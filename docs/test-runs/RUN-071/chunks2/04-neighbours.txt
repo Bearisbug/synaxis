@@ -1,0 +1,40 @@
+# Neighbour test classes of Player#sendPendingChunks and EntityTrackerImpl.ChunkView. Common header: see 00-index.txt.
+# Lock hold 19:36:41-19:39:10. The code under test was the fix as first committed (c7ac6e0830, amended into a6155af745 after this
+# run): the same Player.java and EntityTrackerImpl.java, the test class one Javadoc line shorter.
+# root  ./gradlew :test --rerun --tests <each class below> --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts [STRICT]
+# synx  ./gradlew :synx:test ... the same flags; SynxChunkOverlayIntegrationTest and SynxChunkLoaderIntegrationTest send SynxChunk
+#       packets through the real Player queue (RecordingConnection)
+# loadtest  ./gradlew :loadtest:test --rerun --tests io.github.bearisbug.synaxis.loadtest.BotSocketTest ... (real sockets on loopback,
+#       bots that acknowledge every batch), default mode only
+# No database variables: none of these classes reads them.
+
+  io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest         tests=6 failures=0 errors=0 skipped=0 time=1.84s
+  io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest    tests=3 failures=0 errors=0 skipped=0 time=1.245s
+  io.github.bearisbug.synaxis.entity.player.ChunkSendCapTest                       tests=2 failures=0 errors=0 skipped=0 time=1.35s
+  io.github.bearisbug.synaxis.instance.ChunkViewerIntegrationTest                  tests=4 failures=0 errors=0 skipped=0 time=1.687s
+  io.github.bearisbug.synaxis.instance.EntityTrackerIntegrationTest                tests=3 failures=0 errors=0 skipped=0 time=1.814s
+root-default: 5 classes, tests=18 failures=0 errors=0 skipped=0
+    gradle: BUILD SUCCESSFUL in 8s
+
+  io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest         tests=6 failures=0 errors=0 skipped=0 time=1.82s
+  io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest    tests=3 failures=0 errors=0 skipped=0 time=1.207s
+  io.github.bearisbug.synaxis.entity.player.ChunkSendCapTest                       tests=2 failures=0 errors=0 skipped=0 time=1.33s
+  io.github.bearisbug.synaxis.instance.ChunkViewerIntegrationTest                  tests=4 failures=0 errors=0 skipped=0 time=1.636s
+  io.github.bearisbug.synaxis.instance.EntityTrackerIntegrationTest                tests=3 failures=0 errors=0 skipped=0 time=1.686s
+root-strict: 5 classes, tests=18 failures=0 errors=0 skipped=0
+    gradle: BUILD SUCCESSFUL in 7s
+
+  io.github.bearisbug.synaxis.synx.SynxChunkLoaderIntegrationTest                  tests=12 failures=0 errors=0 skipped=0 time=6.674s
+  io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest                 tests=14 failures=0 errors=0 skipped=0 time=1.944s
+synx-default: 2 classes, tests=26 failures=0 errors=0 skipped=0
+    gradle: BUILD SUCCESSFUL in 19s
+
+  io.github.bearisbug.synaxis.synx.SynxChunkLoaderIntegrationTest                  tests=12 failures=0 errors=0 skipped=0 time=6.761s
+  io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest                 tests=14 failures=0 errors=0 skipped=0 time=1.898s
+synx-strict: 2 classes, tests=26 failures=0 errors=0 skipped=0
+    gradle: BUILD SUCCESSFUL in 13s
+
+  io.github.bearisbug.synaxis.loadtest.BotSocketTest                               tests=8 failures=0 errors=0 skipped=0 time=92.187s
+loadtest-default: 1 classes, tests=8 failures=0 errors=0 skipped=0
+    gradle: BUILD SUCCESSFUL in 1m 40s
+

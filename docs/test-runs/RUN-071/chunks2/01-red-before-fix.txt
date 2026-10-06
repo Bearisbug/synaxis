@@ -1,0 +1,78 @@
+# ChunkSendBlockChangeIntegrationTest on the code before the fix. Common header: see 00-index.txt.
+# ./gradlew :test --rerun --tests 'io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts [STRICT]
+# STRICT = -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+
+# Final run (lock hold about 19:44:47-19:47:09, 2026-10-06 UTC+8; the start line of the hold was not kept, its first Gradle run took 23 s and ended 19:45:10): Player.java and EntityTrackerImpl.java of 8b18922130 over the
+# committed test class (git show 8b18922130:<file> > <file>), run, git checkout HEAD -- src/main.
+
+## before, default: tests=3 failures=3 errors=0 skipped=0 time=6.189s timestamp=2026-10-06T11:45:03.606Z (UTC)
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)   1.090s  FAILED
+    message: org.opentest4j.AssertionFailedError: the block at 65,45,1 the client sees ==> expected: <minecraft:gold_block> but was: <minecraft:air>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(ChunkSendBlockChangeIntegrationTest.java:220)
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                         0.044s  FAILED
+    message: org.opentest4j.AssertionFailedError: the block at -15,45,-15 the client sees ==> expected: <minecraft:gold_block> but was: <minecraft:air>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(ChunkSendBlockChangeIntegrationTest.java:122)
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                   5.044s  FAILED
+    message: org.opentest4j.AssertionFailedError: the thread holding the write-locks of column 4 waited 5003 ms for the queue lock of the player sending it: a deadlock ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(ChunkSendBlockChangeIntegrationTest.java:183)
+    stdout: Center told to the client 1,0, the client sees minecraft:air in chunk 4,0
+    stdout: Chunk -1,-1: the setter changed the block before the packet was queued, the client sees minecraft:air, the server has minecraft:gold_block
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 5003958 µs for the queue lock and took it false, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: 3 tests completed, 3 failed
+    gradle: BUILD FAILED in 23s
+
+## before, strict grid: tests=3 failures=3 errors=0 skipped=0 time=5.94s timestamp=2026-10-06T11:45:15.650Z (UTC)
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)   0.850s  FAILED
+    message: org.opentest4j.AssertionFailedError: the block at 65,45,1 the client sees ==> expected: <minecraft:gold_block> but was: <minecraft:air>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(ChunkSendBlockChangeIntegrationTest.java:220)
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                         0.037s  FAILED
+    message: org.opentest4j.AssertionFailedError: the block at -15,45,-15 the client sees ==> expected: <minecraft:gold_block> but was: <minecraft:air>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(ChunkSendBlockChangeIntegrationTest.java:122)
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                   5.044s  FAILED
+    message: org.opentest4j.AssertionFailedError: the thread holding the write-locks of column 4 waited 5005 ms for the queue lock of the player sending it: a deadlock ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(ChunkSendBlockChangeIntegrationTest.java:183)
+    stdout: Center told to the client 1,0, the client sees minecraft:air in chunk 4,0
+    stdout: Chunk -1,-1: the setter changed the block before the packet was queued, the client sees minecraft:air, the server has minecraft:gold_block
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 5005128 µs for the queue lock and took it false, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: 3 tests completed, 3 failed
+    gradle: BUILD FAILED in 11s
+
+# First red run (lock hold 19:27:32-19:27:57), the test class one Javadoc line shorter, so every line number one lower
+# (:121, :182, :219): the same three tests red with the same messages in both modes.
+## first run, default: tests=3 failures=3 errors=0 skipped=0 time=6.088s timestamp=2026-10-06T11:27:39.826Z (UTC)
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)   1.012s  FAILED
+    message: org.opentest4j.AssertionFailedError: the block at 65,45,1 the client sees ==> expected: <minecraft:gold_block> but was: <minecraft:air>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(ChunkSendBlockChangeIntegrationTest.java:219)
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                         0.035s  FAILED
+    message: org.opentest4j.AssertionFailedError: the block at -15,45,-15 the client sees ==> expected: <minecraft:gold_block> but was: <minecraft:air>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(ChunkSendBlockChangeIntegrationTest.java:121)
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                   5.033s  FAILED
+    message: org.opentest4j.AssertionFailedError: the thread holding the write-locks of column 4 waited 5000 ms for the queue lock of the player sending it: a deadlock ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(ChunkSendBlockChangeIntegrationTest.java:182)
+    stdout: Center told to the client 1,0, the client sees minecraft:air in chunk 4,0
+    stdout: Chunk -1,-1: the setter changed the block before the packet was queued, the client sees minecraft:air, the server has minecraft:gold_block
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 5000579 µs for the queue lock and took it false, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: 3 tests completed, 3 failed
+    gradle: BUILD FAILED in 13s
+
+## first run, strict grid: tests=3 failures=3 errors=0 skipped=0 time=5.965s timestamp=2026-10-06T11:27:51.674Z (UTC)
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)   0.891s  FAILED
+    message: org.opentest4j.AssertionFailedError: the block at 65,45,1 the client sees ==> expected: <minecraft:gold_block> but was: <minecraft:air>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(ChunkSendBlockChangeIntegrationTest.java:219)
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                         0.033s  FAILED
+    message: org.opentest4j.AssertionFailedError: the block at -15,45,-15 the client sees ==> expected: <minecraft:gold_block> but was: <minecraft:air>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(ChunkSendBlockChangeIntegrationTest.java:121)
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                   5.030s  FAILED
+    message: org.opentest4j.AssertionFailedError: the thread holding the write-locks of column 4 waited 5000 ms for the queue lock of the player sending it: a deadlock ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(ChunkSendBlockChangeIntegrationTest.java:182)
+    stdout: Center told to the client 1,0, the client sees minecraft:air in chunk 4,0
+    stdout: Chunk -1,-1: the setter changed the block before the packet was queued, the client sees minecraft:air, the server has minecraft:gold_block
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 5000159 µs for the queue lock and took it false, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: 3 tests completed, 3 failed
+    gradle: BUILD FAILED in 11s
+
+# Earlier attempts (19:22-19:25) did not reach the tests or used a first version of the deadlock case: two compile errors (a map
+# keyed by long for an int index; Error Prone UnnamedVariable), then a version of TC-PROD-676 whose holder held one chunk across
+# ticks and asked for the queue lock once any thread waited on that chunk's lock. It took the chunk's own tick (DynamicChunk#tick
+# takes the read-lock) for the send: in default mode it got the queue lock after 34 us and passed on the code before the fix. The
+# case was rewritten to take the column's locks from inside the send of its first chunk, which runs under the queue lock.

@@ -1,0 +1,98 @@
+# Docs checks of the group (2026-10-06, after the docs edits). Common header: see 00-index.txt.
+
+## bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md
+    lint: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-chunks/docs/DESIGN-PROD.md
+    ℹ️ 以下 ID 只被引用、未在本文档定义,§1 关联已声明兄弟分册(docs/DESIGN-M2.md docs/DESIGN-M3.md docs/DESIGN.md ),按跨分册引用处理,人工核一次: REQ-005 REQ-013 REQ-014 REQ-M3-014 REQ-M3-015 REQ-M3-016 REQ-M3-017 REQ-M3-018 API-001 API-003 API-M2-002 API-M2
+    ℹ️ 请核对以下 API-* 是否都在 §10 权限矩阵出现或有显式免列说明(读/列表/回调端点最易漏标):API-PROD-001 API-PROD-002 API-PROD-003 API-PROD-004 API-PROD-005 API-PROD-006 API-PROD-007 API-PROD-008 API-PROD-009 API-PROD-010 API-PROD-011 API-PROD-012 API-PR
+    ✓ 状态图带事件转移 ↔ 迁移表行数一致(按机分段: 10 11 12 21 25)
+    ℹ️ 已画 5 台状态机;请核对:数据字典每个 ≥2 态 status/生命周期枚举实体,已建机或按三类出口(纯派生/投影态、状态由他机翻转、极简运营态)显式免建——见 CHECKLIST C1
+    ✅ lint 无警告
+
+## bash ~/.claude/skills/test-doc/check.sh docs/TEST.md (the known warnings only: section 3 environment table, section 6 environment column, the two RUN-031 rows)
+    lint: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-chunks/docs/TEST.md
+    ⚠️ §3 缺环境表(TEMPLATE §3:| 环境 | 入口 | 就绪判定 | 测试账号 | 种子与重置 | 外部副作用 |);跑线上轮前先补表,再逐条判定冒烟用例能否标「线上可跑」(SKILL.md 执行流程第 2 条)
+    ℹ️ 没有用例标「线上可跑」——跑线上冒烟轮前先按 TEMPLATE 头部判据逐条判定冒烟用例(SKILL.md 执行流程第 2 条)
+    ⚠️ 轮次汇总表头缺「环境」列(TEMPLATE §6:本地 / 预发 / 线上)
+    ⚠️ 执行记录明细行不合格:
+      失败项缺证据引用:| RUN-031 | TC-PROD-271 | 失败 | 5A 200 人 walk 30 min 基线只差「超 50 ms 的 tick 为 0」一项：实测 18 个；服务端与机器人同机，本机另有会话在跑，swap 约 29 GiB | 分机档（DESIGN-PROD §28.1 Q11）重跑 |
+      失败项缺证据引用:| RUN-031 | TC-PROD-360 | 失败 | 集成后 200 人 walk 30 min 同样只差这一项：6 个；同一档可见实体有 302 个采样超过上限 100（最大 102），登记为 DESIGN-PROD v0.8.2 §28.2 缺陷 | 分机档重跑；可见上限的竞态第 6 波开始前修 |
+    ℹ️ 联检设计文档自动解析自元信息:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-chunks/docs/../docs/DESIGN.md
+    ℹ️ 联检设计文档自动解析自元信息:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-chunks/docs/../docs/DESIGN-M2.md
+    ℹ️ 联检设计文档自动解析自元信息:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-chunks/docs/../docs/DESIGN-M3.md
+    ℹ️ 联检设计文档自动解析自元信息:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-chunks/docs/../docs/DESIGN-PROD.md
+    ✓ REQ 已双向联检(TEST→设计 悬空 + 设计→TEST 覆盖;设计文档 4 份)
+    ℹ️ 用例 653 条(冒烟 57)· 轮次 68;覆盖与执行完整性按 references/CHECKLIST.md 核对
+    (以上为机械提示;REQ/Gherkin 覆盖、冷启动实测等语义项按 references/CHECKLIST.md 逐条过)
+
+## Line references to the two changed source files: rg -n 'Player\.java:[0-9]|EntityTrackerImpl\.java:[0-9]' docs/*.md
+# Change-log rows keep the numbers of their time and are not listed; every other reference, with the line it points at now:
+    docs/DESIGN-M3.md:886:Player.java:950
+    docs/DESIGN-M3.md:886:Player.java:955
+    docs/DESIGN-PROD.md:2858:Player.java:355
+    docs/DESIGN-PROD.md:2863:Player.java:355
+    docs/DESIGN-PROD.md:3055:Player.java:505-506
+    docs/DESIGN-PROD.md:3055:Player.java:507
+    docs/DESIGN-PROD.md:3055:Player.java:508
+    docs/DESIGN-PROD.md:3143:Player.java:950
+    docs/DESIGN-PROD.md:3143:Player.java:955
+    docs/DESIGN-PROD.md:3143:Player.java:968
+    docs/DESIGN-PROD.md:3143:Player.java:973
+    docs/DESIGN-PROD.md:558:Player.java:395-397
+    docs/DESIGN-PROD.md:677:Player.java:387-390
+    docs/TEST.md:17:Player.java:745
+    docs/TEST.md:9687:EntityTrackerImpl.java:68
+    docs/TEST.md:9687:Player.java:747
+
+# Not changed, on purpose: DESIGN-M3.md:886 (:950, :955) is the lighting session's line, DESIGN-PROD section 28.3 asks it to write
+# :968 and :973 (both old and new numbers stand in that row, DESIGN-PROD.md:3143); DESIGN-PROD.md:2858 and :2863 (:355) say they
+# are the numbers of 8de32ab9b4; TEST.md:17 is this group's change-log row. Changed: DESIGN-PROD.md:558, :677, :3055 and
+# TEST.md:9687 (:747), each +2 for the two constant lines added at Player.java:181-182.
+
+# What those lines hold in a6155af745:
+    Player.java:387-390
+                this.maxViewDistance = requestedMaxViewDistance;
+                this.serverViewDistance = Math.min(spawnInstance.viewDistance(), maxViewDistance);
+                final JoinGamePacket joinGamePacket = new JoinGamePacket(
+                        getEntityId(), this.hardcore, List.of(), 0,
+    Player.java:395-397
+                                deathLocation, portalCooldown, DEFAULT_SEA_LEVEL),
+                        // Online mode stays on so the client shows tablist heads. Secure chat is off: chat is
+                        // relayed as system messages, never as signed player chat (docs/DESIGN-PROD.md ADR-PROD-009).
+    Player.java:505-508
+                                final PickupExperienceEvent pickupExperienceEvent = new PickupExperienceEvent(this, experienceOrb);
+                                process().eventHandler().callCancellable(pickupExperienceEvent, () -> {
+        //                            short experienceCount = pickupExperienceEvent.getExperienceCount(); // TODO give to player
+                                    experienceOrb.remove();
+    Player.java:747
+                        runnable.accept(instance);
+    Player.java:968
+                        process().eventHandler().call(new PlayerChunkLoadEvent(this, chunkX, chunkZ));
+    Player.java:973
+                    sendPacket(new ChunkBatchFinishedPacket(batchSize));
+    EntityTrackerImpl.java:68
+                EntityTrackerEntry prevEntryWithUuid = entriesByEntityUuid.putIfAbsent(entity.getUuid(), newEntry);
+
+# Red lines of the new test class cited in docs/TEST.md (<SB> = ChunkSendBlockChangeIntegrationTest.java), as in 01 and 03:
+    <SB>:122  assertEquals(server.name(), client.name(), "the block at " + x + "," + CHANGED_Y + "," + z + " the client sees");
+    <SB>:123  assertTrue(underTheLock.isEmpty(), "PlayerChunkLoadEvent dispatched under the chunk write-lock for " + underTheLock);
+    <SB>:183  assertTrue(queueLockTaken.get(), "the thread holding the write-locks of column " + column + " waited "
+    <SB>:185  assertEquals(2 * RADIUS + 1, times.size(), "chunks of column " + column + " sent " + times);
+    <SB>:220  assertEquals(Block.GOLD_BLOCK.name(), client.name(), "the block at " + x + "," + CHANGED_Y + "," + z + " the client sees");
+# Lines of <PL> and <ET> the counter proofs edit:
+    <PL>:181-182
+            // How long a chunk send waits for the write-lock of the chunk, see #sendPendingChunks()
+            private static final Duration CHUNK_LOCK_WAIT = Duration.ofMillis(1);
+    <PL>:958-968
+                        if (!chunk.tryLockWriteLock(CHUNK_LOCK_WAIT)) {
+                            queuedChunks.add(chunkIndex);
+                            chunkQueue.enqueue(chunkIndex);
+                            break;
+                        }
+                        try {
+                            sendPacket(chunk.getFullDataPacket());
+                        } finally {
+                            chunk.unlockWriteLock();
+                        }
+                        process().eventHandler().call(new PlayerChunkLoadEvent(this, chunkX, chunkZ));
+    <ET>:379
+                        if (player.isChunkInRing(chunkX, chunkZ)) entityMap.putIfAbsent(player.getEntityId(), player);

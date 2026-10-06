@@ -1,42 +1,45 @@
-# RUN-070 / items: source gates on 34d3fd8855 and the two document lints on the final docs.
-# errorproneCheck compiles every source set with Error Prone (-Werror); testNamingCheck ran in full (--rerun) in every project;
-# checkBinaryCompatibility is SKIPPED without -PbaselineJarDir (CI passes it); this group changes no public signature, only
-# the Javadoc of PluginEvents and PlayerDataStore, which :plugin-api:javadoc builds.
+# RUN-070 / items: source gates on 1ad4db8579 and the two document lints on the final docs.
+# errorproneCheck compiles every source set with Error Prone (-Werror): the compile tasks were up to date from the full
+# runs of 07 and 08 on the same HEAD, which compiled with Error Prone; testNamingCheck ran in full (--rerun) in every
+# project; checkBinaryCompatibility is SKIPPED without -PbaselineJarDir (CI passes it). This group changes no public
+# signature, only the Javadoc of PluginEvents and PlayerDataStore, which :plugin-api:javadoc builds.
 
-[2026-10-06 05:26:31] lock taken; HEAD 34d3fd8855; git status --short: 3 paths
-[2026-10-06 05:26:31] gates: ./gradlew errorproneCheck forbiddenImportsCheck testNamingCheck --rerun :architecture-tests:test --rerun :plugin-api:javadoc checkBinaryCompatibility --console=plain --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
-  BUILD SUCCESSFUL in 11s
-[2026-10-06 05:26:43] gates: rc=0 (12 s)
+[2026-10-06 09:26:47] gates (same hold as 07 and 08): ./gradlew errorproneCheck forbiddenImportsCheck testNamingCheck --rerun :architecture-tests:test --rerun :plugin-api:javadoc --continue --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 12s
+[2026-10-06 09:27:00] gates: rc=0
+  > Task :architecture-tests:test
   > Task :architecture-tests:testNamingCheck
   > Task :baker:testNamingCheck
+  > Task :game-rts:testNamingCheck
   > Task :jcstress-tests:testNamingCheck
   > Task :jmh-benchmarks:testNamingCheck
   > Task :loadtest:testNamingCheck
-  > Task :game-rts:testNamingCheck
+  > Task :plugin-api:javadoc
   > Task :plugin-api:testNamingCheck
   > Task :protocol:testNamingCheck
-  > Task :synx:testNamingCheck
-  > Task :testing:testNamingCheck
-  > Task :architecture-tests:testClasses UP-TO-DATE
   > Task :server-app:testNamingCheck
+  > Task :synx:testNamingCheck
   > Task :testNamingCheck
+  > Task :testing:testNamingCheck
+TOTAL architecture-tests/build/test-results/test: classes=7 tests=20 failures=0 errors=0 skipped=0
+[2026-10-06 09:27:00] lock released
+
+[2026-10-06 09:30:01] checkBinaryCompatibility (the hold of 05): ./gradlew checkBinaryCompatibility --console=plain --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  > Task :protocol:checkBinaryCompatibility SKIPPED
   > Task :checkBinaryCompatibility SKIPPED
   > Task :plugin-api:checkBinaryCompatibility SKIPPED
-  > Task :protocol:checkBinaryCompatibility SKIPPED
   > Task :testing:checkBinaryCompatibility SKIPPED
-  > Task :plugin-api:javadoc
-  > Task :architecture-tests:test
-TOTAL architecture-tests/build/test-results/test *: classes=7 tests=20 failures=0 errors=0 skipped=0
-[2026-10-06 05:26:43] lock releasing
+  BUILD SUCCESSFUL in 4s
+[2026-10-06 09:30:06] lock released
 
-[2026-10-06 05:28:43] bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md
+[2026-10-06 09:34:26] bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md
   lint: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-items/docs/DESIGN-PROD.md
   ℹ️ 以下 ID 只被引用、未在本文档定义,§1 关联已声明兄弟分册(docs/DESIGN-M2.md docs/DESIGN-M3.md docs/DESIGN.md ),按跨分册引用处理,人工核一次: REQ-005 REQ-013 REQ-014 REQ-M3-014 REQ-M3-015 REQ-M3-016 REQ-M3-017 REQ-M3-018 API-001 API-003 API-M2-002 API-M2-007 API-M2-008 API-M2-010 API-M2-011 API-M3-003 API-M3-005 API-M3-006 API-M3-007 API-M3-009 API-M3-010 API-M3-011 API-M3-012 API-M3-013 API-M3-015 RB-002 RB-M3-001 RB-M3-005
   ℹ️ 请核对以下 API-* 是否都在 §10 权限矩阵出现或有显式免列说明(读/列表/回调端点最易漏标):API-PROD-001 API-PROD-002 API-PROD-003 API-PROD-004 API-PROD-005 API-PROD-006 API-PROD-007 API-PROD-008 API-PROD-009 API-PROD-010 API-PROD-011 API-PROD-012 API-PROD-013 API-PROD-014 API-PROD-015 API-PROD-016 API-PROD-017 API-PROD-018 API-PROD-019 API-PROD-020 API-PROD-021 API-PROD-022 API-PROD-023 API-PROD-024 API-PROD-025 API-PROD-026 API-PROD-027 API-PROD-028 API-PROD-029 
   ✓ 状态图带事件转移 ↔ 迁移表行数一致(按机分段: 10 11 12 21 25)
   ℹ️ 已画 5 台状态机;请核对:数据字典每个 ≥2 态 status/生命周期枚举实体,已建机或按三类出口(纯派生/投影态、状态由他机翻转、极简运营态)显式免建——见 CHECKLIST C1
   ✅ lint 无警告
-[2026-10-06 05:28:45] bash ~/.claude/skills/test-doc/check.sh docs/TEST.md
+[2026-10-06 09:34:27] bash ~/.claude/skills/test-doc/check.sh docs/TEST.md
   lint: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-items/docs/TEST.md
   ⚠️ §3 缺环境表(TEMPLATE §3:| 环境 | 入口 | 就绪判定 | 测试账号 | 种子与重置 | 外部副作用 |);跑线上轮前先补表,再逐条判定冒烟用例能否标「线上可跑」(SKILL.md 执行流程第 2 条)
   ℹ️ 没有用例标「线上可跑」——跑线上冒烟轮前先按 TEMPLATE 头部判据逐条判定冒烟用例(SKILL.md 执行流程第 2 条)
@@ -49,5 +52,5 @@ TOTAL architecture-tests/build/test-results/test *: classes=7 tests=20 failures=
   ℹ️ 联检设计文档自动解析自元信息:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-items/docs/../docs/DESIGN-M3.md
   ℹ️ 联检设计文档自动解析自元信息:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-items/docs/../docs/DESIGN-PROD.md
   ✓ REQ 已双向联检(TEST→设计 悬空 + 设计→TEST 覆盖;设计文档 4 份)
-  ℹ️ 用例 626 条(冒烟 57)· 轮次 66;覆盖与执行完整性按 references/CHECKLIST.md 核对
+  ℹ️ 用例 628 条(冒烟 57)· 轮次 66;覆盖与执行完整性按 references/CHECKLIST.md 核对
   (以上为机械提示;REQ/Gherkin 覆盖、冷启动实测等语义项按 references/CHECKLIST.md 逐条过)

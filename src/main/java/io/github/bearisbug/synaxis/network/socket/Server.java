@@ -265,7 +265,7 @@ public final class Server {
                 }
                 if (!connection.isOnline()) {
                     try {
-                        connection.flushSync();
+                        connection.flushRemaining();
                     } catch (IOException _) {
                         // Ignore IO errors
                     } finally {

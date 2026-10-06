@@ -794,6 +794,21 @@ public class PlayerSocketConnection extends PlayerConnection {
         else this.writeLeftover = buffer;
     }
 
+    /**
+     * Writes everything left for the peer once the connection is offline, the disconnect packet and
+     * all that was queued before it: one {@link #flushSync()} writes at most one buffer, and a kick
+     * can find more than that waiting. Called by the write thread before it closes the channel; a peer
+     * that does not read it all is cut off by {@link #closeOnceFlushed()}.
+     *
+     * @throws IOException if writing fails, the channel closed under the write included
+     */
+    @ApiStatus.Internal
+    public void flushRemaining() throws IOException {
+        do {
+            flushSync();
+        } while (!packetQueue.isEmpty() || writeLeftover != null);
+    }
+
     private boolean writeCounted(NetworkBuffer buffer, SendablePacket packet) {
         final boolean compressed = sentPacketCounter.get() > compressionStart;
         final boolean success = writeSendable(buffer, packet, compressed);

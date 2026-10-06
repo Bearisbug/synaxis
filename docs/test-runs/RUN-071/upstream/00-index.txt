@@ -1,0 +1,60 @@
+# Group upstream of the production-readiness session (branch prod/r071-upstream, worktree synaxis-wt/r071-upstream): five ports from
+# upstream Minestom (master checked up to fcd35c05d9), for the integrate round to register as RUN-071. Code under test: 29df11e74f
+# (main 8b18922130 + five code commits, one per port); the docs commit on top changes docs and this directory only. 2026-10-06
+# 20:40 to 21:30 (UTC+8). Machine: Apple M4 Pro, 12 cores, 24 GiB, macOS 15.3.2, Homebrew JDK 25.0.4.1. Every Gradle command ran inside
+# a hold of the shared heavy lock (/tmp/synaxis-heavy.lock), released at the end of its batch; five holds: 20:56:57-20:57:36,
+# 20:58:32-20:58:43, 21:01:43-21:02:41, 21:05:50-21:08:10, 21:12:19-21:12:59. Gradle: --max-workers=2 --no-daemon --init-script
+# gradle/init/aliyun-mirror.init.gradle.kts. No class here touches a database; no database variables were set. Raw Gradle logs and
+# JUnit XML stayed in /tmp/run071/upstream, deleted after the round; the lines in these files are copied out of them.
+00-index.txt                this file
+01-decompile-26.2.txt       what the 26.2 client reads and writes for the border packets, the five packets and the pairing equipment
+02-red-before-fix.txt       the new and changed tests on the code of 8b18922130: 17 of 54 red in both modes; the compile failure of
+                            NbtComponentSerializer.nbt(Registries); logback 1.6.3
+03-green-after-fix.txt      the changed classes and their neighbours on 29df11e74f: 18 classes, 572 tests, 0 failures in both modes;
+                            forbiddenImportsCheck, testNamingCheck, javadoc; logback 1.6.5
+04-counterproofs.txt        cp1-cp7, one edit each on 29df11e74f, all red as the cases say, restored after; TC-PROD-121 step 2 rerun
+05-docs.txt                 design-doc and test-doc lint (only the known warnings) and the line references of the docs to changed files
+
+# The ports (one commit each)
+aacafe2be3  #3382 (89399c65ce)  world border lerp time in ticks; ClientChangeDifficultyPacket, ClientSetBeaconEffectPacket,
+                                ClientUpdateStructureBlockPacket, DeleteChatPacket, MoveMinecartPacket to the 26.2 layout
+64618aaeda  #3304 (one item)    FilteredText's four codecs and DataComponentPredicate.Damage.CODEC final; ArchitectureTest rule
+8d9e71e653  #3249 (024de826c7)  empty equipment slots not sent; PlayerInventory#clear no longer sends the full packet on top
+e28e69ba07  #3400 (268866b01b)  hover item components encoded with the buffer registries; #3388 NbtComponentSerializer.nbt(Registries)
+29df11e74f  #3373 + logback     module-info exports item.predicate; logback 1.6.3 -> 1.6.5
+
+# Where this branch differs from upstream, and why
+- MoveMinecartPacket: upstream's commit message says LP_FLOAT, its code writes angle bytes; 26.2 uses ByteBufCodecs.ROTATION_BYTE
+  (01, section 9), so angle bytes. The packing truncates like the engine's other entity packets ((byte) (deg * 256 / 360));
+  vanilla's Mth.packDegrees floors, so a negative angle off the 1/256 grid lands one step apart. Not changed here.
+- Hover items: in this fork RegistryKey's codec does not look the key up when encoding, so an engine value naming an entry the
+  process registered itself (upstream's test case) already encoded before the fix. What threw before the fix is a Gson value: the
+  Adventure SPI has no Gson to NBT conversion (02, ComponentHoverItemRegistriesTest). The new test covers that, and that the Gson
+  value is decoded with the buffer's registries (cp7).
+- #3382's debug packet and ItemStackTemplate changes do not apply: the debug package was deleted with REQ-005 (dfadb0731d) and
+  ItemStackTemplate already writes the component patch (6507294e3e).
+- Instance.java keeps its line count (docs/DESIGN-M3.md cites Instance.java:1302-1334, :1315, :1332), so the two transition lines
+  are reordered rather than merged as upstream does.
+
+# Results (8 new cases, 8 pass; TC-PROD-121 count updated and its counter proof rerun)
+TC-PROD-680  pass  lerp packet 20 ticks for 1 s, initialize packet 15 after 5 ticks (03); red before the fix at
+                   WorldBorderIntegrationTest.java:75, 1000 (02); cp1 red at :75, cp2 red at :78, 750 (04)
+TC-PROD-681  pass  six layout cases, PacketWriteReadRegistriesTest 470 (03); before the fix 6 of 6 red (02); cp3 red at :95 (04)
+TC-PROD-682  pass  ArchitectureTest 8 (03); before the fix red at :291, 5 fields (02); cp4 red at :291, 1 field (04)
+TC-PROD-683  pass  NonLiving 3, PlayerInventory 9 (03); before the fix red at :62, :48 and PlayerInventoryIntegrationTest.java:169 (02);
+                   cp6 the same three (04)
+TC-PROD-684  pass  PlayerInventory 9, Inventory 16 (03); before the fix red at PlayerInventoryIntegrationTest.java:158 (two packets),
+                   :114 and InventoryIntegrationTest.java:158 (02)
+TC-PROD-685  pass  hover 5, NBT serializer 3, component buffer types 13 + 1 (03); before the fix 2 red at :55 via :67 and :88, the
+                   serializer test does not compile (02); cp7 red at :55 via :67 (04)
+TC-PROD-686  pass  ModuleExportsTest (03); before the fix and cp5 red at :31 (02, 04); logback 1.6.3 -> 1.6.5, LogbackConfigurationTest 5
+                   and LogBudgetTest 2 in both modes (02, 03)
+TC-PROD-687  pass  PacketVanillaIdTest 6, PacketRegistryLookupTest 7, PlayerMovementAuthorityIntegrationTest 7,
+                   PlayerRespawnChunkIntegrationTest 4 in both modes; forbiddenImportsCheck, testNamingCheck, javadoc (03)
+TC-PROD-121  pass  step 2 rerun with this branch's ArchitectureTest: 8 tests completed, 1 failed, HandshakeListener.java:32 (04)
+
+# Not verified here
+- No full module run, no real client, no server process: the full gate runs in the integrate round on GitHub Actions. The real
+  client regression (TC-PROD-040 / TC-PROD-130) is the first run where a vanilla client reads the changed equipment and hover paths.
+- The 50x slower client wall before the fix (DESIGN-PROD §28.2) is worked out from the decompiled client and the code, not run on a
+  client; no deployment sets a border with a transition time.

@@ -34,6 +34,15 @@ public final class PlayerActionListener {
         final Instance instance = player.getInstance();
         if (instance == null) return;
 
+        final boolean dig = status == ClientPlayerActionPacket.Status.STARTED_DIGGING
+                || status == ClientPlayerActionPacket.Status.FINISHED_DIGGING;
+        if (dig && instance.isChunkLoaded(blockPosition) && outOfReach(player, blockPosition)) {
+            // Out of reach the vanilla server only acknowledges, on which the client rolls its prediction
+            // back; the data of a block entity is not sent again, to the player or to its viewers
+            player.sendPacket(new AcknowledgeBlockChangePacket(packet.sequence()));
+            return;
+        }
+
         DiggingResult diggingResult = null;
         if (status == ClientPlayerActionPacket.Status.STARTED_DIGGING) {
             if (!instance.isChunkLoaded(blockPosition)) return;
@@ -72,8 +81,8 @@ public final class PlayerActionListener {
     private static DiggingResult startDigging(Player player, Instance instance, Point blockPosition, BlockFace blockFace) {
         final Block block = instance.getBlock(blockPosition);
 
-        // Prevent spectators, check players in adventure mode and the reach
-        if (shouldPreventBreaking(player, blockPosition, block)) {
+        // Prevent spectators and check players in adventure mode
+        if (shouldPreventBreaking(player, block)) {
             return new DiggingResult(block, false);
         }
 
@@ -99,7 +108,7 @@ public final class PlayerActionListener {
     private static DiggingResult finishDigging(Player player, Instance instance, Point blockPosition, BlockFace blockFace) {
         final Block block = instance.getBlock(blockPosition);
 
-        if (shouldPreventBreaking(player, blockPosition, block)) {
+        if (shouldPreventBreaking(player, block)) {
             return new DiggingResult(block, false);
         }
 
@@ -120,9 +129,7 @@ public final class PlayerActionListener {
         return breakBlock(instance, player, blockPosition, playerFinishDiggingEvent.getBlock(), blockFace);
     }
 
-    private static boolean shouldPreventBreaking(Player player, Point blockPosition, Block block) {
-        // Out of reach the vanilla server only acknowledges, on which the client rolls its prediction back
-        if (outOfReach(player, blockPosition)) return true;
+    private static boolean shouldPreventBreaking(Player player, Block block) {
         final ItemStack itemInMainHand = player.getItemInMainHand();
 
         return switch (player.getGameMode()) {

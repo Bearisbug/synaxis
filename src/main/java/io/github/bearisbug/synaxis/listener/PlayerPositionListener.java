@@ -78,12 +78,10 @@ public class PlayerPositionListener {
         }
         // Turned back where the player is, loading no chunk: a move into a chunk that is not loaded, a
         // move of more than 64 blocks in one packet (4 chunks: the client teleporting itself) and a move
-        // out across the world border. A player already outside the border, put there by the server,
-        // still moves; only crossing it outwards is turned back
-        final var border = instance.getWorldBorder();
+        // out across the world border, or farther out for a player the server put outside it
         if ((!currentPosition.sameChunk(packetPosition) && !ChunkUtils.isLoaded(instance, packetPosition))
                 || currentPosition.distanceSquared(packetPosition) > 64 * 64
-                || (border.inBounds(currentPosition) && !border.inBounds(packetPosition))) {
+                || outwards(instance, currentPosition, packetPosition)) {
             var _ = player.teleport(currentPosition);
             return;
         }
@@ -115,5 +113,29 @@ public class PlayerPositionListener {
                 var _ = player.teleport(eventPosition);
             }
         }
+    }
+
+    /**
+     * Whether a move leaves the world border of the instance or, for a player the server put outside
+     * it, gets farther out on the x or the z axis; turning, walking along the border and walking back
+     * in do not. The border ends at the wall the vanilla client collides with, its minimum rounded
+     * down and its maximum up (26.2 {@code WorldBorder$StaticBorderExtent#updateBox}), so that a
+     * client against the wall of a border off the block grid, or of one changing its size, is inside.
+     */
+    private static boolean outwards(Instance instance, Pos from, Pos to) {
+        final var border = instance.getWorldBorder();
+        final double radius = border.diameter() / 2;
+        final double minX = Math.floor(border.centerX() - radius), maxX = Math.ceil(border.centerX() + radius);
+        final double minZ = Math.floor(border.centerZ() - radius), maxZ = Math.ceil(border.centerZ() + radius);
+        if (from.x() >= minX && from.x() < maxX && from.z() >= minZ && from.z() < maxZ) {
+            return to.x() < minX || to.x() >= maxX || to.z() < minZ || to.z() >= maxZ;
+        }
+        return beyond(to.x(), minX, maxX) > beyond(from.x(), minX, maxX)
+                || beyond(to.z(), minZ, maxZ) > beyond(from.z(), minZ, maxZ);
+    }
+
+    /** How far {@code coordinate} is outside [{@code min}, {@code max}], 0 within it. */
+    private static double beyond(double coordinate, double min, double max) {
+        return Math.max(0, Math.max(min - coordinate, coordinate - max));
     }
 }

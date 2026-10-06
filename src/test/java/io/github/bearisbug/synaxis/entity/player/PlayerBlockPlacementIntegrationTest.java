@@ -124,6 +124,7 @@ public class PlayerBlockPlacementIntegrationTest {
         var player = connection.connect(instance, new Pos(1612.5, 42, 5.5));
         player.setItemInMainHand(ItemStack.of(Material.WHITE_WOOL));
 
+        var blockChanges = connection.trackIncoming(BlockChangePacket.class);
         var acks = connection.trackIncoming(AcknowledgeBlockChangePacket.class);
         var packet = new ClientPlayerBlockPlacementPacket(
                 PlayerHand.MAIN, new Pos(1615, 41, 5), BlockFace.EAST,
@@ -134,6 +135,8 @@ public class PlayerBlockPlacementIntegrationTest {
 
         // The placement lands in the unloaded chunk and is ignored, but the sequence is still acked.
         acks.assertCount(1);
+        // No block written back: not the refusal of a block use out of reach or outside the border
+        blockChanges.assertCount(0);
     }
 
     @Test

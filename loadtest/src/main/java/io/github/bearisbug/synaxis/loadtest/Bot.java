@@ -87,6 +87,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.LongSupplier;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
@@ -128,6 +129,13 @@ final class Bot {
     private static final String NO_TRANSFER = "no-transfer";
     /** The chunk of a new connection that completes a transfer: the last of the vanilla first batch. */
     private static final int FIRST_BATCH = 9;
+    /**
+     * The farthest one position packet goes from where the server has the bot. The server turns back a
+     * packet more than 64 blocks away ({@code docs/DESIGN-PROD.md} {@code API-PROD-030}), and the profile
+     * runs ahead of the server when the moving thread stalls, so the bot walks to it in steps of this
+     * length, as {@code tools/loadtest/PacketFlood.java} and {@code soak.py} do.
+     */
+    private static final double STEP_LIMIT = 32;
 
     private static final int KEEP_ALIVE = Protocol.serverId(ConnectionState.PLAY, KeepAlivePacket.class);
     private static final int PING = Protocol.serverId(ConnectionState.PLAY, PingPacket.class);
@@ -191,16 +199,28 @@ final class Bot {
     private volatile @Nullable Leg leg;
     /** When the running try of a gate bot started, {@link System#nanoTime()}; 0 when none runs. */
     private final AtomicLong tryStart = new AtomicLong();
+    /**
+     * Where the server has the bot: the position it sent last, or where the last teleport put it, the
+     * first one of a connection included. Under {@link #writeLock}.
+     */
+    private double[] serverPosition = new double[3];
+    /** What the moves take the time from: {@link System#nanoTime()}, a clock a test jumps to stall them. */
+    private final LongSupplier clock;
 
     /** One spawn: where and when, and the walk of a gate bot from there. */
     private record Leg(double x, double y, double z, long since, @Nullable GateWalk walk) {
     }
 
     Bot(int index, Settings settings, BotStats stats) {
+        this(index, settings, stats, System::nanoTime);
+    }
+
+    Bot(int index, Settings settings, BotStats stats, LongSupplier clock) {
         this.index = index;
         this.username = String.format(Locale.ROOT, "bot%05d", index);
         this.settings = settings;
         this.stats = stats;
+        this.clock = clock;
     }
 
     /**
@@ -508,7 +528,11 @@ final class Bot {
             case KeepAlivePacket keepAlive -> send(ConnectionState.PLAY, new ClientKeepAlivePacket(keepAlive.id()));
             case PingPacket ping -> send(ConnectionState.PLAY, new ClientPongPacket(ping.id()));
             case PlayerPositionAndLookPacket teleport -> {
-                send(ConnectionState.PLAY, new ClientTeleportConfirmPacket(teleport.teleportId()));
+                synchronized (writeLock) {
+                    // Every position sent after the confirmation starts from where the teleport put the bot
+                    serverPosition = new double[]{teleport.position().x(), teleport.position().y(), teleport.position().z()};
+                    send(ConnectionState.PLAY, new ClientTeleportConfirmPacket(teleport.teleportId()));
+                }
                 if (leg == null) spawned(teleport);
             }
             case ChunkBatchFinishedPacket _ -> {
@@ -529,7 +553,7 @@ final class Bot {
      */
     private void spawned(PlayerPositionAndLookPacket teleport) throws IOException {
         send(ConnectionState.PLAY, new ClientPlayerLoadedPacket());
-        final long now = System.nanoTime();
+        final long now = clock.getAsLong();
         final double x = teleport.position().x();
         final double y = teleport.position().y();
         final double z = teleport.position().z();
@@ -613,12 +637,14 @@ final class Bot {
     }
 
     /**
-     * One tick on a leg: where the profile has the bot now, sent unless the leg's connection is gone
-     * or back in configuration. A gate walk only moves on a tick whose position goes out, so that a
-     * try starts with the first position in a frame the bot sends.
+     * One tick on a leg: where the profile has the bot now, at most {@link #STEP_LIMIT} blocks from
+     * where the server has it, sent unless the leg's connection is gone or back in configuration. A
+     * gate walk only moves on a tick whose position goes out, so that a try starts with the first
+     * position in a frame the bot sends. After a stall the bot catches up with its walk over a few
+     * ticks, and a try that starts meanwhile starts that much before the bot is in the frame.
      */
     private void moveOn(Leg current) throws IOException {
-        final long now = System.nanoTime();
+        final long now = clock.getAsLong();
         final boolean onGround = settings.profile().lift == 0;
         synchronized (writeLock) {
             if (leg != current || state != ConnectionState.PLAY) return;
@@ -634,10 +660,21 @@ final class Bot {
                 at = settings.profile().position(index, current.x(), current.y(), current.z(),
                         (now - current.since()) / 1e9);
             }
-            send(ConnectionState.PLAY, new ClientPlayerPositionPacket(new Vec(at[0], at[1], at[2]),
+            final double[] next = toward(serverPosition, at);
+            serverPosition = next;
+            send(ConnectionState.PLAY, new ClientPlayerPositionPacket(new Vec(next[0], next[1], next[2]),
                     (byte) (onGround ? ClientPlayerPositionPacket.FLAG_ON_GROUND : 0)));
             send(ConnectionState.PLAY, new ClientTickEndPacket());
         }
+    }
+
+    /** The point on the way from {@code from} to {@code to} at most {@link #STEP_LIMIT} blocks from {@code from}. */
+    private static double[] toward(double[] from, double[] to) {
+        final double dx = to[0] - from[0], dy = to[1] - from[1], dz = to[2] - from[2];
+        final double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (distance <= STEP_LIMIT) return to;
+        final double scale = STEP_LIMIT / distance;
+        return new double[]{from[0] + dx * scale, from[1] + dy * scale, from[2] + dz * scale};
     }
 
     /** Hands the run file entry of the connection that ended, if any, to {@link BotStats#connectionLog}. */

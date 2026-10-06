@@ -17,8 +17,10 @@ import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerActionPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerBlockPlacementPacket;
+import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.AcknowledgeBlockChangePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.BlockChangePacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.BlockEntityDataPacket;
 import io.github.bearisbug.synaxis.testing.Collector;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
@@ -26,6 +28,7 @@ import io.github.bearisbug.synaxis.testing.TestConnection;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A dig or a block use whose block is out of the player's reach is refused
@@ -72,6 +75,40 @@ public class PlayerBlockReachIntegrationTest {
         acks.assertSingle(ack -> assertEquals(7, ack.sequence()));
     }
 
+    /**
+     * A dig out of reach is answered with the acknowledgement alone, as the vanilla server answers it:
+     * the data of a block entity is not sent again, to the player or to its viewers, so that a modified
+     * client cannot have a chest anywhere in a loaded chunk sent to everyone around it, packet after
+     * packet. A dig refused for another reason, adventure mode with nothing in hand here, still has it
+     * sent to the viewers.
+     */
+    @Test
+    public void aDigOutOfReachSendsNoBlockEntityData(Env env) {
+        final Instance instance = env.createFlatInstance();
+        instance.loadChunk(2, 0).join();
+        // At eye height: 30.5 blocks east of the eyes, and 1.5
+        instance.setBlock(39, 41, 8, Block.CHEST);
+        instance.setBlock(10, 41, 8, Block.CHEST);
+        final TestConnection connection = env.createConnection();
+        final Player player = connection.connect(instance, SPAWN);
+        final TestConnection neighborConnection = env.createConnection();
+        final Player neighbor = neighborConnection.connect(instance, new Pos(10.5, 40, 10.5));
+        assertTrue(player.isViewer(neighbor), "the second player sees the digger");
+        final Collector<BlockEntityDataPacket> toTheNeighbor = neighborConnection.trackIncoming(BlockEntityDataPacket.class);
+        final Collector<ServerPacket> toTheDigger = connection.trackIncoming();
+
+        dig(player, ClientPlayerActionPacket.Status.FINISHED_DIGGING, 39, 41, 8, 5);
+
+        toTheNeighbor.assertEmpty();
+        toTheDigger.assertSingle(AcknowledgeBlockChangePacket.class, ack -> assertEquals(5, ack.sequence()));
+        assertTrue(instance.getBlock(39, 41, 8).compare(Block.CHEST), "the chest 30.5 blocks away is still there");
+
+        player.setGameMode(GameMode.ADVENTURE);
+        final Collector<BlockEntityDataPacket> refused = neighborConnection.trackIncoming(BlockEntityDataPacket.class);
+        dig(player, ClientPlayerActionPacket.Status.FINISHED_DIGGING, 10, 41, 8, 6);
+        refused.assertSingle(packet -> assertEquals(new Vec(10, 41, 8), packet.blockPosition().asVec()));
+    }
+
     /** The limit is the block interaction range plus one block, exclusive, the range read from the attribute. */
     @Test
     public void theReachIsTheBlockInteractionRangePlusOneBlock(Env env) {
@@ -101,7 +138,7 @@ public class PlayerBlockReachIntegrationTest {
         player.setGameMode(GameMode.CREATIVE);
 
         dig(player, ClientPlayerActionPacket.Status.STARTED_DIGGING, 20, 39, 8, 1);
-        assertEquals(Block.STONE, instance.getBlock(20, 39, 8), "11.5 blocks from the eyes");
+        assertEquals(Block.STONE, instance.getBlock(20, 39, 8), "11.61 blocks from the eyes");
         dig(player, ClientPlayerActionPacket.Status.STARTED_DIGGING, 10, 39, 8, 2);
         assertEquals(Block.AIR, instance.getBlock(10, 39, 8), "2.2 blocks from the eyes");
     }
@@ -120,11 +157,11 @@ public class PlayerBlockReachIntegrationTest {
         final Collector<BlockChangePacket> blockChanges = connection.trackIncoming(BlockChangePacket.class);
         final Collector<AcknowledgeBlockChangePacket> acks = connection.trackIncoming(AcknowledgeBlockChangePacket.class);
 
-        // The top face of the stone at (20, 39, 8), 11.5 blocks from the eyes
+        // The top face of the stone at (20, 39, 8), 11.61 blocks from the eyes
         send(player, new ClientPlayerBlockPlacementPacket(PlayerHand.MAIN, new Vec(20, 39, 8), BlockFace.TOP,
                 0.5f, 1f, 0.5f, false, false, 3));
 
-        assertEquals(Block.AIR, instance.getBlock(20, 40, 8), "placed 11.5 blocks from the eyes");
+        assertEquals(Block.AIR, instance.getBlock(20, 40, 8), "placed 11.61 blocks from the eyes");
         interactions.assertEmpty();
         blockChanges.assertCount(2);
         acks.assertSingle(ack -> assertEquals(3, ack.sequence()));

@@ -1,0 +1,58 @@
+Counter proofs on 7e0052928e (TC-PROD-665 step 4, 667 steps 4-5, 668 steps 4-6, 669 steps 4-5, 670 steps 4-5). Each one:
+edit one place (scripted, exact text, the edit refused unless it matches once), run the class, keep its JUnit XML,
+git checkout HEAD -- <file>, check git status clean. Lock run D. Edits (file: old -> new):
+  d1  PlayerVehicleListener.java:32  'if (current.distanceSquared(position) > 64 * 64' -> 'if ((Boolean.getBoolean("proof.never") && current.distanceSquared(position) > 64 * 64)'
+  d2  PlayerVehicleListener.java:33  '|| PlayerPositionListener.outwards(...)) {' -> '|| (Boolean.getBoolean("proof.never") && PlayerPositionListener.outwards(...))) {'
+  d3  PlayerVehicleListener.java:32  '> 64 * 64' -> '>= 64 * 64'
+  d4  PlayerVehicleListener.java:32  'current.distanceSquared(position) > 64 * 64' -> the largest of |dx|, |dy|, |dz| '> 64'
+  d5  PlayerVehicleListener.java:34  'player.sendPacket(new VehicleMovePacket(current));' with 'if (Boolean.getBoolean("proof.never"))' in front
+  d6  d1 again under strict grid
+  d7  CoreMode.java:151              'world.setWorldBorder(...);' with 'if (Boolean.getBoolean("proof.never"))' in front
+  d8  Main.java:220                  'if (shard) ShardMain.gateDefaults' -> 'if (Boolean.getBoolean("proof.never") && shard) ShardMain.gateDefaults'
+  d9  Main.java:220                  'if (shard) ShardMain.gateDefaults' -> 'if (!Boolean.getBoolean("proof.never") || shard) ShardMain.gateDefaults'
+  d10 ShardMain.java:123             'return defaults;' -> 'return Boolean.getBoolean("proof.never") ? defaults : Map.of();'
+  d11 ShardMain.java:117             'if (seats > 0)' -> 'if (seats >= 0)'
+
+d1-v-no64: 3 tests completed, 1 failed BUILD FAILED in 7s
+d2-v-noborder: 3 tests completed, 2 failed BUILD FAILED in 6s
+d3-v-64back: 3 tests completed, 1 failed BUILD FAILED in 6s
+d4-v-peraxis: 3 tests completed, 1 failed BUILD FAILED in 6s
+d5-v-nopacket: 3 tests completed, 3 failed BUILD FAILED in 6s
+d6-v-grid-no64: 3 tests completed, 1 failed BUILD FAILED in 7s
+d7-core-noborder: 4 tests completed, 1 failed BUILD FAILED in 7s
+d8-main-nowire: 12 tests completed, 1 failed BUILD FAILED in 15s
+d9-main-everywhere: 12 tests completed, 1 failed BUILD FAILED in 13s
+d10-sm-nothing: 13 tests completed, 3 failed BUILD FAILED in 8s
+d11-sm-zero: 13 tests completed, 1 failed BUILD FAILED in 5s
+
+d1-v-no64: PlayerVehicleMoveAuthorityIntegrationTest tests=3 failures=1 errors=0 skipped=0
+   aVehicleMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env) @ ['PlayerVehicleMoveAuthorityIntegrationTest.java:95'] | org.opentest4j.AssertionFailedError: 65 blocks east in one packet ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=65.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+d2-v-noborder: PlayerVehicleMoveAuthorityIntegrationTest tests=3 failures=2 errors=0 skipped=0
+   aVehicleOutsideTheBorderGetsNoFartherOut(Env) @ ['PlayerVehicleMoveAuthorityIntegrationTest.java:119'] | org.opentest4j.AssertionFailedError: 5 blocks farther out, from 10 blocks outside the border ==> expected: <Pos[x=42.0, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=47.0, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+   aVehicleMoveOutAcrossTheWorldBorderIsTurnedBack(Env) @ ['PlayerVehicleMoveAuthorityIntegrationTest.java:76'] | org.opentest4j.AssertionFailedError: a vehicle move to x 40.5 across the border at x 32 ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=40.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+d3-v-64back: PlayerVehicleMoveAuthorityIntegrationTest tests=3 failures=1 errors=0 skipped=0
+   aVehicleMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env) @ ['PlayerVehicleMoveAuthorityIntegrationTest.java:102'] | org.opentest4j.AssertionFailedError: 64 blocks east in one packet ==> expected: <Pos[x=64.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+d4-v-peraxis: PlayerVehicleMoveAuthorityIntegrationTest tests=3 failures=1 errors=0 skipped=0
+   aVehicleMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env) @ ['PlayerVehicleMoveAuthorityIntegrationTest.java:99'] | org.opentest4j.AssertionFailedError: 37 blocks along each axis in one packet ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=37.5, y=77.0, z=37.5, yaw=0.0, pitch=0.0]>
+d5-v-nopacket: PlayerVehicleMoveAuthorityIntegrationTest tests=3 failures=3 errors=0 skipped=0
+   aVehicleOutsideTheBorderGetsNoFartherOut(Env) @ ['PlayerVehicleMoveAuthorityIntegrationTest.java:120'] | org.opentest4j.AssertionFailedError: Expected 1 element, got [] ==> expected: <1> but was: <0>
+   aVehicleMoveOutAcrossTheWorldBorderIsTurnedBack(Env) @ ['PlayerVehicleMoveAuthorityIntegrationTest.java:78'] | org.opentest4j.AssertionFailedError: Expected 1 element, got [] ==> expected: <1> but was: <0>
+   aVehicleMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env) @ ['PlayerVehicleMoveAuthorityIntegrationTest.java:100'] | org.opentest4j.AssertionFailedError: Expected 3 element(s), got 0: [] ==> expected: <3> but was: <0>
+d6-v-grid-no64: PlayerVehicleMoveAuthorityIntegrationTest tests=3 failures=1 errors=0 skipped=0
+   aVehicleMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env) @ ['PlayerVehicleMoveAuthorityIntegrationTest.java:95'] | org.opentest4j.AssertionFailedError: 65 blocks east in one packet ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=65.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+d7-core-noborder: CoreModeIntegrationTest tests=4 failures=1 errors=0 skipped=0
+   theCoreWorldEndsAtAWorldBorder(Env) @ ['CoreModeIntegrationTest.java:77'] | org.opentest4j.AssertionFailedError: expected: <WorldBorder[diameter=4096.0, centerX=0.0, centerZ=0.0, warningDistance=5, warningTime=15, dimensionTeleportBoundary=29999984]> but was: <WorldBorder[diameter=5.9999968E7, centerX=0.0, centerZ=0.0, warningDistance=5, warningTime=15, dimensionTeleportBoundary=29999984]>
+d8-main-nowire: ShardLaunchTest tests=12 failures=1 errors=0 skipped=0
+   aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path) @ ['ShardLaunchTest.java:179'] | org.opentest4j.AssertionFailedError: 17:40:34.244 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders … etrics 17:40:34.361 [main] INFO  i.g.b.s.a.m.ManagementServer - Effective management: enabled=false bind=127.0.0.1:25585 token=unset ==> expected: <true> but was: <false>
+d9-main-everywhere: ShardLaunchTest tests=12 failures=1 errors=0 skipped=0
+   aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path) @ ['ShardLaunchTest.java:185'] | org.opentest4j.AssertionFailedError: 17:40:48.146 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders …  started successfully. 17:40:48.262 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:65507 ==> expected: <true> but was: <false>
+d10-sm-nothing: ShardMainTest tests=13 failures=3 errors=0 skipped=0
+   theCommandLineWinsForTheGate() @ ['ShardMainTest.java:107'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-joins-per-tick=5}> but was: <{}>
+   aShardWithoutACapacityKeepsTheEngineSocketCap() @ ['ShardMainTest.java:98'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-joins-per-tick=5}> but was: <{}>
+   aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick() @ ['ShardMainTest.java:89'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-joins-per-tick=5, synaxis.max-connections=1500}> but was: <{}>
+d11-sm-zero: ShardMainTest tests=13 failures=1 errors=0 skipped=0
+   aShardWithoutACapacityKeepsTheEngineSocketCap() @ ['ShardMainTest.java:99'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-joins-per-tick=5}> but was: <{synaxis.max-connections=0, synaxis.max-joins-per-tick=5}>
+
+Effective settings in the child JVM logs of d8 (the shard, ShardLaunchTest.java:179) and d9 (Main, :185):
+d8-main-nowire:  2 maxConnections=1024  2 maxJoinsPerTick=0 
+d9-main-everywhere:  2 maxConnections=600  2 maxJoinsPerTick=5 

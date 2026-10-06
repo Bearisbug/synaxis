@@ -1,0 +1,51 @@
+package io.github.bearisbug.synaxis.listener;
+
+import io.github.bearisbug.synaxis.coordinate.ChunkRange;
+import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.entity.Entity;
+import io.github.bearisbug.synaxis.entity.EntityType;
+import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientVehicleMovePacket;
+import io.github.bearisbug.synaxis.testing.Env;
+import io.github.bearisbug.synaxis.testing.EnvTest;
+import org.junit.jupiter.api.Test;
+
+/** Probe, not a test: a vehicle move into a chunk that is not loaded, within 64 blocks and the border. */
+@EnvTest
+public class VehicleUnloadedChunkProbe {
+
+    @Test
+    public void probe(Env env) {
+        final Instance instance = env.createFlatInstance();
+        instance.viewDistance(2);
+        ChunkRange.chunksInRange(0, 0, 3, (x, z) -> instance.loadChunk(x, z).join());
+        final Pos spawn = new Pos(0.5, 40, 0.5);
+        final Player player = env.createConnection().connect(instance, spawn);
+        final Entity vehicle = new Entity(EntityType.HORSE);
+        vehicle.setInstance(instance, spawn).join();
+        vehicle.addPassenger(player);
+        System.out.println("PROBE chunk 4 loaded before: " + (instance.getChunk(4, 0) != null));
+        try {
+            player.addPacketToQueue(new ClientVehicleMovePacket(new Pos(64.4, 40, 0.5), true));
+            player.interpretPacketQueue();
+            System.out.println("PROBE no exception out of interpretPacketQueue");
+        } catch (Throwable t) {
+            System.out.println("PROBE thrown " + t);
+        }
+        System.out.println("PROBE online=" + player.isOnline() + " vehicle=" + vehicle.getPosition() + " vehicle_chunk="
+                + vehicle.getChunk() + " player=" + player.getPosition() + " player_chunk=" + player.getChunk()
+                + " chunks=" + instance.getChunks().size());
+        for (int tick = 0; tick < 20; tick++) {
+            try {
+                env.tick();
+            } catch (Throwable t) {
+                System.out.println("PROBE tick " + tick + " thrown " + t + " cause " + t.getCause()); if (t.getCause() != null) for (StackTraceElement e : t.getCause().getStackTrace()) System.out.println("PROBE   at " + e);
+                break;
+            }
+        }
+        System.out.println("PROBE after 20 ticks online=" + player.isOnline() + " vehicle=" + vehicle.getPosition()
+                + " vehicle_chunk=" + vehicle.getChunk() + " player_chunk=" + player.getChunk()
+                + " chunks=" + instance.getChunks().size() + " chunk 4 loaded=" + (instance.getChunk(4, 0) != null));
+    }
+}

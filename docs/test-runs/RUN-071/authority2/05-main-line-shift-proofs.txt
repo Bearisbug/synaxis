@@ -1,0 +1,98 @@
+Main.java gained two lines in step (1) (lines 219-220 of 7e0052928e), so every reference to a line from 219 on moves by
+two. The counter proofs of other test cases that edit Main.java at such a line were rerun on 7e0052928e with the new
+line (TC-PROD-671 step 3). Lock run E, with the database variables (SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/
+postgres, SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440, the password from the synaxis-pg container through the environment
+only). Edits by line (file:line old -> new), each reverted with git checkout HEAD and checked clean:
+  e1 TC-PROD-521 step 4  Main.java:760 'redis, cooldowns);' -> 'redis, TransferCooldowns.fromSystemProperties());'      (was :758)
+  e2 TC-PROD-528 step 2  Main.java:714 'TransferCooldowns.fromSystemProperties()' -> 'new TransferCooldowns(5_000, System::currentTimeMillis)' (was :712)
+  e3 TC-PROD-533 step 3  Main.java:758 'keys, cooldowns, ledger::record' -> 'keys, TransferCooldowns.fromSystemProperties(), ledger::record' (was :756)
+  e5 TC-PROD-603 step 2  Main.java:620 'if (bind.getAddress() != null' -> 'if (Boolean.getBoolean("proof.never") && bind.getAddress() != null' (was :618)
+  e6 TC-PROD-604 step 2  Main.java:346 'if (!(e.getCause() instanceof IOException cause)) throw e;' -> 'if (!Boolean.getBoolean("proof.never") || !(...)) throw e;' (was :344)
+  e7 TC-PROD-604 step 3  e6 together with TC-PROD-605 step 2 (HostMetrics.java:347 '.daemon()' -> '.daemon(Boolean.getBoolean("proof.never"))')
+  (e7's 'NOT CLEAN' line in the run log was the check after reverting Main.java while HostMetrics.java was still edited;
+   the next step reverted HostMetrics.java and the tree was clean before e8)
+Not rerun: TC-PROD-548 step 7 (Main.java:269 -> :271): it needs two shard server processes and the database, and this
+machine runs no server process outside the tests; the edit is located by its code text.
+
+e0-cooldown-green:  BUILD SUCCESSFUL in 8s
+e1-tc521-s4: 3 tests completed, 2 failed BUILD FAILED in 6s
+e2-tc528-s2: 3 tests completed, 1 failed BUILD FAILED in 11s
+e3-tc533-s3: 3 tests completed, 1 failed BUILD FAILED in 9s
+e4-ops-green:  BUILD SUCCESSFUL in 9s
+e5-tc603-s2: 2 tests completed, 1 failed BUILD FAILED in 8s
+e6-tc604-s2: 2 tests completed, 1 failed BUILD FAILED in 6s
+e7-tc604-s3: 4 tests completed, 2 failed BUILD FAILED in 39s
+e8-ops-green-grid:  BUILD SUCCESSFUL in 10s
+
+e0-cooldown-green: TransferCooldownTableIntegrationTest tests=3 failures=0 errors=0 skipped=0
+e1-tc521-s4: TransferCooldownTableIntegrationTest tests=3 failures=2 errors=0 skipped=0
+   aPluginTransferCoolsTheTicketSideDown(Env) @ ['TransferCooldownTableIntegrationTest.java:91'] | org.opentest4j.AssertionFailedError: expected: <COOLDOWN> but was: <NOT_ONLINE>
+   aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) @ ['TransferCooldownTableIntegrationTest.java:113'] | org.opentest4j.AssertionFailedError: the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>
+e2-tc528-s2: TransferCooldownTableIntegrationTest tests=3 failures=1 errors=0 skipped=0
+   aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) @ ['TransferCooldownTableIntegrationTest.java:132'] | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+e3-tc533-s3: TransferCooldownTableIntegrationTest tests=3 failures=1 errors=0 skipped=0
+   aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) @ ['TransferCooldownTableIntegrationTest.java:113'] | org.opentest4j.AssertionFailedError: the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>
+e4-ops-green: OpsPortsLaunchTest tests=2 failures=0 errors=0 skipped=0
+e4-ops-green: MetricsEndpointGuardsTest tests=2 failures=0 errors=0 skipped=0
+e5-tc603-s2: OpsPortsLaunchTest tests=2 failures=1 errors=0 skipped=0
+   aWildcardBindOfEitherOperationsPortIsWarnedAboutAtTheStart(Path) @ ['OpsPortsLaunchTest.java:89'] | org.opentest4j.AssertionFailedError: 17:44:02.754 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders … axis server started successfully. 17:44:02.865 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:0 ==> expected: <2> but was: <0>
+e6-tc604-s2: OpsPortsLaunchTest tests=2 failures=1 errors=0 skipped=0
+   aGamePortTakenRefusesTheStart(Path) @ ['OpsPortsLaunchTest.java:50'] | org.opentest4j.AssertionFailedError: 17:44:10.046 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders … nit(Server.java:73) 	at io.github.bearisbug.synaxis.ServerProcessImpl.start(ServerProcessImpl.java:300) 	... 5 common frames omitted ==> expected: <true> but was: <false>
+e7-tc604-s3: OpsPortsLaunchTest tests=2 failures=1 errors=0 skipped=0
+   aGamePortTakenRefusesTheStart(Path) @ ['ConfigFileLaunchTest.java:316'] | org.opentest4j.AssertionFailedError: the JVM exits: 17:44:19.711 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /priv … nit(Server.java:73) 	at io.github.bearisbug.synaxis.ServerProcessImpl.start(ServerProcessImpl.java:300) 	... 5 common frames omitted ==> expected: <true> but was: <false>
+e7-tc604-s3: MetricsEndpointGuardsTest tests=2 failures=1 errors=0 skipped=0
+   theDispatcherThreadIsADaemon() @ ['MetricsEndpointGuardsTest.java:78'] | org.opentest4j.AssertionFailedError: the dispatcher keeps no JVM alive ==> expected: <true> but was: <false>
+e8-ops-green-grid: OpsPortsLaunchTest tests=2 failures=0 errors=0 skipped=0
+e8-ops-green-grid: TransferCooldownTableIntegrationTest tests=3 failures=0 errors=0 skipped=0
+e8-ops-green-grid: MetricsEndpointGuardsTest tests=2 failures=0 errors=0 skipped=0
+
+e7 times:
+testcase name="aConnectionPastTheCapIsClosedAtOnce()" time="1.105"
+testcase name="theDispatcherThreadIsADaemon()" time="0.03"
+testcase name="aWildcardBindOfEitherOperationsPortIsWarnedAboutAtTheStart(Path)" time="1.256"
+testcase name="aGamePortTakenRefusesTheStart(Path)" time="30.027"
+e7 OpsPortsLaunchTest frames:
+OpsPortsLaunchTest.java:48
+
+Read-only steps on Main.java (TC-PROD-498 step 3, 521 step 3, 533 step 2, 573 step 3, 6A rest section, §7):
+## at 7e0052928e
+$ grep -n store.cooldowns() Main.java
+267:                store.permissions(), store.moderation(), store.cooldowns());
+$ sed -n 758,760p Main.java
+                    new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,
+                            onClaimed),
+                    permissions, moderation, session, redis, cooldowns);
+$ grep -n buildShutdownTask Main.java
+325:        process.scheduler().buildShutdownTask(host::disableAll);
+327:        process.scheduler().buildShutdownTask(commands::awaitStopAnswers);
+329:        process.scheduler().buildShutdownTask(ledger::close);
+332:            process.scheduler().buildShutdownTask(directoryMode.flags()::close);
+333:            process.scheduler().buildShutdownTask(directoryMode.heartbeat()::close);
+336:        process.scheduler().buildShutdownTask(store::close);
+337:        process.scheduler().buildShutdownTask(metrics::close);
+338:        process.scheduler().buildShutdownTask(management::close);
+340:        process.scheduler().buildShutdownTask(watchdog::stop);
+$ grep -n "new ShardGates(" Main.java
+528:            new ShardGates(directoryMode.directory(), directoryMode.service(), ledger::record, store::isOnline).attach(world.instance());
+$ sed -n 271,272p;287p
+        final @Nullable ShardService shardService = directoryMode == null ? null : directoryMode.service();
+        process.command().register(new TransferCommand(process, store.permissions(), shardService, ledger::record));
+                store.moderation(), store.session(), shardService, shardId, ledger::record);
+$ sed -n 362p
+        LOGGER.info("synaxis server-app listening on {}:{}", BIND_ADDRESS, port);
+## at 8b18922130
+265:                store.permissions(), store.moderation(), store.cooldowns());
+323:        process.scheduler().buildShutdownTask(host::disableAll);
+325:        process.scheduler().buildShutdownTask(commands::awaitStopAnswers);
+327:        process.scheduler().buildShutdownTask(ledger::close);
+330:            process.scheduler().buildShutdownTask(directoryMode.flags()::close);
+331:            process.scheduler().buildShutdownTask(directoryMode.heartbeat()::close);
+334:        process.scheduler().buildShutdownTask(store::close);
+335:        process.scheduler().buildShutdownTask(metrics::close);
+336:        process.scheduler().buildShutdownTask(management::close);
+338:        process.scheduler().buildShutdownTask(watchdog::stop);
+526:            new ShardGates(directoryMode.directory(), directoryMode.service(), ledger::record, store::isOnline).attach(world.instance());
+        final @Nullable ShardService shardService = directoryMode == null ? null : directoryMode.service();
+        process.command().register(new TransferCommand(process, store.permissions(), shardService, ledger::record));
+                store.moderation(), store.session(), shardService, shardId, ledger::record);
+        LOGGER.info("synaxis server-app listening on {}:{}", BIND_ADDRESS, port);

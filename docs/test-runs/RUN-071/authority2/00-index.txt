@@ -1,0 +1,46 @@
+RUN-071 authority2: the follow-ups of RUN-070's border and move checks, and the connection gate defaults of a shard, on branch
+prod/r071-authority (base main 8b18922130). docs/DESIGN-PROD.md v0.9.53, docs/DESIGN-M2.md v0.57, docs/TEST.md TC-PROD-665 to
+TC-PROD-671. The integration round registers RUN-071; this directory is this group's part of it.
+
+  1. The flat world of the core mode (CoreMode) gets a world border 4,096 blocks across, centred on the origin, instead of the
+     default one; it never unloads chunks, so this is what bounds the chunks a client makes it hold (DESIGN-M2 §28.2 G3).
+  2. PlayerVehicleListener#vehicleMoveListener turns back a vehicle move of more than 64 blocks or out across the world border
+     with a VehicleMovePacket of the vehicle's position.
+  3. ShardMain#gateDefaults writes synaxis.max-connections = 3 x synaxis.max-players and synaxis.max-joins-per-tick=5 when they
+     are not given; Main calls it in step (1) for the shard host, after the shard directory has written the capacity.
+
+Code under test: 7e0052928e (8b18922130 + the three changes and their tests). JDK 25 (Homebrew openjdk@25), Gradle
+--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, macOS, the machine shared with other
+sessions; only the classes named below were run, the full gates are the integration round's on GitHub Actions.
+
+Heavy lock /tmp/synaxis-heavy.lock, taken at the top level of each script with its EXIT trap (07), owner line
+"生产就绪会话/authority2"; memory_pressure free 53-65% and load average (1 min) 5.3-15.9 at each start:
+  lock run A  17:25:40-17:26:37  chunk bytes probe; reds before the fixes: vehicle, ShardMainTest (with the stub), ShardLaunchTest
+  lock run B  17:30:37-17:30:48  red before the fix: CoreModeIntegrationTest
+  lock run C  17:37:01-17:37:56  the changed classes, default and strict grid
+  lock run D  17:39:37-17:41:10  eleven counter proofs
+  lock run E  17:43:08-17:45:00  the Main.java line shift: six counter proofs of older cases, greens default and strict grid
+  lock run G  17:46, 17:47       probe of a vehicle move into a chunk that is not loaded (one Gradle run each, under 10 s)
+  lock run H  17:58:51-17:59:44  the changed classes again once every proof was reverted, default and strict grid
+
+00-index.txt                          this file
+01-chunk-bytes-probe.txt              9,013 B a chunk of the core world with its cached packet (8,878 B in the larger batch);
+                                      the border width worked out from it (TC-PROD-666)
+02-reds-before-the-fixes.txt          vehicle 3 of 3 red (:76, :95, :119); ShardMainTest 3 of 13 red (:89, :98, :107);
+                                      ShardLaunchTest red at :179 with maxConnections=1024 maxJoinsPerTick=0; CoreModeIntegrationTest
+                                      red at :77 (diameter 5.9999968E7)
+03-greens.txt                         3 root classes 11 tests and 5 server-app classes 52 tests, 0 failures, default and strict grid,
+                                      twice (runs C and H)
+04-counter-proofs.txt                 d1-d11, each red where TC-PROD-665 to 670 say
+05-main-line-shift-proofs.txt         TC-PROD-521/528/533/603/604 proofs at the moved lines, red where those cases say; the read-only
+                                      grep and sed steps with the new line numbers; what was not rerun (TC-PROD-548 step 7)
+06-vehicle-unloaded-chunk-probe.txt   the residual risk: a vehicle move into an unloaded chunk throws in the rider's
+                                      refreshCoordinate, loads nothing, leaves the pair's position and chunk apart
+07-scripts.txt                        the lock scripts, the edit helpers and the JUnit XML summariser
+08-lint.txt                           design-doc and test-doc lint of the three documents
+CoreChunkBytesProbe.java.txt          the probe of 01 (not in the test source set)
+VehicleUnloadedChunkProbe.java.txt    the probe of 06 (not in the test source set)
+
+Cleanup: the probes were deleted from the source sets after their runs; /tmp/run071/authority2 removed at the end; no
+container, simulator or server process was started (the child JVMs of ShardLaunchTest and OpsPortsLaunchTest exit with
+their tests).

@@ -1,9 +1,11 @@
 package io.github.bearisbug.synaxis.instance;
 
+import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.EntityType;
+import io.github.bearisbug.synaxis.network.packet.server.play.WorldBorderLerpSizePacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
@@ -53,6 +55,28 @@ public class WorldBorderIntegrationTest {
             assertEquals(25, instance.getWorldBorder().diameter());
             instance.tick(0);
         }
+    }
+
+    /**
+     * The 26.2 client counts the lerp time of {@code set_border_lerp_size} and {@code initialize_border} down by one
+     * every client tick ({@code WorldBorder$MovingBorderExtent#update}), so both packets carry ticks.
+     */
+    @Test
+    public void transitionTimeIsSentInTicks(Env env) {
+        Instance instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        connection.connect(instance, new Pos(0, 42, 0));
+
+        final long ticksPerSecond = 1000 / MinecraftServer.TICK_MS;
+        WorldBorder border = instance.getWorldBorder();
+        instance.setWorldBorder(border.withDiameter(30));
+        var lerp = connection.trackIncoming(WorldBorderLerpSizePacket.class);
+        instance.setWorldBorder(border.withDiameter(10), 1);
+        lerp.assertSingle(packet -> assertEquals(ticksPerSecond, packet.speed(), "lerp time of a 1 s transition"));
+
+        for (int i = 0; i < 5; i++) instance.tick(0);
+        assertEquals(ticksPerSecond - 5, instance.createInitializeWorldBorderPacket().speed(),
+                "lerp time left for a player joining 5 ticks in");
     }
 
     @Test

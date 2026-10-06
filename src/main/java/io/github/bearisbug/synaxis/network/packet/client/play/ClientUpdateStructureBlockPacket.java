@@ -11,9 +11,9 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.BLOCK_POSITION;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.BYTE;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.Enum;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.FLOAT;
-import static io.github.bearisbug.synaxis.network.NetworkBuffer.LONG;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.STRING;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
+import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_LONG;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.VECTOR3B;
 
 public record ClientUpdateStructureBlockPacket(
@@ -36,7 +36,7 @@ public record ClientUpdateStructureBlockPacket(
             VAR_INT.transform(ClientUpdateStructureBlockPacket::fromRestrictedRotation, ClientUpdateStructureBlockPacket::toRestrictedRotation), ClientUpdateStructureBlockPacket::rotation,
             STRING, ClientUpdateStructureBlockPacket::metadata,
             FLOAT, ClientUpdateStructureBlockPacket::integrity,
-            LONG, ClientUpdateStructureBlockPacket::seed,
+            VAR_LONG, ClientUpdateStructureBlockPacket::seed,
             BYTE, ClientUpdateStructureBlockPacket::flags,
             ClientUpdateStructureBlockPacket::new
     );

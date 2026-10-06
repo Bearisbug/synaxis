@@ -23,6 +23,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.lang.ref.WeakReference;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -32,6 +33,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
+import static io.github.bearisbug.synaxis.testing.TestUtils.waitUntilCleared;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -148,6 +150,74 @@ class FreezeBeforePluginListenersIntegrationTest {
         host.disableAll();
     }
 
+    /**
+     * The root node decides on a pickup or drop that reaches it already cancelled too: a plugin un-cancels both at
+     * {@code HIGHEST}, and its {@code MONITOR} listeners must still see both cancelled, whatever cancelled them before.
+     */
+    @Test
+    void aPickupAndDropCancelledBeforeTheRootAreCancelledAgainAfterAnUndo(Env env) {
+        final Instance instance = env.createFlatInstance();
+        final Player player = env.createPlayer(instance, new Pos(0, 41, 0));
+        final List<String> seen = new CopyOnWriteArrayList<>();
+        final Plugin plugin = new Plugin("undo", ctx -> {
+            final PluginEvents events = ctx.events();
+            events.addListener(PickupItemEvent.class, EventPriority.HIGHEST, false, event -> event.setCancelled(false));
+            events.addListener(ItemDropEvent.class, EventPriority.HIGHEST, false, event -> event.setCancelled(false));
+            events.addListener(PickupItemEvent.class, EventPriority.MONITOR, false,
+                    event -> seen.add("pickup cancelled=" + event.isCancelled()));
+            events.addListener(ItemDropEvent.class, EventPriority.MONITOR, false,
+                    event -> seen.add("drop cancelled=" + event.isCancelled()));
+        });
+        final PlayerStore store = PlayerStore.inMemory(env.process(), (_, _) -> {
+        });
+        ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
+        ledger.start();
+        final PluginHost host = new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger, store);
+        host.enable(List.of(plugin), Set.of());
+        store.saveAll(Duration.ofSeconds(1), true).join();
+
+        final PickupItemEvent pickup = new PickupItemEvent(player, new ItemEntity(ItemStack.of(Material.DIAMOND)));
+        pickup.setCancelled(true);
+        env.process().eventHandler().call(pickup);
+        final ItemDropEvent drop = new ItemDropEvent(player, ItemStack.of(Material.DIAMOND));
+        drop.setCancelled(true);
+        env.process().eventHandler().call(drop);
+
+        assertEquals(List.of("pickup cancelled=true", "drop cancelled=true"), seen, "what the MONITOR listeners saw");
+        host.disableAll();
+    }
+
+    /**
+     * A dispatch cut short between the two cancels keeps nothing alive: a listener put straight on the root node,
+     * outside the plugin wrapper, throws after the store's listener cancelled a frozen player's pickup. The root node's
+     * handle catches it and skips the rest of the dispatch, the freeze node included, so the pickup never leaves the
+     * store's set that way; the set must not keep it, with its player and item, reachable from this thread.
+     */
+    @Test
+    void aPickupCutShortBeforeTheFreezeNodeIsNotKeptAlive(Env env) {
+        final Instance instance = env.createFlatInstance();
+        final Player player = env.createPlayer(instance, new Pos(0, 41, 0));
+        final List<Throwable> reported = new CopyOnWriteArrayList<>();
+        env.process().exception().setExceptionHandler(reported::add);
+        final Plugin plugin = new Plugin("thrower", ctx -> ctx.process().eventHandler().addListener(
+                EventListener.builder(PickupItemEvent.class).ignoreCancelled(false).handler(_ -> {
+                    throw new IllegalStateException("thrown between the two cancels");
+                }).build()));
+        final PlayerStore store = PlayerStore.inMemory(env.process(), (_, _) -> {
+        });
+        ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
+        ledger.start();
+        final PluginHost host = new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger, store);
+        host.enable(List.of(plugin), Set.of());
+        store.saveAll(Duration.ofSeconds(1), true).join();
+
+        final WeakReference<PickupItemEvent> cutShort = pickUpAndLetGo(env, player);
+
+        assertEquals(1, reported.size(), "the dispatch was cut short: " + reported);
+        waitUntilCleared(cutShort);
+        host.disableAll();
+    }
+
     /** Dispatches a pickup and a drop of the player, and tells whether both ended cancelled. */
     private static boolean pickUpAndDrop(Env env, Player player) {
         final PickupItemEvent pickup = new PickupItemEvent(player, new ItemEntity(ItemStack.of(Material.DIAMOND)));
@@ -155,6 +225,14 @@ class FreezeBeforePluginListenersIntegrationTest {
         final ItemDropEvent drop = new ItemDropEvent(player, ItemStack.of(Material.DIAMOND));
         env.process().eventHandler().call(drop);
         return pickup.isCancelled() && drop.isCancelled();
+    }
+
+    /** Dispatches a pickup of the player, checks that it ended cancelled, and keeps only a weak reference to it. */
+    private static WeakReference<PickupItemEvent> pickUpAndLetGo(Env env, Player player) {
+        final PickupItemEvent pickup = new PickupItemEvent(player, new ItemEntity(ItemStack.of(Material.DIAMOND)));
+        env.process().eventHandler().call(pickup);
+        assertTrue(pickup.isCancelled(), "the frozen player's pickup ends cancelled");
+        return new WeakReference<>(pickup);
     }
 
     private static void listen(PluginEvents events, String where, EventPriority priority, List<String> seen) {

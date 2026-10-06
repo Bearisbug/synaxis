@@ -79,8 +79,9 @@ public interface PlayerDataStore {
      * A frozen player can move and fight, but nothing that changes who owns an item may happen:
      * the host cancels the pickups and drops dispatched while it is frozen before any plugin
      * listener of any scope sees them (see {@link PluginEvents} for a freeze in the middle of a
-     * dispatch and for undoing that cancel), and a plugin must check this before a trade, a mail or
-     * a shop purchase. Callable from any thread.
+     * dispatch and for undoing that cancel; a pickup or drop listener goes by
+     * {@code isCancelled()}, not by this), and a plugin must check this before a trade, a mail or a
+     * shop purchase. Callable from any thread.
      *
      * @param player the player
      * @return true while the player is frozen

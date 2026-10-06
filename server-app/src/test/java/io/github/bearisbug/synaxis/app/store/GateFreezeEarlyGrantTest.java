@@ -59,7 +59,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * item with one position packet on 4 grid tick threads: the gate freezes it in the packet handling, and the pickup
  * of the same update must reach those listeners already cancelled. Otherwise they hand the stack over, the freeze
  * cancels the pickup after them, the transfer snapshot of the next tick takes the grant and the item stays on the
- * ground.
+ * ground. A drop in the same batch of packets, after the move, reaches even an instance scoped {@code LOWEST} listener,
+ * the first plugin listener of all, already cancelled.
  * <p>
  * In production the gate's heartbeat read completes on a virtual thread ({@code ShardHeartbeat}), and the transfer
  * freezes the player on that thread, whenever it completes. The last two cases complete it from inside a global
@@ -158,6 +159,44 @@ class GateFreezeEarlyGrantTest {
         normal.addListener(grant("global:normal", () -> {}));
         hostNode.addChild(normal);
         assertNothingHandedOver(walkOntoTheItemThroughTheGate());
+    }
+
+    /**
+     * The 5 diamonds in hand are dropped in the batch of the walk in, after the move the gate freezes the player in; an
+     * instance scoped {@code LOWEST} listener spawns the dropped stack unless an earlier listener cancelled the drop.
+     */
+    @Test
+    void aDropInTheBatchOfAGateWalkInReachesTheFirstListenerCancelled() throws Exception {
+        final List<ItemEntity> spawned = new CopyOnWriteArrayList<>();
+        final EventNode<InstanceEvent> lowest = EventNode.type("plugin/drop@" + instance.getUuid() + "/lowest",
+                EventFilter.INSTANCE).setPriority(-2);
+        lowest.addListener(EventListener.builder(ItemDropEvent.class).ignoreCancelled(false).handler(event -> {
+            seen.add("instance:lowest cancelled=" + event.isCancelled());
+            if (event.isCancelled()) return;
+            final ItemEntity item = new ItemEntity(event.getItemStack());
+            item.setInstance(instance, event.getPlayer().getPosition()).join();
+            spawned.add(item);
+        }).build());
+        instance.eventNode().addChild(lowest);
+        final EventNode<Event> monitor = EventNode.all("plugin/drop/monitor").setPriority(4);
+        monitor.addListener(EventListener.builder(ItemDropEvent.class).ignoreCancelled(false)
+                .handler(event -> seen.add("global:monitor cancelled=" + event.isCancelled())).build());
+        hostNode.addChild(monitor);
+
+        final Player player = aPlayerInTheWorld();
+        player.setItemInMainHand(ItemStack.of(Material.DIAMOND, AMOUNT));
+        walkIntoTheGate(player, new ClientPlayerActionPacket(ClientPlayerActionPacket.Status.DROP_ITEM_STACK, Vec.ZERO,
+                BlockFace.BOTTOM, 0));
+
+        final ItemStack held = player.getItemInMainHand();
+        final int inHand = held.isAir() ? 0 : held.amount();
+        final int onTheGround = spawned.stream().filter(item -> !item.isRemoved())
+                .mapToInt(item -> item.getItemStack().amount()).sum();
+        System.out.println("after the walk in: in hand " + inHand + ", spawned " + onTheGround + ", " + seen);
+        assertEquals(AMOUNT, inHand + onTheGround, "diamonds after the walk in (in hand " + inHand + ", spawned "
+                + onTheGround + "): " + seen);
+        assertEquals(List.of("instance:lowest cancelled=true", "global:monitor cancelled=true"), seen,
+                "the drop reached the first listener cancelled and nothing was dropped");
     }
 
     /** The global {@code NORMAL} grant completes the heartbeat read before it hands the stack over. */

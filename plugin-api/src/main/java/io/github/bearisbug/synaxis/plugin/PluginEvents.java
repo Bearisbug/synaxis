@@ -31,9 +31,11 @@ import java.util.function.Consumer;
  * reads the freeze once per event, before any plugin listener: when a player is frozen from another
  * thread in the middle of a dispatch (a transfer, a degraded session), that pickup or drop goes
  * through as allowed and the next ones are cancelled. A listener that hands items over must skip
- * cancelled events ({@code ignoreCancelled} true, or a check of {@code isCancelled()}). Undoing that
- * cancel is not supported: the listeners that run after the undo and before the second cancel, the
- * instance scoped ones included, see the pickup or drop as allowed.
+ * cancelled events ({@code ignoreCancelled} true, or a check of {@code isCancelled()}) and go by
+ * that alone, not by {@code isFrozen}: a pickup or drop the freeze landed in the middle of goes
+ * through while {@code isFrozen} is already true, and a listener that refuses it loses the stack.
+ * Undoing that cancel is not supported: the listeners that run after the undo and before the second
+ * cancel, the instance scoped ones included, see the pickup or drop as allowed.
  * <p>
  * Only the host implements this interface: a plugin is handed one and calls it.
  */

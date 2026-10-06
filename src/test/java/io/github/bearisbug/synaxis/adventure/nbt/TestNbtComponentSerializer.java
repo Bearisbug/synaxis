@@ -4,6 +4,7 @@ import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.nbt.ListBinaryTag;
 import net.kyori.adventure.text.Component;
 import io.github.bearisbug.synaxis.adventure.serializer.nbt.NbtComponentSerializer;
+import io.github.bearisbug.synaxis.registry.Registries;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -37,6 +38,16 @@ public class TestNbtComponentSerializer {
         var comp2 = serializer.deserialize(tag);
 
         assertEquals(comp, comp2);
+    }
+
+    @Test
+    void testWriteReadWithRegistries() {
+        var serializer = NbtComponentSerializer.nbt(Registries.vanilla());
+        var comp = Component.text("Hello").appendSpace().append(Component.text("World!"));
+
+        var tag = serializer.serialize(comp);
+        assertEquals(NbtComponentSerializer.nbt().serialize(comp), tag);
+        assertEquals(comp, serializer.deserialize(tag));
     }
 
 }

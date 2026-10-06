@@ -178,6 +178,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     // The view distances a client can ask for, see ClientSettings
     private static final int MIN_VIEW_DISTANCE = 2;
     private static final int MAX_VIEW_DISTANCE = 32;
+    // How long a chunk send waits for the write-lock of the chunk, see #sendPendingChunks()
+    private static final Duration CHUNK_LOCK_WAIT = Duration.ofMillis(1);
 
     private long lastKeepAlive;
     private boolean answerKeepAlive;
@@ -947,7 +949,22 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 var chunk = instance.getChunk(chunkX, chunkZ);
                 if (chunk == null || !chunk.isLoaded()) continue;
 
-                sendPacket(chunk.getFullDataPacket());
+                // The packet is taken and handed to the connection under the write-lock of the chunk, where its blocks
+                // change and InstanceContainer#setBlock sends the change to the viewers, this player among them: a
+                // change is in the packet or reaches the connection after it. A change in between would reach the
+                // client ahead of the chunk, which drops it, then the chunk without it, for good. The lock is only
+                // waited for briefly, the queue lock held: a thread holding it may be queuing chunks for this player
+                // (Chunk#sendChunk). The chunk goes back to the queue and the batch ends, the next tick tries again
+                if (!chunk.tryLockWriteLock(CHUNK_LOCK_WAIT)) {
+                    queuedChunks.add(chunkIndex);
+                    chunkQueue.enqueue(chunkIndex);
+                    break;
+                }
+                try {
+                    sendPacket(chunk.getFullDataPacket());
+                } finally {
+                    chunk.unlockWriteLock();
+                }
                 process().eventHandler().call(new PlayerChunkLoadEvent(this, chunkX, chunkZ));
 
                 pendingChunkCount -= 1f;
@@ -1043,6 +1060,21 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             }
         }
         return chunks.toLongArray();
+    }
+
+    /**
+     * Whether the chunk is in the ring of chunks this player is sent: the ring of {@link #effectiveViewDistance()}
+     * around the chunk the client was last told to center on ({@code UpdateViewPosition}), which the chunk update
+     * limiter can hold a few chunks behind the chunk of the position. The viewers of a chunk
+     * ({@link Chunk#getViewers()}) are the players whose ring has it.
+     *
+     * @param chunkX the chunk X
+     * @param chunkZ the chunk Z
+     * @return true if the chunk is in the ring
+     */
+    @ApiStatus.Internal
+    public boolean isChunkInRing(int chunkX, int chunkZ) {
+        return !isOutOfClientRange(chunkX, chunkZ);
     }
 
     private boolean isOutOfClientRange(int chunkX, int chunkZ) {

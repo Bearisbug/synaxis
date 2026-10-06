@@ -371,13 +371,12 @@ final class EntityTrackerImpl implements EntityTracker {
 
         private Collection<Player> references() {
             Int2ObjectOpenHashMap<Player> entityMap = new Int2ObjectOpenHashMap<>(lastReferenceCount);
-            // Each player has its own view distance (client setting, capped by the instance, plus one:
-            // see Player#effectiveViewDistance). A single server-wide radius left the outermost ring of
-            // chunks the player was sent without any viewer, so block updates never reached it.
+            // The viewers are the players whose ring of chunks has this one (Player#isChunkInRing): each its own
+            // radius, and its own center, which the chunk update limiter can hold a few chunks behind the position.
+            // Measured from the position, or with one server-wide radius, part of the chunks a player was sent would
+            // not have it as a viewer, and their block updates would never reach it.
             for (Player player : entities(Target.PLAYERS)) {
-                final Point position = player.getPosition();
-                final int distance = Math.max(Math.abs(position.chunkX() - chunkX), Math.abs(position.chunkZ() - chunkZ));
-                if (distance <= player.effectiveViewDistance()) entityMap.putIfAbsent(player.getEntityId(), player);
+                if (player.isChunkInRing(chunkX, chunkZ)) entityMap.putIfAbsent(player.getEntityId(), player);
             }
             this.lastReferenceCount = entityMap.size();
             return entityMap.values();

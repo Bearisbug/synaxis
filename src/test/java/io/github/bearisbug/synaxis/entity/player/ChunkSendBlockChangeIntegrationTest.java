@@ -73,7 +73,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * that packet is lost for good, the client keeps the chunk as the packet had it. The same goes for a change
  * sent to the viewers of a chunk the client holds while the player is not one of them. The send takes the
  * lock of the chunk for this, under the queue lock of the player, and must not wait for it without a bound, nor
- * let a chunk whose lock is held hold back the rest of the batch.
+ * let a chunk whose lock is held hold back the rest of the batch, nor lose or duplicate the chunks it defers.
  * <p>
  * The players are engine players, whose chunks wait in the send queue, at view distance 2: a ring of radius 3. They
  * only watch what is handed to their connection ({@link CheckedPlayer}). The client is modelled from the packets it was
@@ -327,6 +327,107 @@ public class ChunkSendBlockChangeIntegrationTest {
                 "a position sync after the first chunk packet, at " + first + ": position syncs at " + syncs);
     }
 
+    @Test
+    public void aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(Env env) {
+        final InstanceContainer instance = takenChunkInstance(env, _ -> {
+        });
+        preload(instance, -RADIUS, RADIUS + 1, -RADIUS, RADIUS);
+        final TestConnection connection = env.createConnection();
+        final CheckedPlayer player = join(env, connection, instance);
+        drain(env, player);
+
+        // Moving one chunk east queues the column at x 4, (4, 0) first. Another thread holds its write-lock through the
+        // batch of the move, so it is deferred. The PlayerChunkLoadEvent of the next chunk sent, dispatched on the sending
+        // thread under the queue lock, queues (4, 0) again while it waits to be put back: the batch dequeues it a second
+        // time and defers it a second time
+        final int column = 1 + RADIUS;
+        final Chunk deferred = Objects.requireNonNull(instance.getChunk(column, 0));
+        final String deferredAt = column + ",0";
+        final AtomicBoolean queuedAgain = new AtomicBoolean();
+        env.process().eventHandler().addListener(PlayerChunkLoadEvent.class, event -> {
+            if (event.getChunkX() != column || event.getChunkZ() == 0 || player.chunksHanded.contains(deferredAt)) return;
+            if (queuedAgain.compareAndSet(false, true)) player.sendChunk(deferred);
+        });
+        final AtomicReference<Holder> holder = new AtomicReference<>();
+        player.onBatchStart = () -> holder.set(new Holder(List.of(deferred), null));
+        player.onBatchEnd = () -> holder.get().letGo();
+        final Collector<ChunkDataPacket> sent = connection.trackIncoming(ChunkDataPacket.class);
+        moveTo(env, player, 8.5 + 16);
+        player.onBatchStart = () -> {
+        };
+        player.onBatchEnd = () -> {
+        };
+        assertNotNull(holder.get(), "a batch in the tick of the move");
+        final Queue afterTheMove = queue(player);
+        drain(env, player);
+
+        final Map<String, Long> times = new TreeMap<>();
+        for (String chunk : names(sent.collect())) times.merge(chunk, 1L, Long::sum);
+        System.out.println("Chunk " + deferredAt + " deferred and queued again by a PlayerChunkLoadEvent listener: "
+                + (queuedAgain.get() ? "queued again" : "not queued again") + ", after the batch the queue has "
+                + afterTheMove.entries() + " entries for the chunks " + afterTheMove.chunks() + ", chunks sent " + times);
+        assertTrue(queuedAgain.get(), "the listener queues chunk " + deferredAt + " again before it is sent");
+        assertEquals(afterTheMove.chunks().size(), afterTheMove.entries(), "the entries of the queue for the chunks "
+                + afterTheMove.chunks() + " after the batch of the move");
+        assertEquals(2 * RADIUS + 1, times.size(), "chunks of column " + column + " sent " + times);
+        assertTrue(times.values().stream().allMatch(count -> count == 1), "each chunk sent once: " + times);
+    }
+
+    @Test
+    public void aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(Env env) {
+        final AtomicReference<Consumer<Chunk>> hook = new AtomicReference<>(_ -> {
+        });
+        final InstanceContainer instance = takenChunkInstance(env, chunk -> hook.get().accept(chunk));
+        preload(instance, -RADIUS, RADIUS + 1, -RADIUS, RADIUS);
+        final TestConnection connection = env.createConnection();
+        final CheckedPlayer player = join(env, connection, instance);
+        drain(env, player);
+
+        // Moving one chunk east queues the column at x 4, (4, 0) first. Another thread holds its write-lock through the
+        // batch of the move, so it is deferred; taking the packet of the next chunk of the column throws, once, and the
+        // exception leaves the batch on its way to the tick thread. The other thread lets go before the throw: the tick
+        // of the chunk takes its read-lock
+        final int column = 1 + RADIUS;
+        final Chunk deferred = Objects.requireNonNull(instance.getChunk(column, 0));
+        final String deferredAt = column + ",0";
+        final AtomicReference<Holder> holder = new AtomicReference<>();
+        final AtomicReference<String> failed = new AtomicReference<>();
+        hook.set(chunk -> {
+            if (chunk.getChunkX() != column || chunk.getChunkZ() == 0) return;
+            if (failed.compareAndSet(null, chunk.getChunkX() + "," + chunk.getChunkZ())) {
+                holder.get().letGo();
+                throw new IllegalStateException("taking the packet of chunk " + failed.get() + " fails");
+            }
+        });
+        final List<Throwable> reported = new CopyOnWriteArrayList<>();
+        env.process().exception().setExceptionHandler(reported::add);
+        player.onBatchStart = () -> holder.set(new Holder(List.of(deferred), null));
+        player.onBatchEnd = () -> holder.get().letGo();
+        final Collector<ChunkDataPacket> sent = connection.trackIncoming(ChunkDataPacket.class);
+        moveTo(env, player, 8.5 + 16);
+        player.onBatchStart = () -> {
+        };
+        player.onBatchEnd = () -> {
+        };
+        assertNotNull(holder.get(), "a batch in the tick of the move");
+        final Queue afterTheMove = queue(player);
+        final List<Throwable> inTheMove = List.copyOf(reported);
+        drain(env, player);
+
+        final Map<String, Long> times = new TreeMap<>();
+        for (String chunk : names(sent.collect())) times.merge(chunk, 1L, Long::sum);
+        System.out.println("Chunk " + deferredAt + " deferred, then taking the packet of chunk " + failed.get() + " threw: "
+                + inTheMove.size() + " exceptions reported in the tick of the move, after it the queue has "
+                + afterTheMove.entries() + " entries for the chunks " + afterTheMove.chunks() + ", chunks sent " + times);
+        assertEquals(1, inTheMove.size(), "exceptions reported in the tick of the move: " + inTheMove);
+        assertTrue(afterTheMove.chunks().contains(deferredAt), "chunk " + deferredAt + ", deferred ahead of the failure, is queued"
+                + " after the failed batch: queued " + afterTheMove.chunks());
+        assertEquals(afterTheMove.chunks().size(), afterTheMove.entries(), "the entries of the queue for the chunks "
+                + afterTheMove.chunks() + " after the failed batch");
+        assertEquals(1L, times.get(deferredAt), "chunk " + deferredAt + " sent after the failed batch: chunks sent " + times);
+        assertTrue(times.values().stream().allMatch(count -> count == 1), "each chunk sent at most once: " + times);
+    }
+
     /** A flat instance of {@link TakenChunk}s that call {@code taken} once they took their packet. */
     private static InstanceContainer takenChunkInstance(Env env, Consumer<Chunk> taken) {
         final InstanceContainer instance = env.process().instance().createInstanceContainer();
@@ -519,6 +620,31 @@ public class ChunkSendBlockChangeIntegrationTest {
             lock.lock();
             try {
                 return ((LongPriorityQueue) field("chunkQueue").get(player)).size();
+            } finally {
+                lock.unlock();
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new LinkageError(e.getMessage(), e);
+        }
+    }
+
+    /** The send queue of a player: its entries, and the chunks it holds as {@code x,z}, sorted. */
+    private record Queue(int entries, List<String> chunks) {
+    }
+
+    /** The send queue of the player, read under its queue lock. */
+    private static Queue queue(Player player) {
+        try {
+            final ReentrantLock lock = (ReentrantLock) field("chunkQueueLock").get(player);
+            lock.lock();
+            try {
+                final List<String> chunks = new ArrayList<>();
+                for (Object chunk : (Set<?>) field("queuedChunks").get(player)) {
+                    final long index = (Long) chunk;
+                    chunks.add(CoordConversion.chunkIndexGetX(index) + "," + CoordConversion.chunkIndexGetZ(index));
+                }
+                chunks.sort(null);
+                return new Queue(((LongPriorityQueue) field("chunkQueue").get(player)).size(), chunks);
             } finally {
                 lock.unlock();
             }

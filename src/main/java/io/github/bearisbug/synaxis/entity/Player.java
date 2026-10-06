@@ -934,10 +934,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         pendingChunkCount = Math.min(pendingChunkCount + targetChunksPerTick, process().config().maxChunksPerTick());
         if (pendingChunkCount < 1) return; // Cant send anything
 
+        final LongArrayList deferred = new LongArrayList();
         chunkQueueLock.lock();
         try {
             int batchSize = 0;
-            final LongArrayList deferred = new LongArrayList();
             long lockWait = CHUNK_LOCK_WAIT.toNanos();
             sendPacket(new ChunkBatchStartPacket());
             while (!chunkQueue.isEmpty() && pendingChunkCount - deferred.size() >= 1f) {
@@ -976,12 +976,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 pendingChunkCount -= 1f;
                 batchSize += 1;
             }
-            // Back in the queue once the batch is done: closest to the center, a deferred chunk would be dequeued again
-            for (int i = 0; i < deferred.size(); i++) {
-                final long chunkIndex = deferred.getLong(i);
-                queuedChunks.add(chunkIndex);
-                chunkQueue.enqueue(chunkIndex);
-            }
             sendPacket(new ChunkBatchFinishedPacket(batchSize));
             chunkBatchLead += 1;
 //            logger.debug("chunk batch sent player={} chunks={} lead={}", username, batchSize, chunkBatchLead);
@@ -996,6 +990,13 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 needsChunkPositionSync = false;
             }
         } finally {
+            // Back in the queue once the batch is done, or has thrown: closest to the center, a deferred chunk would be
+            // dequeued again. Once: a PlayerChunkLoadEvent listener may have queued it again (#sendChunk(Chunk)), and the
+            // batch then deferred it a second time
+            for (int i = 0; i < deferred.size(); i++) {
+                final long chunkIndex = deferred.getLong(i);
+                if (queuedChunks.add(chunkIndex)) chunkQueue.enqueue(chunkIndex);
+            }
             chunkQueueLock.unlock();
         }
     }

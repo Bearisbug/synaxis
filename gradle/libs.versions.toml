@@ -22,7 +22,7 @@ jcstress = "0.16"
 errorprone = "2.50.0"
 
 # Log impl (for demo)
-logback = "1.6.3"
+logback = "1.6.5"
 
 # Player data store of the host (docs/DESIGN-PROD.md API-PROD-004, API-PROD-006)
 postgresql = "42.7.13"

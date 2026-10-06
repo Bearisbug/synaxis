@@ -1,0 +1,160 @@
+# What the 26.2 client reads and writes, from javap -c -p of the Loom cache jar (Mojang names; 26.2 ships unobfuscated):
+#   ~/.gradle/caches/fabric-loom/26.2/minecraft-merged.jar  (a1ea944be7db1879…, 35941027 bytes)
+# javap of JDK 25.0.4.1 (Homebrew openjdk@25). Only the instructions that decide a field are kept; '…' marks cuts.
+
+## 1. ClientboundSetBorderLerpSizePacket(FriendlyByteBuf): oldSize, newSize as doubles, lerpTime as a VarLong
+         6: invokevirtual #33                 // Method net/minecraft/network/FriendlyByteBuf.readDouble:()D
+         9: putfield      #13                 // Field oldSize:D
+        14: invokevirtual #33                 // Method net/minecraft/network/FriendlyByteBuf.readDouble:()D
+        17: putfield      #22                 // Field newSize:D
+        22: invokevirtual #38                 // Method net/minecraft/network/FriendlyByteBuf.readVarLong:()J
+        25: putfield      #29                 // Field lerpTime:J
+
+## 2. ClientboundInitializeBorderPacket(FriendlyByteBuf): x, z, oldSize, newSize doubles, lerpTime VarLong, absolute max, warning blocks, warning time VarInts
+         6: invokevirtual #7                  // Method net/minecraft/network/FriendlyByteBuf.readDouble:()D
+         9: putfield      #13                 // Field newCenterX:D
+        14: invokevirtual #7                  // Method net/minecraft/network/FriendlyByteBuf.readDouble:()D
+        17: putfield      #19                 // Field newCenterZ:D
+        22: invokevirtual #7                  // Method net/minecraft/network/FriendlyByteBuf.readDouble:()D
+        25: putfield      #22                 // Field oldSize:D
+        30: invokevirtual #7                  // Method net/minecraft/network/FriendlyByteBuf.readDouble:()D
+        33: putfield      #25                 // Field newSize:D
+        38: invokevirtual #28                 // Method net/minecraft/network/FriendlyByteBuf.readVarLong:()J
+        41: putfield      #32                 // Field lerpTime:J
+        46: invokevirtual #36                 // Method net/minecraft/network/FriendlyByteBuf.readVarInt:()I
+        49: putfield      #40                 // Field newAbsoluteMaxSize:I
+        54: invokevirtual #36                 // Method net/minecraft/network/FriendlyByteBuf.readVarInt:()I
+        57: putfield      #44                 // Field warningBlocks:I
+        62: invokevirtual #36                 // Method net/minecraft/network/FriendlyByteBuf.readVarInt:()I
+        65: putfield      #47                 // Field warningTime:I
+
+## 3. ClientPacketListener: both packets hand lerpTime and the level's game time to WorldBorder#lerpSizeBetween(DDJJ)
+        28: invokevirtual #3854               // Method net/minecraft/network/protocol/game/ClientboundSetBorderLerpSizePacket.getLerpTime:()J
+        35: invokevirtual #3810               // Method net/minecraft/client/multiplayer/ClientLevel.getGameTime:()J
+        38: invokevirtual #3814               // Method net/minecraft/world/level/border/WorldBorder.lerpSizeBetween:(DDJJ)V
+        33: invokevirtual #3801               // Method net/minecraft/network/protocol/game/ClientboundInitializeBorderPacket.getLerpTime:()J
+        39: lcmp
+        40: ifle          66
+        57: invokevirtual #3810               // Method net/minecraft/client/multiplayer/ClientLevel.getGameTime:()J
+        60: invokevirtual #3814               // Method net/minecraft/world/level/border/WorldBorder.lerpSizeBetween:(DDJJ)V
+        71: invokevirtual #3818               // Method net/minecraft/world/level/border/WorldBorder.setSize:(D)V
+
+## 4. WorldBorder$MovingBorderExtent: lerpDuration = lerpTime, lerpProgress = lerpTime; update() takes one off lerpProgress per call,
+##    calculateSize() lerps by (lerpDuration - lerpProgress) / lerpDuration; WorldBorder#tick calls update() and ClientLevel#tick calls
+##    WorldBorder#tick, once per client tick. So lerpTime counts ticks.
+         7: putfield      #7                  // Field this$0:Lnet/minecraft/world/level/border/WorldBorder;
+        16: putfield      #19                 // Field from:D
+        22: putfield      #23                 // Field to:D
+        26: lload         6
+        28: l2d
+        29: putfield      #26                 // Field lerpDuration:D
+        33: lload         6
+        35: putfield      #29                 // Field lerpProgress:J
+  public net.minecraft.world.level.border.WorldBorder$BorderExtent update();
+    Code:
+         0: aload_0
+         1: dup
+         2: getfield      #29                 // Field lerpProgress:J
+         5: lconst_1
+         6: lsub
+         7: putfield      #29                 // Field lerpProgress:J
+        10: aload_0
+        11: aload_0
+  private double calculateSize();
+    Code:
+         0: aload_0
+         1: getfield      #26                 // Field lerpDuration:D
+         4: aload_0
+         5: getfield      #29                 // Field lerpProgress:J
+         8: l2d
+         9: dsub
+        10: aload_0
+        11: getfield      #26                 // Field lerpDuration:D
+        14: ddiv
+        15: dstore_1
+  public void tick();
+    Code:
+         0: aload_0
+         1: aload_0
+         2: getfield      #61                 // Field extent:Lnet/minecraft/world/level/border/WorldBorder$BorderExtent;
+         5: invokeinterface #314,  1          // InterfaceMethod net/minecraft/world/level/border/WorldBorder$BorderExtent.update:()Lnet/minecraft/world/level/border/WorldBorder$BorderExtent;
+        10: putfield      #61                 // Field extent:Lnet/minecraft/world/level/border/WorldBorder$BorderExtent;
+        13: return
+452:        18: invokevirtual #622                // Method net/minecraft/world/level/border/WorldBorder.tick:()V
+
+## 5. ServerboundChangeDifficultyPacket: one record component, STREAM_CODEC = composite(Difficulty.STREAM_CODEC, …); Difficulty.STREAM_CODEC is an idMapper (VarInt)
+  private final net.minecraft.world.Difficulty difficulty;
+         0: getstatic     #41                 // Field net/minecraft/world/Difficulty.STREAM_CODEC:Lnet/minecraft/network/codec/StreamCodec;
+        13: invokestatic  #52                 // InterfaceMethod net/minecraft/network/codec/StreamCodec.composite:(Lnet/minecraft/network/codec/StreamCodec;Ljava/util/function/Function;Ljava/util/function/Function;)Lnet/minecraft/network/codec/StreamCodec;
+       106: invokestatic  #122                // InterfaceMethod net/minecraft/network/codec/ByteBufCodecs.idMapper:(Ljava/util/function/IntFunction;Ljava/util/function/ToIntFunction;)Lnet/minecraft/network/codec/StreamCodec;
+       109: putstatic     #128                // Field STREAM_CODEC:Lnet/minecraft/network/codec/StreamCodec;
+
+## 6. ServerboundSetBeaconPacket: Optional<Holder<MobEffect>> twice, ByteBufCodecs.optional(MobEffect.STREAM_CODEC); MobEffect.STREAM_CODEC = holderRegistry(MOB_EFFECT)
+  private final java.util.Optional<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>> primary;
+  private final java.util.Optional<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>> secondary;
+      #110 REF_invokeStatic net/minecraft/network/codec/ByteBufCodecs.optional:(Lnet/minecraft/network/codec/StreamCodec;)Lnet/minecraft/network/codec/StreamCodec;
+  #110 = MethodHandle       6:#111        // REF_invokeStatic net/minecraft/network/codec/ByteBufCodecs.optional:(Lnet/minecraft/network/codec/StreamCodec;)Lnet/minecraft/network/codec/StreamCodec;
+         0: getstatic     #81                 // Field net/minecraft/core/registries/BuiltInRegistries.MOB_EFFECT:Lnet/minecraft/core/Registry;
+        11: getstatic     #276                // Field net/minecraft/core/registries/Registries.MOB_EFFECT:Lnet/minecraft/resources/ResourceKey;
+        14: invokestatic  #281                // InterfaceMethod net/minecraft/network/codec/ByteBufCodecs.holderRegistry:(Lnet/minecraft/resources/ResourceKey;)Lnet/minecraft/network/codec/StreamCodec;
+        17: putstatic     #287                // Field STREAM_CODEC:Lnet/minecraft/network/codec/StreamCodec;
+
+## 7. ServerboundSetStructureBlockPacket(FriendlyByteBuf): … readFloat (integrity), readVarLong (seed), readByte (flags)
+         6: invokevirtual #64                 // Method net/minecraft/network/FriendlyByteBuf.readBlockPos:()Lnet/minecraft/core/BlockPos;
+        16: invokevirtual #72                 // Method net/minecraft/network/FriendlyByteBuf.readEnum:(Ljava/lang/Class;)Ljava/lang/Enum;
+        29: invokevirtual #72                 // Method net/minecraft/network/FriendlyByteBuf.readEnum:(Ljava/lang/Class;)Ljava/lang/Enum;
+        40: invokevirtual #78                 // Method net/minecraft/network/FriendlyByteBuf.readUtf:()Ljava/lang/String;
+        55: invokevirtual #86                 // Method net/minecraft/network/FriendlyByteBuf.readByte:()B
+        66: invokevirtual #86                 // Method net/minecraft/network/FriendlyByteBuf.readByte:()B
+        77: invokevirtual #86                 // Method net/minecraft/network/FriendlyByteBuf.readByte:()B
+       102: invokevirtual #86                 // Method net/minecraft/network/FriendlyByteBuf.readByte:()B
+       112: invokevirtual #86                 // Method net/minecraft/network/FriendlyByteBuf.readByte:()B
+       122: invokevirtual #86                 // Method net/minecraft/network/FriendlyByteBuf.readByte:()B
+       141: invokevirtual #72                 // Method net/minecraft/network/FriendlyByteBuf.readEnum:(Ljava/lang/Class;)Ljava/lang/Enum;
+       154: invokevirtual #72                 // Method net/minecraft/network/FriendlyByteBuf.readEnum:(Ljava/lang/Class;)Ljava/lang/Enum;
+       168: invokevirtual #106                // Method net/minecraft/network/FriendlyByteBuf.readUtf:(I)Ljava/lang/String;
+       176: invokevirtual #109                // Method net/minecraft/network/FriendlyByteBuf.readFloat:()F
+       189: invokevirtual #116                // Method net/minecraft/network/FriendlyByteBuf.readVarLong:()J
+       196: invokevirtual #86                 // Method net/minecraft/network/FriendlyByteBuf.readByte:()B
+
+## 8. ClientboundDeleteChatPacket: a MessageSignature$Packed; Packed.read: VarInt - 1, -1 means a full signature follows
+  private final net.minecraft.network.chat.MessageSignature$Packed messageSignature;
+         2: invokestatic  #13                 // Method net/minecraft/network/chat/MessageSignature$Packed.read:(Lnet/minecraft/network/FriendlyByteBuf;)Lnet/minecraft/network/chat/MessageSignature$Packed;
+         5: invokestatic  #22                 // Method net/minecraft/network/chat/MessageSignature$Packed.write:(Lnet/minecraft/network/FriendlyByteBuf;Lnet/minecraft/network/chat/MessageSignature$Packed;)V
+         1: invokevirtual #20                 // Method net/minecraft/network/FriendlyByteBuf.readVarInt:()I
+         5: isub
+         8: iconst_m1
+        17: invokestatic  #26                 // Method net/minecraft/network/chat/MessageSignature.read:(Lnet/minecraft/network/FriendlyByteBuf;)Lnet/minecraft/network/chat/MessageSignature;
+
+## 9. ClientboundMoveMinecartPacket: VarInt entity id, list of NewMinecartBehavior$MinecartStep; a step is Vec3.STREAM_CODEC (3 doubles) twice,
+##    ByteBufCodecs.ROTATION_BYTE twice (Mth.packDegrees / unpackDegrees, a 256th of a turn in a byte), FLOAT weight
+         0: getstatic     #38                 // Field net/minecraft/world/phys/Vec3.STREAM_CODEC:Lnet/minecraft/network/codec/StreamCodec;
+         8: getstatic     #38                 // Field net/minecraft/world/phys/Vec3.STREAM_CODEC:Lnet/minecraft/network/codec/StreamCodec;
+        16: getstatic     #49                 // Field net/minecraft/network/codec/ByteBufCodecs.ROTATION_BYTE:Lnet/minecraft/network/codec/StreamCodec;
+        24: getstatic     #49                 // Field net/minecraft/network/codec/ByteBufCodecs.ROTATION_BYTE:Lnet/minecraft/network/codec/StreamCodec;
+        32: getstatic     #56                 // Field net/minecraft/network/codec/ByteBufCodecs.FLOAT:Lnet/minecraft/network/codec/StreamCodec;
+         5: invokevirtual #9                  // Method io/netty/buffer/ByteBuf.readDouble:()D
+         9: invokevirtual #9                  // Method io/netty/buffer/ByteBuf.readDouble:()D
+        13: invokevirtual #9                  // Method io/netty/buffer/ByteBuf.readDouble:()D
+      #680 REF_invokeStatic net/minecraft/util/Mth.unpackDegrees:(B)F
+      #689 REF_invokeStatic net/minecraft/util/Mth.packDegrees:(F)B
+  public static byte packDegrees(float);
+    Code:
+         0: fload_0
+         1: ldc           #96                 // float 256.0f
+         3: fmul
+         4: ldc           #97                 // float 360.0f
+         6: fdiv
+         7: invokestatic  #98                 // Method floor:(F)I
+        10: i2b
+        11: ireturn
+
+## 10. ServerEntity#sendPairingData: for a LivingEntity, the non-empty slots of EquipmentSlot.VALUES only, and no ClientboundSetEquipmentPacket
+##     when the list is empty
+       168: getstatic     #468                // Field net/minecraft/world/entity/EquipmentSlot.VALUES:Ljava/util/List;
+       204: invokevirtual #473                // Method net/minecraft/world/entity/LivingEntity.getItemBySlot:(Lnet/minecraft/world/entity/EquipmentSlot;)Lnet/minecraft/world/item/ItemStack;
+       211: invokevirtual #477                // Method net/minecraft/world/item/ItemStack.isEmpty:()Z
+       240: invokeinterface #362,  1          // InterfaceMethod java/util/List.isEmpty:()Z
+       249: new           #489                // class net/minecraft/network/protocol/game/ClientboundSetEquipmentPacket
+       262: invokespecial #491                // Method net/minecraft/network/protocol/game/ClientboundSetEquipmentPacket."<init>":(ILjava/util/List;)V
+       277: invokeinterface #362,  1          // InterfaceMethod java/util/List.isEmpty:()Z

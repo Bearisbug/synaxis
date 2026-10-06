@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-06 | 分支 `prod/r071-upstream`，跟进 `docs/DESIGN-PROD.md` v0.9.55（上游 Minestom 移植五条），不登执行轮次（集成轮登记 RUN-071）。**新增 §4「生产就绪 · RUN-071：上游 Minestom 移植」八条** `TC-PROD-680`～`TC-PROD-687`（`REQ-017`，`TC-PROD-680` 另对应 `REQ-PROD-013`），反证都实跑过，证据 `docs/test-runs/RUN-071/upstream/`。**新类** `PacketVanillaLayoutTest` 6 条、`ComponentHoverItemRegistriesTest` 5 条、`ModuleExportsTest` 1 条；**改动的类** `WorldBorderIntegrationTest` 5 → 6、`ArchitectureTest` 7 → 8、`NonLivingEquipmentIntegrationTest` 2 → 3（`livingEntityStillSendsEquipment` 改为先装备再断言只带那一格）、`PlayerInventoryIntegrationTest` 7 → 9（`clearInventoryTest` 改为不发装备包）、`TestNbtComponentSerializer` 2 → 3、`PacketWriteReadRegistriesTest` 469 → 470，`InventoryIntegrationTest` 16 条不变（`clearingPlayerInventoryClearsCursorTest` 改为不发装备包）。**条数**：`TC-PROD-121` 第 1、2 步的 `ArchitectureTest` 7 → 8，第 2 步的反证在本分支重跑，仍红在 `HandshakeListener.java:32`。根项目 `:test` 的全量条数（本组加 19 条）不改，由集成轮按 CI 实数改。§5 加一行 | Bearisbug |
 | 2026-10-06 | 分支 `prod/r071-chunks` 按第二轮评审返工（代码提交 `68d6b07ea2`），跟进 `docs/DESIGN-PROD.md` v0.9.54 变更记录的第二轮一句：推后的区块改在放开队列锁的 `finally` 里放回，已在队列里的跳过。§4「生产就绪 · RUN-071：区块交包窗口」：`TC-PROD-679` 加第 9～14 步（新类加两个方法：`PlayerChunkLoadEvent` 的监听器把推后的区块重新排进队列时它只放回一次、只发一次；取包抛异常时已推后的区块仍在队列里、之后发出；`c193a22479` 的发送上两个都红，两个反证：放回不查是否已在队列里、放回不在 `finally` 里），标题补这两点；第 1 步写明 `holder` 的排队计数只会少计，负载很高时第 6 步可能假绿，对修复后的代码这条断言确定成立；本节 `<PL>` 行号按 `68d6b07ea2`（`:979-984` → `:993-999`、`:980-984` → `:996-999`、`:994` → `:988`，其余不动），675～679 各步条数 `5 tests` → `7 tests` 并重跑，`a6155af745` 的发送、改动前的代码与各反证上两个新方法红在哪一行写进对应步骤；`TC-PROD-678` 第 1 步 20 个 → 22 个（第 2、3 步本轮没有重跑）。根项目 `:test` 比 RUN-070 多 1 个类 7 个测试，写死的全量条数仍由集成轮统一改 | Bearisbug |
 | 2026-10-06 | 分支 `prod/r071-chunks` 按评审返工（代码提交 `c193a22479`），跟进 `docs/DESIGN-PROD.md` v0.9.54 变更记录的返工一句：发送一批共用 1 ms 等锁预算，等不到的区块推到下一个 tick、不挡同批后面的区块，首批一个区块都没发出时不提前用掉位置同步。§4「生产就绪 · RUN-071：区块交包窗口」：**新增 `TC-PROD-679`**（新类加两个方法：6 块被别的线程持锁时第 7 块照发、整批只排一把锁；首批全被推后时位置同步排在第一批区块之后；`a6155af745` 的发送上两个都红，三个反证：等不到就结束这一批、每块各等 1 ms、空批也用掉位置同步）；`TC-PROD-675` 第 1 步加「区块包在区块写锁里交给连接」的断言、新增第 6 步反证（锁里取包、放锁后才交给连接，只红在这条新断言）；675～677 各步的红行、`<PL>` 行号与条数按 `c193a22479` 重写并重跑（`3 tests` → `5 tests`），`TC-PROD-676` 第 1 步按新发法改写，第 4 步反证改为删掉批末放回；`TC-PROD-678` 第 1 步 18 个 → 20 个。**§5** 那一行改为 675～679。根项目 `:test` 比 RUN-070 多 1 个类 5 个测试，写死的全量条数仍由集成轮统一改 | Bearisbug |
 | 2026-10-06 | 分支 `prod/r071-chunks`（代码提交 `a6155af745`，基线 `main` `8b18922130`），跟进 `docs/DESIGN-PROD.md` v0.9.54（光照会话交来的补充项：区块包与同一区块的方块更新错序，客户端永久看到旧方块），不登执行轮次，由集成轮登记 RUN-071；本组证据在 `docs/test-runs/RUN-071/chunks2/`。**新增 §4「生产就绪 · RUN-071：区块交包窗口」四条 `TC-PROD-675`～`TC-PROD-678`**，新类 `ChunkSendBlockChangeIntegrationTest` 3 条；改动前的代码上 675～677 都红，默认与严格 grid 相同；五个反证（不在区块锁里发、事件在锁里派发、不限时等锁、等不到锁就丢掉区块、观察者按位置算）都实跑过，各自红在用例写的那一行。根项目 `:test` 多 1 个类 3 个测试，写死的全量条数本组不改，由集成轮统一改。**§5** 加一行。**§7** `OnlineDuplicateLoginSocketTest` 结案一条引的 `Player.java:745` 改为 `:747`（本版在 `Player.java` 前部加了两行常量） | Bearisbug |
@@ -4345,8 +4346,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.ArchitectureTest` | 7 个 0 失败；`boundedReporters()` 里没有 `HandshakeListener` |
-| 2 | 反证有齿：`HandshakeListener#listener` 里超长服务器地址那一段的 `connection.disconnectTurnedAway();` 前加一行 `LoggerFactory.getLogger(HandshakeListener.class).warn("Server address too long: {}", address.length());`（并补 `org.slf4j.LoggerFactory` 的 import，写全限定名会先被 Error Prone 的 `UnnecessarilyFullyQualified` 拦下；v0.9.39 之前这一段是 `throw`，加在 `throw` 前），重跑第 1 步，再 `git checkout --` 该文件 | `7 tests completed, 1 failed`，红在 `clientDrivenPathsDoNotWriteALinePerPacket`：`Architecture Violation … Rule 'no classes that reside in any package ['io.github.bearisbug.synaxis.network..', 'io.github.bearisbug.synaxis.listener..'] and not name …'`，违例指向 `HandshakeListener.listener`（`HandshakeListener.java:32`）。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.ArchitectureTest` | 8 个 0 失败；`boundedReporters()` 里没有 `HandshakeListener` |
+| 2 | 反证有齿：`HandshakeListener#listener` 里超长服务器地址那一段的 `connection.disconnectTurnedAway();` 前加一行 `LoggerFactory.getLogger(HandshakeListener.class).warn("Server address too long: {}", address.length());`（并补 `org.slf4j.LoggerFactory` 的 import，写全限定名会先被 Error Prone 的 `UnnecessarilyFullyQualified` 拦下；v0.9.39 之前这一段是 `throw`，加在 `throw` 前），重跑第 1 步，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `clientDrivenPathsDoNotWriteALinePerPacket`：`Architecture Violation … Rule 'no classes that reside in any package ['io.github.bearisbug.synaxis.network..', 'io.github.bearisbug.synaxis.listener..'] and not name …'`，违例指向 `HandshakeListener.listener`（`HandshakeListener.java:32`）。还原后复绿 |
 
 后置：确认 `HandshakeListener.java` 没有残留改动。
 
@@ -9477,6 +9478,121 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · RUN-071：上游 Minestom 移植
+
+对应 `REQ-017`（`docs/DESIGN.md` 上游加固移植）与 `REQ-PROD-013`（`API-PROD-030` 的世界边界）；`docs/DESIGN-PROD.md` v0.9.55。上游 master 核对到 `fcd35c05d9`，移植五条：#3382（`89399c65ce`）世界边界的过渡时间按 tick 发、五个只注册的包按 26.2 改字段；#3304 中 `FilteredText` 四个编解码器与 `DataComponentPredicate.Damage.CODEC` 改 final；#3249（`024de826c7`）全空的装备槽不发包；#3400（`268866b01b`）与 #3388 悬停物品的数据组件按缓冲区的注册表编码、`NbtComponentSerializer.nbt(Registries)`；#3373 导出 `item.predicate`，logback 1.6.5。26.2 客户端的读法取自 Loom 缓存的 `minecraft-merged.jar`（`javap -c`），摘录在 `docs/test-runs/RUN-071/upstream/01-decompile-26.2.txt`。
+
+测试都在根项目，`<P>` 是 `io.github.bearisbug.synaxis`：新类 `<P>.network.packet.PacketVanillaLayoutTest`（6 条，按 26.2 的布局手写字节）、`<P>.network.ComponentHoverItemRegistriesTest`（5 条，`@RegistriesTest`）、`<P>.ModuleExportsTest`（1 条）；改动的类见 §1 变更记录的同日一行。「跑 `<类>`」即 `./gradlew :test --rerun --tests '<类全名>' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，「严格 grid」是再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`，结果看 `build/test-results/test/TEST-<类全名>.xml`。反证一律是临时改一处、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿；行号按提交 `29df11e74f`。「改动前的代码」指主代码与 `gradle/libs.versions.toml` 取 `8b18922130` 的（`git checkout 8b18922130 -- src/main gradle/libs.versions.toml`），测试类用本分支的，其中 `PacketWriteReadRegistriesTest` 与 `TestNbtComponentSerializer` 也取 `8b18922130` 的（它们用到改后的构造器与新方法），跑完 `git checkout HEAD -- src gradle`。本节不需要数据库前置。证据 `docs/test-runs/RUN-071/upstream/`。
+
+#### `TC-PROD-680` 世界边界的过渡时间按 tick 发：1 s 的过渡发 20，5 个 tick 后进来的玩家收到 15 — 对应 `REQ-017`、`REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。26.2 客户端把 `set_border_lerp_size` 与 `initialize_border` 的过渡时间读成 VarLong，`WorldBorder$MovingBorderExtent#update` 每个客户端 tick 减一（`01-decompile-26.2.txt` 第 1～4 节）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.instance.WorldBorderIntegrationTest` | `tests="6"` 0 失败。`transitionTimeIsSentInTicks`：直径 30 → 10、过渡 1 s，玩家收到一个 `WorldBorderLerpSizePacket`，`speed` 为 20（`1000 / MinecraftServer.TICK_MS`）；再过 5 个 tick，`Instance#createInitializeWorldBorderPacket().speed()` 为 15。`resizeWorldBorder`（服务端每 tick 的插值）照旧通过 |
+| 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
+| 3 | 反证有齿（插值包发毫秒）：`Instance.java:638` 的 `createLerpSizePacket(newBorder.diameter(), transitionTicks)` 改为 `createLerpSizePacket(newBorder.diameter(), transitionTicks * MinecraftServer.TICK_MS)`，跑第 1 步的类，再还原 | `6 tests completed, 1 failed`：红在 `WorldBorderIntegrationTest.java:75`，`lerp time of a 1 s transition ==> expected: <20> but was: <1000>` |
+| 4 | 反证有齿（初始化包发毫秒）：`Instance.java:631` 的 `createInitializePacket(targetBorderDiameter, remainingWorldBorderTransitionTicks)` 改为 `createInitializePacket(targetBorderDiameter, remainingWorldBorderTransitionTicks * MinecraftServer.TICK_MS)`，跑第 1 步的类，再还原 | `6 tests completed, 1 failed`：红在 `:78`，`lerp time left for a player joining 5 ticks in ==> expected: <15> but was: <750>` |
+| 5 | 改动前的代码上默认与严格 grid 各跑一次第 1 步的类 | 两次都只有这一条红，在 `:75`，消息同第 3 步 |
+| 6 | 还原后重跑第 1、2 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-681` 五个只注册的包按 26.2 的布局读写：字节读尽、写回逐字节相同 — 对应 `REQ-017` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。五个包的 26.2 布局见 `01-decompile-26.2.txt` 第 5～9 节。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.network.packet.PacketVanillaLayoutTest` 与 `<P>.network.PacketWriteReadRegistriesTest` | 前者 `tests="6"`、后者 `tests="470"`，0 失败。`PacketVanillaLayoutTest` 每条按 26.2 的布局手写字节，读完缓冲区剩 0 字节、写回逐字节相同：改难度只有一个 VarInt（3 → `HARD`）；信标是两个可选的 mob_effect id（`SPEED`、`REGENERATION`）；结构方块的 seed 300 是两字节的 VarLong；删聊天按缓存下标（VarInt 6 → 下标 5）与按完整签名（VarInt 0 加 256 字节）各一条；矿车一步的 yaw、pitch 各一字节（64 → 90°，−32 → −45°）。`PacketWriteReadRegistriesTest` 里这五个包的实例用改后的构造器，`DeleteChatPacket` 多一个按下标的实例，矿车的角度改为 90、−45（角度字节只保住 1/256 圈的整数倍） |
+| 2 | 严格 grid 跑同两个类 | 与第 1 步相同 |
+| 3 | 反证有齿（seed 按 8 字节读）：`ClientUpdateStructureBlockPacket.java:39` 的 `VAR_LONG,` 改为 `Boolean.getBoolean("proof.never") ? VAR_LONG : NetworkBuffer.LONG,`（直接换成 `LONG` 要改 import，Error Prone 的未用 import 先让编译失败），跑 `PacketVanillaLayoutTest`，再还原 | `6 tests completed, 1 failed`：`structureBlockSeedIsAVarLong` 红在 `PacketVanillaLayoutTest.java:95`（经 `:37`），`IndexOutOfBoundsException: Out of bound access on segment MemorySegment{ kind: heap, …, byteSize: 39 }; new offset = 36; new length = 8` |
+| 4 | 改动前的代码上默认与严格 grid 各跑一次 `PacketVanillaLayoutTest` | 两次都是 6 条全红：`changeDifficultyIsTheDifficultyAlone` 在 `:50`（经 `:37`），`IndexOutOfBoundsException … byteSize: 1 }; new offset = 1; new length = 1`（多读的 `locked`）；`beaconEffectsAreMobEffects` 在 `:67`，`expected: <minecraft:speed> but was: <minecraft:water>`（id 0 按药水注册表读）；`structureBlockSeedIsAVarLong` 同第 3 步；`deleteChatTakesACacheIndex` 在 `:108`（经 `:37`），`IndexOutOfBoundsException: Buffer needs 256 bytes to read, found 1`；`deleteChatTakesAFullSignature` 在 `:120`（经 `:38`），`bytes left unread after DeleteChatPacket[…] ==> expected: <0> but was: <1>`；`minecartStepRotationsAreAngleBytes` 在 `:139`（经 `:37`），`IndexOutOfBoundsException … byteSize: 56 }; new offset = 54; new length = 4` |
+| 5 | 还原后重跑第 1、2 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-682` 引擎的 public static 字段都是 final，只豁免 `EngineAdventure.COMPONENT_TRANSLATOR` — 对应 `REQ-017` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.ArchitectureTest` | `tests="8"` 0 失败，其中 `publicStaticFieldsAreFinal` 是本节加的；`FilteredText` 的 `STRING_NETWORK_TYPE`、`STRING_CODEC`、`COMPONENT_NETWORK_TYPE`、`COMPONENT_CODEC` 与 `DataComponentPredicate.Damage.CODEC` 都是 `public static final` |
+| 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
+| 3 | 反证有齿：`FilteredText.java:14` 去掉 `final`，前面加一行 `@SuppressWarnings("ConstantField")`（不加时 Error Prone 的 `ConstantField` 先让编译失败），跑第 1 步的类，再还原 | `8 tests completed, 1 failed`：`publicStaticFieldsAreFinal` 红在 `ArchitectureTest.java:291`，`Architecture Violation [Priority: MEDIUM] - Rule 'fields that are public and are static and do not have full name '…EngineAdventure.COMPONENT_TRANSLATOR' should be final, because any code in the process could reassign it' was violated (1 times)`，`Field <…FilteredText.STRING_CODEC> does not have modifier FINAL` |
+| 4 | 改动前的代码上默认与严格 grid 各跑一次第 1 步的类 | 两次都红在 `:291`，`was violated (5 times)`，列出 `DataComponentPredicate$Damage.CODEC` 与 `FilteredText` 的四个字段 |
+| 5 | 还原后重跑第 1、2 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-683` 新 viewer 只收到有物品的装备槽，全空时不发装备包 — 对应 `REQ-017` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。原版 26.2 `ServerEntity#sendPairingData` 只发非空的槽、列表为空时不发（`01-decompile-26.2.txt` 第 10 节）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.entity.NonLivingEquipmentIntegrationTest` 与 `<P>.inventory.PlayerInventoryIntegrationTest` | 3 + 9 条 0 失败。`livingEntityStillSendsEquipment`：僵尸只戴铁头盔，加 viewer 时 viewer 收到一个 `EntityEquipmentPacket`，装备表恰为 `{HELMET=铁头盔}`；`livingEntityWithNothingEquippedSendsNoEquipment`：什么都没装备的僵尸加 viewer，0 个装备包；`nonLivingEntityDoesNotSendEquipment`（箭类型的 `LivingEntity`）照旧 0 个；`playerWithNothingEquippedSendsNoEquipmentToANewViewerTest`：第二名玩家进服时，先进来的玩家收到 0 个装备包 |
+| 2 | 严格 grid 跑同两个类 | 与第 1 步相同 |
+| 3 | 反证有齿（每个槽都放进包）：`EquipmentHandler.java:212` 的 `if (!stack.isAir()) equipment.put(slot, stack);` 改为 `equipment.put(slot, stack);`，跑第 1 步的两个类与 `<P>.inventory.InventoryIntegrationTest`，再还原 | `28 tests completed, 3 failed`：`livingEntityWithNothingEquippedSendsNoEquipment` 红在 `NonLivingEquipmentIntegrationTest.java:62`，`Expected 0 element(s), got 1: [EntityEquipmentPacket[entityId=…, equipments={MAIN_HAND=…minecraft:air…, SADDLE=…`；`livingEntityStillSendsEquipment` 红在 `:48`，`expected: <{HELMET=…minecraft:iron_helmet…}> but was: <{MAIN_HAND=…minecraft:air…`；`playerWithNothingEquippedSendsNoEquipmentToANewViewerTest` 红在 `PlayerInventoryIntegrationTest.java:169`，`Expected 0 element(s), got 1`；`InventoryIntegrationTest` 16 条与 `TC-PROD-684` 的三条绿 |
+| 4 | 改动前的代码上默认与严格 grid 各跑一次第 1 步的两个类与 `InventoryIntegrationTest` | 两次都是第 3 步的三条红（同一行，包里是全部八个槽），另有 `TC-PROD-684` 第 3 步的三条 |
+| 5 | 还原后重跑第 1、2 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-684` 清空玩家背包：viewer 只收到被清空那一格的装备包，什么都没装备时不发 — 对应 `REQ-017` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.inventory.PlayerInventoryIntegrationTest` 与 `<P>.inventory.InventoryIntegrationTest` | 9 + 16 条 0 失败。`clearInventoryClearsEquipmentForViewersTest`：戴头盔的玩家 `getInventory().clear()`，旁边的玩家恰好收到一个装备包，`HELMET` 为空气（逐槽同步发的那一个）；`clearInventoryTest` 与 `clearingPlayerInventoryClearsCursorTest`：什么都没装备的玩家清空背包，自己收到 0 个装备包，`WindowItemsPacket` 照旧一个 |
+| 2 | 严格 grid 跑同两个类 | 与第 1 步相同 |
+| 3 | 改动前的代码上默认与严格 grid 各跑一次（`PlayerInventory#clear` 在逐槽同步之后再给自己与 viewer 发八个槽的全量包） | 两次都是这三条红：`clearInventoryClearsEquipmentForViewersTest` 在 `PlayerInventoryIntegrationTest.java:158`，`Expected 1 element, got [EntityEquipmentPacket[…{HELMET=…minecraft:air…}], EntityEquipmentPacket[…{OFF_HAND=…minecraft:air…, LEGGINGS=…`（两个包）；`clearInventoryTest` 在 `:114` 与 `clearingPlayerInventoryClearsCursorTest` 在 `InventoryIntegrationTest.java:158`，都是 `Expected 0 element(s), got 1: [EntityEquipmentPacket[…]]`，八个槽都是空气 |
+| 4 | 还原后重跑第 1、2 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-685` 悬停物品的数据组件按缓冲区的注册表编码 — 对应 `REQ-017` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.network.ComponentHoverItemRegistriesTest`、`<P>.adventure.nbt.TestNbtComponentSerializer`、`<P>.network.ComponentNetworkBufferTypeTest`、`<P>.network.ComponentNetworkBufferTypeReadTest` | 5 + 3 + 13 + 1 条 0 失败。`aJsonValueIsDecodedWithTheRegistriesOfTheBuffer`：另建一份原版注册表并注册伤害类型 `synaxis:hover_damage`，悬停物品的 `minecraft:damage_type` 是 Gson 值 `"synaxis:hover_damage"`，写进带这份注册表的缓冲区，读回的 NBT 里该组件为字符串 `synaxis:hover_damage`；同一组件写进共享的原版注册表（没有这个条目）抛 `IllegalArgumentException`。`anEngineValueIsEncodedWithTheRegistriesOfTheBuffer`：`ItemStack#asHoverEvent` 给的引擎值同样写出 `synaxis:hover_damage`；`aTypedValueNeedsTheRegistriesOfTheBuffer`：没有注册表的缓冲区写引擎值抛 `NullPointerException`；`anNbtValueIsWrittenAsItIs`：NBT 值在没有注册表的缓冲区里原样写出；`aRemovedValueIsWrittenAsARemoval`：移除标记写成名为 `!minecraft:damage_type` 的空复合标签。`testWriteReadWithRegistries`：`NbtComponentSerializer.nbt(Registries.vanilla())` 序列化出的 NBT 与 `nbt()` 的相同，读回等于原组件 |
+| 2 | 严格 grid 跑同四个类 | 与第 1 步相同 |
+| 3 | 反证有齿（Gson 值按原版注册表解码）：`ComponentNetworkBufferTypeImpl.java:477` 的 `new RegistryTranscoder<>(Transcoder.JSON, registries)` 改为 `new RegistryTranscoder<>(Transcoder.JSON, Registries.vanilla())`，跑 `ComponentHoverItemRegistriesTest`，再还原 | `5 tests completed, 1 failed`：`aJsonValueIsDecodedWithTheRegistriesOfTheBuffer` 红在 `ComponentHoverItemRegistriesTest.java:55`（经 `:67`），`IllegalArgumentException: failed to decode minecraft:damage_type: Unknown key synaxis:hover_damage for registry minecraft:damage_type` |
+| 4 | 改动前的代码上默认与严格 grid 各跑一次 `ComponentHoverItemRegistriesTest` | 两次都是 2 条红：`aJsonValueIsDecodedWithTheRegistriesOfTheBuffer` 在 `:55`（经 `:67`），`IllegalArgumentException: There is no data holder converter registered to convert from a class net.kyori.adventure.text.serializer.gson.GsonDataComponentValueImpl instance to a interface io.github.bearisbug.synaxis.adventure.serializer.nbt.NbtDataComponentValue (on field minecraft:damage_type)`；`aTypedValueNeedsTheRegistriesOfTheBuffer` 在 `:88`，`Expected java.lang.NullPointerException to be thrown, but nothing was thrown.`（修前按原版快照编码）。另三条修前也绿：`RegistryKey` 的编解码器编码时不查注册表 |
+| 5 | 改动前的代码上编译本分支的 `TestNbtComponentSerializer`（`./gradlew :compileTestJava --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`） | 编译失败在 `TestNbtComponentSerializer.java:45`：`nbt` 不接受参数（本机 javac 的中文消息「无法将接口 NbtComponentSerializer中的方法 nbt应用到给定类型; 需要: 没有参数 找到: Registries」） |
+| 6 | 还原后重跑第 1、2 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-686` 引擎的每个包都导出；logback 1.6.5 — 对应 `REQ-017` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.ModuleExportsTest`，默认与严格 grid 各一次 | `tests="1"` 0 失败：从 `build/classes/java/main` 读出的模块描述里，`io.github.bearisbug.synaxis` 的每个包都有不限定的 `exports`，含 `item.predicate` |
+| 2 | 反证有齿：删掉 `module-info.java:95` 的 `exports io.github.bearisbug.synaxis.item.predicate;`，跑第 1 步的类，再还原 | 红在 `ModuleExportsTest.java:31`，`packages of io.github.bearisbug.synaxis that module-info does not export ==> expected: <[]> but was: <[io.github.bearisbug.synaxis.item.predicate]>`；改动前的代码上默认与严格 grid 结果相同 |
+| 3 | `./gradlew :server-app:dependencyInsight --dependency logback-classic --configuration runtimeClasspath --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 解析到 `ch.qos.logback:logback-classic:1.6.5`；改动前的代码上是 `1.6.3` |
+| 4 | `./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.LogbackConfigurationTest' :plugin-api:test --rerun --tests 'io.github.bearisbug.synaxis.plugin.LogBudgetTest' …`，默认与严格 grid 各一次 | 5 + 2 条 0 失败：生产 `logback.xml` 的文件模式（滚动、压缩、非阻塞队列）、`stdout` 模式、`org.java_websocket` 钉在 INFO 与未知模式的报错，在 1.6.5 上照旧 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-687` 改动所在类的邻近回归 — 对应 `REQ-017` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.network.packet.PacketVanillaIdTest`、`<P>.network.packet.PacketRegistryLookupTest`、`<P>.listener.PlayerMovementAuthorityIntegrationTest`、`<P>.entity.player.PlayerRespawnChunkIntegrationTest`，默认与严格 grid 各一次 | 6 + 7 + 7 + 4 条 0 失败：包 id 与 `DeleteChatPacket` 的查表不变；`API-PROD-030` 的世界边界判定（`setWorldBorder` 不带过渡时间）不变；重生路径（经 `Player#refreshAfterTeleport`）照旧通过 |
+| 2 | 第 1 步的默认那一次同时跑 `:forbiddenImportsCheck :testNamingCheck :javadoc` | 三个任务都通过 |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -9544,6 +9660,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-071 ops 组，断开时的出站冲刷、P10 夹具权限与文档收口（`REQ-PROD-030`、`REQ-PROD-031`、`REQ-PROD-009`，v0.9.52）→ TC-PROD-660～TC-PROD-664；动了 `Server#playerWriteLoop` 的下线分支，`PlayerSocketConnection` 的 `flushRemaining`、`flushSync`、`closeOnceFlushed` 或 `startCloser`，或 `PacketWriting#writeQueue` 一次写多少，就跑 TC-PROD-661、TC-PROD-662（后者含 TC-GAME-069 第 1 步的 `SlowReaderIntegrationTest`）；动了 `p10.py` 的 `shards` 就跑 TC-PROD-660，再按 P10 一行跑 TC-PROD-550；改动挪了 `CLOSE_OUT` 引的代码行（`ChatMessageListener`、`ServerConfig` 的聊天键、`ConfigFile` 键表、`Player` 发的 `JoinGamePacket`、`Messenger`、`ClientPacketListenerMixin`、`TicketIssuer`、`ShardGates`、`PlayerSocketConnection#processPackets` 与 `processBatch`），就跑 TC-PROD-664，按新行号改 `docs/DESIGN-M2.md` 聊天一行、`docs/DESIGN-PROD.md` §28.3 两行与 `CLOSE_OUT`；R8 再红时先按 TC-PROD-663 读产物，再对 §7 那一条下结论。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-071 authority2 组，核心模式的边界、载具移动包的判定与分片的闸门默认值（`REQ-PROD-013`、`REQ-PROD-001`，v0.9.53）→ TC-PROD-665～TC-PROD-672；动了 `CoreMode#start` 的边界或核心世界的生成就跑 TC-PROD-665，生成或区块的内存布局变了（层高、地面、调色板、区块包缓存）再按 TC-PROD-666 重量每区块字节、重算边长；动了 `PlayerVehicleListener#vehicleMoveListener` 就跑 TC-PROD-667、TC-PROD-668，动了 `PlayerPositionListener#outwards` 再加 TC-PROD-630；动了 `ShardMain#gateDefaults` 就跑 TC-PROD-669、TC-PROD-670，动了 `Main` 步骤 (1) 里它与 `shardDirectory` 的先后就跑 TC-PROD-672 与 TC-WORLD-059（`MainDirectoryModeTest`）。`Main.java` 第 219 行之前加减行时，按 TC-PROD-671 第 3、4 步复核引它行号的旧用例。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-071 chunks2 组，区块交包窗口（`REQ-PROD-026`，v0.9.54）→ TC-PROD-675～TC-PROD-679；动了 `Player#sendPendingChunks` 取包与交给连接的那几行（区块写锁、`CHUNK_LOCK_WAIT` 与一批的等锁预算、推后与批末放回、`PlayerChunkLoadEvent` 的位置、首批之后位置同步的条件）、`Chunk` 的锁方法或任一 `Chunk` 子类的 `getFullDataPacket`，就跑 TC-PROD-675、TC-PROD-676、TC-PROD-679（同一个类约 2 s，默认与严格 grid 各一次）与 TC-PROD-650 一节；动了 `EntityTrackerImpl.ChunkView#references`、`Player#isChunkInRing`、`isOutOfClientRange`、`chunksLoadedByClient` 的更新或 `ChunkUpdateLimitChecker`，就跑 TC-PROD-677 与 TC-PROD-678 第 1 步；动了 `SynxChunk` 的取包，或 `InstanceContainer#UNSAFE_setBlock` 里改方块与发 `BlockChange` 的先后，就跑 TC-PROD-675 与 TC-PROD-678 第 2 步。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-071 上游 Minestom 移植（`REQ-017`、`REQ-PROD-013`，v0.9.55）→ TC-PROD-680～TC-PROD-687；动了 `Instance#setWorldBorder`、`createInitializeWorldBorderPacket` 或 `WorldBorder` 的两个建包方法就跑 TC-PROD-680 与 TC-PROD-630、TC-PROD-631；动了 `ClientChangeDifficultyPacket`、`ClientSetBeaconEffectPacket`、`ClientUpdateStructureBlockPacket`、`DeleteChatPacket`、`MoveMinecartPacket` 或往 `PacketVanillaLayoutTest` 补包就跑 TC-PROD-681；给引擎加 public static 字段或动了 `ArchitectureTest` 就跑 TC-PROD-682 与 TC-PROD-121；动了 `EquipmentHandler#getEquipmentsPacket`、它的三个调用处（`LivingEntity#updateNewViewer`、`Player#refreshAfterTeleport`、`Player#showPlayer`）或 `PlayerInventory#clear` 就跑 TC-PROD-683、TC-PROD-684；动了 `ComponentNetworkBufferTypeImpl` 的 `writeHoverEvent` 或 `hoverDataComponentValue`、`EngineDataComponentValueConverterProvider`、`NbtComponentSerializer` 就跑 TC-PROD-685；加包或动了 `module-info.java` 就跑 TC-PROD-686 第 1、2 步，升 logback 跑第 3、4 步；以上任一都加 TC-PROD-687。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

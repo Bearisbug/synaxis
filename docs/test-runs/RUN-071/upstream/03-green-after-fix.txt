@@ -1,0 +1,254 @@
+# The changed classes and their neighbours on the fixes: HEAD 29df11e74f (the five code commits on 8b18922130). Common header: see
+# 00-index.txt. One Gradle run per mode (lock hold 21:12:19-21:12:59, 2026-10-06 UTC+8):
+# ./gradlew :test --rerun --tests <16 root classes> :server-app:test --rerun --tests …LogbackConfigurationTest
+#           :plugin-api:test --rerun --tests …LogBudgetTest [:forbiddenImportsCheck :testNamingCheck :javadoc in the default run] [STRICT]
+# Both runs BUILD SUCCESSFUL: 18 classes, 572 tests, 0 failures, 0 skipped in each mode (PacketWriteReadRegistriesTest's 470
+# passing cases are not listed one by one). The default run also passed forbiddenImportsCheck, testNamingCheck and the javadoc
+# of the root module.
+
+## default
+## io.github.bearisbug.synaxis.ArchitectureTest: tests=8 failures=0 errors=0 skipped=0 time=5.362s timestamp=2026-10-06T13:12:28.794Z (UTC)
+  lowerLevelPackagesDoNotDependOnTheRestOfTheEngine()                                        2.554s  passed
+  clientDrivenPathsDoNotWriteALinePerPacket()                                                1.005s  passed
+  publicStaticFieldsAreFinal()                                                               0.777s  passed
+  theGameSideRuleAcceptsTheEngineOwnNetworkPluginPackage()                                   0.138s  passed
+  theClientDrivenLogRuleRejectsALinePerPacket()                                              0.023s  passed
+  theClientDrivenLogRuleRejectsAReportPerPacket()                                            0.021s  passed
+  engineDoesNotDependOnTheGameSideModules()                                                  0.796s  passed
+  theGameSideRuleRejectsADependencyOnTheGameSide()                                           0.037s  passed
+## io.github.bearisbug.synaxis.ModuleExportsTest: tests=1 failures=0 errors=0 skipped=0 time=0.067s timestamp=2026-10-06T13:12:28.794Z (UTC)
+  everyPackageIsExported()                                                                   0.058s  passed
+## io.github.bearisbug.synaxis.adventure.nbt.TestNbtComponentSerializer: tests=3 failures=0 errors=0 skipped=0 time=0.654s timestamp=2026-10-06T13:12:28.794Z (UTC)
+  testWriteReadWithRegistries()                                                              0.644s  passed
+  testWriteRead()                                                                            0.0s  passed
+  testReadStringChildren()                                                                   0.001s  passed
+## io.github.bearisbug.synaxis.app.LogbackConfigurationTest: tests=5 failures=0 errors=0 skipped=0 time=0.118s timestamp=2026-10-06T13:12:35.152Z (UTC)
+  theFileModeHasTheDesignedRetentionBehindANonBlockingQueue(Path)                            0.041s  passed
+  theStdoutModeWritesNoFile(Path)                                                            0.013s  passed
+  aModeThatDoesNotExistIsReportedByLogback(Path)                                             0.005s  passed
+  threeMegabytesOfLogRollIntoCompressedFiles(Path)                                           0.043s  passed
+  theWebSocketLibraryStaysAtInfoWhateverTheRootLevel(Path)                                   0.004s  passed
+## io.github.bearisbug.synaxis.entity.NonLivingEquipmentIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=2.268s timestamp=2026-10-06T13:12:28.794Z (UTC)
+  livingEntityWithNothingEquippedSendsNoEquipment(Env)                                       1.469s  passed
+  livingEntityStillSendsEquipment(Env)                                                       0.482s  passed
+  nonLivingEntityDoesNotSendEquipment(Env)                                                   0.307s  passed
+## io.github.bearisbug.synaxis.entity.player.PlayerRespawnChunkIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=2.609s timestamp=2026-10-06T13:12:28.794Z (UTC)
+  testChunkReloadCount(Env)                                                                  1.606s  passed
+  testPlayerTryRespawn(Env)                                                                  0.58s  passed
+  respawnDoesNotWaitForTheRespawnChunk(Env)                                                  0.098s  passed
+  testChunkUnloadsOnRespawn(Env)                                                             0.315s  passed
+## io.github.bearisbug.synaxis.instance.WorldBorderIntegrationTest: tests=6 failures=0 errors=0 skipped=0 time=1.588s timestamp=2026-10-06T13:12:28.794Z (UTC)
+  pointInBoundsExcludesMaximumBound()                                                        0.02s  passed
+  setWorldborderSize(Env)                                                                    0.725s  passed
+  transitionTimeIsSentInTicks(Env)                                                           0.766s  passed
+  resizeWorldBorder(Env)                                                                     0.038s  passed
+  entityBoundsIncludeBoundingBox(Env)                                                        0.012s  passed
+  invalidArguments(Env)                                                                      0.015s  passed
+## io.github.bearisbug.synaxis.inventory.InventoryIntegrationTest: tests=16 failures=0 errors=0 skipped=0 time=3.817s timestamp=2026-10-06T13:12:28.794Z (UTC)
+  clearInventoryTest(Env)                                                                    1.201s  passed
+  openInventoryOnItemDropFromInventoryClosingTest(Env)                                       0.419s  passed
+  testInnerInventorySlotSending(Env)                                                         0.389s  passed
+  bundleActivateTestInvalidPacketIgnoredContainer(Env)                                       0.276s  passed
+  clearingPlayerInventoryClearsCursorTest(Env)                                               0.198s  passed
+  setSlotDuplicateTest(Env)                                                                  0.16s  passed
+  bundleActivateTestInvalidPacketIgnored(Env)                                                0.147s  passed
+  bundleActivateTestUpperInventory(Env)                                                      0.138s  passed
+  closeInventoryTest(Env)                                                                    0.145s  passed
+  testEventNode(Env)                                                                         0.169s  passed
+  bundleActivateTestInventorySizeSlot(Env)                                                   0.147s  passed
+  containerInventoryIsBoundWhenOpened(Env)                                                   0.065s  passed
+  setCursorItemDuplicateTest(Env)                                                            0.056s  passed
+  bundleActivateTestInventorySizeSlotContainer(Env)                                          0.055s  passed
+  bundleActivateTestNoContainerOpen(Env)                                                     0.055s  passed
+  bundleActivateTestLowerInventory(Env)                                                      0.062s  passed
+## io.github.bearisbug.synaxis.inventory.PlayerInventoryIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=3.528s timestamp=2026-10-06T13:12:28.794Z (UTC)
+  clearInventoryTest(Env)                                                                    1.368s  passed
+  setSlotDuplicateTest(Env)                                                                  0.463s  passed
+  closeInventoryWithNoneOpenSendsPlayerInventoryClose(Env)                                   0.389s  passed
+  equipmentViewTest(Env)                                                                     0.274s  passed
+  heldItemViewTest(Env)                                                                      0.222s  passed
+  setCursorItemDuplicateTest(Env)                                                            0.155s  passed
+  clearInventoryClearsEquipmentForViewersTest(Env)                                           0.202s  passed
+  closingPlayerInventorySendsEventTest(Env)                                                  0.17s  passed
+  playerWithNothingEquippedSendsNoEquipmentToANewViewerTest(Env)                             0.152s  passed
+## io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=7 failures=0 errors=0 skipped=0 time=1.962s timestamp=2026-10-06T13:12:28.794Z (UTC)
+  aMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env)                                            1.019s  passed
+  aMoveTurnedBackAtTheWorldBorderLoadsNoChunk(Env)                                           0.15s  passed
+  repeatedJumpsStopAtTheBorder(Env)                                                          0.156s  passed
+  theBorderEndsAtTheWallOfTheVanillaClient(Env)                                              0.178s  passed
+  theServersOwnMovesAreFollowed(Env)                                                         0.302s  passed
+  aMoveOutAcrossTheWorldBorderIsTurnedBack(Env)                                              0.07s  passed
+  aPlayerOutsideTheBorderGetsNoFartherOut(Env)                                               0.076s  passed
+## io.github.bearisbug.synaxis.network.ComponentHoverItemRegistriesTest: tests=5 failures=0 errors=0 skipped=0 time=0.686s timestamp=2026-10-06T13:12:28.794Z (UTC)
+  aJsonValueIsDecodedWithTheRegistriesOfTheBuffer(Registries)                                0.02s  passed
+  aRemovedValueIsWrittenAsARemoval(Registries)                                               0.001s  passed
+  aTypedValueNeedsTheRegistriesOfTheBuffer()                                                 0.011s  passed
+  anEngineValueIsEncodedWithTheRegistriesOfTheBuffer(Registries)                             0.011s  passed
+  anNbtValueIsWrittenAsItIs()                                                                0.002s  passed
+## io.github.bearisbug.synaxis.network.ComponentNetworkBufferTypeReadTest: tests=1 failures=0 errors=0 skipped=0 time=0.09s timestamp=2026-10-06T13:12:28.794Z (UTC)
+  networkBufferReadsShowEntityWithoutName()                                                  0.081s  passed
+## io.github.bearisbug.synaxis.network.ComponentNetworkBufferTypeTest: tests=13 failures=0 errors=0 skipped=0 time=0.04s timestamp=2026-10-06T13:12:28.862Z (UTC)
+  textModifiedUtf8()                                                                         0.021s  passed
+  objectComponentFallback()                                                                  0.003s  passed
+  translatable()                                                                             0.004s  passed
+  hoverAction()                                                                              0.001s  passed
+  keybind()                                                                                  0.001s  passed
+  testObjectComponentHeadString()                                                            0.002s  passed
+  text()                                                                                     0.001s  passed
+  empty()                                                                                    0.0s  passed
+  score()                                                                                    0.001s  passed
+  objectComponentHeadTexture()                                                               0.001s  passed
+  testObjectComponentHeadUUID()                                                              0.001s  passed
+  selector()                                                                                 0.001s  passed
+  textChildren()                                                                             0.001s  passed
+## io.github.bearisbug.synaxis.network.PacketWriteReadRegistriesTest: tests=470 failures=0 errors=0 skipped=0 time=1.331s timestamp=2026-10-06T13:12:28.885Z (UTC)
+## io.github.bearisbug.synaxis.network.packet.PacketRegistryLookupTest: tests=7 failures=0 errors=0 skipped=0 time=0.114s timestamp=2026-10-06T13:12:28.902Z (UTC)
+  aPacketOfTheWrongStateIsRejectedWithBothSideAndState()                                     0.107s  passed
+  aPacketIdIsItsIndexInTheRegistryDeclaration()                                              0.001s  passed
+  theSameClassInBothDirectionsKeepsSeparateRegistries()                                      0.0s  passed
+  theClientBoundPlayIdsAreTheVanillaOnes()                                                   0.001s  passed
+  theHandshakeRegistryDescribesItselfAsTheClientHandshake()                                  0.0s  passed
+  anIdOutsideTheRegistryIsRejected()                                                         0.001s  passed
+  theClientBoundLoginIdsAreTheVanillaOnes()                                                  0.0s  passed
+## io.github.bearisbug.synaxis.network.packet.PacketVanillaIdTest: tests=6 failures=0 errors=0 skipped=0 time=0.124s timestamp=2026-10-06T13:12:28.892Z (UTC)
+  theClientboundLoginIdsAreTheVanillaOnes()                                                  0.087s  passed
+  theServerboundLoginIdsAreTheVanillaOnes()                                                  0.0s  passed
+  theServerboundPlayIdsAreTheVanillaOnes()                                                   0.001s  passed
+  theServerboundConfigurationIdsAreTheVanillaOnes()                                          0.001s  passed
+  theClientboundConfigurationIdsAreTheVanillaOnes()                                          0.001s  passed
+  theClientboundPlayIdsAreTheVanillaOnes()                                                   0.001s  passed
+## io.github.bearisbug.synaxis.network.packet.PacketVanillaLayoutTest: tests=6 failures=0 errors=0 skipped=0 time=0.098s timestamp=2026-10-06T13:12:28.794Z (UTC)
+  minecartStepRotationsAreAngleBytes()                                                       0.055s  passed
+  deleteChatTakesACacheIndex()                                                               0.002s  passed
+  deleteChatTakesAFullSignature()                                                            0.001s  passed
+  beaconEffectsAreMobEffects()                                                               0.023s  passed
+  structureBlockSeedIsAVarLong()                                                             0.006s  passed
+  changeDifficultyIsTheDifficultyAlone()                                                     0.001s  passed
+## io.github.bearisbug.synaxis.plugin.LogBudgetTest: tests=2 failures=0 errors=0 skipped=0 time=0.077s timestamp=2026-10-06T13:12:35.921Z (UTC)
+  whatOneIntervalSwallowsIsCountedByTheNextLine()                                            0.025s  passed
+  theReportedFailureKeepsItsStack()                                                          0.015s  passed
+
+## strict grid
+## io.github.bearisbug.synaxis.ArchitectureTest: tests=8 failures=0 errors=0 skipped=0 time=5.583s timestamp=2026-10-06T13:12:44.565Z (UTC)
+  lowerLevelPackagesDoNotDependOnTheRestOfTheEngine()                                        3.047s  passed
+  clientDrivenPathsDoNotWriteALinePerPacket()                                                0.79s  passed
+  publicStaticFieldsAreFinal()                                                               0.685s  passed
+  theGameSideRuleAcceptsTheEngineOwnNetworkPluginPackage()                                   0.133s  passed
+  theClientDrivenLogRuleRejectsALinePerPacket()                                              0.023s  passed
+  theClientDrivenLogRuleRejectsAReportPerPacket()                                            0.02s  passed
+  engineDoesNotDependOnTheGameSideModules()                                                  0.823s  passed
+  theGameSideRuleRejectsADependencyOnTheGameSide()                                           0.039s  passed
+## io.github.bearisbug.synaxis.ModuleExportsTest: tests=1 failures=0 errors=0 skipped=0 time=0.116s timestamp=2026-10-06T13:12:44.565Z (UTC)
+  everyPackageIsExported()                                                                   0.102s  passed
+## io.github.bearisbug.synaxis.adventure.nbt.TestNbtComponentSerializer: tests=3 failures=0 errors=0 skipped=0 time=0.94s timestamp=2026-10-06T13:12:44.565Z (UTC)
+  testWriteReadWithRegistries()                                                              0.924s  passed
+  testWriteRead()                                                                            0.0s  passed
+  testReadStringChildren()                                                                   0.0s  passed
+## io.github.bearisbug.synaxis.app.LogbackConfigurationTest: tests=5 failures=0 errors=0 skipped=0 time=0.158s timestamp=2026-10-06T13:12:44.583Z (UTC)
+  theFileModeHasTheDesignedRetentionBehindANonBlockingQueue(Path)                            0.077s  passed
+  theStdoutModeWritesNoFile(Path)                                                            0.01s  passed
+  aModeThatDoesNotExistIsReportedByLogback(Path)                                             0.006s  passed
+  threeMegabytesOfLogRollIntoCompressedFiles(Path)                                           0.042s  passed
+  theWebSocketLibraryStaysAtInfoWhateverTheRootLevel(Path)                                   0.005s  passed
+## io.github.bearisbug.synaxis.entity.NonLivingEquipmentIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=1.958s timestamp=2026-10-06T13:12:44.565Z (UTC)
+  livingEntityWithNothingEquippedSendsNoEquipment(Env)                                       1.496s  passed
+  livingEntityStillSendsEquipment(Env)                                                       0.35s  passed
+  nonLivingEntityDoesNotSendEquipment(Env)                                                   0.097s  passed
+## io.github.bearisbug.synaxis.entity.player.PlayerRespawnChunkIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=2.146s timestamp=2026-10-06T13:12:44.565Z (UTC)
+  testChunkReloadCount(Env)                                                                  1.526s  passed
+  testPlayerTryRespawn(Env)                                                                  0.371s  passed
+  respawnDoesNotWaitForTheRespawnChunk(Env)                                                  0.068s  passed
+  testChunkUnloadsOnRespawn(Env)                                                             0.165s  passed
+## io.github.bearisbug.synaxis.instance.WorldBorderIntegrationTest: tests=6 failures=0 errors=0 skipped=0 time=1.719s timestamp=2026-10-06T13:12:44.565Z (UTC)
+  pointInBoundsExcludesMaximumBound()                                                        0.025s  passed
+  setWorldborderSize(Env)                                                                    1.024s  passed
+  transitionTimeIsSentInTicks(Env)                                                           0.456s  passed
+  resizeWorldBorder(Env)                                                                     0.059s  passed
+  entityBoundsIncludeBoundingBox(Env)                                                        0.125s  passed
+  invalidArguments(Env)                                                                      0.012s  passed
+## io.github.bearisbug.synaxis.inventory.InventoryIntegrationTest: tests=16 failures=0 errors=0 skipped=0 time=2.882s timestamp=2026-10-06T13:12:44.565Z (UTC)
+  clearInventoryTest(Env)                                                                    1.33s  passed
+  openInventoryOnItemDropFromInventoryClosingTest(Env)                                       0.241s  passed
+  testInnerInventorySlotSending(Env)                                                         0.152s  passed
+  bundleActivateTestInvalidPacketIgnoredContainer(Env)                                       0.154s  passed
+  clearingPlayerInventoryClearsCursorTest(Env)                                               0.091s  passed
+  setSlotDuplicateTest(Env)                                                                  0.063s  passed
+  bundleActivateTestInvalidPacketIgnored(Env)                                                0.115s  passed
+  bundleActivateTestUpperInventory(Env)                                                      0.055s  passed
+  closeInventoryTest(Env)                                                                    0.126s  passed
+  testEventNode(Env)                                                                         0.053s  passed
+  bundleActivateTestInventorySizeSlot(Env)                                                   0.052s  passed
+  containerInventoryIsBoundWhenOpened(Env)                                                   0.051s  passed
+  setCursorItemDuplicateTest(Env)                                                            0.059s  passed
+  bundleActivateTestInventorySizeSlotContainer(Env)                                          0.051s  passed
+  bundleActivateTestNoContainerOpen(Env)                                                     0.05s  passed
+  bundleActivateTestLowerInventory(Env)                                                      0.049s  passed
+## io.github.bearisbug.synaxis.inventory.PlayerInventoryIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=2.561s timestamp=2026-10-06T13:12:44.565Z (UTC)
+  clearInventoryTest(Env)                                                                    1.332s  passed
+  setSlotDuplicateTest(Env)                                                                  0.243s  passed
+  closeInventoryWithNoneOpenSendsPlayerInventoryClose(Env)                                   0.157s  passed
+  equipmentViewTest(Env)                                                                     0.195s  passed
+  heldItemViewTest(Env)                                                                      0.096s  passed
+  setCursorItemDuplicateTest(Env)                                                            0.08s  passed
+  clearInventoryClearsEquipmentForViewersTest(Env)                                           0.087s  passed
+  closingPlayerInventorySendsEventTest(Env)                                                  0.094s  passed
+  playerWithNothingEquippedSendsNoEquipmentToANewViewerTest(Env)                             0.085s  passed
+## io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=7 failures=0 errors=0 skipped=0 time=2.12s timestamp=2026-10-06T13:12:44.565Z (UTC)
+  aMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env)                                            1.385s  passed
+  aMoveTurnedBackAtTheWorldBorderLoadsNoChunk(Env)                                           0.074s  passed
+  repeatedJumpsStopAtTheBorder(Env)                                                          0.046s  passed
+  theBorderEndsAtTheWallOfTheVanillaClient(Env)                                              0.22s  passed
+  theServersOwnMovesAreFollowed(Env)                                                         0.146s  passed
+  aMoveOutAcrossTheWorldBorderIsTurnedBack(Env)                                              0.048s  passed
+  aPlayerOutsideTheBorderGetsNoFartherOut(Env)                                               0.186s  passed
+## io.github.bearisbug.synaxis.network.ComponentHoverItemRegistriesTest: tests=5 failures=0 errors=0 skipped=0 time=0.969s timestamp=2026-10-06T13:12:44.565Z (UTC)
+  aJsonValueIsDecodedWithTheRegistriesOfTheBuffer(Registries)                                0.019s  passed
+  aRemovedValueIsWrittenAsARemoval(Registries)                                               0.001s  passed
+  aTypedValueNeedsTheRegistriesOfTheBuffer()                                                 0.007s  passed
+  anEngineValueIsEncodedWithTheRegistriesOfTheBuffer(Registries)                             0.02s  passed
+  anNbtValueIsWrittenAsItIs()                                                                0.001s  passed
+## io.github.bearisbug.synaxis.network.ComponentNetworkBufferTypeReadTest: tests=1 failures=0 errors=0 skipped=0 time=0.14s timestamp=2026-10-06T13:12:44.565Z (UTC)
+  networkBufferReadsShowEntityWithoutName()                                                  0.126s  passed
+## io.github.bearisbug.synaxis.network.ComponentNetworkBufferTypeTest: tests=13 failures=0 errors=0 skipped=0 time=0.042s timestamp=2026-10-06T13:12:44.687Z (UTC)
+  textModifiedUtf8()                                                                         0.017s  passed
+  objectComponentFallback()                                                                  0.003s  passed
+  translatable()                                                                             0.005s  passed
+  hoverAction()                                                                              0.001s  passed
+  keybind()                                                                                  0.002s  passed
+  testObjectComponentHeadString()                                                            0.004s  passed
+  text()                                                                                     0.0s  passed
+  empty()                                                                                    0.001s  passed
+  score()                                                                                    0.002s  passed
+  objectComponentHeadTexture()                                                               0.001s  passed
+  testObjectComponentHeadUUID()                                                              0.001s  passed
+  selector()                                                                                 0.002s  passed
+  textChildren()                                                                             0.001s  passed
+## io.github.bearisbug.synaxis.network.PacketWriteReadRegistriesTest: tests=470 failures=0 errors=0 skipped=0 time=1.723s timestamp=2026-10-06T13:12:44.705Z (UTC)
+## io.github.bearisbug.synaxis.network.packet.PacketRegistryLookupTest: tests=7 failures=0 errors=0 skipped=0 time=0.176s timestamp=2026-10-06T13:12:44.730Z (UTC)
+  aPacketOfTheWrongStateIsRejectedWithBothSideAndState()                                     0.16s  passed
+  aPacketIdIsItsIndexInTheRegistryDeclaration()                                              0.012s  passed
+  theSameClassInBothDirectionsKeepsSeparateRegistries()                                      0.001s  passed
+  theClientBoundPlayIdsAreTheVanillaOnes()                                                   0.0s  passed
+  theHandshakeRegistryDescribesItselfAsTheClientHandshake()                                  0.0s  passed
+  anIdOutsideTheRegistryIsRejected()                                                         0.0s  passed
+  theClientBoundLoginIdsAreTheVanillaOnes()                                                  0.0s  passed
+## io.github.bearisbug.synaxis.network.packet.PacketVanillaIdTest: tests=6 failures=0 errors=0 skipped=0 time=0.201s timestamp=2026-10-06T13:12:44.707Z (UTC)
+  theClientboundLoginIdsAreTheVanillaOnes()                                                  0.132s  passed
+  theServerboundLoginIdsAreTheVanillaOnes()                                                  0.0s  passed
+  theServerboundPlayIdsAreTheVanillaOnes()                                                   0.001s  passed
+  theServerboundConfigurationIdsAreTheVanillaOnes()                                          0.001s  passed
+  theClientboundConfigurationIdsAreTheVanillaOnes()                                          0.0s  passed
+  theClientboundPlayIdsAreTheVanillaOnes()                                                   0.002s  passed
+## io.github.bearisbug.synaxis.network.packet.PacketVanillaLayoutTest: tests=6 failures=0 errors=0 skipped=0 time=0.142s timestamp=2026-10-06T13:12:44.565Z (UTC)
+  minecartStepRotationsAreAngleBytes()                                                       0.086s  passed
+  deleteChatTakesACacheIndex()                                                               0.005s  passed
+  deleteChatTakesAFullSignature()                                                            0.001s  passed
+  beaconEffectsAreMobEffects()                                                               0.026s  passed
+  structureBlockSeedIsAVarLong()                                                             0.009s  passed
+  changeDifficultyIsTheDifficultyAlone()                                                     0.001s  passed
+## io.github.bearisbug.synaxis.plugin.LogBudgetTest: tests=2 failures=0 errors=0 skipped=0 time=0.094s timestamp=2026-10-06T13:12:45.561Z (UTC)
+  whatOneIntervalSwallowsIsCountedByTheNextLine()                                            0.024s  passed
+  theReportedFailureKeepsItsStack()                                                          0.028s  passed
+
+## logback after the bump: ./gradlew :server-app:dependencyInsight --dependency logback-classic --configuration runtimeClasspath (21:02)
+ch.qos.logback:logback-classic:1.6.5

@@ -1,0 +1,131 @@
+# Counter proofs on HEAD 29df11e74f, one edit at a time, each run with ./gradlew :test --rerun --tests <class> (default mode) and
+# undone with git checkout HEAD -- <file> before the next one; git status --short was empty after cp7. Lock hold 21:05:50-21:08:10
+# (2026-10-06 UTC+8). Line numbers are those of 29df11e74f. The TC-PROD-121 rerun is the last section (lock hold 21:12:19-21:12:59).
+
+## cp1 (TC-PROD-680 step 3): Instance.java:638 createLerpSizePacket(newBorder.diameter(), transitionTicks) -> (…, transitionTicks * MinecraftServer.TICK_MS)
+## io.github.bearisbug.synaxis.instance.WorldBorderIntegrationTest: tests=6 failures=1 errors=0 skipped=0 time=1.104s timestamp=2026-10-06T13:06:08.231Z (UTC)
+  pointInBoundsExcludesMaximumBound()                                                        0.011s  passed
+  setWorldborderSize(Env)                                                                    0.8s  passed
+  transitionTimeIsSentInTicks(Env)                                                           0.25s  FAILED
+      org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: lerp time of a 1 s transition ==> expected: <20> but was: <1000>
+      at io.github.bearisbug.synaxis.instance.WorldBorderIntegrationTest.lambda$transitionTimeIsSentInTicks$0(WorldBorderIntegrationTest.java:75)
+      at io.github.bearisbug.synaxis.instance.WorldBorderIntegrationTest.transitionTimeIsSentInTicks(WorldBorderIntegrationTest.java:75)
+  resizeWorldBorder(Env)                                                                     0.012s  passed
+  entityBoundsIncludeBoundingBox(Env)                                                        0.01s  passed
+  invalidArguments(Env)                                                                      0.009s  passed
+6 tests completed, 1 failed
+
+## cp2 (TC-PROD-680 step 4): Instance.java:631 createInitializePacket(targetBorderDiameter, remainingWorldBorderTransitionTicks) -> (…, remainingWorldBorderTransitionTicks * MinecraftServer.TICK_MS)
+## io.github.bearisbug.synaxis.instance.WorldBorderIntegrationTest: tests=6 failures=1 errors=0 skipped=0 time=1.085s timestamp=2026-10-06T13:06:24.625Z (UTC)
+  pointInBoundsExcludesMaximumBound()                                                        0.02s  passed
+  setWorldborderSize(Env)                                                                    0.801s  passed
+  transitionTimeIsSentInTicks(Env)                                                           0.211s  FAILED
+      org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: lerp time left for a player joining 5 ticks in ==> expected: <15> but was: <750>
+      at io.github.bearisbug.synaxis.instance.WorldBorderIntegrationTest.transitionTimeIsSentInTicks(WorldBorderIntegrationTest.java:78)
+  resizeWorldBorder(Env)                                                                     0.016s  passed
+  entityBoundsIncludeBoundingBox(Env)                                                        0.011s  passed
+  invalidArguments(Env)                                                                      0.009s  passed
+6 tests completed, 1 failed
+
+## cp3 (TC-PROD-681 step 3): ClientUpdateStructureBlockPacket.java:39 VAR_LONG -> Boolean.getBoolean("proof.never") ? VAR_LONG : NetworkBuffer.LONG
+## io.github.bearisbug.synaxis.network.packet.PacketVanillaLayoutTest: tests=6 failures=1 errors=0 skipped=0 time=0.092s timestamp=2026-10-06T13:06:42.751Z (UTC)
+  minecartStepRotationsAreAngleBytes()                                                       0.035s  passed
+  deleteChatTakesACacheIndex()                                                               0.003s  passed
+  deleteChatTakesAFullSignature()                                                            0.001s  passed
+  beaconEffectsAreMobEffects()                                                               0.035s  passed
+  structureBlockSeedIsAVarLong()                                                             0.007s  FAILED
+      java.lang.IndexOutOfBoundsException: java.lang.IndexOutOfBoundsException: Out of bound access on segment MemorySegment{ kind: heap, heapBase: [B@2fd291c1, address: 0x0, byteSize: 39 }; new offset = 36; new length = 8
+      at io.github.bearisbug.synaxis.network.packet.PacketVanillaLayoutTest.readWhole(PacketVanillaLayoutTest.java:37)
+      at io.github.bearisbug.synaxis.network.packet.PacketVanillaLayoutTest.structureBlockSeedIsAVarLong(PacketVanillaLayoutTest.java:95)
+  changeDifficultyIsTheDifficultyAlone()                                                     0.001s  passed
+6 tests completed, 1 failed
+
+## cp4 (TC-PROD-682 step 3): FilteredText.java:14 'public static final Codec<…> STRING_CODEC' -> '@SuppressWarnings("ConstantField") public static Codec<…> STRING_CODEC'
+## io.github.bearisbug.synaxis.ArchitectureTest: tests=8 failures=1 errors=0 skipped=0 time=4.026s timestamp=2026-10-06T13:07:00.430Z (UTC)
+  lowerLevelPackagesDoNotDependOnTheRestOfTheEngine()                                        1.64s  passed
+  clientDrivenPathsDoNotWriteALinePerPacket()                                                0.731s  passed
+  publicStaticFieldsAreFinal()                                                               0.653s  FAILED
+      java.lang.AssertionError: java.lang.AssertionError: Architecture Violation [Priority: MEDIUM] - Rule 'fields that are public and are static and do not have full name 'io.github.bearisbug.synaxis.adventure.EngineAdventure.COMPONENT_TRANSLATOR' should be final, because any code in the process could reassign it' was violated (1 times): | Field <io.github.bearisbug.synaxis.item.component.FilteredText.STRING_CODEC> does not have modifier FINAL in (FilteredText.java:0)
+      at io.github.bearisbug.synaxis.ArchitectureTest.publicStaticFieldsAreFinal(ArchitectureTest.java:291)
+  theGameSideRuleAcceptsTheEngineOwnNetworkPluginPackage()                                   0.132s  passed
+  theClientDrivenLogRuleRejectsALinePerPacket()                                              0.023s  passed
+  theClientDrivenLogRuleRejectsAReportPerPacket()                                            0.027s  passed
+  engineDoesNotDependOnTheGameSideModules()                                                  0.769s  passed
+  theGameSideRuleRejectsADependencyOnTheGameSide()                                           0.038s  passed
+8 tests completed, 1 failed
+
+## cp5 (TC-PROD-686 step 2): module-info.java:95 'exports io.github.bearisbug.synaxis.item.predicate;' deleted
+## io.github.bearisbug.synaxis.ModuleExportsTest: tests=1 failures=1 errors=0 skipped=0 time=0.055s timestamp=2026-10-06T13:07:31.179Z (UTC)
+  everyPackageIsExported()                                                                   0.048s  FAILED
+      org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: packages of io.github.bearisbug.synaxis that module-info does not export ==> expected: <[]> but was: <[io.github.bearisbug.synaxis.item.predicate]>
+      at io.github.bearisbug.synaxis.ModuleExportsTest.everyPackageIsExported(ModuleExportsTest.java:31)
+
+## cp6 (TC-PROD-683 step 3): EquipmentHandler.java:212 'if (!stack.isAir()) equipment.put(slot, stack);' -> 'equipment.put(slot, stack);'
+## io.github.bearisbug.synaxis.entity.NonLivingEquipmentIntegrationTest: tests=3 failures=2 errors=0 skipped=0 time=1.5s timestamp=2026-10-06T13:07:49.966Z (UTC)
+  livingEntityWithNothingEquippedSendsNoEquipment(Env)                                       1.077s  FAILED
+      org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: Expected 0 element(s), got 1: [EntityEquipmentPacket[entityId=4, equipments={MAIN_HAND=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], SADDLE=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], BOOTS=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], HELMET=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], BODY=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], CHESTPLATE=ItemStackImpl[material=minecraft:ai
+      at io.github.bearisbug.synaxis.entity.NonLivingEquipmentIntegrationTest.livingEntityWithNothingEquippedSendsNoEquipment(NonLivingEquipmentIntegrationTest.java:62)
+  livingEntityStillSendsEquipment(Env)                                                       0.215s  FAILED
+      org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <{HELMET=ItemStackImpl[material=minecraft:iron_helmet, amount=1, componentPatch=DataComponentMapImpl[components={}]]}> but was: <{MAIN_HAND=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], SADDLE=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], BOOTS=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], HELMET=ItemStackImpl[material=minecraft:iron_helmet, amount=1, componentPatch=DataComponentMapImpl[components={}]], BODY=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponent
+      at io.github.bearisbug.synaxis.entity.NonLivingEquipmentIntegrationTest.lambda$livingEntityStillSendsEquipment$0(NonLivingEquipmentIntegrationTest.java:48)
+      at io.github.bearisbug.synaxis.entity.NonLivingEquipmentIntegrationTest.livingEntityStillSendsEquipment(NonLivingEquipmentIntegrationTest.java:48)
+  nonLivingEntityDoesNotSendEquipment(Env)                                                   0.199s  passed
+## io.github.bearisbug.synaxis.inventory.InventoryIntegrationTest: tests=16 failures=0 errors=0 skipped=0 time=2.697s timestamp=2026-10-06T13:07:49.966Z (UTC)
+  clearInventoryTest(Env)                                                                    0.964s  passed
+  openInventoryOnItemDropFromInventoryClosingTest(Env)                                       0.215s  passed
+  testInnerInventorySlotSending(Env)                                                         0.207s  passed
+  bundleActivateTestInvalidPacketIgnoredContainer(Env)                                       0.14s  passed
+  clearingPlayerInventoryClearsCursorTest(Env)                                               0.139s  passed
+  setSlotDuplicateTest(Env)                                                                  0.126s  passed
+  bundleActivateTestInvalidPacketIgnored(Env)                                                0.138s  passed
+  bundleActivateTestUpperInventory(Env)                                                      0.15s  passed
+  closeInventoryTest(Env)                                                                    0.125s  passed
+  testEventNode(Env)                                                                         0.053s  passed
+  bundleActivateTestInventorySizeSlot(Env)                                                   0.053s  passed
+  containerInventoryIsBoundWhenOpened(Env)                                                   0.052s  passed
+  setCursorItemDuplicateTest(Env)                                                            0.054s  passed
+  bundleActivateTestInventorySizeSlotContainer(Env)                                          0.052s  passed
+  bundleActivateTestNoContainerOpen(Env)                                                     0.052s  passed
+  bundleActivateTestLowerInventory(Env)                                                      0.053s  passed
+## io.github.bearisbug.synaxis.inventory.PlayerInventoryIntegrationTest: tests=9 failures=1 errors=0 skipped=0 time=2.329s timestamp=2026-10-06T13:07:49.966Z (UTC)
+  clearInventoryTest(Env)                                                                    0.964s  passed
+  setSlotDuplicateTest(Env)                                                                  0.214s  passed
+  closeInventoryWithNoneOpenSendsPlayerInventoryClose(Env)                                   0.208s  passed
+  equipmentViewTest(Env)                                                                     0.152s  passed
+  heldItemViewTest(Env)                                                                      0.132s  passed
+  setCursorItemDuplicateTest(Env)                                                            0.121s  passed
+  clearInventoryClearsEquipmentForViewersTest(Env)                                           0.166s  passed
+  closingPlayerInventorySendsEventTest(Env)                                                  0.122s  passed
+  playerWithNothingEquippedSendsNoEquipmentToANewViewerTest(Env)                             0.127s  FAILED
+      org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: Expected 0 element(s), got 1: [EntityEquipmentPacket[entityId=28, equipments={MAIN_HAND=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], SADDLE=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], BOOTS=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], HELMET=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], BODY=ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], CHESTPLATE=ItemStackImpl[material=minecraft:a
+      at io.github.bearisbug.synaxis.inventory.PlayerInventoryIntegrationTest.playerWithNothingEquippedSendsNoEquipmentToANewViewerTest(PlayerInventoryIntegrationTest.java:169)
+28 tests completed, 3 failed
+
+## cp7 (TC-PROD-685 step 3): ComponentNetworkBufferTypeImpl.java:477 RegistryTranscoder<>(Transcoder.JSON, registries) -> (Transcoder.JSON, Registries.vanilla())
+## io.github.bearisbug.synaxis.network.ComponentHoverItemRegistriesTest: tests=5 failures=1 errors=0 skipped=0 time=0.645s timestamp=2026-10-06T13:08:09.835Z (UTC)
+  aJsonValueIsDecodedWithTheRegistriesOfTheBuffer(Registries)                                0.041s  FAILED
+      java.lang.IllegalArgumentException: java.lang.IllegalArgumentException: failed to decode minecraft:damage_type: Unknown key synaxis:hover_damage for registry minecraft:damage_type
+      at io.github.bearisbug.synaxis.network.ComponentHoverItemRegistriesTest.writtenComponent(ComponentHoverItemRegistriesTest.java:55)
+      at io.github.bearisbug.synaxis.network.ComponentHoverItemRegistriesTest.aJsonValueIsDecodedWithTheRegistriesOfTheBuffer(ComponentHoverItemRegistriesTest.java:67)
+  aRemovedValueIsWrittenAsARemoval(Registries)                                               0.005s  passed
+  aTypedValueNeedsTheRegistriesOfTheBuffer()                                                 0.004s  passed
+  anEngineValueIsEncodedWithTheRegistriesOfTheBuffer(Registries)                             0.01s  passed
+  anNbtValueIsWrittenAsItIs()                                                                0.001s  passed
+5 tests completed, 1 failed
+
+## TC-PROD-121 step 2 with this branch's ArchitectureTest (8 cases): HandshakeListener gets 'import org.slf4j.LoggerFactory;' after
+## its imports and, before connection.disconnectTurnedAway() of the long address branch, the line
+## LoggerFactory.getLogger(HandshakeListener.class).warn("Server address too long: {}", address.length());  then undone
+## io.github.bearisbug.synaxis.ArchitectureTest: tests=8 failures=1 errors=0 skipped=0 time=3.944s timestamp=2026-10-06T13:12:55.661Z (UTC)
+  lowerLevelPackagesDoNotDependOnTheRestOfTheEngine()                                        1.551s  passed
+  clientDrivenPathsDoNotWriteALinePerPacket()                                                0.746s  FAILED
+      java.lang.AssertionError: java.lang.AssertionError: Architecture Violation [Priority: MEDIUM] - Rule 'no classes that reside in any package ['io.github.bearisbug.synaxis.network..', 'io.github.bearisbug.synaxis.listener..'] and not name 'io.github.bearisbug.synaxis.network.packet.PacketReading' or name 'io.github.bearisbug.synaxis.network.player.PlayerSocketConnection' or name 'io.github.bearisbug.synaxis.network.socket.Se
+      at io.github.bearisbug.synaxis.ArchitectureTest.clientDrivenPathsDoNotWriteALinePerPacket(ArchitectureTest.java:245)
+  publicStaticFieldsAreFinal()                                                               0.637s  passed
+  theGameSideRuleAcceptsTheEngineOwnNetworkPluginPackage()                                   0.147s  passed
+  theClientDrivenLogRuleRejectsALinePerPacket()                                              0.025s  passed
+  theClientDrivenLogRuleRejectsAReportPerPacket()                                            0.029s  passed
+  engineDoesNotDependOnTheGameSideModules()                                                  0.764s  passed
+  theGameSideRuleRejectsADependencyOnTheGameSide()                                           0.034s  passed
+      … Method <io.github.bearisbug.synaxis.listener.preplay.HandshakeListener.listener(io.github.bearisbug.synaxis.network.packet.client.handshake.ClientHandshakePacket, io.github.bearisbug.synaxis.network.player.PlayerConnection)> calls method <org.slf4j.Logger.warn(java.lang.String, java.lang.Object)> in (HandshakeListener.java:32)
+8 tests completed, 1 failed

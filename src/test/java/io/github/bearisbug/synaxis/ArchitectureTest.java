@@ -7,6 +7,7 @@ import com.tngtech.archunit.core.domain.properties.HasName;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
+import io.github.bearisbug.synaxis.adventure.EngineAdventure;
 import io.github.bearisbug.synaxis.exception.ExceptionManager;
 import io.github.bearisbug.synaxis.game.rts.GameSideFixture;
 import io.github.bearisbug.synaxis.listener.UnboundedClientDrivenLogFixture;
@@ -30,6 +31,7 @@ import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPac
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
 import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.name;
 import static com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -272,6 +274,21 @@ public class ArchitectureTest {
 
         assertTrue(violation.getMessage().contains(UnboundedClientDrivenReportFixture.class.getName()),
                 violation.getMessage());
+    }
+
+    /**
+     * A public static field of the engine is a constant. The fork owes no binary compatibility to the code built
+     * against upstream Minestom, so no field stays assignable for that reason; the one exception is
+     * {@link EngineAdventure#COMPONENT_TRANSLATOR}, which a server replaces on purpose to translate components.
+     */
+    @Test
+    public void publicStaticFieldsAreFinal() {
+        fields()
+                .that().arePublic().and().areStatic()
+                .and().doNotHaveFullName(EngineAdventure.class.getName() + ".COMPONENT_TRANSLATOR")
+                .should().beFinal()
+                .because("any code in the process could reassign it")
+                .check(engineClasses());
     }
 
     @Test

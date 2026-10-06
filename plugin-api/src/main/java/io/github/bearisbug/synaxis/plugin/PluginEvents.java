@@ -24,13 +24,16 @@ import java.util.function.Consumer;
  * during the configuration phase, where the player has no instance and the mapped branch asserts.
  * {@link #forInstance} refuses it for that reason.
  * <p>
- * The pickups and drops of a frozen player ({@link PlayerDataStore#isFrozen}) reach every listener
- * already cancelled, in every scope: the host cancels them before any plugin listener runs, and
- * again between {@link EventPriority#HIGHEST} and {@link EventPriority#MONITOR} of the global
- * scope. A listener that hands items over must skip cancelled events ({@code ignoreCancelled} true,
- * or a check of {@code isCancelled()}). Undoing that cancel is not supported: the listeners that run
- * after the undo and before the second cancel, the instance scoped ones included, see the pickup or
- * drop as allowed.
+ * The pickups and drops of a player frozen when they are dispatched
+ * ({@link PlayerDataStore#isFrozen}) reach every listener already cancelled, in every scope: the
+ * host cancels them before any plugin listener runs, and again between
+ * {@link EventPriority#HIGHEST} and {@link EventPriority#MONITOR} of the global scope. The host
+ * reads the freeze once per event, before any plugin listener: when a player is frozen from another
+ * thread in the middle of a dispatch (a transfer, a degraded session), that pickup or drop goes
+ * through as allowed and the next ones are cancelled. A listener that hands items over must skip
+ * cancelled events ({@code ignoreCancelled} true, or a check of {@code isCancelled()}). Undoing that
+ * cancel is not supported: the listeners that run after the undo and before the second cancel, the
+ * instance scoped ones included, see the pickup or drop as allowed.
  * <p>
  * Only the host implements this interface: a plugin is handed one and calls it.
  */

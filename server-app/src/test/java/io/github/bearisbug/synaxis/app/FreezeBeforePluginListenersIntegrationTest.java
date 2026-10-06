@@ -111,6 +111,43 @@ class FreezeBeforePluginListenersIntegrationTest {
         host.disableAll();
     }
 
+    /**
+     * The freeze node cancels again the very events the root node cancelled: a drop that a listener dispatches while
+     * it has a frozen player's pickup does not take the pickup's place. A plugin un-cancels both at {@code HIGHEST},
+     * and its {@code MONITOR} listeners must still see both cancelled.
+     */
+    @Test
+    void aDropDispatchedInsideAFrozenPickupLeavesBothCancelled(Env env) {
+        final Instance instance = env.createFlatInstance();
+        final Player player = env.createPlayer(instance, new Pos(0, 41, 0));
+        final List<String> seen = new CopyOnWriteArrayList<>();
+        final Plugin plugin = new Plugin("nested", ctx -> {
+            final PluginEvents events = ctx.events();
+            events.addListener(PickupItemEvent.class, EventPriority.NORMAL, false,
+                    _ -> ctx.process().eventHandler().call(new ItemDropEvent(player, ItemStack.of(Material.DIAMOND))));
+            events.addListener(PickupItemEvent.class, EventPriority.HIGHEST, false, event -> event.setCancelled(false));
+            events.addListener(ItemDropEvent.class, EventPriority.HIGHEST, false, event -> event.setCancelled(false));
+            events.addListener(PickupItemEvent.class, EventPriority.MONITOR, false,
+                    event -> seen.add("pickup cancelled=" + event.isCancelled()));
+            events.addListener(ItemDropEvent.class, EventPriority.MONITOR, false,
+                    event -> seen.add("drop cancelled=" + event.isCancelled()));
+        });
+        final PlayerStore store = PlayerStore.inMemory(env.process(), (_, _) -> {
+        });
+        ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
+        ledger.start();
+        final PluginHost host = new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger, store);
+        host.enable(List.of(plugin), Set.of());
+        store.saveAll(Duration.ofSeconds(1), true).join();
+
+        final PickupItemEvent pickup = new PickupItemEvent(player, new ItemEntity(ItemStack.of(Material.DIAMOND)));
+        env.process().eventHandler().call(pickup);
+
+        assertEquals(List.of("drop cancelled=true", "pickup cancelled=true"), seen, "what the MONITOR listeners saw");
+        assertTrue(pickup.isCancelled(), "the pickup ends cancelled");
+        host.disableAll();
+    }
+
     /** Dispatches a pickup and a drop of the player, and tells whether both ended cancelled. */
     private static boolean pickUpAndDrop(Env env, Player player) {
         final PickupItemEvent pickup = new PickupItemEvent(player, new ItemEntity(ItemStack.of(Material.DIAMOND)));

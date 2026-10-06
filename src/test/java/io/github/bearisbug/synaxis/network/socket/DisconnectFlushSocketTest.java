@@ -26,7 +26,9 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
+import java.net.StandardSocketOptions;
 import java.nio.channels.SocketChannel;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -34,6 +36,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -97,6 +100,54 @@ public class DisconnectFlushSocketTest {
                             + " packets queued before the kick, then the end of the stream");
             assertEquals(NOISE_PACKETS + 1, requests, "every packet queued before the kick");
             assertEquals(Component.text("bye"), disconnect.kickMessage());
+        } finally {
+            process.stop();
+        }
+    }
+
+    /**
+     * The same queue behind a kick made on the write thread itself, as a listener of outgoing packets
+     * or a write that throws would, to a peer whose receive buffer is a few kilobytes and that reads
+     * nothing: the write thread blocks writing what is left, and only the closer thread ends it.
+     */
+    @Test
+    public void aKickOnTheWriteThreadClosesAPeerThatStoppedReadingWithinTheBudget() throws Exception {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().compressionThreshold(0).build());
+        final CompletableFuture<PlayerSocketConnection> accepted = new CompletableFuture<>();
+        final CountDownLatch kicked = new CountDownLatch(1);
+        process.eventHandler().addListener(AsyncPlayerPreLoginEvent.class, event -> {
+            accepted.complete((PlayerSocketConnection) event.getConnection());
+            await(kicked);
+        });
+        process.server().init(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
+        process.server().start();
+        try (SocketChannel peer = SocketChannel.open()) {
+            peer.setOption(StandardSocketOptions.SO_RCVBUF, 4_096);
+            peer.connect(new InetSocketAddress(InetAddress.getLoopbackAddress(), process.server().getPort()));
+            send(peer, ConnectionState.HANDSHAKE, new ClientHandshakePacket(MinecraftServer.PROTOCOL_VERSION,
+                    "localhost", process.server().getPort(), ClientHandshakePacket.Intent.LOGIN));
+            send(peer, ConnectionState.LOGIN, new ClientLoginStartPacket("Kicked", UUID.randomUUID()));
+            final PlayerSocketConnection connection = accepted.get(10, TimeUnit.SECONDS);
+
+            final CountDownLatch held = new CountDownLatch(1);
+            final CountDownLatch release = new CountDownLatch(1);
+            connection.sendPacket(new CachedPacket(() -> {
+                held.countDown();
+                await(release);
+                connection.kick(Component.text("bye"));
+                kicked.countDown();
+                return new LoginPluginRequestPacket(0, CHANNEL, new byte[0]);
+            }));
+            assertTrue(held.await(10, TimeUnit.SECONDS), "the write thread never took the first packet");
+            final byte[] noise = new byte[NOISE_BYTES];
+            for (int i = 1; i <= NOISE_PACKETS; i++)
+                connection.sendPacket(new LoginPluginRequestPacket(i, CHANNEL, noise));
+            release.countDown();
+            assertTrue(kicked.await(10, TimeUnit.SECONDS), "the write thread never kicked");
+
+            assertTrue(connection.writeThread().join(Duration.ofSeconds(5)),
+                    "the write thread was still writing to a peer that reads nothing 5 s after it kicked");
+            assertFalse(connection.getChannel().isOpen(), "the write thread left the channel open");
         } finally {
             process.stop();
         }

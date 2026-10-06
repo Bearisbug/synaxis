@@ -798,12 +798,14 @@ public class PlayerSocketConnection extends PlayerConnection {
      * Writes everything left for the peer once the connection is offline, the disconnect packet and
      * all that was queued before it: one {@link #flushSync()} writes at most one buffer, and a kick
      * can find more than that waiting. Called by the write thread before it closes the channel; a peer
-     * that does not read it all is cut off by {@link #closeOnceFlushed()}.
+     * that does not read it all is cut off by the closer thread of {@link #closeOnceFlushed()}, which
+     * is started here when the disconnect came from the write thread itself.
      *
      * @throws IOException if writing fails, the channel closed under the write included
      */
     @ApiStatus.Internal
     public void flushRemaining() throws IOException {
+        startCloser();
         do {
             flushSync();
         } while (!packetQueue.isEmpty() || writeLeftover != null);
@@ -871,8 +873,9 @@ public class PlayerSocketConnection extends PlayerConnection {
      * it keeps the TCP connection up: the kernel only takes the bytes once the peer reads them.
      * Closing the channel is the one thing that ends such a write, so once the flush budget is
      * spent it is done from a thread of its own, and with the channel go both socket threads, the
-     * read buffer and everything queued for the peer. The write thread never needs this: a call
-     * from there means it is not inside a write, and it closes the channel itself right after.
+     * read buffer and everything queued for the peer. A call from the write thread starts nothing:
+     * it is not inside a write then, and {@link #flushRemaining()} starts the closer thread before
+     * the writes that are left.
      * <p>
      * The write thread has to be started before anything can disconnect the connection: joining a
      * thread that has not started returns at once, and the channel would be closed before the
@@ -880,6 +883,10 @@ public class PlayerSocketConnection extends PlayerConnection {
      */
     private void closeOnceFlushed() {
         if (Thread.currentThread() == writeThread) return;
+        startCloser();
+    }
+
+    private void startCloser() {
         if (!closeArmed.compareAndSet(false, true)) return;
         Thread.ofVirtual().name("Syn-Socket-Closer").start(() -> {
             try {

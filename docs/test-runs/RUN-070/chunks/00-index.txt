@@ -57,3 +57,29 @@ TC-PROD-654  pass  entity.player 15 classes 80 tests in both modes; BotSocketTes
 - The real client regression (TC-PROD-040 / TC-PROD-130, client-gametest.yml): it runs the client in a container and this round may not
   start containers. A vanilla client answers every batch, which is the case TC-PROD-653 and BotSocketTest cover; CI runs it on the PR.
 - The 79,524 entries of a 4k x 4k region and its drain time are computed from the measured rate (2r + 1 per chunk) and the 80,000 probe.
+
+# Follow-up (fu-chunks), 2026-10-06 10:28 to 11:10 (UTC+8), on the review notes of this group. Code under test: 7ac36afb6e
+# (5e41126dfe + Player#trimChunkQueue returns for a negative ring radius, its Javadoc says the thread holding the player, and two
+# new cases in ChunkQueueBoundIntegrationTest, 6 in all); the docs commit on top changes docs and this directory only. Same machine,
+# JDK and Gradle flags as above. Four holds of the heavy lock, each released at the end of its batch: 10:32:22-10:32:43,
+# 10:36:08-10:36:55, 10:39:25-10:43:21, 10:58:34-10:59:48. Raw logs and JUnit XML stayed in /tmp/m3fix-int/fu-chunks, deleted after.
+08-followup-red.txt                  the class on the Player.java of 5a084b973e: TC-PROD-658 red, default and strict grid
+09-followup-green-counterproofs.txt  the class on 7ac36afb6e, default and strict grid, before and after every counter proof cp1-cp6
+                                     and the code before the fix, all with the 6-case class; cp5 four times in each mode
+10-followup-full-runs.txt            root :test default with the database variables: 429 classes, 3,168 tests, 0 failures, 15
+                                     skipped; forbiddenImportsCheck, testNamingCheck and javadoc of the root module
+11-followup-docs.txt                 design-doc and test-doc lint and the line references of the docs to the two changed files
+
+# Results of the follow-up (7 cases of the section on 7ac36afb6e, 7 pass)
+TC-PROD-658  pass  instance view distance -2, so a radius of -1: 0 exceptions in 20 ticks, alive ticks +20 (09); red on 5a084b973e
+                   and with cp6 (no check of a negative radius) at ChunkQueueBoundIntegrationTest.java:234, 20 IllegalArgumentException
+                   "Range cannot be negative", alive ticks +0 (08, 09)
+TC-PROD-659  pass  the trim held at its first queued chunk while another thread calls sendChunk for the 9 chunks of the first batch:
+                   that thread queues on the lock, queue and index hold 121 each and agree (09); red with cp5 (no queue lock in the
+                   trim) at :310 in 8 of 8 runs with the same message: 8 chunks queued twice, 8 indexed but not queued (09)
+TC-PROD-650  pass  as before; cp1 and the code before the fix now report 6 tests completed, 4 failed (650 at :95, 651 at :128,
+to 653             652 at :171, 659 at :270), cp2 6/1 (651 at :128), cp3 6/4 (652, 653 and 659 at :424, 651 at :128), cp4 6/3
+                   (653 and 652 at :424, 659 at :270); the test class gained 3 import lines, so its line numbers moved (09)
+TC-PROD-654  pass  root :test default 3,168, 0 failures; entity.player 15 classes, 82 tests in that run (10). Not repeated here: the
+                   strict grid full run, the separate entity.player runs and BotSocketTest; the code change only acts on a negative
+                   radius, which no other test sets

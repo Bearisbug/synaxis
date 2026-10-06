@@ -16,6 +16,13 @@
 03-counterproofs.txt      five edits of the fix, one at a time (cp1, cp2 also in strict grid), and the restored runs
 04-neighbours.txt         5 root classes (18 tests) and 2 :synx classes (26 tests) in both modes, :loadtest BotSocketTest (8 tests)
 05-docs.txt               design-doc and test-doc lint, the line references of the docs to the two changed files
+06-rework-red-green.txt   review rework: the test class of c193a22479 on the fix, on the send of a6155af745 and on the code of
+                          8b18922130, default and strict grid
+07-rework-counterproofs.txt  review rework: nine edits of c193a22479, one at a time (cp1, cp2 also in strict grid), and the
+                          restored runs
+08-rework-neighbours.txt  review rework: 5 root classes (20 tests) and 2 :synx classes (26 tests) in both modes, :loadtest
+                          BotSocketTest (8 tests)
+09-rework-docs.txt        review rework: design-doc and test-doc lint, the line references of the docs to the changed files
 
 # What the code did before the fix (8b18922130), read from the code
 - Who gets a block change: InstanceContainer#UNSAFE_setBlock holds the instance monitor and the chunk write-lock, changes the
@@ -61,9 +68,13 @@
 - What the send can wait for: threads holding the chunk's read- or write-lock: block lookups (Instance#getBlock takes the read-lock
   on every call, physics and collision use it), the chunk tick's snapshot of its ticking handlers, a write thread serializing the
   chunk packet the first time after a change, the relight snapshot (SynxRelight), the overlay encode (SynxChunk#encodeOverlay holds the
-  write-lock while it encodes; docs/DESIGN-M3.md estimates about 0.5 ms). At most one wait per player per tick, at most 1 ms: measured
-  in TC-PROD-676, the other thread got the queue lock after 1,196 to 1,382 us over 16 runs (02, 03, 04 and the earlier holds), the
-  1 ms bound plus scheduling.
+  write-lock while it encodes; docs/DESIGN-M3.md estimates about 0.5 ms). Each chunk of a batch waits up to 1 ms on its own, and
+  only the wait it does not win ends the batch: the waits of one player in one tick add up to about (chunks of the batch + 1) x 1 ms,
+  about 65 ms at the engine default of 64 chunks a tick and about 5 ms at the 4 of the shard host, and the players of one tick thread
+  add up. The chunk put back is the closest to the center and comes out first the next tick: a chunk whose lock is held at every try
+  holds back every chunk of that player behind it. (An earlier version of this file said at most one wait of 1 ms per player and
+  tick, which the code did not do; the review found it, see "Review rework".) Measured in TC-PROD-676: the other thread got the queue
+  lock after 1,196 to 1,382 us over 16 runs (02, 03, 04 and the earlier holds).
 - Not measured: how often a send waits or defers under load (no load test or JMH in this round).
 
 # Results (4 new cases, 4 pass)
@@ -83,3 +94,50 @@ TC-PROD-678  pass  root 5 classes 18 tests, :synx 2 classes 26 tests, both modes
 - A SynxChunk on a real shard with a world flag: the engine test models the overlay snapshot with TakenChunk; the two :synx classes
   of 04 send real SynxChunk packets through the Player queue, without a concurrent change.
 - How often the 1 ms bound defers a chunk under load.
+
+# Review rework (c193a22479), 2026-10-06 22:09 to 22:45 (UTC+8)
+The review of the docs commit 883f222f25 found the bound above stated wrong and the starvation understated, and four smaller points.
+Chosen: change the code (not only the docs), because the per-chunk wait let one player hold its tick thread for about 65 ms at the
+engine default, and the head-of-line block left a player without every chunk behind one busy chunk.
+- Player#sendPendingChunks: the waits of a batch share CHUNK_LOCK_WAIT (each tryLockWriteLock waits for what is left of it, a try
+  without a wait once it is spent); a chunk not locked in time is deferred, the batch goes on with the chunks behind it and puts the
+  deferred ones back in the queue once it is done; a deferral takes the place of a chunk sent, so a batch tries at most as many
+  chunks as it may send; the position sync after the first chunks needs a batch that sent a chunk (batchSize > 0). The order of the
+  locks (queue lock outside, chunk write-lock inside), the bound of the queue (trimChunkQueue) and the per-tick cap are unchanged;
+  no wait is unbounded.
+- Bound now: the waits of one player in one tick add up to at most 1 ms plus the scheduling of one timed wait, whatever the batch
+  size; N players of one tick thread at most N ms. A chunk whose lock is held at every try keeps being deferred, one place of the
+  batch and at most 1 ms a tick, without holding back the chunks behind it.
+- Test class (5 tests): TC-PROD-675 also checks that each ChunkDataPacket is handed to the connection under its chunk write-lock
+  (CheckedPlayer, a Player subclass that watches sendPacket); TC-PROD-679 adds the head-of-line case (6 of 7 chunks of a column held
+  by another thread for the batch only: the 7th is sent, the sending thread queues for one lock only) and the empty first batch (the
+  13 chunks within 2 of the spawn chunk held while joining: no position sync before the first chunk).
+- Lock holds, each after memory_pressure free >= 30 % and the 1-minute load <= 24 (free 38 to 57 %, load 3.94 to 14.80):
+  22:09:18-22:09:43 (the runner script built the task name wrong, nothing ran), 22:10:26-22:11:56 and 22:14:47-22:15:17 (earlier
+  versions of the two new tests, see below), 22:13:51-22:14:33 (Error Prone refused a lambda constant, did not compile),
+  22:16:36-22:22:31 (counter proofs on the second version), 22:22:49-22:25:07 (neighbours on the second version), 22:27:16-22:32:02
+  (06 and 07), 22:32:22-22:34:44 (08). Raw logs and XML in /tmp/rework-chunks2, deleted after the round.
+- Earlier versions of the new tests, not kept as evidence: the first held the column's locks through the whole tick of the move;
+  DynamicChunk#tick takes the read-lock of each chunk, so the tick blocked on them and the head-of-line test went red on the send of
+  a6155af745 for that reason, not for the head-of-line block. The second held them for the batch only and asserted the batch took
+  under 5 ms: the counter proofs went red as in 07, but in the neighbour run of 22:22:49, five classes in one JVM, a batch of the fix
+  took 20,113 us and failed. The final version asserts how many held locks the sending thread queued for (at most one) and only
+  prints the duration.
+
+# Results of the rework (5 cases, 5 pass)
+TC-PROD-675  pass  the setter waits for the chunk lock, the client sees gold, 49 chunk packets handed under the lock (06); red before
+                   the fix at ChunkSendBlockChangeIntegrationTest.java:133, 49 handed outside the lock (06); cp1 red at :133, cp4 at
+                   :134, cp6 (taken under the lock, handed after it) at :135 only, :133 green in that run (07)
+TC-PROD-676  pass  the holder gets the queue lock after 1,296 to 1,413 us over 6 runs (06, 07, 08); red before the fix at :196, 5007 /
+                   5005 ms (06); cp1 and cp2 red at :196, cp3 (deferred chunks dropped) at :198, 1 chunk of 7 (07)
+TC-PROD-677  pass  (06); red before the fix and with cp5 at :233 (06, 07)
+TC-PROD-678  pass  root 5 classes 20 tests, :synx 2 classes 26 tests, both modes; BotSocketTest 8 tests (08)
+TC-PROD-679  pass  only 4,-3 sent in the tick of the move, the sending thread queued for the lock of 4,0 only, the batch 1,179 to 2,101
+                   us over 6 runs; the empty first batch is followed by a batch of 49 and then the position sync (06, 07, 08); red
+                   on the send of a6155af745 at :281 (nothing sent in the tick of the move) and :326 (position sync before any
+                   chunk) (06); red before the fix at :281 and :324 after a 10 s hold each (06); cp7 (break) at :281, cp8 (1 ms per
+                   chunk) at :282, 6 locks queued for and 6,832 us, cp9 (empty batch uses the sync) at :326 (07)
+
+# Not verified in the rework
+- The same as above: full module runs and the real client are the integration round's; a SynxChunk with a world flag on a real shard.
+- How often a chunk is deferred under load (no load test); the head-of-line case is shown with locks held by a test thread only.

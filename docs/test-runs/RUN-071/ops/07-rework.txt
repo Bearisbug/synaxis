@@ -1,0 +1,180 @@
+# Rework after review (2026-10-06 16:00 to 17:00, UTC+8). Code under test: 662f645ea4 (c0c75ecc59 + flushRemaining starts the closer
+# thread, PlayerSocketConnection#startCloser, and the second test of DisconnectFlushSocketTest). Docs: DESIGN-PROD v0.9.52 §16 row,
+# §28.3 rows (the ㉑ row resolved, one new row for DESIGN.md §16 and TC-GAME-069), TEST.md TC-PROD-661, 662, 664 and CLOSE_OUT.
+# Three holds of /tmp/synaxis-heavy.lock (owner 生产就绪会话/rework-ops pid=33941), each taken with free >= 30 % and load1 <= 24:
+#   16:06:52-16:08:02 (free 51, load1 10.43), 16:45:03-16:46:09 (free 52, load1 23.24; waited 16:10-16:45 for load1 to drop
+#   from up to 325, other projects' ffmpeg), 16:48:05-16:49:55 (free 44, load1 19.75).
+# Gradle: ./gradlew :test --rerun --tests <class>... --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts,
+# "grid" adds -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid. Lines copied from
+# the Gradle logs and JUnit XML in /tmp/run071/rework-ops, deleted after the round.
+
+## Why: a disconnect on the write thread itself never started the closer thread
+closeOnceFlushed returns at once on the write thread, and on c0c75ecc59 the write thread then wrote the whole queue in
+flushRemaining (before 766f09a0bf it wrote one more buffer). Write thread disconnects: the write loop catching a non-IO throwable,
+a PlayerPacketOutEvent listener kicking (the event runs in writePacketSync, on the write thread).
+
+## 1. c0c75ecc59's code + the new test, default (TC-PROD-661 step 4, second half)
+[b3a-head-default default] 16:48:06..16:48:28 rc=1 io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest
+<testsuite name="io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-06T08:48:21.060Z" hostname="Mac.local" time="6.705"
+message="org.opentest4j.AssertionFailedError: the write thread was still writing to a peer that reads nothing 5 s after it kicked ==> expected: <true> but was: <false>"
+DisconnectFlushSocketTest > aKickOnTheWriteThreadClosesAPeerThatStoppedReadingWithinTheBudget() FAILED
+    org.opentest4j.AssertionFailedError at DisconnectFlushSocketTest.java:148
+2 tests completed, 1 failed
+> Task :test FAILED
+BUILD FAILED in 21s
+(the same red at 16:06:52, before the fix was applied, default: "2 tests completed, 1 failed", DisconnectFlushSocketTest.java:148)
+
+## 2. The fix, five classes, default and strict grid (TC-PROD-662: 13 tests, 2 1 1 2 7)
+[default] 16:07:05..16:07:17 rc=0 io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest io.github.bearisbug.synaxis.network.player.SlowReaderIntegrationTest io.github.bearisbug.synaxis.network.player.PlayerConnectionKickIntegrationTest io.github.bearisbug.synaxis.network.player.OutboundBacklogIntegrationTest io.github.bearisbug.synaxis.network.DisconnectReasonsIntegrationTest
+<testsuite name="io.github.bearisbug.synaxis.network.DisconnectReasonsIntegrationTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-06T08:07:13.990Z" hostname="Mac.local" time="1.18"
+<testsuite name="io.github.bearisbug.synaxis.network.player.OutboundBacklogIntegrationTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-06T08:07:13.991Z" hostname="Mac.local" time="1.403"
+<testsuite name="io.github.bearisbug.synaxis.network.player.PlayerConnectionKickIntegrationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-06T08:07:13.991Z" hostname="Mac.local" time="0.934"
+<testsuite name="io.github.bearisbug.synaxis.network.player.SlowReaderIntegrationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-06T08:07:13.991Z" hostname="Mac.local" time="2.471"
+<testsuite name="io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-06T08:07:13.991Z" hostname="Mac.local" time="1.993"
+[grid] 16:07:17..16:07:28 rc=0 io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest io.github.bearisbug.synaxis.network.player.SlowReaderIntegrationTest io.github.bearisbug.synaxis.network.player.PlayerConnectionKickIntegrationTest io.github.bearisbug.synaxis.network.player.OutboundBacklogIntegrationTest io.github.bearisbug.synaxis.network.DisconnectReasonsIntegrationTest
+<testsuite name="io.github.bearisbug.synaxis.network.DisconnectReasonsIntegrationTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-06T08:07:23.598Z" hostname="Mac.local" time="3.339"
+<testsuite name="io.github.bearisbug.synaxis.network.player.OutboundBacklogIntegrationTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-06T08:07:23.598Z" hostname="Mac.local" time="3.36"
+<testsuite name="io.github.bearisbug.synaxis.network.player.PlayerConnectionKickIntegrationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-06T08:07:23.598Z" hostname="Mac.local" time="2.629"
+<testsuite name="io.github.bearisbug.synaxis.network.player.SlowReaderIntegrationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-06T08:07:23.598Z" hostname="Mac.local" time="4.192"
+<testsuite name="io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-06T08:07:23.592Z" hostname="Mac.local" time="3.793"
+
+## 3. Counter-proof: flushRemaining's first line startCloser(); deleted, strict grid (TC-PROD-661 step 4)
+[grid] 16:07:28..16:07:44 rc=1 DisconnectFlushSocketTest: tests="2" failures="1" time="6.016"
+DisconnectFlushSocketTest > aKickOnTheWriteThreadClosesAPeerThatStoppedReadingWithinTheBudget() FAILED
+    org.opentest4j.AssertionFailedError at DisconnectFlushSocketTest.java:148
+message="org.opentest4j.AssertionFailedError: the write thread was still writing to a peer that reads nothing 5 s after it kicked ==> expected: <true> but was: <false>"
+restored with git checkout + git apply of the fix; diff identical to the commit
+
+## 4. Counter-proof: Server.java:268 back to connection.flushSync(), strict grid (TC-PROD-661 step 2; the red line is now :98,
+##    three imports were added above it)
+[b3b-cp-flushsync-grid grid] 16:48:28..16:49:03 rc=1 io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest
+<testsuite name="io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-06T08:49:00.684Z" hostname="Mac.local" time="1.649"
+message="org.opentest4j.AssertionFailedError: the peer read 9 of the 1574 packets queued before the kick, then the end of the stream ==> Unexpected type, expected: <io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket> but was: <io.github.bearisbug.synaxis.network.packet.server.login.LoginPluginRequestPacket>"
+DisconnectFlushSocketTest > theDisconnectPacketIsWrittenBehindMoreThanOneFlushOfQueuedPackets() FAILED
+    org.opentest4j.AssertionFailedError at DisconnectFlushSocketTest.java:98
+2 tests completed, 1 failed
+> Task :test FAILED
+BUILD FAILED in 34s
+
+## 5. Restored, strict grid then default (TC-PROD-661 steps 3 and 5)
+[b3c-restored-grid grid] 16:49:03..16:49:13 rc=0 io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest
+<testsuite name="io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-06T08:49:10.323Z" hostname="Mac.local" time="2.682"
+[b3c-restored-default default] 16:49:13..16:49:28 rc=0 io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest
+<testsuite name="io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-06T08:49:24.837Z" hostname="Mac.local" time="2.636"
+
+## 6. TC-GAME-069 step 2's counter-proof (closeOnceFlushed's first line == turned into !=), SlowReaderIntegrationTest, default
+c0c75ecc59's code, still red:
+[b2a-head-reversed default] 16:45:03..16:45:27 rc=1 io.github.bearisbug.synaxis.network.player.SlowReaderIntegrationTest
+<testsuite name="io.github.bearisbug.synaxis.network.player.SlowReaderIntegrationTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-06T08:45:15.065Z" hostname="Mac.local" time="11.968"
+message="org.opentest4j.AssertionFailedError: a disconnected connection must close its channel even while the peer is not reading ==> expected: <false> but was: <true>"
+SlowReaderIntegrationTest > aDisconnectClosesTheChannelUnderAWriteThePeerNeverReads(Env) FAILED
+    org.opentest4j.AssertionFailedError at SlowReaderIntegrationTest.java:80
+> Task :test FAILED
+BUILD FAILED in 23s
+the fix, green (16:07:44, time="7.042"; again with diagnostics, time="8.483"):
+[b2c-fix-reversed-diag default] 16:45:50..16:46:09 rc=0 SlowReaderIntegrationTest tests="1" failures="0"
+Temporary System.err lines (not committed) in disconnect, flushRemaining and the closer, epoch milliseconds:
+  c0c75ecc59 + reversed guard:
+    diag disconnect Thread[#39,ForkJoinPool-1-worker-1,5,main] 1791276339571
+    diag flushRemaining VirtualThread[#50,Syn-Socket-Writer-0]/runnable@ForkJoinPool-2-worker-3 1791276344089
+    diag disconnect VirtualThread[#49,Syn-Socket-Reader-0]/runnable@ForkJoinPool-2-worker-2 1791276349596
+  the fix + reversed guard:
+    diag disconnect Thread[#39,ForkJoinPool-1-worker-1,5,main] 1791276363283
+    diag flushRemaining VirtualThread[#50,Syn-Socket-Writer-0]/runnable@ForkJoinPool-2-worker-1 1791276367800
+    diag closer closes 1791276368808
+    diag disconnect VirtualThread[#49,Syn-Socket-Reader-0]/runnable@ForkJoinPool-2-worker-4 1791276368811
+Reading: the test thread disconnects; the reversed guard starts no closer; the write thread's blocking write to the peer that reads
+nothing still takes a few bytes about 4.5 s later and returns to the write loop, which sees the connection offline and enters
+flushRemaining. On c0c75ecc59 it blocks there for good (the read thread's disconnect at +10 s is the test closing the peer); with the
+fix flushRemaining starts the closer, which closes the channel 1 s later, and the test's joins (5 s + 5 s) see it closed.
+Replacement counter-proof for TC-GAME-069 steps 2 and 5 (handed to the lighting session, DESIGN-PROD §28.3): startCloser's first
+line compareAndSet(false, true) turned into compareAndSet(true, true), so that no closer thread starts from anywhere; on the fix:
+[b3d-cp-nocloser-default default] 16:49:28..16:49:55 rc=1 io.github.bearisbug.synaxis.network.player.SlowReaderIntegrationTest io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest
+<testsuite name="io.github.bearisbug.synaxis.network.player.SlowReaderIntegrationTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-06T08:49:43.192Z" hostname="Mac.local" time="11.92"
+message="org.opentest4j.AssertionFailedError: a disconnected connection must close its channel even while the peer is not reading ==> expected: <false> but was: <true>"
+<testsuite name="io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-06T08:49:43.192Z" hostname="Mac.local" time="6.47"
+message="org.opentest4j.AssertionFailedError: the write thread was still writing to a peer that reads nothing 5 s after it kicked ==> expected: <true> but was: <false>"
+DisconnectFlushSocketTest > aKickOnTheWriteThreadClosesAPeerThatStoppedReadingWithinTheBudget() FAILED
+    org.opentest4j.AssertionFailedError at DisconnectFlushSocketTest.java:148
+SlowReaderIntegrationTest > aDisconnectClosesTheChannelUnderAWriteThePeerNeverReads(Env) FAILED
+    org.opentest4j.AssertionFailedError at SlowReaderIntegrationTest.java:80
+3 tests completed, 2 failed
+> Task :test FAILED
+BUILD FAILED in 27s
+
+## 7. CLOSE_OUT (TC-PROD-664), read only
+### on the branch
+ok       ChatMessageListener.java:40
+ok       ChatMessageListener.java:50
+ok       ChatMessageListener.java:56
+ok       ServerConfig.java:262
+ok       ServerConfig.java:263
+ok       ServerConfig.java:433
+ok       ServerConfig.java:434
+ok       ConfigFile.java:86
+ok       ConfigFile.java:87
+ok       Player.java:396
+ok       Messenger.java:46
+ok       ClientPacketListenerMixin.java:22
+ok       TicketIssuer.java:38
+ok       ShardGates.java:119
+ok       PlayerSocketConnection.java:206
+ok       PlayerSocketConnection.java:221
+ok       PlayerSocketConnection.java:282
+ok       cf1a359794 is in HEAD
+ok       DESIGN.md v0.43 (8babd09aa1) rewrote ①
+ok       DESIGN-M3 v0.38 (0b554bb0ed) records ⑬⑯⑰⑱⑲ and ⑮
+| 已决 | **原版聊天是一进 N 出的放大面**
+| 已完成：`docs/ENGINE.md` 部分由本分册 
+| 已决（`docs/DESIGN-M3.md` §28.2
+1
+### with the docs of 8b18922130 (git show 8b18922130:docs/DESIGN-PROD.md and docs/DESIGN-M2.md), same code
+ok       ChatMessageListener.java:40
+ok       ChatMessageListener.java:50
+ok       ChatMessageListener.java:56
+ok       ServerConfig.java:262
+ok       ServerConfig.java:263
+ok       ServerConfig.java:433
+ok       ServerConfig.java:434
+ok       ConfigFile.java:86
+ok       ConfigFile.java:87
+ok       Player.java:396
+ok       Messenger.java:46
+ok       ClientPacketListenerMixin.java:22
+ok       TicketIssuer.java:38
+ok       ShardGates.java:119
+ok       PlayerSocketConnection.java:206
+ok       PlayerSocketConnection.java:221
+ok       PlayerSocketConnection.java:282
+ok       cf1a359794 is in HEAD
+ok       DESIGN.md v0.43 (8babd09aa1) rewrote ①
+ok       DESIGN-M3 v0.38 (0b554bb0ed) records ⑬⑯⑰⑱⑲ and ⑮
+| 风险 | **原版聊天是一进 N 出的放大面**
+| `docs/ENGINE.md` 部分已完成（本分册 v
+| M3 会话 |
+0
+### counter-proof: a blank line before line 1 of ChatMessageListener.java, then git checkout
+MISMATCH ChatMessageListener.java:40 wants chatRateLimiter().tryAcquire
+MISMATCH ChatMessageListener.java:50 wants new PlayerChatEvent(player, List.of(), message)
+MISMATCH ChatMessageListener.java:56 wants if (!recipients.isEmpty())
+ok       ServerConfig.java:262
+ok       ServerConfig.java:263
+ok       ServerConfig.java:433
+ok       ServerConfig.java:434
+ok       ConfigFile.java:86
+ok       ConfigFile.java:87
+ok       Player.java:396
+ok       Messenger.java:46
+ok       ClientPacketListenerMixin.java:22
+ok       TicketIssuer.java:38
+ok       ShardGates.java:119
+ok       PlayerSocketConnection.java:206
+ok       PlayerSocketConnection.java:221
+ok       PlayerSocketConnection.java:282
+ok       cf1a359794 is in HEAD
+ok       DESIGN.md v0.43 (8babd09aa1) rewrote ①
+ok       DESIGN-M3 v0.38 (0b554bb0ed) records ⑬⑯⑰⑱⑲ and ⑮
+| 已决 | **原版聊天是一进 N 出的放大面**
+| 已完成：`docs/ENGINE.md` 部分由本分册 
+| 已决（`docs/DESIGN-M3.md` §28.2
+1

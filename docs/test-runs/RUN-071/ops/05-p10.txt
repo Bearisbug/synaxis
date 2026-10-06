@@ -1,0 +1,82 @@
+# p10.py shards writes shards.json 0644 whatever the umask (docs/TEST.md TC-PROD-660). Python 3.10.18 of the repository's .venv, standard
+# library only; no Gradle, outside the heavy lock. Command, from the worktree root:
+#     /Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python -m unittest discover -s client-fabric/gametest-env -p 'test_*.py' [-v]
+# The generated client-fabric/gametest-env/__pycache__/ (gitignored) was deleted after each run.
+
+## 1. 15:15, the new test_p10.py against p10.py of 8b18922130 (no chmod)
+   test_the_shard_directory_is_0644_whatever_the_umask (test_p10.ShardsTest) ... 
+   ======================================================================
+   FAIL: test_the_shard_directory_is_0644_whatever_the_umask (test_p10.ShardsTest) (umask='0o2')
+   ----------------------------------------------------------------------
+   Traceback (most recent call last):
+     File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-ops/client-fabric/gametest-env/test_p10.py", line 32, in test_the_shard_directory_is_0644_whatever_the_umask
+       self.assertEqual(oct(stat.S_IMODE(out.stat().st_mode)), oct(0o644))
+   AssertionError: '0o664' != '0o644'
+   - 0o664
+   ?    ^
+   + 0o644
+   ?    ^
+   
+   
+   ======================================================================
+   FAIL: test_the_shard_directory_is_0644_whatever_the_umask (test_p10.ShardsTest) (umask='0o77')
+   ----------------------------------------------------------------------
+   Traceback (most recent call last):
+     File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-ops/client-fabric/gametest-env/test_p10.py", line 32, in test_the_shard_directory_is_0644_whatever_the_umask
+       self.assertEqual(oct(stat.S_IMODE(out.stat().st_mode)), oct(0o644))
+   AssertionError: '0o600' != '0o644'
+   - 0o600
+   + 0o644
+   
+   
+   ----------------------------------------------------------------------
+   Ran 1 test in 0.209s
+   
+   FAILED (failures=2)
+
+## 2. 15:16, after adding out.chmod(0o644) to shards (the change committed in 766f09a0bf)
+   test_the_shard_directory_is_0644_whatever_the_umask (test_p10.ShardsTest) ... ok
+   
+   ----------------------------------------------------------------------
+   Ran 1 test in 0.180s
+   
+   OK
+
+## 3. 15:28, counter-proof on 766f09a0bf: p10.py line 83 'out.chmod(0o644)' replaced by 'pass', then git checkout HEAD -- p10.py
+   ## counter-proof: p10.py:83 out.chmod(0o644) replaced by pass
+   
+   ======================================================================
+   FAIL: test_the_shard_directory_is_0644_whatever_the_umask (test_p10.ShardsTest) (umask='0o2')
+   ----------------------------------------------------------------------
+   Traceback (most recent call last):
+     File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-ops/client-fabric/gametest-env/test_p10.py", line 32, in test_the_shard_directory_is_0644_whatever_the_umask
+       self.assertEqual(oct(stat.S_IMODE(out.stat().st_mode)), oct(0o644))
+   AssertionError: '0o664' != '0o644'
+   - 0o664
+   ?    ^
+   + 0o644
+   ?    ^
+   
+   
+   ======================================================================
+   FAIL: test_the_shard_directory_is_0644_whatever_the_umask (test_p10.ShardsTest) (umask='0o77')
+   ----------------------------------------------------------------------
+   Traceback (most recent call last):
+     File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-ops/client-fabric/gametest-env/test_p10.py", line 32, in test_the_shard_directory_is_0644_whatever_the_umask
+       self.assertEqual(oct(stat.S_IMODE(out.stat().st_mode)), oct(0o644))
+   AssertionError: '0o600' != '0o644'
+   - 0o600
+   + 0o644
+   
+   
+   ----------------------------------------------------------------------
+   Ran 1 test in 0.166s
+   
+   FAILED (failures=2)
+   ## restored (git checkout HEAD -- p10.py)
+   test_the_shard_directory_is_0644_whatever_the_umask (test_p10.ShardsTest) ... ok
+   
+   ----------------------------------------------------------------------
+   Ran 1 test in 0.173s
+   
+   OK

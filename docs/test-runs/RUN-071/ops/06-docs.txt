@@ -1,0 +1,140 @@
+# Documents of the group (docs/TEST.md TC-PROD-664; docs/DESIGN-PROD.md v0.9.52, docs/DESIGN-M2.md v0.57) and the doc lints.
+# CLOSE_OUT is the script at the head of the docs/TEST.md section "生产就绪 · RUN-071：ops", run from the worktree root. Read only.
+
+## CLOSE_OUT on the branch (working tree with the v0.9.52 docs)
+ok       ChatMessageListener.java:40
+ok       ChatMessageListener.java:50
+ok       ChatMessageListener.java:56
+ok       ServerConfig.java:262
+ok       ServerConfig.java:263
+ok       ServerConfig.java:433
+ok       ServerConfig.java:434
+ok       ConfigFile.java:86
+ok       ConfigFile.java:87
+ok       Player.java:396
+ok       Messenger.java:46
+ok       ClientPacketListenerMixin.java:22
+ok       TicketIssuer.java:38
+ok       ShardGates.java:119
+ok       PlayerSocketConnection.java:206
+ok       PlayerSocketConnection.java:221
+ok       PlayerSocketConnection.java:282
+ok       cf1a359794 is in HEAD
+ok       DESIGN.md v0.43 (8babd09aa1) rewrote ①
+| 已决 | **原版聊天是一进 N 出的放大面**
+| 已完成：`docs/ENGINE.md` 部分由本分册 
+；⑳ 未到时点；㉑ 已决
+1
+
+## CLOSE_OUT with the docs of 8b18922130 (git show 8b18922130:docs/DESIGN-PROD.md and docs/DESIGN-M2.md), same code
+ok       ChatMessageListener.java:40
+ok       ChatMessageListener.java:50
+ok       ChatMessageListener.java:56
+ok       ServerConfig.java:262
+ok       ServerConfig.java:263
+ok       ServerConfig.java:433
+ok       ServerConfig.java:434
+ok       ConfigFile.java:86
+ok       ConfigFile.java:87
+ok       Player.java:396
+ok       Messenger.java:46
+ok       ClientPacketListenerMixin.java:22
+ok       TicketIssuer.java:38
+ok       ShardGates.java:119
+ok       PlayerSocketConnection.java:206
+ok       PlayerSocketConnection.java:221
+ok       PlayerSocketConnection.java:282
+ok       cf1a359794 is in HEAD
+ok       DESIGN.md v0.43 (8babd09aa1) rewrote ①
+| 风险 | **原版聊天是一进 N 出的放大面**
+| `docs/ENGINE.md` 部分已完成（本分册 v
+；⑳ 未到时点，㉑ 仍待 M3 会话改 `TicketIssuer.java`
+0
+
+## counter-proof: a blank line inserted before line 1 of ChatMessageListener.java
+ docs/DESIGN-M2.md                                              |  3 ++-
+ docs/DESIGN-PROD.md                                            | 10 ++++++----
+ .../github/bearisbug/synaxis/listener/ChatMessageListener.java |  1 +
+ 3 files changed, 9 insertions(+), 5 deletions(-)
+MISMATCH ChatMessageListener.java:40 wants chatRateLimiter().tryAcquire
+MISMATCH ChatMessageListener.java:50 wants new PlayerChatEvent(player, List.of(), message)
+MISMATCH ChatMessageListener.java:56 wants if (!recipients.isEmpty())
+ok       ServerConfig.java:262
+ok       ServerConfig.java:263
+ok       ServerConfig.java:433
+ok       ServerConfig.java:434
+ok       ConfigFile.java:86
+ok       ConfigFile.java:87
+ok       Player.java:396
+ok       Messenger.java:46
+ok       ClientPacketListenerMixin.java:22
+ok       TicketIssuer.java:38
+ok       ShardGates.java:119
+ok       PlayerSocketConnection.java:206
+ok       PlayerSocketConnection.java:221
+ok       PlayerSocketConnection.java:282
+ok       cf1a359794 is in HEAD
+ok       DESIGN.md v0.43 (8babd09aa1) rewrote ①
+| 已决 | **原版聊天是一进 N 出的放大面**
+| 已完成：`docs/ENGINE.md` 部分由本分册 
+；⑳ 未到时点；㉑ 已决
+1
+
+## restored (git checkout HEAD -- ChatMessageListener.java)
+ok       ChatMessageListener.java:40
+ok       ChatMessageListener.java:50
+ok       ChatMessageListener.java:56
+ok       ServerConfig.java:262
+ok       ServerConfig.java:263
+ok       ServerConfig.java:433
+ok       ServerConfig.java:434
+ok       ConfigFile.java:86
+ok       ConfigFile.java:87
+ok       Player.java:396
+ok       Messenger.java:46
+ok       ClientPacketListenerMixin.java:22
+ok       TicketIssuer.java:38
+ok       ShardGates.java:119
+ok       PlayerSocketConnection.java:206
+ok       PlayerSocketConnection.java:221
+ok       PlayerSocketConnection.java:282
+ok       cf1a359794 is in HEAD
+ok       DESIGN.md v0.43 (8babd09aa1) rewrote ①
+| 已决 | **原版聊天是一进 N 出的放大面**
+| 已完成：`docs/ENGINE.md` 部分由本分册 
+；⑳ 未到时点；㉑ 已决
+1
+
+## line references in docs/ to the files the commit changed
+## rg -n "PlayerSocketConnection\.java:[0-9]" docs/ (the commit adds lines 797-811 and moves nothing before them; every reference below is before them)
+docs/DESIGN-PROD.md:104:PlayerSocketConnection.java:281-282
+docs/DESIGN-PROD.md:1717:PlayerSocketConnection.java:174-183
+docs/DESIGN-PROD.md:3116:PlayerSocketConnection.java:281-282
+docs/DESIGN-PROD.md:3121:PlayerSocketConnection.java:281-282
+docs/DESIGN-PROD.md:71:PlayerSocketConnection.java:126-131
+docs/DESIGN-PROD.md:77:PlayerSocketConnection.java:173-182
+
+## rg -n "(^|[^A-Za-z])Server\.java:[0-9]" docs/ (the commit replaces line 268 in place, no line moves)
+docs/TEST.md:17:`Server.java:268
+
+## rg -n "p10\.py:[0-9]" docs/
+docs/TEST.md:17:p10.py:32
+docs/TEST.md:9220:p10.py:32
+   (every other hit is under docs/research/ or docs/test-runs/: audit and evidence of earlier code, not kept in step with it)
+
+## bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md (last lines)
+   ✓ 状态图带事件转移 ↔ 迁移表行数一致(按机分段: 10 11 12 21 25)
+   ℹ️ 已画 5 台状态机;请核对:数据字典每个 ≥2 态 status/生命周期枚举实体,已建机或按三类出口(纯派生/投影态、状态由他机翻转、极简运营态)显式免建——见 CHECKLIST C1
+   ✅ lint 无警告
+
+## bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-M2.md (last line)
+   ✅ lint 无警告
+
+## bash ~/.claude/skills/test-doc/check.sh docs/TEST.md: only the known warnings (§3 environment table, §6 environment column, the two RUN-031 rows without evidence)
+   ⚠️ §3 缺环境表(TEMPLATE §3:| 环境 | 入口 | 就绪判定 | 测试账号 | 种子与重置 | 外部副作用 |);跑线上轮前先补表,再逐条判定冒烟用例能否标「线上可跑」(SKILL.md 执行流程第 2 条)
+   ⚠️ 轮次汇总表头缺「环境」列(TEMPLATE §6:本地 / 预发 / 线上)
+   ⚠️ 执行记录明细行不合格:
+     失败项缺证据引用:| RUN-031 | TC-PROD-271 | 失败 | 5A 200 人 walk 30 min 基线只差「超 50 ms 的 tick 为 0」一项：实测 18 个；服务端与机器人同机，本机另有会话在跑，swap 约 29 GiB | 分机档（DESIGN-PROD §28.1 Q11）重
+     失败项缺证据引用:| RUN-031 | TC-PROD-360 | 失败 | 集成后 200 人 walk 30 min 同样只差这一项：6 个；同一档可见实体有 302 个采样超过上限 100（最大 102），登记为 DESIGN-PROD v0.8.2 §28.2 缺陷 | 分机档重跑；可见上限的竞态第 6 
+   ✓ REQ 已双向联检(TEST→设计 悬空 + 设计→TEST 覆盖;设计文档 4 份)
+   ℹ️ 用例 654 条(冒烟 57)· 轮次 68;覆盖与执行完整性按 references/CHECKLIST.md 核对

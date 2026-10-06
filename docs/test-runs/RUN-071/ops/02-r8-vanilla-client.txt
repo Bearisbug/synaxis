@@ -1,0 +1,146 @@
+# R8: what the vanilla 26.2 client shows when a connection ends (docs/TEST.md TC-PROD-663 step 2)
+# Source: ~/.gradle/caches/fabric-loom/26.2/minecraft-merged.jar (the jar Loom builds client-fabric against; 26.2 ships without
+# obfuscation, so the names are Mojang's). Classes extracted into /tmp/run071/ops/mc and read with JDK 25.0.4.1 javap -p -c, deleted
+# after the round. Bytecode below is cut to the lines that matter; offsets are javap's.
+
+## assets/minecraft/lang/en_us.json
+   multiplayer.disconnect.generic = Disconnected
+   disconnect.endOfStream = End of stream
+   disconnect.lost = Connection Lost
+   disconnect.genericReason = %s
+
+## net.minecraft.network.Connection#disconnect(DisconnectionDetails): closes the channel and waits for it, only then stores the reason
+     public void disconnect(net.minecraft.network.DisconnectionDetails);
+       Code:
+            0: aload_0
+            1: getfield      #37                 // Field channel:Lio/netty/channel/Channel;
+            4: ifnonnull     12
+            7: aload_0
+            8: aload_1
+            9: putfield      #50                 // Field delayedDisconnect:Lnet/minecraft/network/DisconnectionDetails;
+           12: aload_0
+           13: invokevirtual #370                // Method isConnected:()Z
+           16: ifeq          39
+           19: aload_0
+           20: getfield      #37                 // Field channel:Lio/netty/channel/Channel;
+           23: invokeinterface #494,  1          // InterfaceMethod io/netty/channel/Channel.close:()Lio/netty/channel/ChannelFuture;
+           28: invokeinterface #497,  1          // InterfaceMethod io/netty/channel/ChannelFuture.awaitUninterruptibly:()Lio/netty/channel/ChannelFuture;
+           33: pop
+           34: aload_0
+           35: aload_1
+           36: putfield      #500                // Field disconnectionDetails:Lnet/minecraft/network/DisconnectionDetails;
+           39: return
+
+## Connection#channelInactive: disconnect(Component "disconnect.endOfStream"), which stores nothing once the channel is closed (isConnected() false)
+     public void channelInactive(io.netty.channel.ChannelHandlerContext);
+       Code:
+            0: aload_0
+            1: ldc           #58                 // String disconnect.endOfStream
+            3: invokestatic  #60                 // InterfaceMethod net/minecraft/network/chat/Component.translatable:(Ljava/lang/String;)Lnet/minecraft/network/chat/MutableComponent;
+            6: invokevirtual #66                 // Method disconnect:(Lnet/minecraft/network/chat/Component;)V
+            9: return
+
+## Connection#tick (called from the client's main/render thread): channel closed and not handled yet -> handleDisconnection()
+     public void tick();
+       Code:
+            0: aload_0
+            1: invokevirtual #373                // Method flushQueue:()V
+            4: aload_0
+            5: getfield      #119                // Field packetListener:Lnet/minecraft/network/PacketListener;
+            8: astore_2
+            9: aload_2
+           10: instanceof    #446                // class net/minecraft/network/TickablePacketListener
+           13: ifeq          27
+           16: aload_2
+           17: checkcast     #446                // class net/minecraft/network/TickablePacketListener
+           20: astore_1
+           21: aload_1
+           22: invokeinterface #448,  1          // InterfaceMethod net/minecraft/network/TickablePacketListener.tick:()V
+           27: aload_0
+           28: invokevirtual #370                // Method isConnected:()Z
+           31: ifne          45
+           34: aload_0
+           35: getfield      #451                // Field disconnectionHandled:Z
+           38: ifne          45
+           41: aload_0
+           42: invokevirtual #454                // Method handleDisconnection:()V
+
+## Connection#isConnected: the channel exists and is open
+     public boolean isConnected();
+       Code:
+            0: aload_0
+            1: getfield      #37                 // Field channel:Lio/netty/channel/Channel;
+            4: ifnull        23
+            7: aload_0
+            8: getfield      #37                 // Field channel:Lio/netty/channel/Channel;
+           11: invokeinterface #92,  1           // InterfaceMethod io/netty/channel/Channel.isOpen:()Z
+           16: ifeq          23
+           19: iconst_1
+           20: goto          24
+           23: iconst_0
+           24: ireturn
+
+## Connection#handleDisconnection: a null reason becomes multiplayer.disconnect.generic ("Disconnected")
+           61: astore_2
+           62: aload_2
+           63: ifnull        89
+           66: aload_0
+           67: invokevirtual #739                // Method getDisconnectionDetails:()Lnet/minecraft/network/DisconnectionDetails;
+           70: invokedynamic #743,  0            // InvokeDynamic #14:get:()Ljava/util/function/Supplier;
+           75: invokestatic  #746                // Method java/util/Objects.requireNonNullElseGet:(Ljava/lang/Object;Ljava/util/function/Supplier;)Ljava/lang/Object;
+           78: checkcast     #129                // class net/minecraft/network/DisconnectionDetails
+           81: astore_3
+           82: aload_2
+           83: aload_3
+           84: invokeinterface #750,  2          // InterfaceMethod net/minecraft/network/PacketListener.onDisconnect:(Lnet/minecraft/network/DisconnectionDetails;)V
+           89: return
+     private static net.minecraft.network.DisconnectionDetails lambda$handleDisconnection$0();
+       Code:
+            0: new           #129                // class net/minecraft/network/DisconnectionDetails
+            3: dup
+            4: ldc_w         #763                // String multiplayer.disconnect.generic
+            7: invokestatic  #60                 // InterfaceMethod net/minecraft/network/chat/Component.translatable:(Ljava/lang/String;)Lnet/minecraft/network/chat/MutableComponent;
+           10: invokespecial #131                // Method net/minecraft/network/DisconnectionDetails."<init>":(Lnet/minecraft/network/chat/Component;)V
+           13: areturn
+
+## net.minecraft.client.multiplayer.ClientCommonPacketListenerImpl#handleDisconnect: no ensureRunningOnSameThread, so it runs on the
+## Netty thread that decoded the packet and calls Connection#disconnect there
+     public void handleDisconnect(net.minecraft.network.protocol.common.ClientboundDisconnectPacket);
+       Code:
+            0: aload_0
+            1: getfield      #105                // Field connection:Lnet/minecraft/network/Connection;
+            4: aload_1
+            5: invokevirtual #829                // Method net/minecraft/network/protocol/common/ClientboundDisconnectPacket.reason:()Lnet/minecraft/network/chat/Component;
+            8: invokevirtual #776                // Method net/minecraft/network/Connection.disconnect:(Lnet/minecraft/network/chat/Component;)V
+           11: return
+## ClientCommonPacketListenerImpl#onDisconnect: the WARN line of the client log
+     public void onDisconnect(net.minecraft.network.DisconnectionDetails);
+       Code:
+            0: aload_0
+            1: getfield      #122                // Field telemetryManager:Lnet/minecraft/client/telemetry/WorldSessionTelemetryManager;
+            4: invokevirtual #857                // Method net/minecraft/client/telemetry/WorldSessionTelemetryManager.onDisconnect:()V
+            7: aload_0
+            8: getfield      #103                // Field minecraft:Lnet/minecraft/client/Minecraft;
+           11: aload_0
+           12: aload_1
+           13: invokevirtual #861                // Method createDisconnectScreen:(Lnet/minecraft/network/DisconnectionDetails;)Lnet/minecraft/client/gui/screens/Screen;
+           16: aload_0
+           17: getfield      #344                // Field isTransferring:Z
+           20: invokevirtual #864                // Method net/minecraft/client/Minecraft.disconnect:(Lnet/minecraft/client/gui/screens/Screen;Z)V
+           23: getstatic     #164                // Field LOGGER:Lorg/slf4j/Logger;
+           26: ldc_w         #866                // String Client disconnected with reason: {}
+           29: aload_1
+           30: invokevirtual #867                // Method net/minecraft/network/DisconnectionDetails.reason:()Lnet/minecraft/network/chat/Component;
+           33: invokeinterface #870,  1          // InterfaceMethod net/minecraft/network/chat/Component.getString:()Ljava/lang/String;
+           38: invokeinterface #740,  3          // InterfaceMethod org/slf4j/Logger.warn:(Ljava/lang/String;Ljava/lang/Object;)V
+           43: return
+
+## reading
+- The screen and the WARN line take the reason Connection#handleDisconnection read. It is null, shown as "Disconnected", whenever
+  disconnectionDetails was not set by the time the main thread's Connection#tick saw the channel closed.
+- Path 1, the disconnect packet never arrives: the server closes the socket, Netty reads the end of the stream, closes the channel and
+  then fires channelInactive -> disconnect(endOfStream), which stores nothing because the channel is already closed. "Disconnected" is
+  certain on this path.
+- Path 2, the packet arrives: handleDisconnect -> Connection#disconnect on the Netty thread closes the channel, waits, and only then
+  stores the reason. If the main thread's tick checks isConnected() inside that window, it handles the disconnection with no reason:
+  "Disconnected" again. The window is the few steps of a channel close on the event loop; nothing the server does changes it.

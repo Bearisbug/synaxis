@@ -1,0 +1,39 @@
+# Group ops of the production-readiness session for RUN-071 (branch prod/r071-ops, worktree synaxis-wt/r071-ops, base main 8b18922130):
+# the R8 intermittent red of the real client regression, the P10 fixture's shards.json mode, and the documents the lighting session
+# handed over (docs/DESIGN-M3.md §28.2 handover row M3 v0.38, items 12, 13, 15, 16, 18). For the integrate round to register as RUN-071.
+# Code under test: 766f09a0bf (8b18922130 + the fix, its test class, p10.py and test_p10.py), then 662f645ea4 after review (the closer
+# thread for a disconnect on the write thread and a second test, 07-rework.txt); the docs commits change docs and this directory only.
+# 2026-10-06 15:05 to 15:45 and 16:00 to 17:00 (UTC+8). Machine: Apple M4 Pro, 12 cores, 24 GiB, macOS 15.3.2, Homebrew JDK 25.0.4.1.
+# Every Gradle command ran inside a hold of the shared heavy lock (/tmp/synaxis-heavy.lock), taken only with memory_pressure's free
+# percentage >= 30 and the 1 minute load <= 24, released at the end of its batch. Gradle: --max-workers=2 --no-daemon --init-script
+# gradle/init/aliyun-mirror.init.gradle.kts, single test classes only (no full module runs on this machine; the full gate runs on the
+# integrate round's draft PR). No Docker, no client, no server process except the loopback ones the tests start; no database.
+# Raw Gradle logs, JUnit XML, the CI artifact and the extracted Minecraft classes stayed in /tmp/run071/ops, deleted after the round;
+# the lines in these files are copied out of them.
+00-index.txt                       this file
+01-r8-ci-artifacts.txt             CI run 37423439285 attempt 1: reports, judge, server log, ledger, client log; the workflow's history
+02-r8-vanilla-client.txt           javap of the vanilla 26.2 Connection and ClientCommonPacketListenerImpl: where "Disconnected" comes from
+03-flush-red-before-fix.txt        DisconnectFlushSocketTest on 8b18922130's code: the peer reads 9 of 1,574 packets and no disconnect packet
+04-flush-green-and-counterproof.txt  five network classes on the fix, default and strict grid (12 tests, 0 failures each); the counter-proof
+                                   (Server.java:268 back to flushSync) red in strict grid with the same message
+05-p10.txt                         test_p10.py before and after the chmod, and the counter-proof
+06-docs.txt                        CLOSE_OUT on the branch, on 8b18922130's docs and with a moved line; the docs' line references; lints
+07-rework.txt                      after review, on 662f645ea4: the write thread's own disconnect starts the closer thread (red on
+                                   c0c75ecc59, counter-proof, five classes default and strict grid with 13 tests), the flushSync
+                                   counter-proof again (red line now :98), TC-GAME-069 step 2's counter-proof on old and new code with
+                                   the replacement handed over, CLOSE_OUT with the resolved ㉑ row
+
+# Findings
+- Engine defect, fixed: once a connection is offline the write thread (Server#playerWriteLoop) flushed once more and closed the
+  channel. One flushSync writes at most one buffer (16,383 bytes from the pool by default), so a disconnect packet queued behind more
+  than that never left: the peer read the end of the stream. The write thread now calls PlayerSocketConnection#flushRemaining, which
+  flushes until the queue and the leftover buffer are empty; a peer that does not read is still cut off by the closer thread after 1 s.
+- R8 of run 37423439285 attempt 1 ("R8 FAIL screen: Connection Lost. Disconnected", once in 83 runs of the workflow, the rerun green):
+  not closed. "Disconnected" is the vanilla client's text for a connection that ended without a reason. Two paths give it and the
+  artifact cannot tell them apart: the disconnect packet never arrived (the defect above is one sure way there, on a 2 core runner
+  whose client reads slowly), or it arrived and the client's render thread saw the channel closed in the window between the Netty
+  thread closing it and storing the reason. Registered in docs/TEST.md §7 with what to record to decide the next time.
+- Engine defect, fixed after review (662f645ea4): a disconnect on the write thread itself (a non-IO throwable in the write loop, a
+  PlayerPacketOutEvent listener kicking) started no closer thread, and flushRemaining then wrote the whole queue: a peer that reads
+  nothing kept the write thread in a blocking write with no end. flushRemaining now starts the closer thread before it writes.
+- p10.py shards now chmods shards.json to 0644; before, the mode followed the umask (0664 under 002, 0600 under 077).

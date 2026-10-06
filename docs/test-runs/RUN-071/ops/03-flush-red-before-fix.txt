@@ -1,0 +1,47 @@
+# DisconnectFlushSocketTest on the code before the fix (docs/TEST.md TC-PROD-661, the "before" of step 2)
+# 2026-10-06 15:19 (UTC+8), inside one hold of /tmp/synaxis-heavy.lock. The test class was new and uncommitted; the main code was
+# 8b18922130's (Gradle took :compileJava FROM-CACHE, so the root classes were the ones of the unchanged sources). Default mode.
+# ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest --max-workers=2 --no-daemon \
+#     --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+## Gradle
+   > Task :test
+   
+   DisconnectFlushSocketTest > theDisconnectPacketIsWrittenBehindMoreThanOneFlushOfQueuedPackets() FAILED
+       org.opentest4j.AssertionFailedError at DisconnectFlushSocketTest.java:95
+   
+   1 test completed, 1 failed
+   
+   > Task :test FAILED
+   Configuration cache entry stored.
+   exit=1 seconds=25
+
+## build/test-results/test/TEST-io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest.xml
+   <testsuite name="io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-06T07:19:04.165Z" hostname="Mac.local" time="1.475">
+   failure message="org.opentest4j.AssertionFailedError: the peer read 9 of the 1574 packets queued before the kick, then the end of the stream ==> Unexpected type, expected: <io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket> but was: <io.github.bearisbug.synaxis.network.packet.server.login.LoginPluginRequestPacket>"
+
+## the code under test: src/main/java/io/github/bearisbug/synaxis/network/socket/Server.java of 8b18922130, the write loop's offline branch
+                   if (!connection.isOnline()) {
+                       try {
+                           connection.flushSync();
+                       } catch (IOException _) {
+                           // Ignore IO errors
+                       } finally {
+                           try {
+                               connection.getChannel().close();
+                           } catch (IOException _) {
+                               // May error if it was disconnect client side
+                           }
+                       }
+                       break; // Disconnect
+                   }
+
+## why 9
+- The CachedPacket the test queues first is taken by the write thread, whose supplier then waits: the thread is inside
+  PacketWriting#writeQueue of one flushSync. While it waits the test queues 1,573 LoginPluginRequestPackets of 4,000 bytes (a frame of
+  about 4,020 bytes each) and kicks: the LoginDisconnect goes behind them, online turns false, the closer thread starts its 1 s join.
+- Released, the same writeQueue goes on filling its pooled buffer of 16,383 bytes: the held packet and 4 requests. Back in the loop the
+  write thread sees the connection offline, runs flushSync once more (4 requests) and closes the channel: 9 packets, then the end of
+  the stream. The other 1,569 requests and the disconnect packet stay in the queue.
+- A pooled buffer another test grew can hold more (up to synaxis.max-packet-size, 2,097,151 bytes); the 1,573 requests are more than
+  three of those, so two flushes never reach the disconnect packet whatever is in the pool.

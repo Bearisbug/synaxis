@@ -6,7 +6,8 @@ python3, a local run with the repository's .venv (docs/TEST.md TC-PROD-550).
     p10.py shards --host 127.0.0.1 --ports 25611,25612 --out maps/p10/shards.json
 
 writes the shard directory of the fixture (docs/DESIGN-M3.md API-M3-010): one region r0 over the
-chunks 0,0 to 15,15 with no gates, its channels r0-c1 and r0-c2 on those two ports.
+chunks 0,0 to 15,15 with no gates, its channels r0-c1 and r0-c2 on those two ports; the file is
+0644 whatever the umask.
 
     SYNAXIS_MANAGEMENT_TOKEN=... p10.py drive --management r0-c1=127.0.0.1:25585 \\
         --management r0-c2=127.0.0.1:25586 --psql 'psql -h 127.0.0.1 -U postgres -d postgres' \\
@@ -75,7 +76,11 @@ def shards(args: argparse.Namespace) -> None:
         "channels": [{"shard_id": shard, "region_id": REGION, "channel": n + 1, "host": args.host,
                       "port": port, "capacity": 200} for n, (shard, port) in enumerate(zip(CHANNELS, ports))],
     }
-    Path(args.out).write_text(json.dumps(directory, indent=1) + "\n", encoding="utf-8")
+    out = Path(args.out)
+    out.write_text(json.dumps(directory, indent=1) + "\n", encoding="utf-8")
+    # A shard refuses a shards.json group or others may write (docs/DESIGN-M3.md API-M3-002), and
+    # what the runner's umask made of the file is not up to this script
+    out.chmod(0o644)
 
 
 class Management:

@@ -11,6 +11,9 @@ After the review: main 8220ef9d0f (RUN-072) merged in with --no-ff as 320ff22df9
 fixtures take ShardMain's join cap; the far view fixture keeps the map read only) and 6c9f9836d7 (v1 holds the client's
 sky at noon for F6 and F7), then the docs of the follow-up. Its gate on GitHub Actions did not start either (02, end);
 the merged tree ran here only in batches D and E (11) and TC-PROD-656 (12).
+The R8 intermittent failure of the client regression (DESIGN-PROD §28.2, RUN-071 looked into it) showed once on this
+round's branches: PR #11 head 3077b68806, Client gametest run 37581083878, "R8 FAIL screen: Connection Lost.
+Disconnected"; the integration branch's own gate on 49bee23cc1 (01) was green.
 
 Files
   01-ci-49bee23cc1.txt        the four workflows on 49bee23cc1 and the test counts per module from their XML

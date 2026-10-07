@@ -26,7 +26,7 @@
      java @server-app/build/farview-fixture.args -Xms1G -Xmx1G -XX:ActiveProcessorCount=2 \
        -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 \
        io.github.bearisbug.synaxis.app.shard.FarViewShardFixture 25750 25751 <WORK> baked http://127.0.0.1:25751 [dayTime [rtt]]
-   第 5 个参数是宣告里的地址根；第 6 个 dayTime（tick，-1 让日夜照常走）给了就在那一刻停住时钟，夹具输出
+   第 5 个参数是宣告里的地址根；第 6 个 dayTime（tick；-1 停在正午 6000，DESIGN-M3 v0.39 起，地图分片按挂钟走日夜，比截图的用例要固定的天空）给了就在那一刻停住时钟，夹具输出
    day_time=<值> (clock stopped)；第 7 个是往返时延毫秒数，夹具在游戏端口前放一个 TCP 代理、两个方向各延迟一半。
    等到输出 farview fixture ready。第一次起要先烘 3×3 瓦片测试图（两核约 8 min，<WORK> 约 1.9 GB），之后约 5 s 就绪；
    build_id 应为 farview3x3-82ef22b94f77-p776。
@@ -110,8 +110,9 @@
      模式 rts-shots。F25 PASS 的判据：进世界时与 600 tick 后客户端默认时钟都等于给的 dayTime，太阳高度角与期望相差
      ≤ 1°。10137 的来历：26.2 客户端的太阳角是时间线 minecraft:day 的轨道 visual/sun_angle，正午 tick 6000 为 0°、
      一天后 360°，按 cubic-bezier(0.362, 0.241, 0.638, 0.759) 缓动；高度角 = 90° − 太阳角，tick 10137 时是 39.995°
-     （10136 与 10138 是 40.009° 与 39.981°），正午 6000 是 90°。地图的维度类型 synaxis:map 本身不带时间线，
-     这时太阳恒在默认角 0°（正午），所以夹具给了 dayTime 才把它换成主世界的时间线与时钟。交回两张截图与报告，
+     （10136 与 10138 是 40.009° 与 39.981°），正午 6000 是 90°。地图的维度类型 synaxis:map 自 DESIGN-M3 v0.39
+     起带主世界的时间线与时钟（REQ-M3-034，用户 2026-10-07 定地图分片有日夜），夹具给了 dayTime 就停在那一刻，
+     时钟暂停之后分片按挂钟的对齐不再动它。交回两张截图与报告，
      由美术评审透视下的雾、水面与阴影。
 
 6. 回收：停夹具（Ctrl+C），删掉 <WORK>、<LWORK> 与 <DIR>。

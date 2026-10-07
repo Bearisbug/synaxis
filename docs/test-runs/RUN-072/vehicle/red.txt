@@ -1,0 +1,12 @@
+# RUN-072 vehicle red (before fix, base f7a9756f7b + test only)
+<testsuite name="io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest" tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-07T08:45:10.393Z" hostname="Mac.local" time="0.903">
+<testcase name="aVehicleMoveIntoAnUnloadedChunkIsTurnedBack(Env)" classname="io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest" time="0.809">
+<testcase name="aVehicleOutsideTheBorderGetsNoFartherOut(Env)" classname="io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest" time="0.036"/>
+<testcase name="aVehicleMoveOutAcrossTheWorldBorderIsTurnedBack(Env)" classname="io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest" time="0.026"/>
+<testcase name="aVehicleMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env)" classname="io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest" time="0.023"/>
+    <failure message="org.opentest4j.AssertionFailedError: a vehicle move to x 64.5, in chunk 4 that is not loaded ==&gt; expected: &lt;Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]&gt; but was: &lt;Pos[x=64.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: a vehicle move to x 64.5, in chunk 4 that is not loaded ==&gt; expected: &lt;Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]&gt; but was: &lt;Pos[x=64.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest.aVehicleMoveIntoAnUnloadedChunkIsTurnedBack(PlayerVehicleMoveAuthorityIntegrationTest.java:120)
+	Caused by: java.lang.NullPointerException: The entity 1 tried to move in an unloaded chunk at Pos[x=64.5, y=40.84375002384186, z=0.5, yaw=0.0, pitch=0.0]
+4 tests completed, 1 failed
+BUILD FAILED in 25s

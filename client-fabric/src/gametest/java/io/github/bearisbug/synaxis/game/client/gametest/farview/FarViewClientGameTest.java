@@ -43,6 +43,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
@@ -53,10 +54,12 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.attribute.EnvironmentAttributes;
+import net.minecraft.world.clock.ClockNetworkState;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -80,6 +83,8 @@ import org.jspecify.annotations.Nullable;
  * elevation in degrees {@code rts-shots} expects (F25) of a fixture that stopped the clock; {@code SYNAXIS_SHADER_PACK}
  * picks the shader pack by the start of its file name, Complementary unless given; {@code SYNAXIS_DH_THREADS} gives DH's
  * workers that many threads all the time, for a machine with few cores ({@code farview-gametest.yml}'s 2 core runner).
+ * {@code v1} holds the client's default clock at noon from joining to the end of the mode, whatever the server's clock
+ * does, so that ⑥ and ⑦ compare shots under one sky.
  */
 public final class FarViewClientGameTest implements FabricClientGameTest {
 
@@ -94,6 +99,10 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
     private static final Pattern BAKED = Pattern.compile(
             "view (\\w+) baked in (\\d+) ms: (\\d+) sources, (\\d+) B; written (\\d+) ms, visible (\\d+) ms after the announcement");
     private static final Pattern SAVE_FOLDER = Pattern.compile("Save folder overridden from \\[(.*)] -> \\[(.*)]\\.");
+    /** The day time V1 holds the client's sky at: noon, where a fixture without a {@code dayTime} stops its clock. */
+    private static final long NOON = 6000;
+    /** The day time the client's default clock is held at, at the end of every client tick; null leaves it to the server. */
+    private static volatile @Nullable Long heldDayTime;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -102,6 +111,7 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
         final Run run = new Run(context, server, env("SYNAXIS_FARVIEW_HTTP", ""));
         try {
             context.waitForScreen(TitleScreen.class);
+            ClientTickEvents.END_CLIENT_TICK.register(FarViewClientGameTest::holdSky);
             // SYNAXIS_DH_THREADS=<n>: DH's workers get n threads all the time (farview-gametest.yml on its 2 core runner)
             final String threads = env("SYNAXIS_DH_THREADS", "");
             if (!threads.isEmpty() && FabricLoader.getInstance().isModLoaded(FarViewClient.DH_MOD_ID)) {
@@ -136,6 +146,20 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
         final StringWriter out = new StringWriter();
         t.printStackTrace(new PrintWriter(out));
         return out.toString().lines().limit(12).reduce((a, b) -> a + " | " + b).orElse(String.valueOf(t));
+    }
+
+    /**
+     * Puts the client's default clock back at {@link #heldDayTime}, stopped, once a time packet moved it: the one of
+     * joining, and the one a map shard sends when it sets its clock back to the wall clock ({@code docs/DESIGN-M3.md}
+     * {@code API-M3-006} 日夜). The server's clock runs on; only what this client draws stands still.
+     */
+    private static void holdSky(Minecraft client) {
+        final Long held = heldDayTime;
+        final ClientLevel level = client.level;
+        if (held == null || level == null || level.getDefaultClockTime() == held) return;
+        level.dimensionType().defaultClock().ifPresent(clock -> level.clockManager().handleUpdates(level.getGameTime(),
+                Map.of(clock, new ClockNetworkState(held, 0f, 0f))));
+        level.environmentAttributes().invalidateTickCache();
     }
 
     /** One client run against one fixture: its report, its fixture, its camera spots. */
@@ -335,6 +359,7 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
         }
 
         void resetHooks() {
+            heldDayTime = null;
             FarViewTestHook.reset();
             if (dh) DhTestHook.reset();
         }
@@ -615,6 +640,9 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                 line("F1", false, "not in the world");
                 return;
             }
+            // ⑥ and ⑦ compare shots taken up to 20 minutes apart, a whole day of a shard on the wall clock (bin/server-shard)
+            note("V1 holds the client's sky at day time " + NOON + ", the server's default clock at " + dayTime());
+            heldDayTime = NOON;
             final boolean baking = until(() -> {
                 final FarViewConnection c = connection();
                 return c != null && (c.state() == FarViewConnection.State.BAKING || c.failure() != null);
@@ -630,6 +658,7 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             before.put("far", shot("v1-far-before", farView(), 80));
             before.put("edge", shot("v1-edge-before", view("EDGE_VIEW"), 40));
             before.put("lod", shot("v1-lod-before", lodView(), 40));
+            final long skyBefore = dayTime();
             hold.countDown();
             // The HUD line while the bake runs (API-M3-015 进度与日志), the one shot with the HUD shown
             context.waitTicks(100);
@@ -723,6 +752,7 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             final Path far = stable("v1-far-after", farView(), 1200);
             final Path lod = shot("v1-lod-after", lodView(), 40);
             final Path edge = shot("v1-edge-after", view("EDGE_VIEW"), 40);
+            final long skyAfter = dayTime();
             final BufferedImage farBefore = Shots.read(before.get("far")), farAfter = Shots.read(far);
             final double horizon = Shots.changed(farBefore, farAfter, Shots.Box.rows(farBefore, 200, 460));
             final BufferedImage lodBefore = Shots.read(before.get("lod")), lodAfter = Shots.read(lod);
@@ -730,11 +760,12 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             final BufferedImage edgeBefore = Shots.read(before.get("edge")), edgeAfter = Shots.read(edge);
             final Shots.Box centre = Shots.Box.centre(edgeAfter, CENTRE);
             final double edgeChanged = Shots.changed(edgeBefore, edgeAfter, centre);
-            line("F6", horizon > 0.01 && lodChanged > 0.25 && edgeChanged > 0.5,
+            line("F6", horizon > 0.01 && lodChanged > 0.25 && edgeChanged > 0.5 && skyBefore == NOON && skyAfter == NOON,
                     "FAR_VIEW horizon rows 200..459 changed " + Shots.percent(horizon) + "; LOD_VIEW changed "
                             + Shots.percent(lodChanged) + " (mean " + Shots.hex(Shots.mean(lodAfter, Shots.Box.whole(lodAfter)))
                             + "); EDGE_VIEW centre " + centre + " changed " + Shots.percent(edgeChanged) + " (mean before "
-                            + Shots.hex(Shots.mean(edgeBefore, centre)) + ", after " + Shots.hex(Shots.mean(edgeAfter, centre)) + ")");
+                            + Shots.hex(Shots.mean(edgeBefore, centre)) + ", after " + Shots.hex(Shots.mean(edgeAfter, centre))
+                            + "); client day time " + skyBefore + " at the shots before, " + skyAfter + " after");
 
             // ⑦ the announcement before the save folder; a reconnect downloads and bakes nothing
             final int announced = index(log, FarViewClient.PREFIX + "announcement received");
@@ -753,11 +784,13 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                     break;
                 }
             }
+            final long skyAgain = dayTime();
+            note("V1 reconnect: client day time " + skyAgain + " at the last shot");
             final boolean readyLine = until(() -> find(logSince(logAgain), "view " + key + " ready") != null, 600);
             final List<String> logAfter = logSince(logAgain);
             final int accessAfter = accessLog().size();
             line("F7", announced >= 0 && overridden > announced && back && accessAfter == accessBefore && readyLine
-                            && find(logAfter, "baked in") == null && lodSoon,
+                            && find(logAfter, "baked in") == null && lodSoon && skyAgain == NOON,
                     "announcement at log line " + announced + ", save folder at " + overridden + "; reconnect: access.log "
                             + accessBefore + " -> " + accessAfter + " lines, ready line " + readyLine + ", baked in "
                             + (find(logAfter, "baked in") != null) + ", FAR_VIEW shows LOD " + (lodSoon ? "after " + ticks + " ticks"
@@ -1580,6 +1613,11 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             return context.computeOnClient(client -> new Sky(client.level.getDefaultClockTime(), client.level.getOverworldClockTime(),
                     client.level.getGameTime(), client.level.environmentAttributes().getValue(EnvironmentAttributes.SUN_ANGLE,
                     client.player.position())));
+        }
+
+        /** The client's default clock, -1 out of a world. */
+        long dayTime() {
+            return context.computeOnClient(client -> client.level == null ? -1 : client.level.getDefaultClockTime());
         }
 
         /**

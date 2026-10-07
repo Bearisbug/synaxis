@@ -1,0 +1,131 @@
+RUN-072 integrate: the full gate of the integration branch prod/integrate-072 at e32f0e2d1a (main f7a9756f7b with
+prod/r072-ci 0d73178d89, prod/r072-chunks c2699f1346, prod/r072-vehicle 5c06e99292, prod/r072-gate e968e6bcb9 and
+prod/r072-flake 17bf48fb23 merged in that order with --no-ff as c30d4b7310, 8ecc09821f, 9737c62822, 50943affc3 and
+2dbc83b185, then Dependabot PR #10 9904b22a2e as 6014f8560e, then the docs commit e32f0e2d1a; docs/DESIGN-PROD.md v0.9.57
+to v0.9.61), run on GitHub Actions for draft PR #13. The five groups' own cases, red runs and counter proofs are in ../ci,
+../chunks, ../vehicle, ../gate (the connection gate group, TC-PROD-695) and ../flake.
+
+On this machine for the gate: no Gradle, no containers, no server or client process; only gh, git, a read-only grep and the
+counting below (Python of the synaxis .venv). git fetch: origin/main is still f7a9756f7b.
+
+Runs (all on e32f0e2d1a, attempt 1, event pull_request unless noted; times UTC 2026-10-07)
+  CI 37600103503                              success  09:21:59-09:45:21
+    Check                                     success  09:22:04-09:39:36  ./gradlew check jacocoTestReport, BUILD SUCCESSFUL in
+                                                                          16m 41s on Gradle 9.8.0 (PR #10's wrapper), database
+                                                                          variables set (PostgreSQL and Valkey services); "Check
+                                                                          that the player store tests ran against the database"
+                                                                          success; ABI gate of the stable surface success;
+                                                                          diff-cover of newly added lines success: Player.java
+                                                                          100%, PlayerVehicleListener.java 100%, 12 lines,
+                                                                          missing 0
+    Test with 4 tick threads (strict)         success  09:22:03-09:45:20  4 tick threads, acquirable strict, database set,
+                                                                          BUILD SUCCESSFUL in 22m 31s; "Check that the tests ran
+                                                                          with 4 tick threads" success
+    Test with 4 tick threads (strict, grid)   success  09:22:03-09:45:04  the same plus the grid thread provider, BUILD
+                                                                          SUCCESSFUL in 22m 16s; its thread check success
+  Concurrency 37600103487                     success  09:21:59-09:27:12
+    jcstress                                  success  09:22:02-09:27:12
+  Client mod 37600103480                      success  09:21:59-09:24:49
+    Build the Fabric mod                      success  09:22:02-09:24:49  client-test-reports: 15 classes 184 tests,
+                                                                          0 failures 0 errors 0 skipped
+  Client gametest 37600103460                 success  09:21:59-09:27:36
+    Run the client gametests                  success  09:22:01-09:27:34  R1-R8 PASS (lines below)
+    Two shards, 100 round trips (P10)         skipped (only on workflow_dispatch with p10=true)
+  Client gametest 37600104323 (workflow_dispatch, client-gametest.yml, p10=true, ref prod/integrate-072)
+                                              success  09:21:59-09:49:12
+    Two shards, 100 round trips (P10)         success  09:22:03-09:49:11
+    Run the client gametests                  skipped
+  No job was rerun; no attempt 2.
+
+Client gametest 37600103460, the report lines:
+  R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]
+  R2 PASS state=VERIFIED schema_version=1
+  R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://127.0.0.1:34939
+  R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+  R5 PASS unit_id=1 selected=1
+  R6 PASS unit_id=1 answers [OK] target 263.50,40.00,255.50 moved 2.10 blocks (need 2.0)
+  R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+  R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.
+  ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+
+P10 run 37600104323, step "Unit tests of p10.py" (new in the ci group, TC-PROD-660 and TC-PROD-688), its output:
+  python3 -m unittest discover -s client-fabric/gametest-env -p 'test_*.py'
+  Ran 1 test in 0.155s
+  OK
+  It runs before "Bake the map and write the shard directory", the first step that uses p10.py. The fake sessionserver
+  step of the same job ran with the new ": > sessionserver.log" line ahead of the background start.
+
+P10 judge step ("Judge P10 by the driver's record, the ledgers and the client's report"), its output:
+  ok   the driver ran to the end
+  ok   200 of 200 transfers answered sent, expected 200 of 200
+  ok   200 transfers arrived on their target shard, expected 200
+  ok   character.version read 201 times, expected 201, larger after every transfer: True ([0] .. [200])
+  ok   transfer_issued {'r0-c1': 100, 'r0-c2': 100}, 200 in all, expected 200
+  ok   the client joined 201 worlds, expected 201
+  ok   the client's joins alternate between two shards: ['25611', '25612']
+  ok   the client's report ends with ['end done']
+  P10: all checks passed
+  The last line of the step is "P10: all checks passed".
+
+Counts: artifacts test-reports (Check, id 11472708941), test-reports-multithreaded (strict, 11473740889) and
+test-reports-multithreaded-grid (strict grid, 11473183041) of run 37600103503, fetched with gh api .../actions/artifacts/<id>/zip
+(gh run download stops on two report HTML files whose names differ only in case on this file system, as in RUN-071), only the
+*build/test-results/ entries extracted. One row per module directory that holds build/test-results (":" is the root project);
+classes = TEST-*.xml testsuites; tests, fail, err, skip = sums of the testsuite attributes.
+
+  [test-reports]
+  module                 classes  tests  fail  err  skip
+  :                          439   3215     0    0    21
+  :architecture-tests          7     20     0    0     0
+  :baker                       8     76     0    0     0
+  :game-rts                   13     87     0    0     0
+  :loadtest                    6     26     0    0     0
+  :plugin-api                  3     15     0    0     0
+  :protocol                    7    122     0    0     0
+  :server-app                117    593     0    0     0
+  :synx                       17    142     0    0     0
+  :testing                     8     11     0    0     0
+  TOTAL                      625   4307     0    0    21
+
+  [test-reports-multithreaded] and [test-reports-multithreaded-grid]: every row the same as [test-reports], and the same
+  tests, failures, errors and skipped for every one of the 625 classes.
+
+  Against RUN-071 (test-reports of run 37490737766, id 11425769893, fetched the same way: 624 classes 4,304; root 438 / 3,213,
+  server-app 117 / 592) 1 class and 3 tests more, per class from the two sets of XML (no other class differs):
+    root        new      entity.player.ChunkSendFailureIntegrationTest 1 (chunks)
+                changed  listener.PlayerVehicleMoveAuthorityIntegrationTest 3 -> 4 (vehicle)
+    server-app  changed  app.ShardGateLaunchTest 2 -> 3 (gate)
+  These are the test classes git diff f7a9756f7b e32f0e2d1a --stat adds and changes, besides ChunkSendBlockChangeIntegrationTest
+  (chunks, a method renamed, 7 stays 7) and ConnectionGateSocketTest (flake, 12 stays 12). Dependabot PR #10 changes no test.
+  The 21 skipped of the root project are the same as RUN-071's: the 15 of a local run (TestMojangUtils 9,
+  TranslationIntegrationTest 3, PlayerSkinTest 2, TagNbtTest 1) and ServerProcessTest 3 and ServerAddressTest 3, which
+  assumeTrue(GITHUB_ACTIONS == null).
+  By package (root, the same in all three modes): entity.* 78 classes 301 tests 2 skipped (RUN-071 77 / 300),
+  entity.player.* 17 / 90 (16 / 89), network.* 69 / 892 3 skipped (unchanged), listener.* 13 / 54 (13 / 53).
+  Classes the RUN-072 cases name, all 0 failures in all three modes: PlayerVehicleMoveAuthorityIntegrationTest 4,
+  PlayerVehicleMoveValidationIntegrationTest 1, PlayerMovementAuthorityIntegrationTest 7 (TC-PROD-671 step 1: 3 classes 12);
+  CoreModeIntegrationTest 4, ShardMainTest 10, ShardMainGateTest 3, ShardLaunchTest 11, ShardGateLaunchTest 3,
+  MainDirectoryModeTest 8, MainTest 15 (TC-PROD-671 step 2: 7 classes 54); ChunkSendBlockChangeIntegrationTest 7,
+  ChunkSendFailureIntegrationTest 1, ConnectionGateSocketTest 12.
+
+EnvDispatcherThreadsIntegrationTest (testing module) output in each artifact:
+  test-reports                     env dispatcher threads: 1, env thread provider: counter
+  test-reports-multithreaded       env dispatcher threads: 4, env thread provider: counter
+  test-reports-multithreaded-grid  env dispatcher threads: 4, env thread provider: grid
+
+Read only on the merged tree: TC-PROD-131 step 2 (grep -n 'fake-sessionserver\|auth=\|session-server\|SESSION_HOST\|SESSION_LOG\|
+sessionserver.log' .github/workflows/client-gametest.yml): ": > sessionserver.log" at lines 88 (job gametest) and 273 (job p10),
+each right before the background start of the fake sessionserver (89, 274); the other lines as the step expects.
+
+Not run in this round (no Gradle on this machine) and not run by the groups, their expected text changed by reasoning from the
+code: TC-PROD-061 steps 2 and 3, TC-PROD-062 steps 2 to 4 and TC-PROD-063 step 2 (flake: test line numbers +1);
+TC-PROD-667 steps 3 and 4 and TC-PROD-668 steps 3 to 6 (vehicle: line numbers and 3 -> 4 tests); TC-PROD-670 steps 3 and 5 and
+TC-PROD-672 step 4 (gate: 2 -> 3 tests). The green steps of these cases (the classes) are covered by the three CI test jobs.
+TC-PROD-691 steps 3 to 8, 11 and 12 keep the results of TC-PROD-679 on 68d6b07ea2 (RUN-071), as its preamble says.
+The vehicle group records TC-PROD-667 step 5 (the same edit as TC-PROD-692 step 4) as run; ../vehicle holds the output of
+TC-PROD-692 steps 1 to 3 only.
+The chunks group's residual of v0.9.54 (DESIGN-PROD §28.2: TestConnection serialises under the chunk write-lock, a full run
+could hang) did not show: the three test jobs took 17.5 (Check), 23.3 (strict) and 23.0 (strict grid) minutes; RUN-071's took
+21.7, 20.4 and 17.6.
+Cleanup: /tmp/run072/counts-072 (artifact zips, extracted XML, the CI, gametest and P10 logs, the counting script) deleted at
+the end.

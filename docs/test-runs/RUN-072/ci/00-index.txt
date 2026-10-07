@@ -5,7 +5,7 @@
 # Raw CI logs and the scratch directories stayed in /tmp/run072/fix-ci, deleted after the round; the lines here are copied out of them.
 00-index.txt                   this file
 01-ci-attempts.txt             CI run 37495680948 attempts 1 and 2: the failed steps (dependency resolution; the sed race)
-02-repro-red-green.txt         repro-sessionserver-log.sh before (red, 5 of 5) and after (green, 5 of 5), docs/TEST.md TC-PROD-688 steps 1-2
+02-repro-red-green.txt         repro-sessionserver-log.sh before (red, 6 of 6) and after (green, 6 of 6), docs/TEST.md TC-PROD-688 steps 1-2
 03-workflow-check.txt          PyYAML parse of the changed workflow, check-workflow.py on the branch and on f7a9756f7b, actionlint
                                (TC-PROD-688 steps 3-5)
 04-p10-unittest.txt            p10.py's unit tests by test_p10.py's own command, the one the p10 job now runs (TC-PROD-660)

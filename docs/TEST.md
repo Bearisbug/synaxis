@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-07 | 分支 `prod/r072-chunks`（基线 `main` `f7a9756f7b`），跟进 `docs/DESIGN-PROD.md` v0.9.58（取包抛异常的区块推后、批末放回，RUN-071 评审残留 ⑤），不登执行轮次，由集成轮登记 RUN-072；本组证据在 `docs/test-runs/RUN-072/chunks/`。**新增 §4「生产就绪 · RUN-072：区块发送抛异常时的回队」两条 `TC-PROD-690`～`TC-PROD-691`**（新类 `ChunkSendFailureIntegrationTest` 1 条；`TC-PROD-691` 写明 `TC-PROD-679` 第 10、13 步在本版代码上的变化）。§5 加一行回归映射。不改写死的全量条数 | Bearisbug |
 | 2026-10-07 | 集成分支 `prod/integrate-071` 的全量门禁在 GitHub Actions 上跑完（草稿 PR #9，提交 `d9dd575019`），登记 RUN-071（证据 `docs/test-runs/RUN-071/gate/`）。**条数**（按 CI run `37490737766`「Check」的 JUnit XML，带数据库变量；4 线程严格与严格 grid 两份条数相同）：`:server-app:test` 586 → 592、类 115 → 117（authority2 组 `ShardMainGateTest` 3、`ShardGateLaunchTest` 2，`CoreModeIntegrationTest` 3 → 4），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步、`636` 第 1 步；根项目 `:test` 3,182 → 3,213、类 432 → 438（ops 组 `DisconnectFlushSocketTest` 2，authority2 组 `PlayerVehicleMoveAuthorityIntegrationTest` 3，chunks 组 `ChunkSendBlockChangeIntegrationTest` 7，upstream 组 `PacketVanillaLayoutTest` 6、`ComponentHoverItemRegistriesTest` 5、`ModuleExportsTest` 1 与它改的 6 个既有类共 7），改 `TC-PROD-505` 第 3 步、`585` 第 1、2 步、`618` 第 1、2 步、`636` 第 1 步、`654` 第 3 步；全部模块 616 个类 4,267 → 624 个类 4,304（`TC-PROD-636` 第 1 步）；`entity.*` 76 / 292 → 77 / 300（`TC-PROD-623` 第 1 步、`645` 第 2 步），`entity.player.*` 15 / 82 → 16 / 89（`TC-PROD-654` 第 1 步），`network.*` 66 / 878 → 69 / 892（`TC-PROD-513` 第 4 步）；`:loadtest:test` 仍是 6 个类 26 个。不带数据库变量的条数（`TC-PROD-575` 第 3 步）照 RUN-067 原样保留，注明 RUN-071 同样没有重测。§6 登记 RUN-071（通过 48/49 · 跳过 1：`TC-PROD-548` 第 7 步要两个分片进程与数据库） | Bearisbug |
 | 2026-10-06 | 集成分支 `prod/integrate-071`（基于 `main` `8b18922130`，依次合入 `prod/r071-ops`、`prod/r071-authority`、`prod/r071-chunks`、`prod/r071-upstream`），跟进 `docs/DESIGN-PROD.md` v0.9.56。不登执行轮次，不改写死的全量条数：RUN-071 的全量门禁在 GitHub Actions 的草稿 PR 上跑，跑完统一改条数并登记 RUN-071。**合并**：四组的 §4 新节按合并顺序整节取自各组分支，排在 §4 末尾（ops `TC-PROD-660`～`TC-PROD-664`，authority2 `TC-PROD-665`～`TC-PROD-672`，chunks `TC-PROD-675`～`TC-PROD-679`，upstream `TC-PROD-680`～`TC-PROD-687`），§5 映射行、§7 的条目（ops 新登一条，authority2 与 chunks 各改一条既有条目）与四组的变更记录行都留；各组对既有用例的改动没有冲突，照原样合入。两处随合并改：authority2 节首引的 `docs/DESIGN-M2.md` v0.57 改为 v0.58（ops 组先合、占了 v0.57）；`TC-PROD-664` 的 `CLOSE_OUT` 引的 `Player.java` 第 396 行改为第 398 行（chunks 组在它前面加了两行），第 1 步「改动前」一句随之改，`CLOSE_OUT` 在集成分支上前 20 行都是 `ok` | Bearisbug |
 | 2026-10-06 | 分支 `prod/r071-upstream`，跟进 `docs/DESIGN-PROD.md` v0.9.55（上游 Minestom 移植五条），不登执行轮次（集成轮登记 RUN-071）。**新增 §4「生产就绪 · RUN-071：上游 Minestom 移植」八条** `TC-PROD-680`～`TC-PROD-687`（`REQ-017`，`TC-PROD-680` 另对应 `REQ-PROD-013`），反证都实跑过，证据 `docs/test-runs/RUN-071/upstream/`。**新类** `PacketVanillaLayoutTest` 6 条、`ComponentHoverItemRegistriesTest` 5 条、`ModuleExportsTest` 1 条；**改动的类** `WorldBorderIntegrationTest` 5 → 6、`ArchitectureTest` 7 → 8、`NonLivingEquipmentIntegrationTest` 2 → 3（`livingEntityStillSendsEquipment` 改为先装备再断言只带那一格）、`PlayerInventoryIntegrationTest` 7 → 9（`clearInventoryTest` 改为不发装备包）、`TestNbtComponentSerializer` 2 → 3、`PacketWriteReadRegistriesTest` 469 → 470，`InventoryIntegrationTest` 16 条不变（`clearingPlayerInventoryClearsCursorTest` 改为不发装备包）。**条数**：`TC-PROD-121` 第 1、2 步的 `ArchitectureTest` 7 → 8，第 2 步的反证在本分支重跑，仍红在 `HandshakeListener.java:32`。根项目 `:test` 的全量条数（本组加 19 条）不改，由集成轮按 CI 实数改。§5 加一行 | Bearisbug |
@@ -9595,6 +9596,35 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · RUN-072：区块发送抛异常时的回队
+
+对应 `REQ-PROD-026`（`docs/DESIGN-PROD.md` v0.9.58：`API-PROD-020`「区块包与方块更新的先后」一条，§19「区块包与方块更新的先后」行，§28.2 取包抛异常的区块丢失一行已决）。起因是 RUN-071 评审的残留 ⑤：`Player#sendPendingChunks` 出队时先从 `queuedChunks` 删掉区块，取包（`getFullDataPacket`）抛异常时这个区块既不在队列里、也没发给客户端。
+
+测试：根项目新类 `io.github.bearisbug.synaxis.entity.player.ChunkSendFailureIntegrationTest`（1 条，`@EnvTest`）。玩家是引擎 `Player`（区块照常进待发队列），视距 2，区块环半径 3，在区块 (0, 0) 出生并确认最后一次传送；实例的区块是测试里的 `FailingChunk`（`DynamicChunk` 的子类，置上 `failNext` 后下一次 `getFullDataPacket` 抛一次 `IllegalStateException`）；测试把异常处理器换成收集。`<PL>` 是 `src/main/java/io/github/bearisbug/synaxis/entity/Player.java`，`<SF>` 是 `src/test/java/io/github/bearisbug/synaxis/entity/player/ChunkSendFailureIntegrationTest.java`；反证一律是改 `<PL>`、跑、看红、`cp` 回改好的文件、核对与改好的文件逐字节相同；行号按分支 `prod/r072-chunks` 的代码提交。「改动前的代码」指基线 `main` `f7a9756f7b` 的 `<PL>`。证据 `docs/test-runs/RUN-072/chunks/`。
+
+#### `TC-PROD-690` 取包抛异常的区块下一个 tick 发出、只发一次，这一批接着发它后面的区块 — 对应 `REQ-PROD-026` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `zsh ~/.claude/r072/gradle.zsh <worktree> fix-chunks :test --tests '*ChunkSendFailureIntegrationTest*' --tests '*ChunkSendBlockChangeIntegrationTest*'`，看 `aChunkWhosePacketThrowsIsSentInALaterBatchOnce` | 通过。玩家每 tick 回执、收完区块环后往东走一个区块，x = 4 一列 7 块进环入队，(4, 0) 离新中心最近、先出队，它的 `failNext` 已置上，取包抛一次。标准输出一行 `Chunk 4,0 threw taking its packet: sent in the tick of the move [4,1, 4,-1, 4,2, 4,-2, 4,3, 4,-3], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}, exceptions reported 1`：这一批接着发了后面 6 块，(4, 0) 在下一个 tick 发出，7 块各一次，异常处理器收到这一个异常 |
+| 2 | 改动前的代码上跑第 1 步的类（只跑 `ChunkSendFailureIntegrationTest`） | `1 test completed, 1 failed`，红在 `<SF>:86`，`times chunk 4,0 was sent, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,1=1, 4,2=1, 4,3=1} ==> expected: <1> but was: <0>`；标准输出 `sent in the tick of the move []`：异常带着这一批离开 `sendPendingChunks`，(4, 0) 已出队、没放回，之后再也没发 |
+| 3 | 反证有齿（异常照旧传出、只把区块放回）：删掉 `<PL>:977`（`process().exception().handleException(...)`），`<PL>:978` 的 `continue;` 改成 `throw e;`，跑第 2 步的类，再还原 | `1 test completed, 1 failed`，红在 `<SF>:89`，`the batch of the move goes on behind the chunk that threw: [] ==> expected: <6> but was: <0>`；标准输出 `chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}`，7 块各一次：(4, 0) 经 `finally` 放回、下一批发出，但这一批在它这里中断 |
+| 4 | 还原后与改好的文件逐字节相同（`cmp`），第 1 步的结果即复绿 | `cmp` 无输出 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-691` 回归：区块交包窗口的相邻类 — 对应 `REQ-PROD-026` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `TC-PROD-690` 第 1 步的同一次运行，看 `ChunkSendBlockChangeIntegrationTest` | `7 tests completed`，全部通过。其中 `aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows`（`TC-PROD-679` 第 10 步）的取包钩子让 (4, 1) 抛异常，v0.9.58 起这个异常在批内接住，(4, 1) 也推后：标准输出 `Chunk 4,0 deferred, then taking the packet of chunk 4,1 threw: 1 exceptions reported in the tick of the move, after it the queue has 2 entries for the chunks [4,0, 4,1], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}`。`TC-PROD-679` 第 10 步写的「异常带着这一批离开 `sendPendingChunks`、`ChunkBatchFinished` 不发」与第 13 步的反证按 `68d6b07ea2` 的代码成立，在本版代码上第 13 步的反证不再红：取包是批内唯一真能抛的一步，`finally` 里放回推后区块这一支已没有测试能走到 |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -9662,6 +9692,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-071 ops 组，断开时的出站冲刷、P10 夹具权限与文档收口（`REQ-PROD-030`、`REQ-PROD-031`、`REQ-PROD-009`，v0.9.52）→ TC-PROD-660～TC-PROD-664；动了 `Server#playerWriteLoop` 的下线分支，`PlayerSocketConnection` 的 `flushRemaining`、`flushSync`、`closeOnceFlushed` 或 `startCloser`，或 `PacketWriting#writeQueue` 一次写多少，就跑 TC-PROD-661、TC-PROD-662（后者含 TC-GAME-069 第 1 步的 `SlowReaderIntegrationTest`）；动了 `p10.py` 的 `shards` 就跑 TC-PROD-660，再按 P10 一行跑 TC-PROD-550；改动挪了 `CLOSE_OUT` 引的代码行（`ChatMessageListener`、`ServerConfig` 的聊天键、`ConfigFile` 键表、`Player` 发的 `JoinGamePacket`、`Messenger`、`ClientPacketListenerMixin`、`TicketIssuer`、`ShardGates`、`PlayerSocketConnection#processPackets` 与 `processBatch`），就跑 TC-PROD-664，按新行号改 `docs/DESIGN-M2.md` 聊天一行、`docs/DESIGN-PROD.md` §28.3 两行与 `CLOSE_OUT`；R8 再红时先按 TC-PROD-663 读产物，再对 §7 那一条下结论。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-071 authority2 组，核心模式的边界、载具移动包的判定与分片的闸门默认值（`REQ-PROD-013`、`REQ-PROD-001`，v0.9.53）→ TC-PROD-665～TC-PROD-672；动了 `CoreMode#start` 的边界或核心世界的生成就跑 TC-PROD-665，生成或区块的内存布局变了（层高、地面、调色板、区块包缓存）再按 TC-PROD-666 重量每区块字节、重算边长；动了 `PlayerVehicleListener#vehicleMoveListener` 就跑 TC-PROD-667、TC-PROD-668，动了 `PlayerPositionListener#outwards` 再加 TC-PROD-630；动了 `ShardMain#gateDefaults` 就跑 TC-PROD-669、TC-PROD-670，动了 `Main` 步骤 (1) 里它与 `shardDirectory` 的先后就跑 TC-PROD-672 与 TC-WORLD-059（`MainDirectoryModeTest`）。`Main.java` 第 219 行之前加减行时，按 TC-PROD-671 第 3、4 步复核引它行号的旧用例。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-071 chunks2 组，区块交包窗口（`REQ-PROD-026`，v0.9.54）→ TC-PROD-675～TC-PROD-679；动了 `Player#sendPendingChunks` 取包与交给连接的那几行（区块写锁、`CHUNK_LOCK_WAIT` 与一批的等锁预算、推后与批末放回、`PlayerChunkLoadEvent` 的位置、首批之后位置同步的条件）、`Chunk` 的锁方法或任一 `Chunk` 子类的 `getFullDataPacket`，就跑 TC-PROD-675、TC-PROD-676、TC-PROD-679（同一个类约 2 s，默认与严格 grid 各一次）与 TC-PROD-650 一节；动了 `EntityTrackerImpl.ChunkView#references`、`Player#isChunkInRing`、`isOutOfClientRange`、`chunksLoadedByClient` 的更新或 `ChunkUpdateLimitChecker`，就跑 TC-PROD-677 与 TC-PROD-678 第 1 步；动了 `SynxChunk` 的取包，或 `InstanceContainer#UNSAFE_setBlock` 里改方块与发 `BlockChange` 的先后，就跑 TC-PROD-675 与 TC-PROD-678 第 2 步。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 chunks 组，区块发送抛异常时的回队（`REQ-PROD-026`，v0.9.58）→ TC-PROD-690～TC-PROD-691；动了 `Player#sendPendingChunks` 取包、推后与批末放回的那几行，或 `Chunk#getFullDataPacket` 的任一实现（`DynamicChunk`、`SynxChunk`）时跑 `ChunkSendFailureIntegrationTest` 与 `ChunkSendBlockChangeIntegrationTest`
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-071 上游 Minestom 移植（`REQ-017`、`REQ-PROD-013`，v0.9.55）→ TC-PROD-680～TC-PROD-687；动了 `Instance#setWorldBorder`、`createInitializeWorldBorderPacket` 或 `WorldBorder` 的两个建包方法就跑 TC-PROD-680 与 TC-PROD-630、TC-PROD-631；动了 `ClientChangeDifficultyPacket`、`ClientSetBeaconEffectPacket`、`ClientUpdateStructureBlockPacket`、`DeleteChatPacket`、`MoveMinecartPacket` 或往 `PacketVanillaLayoutTest` 补包就跑 TC-PROD-681；给引擎加 public static 字段或动了 `ArchitectureTest` 就跑 TC-PROD-682 与 TC-PROD-121；动了 `EquipmentHandler#getEquipmentsPacket`、它的三个调用处（`LivingEntity#updateNewViewer`、`Player#refreshAfterTeleport`、`Player#showPlayer`）或 `PlayerInventory#clear` 就跑 TC-PROD-683、TC-PROD-684；动了 `ComponentNetworkBufferTypeImpl` 的 `writeHoverEvent` 或 `hoverDataComponentValue`、`EngineDataComponentValueConverterProvider`、`NbtComponentSerializer` 就跑 TC-PROD-685；加包或动了 `module-info.java` 就跑 TC-PROD-686 第 1、2 步，升 logback 跑第 3、4 步；以上任一都加 TC-PROD-687。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。

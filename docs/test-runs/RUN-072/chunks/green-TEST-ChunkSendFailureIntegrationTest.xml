@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.entity.player.ChunkSendFailureIntegrationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-07T08:48:39.436Z" hostname="Mac.local" time="1.375">
+  <properties/>
+  <testcase name="aChunkWhosePacketThrowsIsSentInALaterBatchOnce(Env)" classname="io.github.bearisbug.synaxis.entity.player.ChunkSendFailureIntegrationTest" time="1.356"/>
+  <system-out><![CDATA[Chunk 4,0 deferred and queued again by a PlayerChunkLoadEvent listener: queued again, after the batch the queue has 1 entries for the chunks [4,0], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+Chunk 4,0 threw taking its packet: sent in the tick of the move [4,1, 4,-1, 4,2, 4,-2, 4,3, 4,-3], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}, exceptions reported 1
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

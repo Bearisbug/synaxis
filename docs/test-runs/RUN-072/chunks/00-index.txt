@@ -1,0 +1,16 @@
+RUN-072 chunks group (branch prod/r072-chunks, baseline main f7a9756f7b), default mode, local Gradle via ~/.claude/r072/gradle.zsh
+
+red-TEST-ChunkSendFailureIntegrationTest.xml
+  Code: baseline Player.java (before the fix), new test class only.
+  Result: 1 test, 1 failed at ChunkSendFailureIntegrationTest.java:86
+  "times chunk 4,0 was sent, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,1=1, 4,2=1, 4,3=1} ==> expected: <1> but was: <0>"
+
+green-TEST-ChunkSendFailureIntegrationTest.xml, green-TEST-ChunkSendBlockChangeIntegrationTest.xml
+  Code: the fix. One run of both classes: 1 + 7 tests, 0 failures.
+
+counter-TEST-ChunkSendFailureIntegrationTest.xml
+  Code: the fix with Player.java:977 (handleException) deleted and :978 "continue;" changed to "throw e;"
+  (the chunk is put back but the exception still ends the batch).
+  Result: 1 test, 1 failed at ChunkSendFailureIntegrationTest.java:89
+  "the batch of the move goes on behind the chunk that threw: [] ==> expected: <6> but was: <0>"
+  Restored by copying the fixed file back; cmp against the fixed file: identical.

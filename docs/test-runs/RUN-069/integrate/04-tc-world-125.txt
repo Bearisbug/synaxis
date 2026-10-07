@@ -1,0 +1,88 @@
+RUN-069 integrate: TC-WORLD-125 on b70c6b7f54 (code of 49bee23cc1, RUN-070's engine checks in the tree), batch B under
+the heavy lock 18:00:57-18:08:42 (with TC-WORLD-132, 05-tc-world-132.txt).
+Step 1/5: ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=2 :server-app:test --tests io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest --rerun
+Step 2: PlayerPositionListener.java: delete the line "|| currentPosition.distanceSquared(packetPosition) > 64 * 64" (:83)
+Step 3: PlayerPositionListener.java :84 "|| outwards(instance, currentPosition, packetPosition)) {" -> ") {"
+Step 4: MapShardPlayerAuthorityTest.java :158 and :184 mount(READ_ONLY) -> mount(WRITABLE); PlayerActionListener.java :39
+        gets "&& Boolean.getBoolean("proof.never")" before ") {" (diff below)
+Each run, then git checkout -- of the changed files; "status" is read before that checkout.
+
+batch B start 18:00:57 mem_free=44% load={ 6.71 6.27 5.71 } head=b70c6b7f547f4f92b784b4c77d292b82e84a0a6c
+== 125-1 18:01:06 mem_free=40% load={ 7.47 6.44 5.78 } head=b70c6b7f54 umask=0022
+116:BUILD SUCCESSFUL in 8s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest" tests="4" skipped="0" failures="0" errors="0"
+S1-V01 jumps=200 x=248.5 farthest=248.5 border_x=256.0 chunks_held_max=945 void_chunks=0
+status: 
+ .../io/github/bearisbug/synaxis/listener/PlayerPositionListener.java     | 1 -
+ 1 file changed, 1 deletion(-)
+== 125-2 18:01:14 mem_free=42% load={ 7.43 6.45 5.78 } head=b70c6b7f54 umask=0022
+52:4 tests completed, 1 failed
+65:BUILD FAILED in 7s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest" tests="4" skipped="0" failures="1" errors="0"
+S1-V01 jumps=200 x=248.5 farthest=248.5 border_x=256.0 chunks_held_max=945 void_chunks=0
+message="org.opentest4j.AssertionFailedError: a packet of 208.0 blocks is turned back ==&gt; expected: &lt;1832.5&gt; but was: &lt;2040.5&gt;"
+   1 MapShardPlayerAuthorityTest.java:262
+status:  M src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java 
+ .../io/github/bearisbug/synaxis/listener/PlayerPositionListener.java    | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+== 125-3 18:01:21 mem_free=44% load={ 7.59 6.52 5.81 } head=b70c6b7f54 umask=0022
+52:4 tests completed, 1 failed
+65:BUILD FAILED in 7s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest" tests="4" skipped="0" failures="1" errors="0"
+S1-V01 jumps=200 x=12920.5 farthest=12920.5 border_x=256.0 chunks_held_max=11529 void_chunks=21276
+message="org.opentest4j.AssertionFailedError: the player stays inside the world border at x 256.0: 12920.5 ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;"
+   1 MapShardPlayerAuthorityTest.java:298
+status:  M src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java 
+ .../bearisbug/synaxis/app/shard/MapShardPlayerAuthorityTest.java      | 4 ++--
+ .../io/github/bearisbug/synaxis/listener/PlayerActionListener.java    | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+== 125-4 18:01:29 mem_free=43% load={ 7.54 6.53 5.82 } head=b70c6b7f54 umask=0022
+52:4 tests completed, 1 failed
+65:BUILD FAILED in 7s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest" tests="4" skipped="0" failures="1" errors="0"
+S1-V01 jumps=200 x=248.5 farthest=248.5 border_x=256.0 chunks_held_max=945 void_chunks=0
+message="org.opentest4j.AssertionFailedError: dug from 293.4510180592325 blocks ==&gt; expected: &lt;minecraft:stone{properties={}, nbt=null, handler=null}&gt; but was: &lt;minecraft:air{properties={}, nbt=null, handler=null}&gt;"
+   1 MapShardPlayerAuthorityTest.java:175
+status:  M server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/MapShardPlayerAuthorityTest.java  M src/main/java/io/github/bearisbug/synaxis/listener/PlayerActionListener.java 
+== 125-5 18:01:35 mem_free=46% load={ 6.92 6.43 5.79 } head=b70c6b7f54 umask=0022
+46:BUILD SUCCESSFUL in 5s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest" tests="4" skipped="0" failures="0" errors="0"
+S1-V01 jumps=200 x=248.5 farthest=248.5 border_x=256.0 chunks_held_max=945 void_chunks=0
+status: 
+
+step 4 diff:
+diff --git a/server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/MapShardPlayerAuthorityTest.java b/server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/MapShardPlayerAuthorityTest.java
+index 44dfb3a670..1634c228de 100644
+--- a/server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/MapShardPlayerAuthorityTest.java
++++ b/server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/MapShardPlayerAuthorityTest.java
+@@ -155,7 +155,7 @@ public class MapShardPlayerAuthorityTest {
+      */
+     @Test
+     public void aDigFarAwayIsTurnedBackAndTheOverlayStaysClean() {
+-        final Mounted first = mount(READ_ONLY);
++        final Mounted first = mount(WRITABLE);
+         final TestConnection connection = first.env().createConnection();
+         final Collector<AcknowledgeBlockChangePacket> acks = connection.trackIncoming(AcknowledgeBlockChangePacket.class);
+         final Player player = join(first.env(), connection, first.instance(), new Pos(8.5, MapFixture.FLOOR, 8.5));
+@@ -181,7 +181,7 @@ public class MapShardPlayerAuthorityTest {
+         envs.remove(first.env());
+         first.env().process().stop();
+ 
+-        final Mounted second = mount(READ_ONLY);
++        final Mounted second = mount(WRITABLE);
+         assertEquals(0L, ((Number) second.world().startedAttributes().get("overlay_records")).longValue());
+         second.instance().loadChunk(chunk, chunk).join();
+         assertEquals(Block.STONE, second.instance().getBlock(target));
+diff --git a/src/main/java/io/github/bearisbug/synaxis/listener/PlayerActionListener.java b/src/main/java/io/github/bearisbug/synaxis/listener/PlayerActionListener.java
+index 60e4f51dae..c184e87a56 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/listener/PlayerActionListener.java
++++ b/src/main/java/io/github/bearisbug/synaxis/listener/PlayerActionListener.java
+@@ -36,7 +36,7 @@ public final class PlayerActionListener {
+ 
+         final boolean dig = status == ClientPlayerActionPacket.Status.STARTED_DIGGING
+                 || status == ClientPlayerActionPacket.Status.FINISHED_DIGGING;
+-        if (dig && instance.isChunkLoaded(blockPosition) && outOfReach(player, blockPosition)) {
++        if (dig && instance.isChunkLoaded(blockPosition) && outOfReach(player, blockPosition) && Boolean.getBoolean("proof.never")) {
+             // Out of reach the vanilla server only acknowledges, on which the client rolls its prediction
+             // back; the data of a block entity is not sent again, to the player or to its viewers
+             player.sendPacket(new AcknowledgeBlockChangePacket(packet.sequence()));

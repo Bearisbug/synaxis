@@ -1,0 +1,25 @@
+RUN-069 integrate: TC-037 steps 4-6 on e775666ab7 (2026-10-07 18:30:38), shell only. Steps 1-3 are track G's (../track-g/registry/), step 7 is the Check of 49bee23cc1 (01).
+--- step 4: find src/main/java -name '*.java' | wc -l
+1132
+--- step 5
+ls: src/main/java/io/github/bearisbug/synaxis/entity/ai: No such file or directory
+ls: src/main/java/io/github/bearisbug/synaxis/entity/pathfinding: No such file or directory
+ls: src/main/java/io/github/bearisbug/synaxis/snapshot: No such file or directory
+--- step 6: ls entity/metadata/
+AbstractVehicleMeta.java
+AgeableMobMeta.java
+EntityMeta.java
+LivingEntityMeta.java
+MobMeta.java
+ObjectDataProvider.java
+PathfinderMobMeta.java
+avatar
+display
+item
+other
+package-info.java
+projectile
+--- step 6: ls entity/metadata/other/
+ArmorStandMeta.java
+InteractionMeta.java
+package-info.java

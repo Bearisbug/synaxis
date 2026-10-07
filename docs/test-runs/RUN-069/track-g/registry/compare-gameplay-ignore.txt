@@ -1,0 +1,33 @@
+probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=compare-registry
+sample=src/test/resources/protocol/registry-data-26.2.bin registries=27 entries=395
+recorded=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3s-g.oNa9/out/registry-gameplay.bin registries=27 entries=396
+ignored minecraft:dimension_type/synaxis:match: sample=absent recording=present
+same minecraft:chat_type entries=7 bytes=202
+same minecraft:worldgen/biome entries=66 bytes=1585
+same minecraft:dialog entries=3 bytes=75
+same minecraft:damage_type entries=51 bytes=1119
+same minecraft:trim_material entries=11 bytes=201
+same minecraft:trim_pattern entries=18 bytes=302
+same minecraft:banner_pattern entries=43 bytes=1009
+same minecraft:enchantment entries=43 bytes=944
+same minecraft:painting_variant entries=51 bytes=951
+same minecraft:jukebox_song entries=22 bytes=391
+same minecraft:instrument entries=8 bytes=214
+same minecraft:wolf_variant entries=9 bytes=159
+same minecraft:wolf_sound_variant entries=7 bytes=118
+same minecraft:cat_variant entries=11 bytes=209
+same minecraft:cat_sound_variant entries=2 bytes=36
+same minecraft:chicken_variant entries=3 bytes=53
+same minecraft:chicken_sound_variant entries=2 bytes=36
+same minecraft:cow_variant entries=3 bytes=53
+same minecraft:cow_sound_variant entries=2 bytes=36
+same minecraft:frog_variant entries=3 bytes=53
+same minecraft:pig_variant entries=3 bytes=53
+same minecraft:pig_sound_variant entries=3 bytes=50
+same minecraft:zombie_nautilus_variant entries=2 bytes=37
+same minecraft:world_clock entries=2 bytes=40
+same minecraft:timeline entries=4 bytes=82
+same minecraft:dimension_type entries=4 bytes=89
+same minecraft:sulfur_cube_archetype entries=12 bytes=248
+compare-registry registries=27 same=27 differences=0 ignored=1
+exit code: 0

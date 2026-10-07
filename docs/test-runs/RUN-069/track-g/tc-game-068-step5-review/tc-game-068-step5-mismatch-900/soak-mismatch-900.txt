@@ -1,0 +1,11 @@
+soak play: pid=5861 connections=5 duration=15.0s units=900 camera=5.0Hz orders=1.0/s out=/tmp/synaxis-play/mismatch-900
+------------------------------------------------------------------------------
+elapsed=15.0s peak_connections=5 logins=5 failures={} lost=0 disconnects={}
+units: expected=900 seen_max=687 commandable_max=685 check=mismatch
+orders: sent=75 answered=75 codes={'ok': 75} selects=10 camera=370
+inbound per connection B/s: {'total': 15963.2, 'engine': 11082.9, 'rts_game': 4880.3}
+S2C_UNIT_STATE: count=740 max_payload_bytes=1214 max_entries=302 hz_per_connection=9.922 bytes_per_s_per_connection=7495.0 bytes_per_s_total=37260.8 interval_ms={'count': 735, 'mean_ms': 99.944, 'p50_ms': 94.799, 'p99_ms': 128.424, 'max_ms': 129.176, 'over_50ms': 735}
+heap: live_mib_max=0.0 rss_mib_max=1201.3 live probes=[] settle={'threads_after_disconnect': 80, 'fds_after_disconnect': 87}
+pathfinding: searches=75 path_ms={'count': 75, 'mean_ms': 0.0, 'p50_ms': 0.0, 'p99_ms': 0.0, 'max_ms': 0.0, 'over_50ms': 0} tick_bucket_ms={'count': 30, 'mean_ms': 0.0, 'p50_ms': 0.0, 'p99_ms': 0.0, 'max_ms': 0.0, 'over_50ms': 0} path_nodes_max issued=395 rejected=0
+server log: warn=0 error=0 kicks=0
+peak cpu=8.0% (t=10.2s clients=5) peak harness cpu=5.6% (t=0.0s clients=0)

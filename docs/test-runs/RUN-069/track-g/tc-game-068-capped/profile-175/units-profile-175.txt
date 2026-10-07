@@ -1,0 +1,341 @@
+probe target=127.0.0.1:25576 protocol=776 schema_version=1 command=units
+sent Handshake protocol=776 intent=login
+sent LoginStart username=probe
+recv SetCompressionPacket
+     compression threshold=256
+recv LoginSuccessPacket
+     LoginSuccess username=probe uuid=a0d7d0d3-bb61-3352-b332-52bfa31d6c0e
+sent LoginAcknowledged
+sent C2S_HELLO mod_version=1 schema_version=1
+recv PluginMessagePacket
+recv SelectKnownPacksPacket
+sent KnownPacks entries=1
+recv KeepAlivePacket
+sent KeepAlive #1 at 13:24:04
+recv PluginMessagePacket
+     S2C_HELLO schema_version=1 tick_rate=20 server_tick=27
+recv UpdateEnabledFeaturesPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv TagsPacket
+recv FinishConfigurationPacket
+sent FinishConfiguration
+state=play
+recv JoinGamePacket
+recv WindowItemsPacket
+recv ServerDifficultyPacket
+recv SpawnPositionPacket
+recv EntityMetaDataPacket
+recv PlayerInfoUpdatePacket
+recv DeclareCommandsPacket
+recv EntityAttributesPacket
+recv EntityStatusPacket
+recv UpdateHealthPacket
+recv PlayerAbilitiesPacket
+recv InitializeWorldBorderPacket
+recv SetTimePacket
+recv ChangeGameStatePacket
+recv ChangeGameStatePacket
+recv ChangeGameStatePacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv UpdateViewPositionPacket
+recv ChunkBatchStartPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkBatchFinishedPacket
+recv PlayerPositionAndLookPacket
+recv PlayerPositionAndLookPacket
+recv WindowItemsPacket
+recv HeldItemChangePacket
+recv ChangeGameStatePacket
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=61 entity_id=61 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=62 entity_id=62 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=63 entity_id=63 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=64 entity_id=64 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=65 entity_id=65 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=66 entity_id=66 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=67 entity_id=67 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=75 entity_id=75 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=76 entity_id=76 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=77 entity_id=77 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=78 entity_id=78 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=79 entity_id=79 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=80 entity_id=80 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=81 entity_id=81 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=89 entity_id=89 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=90 entity_id=90 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=91 entity_id=91 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=92 entity_id=92 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=93 entity_id=93 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=94 entity_id=94 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=95 entity_id=95 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=103 entity_id=103 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=104 entity_id=104 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=105 entity_id=105 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=106 entity_id=106 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=107 entity_id=107 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=108 entity_id=108 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=109 entity_id=109 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=117 entity_id=117 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=118 entity_id=118 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=119 entity_id=119 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=120 entity_id=120 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=121 entity_id=121 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=122 entity_id=122 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=123 entity_id=123 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=131 entity_id=131 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=132 entity_id=132 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=133 entity_id=133 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=134 entity_id=134 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=135 entity_id=135 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=136 entity_id=136 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=137 entity_id=137 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=145 entity_id=145 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=146 entity_id=146 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=147 entity_id=147 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=148 entity_id=148 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=149 entity_id=149 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=150 entity_id=150 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=151 entity_id=151 archetype=0 team=1 flags=1
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=173 entity_id=173 archetype=0 team=0 flags=0
+recv PluginMessagePacket
+     S2C_UNIT_SPAWN unit_id=174 entity_id=174 archetype=0 team=2 flags=0
+recv PluginMessagePacket
+     S2C_UNIT_STATE server_tick=30 count=51 moving=[]
+units=51 commandable=[61, 62, 63, 64, 65, 66, 67, 75, 76, 77, 78, 79, 80, 81, 89, 90, 91, 92, 93, 94, 95, 103, 104, 105, 106, 107, 108, 109, 117, 118, 119, 120, 121, 122, 123, 131, 132, 133, 134, 135, 136, 137, 145, 146, 147, 148, 149, 150, 151] snapshots=1 despawned=[]
+states={61: 'idle', 62: 'idle', 63: 'idle', 64: 'idle', 65: 'idle', 66: 'idle', 67: 'idle', 75: 'idle', 76: 'idle', 77: 'idle', 78: 'idle', 79: 'idle', 80: 'idle', 81: 'idle', 89: 'idle', 90: 'idle', 91: 'idle', 92: 'idle', 93: 'idle', 94: 'idle', 95: 'idle', 103: 'idle', 104: 'idle', 105: 'idle', 106: 'idle', 107: 'idle', 108: 'idle', 109: 'idle', 117: 'idle', 118: 'idle', 119: 'idle', 120: 'idle', 121: 'idle', 122: 'idle', 123: 'idle', 131: 'idle', 132: 'idle', 133: 'idle', 134: 'idle', 135: 'idle', 136: 'idle', 137: 'idle', 145: 'idle', 146: 'idle', 147: 'idle', 148: 'idle', 149: 'idle', 150: 'idle', 151: 'idle', 173: 'idle', 174: 'idle'}
+exit code: 0

@@ -1,0 +1,26 @@
+gate 13:35:24 free=49% load1=4.33 (need free>=30 load1<=12)
+lock acquired 2026-10-07 13:35:24: owner=Synaxis光照/m3s-g068-soak pid=33940 since=2026-10-07 13:35:24 task=TC-GAME-068 rerun: steps 5-6 (default roster, no server)
+System-wide memory free percentage: 49%
+13:35  up 1 day,  1:21, 31 users, load averages: 4.33 4.78 4.97
+gate 13:35:24 free=49% load1=4.33 (need free>=30 load1<=12)
+=== step 5: default roster 13:35:24
+ready after 8s
+--units 60 exit=0
+elapsed=15.0s peak_connections=5 logins=5 failures={} lost=0 disconnects={}
+units: expected=60 seen_max=67 commandable_max=65 check=mismatch
+S2C_UNIT_STATE: count=209 max_payload_bytes=185 max_entries=60 hz_per_connection=2.804 bytes_per_s_per_connection=373.1 bytes_per_s_total=1853.3 interval_ms={'count': 203, 'mean_ms': 100.081, 'p50_ms': 106.266, 'p99_ms': 113.609, 'max_ms': 130.905, 'over_50ms': 203}
+server log: warn=0 error=0 kicks=0
+--units 67 exit=0
+elapsed=15.0s peak_connections=5 logins=5 failures={} lost=0 disconnects={}
+units: expected=67 seen_max=67 commandable_max=65 check=ok
+S2C_UNIT_STATE: count=229 max_payload_bytes=185 max_entries=60 hz_per_connection=3.071 bytes_per_s_per_connection=380.8 bytes_per_s_total=1892.8 interval_ms={'count': 222, 'mean_ms': 100.446, 'p50_ms': 106.563, 'p99_ms': 115.103, 'max_ms': 117.908, 'over_50ms': 222}
+server log: warn=0 error=0 kicks=0
+server gradle exit=0
+=== step 6: no server 13:36:09
+lsof exit=1 (1 = nothing listens)
+exit=2
+soak: no server process listens on TCP port 25576 (lsof -nP -iTCP:25576 -sTCP:LISTEN); start the server on that port or pass --pid. Sampling nothing would look like a clean run.
+batch exit=0 13:36:09
+System-wide memory free percentage: 48%
+13:36  up 1 day,  1:22, 31 users, load averages: 3.96 4.60 4.89
+lock released 2026-10-07 13:36:09

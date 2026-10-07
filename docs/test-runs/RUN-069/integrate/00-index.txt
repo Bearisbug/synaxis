@@ -1,0 +1,85 @@
+RUN-069: the merge acceptance of M3-S on the integration branch m3s/integrate (draft PR #12).
+
+Branch: main f7a9756f7b (RUN-070 and RUN-071 in it), then --no-ff merges of m3/fix-base (daa9370385), m3s/base
+(c7a5e902b6), m3s/s-shard (91257c25a9), m3s/c-client (93a62a6cf3), m3s/g-tests (e9935cea51), the compile fix of the
+merge 47346d709c, the day-night of map shards 603aaccca6 (design) and 49bee23cc1 (code), the docs of the merge step
+b70c6b7f54, and in this acceptance b65d1115f9 (docs/DESIGN-M3.md v0.41) and e775666ab7 (the light group of
+.github/workflows/farview-gametest.yml, docs/ENGINE.md).
+Tested code: 49bee23cc1. Every commit after it changes docs/ or the label-triggered farview workflow only, so the full
+gate of 49bee23cc1 (01) is the gate of the tested code, and the local runs on b70c6b7f54 (03-08) ran that code.
+
+Files
+  01-ci-49bee23cc1.txt        the four workflows on 49bee23cc1 and the test counts per module from their XML
+  02-actions-billing.txt      why nothing ran on GitHub Actions after 49bee23cc1: no job was started
+  03-config-key-gate.txt      TC-PROD-441 steps 1-5, TC-WORLD-041 step 2, TC-PROD-569 step 4 (gate, :architecture-tests)
+  04-tc-world-125.txt         TC-WORLD-125 steps 1-5 with RUN-070's engine in the tree
+  05-tc-world-132.txt         TC-WORLD-132 steps 1-3 under umask 002
+  06-tc-world-128-sweep.txt   TC-WORLD-128, the sweep measurement on the 4k synthetic map
+  07-tc-world-139-relight.txt TC-WORLD-139, the relight measurement (busy machine, readings recorded only)
+  08-tc-prod-656.txt          TC-PROD-656 steps 1-4, the CI list of docs/ENGINE.md §7 with the light group
+  09-tc-037-steps-4-6.txt     TC-037 steps 4-6 (the main source count and the removed directories), shell only
+  ../track-g/                 track G's runs on m3s/g-tests (TC-GAME-053 to 059, TC-037's registry compare, the probe
+                              plugin a) and TC-GAME-068: tc-game-068-capped/ is the rerun with the sixty-line cap on
+                              ab62fd4107 (steps 1, 2, 5, 6, 7; summary.json of the gate and of the profile tier),
+                              tc-game-068-uncapped/ the first run without the cap, tc-game-068-step5-review/ step 5 as
+                              the review rewrote it. *.log files are renamed *.log.txt (the repository ignores *.log)
+  ../track-c/                 real-machine-steps.txt (the six real-machine cases and V6b) and ci-37494914754/, the
+                              reports of track C's third container round (on m3s/c-client, before track S was merged)
+
+Results per case (where each ran)
+  TC-WORLD-125  pass          here, 04
+  TC-WORLD-126  pass          track S (c54f5e06c1) for the counter proofs; JUnit in the gate of 49bee23cc1
+  TC-WORLD-127  pass          the same
+  TC-WORLD-128  pass          here, 06
+  TC-WORLD-129  pass          track S; gate
+  TC-WORLD-130  pass          track S (the real process refusals); gate
+  TC-WORLD-131  pass          track S; gate
+  TC-WORLD-132  fail          here, 05: step 2 reds 6 and 9 where the step wrote 5 and 7 (the three day-night tests)
+  TC-WORLD-133  pass          track S; gate (SynxTruncatedMappingTest on Linux: InternalError, exit 0)
+  TC-WORLD-134  pass          track S; gate
+  TC-WORLD-135  pass          track S; gate
+  TC-WORLD-136  pass          step 0 (3be2fd114c); gate
+  TC-WORLD-137  pass          track C (cb559c73d8); client-test-reports of 49bee23cc1, 17 classes 199 tests
+  TC-WORLD-138  pass          track S; gate
+  TC-WORLD-139  blocked       here, 07: precondition "idle machine" not met, readings recorded only
+  TC-WORLD-140  blocked       02: the far view containers run on GitHub Actions, no job was started
+  TC-WORLD-141  blocked       02
+  TC-WORLD-142  blocked       02
+  TC-WORLD-143  blocked       02 (the WARN of a plain http url-root to a non loopback host not yet seen on a runner)
+  TC-WORLD-144  manual        the real machines, ../track-c/real-machine-steps.txt
+  TC-WORLD-145  manual
+  TC-WORLD-146  manual
+  TC-WORLD-147  manual
+  TC-WORLD-148  manual
+  TC-WORLD-149  manual
+  TC-WORLD-150  pass          the day-night step on 49bee23cc1 (red before, green after, the paused clock counter
+                              proof); gate
+  TC-WORLD-117  blocked       02 (and the walk counter proof of its precondition)
+  TC-WORLD-119  blocked       02
+  TC-WORLD-120  blocked       02
+  TC-WORLD-124  manual
+  TC-WORLD-095  blocked       02: the light group added here (e775666ab7) did not run; L7's new stand only compiled
+  TC-037        pass          track G steps 1-3 (../track-g/registry/), here steps 4-6 (09), step 7 = Check of 49bee23cc1
+  TC-038        manual
+  TC-GAME-053   pass          track G
+  TC-GAME-054   fail          track G: step 5 as written then (one ERROR line per login) did not hold, LogBudget
+  TC-GAME-055   skipped       track G: step 3 skipped, its precondition contradicted AdmissionRegistry
+  TC-GAME-056   pass          track G
+  TC-GAME-057   skipped       track G: steps 2-4, no way to end a match in M2
+  TC-GAME-058   pass          track G (step 6 rerun literally after the review)
+  TC-GAME-059   fail          track G: step 4's grep over the whole test tree hit ClientDrivenLogArchitectureTest:163
+  TC-GAME-068   pass          track G's rerun with the cap (ab62fd4107): steps 1, 2, 5, 6, 7; step 3 (the curve, not
+                              judged) and step 4 (counter proof of the units knob, untouched by the cap) not rerun
+  TC-PROD-441   pass          here, 03
+  TC-PROD-569   pass (step 4) here, 03: the gate line 117/117/21 and :architecture-tests 7 classes 20 tests
+  TC-PROD-656   pass          here, 08
+  TC-WORLD-041  pass (step 2) here, 03: 117 keys read, 115 in ConfigFile.KEYS
+  45 cases: pass 23, fail 3, manual 8, blocked 9, skipped 2.
+
+The heavy lock (/tmp/synaxis-heavy.lock, owner=Synaxis光照/m3s-acc-<batch> pid=33940), all times 2026-10-07 UTC+8:
+  A   17:56:26-17:57:24  taken at mem free 47 %, load1 5.45; released at 46 %, 6.95     03
+  B   18:00:57-18:08:42  taken at 44 %, 6.71; released at 46 %, 6.46                    04, 05 steps 1-2
+  B2  18:09:50-18:12:30  taken at 39 %, 7.40; released at 56 %, 7.58                    05 step 3, 07
+  C   18:13:10-18:16:09  taken at 57 %, 5.29; released at 50 %, 4.14                    06
+  The trap at the top level of each job script removed the lock directory.
+TC-PROD-656 (08) runs git, sed and grep only, without the lock.

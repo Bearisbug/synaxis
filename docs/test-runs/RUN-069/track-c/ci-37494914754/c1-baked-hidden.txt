@@ -1,0 +1,16 @@
+F1 PASS override target /home/runner/work/synaxis/synaxis/client-fabric/build/run/clientGameTest/synaxis/farview/dh/743accedc445d763, level getDhSaveFolder /home/runner/work/synaxis/synaxis/client-fabric/build/run/clientGameTest/synaxis/farview/dh/743accedc445d763, libraries under Distant_Horizons_server_data []
+F2 PASS getReadOnly true, chunkRenderDistance api=256 value=256 overridable=true, maxHorizontalResolution api=FOUR_BLOCKS value=FOUR_BLOCKS overridable=true
+F3 FAIL no bake line; marker sources none, fine blocks + coarse blocks × 16 = -1
+F4 FAIL DetailLevel=2 2304 of -1, ApplyToParent=1 1355, ApplyToChildren=1 0, DetailLevel=4 78; peak@3192,3252 expected minecraft:oak_leaves index 117 got {state=279, block=minecraft:oak_leaves, bottom=0, top=118, sky=15, light=0, biome=minecraft:plains, points=2} ok; water@0,0 expected minecraft:water index 62 got {state=86, block=minecraft:water, bottom=61, top=63, sky=15, light=0, biome=minecraft:plains, points=3} ok; mountain@-816,3344 expected minecraft:oak_leaves index 112 got {state=279, block=minecraft:oak_leaves, bottom=0, top=113, sky=15, light=0, biome=minecraft:plains, points=2} ok; hidden-peak@440,104 expected minecraft:stone index 96 biome minecraft:plains got {state=1, block=minecraft:stone, bottom=0, top=97, sky=15, light=0, biome=minecraft:plains, points=2} ok; hidden-edge-fine@32,2048 expected minecraft:stone index 62 biome minecraft:plains got {state=1, block=minecraft:stone, bottom=0, top=63, sky=15, light=0, biome=minecraft:plains, points=2} ok; hidden-edge-coarse@-32,2048 expected minecraft:stone index 62 biome minecraft:plains got {state=1, block=minecraft:stone, bottom=0, top=63, sky=15, light=0, biome=minecraft:plains, points=2} ok
+F5 PASS DetailLevel=0 before the walk 0, after 200 blocks and back 0; walked to x + 200 (2240.5, 180.0, 2040.5)
+F6 PASS FAR_VIEW horizon rows 200..459 changed 51.28%; LOD_VIEW changed 74.79% (mean #48584c); EDGE_VIEW centre 608,328..671,391 changed 100.00% (mean before #161f2f, after #2c4981)
+F7 FAIL announcement at log line 13, save folder at 34; reconnect: access.log 9 -> 9 lines, ready line false, baked in true, FAR_VIEW shows LOD after 0 ticks (213243 ms)
+# Distant Horizons threads set to 2, run time ratio 1.0: threadCount api=2 value=2 overridable=true, threadRuntimeRatio api=1.0 value=1.0 overridable=true
+# mode v1 from 16:26:46
+# fixture mode baked-hidden, map farview3x3h, spawn 2040.5 74.0 2040.5
+# V1 waiting for the bake to start: true, state BAKING
+# V1 HUD line during the bake: Preparing the far view: 2%
+# V1 state ABSENT failure parents pending, view 743accedc445d763, download 383 ms, timings null
+# V1 access.log after the bake: 9 GET of 9 request(s)
+# walked to x + 200 (2240.5, 180.0, 2040.5) from (2040.5, 74.0, 2040.5)
+# attempt 1 not in the world of 127.0.0.1:25750: Connection Lost. Somebody is already playing under this name.

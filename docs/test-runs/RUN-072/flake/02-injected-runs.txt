@@ -1,0 +1,55 @@
+# Local runs on Mac.local, strict grid (-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid), :test --tests '*ConnectionGateSocketTest*', base f7a9756f7b
+## run 1: temporary delays: ConnectionManager#transitionLoginToConfig sleeps 300 ms between startCompression() and the AsyncPlayerPreLoginEvent call; HandshakeListener#listener sleeps 600 ms for a LOGIN handshake of 203.0.113.7 (this one sits after the decoder has moved the state off HANDSHAKE, so the 500 ms handshake watchdog does not fire: behindTheProxy stays green). Test unchanged.
+ConnectionGateSocketTest > withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake() FAILED
+    org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:131
+ConnectionGateSocketTest > aFullProcessRefusesTheLoginStartBeforeTheLoginRuns() FAILED
+    org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:290
+12 tests completed, 2 failed
+> Task :test FAILED
+BUILD FAILED in 33s
+  <testcase name="loginStartsArrivingTogetherNeverTakeMoreSeatsThanThereAre()"  time="1.18"/>
+  <testcase name="theStatusResponseReportsTheSocketLimitWhenSeatsAreUnlimited()"  time="0.039"/>
+  <testcase name="theSocketPastTheProcessLimitIsClosedWithoutAByte()"  time="0.123"/>
+  <testcase name="statusAndTransferHandshakesCountOnTheirOwnBuckets()"  time="0.672"/>
+  <testcase name="withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake()"  time="2.023">
+    <failure message="org.opentest4j.AssertionFailedError: the login turned away never reached the login event ==&gt; expected: &lt;3&gt; but was: &lt;2&gt;"
+  <testcase name="behindTheProxyAnOversizedServerAddressCountsAgainstItsAddress()"  time="0.689"/>
+  <testcase name="withoutTheProxyProtocolTheAddressLimitIsCheckedAtAccept()"  time="0.014"/>
+  <testcase name="aFullProcessRefusesTheLoginStartBeforeTheLoginRuns()"  time="0.116">
+    <failure message="org.opentest4j.AssertionFailedError: the login event never ran for the connection turned away ==&gt; expected: &lt;2&gt; but was: &lt;0&gt;"
+  <testcase name="aConnectionThatSaysNothingIsClosedAtTheHandshakeTimeout()"  time="1.167"/>
+  <testcase name="anOversizedServerAddressTakesItsTokenAndIsClosed()"  time="0.148"/>
+  <testcase name="theFourthLoginOfAnAddressIsThrottledAndLetInTwoSecondsLater()"  time="0.144"/>
+  <testcase name="anOversizedServerAddressDoesNotSkipTheGate()"  time="0.414"/>
+
+## run 2: only the 300 ms delay of run 1 (the read-loop delay meant for this run did not apply). Test unchanged.
+ConnectionGateSocketTest > withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake() FAILED
+    org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:131
+ConnectionGateSocketTest > aFullProcessRefusesTheLoginStartBeforeTheLoginRuns() FAILED
+    org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:290
+12 tests completed, 2 failed
+> Task :test FAILED
+BUILD FAILED in 13s
+    <failure message="org.opentest4j.AssertionFailedError: the login turned away never reached the login event ==&gt; expected: &lt;3&gt; but was: &lt;0&gt;"
+    <failure message="org.opentest4j.AssertionFailedError: the login event never ran for the connection turned away ==&gt; expected: &lt;2&gt; but was: &lt;0&gt;"
+
+## run 3: 300 ms delay as above, plus Server#playerReadLoop sleeps 600 ms before its first read when proxyProtocol() && maxConnectionsPerIp() == 1 (a reader that gets no CPU for 600 ms after accept). Test FIXED, plus a temporary copy r072InjectUnfixedCopy = the holder part of behindTheProxy... with handshakeTimeout(500) as before the fix.
+ConnectionGateSocketTest > r072InjectUnfixedCopy() FAILED
+    org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:251
+13 tests completed, 1 failed
+> Task :test FAILED
+BUILD FAILED in 34s
+  <testcase name="loginStartsArrivingTogetherNeverTakeMoreSeatsThanThereAre()"  time="1.075"/>
+  <testcase name="theStatusResponseReportsTheSocketLimitWhenSeatsAreUnlimited()"  time="0.054"/>
+  <testcase name="theSocketPastTheProcessLimitIsClosedWithoutAByte()"  time="0.102"/>
+  <testcase name="statusAndTransferHandshakesCountOnTheirOwnBuckets()"  time="0.655"/>
+  <testcase name="withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake()"  time="0.477"/>
+  <testcase name="behindTheProxyAnOversizedServerAddressCountsAgainstItsAddress()"  time="1.271"/>
+  <testcase name="withoutTheProxyProtocolTheAddressLimitIsCheckedAtAccept()"  time="0.033"/>
+  <testcase name="aFullProcessRefusesTheLoginStartBeforeTheLoginRuns()"  time="0.449"/>
+  <testcase name="r072InjectUnfixedCopy()"  time="0.573">
+    <failure message="org.opentest4j.AssertionFailedError: the one connection of 203.0.113.7 ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;"
+  <testcase name="aConnectionThatSaysNothingIsClosedAtTheHandshakeTimeout()"  time="1.172"/>
+  <testcase name="anOversizedServerAddressTakesItsTokenAndIsClosed()"  time="0.147"/>
+  <testcase name="theFourthLoginOfAnAddressIsThrottledAndLetInTwoSecondsLater()"  time="0.146"/>
+  <testcase name="anOversizedServerAddressDoesNotSkipTheGate()"  time="0.417"/>

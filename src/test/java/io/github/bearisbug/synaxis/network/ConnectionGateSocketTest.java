@@ -125,6 +125,7 @@ public class ConnectionGateSocketTest {
             other.handshake(Intent.LOGIN);
             other.send(ConnectionState.LOGIN, new ClientLoginStartPacket("other", UUID.randomUUID()));
             assertTrue(other.loggedIn(), "another address behind the same proxy");
+            awaitUntil(() -> logins.get() == 3, "the three logins reach the login event");
 
             assertEquals(2, rig.gate().rejected(ConnectionGate.Reason.TOO_MANY));
             assertEquals(0, rig.gate().rejected(ConnectionGate.Reason.CLOSED_AT_ACCEPT));
@@ -225,7 +226,7 @@ public class ConnectionGateSocketTest {
      */
     @Test
     public void behindTheProxyAnOversizedServerAddressCountsAgainstItsAddress() throws Exception {
-        try (Rig rig = Rig.start(proxied().maxConnectionsPerIp(1).handshakeTimeout(500))) {
+        try (Rig rig = Rig.start(proxied().maxConnectionsPerIp(1))) {
             final Peer holder = rig.connect();
             holder.proxyHeader("203.0.113.7");
             holder.handshake(Intent.LOGIN);
@@ -283,6 +284,8 @@ public class ConnectionGateSocketTest {
             final Peer first = rig.login("first");
             assertTrue(first.loggedIn());
             assertTrue(rig.login("second").loggedIn());
+            // SetCompression is sent before the login event runs on the login thread of the connection
+            awaitUntil(() -> logins.get() == 2, "the two logins reach the login event");
 
             final Peer third = rig.login("third");
             assertEquals("synaxis:shard-full", third.disconnectReason());

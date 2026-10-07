@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-07T08:48:39.436Z" hostname="Mac.local" time="1.598">
+  <properties/>
+  <testcase name="aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(Env)" classname="io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest" time="1.356"/>
+  <testcase name="theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(Env)" classname="io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest" time="0.053"/>
+  <testcase name="thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(Env)" classname="io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest" time="0.042"/>
+  <testcase name="aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)" classname="io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest" time="0.04"/>
+  <testcase name="aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)" classname="io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest" time="0.03"/>
+  <testcase name="aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(Env)" classname="io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest" time="0.032"/>
+  <testcase name="aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)" classname="io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest" time="0.024"/>
+  <system-out><![CDATA[Chunks within 2 of the spawn chunk locked by another thread while joining: batches [0, 49], the first chunk packet at 29, position syncs at [23, 79]
+Center told to the client 1,0, the client sees minecraft:gold_block in chunk 4,0
+Chunk -1,-1: the setter waited for the chunk lock, the client sees minecraft:gold_block, the server has minecraft:gold_block; 49 chunk packets handed to the connection, 0 outside the chunk write-lock
+Chunk 4,0 deferred, then taking the packet of chunk 4,1 threw: 1 exceptions reported in the tick of the move, after it the queue has 2 entries for the chunks [4,0, 4,1], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+Column 4 locked by another thread after its first chunk: the holder waited 1334 µs for the queue lock and took it true, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -374,31 +374,30 @@ public class ChunkSendBlockChangeIntegrationTest {
     }
 
     @Test
-    public void aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(Env env) {
-        final AtomicReference<Consumer<Chunk>> hook = new AtomicReference<>(_ -> {
+    public void aDeferredChunkStaysQueuedWhenHandingAChunkPacketThrows(Env env) {
+        final InstanceContainer instance = takenChunkInstance(env, _ -> {
         });
-        final InstanceContainer instance = takenChunkInstance(env, chunk -> hook.get().accept(chunk));
         preload(instance, -RADIUS, RADIUS + 1, -RADIUS, RADIUS);
         final TestConnection connection = env.createConnection();
         final CheckedPlayer player = join(env, connection, instance);
         drain(env, player);
 
         // Moving one chunk east queues the column at x 4, (4, 0) first. Another thread holds its write-lock through the
-        // batch of the move, so it is deferred; taking the packet of the next chunk of the column throws, once, and the
-        // exception leaves the batch on its way to the tick thread. The other thread lets go before the throw: the tick
-        // of the chunk takes its read-lock
+        // batch of the move, so it is deferred; handing the packet of the next chunk of the column to the connection
+        // throws, once, and the exception leaves the batch on its way to the tick thread. The other thread lets go before
+        // the throw: the tick of the chunk takes its read-lock
         final int column = 1 + RADIUS;
         final Chunk deferred = Objects.requireNonNull(instance.getChunk(column, 0));
         final String deferredAt = column + ",0";
         final AtomicReference<Holder> holder = new AtomicReference<>();
         final AtomicReference<String> failed = new AtomicReference<>();
-        hook.set(chunk -> {
-            if (chunk.getChunkX() != column || chunk.getChunkZ() == 0) return;
-            if (failed.compareAndSet(null, chunk.getChunkX() + "," + chunk.getChunkZ())) {
+        player.onChunk = data -> {
+            if (data.chunkX() != column || data.chunkZ() == 0) return;
+            if (failed.compareAndSet(null, data.chunkX() + "," + data.chunkZ())) {
                 holder.get().letGo();
-                throw new IllegalStateException("taking the packet of chunk " + failed.get() + " fails");
+                throw new IllegalStateException("handing the packet of chunk " + failed.get() + " fails");
             }
-        });
+        };
         final List<Throwable> reported = new CopyOnWriteArrayList<>();
         env.process().exception().setExceptionHandler(reported::add);
         player.onBatchStart = () -> holder.set(new Holder(List.of(deferred), null));
@@ -416,7 +415,7 @@ public class ChunkSendBlockChangeIntegrationTest {
 
         final Map<String, Long> times = new TreeMap<>();
         for (String chunk : names(sent.collect())) times.merge(chunk, 1L, Long::sum);
-        System.out.println("Chunk " + deferredAt + " deferred, then taking the packet of chunk " + failed.get() + " threw: "
+        System.out.println("Chunk " + deferredAt + " deferred, then handing the packet of chunk " + failed.get() + " threw: "
                 + inTheMove.size() + " exceptions reported in the tick of the move, after it the queue has "
                 + afterTheMove.entries() + " entries for the chunks " + afterTheMove.chunks() + ", chunks sent " + times);
         assertEquals(1, inTheMove.size(), "exceptions reported in the tick of the move: " + inTheMove);
@@ -496,12 +495,14 @@ public class ChunkSendBlockChangeIntegrationTest {
      * An engine player that watches what is handed to its connection: whether a {@code ChunkDataPacket}, which a
      * {@link TakenChunk} hands out as it is, is handed under the write-lock of its chunk, and how long the last chunk
      * batch took from its start to its end. Runs {@link #onBatchStart} and {@link #onBatchEnd} on the sending thread,
-     * the start before the batch is timed.
+     * the start before the batch is timed, and {@link #onChunk} before a {@code ChunkDataPacket} is handed.
      */
     private static final class CheckedPlayer extends Player {
         final List<String> chunksHanded = new CopyOnWriteArrayList<>(), handedOutsideTheLock = new CopyOnWriteArrayList<>();
         volatile Runnable onBatchStart = () -> {
         }, onBatchEnd = () -> {
+        };
+        volatile Consumer<ChunkDataPacket> onChunk = _ -> {
         };
         volatile long lastBatchNanos = -1;
         private volatile long batchStart;
@@ -522,6 +523,7 @@ public class ChunkSendBlockChangeIntegrationTest {
                     onBatchEnd.run();
                 }
                 case ChunkDataPacket data -> {
+                    onChunk.accept(data);
                     final String at = data.chunkX() + "," + data.chunkZ();
                     chunksHanded.add(at);
                     final Chunk chunk = getInstance().getChunk(data.chunkX(), data.chunkZ());

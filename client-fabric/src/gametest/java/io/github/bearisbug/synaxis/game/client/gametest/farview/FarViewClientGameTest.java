@@ -7,6 +7,7 @@ import io.github.bearisbug.synaxis.game.client.farview.FarViewCache;
 import io.github.bearisbug.synaxis.game.client.farview.FarViewClient;
 import io.github.bearisbug.synaxis.game.client.farview.FarViewConnection;
 import io.github.bearisbug.synaxis.game.client.farview.FarViewSettings;
+import io.github.bearisbug.synaxis.game.client.farview.FarViewTestHook;
 import io.github.bearisbug.synaxis.game.client.farview.dh.DhTestHook;
 import io.github.bearisbug.synaxis.game.client.gametest.camera.SpikeCamera;
 import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
@@ -55,6 +56,7 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -70,7 +72,14 @@ import org.jspecify.annotations.Nullable;
  * {@code /access.log}), {@code SYNAXIS_FARVIEW_MODE} a comma separated list of the modes below, run
  * in that order in one client. Each case writes one line {@code F<n> PASS|FAIL <evidence>} to
  * {@code synaxis-gametest/farview-report.txt}; readings that only get recorded are {@code #} lines.
- * DH is reached only through {@code DhTestHook}, and only when Fabric loaded DH.
+ * DH is reached only through {@code DhTestHook}, and only when Fabric loaded DH. The modes of M3-S
+ * ({@code docs/DESIGN-M3.md} §26 M3-S, 轨道 C): {@code counter-radius}, {@code counter-off}, {@code counter-sha} and
+ * {@code counter-range} run {@code tiers}, {@code none}, {@code break-sha} and {@code half} with one switch of
+ * {@code FarViewTestHook} off, each writing its line as {@code F<n> FAIL counter-proof <mode>: …}; {@code fill-time}
+ * (P1③, F30) and {@code bench-low} (P1⑦, F31) are real machine modes. {@code SYNAXIS_FARVIEW_SUN_ELEVATION} is the sun
+ * elevation in degrees {@code rts-shots} expects (F25) of a fixture that stopped the clock; {@code SYNAXIS_SHADER_PACK}
+ * picks the shader pack by the start of its file name, Complementary unless given; {@code SYNAXIS_DH_THREADS} gives DH's
+ * workers that many threads all the time, for a machine with few cores ({@code farview-gametest.yml}'s 2 core runner).
  */
 public final class FarViewClientGameTest implements FabricClientGameTest {
 
@@ -93,6 +102,12 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
         final Run run = new Run(context, server, env("SYNAXIS_FARVIEW_HTTP", ""));
         try {
             context.waitForScreen(TitleScreen.class);
+            // SYNAXIS_DH_THREADS=<n>: DH's workers get n threads all the time (farview-gametest.yml on its 2 core runner)
+            final String threads = env("SYNAXIS_DH_THREADS", "");
+            if (!threads.isEmpty() && FabricLoader.getInstance().isModLoaded(FarViewClient.DH_MOD_ID)) {
+                run.note("Distant Horizons threads set to " + threads + ", run time ratio 1.0: "
+                        + context.computeOnClient(_ -> DhTestHook.threads(Integer.parseInt(threads), 1.0)));
+            }
             for (String mode : env("SYNAXIS_FARVIEW_MODE", "v1").split(",")) {
                 final String name = mode.trim();
                 if (name.isEmpty()) continue;
@@ -137,6 +152,8 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                 .connectTimeout(Duration.ofSeconds(10)).version(HttpClient.Version.HTTP_1_1).build();
         private @Nullable JsonObject expect;
         private Vec3 spawn = Vec3.ZERO;
+        /** The counter-proof mode running, which its lines are marked with; null for every other mode. */
+        private @Nullable String counterMode;
         private int minY;
         /** The shots of the last V1 before its bake, for the reconnect of ⑦ and the modes after it. */
         private final Map<String, Path> before = new LinkedHashMap<>();
@@ -171,6 +188,12 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                 case "rts-shots" -> realRtsShots();
                 case "bench" -> bench(FarViewSettings.DEFAULT_RADIUS);
                 case "bench-2048" -> bench(FarViewSettings.LOW_RADIUS);
+                case "counter-radius" -> counter(mode, () -> FarViewTestHook.radius = false, this::tiers);
+                case "counter-off" -> counter(mode, () -> FarViewTestHook.pinOff = false, this::none);
+                case "counter-sha" -> counter(mode, () -> FarViewTestHook.digest = false, this::breakSha);
+                case "counter-range" -> counter(mode, () -> FarViewTestHook.range = false, this::half);
+                case "fill-time" -> fillTime();
+                case "bench-low" -> benchLow();
                 default -> note("unknown mode " + mode);
             }
         }
@@ -178,8 +201,23 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
         // ---- The report
 
         void line(String id, boolean pass, String evidence) {
-            lines.put(id, id + (pass ? " PASS " : " FAIL ") + evidence);
+            final String key = counterMode == null ? id : id + " " + counterMode;
+            lines.put(key, id + (pass ? " PASS " : " FAIL ") + (counterMode == null ? "" : "counter-proof " + counterMode + ": ") + evidence);
             write();
+        }
+
+        /**
+         * A counter-proof of {@code TC-WORLD-119} or {@code TC-WORLD-120}: the case with one switch of
+         * {@code FarViewTestHook} off, its line kept apart from the case's own.
+         */
+        void counter(String mode, Runnable off, Runnable run) {
+            counterMode = mode;
+            try {
+                off.run();
+                run.run();
+            } finally {
+                counterMode = null;
+            }
         }
 
         void note(String text) {
@@ -297,6 +335,7 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
         }
 
         void resetHooks() {
+            FarViewTestHook.reset();
             if (dh) DhTestHook.reset();
         }
 
@@ -465,23 +504,67 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
 
         // ---- The player
 
-        /** Flies {@code blocks} east and back, two blocks a tick at y 180, so the server sends the chunks on the way. */
-        void walk(int blocks) {
+        /** The most a walk moves the player in one tick: four ticks folded into one packet stay within the engine's 64. */
+        static final int WALK_STEP = 16;
+
+        /**
+         * How a walk went: whether the player got to (x + {@code blocks}, 180), the client's position there 20 ticks
+         * after the last step against it on every axis within 0.5 blocks, and that position.
+         */
+        record Walked(boolean arrived, String detail) {
+        }
+
+        /**
+         * Flies {@code blocks} east and back at y 180, so the server sends the chunks on the way, moving the player at
+         * most {@value #WALK_STEP} blocks a tick (M3-S, §19 「只读挡住近圈区块」): up from where it stands to y 180 a tick
+         * at a time, then two blocks east a tick, back the same way, and down a tick at a time. The engine turns back a
+         * position packet of more than 64 blocks ({@code docs/DESIGN-PROD.md} {@code API-PROD-030}); a client turned
+         * back stands where the server has it 20 ticks later, which the detail then names.
+         */
+        Walked walk(int blocks) {
             final Vec3 from = context.computeOnClient(client -> client.player.position());
-            for (int step = 0; step <= blocks; step += 2) {
+            climb(from.x, from.y, 180, from.z);
+            for (int step = 2; step <= blocks; step += 2) {
                 final double x = from.x + step;
-                context.runOnClient(client -> client.player.setPos(x, 180, from.z));
+                context.runOnClient(client -> fly(client, x, 180, from.z));
                 context.waitTick();
             }
             context.waitTicks(20);
-            note("walked to " + context.computeOnClient(client -> client.player.position()) + " from " + from);
-            for (int step = blocks; step >= 0; step -= 2) {
+            final Vec3 far = context.computeOnClient(client -> client.player.position());
+            final boolean arrived = Math.abs(far.x - (from.x + blocks)) <= 0.5 && Math.abs(far.y - 180) <= 0.5
+                    && Math.abs(far.z - from.z) <= 0.5;
+            final String detail = arrived ? "walked to x + " + blocks + " " + far
+                    : "not at x + " + blocks + " (" + (from.x + blocks) + ", 180, " + from.z + "): turned back to " + far;
+            note(detail + " from " + from);
+            for (int step = blocks - 2; step >= 0; step -= 2) {
                 final double x = from.x + step;
-                context.runOnClient(client -> client.player.setPos(x, 180, from.z));
+                context.runOnClient(client -> fly(client, x, 180, from.z));
                 context.waitTick();
             }
-            context.runOnClient(client -> client.player.setPos(from.x, from.y, from.z));
+            climb(from.x, 180, from.y, from.z);
             context.waitTicks(40);
+            return new Walked(arrived, detail);
+        }
+
+        /** Moves the player from y {@code y0} to {@code y1} over x, z, at most {@value #WALK_STEP} blocks a tick. */
+        void climb(double x, double y0, double y1, double z) {
+            final int steps = Math.max(1, (int) Math.ceil(Math.abs(y1 - y0) / WALK_STEP));
+            for (int i = 1; i <= steps; i++) {
+                final double y = y0 + (y1 - y0) * i / steps;
+                context.runOnClient(client -> fly(client, x, y, z));
+                context.waitTick();
+            }
+        }
+
+        /**
+         * Puts the player at x, y, z flying and still. A player standing on the ground stops flying
+         * ({@code LocalPlayer#aiStep}), and {@code setPos} keeps the speed of a fall: without this the 20 ticks at the
+         * far end are a fall at full speed, some 75 blocks.
+         */
+        private static void fly(Minecraft client, double x, double y, double z) {
+            client.player.getAbilities().flying = true;
+            client.player.setDeltaMovement(Vec3.ZERO);
+            client.player.setPos(x, y, z);
         }
 
         // ---- What the packs say
@@ -525,6 +608,7 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             clearCache();
             radius(FarViewSettings.DEFAULT_RADIUS);
             final int logFrom = log().size();
+            final FarViewConnection earlier = connection();
             final CountDownLatch hold = new CountDownLatch(1);
             DhTestHook.holdStart = hold;
             if (!connect()) {
@@ -535,6 +619,13 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                 final FarViewConnection c = connection();
                 return c != null && (c.state() == FarViewConnection.State.BAKING || c.failure() != null);
             }, CONNECT_TICKS);
+            if (connection() == earlier) {
+                // The shard announced nothing (bin/server-shard without url-root, the counter-proof of serve-only)
+                hold.countDown();
+                line("F1", false, "no announcement: library " + query(DhTestHook::saveFolder) + ", access.log "
+                        + accessLog().size() + " request(s)");
+                return;
+            }
             note("V1 waiting for the bake to start: " + baking + ", state " + Objects.requireNonNull(connection()).state());
             before.put("far", shot("v1-far-before", farView(), 80));
             before.put("edge", shot("v1-edge-before", view("EDGE_VIEW"), 40));
@@ -563,6 +654,9 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             final List<String> log = logSince(logFrom);
             note("V1 state " + c.state() + (c.failure() == null ? "" : " failure " + c.failure()) + ", view " + key
                     + ", download " + c.downloadMillis() + " ms, timings " + c.timings());
+            final List<String> requested = accessLog();
+            note("V1 access.log after the bake: " + requested.stream().filter(line -> line.startsWith("GET ")).count() + " GET of "
+                    + requested.size() + " request(s)");
 
             // ① the library is pinned to synaxis/farview/dh/<view_key>/, DH's own folder holds none
             final String saveLine = find(log, "Save folder overridden from");
@@ -606,11 +700,12 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                 final int x = point.get("x").getAsInt(), z = point.get("z").getAsInt();
                 final Map<String, Object> top = query(() -> DhTestHook.topPoint(x, z, 2));
                 final int expectedIndex = point.get("y").getAsInt() - minY;
+                final String biome = point.has("biome") ? point.get("biome").getAsString() : null;
                 final boolean ok = top != null && !top.isEmpty() && ((Integer) top.get("state")) == point.get("state").getAsInt()
-                        && ((Integer) top.get("top")) - 1 == expectedIndex;
+                        && ((Integer) top.get("top")) - 1 == expectedIndex && (biome == null || sameBiome(biome, top.get("biome")));
                 pointsOk &= ok;
                 points.add(point.get("name").getAsString() + "@" + x + "," + z + " expected " + point.get("block").getAsString()
-                        + " index " + expectedIndex + " got " + top + (ok ? " ok" : " WRONG"));
+                        + " index " + expectedIndex + (biome == null ? "" : " biome " + biome) + " got " + top + (ok ? " ok" : " WRONG"));
             }
             line("F4", base == sources && parents == 0 && children == 0 && four > 0 && pointsOk,
                     "DetailLevel=2 " + base + " of " + sources + ", ApplyToParent=1 " + parents + ", ApplyToChildren=1 " + children
@@ -618,10 +713,11 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
 
             // ⑤ the near chunks stay out of the library
             final long levelZeroBefore = count("DetailLevel = 0");
-            walk(200);
+            final Walked walked = walk(200);
             final long levelZeroAfter = count("DetailLevel = 0");
-            line("F5", levelZeroBefore == 0 && levelZeroAfter == 0,
-                    "DetailLevel=0 before the walk " + levelZeroBefore + ", after 200 blocks and back " + levelZeroAfter);
+            line("F5", levelZeroBefore == 0 && levelZeroAfter == 0 && walked.arrived(),
+                    "DetailLevel=0 before the walk " + levelZeroBefore + ", after 200 blocks and back " + levelZeroAfter + "; "
+                            + walked.detail());
 
             // ⑥ the far view, the LOD view and the edge view drawn
             final Path far = stable("v1-far-after", farView(), 1200);
@@ -668,6 +764,13 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                             : "not within 200 ticks") + " (" + FarViewConnection.millisSince(inWorldAt) + " ms)");
         }
 
+        /** A biome as DH names it against the {@code namespace:path} of {@code /expect.json}. */
+        private static boolean sameBiome(String expected, @Nullable Object got) {
+            if (got == null) return false;
+            final String name = got.toString();
+            return name.equals(expected) || name.endsWith(expected.substring(expected.indexOf(':')));
+        }
+
         private static List<Path> libraries(Path dir) {
             if (!Files.isDirectory(dir)) return List.of();
             try (Stream<Path> files = Files.walk(dir)) {
@@ -706,12 +809,12 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             ready();
             final Boolean readOnly = query(DhTestHook::readOnlyNow);
             final long levelZeroBefore = count("DetailLevel = 0");
-            walk(200);
+            final Walked walked = walk(200);
             final long levelZeroAfter = count("DetailLevel = 0");
             final FarViewConnection c = Objects.requireNonNull(connection());
-            line("F9", levelZeroAfter > 0, "counter-proof v1-writable: getReadOnly " + readOnly + ", DetailLevel=0 before the walk "
-                    + levelZeroBefore + ", after " + levelZeroAfter + " (above 0 expected); the bake ended " + c.state()
-                    + (c.failure() == null ? "" : " " + c.failure()));
+            line("F9", levelZeroAfter > 0 && walked.arrived(), "counter-proof v1-writable: getReadOnly " + readOnly
+                    + ", DetailLevel=0 before the walk " + levelZeroBefore + ", after " + levelZeroAfter + " (above 0 expected); the bake ended "
+                    + c.state() + (c.failure() == null ? "" : " " + c.failure()) + "; " + walked.detail());
             leave();
             clearCache();
         }
@@ -973,17 +1076,17 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             final Boolean readOnly = query(DhTestHook::readOnlyNow);
             final Map<String, String> graphics = graphics();
             final String folder = query(DhTestHook::saveFolder);
-            walk(200);
+            final Walked walked = walk(200);
             final long rows = count("DetailLevel >= 0");
             final FarViewConnection c = FarViewClient.current();
             leave();
             final Map<String, String> after = graphics();
             line("F16", c == null && Boolean.TRUE.equals(readOnly) && noOverride(graphics) && pinnedOff(folder) && rows == 0
-                            && noOverride(after),
+                            && noOverride(after) && walked.arrived(),
                     "announcement " + (c == null ? "none" : "one") + ", getReadOnly " + readOnly + ", library " + folder + " with "
                             + rows + " rows after a 200 block walk, renderingEnabled " + graphics.get("renderingEnabled")
                             + ", chunkRenderDistance " + graphics.get("chunkRenderDistance") + "; after the disconnect "
-                            + after.get("renderingEnabled"));
+                            + after.get("renderingEnabled") + "; " + walked.detail());
         }
 
         /** No DH: the mod loads, the world is entered, nothing is downloaded. */
@@ -1028,18 +1131,30 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                             + "; in the world without a screen " + playing);
         }
 
-        /** The fixture's half: the first response cut in half, the second asked for the rest with Range. */
+        /**
+         * The fixture's half: the first response cut in half, the second request for that object asks for the rest
+         * with Range and is answered 206. The line names the second request whatever it was.
+         */
         void half() {
             clearCache();
+            // A second run against the same fixture (half, then counter-range) gets a cut of its own
+            get("/rearm");
             final int access = accessLog().size();
             final boolean in = connect();
             final boolean ready = in && ready();
             final List<String> requests = accessLog().subList(access, accessLog().size());
-            final String cut = requests.stream().filter(line -> line.endsWith(" cut")).findFirst().orElse(null);
+            int cutAt = -1;
+            for (int i = 0; i < requests.size() && cutAt < 0; i++) {
+                if (requests.get(i).endsWith(" cut")) cutAt = i;
+            }
+            final String cut = cutAt < 0 ? null : requests.get(cutAt);
             final String path = cut == null ? "" : cut.split(" ")[1];
-            final String resumed = requests.stream().filter(line -> line.contains(path) && line.contains(" bytes=")
-                    && line.contains(" 206")).findFirst().orElse(null);
-            line("F19", ready && cut != null && resumed != null, "cut " + cut + "; resumed " + resumed + "; ready " + ready);
+            // access.log: method, path, Range header (- without), status[, cut]
+            final String second = cut == null ? null : requests.subList(cutAt + 1, requests.size()).stream()
+                    .filter(line -> line.split(" ")[1].equals(path)).findFirst().orElse(null);
+            final String[] fields = second == null ? new String[0] : second.split(" ");
+            final boolean resumed = fields.length >= 4 && fields[2].startsWith("bytes=") && fields[3].equals("206");
+            line("F19", ready && resumed, "cut " + cut + "; second " + second + "; ready " + ready);
         }
 
         // ---- V2a, V3a, V6a, V8a: readings, recorded
@@ -1129,12 +1244,16 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
         String installShaderPack() {
             final String packs = env("SYNAXIS_DH_SHADERPACKS", "/dh/shaderpacks");
             final Path irisPacks = (Path) reflect(null, "net.irisshaders.iris.Iris", "getShaderpacksDirectory", new Class<?>[0]);
+            // Complementary unless SYNAXIS_SHADER_PACK names another by the start of its file name (P1⑧: Photon)
+            final String wanted = env("SYNAXIS_SHADER_PACK", "Complementary");
             String pack = "none";
             try (Stream<Path> files = Files.list(Path.of(packs))) {
-                for (Path file : files.toList()) {
+                for (Path file : files.sorted().toList()) {
                     Files.createDirectories(irisPacks);
                     Files.copy(file, irisPacks.resolve(file.getFileName()), StandardCopyOption.REPLACE_EXISTING);
-                    pack = file.getFileName().toString();
+                    final String name = file.getFileName().toString();
+                    // A pack's settings file (<pack>.txt, e.g. profile=LOW) goes along but is no pack
+                    if (name.startsWith(wanted) && name.endsWith(".zip")) pack = name;
                 }
             } catch (IOException e) {
                 note("no shader pack copied: " + e);
@@ -1398,30 +1517,69 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
 
         /**
          * V6b: the perspective RTS camera at eye 64 and 100 above the ground, and one ortho shot for the record. The
-         * sun stands where the fixture's clock has it: the client of 26.2 takes the day time from the server's clock,
-         * so the 40° shot needs the fixture to set its time.
+         * sun stands where the fixture's clock has it: the client of 26.2 takes its clocks from the server, and its sun
+         * angle from the {@code minecraft:day} timeline of the dimension type. With a fixture that stopped its clock
+         * ({@code day_time} in {@code /expect.json}) the line judges it (§19 「夹具定住日间时间」): the default clock is
+         * that time once in the world and 600 ticks later, and the sun is within 1° of {@code SYNAXIS_FARVIEW_SUN_ELEVATION}
+         * when given; without it the line only records. The sun is read while the bake runs and needs no far view;
+         * the shots wait for a ready one and are left out without it, which the line notes.
          */
         void realRtsShots() {
             clearCache();
             radius(FarViewSettings.DEFAULT_RADIUS);
             final Map.Entry<Path, Long> held = heldBake("v6b");
-            if (held == null || !ready()) {
-                line("F25", false, "no ready far view");
+            if (held == null) {
+                line("F25", false, "not in the world");
                 return;
             }
-            drawn("v6b-lod", lodView(), held.getKey(), 2400);
+            final Sky first = sky();
+            context.waitTicks(600);
+            final Sky later = sky();
+            final boolean ready = ready();
             final List<String> taken = new ArrayList<>();
-            final int ground = groundAt((int) spawn.x, (int) spawn.z);
-            for (int height : new int[]{64, 100}) {
-                taken.add(stable("v6b-h" + height, at(spawn.x, ground + height, spawn.z - 60, 0f, 55f), 800).getFileName().toString());
+            if (ready) {
+                drawn("v6b-lod", lodView(), held.getKey(), 2400);
+                // V6b judges fog, water and shadows with the shader pack on, P1⑧ the culling of Sodium and Iris on it
+                if (iris) {
+                    installShaderPack();
+                    setShaders(true);
+                    context.waitTicks(300);
+                }
+                final int ground = groundAt((int) spawn.x, (int) spawn.z);
+                for (int height : new int[]{64, 100}) {
+                    taken.add(stable("v6b-h" + height, at(spawn.x, ground + height, spawn.z - 60, 0f, 55f), 800).getFileName().toString());
+                }
+                context.runOnClient(_ -> SpikeCamera.set(new SpikeCamera.Settings(SpikeCamera.Mode.ORTHO,
+                        new Vec3(spawn.x, ground, spawn.z), -90f, 60f, 64f, 96f)));
+                context.waitTicks(100);
+                taken.add(context.takeScreenshot(TestScreenshotOptions.of("farview-v6b-ortho").withSize(SHOT_WIDTH, SHOT_HEIGHT))
+                        .getFileName().toString());
             }
-            context.runOnClient(_ -> SpikeCamera.set(new SpikeCamera.Settings(SpikeCamera.Mode.ORTHO,
-                    new Vec3(spawn.x, ground, spawn.z), -90f, 60f, 64f, 96f)));
-            context.waitTicks(100);
-            taken.add(context.takeScreenshot(TestScreenshotOptions.of("farview-v6b-ortho").withSize(SHOT_WIDTH, SHOT_HEIGHT))
-                    .getFileName().toString());
-            final long dayTime = context.computeOnClient(client -> client.level.getOverworldClockTime());
-            line("F25", true, "day time " + dayTime + ", shots " + taken);
+            final JsonElement given = expect().get("day_time");
+            final String target = env("SYNAXIS_FARVIEW_SUN_ELEVATION", "");
+            final boolean stopped = given == null || first.dayTime() == given.getAsLong() && later.dayTime() == given.getAsLong()
+                    && (target.isEmpty() || Math.abs(later.elevation() - Double.parseDouble(target)) <= 1);
+            line("F25", stopped, String.format(Locale.ROOT, "day time %d, %d after %d ticks (game time), overworld clock %d; sun angle "
+                            + "%.3f°, elevation %.3f°; fixture day_time %s, expected elevation %s; far view ready %s, shots %s", first.dayTime(),
+                    later.dayTime(), later.gameTime() - first.gameTime(), later.overworld(), later.angle(), later.elevation(),
+                    given == null ? "none (recorded only)" : given.getAsString(), target.isEmpty() ? "none" : target + "°", ready, taken));
+        }
+
+        /**
+         * The client's sky: its default clock, the overworld clock, the game time, and the sun angle the
+         * {@code minecraft:day} timeline gives at the player (0° at noon), with the sun's elevation it makes.
+         */
+        record Sky(long dayTime, long overworld, long gameTime, double angle) {
+            double elevation() {
+                final double a = Math.floorMod(Math.round(angle * 1000), 360_000) / 1000.0;
+                return 90 - Math.min(a, 360 - a);
+            }
+        }
+
+        Sky sky() {
+            return context.computeOnClient(client -> new Sky(client.level.getDefaultClockTime(), client.level.getOverworldClockTime(),
+                    client.level.getGameTime(), client.level.environmentAttributes().getValue(EnvironmentAttributes.SUN_ANGLE,
+                    client.player.position())));
         }
 
         /**
@@ -1431,14 +1589,37 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
          * default profile.
          */
         void bench(int far) {
+            bench("F26", far == FarViewSettings.DEFAULT_RADIUS ? "farview-bench.csv" : "farview-bench-" + far + ".csv",
+                    new int[]{far, FarViewSettings.OFF}, 12, true);
+        }
+
+        /**
+         * P1⑦ ({@code docs/DESIGN-M3.md} §26 M3-S, 真机六项): the low end machine at the vanilla render distance 8 and
+         * the far view of 2,048, no shader pack, the route of {@link #bench} for 60 s; frame times to
+         * {@code farview-bench-low.csv}. Judged on the machine by §15's P1% of 45 FPS; here only recorded.
+         */
+        void benchLow() {
+            bench("F31", "farview-bench-low.csv", new int[]{FarViewSettings.LOW_RADIUS}, 8, false);
+        }
+
+        /**
+         * 60 s along the bench route for each radius, frame times to {@code file}.
+         *
+         * @param id             the report line
+         * @param file           the csv under {@code synaxis-gametest/}
+         * @param radii          the far view radii, one flight each, 0 without a far view
+         * @param renderDistance the vanilla render distance
+         * @param shaders        whether Iris, when loaded, runs the shader pack
+         */
+        void bench(String id, String file, int[] radii, int renderDistance, boolean shaders) {
             final List<String> csv = new ArrayList<>();
             csv.add("radius,frame,ms");
             final List<String> seen = new ArrayList<>();
-            for (int radius : new int[]{far, FarViewSettings.OFF}) {
+            for (int radius : radii) {
                 radius(radius);
                 if (radius == FarViewSettings.OFF) {
                     if (!connect()) {
-                        line("F26", false, "not in the world at 0");
+                        line(id, false, "not in the world at 0");
                         return;
                     }
                     context.waitTicks(200);
@@ -1446,13 +1627,13 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                     clearCache();
                     final Map.Entry<Path, Long> held = heldBake("v8b-" + radius);
                     if (held == null || !ready()) {
-                        line("F26", false, "no far view at " + radius);
+                        line(id, false, "no far view at " + radius);
                         return;
                     }
                     drawn("v8b-" + radius + "-lod", lodView(), held.getKey(), 2400);
                 }
-                context.runOnClient(client -> client.options.renderDistance().set(12));
-                if (iris) {
+                context.runOnClient(client -> client.options.renderDistance().set(renderDistance));
+                if (iris && shaders) {
                     installShaderPack();
                     setShaders(true);
                 }
@@ -1474,14 +1655,60 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                         mean, p99, p99 == 0 ? 0 : 1000 / p99));
                 leave();
             }
-            final String file = far == FarViewSettings.DEFAULT_RADIUS ? "farview-bench.csv" : "farview-bench-" + far + ".csv";
             try {
                 Files.write(gameDir.resolve("synaxis-gametest").resolve(file), csv, StandardCharsets.UTF_8);
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             }
             radius(FarViewSettings.DEFAULT_RADIUS);
-            line("F26", true, "framebuffer " + framebuffer() + "; " + String.join("; ", seen));
+            line(id, true, "framebuffer " + framebuffer() + ", vanilla render distance " + renderDistance + ", " + file + "; "
+                    + String.join("; ", seen));
+        }
+
+        /** The chunks of the ring a view distance of 12 sends: (2 × (12 + 1) + 1)². */
+        static final int RING_CHUNKS = 729;
+
+        /**
+         * P1③ ({@code docs/DESIGN-M3.md} §26 M3-S, 真机六项): with {@code farview.radius} 0 and the vanilla render
+         * distance 12, three connections, each timed from the client's level appearing (the play phase's
+         * {@code Login}) to its chunk cache holding {@value #RING_CHUNKS} chunks; the fixture gives the round trip
+         * (its seventh argument). Only recorded.
+         */
+        void fillTime() {
+            radius(FarViewSettings.OFF);
+            final List<Long> filled = new ArrayList<>();
+            final List<String> seen = new ArrayList<>();
+            for (int run = 1; run <= 3; run++) {
+                expect();
+                context.runOnClient(client -> {
+                    client.options.renderDistance().set(12);
+                    client.options.cloudStatus().set(CloudStatus.OFF);
+                    ConnectScreen.startConnecting(new TitleScreen(), client, ServerAddress.parseString(server),
+                            new ServerData("farview", server, ServerData.Type.OTHER), false, null);
+                });
+                final long started = System.nanoTime();
+                long login = -1;
+                long full = -1;
+                int chunks = 0;
+                for (int tick = 0; tick < 20 * 300 && full < 0; tick++) {
+                    final int now = context.computeOnClient(client -> client.level == null ? -1 : client.level.getChunkSource()
+                            .getLoadedChunksCount());
+                    if (now >= 0 && login < 0) login = System.nanoTime();
+                    chunks = Math.max(chunks, now);
+                    if (now >= RING_CHUNKS) full = System.nanoTime();
+                    if (context.computeOnClient(client -> client.gui.screen() instanceof DisconnectedScreen)) break;
+                    context.waitTick();
+                }
+                final long ms = login < 0 || full < 0 ? -1 : TimeUnit.NANOSECONDS.toMillis(full - login);
+                if (ms >= 0) filled.add(ms);
+                seen.add("run " + run + ": " + (login < 0 ? "never in the world" : "login after " + TimeUnit.NANOSECONDS.toMillis(login - started)
+                        + " ms, " + (full < 0 ? "at most " + chunks + " chunks" : RING_CHUNKS + " chunks after " + ms + " ms")));
+                leave();
+            }
+            radius(FarViewSettings.DEFAULT_RADIUS);
+            final List<Long> sorted = filled.stream().sorted().toList();
+            line("F30", sorted.size() == 3, "from Login to " + RING_CHUNKS + " chunks, median " + (sorted.size() == 3 ? sorted.get(1)
+                    + " ms" : "none") + "; " + String.join("; ", seen));
         }
     }
 }

@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Frame times for the V8b bench of {@code docs/DESIGN-M3.md} §26 M3-G (真机验收): while recording,
- * {@code FrameTimeMixin} hands over the start of every frame, and the bench writes the gaps out as
- * {@code farview-bench.csv}. Off, which is always but during a bench, a frame costs one volatile read.
+ * Frame times for the V8b bench of {@code docs/DESIGN-M3.md} §26 M3-G (真机验收) and the {@code light-frames} mode of
+ * {@code LightClientGameTest} (M3-S, 真机六项 P1①): while recording, {@code FrameTimeMixin} hands over the start of every
+ * frame, and the bench writes the gaps out as {@code farview-bench.csv}. Off, which is always but during a bench, a frame costs one volatile read.
  */
 public final class FrameTimes {
 
@@ -28,15 +28,20 @@ public final class FrameTimes {
         }
     }
 
-    static void start() {
+    /** Starts recording, dropping what was recorded before. */
+    public static void start() {
         synchronized (STARTS) {
             STARTS.clear();
         }
         recording = true;
     }
 
-    /** Stops recording and returns the frame times in nanoseconds, one per gap between frame starts. */
-    static List<Long> stop() {
+    /**
+     * Stops recording.
+     *
+     * @return the frame times in nanoseconds, one per gap between frame starts
+     */
+    public static List<Long> stop() {
         recording = false;
         synchronized (STARTS) {
             final List<Long> times = new ArrayList<>(Math.max(0, STARTS.size() - 1));

@@ -2,9 +2,13 @@ package io.github.bearisbug.synaxis.game.client.farview;
 
 import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.UnknownHostException;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -75,6 +79,7 @@ public final class FarViewConnection {
     private final String dhVersion;
     private final FarViewCache cache;
     private final FarViewDownloader downloader;
+    private final @Nullable InetAddress server;
     private final AtomicBoolean cancelled = new AtomicBoolean();
     private final AtomicReference<State> state = new AtomicReference<>(State.ABSENT);
     private final AtomicLong done = new AtomicLong();
@@ -94,8 +99,19 @@ public final class FarViewConnection {
     private @Nullable Object level;
     private @Nullable Baker baker;
 
+    /**
+     * @param announcement   the announcement, null for none or one this client does not take
+     * @param announcedNanos {@link System#nanoTime()} when it was handled
+     * @param settings       the player's setting
+     * @param available      whether this connection draws a far view
+     * @param dhVersion      the DH version the key is made with
+     * @param cache          the cache
+     * @param downloader     the downloads
+     * @param server         the address of the server of this connection, null when unknown
+     */
     FarViewConnection(@Nullable FarViewAnnouncement announcement, long announcedNanos, FarViewSettings settings,
-                      boolean available, String dhVersion, FarViewCache cache, FarViewDownloader downloader) {
+                      boolean available, String dhVersion, FarViewCache cache, FarViewDownloader downloader,
+                      @Nullable InetAddress server) {
         this.announcement = announcement;
         this.announcedNanos = announcedNanos;
         this.settings = settings;
@@ -104,13 +120,23 @@ public final class FarViewConnection {
         this.viewKey = this.available ? FarViewCache.viewKey(dhVersion, FarViewClient.BAKE_CODE_VERSION, announcement.tiles()) : "";
         this.cache = cache;
         this.downloader = downloader;
+        this.server = server;
     }
 
     /**
      * Picks the library and starts what it needs: nothing for a matching marker, the downloads of
-     * the missing objects otherwise.
+     * the missing objects on a thread of their own otherwise.
      */
     void begin() {
+        begin(download -> Thread.ofPlatform().daemon().name("synaxis-farview-download").start(download));
+    }
+
+    /**
+     * {@link #begin()} with the downloads handed to {@code downloads}.
+     *
+     * @param downloads runs the download of the missing objects
+     */
+    void begin(Executor downloads) {
         if (!available) return;
         final FarViewAnnouncement announced = announcement();
         final Optional<FarViewCache.Marker> found = cache.marker(viewKey);
@@ -126,19 +152,28 @@ public final class FarViewConnection {
             return;
         }
         state.set(State.DOWNLOADING);
-        Thread.ofPlatform().daemon().name("synaxis-farview-download").start(() -> {
+        downloads.execute(() -> {
             if (download(missing)) packsReady();
         });
     }
 
     /**
-     * Downloads objects on the calling thread, with the HUD line and the log lines of the design.
+     * Downloads objects on the calling thread, with the HUD line and the log lines of the design; none
+     * when their host resolves to a local address and the server is not local ({@code API-M3-015}
+     * 下载条 ⑥).
      *
      * @param missing the objects
      * @return whether all are in the cache now
      */
     public boolean download(List<FarViewAnnouncement.Tile> missing) {
         state.set(State.DOWNLOADING);
+        final String local = localRefusal(missing);
+        if (local != null) {
+            failure = "local address";
+            LOGGER.warn("{}Far view off: {}", FarViewClient.PREFIX, local);
+            state.compareAndSet(State.DOWNLOADING, State.ABSENT);
+            return false;
+        }
         done.set(0);
         total.set(missing.stream().mapToLong(FarViewAnnouncement.Tile::bytes).sum());
         LOGGER.info("{}view {} downloading {} object(s), {} B", FarViewClient.PREFIX, viewKey, missing.size(), total.get());
@@ -152,12 +187,66 @@ public final class FarViewConnection {
         if (result.failed() != null) {
             failure = "pack " + result.failed().substring(0, 12) + " failed";
             LOGGER.warn("{}Far view pack {} failed after {} attempts: {}", FarViewClient.PREFIX,
-                    result.failed().substring(0, 12), FarViewDownloader.ATTEMPTS, result.reason());
-        } else {
+                    result.failed().substring(0, 12), result.attempts(), result.reason());
+        } else if (result.reason().equals(FarViewDownloader.CANCELLED)) {
             LOGGER.info("{}view {} download stopped: {}", FarViewClient.PREFIX, viewKey, result.reason());
+        } else {
+            failure = result.reason();
+            LOGGER.warn("{}Far view off: view {} download stopped: {}", FarViewClient.PREFIX, viewKey, result.reason());
         }
         state.compareAndSet(State.DOWNLOADING, State.ABSENT);
         return false;
+    }
+
+    /** Why the host of these objects may not be asked on this connection, null when it may. */
+    private @Nullable String localRefusal(List<FarViewAnnouncement.Tile> tiles) {
+        if (tiles.isEmpty()) return null;
+        final String host;
+        final InetAddress[] resolved;
+        try {
+            host = URI.create(tiles.getFirst().url()).getHost();
+            if (host == null) return null;
+            resolved = InetAddress.getAllByName(host);
+        } catch (IllegalArgumentException | UnknownHostException _) {
+            // The downloads fail on their own
+            return null;
+        }
+        return localRefusal(host, resolved, server);
+    }
+
+    /**
+     * The local address rule ({@code API-M3-015} 下载条 ⑥): a host that resolves to a loopback, private,
+     * link local or unspecified address is asked only when the server is at one too, so a server cannot
+     * point the client at the player's own network.
+     *
+     * @param host     the host of the announced URLs
+     * @param resolved what it resolved to
+     * @param server   the address of the server, null when unknown
+     * @return why the host may not be asked, null when it may
+     */
+    static @Nullable String localRefusal(String host, InetAddress[] resolved, @Nullable InetAddress server) {
+        if (server != null && local(server)) return null;
+        for (InetAddress address : resolved) {
+            if (local(address)) {
+                return host + " resolves to the local address " + address.getHostAddress() + ", the server "
+                        + (server == null ? "(unknown)" : server.getHostAddress()) + " is not local";
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Whether an address is loopback (127/8, ::1), private (10/8, 172.16/12, 192.168/16, fc00::/7), link
+     * local (169.254/16, fe80::/10) or unspecified.
+     *
+     * @param address the address
+     * @return whether it is
+     */
+    static boolean local(InetAddress address) {
+        if (address.isLoopbackAddress() || address.isAnyLocalAddress() || address.isLinkLocalAddress()
+                || address.isSiteLocalAddress()) return true;
+        final byte[] bytes = address.getAddress();
+        return bytes.length == 16 && (bytes[0] & 0xFE) == 0xFC;
     }
 
     private synchronized void packsReady() {

@@ -1,0 +1,117 @@
+真机六项（P1① 帧时间、P1③、P1⑦、P1⑧、V7、Vulkan）与 V6b 两张的步骤（DESIGN-M3 §26 M3-S「真机六项的测法」与
+「轨道 C 的四项容器规格」第 1 项；用户亲自启动，gametest 会占用那台机器的窗口与鼠标）
+=====================================================================================================================
+
+提交：分支 m3s/c-client 上含本文件的提交；M3-S 合入 main 之后用 main。夹具与客户端在同一台机器上，所有读数注明「同机」。
+
+机器
+  RTX 3060 级 Windows 10/11（1080p 显示器、内存 16 GiB 以上）：P1①、P1③、P1⑧、Vulkan、V6b。
+  Apple Silicon Mac（M1 以上、macOS 14 以上）：P1①、P1⑧、V7；是 M1 时兼作 P1⑦ 的 Mac。
+  GTX 1650 级 Windows（第三台）：P1⑦。
+  都装 JDK 25 与 Git。检出路径不能含空格：server-app/build/*-fixture.args 里的类路径没有加引号。
+
+1. 取第三方 jar（按 SHA-1 校验，不入库；<DIR> 是仓库外的一个空目录，绝对路径）
+     P1③、P1⑦、Vulkan：        java docs/research/client-spikes-2026-09/dh-iris/Fetch.java dh <DIR>
+     V6b、V7：                  java docs/research/client-spikes-2026-09/dh-iris/Fetch.java dh-iris <DIR>
+     P1⑧：                      java docs/research/client-spikes-2026-09/dh-iris/Fetch.java dh-iris-photon <DIR>
+   <DIR>/mods 是 DH 3.3.2-26.2（dh-iris 另有 Sodium 0.9.2、Iris 1.11.4），<DIR>/shaderpacks 是
+   ComplementaryReimagined_r5.9.3.zip（dh-iris），dh-iris-photon 另有 photon_v1.3b.zip（Modrinth 上 Photon 的最新版，
+   2026-04-14 发布，标的游戏版本到 26.1.2、没有 26.2，能否在 26.2 的 Iris 1.11.4 下加载正是 P1⑧ 要看的）。P1① 不用 jar。
+
+2. 构建（仓库根目录；国内网络再加 --init-script gradle/init/aliyun-mirror.init.gradle.kts）
+     ./gradlew :protocol:publishToMavenLocal :server-app:farviewFixtureArgs :server-app:lightFixtureArgs --no-daemon
+   Windows 用 .\gradlew.bat，参数相同。
+
+3. 远景夹具（仓库根目录，单独一个终端；<WORK> 是仓库外的空目录）
+     java @server-app/build/farview-fixture.args -Xms1G -Xmx1G -XX:ActiveProcessorCount=2 \
+       -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 \
+       io.github.bearisbug.synaxis.app.shard.FarViewShardFixture 25750 25751 <WORK> baked http://127.0.0.1:25751 [dayTime [rtt]]
+   第 5 个参数是宣告里的地址根；第 6 个 dayTime（tick，-1 让日夜照常走）给了就在那一刻停住时钟，夹具输出
+   day_time=<值> (clock stopped)；第 7 个是往返时延毫秒数，夹具在游戏端口前放一个 TCP 代理、两个方向各延迟一半。
+   等到输出 farview fixture ready。第一次起要先烘 3×3 瓦片测试图（两核约 8 min，<WORK> 约 1.9 GB），之后约 5 s 就绪；
+   build_id 应为 farview3x3-82ef22b94f77-p776。
+
+4. 客户端（client-fabric/ 目录，另一个终端）。环境变量：
+     SYNAXIS_FARVIEW_SERVER=127.0.0.1:25750
+     SYNAXIS_FARVIEW_HTTP=http://127.0.0.1:25751
+     SYNAXIS_FARVIEW_MODE=<下面各项的模式>
+     JAVA_TOOL_OPTIONS=-Dfabric.addMods=<DIR>/mods
+     SYNAXIS_DH_SHADERPACKS=<DIR>/shaderpacks             （装 Iris 的几项设）
+     SYNAXIS_SHADER_PACK=<文件名开头>                       （不设是 Complementary；P1⑧ 第二遍设 photon）
+   命令：
+     macOS：   ./gradlew runClientGameTest --args="--width 1920 --height 1080" --no-daemon
+     Windows： PowerShell 里先 $env:SYNAXIS_FARVIEW_SERVER="127.0.0.1:25750" 等逐个设好，再
+               .\gradlew.bat runClientGameTest --args="--width 1920 --height 1080" --no-daemon
+   产物在 client-fabric/build/run/clientGameTest/ 下：synaxis-gametest/farview-report.txt（每条一行
+   F<n> PASS|FAIL <证据>，# 开头的是记录）、synaxis-gametest/*.csv、logs/latest.log、screenshots/。
+   下一次运行会清空这个目录，每次跑完先拷走。
+
+5. 各项
+
+   P1① 帧时间（3060 与 Mac 各两档）
+     夹具换成光照夹具（仓库根目录，单独一个终端；<LWORK> 是仓库外的空目录）：
+       java @server-app/build/light-fixture.args -Xms1G -Xmx1G -Dsynaxis.app.auth=offline \
+         -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 [-Dsynaxis.chunk-view-distance=16] \
+         io.github.bearisbug.synaxis.app.shard.LightShardFixture 25760 <LWORK>
+     视距 12 那一档不给 -Dsynaxis.chunk-view-distance（夹具写 12），16 那一档给 16。等 light fixture ready。
+     客户端：SYNAXIS_LIGHT_SERVER=127.0.0.1:25760、SYNAXIS_LIGHT_MODE=light-frames，12 那一档
+     SYNAXIS_LIGHT_RENDER_DISTANCE=12、SYNAXIS_LIGHT_RING=729，16 那一档 =16、=1225；不设 SYNAXIS_FARVIEW_*，不加 mods。
+     模式从连上开始记帧，区块环满了之后站着不动 10 s，再在玩家东边 2～4 格放 9 支火把、逐个拆掉。
+     交回 synaxis-gametest/light-report.txt（L12 行：环满所用毫秒、进场窗口与放拆窗口各自的帧数、平均、最坏单帧、
+     p99 与 P1% FPS = 1,000 / p99，站着不动 10 s 的帧时间中位数）与 synaxis-gametest/light-frames.csv
+     （window 列是 arriving、still、torches；进场窗口 = arriving + still）。
+     判据（DESIGN-M3 §15 兼容行）：进场窗口与放拆窗口的 P1% 都不低于同一台机器的判据（3060 ≥ 60 FPS、Mac ≥ 45 FPS）。
+     进场窗口不达标：光照夹具加 -Dsynaxis.chunk-queue.max-per-tick=2 再测一次，仍不达标回到用户；放拆窗口不达标只登记。
+
+   P1③（3060）
+     远景夹具第 6、7 个参数给 -1 150：... baked http://127.0.0.1:25751 -1 150。模式 fill-time（模式自己把
+     farview.radius 设 0、原版渲染距离设 12，连三次）。
+     交回 farview-report.txt 的 F30 行：每次从 Login（客户端层级出现）到客户端区块缓存里有 729 个区块的毫秒，
+     与三次的中位数。只登记，回写 DESIGN-M3 §15 的下发速率条，要不要定填满时间的目标由用户定。
+
+   P1⑦（GTX 1650 级 Windows 与 M1 Mac）
+     Fetch 用 dh。Windows 在客户端启动前另开终端 nvidia-smi --query-gpu=memory.used --format=csv -l 1 > vram.csv，
+     客户端退出后停掉。模式 bench-low：远景 2,048、原版渲染距离 8、不装光影包，沿 bench 的固定路线飞 60 s。
+     交回 F31 行（平均帧时间、p99、P1% FPS）、synaxis-gametest/farview-bench-low.csv 与 vram.csv。
+     判据：§15 兼容行 P1% ≥ 45 FPS；不达标回到用户，在「低配档默认远景 0 档」与「低配档降原版渲染距离」之间选。
+
+   P1⑧（3060 与 Mac）
+     Fetch 用 dh-iris-photon，设 SYNAXIS_DH_SHADERPACKS。每台四次运行：
+       a. 模式 bench，不设 SYNAXIS_SHADER_PACK（Complementary）；
+       b. 模式 bench，SYNAXIS_SHADER_PACK=photon；
+       c. 模式 rts-shots，不设 SYNAXIS_SHADER_PACK；
+       d. 模式 rts-shots，SYNAXIS_SHADER_PACK=photon。
+     bench 写 farview-bench.csv 与 F26（远景 4,096 与关两档）；rts-shots 开着光影（装了 Iris 时模式自己打开）在
+     eye 64 与 100 各截一张透视、一张正交，F25 列出文件名。Sodium 的异步遮挡剔除与 Iris 的阴影剔除用它们的默认设置
+     （两者默认开），跑之前不要动它们的菜单。
+     交回四份报告、两份 csv 与截图。判据（REQ-M3-019）：两种光影包都能加载、加 DH 不崩；Complementary 的读数达 §15 兼容行
+     （3060 P1% ≥ 60 FPS、Mac ≥ 45 FPS，与 V8b 同一判据），Photon 只登记；截图除 V6a 解释过的近圈空洞外没有缺块。
+     不达标回到用户；RTS 相机那一半在 M2 阶段 6b 合入后用真相机重跑。
+
+   V7（Apple Silicon Mac）
+     Fetch 用 dh-iris。在 <DIR>/shaderpacks 里放一个文本文件 ComplementaryReimagined_r5.9.3.zip.txt，内容一行
+     profile=LOW（Iris 照 OptiFine 的写法读光影包设置文件里的 profile 选档；模式把这个文件随光影包一起拷进运行目录）。
+     模式 bench。交回报告、farview-bench.csv 与 logs/latest.log，并在截图或 Iris 的光影设置里确认用的是 LOW 档
+     （未在真机核实 Iris 读这一行）。判据：能加载、加 DH 不崩、1080p 的 P1% ≥ 45 FPS；Iris 在 Mac 上自动关掉光影包时，
+     按 PAGE-SHADER-GUIDE 第三态的原版兜底算通过。不达标回到用户。
+
+   Vulkan（3060）
+     Fetch 用 dh（不装 Iris）。26.2 的启动参数 --graphicsBackend 选图形后端（GameConfig 的 forcedGraphicsApi），
+     命令改成 runClientGameTest --args="--width 1920 --height 1080 --graphicsBackend vulkan"。模式 v1，只看 F3（烘焙行）
+     与 F6（FAR_VIEW 地平线一带的变化、LOD_VIEW 是否一片天空色）；logs/latest.log 里核对后端是 Vulkan，
+     写的仍是 OpenGL 就作废并回报（参数名与取值 vulkan 取自 26.2 jar，没有在真机上跑过）。
+     判据：不崩；F6 的两条与 OpenGL 下相同（地平线一带变化 > 1%，LOD_VIEW 不是一片天空色）。
+     不达标登记为已知限制（只影响不开光影的 Vulkan 玩家），PAGE-SHADER-GUIDE 加一句：连 Synaxis 时用 OpenGL。
+
+   V6b 两张（3060，DESIGN-M3 §28.2 待办「V6b 的正午与太阳高度角 40° 两张拍不了」由这一步关掉）
+     Fetch 用 dh-iris，设 SYNAXIS_DH_SHADERPACKS。远景夹具各起一次：
+       正午：   ... baked http://127.0.0.1:25751 6000          客户端另设 SYNAXIS_FARVIEW_SUN_ELEVATION=90
+       40°：    ... baked http://127.0.0.1:25751 10137         客户端另设 SYNAXIS_FARVIEW_SUN_ELEVATION=40
+     模式 rts-shots。F25 PASS 的判据：进世界时与 600 tick 后客户端默认时钟都等于给的 dayTime，太阳高度角与期望相差
+     ≤ 1°。10137 的来历：26.2 客户端的太阳角是时间线 minecraft:day 的轨道 visual/sun_angle，正午 tick 6000 为 0°、
+     一天后 360°，按 cubic-bezier(0.362, 0.241, 0.638, 0.759) 缓动；高度角 = 90° − 太阳角，tick 10137 时是 39.995°
+     （10136 与 10138 是 40.009° 与 39.981°），正午 6000 是 90°。地图的维度类型 synaxis:map 本身不带时间线，
+     这时太阳恒在默认角 0°（正午），所以夹具给了 dayTime 才把它换成主世界的时间线与时钟。交回两张截图与报告，
+     由美术评审透视下的雾、水面与阴影。
+
+6. 回收：停夹具（Ctrl+C），删掉 <WORK>、<LWORK> 与 <DIR>。

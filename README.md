@@ -19,7 +19,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 ./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
 ```
 
-JDK 25 / Gradle 9.7.1。冷启动、常用命令、目录地图、升 Minecraft 版本 checklist
+JDK 25 / Gradle 9.8.0。冷启动、常用命令、目录地图、升 Minecraft 版本 checklist
 全部在 [`docs/ENGINE.md`](docs/ENGINE.md)。
 
 ## 仓库结构

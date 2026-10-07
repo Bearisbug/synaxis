@@ -1,18 +1,25 @@
 package io.github.bearisbug.synaxis.app.shard;
 
+import io.github.bearisbug.synaxis.baker.Baker;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.instance.WorldBorder;
 import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.instance.block.BlockManager;
+import io.github.bearisbug.synaxis.instance.light.LightEngine;
+import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.synx.OverlayOptions;
 import io.github.bearisbug.synaxis.synx.OverlayStats;
 import io.github.bearisbug.synaxis.synx.RelightStats;
+import io.github.bearisbug.synaxis.synx.SynxBuildVerifier;
+import io.github.bearisbug.synaxis.synx.SynxException;
+import io.github.bearisbug.synaxis.synx.SynxExpectations;
 import io.github.bearisbug.synaxis.synx.SynxFormat;
 import io.github.bearisbug.synaxis.synx.SynxHandlers;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import io.github.bearisbug.synaxis.synx.SynxOptions;
 import io.github.bearisbug.synaxis.synx.SynxStreamStats;
+import io.github.bearisbug.synaxis.synx.VerifiedBuild;
 import io.github.bearisbug.synaxis.tag.Tag;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.world.DimensionType;
@@ -271,19 +278,26 @@ public class ShardWorldTest {
         assertEquals(128, wide.diameter());
     }
 
+    /** The release mapped and checked as {@link ShardWorld#prepare} does, over the view of {@code bounds}. */
+    private static VerifiedBuild verified(SynxManifest.Bounds bounds) throws IOException, SynxException {
+        final SynxManifest manifest = SynxManifest.fromJson(Files.readString(release.buildDir().resolve(SynxManifest.FILE_NAME)));
+        return SynxBuildVerifier.open(release.buildDir(), manifest, SynxExpectations.of(Registries.vanilla(),
+                Baker.COMPRESSION_THRESHOLD, manifest.world().minY(), manifest.world().height(), LightEngine.VERSION),
+                ShardWorld.viewBounds(bounds));
+    }
+
     /** §28.1: the center column of the center chunk of the bounds, standing on its surface_y of segment ②. */
     @Test
     public void thePlayersSpawnOnTheSurfaceOfTheCenterColumn() throws Exception {
-        final SynxManifest manifest = SynxManifest.fromJson(Files.readString(release.buildDir().resolve(SynxManifest.FILE_NAME)));
-        assertEquals(new Pos(7 * 16 + 8.5, MapFixture.FLOOR, 7 * 16 + 8.5), ShardWorld.spawn(release.buildDir(), manifest, manifest.bounds()));
+        assertEquals(new Pos(7 * 16 + 8.5, MapFixture.FLOOR, 7 * 16 + 8.5), ShardWorld.spawn(verified(MapFixture.BOUNDS),
+                MapFixture.BOUNDS));
     }
 
     /** In the directory mode the spawn point is the center column of the region, not of the release. */
     @Test
     public void theSpawnPointIsTheCenterColumnOfTheRegion() throws Exception {
-        final SynxManifest manifest = SynxManifest.fromJson(Files.readString(release.buildDir().resolve(SynxManifest.FILE_NAME)));
-        assertEquals(new Pos(3 * 16 + 8.5, MapFixture.FLOOR, 7 * 16 + 8.5),
-                ShardWorld.spawn(release.buildDir(), manifest, new SynxManifest.Bounds(0, 0, 7, 15)));
+        final SynxManifest.Bounds region = new SynxManifest.Bounds(0, 0, 7, 15);
+        assertEquals(new Pos(3 * 16 + 8.5, MapFixture.FLOOR, 7 * 16 + 8.5), ShardWorld.spawn(verified(region), region));
     }
 
     /** §20: the counters are the difference of two readings, the rest as read. */
@@ -292,14 +306,15 @@ public class ShardWorldTest {
         final Map<String, Object> event = ShardWorld.streamStats(
                 new SynxStreamStats(10, 1, 1_000, 0, 50, 5, 100, 2, 4_000),
                 new SynxStreamStats(25, 3, 2_500, 1, 70, 9, 300, 2, 4_000),
-                new OverlayStats(3, 1, 0, 10, 4, 1.5, 2.0, 7),
-                new OverlayStats(5, 2, 1, 16, 6, 3.5, 4.0, 11),
-                new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0), new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0));
+                new OverlayStats(3, 1, 0, 10, 4, 1.5, 2.0, 7, 40_000, false),
+                new OverlayStats(5, 2, 1, 16, 6, 3.5, 4.0, 11, 70_000, true),
+                new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0), new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0), 3);
         assertEquals(List.of("handle_sent", "overlay_sent", "bytes_sent", "failed", "loaded", "overlay_resident",
                 "overlay_evicted", "evict_failed", "flush_appended", "flush_fsyncs", "flush_lag_s_max",
                 "write_phase_ms_max", "relight_queue_p99_ms", "relight_ms_p99", "relights", "relight_skipped",
                 "light_materialized", "light_packets", "light_sections", "relight_install_ms_max", "relight_pending",
-                "unloaded", "section_cache_bytes", "flag_conflicts"), List.copyOf(event.keySet()));
+                "unloaded", "section_cache_bytes", "flag_conflicts", "void_chunks", "overlay_bytes", "overlay_full"),
+                List.copyOf(event.keySet()));
         assertEquals(15L, event.get("handle_sent"));
         assertEquals(2L, event.get("overlay_sent"));
         assertEquals(1_500L, event.get("bytes_sent"));
@@ -315,6 +330,9 @@ public class ShardWorldTest {
         assertEquals(4L, event.get("unloaded"));
         assertEquals(300L, event.get("section_cache_bytes"));
         assertEquals(0, event.get("flag_conflicts"));
+        assertEquals(3L, event.get("void_chunks"), "the difference the statistics task hands in");
+        assertEquals(70_000L, event.get("overlay_bytes"), "the bytes written as read");
+        assertEquals(true, event.get("overlay_full"));
     }
 
     /**

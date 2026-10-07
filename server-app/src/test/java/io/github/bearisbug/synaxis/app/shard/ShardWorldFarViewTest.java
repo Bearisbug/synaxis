@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -387,5 +388,68 @@ public class ShardWorldFarViewTest {
         assertTrue(warnings.getFirst().startsWith("Far view off: ") && warnings.getFirst().contains(file), warnings.toString());
         assertEquals(List.of(), farViewLines(started, Level.INFO));
         assertEquals(0, started.attributes().get("farview_tiles"));
+    }
+
+    /** §19 「url-root 是非回环的明文 http 时起服记 WARN」. */
+    @Test
+    public void aUrlRootOfPlainHttpToAnotherHostIsAnnouncedWithAWarning(@TempDir Path maps) {
+        final ShardSettings release = fourTileRelease(maps, "");
+        final List<Integer> warnings = new ArrayList<>();
+        for (String root : List.of("http://127.0.0.1:25751", "http://cdn.test", "https://cdn.test")) {
+            final Started started = start(new ShardSettings(release.mapRoot(), release.mapBuild(), 4, 100, root), directory());
+            assertNotNull(started.farView(), root);
+            final List<String> lines = farViewLines(started, Level.WARN);
+            warnings.add(lines.size());
+            if (!lines.isEmpty()) {
+                assertEquals("Far view packs go over plain http to cdn.test: which tiles a player loads can be seen on the "
+                        + "way, use https", lines.getFirst());
+            }
+        }
+        assertEquals(List.of(0, 1, 0), warnings, "only the plain http to another host");
+    }
+
+    /**
+     * §19 「读文件之前先比大小」, the far view pack: one of 41,943,041 bytes, its size and SHA-256 as the
+     * manifest says, is not read before its size turns it down, and the shard starts without a far view.
+     */
+    @Test
+    public void aPackOverFortyMebibytesIsTurnedDownOnItsSizeAlone(@TempDir Path maps) throws Exception {
+        final ShardSettings release = fourTileRelease(maps, URL_ROOT);
+        final Path pack = release.buildDir().resolve("farview").resolve("t.0.0.hfp");
+        final long bytes = FarViewAnnouncement.MAX_OBJECT_BYTES + 1;
+        ShardWorldFileTrustTest.sparse(pack, bytes);
+        final MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        final byte[] zeros = new byte[1 << 20];
+        for (long left = bytes - 1; left > 0; left -= zeros.length) digest.update(zeros, 0, (int) Math.min(zeros.length, left));
+        digest.update((byte) ' ');
+        final byte[] sha256 = digest.digest();
+        rewriteTile(release, 0, 0, entry -> new SynxManifest.FarView(0, 0, entry.baseLevel(), entry.coarseLevel(), bytes,
+                sha256, entry.coarseBytes(), entry.coarseSha256()));
+
+        final Started started = start(release, directory());
+        assertNull(started.farView());
+        final List<String> warnings = farViewLines(started, Level.WARN);
+        assertEquals(1, warnings.size(), started.log().toString());
+        assertTrue(warnings.getFirst().endsWith("farview/t.0.0.hfp of " + release.mapBuild() + " is 41943041 bytes, over "
+                + "the 41943040 bytes a far view object may have"), warnings.getFirst());
+        final SynxManifest manifest = SynxManifest.fromJson(Files.readString(release.buildDir().resolve(SynxManifest.FILE_NAME)));
+        final SynxManifest.FarView entry = manifest.farview().stream().filter(tile -> tile.tileX() == 0 && tile.tileZ() == 0)
+                .findFirst().orElseThrow();
+        try (ShardWorldFileTrustTest.Counting channel = new ShardWorldFileTrustTest.Counting(pack)) {
+            assertTrue(ShardWorld.mismatch(channel, entry, FarViewAnnouncement.LAYER_FULL).contains("41943041 bytes"));
+            assertEquals(0, channel.read, "only its size was taken");
+        }
+    }
+
+    /** Rewrites the manifest entry of a tile of a release. */
+    private static void rewriteTile(ShardSettings release, int tileX, int tileZ, UnaryOperator<SynxManifest.FarView> change)
+            throws IOException, SynxException {
+        final Path manifestFile = release.buildDir().resolve(SynxManifest.FILE_NAME);
+        final SynxManifest manifest = SynxManifest.fromJson(Files.readString(manifestFile));
+        final List<SynxManifest.FarView> farview = new ArrayList<>();
+        for (SynxManifest.FarView entry : manifest.farview()) {
+            farview.add(entry.tileX() == tileX && entry.tileZ() == tileZ ? change.apply(entry) : entry);
+        }
+        Files.writeString(manifestFile, withFarView(manifest, farview).toJson());
     }
 }

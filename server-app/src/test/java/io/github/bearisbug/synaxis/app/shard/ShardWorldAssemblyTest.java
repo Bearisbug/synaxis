@@ -44,6 +44,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -317,13 +318,15 @@ public class ShardWorldAssemblyTest {
 
     /**
      * §14: an overlay store that cannot be opened refuses the start naming the overlay directory, which
-     * is where RB-M3-002 has the operator look, not the map release.
+     * is where RB-M3-002 has the operator look, not the map release. The file in the way is 0600 whatever
+     * the umask: one group or others may write is refused by the check of the overlay directories first.
      */
     @Test
     public void anOverlayStoreThatCannotBeOpenedNamesItsDirectory() throws IOException {
         final ServerProcess process = process();
         try {
-            final Path notADirectory = Files.createFile(overlayRoot.resolve("overlay"));
+            final Path notADirectory = Files.createFile(overlayRoot.resolve("overlay"),
+                    PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
             final ShardWorld world = ShardWorld.prepare(process, release, SYNX, new OverlayOptions(16_384, 10), null);
             final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
             try {

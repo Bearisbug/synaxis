@@ -42,11 +42,22 @@ public final class SynxRegion {
      *                       {@link SynxError#MAGIC} for an unknown magic, format version or flag, or an overlay segment file
      */
     public static SynxRegion open(Path path, Arena arena) throws IOException, SynxException {
-        final String name = path.getFileName().toString();
-        final MemorySegment file;
+        return of(path.getFileName().toString(), map(path, arena));
+    }
+
+    /** Maps the whole file into {@code arena}, read only; nothing of it is read yet. */
+    static MemorySegment map(Path path, Arena arena) throws IOException {
         try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
-            file = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size(), arena);
+            return channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size(), arena);
         }
+    }
+
+    /**
+     * A region file already mapped, {@link #open} once the mapping is there.
+     *
+     * @param name the file name, for the messages
+     */
+    static SynxRegion of(String name, MemorySegment file) throws SynxException {
         final SynxHeader header = SynxHeader.decode(file, name);
         if ((header.flags() & SynxFormat.FLAG_OVERLAY) != 0) {
             throw new SynxException(SynxError.MAGIC, name, "an overlay segment file, not a region file");
@@ -60,6 +71,11 @@ public final class SynxRegion {
 
     public SynxHeader header() {
         return header;
+    }
+
+    /** The length of the mapping, which is the length of the file when it was mapped. */
+    long byteSize() {
+        return file.byteSize();
     }
 
     /** The header against the running process, see {@link SynxExpectations#check}. */

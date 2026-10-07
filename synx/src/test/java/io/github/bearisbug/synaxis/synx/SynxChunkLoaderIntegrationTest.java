@@ -54,6 +54,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.zip.CRC32C;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -118,13 +119,16 @@ public class SynxChunkLoaderIntegrationTest {
     public void aReadOnlyWorldIgnoresEveryChange(Env env) {
         final SynxChunkLoader loader = SynxWorlds.loader(SynxWorlds.READ_ONLY, new MemoryOverlay());
         final Instance instance = SynxWorlds.instance(env.process(), loader);
-        final RecordingConnection connection = new RecordingConnection(env.process());
-        final Player player = RecordingConnection.connect(env.process(), connection, instance,
-                new Pos(16 * 16 + 8, 190, 16 * 16 + 8));
-        player.setGameMode(GameMode.CREATIVE);
         final SynxChunk chunk = (SynxChunk) instance.loadChunk(17, 16).join();
         final int x = 17 * 16 + 3, z = 16 * 16 + 3;
         final int y = surface(instance, x, z);
+        final int digX = x + 5, digZ = z + 5, digY = surface(instance, digX, digZ);
+        // Within reach of the block it digs, so that the dig fails on the read only world alone: the engine
+        // refuses a dig 5.5 blocks or more from the eyes (docs/DESIGN-PROD.md API-PROD-030)
+        final RecordingConnection connection = new RecordingConnection(env.process());
+        final Player player = RecordingConnection.connect(env.process(), connection, instance,
+                new Pos(digX + 0.5, digY + 1, digZ + 2.5));
+        player.setGameMode(GameMode.CREATIVE);
         final Block before = instance.getBlock(x, y, z);
         final RegistryKey<Biome> biomeBefore = instance.getBiome(x, y, z);
         final RegistryKey<Biome> otherBiome = biomeBefore.equals(Biome.DESERT) ? Biome.PLAINS : Biome.DESERT;
@@ -144,7 +148,6 @@ public class SynxChunkLoaderIntegrationTest {
         assertTrue(chunk.isReadOnly());
 
         // The player digs another block of the chunk
-        final int digX = x + 5, digZ = z + 5, digY = surface(instance, digX, digZ);
         final Block dug = instance.getBlock(digX, digY, digZ);
         player.addPacketToQueue(new ClientPlayerActionPacket(ClientPlayerActionPacket.Status.STARTED_DIGGING,
                 new BlockVec(digX, digY, digZ), BlockFace.TOP, 42));
@@ -518,5 +521,57 @@ public class SynxChunkLoaderIntegrationTest {
             one.put(0, (byte) (one.get(0) ^ 0x5A)).rewind();
             channel.write(one, at);
         }
+    }
+
+    /**
+     * §19 「解析器先核长度再分配」, the loader (M3-S): a record whose segment ① frame header is out of its
+     * bounds, here a frame length one less than the bytes after it, loads as failed with an ERROR naming the
+     * chunk, before anything reads the packet; until then it loaded in handle mode and failed later, on the
+     * first read of a block.
+     */
+    @Test
+    public void aRecordWhoseFrameHeaderIsOutOfItsBoundsLoadsAsFailed(Env env, @TempDir Path dir) throws Exception {
+        final Path build = SynxTestMap.get().copyTo(dir);
+        final int cx = 21, cz = 20;
+        try (FileChannel channel = FileChannel.open(SynxTestMap.regionFile(build, cx, cz), StandardOpenOption.READ,
+                StandardOpenOption.WRITE)) {
+            final long entryAt = SynxFormat.HEADER_BYTES + (long) SynxFormat.index(cx, cz) * SynxFormat.INDEX_ENTRY_BYTES;
+            final ByteBuffer entry = ByteBuffer.allocate(SynxFormat.INDEX_ENTRY_BYTES).order(ByteOrder.LITTLE_ENDIAN);
+            channel.read(entry, entryAt);
+            final long offset = entry.getLong(0);
+            final ByteBuffer record = ByteBuffer.allocate(entry.getInt(8));
+            channel.read(record, offset);
+            final byte[] bytes = record.array();
+            // The frame length VarInt, one less, written in as many bytes as it had
+            final int at = SynxFormat.SEGMENT_TABLE_BYTES;
+            int value = 0;
+            int size = 0;
+            boolean more;
+            do {
+                final int shift = 7 * size;
+                value |= (bytes[at + size] & 0x7F) << shift;
+                more = (bytes[at + size] & 0x80) != 0;
+                size++;
+            } while (more);
+            for (int i = 0; i < size; i++) {
+                final int low = ((value - 1) >>> (7 * i)) & 0x7F;
+                bytes[at + i] = (byte) (i < size - 1 ? low | 0x80 : low);
+            }
+            channel.write(ByteBuffer.wrap(bytes), offset);
+            final CRC32C crc = new CRC32C();
+            crc.update(bytes);
+            channel.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(0, (int) crc.getValue()), entryAt + 12);
+        }
+        final SynxChunkLoader loader = SynxWorlds.loader(build, SynxTestMap.REGION, SynxWorlds.WRITABLE, new MemoryOverlay());
+        final Instance instance = SynxWorlds.instance(env.process(), loader);
+        try (LogCapture logs = LogCapture.of(SynxChunkLoader.class)) {
+            final SynxChunk chunk = (SynxChunk) instance.loadChunk(cx, cz).join();
+            assertEquals(SynxChunk.Mode.FAILED, chunk.mode(), "failed as it loads");
+            final List<String> errors = logs.messagesAt(Level.ERROR);
+            assertEquals(1, errors.size(), errors.toString());
+            assertTrue(errors.getFirst().startsWith("Chunk " + cx + "," + cz + " of ")
+                    && errors.getFirst().contains("segment ①: frame length"), errors.getFirst());
+        }
+        assertEquals(1, loader.stats().failed());
     }
 }

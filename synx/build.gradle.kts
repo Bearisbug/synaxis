@@ -23,9 +23,13 @@ dependencies {
 
 // CI runs `./gradlew check -Dsynaxis.synx.require-frozen-zlib=true`: there SynxVectorTest fails instead
 // of skipping the byte for byte comparison when the JDK's zlib is not the one the vectors were frozen with.
+// The measurement mode of SynxRelightBacklogTest (docs/DESIGN-M3.md §15 光照重算吞吐) only runs with
+// `-Dsynaxis.relight.measure=true`: a key of the tests alone, which the config key gate does not see.
 tasks.test {
     val requireFrozenZlib = "synaxis.synx.require-frozen-zlib"
     providers.systemProperty(requireFrozenZlib).orNull?.let { systemProperty(requireFrozenZlib, it) }
+    val relightMeasure = "synaxis.relight.measure"
+    providers.systemProperty(relightMeasure).orNull?.let { systemProperty(relightMeasure, it) }
 }
 
 // Regenerates the frozen test vectors of docs/DESIGN-M3.md §24. Only run it together with a

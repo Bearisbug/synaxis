@@ -38,6 +38,14 @@ final class SectionCache {
         static Key regionFile(int chunkX, int chunkZ) {
             return new Key(REGION_FILE, CoordConversion.chunkIndex(chunkX, chunkZ));
         }
+
+        /** The file the record of this key is mapped from, for the messages. */
+        String file() {
+            if (segment != REGION_FILE) return "the overlay segment " + OverlaySegment.fileName(segment);
+            final int chunkX = CoordConversion.chunkIndexGetX(offset), chunkZ = CoordConversion.chunkIndexGetZ(offset);
+            return "chunk " + chunkX + "," + chunkZ + ": the region file "
+                    + SynxFormat.regionFileName(SynxFormat.region(chunkX), SynxFormat.region(chunkZ));
+        }
     }
 
     /** The palettes of one key, and whether a chunk has read them since the last eviction pass. */
@@ -76,13 +84,20 @@ final class SectionCache {
      * The entry of {@code framed}, from the cache or decoded into it.
      *
      * @throws IllegalArgumentException if {@code framed} is not a chunk packet of {@code sectionCount} sections
+     * @throws IllegalStateException    if the mapping {@code framed} is a view of faulted while it was read: the
+     *                                  file was cut short under the shard ({@code API-M3-005} 映射读取出错)
      */
     Entry get(Key key, MemorySegment framed, Registries registries, int sectionCount) {
         synchronized (this) {
             final Entry entry = entries.get(key);
             if (entry != null) return entry;
         }
-        final SynxPacketDecoder.Sections decoded = SynxPacketDecoder.sections(framed, registries, sectionCount);
+        final SynxPacketDecoder.Sections decoded;
+        try {
+            decoded = SynxPacketDecoder.sections(framed, registries, sectionCount);
+        } catch (InternalError e) {
+            throw new IllegalStateException(key.file() + " faulted on read", e);
+        }
         final Entry inserted = new Entry(key, decoded, size(decoded));
         synchronized (this) {
             final Entry raced = entries.get(key);

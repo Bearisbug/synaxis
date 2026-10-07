@@ -250,9 +250,9 @@ public class ShardWorldRelightTest {
     public void theStreamStatisticsCarryTheNineLightAttributes() {
         final Map<String, Object> event = ShardWorld.streamStats(
                 new SynxStreamStats(0, 0, 0, 0, 0, 0, 0, 0, 0), new SynxStreamStats(0, 0, 0, 0, 0, 0, 0, 0, 0),
-                new OverlayStats(0, 0, 0, 0, 0, 0, 0, 0), new OverlayStats(0, 0, 0, 0, 0, 0, 0, 0),
+                new OverlayStats(0, 0, 0, 0, 0, 0, 0, 0, 0, false), new OverlayStats(0, 0, 0, 0, 0, 0, 0, 0, 0, false),
                 new RelightStats(10, 2, 1, 5, 40, 0, 0, 0, 0),
-                new RelightStats(25, 3, 4, 9, 76, 180.5, 12.25, 3.5, 7));
+                new RelightStats(25, 3, 4, 9, 76, 180.5, 12.25, 3.5, 7), 0);
         assertEquals(15L, event.get("relights"));
         assertEquals(1L, event.get("relight_skipped"));
         assertEquals(3L, event.get("light_materialized"));

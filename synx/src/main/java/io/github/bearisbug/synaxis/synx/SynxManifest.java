@@ -6,13 +6,22 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+import com.google.gson.Strictness;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.math.BigDecimal;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -31,6 +40,7 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
     public static final String FILE_NAME = "manifest.json";
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+    private static final TypeAdapter<JsonElement> JSON = new Gson().getAdapter(JsonElement.class);
 
     public SynxManifest {
         contentHash = contentHash.clone();
@@ -187,12 +197,13 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
     /**
      * Parses a manifest.
      *
-     * @throws SynxException {@link SynxError#MANIFEST} if the text is not JSON, a required field is
-     *                       missing or has the wrong type, or a digest is not 32 bytes of hex
+     * @throws SynxException {@link SynxError#MANIFEST} if the text is not strict JSON, an object of it gives
+     *                       a name twice, a required field is missing or has the wrong type, or a digest is not 32
+     *                       bytes of hex
      */
     public static SynxManifest fromJson(String text) throws SynxException {
         try {
-            final JsonObject json = JsonParser.parseString(text).getAsJsonObject();
+            final JsonObject json = parse(text);
             final JsonObject worldJson = object(json, "world");
             final JsonObject boundsJson = object(json, "bounds");
             final JsonObject sourceJson = object(json, "source");
@@ -218,6 +229,55 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
                             verifyJson.has("source_light_diff") ? longInteger(verifyJson, "source_light_diff") : null));
         } catch (JsonParseException | IllegalStateException | IllegalArgumentException | ArithmeticException e) {
             throw new SynxException(SynxError.MANIFEST, FILE_NAME, String.valueOf(e.getMessage()));
+        }
+    }
+
+    /**
+     * RFC 8259 JSON in Gson's {@link Strictness#STRICT}: no comments, single quotes or unquoted names, one
+     * document and nothing after it, and no name twice in one object (M3-S): a lenient reader takes the
+     * later of two, which the shard directory refuses as well.
+     */
+    private static JsonObject parse(String text) {
+        final UniqueNamesReader reader = new UniqueNamesReader(text);
+        final JsonElement root;
+        try {
+            root = JSON.read(reader);
+            if (reader.peek() != JsonToken.END_DOCUMENT) {
+                throw new IllegalArgumentException("more after the document at " + reader.getPath());
+            }
+        } catch (IOException e) {
+            throw new IllegalArgumentException(e.getMessage(), e);
+        }
+        if (!root.isJsonObject()) throw new IllegalArgumentException("not a JSON object");
+        return root.getAsJsonObject();
+    }
+
+    /** A strict reader that fails on the second occurrence of a name in one object. */
+    private static final class UniqueNamesReader extends JsonReader {
+        private final Deque<Set<String>> objects = new ArrayDeque<>();
+
+        UniqueNamesReader(String text) {
+            super(new StringReader(text));
+            setStrictness(Strictness.STRICT);
+        }
+
+        @Override
+        public void beginObject() throws IOException {
+            super.beginObject();
+            objects.push(new HashSet<>());
+        }
+
+        @Override
+        public void endObject() throws IOException {
+            super.endObject();
+            objects.pop();
+        }
+
+        @Override
+        public String nextName() throws IOException {
+            final String name = super.nextName();
+            if (!objects.element().add(name)) throw new IOException(getPath() + " is given twice");
+            return name;
         }
     }
 

@@ -16,13 +16,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.lang.foreign.Arena;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -30,9 +24,9 @@ import java.util.concurrent.atomic.LongAdder;
 
 /**
  * Loads the chunks of a map release ({@code docs/DESIGN-M3.md} API-M3-005): one per shard process,
- * owner of the section cache. The region files that {@code view_bounds} (the region, {@code bounds},
- * grown by {@value #VIEW_MARGIN} chunks) shares with the release are mapped once, read only, for the
- * life of the process.
+ * owner of the section cache. It reads the region files that {@code view_bounds} (the region, {@code bounds},
+ * grown by {@value #VIEW_MARGIN} chunks) shares with the release through the mappings the start-up check
+ * made and checked ({@link VerifiedBuild}), read only, for the life of the process.
  * <table>
  *     <caption>What {@link #loadChunk} returns</caption>
  *     <tr><th>Chunk</th><th>Looks up</th><th>Found</th><th>Returns</th></tr>
@@ -65,8 +59,7 @@ public final class SynxChunkLoader implements ChunkLoader {
     private final SynxOptions options;
     private final OverlayIndex overlay;
     private final OverlayTracker tracker;
-    private final Map<Long, SynxRegion> regions;
-    private final long bytesMapped;
+    private final VerifiedBuild verified;
     private final SectionCache cache;
     private final Set<String> warnedEntityTypes = ConcurrentHashMap.newKeySet();
 
@@ -80,19 +73,19 @@ public final class SynxChunkLoader implements ChunkLoader {
     private volatile @Nullable SynxRelight relight;
 
     /**
-     * Maps the region files of the release that {@code view_bounds} reaches. The caller has already run
-     * the start-up check of API-M3-002 on {@code buildDir} and hands in the manifest it returned; nothing
-     * is checked again here.
+     * Loads from the region files the start-up check of API-M3-002 mapped and checked
+     * ({@link SynxBuildVerifier#open}), for the {@code view_bounds} of {@code bounds}; nothing is
+     * opened by its path or checked again here.
      *
-     * @param bounds  the region this shard serves: changes and the overlay store apply inside it only
-     * @param overlay where chunks of the region load their overlay content from
-     * @param tracker what the chunks tell about their overlay life
-     * @throws IOException   if a region file cannot be mapped
-     * @throws SynxException if a region file is no region file at all
+     * @param verified the release, its regions mapped over the {@code view_bounds} of {@code bounds}
+     * @param bounds   the region this shard serves: changes and the overlay store apply inside it only
+     * @param overlay  where chunks of the region load their overlay content from
+     * @param tracker  what the chunks tell about their overlay life
      */
-    public SynxChunkLoader(Path buildDir, SynxManifest manifest, SynxManifest.Bounds bounds, SynxOptions options,
-                           OverlayIndex overlay, OverlayTracker tracker) throws IOException, SynxException {
-        this.manifest = manifest;
+    public SynxChunkLoader(VerifiedBuild verified, SynxManifest.Bounds bounds, SynxOptions options,
+                           OverlayIndex overlay, OverlayTracker tracker) {
+        this.verified = verified;
+        this.manifest = verified.manifest();
         this.bounds = bounds;
         this.viewBounds = new SynxManifest.Bounds(bounds.minX() - VIEW_MARGIN, bounds.minZ() - VIEW_MARGIN,
                 bounds.maxX() + VIEW_MARGIN, bounds.maxZ() + VIEW_MARGIN);
@@ -100,26 +93,6 @@ public final class SynxChunkLoader implements ChunkLoader {
         this.overlay = overlay;
         this.tracker = tracker;
         this.cache = new SectionCache(options.sectionCacheBytes());
-
-        final Map<Long, SynxRegion> regions = new HashMap<>();
-        long bytesMapped = 0;
-        final SynxManifest.Bounds release = manifest.bounds();
-        final int minX = Math.max(viewBounds.minX(), release.minX()), maxX = Math.min(viewBounds.maxX(), release.maxX());
-        final int minZ = Math.max(viewBounds.minZ(), release.minZ()), maxZ = Math.min(viewBounds.maxZ(), release.maxZ());
-        if (minX <= maxX && minZ <= maxZ) {
-            // Shared and never closed: queued packets and handle chunks keep reading the mappings
-            final Arena arena = Arena.ofShared();
-            for (int regionZ = SynxFormat.region(minZ); regionZ <= SynxFormat.region(maxZ); regionZ++) {
-                for (int regionX = SynxFormat.region(minX); regionX <= SynxFormat.region(maxX); regionX++) {
-                    final Path file = buildDir.resolve("regions").resolve(SynxFormat.regionFileName(regionX, regionZ));
-                    if (!Files.isRegularFile(file)) continue;
-                    regions.put(regionKey(regionX, regionZ), SynxRegion.open(file, arena));
-                    bytesMapped += Files.size(file);
-                }
-            }
-        }
-        this.regions = Map.copyOf(regions);
-        this.bytesMapped = bytesMapped;
     }
 
     @Override
@@ -129,24 +102,48 @@ public final class SynxChunkLoader implements ChunkLoader {
         if (inRegion) {
             final OverlayHit hit = overlay.find(chunkX, chunkZ);
             if (hit != null) {
-                return handle(instance, chunkX, chunkZ, true, hit.record(), new SectionCache.Key(hit.segment(), hit.offset()),
-                        hit.generation());
+                try {
+                    return handle(instance, chunkX, chunkZ, true, hit.record(), new SectionCache.Key(hit.segment(), hit.offset()),
+                            hit.generation());
+                } catch (InternalError _) {
+                    return faulted(instance, chunkX, chunkZ, true, "the overlay segment " + OverlaySegment.fileName(hit.segment()));
+                }
             }
         }
-        final SynxRegion region = regions.get(regionKey(SynxFormat.region(chunkX), SynxFormat.region(chunkZ)));
-        final SynxSlot slot = region != null ? region.slot(chunkX, chunkZ) : new SynxSlot.Absent();
-        return switch (slot) {
-            case SynxSlot.Present present -> handle(instance, chunkX, chunkZ, inRegion, present,
-                    SectionCache.Key.regionFile(chunkX, chunkZ), 0);
-            case SynxSlot.Failed broken -> failed(instance, chunkX, chunkZ, inRegion, broken.fault() + " " + broken.detail());
-            case SynxSlot.Absent _ -> inRegion
-                    ? failed(instance, chunkX, chunkZ, true, region != null ? "no record" : "no region file")
-                    : null;
-        };
+        final int regionX = SynxFormat.region(chunkX), regionZ = SynxFormat.region(chunkZ);
+        final SynxRegion region = verified.region(regionX, regionZ);
+        try {
+            final SynxSlot slot = region != null ? region.slot(chunkX, chunkZ) : new SynxSlot.Absent();
+            return switch (slot) {
+                case SynxSlot.Present present -> handle(instance, chunkX, chunkZ, inRegion, present,
+                        SectionCache.Key.regionFile(chunkX, chunkZ), 0);
+                case SynxSlot.Failed broken -> failed(instance, chunkX, chunkZ, inRegion, broken.fault() + " " + broken.detail());
+                case SynxSlot.Absent _ -> inRegion
+                        ? failed(instance, chunkX, chunkZ, true, region != null ? "no record" : "no region file")
+                        : null;
+            };
+        } catch (InternalError _) {
+            return faulted(instance, chunkX, chunkZ, inRegion, "the region file " + SynxFormat.regionFileName(regionX, regionZ));
+        }
+    }
+
+    /**
+     * A mapping that faulted while the chunk loaded from it ({@code API-M3-005} 映射读取出错): the file was
+     * cut short under the shard, which the start-up check cannot stop. The chunk loads as failed, the
+     * process goes on.
+     */
+    private SynxChunk faulted(Instance instance, int chunkX, int chunkZ, boolean inRegion, String file) {
+        return failed(instance, chunkX, chunkZ, inRegion, file + " faulted on read");
     }
 
     private SynxChunk handle(Instance instance, int chunkX, int chunkZ, boolean inRegion, SynxSlot.Present record,
                              SectionCache.Key key, long generation) {
+        try {
+            // The two VarInts of the frame, before anything reads the packet (M3-S, API-M3-001 长度上限)
+            SynxChunkPacket.checkFrame(record.packet());
+        } catch (IllegalArgumentException e) {
+            return failed(instance, chunkX, chunkZ, inRegion, "segment ①: " + e.getMessage());
+        }
         final SynxChunk.Source source;
         try {
             source = source(record, key, instance.process().block());
@@ -266,7 +263,7 @@ public final class SynxChunkLoader implements ChunkLoader {
     /** Counters since construction, and the current size of the section cache and the mappings. */
     public SynxStreamStats stats() {
         return new SynxStreamStats(handleSent.sum(), overlaySent.sum(), bytesSent.sum(), failed.sum(), loaded.sum(),
-                unloaded.sum(), cache.bytes(), regions.size(), bytesMapped);
+                unloaded.sum(), cache.bytes(), verified.regionCount(), verified.bytesMapped());
     }
 
     SynxOptions options() {
@@ -298,9 +295,5 @@ public final class SynxChunkLoader implements ChunkLoader {
 
     private static boolean contains(SynxManifest.Bounds bounds, int chunkX, int chunkZ) {
         return chunkX >= bounds.minX() && chunkX <= bounds.maxX() && chunkZ >= bounds.minZ() && chunkZ <= bounds.maxZ();
-    }
-
-    private static long regionKey(int regionX, int regionZ) {
-        return (long) regionX << 32 | (regionZ & 0xFFFFFFFFL);
     }
 }

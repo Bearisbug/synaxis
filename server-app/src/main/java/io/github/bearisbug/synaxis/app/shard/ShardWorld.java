@@ -8,6 +8,7 @@ import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
 import io.github.bearisbug.synaxis.game.protocol.FarViewPack;
 import io.github.bearisbug.synaxis.game.protocol.MalformedMessageException;
 import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
+import io.github.bearisbug.synaxis.instance.Clock;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.WorldBorder;
 import io.github.bearisbug.synaxis.instance.light.LightEngine;
@@ -63,6 +64,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
+import java.util.function.LongSupplier;
 
 /**
  * The map mounting mode of the shard host ({@code docs/DESIGN-M3.md} {@code API-M3-006}): checks the
@@ -93,6 +95,17 @@ public final class ShardWorld {
     private static final int DIGEST_BLOCK = 1 << 20;
     /** How {@link FileTrust} ends the refusal of an overlay directory or segment group or others may write. */
     private static final String OVERLAY_WRITER = "only the service user may write it";
+    /**
+     * {@code API-M3-006} 日夜: the wall clock's time is taken modulo 192,000 ticks, the period of the overworld's
+     * {@code minecraft:moon} timeline, eight days of 24,000 ticks; modulo one day the moon would stay full.
+     */
+    private static final long DAY_CYCLE_TICKS = 192_000;
+    /** A tick of the day in wall clock milliseconds, as the client counts it. */
+    private static final long TICK_MILLIS = 50;
+    /** How often, in ticks of the map instance, its clock is held against the wall clock. */
+    private static final int CLOCK_CHECK_TICKS = 20;
+    /** How far a running clock may stray from the wall clock before it is set back: one second. */
+    private static final long CLOCK_TOLERANCE_TICKS = 20;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ShardWorld.class);
 
@@ -339,7 +352,8 @@ public final class ShardWorld {
      * entries: checks the view and simulation distances, checks who may have written the files of the
      * release before reading them ({@link MapFileTrust}), reads the manifest once, runs the start-up check
      * of {@code API-M3-002} on the region files it maps for good, registers the map dimension type from
-     * the manifest's world, and the block handlers the baker registered. In the directory mode it also checks the shard
+     * the manifest's world with the overworld's timelines and clock, and the block handlers the baker
+     * registered. In the directory mode it also checks the shard
      * directory against the release and the spawn column of the region against its gates, and the
      * start-up check covers the view of the region instead of the whole release. Writes nothing.
      *
@@ -384,8 +398,13 @@ public final class ShardWorld {
         final SynxManifest manifest = verified.manifest();
         final long verifyMillis = Duration.ofNanos(System.nanoTime() - started).toMillis();
         final SynxManifest.World world = manifest.world();
+        // The overworld's timelines and clock: without the minecraft:day timeline the 26.2 client keeps the sun at noon
+        final DimensionType overworld = Objects.requireNonNull(process.dimensionType().get(DimensionType.OVERWORLD),
+                "minecraft:overworld");
         final RegistryKey<DimensionType> dimensionType = process.dimensionType().register(Key.key(DIMENSION_TYPE),
-                DimensionType.builder().minY(world.minY()).height(world.height()).logicalHeight(world.height()).build());
+                DimensionType.builder().minY(world.minY()).height(world.height()).logicalHeight(world.height())
+                        .timelines(overworld.timelines())
+                        .defaultClock(Objects.requireNonNull(overworld.defaultClock(), "the overworld has a clock")).build());
         SynxHandlers.registerAll(process.block());
         LOGGER.info("Map release {} verified in {} ms: bounds={} world={}{}", manifest.buildId(), verifyMillis,
                 manifest.bounds(), world, trust.checked() ? "" : " permissions=unchecked (the file system has no POSIX permissions)");
@@ -521,7 +540,8 @@ public final class ShardWorld {
      * its final flush after the players' save, builds the map instance with its simulation distance
      * and unload grace period on the bounds the shard serves (its region in the directory mode, the
      * chunks past them read only), replays the flags into it, sets its world border and spawn point on
-     * those bounds, schedules the write phase of the overlay store at the end of every tick and
+     * those bounds, sets its clock to the wall clock and holds it there ({@code API-M3-006} 日夜),
+     * schedules the write phase of the overlay store at the end of every tick and
      * {@code EVT:chunk_stream_stats} every 60 s, and computes the far view announcement of those bounds.
      *
      * @param shutdown the shutdown sequence, still taking steps
@@ -553,6 +573,15 @@ public final class ShardWorld {
      */
     Started start(ShutdownSequence shutdown, BiConsumer<String, Map<String, ?>> events, @Nullable WorldFlagsImpl flags,
                   Path overlayRoot, @Nullable Executor relightExecutor) {
+        return start(shutdown, events, flags, overlayRoot, relightExecutor, System::currentTimeMillis);
+    }
+
+    /**
+     * {@link #start(ShutdownSequence, BiConsumer, WorldFlagsImpl, Path, Executor)} on the wall clock
+     * {@code wallMillis} (epoch milliseconds) instead of the system's, for the tests of the day.
+     */
+    Started start(ShutdownSequence shutdown, BiConsumer<String, Map<String, ?>> events, @Nullable WorldFlagsImpl flags,
+                  Path overlayRoot, @Nullable Executor relightExecutor, LongSupplier wallMillis) {
         // Before the overlay store is opened: flags that cannot be read refuse the start with the disk untouched
         if (flags != null) flags.load();
         final SynxSettings overlaySettings = overlaySettings(manifest, process.compressionThreshold());
@@ -597,6 +626,7 @@ public final class ShardWorld {
                     + "short one until the border turns them back", bounds, manifest.buildId());
         }
         final Pos spawn = spawn(verified, bounds);
+        startDay(instance, wallMillis);
         if (synxOptions.worldWritable()) {
             LOGGER.warn("Map {} is writable ({}=true): players' digging and placing go into the overlay", manifest.buildId(),
                     SynxOptions.WORLD_WRITABLE);
@@ -642,6 +672,37 @@ public final class ShardWorld {
                 process.exception().handleException(e);
             }
         }, TaskSchedule.nextTick(), TaskSchedule.nextTick(), ExecutionType.TICK_END);
+    }
+
+    /**
+     * {@code API-M3-006} 日夜: sets the clock of the map instance to the wall clock, a tick of the day every tick, and
+     * holds it there every {@value #CLOCK_CHECK_TICKS} ticks at the end of the instance's tick, after the clock
+     * ticked, on the thread that ticks it.
+     */
+    private static void startDay(InstanceContainer instance, LongSupplier wallMillis) {
+        final Clock clock = Objects.requireNonNull(instance.defaultClock(), "the map has a clock");
+        clock.rate(1f);
+        clock.time(wallTime(wallMillis.getAsLong()));
+        instance.scheduler().buildTask(() -> alignClock(clock, wallMillis.getAsLong()))
+                .delay(TaskSchedule.tick(CLOCK_CHECK_TICKS)).repeat(TaskSchedule.tick(CLOCK_CHECK_TICKS))
+                .executionType(ExecutionType.TICK_END).schedule();
+    }
+
+    /** {@code API-M3-006} 日夜: the time of every shard of a map at {@code epochMillis}, (epoch ms ÷ 50) mod 192,000. */
+    static long wallTime(long epochMillis) {
+        return Math.floorMod(Math.floorDiv(epochMillis, TICK_MILLIS), DAY_CYCLE_TICKS);
+    }
+
+    /**
+     * Sets a running {@code clock} back to the wall clock once it strayed {@value #CLOCK_TOLERANCE_TICKS} ticks or
+     * more, which a tick loop that gives up catching up does by dropping ticks; {@link Clock#time(long)} sends the
+     * players of the instance the time. A stopped clock is left where it is: only a test fixture stops one.
+     */
+    static void alignClock(Clock clock, long epochMillis) {
+        if (clock.paused()) return;
+        final long target = wallTime(epochMillis);
+        final long ahead = Math.floorMod(clock.time() - target, DAY_CYCLE_TICKS);
+        if (Math.min(ahead, DAY_CYCLE_TICKS - ahead) >= CLOCK_TOLERANCE_TICKS) clock.time(target);
     }
 
     /**

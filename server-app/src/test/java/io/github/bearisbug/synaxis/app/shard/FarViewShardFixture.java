@@ -44,9 +44,7 @@ import io.github.bearisbug.synaxis.synx.SynxExpectations;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import io.github.bearisbug.synaxis.synx.SynxOptions;
 import io.github.bearisbug.synaxis.synx.VerifiedBuild;
-import io.github.bearisbug.synaxis.world.DimensionType;
 import io.github.bearisbug.synaxis.world.biome.Biome;
-import net.kyori.adventure.key.Key;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -94,17 +92,18 @@ import java.util.stream.Stream;
  * {@code 0.0.0.0:<port>}, the packs on {@code 0.0.0.0:<httpPort>} under {@code /<map_id>/farview/<sha256>.hfp},
  * every connection sharing one bucket of {@value #BYTES_PER_SECOND} B/s (50 Mbit/s). {@code urlRoot} is the
  * root of the announced URLs, {@code http://host.docker.internal:<httpPort>} unless given ({@code -} keeps that
- * default): what a client in the container sees. {@code dayTime} (ticks, -1 lets the day run) stops the
- * overworld clock of the map at that time, so the sun stands still (V6b); the map's dimension type then takes
- * the overworld's timelines and clock, without which the 26.2 client keeps its sun at noon. {@code rttMillis}
- * (0 for none) puts a TCP proxy in front of the game port that holds every byte for half of it each way (P1③).
+ * default): what a client in the container sees. {@code dayTime} (ticks) stops the clock of the map at that
+ * time, so the sun stands still (V6b); -1, the default, stops it at noon: a map shard's day runs on the wall
+ * clock ({@link ShardWorld}), and the screenshots the container cases compare were taken under one sky.
+ * {@code rttMillis} (0 for none) puts a TCP proxy in front of the game port that holds every byte for half of it each way (P1③).
  * {@code /expect.json} gives the points to check in the library and the camera spots, {@code /access.log} one
  * line per pack request: method, path, {@code Range} header ({@code -} without), status, and {@code cut} for a
  * response cut short; {@code /rearm} lets {@code half} cut its next response again. Prints {@value #READY}
  * once both listen.
  * <p>
- * The system property {@value #CLOCK_RUNS} set to {@code true} sets the time without stopping the clock: the
- * counter-proof of the stopped sun ({@code docs/DESIGN-M3.md} §19 「夹具定住日间时间」).
+ * The system property {@value #CLOCK_RUNS} set to {@code true} sets the time without stopping the clock, which
+ * the map shard then sets back to the wall clock: the counter-proof of the stopped sun
+ * ({@code docs/DESIGN-M3.md} §19 「夹具定住日间时间」).
  * <p>
  * The modes:
  * <ul>
@@ -151,6 +150,8 @@ final class FarViewShardFixture {
     static final Set<String> BAKED_MODES = Set.of("baked", "baked-hidden", "counter-hidden", "serve-only");
     /** Set to {@code true}: the time is set and the clock left running, the counter-proof of {@code dayTime}. */
     static final String CLOCK_RUNS = "farview.fixture.clock-runs";
+    /** The day time the clock stops at without a {@code dayTime}: noon, the sun at 90°. */
+    static final long NOON = 6000;
     /**
      * The hidden areas of {@code baked-hidden}, by x1: across the edge of tiles (-1, 0) and (0, 0) on the spawn's
      * z, and over the highest fine sample of tile (0, 0) in {@code baked}, column 440, 104.
@@ -235,14 +236,13 @@ final class FarViewShardFixture {
         final ServerProcess process = server.process();
         final ShardWorld world = ShardWorld.prepare(process, settings, SynxOptions.fromSystemProperties(),
                 OverlayOptions.fromSystemProperties(), directory);
-        if (dayTime >= 0) withOverworldClock(process);
         final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
         process.setShutdownParticipant(shutdown);
         final ShardWorld.Started started = world.start(shutdown, (_, _) -> {
         }, null, workDir.resolve("overlay"));
         final InstanceContainer instance = started.instance();
         final Pos spawn = started.spawn();
-        if (dayTime >= 0) holdTime(instance, dayTime, Boolean.getBoolean(CLOCK_RUNS));
+        holdTime(instance, dayTime, Boolean.getBoolean(CLOCK_RUNS));
         final SynxManifest manifest = manifest(settings.buildDir());
 
         final Content content = baked ? Content.baked(settings.buildDir(), manifest.mapId(), started.farView())
@@ -363,23 +363,10 @@ final class FarViewShardFixture {
         }
     }
 
-    /**
-     * Gives the map's dimension type the overworld's timelines and clock. {@link ShardWorld} registers it without
-     * them, and a 26.2 client draws the sun of a dimension type without the {@code minecraft:day} timeline at the
-     * default angle 0, noon, whatever the time; with them the sun follows the overworld clock.
-     */
-    static void withOverworldClock(ServerProcess process) {
-        final Key key = Key.key(ShardWorld.DIMENSION_TYPE);
-        final DimensionType map = Objects.requireNonNull(process.dimensionType().get(key), ShardWorld.DIMENSION_TYPE);
-        final DimensionType overworld = Objects.requireNonNull(process.dimensionType().get(DimensionType.OVERWORLD));
-        process.dimensionType().register(key, DimensionType.builder(map).timelines(overworld.timelines())
-                .defaultClock(Objects.requireNonNull(overworld.defaultClock(), "the overworld has a clock")).build());
-    }
-
-    /** Sets the default clock to {@code dayTime} and, unless {@code running}, stops it there. */
+    /** Sets the default clock to {@code dayTime}, {@value #NOON} for -1, and unless {@code running} stops it there. */
     static void holdTime(InstanceContainer instance, long dayTime, boolean running) {
         final Clock clock = Objects.requireNonNull(instance.defaultClock(), "the map has a clock");
-        clock.time(dayTime);
+        clock.time(dayTime >= 0 ? dayTime : NOON);
         if (!running) clock.pause();
     }
 

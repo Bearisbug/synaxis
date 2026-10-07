@@ -93,6 +93,28 @@ public class ShardWorldTest {
     }
 
     /**
+     * §19 「地图维度类型带主世界的时间线与默认时钟」 (REQ-M3-034): without the {@code minecraft:day} timeline
+     * the 26.2 client keeps the sun at noon whatever the time.
+     */
+    @Test
+    public void theMapDimensionTypeTakesTheTimelinesAndTheClockOfTheOverworld() {
+        final Env env = Env.create(config -> config.chunkViewDistance(12));
+        try {
+            ShardWorld.prepare(env.process(), release, SYNX, OVERLAY, null);
+            final DimensionType overworld = Objects.requireNonNull(env.process().dimensionType().get(DimensionType.OVERWORLD));
+            final DimensionType map = Objects.requireNonNull(
+                    env.process().dimensionType().get(RegistryKey.unsafeOf(Key.key(ShardWorld.DIMENSION_TYPE))));
+            assertEquals(overworld.defaultClock(), map.defaultClock(), "the map runs on the overworld clock");
+            assertEquals("minecraft:overworld", Objects.requireNonNull(map.defaultClock()).key().asString());
+            assertEquals(overworld.timelines(), map.timelines(), "the map has the timelines of the overworld");
+            assertEquals(0, map.minY());
+            assertEquals(64, map.height());
+        } finally {
+            env.process().stop();
+        }
+    }
+
+    /**
      * §19 「分片与烘焙器登记同一份处理器清单」 (REQ-M3-022): the shard registers the handlers
      * {@link SynxHandlers#registerAll} finds on its class path, the data markers of {@code :game-rts}, which
      * are the handlers the baker bakes with ({@code BakerMainTest#theCommandLineBakesASaveWithDataMarkers}).

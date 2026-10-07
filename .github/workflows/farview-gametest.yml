@@ -19,7 +19,7 @@ on:
         type: string
         default: v1
       day_time:
-        description: The fixture's dayTime, -1 to let the day run
+        description: The fixture's dayTime, where it stops the clock; -1 for noon
         type: string
         default: '-1'
       sun_elevation:

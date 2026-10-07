@@ -14,10 +14,8 @@ import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.network.packet.server.play.SetTimePacket;
-import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.synx.SynxDigests;
 import io.github.bearisbug.synaxis.world.DimensionType;
-import net.kyori.adventure.key.Key;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -49,7 +47,6 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -514,31 +511,30 @@ public class FarViewShardFixtureTest {
     }
 
     /**
-     * The map's dimension type takes the overworld's timelines and clock, without which the 26.2 client keeps the
-     * sun at noon; the clock is set and stopped, or with {@code farview.fixture.clock-runs} only set.
+     * §19 「停住的时钟不被对齐，夹具默认停在正午」 (REQ-M3-034): the clock {@link FarViewShardFixture#holdTime} stops, at
+     * the day time or at noon without one, stays there against the wall clock the map shard holds its clock to
+     * ({@link ShardWorld#alignClock}); with {@code farview.fixture.clock-runs} it is only set, and the wall clock
+     * takes it.
      */
     @Test
-    public void theMapTakesTheOverworldClockAndTheClockStopsAtTheDayTime() {
+    public void aStoppedClockStaysAtTheDayTimeAgainstTheWallClock() {
         final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true).build());
-        final Key key = Key.key(ShardWorld.DIMENSION_TYPE);
-        process.dimensionType().register(key, DimensionType.builder().minY(0).height(256).logicalHeight(256).build());
-        final DimensionType overworld = Objects.requireNonNull(process.dimensionType().get(DimensionType.OVERWORLD));
-        assertNull(Objects.requireNonNull(process.dimensionType().get(key)).defaultClock(), "ShardWorld's map type has no clock");
-
-        FarViewShardFixture.withOverworldClock(process);
-
-        final DimensionType map = Objects.requireNonNull(process.dimensionType().get(key));
-        assertEquals(overworld.defaultClock(), map.defaultClock());
-        assertEquals(overworld.timelines(), map.timelines());
-        assertEquals(256, map.height());
-        final InstanceContainer stopped = process.instance().createInstanceContainer(RegistryKey.unsafeOf(key));
+        final InstanceContainer stopped = process.instance().createInstanceContainer(DimensionType.OVERWORLD);
         FarViewShardFixture.holdTime(stopped, 6000, false);
+        final InstanceContainer noon = process.instance().createInstanceContainer(DimensionType.OVERWORLD);
+        FarViewShardFixture.holdTime(noon, -1, false);
+        final InstanceContainer running = process.instance().createInstanceContainer(DimensionType.OVERWORLD);
+        FarViewShardFixture.holdTime(running, 6000, true);
+        // 2026-10-07T07:15:23.456Z, 138,469 on the wall clock of a map shard
+        for (InstanceContainer instance : List.of(stopped, noon, running)) {
+            ShardWorld.alignClock(Objects.requireNonNull(instance.defaultClock()), 1_791_357_323_456L);
+        }
         assertEquals(6000, stopped.getTime());
         assertEquals(0f, rate(stopped), "stopped: the client's clock does not move");
-        final InstanceContainer running = process.instance().createInstanceContainer(RegistryKey.unsafeOf(key));
-        FarViewShardFixture.holdTime(running, 6000, true);
-        assertEquals(6000, running.getTime());
-        assertEquals(1f, rate(running), "the counter-proof leaves it running");
+        assertEquals(6000, noon.getTime(), "without a day time: noon");
+        assertEquals(0f, rate(noon));
+        assertEquals(138_469, running.getTime(), "the counter-proof runs on the wall clock");
+        assertEquals(1f, rate(running));
     }
 
     private static float rate(InstanceContainer instance) {

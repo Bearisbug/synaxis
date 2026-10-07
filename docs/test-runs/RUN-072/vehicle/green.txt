@@ -1,0 +1,9 @@
+# RUN-072 vehicle green (after fix, default mode)
+<testsuite name="io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-07T08:45:58.116Z" hostname="Mac.local" time="0.877">
+<testcase name="aVehicleMoveIntoAnUnloadedChunkIsTurnedBack(Env)" classname="io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest" time="0.81"/>
+<testcase name="aVehicleOutsideTheBorderGetsNoFartherOut(Env)" classname="io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest" time="0.022"/>
+<testcase name="aVehicleMoveOutAcrossTheWorldBorderIsTurnedBack(Env)" classname="io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest" time="0.019"/>
+<testcase name="aVehicleMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env)" classname="io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest" time="0.019"/>
+<testsuite name="io.github.bearisbug.synaxis.listener.PlayerVehicleMoveValidationIntegrationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-07T08:45:58.117Z" hostname="Mac.local" time="0.824">
+<testcase name="nonFiniteVehicleRotationIsRejected(Env)" classname="io.github.bearisbug.synaxis.listener.PlayerVehicleMoveValidationIntegrationTest" time="0.818"/>
+BUILD SUCCESSFUL in 9s

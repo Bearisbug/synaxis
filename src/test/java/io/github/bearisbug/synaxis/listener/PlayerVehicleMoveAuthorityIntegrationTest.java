@@ -16,6 +16,7 @@ import io.github.bearisbug.synaxis.testing.TestConnection;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * What the server takes from a client's vehicle moves ({@code docs/DESIGN-PROD.md} {@code API-PROD-030}):
@@ -100,6 +101,30 @@ public class PlayerVehicleMoveAuthorityIntegrationTest {
         ride.turnedBack().assertCount(3);
         ride.drive(64.5, 40, 0.5);
         assertEquals(new Pos(64.5, 40, 0.5), ride.vehicle().getPosition(), "64 blocks east in one packet");
+    }
+
+    /**
+     * A move into another chunk that is not loaded is turned back where the vehicle is, loading no
+     * chunk, as a player's own move is; a move within the vehicle's chunk and one into a loaded chunk
+     * are taken. Chunk 4 on the x axis is past the ring of the spawn, and 64 blocks east reaches it in
+     * one packet.
+     */
+    @Test
+    public void aVehicleMoveIntoAnUnloadedChunkIsTurnedBack(Env env) {
+        final Instance instance = instance(env);
+        final Ride ride = Ride.at(env, instance, SPAWN);
+        final Pos riding = ride.player().getPosition();
+
+        ride.drive(64.5, 40, 0.5);
+
+        assertEquals(SPAWN, ride.vehicle().getPosition(), "a vehicle move to x 64.5, in chunk 4 that is not loaded");
+        assertEquals(riding, ride.player().getPosition(), "the rider of a vehicle turned back");
+        assertNull(instance.getChunk(4, 0), "chunk 4 after a vehicle move into it was turned back");
+        ride.turnedBack().assertSingle(packet -> assertEquals(SPAWN, packet.position()));
+        ride.drive(8.5, 40, 8.5);
+        assertEquals(new Pos(8.5, 40, 8.5), ride.vehicle().getPosition(), "a vehicle move within chunk 0");
+        ride.drive(24.5, 40, 8.5);
+        assertEquals(new Pos(24.5, 40, 8.5), ride.vehicle().getPosition(), "a vehicle move into chunk 1, which is loaded");
     }
 
     /**

@@ -1,0 +1,10 @@
+# p10.py's unit tests by the command at the head of test_p10.py (TC-PROD-660), the one the p10 job now runs before baking.
+# The runner uses its own python3 (ubuntu-latest, standard library only); here synaxis/.venv's Python 3.10.18, with
+# PYTHONDONTWRITEBYTECODE=1 so no __pycache__ is left behind.
+$ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s client-fabric/gametest-env -p 'test_*.py' -v
+test_the_shard_directory_is_0644_whatever_the_umask (test_p10.ShardsTest) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.080s
+
+OK

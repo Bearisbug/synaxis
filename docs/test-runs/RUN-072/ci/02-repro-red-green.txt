@@ -1,0 +1,26 @@
+# repro-sessionserver-log.sh (this directory), red then green, 2026-10-07 on this machine (macOS 15.3.2, /bin/bash 3.2.57,
+# /usr/bin/sed is BSD sed). Each run in an empty scratch directory under /tmp/run072/fix-ci, deleted afterwards.
+# BSD sed words the missing file as "sed: <file>: No such file or directory" and exits 1; the runner's GNU sed says
+# "sed: can't read <file>: No such file or directory" and exits 2 (01-ci-attempts.txt). Either way `port=$(sed …)` fails and
+# bash -e ends the step with sed's status before the loop ever sleeps.
+
+## One run each, with the output
+$ GITHUB_ENV=$PWD/github_env bash -e repro-sessionserver-log.sh before
+sed: sessionserver.log: No such file or directory
+exit code 1
+github_env: (not written)
+$ GITHUB_ENV=$PWD/github_env bash -e repro-sessionserver-log.sh after
+exit code 0
+github_env: SESSION_HOST=http://127.0.0.1:40541
+
+## Five more runs each (output dropped): the delay ahead of the redirection makes the outcome the same every time
+before run 1: exit code 1
+before run 2: exit code 1
+before run 3: exit code 1
+before run 4: exit code 1
+before run 5: exit code 1
+after run 1: exit code 0
+after run 2: exit code 0
+after run 3: exit code 0
+after run 4: exit code 0
+after run 5: exit code 0

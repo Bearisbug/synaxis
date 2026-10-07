@@ -1,0 +1,89 @@
+# GitHub Actions "Client gametest" run 37495680948 (main f7a9756f7b, push), attempts 1 and 2: the failed steps, copied from
+# `gh run view 37495680948 --attempt <n> --log-failed` on 2026-10-07 (ANSI colour codes and the env block trimmed).
+# Attempt 3 is green; so is run 37495681592 on the same commit, attempt 1.
+
+## Attempt 2, job "Run the client gametests", step "Start the fake sessionserver in record mode" (the race fixed in this group)
+2026-10-06T16:51:15.5388801Z ##[group]Run (java tools/fake-sessionserver/FakeSessionServer.java --mode record --port 0 > sessionserver.log 2>&1 &)
+2026-10-06T16:51:15.5389565Z (java tools/fake-sessionserver/FakeSessionServer.java --mode record --port 0 > sessionserver.log 2>&1 &)
+2026-10-06T16:51:15.5390077Z for _ in $(seq 1 60); do
+2026-10-06T16:51:15.5390505Z   port=$(sed -n 's|.*listening on http://127.0.0.1:\([0-9]*\),.*|\1|p' sessionserver.log)
+2026-10-06T16:51:15.5390920Z   if [ -n "$port" ]; then
+2026-10-06T16:51:15.5391296Z     echo "SESSION_HOST=http://127.0.0.1:$port" >> "$GITHUB_ENV"
+2026-10-06T16:51:15.5391639Z     exit 0
+2026-10-06T16:51:15.5391879Z   fi
+2026-10-06T16:51:15.5392095Z   sleep 1
+2026-10-06T16:51:15.5392317Z done
+2026-10-06T16:51:15.5392550Z cat sessionserver.log
+2026-10-06T16:51:15.5392854Z exit 1
+2026-10-06T16:51:15.5451086Z shell: /usr/bin/bash -e {0}
+2026-10-06T16:51:15.5456367Z ##[endgroup]
+2026-10-06T16:51:15.5574876Z sed: can't read sessionserver.log: No such file or directory
+2026-10-06T16:51:15.5747403Z ##[error]Process completed with exit code 2.
+
+## Attempt 1, job "Run the client gametests", step "Start server-app in game mode" (dependency resolution, not fixed: see docs/TEST.md §7)
+# The step waits 300 s for "server-app listening" and then prints server.log, so every line below carries the 16:32:45 timestamp.
+2026-10-06T16:27:44.1835240Z ##[group]Run (tail -f /dev/null | ./gradlew :server-app:run --console=plain -Dsynaxis.app.auth=online \
+2026-10-06T16:27:44.1836888Z (tail -f /dev/null | ./gradlew :server-app:run --console=plain -Dsynaxis.app.auth=online \
+2026-10-06T16:27:44.1838221Z   -Dsynaxis.app.auth.session-server="$SESSION_HOST/session/minecraft/hasJoined" \
+2026-10-06T16:27:44.1839415Z   -Dsynaxis.app.port=25565 -Dsynaxis.app.handshake-phase=$HANDSHAKE_PHASE \
+2026-10-06T16:27:44.1840273Z   > server.log 2>&1 &)
+2026-10-06T16:27:44.1840835Z for i in $(seq 1 300); do
+2026-10-06T16:27:44.1841528Z   grep -q "server-app listening" server.log && exit 0
+2026-10-06T16:27:44.1842246Z   sleep 1
+2026-10-06T16:27:44.1842712Z done
+2026-10-06T16:27:44.1843166Z cat server.log
+2026-10-06T16:27:44.1843657Z exit 1
+2026-10-06T16:27:44.1917866Z shell: /usr/bin/bash -e {0}
+2026-10-06T16:27:44.1924853Z ##[endgroup]
+2026-10-06T16:32:45.0999373Z Isolated Projects is an incubating feature.
+2026-10-06T16:32:45.1004398Z Calculating task graph as no cached configuration is available for tasks: :server-app:run
+2026-10-06T16:32:45.1020997Z gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_4-1791304065249.json
+2026-10-06T16:32:45.1022043Z 
+2026-10-06T16:32:45.1022510Z [Incubating] Problems report is available at: file:///home/runner/work/synaxis/synaxis/build/reports/problems/problems-report.html
+2026-10-06T16:32:45.1023064Z 
+2026-10-06T16:32:45.1023213Z FAILURE: Build failed with an exception.
+2026-10-06T16:32:45.1023448Z 
+2026-10-06T16:32:45.1023568Z * What went wrong:
+2026-10-06T16:32:45.1023959Z Could not determine the dependencies of task ':server-app:run'.
+2026-10-06T16:32:45.1024552Z > Could not resolve all dependencies for configuration ':server-app:runtimeClasspath'.
+2026-10-06T16:32:45.1025102Z    > Could not find ch.qos.logback:logback-core:1.6.5.
+2026-10-06T16:32:45.1025506Z      Searched in the following locations:
+2026-10-06T16:32:45.1026074Z        - https://repo.maven.apache.org/maven2/ch/qos/logback/logback-core/1.6.5/logback-core-1.6.5.pom
+2026-10-06T16:32:45.1026969Z      Required by:
+2026-10-06T16:32:45.1027458Z          project ':server-app'
+2026-10-06T16:32:45.1028051Z    > Could not find ch.qos.logback:logback-classic:1.6.5.
+2026-10-06T16:32:45.1028678Z      Searched in the following locations:
+2026-10-06T16:32:45.1029884Z        - https://repo.maven.apache.org/maven2/ch/qos/logback/logback-classic/1.6.5/logback-classic-1.6.5.pom
+2026-10-06T16:32:45.1030849Z      Required by:
+2026-10-06T16:32:45.1031260Z          project ':server-app'
+2026-10-06T16:32:45.1031461Z 
+2026-10-06T16:32:45.1031569Z * Try:
+2026-10-06T16:32:45.1032341Z > If the artifact you are trying to retrieve can be found in the repository but without metadata in 'Maven POM' format, you need to adjust the 'metadataSources { ... }' of the repository declaration.
+2026-10-06T16:32:45.1033227Z > Run with --stacktrace option to get the stack trace.
+2026-10-06T16:32:45.1033676Z > Run with --info or --debug option to get more log output.
+2026-10-06T16:32:45.1034201Z > Run with --scan to get full insights from a Build Scan (powered by Develocity).
+2026-10-06T16:32:45.1034705Z > Get more help at https://help.gradle.org.
+2026-10-06T16:32:45.1034956Z 
+2026-10-06T16:32:45.1035258Z Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+2026-10-06T16:32:45.1035658Z 
+2026-10-06T16:32:45.1036114Z You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+2026-10-06T16:32:45.1037099Z 
+2026-10-06T16:32:45.1037702Z For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+2026-10-06T16:32:45.1038321Z 
+2026-10-06T16:32:45.1038445Z BUILD FAILED in 3s
+2026-10-06T16:32:45.1038743Z 18 actionable tasks: 18 up-to-date
+2026-10-06T16:32:45.1039088Z Configuration cache entry stored.
+2026-10-06T16:32:45.1043178Z ##[error]Process completed with exit code 1.
+
+## Attempt 1, the judge step that followed (it only reports that no client ever connected)
+2026-10-06T16:33:04.7937525Z FAIL no report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt
+2026-10-06T16:33:04.7938889Z FAIL no report at client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt
+2026-10-06T16:33:04.7940091Z FAIL 0 reports for 2 launches
+2026-10-06T16:33:04.8063225Z FAIL client_verified 0, expected 2
+2026-10-06T16:33:04.8064101Z ok   client_rejected 0, expected 0
+2026-10-06T16:33:04.8065484Z FAIL unit_order_issued 0, expected >= 2
+2026-10-06T16:33:04.8066478Z FAIL protocol-error kicks 0, expected 2
+2026-10-06T16:33:04.8113238Z FAIL sessionserver join 0, expected 2
+2026-10-06T16:33:04.8114273Z FAIL sessionserver hasJoined 200 0 of 0, expected 2 of 2
+2026-10-06T16:33:04.8115470Z client regression: 8 check(s) failed
+2026-10-06T16:33:04.8121334Z ##[error]Process completed with exit code 1.

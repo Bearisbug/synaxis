@@ -1,0 +1,24 @@
+# Group ci of the production-readiness session for RUN-072 (branch prod/r072-ci, worktree synaxis-wt/r072-ci, base main f7a9756f7b):
+# the fake sessionserver step's log race in .github/workflows/client-gametest.yml, and p10.py's unit tests in the p10 job.
+# For the integrate round to register as RUN-072. Workflow and docs only, no Java change, so no Gradle run in this group.
+# 2026-10-07 (UTC+8). Machine: Apple M4 Pro, 12 cores, 24 GiB, macOS 15.3.2. No Docker, no client, no server process, no database.
+# Raw CI logs and the scratch directories stayed in /tmp/run072/fix-ci, deleted after the round; the lines here are copied out of them.
+00-index.txt                   this file
+01-ci-attempts.txt             CI run 37495680948 attempts 1 and 2: the failed steps (dependency resolution; the sed race)
+02-repro-red-green.txt         repro-sessionserver-log.sh before (red, 5 of 5) and after (green, 5 of 5), docs/TEST.md TC-PROD-688 steps 1-2
+03-workflow-check.txt          PyYAML parse of the changed workflow, check-workflow.py on the branch and on f7a9756f7b, actionlint
+                               (TC-PROD-688 steps 3-5)
+04-p10-unittest.txt            p10.py's unit tests by test_p10.py's own command, the one the p10 job now runs (TC-PROD-660)
+repro-sessionserver-log.sh     the step's run block with the JVM replaced by a fake first line and `sleep 1` ahead of the redirection
+check-workflow.py              read-only check of the workflow: the log is created before the background start in both jobs, and the
+                               p10 job runs the unit tests before its first use of p10.py
+
+# Findings
+- Workflow race, fixed: `(java … > sessionserver.log 2>&1 &)` leaves the redirection to the background fork, so the next line's
+  `port=$(sed -n … sessionserver.log)` can run before the file exists; GNU sed exits 2 and the runner's `bash -e` ends the step.
+  Both jobs now run `: > sessionserver.log` before the background start.
+- p10 job: a step "Unit tests of p10.py" (python3 -m unittest discover -s client-fabric/gametest-env -p 'test_*.py', standard
+  library only) now runs right before "Bake the map and write the shard directory", the first step that uses p10.py.
+- Attempt 1's "Could not find ch.qos.logback:logback-core:1.6.5" (Maven Central answered "not found" for a POM that exists; attempt 3
+  and later runs resolve it, curl -I gives 200 on 2026-10-07): an external one-off, no code change; docs/TEST.md §7 says how to
+  tell it apart from a real missing dependency next time.

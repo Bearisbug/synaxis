@@ -335,11 +335,11 @@ final class Units {
     }
 
     /**
-     * Sends every player the state of the units it can see, after announcing the units that
-     * entered or left its interest set since the last snapshot. The interest sets differ from
-     * player to player, so the packets do too and the engine's grouped packet cache does not apply
-     * ({@code API-M2-006}); the snapshot is built by walking the units once and bucketing by viewer
-     * rather than by asking each player which units it sees.
+     * Sends every player the state of its turn of the units it can see ({@link #turn}), after
+     * announcing the units that entered or left its interest set since the last snapshot. The
+     * interest sets differ from player to player, so the packets do too and the engine's grouped
+     * packet cache does not apply ({@code API-M2-006}); the snapshot is built by walking the units
+     * once and bucketing by viewer rather than by asking each player which units it sees.
      */
     private void snapshot() {
         final Map<Player, List<S2CUnitState.Entry>> byViewer = new HashMap<>();

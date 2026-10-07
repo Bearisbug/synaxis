@@ -54,14 +54,18 @@ class UnitSnapshotIntegrationTest {
         final SliceFixture fixture = crowd(env, THRONG);
         final S2CUnitState first = snapshots(fixture, 1).getFirst();
 
-        // The unit the first snapshot ended on leaves the view: the next turn starts after it all
-        // the same, rather than starting over or stalling on a unit that is no longer there
+        // The unit the first snapshot ended on leaves the view: the next snapshot starts at the first
+        // unit after it all the same. Starting over from the lowest unit_id instead would still
+        // cover the whole view in ten snapshots, but a view whose last unit kept leaving would
+        // never get past its first sixty
         final int gone = first.entries().getLast().unitId();
         Objects.requireNonNull(fixture.units.byId(gone)).entity().setAutoViewable(false);
         fixture.channels.clear();
         final int left = THRONG - 1;
         final List<S2CUnitState> turns = snapshots(fixture, Math.ceilDiv(left, LINES));
 
+        assertEquals(gone + 1, turns.getFirst().entries().getFirst().unitId(),
+                "the turn after unit " + gone + " left the view did not start right after it");
         final Set<Integer> missed = IntStream.rangeClosed(1, THRONG).boxed()
                 .filter(unitId -> unitId != gone)
                 .collect(Collectors.toCollection(TreeSet::new));

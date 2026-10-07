@@ -79,6 +79,12 @@ final class Units {
     static final int MAX_QUEUE_DEPTH = 32;
 
     /**
+     * §15: the most lines one {@code S2C_UNIT_STATE} carries. A view holding more units than this
+     * is sent in turns, so every unit is refreshed within ⌈n ÷ 60⌉ snapshots.
+     */
+    static final int SNAPSHOT_LINES = 60;
+
+    /**
      * One order waiting for a path. It keeps the player rather than looking it up later: the answer
      * has to reach the connection that asked even if the unit is gone by then.
      */
@@ -117,8 +123,11 @@ final class Units {
     /** The budget of the line that reports a unit that could not be advanced. */
     private final LogBudget stuck = new LogBudget(LOGGER, "units that could not be advanced");
 
-    /** The budget of the line {@code RB-M2-003} reads when a snapshot does not fit. */
-    private final LogBudget oversized = new LogBudget(LOGGER, "interest sets over the snapshot cap");
+    /**
+     * Per viewer, the {@code unit_id} its last snapshot ended on when its view was too big for one;
+     * the next turn starts at the first unit after it. Only the snapshot touches it, on the tick.
+     */
+    private final Map<Player, Integer> turnEnds = new HashMap<>();
 
     private int nextUnitId = 1;
     private long ticks;
@@ -326,11 +335,11 @@ final class Units {
     }
 
     /**
-     * Sends every player the state of the units it can see, after announcing the units that
-     * entered or left its interest set since the last snapshot. The interest sets differ from
-     * player to player, so the packets do too and the engine's grouped packet cache does not apply
-     * ({@code API-M2-006}); the snapshot is built by walking the units once and bucketing by viewer
-     * rather than by asking each player which units it sees.
+     * Sends every player the state of its turn of the units it can see ({@link #turn}), after
+     * announcing the units that entered or left its interest set since the last snapshot. The
+     * interest sets differ from player to player, so the packets do too and the engine's grouped
+     * packet cache does not apply ({@code API-M2-006}); the snapshot is built by walking the units
+     * once and bucketing by viewer rather than by asking each player which units it sees.
      */
     private void snapshot() {
         final Map<Player, List<S2CUnitState.Entry>> byViewer = new HashMap<>();
@@ -340,18 +349,37 @@ final class Units {
                 byViewer.computeIfAbsent(viewer, _ -> new ArrayList<>()).add(entry);
             }
         }
+        // A player that sees nothing, or has gone, starts its turns over the next time it sees more
+        turnEnds.keySet().retainAll(byViewer.keySet());
         final int serverTick = (int) (ticks % Integer.MAX_VALUE);
         for (final Map.Entry<Player, List<S2CUnitState.Entry>> viewer : byViewer.entrySet()) {
-            List<S2CUnitState.Entry> entries = viewer.getValue();
-            if (entries.size() > S2CUnitState.MAX_ENTRIES) {
-                // RB-M2-003: the interest set outgrew what one snapshot may carry. The units past
-                // the cap keep their last known state on the client until the set shrinks again
-                oversized.warn("An interest set is over the snapshot cap: match_id={} units={} cap={}",
-                        match.matchId(), entries.size(), S2CUnitState.MAX_ENTRIES);
-                entries = entries.subList(0, S2CUnitState.MAX_ENTRIES);
-            }
-            send(viewer.getKey(), new S2CUnitState(serverTick, entries));
+            send(viewer.getKey(), new S2CUnitState(serverTick, turn(viewer.getKey(), viewer.getValue())));
         }
+    }
+
+    /**
+     * The lines of one player's snapshot (§15): the whole view when it fits in
+     * {@value #SNAPSHOT_LINES}, otherwise the next {@value #SNAPSHOT_LINES} units after the one the
+     * last snapshot ended on, wrapping round to the lowest {@code unit_id}. The turn is kept by
+     * {@code unit_id} rather than by position, so a unit entering the view ahead of another's turn
+     * puts that turn back by one line, and a unit leaving it brings the turn a line closer.
+     *
+     * @param viewer the player
+     * @param view   the units it sees, in ascending {@code unit_id}
+     * @return the lines to send it
+     */
+    private List<S2CUnitState.Entry> turn(Player viewer, List<S2CUnitState.Entry> view) {
+        if (view.size() <= SNAPSHOT_LINES) return view;
+        final Integer endedOn = turnEnds.get(viewer);
+        int start = 0;
+        if (endedOn != null) {
+            while (start < view.size() && view.get(start).unitId() <= endedOn) start++;
+            if (start == view.size()) start = 0;
+        }
+        final List<S2CUnitState.Entry> lines = new ArrayList<>(SNAPSHOT_LINES);
+        for (int i = 0; i < SNAPSHOT_LINES; i++) lines.add(view.get((start + i) % view.size()));
+        turnEnds.put(viewer, lines.getLast().unitId());
+        return lines;
     }
 
     /**

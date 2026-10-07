@@ -23,6 +23,8 @@ Subcommands, see docs/TEST.md section 3:
                                   non-creative player has the packet dropped before decoding
     echo --payload TEXT           round trip TEXT over the synaxis:main custom payload channel
     record-registry --out FILE    dump every received RegistryData packet to FILE
+    compare-registry SAMPLE RECORDED [--ignore REGISTRY/ENTRY]
+                                  compare two such dumps per registry and entry, no server needed
     order [--count N] [--group G] send move orders on rts:game and report the result codes
     select --units 1,2,3          send one C2S_SELECT and check it is not answered
     march [--units N]             keep N units walking, so a load test has moving units under it
@@ -1474,6 +1476,107 @@ def cmd_record_registry(args: argparse.Namespace) -> int:
         session.close()
 
 
+def split_registry_dump(data: bytes) -> list[tuple[str, list[tuple[str, bytes]]]]:
+    """Splits a ``record-registry`` dump into its registries and their entries.
+
+    The dump is the bodies of the RegistryData packets back to back, each starting with its packet
+    id: ``cmd_record_registry`` writes it so, and so does ``RegistryDataByteParityIntegrationTest``
+    for the sample. An entry is its id, a has-data flag and, when the flag is set, its data as
+    network NBT; every entry keeps the exact bytes it was sent as.
+    """
+    packet_id = REGISTRIES[_SERVER_REGISTRY[CONFIGURATION]].index("RegistryDataPacket")
+    reader = Reader(data)
+    registries = []
+    while reader.remaining():
+        start = reader.stream.tell()
+        found = reader.varint()
+        if found != packet_id:
+            raise ValueError(f"byte {start}: packet id 0x{found:02x}, a RegistryData packet is 0x{packet_id:02x}")
+        name = reader.string()
+        entries = []
+        for _ in range(reader.varint()):
+            entry_start = reader.stream.tell()
+            entry = reader.string()
+            if reader.boolean():
+                reader.nbt()
+            entries.append((entry, data[entry_start:reader.stream.tell()]))
+        registries.append((name, entries))
+    return registries
+
+
+def split_ignored(item: str) -> tuple[str, str]:
+    """Splits ``<registry>/<entry>``: both are namespaced and a registry name may hold a slash
+    (``minecraft:worldgen/biome``), an entry's own namespace starts after the last one before its
+    colon."""
+    colon = item.rfind(":")
+    slash = item.rfind("/", 0, colon)
+    if colon < 0 or slash < 0 or ":" not in item[:slash]:
+        raise SystemExit(f"--ignore {item}: expected <registry>/<entry>, as in minecraft:dimension_type/synaxis:match")
+    return item[:slash], item[slash + 1:]
+
+
+def cmd_compare_registry(args: argparse.Namespace) -> int:
+    sample = split_registry_dump(Path(args.sample).read_bytes())
+    recorded = split_registry_dump(Path(args.recorded).read_bytes())
+    ignored = {split_ignored(item) for item in args.ignore}
+    print(f"sample={args.sample} registries={len(sample)} entries={sum(len(e) for _, e in sample)}", flush=True)
+    print(f"recorded={args.recorded} registries={len(recorded)} entries={sum(len(e) for _, e in recorded)}",
+          flush=True)
+
+    differences = 0
+
+    def differs(what: str) -> None:
+        nonlocal differences
+        differences += 1
+        print(f"differs {what}", flush=True)
+
+    sample_names = [name for name, _ in sample]
+    recorded_names = [name for name, _ in recorded]
+    for name in sample_names:
+        if name not in recorded_names:
+            differs(f"{name}: registry only in the sample")
+    for name in recorded_names:
+        if name not in sample_names:
+            differs(f"{name}: registry only in the recording")
+    common = [name for name in sample_names if name in recorded_names]
+    if common != [name for name in recorded_names if name in sample_names]:
+        differs(f"registry order: sample {common} recording {[n for n in recorded_names if n in sample_names]}")
+
+    for registry, entry in sorted(ignored):
+        in_sample = any(name == registry and any(e == entry for e, _ in entries) for name, entries in sample)
+        in_recorded = any(name == registry and any(e == entry for e, _ in entries) for name, entries in recorded)
+        print(f"ignored {registry}/{entry}: sample={'present' if in_sample else 'absent'} "
+              f"recording={'present' if in_recorded else 'absent'}", flush=True)
+
+    same = 0
+    recorded_by_name = dict(recorded)
+    for name, sample_entries in sample:
+        if name not in recorded_by_name:
+            continue
+        left = [(entry, raw) for entry, raw in sample_entries if (name, entry) not in ignored]
+        right = [(entry, raw) for entry, raw in recorded_by_name[name] if (name, entry) not in ignored]
+        if left == right:
+            same += 1
+            print(f"same {name} entries={len(left)} bytes={sum(len(raw) for _, raw in left)}", flush=True)
+            continue
+        left_raw, right_raw = dict(left), dict(right)
+        for entry, raw in left:
+            if entry not in right_raw:
+                differs(f"{name}/{entry}: only in the sample")
+            elif raw != right_raw[entry]:
+                differs(f"{name}/{entry}: {len(raw)} bytes in the sample, {len(right_raw[entry])} in the recording")
+        for entry, _ in right:
+            if entry not in left_raw:
+                differs(f"{name}/{entry}: only in the recording")
+        left_order = [entry for entry, _ in left if entry in right_raw]
+        right_order = [entry for entry, _ in right if entry in left_raw]
+        if left_order != right_order:
+            differs(f"{name}: entries in another order")
+    print(f"compare-registry registries={len(sample)} same={same} differences={differences} "
+          f"ignored={len(ignored)}", flush=True)
+    return 0 if differences == 0 else 1
+
+
 # --------------------------------------------------------------------------------------
 # Entry point
 # --------------------------------------------------------------------------------------
@@ -1611,6 +1714,16 @@ def build_parser() -> argparse.ArgumentParser:
     record = subparsers.add_parser("record-registry", help="dump every RegistryData packet")
     record.add_argument("--out", required=True)
     record.set_defaults(run=cmd_record_registry)
+
+    compare = subparsers.add_parser("compare-registry",
+                                    help="compare two record-registry dumps registry by registry and entry by entry")
+    compare.add_argument("sample", help="the dump to compare against, e.g. src/test/resources/protocol/"
+                                        "registry-data-26.2.bin")
+    compare.add_argument("recorded", help="the dump record-registry wrote")
+    compare.add_argument("--ignore", action="append", default=[], metavar="REGISTRY/ENTRY",
+                         help="leave this entry out on both sides, e.g. minecraft:dimension_type/synaxis:match; "
+                              "repeatable")
+    compare.set_defaults(run=cmd_compare_registry)
 
     return parser
 

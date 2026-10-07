@@ -33,13 +33,17 @@ import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.generator.GenerationUnit;
 import io.github.bearisbug.synaxis.instance.generator.UnitModifier;
+import io.github.bearisbug.synaxis.instance.light.LightEngine;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.synx.OverlayOptions;
+import io.github.bearisbug.synaxis.synx.SynxBuildVerifier;
 import io.github.bearisbug.synaxis.synx.SynxDigests;
 import io.github.bearisbug.synaxis.synx.SynxException;
+import io.github.bearisbug.synaxis.synx.SynxExpectations;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import io.github.bearisbug.synaxis.synx.SynxOptions;
+import io.github.bearisbug.synaxis.synx.VerifiedBuild;
 import io.github.bearisbug.synaxis.world.DimensionType;
 import io.github.bearisbug.synaxis.world.biome.Biome;
 import net.kyori.adventure.key.Key;
@@ -287,7 +291,7 @@ final class FarViewShardFixture {
     private static void serveOnly(ShardSettings release, int httpPort, long dayTime) throws IOException, InterruptedException {
         final SynxManifest manifest = manifest(release.buildDir());
         final Content content = Content.exported(release.buildDir(), manifest);
-        final Pos spawn = ShardWorld.spawn(release.buildDir(), manifest, manifest.bounds());
+        final Pos spawn = ShardWorld.spawn(verified(release.buildDir(), manifest), manifest.bounds());
         final PackServer packs = new PackServer(content.mapId(), content.served(), false,
                 expectJson("serve-only", content, spawn, dayTime));
         packs.start(httpPort);
@@ -382,6 +386,16 @@ final class FarViewShardFixture {
     private static SynxManifest manifest(Path buildDir) throws IOException {
         try {
             return SynxManifest.fromJson(Files.readString(buildDir.resolve(SynxManifest.FILE_NAME)));
+        } catch (SynxException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** The release mapped and checked as {@link ShardWorld#prepare} does for a shard of all of it. */
+    private static VerifiedBuild verified(Path buildDir, SynxManifest manifest) throws IOException {
+        try {
+            return SynxBuildVerifier.open(buildDir, manifest, SynxExpectations.of(Registries.vanilla(), Baker.COMPRESSION_THRESHOLD,
+                    manifest.world().minY(), manifest.world().height(), LightEngine.VERSION), ShardWorld.viewBounds(manifest.bounds()));
         } catch (SynxException e) {
             throw new IllegalStateException(e);
         }

@@ -1,0 +1,29 @@
+# The workflow after the change, parsed with PyYAML (synaxis/.venv, Python 3.10.18), and the read-only check of TC-PROD-688
+# step 3 on the branch and on main f7a9756f7b. Run from the worktree root.
+
+## Parse and step order
+gametest 12 steps
+  sessionserver step first lines: ['# The background fork opens the log on its own schedule; without the file the sed below exits 2 under bash -e', ': > sessionserver.log', '(java tools/fake-sessionserver/FakeSessionServer.java --mode record --port 0 > sessionserver.log 2>&1 &)']
+p10 18 steps
+  sessionserver step first lines: ['# The background fork opens the log on its own schedule; without the file the sed below exits 2 under bash -e', ': > sessionserver.log', '(java -Xmx256m tools/fake-sessionserver/FakeSessionServer.java --mode record --port 0 > sessionserver.log 2>&1 &)']
+  unit tests at 6 bake at 7 first p10.py use: 7
+  run: python3 -m unittest discover -s client-fabric/gametest-env -p 'test_*.py'
+added lines identical: True
+
+## docs/test-runs/RUN-072/ci/check-workflow.py
+$ .venv/bin/python docs/test-runs/RUN-072/ci/check-workflow.py .github/workflows/client-gametest.yml
+gametest log created before start
+p10 log created before start
+p10 unit tests before first p10.py use
+$ git show f7a9756f7b:.github/workflows/client-gametest.yml > /tmp/run072/fix-ci/old.yml
+$ .venv/bin/python docs/test-runs/RUN-072/ci/check-workflow.py /tmp/run072/fix-ci/old.yml
+gametest MISSING log creation before start
+p10 MISSING log creation before start
+MISSING p10 unit tests before first p10.py use
+
+## actionlint (Homebrew), branch: the two known hints only, both in "Start server-app in game mode" (TC-PROD-131 step 1)
+$ actionlint .github/workflows/client-gametest.yml
+.github/workflows/client-gametest.yml:103:9: shellcheck reported issue in this script: SC2034:warning:5:1: i appears unused. Verify use (or export if used externally) [shellcheck]
+.github/workflows/client-gametest.yml:103:9: shellcheck reported issue in this script: SC2086:info:3:58: Double quote to prevent globbing and word splitting [shellcheck]
+$ actionlint <f7a9756f7b client-gametest.yml> | grep -c "shellcheck reported"
+2

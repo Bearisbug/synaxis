@@ -84,6 +84,8 @@ jobs:
       # Its first line names the port it took; the client's authlib and the server both go there.
       - name: Start the fake sessionserver in record mode
         run: |
+          # The background fork opens the log on its own schedule; without the file the sed below exits 2 under bash -e
+          : > sessionserver.log
           (java tools/fake-sessionserver/FakeSessionServer.java --mode record --port 0 > sessionserver.log 2>&1 &)
           for _ in $(seq 1 60); do
             port=$(sed -n 's|.*listening on http://127.0.0.1:\([0-9]*\),.*|\1|p' sessionserver.log)
@@ -239,6 +241,10 @@ jobs:
           ./gradlew :server-app:installDist :baker:installDist
           ./gradlew --stop
 
+      # Standard library only, so nothing to install (docs/TEST.md TC-PROD-660)
+      - name: Unit tests of p10.py
+        run: python3 -m unittest discover -s client-fabric/gametest-env -p 'test_*.py'
+
       - name: Bake the map and write the shard directory
         run: |
           mkdir -p "$P10" && cd "$P10"
@@ -263,6 +269,8 @@ jobs:
 
       - name: Start the fake sessionserver in record mode
         run: |
+          # The background fork opens the log on its own schedule; without the file the sed below exits 2 under bash -e
+          : > sessionserver.log
           (java -Xmx256m tools/fake-sessionserver/FakeSessionServer.java --mode record --port 0 > sessionserver.log 2>&1 &)
           for _ in $(seq 1 60); do
             port=$(sed -n 's|.*listening on http://127.0.0.1:\([0-9]*\),.*|\1|p' sessionserver.log)

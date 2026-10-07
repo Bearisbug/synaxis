@@ -3,7 +3,9 @@ name: Far view gametest
 # The container cases of the client far view (docs/DESIGN-M3.md §26 M3-G 容器验收 and M3-S 轨道 C 的四项容器规格,
 # docs/TEST.md TC-WORLD-117 to TC-WORLD-120) on the runner itself, the way client-gametest.yml runs the regression:
 # FarViewShardFixture (and bin/server-shard) from the server test sources, then the real client with Distant
-# Horizons under Xvfb and Mesa llvmpipe, each case judged by its farview-report.txt.
+# Horizons under Xvfb and Mesa llvmpipe, each case judged by its farview-report.txt. Group light runs the runtime light
+# cases of LightClientGameTest (docs/TEST.md TC-WORLD-095 steps 5 to 11) against LightShardFixture, without Distant
+# Horizons, judged by its light-report.txt.
 # Only by hand, since a run holds runners for about two hours of a private repository's minutes: labelling a pull
 # request farview-gametest (any other label starts a run that skips at the job's if), or workflow_dispatch once this
 # file is on the default branch. To run a labelled pull request again, gh run rerun, or take the label off and on.
@@ -42,15 +44,16 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'farview-gametest'
     runs-on: ubuntu-latest
     # On these 2 cores the fixture bakes a 3 × 3 tile map in about 24 minutes (baked and hidden, each its own map); a
-    # bake of the client takes 10 to 20 minutes, a client run 5 to 45; synthetic has four client runs, baked six
-    timeout-minutes: ${{ matrix.group == 'hidden' && 90 || matrix.group == 'synthetic' && 150 || 180 }}
+    # bake of the client takes 10 to 20 minutes, a client run 5 to 45; synthetic has four client runs, baked six, light
+    # one against a map of 33 × 33 chunks
+    timeout-minutes: ${{ matrix.group == 'light' && 75 || matrix.group == 'hidden' && 90 || matrix.group == 'synthetic' && 150 || 180 }}
     strategy:
       fail-fast: false
       matrix:
         # synthetic: TC-WORLD-117 (v1, the walk of F5 and F9), TC-WORLD-119 and TC-WORLD-120 with their counter-proofs;
         # baked: the stopped sun (V6b) and its counter-proof, server-shard with and without url-root, counter-hidden;
-        # hidden: baked-hidden, which bakes a map of its own
-        group: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["custom"]' || '["synthetic","baked","hidden"]') }}
+        # hidden: baked-hidden, which bakes a map of its own; light: LightClientGameTest in mode default
+        group: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["custom"]' || '["synthetic","baked","hidden","light"]') }}
     env:
       OUT: ${{ github.workspace }}/farview-out
       LIBGL_ALWAYS_SOFTWARE: "1"
@@ -85,11 +88,13 @@ jobs:
       # afterwards: the fixture, the shard and the client need the memory of this 2 core, 7 GB runner
       - name: Build the fixture's classpath, the server and the client
         run: |
-          env -u CI ./gradlew :protocol:publishToMavenLocal :server-app:farviewFixtureArgs :server-app:installDist --console=plain
+          env -u CI ./gradlew :protocol:publishToMavenLocal :server-app:farviewFixtureArgs :server-app:lightFixtureArgs \
+            :server-app:installDist --console=plain
           ./gradlew --stop
           (cd client-fabric && ./gradlew compileGametestJava --console=plain && ./gradlew --stop)
 
       - name: Fetch Distant Horizons
+        if: matrix.group != 'light'
         run: java docs/research/client-spikes-2026-09/dh-iris/Fetch.java dh "$RUNNER_TEMP/dh"
 
       # The 3 × 3 tile map of baked and of hidden, baked before the cases: FarViewShardFixture reuses a release it finds
@@ -361,6 +366,42 @@ jobs:
               check c1-baked-hidden "the announcement before the save folder" announced_first c1-baked-hidden
               record c1-baked-hidden F3 F4 F7
             }
+            stop_all
+            ;;
+          light)
+            # TC-WORLD-095 steps 5 to 11: no L0, L1 to L11 PASS (L7's block is reached from within 5.5 blocks, as the
+            # engine turns down a placement out of reach). The stats line, the bounds of step 12, is recorded only: these
+            # 2 cores are not the machine of docs/DESIGN-M3.md §15
+            name=d1-light report="$OUT/d1-light/synaxis-gametest/light-report.txt" ready=0
+            mkdir -p "$OUT/$name"
+            java @server-app/build/light-fixture.args -Xms1G -Xmx1G -XX:-AlwaysPreTouch \
+              io.github.bearisbug.synaxis.app.shard.LightShardFixture "$FIXTURE_PORT" "$WORK/light" > "$OUT/$name/fixture.log" 2>&1 &
+            FIXTURE_PID=$!
+            for _ in $(seq 1 1800); do
+              grep -q 'light fixture ready' "$OUT/$name/fixture.log" && { ready=1; break; }
+              kill -0 "$FIXTURE_PID" 2>/dev/null || break
+              sleep 1
+            done
+            if [ $ready = 1 ]; then
+              echo "::group::$name: client, mode default"
+              (cd client-fabric && env SYNAXIS_LIGHT_SERVER="127.0.0.1:$FIXTURE_PORT" SYNAXIS_LIGHT_MODE=default \
+                JAVA_TOOL_OPTIONS="-Dfabric.noGui=true" \
+                timeout 50m xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest --console=plain --stacktrace) \
+                > "$OUT/$name/client.log" 2>&1
+              echo "client exit $?" >> "$OUT/$name/client.log"
+              run=client-fabric/build/run/clientGameTest
+              cp -r "$run/synaxis-gametest" "$run/screenshots" "$run/logs" "$OUT/$name/" 2>/dev/null
+              cat "$report" 2>/dev/null
+              echo "::endgroup::"
+              lacks() { ! grep -Eq "$2" "$1"; }
+              check $name "a report of mode default" grep -qx '# mode default' "$report"
+              check $name "without L0" lacks "$report" '^L0 '
+              for n in $(seq 1 11); do check $name "L$n PASS" grep -q "^L$n PASS" "$report"; done
+              grep '^# stats ' "$report" | sed "s/^/::notice::$name records /"
+            else
+              echo "::error::$name: the fixture did not get ready"; tail -n 40 "$OUT/$name/fixture.log"
+              FAILED+=("$name")
+            fi
             stop_all
             ;;
           esac

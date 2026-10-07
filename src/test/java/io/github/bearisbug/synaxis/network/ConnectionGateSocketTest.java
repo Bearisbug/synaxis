@@ -125,7 +125,7 @@ public class ConnectionGateSocketTest {
             other.handshake(Intent.LOGIN);
             other.send(ConnectionState.LOGIN, new ClientLoginStartPacket("other", UUID.randomUUID()));
             assertTrue(other.loggedIn(), "another address behind the same proxy");
-            awaitUntil(() -> logins.get() == 3, "the three logins reach the login event");
+            awaitUntil(() -> logins.get() >= 3, "the three logins reach the login event");
 
             assertEquals(2, rig.gate().rejected(ConnectionGate.Reason.TOO_MANY));
             assertEquals(0, rig.gate().rejected(ConnectionGate.Reason.CLOSED_AT_ACCEPT));

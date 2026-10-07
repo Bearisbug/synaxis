@@ -1,5 +1,5 @@
 # Local runs on Mac.local, strict grid (-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid), :test --tests '*ConnectionGateSocketTest*', base f7a9756f7b
-## run 1: temporary delays: ConnectionManager#transitionLoginToConfig sleeps 300 ms between startCompression() and the AsyncPlayerPreLoginEvent call; HandshakeListener#listener sleeps 600 ms for a LOGIN handshake of 203.0.113.7 (this one sits after the decoder has moved the state off HANDSHAKE, so the 500 ms handshake watchdog does not fire: behindTheProxy stays green). Test unchanged.
+## run 1: temporary delays: ConnectionManager#transitionLoginToConfig sleeps 300 ms between startCompression() and the AsyncPlayerPreLoginEvent call; HandshakeListener#listener sleeps 600 ms for a LOGIN handshake of 203.0.113.7 (this one sits after PacketListenerManager#processClientPacket has set PlayerConnection#clientState to LOGIN on the read thread, so the 500 ms handshake watchdog does not fire: behindTheProxy stays green). Test unchanged.
 ConnectionGateSocketTest > withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake() FAILED
     org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:131
 ConnectionGateSocketTest > aFullProcessRefusesTheLoginStartBeforeTheLoginRuns() FAILED

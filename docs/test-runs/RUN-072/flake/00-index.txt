@@ -2,3 +2,4 @@ RUN-072 flake (ConnectionGateSocketTest strict-grid flake), branch prod/r072-fla
 01-ci-evidence.txt  CI attempt 1 log lines, attempt 1 and 2 report timings (artifacts fetched by id)
 02-injected-runs.txt  runs 1-3, strict grid, temporary delays (not committed): red before the test fix, green after it under the same delays
 03-green-default.txt  run 4, no delays, fixed test, default mode: 12 tests 0 failures
+04-review-followup.txt  runs 5-6 after the review: strict grid with the 300 ms login event delay, then default mode without it; the changed await stays green

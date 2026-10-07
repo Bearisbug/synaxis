@@ -1,0 +1,62 @@
+# Refutation: ShardMain#gateDefaults writes both gate defaults unconditionally (diff below), ShardGateLaunchTest run
+# zsh ~/.claude/r072/gradle.zsh <wt> fix-gate :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.ShardGateLaunchTest'
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
+index 6756ebe3aa..fc5a53b9d4 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
+@@ -111,7 +111,7 @@ public final class ShardMain {
+     static Map<String, String> gateDefaults(UnaryOperator<String> properties) {
+         final Map<String, String> defaults = new LinkedHashMap<>();
+         final String capacity = properties.apply(MAX_PLAYERS);
+-        if (properties.apply(MAX_CONNECTIONS) == null && capacity != null) {
++        if (capacity != null) {
+             try {
+                 final int seats = Integer.parseInt(capacity);
+                 if (seats > 0) defaults.put(MAX_CONNECTIONS, Long.toString(Math.min(Integer.MAX_VALUE, 3L * seats)));
+@@ -119,7 +119,7 @@ public final class ShardMain {
+                 // ServerConfig refuses it with its own message
+             }
+         }
+-        if (properties.apply(MAX_JOINS_PER_TICK) == null) defaults.put(MAX_JOINS_PER_TICK, "5");
++        if (true) defaults.put(MAX_JOINS_PER_TICK, "5");
+         return defaults;
+     }
+ 
+
+ShardGateLaunchTest > aShardTakesTheGateFromItsConfigFileOverItsDefaults(Path) FAILED
+    org.opentest4j.AssertionFailedError at ShardGateLaunchTest.java:86
+
+3 tests completed, 1 failed
+
+> Task :server-app:test FAILED
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r072-gate/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':server-app:test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r072-gate/server-app/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 19s
+42 actionable tasks: 2 executed, 40 up-to-date
+Configuration cache entry stored.
+[fix-gate] gradle exit=1 end 16:45:39
+
+# From server-app/build/test-results/test/TEST-io.github.bearisbug.synaxis.app.ShardGateLaunchTest.xml (the child JVM log in the failure message of aShardTakesTheGateFromItsConfigFileOverItsDefaults)
+<testsuite name="io.github.bearisbug.synaxis.app.ShardGateLaunchTest" tests="3" skipped="0" failures="1" errors="0" timestamp="2026-10-07T08:45:36.109Z" hostname="Mac.local" time="3.49">
+Effective config file: path=/private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-4724682370120777835/synaxis.properties keys=3 overridden_by_command_line=[]
+Effective config file: path=/private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-4724682370120777835/synaxis.properties keys=3 overridden_by_command_line=[]
+Effective ServerConfig[
+maxConnections=600
+maxPlayers=200, maxJoinsPerTick=5
+expected: <true> but was: <false>

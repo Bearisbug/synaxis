@@ -1,0 +1,11 @@
+# Restored: git checkout HEAD -- server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java (git diff server-app/src/main is empty), same run
+# zsh ~/.claude/r072/gradle.zsh <wt> fix-gate :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.ShardGateLaunchTest'
+[fix-gate] /tmp/synaxis-r072-slot1 free=67% load=8 start 16:46:04
+BUILD SUCCESSFUL in 6s
+[fix-gate] gradle exit=0 end 16:46:11
+
+# server-app/build/test-results/test/TEST-io.github.bearisbug.synaxis.app.ShardGateLaunchTest.xml
+<testsuite name="io.github.bearisbug.synaxis.app.ShardGateLaunchTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-07T08:46:08.051Z" hostname="Mac.local" time="3.76">
+<testcase name="aShardTakesTheGateFromItsConfigFileOverItsDefaults(Path)" classname="io.github.bearisbug.synaxis.app.ShardGateLaunchTest" time="1.03"/>
+<testcase name="aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path)" classname="io.github.bearisbug.synaxis.app.ShardGateLaunchTest" time="1.843"/>
+<testcase name="aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path)" classname="io.github.bearisbug.synaxis.app.ShardGateLaunchTest" time="0.879"/>

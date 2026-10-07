@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-07 | 分支 `prod/r072-gate`（基线 `main` `f7a9756f7b`），跟进 `docs/DESIGN-PROD.md` v0.9.60，不登执行轮次（集成轮登记 RUN-072，本组证据 `docs/test-runs/RUN-072/gate/`）。**新增 §4「生产就绪 · RUN-072：gate（分片闸门两项的配置文件优先）」一条 `TC-PROD-695`**：`synaxis.properties` 给的 `max-connections`、`max-joins-per-tick` 不被 `ShardMain#gateDefaults` 改写，反证实跑过。`ShardGateLaunchTest` 2 → 3 条，`TC-PROD-670` 第 1、3、4、5 步，`TC-PROD-671` 第 2 步与 `TC-PROD-672` 第 1、4 步的条数随之改：新的一条在这几处反证下都绿（`TC-PROD-670` 第 4 步实跑过，其余按代码推断）。**条数**本组不改：`:server-app:test` 多 1 个，由集成轮统一改 | Bearisbug |
 | 2026-10-07 | 分支 `prod/r072-vehicle`（基线 `main` `f7a9756f7b`），跟进 `docs/DESIGN-PROD.md` v0.9.59（载具移动包补「目标区块未载入」），不登执行轮次（集成轮登记 RUN-072，本组证据 `docs/test-runs/RUN-072/vehicle/`）。**新增 §4「生产就绪 · RUN-072：vehicle（载具移动包驶向未载入的区块）」一条 `TC-PROD-692`**：`PlayerVehicleMoveAuthorityIntegrationTest` 加 1 条（3 → 4），改动前的红与反证都实跑过。新测试加了一行 import、插在第三个方法之前，`<VL>` 的判定多了四行：`TC-PROD-667`、`TC-PROD-668` 的行号（`<VL>:32`～`:34` → `:37`～`:39`，测试类 `:76`、`:78`、`:95`、`:99`、`:100`、`:102` 各 +1，`:119`、`:120` → `:144`、`:145`）、条数（`3 tests` → `4 tests`）与 `TC-PROD-671` 第 1 步（11 个 → 12 个）随之改；`TC-PROD-667` 第 1、5 步本轮实跑过，其余步骤的条数与红行按代码推算、没有复跑（基线 `8b18922130` 的 `<VL>` 上新方法同样红在 `:120`）。**§5** 加一行。写死的全量条数本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-07 | 分支 `prod/r072-chunks` 按评审返工，跟进 `docs/DESIGN-PROD.md` v0.9.58。**废弃 `TC-PROD-679`，由 `TC-PROD-691` 取代**：v0.9.58 起取包抛异常在批内接住，`TC-PROD-679` 第 10 步的预期不再成立、第 13 步的反证不再红；`ChunkSendBlockChangeIntegrationTest` 的 `CheckedPlayer` 加钩子 `onChunk`，第 10 步的方法改名 `aDeferredChunkStaysQueuedWhenHandingAChunkPacketThrows`、抛点由取包改为交给连接，重新走到 `finally` 里放回推后区块的那一支。`TC-PROD-691` 第 1～9、11、12、14 步逐字取自 `TC-PROD-679`，第 10 步换预期，第 13 步按本分支的代码重写（反证红在 `<SB>:422`）；原 `TC-PROD-691`（相邻类回归）并进它的第 10 步。§4 本节开头写明测试类的改动，§5 RUN-071 chunks2 一行换 ID。证据 `docs/test-runs/RUN-072/chunks/rework-*` | Bearisbug |
 | 2026-10-07 | 分支 `prod/r072-chunks`（基线 `main` `f7a9756f7b`），跟进 `docs/DESIGN-PROD.md` v0.9.58（取包抛异常的区块推后、批末放回，RUN-071 评审残留 ⑤），不登执行轮次，由集成轮登记 RUN-072；本组证据在 `docs/test-runs/RUN-072/chunks/`。**新增 §4「生产就绪 · RUN-072：区块发送抛异常时的回队」两条 `TC-PROD-690`～`TC-PROD-691`**（新类 `ChunkSendFailureIntegrationTest` 1 条；`TC-PROD-691` 写明 `TC-PROD-679` 第 10、13 步在本版代码上的变化）。§5 加一行回归映射。不改写死的全量条数 | Bearisbug |
@@ -9365,11 +9366,11 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.ShardGateLaunchTest`，看 `aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick` | `tests="2"` 0 失败（另一条归 `TC-PROD-672`），全类本机约 6.5 s，本条约 3.8 s：以 `ShardMain` 起子 JVM（`-Xmx1g`，离线、核心模式、`-Dsynaxis.max-players=200`，游戏端口取空闲的、指标绑 `127.0.0.1:0`），就绪行之前的 `Effective ServerConfig[…]` 含 `maxConnections=600,` 与 `maxJoinsPerTick=5,`；再以 `Main` 同样起一次，含 `maxConnections=1024,` 与 `maxJoinsPerTick=0,` |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.ShardGateLaunchTest`，看 `aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick` | `tests="3"` 0 失败（另两条归 `TC-PROD-672`、`TC-PROD-695`；v0.9.60 之前是 2 条），全类本机约 6.5 s，本条约 3.8 s：以 `ShardMain` 起子 JVM（`-Xmx1g`，离线、核心模式、`-Dsynaxis.max-players=200`，游戏端口取空闲的、指标绑 `127.0.0.1:0`），就绪行之前的 `Effective ServerConfig[…]` 含 `maxConnections=600,` 与 `maxJoinsPerTick=5,`；再以 `Main` 同样起一次，含 `maxConnections=1024,` 与 `maxJoinsPerTick=0,` |
 | 2 | 严格 grid 跑同一个类 | 与第 1 步相同（全类约 3.5 s） |
-| 3 | 改动前的红：`<MN>` 取基线的，`<SM>` 取基线的再加本节开头的桩，跑同一个类，再还原 | `2 tests completed, 2 failed`：本条红在 `ShardGateLaunchTest.java:38`，消息是分片子 JVM 的整段日志，自检行里是 `maxConnections=1024`、`maxPlayers=200`、`maxJoinsPerTick=0`，末尾 `expected: <true> but was: <false>`；另一条是 `TC-PROD-672` 第 3 步 |
-| 4 | 反证有齿（`Main` 不调 `gateDefaults`）：`<MN>:220` 的 `if (shard) ShardMain.gateDefaults` 改为 `if (Boolean.getBoolean("proof.never") && shard) ShardMain.gateDefaults`，跑同一个类，再还原 | 与第 3 步相同：两条都红，`:38` 与 `:66`，两个分片子 JVM 的自检行都是 `maxConnections=1024`、`maxJoinsPerTick=0` |
-| 5 | 反证有齿（不只对分片宿主写）：同一处改为 `if (!Boolean.getBoolean("proof.never") \|\| shard) ShardMain.gateDefaults`，跑同一个类，再还原 | `2 tests completed, 1 failed`：红在 `:44`，消息是 `Main` 子 JVM 的整段日志，自检行里是 `maxConnections=600` 与 `maxJoinsPerTick=5` |
+| 3 | 改动前的红：`<MN>` 取基线的，`<SM>` 取基线的再加本节开头的桩，跑同一个类，再还原 | `3 tests completed, 2 failed`（v0.9.60 之前是 `2 tests completed`，多出的 `TC-PROD-695` 那一条的值由配置文件给，在这里绿）：本条红在 `ShardGateLaunchTest.java:38`，消息是分片子 JVM 的整段日志，自检行里是 `maxConnections=1024`、`maxPlayers=200`、`maxJoinsPerTick=0`，末尾 `expected: <true> but was: <false>`；另一条是 `TC-PROD-672` 第 3 步 |
+| 4 | 反证有齿（`Main` 不调 `gateDefaults`）：`<MN>:220` 的 `if (shard) ShardMain.gateDefaults` 改为 `if (Boolean.getBoolean("proof.never") && shard) ShardMain.gateDefaults`，跑同一个类，再还原 | 与第 3 步相同：`3 tests completed, 2 failed`，`:38` 与 `:66` 两条红，两个分片子 JVM 的自检行都是 `maxConnections=1024`、`maxJoinsPerTick=0` |
+| 5 | 反证有齿（不只对分片宿主写）：同一处改为 `if (!Boolean.getBoolean("proof.never") \|\| shard) ShardMain.gateDefaults`，跑同一个类，再还原 | `3 tests completed, 1 failed`：红在 `:44`，消息是 `Main` 子 JVM 的整段日志，自检行里是 `maxConnections=600` 与 `maxJoinsPerTick=5` |
 
 后置：`git status --short` 无输出。
 
@@ -9380,7 +9381,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑根项目的 `PlayerVehicleMoveAuthorityIntegrationTest`、`PlayerVehicleMoveValidationIntegrationTest`、`PlayerMovementAuthorityIntegrationTest`（一次 `--tests` 三个类全名），默认与严格 grid 各一次 | 两次都 3 个类 12 个 0 失败（4、1、7）；`PlayerMovementAuthorityIntegrationTest` 防的是 `outwards` 改为包内可见时改到位置包 |
-| 2 | 跑 `server-app` 的 `CoreModeIntegrationTest`、`ShardMainTest`、`ShardMainGateTest`、`ShardLaunchTest`、`ShardGateLaunchTest`、`MainDirectoryModeTest`、`MainTest`，默认与严格 grid 各一次 | 两次都 7 个类 53 个 0 失败（4、10、3、11、2、8、15） |
+| 2 | 跑 `server-app` 的 `CoreModeIntegrationTest`、`ShardMainTest`、`ShardMainGateTest`、`ShardLaunchTest`、`ShardGateLaunchTest`、`MainDirectoryModeTest`、`MainTest`，默认与严格 grid 各一次 | 两次都 7 个类 54 个 0 失败（4、10、3、11、3、8、15；v0.9.60 之前 `ShardGateLaunchTest` 是 2 个，共 53 个） |
 | 3 | 跑 `TransferCooldownTableIntegrationTest`、`OpsPortsLaunchTest`、`io.github.bearisbug.synaxis.app.metrics.MetricsEndpointGuardsTest`；照 `TC-PROD-521` 第 4 步、`TC-PROD-528` 第 2 步、`TC-PROD-533` 第 3 步、`TC-PROD-603` 第 2 步、`TC-PROD-604` 第 2、3 步做反证（这几步引的 `<MN>` 行号本组 +2）；最后严格 grid 把三个类一起跑一次 | 第一次 3、2、2 个 0 失败 0 跳过；六个反证各红在原用例写的那一行，消息相同：`TransferCooldownTableIntegrationTest.java:91` 与 `:113`、`:132`、`:113`、`OpsPortsLaunchTest.java:89`、`:50`、`:48`（用时 30.027 s）与 `MetricsEndpointGuardsTest.java:78`；严格 grid 7 个 0 失败。`TC-PROD-548` 第 7 步（`:269` → `:271`）要起两个分片真进程与数据库，本组没有复跑，改法按代码内容 `directoryMode == null ? null : directoryMode.service()` 定位 |
 | 4 | 只读核对 `<MN>`：`grep -n 'store.cooldowns()'`、`sed -n 758,760p`、`grep -n buildShutdownTask`、`grep -n 'new ShardGates('` | 依次是 `267`；`TC-PROD-533` 第 2 步那三行；`TC-PROD-498` 第 3 步那 9 行，行号 325、327、329、332、333、336、337、338、340；`528`（`TC-WORLD-100`、`TC-WORLD-101` 第 2 步写的 526 交光照会话改，`docs/DESIGN-PROD.md` §28.3） |
 | 5 | 照 `TC-PROD-333` 第 2 步、`TC-WORLD-010` 第 2～4 步、`TC-WORLD-047` 第 2 步做反证（都改 `<SM>`，按代码内容定位，`gateDefaults` 加在它们之后），各跑 `ShardMainTest` | 都是 `10 tests completed`：`TC-PROD-333` 的 3 条红在 `ShardMainTest.java:20`、`:28`、`:34`（`<{…=6…}>` 对 `<{…=8…}>`，`expected: <1> but was: <2>`）；`TC-WORLD-010` 三步各 1 条，红在 `:57`、`:84`、`:51`；`TC-WORLD-047` 1 条，红在 `:78` `expected: <{}> but was: <{synaxis.app.core-mode=on}>`。都与原用例写的相同 |
@@ -9393,10 +9394,10 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.ShardGateLaunchTest`，看 `aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel` | `tests="2"` 0 失败，本条本机约 2.6 s。测试把测试资源 `shards/shards.json`（`docs/DESIGN-M3.md` `API-M3-010` 的示例，`r0-c1` 的 `capacity` 200）拷成临时工作目录的 `maps/fixture/shards.json`，以 `ShardMain` 起子 JVM：离线，`-Dsynaxis.map.root=maps/fixture`、`-Dsynaxis.map.build=fixture-0123456789ab-p776`（这个目录不存在）、`-Dsynaxis.app.store=postgres`、`-Dsynaxis.app.shard-id=r0-c1`，命令行不给 `synaxis.max-players`。子 JVM 退出码 1，日志里 `Effective ServerConfig[…]` 含 `maxPlayers=200,`、`maxConnections=600,`、`maxJoinsPerTick=5,`，之后一行 `Refusing to start: synx-manifest: manifest.json: missing in maps/fixture/fixture-0123456789ab-p776` |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.ShardGateLaunchTest`，看 `aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel` | `tests="3"` 0 失败（v0.9.60 之前是 2 条），本条本机约 2.6 s。测试把测试资源 `shards/shards.json`（`docs/DESIGN-M3.md` `API-M3-010` 的示例，`r0-c1` 的 `capacity` 200）拷成临时工作目录的 `maps/fixture/shards.json`，以 `ShardMain` 起子 JVM：离线，`-Dsynaxis.map.root=maps/fixture`、`-Dsynaxis.map.build=fixture-0123456789ab-p776`（这个目录不存在）、`-Dsynaxis.app.store=postgres`、`-Dsynaxis.app.shard-id=r0-c1`，命令行不给 `synaxis.max-players`。子 JVM 退出码 1，日志里 `Effective ServerConfig[…]` 含 `maxPlayers=200,`、`maxConnections=600,`、`maxJoinsPerTick=5,`，之后一行 `Refusing to start: synx-manifest: manifest.json: missing in maps/fixture/fixture-0123456789ab-p776` |
 | 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
 | 3 | 改动前的红：同 `TC-PROD-670` 第 3 步 | 本条红在 `ShardGateLaunchTest.java:66`，自检行里是 `maxPlayers=200`（基线的 `Main#applyDirectory` 照样写容量）、`maxConnections=1024`、`maxJoinsPerTick=0` |
-| 4 | 反证有齿（先写闸门、后读分片目录）：`<MN>` 步骤 (1) 里 `// After the directory, …` 与 `if (shard) ShardMain.gateDefaults(…)` 两行挪到 `// Before the engine reads synaxis.max-players, …` 与 `final @Nullable ShardDirectory directory = …` 两行之前，跑同一个类，再还原；严格 grid 再做一次 | 两次都 `2 tests completed, 1 failed`：红在 `:66`，自检行里是 `maxPlayers=200`、`maxConnections=1024`、`maxJoinsPerTick=5`（写闸门时 `max-players` 还没写，L0 留在引擎的 1,024）；`aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick` 绿，它的容量在命令行上 |
+| 4 | 反证有齿（先写闸门、后读分片目录）：`<MN>` 步骤 (1) 里 `// After the directory, …` 与 `if (shard) ShardMain.gateDefaults(…)` 两行挪到 `// Before the engine reads synaxis.max-players, …` 与 `final @Nullable ShardDirectory directory = …` 两行之前，跑同一个类，再还原；严格 grid 再做一次 | 两次都 `3 tests completed, 1 failed`：红在 `:66`，自检行里是 `maxPlayers=200`、`maxConnections=1024`、`maxJoinsPerTick=5`（写闸门时 `max-players` 还没写，L0 留在引擎的 1,024）；`aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick` 绿，它的容量在命令行上；`TC-PROD-695` 那一条绿，它的三项都在配置文件里 |
 
 后置：`git status --short` 无输出。
 
@@ -9684,6 +9685,24 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · RUN-072：gate（分片闸门两项的配置文件优先）
+
+对应 `REQ-PROD-001`（`docs/DESIGN-PROD.md` v0.9.60：`API-PROD-003`「分片宿主的两项默认值」一条，§19 一个场景，§28.2 一行）。起因是 RUN-071 authority2 复审的非阻塞项：`ShardMain#gateDefaults` 在命令行与 `synaxis.properties` 都没给时才写 L0、L4，`ShardMainGateTest`（`TC-PROD-669`）只用属性查找表验证了命令行优先；配置文件由 `Main` 类初始化时写进系统属性，早于 `Main` 步骤 (1) 调 `gateDefaults`，这条链原先由 `ConfigFileLaunchTest`（`TC-PROD-442`）守，那里没有对这两项的断言。本组只加测试，不改产品代码：`ShardGateLaunchTest` 加第 3 条 `aShardTakesTheGateFromItsConfigFileOverItsDefaults`，它没有「改动前的红」，第 2 步的反证就是它的红。
+
+「跑 `<类>`」即 `./gradlew :server-app:test --rerun --tests '<类全名>' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `server-app/build/test-results/test/TEST-<类全名>.xml`。`<SM>` 是 `server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java`。反证是临时改一处、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿；行号按 `main` `f7a9756f7b`（本组不改产品代码）。不需要数据库前置。证据 `docs/test-runs/RUN-072/gate/`。
+
+#### `TC-PROD-695` 分片的闸门两项取 `synaxis.properties` 的值，不被分片默认值改写（§19 场景） — 对应 `REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.ShardGateLaunchTest`，看 `aShardTakesTheGateFromItsConfigFileOverItsDefaults` | `tests="3"` 0 失败（另两条归 `TC-PROD-670`、`TC-PROD-672`），全类本机约 3.8 s，本条约 1.0 s：测试在临时工作目录写 `synaxis.properties`（权限 0644：`ConfigFile` 拒绝组或他人可写的文件）三行 `synaxis.max-players=200`、`synaxis.max-connections=450`、`synaxis.max-joins-per-tick=2`，以 `ShardMain` 起子 JVM（`-Xmx1g`，命令行给日志到标准输出、离线、核心模式、空闲的游戏端口、指标绑 `127.0.0.1:0`，不给这三项）；就绪行之前有 `Effective config file: path=<工作目录>/synaxis.properties keys=3 overridden_by_command_line=[]`，`Effective ServerConfig[…]` 含 `maxConnections=450,` 与 `maxJoinsPerTick=2,`（分片默认值是 600 与 5） |
+| 2 | 反证有齿（`gateDefaults` 不看这两项已有的值）：`<SM>:114` 的 `if (properties.apply(MAX_CONNECTIONS) == null && capacity != null) {` 改为 `if (capacity != null) {`，`<SM>:122` 的 `if (properties.apply(MAX_JOINS_PER_TICK) == null) defaults.put(…)` 改为 `if (true) defaults.put(…)`，跑同一个类，再还原 | `3 tests completed, 1 failed`：本条红在 `ShardGateLaunchTest.java:86`（`maxConnections=450,` 那一行断言），消息是分片子 JVM 的整段日志，`Effective config file` 一行仍是 `keys=3 overridden_by_command_line=[]`，自检行里是 `maxConnections=600`、`maxPlayers=200`、`maxJoinsPerTick=5`，末尾 `expected: <true> but was: <false>`；另两条绿，它们的闸门两项命令行与配置文件都没给 |
+| 3 | 还原后再跑同一个类 | 与第 1 步相同；`git diff server-app/src/main` 无输出 |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -9755,6 +9774,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-071 上游 Minestom 移植（`REQ-017`、`REQ-PROD-013`，v0.9.55）→ TC-PROD-680～TC-PROD-687；动了 `Instance#setWorldBorder`、`createInitializeWorldBorderPacket` 或 `WorldBorder` 的两个建包方法就跑 TC-PROD-680 与 TC-PROD-630、TC-PROD-631；动了 `ClientChangeDifficultyPacket`、`ClientSetBeaconEffectPacket`、`ClientUpdateStructureBlockPacket`、`DeleteChatPacket`、`MoveMinecartPacket` 或往 `PacketVanillaLayoutTest` 补包就跑 TC-PROD-681；给引擎加 public static 字段或动了 `ArchitectureTest` 就跑 TC-PROD-682 与 TC-PROD-121；动了 `EquipmentHandler#getEquipmentsPacket`、它的三个调用处（`LivingEntity#updateNewViewer`、`Player#refreshAfterTeleport`、`Player#showPlayer`）或 `PlayerInventory#clear` 就跑 TC-PROD-683、TC-PROD-684；动了 `ComponentNetworkBufferTypeImpl` 的 `writeHoverEvent` 或 `hoverDataComponentValue`、`EngineDataComponentValueConverterProvider`、`NbtComponentSerializer` 就跑 TC-PROD-685；加包或动了 `module-info.java` 就跑 TC-PROD-686 第 1、2 步，升 logback 跑第 3、4 步；以上任一都加 TC-PROD-687。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 ci 组，`client-gametest.yml` 假 sessionserver 一步的日志竞态与 P10 job 的单测（`REQ-PROD-030`、`REQ-PROD-031`，v0.9.57）→ TC-PROD-688，只跑脚本与只读核对、十几秒跑完；改了 `client-gametest.yml` 里后台起进程、再读它日志的步骤（两个 job 的假 sessionserver 一步），或 job `p10` 的步骤顺序，就跑 TC-PROD-688；改了 `p10.py` 或 `test_p10.py` 跑 TC-PROD-660（CI 的 P10 job 也跑它，但 P10 不跑 PR）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 vehicle 组，载具移动包驶向未载入的区块（`REQ-PROD-013`，v0.9.59）→ TC-PROD-692；动了 `PlayerVehicleListener#vehicleMoveListener` 就跑 TC-PROD-692 与 TC-PROD-667、TC-PROD-668（同一个类）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 gate 组，分片闸门两项的配置文件优先（`REQ-PROD-001`，v0.9.60）→ TC-PROD-695；动了 `ShardMain#gateDefaults` 的空值判断、`Main` 读 `synaxis.properties` 的时机或步骤 (1) 调 `gateDefaults` 的位置就跑它，连同 TC-PROD-669、TC-PROD-670、TC-PROD-672。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

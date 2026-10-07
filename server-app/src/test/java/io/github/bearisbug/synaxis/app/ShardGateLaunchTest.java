@@ -67,4 +67,24 @@ public class ShardGateLaunchTest {
             assertTrue(log.contains("maxJoinsPerTick=5,"), log);
         }
     }
+
+    /**
+     * {@code synaxis.properties} over the defaults of the gate: {@link Main} applies the file as it is
+     * initialised, before step (1) fills what is left, so a file giving 200 seats, 450 sockets and 2
+     * joins a tick holds 450 sockets and takes 2 joins, not 600 and 5.
+     */
+    @Test
+    public void aShardTakesTheGateFromItsConfigFileOverItsDefaults(@TempDir Path directory) throws Exception {
+        ConfigFileTest.write(directory.resolve(ConfigFile.DEFAULT_FILE), """
+                synaxis.max-players=200
+                synaxis.max-connections=450
+                synaxis.max-joins-per-tick=2
+                """);
+        try (Launched shard = Launched.start(directory, ShardMain.class, launch("-Dsynaxis.app.core-mode=on"))) {
+            final String log = shard.awaitLine("listening on");
+            assertTrue(log.contains("keys=3 overridden_by_command_line=[]"), log);
+            assertTrue(log.contains("maxConnections=450,"), log);
+            assertTrue(log.contains("maxJoinsPerTick=2,"), log);
+        }
+    }
 }

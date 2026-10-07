@@ -1,0 +1,45 @@
+# TC-PROD-670 step 4 refutation (Main does not call gateDefaults), with the class now holding 3 tests
+# zsh ~/.claude/r072/gradle.zsh <wt> fix-gate :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.ShardGateLaunchTest'
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+index 07666c76b8..91ec3169b4 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+@@ -217,7 +217,7 @@ public final class Main {
+         // Before the engine reads synaxis.max-players, which the directory sets
+         final @Nullable ShardDirectory directory = map == null ? null : shardDirectory(map.settings(), storeMode, shardId);
+         // After the directory, which writes the capacity the socket cap of a shard follows
+-        if (shard) ShardMain.gateDefaults(System::getProperty).forEach(System::setProperty);
++        if (Boolean.getBoolean("proof.never") && shard) ShardMain.gateDefaults(System::getProperty).forEach(System::setProperty);
+         applyViewRangeDefaults();
+ 
+         // (2) The engine facade, not a bare ServerProcess: MinecraftServer#start is the only public
+
+ShardGateLaunchTest > aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path) FAILED
+    org.opentest4j.AssertionFailedError at ShardGateLaunchTest.java:38
+
+ShardGateLaunchTest > aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path) FAILED
+    org.opentest4j.AssertionFailedError at ShardGateLaunchTest.java:66
+
+3 tests completed, 2 failed
+
+> Task :server-app:test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':server-app:test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r072-gate/server-app/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 12s
+24 actionable tasks: 2 executed, 22 up-to-date
+Configuration cache entry reused.
+[fix-gate] gradle exit=1 end 16:48:42
+
+# server-app/build/test-results/test/TEST-io.github.bearisbug.synaxis.app.ShardGateLaunchTest.xml
+<testsuite name="io.github.bearisbug.synaxis.app.ShardGateLaunchTest" tests="3" skipped="0" failures="2" errors="0" timestamp="2026-10-07T08:48:38.102Z" hostname="Mac.local" time="4.197">
+<testcase name="aShardTakesTheGateFromItsConfigFileOverItsDefaults(Path)" classname="io.github.bearisbug.synaxis.app.ShardGateLaunchTest" time="1.681"/>
+<testcase name="aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path)" classname="io.github.bearisbug.synaxis.app.ShardGateLaunchTest" time="1.46">
+<testcase name="aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path)" classname="io.github.bearisbug.synaxis.app.ShardGateLaunchTest" time="1.038">

@@ -207,13 +207,18 @@ final class FarViewShardFixture {
         final long dayTime = args.length > 5 ? Long.parseLong(args[5]) : -1;
         final int rttMillis = args.length > 6 ? Integer.parseInt(args[6]) : 0;
         if (!MODES.contains(mode)) throw new IllegalArgumentException("mode is one of " + MODES + ", not " + mode);
-        // What ShardMain writes, where the command line said nothing
+        // What ShardMain writes, where the command line said nothing, but for two. synaxis.max-connections:
+        // ShardMain#gateDefaults makes it 3 × synaxis.max-players, which Main writes from the capacity of the shard
+        // directory (baked's r0-c1 holds 500, a real shard of it 1,500); the fixture runs no Main and sets no capacity,
+        // so the engine's 1,024 stays. synaxis.app.core-mode=on: only Main reads it, and the fixture loads no plugin
         final int cores = Runtime.getRuntime().availableProcessors();
         setIfAbsent("synaxis.thread-provider", "grid");
         setIfAbsent("synaxis.dispatcher-threads", Integer.toString(Math.max(1, cores - 2)));
         setIfAbsent("synaxis.chunk-view-distance", "12");
         setIfAbsent("synaxis.chunk-queue.max-per-tick", "4");
         setIfAbsent("synaxis.max-visible-entities-per-player", "100");
+        setIfAbsent("synaxis.max-joins-per-tick", "5");
+        setIfAbsent("synaxis.world-writable", "false");
 
         final boolean baked = BAKED_MODES.contains(mode);
         final Path mapsRoot = workDir.resolve("maps");

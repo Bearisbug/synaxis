@@ -23,3 +23,17 @@ annotation.
 The account's billing settings are not readable with this token (gh api /users/Bearisbug/settings/billing/actions:
 404, needs the user scope). The last runs that did start on this repository: prod/integrate-072, created 09:21:59 UTC. The runs created after
 09:46 UTC on prod/integrate-072 (10:12:18, 10:30:39) and on main (10:31:13, 10:33:53) failed the same way (gh run list).
+
+Review follow-up: the head ec9fd2b741 (main 8220ef9d0f merged in as 320ff22df9, then 61c8d55c8c, 6c9f9836d7 and the
+docs), pushed 2026-10-07 19:27 local time (UTC+8). Its runs (event pull_request, attempt 1, created 11:27:05 UTC):
+  CI 37614157880, Client mod 37614157945, Concurrency 37614157881, Client gametest 37614157878: all failure
+    CI               Test with 4 tick threads (strict)          failure  2026-10-07T11:27:05Z-2026-10-07T11:27:08Z
+    CI               Test with 4 tick threads (strict, grid)    failure  2026-10-07T11:27:05Z-2026-10-07T11:27:09Z
+    CI               Check                                      failure  2026-10-07T11:27:05Z-2026-10-07T11:27:08Z
+    Client mod       Build the Fabric mod                       failure  2026-10-07T11:27:05Z-2026-10-07T11:27:08Z
+    Concurrency      jcstress                                   failure  2026-10-07T11:27:05Z-2026-10-07T11:27:08Z
+    Client gametest  Run the client gametests                   failure  2026-10-07T11:27:05Z-2026-10-07T11:27:09Z
+    Client gametest  Two shards, 100 round trips (P10)          skipped  2026-10-07T11:27:06Z-2026-10-07T11:27:05Z
+  The annotation of job 112768351220 (Test with 4 tick threads (strict)) is the same billing line as above. No
+  rerun, no farview-gametest label: PR #12 is MERGEABLE (no longer CONFLICTING) and stays without a gate until the
+  account's billing is restored.

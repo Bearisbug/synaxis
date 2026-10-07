@@ -15,6 +15,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-10-07 | v0.45 | M3-S 集成分支 `m3s/integrate` 合入 `main` `8220ef9d0f`（RUN-072）之后，按 `docs/DESIGN-PROD.md` §28.3 Gradle 版本一行改，本版只改文档：该分册 v0.9.61 合入 Dependabot PR #10，根构建的 wrapper 由 9.7.1 升到 9.8.0（`gradle/wrapper/gradle-wrapper.properties`），§5 `REQ-001`、§6 架构图 `gradle` 节点、§17 依赖表三处写死的版本随之改为 9.8.0。`client-fabric` 的独立 wrapper 仍是 9.7.1，不在这三处 | Bearisbug |
 | 2026-10-07 | v0.44 | M3-S 合并步骤（集成分支 `m3s/integrate`）按 `docs/DESIGN-PROD.md` §28.3 交给光照会话的行改，本版只改文档。**§15** 加一行「客户端位置与方块操作」：越界与单包 64 格的位置包拉回、挖掘与使用方块的距离判定（该分册 v0.9.47，`API-PROD-030`、`ADR-PROD-016`），载具移动包同判（v0.9.53）；核心模式平坦世界的边界不进这一行。**§5 `REQ-017`** 记上游移植第二批（该分册 v0.9.55：#3382、#3304、#3249、#3400 与 #3388、#3373、logback 1.6.5，用例 `TC-PROD-680`～`TC-PROD-687`）。**§16**「对端停止读取，服务端断开该连接」一行按该分册 v0.9.52 改：参与方加写线程自己，写线程退出前经 `flushRemaining` 写空出站队列并起同一条关闭线程。**§28**：Adventure 转换 SPI 一行记部分解决（悬停物品按缓冲区的注册表编码，`nbt(Registries)`），仍开着的是转换 SPI 本身与无参的 `nbt()`；三行转已决：引擎位置、挖掘与放置判定（RUN-070、RUN-071 已合入 `main`，余项在该分册 §28.2）、`TC-020` 的注册表样本（由 `docs/TEST.md` `TC-037` 取代，`probe.py compare-registry`）、`docs/ENGINE.md` §7 漏列的工作流（该分册 v0.9.50）。§1 状态行与 §26 阶段 3 行写上核心模式下原版冒烟的用例号 `TC-038` | Bearisbug |
 | 2026-10-06 | v0.43 | 按 2026-10-06 的全项目盘点改过期标注，并登记用户同日对 `REQ-011` 验收方式的选择（做法 A，推荐项），本版只改文档。**`REQ-011`**：`TC-030`（玩法模式下的原版客户端登录）的前置在强制客户端模组握手（`REQ-M2-008`）之后不成立，废弃；核心模式（`-Dsynaxis.app.core-mode=on`）本来就放行原版客户端（`HandshakeGate` 只在玩法模式要求握手），新写一条核心模式下的原版客户端登录与断开用例，人工执行一次，不改代码；探针经 `synaxis:main` 的 echo 往返已有证据（RUN-004～015 中 9 轮的 `echo.txt`，最近 RUN-015）。§1 状态行、§5 `REQ-011` 一行（原版客户端在核心模式下进世界并断开，echo 往返交给探针）、§19 `REQ-011` 的原版客户端场景拆成两条、§26 阶段 3 行、§27 同步；新用例的 ID 由 `docs/TEST.md` 分配（`docs/DESIGN-M3.md` §26 M3-S 轨道 G 起草）。**§19**「删除波次 1 与 2 后协议不变」按两种进程分开写判据：不带宿主的引擎进程逐字节相同（`RegistryDataByteParityIntegrationTest`），`server-app` 除宿主加的 `synaxis:match` 外逐字节相同，加不带忽略项比的反证，取代 `TC-020` 的新用例追溯这一句；主源码文件数改为 §3 规模行的 ≤ 1,150。**§28**：已解决的五行转已决（ArchUnit 冻结存储剪枝、`minestom.` 前缀、`ObjectPoolTest` 的 NPE、连接数上限、jcstress 与 isolated-projects 的风险）；台账一行按现状改写处置；读超时一行写明一半到位；「监听器抛了异常」已决行的 ① 按 `docs/DESIGN-PROD.md` v0.9.39 改写（该分册 §28.3 交 M3 会话的一行）；公开或私有的时限与 `docs/DESIGN-M2.md` §28.2 对齐为「内测全量放量前」；纯文本断线、`network` 包三处、`CommandParserImpl` 的 ERROR、Adventure 两条技术债的过期时限改成可判定的触发条件并写明归属，Adventure `ClickCallback.Provider` 那条 Open Question 的过期时限同样改成触发条件并写明默认；新增五行：引擎位置、挖掘与放置判定的安全修复（`docs/DESIGN-M3.md` §28.2 交接行 M3 v0.38）、`TC-020` 的注册表样本、`docs/ENGINE.md` §7 漏列的工作流、Dependabot PR #6、`main` 的分支保护 | Bearisbug |
 | 2026-09-30 | v0.42 | 按 `docs/DESIGN-PROD.md` v0.9.35 改限流阈值，本版只改文档。§15「限流」行与 §28 速率闸那条已决行的 7 s 窗口 582 包改为 750（用户 2026-09-30 拍板：`docs/TEST.md` RUN-057 六档压测机器人每人 7 s 上行包数 P99 最高 374 × 2，取整），已决行补上 582 → 750 的来源。§15「入站包」行的 50 玩家 5,000 包/秒是每连接 100 包/秒，7 s 700 个，在 750 之下 | Bearisbug |
@@ -106,7 +107,7 @@ N/A — 画像:内部系统，本里程碑无产品指标与埋点事件；工�
 
 | ID | 功能 | 对应目标 | 优先级 |
 | --- | --- | --- | --- |
-| REQ-001 | 冻结：Minecraft 26.2（协议 776）、JDK 25、Gradle 9.7.1 钉死；注册表数据 74 个 JSON 从 `net.minestom:data:26.2-rv3` 解出 vendoring 进 `src/main/resources/data`，移除该外部依赖 | 构建链自控 | P0 |
+| REQ-001 | 冻结：Minecraft 26.2（协议 776）、JDK 25、Gradle 9.8.0 钉死；注册表数据 74 个 JSON 从 `net.minestom:data:26.2-rv3` 解出 vendoring 进 `src/main/resources/data`，移除该外部依赖 | 构建链自控 | P0 |
 | REQ-002 | 仓库独立：断开 GitHub fork 与 `upstream` 远程，推送到 `Bearisbug/synaxis`，保留完整 git 历史；删除旧 fork；本地目录改名 `synaxis` | 独立维护 | P0 |
 | REQ-003 | 止血：审计 15 条 P0 与 48 条 P1 的修复合入主干，全量测试绿 | 可用基线 | P0（已完成） |
 | REQ-004 | CI 门禁：`check`（Error Prone 96 项 `-Werror`、命名检查、禁止 import 检查）+ jcstress 并发场景 + ArchUnit 分层规则 + 新增行覆盖率门 | 防回退 | P0 |
@@ -141,7 +142,7 @@ flowchart LR
     payload[自定义负载通道]
   end
   subgraph build[构建与验证链]
-    gradle[Gradle 9.7.1 · JDK 25<br/>阿里云镜像 init 脚本]
+    gradle[Gradle 9.8.0 · JDK 25<br/>阿里云镜像 init 脚本]
     ci[GitHub Actions<br/>check · jcstress · ArchUnit · 覆盖率]
     data[vendoring 的 74 个注册表 JSON]
   end
@@ -446,7 +447,7 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 | 依赖 | 用途 | SLA | 超时/重试 | 失败影响 | 降级 |
 | --- | --- | --- | --- | --- | --- |
 | JDK 25（Homebrew `openjdk@25`） | 编译与运行 | 本机安装 | — | 无法构建 | 无；`docs/ENGINE.md` 写明安装 |
-| Gradle 9.7.1 + 阿里云镜像 init 脚本 | 依赖解析 | 镜像可用性由阿里云保证 | Gradle 默认 3 次重试 | 无法构建 | 回退 Maven Central 直连（经本机代理，不稳） |
+| Gradle 9.8.0 + 阿里云镜像 init 脚本 | 依赖解析 | 镜像可用性由阿里云保证 | Gradle 默认 3 次重试 | 无法构建 | 回退 Maven Central 直连（经本机代理，不稳） |
 | Adventure 5.2、fastutil 8.5、JCTools 4.0 | 文本、集合、并发队列 | Maven Central 存量 | — | 无法构建 | 版本钉死在 `libs.versions.toml` |
 | vendoring 的注册表数据（39 个 JSON + 23 个黄金 NBT） | 运行时注册表 | 随仓库 | — | 进程无法启动 | 无外部链，`REQ-001` 后不再依赖 `net.minestom:data` |
 | GitHub `Bearisbug/synaxis` | 代码托管与 CI | GitHub SLA | — | CI 不跑 | 本地 `./gradlew check` 等价 |

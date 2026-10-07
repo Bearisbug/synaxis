@@ -7,6 +7,10 @@ b70c6b7f54, and in this acceptance b65d1115f9 (docs/DESIGN-M3.md v0.41) and e775
 .github/workflows/farview-gametest.yml, docs/ENGINE.md).
 Tested code: 49bee23cc1. Every commit after it changes docs/ or the label-triggered farview workflow only, so the full
 gate of 49bee23cc1 (01) is the gate of the tested code, and the local runs on b70c6b7f54 (03-08) ran that code.
+After the review: main 8220ef9d0f (RUN-072) merged in with --no-ff as 320ff22df9 (10), then 61c8d55c8c (the two shard
+fixtures take ShardMain's join cap; the far view fixture keeps the map read only) and 6c9f9836d7 (v1 holds the client's
+sky at noon for F6 and F7), then the docs of the follow-up. Its gate on GitHub Actions did not start either (02, end);
+the merged tree ran here only in batches D and E (11) and TC-PROD-656 (12).
 
 Files
   01-ci-49bee23cc1.txt        the four workflows on 49bee23cc1 and the test counts per module from their XML
@@ -18,6 +22,10 @@ Files
   07-tc-world-139-relight.txt TC-WORLD-139, the relight measurement (busy machine, readings recorded only)
   08-tc-prod-656.txt          TC-PROD-656 steps 1-4, the CI list of docs/ENGINE.md §7 with the light group
   09-tc-037-steps-4-6.txt     TC-037 steps 4-6 (the main source count and the removed directories), shell only
+  10-merge-main.txt           the merge of main 8220ef9d0f: the conflict, its resolution, the full counts worked out
+  11-local-batches.txt        batches D and E on the merged tree: six server-app classes, TC-WORLD-150 steps 1, 4 and 5,
+                              TC-PROD-671 step 2 in both modes
+  12-tc-prod-656-rerun.txt    TC-PROD-656 steps 1-4 again, with the farview line of docs/ENGINE.md §7 completed
   ../track-g/                 track G's runs on m3s/g-tests (TC-GAME-053 to 059, TC-037's registry compare, the probe
                               plugin a) and TC-GAME-068: tc-game-068-capped/ is the rerun with the sixty-line cap on
                               ab62fd4107 (steps 1, 2, 5, 6, 7; summary.json of the gate and of the profile tier),
@@ -54,6 +62,8 @@ Results per case (where each ran)
   TC-WORLD-149  manual
   TC-WORLD-150  pass          the day-night step on 49bee23cc1 (red before, green after, the paused clock counter
                               proof); gate
+                              review follow-up: step 4 (the alignment task never scheduled) red at
+                              ShardWorldAssemblyTest.java:248, steps 1 and 5 green on the merged tree (11)
   TC-WORLD-117  blocked       02 (and the walk counter proof of its precondition)
   TC-WORLD-119  blocked       02
   TC-WORLD-120  blocked       02
@@ -72,7 +82,7 @@ Results per case (where each ran)
                               judged) and step 4 (counter proof of the units knob, untouched by the cap) not rerun
   TC-PROD-441   pass          here, 03
   TC-PROD-569   pass (step 4) here, 03: the gate line 117/117/21 and :architecture-tests 7 classes 20 tests
-  TC-PROD-656   pass          here, 08
+  TC-PROD-656   pass          here, 08; again after the review on the merged tree, 12
   TC-WORLD-041  pass (step 2) here, 03: 117 keys read, 115 in ConfigFile.KEYS
   45 cases: pass 23, fail 3, manual 8, blocked 9, skipped 2.
 
@@ -81,5 +91,7 @@ The heavy lock (/tmp/synaxis-heavy.lock, owner=Synaxis光照/m3s-acc-<batch> pid
   B   18:00:57-18:08:42  taken at 44 %, 6.71; released at 46 %, 6.46                    04, 05 steps 1-2
   B2  18:09:50-18:12:30  taken at 39 %, 7.40; released at 56 %, 7.58                    05 step 3, 07
   C   18:13:10-18:16:09  taken at 57 %, 5.29; released at 50 %, 4.14                    06
+  D   19:16:30-19:19:35  taken at 54 %, 3.07; released at 53 %, 5.81                    11 (batch D)
+  E   19:21:44-19:22:16  taken at 55 %, 4.37; released at 50 %, 6.96                    11 (batch E)
   The trap at the top level of each job script removed the lock directory.
-TC-PROD-656 (08) runs git, sed and grep only, without the lock.
+TC-PROD-656 (08, 12) runs git, sed and grep only, without the lock.

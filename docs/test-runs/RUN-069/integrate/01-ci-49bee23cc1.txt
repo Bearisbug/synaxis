@@ -4,6 +4,9 @@ Which head: the gate last ran on 49bee23cc1 (the day-night commit). The heads af
 b70c6b7f54 (docs only: git diff --stat 49bee23cc1 b70c6b7f54 lists docs/ alone, 8 files), f8d83f0aa3 (docs only) and
 5a348d93aa (.github/workflows/farview-gametest.yml and docs/ENGINE.md: the light group). The tested code of RUN-069 is
 therefore that of 49bee23cc1. The runs on b70c6b7f54 never started a job (02-actions-billing.txt).
+Note: f8d83f0aa3 and 5a348d93aa were local commits that a git reset --soft replaced with b65d1115f9 and e775666ab7
+(git diff --stat f8d83f0aa3 b65d1115f9 and 5a348d93aa e775666ab7: each pair differs in one line of docs/DESIGN-M3.md, the
+load range of v0.41); no branch has them, here or on origin; they are dangling objects of this machine's repository.
 
 Runs on 49bee23cc1 (event pull_request, attempt 1, times UTC 2026-10-07; none rerun)
   CI 37592308915                              success  08:13:10-08:36:11

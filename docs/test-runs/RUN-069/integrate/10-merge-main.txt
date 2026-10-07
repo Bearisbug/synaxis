@@ -1,0 +1,32 @@
+RUN-069 integrate, review follow-up: m3s/integrate takes main 8220ef9d0f (RUN-072) in.
+
+Before: m3s/integrate 5a5e374029, merge base f7a9756f7b, draft PR #12 CONFLICTING. origin/main 8220ef9d0f carries
+RUN-072 (e32f0e2d1a: prod/r072-ci, -chunks, -vehicle, -gate, -flake and Dependabot PR #10, Gradle 9.8.0) and two docs
+commits (6ab244ed63, b2b686b95e, 8220ef9d0f).
+
+git merge --no-ff --no-commit origin/main: one conflict, docs/TEST.md, two places.
+  1. The change log of §1: both blocks kept, the M3-S rows (newer) first, then RUN-072's.
+  2. TC-PROD-671 steps 1 and 2 (RUN-072's case): main had 3 classes 12 (4, 1, 7) and 7 classes 54 with
+     ShardGateLaunchTest 3 and ShardMainTest 10; M3-S had 11 (3, 1, 7) and 54 with ShardGateLaunchTest 2 and
+     ShardMainTest 11. Taken together: 12 (4, 1, 7) and 55 (4, 11, 3, 11, 3, 8, 15). Batch E ran step 2 on the merged
+     tree, default and strict grid: 7 classes 55, 0 failures, in that split (11-local-batches.txt).
+  Merge commit 320ff22df9. No code file is changed on both sides: git diff --name-only f7a9756f7b 5a5e374029 and
+  f7a9756f7b origin/main, docs/ left out, have no file in common (comm -12 printed nothing).
+
+The full counts of the merged tree, worked out from the two sets of JUnit XML (not run here; the CI of the new head did
+not start, 02-actions-billing.txt):
+  M3-S on 49bee23cc1 (01-ci-49bee23cc1.txt): 637 classes 4,386 tests, root 438 / 3,213, server-app 123 / 638.
+  RUN-072 on e32f0e2d1a against RUN-071 (docs/test-runs/RUN-072/integrate/00-index.txt): 1 class and 3 tests more:
+    root ChunkSendFailureIntegrationTest new (1), PlayerVehicleMoveAuthorityIntegrationTest 3 -> 4;
+    server-app ShardGateLaunchTest 2 -> 3.
+  M3-S changed none of these classes and no root test, so the merged tree should give 638 classes 4,389 tests:
+  root 439 / 3,215 (21 skipped), server-app 123 / 639, the other modules as on 49bee23cc1; client-fabric stays at
+  17 classes 199 (RUN-072 changes no client test). To be confirmed by the first gate that runs on the new head.
+
+The handoff of docs/DESIGN-PROD.md §28.3 that waited for this merge, done in the same follow-up:
+  - DESIGN-M3 API-M3-010: Player.java:974 / :979 -> :985 / :990 (git grep on the merged tree: PlayerChunkLoadEvent at
+    985, ChunkBatchFinishedPacket at 990).
+  - docs/DESIGN.md §5 REQ-001, §6 the gradle node, §17 the dependency row: Gradle 9.7.1 -> 9.8.0
+    (gradle/wrapper/gradle-wrapper.properties: gradle-9.8.0-bin.zip). client-fabric's wrapper stays 9.7.1.
+  - DESIGN-M3 §1 关联: DESIGN-PROD v0.9.56 -> v0.9.62.
+  - The fixture row: LightShardFixture and FarViewShardFixture (61c8d55c8c).

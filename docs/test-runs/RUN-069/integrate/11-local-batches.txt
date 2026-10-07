@@ -1,0 +1,54 @@
+RUN-069 integrate, review follow-up: the local batches on the merged tree (head 6c9f9836d7, with the docs edits of this
+follow-up uncommitted: git status --porcelain listed docs/ files only after each batch).
+
+Command: JAVA_HOME=openjdk@25, JAVA_TOOL_OPTIONS with the proxy, ./gradlew --no-daemon --init-script
+gradle/init/aliyun-mirror.init.gradle.kts --max-workers=2 :server-app:test --tests <class>...; Gradle 9.8.0 (the
+merged wrapper). No database variables: none of these classes needs one.
+
+Batch D (lock m3s-acc-D)
+  1. green, six classes: ShardWorldAssemblyTest, ShardWorldTest, FarViewShardFixtureTest (TC-WORLD-150 step 1, and the
+     fixtures of 61c8d55c8c compiled), MapShardPlayerAuthorityTest (TC-WORLD-125's class, with RUN-072's Player.java),
+     ShardGateLaunchTest (RUN-072's third test with M3-S's ShardMain and FileTrust), ShardMainTest. exit 0, BUILD SUCCESSFUL in 2m 21s
+    app.ShardGateLaunchTest                  tests=3 skipped=0 failures=0 errors=0
+    app.ShardMainTest                        tests=11 skipped=0 failures=0 errors=0
+    app.shard.FarViewShardFixtureTest        tests=14 skipped=0 failures=0 errors=0
+    app.shard.MapShardPlayerAuthorityTest    tests=4 skipped=0 failures=0 errors=0
+    app.shard.ShardWorldAssemblyTest         tests=10 skipped=0 failures=0 errors=0
+    app.shard.ShardWorldTest                 tests=19 skipped=0 failures=0 errors=0
+  2. TC-WORLD-150 step 4, the new counter proof (the alignment task never scheduled):
+     -        instance.scheduler().buildTask(() -> alignClock(clock, wallMillis.getAsLong()))
+     +        if (Boolean.getBoolean("proof.never")) instance.scheduler().buildTask(() -> alignClock(clock, wallMillis.getAsLong()))
+     only ShardWorldAssemblyTest: 10 tests completed, 1 failed
+     twoShardsOfAMapShowOneTimeAndAShardThatLostTicksIsSetBack at ShardWorldAssemblyTest.java:248:
+     org.opentest4j.AssertionFailedError: set back to the wall clock at the end of the 20th tick ==> expected: <139829> but was: <139229>
+     the asserts before it in the same test (:236, :237, :246) held: without the task the clock still ticks, only the
+     600 ticks lost in the stall are not given back. Then git checkout -- ShardWorld.java; git diff --quiet on it: clean.
+  3. TC-WORLD-150 step 5 (ShardWorldAssemblyTest again): exit 0
+    app.shard.ShardWorldAssemblyTest         tests=10 skipped=0 failures=0 errors=0
+  lock taken 19:16:30; System-wide memory free percentage: 54%; 19:16  up 1 day,  7:02, 25 users, load averages: 3.07 3.42 3.69
+  lock released 19:19:35; System-wide memory free percentage: 53%; 19:19  up 1 day,  7:06, 25 users, load averages: 5.81 4.57 4.11
+
+Batch E (lock m3s-acc-E): TC-PROD-671 step 2 on the merged tree (--rerun), the count the merge resolution wrote
+  default: exit 0, BUILD SUCCESSFUL in 16s
+    app.CoreModeIntegrationTest              tests=4 skipped=0 failures=0 errors=0
+    app.MainDirectoryModeTest                tests=8 skipped=0 failures=0 errors=0
+    app.MainTest                             tests=15 skipped=0 failures=0 errors=0
+    app.ShardGateLaunchTest                  tests=3 skipped=0 failures=0 errors=0
+    app.ShardLaunchTest                      tests=11 skipped=0 failures=0 errors=0
+    app.ShardMainGateTest                    tests=3 skipped=0 failures=0 errors=0
+    app.ShardMainTest                        tests=11 skipped=0 failures=0 errors=0
+  strict grid (-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid):
+  exit 0, BUILD SUCCESSFUL in 15s
+    app.CoreModeIntegrationTest              tests=4 skipped=0 failures=0 errors=0
+    app.MainDirectoryModeTest                tests=8 skipped=0 failures=0 errors=0
+    app.MainTest                             tests=15 skipped=0 failures=0 errors=0
+    app.ShardGateLaunchTest                  tests=3 skipped=0 failures=0 errors=0
+    app.ShardLaunchTest                      tests=11 skipped=0 failures=0 errors=0
+    app.ShardMainGateTest                    tests=3 skipped=0 failures=0 errors=0
+    app.ShardMainTest                        tests=11 skipped=0 failures=0 errors=0
+  7 classes 55 tests, 0 failures, both times (4, 11, 3, 11, 3, 8, 15).
+  lock taken 19:21:44; System-wide memory free percentage: 55%; 19:21  up 1 day,  7:08, 25 users, load averages: 4.37 4.32 4.07
+  lock released 19:22:16; System-wide memory free percentage: 50%; 19:22  up 1 day,  7:08, 25 users, load averages: 6.96 5.07 4.35
+
+Each job script set its trap at the top level (rm -rf the lock directory; batch D also git checkout -- ShardWorld.java)
+and checked after mkdir that the owner line was its own (pid=33940).

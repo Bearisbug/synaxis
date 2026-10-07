@@ -1,0 +1,13 @@
+# Review follow-up runs on Mac.local, :test --tests '*ConnectionGateSocketTest*', test at the follow-up commit (withTheProxy awaits logins >= 3 instead of == 3)
+## run 5: strict grid (-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid), temporary delay (not committed): ConnectionManager#transitionLoginToConfig sleeps 300 ms before '// Call pre login event'
+BUILD SUCCESSFUL in 30s
+[rework-flake] gradle exit=0 end 17:05:12
+testsuite tests="12" skipped="0" failures="0" errors="0" time="4.65"
+withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake() 0.491 s, aFullProcessRefusesTheLoginStartBeforeTheLoginRuns() 0.423 s, behindTheProxyAnOversizedServerAddressCountsAgainstItsAddress() 0.088 s
+## run 6: default mode, no delay (ConnectionManager restored with git checkout HEAD --)
+BUILD SUCCESSFUL in 11s
+[rework-flake] gradle exit=0 end 17:05:49
+testsuite tests="12" skipped="0" failures="0" errors="0" time="3.581"
+withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake() 0.203 s
+behindTheProxyAnOversizedServerAddressCountsAgainstItsAddress() 0.092 s
+aFullProcessRefusesTheLoginStartBeforeTheLoginRuns() 0.142 s

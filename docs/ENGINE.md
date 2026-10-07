@@ -39,7 +39,7 @@ export PATH="$JAVA_HOME/bin:$PATH"
 EOF
 ```
 
-Gradle 不需要单独安装，仓库自带 wrapper（`./gradlew`，版本钉在 `gradle/wrapper/gradle-wrapper.properties`，当前 9.7.1）。
+Gradle 不需要单独安装，仓库自带 wrapper（`./gradlew`，版本钉在 `gradle/wrapper/gradle-wrapper.properties`，当前 9.8.0）。
 
 ### 1.3 克隆仓库
 
@@ -264,7 +264,7 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 | `docs/research/` | 选型调研与对起点代码的六路审计、架构评审 |
 | `docs/test-runs/` | 各轮测试的证据目录（`RUN-*`） |
 
-版本钉死口径：Minecraft 26.2 / 协议 776（`src/main/resources/data/constants.json`）、JDK 25、Gradle 9.7.1。
+版本钉死口径：Minecraft 26.2 / 协议 776（`src/main/resources/data/constants.json`）、JDK 25、Gradle 9.8.0（`client-fabric` 的独立 wrapper 是 9.7.1）。
 **客户端侧另有一份且不在版本目录里**：`client-fabric/build.gradle.kts` 顶部的 `minecraftVersion` / `loaderVersion` / `fabricApiVersion`（26.2 / 0.19.5 / 0.161.0+26.2）——独立构建读不到 `gradle/libs.versions.toml`，升版本时这三个常量必须单独改，`fabric.mod.json` 的 minecraft 依赖由第一个常量展开。
 
 ---

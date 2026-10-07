@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.entity.player.ChunkSendFailureIntegrationTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-07T08:51:21.581Z" hostname="Mac.local" time="1.135">
+  <properties/>
+  <testcase name="aChunkWhosePacketThrowsIsSentInALaterBatchOnce(Env)" classname="io.github.bearisbug.synaxis.entity.player.ChunkSendFailureIntegrationTest" time="1.127">
+    <failure message="org.opentest4j.AssertionFailedError: the batch of the move goes on behind the chunk that threw: [] ==&gt; expected: &lt;6&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the batch of the move goes on behind the chunk that threw: [] ==&gt; expected: &lt;6&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.entity.player.ChunkSendFailureIntegrationTest.aChunkWhosePacketThrowsIsSentInALaterBatchOnce(ChunkSendFailureIntegrationTest.java:89)
+</failure>
+  </testcase>
+  <system-out><![CDATA[Chunk 4,0 threw taking its packet: sent in the tick of the move [], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}, exceptions reported 1
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

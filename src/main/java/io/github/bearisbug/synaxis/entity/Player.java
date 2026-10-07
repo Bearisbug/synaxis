@@ -966,8 +966,19 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                     deferred.add(chunkIndex);
                     continue;
                 }
+                // Taking the packet can throw, a SynxChunk freezes and serializes its overlay here: the chunk is out of
+                // the queue and not on its way to the client, which would never get it. It is deferred as well
+                final SendablePacket packet;
                 try {
-                    sendPacket(chunk.getFullDataPacket());
+                    packet = chunk.getFullDataPacket();
+                } catch (Throwable e) {
+                    chunk.unlockWriteLock();
+                    deferred.add(chunkIndex);
+                    process().exception().handleException(e, playerConnection.connectionId());
+                    continue;
+                }
+                try {
+                    sendPacket(packet);
                 } finally {
                     chunk.unlockWriteLock();
                 }

@@ -1,0 +1,19 @@
+RUN-072 gate: the config file over the shard defaults of the connection gate, on branch prod/r072-gate (base main
+f7a9756f7b). docs/DESIGN-PROD.md v0.9.60, docs/TEST.md TC-PROD-695. The integration round registers RUN-072; this
+directory is this group's part of it. No product code changed: one test added to ShardGateLaunchTest
+(aShardTakesTheGateFromItsConfigFileOverItsDefaults), one row handed to the lighting session in DESIGN-PROD §28.3.
+
+Gradle runs (all through ~/.claude/r072/gradle.zsh, label fix-gate, default mode, --tests on the one class):
+  run 1  compileTestJava refused by Error Prone (StringConcatToTextBlock, -Werror) on the first draft of the test,
+         which built the file with String.join; rewritten as a text block. No test ran.
+  run 2  01-proof-red.txt         TC-PROD-695 step 2: ShardMain#gateDefaults writes both values unconditionally;
+                                   3 tests completed, 1 failed, the new test at ShardGateLaunchTest.java:86,
+                                   self-check maxConnections=600, maxJoinsPerTick=5 with keys=3 read from the file.
+  run 3  02-green.txt             TC-PROD-695 steps 1 and 3: ShardMain restored, tests="3" failures="0".
+  run 4  03-old-proof-670-4.txt   TC-PROD-670 step 4 (Main does not call gateDefaults) with the class now at 3 tests:
+                                   3 tests completed, 2 failed at :38 and :66 as written, the new test green.
+                                   Main.java restored afterwards; the last green run (run 3) was on the restored code.
+  Not rerun (reasoned from the code): TC-PROD-670 steps 3 and 5, TC-PROD-672 step 4 with the new test green there.
+  Strict mode and strict grid: left to the GitHub Actions gate of the integration round.
+
+Lint: 04-lint.txt.

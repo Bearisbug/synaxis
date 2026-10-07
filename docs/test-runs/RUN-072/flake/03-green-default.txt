@@ -1,0 +1,16 @@
+# run 4: no injection, fixed test, default mode: :test --tests '*ConnectionGateSocketTest*'
+BUILD SUCCESSFUL in 27s
+[fix-flake] gradle exit=0 end 16:51:12
+<testsuite name="io.github.bearisbug.synaxis.network.ConnectionGateSocketTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-07T08:51:06.683Z" hostname="Mac.local" time="4.585">
+  <testcase name="loginStartsArrivingTogetherNeverTakeMoreSeatsThanThereAre()"  time="1.572"/>
+  <testcase name="theStatusResponseReportsTheSocketLimitWhenSeatsAreUnlimited()"  time="0.055"/>
+  <testcase name="theSocketPastTheProcessLimitIsClosedWithoutAByte()"  time="0.136"/>
+  <testcase name="statusAndTransferHandshakesCountOnTheirOwnBuckets()"  time="0.688"/>
+  <testcase name="withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake()"  time="0.203"/>
+  <testcase name="behindTheProxyAnOversizedServerAddressCountsAgainstItsAddress()"  time="0.093"/>
+  <testcase name="withoutTheProxyProtocolTheAddressLimitIsCheckedAtAccept()"  time="0.046"/>
+  <testcase name="aFullProcessRefusesTheLoginStartBeforeTheLoginRuns()"  time="0.161"/>
+  <testcase name="aConnectionThatSaysNothingIsClosedAtTheHandshakeTimeout()"  time="1.183"/>
+  <testcase name="anOversizedServerAddressTakesItsTokenAndIsClosed()"  time="0.144"/>
+  <testcase name="theFourthLoginOfAnAddressIsThrottledAndLetInTwoSecondsLater()"  time="0.144"/>
+  <testcase name="anOversizedServerAddressDoesNotSkipTheGate()"  time="0.139"/>

@@ -3,6 +3,8 @@ package io.github.bearisbug.synaxis.listener;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.instance.ChunkUtils;
+import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientVehicleMovePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.VehicleMovePacket;
 
@@ -25,12 +27,15 @@ public class PlayerVehicleListener {
             return;
         }
 
-        // Turned back where the vehicle is, as a player's own move is: a move of more than 64 blocks in
-        // one packet and a move out across the world border, or farther out for a vehicle the server put
-        // outside it. The vanilla server corrects a vehicle the same way, the client snaps it back.
+        // Turned back where the vehicle is, loading no chunk, as a player's own move is: a move into a
+        // chunk that is not loaded, a move of more than 64 blocks in one packet and a move out across the
+        // world border, or farther out for a vehicle the server put outside it. The vanilla server
+        // corrects a vehicle the same way, the client snaps it back.
+        final Instance instance = vehicle.getInstance();
         final Pos current = vehicle.getPosition();
-        if (current.distanceSquared(position) > 64 * 64
-                || PlayerPositionListener.outwards(vehicle.getInstance(), current, position)) {
+        if ((!current.sameChunk(position) && !ChunkUtils.isLoaded(instance, position))
+                || current.distanceSquared(position) > 64 * 64
+                || PlayerPositionListener.outwards(instance, current, position)) {
             player.sendPacket(new VehicleMovePacket(current));
             return;
         }

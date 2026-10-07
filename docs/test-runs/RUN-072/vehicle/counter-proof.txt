@@ -1,0 +1,7 @@
+# RUN-072 vehicle counter-proof (after fix): PlayerVehicleListener.java:36
+#   '(!current.sameChunk(position) && ...' -> '(Boolean.getBoolean("proof.never") && !current.sameChunk(position) && ...', run, git restore, rerun green (green.txt)
+PlayerVehicleMoveAuthorityIntegrationTest > aVehicleMoveIntoAnUnloadedChunkIsTurnedBack(Env) FAILED
+4 tests completed, 1 failed
+> Task :test FAILED
+<testsuite name="io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest" tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-07T08:47:16.780Z" hostname="Mac.local"
+<failure message="org.opentest4j.AssertionFailedError: a vehicle move to x 64.5, in chunk 4 that is not loaded ==&gt; expected: &lt;Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]&gt; but was: &lt;Pos[x=64.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]&gt;"

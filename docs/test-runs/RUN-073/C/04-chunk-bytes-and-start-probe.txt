@@ -1,0 +1,58 @@
+Chunk bytes and start time of the core world (TC-PROD-720 steps 3 and 4, TC-PROD-666 measured again). server-app test
+source set, CoreChunkBytesProbe (source next to this file: RUN-071's probe plus the start time of CoreMode#start, the ring it
+loads and the framed size of the packets), copied in for the run and deleted after; the probe the only class of the run, test
+JVM max heap 1 GiB. The stdout lines are read from server-app/build/test-results/test/
+TEST-io.github.bearisbug.synaxis.app.CoreChunkBytesProbe.xml.
+
+Order inside the probe: CoreMode#start at view distance 10 on a ServerProcess of its own (the first start of the JVM), then 12,
+then the Env's process (view distance 8) with heap readings around the start and around its ring's packets, then RUN-071's two
+batches far from the spawn (x 32,000 and 64,000: out of the ring and the border, lit when their packet is built), then view
+distance 10 once more. Each heap reading is three System.gc() 200 ms apart, then the used heap.
+
+Run 4, the changed CoreMode (10946bbcd9):
+$ zsh ~/.claude/r073/gradle.zsh <worktree> fix-C :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CoreChunkBytesProbe'
+    PROBE start view_distance=10 ring_chunks=529 start_ms=456
+    PROBE start view_distance=12 ring_chunks=729 start_ms=241
+    PROBE ring view_distance=8 ring_chunks=361 start_ms=153 chunk_bytes=7618 packet_bytes=7011 total_bytes=14629 framed_bytes=117
+    PROBE chunks=1024 chunk_bytes=5548 packet_bytes=8785 total_bytes=14333 cached=1024 instance_chunks=1386 framed_bytes=117 packets_ms=826
+    PROBE chunks=4096 chunk_bytes=5543 packet_bytes=8825 total_bytes=14368 cached=4096 instance_chunks=5482 framed_bytes=119 packets_ms=2080
+    PROBE held=5120 loaded=5120 max_heap=1073741824 compression_threshold=256
+    PROBE start view_distance=10 ring_chunks=529 start_ms=218
+BUILD SUCCESSFUL in 19s
+
+Run 5, the same probe on the CoreMode before the change (<CM> taken from 15b5487edc for the run, put back with git checkout
+HEAD -- <CM> after it):
+    PROBE start view_distance=10 ring_chunks=0 start_ms=27
+    PROBE start view_distance=12 ring_chunks=0 start_ms=0
+    PROBE ring view_distance=8 ring_chunks=0 start_ms=0 chunk_bytes=22600 packet_bytes=0 total_bytes=22600 framed_bytes=0
+    PROBE chunks=1024 chunk_bytes=5433 packet_bytes=3530 total_bytes=8963 cached=1024 instance_chunks=1025 framed_bytes=86 packets_ms=88
+    PROBE chunks=4096 chunk_bytes=5391 packet_bytes=3489 total_bytes=8881 cached=4096 instance_chunks=5121 framed_bytes=86 packets_ms=152
+    PROBE held=5120 loaded=5120 max_heap=1073741824 compression_threshold=256
+    PROBE start view_distance=10 ring_chunks=0 start_ms=0
+BUILD SUCCESSFUL in 10s
+(The ring line has no ring to divide by before the change: its 22,600 B is the whole heap difference across the start, not a
+per chunk figure.)
+
+Per chunk, the chunk itself + its cached packet (with the light the packet build computed, for the batches) = total:
+                                   before the change          after the change           after / before
+  batch of 1,024, lit lazily       5,433 + 3,530 = 8,963 B    5,548 + 8,785 = 14,333 B   1.60
+  batch of 4,096, lit lazily       5,391 + 3,489 = 8,881 B    5,543 + 8,825 = 14,368 B   1.62
+  ring of 361, lit by relight      -                          7,618 + 7,011 = 14,629 B
+  RUN-071 (2026-10-06)             5,452 + 3,560 = 9,013 B / 5,402 + 3,475 = 8,878 B
+  framed packet, compressed        86 B                       117 B / 119 B              1.36 / 1.38
+  building the batch's packets     88 ms / 152 ms             826 ms / 2,080 ms
+The ring's chunk holds its light from the start (relight writes the sections), a lazily lit chunk gets it only when the packet
+is built, which is why the split differs while the totals are within 2%.
+
+The border width again, TC-PROD-666 step 2's way, from the largest figure 14,629 B:
+  (D / 16)^2 x 14,629 B <= 25% of 4 GiB = 1,073,741,824 B  ->  D <= 4,334.7
+  border only:          256^2      = 65,536 chunks x 14,629 B =   958,726,144 B = 22.3% of 4 GiB   (was 13.8%)
+  view 10 (Main):      (256 + 22)^2 = 77,284 chunks x 14,629 B = 1,130,587,636 B = 26.3% of 4 GiB, 35.1% of 3 GiB
+                                                                                   (was 16.2%, 21.6%)
+  view 12 (ShardMain): (256 + 26)^2 = 79,524 chunks x 14,629 B = 1,163,356,596 B = 27.1% of 4 GiB  (was 16.7%)
+  To keep the reach past the border inside 25% too: sqrt(1,073,741,824 / 14,629) = 270.9 chunks across, minus 22 -> D <= 3,982;
+  3,840 (240 chunks): (240 + 22)^2 = 68,644 chunks x 14,629 B = 1,004,193,076 B = 23.4% of 4 GiB, 31.2% of 3 GiB.
+
+Start time: CoreMode#start at view distance 10 took 456 ms the first time in the JVM (LightEngine and the generation path cold),
+27 ms before the change; a launch of bin/server-app is that cold start, about 0.43 s longer. Warm, in the same JVM: view
+distance 12 (729 chunks) 241 ms, view distance 10 again 218 ms, view distance 8 (361 chunks) 153 ms.

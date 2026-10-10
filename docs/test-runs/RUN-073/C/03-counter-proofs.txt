@@ -1,0 +1,46 @@
+Three counter proofs in one run (run 3), on 10946bbcd9's code. Each one puts if (Boolean.getBoolean("proof.never")) in
+front of one statement of <CM>, so that it never runs and the code still compiles; the three statements are in different
+cases' way, so each case below goes red for exactly one of them. Reverted after the run with git checkout HEAD -- <CM>.
+
+$ sed -i '' -e '157s/^        world.setWorldBorder/        if (Boolean.getBoolean("proof.never")) world.setWorldBorder/' \
+            -e '161s/^        process.eventHandler().addListener/        if (Boolean.getBoolean("proof.never")) process.eventHandler().addListener/' \
+            -e '188s/^        LightingChunk.relight/        if (Boolean.getBoolean("proof.never")) LightingChunk.relight/' <CM>
+  <CM>:157  world.setWorldBorder(...)                                  border never set        (TC-PROD-665 step 4)
+  <CM>:161  process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class, ...)
+                                                                         no spawn listener       (TC-PROD-718 step 3)
+  <CM>:188  LightingChunk.relight(world, world.getChunks())             ring loaded, not lit    (TC-PROD-719 step 4)
+
+$ zsh ~/.claude/r073/gradle.zsh <worktree> fix-C :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CoreModeIntegrationTest'
+CoreModeIntegrationTest > theChunksAroundTheSpawnAreLitBeforeAnybodyJoins(Env) FAILED
+CoreModeIntegrationTest > aPlayerWhoJoinsIsPutAtTheSpawn(Env) FAILED
+CoreModeIntegrationTest > theCoreWorldEndsAtAWorldBorder(Env) FAILED
+8 tests completed, 3 failed
+BUILD FAILED in 8s
+
+tests=8 failures=3 errors=0 skipped=0 time=2.465
+    everyConnectionIsAdmittedIntoTheCoreWorld(Env)            1.57s passed
+    theChunksAroundTheSpawnAreLitBeforeAnybodyJoins(Env)     0.053s FAILED
+        org.opentest4j.AssertionFailedError: the section holding y 40 is still waiting for its light, which would be computed only when it is sent ==> expected: <false> but was: <true>
+        at computedSkyLight(CoreModeIntegrationTest.java:234)
+        at theChunksAroundTheSpawnAreLitBeforeAnybodyJoins(CoreModeIntegrationTest.java:182)
+    aPlayerWhoJoinsIsPutAtTheSpawn(Env)                      0.257s FAILED
+        org.opentest4j.AssertionFailedError: the respawn point the configuration left ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=0.0, y=0.0, z=0.0, yaw=0.0, pitch=0.0]>
+        at aPlayerWhoJoinsIsPutAtTheSpawn(CoreModeIntegrationTest.java:159)
+    theDiagnosticChannelEchoesThePayloadBack(Env)             0.21s passed
+    aChunkGeneratedAfterTheStartIsLitWhenItIsFirstSent(Env)   0.07s passed
+    theChunkAPlayerSpawnsInIsSentLit(Env)                    0.209s passed
+    theCoreWorldIsRegisteredAndHasGroundToStandOn(Env)       0.042s passed
+    theCoreWorldEndsAtAWorldBorder(Env)                      0.042s FAILED
+        org.opentest4j.AssertionFailedError: expected: <WorldBorder[diameter=4096.0, centerX=0.0, centerZ=0.0, warningDistance=5, warningTime=15, dimensionTeleportBoundary=29999984]> but was: <WorldBorder[diameter=5.9999968E7, centerX=0.0, centerZ=0.0, warningDistance=5, warningTime=15, dimensionTeleportBoundary=29999984]>
+        at theCoreWorldEndsAtAWorldBorder(CoreModeIntegrationTest.java:99)
+
+Reading:
+  - relight skipped: the 361 chunks are LightingChunks and loaded, but their sections still wait for their light. The two
+    packet cases stay green: building a LightingChunk's packet computes the light it lacks (the lazy path), which is why
+    only swapping the chunk supplier would have looked lit to a client too, the computation then landing on the thread that
+    builds the packet; the preloaded ring is what this case pins.
+  - spawn listener skipped: the player spawns at the engine's default respawn point (0, 0, 0).
+  - border skipped: TC-PROD-665's red, now at <CT>:99 (it was :77 before the 22 imports this group added); on the 8-case
+    class it is the only case the border makes red.
+
+$ git checkout HEAD -- <CM>; git status --short     -> no output; run 6 in 02 is the green after the revert

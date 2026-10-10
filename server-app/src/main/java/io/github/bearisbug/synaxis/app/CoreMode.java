@@ -3,7 +3,9 @@ package io.github.bearisbug.synaxis.app;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
+import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
+import io.github.bearisbug.synaxis.instance.LightingChunk;
 import io.github.bearisbug.synaxis.instance.WorldBorder;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.plugin.Admission;
@@ -12,7 +14,10 @@ import io.github.bearisbug.synaxis.world.DimensionType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * The core mode of the startup contract (API-M2-010 step 5): the server core serving itself, with
@@ -58,9 +63,9 @@ final class CoreMode {
      * The width of the core world in blocks, its world border centred on the origin. The world never
      * unloads a chunk, so the border is what bounds the chunks a client walking away makes it hold
      * ({@code docs/DESIGN-PROD.md} {@code API-PROD-030}): 256 chunks across, and 278 with the chunk
-     * rings of view distance 10 reaching 11 chunks past it, at 9,013 B a chunk with its cached packet
-     * is 16% of the 4 GiB default heap. The circles of the load test bots stay within 1,536 blocks of
-     * the spawn.
+     * rings of view distance 10 reaching 11 chunks past it, at 14,629 B a lit chunk with its cached
+     * packet is 26% of the 4 GiB default heap. The circles of the load test bots stay within 1,536
+     * blocks of the spawn.
      */
     private static final int BORDER_DIAMETER = 4096;
 
@@ -147,10 +152,12 @@ final class CoreMode {
     static InstanceContainer start(ServerProcess process, PluginHost host,
                                    RegistryKey<DimensionType> dimensionType, Setting setting) {
         final InstanceContainer world = process.instance().createInstanceContainer(dimensionType);
+        world.setChunkSupplier(LightingChunk::new);
         world.setGenerator(unit -> unit.modifier().fillHeight(0, FLOOR_HEIGHT, Block.STONE));
         world.setWorldBorder(WorldBorder.defaultBorder().withDiameter(BORDER_DIAMETER));
         // Automatic chunk loading stays on, unlike a match: within the border the core world is a flat
         // plane, so a column is generated whenever somebody gets close enough to it.
+        lightAroundTheSpawn(world, process.config().chunkViewDistance() + 1);
         process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
                 event -> event.getPlayer().setRespawnPoint(SPAWN));
         host.registerHostAdmission(_ -> new Admission.Accept(world, TEAM));
@@ -159,5 +166,25 @@ final class CoreMode {
                 + "spawn={} channel={} (echoes every payload back)",
                 PROPERTY, setting.name().toLowerCase(Locale.ROOT), SPAWN, ECHO_CHANNEL);
         return world;
+    }
+
+    /**
+     * Loads the chunk ring of a player standing at the spawn and lights it, while nobody can connect
+     * yet. Left to itself a {@link LightingChunk} computes its light when its first packet is built,
+     * on the thread building that packet; a chunk first generated out of this ring still does.
+     *
+     * @param world  the core world, which does not tick yet
+     * @param radius the radius of the ring in chunks, the chunk view distance plus one
+     */
+    private static void lightAroundTheSpawn(InstanceContainer world, int radius) {
+        final List<CompletableFuture<Chunk>> chunks = new ArrayList<>();
+        for (int x = SPAWN.chunkX() - radius; x <= SPAWN.chunkX() + radius; x++) {
+            for (int z = SPAWN.chunkZ() - radius; z <= SPAWN.chunkZ() + radius; z++) {
+                chunks.add(world.loadChunk(x, z));
+            }
+        }
+        // Generation runs on virtual threads, not on a tick, so this completes before the first tick
+        CompletableFuture.allOf(chunks.toArray(CompletableFuture[]::new)).join();
+        LightingChunk.relight(world, world.getChunks());
     }
 }

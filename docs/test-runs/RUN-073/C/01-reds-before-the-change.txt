@@ -1,0 +1,37 @@
+The four new cases of CoreModeIntegrationTest on the CoreMode before the change (15b5487edc: DynamicChunk, nothing loaded
+before the port is bound). The test file as committed in 10946bbcd9, <CM> not yet edited. Run 1.
+
+$ zsh ~/.claude/r073/gradle.zsh <worktree> fix-C :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CoreModeIntegrationTest'
+CoreModeIntegrationTest > theChunksAroundTheSpawnAreLitBeforeAnybodyJoins(Env) FAILED
+CoreModeIntegrationTest > aChunkGeneratedAfterTheStartIsLitWhenItIsFirstSent(Env) FAILED
+CoreModeIntegrationTest > theChunkAPlayerSpawnsInIsSentLit(Env) FAILED
+8 tests completed, 3 failed
+BUILD FAILED in 20s
+
+server-app/build/test-results/test/TEST-io.github.bearisbug.synaxis.app.CoreModeIntegrationTest.xml
+tests=8 failures=3 errors=0 skipped=0 time=1.344
+    everyConnectionIsAdmittedIntoTheCoreWorld(Env)           1.062s passed
+    theChunksAroundTheSpawnAreLitBeforeAnybodyJoins(Env)     0.017s FAILED
+        org.opentest4j.AssertionFailedError: chunks loaded around the spawn ==> expected: <361> but was: <0>
+        at theChunksAroundTheSpawnAreLitBeforeAnybodyJoins(CoreModeIntegrationTest.java:174)
+    aPlayerWhoJoinsIsPutAtTheSpawn(Env)                      0.071s passed
+    theDiagnosticChannelEchoesThePayloadBack(Env)            0.058s passed
+    aChunkGeneratedAfterTheStartIsLitWhenItIsFirstSent(Env)  0.011s FAILED
+        org.opentest4j.AssertionFailedError: the packet carries the sky light of the section holding y 40, sky mask {} ==> expected: <true> but was: <false>
+        at sentSkyLight(CoreModeIntegrationTest.java:251)
+        at aChunkGeneratedAfterTheStartIsLitWhenItIsFirstSent(CoreModeIntegrationTest.java:223)
+    theChunkAPlayerSpawnsInIsSentLit(Env)                    0.053s FAILED
+        org.opentest4j.AssertionFailedError: the packet carries the sky light of the section holding y 40, sky mask {} ==> expected: <true> but was: <false>
+        at sentSkyLight(CoreModeIntegrationTest.java:251)
+        at theChunkAPlayerSpawnsInIsSentLit(CoreModeIntegrationTest.java:205)
+    theCoreWorldIsRegisteredAndHasGroundToStandOn(Env)       0.008s passed
+    theCoreWorldEndsAtAWorldBorder(Env)                      0.056s passed
+
+Reading:
+  - The ring: CoreMode.start loaded no chunk at all; the test process runs at the engine's default chunk view distance 8,
+    so the ring is 19 x 19 = 361 chunks.
+  - The two packets: a DynamicChunk section has no light array, DynamicChunk#createLightData puts every section into the
+    empty sky mask, the sky mask the client reads is empty.
+  - aPlayerWhoJoinsIsPutAtTheSpawn passes before the change: the spawn listener (<CM> 15b5487edc :154-155) was there
+    already. The case closes a coverage gap (the older cases join through TestConnection#connect, which sets a spawn of its
+    own on the player's node, after the core mode's global listener); its red is the counter proof in 03.

@@ -1,0 +1,126 @@
+package io.github.bearisbug.synaxis.app;
+
+import io.github.bearisbug.synaxis.ServerConfig;
+import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.instance.Chunk;
+import io.github.bearisbug.synaxis.instance.InstanceContainer;
+import io.github.bearisbug.synaxis.network.ConnectionState;
+import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
+import io.github.bearisbug.synaxis.testing.Env;
+import io.github.bearisbug.synaxis.testing.EnvTest;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.lang.management.ManagementFactory;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * Probe, not a test: the heap one chunk of the core world holds, the chunk alone and with the
+ * framed packet a player's ring makes it cache; since RUN-073 C also how long CoreMode#start takes
+ * and what the ring it loads and lights before the port is bound holds. Run with --tests, read the
+ * stdout lines.
+ * <p>
+ * Order: CoreMode#start at view distance 10 (Main) on a process of its own first, the first start
+ * of this JVM, then 12 (ShardMain), then the Env's process (view distance 8) with heap readings
+ * around the start and around its ring's packets, then the two batches of RUN-071 far away from the
+ * spawn (lit, since RUN-073 C, when their packet is built), then view distance 10 once more.
+ */
+@EnvTest
+class CoreChunkBytesProbe {
+
+    @TempDir
+    Path workingDirectory;
+
+    private static long live() throws InterruptedException {
+        for (int i = 0; i < 3; i++) {
+            System.gc();
+            Thread.sleep(200);
+        }
+        return ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed();
+    }
+
+    private PluginHost host(ServerProcess process, String name) {
+        return new PluginHost(process, workingDirectory.resolve(name).resolve("plugins"),
+                new EventLedger(workingDirectory.resolve(name).resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY));
+    }
+
+    /** @return the framed bytes of the packets, summed */
+    private static long packets(ServerProcess process, Collection<Chunk> chunks) {
+        long bytes = 0;
+        for (Chunk chunk : chunks) {
+            final NetworkBuffer body = Objects.requireNonNull(((CachedPacket) chunk.getFullDataPacket())
+                    .body(ConnectionState.PLAY, process.registries(), process.compressionThreshold()));
+            bytes += body.readableBytes();
+        }
+        return bytes;
+    }
+
+    private void timeStart(int viewDistance) {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true)
+                .chunkViewDistance(viewDistance).build());
+        final PluginHost host = host(process, "vd" + viewDistance + "-" + System.nanoTime());
+        final long started = System.nanoTime();
+        final InstanceContainer world = CoreMode.start(process, host, Main.registerMatchDimensionType(process),
+                CoreMode.Setting.AUTO);
+        final long startMs = (System.nanoTime() - started) / 1_000_000L;
+        System.out.printf("PROBE start view_distance=%d ring_chunks=%d start_ms=%d%n", viewDistance,
+                world.getChunks().size(), startMs);
+    }
+
+    @Test
+    void measure(Env env) throws Exception {
+        timeStart(10);
+        timeStart(12);
+
+        final ServerProcess process = env.process();
+        final PluginHost host = host(process, "env");
+        final long beforeStart = live();
+        final long started = System.nanoTime();
+        final InstanceContainer world = CoreMode.start(process, host, Main.registerMatchDimensionType(process),
+                CoreMode.Setting.AUTO);
+        final long startMs = (System.nanoTime() - started) / 1_000_000L;
+        final List<Chunk> ring = new ArrayList<>(world.getChunks());
+        final long afterStart = live();
+        final long ringWire = ring.isEmpty() ? 0 : packets(process, ring);
+        final long afterRingPackets = live();
+        final int ringCount = Math.max(1, ring.size());
+        System.out.printf("PROBE ring view_distance=%d ring_chunks=%d start_ms=%d chunk_bytes=%d packet_bytes=%d "
+                        + "total_bytes=%d framed_bytes=%d%n", process.config().chunkViewDistance(), ring.size(), startMs,
+                (afterStart - beforeStart) / ringCount, (afterRingPackets - afterStart) / ringCount,
+                (afterRingPackets - beforeStart) / ringCount, ringWire / ringCount);
+
+        // Warm up: classes, palettes, the packet path
+        final Chunk warm = world.loadChunk(-10, -10).join();
+        packets(process, List.of(warm));
+        final List<Chunk> held = new ArrayList<>();
+        int loaded = 0;
+        for (int side : new int[]{32, 64}) {
+            final long base = live();
+            final List<Chunk> batch = new ArrayList<>();
+            for (int x = 0; x < side; x++)
+                for (int z = 0; z < side; z++)
+                    batch.add(world.loadChunk(1000 * side + x, z).join());
+            held.addAll(batch);
+            final long afterLoad = live();
+            final long packetsStarted = System.nanoTime();
+            final long wire = packets(process, batch);
+            final long packetsMs = (System.nanoTime() - packetsStarted) / 1_000_000L;
+            final long afterPackets = live();
+            loaded += batch.size();
+            int cached = 0;
+            for (Chunk chunk : batch) if (((CachedPacket) chunk.getFullDataPacket()).isValid()) cached++;
+            System.out.printf("PROBE chunks=%d chunk_bytes=%d packet_bytes=%d total_bytes=%d cached=%d instance_chunks=%d "
+                            + "framed_bytes=%d packets_ms=%d%n",
+                    batch.size(), (afterLoad - base) / batch.size(), (afterPackets - afterLoad) / batch.size(),
+                    (afterPackets - base) / batch.size(), cached, world.getChunks().size(), wire / batch.size(), packetsMs);
+        }
+        System.out.printf("PROBE held=%d loaded=%d max_heap=%d compression_threshold=%d%n", held.size(), loaded,
+                Runtime.getRuntime().maxMemory(), process.compressionThreshold());
+        timeStart(10);
+    }
+}

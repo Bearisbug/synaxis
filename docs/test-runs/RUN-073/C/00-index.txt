@@ -1,0 +1,44 @@
+RUN-073 C: the light of the flat world of the core mode, on branch prod/r073-C (base prod/r073-docs 15b5487edc, the design
+of RUN-073: docs/DESIGN-PROD.md v0.9.63). docs/DESIGN-PROD.md v0.9.66, docs/TEST.md TC-PROD-718 to TC-PROD-720. The
+integration round registers RUN-073; this directory is this group's part of it.
+
+  CoreMode#start builds the flat world from LightingChunk (setChunkSupplier before setGenerator) and, before the port is
+  bound, loads the chunks within the chunk view distance + 1 of the spawn chunk and calls LightingChunk.relight on them, as
+  Match#load does for an RTS map. A chunk first generated out of that ring is lit when its first packet is built.
+
+Code under test: 10946bbcd9 (the change and the four new cases of CoreModeIntegrationTest) for 01 to 04; 969cf2ce3b (the
+same code, only the Javadoc of CoreMode.BORDER_DIAMETER restated for the lit chunk size, line numbers unchanged) for the last
+green in 02. Line numbers: <CM> = server-app/src/main/java/io/github/bearisbug/synaxis/app/CoreMode.java, <CT> =
+server-app/src/test/java/io/github/bearisbug/synaxis/app/CoreModeIntegrationTest.java, both as in 10946bbcd9 and
+969cf2ce3b. "Before the change" is <CM> as in 15b5487edc.
+
+JDK 25 (Homebrew openjdk@25), macOS, the machine shared with the other RUN-073 groups. Every Gradle run went through
+~/.claude/r073/gradle.zsh (round lock of the production readiness session, one of two slots, --max-workers=2 --no-daemon
+--init-script gradle/init/aliyun-mirror.init.gradle.kts), default mode only, one test class per run; strict and strict grid
+are the integration round's on GitHub Actions. memory_pressure free and load average (1 min) at each start:
+
+  run 1  05:39:19-05:39:40  free 46% load 4  red: the new cases on the unchanged CoreMode                     (01)
+  run 2  05:41:38-05:41:50  free 50% load 5  green on 10946bbcd9's code                                      (02)
+  run 3  05:43:03-05:43:11  free 44% load 5  three counter proofs in one run, each red in its own case       (03)
+  run 4  05:43:46-05:44:05  free 46% load 6  chunk bytes and start time probe on the changed CoreMode         (04)
+  run 5  05:45:19-05:45:30  free 45% load 4  the same probe on the CoreMode before the change                 (04)
+  run 6  05:49:16-05:49:24  free 58% load 4  green on 969cf2ce3b, every proof reverted                       (02)
+  run 7  06:48:26-06:48:37  free 56% load 2  tick stall probe on 969cf2ce3b's CoreMode                       (06)
+  run 8  06:49:43-06:49:50  free 55% load 3  the same probe with three more squares and four more columns    (06)
+
+No database, no Redis, no Docker container, no server process and no real client: the class runs on the testing Env.
+
+00-index.txt                      this file
+01-reds-before-the-change.txt     8 tests, 3 failed: the ring (<CT>:174, 0 of 361 chunks loaded), the spawn chunk packet and a
+                                  chunk generated after the start (<CT>:251 from :205 and :223, sky mask {})
+02-greens.txt                     8 tests, 0 failed, twice (10946bbcd9 and 969cf2ce3b)
+03-counter-proofs.txt             relight skipped -> <CT>:234 from :182; spawn listener skipped -> <CT>:159; border skipped ->
+                                  <CT>:99 (TC-PROD-665 step 4 on the 8-case class)
+04-chunk-bytes-and-start-probe.txt  14,333 / 14,368 B a chunk lit when its packet is built, 14,629 B a chunk of the ring lit by
+                                  relight, against 8,963 / 8,881 B before the change; CoreMode#start 456 ms the first time at view
+                                  distance 10, 27 ms before; the border worked out again (TC-PROD-666's way)
+05-lint.txt                       design-doc and test-doc lint of the two documents
+CoreChunkBytesProbe.java.txt      the probe of 04 (RUN-071's probe plus the start time, the ring and the framed size)
+06-tick-stall-probe.txt           how long InstanceContainer#tick waits while relightSection lights chunks generated out of the
+                                  ring: 0.5-4.3 ms a column of 23, 34-39 ms a square of 529, 236-286 ms the JVM's first square
+CoreLightStallProbe.java.txt      the probe of 06

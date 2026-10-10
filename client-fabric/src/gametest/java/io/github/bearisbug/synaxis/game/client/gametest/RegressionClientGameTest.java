@@ -91,7 +91,7 @@ public final class RegressionClientGameTest implements FabricClientGameTest {
      * Set, with its two siblings, by build.gradle.kts from SYNAXIS_GAMETEST_SESSION_HOST: the full
      * online tier, where the server is in online mode and the connection has to be encrypted.
      */
-    private static final String SESSION_HOST_PROPERTY = "minecraft.api.session.host";
+    static final String SESSION_HOST_PROPERTY = "minecraft.api.session.host";
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -293,23 +293,23 @@ public final class RegressionClientGameTest implements FabricClientGameTest {
         return null;
     }
 
-    private static int sky(Minecraft client, BlockPos pos) {
+    static int sky(Minecraft client, BlockPos pos) {
         return client.level.getBrightness(LightLayer.SKY, pos);
     }
 
-    private static boolean inWorld(Minecraft client) {
+    static boolean inWorld(Minecraft client) {
         return client.level != null && client.player != null;
     }
 
     /** Whether the connection to the server carries the cipher handlers the key exchange adds. */
-    private static boolean encrypted(Minecraft client) {
+    static boolean encrypted(Minecraft client) {
         final ClientPacketListener listener = client.getConnection();
         if (listener == null) return false;
         final ChannelPipeline pipeline = ((ConnectionAccessor) listener.getConnection()).synaxis$channel().pipeline();
         return pipeline.get("decrypt") != null && pipeline.get("encrypt") != null;
     }
 
-    private static String screenText(Minecraft client) {
+    static String screenText(Minecraft client) {
         return client.gui.screen() == null ? "no screen" : client.gui.screen().getNarrationMessage().getString();
     }
 
@@ -327,7 +327,7 @@ public final class RegressionClientGameTest implements FabricClientGameTest {
         }
     }
 
-    private static <T> T staticField(Class<T> type, String name) {
+    static <T> T staticField(Class<T> type, String name) {
         try {
             final Field field = SynaxisClientMod.class.getDeclaredField(name);
             field.setAccessible(true);
@@ -337,7 +337,7 @@ public final class RegressionClientGameTest implements FabricClientGameTest {
         }
     }
 
-    private static void leaveToTitle(ClientGameTestContext context) {
+    static void leaveToTitle(ClientGameTestContext context) {
         if (context.computeOnClient(client -> client.level != null)) {
             context.runOnClient(client -> client.disconnect(new TitleScreen(), false));
         } else if (!context.computeOnClient(client -> client.gui.screen() instanceof TitleScreen)) {

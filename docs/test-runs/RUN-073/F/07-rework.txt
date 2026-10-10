@@ -1,0 +1,168 @@
+RUN-073 group F, after the review (commit b49da7cae7 on 39502170c2). What each review item changed and how it was checked
+on this machine; the script itself runs only on GitHub Actions, and no run was pushed for this round (the group's limit of
+3 pushes was used in the first round), so the script changes are compiled here and judged in TC-PROD-734.
+
+Review items -> change
+  blocking   TC-PROD-042 / TC-PROD-131 out of date            docs/TEST.md; rerun in 06-old-cases.txt
+  1 rts G1 not R3's criterion                                  G1 requires `encrypted || !online` (both modes); design G1 row
+  2 G8 "second hit does not drop" may have no teeth            opening drop < 1.5 x a later single hit's drop; design tools line
+  3 waitUntil package visible but unused                       private; SESSION_HOST_PROPERTY package visible for item 1
+  4 artifact root moved by the RUNNER_TEMP paths               copy step into playable/ before the upload; check-workflow.py
+  5 return value named group A for the lighting fix            the fix is group C's (prod/r073-C 10946bbcd9); return value only
+  6 evidence carried disconnects of earlier connections        connectionMark set in connect(); attempt/ready/joined use it
+  7 since() streamed a subList view (CME)                      List.copyOf snapshot; SinceSnapshotProof.java (TC-PROD-735)
+  8 DESIGN-PROD R1-R8 judge still C = N / 2N                   a sentence pointing at the playable script's 3N / 4N
+  9 merge hint with prod/r073-G                                p10's runs-on comment line dropped; merge-tree below
+  10 handshake=SENT not registered                             docs/TEST.md section 7, open item
+
+Evidence of the baseline runs for item 1 (the new criterion would have passed them): every core G1 and rts G1 line of
+04-ci-baseline.txt and 05-ci-lanes.txt has encrypted=true.
+
+################ TC-PROD-735 step 1 (red: the view the script had at 39502170c2)
+$ java SinceSnapshotProof.java view    # the view of the live list, PlayableClientGameTest#since at 39502170c2
+view deterministic: threw java.util.ConcurrentModificationException
+view stress: 99529 of 214576 reads threw
+exit=0
+$ java SinceSnapshotProof.java view   # second run
+view deterministic: threw java.util.ConcurrentModificationException
+view stress: 111522 of 307324 reads threw
+
+################ TC-PROD-735 step 2 (green: the snapshot the script reads now)
+$ java SinceSnapshotProof.java snapshot
+snapshot deterministic: match=true
+snapshot stress: 0 of 359632 reads threw
+exit=0
+
+################ TC-PROD-729 / TC-PROD-735 step 3: compileGametestJava of client-fabric through the RUN-073 Gradle slot
+(client-fabric has no gradle/init/; gametest-env/mirror.init.gradle.kts was copied to client-fabric/gradle/init/aliyun-mirror.init.gradle.kts for the run and deleted after)
+$ zsh ~/.claude/r073/gradle.zsh <worktree>/client-fabric rework-F compileGametestJava --console=plain
+[rework-F] /tmp/synaxis-r073-slot1 free=65% load=3 start 07:02:51
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Configure project :
+Fabric Loom: 1.17.21
+> Task :fetchDistantHorizons UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :compileGametestJava
+BUILD SUCCESSFUL in 3s
+4 actionable tasks: 1 executed, 3 up-to-date
+[rework-F] gradle exit=0 end 07:02:55
+javap of the classes: PlayableClientGameTest has SINGLE_HIT_BOUND = 1.5f and connectionMark; RegressionClientGameTest has
+package visible SESSION_HOST_PROPERTY and private waitUntil
+
+################ TC-PROD-731: check-workflow.py (25 facts)
+$ .venv/bin/python check-workflow.py .github/workflows/client-gametest.yml <fabric.mod.json> <synaxis-gametest.mixins.json>   # the branch
+ok gametest runs on ubuntu-24.04
+ok p10 runs on ubuntu-24.04
+ok a step prints nproc and free -m
+ok installDist is built before the game mode server starts
+ok the core mode server starts after the game mode server
+ok core server in its own working directory under RUNNER_TEMP
+ok core server from the installDist start script
+ok core server with stdin from /dev/null
+ok core server JAVA_OPTS 1G heap without pretouch
+ok core server core-mode=on
+ok core server on port 25566
+ok core server metrics on any free port
+ok core server online against the job's fake sessionserver
+ok core server waits for server-app listening
+ok core server keeps the default in-memory store
+ok both client launches start after the core mode server
+ok both client launches set SYNAXIS_PLAYABLE_SERVER=127.0.0.1:25566
+ok CONNECTIONS_PER_LAUNCH is 3, 4 with the spikes
+ok the judge step passes CORE_CONNECTIONS = 2 per launch
+ok the artifact takes playable.txt
+ok the artifact takes the core server's log from the workspace, no path outside it
+ok the artifact takes the core server's ledger from the workspace, no path outside it
+ok the core server's log and ledger are copied into the workspace before the upload
+ok PlayableClientGameTest comes right after RegressionClientGameTest
+ok DisconnectReasonMixin is registered
+
+$ same on the three files of 15b5487edc
+MISSING gametest runs on ubuntu-24.04
+MISSING p10 runs on ubuntu-24.04
+MISSING a step prints nproc and free -m
+MISSING installDist is built before the game mode server starts
+MISSING the core mode server starts after the game mode server
+MISSING core server in its own working directory under RUNNER_TEMP
+MISSING core server from the installDist start script
+MISSING core server with stdin from /dev/null
+MISSING core server JAVA_OPTS 1G heap without pretouch
+MISSING core server core-mode=on
+MISSING core server on port 25566
+MISSING core server metrics on any free port
+MISSING core server online against the job's fake sessionserver
+MISSING core server waits for server-app listening
+MISSING core server keeps the default in-memory store
+MISSING both client launches start after the core mode server
+MISSING both client launches set SYNAXIS_PLAYABLE_SERVER=127.0.0.1:25566
+MISSING CONNECTIONS_PER_LAUNCH is 3, 4 with the spikes
+MISSING the judge step passes CORE_CONNECTIONS = 2 per launch
+MISSING the artifact takes playable.txt
+MISSING the artifact takes the core server's log from the workspace, no path outside it
+MISSING the artifact takes the core server's ledger from the workspace, no path outside it
+MISSING the core server's log and ledger are copied into the workspace before the upload
+MISSING PlayableClientGameTest comes right after RegressionClientGameTest
+MISSING DisconnectReasonMixin is registered
+
+$ same on the three files of 39502170c2 (before the review)
+ok gametest runs on ubuntu-24.04
+ok p10 runs on ubuntu-24.04
+ok a step prints nproc and free -m
+ok installDist is built before the game mode server starts
+ok the core mode server starts after the game mode server
+ok core server in its own working directory under RUNNER_TEMP
+ok core server from the installDist start script
+ok core server with stdin from /dev/null
+ok core server JAVA_OPTS 1G heap without pretouch
+ok core server core-mode=on
+ok core server on port 25566
+ok core server metrics on any free port
+ok core server online against the job's fake sessionserver
+ok core server waits for server-app listening
+ok core server keeps the default in-memory store
+ok both client launches start after the core mode server
+ok both client launches set SYNAXIS_PLAYABLE_SERVER=127.0.0.1:25566
+ok CONNECTIONS_PER_LAUNCH is 3, 4 with the spikes
+ok the judge step passes CORE_CONNECTIONS = 2 per launch
+ok the artifact takes playable.txt
+MISSING the artifact takes the core server's log from the workspace, no path outside it
+MISSING the artifact takes the core server's ledger from the workspace, no path outside it
+MISSING the core server's log and ledger are copied into the workspace before the upload
+ok PlayableClientGameTest comes right after RegressionClientGameTest
+ok DisconnectReasonMixin is registered
+
+################ TC-PROD-688 step 3 and 5
+$ .venv/bin/python docs/test-runs/RUN-072/ci/check-workflow.py .github/workflows/client-gametest.yml   # TC-PROD-688 step 3
+gametest log created before start
+p10 log created before start
+p10 unit tests before first p10.py use
+exit=0
+
+$ actionlint .github/workflows/client-gametest.yml
+.github/workflows/client-gametest.yml:119:9: shellcheck reported issue in this script: SC2034:warning:5:1: i appears unused. Verify use (or export if used externally) [shellcheck]
+.github/workflows/client-gametest.yml:119:9: shellcheck reported issue in this script: SC2086:info:3:58: Double quote to prevent globbing and word splitting [shellcheck]
+hints=2
+
+################ TC-PROD-730 step 2 again (judge.sh unchanged by the review)
+$ bash judge-cases.sh client-fabric/gametest-env/judge.sh | grep exit=
+== case all-pass exit=0
+== case core-step-fails exit=1
+== case rts-step-skipped exit=1
+== case no-playable-report exit=1
+== case core-logins-missing exit=1
+
+################ item 9: git merge-tree --write-tree prod/r073-F prod/r073-G (b49da7cae7 and f58514441e)
+
+Auto-merging .github/workflows/client-gametest.yml
+Auto-merging docs/DESIGN-PROD.md
+CONFLICT (content): Merge conflict in docs/DESIGN-PROD.md
+Auto-merging docs/ENGINE.md
+CONFLICT (content): Merge conflict in docs/ENGINE.md
+Auto-merging docs/TEST.md
+CONFLICT (content): Merge conflict in docs/TEST.md
+The workflow merges by itself; the conflicts are the three documents the integration round merges anyway. In the
+merged tree job p10's 'Bake the map and write the shard directory' is at lines 300 to 307 (group G's job p11-smoke
+adds its own copy at line 521), and the three jobs' runs-on are ubuntu-24.04 at lines 52, 233 and 456.

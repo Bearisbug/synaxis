@@ -1,0 +1,147 @@
+# bash docs/test-runs/RUN-073/F/judge-cases.sh <judge.sh>, five hand written one-launch runs (TC-PROD-730)
+#### before: client-fabric/gametest-env/judge.sh of 15b5487edc
+== case all-pass exit=1
+ok   all-pass/run/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+ok   client_verified 3, expected 3
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+FAIL sessionserver join 5, expected 3
+FAIL sessionserver hasJoined 200 5 of 5, expected 3 of 3
+client regression: 2 check(s) failed
+== case core-step-fails exit=1
+ok   core-step-fails/run/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+ok   client_verified 3, expected 3
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+FAIL sessionserver join 5, expected 3
+FAIL sessionserver hasJoined 200 5 of 5, expected 3 of 3
+client regression: 2 check(s) failed
+== case rts-step-skipped exit=1
+ok   rts-step-skipped/run/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+ok   client_verified 3, expected 3
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+FAIL sessionserver join 5, expected 3
+FAIL sessionserver hasJoined 200 5 of 5, expected 3 of 3
+client regression: 2 check(s) failed
+== case no-playable-report exit=1
+ok   no-playable-report/run/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+ok   client_verified 3, expected 3
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+FAIL sessionserver join 5, expected 3
+FAIL sessionserver hasJoined 200 5 of 5, expected 3 of 3
+client regression: 2 check(s) failed
+== case core-logins-missing exit=0
+ok   core-logins-missing/run/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+ok   client_verified 3, expected 3
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+ok   sessionserver join 3, expected 3
+ok   sessionserver hasJoined 200 3 of 3, expected 3 of 3
+client regression: all checks passed
+#### after: client-fabric/gametest-env/judge.sh of the working tree
+== case all-pass exit=0
+ok   all-pass/run/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+ok   all-pass/run/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   1 playable reports for 1 launches
+ok   client_verified 3, expected 3
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+ok   sessionserver join 5, expected 5
+ok   sessionserver hasJoined 200 5 of 5, expected 5 of 5
+client regression: all checks passed
+== case core-step-fails exit=1
+ok   core-step-fails/run/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+FAIL core-step-fails/run/synaxis-gametest/playable.txt: core 9 PASS, rts 5 PASS, 1 FAIL or SKIP
+     core G4 FAIL evidence
+ok   1 playable reports for 1 launches
+ok   client_verified 3, expected 3
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+ok   sessionserver join 5, expected 5
+ok   sessionserver hasJoined 200 5 of 5, expected 5 of 5
+client regression: 1 check(s) failed
+== case rts-step-skipped exit=1
+ok   rts-step-skipped/run/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+FAIL rts-step-skipped/run/synaxis-gametest/playable.txt: core 10 PASS, rts 4 PASS, 1 FAIL or SKIP
+     rts G10 SKIP evidence
+ok   1 playable reports for 1 launches
+ok   client_verified 3, expected 3
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+ok   sessionserver join 5, expected 5
+ok   sessionserver hasJoined 200 5 of 5, expected 5 of 5
+client regression: 1 check(s) failed
+== case no-playable-report exit=1
+ok   no-playable-report/run/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+FAIL no playable report at no-playable-report/run/synaxis-gametest/playable.txt
+FAIL 0 playable reports for 1 launches
+ok   client_verified 3, expected 3
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+ok   sessionserver join 5, expected 5
+ok   sessionserver hasJoined 200 5 of 5, expected 5 of 5
+client regression: 2 check(s) failed
+== case core-logins-missing exit=1
+ok   core-logins-missing/run/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+ok   core-logins-missing/run/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   1 playable reports for 1 launches
+ok   client_verified 3, expected 3
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+FAIL sessionserver join 3, expected 5
+FAIL sessionserver hasJoined 200 3 of 3, expected 5 of 5
+client regression: 2 check(s) failed
+#### counter-proof: judge.sh with the line 'logins=$((CONNECTIONS + ${CORE_CONNECTIONS:-0}))' changed to 'logins=$CONNECTIONS'
+== case all-pass exit=1
+FAIL sessionserver join 5, expected 3
+FAIL sessionserver hasJoined 200 5 of 5, expected 3 of 3
+== case core-step-fails exit=1
+FAIL sessionserver join 5, expected 3
+FAIL sessionserver hasJoined 200 5 of 5, expected 3 of 3
+== case rts-step-skipped exit=1
+FAIL sessionserver join 5, expected 3
+FAIL sessionserver hasJoined 200 5 of 5, expected 3 of 3
+== case no-playable-report exit=1
+FAIL sessionserver join 5, expected 3
+FAIL sessionserver hasJoined 200 5 of 5, expected 3 of 3
+== case core-logins-missing exit=0
+ok   sessionserver join 3, expected 3
+ok   sessionserver hasJoined 200 3 of 3, expected 3 of 3
+#### restored (git diff --stat client-fabric/gametest-env/judge.sh against HEAD is empty: 0 lines)
+== case all-pass exit=0
+ok   sessionserver join 5, expected 5
+ok   sessionserver hasJoined 200 5 of 5, expected 5 of 5
+== case core-step-fails exit=1
+ok   sessionserver join 5, expected 5
+ok   sessionserver hasJoined 200 5 of 5, expected 5 of 5
+== case rts-step-skipped exit=1
+ok   sessionserver join 5, expected 5
+ok   sessionserver hasJoined 200 5 of 5, expected 5 of 5
+== case no-playable-report exit=1
+ok   sessionserver join 5, expected 5
+ok   sessionserver hasJoined 200 5 of 5, expected 5 of 5
+== case core-logins-missing exit=1
+FAIL sessionserver join 3, expected 5
+FAIL sessionserver hasJoined 200 3 of 3, expected 5 of 5

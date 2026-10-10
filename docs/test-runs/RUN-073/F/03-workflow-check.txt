@@ -1,0 +1,63 @@
+# check-workflow.py (TC-PROD-731): before = the three files of 15b5487edc, after = the working tree
+#### before
+MISSING gametest runs on ubuntu-24.04
+MISSING p10 runs on ubuntu-24.04
+MISSING a step prints nproc and free -m
+MISSING installDist is built before the game mode server starts
+MISSING the core mode server starts after the game mode server
+MISSING core server in its own working directory under RUNNER_TEMP
+MISSING core server from the installDist start script
+MISSING core server with stdin from /dev/null
+MISSING core server JAVA_OPTS 1G heap without pretouch
+MISSING core server core-mode=on
+MISSING core server on port 25566
+MISSING core server metrics on any free port
+MISSING core server online against the job's fake sessionserver
+MISSING core server waits for server-app listening
+MISSING core server keeps the default in-memory store
+MISSING both client launches start after the core mode server
+MISSING both client launches set SYNAXIS_PLAYABLE_SERVER=127.0.0.1:25566
+MISSING CONNECTIONS_PER_LAUNCH is 3, 4 with the spikes
+MISSING the judge step passes CORE_CONNECTIONS = 2 per launch
+MISSING the artifact takes playable.txt
+MISSING the artifact takes the core server's log
+MISSING the artifact takes the core server's ledger
+MISSING PlayableClientGameTest comes right after RegressionClientGameTest
+MISSING DisconnectReasonMixin is registered
+#### after
+ok gametest runs on ubuntu-24.04
+ok p10 runs on ubuntu-24.04
+ok a step prints nproc and free -m
+ok installDist is built before the game mode server starts
+ok the core mode server starts after the game mode server
+ok core server in its own working directory under RUNNER_TEMP
+ok core server from the installDist start script
+ok core server with stdin from /dev/null
+ok core server JAVA_OPTS 1G heap without pretouch
+ok core server core-mode=on
+ok core server on port 25566
+ok core server metrics on any free port
+ok core server online against the job's fake sessionserver
+ok core server waits for server-app listening
+ok core server keeps the default in-memory store
+ok both client launches start after the core mode server
+ok both client launches set SYNAXIS_PLAYABLE_SERVER=127.0.0.1:25566
+ok CONNECTIONS_PER_LAUNCH is 3, 4 with the spikes
+ok the judge step passes CORE_CONNECTIONS = 2 per launch
+ok the artifact takes playable.txt
+ok the artifact takes the core server's log
+ok the artifact takes the core server's ledger
+ok PlayableClientGameTest comes right after RegressionClientGameTest
+ok DisconnectReasonMixin is registered
+#### actionlint .github/workflows/client-gametest.yml (after)
+.github/workflows/client-gametest.yml:119:9: shellcheck reported issue in this script: SC2034:warning:5:1: i appears unused. Verify use (or export if used externally) [shellcheck]
+    |
+119 |         run: |
+    |         ^~~~
+.github/workflows/client-gametest.yml:119:9: shellcheck reported issue in this script: SC2086:info:3:58: Double quote to prevent globbing and word splitting [shellcheck]
+    |
+119 |         run: |
+    |         ^~~~
+exit=1
+#### actionlint, 15b5487edc: count of shellcheck hints
+2

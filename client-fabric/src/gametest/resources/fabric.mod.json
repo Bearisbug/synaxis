@@ -13,6 +13,7 @@
 			"io.github.bearisbug.synaxis.game.client.gametest.light.LightClientGameTest",
 			"io.github.bearisbug.synaxis.game.client.gametest.farview.FarViewClientGameTest",
 			"io.github.bearisbug.synaxis.game.client.gametest.RegressionClientGameTest",
+			"io.github.bearisbug.synaxis.game.client.gametest.PlayableClientGameTest",
 			"io.github.bearisbug.synaxis.game.client.gametest.SpikeClientGameTest",
 			"io.github.bearisbug.synaxis.game.client.gametest.TransferRoundTripClientGameTest"
 		]

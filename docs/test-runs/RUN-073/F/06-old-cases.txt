@@ -1,0 +1,547 @@
+RUN-073 group F, after the review: the older client gametest cases that judge.sh and client-gametest.yml touch
+(docs/TEST.md section 5: TC-PROD-041, TC-PROD-042, TC-PROD-130, TC-PROD-131), rerun on the branch prod/r073-F.
+
+This machine starts no Docker container and no real client, so TC-PROD-040 and TC-PROD-130's client runs are not run
+here (CI's job gametest runs the online tier on every pull request: R1 to R8 PASS on both launches of run 38090480829,
+05-ci-lanes.txt). old-cases.sh builds hand written stand-ins for their outputs (the report lines those cases record;
+ledgers, server logs and fake sessionserver logs in the formats the server-app and tools/fake-sessionserver write) and
+runs the judge half of each step on them, extracting the judge step from the workflow as it stands.
+
+Three forms of old-cases.sh:
+  A. base     15b5487edc's workflow and judge.sh, layout "none" (no playable.txt): how the two cases held before group F
+  B. red      the branch's workflow and judge.sh, layout "none": TC-PROD-042 and TC-PROD-131 as written before the review
+  C. green    the branch's workflow and judge.sh, layout "playable": the two cases as rewritten
+Then: the one-launch run of TC-PROD-042 step 4 as originally written (two-launch ledger) on 15b5487edc, which was already
+red; TC-PROD-042 steps 1 to 3 and TC-PROD-131 steps 1 to 3 on the branch.
+
+################ A. base: PY=.venv/bin/python bash old-cases.sh <15b5487edc>/client-gametest.yml <15b5487edc>/judge.sh none
+=== TC-PROD-041 step 2  client regression: 4 check(s) failed  exit=1
+=== TC-PROD-041 step 3  client regression: 3 check(s) failed  exit=1
+=== TC-PROD-041 step 4  client regression: 5 check(s) failed  exit=1
+=== TC-PROD-042 step 4 (two launches)  client regression: all checks passed  exit=0
+=== TC-PROD-042 step 4 (one launch: the dev report gone, the ledger and log of one launch)  client regression: all checks passed  exit=0
+=== TC-PROD-042 step 5 (one launch, the production report has R8 FAIL)  client regression: 1 check(s) failed  exit=1
+=== TC-PROD-042 step 5 (two launches, the dev launch left nothing)  client regression: 2 check(s) failed  exit=1
+=== TC-PROD-130 step 3  client regression: all checks passed  exit=0
+=== TC-PROD-130 step 4 (offline server: R3 FAIL encrypted=false, no join)  client regression: 3 check(s) failed  exit=1
+=== TC-PROD-130 step 5 (offline-encrypted server: 8 PASS, no join)  client regression: 2 check(s) failed  exit=1
+=== TC-PROD-130 step 6 (spikes: one launch, two connections)  client regression: all checks passed  exit=0
+=== TC-PROD-131 step 4  client regression: all checks passed  exit=0
+=== TC-PROD-131 step 5 (the sessionserver log of the offline-encrypted round)  client regression: 2 check(s) failed  exit=1
+=== TC-PROD-131 step 5 (no sessionserver log)  client regression: 1 check(s) failed  exit=1
+
+################ B. red: PY=.venv/bin/python bash old-cases.sh .github/workflows/client-gametest.yml client-fabric/gametest-env/judge.sh none
+=== TC-PROD-041 step 2
+$ bash client-fabric/gametest-env/judge.sh out4/report.txt
+FAIL out4/report.txt: 1 PASS, 7 FAIL
+     R2 FAIL state=IDLE
+     R3 FAIL not in world: Failed to connect to the server. finishConnect(..) failed with error(-111): Connection refused
+     R4 FAIL not reached: R3 failed
+     R5 FAIL not reached: R3 failed
+     R6 FAIL not reached: R3 failed
+     R7 FAIL not reached: R3 failed
+     R8 FAIL not reached: R3 failed
+ok   1 reports for 1 launches
+FAIL client_verified 0, expected 1
+ok   client_rejected 0, expected 0
+FAIL unit_order_issued 0, expected >= 1
+FAIL protocol-error kicks 0, expected 1
+client regression: 4 check(s) failed
+exit=1
+
+=== TC-PROD-041 step 3
+$ bash client-fabric/gametest-env/judge.sh out1/report.txt
+ok   out1/report.txt: 8 PASS
+ok   1 reports for 1 launches
+FAIL client_verified 0, expected 1
+ok   client_rejected 0, expected 0
+FAIL unit_order_issued 0, expected >= 1
+FAIL protocol-error kicks 0, expected 1
+client regression: 3 check(s) failed
+exit=1
+
+=== TC-PROD-041 step 4
+$ bash client-fabric/gametest-env/judge.sh out1/report.txt missing/report.txt
+ok   out1/report.txt: 8 PASS
+FAIL no report at missing/report.txt
+FAIL 1 reports for 2 launches
+FAIL client_verified 0, expected 2
+ok   client_rejected 0, expected 0
+FAIL unit_order_issued 0, expected >= 2
+FAIL protocol-error kicks 0, expected 2
+client regression: 5 check(s) failed
+exit=1
+
+=== TC-PROD-042 step 4 (two launches)
+$ bash step.sh
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+FAIL no playable report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+FAIL no playable report at client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt
+FAIL 0 playable reports for 2 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+client regression: 3 check(s) failed
+exit=1
+
+=== TC-PROD-042 step 4 (one launch: the dev report gone, the ledger and log of one launch)
+$ bash step.sh
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+FAIL no playable report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+FAIL 0 playable reports for 1 launches
+ok   client_verified 1, expected 1
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+client regression: 2 check(s) failed
+exit=1
+
+=== TC-PROD-042 step 5 (one launch, the production report has R8 FAIL)
+$ bash step.sh
+FAIL client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 7 PASS, 1 FAIL
+     R8 FAIL screen: Connection Lost. synaxis:protocol-error
+ok   1 reports for 1 launches
+FAIL no playable report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+FAIL 0 playable reports for 1 launches
+ok   client_verified 1, expected 1
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+client regression: 3 check(s) failed
+exit=1
+
+=== TC-PROD-042 step 5 (two launches, the dev launch left nothing)
+$ bash step.sh
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+FAIL no report at client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt
+FAIL 1 reports for 2 launches
+FAIL no playable report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+FAIL no playable report at client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt
+FAIL 0 playable reports for 2 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+client regression: 5 check(s) failed
+exit=1
+
+=== TC-PROD-130 step 3
+$ bash client-fabric/gametest-env/judge.sh out1/report.txt out2/report.txt
+ok   out1/report.txt: 8 PASS
+ok   out2/report.txt: 8 PASS
+ok   2 reports for 2 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+ok   sessionserver join 2, expected 2
+ok   sessionserver hasJoined 200 2 of 2, expected 2 of 2
+client regression: all checks passed
+exit=0
+
+=== TC-PROD-130 step 4 (offline server: R3 FAIL encrypted=false, no join)
+$ bash client-fabric/gametest-env/judge.sh out3/report.txt
+FAIL out3/report.txt: 7 PASS, 1 FAIL
+     R3 FAIL in world at BlockPos{x=256, y=40, z=256} encrypted=false session_host=http://host.docker.internal:41234
+ok   1 reports for 1 launches
+ok   client_verified 1, expected 1
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+FAIL sessionserver join 0, expected 1
+FAIL sessionserver hasJoined 200 0 of 0, expected 1 of 1
+client regression: 3 check(s) failed
+exit=1
+
+=== TC-PROD-130 step 5 (offline-encrypted server: 8 PASS, no join)
+$ bash client-fabric/gametest-env/judge.sh out4/report.txt
+ok   out4/report.txt: 8 PASS
+ok   1 reports for 1 launches
+ok   client_verified 1, expected 1
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+FAIL sessionserver join 0, expected 1
+FAIL sessionserver hasJoined 200 0 of 0, expected 1 of 1
+client regression: 2 check(s) failed
+exit=1
+
+=== TC-PROD-130 step 6 (spikes: one launch, two connections)
+$ bash client-fabric/gametest-env/judge.sh out5/report.txt
+ok   out5/report.txt: 8 PASS
+ok   1 reports for 1 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+ok   sessionserver join 2, expected 2
+ok   sessionserver hasJoined 200 2 of 2, expected 2 of 2
+client regression: all checks passed
+exit=0
+
+=== TC-PROD-131 step 4
+sessionserver.log: 2 joins, 2 hasJoined 200
+$ bash judge-step.sh
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+FAIL no playable report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+FAIL no playable report at client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt
+FAIL 0 playable reports for 2 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+FAIL sessionserver join 2, expected 6
+FAIL sessionserver hasJoined 200 2 of 2, expected 6 of 6
+client regression: 5 check(s) failed
+exit=1
+
+=== TC-PROD-131 step 5 (the sessionserver log of the offline-encrypted round)
+$ bash judge-step.sh
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+FAIL no playable report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+FAIL no playable report at client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt
+FAIL 0 playable reports for 2 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+FAIL sessionserver join 0, expected 6
+FAIL sessionserver hasJoined 200 0 of 0, expected 6 of 6
+client regression: 5 check(s) failed
+exit=1
+
+=== TC-PROD-131 step 5 (no sessionserver log)
+$ bash judge-step.sh
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+FAIL no playable report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+FAIL no playable report at client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt
+FAIL 0 playable reports for 2 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+FAIL no sessionserver log at sessionserver.log
+client regression: 4 check(s) failed
+exit=1
+
+
+################ C. green: PY=.venv/bin/python bash old-cases.sh .github/workflows/client-gametest.yml client-fabric/gametest-env/judge.sh playable
+=== TC-PROD-041 step 2
+$ bash client-fabric/gametest-env/judge.sh out4/report.txt
+FAIL out4/report.txt: 1 PASS, 7 FAIL
+     R2 FAIL state=IDLE
+     R3 FAIL not in world: Failed to connect to the server. finishConnect(..) failed with error(-111): Connection refused
+     R4 FAIL not reached: R3 failed
+     R5 FAIL not reached: R3 failed
+     R6 FAIL not reached: R3 failed
+     R7 FAIL not reached: R3 failed
+     R8 FAIL not reached: R3 failed
+ok   1 reports for 1 launches
+FAIL client_verified 0, expected 1
+ok   client_rejected 0, expected 0
+FAIL unit_order_issued 0, expected >= 1
+FAIL protocol-error kicks 0, expected 1
+client regression: 4 check(s) failed
+exit=1
+
+=== TC-PROD-041 step 3
+$ bash client-fabric/gametest-env/judge.sh out1/report.txt
+ok   out1/report.txt: 8 PASS
+ok   1 reports for 1 launches
+FAIL client_verified 0, expected 1
+ok   client_rejected 0, expected 0
+FAIL unit_order_issued 0, expected >= 1
+FAIL protocol-error kicks 0, expected 1
+client regression: 3 check(s) failed
+exit=1
+
+=== TC-PROD-041 step 4
+$ bash client-fabric/gametest-env/judge.sh out1/report.txt missing/report.txt
+ok   out1/report.txt: 8 PASS
+FAIL no report at missing/report.txt
+FAIL 1 reports for 2 launches
+FAIL client_verified 0, expected 2
+ok   client_rejected 0, expected 0
+FAIL unit_order_issued 0, expected >= 2
+FAIL protocol-error kicks 0, expected 2
+client regression: 5 check(s) failed
+exit=1
+
+=== TC-PROD-042 step 4 (two launches)
+$ bash step.sh
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   2 playable reports for 2 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+client regression: all checks passed
+exit=0
+
+=== TC-PROD-042 step 4 (one launch: the dev report gone, the ledger and log of one launch)
+$ bash step.sh
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   1 playable reports for 1 launches
+ok   client_verified 1, expected 1
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+client regression: all checks passed
+exit=0
+
+=== TC-PROD-042 step 5 (one launch, the production report has R8 FAIL)
+$ bash step.sh
+FAIL client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 7 PASS, 1 FAIL
+     R8 FAIL screen: Connection Lost. synaxis:protocol-error
+ok   1 reports for 1 launches
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   1 playable reports for 1 launches
+ok   client_verified 1, expected 1
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+client regression: 1 check(s) failed
+exit=1
+
+=== TC-PROD-042 step 5 (two launches, the dev launch left nothing)
+$ bash step.sh
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+FAIL no report at client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt
+FAIL 1 reports for 2 launches
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+FAIL no playable report at client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt
+FAIL 1 playable reports for 2 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+client regression: 4 check(s) failed
+exit=1
+
+=== TC-PROD-130 step 3
+$ bash client-fabric/gametest-env/judge.sh out1/report.txt out2/report.txt
+ok   out1/report.txt: 8 PASS
+ok   out2/report.txt: 8 PASS
+ok   2 reports for 2 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+ok   sessionserver join 2, expected 2
+ok   sessionserver hasJoined 200 2 of 2, expected 2 of 2
+client regression: all checks passed
+exit=0
+
+=== TC-PROD-130 step 4 (offline server: R3 FAIL encrypted=false, no join)
+$ bash client-fabric/gametest-env/judge.sh out3/report.txt
+FAIL out3/report.txt: 7 PASS, 1 FAIL
+     R3 FAIL in world at BlockPos{x=256, y=40, z=256} encrypted=false session_host=http://host.docker.internal:41234
+ok   1 reports for 1 launches
+ok   client_verified 1, expected 1
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+FAIL sessionserver join 0, expected 1
+FAIL sessionserver hasJoined 200 0 of 0, expected 1 of 1
+client regression: 3 check(s) failed
+exit=1
+
+=== TC-PROD-130 step 5 (offline-encrypted server: 8 PASS, no join)
+$ bash client-fabric/gametest-env/judge.sh out4/report.txt
+ok   out4/report.txt: 8 PASS
+ok   1 reports for 1 launches
+ok   client_verified 1, expected 1
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+FAIL sessionserver join 0, expected 1
+FAIL sessionserver hasJoined 200 0 of 0, expected 1 of 1
+client regression: 2 check(s) failed
+exit=1
+
+=== TC-PROD-130 step 6 (spikes: one launch, two connections)
+$ bash client-fabric/gametest-env/judge.sh out5/report.txt
+ok   out5/report.txt: 8 PASS
+ok   1 reports for 1 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+ok   sessionserver join 2, expected 2
+ok   sessionserver hasJoined 200 2 of 2, expected 2 of 2
+client regression: all checks passed
+exit=0
+
+=== TC-PROD-131 step 4
+sessionserver.log: 6 joins, 6 hasJoined 200
+$ bash judge-step.sh
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   2 playable reports for 2 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+ok   sessionserver join 6, expected 6
+ok   sessionserver hasJoined 200 6 of 6, expected 6 of 6
+client regression: all checks passed
+exit=0
+
+=== TC-PROD-131 step 5 (the sessionserver log of the offline-encrypted round)
+$ bash judge-step.sh
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   2 playable reports for 2 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+FAIL sessionserver join 0, expected 6
+FAIL sessionserver hasJoined 200 0 of 0, expected 6 of 6
+client regression: 2 check(s) failed
+exit=1
+
+=== TC-PROD-131 step 5 (no sessionserver log)
+$ bash judge-step.sh
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   2 playable reports for 2 launches
+ok   client_verified 2, expected 2
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+FAIL no sessionserver log at sessionserver.log
+client regression: 1 check(s) failed
+exit=1
+
+
+################ TC-PROD-042 step 4, the one-launch run as originally written (two-launch ledger and server.log)
+$ # 15b5487edc judge step, LAUNCHES=1, dev report gone, the ledger and server.log of TC-PROD-042 step 4 (two launches) as the case wrote it
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+FAIL client_verified 2, expected 1
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 1
+FAIL protocol-error kicks 2, expected 1
+client regression: 2 check(s) failed
+exit=1
+
+################ TC-PROD-042 steps 1 to 3, TC-PROD-131 steps 1 and 2 (the branch)
+=== TC-PROD-042 step 1 / TC-PROD-131 step 1
+$ actionlint .github/workflows/client-gametest.yml
+.github/workflows/client-gametest.yml:119:9: shellcheck reported issue in this script: SC2034:warning:5:1: i appears unused. Verify use (or export if used externally) [shellcheck]
+    |
+119 |         run: |
+    |         ^~~~
+.github/workflows/client-gametest.yml:119:9: shellcheck reported issue in this script: SC2086:info:3:58: Double quote to prevent globbing and word splitting [shellcheck]
+    |
+119 |         run: |
+    |         ^~~~
+exit=1
+
+=== TC-PROD-042 step 2
+$ sed -n '/^on:/,/^permissions:/p' .github/workflows/client-gametest.yml
+on:
+  pull_request:
+    paths:
+      - client-fabric/**
+      - protocol/**
+      - server-app/**
+      - game-rts/**
+      - plugin-api/**
+      - src/main/java/**/network/**
+      - src/main/java/**/listener/**
+      - .github/workflows/client-gametest.yml
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 18 * * *'
+    # P10 only, weekly (Sunday): each run holds a runner about 45 to 60 minutes
+    - cron: '0 19 * * 0'
+  workflow_dispatch:
+    inputs:
+      p10:
+        description: Run only the P10 job (two shards, 100 round trips) instead of the regression
+        type: boolean
+        default: false
+      handshake_phase:
+        description: synaxis.app.handshake-phase of the server-app the client joins
+        type: choice
+        options: [ configuration, login ]
+        default: configuration
+
+permissions:
+
+=== TC-PROD-042 step 3
+$ grep -n 'LAUNCHES:\|SYNAXIS_SPIKES:\|CONNECTIONS_PER_LAUNCH:\|continue-on-error\|judge.sh' .github/workflows/client-gametest.yml
+57:      LAUNCHES: ${{ github.event_name == 'pull_request' && '1' || '2' }}
+59:      SYNAXIS_SPIKES: ${{ github.event_name == 'schedule' && 'all' || '' }}
+63:      CONNECTIONS_PER_LAUNCH: ${{ github.event_name == 'schedule' && '4' || '3' }}
+156:        continue-on-error: true
+169:        continue-on-error: true
+196:            client-fabric/gametest-env/judge.sh "${reports[@]}"
+$ sed -n 195p .github/workflows/client-gametest.yml   # the line before judge.sh, outside the grep's patterns
+          CONNECTIONS=$((LAUNCHES * CONNECTIONS_PER_LAUNCH)) CORE_CONNECTIONS=$((LAUNCHES * 2)) \
+
+=== TC-PROD-131 step 2
+$ grep -n 'fake-sessionserver\|auth=\|session-server\|SESSION_HOST\|SESSION_LOG\|sessionserver.log' .github/workflows/client-gametest.yml
+45:  # tools/fake-sessionserver in record mode, the server in online mode asks the same one hasJoined,
+99:          : > sessionserver.log
+100:          (java tools/fake-sessionserver/FakeSessionServer.java --mode record --port 0 > sessionserver.log 2>&1 &)
+102:            port=$(sed -n 's|.*listening on http://127.0.0.1:\([0-9]*\),.*|\1|p' sessionserver.log)
+104:              echo "SESSION_HOST=http://127.0.0.1:$port" >> "$GITHUB_ENV"
+109:          cat sessionserver.log
+120:          (tail -f /dev/null | ./gradlew :server-app:run --console=plain -Dsynaxis.app.auth=online \
+121:            -Dsynaxis.app.auth.session-server="$SESSION_HOST/session/minecraft/hasJoined" \
+140:            -Dsynaxis.app.metrics.bind=127.0.0.1:0 -Dsynaxis.app.auth=online \
+141:            -Dsynaxis.app.auth.session-server=$SESSION_HOST/session/minecraft/hasJoined" \
+161:          SYNAXIS_GAMETEST_SESSION_HOST: ${{ env.SESSION_HOST }}
+174:          SYNAXIS_GAMETEST_SESSION_HOST: ${{ env.SESSION_HOST }}
+184:          cat sessionserver.log || true
+191:          SESSION_LOG: sessionserver.log
+218:            sessionserver.log
+325:          : > sessionserver.log
+326:          (java -Xmx256m tools/fake-sessionserver/FakeSessionServer.java --mode record --port 0 > sessionserver.log 2>&1 &)
+328:            port=$(sed -n 's|.*listening on http://127.0.0.1:\([0-9]*\),.*|\1|p' sessionserver.log)
+330:              echo "SESSION_HOST=http://127.0.0.1:$port" >> "$GITHUB_ENV"
+335:          cat sessionserver.log
+354:            SERVER_APP_OPTS="-Dsynaxis.app.port=$2 -Dsynaxis.app.auth=online \
+355:              -Dsynaxis.app.auth.session-server=$SESSION_HOST/session/minecraft/hasJoined \
+382:          SYNAXIS_GAMETEST_SESSION_HOST: ${{ env.SESSION_HOST }}
+446:            sessionserver.log
+auth=offline lines: 0
+
+################ TC-PROD-131 step 3 (JDK 25; the fake sessionserver is stopped by its pid right after)
+$ GITHUB_ENV=<ci>/ghenv bash -e step.sh   # the run block of "Start the fake sessionserver in record mode", job gametest
+exit=0
+$ cat ghenv
+SESSION_HOST=http://127.0.0.1:55046
+$ head -1 sessionserver.log
+fake sessionserver mode=record listening on http://127.0.0.1:55046, hasJoined at /session/minecraft/hasJoined
+$ lsof -nP -tiTCP:55046 -sTCP:LISTEN -> pid found: yes
+after kill, listening: 0

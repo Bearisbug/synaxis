@@ -1,0 +1,66 @@
+How long the tick of the core world waits while chunks generated after the start are lit (TC-PROD-720 step 5). server-app
+test source set, CoreLightStallProbe (source next to this file), copied in for the run and deleted after; the probe the only
+class of the run. The stdout lines are read from server-app/build/test-results/test/
+TEST-io.github.bearisbug.synaxis.app.CoreLightStallProbe.xml. Code under test: 969cf2ce3b's CoreMode (HEAD 9dda638b08,
+unchanged by this probe).
+
+Why the tick waits (code, not measured): LightingChunk lights a chunk generated out of the lit ring when its first packet is
+built (DynamicChunk#createChunkPacket -> LightingChunk#createLightData, LightingChunk.java:273 and :280 -> relightSection,
+which runs inside synchronized (instance), :635). InstanceContainer#tick enters the same monitor every tick to clear
+currentlyChangingBlocks (InstanceContainer.java:783-785), and the server tick ticks the instances before the dispatcher
+ticks the chunks and entities (ServerProcessImpl.java:681-683). One relightSection covers more than one chunk:
+collectRequiredNearby (:603-622) walks the 3 x 3 x 3 neighbourhood breadth first and takes in every loaded section still
+waiting for its light; block light is not filtered by height (only sky light is, :587).
+
+What the probe does: CoreMode.start on the Env's process (view distance 8, ring 361 chunks), then, out of the ring, one batch
+after another: a 5 x 5 warm-up at chunk (0, 100); a 23 x 23 square (529 chunks, the ring of view distance 10) at (100, 0);
+four columns of 23 chunks at x 112 to 115 (z -11 to 11), next to that square, one after another; then (run 2 only) squares at
+(-100, 0), (0, -100), (0, 60) and four columns at x -112 to -115. Each batch is loaded first (loadChunk(...).join() on the
+test thread), then a virtual thread builds the packets of the batch nearest first, as a player's chunk queue sends them and
+off the tick thread like a connection's write thread, while the test thread calls InstanceContainer#tick once a millisecond
+and times each call. first_packet_ms is the first packet's build, all_packets_ms the whole batch, longest_tick_ms the longest
+tick call, ticks_over_50ms the tick calls over 50 ms, ticked_ms the tick calls summed.
+
+Run 1  06:48:26-06:48:37  free 56% load 2  (the probe without the last three squares and the west columns)
+$ zsh ~/.claude/r073/gradle.zsh <worktree> rework-C :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CoreLightStallProbe'
+    PROBE processors=12 ring_chunks=361
+    PROBE warm-up-5x5 chunks=25 first_packet_ms=52.9 all_packets_ms=127.1 ticks=44 longest_tick_ms=34.8 ticks_over_50ms=0 ticked_ms=57.5 instance_chunks=386
+    PROBE square-23x23-east chunks=529 first_packet_ms=287.9 all_packets_ms=553.4 ticks=171 longest_tick_ms=285.9 ticks_over_50ms=1 ticked_ms=313.0 instance_chunks=915
+    PROBE column-x112 chunks=23 first_packet_ms=5.4 all_packets_ms=12.5 ticks=6 longest_tick_ms=4.3 ticks_over_50ms=0 ticked_ms=4.6 instance_chunks=938
+    PROBE column-x113 chunks=23 first_packet_ms=2.8 all_packets_ms=10.6 ticks=6 longest_tick_ms=1.5 ticks_over_50ms=0 ticked_ms=1.8 instance_chunks=961
+    PROBE column-x114 chunks=23 first_packet_ms=3.0 all_packets_ms=11.4 ticks=7 longest_tick_ms=1.4 ticks_over_50ms=0 ticked_ms=2.2 instance_chunks=984
+    PROBE column-x115 chunks=23 first_packet_ms=3.4 all_packets_ms=10.8 ticks=6 longest_tick_ms=2.1 ticks_over_50ms=0 ticked_ms=2.6 instance_chunks=1007
+    PROBE square-23x23-west chunks=529 first_packet_ms=35.7 all_packets_ms=269.2 ticks=148 longest_tick_ms=34.1 ticks_over_50ms=0 ticked_ms=62.6 instance_chunks=1536
+BUILD SUCCESSFUL in 10s
+
+Run 2  06:49:43-06:49:50  free 55% load 3  (the probe as in CoreLightStallProbe.java.txt)
+$ zsh ~/.claude/r073/gradle.zsh <worktree> rework-C :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CoreLightStallProbe'
+    PROBE processors=12 ring_chunks=361
+    PROBE warm-up-5x5 chunks=25 first_packet_ms=64.5 all_packets_ms=126.3 ticks=46 longest_tick_ms=42.4 ticks_over_50ms=0 ticked_ms=58.4 instance_chunks=386
+    PROBE square-23x23-east chunks=529 first_packet_ms=237.5 all_packets_ms=512.9 ticks=176 longest_tick_ms=235.8 ticks_over_50ms=1 ticked_ms=264.8 instance_chunks=915
+    PROBE column-x112 chunks=23 first_packet_ms=5.2 all_packets_ms=12.3 ticks=6 longest_tick_ms=3.6 ticks_over_50ms=0 ticked_ms=3.7 instance_chunks=938
+    PROBE column-x113 chunks=23 first_packet_ms=3.0 all_packets_ms=10.8 ticks=7 longest_tick_ms=1.2 ticks_over_50ms=0 ticked_ms=1.6 instance_chunks=961
+    PROBE column-x114 chunks=23 first_packet_ms=3.0 all_packets_ms=9.9 ticks=6 longest_tick_ms=1.3 ticks_over_50ms=0 ticked_ms=1.9 instance_chunks=984
+    PROBE column-x115 chunks=23 first_packet_ms=3.1 all_packets_ms=11.3 ticks=7 longest_tick_ms=1.4 ticks_over_50ms=0 ticked_ms=1.8 instance_chunks=1007
+    PROBE square-23x23-west chunks=529 first_packet_ms=39.8 all_packets_ms=280.5 ticks=152 longest_tick_ms=38.5 ticks_over_50ms=0 ticked_ms=69.4 instance_chunks=1536
+    PROBE square-23x23-north chunks=529 first_packet_ms=36.4 all_packets_ms=271.9 ticks=151 longest_tick_ms=35.2 ticks_over_50ms=0 ticked_ms=66.4 instance_chunks=2065
+    PROBE square-23x23-south chunks=529 first_packet_ms=37.8 all_packets_ms=273.9 ticks=147 longest_tick_ms=36.4 ticks_over_50ms=0 ticked_ms=65.3 instance_chunks=2594
+    PROBE column-x-112 chunks=23 first_packet_ms=3.9 all_packets_ms=10.5 ticks=7 longest_tick_ms=0.5 ticks_over_50ms=0 ticked_ms=0.8 instance_chunks=2617
+    PROBE column-x-113 chunks=23 first_packet_ms=3.5 all_packets_ms=10.3 ticks=6 longest_tick_ms=1.7 ticks_over_50ms=0 ticked_ms=2.1 instance_chunks=2640
+    PROBE column-x-114 chunks=23 first_packet_ms=2.8 all_packets_ms=9.1 ticks=5 longest_tick_ms=1.5 ticks_over_50ms=0 ticked_ms=1.8 instance_chunks=2663
+    PROBE column-x-115 chunks=23 first_packet_ms=2.7 all_packets_ms=8.7 ticks=5 longest_tick_ms=1.5 ticks_over_50ms=0 ticked_ms=1.9 instance_chunks=2686
+BUILD SUCCESSFUL in 7s
+
+Reading (12 cores, test JVM):
+  one column of 23 new chunks         longest tick 0.5-4.3 ms, first packet 2.7-5.4 ms
+  529 chunks, the JVM's first time    longest tick 285.9 / 235.8 ms, one tick over 50 ms each run
+  529 chunks afterwards               longest tick 34.1-38.5 ms, the 529 packets 269-281 ms
+  25 chunks warm-up (the first lazy light of the JVM)  longest tick 34.8 / 42.4 ms
+For the 529-chunk batches the longest tick is 1.2-2.0 ms below the first packet's build: the first packet's relightSection
+lights the whole batch while it holds the monitor. The later packets of a batch hold it only for the sky light of their two
+sections above the floor (the sections the sky light filter at :587 leaves out of the walk), which the code shows and the
+probe does not separate.
+
+What it does not cover: a real connection's write thread (the probe's builder is a virtual thread of its own), chunk loading
+and packet building interleaved as they are around a moving player (each batch here is loaded completely first, the worst
+case for one hold), more than one builder at a time, and the strict and grid modes.

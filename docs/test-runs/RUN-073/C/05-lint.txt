@@ -1,4 +1,5 @@
-Lint of the two documents as committed by this group (design-doc and test-doc skills' check.sh).
+Lint of the documents as committed by this group (design-doc and test-doc skills' check.sh), run on the final commit's
+documents.
 
 $ bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md
 lint: docs/DESIGN-PROD.md
@@ -6,6 +7,14 @@ lint: docs/DESIGN-PROD.md
 ℹ️ 请核对以下 API-* 是否都在 §10 权限矩阵出现或有显式免列说明(读/列表/回调端点最易漏标):API-PROD-001 API-PROD-002 API-PROD-003 API-PROD-004 API-PROD-005 API-PROD-006 API-PROD-007 API-PROD-008 API-PROD-009 API-PROD-010 API-PROD-011 API-PROD-012 API-PROD-013 API-PROD-014 API-PROD-015 API-PROD-016 API-PROD-017 API-PROD-018 API-PROD-019 API-PROD-020 API-PROD-021 API-PROD-022 API-PROD-023 API-PROD-024 API-PROD-025 API-PROD-026 API-PROD-027 API-PROD-028 API-PROD-029 API-PROD-030 API-PROD-031 API-PROD-032 
 ✓ 状态图带事件转移 ↔ 迁移表行数一致(按机分段: 4 10 11 12 21 25)
 ℹ️ 已画 6 台状态机;请核对:数据字典每个 ≥2 态 status/生命周期枚举实体,已建机或按三类出口(纯派生/投影态、状态由他机翻转、极简运营态)显式免建——见 CHECKLIST C1
+✅ lint 无警告
+
+$ bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-M2.md
+lint: docs/DESIGN-M2.md
+ℹ️ 以下 ID 只被引用、未在本文档定义,§1 关联已声明兄弟分册(docs/DESIGN.md ),按跨分册引用处理,人工核一次: REQ-005 REQ-M3-003 REQ-M3-005 REQ-M3-007 REQ-M3-027 REQ-M3-034 REQ-PROD-009 REQ-PROD-013 REQ-PROD-022 REQ-PROD-036 REQ-PROD-046 REQ-PROD-047 API-002 API-M3-001 API-M3-002 API-M3-005 API-M3-006 API-M3-015 API-PROD-012 API-PROD-018 API-PROD-023 API-PROD-029 API-PROD-030 RB-M3-004
+ℹ️ 请核对以下 API-* 是否都在 §10 权限矩阵出现或有显式免列说明(读/列表/回调端点最易漏标):API-M2-001 API-M2-002 API-M2-003 API-M2-004 API-M2-005 API-M2-006 API-M2-007 API-M2-008 API-M2-009 API-M2-010 API-M2-011 
+✓ 状态图带事件转移 ↔ 迁移表行数一致(按机分段: 4 6 7 8)
+ℹ️ 已画 4 台状态机;请核对:数据字典每个 ≥2 态 status/生命周期枚举实体,已建机或按三类出口(纯派生/投影态、状态由他机翻转、极简运营态)显式免建——见 CHECKLIST C1
 ✅ lint 无警告
 
 $ bash ~/.claude/skills/test-doc/check.sh docs/TEST.md
@@ -26,5 +35,5 @@ lint: docs/TEST.md
 (以上为机械提示;REQ/Gherkin 覆盖、冷启动实测等语义项按 references/CHECKLIST.md 逐条过)
 
 Known warnings only: RUN-031's two rows without evidence, §3 without the environment table, §6 without the environment
-column, and REQ-PROD-047 (a design-phase REQ of RUN-073 that another group covers) without a TC. REQ-PROD-046 is now
+column, and REQ-PROD-047 (a design-phase REQ of RUN-073 that another group covers) without a TC. REQ-PROD-046 is
 referenced by TC-PROD-718 to TC-PROD-720.

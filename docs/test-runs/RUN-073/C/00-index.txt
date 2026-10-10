@@ -23,6 +23,8 @@ are the integration round's on GitHub Actions. memory_pressure free and load ave
   run 4  05:43:46-05:44:05  free 46% load 6  chunk bytes and start time probe on the changed CoreMode         (04)
   run 5  05:45:19-05:45:30  free 45% load 4  the same probe on the CoreMode before the change                 (04)
   run 6  05:49:16-05:49:24  free 58% load 4  green on 969cf2ce3b, every proof reverted                       (02)
+  run 7  06:48:26-06:48:37  free 56% load 2  tick stall probe on 969cf2ce3b's CoreMode                       (06)
+  run 8  06:49:43-06:49:50  free 55% load 3  the same probe with three more squares and four more columns    (06)
 
 No database, no Redis, no Docker container, no server process and no real client: the class runs on the testing Env.
 
@@ -37,3 +39,6 @@ No database, no Redis, no Docker container, no server process and no real client
                                   distance 10, 27 ms before; the border worked out again (TC-PROD-666's way)
 05-lint.txt                       design-doc and test-doc lint of the two documents
 CoreChunkBytesProbe.java.txt      the probe of 04 (RUN-071's probe plus the start time, the ring and the framed size)
+06-tick-stall-probe.txt           how long InstanceContainer#tick waits while relightSection lights chunks generated out of the
+                                  ring: 0.5-4.3 ms a column of 23, 34-39 ms a square of 529, 236-286 ms the JVM's first square
+CoreLightStallProbe.java.txt      the probe of 06

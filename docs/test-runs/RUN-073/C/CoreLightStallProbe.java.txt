@@ -1,0 +1,115 @@
+package io.github.bearisbug.synaxis.app;
+
+import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.instance.Chunk;
+import io.github.bearisbug.synaxis.instance.InstanceContainer;
+import io.github.bearisbug.synaxis.network.ConnectionState;
+import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
+import io.github.bearisbug.synaxis.testing.Env;
+import io.github.bearisbug.synaxis.testing.EnvTest;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
+
+/**
+ * Probe, not a test: how long the tick of the core world waits while the packets of chunks generated
+ * after the start are built. LightingChunk lights such a chunk when its first packet is built
+ * (createLightData, relightSection), inside synchronized (instance); InstanceContainer#tick enters the
+ * same monitor every tick, and the server tick ticks the instances before the dispatcher ticks the
+ * chunks and entities. A virtual thread builds the packets nearest first, as a player's chunk queue
+ * sends them and as a connection's write thread builds them; meanwhile the test thread ticks the
+ * instance once a millisecond. Run with --tests, read the PROBE lines.
+ * <p>
+ * Cases: a warm-up square; a 23 x 23 square (the chunk ring of view distance 10) loaded at once far
+ * from the spawn, as around a player back at a saved position out of the lit ring after a restart;
+ * then four columns of 23 chunks next to it, one after another, as a player walking east along an
+ * axis generates them; then three more 23 x 23 squares, and four columns west of the second one.
+ */
+@EnvTest
+class CoreLightStallProbe {
+
+    @TempDir
+    Path workingDirectory;
+
+    @Test
+    void measure(Env env) throws Exception {
+        final ServerProcess process = env.process();
+        final PluginHost host = new PluginHost(process, workingDirectory.resolve("plugins"),
+                new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY));
+        final InstanceContainer world = CoreMode.start(process, host, Main.registerMatchDimensionType(process),
+                CoreMode.Setting.AUTO);
+        System.out.printf("PROBE processors=%d ring_chunks=%d%n", Runtime.getRuntime().availableProcessors(),
+                world.getChunks().size());
+
+        stall(process, world, "warm-up-5x5", square(world, 0, 100, 2));
+        stall(process, world, "square-23x23-east", square(world, 100, 0, 11));
+        for (int x = 112; x <= 115; x++) stall(process, world, "column-x" + x, column(world, x, 0, 11));
+        stall(process, world, "square-23x23-west", square(world, -100, 0, 11));
+        stall(process, world, "square-23x23-north", square(world, 0, -100, 11));
+        stall(process, world, "square-23x23-south", square(world, 0, 60, 11));
+        for (int x = -112; x >= -115; x--) stall(process, world, "column-x" + x, column(world, x, 0, 11));
+    }
+
+    /** Loads the (2r + 1)^2 chunks around (cx, cz), returned nearest first. */
+    private static List<Chunk> square(InstanceContainer world, int cx, int cz, int r) {
+        final List<Chunk> chunks = new ArrayList<>();
+        for (int x = cx - r; x <= cx + r; x++)
+            for (int z = cz - r; z <= cz + r; z++)
+                chunks.add(world.loadChunk(x, z).join());
+        chunks.sort(Comparator.comparingInt(c -> Math.max(Math.abs(c.getChunkX() - cx), Math.abs(c.getChunkZ() - cz))));
+        return chunks;
+    }
+
+    /** Loads the column of 2r + 1 chunks at x around z = cz, returned nearest first. */
+    private static List<Chunk> column(InstanceContainer world, int x, int cz, int r) {
+        final List<Chunk> chunks = new ArrayList<>();
+        for (int z = cz - r; z <= cz + r; z++) chunks.add(world.loadChunk(x, z).join());
+        chunks.sort(Comparator.comparingInt(c -> Math.abs(c.getChunkZ() - cz)));
+        return chunks;
+    }
+
+    private static void stall(ServerProcess process, InstanceContainer world, String label, List<Chunk> chunks)
+            throws Exception {
+        final long[] firstNanos = new long[1];
+        final AtomicReference<Throwable> failure = new AtomicReference<>();
+        final Thread builder = Thread.ofVirtual().unstarted(() -> {
+            try {
+                final long started = System.nanoTime();
+                for (int i = 0; i < chunks.size(); i++) {
+                    Objects.requireNonNull(((CachedPacket) chunks.get(i).getFullDataPacket())
+                            .body(ConnectionState.PLAY, process.registries(), process.compressionThreshold()));
+                    if (i == 0) firstNanos[0] = System.nanoTime() - started;
+                }
+            } catch (Throwable e) {
+                failure.set(e);
+            }
+        });
+        long longest = 0, ticked = 0;
+        int ticks = 0, over50 = 0;
+        final long started = System.nanoTime();
+        builder.start();
+        while (builder.isAlive()) {
+            final long tickStarted = System.nanoTime();
+            world.tick(System.currentTimeMillis());
+            final long took = System.nanoTime() - tickStarted;
+            longest = Math.max(longest, took);
+            ticked += took;
+            ticks++;
+            if (took > 50_000_000L) over50++;
+            LockSupport.parkNanos(1_000_000L);
+        }
+        builder.join();
+        final long all = System.nanoTime() - started;
+        if (failure.get() != null) throw new AssertionError(label, failure.get());
+        System.out.printf("PROBE %s chunks=%d first_packet_ms=%.1f all_packets_ms=%.1f ticks=%d longest_tick_ms=%.1f "
+                        + "ticks_over_50ms=%d ticked_ms=%.1f instance_chunks=%d%n", label, chunks.size(),
+                firstNanos[0] / 1e6, all / 1e6, ticks, longest / 1e6, over50, ticked / 1e6, world.getChunks().size());
+    }
+}

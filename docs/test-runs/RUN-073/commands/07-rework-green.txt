@@ -1,0 +1,27 @@
+# Rework round, green, default mode, one Gradle run. The code is the committed fix plus two comment-only edits:
+# HostCommands.java:156 (the ledger comment of list, same line count) and the class Javadoc of LogCapture (test helper).
+# zsh ~/.claude/r073/gradle.zsh <worktree> rework-B :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CommandsIntegrationTest' :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --continue
+
+> Task :server-app:compileJava
+> Task :server-app:compileTestJava
+> Task :architecture-tests:test
+> Task :server-app:test
+BUILD SUCCESSFUL in 12s
+
+<testsuite name="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" tests="12" skipped="0" failures="0" errors="0"  time="4.989">
+<testcase name="aPluginCommandLivesUnderItsNamespaceAndABareNameGoesToTheFirst(Env)" time="0.877"
+<testcase name="aThrowingPluginCommandIsOneLinePerTenSecondsAndGoneOnceDisabled(Env)" time="0.274"
+<testcase name="aCommandRegisteredAfterThePluginIsTakenBackIsDropped(Env)" time="0.071"
+<testcase name="aPlayersUnknownCommandIsAnsweredWithItsFirstWordAndTheConsoleOnlyLogsIt(Env)" time="0.12"
+<testcase name="aPlayerWithoutNodesSeesAndRunsListAndOnlyTheConsoleWritesAGmCommand(Env)" time="0.073"
+<testcase name="theNodeDecidesWhetherAPlayerRunsAndSeesACommandOfTheHost(Env)" time="0.112"
+<testcase name="theConsoleRunsListTpsAndSaveAndAnUnknownLineIsOneLine(Env)" time="0.119"
+<testcase name="broadcastReachesEveryPlayerAndKickWithoutAReasonIsTheVanillaOne(Env)" time="0.109"
+<testcase name="aCommandRegisteredOrTakenBackWhilePlayersAreOnlineReachesTheirCompletions(Env)" time="0.073"
+<testcase name="stopWhileTheEngineIsAlreadyStoppingAnswersSoAndChangesNothing(Env)" time="2.062"
+<testcase name="stopWithSecondsClosesTheGateAndStopsAfterTheCountdown(Env)" time="1.017"
+<testcase name="aConsoleLineThatThrowsIsOneLogLineAndTheNextLineRuns(Env)" time="0.072"
+<testsuite name="io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest" tests="2" skipped="0" failures="0" errors="0"  time="1.944">
+
+translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+# This is also TC-PROD-240 step 1 with the new count: 12 tests, 0 failures.

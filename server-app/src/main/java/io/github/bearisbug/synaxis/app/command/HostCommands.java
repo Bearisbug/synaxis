@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.app.command;
 
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
+import io.github.bearisbug.synaxis.command.CommandManager;
 import io.github.bearisbug.synaxis.command.CommandSender;
 import io.github.bearisbug.synaxis.command.builder.Command;
 import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentStringArray;
@@ -32,10 +33,12 @@ import java.util.function.BiConsumer;
  * {@code broadcast <text>}, {@code save}, {@code stop [seconds]}, {@code tps} and
  * {@code profile [seconds]}.
  * <p>
- * The console may run all of them. A player runs one only while holding
+ * The console may run all of them. A player runs one other than {@code list} only while holding
  * {@code synaxis.command.<name>}; without it the engine refuses the command as a failed
- * precondition and leaves it out of the player's completions. Every run writes one
- * {@code gm_command} event.
+ * precondition and leaves it out of the player's completions. {@code list} asks for no node, as the
+ * vanilla {@code /list} asks for permission level 0. Every run writes one {@code gm_command} event
+ * except a player's {@code list}, which is no GM command. A player's command the engine does not
+ * know is answered with one line.
  */
 public final class HostCommands {
 
@@ -73,12 +76,14 @@ public final class HostCommands {
     }
 
     /**
-     * Registers the seven commands and starts counting the ticks {@code tps} reports on. Called
-     * before the plugins are enabled, so that the bare names are the host's.
+     * Registers the seven commands and the answer to an unknown command, and starts counting the
+     * ticks {@code tps} reports on. Called before the plugins are enabled, so that the bare names are
+     * the host's.
      */
     public void register() {
         process.eventHandler().addListener(ServerTickMonitorEvent.class, ticks::record);
         process.command().register(list(), kick(), broadcast(), save(), stop(), tps(), profile());
+        process.command().setUnknownCommandCallback(HostCommands::unknown);
     }
 
     /**
@@ -142,15 +147,31 @@ public final class HostCommands {
     }
 
     private Command list() {
-        final Command list = command("list");
+        // No condition: every player runs it and sees it among the completions
+        final Command list = new Command("list");
         list.setDefaultExecutor((sender, context) -> {
             final List<String> names = process.connection().getOnlinePlayers().stream()
                     .map(Player::getUsername).sorted().toList();
             reply(sender, "synaxis:command-list", "%s players online: %s", String.valueOf(names.size()),
                     String.join(", ", names));
-            record(sender, context.getInput(), null, "ok");
+            // A player's list is no GM command; recording it would let the client fill the ledger
+            if (!(sender instanceof Player)) record(sender, context.getInput(), null, "ok");
         });
         return list;
+    }
+
+    /**
+     * Answers a player whose command has a root the engine does not know, naming its first word
+     * without a leading slash. The console gets nothing: {@code Main#runConsoleCommand} already logs
+     * the line. Neither logs nor writes to the ledger, as the client decides how often it comes.
+     */
+    private static void unknown(CommandSender sender, String input) {
+        if (!(sender instanceof Player)) return;
+        final String command = input.startsWith(CommandManager.COMMAND_PREFIX)
+                ? input.substring(CommandManager.COMMAND_PREFIX.length()) : input;
+        final int space = command.indexOf(' ');
+        reply(sender, "synaxis:command-unknown", "Unknown command: %s",
+                space < 0 ? command : command.substring(0, space));
     }
 
     private Command kick() {

@@ -1,0 +1,16 @@
+# Counterproof e (default mode): the callback logs a line. HostCommands.java:169 'if (!(sender instanceof Player)) return;' becomes
+#   'if (!(sender instanceof Player player)) return;' followed by
+#   'LoggerFactory.getLogger(HostCommands.class).info("Unknown command from {}: {}", player.getUsername(), input);' (import org.slf4j.LoggerFactory added).
+# Error Prone treats UnnecessarilyFullyQualified and PatternMatchingInstanceof as errors in this build: a mutation that
+#   writes org.slf4j.LoggerFactory in full, or casts (Player) sender after the instanceof, does not compile.
+# zsh ~/.claude/r073/gradle.zsh <worktree> fix-B :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CommandsIntegrationTest'
+
+CommandsIntegrationTest > aPlayersUnknownCommandIsAnsweredWithItsFirstWordAndTheConsoleOnlyLogsIt(Env) FAILED
+    org.opentest4j.AssertionFailedError at CommandsIntegrationTest.java:509
+12 tests completed, 1 failed
+> Task :server-app:test FAILED
+BUILD FAILED in 9s
+
+<testsuite name="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" tests="12" skipped="0" failures="1" errors="0"  time="4.967">
+<failure message="org.opentest4j.AssertionFailedError: no log line at INFO ==> expected: <[]> but was: <[Unknown command from Newcomer: synaxisnosuchcommand, Unknown command from Newcomer: /frobnicate now]>"
+# Restored with git checkout HEAD -- HostCommands.java.

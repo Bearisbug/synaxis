@@ -61,10 +61,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The console, the seven commands of the host and the commands of plugins
- * ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-012}, {@code API-PROD-011}, §19 the two command
- * scenarios): a console line is a command, a player runs a command of the host only with its node
- * and only sees it among the completions with it, a plugin command lives under the plugin's
- * namespace and leaves with the plugin, and what it throws is logged at most once every 10 s.
+ * ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-012}, {@code API-PROD-011}, §19 the three command
+ * scenarios): a console line is a command, a player runs and sees a command of the host other than
+ * list only with its node, a player's unknown command is answered, a plugin command lives under the
+ * plugin's namespace and leaves with the plugin, and what it throws is logged at most once every 10 s.
  */
 @EnvTest
 class CommandsIntegrationTest {
@@ -234,7 +234,7 @@ class CommandsIntegrationTest {
         assertTrue(keeperSees.containsAll(Set.of("kick", "list")), "the completions follow the nodes: " + keeperSees);
         assertFalse(keeperSees.contains("stop"), keeperSees.toString());
         final Set<String> ruffianSees = lastTree(ruffianCommands);
-        for (String name : List.of("list", "kick", "broadcast", "save", "stop", "tps", "profile"))
+        for (String name : List.of("kick", "broadcast", "save", "stop", "tps", "profile"))
             assertFalse(ruffianSees.contains(name), name + " is not among the completions of a player without its node");
 
         assertEquals(CommandResult.Type.CANCELLED, env.process().command().execute(ruffian, "kick Keeper").getType(),
@@ -459,6 +459,64 @@ class CommandsIntegrationTest {
         final RecordingConsole console = new RecordingConsole(env.process());
         assertEquals(CommandResult.Type.UNKNOWN, env.process().command().execute(console, "mmo:party").getType());
         assertFalse(env.process().command().commandExists("party"), "the bare name stays free for the next plugin");
+        host.disableAll();
+    }
+
+    @Test
+    void aPlayerWithoutNodesSeesAndRunsListAndOnlyTheConsoleWritesAGmCommand(Env env) {
+        final Instance match = env.createFlatInstance();
+        final PluginHost host = host(env);
+        host.enable(List.of(new Probe("mmo", match, _ -> { })), Set.of());
+        final TestConnection connection = env.createConnection(new GameProfile(UUID.randomUUID(), "Newcomer"));
+        final Collector<DeclareCommandsPacket> declared = connection.trackIncoming(DeclareCommandsPacket.class);
+        final Collector<SystemChatPacket> chat = connection.trackIncoming(SystemChatPacket.class);
+        final Player newcomer = connection.connect(match, new Pos(0, 41, 0));
+
+        assertEquals(CommandResult.Type.SUCCESS, env.process().command().execute(newcomer, "list").getType(),
+                "list asks for no node, as the vanilla /list asks for permission level 0");
+        assertEquals(List.of("synaxis:command-list 1|Newcomer"),
+                chat.collect().stream().map(packet -> text(packet.message())).toList());
+        assertTrue(lastTree(declared).contains("list"), "list is among the completions of a player without nodes");
+        assertEquals(List.of(), events, "a player's list is no GM command");
+
+        final RecordingConsole console = new RecordingConsole(env.process());
+        assertEquals(CommandResult.Type.SUCCESS, env.process().command().execute(console, "list").getType());
+        assertEquals(List.of("console list"), events.stream().map(e -> e.get("actor") + " " + e.get("command")).toList(),
+                "the console's list still writes one");
+        host.disableAll();
+    }
+
+    @Test
+    void aPlayersUnknownCommandIsAnsweredWithItsFirstWordAndTheConsoleOnlyLogsIt(Env env) {
+        final Instance match = env.createFlatInstance();
+        final PluginHost host = host(env);
+        host.enable(List.of(new Probe("mmo", match, _ -> { })), Set.of());
+        final TestConnection connection = env.createConnection(new GameProfile(UUID.randomUUID(), "Newcomer"));
+        final Collector<SystemChatPacket> chat = connection.trackIncoming(SystemChatPacket.class);
+        final Player newcomer = connection.connect(match, new Pos(0, 41, 0));
+
+        // The commands run on this thread, so its lines are all the lines they log
+        try (LogCapture all = LogCapture.rootOfThisThread()) {
+            assertEquals(CommandResult.Type.CANCELLED, env.process().command().execute(newcomer, "stop").getType(),
+                    "a command there but refused to the player");
+            assertEquals(CommandResult.Type.UNKNOWN,
+                    env.process().command().execute(newcomer, "synaxisnosuchcommand").getType());
+            assertEquals(CommandResult.Type.UNKNOWN, env.process().command().execute(newcomer, "/frobnicate now").getType());
+            assertEquals(List.of("synaxis:command-unknown synaxisnosuchcommand", "synaxis:command-unknown frobnicate"),
+                    chat.collect().stream().map(packet -> text(packet.message())).toList(),
+                    "one answer per unknown command naming its first word without the slash, none for stop");
+            for (Level level : List.of(Level.INFO, Level.WARN, Level.ERROR))
+                assertEquals(List.of(), all.messagesAt(level), "no log line at " + level);
+        }
+        assertEquals(List.of(), events, "no ledger line");
+        assertEquals(ShutdownPhase.RUNNING, env.process().shutdownPhase());
+
+        try (LogCapture main = LogCapture.of(Main.class); LogCapture console = LogCapture.of(ConsoleSender.class)) {
+            assertEquals(CommandResult.Type.UNKNOWN,
+                    Main.runConsoleCommand(env.process(), "synaxisnosuchcommand").getType());
+            assertEquals(List.of("Unknown command: synaxisnosuchcommand"), main.messagesAt(Level.INFO));
+            assertEquals(List.of(), console.messagesAt(Level.INFO), "the console gets no answer on top of that line");
+        }
         host.disableAll();
     }
 }

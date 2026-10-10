@@ -55,6 +55,7 @@
 	"synaxis:command-profile-busy": "A recording to %s is still running.",
 	"synaxis:command-profile-usage": "Usage: profile [seconds], a whole number from %s to %s.",
 	"synaxis:command-profile-failed": "The recording failed: %s",
+	"synaxis:command-unknown": "Unknown command: %s",
 	"synaxis:command-transfer-unavailable": "This shard cannot send players to other shards: it is not in the directory mode.",
 	"synaxis:command-transfer-no-target": "%s is not a player online on this shard.",
 	"synaxis:command-transfer-result": "Transfer of %s to %s: %s",

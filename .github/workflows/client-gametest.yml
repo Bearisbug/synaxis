@@ -445,3 +445,225 @@ jobs:
             client-fabric/build/run/productionClientGameTest/logs/
             sessionserver.log
           retention-days: 14
+
+  # Playable item P11 of docs/DESIGN-PROD.md §19 (REQ-PROD-031, REQ-PROD-047): the p10 job's fixture,
+  # steps and judge with 2 round trips instead of 100, so that every change the workflow runs on
+  # crosses the shards: four transfers, each arrival with the inventory the client left with.
+  p11-smoke:
+    name: Two shards, 2 round trips (P11 smoke)
+    # Every pull request the workflow runs on and every push to main, beside the regression job
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    # The builds, the client's start and the judge as in p10, the four transfers well under a minute
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: synaxis
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      P10: ${{ github.workspace }}/p10
+      SYNAXIS_STATE_DB_URL: jdbc:postgresql://127.0.0.1:5432/postgres
+      SYNAXIS_STATE_DB_USER: postgres
+      SYNAXIS_STATE_DB_PASSWORD: synaxis
+      SYNAXIS_REDIS_URL: redis://127.0.0.1:6379
+      PGPASSWORD: synaxis
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
+
+      - name: Install Xvfb, Mesa and psql
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            xvfb xauth libgl1 libgl1-mesa-dri libegl1 libglx-mesa0 mesa-utils postgresql-client
+
+      - name: Publish :protocol to the local repository
+        run: env -u CI ./gradlew :protocol:publishToMavenLocal
+
+      # The daemon goes afterwards: the two shards and the client need its memory on this 2 core, 7 GB runner
+      - name: Build the server and the baker
+        run: |
+          ./gradlew :server-app:installDist :baker:installDist
+          ./gradlew --stop
+
+      # Standard library only, so nothing to install (docs/TEST.md TC-PROD-660)
+      - name: Unit tests of p10.py
+        run: python3 -m unittest discover -s client-fabric/gametest-env -p 'test_*.py'
+
+      - name: Bake the map and write the shard directory
+        run: |
+          mkdir -p "$P10" && cd "$P10"
+          "$GITHUB_WORKSPACE/baker/build/install/baker/bin/baker" bake --map-id p10 \
+            --source generator:synthetic:1 --out maps --bounds 0,0,15,15 --threads 1
+          echo "P10_BUILD=$(ls maps/p10)" >> "$GITHUB_ENV"
+          python3 "$GITHUB_WORKSPACE/client-fabric/gametest-env/p10.py" shards --host 127.0.0.1 \
+            --ports 25611,25612 --out maps/p10/shards.json
+
+      # Made for this job and never printed: masked, and handed to the steps that need them in files
+      # only the runner's user reads, not through GITHUB_ENV
+      - name: Generate the ticket key and the management token
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/p10-secrets"
+          key=$(openssl rand -base64 32)
+          token=$(openssl rand -hex 32)
+          echo "::add-mask::$key"
+          echo "::add-mask::$token"
+          printf '1:%s' "$key" > "$RUNNER_TEMP/p10-secrets/hmac-keys"
+          printf '%s' "$token" > "$RUNNER_TEMP/p10-secrets/management-token"
+
+      - name: Start the fake sessionserver in record mode
+        run: |
+          # The background fork opens the log on its own schedule; without the file the sed below exits 2 under bash -e
+          : > sessionserver.log
+          (java -Xmx256m tools/fake-sessionserver/FakeSessionServer.java --mode record --port 0 > sessionserver.log 2>&1 &)
+          for _ in $(seq 1 60); do
+            port=$(sed -n 's|.*listening on http://127.0.0.1:\([0-9]*\),.*|\1|p' sessionserver.log)
+            if [ -n "$port" ]; then
+              echo "SESSION_HOST=http://127.0.0.1:$port" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat sessionserver.log
+          exit 1
+
+      # Online mode against the fake sessionserver is offline in effect (REQ-PROD-036), and a shard
+      # refuses a database recorded for another mode
+      - name: Migrate the shared database
+        env:
+          JAVA_OPTS: -Xms256m -Xmx256m -XX:-AlwaysPreTouch
+        run: server-app/build/install/server-app/bin/server-app --migrate-only --auth-mode=offline
+
+      # Each in a working directory of its own (logs/ and overlay/ are relative to it, docs/DESIGN-M3.md
+      # API-M3-007), on the port the directory gives its channel; JAVA_OPTS comes after the 4G default
+      - name: Start the two shards
+        run: |
+          start() { # <shard_id> <game port> <management port>
+            mkdir -p "$P10/work-$1" && cd "$P10/work-$1"
+            SYNAXIS_TRANSFER_HMAC_KEYS=$(cat "$RUNNER_TEMP/p10-secrets/hmac-keys") \
+            SYNAXIS_MANAGEMENT_TOKEN=$(cat "$RUNNER_TEMP/p10-secrets/management-token") \
+            JAVA_OPTS="-Xms1G -Xmx1G -XX:-AlwaysPreTouch" \
+            SERVER_APP_OPTS="-Dsynaxis.app.port=$2 -Dsynaxis.app.auth=online \
+              -Dsynaxis.app.auth.session-server=$SESSION_HOST/session/minecraft/hasJoined \
+              -Dsynaxis.app.metrics.bind=127.0.0.1:0 -Dsynaxis.app.log=stdout \
+              -Dsynaxis.map.root=$P10/maps/p10 -Dsynaxis.map.build=$P10_BUILD \
+              -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=$1 \
+              -Dsynaxis.app.management.enabled=true -Dsynaxis.app.management.bind=127.0.0.1:$3" \
+              nohup "$GITHUB_WORKSPACE/server-app/build/install/server-app/bin/server-shard" < /dev/null > shard.log 2>&1 &
+            echo $! > shard.pid
+          }
+          start r0-c1 25611 25585
+          start r0-c2 25612 25586
+          for shard in r0-c1 r0-c2; do
+            for _ in $(seq 1 180); do
+              grep -q 'server-app listening on' "$P10/work-$shard/shard.log" && continue 2
+              kill -0 "$(cat "$P10/work-$shard/shard.pid")" 2>/dev/null || break
+              sleep 1
+            done
+            cat "$P10/work-$shard/shard.log"
+            exit 1
+          done
+
+      # The production mod jar, in the background: the driver below decides when the run is over and
+      # says so by creating $P10/done
+      - name: Start the client
+        working-directory: client-fabric
+        env:
+          SYNAXIS_P10_SERVER: 127.0.0.1:25611
+          SYNAXIS_P10_DONE: ${{ github.workspace }}/p10/done
+          SYNAXIS_GAMETEST_SESSION_HOST: ${{ env.SESSION_HOST }}
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          GALLIUM_DRIVER: llvmpipe
+        run: |
+          nohup xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runProductionClientGameTest --console=plain \
+            --stacktrace < /dev/null > "$P10/client.log" 2>&1 &
+          echo $! > "$P10/client.pid"
+
+      # Up to 900 s of it is the wait for the client's first join
+      - name: Send the client back and forth twice
+        timeout-minutes: 20
+        run: |
+          SYNAXIS_MANAGEMENT_TOKEN=$(cat "$RUNNER_TEMP/p10-secrets/management-token") \
+            python3 client-fabric/gametest-env/p10.py drive --round-trips 2 \
+            --management r0-c1=127.0.0.1:25585 --management r0-c2=127.0.0.1:25586 \
+            --psql "psql -h 127.0.0.1 -U postgres -d postgres" --done-file "$P10/done" --out "$P10/drive.json"
+
+      # The client's exit code is only recorded, like the regression's
+      - name: Wait for the client to leave
+        if: always()
+        run: |
+          touch "$P10/done"
+          pid=$(cat "$P10/client.pid" 2>/dev/null) || exit 0
+          for _ in $(seq 1 300); do
+            kill -0 "$pid" 2>/dev/null || exit 0
+            sleep 1
+          done
+          echo "the client is still running 300 s after $P10/done appeared"
+          pkill -TERM -P "$pid" || true
+
+      - name: Stop the shards
+        if: always()
+        run: |
+          for shard in r0-c1 r0-c2; do
+            pid=$(cat "$P10/work-$shard/shard.pid" 2>/dev/null) && kill -TERM "$pid" 2>/dev/null || true
+          done
+          for shard in r0-c1 r0-c2; do
+            pid=$(cat "$P10/work-$shard/shard.pid" 2>/dev/null) || continue
+            for _ in $(seq 1 60); do
+              kill -0 "$pid" 2>/dev/null || break
+              sleep 1
+            done
+            tail -n 3 "$P10/work-$shard/shard.log"
+          done
+
+      - name: Judge P11 by the driver's record, the ledgers and the client's report
+        if: success() || failure()
+        run: |
+          python3 client-fabric/gametest-env/p10.py judge --round-trips 2 --drive "$P10/drive.json" \
+            --ledger r0-c1="$P10/work-r0-c1/logs" --ledger r0-c2="$P10/work-r0-c2/logs" \
+            --client-report client-fabric/build/run/productionClientGameTest/synaxis-gametest/p10.txt
+
+      - name: Upload the record, the logs and the ledgers
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-gametest-p11-smoke
+          path: |
+            p10/drive.json
+            p10/client.log
+            p10/maps/p10/shards.json
+            p10/work-*/shard.log
+            p10/work-*/logs/events-*
+            client-fabric/build/run/productionClientGameTest/synaxis-gametest/
+            client-fabric/build/run/productionClientGameTest/logs/
+            sessionserver.log
+          retention-days: 14

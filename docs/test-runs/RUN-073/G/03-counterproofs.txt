@@ -1,0 +1,36 @@
+# TC-PROD-740 steps 3-5: counter-proofs on p10.py (HEAD 4e58e2c2af), each restored with git checkout HEAD -- p10.py
+
+## counter-proof (a): p10.py:323 'and states[m] != states[n]]' replaced by 'and False]' (neighbouring worlds never compared)
+                   and False]
+FAIL: test_an_inventory_a_transfer_changed_fails (test_p10.JudgeTest) (changed='items')
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-G/client-fabric/gametest-env/test_p10.py", line 93, in test_an_inventory_a_transfer_changed_fails
+AssertionError: 0 != 1 : ok   the driver ran to the end
+FAIL: test_an_inventory_a_transfer_changed_fails (test_p10.JudgeTest) (changed='held slot')
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-G/client-fabric/gametest-env/test_p10.py", line 93, in test_an_inventory_a_transfer_changed_fails
+AssertionError: 0 != 1 : ok   the driver ran to the end
+Ran 4 tests in 0.233s
+FAILED (failures=2)
+
+## counter-proof (b): p10.py:318 summary without the selected slot (held=0 always)
+                    states[line.split(" ")[1]] = f"held=0 inventory={fields['inventory']}"
+FAIL: test_an_inventory_a_transfer_changed_fails (test_p10.JudgeTest) (changed='held slot')
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-G/client-fabric/gametest-env/test_p10.py", line 93, in test_an_inventory_a_transfer_changed_fails
+AssertionError: 0 != 1 : ok   the driver ran to the end
+Ran 4 tests in 0.231s
+FAILED (failures=1)
+
+## counter-proof (c): p10.py:321 the per-world state count not judged (expect(True, ...))
+        expect(True, f"the client recorded its state in {len(recorded)} of {len(worlds)} worlds")
+FAIL: test_a_world_without_a_state_fails (test_p10.JudgeTest) (states=['pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty', 'pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty', None])
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-G/client-fabric/gametest-env/test_p10.py", line 103, in test_a_world_without_a_state_fails
+AssertionError: 0 != 1 : ok   the driver ran to the end
+FAIL: test_a_world_without_a_state_fails (test_p10.JudgeTest) (states=['pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty', 'none', 'pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty'])
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-G/client-fabric/gametest-env/test_p10.py", line 103, in test_a_world_without_a_state_fails
+AssertionError: 0 != 1 : ok   the driver ran to the end
+Ran 4 tests in 0.236s
+FAILED (failures=2)
+
+## restored, rerun
+Ran 4 tests in 0.235s
+
+OK

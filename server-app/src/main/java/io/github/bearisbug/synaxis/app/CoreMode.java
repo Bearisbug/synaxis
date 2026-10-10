@@ -63,9 +63,9 @@ final class CoreMode {
      * The width of the core world in blocks, its world border centred on the origin. The world never
      * unloads a chunk, so the border is what bounds the chunks a client walking away makes it hold
      * ({@code docs/DESIGN-PROD.md} {@code API-PROD-030}): 256 chunks across, and 278 with the chunk
-     * rings of view distance 10 reaching 11 chunks past it, at 9,013 B a chunk with its cached packet
-     * is 16% of the 4 GiB default heap. The circles of the load test bots stay within 1,536 blocks of
-     * the spawn.
+     * rings of view distance 10 reaching 11 chunks past it, at 14,629 B a lit chunk with its cached
+     * packet is 26% of the 4 GiB default heap. The circles of the load test bots stay within 1,536
+     * blocks of the spawn.
      */
     private static final int BORDER_DIAMETER = 4096;
 

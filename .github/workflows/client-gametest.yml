@@ -195,6 +195,15 @@ jobs:
           CONNECTIONS=$((LAUNCHES * CONNECTIONS_PER_LAUNCH)) CORE_CONNECTIONS=$((LAUNCHES * 2)) \
             client-fabric/gametest-env/judge.sh "${reports[@]}"
 
+      # A path outside the workspace in the upload list would move the artifact's root up to the
+      # common ancestor, and every entry under it
+      - name: Copy the core server's log and ledger into the workspace
+        if: always()
+        run: |
+          mkdir -p playable
+          cp "$RUNNER_TEMP/playable/server.log" playable/ || true
+          cp -R "$RUNNER_TEMP/playable/logs" playable/ || true
+
       - name: Upload screenshots, report and logs
         if: always()
         uses: actions/upload-artifact@v7
@@ -208,8 +217,8 @@ jobs:
             server.log
             sessionserver.log
             logs/events-*.jsonl
-            ${{ runner.temp }}/playable/server.log
-            ${{ runner.temp }}/playable/logs/
+            playable/server.log
+            playable/logs/
           retention-days: 14
 
   # P10 of docs/DESIGN-PROD.md §19 (REQ-PROD-031, API-PROD-026): the real client sent from one map
@@ -221,7 +230,6 @@ jobs:
     name: Two shards, 100 round trips (P10)
     # Weekly on Sunday and by hand (workflow_dispatch with p10: true): not on pull requests or pushes
     if: github.event.schedule == '0 19 * * 0' || (github.event_name == 'workflow_dispatch' && inputs.p10)
-    # Pinned for the same reason as the regression's
     runs-on: ubuntu-24.04
     # The transfers take about 1,100 s (199 gaps of 5.5 s, more where an arrival is slower), the builds,
     # the client's start and the judge about 15 minutes more: 40 like the regression's would cut a

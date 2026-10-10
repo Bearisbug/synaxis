@@ -91,7 +91,7 @@ public final class RegressionClientGameTest implements FabricClientGameTest {
      * Set, with its two siblings, by build.gradle.kts from SYNAXIS_GAMETEST_SESSION_HOST: the full
      * online tier, where the server is in online mode and the connection has to be encrypted.
      */
-    private static final String SESSION_HOST_PROPERTY = "minecraft.api.session.host";
+    static final String SESSION_HOST_PROPERTY = "minecraft.api.session.host";
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -318,7 +318,7 @@ public final class RegressionClientGameTest implements FabricClientGameTest {
     }
 
     /** {@link ClientGameTestContext#waitFor} that answers false on a timeout instead of throwing. */
-    static boolean waitUntil(ClientGameTestContext context, Predicate<Minecraft> condition, int ticks) {
+    private static boolean waitUntil(ClientGameTestContext context, Predicate<Minecraft> condition, int ticks) {
         try {
             context.waitFor(condition, ticks);
             return true;

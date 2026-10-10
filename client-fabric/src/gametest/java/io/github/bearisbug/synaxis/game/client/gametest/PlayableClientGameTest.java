@@ -142,6 +142,8 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
     private static final double MELEE_REACH = 2.5;
     private static final int HURT_TIMEOUT_TICKS = 20;
     private static final int REHIT_TICKS = 12;
+    /** G8: the opening's drop is one hit when it stays under this many drops of one hit on its own. */
+    private static final float SINGLE_HIT_BOUND = 1.5f;
     private static final int MAX_HITS = 15;
     private static final int DEATH_REMOVAL_TICKS = 40;
     private static final int DUMMY_RESPAWN_TICKS = 140;
@@ -191,6 +193,8 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
     private @Nullable ClientGameTestContext context;
     private @Nullable TestInput input;
     private @Nullable Vec3 rtsSpawn;
+    /** {@link #DISCONNECTS} when the current connection began: the evidence names only its own disconnects. */
+    private int connectionMark;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -249,7 +253,7 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
         try {
             inWorld = join(mode, server);
         } catch (RuntimeException | AssertionError e) {
-            report.failIfAbsent(mode + " G1", "threw " + e + disconnectsSince(0));
+            report.failIfAbsent(mode + " G1", "threw " + e + disconnectsSince(connectionMark));
         }
         if (!inWorld) report.skipRest(mode, mode + " G1 did not reach the world");
         return inWorld;
@@ -264,28 +268,32 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
         try {
             body.run();
         } catch (RuntimeException | AssertionError e) {
-            report.failIfAbsent(step, "threw " + e + disconnectsSince(0));
+            report.failIfAbsent(step, "threw " + e + disconnectsSince(connectionMark));
         }
     }
 
     // ---- G1, G2 ------------------------------------------------------------------------------
 
-    /** G1: in the world within 60 s; on the core world also in survival and alive. */
+    /**
+     * G1: in the world within 60 s, in the full online tier over an encrypted connection (R3's
+     * criterion); on the core world also in survival and alive.
+     */
     private boolean join(String mode, String server) {
         final String step = mode + " G1";
-        final int mark = DISCONNECTS.size();
         connect(server, "synaxis-" + mode);
         final boolean inWorld = ctx().computeOnClient(RegressionClientGameTest::inWorld);
         final boolean settled = inWorld && settle();
         final ClientHandshake handshake = RegressionClientGameTest.staticField(ClientHandshake.class, "HANDSHAKE");
+        final boolean online = System.getProperty(RegressionClientGameTest.SESSION_HOST_PROPERTY) != null;
+        final boolean encrypted = inWorld && ctx().computeOnClient(RegressionClientGameTest::encrypted);
         final boolean core = mode.equals("core");
-        final boolean pass = inWorld && (!core || ctx().computeOnClient(client ->
+        final boolean pass = inWorld && (encrypted || !online) && (!core || ctx().computeOnClient(client ->
                 client.gameMode.getPlayerMode() == GameType.SURVIVAL && client.player.getHealth() > 0));
         report.put(step, pass, ctx().computeOnClient(client -> RegressionClientGameTest.inWorld(client)
-                ? String.format(Locale.ROOT, "in world at %s mode=%s health=%.1f handshake=%s encrypted=%s settled=%s",
+                ? String.format(Locale.ROOT, "in world at %s mode=%s health=%.1f handshake=%s encrypted=%s online=%s settled=%s",
                         xyz(client.player.position()), client.gameMode.getPlayerMode(), client.player.getHealth(),
-                        handshake.state(), RegressionClientGameTest.encrypted(client), settled)
-                : "not in world: " + RegressionClientGameTest.screenText(client) + disconnectsSince(mark)));
+                        handshake.state(), encrypted, online, settled)
+                : "not in world: " + RegressionClientGameTest.screenText(client) + disconnectsSince(connectionMark)));
         return inWorld;
     }
 
@@ -640,8 +648,13 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
         return false;
     }
 
+    /**
+     * The lines from the mark on, out of a snapshot: a sub list view of {@link #MESSAGES} throws
+     * ConcurrentModificationException when the client thread adds a line before it is read.
+     */
     private static List<Component> since(int mark) {
-        return MESSAGES.subList(Math.min(mark, MESSAGES.size()), MESSAGES.size());
+        final List<Component> messages = List.copyOf(MESSAGES);
+        return messages.subList(Math.min(mark, messages.size()), messages.size());
     }
 
     private static String linesText(int mark) {
@@ -660,8 +673,9 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
 
     /**
      * G8: the training dummy east of the spawn, hit from its west side so that the knockback pushes
-     * it away from the spawn and the shaft; a second hit inside the cooldown does nothing, then one
-     * hit every 12 ticks until it dies, and a fresh one comes back where it stood.
+     * it away from the spawn and the shaft; a second hit inside the cooldown does nothing (no second
+     * drop, and the opening's drop under 1.5 times that of a later hit on its own), then one hit
+     * every 12 ticks until it dies, and a fresh one comes back where it stood.
      */
     private void melee() {
         final String step = "core G8";
@@ -698,18 +712,29 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
             report.put(step, false, opening);
             return;
         }
+        // Two opening hits the server lands in one tick reach the client as one drop of twice the
+        // damage, which the wait above takes for one: the opening's drop is held against the drop of
+        // the first hit below that leaves the dummy alive
+        float single = Float.NaN;
         int hits = 2;
         while (alive(dummy) && hits < MAX_HITS) {
             ctx().waitTicks(REHIT_TICKS);
             if (!alive(dummy)) break;
             approach(dummy);
+            final float before = health(dummy);
             hit(dummy);
             hits++;
+            if (Float.isNaN(single) && ticksUntil(client -> health(client, dummy) < before, HURT_TIMEOUT_TICKS) >= 0 && alive(dummy))
+                single = before - health(dummy);
         }
+        final boolean alone = !Float.isNaN(single) && full - after < SINGLE_HIT_BOUND * single;
         final boolean died = ticksUntil(_ -> !alive(dummy), DEATH_REMOVAL_TICKS) >= 0;
         final Integer[] fresh = new Integer[1];
         final int respawned = died ? ticksUntil(client -> (fresh[0] = freshDummy(client, dummy)) != null, DUMMY_RESPAWN_TICKS) : -1;
-        report.put(step, died && respawned >= 0, opening + String.format(Locale.ROOT, "; %d hits, %s, %s",
+        report.put(step, alone && died && respawned >= 0, opening + String.format(Locale.ROOT, "; %s, %d hits, %s, %s",
+                Float.isNaN(single) ? "no drop of one hit on its own to hold the opening against"
+                        : String.format(Locale.ROOT, "one hit on its own %.1f, the opening %.1f (%s)", single, full - after,
+                                alone ? "one hit" : "more than one hit"),
                 hits, died ? "died" : "still alive at " + health(dummy),
                 respawned >= 0 ? "a fresh zombie at " + entityAt(fresh[0]) + " after " + respawned + " ticks"
                         : "no fresh zombie within " + DUMMY_RESPAWN_TICKS + " ticks"));
@@ -933,6 +958,7 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
     // ---- connection ----------------------------------------------------------------------------
 
     private void connect(String server, String name) {
+        connectionMark = DISCONNECTS.size();
         ctx().runOnClient(client -> ConnectScreen.startConnecting(new TitleScreen(), client, ServerAddress.parseString(server),
                 new ServerData(name, server, ServerData.Type.OTHER), false, null));
         ticksUntil(client -> RegressionClientGameTest.inWorld(client) && client.gui.screen() == null
@@ -942,10 +968,9 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
     /** Leaves to the title screen and joins the same server again; null once back in the world. */
     private @Nullable String reconnect(String server, String name) {
         leave();
-        final int mark = DISCONNECTS.size();
         connect(server, name);
         if (!ctx().computeOnClient(RegressionClientGameTest::inWorld))
-            return "the reconnect did not reach the world: " + screenText() + disconnectsSince(mark);
+            return "the reconnect did not reach the world: " + screenText() + disconnectsSince(connectionMark);
         settle();
         return null;
     }
@@ -977,14 +1002,15 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
 
     /**
      * Whether the step can run: the client is in the world. A screen an earlier step left open is
-     * closed first. A step that cannot run is SKIP, with the last disconnect reason if there is one.
+     * closed first. A step that cannot run is SKIP, with the last disconnect reason of the current
+     * connection if there is one.
      */
     private boolean ready(String step) {
         if (ctx().computeOnClient(client -> client.gui.screen() instanceof InventoryScreen || client.gui.screen() instanceof ChatScreen))
             closeScreen();
         final boolean inWorld = ctx().computeOnClient(client -> RegressionClientGameTest.inWorld(client)
                 && !(client.gui.screen() instanceof DisconnectedScreen));
-        if (!inWorld) report.skip(step, "not in the world: " + screenText() + disconnectsSince(0));
+        if (!inWorld) report.skip(step, "not in the world: " + screenText() + disconnectsSince(connectionMark));
         return inWorld;
     }
 

@@ -76,10 +76,13 @@ import org.lwjgl.glfw.GLFW;
  * Fabric's runner stops at the first test that throws, and the file is what CI judges.
  * <p>
  * Both client launches of a CI run play on the same core server, world and in-memory store kept, so
- * every step has to hold for an account that played there before: the steps that change the world
- * do it at fixed places off each other's paths (G3 and G4 beside the end of G2, the G9 shaft
- * north-west of the spawn), and G10 leaves the player where the next launch's G2 starts. G9 needs
- * the core world and the RTS map to have no bedrock: the shaft goes through y = 0 into the void.
+ * every step has to hold on a world an earlier launch changed. The two launches are two accounts
+ * (with no {@code --username} the vanilla client names itself {@code Player} and the current
+ * milliseconds modulo 1000), so the second starts as a new character at the spawn: G2 walks south
+ * in the launch with the dev mod and north in the one with the production mod jar, and G3 and G4
+ * change the blocks beside the end of their own launch's walk. The G9 shaft north-west of the spawn
+ * is shared: a second launch finds it dug and drops in. G9 needs the core world and the RTS map to
+ * have no bedrock: the shaft goes through y = 0 into the void.
  * <p>
  * The client is driven the way a player drives it: {@link TestInput} keys for walking, digging,
  * using, dropping, the hotbar, the inventory and chat; the clicks inside the inventory screen go
@@ -286,13 +289,14 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
     }
 
     /**
-     * G2: the forward key held for 3 s; on the core world facing south, on the RTS map the first of
-     * south, east, north and west that is free of pillars for {@link #CLEAR_RUN} blocks.
+     * G2: the forward key held for 3 s; on the core world south in the dev mod launch and north in
+     * the production mod jar one (see the class comment), on the RTS map the first of south, east,
+     * north and west that is free of pillars for {@link #CLEAR_RUN} blocks.
      */
     private void move(String mode) {
         final String step = mode + " G2";
         if (!ready(step)) return;
-        final float yaw = mode.equals("core") ? 0f : clearYaw();
+        final float yaw = !mode.equals("core") ? clearYaw() : FabricLoader.getInstance().isDevelopmentEnvironment() ? 0f : 180f;
         input().lookAt(yaw, 0f);
         final Vec3 start = position();
         input().holdKeyFor(options -> options.keyUp, WALK_TICKS);

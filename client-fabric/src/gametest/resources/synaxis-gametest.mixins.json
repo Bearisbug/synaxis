@@ -5,6 +5,7 @@
 	"client": [
 		"CameraMixin",
 		"ConnectionAccessor",
+		"DisconnectReasonMixin",
 		"FrameTimeMixin",
 		"GameRendererMixin",
 		"LevelExtractorMixin",

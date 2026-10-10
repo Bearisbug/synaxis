@@ -36,9 +36,11 @@ permissions:
 
 jobs:
   # The real Minecraft client, driven by fabric-client-gametest-api, against a server-app in game
-  # mode: the regression assertions R1 to R8 (RegressionClientGameTest), plus on the daily run the
-  # spikes of docs/research/client-spikes-2026-09/README.md. Xvfb gives it a display and Mesa
-  # llvmpipe gives it OpenGL, the same as client-fabric/gametest-env/ does in Docker.
+  # mode: the regression assertions R1 to R8 (RegressionClientGameTest), the playable script's steps
+  # G1 to G10 on a second server-app serving the flat core world and its RTS steps on the first
+  # (PlayableClientGameTest, docs/DESIGN-PROD.md §19), plus on the daily run the spikes of
+  # docs/research/client-spikes-2026-09/README.md. Xvfb gives it a display and Mesa llvmpipe gives it
+  # OpenGL, the same as client-fabric/gametest-env/ does in Docker.
   # The login is the full online path with no Mojang account: the client joins at
   # tools/fake-sessionserver in record mode, the server in online mode asks the same one hasJoined,
   # and the connection is encrypted.
@@ -46,7 +48,8 @@ jobs:
     name: Run the client gametests
     # Not on the weekly P10 schedule, and not when a manual run asks for P10 only
     if: github.event.schedule != '0 19 * * 0' && !(github.event_name == 'workflow_dispatch' && inputs.p10)
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19, and the Xvfb and Mesa packages below are the 24.04 ones
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
       HANDSHAKE_PHASE: ${{ inputs.handshake_phase || 'configuration' }}
@@ -55,10 +58,18 @@ jobs:
       # The spikes' S1 connects once more per launch. S3's distances are the ones the spike report used.
       SYNAXIS_SPIKES: ${{ github.event_name == 'schedule' && 'all' || '' }}
       SYNAXIS_S3_DISTANCES: ${{ github.event_name == 'schedule' && '97,130,150,170,200,250,300,340' || '' }}
-      CONNECTIONS_PER_LAUNCH: ${{ github.event_name == 'schedule' && '2' || '1' }}
+      # Connections per launch to the game mode server: R1 to R8 one, the playable script's rts G1 and
+      # rts G10 two more, S1 of the spikes one more again
+      CONNECTIONS_PER_LAUNCH: ${{ github.event_name == 'schedule' && '4' || '3' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+
+      # Two servers and the client share this runner; what it had is part of reading a slow run
+      - name: Show the runner's processors and memory
+        run: |
+          nproc
+          free -m
 
       - name: Set up JDK 25
         uses: actions/setup-java@v6
@@ -98,6 +109,11 @@ jobs:
           cat sessionserver.log
           exit 1
 
+      # The flat core server below runs from the start script. Built before the game mode server
+      # starts, so that no second Gradle build runs beside the one that `:server-app:run` keeps busy.
+      - name: Build the server's start script
+        run: ./gradlew :server-app:installDist
+
       # server-app reads commands from stdin; `tail -f /dev/null` keeps it open for the whole job.
       - name: Start server-app in game mode
         run: |
@@ -112,6 +128,27 @@ jobs:
           cat server.log
           exit 1
 
+      # The playable script's flat core world (API-PROD-026), in a working directory of its own: its
+      # ledger in logs/ stays apart from the one the judge reads for the game mode server. Its metrics
+      # endpoint takes any free port, the game mode server holds the default 127.0.0.1:9464; the store
+      # is the default in-memory one, kept for both launches like the world.
+      - name: Start server-app in core mode
+        run: |
+          mkdir -p "$RUNNER_TEMP/playable" && cd "$RUNNER_TEMP/playable"
+          JAVA_OPTS="-Xms1G -Xmx1G -XX:-AlwaysPreTouch" \
+          SERVER_APP_OPTS="-Dsynaxis.app.core-mode=on -Dsynaxis.app.port=25566 -Dsynaxis.app.shard-id=core \
+            -Dsynaxis.app.metrics.bind=127.0.0.1:0 -Dsynaxis.app.auth=online \
+            -Dsynaxis.app.auth.session-server=$SESSION_HOST/session/minecraft/hasJoined" \
+            nohup "$GITHUB_WORKSPACE/server-app/build/install/server-app/bin/server-app" < /dev/null > server.log 2>&1 &
+          echo $! > server.pid
+          for _ in $(seq 1 180); do
+            grep -q 'server-app listening' server.log && exit 0
+            kill -0 "$(cat server.pid)" 2>/dev/null || break
+            sleep 1
+          done
+          cat server.log
+          exit 1
+
       # The exit codes of the two client steps are recorded, not judged: the judge step below reads
       # the reports and the server's ledger and log instead.
       - name: Run the client gametests
@@ -120,6 +157,7 @@ jobs:
         working-directory: client-fabric
         env:
           SYNAXIS_GAMETEST_SERVER: 127.0.0.1:25565
+          SYNAXIS_PLAYABLE_SERVER: 127.0.0.1:25566
           SYNAXIS_GAMETEST_SESSION_HOST: ${{ env.SESSION_HOST }}
           LIBGL_ALWAYS_SOFTWARE: "1"
           GALLIUM_DRIVER: llvmpipe
@@ -132,6 +170,7 @@ jobs:
         working-directory: client-fabric
         env:
           SYNAXIS_GAMETEST_SERVER: 127.0.0.1:25565
+          SYNAXIS_PLAYABLE_SERVER: 127.0.0.1:25566
           SYNAXIS_GAMETEST_SESSION_HOST: ${{ env.SESSION_HOST }}
           LIBGL_ALWAYS_SOFTWARE: "1"
           GALLIUM_DRIVER: llvmpipe
@@ -140,7 +179,7 @@ jobs:
       - name: Show the reports and the server's event ledger
         if: always()
         run: |
-          for report in client-fabric/build/run/*/synaxis-gametest/report.txt; do echo "== $report"; cat "$report"; done || true
+          for report in client-fabric/build/run/*/synaxis-gametest/{report,playable}.txt; do echo "== $report"; cat "$report"; done || true
           cat logs/events-*.jsonl || true
           cat sessionserver.log || true
 
@@ -153,7 +192,8 @@ jobs:
         run: |
           reports=(client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt)
           if [ "$LAUNCHES" = 2 ]; then reports+=(client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt); fi
-          CONNECTIONS=$((LAUNCHES * CONNECTIONS_PER_LAUNCH)) client-fabric/gametest-env/judge.sh "${reports[@]}"
+          CONNECTIONS=$((LAUNCHES * CONNECTIONS_PER_LAUNCH)) CORE_CONNECTIONS=$((LAUNCHES * 2)) \
+            client-fabric/gametest-env/judge.sh "${reports[@]}"
 
       - name: Upload screenshots, report and logs
         if: always()
@@ -163,10 +203,13 @@ jobs:
           path: |
             client-fabric/build/run/**/screenshots/
             client-fabric/build/run/**/synaxis-gametest/report.txt
+            client-fabric/build/run/**/synaxis-gametest/playable.txt
             client-fabric/build/run/**/logs/
             server.log
             sessionserver.log
             logs/events-*.jsonl
+            ${{ runner.temp }}/playable/server.log
+            ${{ runner.temp }}/playable/logs/
           retention-days: 14
 
   # P10 of docs/DESIGN-PROD.md §19 (REQ-PROD-031, API-PROD-026): the real client sent from one map
@@ -178,7 +221,8 @@ jobs:
     name: Two shards, 100 round trips (P10)
     # Weekly on Sunday and by hand (workflow_dispatch with p10: true): not on pull requests or pushes
     if: github.event.schedule == '0 19 * * 0' || (github.event_name == 'workflow_dispatch' && inputs.p10)
-    runs-on: ubuntu-latest
+    # Pinned for the same reason as the regression's
+    runs-on: ubuntu-24.04
     # The transfers take about 1,100 s (199 gaps of 5.5 s, more where an arrival is slower), the builds,
     # the client's start and the judge about 15 minutes more: 40 like the regression's would cut a
     # run that is only slow short

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.ShardGateLaunchTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-10T22:58:54.927Z" hostname="Mac.local" time="3.154">
+  <properties/>
+  <testcase name="aShardTakesTheGateFromItsConfigFileOverItsDefaults(Path)" classname="io.github.bearisbug.synaxis.app.ShardGateLaunchTest" time="0.826"/>
+  <testcase name="aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path)" classname="io.github.bearisbug.synaxis.app.ShardGateLaunchTest" time="1.61"/>
+  <testcase name="aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path)" classname="io.github.bearisbug.synaxis.app.ShardGateLaunchTest" time="0.717"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.FarViewLaunchTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-10T22:58:49.190Z" hostname="Mac.local" time="3.975">
+  <properties/>
+  <testcase name="aMapShardWithoutAUrlRootAnnouncesNothing(Path)" classname="io.github.bearisbug.synaxis.app.FarViewLaunchTest" time="1.413"/>
+  <testcase name="aMapShardAnnouncesItsTilesBeforeFinishConfiguration(Path)" classname="io.github.bearisbug.synaxis.app.FarViewLaunchTest" time="1.157"/>
+  <testcase name="aShardOnAMapOfOneTileSendsThatTileBeforeFinishConfiguration(Path)" classname="io.github.bearisbug.synaxis.app.FarViewLaunchTest" time="1.111"/>
+  <testcase name="aUrlRootThatIsNotAnHttpUrlRefusesTheStart(Path)" classname="io.github.bearisbug.synaxis.app.FarViewLaunchTest" time="0.292"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

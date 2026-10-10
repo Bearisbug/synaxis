@@ -61,3 +61,38 @@ Run 6 -> 06-final/
   FreezeBeforePluginListenersIntegrationTest 4, PluginEventsIntegrationTest 9, PluginHostIntegrationTest 18,
   ClientDrivenLogArchitectureTest 2;
   :architecture-tests:test TranslationKeyGateTest 2, ConfigKeyGateTest 1.
+
+Rework after review (three more Gradle runs, the same script and flags). These three run with the
+database: SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres, the password from the
+environment only (TransferCooldownTableIntegrationTest needs it). No Redis. The test change: one test
+added to DefaultPlayPickupIntegrationTest (thePluginListenersSeeAPickupTheInventoryCannotTakeCancelled)
+with three imports, so the lines of the four older tests of that class moved down by 3 (:44, :56, :74,
+:93 of runs 3 and 5 are :47, :59, :77, :96 now). Production code unchanged.
+
+Run 7 -> 07-rework-counter-proofs/
+  Code: c7fc23068a plus the new test of d3780c21a3, with the seven temporary edits of counter-proofs.diff
+  applied together:
+    DefaultPlay.java:181 the decision stage of PICKUP off       -> Pickup thePluginListenersSee... at :119, [false, false]
+    Main.java:329        step (5) passes mapMounted=false       -> FarViewLaunchTest 3 of 4 (the map shards that must
+                                                                    listen refuse: "Refusing to start: the training dummy
+                                                                    needs the core world")
+    Main.java:630        TC-PROD-603 step 2                     -> OpsPortsLaunchTest :89
+    Main.java:356        TC-PROD-604 step 2                     -> OpsPortsLaunchTest :50
+    Main.java:224        TC-PROD-670 step 4                     -> ShardGateLaunchTest :38 and :66
+    Main.java:770        TC-PROD-521 step 4                     -> TransferCooldownTableIntegrationTest :91 and :113
+    Main.java:724        TC-PROD-528 step 2                     -> TransferCooldownTableIntegrationTest :132
+  17 tests, 11 failed, each where its case says; the other 4 Pickup tests and the two other tests stayed green.
+  Restored with git checkout HEAD -- server-app/src/main.
+
+Run 8 -> 08-rework-proof-533/
+  Code: the same with only TC-PROD-533 step 3 (Main.java:768, counter-proof-533.diff), run apart because
+  TC-PROD-521 step 4 also reddens :113. TransferCooldownTableIntegrationTest 3 tests, 1 failed at :113.
+  Restored.
+
+Run 9 -> 09-rework-green/
+  Code: the tree of d3780c21a3 (the new test was committed right after this run, unchanged). All green,
+  BUILD SUCCESSFUL: DefaultPlayPickupIntegrationTest 5, FarViewLaunchTest 4, OpsPortsLaunchTest 2,
+  ShardGateLaunchTest 3, TransferCooldownTableIntegrationTest 3.
+  Read-only checks of Main.java on the same tree: grep -n buildShutdownTask gives 335, 337, 339, 342, 343,
+  346, 347, 348, 350; grep -n 'store.cooldowns()' 271; sed -n 768,770p the three lines of TC-PROD-533 step 2;
+  grep -n 'new ShardGates(' 538; grep -n 'directoryMode, store.store(), ledger' 313.

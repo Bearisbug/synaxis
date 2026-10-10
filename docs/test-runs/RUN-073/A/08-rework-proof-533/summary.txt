@@ -1,0 +1,6 @@
+TEST-io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest.xml tests=3 failures=1 errors=0 skipped=0 time=1.864
+   ok   aPluginTransferCoolsTheTicketSideDown(Env) 1.509
+   ok   aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) 0.014
+   FAIL aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) 0.334
+         org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>
+         at io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest.aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(TransferCooldownTableIntegrationTest.java:113)

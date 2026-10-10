@@ -1,9 +1,11 @@
 # RUN-073 group B (commands), branch prod/r073-B on 15b5487edc: list without a node, the answer to an unknown command.
 # docs/TEST.md TC-PROD-715 to TC-PROD-717. Every Gradle run went through ~/.claude/r073/gradle.zsh (default mode,
 # --max-workers=2 --no-daemon, the mirror init script); strict and strict grid are left to the full gate on GitHub Actions.
-01-client-sends-unknown-commands.txt  javap of the 26.2 client: the chat screen sends a command whose root the tree lacks (TC-PROD-716 step 1)
+01-client-sends-unknown-commands.txt  javap of the 26.2 client and of the fabric-api client command mixin: the chat screen sends a command whose root the tree lacks (TC-PROD-716 step 1)
 02-red-before-the-fix.txt             the two new tests red on the base HostCommands (TC-PROD-715 step 2, TC-PROD-716 step 3)
 03-green-after-the-fix.txt            CommandsIntegrationTest 12/12 and TranslationKeyGateTest 2/2, 61 keys (TC-PROD-715 step 1, 716 step 2, 717 step 1)
 04-counterproofs-a-b-c.txt            player's list in the ledger, console answered, zh_cn key missing (TC-PROD-715 step 3, 716 step 4, 717 step 2)
 05-counterproof-d.txt                 the answer names the whole input (TC-PROD-716 step 5)
 06-counterproof-e.txt                 the callback logs a line (TC-PROD-716 step 6)
+07-rework-green.txt                   rework round: green again after two comment-only edits (TC-PROD-715 step 1, 716 step 2, 717 step 1, TC-PROD-240 step 1)
+08-rework-count-counterproofs.txt     rework round: the class count 10 -> 12 in TC-PROD-240 to 256, counterproofs of 240 steps 2 and 3, 241 step 2, 247 step 2

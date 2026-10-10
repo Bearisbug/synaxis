@@ -1,0 +1,59 @@
+# Rework round: the steps of TC-PROD-240 to 256 that now read 12 (or 20 with PermissionsIntegrationTest) instead of 10 (18).
+# Checked by running the counterproofs whose code path the two new tests could cross; default mode, no database variables.
+
+## Run A, one Gradle run, three counterproofs in three different test methods:
+#  TC-PROD-240 step 3: Main#runConsoleCommand 'case UNKNOWN -> LOGGER.info("Unknown command: {}", input);'
+#                      -> 'case UNKNOWN -> LOGGER.info("Unknown command: {}", input, new IllegalArgumentException(input));'
+#                      (aPlayersUnknownCommand... reads Main's INFO lines through runConsoleCommand)
+#  TC-PROD-241 step 2: HostCommands#command '|| permissions.has(player, node));' -> '|| permissions.has(player, node) || player.getPermissionLevel() == 4);'
+#  TC-PROD-247 step 2: PluginCommandsImpl#refreshCompletions, 'if (Boolean.getBoolean("proof.never"))' put before the loop
+#                      (aPlayerWithoutNodes... reads the command tree through lastTree)
+# zsh ~/.claude/r073/gradle.zsh <worktree> rework-B :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CommandsIntegrationTest'
+
+CommandsIntegrationTest > aThrowingPluginCommandIsOneLinePerTenSecondsAndGoneOnceDisabled(Env) FAILED
+    org.opentest4j.AssertionFailedError at CommandsIntegrationTest.java:181
+CommandsIntegrationTest > theNodeDecidesWhetherAPlayerRunsAndSeesACommandOfTheHost(Env) FAILED
+    org.opentest4j.AssertionFailedError at CommandsIntegrationTest.java:240
+CommandsIntegrationTest > theConsoleRunsListTpsAndSaveAndAnUnknownLineIsOneLine(Env) FAILED
+    org.opentest4j.AssertionFailedError at CommandsIntegrationTest.java:208
+CommandsIntegrationTest > aCommandRegisteredOrTakenBackWhilePlayersAreOnlineReachesTheirCompletions(Env) FAILED
+    org.opentest4j.AssertionFailedError at CommandsIntegrationTest.java:181
+12 tests completed, 4 failed
+BUILD FAILED in 10s
+
+<testsuite name="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" tests="12" skipped="0" failures="4" errors="0"
+aThrowingPluginCommandIsOneLinePerTenSecondsAndGoneOnceDisabled(Env) | no command tree came ==> expected: <false> but was: <true>
+    at ...CommandsIntegrationTest.lastTree(CommandsIntegrationTest.java:181)
+    at ...CommandsIntegrationTest.aThrowingPluginCommandIsOneLinePerTenSecondsAndGoneOnceDisabled(CommandsIntegrationTest.java:418)
+theNodeDecidesWhetherAPlayerRunsAndSeesACommandOfTheHost(Env) | permission level 4 is no node ==> expected: <CANCELLED> but was: <SUCCESS>
+    at ...CommandsIntegrationTest.theNodeDecidesWhetherAPlayerRunsAndSeesACommandOfTheHost(CommandsIntegrationTest.java:240)
+theConsoleRunsListTpsAndSaveAndAnUnknownLineIsOneLine(Env) | no stack ==> expected: <true> but was: <false>
+    at ...CommandsIntegrationTest.theConsoleRunsListTpsAndSaveAndAnUnknownLineIsOneLine(CommandsIntegrationTest.java:208)
+aCommandRegisteredOrTakenBackWhilePlayersAreOnlineReachesTheirCompletions(Env) | no command tree came ==> expected: <false> but was: <true>
+    at ...CommandsIntegrationTest.lastTree(CommandsIntegrationTest.java:181)
+    at ...CommandsIntegrationTest.aCommandRegisteredOrTakenBackWhilePlayersAreOnlineReachesTheirCompletions(CommandsIntegrationTest.java:438)
+# Each red is the one its step names (:208; :240; :438 and TC-PROD-246's :418 through lastTree :181); both new tests pass.
+# The three reds sit in different test methods, so each counterproof alone fails only its own: 1 (240 step 3, 241 step 2), 2 (247 step 2).
+# Restored: git checkout HEAD -- Main.java PluginCommandsImpl.java; the HostCommands edit reversed, leaving only the comment edit of 07.
+
+## Run B, one Gradle run: TC-PROD-240 step 2, ConsoleSender.java 'LOGGER.info(TEXT.serialize(message));' -> 'LOGGER.info(message);'
+#  (aPlayersUnknownCommand... reads ConsoleSender's INFO lines)
+# zsh ~/.claude/r073/gradle.zsh <worktree> rework-B :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CommandsIntegrationTest' --tests 'io.github.bearisbug.synaxis.app.PermissionsIntegrationTest'
+
+CommandsIntegrationTest > theConsoleRunsListTpsAndSaveAndAnUnknownLineIsOneLine(Env) FAILED
+    org.opentest4j.AssertionFailedError at CommandsIntegrationTest.java:199
+20 tests completed, 1 failed, 8 skipped
+BUILD FAILED in 21s
+
+<testsuite name="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" tests="12" skipped="0" failures="1" errors="0"
+theConsoleRunsListTpsAndSaveAndAnUnknownLineIsOneLine(Env) | expected: <2 players online: Alpha, Bravo> but was: <>
+    at ...CommandsIntegrationTest.theConsoleRunsListTpsAndSaveAndAnUnknownLineIsOneLine(CommandsIntegrationTest.java:199)
+<testsuite name="io.github.bearisbug.synaxis.app.PermissionsIntegrationTest" tests="8" skipped="8" failures="0" errors="0"
+# PermissionsIntegrationTest takes its database from SYNAXIS_TEST_PG_URL; without it its 8 tests are skipped, hence
+# '8 skipped'. With the database they run, as in the step's original 18; this round did not run them.
+# Restored: git checkout HEAD -- ConsoleSender.java.
+
+## Not rerun, counted from the code: TC-PROD-242, 243, 245, 246 steps 2 and 3, 254, 255 steps 2 and 3, 256.
+# The new tests do not reach what those counterproofs change: Newcomer's stop is refused by the condition before
+# HostCommands#stop runs, the Probe plugin registers no command, nothing calls Main#readConsole, and broadcast is not used.
+# TC-PROD-252 (24 = 12 + 1 + 3 + 8) runs in strict mode with the database; it is left to the full gate on GitHub Actions.

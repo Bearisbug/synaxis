@@ -1,8 +1,9 @@
 # Does the 26.2 client send a command that is not in the command tree the server declared? javap -c -p, JDK 25.0.4.1.
 # Jar: the 26.2 client jar from Mojang's launcher metadata (piston-meta v1/packages/d367f3dfbc…/26.2.json,
 #   downloads.client sha1 2dc72797acbc1b63fc16a11c4ac393605f453754, 39193383 bytes; 26.2 ships unobfuscated, Mojang names).
-#   The Loom cache jar (~/.gradle/caches/fabric-loom/26.2/minecraft-merged.jar) RUN-071 read is no longer on this machine;
-#   the classes below are client-only, so the merged jar carries the same bytecode for them.
+#   Either jar will do: the Loom cache's ~/.gradle/caches/fabric-loom/26.2/minecraft-merged.jar (sha1 b3eb77818670aa9bb2fbffc03b98bb07b194b8f3
+#   on 2026-10-11) gives the same instruction sequences for the classes below, which are client-only; only the constant pool
+#   numbers differ. The minecraft-client.jar in the same cache directory has the sha1 above.
 # Only the instructions that decide the path are kept; '…' marks cuts.
 
 ## 1. ChatScreen#handleChatInput: a line starting with '/' goes to ClientPacketListener#sendCommand without the slash, nothing checked first
@@ -48,8 +49,33 @@
         80: ldc_w         #4243               // String multiplayer.confirm_command.permissions_required
         92: ldc_w         #4245               // String multiplayer.confirm_command.signature_required
 
+## 5. The modded client: fabric-api 0.161.0+26.2 pulls fabric-command-api-v2 3.1.0+00cb03469e (its pom), whose client
+##    mixin runs before vanilla sendCommand. client-fabric registers no client command (no ClientCommandRegistrationCallback
+##    under client-fabric/src). javap -c -p -v of the jar in ~/.gradle/caches/modules-2 (sha1 dir b144d197…):
+  net.fabricmc.fabric.mixin.command.client.ClientPacketListenerMixin
+  private void onSendCommand(java.lang.String, org.spongepowered.asm.mixin.injection.callback.CallbackInfo);
+        org.spongepowered.asm.mixin.injection.Inject(method=["sendCommand"] at=[@At(value="HEAD")] cancellable=true)
+         9: invokestatic  #77                 // Method net/fabricmc/fabric/impl/command/client/ClientCommandInternals.executeCommand:(…)Z
+        12: ifeq          19
+        16: invokevirtual #81                 // Method org/spongepowered/asm/mixin/injection/callback/CallbackInfo.cancel:()V
+  (the other onSendCommand, with a Screen, is on sendUnattendedCommand)
+  net.fabricmc.fabric.impl.command.client.ClientCommandInternals
+  public static boolean executeCommand(java.lang.String, FabricClientCommandSource, FabricClientCommandSource);
+        47: getstatic     #7                  // Field activeDispatcher:Lcom/mojang/brigadier/CommandDispatcher;
+        52: invokevirtual #42                 // Method com/mojang/brigadier/CommandDispatcher.execute:(Ljava/lang/String;Ljava/lang/Object;)I
+        73: invokestatic  #54                 // Method isIgnoredException:(Lcom/mojang/brigadier/exceptions/CommandExceptionType;)Z
+        80: ifeq          109
+        95: iconst_0                          (ignored: return false, the mixin does not cancel)
+  private static boolean isIgnoredException(com.mojang.brigadier.exceptions.CommandExceptionType);
+         6: invokeinterface #175,  1          // InterfaceMethod …BuiltInExceptionProvider.dispatcherUnknownCommand:()…
+        16: invokeinterface #181,  1          // InterfaceMethod …BuiltInExceptionProvider.dispatcherParseException:()…
+        24: iconst_1                          (true for either)
+# activeDispatcher is a new CommandDispatcher made on handleLogin and filled by ClientCommandRegistrationCallback only;
+# finalizeInit adds the fabric help commands only when that dispatcher already has a child. With no client command, a root
+# such as synaxisnosuchcommand throws dispatcherUnknownCommand there, executeCommand returns false, and vanilla sends the packet.
+
 ## Conclusion
-# The 26.2 client sends /synaxisnosuchcommand as a ServerboundChatCommandPacket (the engine's ClientCommandChatPacket),
+# The 26.2 client, with fabric-api as the test client has it, sends /synaxisnosuchcommand as a ServerboundChatCommandPacket (the engine's ClientCommandChatPacket),
 # whether or not the declared tree has the root. The same holds for a command the tree leaves out
 # because its condition refuses the player (stop without its node). So the server's UNKNOWN callback is reachable from
 # the chat screen, and G7 of the playable script (DESIGN-PROD API-PROD-026) can check the synaxis:command-unknown answer

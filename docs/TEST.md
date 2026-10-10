@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-11 | M3-S 合入 `main` 前的文档收口，跟进 `docs/DESIGN-M3.md` v0.44。**`TC-WORLD-120` 第 2 步**的预期与 `TC-WORLD-141` 同一写法：F19 行在两核 runner 上因 ready false 记 FAIL，只判第二次请求带 Range、回 206（RUN-069 run `38065240160` 的读数就是这样）。**`TC-WORLD-081` 第 1 步**跟进该分册 §28.1 正式档内存判据（用户 2026-10-11 选 (b)）：分片起服时加 `-Xlog:gc`，判据仍引 §19 那条场景（RSS ≤ 堆上限 + 1 GiB，加 GC 判据） | Bearisbug |
 | 2026-10-11 | M3-S 合并验收（RUN-069）在 GitHub Actions 恢复之后补跑完，跟进 `docs/DESIGN-M3.md` v0.43。**`TC-WORLD-117` 前置**：写明工作流的 `a1-synthetic` 只跑 `v1,v1-writable,tiers,counter-radius`，F8、F10 与第 4 步的 baked 夹具直连不在矩阵里；`walk` 反证写明在单独的临时分支上跑（工作流加只对该分支生效的 `push` 触发，跑完删分支）与 RUN-069 的读数。**`TC-WORLD-143` 第 1 步**：非回环明文 http 的 WARN 由「合并树上第一次看」改为 RUN-069 读到的原文。**§3** 安全修复一条去掉「未验证，RUN-069 是第一轮」。**§7** `TC-WORLD-119`、`TC-WORLD-120` 反证一条补上合并树的复跑。判据都没改 | Bearisbug |
 | 2026-10-07 | M3-S 合并验收复核（集成分支 `m3s/integrate` 合入 `main` `8220ef9d0f`，即 RUN-072），跟进 `docs/DESIGN-M3.md` v0.42、`docs/DESIGN.md` v0.45、`docs/DESIGN-M2.md` v0.63，RUN-069 随之补登（证据 `docs/test-runs/RUN-069/integrate/10`～`12`）。**合并冲突**：`TC-PROD-671` 第 1、2 步两边各改了条数，合起来是 3 个类 12 个（4、1、7）与 7 个类 55 个（4、11、3、11、3、8、15）。**`TC-WORLD-150`** 加第 4 步反证：`startDay` 不登记对齐任务，红在 `ShardWorldAssemblyTest.java:248`（`expected: <139829> but was: <139229>`），原第 4 步改为第 5 步；第 3 步的「再还原」改成 `git checkout -- <SW>`；§19 场景对照表「丢掉的 tick 由对齐补回」一行的步骤加第 4 步。**`TC-WORLD-117` 第 3 步与 `TC-WORLD-143` 第 1 步**：`v1` 从进世界起把客户端的天空定在正午 6000（地图分片的日夜按挂钟走，`bin/server-shard` 上 F6、F7 比的两张图最多隔一整天），F6 行尾多一段 `client day time 6000 at the shots before, 6000 after`，F7 另有一行 `#` 记重连后的日间时间。**`TC-PROD-613`** 前置加一句：M3-S 把权限规则搬进 `FileTrust.java`，第 2～5 步照字面做不了，改写归生产就绪会话，改写之前登记跳过 | Bearisbug |
 | 2026-10-07 | M3-S 合并验收（集成分支 `m3s/integrate`，草稿 PR #12），跟进 `docs/DESIGN-M3.md` v0.41，登记 RUN-069（证据 `docs/test-runs/RUN-069/integrate/`）。**按合并树的实跑改的用例**：`TC-WORLD-132` 第 2 步写明改法（`Baker.java:653` 与 `SynxRegionWriter.java:113` 的 posix 条件加 `Boolean.getBoolean("proof.never")`），只跑 `ShardWorldTest`、`ShardWorldAssemblyTest`、`GeneratorBakeTest` 三类，红的条数 5、7 → 6、9（日夜那一步加的三条测试同样挂发布）；第 3 步写明改法（`:394` 换成 `new FileAttribute<?>[0]`、`:48` 的导入随之换，行号不变）与 RUN-069 读到的完整信息。**注明 RUN-069 已在合并树上实跑的步骤**：`TC-WORLD-125` 第 2～4 步（红行与信息同轨道 S）、`TC-WORLD-041` 第 2 步（原写按键数推算）。**参考读数**：`TC-WORLD-128` 加 RUN-069 的扫图读数（每区块 6,577 B，判通过）；`TC-WORLD-139` 加 RUN-069 的读数（机器不空闲，只登记）。`TC-WORLD-095` 前置加一句：本机不起容器时第 5～11 步在 `farview-gametest.yml` 的 `light` 组跑（`docs/ENGINE.md` §7） | Bearisbug |
@@ -3163,7 +3164,7 @@ JUnit 与反证的纪律同 M3-C 一节。红行号按集成分支 `m3e/integrat
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `docs/DESIGN-M3.md` §19「目录模式 200 机器人 30 min 达标」的 When：200 个 `walk` 机器人 1,800 s，服务端机上跑 `<LT> sample`，`merge` | 该场景 Then 的全部判据；同机档时 tick 与 RSS 只登记为补充读数 |
+| 1 | `docs/DESIGN-M3.md` §19「目录模式 200 机器人 30 min 达标」的 When：分片起服时 `JAVA_OPTS` 加 `-Xlog:gc:file=<L>/gc.log`，200 个 `walk` 机器人 1,800 s，服务端机上跑 `<LT> sample`，`merge` | 该场景 Then 的全部判据（RSS 与 GC 两项的写法与读法见该场景与该分册 §15 tick 预算（M3-E）行）；同机档时 tick 与 RSS 只登记为补充读数 |
 
 后置：按夹具收拾；删 4k 图。同机档拿到过锁的，本轮最后一档收拾完放锁，写法同 `TC-WORLD-099` 后置。
 
@@ -3658,7 +3659,7 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 夹具以 `break-sha` 模式起（`TC-WORLD-117` 第 2 步的模式换掉），跑 `TC-WORLD-117` 第 3 步，模式 `break-sha` | F18 PASS：同一个整包被请求 3 次（`access.log` 三行 `- 200`），日志 `Far view pack <前 12 位> failed after 3 attempts: its SHA-256 is …, not the announced …`，包、`.part` 与完成标记都没留下，玩家在世界里、没有弹窗 |
-| 2 | 按 pid 停夹具，以 `half` 模式重起，模式 `half` | F19 PASS：第一次请求的 `access.log` 行尾是 `cut`，第二次请求带 `Range: bytes=<已收字节>-`、回 206，报告写 `cut GET <path> - 200 cut; second GET <path> bytes=<n>- 206; ready …`；最后 `ready true`（GitHub Actions 两核 runner 上 ready 只登记） |
+| 2 | 按 pid 停夹具，以 `half` 模式重起，模式 `half` | F19 行（两核 runner 上因 ready false 记 FAIL，只判第二次请求带 Range、回 206）：第一次请求的 `access.log` 行尾是 `cut`，第二次请求带 `Range: bytes=<已收字节>-`、回 206，报告写 `F19 … cut GET <path> - 200 cut; second GET <path> bytes=<n>- 206; ready …` |
 
 后置：同 `TC-WORLD-117`。反证是 `TC-WORLD-141`（`counter-sha`、`counter-range`）。
 

@@ -19,6 +19,7 @@ import io.github.bearisbug.synaxis.app.moderation.ModerationStore;
 import io.github.bearisbug.synaxis.app.permission.HostPermissions;
 import io.github.bearisbug.synaxis.app.permission.RoleCommand;
 import io.github.bearisbug.synaxis.app.permission.RoleStore;
+import io.github.bearisbug.synaxis.app.play.DefaultPlay;
 import io.github.bearisbug.synaxis.app.shard.ShardArrivals;
 import io.github.bearisbug.synaxis.app.shard.ShardDirectory;
 import io.github.bearisbug.synaxis.app.shard.ShardGates;
@@ -49,6 +50,8 @@ import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
 import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
 import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
+import io.github.bearisbug.synaxis.instance.InstanceContainer;
+import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.plugin.Admission;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
@@ -74,6 +77,7 @@ import java.sql.SQLException;
 import java.time.Clock;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -299,10 +303,12 @@ public final class Main {
         // rather than letting every player hit an internal error, or hiding the failure behind a
         // world nobody can play in.
         final int runningMatches = runningMatches(process);
-        switch (CoreMode.decide(coreMode, host.attemptedPluginCount(),
-                host.hasAdmissionProvider(), runningMatches)) {
+        final CoreMode.Mode mode = CoreMode.decide(coreMode, host.attemptedPluginCount(),
+                host.hasAdmissionProvider(), runningMatches);
+        @Nullable InstanceContainer coreWorld = null;
+        switch (mode) {
             case CORE -> {
-                if (shardWorld == null) CoreMode.start(process, host, dimensionType, coreMode);
+                if (shardWorld == null) coreWorld = CoreMode.start(process, host, dimensionType, coreMode);
                 else serveMap(process, host, shardWorld.start(shutdown, ledger::record,
                         directoryMode == null ? null : directoryMode.flags()), directoryMode, store.store(), ledger);
             }
@@ -318,6 +324,10 @@ public final class Main {
             }
             case REFUSED -> refuseToServe(host, ledger, runningMatches, port);
         }
+        // The default play layer of the mode, on the host node and before the port opens
+        // (docs/DESIGN-PROD.md API-PROD-031)
+        final Set<DefaultPlay.Feature> play = defaultPlay(mode, shardWorld != null);
+        if (!play.isEmpty()) DefaultPlay.attach(process, host.hostNode(), play, Main::emptyInventory, coreWorld);
 
         // The only place the plugins are disabled, console and SIGINT alike: the engine drains its
         // shutdown tasks after the players are saved and kicked, between two ticks, and before it
@@ -850,6 +860,35 @@ public final class Main {
         LOGGER.error("Not binding {}:{}.", BIND_ADDRESS, port);
         ledger.close();
         System.exit(1);
+    }
+
+    /**
+     * Which features of the default play layer a mode gets ({@code docs/DESIGN-PROD.md} {@code API-PROD-031},
+     * {@code ADR-PROD-017}): every one in the core world, the chat alone under a gameplay plugin, and none on a map
+     * shard, whose play rules are left to the gameplay design, nor in a refused launch.
+     *
+     * @param mode       the mode of step (5)
+     * @param mapMounted whether the process serves a map
+     * @return the features to attach, empty for no play layer at all
+     */
+    static Set<DefaultPlay.Feature> defaultPlay(CoreMode.Mode mode, boolean mapMounted) {
+        return switch (mode) {
+            case CORE -> mapMounted ? Set.of() : EnumSet.allOf(DefaultPlay.Feature.class);
+            case GAMEPLAY -> EnumSet.of(DefaultPlay.Feature.CHAT);
+            case REFUSED -> Set.of();
+        };
+    }
+
+    /**
+     * Whether a character counts as new for the starter kit of the default play layer: while its inventory is empty.
+     * This stands in for {@code PlayerStateSection#isFresh} until {@code synaxis:player} is registered
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-032}).
+     *
+     * @param player the player at its first spawn
+     * @return whether every slot of its inventory is air
+     */
+    static boolean emptyInventory(Player player) {
+        return Arrays.stream(player.getInventory().getItemStacks()).allMatch(ItemStack::isAir);
     }
 
     /**

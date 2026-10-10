@@ -2276,6 +2276,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         if (openInventory != inventory) {
             this.openInventory = null;
             openInventory.removeViewer(this);
+        } else {
+            // The player's own inventory has no viewer to remove, its cursor item goes the same way as a container's
+            dropCursorItem();
         }
         inventory.update();
 
@@ -2284,6 +2287,24 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         Inventory newInventory = inventoryCloseEvent.getNewInventory();
         if (newInventory != null)
             openInventory(newInventory);
+    }
+
+    /**
+     * Takes the item off the cursor of a closing inventory, a container's or the player's own: drops it, stores it in
+     * the inventory when the drop is cancelled, and leaves it on the cursor when it can be neither, rather than
+     * destroying it.
+     */
+    @ApiStatus.Internal
+    public void dropCursorItem() {
+        final PlayerInventory playerInventory = getInventory();
+        final ItemStack cursorItem;
+        synchronized (playerInventory) {
+            cursorItem = playerInventory.getCursorItem();
+            playerInventory.setCursorItem(ItemStack.AIR);
+        }
+        if (cursorItem.isAir()) return;
+        // ALL_OR_NOTHING: keep the item on the cursor when it can neither be dropped nor stored
+        if (!dropItem(cursorItem) && !playerInventory.addItemStack(cursorItem)) playerInventory.setCursorItem(cursorItem);
     }
 
     /**

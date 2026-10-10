@@ -1,5 +1,5 @@
 RUN-073 group G: the inventory carried across transfers (playable item P11), branch prod/r073-G
-Base: prod/r073-docs 15b5487edc. Code commit: 4e58e2c2af. Design: docs/DESIGN-PROD.md v0.9.69. Cases: docs/TEST.md TC-PROD-740 to TC-PROD-743.
+Base: prod/r073-docs 15b5487edc. Code commit: 4e58e2c2af. Design: docs/DESIGN-PROD.md v0.9.67. Cases: docs/TEST.md TC-PROD-740 to TC-PROD-743.
 Local runs only: no database, no server process, no real client, no Docker. The CI side (TC-PROD-742) is run by the integration round.
 
 01-p10-unittest-red.txt   TC-PROD-740 step 2: the new JudgeTest cases against p10.py at 15b5487edc, FAILED (failures=6)

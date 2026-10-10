@@ -1,4 +1,4 @@
-RUN-073 group F: the real client playable script (PlayableClientGameTest) and its CI (docs/DESIGN-PROD.md v0.9.68,
+RUN-073 group F: the real client playable script (PlayableClientGameTest) and its CI (docs/DESIGN-PROD.md v0.9.66,
 docs/TEST.md TC-PROD-729 to TC-PROD-734). Branch prod/r073-F on 15b5487edc. Not a registered round: the integration
 round registers RUN-073.
 

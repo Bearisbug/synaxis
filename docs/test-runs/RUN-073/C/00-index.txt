@@ -1,5 +1,5 @@
 RUN-073 C: the light of the flat world of the core mode, on branch prod/r073-C (base prod/r073-docs 15b5487edc, the design
-of RUN-073: docs/DESIGN-PROD.md v0.9.63). docs/DESIGN-PROD.md v0.9.66, docs/TEST.md TC-PROD-718 to TC-PROD-720. The
+of RUN-073: docs/DESIGN-PROD.md v0.9.63). docs/DESIGN-PROD.md v0.9.65, docs/TEST.md TC-PROD-718 to TC-PROD-720. The
 integration round registers RUN-073; this directory is this group's part of it.
 
   CoreMode#start builds the flat world from LightingChunk (setChunkSupplier before setGenerator) and, before the port is

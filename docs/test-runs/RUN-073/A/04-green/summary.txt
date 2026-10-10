@@ -1,0 +1,47 @@
+TEST-io.github.bearisbug.synaxis.app.CoreModeIntegrationTest.xml tests=4 failures=0 errors=0 skipped=0 time=0.164
+   ok   everyConnectionIsAdmittedIntoTheCoreWorld(Env) 0.052
+   ok   theDiagnosticChannelEchoesThePayloadBack(Env) 0.056
+   ok   theCoreWorldIsRegisteredAndHasGroundToStandOn(Env) 0.006
+   ok   theCoreWorldEndsAtAWorldBorder(Env) 0.049
+TEST-io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.xml tests=5 failures=0 errors=0 skipped=0 time=1.289
+   ok   aFrozenPlayerDropsNothing(Env) 0.958
+   ok   aCharacterIsNewWhileItsInventoryIsEmpty(Env) 0.07
+   ok   aGlobalPluginListenerOverridesTheDefaults(Env) 0.131
+   ok   eachModeGetsItsPlayLayer() 0.001
+   ok   anInstancePluginListenerChoosesTheRecipientsFirst(Env) 0.122
+TEST-io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest.xml tests=4 failures=0 errors=0 skipped=0 time=9.688
+   ok   aClientThatNeverAnswersTheKnownPacksDoesNotHoldTheStop(Path) 1.389
+   ok   aCountdownLeavesAClientThatStillConfiguresInTheShutdownSave(Path) 3.372
+   ok   aClientThatNeverAcknowledgesTheEndOfItsConfigurationDoesNotHoldTheStop(Path) 1.464
+   ok   aCountdownIsAnnouncedToAClientInThePlayState(Path) 3.463
+TEST-io.github.bearisbug.synaxis.app.ShutdownSignalLaunchTest.xml tests=1 failures=0 errors=0 skipped=0 time=1.338
+   ok   aSignalDuringAConsoleCountdownCutsItAndWaitsForTheSequence(Path) 1.338
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayChatIntegrationTest.xml tests=4 failures=0 errors=0 skipped=0 time=0.415
+   ok   recipientsChosenBeforeTheHostAreKept(Env) 0.106
+   ok   inTheCoreWorldChatReachesTheSendersInstance(Env) 0.103
+   ok   aListenerAfterTheHostCanEmptyTheRecipients(Env) 0.103
+   ok   underAGameplayPluginChatReachesTheSendersInstance(Env) 0.103
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayDropIntegrationTest.xml tests=3 failures=0 errors=0 skipped=0 time=0.166
+   ok   withoutTheFeatureADropSpawnsNothing(Env) 0.052
+   ok   aDropCancelledAfterTheHostSpawnsNothing(Env) 0.056
+   ok   everyDropPathSpawnsAnItemEntityAtTheEyes(Env) 0.056
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayMeleeIntegrationTest.xml tests=2 failures=0 errors=0 skipped=0 time=0.11
+   ok   aCancelledPlayerAttackNeitherHurtsNorKnocksBack(Env) 0.051
+   ok   aHitTakesTheAttackDamageAndKnocksBackOnceInTenTicks(Env) 0.058
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.xml tests=4 failures=0 errors=0 skipped=0 time=0.202
+   ok   aPickupThatNoLongerFitsWhenAppliedIsCancelled(Env) 0.052
+   ok   aPickupCancelledAfterTheHostLeavesTheInventoryAlone(Env) 0.05
+   ok   aPickupGoesIntoTheInventory(Env) 0.05
+   ok   aPickupTheInventoryCannotTakeIsCancelled(Env) 0.049
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayStarterKitIntegrationTest.xml tests=2 failures=0 errors=0 skipped=0 time=0.098
+   ok   aCharacterThatIsNotNewGetsNothing(Env) 0.05
+   ok   aNewCharacterGetsTheKitOnItsFirstSpawnOnly(Env) 0.048
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.xml tests=4 failures=0 errors=0 skipped=0 time=0.029
+   ok   aDeadDummyIsRemovedAfter20TicksAndReplacedAfter100(Env) 0.01
+   ok   theDummyNeedsTheCoreWorld(Env) 0.005
+   ok   theDummyStandsBesideTheSpawnFacingIt(Env) 0.004
+   ok   aDummyBelowTheVoidLineDiesAndIsReplaced(Env) 0.008
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayVoidDamageIntegrationTest.xml tests=1 failures=1 errors=0 skipped=0 time=0.055
+   FAIL belowTheVoidLineAPlayerTakesFourEveryTick(Env) 0.055
+         org.opentest4j.AssertionFailedError: Expected 5 element(s), got 0: [] ==> expected: <5> but was: <0>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayVoidDamageIntegrationTest.belowTheVoidLineAPlayerTakesFourEveryTick(DefaultPlayVoidDamageIntegrationTest.java:51)

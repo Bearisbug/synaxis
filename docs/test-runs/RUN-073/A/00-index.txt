@@ -1,0 +1,63 @@
+RUN-073 group A: the host's default play layer (branch prod/r073-A, base prod/r073-docs 15b5487edc,
+code commit 2a55883024). Default mode only (no -Dsynaxis.* round switches), local Gradle through
+~/.claude/r073/gradle.zsh (JDK 25, --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts).
+No database, no Redis: none of the classes run needs either. Six Gradle runs in all, listed in order.
+Each directory holds the JUnit XML reports of that run and summary.txt, one line per test with the
+failure message and the first test-class frame.
+
+Run 1 -> 01-red-engine/
+  Code: base Player.java and AbstractInventory.java (before the engine change), new engine tests only.
+  :test CursorItemOnCloseIntegrationTest: 4 tests, 2 failed
+    closingTheOwnInventoryDropsTheCursorItem at CursorItemOnCloseIntegrationTest.java:72
+      "Expected 1 element, got [] ==> expected: <1> but was: <0>"
+    closingTheOwnInventoryStoresACursorItemThatCannotBeDropped at :90
+      "the cursor after closing window 0 ==> expected: <...air...> but was: <...diamond, amount=5...>"
+  The :server-app:test half of this run hung in DefaultPlayHostIntegrationTest.aFrozenPlayerDropsNothing:
+  PlayerStore#saveAll(1 s, true).join() on the test thread waits for a snapshot queued on the player's
+  tick thread, and nothing ticked. The test executor was killed after 7 min (exit 143); no other
+  server-app class had run. The test now ticks while it waits (env.tickWhile until the future is done).
+
+Run 2 -> 02-compile-failure.txt
+  The first engine change synchronized on Player#inventory, a non-final field; Error Prone
+  SynchronizeOnNonFinalField failed :compileJava, nothing ran. Player#dropCursorItem now locks a local
+  taken from getInventory(), as AbstractInventory#removeViewer did.
+
+Run 3 -> 03-red-play/
+  Code: the engine change as committed; app.play as a skeleton (DefaultPlay with the Feature enum and an
+  empty attach, Main#defaultPlay returning Set.of(); PluginHost#hostNode and Main#emptyInventory as
+  committed). Engine: CursorItemOnCloseIntegrationTest 4/0, InventoryCloseStateIntegrationTest 2/0,
+  InventoryIntegrationTest 16/0. Server-app: the red lines of TC-PROD-701 to TC-PROD-713 step 2 (see
+  summary.txt; the tests asserting that nothing happens pass on the skeleton). DefaultPlayVoidDamage
+  IntegrationTest red at :44 in this version of the test, :45 in the committed one.
+
+Run 4 -> 04-green/
+  Code: the implementation. app.play, DefaultPlayHostIntegrationTest, CoreModeIntegrationTest,
+  ShutdownBeforeTheWorldLaunchTest (4), ShutdownSignalLaunchTest (1): all green but
+  DefaultPlayVoidDamageIntegrationTest, red at its last count, "Expected 5 element(s), got 0": the test
+  called Collector#assertEmpty() on the void line, and Collector#collect() unmaps the player's node, so
+  later damage events were not collected (the health asserts in between had passed). Test fixed to
+  listen on the player's own event node; production code unchanged. Committed as 2a55883024.
+
+Run 5 -> 05-counter-proofs/
+  Code: 2a55883024 with the ten temporary edits of counter-proofs.diff applied together, each aimed at
+  different tests:
+    a DefaultPlay.java:139  the drop spawned on the host node itself     -> aDropCancelledAfterTheHost..., aGlobalPluginListener...
+    b DefaultPlay.java:140  the pickup applied on the host node itself   -> aPickupThatNoLongerFits..., aPickupCancelledAfterTheHost...
+    c DefaultPlay.java:211  no melee cooldown                            -> aHitTakes... at :59
+    d DefaultPlay.java:212  EntityDamage (MOB_ATTACK) for the melee      -> aCancelledPlayerAttack... at :91
+    e DefaultPlay.java:152  recipients filled even when not empty        -> recipientsChosenBefore..., anInstancePluginListener...
+    f DefaultPlay.java:234  the kit on every spawn                       -> aNewCharacterGetsTheKit... at :56
+    g TrainingDummy.java:69 no fall-out check                            -> aDummyBelowTheVoidLine... at :69
+    h Main.java:876         a map shard gets every feature               -> eachModeGetsItsPlayLayer at :86
+    i Main.java:891         any empty slot counts as an empty inventory  -> aCharacterIsNewWhileItsInventoryIsEmpty at :180
+    j Player.java:2281      window 0 keeps the cursor item               -> CursorItemOnClose (2, :72 and :90), everyDropPath... at :72
+  Every other test of these classes stayed green in the same run, the fixed void damage test among them.
+  Restored with git checkout HEAD -- server-app/src/main src/main.
+
+Run 6 -> 06-final/
+  Code: 2a55883024 again (git status clean). All green, BUILD SUCCESSFUL:
+  :test CursorItemOnCloseIntegrationTest 4, InventoryCloseStateIntegrationTest 2;
+  :server-app:test app.play.* 20, DefaultPlayHostIntegrationTest 5, CoreModeIntegrationTest 4,
+  FreezeBeforePluginListenersIntegrationTest 4, PluginEventsIntegrationTest 9, PluginHostIntegrationTest 18,
+  ClientDrivenLogArchitectureTest 2;
+  :architecture-tests:test TranslationKeyGateTest 2, ConfigKeyGateTest 1.

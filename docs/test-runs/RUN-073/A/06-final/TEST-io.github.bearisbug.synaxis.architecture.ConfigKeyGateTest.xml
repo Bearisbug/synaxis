@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-10T22:06:58.681Z" hostname="Mac.local" time="1.86">
+  <properties/>
+  <testcase name="theTableOfTheConfigFileIsEveryKeyTheCodeReads()" classname="io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest" time="1.852"/>
+  <system-out><![CDATA[06:06:58.698 [Test worker] INFO  c.tngtech.archunit.core.PluginLoader - Detected Java version 25.0.4.1
+config key gate: 117 keys read, 117 in ConfigFile.KEYS, 21 meter names left out
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

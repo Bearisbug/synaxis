@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-10T22:06:53.891Z" hostname="Mac.local" time="1.615">
+  <properties/>
+  <testcase name="closingTheOwnInventoryStoresACursorItemThatCannotBeDropped(Env)" classname="io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest" time="1.29"/>
+  <testcase name="cursorItemGoesBackIntoTheInventoryOnClose(Env)" classname="io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest" time="0.194"/>
+  <testcase name="closingTheOwnInventoryDropsTheCursorItem(Env)" classname="io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest" time="0.066"/>
+  <testcase name="cursorItemIsNotDestroyedWhenItCannotBeStored(Env)" classname="io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest" time="0.057"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

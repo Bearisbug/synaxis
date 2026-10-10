@@ -1,0 +1,7 @@
+> Compilation failed; see the compiler output below.
+  /Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-A/src/main/java/io/github/bearisbug/synaxis/entity/Player.java:2300: 警告: [SynchronizeOnNonFinalField] Synchronizing on non-final fields is not safe: if the field is ever updated, different threads may end up locking on different objects.
+          synchronized (inventory) {
+                       ^
+      (see https://errorprone.info/bugpattern/SynchronizeOnNonFinalField)
+  1 个错误
+  1 个警告

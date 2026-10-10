@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.play.DefaultPlayDropIntegrationTest" tests="3" skipped="0" failures="1" errors="0" timestamp="2026-10-10T22:01:20.798Z" hostname="Mac.local" time="0.168">
+  <properties/>
+  <testcase name="withoutTheFeatureADropSpawnsNothing(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayDropIntegrationTest" time="0.056"/>
+  <testcase name="aDropCancelledAfterTheHostSpawnsNothing(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayDropIntegrationTest" time="0.057"/>
+  <testcase name="everyDropPathSpawnsAnItemEntityAtTheEyes(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayDropIntegrationTest" time="0.054">
+    <failure message="org.opentest4j.AssertionFailedError: item entities after the Q key ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: item entities after the Q key ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.app.play.DefaultPlayDropIntegrationTest.everyDropPathSpawnsAnItemEntityAtTheEyes(DefaultPlayDropIntegrationTest.java:58)
+</failure>
+  </testcase>
+  <system-out><![CDATA[06:01:20.852 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:01:20.853 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=fe2b3036-6318-4c4e-aa03-8c7bd64f652c identifier=RandName reason=synaxis:server-stopping
+06:01:20.853 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=fe2b3036-6318-4c4e-aa03-8c7bd64f652c identifier=RandName reason=synaxis:server-stopping
+06:01:20.854 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:01:20.854 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:01:20.911 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:01:20.911 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=23c29f09-1b17-4542-8b48-9288cde2f572 identifier=RandName reason=synaxis:server-stopping
+06:01:20.911 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=23c29f09-1b17-4542-8b48-9288cde2f572 identifier=RandName reason=synaxis:server-stopping
+06:01:20.911 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:01:20.911 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:01:20.965 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:01:20.965 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=044c62e6-bef9-480e-9d50-c016423f96f9 identifier=RandName reason=synaxis:server-stopping
+06:01:20.965 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=044c62e6-bef9-480e-9d50-c016423f96f9 identifier=RandName reason=synaxis:server-stopping
+06:01:20.966 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:01:20.966 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

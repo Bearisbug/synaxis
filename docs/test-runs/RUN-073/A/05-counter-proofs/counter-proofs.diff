@@ -1,0 +1,101 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+index ded2dfccb2..f150916d8b 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+@@ -873,7 +873,7 @@ public final class Main {
+      */
+     static Set<DefaultPlay.Feature> defaultPlay(CoreMode.Mode mode, boolean mapMounted) {
+         return switch (mode) {
+-            case CORE -> mapMounted ? Set.of() : EnumSet.allOf(DefaultPlay.Feature.class);
++            case CORE -> EnumSet.allOf(DefaultPlay.Feature.class);
+             case GAMEPLAY -> EnumSet.of(DefaultPlay.Feature.CHAT);
+             case REFUSED -> Set.of();
+         };
+@@ -888,7 +888,7 @@ public final class Main {
+      * @return whether every slot of its inventory is air
+      */
+     static boolean emptyInventory(Player player) {
+-        return Arrays.stream(player.getInventory().getItemStacks()).allMatch(ItemStack::isAir);
++        return Arrays.stream(player.getInventory().getItemStacks()).anyMatch(ItemStack::isAir);
+     }
+ 
+     /**
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java
+index 09d168e1c4..42862ee49b 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java
+@@ -6,7 +6,7 @@ import io.github.bearisbug.synaxis.entity.ItemEntity;
+ import io.github.bearisbug.synaxis.entity.LivingEntity;
+ import io.github.bearisbug.synaxis.entity.Player;
+ import io.github.bearisbug.synaxis.entity.attribute.Attribute;
+-import io.github.bearisbug.synaxis.entity.damage.Damage;
++import io.github.bearisbug.synaxis.entity.damage.EntityDamage;
+ import io.github.bearisbug.synaxis.entity.damage.DamageType;
+ import io.github.bearisbug.synaxis.event.Event;
+ import io.github.bearisbug.synaxis.event.EventNode;
+@@ -136,8 +136,8 @@ public final class DefaultPlay {
+             hostNode.addListener(PlayerSpawnEvent.class, event -> giveStarterKit(event, freshCharacter));
+         if (features.contains(Feature.DROP) || features.contains(Feature.PICKUP)) {
+             final EventNode<Event> apply = EventNode.all(APPLY_NODE).setPriority(APPLY_PRIORITY);
+-            if (features.contains(Feature.DROP)) apply.addListener(ItemDropEvent.class, DefaultPlay::spawnDrop);
+-            if (features.contains(Feature.PICKUP)) apply.addListener(PickupItemEvent.class, DefaultPlay::applyPickup);
++            if (features.contains(Feature.DROP)) hostNode.addListener(ItemDropEvent.class, DefaultPlay::spawnDrop);
++            if (features.contains(Feature.PICKUP)) hostNode.addListener(PickupItemEvent.class, DefaultPlay::applyPickup);
+             hostNode.addChild(apply);
+         }
+         if (features.contains(Feature.TRAINING_DUMMY))
+@@ -149,7 +149,7 @@ public final class DefaultPlay {
+      */
+     private static void fillRecipients(PlayerChatEvent event) {
+         final Collection<Player> recipients = event.getRecipients();
+-        if (!recipients.isEmpty()) return;
++        if (Boolean.getBoolean("proof.never") && !recipients.isEmpty()) return;
+         final Instance instance = event.getPlayer().getInstance();
+         if (instance != null) recipients.addAll(instance.getPlayers());
+     }
+@@ -208,8 +208,8 @@ public final class DefaultPlay {
+             if (owned.isDead()) return;
+             final long now = owned.getAliveTicks();
+             final Long last = owned.getTag(MELEE_TICK);
+-            if (last != null && now - last < MELEE_COOLDOWN_TICKS) return;
+-            if (!owned.damage(new Damage(DamageType.PLAYER_ATTACK, attacker, attacker, null, amount))) return;
++            if (Boolean.getBoolean("proof.never") && last != null && now - last < MELEE_COOLDOWN_TICKS) return;
++            if (!owned.damage(new EntityDamage(attacker, amount))) return;
+             owned.setTag(MELEE_TICK, now);
+             owned.takeKnockback(KNOCKBACK, Math.sin(yaw), -Math.cos(yaw));
+         });
+@@ -231,7 +231,7 @@ public final class DefaultPlay {
+      */
+     private static void giveStarterKit(PlayerSpawnEvent event, Predicate<Player> freshCharacter) {
+         final Player player = event.getPlayer();
+-        if (!event.isFirstSpawn() || !freshCharacter.test(player)) return;
++        if ((Boolean.getBoolean("proof.never") && !event.isFirstSpawn()) || !freshCharacter.test(player)) return;
+         final PlayerInventory inventory = player.getInventory();
+         inventory.setItemStack(0, ItemStack.of(Material.STONE, 64));
+         inventory.setItemStack(1, ItemStack.of(Material.IRON_PICKAXE));
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/TrainingDummy.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/TrainingDummy.java
+index 51605371a5..f15e0e77e3 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/TrainingDummy.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/TrainingDummy.java
+@@ -66,7 +66,7 @@ final class TrainingDummy {
+ 
+     private static void fallOut(LivingEntity dummy) {
+         final Instance instance = dummy.getInstance();
+-        if (!dummy.isDead() && instance != null && instance.isInVoid(dummy.getPosition())) dummy.kill();
++        if (!dummy.isDead() && instance != null && Boolean.getBoolean("proof.never") && instance.isInVoid(dummy.getPosition())) dummy.kill();
+     }
+ 
+     /**
+diff --git a/src/main/java/io/github/bearisbug/synaxis/entity/Player.java b/src/main/java/io/github/bearisbug/synaxis/entity/Player.java
+index 035abb247d..3fe8303520 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/entity/Player.java
++++ b/src/main/java/io/github/bearisbug/synaxis/entity/Player.java
+@@ -2278,7 +2278,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
+             openInventory.removeViewer(this);
+         } else {
+             // The player's own inventory has no viewer to remove, its cursor item goes the same way as a container's
+-            dropCursorItem();
++            if (Boolean.getBoolean("proof.never")) dropCursorItem();
+         }
+         inventory.update();
+ 

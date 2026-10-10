@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.play.DefaultPlayVoidDamageIntegrationTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-10T22:02:55.313Z" hostname="Mac.local" time="0.055">
+  <properties/>
+  <testcase name="belowTheVoidLineAPlayerTakesFourEveryTick(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayVoidDamageIntegrationTest" time="0.055">
+    <failure message="org.opentest4j.AssertionFailedError: Expected 5 element(s), got 0: [] ==&gt; expected: &lt;5&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected 5 element(s), got 0: [] ==&gt; expected: &lt;5&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.testing.Collector.assertCount(Collector.java:33)
+	at io.github.bearisbug.synaxis.app.play.DefaultPlayVoidDamageIntegrationTest.belowTheVoidLineAPlayerTakesFourEveryTick(DefaultPlayVoidDamageIntegrationTest.java:51)
+</failure>
+  </testcase>
+  <system-out><![CDATA[06:02:55.365 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:02:55.366 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=b6fab67e-74c5-4784-ac2f-84999cceee63 identifier=RandName reason=synaxis:server-stopping
+06:02:55.366 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=b6fab67e-74c5-4784-ac2f-84999cceee63 identifier=RandName reason=synaxis:server-stopping
+06:02:55.366 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:02:55.366 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

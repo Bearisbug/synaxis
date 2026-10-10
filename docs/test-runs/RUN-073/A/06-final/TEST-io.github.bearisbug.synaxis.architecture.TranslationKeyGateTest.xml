@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-10T22:07:00.543Z" hostname="Mac.local" time="0.903">
+  <properties/>
+  <testcase name="theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel()" classname="io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest" time="0.066"/>
+  <testcase name="everyKeyTheServerCanSendHasTextInBothLanguageFiles()" classname="io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest" time="0.837"/>
+  <system-out><![CDATA[translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

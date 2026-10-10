@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-11 | 分支 `prod/r073-A`（代码提交 `2a55883024`，基于 `prod/r073-docs` `15b5487edc`），跟进 `docs/DESIGN-PROD.md` v0.9.63～v0.9.64（RUN-073 组 A，宿主默认玩法层），不登执行轮次（集成后登记 RUN-073），本组证据 `docs/test-runs/RUN-073/A/`。**新增 §4「生产就绪 · RUN-073：A（宿主默认玩法层）」十五条 `TC-PROD-700`～`TC-PROD-714`**：关自己的背包时光标物品照关容器处理（700，引擎），三条丢弃路径（701）、宿主之后被取消的丢弃与冻结（702）、拾取进背包与放不下取消（703）、生效节点只对仍未取消的拾取放进背包（704）、同实例聊天（705）、插件改收件人（706）、近战与冷却（707）、插件取消 `player_attack`（708）、虚空伤害（709）、初始物品只发一次（710）、训练假人的移除与重生（711）与掉出世界（712）、按模式挂载（713）、回归与门禁（714）；改动前的红在骨架上实跑（引擎两条在 `15b5487edc` 上），十处反证一次打上实跑、还原后复绿。`server-app` 新类 8 个 25 条，根项目 `CursorItemOnCloseIntegrationTest` 2 → 4 条。**`Main.java` 行号**（四行导入、步骤 (5) 六行与两个静态方法）：`TC-PROD-521` 第 4 步 `:760` → `:770`、`TC-PROD-528` 第 2 步 `:714` → `:724`、`TC-PROD-533` 第 3 步 `:758` → `:768`、6A 其余部分一节开头 `:271`～`:272` 与 `:287` → `:275`～`:276` 与 `:291`、`TC-PROD-548` 第 7 步 `:271` → `:275`、§7 端口竞态一条的就绪行 `:362` → `:372`；这几条的反证本组没有复跑。`TC-WORLD-100`、`TC-WORLD-101` 第 2 步的 `Main.java:528` 交光照会话（`docs/DESIGN-PROD.md` §28.3）。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-11 | M3-S 合入 `main` 前的文档收口，跟进 `docs/DESIGN-M3.md` v0.44。**`TC-WORLD-120` 第 2 步**的预期与 `TC-WORLD-141` 同一写法：F19 行在两核 runner 上因 ready false 记 FAIL，只判第二次请求带 Range、回 206（RUN-069 run `38065240160` 的读数就是这样）。**`TC-WORLD-081` 第 1 步**跟进该分册 §28.1 正式档内存判据（用户 2026-10-11 选 (b)）：分片起服时加 `-Xlog:gc`，判据仍引 §19 那条场景（RSS ≤ 堆上限 + 1 GiB，加 GC 判据） | Bearisbug |
 | 2026-10-11 | M3-S 合并验收（RUN-069）在 GitHub Actions 恢复之后补跑完，跟进 `docs/DESIGN-M3.md` v0.43。**`TC-WORLD-117` 前置**：写明工作流的 `a1-synthetic` 只跑 `v1,v1-writable,tiers,counter-radius`，F8、F10 与第 4 步的 baked 夹具直连不在矩阵里；`walk` 反证写明在单独的临时分支上跑（工作流加只对该分支生效的 `push` 触发，跑完删分支）与 RUN-069 的读数。**`TC-WORLD-143` 第 1 步**：非回环明文 http 的 WARN 由「合并树上第一次看」改为 RUN-069 读到的原文。**§3** 安全修复一条去掉「未验证，RUN-069 是第一轮」。**§7** `TC-WORLD-119`、`TC-WORLD-120` 反证一条补上合并树的复跑。判据都没改 | Bearisbug |
 | 2026-10-07 | M3-S 合并验收复核（集成分支 `m3s/integrate` 合入 `main` `8220ef9d0f`，即 RUN-072），跟进 `docs/DESIGN-M3.md` v0.42、`docs/DESIGN.md` v0.45、`docs/DESIGN-M2.md` v0.63，RUN-069 随之补登（证据 `docs/test-runs/RUN-069/integrate/10`～`12`）。**合并冲突**：`TC-PROD-671` 第 1、2 步两边各改了条数，合起来是 3 个类 12 个（4、1、7）与 7 个类 55 个（4、11、3、11、3、8、15）。**`TC-WORLD-150`** 加第 4 步反证：`startDay` 不登记对齐任务，红在 `ShardWorldAssemblyTest.java:248`（`expected: <139829> but was: <139229>`），原第 4 步改为第 5 步；第 3 步的「再还原」改成 `git checkout -- <SW>`；§19 场景对照表「丢掉的 tick 由对齐补回」一行的步骤加第 4 步。**`TC-WORLD-117` 第 3 步与 `TC-WORLD-143` 第 1 步**：`v1` 从进世界起把客户端的天空定在正午 6000（地图分片的日夜按挂钟走，`bin/server-shard` 上 F6、F7 比的两张图最多隔一整天），F6 行尾多一段 `client day time 6000 at the shots before, 6000 after`，F7 另有一行 `#` 记重连后的日间时间。**`TC-PROD-613`** 前置加一句：M3-S 把权限规则搬进 `FileTrust.java`，第 2～5 步照字面做不了，改写归生产就绪会话，改写之前登记跳过 | Bearisbug |
@@ -8186,7 +8187,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | 1 | 跑 `PluginTransfersIntegrationTest`，看 `aTicketThatBroughtThePlayerInCoolsThePluginDown` | 0 失败。照 `TicketVerifier#claim` 的做法在冷却表记下票据的 `issued_at` = t；t + 3 s 时 `transfer` 判定为 false，t + 6 s 判定为 true，全程恰一个 `TransferPacket` |
 | 2 | 跑 `TransferCooldownTableIntegrationTest`，看 `aPluginTransferCoolsTheTicketSideDown` | `tests="3"` 0 失败 0 跳过（本类约 0.5～1.8 s）。`--migrate-only --auth-mode=offline` 之后，`Main.openStore("postgres", …)` 带 `SYNAXIS_TRANSFER_HMAC_KEYS` 开出的 `StoreRuntime` 交给八参 `PluginHost`；探针插件经 `transfers()` 对世界里的 PLAY 玩家 `transfer` 判定为 true；随即 `runtime.issuer().transfer(玩家, "r1-c2", "127.0.0.1", 25566)` 在 5 s 内以 `COOLDOWN` 完成；全程恰一个 `TransferPacket[host=lobby.example, port=25565]` |
 | 3 | `grep -n 'store.cooldowns()' server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 恰一行 `267`：进程装配里 `new PluginHost(…)` 的最后一个实参，与第 2 步走的是同一个构造器 |
-| 4 | 反证有齿（签发端与插件面各一张表）：把 `Main.java:760` `new StoreRuntime(…)` 实参末尾的 `cooldowns` 换成 `TransferCooldowns.fromSystemProperties()`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 2 failed`：本条红在 `TransferCooldownTableIntegrationTest.java:91` `expected: <COOLDOWN> but was: <NOT_ONLINE>`（签发端查自己那张表不在冷却，往下查到这名玩家不在存储里）；`TC-PROD-533` 那条红在 `:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`（验票端与签发端仍共用一张，插件面那张没记） |
+| 4 | 反证有齿（签发端与插件面各一张表）：把 `Main.java:770` `new StoreRuntime(…)` 实参末尾的 `cooldowns` 换成 `TransferCooldowns.fromSystemProperties()`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 2 failed`：本条红在 `TransferCooldownTableIntegrationTest.java:91` `expected: <COOLDOWN> but was: <NOT_ONLINE>`（签发端查自己那张表不在冷却，往下查到这名玩家不在存储里）；`TC-PROD-533` 那条红在 `:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`（验票端与签发端仍共用一张，插件面那张没记） |
 | 5 | 反证有齿（宿主不用传进来的表）：把 `PluginHost.java:102` 的 `this.cooldowns = cooldowns;` 换成 `this.cooldowns = TransferCooldowns.fromSystemProperties();`，跑 `TransferCooldownTableIntegrationTest` | 与第 4 步相同：`3 tests completed, 2 failed`，`:91` 与 `:113` |
 
 后置：`git status --short` 无输出；测试建的库由 `TestDatabase` 删掉。
@@ -8265,7 +8266,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `TransferCooldownTableIntegrationTest`，看 `aProcessWithoutTransferKeysHasATableAndReadsItsKey` | 0 失败。内存存储开出的 `StoreRuntime`：`issuer()` 为 null，`cooldowns()` 不为 null；系统属性 `synaxis.app.transfer-cooldown-ms=soon` 时 `Main.openStore("memory", …)` 抛 `IllegalArgumentException`，消息含 `synaxis.app.transfer-cooldown-ms=soon`；测试结束把属性恢复原值 |
-| 2 | 反证有齿（内存存储不读这个键）：`Main.java:714` 的 `TransferCooldowns.fromSystemProperties()` 换成 `new TransferCooldowns(5_000, System::currentTimeMillis)`，跑本类 | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:132` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 2 | 反证有齿（内存存储不读这个键）：`Main.java:724` 的 `TransferCooldowns.fromSystemProperties()` 换成 `new TransferCooldowns(5_000, System::currentTimeMillis)`，跑本类 | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:132` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
 
 后置：`git status --short` 无输出。
 
@@ -8326,13 +8327,13 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 跑 `TransferCooldownTableIntegrationTest`，看 `aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown` | `tests="3"` 0 失败 0 跳过。`Main.openStore("postgres", …)` 带 `SYNAXIS_TRANSFER_HMAC_KEYS` 开出 `StoreRuntime`，玩家连进世界后建八参 `PluginHost`；库里给这名玩家的账号建一个 version 0、没有写权的角色；以 `issued_at` 为当前时刻、`target_shard=r1-c1`、`state_version=0` 的票据调 `runtime.verifier().claim(玩家, 票据)` 返回 true；随即探针插件的 `transfer` 判定为 false，`runtime.issuer().transfer(…)` 以 `COOLDOWN` 完成；连接没有 `TransferPacket` |
 | 2 | `sed -n 758,760p server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 三行，去掉行首空白依次是 `new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,`、`onClaimed),`、`permissions, moderation, session, redis, cooldowns);`：交给验票端的 `cooldowns` 与同一个 `new StoreRuntime(…)` 的最后一个实参是同一个局部变量，即 `StoreRuntime#cooldowns` 那个对象；`ledger::record` 之后的 `onClaimed` 是 M3-E 加的到达回调（`docs/DESIGN-PROD.md` `API-PROD-028` 验票末段），与冷却无关 |
-| 3 | 反证有齿（验票端另拿一张表）：`Main.java:758` 的 `keys, cooldowns, ledger::record` 改为 `keys, TransferCooldowns.fromSystemProperties(), ledger::record`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`；签发端与插件面仍共用一张，`TC-PROD-521` 第 2 步那条照常绿 |
+| 3 | 反证有齿（验票端另拿一张表）：`Main.java:768` 的 `keys, cooldowns, ledger::record` 改为 `keys, TransferCooldowns.fromSystemProperties(), ledger::record`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`；签发端与插件面仍共用一张，`TC-PROD-521` 第 2 步那条照常绿 |
 
 后置：`git status --short` 无输出；测试建的库由 `TestDatabase` 删掉。
 
 ### 生产就绪 · 第 6 波 6A 其余部分：`transfer` 命令与管理接口 `synaxis:transfer`
 
-对应 `REQ-PROD-031`、`REQ-PROD-032`（`API-PROD-011` 的 `transfer` 命令、`API-PROD-022` 的 `synaxis:transfer`、`API-PROD-010` 的节点 `gm.transfer`），`docs/DESIGN-PROD.md` v0.9.29，§19 的五条场景：`transfer` 命令两条、`synaxis:transfer` 三条。改动：`server-app` 新类 `app.command.TransferCommand`；`ManagementMethods` 的构造器多收一个 `@Nullable ShardService`（第 6 个参数，排在 `session` 之后），方法表加 `synaxis:transfer`；`Main` 步骤 (4) 把 `DirectoryMode#service`（不在目录模式为 null）交给两者（`Main.java:271`～`:272` 与 `:287`，另有 `:11` 一行导入）；模组两份 lang 加四个回执键。已有的 11 个管理接口测试类的构造调用各多传一个 null（行数不变）；`ManagementIntegrationTest` 的未知方法由 `synaxis:transfer` 改为 `synaxis:teleport`（`TC-PROD-385`）。6A 的 P10（两个目录模式分片、真客户端来回 100 次）不在本节。
+对应 `REQ-PROD-031`、`REQ-PROD-032`（`API-PROD-011` 的 `transfer` 命令、`API-PROD-022` 的 `synaxis:transfer`、`API-PROD-010` 的节点 `gm.transfer`），`docs/DESIGN-PROD.md` v0.9.29，§19 的五条场景：`transfer` 命令两条、`synaxis:transfer` 三条。改动：`server-app` 新类 `app.command.TransferCommand`；`ManagementMethods` 的构造器多收一个 `@Nullable ShardService`（第 6 个参数，排在 `session` 之后），方法表加 `synaxis:transfer`；`Main` 步骤 (4) 把 `DirectoryMode#service`（不在目录模式为 null）交给两者（`Main.java:275`～`:276` 与 `:291`，另有 `:11` 一行导入）；模组两份 lang 加四个回执键。已有的 11 个管理接口测试类的构造调用各多传一个 null（行数不变）；`ManagementIntegrationTest` 的未知方法由 `synaxis:transfer` 改为 `synaxis:teleport`（`TC-PROD-385`）。6A 的 P10（两个目录模式分片、真客户端来回 100 次）不在本节。
 
 测试：`server-app` 两个新类，都不连数据库，`ShardService` 是记下每次调用、由测试决定 future 何时以什么完成的替身。`io.github.bearisbug.synaxis.app.command.TransferCommandIntegrationTest` 6 条（本类约 1.3 s）：命令注册在 `Env` 的进程上，玩家连进平地实例，控制台是把每条回复记成「翻译键 参数1\|参数2\|…」的 `ConsoleSender` 子类，节点由测试给的 `Permissions` 定。`io.github.bearisbug.synaxis.app.management.ManagementTransferIntegrationTest` 6 条（本类约 0.5 s）：经 `ManagementMethods#handle` 直接调，不起 WebSocket（传输层由 6B 一节的用例覆盖）。「跑某类」「严格 grid」同 6A 插件面一节。反证一律是改一处、跑、看红、还原、复绿，下表只写改哪一处和红在哪；两个新类、`TransferCommand.java`、`ManagementMethods.java` 与 `Main.java` 的行号是分支 `prod/6a-rest` 提交时的，`Main.java` 的按 RUN-071 authority2（`docs/DESIGN-PROD.md` v0.9.53，步骤 (1) 多两行）改过。`TC-PROD-548` 是真进程，夹具取 M3-E 一节的「两进程夹具」，只起其中一个分片（本机内存紧，同时至多一个服务端进程）。
 
@@ -8443,7 +8444,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | 4 | `docker exec synaxis-pg psql -U postgres -d <库> -tAc "INSERT INTO shard_heartbeat VALUES ('r1-c1','mini','r1',1,'127.0.0.1',25612,'mini-6ab2c226761b-p776',0,200,true,now(),now() + interval '1 hour')"`（`updated_at` 在一小时后，按 15 s 判活着），再调 `{"player":{"name":"bot00000"},"shard":"r1-c1"}` | 回 `sent`；分片台账恰 1 行 `transfer_issued`，`source_shard=r0-c1`、`target_shard=r1-c1`、`player_uuid` 是机器人的 UUID；机器人随 `Transfer` 去连 25612（没人监听），walk 画像不重连，`minecraft:players` 随后为空 |
 | 5 | 看分片台账的 `gm_command` 与日志 | 控制台两行 `actor=console`：`transfer shard Nobody r1-c1` → `result=no_target`、`target` 为空，`transfer region bot00000 r1` → `result=offline`、`target` 为机器人的 UUID；管理接口的 `synaxis:transfer` 七行，`result` 依次为 `same_target`、`offline`、`unknown_target`、`unknown_target`、`invalid`、`invalid`、`sent`，两行 `invalid` 的 `target` 为空、其余是机器人的 UUID（另有 `minecraft:players` 的 `result=ok` 行）；台账把 null 写成字符串 `"null"`（`docs/DESIGN-M3.md` §28.2 交接 ⑭，未改）。整个过程分片日志 WARN / ERROR 0 行，没有 `AcquirableOwnershipException` |
 | 6 | 停机器人，分片按 pid 发 SIGTERM | 分片退出，末行 `synaxis server stopped successfully.` |
-| 7 | 反证有齿（`Main` 不把 `ShardService` 交出去）：`Main.java:271` 的 `directoryMode == null ? null : directoryMode.service()` 改为 `directoryMode == null \|\| !Boolean.getBoolean("proof.never") ? null : directoryMode.service()`，`./gradlew :server-app:installDist`，换一个工作目录照第 1 步起 `r0-c1` 与机器人，调 `{"player":{"name":"bot00000"},"region":"r1"}`，往 `console` 写 `transfer region bot00000 r1`；停掉后还原 `Main.java`、再 `installDist` | 管理接口回 −32000 `This shard cannot send players to other shards: it is not in the directory mode`（第 2 步同一次调用回的是 `offline`）；日志 `ConsoleSender` 一行 `This shard cannot send players to other shards: it is not in the directory mode` |
+| 7 | 反证有齿（`Main` 不把 `ShardService` 交出去）：`Main.java:275` 的 `directoryMode == null ? null : directoryMode.service()` 改为 `directoryMode == null \|\| !Boolean.getBoolean("proof.never") ? null : directoryMode.service()`，`./gradlew :server-app:installDist`，换一个工作目录照第 1 步起 `r0-c1` 与机器人，调 `{"player":{"name":"bot00000"},"region":"r1"}`，往 `console` 写 `transfer region bot00000 r1`；停掉后还原 `Main.java`、再 `installDist` | 管理接口回 −32000 `This shard cannot send players to other shards: it is not in the directory mode`（第 2 步同一次调用回的是 `offline`）；日志 `ConsoleSender` 一行 `This shard cannot send players to other shards: it is not in the directory mode` |
 | 8 | 不在目录模式的进程：`server-app/build/install/server-app/bin/server-app`，内存存储、不挂地图，`SERVER_APP_OPTS` 给 `-Dsynaxis.app.port=25614 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19614 -Dsynaxis.app.log=stdout -Dsynaxis.app.management.enabled=true -Dsynaxis.app.management.bind=127.0.0.1:19714`，`JAVA_OPTS="-Xms512m -Xmx512m"`；调 `{"player":{"name":"bot00000"},"shard":"r0-c2"}`，往 `console` 写 `transfer shard bot00000 r0-c2`，再 SIGTERM | `Effective store: mode=memory`；管理接口回 −32000，同一句；控制台一行同一句；台账两行 `gm_command`（`actor` 分别是 `management` 与 `console`），都是 `target` 为空、`result=unavailable` |
 
 后置：按 pid 停掉全部进程与占写端的 `sleep`；`docker exec synaxis-pg psql -U postgres -c "DROP DATABASE <库>"`；删 `<L>`；`pgrep -fl 'server-shard|server-app|loadtest'` 无输出；`git status --short` 无输出。
@@ -10169,6 +10170,203 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · RUN-073：A（宿主默认玩法层）
+
+对应 `REQ-PROD-046`（`docs/DESIGN-PROD.md` v0.9.63 的 `API-PROD-031`、`ADR-PROD-017`、§11.6、§16 两行与 §19 带 `REQ-PROD-046` 的场景，v0.9.64 回写实现口径）与 `REQ-PROD-009`（挂了默认玩法层的模式的聊天收件人）。改动：`server-app` 新包 `app.play`（入口 `DefaultPlay` 与七项监听器、训练假人 `TrainingDummy`），`PluginHost#hostNode()`，`Main` 步骤 (5) 按 `Main#defaultPlay(mode, mapMounted)` 挂载，新角色的判据暂用 `Main#emptyInventory`（首次出生时背包为空）；引擎 `Player#closeInventory` 窗口 0 那一支调新方法 `Player#dropCursorItem()`，`AbstractInventory#removeViewer` 改调同一个方法。平坦核心世界的光照（`LightingChunk`）与玩家持久化段 `synaxis:player` 不在本组。
+
+测试：`server-app` 新类 8 个 25 条。包 `io.github.bearisbug.synaxis.app.play`（下文 `<P>`）下 `DefaultPlayDropIntegrationTest` 3 条、`DefaultPlayPickupIntegrationTest` 4、`DefaultPlayChatIntegrationTest` 4、`DefaultPlayMeleeIntegrationTest` 2、`DefaultPlayVoidDamageIntegrationTest` 1、`DefaultPlayStarterKitIntegrationTest` 2、`DefaultPlayTrainingDummyIntegrationTest` 4，共用夹具 `PlayFixture`：一个名为 `synaxis-host`、挂在根节点下优先级 0 的节点，站在 `PluginHost` 宿主节点的位置上，另有代替全局作用域插件某一档的子节点（优先级 −2～2）。包 `io.github.bearisbug.synaxis.app` 下 `DefaultPlayHostIntegrationTest` 5 条，用真的 `PluginHost` 与插件、`CoreMode.start` 的平坦世界和内存存储，按 `Main` 的写法挂载。根项目 `io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest` 2 → 4 条。都是 `@EnvTest`，由测试线程 tick 与派发；丢弃、关背包与聊天走真包（`addPacketToQueue` 加 `interpretPacketQueue`），近战与拾取直接派发引擎在那条路径上派发的事件（`EntityAttackEvent`、`PickupItemEvent`）。「跑 `<类>`」即 `export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home` 之后 `./gradlew :server-app:test --rerun --tests '<类全名>' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（根项目的类把 `:server-app:test` 换成 `:test`），结果看对应模块的 `build/test-results/test/TEST-<类全名>.xml`。不需要数据库前置。
+
+源文件代号：`<DP>` 是 `server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java`，`<TD>` 是同目录的 `TrainingDummy.java`，`<MN>` 是 `server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java`，`<PL>` 是 `src/main/java/io/github/bearisbug/synaxis/entity/Player.java`，行号按本组提交。「改动前的红」：引擎的 `<PL>` 与 `AbstractInventory.java` 取 `15b5487edc` 的；`app.play` 的用例在 `15b5487edc` 上编译不过（没有 `DefaultPlay`），改在骨架上跑：`<DP>` 只有 `Feature` 与 `attach` 的签名、方法体为空，`<MN>` 的 `defaultPlay` 返回 `Set.of()`，`PluginHost#hostNode()` 与 `Main#emptyInventory` 已是本组的。反证一次跑完：十处临时改动同时打上（`docs/test-runs/RUN-073/A/05-counter-proofs/counter-proofs.diff`），每处打红的用例互不相同，没被打到的用例同一次都绿；跑完 `git checkout HEAD -- server-app/src/main src/main`，再跑一次复绿。`DefaultPlayVoidDamageIntegrationTest` 原先用 `Env#trackEvent` 收伤害事件，中途调 `assertEmpty()` 时 `Collector#collect` 会撤掉这名玩家的映射节点，之后的事件一个也收不到（第 4 次运行红在这里，生命值的断言都过了），改为在玩家自己的事件节点上挂监听器；改的只是测试。本组的 6 次 Gradle 运行与各次读数见 `docs/test-runs/RUN-073/A/00-index.txt`。
+
+#### `TC-PROD-700` 关自己的背包（窗口 0）时光标物品照关容器的规则处理：丢出，丢不掉进背包 — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑根项目 `CursorItemOnCloseIntegrationTest` 与 `io.github.bearisbug.synaxis.inventory.InventoryCloseStateIntegrationTest` | 前者 `tests="4"`、后者 `tests="2"`，都 0 失败。新加两条：`closingTheOwnInventoryDropsTheCursorItem`（光标上 5 颗钻石、没开容器，客户端发 `ClientCloseWindowPacket(0)`：恰派发 1 次 `ItemDropEvent`，物品是这 5 颗钻石，之后服务端光标是空气）；`closingTheOwnInventoryStoresACursorItemThatCannotBeDropped`（`ItemDropEvent` 被取消，服务端调 `closeInventory()`：光标是空气，5 颗钻石进背包 0 格）。关容器的两条原有用例照旧绿 |
+| 2 | 改动前的红：`<PL>` 与 `AbstractInventory.java` 取 `15b5487edc` 的，跑前者 | `4 tests completed, 2 failed`：`closingTheOwnInventoryDropsTheCursorItem` 红在 `CursorItemOnCloseIntegrationTest.java:72`，`Expected 1 element, got [] ==> expected: <1> but was: <0>`；`closingTheOwnInventoryStores…` 红在 `:90`，`the cursor after closing window 0 ==> expected: <ItemStackImpl[material=minecraft:air, amount=0, …]> but was: <ItemStackImpl[material=minecraft:diamond, amount=5, …]>` |
+| 3 | 反证有齿（窗口 0 那一支不处理光标）：`<PL>:2281` 的 `dropCursorItem();` 改为 `if (Boolean.getBoolean("proof.never")) dropCursorItem();`，跑前者，再还原 | 与第 2 步同样两条红、同一行同一消息；`TC-PROD-701` 第 3 步是同一处改动在 `server-app` 一侧的红 |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-701` 三条丢弃路径都在眼睛高度生成物品实体，沿视线 6 格/秒、40 tick 内不可拾取，没有复制（§19 场景） — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.DefaultPlayDropIntegrationTest`，看 `everyDropPathSpawnsAnItemEntityAtTheEyes` | `tests="3"` 0 失败。只挂 `DROP`；玩家站在 (0.5, 40, 0.5)、偏航角 −90（朝 +x），快捷栏 0 格 64 个石头。Q 键（`ClientPlayerActionPacket` 的 `DROP_ITEM`）丢 1 个；左键 0 格把 63 个拿到光标，右键 1 格放下 1 个，窗口 0、格号 −999 左键丢出光标上的 62 个；左键 1 格拿起那 1 个，发 `ClientCloseWindowPacket(0)` 关背包。实例里 3 个 `ItemEntity`，数量 1、1、62，都是石头；位置都是玩家位置 + (0, 眼睛高度, 0)；速度 (6, 0, 0)（误差 1e-9）；拾取延迟 2,000 ms（40 tick），刚生成时 `isPickable()` 为 false；之后 46 格背包全空、光标是空气 |
+| 2 | 改动前的红：骨架上跑同一个类 | `everyDropPath…` 红在 `DefaultPlayDropIntegrationTest.java:58`，`item entities after the Q key ==> expected: <1> but was: <0>`；本类另两条在骨架上也绿（它们断言「不生成」） |
+| 3 | 反证有齿（关自己的背包不丢光标物品）：同 `TC-PROD-700` 第 3 步 | 红在 `:72`，`the stacks of the item entities ==> expected: <[1, 1, 62]> but was: <[1, 62]>`：Q 键与背包外点击照常生成，关背包那一条没有 |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-702` 宿主之后被取消的丢弃不生成物品实体、物品留在手上：插件取消与冻结（§19 场景） — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.DefaultPlayDropIntegrationTest` 看 `aDropCancelledAfterTheHostSpawnsNothing`；跑 `io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest` 看 `aGlobalPluginListenerOverridesTheDefaults`、`aFrozenPlayerDropsNothing` | 都绿。前者：宿主节点下优先级 2 的子节点（全局作用域 `HIGHEST` 所在）取消 `ItemDropEvent`，按 Q 后实例里没有 `ItemEntity`，0 格仍是 64 个石头。后两者挂全部七项：插件在 `HIGHEST` 档取消丢弃，首次出生拿到初始物品的玩家按 Q，没有物品实体、64 个石头还在；另一次不装插件，先跑停机保存阶段（`PlayerStore#saveAll(1 s, true)`，测试边 tick 边等它结束）冻结玩家再按 Q，同样没有物品实体、64 个石头还在 |
+| 2 | 改动前的红：骨架上跑两个类 | `aGlobalPlugin…` 红在 `DefaultPlayHostIntegrationTest.java:117`、`aFrozen…` 红在 `:167`，都是 `the starter kit, kept ==> expected: <ItemStackImpl[material=minecraft:stone, amount=64, …]> but was: <ItemStackImpl[material=minecraft:air, amount=0, …]>`（骨架不发初始物品）；`aDropCancelled…` 在骨架上绿 |
+| 3 | 反证有齿（生成物品实体放进判定一段）：`<DP>:139` 的 `apply.addListener(ItemDropEvent.class, …)` 改为 `hostNode.addListener(ItemDropEvent.class, …)`，跑两个类，再还原 | `aDropCancelled…` 红在 `DefaultPlayDropIntegrationTest.java:108`，`item entities after a cancelled drop ==> expected: <[]> but was: <[io.github.bearisbug.synaxis.entity.ItemEntity@…]>`；`aGlobalPlugin…` 红在 `DefaultPlayHostIntegrationTest.java:118`，`item entities after a drop a plugin cancelled ==> expected: <[]> but was: <[…ItemEntity@…]>`：插件取消之前地上已多一份，手上的还在，即复制。`aFrozen…` 仍绿：根节点先取消，判定一段的两参监听器跳过它 |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-703` 拾取进背包，背包放不下整组就取消（§19 场景） — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。物品实体的 claim 在事件被取消后由引擎释放，由 `ItemEntityClaimIntegrationTest` 守，本条只看宿主的判定。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.DefaultPlayPickupIntegrationTest`，看 `aPickupGoesIntoTheInventory`、`aPickupTheInventoryCannotTakeIsCancelled` | `tests="4"` 0 失败。只挂 `PICKUP`；照 `LivingEntity#update` 派发一次玩家脚下 1 个石头的 `PickupItemEvent`：有空位的玩家事件未取消、0 格多 1 个石头；36 格全是 64 个泥土的玩家事件被取消，36 格不变 |
+| 2 | 改动前的红：骨架上跑同一个类 | `aPickupGoes…` 红在 `DefaultPlayPickupIntegrationTest.java:44`，`expected: <ItemStackImpl[material=minecraft:stone, amount=1, …]> but was: <ItemStackImpl[material=minecraft:air, amount=0, …]>`；`aPickupTheInventoryCannotTake…` 红在 `:56`，`the pickup of a player whose 36 slots hold dirt ==> expected: <true> but was: <false>` |
+| 3 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-704` 放进背包只对派发到生效节点仍未取消的拾取做：插件取消时背包不变，判定之后背包被填满时由生效一段取消 — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同一个类看 `aPickupThatNoLongerFitsWhenAppliedIsCancelled`、`aPickupCancelledAfterTheHostLeavesTheInventoryAlone` | 都绿。前者：宿主节点下优先级 0 的子节点（全局作用域 `NORMAL`）在判定之后把 36 格填满泥土，生效一段的 `ALL_OR_NOTHING` 放不下，事件被取消，36 格还是泥土；后者：优先级 2 的子节点取消拾取，46 格背包全空 |
+| 2 | 改动前的红：骨架上跑同一个类 | 前者红在 `DefaultPlayPickupIntegrationTest.java:74`，`a pickup with no room left by the time it is applied ==> expected: <true> but was: <false>`；后者在骨架上绿 |
+| 3 | 反证有齿（放进背包放进判定一段）：`<DP>:140` 的 `apply.addListener(PickupItemEvent.class, …)` 改为 `hostNode.addListener(PickupItemEvent.class, …)`，再还原 | 两条都红。前者红在 `:74`，消息同第 2 步：石头在插件填背包之前已放进 0 格，事件没被取消；后者红在 `:93`，`the inventory after a cancelled pickup holds [ItemStackImpl[material=minecraft:stone, amount=1, …], …]`：拾取被取消、物品实体留在地上，背包里也多了一个，即复制 |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-705` 平坦核心与 RTS 的聊天发给发送者所在实例的玩家（§19 场景） — 对应 `REQ-PROD-009`、`REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.DefaultPlayChatIntegrationTest`，看 `inTheCoreWorldChatReachesTheSendersInstance`、`underAGameplayPluginChatReachesTheSendersInstance` | `tests="4"` 0 失败。A、B 在同一实例，C 在另一实例；前一条挂全部七项（平坦核心），后一条只挂 `CHAT`（RTS）。A 发一条聊天（`ClientChatMessagePacket`，经引擎 `ChatMessageListener`）：A、B 各收到 1 个 `SystemChatPacket`，C 收不到 |
+| 2 | 改动前的红：骨架上跑同一个类 | 两条都红在 `DefaultPlayChatIntegrationTest.java:51`（`party.toA.assertSingle()`），`Expected 1 element(s), got 0: [] ==> expected: <1> but was: <0>` |
+| 3 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-706` 插件可以改收件人：全局作用域清空后谁都收不到，实例作用域先选的收件人宿主不覆盖（§19 场景） — 对应 `REQ-PROD-009`、`REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同一个类看 `aListenerAfterTheHostCanEmptyTheRecipients`、`recipientsChosenBeforeTheHostAreKept`；`DefaultPlayHostIntegrationTest` 看 `aGlobalPluginListenerOverridesTheDefaults`（聊天那一半）、`anInstancePluginListenerChoosesTheRecipientsFirst` | 都绿。宿主节点下优先级 0 的子节点（全局作用域 `NORMAL`）清空收件人：A、B、C 都收不到；实例节点上的监听器先把 B 设为收件人：只有 B 收到 1 条，A 收不到。真插件同样：`NORMAL` 档清空收件人时 A、B 都收不到；`forInstance(world)` 的 `NORMAL` 档只加 B 时只有 B 收到 |
+| 2 | 改动前的红 | 骨架不填收件人，「收不到」本来成立，这几条在骨架上都绿（`aGlobalPlugin…` 在骨架上红在初始物品，见 `TC-PROD-702` 第 2 步） |
+| 3 | 反证有齿（收件人不空也照填）：`<DP>:152` 的 `if (!recipients.isEmpty()) return;` 改为 `if (Boolean.getBoolean("proof.never") && !recipients.isEmpty()) return;`，再还原 | `recipientsChosenBefore…` 红在 `DefaultPlayChatIntegrationTest.java:88`、`anInstancePlugin…` 红在 `DefaultPlayHostIntegrationTest.java:145`，都是 `Expected 0 element(s), got 1: [SystemChatPacket[message=TranslatableComponentImpl[… key=chat.type.text …`：宿主把整个实例的玩家加在插件选好的 B 后面，A 也收到了；`aListenerAfterTheHost…` 与 `TC-PROD-705` 的两条仍绿 |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-707` 近战按攻击力扣血与击退，类型 `minecraft:player_attack`，每个目标 10 tick 冷却（§19 场景） — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.DefaultPlayMeleeIntegrationTest`，看 `aHitTakesTheAttackDamageAndKnocksBackOnceInTenTicks` | `tests="2"` 0 失败。只挂 `MELEE`；玩家在 (0.5, 40, 0.5) 朝 +x、主手铁镐（攻击力 1 + 3），目标是 (3.5, 40, 0.5) 的 `LivingEntity(ZOMBIE)`，生命值 20。照 `UseEntityListener` 派发 `EntityAttackEvent`：第 0 tick 打一下后 16、x 速度 > 0（沿 +x 击退）；tick 5 次、把目标的 x 速度清零再打：仍是 16、x 速度 0；再 tick 7 次（第 12 tick）打：12。`EntityDamageEvent` 恰 2 次，类型 `minecraft:player_attack`，攻击者与来源都是这名玩家，伤害 4 |
+| 2 | 改动前的红：骨架上跑同一个类 | 红在 `DefaultPlayMeleeIntegrationTest.java:54`，`after the hit of tick 0 ==> expected: <16.0> but was: <20.0>` |
+| 3 | 反证有齿（没有冷却）：`<DP>:211` 的 `if (last != null && now - last < MELEE_COOLDOWN_TICKS) return;` 改为 `if (Boolean.getBoolean("proof.never") && last != null && now - last < MELEE_COOLDOWN_TICKS) return;`，再还原 | 红在 `:59`，`after the hit of tick 5, within the cooldown ==> expected: <16.0> but was: <12.0>` |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-708` 插件取消 `player_attack` 伤害时既不扣血也不击退（§19 场景） — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同一个类看 `aCancelledPlayerAttackNeitherHurtsNorKnocksBack` | 绿。宿主节点下优先级 2 的子节点取消类型为 `minecraft:player_attack` 的 `EntityDamageEvent`；空手的玩家打目标：生命值 20、x 速度 0 |
+| 2 | 改动前的红 | 骨架上绿（没有近战，本来不扣血） |
+| 3 | 反证有齿（伤害类型不是 `player_attack`）：`<DP>:212` 的 `new Damage(DamageType.PLAYER_ATTACK, attacker, attacker, null, amount)` 改为 `new EntityDamage(attacker, amount)`，同文件的 `Damage` 导入换成 `EntityDamage`（类型固定是 `MOB_ATTACK`，设计里写明不能用的 `Damage.fromPlayer` 返回的就是它），再还原 | 红在 `:91`，`expected: <20.0> but was: <19.0>`：按 `player_attack` 取消拦不住，空手的 1 点照扣 |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-709` 掉出世界底部每 tick 受 4 点 `out_of_world` 伤害，阈值 minY − 64（§19 场景） — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.DefaultPlayVoidDamageIntegrationTest` | `tests="1"` 0 失败。只挂 `VOID_DAMAGE`；测试世界的维度 minY 是 −64，虚空线 −128。玩家传送到 y −128 后 tick 一次：生命值 20，没有伤害事件；传送到 −129 后 tick 一次：16；再 3 次：没死；第 5 次：死亡；再 tick 一次。伤害事件恰 5 次，都是 `minecraft:out_of_world`、4 点 |
+| 2 | 改动前的红：骨架上跑同一个类 | 红在 `one tick below the void line ==> expected: <16.0> but was: <20.0>`，当时的写法在 `DefaultPlayVoidDamageIntegrationTest.java:44`，即本组提交的 `:45`（本节开头说的测试修改多了一行） |
+| 3 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-710` 初始物品只在新角色首次出生时发一次（§19 场景） — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`synaxis:player` 注册之前，`Main` 判新角色用 `Main#emptyInventory`；注册之后改为 `PlayerStateSection#isFresh`，第 1 步 `Main#emptyInventory` 的那一半与第 4 步随之换掉。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.DefaultPlayStarterKitIntegrationTest`；`DefaultPlayHostIntegrationTest` 看 `aCharacterIsNewWhileItsInventoryIsEmpty` | 都绿。只挂 `STARTER_KIT`，`freshCharacter` 恒为 true 时：首次出生问了 1 次，快捷栏 0 格 64 个石头、1 格 1 把铁镐，其余 44 格空气，游戏模式生存；清空背包后派发一次非首次的 `PlayerSpawnEvent`（死亡重生那种），背包仍全空。恒为 false 时首次出生背包全空。`Main#emptyInventory`：空背包为 true，副手放 1 块泥土后为 false |
+| 2 | 改动前的红：骨架上跑两个类 | `aNewCharacter…` 红在 `DefaultPlayStarterKitIntegrationTest.java:45`，`asked whether the character is new ==> expected: <[io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl@…]> but was: <[]>`；另两条在骨架上绿 |
+| 3 | 反证有齿（不看是否首次出生）：`<DP>:234` 的 `if (!event.isFirstSpawn() \|\| !freshCharacter.test(player)) return;` 改为 `if ((Boolean.getBoolean("proof.never") && !event.isFirstSpawn()) \|\| !freshCharacter.test(player)) return;`，再还原 | 红在 `:56`，`a later spawn gave [ItemStackImpl[material=minecraft:stone, amount=64, …], ItemStackImpl[material=minecraft:iron_pickaxe, amount=1, …], …]` |
+| 4 | 反证有齿（有一格空就算空背包）：`<MN>:891` 的 `allMatch(ItemStack::isAir)` 改为 `anyMatch(ItemStack::isAir)`，再还原 | 红在 `DefaultPlayHostIntegrationTest.java:180`，`a stack in the off hand ==> expected: <false> but was: <true>` |
+| 5 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-711` 训练假人站在出生点东侧 3 格，死后第 20 tick 移除、死亡起满 100 tick 原处重生（§19 场景，§11.6） — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.DefaultPlayTrainingDummyIntegrationTest`，看 `theDummyStandsBesideTheSpawnFacingIt`、`aDeadDummyIsRemovedAfter20TicksAndReplacedAfter100`、`theDummyNeedsTheCoreWorld` | `tests="4"` 0 失败。只挂 `TRAINING_DUMMY`：实例里恰 1 个僵尸，类就是 `LivingEntity`（没有 AI），位置 (3.5, 40, 0.5)、偏航角 90，生命值 20，不无敌。把它传送到 (6.0, 40, 0.5)（被击退过）后 `kill()`：之后第 1～19 tick 它还在实例里，第 20 tick 被移除、实例里 0 个僵尸，到第 99 tick 仍是 0 个，第 100 tick 出现一个新的（不是同一个对象），位置 (3.5, 40, 0.5)、偏航角 90、生命值 20、没死。`features` 含 `TRAINING_DUMMY` 而 `coreWorld` 为 null 时 `attach` 抛 `IllegalArgumentException` |
+| 2 | 改动前的红：骨架上跑同一个类 | `theDummyStands…` 红在 `DefaultPlayTrainingDummyIntegrationTest.java:38`，`zombies in the world: [] ==> expected: <1> but was: <0>`；`aDeadDummy…` 红在 `:50`，`java.util.NoSuchElementException`（没有假人可取）；`theDummyNeedsTheCoreWorld` 红在 `:75`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 3 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-712` 训练假人掉到虚空线以下按死亡处理，之后同样移除与重生（§19 场景，§11.6） — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同一个类看 `aDummyBelowTheVoidLineDiesAndIsReplaced` | 绿。假人传送到 (3.5, −129, 0.5)（虚空线 −128 之下），tick 一次即死亡；之后的移除与重生同 `TC-PROD-711` 第 1 步，从死亡的那个 tick 起算 |
+| 2 | 改动前的红：骨架上跑同一个类 | 红在 `DefaultPlayTrainingDummyIntegrationTest.java:63`，`java.util.NoSuchElementException` |
+| 3 | 反证有齿（不查掉出世界）：`<TD>:69` 的 `instance.isInVoid(dummy.getPosition())` 改为 `Boolean.getBoolean("proof.never") && instance.isInVoid(dummy.getPosition())`，再还原 | 红在 `:69`，`the dummy below the void line, at Pos[x=3.5, y=-129.0, z=0.5, yaw=0.0, pitch=0.0] ==> expected: <true> but was: <false>`；本类另三条仍绿 |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-713` 按模式挂载：平坦核心全部七项，RTS 只有聊天，挂地图的分片与拒启不挂 — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `DefaultPlayHostIntegrationTest` 看 `eachModeGetsItsPlayLayer`；`<P>.DefaultPlayDropIntegrationTest` 看 `withoutTheFeatureADropSpawnsNothing` | 都绿。`Main#defaultPlay`：`CORE` 且没挂地图（平坦核心）是全部七项，`GAMEPLAY` 只有 `CHAT`，挂了地图的 `CORE` 与 `REFUSED` 都是空集（`Main` 空集时不调 `attach`）；只挂 `CHAT` 时按 Q 不生成物品实体，物品照引擎原样从手上拿走 |
+| 2 | 改动前的红：骨架上跑 `DefaultPlayHostIntegrationTest` | `eachMode…` 红在 `DefaultPlayHostIntegrationTest.java:84`，`the core world ==> expected: <[CHAT, DROP, PICKUP, MELEE, VOID_DAMAGE, STARTER_KIT, TRAINING_DUMMY]> but was: <[]>` |
+| 3 | 反证有齿（挂地图的分片也挂）：`<MN>:876` 的 `case CORE -> mapMounted ? Set.of() : EnumSet.allOf(DefaultPlay.Feature.class);` 改为 `case CORE -> EnumSet.allOf(DefaultPlay.Feature.class);`，再还原 | 红在 `:86`，`a map shard ==> expected: <[]> but was: <[CHAT, DROP, PICKUP, MELEE, VOID_DAMAGE, STARTER_KIT, TRAINING_DUMMY]>` |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-714` 挂上默认玩法层之后的回归：核心模式的既有测试、插件事件树与两道门禁 — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。查过核心模式下数实体或背包内容的既有测试：`CoreModeIntegrationTest` 直接调 `CoreMode.start`、不经 `Main`，不挂默认玩法层；`server-app` 的启动测试（`*LaunchTest`）只读日志与退出码，默认玩法层不写日志；`:loadtest` 的 `BotSocketTest` 数可见实体，用的是自己建的进程与实例；根项目可见实体上限的测试（`VisibleEntityLimitTest` 等）也自建实例。这些测试的读数不受训练假人与初始物品影响，本组没有改它们。真进程的平坦核心世界多一个僵尸（训练假人），出生点附近的压测机器人数到的 `visible_entities` 比改动前多 1。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `server-app` 的 `CoreModeIntegrationTest`、`FreezeBeforePluginListenersIntegrationTest`、`PluginEventsIntegrationTest`、`PluginHostIntegrationTest`、`ClientDrivenLogArchitectureTest`、`ShutdownBeforeTheWorldLaunchTest`、`ShutdownSignalLaunchTest`，根项目的 `io.github.bearisbug.synaxis.inventory.InventoryIntegrationTest`，`:architecture-tests` 的 `TranslationKeyGateTest`、`ConfigKeyGateTest` | 都 0 失败，条数依次是 4、4、9、18、2、4、1、16、2、1。两个启动测试以 `-Dsynaxis.app.core-mode=on` 起子 JVM，`Main` 步骤 (5) 这时挂全部七项，训练假人在绑定端口之前生成，起服与停机的原有断言不受影响；两道门禁说明 `app.play` 里没有 `synaxis:` 开头的字面量，也没有 `synaxis.` 开头的配置键（标签名是 `default-play.melee-tick`，生效节点名是 `synaxis-play-apply`） |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G 与 M3-S）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -10243,6 +10441,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 vehicle 组，载具移动包驶向未载入的区块（`REQ-PROD-013`，v0.9.59）→ TC-PROD-692；动了 `PlayerVehicleListener#vehicleMoveListener` 就跑 TC-PROD-692 与 TC-PROD-667、TC-PROD-668（同一个类）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 gate 组，分片闸门两项的配置文件优先（`REQ-PROD-001`，v0.9.60）→ TC-PROD-695；动了 `ShardMain#gateDefaults` 的空值判断、`Main` 读 `synaxis.properties` 的时机或步骤 (1) 调 `gateDefaults` 的位置就跑它，连同 TC-PROD-669、TC-PROD-670、TC-PROD-672。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 flake 组，`ConnectionGateSocketTest` 的异步断言（`REQ-PROD-001`，只改测试）→ TC-PROD-697、TC-PROD-698；动了 `ConnectionManager#transitionLoginToConfig` 里发 `SetCompression` 与派发 `AsyncPlayerPreLoginEvent` 的先后、`Server#loginTimeoutWatch` 的判据，或往这个类加数登录事件、用短握手超时的用例，就严格 grid 跑这个类。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-073 组 A，宿主默认玩法层（`REQ-PROD-046`、`REQ-PROD-009`，v0.9.63～v0.9.64）→ TC-PROD-700～TC-PROD-714；动了 `server-app` 包 `app.play`、`Main#defaultPlay`、`Main#emptyInventory`、`PluginHost#hostNode()`，或宿主节点下各子节点的优先级（`PluginEventsImpl#tier` 的常量、`PlayerStore` 的冻结节点 3、生效节点 `synaxis-play-apply` 的 5），就跑 TC-PROD-701～TC-PROD-713；动了引擎的 `Player#closeInventory`、`Player#dropCursorItem` 或 `AbstractInventory#removeViewer`，跑 TC-PROD-700、TC-PROD-701；改了 `Main` 步骤 (4)、(5) 的顺序再加 TC-PROD-714（两个启动测试起子 JVM，本机约 11 s）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-038、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级；真机用例（TC-WORLD-123、TC-WORLD-124、TC-WORLD-144～TC-WORLD-149）等用户的机器，单独成轮。
@@ -10669,7 +10868,7 @@ RUN-003 证据：`docs/test-runs/RUN-003/tc-001.txt`、`docs/test-runs/RUN-003/t
 - **真机 V2b、V3b、V6b、V8b 待人工（`TC-WORLD-123`、`TC-WORLD-124`，2026-10-02 RUN-064 登记）**：要用户的 RTX 3060 级 Windows 与 Apple Silicon Mac；30 s 判据只由 V2b 定。容器里同一测法的 `visible_ms` 中位数是 70,065 ms（llvmpipe），瓶颈在父层传播，真机超时的话先看这一段（`docs/DESIGN-M3.md` §28.2 写库预算行）。V6b 的正午与太阳高度角 40° 两张原先拍不了（夹具不能设时间）；M3-S 给夹具加了第六个参数 `dayTime`（6000 与 10137），容器里由 `TC-WORLD-140` 判过，真机照 `TC-WORLD-124` 第 2 步拍。
 - **「连接重新进入 configuration 时不重发远景宣告」没有自动测试（未结案）**：`TC-WORLD-108` 的 `FarViewLaunchTest` 只覆盖第一次 configuration；挂地图的分片里没有让玩家重新进入 configuration 的代码路径，要测只能改 `Main`（归生产就绪会话）。
 - **烘焙器的隐藏替换没有经客户端端到端核对（未结案）**：`TC-WORLD-117` 的 baked 那一遍用生成器源，没有隐藏区域；synthetic 那一遍的隐藏区域是夹具自己写进包的。烘焙器一侧由 `TC-WORLD-105` 覆盖；要补就给 baked 夹具的源包加一块隐藏区域、在 `/expect.json` 加一个隐藏点（`docs/DESIGN-M3.md` §28.2）。
-- **`ConfigFileLaunchTest > aShardTakesTheFileOverItsDefaultsAndTheCommandLineOverTheFile` 偶发红：子 JVM 的游戏端口被别人先占（未结案，2026-10-01 安全修复 secrets 组的严格 grid 全量查出）**：`sec/secrets-files` `8c3ee11b58` 的第一次严格 grid 全量里红 1 条（`server-app` 536 条中），120.044 s，红在 `ConfigFileLaunchTest.java:85` 的 `awaitLine`：子 JVM 已读入配置文件，绑游戏端口时 `BindException: Address already in use`，当时不退出，测试等满 120 s；第二次全量照绿（证据 `docs/test-runs/RUN-062/secrets/00-summary.txt` 第七节、`10-review-full-grid.txt`）。根因在测试：`ConfigFileLaunchTest#freePort` 先在回环地址上开一个端口 0 的 `ServerSocket` 拿到端口号、关掉，再交给子 JVM 去绑 `0.0.0.0`，中间这段时间端口可能被本机别的进程占走（当时另一个会话的测试在跑）。同一个 `freePort` 还被 `BindKeysLaunchTest`、`BooleanKeysLaunchTest`、`ShardLaunchTest`、`ShutdownBeforeTheWorldLaunchTest`、`ShutdownSignalLaunchTest`、`OpsPortsLaunchTest` 用着，都有同一个窗口。现在的表现（v0.9.41 的 C-03 合入之后，按代码推断，没有复现）：子 JVM 绑不上即以 `Refusing to start: synaxis.app.port=<端口> cannot be bound: Address already in use` 拒启、以 1 退出，`awaitLine` 见进程已结束当场抛 `no line with "synaxis server-app listening on"`，日志里带这一行，几秒内红，不再等满 120 s；读到这条消息就是撞上了这个竞态，不是被测功能的问题。跟进（默认做法）：这些测试改给子 JVM `synaxis.app.port=0`，由子 JVM 在就绪行回报实际绑上的端口，测试从就绪行读端口再连；`Main.java:362` 的就绪行现在印的是配置值，要先改成印 `server.getPort()`。改之前，同一条红再出现两次（任何会话、任何模式）就排进下一轮
+- **`ConfigFileLaunchTest > aShardTakesTheFileOverItsDefaultsAndTheCommandLineOverTheFile` 偶发红：子 JVM 的游戏端口被别人先占（未结案，2026-10-01 安全修复 secrets 组的严格 grid 全量查出）**：`sec/secrets-files` `8c3ee11b58` 的第一次严格 grid 全量里红 1 条（`server-app` 536 条中），120.044 s，红在 `ConfigFileLaunchTest.java:85` 的 `awaitLine`：子 JVM 已读入配置文件，绑游戏端口时 `BindException: Address already in use`，当时不退出，测试等满 120 s；第二次全量照绿（证据 `docs/test-runs/RUN-062/secrets/00-summary.txt` 第七节、`10-review-full-grid.txt`）。根因在测试：`ConfigFileLaunchTest#freePort` 先在回环地址上开一个端口 0 的 `ServerSocket` 拿到端口号、关掉，再交给子 JVM 去绑 `0.0.0.0`，中间这段时间端口可能被本机别的进程占走（当时另一个会话的测试在跑）。同一个 `freePort` 还被 `BindKeysLaunchTest`、`BooleanKeysLaunchTest`、`ShardLaunchTest`、`ShutdownBeforeTheWorldLaunchTest`、`ShutdownSignalLaunchTest`、`OpsPortsLaunchTest` 用着，都有同一个窗口。现在的表现（v0.9.41 的 C-03 合入之后，按代码推断，没有复现）：子 JVM 绑不上即以 `Refusing to start: synaxis.app.port=<端口> cannot be bound: Address already in use` 拒启、以 1 退出，`awaitLine` 见进程已结束当场抛 `no line with "synaxis server-app listening on"`，日志里带这一行，几秒内红，不再等满 120 s；读到这条消息就是撞上了这个竞态，不是被测功能的问题。跟进（默认做法）：这些测试改给子 JVM `synaxis.app.port=0`，由子 JVM 在就绪行回报实际绑上的端口，测试从就绪行读端口再连；`Main.java:372` 的就绪行现在印的是配置值，要先改成印 `server.getPort()`。改之前，同一条红再出现两次（任何会话、任何模式）就排进下一轮
 - ~~`ManagementBacklogIntegrationTest > aPeerThatReadsWhatItIsSentKeepsItsConnection` 偶发红~~ **已结案（2026-10-01）**：CI run `36740800681`（`main` `c46578d24f`）第 1 次尝试，4 线程严格 `grid` 那个 job 红 1 条（`server-app` 521 条中）：`java.net.SocketTimeoutException at ManagementBacklogIntegrationTest.java:211`，即一轮写 100 个 ping 之后读 100 个 pong（12,700 B），10 s 的 soTimeout 读满也没读齐；用时 10.614 s，结果 XML 里这段时间没有关闭连接的 WARN（两行 WARN 都属同类另两条），读到的也不是 EOF，所以服务端既没关连接、也没把这一轮写完。同一 job 的第 2 次尝试通过。**根因在产品，在 Java-WebSocket 1.6.0 的写唤醒，不在出站上限的锁里**：选择器线程在 `WebSocketServer#doWrite` 里，`SocketChannelIOHelper#batch` 把队列写空之后执行 `key.interestOps(OP_READ)` 撤掉写兴趣，撤之前不再看队列；解码线程每回一个 pong 就入队，并经 `onWriteDemand` 登记 `OP_READ | OP_WRITE`、唤醒选择器。入队与登记落在选择器最后一次看到空队列与撤兴趣之间时，登记被覆盖，这些 pong 留在队列里没人写，直到这条连接再有东西入队；测试等这一轮收齐才写下一轮，于是停住，最迟要等库 60 s 一次的探活 ping。`GuardedSocket` 的对象锁不在这条路径上：选择器写 socket、撤兴趣都不拿它，解码线程拿它只为判定与入队，不是死锁；也不是服务端限速，出站上限到限是关连接、不是延后写。**复现**：①不改产品代码，4 线程严格 `grid` 下把这条测试的正文用临时测试类循环 50 次（5,000 轮；另开看门狗线程，一轮超过 5 s 就对测试 JVM 做 `jcmd <pid> Thread.print -l` 并经反射读连接状态）：0 次停住，每轮最长 8.8 ms，每 100 轮 250～260 ms。②拉宽窗口（`TC-PROD-575` 节首：`GuardedSocket` 覆写只在这个窗口里被调的 `isFlushAndClose`，先停 2 ms）：第 0 轮就停住，本类红在 `:211` `SocketTimeoutException`，与 CI 同一行同一异常；看门狗读到连接 `outQueue=100`、`interestOps=1`（只等读），上次选中时的 `readyOps=5`（可读、可写），线程转储里 `WebSocketSelector` 停在 `KQueue.poll`（`WebSocketServer.java:419` 的 `select`），`WebSocketWorker` 空闲在 `LinkedBlockingQueue.take`，没有线程在等锁。窗口只有几条指令宽，选择器线程恰好在里面被抢占才会撞上；CI 那次的日志里 `:synx:test`（16:07:48 起）与 `:testing:test`（16:08:35 起）在 `:server-app:test`（16:06:28 起）结束之前就开始了，本类在 16:09:42～16:09:52 跑，runner 当时的负载没有别的读数。**修法**：`ManagementServer.Endpoint` 另起虚拟线程 `Syn-Management-Writes`，每 100 ms（`WRITE_RECHECK`）给队列非空而没有写兴趣的连接经 `onWriteDemand` 补登记（`docs/DESIGN-PROD.md` v0.9.38，`TC-PROD-574`、`TC-PROD-575`）。测试的 10 s 界不改：它测的是边收边读的连接不被关、每轮都收齐，产品现在让这样留下的帧至多晚约 100 ms 写出，真停住时仍红在 `:211`（`TC-PROD-575` 第 1 步）。**修后读数**：拉宽窗口时 1,000 轮每轮都被留下、每轮至多 110.9 ms 写出，本类 3 条通过（读的那条 11.4～11.6 s）；不拉宽时 50 次 × 100 轮每轮最长 2.5 ms；新类 `ManagementWriteRecheckIntegrationTest` 放进队列的回复 2～107 ms 后收到，不起补登记线程时红在 `:101`；默认与 4 线程严格 `grid` 的 `:server-app:test` 全量各 522 个 0 失败（未设数据库变量，125 个跳过）。本组没有登记执行轮次，由集成轮登记。
 - ~~`PermissionsIntegrationTest > withoutADatabaseNobodyHoldsANodeAndTheCommandSaysSo` 偶发红~~ **已结案（2026-09-30）**：`prod/integrate-059` 的全量 `check`（带数据库变量）红 1 条（`server-app` 521 条中）：`java.util.NoSuchElementException at PermissionsIntegrationTest.java:351`，即 `events.getFirst()` 读到空表。**根因在测试**，与 2026-09-28 结案的 `ModerationIntegrationTest` 同一个：`RoleCommand` 先回 `synaxis:role-unavailable`，命令返回之后才把 `gm_command` 交给台账回调，测试只等到回复就读回调记下的属性。`ManagementMethods` 是先记台账再回复，没有这个问题（逐个查过 `server-app` 测试里读台账结果的断言，只有这一处）。**修法**：断言前等回调记下（`await(… !events.isEmpty() …)`，5 s 为失败时限）。**复现与反证**：在测试自己的台账回调里先 `Thread.sleep(200)` 再记下：去掉那一步等待时 `8 tests completed, 1 failed`，红在 `:351` `NoSuchElementException`，与门禁同一句；留着时同样的延迟下全绿；4 线程严格 `grid` 下 8 个全绿。
 - **`TC-WORLD-054` 在同机档有超 50 ms 的 tick（未结案：用例改写已处理、由 `TC-WORLD-099` 取代，分机档待跑；2026-09-30 RUN-057 查出，RUN-058 用默认堆重跑仍有）**：RUN-057（分片 1 GiB 堆）walk 4 个、ride 7 个（最长 90.4、91.2 ms），判据是 0 个；11 个里 9 个与一次 G1 暂停重叠（54.0～86.7 ms；本机 `load1` 3.9～18.1），另 2 个（62.7、70.2 ms）前后没有 GC 暂停。RUN-058 改用 `bin/server-shard` 的默认参数（4 GiB 堆）并开 GC 日志：walk 5 个（最长 71.2 ms），4 个与 G1 暂停重叠，1 个（56.5 ms）没有；ride 前 8 分钟 6 个、全部与 G1 暂停重叠，之后别的会话把 `load1` 推到 47，又有 110 个，101 个没有暂停。堆加到 4 GiB 不缩短暂停（walk 47 次暂停最长 68.5 ms，G1 按 `MaxGCPauseMillis=50` 把每次回收前的堆压在 207～604 MB）。两轮的其余判据都达标（零编码、区块下行 −1.6% 与 −2.9%、200/200 登录 0 掉线、每人区块数）。**用户 2026-09-30 拍板**：M3-C 的 tick 两项与 M3-E 同一规定，只在分机档判定，同机档只登记（`docs/DESIGN-M3.md` §15、§19「压测量出真实区块下行」、§28.1）。跟进：①改写本用例（已处理，2026-09-30）：本 ID 废弃，由 `TC-WORLD-099` 取代，前置分出分机档与同机档，tick P99 < 50 ms、超 50 ms 的 tick 0 个只在分机档判定，同机档登记为补充读数（照 `TC-WORLD-081` 的写法）；§2 的 `REQ-M3-008`、`REQ-M3-014` 两行与 §5 的 M3-C 一段已换成新 ID。②分机档到位后跑 `TC-WORLD-099`；分机档上若同样有与 G1 暂停重叠的慢 tick，GC 参数（`MaxGCPauseMillis`、收集器）或判据怎么改回到用户。关联：`docs/DESIGN-M3.md` §28.2「M3-C 的 200 机器人两档在同机档有超 50 ms 的 tick」，RUN-057 `04-054-walk.txt`、`05-054-ride.txt`，RUN-058 `06-gc-vs-slow-ticks.txt`。

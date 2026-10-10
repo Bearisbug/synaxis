@@ -1,0 +1,88 @@
+TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml tests=1 failures=0 errors=0 skipped=0 time=1.86
+   ok   theTableOfTheConfigFileIsEveryKeyTheCodeReads() 1.852
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml tests=2 failures=0 errors=0 skipped=0 time=0.903
+   ok   theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel() 0.066
+   ok   everyKeyTheServerCanSendHasTextInBothLanguageFiles() 0.837
+TEST-io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest.xml tests=4 failures=0 errors=0 skipped=0 time=1.615
+   ok   closingTheOwnInventoryStoresACursorItemThatCannotBeDropped(Env) 1.29
+   ok   cursorItemGoesBackIntoTheInventoryOnClose(Env) 0.194
+   ok   closingTheOwnInventoryDropsTheCursorItem(Env) 0.066
+   ok   cursorItemIsNotDestroyedWhenItCannotBeStored(Env) 0.057
+TEST-io.github.bearisbug.synaxis.inventory.InventoryCloseStateIntegrationTest.xml tests=2 failures=0 errors=0 skipped=0 time=1.483
+   ok   clientCloseWindowZeroMustNotLeakOpenContainer(Env) 1.288
+   ok   doNotReceiveClosePacketFromServerWhenSendingClientCloseWindowPacket(Env) 0.193
+TEST-io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest.xml tests=2 failures=0 errors=0 skipped=0 time=1.176
+   ok   hostPathsDoNotWriteALinePerPacket() 1.139
+   ok   theHostLogRuleRejectsALinePerPayload() 0.036
+TEST-io.github.bearisbug.synaxis.app.CoreModeIntegrationTest.xml tests=4 failures=0 errors=0 skipped=0 time=0.175
+   ok   everyConnectionIsAdmittedIntoTheCoreWorld(Env) 0.058
+   ok   theDiagnosticChannelEchoesThePayloadBack(Env) 0.055
+   ok   theCoreWorldIsRegisteredAndHasGroundToStandOn(Env) 0.006
+   ok   theCoreWorldEndsAtAWorldBorder(Env) 0.055
+TEST-io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.xml tests=5 failures=0 errors=0 skipped=0 time=1.786
+   ok   aFrozenPlayerDropsNothing(Env) 1.459
+   ok   aCharacterIsNewWhileItsInventoryIsEmpty(Env) 0.067
+   ok   aGlobalPluginListenerOverridesTheDefaults(Env) 0.134
+   ok   eachModeGetsItsPlayLayer() 0.001
+   ok   anInstancePluginListenerChoosesTheRecipientsFirst(Env) 0.114
+TEST-io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest.xml tests=4 failures=0 errors=0 skipped=0 time=0.449
+   ok   everyPluginListenerSeesAFrozenPickupAndDropCancelled(Env) 0.123
+   ok   aDropDispatchedInsideAFrozenPickupLeavesBothCancelled(Env) 0.11
+   ok   aPickupAndDropCancelledBeforeTheRootAreCancelledAgainAfterAnUndo(Env) 0.107
+   ok   aPickupCutShortBeforeTheFreezeNodeIsNotKeptAlive(Env) 0.109
+TEST-io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest.xml tests=9 failures=0 errors=0 skipped=0 time=0.799
+   ok   theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome(Env) 0.115
+   ok   aCancelledEventSkipsTheListenersThatIgnoreCancelled(Env) 0.112
+   ok   anInstanceScopedListenerOnlyHearsItsInstanceOnItsTickThread(Env) 0.067
+   ok   disablingTakesBackEveryPriorityAndEveryInstanceScope(Env) 0.069
+   ok   aListenerThatIgnoresCancelledStillRunsBeforeALaterCancel(Env) 0.063
+   ok   theInstanceScopeRefusesWhatItCannotScope(Env) 0.063
+   ok   thePrioritiesOfEveryPluginRunInOneOrder(Env) 0.067
+   ok   callingForInstanceAgainSharesTheInstanceNodes(Env) 0.119
+   ok   theInstanceScopeRunsBeforeEveryGlobalPluginListener(Env) 0.123
+TEST-io.github.bearisbug.synaxis.app.PluginHostIntegrationTest.xml tests=18 failures=0 errors=0 skipped=0 time=6.289
+   ok   aPluginFailingToEnableIsTornDownWhileTheProcessGoesOn(Env) 0.068
+   ok   aPayloadOnAnUnregisteredChannelIsDroppedWithOneWarning(Env) 0.067
+   ok   discoveryFindsTheCompileTimePlugin() 0.001
+   ok   anAcceptedConnectionIsLetThrough(Env) 0.067
+   ok   theSelectionPropertyPicksWhichPluginsAreEnabled(Env) 0.065
+   ok   aSelectedIdNoPluginAnswersToIsNamedInAWarning(Env) 0.057
+   ok   theProcessAcceptsOnlyOneAdmissionProvider(Env) 0.062
+   ok   eachWrapperLogsTheExceptionOnceAgainstThePlugin(Env) 0.063
+   ok   anAdmissionProviderThatThrowsTurnsTheConnectionAwayAgainstItsPlugin(Env) 0.064
+   ok   enablesInOrderAndDisablesInReverse(Env) 0.067
+   ok   aPluginThrowingFromOnDisableIsTornDownLikeTheOthers(Env) 0.07
+   ok   disablingTakesBackEventsTasksChannelsAndAdmission(Env) 0.062
+   ok   anIllegalDescriptorStopsTheStartupBeforeAnyPluginIsEnabled(Env) 0.057
+   ok   anAdmissionProviderSlowerThanItsBudgetStillDecidesAndIsWarnedAbout(Env) 0.351
+   ok   aPluginSetsTheTrackingRangeOfAnEntityType(Env) 0.01
+   ok   enablingRecordsOneLedgerLine(Env) 0.067
+   ok   aPluginHangingInOnDisableDoesNotHoldTheShutdown(Env) 5.023
+   ok   aConnectionIsTurnedAwayWhileNoPluginHoldsTheAdmissionSlot(Env) 0.063
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayChatIntegrationTest.xml tests=4 failures=0 errors=0 skipped=0 time=0.407
+   ok   recipientsChosenBeforeTheHostAreKept(Env) 0.109
+   ok   inTheCoreWorldChatReachesTheSendersInstance(Env) 0.093
+   ok   aListenerAfterTheHostCanEmptyTheRecipients(Env) 0.105
+   ok   underAGameplayPluginChatReachesTheSendersInstance(Env) 0.1
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayDropIntegrationTest.xml tests=3 failures=0 errors=0 skipped=0 time=0.159
+   ok   withoutTheFeatureADropSpawnsNothing(Env) 0.049
+   ok   aDropCancelledAfterTheHostSpawnsNothing(Env) 0.054
+   ok   everyDropPathSpawnsAnItemEntityAtTheEyes(Env) 0.054
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayMeleeIntegrationTest.xml tests=2 failures=0 errors=0 skipped=0 time=0.107
+   ok   aCancelledPlayerAttackNeitherHurtsNorKnocksBack(Env) 0.052
+   ok   aHitTakesTheAttackDamageAndKnocksBackOnceInTenTicks(Env) 0.055
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.xml tests=4 failures=0 errors=0 skipped=0 time=0.215
+   ok   aPickupThatNoLongerFitsWhenAppliedIsCancelled(Env) 0.049
+   ok   aPickupCancelledAfterTheHostLeavesTheInventoryAlone(Env) 0.059
+   ok   aPickupGoesIntoTheInventory(Env) 0.056
+   ok   aPickupTheInventoryCannotTakeIsCancelled(Env) 0.05
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayStarterKitIntegrationTest.xml tests=2 failures=0 errors=0 skipped=0 time=0.101
+   ok   aCharacterThatIsNotNewGetsNothing(Env) 0.047
+   ok   aNewCharacterGetsTheKitOnItsFirstSpawnOnly(Env) 0.053
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.xml tests=4 failures=0 errors=0 skipped=0 time=0.036
+   ok   aDeadDummyIsRemovedAfter20TicksAndReplacedAfter100(Env) 0.014
+   ok   theDummyNeedsTheCoreWorld(Env) 0.006
+   ok   theDummyStandsBesideTheSpawnFacingIt(Env) 0.006
+   ok   aDummyBelowTheVoidLineDiesAndIsReplaced(Env) 0.01
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayVoidDamageIntegrationTest.xml tests=1 failures=0 errors=0 skipped=0 time=0.064
+   ok   belowTheVoidLineAPlayerTakesFourEveryTick(Env) 0.063

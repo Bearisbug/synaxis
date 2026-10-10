@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest" tests="4" skipped="0" failures="2" errors="0" timestamp="2026-10-10T22:05:52.407Z" hostname="Mac.local" time="1.293">
+  <properties/>
+  <testcase name="closingTheOwnInventoryStoresACursorItemThatCannotBeDropped(Env)" classname="io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest" time="1.089">
+    <failure message="org.opentest4j.AssertionFailedError: the cursor after closing window 0 ==&gt; expected: &lt;ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]]&gt; but was: &lt;ItemStackImpl[material=minecraft:diamond, amount=5, componentPatch=DataComponentMapImpl[components={}]]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the cursor after closing window 0 ==&gt; expected: &lt;ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]]&gt; but was: &lt;ItemStackImpl[material=minecraft:diamond, amount=5, componentPatch=DataComponentMapImpl[components={}]]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest.closingTheOwnInventoryStoresACursorItemThatCannotBeDropped(CursorItemOnCloseIntegrationTest.java:90)
+</failure>
+  </testcase>
+  <testcase name="cursorItemGoesBackIntoTheInventoryOnClose(Env)" classname="io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest" time="0.073"/>
+  <testcase name="closingTheOwnInventoryDropsTheCursorItem(Env)" classname="io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest" time="0.063">
+    <failure message="org.opentest4j.AssertionFailedError: Expected 1 element, got [] ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected 1 element, got [] ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.testing.Collector.assertSingle(Collector.java:27)
+	at io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest.closingTheOwnInventoryDropsTheCursorItem(CursorItemOnCloseIntegrationTest.java:72)
+</failure>
+  </testcase>
+  <testcase name="cursorItemIsNotDestroyedWhenItCannotBeStored(Env)" classname="io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest" time="0.058"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

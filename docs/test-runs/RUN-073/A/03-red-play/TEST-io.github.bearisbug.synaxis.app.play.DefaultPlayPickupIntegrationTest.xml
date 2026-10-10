@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest" tests="4" skipped="0" failures="3" errors="0" timestamp="2026-10-10T22:01:21.072Z" hostname="Mac.local" time="0.214">
+  <properties/>
+  <testcase name="aPickupThatNoLongerFitsWhenAppliedIsCancelled(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest" time="0.054">
+    <failure message="org.opentest4j.AssertionFailedError: a pickup with no room left by the time it is applied ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: a pickup with no room left by the time it is applied ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.aPickupThatNoLongerFitsWhenAppliedIsCancelled(DefaultPlayPickupIntegrationTest.java:74)
+</failure>
+  </testcase>
+  <testcase name="aPickupCancelledAfterTheHostLeavesTheInventoryAlone(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest" time="0.054"/>
+  <testcase name="aPickupGoesIntoTheInventory(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest" time="0.052">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;ItemStackImpl[material=minecraft:stone, amount=1, componentPatch=DataComponentMapImpl[components={}]]&gt; but was: &lt;ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;ItemStackImpl[material=minecraft:stone, amount=1, componentPatch=DataComponentMapImpl[components={}]]&gt; but was: &lt;ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.aPickupGoesIntoTheInventory(DefaultPlayPickupIntegrationTest.java:44)
+</failure>
+  </testcase>
+  <testcase name="aPickupTheInventoryCannotTakeIsCancelled(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest" time="0.053">
+    <failure message="org.opentest4j.AssertionFailedError: the pickup of a player whose 36 slots hold dirt ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the pickup of a player whose 36 slots hold dirt ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.aPickupTheInventoryCannotTakeIsCancelled(DefaultPlayPickupIntegrationTest.java:56)
+</failure>
+  </testcase>
+  <system-out><![CDATA[06:01:21.124 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:01:21.124 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=50f16eee-56a5-4ff3-b7f5-66ee26238556 identifier=RandName reason=synaxis:server-stopping
+06:01:21.124 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=50f16eee-56a5-4ff3-b7f5-66ee26238556 identifier=RandName reason=synaxis:server-stopping
+06:01:21.126 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:01:21.126 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:01:21.180 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:01:21.180 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=bb86a101-867c-4466-b314-15aa2ad4fce7 identifier=RandName reason=synaxis:server-stopping
+06:01:21.180 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=bb86a101-867c-4466-b314-15aa2ad4fce7 identifier=RandName reason=synaxis:server-stopping
+06:01:21.181 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:01:21.181 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:01:21.232 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:01:21.232 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=ada476df-f52b-4e2f-98cc-46e273ac9e5d identifier=RandName reason=synaxis:server-stopping
+06:01:21.232 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=ada476df-f52b-4e2f-98cc-46e273ac9e5d identifier=RandName reason=synaxis:server-stopping
+06:01:21.232 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:01:21.232 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:01:21.285 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:01:21.285 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=51915a08-cdbe-4bd1-a45c-12026ec8272d identifier=RandName reason=synaxis:server-stopping
+06:01:21.285 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=51915a08-cdbe-4bd1-a45c-12026ec8272d identifier=RandName reason=synaxis:server-stopping
+06:01:21.286 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:01:21.286 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -57,10 +57,17 @@ cpl = job["env"].get("CONNECTIONS_PER_LAUNCH", "")
 say("'4'" in cpl and "'3'" in cpl, "CONNECTIONS_PER_LAUNCH is 3, 4 with the spikes")
 judge = run_of("Judge the regression by the reports, the ledger and the server log")
 say("CORE_CONNECTIONS=$((LAUNCHES * 2))" in judge, "the judge step passes CORE_CONNECTIONS = 2 per launch")
-upload = next((s.get("with", {}).get("path", "") for s in steps if s.get("uses", "").startswith("actions/upload-artifact")), "")
-for fact, needle in [("playable.txt", "synaxis-gametest/playable.txt"), ("the core server's log", "${{ runner.temp }}/playable/server.log"),
-                     ("the core server's ledger", "${{ runner.temp }}/playable/logs/")]:
-    say(needle in upload, "the artifact takes " + fact)
+uploads = [i for i, s in enumerate(steps) if s.get("uses", "").startswith("actions/upload-artifact")]
+upload = steps[uploads[0]].get("with", {}).get("path", "") if uploads else ""
+paths = [line.strip() for line in upload.splitlines() if line.strip()]
+# A path outside the workspace moves the artifact's root up to the common ancestor of all of them
+outside = [p for p in paths if "runner.temp" in p or p.startswith("/")]
+say("synaxis-gametest/playable.txt" in upload, "the artifact takes playable.txt")
+say("playable/server.log" in paths and not outside, "the artifact takes the core server's log from the workspace, no path outside it")
+say("playable/logs/" in paths and not outside, "the artifact takes the core server's ledger from the workspace, no path outside it")
+copied = [i for i, s in enumerate(steps) if all(n in (s.get("run") or "") for n in
+          ('"$RUNNER_TEMP/playable/server.log" playable/', '"$RUNNER_TEMP/playable/logs" playable/'))]
+say(bool(copied) and bool(uploads) and copied[0] < uploads[0], "the core server's log and ledger are copied into the workspace before the upload")
 
 entries = json.load(open(sys.argv[2]))["entrypoints"]["fabric-client-gametest"]
 regression = "io.github.bearisbug.synaxis.game.client.gametest.RegressionClientGameTest"

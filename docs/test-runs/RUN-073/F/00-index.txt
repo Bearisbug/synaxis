@@ -14,7 +14,15 @@ round registers RUN-073.
 05-ci-lanes.txt           TC-PROD-732 step 3 and TC-PROD-733: run 38090475543 (PR, head 9202ae0150, north lane), run
                           38090480829 (workflow_dispatch, LAUNCHES=2, both lanes), and the red run 38091153993
                           (workflow_dispatch on the temporary branch prod/r073-F-red at 24a85974c8, deleted afterwards)
+06-old-cases.txt          after the review: TC-PROD-041 steps 2-4, TC-PROD-042 steps 1-5, TC-PROD-130 steps 3-6 (the judge.sh
+                          half) and TC-PROD-131 steps 1-5 on the branch; old-cases.sh on 15b5487edc, on the branch with the
+                          layouts the two cases had (red) and with the rewritten ones (green)
+07-rework.txt             after the review: each review item and its change, TC-PROD-735 (SinceSnapshotProof red and green),
+                          compileGametestJava, check-workflow.py with 25 facts (branch, 15b5487edc, 39502170c2), TC-PROD-688,
+                          and the merge with prod/r073-G
 check-workflow.py         the read-only workflow check of TC-PROD-731
 judge-cases.sh            the five hand written one-launch runs of TC-PROD-730
+old-cases.sh              the judge half of TC-PROD-041/042/130/131 on hand written stand-ins of the container runs' outputs
+SinceSnapshotProof.java   TC-PROD-735: the subList view against the snapshot of the lines received, deterministic and stress
 
 The draft PR #15 was closed and the remote branches prod/r073-F and prod/r073-F-red deleted after the runs.

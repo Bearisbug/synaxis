@@ -28,7 +28,7 @@ a failure.
 judges by the scenario's Then, once the client and both shards have stopped: every transfer
 answered sent and arrived, character.version larger after each one, exactly 2 x --round-trips
 transfer_issued events over both ledgers; and the client joined 2 x --round-trips + 1 worlds,
-alternating between the two shards, and left because the driver was done.
+alternating between the two shards, with the same inventory in each, and left because the driver was done.
 """
 
 from __future__ import annotations
@@ -308,6 +308,21 @@ def judge(args: argparse.Namespace) -> int:
         alternate = all(a != b for a, b in zip(ports, ports[1:]))
         expect(len(ports) == transfers + 1, f"the client joined {len(ports)} worlds, expected {transfers + 1}")
         expect(alternate, f"the client's joins alternate between two shards: {sorted(set(ports))}")
+        # One state line per world, what the client held when it left it: a transfer carries the
+        # inventory over (synaxis:player, API-PROD-032), so every world shows the one before it
+        states = {}
+        for line in lines:
+            if line.startswith("state "):
+                fields = dict(f.split("=", 1) for f in line.split(" ")[2:] if "=" in f)
+                if "inventory" in fields:
+                    states[line.split(" ")[1]] = f"held={fields.get('held')} inventory={fields['inventory']}"
+        worlds = [line.split(" ")[1] for line in lines if line.startswith("join ")]
+        recorded = [states[n] for n in worlds if n in states]
+        expect(len(recorded) == len(worlds), f"the client recorded its state in {len(recorded)} of {len(worlds)} worlds")
+        changed = [(n, states[m], states[n]) for m, n in zip(worlds, worlds[1:]) if m in states and n in states
+                   and states[m] != states[n]]
+        expect(not changed, "the inventory changed on arriving in world {}: {} before, {} after".format(*changed[0])
+               if changed else f"the inventory is the same in all {len(worlds)} worlds: {recorded[0] if recorded else None}")
         expect(bool(lines) and lines[-1] == "end done", f"the client's report ends with {lines[-1:]}")
     else:
         expect(False, f"no client report at {report}")

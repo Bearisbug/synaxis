@@ -77,12 +77,13 @@ import org.lwjgl.glfw.GLFW;
  * <p>
  * Both client launches of a CI run play on the same core server, world and in-memory store kept, so
  * every step has to hold on a world an earlier launch changed. The two launches are two accounts
- * (with no {@code --username} the vanilla client names itself {@code Player} and the current
- * milliseconds modulo 1000), so the second starts as a new character at the spawn: G2 walks south
- * in the launch with the dev mod and north in the one with the production mod jar, and G3 and G4
- * change the blocks beside the end of their own launch's walk. The G9 shaft north-west of the spawn
- * is shared: a second launch finds it dug and drops in. G9 needs the core world and the RTS map to
- * have no bedrock: the shaft goes through y = 0 into the void.
+ * (the dev launch plays as {@code Player0}; the production one passes no {@code --username}, so the
+ * vanilla client names itself {@code Player} and the current milliseconds modulo 1000), so the
+ * second starts as a new character at the spawn: G2 walks south in the launch with the dev mod and
+ * north in the one with the production mod jar, and G3 and G4 change the blocks beside the end of
+ * their own launch's walk. The G9 shaft north-west of the spawn is shared: a second launch finds it
+ * dug and drops in. G9 needs the core world and the RTS map to have no bedrock: the shaft goes
+ * through y = 0 into the void.
  * <p>
  * The client is driven the way a player drives it: {@link TestInput} keys for walking, digging,
  * using, dropping, the hotbar, the inventory and chat; the clicks inside the inventory screen go

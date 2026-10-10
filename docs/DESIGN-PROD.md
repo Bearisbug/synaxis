@@ -112,6 +112,7 @@
 | 2026-10-07 | v0.9.60 | RUN-072 gate 组（分支 `prod/r072-gate`，基于 `main` `f7a9756f7b`，用户 2026-10-07 批准），只加测试与文档，不改接口、需求与产品代码。RUN-071 authority2 复审的非阻塞项：`API-PROD-003`「分片宿主的两项默认值」写命令行与 `synaxis.properties` 都没给时才写，`ShardMainGateTest` 只用属性查找表验证了命令行优先；配置文件由 `Main` 类初始化时写进系统属性，早于步骤 (1) 调 `ShardMain#gateDefaults`，这条链原先只有 `ConfigFileLaunchTest` 守，那里没有这两项的断言。`ShardGateLaunchTest` 加第 3 条：`synaxis.properties` 给 `max-players=200`、`max-connections=450`、`max-joins-per-tick=2`，以 `ShardMain` 起的子 JVM 自检行是 450 与 2（分片默认值是 600 与 5）；反证是 `gateDefaults` 两处空值判断改成恒真，这一条红，自检行是 600 与 5。**§19** 新增一个场景；**§28.2** 分片闸门的已决行补这条用例；**§28.3** 新增一行交光照会话：`LightShardFixture`、`FarViewShardFixture` 照抄 `ShardMain` 默认值的一段缺闸门两项。用例 `docs/TEST.md` `TC-PROD-695`，证据 `docs/test-runs/RUN-072/gate/` | Bearisbug |
 | 2026-10-07 | v0.9.61 | RUN-072 五组的集成（分支 `prod/integrate-072`，基于 `main` `f7a9756f7b`，依次合入 `prod/r072-ci`（v0.9.57）、`prod/r072-chunks`（v0.9.58）、`prod/r072-vehicle`（v0.9.59）、`prod/r072-gate`（v0.9.60）、`prod/r072-flake`（只改测试与 `docs/TEST.md`，不占版本号），再合入 Dependabot PR #10（`9904b22a2e`）），不改接口与需求。**合并**：五组改的代码、测试与工作流文件互不重叠（ci 改 `client-gametest.yml`，chunks 改 `entity/Player.java` 与两个测试类，vehicle 改 `listener/PlayerVehicleListener.java` 与一个测试类，gate 改 `ShardGateLaunchTest`，flake 改 `ConnectionGateSocketTest`），合并后与各组分支逐字相同，各组文档引的行号不受别组影响（`API-M3-010`「首批区块」的 `Player.java:985`、`:990` 在合并后的代码上复核过）。冲突都在文档：本分册的变更记录，`docs/TEST.md` 的变更记录、§4 末尾、§5 映射与 `TC-PROD-671` 第 1、2 步。两边都留：四个版本按 v0.9.57～v0.9.60 接在 v0.9.56 之后；`docs/TEST.md` §4 的五节按合并顺序整节取自各组分支，变更记录按合并的倒序排在顶部；`TC-PROD-671` 第 1 步取 vehicle 组的条数（3 个类 12 个），第 2 步取 gate 组的条数（7 个类 54 个）。合入 PR #10 之前，`compileJava compileTestJava` 在全部模块上通过（Gradle 9.7.1）。**PR #10**：Gradle wrapper 9.7.1 → 9.8.0（另改 `gradlew.bat` 与 `gradle-wrapper.jar`）、`slf4j-api` 2.0.19 → 2.0.20、`archunit-junit5` 1.5.0 → 1.5.1、`flyway-core` 与 `flyway-database-postgresql` 13.7.0 → 13.9.0、`org.graalvm.buildtools.native` 1.1.8 → 1.1.14；本机不编译（要下载 Gradle 9.8.0 发行包），由草稿 PR 的 CI 验。随之改 §17 依赖表 pgjdbc 一行的 Flyway 版本，运行时闭包 4,159,717 B 注明是 13.7.0 时量得；`docs/ENGINE.md` §1 wrapper 一句与 §5 版本钉死口径一句改为 9.8.0（`client-fabric` 的独立 wrapper 仍是 9.7.1，`docs/DESIGN-M2.md` §17 Fabric Loom 一行不变）。**§28.3** 新增一行：`docs/DESIGN.md` 三处与 `README.md` 一处写死的 Gradle 9.7.1。**门禁**：RUN-072 的全量门禁在 GitHub Actions 的草稿 PR #13 上对 `e32f0e2d1a` 跑，都是第 1 次尝试：Check（Gradle 9.8.0，PR #10 由此验过）、4 线程严格、严格 grid 三种模式各 625 个类 4,307 个、0 失败，jcstress、模组构建、真客户端回归（R1～R8）通过，`workflow_dispatch` 的 P10 两分片 100 次往返通过，同一 job 先跑的 `p10.py` 单测通过；`docs/TEST.md` 写死的全量条数按 Check 的实数改，RUN-072 通过 24/31、跳过 7（七条旧用例随各组改了行号或条数的反证没有复跑）。**同日按评审**：§16 并发表「持区块锁的线程给玩家排区块，与这名玩家发同一个区块」一行引的 `TC-PROD-679` 改为 `TC-PROD-691`；§28.2 v0.9.58 已决行的残余 ① 补一句：每次取包都抛的区块在环内时，每个 tick 给这名玩家一对批次包、换一次回执与一次异常上报，与 v0.9.54 的残余 ① 同类；§28.2 新增一行待办：载具贴着已载入范围的边沿时，乘客偏移把乘客带进相邻的未载入区块，乘客的 `Entity#refreshCoordinate` 仍抛异常（v0.9.59 只判载具自己的目标区块） | Bearisbug |
 | 2026-10-07 | v0.9.62 | `README.md` 第 22 行「JDK 25 / Gradle 9.7.1」改为 9.8.0：v0.9.61 合入 Dependabot PR #10 之后根构建的 wrapper 是 9.8.0。`README.md` 不在两个会话的文档归属表里，光照会话 2026-10-07 同意由本会话改；§28.3 Gradle 版本一行随之只剩 `docs/DESIGN.md` 三处。不改接口、需求与代码 | Bearisbug |
+| 2026-10-11 | v0.9.63 | RUN-073 docs 组（分支 `prod/r073-docs`，基于 `main` `8220ef9d0f`），按用户 2026-10-11 的拍板（验收标准「服务端核心完全正常游玩」）落定本轮契约，只改文档，代码由同轮其余各组照此实现。**新增**：`REQ-PROD-046` / `API-PROD-031` 宿主默认玩法层（包 `app.play`，挂在宿主节点上；平坦核心全开，RTS 只开聊天，挂地图的分片不挂；判定在宿主节点自身的监听器里、先于全局作用域的插件，生成物品实体与物品进背包在宿主节点下优先级 5 的子节点里、只对派发到那里仍未取消的事件做；平坦核心世界改用 `LightingChunk`，绑定端口之前预载并照亮出生点一圈区块；训练假人状态机 §11.6）；`REQ-PROD-047` / `API-PROD-032` 玩家持久化段 `synaxis:player`（位置与朝向及世界标识、46 格背包加选中格、生命值；三种模式都注册；`PlayerStore` 每次快照开头捕获、有变化才标脏；宿主节点上首次 `PlayerSpawnEvent` 时应用，位置按模式取舍；转服随写回进库、目标分片凭票据载入）；`ADR-PROD-017`；§12.5 进世界的时序；§19 可玩项 P1～P11 验收矩阵与 `API-PROD-026` 的剧本步骤 G1～G10；§4 四个术语，§7 两个实体，§9 六个字段，§10 三行，§16 三行，§28.2 一行风险（断开时光标上的物品不保存）。**改**：`REQ-PROD-005` 推迟位置持久化的一句改为由 `REQ-PROD-047` 实现（`character_location` 与 `current_region` 仍不读写，跨大区送回待做，§28.2 待办行与 §23 R2 门槛随之改）；`REQ-PROD-009` / `API-PROD-008` 挂了默认玩法层的模式默认收件人是同一实例的玩家；`REQ-PROD-012` / `API-PROD-011` `list` 不要求节点、玩家执行的不写 `EVT:gm_command`，未知命令回 `synaxis:command-unknown`（§14 加键，翻译键门禁 60 → 61，不进台账；`synaxis:player` 进 `API-PROD-029` 的非文字标识名单，15 → 16）；内存判据按用户 2026-10-11 的拍板（光照会话转述，`docs/DESIGN-M3.md` §28.1「正式档的 RSS 判据与分片默认堆」一行）改为「堆 4 GiB、RSS ≤ 堆上限 + 1 GiB、压测末段老年代回收后占用 ≤ 堆上限的 50%」，改 §15 tick 预算行与 `capacity` 一段、§19 对应场景、§26 第 5 波退出条件，§28.1 加 Q13（已决），即 `docs/DESIGN-M3.md` §28.2 交接行 M3 v0.44；§26 加「可玩」一行；§28.3 交光照会话四行（`ShardWorld` 三个访问器、`docs/DESIGN-M3.md` §28.1 按大区位置一行、交接行 M3 v0.44 转已完成、默认玩法层是否挂地图分片）。同步改 `docs/DESIGN-M2.md` v0.65 与 `docs/ENGINE.md` 核心模式一段 | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -184,10 +185,14 @@
 | 假 sessionserver | 单文件 JDK HTTP 服务，`record` 模式供 CI、`allow-all` 模式供压测 | `tools/fake-sessionserver` | — |
 | 压测机器人 | `:loadtest` 模块里的 Java 客户端，回区块回执、可加密、可分机 | `:loadtest` | — |
 | 管理接口 | 原版 Server Management Protocol（WebSocket 上的 JSON-RPC 2.0）的兼容子集加 `synaxis:` 扩展 | `ManagementServer` | — |
+| 宿主默认玩法层 | 宿主挂在宿主节点上的一组原版式行为：同实例聊天、丢弃生成物品实体、拾取进背包、近战、虚空伤害、首次出生的初始物品、训练假人；按模式开关，全局作用域的插件可以改或取消 | `DefaultPlay` | — |
+| 玩家持久化段 | 宿主自己注册的数据段，存玩家的位置与朝向（带世界标识）、46 格背包加选中格、生命值 | `synaxis:player`、`PlayerStateSection` | `ENT-PlayerState` |
+| 训练假人 | 平坦核心世界出生点旁一个无 AI、可受伤、死后 5 s 重生的实体 | `TRAINING_DUMMY` | `ENT-TrainingDummy` |
+| 可玩项 | 用户 2026-10-11 定的「服务端核心完全正常游玩」验收项 P1～P11（§19 矩阵）。与 `API-PROD-026` 的「P10 job」（两分片来回转服 100 次）不是一回事，正文一律写全「可玩项 P10」 | P1～P11 | — |
 
 ## 5. 功能清单与需求 ID
 
-「档」列：阻断 = 开服阻断，内测 = 内测前必需，运营 = 正式运营前，条件 = 条件触发。工作量取清单 §2 各行，只在 §26 汇总，这里不重复。无对外 API 的需求在锚点列写明状态机、时序或门禁。
+「档」列：阻断 = 开服阻断，内测 = 内测前必需，运营 = 正式运营前，条件 = 条件触发，可玩 = 用户 2026-10-11 定的「服务端核心完全正常游玩」（可玩项 P1～P11，§19）。工作量取清单 §2 各行，只在 §26 汇总，这里不重复。无对外 API 的需求在锚点列写明状态机、时序或门禁。
 
 | ID | 功能 | 差距 | 档 | 优先级 | 锚点 |
 | --- | --- | --- | --- | --- | --- |
@@ -195,14 +200,14 @@
 | REQ-PROD-002 | 正版验证与 AES/CFB8 加密：`Auth.Online` 重写（不回滚上游），先开加密再验证，`hasJoined` 结果三分，故障时退避重试一次后拒绝登录，429 按 `Retry-After` 停发、不重试；验证在独立虚拟线程上、并发 ≤ 32；`server-app` 默认在线模式 | G01 | 阻断 | P0 | `API-PROD-001`、`API-PROD-002`；状态机 §11.1 |
 | REQ-PROD-003 | 皮肤：`hasJoined` 返回的签名 `textures` 属性原样进 profile 与 PlayerInfo，登录路径不另调 `PlayerSkin.fromUsername` | G06 | 内测 | P0 | `API-PROD-002`；时序 §12.1 |
 | REQ-PROD-004 | 同一 UUID 重复登录：在线模式踢旧会话、放新连接（旧会话收 `synaxis:logged-in-elsewhere`）；离线模式保持拒新，跨分片同样拒新、不发顶号；在线模式跨分片由会话租约与 Redis 顶号通知处理 | G07 | 内测 | P0 | `API-PROD-006`；状态机 §11.3、时序 §12.4 |
-| REQ-PROD-005 | 玩家数据持久化：PostgreSQL 是唯一权威（账号、角色、数据段、按大区位置、会话租约、版本号；按大区位置与 `current_region` 第 3 波建表不读写，默认 M3-E 也不接、玩家下线再上线回到大区出生点，`docs/DESIGN-M3.md` §23 内测 A 环之前由本分册接上，见该分册 §28.1「按大区的最后位置」一行与本分册 §28.2 待办）；登录载入（同一账号在同一分片串行载入）、60 s 定时保存（每人每周期一次，按 tick 摊开）、登出保存、关键操作先落库后生效；数据库故障时 10 s 冻结、30 s 踢出 | G03 | 阻断 | P0 | `API-PROD-004`；状态机 §11.2、§11.3 |
+| REQ-PROD-005 | 玩家数据持久化：PostgreSQL 是唯一权威（账号、角色、数据段、会话租约、版本号；玩家的位置由 `REQ-PROD-047` 的宿主数据段 `synaxis:player` 记，挂地图的分片上同一地图版本、落在本分片 `bounds` 里才用；按大区位置表 `character_location` 与 `current_region` 第 3 波建表，仍不读写，跨大区送回待做，见 `docs/DESIGN-M3.md` §28.1「按大区的最后位置」一行与本分册 §28.2 待办）；登录载入（同一账号在同一分片串行载入）、60 s 定时保存（每人每周期一次，按 tick 摊开）、登出保存、关键操作先落库后生效；数据库故障时 10 s 冻结、30 s 踢出 | G03 | 阻断 | P0 | `API-PROD-004`；状态机 §11.2、§11.3 |
 | REQ-PROD-006 | 插件存储 API：`PlayerDataStore` 按数据段读写，插件看不见 JDBC、SQL、Redis 与租约 | G03 | 阻断 | P0 | `API-PROD-005` |
 | REQ-PROD-007 | Redis（Valkey 8）只放可丢数据：在线名单、跨分片消息、顶号通知；Redis 整体宕机时登录照常，顶号退化为拒新，恢复后各分片重写本分片在线名单 | G03、G07 | 阻断 | P0 | `API-PROD-006` |
 | REQ-PROD-008 | 优雅停机：关登录门 → 广播倒计时 → 批量保存全部在线玩家（30 s 预算，超时记 ERROR、靠租约过期兜底）→ 踢人 → 插件 onDisable → 停 tick；插件拿「停机前保存」钩子，不依赖断线事件 | G04 | 阻断 | P0 | `API-PROD-007`；状态机 §11.4、时序 §12.2 |
-| REQ-PROD-009 | 聊天：聊天事件的默认收件人为空集合，发给谁由玩法插件定；每连接令牌桶（`synaxis.chat-rate-per-second` 默认 1、`synaxis.chat-burst` 默认 3）；`JoinGame` 的 `enforcesSecureChat` 改为 false，聊天一律以系统消息转发；客户端模组拦掉进服时的聊天验证提示 toast | G05 | 阻断 | P0 | `API-PROD-008` |
+| REQ-PROD-009 | 聊天：引擎发出的聊天事件收件人为空集合，发给谁由玩法插件定；挂了宿主默认玩法层的模式（平坦核心、RTS）由宿主在全局作用域的插件之前填成同一实例的玩家，插件可改（`REQ-PROD-046`，v0.9.63）；每连接令牌桶（`synaxis.chat-rate-per-second` 默认 1、`synaxis.chat-burst` 默认 3）；`JoinGame` 的 `enforcesSecureChat` 改为 false，聊天一律以系统消息转发；客户端模组拦掉进服时的聊天验证提示 toast | G05 | 阻断 | P0 | `API-PROD-008` |
 | REQ-PROD-010 | 白名单与封禁：按 UUID 与 IP，带理由与到期；存 PostgreSQL 全大区共享、进程内 30 s 缓存、变更经 Redis 通知在线玩家即时下线；判定在 Mojang 验证之后、`AdmissionProvider` 之前 | G08 | 内测 | P1 | `API-PROD-009` |
 | REQ-PROD-011 | 权限与 GM 角色：PostgreSQL 角色表（玩家 → 角色 → 权限串），`has(player, node)`；`permissionLevel` 只控制客户端显示，不作授权依据；GM 命令写审计事件 | G09 | 内测 | P1 | `API-PROD-010` |
-| REQ-PROD-012 | 控制台命令与插件命令：控制台输入交给 `CommandManager`；`PluginContext#commands()` 按插件命名空间注册、禁用时注销、异常走 `LogBudget`；内置 list、kick、broadcast、save、stop、tps 六条（`profile` 属 `REQ-PROD-034`） | G10 | 内测 | P1 | `API-PROD-011` |
+| REQ-PROD-012 | 控制台命令与插件命令：控制台输入交给 `CommandManager`；`PluginContext#commands()` 按插件命名空间注册、禁用时注销、异常走 `LogBudget`；内置 list、kick、broadcast、save、stop、tps 六条（`profile` 属 `REQ-PROD-034`）；`list` 不要求节点（原版 `/list` 是 0 级），未知命令回一行可翻译的回执（v0.9.63） | G10 | 内测 | P1 | `API-PROD-011` |
 | REQ-PROD-013 | 入站包速率闸与补全限频：读线程入队处滑动窗口计数（全部包 + 按包类型覆盖，play 态的即时包同样计数），动作 DROP / KICK；解压字节/秒上限；补全每连接 20 次/秒。位置包与方块操作的服务端判定（v0.9.47）：越过世界边界（由内向外，或在边界外离边界更远）、单包位移超过 64 格的位置包与「目标区块未加载」同样拉回；挖掘与使用方块离眼睛不小于方块交互距离 + 1 格的拒绝；载具移动包同样判世界边界与单包 64 格，核心模式的平坦世界设有限边界（v0.9.53）；载具移动包也判「目标区块未加载」（v0.9.59） | G11；M3 侧安全审查 S1-V01、S1-02、S1-01 | 内测 | P1 | `API-PROD-012`、`API-PROD-030` |
 | REQ-PROD-014 | tick 卡死看门狗：卡 10 s 打印全部 TickThread 与调度线程栈、之后每 5 s 一次；60 s 判死先尝试落盘停机，15 s 未完成 `Runtime.halt` 非零退出 | G12 | 内测 | P0 | `API-PROD-013`；状态机 §11.5 |
 | REQ-PROD-015 | 崩溃报告与未捕获异常：`ExceptionManager` 走 SLF4J 带上下文并保留限流；致命路径写 `crash-reports/<时间戳>-<shard_id>.txt`；OOM 由 `REQ-PROD-028` 默认参数里的 `ExitOnOutOfMemoryError` 结束进程，本需求不另加启动参数 | G13 | 内测 | P1 | `API-PROD-013` |
@@ -236,6 +241,8 @@
 | REQ-PROD-043 | keep-alive 收尾：`socketTimeout` 对 `SocketChannel` 无效，走弃用流程删除；keep-alive 超时断线改用 `synaxis:keep-alive-timeout` 键 | G40 | 条件 | P2 | `API-PROD-003` |
 | REQ-PROD-044 | 假 sessionserver：`record` 模式只对客户端 `join` 过的 serverId 回 200（join 请求体里没有用户名，不按用户名匹配），`allow-all` 模式对任何用户名回 200；两种模式都能注入延迟、204、429、503 与超时；供 CI 与压测 | G01、G26、G27 | 阻断 | P0 | `API-PROD-027` |
 | REQ-PROD-045 | 转服票据的签发与验票：源分片写回并释放写权后签 HMAC-SHA256 票据（30 s 过期、16 B 一次性 nonce、带 `state_version`），先 `StoreCookie` 再 `Transfer`；目标分片在 configuration 阶段按固定顺序验票（签名 → 有效期 → 目标分片与 UUID → nonce → 写权），nonce 记 PostgreSQL `transfer_nonce`；每玩家冷却 5 s；以宿主内部接口交给 M3 `ShardService` 的实现 `ShardServiceImpl` 调用，不依赖 M3 的任何代码 | G28 | 运营 | P1 | `API-PROD-028`；状态机 §11.3、时序 §12.3 |
+| REQ-PROD-046 | 宿主默认玩法层：`server-app` 新包 `app.play`，挂在宿主节点上，判定先于全局作用域的插件、插件可以改或取消；平坦核心全开（同实例聊天、三条丢弃路径都生成物品实体、拾取进背包、近战伤害与击退、虚空伤害、首次出生的初始物品、出生点旁的训练假人），RTS 只开聊天，挂地图的分片不挂；平坦核心世界有光照；不补原版生存内容（合成、怪物 AI、饥饿、红石） | 无（用户 2026-10-11 拍板） | 可玩 | P0 | `API-PROD-031`；状态机 §11.6、时序 §12.5 |
+| REQ-PROD-047 | 玩家持久化段 `synaxis:player`：宿主注册，三种模式（平坦核心、RTS、挂地图的分片）都注册；存位置与朝向及世界标识（挂地图的分片另记 `map_id`、`build_id`）、46 格背包加选中格、生命值；每次快照开头捕获、有变化才写；首次出生时应用，位置按模式取舍：平坦核心用存档位置，RTS 由 `RtsPlugin` 的出生点决定，挂地图的分片要同一 `map_id`、存档位置落在本分片 `bounds` 里、同一 `build_id` 三条都满足才用，否则回本大区出生点，凭转服票据到达时用门框落点；转服时随写回带到目标分片；`character.current_region` 不写 | 无（用户 2026-10-11 拍板） | 可玩 | P0 | `API-PROD-032`；时序 §12.5、§12.3 |
 
 ## 6. 总体架构
 
@@ -383,7 +390,8 @@ erDiagram
 | `ENT-Character` | `character` | 账号与角色 1:N（`unique(account_uuid, slot)`），首个版本只开 `slot = 0`（D2）；写权见 `ENT-CharacterLease` |
 | `ENT-CharacterLease` | `character.lease_session_id` + `character.version` | 不是独立的表，是角色行上的写权投影；状态机见 §11.3 |
 | `ENT-CharacterSection` | `character_section` | 插件数据段；单段编码后 ≤ 64 KiB（沿用 `API-M3-012` 的 65,536 B） |
-| `ENT-CharacterLocation` | `character_location` | 每个大区各记一个最后位置；V1 已建表，第 3 波宿主不读写（`character.current_region` 同）；按 `docs/DESIGN-M3.md` §28.1「按大区的最后位置」一行，默认 M3-E 也不接，该分册 §23 内测 A 环之前由本分册接上，在那之前玩家下线再上线回到大区出生点 |
+| `ENT-CharacterLocation` | `character_location` | 每个大区各记一个最后位置；V1 已建表，宿主仍不读写（`character.current_region` 同）。同一大区里的最后位置由 `ENT-PlayerState` 记（v0.9.63）；跨大区送回（玩家在 A 大区下线、连到 B 大区的分片时送回 A）没做，见 §28.2 待办与 `docs/DESIGN-M3.md` §28.1「按大区的最后位置」一行 |
+| `ENT-PlayerState` | `character_section`（`section_id = 'synaxis:player'` 的一行） | 宿主的玩家持久化段，字段见 §9，编码与读写时机见 `API-PROD-032`；不是独立的表，与插件数据段同表、同一个 `version`、同一次写入 |
 | `ENT-ShardSession` | `shard_session` | 分片每次起服新建一行；状态机见 §11.2 |
 | `ENT-TransferNonce` | `transfer_nonce` | 转服票据用过的 nonce，一行一张票据；目标分片验票检查 ⑤ 插入（`API-PROD-028`），过期行由 `transfer_nonce.gc` 每 10 min 删除（§17） |
 | `ENT-StoreMeta` | `store_meta` | `auth_mode = online / offline`，防离线 UUID 写进正式库；只由 `--migrate-only --auth-mode` 写入（`API-PROD-004`），分片只读 |
@@ -393,6 +401,7 @@ erDiagram
 | `ENT-ItemLedger` | `item_ledger` | 只记带 `uid` 的物品的产生、销毁与跨角色转移（D5） |
 | `ENT-LoginAttempt` | 无表（内存） | 一条 login / transfer 意图连接从 accept 到进 configuration 的过程；状态机见 §11.1 |
 | `ENT-Watchdog` | 无表（内存） | 看门狗；状态机见 §11.5 |
+| `ENT-TrainingDummy` | 无表（内存） | 平坦核心世界的训练假人（`API-PROD-031`），停机即消失、不存档；状态机见 §11.6 |
 
 `shard_heartbeat`（在线人数心跳）属 `API-M3-010`，不在本表。`docs/DESIGN-M3.md` `API-M3-012` 的 `player_state(… payload bytea …)` 表**不建**，由 `character` + `character_section` 取代（§25）。
 
@@ -564,7 +573,7 @@ erDiagram
   - 插件：`PluginContext#lifecycle()`（默认方法，同 `playerData()`）返回 `PluginLifecycle`，`onShutdownSave(Consumer<ShutdownNotice> hook)` 由宿主在 `saveAll` 内、在每个玩家所属 tick 线程上调一次；已准入、还没进世界的玩家没有所属 tick 线程：保存阶段开始后的下一个 tick，宿主以 `synaxis:server-stopping` 断开其中仍连着的，钩子在派发其 `PlayerDisconnectEvent` 的线程上调（宿主断开的都在 tick 调度线程上），同样恰一次（§11.4 `gate_closed → saving`）。插件在这里把内存状态写进数据段并 `markDirty`；插件不得依赖停机时的 `PlayerDisconnectEvent` 做保存。插件 `onDisable` 的线程：停机线程把 `scheduler.shutdown()` 投递到 tick 调度线程，在两个 tick 之间执行；1 s 内没被接走（tick 卡住）或看门狗已判死时改在停机线程上执行，整体等待上限 15 s，超时记 WARN 继续停机。`scheduler.shutdown()` 在那里跑的是宿主的 `PluginHost#disableAll`：按启用逆序给每个插件新起一条 daemon 平台线程 `plugin-disable-<id>` 跑 `onDisable`，自己 join 等它，全部插件共用 5 s，用完记 ERROR、收回该插件的能力、不再等。所以 `onDisable` 不与 tick 并行，但它所在的线程不属于任何 tick 线程：移除或改动实体要经 `Acquirable#sync` 拿到实体所属的 tick 线程；还没分配给 tick 线程的实体（`assignedThread()` 为 null）直接操作，因为未分配元素上的 `sync` 只认创建线程（`API-PROD-016` 所有权断言一条）。在这条线程上直接调 `Entity#remove` 这类带所有权断言的方法，断言开或 `synaxis.acquirable-strict=true` 时抛 `AcquirableOwnershipException`。
   - 预算：保存阶段 30 s；部署侧 systemd `TimeoutStopSec` 或 Kubernetes `terminationGracePeriodSeconds` ≥ 60 s（清单 G04）。控制台 `stop [秒数]` 与管理接口 `server/stop` 的倒计时默认 0 s（本分册定，无外部来源）。
 - **`API-PROD-008` 聊天** — 实现 `REQ-PROD-009`
-  - `PlayerChatEvent` 的收件人默认是空集合（`ChatMessageListener` 不再取全进程在线玩家），发给谁由玩法插件决定：按频道、同实例或私聊填收件人，没有插件填时一条也不发。
+  - 引擎发出的 `PlayerChatEvent` 收件人是空集合（`ChatMessageListener` 不再取全进程在线玩家）。挂了宿主默认玩法层 `CHAT` 一项的模式（平坦核心、RTS，`API-PROD-031`，v0.9.63）由宿主在宿主节点自身的监听器里把空的收件人填成发送者所在实例的全部玩家（含发送者），排在全局作用域的插件监听器之前，插件可以增删收件人或取消；挂地图的分片不挂默认玩法层，收件人仍为空。没挂的模式里发给谁由玩法插件决定：按频道、同实例或私聊填收件人，没有插件填时一条也不发。
   - `synaxis.chat-rate-per-second` 默认 1、`synaxis.chat-burst` 默认 3（burst 为本分册定，清单只给了 1 条/秒）；两个键取整数且 ≥ 1。限频排在 `PlayerChatEvent` 之前，每连接一只令牌桶（`ChatRateLimiter`，只由解释该玩家包的线程使用）；超限的消息丢弃并计入该桶的 `dropped()`，不断线。
   - `JoinGamePacket` 的 `enforcesSecureChat` 由写死的 true 改为 false（`Player.java:395-397`）；聊天以 `SystemChatPacket` 转发。
   - 客户端模组：原版客户端进入不强制安全聊天的服务器时弹「聊天消息无法验证」toast，而 Synaxis 服务器恒为 false；`client-fabric` 的 `ClientPacketListenerMixin` 拦掉 `handleLogin` 里唯一的 `addToast` 调用，玩家不会为服务器按设计工作而收到警告。
@@ -581,11 +590,12 @@ erDiagram
   - 到期：`account_role.expires_at` 由每次读取的查询条件 `expires_at > now()` 判定，到期不发通知，已读进内存的授予最迟晚一个刷新周期（30 s）失效。节点集合变化时给该玩家重发命令树（`API-PROD-011`）。`role` 命令对玩家发送者不用这份内存，见下一条。
   - GM 命令 `role grant|revoke <玩家名|UUID> <角色>` 与 `role list <玩家名|UUID>`，节点 `gm.role`；玩家名只在本分片在线玩家里找，别处或从未登录的账号用 UUID。控制台的 `grant` 写入不到期的授予（`expires_at` 为 null），目标已有这条授予时清掉它的到期；角色不存在时回 `synaxis:role-unknown`。发送者是玩家时，判定当场读库（`HostPermissions#grantsOf`，与 `RoleStore#load` 同一条查询，不用本分片内存里的那份）：发送者此刻在库里的有效授予要覆盖 `gm.role`，并且覆盖「角色在 `role_permission` 里的每个节点」，对自己也一样：节点本身、`*` 或按整段的前缀通配覆盖它，`gm.*` 这样的通配节点要发送者持有它本身、更短前缀的通配或 `*`，单独一个 `*` 只有持有 `*` 的发送者覆盖；没有节点的角色只要求 `gm.role`。不满足时回 `synaxis:role-above-sender`、不写库。玩家的 `grant` 写入的授予随发送者最早到期的那条有效授予到期，发送者的授予都不到期时为 null；目标已有这条授予而尚未到期时原样保留、不改到期，已到期时换成新的到期（`RoleStore#handOut`：`ON CONFLICT … DO UPDATE SET expires_at = EXCLUDED.expires_at WHERE account_role.expires_at <= now()`）。所以玩家授出的授予不晚于自己最早到期的那条有效授予，授给自己、授给别人、经小号转手都一样；不到期的授予只有控制台与有效授予全都不到期的玩家写得出。玩家的 `grant` 不改目标尚未到期的授予，但有效授予全都不到期的玩家可以先 `revoke` 再 `grant`，把别人的限时授予换成不到期的；持有者先 `revoke` 掉自己的限时授予、余下的有效授予全都不到期时，再给自己 `grant` 也写成不到期的，这时角色的节点已由它不到期的授予覆盖，不多出权限。撤销到达本分片之前，玩家不能把撤掉的角色授回给自己。「最早到期」按发送者全部有效授予取，不只看覆盖这个角色所需的那几条：同时持有不到期的 `gm.*` 与一条限时角色的发送者，授出的授予也随那条限时角色到期，要授不到期的用控制台。控制台不受这些限制。`role` 与 `role_permission` 的行没有命令或接口维护，由 ROLE-Operator 用 SQL 写。`Player#permissionLevel` 只决定客户端调试界面与补全显示，不作授权依据。
   - GM 命令执行一次写一条 `EVT:gm_command`（`API-PROD-014`，`result` 取值见 §20）。
-  - 宿主的 GM 节点共四个：`gm.role`（本条）、`gm.ban` 与 `gm.whitelist`（`API-PROD-009`）、`gm.transfer`（`API-PROD-011` 的 `transfer` 命令，6A）；内置命令的节点是 `synaxis.command.<名>`（`API-PROD-011`）。节点只在命令的 condition 里查，控制台恒有权限。
+  - 宿主的 GM 节点共四个：`gm.role`（本条）、`gm.ban` 与 `gm.whitelist`（`API-PROD-009`）、`gm.transfer`（`API-PROD-011` 的 `transfer` 命令，6A）；内置命令的节点是 `synaxis.command.<名>`（`API-PROD-011`），`list` 除外（不要求节点，v0.9.63）。节点只在命令的 condition 里查，控制台恒有权限。
 - **`API-PROD-011` 命令** — 实现 `REQ-PROD-012`、`REQ-PROD-034`
   - `PluginContext#commands()`（默认方法）返回 `PluginCommands`：`register(Command command)`，名字与每个别名自动加 `<plugin_id>:` 命名空间并注册无前缀别名（冲突时别名让给先注册者），名字或别名含 `:` 抛 `IllegalArgumentException`，本插件已注册过同名时抛 `IllegalStateException`；`boolean unregister(Command command)` 只收回本插件注册过的命令，别人的返回 false 且不动。插件禁用时宿主注销它全部命令，之后再调 `register` 静默丢弃。谁能执行由命令自己的 condition 决定（同时决定补全里是否可见），condition 里查 `Permissions`，不查 `permissionLevel`。执行器在发送者所在 tick 线程上跑，控制台的在控制台读线程上跑；执行异常经 `LogBudget` 输出（每条命令 10 s 至多一行），发送者收到原版键 `command.failed`。
   - 控制台：`Main#readConsole`（`server-app/.../Main.java:988`）把每个非空行交给 `Main#runConsoleCommand`（`CommandManager` + `ConsoleSender`，接受前导 `/`）；一行抛出的 `RuntimeException` 记一行 ERROR 带栈，接着读下一行；未知或不完整的命令只写一行 INFO、不带栈。控制台线程是 daemon。引擎 `ConsoleSender` 把翻译组件写成回退文本，开着 `synaxis.automatic-component-translation` 时写服务端译文，译文由去掉子组件的组件求得，子组件由扁平化器接着写。
-  - 内置命令（宿主在插件启用之前注册，所以无前缀名归宿主；权限节点 `synaxis.command.<名>`，控制台恒有权限）：`REQ-PROD-012` 六条 `list`、`kick <玩家> [原因]`（不带原因时用原版键 `multiplayer.disconnect.kicked`）、`broadcast <文本>`、`save`、`stop [秒数]`、`tps`（最近 1,200 个 tick 的 TPS 与 MSPT p50 / p95 / p99）；`REQ-PROD-034` 加 `profile [秒数]`（第 6 波 6B）。回执键见 §14。
+  - 内置命令（宿主在插件启用之前注册，所以无前缀名归宿主；权限节点 `synaxis.command.<名>`，`list` 不要求节点（见下一条），控制台恒有权限）：`REQ-PROD-012` 六条 `list`、`kick <玩家> [原因]`（不带原因时用原版键 `multiplayer.disconnect.kicked`）、`broadcast <文本>`、`save`、`stop [秒数]`、`tps`（最近 1,200 个 tick 的 TPS 与 MSPT p50 / p95 / p99）；`REQ-PROD-034` 加 `profile [秒数]`（第 6 波 6B）。回执键见 §14。
+  - `list` 与未知命令（v0.9.63，`REQ-PROD-012`）：`list` 的 condition 恒放行，补全里人人可见：原版 `/list` 是 0 级权限，而内存存储的进程里玩家一律没有节点（`HostPermissions#withoutDatabase`，`API-PROD-010`），原先谁都执行不了。玩家执行的 `list` 不写 `EVT:gm_command`：它已不是 GM 命令，命令包只受入站闸 750 包 / 7 s 约束，每次都写的话台账条数由客户端决定（§20 开头的原则）；控制台执行的照旧写一条。未知命令：`HostCommands#register` 调 `CommandManager#setUnknownCommandCallback`，引擎判出 `UNKNOWN`（根命令不存在）时回调；发送者是玩家时回一条系统消息 `synaxis:command-unknown`（参数：输入的第一个词，不带前导 `/`；回退文本 `Unknown command: %s`），发送者是控制台时什么都不发（`Main#runConsoleCommand` 已为未知命令写一行 INFO，见上面控制台一条）；不写日志、不进台账（客户端驱动，按 `docs/DESIGN.md` §28 `SOAK-3` 的规则不按包写行）。不变的两处：命令存在而 condition 不放行（没有节点的玩家执行 `stop`）由引擎判 `PRECONDITION_FAILED`、按 `CANCELLED` 静默取消，不走这个回调；参数写错（`INVALID_SYNTAX`）同样没有这条回执。`HostCommands` 每个进程都注册，挂地图的分片同样生效。
   - `stop [秒数]`：秒数为不小于 0 的整数，不设上限（误输入可再发 SIGTERM：剩余倒计时作废，照常保存后退出，§11.4）；解析不了时回 `synaxis:command-stop-usage`、不停机。停机是不是这次 `stop` 发起的，只由引擎判定：宿主调 `ServerProcess#beginShutdown(秒数)`，得 true 回 `synaxis:command-stopping`、`EVT:gm_command` 记 `result=ok`；得 false（引擎已在停机，占下它的是 SIGTERM、看门狗判死、更早的 `stop` 或管理接口 `minecraft:server/stop`）回 `synaxis:command-already-stopping`、记 `result=invalid`，引擎的倒计时不变。控制台、玩家命令与管理接口都经 `HostCommands#beginStop` 调这一次，宿主不另设标志：另设的标志与引擎的 CAS 是两次判定，两次之间 SIGTERM 占下停机时宿主会回「5 s 后停」而引擎按 0 s 停（§28.2 已决一行）。停机序列跑在引擎的非 daemon 线程 `Syn-Shutdown` 上。回复与台账那一行先于台账关闭与管理连接断开：`beginStop` 在问引擎之前取宿主唯一的回复许可（`Semaphore(1)`），调用方回复完（管理接口是回复发出之后）调 `HostCommands#stopAnswered` 交还；装配在 `ledger::close` 之前挂停机任务 `HostCommands#awaitStopAnswers`，等这个许可至多 1 s，过时不再等。
   - `profile [秒数]`：秒数 1～600（本分册定），默认 60；越界或解析不了回 `synaxis:command-profile-usage`、不录。用 JDK 自带的 `profile` 设置（`jdk.jfr.Configuration.getConfiguration("profile")`）的副本开一个 JFR 录制。这个文件要交给别人分析（`RB-PROD-003`），副本关掉下表七个事件（`Profiler.LEFT_OUT`），它们会把表中内容明文写进文件，与 `API-PROD-022`「令牌不进任何日志与台账」和 `API-PROD-013` 崩溃报告的脱敏规则相悖；第一行以外是 v0.9.42 加的（安全审查 C-04、D-V02）：
 
@@ -916,6 +926,25 @@ erDiagram
     - 驱动：`p10.py drive`，只用 Python 标准库。对两个分片的管理接口各开一条 WebSocket 连接跑完全程，连接空闲 20 s 发一个不请自来的 pong，否则 Java-WebSocket 的断线计时器会关掉它。先等首个分片的 `minecraft:players` 恰列出一名玩家（至多 900 s，含客户端的构建与启动），用 `psql` 读它的 `character.version`（`account_uuid` 为该玩家、`slot = 0`）。之后 200 次，每次：对玩家所在分片调 `synaxis:transfer`，参数 `{"player":{"id":…},"shard":<另一频道>}`，结果必须是 `sent`；每 0.5 s 问一次目标分片的 `minecraft:players`，60 s 内要列出这名玩家；再读一次 `version`，必须比上一次大。下一次转服不早于上一次 `sent` 回复之后 5.5 s：回复在票据 `issued_at` 之后才发出，所以离冷却起点至少 5.5 s。任一处不符即停。结果写 `drive.json`（每次的结果、回复与到达的耗时、`version` 序列、失败原因）；无论成败，都创建 `SYNAXIS_P10_DONE` 指的文件。
     - 判定：客户端退出、两个分片按 pid 收 SIGTERM 退出之后，`p10.py judge` 读三处。`drive.json` 没有失败原因，200 次都回 `sent` 且都到达，`version` 读到 201 个且逐个变大；两个工作目录下 `logs/events-*.jsonl` 里的 `transfer_issued` 合计恰 200 行，跨天压缩的 `.jsonl.gz` 一并计；`p10.txt` 恰 201 行 `join`，相邻两行的端口不同，末行 `end done`。
     - 本机跑法见 `docs/TEST.md` `TC-PROD-550`：客户端在 `client-fabric/gametest-env/run.sh` 的容器里，`run.sh` 透传 `SYNAXIS_P10_SERVER` 与 `SYNAXIS_P10_DONE`；`shards.json` 的 `host` 写 `host.docker.internal`，否则容器里的客户端照 `Transfer` 去连 127.0.0.1，连到的是容器自己。
+  - 可玩项剧本（v0.9.63，`REQ-PROD-046`、`REQ-PROD-047`，§19 可玩项矩阵）：
+    - 客户端：gametest 源集新增 `PlayableClientGameTest`，入口表里排在 `RegressionClientGameTest` 之后，只在设了 `SYNAXIS_PLAYABLE_SERVER`（平坦核心服务端的 `host:port`）时跑；RTS 那五步连 `SYNAXIS_GAMETEST_SERVER`（R1～R8 那台）。它自己捕获全部异常、不抛出（Fabric 的 gametest runner 在一条测试抛异常后不再跑后面的），每步写一行进运行目录的 `synaxis-gametest/playable.txt`：`<模式> G<n> PASS|FAIL|SKIP <证据>`，模式是 `core` 或 `rts`；写报告放进 `try/finally`，一步失败时其后依赖它的步骤记 `SKIP`。P10 job 不设 `SYNAXIS_PLAYABLE_SERVER`，它直接返回。
+    - 服务端：job `gametest` 多起一台 `server-app` 平坦核心，`-Dsynaxis.app.core-mode=on -Dsynaxis.app.port=25566`，与 R1～R8 那台共用本 job 的假 sessionserver（在线模式，`record` 模式），内存存储，`JAVA_OPTS="-Xms1G -Xmx1G -XX:-AlwaysPreTouch"`（理由同 P10 job：2 核 / 7 GB 的 runner 上还有客户端与另一台服务端），同样等到 `server-app listening` 再起客户端。两次客户端启动（开发 mod 与生产 mod jar）连同一台，所以每一步都要在「这个账号已在本服玩过」时同样成立。job 时限 40 分钟不变，实测不够时再调。
+    - 步骤（平坦核心十步；RTS 只跑 G1、G2、G6、G7、G10）：
+
+      | 步骤 | 操作 | PASS 的条件 |
+      | --- | --- | --- |
+      | G1 进服 | 连上服务端 | 60 s 内 `level` 与 `player` 非空；平坦核心另要求游戏模式是生存、生命值 > 0 |
+      | G2 移动与区块加载 | 按住前进 3 s（`TestInput`） | 水平位移 ≥ 3 格；脚下那格不是空气、所在区块客户端已载入；脚上一格的天空光是 15 |
+      | G3 挖 | 看向脚边相邻的一格地面石头（y 39），按住攻击直到客户端那格变成空气 | 变成空气后 40 tick 里一直是空气（服务端没有回弹） |
+      | G4 放 | 选中有石头的格，对一格地面的顶面按使用 | 上方那格出现石头并保持 40 tick；该格石头数减 1 |
+      | G5 背包与物品 | ① 看背包；② 切到铁镐所在的快捷栏格；③ 打开背包，把一组石头从快捷栏格移到主背包的空格，关背包；④ 选中石头按 Q；⑤ 打开背包，拿起一个石头、在背包外右键，关背包；⑥ 等 40 tick 后走到两个物品实体上 | ① 有 ≥ 2 个石头与 1 把铁镐；② 主手是铁镐；③ 20 tick 后两格的内容与操作一致、没有回弹；④⑤ 各在 20 tick 内出现一个石头物品实体，石头数各减 1；⑥ 100 tick 内两个物品实体都消失、石头数恢复 |
+      | G6 聊天 | 发一条带随机串的聊天 | 40 tick 内聊天栏出现含该串的一行 |
+      | G7 命令 | 发 `/list`，再发 `/synaxisnosuchcommand` | 40 tick 内各出现一行：前者是 `synaxis:command-list` 的译文、含本玩家名，后者是 `synaxis:command-unknown` 的译文、含 `synaxisnosuchcommand` |
+      | G8 打实体 | 找 (3.5, 40, 0.5) 附近的僵尸（训练假人），走到 2.5 格内，手持铁镐打一下，5 tick 内再打一下，之后每 12 tick 打一下直到它死 | 第一下后 20 tick 内客户端看到它的生命值下降；第二下不再下降；它死后 140 tick 内 (3.5, 40, 0.5) 附近重新出现一个生命值满的僵尸 |
+      | G9 死亡与重生 | 低头（pitch 90），手持铁镐按住攻击，一路挖穿 y = 0 掉下去 | 掉到 y < −64 之后 200 tick 内出现死亡界面；点重生后 100 tick 内位置离 (0.5, 40, 0.5) ≤ 1 格、生命值 20 |
+      | G10 退出重进 | 平坦核心：走到离出生点 ≥ 5 格处，转到 yaw 45，选中快捷栏 2 格，记下位置、朝向、46 格背包与选中格，断开回标题屏，再连同一台。RTS：记下 R4 那样数出的可指挥单位数，断开再连 | 平坦核心：位置差 ≤ 0.5 格、yaw 差 ≤ 1°，选中格相同，46 格背包逐格相同（没有多出一份初始物品）；RTS：重连后 60 s 内可指挥单位数与断开前相同 |
+
+    - 判定（CI，接在 R1～R8 的判定步骤之后）：报告份数 = 客户端启动次数 N；每份 `^core G([1-9]|10) PASS` 恰 10 行、`^rts G(1|2|6|7|10) PASS` 恰 5 行，`FAIL` 与 `SKIP` 0 行。R1～R8 那台的台账判定随之改一项：剧本每次启动在那台多连 2 次（`rts G1` 一次、`rts G10` 重连一次），`client_verified` = C 的 C 不带 spike 时是 3N、带 spike 时 4N；`client_rejected` = 0、`unit_order_issued` ≥ N 与 `reason=synaxis:protocol-error` 的 kick 行 = N 不变（剧本步骤不下令、不触发协议错误）；完整正版路径档读假 sessionserver 日志的两项按两台服务端的连接合计（平坦核心那台每次启动 2 次连接）。平坦核心那台的日志与台账随产物上传，不另判定。
   - M3-D 的光照用例（`docs/DESIGN-M3.md` §19 容器场景与 §26 M3-D 第 4 步，`docs/TEST.md` `TC-WORLD-095`～`TC-WORLD-097`）：gametest 源集另有 `light/LightClientGameTest`，排在入口表首位，只在设了 `SYNAXIS_LIGHT_SERVER` 时连服务器，否则直接返回，R1～R8 照旧在它之后跑。`client-gametest.yml` 的两个 job 都不设 `SYNAXIS_LIGHT_*`，CI 的报告份数、`R` 行与判定步骤不变。本机经 `run.sh` 跑（透传 `SYNAXIS_LIGHT_SERVER` 与 `SYNAXIS_LIGHT_MODE`，固定传 `SYNAXIS_LIGHT_MARKER=/out/light-ready`）。
   - M3-G 的远景用例（`docs/DESIGN-M3.md` §26 M3-G 轨道 C，`docs/TEST.md` `TC-WORLD-117`～`TC-WORLD-124`）：gametest 源集另有 `farview/FarViewClientGameTest`，排在 `LightClientGameTest` 之后、R1～R8 之前，只在设了 `SYNAXIS_FARVIEW_SERVER` 时连服务器，否则立即返回；`client` 入口在 `LightProbe` 之后另有 `farview/DhUpdaterOff`：装了 DH 时在客户端启动后关掉它的自动更新（较新的 DH 发布后，它的更新界面会挡在标题屏上），没装时什么也不做。`client-gametest.yml` 的两个 job 都不设 `SYNAXIS_FARVIEW_*`（DH 只是编译期依赖，不加 `-Dfabric.addMods` 时客户端里没有它），CI 的报告份数、`R` 行与判定步骤不变。本机经 `run.sh` 跑：透传 `SYNAXIS_FARVIEW_SERVER`、`SYNAXIS_FARVIEW_HTTP`、`SYNAXIS_FARVIEW_MODE`、`SYNAXIS_FARVIEW_MODS` 与 `SYNAXIS_GAMETEST_ARGS`（作 Gradle 的 `--args`，如 `--width 1920 --height 1080`），固定传 `SYNAXIS_DH_SHADERPACKS=/dh/shaderpacks`；`SYNAXIS_FARVIEW_MODS` 不为空时（取 `dh` 或 `dh-iris`）在容器里按 SHA-1 取 DH（`dh-iris` 另取 Sodium、Iris 与光影包），客户端 JVM 加 `-Dfabric.addMods=/dh/mods`；`http.nonProxyHosts` 加 `host.docker.internal`，容器里的客户端连宿主上的远景夹具不经代理。
 - **`API-PROD-027` 假 sessionserver** — 实现 `REQ-PROD-044`
@@ -951,9 +980,9 @@ erDiagram
   - 插件面：`SynaxisPlugin` 加默认方法 `Set<String> translationKeys()`，默认返回空集合，列出插件发给玩家、又不是 `DisconnectKeys` 常量的翻译键（断线原因、准入拒绝、系统消息），命名空间不限。宿主不调用它；门禁在按宿主的做法（`ServiceLoader`、无参构造器）建出的实例上调用。`SynaxisPlugin` 由插件实现，按 §8 只能加默认方法。
   - 门禁：`:architecture-tests` 的 `TranslationKeyGateTest`，随 `./gradlew check` 在 CI 的 `check` job 里跑（两个严格模式 job 的 `test` 也带上它）。放在这个项目，是因为只有它的 classpath 上同时有引擎、`:plugin-api`、宿主与插件。键集合按三步得出：
     - ① 该 classpath 上 `io.github.bearisbug.synaxis` 包下的全部主类（引擎、`:plugin-api`、`:protocol`、`:server-app`、`:game-rts`、`:synx`、`:baker`；测试类不算）常量池里整串匹配 `synaxis:[a-z0-9_./-]+` 的字符串常量。引擎 `DisconnectReasons`、`DisconnectKeys`、宿主各命令的回执与系统消息（§14）都在此列；别的类内联的常量在两处都出现，报错时两处都列。
-    - ② 去掉非文字标识：插件消息频道 `synaxis:handshake`、`synaxis:main`，Redis 频道 `synaxis:permission`、`synaxis:moderation`（`API-PROD-006`），Cookie 键 `synaxis:transfer`（`API-PROD-028`），维度类型 `synaxis:match`，烘焙器 Anvil 源里的标记方块 `synaxis:hidden`，管理接口的 JSON-RPC 方法名 `synaxis:shard/drain`、`synaxis:shard/status`、`synaxis:broadcast`、`synaxis:profile`（`API-PROD-022`），挂地图的分片的维度类型 `synaxis:map`（`docs/DESIGN-M3.md` `API-M3-006`），挂地图的分片在 configuration 阶段宣告远景的插件消息频道 `synaxis:farview`（`docs/DESIGN-M3.md` `API-M3-015`），`:game-rts` 数据标记的方块 handler 键 `synaxis:door`、`synaxis:loot`（`docs/DESIGN-M3.md` `API-M3-003`），共 15 个。名单写在门禁类里，名单上的名字没有任何类再用时门禁同样失败，名单只能跟着代码减，不会留着挡住以后同名的键。新增 `synaxis:` 开头的频道、Cookie 键、数据标记的 handler 命名空间（`docs/DESIGN-M3.md` `API-M3-003`；`:baker`、`:synx` 与游戏模块的主类同在 ① 的扫描范围）或管理接口的 JSON-RPC 方法名时把它加进名单，否则门禁按缺译文报它；`synaxis:transfer` 同时是 Cookie 键与方法名，已在名单里。
+    - ② 去掉非文字标识：插件消息频道 `synaxis:handshake`、`synaxis:main`，Redis 频道 `synaxis:permission`、`synaxis:moderation`（`API-PROD-006`），Cookie 键 `synaxis:transfer`（`API-PROD-028`），维度类型 `synaxis:match`，烘焙器 Anvil 源里的标记方块 `synaxis:hidden`，管理接口的 JSON-RPC 方法名 `synaxis:shard/drain`、`synaxis:shard/status`、`synaxis:broadcast`、`synaxis:profile`（`API-PROD-022`），挂地图的分片的维度类型 `synaxis:map`（`docs/DESIGN-M3.md` `API-M3-006`），挂地图的分片在 configuration 阶段宣告远景的插件消息频道 `synaxis:farview`（`docs/DESIGN-M3.md` `API-M3-015`），`:game-rts` 数据标记的方块 handler 键 `synaxis:door`、`synaxis:loot`（`docs/DESIGN-M3.md` `API-M3-003`），宿主的玩家持久化段 ID `synaxis:player`（`API-PROD-032`，v0.9.63），共 16 个。名单写在门禁类里，名单上的名字没有任何类再用时门禁同样失败，名单只能跟着代码减，不会留着挡住以后同名的键。新增 `synaxis:` 开头的频道、Cookie 键、数据标记的 handler 命名空间（`docs/DESIGN-M3.md` `API-M3-003`；`:baker`、`:synx` 与游戏模块的主类同在 ① 的扫描范围）、宿主数据段 ID（`API-PROD-032`）或管理接口的 JSON-RPC 方法名时把它加进名单，否则门禁按缺译文报它；`synaxis:transfer` 同时是 Cookie 键与方法名，已在名单里。
     - ③ 加上 `ServiceLoader` 找到的每个插件 `translationKeys()` 的返回值。
-  - 核对：把 `client-fabric/src/main/resources/assets/synaxis/lang/en_us.json` 与 `zh_cn.json` 按 JSON 解析成键集合，每个键缺一处报一行 `<文件> has no text for <键> (from <类名或 plugin <id>>)`，全部列完再失败。语言目录由 `architecture-tests/build.gradle.kts` 的参数提供器 `ModLanguageFiles`（`CommandLineArgumentProvider`）以系统属性 `synaxis.lang.dir` 传给测试 JVM。目录是 `test` 任务的输入（`@InputDirectory`，按相对路径取指纹）：只改语言文件时门禁也重跑，不会被判为 up-to-date。绝对路径只进 JVM 参数、不进构建缓存的键：同一提交检出在不同路径（另一份 clone、CI runner）时，门禁命中同一条缓存。通过时标准输出一行 `translation key gate: <N> keys checked against [en_us.json, zh_cn.json], 15 identifiers left out`（v0.9 时 N = 56，M3-C 合入后仍是 56，6A 其余部分加 `transfer` 命令的 4 个回执键后是 60；M3-G 加的 `synaxis:farview` 是标识，N 仍是 60）。
+  - 核对：把 `client-fabric/src/main/resources/assets/synaxis/lang/en_us.json` 与 `zh_cn.json` 按 JSON 解析成键集合，每个键缺一处报一行 `<文件> has no text for <键> (from <类名或 plugin <id>>)`，全部列完再失败。语言目录由 `architecture-tests/build.gradle.kts` 的参数提供器 `ModLanguageFiles`（`CommandLineArgumentProvider`）以系统属性 `synaxis.lang.dir` 传给测试 JVM。目录是 `test` 任务的输入（`@InputDirectory`，按相对路径取指纹）：只改语言文件时门禁也重跑，不会被判为 up-to-date。绝对路径只进 JVM 参数、不进构建缓存的键：同一提交检出在不同路径（另一份 clone、CI runner）时，门禁命中同一条缓存。通过时标准输出一行 `translation key gate: <N> keys checked against [en_us.json, zh_cn.json], 16 identifiers left out`（v0.9 时 N = 56，M3-C 合入后仍是 56，6A 其余部分加 `transfer` 命令的 4 个回执键后是 60；M3-G 加的 `synaxis:farview` 是标识，N 仍是 60；v0.9.63 加未知命令的回执键 `synaxis:command-unknown` 后是 61，`synaxis:player` 是数据段 ID、不出现在给玩家的文字里，加进非文字标识名单，名单 15 → 16 个）。
   - 约束：键必须以完整的字符串常量或字面量出现，运行时拼出来的键（如 `"synaxis:command-" + name`）门禁看不见，不允许这样写。原版键（`multiplayer.disconnect.kicked`、`command.failed`）由原版语言文件提供，不在门禁范围。门禁只核对本仓 classpath 上的插件；仓外插件的键由插件作者把译文提交到模组的两份语言文件。模组自己选的键（`OrderFeedback` 的 `synaxis.order.*`，由带内结果码映射）不是服务端发的，仍由模组的 `OrderFeedbackTest` 核对。
   - 取代：模组测试里手写的服务端键清单删除，即按功能写的六个测试类（`ConnectionGateTextTest`、`LoginVerificationTextTest`、`PlayerStoreTextTest`、`RoleCommandTextTest`、`ModerationTextTest`、`HostCommandTextTest`）与 `ClientHandshakeTest` 里查握手三个键的一条。它们查的每个键都在门禁的集合里；新键要有人记得手动加进清单，漏加时它们照样绿。
 - **`API-PROD-030` 位置包与方块操作的服务端判定（引擎监听器，v0.9.47）** — 实现 `REQ-PROD-013`
@@ -968,6 +997,111 @@ erDiagram
   - 复现代价：本条挡住的是一包直达，不是距离本身。位置包仍不校验速度与碰撞，挖掘距离只相对服务端此刻的位置判：S1-01 的原 PoC 在挖掘前后各加 5 个不超过 64 格的位置包即可复现（评审实测：生存模式、空手的玩家从 (8.5, 40, 8.5) 发 5 个各 58.5 格的位置包走到石头旁，发一包 `FINISHED_DIGGING`，再发 5 包走回，共 11 包、不 tick，离出生点的眼睛 293.45 格的石头被挖掉，玩家回到原处）；S1-02 的 208 格拆成 4 包，同一 tick 内进门框（按同一规则推算，没有单独实跑）。目标区块都已载入时，上限是 `ADR-PROD-016` 算出的约 6,860 格/秒。
   - 没有配置键。拉回与拒绝都不写日志：频率由客户端决定，按 `docs/DESIGN.md` §28 `SOAK-3` 的规则 `listener` 包不按包写行。
   - 发位置包的压测工具按 64 格改了走法：`tools/loadtest/PacketFlood.java` 与 `soak.py` 的 `run` 绕出生点画半径 16～72 格的圆，第一个包从出生点直接落到圆上（最远 72 格）；`soak.py play` 每次报告镜头锚点时把玩家挪到锚点，第一个锚点可以在地图另一头（`rts-512` 上最远约 350 格）。三处改为每包至多走 32 格（`STEP_LIMIT`），从服务端最后放下玩家的位置（出生、拉回的 `PlayerPositionAndLook`）走向目标点，到了之后照旧。在修后的服务端上，改之前的 `PacketFlood` 按 `TC-GAME-060` 第 5 步跑 50 条连接、每条 100 包/秒，半径 72 格的 6 条每个位置包都被拉回、每次多回一个传送确认，7 s 窗口到 751 个被入站闸踢掉；改之前的 `soak.py play` 5 名玩家 20 s 发 490 个位置包、收到 432 个拉回，玩家一直被拉回出生点（`docs/TEST.md` `TC-PROD-635`）。真客户端 S5 spike（`TerrainSpike`）把玩家一次放到 216 格外的地图边缘，改为每 tick 32 格走过去。`:loadtest` 的 `Bot` 稳态每 tick 只走 0.2～1.5 格，但位置按经过的时间推算：发包线程停顿超过「64 ÷ 画像速度」秒（walk 14.8 s，ride 与 gate 6.4 s，fly 2.1 s）之后，下一包离服务端的位置超过 64 格被拉回，之后每包照旧按画像位置发、每包被拉回，直到画像回到停顿处 64 格以内；gate 画像停在门框中心，这一程再也进不了门框。`Bot` 同样改为每包至多走 32 格（`STEP_LIMIT`），从服务端放下它的位置（它发出的上一包，或传送、拉回的 `PlayerPositionAndLook`）走向画像位置（`docs/TEST.md` `TC-PROD-637`）。另，发包循环按截止时间追赶，停顿之后把落下的 tick 一口气补发：停顿超过约 18.75 s 时，这一串（每 tick 一个位置包与一个 tick 结束包）本身就超过入站闸的 750 包 / 7 s，机器人被踢（按代码推算，没有实跑）。
+- **`API-PROD-031` 宿主默认玩法层（`server-app` 包 `io.github.bearisbug.synaxis.app.play`，v0.9.63）** — 实现 `REQ-PROD-046`
+  - 入口：
+
+    ```java
+    public final class DefaultPlay {
+        public enum Feature { CHAT, DROP, PICKUP, MELEE, VOID_DAMAGE, STARTER_KIT, TRAINING_DUMMY }
+        // 启动线程上、Main 步骤 (5) 定下模式之后、绑定端口之前调用，每个进程至多一次
+        public static void attach(ServerProcess process, EventNode<Event> hostNode, Set<Feature> features,
+                                  Predicate<Player> freshCharacter, @Nullable Instance coreWorld);
+    }
+    ```
+
+    `hostNode` 是 `PluginHost` 的宿主节点 `synaxis-host`，由新加的包内访问器 `PluginHost#hostNode()` 交给 `Main`；`freshCharacter` 传 `PlayerStateSection#isFresh`（`API-PROD-032`）；`features` 含 `TRAINING_DUMMY` 时 `coreWorld` 为 null 抛 `IllegalArgumentException`。`Main` 步骤 (5) 按模式传参：
+
+    | 模式 | 怎么判 | `features` | `coreWorld` |
+    | --- | --- | --- | --- |
+    | 平坦核心 | `CoreMode.decide` 得 `CORE` 且没挂地图（`bin/server-app -Dsynaxis.app.core-mode=on`，或 `auto` 下没有插件参与启动） | 全部七项 | `CoreMode#start` 返回的平坦实例 |
+    | RTS | 得 `GAMEPLAY` | 只有 `CHAT` | null |
+    | 挂地图的分片 | 得 `CORE` 且挂了地图（`bin/server-shard`） | 不调用 `attach` | — |
+    | 拒启 | 得 `REFUSED` | 不调用，进程退出 | — |
+
+  - 两段挂载（`ADR-PROD-017`）：
+    - 判定：宿主节点自身的监听器，用两参 `addListener`（可取消的事件到达时已取消就跳过）。一个事件的派发次序是：根节点自身的监听器（存储冻结在这里取消拾取与丢弃，`API-PROD-005`）→ 映射节点（实例与实体作用域，含任一档的实例作用域插件监听器）→ 根节点的子节点按优先级，其中宿主节点（0）先跑自身的监听器，再按优先级跑它的子节点：全局作用域插件 `LOWEST`～`HIGHEST`（−2～2）、`synaxis-store-freeze`（3）、`MONITOR`（4）。所以默认结果先于全局作用域的插件定下，插件看到的是默认结果，可以改或取消；实例作用域的插件监听器排在宿主之前，它取消的事件宿主不再处理，它填过的聊天收件人宿主不覆盖。
+    - 生效：宿主节点的子节点 `synaxis-play-apply`，优先级 5（排在 `MONITOR` 之后），同样用两参 `addListener`。可取消事件上改世界的动作（丢弃生成物品实体、拾取放进背包）只在这里做，只对派发到这里仍未取消的事件做：放进判定一段的话，插件之后取消丢弃时引擎把物品留在背包里、地上已多出一份，拾取同理，都是复制。不可取消的事件（攻击、玩家 tick、出生）没有「做完之后又被取消」的问题，在判定一段里直接做，插件靠取消随之派发的伤害事件或在之后改状态来覆盖。`MONITOR` 监听器看到的是插件改完、宿主还没生效的事件。
+    - 冻结：`ItemDropEvent` 与 `PickupItemEvent` 冻结时由根节点取消，两段都跳过，宿主不另查 `isFrozen`；冻结在派发中途落地的那一次照根节点的判定放行到底（`API-PROD-005` 冻结一条）。其余五项不受冻结影响：冻结只禁止改变物品归属的操作，移动与战斗照常。
+  - 逐项行为（数值都是本分册定，不加配置键）：
+
+    | 项 | 事件，挂在哪段 | 行为 |
+    | --- | --- | --- |
+    | `CHAT` | `PlayerChatEvent`，判定 | 收件人为空时填成发送者 `getInstance().getPlayers()`（含发送者）；已不为空（实例作用域的插件填过）不动；发送者没有实例时不填。限频照旧在事件之前（`API-PROD-008`），格式用引擎默认的 `chat.type.text` |
+    | `DROP` | `ItemDropEvent`，生效 | 三条丢弃路径都经 `Player#dropItem` 派发这一个事件（`Player.java:1679-1684`），一处处理：快捷栏的 Q 键（`PlayerActionListener` 的 `dropStack` / `dropSingle`）与背包里的 Q 键（`InventoryClickProcessor#drop`，格号不是 −999），背包外点击（同一方法，格号 −999，`InventoryClickProcessor.java:299`、`:307`），关背包时光标上的物品（`AbstractInventory.java:136`）。在玩家的实例里于 `位置 + (0, Player#getEyeHeight(), 0)` 生成 `ItemEntity`，物品取事件的物品，速度 = `getPosition().direction()` × 6 格/秒（引擎的速度按格/秒计，合每 tick 0.3 格），拾取延迟 40 tick（2 s）；之后引擎照事件未取消把物品从手、格子或光标上拿走。玩家没有实例时取消事件，物品留在原处 |
+    | `PICKUP` | `PickupItemEvent`（拾取者是玩家），判定 + 生效 | 判定：背包放不下整组（`addItemStack(物品, TransactionOption.DRY_RUN)` 为 false）就取消，物品实体留在地上、claim 释放（`LivingEntity.java:238-243`）；生效：`addItemStack(物品, TransactionOption.ALL_OR_NOTHING)`，得 false（判定之后插件动了背包）再取消。拾取者不是玩家的不管（引擎里只有玩家默认能拾取，`Player.java:332`） |
+    | `MELEE` | `EntityAttackEvent`（不可取消，`UseEntityListener.java:34`），判定 | 攻击者是玩家、目标是没死的 `LivingEntity` 且不是攻击者自己时：在攻击者的 tick 线程上读伤害 = 攻击者 `Attribute.ATTACK_DAMAGE` 的值（空手 1，手持铁镐 4：引擎按手持物品的属性修饰符改属性，`LivingEntity.java:196-207`）与攻击者的偏航角；再经 `target.acquirable().sync` 在目标所属 tick 线程上（`API-PROD-016`）：目标的 `getAliveTicks()` 距它上次被本项命中不足 10 tick 就什么都不做（冷却按目标计、与攻击者无关，记在目标实体的 `Tag<Long>` `default-play.melee-tick` 上；标签名不用 `synaxis:` 与 `synaxis.` 开头，免得被翻译键门禁与配置键门禁当成键）；否则 `target.damage(Damage.fromPlayer(攻击者, 伤害))`，返回 true（伤害事件没被取消）才记下命中的 tick 并 `target.takeKnockback(0.4f, sin(yaw), −cos(yaw))`（yaw 按弧度）。插件要换掉近战，取消伤害类型为 `PLAYER_ATTACK`、攻击者是该玩家的 `EntityDamageEvent` 即可，这时也不击退 |
+    | `VOID_DAMAGE` | `PlayerTickEvent`，判定 | 玩家没死且 `getInstance().isInVoid(位置)`（y < 维度 minY − 64，`InstanceContainer.java:615-618`；平坦核心维度 minY 0，即 y < −64）时，每 tick `player.damage(DamageType.OUT_OF_WORLD, 4)`；插件取消这个伤害事件即免伤。地面是 y 0～39 的 40 层石头、没有基岩，挖穿 y = 0 那层就掉进虚空 |
+    | `STARTER_KIT` | `PlayerSpawnEvent`，判定，排在持久化段的应用监听器之后 | `isFirstSpawn()` 且 `freshCharacter` 为 true（该角色的 `synaxis:player` 还是默认值、从没被捕获过）时：快捷栏 0 格 64 个石头、1 格 1 把铁镐（`setItemStack`），游戏模式不改（引擎默认生存）。下一次快照捕获之后段就不再是默认值，同一角色只发一次；登出保存写不进库（§11.3 `orphaned`）时库里还没有这一段，下次登录会再发一次 |
+    | `TRAINING_DUMMY` | `attach` 时生成，死亡与重生见 §11.6 | 在 `coreWorld` 的 (3.5, 40, 0.5)（出生点东侧 3 格）生成 `LivingEntity(EntityType.ZOMBIE)`：普通 `LivingEntity` 没有 AI，偏航角 90°（面朝出生点），生命值取它的 `MAX_HEALTH` 属性（20），不设无敌，受近战伤害与击退；只有这一个，`VOID_DAMAGE` 只打玩家 |
+
+  - 平坦核心世界本身（`CoreMode#start`，可玩项 P2 的前提）：实例改用 `setChunkSupplier(LightingChunk::new)`（原先用默认的 `DynamicChunk`，没有光照）；在启动线程上、绑定端口之前载入出生点区块 (0, 0) 周围半径 `synaxis.chunk-view-distance` + 1 的区块（`Main` 写 10 时 23 × 23 = 529 块），再对它们调 `LightingChunk.relight`，照 `Match` 的做法（`Match.java:195-202`）。走出这一圈之后才生成的区块由 `LightingChunk` 在第一次建包时算光，已知代价是这些区块第一次发出时可能还没有光（与 `Match` 注释里写的同因）。世界边界、自动载入区块、出生点与重生点不变。
+  - 线程：`CHAT`、`DROP`、`PICKUP`、`VOID_DAMAGE`、`STARTER_KIT` 的事件都在玩家所属 tick 线程上派发，只碰这名玩家与新生成的实体；`MELEE` 跨实体的部分按上表经 `Acquirable#sync`；训练假人的重生任务排在进程调度器上，在 tick 调度线程上生成。平坦核心与 RTS 用引擎默认的 `counter` + 1 条线程，`grid` 下这几条同样成立。
+  - 不做：合成、怪物 AI、饥饿、红石、摔落伤害、经验、死亡掉落（死亡不掉背包，与改动前相同）；挂地图的分片的玩法规则由后续的玩法架构分册定（`ADR-PROD-017`）。没有配置键；不写日志（全部由客户端驱动）；不进台账。
+- **`API-PROD-032` 玩家持久化段 `synaxis:player`（`server-app` 包 `io.github.bearisbug.synaxis.app.store`，v0.9.63）** — 实现 `REQ-PROD-047`、`REQ-PROD-005`
+  - 值、段与位置规则：
+
+    ```java
+    public record PlayerState(@Nullable World world, @Nullable Pos position, Map<Integer, ItemStack> inventory,
+                              int heldSlot, float health) {
+        public sealed interface World permits Core, Rts, MapShard {}
+        public record Core() implements World {}
+        public record Rts() implements World {}
+        public record MapShard(String mapId, String buildId) implements World {}
+        public static final PlayerState DEFAULT = new PlayerState(null, null, Map.of(), 0, 20f);
+        public boolean isDefault() { return world == null; }   // 从没被捕获过
+    }
+    public final class PlayerStateSection implements DataSection<PlayerState> {
+        public static final String ID = "synaxis:player";      // schemaVersion() = 1，createDefault() = PlayerState.DEFAULT
+        public void install(PlayerStore store, EventNode<Event> hostNode); // 启动线程，Main 步骤 (4)
+        public void useRule(PositionRule rule);                 // 启动线程，Main 步骤 (5)，绑定端口之前，恰一次
+        public boolean isFresh(Player player);                  // 玩家所属 tick 线程；hostValue(...).isDefault()
+        public void claimed(Player player);                     // 验票通过时，configuration 线程
+    }
+    public sealed interface PositionRule {
+        record Core() implements PositionRule {}
+        record Rts() implements PositionRule {}
+        record MapShard(String mapId, String buildId, SynxManifest.Bounds bounds) implements PositionRule {}
+    }
+    ```
+
+    `inventory` 的键是 `PlayerInventory` 的格号 0～45（引擎 `PlayerInventory.INVENTORY_SIZE` = 46 的布局：0～8 快捷栏，9～35 主背包，其余是盔甲、副手与合成格），只放非空气的格；`heldSlot` 0～8；光标上的物品不在段里（拍板只存 46 格，断开时的光标物品见 §28.2）。
+  - `PlayerStore` 新增的宿主内部接口（不进 `:plugin-api`，ABI 门不涉及）：
+
+    ```java
+    // 启动线程上、绑定端口之前；id 不以 "synaxis:" 开头抛 IllegalArgumentException，重复注册抛 IllegalStateException
+    public <T> void registerHostSection(DataSection<T> section, Function<Player, T> capture);
+    // 这名玩家这一段当前的值（载入的值，或最近一次捕获的值）；没载入时抛 IllegalStateException
+    public <T> T hostValue(Player player, DataSection<T> section);
+    ```
+
+    宿主段与插件段同表（`character_section`）、同一次写入、同一个 `version`，解码失败同样拒绝登录、不用默认值覆盖（`API-PROD-005` 语义一条；生产代码里原先没有任何 `DataSection` 实现，`PlayerStore` 的载入（`decode`）与快照（`snapshot`）从这里起第一次有宿主自己的段）。`synaxis` 是宿主保留的插件 id（`PluginDescriptors.RESERVED_ID`），插件注册不到 `synaxis:` 开头的段，`PluginPlayerData` 的 `owned` 判定也让插件读写不到这一段（§10 行级可见性）。
+  - 注册时机：`Main` 步骤 (4)。`openStore` 之前 `new PlayerStateSection()`（验票的到达回调要引用它，见下面「凭票据到达」）；`openStore` 与 `new PluginHost(…)` 之后、`host.enable` 之前调 `install(store.store(), host.hostNode())`：`registerHostSection(this, 捕获)`，并在宿主节点上加 `PlayerSpawnEvent` 的应用监听器与 `PlayerDisconnectEvent` 的清理监听器。排在插件启用与默认玩法层之前，是因为同一节点自身的监听器按添加顺序执行：应用监听器在步骤 (4) 加，默认玩法层在步骤 (5) 加，`STARTER_KIT` 的判定（`API-PROD-031`）因此在应用存档之后。模式在步骤 (5) 才定（`auto` 下要看插件留下了什么），所以位置规则由 `useRule` 在步骤 (5) 设：平坦核心 `Core()`，RTS `Rts()`，挂地图的分片 `MapShard(shardWorld.mapId(), shardWorld.buildId(), shardWorld.bounds())`。这三个 `ShardWorld` 访问器要光照会话加（§28.3）：`map_id` 与 `build_id` 取地图版本清单（`SynxManifest#mapId`、`#buildId`，目录模式下与 `shards.json` 的 `map_id` 相同，`ShardDirectory#checkAgainst` 已校验），`bounds` 是本分片服务的范围（目录模式是本大区的，否则是整个地图版本的，与 `API-PROD-030` 世界边界同一出处）。三种模式都注册；拒启的进程不设规则，它不绑端口。端口绑定之前没有玩家，规则设下之前不会有捕获或应用，真被调到时抛 `IllegalStateException`。
+  - 捕获、标脏与写回：`PlayerStore#snapshot`（定时保存、登出、转服、停机、`save` 命令与插件的 `saveNow` 共用它）开头先对每个宿主段调一次捕获，就在快照所在的线程上：tick 活着时都在玩家所属 tick 线程上，看门狗判死之后的停机快照在停机线程上直接读（与插件段同一已知代价，`API-PROD-007`）。捕获结果与当前值 `equals` 就不动，否则替换当前值并标脏，随后照常编码脏段；捕获抛异常时记一条 ERROR（经 `LogBudget`，10 s 至多一行），这一段保留原值、不标脏，其余段照常。所以没动过的玩家定时保存不写库、`version` 不涨（`PlayerStore#write` 原有的空快照判断），丢失窗口与其他段一样是一个定时保存周期 60 s（§15 丢失窗口行）。`synaxis:player` 的捕获：`world` 按位置规则（`Core` → `Core()`，`Rts` → `Rts()`，`MapShard` → `MapShard(mapId, buildId)`），`position` = `Player#getPosition()`（含 yaw 与 pitch），`inventory` = 0～45 格里非空气的，`heldSlot` = `Player#getHeldSlot()`，`health` = `Player#getHealth()`。捕获只在快照里做，不另起定时器，也不在每次移动或改背包时标脏。
+  - 应用：宿主节点自身的 `PlayerSpawnEvent` 监听器，只在 `isFirstSpawn()` 时，在玩家所属 tick 线程上。段是默认值（新角色）时什么都不改，玩家保持引擎给的初始状态（重生点、空背包、选中格 0、满血）。否则依次：背包 46 格逐格写（段里没有的格写空气）；`setHeldItemSlot(heldSlot)`；生命值：存的 > 0 时取 min(存的, 当前 `MAX_HEALTH`)，存的是 0（在死亡界面上断开）时取满、并且不应用位置（按重生处理，留在重生点）；位置按下表，用 `Player#teleport(存档位置)`（带朝向）。玩家先在引擎给的出生位置（重生点）出生、收到那一圈区块，再传送过去，已知代价是出生点那一圈区块多发一次。
+
+    | 规则 | 用存档位置的条件 | 不用时玩家在哪 |
+    | --- | --- | --- |
+    | `Core` | 存的 `world` 是 `Core()` | 平坦核心的出生点 (0.5, 40, 0.5)（`CoreMode` 设的重生点） |
+    | `Rts` | 从不 | `RtsPlugin` 设的出生点（`RtsPlugin.java:69-70`） |
+    | `MapShard` | 不是凭票据到达，且存的 `world` 是 `MapShard`、`map_id` 与 `build_id` 都等于本分片的，且存档位置所在区块（`floor(x / 16)`、`floor(z / 16)`）落在 `bounds` 里 | 凭票据到达：门框落点（`ShardArrivals#claimed` 设的重生点；没有通回来源大区的门时是大区出生点，`docs/DESIGN-M3.md` `API-M3-010`，光照会话 2026-10-11 确认）；其余：本大区出生点 |
+
+    `Core` 规则也比对 `world`：同一个数据库可能先后被挂地图的分片与平坦核心用到，地图上的坐标放进平坦世界没有意义。实例作用域的插件监听器排在应用之前（`API-PROD-031` 的派发次序），在那里给的物品、改的生命值与位置会被应用覆盖；要在应用之后动手，在全局作用域任一档监听 `PlayerSpawnEvent`。
+  - 为什么不在 configuration 阶段应用：`CoreMode` 设重生点的监听器挂在根节点上（`CoreMode#start`），先于宿主节点上 `AdmissionGate` 的载入执行，那时段还没读出来；`RtsPlugin` 设出生点的监听器（`RtsPlugin.java:69-70`）在插件子节点里、晚于宿主执行，宿主在那里设的位置会被它盖掉；再者引擎拿重生点当首次出生的位置，在那里设存档位置等于把死后的重生点也改成存档位置。所以在首次出生之后传送。
+  - 凭票据到达：`Main` 交给 `openStore` 的到达回调（`API-PROD-028` 到达回调一条）改为先照旧调 `ShardArrivals#claimed`（目录模式），再调 `PlayerStateSection#claimed`；后者按 `Player` 对象把这名玩家记进一个集合，首次出生应用时或 `PlayerDisconnectEvent` 时移出。只有 `MapShard` 规则看这个集合。
+  - 转服：源分片签发 ③ 的写回（`PlayerStore#transferOut` 排在玩家下一个 tick 的快照）同样先捕获，`synaxis:player` 随这次写入进库；票据只带 `state_version`、不带段内容（`API-PROD-028`），目标分片凭票据取得写权后照普通载入读出这一段，`state_version` 保证读到的就是这次写回。目标分片应用背包、选中格与生命值，位置按上表取门框落点。
+  - JSON 编码（`schema_version` 1，`encode` 在快照的线程上调用）：
+
+    ```json
+    {"world": {"kind": "map", "map_id": "demo", "build_id": "b20261011"},
+     "pos": {"x": 1024.5, "y": 71.0, "z": -12.25, "yaw": 90.0, "pitch": 12.5},
+     "inventory": [{"slot": 0, "item": {"id": "minecraft:stone", "count": 63}},
+                   {"slot": 1, "item": {"id": "minecraft:iron_pickaxe", "count": 1, "components": {"minecraft:damage": 3}}}],
+     "held_slot": 1,
+     "health": 17.5}
+    ```
+
+    `kind` 取 `core`、`rts`、`map`，只有 `map` 带 `map_id` 与 `build_id`；物品经 `ItemStack.CODEC` 与 `Transcoder.JSON` 编解码（原版物品 JSON：`id`、`count`、`components`）；`inventory` 按格号升序。解码拒收（按 `API-PROD-005` 拒绝登录、不改库）：缺字段、`kind` 不是这三个值、数值不是有限值、格号不在 0～45 或重复、物品解不出（含未知物品 id）、`held_slot` 不在 0～8、`health` < 0。默认值不会写库：只有捕获过的值才标脏。编码后受 `character_section` 的 64 KiB 约束（§9）：46 格都是带大量组件的物品时可能超出，超出时整名角色写不进，与 §28.2 数据段写不进库一行同一风险。
+  - 不写 `character.current_region`，不读写 `character_location`（§7）；跨大区送回待做（§28.2）。没有配置键。
 
 演进与弃用：
 
@@ -988,11 +1122,17 @@ erDiagram
 | 角色槽位 | `slot` | `character.slot` | smallint | 是 | `unique(account_uuid, slot)`；首版只用 0 | — | 否 |
 | 角色版本 | `version` | `character.version` | bigint | 是 | ≥ 0，每次成功保存 +1 | — | 否 |
 | 租约持有会话 | `lease_session_id` | `character.lease_session_id` | bigint | 否 | 指向 `shard_session.session_id`；null = 无人持有 | — | 否 |
-| 当前大区 | `current_region` | `character.current_region` | text | 否 | M3 `region_id`；第 3 波不读写，默认 M3-E 也不接（`docs/DESIGN-M3.md` §28.1「按大区的最后位置」一行），该分册 §23 内测 A 环之前由本分册接上 | — | 否 |
+| 当前大区 | `current_region` | `character.current_region` | text | 否 | M3 `region_id`；宿主仍不读写（用户 2026-10-11 定这一轮不写），做跨大区送回时再接（§28.2 待办，`docs/DESIGN-M3.md` §28.1「按大区的最后位置」一行） | — | 否 |
 | 数据段 ID | `section_id` | `character_section.section_id` | text | 是 | `<plugin_id>:<name>` | — | 否 |
 | 数据段格式版本 | `schema_version` | `character_section.schema_version` | int | 是 | 只增；库里高于代码时拒绝登录 | — | 否 |
 | 数据段内容 | `data` | `character_section.data` | jsonb | 是 | 编码后 ≤ 65,536 B | 字节 | 视插件内容 |
-| 位置 | `x` / `y` / `z` / `yaw` / `pitch` | `character_location.*` | double / real | 是 | 有限值 | 格 / 度 | 否 |
+| 按大区位置 | `x` / `y` / `z` / `yaw` / `pitch` | `character_location.*` | double / real | 是 | 有限值；表在，宿主不读写（§7） | 格 / 度 | 否 |
+| 玩家持久化段 | `synaxis:player` | `character_section`（`section_id = 'synaxis:player'`） | jsonb | 否（新角色没有这一行） | 布局见 `API-PROD-032`，`schema_version` 1；默认值不写库 | 字节 | 否 |
+| 存档世界 | `world.kind` / `world.map_id` / `world.build_id` | `character_section.data` 内 | text | 是（`map_id`、`build_id` 只在 `map` 时有） | `kind` ∈ `core / rts / map`；`map_id`、`build_id` 是地图版本清单的值 | — | 否 |
+| 存档位置与朝向 | `pos.x` / `pos.y` / `pos.z` / `pos.yaw` / `pos.pitch` | `character_section.data` 内 | double / float | 是 | 有限值；用不用按 `API-PROD-032` 的位置规则 | 格 / 度 | 否 |
+| 背包格 | `inventory[].slot` / `inventory[].item` | `character_section.data` 内 | int / 物品 JSON | 否（空背包为空数组） | 格号 0～45、不重复、升序；物品按 `ItemStack.CODEC`，只存非空气的格 | 个 | 否 |
+| 选中格 | `held_slot` | `character_section.data` 内 | int | 是 | 0～8 | — | 否 |
+| 生命值 | `health` | `character_section.data` 内 | float | 是 | 有限值且 ≥ 0；应用时大于 `MAX_HEALTH` 取上限，0 按重生处理 | 点（原版单位，1 点 = 半颗心） | 否 |
 | 分片会话 ID | `session_id` | `shard_session.session_id` | bigint | 是 | identity，即纪元号 | — | 否 |
 | 分片 ID | `shard_id` | `shard_session.shard_id` | text | 是 | M3 `shards.json` 的 `shard_id` | — | 否 |
 | 会话到期 | `expires_at` | `shard_session.expires_at` | timestamptz | 是 | 每 5 s 续期到 `now() + 30 s` | UTC | 否 |
@@ -1047,7 +1187,7 @@ erDiagram
 | `API-PROD-008` 聊天 | ✓（发，受限频） | ✓（定收件人） | ✓ | ✗ | ✗ | ✗ |
 | `API-PROD-009` 封禁与白名单 | ✗ | ✓ | ✓ | 节点 `gm.ban` / `gm.whitelist` | ✓ | ✗ |
 | `API-PROD-010` 权限 | ✗ | ✓（查询） | ✓ | 节点 `gm.role`（授予与收回角色，只限节点都被自己此刻在库里的有效授予覆盖的角色；授出的授予随自己最早到期的授予到期） | ✓ | ✗ |
-| `API-PROD-011` 命令 | ✓（执行，受节点） | ✓（注册） | ✓ | 节点 `synaxis.command.<名>`；`transfer` 为 `gm.transfer` | ✓（控制台） | ✗ |
+| `API-PROD-011` 命令 | ✓（执行，受节点；`list` 不受） | ✓（注册） | ✓ | 节点 `synaxis.command.<名>`，`list` 不要求节点；`transfer` 为 `gm.transfer` | ✓（控制台） | ✗ |
 | `API-PROD-012` 包速率闸配置 | ✗ | ✗ | ✓ | ✗ | ✓ | ✗ |
 | `API-PROD-013` 看门狗与崩溃报告 | ✗ | ✗ | ✓ | ✗ | ✓（读报告） | ✗ |
 | `API-PROD-014` 日志与台账 | ✗ | ✓（经 `analytics()` 写） | ✓ | ✗ | ✓（读） | ✓（CI 读台账） |
@@ -1067,12 +1207,15 @@ erDiagram
 | `API-PROD-028` 转服票据 | ✓（只保存与回传 Cookie，无法解读或伪造） | ✗（地图分片不加载插件，`docs/DESIGN-M3.md` §28.1 已决；与插件相关的两条已决项改判后经 `Transfers#toRegion` / `toShard` 间接发起） | ✓（签发与验票，持有密钥） | 节点 `gm.transfer`（`transfer` 命令，经宿主的 `ShardService`） | ✓（配置密钥；控制台 `transfer` 命令与管理接口 `synaxis:transfer` 经 `ShardService`） | ✗ |
 | `API-PROD-029` 翻译键声明与门禁 | ✗ | ✓（声明自己发的键） | ✗（宿主不调用） | ✗ | ✗ | ✓（CI 门禁读） |
 | `API-PROD-030` 位置包与方块操作判定 | ✓（发位置、挖掘与使用方块的包，按三条判定；载具移动包按其中两条与「目标区块未载入」） | ✓（改玩家的 `BLOCK_INTERACTION_RANGE`、实例的世界边界，判定随之变；`PlayerMoveEvent` 在判定通过之后才派发） | ✓（挂地图的分片按大区 `bounds` 设世界边界，核心模式的平坦世界设边长 4,096 格） | ✗ | ✗ | ✓（压测工具与 gametest 每包至多走 32 格） |
+| `API-PROD-031` 宿主默认玩法层 | ✓（聊天、丢弃、拾取、攻击，按该条的规则） | ✓（全局作用域任一档改事件或取消；实例作用域排在宿主之前） | ✓（按模式挂载） | ✗ | ✗ | ✓（可玩项剧本） |
+| `API-PROD-032` 玩家持久化段 | ✗（只经玩法间接改变自己的状态） | ✗（读写不到 `synaxis:` 开头的段） | ✓（注册、捕获、应用） | ✗ | ✗ | ✗ |
 
 行级可见性：
 
 | 接口 | 主体 | 可见 / 可写范围 |
 | --- | --- | --- |
 | `API-PROD-005` | ROLE-Plugin | 只能 `get` / `markDirty` 本插件 `register` 过的段；`register` 的 id 前缀必须等于自己的 plugin id，否则 `IllegalStateException` |
+| `API-PROD-032` | ROLE-Plugin | `synaxis:player` 不在任何插件的 `owned` 里，`get`、`markDirty` 与 `commitTogether` 碰它抛 `IllegalStateException`；`synaxis` 是宿主保留的插件 id，插件注册不到 `synaxis:` 开头的段 |
 | `API-PROD-010` | ROLE-GM | `role grant` 判定当场读库，授出的授予不晚于自己最早到期的那条有效授予；不改目标尚未到期的授予，已到期的换成新的到期。不到期的授予只有控制台与有效授予全都不到期的玩家写得出，后者可以先 `revoke` 再 `grant`，把别人的限时授予换成不到期的 |
 | `API-PROD-011` | ROLE-Plugin | 只能注销自己注册的命令 |
 | `API-PROD-021` | ROLE-Plugin | Cookie 只能读写 `<plugin_id>:` 命名空间里的键，别的命名空间（含宿主的 `synaxis:transfer`）抛 `IllegalArgumentException`、不发包；`transfer` 只对 PLAY 状态的玩家发，受每进程一张的转服冷却表约束 |
@@ -1084,7 +1227,7 @@ erDiagram
 
 ## 11. 状态机
 
-数据字典里 ≥ 2 态的枚举：`login_state`（§11.1 建机）、`state`（分片会话，§11.2 建机）、`lease_state`（§11.3 建机）、停机阶段（§11.4 建机，扩展 `docs/DESIGN.md` §11.2 的 `stopping` 态）、看门狗（§11.5 建机）。免建：`result`、`SaveResult` 与 `reject_reason` 是单次调用或单次验票的结果，没有生命周期（票据本身的生命周期即 §11.3 的 `in_transit`）；`ban` 的「生效 / 到期 / 撤销」是纯派生态（`revoked_at IS NULL ∧ (expires_at IS NULL ∨ expires_at > now())`），产生转移只有 `API-PROD-009` 的 `ban`（→ 生效）、`unban`（→ 撤销）与时间流逝（→ 到期），三条都已在 `API-PROD-009` 与 §9 核到；Redis `presence.state` 是 §11.3 的投影，随 §11.3 迁移表的动作列翻转。
+数据字典里 ≥ 2 态的枚举：`login_state`（§11.1 建机）、`state`（分片会话，§11.2 建机）、`lease_state`（§11.3 建机）、停机阶段（§11.4 建机，扩展 `docs/DESIGN.md` §11.2 的 `stopping` 态）、看门狗（§11.5 建机）、训练假人（§11.6 建机，`ENT-TrainingDummy` 没有枚举字段，生死由实体本身体现）。免建：`synaxis:player` 段的「默认 / 捕获过」是 `world` 是否为 null 的派生态，只有一次性的翻转（首次捕获），不建机；`result`、`SaveResult` 与 `reject_reason` 是单次调用或单次验票的结果，没有生命周期（票据本身的生命周期即 §11.3 的 `in_transit`）；`ban` 的「生效 / 到期 / 撤销」是纯派生态（`revoked_at IS NULL ∧ (expires_at IS NULL ∨ expires_at > now())`），产生转移只有 `API-PROD-009` 的 `ban`（→ 生效）、`unban`（→ 撤销）与时间流逝（→ 到期），三条都已在 `API-PROD-009` 与 §9 核到；Redis `presence.state` 是 §11.3 的投影，随 §11.3 迁移表的动作列翻转。
 
 ### 11.1 登录验证 `ENT-LoginAttempt`
 
@@ -1331,6 +1474,25 @@ stateDiagram-v2
 
 跨机一致性：§11.4 三条判死转移的守卫「tick 卡住 ≥ 60 s」与 `watching → dying`、`warning → dying` 同一判据（默认值下）；停机序列处于 `started`、`gate_closed`、`saving` 时恰有一条成立，处于 `kicking` 及之后时不驱动，由 `dying → halted` 收尾。判死路径的保存预算是 15 s（halt 计时），不是正常停机的 30 s。`dying → halted` 先于 `onSaveEnded` 发生时 §11.2 的会话不会走到 `released`，残余租约靠 30 s 过期（§11.3 `online → orphaned`）。
 
+### 11.6 训练假人 `ENT-TrainingDummy`（v0.9.63）
+
+```mermaid
+stateDiagram-v2
+  [*] --> alive : 平坦核心起服(宿主) [features 含 TRAINING_DUMMY]
+  alive --> dead : 生命值到 0(引擎) [死的是这个假人]
+  dead --> alive : 重生计时到期(调度器) [死亡起满 100 tick]
+```
+
+迁移表：
+
+| 源 → 目标 | 事件 | 守卫（纯布尔） | 动作（副作用） | 谁触发 | 接口/事件 |
+| --- | --- | --- | --- | --- | --- |
+| [*] → alive | 平坦核心起服 | `features` 含 `TRAINING_DUMMY` | 在 (3.5, 40, 0.5) 生成 `LivingEntity(EntityType.ZOMBIE)`，偏航角 90°，生命值 20 | 宿主（`DefaultPlay#attach`，启动线程，绑定端口之前） | `API-PROD-031` |
+| alive → dead | 生命值到 0 | 引擎 `EntityDeathEvent` 的实体就是这个假人 | 引擎播死亡动画后移除实体；在进程调度器上排一个 100 tick 后的重生任务 | 引擎（`LivingEntity#kill`，在打死它的近战所在的目标 tick 线程上） | `API-PROD-031` |
+| dead → alive | 重生计时到期 | 死亡起满 100 tick（5 s） | 在原处生成一个新的假人：新实体，满血，原朝向 | 内部任务（进程调度器，tick 调度线程） | `API-PROD-031` |
+
+受伤不是状态转移：生命值是属性，近战命中只改它与位置（击退）。被击退的假人留在被推到的地方，重生时回到原处。停机时随进程消失，不存档，下次起服重新生成。
+
 ## 12. 关键流程时序
 
 ### 12.1 在线模式登录：闸门 → 加密 → 验证 → 准入 → 载入
@@ -1511,6 +1673,35 @@ sequenceDiagram
 
 离线模式跨分片不走本图：获取影响 0 行直接断线 `synaxis:state-unavailable`。同一账号在同一分片的登录串行载入（§11.3 末段），一次登录停在本图的轮询里时，同账号在本分片的新登录要等它结束。所以轮询每次获取语句影响 0 行之后、发顶号之前，先查新连接是否仍在线（`isOnline()`），已断开即以 `synaxis:state-unavailable` 退出：不为一条已断开的连接去踢持有者，放掉串行载入位与载入名额；客户端断开后立刻重连的新登录不用等旧的轮询跑满 5 s，能用满自己的 5 s 预算发顶号并等持有者释放。
 
+### 12.5 进世界：载入 → 首次出生 → 应用存档 → 初始物品（v0.9.63）
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as 客户端
+  participant R as 根节点监听器
+  participant G as 宿主节点 AdmissionGate
+  participant S as PlayerStore
+  participant I as 实例作用域插件监听器
+  participant H as 宿主节点 持久化段与默认玩法层
+  participant P as 全局作用域插件监听器
+  C->>R: configuration 阶段 AsyncPlayerConfigurationEvent
+  R->>R: CoreMode 或 serveMap 设重生点 (API-M2-010)
+  R->>G: 同一事件派发到宿主节点
+  G->>S: 验票(转入时) 与载入角色和全部数据段 (API-PROD-028, API-PROD-004)
+  S-->>G: synaxis:player 的值, 新角色为默认值 (API-PROD-032)
+  G-->>C: FinishConfiguration
+  C->>R: 进 play, 首次出生 PlayerSpawnEvent
+  R->>I: 映射节点先派发 (API-PROD-018)
+  I->>H: 宿主节点自身的监听器, 按添加顺序
+  H->>H: 应用背包 选中格 生命值, 按位置规则传送 (API-PROD-032)
+  H->>H: 首次出生且段为默认值时发初始物品, 只在平坦核心 (API-PROD-031)
+  H-->>C: 背包格与传送包
+  H->>P: 子节点按优先级 -2..2, 3, 4 (API-PROD-018)
+```
+
+RTS 下 `RtsPlugin` 设出生点的监听器在 configuration 事件的插件子节点里，晚于 `AdmissionGate`；挂地图的分片设重生点的是 `Main#serveMap` 的根节点监听器，凭票据到达时验票（`AdmissionGate` 里）通过后 `ShardArrivals#claimed` 把重生点改成门框落点，`PlayerStateSection#claimed` 记下这名玩家，应用时不传送。之后的每次快照（定时保存、登出、转服、停机）都先捕获 `synaxis:player`，有变化才写（`API-PROD-032`）。
+
 ## 13. 页面与跳转地图
 
 N/A — 本分册没有新页面。断线原因的文案住在客户端模组的 `assets/synaxis/lang/zh_cn.json`、`en_us.json`（§14 的每个新键都要进两份文件，§24 翻译键门禁检查）；客户端界面与跳转见 `docs/DESIGN-M2.md` §13。
@@ -1534,7 +1725,7 @@ N/A — 本分册没有新页面。断线原因的文案住在客户端模组的
 | `synaxis:banned-until` | `server-app`（`HostModeration`），模组两份 lang | `synaxis:banned` 的第二个翻译参数；参数：到期时间 `yyyy-MM-dd HH:mm UTC` | 有到期的封禁才带，永久封禁时第二个参数为空组件 | 显示「封禁到某时结束」 |
 | `synaxis:role-granted`、`role-revoked`、`role-list`、`role-unknown`、`role-not-granted`、`role-no-target`、`role-unavailable`、`role-above-sender` | `server-app`（`RoleCommand`），模组两份 lang | 发给命令发送者的系统消息，不断线 | `role` 命令的回执：授予、收回、列出、角色不存在、未持有该角色、找不到目标、读不到角色数据、玩家发送者要动的角色有自己没有的节点（`API-PROD-010`） | 显示译文；控制台写回退文本 |
 | `synaxis:ban-done`、`unban-done`、`unban-none`、`whitelist-added`、`whitelist-removed`、`moderation-no-target`、`moderation-bad-duration`、`moderation-bad-reason`、`moderation-unavailable` | `server-app`（`ModerationCommands`），模组两份 lang | 发给命令发送者的系统消息，不断线 | `ban`、`unban`、`whitelist` 的回执：成功三种、没有该编号的生效封禁、找不到目标、时长写法不对、理由长度不对、读不到封禁数据（`API-PROD-009`） | 显示译文；控制台写回退文本 |
-| `synaxis:command-list`、`command-no-player`、`command-kicked`、`command-broadcast`、`command-saved`、`command-stopping`、`command-already-stopping`、`command-stop-usage`、`command-tps`、`command-profile-started`、`command-profile-done`、`command-profile-busy`、`command-profile-usage`、`command-profile-failed` | `server-app`（`HostCommands`），模组两份 lang | 发给命令发送者的系统消息，不断线 | 内置七条命令的回执（`API-PROD-011`）；`kick` 不带原因时踢人文本用原版键 `multiplayer.disconnect.kicked`，插件命令抛异常时发送者收到原版键 `command.failed` | 显示译文；控制台写回退文本 |
+| `synaxis:command-list`、`command-no-player`、`command-kicked`、`command-broadcast`、`command-saved`、`command-stopping`、`command-already-stopping`、`command-stop-usage`、`command-tps`、`command-profile-started`、`command-profile-done`、`command-profile-busy`、`command-profile-usage`、`command-profile-failed`、`command-unknown` | `server-app`（`HostCommands`），模组两份 lang | 发给命令发送者的系统消息，不断线 | 内置七条命令的回执（`API-PROD-011`）；`command-unknown` 是玩家输入不存在的命令时的回执（参数：输入的第一个词，不带前导 `/`；控制台不发，v0.9.63）；`kick` 不带原因时踢人文本用原版键 `multiplayer.disconnect.kicked`，插件命令抛异常时发送者收到原版键 `command.failed` | 显示译文；控制台写回退文本 |
 | `synaxis:command-transfer-result`、`command-transfer-no-target`、`command-transfer-unavailable`、`command-transfer-error` | `server-app`（`TransferCommand`），模组两份 lang | 发给命令发送者的系统消息，不断线 | `transfer` 命令的回执（`API-PROD-011`，6A）：转服的结果（参数：玩家名、大区或分片、`ShardTransferResult` 的小写名）、本分片没有这名在线玩家（参数：原样的名字或 UUID）、进程不在目录模式没有 `ShardService`、`ShardService` 的 future 异常完成（参数：玩家名） | 显示译文；控制台写回退文本 |
 | `synaxis:state-unavailable` | plugin-api | Disconnect（configuration 阶段）或 Disconnect（play 中被隔离） | 玩家数据暂时拿不到，六种来源：载入超时或解码失败（§11.3 `loading → offline`）；停机保存阶段开始时仍在途的登录（§11.2 表下方）；分片会话隔离（§11.2）；顶号 5 s 内未拿到租约，或 Redis 不可达时租约被活会话持有（§11.3 末段）；转入时写权被别处持有（`API-PROD-028` ⑥ `lease-held`）；验票时数据库错误或超时（`store-unavailable`） | 提示稍后重试；30 s 后重试（会话租约最长 30 s 过期） |
 | `synaxis:transfer-rejected` | plugin-api | Disconnect（configuration 阶段；源分片的那种在 play 中） | 转入的票据不可用：缺失或签名无效、已过期、目标分片或 UUID 不符、nonce 已用、版本不一致（`API-PROD-028` ②～⑤ 与一致性断言）。另一种来源在源分片：票据发出 10 s 后连接还开着（客户端没照 `Transfer` 走，或监听器取消了 `OutgoingTransferEvent`，`API-PROD-028` ④）。写权在签票前已释放，玩家重新登录任一分片都能取回角色 | 提示「切换大区失败，请重新登录」；10 分钟内第二次出现时提示报障并附时间 |
@@ -1551,7 +1742,7 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 
 | 维度 | 场景 | 目标 |
 | --- | --- | --- |
-| tick 预算 | 单分片 200 机器人（walk，30 min）；500 机器人（walk，600 s）与「500 人挤在 1 个分格」 | 200 人：tick P99 < 50 ms、超 50 ms 的 tick 为 0、RSS < 4 GiB；500 人两档分别记 tick P99、`ticks.acquire_ms`（每 tick 获取等待的分布，v0.9.36 起有值）与每人出口，不达标则频道 `capacity` 降到 200～300（运维草案 ⑤ 5.4 C / D，`docs/DESIGN-M3.md` §15） |
+| tick 预算 | 单分片 200 机器人（walk，30 min）；500 机器人（walk，600 s）与「500 人挤在 1 个分格」 | 200 人：tick P99 < 50 ms、超 50 ms 的 tick 为 0；内存三条（用户 2026-10-11 拍板，§28.1 Q13）：堆维持 4 GiB（`REQ-PROD-028` 默认参数不改），RSS ≤ 堆上限 + 1 GiB（4 GiB 堆时 5 GiB），压测末段老年代回收后占用 ≤ 堆上限的 50%（4 GiB 堆时 2 GiB；末段取最后 5 min、读 `-Xlog:gc` 的日志，读法同 `docs/DESIGN-M3.md` §15 tick 预算（M3-E）行）；500 人两档分别记 tick P99、`ticks.acquire_ms`（每 tick 获取等待的分布，v0.9.36 起有值）与每人出口，不达标则频道 `capacity` 降到 200～300（运维草案 ⑤ 5.4 C / D，`docs/DESIGN-M3.md` §15） |
 | 登录延迟 | 在线模式单客户端从 TCP 接入到 `LoginSuccess` | `hasJoined` p99 由上线前 1,000 次探测定（auth 草案 §4.3，目标机房连通性**未核实**）；登录总超时 30 s 不变 |
 | 登录风暴 | 500 机器人同秒断开再重连，`max-joins-per-tick=5` | 30 s 内全部进 play；0 次 `shard-full`；风暴那一分钟 tick P99 < 50 ms（运维草案 5.4 E） |
 | 闸门 | 单个攻击 IP 以 100 连接/秒开合 60 s，同时 200 机器人在线（机器人网段白名单） | 连接数 ≤ L0；机器人 0 掉线；拒绝日志 10 s 至多 1 行；台账 0 条来自攻击 IP 的会话事件（5.4 G；只在在线模式成立：离线模式下攻击 IP 通过 L2 的那几次登录（每 2 s 1 次）不经验证就进 configuration，会写会话事件）；握手里写超长服务器地址的连接同样受 L1 / L2 约束，不能绕过（v0.9.39） |
@@ -1612,7 +1803,7 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 | `int-gate200` | 200 人在线，单 IP 100 连接/s × 60 s | 3.2～4.1 | 6.015 ms / 0 | 34.6 Mbit/s | 闸门行：进程 fd 最多 301（L0 1,024）；机器人 0 掉线；拒绝 5,968 次，汇总日志 7 行、间隔 10.00～10.05 s；台账 0 条攻击方会话事件，但这一项空转：`flood` 不回 `LoginAcknowledged`，本来就进不了 configuration（§28.2） |
 | 台账（六档） | — | — | — | — | 台账行：六档 `ledger_dropped` 都是 0；200 人 30 min 只写 201 行、31,149 B，核心模式没有插件事件，写入压力没有被压到（§28.2） |
 
-`capacity` 建议值：内测期每频道 **200**（§2 的内测规模，也是唯一跑满 30 min 的档）；正式档**暂定 500**。依据：两个 500 人档的 tick P99 是 12.214 与 25.541 ms，都 < 50 ms，按 `docs/DESIGN-M3.md` §15「tick P99 ≥ 50 ms 才把 `capacity` 降到 300」不降；500 人时 10 条 tick 线程的忙碌比最高 0.077，tick 线程远没到瓶颈；每分片出站 145.2～168.4 Mbit/s，千兆网卡够一个分片。同机档的超 50 ms tick（500 人两档 6 与 31 个）不作降容依据：200 人档也有 6 个，同机分不出是分片自身还是机器负载与 GC 暂停。500 定值要等分机档：服务端一台 Linux ≥ 8 核 / 16 GiB，机器人另一台 ≥ 8 核 / 16 GiB（§28.1 Q11，与 `docs/DESIGN-M3.md` §15 分机档相同；同机 500 人档的机器人进程实测均值 1.04～1.06 个核、最高 1.19 个核，堆上限 2 GiB），千兆内网；在那里重跑 TC-PROD-361、TC-PROD-362（town 档出生点改到格中心），town 档 tick P99 ≥ 50 ms、或任一档有一分钟 P99 ≥ 50 ms 且那一分钟的慢 tick 不与 GC 暂停重叠，正式档就降到 300；RSS 判据（< 4 GiB）也在那一档量。定下的值写在 `shards.json` 各频道的 `capacity`（`docs/DESIGN-M3.md` `API-M3-010`）：目录模式分片起服时由 `Main` 据此写 `synaxis.max-players`，命令行或 `synaxis.properties` 给了不同的值即拒启，容量只有目录一个出处。M3-E 合并验收的分机档 500 人两档读数回填到这一段；这两档按 `docs/DESIGN-M3.md` §15 要五项读数，其中 `ticks.acquire_ms` 在 v0.9.36 之前恒为 `null`（审计 P3-3 未修，不导出），`docs/TEST.md` RUN-057 的同机两档（`TC-WORLD-082`、`TC-WORLD-083`）因此只有四项；v0.9.36 起 `sample` 给出它的分布，重跑即齐。读法：整 tick 的获取等待不超过 tick 时长，是 tick 里任何一条线程路径上等锁时间的上界（`API-PROD-016`「获取等待」），它的 P99 远小于 tick P99 时慢 tick 不来自锁争用，单分格档该看 `dispatcher_busy_ratio` 里那一条线程；两者接近时按 `synaxis_tick_acquire_seconds` 的每线程 `_sum` 找等锁的线程。分机档到位之前 tick 与 RSS 两项不用同机档读数判定（`docs/DESIGN-M3.md` §28.1「M3-E 的 tick 与 RSS 判据能否用同机档读数关闭」一行已决：不能，用户 2026-09-28 拍板）。
+`capacity` 建议值：内测期每频道 **200**（§2 的内测规模，也是唯一跑满 30 min 的档）；正式档**暂定 500**。依据：两个 500 人档的 tick P99 是 12.214 与 25.541 ms，都 < 50 ms，按 `docs/DESIGN-M3.md` §15「tick P99 ≥ 50 ms 才把 `capacity` 降到 300」不降；500 人时 10 条 tick 线程的忙碌比最高 0.077，tick 线程远没到瓶颈；每分片出站 145.2～168.4 Mbit/s，千兆网卡够一个分片。同机档的超 50 ms tick（500 人两档 6 与 31 个）不作降容依据：200 人档也有 6 个，同机分不出是分片自身还是机器负载与 GC 暂停。500 定值要等分机档：服务端一台 Linux ≥ 8 核 / 16 GiB，机器人另一台 ≥ 8 核 / 16 GiB（§28.1 Q11，与 `docs/DESIGN-M3.md` §15 分机档相同；同机 500 人档的机器人进程实测均值 1.04～1.06 个核、最高 1.19 个核，堆上限 2 GiB），千兆内网；在那里重跑 TC-PROD-361、TC-PROD-362（town 档出生点改到格中心），town 档 tick P99 ≥ 50 ms、或任一档有一分钟 P99 ≥ 50 ms 且那一分钟的慢 tick 不与 GC 暂停重叠，正式档就降到 300；内存三条（堆 4 GiB、RSS ≤ 堆上限 + 1 GiB、末段老年代回收后 ≤ 堆上限的 50%，上表 tick 预算行）也在那一档量。定下的值写在 `shards.json` 各频道的 `capacity`（`docs/DESIGN-M3.md` `API-M3-010`）：目录模式分片起服时由 `Main` 据此写 `synaxis.max-players`，命令行或 `synaxis.properties` 给了不同的值即拒启，容量只有目录一个出处。M3-E 合并验收的分机档 500 人两档读数回填到这一段；这两档按 `docs/DESIGN-M3.md` §15 要五项读数，其中 `ticks.acquire_ms` 在 v0.9.36 之前恒为 `null`（审计 P3-3 未修，不导出），`docs/TEST.md` RUN-057 的同机两档（`TC-WORLD-082`、`TC-WORLD-083`）因此只有四项；v0.9.36 起 `sample` 给出它的分布，重跑即齐。读法：整 tick 的获取等待不超过 tick 时长，是 tick 里任何一条线程路径上等锁时间的上界（`API-PROD-016`「获取等待」），它的 P99 远小于 tick P99 时慢 tick 不来自锁争用，单分格档该看 `dispatcher_busy_ratio` 里那一条线程；两者接近时按 `synaxis_tick_acquire_seconds` 的每线程 `_sum` 找等锁的线程。分机档到位之前 tick 与 RSS 两项不用同机档读数判定（`docs/DESIGN-M3.md` §28.1「M3-E 的 tick 与 RSS 判据能否用同机档读数关闭」一行已决：不能，用户 2026-09-28 拍板）。
 
 压测基线的视距（v0.8.5）：`ShardMain` 默认区块视距 12，上面六档与 5A 基线都是视距 10 量的。已登记的读数不改，复跑它们时加 `-Dsynaxis.chunk-view-distance=10` 才可比（`docs/TEST.md` TC-PROD-336、TC-PROD-360 前置）。分机档起的新基线一律按 `ShardMain` 默认值（视距 12）跑：`capacity` 定的是线上分片的容量，线上用 12；视距 12 比 10 每人多 200 个区块（729 对 529：区块环半径是视距 + 1，`API-PROD-019`），进场与移动时的区块流量随之上升，所以 500 定值与降到 300 的判断都以视距 12 的分机档为准，不拿视距 10 的同机读数外推。
 
@@ -1676,6 +1867,9 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 | 同一管理连接的并发回复与出站上限 | 各调用的虚拟线程 × 触发进出通知的线程 × 解码线程（pong）× 选择器线程（写 socket） | 排队未写出的至多 4,096 帧、1 MiB 加一条消息，与同时回复的调用有几条无关 | `GuardedSocket` 的四个发送入口在这条连接的对象锁里判定并入队（`API-PROD-022` 大小一条）；选择器线程在锁外累加已写出的字节，只会让积压变小 |
 | 管理连接的入队与选择器写空队列 | 各发送线程（解码线程的 pong、调用的回复、进出通知）× 选择器线程（写 socket、撤写兴趣） | 入队的帧至多约 100 ms 后开始写，不等这条连接的下一次入队或 60 s 的探活 ping | Java-WebSocket 撤写兴趣之前不再看队列，入队方登记的写兴趣可能被它覆盖；`Syn-Management-Writes` 每 100 ms 给队列非空而没有写兴趣的连接补登记（`API-PROD-022` 大小一条） |
 | 握手未完成的计数与连接的升级、关闭 | 选择器线程（accept）× 解码线程（升级或拒掉）× 握手计时的虚拟线程与对端（关） | 同时未完成握手的连接至多 64 条。计数只会多算：在去掉已结束的连接与判满之间刚升级或关闭的那一条仍算在内，至多让这一次 accept 的连接被关 | 计数集合只由选择器线程在 accept 时增删，判据是 `WebSocketImpl` 的 volatile `readyState` 是否仍为 `NOT_YET_CONNECTED`（`API-PROD-022` 大小一条） |
+| 丢弃或拾取与冻结同时发生（v0.9.63） | 玩家 tick 线程 × 关卡门心跳的虚拟线程或会话看门线程（置冻结） | 派发开始前已冻结：根节点取消，默认玩法层判定与生效两段都跳过，引擎把物品留在原处；派发中途才冻结：这一次照根节点的判定放行到底，生效一段照常生成物品实体或放进背包，下一次起取消；这一次的结果在玩家所属线程上完成，排在它之后的转服或停机快照带走它 | 两段都用两参 `addListener`，只看事件是否已取消，不另读 `isFrozen`（`API-PROD-031`、`API-PROD-005` 冻结一条） |
+| 近战的攻击者与目标分属两条 tick 线程（`grid`，v0.9.63） | 攻击者 tick 线程 × 目标 tick 线程 | 伤害、击退与冷却判定都在目标所属线程上做；同一 tick 两名攻击者打同一目标，先到的命中、后到的落在 10 tick 冷却里 | `Acquirable#sync`（`API-PROD-016`），冷却记在目标实体上（`API-PROD-031` `MELEE`） |
+| 快照捕获与玩家改背包、移动（v0.9.63） | 快照所在线程 × 玩家 tick 线程 | tick 活着时快照排在玩家所属线程上，捕获与改动串行，捕获到的是某个 tick 之间的完整状态；看门狗判死之后停机线程直接读，可能读到改了一半的背包（与插件段同一已知代价） | `PlayerStore#snapshot` 的线程（`API-PROD-032`、`API-PROD-007`） |
 
 一致性承诺：
 
@@ -1807,6 +2001,15 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
   - Decision：`API-PROD-030` 三条：越过世界边界的位置包拉回（边界内的玩家不许出去，边界外的玩家不许离边界更远，边沿按原版客户端的碰撞墙取整）；单包位移超过 64 格的拉回；挖掘与使用方块按原版的距离判法（方块交互距离属性 + 1 格）拒绝。拉回与「目标区块未加载」同一路径，不加配置键。载具移动包按单包位移与世界边界两条（v0.9.53）与「目标区块未加载」（v0.9.59）同样拉回（`API-PROD-030` 载具一条）。
   - Alternatives：照搬原版的每包约 10 格——上限要按本 tick 收到的包数与速度折算，玩法加的速度效果、击退与将来的载具都要跟着算进去，算漏一处就是正常玩家被拉回，压测机器人与 gametest 的走法也得按它重写；服务端重算移动与碰撞（moved wrongly）——每个位置包在 tick 线程上做一次碰撞，开销未测，插件施加的速度要由服务端同样算出来；挖掘时长——要按硬度、工具、效果、水下与离地算进度并给延迟留容差，原版的容差规则未核实，这次登记 §28.2。
   - Consequences：+ 玩家走不出世界边界，服务端放到边界外的玩家也不能离边界更远：区块环至多伸出边界一个环半径，边界外的玩家再加它被放下处离边界的距离；一包至多 64 格，进不了 64 格外的门框；够不着的方块挖不到、用不了。− 64 格以内的瞬移、穿墙、飞行与秒挖照旧可行：目标区块都已载入时，按入站闸 750 包 / 7 s 折算一秒至多约 6,860 格；S1-01 的原 PoC 在挖掘前后各加 5 个位置包照样成立（`API-PROD-030`「复现代价」）。+ 核心模式的平坦世界 v0.9.53 起有边长 4,096 格的边界，区块总数的上界是 (256 + 2 × (视距 + 1))²，视距 10 时 77,284 块（§28.2 对应的已决行，`docs/DESIGN-M2.md` §28.2 G3）。− 发位置包的压测工具不能再一包落到远处，`PacketFlood`、`soak.py`、S5 spike 与 `:loadtest` 的 `Bot` 已改（`API-PROD-030` 末条）。
+- **`ADR-PROD-017` 默认玩法层放在宿主、挂在宿主节点上，地图分片暂不挂** — Status: Accepted（用户 2026-10-11 拍板，v0.9.63）
+  - Context：用户 2026-10-11 定验收标准「服务端核心完全正常游玩」：装了模组的真客户端在平坦核心世界走通可玩项 P1～P10。原版玩法已删（清单 §5.1），引擎发出的聊天事件收件人为空（`ADR-PROD-009`），丢弃只派发事件就把物品清掉，拾取不进背包，攻击只派发事件、没有伤害，虚空判定没有调用方；平坦核心与 RTS 都没有插件补这些。事件树的派发次序是根节点自身 → 映射节点（实例与实体作用域）→ 子节点按优先级，插件的全局作用域节点挂在宿主节点下（`API-PROD-018`）。
+  - Decision：宿主新包 `app.play` 提供默认玩法层（`API-PROD-031`），由 `Main` 按模式挂：平坦核心全开，RTS 只开聊天，挂地图的分片不挂。判定挂在宿主节点自身，生效（生成物品实体、物品进背包）挂在宿主节点下优先级 5 的子节点，只对派发到那里仍未取消的事件做。
+  - Alternatives：
+    - 放进引擎（在 `Player`、监听器里直接生成物品实体、加进背包、扣血）：引擎不含玩法（`CLAUDE.md`、清单 §5.1），每个使用方都得先接受再关掉这套规则，RTS 与将来的 MMO 规则首当其冲；引擎在事件之后直接动手，插件只能靠取消事件来换规则。
+    - 挂在根节点：根节点自身的监听器排在实例作用域与全部插件之前，两参 `addListener` 看不到插件的取消；生效动作也在插件之前发生，插件随后取消丢弃时地上多一份、背包里还在，等于复制。
+    - 判定与生效都放在宿主节点自身：生效仍先于全局作用域的插件，插件取消丢弃或拾取同样复制物品。
+    - 地图分片一起挂：地图分片是 MMO 的大区，丢弃、拾取、近战与死亡的规则（掉落归属、PvP 区域、物品流水 `item_ledger`）要由后续的玩法架构分册（暂名 DESIGN-PLAY，尚未建）定；现在挂上，地图分片先跑一套以后要拆的规则。
+  - Consequences：+ 引擎仍不含玩法；平坦核心可以完整游玩；`game-rts` 一行不改就有同实例聊天；全局作用域的插件可以改或取消任一项。− 实例作用域的插件监听器排在宿主之前，它对 `PlayerSpawnEvent` 做的改动会被持久化段的应用覆盖（`API-PROD-032`）；生效排在 `MONITOR` 之后，`MONITOR` 看到的事件还没生效。− 挂地图的分片上没有聊天收件人、拾取与伤害，等玩法架构分册定下规则（§28.3）。
 
 ## 19. 验收 / 测试
 
@@ -1819,7 +2022,7 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 | 数据库集成 | 普通 `test` 任务连 PostgreSQL 16、Valkey 8：本地是共用容器 `synaxis-pg` / `synaxis-valkey`，CI 是服务容器，地址经 `SYNAXIS_TEST_*` 传入 | 持久化草案 P2～P5、P13；封禁、权限；插件转服与票据签发、验票共用一张冷却表（`REQ-PROD-031`） | `./gradlew check`；CI 检查 store 各测试类跳过数为 0；`SYNAXIS_TEST_*` 声明为 `:server-app:test` 的输入，设与不设变量的两次运行不互相命中 UP-TO-DATE |
 | 多线程 | 4 线程严格模式跑全量（第 0 波 `counter`，5D 起加一轮 `grid`） | `REQ-PROD-019`、`REQ-PROD-020` | CI 独立 job |
 | 进程级与故障注入 | 真 `server-app` 进程；数据库不应答用测试内停止转发的 TCP 代理，Redis 宕机用不可达地址（两个容器各组共用，`docker pause` 会打断别的用例，不做） | 持久化草案 P6～P9、P11；目录模式分片上的 `transfer` 命令与 `synaxis:transfer`（一个分片、一个机器人，另一频道的心跳行由测试写进库） | 压测流程，每次改存储代码跑一遍；转服入口改动时跑一遍 |
-| 真客户端 | `client-gametest.yml` R1～R8；两分片来回转服 100 次（P10，job `p10`，不跑 PR，`API-PROD-026`） | `REQ-PROD-030`、`REQ-PROD-031` | 常驻 CI |
+| 真客户端 | `client-gametest.yml` R1～R8；可玩项剧本 G1～G10（平坦核心十步、RTS 五步，同在 job `gametest`，v0.9.63）；两分片来回转服 100 次（P10 job，job `p10`，不跑 PR，`API-PROD-026`） | `REQ-PROD-030`、`REQ-PROD-031`、`REQ-PROD-046`、`REQ-PROD-047`；可玩项 P1～P11 见本节末的矩阵 | 常驻 CI |
 | 压测 | `:loadtest` A～H 档（运维草案 ⑤ 5.4） | §15 | 压测机，报告入 `docs/research/` |
 | 人工（需正版账号） | auth 草案 §6.2 六条 | 正版进服、非正版被拒、跨大区转服、sessionserver 不可达、同号两地、目标机房 1,000 次探测 | 用户执行，登记 `docs/TEST.md` 执行记录 |
 
@@ -2086,10 +2289,15 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
   When 看门狗判死触发停机
   Then 第一步在停机线程上以 tickAlive=false 被调用，剩余预算约 15 s；15 s 后照常踢人与禁用插件；后一步不被调用并记一条 ERROR；玩家存储收到 onSaveEnded(false)
 
-场景: 引擎默认不广播聊天 (REQ-PROD-009)
-  Given 50 人在线且没有插件处理 PlayerChatEvent
+场景: 不挂默认玩法层的进程不广播聊天 (REQ-PROD-009)
+  Given 挂地图的分片 50 人在线且没有插件处理 PlayerChatEvent
   When 一名玩家发聊天
   Then 服务端出站聊天包数为 0；有插件设收件人时，只有收件人收到 SystemChat
+
+场景: 挂了默认玩法层的进程把聊天发给同一实例 (REQ-PROD-009、REQ-PROD-046)
+  Given 平坦核心与 RTS 进程各有 A、B 两名玩家在同一实例，另一实例里有 C（测试里另建的实例），没有插件处理 PlayerChatEvent
+  When A 发一条聊天；再让一个全局作用域 NORMAL 档的插件监听器把收件人清空后 A 再发一条
+  Then 第一条 A、B 各收到一次、C 收不到；第二条谁都收不到；实例作用域的插件监听器先填了收件人时宿主不覆盖
 
 场景: 聊天限频 (REQ-PROD-009)
   Given 每连接 1 条/秒、burst 3
@@ -2145,6 +2353,11 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
   Given server-app 已就绪
   When 控制台输入 list、tps、save
   Then 分别输出在线名单、MSPT p50/p95/p99、保存结果；输入未知命令输出一行提示，不抛栈
+
+场景: 没有角色的玩家能执行 list，未知命令有回执 (REQ-PROD-012)
+  Given 内存存储的 server-app，玩家 N 没有任何节点
+  When N 执行 /list、/stop 与 /synaxisnosuchcommand
+  Then /list 回 synaxis:command-list 且台账没有这一条 EVT:gm_command；/stop 照旧静默取消；/synaxisnosuchcommand 回一条 synaxis:command-unknown，参数是 synaxisnosuchcommand，台账与日志都不多一行；控制台输入同一个未知命令时不发这条回执、只有原先那一行 INFO
 
 场景: 插件命令按命名空间注册、禁用时注销、异常限流 (REQ-PROD-012)
   Given 插件 mmo 注册命令 party，执行时必抛异常
@@ -2389,7 +2602,7 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 场景: 200 人稳态与 500 人两档达标或降容量 (REQ-PROD-029)
   Given 服务端与机器人各一台 ≥ 8 核 / 16 GiB
   When 跑 200 人 walk 30 min、500 人 walk 600 s 与 500 人同格 600 s
-  Then 200 人 tick P99 < 50 ms、超 50 ms 的 tick 为 0、RSS < 4 GiB；500 人两档记录 tick P99 与每人出口，未达标时频道 capacity 写成 200～300 并回写 §15
+  Then 200 人 tick P99 < 50 ms、超 50 ms 的 tick 为 0；堆 4 GiB 时 RSS ≤ 5 GiB（堆上限 + 1 GiB），最后 5 min 里每次老年代回收后的占用 ≤ 2 GiB（堆上限的 50%，读 -Xlog:gc）；500 人两档记录 tick P99 与每人出口，未达标时频道 capacity 写成 200～300 并回写 §15
 
 场景: CI 判定不看退出码 (REQ-PROD-030)
   Given 两次运行：一次报告 8 条 PASS、台账齐，但客户端步骤退出码为 1（容器退出时 libopenal 段错误）；另一次客户端没进世界，报告 R3 为 FAIL 或整份报告缺失
@@ -2750,7 +2963,93 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
   Given record 模式运行
   When 客户端 join(Steve, H1) 后服务端查 hasJoined(Steve, H1) 与 hasJoined(Alex, H2)
   Then 前者 200、后者 204；record 只按 serverId 匹配，hasJoined(Alex, H1) 也回 200，正文 name 为 Alex、id 为 join 时的 profile；allow-all 模式下前两者都是 200；--inject status=503 时对指定序号的请求回 503
+
+场景: 三条丢弃路径都在眼睛高度生成物品实体 (REQ-PROD-046)
+  Given 平坦核心进程，玩家快捷栏 0 格 64 个石头、朝 +x 平视
+  When 按 Q 丢 1 个；打开背包，把一组石头拿到光标上，在背包外左键；再把 1 个石头拿到光标上直接关背包
+  Then 三次各在玩家实例里多一个 ItemEntity，出生位置 = 玩家位置 + (0, 眼睛高度, 0)，速度沿 +x 6 格/秒，40 tick 内不可拾取；背包里的石头按丢出的数量减少，没有复制
+
+场景: 插件取消丢弃时不生成物品实体 (REQ-PROD-046)
+  Given 平坦核心进程，一个全局作用域 HIGHEST 档的插件监听器取消 ItemDropEvent
+  When 玩家按 Q
+  Then 实例里没有新的 ItemEntity，物品留在手上；冻结中的玩家按 Q 同样如此（根节点取消，API-PROD-005）
+
+场景: 拾取进背包，放不下就留在地上 (REQ-PROD-046)
+  Given 地上一个 40 tick 前丢出的石头物品实体
+  When 背包有空位的玩家走上去；另一次背包 36 格全满（都不是石头）的玩家走上去
+  Then 前者背包多 1 个石头、物品实体移除；后者 PickupItemEvent 被取消、物品实体留在原处、claim 已释放，换一名有空位的玩家能捡起
+
+场景: 近战按攻击力扣血与击退，每个目标 10 tick 冷却 (REQ-PROD-046)
+  Given 平坦核心进程的训练假人生命值 20，玩家手持铁镐（攻击力 4）
+  When 玩家在第 0 tick、第 5 tick、第 12 tick 各打它一下
+  Then 第一下后生命值 16 并被击退，第二下不扣血、不击退，第三下后 12；插件取消 PLAYER_ATTACK 的 EntityDamageEvent 时既不扣血也不击退
+
+场景: 训练假人死后 5 s 原处重生 (REQ-PROD-046)
+  Given 训练假人在 (3.5, 40, 0.5) 被击退到 (6.0, 40, 0.5)
+  When 打到生命值 0
+  Then 假人死亡并被移除；死亡起满 100 tick 时 (3.5, 40, 0.5) 出现一个新的、生命值 20 的假人，实例里始终至多一个假人
+
+场景: 掉出世界底部每 tick 受 4 点伤害 (REQ-PROD-046)
+  Given 平坦核心进程，维度 minY 0
+  When 玩家挖穿 y = 0 掉下去
+  Then y ≥ -64 时不受伤；y < -64 起每 tick 一次 OUT_OF_WORLD 伤害 4 点，生命值 20 的玩家 5 tick 内死亡、出现死亡界面，重生后回到 (0.5, 40, 0.5)、生命值 20
+
+场景: 初始物品只在新角色首次出生时发一次 (REQ-PROD-046、REQ-PROD-047)
+  Given 平坦核心进程，账号 A 从没进过服
+  When A 进服、断开、再进服
+  Then 第一次出生后快捷栏 0 格 64 个石头、1 格 1 把铁镐，游戏模式生存；第二次出生时背包与断开时一致，没有再多一份初始物品；RTS 与挂地图的分片进服时不发
+
+场景: 平坦核心世界出生点一圈有光照 (REQ-PROD-046)
+  Given 平坦核心进程已绑定端口
+  When 客户端在出生点进服
+  Then 首批区块里地面以上天空光 15、石头里 0，不必等光照补算；出生点周围半径 chunk-view-distance + 1 的区块在绑定端口之前已载入
+
+场景: 退出重进背包、选中格、生命值与位置都还在 (REQ-PROD-047)
+  Given 平坦核心进程（内存存储，或 PostgreSQL 存储），玩家走到 (8.5, 40, -3.5)、朝向 yaw 45 / pitch 10，选中格 2，生命值 13，背包里有 63 个石头、1 把耗损 3 的铁镐与 9 格的一组泥土
+  When 玩家断开再进服
+  Then 首次出生后被传送到 (8.5, 40, -3.5)、朝向不变，选中格 2，生命值 13，46 格背包与断开时逐格相同；角色 version 只在断开那次加 1
+
+场景: 没变化的玩家定时保存不写库 (REQ-PROD-047)
+  Given PostgreSQL 存储的进程，玩家进服后站着不动、不碰背包
+  When 一个定时保存周期 60 s 过去
+  Then synaxis:player 的捕获结果与当前值相等、不标脏，角色 version 不变；玩家动了一下之后的下一次定时保存写一次、version 加 1
+
+场景: 死亡界面上断开，重进按重生处理 (REQ-PROD-047)
+  Given 平坦核心进程，玩家在虚空里死亡、停在死亡界面
+  When 断开再进服
+  Then 生命值取满，位置是重生点 (0.5, 40, 0.5)，不传送到死亡处
+
+场景: 地图分片三条都满足才用存档位置 (REQ-PROD-047)
+  Given 两个挂地图的分片：同一 map_id、同一 build_id 的大区 r0 与 r1；玩家的 synaxis:player 存在 r0 的 (40.5, 70, 40.5)
+  When 玩家不凭票据登录 r0；再分别登录 r1、换了 build_id 的 r0
+  Then 第一次传送到 (40.5, 70, 40.5)；后两次留在各自大区的出生点；背包、选中格与生命值三次都照存档应用
+
+场景: 转服带走背包与生命值，到达点是门框落点 (REQ-PROD-047、REQ-PROD-045)
+  Given 目录模式的两个分片 r0-c1、r1-c1，玩家在 r0-c1 背包里有 5 个泥土、生命值 15
+  When 玩家走进通往 r1 的门框
+  Then 签发 ③ 的写回里有 synaxis:player，Cookie 里只有 state_version；玩家到 r1-c1 后背包 5 个泥土、生命值 15，位置是 r1 通回 r0 那扇门的到达点，不是存档里 r0 的坐标
+
+场景: 解码不了的 synaxis:player 拒绝登录且不改库 (REQ-PROD-047)
+  Given 库里该角色的 synaxis:player 有一格物品 id 是 minecraft:no_such_item，或 held_slot 为 9
+  When 玩家登录
+  Then 断线 synaxis:state-unavailable，日志一行 ERROR 写明 section_id=synaxis:player；库里这一行原样不变
 ```
+
+**可玩项 P1～P11 验收矩阵**（v0.9.63，用户 2026-10-11 拍板）。验收只靠自动化：真客户端剧本在 GitHub Actions 的 `client-gametest.yml` 上跑（`API-PROD-026` 可玩项剧本一条，`core G<n>` / `rts G<n>` 是剧本步骤的编号），服务端测试补真客户端看不到的部分（上面带 `REQ-PROD-046`、`REQ-PROD-047` 的场景）。平坦核心是 `bin/server-app -Dsynaxis.app.core-mode=on`；RTS 按 `docs/DESIGN-M2.md` `ADR-M2-013` 自身的设计，只验 P1、P2、P6、P7 与 P10（重连后队伍单位还在），`game-rts` 一行不改；可玩项 P11 在挂地图的分片（`bin/server-shard`）上验。不补原版生存内容，矩阵里没有合成、怪物、饥饿与红石。
+
+| 可玩项 | 平坦核心 | RTS | 挂地图的分片 | 服务端测试补的部分 |
+| --- | --- | --- | --- | --- |
+| P1 进服 | `core G1` | `rts G1`（与 R3 同一判据） | — | — |
+| P2 移动与区块加载 | `core G2` | `rts G2` | — | 平坦核心出生点一圈有光照 |
+| P3 挖 | `core G3` | 不验 | — | — |
+| P4 放 | `core G4` | 不验 | — | — |
+| P5 背包与物品 | `core G5`（快捷栏、背包内移动、Q 键丢弃、背包外点击丢弃、拾取） | 不验 | — | 关背包时光标物品的丢弃、背包满时不拾取、插件取消丢弃时不生成实体、冻结 |
+| P6 聊天 | `core G6` | `rts G6` | — | 收件人只到同一实例、插件可改 |
+| P7 命令 | `core G7` | `rts G7` | — | 无节点玩家的 `list`、未知命令回执、控制台不回执 |
+| P8 打实体与受伤 | `core G8` | 不验 | — | 攻击力、10 tick 冷却、击退、插件取消、假人 5 s 重生 |
+| P9 死亡与重生 | `core G9` | 不验 | — | 每 tick 4 点、阈值 minY − 64 |
+| P10 退出重进数据还在 | `core G10` | `rts G10`（重连后队伍单位还在） | — | 生命值不满时的往返、没变化不写库、死亡界面上断开、解码失败拒绝登录、初始物品只发一次 |
+| P11 转服 | — | — | P10 job（两分片来回转服 100 次，`API-PROD-026` P10 一条） | 转服带走背包与生命值、到达点是门框落点、三条都满足才用存档位置 |
 
 ## 20. 埋点 / 分析事件
 
@@ -2761,7 +3060,7 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 | `EVT:shutdown_saved` | §11.4 保存阶段结束 | `shard_id`、`online`、`saved`、`failed`、`elapsed_ms`、`timed_out` | 停机保存完整率 |
 | `EVT:critical_commit` | `commitTogether` / `saveNow` 完成 | `shard_id`、`kind`（`commit` / `save_now`；宿主分不出插件用 `commitTogether` 做的是交易、邮件还是商店）、`result`（`saved` / `fenced` / `unavailable`）、`cause`（`frozen` / `db_error` / `version_mismatch` / 空）、`elapsed_ms`、`participants` | 关键操作落库成功率 |
 | `EVT:player_banned` | `Moderation#ban` 成功，只在发起封禁的分片写一条 | `ban_id`、`kind`（`uuid` / `network`）、`operator`、`was_online`（本分片踢出了至少一人）、`kicked_within_ms`（本分片踢完的耗时，没人被踢时为 null） | 封禁即时生效率（其他分片的踢出不计入，§28.2） |
-| `EVT:gm_command` | GM 命令或管理接口调用执行 | `actor`（`player` / `console` / `management`）、`actor_uuid`（控制台与管理接口为 null）、`command`（原样输入；管理接口为方法名，带参数时后接一个空格与紧凑 JSON）、`target`、`result`：`ok`、`invalid`（`stop` 秒数解析不了或已在停机；`profile` 秒数越界或已有录制在跑；管理接口参数不合规（含 `synaxis:transfer` 找不到玩家），或 `shard/drain` 时登录门已关）、`partial`（`save` 有人没存上）、`unavailable`（读写数据库失败、内存存储、JFR 写不出文件、起服完成之前的管理接口 `server/stop`，管理调用抛了未预料的异常，或 `transfer` 命令与 `synaxis:transfer` 在不在目录模式的进程上、`ShardService` 的 future 异常完成）、`no_target`（`kick` 没有踢到人，`transfer` 命令找不到本分片的在线玩家）、`sent`、`cooldown`、`not_online`、`save_failed`、`unknown_target`、`same_target`、`full`、`offline`、`directory_unavailable`（`transfer` 命令与 `synaxis:transfer`：`ShardTransferResult` 的小写名）、`unknown_role`、`not_granted`、`above_sender`（玩家要授予或收回的角色有自己没有的节点）、`bad_duration`、`bad_reason`、`no_ban` | 诊断用（审计），不进 §3 |
+| `EVT:gm_command` | GM 命令或管理接口调用执行；内置命令 `list` 只在控制台执行时写，玩家执行的不写（v0.9.63，`API-PROD-011`） | `actor`（`player` / `console` / `management`）、`actor_uuid`（控制台与管理接口为 null）、`command`（原样输入；管理接口为方法名，带参数时后接一个空格与紧凑 JSON）、`target`、`result`：`ok`、`invalid`（`stop` 秒数解析不了或已在停机；`profile` 秒数越界或已有录制在跑；管理接口参数不合规（含 `synaxis:transfer` 找不到玩家），或 `shard/drain` 时登录门已关）、`partial`（`save` 有人没存上）、`unavailable`（读写数据库失败、内存存储、JFR 写不出文件、起服完成之前的管理接口 `server/stop`，管理调用抛了未预料的异常，或 `transfer` 命令与 `synaxis:transfer` 在不在目录模式的进程上、`ShardService` 的 future 异常完成）、`no_target`（`kick` 没有踢到人，`transfer` 命令找不到本分片的在线玩家）、`sent`、`cooldown`、`not_online`、`save_failed`、`unknown_target`、`same_target`、`full`、`offline`、`directory_unavailable`（`transfer` 命令与 `synaxis:transfer`：`ShardTransferResult` 的小写名）、`unknown_role`、`not_granted`、`above_sender`（玩家要授予或收回的角色有自己没有的节点）、`bad_duration`、`bad_reason`、`no_ban` | 诊断用（审计），不进 §3 |
 | `EVT:lease_takeover` | §11.3 `orphaned → loading`，持有者是别的会话时 | `character_id`、`previous_session_id`、`gap_ms`（距该角色上一次成功保存 `last_saved_at` 的毫秒数，从没保存过时为空；事件名沿用 M3，属性按本分册取代 M3 的 `player_uuid`、`previous_owner`，M3 会话同步，§28.3） | 诊断用；停机保存完整率的兜底证据 |
 | `EVT:save_fenced` | §11.3 `online → fenced` | `character_id`、`session_id`、`cause`（`zero_rows` / `session_isolated`） | 诊断用；与 `synaxis_store_save_total{result="fenced"}` 互证 |
 | `EVT:transfer_rejected` | 目标分片验票不通过（§11.3 `in_transit → offline` 或票据作废） | `transfer_ref`、`reason`（§9 `reject_reason`）、`source_shard`、`target_shard`（票据可解析时才有）、`player_uuid`（本次验证所得） | 诊断用；`docs/DESIGN-M3.md` §3 转服成功率的失败侧明细 |
@@ -2817,7 +3116,7 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 | --- | --- | --- | --- |
 | R0 本地与 CI | — | `./gradlew check`（含数据库用例，跳过数为 0）+ 4 线程 job + 真客户端 R1～R8 全绿 | 不合并 |
 | R1 内部测试服 | 团队 ≤ 10 人，在线模式 | §26 第 0～4 波退出条件全部满足 | 回退 tag |
-| R2 封闭内测 | 白名单，单分片 ≤ 50 人 | R1 运行 7 天：停机保存完整率 100%、验证成功率 ≥ 99.5%、fenced 为 0；WAL 归档已开（`REQ-PROD-035`）；挂地图的分片接上按大区的最后位置（§28.2 待办）；M3-S 已合入 `main`（`docs/DESIGN-M3.md` §26 M3-S 行标完成）；光照会话 M3 侧安全审查里归本会话的 ①②③⑥ 已在引擎落地并合入 `main`（编号见 `docs/DESIGN-M3.md` §28.2 交接行 M3 v0.38，随 M3-S 进 `main`）。后一条到 RUN-070 为止合入 `main` 的是 ①②③ 的位置与方块判定（v0.9.47）与 ⑥ 的区块待发队列修剪（v0.9.49）；① 里平坦实例的世界边界与载具两判、⑥ 的交包窗口随 RUN-071 | 回退 tag；数据层按 `RB-PROD-008` |
+| R2 封闭内测 | 白名单，单分片 ≤ 50 人 | R1 运行 7 天：停机保存完整率 100%、验证成功率 ≥ 99.5%、fenced 为 0；WAL 归档已开（`REQ-PROD-035`）；挂地图的分片记同一大区的最后位置（`REQ-PROD-047`，v0.9.63；R2 只有一个大区，跨大区送回不在这一门槛里，§28.2 待办）；M3-S 已合入 `main`（`docs/DESIGN-M3.md` §26 M3-S 行标完成）；光照会话 M3 侧安全审查里归本会话的 ①②③⑥ 已在引擎落地并合入 `main`（编号见 `docs/DESIGN-M3.md` §28.2 交接行 M3 v0.38，随 M3-S 进 `main`）。后一条到 RUN-070 为止合入 `main` 的是 ①②③ 的位置与方块判定（v0.9.47）与 ⑥ 的区块待发队列修剪（v0.9.49）；① 里平坦实例的世界边界与载具两判、⑥ 的交包窗口随 RUN-071 | 回退 tag；数据层按 `RB-PROD-008` |
 | R3 公开内测 | 单分片 ≤ 200 人 | §26 第 5 波 200 人档达标；R2 运行 7 天关键操作落库成功率 ≥ 99.9%、封禁即时生效率 ≥ 99% | 频道 `capacity` 降回 50；回退 tag |
 | R4 正式 | 每分片 200～500 人 | 500 人两档记录在案并据此定 `capacity`；第 6 波全部完成（G28～G38） | `capacity` 降一档；回退 tag |
 
@@ -2845,7 +3144,7 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 - **lint 口径**：`bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md` 的 ID 类机械检查对 `REQ-PROD-*` / `API-PROD-*` / `RB-PROD-*` 生效（域段正则 `[A-Z][A-Z0-9]*` 认纯字母的 `PROD`）；定义记法同 `docs/DESIGN-M2.md` §24：需求与 Runbook 是表格首格或条目，接口是 `- **`API-PROD-001`** …` 条目。回指 `docs/DESIGN.md`、M2、M3 的 ID（`API-003`、`API-M3-011` 等）由 lint 单列 ℹ️，不计警告。零警告是交付门槛。
 - **ABI 门**：`:plugin-api` 新增的 `PlayerDataStore`、`Moderation`、`Permissions`、`PluginCommands`、`PluginLifecycle`、`Transfers` 与 `PluginScheduler` / `PluginEvents` 的新方法、`SynaxisPlugin#translationKeys()`（`API-PROD-029`）全部过 `checkBinaryCompatibility`（`docs/DESIGN-M2.md` §24；还没打 tag 时 CI 不传 `-PbaselineJarDir`，该任务跳过），新方法按 §8 写成默认方法；`AdmissionRequest` 加组件若被判破坏，同一 PR 把 `API_VERSION` 加到 2。
 - **ArchUnit**：① 引擎、`:plugin-api`、玩法插件不依赖 `java.sql..`、`org.postgresql..`、`com.zaxxer..`、`redis.clients..`（`ADR-PROD-012`）；② 新类 `ConnectionGate`、`SessionClient` 进 `ClientDrivenLogArchitectureTest` / `ArchitectureTest` 的检查范围，豁免名单逐条写上界；第 6 波 U 组的 `ShutdownSequence` 进宿主的豁免名单，上界是每个停机步骤每次停机至多一行 ERROR（步骤只在装配时注册，客户端碰不到）；M3-C 的 `ShardWorld`（挂地图分片起服时固定几行）与 M3-E 轨道 A 的 `ShardHeartbeat`（连续 3 次写失败一行 WARN，按每 5 s 写一次算至多 15 s 一行；`close()` 等写超过 2 s 时一行；都由数据库驱动，客户端碰不到）也在名单里，名单共 11 个类；`Watchdog` 不纳入，它的日志量只随时间走（每次卡住每 5 s 一条，与客户端发什么无关）。
-- **翻译键门禁**（`REQ-PROD-041`、`API-PROD-029`）：`:architecture-tests` 的 `TranslationKeyGateTest` 随 `./gradlew check` 在 CI 运行，收集本仓主类里整串是 `synaxis:<路径>` 的字符串常量（`DisconnectReasons`、`DisconnectKeys`、宿主的回执与系统消息都在其中），去掉非文字标识名单，加上插件 `translationKeys()` 声明的键，逐个核对 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 与 `en_us.json`，缺任一即失败并列出键、缺的文件与来源。加断线原因或回执的键只需在两份语言文件里各加一行；加 `synaxis:` 开头的频道、Cookie 键、数据标记的 handler 命名空间（含 `:baker`、`:synx` 里的）或 JSON-RPC 方法名要进名单。
+- **翻译键门禁**（`REQ-PROD-041`、`API-PROD-029`）：`:architecture-tests` 的 `TranslationKeyGateTest` 随 `./gradlew check` 在 CI 运行，收集本仓主类里整串是 `synaxis:<路径>` 的字符串常量（`DisconnectReasons`、`DisconnectKeys`、宿主的回执与系统消息都在其中），去掉非文字标识名单，加上插件 `translationKeys()` 声明的键，逐个核对 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 与 `en_us.json`，缺任一即失败并列出键、缺的文件与来源。加断线原因或回执的键只需在两份语言文件里各加一行；加 `synaxis:` 开头的频道、Cookie 键、数据标记的 handler 命名空间（含 `:baker`、`:synx` 里的）、宿主数据段 ID 或 JSON-RPC 方法名要进名单。
 - **配置键**（`REQ-PROD-033`、`API-PROD-023`，v0.9 按 6C 实现）：配置文件的「未知键拒绝启动」由 `ConfigFile.KEYS` 这一张键表驱动。`:architecture-tests` 的配置键门禁 `ConfigKeyGateTest` 随 `./gradlew check` 运行：收集本仓主类里整串匹配 `synaxis(\.[a-z0-9-]+)+` 的字符串常量，跳过键表所在的 `ConfigFile` 本身（它列着全部键，算进来的话「表里的键没有类读」永远查不出），去掉宿主的 Micrometer 指标名（`HostMetrics.NAMES` 里某个族名的点号写法，现有 21 个，v0.9.36 加 `synaxis.tick.acquire`），再加上宿主 `logback.xml` 里 `${synaxis.…}` 形式的替换（`synaxis.app.log` 只由 logback 读，没有类提到它），得到的集合必须正好等于键表。代码新读了一个表外的键（文件会拒绝它），或表里的键已经没有类读，都各报一行并失败；通过时输出 `config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out`。两条约束：键只能以完整常量或字面量出现，运行时拼出的键门禁看不见；门禁只看本仓 classpath。`ServerConfigTest` 的 `defaults() == fromSystemProperties()` 断言照旧覆盖全部进程级键。
 - **数据库**：Flyway 脚本只增不改；每个版本配一份 `db/rollback/V<n>__*.down.sql`；普通 `test` 任务连 `SYNAXIS_TEST_*` 指的库跑「空库 migrate」「从上一版本 migrate」「库版本领先代码时拒绝起服」（持久化草案 P13）「migrate → 回退 SQL → migrate 正反往返」（`docs/DESIGN-M3.md` §25 口径）「`store_meta` 缺失时拒绝起服」五条（前四条在 `MigrationsDbTest`，第五条在 `MainStoreIntegrationTest`）。
 - **转服票据向量**：`API-PROD-028` 的布局只有一个事实源——`server-app` 的票据编解码类；`server-app/src/test/resources/vectors/transfer/` 的一张好票据与三张坏票据由签发与验票两侧跑同一批，改布局必须同一个 PR 里升 `ver` 并重新生成向量。
@@ -2891,7 +3190,7 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 
 ## 26. 里程碑
 
-按依赖分七波（第 0～6 波）。关键路径 G02 → G01 → G18 → G03：正版验证对公网开放前必须先有每 IP 登录令牌桶（`ADR-PROD-002`），持久化依赖异步调度器（清单 §1）。工作量取清单 §2 各行（人日）；标「本分册估」的是对清单一行的拆分，拆分比例**未核实**。
+按依赖分七波（第 0～6 波），另有用户 2026-10-11 定的「可玩」一行（RUN-073，v0.9.63）。关键路径 G02 → G01 → G18 → G03：正版验证对公网开放前必须先有每 IP 登录令牌桶（`ADR-PROD-002`），持久化依赖异步调度器（清单 §1）。工作量取清单 §2 各行（人日）；标「本分册估」的是对清单一行的拆分，拆分比例**未核实**。
 
 ```mermaid
 flowchart LR
@@ -2906,6 +3205,7 @@ flowchart LR
   W5b --> W6
   W3 --> M3E[M3-E 分片 见 DESIGN-M3 §26]
   M3E --> W6
+  W6 --> WP[可玩 RUN-073 默认玩法层与 synaxis:player]
 ```
 
 第 3 波的 3D 组（转服票据，`REQ-PROD-045`）只依赖 3A 的写权语句与 V1，不依赖 M3 的任何代码；M3-E 的转服调用 3D 的 `TransferTickets`，所以排在第 3 波之后；第 6 波 6A 里插件面 `Transfers`（`API-PROD-021` 的四个方法）只依赖 3D，`gm.transfer`、管理接口 `synaxis:transfer` 与 P10 两分片来回转服经宿主的 `ShardService`，依赖 M3-E。依赖只有 3D → M3-E → 6A 一个方向，没有环。下表与后面的文件冲突表写于开工前，其中的行号（`Player.java:355`、`AdmissionGate.java` 的 `:60-71`、`Instance.java:162`、`ServerProcessImpl.java:104`）是 `8de32ab9b4` 时的代码位置。
@@ -2917,8 +3217,9 @@ flowchart LR
 | 2 正版验证 | `REQ-PROD-002`（G01）、`REQ-PROD-003`（G06）、`REQ-PROD-004`（G07，同分片部分）、`REQ-PROD-044`、`REQ-PROD-036`（G33）、`REQ-PROD-030` 切完整正版路径档 | 2A 一个 PR：G01 + G06 + G07 + 假 sessionserver（`Auth.java`、`LoginListener.java`、`ConnectionManager.java`（同分片踢旧后等旧 `Player` 移除）、`HandshakeListener.java`、`PlayerSocketConnection.java`、`PacketVanilla.java`、`crypto/`、`module-info.java`、`server-app/.../Main.java`）；2A 合并后串行：2B 删除 `Auth.Velocity` / `Bungee` 与 PROXY 可信网段自检（G33 的前半；又改 `Auth.java`、`HandshakeListener.java`，不能与 2A 并行；`store_meta` 自检要读第 3 波才建的表，挪到 3A）；2C 切 B 档（工作流、`client-fabric/gametest-env/judge.sh` 的两项假 sessionserver 日志检查、回归测试 `RegressionClientGameTest` 的 R3 与 gametest 源集的访问器 mixin `ConnectionAccessor`；不动引擎，可与 2B 并行） | 在线模式全部自动化场景绿（`REQ-PROD-002`～`004`、`044`）；B 档 R1～R8 连续 5 次绿；用户用正版账号完成 auth 草案 §6.2 前两条人工用例并登记 | 7.5～10（假 sessionserver 与 B 档切换含在 G01、G27 内） |
 | 3 持久化 | `REQ-PROD-021`（G18）→ `REQ-PROD-005`、`006`、`007`（G03）→ `REQ-PROD-008`（G04）；`REQ-PROD-004` 跨分片部分；`REQ-PROD-022`（G19）；`REQ-PROD-035` 前半（WAL 归档与每日基础备份）；`REQ-PROD-045`（G28 前半，转服票据） | 3A 主线串行（同一人）：G18（`PluginScheduler`、`PluginSchedulerImpl`）→ G03（`server-app` 新包 `store/`、`PluginContext.java`、`AdmissionGate.java`（载入插在 `handshake.await` 与 `provider.admit` 之间，`:60-71`）、Flyway V1～V2 与回退 SQL、`--migrate-only --auth-mode` 与 `store_meta` 自检）→ G04（`ServerProcessImpl.java`、`ServerProcess.java`、`Main.java`、`ConnectionManager.java`，含看门狗判死接保存阶段）；3B 事件优先级 G19（`PluginEvents.java`、`PluginEventsImpl.java`，另改 `PluginHost.java` 建节点与收回的两处和 `LoadedPlugin.java`；与 3A 并行，`PluginHost.java` 两边都改，合并时都留）；3C 运维：WAL 归档与每日基础备份（不动 Java 代码，脚本与操作步骤在 `ops/postgres/`）；3D 转服票据 G28 前半（`REQ-PROD-045`：`server-app` 新包 `transfer/`（票据编解码、`TransferTickets`、验票）、`AdmissionGate.java`（验票插在 `store.load` 之前）、`transfer_nonce.gc`、`DisconnectKeys.java` 加 `synaxis:transfer-rejected`、模组 lang、`.env.example` 登记 `SYNAXIS_TRANSFER_HMAC_KEYS`；3A 合并后开工，改 `AdmissionGate.java` 排在 3A 之后） | 持久化草案 P1～P9、P13、P14 全绿；§19 `REQ-PROD-005`、`REQ-PROD-008` 全部场景与 `REQ-PROD-014` 两条落盘场景绿；`REQ-PROD-036` 的三条 `store_meta` 场景绿；`REQ-PROD-045` 三条场景绿（由 `server-app` 的集成测试直接调 `TransferTickets` 驱动，源与目标可以是同一进程，不需要 M3 的 `ShardService`）且票据向量测试绿；WAL 归档已开并有第一份基础备份 | 17.5～22.5（G32 前半 1、G28 前半 2～3 为本分册估；从第 0 波挪来的「判死接保存」与从第 2 波挪来的 `store_meta` 自检工作量仍计在原波次） |
 | 4 治理 | `REQ-PROD-011`（G09）→ `REQ-PROD-010`（G08）、`REQ-PROD-012`（G10） | 4A 权限 G09（Flyway V3、`Permissions`）先合；之后 4B 封禁 G08（Flyway V4、`AdmissionRequest.java`、`DisconnectKeys.java`、宿主节点上的预登录判定与 `HandshakeGate.java` 的跳过判断；引擎 `ConnectionManager.java` 不用改）与 4C 命令 G10（`Main.java#readConsole`、`PluginCommands`，内置六条，`profile` 在 6B；另改引擎 `ConsoleSender.java` 的翻译回退）并行。4A～4C 都往 `PluginContext.java` 加方法，合并按 A → B → C 串行，ABI 门每次过 | 封禁、白名单、权限、命令场景全绿；`API_VERSION` 是否加到 2 已由 ABI 门判定并记入 §1 | 10～13 |
-| 5 规模 | 前半：`REQ-PROD-018`（G16）→ `REQ-PROD-029` harness（G26）→ 200 人基线；后半：`REQ-PROD-013`（G11）、`REQ-PROD-023`（G20）、`REQ-PROD-024`（G21）、`REQ-PROD-025`（G22）、`REQ-PROD-026`（G23）、`REQ-PROD-027`（G24）→ `REQ-PROD-020` 分格 + `REQ-PROD-019` 后半 → 500 人压测 | 5A 指标与 harness（新模块 `:loadtest`、`server-app` 指标包、`Main.java` 指标装配）；基线之后：5B 入站 G11 + 出站 G22 + 区块 G23 + Tab G24（都改 `Player.java`，G11 与 G22 还同改 `PlayerSocketConnection.java`，同一人串行）；5C 可见性 G20 + G21（`EntityView.java`、`EntityTrackerImpl.java`、`Instance.java:162`，也改 `Player.java`，合并排在 5B 之后）；5D 分格（`ThreadProvider.java`、`ServerProcessImpl.java:104`、分片宿主），与 5B / 5C 只共用 `ServerConfig.java`，按 5B → 5C → 5D 合并 | 200 人 walk 30 min：tick P99 < 50 ms、超 50 ms 为 0、RSS < 4 GiB；G11 阈值按入站 P99 × 2 写回 `API-PROD-012`；4 线程 `grid` 严格模式 job 在 main 上连续 3 次绿（5D）；500 人两档与重连风暴、闸门、台账档记录在案，`capacity` 定值写回 §15 | 40～57（G17 后半 4～7、分格 3～4 为本分册估；分格从 M3-E 的 12 天中扣出，由 M3 会话同步） |
+| 5 规模 | 前半：`REQ-PROD-018`（G16）→ `REQ-PROD-029` harness（G26）→ 200 人基线；后半：`REQ-PROD-013`（G11）、`REQ-PROD-023`（G20）、`REQ-PROD-024`（G21）、`REQ-PROD-025`（G22）、`REQ-PROD-026`（G23）、`REQ-PROD-027`（G24）→ `REQ-PROD-020` 分格 + `REQ-PROD-019` 后半 → 500 人压测 | 5A 指标与 harness（新模块 `:loadtest`、`server-app` 指标包、`Main.java` 指标装配）；基线之后：5B 入站 G11 + 出站 G22 + 区块 G23 + Tab G24（都改 `Player.java`，G11 与 G22 还同改 `PlayerSocketConnection.java`，同一人串行）；5C 可见性 G20 + G21（`EntityView.java`、`EntityTrackerImpl.java`、`Instance.java:162`，也改 `Player.java`，合并排在 5B 之后）；5D 分格（`ThreadProvider.java`、`ServerProcessImpl.java:104`、分片宿主），与 5B / 5C 只共用 `ServerConfig.java`，按 5B → 5C → 5D 合并 | 200 人 walk 30 min：tick P99 < 50 ms、超 50 ms 为 0、内存三条（堆 4 GiB、RSS ≤ 堆上限 + 1 GiB、末段老年代回收后 ≤ 堆上限的 50%，§15 tick 预算行，用户 2026-10-11 拍板）；G11 阈值按入站 P99 × 2 写回 `API-PROD-012`；4 线程 `grid` 严格模式 job 在 main 上连续 3 次绿（5D）；500 人两档与重连风暴、闸门、台账档记录在案，`capacity` 定值写回 §15 | 40～57（G17 后半 4～7、分格 3～4 为本分册估；分格从 M3-E 的 12 天中扣出，由 M3 会话同步） |
 | 6 正式运营前 | `REQ-PROD-031`（G28）、`REQ-PROD-032`（G29）、`REQ-PROD-033`（G30）、`REQ-PROD-034`（G31）、`REQ-PROD-035` 后半（G32 恢复演练）、`REQ-PROD-037`（G34）、`REQ-PROD-038`（G35）、`REQ-PROD-039`（G36）、`REQ-PROD-040`（G37）、`REQ-PROD-041`（G38） | 6A 转服 G28 后半（插件面 `Transfers`、`gm.transfer`、管理接口 `synaxis:transfer`、`HandshakeListener.java`；票据用 3D 的。插件面只依赖 3D；`gm.transfer`、`synaxis:transfer` 与 P10 经宿主的 `ShardService`，两个分片可以是同大区的两个频道（`transferTo`），所以这三项排在 M3-E 之后）；6B 管理接口 G29 + profile G31（新 WebSocket 包、`Main.java`，6C 之前合并）；6C 配置文件 G30 + 压缩 G35（都改 `ServerConfig.java`，同一人；键表要收全本波新增的键，所以 6C 排在第 6 波最后合并）；6D 列表 G34（`StatusResponse.java`、新类 `Favicon.java` 与 `event/server/ServerListPingEvent.java`、`StatusListener.java`、`ConnectionManager.java` 在构造时读图标、`ServerConfig.java` 三个键，线程契约一条进 `plugin-api` 的 `package-info` 与 `docs/PLUGINS.md` §10）；6E 视距 G36 + 休眠 G37（`Player.java`、`Entity.java`，另有 `Instance.java` 的玩家位置快照与新类 `DormancyPolicy.java`、`PlayerPositions.java`，同一人；不改 `ServerConfig.java`，没有新配置键）；6F 翻译键门禁 G38（CI）；6G 恢复演练 G32（运维） | 各 REQ 场景全绿；两分片来回转服 100 次（P10）绿；恢复演练一次并记录耗时；§23 R4 进入门槛满足 | 17～20.5（G28 前半 2～3 已移到 3D） |
+| 可玩（RUN-073） | `REQ-PROD-046`、`REQ-PROD-047`；`REQ-PROD-009`、`REQ-PROD-012` 的改动 | 按改动文件分组（组名以 RUN-073 的编排为准）：默认玩法层（新包 `app.play`、`CoreMode.java` 的光照与预载、`PluginHost#hostNode`）；持久化段（`PlayerStore` 两个新方法、`PlayerStateSection`、`Main` 步骤 (4)(5) 与到达回调）；命令（`HostCommands`、模组两份 lang、翻译键门禁名单）；真客户端剧本与 CI（`PlayableClientGameTest`、`client-gametest.yml`）。前两组都改 `Main.java`，按持久化段 → 默认玩法层的顺序合并：应用监听器要先加在宿主节点上 | §19 可玩项矩阵全绿：job `gametest` 每次客户端启动 `core` 10 行、`rts` 5 行 PASS（GitHub Actions）；带 `REQ-PROD-046`、`REQ-PROD-047` 的服务端场景默认模式与两种严格模式都绿；P10 job 手动触发一次绿（可玩项 P11）；挂地图分片的位置规则等 `ShardWorld` 三个访问器落地（§28.3） | 未估（用户直接定的一轮，不在清单 §2） |
 | 条件 | `REQ-PROD-042`（G39） | — | 触发条件成立时另立波次 | 2 |
 
 合计：第 0～5 波 95～126.5 人日（清单 G01～G27 的 88～117，加上移入的 G40 0.5、G33 0.5～1、G32 前半 1、G28 前半 2～3，以及从 M3 划过来的分格 3～4），第 6 波 17～20.5 人日，条件项 2 人日。
@@ -3014,6 +3315,7 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | Q10 | 新增依赖 | 按默认值定；G29 的 WebSocket 库由用户 2026-09-25 拍板 | 接受 pgjdbc、HikariCP、Flyway、Jedis、Micrometer + Prometheus；G29 用 Java-WebSocket（`org.java-websocket:Java-WebSocket` 1.6.0） | 项目要求零新依赖时 G16 改 JDK `HttpServer` 手写文本格式，约多 1 人日；Java-WebSocket 出现影响本用法的安全公告而 30 天内没有修复版，或要求管理接口直接对内网以外开放（要 TLS 与更细的握手控制）时换 Jetty 12 WebSocket，代价是运行时闭包多出 Jetty 的服务器与 HTTP 模块 · §17、`ADR-PROD-014` |
 | Q11 / ops #10 | 压测机器 | 按默认值定 | 服务端与机器人各一台 ≥ 8 核 / 16 GiB，千兆内网 | 只有本机时 500 人档只跑 A～C，D～G 等第二台机器 · `REQ-PROD-029` |
 | Q12 | G28 Transfer 排期 | 按默认值定 | 票据签发与验票在第 3 波 3D（M3-E 的转服依赖它）；插件面 `Transfers` 与 P10 在正式运营前（第 6 波 6A）。6A 的插件面只依赖 3D，现在就能开工；`gm.transfer`、管理接口 `synaxis:transfer` 与 P10 经宿主的 `ShardService`，等 M3-E 的 `app.shard` 进 `main` | 内测开两个及以上大区时 6A 提前到内测前，工作量 +1.5～2 人日（3.5～5 减去已在 3D 的 2～3，本分册估） · §26 |
+| Q13 | 正式档的内存判据 | 用户拍板（2026-10-11，光照会话转述，见 `docs/DESIGN-M3.md` §28.1「正式档的 RSS 判据与分片默认堆」一行；v0.9.63 登记） | 堆维持 4 GiB（`REQ-PROD-028`，启动脚本不改）；RSS ≤ 堆上限 + 1 GiB；另加 GC 判据：压测末段（最后 5 min，读 `-Xlog:gc`）老年代回收后的占用 ≤ 堆上限的 50%。原写的「RSS < 4 GiB」在 `AlwaysPreTouch` 下按默认参数一定判失败：起服时把整个 4 GiB 堆逐页写一遍、全部计入 RSS；RSS 看堆外开销，GC 判据看堆压力 | 一台机器放 n 个分片时每个分片的份额 =（单机内存 − 1 GiB 系统预留）÷ n；份额 < 5 GiB 时改为堆 3 GiB、RSS < 4 GiB，代价是本分册改启动脚本的默认堆（`REQ-PROD-028`）；份额 < 4 GiB 时两种都装不下，只能减少每台的分片数；1 GiB 预留只在这台机器不跑 PostgreSQL、Valkey 或机器人时成立 · §15 tick 预算行、§19、§26 第 5 波 |
 | auth ② / D7 | 在线模式重复登录 | 按默认值定 | 踢旧会话、放新连接；跨分片顶号 | 持久化侧做不到「旧会话先保存释放、新会话再载入」，或运营认定顶号是安全风险时改拒新 · `ADR-PROD-010` |
 | auth ③ | 转服冷却 | 按默认值定 | 每玩家 5 s | Mojang 客户端 join 限额被证实不是 6 次 / 30 s 时重算 · `API-PROD-021` |
 | auth ⑤ | CFB8 实现 | 按默认值定 | JDK 自带 | 生产机型上加密占用 > 1 个核的 10% · `ADR-PROD-011` |
@@ -3085,7 +3387,8 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | 已决 | 管理接口对应的 SMP 版本：minecraft.wiki「Minecraft Server Management Protocol」页（2026-09-25 查）的历史表写 26.2（snap5 起）为 API 3.0.0，26.3 起 3.1.0。`API-PROD-022` 的原版方法名、参数名与 Player / Message / User Ban 结构按 3.0.0 写；与原版的差异四处（握手被拒回 404 而非 401、不收 `Sec-WebSocket-Protocol` 里的令牌、不做 TLS、没有 `rpc.discover`）写在 `API-PROD-022` | Bearisbug | — |
 | 已决 | `synaxis:transfer`（v0.9.29 实现，与 `transfer` 命令同一批）：经宿主的 `ShardService` 把本分片在线的玩家送到另一个分片，参数是 `player` 加 `region` 或 `shard` 二选一，地址由心跳解析、不收 `host` / `port`，结果是 `ShardTransferResult` 的小写名（九个值），进程没有 `ShardService`（不在目录模式）回 −32000；检查顺序与异常的回复见 `API-PROD-022` | Bearisbug | — |
 | 已决 | 签发 ④ 的 `OutgoingTransferEvent` 不在玩家所属 tick 线程上（v0.9.31 转已决，M3 会话按本行给的做法在 `docs/DESIGN-M3.md` v0.20 修复）：`TicketIssuer#transfer` 原先在写回完成的 `Syn-Store-Write` 虚拟线程上调 `PlayerConnection#transfer`，事件在那条线程上同步派发，与 `API-PROD-016` 线程契约不符，监听器在那里碰玩家时严格模式抛 `AcquirableOwnershipException`，断言关时是跨线程写；关卡门、`transfer` 命令与 `synaxis:transfer` 签出的票据都走这条路径。现在 `TicketIssuer` 照 `API-PROD-021` 插件面 `transfer` 的线程一条，把签票、记冷却、`storeCookie`、`transfer` 与写 `EVT:transfer_issued` 排到玩家的下一个 tick，在玩家所属 tick 线程上做，future 也在那里完成；玩家不 tick 时每 5 s 看一次连接，断开才回 `NOT_ONLINE`，不照插件面 5 s 放弃（`API-PROD-028` ④，`docs/DESIGN-M3.md` `API-M3-010`「签发 ④ 的线程」一条）。证据：`docs/TEST.md` `TC-WORLD-090` 与 RUN-048（修复前事件在 `Syn-Store-Write` 虚拟线程上派发，测试红；修复后 `check` 与两种严格模式都绿） | Bearisbug | — |
-| 待办 | 按大区的最后位置与 `character.current_region` 没接：V1 建了 `character_location` 与这一列，宿主不读写，M3-E 也不接（`docs/DESIGN-M3.md` §28.1「按大区的最后位置」一行的默认值），玩家下线再上线回到大区出生点。由本分册接上：保存事务里 upsert 本分片大区的 `character_location` 并写 `current_region`，载入时读本大区那一行作出生点，宿主把本分片的 `region_id` 交给玩家存储；改 `API-PROD-004`、`REQ-PROD-005`、§7、§9、§25 V1 行与 `PlayerStore`，约 1.5 天（`docs/DESIGN-M3.md` 那一行的自估）。§23 R2 的进入门槛含这一项 | Bearisbug | `docs/DESIGN-M3.md` §23 内测 A 环（1 个大区 1 个频道、白名单 50 人，即本分册 §23 R2）开放之前 |
+| 待办 | 跨大区送回没做（v0.9.63 起同一大区里的最后位置由 `REQ-PROD-047` 的 `synaxis:player` 记，挂地图的分片同一 `map_id`、同一 `build_id`、存档位置落在本分片 `bounds` 里才用，否则回本大区出生点）：V1 建的 `character_location` 与 `character.current_region` 仍不读写（用户 2026-10-11 定这一轮不写），玩家在 A 大区下线、上线时连到 B 大区的分片，留在 B 的出生点。要做时：保存事务里写 `current_region`（或改用 `character_location` 每大区一行），登录进世界后按存档的大区多一次转服送回（登录多 2～3 s），并要一个固定的入口地址（`docs/DESIGN-M3.md` §28.1「按大区的最后位置」一行的代价）；改 `API-PROD-004`、`API-PROD-032`、§7、§9 与 `PlayerStore`。§23 R2 只有一个大区，不含这一项 | Bearisbug | 两个及以上大区对真人开放之前（`docs/DESIGN-M3.md` §23 的内测 A、B 都只有一个大区） |
+| 风险 | 断开时光标上的物品不保存（v0.9.63，拍板只存 46 格）：玩家拿着光标物品断开时，登出快照先于 `Player#remove` 里关闭界面的那次丢弃；开着容器时引擎把光标物品经 `Player#dropItem` 丢出，而这时玩家已在 §11.3 `saving`、冻结，根节点取消丢弃，引擎改把它放回背包，放回发生在快照之后，这件物品随断开丢失；开着自己背包时光标物品不丢也不放回，同样丢失。默认接受（原版同样只在容器关闭时处理光标）；出现玩家申诉或插件依赖光标暂存时，在捕获里把光标物品并进第一个空格 | Bearisbug | 第一次相关申诉时 |
 | 风险 | 管理接口不做 TLS，服务端也从不先证明自己：令牌在升级请求里由客户端先发出。① 网络一面：令牌在内网上明文传输，能在同一网段抓包的主机能拿到令牌，进而停服、封人；默认只绑回环地址，绑到内网地址是运维的决定。② 同机一面：回环挡不住同机的其他系统用户。回环上 1024 及以上的 TCP 端口没有属主校验，谁先 bind 就是谁的；分片不在监听的窗口里（发版重启、崩溃后拉起、看门狗判死、`drain` 之后 `stop`、拒启），同机任何非特权用户都能先占住 `127.0.0.1:25585`，收下运维客户端或健康检查在第一次写入里带出的 `Authorization: Bearer <令牌>`，再放开端口让分片起来。缓解是 §23 的部署前提（v0.9.41）：开管理接口的主机上没有不受信任的系统用户，或者每个分片有独立的网络命名空间（别人的 127.0.0.1 不是这个分片的）；令牌每分片一个，拿到一个只开一个分片。默认端口不变 | Bearisbug | 管理接口要绑回环以外的地址时，在前面放终结 TLS 的反向代理，或按 §28.1 Q10 换库；部署前提做不到（裸机或 systemd 部署、同机有别的用户）又要开管理接口时，把 `synaxis.app.management.bind` 改到 1024 以下的回环端口（如 `127.0.0.1:585`，Linux 上非 root 进程绑不上；前提是主机网络命名空间的 `net.ipv4.ip_unprivileged_port_start` 仍是默认的 1024，部署时用 `sysctl` 核对。这个值每个网络命名空间各一份，Docker 把容器的设为 0，那种部署已满足 §23 的另一条前提），服务单元加 `AmbientCapabilities=CAP_NET_BIND_SERVICE` |
 | 已决 | `gm.role` 的授予范围（v0.7.1）：玩家发送者只能授予或收回每个节点都被自己的有效节点覆盖的角色，带 `*` 的角色只有持有 `*` 的发送者能动，控制台不受限（`API-PROD-010`）；代价是给别人发高权限角色只能由持有同等节点的 GM 或控制台做。切换条件：运维需要一个能发出高于自己权限角色的代理人时，改为按角色单独配置「可授予的角色」名单，而不是放开这条限制 | Bearisbug | — |
 | 已决 | PostgreSQL 16 的 `pg_archivecleanup` 不删 `.backup` 标签文件，每份基础备份留一个约 200 B 的文件，不清理 | Bearisbug | — |
@@ -3207,3 +3510,7 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | `docs/DESIGN.md`、`docs/TEST.md` | `docs/DESIGN.md` §16「对端停止读取，服务端断开该连接」一行；`docs/TEST.md` `TC-GAME-069` 第 2、5 步 | 按本分册 v0.9.52（§16「断开与出站队列」，`662f645ea4`）：写线程看到连接下线后经 `PlayerSocketConnection#flushRemaining` 写空出站队列再关 channel，写之前起同一条 `Syn-Socket-Closer`（`startCloser`），关闭线程从此有两个起点：断开方的 `closeOnceFlushed` 与写线程的 `flushRemaining`。① `docs/DESIGN.md` 那一行参与方加「写线程自己（写循环捕到非 IO 异常、写线程上的 `PlayerPacketOutEvent` 监听器踢人）」；依据列「写线程自己调 `disconnect` 时不起这条线程，它退出时自己关」改为「写线程自己调 `disconnect` 时不在那里起这条线程，由它退出前的 `flushRemaining` 起，同样 1 s 后关」。② `TC-GAME-069` 第 2 步只把 `closeOnceFlushed` 首行的 `==` 改成 `!=` 已红不了：对端不读时，写线程的阻塞写隔几秒仍会写进几个字节、回到写循环（本机实测断开后约 4.5 s），随即进 `flushRemaining` 起关闭线程，`SlowReaderIntegrationTest` 约 5.5 s 关掉 channel、照绿（`c0c75ecc59` 上同一反证仍红）。反证改成把 `startCloser` 首行的 `compareAndSet(false, true)` 改为 `compareAndSet(true, true)`（哪里都起不了关闭线程），红在 `SlowReaderIntegrationTest.java:80` 同一句（`docs/test-runs/RUN-071/ops/07-rework.txt`）；第 5 步用的是第 2 步那份工作副本，跟着改。「不要删 `disconnect` 里那句 `closeOnceFlushed();`」的提醒照旧成立 | 光照会话（`TC-GAME-*` 不归本会话；随 RUN-071 合入 `main` 之后） |
 | 光照会话的测试夹具 | `server-app` 测试包 `app/shard` 的 `LightShardFixture#main`（第 113 行起）与 `FarViewShardFixture#main`（第 149 行起）注释「What ShardMain writes, where the command line said nothing」下的一段 `setIfAbsent` | 本分册 v0.9.53（`API-PROD-003`「分片宿主的两项默认值」）起 `ShardMain` 还写连接闸门两项，这两段只照抄了线程提供者、线程数、区块视距、每 tick 区块数与可见实体上限五项。照 `ShardMain` 应得：`LightShardFixture` 不给 `synaxis.max-players`，L0 仍是引擎的 1,024，只缺 L4 `synaxis.max-joins-per-tick=5`；`FarViewShardFixture` 的 `synthetic`、`break-sha`、`half` 三种模式同上，`baked` 模式的频道 `r0-c1` `capacity` 500，真分片由 `Main` 步骤 (1) 写 `max-players=500`，得 L0 1,500、L4 5，夹具不调 `Main#applyDirectory`，连 `max-players` 也不写，跑的是 L0 1,024、L3 与 L4 不限。容器验收只连一个真客户端，这几项不影响结果。建议两个夹具都补 `setIfAbsent("synaxis.max-joins-per-tick", "5")`；`baked` 的 L0 跟着 `Main` 写的容量走，不属于 `ShardMain` 写的那段，在注释里写明夹具不含它即可。不补的话，就在两处注释里写明夹具不含闸门两项 | 光照会话 |
 | `docs/DESIGN.md` | §5 `REQ-001`「Gradle 9.7.1 钉死」、§6 架构图 `gradle` 节点「Gradle 9.7.1 · JDK 25」、§17 依赖表「Gradle 9.7.1 + 阿里云镜像 init 脚本」一行 | 本分册 v0.9.61 合入 Dependabot PR #10，根构建的 Gradle wrapper 由 9.7.1 升到 9.8.0（`gradle/wrapper/gradle-wrapper.properties`），三处改为 9.8.0（`README.md` 第 22 行同一处由本分册 v0.9.62 改）；`client-fabric` 的独立 wrapper 仍是 9.7.1，`docs/DESIGN-M2.md` §17 Fabric Loom 一行不用改 | 光照会话 |
+| `server-app` 包 `app/shard` 的 `ShardWorld` | 加三个公开方法 `public String mapId()`、`public String buildId()`、`public SynxManifest.Bounds bounds()` | 本分册 v0.9.63 `API-PROD-032`：`Main` 步骤 (5) 用它们构造挂地图分片的位置规则 `PositionRule.MapShard`，并按它们给 `synaxis:player` 记世界标识。`mapId()`、`buildId()` 返回地图版本清单的 `SynxManifest#mapId`、`#buildId`；`bounds()` 返回本分片服务的范围，即现有私有方法 `bounds(manifest, directory)` 的结果（目录模式是本大区的，否则是整个地图版本的）。现有公开接口不够：内存存储的挂地图分片没有 `ShardDirectory`，`map_id` 与 `bounds` 只在 `ShardWorld` 私有的 `manifest` 里；目录模式下虽可由 `ShardDirectory#mapId()`、`#ownRegion().bounds()` 与 `ShardSettings#mapBuild()` 拼出，那是第二份「本分片服务哪块」的判断，会与 `ShardWorld#bounds` 漂移。`Main` 里挂地图分片注册 `synaxis:player` 的那一支等这三个方法落地再合；可玩项 P11 用的 P10 job 不受影响（转服本身不依赖这一段） | 光照会话 |
+| `docs/DESIGN-M3.md` | §28.1「按大区的最后位置与 `current_region` 是否随 M3-E 接上」一行 | 改为「同大区记位置已做，跨大区送回待做」：本分册 v0.9.63（`REQ-PROD-047`、`API-PROD-032`，用户 2026-10-11 拍板）由宿主数据段 `synaxis:player` 记位置，挂地图的分片同一 `map_id`、同一 `build_id`、存档位置落在本分片 `bounds` 里才用，否则回本大区出生点，凭票据到达照旧用门框落点；`character_location` 与 `current_region` 仍不读写；跨大区送回的待办在本分册 §28.2 | 光照会话 |
+| `docs/DESIGN-M3.md` | §28.2 交接行「交给生产就绪会话的改动（M3 v0.44）」（正式档的内存判据） | 转已完成：本分册 v0.9.63 按 (b) 改了 §15 tick 预算行（200 人那一档）与 `capacity` 一段、§19「200 人稳态与 500 人两档达标或降容量」场景、§26 第 5 波的退出条件，§28.1 加 Q13 已决；启动脚本的默认堆不改 | 光照会话 |
+| `docs/DESIGN-M3.md`（与将来的玩法架构分册） | M3-E 与地图分片的玩法边界 | 宿主默认玩法层（`API-PROD-031`：同实例聊天、丢弃与拾取、近战、虚空伤害、初始物品、训练假人）本轮不挂挂地图的分片（`ADR-PROD-017`）；将来挂不挂、挂哪几项，由后续的玩法架构分册（暂名 DESIGN-PLAY，尚未建）定 MMO 规则时决定。在那之前挂地图的分片上聊天收件人仍为空、拾取不进背包、没有伤害，与 v0.9.62 相同；需要的话在该分册 §28.1 登一行 Open Question 指向这里 | 光照会话（登记）；玩法架构分册（决定） |

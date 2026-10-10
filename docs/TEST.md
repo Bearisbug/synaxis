@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-11 | 分支 `prod/r073-B`（基线 `15b5487edc`），跟进 `docs/DESIGN-PROD.md` v0.9.63（RUN-073 组 B：`list` 不要求节点、未知命令的回执，`REQ-PROD-012`），设计已覆盖、不占版本号，不登执行轮次（集成轮登记 RUN-073）；证据 `docs/test-runs/RUN-073/commands/`。**新增 §4「生产就绪 · RUN-073：commands」三条 `TC-PROD-715`～`TC-PROD-717`**，每条带实跑过的修前红或反证：没有节点的玩家执行并看到 `list`，玩家的 `list` 不写 `EVT:gm_command`、控制台的照旧写（715）；玩家的未知命令回一条 `synaxis:command-unknown`，参数是第一个词、不带前导 `/`，不写日志、不进台账，没有节点的 `stop` 照旧静默取消，控制台只留原先那行 INFO（716，第 1 步用 `javap` 核对 26.2 客户端对命令树里没有的根照样发包，可玩项剧本 G7 按设计验这条回执）；两份语言文件有新键，翻译键门禁 61 个键（717）。`CommandsIntegrationTest` 10 → 12 条，新方法在类末尾，旧用例引的行号不变。**改**：`TC-PROD-241` 标题与第 1 步，没有节点的 Ruffian 看不到的名单去掉 `list`；§5 加一行 | Bearisbug |
 | 2026-10-11 | M3-S 合入 `main` 前的文档收口，跟进 `docs/DESIGN-M3.md` v0.44。**`TC-WORLD-120` 第 2 步**的预期与 `TC-WORLD-141` 同一写法：F19 行在两核 runner 上因 ready false 记 FAIL，只判第二次请求带 Range、回 206（RUN-069 run `38065240160` 的读数就是这样）。**`TC-WORLD-081` 第 1 步**跟进该分册 §28.1 正式档内存判据（用户 2026-10-11 选 (b)）：分片起服时加 `-Xlog:gc`，判据仍引 §19 那条场景（RSS ≤ 堆上限 + 1 GiB，加 GC 判据） | Bearisbug |
 | 2026-10-11 | M3-S 合并验收（RUN-069）在 GitHub Actions 恢复之后补跑完，跟进 `docs/DESIGN-M3.md` v0.43。**`TC-WORLD-117` 前置**：写明工作流的 `a1-synthetic` 只跑 `v1,v1-writable,tiers,counter-radius`，F8、F10 与第 4 步的 baked 夹具直连不在矩阵里；`walk` 反证写明在单独的临时分支上跑（工作流加只对该分支生效的 `push` 触发，跑完删分支）与 RUN-069 的读数。**`TC-WORLD-143` 第 1 步**：非回环明文 http 的 WARN 由「合并树上第一次看」改为 RUN-069 读到的原文。**§3** 安全修复一条去掉「未验证，RUN-069 是第一轮」。**§7** `TC-WORLD-119`、`TC-WORLD-120` 反证一条补上合并树的复跑。判据都没改 | Bearisbug |
 | 2026-10-07 | M3-S 合并验收复核（集成分支 `m3s/integrate` 合入 `main` `8220ef9d0f`，即 RUN-072），跟进 `docs/DESIGN-M3.md` v0.42、`docs/DESIGN.md` v0.45、`docs/DESIGN-M2.md` v0.63，RUN-069 随之补登（证据 `docs/test-runs/RUN-069/integrate/10`～`12`）。**合并冲突**：`TC-PROD-671` 第 1、2 步两边各改了条数，合起来是 3 个类 12 个（4、1、7）与 7 个类 55 个（4、11、3、11、3、8、15）。**`TC-WORLD-150`** 加第 4 步反证：`startDay` 不登记对齐任务，红在 `ShardWorldAssemblyTest.java:248`（`expected: <139829> but was: <139229>`），原第 4 步改为第 5 步；第 3 步的「再还原」改成 `git checkout -- <SW>`；§19 场景对照表「丢掉的 tick 由对齐补回」一行的步骤加第 4 步。**`TC-WORLD-117` 第 3 步与 `TC-WORLD-143` 第 1 步**：`v1` 从进世界起把客户端的天空定在正午 6000（地图分片的日夜按挂钟走，`bin/server-shard` 上 F6、F7 比的两张图最多隔一整天），F6 行尾多一段 `client day time 6000 at the shots before, 6000 after`，F7 另有一行 `#` 记重连后的日间时间。**`TC-PROD-613`** 前置加一句：M3-S 把权限规则搬进 `FileTrust.java`，第 2～5 步照字面做不了，改写归生产就绪会话，改写之前登记跳过 | Bearisbug |
@@ -5860,13 +5861,13 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：确认 `ConsoleSender.java`、`Main.java` 没有残留改动。
 
-#### `TC-PROD-241` 节点决定玩家能否执行、能否在补全里看到内置命令，`permissionLevel` 不授权；`kick` 补全在线玩家名，每次执行一条 `EVT:gm_command` — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+#### `TC-PROD-241` 节点决定玩家能否执行、能否在补全里看到 `list` 以外的内置命令，`permissionLevel` 不授权；`kick` 补全在线玩家名，每次执行一条 `EVT:gm_command` — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
 
 前置：工作副本干净。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `CommandsIntegrationTest`，看 `theNodeDecidesWhetherAPlayerRunsAndSeesACommandOfTheHost` | 通过：测试给的 `Permissions` 只让 Keeper 持有 `synaxis.command.kick`、`synaxis.command.list`；Ruffian 没有节点，`setPermissionLevel(4)`。Keeper 出生时收到的命令树含 `kick`、`list`、不含 `stop`；Ruffian 的命令树六条内置命令一条都没有。Ruffian 执行 `kick Keeper`、Keeper 执行 `stop` 都得 `CANCELLED`（引擎的前置条件拒绝）。Keeper 发补全 `kick Ru` 收到恰好一个 `TabCompletePacket`，候选只有 `Ruffian`。Keeper 执行 `kick Nobody`、`kick Ruffian spamming the chat` 都得 `SUCCESS`，Ruffian 收到一个 `DisconnectPacket`，文本 `spamming the chat`；台账两条 `gm_command`：`player <Keeper> kick Nobody null no_target` 与 `player <Keeper> kick Ruffian spamming the chat <Ruffian> ok` |
+| 1 | 跑 `CommandsIntegrationTest`，看 `theNodeDecidesWhetherAPlayerRunsAndSeesACommandOfTheHost` | 通过：测试给的 `Permissions` 只让 Keeper 持有 `synaxis.command.kick`、`synaxis.command.list`；Ruffian 没有节点，`setPermissionLevel(4)`。Keeper 出生时收到的命令树含 `kick`、`list`、不含 `stop`；Ruffian 的命令树里 `list` 以外的六条内置命令一条都没有（`list` 不要求节点，v0.9.63；它出现在没有节点的玩家的命令树里由 `TC-PROD-715` 验）。Ruffian 执行 `kick Keeper`、Keeper 执行 `stop` 都得 `CANCELLED`（引擎的前置条件拒绝）。Keeper 发补全 `kick Ru` 收到恰好一个 `TabCompletePacket`，候选只有 `Ruffian`。Keeper 执行 `kick Nobody`、`kick Ruffian spamming the chat` 都得 `SUCCESS`，Ruffian 收到一个 `DisconnectPacket`，文本 `spamming the chat`；台账两条 `gm_command`：`player <Keeper> kick Nobody null no_target` 与 `player <Keeper> kick Ruffian spamming the chat <Ruffian> ok` |
 | 2 | 反证有齿（按原版 op 等级放行）：`HostCommands#command` 的条件 `\|\| permissions.has(player, node));` 改为 `\|\| permissions.has(player, node) \|\| player.getPermissionLevel() == 4);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:240`：`permission level 4 is no node ==> expected: <CANCELLED> but was: <SUCCESS>`。还原后复绿 |
 
 后置：确认 `HostCommands.java` 没有残留改动。
@@ -10169,6 +10170,53 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · RUN-073：commands（组 B：无节点玩家的 `list` 与未知命令的回执）
+
+对应 `REQ-PROD-012`（`docs/DESIGN-PROD.md` v0.9.63：`API-PROD-011`「`list` 与未知命令」一条，§10 `API-PROD-011` 一行，§14 `synaxis:command-unknown`，§19「没有角色的玩家能执行 list，未知命令有回执」场景，§20 `EVT:gm_command` 一行，§19 可玩项矩阵里的可玩项 P7）。起因是用户 2026-10-11 的拍板「服务端核心完全正常游玩」：内存存储的进程里玩家一律没有节点（`HostPermissions#withoutDatabase`），`list` 原先要 `synaxis.command.list`，谁都执行不了；玩家输入不存在的命令时引擎判 `UNKNOWN`，宿主没设回调，客户端什么也收不到。改动：`HostCommands#list` 不设 condition，玩家执行的不写 `EVT:gm_command`，控制台执行的照旧写；`HostCommands#register` 调 `CommandManager#setUnknownCommandCallback(HostCommands::unknown)`，回调只回玩家；模组两份语言文件加 `synaxis:command-unknown`。`Main` 不动。
+
+测试：`server-app` 的 `CommandsIntegrationTest` 加 2 条（10 → 12 条），都加在类末尾，前面的行号不动；`TC-PROD-240`～`TC-PROD-243`、`TC-PROD-252` 里写的该类条数 10 按 12 读，红行不变。`theNodeDecidesWhetherAPlayerRunsAndSeesACommandOfTheHost` 里「没有节点的玩家看不到」的名单去掉 `list`（`TC-PROD-241` 第 1 步随之改）。测试助手 `LogCapture` 加 `rootOfThisThread()`：挂在根日志器上，过滤器在入表之前挡掉别的线程的行，表只由调用线程写，所以并行跑的别的测试类写的行进不来。「跑该类」即 `./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CommandsIntegrationTest' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `server-app/build/test-results/test/TEST-io.github.bearisbug.synaxis.app.CommandsIntegrationTest.xml`；「跑门禁」即 `./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest'` 加同样三个参数。两者可以在一次 Gradle 里跑，两个任务各带自己的 `--rerun --tests`，反证跑时再加 `--continue`。路径简写：`<HC>` = `server-app/src/main/java/io/github/bearisbug/synaxis/app/command/HostCommands.java`，`<CI>` = `server-app/src/test/java/io/github/bearisbug/synaxis/app/CommandsIntegrationTest.java`，`<ZH>` = `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json`。「改动前」指 `<HC>` 取本组基线 `15b5487edc` 的（`git checkout 15b5487edc -- <HC>`，跑完 `git checkout HEAD -- <HC>`）；反证是临时改一处、跑、看红、`git checkout HEAD -- <文件>`，还原后与提交的文件逐字节相同，复绿即第 1 步那次运行。`<HC>` 里写反证时注意：本构建把 Error Prone 的 `UnnecessarilyFullyQualified` 与 `PatternMatchingInstanceof` 判为错误，写全名 `org.slf4j.LoggerFactory` 或在 `instanceof` 之后再强转 `(Player) sender` 都编不过。行号按分支 `prod/r073-B` 的代码提交。都在默认模式下跑；严格与严格 grid 交给 GitHub Actions 的全量门禁。不需要数据库前置。证据 `docs/test-runs/RUN-073/commands/`。
+
+#### `TC-PROD-715` 没有节点的玩家能执行并看到 `list`；玩家的 `list` 不写 `EVT:gm_command`，控制台的照旧写一条（§19 场景前半） — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑该类与门禁（一次 Gradle），看 `aPlayerWithoutNodesSeesAndRunsListAndOnlyTheConsoleWritesAGmCommand` | 该类 `tests="12"` 0 失败（本条约 0.07 s）。内存存储，测试给的 `Permissions` 不给 Newcomer 任何节点。Newcomer 执行 `list` 得 `SUCCESS`，恰收到一个 `SystemChatPacket`：`synaxis:command-list`，参数 `1`、`Newcomer`；出生时收到的命令树含 `list`；台账回调没有 `gm_command`。随后控制台执行 `list`，台账回调恰一条，`actor` 是 `console`、`command` 是 `list`。证据 `03-green-after-the-fix.txt` |
+| 2 | 改动前的红：`<HC>` 取基线的，跑该类，再还原 | `12 tests completed, 2 failed`：本条红在 `<CI>:475`，`list asks for no node, as the vanilla /list asks for permission level 0 ==> expected: <SUCCESS> but was: <CANCELLED>`（引擎按前置条件不满足取消）；另一条见 `TC-PROD-716` 第 3 步。证据 `02-red-before-the-fix.txt` |
+| 3 | 反证有齿（玩家的 `list` 照写台账）：`<HC>:158` 的 `if (!(sender instanceof Player)) record(sender, context.getInput(), null, "ok");` 改为 `record(sender, context.getInput(), null, "ok");`，跑该类，再还原（与 `TC-PROD-716` 第 4 步、`TC-PROD-717` 第 2 步同一次运行，三处在不同的测试或模块里，互不遮挡） | 本条红在 `<CI>:480`，`a player's list is no GM command ==> expected: <[]> but was: <[{actor=player, actor_uuid=<Newcomer 的 UUID>, command=list, target=null, result=ok}]>`；该类 `12 tests completed, 2 failed`，另一条是 `TC-PROD-716` 第 4 步。证据 `04-counterproofs-a-b-c.txt` |
+| 4 | 还原后 `git status --short` 不列 `<HC>`（与提交的文件逐字节相同） | 第 1 步的结果即复绿 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-716` 玩家的未知命令回一条 `synaxis:command-unknown`（输入的第一个词，不带前导 `/`），不写日志、不进台账；存在但不对他放行的命令照旧静默取消；控制台的未知命令只有原先那一行 INFO（§19 场景后半） — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。这条验「根命令不存在」的回执，前提是 26.2 客户端对它收到的命令树里没有的根照样发包：服务端发给没有节点的玩家的命令树里既没有 `synaxisnosuchcommand`，也没有 `stop`，客户端若在本地拦下，这条回执到不了真客户端，可玩项剧本的 G7（`docs/DESIGN-PROD.md` `API-PROD-026`）就得改成验「存在但无权限的命令」的回执。第 1 步核对这个前提，结论是客户端照样发包，G7 按设计验 `synaxis:command-unknown`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 只读核对 26.2 客户端：取 Mojang 版本清单里 26.2 的客户端 jar（`downloads.client`，sha1 `2dc72797acbc1b63fc16a11c4ac393605f453754`，39,193,383 B），JDK 25 的 `javap -c -p` 看 `net.minecraft.client.gui.screens.ChatScreen#handleChatInput`、`net.minecraft.client.multiplayer.ClientPacketListener#sendCommand` 与 `#sendUnattendedCommand`、`net.minecraft.network.chat.SignableCommand#of`。Loom 缓存里的 `minecraft-merged.jar`（`~/.gradle/caches/fabric-loom/26.2/`）本机已没有；这几个类只在客户端里，合并 jar 里是同样的字节码 | 聊天屏把以 `/` 开头的一行去掉 `/` 交给 `sendCommand`，之前不做任何检查；`sendCommand` 拿收到的命令树 `parse` 一遍，只为找要签名的参数，参数为空就无条件发 `ServerboundChatCommandPacket`（引擎的 `ClientCommandChatPacket`）。根不在树里时解析结果没有节点，`SignableCommand#of` 收不到参数，照发。查解析错误与权限的 `verifyCommand` 只在 `sendUnattendedCommand` 上，那是点击事件与对话框发命令的路径。同一路径也说明没有节点的玩家打 `/stop` 同样发到服务端（第 2 步验它静默取消）。摘录见证据 `01-client-sends-unknown-commands.txt` |
+| 2 | `TC-PROD-715` 第 1 步那次运行，看 `aPlayersUnknownCommandIsAnsweredWithItsFirstWordAndTheConsoleOnlyLogsIt` | 通过（本条约 0.15 s）。Newcomer 没有节点；挂上 `LogCapture.rootOfThisThread()` 之后依次执行：`stop` 得 `CANCELLED`，`synaxisnosuchcommand` 与 `/frobnicate now` 都得 `UNKNOWN`（玩家打 `//frobnicate now` 时包里就是 `/frobnicate now`）。Newcomer 恰收到两个 `SystemChatPacket`：`synaxis:command-unknown` 参数 `synaxisnosuchcommand`，`synaxis:command-unknown` 参数 `frobnicate`；`stop` 没有回执。测试线程上 INFO、WARN、ERROR 都没有行，台账回调没有 `gm_command`，停机阶段仍是 `RUNNING`。之后 `Main.runConsoleCommand` 输入 `synaxisnosuchcommand` 得 `UNKNOWN`，`Main` 的日志恰一行 INFO `Unknown command: synaxisnosuchcommand`，`ConsoleSender` 一行也没写 |
+| 3 | 改动前的红（`TC-PROD-715` 第 2 步那次运行） | 本条红在 `<CI>:505`，`one answer per unknown command naming its first word without the slash, none for stop ==> expected: <[synaxis:command-unknown synaxisnosuchcommand, synaxis:command-unknown frobnicate]> but was: <[]>`：没设回调，引擎判出 `UNKNOWN` 后什么都不发 |
+| 4 | 反证有齿（控制台也回执）：`<HC>:169` 的 `if (!(sender instanceof Player)) return;` 改为 `if (Boolean.getBoolean("proof.never")) return;`，跑该类，再还原（`TC-PROD-715` 第 3 步那次运行） | 本条红在 `<CI>:518`，`the console gets no answer on top of that line ==> expected: <[]> but was: <[Unknown command: synaxisnosuchcommand]>`：`ConsoleSender` 把回执写成回退文本，与 `Main` 那一行 INFO 重复 |
+| 5 | 反证有齿（回执带整行输入）：`<HC>:174` 的 `space < 0 ? command : command.substring(0, space));` 改为 `space < 0 \|\| !Boolean.getBoolean("proof.never") ? command : command.substring(0, space));`，跑该类，再还原 | `12 tests completed, 1 failed`：本条红在 `<CI>:505`，`… but was: <[synaxis:command-unknown synaxisnosuchcommand, synaxis:command-unknown frobnicate now]>`。证据 `05-counterproof-d.txt` |
+| 6 | 反证有齿（回调写日志）：`<HC>:169` 改为 `if (!(sender instanceof Player player)) return;`，其后加一行 `LoggerFactory.getLogger(HostCommands.class).info("Unknown command from {}: {}", player.getUsername(), input);`，并加 `import org.slf4j.LoggerFactory;`，跑该类，再还原 | `12 tests completed, 1 failed`：本条红在 `<CI>:509`，`no log line at INFO ==> expected: <[]> but was: <[Unknown command from Newcomer: synaxisnosuchcommand, Unknown command from Newcomer: /frobnicate now]>`。证据 `06-counterproof-e.txt` |
+| 7 | 还原后 `git status --short` 不列 `<HC>` | 第 2 步的结果即复绿 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-717` 模组两份语言文件都有 `synaxis:command-unknown`，翻译键门禁核对 61 个键 — 对应 `REQ-PROD-012`、`REQ-PROD-041` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `TC-PROD-715` 第 1 步那次运行，看门禁 | `TranslationKeyGateTest` `tests="2"` 0 失败；`<system-out>` 有 `translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out`：基线 60 个键加 `synaxis:command-unknown`（`en_us.json` 为 `Unknown command: %s`，`zh_cn.json` 为 `未知命令：%s`）。`TC-PROD-430` 第 1 步写的 60 由集成轮按合入后的实跑改 |
+| 2 | 反证有齿：删掉 `<ZH>` 的 `synaxis:command-unknown` 一行，跑门禁，再还原（`TC-PROD-715` 第 3 步那次运行） | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:91`：`Problems of the translation key gate (1):` 之后一行 `zh_cn.json has no text for synaxis:command-unknown (from io.github.bearisbug.synaxis.app.command.HostCommands)` |
+| 3 | 还原后 `git status --short` 不列 `<ZH>` | 第 1 步的结果即复绿 |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G 与 M3-S）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -10243,6 +10291,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 vehicle 组，载具移动包驶向未载入的区块（`REQ-PROD-013`，v0.9.59）→ TC-PROD-692；动了 `PlayerVehicleListener#vehicleMoveListener` 就跑 TC-PROD-692 与 TC-PROD-667、TC-PROD-668（同一个类）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 gate 组，分片闸门两项的配置文件优先（`REQ-PROD-001`，v0.9.60）→ TC-PROD-695；动了 `ShardMain#gateDefaults` 的空值判断、`Main` 读 `synaxis.properties` 的时机或步骤 (1) 调 `gateDefaults` 的位置就跑它，连同 TC-PROD-669、TC-PROD-670、TC-PROD-672。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 flake 组，`ConnectionGateSocketTest` 的异步断言（`REQ-PROD-001`，只改测试）→ TC-PROD-697、TC-PROD-698；动了 `ConnectionManager#transitionLoginToConfig` 里发 `SetCompression` 与派发 `AsyncPlayerPreLoginEvent` 的先后、`Server#loginTimeoutWatch` 的判据，或往这个类加数登录事件、用短握手超时的用例，就严格 grid 跑这个类。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-073 commands 组，无节点玩家的 `list` 与未知命令的回执（`REQ-PROD-012`，v0.9.63）→ TC-PROD-715～TC-PROD-717；动了 `HostCommands#list`、`HostCommands#unknown`、`register` 里设回调的那一行，或引擎 `CommandManager#execute` 判出 `UNKNOWN` 之后调回调的那几行，就跑 TC-PROD-715、TC-PROD-716（同一个类）与 TC-PROD-240～TC-PROD-243；加减或改名宿主的回执键就跑 TC-PROD-717 与 TC-PROD-430；升 Minecraft 版本时按 TC-PROD-716 第 1 步重新核对客户端对命令树里没有的根是否照样发包。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-038、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级；真机用例（TC-WORLD-123、TC-WORLD-124、TC-WORLD-144～TC-WORLD-149）等用户的机器，单独成轮。

@@ -1,0 +1,28 @@
+# Counterproofs a, b, c in one Gradle run (default mode, --continue), each in a different test or module:
+#  a) HostCommands.java:158  'if (!(sender instanceof Player)) record(sender, context.getInput(), null, "ok");' -> 'record(sender, context.getInput(), null, "ok");'
+#  b) HostCommands.java:169  'if (!(sender instanceof Player)) return;' -> 'if (Boolean.getBoolean("proof.never")) return;'
+#  c) zh_cn.json: the line of synaxis:command-unknown deleted
+# zsh ~/.claude/r073/gradle.zsh <worktree> fix-B :server-app:test --rerun --tests '...CommandsIntegrationTest' :architecture-tests:test --rerun --tests '...TranslationKeyGateTest' --continue
+
+ client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json       | 1 -
+ .../java/io/github/bearisbug/synaxis/app/command/HostCommands.java    | 4 ++--
+ 2 files changed, 2 insertions(+), 3 deletions(-)
+
+CommandsIntegrationTest > aPlayersUnknownCommandIsAnsweredWithItsFirstWordAndTheConsoleOnlyLogsIt(Env) FAILED
+    org.opentest4j.AssertionFailedError at CommandsIntegrationTest.java:518
+CommandsIntegrationTest > aPlayerWithoutNodesSeesAndRunsListAndOnlyTheConsoleWritesAGmCommand(Env) FAILED
+    org.opentest4j.AssertionFailedError at CommandsIntegrationTest.java:480
+> Task :architecture-tests:test FAILED
+TranslationKeyGateTest > everyKeyTheServerCanSendHasTextInBothLanguageFiles() FAILED
+    org.opentest4j.AssertionFailedError at TranslationKeyGateTest.java:91
+2 tests completed, 1 failed
+> Task :server-app:test FAILED
+12 tests completed, 2 failed
+BUILD FAILED in 10s
+
+<testsuite name="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" tests="12" skipped="0" failures="2" errors="0"  time="5.424">
+<failure message="org.opentest4j.AssertionFailedError: the console gets no answer on top of that line ==> expected: <[]> but was: <[Unknown command: synaxisnosuchcommand]>"
+<failure message="org.opentest4j.AssertionFailedError: a player's list is no GM command ==> expected: <[]> but was: <[{actor=player, actor_uuid=c1a14695-52c3-457f-a748-292077880319, command=list, target=null, result=ok}]>"
+<testsuite name="io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest" tests="2" skipped="0" failures="1" errors="0"  time="2.245">
+<failure message="org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):\nzh_cn.json has no text for synaxis:command-unknown (from io.github.bearisbug.synaxis.app.command.HostCommands)\n ==> expected: <true> but was: <false>"
+# Restored with git checkout HEAD -- <both files>; git status --short then lists only this evidence file.

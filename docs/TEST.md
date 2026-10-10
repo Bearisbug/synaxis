@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-11 | 分支 `prod/r073-F`（基线 `15b5487edc`），跟进 `docs/DESIGN-PROD.md` v0.9.68（RUN-073 组 F：真客户端可玩项剧本与 CI），不登执行轮次，由集成轮登记 RUN-073；证据在 `docs/test-runs/RUN-073/F/`。**新增 §4「生产就绪 · RUN-073：组 F 真客户端可玩项剧本与 CI」`TC-PROD-729`～`TC-PROD-734`**：gametest 源集编译；`judge.sh` 判可玩项报告、假 sessionserver 两项按两台服务端的连接合计（改动前的脚本把全绿的运行判红、把缺了平坦核心连接的运行判绿，其余三个只因连接数红、不读 `playable.txt`）；`check-workflow.py` 核对 job `gametest` 的 24 条事实（改动前 24 条都缺）；服务端修复合入前的基线（草稿 PR #15：五行 PASS、十行 FAIL，FAIL 的证据都指向服务端缺的功能）；两次客户端启动是两个账号、G2 按启动分道（分道之前第二次启动的 `core G3` 挖到第一次挖过的格）；服务端修复合入后全绿（集成后执行）。**§5** 加一行回归映射 | Bearisbug |
 | 2026-10-11 | M3-S 合入 `main` 前的文档收口，跟进 `docs/DESIGN-M3.md` v0.44。**`TC-WORLD-120` 第 2 步**的预期与 `TC-WORLD-141` 同一写法：F19 行在两核 runner 上因 ready false 记 FAIL，只判第二次请求带 Range、回 206（RUN-069 run `38065240160` 的读数就是这样）。**`TC-WORLD-081` 第 1 步**跟进该分册 §28.1 正式档内存判据（用户 2026-10-11 选 (b)）：分片起服时加 `-Xlog:gc`，判据仍引 §19 那条场景（RSS ≤ 堆上限 + 1 GiB，加 GC 判据） | Bearisbug |
 | 2026-10-11 | M3-S 合并验收（RUN-069）在 GitHub Actions 恢复之后补跑完，跟进 `docs/DESIGN-M3.md` v0.43。**`TC-WORLD-117` 前置**：写明工作流的 `a1-synthetic` 只跑 `v1,v1-writable,tiers,counter-radius`，F8、F10 与第 4 步的 baked 夹具直连不在矩阵里；`walk` 反证写明在单独的临时分支上跑（工作流加只对该分支生效的 `push` 触发，跑完删分支）与 RUN-069 的读数。**`TC-WORLD-143` 第 1 步**：非回环明文 http 的 WARN 由「合并树上第一次看」改为 RUN-069 读到的原文。**§3** 安全修复一条去掉「未验证，RUN-069 是第一轮」。**§7** `TC-WORLD-119`、`TC-WORLD-120` 反证一条补上合并树的复跑。判据都没改 | Bearisbug |
 | 2026-10-07 | M3-S 合并验收复核（集成分支 `m3s/integrate` 合入 `main` `8220ef9d0f`，即 RUN-072），跟进 `docs/DESIGN-M3.md` v0.42、`docs/DESIGN.md` v0.45、`docs/DESIGN-M2.md` v0.63，RUN-069 随之补登（证据 `docs/test-runs/RUN-069/integrate/10`～`12`）。**合并冲突**：`TC-PROD-671` 第 1、2 步两边各改了条数，合起来是 3 个类 12 个（4、1、7）与 7 个类 55 个（4、11、3、11、3、8、15）。**`TC-WORLD-150`** 加第 4 步反证：`startDay` 不登记对齐任务，红在 `ShardWorldAssemblyTest.java:248`（`expected: <139829> but was: <139229>`），原第 4 步改为第 5 步；第 3 步的「再还原」改成 `git checkout -- <SW>`；§19 场景对照表「丢掉的 tick 由对齐补回」一行的步骤加第 4 步。**`TC-WORLD-117` 第 3 步与 `TC-WORLD-143` 第 1 步**：`v1` 从进世界起把客户端的天空定在正午 6000（地图分片的日夜按挂钟走，`bin/server-shard` 上 F6、F7 比的两张图最多隔一整天），F6 行尾多一段 `client day time 6000 at the shots before, 6000 after`，F7 另有一行 `#` 记重连后的日间时间。**`TC-PROD-613`** 前置加一句：M3-S 把权限规则搬进 `FileTrust.java`，第 2～5 步照字面做不了，改写归生产就绪会话，改写之前登记跳过 | Bearisbug |
@@ -10169,6 +10170,86 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · RUN-073：组 F 真客户端可玩项剧本与 CI
+
+对应 `REQ-PROD-030`、`REQ-PROD-046`、`REQ-PROD-047`，连带 `REQ-PROD-009`、`REQ-PROD-012` 的真客户端判据（`docs/DESIGN-PROD.md` v0.9.68：`API-PROD-026` 可玩项剧本一条与 §19 可玩项矩阵）。改动：gametest 源集新增 `PlayableClientGameTest`（入口表排在 `RegressionClientGameTest` 之后）与 mixin `DisconnectReasonMixin`，`RegressionClientGameTest` 七个辅助方法改为包内可见供它复用；`client-fabric/gametest-env/judge.sh` 加环境变量 `CORE_CONNECTIONS`；`.github/workflows/client-gametest.yml` 的 job `gametest` 加「Build the server's start script」（`:server-app:installDist`）与「Start server-app in core mode」两步、两个客户端步骤设 `SYNAXIS_PLAYABLE_SERVER=127.0.0.1:25566`、`CONNECTIONS_PER_LAUNCH` 改为 3（带 spike 4）、判定步骤传 `CORE_CONNECTIONS`、产物带 `playable.txt` 与平坦核心那台的日志和台账，加打印 `nproc`、`free -m` 一步，两个 job 的 `runs-on` 钉成 `ubuntu-24.04`。剧本只能在 GitHub Actions 上跑（本机不起真客户端）：本机只编译、跑判定脚本与工作流核对；RUN-073 组 A～D 的服务端修复合入之前的基线由草稿 PR #15 与两次手动触发跑（`TC-PROD-732`、`TC-PROD-733`），合入之后的全绿是 `TC-PROD-734`。可玩项 P1～P11 是用户口径的验收项，与仓库里的「P10 job」（两分片来回转服 100 次）不是一回事。
+
+约定：在 worktree 根执行；`<F>` 是 `docs/test-runs/RUN-073/F`，`<s>` 是一个空的临时目录。`.venv/bin/python` 是仓库 `.venv`（要 PyYAML）。`TC-PROD-729` 跑一次 Gradle（`client-fabric` 的 `compileGametestJava`），其余本机用例不需要数据库、服务端与客户端。GitHub Actions 的用例读 job「Run the client gametests」的日志（`gh run view <run> --log`）与产物 `client-gametest-configuration`（`gh run download <run>`）。
+
+#### `TC-PROD-729` gametest 源集编译通过（`API-PROD-026`） — 对应 `REQ-PROD-030`、`REQ-PROD-046`、`REQ-PROD-047` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；`~/.m2` 里有 `:protocol` 的 `dev` 版（根构建 `./gradlew :protocol:publishToMavenLocal`）。`client-fabric` 是独立构建、没有自己的 `gradle/init/`，镜像脚本用容器里那份 `client-fabric/gametest-env/mirror.init.gradle.kts`（只把阿里云 Maven Central 放在最前，不改 Loom 的 Mojang 与 Fabric 仓库；根目录的 `gradle/init/aliyun-mirror.init.gradle.kts` 设了 `PREFER_SETTINGS`，会让 Loom 加的项目级仓库失效）。编译用例没有反证，剧本的红绿在 `TC-PROD-732`～`TC-PROD-734`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `cd client-fabric && ./gradlew compileGametestJava --no-daemon --init-script gametest-env/mirror.init.gradle.kts`（JDK 25） | `BUILD SUCCESSFUL`；`build/classes/java/gametest/io/github/bearisbug/synaxis/game/client/gametest/` 下有 `PlayableClientGameTest.class` 与 `mixin/DisconnectReasonMixin.class`（证据 `<F>/01-compile.txt`，两次：`24a85974c8` 与分道之后的 `9202ae0150`） |
+
+后置：无。
+
+#### `TC-PROD-730` `judge.sh` 判可玩项报告，假 sessionserver 的两项按两台服务端的连接合计（`API-PROD-026`） — 对应 `REQ-PROD-030` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`<F>/judge-cases.sh <judge.sh>` 在 `mktemp -d` 的目录里造五次单次启动的运行（PR 的形态，`LAUNCHES=1 CONNECTIONS=3 CORE_CONNECTIONS=2`）：每次都有 8 行 PASS 的 `report.txt`、游戏模式那台的台账 3 条 `client_verified` 与 1 条 `unit_order_issued`、1 行 `reason=synaxis:protocol-error` 的踢人、假 sessionserver 日志；五次只差可玩项报告与 sessionserver 的连接数：`all-pass`（15 行 PASS、5 次连接）、`core-step-fails`（`core G4 FAIL`）、`rts-step-skipped`（`rts G10 SKIP`）、`no-playable-report`（没有 `playable.txt`）、`core-logins-missing`（只有 3 次连接）。脚本结束时删掉临时目录。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 红（改动前的判定脚本）：`git show 15b5487edc:client-fabric/gametest-env/judge.sh > <s>/judge.sh`，`bash <F>/judge-cases.sh <s>/judge.sh` | `all-pass exit=1`：`FAIL sessionserver join 5, expected 3`，旧脚本不知道平坦核心那台的 2 次连接；`core-step-fails`、`rts-step-skipped`、`no-playable-report` 也只红在这一项，`playable.txt` 一行都不读；`core-logins-missing exit=0`，少了平坦核心那台的连接反而判绿 |
+| 2 | 绿：`bash <F>/judge-cases.sh client-fabric/gametest-env/judge.sh` | `all-pass exit=0`，`ok …/playable.txt: core 10 PASS, rts 5 PASS`、`ok sessionserver join 5, expected 5`；`core-step-fails exit=1`，`FAIL …/playable.txt: core 9 PASS, rts 5 PASS, 1 FAIL or SKIP`，下一行列出 `core G4 FAIL evidence`；`rts-step-skipped exit=1`，同样列出 `rts G10 SKIP evidence`；`no-playable-report exit=1`：`FAIL no playable report at …` 与 `FAIL 0 playable reports for 1 launches`；`core-logins-missing exit=1`：`FAIL sessionserver join 3, expected 5` |
+| 3 | 反证有齿（等于把平坦核心那台的连接从合计里拿掉）：把 `judge.sh` 里 `logins=$((CONNECTIONS + ${CORE_CONNECTIONS:-0}))` 改成 `logins=$CONNECTIONS`，跑第 2 步，再还原 | 红在 sessionserver 两项：`all-pass exit=1`，`FAIL sessionserver join 5, expected 3`、`FAIL sessionserver hasJoined 200 5 of 5, expected 3 of 3`；`core-logins-missing exit=0`。还原后 `git diff client-fabric/gametest-env/judge.sh` 为空，第 2 步复绿（证据 `<F>/02-judge-red-green.txt`） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-731` job `gametest` 起平坦核心那台、两次客户端启动都跑剧本（`API-PROD-026`） — 对应 `REQ-PROD-030`、`REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`<F>/check-workflow.py <workflow> <fabric.mod.json> <mixins.json>` 只读三份文件，每条事实打一行 `ok <事实>` 或 `MISSING <事实>`，共 24 条：两个 job 钉 `ubuntu-24.04`；有一步打印 `nproc` 与 `free -m`；`installDist` 在起游戏模式那台之前；平坦核心那一步排在游戏模式那台之后，在 `$RUNNER_TEMP/playable` 里以 `installDist` 的启动脚本起、标准输入接 `/dev/null`、`JAVA_OPTS="-Xms1G -Xmx1G -XX:-AlwaysPreTouch"`、`core-mode=on`、端口 25566、指标绑 `127.0.0.1:0`、在线模式连本 job 的假 sessionserver、等 `server-app listening`、存储取默认；两个客户端步骤在它之后且都设 `SYNAXIS_PLAYABLE_SERVER=127.0.0.1:25566`；`CONNECTIONS_PER_LAUNCH` 为 3 / 4；判定步骤传 `CORE_CONNECTIONS=$((LAUNCHES * 2))`；产物带 `playable.txt`、平坦核心那台的 `server.log` 与 `logs/`；入口表里 `PlayableClientGameTest` 紧跟 `RegressionClientGameTest`；mixin 表有 `DisconnectReasonMixin`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 绿：`.venv/bin/python <F>/check-workflow.py .github/workflows/client-gametest.yml client-fabric/src/gametest/resources/fabric.mod.json client-fabric/src/gametest/resources/synaxis-gametest.mixins.json` | 24 行都以 `ok` 开头 |
+| 2 | 红（改动前）：`git show 15b5487edc:<三个路径>` 各写进 `<s>`，对它们跑第 1 步 | 24 行都以 `MISSING` 开头，第一行 `MISSING gametest runs on ubuntu-24.04`，末行 `MISSING DisconnectReasonMixin is registered` |
+| 3 | `actionlint .github/workflows/client-gametest.yml` | 只有 `TC-PROD-131` 第 1 步那 2 条提示（「Start server-app in game mode」的 `SC2034`、`SC2086`），与 `15b5487edc` 的条数相同；新加的步骤零提示（证据 `<F>/03-workflow-check.txt`） |
+
+后置：删掉 `<s>`；`git status --short` 无输出。
+
+#### `TC-PROD-732` 服务端修复合入前的基线：剧本走得通，红的都是服务端缺的功能（GitHub Actions，`API-PROD-026`） — 对应 `REQ-PROD-046`、`REQ-PROD-047`、`REQ-PROD-009`、`REQ-PROD-012`、`REQ-PROD-030` · 级别: 回归 · 执行者: AI
+
+前置：分支 `prod/r073-F`（基于 `15b5487edc`，只有本组的改动，没有 RUN-073 组 A～D 的服务端修复），草稿 PR #15「RUN-073 F baseline (do not merge)」触发「Client gametest」（`pull_request`：`LAUNCHES=1`，只起生产 mod jar 一次，走北道）。读的是 run `38089821415`（head `24a85974c8`）与分道之后的 run `38090475543`（head `9202ae0150`）。这条是 `TC-PROD-734` 的红：服务端各组合入后同一剧本应全绿。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 读 job「Run the client gametests」的步骤结论与「Show the runner's processors and memory」 | 「Start server-app in core mode」success，「Run the client gametests against the production mod jar」success（退出码只记录），判定一步 failure；runner 4 核，`free -m` 总内存 15,989 MiB |
+| 2 | 读 `report.txt` | R1～R8 8 行 PASS：剧本排在 R1～R8 之后，不改它们的结果 |
+| 3 | 读 `playable.txt`（run `38090475543`） | 15 行、没有 `SKIP`。PASS 五行：`core G1`（生存、生命值 20.0、`encrypted=true`）、`core G3`（空手 151 tick 挖掉 `1, 39, -13`，之后 40 tick 一直是空气）、`rts G1`、`rts G2`（走 12.94 格、`sky_above=15`）、`rts G10`（可指挥单位 64 → 64）。FAIL 十行，证据都指向服务端缺的功能：`core G2` 走了 12.94 格、脚下石头、区块已载入，只缺 `sky_above=0`（平坦核心世界没有光照，`API-PROD-031` 的 `LightingChunk`）；`core G4 no stone in the hotbar: {}`、`core G5 (1) stone=0 iron_pickaxe_in_hotbar=false`、`core G9 no iron pickaxe in the hotbar to dig the shaft with: {}`（没有初始物品 `STARTER_KIT`）；`core G6` 与 `rts G6` `no line with g6-… within 40 ticks; lines since: []`（聊天收件人为空，`CHAT`）；`core G7` 与 `rts G7` 两条命令都没有回执，`synaxis:command-list` 的 `translated=true`、`synaxis:command-unknown` 的 `translated=false`（`list` 要节点、没有未知命令回执、模组语言文件还没有这个键，`REQ-PROD-012`）；`core G8 no living zombie within 4.0 blocks of 3.50,40.00,0.50`（没有训练假人）；`core G10` 重连后回到 `0.50,40.00,0.50`、yaw 0.0、选中格 0（没有 `synaxis:player`，`REQ-PROD-047`） |
+| 4 | 读判定一步的输出 | 只有可玩项一项红：`FAIL …/playable.txt: core 2 PASS, rts 3 PASS, 10 FAIL or SKIP`；`client_verified 3, expected 3`、`protocol-error kicks 1, expected 1`、`sessionserver join 5, expected 5`、`sessionserver hasJoined 200 5 of 5`：游戏模式那台每次启动 3 次连接、平坦核心那台 2 次，连接数是定的 |
+| 5 | 读产物里平坦核心那台的台账与日志（`_temp/playable/`） | `logs/events-core-<日期>.jsonl` 2 条 `client_verified`（`core G1` 与 `core G10` 的重连）；`server.log` 有 `Metrics endpoint listening on http://127.0.0.1:<非 9464 的端口>/metrics` 与 `listening on 0.0.0.0:25566` |
+| 6 | 读 run `38089821415`（分道之前的同一 PR） | 与第 3 步同样五行 PASS、十行 FAIL，只差 `core G2` 是 `yaw 0 … to 0.50,40.00,13.45`、`core G3` 挖的是 `1, 39, 13`（当时 G2 一律朝南）（证据 `<F>/04-ci-baseline.txt`、`<F>/05-ci-lanes.txt`） |
+
+后置：草稿 PR #15 关闭，远端分支 `prod/r073-F` 删除（集成轮从本地分支合入）。
+
+#### `TC-PROD-733` 两次客户端启动是两个账号，G2 按启动分道（GitHub Actions，`API-PROD-026`） — 对应 `REQ-PROD-046`、`REQ-PROD-047` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`gh workflow run client-gametest.yml --ref <分支>` 触发（`workflow_dispatch`：`LAUNCHES=2`，先开发 mod，后生产 mod jar，同一台平坦核心、世界与内存存储都留着）。绿是分道之后的 run `38090480829`（分支 `prod/r073-F`，head `9202ae0150`）；红是把分道之前的 `24a85974c8` 推成临时分支 `prod/r073-F-red` 跑的 run `38091153993`，跑完删掉临时分支。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 读绿 run 的假 sessionserver 日志（「Show the reports and the server's event ledger」） | 20 行、10 次 `join -> 204` 与 10 次 `hasJoined … -> 200`；前 5 次的 `username` 是开发 mod 那次的 `Player0`，后 5 次是生产 mod jar 那次的 `Player449`（原版默认名，每次启动不同）：两次启动是两个账号 |
+| 2 | 读绿 run 的两份 `playable.txt` | 两份的 `core G1` 都在 `0.50,40.00,0.50`（第二次也是新角色）；开发 mod 那份 `core G2 … yaw 0 … to 0.50,40.00,13.45`、`core G3 PASS target 1, 39, 13`；生产 mod jar 那份 `core G2 … yaw 180 … to 0.50,40.00,-12.45`、`core G3 PASS target 1, 39, -13`；其余各行与 `TC-PROD-732` 第 3 步同样的 PASS 与 FAIL |
+| 3 | 读绿 run 的判定输出 | `2 reports for 2 launches`、`2 playable reports for 2 launches`、`client_verified 6, expected 6`、`sessionserver join 10, expected 10`、`hasJoined 200 10 of 10`；红的只有两份可玩项报告各一行 |
+| 4 | 红（分道之前，G2 一律朝南）：读 run `38091153993` 的两份 `playable.txt` 与假 sessionserver 日志 | 名字仍是两个（`Player0`、`Player332`）；开发 mod 那份 `core G2 … yaw 0 … to 0.50,40.00,13.45`、`core G3 PASS target 1, 39, 13`；生产 mod jar 那份同样走到 `0.50,40.00,13.45`，`core G3 FAIL the block to dig at 1, 39, 13 is air already`：第二次启动的新角色从出生点出发，挖到第一次挖过的格（证据 `<F>/05-ci-lanes.txt`） |
+
+后置：`git push origin --delete prod/r073-F-red`，`git ls-remote origin prod/r073-F-red` 无输出。
+
+#### `TC-PROD-734` 服务端修复合入后可玩项全绿（GitHub Actions，`API-PROD-026`） — 对应 `REQ-PROD-046`、`REQ-PROD-047`、`REQ-PROD-009`、`REQ-PROD-012`、`REQ-PROD-030` · 级别: 回归 · 执行者: AI
+
+前置：RUN-073 组 A～D 与本组合入集成分支（`DESIGN-PROD` §26「可玩」一行的退出条件）。集成分支上开草稿 PR 跑一次（`LAUNCHES=1`，北道），再 `gh workflow run client-gametest.yml --ref <集成分支>` 跑一次（`LAUNCHES=2`，两道）。`TC-PROD-732` 与 `TC-PROD-733` 第 1～3 步是它的红。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 两次运行的判定一步 | 都是 `client regression: all checks passed`；每份 `playable.txt` `core 10 PASS, rts 5 PASS`，没有 `FAIL` 与 `SKIP` |
+| 2 | 读 `LAUNCHES=2` 那次两份 `playable.txt` 的 `core G9` | 开发 mod 那份 `below y -64.0 after <n> ticks, death screen after <m> ticks, respawned at the spawn with full health …`（第一次挖穿竖井）；生产 mod jar 那份同样三段，走到竖井时直接掉下去，`below y` 的 tick 数少于第一份（不用挖） |
+| 3 | 读两份的 `core G5` 与 `core G10` | `core G5` 证据依次有 `(1)`～`(6)` 六段，`(5)` 里 `outside Drop[id=…, count=1]`、`closing Drop[id=…, count=<光标数 − 1>]`、`cursor after 0`，`(6)` `picked up after <n> ticks`、石头总数回到 `(4)` 之前；`core G10` `after` 与 `before` 的位置差 ≤ 0.5 格、yaw 45.0、选中格 2、物品数相同 |
+
+后置：关掉集成分支的草稿 PR（登记 RUN-073 时按集成轮的口径）。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G 与 M3-S）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -10243,6 +10324,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 vehicle 组，载具移动包驶向未载入的区块（`REQ-PROD-013`，v0.9.59）→ TC-PROD-692；动了 `PlayerVehicleListener#vehicleMoveListener` 就跑 TC-PROD-692 与 TC-PROD-667、TC-PROD-668（同一个类）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 gate 组，分片闸门两项的配置文件优先（`REQ-PROD-001`，v0.9.60）→ TC-PROD-695；动了 `ShardMain#gateDefaults` 的空值判断、`Main` 读 `synaxis.properties` 的时机或步骤 (1) 调 `gateDefaults` 的位置就跑它，连同 TC-PROD-669、TC-PROD-670、TC-PROD-672。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 flake 组，`ConnectionGateSocketTest` 的异步断言（`REQ-PROD-001`，只改测试）→ TC-PROD-697、TC-PROD-698；动了 `ConnectionManager#transitionLoginToConfig` 里发 `SetCompression` 与派发 `AsyncPlayerPreLoginEvent` 的先后、`Server#loginTimeoutWatch` 的判据，或往这个类加数登录事件、用短握手超时的用例，就严格 grid 跑这个类。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-073 组 F，真客户端可玩项剧本与 CI（`REQ-PROD-030`、`REQ-PROD-046`、`REQ-PROD-047`，v0.9.68）→ TC-PROD-729～TC-PROD-734；改了 `PlayableClientGameTest`、`DisconnectReasonMixin` 或 gametest 入口表就跑 TC-PROD-729、TC-PROD-731，再在 GitHub Actions 上跑 TC-PROD-734（剧本只在 CI 上跑），改了 G2 的分道或改世界的步骤的落点再加 TC-PROD-733 的两次启动；改了 `judge.sh` 跑 TC-PROD-730；改了 `client-gametest.yml` 的 job `gametest` 跑 TC-PROD-731 与 TC-PROD-688；动了平坦核心或 RTS 进程里剧本走到的服务端行为（`app.play`、`synaxis:player`、`HostCommands`、`CoreMode`）跑 TC-PROD-734。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-038、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级；真机用例（TC-WORLD-123、TC-WORLD-124、TC-WORLD-144～TC-WORLD-149）等用户的机器，单独成轮。

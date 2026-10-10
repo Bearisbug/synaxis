@@ -1,0 +1,245 @@
+# Runs after the lane change (TC-PROD-732 step 3, TC-PROD-733)
+
+## run 38090475543: pull_request on draft PR #15, head 9202ae0150 (LAUNCHES=1, production mod jar, north lane)
+== client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt
+R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]
+R2 PASS state=VERIFIED schema_version=1
+R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://127.0.0.1:46823
+R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+R5 PASS unit_id=1 selected=1
+R6 PASS unit_id=1 answers [OK] target 263.50,40.00,255.50 moved 2.10 blocks (need 2.0)
+R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.
+== client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+core G1 PASS in world at 0.50,40.00,0.50 mode=SURVIVAL health=20.0 handshake=VERIFIED encrypted=true settled=true
+core G2 FAIL yaw 180 from 0.50,40.00,0.50 to 0.50,40.00,-12.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=0
+core G3 PASS target 1, 39, -13 with 0 minecraft:air mouse_grabbed=true air after 151 ticks, stayed air 40 ticks
+core G4 FAIL no stone in the hotbar: {}
+core G5 FAIL (1) stone=0 iron_pickaxe_in_hotbar=false inventory: {}
+core G6 FAIL no line with g6-c69dee82 within 40 ticks; lines since: []
+core G7 FAIL /list no line of synaxis:command-list with Player226 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+core G8 FAIL no living zombie within 4.0 blocks of 3.50,40.00,0.50; living entities: []
+core G9 FAIL no iron pickaxe in the hotbar to dig the shaft with: {}
+core G10 FAIL before 0.50,40.00,-5.54 yaw 45.0 selected 2 items 0; after 0.50,40.00,0.50 yaw 0.0 selected 0 items 0; differs in [position 0.50,40.00,0.50, yaw 0.0, selected 0]
+rts G1 PASS in world at 256.50,40.00,256.50 mode=SURVIVAL health=20.0 handshake=VERIFIED encrypted=true settled=true
+rts G2 PASS yaw 0 from 256.50,40.00,256.50 to 256.50,40.00,269.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=15
+rts G6 FAIL no line with g6-a3696213 within 40 ticks; lines since: []
+rts G7 FAIL /list no line of synaxis:command-list with Player226 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+rts G10 PASS commandable before 64 after 64 within 0 ticks
+#### judge
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+FAIL client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 2 PASS, rts 3 PASS, 10 FAIL or SKIP
+     core G2 FAIL yaw 180 from 0.50,40.00,0.50 to 0.50,40.00,-12.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=0
+     core G4 FAIL no stone in the hotbar: {}
+     core G5 FAIL (1) stone=0 iron_pickaxe_in_hotbar=false inventory: {}
+     core G6 FAIL no line with g6-c69dee82 within 40 ticks; lines since: []
+     core G7 FAIL /list no line of synaxis:command-list with Player226 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+     core G8 FAIL no living zombie within 4.0 blocks of 3.50,40.00,0.50; living entities: []
+     core G9 FAIL no iron pickaxe in the hotbar to dig the shaft with: {}
+     core G10 FAIL before 0.50,40.00,-5.54 yaw 45.0 selected 2 items 0; after 0.50,40.00,0.50 yaw 0.0 selected 0 items 0; differs in [position 0.50,40.00,0.50, yaw 0.0, selected 0]
+     rts G6 FAIL no line with g6-a3696213 within 40 ticks; lines since: []
+     rts G7 FAIL /list no line of synaxis:command-list with Player226 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+ok   1 playable reports for 1 launches
+ok   client_verified 3, expected 3
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+ok   sessionserver join 5, expected 5
+ok   sessionserver hasJoined 200 5 of 5, expected 5 of 5
+client regression: 1 check(s) failed
+
+## run 38090480829: workflow_dispatch on prod/r073-F, head 9202ae0150 (LAUNCHES=2: dev mod, then production mod jar)
+== client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt
+R1 PASS mods [synaxis 0.1.0, io_github_bearisbug_synaxis_protocol dev]
+R2 PASS state=VERIFIED schema_version=1
+R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://127.0.0.1:36741
+R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+R5 PASS unit_id=1 selected=1
+R6 PASS unit_id=1 answers [OK] target 263.50,40.00,255.50 moved 2.10 blocks (need 2.0)
+R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.
+== client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt
+R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]
+R2 PASS state=VERIFIED schema_version=1
+R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://127.0.0.1:36741
+R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+R5 PASS unit_id=2 selected=2
+R6 PASS unit_id=2 answers [OK] target 263.50,40.00,256.50 moved 2.17 blocks (need 2.0)
+R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.
+== client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt
+core G1 PASS in world at 0.50,40.00,0.50 mode=SURVIVAL health=20.0 handshake=VERIFIED encrypted=true settled=true
+core G2 FAIL yaw 0 from 0.50,40.00,0.50 to 0.50,40.00,13.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=0
+core G3 PASS target 1, 39, 13 with 0 minecraft:air mouse_grabbed=true air after 151 ticks, stayed air 40 ticks
+core G4 FAIL no stone in the hotbar: {}
+core G5 FAIL (1) stone=0 iron_pickaxe_in_hotbar=false inventory: {}
+core G6 FAIL no line with g6-c5243cd9 within 40 ticks; lines since: []
+core G7 FAIL /list no line of synaxis:command-list with Player0 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+core G8 FAIL no living zombie within 4.0 blocks of 3.50,40.00,0.50; living entities: []
+core G9 FAIL no iron pickaxe in the hotbar to dig the shaft with: {}
+core G10 FAIL before 0.50,40.00,-5.54 yaw 45.0 selected 2 items 0; after 0.50,40.00,0.50 yaw 0.0 selected 0 items 0; differs in [position 0.50,40.00,0.50, yaw 0.0, selected 0]
+rts G1 PASS in world at 256.50,40.00,256.50 mode=SURVIVAL health=20.0 handshake=VERIFIED encrypted=true settled=true
+rts G2 PASS yaw 0 from 256.50,40.00,256.50 to 256.50,40.00,269.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=15
+rts G6 FAIL no line with g6-7346e67a within 40 ticks; lines since: []
+rts G7 FAIL /list no line of synaxis:command-list with Player0 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+rts G10 PASS commandable before 64 after 64 within 0 ticks
+== client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+core G1 PASS in world at 0.50,40.00,0.50 mode=SURVIVAL health=20.0 handshake=VERIFIED encrypted=true settled=true
+core G2 FAIL yaw 180 from 0.50,40.00,0.50 to 0.50,40.00,-12.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=0
+core G3 PASS target 1, 39, -13 with 0 minecraft:air mouse_grabbed=true air after 151 ticks, stayed air 40 ticks
+core G4 FAIL no stone in the hotbar: {}
+core G5 FAIL (1) stone=0 iron_pickaxe_in_hotbar=false inventory: {}
+core G6 FAIL no line with g6-701a034a within 40 ticks; lines since: []
+core G7 FAIL /list no line of synaxis:command-list with Player449 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+core G8 FAIL no living zombie within 4.0 blocks of 3.50,40.00,0.50; living entities: []
+core G9 FAIL no iron pickaxe in the hotbar to dig the shaft with: {}
+core G10 FAIL before 0.50,40.00,-5.54 yaw 45.0 selected 2 items 0; after 0.50,40.00,0.50 yaw 0.0 selected 0 items 0; differs in [position 0.50,40.00,0.50, yaw 0.0, selected 0]
+rts G1 PASS in world at 256.50,40.00,256.50 mode=SURVIVAL health=20.0 handshake=VERIFIED encrypted=true settled=true
+rts G2 PASS yaw 0 from 256.50,40.00,256.50 to 256.50,40.00,269.44 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=15
+rts G6 FAIL no line with g6-37e1239a within 40 ticks; lines since: []
+rts G7 FAIL /list no line of synaxis:command-list with Player449 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+rts G10 PASS commandable before 64 after 64 within 0 ticks
+1 POST /session/minecraft/join -> 204
+2 GET /session/minecraft/hasJoined?username=Player0&serverId=<id> -> 200
+3 POST /session/minecraft/join -> 204
+4 GET /session/minecraft/hasJoined?username=Player0&serverId=<id> -> 200
+5 POST /session/minecraft/join -> 204
+6 GET /session/minecraft/hasJoined?username=Player0&serverId=<id> -> 200
+7 POST /session/minecraft/join -> 204
+8 GET /session/minecraft/hasJoined?username=Player0&serverId=<id> -> 200
+9 POST /session/minecraft/join -> 204
+10 GET /session/minecraft/hasJoined?username=Player0&serverId=<id> -> 200
+11 POST /session/minecraft/join -> 204
+12 GET /session/minecraft/hasJoined?username=Player449&serverId=<id> -> 200
+13 POST /session/minecraft/join -> 204
+14 GET /session/minecraft/hasJoined?username=Player449&serverId=<id> -> 200
+15 POST /session/minecraft/join -> 204
+16 GET /session/minecraft/hasJoined?username=Player449&serverId=<id> -> 200
+17 POST /session/minecraft/join -> 204
+18 GET /session/minecraft/hasJoined?username=Player449&serverId=<id> -> 200
+19 POST /session/minecraft/join -> 204
+20 GET /session/minecraft/hasJoined?username=Player449&serverId=<id> -> 200
+#### judge
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+FAIL client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 2 PASS, rts 3 PASS, 10 FAIL or SKIP
+     core G2 FAIL yaw 180 from 0.50,40.00,0.50 to 0.50,40.00,-12.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=0
+     core G4 FAIL no stone in the hotbar: {}
+     core G5 FAIL (1) stone=0 iron_pickaxe_in_hotbar=false inventory: {}
+     core G6 FAIL no line with g6-701a034a within 40 ticks; lines since: []
+     core G7 FAIL /list no line of synaxis:command-list with Player449 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+     core G8 FAIL no living zombie within 4.0 blocks of 3.50,40.00,0.50; living entities: []
+     core G9 FAIL no iron pickaxe in the hotbar to dig the shaft with: {}
+     core G10 FAIL before 0.50,40.00,-5.54 yaw 45.0 selected 2 items 0; after 0.50,40.00,0.50 yaw 0.0 selected 0 items 0; differs in [position 0.50,40.00,0.50, yaw 0.0, selected 0]
+     rts G6 FAIL no line with g6-37e1239a within 40 ticks; lines since: []
+     rts G7 FAIL /list no line of synaxis:command-list with Player449 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+FAIL client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 2 PASS, rts 3 PASS, 10 FAIL or SKIP
+     core G2 FAIL yaw 0 from 0.50,40.00,0.50 to 0.50,40.00,13.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=0
+     core G4 FAIL no stone in the hotbar: {}
+     core G5 FAIL (1) stone=0 iron_pickaxe_in_hotbar=false inventory: {}
+     core G6 FAIL no line with g6-c5243cd9 within 40 ticks; lines since: []
+     core G7 FAIL /list no line of synaxis:command-list with Player0 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+     core G8 FAIL no living zombie within 4.0 blocks of 3.50,40.00,0.50; living entities: []
+     core G9 FAIL no iron pickaxe in the hotbar to dig the shaft with: {}
+     core G10 FAIL before 0.50,40.00,-5.54 yaw 45.0 selected 2 items 0; after 0.50,40.00,0.50 yaw 0.0 selected 0 items 0; differs in [position 0.50,40.00,0.50, yaw 0.0, selected 0]
+     rts G6 FAIL no line with g6-7346e67a within 40 ticks; lines since: []
+     rts G7 FAIL /list no line of synaxis:command-list with Player0 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+ok   2 playable reports for 2 launches
+ok   client_verified 6, expected 6
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+ok   sessionserver join 10, expected 10
+ok   sessionserver hasJoined 200 10 of 10, expected 10 of 10
+client regression: 2 check(s) failed
+
+## run 38091153993 (red): workflow_dispatch on the temporary branch prod/r073-F-red at 24a85974c8, before the lanes (LAUNCHES=2); the branch was deleted afterwards
+== client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt
+core G1 PASS in world at 0.50,40.00,0.50 mode=SURVIVAL health=20.0 handshake=VERIFIED encrypted=true settled=true
+core G2 FAIL yaw 0 from 0.50,40.00,0.50 to 0.50,40.00,13.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=0
+core G3 PASS target 1, 39, 13 with 0 minecraft:air mouse_grabbed=true air after 151 ticks, stayed air 40 ticks
+core G4 FAIL no stone in the hotbar: {}
+core G5 FAIL (1) stone=0 iron_pickaxe_in_hotbar=false inventory: {}
+core G6 FAIL no line with g6-c748159a within 40 ticks; lines since: []
+core G7 FAIL /list no line of synaxis:command-list with Player0 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+core G8 FAIL no living zombie within 4.0 blocks of 3.50,40.00,0.50; living entities: []
+core G9 FAIL no iron pickaxe in the hotbar to dig the shaft with: {}
+core G10 FAIL before 0.50,40.00,-5.54 yaw 45.0 selected 2 items 0; after 0.50,40.00,0.50 yaw 0.0 selected 0 items 0; differs in [position 0.50,40.00,0.50, yaw 0.0, selected 0]
+rts G1 PASS in world at 256.50,40.00,256.50 mode=SURVIVAL health=20.0 handshake=VERIFIED encrypted=true settled=true
+rts G2 PASS yaw 0 from 256.50,40.00,256.50 to 256.50,40.00,269.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=15
+rts G6 FAIL no line with g6-55bea5ce within 40 ticks; lines since: []
+rts G7 FAIL /list no line of synaxis:command-list with Player0 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+rts G10 PASS commandable before 64 after 64 within 0 ticks
+== client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+core G1 PASS in world at 0.50,40.00,0.50 mode=SURVIVAL health=20.0 handshake=VERIFIED encrypted=true settled=true
+core G2 FAIL yaw 0 from 0.50,40.00,0.50 to 0.50,40.00,13.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=0
+core G3 FAIL the block to dig at 1, 39, 13 is air already
+core G4 FAIL no stone in the hotbar: {}
+core G5 FAIL (1) stone=0 iron_pickaxe_in_hotbar=false inventory: {}
+core G6 FAIL no line with g6-6d15a0a0 within 40 ticks; lines since: []
+core G7 FAIL /list no line of synaxis:command-list with Player332 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+core G8 FAIL no living zombie within 4.0 blocks of 3.50,40.00,0.50; living entities: []
+core G9 FAIL no iron pickaxe in the hotbar to dig the shaft with: {}
+core G10 FAIL before 0.50,40.00,-5.54 yaw 45.0 selected 2 items 0; after 0.50,40.00,0.50 yaw 0.0 selected 0 items 0; differs in [position 0.50,40.00,0.50, yaw 0.0, selected 0]
+rts G1 PASS in world at 256.50,40.00,256.50 mode=SURVIVAL health=20.0 handshake=VERIFIED encrypted=true settled=true
+rts G2 PASS yaw 0 from 256.50,40.00,256.50 to 256.50,40.00,269.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=15
+rts G6 FAIL no line with g6-bb3071e4 within 40 ticks; lines since: []
+rts G7 FAIL /list no line of synaxis:command-list with Player332 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+rts G10 PASS commandable before 64 after 64 within 0 ticks
+1 POST /session/minecraft/join -> 204
+2 GET /session/minecraft/hasJoined?username=Player0&serverId=<id> -> 200
+3 POST /session/minecraft/join -> 204
+4 GET /session/minecraft/hasJoined?username=Player0&serverId=<id> -> 200
+5 POST /session/minecraft/join -> 204
+6 GET /session/minecraft/hasJoined?username=Player0&serverId=<id> -> 200
+7 POST /session/minecraft/join -> 204
+8 GET /session/minecraft/hasJoined?username=Player0&serverId=<id> -> 200
+9 POST /session/minecraft/join -> 204
+10 GET /session/minecraft/hasJoined?username=Player0&serverId=<id> -> 200
+11 POST /session/minecraft/join -> 204
+12 GET /session/minecraft/hasJoined?username=Player332&serverId=<id> -> 200
+13 POST /session/minecraft/join -> 204
+14 GET /session/minecraft/hasJoined?username=Player332&serverId=<id> -> 200
+15 POST /session/minecraft/join -> 204
+16 GET /session/minecraft/hasJoined?username=Player332&serverId=<id> -> 200
+17 POST /session/minecraft/join -> 204
+18 GET /session/minecraft/hasJoined?username=Player332&serverId=<id> -> 200
+19 POST /session/minecraft/join -> 204
+20 GET /session/minecraft/hasJoined?username=Player332&serverId=<id> -> 200
+#### judge
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+FAIL client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 1 PASS, rts 3 PASS, 11 FAIL or SKIP
+     core G2 FAIL yaw 0 from 0.50,40.00,0.50 to 0.50,40.00,13.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=0
+     core G3 FAIL the block to dig at 1, 39, 13 is air already
+     core G4 FAIL no stone in the hotbar: {}
+     core G5 FAIL (1) stone=0 iron_pickaxe_in_hotbar=false inventory: {}
+     core G6 FAIL no line with g6-6d15a0a0 within 40 ticks; lines since: []
+     core G7 FAIL /list no line of synaxis:command-list with Player332 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+     core G8 FAIL no living zombie within 4.0 blocks of 3.50,40.00,0.50; living entities: []
+     core G9 FAIL no iron pickaxe in the hotbar to dig the shaft with: {}
+     core G10 FAIL before 0.50,40.00,-5.54 yaw 45.0 selected 2 items 0; after 0.50,40.00,0.50 yaw 0.0 selected 0 items 0; differs in [position 0.50,40.00,0.50, yaw 0.0, selected 0]
+     rts G6 FAIL no line with g6-bb3071e4 within 40 ticks; lines since: []
+     rts G7 FAIL /list no line of synaxis:command-list with Player332 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+FAIL client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 2 PASS, rts 3 PASS, 10 FAIL or SKIP
+     core G2 FAIL yaw 0 from 0.50,40.00,0.50 to 0.50,40.00,13.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=0
+     core G4 FAIL no stone in the hotbar: {}
+     core G5 FAIL (1) stone=0 iron_pickaxe_in_hotbar=false inventory: {}
+     core G6 FAIL no line with g6-c748159a within 40 ticks; lines since: []
+     core G7 FAIL /list no line of synaxis:command-list with Player0 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+     core G8 FAIL no living zombie within 4.0 blocks of 3.50,40.00,0.50; living entities: []
+     core G9 FAIL no iron pickaxe in the hotbar to dig the shaft with: {}
+     core G10 FAIL before 0.50,40.00,-5.54 yaw 45.0 selected 2 items 0; after 0.50,40.00,0.50 yaw 0.0 selected 0 items 0; differs in [position 0.50,40.00,0.50, yaw 0.0, selected 0]
+     rts G6 FAIL no line with g6-55bea5ce within 40 ticks; lines since: []
+     rts G7 FAIL /list no line of synaxis:command-list with Player0 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+ok   2 playable reports for 2 launches
+ok   client_verified 6, expected 6
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+ok   sessionserver join 10, expected 10
+ok   sessionserver hasJoined 200 10 of 10, expected 10 of 10
+client regression: 2 check(s) failed

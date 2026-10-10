@@ -1,0 +1,115 @@
+# Baseline of the playable script before the server-side fixes of RUN-073 (TC-PROD-732)
+# draft PR #15 "RUN-073 F baseline (do not merge)", head 24a85974c8 (branch prod/r073-F on 15b5487edc)
+# GitHub Actions "Client gametest" run 38089821415 (pull_request: LAUNCHES=1, production mod jar only), job "Run the client gametests"
+# step conclusions:
+#   success Set up job
+#   success Checkout repository
+#   success Show the runner's processors and memory
+#   success Set up JDK 25
+#   success Set up Gradle
+#   success Install Xvfb and Mesa
+#   success Publish :protocol to the local repository
+#   success Start the fake sessionserver in record mode
+#   success Build the server's start script
+#   success Start server-app in game mode
+#   success Start server-app in core mode
+#   skipped Run the client gametests
+#   success Run the client gametests against the production mod jar
+#   success Show the reports and the server's event ledger
+#   failure Judge the regression by the reports, the ledger and the server log
+#   success Upload screenshots, report and logs
+#   success Post Set up Gradle
+#   success Post Set up JDK 25
+#   success Post Checkout repository
+#   success Complete job
+#### Show the runner's processors and memory (nproc, free -m)
+4
+               total        used        free      shared  buff/cache   available
+Mem:           15989        1383       12298          46        2678       14606
+Swap:           3071           0        3071
+#### report.txt and playable.txt (step: Show the reports and the server's event ledger)
+== client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt
+R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]
+R2 PASS state=VERIFIED schema_version=1
+R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://127.0.0.1:43113
+R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+R5 PASS unit_id=1 selected=1
+R6 PASS unit_id=1 answers [OK] target 263.50,40.00,255.50 moved 2.10 blocks (need 2.0)
+R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.
+== client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+core G1 PASS in world at 0.50,40.00,0.50 mode=SURVIVAL health=20.0 handshake=SENT encrypted=true settled=true
+core G2 FAIL yaw 0 from 0.50,40.00,0.50 to 0.50,40.00,13.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=0
+core G3 PASS target 1, 39, 13 with 0 minecraft:air mouse_grabbed=true air after 151 ticks, stayed air 40 ticks
+core G4 FAIL no stone in the hotbar: {}
+core G5 FAIL (1) stone=0 iron_pickaxe_in_hotbar=false inventory: {}
+core G6 FAIL no line with g6-c3237836 within 40 ticks; lines since: []
+core G7 FAIL /list no line of synaxis:command-list with Player860 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+core G8 FAIL no living zombie within 4.0 blocks of 3.50,40.00,0.50; living entities: []
+core G9 FAIL no iron pickaxe in the hotbar to dig the shaft with: {}
+core G10 FAIL before 0.50,40.00,-5.54 yaw 45.0 selected 2 items 0; after 0.50,40.00,0.50 yaw 0.0 selected 0 items 0; differs in [position 0.50,40.00,0.50, yaw 0.0, selected 0]
+rts G1 PASS in world at 256.50,40.00,256.50 mode=SURVIVAL health=20.0 handshake=VERIFIED encrypted=true settled=true
+rts G2 PASS yaw 0 from 256.50,40.00,256.50 to 256.50,40.00,269.44 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=15
+rts G6 FAIL no line with g6-48992298 within 40 ticks; lines since: []
+rts G7 FAIL /list no line of synaxis:command-list with Player860 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+rts G10 PASS commandable before 64 after 64 within 0 ticks
+#### step: Judge the regression by the reports, the ledger and the server log
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   1 reports for 1 launches
+FAIL client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 2 PASS, rts 3 PASS, 10 FAIL or SKIP
+     core G2 FAIL yaw 0 from 0.50,40.00,0.50 to 0.50,40.00,13.45 moved 12.94 blocks (need 3.0) stopped=true ground_below=Block{minecraft:stone} chunk_loaded=true sky_above=0
+     core G4 FAIL no stone in the hotbar: {}
+     core G5 FAIL (1) stone=0 iron_pickaxe_in_hotbar=false inventory: {}
+     core G6 FAIL no line with g6-c3237836 within 40 ticks; lines since: []
+     core G7 FAIL /list no line of synaxis:command-list with Player860 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+     core G8 FAIL no living zombie within 4.0 blocks of 3.50,40.00,0.50; living entities: []
+     core G9 FAIL no iron pickaxe in the hotbar to dig the shaft with: {}
+     core G10 FAIL before 0.50,40.00,-5.54 yaw 45.0 selected 2 items 0; after 0.50,40.00,0.50 yaw 0.0 selected 0 items 0; differs in [position 0.50,40.00,0.50, yaw 0.0, selected 0]
+     rts G6 FAIL no line with g6-48992298 within 40 ticks; lines since: []
+     rts G7 FAIL /list no line of synaxis:command-list with Player860 within 40 ticks (translated=true); lines since: []; /synaxisnosuchcommand no line of synaxis:command-unknown with synaxisnosuchcommand within 40 ticks (translated=false); lines since: []
+ok   1 playable reports for 1 launches
+ok   client_verified 3, expected 3
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 1, expected >= 1
+ok   protocol-error kicks 1, expected 1
+ok   sessionserver join 5, expected 5
+ok   sessionserver hasJoined 200 5 of 5, expected 5 of 5
+client regression: 1 check(s) failed
+##[error]Process completed with exit code 1.
+#### the game mode server's ledger (logs/events-local-20261010.jsonl, artifact): events by name
+   3 "event":"client_verified"
+   1 "event":"match_created"
+   1 "event":"match_started"
+   1 "event":"plugin_enabled"
+   3 "event":"session_entered_configuration"
+   1 "event":"unit_order_issued"
+   1 "event":"unit_order_superseded"
+   1 "event":"unit_selected"
+#### the core server's ledger ($RUNNER_TEMP/playable/logs/events-core-20261010.jsonl, artifact): events by name
+   2 "event":"client_verified"
+   2 "event":"session_entered_configuration"
+#### the core server's log, startup and warnings ($RUNNER_TEMP/playable/server.log, artifact)
+22:02:43.173 [main] WARN  i.github.bearisbug.synaxis.app.Main - Effective auth: mode=online session_server=http://127.0.0.1:43113/session/minecraft/hasJoined is not Mojang's session server; a login is let in on whatever 
+22:02:43.275 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:34327/metrics
+22:02:43.297 [main] INFO  i.g.bearisbug.synaxis.app.CoreMode - Core mode (synaxis.app.core-mode=on): no plugin is serving gameplay, so the host serves its own flat world. spawn=Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.
+22:02:43.303 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25566
+22:04:04.054 [Syn-TickScheduler] WARN  i.g.b.s.app.PluginChannelRouter - Dropped a payload on an unregistered channel: connection_id=d9a35f51-6d9d-47d0-814e-81e020952130 channel=minecraft:brand bytes=7 (1 payloads since 
+22:04:34.453 [Syn-TickScheduler] WARN  i.g.b.s.app.PluginChannelRouter - Dropped a payload on an unregistered channel: connection_id=e7e6e6e3-adb3-4c01-a29d-20ba0af19344 channel=minecraft:brand bytes=7 (2 payloads since 
+#### sessionserver.log (serverId replaced)
+fake sessionserver mode=record listening on http://127.0.0.1:43113, hasJoined at /session/minecraft/hasJoined
+1 POST /session/minecraft/join -> 204
+2 GET /session/minecraft/hasJoined?username=Player860&serverId=<id> -> 200
+3 POST /session/minecraft/join -> 204
+4 GET /session/minecraft/hasJoined?username=Player860&serverId=<id> -> 200
+5 POST /session/minecraft/join -> 204
+6 GET /session/minecraft/hasJoined?username=Player860&serverId=<id> -> 200
+7 POST /session/minecraft/join -> 204
+8 GET /session/minecraft/hasJoined?username=Player860&serverId=<id> -> 200
+9 POST /session/minecraft/join -> 204
+10 GET /session/minecraft/hasJoined?username=Player860&serverId=<id> -> 200
+#### screenshots in the artifact
+synaxis/synaxis/client-fabric/build/run/productionClientGameTest/screenshots/0000_r3-after-connect.png
+synaxis/synaxis/client-fabric/build/run/productionClientGameTest/screenshots/0001_r7-in-world.png
+synaxis/synaxis/client-fabric/build/run/productionClientGameTest/screenshots/0002_r8-disconnected.png
+synaxis/synaxis/client-fabric/build/run/productionClientGameTest/screenshots/0003_core-g2-walked.png
+synaxis/synaxis/client-fabric/build/run/productionClientGameTest/screenshots/0004_rts-g2-walked.png

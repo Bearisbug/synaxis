@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.UnaryOperator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -81,7 +82,9 @@ class ShardServiceHeartbeatDbTest {
         final ShardDirectory directory = ExampleDirectory.as("r0-c1");
         heartbeat = new ShardHeartbeat(pool.pool(), directory, "synth-0123456789ab-p776", env.process());
         final Tickets tickets = new Tickets();
-        final ShardService service = new ShardServiceImpl(directory, heartbeat, tickets);
+        // The clock a read is reused on, moved past its second before the second read (REQ-M3-033)
+        final AtomicLong now = new AtomicLong();
+        final ShardService service = new ShardServiceImpl(directory, heartbeat, tickets, now::get);
         final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 42, 0));
 
         assertEquals(ShardTransferResult.SENT, service.transfer(player, "r1").get(5, TimeUnit.SECONDS));
@@ -89,6 +92,7 @@ class ShardServiceHeartbeatDbTest {
                 "r1-c1 is 20 s old and r1-c2 is closed, though both are emptier: r1-c3 at the address of its row");
 
         database.execute("UPDATE shard_heartbeat SET updated_at = now() - interval '16 seconds' WHERE shard_id = 'r1-c3'");
+        now.addAndGet(TimeUnit.MILLISECONDS.toNanos(1_001));
         assertEquals(ShardTransferResult.OFFLINE, service.transfer(player, "r1").get(5, TimeUnit.SECONDS),
                 "16 s is past the 15 s a row stays live");
         assertEquals(ShardTransferResult.OFFLINE, service.transferTo(player, "r1-c3").get(5, TimeUnit.SECONDS));

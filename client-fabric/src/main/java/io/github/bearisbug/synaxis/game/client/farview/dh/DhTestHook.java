@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.game.client.farview.dh;
 import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.interfaces.config.IDhApiConfigValue;
 import com.seibel.distanthorizons.api.interfaces.config.client.IDhApiGraphicsConfig;
+import com.seibel.distanthorizons.api.interfaces.config.client.IDhApiMultiThreadingConfig;
 import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
 import com.seibel.distanthorizons.api.objects.data.DhApiTerrainDataPoint;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
@@ -84,8 +85,8 @@ public final class DhTestHook {
      * @param x         the block column
      * @param z         the block column
      * @param baseLevel the level the column was written at
-     * @return {@code state}, {@code block}, {@code bottom}, {@code top} (exclusive), {@code sky}, {@code light}
-     *         and {@code points} of that point; empty when the column holds only air; null without a level
+     * @return {@code state}, {@code block}, {@code bottom}, {@code top} (exclusive), {@code sky}, {@code light},
+     *         {@code biome} (DH's serial string) and {@code points} of that point; empty when the column holds only air; null without a level
      */
     public static @Nullable Map<String, Object> topPoint(int x, int z, int baseLevel) {
         final IDhApiLevelWrapper level = DhFarView.level();
@@ -110,6 +111,7 @@ public final class DhTestHook {
             found.put("top", top.topYBlockPos);
             found.put("sky", top.skyLightLevel);
             found.put("light", top.blockLightLevel);
+            found.put("biome", top.biomeWrapper == null ? null : top.biomeWrapper.getSerialString());
             found.put("points", column.size());
             return found;
         } finally {
@@ -182,6 +184,22 @@ public final class DhTestHook {
 
     private static String describe(IDhApiConfigValue<?> value) {
         return "api=" + value.getApiValue() + " value=" + value.getValue() + " overridable=" + value.getCanBeOverrodeByApi();
+    }
+
+    /**
+     * Overrides DH's worker threads ({@code multiThreading.threadCount} and {@code threadRuntimeRatio}) for a machine
+     * whose few cores the software renderer takes most of: the 2 core runner of {@code farview-gametest.yml}, where DH's
+     * default share, one thread on two cores, left a bake writing for 18 minutes. Call on the client thread.
+     *
+     * @param count        the threads
+     * @param runtimeRatio the share of the time they run, 1 for all of it
+     * @return both settings as DH has them afterwards
+     */
+    public static String threads(int count, double runtimeRatio) {
+        final IDhApiMultiThreadingConfig threading = DhApi.Delayed.configs.multiThreading();
+        threading.threadCount().setValue(count, DhSession.API_USER);
+        threading.threadRuntimeRatio().setValue(runtimeRatio, DhSession.API_USER);
+        return "threadCount " + describe(threading.threadCount()) + ", threadRuntimeRatio " + describe(threading.threadRuntimeRatio());
     }
 
     /**

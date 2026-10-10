@@ -7,13 +7,10 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
@@ -166,6 +163,7 @@ public final class ConfigFile {
             "synaxis.synx.section-cache-bytes",
             "synaxis.overlay.cap",
             "synaxis.overlay.flush-interval-s",
+            "synaxis.overlay.max-bytes",
             "synaxis.relight-threads",
             "synaxis.relight.resend-light",
             // The logging setup, logback.xml
@@ -176,10 +174,6 @@ public final class ConfigFile {
 
     /** See {@link #isSecret}. */
     private static final Pattern SECRET_NAME = Pattern.compile("(?i).*(password|secret|token|credential).*");
-
-    /** The group's and the others' write bits and the sticky bit of a {@code unix:mode}. */
-    private static final int GROUP_OR_OTHERS_WRITE = 0022;
-    private static final int STICKY = 01000;
 
     private ConfigFile() {
     }
@@ -256,7 +250,7 @@ public final class ConfigFile {
             entries = read(file);
             // The JDK's unix view, which has the sticky bit, comes with POSIX permissions
             permissionsChecked = file.getFileSystem().supportedFileAttributeViews().contains("unix");
-            final @Nullable String writable = permissionsChecked ? writableByOthers(file) : null;
+            final @Nullable String writable = permissionsChecked ? FileTrust.writableByOthers(file, "only the service user may write it") : null;
             if (writable != null) return refused(file, writable);
         } catch (IOException e) {
             return refused(file, "cannot be read: " + e);
@@ -282,34 +276,6 @@ public final class ConfigFile {
 
     private static Outcome refused(Path file, String why) {
         return new Outcome(file, false, List.of(), List.of(), true, file + ": " + why);
-    }
-
-    /**
-     * Why someone besides the owner of the file may have written it, null when nobody may: the file
-     * decides the login mode, the gates and the whitelist. Group or others may write the file, or
-     * write its directory without the sticky bit and so replace it. The owner is not looked at: a file
-     * root owns and the service user only reads is fine. So a file someone else created in a directory
-     * with the sticky bit while there was none is read, and only the directory the file is in is looked
-     * at, not the ones above it: {@code docs/DESIGN-PROD.md} §23 keeps the working directory the service
-     * user's alone.
-     *
-     * @param file the file, on a file system with the {@code unix} attribute view
-     * @return why the file is refused, or null
-     * @throws IOException if the permissions cannot be read
-     */
-    private static @Nullable String writableByOthers(Path file) throws IOException {
-        final Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(file);
-        if (permissions.contains(PosixFilePermission.GROUP_WRITE)
-                || permissions.contains(PosixFilePermission.OTHERS_WRITE))
-            return "writable by group or others (" + PosixFilePermissions.toString(permissions)
-                    + "); only the service user may write it";
-        final Path directory = file.getParent();
-        final int mode = (Integer) Files.getAttribute(directory, "unix:mode");
-        if ((mode & GROUP_OR_OTHERS_WRITE) != 0 && (mode & STICKY) == 0)
-            return "its directory " + directory + " is writable by group or others without the sticky bit ("
-                    + PosixFilePermissions.toString(Files.getPosixFilePermissions(directory))
-                    + "); they may replace the file";
-        return null;
     }
 
     /**

@@ -1,0 +1,208 @@
+03:38:31.288 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3s-g.oNa9/run/synaxis.properties does not exist
+03:38:31.289 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=10, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=1, threadProvider=COUNTER, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeout=5000, knownPacksResponseTimeout=300000, acceptTransfers=false, playerPacketPerTick=50, playerPacketQueueSize=1000, keepAliveDelay=10000, keepAliveKick=15000, playerChunkUpdateLimiterHistorySize=0, maxConnections=1024, acceptBackoff=100, maxConnectionsPerIp=16, handshakeTimeout=5000, loginRatePerIp=0.5, loginBurstPerIp=3, statusRatePerIp=1.0, statusBurstPerIp=10, transferRatePerIp=2.0, transferBurstPerIp=10, connectionGateTrustedNetworks=127.0.0.0/8, maxPlayers=0, maxJoinsPerTick=0, motd=synaxis, serverIcon=, hideOnlinePlayers=false, chatRatePerSecond=1, chatBurst=3, packetLimitWindow=7000, packetLimitMaxPackets=750, packetLimitAction=KICK, packetLimitOverrides=, maxInflatedBytesPerSecond=4194304, tabCompleteRatePerSecond=20, maxOutboundBacklogBytes=4194304, tabLatencyInterval=30000, compressionThreshold=256, suppressConnectionAcceptErrors=true, suppressConnectionIoErrors=true, suppressMalformedPacketErrorLevel=0, suppressMisusedPacketErrorLevel=0, rejectMalformedPacket=true, rejectMisusedPacket=false, socketSendBufferSize=262143, socketReceiveBufferSize=32767, socketNoDelay=true, socketTimeout=15000, pooledBufferSize=16383, minChunksPerTick=0.01, maxChunksPerTick=64.0, chunksPerTickMultiplier=1.0, viewablePacket=true, enforceInteractionLimit=true, maxVisibleEntitiesPerPlayer=0, watchdogEarlyWarning=10000, watchdogEarlyWarningEvery=5000, watchdogTimeout=60000, watchdogHaltAfter=15000, registryUnsafeOps=false, insideTest=false, fasterSocketWrites=false, proxyProtocol=false, proxyProtocolRequired=false, proxyProtocolTrustedNetworks=]
+03:38:31.302 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective JvmFlags[serverTicksPerSecond=20, automaticComponentTranslation=false, groupedPacket=true, cachedPacket=true, maxPacketSize=2097151, maxPacketSizePreAuth=8192, warnUnreadBytesPacket=true, eventNodeAllowMultipleParents=false, templateCompiler=false, nbtMaxDepth=512, nbtMaxBytes=2097152, compressionLevel=6]
+03:38:31.302 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective auth: mode=offline
+03:38:31.305 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=memory, player data lives as long as the process
+03:38:31.319 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+03:38:31.328 [main] INFO  i.github.bearisbug.synaxis.Watchdog - Tick watchdog on: stacks after 10000 ms and every 5000 ms after that, judged dead after 60000 ms, halted with exit code 70 15000 ms later
+03:38:31.376 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:9464/metrics
+03:38:31.377 [main] INFO  i.g.b.s.a.m.ManagementServer - Effective management: enabled=false bind=127.0.0.1:25585 token=unset
+03:38:31.381 [main] INFO  plugin.rts - Enabling: plugin_id=rts version=0.1.0 data_directory=plugins/rts
+03:38:31.895 [main] INFO  plugin.rts - Match running: match_id=7ae297ef-b561-4763-a601-ab6648bec8ac map_id=rts-512 dimension_name=synaxis:match_e03e6511fc4740fb8befe098f8d5e73d chunk_count=1024 load_ms=455
+03:38:31.918 [main] INFO  i.g.b.synaxis.app.PluginChannelsImpl - Registered channel: plugin_id=rts channel=rts:game
+03:38:31.919 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=rts version=0.1.0 enable_ms=538
+03:38:31.919 [main] INFO  plugin.a - probe-a onEnable plugin_id=a data_directory=plugins/a mode=throw
+03:38:31.919 [main] INFO  i.g.b.synaxis.app.PluginChannelsImpl - Registered channel: plugin_id=a channel=a:probe
+03:38:31.919 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=a version=1.0.0 enable_ms=0
+03:38:31.919 [main] INFO  i.github.bearisbug.synaxis.app.Main - Gameplay mode: the running match and the admission provider come from plugin_ids=[rts, a], and a client has 3 s to send C2S_HELLO on synaxis:handshake in the configuration phase (schema_version=1)
+03:38:31.920 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Starting synaxis (dev) server.
+03:38:31.920 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Running in offline mode. Beware that this is not secure and players can impersonate each other.
+03:38:31.920 [main] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server started successfully.
+03:38:31.921 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+03:38:32.645 [Syn-Socket-Reader-0] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=1b6059a9-36de-41d9-a167-369b30f38901 identifier=/127.0.0.1:63408
+03:38:32.698 [virtual-1111] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=b23654b8-3aae-45ae-952f-fb3975d9ab26 remote_address=/127.0.0.1:63409
+03:38:32.790 [Syn-Socket-Reader-1] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=b23654b8-3aae-45ae-952f-fb3975d9ab26 identifier=probe
+03:38:36.871 [Syn-TickScheduler] ERROR i.g.b.s.app.PluginSchedulerImpl - Plugin task failed: plugin_id=a
+java.lang.RuntimeException: probe-a task throws
+	at probe.a.ProbePlugin.lambda$onEnable$1(ProbePlugin.java:36)
+	at io.github.bearisbug.synaxis.app.PluginSchedulerImpl.lambda$guarded$0(PluginSchedulerImpl.java:126)
+	at io.github.bearisbug.synaxis.timer.Task$Builder.lambda$new$0(Task.java:41)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:77)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:68)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.handleTask(SchedulerImpl.java:127)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.runTasks(SchedulerImpl.java:85)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTickTasks(SchedulerImpl.java:70)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:53)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:49)
+	at io.github.bearisbug.synaxis.timer.SchedulerManager.processTick(SchedulerManager.java:24)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tickWatched(ServerProcessImpl.java:622)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tick(ServerProcessImpl.java:611)
+	at io.github.bearisbug.synaxis.TickSchedulerThread.run(TickSchedulerThread.java:38)
+03:38:41.871 [Syn-TickScheduler] ERROR i.g.b.s.app.PluginSchedulerImpl - Plugin task failed: plugin_id=a
+java.lang.RuntimeException: probe-a task throws
+	at probe.a.ProbePlugin.lambda$onEnable$1(ProbePlugin.java:36)
+	at io.github.bearisbug.synaxis.app.PluginSchedulerImpl.lambda$guarded$0(PluginSchedulerImpl.java:126)
+	at io.github.bearisbug.synaxis.timer.Task$Builder.lambda$new$0(Task.java:41)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:77)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:68)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.handleTask(SchedulerImpl.java:127)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.runTasks(SchedulerImpl.java:85)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTickTasks(SchedulerImpl.java:70)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:53)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:49)
+	at io.github.bearisbug.synaxis.timer.SchedulerManager.processTick(SchedulerManager.java:24)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tickWatched(ServerProcessImpl.java:622)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tick(ServerProcessImpl.java:611)
+	at io.github.bearisbug.synaxis.TickSchedulerThread.run(TickSchedulerThread.java:38)
+03:38:44.879 [virtual-1124] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=61bd3d8d-9024-44d4-a084-819f2f3c2105 remote_address=/127.0.0.1:63437
+03:38:44.981 [Syn-TickScheduler] ERROR i.g.b.synaxis.app.PluginEventsImpl - Plugin event listener failed: plugin_id=a event=PlayerSpawnEvent (1 failures since the last report)
+java.lang.RuntimeException: probe-a listener throws for probe
+	at probe.a.ProbePlugin.lambda$onEnable$0(ProbePlugin.java:32)
+	at io.github.bearisbug.synaxis.app.PluginEventsImpl.lambda$addListener$0(PluginEventsImpl.java:77)
+	at io.github.bearisbug.synaxis.event.EventListener$Builder.lambda$build$0(EventListener.java:168)
+	at io.github.bearisbug.synaxis.event.EventListener$Builder$ListenerImpl.run(EventListener.java:66)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.callListener(EventNodeImpl.java:594)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.lambda$listenersConsumer$2(EventNodeImpl.java:511)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.lambda$createConsumer$5(EventNodeImpl.java:482)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.lambda$createConsumer$5(EventNodeImpl.java:490)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.lambda$createConsumer$5(EventNodeImpl.java:490)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.call(EventNodeImpl.java:413)
+	at io.github.bearisbug.synaxis.event.EventNode.call(EventNode.java:189)
+	at io.github.bearisbug.synaxis.entity.Player.spawnPlayer(Player.java:893)
+	at io.github.bearisbug.synaxis.entity.Player.lambda$setInstance$1(Player.java:731)
+	at io.github.bearisbug.synaxis.entity.Entity.runOwned(Entity.java:1121)
+	at io.github.bearisbug.synaxis.entity.Player.lambda$setInstance$0(Player.java:731)
+	at io.github.bearisbug.synaxis.entity.Player.setInstance(Player.java:745)
+	at io.github.bearisbug.synaxis.entity.Player.setInstance(Player.java:810)
+	at io.github.bearisbug.synaxis.entity.Player.UNSAFE_init(Player.java:446)
+	at io.github.bearisbug.synaxis.network.ConnectionManager.lambda$updateWaitingPlayers$2(ConnectionManager.java:744)
+	at org.jctools.queues.MessagePassingQueueUtil.drain(MessagePassingQueueUtil.java:39)
+	at org.jctools.queues.varhandle.BaseMpscLinkedVarHandleArrayQueue.drain(BaseMpscLinkedVarHandleArrayQueue.java:576)
+	at org.jctools.queues.varhandle.MpscUnboundedVarHandleArrayQueue.drain(MpscUnboundedVarHandleArrayQueue.java:27)
+	at org.jctools.queues.varhandle.MpscUnboundedVarHandleArrayQueue.drain(MpscUnboundedVarHandleArrayQueue.java:61)
+	at io.github.bearisbug.synaxis.network.ConnectionManager.updateWaitingPlayers(ConnectionManager.java:770)
+	at io.github.bearisbug.synaxis.network.ConnectionManager.tick(ConnectionManager.java:642)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tickWatched(ServerProcessImpl.java:626)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tick(ServerProcessImpl.java:611)
+	at io.github.bearisbug.synaxis.TickSchedulerThread.run(TickSchedulerThread.java:38)
+03:38:44.983 [Syn-Tick-0] ERROR i.g.b.s.app.PluginChannelRouter - Plugin channel handler failed: plugin_id=a channel=a:probe connection_id=61bd3d8d-9024-44d4-a084-819f2f3c2105 (1 failures since the last report)
+java.lang.RuntimeException: probe-a channel throws, 1 bytes
+	at probe.a.ProbePlugin.lambda$onEnable$2(ProbePlugin.java:40)
+	at io.github.bearisbug.synaxis.app.PluginChannelRouter.route(PluginChannelRouter.java:131)
+	at io.github.bearisbug.synaxis.event.EventListener.lambda$of$1(EventListener.java:53)
+	at io.github.bearisbug.synaxis.event.EventListener$Builder$ListenerImpl.run(EventListener.java:66)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.callListener(EventNodeImpl.java:594)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.lambda$listenersConsumer$2(EventNodeImpl.java:511)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.lambda$createConsumer$5(EventNodeImpl.java:482)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.lambda$createConsumer$5(EventNodeImpl.java:490)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.call(EventNodeImpl.java:413)
+	at io.github.bearisbug.synaxis.event.EventNode.call(EventNode.java:189)
+	at io.github.bearisbug.synaxis.listener.common.PluginMessageListener.listener(PluginMessageListener.java:11)
+	at io.github.bearisbug.synaxis.listener.manager.PacketListenerManager.lambda$setPlayListener$0(PacketListenerManager.java:263)
+	at io.github.bearisbug.synaxis.listener.manager.PacketListenerManager.processClientPacket(PacketListenerManager.java:236)
+	at io.github.bearisbug.synaxis.entity.Player.lambda$interpretPacketQueue$0(Player.java:2513)
+	at org.jctools.queues.varhandle.MpscVarHandleArrayQueue.drain(MpscVarHandleArrayQueue.java:493)
+	at io.github.bearisbug.synaxis.entity.Player.interpretPacketQueue(Player.java:2511)
+	at io.github.bearisbug.synaxis.entity.Player.update(Player.java:475)
+	at io.github.bearisbug.synaxis.entity.Entity.tick(Entity.java:843)
+	at io.github.bearisbug.synaxis.thread.TickThread.tick(TickThread.java:96)
+	at io.github.bearisbug.synaxis.thread.TickThread.run(TickThread.java:65)
+03:38:46.871 [Syn-TickScheduler] ERROR i.g.b.s.app.PluginSchedulerImpl - Plugin task failed: plugin_id=a
+java.lang.RuntimeException: probe-a task throws
+	at probe.a.ProbePlugin.lambda$onEnable$1(ProbePlugin.java:36)
+	at io.github.bearisbug.synaxis.app.PluginSchedulerImpl.lambda$guarded$0(PluginSchedulerImpl.java:126)
+	at io.github.bearisbug.synaxis.timer.Task$Builder.lambda$new$0(Task.java:41)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:77)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:68)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.handleTask(SchedulerImpl.java:127)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.runTasks(SchedulerImpl.java:85)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTickTasks(SchedulerImpl.java:70)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:53)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:49)
+	at io.github.bearisbug.synaxis.timer.SchedulerManager.processTick(SchedulerManager.java:24)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tickWatched(ServerProcessImpl.java:622)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tick(ServerProcessImpl.java:611)
+	at io.github.bearisbug.synaxis.TickSchedulerThread.run(TickSchedulerThread.java:38)
+03:38:51.871 [Syn-TickScheduler] ERROR i.g.b.s.app.PluginSchedulerImpl - Plugin task failed: plugin_id=a
+java.lang.RuntimeException: probe-a task throws
+	at probe.a.ProbePlugin.lambda$onEnable$1(ProbePlugin.java:36)
+	at io.github.bearisbug.synaxis.app.PluginSchedulerImpl.lambda$guarded$0(PluginSchedulerImpl.java:126)
+	at io.github.bearisbug.synaxis.timer.Task$Builder.lambda$new$0(Task.java:41)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:77)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:68)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.handleTask(SchedulerImpl.java:127)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.runTasks(SchedulerImpl.java:85)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTickTasks(SchedulerImpl.java:70)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:53)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:49)
+	at io.github.bearisbug.synaxis.timer.SchedulerManager.processTick(SchedulerManager.java:24)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tickWatched(ServerProcessImpl.java:622)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tick(ServerProcessImpl.java:611)
+	at io.github.bearisbug.synaxis.TickSchedulerThread.run(TickSchedulerThread.java:38)
+03:38:54.977 [Syn-Socket-Reader-2] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=61bd3d8d-9024-44d4-a084-819f2f3c2105 identifier=probe
+03:38:56.053 [virtual-1132] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=fedd67a9-8a40-470e-b4d2-ed1e835478d9 remote_address=/127.0.0.1:63459
+03:38:56.133 [Syn-Socket-Reader-3] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=fedd67a9-8a40-470e-b4d2-ed1e835478d9 identifier=probe
+03:38:56.169 [virtual-1138] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=01b74ed7-1905-4ac3-9699-258c9b69bedc remote_address=/127.0.0.1:63460
+03:38:56.246 [Syn-Socket-Reader-4] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=01b74ed7-1905-4ac3-9699-258c9b69bedc identifier=probe
+03:38:56.281 [virtual-1146] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=bbadfbe6-f658-4eef-8624-6c76715be068 remote_address=/127.0.0.1:63461
+03:38:56.362 [Syn-Socket-Reader-5] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=bbadfbe6-f658-4eef-8624-6c76715be068 identifier=probe
+03:38:56.402 [virtual-1153] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=19edac8b-bad3-442c-b73e-f6af2b9aaf33 remote_address=/127.0.0.1:63462
+03:38:56.490 [Syn-Socket-Reader-6] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=19edac8b-bad3-442c-b73e-f6af2b9aaf33 identifier=probe
+03:38:56.526 [virtual-1160] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=f9e2154d-789e-4eed-9ca3-b6e3c5620bef remote_address=/127.0.0.1:63463
+03:38:56.612 [Syn-Socket-Reader-7] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=f9e2154d-789e-4eed-9ca3-b6e3c5620bef identifier=probe
+03:38:56.647 [virtual-1167] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=6a95172a-9d55-4687-9572-8c6c835bcdf3 remote_address=/127.0.0.1:63464
+03:38:56.723 [Syn-Socket-Reader-8] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=6a95172a-9d55-4687-9572-8c6c835bcdf3 identifier=probe
+03:38:56.760 [virtual-1173] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=146357aa-941a-445a-be27-8fc933875b3f remote_address=/127.0.0.1:63465
+03:38:56.847 [Syn-Socket-Reader-9] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=146357aa-941a-445a-be27-8fc933875b3f identifier=probe
+03:38:56.871 [Syn-TickScheduler] ERROR i.g.b.s.app.PluginSchedulerImpl - Plugin task failed: plugin_id=a
+java.lang.RuntimeException: probe-a task throws
+	at probe.a.ProbePlugin.lambda$onEnable$1(ProbePlugin.java:36)
+	at io.github.bearisbug.synaxis.app.PluginSchedulerImpl.lambda$guarded$0(PluginSchedulerImpl.java:126)
+	at io.github.bearisbug.synaxis.timer.Task$Builder.lambda$new$0(Task.java:41)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:77)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:68)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.handleTask(SchedulerImpl.java:127)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.runTasks(SchedulerImpl.java:85)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTickTasks(SchedulerImpl.java:70)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:53)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:49)
+	at io.github.bearisbug.synaxis.timer.SchedulerManager.processTick(SchedulerManager.java:24)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tickWatched(ServerProcessImpl.java:622)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tick(ServerProcessImpl.java:611)
+	at io.github.bearisbug.synaxis.TickSchedulerThread.run(TickSchedulerThread.java:38)
+03:38:56.883 [virtual-1181] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=349db020-1108-449d-9b16-b6389de490d0 remote_address=/127.0.0.1:63466
+03:38:56.970 [Syn-Socket-Reader-10] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=349db020-1108-449d-9b16-b6389de490d0 identifier=probe
+03:38:57.006 [virtual-1188] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=bb887eb1-b8a1-4c27-bffd-8e5f78398e0b remote_address=/127.0.0.1:63467
+03:38:57.093 [Syn-Socket-Reader-11] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=bb887eb1-b8a1-4c27-bffd-8e5f78398e0b identifier=probe
+03:38:57.130 [virtual-1195] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=701e70cd-cf10-424b-843b-c62d27c222cb remote_address=/127.0.0.1:63468
+03:38:57.216 [Syn-Socket-Reader-12] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=701e70cd-cf10-424b-843b-c62d27c222cb identifier=probe
+03:38:57.252 [virtual-1202] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=61cc1a14-ed35-4b76-9e0d-f1e797bd79f1 remote_address=/127.0.0.1:63469
+03:38:57.329 [Syn-Socket-Reader-13] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=61cc1a14-ed35-4b76-9e0d-f1e797bd79f1 identifier=probe
+03:38:57.366 [virtual-1208] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=61cc1a4b-c459-442c-b7c1-42af706e94b3 remote_address=/127.0.0.1:63470
+03:38:57.448 [Syn-Socket-Reader-14] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=61cc1a4b-c459-442c-b7c1-42af706e94b3 identifier=probe
+03:38:57.484 [virtual-1216] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=cf9cfa44-1839-4808-bb5b-0706bcddc47b remote_address=/127.0.0.1:63471
+03:38:57.567 [Syn-Socket-Reader-15] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=cf9cfa44-1839-4808-bb5b-0706bcddc47b identifier=probe
+03:38:57.603 [virtual-1223] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=04281a84-ce4d-4267-a71c-a8077beb4ece remote_address=/127.0.0.1:63472
+03:38:57.684 [Syn-Socket-Reader-16] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=04281a84-ce4d-4267-a71c-a8077beb4ece identifier=probe
+03:38:57.720 [virtual-1229] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=47701b6c-d959-4a9f-b3d9-be9232be2cf0 remote_address=/127.0.0.1:63473
+03:38:57.801 [Syn-Socket-Reader-17] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=47701b6c-d959-4a9f-b3d9-be9232be2cf0 identifier=probe
+03:38:57.838 [virtual-1237] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=c7a23dbb-ca2f-45bb-bb56-a559a53a3829 remote_address=/127.0.0.1:63474
+03:38:57.924 [Syn-Socket-Reader-18] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=c7a23dbb-ca2f-45bb-bb56-a559a53a3829 identifier=probe
+03:38:57.959 [virtual-1243] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=7b841366-b49c-4f02-b63e-1d382ca53844 remote_address=/127.0.0.1:63477
+03:38:58.044 [Syn-Socket-Reader-19] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=7b841366-b49c-4f02-b63e-1d382ca53844 identifier=probe
+03:38:58.080 [virtual-1251] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=14c36f67-5b4c-4c7d-93db-9f2860b70e35 remote_address=/127.0.0.1:63478
+03:38:58.167 [Syn-Socket-Reader-20] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=14c36f67-5b4c-4c7d-93db-9f2860b70e35 identifier=probe
+03:38:58.203 [virtual-1258] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=a18f1aa3-2bc9-4d94-b2bf-0b770c4bb2a9 remote_address=/127.0.0.1:63479
+03:38:58.289 [Syn-Socket-Reader-21] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=a18f1aa3-2bc9-4d94-b2bf-0b770c4bb2a9 identifier=probe
+03:38:58.326 [virtual-1265] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=0508c121-ef94-4c6b-8bfb-4ba2cc45cbec remote_address=/127.0.0.1:63480
+03:38:58.405 [Syn-Socket-Reader-22] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=0508c121-ef94-4c6b-8bfb-4ba2cc45cbec identifier=probe
+03:38:59.430 [Syn-Socket-Reader-23] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=945bc2be-ff3b-4562-a843-53976b168cdb identifier=/127.0.0.1:63483
+03:38:59.435 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+03:38:59.436 [server-app-console] INFO  i.g.b.synaxis.command.ConsoleSender - The server stops in 0 s
+03:38:59.471 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=a
+03:38:59.471 [plugin-disable-a] INFO  plugin.a - probe-a onDisable plugin_id=a
+03:38:59.471 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=a: event node, tasks, channels, admission provider, commands, tab list visibility
+03:38:59.471 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=rts
+03:38:59.476 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=rts: event node, tasks, channels, admission provider, commands, tab list visibility
+03:38:59.544 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+03:38:59.544 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.

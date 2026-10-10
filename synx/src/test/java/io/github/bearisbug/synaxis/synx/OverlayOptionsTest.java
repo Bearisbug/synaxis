@@ -24,6 +24,18 @@ public class OverlayOptionsTest {
     }
 
     @Test
+    public void theOverlayDiskCapIsFourGibibytesUnlessGiven() {
+        assertEquals(4_294_967_296L, OverlayOptions.from(Map.<String, String>of()::get).maxBytes());
+        assertEquals(new OverlayOptions(16_384, 10, 65_536), OverlayOptions.from(Map.of(
+                "synaxis.overlay.max-bytes", "65536")::get));
+        assertEquals("Property 'synaxis.overlay.max-bytes' is below 1: 0", assertThrows(IllegalArgumentException.class,
+                () -> OverlayOptions.from(Map.of("synaxis.overlay.max-bytes", "0")::get)).getMessage());
+        assertEquals("Property 'synaxis.overlay.max-bytes' is not a number of bytes: 4G", assertThrows(
+                IllegalArgumentException.class,
+                () -> OverlayOptions.from(Map.of("synaxis.overlay.max-bytes", "4G")::get)).getMessage());
+    }
+
+    @Test
     public void aValueOutOfRangeOrNotAnIntegerIsRefused() {
         assertEquals("Property 'synaxis.overlay.flush-interval-s' is not from 1 to 60: 0", assertThrows(
                 IllegalArgumentException.class,

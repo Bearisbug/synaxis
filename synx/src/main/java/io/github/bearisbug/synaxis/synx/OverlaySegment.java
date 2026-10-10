@@ -15,7 +15,10 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.zip.CRC32C;
 
 /**
@@ -72,13 +75,17 @@ final class OverlaySegment {
 
     /**
      * Makes segment {@code number} at {@code size} bytes, a sparse file, with its header written and
-     * not yet forced. A file that fails halfway is deleted.
+     * not yet forced; 0600 where the file system has POSIX permissions (M3-S). A file that fails halfway
+     * is deleted.
      */
     static OverlaySegment create(Path directory, int number, SynxHeader header, long size, OverlayTuning.Disk disk)
             throws IOException {
         final Path path = directory.resolve(fileName(number));
-        final FileChannel channel = FileChannel.open(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.READ,
-                StandardOpenOption.WRITE);
+        final FileAttribute<?>[] attributes = OverlayStore.posix(path)
+                ? new FileAttribute<?>[]{PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"))}
+                : new FileAttribute<?>[0];
+        final FileChannel channel = FileChannel.open(path, Set.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.READ,
+                StandardOpenOption.WRITE), attributes);
         try {
             channel.write(ByteBuffer.allocate(1), size - 1);
             disk.write(channel, ByteBuffer.wrap(header.encode()), 0);
@@ -139,6 +146,8 @@ final class OverlaySegment {
             sink.record(segment, offset, mapping.get(LONG, offset + 8), segment.present(offset));
             offset = align(offset + RECORD_HEADER_BYTES + length);
         }
+        // Sealed: what counts is where its records end, not the length of the sparse file
+        segment.position = offset;
         return segment;
     }
 
@@ -163,6 +172,14 @@ final class OverlaySegment {
 
     private static long align(long offset) {
         return (offset + SynxFormat.RECORD_ALIGNMENT - 1) & -SynxFormat.RECORD_ALIGNMENT;
+    }
+
+    /**
+     * Where the segment is written to: the end of its last record, 8 byte aligned, the header counted;
+     * for the segment taking records the position the next one goes to ({@code overlay_bytes}, M3-S).
+     */
+    long written() {
+        return position;
     }
 
     /** Whether a record of {@code length} bytes still fits behind the last one. */

@@ -1,0 +1,150 @@
+RUN-069 integrate: TC-WORLD-132 on b70c6b7f54 (code of 49bee23cc1). Database variables set (SYNAXIS_TEST_PG_URL
+jdbc:postgresql://127.0.0.1:5440/postgres, user postgres, password read from docker inspect synaxis-pg and not printed,
+SYNAXIS_TEST_REDIS_URL redis://127.0.0.1:6440).
+Step 1 (batch B, 18:01:35-18:08:21): umask 002; ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=2 :server-app:test :baker:test --tests io.github.bearisbug.synaxis.baker.GeneratorBakeTest --rerun
+Step 2 (batch B): the release left to the umask: Baker.java :653 (publishedMode, behind publishedDirectory and
+  publishedFile, which FarViewAssembler :283 and :393 call too) and SynxRegionWriter.java :113 (readableByAll) get
+  "&& Boolean.getBoolean("proof.never")" on their posix condition (diff 132-2 below), so nothing sets 0755 / 0644;
+  umask 002; run on the three classes the step names (ShardWorldTest, ShardWorldAssemblyTest, GeneratorBakeTest),
+  not the whole of step 1; git checkout -- baker synx.
+Step 3 (batch B2, 18:09:50-18:10:12): ShardWorldAssemblyTest.java :394 the attribute -> new FileAttribute<?>[0] and the
+  import on :48 PosixFilePermissions -> FileAttribute (Error Prone refuses an unused import and a fully qualified
+  name, the first try in batch B did not compile; this keeps every line number), umask 002, the one class, git checkout.
+
+Step 1:
+== 132-1 18:08:21 mem_free=48% load={ 5.64 6.16 5.96 } umask=0002
+122:BUILD SUCCESSFUL in 6m 46s
+server-app classes=123 tests=638 skipped=0 failures=0 errors=0
+<testsuite name="io.github.bearisbug.synaxis.baker.GeneratorBakeTest" tests="13" skipped="0" failures="0" errors="0"
+classes with skipped > 0: none (the grep for skipped="[1-9] printed nothing)
+
+Step 2:
+== 132-2 18:08:36 mem_free=43% load={ 6.15 6.25 6.00 } head=b70c6b7f54 umask=0002
+162:29 tests completed, 15 failed
+169:13 tests completed, 1 failed
+203:BUILD FAILED in 14s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.ShardWorldTest" tests="19" skipped="0" failures="6" errors="0"
+message="java.lang.IllegalArgumentException: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-7357170050832118482/fixture/fixture-53b7eb295525-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone"
+message="java.lang.IllegalArgumentException: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-7357170050832118482/fixture/fixture-53b7eb295525-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone"
+message="org.opentest4j.AssertionFailedError: expected: &lt;the spawn column 56, 120 of r0 is inside the gate r0-east: a player would be sent away on joining&gt; but was: &lt;/private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-7357170050832118482/fixture/fixture-53b7eb295525-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone&gt;"
+message="org.opentest4j.AssertionFailedError: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-7357170050832118482/fixture/fixture-53b7eb295525-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;"
+message="java.lang.IllegalArgumentException: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-7357170050832118482/fixture/fixture-53b7eb295525-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone"
+message="java.lang.IllegalArgumentException: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-7357170050832118482/fixture/fixture-53b7eb295525-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone"
+   1 ShardWorldTest.java:103
+   1 ShardWorldTest.java:126
+   1 ShardWorldTest.java:221
+   1 ShardWorldTest.java:232
+   1 ShardWorldTest.java:244
+   1 ShardWorldTest.java:84
+<testsuite name="io.github.bearisbug.synaxis.app.shard.ShardWorldAssemblyTest" tests="10" skipped="0" failures="9" errors="0"
+message="java.lang.IllegalArgumentException: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-16745519700004389514/fixture/fixture-53b7eb295525-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone"
+message="java.lang.IllegalArgumentException: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-16745519700004389514/fixture/fixture-53b7eb295525-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone"
+message="java.lang.IllegalArgumentException: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-11858403555663969897/wide/wide-5418c9b9935b-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone"
+message="java.lang.IllegalArgumentException: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-16745519700004389514/fixture/fixture-53b7eb295525-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone"
+message="java.lang.IllegalArgumentException: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-16011394609478301821/wide/wide-5418c9b9935b-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone"
+message="java.lang.IllegalArgumentException: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-16745519700004389514/fixture/fixture-53b7eb295525-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone"
+message="java.lang.IllegalArgumentException: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-16745519700004389514/fixture/fixture-53b7eb295525-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone"
+message="java.lang.IllegalArgumentException: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-16745519700004389514/fixture/fixture-53b7eb295525-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone"
+message="java.lang.IllegalArgumentException: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-16745519700004389514/fixture/fixture-53b7eb295525-p776: writable by group or others (rwxrwxr-x); a map release is written by its owner alone"
+   4 ShardWorldAssemblyTest.java:139
+   2 ShardWorldAssemblyTest.java:148
+   1 ShardWorldAssemblyTest.java:178
+   1 ShardWorldAssemblyTest.java:211
+   1 ShardWorldAssemblyTest.java:229
+   1 ShardWorldAssemblyTest.java:263
+   1 ShardWorldAssemblyTest.java:314
+   1 ShardWorldAssemblyTest.java:344
+   1 ShardWorldAssemblyTest.java:395
+   1 ShardWorldAssemblyTest.java:417
+   1 ShardWorldAssemblyTest.java:450
+<testsuite name="io.github.bearisbug.synaxis.baker.GeneratorBakeTest" tests="13" skipped="0" failures="1" errors="0"
+message="org.opentest4j.AssertionFailedError: what is not 0755 or 0644 ==&gt; expected: &lt;[]&gt; but was: &lt;[ rwxrwxr-x, test-0d0335a8e60e-p776 rwxrwxr-x, test-0d0335a8e60e-p776/farview rwxrwxr-x, test-0d0335a8e60e-p776/farview/t.0.0.hfp rw-rw-r--, test-0d0335a8e60e-p776/manifest.json rw-rw-r--, test-0d0335a8e60e-p776/regions rwxrwxr-x, test-0d0335a8e60e-p776/regions/r.0.0.synx rw-rw-r--, test
+   1 GeneratorBakeTest.java:78
+status:  M baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java  M synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxRegionWriter.java 
+Failed methods:
+  ShardWorldTest:
+    aShardDirectoryThatFitsTheReleasePasses()
+    theShardRegistersTheHandlersOfTheBaker()
+    theSpawnColumnInsideAGateOfTheRegionIsRefused()
+    aShardDirectoryOfAnotherMapIsRefusedNamingItsFile()
+    aReleaseThatPassesRegistersTheMapDimensionTypeFromItsWorld()
+    theMapDimensionTypeTakesTheTimelinesAndTheClockOfTheOverworld()
+  ShardWorldAssemblyTest:
+    aDirtyChunkIsWrittenBeforeItIsUnloaded()
+    anOverlayStoreThatCannotBeOpenedNamesItsDirectory()
+    aShardInTheDirectoryModeServesItsRegion(Path)
+    aShardOutsideTheDirectoryModeStartsWithoutARegion()
+    theStartUpCheckCoversTheViewOfTheRegion(Path)
+    aMountedShardServesTheMapInstance()
+    theMapClockStartsAtTheWallClock()
+    twoShardsOfAMapShowOneTimeAndAShardThatLostTicksIsSetBack()
+    aNormalStopWritesEveryChangeAndNothingAfterIt()
+  GeneratorBakeTest:
+    theReleaseIsReadableByAllAndWrittenByItsOwnerAlone()
+  Six of ShardWorldTest and nine of ShardWorldAssemblyTest, where the step writes 5 and 7 (track S's run on
+  c54f5e06c1): the three more are the day-night tests of 49bee23cc1 (theMapDimensionTypeTakesTheTimelinesAndTheClockOfTheOverworld,
+  theMapClockStartsAtTheWallClock, twoShardsOfAMapShowOneTimeAndAShardThatLostTicksIsSetBack), which mount a release too.
+
+diff 132-2:
+diff --git a/baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java b/baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java
+index 2c19335371..ffd69dae66 100644
+--- a/baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java
++++ b/baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java
+@@ -650,7 +650,7 @@ public final class Baker {
+     }
+ 
+     private static Path publishedMode(Path path, String permissions) throws IOException {
+-        if (path.getFileSystem().supportedFileAttributeViews().contains("posix")) {
++        if (path.getFileSystem().supportedFileAttributeViews().contains("posix") && Boolean.getBoolean("proof.never")) {
+             Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions));
+         }
+         return path;
+diff --git a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxRegionWriter.java b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxRegionWriter.java
+index e1e51ceea9..d67cf3f35a 100644
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxRegionWriter.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxRegionWriter.java
+@@ -110,7 +110,7 @@ public final class SynxRegionWriter {
+     }
+ 
+     private static void readableByAll(Path file) throws IOException {
+-        if (file.getFileSystem().supportedFileAttributeViews().contains("posix")) {
++        if (file.getFileSystem().supportedFileAttributeViews().contains("posix") && Boolean.getBoolean("proof.never")) {
+             Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-r--r--"));
+         }
+     }
+
+Step 3:
+== 132-3 18:10:12 mem_free=53% load={ 6.85 6.61 6.17 } umask=0002
+52:10 tests completed, 1 failed
+65:BUILD FAILED in 22s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.ShardWorldAssemblyTest" tests="10" skipped="0" failures="1" errors="0"
+failed: anOverlayStoreThatCannotBeOpenedNamesItsDirectory()
+message="org.opentest4j.AssertionFailedError: /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-18062931172480222798/overlay: writable by group or others (rw-rw-r--); only the service user may write it ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;"
+   1 ShardWorldAssemblyTest.java:402
+status: 
+
+diff 132-3:
+diff --git a/server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/ShardWorldAssemblyTest.java b/server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/ShardWorldAssemblyTest.java
+index 3cb6bf98f9..5cc4bac75f 100644
+--- a/server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/ShardWorldAssemblyTest.java
++++ b/server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/ShardWorldAssemblyTest.java
+@@ -45,7 +45,7 @@ import java.net.InetAddress;
+ import java.net.InetSocketAddress;
+ import java.nio.file.Files;
+ import java.nio.file.Path;
+-import java.nio.file.attribute.PosixFilePermissions;
++import java.nio.file.attribute.FileAttribute;
+ import java.time.Duration;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+@@ -391,7 +391,7 @@ public class ShardWorldAssemblyTest {
+         final ServerProcess process = process();
+         try {
+             final Path notADirectory = Files.createFile(overlayRoot.resolve("overlay"),
+-                    PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
++                    new FileAttribute<?>[0]);
+             final ShardWorld world = ShardWorld.prepare(process, release, SYNX, new OverlayOptions(16_384, 10), null);
+             final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
+             try {
+
+After: umask 022; git status --porcelain empty (batch B2: "status after:" with nothing).

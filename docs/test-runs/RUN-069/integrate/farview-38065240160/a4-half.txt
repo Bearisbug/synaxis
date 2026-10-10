@@ -1,0 +1,8 @@
+F19 FAIL cut GET /farview/farview/afbcc46cf7d2ba7b07e3eae738d2fe94c9e08f470c571a5b96236b19fdf74e78.hfp - 200 cut; second GET /farview/farview/afbcc46cf7d2ba7b07e3eae738d2fe94c9e08f470c571a5b96236b19fdf74e78.hfp bytes=4379- 206; ready false
+F19 FAIL counter-proof counter-range: cut GET /farview/farview/895adb1483ef0cbedb72aafea23ec1db9b24eb81ce6426cf88d2febdb6a97e33.hfp - 200 cut; second GET /farview/farview/895adb1483ef0cbedb72aafea23ec1db9b24eb81ce6426cf88d2febdb6a97e33.hfp - 200; ready false
+# Distant Horizons threads set to 2, run time ratio 1.0: threadCount api=2 value=2 overridable=true, threadRuntimeRatio api=1.0 value=1.0 overridable=true
+# mode half from 16:35:09
+# fixture mode half, map farview, spawn 264.5 64.0 264.5
+# mode counter-range from 16:44:20
+# attempt 1 not in the world of 127.0.0.1:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 2 not in the world of 127.0.0.1:25750: Connection Lost. Somebody is already playing under this name.

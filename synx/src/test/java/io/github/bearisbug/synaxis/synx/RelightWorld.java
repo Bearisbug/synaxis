@@ -154,7 +154,8 @@ final class RelightWorld {
         final RelightTestMap map = RelightTestMap.get();
         try {
             final OverlayStore store = OverlayStore.open(overlayRoot, map.manifest, map.settings(), overlayOptions);
-            final SynxChunkLoader loader = new SynxChunkLoader(map.buildDir, map.manifest, bounds, options, store, store);
+            final SynxChunkLoader loader = new SynxChunkLoader(SynxWorlds.mapped(map.buildDir, map.manifest, bounds), bounds, options,
+                    store, store);
             final InstanceContainer instance = env.process().instance().createInstanceContainer(dimension(env.process()), loader);
             final ManualExecutor executor = manual ? new ManualExecutor() : null;
             final SynxRelight relight = executor != null ? loader.startRelight(instance, executor) : loader.startRelight(instance);

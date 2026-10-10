@@ -230,14 +230,16 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     }
 
     /**
-     * Outside the region, in failed mode, or with {@code synaxis.world-writable=false} unless this
-     * thread applies a world state flag ({@link #asWorldFlag}). The engine checks this in
+     * Outside the region, in failed mode, or with {@code synaxis.world-writable=false} or the overlay store
+     * full ({@link OverlayTracker#full()}, M3-S) unless this thread applies a world state flag
+     * ({@link #asWorldFlag}). The engine checks this in
      * {@code InstanceContainer} only; {@link #setBlock} and {@link #setBiome} check it again for the
      * callers that come around it.
      */
     @Override
     public boolean isReadOnly() {
-        return !inRegion || mode == Mode.FAILED || (!loader.options().worldWritable() && !WORLD_FLAG.isBound())
+        return !inRegion || mode == Mode.FAILED
+                || ((!loader.options().worldWritable() || loader.tracker().full()) && !WORLD_FLAG.isBound())
                 || super.isReadOnly();
     }
 

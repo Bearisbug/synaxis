@@ -1,0 +1,4 @@
+F1 FAIL no announcement: library /home/runner/work/synaxis/synaxis/client-fabric/build/run/clientGameTest/synaxis/farview/dh/off, access.log 0 request(s)
+# Distant Horizons threads set to 2, run time ratio 1.0: threadCount api=2 value=2 overridable=true, threadRuntimeRatio api=1.0 value=1.0 overridable=true
+# mode v1 from 16:54:33
+# fixture mode serve-only, map farview3x3, spawn 2040.5 74.0 2040.5

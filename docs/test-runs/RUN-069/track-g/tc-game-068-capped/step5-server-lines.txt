@@ -1,0 +1,5 @@
+Daemon will be stopped at the end of the build 
+13:35:31.267 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:9464/metrics
+13:35:31.655 [main] INFO  plugin.rts - Match running: match_id=8eb6f491-e057-44c6-8d08-1e7105d717c3 map_id=rts-512 dimension_name=synaxis:match_24ecbdf5ac374e5c959eb06caa675720 chunk_count=1024 load_ms=338
+13:35:31.683 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25576
+13:36:07.284 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.

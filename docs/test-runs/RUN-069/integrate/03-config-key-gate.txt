@@ -1,0 +1,89 @@
+RUN-069 integrate: the config key gate on b70c6b7f54 (code of 49bee23cc1), one batch under the heavy lock 17:56:26-17:57:24.
+<G> = ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=2 (JDK 25, proxy JAVA_TOOL_OPTIONS). Gate = <G> :architecture-tests:test --tests io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest --rerun.
+Each change below was made with sed on the named file, the gate run, then git checkout -- <file>; the "status" line is
+read before that checkout, the next step starts clean.
+
+  441-1, 441-5       TC-PROD-441 steps 1 and 5 (also TC-PROD-569 step 4's gate line and TC-WORLD-041 step 1's gate)
+  441-1-dryrun       ./gradlew check --dry-run --no-daemon --init-script ... | grep -E '^:architecture-tests:test '
+  441-2              ConfigFile.java: delete the line "synaxis.compression-level",
+  441-3              ConfigFile.java: "synaxis.app.units"))); -> "synaxis.app.units", "synaxis.gone")));
+  441-4              logback.xml: ${synaxis.app.log:-file} -> ${synaxis.app.logs:-file}
+  w041-2             TC-WORLD-041 step 2: ConfigFile.java: delete "synaxis.overlay.cap", and "synaxis.overlay.flush-interval-s",
+  569-arch           TC-PROD-569 step 4's last sentence: <G> :architecture-tests:test --rerun (all of it)
+
+batch A start 17:56:26 mem_free=47% load={ 5.45 5.48 5.31 } head=b70c6b7f547f4f92b784b4c77d292b82e84a0a6c
+== 441-1 17:56:35 mem_free=39% load={ 6.90 5.78 5.42 } head=b70c6b7f54
+tests="1" skipped="0" failures="0" errors="0"
+config key gate: 117 keys read, 117 in ConfigFile.KEYS, 21 meter names left out
+116:BUILD SUCCESSFUL in 9s
+status: 
+dry-run: :architecture-tests:test SKIPPED
+ server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java | 1 -
+ 1 file changed, 1 deletion(-)
+== 441-2 17:56:49 mem_free=39% load={ 7.15 5.87 5.45 } head=b70c6b7f54
+tests="1" skipped="0" failures="1" errors="0"
+config key gate: 117 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+50:    org.opentest4j.AssertionFailedError at ConfigKeyGateTest.java:74
+65:BUILD FAILED in 7s
+status:  M server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java 
+ .../src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java       | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+== 441-3 17:56:55 mem_free=42% load={ 7.04 5.89 5.47 } head=b70c6b7f54
+tests="1" skipped="0" failures="1" errors="0"
+config key gate: 117 keys read, 118 in ConfigFile.KEYS, 21 meter names left out
+50:    org.opentest4j.AssertionFailedError at ConfigKeyGateTest.java:74
+65:BUILD FAILED in 6s
+status:  M server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java 
+ server-app/src/main/resources/logback.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+== 441-4 17:57:00 mem_free=46% load={ 6.95 5.89 5.47 } head=b70c6b7f54
+tests="1" skipped="0" failures="1" errors="0"
+config key gate: 117 keys read, 117 in ConfigFile.KEYS, 21 meter names left out
+47:    org.opentest4j.AssertionFailedError at ConfigKeyGateTest.java:74
+62:BUILD FAILED in 4s
+status:  M server-app/src/main/resources/logback.xml 
+== 441-5 17:57:05 mem_free=44% load={ 7.20 5.95 5.49 } head=b70c6b7f54
+tests="1" skipped="0" failures="0" errors="0"
+config key gate: 117 keys read, 117 in ConfigFile.KEYS, 21 meter names left out
+46:BUILD SUCCESSFUL in 4s
+status: 
+ .../src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java       | 2 --
+ 1 file changed, 2 deletions(-)
+== w041-2 17:57:12 mem_free=46% load={ 7.10 5.96 5.50 } head=b70c6b7f54
+tests="1" skipped="0" failures="1" errors="0"
+config key gate: 117 keys read, 115 in ConfigFile.KEYS, 21 meter names left out
+50:    org.opentest4j.AssertionFailedError at ConfigKeyGateTest.java:74
+65:BUILD FAILED in 6s
+status:  M server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java 
+== 569-arch 17:57:24 mem_free=46% load={ 6.95 5.96 5.50 }
+<testsuite name="io.github.bearisbug.synaxis.architecture.BakerArchitectureTest" tests="4" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest" tests="1" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.architecture.EngineInternalsArchitectureTest" tests="5" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.architecture.LightEngineArchitectureTest" tests="1" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.architecture.PersistenceBoundaryArchitectureTest" tests="2" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest" tests="5" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest" tests="2" skipped="0" failures="0" errors="0"
+config key gate: 117 keys read, 117 in ConfigFile.KEYS, 21 meter names left out
+BUILD SUCCESSFUL in 11s
+status after: 
+batch A end 17:57:24 mem_free=46% load={ 6.95 5.96 5.50 }
+
+Problems lines (the failure message of ConfigKeyGateTest in each XML):
+  441-2:
+    org.opentest4j.AssertionFailedError: Problems of the config key gate (1):
+    synaxis.compression-level is read (io.github.bearisbug.synaxis.JvmFlags) but not in ConfigFile.KEYS, so the config file refuses it
+     ==> expected: <true> but was: <false>
+  441-3:
+    org.opentest4j.AssertionFailedError: Problems of the config key gate (1):
+    synaxis.gone is in ConfigFile.KEYS, but no class reads it any more
+     ==> expected: <true> but was: <false>
+  441-4:
+    org.opentest4j.AssertionFailedError: Problems of the config key gate (2):
+    synaxis.app.logs is read (logback.xml) but not in ConfigFile.KEYS, so the config file refuses it
+    synaxis.app.log is in ConfigFile.KEYS, but no class reads it any more
+     ==> expected: <true> but was: <false>
+  w041-2:
+    org.opentest4j.AssertionFailedError: Problems of the config key gate (2):
+    synaxis.overlay.cap is read (io.github.bearisbug.synaxis.synx.OverlayOptions) but not in ConfigFile.KEYS, so the config file refuses it
+    synaxis.overlay.flush-interval-s is read (io.github.bearisbug.synaxis.synx.OverlayOptions) but not in ConfigFile.KEYS, so the config file refuses it
+     ==> expected: <true> but was: <false>

@@ -14,8 +14,12 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.nio.file.Files;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -51,6 +55,8 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
     private static final int MAX_HOST_LENGTH = 253;
     private static final int MAX_PORT = 65_535;
     private static final int MAX_CAPACITY = 500;
+    /** The largest file read: a directory of the production tier, 64 regions of 3 channels, is about 50 KB. */
+    static final int MAX_BYTES = 1 << 20;
     private static final TypeAdapter<JsonElement> JSON = new Gson().getAdapter(JsonElement.class);
 
     public ShardDirectory {
@@ -133,20 +139,42 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
      */
     public static ShardDirectory load(Path file, String shardId) {
         final Path absolute = file.toAbsolutePath();
-        final String refusal = "the shard directory " + absolute + " is not valid: ";
+        try (FileChannel channel = FileChannel.open(absolute, StandardOpenOption.READ)) {
+            return load(channel, absolute, shardId);
+        } catch (IOException e) {
+            throw new IllegalArgumentException(refusal(absolute) + "cannot be read: " + e, e);
+        }
+    }
+
+    /**
+     * {@link #load(Path, String)} on a channel of the file: its size is compared with {@value #MAX_BYTES}
+     * before a byte is read, and no more is read than one byte past it (M3-S).
+     *
+     * @param absolute the file, for the messages
+     * @throws IOException if the channel cannot be read, or the file is not UTF-8
+     */
+    static ShardDirectory load(SeekableByteChannel channel, Path absolute, String shardId) throws IOException {
+        final String refusal = refusal(absolute);
+        final byte[] bytes = BoundedRead.readAtMost(channel, MAX_BYTES);
+        if (bytes == null) {
+            throw new IllegalArgumentException(refusal + channel.size() + " bytes, over " + MAX_BYTES);
+        }
+        final String text = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)).toString();
         final ShardDirectory directory;
         try {
-            directory = read(parse(Files.readString(absolute)), shardId);
-        } catch (IOException e) {
-            throw new IllegalArgumentException(refusal + "cannot be read: " + e, e);
+            directory = read(parse(text), shardId);
         } catch (Invalid e) {
             throw new IllegalArgumentException(refusal + e.getMessage(), e);
         }
-        if (directory.channels().stream().noneMatch(channel -> channel.shardId().equals(shardId))) {
+        if (directory.channels().stream().noneMatch(entry -> entry.shardId().equals(shardId))) {
             throw new IllegalArgumentException("synaxis.app.shard-id=" + shardId
                     + " is not a channel of the shard directory " + absolute);
         }
         return directory;
+    }
+
+    private static String refusal(Path absolute) {
+        return "the shard directory " + absolute + " is not valid: ";
     }
 
     /**

@@ -1,17 +1,25 @@
 package io.github.bearisbug.synaxis.game.client.farview;
 
 import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationNetworking;
 import net.fabricmc.fabric.api.client.networking.v1.ClientLoginConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
@@ -79,8 +87,12 @@ public final class FarViewClient {
      */
     public static void init(BooleanSupplier handshakeVerified) {
         handshaken = handshakeVerified;
-        cache = new FarViewCache(FabricLoader.getInstance().getGameDir().resolve("synaxis").resolve("farview"));
-        ClientConfigurationNetworking.registerGlobalReceiver(FarViewPayload.TYPE, (payload, _) -> onAnnouncement(payload));
+        final FarViewCache store = new FarViewCache(FabricLoader.getInstance().getGameDir().resolve("synaxis").resolve("farview"));
+        cache = store;
+        // What a connection left over a day ago goes now; the rest waits for the next announcement
+        store.dropStaleParts(null, System.currentTimeMillis());
+        ClientConfigurationNetworking.registerGlobalReceiver(FarViewPayload.TYPE, (payload, context) ->
+                onAnnouncement(payload, server(context.packetContext().orElse(PacketContext.CONNECTION, null))));
         // A connection attempt starts with login: whatever the last connection had under way stops there,
         // which also covers a connection lost before its play phase
         ClientLoginConnectionEvents.INIT.register((_, _) -> {
@@ -94,6 +106,11 @@ public final class FarViewClient {
             if (line != null) graphics.text(Minecraft.getInstance().font, line, 2, graphics.guiHeight() - 10, 0xFFFFFFFF);
         });
         gate = gate(FabricLoader.getInstance().isModLoaded(DH_MOD_ID), FarViewClient::loadDh);
+    }
+
+    /** The address of the server of a connection, null when it is not an IP address. */
+    private static @Nullable InetAddress server(@Nullable Connection connection) {
+        return connection != null && connection.getRemoteAddress() instanceof InetSocketAddress address ? address.getAddress() : null;
     }
 
     private static FarViewDh loadDh() {
@@ -156,31 +173,99 @@ public final class FarViewClient {
         return gate == Gate.SUPPORTED && settings.on() && announcement != null;
     }
 
-    private static void onAnnouncement(FarViewPayload payload) {
-        final long now = System.nanoTime();
+    private static void onAnnouncement(FarViewPayload payload, @Nullable InetAddress server) {
         final FarViewCache store = cache;
         if (store == null) return;
-        final FarViewSettings settings = FarViewSettings.load(FabricLoader.getInstance().getConfigDir());
-        final FarViewAnnouncement announcement = payload.announcement();
-        final boolean on = available(gate, settings, announcement);
-        final FarViewConnection connection = new FarViewConnection(announcement, now, settings, on, DH_VERSION, store,
-                FarViewDownloader.standard(store));
         final FarViewConnection before = current;
         if (before != null) before.cancel("a new announcement");
+        final FarViewSettings settings = FarViewSettings.load(FabricLoader.getInstance().getConfigDir());
+        final FarViewConnection connection = announced(payload.announcement(), System.nanoTime(), gate, settings, store,
+                FarViewDownloader.standard(store), server);
         current = connection;
         last = connection;
-        if (announcement == null) {
-            LOGGER.info("{}announcement received, but it could not be read: far view off", PREFIX);
-        } else {
-            final long coarse = announcement.tiles().stream().filter(t -> t.layer() == FarViewAnnouncement.LAYER_COARSE).count();
-            LOGGER.info("{}announcement received: build {}, {} tile(s), {} coarse, view {}{}", PREFIX, announcement.buildId(),
-                    announcement.tiles().size(), coarse, on ? connection.viewKey() : "-",
-                    on ? "" : "; far view off (" + reason(settings) + ")");
-        }
         connection.begin();
     }
 
-    private static String reason(FarViewSettings settings) {
+    /**
+     * The far view of a connection that got an announcement, not begun yet: the announcement as this client
+     * takes it ({@link #admitted}), the {@code .part} files it does not name or a day old dropped, whether it
+     * draws a far view.
+     *
+     * @param received   the announcement, null when it could not be read
+     * @param now        {@link System#nanoTime()} when it was handled
+     * @param gate       what DH offers
+     * @param settings   the player's setting
+     * @param store      the cache
+     * @param downloader the downloads
+     * @param server     the address of the server, null when unknown
+     * @return the connection's far view
+     */
+    static FarViewConnection announced(@Nullable FarViewAnnouncement received, long now, Gate gate, FarViewSettings settings,
+                                       FarViewCache store, FarViewDownloader downloader, @Nullable InetAddress server) {
+        final FarViewAnnouncement announcement = admitted(received);
+        final Set<String> named = new HashSet<>();
+        if (announcement != null) announcement.tiles().forEach(tile -> named.add(FarViewConnection.hex(tile)));
+        store.dropStaleParts(named, System.currentTimeMillis());
+        final boolean on = available(gate, settings, announcement);
+        final FarViewConnection connection = new FarViewConnection(announcement, now, settings, on, DH_VERSION, store,
+                downloader, server);
+        if (received == null) {
+            LOGGER.info("{}announcement received, but it could not be read: far view off", PREFIX);
+        } else if (announcement != null) {
+            final long coarse = announcement.tiles().stream().filter(t -> t.layer() == FarViewAnnouncement.LAYER_COARSE).count();
+            LOGGER.info("{}announcement received: build {}, {} tile(s), {} coarse, view {}{}", PREFIX, announcement.buildId(),
+                    announcement.tiles().size(), coarse, on ? connection.viewKey() : "-",
+                    on ? "" : "; far view off (" + reason(gate, settings) + ")");
+        }
+        return connection;
+    }
+
+    /**
+     * An announcement as this client takes it ({@code API-M3-015}, M3-S {@code REQ-M3-032}): none when its
+     * objects together are over the cache limit, or when its URLs are not all absolute http(s) URLs of
+     * one scheme, host and port. Each refusal is one WARN line.
+     *
+     * @param announcement the announcement, null for none
+     * @return it, or null
+     */
+    static @Nullable FarViewAnnouncement admitted(@Nullable FarViewAnnouncement announcement) {
+        if (announcement == null) return null;
+        final long bytes = announcement.tiles().stream().mapToLong(FarViewAnnouncement.Tile::bytes).sum();
+        if (bytes > FarViewCache.LIMIT_BYTES) {
+            LOGGER.warn("{}Far view announcement of {} bytes is over the cache limit of {} bytes: ignored", PREFIX, bytes,
+                    FarViewCache.LIMIT_BYTES);
+            return null;
+        }
+        String first = null;
+        for (FarViewAnnouncement.Tile tile : announcement.tiles()) {
+            final String origin;
+            try {
+                origin = origin(tile.url());
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("{}Far view announcement names a url that cannot be requested: {}: ignored", PREFIX, e.getMessage());
+                return null;
+            }
+            if (first == null) {
+                first = origin;
+            } else if (!first.equals(origin)) {
+                LOGGER.warn("{}Far view announcement names more than one host: ignored", PREFIX);
+                return null;
+            }
+        }
+        return announcement;
+    }
+
+    /** {@code scheme://host:port} of an absolute http(s) URL, the default port written out. */
+    private static String origin(String url) {
+        final URI uri = URI.create(url);
+        final String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+        if (!scheme.equals("http") && !scheme.equals("https")) throw new IllegalArgumentException(url + " is not http or https");
+        if (uri.getHost() == null) throw new IllegalArgumentException(url + " names no host");
+        final int port = uri.getPort() >= 0 ? uri.getPort() : scheme.equals("https") ? 443 : 80;
+        return scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT) + ":" + port;
+    }
+
+    private static String reason(Gate gate, FarViewSettings settings) {
         if (gate != Gate.SUPPORTED) return gate == Gate.ABSENT ? "no Distant Horizons" : "unsupported Distant Horizons";
         return settings.on() ? "no announcement" : FarViewSettings.KEY + " is 0";
     }
@@ -235,11 +320,22 @@ public final class FarViewClient {
     public static @Nullable Path libraryDirectory() {
         final FarViewCache store = cache;
         if (store == null) return null;
-        final FarViewConnection connection = current;
+        return library(store, current, synaxisConnection());
+    }
+
+    /**
+     * The library a connection pins DH to.
+     *
+     * @param store      the cache
+     * @param connection the far view of the connection, null before an announcement
+     * @param synaxis    whether the connection is a Synaxis one
+     * @return {@code dh/<view_key>} for a far view, {@code dh/off} for a Synaxis connection without one, else null
+     */
+    static @Nullable Path library(FarViewCache store, @Nullable FarViewConnection connection, boolean synaxis) {
         if (connection != null && connection.available() && !connection.cancelled().get()) {
             return store.library(connection.viewKey());
         }
-        return synaxisConnection() ? store.library(NO_FAR_VIEW) : null;
+        return synaxis ? store.library(NO_FAR_VIEW) : null;
     }
 
     /**

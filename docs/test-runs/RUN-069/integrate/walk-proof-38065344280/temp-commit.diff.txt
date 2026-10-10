@@ -1,0 +1,66 @@
+commit 7596bf4218169156e95a099e0a7741f5d366c157
+parent 6f3ffa9c7974ffb15d3c5e820be98910433d26b2
+
+test: walk counter-proof run, the first step of walk climbs to y 180 in one packet
+
+Temporary branch for the far view workflow's custom case (synthetic fixture, mode v1) on push; not for merge.
+
+
+diff --git a/.github/workflows/farview-gametest.yml b/.github/workflows/farview-gametest.yml
+index f4df9715fe..834e6c73ff 100644
+--- a/.github/workflows/farview-gametest.yml
++++ b/.github/workflows/farview-gametest.yml
+@@ -30,6 +30,8 @@ on:
+         default: ''
+   pull_request:
+     types: [ labeled ]
++  push:
++    branches: [ m3s/walk-proof ]
+ 
+ permissions:
+   contents: read
+@@ -41,7 +43,7 @@ concurrency:
+ jobs:
+   farview:
+     name: Far view cases (${{ matrix.group }})
+-    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'farview-gametest'
++    if: github.event_name != 'pull_request' || github.event.label.name == 'farview-gametest'
+     runs-on: ubuntu-latest
+     # On these 2 cores the fixture bakes a 3 × 3 tile map in about 24 minutes (baked and hidden, each its own map); a
+     # bake of the client takes 10 to 20 minutes, a client run 5 to 45; synthetic has four client runs, baked six, light
+@@ -53,7 +55,7 @@ jobs:
+         # synthetic: TC-WORLD-117 (v1, the walk of F5 and F9), TC-WORLD-119 and TC-WORLD-120 with their counter-proofs;
+         # baked: the stopped sun (V6b) and its counter-proof, server-shard with and without url-root, counter-hidden;
+         # hidden: baked-hidden, which bakes a map of its own; light: LightClientGameTest in mode default
+-        group: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["custom"]' || '["synthetic","baked","hidden","light"]') }}
++        group: ${{ fromJSON(github.event_name != 'pull_request' && '["custom"]' || '["synthetic","baked","hidden","light"]') }}
+     env:
+       OUT: ${{ github.workspace }}/farview-out
+       LIBGL_ALWAYS_SOFTWARE: "1"
+@@ -121,9 +123,9 @@ jobs:
+       - name: Run the cases
+         env:
+           GROUP: ${{ matrix.group }}
+-          IN_FIXTURE: ${{ inputs.fixture }}
+-          IN_MODES: ${{ inputs.modes }}
+-          IN_DAY_TIME: ${{ inputs.day_time }}
++          IN_FIXTURE: ${{ inputs.fixture || 'synthetic' }}
++          IN_MODES: ${{ inputs.modes || 'v1' }}
++          IN_DAY_TIME: ${{ inputs.day_time || '-1' }}
+           IN_SUN: ${{ inputs.sun_elevation }}
+         run: |
+           # Every case runs whatever the one before did; the judge collects what did not hold
+diff --git a/client-fabric/src/gametest/java/io/github/bearisbug/synaxis/game/client/gametest/farview/FarViewClientGameTest.java b/client-fabric/src/gametest/java/io/github/bearisbug/synaxis/game/client/gametest/farview/FarViewClientGameTest.java
+index 8d2a7fd86a..de06a0c3ed 100644
+--- a/client-fabric/src/gametest/java/io/github/bearisbug/synaxis/game/client/gametest/farview/FarViewClientGameTest.java
++++ b/client-fabric/src/gametest/java/io/github/bearisbug/synaxis/game/client/gametest/farview/FarViewClientGameTest.java
+@@ -548,7 +548,8 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
+          */
+         Walked walk(int blocks) {
+             final Vec3 from = context.computeOnClient(client -> client.player.position());
+-            climb(from.x, from.y, 180, from.z);
++            context.runOnClient(client -> fly(client, from.x, 180, from.z));
++            context.waitTick();
+             for (int step = 2; step <= blocks; step += 2) {
+                 final double x = from.x + step;
+                 context.runOnClient(client -> fly(client, x, 180, from.z));

@@ -3,14 +3,19 @@ package io.github.bearisbug.synaxis.app.shard;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.bearisbug.synaxis.ServerConfig;
+import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
 import io.github.bearisbug.synaxis.game.protocol.FarViewPack;
 import io.github.bearisbug.synaxis.game.protocol.FarViewPack.Layer;
 import io.github.bearisbug.synaxis.game.protocol.FarViewPack.Sample;
 import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
+import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.network.packet.server.play.SetTimePacket;
 import io.github.bearisbug.synaxis.synx.SynxDigests;
+import io.github.bearisbug.synaxis.world.DimensionType;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -18,6 +23,9 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -139,7 +147,7 @@ public class FarViewShardFixtureTest {
     @Test
     public void theExpectedPointsAreWhatThePacksHold() {
         final JsonObject expect = JsonParser.parseString(FarViewShardFixture.expectJson("synthetic", content,
-                new Pos(264.5, 64, 264.5))).getAsJsonObject();
+                new Pos(264.5, 64, 264.5), -1)).getAsJsonObject();
         final Map<String, JsonObject> points = new TreeMap<>();
         for (JsonElement point : expect.getAsJsonArray("points")) points.put(point.getAsJsonObject().get("name").getAsString(),
                 point.getAsJsonObject());
@@ -161,7 +169,7 @@ public class FarViewShardFixtureTest {
 
     /**
      * A stand-in for the release {@code baked} mounts, which only the baker of track S writes: tile (0, 0)
-     * whole and tile (-1, 0) by its coarse prefix, {@code min_y} 0 and 256 high as the baker's synthetic map.
+     * whole and tile (-1, 0) by its coarse prefix (both whole on disk, as the baker writes every pack), {@code min_y} 0 and 256 high as the baker's synthetic map.
      * Terraces stepping 1 block every 16 across, a flat plain at y 80 over 2048..2559 on both axes, a lake
      * of water up to y 62 over x 1000..1199, z 600..799 (deepest over 1080..1119 × 680..719), a hill up to
      * y 200 at (3000, 1500), and in tile (-1, 0) a mountain up to y 190 at (-300, 2040).
@@ -209,15 +217,13 @@ public class FarViewShardFixtureTest {
                         writer.block(Layer.COARSE, bx, bz, coarse);
                     }
                 }
-                if (whole) {
-                    for (int bz = 0; bz < 16; bz++) {
-                        for (int bx = 0; bx < 16; bx++) {
-                            final List<Sample> fine = new ArrayList<>(FarViewPack.BLOCK_SAMPLES);
-                            for (int sz = bz * 64; sz < bz * 64 + 64; sz++) {
-                                for (int sx = bx * 64; sx < bx * 64 + 64; sx++) fine.add(column(x0 + sx * 4, sz * 4));
-                            }
-                            writer.block(Layer.FINE, bx, bz, fine);
+                for (int bz = 0; bz < 16; bz++) {
+                    for (int bx = 0; bx < 16; bx++) {
+                        final List<Sample> fine = new ArrayList<>(FarViewPack.BLOCK_SAMPLES);
+                        for (int sz = bz * 64; sz < bz * 64 + 64; sz++) {
+                            for (int sx = bx * 64; sx < bx * 64 + 64; sx++) fine.add(column(x0 + sx * 4, sz * 4));
                         }
+                        writer.block(Layer.FINE, bx, bz, fine);
                     }
                 }
                 final byte[] pack = writer.write();
@@ -292,7 +298,7 @@ public class FarViewShardFixtureTest {
     }
 
     private static JsonObject expectBaked(FarViewShardFixture.Content baked) {
-        return JsonParser.parseString(FarViewShardFixture.expectJson("baked", baked, BakedLike.SPAWN)).getAsJsonObject();
+        return JsonParser.parseString(FarViewShardFixture.expectJson("baked", baked, BakedLike.SPAWN, -1)).getAsJsonObject();
     }
 
     /** {@code baked}: the points come out of the packs with the absolute y of their {@code min_y}, not of synthetic's -64. */
@@ -433,6 +439,150 @@ public class FarViewShardFixtureTest {
             assertEquals(206, rest.statusCode());
             assertArrayEquals(Arrays.copyOfRange(object, 100_000, object.length), rest.body());
             assertEquals(List.of("GET " + path + " - 200 cut", "GET " + path + " bytes=100000- 206"), server.log());
+        } finally {
+            server.stop();
+        }
+    }
+
+    // ---- M3-S track C: the hidden points, the stopped clock, the round trip, the rearmed cut
+
+    /** The top a hidden ring takes from a BakedLike sample of one layer: its cell's column, an empty one 0. */
+    private static int ringTop(Layer layer, int cellX, int cellZ) {
+        if (layer == Layer.FINE) return Math.max(0, BakedLike.column(cellX * 4, cellZ * 4).top());
+        final List<Sample> fine = new ArrayList<>(16);
+        for (int z = 0; z < 16; z += 4) {
+            for (int x = 0; x < 16; x += 4) fine.add(BakedLike.column(cellX * 16 + x, cellZ * 16 + z));
+        }
+        return Math.max(0, FarViewPack.coarsen(2, fine).top());
+    }
+
+    /**
+     * The hidden points of {@code baked-hidden} and {@code counter-hidden} on the BakedLike packs, which hide
+     * nothing: stone of plains at the lowest top of the ring around the cells of their area on their own layer,
+     * walked side by side as the baker walks it, the fine ring of the area across the tile edge read from the
+     * fine layer of tile (-1, 0) that only the whole pack on disk has.
+     */
+    @Test
+    public void theHiddenPointsTakeTheLowestTopOfTheRingOfTheirArea(@TempDir Path dir) throws IOException {
+        final FarViewShardFixture.Content baked = BakedLike.content(dir);
+        assertTrue(reader(baked.packs().get("-1 0")).coarseOnly(), "tile (-1, 0) is served by its coarse prefix");
+        assertFalse(reader(baked.full().get("-1 0")).coarseOnly(), "and whole on disk");
+        for (String mode : List.of("baked-hidden", "counter-hidden")) {
+            final JsonObject expect = JsonParser.parseString(FarViewShardFixture.expectJson(mode, baked, BakedLike.SPAWN, -1))
+                    .getAsJsonObject();
+            final Map<String, JsonObject> points = new TreeMap<>();
+            for (JsonElement point : expect.getAsJsonArray("points")) {
+                points.put(point.getAsJsonObject().get("name").getAsString(), point.getAsJsonObject());
+            }
+            assertEquals(new TreeSet<>(List.of("hidden-edge-coarse", "hidden-edge-fine", "hidden-peak", "mountain", "peak", "water")),
+                    points.keySet(), mode);
+            for (FarViewShardFixture.HiddenPoint hidden : FarViewShardFixture.HIDDEN_POINTS) {
+                final int level = hidden.layer() == Layer.COARSE ? FarViewPack.COARSE_LEVEL : 2;
+                final var area = FarViewShardFixture.HIDDEN_AREAS.stream().filter(a -> hidden.x() >= a.x1() && hidden.x() <= a.x2()
+                        && hidden.z() >= a.z1() && hidden.z() <= a.z2()).findFirst().orElseThrow();
+                final int minX = area.x1() >> level, maxX = area.x2() >> level, minZ = area.z1() >> level, maxZ = area.z2() >> level;
+                int lowest = Integer.MAX_VALUE;
+                for (int x = minX - 1; x <= maxX + 1; x++) {
+                    lowest = Math.min(lowest, Math.min(ringTop(hidden.layer(), x, minZ - 1), ringTop(hidden.layer(), x, maxZ + 1)));
+                }
+                for (int z = minZ; z <= maxZ; z++) {
+                    lowest = Math.min(lowest, Math.min(ringTop(hidden.layer(), minX - 1, z), ringTop(hidden.layer(), maxX + 1, z)));
+                }
+                final JsonObject point = points.get(hidden.name());
+                assertEquals(lowest, point.get("y").getAsInt(), mode + " " + hidden);
+                assertEquals("minecraft:stone", point.get("block").getAsString());
+                assertEquals(Block.STONE.stateId(), point.get("state").getAsInt());
+                assertEquals("minecraft:plains", point.get("biome").getAsString());
+                assertEquals(hidden.layer() == Layer.COARSE ? "coarse" : "fine", point.get("layer").getAsString());
+            }
+        }
+        assertEquals(-1, FarViewShardFixture.HIDDEN_POINTS.get(2).x() >> 12, "the coarse point is in tile (-1, 0)");
+        for (JsonElement point : expectBaked(baked).getAsJsonArray("points")) {
+            assertFalse(point.getAsJsonObject().has("biome"), "baked has no hidden point: " + point);
+        }
+    }
+
+    @Test
+    public void theDayTimeGoesIntoExpectJsonOnlyWhenGiven(@TempDir Path dir) throws IOException {
+        final FarViewShardFixture.Content baked = BakedLike.content(dir);
+        assertEquals(6000, JsonParser.parseString(FarViewShardFixture.expectJson("baked", baked, BakedLike.SPAWN, 6000))
+                .getAsJsonObject().get("day_time").getAsLong());
+        assertFalse(expectBaked(baked).has("day_time"));
+    }
+
+    /**
+     * §19 「停住的时钟不被对齐，夹具默认停在正午」 (REQ-M3-034): the clock {@link FarViewShardFixture#holdTime} stops, at
+     * the day time or at noon without one, stays there against the wall clock the map shard holds its clock to
+     * ({@link ShardWorld#alignClock}); with {@code farview.fixture.clock-runs} it is only set, and the wall clock
+     * takes it.
+     */
+    @Test
+    public void aStoppedClockStaysAtTheDayTimeAgainstTheWallClock() {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true).build());
+        final InstanceContainer stopped = process.instance().createInstanceContainer(DimensionType.OVERWORLD);
+        FarViewShardFixture.holdTime(stopped, 6000, false);
+        final InstanceContainer noon = process.instance().createInstanceContainer(DimensionType.OVERWORLD);
+        FarViewShardFixture.holdTime(noon, -1, false);
+        final InstanceContainer running = process.instance().createInstanceContainer(DimensionType.OVERWORLD);
+        FarViewShardFixture.holdTime(running, 6000, true);
+        // 2026-10-07T07:15:23.456Z, 138,469 on the wall clock of a map shard
+        for (InstanceContainer instance : List.of(stopped, noon, running)) {
+            ShardWorld.alignClock(Objects.requireNonNull(instance.defaultClock()), 1_791_357_323_456L);
+        }
+        assertEquals(6000, stopped.getTime());
+        assertEquals(0f, rate(stopped), "stopped: the client's clock does not move");
+        assertEquals(6000, noon.getTime(), "without a day time: noon");
+        assertEquals(0f, rate(noon));
+        assertEquals(138_469, running.getTime(), "the counter-proof runs on the wall clock");
+        assertEquals(1f, rate(running));
+    }
+
+    private static float rate(InstanceContainer instance) {
+        final SetTimePacket packet = instance.createTimePacket();
+        return Objects.requireNonNull(packet.clocks().get(Objects.requireNonNull(instance.defaultClock()).clock())).rate();
+    }
+
+    @Test
+    public void theProxyHoldsEachWayForHalfTheRoundTrip() throws Exception {
+        try (ServerSocket echo = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+            Thread.ofPlatform().daemon().start(() -> {
+                try (Socket peer = echo.accept()) {
+                    final byte[] buffer = new byte[1024];
+                    for (int read; (read = peer.getInputStream().read(buffer)) >= 0; ) peer.getOutputStream().write(buffer, 0, read);
+                } catch (IOException _) {
+                    // the test ended
+                }
+            });
+            final FarViewShardFixture.DelayProxy proxy = new FarViewShardFixture.DelayProxy(0, echo.getLocalPort(), 300);
+            proxy.start();
+            try (Socket client = new Socket(InetAddress.getLoopbackAddress(), proxy.port())) {
+                final long started = System.nanoTime();
+                client.getOutputStream().write(new byte[]{1, 2, 3});
+                final byte[] back = client.getInputStream().readNBytes(3);
+                final long millis = (System.nanoTime() - started) / 1_000_000;
+                assertArrayEquals(new byte[]{1, 2, 3}, back);
+                assertTrue(millis >= 300 && millis < 1300, "one round trip of 300 ms: " + millis + " ms");
+            } finally {
+                proxy.stop();
+            }
+        }
+    }
+
+    @Test
+    public void rearmLetsHalfCutItsNextResponseAgain() throws Exception {
+        final byte[] object = new byte[200_000];
+        new Random(13).nextBytes(object);
+        final String hex = SynxDigests.hex(SynxDigests.sha256(object));
+        final FarViewShardFixture.PackServer server = new FarViewShardFixture.PackServer("farview", Map.of(hex, object),
+                true, "{}\n");
+        server.start(0);
+        try {
+            final String path = "/farview/farview/" + hex + ".hfp";
+            assertThrows(IOException.class, () -> get(server.port(), path, null));
+            assertEquals(200, get(server.port(), path, null).statusCode(), "cut once");
+            assertEquals("rearmed\n", new String(get(server.port(), "/rearm", null).body(), StandardCharsets.UTF_8));
+            assertThrows(IOException.class, () -> get(server.port(), path, null), "and again after /rearm");
+            assertEquals(List.of("GET " + path + " - 200 cut", "GET " + path + " - 200", "GET " + path + " - 200 cut"), server.log());
         } finally {
             server.stop();
         }

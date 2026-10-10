@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rts.RosterTest" tests="8" skipped="0" failures="1" errors="0" timestamp="2026-10-06T19:25:15.778Z" hostname="Mac.local" time="0.063">
+  <properties/>
+  <testcase name="theDefaultRosterStaysInRingsAroundTheSpawn()" classname="io.github.bearisbug.synaxis.game.rts.RosterTest" time="0.016"/>
+  <testcase name="aNumberIsTakenAsGiven()" classname="io.github.bearisbug.synaxis.game.rts.RosterTest" time="0.0"/>
+  <testcase name="theDefaultIsTheAcceptanceRoster()" classname="io.github.bearisbug.synaxis.game.rts.RosterTest" time="0.001"/>
+  <testcase name="aValueThatIsNotANumberIsRefusedByName()" classname="io.github.bearisbug.synaxis.game.rts.RosterTest" time="0.001"/>
+  <testcase name="theNumberIsReadOffTheSystemProperty()" classname="io.github.bearisbug.synaxis.game.rts.RosterTest" time="0.0"/>
+  <testcase name="aRosterWithNothingForThePlayerIsRefused()" classname="io.github.bearisbug.synaxis.game.rts.RosterTest" time="0.001"/>
+  <testcase name="aThousandUnitsAreSpreadOverTheWholeMap()" classname="io.github.bearisbug.synaxis.game.rts.RosterTest" time="0.021"/>
+  <testcase name="theProfileTierPutsNoMoreThanFortyNineUnitsInAnyView()" classname="io.github.bearisbug.synaxis.game.rts.RosterTest" time="0.006">
+    <failure message="org.opentest4j.AssertionFailedError: e = 10: a player sees 50 of the player's units ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: e = 10: a player sees 50 of the player's units ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.game.rts.RosterTest.theProfileTierPutsNoMoreThanFortyNineUnitsInAnyView(RosterTest.java:137)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

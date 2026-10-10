@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.CoreModeTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-06T19:47:48.080Z" hostname="Mac.local" time="0.005">
+  <properties/>
+  <testcase name="theCoreModeIsServedEvenWithAGameplayPluginOnceItIsAskedFor()" classname="io.github.bearisbug.synaxis.app.CoreModeTest" time="0.001"/>
+  <testcase name="withoutAnyPluginTheProcessServesTheCoreWorld()" classname="io.github.bearisbug.synaxis.app.CoreModeTest" time="0.0"/>
+  <testcase name="aCoreModeSettingThatIsNotAModeIsRefused()" classname="io.github.bearisbug.synaxis.app.CoreModeTest" time="0.001"/>
+  <testcase name="theCoreModeCanBeAskedForAndRefusedByProperty()" classname="io.github.bearisbug.synaxis.app.CoreModeTest" time="0.0"/>
+  <testcase name="aPluginThatProvidedNothingIsRefusedRatherThanFallenBackOn()" classname="io.github.bearisbug.synaxis.app.CoreModeTest" time="0.0"/>
+  <testcase name="halfProvidedGameplayIsStillRefused()" classname="io.github.bearisbug.synaxis.app.CoreModeTest" time="0.0"/>
+  <testcase name="theCoreModeFollowsThePluginsWhenNobodySaysOtherwise()" classname="io.github.bearisbug.synaxis.app.CoreModeTest" time="0.0"/>
+  <testcase name="theCoreModeIsNotFallenBackToOnceItIsRefused()" classname="io.github.bearisbug.synaxis.app.CoreModeTest" time="0.0"/>
+  <testcase name="aPluginThatProvidesGameplayKeepsTheCoreModeOut()" classname="io.github.bearisbug.synaxis.app.CoreModeTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

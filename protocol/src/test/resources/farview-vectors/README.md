@@ -69,3 +69,4 @@ announcement is written field by field (`FarViewVectors#edgeAnnouncements`). A p
 | `edge/announce-duplicate-tile.bin` | tile (0, 0) twice, `layer` 0 and 1 |
 | `edge/announce-layer-2.bin` | a tile of `layer` 2 |
 | `edge/announce-no-full-tile.bin` | two tiles, both `layer` 1 |
+| `edge/announce-object-over-40mib.bin` | a tile of 41,943,041 `bytes`, one over `FarViewAnnouncement.MAX_OBJECT_BYTES` |

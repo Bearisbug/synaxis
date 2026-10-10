@@ -42,7 +42,7 @@ class RosterIntegrationTest {
     }
 
     @Test
-    void aThousandUnitsAreDeployedAroundTheSpawnAndNumberedLikeTheDefaultRoster(Env env) {
+    void aThousandUnitsAreDeployedOverTheMapAndNumberedLikeTheDefaultRoster(Env env) {
         final Board board = Board.of(env);
         Roster.deploy(board.units(), board.grid(), board.preset(), board.match().spawn(), 1000);
 

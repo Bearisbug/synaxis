@@ -1,0 +1,18 @@
+F1 PASS override target /home/runner/work/synaxis/synaxis/client-fabric/build/run/clientGameTest/synaxis/farview/dh/efd38a986777062f, level getDhSaveFolder /home/runner/work/synaxis/synaxis/client-fabric/build/run/clientGameTest/synaxis/farview/dh/efd38a986777062f, libraries under Distant_Horizons_server_data []
+F2 PASS getReadOnly true, chunkRenderDistance api=256 value=256 overridable=true, maxHorizontalResolution api=FOUR_BLOCKS value=FOUR_BLOCKS overridable=true
+F3 FAIL no bake line; marker sources none, fine blocks + coarse blocks × 16 = -1
+F4 FAIL DetailLevel=2 2304 of -1, ApplyToParent=1 1102, ApplyToChildren=1 0, DetailLevel=4 94; peak@440,104 expected minecraft:oak_leaves index 117 got {state=279, block=minecraft:oak_leaves, bottom=0, top=118, sky=15, light=0, biome=minecraft:plains, points=2} ok; water@0,0 expected minecraft:water index 62 got {state=86, block=minecraft:water, bottom=61, top=63, sky=15, light=0, biome=minecraft:plains, points=3} ok; mountain@-812,3348 expected minecraft:oak_leaves index 112 got {state=279, block=minecraft:oak_leaves, bottom=0, top=113, sky=15, light=0, biome=minecraft:plains, points=2} ok
+F5 PASS DetailLevel=0 before the walk 0, after 200 blocks and back 0; walked to x + 200 (2240.5, 180.0, 2040.5)
+F6 PASS FAR_VIEW horizon rows 200..459 changed 51.09%; LOD_VIEW changed 74.79% (mean #48584c); EDGE_VIEW centre 608,328..671,391 changed 100.00% (mean before #161f2f, after #2c4980); client day time 6000 at the shots before, 6000 after
+F7 FAIL announcement at log line 13, save folder at 36; reconnect: access.log 9 -> 9 lines, ready line false, baked in true, FAR_VIEW shows LOD after 0 ticks (138259 ms)
+# Distant Horizons threads set to 2, run time ratio 1.0: threadCount api=2 value=2 overridable=true, threadRuntimeRatio api=1.0 value=1.0 overridable=true
+# mode v1 from 16:03:31
+# fixture mode serve-only, map farview3x3, spawn 2040.5 74.0 2040.5
+# V1 holds the client's sky at day time 6000, the server's default clock at 4264
+# V1 waiting for the bake to start: true, state BAKING
+# V1 HUD line during the bake: Preparing the far view: 20%
+# V1 state ABSENT failure parents pending, view efd38a986777062f, download 949 ms, timings null
+# V1 access.log after the bake: 9 GET of 9 request(s)
+# walked to x + 200 (2240.5, 180.0, 2040.5) from (2040.5, 74.0, 2040.5)
+# attempt 1 not in the world of 127.0.0.1:25752: Connection Lost. Somebody is already playing under this name.
+# V1 reconnect: client day time 6000 at the last shot

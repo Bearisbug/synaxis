@@ -244,6 +244,11 @@ final class FarViewVectors {
 
     /** The head of {@link #nineTiles()} with another tile list, written field by field. */
     private static byte[] rawAnnouncement(List<int[]> tiles, int urlBytes) {
+        return rawAnnouncement(tiles, urlBytes, 98_765);
+    }
+
+    /** The same with every tile of {@code bytes}. */
+    private static byte[] rawAnnouncement(List<int[]> tiles, int urlBytes, long bytes) {
         final MsgBuf buf = MsgBuf.writing();
         buf.writeVarInt(FarViewAnnouncement.FORMAT_VERSION);
         buf.writeString("farview-0123456789ab-p776");
@@ -256,7 +261,7 @@ final class FarViewVectors {
             buf.writeVarInt(tile[0]);
             buf.writeVarInt(tile[1]);
             buf.writeUnsignedByte(tile[2]);
-            buf.writeVarLong(98_765);
+            buf.writeVarLong(bytes);
             buf.writeBytes(sha256("tile " + tile[0] + " " + tile[1] + " layer " + tile[2]));
             final String root = "http://host.docker.internal:25751/farview/farview/";
             buf.writeString(root + "x".repeat(Math.max(0, urlBytes - root.length())));
@@ -275,6 +280,7 @@ final class FarViewVectors {
         edges.put("announce-duplicate-tile.bin", rawAnnouncement(List.of(new int[]{0, 0, 0}, new int[]{0, 0, 1}), 80));
         edges.put("announce-layer-2.bin", rawAnnouncement(List.of(new int[]{0, 0, 0}, new int[]{0, 1, 2}), 80));
         edges.put("announce-no-full-tile.bin", rawAnnouncement(List.of(new int[]{-1, 0, 1}, new int[]{0, 0, 1}), 80));
+        edges.put("announce-object-over-40mib.bin", rawAnnouncement(List.of(new int[]{0, 0, 0}), 80, 41_943_041L));
         return edges;
     }
 

@@ -1,0 +1,18 @@
+TC-PROD-656 2026-10-07 19:16:45 head=6c9f9836d7 grep=/usr/bin/grep
+docs/ENGINE.md and .github/workflows/ against HEAD:  1 file changed, 1 insertion(+), 1 deletion(-)
+--- step 1
+(end step 1)
+--- step 2
+deleting docs/ENGINE.md line 294:   - job `multithreaded-grid`（「Test with 4 tick threads (stri
+missing job ci.yml multithreaded-grid
+(end step 2)
+--- step 3
+missing job concurrency.yml extra
+(end step 3)
+--- step 4
+(end step 4)
+restored: both files byte-identical to the saved copies
+after: git diff --stat HEAD -- .github/workflows/: []
+Note: run on 6c9f9836d7 with this follow-up's docs/ENGINE.md edit not yet committed (the one changed file the second
+line counts: the farview line of §7 names TC-WORLD-140 to 143 and the light group's TC-WORLD-095); the docs commit of
+the follow-up commits that file as it was here. Run with bash, so grep is /usr/bin/grep.

@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -21,15 +22,24 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The far view cache of {@code docs/DESIGN-M3.md} {@code API-M3-015} (缓存条) under
  * {@code <gameDir>/synaxis/farview/}: {@code packs/<sha256>.hfp}, the objects downloaded and checked
  * (whole packs and coarse prefixes alike, named by their own digest, {@code .part} while they
  * download), and {@code dh/<view_key>/}, one Distant Horizons library per announcement content
- * ({@code ENT-FarViewLibrary}, §11.3) with its completion marker {@value #MARKER}.
+ * ({@code ENT-FarViewLibrary}, §11.3) with its completion marker {@value #MARKER}. A {@code .part} lives
+ * at most until the next announcement that does not name it, a day, or the next cleaning after a
+ * bake ({@link #dropStaleParts}, {@link #clean}; M3-S {@code REQ-M3-032}); one that cannot be deleted
+ * is logged and tried again the next time.
  */
 public final class FarViewCache {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("synaxis");
+    private static final String PART = ".hfp.part";
 
     /** The completion marker in a library directory. */
     public static final String MARKER = "synaxis-library.json";
@@ -37,6 +47,8 @@ public final class FarViewCache {
     public static final int MARKER_FORMAT = 1;
     /** What the whole of {@code synaxis/farview/} may hold before libraries are dropped: 1 GiB. */
     public static final long LIMIT_BYTES = 1L << 30;
+    /** A {@code .part} modified longer ago than this is dropped, named by the announcement or not. */
+    public static final Duration STALE_PART = Duration.ofHours(24);
 
     private final Path root;
 
@@ -286,15 +298,17 @@ public final class FarViewCache {
      *
      * @param libraries the keys of the library directories removed, oldest first
      * @param packs     the digests of the objects removed
+     * @param parts     the digests of the {@code .part} files removed
      * @param size      the bytes left
      */
-    public record Cleaned(List<String> libraries, List<String> packs, long size) {
+    public record Cleaned(List<String> libraries, List<String> packs, List<String> parts, long size) {
     }
 
     /**
-     * Holds the cache to {@code limit}: while it is over, removes the library least recently used
-     * (one without a marker counts as the oldest) other than {@code inUse}, then every object no
-     * remaining marker names.
+     * Removes every {@code .part}, then holds the cache to {@code limit}: while it is over, removes the
+     * library least recently used (one without a marker counts as the oldest) other than {@code inUse},
+     * then every object no remaining marker names. It runs once a bake succeeded, when this connection
+     * has nothing downloading.
      *
      * @param limit the bytes the cache may hold
      * @param inUse the key of the library this connection uses, never removed
@@ -302,6 +316,10 @@ public final class FarViewCache {
      * @throws IOException if the cache cannot be walked
      */
     public Cleaned clean(long limit, String inUse) throws IOException {
+        final List<String> partsDropped = new ArrayList<>();
+        for (Path part : parts()) {
+            if (delete(part)) partsDropped.add(sha256Of(part));
+        }
         final List<String> libraries = new ArrayList<>();
         final List<String> packs = new ArrayList<>();
         long size = size();
@@ -326,7 +344,62 @@ public final class FarViewCache {
             packs.addAll(dropUnnamedPacks());
             size = size();
         }
-        return new Cleaned(List.copyOf(libraries), List.copyOf(packs), size);
+        return new Cleaned(List.copyOf(libraries), List.copyOf(packs), List.copyOf(partsDropped), size);
+    }
+
+    /**
+     * Drops the {@code .part} files left behind: at an announcement ({@code named} its objects' digests)
+     * those it does not name and those not modified for {@link #STALE_PART}, a named one included, which
+     * is then downloaded from the start; at the client's start ({@code named} null) only the stale ones.
+     * One that cannot be deleted, a file another process holds open on Windows, is logged and skipped.
+     *
+     * @param named the lower case hex digests of the objects of the announcement, null at start
+     * @param now   epoch milliseconds
+     * @return the digests of the {@code .part} files dropped, in order
+     */
+    public List<String> dropStaleParts(@Nullable Set<String> named, long now) {
+        final List<String> dropped = new ArrayList<>();
+        final long staleBefore = now - STALE_PART.toMillis();
+        for (Path part : parts()) {
+            final String sha256 = sha256Of(part);
+            boolean stale;
+            try {
+                stale = Files.getLastModifiedTime(part).toMillis() < staleBefore;
+            } catch (IOException _) {
+                stale = false;
+            }
+            if (!stale && (named == null || named.contains(sha256))) continue;
+            if (delete(part)) dropped.add(sha256);
+        }
+        return dropped;
+    }
+
+    /** The {@code .part} files under {@code packs/}, in order; none when it cannot be listed. */
+    private List<Path> parts() {
+        final Path packs = root.resolve("packs");
+        if (!Files.isDirectory(packs)) return List.of();
+        try (Stream<Path> files = Files.list(packs)) {
+            return files.filter(file -> file.getFileName().toString().endsWith(PART)).sorted().toList();
+        } catch (IOException e) {
+            LOGGER.warn("{}Far view cache {} cannot be listed: {}", FarViewClient.PREFIX, packs, e.toString());
+            return List.of();
+        }
+    }
+
+    private static String sha256Of(Path part) {
+        final String name = part.getFileName().toString();
+        return name.substring(0, name.length() - PART.length());
+    }
+
+    /** Deletes one file of the cache; true when it is gone. */
+    private static boolean delete(Path file) {
+        try {
+            Files.deleteIfExists(file);
+            return true;
+        } catch (IOException e) {
+            LOGGER.warn("{}Far view cache {} cannot be deleted: {}", FarViewClient.PREFIX, file.getFileName(), e.toString());
+            return false;
+        }
     }
 
     /** Removes every object no remaining marker names, and returns their digests. */

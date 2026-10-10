@@ -1,0 +1,24 @@
+JFR.start: 48795:
+Started recording 1.
+
+Use jcmd 48795 JFR.dump name=soak to copy recording data to file.
+soak play: pid=48795 connections=50 duration=600.0s units=1000 camera=5.0Hz orders=1.0/s out=/tmp/synaxis-play/gate-1000
+48795:
+Dumped recording "soak", 42.1 MB written to:
+
+/private/tmp/synaxis-play/gate-1000/soak.jfr
+48795:
+Stopped recording "soak", 42.4 MB written to:
+
+/private/tmp/synaxis-play/gate-1000/soak.jfr
+------------------------------------------------------------------------------
+elapsed=600.0s peak_connections=50 logins=50 failures={} lost=0 disconnects={}
+units: expected=1000 seen_max=1000 commandable_max=998 check=ok
+orders: sent=29908 answered=29903 codes={'no-path': 43, 'ok': 29415, 'out-of-bounds': 445} selects=3000 camera=147798
+inbound per connection B/s: {'total': 28754.5, 'engine': 25545.1, 'rts_game': 3209.3}
+S2C_UNIT_STATE: count=299794 max_payload_bytes=245 max_entries=60 hz_per_connection=9.998 bytes_per_s_per_connection=2367.8 bytes_per_s_total=118330.5 interval_ms={'count': 299744, 'mean_ms': 99.999, 'p50_ms': 104.537, 'p99_ms': 128.697, 'max_ms': 184.49, 'over_50ms': 299639}
+tick_ms={'count': 12314, 'mean_ms': 2.931, 'p50_ms': 2.673, 'p99_ms': 8.788, 'max_ms': 54.641, 'over_50ms': 2}
+heap: live_mib_max=67.8 rss_mib_max=962.5 live probes=[66.9, 57.6, 54.9, 58.4, 58.1, 62.7, 66.6, 67.8, 67.4, 57.9] settle={'live_mib_after_disconnect': 54.7, 'threads_after_disconnect': 71, 'fds_after_disconnect': 90}
+pathfinding: searches=29463 path_ms={'count': 29463, 'mean_ms': 0.004, 'p50_ms': 0.0, 'p99_ms': 0.0, 'max_ms': 14.0, 'over_50ms': 0} tick_bucket_ms={'count': 8126, 'mean_ms': 0.015, 'p50_ms': 0.0, 'p99_ms': 0.0, 'max_ms': 14.0, 'over_50ms': 0} path_nodes_max issued=2503 rejected=4001
+server log: warn=0 error=0 kicks=0
+peak cpu=79.1% (t=0.0s clients=0) peak harness cpu=13.6% (t=438.8s clients=50)

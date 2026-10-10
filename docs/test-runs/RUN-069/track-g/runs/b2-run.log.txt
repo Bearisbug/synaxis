@@ -1,0 +1,112 @@
+gate 03:28:14 free=56% load1=5.76 (need free>=30 load1<=24)
+lock acquired 2026-10-07 03:28:14: owner=Synaxis光照/m3s-g-b2 pid=33940 since=2026-10-07 03:28:14 task=TC-GAME-053..055 server-app runs with probe plugin a, PluginHostIntegrationTest
+System-wide memory free percentage: 56%
+ 3:28  up 15:14, 29 users, load averages: 5.76 6.14 6.14
+=== TC-GAME-053 (stop over stdin)
+[g053] started pid=51574 03:28:14
+ready after 2s
+-- step 2: onEnable vs ready line numbers
+13:03:28:15.813 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=rts version=0.1.0 enable_ms=499
+14:03:28:15.813 [main] INFO  plugin.a - probe-a onEnable plugin_id=a data_directory=plugins/a mode=print
+17:03:28:15.814 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=a version=1.0.0 enable_ms=0
+22:03:28:15.816 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+-- step 3
+{"ts":"2026-10-06T19:28:15.813776Z","event":"plugin_enabled","plugin_id":"rts","version":"0.1.0","enable_ms":499}
+{"ts":"2026-10-06T19:28:15.814635Z","event":"plugin_enabled","plugin_id":"a","version":"1.0.0","enable_ms":0}
+-- step 4
+drwxr-xr-x@ 2 bug  staff  64 Oct  7 03:28 /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3s-g.oNa9/run/plugins/a
+-- step 5
+stopped exit=0 in 1s
+24:03:28:16.410 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+26:03:28:16.416 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=a
+27:03:28:16.416 [plugin-disable-a] INFO  plugin.a - probe-a onDisable plugin_id=a
+28:03:28:16.416 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=a: event node, tasks, channels, admission provider, commands, tab list visibility
+29:03:28:16.416 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=rts
+30:03:28:16.424 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=rts: event node, tasks, channels, admission provider, commands, tab list visibility
+32:03:28:16.480 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+-- tail
+03:28:16.424 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=rts: event node, tasks, channels, admission provider, commands, tab list visibility
+03:28:16.480 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+03:28:16.480 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+=== TC-GAME-053 step 6, SIGINT path
+[g053int] started pid=51626 03:28:17
+ready after 2s
+SIGINT exit=0 in 611s
+146:03:38:30.177 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+148:03:38:30.179 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=a
+149:03:38:30.180 [plugin-disable-a] INFO  plugin.a - probe-a onDisable plugin_id=a
+150:03:38:30.180 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=a: event node, tasks, channels, admission provider, commands, tab list visibility
+151:03:38:30.180 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=rts
+152:03:38:30.189 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=rts: event node, tasks, channels, admission provider, commands, tab list visibility
+154:03:38:30.259 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+=== TC-GAME-054 (mode throw)
+[g054] started pid=58359 03:38:30
+ready after 2s
+14:03:38:31.919 [main] INFO  plugin.a - probe-a onEnable plugin_id=a data_directory=plugins/a mode=throw
+-- step 2
+probe login exit=0
+keep_alives=1
+exit code: 0
+listener ERROR lines 0 -> 0
+-- step 3
+task ERROR lines 0 -> 2 over 11 s
+25:03:38:36.871 [Syn-TickScheduler] ERROR i.g.b.s.app.PluginSchedulerImpl - Plugin task failed: plugin_id=a
+41:03:38:41.871 [Syn-TickScheduler] ERROR i.g.b.s.app.PluginSchedulerImpl - Plugin task failed: plugin_id=a
+2
+-- step 4
+probe echo exit=1
+sent KeepAlive #2 at 03:38:54
+recv PluginMessagePacket
+no echo received
+exit code: 1
+channel ERROR lines 0 -> 1
+88:03:38:44.983 [Syn-Tick-0] ERROR i.g.b.s.app.PluginChannelRouter - Plugin channel handler failed: plugin_id=a channel=a:probe connection_id=61bd3d8d-9024-44d4-a084-819f2f3c2105 (1 failures since the last report)
+-- step 5
+20 logins in 2s, probe failures=0
+listener ERROR lines 0 -> 1 (21 logins in all: 0 -> 1)
+grep plugin_tripped exit=1
+Connection to 127.0.0.1 port 25565 [tcp/*] succeeded!
+nc -z exit=0
+0
+stopped exit=0 in 1s
+=== TC-GAME-055 (mode print) and record-registry in gameplay mode
+[g055] started pid=58845 03:39:00
+ready after 2s
+13:03:39:01.622 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=rts version=0.1.0 enable_ms=385
+16:03:39:01.622 [main] WARN  plugin.a - probe-a admission provider not registered plugin_id=a: The process accepts one admission provider: plugin_id=a tried to register a second one, plugin_id=rts holds the slot
+17:03:39:01.622 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=a version=1.0.0 enable_ms=0
+-- step 1
+probe login exit=0
+24:03:39:06.574 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+25:03:39:11.574 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+26:03:39:16.574 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+27:03:39:21.574 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+28:03:39:26.574 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+29:03:39:31.574 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+record-registry exit=0
+registry_data_packets=27 bytes=9409 out=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3s-g.oNa9/out/registry-gameplay.bin
+exit code: 0
+-- step 2
+stopped exit=0 in 1s
+25:03:39:11.574 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+26:03:39:16.574 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+27:03:39:21.574 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+28:03:39:26.574 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+29:03:39:31.574 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+34:03:39:33.809 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+36:03:39:33.874 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=a
+37:03:39:33.875 [plugin-disable-a] INFO  plugin.a - probe-a onDisable plugin_id=a
+38:03:39:33.875 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=a: event node, tasks, channels, admission provider, commands, tab list visibility
+39:03:39:33.875 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=rts
+40:03:39:33.882 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=rts: event node, tasks, channels, admission provider, commands, tab list visibility
+42:03:39:33.954 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+-- step 4: lines starting with 'at ' or tab-at
+0
+0
+=== TC-GAME-055 step 5
+gradle exit=0
+BUILD SUCCESSFUL in 18s
+batch exit=0 03:39:53
+System-wide memory free percentage: 50%
+ 3:39  up 15:26, 29 users, load averages: 6.82 6.28 6.14
+lock released 03:39:53

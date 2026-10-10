@@ -1,0 +1,14 @@
+gate 03:24:59 free=56% load1=5.99 (need free>=30 load1<=24)
+lock acquired 2026-10-07 03:24:59: owner=Synaxis光照/m3s-g-b1 pid=33940 since=2026-10-07 03:24:59 task=RosterTest red/green, :game-rts:test, :server-app:installDist
+System-wide memory free percentage: 56%
+ 3:24  up 15:11, 29 users, load averages: 5.99 5.91 6.05
+131:        return total < 0
+red gradle exit=1
+Roster restored
+green gradle exit=1
+game-rts test exit=1
+installDist exit=0
+batch exit=0 03:25:32
+System-wide memory free percentage: 53%
+ 3:25  up 15:11, 29 users, load averages: 7.22 6.22 6.16
+lock released 03:25:32

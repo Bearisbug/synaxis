@@ -1,0 +1,36 @@
+gate 13:23:55 free=54% load1=5.28 (need free>=30 load1<=12)
+lock acquired 2026-10-07 13:23:55: owner=Synaxis光照/m3s-g068-soak pid=33940 since=2026-10-07 13:23:55 task=TC-GAME-068 rerun: steps 1-2 on the profile tier (175 units)
+System-wide memory free percentage: 54%
+13:23  up 1 day,  1:10, 31 users, load averages: 5.28 5.13 5.19
+gate 13:23:55 free=54% load1=5.28 (need free>=30 load1<=12)
+=== tier profile-175: -Dsynaxis.app.units=175 13:23:56
+ready after 8s
+104:13:24:02.479 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:9464/metrics
+107:13:24:02.875 [main] INFO  plugin.rts - Match running: match_id=c35e9014-ab06-4720-a3af-b3217ece6376 map_id=rts-512 dimension_name=synaxis:match_a34d8e7ae31a4bea863916f8ae9ba813 chunk_count=1024 load_ms=326
+109:13:24:02.913 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=rts version=0.1.0 enable_ms=426
+114:13:24:02.915 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25576
+-- step 1 probe
+probe units exit=0
+units=51 commandable=[61, 62, 63, 64, 65, 66, 67, 75, 76, 77, 78, 79, 80, 81, 89, 90, 91, 92, 93, 94, 95, 103, 104, 105, 106, 107, 108, 109, 117, 118, 119, 120, 121, 122, 123, 131, 132, 133, 134, 135, 136, 137, 145, 146, 147, 148, 149, 150, 151] snapshots=1 despawned=[]
+-- soak, before: System-wide memory free percentage: 46% / 13:24  up 1 day,  1:10, 31 users, load averages: 7.39 5.57 5.34
+soak exit=0
+after: System-wide memory free percentage: 44% / 13:34  up 1 day,  1:20, 31 users, load averages: 4.88 4.96 5.05
+Stopped recording "soak", 41.3 MB written to:
+
+/private/tmp/synaxis-play/profile-175/soak.jfr
+------------------------------------------------------------------------------
+elapsed=600.0s peak_connections=50 logins=50 failures={} lost=0 disconnects={}
+units: expected=175 seen_max=175 commandable_max=173 check=ok
+orders: sent=29900 answered=29900 codes={'no-path': 23, 'ok': 29444, 'out-of-bounds': 433} selects=3000 camera=147830
+inbound per connection B/s: {'total': 12736.3, 'engine': 11444.5, 'rts_game': 1291.8}
+S2C_UNIT_STATE: count=292507 max_payload_bytes=226 max_entries=60 hz_per_connection=9.755 bytes_per_s_per_connection=984.5 bytes_per_s_total=49200.6 interval_ms={'count': 292388, 'mean_ms': 100.018, 'p50_ms': 94.788, 'p99_ms': 129.468, 'max_ms': 901.932, 'over_50ms': 292388}
+tick_ms={'count': 12311, 'mean_ms': 1.999, 'p50_ms': 1.595, 'p99_ms': 5.435, 'max_ms': 41.148, 'over_50ms': 0}
+heap: live_mib_max=63.4 rss_mib_max=765.3 live probes=[63.4, 51.9, 54.0, 53.6, 52.3, 50.0, 50.2, 53.2, 51.9, 48.1] settle={'live_mib_after_disconnect': 46.7, 'threads_after_disconnect': 71, 'fds_after_disconnect': 90}
+pathfinding: searches=29467 path_ms={'count': 29467, 'mean_ms': 0.011, 'p50_ms': 0.0, 'p99_ms': 0.0, 'max_ms': 9.0, 'over_50ms': 0} tick_bucket_ms={'count': 7731, 'mean_ms': 0.042, 'p50_ms': 0.0, 'p99_ms': 1.0, 'max_ms': 9.0, 'over_50ms': 0} path_nodes_max issued=2202 rejected=4001
+server log: warn=0 error=0 kicks=0
+peak cpu=43.8% (t=10.1s clients=50) peak harness cpu=10.3% (t=316.4s clients=50)
+server gradle exit=0
+batch exit=0 13:34:23
+System-wide memory free percentage: 48%
+13:34  up 1 day,  1:20, 31 users, load averages: 4.73 4.93 5.03
+lock released 2026-10-07 13:34:23

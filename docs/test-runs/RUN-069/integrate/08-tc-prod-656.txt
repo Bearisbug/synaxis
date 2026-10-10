@@ -1,0 +1,16 @@
+TC-PROD-656 2026-10-07 18:19:55 head=5a348d93aa status=[]
+workflows: ci.yml client-gametest.yml client-mod.yml concurrency.yml farview-gametest.yml 
+jobs: ci.yml:check ci.yml:multithreaded ci.yml:multithreaded-grid client-gametest.yml:gametest client-gametest.yml:p10 client-mod.yml:mod concurrency.yml:jcstress farview-gametest.yml:farview 
+--- step 1
+(end step 1)
+--- step 2
+deleting docs/ENGINE.md line 294:   - job `multithreaded-grid`（「Test with 4 tick threads (strict, grid)」，`REQ-PROD
+missing job ci.yml multithreaded-grid
+(end step 2)
+--- step 3
+missing job concurrency.yml extra
+(end step 3)
+--- step 4
+(end step 4)
+after: status=[]
+Note: run on 5a348d93aa; the commit e775666ab7 replaces it with the same docs/ENGINE.md and .github/workflows/ (git diff --stat 5a348d93aa e775666ab7: only docs/DESIGN-M3.md, one line of v0.41's load range).

@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -160,7 +161,7 @@ public final class Baker {
         final Path mapDir = request.mapsRoot().resolve(request.mapId());
         final Path work;
         try {
-            Files.createDirectories(mapDir);
+            if (!Files.isDirectory(mapDir)) publishedDirectory(Files.createDirectories(mapDir));
             work = Files.createTempDirectory(mapDir, ".baking-");
             Files.createDirectory(work.resolve("staging"));
             Files.createDirectory(work.resolve(FarViewAssembler.PARTS));
@@ -205,7 +206,8 @@ public final class Baker {
         final List<SynxManifest.Region> manifestRegions = new ArrayList<>(outcomes.size());
         long bytes = 0;
         try {
-            Files.createDirectories(buildDir.resolve("regions"));
+            publishedDirectory(Files.createDirectories(buildDir));
+            publishedDirectory(Files.createDirectories(buildDir.resolve("regions")));
             for (RegionOutcome outcome : outcomes) {
                 final SynxRegionWriter.Encoded encoded = outcome.encoded();
                 encoded.write(buildDir.resolve("regions").resolve(SynxFormat.regionFileName(outcome.regionX(),
@@ -302,7 +304,7 @@ public final class Baker {
     }
 
     private static void writeManifest(Path buildDir, SynxManifest manifest) throws IOException {
-        Files.writeString(buildDir.resolve(SynxManifest.FILE_NAME), manifest.toJson());
+        publishedFile(Files.writeString(buildDir.resolve(SynxManifest.FILE_NAME), manifest.toJson()));
     }
 
     /** The regions overlapping the bounds, in (rx, rz) order. */
@@ -632,6 +634,26 @@ public final class Baker {
     private static long processCpuNanos() {
         return ManagementFactory.getOperatingSystemMXBean() instanceof OperatingSystemMXBean os
                 ? os.getProcessCpuTime() : 0;
+    }
+
+    /**
+     * A directory of the release, 0755 where the file system has POSIX permissions, whatever the umask: the
+     * shard refuses a release group or others may write ({@code docs/DESIGN-M3.md} {@code API-M3-002} 文件信任).
+     */
+    static Path publishedDirectory(Path directory) throws IOException {
+        return publishedMode(directory, "rwxr-xr-x");
+    }
+
+    /** A file of the release, 0644 where the file system has POSIX permissions, see {@link #publishedDirectory}. */
+    static Path publishedFile(Path file) throws IOException {
+        return publishedMode(file, "rw-r--r--");
+    }
+
+    private static Path publishedMode(Path path, String permissions) throws IOException {
+        if (path.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+            Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions));
+        }
+        return path;
     }
 
     static void deleteTree(Path root) throws IOException {

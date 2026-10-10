@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.stream.Stream;
 
 /**
@@ -41,13 +42,20 @@ public final class MapFixture {
         return new ShardSettings(mapsRoot.resolve(MAP_ID), result.directory().getFileName().toString(), 4, 100);
     }
 
-    /** Copies a release, to damage the copy. */
+    /**
+     * Copies a release, to damage the copy: directories 0755 and files 0644, as the baker publishes them,
+     * whatever the umask of the test JVM, or the shard refuses the copy ({@code docs/DESIGN-M3.md}
+     * {@code API-M3-002} 文件信任).
+     */
     public static ShardSettings copy(ShardSettings release, Path mapsRoot) {
         final Path target = mapsRoot.resolve(MAP_ID).resolve(release.mapBuild());
         try (Stream<Path> files = Files.walk(release.buildDir())) {
             Files.createDirectories(target.getParent());
+            Files.setPosixFilePermissions(target.getParent(), PosixFilePermissions.fromString("rwxr-xr-x"));
             for (Path file : files.toList()) {
-                Files.copy(file, target.resolve(release.buildDir().relativize(file).toString()));
+                final Path copy = Files.copy(file, target.resolve(release.buildDir().relativize(file).toString()));
+                Files.setPosixFilePermissions(copy, PosixFilePermissions.fromString(Files.isDirectory(copy)
+                        ? "rwxr-xr-x" : "rw-r--r--"));
             }
         } catch (IOException e) {
             throw new UncheckedIOException(e);

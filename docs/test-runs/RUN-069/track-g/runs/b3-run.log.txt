@@ -1,0 +1,125 @@
+gate 03:42:06 free=55% load1=7.99 (need free>=30 load1<=24)
+lock acquired 2026-10-07 03:42:06: owner=Synaxis光照/m3s-g-b3 pid=33940 since=2026-10-07 03:42:06 task=TC-GAME-053 SIGINT, 054, 055 redo, 056, 057 server-app runs
+System-wide memory free percentage: 55%
+ 3:42  up 15:28, 29 users, load averages: 7.99 6.55 6.25
+=== TC-GAME-053 step 6, SIGINT path
+[g053int] started pid=61266 03:42:06
+ready after 2s
+SIGINT exit=130 in 1s
+23:03:42:08.503 [Thread-3] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+25:03:42:08.528 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=a
+26:03:42:08.528 [plugin-disable-a] INFO  plugin.a - probe-a onDisable plugin_id=a
+27:03:42:08.528 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=a: event node, tasks, channels, admission provider, commands, tab list visibility
+28:03:42:08.528 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=rts
+29:03:42:08.536 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=rts: event node, tasks, channels, admission provider, commands, tab list visibility
+31:03:42:08.603 [Thread-3] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+03:42:08.603 [Thread-3] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+=== TC-GAME-054 (mode throw, listener on AsyncPlayerConfigurationEvent)
+[g054b] started pid=61315 03:42:09
+ready after 2s
+14:03:42:10.715 [main] INFO  plugin.a - probe-a onEnable plugin_id=a data_directory=plugins/a mode=throw
+-- step 2
+probe login exit=0
+1
+listener ERROR lines 0 -> 1
+24:03:42:11.720 [virtual-1112] ERROR i.g.b.synaxis.app.PluginEventsImpl - Plugin event listener failed: plugin_id=a event=AsyncPlayerConfigurationEvent (1 failures since the last report)
+25-java.lang.RuntimeException: probe-a listener throws for probe
+-- step 3
+task ERROR lines 0 -> 2 over 11 s
+41:03:42:15.668 [Syn-TickScheduler] ERROR i.g.b.s.app.PluginSchedulerImpl - Plugin task failed: plugin_id=a
+57:03:42:20.668 [Syn-TickScheduler] ERROR i.g.b.s.app.PluginSchedulerImpl - Plugin task failed: plugin_id=a
+WARN lines about ticks: 2
+-- step 4
+probe echo exit=1
+recv PluginMessagePacket
+no echo received
+exit code: 1
+0
+channel ERROR lines 0 -> 1
+-- step 5
+20 logins in 2s, probe failures=0
+listener ERROR lines 1 -> 3 (logins in all: 21)
+74:03:42:23.918 [virtual-1124] ERROR i.g.b.synaxis.app.PluginEventsImpl - Plugin event listener failed: plugin_id=a event=AsyncPlayerConfigurationEvent (1 failures since the last report)
+146:03:42:35.118 [virtual-1132] ERROR i.g.b.synaxis.app.PluginEventsImpl - Plugin event listener failed: plugin_id=a event=AsyncPlayerConfigurationEvent (1 failures since the last report)
+grep plugin_tripped exit=1
+Connection to 127.0.0.1 port 25565 [tcp/*] succeeded!
+nc -z exit=0
+stopped exit=0 in 1s
+=== TC-GAME-055 (mode print, listener on AsyncPlayerConfigurationEvent)
+[g055b] started pid=61730 03:42:39
+ready after 2s
+13:03:42:40.735 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=rts version=0.1.0 enable_ms=466
+16:03:42:40.736 [main] WARN  plugin.a - probe-a admission provider not registered plugin_id=a: The process accepts one admission provider: plugin_id=a tried to register a second one, plugin_id=rts holds the slot
+17:03:42:40.736 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=a version=1.0.0 enable_ms=0
+-- step 1
+probe login exit=0
+24:03:42:45.687 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+25:03:42:50.687 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+26:03:42:55.687 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+27:03:43:00.687 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+28:03:43:05.687 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+29:03:43:10.687 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+31:03:43:11.689 [virtual-1119] INFO  plugin.a - probe-a listener plugin_id=a player joined: probe
+-- step 2
+stopped exit=0 in 1s
+28:03:43:05.687 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+29:03:43:10.687 [Syn-TickScheduler] INFO  plugin.a - probe-a task plugin_id=a ran
+31:03:43:11.689 [virtual-1119] INFO  plugin.a - probe-a listener plugin_id=a player joined: probe
+33:03:43:12.751 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+35:03:43:12.787 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=a
+36:03:43:12.787 [plugin-disable-a] INFO  plugin.a - probe-a onDisable plugin_id=a
+37:03:43:12.788 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=a: event node, tasks, channels, admission provider, commands, tab list visibility
+38:03:43:12.788 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=rts
+39:03:43:12.795 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=rts: event node, tasks, channels, admission provider, commands, tab list visibility
+41:03:43:12.865 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+a task/listener lines after onDisable (line 36): 0
+-- step 4: at-lines 0 ERROR 0
+=== TC-GAME-056
+-- step 1
+[g056-1] started gradle pid=62158 03:43:13
+exited exit=1 after 1s
+grep: logs/events-*.jsonl: No such file or directory
+-- step 2: match_started 0; chunk lines 0
+step 5 (start 1) nc -z exit=1
+-- step 3
+1
+[g056-3] started gradle pid=62195 03:43:14
+exited exit=1 after 1s
+grep: logs/events-*.jsonl: No such file or directory
+step 5 (start 3) nc -z exit=1
+-- step 4
+1
+[g056-4] started gradle pid=62237 03:43:15
+exited exit=1 after 1s
+grep: logs/events-*.jsonl: No such file or directory
+step 5 (start 4) nc -z exit=1
+MapPreset restored
+-- step 6
+[g056-6] started gradle pid=62270 03:43:16
+exited before ready, exit=1 after 1s
+grep: logs/events-*.jsonl: No such file or directory
+stopped exit=1 in 0s
+ M game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Roster.java
+ M game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/RosterIntegrationTest.java
+ M game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/RosterTest.java
+ M tools/protocol-probe/probe.py
+=== TC-GAME-057
+-- step 1
+[g057-1] started gradle pid=62302 03:43:17
+exited exit=1 after 1s
+nc -z exit=1
+-- step 5
+gradle exit=0
+BUILD SUCCESSFUL in 8s
+-- step 6
+[g057-6] started gradle pid=62445 03:43:27
+exited exit=1 after 1s
+nc -z exit=1
+ M game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Roster.java
+ M game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/RosterIntegrationTest.java
+ M game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/RosterTest.java
+ M tools/protocol-probe/probe.py
+batch exit=0 03:43:28
+System-wide memory free percentage: 50%
+ 3:43  up 15:29, 29 users, load averages: 7.95 6.98 6.44
+lock released 03:43:28

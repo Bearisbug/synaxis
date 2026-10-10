@@ -1,0 +1,35 @@
+RUN-069 integrate: TC-WORLD-128 (the sweep measurement) on b70c6b7f54 (code of 49bee23cc1, RUN-070's engine checks in
+the tree), batch C under the heavy lock 18:13:10-18:16:09. 12 cores; another session's work on the machine, load1 4.1-5.3.
+  1. ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=2 :baker:installDist :server-app:lightFixtureArgs
+  2. <O> = mktemp -d under $TMPDIR; /usr/bin/time -l baker/build/install/baker/bin/baker bake --map-id synth
+     --source generator:synthetic:7 --out <O>/maps12 --logs <O>/logs12 --threads 2   (TC-WORLD-023 step 1 with 2 threads
+     instead of 12, as track S did, to keep the load down; the release is the same build id and byte count)
+  3. /usr/bin/time -l java @server-app/build/light-fixture.args -Xms4G -Xmx4G -Dsynaxis.map.root=<O>/maps12/synth
+     -Dsynaxis.map.build=synth-09b42ebb5dc6-p776 io.github.bearisbug.synaxis.app.shard.ShardSweepProbe 120
+  4. rm -rf <O>
+The line after "sweep exit 0" is the count of WARN / ERROR lines in the probe's output.
+
+batch C start 18:13:10 mem_free=57% load={ 5.29 6.51 6.24 } head=b70c6b7f547f4f92b784b4c77d292b82e84a0a6c map dir /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T//m3s-acc-sweep.nf5Ylj df_free_mb=43743
+116:BUILD SUCCESSFUL in 4s
+== bake before 18:13:15 mem_free=57% load={ 5.19 6.47 6.23 }
+bake exit 0 18:14:07 mem_free=54% load={ 5.21 6.28 6.17 }
+baker: published /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3s-acc-sweep.nf5Ylj/maps12/synth/synth-09b42ebb5dc6-p776, 213319659 bytes; 1 far view pack(s), 596465 bytes, assembled in 841 ms
+       51.90 real        95.35 user         5.41 sys
+          1241939968  maximum resident set size
+"event":"map_build_finished","ts":"2026-10-07T10:14:06.995227Z","shard_id":"baker","build_id":"synth-09b42ebb5dc6-p776","outcome":"published","wall_ms":49115,"cpu_ms":98757,"bytes":213319659,"farview_bytes":596465,"failed_regions":0,"verify_diffs":0}
+synth-09b42ebb5dc6-p776
+      64
+== sweep before 18:14:07 mem_free=54% load={ 5.21 6.28 6.17 }
+sweep exit 0 18:16:09 mem_free=50% load={ 4.14 5.51 5.87 }
+0
+sweep: seconds=120.0 packets=9304 packets_per_s=77.5 turned_back=0 chunks_start=729 chunks_peak=51249 chunks_end=43273 view_chunks=84100 loads_per_s=4410.0 unloads_per_s=4055.4 heap_before=27007864 heap_after=306859000 bytes_per_chunk=6577 cpu_us_per_load=54.7 tick_p99_ms=10.56 void_chunks=0 budget_bytes=1073741824 verdict=pass
+      121.99 real        27.23 user         6.49 sys
+          2519302144  maximum resident set size
+map dir removed: yes
+status after: 
+batch C end 18:16:09 mem_free=50% load={ 4.14 5.51 5.87 }
+
+Judgement (TC-WORLD-128 step 2): turned_back 0, chunks_peak 51,249 <= 84,100, void_chunks 0; 84,100 x 6,577 B =
+553,125,700 B, 51.5 % of 1 GiB (1,073,741,824 B), at most 12,767 B a chunk: pass. tick P99 10.56 ms is recorded only.
+Track S's reading on c54f5e06c1 (without RUN-070's engine checks): 9,284 packets, 77.4/s, peak 51,249, end 44,297,
+6,570 B a chunk, 62.3 us a load, tick P99 17.36 ms, peak RSS 2,239,627,264 B.

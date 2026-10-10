@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest" tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-06T19:50:12.980Z" hostname="Mac.local" time="0.831">
+  <properties/>
+  <testcase name="theStableSurfaceReturnsNoEngineInternal()" classname="io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest" time="0.601">
+    <failure message="java.lang.AssertionError: Architecture Violation [Priority: MEDIUM] - Rule 'no methods that are declared in classes that reside in a package 'io.github.bearisbug.synaxis.plugin..' and are declared in classes that are public and are public should have raw return type annotated with @Internal, because a plugin must not have to name an engine internal to read the stable surface' was violated (1 times):&#10;Method &lt;io.github.bearisbug.synaxis.plugin.PluginChannels.leakedForTcGame059()&gt; has raw return type annotated with @Internal in (PluginChannels.java:20)" type="java.lang.AssertionError">java.lang.AssertionError: Architecture Violation [Priority: MEDIUM] - Rule 'no methods that are declared in classes that reside in a package 'io.github.bearisbug.synaxis.plugin..' and are declared in classes that are public and are public should have raw return type annotated with @Internal, because a plugin must not have to name an engine internal to read the stable surface' was violated (1 times):
+Method &lt;io.github.bearisbug.synaxis.plugin.PluginChannels.leakedForTcGame059()&gt; has raw return type annotated with @Internal in (PluginChannels.java:20)
+	at com.tngtech.archunit.lang.ArchRule$Assertions.assertNoViolation(ArchRule.java:94)
+	at com.tngtech.archunit.lang.ArchRule$Assertions.check(ArchRule.java:86)
+	at com.tngtech.archunit.lang.ArchRule$Factory$SimpleArchRule.check(ArchRule.java:165)
+	at io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest.theStableSurfaceReturnsNoEngineInternal(StableSurfaceArchitectureTest.java:60)
+</failure>
+  </testcase>
+  <testcase name="theReturnTypeRuleRejectsALeakedInternal()" classname="io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest" time="0.048"/>
+  <testcase name="theStableSurfaceAsksForNoEngineInternal()" classname="io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest" time="0.144"/>
+  <testcase name="theParameterRuleRejectsALeakedInternal()" classname="io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest" time="0.029"/>
+  <system-out><![CDATA[03:50:13.017 [Test worker] INFO  c.tngtech.archunit.core.PluginLoader - Detected Java version 25.0.4.1
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

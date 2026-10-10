@@ -11,6 +11,8 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -150,6 +152,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     }
 
     private final Path directory;
+    private final String buildId;
     private final SynxSettings settings;
     private final SynxHeader header;
     private final OverlayOptions options;
@@ -194,10 +197,14 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private final LongAdder flushFsyncs = new LongAdder();
     private final AtomicLong flushLagMaxNanos = new AtomicLong();
     private final AtomicLong writePhaseMaxNanos = new AtomicLong();
+    // overlay_bytes and overlay_full (M3-S): judged by the holder of the write right, read by any thread
+    private volatile long writtenBytes;
+    private volatile boolean full;
 
     private OverlayStore(Path directory, SynxManifest manifest, SynxSettings settings, OverlayOptions options,
                          OverlayTuning tuning) {
         this.directory = directory;
+        this.buildId = manifest.buildId();
         this.settings = settings;
         this.options = options;
         this.tuning = tuning;
@@ -230,7 +237,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
 
     static OverlayStore open(Path overlayRoot, SynxManifest manifest, SynxSettings settings, OverlayOptions options,
                              OverlayTuning tuning) throws IOException, SynxException {
-        Files.createDirectories(overlayRoot);
+        Files.createDirectories(overlayRoot, ownerOnly(overlayRoot));
         final List<Path> stale = new ArrayList<>();
         try (DirectoryStream<Path> entries = Files.newDirectoryStream(overlayRoot)) {
             for (Path entry : entries) {
@@ -244,12 +251,27 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
             deleteTree(directory);
             LOGGER.info("Overlay of {} deleted: the shard runs {} now", directory.getFileName(), manifest.buildId());
         }
-        final OverlayStore store = new OverlayStore(Files.createDirectories(overlayRoot.resolve(manifest.buildId())),
+        final Path own = overlayRoot.resolve(manifest.buildId());
+        final OverlayStore store = new OverlayStore(Files.createDirectories(own, ownerOnly(own)),
                 manifest, settings, options, tuning);
         store.load(new SynxExpectations(settings.protocolVersion(), settings.registryDigest(),
                 settings.compressionThreshold(), settings.minY(), settings.height(), settings.lightEngineVersion()),
                 manifest.contentHash());
         return store;
+    }
+
+    /**
+     * What the directories of the store are made with: 0700 where the file system has POSIX permissions
+     * (M3-S, {@code API-M3-002} 覆盖层), so that nobody but the service user writes what the shard sends
+     * to the players; the shard host checks the ones that are there before it opens the store.
+     */
+    private static FileAttribute<?>[] ownerOnly(Path path) {
+        return posix(path) ? new FileAttribute<?>[]{PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"))}
+                : new FileAttribute<?>[0];
+    }
+
+    static boolean posix(Path path) {
+        return path.getFileSystem().supportedFileAttributeViews().contains("posix");
     }
 
     private static void deleteTree(Path directory) throws IOException {
@@ -285,6 +307,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         }
         nextSegment = files.isEmpty() ? 0 : files.lastKey() + 1;
         for (Indexed indexed : index.values()) indexed.segment().live++;
+        judgeFull();
         LOGGER.info("Overlay store {}: records of {} chunks in {} segments", directory, index.size(), segments.size());
     }
 
@@ -462,6 +485,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
                 active = null;
             }
             unlinkEmptySegments();
+            judgeFull();
         }
     }
 
@@ -681,6 +705,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         final long writtenAt = tuning.clock().getAsLong();
         final List<OverlayHit> hits = new ArrayList<>(appended.size());
         for (Appended record : appended) hits.add(index(record));
+        judgeFull();
         for (Appended record : appended) {
             if (record.item() instanceof PendingItem written) pending.remove(written.key(), written.entry());
         }
@@ -821,6 +846,34 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         }
     }
 
+    /**
+     * {@code overlay_full} ({@code API-M3-007} 磁盘上限, M3-S): the bytes every segment file holds written,
+     * the header and the alignment counted and the sparse rest not, against {@code synaxis.overlay.max-bytes};
+     * after the start-up scan, after each write made durable and after compaction unlinked segments. One
+     * line of the log when it turns, an ERROR to full and an INFO back. The holder of the write right's.
+     */
+    private void judgeFull() {
+        long bytes = 0;
+        for (OverlaySegment segment : segments.values()) bytes += segment.written();
+        this.writtenBytes = bytes;
+        final boolean nowFull = bytes >= options.maxBytes();
+        if (nowFull == full) return;
+        this.full = nowFull;
+        if (nowFull) {
+            LOGGER.error("Overlay store full: {} of {} bytes written for {}, changes to the map are refused", bytes,
+                    options.maxBytes(), buildId);
+        } else {
+            LOGGER.info("Overlay store no longer full: {} of {} bytes written for {}, changes to the map are taken again",
+                    bytes, options.maxBytes(), buildId);
+        }
+    }
+
+    /** Whether the segment files hold {@code synaxis.overlay.max-bytes} written; then the chunks are read only. */
+    @Override
+    public boolean full() {
+        return full;
+    }
+
     // ---- The final flush
 
     /**
@@ -950,7 +1003,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     public OverlayStats stats() {
         return new OverlayStats(residents.size(), evicted.sum(), evictFailed.sum(), flushAppended.sum(),
                 flushFsyncs.sum(), (double) flushLagMaxNanos.getAndSet(0) / 1e9,
-                (double) writePhaseMaxNanos.getAndSet(0) / 1e6, index.size());
+                (double) writePhaseMaxNanos.getAndSet(0) / 1e6, index.size(), writtenBytes, full);
     }
 
     private static long key(OverlayChunk chunk) {

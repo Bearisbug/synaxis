@@ -1,0 +1,419 @@
+name: Far view gametest
+
+# The container cases of the client far view (docs/DESIGN-M3.md §26 M3-G 容器验收 and M3-S 轨道 C 的四项容器规格,
+# docs/TEST.md TC-WORLD-117 to TC-WORLD-120) on the runner itself, the way client-gametest.yml runs the regression:
+# FarViewShardFixture (and bin/server-shard) from the server test sources, then the real client with Distant
+# Horizons under Xvfb and Mesa llvmpipe, each case judged by its farview-report.txt. Group light runs the runtime light
+# cases of LightClientGameTest (docs/TEST.md TC-WORLD-095 steps 5 to 11) against LightShardFixture, without Distant
+# Horizons, judged by its light-report.txt.
+# Only by hand, since a run holds runners for about two hours of a private repository's minutes: labelling a pull
+# request farview-gametest (any other label starts a run that skips at the job's if), or workflow_dispatch once this
+# file is on the default branch. To run a labelled pull request again, gh run rerun, or take the label off and on.
+on:
+  workflow_dispatch:
+    inputs:
+      fixture:
+        description: FarViewShardFixture mode of one case (synthetic, baked, break-sha, half, baked-hidden, counter-hidden, serve-only)
+        type: string
+        default: synthetic
+      modes:
+        description: The gametest modes of that case, comma separated (SYNAXIS_FARVIEW_MODE)
+        type: string
+        default: v1
+      day_time:
+        description: The fixture's dayTime, where it stops the clock; -1 for noon
+        type: string
+        default: '-1'
+      sun_elevation:
+        description: The sun elevation rts-shots expects (SYNAXIS_FARVIEW_SUN_ELEVATION), empty for none
+        type: string
+        default: ''
+  pull_request:
+    types: [ labeled ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: farview-gametest-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  farview:
+    name: Far view cases (${{ matrix.group }})
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'farview-gametest'
+    runs-on: ubuntu-latest
+    # On these 2 cores the fixture bakes a 3 × 3 tile map in about 24 minutes (baked and hidden, each its own map); a
+    # bake of the client takes 10 to 20 minutes, a client run 5 to 45; synthetic has four client runs, baked six, light
+    # one against a map of 33 × 33 chunks
+    timeout-minutes: ${{ matrix.group == 'light' && 75 || matrix.group == 'hidden' && 90 || matrix.group == 'synthetic' && 150 || 180 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # synthetic: TC-WORLD-117 (v1, the walk of F5 and F9), TC-WORLD-119 and TC-WORLD-120 with their counter-proofs;
+        # baked: the stopped sun (V6b) and its counter-proof, server-shard with and without url-root, counter-hidden;
+        # hidden: baked-hidden, which bakes a map of its own; light: LightClientGameTest in mode default
+        group: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["custom"]' || '["synthetic","baked","hidden","light"]') }}
+    env:
+      OUT: ${{ github.workspace }}/farview-out
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      GALLIUM_DRIVER: llvmpipe
+      ALSOFT_DRIVERS: "null"
+      # Two cores for the renderer, Distant Horizons, the fixture and the shard: llvmpipe rasterizes on one thread, and
+      # DH's workers get two all the time (SYNAXIS_DH_THREADS), where with its default of one a bake wrote for 18 minutes
+      LP_NUM_THREADS: "1"
+      SYNAXIS_DH_THREADS: "2"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
+
+      - name: Install Xvfb and Mesa
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            xvfb xauth libgl1 libgl1-mesa-dri libegl1 libglx-mesa0 mesa-utils
+
+      # `env -u CI`: the publishing convention requires signing whenever CI is set (see client-mod.yml). The daemon goes
+      # afterwards: the fixture, the shard and the client need the memory of this 2 core, 7 GB runner
+      - name: Build the fixture's classpath, the server and the client
+        run: |
+          env -u CI ./gradlew :protocol:publishToMavenLocal :server-app:farviewFixtureArgs :server-app:lightFixtureArgs \
+            :server-app:installDist --console=plain
+          ./gradlew --stop
+          (cd client-fabric && ./gradlew compileGametestJava --console=plain && ./gradlew --stop)
+
+      - name: Fetch Distant Horizons
+        if: matrix.group != 'light'
+        run: java docs/research/client-spikes-2026-09/dh-iris/Fetch.java dh "$RUNNER_TEMP/dh"
+
+      # The 3 × 3 tile map of baked and of hidden, baked before the cases: FarViewShardFixture reuses a release it finds
+      # under maps/, so the first case's fixture gets ready in seconds rather than at the edge of its 30 minutes
+      - name: Bake the fixture's map
+        if: matrix.group == 'baked' || matrix.group == 'hidden'
+        env:
+          MODE: ${{ matrix.group == 'hidden' && 'baked-hidden' || 'baked' }}
+        run: |
+          WORK=$RUNNER_TEMP/farview-work LOG=$RUNNER_TEMP/farview-bake.log
+          mkdir -p "$WORK"
+          java @server-app/build/farview-fixture.args -Xms1G -Xmx1G -Dsynaxis.app.auth=offline \
+            io.github.bearisbug.synaxis.app.shard.FarViewShardFixture 25750 25751 "$WORK" "$MODE" > "$LOG" 2>&1 &
+          pid=$!
+          for _ in $(seq 1 3600); do
+            grep -q 'farview fixture ready' "$LOG" && break
+            kill -0 "$pid" 2>/dev/null || break
+            sleep 1
+          done
+          kill "$pid" 2>/dev/null || true
+          wait "$pid" || true
+          grep 'farview fixture: baked' "$LOG" || { tail -n 40 "$LOG"; exit 1; }
+
+      - name: Run the cases
+        env:
+          GROUP: ${{ matrix.group }}
+          IN_FIXTURE: ${{ inputs.fixture }}
+          IN_MODES: ${{ inputs.modes }}
+          IN_DAY_TIME: ${{ inputs.day_time }}
+          IN_SUN: ${{ inputs.sun_elevation }}
+        run: |
+          # Every case runs whatever the one before did; the judge collects what did not hold
+          set +e -uo pipefail
+          WORK=$RUNNER_TEMP/farview-work DH=$RUNNER_TEMP/dh
+          mkdir -p "$OUT" "$WORK"
+          FIXTURE_PORT=25750 HTTP_PORT=25751 SHARD_PORT=25752 SHARD_METRICS=25753
+          # serve-only announces from the runner's own address: not loopback, as a CDN in the same network would be
+          HOST_IP=$(hostname -I | awk '{print $1}'); HOST_IP=${HOST_IP:-127.0.0.1}
+          FAILED=()
+          FIXTURE_PID='' SHARD_PID=''
+
+          stop_all() {
+            for pid in $SHARD_PID $FIXTURE_PID; do kill "$pid" 2>/dev/null; done
+            for pid in $SHARD_PID $FIXTURE_PID; do
+              for _ in $(seq 1 60); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+              kill -9 "$pid" 2>/dev/null
+            done
+            FIXTURE_PID='' SHARD_PID=''
+          }
+          trap stop_all EXIT
+
+          # <case> <mode> [urlRoot] [dayTime] [rttMillis] [JVM options...]; waits for the ready line (the first bake of
+          # the 3 x 3 tiles included)
+          start_fixture() {
+            local name=$1 mode=$2 root=${3:--} day=${4:--1} rtt=${5:-0}
+            shift $(( $# < 5 ? $# : 5 ))
+            mkdir -p "$OUT/$name"
+            java @server-app/build/farview-fixture.args -Xms1G -Xmx1G -Dsynaxis.app.auth=offline \
+              -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 "$@" \
+              io.github.bearisbug.synaxis.app.shard.FarViewShardFixture "$FIXTURE_PORT" "$HTTP_PORT" "$WORK" "$mode" \
+              "$root" "$day" "$rtt" > "$OUT/$name/fixture.log" 2>&1 &
+            FIXTURE_PID=$!
+            for _ in $(seq 1 1800); do
+              grep -q 'farview fixture ready' "$OUT/$name/fixture.log" && return 0
+              kill -0 "$FIXTURE_PID" 2>/dev/null || break
+              sleep 1
+            done
+            echo "::error::$name: the fixture did not get ready"; tail -n 40 "$OUT/$name/fixture.log"
+            FAILED+=("$name")
+            return 1
+          }
+
+          # <case> <map root> <build> [urlRoot]: bin/server-shard in the memory store, in a directory of its own
+          start_shard() {
+            local name=$1 root=$2 build=$3 url=${4:-}
+            mkdir -p "$WORK/shard-$name"
+            # exec all the way down (the start script execs java too), so that the pid stop_all kills is the shard's JVM
+            (cd "$WORK/shard-$name" && exec env JAVA_OPTS="-Xms1G -Xmx1G -XX:-AlwaysPreTouch" \
+              SERVER_APP_OPTS="-Dsynaxis.app.port=$SHARD_PORT -Dsynaxis.app.metrics.bind=127.0.0.1:$SHARD_METRICS \
+                -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout \
+                -Dsynaxis.map.root=$root -Dsynaxis.map.build=$build ${url:+-Dsynaxis.farview.url-root=$url}" \
+              "$GITHUB_WORKSPACE/server-app/build/install/server-app/bin/server-shard") < /dev/null > "$OUT/$name/shard.log" 2>&1 &
+            SHARD_PID=$!
+            for _ in $(seq 1 240); do
+              grep -q 'listening on' "$OUT/$name/shard.log" && return 0
+              kill -0 "$SHARD_PID" 2>/dev/null || break
+              sleep 1
+            done
+            echo "::error::$name: server-shard did not listen"; tail -n 40 "$OUT/$name/shard.log"
+            FAILED+=("$name")
+            return 1
+          }
+
+          # <case> <server port> <modes> [VAR=value...]: one client launch; the run directory starts empty every time
+          run_client() {
+            local name=$1 port=$2 modes=$3
+            shift 3
+            echo "::group::$name: client, modes $modes"
+            (cd client-fabric && env "$@" "SYNAXIS_FARVIEW_SERVER=127.0.0.1:$port" "SYNAXIS_FARVIEW_HTTP=http://127.0.0.1:$HTTP_PORT" \
+              SYNAXIS_FARVIEW_MODE="$modes" SYNAXIS_DH_SHADERPACKS="$DH/shaderpacks" \
+              JAVA_TOOL_OPTIONS="-Dfabric.addMods=$DH/mods -Dfabric.noGui=true" \
+              timeout 75m xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest --console=plain --stacktrace) \
+              > "$OUT/$name/client.log" 2>&1
+            echo "client exit $?" >> "$OUT/$name/client.log"
+            local run=client-fabric/build/run/clientGameTest
+            cp -r "$run/synaxis-gametest" "$run/screenshots" "$run/logs" "$OUT/$name/" 2>/dev/null
+            if [ -d "$run/synaxis/farview" ]; then
+              find "$run/synaxis/farview" -type f -printf "%s %P\n" | sort -k2 > "$OUT/$name/farview-files.txt"
+            fi
+            curl -s "http://127.0.0.1:$HTTP_PORT/access.log" > "$OUT/$name/access.log"
+            cat "$OUT/$name/synaxis-gametest/farview-report.txt" 2>/dev/null
+            echo "::endgroup::"
+          }
+
+          # <case> <regex>...: each regex matches a line of the report; every F line not named FAIL is a PASS
+          judge() {
+            local name=$1 report="$OUT/$1/synaxis-gametest/farview-report.txt" ok=1
+            shift
+            [ -f "$report" ] || { echo "::error::$name: no report"; FAILED+=("$name"); return; }
+            for pattern in "$@"; do
+              grep -Eq "$pattern" "$report" || { echo "::error::$name: no line matches $pattern"; ok=0; }
+            done
+            while IFS= read -r line; do
+              local expected=0
+              for pattern in "$@"; do [[ "$line" =~ $pattern ]] && expected=1; done
+              [ $expected = 1 ] || { echo "::error::$name: unexpected $line"; ok=0; }
+            done < <(grep -E '^F[0-9]+ FAIL' "$report")
+            [ $ok = 1 ] || FAILED+=("$name")
+          }
+
+          # <case> <what> <command...>: a check outside the report
+          check() {
+            local name=$1 what=$2
+            shift 2
+            if "$@"; then echo "$name: $what"; else echo "::error::$name: not $what"; FAILED+=("$name"); fi
+          }
+
+          # On these 2 cores DH's propagation to the parent levels does not finish within the bake's 120 s (docs/DESIGN-M3.md
+          # §26 M3-S 轨道 C), so what waits on it is left to the real machine (V2b): the bake line (F3), F4's rows against
+          # the sources and its ApplyToParent rows, the ready line and the bake of F7's reconnect, F19's ready. The rest
+          # of F4 and F7 is judged: no child propagation, some rows at level 4, every point read back; the announcement
+          # before the save folder, nothing asked for on the reconnect, the LOD shown within 200 ticks
+          F4_ROWS='^F4 (PASS|FAIL) DetailLevel=2 [0-9]+ of -?[0-9]+, ApplyToParent=1 [0-9]+, ApplyToChildren=1 0, DetailLevel=4 [1-9][0-9]*; '
+          F7_RECONNECT='^F7 (PASS|FAIL) announcement at log line [0-9]+, save folder at [0-9]+; reconnect: access\.log 9 -> 9 lines, ready line (true|false), baked in (true|false), FAR_VIEW shows LOD after [0-9]+ ticks \([0-9]+ ms\)$'
+
+          # <case>: F7's announcement came before DH's save folder
+          announced_first() {
+            local a='' s=''
+            read -r a s < <(sed -nE 's/^F7 (PASS|FAIL) announcement at log line ([0-9]+), save folder at ([0-9]+);.*/\2 \3/p' \
+              "$OUT/$1/synaxis-gametest/farview-report.txt" 2>/dev/null)
+            [ -n "$a" ] && [ -n "$s" ] && [ "$s" -gt "$a" ]
+          }
+
+          # <case> <F id>...: the lines above, recorded as notices
+          record() {
+            local name=$1 id
+            shift
+            for id in "$@"; do
+              grep -E "^$id (PASS|FAIL)" "$OUT/$name/synaxis-gametest/farview-report.txt" 2>/dev/null | cut -c1-600 \
+                | sed "s/^/::notice::$name records /"
+            done
+          }
+
+          baked_build() { ls "$WORK/maps/farview3x3"; }
+          synthetic_build() { ls "$WORK/maps/farview"; }
+
+          case "$GROUP" in
+          custom)
+            start_fixture custom "$IN_FIXTURE" "http://127.0.0.1:$HTTP_PORT" "$IN_DAY_TIME" || exit 1
+            run_client custom "$FIXTURE_PORT" "$IN_MODES" SYNAXIS_FARVIEW_SUN_ELEVATION="$IN_SUN"
+            judge custom
+            stop_all
+            ;;
+          synthetic)
+            # TC-WORLD-117 (V1 and the walk, F5 and F9) and the tiers of TC-WORLD-119 with the counter-proof counter-radius
+            start_fixture a1-synthetic synthetic "http://127.0.0.1:$HTTP_PORT" && {
+              run_client a1-synthetic "$FIXTURE_PORT" v1,v1-writable,tiers,counter-radius
+              judge a1-synthetic '^F1 PASS' '^F2 PASS' '^F3 ' \
+                "${F4_ROWS}peak@[^;]* ok; water@[^;]* ok; hidden@[^;]* ok; mountain@[^;]* ok\$" \
+                '^F5 PASS .*walked to x \+ 200' '^F6 PASS' "$F7_RECONNECT" '^F9 PASS .*walked to x \+ 200' '^F15 PASS' \
+                '^F15 FAIL counter-proof counter-radius'
+              check a1-synthetic "the announcement before the save folder" announced_first a1-synthetic
+              record a1-synthetic F3 F4 F7
+            }
+            stop_all
+            # TC-WORLD-119 step 2: a shard that announces nothing, and counter-off
+            start_fixture a2-none synthetic "http://127.0.0.1:$HTTP_PORT" && \
+              start_shard a2-none "$WORK/maps/farview" "$(synthetic_build)" && {
+                run_client a2-none "$SHARD_PORT" none,counter-off
+                judge a2-none '^F16 PASS .*walked to x \+ 200' '^F16 FAIL counter-proof counter-off'
+                check a2-none "logging Far view off for the empty url-root" grep -q 'Far view off: synaxis.farview.url-root is empty' "$OUT/a2-none/shard.log"
+              }
+            stop_all
+            # TC-WORLD-120 step 1 and counter-sha
+            start_fixture a3-break-sha break-sha "http://127.0.0.1:$HTTP_PORT" && {
+              run_client a3-break-sha "$FIXTURE_PORT" break-sha,counter-sha
+              judge a3-break-sha '^F18 PASS' '^F18 FAIL counter-proof counter-sha'
+            }
+            stop_all
+            # TC-WORLD-120 step 2 and counter-range: a cut, then the second request a Range answered 206; without Range
+            # the second request is answered 200
+            start_fixture a4-half half "http://127.0.0.1:$HTTP_PORT" && {
+              run_client a4-half "$FIXTURE_PORT" half,counter-range
+              judge a4-half '^F19 (PASS|FAIL) cut GET [^ ;]+ - 200 cut; second GET [^ ;]+ bytes=[0-9]+-[0-9]* 206; ready (true|false)$' \
+                '^F19 FAIL counter-proof counter-range: cut GET [^ ;]+ - 200 cut; second GET [^ ;]+ - 200; ready (true|false)$'
+              record a4-half F19
+            }
+            stop_all
+            ;;
+          baked)
+            # bin/server-shard with url-root: nine whole packs, each asked for once, none again on the reconnect
+            start_fixture b4-serve-only serve-only && \
+              start_shard b4-serve-only "$WORK/maps/farview3x3" "$(baked_build)" "http://$HOST_IP:$HTTP_PORT" && {
+                run_client b4-serve-only "$SHARD_PORT" v1
+                judge b4-serve-only '^F1 PASS' '^F2 PASS' '^F3 ' "${F4_ROWS}peak@[^;]* ok; water@[^;]* ok; mountain@[^;]* ok\$" \
+                  '^F5 PASS .*walked to x \+ 200' '^F6 PASS' "$F7_RECONNECT"
+                check b4-serve-only "the announcement before the save folder" announced_first b4-serve-only
+                record b4-serve-only F3 F4 F7
+                check b4-serve-only "nine GET in access.log" test "$(grep -c '^GET ' "$OUT/b4-serve-only/access.log")" = 9
+                check b4-serve-only "announcing nine whole tiles" grep -q "Far view: 9 tile(s), 0 coarse, from http://$HOST_IP:$HTTP_PORT" "$OUT/b4-serve-only/shard.log"
+              }
+            stop_all
+            # its counter-proof: no url-root, no announcement, F1 fails with the library dh/off
+            start_fixture b5-serve-only-no-root serve-only && \
+              start_shard b5-serve-only-no-root "$WORK/maps/farview3x3" "$(baked_build)" && {
+                run_client b5-serve-only-no-root "$SHARD_PORT" v1
+                judge b5-serve-only-no-root '^F1 FAIL no announcement: library .*synaxis/farview/dh/off'
+                check b5-serve-only-no-root "without a GET" test "$(grep -c '^GET ' "$OUT/b5-serve-only-no-root/access.log")" = 0
+                check b5-serve-only-no-root "logging Far view off" grep -q 'Far view off: synaxis.farview.url-root is empty' "$OUT/b5-serve-only-no-root/shard.log"
+              }
+            stop_all
+            # counter-hidden: the hidden points of baked-hidden against packs that hide nothing read back the terrain,
+            # while peak, water and mountain, picked from these packs (the peak is where hidden-peak is), read back as
+            # expected
+            start_fixture b6-counter-hidden counter-hidden "http://127.0.0.1:$HTTP_PORT" && {
+              run_client b6-counter-hidden "$FIXTURE_PORT" v1
+              judge b6-counter-hidden '^F1 PASS' '^F2 PASS' '^F3 ' \
+                "${F4_ROWS}peak@[^;]* ok; water@[^;]* ok; mountain@[^;]* ok; hidden-peak@[^;]* got \{state=[^;]* WRONG; hidden-edge-fine@[^;]* got \{state=[^;]* WRONG; hidden-edge-coarse@[^;]* got \{state=[^;]* WRONG\$" \
+                '^F5 PASS' '^F6 PASS' "$F7_RECONNECT"
+              check b6-counter-hidden "the announcement before the save folder" announced_first b6-counter-hidden
+              record b6-counter-hidden F3 F4 F7
+            }
+            stop_all
+            # V6b: the sun stopped at noon and at 40°, then the counter-proof with the clock left running
+            start_fixture b1-noon baked "http://127.0.0.1:$HTTP_PORT" 6000 && {
+              run_client b1-noon "$FIXTURE_PORT" rts-shots SYNAXIS_FARVIEW_SUN_ELEVATION=90
+              judge b1-noon '^F25 PASS'
+            }
+            stop_all
+            # 26.2's sun_angle track (timeline minecraft:day): tick 10137 is 39.995°
+            start_fixture b2-forty baked "http://127.0.0.1:$HTTP_PORT" 10137 && {
+              run_client b2-forty "$FIXTURE_PORT" rts-shots SYNAXIS_FARVIEW_SUN_ELEVATION=40
+              judge b2-forty '^F25 PASS'
+            }
+            stop_all
+            start_fixture b3-noon-running baked "http://127.0.0.1:$HTTP_PORT" 6000 0 -Dfarview.fixture.clock-runs=true && {
+              run_client b3-noon-running "$FIXTURE_PORT" rts-shots SYNAXIS_FARVIEW_SUN_ELEVATION=90
+              judge b3-noon-running '^F25 FAIL day time [0-9]+, [0-9]+ after [0-9]+ ticks'
+            }
+            stop_all
+            ;;
+          hidden)
+            # baked-hidden: the three hidden points read back as the hidden rule replaced them
+            start_fixture c1-baked-hidden baked-hidden "http://127.0.0.1:$HTTP_PORT" && {
+              run_client c1-baked-hidden "$FIXTURE_PORT" v1
+              judge c1-baked-hidden '^F1 PASS' '^F2 PASS' '^F3 ' \
+                "${F4_ROWS}peak@[^;]* ok; water@[^;]* ok; mountain@[^;]* ok; hidden-peak@[^;]* ok; hidden-edge-fine@[^;]* ok; hidden-edge-coarse@[^;]* ok\$" \
+                '^F5 PASS .*walked to x \+ 200' '^F6 PASS' "$F7_RECONNECT"
+              check c1-baked-hidden "the announcement before the save folder" announced_first c1-baked-hidden
+              record c1-baked-hidden F3 F4 F7
+            }
+            stop_all
+            ;;
+          light)
+            # TC-WORLD-095 steps 5 to 11: no L0, L1 to L11 PASS (L7's block is reached from within 5.5 blocks, as the
+            # engine turns down a placement out of reach). The stats line, the bounds of step 12, is recorded only: these
+            # 2 cores are not the machine of docs/DESIGN-M3.md §15
+            name=d1-light report="$OUT/d1-light/synaxis-gametest/light-report.txt" ready=0
+            mkdir -p "$OUT/$name"
+            java @server-app/build/light-fixture.args -Xms1G -Xmx1G -XX:-AlwaysPreTouch \
+              io.github.bearisbug.synaxis.app.shard.LightShardFixture "$FIXTURE_PORT" "$WORK/light" > "$OUT/$name/fixture.log" 2>&1 &
+            FIXTURE_PID=$!
+            for _ in $(seq 1 1800); do
+              grep -q 'light fixture ready' "$OUT/$name/fixture.log" && { ready=1; break; }
+              kill -0 "$FIXTURE_PID" 2>/dev/null || break
+              sleep 1
+            done
+            if [ $ready = 1 ]; then
+              echo "::group::$name: client, mode default"
+              (cd client-fabric && env SYNAXIS_LIGHT_SERVER="127.0.0.1:$FIXTURE_PORT" SYNAXIS_LIGHT_MODE=default \
+                JAVA_TOOL_OPTIONS="-Dfabric.noGui=true" \
+                timeout 50m xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest --console=plain --stacktrace) \
+                > "$OUT/$name/client.log" 2>&1
+              echo "client exit $?" >> "$OUT/$name/client.log"
+              run=client-fabric/build/run/clientGameTest
+              cp -r "$run/synaxis-gametest" "$run/screenshots" "$run/logs" "$OUT/$name/" 2>/dev/null
+              cat "$report" 2>/dev/null
+              echo "::endgroup::"
+              lacks() { ! grep -Eq "$2" "$1"; }
+              check $name "a report of mode default" grep -qx '# mode default' "$report"
+              check $name "without L0" lacks "$report" '^L0 '
+              for n in $(seq 1 11); do check $name "L$n PASS" grep -q "^L$n PASS" "$report"; done
+              grep '^# stats ' "$report" | sed "s/^/::notice::$name records /"
+            else
+              echo "::error::$name: the fixture did not get ready"; tail -n 40 "$OUT/$name/fixture.log"
+              FAILED+=("$name")
+            fi
+            stop_all
+            ;;
+          esac
+          if [ ${#FAILED[@]} -gt 0 ]; then
+            echo "::error::cases that did not hold: ${FAILED[*]}"
+            exit 1
+          fi
+
+      - name: Upload the reports, screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: farview-gametest-${{ matrix.group }}
+          path: farview-out/
+          retention-days: 14

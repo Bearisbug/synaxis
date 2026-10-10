@@ -34,6 +34,12 @@ import java.util.zip.Inflater;
  * gives them in. The file stores it as one zlib stream, or nothing when both tables are empty.
  */
 final class SynxEntities {
+    /**
+     * The most segment ③ inflates to, 16 MiB, and the accounting cap each of its NBT is read with (M3-S,
+     * {@code API-M3-001} 长度上限): adventure-nbt counts before it allocates, so a stated length never
+     * allocates more than this. Its default cap, 131,082, refuses a chest full of written books.
+     */
+    static final int MAX_BYTES = 16 << 20;
     /** Block entities in {@code (section_y, index)} order, which is the order they are written in. */
     static final Comparator<SynxBlockEntity> ORDER =
             Comparator.comparingInt(SynxBlockEntity::sectionY).thenComparingInt(SynxBlockEntity::index);
@@ -44,8 +50,27 @@ final class SynxEntities {
     private SynxEntities() {
     }
 
+    /**
+     * Segment ③ uncompressed, read back once with the reader of the shard, so that what is written is
+     * what a shard loads (M3-S).
+     *
+     * @throws IllegalArgumentException if it is over {@value #MAX_BYTES} bytes or does not read back
+     */
     static byte[] encode(List<SynxBlockEntity> blockEntities, List<CompoundBinaryTag> staticEntities) {
         if (blockEntities.isEmpty() && staticEntities.isEmpty()) return new byte[0];
+        final byte[] encoded = write(blockEntities, staticEntities);
+        if (encoded.length > MAX_BYTES) {
+            throw new IllegalArgumentException("segment ③ is " + encoded.length + " bytes, over " + MAX_BYTES);
+        }
+        try {
+            decode(encoded);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("segment ③ does not read back: " + e.getMessage(), e);
+        }
+        return encoded;
+    }
+
+    private static byte[] write(List<SynxBlockEntity> blockEntities, List<CompoundBinaryTag> staticEntities) {
         final List<SynxBlockEntity> sorted = new ArrayList<>(blockEntities);
         sorted.sort(ORDER);
         final ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -101,17 +126,24 @@ final class SynxEntities {
         return new Tables(blockEntities, staticEntities);
     }
 
-    /** Inflates a whole zlib stream whose length is not stored anywhere. */
+    /**
+     * Inflates a whole zlib stream whose length is not stored anywhere, to {@value #MAX_BYTES} bytes at most.
+     *
+     * @throws IllegalArgumentException if it is not one zlib stream, or inflates to more
+     */
     static byte[] inflate(ByteBuffer input) {
         final Inflater inflater = new Inflater();
         try {
             inflater.setInput(input);
-            final ByteArrayOutputStream output = new ByteArrayOutputStream(input.remaining() * 4);
+            final ByteArrayOutputStream output = new ByteArrayOutputStream((int) Math.min(MAX_BYTES, input.remaining() * 4L));
             final byte[] chunk = new byte[8192];
             while (!inflater.finished()) {
                 final int n = inflater.inflate(chunk);
                 if (n == 0 && (inflater.needsInput() || inflater.needsDictionary())) {
                     throw new IllegalArgumentException("zlib stream cut short");
+                }
+                if (output.size() + n > MAX_BYTES) {
+                    throw new IllegalArgumentException("segment ③ inflates to more than " + MAX_BYTES + " bytes");
                 }
                 output.write(chunk, 0, n);
             }
@@ -138,7 +170,7 @@ final class SynxEntities {
         final byte[] nbt = new byte[count(buffer)];
         buffer.get(nbt);
         try {
-            return BinaryTagIO.reader().read((DataInput) new DataInputStream(new ByteArrayInputStream(nbt)));
+            return BinaryTagIO.reader(MAX_BYTES).read((DataInput) new DataInputStream(new ByteArrayInputStream(nbt)));
         } catch (IOException e) {
             throw new IllegalArgumentException("unreadable NBT in segment ③", e);
         }

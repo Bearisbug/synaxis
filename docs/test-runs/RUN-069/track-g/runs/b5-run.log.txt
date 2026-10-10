@@ -1,0 +1,25 @@
+gate 03:49:59 free=54% load1=6.01 (need free>=30 load1<=24)
+lock acquired 2026-10-07 03:49:59: owner=Synaxis光照/m3s-g-b5 pid=33940 since=2026-10-07 03:49:59 task=TC-GAME-056 step 6 ledger, TC-GAME-059 step 3
+System-wide memory free percentage: 54%
+ 3:49  up 15:36, 29 users, load averages: 6.01 6.31 6.29
+=== TC-GAME-056 step 6, the ledger read after the stop
+[g056-6b] started gradle pid=67877 03:49:59
+ready after 5s
+match_started lines while running: 1
+stopped exit=0 in 1s
+{"ts":"2026-10-06T19:50:03.323495Z","event":"match_started","match_id":"95a44fe6-b3e2-497e-80bc-90af89c95a44","map_id":"rts-512","chunk_count":1024,"load_ms":373,"heap_delta_kib":8490,"heap_gc_runs":4}
+match_started lines after the stop: 1
+=== TC-GAME-059 step 3
+4:import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
+19:    default CachedPacket leakedForTcGame059() {
+gradle exit=1
+> Task :server-app:test FAILED
+StableSurfaceArchitectureTest > theStableSurfaceReturnsNoEngineInternal() FAILED
+4 tests completed, 1 failed
+BUILD FAILED in 8s
+PluginChannels restored
+post: git status --porcelain
+batch exit=0 03:50:14
+System-wide memory free percentage: 50%
+ 3:50  up 15:36, 29 users, load averages: 8.53 6.83 6.47
+lock released 03:50:14

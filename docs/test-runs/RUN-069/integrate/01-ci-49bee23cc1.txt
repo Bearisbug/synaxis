@@ -1,0 +1,105 @@
+RUN-069 integrate: the full gate on GitHub Actions for draft PR #12 (branch m3s/integrate).
+
+Which head: the gate last ran on 49bee23cc1 (the day-night commit). The heads after it on m3s/integrate are
+b70c6b7f54 (docs only: git diff --stat 49bee23cc1 b70c6b7f54 lists docs/ alone, 8 files), f8d83f0aa3 (docs only) and
+5a348d93aa (.github/workflows/farview-gametest.yml and docs/ENGINE.md: the light group). The tested code of RUN-069 is
+therefore that of 49bee23cc1. The runs on b70c6b7f54 never started a job (02-actions-billing.txt).
+Note: f8d83f0aa3 and 5a348d93aa were local commits that a git reset --soft replaced with b65d1115f9 and e775666ab7
+(git diff --stat f8d83f0aa3 b65d1115f9 and 5a348d93aa e775666ab7: each pair differs in one line of docs/DESIGN-M3.md, the
+load range of v0.41); no branch has them, here or on origin; they are dangling objects of this machine's repository.
+
+Runs on 49bee23cc1 (event pull_request, attempt 1, times UTC 2026-10-07; none rerun)
+  CI 37592308915                              success  08:13:10-08:36:11
+    Check                                     success  08:13:14-08:36:09  ./gradlew check jacocoTestReport, database
+                                                                          variables set; diff-cover of the new lines
+                                                                          538 lines, 41 missing, 92 %
+    Test with 4 tick threads (strict)         success  08:13:13-08:29:36
+    Test with 4 tick threads (strict, grid)   success  08:13:14-08:35:12
+  Client mod 37592308872                      success  08:13:10-08:15:04
+    Build the Fabric mod                      success                     client-test-reports below
+  Concurrency 37592308868                     success  08:13:10-08:15:39  jcstress
+  Client gametest 37592308984                 success  08:13:10-08:18:38
+    Run the client gametests                  success                     R1-R8 PASS, "client regression: all checks passed"
+    Two shards, 100 round trips (P10)         skipped (only on workflow_dispatch with p10=true)
+  R8 read "screen: Connection Lost. The server rejected a message from this connection as malformed." (PASS); the
+  flaky R8 of the coordination file (a "Disconnected" screen) did not show, so nothing was rerun for it.
+
+Counts: artifacts test-reports (11470741025), test-reports-multithreaded (11470275898),
+test-reports-multithreaded-grid (11470765713) of run 37592308915 and client-test-reports (11469615835) of run
+37592308872, fetched with gh api repos/Bearisbug/synaxis/actions/artifacts/<id>/zip, only TEST-*.xml read. One row
+per module directory that holds build/test-results (":" is the root project); classes = TEST-*.xml files; tests,
+fail, err, skip = sums of the testsuite attributes.
+
+[test-reports]
+  module                 classes  tests  fail  err  skip
+  :                          438   3213     0    0    21
+  :architecture-tests          7     20     0    0     0
+  :baker                       8     77     0    0     0
+  :game-rts                   14     93     0    0     0
+  :loadtest                    6     26     0    0     0
+  :plugin-api                  3     15     0    0     0
+  :protocol                    8    127     0    0     0
+  :server-app                123    638     0    0     0
+  :synx                       22    166     0    0     1
+  :testing                     8     11     0    0     0
+  TOTAL                      637   4386     0    0    22
+[test-reports-multithreaded]
+  module                 classes  tests  fail  err  skip
+  :                          438   3213     0    0    21
+  :architecture-tests          7     20     0    0     0
+  :baker                       8     77     0    0     0
+  :game-rts                   14     93     0    0     0
+  :loadtest                    6     26     0    0     0
+  :plugin-api                  3     15     0    0     0
+  :protocol                    8    127     0    0     0
+  :server-app                123    638     0    0     0
+  :synx                       22    166     0    0     1
+  :testing                     8     11     0    0     0
+  TOTAL                      637   4386     0    0    22
+[test-reports-multithreaded-grid]
+  module                 classes  tests  fail  err  skip
+  :                          438   3213     0    0    21
+  :architecture-tests          7     20     0    0     0
+  :baker                       8     77     0    0     0
+  :game-rts                   14     93     0    0     0
+  :loadtest                    6     26     0    0     0
+  :plugin-api                  3     15     0    0     0
+  :protocol                    8    127     0    0     0
+  :server-app                123    638     0    0     0
+  :synx                       22    166     0    0     1
+  :testing                     8     11     0    0     0
+  TOTAL                      637   4386     0    0    22
+[client-test-reports]
+  :client-fabric              17    199     0    0     0
+
+Per class (test-reports, the same in the two strict sets), the counts docs/TEST.md writes for the classes M3-S
+changed:
+  ShardMainTest                          server-app   tests="11" skipped="0" failures="0"
+  SynxBuildVerifierTest                  synx         tests="10" skipped="0" failures="0"
+  GeneratorBakeTest                      baker        tests="13" skipped="0" failures="0"
+  SynxChunkLoaderIntegrationTest         synx         tests="13" skipped="0" failures="0"
+  OverlayOptionsTest                     synx         tests="4" skipped="0" failures="0"
+  OverlayStoreTest                       synx         tests="32" skipped="0" failures="0"
+  ShardServiceImplTest                   server-app   tests="9" skipped="0" failures="0"
+  SynxOverlayCombinedIntegrationTest     synx         tests="7" skipped="0" failures="0"
+  ShardWorldFarViewTest                  server-app   tests="11" skipped="0" failures="0"
+  ShardWorldTest                         server-app   tests="19" skipped="0" failures="0"
+  ShardWorldAssemblyTest                 server-app   tests="10" skipped="0" failures="0"
+  FarViewShardFixtureTest                server-app   tests="14" skipped="0" failures="0"
+  FarViewAnnouncementTest                protocol     tests="7" skipped="0" failures="0"
+  FarViewVectorTest                      protocol     tests="26" skipped="0" failures="0"
+  FarViewDecoderBoundaryTest             protocol     tests="3" skipped="0" failures="0"
+  MapShardPlayerAuthorityTest            server-app   tests="4" skipped="0" failures="0"
+  SynxTruncatedMappingTest               synx         tests="1" skipped="0" failures="0"
+  SynxRelightBacklogTest                 synx         tests="1" skipped="1" failures="0"
+  ShardGatesRaceTest                     server-app   tests="15" skipped="0" failures="0"
+  OverlayCrossCellWritersTest            synx         tests="5" skipped="0" failures="0"
+  FrozenVectorTest                       client-fabric  tests="41" skipped="0" failures="0"
+  FarViewDownloaderTest                  client-fabric  tests="19" skipped="0" failures="0"
+  FarViewCacheTest                       client-fabric  tests="17" skipped="0" failures="0"
+  FarViewClientTest                      client-fabric  tests="4" skipped="0" failures="0"
+  FarViewDownloaderLimitsTest            client-fabric  tests="3" skipped="0" failures="0"
+
+SynxTruncatedMappingTest on Linux (system-out):
+exit 0, copy: java.lang.InternalError: a fault occurred in an unsafe memory access operation
+SynxRelightBacklogTest is skipped without -Dsynaxis.relight.measure (TC-WORLD-139 step 1): <skipped/

@@ -1,0 +1,32 @@
+RUN-069 integrate: the counter-proof of walk (docs/DESIGN-M3.md §26 M3-S ④, docs/TEST.md TC-WORLD-117 precondition):
+the first step of FarViewClientGameTest#walk put back to one packet from the spawn's y 64 to y 180 (116 blocks), the
+synthetic fixture in mode v1; F5 has to FAIL with a detail that the walk did not get to x + 200.
+
+How it ran: a temporary branch m3s/walk-proof with one commit 7596bf4218 on top of m3s/integrate 6f3ffa9c79
+(walk-proof-38065344280/temp-commit.diff.txt):
+  - FarViewClientGameTest.java:551, climb(from.x, from.y, 180, from.z) replaced by one fly(client, from.x, 180, from.z)
+    and one waitTick;
+  - .github/workflows/farview-gametest.yml: a push trigger on that branch alone, the job's if and the matrix take the
+    custom group on any event but pull_request, and the custom case's inputs default to fixture synthetic, modes v1,
+    day time -1 (workflow_dispatch reaches only workflows on the default branch, and a pull request would have run the
+    four gate workflows again).
+  Pushed 2026-10-10 23:52 local time (UTC+8), after the gate of 13-ci-6f3ffa9c79.txt was green; only this workflow ran
+  on the branch (gh run list --branch m3s/walk-proof: one run). The branch was deleted on origin and here right after
+  the run (git push origin --delete m3s/walk-proof; git branch -D m3s/walk-proof); m3s/integrate never had the commit.
+
+Run 38065344280 (Far view gametest, event push, head 7596bf4218), job Far view cases (custom) 114251732253,
+15:52:08-16:15:03 UTC, 23 job minutes; conclusion failure, as intended. Report: walk-proof-38065344280/custom.txt
+(artifact farview-gametest-custom 11674874804).
+
+  F5 FAIL DetailLevel=0 before the walk 0, after 200 blocks and back 0; not at x + 200 (464.5, 180, 264.5): turned
+     back to (264.5, 64.0, 264.5)
+  # not at x + 200 (464.5, 180, 264.5): turned back to (264.5, 64.0, 264.5) from (264.5, 64.0, 264.5)
+
+The engine turned the 116 block packet back (docs/DESIGN-PROD.md API-PROD-030: a move of more than 64 blocks), and
+every packet after it stayed more than 64 blocks from where the server had the player, so the client ended where it
+spawned. F1, F2 and F6 PASS (F6 with client day time 6000 at the shots before, 6000 after); F3, F4's rows and F7 FAIL
+as on every 2 core run (recorded only). The job's errors are those four F lines named unexpected (the custom case
+judges with no expected line) and "cases that did not hold: custom".
+
+With the walk as m3s/integrate has it (at most 16 blocks a tick), the same fixture and mode walked to x + 200 in run
+38065240160 (14-farview-38065240160.txt, a1-synthetic F5 and F9; a2-none F16; b4, b6 and c1 F5).

@@ -1,0 +1,39 @@
+RUN-069 integrate: the runs on b70c6b7f54 (the head before this acceptance), all of them without a started job.
+
+Runs (event pull_request, times UTC 2026-10-07):
+  CI 37602916613 attempt=1 failure created 2026-10-07T09:46:32Z head=b70c6b7f54
+    Check  failure  2026-10-07T09:46:33Z-2026-10-07T09:46:35Z
+    Test with 4 tick threads (strict, grid)  failure  2026-10-07T09:46:33Z-2026-10-07T09:46:35Z
+    Test with 4 tick threads (strict)  failure  2026-10-07T09:46:33Z-2026-10-07T09:46:36Z
+  Client mod 37602916681 attempt=1 failure created 2026-10-07T09:46:32Z head=b70c6b7f54
+    Build the Fabric mod  failure  2026-10-07T09:46:33Z-2026-10-07T09:46:35Z
+  Concurrency 37602916578 attempt=4 failure created 2026-10-07T09:46:32Z head=b70c6b7f54
+    jcstress  failure  2026-10-07T10:20:14Z-2026-10-07T10:20:21Z
+  Client gametest 37602916646 attempt=1 failure created 2026-10-07T09:46:32Z head=b70c6b7f54
+    Run the client gametests  failure  2026-10-07T09:46:32Z-2026-10-07T09:46:35Z
+    Two shards, 100 round trips (P10)  skipped  2026-10-07T09:46:33Z-2026-10-07T09:46:32Z
+
+The annotation of each failed job (gh api repos/Bearisbug/synaxis/check-runs/<job>/annotations):
+  The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings
+  "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+
+Probes during this acceptance: gh run rerun 37602916578 (Concurrency, jcstress, about 2.5 job minutes if it ran) at
+17:49, 18:06, 18:20, 18:26 and 18:33 local time (UTC+8): attempts 2 to 6, each job failed within 3 to 7 s with the same
+annotation.
+The account's billing settings are not readable with this token (gh api /users/Bearisbug/settings/billing/actions:
+404, needs the user scope). The last runs that did start on this repository: prod/integrate-072, created 09:21:59 UTC. The runs created after
+09:46 UTC on prod/integrate-072 (10:12:18, 10:30:39) and on main (10:31:13, 10:33:53) failed the same way (gh run list).
+
+Review follow-up: the head ec9fd2b741 (main 8220ef9d0f merged in as 320ff22df9, then 61c8d55c8c, 6c9f9836d7 and the
+docs), pushed 2026-10-07 19:27 local time (UTC+8). Its runs (event pull_request, attempt 1, created 11:27:05 UTC):
+  CI 37614157880, Client mod 37614157945, Concurrency 37614157881, Client gametest 37614157878: all failure
+    CI               Test with 4 tick threads (strict)          failure  2026-10-07T11:27:05Z-2026-10-07T11:27:08Z
+    CI               Test with 4 tick threads (strict, grid)    failure  2026-10-07T11:27:05Z-2026-10-07T11:27:09Z
+    CI               Check                                      failure  2026-10-07T11:27:05Z-2026-10-07T11:27:08Z
+    Client mod       Build the Fabric mod                       failure  2026-10-07T11:27:05Z-2026-10-07T11:27:08Z
+    Concurrency      jcstress                                   failure  2026-10-07T11:27:05Z-2026-10-07T11:27:08Z
+    Client gametest  Run the client gametests                   failure  2026-10-07T11:27:05Z-2026-10-07T11:27:09Z
+    Client gametest  Two shards, 100 round trips (P10)          skipped  2026-10-07T11:27:06Z-2026-10-07T11:27:05Z
+  The annotation of job 112768351220 (Test with 4 tick threads (strict)) is the same billing line as above. No
+  rerun, no farview-gametest label: PR #12 is MERGEABLE (no longer CONFLICTING) and stays without a gate until the
+  account's billing is restored.

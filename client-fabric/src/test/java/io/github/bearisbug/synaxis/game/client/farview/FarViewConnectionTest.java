@@ -49,7 +49,7 @@ class FarViewConnectionTest {
     private FarViewConnection connection() {
         return new FarViewConnection(new FarViewAnnouncement("b1", 2, 4, -64, 256, tiles), System.nanoTime(),
                 new FarViewSettings(FarViewSettings.DEFAULT_RADIUS), true, FarViewClient.DH_VERSION, cache,
-                FarViewDownloader.standard(cache));
+                FarViewDownloader.standard(cache), null);
     }
 
     private String key() {

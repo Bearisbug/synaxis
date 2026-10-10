@@ -14,6 +14,7 @@ import io.github.bearisbug.synaxis.baker.GeneratorPreset;
 import io.github.bearisbug.synaxis.baker.GeneratorSource;
 import io.github.bearisbug.synaxis.baker.LightVersions;
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.instance.Clock;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.registry.Registries;
@@ -44,14 +45,18 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongSupplier;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -138,6 +143,15 @@ public class ShardWorldAssemblyTest {
         return new Mounted(world, world.start(shutdown, (name, _) -> events.add(name), null, overlayRoot), events);
     }
 
+    /** Steps (3) and (5) of {@code Main} on a map, with the overlay store under {@code overlay} and the wall clock {@code wallMillis}. */
+    private static InstanceContainer mountAt(ServerProcess process, Path overlay, LongSupplier wallMillis) {
+        final ShardWorld world = ShardWorld.prepare(process, release, SYNX, new OverlayOptions(16_384, 10), null);
+        final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
+        process.setShutdownParticipant(shutdown);
+        return world.start(shutdown, (_, _) -> {
+        }, null, overlay, null, wallMillis).instance();
+    }
+
     private OverlayStore reopen(OverlayOptions options) throws IOException, SynxException {
         return OverlayStore.open(overlayRoot, manifest, ShardWorld.overlaySettings(manifest, 256), options);
     }
@@ -183,6 +197,58 @@ public class ShardWorldAssemblyTest {
             }
         } finally {
             process.stop();
+        }
+    }
+
+    /** 2026-10-07T07:15:23.456Z: 35,827,146,469 ticks of 50 ms, 138,469 modulo 192,000 and 18,469 modulo 24,000. */
+    private static final long T0 = 1_791_357_323_456L;
+
+    /** §19 「地图分片的时钟按挂钟走」 (REQ-M3-034). */
+    @Test
+    public void theMapClockStartsAtTheWallClock() {
+        final ServerProcess process = process();
+        try {
+            final InstanceContainer instance = mountAt(process, overlayRoot, () -> T0);
+            assertEquals(138_469, instance.getTime(), "(epoch ms / 50) mod 192,000");
+            assertEquals(Math.floorMod(T0 / 50, 24_000), instance.getTime() % 24_000, "the day time, (epoch ms / 50) mod 24,000");
+            final Clock clock = Objects.requireNonNull(instance.defaultClock(), "the map has a clock");
+            assertEquals(1f, Objects.requireNonNull(instance.createTimePacket().clocks().get(clock.clock())).rate(),
+                    "a tick of the day every tick");
+        } finally {
+            process.stop();
+        }
+    }
+
+    /** §19 「两个分片同一时刻时间相同，丢掉的 tick 由对齐补回」 (REQ-M3-034). */
+    @Test
+    public void twoShardsOfAMapShowOneTimeAndAShardThatLostTicksIsSetBack() {
+        final AtomicLong wall = new AtomicLong(T0);
+        final ServerProcess a = process();
+        final ServerProcess b = process();
+        try {
+            final InstanceContainer first = mountAt(a, overlayRoot.resolve("a"), wall::get);
+            a.dispatcher().start();
+            for (int i = 0; i < 740; i++) {
+                wall.addAndGet(50);
+                tick(a, 1);
+            }
+            final InstanceContainer second = mountAt(b, overlayRoot.resolve("b"), wall::get);
+            assertEquals(139_209, first.getTime(), "A after 740 ticks of 50 ms");
+            assertEquals(139_209, second.getTime(), "B started 37 s after A");
+
+            // A stalls and its tick loop gives up catching up: the 600 ticks of these 30 s never run
+            wall.addAndGet(30_000);
+            for (int i = 0; i < 19; i++) {
+                wall.addAndGet(50);
+                tick(a, 1);
+            }
+            assertEquals(139_228, first.getTime(), "19 ticks after the stall, 600 behind the wall clock");
+            wall.addAndGet(50);
+            tick(a, 1);
+            assertEquals(139_829, first.getTime(), "set back to the wall clock at the end of the 20th tick");
+        } finally {
+            a.stop();
+            b.stop();
         }
     }
 
@@ -317,13 +383,15 @@ public class ShardWorldAssemblyTest {
 
     /**
      * §14: an overlay store that cannot be opened refuses the start naming the overlay directory, which
-     * is where RB-M3-002 has the operator look, not the map release.
+     * is where RB-M3-002 has the operator look, not the map release. The file in the way is 0600 whatever
+     * the umask: one group or others may write is refused by the check of the overlay directories first.
      */
     @Test
     public void anOverlayStoreThatCannotBeOpenedNamesItsDirectory() throws IOException {
         final ServerProcess process = process();
         try {
-            final Path notADirectory = Files.createFile(overlayRoot.resolve("overlay"));
+            final Path notADirectory = Files.createFile(overlayRoot.resolve("overlay"),
+                    PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
             final ShardWorld world = ShardWorld.prepare(process, release, SYNX, new OverlayOptions(16_384, 10), null);
             final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
             try {

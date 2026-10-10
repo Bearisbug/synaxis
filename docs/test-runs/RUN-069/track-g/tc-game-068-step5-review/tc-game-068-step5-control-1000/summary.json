@@ -1,0 +1,313 @@
+{
+  "profile": {
+    "connections": 5,
+    "duration": 15.0,
+    "units": 1000,
+    "map_size": 512.0,
+    "camera_hz": 5.0,
+    "order_hz": 1.0,
+    "select_interval": 10.0,
+    "pan_speed": 20.0,
+    "zoom": 24.0,
+    "gc_probe_interval": 0.0
+  },
+  "pid": 5861,
+  "elapsed_s": 15.0,
+  "connected_peak": 5,
+  "connected_end": 5,
+  "login_attempts": 5,
+  "login_failures": {},
+  "login_latency_ms": {
+    "count": 5,
+    "mean_ms": 93.586,
+    "p50_ms": 93.026,
+    "p99_ms": 94.951,
+    "max_ms": 94.951,
+    "over_50ms": 5
+  },
+  "connections_lost": 0,
+  "disconnect_reasons": {},
+  "keep_alives": 5,
+  "units": {
+    "expected": 1000,
+    "seen_max": 688,
+    "commandable_max": 686,
+    "check": "mismatch"
+  },
+  "uplink": {
+    "camera_reports": 370,
+    "position_packets": 370,
+    "orders_sent": 75,
+    "selects_sent": 10
+  },
+  "orders": {
+    "sent": 75,
+    "answered": 75,
+    "codes": {
+      "ok": 72,
+      "out-of-bounds": 3
+    }
+  },
+  "inbound": {
+    "connection_seconds": 74.5,
+    "per_connection_bytes_per_s": {
+      "total": 15962.9,
+      "engine": 11073.2,
+      "rts_game": 4889.6
+    },
+    "per_connection_distribution": {
+      "engine": {
+        "count": 5,
+        "mean_ms": 11073.227,
+        "p50_ms": 9914.124,
+        "p99_ms": 16165.0,
+        "max_ms": 16165.0,
+        "over_50ms": 5
+      },
+      "rts_game": {
+        "count": 5,
+        "mean_ms": 4889.646,
+        "p50_ms": 4485.844,
+        "p99_ms": 6702.882,
+        "max_ms": 6702.882,
+        "over_50ms": 5
+      }
+    },
+    "engine_by_packet": {
+      "EntityPositionSyncPacket": {
+        "count": 4760,
+        "wire_bytes": 313797
+      },
+      "SpawnEntityPacket": {
+        "count": 3164,
+        "wire_bytes": 173913
+      },
+      "EntityMetaDataPacket": {
+        "count": 3169,
+        "wire_bytes": 129021
+      },
+      "UnloadChunkPacket": {
+        "count": 3973,
+        "wire_bytes": 59595
+      },
+      "EntityPositionAndRotationPacket": {
+        "count": 2906,
+        "wire_bytes": 52308
+      },
+      "EntityHeadLookPacket": {
+        "count": 3224,
+        "wire_bytes": 32107
+      },
+      "EntityVelocityPacket": {
+        "count": 2902,
+        "wire_bytes": 29013
+      },
+      "DestroyEntitiesPacket": {
+        "count": 2163,
+        "wire_bytes": 21605
+      },
+      "ChunkDataPacket": {
+        "count": 45,
+        "wire_bytes": 7475
+      },
+      "PlayerInfoUpdatePacket": {
+        "count": 19,
+        "wire_bytes": 996
+      },
+      "UpdateViewPositionPacket": {
+        "count": 103,
+        "wire_bytes": 927
+      },
+      "PlayerPositionAndLookPacket": {
+        "count": 10,
+        "wire_bytes": 680
+      },
+      "EntityEquipmentPacket": {
+        "count": 26,
+        "wire_bytes": 650
+      },
+      "WindowItemsPacket": {
+        "count": 10,
+        "wire_bytes": 570
+      },
+      "JoinGamePacket": {
+        "count": 5,
+        "wire_bytes": 420
+      },
+      "EntityTeleportPacket": {
+        "count": 6,
+        "wire_bytes": 420
+      },
+      "SpawnPositionPacket": {
+        "count": 5,
+        "wire_bytes": 350
+      },
+      "EntityAttributesPacket": {
+        "count": 31,
+        "wire_bytes": 341
+      },
+      "ChangeGameStatePacket": {
+        "count": 20,
+        "wire_bytes": 240
+      },
+      "InitializeWorldBorderPacket": {
+        "count": 5,
+        "wire_bytes": 230
+      },
+      "other": {
+        "count": 50,
+        "wire_bytes": 690
+      }
+    },
+    "rts_game_by_msg": {
+      "S2C_UNIT_STATE": {
+        "count": 743,
+        "payload_bytes": 560412,
+        "wire_bytes": 233080,
+        "max_payload_bytes": 1198,
+        "max_entries": 298,
+        "hz_per_connection": 9.968,
+        "bytes_per_s_per_connection": 7518.7,
+        "bytes_per_s_total": 37352.4,
+        "interval_ms": {
+          "count": 738,
+          "mean_ms": 100.043,
+          "p50_ms": 94.059,
+          "p99_ms": 132.68,
+          "max_ms": 148.549,
+          "over_50ms": 738
+        }
+      },
+      "S2C_UNIT_SPAWN": {
+        "count": 3122,
+        "payload_bytes": 34084,
+        "wire_bytes": 84036,
+        "max_payload_bytes": 11,
+        "max_entries": 0,
+        "hz_per_connection": 41.886,
+        "bytes_per_s_per_connection": 457.3,
+        "bytes_per_s_total": 2271.8
+      },
+      "S2C_UNIT_DESPAWN": {
+        "count": 2141,
+        "payload_bytes": 10680,
+        "wire_bytes": 44936,
+        "max_payload_bytes": 5,
+        "max_entries": 1,
+        "hz_per_connection": 28.725,
+        "bytes_per_s_per_connection": 143.3,
+        "bytes_per_s_total": 711.8
+      },
+      "S2C_ORDER_RESULT": {
+        "count": 75,
+        "payload_bytes": 1200,
+        "wire_bytes": 2400,
+        "max_payload_bytes": 16,
+        "max_entries": 0,
+        "hz_per_connection": 1.006,
+        "bytes_per_s_per_connection": 16.1,
+        "bytes_per_s_total": 80.0
+      }
+    }
+  },
+  "ticks": {},
+  "heap": {
+    "live_mib_max": 0.0,
+    "rss_mib_max": 1378.3,
+    "gc_probes": [],
+    "settle": {
+      "threads_after_disconnect": 79,
+      "fds_after_disconnect": 87
+    }
+  },
+  "pathfinding": {
+    "events": {
+      "client_verified": 5,
+      "session_entered_configuration": 5,
+      "unit_order_issued": 72,
+      "unit_order_rejected:out-of-bounds": 3,
+      "unit_order_superseded": 72,
+      "unit_selected": 10
+    },
+    "searches": 72,
+    "path_ms": {
+      "count": 72,
+      "mean_ms": 0.139,
+      "p50_ms": 0.0,
+      "p99_ms": 2.0,
+      "max_ms": 2.0,
+      "over_50ms": 0
+    },
+    "path_nodes_max_issued": 386,
+    "path_nodes_max_rejected": 0,
+    "tick_bucket_ms": {
+      "count": 28,
+      "mean_ms": 0.357,
+      "p50_ms": 0.0,
+      "p99_ms": 3.0,
+      "max_ms": 3.0,
+      "over_50ms": 0
+    }
+  },
+  "server_log": {
+    "path": "/tmp/synaxis-play/server-u1000.log",
+    "warn_lines": 0,
+    "error_lines": 0,
+    "kick_lines": 0,
+    "samples": []
+  },
+  "samples": [
+    {
+      "t": 0.0,
+      "clients": 0,
+      "threads": 82,
+      "fds": 92,
+      "cpu_percent": 63.4,
+      "rss_mib": 1713.7,
+      "load1": 5.92,
+      "harness_cpu_percent": 12.3,
+      "S0U": 0.0,
+      "S1U": 0.0,
+      "EU": 67584.0,
+      "OC": 3874816.0,
+      "OU": 37873.6,
+      "MU": 27297.7,
+      "CCSU": 4213.4,
+      "YGC": 2.0,
+      "YGCT": 0.008,
+      "FGC": 4.0,
+      "FGCT": 0.037,
+      "GCT": 0.046,
+      "keep_alives": 0,
+      "moves": 5,
+      "logins": 5,
+      "rtt_samples": 0
+    },
+    {
+      "t": 10.2,
+      "clients": 5,
+      "threads": 79,
+      "fds": 92,
+      "cpu_percent": 10.7,
+      "rss_mib": 1378.3,
+      "load1": 7.72,
+      "harness_cpu_percent": 1.2,
+      "S0U": 0.0,
+      "S1U": 0.0,
+      "EU": 200704.0,
+      "OC": 3874816.0,
+      "OU": 37873.6,
+      "MU": 27297.7,
+      "CCSU": 4213.4,
+      "YGC": 2.0,
+      "YGCT": 0.008,
+      "FGC": 4.0,
+      "FGCT": 0.037,
+      "GCT": 0.046,
+      "keep_alives": 5,
+      "moves": 255,
+      "logins": 5,
+      "rtt_samples": 0
+    }
+  ]
+}

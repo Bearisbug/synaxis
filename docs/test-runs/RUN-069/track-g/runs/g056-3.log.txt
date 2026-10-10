@@ -1,0 +1,138 @@
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as configuration cache cannot be reused because the set of system properties prefixed by 'synaxis.' has changed: 'synaxis.app.map' was removed.
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions UP-TO-DATE
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateEntrypointForLibs UP-TO-DATE
+> Task :build-src:generateEntrypointForLibsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-src:generateLibrariesForConventions UP-TO-DATE
+> Task :build-src:generateLibrariesForLibs UP-TO-DATE
+> Task :build-src:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-src:compilePluginsBlocks UP-TO-DATE
+> Task :build-src:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-src:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-src:verifyEarlyEvaluatedBuild UP-TO-DATE
+> Task :build-src:verifyTopLevelBuild UP-TO-DATE
+> Task :build-src:compileKotlin UP-TO-DATE
+> Task :build-src:compileJava UP-TO-DATE
+> Task :build-src:pluginDescriptors UP-TO-DATE
+> Task :build-src:processResources UP-TO-DATE
+> Task :build-src:classes UP-TO-DATE
+> Task :build-src:jar UP-TO-DATE
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :baker
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :loadtest
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :synx
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :game-rts:processResources UP-TO-DATE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :server-app:buildInfo UP-TO-DATE
+> Task :server-app:processResources UP-TO-DATE
+> Task :synx:processResources NO-SOURCE
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :baker:compileJava UP-TO-DATE
+> Task :server-app:compileJava UP-TO-DATE
+> Task :server-app:classes UP-TO-DATE
+> Task :synx:classes UP-TO-DATE
+> Task :synx:jar UP-TO-DATE
+
+> Task :game-rts:compileJava
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :game-rts:classes
+> Task :game-rts:jar
+
+> Task :server-app:run FAILED
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+03:46:49.749 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3s-g/synaxis.properties does not exist
+03:46:49.750 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=10, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=1, threadProvider=COUNTER, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeout=5000, knownPacksResponseTimeout=300000, acceptTransfers=false, playerPacketPerTick=50, playerPacketQueueSize=1000, keepAliveDelay=10000, keepAliveKick=15000, playerChunkUpdateLimiterHistorySize=0, maxConnections=1024, acceptBackoff=100, maxConnectionsPerIp=16, handshakeTimeout=5000, loginRatePerIp=0.5, loginBurstPerIp=3, statusRatePerIp=1.0, statusBurstPerIp=10, transferRatePerIp=2.0, transferBurstPerIp=10, connectionGateTrustedNetworks=127.0.0.0/8, maxPlayers=0, maxJoinsPerTick=0, motd=synaxis, serverIcon=, hideOnlinePlayers=false, chatRatePerSecond=1, chatBurst=3, packetLimitWindow=7000, packetLimitMaxPackets=750, packetLimitAction=KICK, packetLimitOverrides=, maxInflatedBytesPerSecond=4194304, tabCompleteRatePerSecond=20, maxOutboundBacklogBytes=4194304, tabLatencyInterval=30000, compressionThreshold=256, suppressConnectionAcceptErrors=true, suppressConnectionIoErrors=true, suppressMalformedPacketErrorLevel=0, suppressMisusedPacketErrorLevel=0, rejectMalformedPacket=true, rejectMisusedPacket=false, socketSendBufferSize=262143, socketReceiveBufferSize=32767, socketNoDelay=true, socketTimeout=15000, pooledBufferSize=16383, minChunksPerTick=0.01, maxChunksPerTick=64.0, chunksPerTickMultiplier=1.0, viewablePacket=true, enforceInteractionLimit=true, maxVisibleEntitiesPerPlayer=0, watchdogEarlyWarning=10000, watchdogEarlyWarningEvery=5000, watchdogTimeout=60000, watchdogHaltAfter=15000, registryUnsafeOps=false, insideTest=false, fasterSocketWrites=false, proxyProtocol=false, proxyProtocolRequired=false, proxyProtocolTrustedNetworks=]
+03:46:49.763 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective JvmFlags[serverTicksPerSecond=20, automaticComponentTranslation=false, groupedPacket=true, cachedPacket=true, maxPacketSize=2097151, maxPacketSizePreAuth=8192, warnUnreadBytesPacket=true, eventNodeAllowMultipleParents=false, templateCompiler=false, nbtMaxDepth=512, nbtMaxBytes=2097152, compressionLevel=6]
+03:46:49.763 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective auth: mode=offline
+03:46:49.771 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=memory, player data lives as long as the process
+03:46:49.790 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+03:46:49.800 [main] INFO  i.github.bearisbug.synaxis.Watchdog - Tick watchdog on: stacks after 10000 ms and every 5000 ms after that, judged dead after 60000 ms, halted with exit code 70 15000 ms later
+03:46:49.851 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:9464/metrics
+03:46:49.854 [main] INFO  i.g.b.s.a.m.ManagementServer - Effective management: enabled=false bind=127.0.0.1:25585 token=unset
+03:46:49.859 [main] INFO  plugin.rts - Enabling: plugin_id=rts version=0.1.0 data_directory=plugins/rts
+03:46:49.865 [main] ERROR plugin.rts - Invalid generation parameters: map_id=rts-512, size_x=500 must be a multiple of 16, positive and at most 512
+03:46:49.865 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=rts version=0.1.0 enable_ms=8
+03:46:49.866 [main] ERROR i.github.bearisbug.synaxis.app.Main - No admission provider: no plugin registered one, so nothing would know where to put a player.
+03:46:49.866 [main] ERROR i.github.bearisbug.synaxis.app.Main - No running match: a plugin has to build one and register it before the port opens, and M2 expects exactly one (found 0).
+03:46:49.866 [main] ERROR i.github.bearisbug.synaxis.app.Main - Not binding 0.0.0.0:25565.
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3s-g/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':server-app:run' (registered by plugin 'org.gradle.application').
+> Process 'command '/opt/homebrew/Cellar/openjdk@25/25.0.4.1/libexec/openjdk.jdk/Contents/Home/bin/java'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 7s
+36 actionable tasks: 3 executed, 33 up-to-date
+Configuration cache entry stored.

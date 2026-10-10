@@ -110,13 +110,17 @@ final class LightShardFixture {
     public static void main(String[] args) {
         final int port = Integer.parseInt(args[0]);
         final Path workDir = Path.of(args[1]);
-        // What ShardMain writes, where the command line said nothing
+        // What ShardMain writes, where the command line said nothing, but for three. synaxis.max-connections:
+        // ShardMain#gateDefaults makes it 3 × synaxis.max-players, a capacity this fixture does not set, so the
+        // engine's 1,024 stays. synaxis.app.core-mode=on: only Main reads it, and the fixture loads no plugin anyway.
+        // synaxis.world-writable=false: the channel's place and break, and L7's placement, change the terrain
         final int cores = Runtime.getRuntime().availableProcessors();
         setIfAbsent("synaxis.thread-provider", "grid");
         setIfAbsent("synaxis.dispatcher-threads", Integer.toString(Math.max(1, cores - 2)));
         setIfAbsent("synaxis.chunk-view-distance", "12");
         setIfAbsent("synaxis.chunk-queue.max-per-tick", "4");
         setIfAbsent("synaxis.max-visible-entities-per-player", "100");
+        setIfAbsent("synaxis.max-joins-per-tick", "5");
 
         final ShardSettings settings = LightMapFixture.bake(workDir.resolve("maps"), Math.max(1, cores / 2));
         final MinecraftServer server = MinecraftServer.init();

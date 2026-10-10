@@ -1,0 +1,8 @@
+F18 PASS 3 requests for f4bad83dd248 [GET /farview/farview/f4bad83dd2489831c84be9846ebdd2e2420c82425d5f47c26e0e066a7ef78191.hfp - 200, GET /farview/farview/f4bad83dd2489831c84be9846ebdd2e2420c82425d5f47c26e0e066a7ef78191.hfp - 200, GET /farview/farview/f4bad83dd2489831c84be9846ebdd2e2420c82425d5f47c26e0e066a7ef78191.hfp - 200]; Far view pack f4bad83dd248 failed after 3 attempts: its SHA-256 is 256197c7e3c6, not the announced f4bad83dd248; pack, .part and marker left false; in the world without a screen true
+F18 FAIL counter-proof counter-sha: 1 requests for f4bad83dd248 [GET /farview/farview/f4bad83dd2489831c84be9846ebdd2e2420c82425d5f47c26e0e066a7ef78191.hfp - 200]; no WARN; pack, .part and marker left true; in the world without a screen true
+# Distant Horizons threads set to 2, run time ratio 1.0: threadCount api=2 value=2 overridable=true, threadRuntimeRatio api=1.0 value=1.0 overridable=true
+# mode break-sha from 16:33:14
+# fixture mode break-sha, map farview, spawn 264.5 64.0 264.5
+# mode counter-sha from 16:33:27
+# attempt 1 not in the world of 127.0.0.1:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 2 not in the world of 127.0.0.1:25750: Connection Lost. Somebody is already playing under this name.

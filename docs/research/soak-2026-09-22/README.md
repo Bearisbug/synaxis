@@ -19,7 +19,8 @@ mkdir -p /tmp/synaxis-play
 ## 起玩法模式服务端（1,000 单位、端口 25566）
 
 在 **worktree 根**执行，stdin 要保持打开，停机用 `stop`。`synaxis.app.units` 是对局播种的单位**总数**
-（默认 67，即 `docs/TEST.md` §3 的验收阵容；前 `n − 3` 个是玩家队伍、绕出生点一圈圈铺，随后中立、
+（默认 67，即 `docs/TEST.md` §3 的验收阵容；前 `n − 3` 个是玩家队伍，n ≤ 67 时绕出生点一圈圈铺，n > 67 时
+按 ⌊√(262,144 ÷ (n − 3))⌋ 格的网格铺满全图（`docs/DESIGN-M2.md` v0.59，2026-10-06 起），随后中立、
 `team=2`、远哨各一个），非数字、≤ 3 或地图放不下时进程以 ERROR + 非零码拒启，端口不 bind。
 stdout 一定要重定向到文件——harness 靠它数 WARN / ERROR 行。50 个机器人都从 `127.0.0.1` 来，
 `synaxis.connection-gate.trusted-networks=127.0.0.0/8` 不能省：连接闸门的登录桶每个地址 3 个令牌，
@@ -35,8 +36,9 @@ mkfifo /tmp/synaxis-play/stdin.fifo
   -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 \
   < /tmp/synaxis-play/stdin.fifo > /tmp/synaxis-play/server.log 2>&1 &
 # 就绪：server.log 出现 "synaxis server-app listening on 0.0.0.0:25566"，nc -z 127.0.0.1 25566 通
-# 核对播种：python3 tools/protocol-probe/probe.py --port 25566 units --wait 6 --expect-min 999
-#   出生点能看见 999 个（1..999；远哨 1000 在 +x 220 格外，超出 128 格的实体视距），commandable 997 个（1..997）
+# 核对播种：python3 tools/protocol-probe/probe.py --port 25566 units --wait 6 --expect-min 291
+#   均匀铺开之后出生点看见 291 个，commandable 289 个（RUN-069；远哨 1000 在 +x 220 格外看不见）。
+#   本文的三档读数是旧播种（全部铺在出生点旁）下测的，那时出生点看见 999 个、commandable 997 个
 # 停机：echo stop > /tmp/synaxis-play/stdin.fifo
 ```
 
@@ -89,7 +91,9 @@ done
 读四个数看曲线：`ticks.overall.p99_ms`、`inbound.per_connection_bytes_per_s.engine`（实体位置包随
 走动单位数涨）、`heap.live_mib_max`、`pathfinding.tick_bucket_ms.p99_ms`。
 
-**布局会影响读数**：默认播种把全部单位铺在出生点周围 ±17 格（1,000 个）～ ±34 格（4,000 个），
+**布局会影响读数**（下面这段是 2026-09-22 那一轮的布局；2026-10-06 起大于 67 个单位时均匀铺开，2026-10-07 起每条
+`S2C_UNIT_STATE` 至多 60 条、多出的轮流发，`max_entries` 至多读到 60，见 `docs/DESIGN-M2.md` v0.59、v0.60；
+均匀播种之后单位向锚点聚拢，1,000 个单位那一档不设上限时读到 473，画像档 104）：当时的播种把全部单位铺在出生点周围 ±17 格（1,000 个）～ ±34 格（4,000 个），
 锚点离出生点 128 格内的玩家兴趣集就是全部单位，`S2C_UNIT_STATE` 顶到 `count ≤ 512` 的上限
 （按 §8 布局单条约 2 KB：512 个条目各 3～4 字节，加 `msg_id` / `server_tick` / `count` 的头），
 `max_entries` 读到 512 就是这个意思。这是最坏档，不是 §2
@@ -104,7 +108,7 @@ done
 | `connected_peak`、`connected_end`、`login_attempts`、`login_failures`、`login_latency_ms` | 同核心模式 harness | — |
 | `connections_lost`、`disconnect_reasons` | 跑完之前掉线的连接数；服务端 `Disconnect` 的原因键直方图（被踢的连接在这里，`server_log.kick_lines` 是服务端侧同一件事） | — |
 | `keep_alives` | 应答的 KeepAlive 数 | — |
-| `units.expected` / `seen_max` / `commandable_max` / `check` | `--units`；任一连接经 `S2C_UNIT_SPAWN` 见过的最大单位数；任一连接可指挥的最大单位数；`seen_max` 等于预期为 `ok`，恰好少 1 为 `ok-outpost-unseen`（远哨在出生点 220 格外、编号最末，锚点没游到它 128 格内就没人见过它，短跑常见），其余为 `mismatch`，未给 `--units` 为 `unset` | — |
+| `units.expected` / `seen_max` / `commandable_max` / `check` | `--units`；任一连接经 `S2C_UNIT_SPAWN` 见过的最大单位数；任一连接可指挥的最大单位数；`seen_max` 等于预期为 `ok`，恰好少 1 为 `ok-outpost-unseen`（远哨在出生点 220 格外、编号最末，锚点没游到它 128 格内就没人见过它，短跑常见），其余为 `mismatch`，未给 `--units` 为 `unset`。大于 67 个单位时全图均匀铺开，15 s 级的短跑看不全，读 `mismatch`；600 s 档能看全（RUN-069 两档都是 `ok`），所以 `docs/TEST.md` `TC-GAME-068` 的反证二改在默认 67 个单位的服上做 | — |
 | `uplink.camera_reports` / `position_packets` / `orders_sent` / `selects_sent` | 上行各类包的总数 | 限流行（应远低于 10/s/连接） |
 | `orders.sent` / `answered` / `codes` | 下令数、收到的 `S2C_ORDER_RESULT` 数、结果码直方图（每条必回，`answered` 应等于 `sent`；`out-of-bounds` 是锚点落在柱子或口袋墙上，`busy` 是队列满） | 寻路行的队列深度 |
 | `inbound.connection_seconds` | 全部连接在线秒数之和，下面「每连接」口径的分母 | — |

@@ -1,0 +1,28 @@
+RUN-069 integrate: TC-WORLD-139 (the relight measurement) on b70c6b7f54 (code of 49bee23cc1), batch B2 under the heavy
+lock 18:09:50-18:12:30. The precondition wants an idle machine, load1 < 6 on these 12 cores; it read 6.85 before
+step 1 and 7.43-7.58 around step 2 (another session's work), so the readings are recorded only, not written back.
+Step 1: ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=2 :synx:test --tests io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest --rerun
+Step 2: the same with -Dsynaxis.relight.measure=true
+
+== 139-1 before 18:10:12 mem_free=53% load={ 6.85 6.61 6.17 }
+== 139-1 18:10:18 mem_free=54% load={ 7.43 6.73 6.21 }
+108:BUILD SUCCESSFUL in 5s
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="1" failures="0" errors="0"
+== 139-2 before 18:10:18 mem_free=54% load={ 7.43 6.73 6.21 }
+== 139-2 18:12:30 mem_free=56% load={ 7.58 7.02 6.40 }
+108:BUILD SUCCESSFUL in 2m 12s
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="0" failures="0" errors="0"
+relight backlog: phase=107/s changes=6414 seconds=60.0 centers_per_s=34.7 relight_queue_p99_ms=30050.0 relight_ms_p99=114.4 relight_pending_peak=1024 install_ms_max=1.57 install_backlog_peak=27; phase=unlimited changes=10785792 seconds=60.0 centers_per_s=29.2 relight_queue_p99_ms=21401.3 relight_ms_p99=164.0 relight_pending_peak=1024 install_ms_max=0.19 install_backlog_peak=27
+18:12:30.548 [Test worker] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=1003 bytes=2241604 fsync_ms=6 left=0 by=shutdown
+]]></system-out>
+status after: 
+batch B2 end 18:12:30 mem_free=56% load={ 7.58 7.02 6.40 }
+
+Readings (step 2):            107/s phase   unlimited
+  centers per second            34.7          29.2
+  relight_queue_p99_ms        30,050.0      21,401.3
+  relight_ms_p99                 114.4         164.0
+  relight_pending peak           1,024         1,024
+  install ms max                  1.57          0.19
+  install backlog peak              27            27     (assertion <= 282 holds)
+Track S on 2026-10-06 (load1 12.45): 35.4, 29,254.8, 121.4, 1,024, 3.06, 27 and 27.1, 21,009.8, 224.6, 1,024, 2.15, 36.

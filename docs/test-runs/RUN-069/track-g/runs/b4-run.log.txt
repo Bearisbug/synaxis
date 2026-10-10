@@ -1,0 +1,163 @@
+gate 03:46:34 free=55% load1=5.99 (need free>=30 load1<=24)
+lock acquired 2026-10-07 03:46:34: owner=Synaxis光照/m3s-g-b4 pid=33940 since=2026-10-07 03:46:34 task=TC-GAME-056..059 server-app runs and tests, RosterTest red/green, :game-rts:test
+System-wide memory free percentage: 55%
+ 3:46  up 15:33, 29 users, load averages: 5.99 6.34 6.26
+=== TC-GAME-056
+-- step 1
+[g056-1] started gradle pid=64752 03:46:34
+exited exit=1 after 8s
+104:03:46:40.987 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:9464/metrics
+107:03:46:40.999 [main] ERROR plugin.rts - Unknown map preset: map_id=no-such-map, known presets are [rts-512, rts-128]
+109:03:46:41.000 [main] ERROR i.github.bearisbug.synaxis.app.Main - No admission provider: no plugin registered one, so nothing would know where to put a player.
+110:03:46:41.000 [main] ERROR i.github.bearisbug.synaxis.app.Main - No running match: a plugin has to build one and register it before the port opens, and M2 expects exactly one (found 0).
+111:03:46:41.000 [main] ERROR i.github.bearisbug.synaxis.app.Main - Not binding 0.0.0.0:25565.
+133:BUILD FAILED in 6s
+{"ts":"2026-10-06T19:46:41.000017Z","event":"match_ended","match_id":"b7b67c22-013b-45f0-b066-d5d536c007b3","reason":"map-invalid","duration_s":0}
+-- step 2: match_started 0; lines naming chunk generation 10
+step 5 (start 1) nc -z exit=1
+-- step 3
+1
+[g056-3] started gradle pid=64890 03:46:42
+exited exit=1 after 8s
+107:03:46:49.851 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:9464/metrics
+110:03:46:49.865 [main] ERROR plugin.rts - Invalid generation parameters: map_id=rts-512, size_x=500 must be a multiple of 16, positive and at most 512
+112:03:46:49.866 [main] ERROR i.github.bearisbug.synaxis.app.Main - No admission provider: no plugin registered one, so nothing would know where to put a player.
+113:03:46:49.866 [main] ERROR i.github.bearisbug.synaxis.app.Main - No running match: a plugin has to build one and register it before the port opens, and M2 expects exactly one (found 0).
+114:03:46:49.866 [main] ERROR i.github.bearisbug.synaxis.app.Main - Not binding 0.0.0.0:25565.
+136:BUILD FAILED in 7s
+{"ts":"2026-10-06T19:46:49.865661Z","event":"match_ended","match_id":"fcd904eb-501d-4e49-ba41-a0238f5e1cac","reason":"map-invalid","duration_s":0}
+step 5 (start 3) nc -z exit=1
+-- step 4
+1
+[g056-4] started gradle pid=65016 03:46:50
+exited exit=1 after 6s
+45:03:46:55.724 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:9464/metrics
+48:03:46:55.738 [main] ERROR plugin.rts - Invalid generation parameters: map_id=rts-512, height=0 must be a multiple of 16 and at least 16
+50:03:46:55.739 [main] ERROR i.github.bearisbug.synaxis.app.Main - No admission provider: no plugin registered one, so nothing would know where to put a player.
+51:03:46:55.739 [main] ERROR i.github.bearisbug.synaxis.app.Main - No running match: a plugin has to build one and register it before the port opens, and M2 expects exactly one (found 0).
+52:03:46:55.739 [main] ERROR i.github.bearisbug.synaxis.app.Main - Not binding 0.0.0.0:25565.
+66:BUILD FAILED in 5s
+{"ts":"2026-10-06T19:46:55.739071Z","event":"match_ended","match_id":"33592ec5-99dc-4dd4-8508-033b608257ec","reason":"map-invalid","duration_s":0}
+step 5 (start 4) nc -z exit=1
+MapPreset restored
+-- step 6
+[g056-6] started gradle pid=65127 03:46:57
+ready after 4s
+match_started lines: 0
+stopped exit=0 in 1s
+post: git status --porcelain
+ M game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Roster.java
+ M game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/RosterIntegrationTest.java
+ M game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/RosterTest.java
+ M tools/protocol-probe/probe.py
+=== TC-GAME-057
+-- step 1
+[g057-1] started gradle pid=65217 03:47:02
+exited exit=1 after 7s
+104:03:47:07.649 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:9464/metrics
+107:03:47:07.653 [main] ERROR i.github.bearisbug.synaxis.app.Main - No admission provider: no plugin registered one, so nothing would know where to put a player.
+108:03:47:07.653 [main] ERROR i.github.bearisbug.synaxis.app.Main - No running match: a plugin has to build one and register it before the port opens, and M2 expects exactly one (found 0).
+109:03:47:07.653 [main] ERROR i.github.bearisbug.synaxis.app.Main - Not binding 0.0.0.0:25565.
+131:BUILD FAILED in 5s
+nc -z exit=1
+-- step 6
+[g057-6] started gradle pid=65338 03:47:09
+exited exit=1 after 7s
+104:03:47:14.386 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:9464/metrics
+107:03:47:14.397 [main] ERROR plugin.rts - Unknown map preset: map_id=no-such-map, known presets are [rts-512, rts-128]
+109:03:47:14.398 [main] ERROR i.github.bearisbug.synaxis.app.Main - No admission provider: no plugin registered one, so nothing would know where to put a player.
+110:03:47:14.398 [main] ERROR i.github.bearisbug.synaxis.app.Main - No running match: a plugin has to build one and register it before the port opens, and M2 expects exactly one (found 0).
+111:03:47:14.398 [main] ERROR i.github.bearisbug.synaxis.app.Main - Not binding 0.0.0.0:25565.
+133:BUILD FAILED in 5s
+nc -z exit=1
+=== TC-GAME-058
+-- step 1
+[g058-1] started gradle pid=65481 03:47:16
+ready after 7s
+102:03:47:21.522 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+104:03:47:21.585 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:9464/metrics
+106:03:47:21.588 [main] WARN  i.g.bearisbug.synaxis.app.PluginHost - No plugin answers to selected ids [none]: discovered plugin_ids=[rts].
+107:03:47:21.605 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:main
+108:03:47:21.605 [main] INFO  i.g.bearisbug.synaxis.app.CoreMode - Core mode (synaxis.app.core-mode=auto): no plugin is serving gameplay, so the host serves its own flat world. spawn=Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0] channel=synaxis:main (echoes every payload back)
+112:03:47:21.607 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+Connection to 127.0.0.1 port 25565 [tcp/*] succeeded!
+nc -z exit=0
+-- step 2
+probe login exit=0
+0
+-- step 3
+probe echo exit=0
+     echo channel=synaxis:main payload=ping
+record-registry (core mode) exit=0
+registry_data_packets=27 bytes=9409 out=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3s-g.oNa9/out/registry-core.bin
+exit code: 0
+-- step 4
+stopped exit=0 in 1s
+ERROR lines 0, at-lines 0
+-- step 5
+[g058-5] started gradle pid=65648 03:47:26
+ready after 7s
+107:03:47:32.301 [main] INFO  i.g.bearisbug.synaxis.app.CoreMode - Core mode (synaxis.app.core-mode=on): no plugin is serving gameplay, so the host serves its own flat world. spawn=Pos[x=0.5, y=40.0, 
+Plugin enabled lines 0, Match running lines 0
+stopped exit=0 in 1s
+-- step 6
+[g058-6] started gradle pid=65773 03:47:35
+ready after 6s
+107:03:47:40.715 [main] INFO  plugin.rts - Match running: match_id=b351698a-33a3-4a08-a774-ea9a270355cf map_id=rts-512 dimension_name=synaxis:match_b680b0da05b2493d9b73d3a61b7152e4 chunk_count=1024 lo
+110:03:47:40.739 [main] INFO  i.github.bearisbug.synaxis.app.Main - Gameplay mode: the running match and the admission provider come from plugin_ids=[rts], and a client has 3 s to send C2S_HELLO on sy
+Core mode lines 0
+stopped exit=0 in 1s
+-- step 7
+gradle exit=0
+BUILD SUCCESSFUL in 6s
+post: git status --porcelain
+ M game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Roster.java
+ M game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/RosterIntegrationTest.java
+ M game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/RosterTest.java
+ M tools/protocol-probe/probe.py
+=== TC-GAME-059
+-- step 1
+gradle exit=0
+BUILD SUCCESSFUL in 6s
+-- step 2
+testcase name="theStableSurfaceReturnsNoEngineInternal()"
+testcase name="theReturnTypeRuleRejectsALeakedInternal()"
+testcase name="theStableSurfaceAsksForNoEngineInternal()"
+testcase name="theParameterRuleRejectsALeakedInternal()"
+0
+-- step 3
+18:    default io.github.bearisbug.synaxis.network.packet.server.CachedPacket leakedForTcGame059() {
+gradle exit=1
+> Task :plugin-api:compileJava FAILED
+BUILD FAILED in 2s
+PluginChannels restored
+-- step 4
+server-app/src/test/java/io/github/bearisbug/synaxis/app/ClientDrivenLogArchitectureTest.java:163:                .withImportOption(new ImportOption.DoNotIncludeJars())
+grep exit=0
+post: git status --porcelain
+ M game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Roster.java
+ M game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/RosterIntegrationTest.java
+ M game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/RosterTest.java
+ M tools/protocol-probe/probe.py
+=== TC-GAME-054 step 5, the budget's next report
+[g054c] started pid=66112 03:47:57
+ready after 2s
+after 21 logins: 1 listener lines
+24:03:47:59.834 [virtual-1112] ERROR i.g.b.synaxis.app.PluginEventsImpl - Plugin event listener failed: plugin_id=a event=AsyncPlayerConfigurationEvent (1 failures since the last report)
+114:03:48:13.432 [virtual-1264] ERROR i.g.b.synaxis.app.PluginEventsImpl - Plugin event listener failed: plugin_id=a event=AsyncPlayerConfigurationEvent (21 failures since the last report)
+stopped exit=0 in 1s
+=== RosterTest red and green on the committed test file
+131:        return total < 0
+red gradle exit=1
+Roster restored
+game-rts test exit=0
+BUILD SUCCESSFUL in 8s
+post: git status --porcelain
+ M game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Roster.java
+ M game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/RosterIntegrationTest.java
+ M game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/RosterTest.java
+ M tools/protocol-probe/probe.py
+batch exit=0 03:48:27
+System-wide memory free percentage: 53%
+ 3:48  up 15:34, 29 users, load averages: 6.46 6.58 6.38
+lock released 03:48:27

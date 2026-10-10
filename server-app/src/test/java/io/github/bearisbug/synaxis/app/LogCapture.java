@@ -11,8 +11,9 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 
 /**
- * Collects the log lines one logger emits, so that a test can assert on the attribution the host
- * puts in them (REQ-M2-005, REQ-M2-006).
+ * Collects the log lines one logger emits ({@link #of}), or the lines one thread emits through any
+ * logger ({@link #rootOfThisThread}), so that a test can assert on the attribution the host puts in
+ * them (REQ-M2-005, REQ-M2-006) or on their absence.
  */
 final class LogCapture implements AutoCloseable {
 

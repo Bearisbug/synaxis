@@ -154,7 +154,7 @@ public final class HostCommands {
                     .map(Player::getUsername).sorted().toList();
             reply(sender, "synaxis:command-list", "%s players online: %s", String.valueOf(names.size()),
                     String.join(", ", names));
-            // A player's would put as many lines in the ledger as the client sends commands
+            // A player's list is no GM command; recording it would let the client fill the ledger
             if (!(sender instanceof Player)) record(sender, context.getInput(), null, "ok");
         });
         return list;

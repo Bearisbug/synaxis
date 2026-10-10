@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.ItemEntity;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.Event;
+import io.github.bearisbug.synaxis.event.EventListener;
 import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.event.item.PickupItemEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
@@ -15,8 +16,10 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -92,6 +95,28 @@ class DefaultPlayPickupIntegrationTest {
 
         assertTrue(Arrays.stream(player.getInventory().getItemStacks()).allMatch(ItemStack::isAir),
                 "the inventory after a cancelled pickup holds " + Arrays.toString(player.getInventory().getItemStacks()));
+    }
+
+    /**
+     * The decision stage cancels a pickup the inventory cannot take before the global scope plugin listeners below the
+     * host node run: the first of them ({@code LOWEST}) and {@code MONITOR} see it cancelled already, not only the apply
+     * stage after them.
+     */
+    @Test
+    void thePluginListenersSeeAPickupTheInventoryCannotTakeCancelled(Env env) {
+        final Instance instance = env.createFlatInstance();
+        final EventNode<Event> hostNode = PlayFixture.hostNode(env);
+        PlayFixture.attach(env, hostNode, EnumSet.of(Feature.PICKUP), null);
+        final List<Boolean> seen = new ArrayList<>();
+        for (int priority : new int[]{-2, 4})
+            PlayFixture.pluginTier(hostNode, priority).addListener(EventListener.builder(PickupItemEvent.class)
+                    .ignoreCancelled(false).handler(event -> seen.add(event.isCancelled())).build());
+        final Player player = env.createPlayer(instance, SPAWN);
+        fill(player.getInventory());
+
+        pickUp(env, instance, player);
+
+        assertEquals(List.of(true, true), seen, "whether LOWEST and MONITOR saw the pickup of a full inventory cancelled");
     }
 
     /**

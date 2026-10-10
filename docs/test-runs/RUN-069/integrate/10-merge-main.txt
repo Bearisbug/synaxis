@@ -30,3 +30,9 @@ The handoff of docs/DESIGN-PROD.md §28.3 that waited for this merge, done in th
     (gradle/wrapper/gradle-wrapper.properties: gradle-9.8.0-bin.zip). client-fabric's wrapper stays 9.7.1.
   - DESIGN-M3 §1 关联: DESIGN-PROD v0.9.56 -> v0.9.62.
   - The fixture row: LightShardFixture and FarViewShardFixture (61c8d55c8c).
+
+Confirmed 2026-10-10 by the gate on the head 6f3ffa9c79 (13-ci-6f3ffa9c79.txt; origin/main still 8220ef9d0f): CI run
+38063985868, the three sets test-reports, test-reports-multithreaded and test-reports-multithreaded-grid each 638
+classes 4,389 tests, 22 skipped, 0 failures, 0 errors; root 439 / 3,215 (21 skipped), server-app 123 / 639, the other
+modules as on 49bee23cc1; Client mod run 38063985700, client-fabric 17 classes 199 tests (FrozenVectorTest 41). Every
+number worked out above holds, module by module.

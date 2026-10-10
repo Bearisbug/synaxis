@@ -1,0 +1,4 @@
+F25 FAIL day time 74107, 74707 after 600 ticks (game time), overworld clock 74707; sun angle 321.546°, elevation 51.546°; fixture day_time 6000, expected elevation 90°; far view ready false, shots []
+# Distant Horizons threads set to 2, run time ratio 1.0: threadCount api=2 value=2 overridable=true, threadRuntimeRatio api=1.0 value=1.0 overridable=true
+# mode rts-shots from 17:01:40
+# fixture mode baked, map farview3x3, spawn 2040.5 74.0 2040.5

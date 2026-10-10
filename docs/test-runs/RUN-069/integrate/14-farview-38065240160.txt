@@ -1,0 +1,103 @@
+RUN-069 integrate: the far view container round on GitHub Actions for draft PR #12, head 6f3ffa9c79.
+
+Trigger: gh pr edit 12 --add-label farview-gametest at 2026-10-10 23:50 local time (UTC+8), after the gate of
+13-ci-6f3ffa9c79.txt was green. Run 38065240160 (Far view gametest, event pull_request labeled, attempt 1, none rerun),
+the workflow and the code of the pull_request merge commit of 6f3ffa9c79 (origin/main 8220ef9d0f is its ancestor).
+One round only.
+
+Jobs (times UTC 2026-10-10; job minutes rounded up per job)
+  Far view cases (synthetic)  success  15:50:37-16:54:08   64 min   a1-synthetic, a2-none, a3-break-sha, a4-half
+  Far view cases (baked)      success  15:50:37-17:09:27   79 min   b4, b5, b6, b1, b2, b3 (the map baked first)
+  Far view cases (hidden)     success  15:50:38-16:32:40   43 min   c1-baked-hidden (its own map baked first)
+  Far view cases (light)      success  15:50:38-15:59:50   10 min   d1-light
+  Every job log: 0 ::error:: lines (the workflow's judge and checks all held); the three ##[warning] lines per job are
+  javadoc's "no comment" of :protocol.
+Reports: artifacts farview-gametest-synthetic (11675544423), farview-gametest-baked (11677090766),
+farview-gametest-hidden (11675626753), farview-gametest-light (11674778229), 14 days; each case's
+synaxis-gametest/farview-report.txt (light-report.txt for d1-light) is copied to farview-38065240160/<case>.txt, with
+the access.log of b4 and the shard logs of a2, b4 and b5 (*.log.txt).
+
+On these 2 cores, as the workflow and docs/DESIGN-M3.md §26 M3-S ④ write, F3 (no bake line), F4's DetailLevel=2 and
+ApplyToParent row counts and F7's ready line and "baked in" are recorded only (the judgement is the real machine's,
+V2b); every v1 case below had them as in track C's third round: F3 FAIL no bake line; F4 FAIL "DetailLevel=2 2304 of
+-1" with every point ok; F7 FAIL "ready line false, baked in true" with access.log 9 -> 9 lines.
+
+TC-WORLD-140 (V6b, baked group)                                                                       pass
+  step 1  b1-noon   F25 PASS day time 6000, 6000 after 600 ticks, overworld clock 6000; sun angle 0.000°,
+                    elevation 90.000°
+          b2-forty  F25 PASS day time 10137, 10137 after 600 ticks; sun angle 50.005°, elevation 39.995° (|40 - 39.995|
+                    <= 1)
+  step 2  b3-noon-running  F25 FAIL day time 74107, 74707 after 600 ticks (game time), elevation 51.546°: neither is
+                    6000, 600 more after 600 ticks; the clock was set to the wall clock (mod 192,000) within the first
+                    second, as the case allows
+
+TC-WORLD-141 (the four counter-proofs, synthetic group)                                               pass
+  a1-synthetic  F15 PASS and F15 FAIL counter-proof counter-radius (4096 and 2048: chunkRenderDistance api=null)
+  a2-none       F16 PASS ... walked to x + 200 (464.5, 180.0, 264.5) and F16 FAIL counter-proof counter-off (library
+                .../Distant_Horizons_server_data/farview/0000000000000@synaxis@@map, not dh/off)
+  a3-break-sha  F18 PASS (3 requests, "Far view pack f4bad83dd248 failed after 3 attempts: its SHA-256 is 256197c7e3c6,
+                not the announced f4bad83dd248", nothing left) and F18 FAIL counter-proof counter-sha (1 request, no
+                WARN, pack, .part and marker left true)
+  a4-half       F19 FAIL cut GET <pack> - 200 cut; second GET <pack> bytes=4379- 206; ready false (the positive: a
+                Range answered 206; ready recorded only) and F19 FAIL counter-proof counter-range: cut ...; second GET
+                <pack> - 200; ready false
+  No ::error:: line for the four cases.
+
+TC-WORLD-142 (hidden areas)                                                                           pass
+  step 1  c1-baked-hidden F4: peak ok, water ok, mountain ok; hidden-peak@440,104 stone top 97 (index 96) plains ok;
+          hidden-edge-fine@32,2048 stone top 63 (index 62) plains ok; hidden-edge-coarse@-32,2048 stone top 63 plains
+          ok. F1, F2 PASS, F5 PASS walked to x + 200 (2240.5, 180.0, 2040.5), F6 PASS (51.09 %, 74.78 %, 100.00 %;
+          client day time 6000 at the shots before, 6000 after)
+  step 2  b6-counter-hidden F4: hidden-peak got oak_leaves top 118 WRONG, hidden-edge-fine got water top 63 WRONG,
+          hidden-edge-coarse got water top 63 WRONG; peak, water, mountain ok
+
+TC-WORLD-143 (server-shard with url-root, baked group)                                                pass
+  step 1  b4-serve-only: F1, F2 PASS; F4 peak, water, mountain ok; F5 PASS walked to x + 200 (2240.5, 180.0, 2040.5);
+          F6 PASS FAR_VIEW horizon 51.09 %, LOD_VIEW 74.79 %, EDGE_VIEW centre 100.00 %, "client day time 6000 at the
+          shots before, 6000 after"; "# V1 holds the client's sky at day time 6000, the server's default clock at
+          4264"; F7 "reconnect: access.log 9 -> 9 lines" and "# V1 reconnect: client day time 6000 at the last shot";
+          access.log exactly 9 GET, each 200 (b4-serve-only.access.log.txt); the shard log (b4-serve-only.shard.log.txt):
+            INFO  ShardWorld - Far view: 9 tile(s), 0 coarse, from http://10.1.0.21:25751
+            WARN  ShardWorld - Far view packs go over plain http to 10.1.0.21: which tiles a player loads can be seen
+                  on the way, use https
+          The WARN of a plain http url-root to a non loopback host (REQ-M3-032, track S) shows on a runner for the
+          first time; the spawn of ShardWorld.spawn(VerifiedBuild, Bounds) is (2040.5, 74.0, 2040.5)
+  step 2  b5-serve-only-no-root: F1 FAIL no announcement: library .../synaxis/farview/dh/off, access.log 0 request(s);
+          0 GET; shard log "Far view off: synaxis.farview.url-root is empty"; "# ... the server's default clock at
+          26063"
+
+TC-WORLD-117 step 3, in the form the workflow runs it (a1-synthetic: modes v1, v1-writable, tiers, counter-radius)  pass
+  F1 PASS (DH's library pinned at synaxis/farview/dh/85dc9b484136bb0f, none under Distant_Horizons_server_data); F2 PASS
+  (getReadOnly true, chunkRenderDistance api=256, maxHorizontalResolution api=FOUR_BLOCKS, overridable=true); F3, F4 rows
+  and F7 ready recorded as above (F4 ApplyToParent=1 1194, ApplyToChildren=1 0, DetailLevel=4 77; peak, water, hidden,
+  mountain ok); F5 PASS DetailLevel=0 0 and 0, walked to x + 200 (464.5, 180.0, 264.5); F6 PASS 58.12 %, 79.37 %,
+  98.88 %, client day time 6000 at the shots before, 6000 after; F7 announcement at log line 13, save folder at 35,
+  access.log 9 -> 9, "# V1 reconnect: client day time 6000 at the last shot"; F9 PASS getReadOnly false, DetailLevel=0
+  36 before the walk, 54 after, walked to x + 200. F8 (v1-noparent) and F10 (v1-coarse-only) are not in the
+  workflow's matrix (RUN-064 ran them in the local container); step 4's baked fixture runs here as b4 and b6 (v1 on
+  the 3 x 3 tile map). The walk's counter-proof of the precondition: 15-walk-proof-38065344280.txt.
+
+TC-WORLD-119 steps 1 and 2                                                                            pass
+  step 1  a1-synthetic F15 PASS: 4096 api=256, 2048 api=128, both FOUR_BLOCKS; 0: far view available false,
+          access.log 27 -> 27 lines, library .../synaxis/farview/dh/off with 0 rows, renderingEnabled api=null
+          value=true, chunkRenderDistance api=null
+  step 2  a2-none (bin/server-shard without url-root) F16 PASS announcement none, getReadOnly true, library dh/off with
+          0 rows after a 200 block walk, walked to x + 200 (464.5, 180.0, 264.5), no override after the disconnect; the
+          shard log has "Far view off: synaxis.farview.url-root is empty"
+  Step 3 (mode absent, F17) is not in the workflow's matrix.
+
+TC-WORLD-120                                                                                          pass
+  step 1  a3-break-sha F18 PASS as above (3 requests - 200, the SHA-256 WARN, nothing left, in the world without a
+          screen)
+  step 2  a4-half F19: first request cut, second GET bytes=4379- answered 206; ready false (recorded only on 2 cores)
+
+TC-WORLD-095 steps 5 to 11 (light group, d1-light: LightShardFixture and LightClientGameTest, mode default)  pass
+  "# mode default", no L0 line, L1 to L11 PASS (d1-light.txt). L1 64 chunks 1024 sections diffs=0; L2 to L7 t0=0,
+  client_packets={} fixture_sent={}, 3x3 diffs=0; L7 own-edge 256, 64, 260 "eye to block 2.67 (stood next to it)" (the
+  new stand of track C, ba2bc4a317, under RUN-070's placement reach); L8 packets {29,15=1, 29,16=1, 29,17=1}; L9, L10
+  (left (3..7,3..7)=true, nine packets in (4..6,4..6), back=true) and L11 (16 changes, diffs=0) as the case writes.
+  Step 12 recorded only: install_ms_max_seen 1.02, queue_ms_p99_max_seen 104.2, relight_ms_p99_max_seen 36.7.
+  Steps 3 and 13 (JFR) are not recorded on the runner, as the case's CI form writes.
+
+Values in the logs: the shard log prints "Effective management: enabled=false ... token=unset" (no value); no password,
+token or key in the reports or logs copied here.

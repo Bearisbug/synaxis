@@ -11,9 +11,13 @@ After the review: main 8220ef9d0f (RUN-072) merged in with --no-ff as 320ff22df9
 fixtures take ShardMain's join cap; the far view fixture keeps the map read only) and 6c9f9836d7 (v1 holds the client's
 sky at noon for F6 and F7), then the docs of the follow-up. Its gate on GitHub Actions did not start either (02, end);
 the merged tree ran here only in batches D and E (11) and TC-PROD-656 (12).
+On 2026-10-10 (the repository made public, jobs start again): the head 6f3ffa9c79 (its code is that of 6c9f9836d7) pushed,
+its gate green with the counts 10 worked out (13); then the label farview-gametest on PR #12, one far view round on
+that head (14), and the walk counter proof on a temporary branch deleted after its run (15).
 The R8 intermittent failure of the client regression (DESIGN-PROD §28.2, RUN-071 looked into it) showed once on this
 round's branches: PR #11 head 3077b68806, Client gametest run 37581083878, "R8 FAIL screen: Connection Lost.
-Disconnected"; the integration branch's own gate on 49bee23cc1 (01) was green.
+Disconnected"; the integration branch's own gate on 49bee23cc1 (01) was green, and so was the one on 6f3ffa9c79
+(13; R8 read "The server rejected a message from this connection as malformed", nothing rerun).
 
 Files
   01-ci-49bee23cc1.txt        the four workflows on 49bee23cc1 and the test counts per module from their XML
@@ -29,6 +33,11 @@ Files
   11-local-batches.txt        batches D and E on the merged tree: six server-app classes, TC-WORLD-150 steps 1, 4 and 5,
                               TC-PROD-671 step 2 in both modes
   12-tc-prod-656-rerun.txt    TC-PROD-656 steps 1-4 again, with the farview line of docs/ENGINE.md §7 completed
+  13-ci-6f3ffa9c79.txt        the four workflows on 6f3ffa9c79 and the test counts per module from their XML
+  14-farview-38065240160.txt  the far view round on 6f3ffa9c79: TC-WORLD-140 to 143, 117, 119, 120, 095 case by case
+  15-walk-proof-38065344280.txt  the walk counter proof (F5 FAIL, not at x + 200)
+  farview-38065240160/        each case's report of 14, the access.log of b4, the shard logs of a2, b4, b5
+  walk-proof-38065344280/     the report of 15 and the temporary commit
   ../track-g/                 track G's runs on m3s/g-tests (TC-GAME-053 to 059, TC-037's registry compare, the probe
                               plugin a) and TC-GAME-068: tc-game-068-capped/ is the rerun with the sixty-line cap on
                               ab62fd4107 (steps 1, 2, 5, 6, 7; summary.json of the gate and of the profile tier),
@@ -53,10 +62,10 @@ Results per case (where each ran)
   TC-WORLD-137  pass          track C (cb559c73d8); client-test-reports of 49bee23cc1, 17 classes 199 tests
   TC-WORLD-138  pass          track S; gate
   TC-WORLD-139  blocked       here, 07: precondition "idle machine" not met, readings recorded only
-  TC-WORLD-140  blocked       02: the far view containers run on GitHub Actions, no job was started
-  TC-WORLD-141  blocked       02
-  TC-WORLD-142  blocked       02
-  TC-WORLD-143  blocked       02 (the WARN of a plain http url-root to a non loopback host not yet seen on a runner)
+  TC-WORLD-140  pass          14 (run 38065240160 on 6f3ffa9c79; before 2026-10-10 blocked, 02)
+  TC-WORLD-141  pass          14
+  TC-WORLD-142  pass          14
+  TC-WORLD-143  pass          14 (the WARN of a plain http url-root to a non loopback host seen on a runner)
   TC-WORLD-144  manual        the real machines, ../track-c/real-machine-steps.txt
   TC-WORLD-145  manual
   TC-WORLD-146  manual
@@ -67,11 +76,12 @@ Results per case (where each ran)
                               proof); gate
                               review follow-up: step 4 (the alignment task never scheduled) red at
                               ShardWorldAssemblyTest.java:248, steps 1 and 5 green on the merged tree (11)
-  TC-WORLD-117  blocked       02 (and the walk counter proof of its precondition)
-  TC-WORLD-119  blocked       02
-  TC-WORLD-120  blocked       02
+  TC-WORLD-117  pass (step 3) 14, the form the workflow runs (a1-synthetic; F8, F10 not in its matrix); the walk
+                              counter proof of its precondition, 15
+  TC-WORLD-119  pass (1, 2)   14 (step 3, mode absent, not in the workflow matrix)
+  TC-WORLD-120  pass          14
   TC-WORLD-124  manual
-  TC-WORLD-095  blocked       02: the light group added here (e775666ab7) did not run; L7's new stand only compiled
+  TC-WORLD-095  pass (5-11)   14, the light group (d1-light), L7 included
   TC-037        pass          track G steps 1-3 (../track-g/registry/), here steps 4-6 (09), step 7 = Check of 49bee23cc1
   TC-038        manual
   TC-GAME-053   pass          track G
@@ -87,7 +97,7 @@ Results per case (where each ran)
   TC-PROD-569   pass (step 4) here, 03: the gate line 117/117/21 and :architecture-tests 7 classes 20 tests
   TC-PROD-656   pass          here, 08; again after the review on the merged tree, 12
   TC-WORLD-041  pass (step 2) here, 03: 117 keys read, 115 in ConfigFile.KEYS
-  45 cases: pass 23, fail 3, manual 8, blocked 9, skipped 2.
+  45 cases: pass 31, fail 3, manual 8, blocked 1, skipped 2 (until 2026-10-10: pass 23, blocked 9).
 
 The heavy lock (/tmp/synaxis-heavy.lock, owner=Synaxis光照/m3s-acc-<batch> pid=33940), all times 2026-10-07 UTC+8:
   A   17:56:26-17:57:24  taken at mem free 47 %, load1 5.45; released at 46 %, 6.95     03

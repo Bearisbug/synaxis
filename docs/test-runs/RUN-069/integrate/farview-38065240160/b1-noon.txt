@@ -1,0 +1,4 @@
+F25 PASS day time 6000, 6000 after 600 ticks (game time), overworld clock 6000; sun angle 0.000°, elevation 90.000°; fixture day_time 6000, expected elevation 90°; far view ready false, shots []
+# Distant Horizons threads set to 2, run time ratio 1.0: threadCount api=2 value=2 overridable=true, threadRuntimeRatio api=1.0 value=1.0 overridable=true
+# mode rts-shots from 16:45:05
+# fixture mode baked, map farview3x3, spawn 2040.5 74.0 2040.5

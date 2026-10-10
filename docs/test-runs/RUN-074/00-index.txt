@@ -1,0 +1,20 @@
+RUN-074: ShardWorld read-only accessors (m3/shard-accessors 8bf674db81, main a1bc25fea5 plus one commit).
+Local, one test class, under the heavy lock lent by the production readiness session (RUN-073).
+Lock: owner=Synaxis光照/shard-accessors pid=51611, taken 05:47:55, released 05:48:16 (2026-10-11, UTC+8); memory free 58%, load1 4.06.
+Every gradle command: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=2, JDK 25.
+
+Step 1 (green, before the counter-proof): ./gradlew :server-app:test --tests 'io.github.bearisbug.synaxis.app.shard.ShardWorldTest'
+name="io.github.bearisbug.synaxis.app.shard.ShardWorldTest" tests="20" skipped="0" failures="0" errors="0"
+
+Step 2 (counter-proof): in ShardWorld.java bounds() returns manifest.bounds() instead of bounds(manifest, directory);
+./gradlew :server-app:test --tests 'io.github.bearisbug.synaxis.app.shard.ShardWorldTest.theWorldNamesItsMapItsBuildAndTheBoundsItServes'
+  > Task :server-app:test FAILED
+  ShardWorldTest > theWorldNamesItsMapItsBuildAndTheBoundsItServes() FAILED
+      org.opentest4j.AssertionFailedError at ShardWorldTest.java:246
+  BUILD FAILED in 5s
+  message: expected: <Bounds[minX=0, minZ=0, maxX=7, maxZ=15]> but was: <Bounds[minX=0, minZ=0, maxX=15, maxZ=15]>
+Step 3 was not run again: the restore (git checkout) put back the committed file the step 1 run used, byte for byte.
+Restored with git checkout -- server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java; git status --porcelain empty afterwards.
+
+An earlier attempt at 05:26 under a first lock window failed at :server-app:compileJava (Error Prone MissingSummary on the
+accessors' javadoc); no test ran. The javadoc was rewritten before the run above.

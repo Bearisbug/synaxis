@@ -1,0 +1,27 @@
+# Green after the fix (HostCommands, both language files), default mode, one Gradle run:
+# zsh ~/.claude/r073/gradle.zsh <worktree> fix-B :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CommandsIntegrationTest' :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest'
+
+> Task :server-app:testClasses UP-TO-DATE
+> Task :architecture-tests:testClasses
+> Task :architecture-tests:test
+> Task :server-app:test
+BUILD SUCCESSFUL in 13s
+
+<testsuite name="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" tests="12" skipped="0" failures="0" errors="0"  time="5.205">
+<testcase name="aPluginCommandLivesUnderItsNamespaceAndABareNameGoesToTheFirst(Env)" time="0.997"
+<testcase name="aThrowingPluginCommandIsOneLinePerTenSecondsAndGoneOnceDisabled(Env)" time="0.328"
+<testcase name="aCommandRegisteredAfterThePluginIsTakenBackIsDropped(Env)" time="0.069"
+<testcase name="aPlayersUnknownCommandIsAnsweredWithItsFirstWordAndTheConsoleOnlyLogsIt(Env)" time="0.145"
+<testcase name="aPlayerWithoutNodesSeesAndRunsListAndOnlyTheConsoleWritesAGmCommand(Env)" time="0.07"
+<testcase name="theNodeDecidesWhetherAPlayerRunsAndSeesACommandOfTheHost(Env)" time="0.122"
+<testcase name="theConsoleRunsListTpsAndSaveAndAnUnknownLineIsOneLine(Env)" time="0.118"
+<testcase name="broadcastReachesEveryPlayerAndKickWithoutAReasonIsTheVanillaOne(Env)" time="0.124"
+<testcase name="aCommandRegisteredOrTakenBackWhilePlayersAreOnlineReachesTheirCompletions(Env)" time="0.068"
+<testcase name="stopWhileTheEngineIsAlreadyStoppingAnswersSoAndChangesNothing(Env)" time="2.066"
+<testcase name="stopWithSecondsClosesTheGateAndStopsAfterTheCountdown(Env)" time="1.016"
+<testcase name="aConsoleLineThatThrowsIsOneLogLineAndTheNextLineRuns(Env)" time="0.067"
+<testsuite name="io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest" tests="2" skipped="0" failures="0" errors="0"  time="2.043">
+<testcase name="theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel()" time="0.534"
+<testcase name="everyKeyTheServerCanSendHasTextInBothLanguageFiles()" time="1.501"
+
+translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out

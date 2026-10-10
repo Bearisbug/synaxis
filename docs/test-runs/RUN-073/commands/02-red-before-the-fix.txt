@@ -1,0 +1,16 @@
+# Red before the fix: the two new tests of CommandsIntegrationTest on 15b5487edc's HostCommands (tests added, HostCommands untouched).
+# zsh ~/.claude/r073/gradle.zsh <worktree> fix-B :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CommandsIntegrationTest'  (default mode)
+
+CommandsIntegrationTest > aPlayersUnknownCommandIsAnsweredWithItsFirstWordAndTheConsoleOnlyLogsIt(Env) FAILED
+    org.opentest4j.AssertionFailedError at CommandsIntegrationTest.java:505
+CommandsIntegrationTest > aPlayerWithoutNodesSeesAndRunsListAndOnlyTheConsoleWritesAGmCommand(Env) FAILED
+    org.opentest4j.AssertionFailedError at CommandsIntegrationTest.java:475
+12 tests completed, 2 failed
+> Task :server-app:test FAILED
+BUILD FAILED in 20s
+
+<testsuite name="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" tests="12" skipped="0" failures="2" errors="0"  time="5.041">
+<failure message="org.opentest4j.AssertionFailedError: one answer per unknown command naming its first word without the slash, none for stop ==> expected: <[synaxis:command-unknown synaxisnosuchcommand, synaxis:command-unknown frobnicate]> but was: <[]>"
+<failure message="org.opentest4j.AssertionFailedError: list asks for no node, as the vanilla /list asks for permission level 0 ==> expected: <SUCCESS> but was: <CANCELLED>"
+at io.github.bearisbug.synaxis.app.CommandsIntegrationTest.aPlayersUnknownCommandIsAnsweredWithItsFirstWordAndTheConsoleOnlyLogsIt(CommandsIntegrationTest.java:505)
+at io.github.bearisbug.synaxis.app.CommandsIntegrationTest.aPlayerWithoutNodesSeesAndRunsListAndOnlyTheConsoleWritesAGmCommand(CommandsIntegrationTest.java:475)

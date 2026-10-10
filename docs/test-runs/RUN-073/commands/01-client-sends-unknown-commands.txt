@@ -1,0 +1,56 @@
+# Does the 26.2 client send a command that is not in the command tree the server declared? javap -c -p, JDK 25.0.4.1.
+# Jar: the 26.2 client jar from Mojang's launcher metadata (piston-meta v1/packages/d367f3dfbc…/26.2.json,
+#   downloads.client sha1 2dc72797acbc1b63fc16a11c4ac393605f453754, 39193383 bytes; 26.2 ships unobfuscated, Mojang names).
+#   The Loom cache jar (~/.gradle/caches/fabric-loom/26.2/minecraft-merged.jar) RUN-071 read is no longer on this machine;
+#   the classes below are client-only, so the merged jar carries the same bytecode for them.
+# Only the instructions that decide the path are kept; '…' marks cuts.
+
+## 1. ChatScreen#handleChatInput: a line starting with '/' goes to ClientPacketListener#sendCommand without the slash, nothing checked first
+  public void handleChatInput(java.lang.String, boolean);
+         7: invokevirtual #532                // Method java/lang/String.isEmpty:()Z
+        13: return
+        36: ldc_w         #555                // String /
+        39: invokevirtual #557                // Method java/lang/String.startsWith:(Ljava/lang/String;)Z
+        57: invokevirtual #565                // Method java/lang/String.substring:(I)Ljava/lang/String;
+        60: invokevirtual #569                // Method net/minecraft/client/multiplayer/ClientPacketListener.sendCommand:(Ljava/lang/String;)V
+        77: invokevirtual #574                // Method net/minecraft/client/multiplayer/ClientPacketListener.sendChat:(Ljava/lang/String;)V
+        80: return
+
+## 2. ClientPacketListener#sendCommand: parses against the declared tree only to find signable arguments; with none it sends
+##    ServerboundChatCommandPacket unconditionally. A root the tree does not have parses to no nodes, so no arguments.
+  public void sendCommand(java.lang.String);
+         9: invokevirtual #4199               // Method com/mojang/brigadier/CommandDispatcher.parse:(Ljava/lang/String;Ljava/lang/Object;)Lcom/mojang/brigadier/ParseResults;
+        12: invokestatic  #4203               // Method net/minecraft/network/chat/SignableCommand.of:(Lcom/mojang/brigadier/ParseResults;)Lnet/minecraft/network/chat/SignableCommand;
+        17: invokevirtual #4208               // Method net/minecraft/network/chat/SignableCommand.arguments:()Ljava/util/List;
+        20: invokeinterface #4211,  1         // InterfaceMethod java/util/List.isEmpty:()Z
+        25: ifeq          41
+        29: new           #4212               // class net/minecraft/network/protocol/game/ServerboundChatCommandPacket
+        34: invokespecial #4214               // Method net/minecraft/network/protocol/game/ServerboundChatCommandPacket."<init>":(Ljava/lang/String;)V
+        37: invokevirtual #1465               // Method send:(Lnet/minecraft/network/protocol/Packet;)V
+        40: return
+        66: invokedynamic #4215,  0           // InvokeDynamic #19:sign:(Lnet/minecraft/client/multiplayer/ClientPacketListener;Ljava/time/Instant;JLnet/minecraft/network/chat/LastSeenMessagesTracker$Update;)Lnet/minecraft/commands/arguments/ArgumentSignatures$Signer;
+        71: invokestatic  #4219               // Method net/minecraft/commands/arguments/ArgumentSignatures.signCommand:(Lnet/minecraft/network/chat/SignableCommand;Lnet/minecraft/commands/arguments/ArgumentSignatures$Signer;)Lnet/minecraft/commands/arguments/ArgumentSignatures;
+        92: invokespecial #4227               // Method net/minecraft/network/protocol/game/ServerboundChatCommandSignedPacket."<init>":(Ljava/lang/String;Ljava/time/Instant;JLnet/minecraft/commands/arguments/ArgumentSignatures;Lnet/minecraft/network/chat/LastSeenMessages$Update;)V
+        95: invokevirtual #1465               // Method send:(Lnet/minecraft/network/protocol/Packet;)V
+        98: return
+
+## 3. SignableCommand.of collects arguments by visiting the parse result's nodes (ArgumentVisitor.visitArguments, which walks the
+##    context and its children through visitNodeArguments); a parse that matched no root has no nodes and yields no arguments
+  public static <S> net.minecraft.network.chat.SignableCommand<S> of(com.mojang.brigadier.ParseResults<S>);
+        14: invokespecial #40                 // Method java/util/ArrayList."<init>":()V
+        29: invokestatic  #46                 // Method net/minecraft/commands/ArgumentVisitor.visitArguments:(Lcom/mojang/brigadier/ParseResults;Lnet/minecraft/commands/ArgumentVisitor$Output;Z)V
+        40: areturn
+
+## 4. The permission and parse checks (verifyCommand) are only on sendUnattendedCommand, the path of click events and dialogs, not of the chat screen
+  public void sendUnattendedCommand(java.lang.String, net.minecraft.client.gui.screens.Screen);
+         2: invokevirtual #4230               // Method verifyCommand:(Ljava/lang/String;)Lnet/minecraft/client/multiplayer/ClientPacketListener$CommandCheckResult;
+        68: ldc_w         #4237               // String multiplayer.confirm_command.parse_errors
+        80: ldc_w         #4243               // String multiplayer.confirm_command.permissions_required
+        92: ldc_w         #4245               // String multiplayer.confirm_command.signature_required
+
+## Conclusion
+# The 26.2 client sends /synaxisnosuchcommand as a ServerboundChatCommandPacket (the engine's ClientCommandChatPacket),
+# whether or not the declared tree has the root. The same holds for a command the tree leaves out
+# because its condition refuses the player (stop without its node). So the server's UNKNOWN callback is reachable from
+# the chat screen, and G7 of the playable script (DESIGN-PROD API-PROD-026) can check the synaxis:command-unknown answer
+# as designed; no fallback to the answer of a command there but refused is needed.

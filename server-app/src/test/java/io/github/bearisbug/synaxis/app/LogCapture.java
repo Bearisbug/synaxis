@@ -3,7 +3,9 @@ package io.github.bearisbug.synaxis.app;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.filter.Filter;
 import ch.qos.logback.core.read.ListAppender;
+import ch.qos.logback.core.spi.FilterReply;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
@@ -23,8 +25,30 @@ final class LogCapture implements AutoCloseable {
         this.logger.addAppender(appender);
     }
 
+    private LogCapture(Logger logger, Filter<ILoggingEvent> filter) {
+        this.logger = logger;
+        this.appender.addFilter(filter);
+        this.appender.start();
+        this.logger.addAppender(appender);
+    }
+
     static LogCapture of(Class<?> type) {
         return new LogCapture((Logger) LoggerFactory.getLogger(type));
+    }
+
+    /**
+     * Collects the lines the calling thread emits through any logger, as they reach the root logger.
+     * The lines of other threads are turned away before they are kept, so only the calling thread
+     * touches the list.
+     */
+    static LogCapture rootOfThisThread() {
+        final String thread = Thread.currentThread().getName();
+        return new LogCapture((Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME), new Filter<>() {
+            @Override
+            public FilterReply decide(ILoggingEvent event) {
+                return thread.equals(event.getThreadName()) ? FilterReply.NEUTRAL : FilterReply.DENY;
+            }
+        });
     }
 
     List<String> messagesAt(Level level) {

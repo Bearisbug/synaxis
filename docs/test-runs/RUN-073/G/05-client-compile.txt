@@ -1,0 +1,23 @@
+# TC-PROD-743 step 1: client-fabric compileGametestJava through the RUN-073 Gradle slot script (HEAD 4e58e2c2af code)
+# zsh ~/.claude/r073/gradle.zsh <worktree>/client-fabric fix-G compileGametestJava --console=plain
+[fix-G] /tmp/synaxis-r073-slot1 free=51% load=4 start 05:38:37
+Fetching distribution.
+Downloading https://services.gradle.org/distributions/gradle-9.7.1-bin.zip
+..............10%..............20%...............30%..............40%...............50%..............60%...............70%..............80%..............90%...............100%
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :
+Fabric Loom: 1.17.21
+
+> Task :fetchDistantHorizons
+fetchDistantHorizons: 27702766 B into /Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-G/client-fabric/build/dh/DistantHorizons-3.3.2-26.2-fabric-neoforge.jar
+
+> Task :compileJava
+> Task :processResources
+> Task :classes
+> Task :compileGametestJava
+
+BUILD SUCCESSFUL in 1m 29s
+4 actionable tasks: 4 executed
+[fix-G] gradle exit=0 end 05:40:07

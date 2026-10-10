@@ -1,0 +1,39 @@
+# TC-PROD-741: the job p11-smoke, read only (.venv/bin/python with PyYAML 6.0.3; actionlint from Homebrew)
+# step 3 mutates copies of the workflow under a temporary directory, one change each
+
+## TC-PROD-741 step 1: docs/test-runs/RUN-073/G/check-workflow.py .github/workflows/client-gametest.yml (HEAD 4e58e2c2af)
+workflow triggers include push main and pull_request
+p11-smoke runs on pull_request and push only
+p11-smoke and p10 run on ubuntu-24.04
+p11-smoke needs no other job
+p11-smoke p10.py drive --round-trips 2
+p10 p10.py drive keeps the default 100
+p11-smoke p10.py judge --round-trips 2
+p10 p10.py judge keeps the default 100
+p11-smoke unit tests before first p10.py use
+p11-smoke repeats p10's 18 steps, services and env
+p10 stays weekly and manual
+exit=0
+
+## step 2: the workflow before the change (15b5487edc)
+MISSING job p11-smoke
+exit=1
+
+## step 3 (needs)
+MISSING independence, needs 'gametest'
+
+## step 3 (judge100)
+MISSING --round-trips 2 on p11-smoke p10.py judge
+
+## step 3 (nopsql)
+MISSING p10's steps, services and env in p11-smoke: 18 vs 18 steps, differing ['Install Xvfb, Mesa and psql']
+
+## step 4: actionlint .github/workflows/client-gametest.yml
+.github/workflows/client-gametest.yml:103:9: shellcheck reported issue in this script: SC2034:warning:5:1: i appears unused. Verify use (or export if used externally) [shellcheck]
+.github/workflows/client-gametest.yml:103:9: shellcheck reported issue in this script: SC2086:info:3:58: Double quote to prevent globbing and word splitting [shellcheck]
+lines above: 2
+
+## step 5: CI_LIST (TC-PROD-656) on HEAD's ENGINE.md (before the docs commit, i.e. without the p11-smoke bullet)
+missing job client-gametest.yml p11-smoke
+## step 5: CI_LIST with the updated docs/ENGINE.md
+(no output above = all listed)

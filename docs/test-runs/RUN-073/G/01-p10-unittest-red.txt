@@ -1,0 +1,94 @@
+# TC-PROD-740 step 2: red before the change
+# test_p10.py as committed in 4e58e2c2af (the three JudgeTest tests written first), p10.py as at 15b5487edc
+# command: .venv/bin/python -m unittest discover -s client-fabric/gametest-env -p 'test_*.py' -v  (Python 3.10.18)
+
+test_a_world_without_a_state_fails (test_p10.JudgeTest) ... test_an_inventory_a_transfer_changed_fails (test_p10.JudgeTest) ... test_the_inventory_the_client_arrives_with_is_the_one_it_left_with (test_p10.JudgeTest) ... test_the_shard_directory_is_0644_whatever_the_umask (test_p10.ShardsTest) ... ok
+
+======================================================================
+FAIL: test_a_world_without_a_state_fails (test_p10.JudgeTest) (states=['pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty', 'pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty', None])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-G/client-fabric/gametest-env/test_p10.py", line 103, in test_a_world_without_a_state_fails
+    self.assertEqual(run.returncode, 1, run.stdout)
+AssertionError: 0 != 1 : ok   the driver ran to the end
+ok   2 of 2 transfers answered sent, expected 2 of 2
+ok   2 transfers arrived on their target shard, expected 2
+ok   character.version read 3 times, expected 3, larger after every transfer: True ([1] .. [3])
+ok   transfer_issued {'r0-c1': 1, 'r0-c2': 1}, 2 in all, expected 2
+ok   the client joined 3 worlds, expected 3
+ok   the client's joins alternate between two shards: ['25611', '25612']
+ok   the client's report ends with ['end done']
+P10: all checks passed
+
+
+======================================================================
+FAIL: test_a_world_without_a_state_fails (test_p10.JudgeTest) (states=['pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty', 'none', 'pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty'])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-G/client-fabric/gametest-env/test_p10.py", line 103, in test_a_world_without_a_state_fails
+    self.assertEqual(run.returncode, 1, run.stdout)
+AssertionError: 0 != 1 : ok   the driver ran to the end
+ok   2 of 2 transfers answered sent, expected 2 of 2
+ok   2 transfers arrived on their target shard, expected 2
+ok   character.version read 3 times, expected 3, larger after every transfer: True ([1] .. [3])
+ok   transfer_issued {'r0-c1': 1, 'r0-c2': 1}, 2 in all, expected 2
+ok   the client joined 3 worlds, expected 3
+ok   the client's joins alternate between two shards: ['25611', '25612']
+ok   the client's report ends with ['end done']
+P10: all checks passed
+
+
+======================================================================
+FAIL: test_an_inventory_a_transfer_changed_fails (test_p10.JudgeTest) (changed='items')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-G/client-fabric/gametest-env/test_p10.py", line 93, in test_an_inventory_a_transfer_changed_fails
+    self.assertEqual(run.returncode, 1, run.stdout)
+AssertionError: 0 != 1 : ok   the driver ran to the end
+ok   2 of 2 transfers answered sent, expected 2 of 2
+ok   2 transfers arrived on their target shard, expected 2
+ok   character.version read 3 times, expected 3, larger after every transfer: True ([1] .. [3])
+ok   transfer_issued {'r0-c1': 1, 'r0-c2': 1}, 2 in all, expected 2
+ok   the client joined 3 worlds, expected 3
+ok   the client's joins alternate between two shards: ['25611', '25612']
+ok   the client's report ends with ['end done']
+P10: all checks passed
+
+
+======================================================================
+FAIL: test_an_inventory_a_transfer_changed_fails (test_p10.JudgeTest) (changed='held slot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-G/client-fabric/gametest-env/test_p10.py", line 93, in test_an_inventory_a_transfer_changed_fails
+    self.assertEqual(run.returncode, 1, run.stdout)
+AssertionError: 0 != 1 : ok   the driver ran to the end
+ok   2 of 2 transfers answered sent, expected 2 of 2
+ok   2 transfers arrived on their target shard, expected 2
+ok   character.version read 3 times, expected 3, larger after every transfer: True ([1] .. [3])
+ok   transfer_issued {'r0-c1': 1, 'r0-c2': 1}, 2 in all, expected 2
+ok   the client joined 3 worlds, expected 3
+ok   the client's joins alternate between two shards: ['25611', '25612']
+ok   the client's report ends with ['end done']
+P10: all checks passed
+
+
+======================================================================
+FAIL: test_the_inventory_the_client_arrives_with_is_the_one_it_left_with (test_p10.JudgeTest) (inventory='empty')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-G/client-fabric/gametest-env/test_p10.py", line 83, in test_the_inventory_the_client_arrives_with_is_the_one_it_left_with
+    self.assertIn("ok   the client recorded its state in 3 of 3 worlds\n", run.stdout)
+AssertionError: 'ok   the client recorded its state in 3 of 3 worlds\n' not found in "ok   the driver ran to the end\nok   2 of 2 transfers answered sent, expected 2 of 2\nok   2 transfers arrived on their target shard, expected 2\nok   character.version read 3 times, expected 3, larger after every transfer: True ([1] .. [3])\nok   transfer_issued {'r0-c1': 1, 'r0-c2': 1}, 2 in all, expected 2\nok   the client joined 3 worlds, expected 3\nok   the client's joins alternate between two shards: ['25611', '25612']\nok   the client's report ends with ['end done']\nP10: all checks passed\n"
+
+======================================================================
+FAIL: test_the_inventory_the_client_arrives_with_is_the_one_it_left_with (test_p10.JudgeTest) (inventory='36:minecraft:stone*64,37:minecraft:iron_pickaxe*1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-G/client-fabric/gametest-env/test_p10.py", line 83, in test_the_inventory_the_client_arrives_with_is_the_one_it_left_with
+    self.assertIn("ok   the client recorded its state in 3 of 3 worlds\n", run.stdout)
+AssertionError: 'ok   the client recorded its state in 3 of 3 worlds\n' not found in "ok   the driver ran to the end\nok   2 of 2 transfers answered sent, expected 2 of 2\nok   2 transfers arrived on their target shard, expected 2\nok   character.version read 3 times, expected 3, larger after every transfer: True ([1] .. [3])\nok   transfer_issued {'r0-c1': 1, 'r0-c2': 1}, 2 in all, expected 2\nok   the client joined 3 worlds, expected 3\nok   the client's joins alternate between two shards: ['25611', '25612']\nok   the client's report ends with ['end done']\nP10: all checks passed\n"
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.302s
+
+FAILED (failures=6)

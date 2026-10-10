@@ -1,0 +1,12 @@
+# TC-PROD-740 step 1: green after the change (p10.py and test_p10.py as committed in 4e58e2c2af)
+# command: .venv/bin/python -m unittest discover -s client-fabric/gametest-env -p 'test_*.py' -v  (Python 3.10.18)
+
+test_a_world_without_a_state_fails (test_p10.JudgeTest) ... ok
+test_an_inventory_a_transfer_changed_fails (test_p10.JudgeTest) ... ok
+test_the_inventory_the_client_arrives_with_is_the_one_it_left_with (test_p10.JudgeTest) ... ok
+test_the_shard_directory_is_0644_whatever_the_umask (test_p10.ShardsTest) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.239s
+
+OK

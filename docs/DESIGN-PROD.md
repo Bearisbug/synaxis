@@ -112,7 +112,7 @@
 | 2026-10-07 | v0.9.60 | RUN-072 gate 组（分支 `prod/r072-gate`，基于 `main` `f7a9756f7b`，用户 2026-10-07 批准），只加测试与文档，不改接口、需求与产品代码。RUN-071 authority2 复审的非阻塞项：`API-PROD-003`「分片宿主的两项默认值」写命令行与 `synaxis.properties` 都没给时才写，`ShardMainGateTest` 只用属性查找表验证了命令行优先；配置文件由 `Main` 类初始化时写进系统属性，早于步骤 (1) 调 `ShardMain#gateDefaults`，这条链原先只有 `ConfigFileLaunchTest` 守，那里没有这两项的断言。`ShardGateLaunchTest` 加第 3 条：`synaxis.properties` 给 `max-players=200`、`max-connections=450`、`max-joins-per-tick=2`，以 `ShardMain` 起的子 JVM 自检行是 450 与 2（分片默认值是 600 与 5）；反证是 `gateDefaults` 两处空值判断改成恒真，这一条红，自检行是 600 与 5。**§19** 新增一个场景；**§28.2** 分片闸门的已决行补这条用例；**§28.3** 新增一行交光照会话：`LightShardFixture`、`FarViewShardFixture` 照抄 `ShardMain` 默认值的一段缺闸门两项。用例 `docs/TEST.md` `TC-PROD-695`，证据 `docs/test-runs/RUN-072/gate/` | Bearisbug |
 | 2026-10-07 | v0.9.61 | RUN-072 五组的集成（分支 `prod/integrate-072`，基于 `main` `f7a9756f7b`，依次合入 `prod/r072-ci`（v0.9.57）、`prod/r072-chunks`（v0.9.58）、`prod/r072-vehicle`（v0.9.59）、`prod/r072-gate`（v0.9.60）、`prod/r072-flake`（只改测试与 `docs/TEST.md`，不占版本号），再合入 Dependabot PR #10（`9904b22a2e`）），不改接口与需求。**合并**：五组改的代码、测试与工作流文件互不重叠（ci 改 `client-gametest.yml`，chunks 改 `entity/Player.java` 与两个测试类，vehicle 改 `listener/PlayerVehicleListener.java` 与一个测试类，gate 改 `ShardGateLaunchTest`，flake 改 `ConnectionGateSocketTest`），合并后与各组分支逐字相同，各组文档引的行号不受别组影响（`API-M3-010`「首批区块」的 `Player.java:985`、`:990` 在合并后的代码上复核过）。冲突都在文档：本分册的变更记录，`docs/TEST.md` 的变更记录、§4 末尾、§5 映射与 `TC-PROD-671` 第 1、2 步。两边都留：四个版本按 v0.9.57～v0.9.60 接在 v0.9.56 之后；`docs/TEST.md` §4 的五节按合并顺序整节取自各组分支，变更记录按合并的倒序排在顶部；`TC-PROD-671` 第 1 步取 vehicle 组的条数（3 个类 12 个），第 2 步取 gate 组的条数（7 个类 54 个）。合入 PR #10 之前，`compileJava compileTestJava` 在全部模块上通过（Gradle 9.7.1）。**PR #10**：Gradle wrapper 9.7.1 → 9.8.0（另改 `gradlew.bat` 与 `gradle-wrapper.jar`）、`slf4j-api` 2.0.19 → 2.0.20、`archunit-junit5` 1.5.0 → 1.5.1、`flyway-core` 与 `flyway-database-postgresql` 13.7.0 → 13.9.0、`org.graalvm.buildtools.native` 1.1.8 → 1.1.14；本机不编译（要下载 Gradle 9.8.0 发行包），由草稿 PR 的 CI 验。随之改 §17 依赖表 pgjdbc 一行的 Flyway 版本，运行时闭包 4,159,717 B 注明是 13.7.0 时量得；`docs/ENGINE.md` §1 wrapper 一句与 §5 版本钉死口径一句改为 9.8.0（`client-fabric` 的独立 wrapper 仍是 9.7.1，`docs/DESIGN-M2.md` §17 Fabric Loom 一行不变）。**§28.3** 新增一行：`docs/DESIGN.md` 三处与 `README.md` 一处写死的 Gradle 9.7.1。**门禁**：RUN-072 的全量门禁在 GitHub Actions 的草稿 PR #13 上对 `e32f0e2d1a` 跑，都是第 1 次尝试：Check（Gradle 9.8.0，PR #10 由此验过）、4 线程严格、严格 grid 三种模式各 625 个类 4,307 个、0 失败，jcstress、模组构建、真客户端回归（R1～R8）通过，`workflow_dispatch` 的 P10 两分片 100 次往返通过，同一 job 先跑的 `p10.py` 单测通过；`docs/TEST.md` 写死的全量条数按 Check 的实数改，RUN-072 通过 24/31、跳过 7（七条旧用例随各组改了行号或条数的反证没有复跑）。**同日按评审**：§16 并发表「持区块锁的线程给玩家排区块，与这名玩家发同一个区块」一行引的 `TC-PROD-679` 改为 `TC-PROD-691`；§28.2 v0.9.58 已决行的残余 ① 补一句：每次取包都抛的区块在环内时，每个 tick 给这名玩家一对批次包、换一次回执与一次异常上报，与 v0.9.54 的残余 ① 同类；§28.2 新增一行待办：载具贴着已载入范围的边沿时，乘客偏移把乘客带进相邻的未载入区块，乘客的 `Entity#refreshCoordinate` 仍抛异常（v0.9.59 只判载具自己的目标区块） | Bearisbug |
 | 2026-10-07 | v0.9.62 | `README.md` 第 22 行「JDK 25 / Gradle 9.7.1」改为 9.8.0：v0.9.61 合入 Dependabot PR #10 之后根构建的 wrapper 是 9.8.0。`README.md` 不在两个会话的文档归属表里，光照会话 2026-10-07 同意由本会话改；§28.3 Gradle 版本一行随之只剩 `docs/DESIGN.md` 三处。不改接口、需求与代码 | Bearisbug |
-| 2026-10-11 | v0.9.63 | RUN-073 docs 组（分支 `prod/r073-docs`，基于 `main` `8220ef9d0f`），按用户 2026-10-11 的拍板（验收标准「服务端核心完全正常游玩」）落定本轮契约，只改文档，代码由同轮其余各组照此实现。**新增**：`REQ-PROD-046` / `API-PROD-031` 宿主默认玩法层（包 `app.play`，挂在宿主节点上；平坦核心全开，RTS 只开聊天，挂地图的分片不挂；判定在宿主节点自身的监听器里、先于全局作用域的插件，生成物品实体与物品进背包在宿主节点下优先级 5 的子节点里、只对派发到那里仍未取消的事件做；平坦核心世界改用 `LightingChunk`，绑定端口之前预载并照亮出生点一圈区块；训练假人状态机 §11.6）；`REQ-PROD-047` / `API-PROD-032` 玩家持久化段 `synaxis:player`（位置与朝向及世界标识、46 格背包加选中格、生命值；三种模式都注册；`PlayerStore` 每次快照开头捕获、有变化才标脏；宿主节点上首次 `PlayerSpawnEvent` 时应用，位置按模式取舍；转服随写回进库、目标分片凭票据载入）；`ADR-PROD-017`；§12.5 进世界的时序；§19 可玩项 P1～P11 验收矩阵与 `API-PROD-026` 的剧本步骤 G1～G10；§4 四个术语，§7 两个实体，§9 六个字段，§10 三行，§16 三行，§28.2 一行风险（断开时光标上的物品不保存）。**改**：`REQ-PROD-005` 推迟位置持久化的一句改为由 `REQ-PROD-047` 实现（`character_location` 与 `current_region` 仍不读写，跨大区送回待做，§28.2 待办行与 §23 R2 门槛随之改）；`REQ-PROD-009` / `API-PROD-008` 挂了默认玩法层的模式默认收件人是同一实例的玩家；`REQ-PROD-012` / `API-PROD-011` `list` 不要求节点、玩家执行的不写 `EVT:gm_command`，未知命令回 `synaxis:command-unknown`（§14 加键，翻译键门禁 60 → 61，不进台账；`synaxis:player` 进 `API-PROD-029` 的非文字标识名单，15 → 16）；内存判据按用户 2026-10-11 的拍板（光照会话转述，`docs/DESIGN-M3.md` §28.1「正式档的 RSS 判据与分片默认堆」一行）改为「堆 4 GiB、RSS ≤ 堆上限 + 1 GiB、压测末段老年代回收后占用 ≤ 堆上限的 50%」，改 §15 tick 预算行与 `capacity` 一段、§19 对应场景、§26 第 5 波退出条件，§28.1 加 Q13（已决），即 `docs/DESIGN-M3.md` §28.2 交接行 M3 v0.44；§26 加「可玩」一行；§28.3 交光照会话四行（`ShardWorld` 三个访问器、`docs/DESIGN-M3.md` §28.1 按大区位置一行、交接行 M3 v0.44 转已完成、默认玩法层是否挂地图分片）。同步改 `docs/DESIGN-M2.md` v0.65 与 `docs/ENGINE.md` 核心模式一段 | Bearisbug |
+| 2026-10-11 | v0.9.63 | RUN-073 docs 组（分支 `prod/r073-docs`，基于 `main` `8220ef9d0f`），按用户 2026-10-11 的拍板（验收标准「服务端核心完全正常游玩」）落定本轮契约，只改文档，代码由同轮其余各组照此实现。**新增**：`REQ-PROD-046` / `API-PROD-031` 宿主默认玩法层（包 `app.play`，挂在宿主节点上；平坦核心全开，RTS 只开聊天，挂地图的分片不挂；判定在宿主节点自身的监听器里、先于全局作用域的插件，生成物品实体与物品进背包在宿主节点下优先级 5 的子节点里、只对派发到那里仍未取消的事件做；三条丢弃路径中关背包那条要一处引擎改动：`Player#closeInventory` 关自己的背包（窗口 0）时照 `removeViewer` 的规则处理光标物品；近战按 `PLAYER_ATTACK` 伤害；平坦核心世界改用 `LightingChunk`，绑定端口之前预载并照亮出生点一圈区块；训练假人状态机 §11.6，死后 20 tick 由宿主移除，掉出世界按死亡处理）；`REQ-PROD-047` / `API-PROD-032` 玩家持久化段 `synaxis:player`（位置与朝向及世界标识、46 格背包加选中格、生命值；三种模式都注册，挂地图的分片那一支等 `ShardWorld` 的三个访问器；宿主节点上首次 `PlayerSpawnEvent` 时应用，位置按模式取舍；`PlayerStore` 在应用之后每次快照开头捕获、有变化才标脏，应用之前断开不改库；转服随写回进库、目标分片凭票据载入）；`ADR-PROD-017`；§12.5 进世界的时序；§19 可玩项 P1～P11 验收矩阵与 `API-PROD-026` 的剧本步骤 G1～G10（平坦核心服务端用 `installDist` 的启动脚本、在自己的工作目录里起，改世界的步骤落在固定方位）；§4 四个术语，§7 两个实体，§9 六个字段，§10 三行，§16 四行，§28.2 一行风险（断开时光标上的物品不保存）。**改**：`REQ-PROD-005` 推迟位置持久化的一句改为由 `REQ-PROD-047` 实现（`character_location` 与 `current_region` 仍不读写，跨大区送回待做，§28.2 待办行与 §23 R2 门槛随之改）；`REQ-PROD-009` / `API-PROD-008` 挂了默认玩法层的模式默认收件人是同一实例的玩家；`REQ-PROD-012` / `API-PROD-011` `list` 不要求节点、玩家执行的不写 `EVT:gm_command`，未知命令回 `synaxis:command-unknown`（§14 加键，翻译键门禁 60 → 61，不进台账；`synaxis:player` 进 `API-PROD-029` 的非文字标识名单，15 → 16）；`REQ-PROD-022` / `API-PROD-018` 写明默认玩法层的生效节点（优先级 5）排在 `MONITOR` 之后，以及 `MONITOR` 读到的取消状态的两处例外与切换条件；内存判据按用户 2026-10-11 的拍板（光照会话转述，`docs/DESIGN-M3.md` §28.1「正式档的 RSS 判据与分片默认堆」一行）改为「堆 4 GiB、RSS ≤ 堆上限 + 1 GiB、压测末段老年代回收后占用 ≤ 堆上限的 50%」，改 §15 tick 预算行与 `capacity` 一段、§19 对应场景、§26 第 5 波退出条件，§28.1 加 Q13（已决），即 `docs/DESIGN-M3.md` §28.2 交接行 M3 v0.44；§26 加「可玩」一行；§28.3 交光照会话四行（`ShardWorld` 三个访问器、`docs/DESIGN-M3.md` §28.1 按大区位置一行、交接行 M3 v0.44 转已完成、默认玩法层是否挂地图分片）。同步改 `docs/DESIGN-M2.md` v0.65 与 `docs/ENGINE.md` 核心模式一段 | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -217,7 +217,7 @@
 | REQ-PROD-019 | tick 多线程引擎侧正确性：`ThreadDispatcherImpl` 取模改 `Math.floorMod`；`setInstance` / `teleport` 三处 `Acquirable` 接线；全量测试加一轮 4 线程严格模式（先 `counter`，`REQ-PROD-020` 落地后再加一轮 `grid`）；`LogBudget` 与 `GameChannel` 线程安全审过；插件线程契约写进 `plugin-api` 与 `docs/PLUGINS.md` | G17 | 内测 | P0 | `API-PROD-016` |
 | REQ-PROD-020 | 空间分格 `ThreadProvider.grid`：16×16 区块一格，`RefreshType.NEVER`；分片宿主选用并把 `dispatcherThreads` 设为核数 − 2；引擎默认仍 `counter` + 1；RTS 进程不开 | G17（承接 `REQ-M3-015`） | 内测 | P1 | `API-PROD-016` |
 | REQ-PROD-021 | 插件调度器：`runAsync`（虚拟线程，插件禁用时中断）与 `runOn(Schedulable)`（回到实例或实体所属线程）；持久化的标准路径是「异步查库 → 结果回实体线程应用」 | G18 | 内测 | P0 | `API-PROD-017` |
-| REQ-PROD-022 | 插件事件 API：六档优先级（Paper 顺序，`LOWEST` 先、`MONITOR` 末）、忽略已取消（两参形式相对 M2 改为收到已取消事件）、按实例作用域监听（拒绝玩家没有实例时也会派发的事件；实例作用域先于全局作用域的插件监听器） | G19 | 内测 | P1 | `API-PROD-018` |
+| REQ-PROD-022 | 插件事件 API：六档优先级（Paper 顺序，`LOWEST` 先、`MONITOR` 末；平坦核心上宿主默认玩法层的生效节点排在 `MONITOR` 之后，v0.9.63）、忽略已取消（两参形式相对 M2 改为收到已取消事件）、按实例作用域监听（拒绝玩家没有实例时也会派发的事件；实例作用域先于全局作用域的插件监听器） | G19 | 内测 | P1 | `API-PROD-018` |
 | REQ-PROD-023 | 按实体的追踪范围（含 Y 轴）：实体类型默认值 + 每实体覆盖，类别由插件定 | G20 | 内测 | P1 | `API-PROD-019` |
 | REQ-PROD-024 | 每玩家可见实体上限：默认 100 个非必显实体，超出按距离裁剪，插件可标必显 | G21 | 内测 | P1 | `API-PROD-019` |
 | REQ-PROD-025 | 出站积压上限：每连接 4 MiB，超限先丢可合并的位置包，仍超限断线；同步间隔与移动包频率可配 | G22 | 内测 | P1 | `API-PROD-020` |
@@ -242,7 +242,7 @@
 | REQ-PROD-044 | 假 sessionserver：`record` 模式只对客户端 `join` 过的 serverId 回 200（join 请求体里没有用户名，不按用户名匹配），`allow-all` 模式对任何用户名回 200；两种模式都能注入延迟、204、429、503 与超时；供 CI 与压测 | G01、G26、G27 | 阻断 | P0 | `API-PROD-027` |
 | REQ-PROD-045 | 转服票据的签发与验票：源分片写回并释放写权后签 HMAC-SHA256 票据（30 s 过期、16 B 一次性 nonce、带 `state_version`），先 `StoreCookie` 再 `Transfer`；目标分片在 configuration 阶段按固定顺序验票（签名 → 有效期 → 目标分片与 UUID → nonce → 写权），nonce 记 PostgreSQL `transfer_nonce`；每玩家冷却 5 s；以宿主内部接口交给 M3 `ShardService` 的实现 `ShardServiceImpl` 调用，不依赖 M3 的任何代码 | G28 | 运营 | P1 | `API-PROD-028`；状态机 §11.3、时序 §12.3 |
 | REQ-PROD-046 | 宿主默认玩法层：`server-app` 新包 `app.play`，挂在宿主节点上，判定先于全局作用域的插件、插件可以改或取消；平坦核心全开（同实例聊天、三条丢弃路径都生成物品实体、拾取进背包、近战伤害与击退、虚空伤害、首次出生的初始物品、出生点旁的训练假人），RTS 只开聊天，挂地图的分片不挂；平坦核心世界有光照；不补原版生存内容（合成、怪物 AI、饥饿、红石） | 无（用户 2026-10-11 拍板） | 可玩 | P0 | `API-PROD-031`；状态机 §11.6、时序 §12.5 |
-| REQ-PROD-047 | 玩家持久化段 `synaxis:player`：宿主注册，三种模式（平坦核心、RTS、挂地图的分片）都注册；存位置与朝向及世界标识（挂地图的分片另记 `map_id`、`build_id`）、46 格背包加选中格、生命值；每次快照开头捕获、有变化才写；首次出生时应用，位置按模式取舍：平坦核心用存档位置，RTS 由 `RtsPlugin` 的出生点决定，挂地图的分片要同一 `map_id`、存档位置落在本分片 `bounds` 里、同一 `build_id` 三条都满足才用，否则回本大区出生点，凭转服票据到达时用门框落点；转服时随写回带到目标分片；`character.current_region` 不写 | 无（用户 2026-10-11 拍板） | 可玩 | P0 | `API-PROD-032`；时序 §12.5、§12.3 |
+| REQ-PROD-047 | 玩家持久化段 `synaxis:player`：宿主注册，三种模式（平坦核心、RTS、挂地图的分片）都注册（挂地图的分片那一支等 §28.3 的三个 `ShardWorld` 访问器）；存位置与朝向及世界标识（挂地图的分片另记 `map_id`、`build_id`）、46 格背包加选中格、生命值；首次出生时应用，应用之后每次快照开头捕获、有变化才写（应用之前断开不改库）；位置按模式取舍：平坦核心用存档位置，RTS 由 `RtsPlugin` 的出生点决定，挂地图的分片要同一 `map_id`、存档位置落在本分片 `bounds` 里、同一 `build_id` 三条都满足才用，否则回本大区出生点，凭转服票据到达时用门框落点；转服时随写回带到目标分片；`character.current_region` 不写 | 无（用户 2026-10-11 拍板） | 可玩 | P0 | `API-PROD-032`；时序 §12.5、§12.3 |
 
 ## 6. 总体架构
 
@@ -684,7 +684,7 @@ erDiagram
 - **`API-PROD-017` 插件调度器** — 实现 `REQ-PROD-021`
   - `PluginScheduler` 增加两个默认方法（默认实现抛 `UnsupportedOperationException`，宿主覆盖）：`Task runAsync(Runnable task)`（虚拟线程；插件禁用时中断未完成任务）与 `Task runOn(Schedulable target, Runnable task, TaskSchedule delay)`（投递到实例或实体所属线程）；现有 `scheduleTask(task, delay, repeat)` 不变。
 - **`API-PROD-018` 插件事件优先级与作用域** — 实现 `REQ-PROD-022`
-  - `PluginEvents#addListener(Class<E> type, EventPriority priority, boolean ignoreCancelled, Consumer<E> listener)`；`EventPriority` 六档 `LOWEST / LOW / NORMAL / HIGH / HIGHEST / MONITOR`，映射到引擎 `EventNode#setPriority`（`event/EventNode.java:227-230`）：`LOWEST`～`HIGHEST` 为 −2～2（`NORMAL` 为 0，与其他节点的默认优先级相同），`MONITOR` 为 4，中间的 3 是存储冻结节点（`API-PROD-005`），两处先后不靠同优先级时的挂载顺序；`MONITOR` 监听器不得修改事件，这是写进 Javadoc 的约定，不做运行时拦截（引擎事件是带 setter 的可变对象，无法通用地拦住修改）。
+  - `PluginEvents#addListener(Class<E> type, EventPriority priority, boolean ignoreCancelled, Consumer<E> listener)`；`EventPriority` 六档 `LOWEST / LOW / NORMAL / HIGH / HIGHEST / MONITOR`，映射到引擎 `EventNode#setPriority`（`event/EventNode.java:227-230`）：`LOWEST`～`HIGHEST` 为 −2～2（`NORMAL` 为 0，与其他节点的默认优先级相同），`MONITOR` 为 4，中间的 3 是存储冻结节点（`API-PROD-005`），两处先后不靠同优先级时的挂载顺序；`MONITOR` 监听器不得修改事件，这是写进 Javadoc 的约定，不做运行时拦截（引擎事件是带 setter 的可变对象，无法通用地拦住修改）。宿主节点下还有一个子节点在 `MONITOR` 之后：默认玩法层的生效节点 `synaxis-play-apply`，优先级 5（v0.9.63，`API-PROD-031`），只在平坦核心挂。`MONITOR` 读到的是插件改完、宿主还没生效的事件（物品实体还没生成、拾取的物品还没进背包）；取消状态只有两处例外，事件在 `MONITOR` 之后才被取消：丢弃时玩家没有实例，拾取时生效一段的 `ALL_OR_NOTHING` 放不下（判定之后、生效之前有监听器往背包里加了东西）。默认接受这两处例外；出现要靠 `MONITOR` 读到最终结果的插件时，把 `MONITOR` 改为 5、生效节点改为 4，`MONITOR` 就排在生效之后，代价是改 `PluginEventsImpl#tier` 的常量，以及 `docs/TEST.md` `TC-PROD-180`、`TC-PROD-189` 引用这些优先级的反证行。
   - `PluginEvents#forInstance(Instance instance)` 返回挂在该实例事件节点下的 `PluginEvents`，监听器在实例所属线程上触发。
   - 两参 `addListener` 等价于 `NORMAL`、`ignoreCancelled=false`。这是相对 M2 的行为变更：M2 的两参形式走引擎 `EventNode#addListener(Class, Consumer)`，对可取消的事件跳过已取消的，相当于 `ignoreCancelled=true`；现在改为收到已取消事件。
   - `forInstance` 返回的作用域拒绝这些事件类型，违反时抛 `IllegalArgumentException`：不是 `InstanceEvent` 的；`PlayerPluginMessageEvent`、`PlayerCustomClickEvent`、`PlayerDisconnectEvent`、`PlayerPacketEvent` 与这四个的超类型，它们在玩家没有实例时（配置阶段、非 PLAY 状态下断开）也可能派发。
@@ -928,23 +928,23 @@ erDiagram
     - 本机跑法见 `docs/TEST.md` `TC-PROD-550`：客户端在 `client-fabric/gametest-env/run.sh` 的容器里，`run.sh` 透传 `SYNAXIS_P10_SERVER` 与 `SYNAXIS_P10_DONE`；`shards.json` 的 `host` 写 `host.docker.internal`，否则容器里的客户端照 `Transfer` 去连 127.0.0.1，连到的是容器自己。
   - 可玩项剧本（v0.9.63，`REQ-PROD-046`、`REQ-PROD-047`，§19 可玩项矩阵）：
     - 客户端：gametest 源集新增 `PlayableClientGameTest`，入口表里排在 `RegressionClientGameTest` 之后，只在设了 `SYNAXIS_PLAYABLE_SERVER`（平坦核心服务端的 `host:port`）时跑；RTS 那五步连 `SYNAXIS_GAMETEST_SERVER`（R1～R8 那台）。它自己捕获全部异常、不抛出（Fabric 的 gametest runner 在一条测试抛异常后不再跑后面的），每步写一行进运行目录的 `synaxis-gametest/playable.txt`：`<模式> G<n> PASS|FAIL|SKIP <证据>`，模式是 `core` 或 `rts`；写报告放进 `try/finally`，一步失败时其后依赖它的步骤记 `SKIP`。P10 job 不设 `SYNAXIS_PLAYABLE_SERVER`，它直接返回。
-    - 服务端：job `gametest` 多起一台 `server-app` 平坦核心，`-Dsynaxis.app.core-mode=on -Dsynaxis.app.port=25566`，与 R1～R8 那台共用本 job 的假 sessionserver（在线模式，`record` 模式），内存存储，`JAVA_OPTS="-Xms1G -Xmx1G -XX:-AlwaysPreTouch"`（理由同 P10 job：2 核 / 7 GB 的 runner 上还有客户端与另一台服务端），同样等到 `server-app listening` 再起客户端。两次客户端启动（开发 mod 与生产 mod jar）连同一台，所以每一步都要在「这个账号已在本服玩过」时同样成立。job 时限 40 分钟不变，实测不够时再调。
+    - 服务端：job `gametest` 多起一台 `server-app` 平坦核心，照 P10 job 的做法用 `installDist` 的启动脚本、在自己的工作目录里起：先 `./gradlew :server-app:installDist`，再在 `$RUNNER_TEMP/playable` 里以 `nohup` 后台跑 `$GITHUB_WORKSPACE/server-app/build/install/server-app/bin/server-app`，标准输入接 `/dev/null`，输出写这个目录的 `server.log`，记下 pid。参数经 `SERVER_APP_OPTS`：`-Dsynaxis.app.core-mode=on -Dsynaxis.app.port=25566 -Dsynaxis.app.auth=online -Dsynaxis.app.auth.session-server=<本 job 假 sessionserver 的 hasJoined 地址>`，与 R1～R8 那台共用本 job 的假 sessionserver（`record` 模式），存储取默认的内存存储；`JAVA_OPTS="-Xms1G -Xmx1G -XX:-AlwaysPreTouch"`（理由同 P10 job：2 核 / 7 GB 的 runner 上还有客户端与另一台服务端）。同样等到 `server.log` 出现 `server-app listening` 再起客户端。不用 `:server-app:run`：它的工作目录固定是仓库根（`server-app/build.gradle.kts:102`），与 R1～R8 那台共写仓库根的 `logs/events-*.jsonl`，核心模式同样记 `client_verified`（`HandshakeGate.java:384`），判定读 `LEDGER_DIR=logs` 时就会多数平坦核心那台的连接；`JAVA_OPTS` 也只对 `bin/` 启动脚本生效。两次客户端启动（开发 mod 与生产 mod jar）连同一台，世界与内存存储都留着，所以每一步都要在「这个账号已在本服玩过、世界已被上一次启动改过」时同样成立：改世界的步骤落在固定方位（G3、G4 在 G2 终点的东西两侧，G9 的竖井在出生点西北），走动的步骤朝固定方向，第二次启动的 G2 从 G10 留下的 (0.5, 40, −5.5) 朝南走约 13 格，不经过上一次启动挖的坑、放的石头与竖井。job 时限 40 分钟不变，实测不够时再调。
     - 步骤（平坦核心十步；RTS 只跑 G1、G2、G6、G7、G10）：
 
       | 步骤 | 操作 | PASS 的条件 |
       | --- | --- | --- |
       | G1 进服 | 连上服务端 | 60 s 内 `level` 与 `player` 非空；平坦核心另要求游戏模式是生存、生命值 > 0 |
-      | G2 移动与区块加载 | 按住前进 3 s（`TestInput`） | 水平位移 ≥ 3 格；脚下那格不是空气、所在区块客户端已载入；脚上一格的天空光是 15 |
-      | G3 挖 | 看向脚边相邻的一格地面石头（y 39），按住攻击直到客户端那格变成空气 | 变成空气后 40 tick 里一直是空气（服务端没有回弹） |
-      | G4 放 | 选中有石头的格，对一格地面的顶面按使用 | 上方那格出现石头并保持 40 tick；该格石头数减 1 |
-      | G5 背包与物品 | ① 看背包；② 切到铁镐所在的快捷栏格；③ 打开背包，把一组石头从快捷栏格移到主背包的空格，关背包；④ 选中石头按 Q；⑤ 打开背包，拿起一个石头、在背包外右键，关背包；⑥ 等 40 tick 后走到两个物品实体上 | ① 有 ≥ 2 个石头与 1 把铁镐；② 主手是铁镐；③ 20 tick 后两格的内容与操作一致、没有回弹；④⑤ 各在 20 tick 内出现一个石头物品实体，石头数各减 1；⑥ 100 tick 内两个物品实体都消失、石头数恢复 |
+      | G2 移动与区块加载 | 平坦核心先转到 yaw 0（朝南，+z）；按住前进 3 s（`TestInput`） | 水平位移 ≥ 3 格；脚下那格不是空气、所在区块客户端已载入；脚上一格的天空光是 15 |
+      | G3 挖 | 看向脚下那格东侧（+x）相邻的地面石头（y 39）的顶面，按住攻击直到客户端那格变成空气 | 变成空气后 40 tick 里一直是空气（服务端没有回弹） |
+      | G4 放 | 选中有石头的快捷栏格，对脚下那格西侧（−x）相邻地面石头的顶面按使用 | 那格上方（y 40）出现石头并保持 40 tick；该格石头数减 1 |
+      | G5 背包与物品 | 先转到 yaw 0、平视（丢出的物品往南飞，落在没被改过的地面上）。① 看背包；② 切到铁镐所在的快捷栏格；③ 打开背包，右键快捷栏里一组 ≥ 2 个的石头（拿起一半），左键主背包的一个空格放下，关背包；④ 选中快捷栏里有石头的格按 Q；⑤ 打开背包，右键主背包里一组 ≥ 2 个的石头（拿起一半），在背包外右键一次（丢出 1 个），带着光标上其余的石头关背包；⑥ 等 40 tick 后朝南走到这三个物品实体上 | ① 有 ≥ 2 个石头与 1 把铁镐；② 主手是铁镐；③ 20 tick 后两格的内容与操作一致、光标为空、没有回弹；④ 20 tick 内出现一个石头物品实体，石头数减 1；⑤ 背包外右键与关背包之后各在 20 tick 内出现一个石头物品实体（关背包那个是光标上剩下的全部），关背包后光标为空；⑥ 100 tick 内三个物品实体都消失、石头总数回到 ④ 之前 |
       | G6 聊天 | 发一条带随机串的聊天 | 40 tick 内聊天栏出现含该串的一行 |
       | G7 命令 | 发 `/list`，再发 `/synaxisnosuchcommand` | 40 tick 内各出现一行：前者是 `synaxis:command-list` 的译文、含本玩家名，后者是 `synaxis:command-unknown` 的译文、含 `synaxisnosuchcommand` |
-      | G8 打实体 | 找 (3.5, 40, 0.5) 附近的僵尸（训练假人），走到 2.5 格内，手持铁镐打一下，5 tick 内再打一下，之后每 12 tick 打一下直到它死 | 第一下后 20 tick 内客户端看到它的生命值下降；第二下不再下降；它死后 140 tick 内 (3.5, 40, 0.5) 附近重新出现一个生命值满的僵尸 |
-      | G9 死亡与重生 | 低头（pitch 90），手持铁镐按住攻击，一路挖穿 y = 0 掉下去 | 掉到 y < −64 之后 200 tick 内出现死亡界面；点重生后 100 tick 内位置离 (0.5, 40, 0.5) ≤ 1 格、生命值 20 |
-      | G10 退出重进 | 平坦核心：走到离出生点 ≥ 5 格处，转到 yaw 45，选中快捷栏 2 格，记下位置、朝向、46 格背包与选中格，断开回标题屏，再连同一台。RTS：记下 R4 那样数出的可指挥单位数，断开再连 | 平坦核心：位置差 ≤ 0.5 格、yaw 差 ≤ 1°，选中格相同，46 格背包逐格相同（没有多出一份初始物品）；RTS：重连后 60 s 内可指挥单位数与断开前相同 |
+      | G8 打实体 | 找 (3.5, 40, 0.5) 附近的僵尸（训练假人），从它西侧走到 2.5 格内、面朝东（击退把它往东推，离开出生点与 G9 的竖井），手持铁镐打一下，5 tick 内再打一下，之后每 12 tick 走回 2.5 格内打一下直到它死 | 第一下后 20 tick 内客户端看到它的生命值下降；第二下不再下降；它死后 140 tick 内 (3.5, 40, 0.5) 附近重新出现一个生命值满的僵尸 |
+      | G9 死亡与重生 | 走到 (−8.5, 40, −8.5)（离格中心 ≤ 0.2 格；在出生点西北，不在 G2 的路线上，也不在 G8 的击退方向上），低头（pitch 90），手持铁镐按住攻击，一路挖穿 y = 0 掉下去；第二次客户端启动时竖井已在，走到井口即掉下去 | 掉到 y < −64 之后 200 tick 内出现死亡界面；点重生后 100 tick 内位置离 (0.5, 40, 0.5) ≤ 1 格、生命值 20 |
+      | G10 退出重进 | 平坦核心：走到 (0.5, 40, −5.5)（出生点北 6 格），转到 yaw 45，选中快捷栏 2 格，记下位置、朝向、46 格背包与选中格，断开回标题屏，再连同一台。RTS：记下 R4 那样数出的可指挥单位数，断开再连 | 平坦核心：位置差 ≤ 0.5 格、yaw 差 ≤ 1°，选中格相同，46 格背包逐格相同（没有多出一份初始物品）；RTS：重连后 60 s 内可指挥单位数与断开前相同 |
 
-    - 判定（CI，接在 R1～R8 的判定步骤之后）：报告份数 = 客户端启动次数 N；每份 `^core G([1-9]|10) PASS` 恰 10 行、`^rts G(1|2|6|7|10) PASS` 恰 5 行，`FAIL` 与 `SKIP` 0 行。R1～R8 那台的台账判定随之改一项：剧本每次启动在那台多连 2 次（`rts G1` 一次、`rts G10` 重连一次），`client_verified` = C 的 C 不带 spike 时是 3N、带 spike 时 4N；`client_rejected` = 0、`unit_order_issued` ≥ N 与 `reason=synaxis:protocol-error` 的 kick 行 = N 不变（剧本步骤不下令、不触发协议错误）；完整正版路径档读假 sessionserver 日志的两项按两台服务端的连接合计（平坦核心那台每次启动 2 次连接）。平坦核心那台的日志与台账随产物上传，不另判定。
+    - 判定（CI，接在 R1～R8 的判定步骤之后）：报告份数 = 客户端启动次数 N；每份 `^core G([1-9]|10) PASS` 恰 10 行、`^rts G(1|2|6|7|10) PASS` 恰 5 行，`FAIL` 与 `SKIP` 0 行。R1～R8 那台的台账判定随之改一项：剧本每次启动在那台多连 2 次（`rts G1` 一次、`rts G10` 重连一次），`client_verified` = C 的 C 不带 spike 时是 3N、带 spike 时 4N；`client_rejected` = 0、`unit_order_issued` ≥ N 与 `reason=synaxis:protocol-error` 的 kick 行 = N 不变（剧本步骤不下令、不触发协议错误）；完整正版路径档读假 sessionserver 日志的两项按两台服务端的连接合计（平坦核心那台每次启动 2 次连接）。平坦核心那台的 `$RUNNER_TEMP/playable/server.log` 与 `logs/` 随产物上传，不另判定。
   - M3-D 的光照用例（`docs/DESIGN-M3.md` §19 容器场景与 §26 M3-D 第 4 步，`docs/TEST.md` `TC-WORLD-095`～`TC-WORLD-097`）：gametest 源集另有 `light/LightClientGameTest`，排在入口表首位，只在设了 `SYNAXIS_LIGHT_SERVER` 时连服务器，否则直接返回，R1～R8 照旧在它之后跑。`client-gametest.yml` 的两个 job 都不设 `SYNAXIS_LIGHT_*`，CI 的报告份数、`R` 行与判定步骤不变。本机经 `run.sh` 跑（透传 `SYNAXIS_LIGHT_SERVER` 与 `SYNAXIS_LIGHT_MODE`，固定传 `SYNAXIS_LIGHT_MARKER=/out/light-ready`）。
   - M3-G 的远景用例（`docs/DESIGN-M3.md` §26 M3-G 轨道 C，`docs/TEST.md` `TC-WORLD-117`～`TC-WORLD-124`）：gametest 源集另有 `farview/FarViewClientGameTest`，排在 `LightClientGameTest` 之后、R1～R8 之前，只在设了 `SYNAXIS_FARVIEW_SERVER` 时连服务器，否则立即返回；`client` 入口在 `LightProbe` 之后另有 `farview/DhUpdaterOff`：装了 DH 时在客户端启动后关掉它的自动更新（较新的 DH 发布后，它的更新界面会挡在标题屏上），没装时什么也不做。`client-gametest.yml` 的两个 job 都不设 `SYNAXIS_FARVIEW_*`（DH 只是编译期依赖，不加 `-Dfabric.addMods` 时客户端里没有它），CI 的报告份数、`R` 行与判定步骤不变。本机经 `run.sh` 跑：透传 `SYNAXIS_FARVIEW_SERVER`、`SYNAXIS_FARVIEW_HTTP`、`SYNAXIS_FARVIEW_MODE`、`SYNAXIS_FARVIEW_MODS` 与 `SYNAXIS_GAMETEST_ARGS`（作 Gradle 的 `--args`，如 `--width 1920 --height 1080`），固定传 `SYNAXIS_DH_SHADERPACKS=/dh/shaderpacks`；`SYNAXIS_FARVIEW_MODS` 不为空时（取 `dh` 或 `dh-iris`）在容器里按 SHA-1 取 DH（`dh-iris` 另取 Sodium、Iris 与光影包），客户端 JVM 加 `-Dfabric.addMods=/dh/mods`；`http.nonProxyHosts` 加 `host.docker.internal`，容器里的客户端连宿主上的远景夹具不经代理。
 - **`API-PROD-027` 假 sessionserver** — 实现 `REQ-PROD-044`
@@ -1020,22 +1020,23 @@ erDiagram
 
   - 两段挂载（`ADR-PROD-017`）：
     - 判定：宿主节点自身的监听器，用两参 `addListener`（可取消的事件到达时已取消就跳过）。一个事件的派发次序是：根节点自身的监听器（存储冻结在这里取消拾取与丢弃，`API-PROD-005`）→ 映射节点（实例与实体作用域，含任一档的实例作用域插件监听器）→ 根节点的子节点按优先级，其中宿主节点（0）先跑自身的监听器，再按优先级跑它的子节点：全局作用域插件 `LOWEST`～`HIGHEST`（−2～2）、`synaxis-store-freeze`（3）、`MONITOR`（4）。所以默认结果先于全局作用域的插件定下，插件看到的是默认结果，可以改或取消；实例作用域的插件监听器排在宿主之前，它取消的事件宿主不再处理，它填过的聊天收件人宿主不覆盖。
-    - 生效：宿主节点的子节点 `synaxis-play-apply`，优先级 5（排在 `MONITOR` 之后），同样用两参 `addListener`。可取消事件上改世界的动作（丢弃生成物品实体、拾取放进背包）只在这里做，只对派发到这里仍未取消的事件做：放进判定一段的话，插件之后取消丢弃时引擎把物品留在背包里、地上已多出一份，拾取同理，都是复制。不可取消的事件（攻击、玩家 tick、出生）没有「做完之后又被取消」的问题，在判定一段里直接做，插件靠取消随之派发的伤害事件或在之后改状态来覆盖。`MONITOR` 监听器看到的是插件改完、宿主还没生效的事件。
+    - 生效：宿主节点的子节点 `synaxis-play-apply`，优先级 5（排在 `MONITOR` 之后），同样用两参 `addListener`；`features` 含 `DROP` 或 `PICKUP` 时才建（平坦核心），RTS 没有这个节点。可取消事件上改世界的动作（丢弃生成物品实体、拾取放进背包）只在这里做，只对派发到这里仍未取消的事件做：放进判定一段的话，插件之后取消丢弃时引擎把物品留在背包里、地上已多出一份，拾取同理，都是复制。不可取消的事件（攻击、玩家 tick、出生）没有「做完之后又被取消」的问题，在判定一段里直接做，插件靠取消随之派发的伤害事件或在之后改状态来覆盖。`MONITOR` 监听器看到的是插件改完、宿主还没生效的事件；生效一段在两种情况下才取消事件，这时取消发生在 `MONITOR` 之后：`DROP` 时玩家没有实例，`PICKUP` 时放不下（判定之后、生效之前有监听器往背包里加了东西）。这是 `API-PROD-018`「`MONITOR` 读到最终的取消状态」的例外，写在那一条里。
     - 冻结：`ItemDropEvent` 与 `PickupItemEvent` 冻结时由根节点取消，两段都跳过，宿主不另查 `isFrozen`；冻结在派发中途落地的那一次照根节点的判定放行到底（`API-PROD-005` 冻结一条）。其余五项不受冻结影响：冻结只禁止改变物品归属的操作，移动与战斗照常。
   - 逐项行为（数值都是本分册定，不加配置键）：
 
     | 项 | 事件，挂在哪段 | 行为 |
     | --- | --- | --- |
     | `CHAT` | `PlayerChatEvent`，判定 | 收件人为空时填成发送者 `getInstance().getPlayers()`（含发送者）；已不为空（实例作用域的插件填过）不动；发送者没有实例时不填。限频照旧在事件之前（`API-PROD-008`），格式用引擎默认的 `chat.type.text` |
-    | `DROP` | `ItemDropEvent`，生效 | 三条丢弃路径都经 `Player#dropItem` 派发这一个事件（`Player.java:1679-1684`），一处处理：快捷栏的 Q 键（`PlayerActionListener` 的 `dropStack` / `dropSingle`）与背包里的 Q 键（`InventoryClickProcessor#drop`，格号不是 −999），背包外点击（同一方法，格号 −999，`InventoryClickProcessor.java:299`、`:307`），关背包时光标上的物品（`AbstractInventory.java:136`）。在玩家的实例里于 `位置 + (0, Player#getEyeHeight(), 0)` 生成 `ItemEntity`，物品取事件的物品，速度 = `getPosition().direction()` × 6 格/秒（引擎的速度按格/秒计，合每 tick 0.3 格），拾取延迟 40 tick（2 s）；之后引擎照事件未取消把物品从手、格子或光标上拿走。玩家没有实例时取消事件，物品留在原处 |
-    | `PICKUP` | `PickupItemEvent`（拾取者是玩家），判定 + 生效 | 判定：背包放不下整组（`addItemStack(物品, TransactionOption.DRY_RUN)` 为 false）就取消，物品实体留在地上、claim 释放（`LivingEntity.java:238-243`）；生效：`addItemStack(物品, TransactionOption.ALL_OR_NOTHING)`，得 false（判定之后插件动了背包）再取消。拾取者不是玩家的不管（引擎里只有玩家默认能拾取，`Player.java:332`） |
-    | `MELEE` | `EntityAttackEvent`（不可取消，`UseEntityListener.java:34`），判定 | 攻击者是玩家、目标是没死的 `LivingEntity` 且不是攻击者自己时：在攻击者的 tick 线程上读伤害 = 攻击者 `Attribute.ATTACK_DAMAGE` 的值（空手 1，手持铁镐 4：引擎按手持物品的属性修饰符改属性，`LivingEntity.java:196-207`）与攻击者的偏航角；再经 `target.acquirable().sync` 在目标所属 tick 线程上（`API-PROD-016`）：目标的 `getAliveTicks()` 距它上次被本项命中不足 10 tick 就什么都不做（冷却按目标计、与攻击者无关，记在目标实体的 `Tag<Long>` `default-play.melee-tick` 上；标签名不用 `synaxis:` 与 `synaxis.` 开头，免得被翻译键门禁与配置键门禁当成键）；否则 `target.damage(Damage.fromPlayer(攻击者, 伤害))`，返回 true（伤害事件没被取消）才记下命中的 tick 并 `target.takeKnockback(0.4f, sin(yaw), −cos(yaw))`（yaw 按弧度）。插件要换掉近战，取消伤害类型为 `PLAYER_ATTACK`、攻击者是该玩家的 `EntityDamageEvent` 即可，这时也不击退 |
+    | `DROP` | `ItemDropEvent`，生效 | 三条丢弃路径都经 `Player#dropItem` 派发这一个事件（`Player.java:1679-1684`），一处处理：快捷栏的 Q 键（`PlayerActionListener` 的 `dropStack` / `dropSingle`）与背包里的 Q 键（`InventoryClickProcessor#drop`，格号不是 −999），背包外点击（同一方法，格号 −999，`InventoryClickProcessor.java:299`、`:307`），关背包时光标上的物品（关容器时 `AbstractInventory#removeViewer` 已经这样做；关自己的背包要靠下面「引擎改动」一条）。在玩家的实例里于 `位置 + (0, Player#getEyeHeight(), 0)` 生成 `ItemEntity`，物品取事件的物品，速度 = `getPosition().direction()` × 6 格/秒（引擎的速度按格/秒计，合每 tick 0.3 格），拾取延迟 40 tick（2 s）；之后引擎照事件未取消把物品从手、格子或光标上拿走。玩家没有实例时取消事件，物品留在原处 |
+    | `PICKUP` | `PickupItemEvent`（拾取者是玩家），判定 + 生效 | 判定：背包放不下整组（`addItemStack(物品, TransactionOption.DRY_RUN)` 为 false）就取消，物品实体留在地上、claim 释放（`LivingEntity.java:244`）；生效：`addItemStack(物品, TransactionOption.ALL_OR_NOTHING)`，得 false（判定之后插件动了背包）再取消。拾取者不是玩家的不管（引擎里只有玩家默认能拾取，`Player.java:332`） |
+    | `MELEE` | `EntityAttackEvent`（不可取消，`UseEntityListener.java:34`），判定 | 攻击者是玩家、目标是没死的 `LivingEntity` 且不是攻击者自己时：在攻击者的 tick 线程上读伤害 = 攻击者 `Attribute.ATTACK_DAMAGE` 的值（空手 1，手持铁镐 4：引擎按手持物品的属性修饰符改属性，`LivingEntity.java:195-217`）与攻击者的偏航角；再经 `target.acquirable().sync` 在目标所属 tick 线程上（`API-PROD-016`）：目标的 `getAliveTicks()` 距它上次被本项命中不足 10 tick 就什么都不做（冷却按目标计、与攻击者无关，记在目标实体的 `Tag<Long>` `default-play.melee-tick` 上；标签名不用 `synaxis:` 与 `synaxis.` 开头，免得被翻译键门禁与配置键门禁当成键）；否则 `target.damage(new Damage(DamageType.PLAYER_ATTACK, 攻击者, 攻击者, null, 伤害))`（这里不能用 `Damage.fromPlayer`：它返回的 `EntityDamage` 类型固定是 `MOB_ATTACK`，`EntityDamage.java:11`），返回 true（伤害事件没被取消）才记下命中的 tick 并 `target.takeKnockback(0.4f, sin(yaw), −cos(yaw))`（yaw 按弧度）。插件要换掉近战，取消伤害类型为 `PLAYER_ATTACK`、攻击者是该玩家的 `EntityDamageEvent` 即可，这时也不击退 |
     | `VOID_DAMAGE` | `PlayerTickEvent`，判定 | 玩家没死且 `getInstance().isInVoid(位置)`（y < 维度 minY − 64，`InstanceContainer.java:615-618`；平坦核心维度 minY 0，即 y < −64）时，每 tick `player.damage(DamageType.OUT_OF_WORLD, 4)`；插件取消这个伤害事件即免伤。地面是 y 0～39 的 40 层石头、没有基岩，挖穿 y = 0 那层就掉进虚空 |
     | `STARTER_KIT` | `PlayerSpawnEvent`，判定，排在持久化段的应用监听器之后 | `isFirstSpawn()` 且 `freshCharacter` 为 true（该角色的 `synaxis:player` 还是默认值、从没被捕获过）时：快捷栏 0 格 64 个石头、1 格 1 把铁镐（`setItemStack`），游戏模式不改（引擎默认生存）。下一次快照捕获之后段就不再是默认值，同一角色只发一次；登出保存写不进库（§11.3 `orphaned`）时库里还没有这一段，下次登录会再发一次 |
-    | `TRAINING_DUMMY` | `attach` 时生成，死亡与重生见 §11.6 | 在 `coreWorld` 的 (3.5, 40, 0.5)（出生点东侧 3 格）生成 `LivingEntity(EntityType.ZOMBIE)`：普通 `LivingEntity` 没有 AI，偏航角 90°（面朝出生点），生命值取它的 `MAX_HEALTH` 属性（20），不设无敌，受近战伤害与击退；只有这一个，`VOID_DAMAGE` 只打玩家 |
+    | `TRAINING_DUMMY` | `attach` 时生成，死亡与重生见 §11.6 | 在 `coreWorld` 的 (3.5, 40, 0.5)（出生点东侧 3 格）生成 `LivingEntity(EntityType.ZOMBIE)`：普通 `LivingEntity` 没有 AI，偏航角 90°（面朝出生点），生命值取它的 `MAX_HEALTH` 属性（20），不设无敌，受近战伤害与击退。普通 `LivingEntity` 的 `kill` 只置死、派发 `EntityDeathEvent`，不移除实体（`LivingEntity.java:292-309`；死后自动移除只写在 `EntityCreature#kill` 里，`EntityCreature.java:32-42`），所以由宿主在假人死后 20 tick 移除它；`VOID_DAMAGE` 只打玩家，假人掉到 minY − 64 以下由它自己的每 tick 检查按死亡处理。实例里至多一个假人 |
 
+  - 引擎改动，关自己的背包时处理光标物品（`DROP` 第三条路径的前提）：玩家关自己的背包（窗口 0，平坦核心世界里唯一打得开的界面）走 `Player#closeInventory(boolean, byte)`（`Player.java:2260-2287`），打开的界面就是自己的背包时不调 `removeViewer`（`:2276`），光标物品留在服务端的光标上，不派发 `ItemDropEvent`、不生成物品实体，随后的 `inventory.update()` 还把它作为光标物品发回客户端（`PlayerInventory.java:167`），与关容器时的处理不一致。改为窗口 0 那一支在 `inventory.update()`（`:2280`）之前按 `removeViewer` 的规则处理光标（`AbstractInventory.java:125-139`：在背包的锁里取出光标物品并置空，先 `dropItem`，丢不掉再 `addItemStack`，再不行放回光标），两处应该共用一个方法，不复制一份。这是引擎行为，不随默认玩法层开关：挂地图的分片上关背包丢出的光标物品与那里的 Q 键一样只派发事件、没人生成物品实体，物品随之消失（挂地图的分片目前没有物品来源）。断开不经 `closeInventory`（`Player#remove` 只对打开的容器调 `removeViewer`），开着自己的背包断开时光标物品的去向见 §28.2 风险行。
   - 平坦核心世界本身（`CoreMode#start`，可玩项 P2 的前提）：实例改用 `setChunkSupplier(LightingChunk::new)`（原先用默认的 `DynamicChunk`，没有光照）；在启动线程上、绑定端口之前载入出生点区块 (0, 0) 周围半径 `synaxis.chunk-view-distance` + 1 的区块（`Main` 写 10 时 23 × 23 = 529 块），再对它们调 `LightingChunk.relight`，照 `Match` 的做法（`Match.java:195-202`）。走出这一圈之后才生成的区块由 `LightingChunk` 在第一次建包时算光，已知代价是这些区块第一次发出时可能还没有光（与 `Match` 注释里写的同因）。世界边界、自动载入区块、出生点与重生点不变。
-  - 线程：`CHAT`、`DROP`、`PICKUP`、`VOID_DAMAGE`、`STARTER_KIT` 的事件都在玩家所属 tick 线程上派发，只碰这名玩家与新生成的实体；`MELEE` 跨实体的部分按上表经 `Acquirable#sync`；训练假人的重生任务排在进程调度器上，在 tick 调度线程上生成。平坦核心与 RTS 用引擎默认的 `counter` + 1 条线程，`grid` 下这几条同样成立。
+  - 线程：`CHAT`、`DROP`、`PICKUP`、`VOID_DAMAGE`、`STARTER_KIT` 的事件都在玩家所属 tick 线程上派发，只碰这名玩家与新生成的实体；`MELEE` 跨实体的部分按上表经 `Acquirable#sync`；训练假人的移除与掉出世界的检查排在它自己的调度器上（`Entity#scheduler()`，在它所属 tick 线程上跑：`Entity#remove` 要求调用方拥有这个实体，`Entity.java:1915`），重生任务排在进程调度器上，在 tick 调度线程上生成新实体。平坦核心与 RTS 用引擎默认的 `counter` + 1 条线程，`grid` 下这几条同样成立。
   - 不做：合成、怪物 AI、饥饿、红石、摔落伤害、经验、死亡掉落（死亡不掉背包，与改动前相同）；挂地图的分片的玩法规则由后续的玩法架构分册定（`ADR-PROD-017`）。没有配置键；不写日志（全部由客户端驱动）；不进台账。
 - **`API-PROD-032` 玩家持久化段 `synaxis:player`（`server-app` 包 `io.github.bearisbug.synaxis.app.store`，v0.9.63）** — 实现 `REQ-PROD-047`、`REQ-PROD-005`
   - 值、段与位置规则：
@@ -1069,15 +1070,16 @@ erDiagram
 
     ```java
     // 启动线程上、绑定端口之前；id 不以 "synaxis:" 开头抛 IllegalArgumentException，重复注册抛 IllegalStateException
-    public <T> void registerHostSection(DataSection<T> section, Function<Player, T> capture);
+    // capture 返回 null 表示这次不捕获：这一段保留当前值、不标脏
+    public <T> void registerHostSection(DataSection<T> section, Function<Player, @Nullable T> capture);
     // 这名玩家这一段当前的值（载入的值，或最近一次捕获的值）；没载入时抛 IllegalStateException
     public <T> T hostValue(Player player, DataSection<T> section);
     ```
 
     宿主段与插件段同表（`character_section`）、同一次写入、同一个 `version`，解码失败同样拒绝登录、不用默认值覆盖（`API-PROD-005` 语义一条；生产代码里原先没有任何 `DataSection` 实现，`PlayerStore` 的载入（`decode`）与快照（`snapshot`）从这里起第一次有宿主自己的段）。`synaxis` 是宿主保留的插件 id（`PluginDescriptors.RESERVED_ID`），插件注册不到 `synaxis:` 开头的段，`PluginPlayerData` 的 `owned` 判定也让插件读写不到这一段（§10 行级可见性）。
-  - 注册时机：`Main` 步骤 (4)。`openStore` 之前 `new PlayerStateSection()`（验票的到达回调要引用它，见下面「凭票据到达」）；`openStore` 与 `new PluginHost(…)` 之后、`host.enable` 之前调 `install(store.store(), host.hostNode())`：`registerHostSection(this, 捕获)`，并在宿主节点上加 `PlayerSpawnEvent` 的应用监听器与 `PlayerDisconnectEvent` 的清理监听器。排在插件启用与默认玩法层之前，是因为同一节点自身的监听器按添加顺序执行：应用监听器在步骤 (4) 加，默认玩法层在步骤 (5) 加，`STARTER_KIT` 的判定（`API-PROD-031`）因此在应用存档之后。模式在步骤 (5) 才定（`auto` 下要看插件留下了什么），所以位置规则由 `useRule` 在步骤 (5) 设：平坦核心 `Core()`，RTS `Rts()`，挂地图的分片 `MapShard(shardWorld.mapId(), shardWorld.buildId(), shardWorld.bounds())`。这三个 `ShardWorld` 访问器要光照会话加（§28.3）：`map_id` 与 `build_id` 取地图版本清单（`SynxManifest#mapId`、`#buildId`，目录模式下与 `shards.json` 的 `map_id` 相同，`ShardDirectory#checkAgainst` 已校验），`bounds` 是本分片服务的范围（目录模式是本大区的，否则是整个地图版本的，与 `API-PROD-030` 世界边界同一出处）。三种模式都注册；拒启的进程不设规则，它不绑端口。端口绑定之前没有玩家，规则设下之前不会有捕获或应用，真被调到时抛 `IllegalStateException`。
-  - 捕获、标脏与写回：`PlayerStore#snapshot`（定时保存、登出、转服、停机、`save` 命令与插件的 `saveNow` 共用它）开头先对每个宿主段调一次捕获，就在快照所在的线程上：tick 活着时都在玩家所属 tick 线程上，看门狗判死之后的停机快照在停机线程上直接读（与插件段同一已知代价，`API-PROD-007`）。捕获结果与当前值 `equals` 就不动，否则替换当前值并标脏，随后照常编码脏段；捕获抛异常时记一条 ERROR（经 `LogBudget`，10 s 至多一行），这一段保留原值、不标脏，其余段照常。所以没动过的玩家定时保存不写库、`version` 不涨（`PlayerStore#write` 原有的空快照判断），丢失窗口与其他段一样是一个定时保存周期 60 s（§15 丢失窗口行）。`synaxis:player` 的捕获：`world` 按位置规则（`Core` → `Core()`，`Rts` → `Rts()`，`MapShard` → `MapShard(mapId, buildId)`），`position` = `Player#getPosition()`（含 yaw 与 pitch），`inventory` = 0～45 格里非空气的，`heldSlot` = `Player#getHeldSlot()`，`health` = `Player#getHealth()`。捕获只在快照里做，不另起定时器，也不在每次移动或改背包时标脏。
-  - 应用：宿主节点自身的 `PlayerSpawnEvent` 监听器，只在 `isFirstSpawn()` 时，在玩家所属 tick 线程上。段是默认值（新角色）时什么都不改，玩家保持引擎给的初始状态（重生点、空背包、选中格 0、满血）。否则依次：背包 46 格逐格写（段里没有的格写空气）；`setHeldItemSlot(heldSlot)`；生命值：存的 > 0 时取 min(存的, 当前 `MAX_HEALTH`)，存的是 0（在死亡界面上断开）时取满、并且不应用位置（按重生处理，留在重生点）；位置按下表，用 `Player#teleport(存档位置)`（带朝向）。玩家先在引擎给的出生位置（重生点）出生、收到那一圈区块，再传送过去，已知代价是出生点那一圈区块多发一次。
+  - 注册时机：`Main` 步骤 (4)。`openStore` 之前 `new PlayerStateSection()`（验票的到达回调要引用它，见下面「凭票据到达」）；`openStore` 与 `new PluginHost(…)` 之后、`host.enable` 之前调 `install(store.store(), host.hostNode())`：`registerHostSection(this, 捕获)`，并在宿主节点上加 `PlayerSpawnEvent` 的应用监听器与 `PlayerDisconnectEvent` 的清理监听器。排在插件启用与默认玩法层之前，是因为同一节点自身的监听器按添加顺序执行：应用监听器在步骤 (4) 加，默认玩法层在步骤 (5) 加，`STARTER_KIT` 的判定（`API-PROD-031`）因此在应用存档之后。模式在步骤 (5) 才定（`auto` 下要看插件留下了什么），所以位置规则由 `useRule` 在步骤 (5) 设：平坦核心 `Core()`，RTS `Rts()`，挂地图的分片 `MapShard(shardWorld.mapId(), shardWorld.buildId(), shardWorld.bounds())`。这三个 `ShardWorld` 访问器要光照会话加（§28.3）：`map_id` 与 `build_id` 取地图版本清单（`SynxManifest#mapId`、`#buildId`，目录模式下与 `shards.json` 的 `map_id` 相同，`ShardDirectory#checkAgainst` 已校验），`bounds` 是本分片服务的范围（目录模式是本大区的，否则是整个地图版本的，与 `API-PROD-030` 世界边界同一出处）。三种模式都注册；拒启的进程不设规则，它不绑端口。端口绑定之前没有玩家，规则设下之前不会有捕获或应用，真被调到时抛 `IllegalStateException`。这三个访问器落地之前，挂了地图的进程（步骤 (1) 已经知道 `map != null`）不调 `install`、也不调 `useRule`，挂地图的分片暂不注册这一段：装上而不设规则的话，每次快照的捕获都会抛这个异常。
+  - 捕获、标脏与写回：`PlayerStore#snapshot`（定时保存、登出、转服、停机、`save` 命令与插件的 `saveNow` 共用它）开头先对每个宿主段调一次捕获，就在快照所在的线程上：tick 活着时都在玩家所属 tick 线程上，看门狗判死之后的停机快照在停机线程上直接读（与插件段同一已知代价，`API-PROD-007`）。捕获返回 null 时这一段这次不捕获；捕获结果与当前值 `equals` 就不动，否则替换当前值并标脏，随后照常编码脏段；捕获抛异常时记一条 ERROR（经 `LogBudget`，10 s 至多一行），这一段保留原值、不标脏，其余段照常。所以没动过的玩家定时保存不写库、`version` 不涨（`PlayerStore#write` 原有的空快照判断），丢失窗口与其他段一样是一个定时保存周期 60 s（§15 丢失窗口行）。`synaxis:player` 的捕获：玩家还没有首次出生应用（没有下面应用一条打的标签）时返回 null。从准入到首次出生之间玩家身上是引擎给的初始状态（空背包、重生点或零点、满血），不是存档：`AdmissionGate` 在 configuration 阶段就调 `store.admitted`（`AdmissionGate.java:133`），记录随即由 `loading` 变 `online`（`PlayerStore.java:536-557`），这期间断开（客户端崩溃、转入后没走完 configuration）的登出快照照常做（`PlayerStore.java:1043-1046`），停机时还没进世界的玩家被以 `synaxis:server-stopping` 断开，同样在断开时做快照（`PlayerStore#disconnectOutsideTheWorld`）；照实捕获的话与载入值不等、标脏写库，存档的背包被清空，新角色被写成「捕获过」、以后拿不到初始物品。应用之后的捕获：`world` 按位置规则（`Core` → `Core()`，`Rts` → `Rts()`，`MapShard` → `MapShard(mapId, buildId)`），`position` = `Player#getPosition()`（含 yaw 与 pitch），`inventory` = 0～45 格里非空气的，`heldSlot` = `Player#getHeldSlot()`，`health` = `Player#getHealth()`。捕获只在快照里做，不另起定时器，也不在每次移动或改背包时标脏。
+  - 应用：宿主节点自身的 `PlayerSpawnEvent` 监听器，只在 `isFirstSpawn()` 时，在玩家所属 tick 线程上。段是默认值（新角色）时什么都不改，玩家保持引擎给的初始状态（重生点、空背包、选中格 0、满血）。否则依次：背包 46 格逐格写（段里没有的格写空气）；`setHeldItemSlot(heldSlot)`；生命值：存的 > 0 时取 min(存的, 当前 `MAX_HEALTH`)，存的是 0（在死亡界面上断开）时取满、并且不应用位置（按重生处理，留在重生点）；位置按下表，用 `Player#teleport(存档位置)`（带朝向）。玩家先在引擎给的出生位置（重生点）出生、收到那一圈区块，再传送过去，已知代价是出生点那一圈区块多发一次。应用的最后（段是默认值、什么都没改时同样）给玩家打上标签 `player-state.applied`（`Tag<Boolean>`，只在内存里，随这个 `Player` 对象消失，不需要断开时清理；标签名不用 `synaxis:` 与 `synaxis.` 开头，理由同 `API-PROD-031` 的近战标签），之后的快照才捕获这一段。应用与 tick 活着时的快照都在玩家所属 tick 线程上，两者串行。
 
     | 规则 | 用存档位置的条件 | 不用时玩家在哪 |
     | --- | --- | --- |
@@ -1088,7 +1090,7 @@ erDiagram
     `Core` 规则也比对 `world`：同一个数据库可能先后被挂地图的分片与平坦核心用到，地图上的坐标放进平坦世界没有意义。实例作用域的插件监听器排在应用之前（`API-PROD-031` 的派发次序），在那里给的物品、改的生命值与位置会被应用覆盖；要在应用之后动手，在全局作用域任一档监听 `PlayerSpawnEvent`。
   - 为什么不在 configuration 阶段应用：`CoreMode` 设重生点的监听器挂在根节点上（`CoreMode#start`），先于宿主节点上 `AdmissionGate` 的载入执行，那时段还没读出来；`RtsPlugin` 设出生点的监听器（`RtsPlugin.java:69-70`）在插件子节点里、晚于宿主执行，宿主在那里设的位置会被它盖掉；再者引擎拿重生点当首次出生的位置，在那里设存档位置等于把死后的重生点也改成存档位置。所以在首次出生之后传送。
   - 凭票据到达：`Main` 交给 `openStore` 的到达回调（`API-PROD-028` 到达回调一条）改为先照旧调 `ShardArrivals#claimed`（目录模式），再调 `PlayerStateSection#claimed`；后者按 `Player` 对象把这名玩家记进一个集合，首次出生应用时或 `PlayerDisconnectEvent` 时移出。只有 `MapShard` 规则看这个集合。
-  - 转服：源分片签发 ③ 的写回（`PlayerStore#transferOut` 排在玩家下一个 tick 的快照）同样先捕获，`synaxis:player` 随这次写入进库；票据只带 `state_version`、不带段内容（`API-PROD-028`），目标分片凭票据取得写权后照普通载入读出这一段，`state_version` 保证读到的就是这次写回。目标分片应用背包、选中格与生命值，位置按上表取门框落点。
+  - 转服：源分片签发 ③ 的写回（`PlayerStore#transferOut` 排在玩家下一个 tick 的快照）同样先捕获，`synaxis:player` 随这次写入进库；票据只带 `state_version`、不带段内容（`API-PROD-028`），目标分片凭票据取得写权后照普通载入读出这一段，`state_version` 保证读到的就是这次写回。目标分片应用背包、选中格与生命值，位置按上表取门框落点。拍板原话是「转服时随票据带到目标分片」，这里按效果实现：段内容不放进 Cookie，因为票据整体受 5,120 B 上限（`API-PROD-028`），而这一段按 §9 可以到 64 KiB（46 格带组件的物品）；票据带的 `state_version` 把目标读到的段钉在这次写回上，玩家到达时手里的东西与离开时相同。
   - JSON 编码（`schema_version` 1，`encode` 在快照的线程上调用）：
 
     ```json
@@ -1480,6 +1482,7 @@ stateDiagram-v2
 stateDiagram-v2
   [*] --> alive : 平坦核心起服(宿主) [features 含 TRAINING_DUMMY]
   alive --> dead : 生命值到 0(引擎) [死的是这个假人]
+  alive --> dead : 掉出世界(假人调度器) [没死且 y 低于 minY - 64]
   dead --> alive : 重生计时到期(调度器) [死亡起满 100 tick]
 ```
 
@@ -1487,11 +1490,12 @@ stateDiagram-v2
 
 | 源 → 目标 | 事件 | 守卫（纯布尔） | 动作（副作用） | 谁触发 | 接口/事件 |
 | --- | --- | --- | --- | --- | --- |
-| [*] → alive | 平坦核心起服 | `features` 含 `TRAINING_DUMMY` | 在 (3.5, 40, 0.5) 生成 `LivingEntity(EntityType.ZOMBIE)`，偏航角 90°，生命值 20 | 宿主（`DefaultPlay#attach`，启动线程，绑定端口之前） | `API-PROD-031` |
-| alive → dead | 生命值到 0 | 引擎 `EntityDeathEvent` 的实体就是这个假人 | 引擎播死亡动画后移除实体；在进程调度器上排一个 100 tick 后的重生任务 | 引擎（`LivingEntity#kill`，在打死它的近战所在的目标 tick 线程上） | `API-PROD-031` |
-| dead → alive | 重生计时到期 | 死亡起满 100 tick（5 s） | 在原处生成一个新的假人：新实体，满血，原朝向 | 内部任务（进程调度器，tick 调度线程） | `API-PROD-031` |
+| [*] → alive | 平坦核心起服 | `features` 含 `TRAINING_DUMMY` | 在 (3.5, 40, 0.5) 生成 `LivingEntity(EntityType.ZOMBIE)`，偏航角 90°，生命值 20；在它自己的调度器上挂一个每 tick 一次的掉出世界检查（`repeat(TaskSchedule.nextTick())`） | 宿主（`DefaultPlay#attach`，启动线程，绑定端口之前） | `API-PROD-031` |
+| alive → dead | 生命值到 0 | 引擎 `EntityDeathEvent` 的实体就是当前这个假人 | 引擎置死、播死亡动画（`LivingEntity#kill` 不移除实体）；宿主节点上的 `EntityDeathEvent` 监听器在假人自己的调度器上排 20 tick 后移除（`scheduleRemove(20, TimeUnit.SERVER_TICK)`，留出死亡动画，与 `EntityCreature` 默认的 1000 ms 相同），在进程调度器上排 100 tick 后的重生任务 | 引擎（`LivingEntity#kill`，在打死它的近战所在的目标 tick 线程上，或在下一行的检查里）；宿主的死亡监听器在同一线程上 | `API-PROD-031` |
+| alive → dead | 掉出世界 | 假人没死，且 `getInstance().isInVoid(位置)`（y < minY − 64，平坦核心即 y < −64） | 调 `kill()`，引擎派发 `EntityDeathEvent`，之后的移除与重生同上一行 | 假人调度器上的每 tick 检查（它所属 tick 线程） | `API-PROD-031` |
+| dead → alive | 重生计时到期 | 死亡起满 100 tick（5 s） | 在 (3.5, 40, 0.5) 生成一个新的假人：新实体，满血，偏航角 90°，挂上它自己的掉出世界检查。旧实体在死亡后第 20 tick 已被移除 | 内部任务（进程调度器，tick 调度线程） | `API-PROD-031` |
 
-受伤不是状态转移：生命值是属性，近战命中只改它与位置（击退）。被击退的假人留在被推到的地方，重生时回到原处。停机时随进程消失，不存档，下次起服重新生成。
+受伤不是状态转移：生命值是属性，近战命中只改它与位置（击退）。被击退的假人留在被推到的地方，掉进没挖穿的坑里也照旧活着；重生时回到 (3.5, 40, 0.5)。实例里至多一个假人：移除在死亡后 20 tick、重生在 100 tick，两者都按 tick 计，卡顿时一起推迟、先后不变；平坦核心世界不自动卸载区块（`chunkUnloadGraceTicks` 为 −1），假人所在区块一直载入，它自己的调度器一直在跑。停机时随进程消失，不存档，下次起服重新生成。
 
 ## 12. 关键流程时序
 
@@ -1694,13 +1698,13 @@ sequenceDiagram
   C->>R: 进 play, 首次出生 PlayerSpawnEvent
   R->>I: 映射节点先派发 (API-PROD-018)
   I->>H: 宿主节点自身的监听器, 按添加顺序
-  H->>H: 应用背包 选中格 生命值, 按位置规则传送 (API-PROD-032)
+  H->>H: 应用背包 选中格 生命值, 按位置规则传送, 最后打上已应用标签 (API-PROD-032)
   H->>H: 首次出生且段为默认值时发初始物品, 只在平坦核心 (API-PROD-031)
   H-->>C: 背包格与传送包
   H->>P: 子节点按优先级 -2..2, 3, 4 (API-PROD-018)
 ```
 
-RTS 下 `RtsPlugin` 设出生点的监听器在 configuration 事件的插件子节点里，晚于 `AdmissionGate`；挂地图的分片设重生点的是 `Main#serveMap` 的根节点监听器，凭票据到达时验票（`AdmissionGate` 里）通过后 `ShardArrivals#claimed` 把重生点改成门框落点，`PlayerStateSection#claimed` 记下这名玩家，应用时不传送。之后的每次快照（定时保存、登出、转服、停机）都先捕获 `synaxis:player`，有变化才写（`API-PROD-032`）。
+RTS 下 `RtsPlugin` 设出生点的监听器在 configuration 事件的插件子节点里，晚于 `AdmissionGate`；挂地图的分片设重生点的是 `Main#serveMap` 的根节点监听器，凭票据到达时验票（`AdmissionGate` 里）通过后 `ShardArrivals#claimed` 把重生点改成门框落点，`PlayerStateSection#claimed` 记下这名玩家，应用时不传送。准入（第 4 步的载入之后 `store.admitted`）到第 10 步打上标签之间的快照不捕获 `synaxis:player`，这期间断开不改库；打上标签之后的每次快照（定时保存、登出、转服、停机）都先捕获，有变化才写（`API-PROD-032`）。
 
 ## 13. 页面与跳转地图
 
@@ -1870,6 +1874,7 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 | 丢弃或拾取与冻结同时发生（v0.9.63） | 玩家 tick 线程 × 关卡门心跳的虚拟线程或会话看门线程（置冻结） | 派发开始前已冻结：根节点取消，默认玩法层判定与生效两段都跳过，引擎把物品留在原处；派发中途才冻结：这一次照根节点的判定放行到底，生效一段照常生成物品实体或放进背包，下一次起取消；这一次的结果在玩家所属线程上完成，排在它之后的转服或停机快照带走它 | 两段都用两参 `addListener`，只看事件是否已取消，不另读 `isFrozen`（`API-PROD-031`、`API-PROD-005` 冻结一条） |
 | 近战的攻击者与目标分属两条 tick 线程（`grid`，v0.9.63） | 攻击者 tick 线程 × 目标 tick 线程 | 伤害、击退与冷却判定都在目标所属线程上做；同一 tick 两名攻击者打同一目标，先到的命中、后到的落在 10 tick 冷却里 | `Acquirable#sync`（`API-PROD-016`），冷却记在目标实体上（`API-PROD-031` `MELEE`） |
 | 快照捕获与玩家改背包、移动（v0.9.63） | 快照所在线程 × 玩家 tick 线程 | tick 活着时快照排在玩家所属线程上，捕获与改动串行，捕获到的是某个 tick 之间的完整状态；看门狗判死之后停机线程直接读，可能读到改了一半的背包（与插件段同一已知代价） | `PlayerStore#snapshot` 的线程（`API-PROD-032`、`API-PROD-007`） |
+| 快照与首次出生的应用（v0.9.63） | 断开或停机时做快照的线程（玩家还没有 tick 线程在跑它）× 玩家 tick 线程（应用） | 准入之后、首次出生应用之前的快照不捕获 `synaxis:player`，这一段保留载入的值、不标脏，库里的存档不被引擎给的初始状态覆盖；应用之后的快照照常捕获 | 玩家标签 `player-state.applied`：应用的最后才打上，捕获见不到它就返回 null（`API-PROD-032` 捕获与应用两条）；应用与 tick 活着时的快照都在玩家所属 tick 线程上，串行 |
 
 一致性承诺：
 
@@ -2009,7 +2014,7 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
     - 挂在根节点：根节点自身的监听器排在实例作用域与全部插件之前，两参 `addListener` 看不到插件的取消；生效动作也在插件之前发生，插件随后取消丢弃时地上多一份、背包里还在，等于复制。
     - 判定与生效都放在宿主节点自身：生效仍先于全局作用域的插件，插件取消丢弃或拾取同样复制物品。
     - 地图分片一起挂：地图分片是 MMO 的大区，丢弃、拾取、近战与死亡的规则（掉落归属、PvP 区域、物品流水 `item_ledger`）要由后续的玩法架构分册（暂名 DESIGN-PLAY，尚未建）定；现在挂上，地图分片先跑一套以后要拆的规则。
-  - Consequences：+ 引擎仍不含玩法；平坦核心可以完整游玩；`game-rts` 一行不改就有同实例聊天；全局作用域的插件可以改或取消任一项。− 实例作用域的插件监听器排在宿主之前，它对 `PlayerSpawnEvent` 做的改动会被持久化段的应用覆盖（`API-PROD-032`）；生效排在 `MONITOR` 之后，`MONITOR` 看到的事件还没生效。− 挂地图的分片上没有聊天收件人、拾取与伤害，等玩法架构分册定下规则（§28.3）。
+  - Consequences：+ 引擎仍不含玩法；平坦核心可以完整游玩；`game-rts` 一行不改就有同实例聊天；全局作用域的插件可以改或取消任一项。− 实例作用域的插件监听器排在宿主之前，它对 `PlayerSpawnEvent` 做的改动会被持久化段的应用覆盖（`API-PROD-032`）；生效排在 `MONITOR` 之后，`MONITOR` 看到的事件还没生效，丢弃时玩家没有实例、拾取时放不下这两种情况下事件在 `MONITOR` 之后才被取消（`API-PROD-018` 写明的例外与切换条件）。− 挂地图的分片上没有聊天收件人、拾取与伤害，等玩法架构分册定下规则（§28.3）。
 
 ## 19. 验收 / 测试
 
@@ -2966,8 +2971,8 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 
 场景: 三条丢弃路径都在眼睛高度生成物品实体 (REQ-PROD-046)
   Given 平坦核心进程，玩家快捷栏 0 格 64 个石头、朝 +x 平视
-  When 按 Q 丢 1 个；打开背包，把一组石头拿到光标上，在背包外左键；再把 1 个石头拿到光标上直接关背包
-  Then 三次各在玩家实例里多一个 ItemEntity，出生位置 = 玩家位置 + (0, 眼睛高度, 0)，速度沿 +x 6 格/秒，40 tick 内不可拾取；背包里的石头按丢出的数量减少，没有复制
+  When 按 Q 丢 1 个；打开背包，把一组石头拿到光标上，在背包外左键；再把 1 个石头拿到光标上直接关背包（客户端发窗口 0 的 CloseWindow）
+  Then 三次各在玩家实例里多一个 ItemEntity，出生位置 = 玩家位置 + (0, 眼睛高度, 0)，速度沿 +x 6 格/秒，40 tick 内不可拾取；背包里的石头按丢出的数量减少，没有复制；关背包之后服务端的光标是空气
 
 场景: 插件取消丢弃时不生成物品实体 (REQ-PROD-046)
   Given 平坦核心进程，一个全局作用域 HIGHEST 档的插件监听器取消 ItemDropEvent
@@ -2982,12 +2987,17 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 场景: 近战按攻击力扣血与击退，每个目标 10 tick 冷却 (REQ-PROD-046)
   Given 平坦核心进程的训练假人生命值 20，玩家手持铁镐（攻击力 4）
   When 玩家在第 0 tick、第 5 tick、第 12 tick 各打它一下
-  Then 第一下后生命值 16 并被击退，第二下不扣血、不击退，第三下后 12；插件取消 PLAYER_ATTACK 的 EntityDamageEvent 时既不扣血也不击退
+  Then 第一下后生命值 16 并被击退，第二下不扣血、不击退，第三下后 12；EntityDamageEvent 的伤害类型是 minecraft:player_attack、攻击者与来源都是这名玩家；插件取消这个伤害事件时既不扣血也不击退
 
 场景: 训练假人死后 5 s 原处重生 (REQ-PROD-046)
   Given 训练假人在 (3.5, 40, 0.5) 被击退到 (6.0, 40, 0.5)
   When 打到生命值 0
-  Then 假人死亡并被移除；死亡起满 100 tick 时 (3.5, 40, 0.5) 出现一个新的、生命值 20 的假人，实例里始终至多一个假人
+  Then 假人死亡，死亡后第 20 tick 从实例里移除；死亡起满 100 tick 时 (3.5, 40, 0.5) 出现一个新的、生命值 20 的假人；实例里的僵尸始终至多一个（死亡后第 20～100 tick 之间为 0 个）
+
+场景: 训练假人掉出世界按死亡处理 (REQ-PROD-046)
+  Given 平坦核心进程，训练假人被击退进一口挖穿 y = 0 的竖井
+  When 它落到 y < -64
+  Then 当 tick 死亡，死亡后第 20 tick 移除，死亡起满 100 tick 时在 (3.5, 40, 0.5) 重生、生命值 20；没有插件也不会有一个永远往下掉的假人
 
 场景: 掉出世界底部每 tick 受 4 点伤害 (REQ-PROD-046)
   Given 平坦核心进程，维度 minY 0
@@ -3008,6 +3018,11 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
   Given 平坦核心进程（内存存储，或 PostgreSQL 存储），玩家走到 (8.5, 40, -3.5)、朝向 yaw 45 / pitch 10，选中格 2，生命值 13，背包里有 63 个石头、1 把耗损 3 的铁镐与 9 格的一组泥土
   When 玩家断开再进服
   Then 首次出生后被传送到 (8.5, 40, -3.5)、朝向不变，选中格 2，生命值 13，46 格背包与断开时逐格相同；角色 version 只在断开那次加 1
+
+场景: 准入之后、首次出生之前断开不改库 (REQ-PROD-047)
+  Given PostgreSQL 存储的平坦核心进程；账号 A 的角色存过 synaxis:player（背包里 63 个石头、位置 (8.5, 40, -3.5)），账号 B 从没进过服
+  When A 与 B 都在准入之后、首次出生之前断开（客户端在 configuration 阶段断开；另一次是停机时还没进世界、被以 synaxis:server-stopping 断开）
+  Then 两人的 synaxis:player 都不写库：A 那一行原样不变，B 库里仍没有这一行，两人的角色 version 都不变；A 下次进服背包与位置照存档，B 下次首次出生照常发初始物品
 
 场景: 没变化的玩家定时保存不写库 (REQ-PROD-047)
   Given PostgreSQL 存储的进程，玩家进服后站着不动、不碰背包
@@ -3043,12 +3058,12 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 | P2 移动与区块加载 | `core G2` | `rts G2` | — | 平坦核心出生点一圈有光照 |
 | P3 挖 | `core G3` | 不验 | — | — |
 | P4 放 | `core G4` | 不验 | — | — |
-| P5 背包与物品 | `core G5`（快捷栏、背包内移动、Q 键丢弃、背包外点击丢弃、拾取） | 不验 | — | 关背包时光标物品的丢弃、背包满时不拾取、插件取消丢弃时不生成实体、冻结 |
+| P5 背包与物品 | `core G5`（快捷栏、背包内移动、Q 键丢弃、背包外点击丢弃、关背包时丢出光标物品、拾取） | 不验 | — | 三条丢弃路径的出生位置与速度、关背包后服务端光标为空、背包满时不拾取、插件取消丢弃时不生成实体、冻结 |
 | P6 聊天 | `core G6` | `rts G6` | — | 收件人只到同一实例、插件可改 |
 | P7 命令 | `core G7` | `rts G7` | — | 无节点玩家的 `list`、未知命令回执、控制台不回执 |
-| P8 打实体与受伤 | `core G8` | 不验 | — | 攻击力、10 tick 冷却、击退、插件取消、假人 5 s 重生 |
+| P8 打实体与受伤 | `core G8` | 不验 | — | 攻击力、伤害类型 `player_attack`、10 tick 冷却、击退、插件取消、假人死后 20 tick 移除与 5 s 重生、假人掉出世界按死亡处理 |
 | P9 死亡与重生 | `core G9` | 不验 | — | 每 tick 4 点、阈值 minY − 64 |
-| P10 退出重进数据还在 | `core G10` | `rts G10`（重连后队伍单位还在） | — | 生命值不满时的往返、没变化不写库、死亡界面上断开、解码失败拒绝登录、初始物品只发一次 |
+| P10 退出重进数据还在 | `core G10` | `rts G10`（重连后队伍单位还在） | — | 生命值不满时的往返、没变化不写库、首次出生之前断开不改库、死亡界面上断开、解码失败拒绝登录、初始物品只发一次 |
 | P11 转服 | — | — | P10 job（两分片来回转服 100 次，`API-PROD-026` P10 一条） | 转服带走背包与生命值、到达点是门框落点、三条都满足才用存档位置 |
 
 ## 20. 埋点 / 分析事件
@@ -3219,7 +3234,7 @@ flowchart LR
 | 4 治理 | `REQ-PROD-011`（G09）→ `REQ-PROD-010`（G08）、`REQ-PROD-012`（G10） | 4A 权限 G09（Flyway V3、`Permissions`）先合；之后 4B 封禁 G08（Flyway V4、`AdmissionRequest.java`、`DisconnectKeys.java`、宿主节点上的预登录判定与 `HandshakeGate.java` 的跳过判断；引擎 `ConnectionManager.java` 不用改）与 4C 命令 G10（`Main.java#readConsole`、`PluginCommands`，内置六条，`profile` 在 6B；另改引擎 `ConsoleSender.java` 的翻译回退）并行。4A～4C 都往 `PluginContext.java` 加方法，合并按 A → B → C 串行，ABI 门每次过 | 封禁、白名单、权限、命令场景全绿；`API_VERSION` 是否加到 2 已由 ABI 门判定并记入 §1 | 10～13 |
 | 5 规模 | 前半：`REQ-PROD-018`（G16）→ `REQ-PROD-029` harness（G26）→ 200 人基线；后半：`REQ-PROD-013`（G11）、`REQ-PROD-023`（G20）、`REQ-PROD-024`（G21）、`REQ-PROD-025`（G22）、`REQ-PROD-026`（G23）、`REQ-PROD-027`（G24）→ `REQ-PROD-020` 分格 + `REQ-PROD-019` 后半 → 500 人压测 | 5A 指标与 harness（新模块 `:loadtest`、`server-app` 指标包、`Main.java` 指标装配）；基线之后：5B 入站 G11 + 出站 G22 + 区块 G23 + Tab G24（都改 `Player.java`，G11 与 G22 还同改 `PlayerSocketConnection.java`，同一人串行）；5C 可见性 G20 + G21（`EntityView.java`、`EntityTrackerImpl.java`、`Instance.java:162`，也改 `Player.java`，合并排在 5B 之后）；5D 分格（`ThreadProvider.java`、`ServerProcessImpl.java:104`、分片宿主），与 5B / 5C 只共用 `ServerConfig.java`，按 5B → 5C → 5D 合并 | 200 人 walk 30 min：tick P99 < 50 ms、超 50 ms 为 0、内存三条（堆 4 GiB、RSS ≤ 堆上限 + 1 GiB、末段老年代回收后 ≤ 堆上限的 50%，§15 tick 预算行，用户 2026-10-11 拍板）；G11 阈值按入站 P99 × 2 写回 `API-PROD-012`；4 线程 `grid` 严格模式 job 在 main 上连续 3 次绿（5D）；500 人两档与重连风暴、闸门、台账档记录在案，`capacity` 定值写回 §15 | 40～57（G17 后半 4～7、分格 3～4 为本分册估；分格从 M3-E 的 12 天中扣出，由 M3 会话同步） |
 | 6 正式运营前 | `REQ-PROD-031`（G28）、`REQ-PROD-032`（G29）、`REQ-PROD-033`（G30）、`REQ-PROD-034`（G31）、`REQ-PROD-035` 后半（G32 恢复演练）、`REQ-PROD-037`（G34）、`REQ-PROD-038`（G35）、`REQ-PROD-039`（G36）、`REQ-PROD-040`（G37）、`REQ-PROD-041`（G38） | 6A 转服 G28 后半（插件面 `Transfers`、`gm.transfer`、管理接口 `synaxis:transfer`、`HandshakeListener.java`；票据用 3D 的。插件面只依赖 3D；`gm.transfer`、`synaxis:transfer` 与 P10 经宿主的 `ShardService`，两个分片可以是同大区的两个频道（`transferTo`），所以这三项排在 M3-E 之后）；6B 管理接口 G29 + profile G31（新 WebSocket 包、`Main.java`，6C 之前合并）；6C 配置文件 G30 + 压缩 G35（都改 `ServerConfig.java`，同一人；键表要收全本波新增的键，所以 6C 排在第 6 波最后合并）；6D 列表 G34（`StatusResponse.java`、新类 `Favicon.java` 与 `event/server/ServerListPingEvent.java`、`StatusListener.java`、`ConnectionManager.java` 在构造时读图标、`ServerConfig.java` 三个键，线程契约一条进 `plugin-api` 的 `package-info` 与 `docs/PLUGINS.md` §10）；6E 视距 G36 + 休眠 G37（`Player.java`、`Entity.java`，另有 `Instance.java` 的玩家位置快照与新类 `DormancyPolicy.java`、`PlayerPositions.java`，同一人；不改 `ServerConfig.java`，没有新配置键）；6F 翻译键门禁 G38（CI）；6G 恢复演练 G32（运维） | 各 REQ 场景全绿；两分片来回转服 100 次（P10）绿；恢复演练一次并记录耗时；§23 R4 进入门槛满足 | 17～20.5（G28 前半 2～3 已移到 3D） |
-| 可玩（RUN-073） | `REQ-PROD-046`、`REQ-PROD-047`；`REQ-PROD-009`、`REQ-PROD-012` 的改动 | 按改动文件分组（组名以 RUN-073 的编排为准）：默认玩法层（新包 `app.play`、`CoreMode.java` 的光照与预载、`PluginHost#hostNode`）；持久化段（`PlayerStore` 两个新方法、`PlayerStateSection`、`Main` 步骤 (4)(5) 与到达回调）；命令（`HostCommands`、模组两份 lang、翻译键门禁名单）；真客户端剧本与 CI（`PlayableClientGameTest`、`client-gametest.yml`）。前两组都改 `Main.java`，按持久化段 → 默认玩法层的顺序合并：应用监听器要先加在宿主节点上 | §19 可玩项矩阵全绿：job `gametest` 每次客户端启动 `core` 10 行、`rts` 5 行 PASS（GitHub Actions）；带 `REQ-PROD-046`、`REQ-PROD-047` 的服务端场景默认模式与两种严格模式都绿；P10 job 手动触发一次绿（可玩项 P11）；挂地图分片的位置规则等 `ShardWorld` 三个访问器落地（§28.3） | 未估（用户直接定的一轮，不在清单 §2） |
+| 可玩（RUN-073） | `REQ-PROD-046`、`REQ-PROD-047`；`REQ-PROD-009`、`REQ-PROD-012` 的改动 | 按改动文件分组（组名以 RUN-073 的编排为准）：默认玩法层（新包 `app.play`、`CoreMode.java` 的光照与预载、`PluginHost#hostNode`，以及引擎 `Player#closeInventory` 关自己背包时处理光标）；持久化段（`PlayerStore` 两个新方法、`PlayerStateSection`、`Main` 步骤 (4)(5) 与到达回调）；命令（`HostCommands`、模组两份 lang、翻译键门禁名单）；真客户端剧本与 CI（`PlayableClientGameTest`、`client-gametest.yml`）。前两组都改 `Main.java`：持久化段的应用监听器在步骤 (4) 加、默认玩法层在步骤 (5) 加，同一节点自身的监听器按添加顺序执行，所以先后由这两处在 `Main` 里的代码位置决定，与两组分支谁先合入无关；解合并冲突时保持步骤 (4) 的 `install` 在步骤 (5) 的 `DefaultPlay.attach` 之前 | §19 可玩项矩阵全绿：job `gametest` 每次客户端启动 `core` 10 行、`rts` 5 行 PASS（GitHub Actions）；带 `REQ-PROD-046`、`REQ-PROD-047` 的服务端场景默认模式与两种严格模式都绿；P10 job 手动触发一次绿（可玩项 P11）；挂地图分片的位置规则等 `ShardWorld` 三个访问器落地（§28.3） | 未估（用户直接定的一轮，不在清单 §2） |
 | 条件 | `REQ-PROD-042`（G39） | — | 触发条件成立时另立波次 | 2 |
 
 合计：第 0～5 波 95～126.5 人日（清单 G01～G27 的 88～117，加上移入的 G40 0.5、G33 0.5～1、G32 前半 1、G28 前半 2～3，以及从 M3 划过来的分格 3～4），第 6 波 17～20.5 人日，条件项 2 人日。
@@ -3388,7 +3403,7 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | 已决 | `synaxis:transfer`（v0.9.29 实现，与 `transfer` 命令同一批）：经宿主的 `ShardService` 把本分片在线的玩家送到另一个分片，参数是 `player` 加 `region` 或 `shard` 二选一，地址由心跳解析、不收 `host` / `port`，结果是 `ShardTransferResult` 的小写名（九个值），进程没有 `ShardService`（不在目录模式）回 −32000；检查顺序与异常的回复见 `API-PROD-022` | Bearisbug | — |
 | 已决 | 签发 ④ 的 `OutgoingTransferEvent` 不在玩家所属 tick 线程上（v0.9.31 转已决，M3 会话按本行给的做法在 `docs/DESIGN-M3.md` v0.20 修复）：`TicketIssuer#transfer` 原先在写回完成的 `Syn-Store-Write` 虚拟线程上调 `PlayerConnection#transfer`，事件在那条线程上同步派发，与 `API-PROD-016` 线程契约不符，监听器在那里碰玩家时严格模式抛 `AcquirableOwnershipException`，断言关时是跨线程写；关卡门、`transfer` 命令与 `synaxis:transfer` 签出的票据都走这条路径。现在 `TicketIssuer` 照 `API-PROD-021` 插件面 `transfer` 的线程一条，把签票、记冷却、`storeCookie`、`transfer` 与写 `EVT:transfer_issued` 排到玩家的下一个 tick，在玩家所属 tick 线程上做，future 也在那里完成；玩家不 tick 时每 5 s 看一次连接，断开才回 `NOT_ONLINE`，不照插件面 5 s 放弃（`API-PROD-028` ④，`docs/DESIGN-M3.md` `API-M3-010`「签发 ④ 的线程」一条）。证据：`docs/TEST.md` `TC-WORLD-090` 与 RUN-048（修复前事件在 `Syn-Store-Write` 虚拟线程上派发，测试红；修复后 `check` 与两种严格模式都绿） | Bearisbug | — |
 | 待办 | 跨大区送回没做（v0.9.63 起同一大区里的最后位置由 `REQ-PROD-047` 的 `synaxis:player` 记，挂地图的分片同一 `map_id`、同一 `build_id`、存档位置落在本分片 `bounds` 里才用，否则回本大区出生点）：V1 建的 `character_location` 与 `character.current_region` 仍不读写（用户 2026-10-11 定这一轮不写），玩家在 A 大区下线、上线时连到 B 大区的分片，留在 B 的出生点。要做时：保存事务里写 `current_region`（或改用 `character_location` 每大区一行），登录进世界后按存档的大区多一次转服送回（登录多 2～3 s），并要一个固定的入口地址（`docs/DESIGN-M3.md` §28.1「按大区的最后位置」一行的代价）；改 `API-PROD-004`、`API-PROD-032`、§7、§9 与 `PlayerStore`。§23 R2 只有一个大区，不含这一项 | Bearisbug | 两个及以上大区对真人开放之前（`docs/DESIGN-M3.md` §23 的内测 A、B 都只有一个大区） |
-| 风险 | 断开时光标上的物品不保存（v0.9.63，拍板只存 46 格）：玩家拿着光标物品断开时，登出快照先于 `Player#remove` 里关闭界面的那次丢弃；开着容器时引擎把光标物品经 `Player#dropItem` 丢出，而这时玩家已在 §11.3 `saving`、冻结，根节点取消丢弃，引擎改把它放回背包，放回发生在快照之后，这件物品随断开丢失；开着自己背包时光标物品不丢也不放回，同样丢失。默认接受（原版同样只在容器关闭时处理光标）；出现玩家申诉或插件依赖光标暂存时，在捕获里把光标物品并进第一个空格 | Bearisbug | 第一次相关申诉时 |
+| 风险 | 断开时光标上的物品不保存（v0.9.63，拍板只存 46 格）：登出快照在 `PlayerDisconnectEvent` 里做，`Player#remove` 先派发这个事件、后处理界面（`Player.java:676-683`）。开着容器断开时 `removeViewer` 把光标物品经 `Player#dropItem` 丢出，而这时玩家已在 §11.3 `saving`、冻结，根节点取消丢弃，引擎改把它放回背包，放回发生在快照之后；开着自己的背包断开时，`Player#remove` 不经 `closeInventory`（关自己背包时处理光标的引擎改动只在 `closeInventory` 里，`API-PROD-031`），光标物品留在服务端的光标上，也不在段里。两种情形这件物品都随断开丢失；正常关背包（客户端发 CloseWindow）时光标物品照 `DROP` 丢出，不丢失。默认接受：只在断开那一刻光标上有物品时发生；出现玩家申诉或插件依赖光标暂存时，在捕获里把光标物品并进第一个空格 | Bearisbug | 第一次相关申诉时 |
 | 风险 | 管理接口不做 TLS，服务端也从不先证明自己：令牌在升级请求里由客户端先发出。① 网络一面：令牌在内网上明文传输，能在同一网段抓包的主机能拿到令牌，进而停服、封人；默认只绑回环地址，绑到内网地址是运维的决定。② 同机一面：回环挡不住同机的其他系统用户。回环上 1024 及以上的 TCP 端口没有属主校验，谁先 bind 就是谁的；分片不在监听的窗口里（发版重启、崩溃后拉起、看门狗判死、`drain` 之后 `stop`、拒启），同机任何非特权用户都能先占住 `127.0.0.1:25585`，收下运维客户端或健康检查在第一次写入里带出的 `Authorization: Bearer <令牌>`，再放开端口让分片起来。缓解是 §23 的部署前提（v0.9.41）：开管理接口的主机上没有不受信任的系统用户，或者每个分片有独立的网络命名空间（别人的 127.0.0.1 不是这个分片的）；令牌每分片一个，拿到一个只开一个分片。默认端口不变 | Bearisbug | 管理接口要绑回环以外的地址时，在前面放终结 TLS 的反向代理，或按 §28.1 Q10 换库；部署前提做不到（裸机或 systemd 部署、同机有别的用户）又要开管理接口时，把 `synaxis.app.management.bind` 改到 1024 以下的回环端口（如 `127.0.0.1:585`，Linux 上非 root 进程绑不上；前提是主机网络命名空间的 `net.ipv4.ip_unprivileged_port_start` 仍是默认的 1024，部署时用 `sysctl` 核对。这个值每个网络命名空间各一份，Docker 把容器的设为 0，那种部署已满足 §23 的另一条前提），服务单元加 `AmbientCapabilities=CAP_NET_BIND_SERVICE` |
 | 已决 | `gm.role` 的授予范围（v0.7.1）：玩家发送者只能授予或收回每个节点都被自己的有效节点覆盖的角色，带 `*` 的角色只有持有 `*` 的发送者能动，控制台不受限（`API-PROD-010`）；代价是给别人发高权限角色只能由持有同等节点的 GM 或控制台做。切换条件：运维需要一个能发出高于自己权限角色的代理人时，改为按角色单独配置「可授予的角色」名单，而不是放开这条限制 | Bearisbug | — |
 | 已决 | PostgreSQL 16 的 `pg_archivecleanup` 不删 `.backup` 标签文件，每份基础备份留一个约 200 B 的文件，不清理 | Bearisbug | — |

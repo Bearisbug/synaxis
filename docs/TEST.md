@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-11 | 分支 `prod/r073-C`（基线 `prod/r073-docs` `15b5487edc`），跟进 `docs/DESIGN-PROD.md` v0.9.66（RUN-073 C 组：平坦核心世界的光照），不登执行轮次（集成后登记 RUN-073），证据 `docs/test-runs/RUN-073/C/`。**新增 §4「生产就绪 · RUN-073：C（平坦核心世界的光照）」三条 `TC-PROD-718`～`TC-PROD-720`**：`CoreModeIntegrationTest` 加 4 条（4 → 8）：经完整 configuration 流程进服的玩家站在 `CoreMode.SPAWN`（改动前就绿，反证是它的红）、绑定端口之前出生点一圈 361 块已载入并照亮、进服玩家收到的出生区块带天空光、启动之后才生成的区块第一次建包就带光且与出生区块逐字节相同；`TC-PROD-720` 第 3、4 步按新探针重量每区块的堆（9,013 → 14,629 B）与起服耗时、重算边长。改动前的红与三处反证都实跑过。**改的旧用例**：`TC-PROD-665` 第 1 步条数 4 → 8，第 4 步行号 `<CM>:151` → `:157`、红行 `CoreModeIntegrationTest.java:77` → `:99`（第 3 步留 RUN-071 时 4 条的结果并注明）；`TC-PROD-666` 加第 3 步，指向 `TC-PROD-720` 的重量。§5 加一行回归映射 | Bearisbug |
 | 2026-10-11 | M3-S 合入 `main` 前的文档收口，跟进 `docs/DESIGN-M3.md` v0.44。**`TC-WORLD-120` 第 2 步**的预期与 `TC-WORLD-141` 同一写法：F19 行在两核 runner 上因 ready false 记 FAIL，只判第二次请求带 Range、回 206（RUN-069 run `38065240160` 的读数就是这样）。**`TC-WORLD-081` 第 1 步**跟进该分册 §28.1 正式档内存判据（用户 2026-10-11 选 (b)）：分片起服时加 `-Xlog:gc`，判据仍引 §19 那条场景（RSS ≤ 堆上限 + 1 GiB，加 GC 判据） | Bearisbug |
 | 2026-10-11 | M3-S 合并验收（RUN-069）在 GitHub Actions 恢复之后补跑完，跟进 `docs/DESIGN-M3.md` v0.43。**`TC-WORLD-117` 前置**：写明工作流的 `a1-synthetic` 只跑 `v1,v1-writable,tiers,counter-radius`，F8、F10 与第 4 步的 baked 夹具直连不在矩阵里；`walk` 反证写明在单独的临时分支上跑（工作流加只对该分支生效的 `push` 触发，跑完删分支）与 RUN-069 的读数。**`TC-WORLD-143` 第 1 步**：非回环明文 http 的 WARN 由「合并树上第一次看」改为 RUN-069 读到的原文。**§3** 安全修复一条去掉「未验证，RUN-069 是第一轮」。**§7** `TC-WORLD-119`、`TC-WORLD-120` 反证一条补上合并树的复跑。判据都没改 | Bearisbug |
 | 2026-10-07 | M3-S 合并验收复核（集成分支 `m3s/integrate` 合入 `main` `8220ef9d0f`，即 RUN-072），跟进 `docs/DESIGN-M3.md` v0.42、`docs/DESIGN.md` v0.45、`docs/DESIGN-M2.md` v0.63，RUN-069 随之补登（证据 `docs/test-runs/RUN-069/integrate/10`～`12`）。**合并冲突**：`TC-PROD-671` 第 1、2 步两边各改了条数，合起来是 3 个类 12 个（4、1、7）与 7 个类 55 个（4、11、3、11、3、8、15）。**`TC-WORLD-150`** 加第 4 步反证：`startDay` 不登记对齐任务，红在 `ShardWorldAssemblyTest.java:248`（`expected: <139829> but was: <139229>`），原第 4 步改为第 5 步；第 3 步的「再还原」改成 `git checkout -- <SW>`；§19 场景对照表「丢掉的 tick 由对齐补回」一行的步骤加第 4 步。**`TC-WORLD-117` 第 3 步与 `TC-WORLD-143` 第 1 步**：`v1` 从进世界起把客户端的天空定在正午 6000（地图分片的日夜按挂钟走，`bin/server-shard` 上 F6、F7 比的两张图最多隔一整天），F6 行尾多一段 `client day time 6000 at the shots before, 6000 after`，F7 另有一行 `#` 记重连后的日间时间。**`TC-PROD-613`** 前置加一句：M3-S 把权限规则搬进 `FileTrust.java`，第 2～5 步照字面做不了，改写归生产就绪会话，改写之前登记跳过 | Bearisbug |
@@ -9733,10 +9734,10 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.CoreModeIntegrationTest` | `tests="4"` 0 失败。`theCoreWorldEndsAtAWorldBorder`：`CoreMode.start` 建的核心世界的边界等于 `new WorldBorder(4096, 0, 0, 5, 15)`（中心原点、边长 4,096，警告距离与时间同引擎默认）；载好区块 (128, 0)（墙外第一个区块，从 x = 2,048 起），玩家出生在 (2040.5, 40, 0.5)、确认出生的传送，一个到 (2050.5, 40, 0.5) 的位置包之后位置不变；确认拉回之后，一个到 (2047.5, 40, 0.5) 的被采信 |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.CoreModeIntegrationTest` | `tests="8"` 0 失败（RUN-071 时 4 条；RUN-073 C 组加的 4 条归 `TC-PROD-718`～`TC-PROD-720`）。`theCoreWorldEndsAtAWorldBorder`：`CoreMode.start` 建的核心世界的边界等于 `new WorldBorder(4096, 0, 0, 5, 15)`（中心原点、边长 4,096，警告距离与时间同引擎默认）；载好区块 (128, 0)（墙外第一个区块，从 x = 2,048 起），玩家出生在 (2040.5, 40, 0.5)、确认出生的传送，一个到 (2050.5, 40, 0.5) 的位置包之后位置不变；确认拉回之后，一个到 (2047.5, 40, 0.5) 的被采信 |
 | 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
-| 3 | 改动前的红：`<CM>` 取基线的，跑同一个类，再还原 | `4 tests completed, 1 failed`：红在 `CoreModeIntegrationTest.java:77`，`expected: <WorldBorder[diameter=4096.0, centerX=0.0, centerZ=0.0, warningDistance=5, warningTime=15, dimensionTeleportBoundary=29999984]> but was: <WorldBorder[diameter=5.9999968E7, centerX=0.0, centerZ=0.0, warningDistance=5, warningTime=15, dimensionTeleportBoundary=29999984]>` |
-| 4 | 反证有齿（不设边界）：`<CM>:151` 的 `world.setWorldBorder(…);` 前加 `if (Boolean.getBoolean("proof.never"))`，跑同一个类，再还原 | 与第 3 步相同 |
+| 3 | 改动前的红：`<CM>` 取基线的，跑同一个类，再还原 | （RUN-071 时该类 4 条的结果）`4 tests completed, 1 failed`：红在 `CoreModeIntegrationTest.java:77`，`expected: <WorldBorder[diameter=4096.0, centerX=0.0, centerZ=0.0, warningDistance=5, warningTime=15, dimensionTeleportBoundary=29999984]> but was: <WorldBorder[diameter=5.9999968E7, centerX=0.0, centerZ=0.0, warningDistance=5, warningTime=15, dimensionTeleportBoundary=29999984]>` |
+| 4 | 反证有齿（不设边界）：`<CM>:157`（行号按 RUN-073 C 组的 `969cf2ce3b`，RUN-071 时是 `:151`）的 `world.setWorldBorder(…);` 前加 `if (Boolean.getBoolean("proof.never"))`，跑同一个类，再还原 | 8 条里只有本条红，在 `CoreModeIntegrationTest.java:99`（RUN-073 C 组在文件头加了 22 行 import，之前是 `:77`），消息与第 3 步相同。RUN-073 C 组这一步与 `TC-PROD-718` 第 3 步、`TC-PROD-719` 第 4 步的反证在同一次运行里，那次 `8 tests completed, 3 failed`，三处各红在自己的用例上（`docs/test-runs/RUN-073/C/03-counter-proofs.txt`） |
 
 后置：`git status --short` 无输出。
 
@@ -9748,6 +9749,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | --- | --- | --- |
 | 1 | 把 `docs/test-runs/RUN-071/authority2/CoreChunkBytesProbe.java.txt` 拷成 `server-app/src/test/java/io/github/bearisbug/synaxis/app/CoreChunkBytesProbe.java`，跑它（加 `-i` 看标准输出），读以 `PROBE` 开头的三行，再删掉这个文件 | 探针用 `CoreMode.start` 建核心世界，先载一个区块、算一次区块包预热，再分两批载 32 × 32 与 64 × 64 个区块；每批前后各做三次 `System.gc()`（间隔 200 ms）再读堆的已用量，载完记区块本身，再对每个区块调一次 `CachedPacket#body` 让区块包进缓存，记区块包。本机（测试 JVM 堆上限 1 GiB）：`chunks=1024 chunk_bytes=5452 packet_bytes=3560 total_bytes=9013 cached=1024`，`chunks=4096 chunk_bytes=5402 packet_bytes=3475 total_bytes=8878 cached=4096`，两批每块相差 1.5% |
 | 2 | 按第 1 步较大的 9,013 B 算：(D ÷ 16)² × 9,013 B ≤ 4 GiB × 25%；再算 `CoreMode` 的 4,096 连同视距 10 的区块环伸出边界的 11 个区块 | D ≤ 5,522；(256 + 22)² = 77,284 块 × 9,013 B = 696,560,692 B，默认堆 4 GiB 的 16.2%、压测档 3 GiB 的 21.6% |
+| 3 | RUN-073 C 组起核心世界是 `LightingChunk`，本条的读数只对没有光照的世界成立；重量按 `TC-PROD-720` 第 3、4 步（探针换成 `docs/test-runs/RUN-073/C/CoreChunkBytesProbe.java.txt`） | 每区块 14,629 B，D ≤ 4,334；4,096 连同视距 10 的区块环伸出的部分占默认堆 4 GiB 的 26.3% |
 
 后置：`git status --short` 无输出（探针已删）。
 
@@ -10169,6 +10171,52 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · RUN-073：C（平坦核心世界的光照）
+
+对应 `REQ-PROD-046`（`docs/DESIGN-PROD.md` v0.9.63 `API-PROD-031`「平坦核心世界本身」一条，§19「平坦核心世界出生点一圈有光照」场景与可玩项矩阵 P2 一行；v0.9.66 改了该条的环外区块一句，§19 加「出生点一圈之外后生成的区块第一次发出就带光照」场景，§28.2 加两行风险）；`TC-PROD-720` 第 3、4 步另对应 `REQ-PROD-013`（`TC-PROD-666` 的边界依据）。起因是可玩项 P2 的前提：平坦核心世界原先用默认的 `DynamicChunk`，区块包里没有光照，真客户端上地形是黑的。改动：`CoreMode#start` 在 `setGenerator` 之前 `setChunkSupplier(LightingChunk::new)`，绑定端口之前载入出生点区块 (0, 0) 周围半径「区块视距 + 1」的区块并调 `LightingChunk.relight`（照 `Match#load`）；环外后生成的区块由 `LightingChunk` 在第一次建包时算光。
+
+测试：`server-app` 的 `CoreModeIntegrationTest` 加 4 条（4 → 8，`@EnvTest`）：`aPlayerWhoJoinsIsPutAtTheSpawn`、`theChunksAroundTheSpawnAreLitBeforeAnybodyJoins`、`theChunkAPlayerSpawnsInIsSentLit`、`aChunkGeneratedAfterTheStartIsLitWhenItIsFirstSent`。进服的两条用测试里的连接 `Wire`（`PlayerConnection` 的子类，记下发给它的包），在虚拟线程上依次 `createPlayer`、`doConfiguration`、`transitionConfigToPlay`，再 `updateWaitingPlayers`，路上不设出生点：`TestConnection#connect` 在玩家自己的节点上设出生点，这个节点排在全局节点上 `CoreMode` 的监听器之后，会盖掉后者，原有用例因此没覆盖出生点监听器。测试进程用引擎默认的区块视距 8，环的半径是 9。「跑 `<类>`」即 `./gradlew :server-app:test --rerun --tests '<类全名>' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `server-app/build/test-results/test/TEST-<类全名>.xml`；「严格 grid」同 `TC-PROD-665` 一节。路径简写：`<CM>` = `server-app/src/main/java/io/github/bearisbug/synaxis/app/CoreMode.java`，`<CT>` = `server-app/src/test/java/io/github/bearisbug/synaxis/app/CoreModeIntegrationTest.java`，行号按代码提交 `969cf2ce3b`（与 `10946bbcd9` 相同）。「改动前」指 `<CM>` 取本组基线 `15b5487edc` 的（`git checkout 15b5487edc -- <CM>`，跑完 `git checkout HEAD -- <CM>`）；反证是在 `<CM>` 的一行前加 `if (Boolean.getBoolean("proof.never"))`、跑、看红、`git checkout HEAD -- <CM>`、重跑复绿。本组只跑了默认模式，严格与严格 grid 由集成轮在 GitHub Actions 上跑。不需要数据库前置。证据 `docs/test-runs/RUN-073/C/`。
+
+#### `TC-PROD-718` 经完整 configuration 流程进服的玩家站在 `CoreMode.SPAWN` — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.CoreModeIntegrationTest`，看 `aPlayerWhoJoinsIsPutAtTheSpawn` | `tests="8"` 0 失败。`Wire` 进服之后 `getInstance()` 是 `CoreMode.start` 建的核心世界（准入由宿主的准入回调给出），`getRespawnPoint()` 与 `getPosition()` 都是 `Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]` |
+| 2 | 改动前跑同一个类 | 本条绿：出生点监听器改动前就有（基线 `<CM>:154-155`），本条补的是覆盖，没有改动前的红，第 3 步的反证就是它的红 |
+| 3 | 反证有齿（不挂出生点监听器）：`<CM>:161` 的 `process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class,` 前加 `if (Boolean.getBoolean("proof.never"))`，跑同一个类，再还原 | 本条红在 `<CT>:159`，`the respawn point the configuration left ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=0.0, y=0.0, z=0.0, yaw=0.0, pitch=0.0]>`（引擎默认的重生点）。本组这一步与 `TC-PROD-719` 第 4 步、`TC-PROD-665` 第 4 步在同一次运行里，`8 tests completed, 3 failed`，三处各红在自己的用例上 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-719` 绑定端口之前出生点一圈已载入并照亮，进服玩家收到的出生区块带天空光（§19 场景） — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.CoreModeIntegrationTest`，看 `theChunksAroundTheSpawnAreLitBeforeAnybodyJoins` | `tests="8"` 0 失败。`CoreMode.start` 返回时实例里恰有 (2r + 1)² = 361 个区块（r = 区块视距 8 + 1），以出生区块 (0, 0) 为中心；每块都是 `LightingChunk`，直接读 section（不经会顺手补算的 `Instance#getSkyLight`），在 x 0、z 0 一列：y 40（地面上的空气）与 y 56 天空光 15，y 39（最上层石头）0，三处 section 的 `requiresUpdate()` 都是 false |
+| 2 | 同一次运行，看 `theChunkAPlayerSpawnsInIsSentLit` | 通过。同 `TC-PROD-718` 的方式进服，`Wire` 收到区块 (0, 0) 的 `ChunkDataPacket`（10 s 内）；它的天空光掩码含 y 40 所在 section 的位（位号 = section 下标 + 1，即第 3 位），按客户端的读法 (0, 40, 0) 为 15、(0, 39, 0) 为 0 |
+| 3 | 改动前的红：`<CM>` 取基线的，跑同一个类，再还原 | `8 tests completed, 3 failed`：第 1 步的方法红在 `<CT>:174`，`chunks loaded around the spawn ==> expected: <361> but was: <0>`；第 2 步的方法红在 `<CT>:251`（`sentSkyLight`，调用处 `<CT>:205`），`the packet carries the sky light of the section holding y 40, sky mask {} ==> expected: <true> but was: <false>`：`DynamicChunk` 的 section 没有光照数组，天空光掩码为空；第三个红是 `TC-PROD-720` 第 2 步 |
+| 4 | 反证有齿（只载入、不照亮）：`<CM>:188` 的 `LightingChunk.relight(world, world.getChunks());` 前加 `if (Boolean.getBoolean("proof.never"))`，跑同一个类，再还原（与 `TC-PROD-718` 第 3 步同一次运行） | 第 1 步的方法红在 `<CT>:234`（`computedSkyLight`，调用处 `<CT>:182`），`the section holding y 40 is still waiting for its light, which would be computed only when it is sent ==> expected: <false> but was: <true>`。第 2 步的方法与 `TC-PROD-720` 第 1 步仍绿：`LightingChunk` 建包时补算缺的光照，所以只换区块类型、不预先照亮时，进服的人照样收到带光的包，算光落在建包的线程上；预先照亮这一半只有第 1 步的方法守着 |
+| 5 | 还原后重跑第 1、2 步 | 与第 1、2 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-720` 启动之后才生成的区块第一次建包时算出光照，与出生区块的天空光逐字节相同；每区块的堆与起服耗时重量（§19 场景） — 对应 `REQ-PROD-046`、`REQ-PROD-013` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头；第 3 步的探针量的是整个 JVM 的堆，`--tests` 只给探针一个类（同 `TC-PROD-666`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.CoreModeIntegrationTest`，看 `aChunkGeneratedAfterTheStartIsLitWhenItIsFirstSent` | 通过。区块 (28, 0)（出生区块往东区块视距 + 20 个区块，在环外、边界内）在 `CoreMode.start` 之后还没载入；`loadChunk` 之后取它的区块包（`SendablePacket.extractServerPacket(ConnectionState.PLAY, getFullDataPacket())`）：(0, 40, 0) 天空光 15、(0, 39, 0) 为 0；与出生区块 (0, 0) 的区块包相比，天空光掩码、空天空光掩码与每个天空光数组都逐字节相同。环外这块走懒算路径（`relightSection`），环内由 `relight` 经 `LightEngine` 算，平坦世界上两条路径结果相同 |
+| 2 | 改动前的红（`TC-PROD-719` 第 3 步的同一次运行） | 本条红在 `<CT>:251`（调用处 `<CT>:223`），消息同 `TC-PROD-719` 第 3 步 |
+| 3 | 每区块的堆与起服耗时：把 `docs/test-runs/RUN-073/C/CoreChunkBytesProbe.java.txt` 拷成 `server-app/src/test/java/io/github/bearisbug/synaxis/app/CoreChunkBytesProbe.java`，只跑它，读结果 XML 里以 `PROBE` 开头的行，再删掉这个文件；`<CM>` 取改动前的再跑一次作同机对照 | 探针先在自建的进程上以视距 10、12 各调一次 `CoreMode.start` 计时，再在 Env 的进程（视距 8）上量起服时照亮的环，再按 `TC-PROD-666` 的办法量环外两批（32 × 32 与 64 × 64 块，建包时才算光），最后视距 10 再调一次。本机（测试 JVM 堆上限 1 GiB）改动后：`start view_distance=10 ring_chunks=529 start_ms=456`、`start view_distance=12 ring_chunks=729 start_ms=241`；环 `ring_chunks=361 chunk_bytes=7618 packet_bytes=7011 total_bytes=14629`；`chunks=1024 chunk_bytes=5548 packet_bytes=8785 total_bytes=14333 framed_bytes=117 packets_ms=826`，`chunks=4096 chunk_bytes=5543 packet_bytes=8825 total_bytes=14368 framed_bytes=119 packets_ms=2080`；视距 10 再调一次 218 ms。改动前：`start_ms=27`（视距 10，环 0 块），`chunks=1024 … total_bytes=8963 framed_bytes=86 packets_ms=88`，`chunks=4096 … total_bytes=8881 framed_bytes=86 packets_ms=152`。每区块约多 60%，压缩后的区块包 86 → 117～119 B，`bin/server-app` 冷启动多约 0.43 s |
+| 4 | 按第 3 步最大的 14,629 B 照 `TC-PROD-666` 第 2 步算边长 | D ≤ 4,334；4,096 本身 256² 块占 4 GiB 的 22.3%（仍满足原规则）；连同视距 10 的区块环伸出边界的 22 个区块 77,284 块 × 14,629 B = 1,130,587,636 B，默认堆 4 GiB 的 26.3%、压测档 3 GiB 的 35.1%；视距 12 时 79,524 块、27.1%。取舍见 `docs/DESIGN-PROD.md` §28.2 v0.9.66 一行风险 |
+
+后置：`git status --short` 无输出（探针已删，`<CM>` 已还原）。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G 与 M3-S）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -10243,6 +10291,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 vehicle 组，载具移动包驶向未载入的区块（`REQ-PROD-013`，v0.9.59）→ TC-PROD-692；动了 `PlayerVehicleListener#vehicleMoveListener` 就跑 TC-PROD-692 与 TC-PROD-667、TC-PROD-668（同一个类）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 gate 组，分片闸门两项的配置文件优先（`REQ-PROD-001`，v0.9.60）→ TC-PROD-695；动了 `ShardMain#gateDefaults` 的空值判断、`Main` 读 `synaxis.properties` 的时机或步骤 (1) 调 `gateDefaults` 的位置就跑它，连同 TC-PROD-669、TC-PROD-670、TC-PROD-672。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-072 flake 组，`ConnectionGateSocketTest` 的异步断言（`REQ-PROD-001`，只改测试）→ TC-PROD-697、TC-PROD-698；动了 `ConnectionManager#transitionLoginToConfig` 里发 `SetCompression` 与派发 `AsyncPlayerPreLoginEvent` 的先后、`Server#loginTimeoutWatch` 的判据，或往这个类加数登录事件、用短握手超时的用例，就严格 grid 跑这个类。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-073 C 组，平坦核心世界的光照（`REQ-PROD-046`，v0.9.66）→ TC-PROD-718～TC-PROD-720；动了 `CoreMode#start` 的区块类型、预载的半径、`relight` 或出生点监听器就跑 `CoreModeIntegrationTest`（TC-PROD-718～TC-PROD-720 第 1、2 步与 TC-PROD-665，同一个类）；动了 `LightingChunk` 的建包懒算（`createLightData`、`relightSection`）或 `LightingChunk.relight` 也跑这个类；核心世界的生成、区块类型或区块包缓存变了，再按 TC-PROD-720 第 3、4 步重量每区块字节、重算边长（取代 TC-PROD-666 的探针）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-038、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级；真机用例（TC-WORLD-123、TC-WORLD-124、TC-WORLD-144～TC-WORLD-149）等用户的机器，单独成轮。

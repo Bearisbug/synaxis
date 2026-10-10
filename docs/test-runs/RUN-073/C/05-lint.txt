@@ -1,0 +1,30 @@
+Lint of the two documents as committed by this group (design-doc and test-doc skills' check.sh).
+
+$ bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md
+lint: docs/DESIGN-PROD.md
+ℹ️ 以下 ID 只被引用、未在本文档定义,§1 关联已声明兄弟分册(docs/DESIGN-M2.md docs/DESIGN-M3.md docs/DESIGN.md ),按跨分册引用处理,人工核一次: REQ-001 REQ-005 REQ-013 REQ-014 REQ-017 REQ-M3-005 REQ-M3-006 REQ-M3-007 REQ-M3-014 REQ-M3-015 REQ-M3-016 REQ-M3-017 REQ-M3-018 REQ-M3-027 API-001 API-003 API-M2-002 API-M2-007 API-M2-008 API-M2-010 API-M2-011 API-M3-003 API-M3-005 API-M3-006 API-M3-007 API-M3-009 API-M3-010 API-M3-011 API-M3-012 API-M3-013 API-M3-015 RB-002 RB-M3-001 RB-M3-005
+ℹ️ 请核对以下 API-* 是否都在 §10 权限矩阵出现或有显式免列说明(读/列表/回调端点最易漏标):API-PROD-001 API-PROD-002 API-PROD-003 API-PROD-004 API-PROD-005 API-PROD-006 API-PROD-007 API-PROD-008 API-PROD-009 API-PROD-010 API-PROD-011 API-PROD-012 API-PROD-013 API-PROD-014 API-PROD-015 API-PROD-016 API-PROD-017 API-PROD-018 API-PROD-019 API-PROD-020 API-PROD-021 API-PROD-022 API-PROD-023 API-PROD-024 API-PROD-025 API-PROD-026 API-PROD-027 API-PROD-028 API-PROD-029 API-PROD-030 API-PROD-031 API-PROD-032 
+✓ 状态图带事件转移 ↔ 迁移表行数一致(按机分段: 4 10 11 12 21 25)
+ℹ️ 已画 6 台状态机;请核对:数据字典每个 ≥2 态 status/生命周期枚举实体,已建机或按三类出口(纯派生/投影态、状态由他机翻转、极简运营态)显式免建——见 CHECKLIST C1
+✅ lint 无警告
+
+$ bash ~/.claude/skills/test-doc/check.sh docs/TEST.md
+lint: docs/TEST.md
+⚠️ §3 缺环境表(TEMPLATE §3:| 环境 | 入口 | 就绪判定 | 测试账号 | 种子与重置 | 外部副作用 |);跑线上轮前先补表,再逐条判定冒烟用例能否标「线上可跑」(SKILL.md 执行流程第 2 条)
+ℹ️ 没有用例标「线上可跑」——跑线上冒烟轮前先按 TEMPLATE 头部判据逐条判定冒烟用例(SKILL.md 执行流程第 2 条)
+⚠️ 轮次汇总表头缺「环境」列(TEMPLATE §6:本地 / 预发 / 线上)
+⚠️ 执行记录明细行不合格:
+  失败项缺证据引用:| RUN-031 | TC-PROD-271 | 失败 | 5A 200 人 walk 30 min 基线只差「超 50 ms 的 tick 为 0」一项：实测 18 个；服务端与机器人同机，本机另有会话在跑，swap 约 29 GiB | 分机档（DESIGN-PROD §28.1 Q11）重跑 |
+  失败项缺证据引用:| RUN-031 | TC-PROD-360 | 失败 | 集成后 200 人 walk 30 min 同样只差这一项：6 个；同一档可见实体有 302 个采样超过上限 100（最大 102），登记为 DESIGN-PROD v0.8.2 §28.2 缺陷 | 分机档重跑；可见上限的竞态第 6 波开始前修 |
+ℹ️ 联检设计文档自动解析自元信息:docs/../docs/DESIGN.md
+ℹ️ 联检设计文档自动解析自元信息:docs/../docs/DESIGN-M2.md
+ℹ️ 联检设计文档自动解析自元信息:docs/../docs/DESIGN-M3.md
+ℹ️ 联检设计文档自动解析自元信息:docs/../docs/DESIGN-PROD.md
+⚠️ 设计文档 docs/../docs/DESIGN-PROD.md 的 REQ-PROD-047 无任何 TC 引用(CHECKLIST A1;已废弃 REQ 请人工忽略)
+✓ REQ 已双向联检(TEST→设计 悬空 + 设计→TEST 覆盖;设计文档 4 份)
+ℹ️ 用例 713 条(冒烟 59)· 轮次 70;覆盖与执行完整性按 references/CHECKLIST.md 核对
+(以上为机械提示;REQ/Gherkin 覆盖、冷启动实测等语义项按 references/CHECKLIST.md 逐条过)
+
+Known warnings only: RUN-031's two rows without evidence, §3 without the environment table, §6 without the environment
+column, and REQ-PROD-047 (a design-phase REQ of RUN-073 that another group covers) without a TC. REQ-PROD-046 is now
+referenced by TC-PROD-718 to TC-PROD-720.

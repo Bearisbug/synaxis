@@ -4,7 +4,7 @@
 
 | 字段 | 值 |
 | --- | --- |
-| 状态 | 草稿，待用户签字（v0.1，2026-10-11 初稿；要签字的事项见 §28.1，签字前 §18 的 ADR 一律是 Proposed） |
+| 状态 | v0.1 已签字（用户 2026-10-12）：方向与 §18 的 ADR 记 Accepted，只有 `ADR-PLAY-009`（§28.1 D3）、`ADR-PLAY-010`（D4）随对应项拍板；§28.1 的 D1、D5、D9 已拍板，其余各项按默认选项，到「何时需拍板」一列的时点前再请用户确认 |
 | 项目画像 | 生产产品（对外真实玩家，与 `docs/DESIGN-PROD.md` §1 同档；全部 `[核心]` 节生效） |
 | Owner | Bearisbug（生产就绪会话维护本分册） |
 | 评审人 | Bearisbug |
@@ -23,6 +23,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-10-12 | v0.1 | 用户签字：状态改为已签字，§18 的 ADR 除 `ADR-PLAY-009`、`ADR-PLAY-010` 外记 Accepted；§28.1 的 D1（按通道协商版本）、D5（模组语言文件加 fallback）、D9（先做最小档 S1）拍板，都选默认选项，其余各项按默认。正文的设计内容未改 | Bearisbug |
 | 2026-10-11 | v0.1 | 初稿。用户 2026-10-11 要求「服务端核心能完全正常游玩之后（RUN-073、RUN-075），给出一套完整的玩法架构体系」。三份方案（运行时优先、内容数据驱动、协议优先）经三名评委打分，两票选协议优先；本稿以协议优先为主干，嫁接运行时方案的托管生命周期、形态取值表、背包策略与票据意图字段，嫁接内容方案的能力回退、活动快照、回调兜底与预建实例池的判据（取舍见 `ADR-PLAY-001`）。样板分最小档 S1 与完整档 S2，默认先做 S1：10～13 天，不等任何签字项，`synaxis:play` 在 W1 之前自带版本、不进握手（`ADR-PLAY-013`，§28.1 D9）。草稿，待用户签字 | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
@@ -1304,9 +1305,9 @@ flowchart LR
 
 ## 18. ADR 决策记录
 
-本分册是草稿，下面的决策一律 Proposed，用户签字后改 Accepted 并在 §1 变更记录登记。
+用户 2026-10-12 签字，下面的决策记 Accepted；`ADR-PLAY-009`、`ADR-PLAY-010` 仍是 Proposed，随 §28.1 D3、D4 拍板。
 
-- **`ADR-PLAY-001` 总体方案：以协议与客户端协作为主干，宿主托管玩法实例的生命周期** — Status: Proposed
+- **`ADR-PLAY-001` 总体方案：以协议与客户端协作为主干，宿主托管玩法实例的生命周期** — Status: Accepted（用户 2026-10-12 签字）
   - Context：用户 2026-10-11 要一套完整的玩法架构。三份方案并行写出：运行时优先（宿主 `GameRuntime` 托管一切，四种形态是同一台状态机的四组 `GameSpec`）、内容数据驱动（玩法定义 JSON 加唯一的运行时插件 `play`，HUD 文本由服务端下发）、协议优先（三层线路、按通道协商版本、服务端驱动的场景与有限小部件）。三名评委按贴合现状、简单、覆盖、客户端、风险五项打分，两票选协议优先，一票选运行时优先。协议优先三次的客户端分都是 9；运行时优先三次的覆盖分都是 9；内容方案贴合现状与风险分最低。
   - Decision：协议优先作主干（`ADR-PLAY-002`～`ADR-PLAY-007`、`ADR-PLAY-011`）。嫁接运行时方案的四处：托管实例的五态状态机加两条短路与每次转移的台账（`ADR-PLAY-008`）、形态取值表（§6.5，只作文档词汇）、背包策略 `SANDBOX`（`ADR-PLAY-010`）、票据第 2 版的意图字段（`API-PLAY-012`）。嫁接内容方案的五处：客户端遇未知相机或小部件时回退、小部件属性 TLV、`MARKER` 与 `PROMPT` 两种小部件、开局快照活动、`Round` 的回调兜底，以及「开局慢就改预建实例池」的判据（本稿把它落在开局准备时长上，§3）。
   - Alternatives：
@@ -1314,43 +1315,43 @@ flowchart LR
     - 内容数据驱动：简单玩法零 Java，作者反馈最快。不选的理由：`API_VERSION` 2 → 3 没有必要（给只由宿主实现的接口加默认方法是兼容变更，`docs/DESIGN-PROD.md` §8），严格相等又会拒掉现有插件；R1 要把 `rts:game` 改名为 `play:rts/game` 并删掉 `RtsPlugin`，对 `game-rts` 冲击最大；服务端下发文本表等于第二个文本来源，绕开 `API-PROD-029` 与翻译键门禁；样板跑通之前要先写 6～8 天的 JSON 格式、条件词表、阶段图校验与组件 SPI，词表不够用时每个新玩法照样写组件。
   - Consequences：+ `game-rts` 冲击最小：W1 只把通道注册改成 `ChannelSpec`，玩法代码一行不动；+ 6b 改 zoom 只升 `rts:game`，不再全局升版；+ 整合包先发、分片后滚；− W1 范围大（握手、向量分目录、删 login 形态、改 `:loadtest` 的 Bot 与 `probe.py`、换 ABI baseline），且要签字改写 `docs/DESIGN-M2.md` §8；− 作者要自己注册准入、驱动 `Round`，比运行时方案多写几十行；− `:play-kit` 不作兼容承诺，仓外插件依赖它可能在升级时被打断。
 
-- **`ADR-PLAY-002` 三层线路，默认 L0 加 L1** — Status: Proposed
+- **`ADR-PLAY-002` 三层线路，默认 L0 加 L1** — Status: Accepted（用户 2026-10-12 签字）
   - Context：客户端今天只静态注册三条通道（`SynaxisClientMod.java:37-44`），没注册的 play 负载被原版当 `DiscardedPayload` 静默丢掉（`docs/DESIGN-M2.md` v0.51 记录的事故）；每上一种玩法都要改模组。
   - Decision：L0 原版原语、L1 宿主场景层（模组写一次）、L2 玩法领域通道（只在 §6.3 的三条条件下开）。
   - Alternatives：每个玩法一条通道加模组模块（今天 RTS 的做法，每个玩法都要发模组）；全部走原版原语（计分板与队伍包已删，侧边栏不可用，`PacketVanilla.java:516`、`:524`）。
   - Consequences：+ 样板零专属客户端代码；− L1 目录之外的渲染仍要发模组。
 
-- **`ADR-PLAY-003` 按通道协商版本，`schema_version` 收窄为握手布局版本，做最后一次全局升版** — Status: Proposed（需签字，§28.1 D1）
+- **`ADR-PLAY-003` 按通道协商版本，`schema_version` 收窄为握手布局版本，做最后一次全局升版** — Status: Accepted（用户 2026-10-12 签字，§28.1 D1 已拍板）
   - Context：唯一的兼容判据是 `SCHEMA_VERSION` 严格相等（`ProtocolSchema.java:16`，`HandshakeGate.java:229`）；manifest 的 digest 覆盖全部向量，加一条向量就得升版（`docs/DESIGN-M2.md` §24）；在全局严格相等下任何协议改动都没法滚动发布。`synaxis:farview` 已有单独版本轴的先例（`docs/DESIGN-M3.md` §8）。
   - Decision：§6.4.1 与 `API-PLAY-001`；授予在 play 阶段重发（`S2C_GRANTS`）。`synaxis:play` 从 S1 起照 farview 的先例自带版本、单独一个向量目录，W1 起进报价与授予（`ADR-PLAY-013`）。
   - Alternatives：永久单轴（每加一个玩法消息都全局升版，整合包与全部分片同时发布）；照 farview 各自 `format_version`、不进握手（旧模组静默缺 HUD，比握手直接拒绝难排查）；客户端在 play 阶段上报小部件种类位集（与版本号重复，第二个出处）。
   - Consequences：+ 可滚动发布；+ 6b 不再和样板抢号；− 改写 `docs/DESIGN-M2.md` §8「线协议无弃用期」；− W1 是一次性断档，旧整合包全部被拒。
 
-- **`ADR-PLAY-004` 有限小部件目录，属性 TLV，客户端不执行服务端下发的代码或布局描述** — Status: Proposed
+- **`ADR-PLAY-004` 有限小部件目录，属性 TLV，客户端不执行服务端下发的代码或布局描述** — Status: Accepted（用户 2026-10-12 签字）
   - Context：客户端主源码里只有一个 HUD 元素、没有 Screen、没有 KeyMapping（`FarViewClient.java:103`）。
   - Decision：八种小部件（`synaxis:play` v1 四种、v2 四种）、七个槽位（`API-PLAY-003`）；加属性不升版，加种类升 `synaxis:play` 版本。
   - Alternatives：服务端下发布局描述或脚本（客户端变成解释器，安全面与测试面都大）；原版 Dialog（高层 API 随 REQ-005 删除，没有真客户端验证）；客户端插件机制（每个插件一个 jar，违背强制单一模组）。
   - Consequences：+ 新玩法默认不改模组；− 目录外的界面要等下一版目录。
 
-- **`ADR-PLAY-005` 预测只做三类，不做通用回滚** — Status: Proposed
+- **`ADR-PLAY-005` 预测只做三类，不做通用回滚** — Status: Accepted（用户 2026-10-12 签字）
   - Context：传输走 TCP、服务端 20 TPS；玩法校验失败只回带内结果码（`docs/DESIGN-M2.md` §14）。
   - Decision：§6.4.4。
   - Alternatives：通用回滚与延迟补偿（代价是一整套客户端模拟，换来的延迟收益在 TCP 上有限）。
   - Consequences：+ 客户端逻辑小；− 高延迟玩家的动作反馈要等一个往返（冷却显示除外）。
 
-- **`ADR-PLAY-006` 每个进程至多一个场景所有者，准入冲突即拒启** — Status: Proposed
+- **`ADR-PLAY-006` 每个进程至多一个场景所有者，准入冲突即拒启** — Status: Accepted（用户 2026-10-12 签字）
   - Context：全进程一个准入槽（`AdmissionRegistry.java:20-26`）；`docs/DESIGN-M2.md` §28.2 L1491 的 Open Question「多插件时谁提供对局」。
   - Decision：§6.2 与 `API-PLAY-007`；选路在部署层。
   - Alternatives：链式责任准入或按端口、按玩家偏好选路（都改 `API-M2-011` 的签名）；运行时接管准入（见 `ADR-PLAY-001`）。
   - Consequences：+ `API-M2-011` 不改；− 一个进程只能跑一个主玩法，多玩法要多进程（W6 之前进程间不能互送玩家）。
 
-- **`ADR-PLAY-007` 文本走网络格式 `Component`（翻译键加 fallback），不做服务端下发文本表，不做服务端资源包** — Status: Proposed（fallback 的客户端显示未核实）
+- **`ADR-PLAY-007` 文本走网络格式 `Component`（翻译键加 fallback），不做服务端下发文本表，不做服务端资源包** — Status: Accepted（用户 2026-10-12 签字，§28.1 D5 已拍板；fallback 的客户端显示未核实）
   - Context：服务端只发翻译键，译文只在模组里（`docs/PLUGINS.md` §11）；引擎网络编码写出 `fallback`（`network/ComponentNetworkBufferTypeImpl.java:92-96`）。
   - Decision：§6.4.5。
   - Alternatives：服务端下发文本表（`S2C_TEXTS`，省掉每个新玩法一次模组发版，代价是第二个文本来源、绕开 `API-PROD-029`，列为 §28.1 D5 的备选）；只发翻译键不带 fallback（服务端先于整合包上新文案时显示键名）。
   - Consequences：+ 翻译键门禁照常生效；− 新文案仍要发模组才能有第二种语言。
 
-- **`ADR-PLAY-008` 托管玩法实例：生命周期状态机在宿主，形态字段只作文档词汇** — Status: Proposed
+- **`ADR-PLAY-008` 托管玩法实例：生命周期状态机在宿主，形态字段只作文档词汇** — Status: Accepted（用户 2026-10-12 签字）
   - Context：今天插件经 `process()` 自己建、注册、注销实例，宿主不收回（`PluginHost.java:301-310`）；`unregisterInstance` 在实例里还有玩家时抛异常（`InstanceManager.java:79-97`）；`game-rts` 只在停服时结束对局（`RtsPlugin.java:101-107`）。
   - Decision：`API-PLAY-006`：`ManagedInstance` 五态（§11.1），转移由宿主执行并写台账、派发状态事件；`create` 照 `Match.load` 用 `LightingChunk`、注册前整图 `relight`（`Match.java:195-218`；不这样做真客户端上地形是黑色剪影，`docs/DESIGN-M2.md` §28.2 L1466-1467）；在 tick 调度线程上调用时准备放到 tick 之外、做完在下一个串行段注册，`chunkRadius ≤ 16`，同一条路径也给 W4b 的 RTS 整图用；开局准备时长 P95 超过 1 s 时改为起服时预建实例池（§3、§15）。
   - Alternatives：状态机只放 `:play-kit`（限时活动与 MMO 没有统一生命周期，且不作兼容承诺）；运行时方案的 `GameSpec` 全托管（宿主面大，见 `ADR-PLAY-001`）；维持经 `process()` 自己调引擎（不收回、不撤离、没台账）；在 tick 调度线程上同步准备并限半径（按 §15 的实测折算，25 个区块就要约 19～89 ms，即 0.4～1.8 个 tick；半径降到 1（9 个区块）仍约 7～32 ms，且放不下样板的竞技场，RTS 整图更不可能）。
@@ -1368,19 +1369,19 @@ flowchart LR
   - Alternatives：玩法进程只应用不捕获（回答不了副本掉落要归角色）；按 `world.kind` 分开存（一个角色多份背包，转服时合并语义不清）；玩法进程永远用内存存储（放弃玩法统计持久化）。
   - Consequences：+ 局内物品不会写进 MMO 角色；− 改的是用户 2026-10-11 刚拍板的 `REQ-PROD-047`。
 
-- **`ADR-PLAY-011` 样板走独立的 `runRush` configuration，不进 `server-app` 默认的运行期依赖** — Status: Proposed
+- **`ADR-PLAY-011` 样板走独立的 `runRush` configuration，不进 `server-app` 默认的运行期依赖** — Status: Accepted（用户 2026-10-12 签字）
   - Context：`server-app` 运行期恒带 `:game-rts`（`server-app/build.gradle.kts:29`）；再加一个注册准入的插件，`core-mode=auto` 下两者同时启用、撞上唯一准入槽。
   - Decision：§6.7.6 的 CI 一段。
   - Alternatives：进默认运行期依赖并要求白名单必填（现有 CI 的玩法模式那台没传白名单，`client-gametest.yml:122`，要跟着改，开发脚本也要改）。
   - Consequences：+ 现有用例与 CI 一个参数不改；− 生产发行版怎么带第二个玩法另行拍板（§28.1 D7，默认一个发行包加白名单必填）。
 
-- **`ADR-PLAY-012` 限时活动是叠加者，活动状态是挂钟的纯函数，开局快照** — Status: Proposed
+- **`ADR-PLAY-012` 限时活动是叠加者，活动状态是挂钟的纯函数，开局快照** — Status: Accepted（用户 2026-10-12 签字）
   - Context：调度器没有按挂钟触发，任务不持久化（`timer/TaskSchedule.java:14-60`）；世界状态标志是宿主内部接口，只在地图分片上（`WorldFlags.java:8-13`）。
   - Decision：§6.5 限时活动、`API-PLAY-009`。
   - Alternatives：宿主日历服务带持久化计时器（重启后的补发语义复杂）；跨进程同步开关（要世界状态标志进插件面，W5 之前没有）。
   - Consequences：+ 重启不丢、跨进程靠 NTP 一致；− 各进程的活动边界相差时钟偏差，要求 NTP 偏差 ≤ 1 s。
 
-- **`ADR-PLAY-013` 样板分两档，先做最小档 S1；S1 的 `synaxis:play` 自带版本、不进握手** — Status: Proposed（需签字，§28.1 D9）
+- **`ADR-PLAY-013` 样板分两档，先做最小档 S1；S1 的 `synaxis:play` 自带版本、不进握手** — Status: Accepted（用户 2026-10-12 签字，§28.1 D9 已拍板）
   - Context：完整样板依赖 W0→W1→W2→W3 串行，合计 15.5～21 天；W1 还卡在 D1 签字与 `docs/DESIGN-M2.md` §8 的归属确认上（§28.2）。用户要的是约 5 分钟的最小样板，端到端验证架构（服务端规则加客户端 HUD）。
   - Decision：S1（§6.7.1）：`synaxis:play` v1 的五条消息与四种小部件、一个动作键、同时 1 局、不写数据段、没有活动、不做报价与授予；托管实例做全。`synaxis:play` 照 `synaxis:farview` 的先例自带版本，向量放单独的 `play-vectors/`，不计入 `schema_version`（`docs/DESIGN-M2.md` `API-M2-001` 的 `synaxis:farview` 一条；`protocol/src/test/resources/farview-vectors/manifest.txt:1-2`）。`docs/DESIGN-M2.md` `API-M2-001` 要加 `synaxis:play` 一条，默认由光照会话照分册归属改；S1 合入时还没改就先以本分册 `API-PLAY-002` 为准，合入的同一个提交在 `docs/DESIGN-PROD.md` §28.3 补登记（§6.7.1）。S2 在 W1～W3 之后补齐。
   - Alternatives：
@@ -1749,17 +1750,19 @@ N/A — 本分册是草稿，没有任何部分上线。W3 合入且 R2 运行�
 
 ### 28.1 待用户拍板
 
+用户 2026-10-12 签字时拍板了 D1、D5、D9，都选默认选项；其余各项先按默认选项执行，到「何时需拍板」一列的时点前再请用户确认。
+
 | # | 问题 | 默认选项 | 切换条件与代价 | 何时需拍板 |
 | --- | --- | --- | --- | --- |
-| D1 | 按通道协商版本加最后一次全局升版（`ADR-PLAY-003`），改写 `docs/DESIGN-M2.md` §8「线协议无弃用期」 | 同意，W1 做；S1 不受影响 | 不签时维持单轴：W2 给 `synaxis:play` 加 v2 时只能按单轴全局升版（`schema_version` 1 → 2），整合包与全部进程同时发布，此后每加一个玩法消息都这样；S2 的「整合包太旧被准入拒绝」改由握手的 `protocol-version-mismatch` 兜住 | S1 合入后、W1 开工前 |
+| D1 | 按通道协商版本加最后一次全局升版（`ADR-PLAY-003`），改写 `docs/DESIGN-M2.md` §8「线协议无弃用期」 | 同意，W1 做；S1 不受影响 | 不签时维持单轴：W2 给 `synaxis:play` 加 v2 时只能按单轴全局升版（`schema_version` 1 → 2），整合包与全部进程同时发布，此后每加一个玩法消息都这样；S2 的「整合包太旧被准入拒绝」改由握手的 `protocol-version-mismatch` 兜住 | **已拍板（用户 2026-10-12）：同意按通道协商版本，W1 做。** S1 合入后、W1 开工前 |
 | D2 | `docs/DESIGN-M2.md` §28.3 ① 的触发条件「出现第二个插件」怎么解读 | 解读为「生产部署的同一进程里启用第二个插件」。依据：开发示例 `hello` 与 `rts` 今天就同进程启用（`docs/PLUGINS.md` §6，`docs/TEST.md` `TC-GAME-016`），① 没有因此补回，「仓内出现」与「任何同进程」两种读法都没被执行过。样板 `rush` 单独一个进程（`runRush` 只启用 `rush`），不触发；第一次触发是 W5（分片同时加载两个插件）或 W7（独立的活动插件），哪一波先开工就在那一波照原设计补回 `depends`、拓扑排序、滑窗熔断、`EVT:plugin_tripped`、`RB-M2-002`，连同把停机的禁用预算改为每插件保底（`PluginHost.java:206-213` 的注释），另加 2～3 天，已计入 §26 | 按字面理解（仓内出现第二个插件即触发）时，S1 加 2～3 天补回，W5、W7 不再加 | 按字面理解时 S1 开工前；否则 W5 或 W7 开工前 |
 | D3 | 地图分片加载玩法插件（改判 `docs/DESIGN-M3.md` §28.1 L3770）、强制模组握手（`ADR-PLAY-009`）、挂聊天（改 `ADR-PROD-017` 的默认值） | W5 开工时一起改判；聊天随 W5 挂，丢弃、拾取、近战等 claim 约定与 `item_ledger` 落地后交 MMO 插件按区域挂 | 第一个开放世界玩法要读写世界状态标志或要插件规则时就触发改判（M3 原文的改判条件之一）；运维要求核心模式仍放行无模组工具时，地图分片不强制握手，L1 只对握手过的连接发 | W5 开工前 |
 | D4 | 背包隔离（`ADR-PLAY-010`，改 `REQ-PROD-047`） | `SANDBOX` 按实例声明，W6 之前落地 | 玩法进程永远只用内存存储、与 MMO 不共库时可以不做，代价是玩法统计不持久化 | W6 开工前；任何玩法进程改用 PostgreSQL 之前 |
-| D5 | HUD 文本的来源（`ADR-PLAY-007`） | 模组语言文件加 `Component` 的 fallback | 每月新增玩法 ≥ 2 个、模组发版成为上新瓶颈时，改为服务端下发文本表（`S2C_TEXTS`），代价是第二个文本来源、翻译门禁要另写一道核对插件文本文件 | W2 开工前 |
+| D5 | HUD 文本的来源（`ADR-PLAY-007`） | 模组语言文件加 `Component` 的 fallback | 每月新增玩法 ≥ 2 个、模组发版成为上新瓶颈时，改为服务端下发文本表（`S2C_TEXTS`），代价是第二个文本来源、翻译门禁要另写一道核对插件文本文件 | **已拍板（用户 2026-10-12）：模组语言文件加 fallback。** W2 开工前 |
 | D6 | 肉鸽是否单列一种形态 | 归入副本或小游戏 | 需要一局里连续切多张离线烘焙的房间图时单列，依赖 W6 之后的运行期加载 `.synx` | 第一个肉鸽玩法立项时 |
 | D7 | 第二个玩法模块怎么进生产发行版（样板在那之前只走 `runRush`，`ADR-PLAY-011`） | 一个发行包带全部玩法模块，生产进程一律给白名单 `synaxis.app.plugins`。依据：`server-app` 的发行包已经同时带 `bin/server-app` 与 `bin/server-shard` 两种角色（`server-app/build.gradle.kts:57-62`），按配置选角色是现有做法；漏给白名单时两个注册准入的插件撞上，`API-PLAY-007` 让进程拒启并点名两个插件，不会静默跑错玩法。代价：W0 要先落地 `API-PLAY-007`；`client-gametest.yml:122` 的玩法模式那台与开发脚本要补 `-Dsynaxis.app.plugins=rts` | 某个玩法的依赖与别的玩法在同一 classpath 上冲突（同一个库要不同版本），或某个玩法必须独立于其他玩法发版时，改为每个玩法一个发行包，代价是多一份构建产物与镜像 | 第一次把第二个玩法部署到生产之前 |
 | D8 | RTS 透视相机（6b）由哪个会话实现 | 本会话随 W4 做：相机档的线上形态定义在本分册（`synaxis:play` v3） | 光照会话已排期 6b 时由它做，本分册只定相机档与 `rts:game` v2 的线上形态。仓内只有 `docs/DESIGN-M3.md` §1 R2（L35）写「另一会话负责」，没点名是哪个会话；没有别的仓内记录写 6b 归谁 | W4a 开工前 |
-| D9 | 样板范围与工期（`ADR-PLAY-013`） | 先做最小档 S1（§6.7.1）：10～13 天出端到端可玩样板，不等 D1～D8、D10 的任何一项；`docs/DESIGN-M2.md` `API-M2-001` 加 `synaxis:play` 一行的登记也不等，默认见 §6.7.1；完整档 S2 随 W0～W3 补齐，合计 19～25 天 | 要求第一个样板就验证按通道协商、限时活动与数据段时，直接走完整路径 W0～W3（15.5～21 天），代价是第一个可玩版本要等 W3，且卡在 D1 签字上。不提供比 S1 更小的档：去掉托管实例只省 2～3 天（§6.7.7），却不再验证「开局创建、结束回收」 | S1 开工前 |
+| D9 | 样板范围与工期（`ADR-PLAY-013`） | 先做最小档 S1（§6.7.1）：10～13 天出端到端可玩样板，不等 D1～D8、D10 的任何一项；`docs/DESIGN-M2.md` `API-M2-001` 加 `synaxis:play` 一行的登记也不等，默认见 §6.7.1；完整档 S2 随 W0～W3 补齐，合计 19～25 天 | 要求第一个样板就验证按通道协商、限时活动与数据段时，直接走完整路径 W0～W3（15.5～21 天），代价是第一个可玩版本要等 W3，且卡在 D1 签字上。不提供比 S1 更小的档：去掉托管实例只省 2～3 天（§6.7.7），却不再验证「开局创建、结束回收」 | **已拍板（用户 2026-10-12）：先做最小档 S1。** S1 开工前 |
 | D10 | 完整档的 `rush:stats` 是否触发 `docs/DESIGN-PROD.md` §28.2 L3518（`item_ledger` 没有写入）。L3518 的默认触发条件原文是「在第一个产生带 `uid` 的物品、或注册 `DataSection` 的插件接入之前把写入实现」，`rush` 在 S2 注册 `rush:stats`，按原文触发 | 请用户把 L3518 的触发条件收窄为「第一个产生带 `uid` 的物品、或在数据段里存物品的插件」。理由：`item_ledger` 只记带 `uid` 的物品的产生、销毁与跨角色转移（`docs/DESIGN-PROD.md` `ENT-ItemLedger`），`rush:stats` 只有四个计数，没有物品可记，按原文实现写入也没有调用方。签字后本会话改 L3518 那一行 | 用户维持原文时，S2 合入之前先实现 `item_ledger` 的写入，工作量本分册没估（写入点与 `uid` 的产生都还没设计，D5 在 `docs/DESIGN-PROD.md`）；或者 S2 不写数据段，删掉 S2 的第 3 项与剧本的 Q10。S1 不注册数据段，两种情况都不受影响 | W3 开工前 |
 
 ### 28.2 风险、技术债与开放问题

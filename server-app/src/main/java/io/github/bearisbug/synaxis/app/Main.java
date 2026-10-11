@@ -331,11 +331,8 @@ public final class Main {
             }
             case REFUSED -> refuseToServe(host, ledger, runningMatches, port);
         }
-        // The position rule of the mode; a refused launch has exited in its branch above. A map shard, always in the
-        // core mode, names the release and the bounds ShardWorld read in step (3)
-        playerState.useRule(mode != CoreMode.Mode.CORE ? new PositionRule.Rts()
-                : shardWorld == null ? new PositionRule.Core()
-                : new PositionRule.MapShard(shardWorld.mapId(), shardWorld.buildId(), shardWorld.bounds()));
+        // The position rule of the mode; a refused launch has exited in its branch above
+        playerState.useRule(positionRule(mode, shardWorld));
         // The default play layer of the mode, on the host node and before the port opens
         // (docs/DESIGN-PROD.md API-PROD-031)
         final Set<DefaultPlay.Feature> play = defaultPlay(mode, shardWorld != null);
@@ -889,6 +886,21 @@ public final class Main {
             case GAMEPLAY -> EnumSet.of(DefaultPlay.Feature.CHAT);
             case REFUSED -> Set.of();
         };
+    }
+
+    /**
+     * The position rule of {@code synaxis:player} in a mode ({@code docs/DESIGN-PROD.md} {@code API-PROD-032}): the
+     * core world's in the core world, and on a map shard, always in the core mode, the release and the bounds
+     * {@code ShardWorld} read in step (3); under a gameplay plugin the plugin's spawn decides.
+     *
+     * @param mode       the mode of step (5)
+     * @param shardWorld the map the process serves, null for none
+     * @return the rule to set
+     */
+    static PositionRule positionRule(CoreMode.Mode mode, @Nullable ShardWorld shardWorld) {
+        return mode != CoreMode.Mode.CORE ? new PositionRule.Rts()
+                : shardWorld == null ? new PositionRule.Core()
+                : new PositionRule.MapShard(shardWorld.mapId(), shardWorld.buildId(), shardWorld.bounds());
     }
 
     /**

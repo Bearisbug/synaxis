@@ -1,0 +1,20 @@
+# TC-PROD-753 step 5 / TC-PROD-754 step 1: p10 unit tests on code commit c8c1aa4a20 (branch prod/r075-P); 2026-10-11 13:39:16 CST
+$ <py> -m unittest discover -s client-fabric/gametest-env -p 'test_*.py' -v
+test_the_first_transfer_waits_the_gap_like_every_other_one (test_p10.DriveTest) ... ok
+test_the_run_ends_the_gap_after_the_last_transfer (test_p10.DriveTest) ... ok
+test_a_seeded_inventory_that_is_empty_fails (test_p10.JudgeTest) ... ok
+test_a_world_without_a_state_fails (test_p10.JudgeTest) ... ok
+test_an_inventory_other_than_the_seeded_one_fails (test_p10.JudgeTest) ... ok
+test_every_world_shows_the_seeded_inventory (test_p10.JudgeTest) ... ok
+test_the_first_world_shows_the_saved_position (test_p10.JudgeTest) ... ok
+test_a_failed_write_leaves_no_record (test_p10.SeedTest) ... ok
+test_the_account_is_the_one_the_shards_record_for_the_name (test_p10.SeedTest) ... ok
+test_the_section_goes_to_the_character_of_the_account (test_p10.SeedTest) ... ok
+test_the_section_is_one_the_shard_decodes_and_applies (test_p10.SeedTest) ... ok
+test_the_shard_directory_is_0644_whatever_the_umask (test_p10.ShardsTest) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.525s
+
+OK
+exit=0

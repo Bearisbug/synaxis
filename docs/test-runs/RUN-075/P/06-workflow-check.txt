@@ -1,0 +1,78 @@
+# TC-PROD-755 steps 1-3: docs/test-runs/RUN-075/P/check-seed-workflow.py on the workflow of this branch, of 940ebcbced and on three
+# copies with one change each in job p11-smoke; then the RUN-073 check of TC-PROD-741 and actionlint; 2026-10-11 13:26:29 CST
+$ <py> docs/test-runs/RUN-075/P/check-seed-workflow.py .github/workflows/client-gametest.yml
+p10 plays as SynaxisP10
+p10 seeds the character of that name from the baked manifest into $P10/seed.json
+p10 seeds after the migration and before the client starts
+p10 judges against $P10/seed.json
+p10 uploads p10/seed.json
+p11-smoke plays as SynaxisP10
+p11-smoke seeds the character of that name from the baked manifest into $P10/seed.json
+p11-smoke seeds after the migration and before the client starts
+p11-smoke judges against $P10/seed.json
+p11-smoke uploads p10/seed.json
+gametest leaves the production launch its own name
+exit=0
+
+$ git show 940ebcbced:.github/workflows/client-gametest.yml > <s>/base.yml; <py> docs/test-runs/RUN-075/P/check-seed-workflow.py <s>/base.yml
+MISSING SYNAXIS_GAMETEST_USERNAME in the env of p10
+MISSING p10.py seed --name, --manifest and --out in p10
+MISSING seed between the migration and the client in p10, steps 10, None, 12
+MISSING --seed "$P10/seed.json" on p10 p10.py judge
+MISSING p10/seed.json in the artifact of p10
+MISSING SYNAXIS_GAMETEST_USERNAME in the env of p11-smoke
+MISSING p10.py seed --name, --manifest and --out in p11-smoke
+MISSING seed between the migration and the client in p11-smoke, steps 10, None, 12
+MISSING --seed "$P10/seed.json" on p11-smoke p10.py judge
+MISSING p10/seed.json in the artifact of p11-smoke
+gametest leaves the production launch its own name
+exit=1
+
+$ <py> docs/test-runs/RUN-075/P/check-seed-workflow.py <s>/a.yml   # (a) p11-smoke: the seed step moved after Start the client
+MISSING seed between the migration and the client in p11-smoke, steps 10, 13, 12
+exit=1
+
+$ <py> docs/test-runs/RUN-075/P/check-seed-workflow.py <s>/b.yml   # (b) p11-smoke: the judge without --seed
+MISSING --seed "$P10/seed.json" on p11-smoke p10.py judge
+exit=1
+
+$ <py> docs/test-runs/RUN-075/P/check-seed-workflow.py <s>/c.yml   # (c) p11-smoke: no SYNAXIS_GAMETEST_USERNAME in the job env
+MISSING SYNAXIS_GAMETEST_USERNAME in the env of p11-smoke
+exit=1
+
+$ <py> docs/test-runs/RUN-073/G/check-workflow.py .github/workflows/client-gametest.yml
+workflow triggers include push main and pull_request
+p11-smoke runs on pull_request and push only
+p11-smoke and p10 run on ubuntu-24.04
+p11-smoke needs no other job
+p11-smoke p10.py drive --round-trips 2
+p10 p10.py drive keeps the default 100
+p11-smoke p10.py judge --round-trips 2
+p10 p10.py judge keeps the default 100
+p11-smoke unit tests before first p10.py use
+p11-smoke repeats p10's 19 steps, services and env
+p10 stays weekly and manual
+exit=0
+
+$ actionlint .github/workflows/client-gametest.yml
+.github/workflows/client-gametest.yml:119:9: shellcheck reported issue in this script: SC2034:warning:5:1: i appears unused. Verify use (or export if used externally) [shellcheck]
+    |
+119 |         run: |
+    |         ^~~~
+.github/workflows/client-gametest.yml:119:9: shellcheck reported issue in this script: SC2086:info:3:58: Double quote to prevent globbing and word splitting [shellcheck]
+    |
+119 |         run: |
+    |         ^~~~
+exit=1
+
+# TC-PROD-741 step 3 (c) after RUN-075: p11-smoke's Install Xvfb, Mesa and psql without postgresql-client
+$ <py> docs/test-runs/RUN-073/G/check-workflow.py <s>/741c.yml
+MISSING p10's steps, services and env in p11-smoke: 19 vs 19 steps, differing ['Install Xvfb, Mesa and psql']
+exit=0
+
+# TC-PROD-688 step 3 after RUN-075 (job p10 has one step more): the RUN-072 check still reads three lines
+$ <py> docs/test-runs/RUN-072/ci/check-workflow.py .github/workflows/client-gametest.yml
+gametest log created before start
+p10 log created before start
+p10 unit tests before first p10.py use
+exit=0

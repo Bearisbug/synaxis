@@ -1,0 +1,29 @@
+RUN-075 group P (branch prod/r075-P, base main 940ebcbced): the P10 driver seeds the client's synaxis:player, the judge
+holds every world to it. docs/DESIGN-PROD.md v0.9.74, docs/TEST.md TC-PROD-753 to TC-PROD-756. Code commit c8c1aa4a20.
+Run on the local machine: the p10 unit tests, the seed statements against a scratch database in the synaxis-pg
+container, YAML checks and actionlint, three Gradle configurations of client-fabric; no server, client or new container.
+
+01-p10-unittest-red.txt      TC-PROD-753 step 2, TC-PROD-754 step 2: the new test_p10.py against p10.py of 940ebcbced,
+                             FAILED (failures=12, errors=1)
+02-empty-inventories.txt     TC-PROD-753 step 3: five empty inventories, as CI had them until RUN-075, pass the old judge
+                             and fail the new one on world 1's position and inventory; the seeded record passes; no seed
+                             record fails
+03-seed-sql-postgres.txt     TC-PROD-754 step 3: p10.py seed twice against V1 to V6 in a scratch database, one row each,
+                             version 0, the stored data equal to seed.json; the database dropped
+04-counterproofs.txt         TC-PROD-753 step 4 (a)-(d), TC-PROD-754 step 4 (e)-(f): one edit of p10.py each, the unit
+                             tests red, restored, green
+05-client-username-probe.txt TC-PROD-755 steps 5-6: runProductionClientGameTest's programArgs with and without
+                             SYNAXIS_GAMETEST_USERNAME and before the change (print-args.gradle); vanilla Main, Loom's
+                             ClientProductionRunTask and FabricApiTesting read with javap
+06-workflow-check.txt        TC-PROD-755 steps 1-4: check-seed-workflow.py on this branch, on 940ebcbced and on three
+                             altered copies; RUN-073's check-workflow.py (19 steps, TC-PROD-741), actionlint;
+                             TC-PROD-741 step 3 (c) and TC-PROD-688 step 3 re-read
+07-seed-position.txt         TC-PROD-754 step 5: terrain.py, the spawn column and the seeded column of generator:synthetic:1
+08-p10-unittest-green.txt    TC-PROD-753 step 5, TC-PROD-754 step 1: Ran 12 tests, OK
+
+check-seed-workflow.py       read only, TC-PROD-755
+terrain.py                   read only, TC-PROD-754 step 5
+print-args.gradle            Gradle init script, TC-PROD-755 step 6
+
+Not run here: TC-PROD-742 (job p11-smoke) and TC-PROD-756 (manual P10 job) need GitHub Actions and group M's wiring of
+synaxis:player on the map shards; the integration round runs them on its draft PR.

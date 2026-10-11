@@ -1,0 +1,58 @@
+# TC-PROD-754 step 3: the statements of p10.py seed against the migrated player store (PostgreSQL 16.13, the local synaxis-pg container, a scratch database run075_fixp)
+# branch prod/r075-P, working tree on 940ebcbced; 2026-10-11 13:23:15 CST
+$ docker exec synaxis-pg psql -U postgres -c 'CREATE DATABASE run075_fixp'
+CREATE DATABASE
+$ docker exec -i synaxis-pg psql -U postgres -d run075_fixp -v ON_ERROR_STOP=1 -q < server-app/src/main/resources/db/migration/V1__player_store.sql
+exit=0
+$ docker exec -i synaxis-pg psql -U postgres -d run075_fixp -v ON_ERROR_STOP=1 -q < server-app/src/main/resources/db/migration/V2__item_ledger.sql
+exit=0
+$ docker exec -i synaxis-pg psql -U postgres -d run075_fixp -v ON_ERROR_STOP=1 -q < server-app/src/main/resources/db/migration/V3__roles.sql
+exit=0
+$ docker exec -i synaxis-pg psql -U postgres -d run075_fixp -v ON_ERROR_STOP=1 -q < server-app/src/main/resources/db/migration/V4__moderation.sql
+exit=0
+$ docker exec -i synaxis-pg psql -U postgres -d run075_fixp -v ON_ERROR_STOP=1 -q < server-app/src/main/resources/db/migration/V5__shard_heartbeat.sql
+exit=0
+$ docker exec -i synaxis-pg psql -U postgres -d run075_fixp -v ON_ERROR_STOP=1 -q < server-app/src/main/resources/db/migration/V6__world_flag.sql
+exit=0
+$ <py> client-fabric/gametest-env/p10.py seed --name SynaxisP10 --manifest <s>/manifest.json --psql 'docker exec -i synaxis-pg psql -U postgres -d run075_fixp' --out <s>/seed.json   # run 1
+SynaxisP10 78e622e9-9481-3cd8-b25c-09e5f10b4555: held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1 at 100.5,79.0,120.5 of p10-41d364b9d82e-p776
+exit=0
+$ docker exec synaxis-pg psql -U postgres -d run075_fixp -c '<rows of the three tables>'
+             account_uuid             | last_name
+--------------------------------------+------------
+ 78e622e9-9481-3cd8-b25c-09e5f10b4555 | SynaxisP10
+(1 row)
+
+ character_id |             account_uuid             | slot | version | lease_session_id | current_region | last_saved_at
+--------------+--------------------------------------+------+---------+------------------+----------------+---------------
+            1 | 78e622e9-9481-3cd8-b25c-09e5f10b4555 |    0 |       0 |                  |                |
+(1 row)
+
+ character_id |   section_id   | schema_version | bytes |                                                                                                                                                                                                 data
+--------------+----------------+----------------+-------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            1 | synaxis:player |              1 |   389 | {"pos": {"x": 100.5, "y": 79.0, "z": 120.5, "yaw": 90.0, "pitch": 0.0}, "world": {"kind": "map", "map_id": "p10", "build_id": "p10-41d364b9d82e-p776"}, "health": 16.0, "held_slot": 1, "inventory": [{"item": {"id": "minecraft:stone", "count": 32}, "slot": 0}, {"item": {"id": "minecraft:iron_pickaxe", "count": 1}, "slot": 1}, {"item": {"id": "minecraft:oak_log", "count": 16}, "slot": 9}]}
+(1 row)
+
+$ <py> client-fabric/gametest-env/p10.py seed --name SynaxisP10 --manifest <s>/manifest.json --psql 'docker exec -i synaxis-pg psql -U postgres -d run075_fixp' --out <s>/seed.json   # run 2
+SynaxisP10 78e622e9-9481-3cd8-b25c-09e5f10b4555: held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1 at 100.5,79.0,120.5 of p10-41d364b9d82e-p776
+exit=0
+$ docker exec synaxis-pg psql -U postgres -d run075_fixp -c '<rows of the three tables>'
+             account_uuid             | last_name
+--------------------------------------+------------
+ 78e622e9-9481-3cd8-b25c-09e5f10b4555 | SynaxisP10
+(1 row)
+
+ character_id |             account_uuid             | slot | version | lease_session_id | current_region | last_saved_at
+--------------+--------------------------------------+------+---------+------------------+----------------+---------------
+            1 | 78e622e9-9481-3cd8-b25c-09e5f10b4555 |    0 |       0 |                  |                |
+(1 row)
+
+ character_id |   section_id   | schema_version | bytes |                                                                                                                                                                                                 data
+--------------+----------------+----------------+-------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            1 | synaxis:player |              1 |   389 | {"pos": {"x": 100.5, "y": 79.0, "z": 120.5, "yaw": 90.0, "pitch": 0.0}, "world": {"kind": "map", "map_id": "p10", "build_id": "p10-41d364b9d82e-p776"}, "health": 16.0, "held_slot": 1, "inventory": [{"item": {"id": "minecraft:stone", "count": 32}, "slot": 0}, {"item": {"id": "minecraft:iron_pickaxe", "count": 1}, "slot": 1}, {"item": {"id": "minecraft:oak_log", "count": 16}, "slot": 9}]}
+(1 row)
+
+$ diff of the stored data and the section in <s>/seed.json (jsonb equality)
+t
+$ docker exec synaxis-pg psql -U postgres -c 'DROP DATABASE run075_fixp'
+DROP DATABASE

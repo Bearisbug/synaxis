@@ -1,0 +1,126 @@
+# TC-PROD-753 / TC-PROD-754: p10 unit tests before the change (test_p10.py of this branch, p10.py of 940ebcbced)
+# 940ebcbced + working tree test_p10.py; 2026-10-11 13:21:56 CST
+$ <py> -m unittest discover -s client-fabric/gametest-env -p 'test_*.py' -v
+test_the_first_transfer_waits_the_gap_like_every_other_one (test_p10.DriveTest) ... ok
+test_the_run_ends_the_gap_after_the_last_transfer (test_p10.DriveTest) ... ok
+test_a_seeded_inventory_that_is_empty_fails (test_p10.JudgeTest) ... FAIL
+test_a_world_without_a_state_fails (test_p10.JudgeTest) ... test_an_inventory_other_than_the_seeded_one_fails (test_p10.JudgeTest) ... test_every_world_shows_the_seeded_inventory (test_p10.JudgeTest) ... FAIL
+test_the_first_world_shows_the_saved_position (test_p10.JudgeTest) ... test_a_failed_write_leaves_no_record (test_p10.SeedTest) ... ok
+test_the_account_is_the_one_the_shards_record_for_the_name (test_p10.SeedTest) ... ERROR
+test_the_section_goes_to_the_character_of_the_account (test_p10.SeedTest) ... FAIL
+test_the_section_is_one_the_shard_decodes_and_applies (test_p10.SeedTest) ... FAIL
+test_the_shard_directory_is_0644_whatever_the_umask (test_p10.ShardsTest) ... ok
+
+======================================================================
+ERROR: test_the_account_is_the_one_the_shards_record_for_the_name (test_p10.SeedTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-P/client-fabric/gametest-env/test_p10.py", line 74, in test_the_account_is_the_one_the_shards_record_for_the_name
+    self.assertEqual(load_p10().offline_uuid("Player998"), "5bd62aa7-8886-32aa-953e-97bdbc2a6931")
+AttributeError: module 'p10_under_test' has no attribute 'offline_uuid'
+
+======================================================================
+FAIL: test_a_seeded_inventory_that_is_empty_fails (test_p10.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-P/client-fabric/gametest-env/test_p10.py", line 216, in test_a_seeded_inventory_that_is_empty_fails
+    self.assertEqual(run.returncode, 1, run.stdout)
+AssertionError: 2 != 1 :
+
+======================================================================
+FAIL: test_a_world_without_a_state_fails (test_p10.JudgeTest) (states=['pos=100.50,79.00,120.50 yaw=0.0 pitch=0.0 held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1', 'pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1', None])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-P/client-fabric/gametest-env/test_p10.py", line 236, in test_a_world_without_a_state_fails
+    self.assertEqual(run.returncode, 1, run.stdout)
+AssertionError: 2 != 1 :
+
+======================================================================
+FAIL: test_a_world_without_a_state_fails (test_p10.JudgeTest) (states=['pos=100.50,79.00,120.50 yaw=0.0 pitch=0.0 held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1', 'none', 'pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1'])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-P/client-fabric/gametest-env/test_p10.py", line 236, in test_a_world_without_a_state_fails
+    self.assertEqual(run.returncode, 1, run.stdout)
+AssertionError: 2 != 1 :
+
+======================================================================
+FAIL: test_an_inventory_other_than_the_seeded_one_fails (test_p10.JudgeTest) (case='emptied by a transfer')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-P/client-fabric/gametest-env/test_p10.py", line 208, in test_an_inventory_other_than_the_seeded_one_fails
+    self.assertEqual(run.returncode, 1, run.stdout)
+AssertionError: 2 != 1 :
+
+======================================================================
+FAIL: test_an_inventory_other_than_the_seeded_one_fails (test_p10.JudgeTest) (case='held slot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-P/client-fabric/gametest-env/test_p10.py", line 208, in test_an_inventory_other_than_the_seeded_one_fails
+    self.assertEqual(run.returncode, 1, run.stdout)
+AssertionError: 2 != 1 :
+
+======================================================================
+FAIL: test_an_inventory_other_than_the_seeded_one_fails (test_p10.JudgeTest) (case='never applied')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-P/client-fabric/gametest-env/test_p10.py", line 208, in test_an_inventory_other_than_the_seeded_one_fails
+    self.assertEqual(run.returncode, 1, run.stdout)
+AssertionError: 2 != 1 :
+
+======================================================================
+FAIL: test_every_world_shows_the_seeded_inventory (test_p10.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-P/client-fabric/gametest-env/test_p10.py", line 193, in test_every_world_shows_the_seeded_inventory
+    self.assertEqual(run.returncode, 0, run.stdout)
+AssertionError: 2 != 0 :
+
+======================================================================
+FAIL: test_the_first_world_shows_the_saved_position (test_p10.JudgeTest) (case='0.3 east')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-P/client-fabric/gametest-env/test_p10.py", line 226, in test_the_first_world_shows_the_saved_position
+    self.assertEqual(run.returncode, 0 if ok else 1, run.stdout)
+AssertionError: 2 != 0 :
+
+======================================================================
+FAIL: test_the_first_world_shows_the_saved_position (test_p10.JudgeTest) (case='0.6 east')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-P/client-fabric/gametest-env/test_p10.py", line 226, in test_the_first_world_shows_the_saved_position
+    self.assertEqual(run.returncode, 0 if ok else 1, run.stdout)
+AssertionError: 2 != 1 :
+
+======================================================================
+FAIL: test_the_first_world_shows_the_saved_position (test_p10.JudgeTest) (case='the arrival point')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-P/client-fabric/gametest-env/test_p10.py", line 226, in test_the_first_world_shows_the_saved_position
+    self.assertEqual(run.returncode, 0 if ok else 1, run.stdout)
+AssertionError: 2 != 1 :
+
+======================================================================
+FAIL: test_the_section_goes_to_the_character_of_the_account (test_p10.SeedTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-P/client-fabric/gametest-env/test_p10.py", line 78, in test_the_section_goes_to_the_character_of_the_account
+    self.assertEqual(run.returncode, 0, run.stderr)
+AssertionError: 2 != 0 : usage: p10.py [-h] {shards,drive,judge} ...
+p10.py: error: argument command: invalid choice: 'seed' (choose from 'shards', 'drive', 'judge')
+
+
+======================================================================
+FAIL: test_the_section_is_one_the_shard_decodes_and_applies (test_p10.SeedTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-P/client-fabric/gametest-env/test_p10.py", line 102, in test_the_section_is_one_the_shard_decodes_and_applies
+    self.assertEqual(run.returncode, 0, run.stderr)
+AssertionError: 2 != 0 : usage: p10.py [-h] {shards,drive,judge} ...
+p10.py: error: argument command: invalid choice: 'seed' (choose from 'shards', 'drive', 'judge')
+
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.438s
+
+FAILED (failures=12, errors=1)
+exit=1

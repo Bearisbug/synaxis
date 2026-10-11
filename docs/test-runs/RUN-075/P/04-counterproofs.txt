@@ -1,0 +1,88 @@
+# TC-PROD-753 / TC-PROD-754 counterproofs: each edit made to p10.py alone, the unit tests run, the file restored
+# branch prod/r075-P on 940ebcbced + working tree; 2026-10-11 13:23:49 CST; line numbers of the working tree p10.py
+## (a) position tolerance 0.5 -> 25 (p10.py:424)
+$ in <P10> replace: expect(distance <= 0.5,   ->  expect(distance <= 25,
+FAIL: test_the_first_world_shows_the_saved_position (test_p10.JudgeTest) (case='0.6 east')
+  test_p10.py", line 226, in test_the_first_world_shows_the_saved_position
+AssertionError: 0 != 1 : ok   the driver ran to the end
+FAIL: test_the_first_world_shows_the_saved_position (test_p10.JudgeTest) (case='the arrival point')
+  test_p10.py", line 226, in test_the_first_world_shows_the_saved_position
+AssertionError: 0 != 1 : ok   the driver ran to the end
+Ran 12 tests in 0.537s
+FAILED (failures=2)
+
+## (b) worlds not compared with the seed (p10.py:428)
+$ in <P10> replace: and states[n] != seeded]  ->  and False]
+FAIL: test_an_inventory_other_than_the_seeded_one_fails (test_p10.JudgeTest) (case='emptied by a transfer')
+  test_p10.py", line 208, in test_an_inventory_other_than_the_seeded_one_fails
+AssertionError: 0 != 1 : ok   the driver ran to the end
+FAIL: test_an_inventory_other_than_the_seeded_one_fails (test_p10.JudgeTest) (case='held slot')
+  test_p10.py", line 208, in test_an_inventory_other_than_the_seeded_one_fails
+AssertionError: 0 != 1 : ok   the driver ran to the end
+FAIL: test_an_inventory_other_than_the_seeded_one_fails (test_p10.JudgeTest) (case='never applied')
+  test_p10.py", line 208, in test_an_inventory_other_than_the_seeded_one_fails
+AssertionError: 0 != 1 : ok   the driver ran to the end
+Ran 12 tests in 0.559s
+FAILED (failures=3)
+
+## (c) empty seed not refused (p10.py:429)
+$ in <P10> replace: expect(bool(section["inventory"]) and not differing,  ->  expect(not differing,
+FAIL: test_a_seeded_inventory_that_is_empty_fails (test_p10.JudgeTest)
+  test_p10.py", line 216, in test_a_seeded_inventory_that_is_empty_fails
+AssertionError: 0 != 1 : ok   the driver ran to the end
+Ran 12 tests in 0.539s
+FAILED (failures=1)
+
+## (d) hotbar slots not moved to the menu's 36..44 (p10.py:272)
+$ in <P10> replace: entry["slot"] + 36 if entry["slot"] < 9 else entry["slot"]  ->  entry["slot"]
+FAIL: test_a_world_without_a_state_fails (test_p10.JudgeTest) (states=['pos=100.50,79.00,120.50 yaw=0.0 pitch=0.0 held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1', 'pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1', None])
+  test_p10.py", line 237, in test_a_world_without_a_state_fails
+AssertionError: Lists differ: ['FAI[44 chars]rlds', 'FAIL the inventory in world 1 is held=[188 chars]*16'] != ['FAI[44 chars]rlds']
+FAIL: test_a_world_without_a_state_fails (test_p10.JudgeTest) (states=['pos=100.50,79.00,120.50 yaw=0.0 pitch=0.0 held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1', 'none', 'pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1'])
+  test_p10.py", line 237, in test_a_world_without_a_state_fails
+AssertionError: Lists differ: ['FAI[44 chars]rlds', 'FAIL the inventory in world 1 is held=[188 chars]*16'] != ['FAI[44 chars]rlds']
+FAIL: test_an_inventory_other_than_the_seeded_one_fails (test_p10.JudgeTest) (case='emptied by a transfer')
+  test_p10.py", line 209, in test_an_inventory_other_than_the_seeded_one_fails
+AssertionError: Lists differ: ['FAI[20 chars]orld 1 is held=1 inventory=9:minecraft:oak_log[157 chars]*16'] != ['FAI[20 chars]orld 2 is held=1 inventory=empty, the seeded o[92 chars]e*1']
+FAIL: test_an_inventory_other_than_the_seeded_one_fails (test_p10.JudgeTest) (case='held slot')
+  test_p10.py", line 209, in test_an_inventory_other_than_the_seeded_one_fails
+AssertionError: Lists differ: ['FAI[20 chars]orld 1 is held=1 inventory=9:minecraft:oak_log[157 chars]*16'] != ['FAI[20 chars]orld 3 is held=4 inventory=9:minecraft:oak_log[159 chars]e*1']
+FAIL: test_an_inventory_other_than_the_seeded_one_fails (test_p10.JudgeTest) (case='never applied')
+  test_p10.py", line 209, in test_an_inventory_other_than_the_seeded_one_fails
+AssertionError: Lists differ: ['FAI[84 chars]tory=0:minecraft:stone*32,1:minecraft:iron_pic[26 chars]*16'] != ['FAI[84 chars]tory=9:minecraft:oak_log*16,36:minecraft:stone[28 chars]e*1']
+FAIL: test_every_world_shows_the_seeded_inventory (test_p10.JudgeTest)
+  test_p10.py", line 193, in test_every_world_shows_the_seeded_inventory
+AssertionError: 1 != 0 : ok   the driver ran to the end
+FAIL: test_the_first_world_shows_the_saved_position (test_p10.JudgeTest) (case='0.3 east')
+  test_p10.py", line 226, in test_the_first_world_shows_the_saved_position
+AssertionError: 1 != 0 : ok   the driver ran to the end
+FAIL: test_the_first_world_shows_the_saved_position (test_p10.JudgeTest) (case='0.6 east')
+  test_p10.py", line 230, in test_the_first_world_shows_the_saved_position
+AssertionError: 2 != 1 : ok   the driver ran to the end
+FAIL: test_the_first_world_shows_the_saved_position (test_p10.JudgeTest) (case='the arrival point')
+  test_p10.py", line 230, in test_the_first_world_shows_the_saved_position
+AssertionError: 2 != 1 : ok   the driver ran to the end
+Ran 12 tests in 0.570s
+FAILED (failures=9)
+
+## (e) the character row not kept when it is there (p10.py:260)
+$ in <P10> replace: "ON CONFLICT (account_uuid, slot) DO NOTHING",  ->  "",
+FAIL: test_the_section_goes_to_the_character_of_the_account (test_p10.SeedTest)
+  test_p10.py", line 87, in test_the_section_goes_to_the_character_of_the_account
+AssertionError: "INSE[107 chars]4555', 0, 0, NULL) " != "INSE[107 chars]4555', 0, 0, NULL) ON CONFLICT (account_uuid, slot) DO NOTHING"
+Ran 12 tests in 0.545s
+FAILED (failures=1)
+
+## (f) the UUID version nibble 3 -> 4, not the offline UUID (p10.py:245)
+$ in <P10> replace: digest(), version=3))  ->  digest(), version=4))
+FAIL: test_the_account_is_the_one_the_shards_record_for_the_name (test_p10.SeedTest)
+  test_p10.py", line 74, in test_the_account_is_the_one_the_shards_record_for_the_name
+AssertionError: '5bd62aa7-8886-42aa-953e-97bdbc2a6931' != '5bd62aa7-8886-32aa-953e-97bdbc2a6931'
+Ran 12 tests in 0.550s
+FAILED (failures=1)
+
+## restored
+$ <py> -m unittest discover -s client-fabric/gametest-env -p 'test_*.py'
+Ran 12 tests in 0.558s
+
+OK

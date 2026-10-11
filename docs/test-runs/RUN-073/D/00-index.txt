@@ -22,3 +22,25 @@ password passed only through the environment. No Redis was needed. Six Gradle ru
                          16 classes (server-app 14, architecture-tests 2), all green.
 
 Each directory holds the JUnit XML of its run and summary.txt (per test: ok / FAIL with message and first test frame).
+
+Review rework (label rework-D), five more Gradle runs, same wrapper and settings, default mode. The PostgreSQL runs (4 and 5
+below) again took the password only through the environment.
+
+07-rework-red-init/      rework run 1, 09:19:39-09:19:43, on 4e100fc6be, PlayerStateSectionIntegrationTest alone: 10 tests,
+                         10 failed, every one in the class initializer: ExceptionInInitializerError at
+                         PlayerStateSectionIntegrationTest.java:49 (the static PICKAXE), caused by IllegalStateException
+                         "Should have been bound" (RegistryData$MaterialEntry.prototype, RegistryData.java:561). Runs 2-6 above
+                         were green because another class of the same JVM had created a process first.
+08-rework-red-new/       rework run 2, 09:21:16-09:21:24, the test class fixed (inventory built in each test) plus two new tests,
+                         PlayerStateSection still the one of 2822b00342, the class alone: 12 tests, 2 failed, the ten old ones
+                         green: theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition at :308 (the logout wrote the
+                         respawn point over the saved position) and aSecondFirstSpawnAppliesNothing at :341 (the inventory
+                         rolled back to the loaded state).
+09-rework-green/         rework run 3, 09:21:46-09:21:53, the fix (committed as 5b6aeab02d), the class alone: 12 tests, all green.
+10-rework-counter-proofs/ rework run 4, 09:23:17-09:23:28, on 5b6aeab02d, the nine mutations of 03-counter-proofs-a at their new
+                         lines (counter-proofs.diff), 4 classes: 25 tests, 14 failed, each on its own assertion; the new
+                         capture test is red at :308 under the mutation that ignores the applied tag; restored with
+                         git checkout HEAD -- server-app/src/main. The two mutations of 04-counter-proofs-b were not rerun.
+11-rework-final/         rework run 5, 09:28:08-09:28:28, restored, 7 classes (PlayerStateSection, PlayerStatePostgres,
+                         PlayerStateCodec, DefaultPlayHost, DefaultPlayStarterKit, PlayerStore, PlayerData integration tests):
+                         57 tests, all green.

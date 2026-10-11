@@ -1,0 +1,21 @@
+io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest: tests=10 failures=10 errors=0 skipped=0
+  FAIL underTheRtsRuleThePluginSpawnDecidesThePosition(Env): java.lang.ExceptionInInitializerError: java.lang.ExceptionInInitializerError
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.<clinit>(PlayerStateSectionIntegrationTest.java:49)
+  FAIL aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(Env): java.lang.NoClassDefFoundError: java.lang.NoClassDefFoundError: Could not initialize class io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.<clinit>(PlayerStateSectionIntegrationTest.java:49)
+  FAIL aPlayerThatLeftOnTheDeathScreenComesBackAsARespawn(Env): java.lang.NoClassDefFoundError: java.lang.NoClassDefFoundError: Could not initialize class io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.<clinit>(PlayerStateSectionIntegrationTest.java:49)
+  FAIL aSnapshotThatFindsNothingChangedWritesNothing(Env): java.lang.NoClassDefFoundError: java.lang.NoClassDefFoundError: Could not initialize class io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.<clinit>(PlayerStateSectionIntegrationTest.java:49)
+  FAIL aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env): java.lang.NoClassDefFoundError: java.lang.NoClassDefFoundError: Could not initialize class io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.<clinit>(PlayerStateSectionIntegrationTest.java:49)
+  FAIL theCoreRuleTakesOnlyAPositionSavedInTheCoreWorld(Env): java.lang.NoClassDefFoundError: java.lang.NoClassDefFoundError: Could not initialize class io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.<clinit>(PlayerStateSectionIntegrationTest.java:49)
+  FAIL aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env): java.lang.NoClassDefFoundError: java.lang.NoClassDefFoundError: Could not initialize class io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.<clinit>(PlayerStateSectionIntegrationTest.java:49)
+  FAIL theHostSectionIsTheHostsAlone(Env): java.lang.NoClassDefFoundError: java.lang.NoClassDefFoundError: Could not initialize class io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.<clinit>(PlayerStateSectionIntegrationTest.java:49)
+  FAIL aSavedHealthAboveTheMaximumIsTheMaximum(Env): java.lang.NoClassDefFoundError: java.lang.NoClassDefFoundError: Could not initialize class io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.<clinit>(PlayerStateSectionIntegrationTest.java:49)
+  FAIL aMapShardTakesTheSavedPositionOnlyWhenAllThreeHold(Env): java.lang.NoClassDefFoundError: java.lang.NoClassDefFoundError: Could not initialize class io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.<clinit>(PlayerStateSectionIntegrationTest.java:49)

@@ -1,0 +1,15 @@
+io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest: tests=12 failures=2 errors=0 skipped=0
+  ok   underTheRtsRuleThePluginSpawnDecidesThePosition(Env)
+  FAIL aSecondFirstSpawnAppliesNothing(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the 46 slots ==> expected: <[ItemStackImpl[material=minecraft:stone, amount=63, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_pickaxe, amount=1, componentPatch=DataComponentMapImpl[components={3=>3}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentM
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aSecondFirstSpawnAppliesNothing(PlayerStateSectionIntegrationTest.java:341)
+  ok   aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(Env)
+  ok   aPlayerThatLeftOnTheDeathScreenComesBackAsARespawn(Env)
+  ok   aSnapshotThatFindsNothingChangedWritesNothing(Env)
+  ok   aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)
+  ok   theCoreRuleTakesOnlyAPositionSavedInTheCoreWorld(Env)
+  ok   aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)
+  ok   theHostSectionIsTheHostsAlone(Env)
+  FAIL theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the saved state of a player that never got there ==> expected: <{"world": {"kind": "core"}, "pos": {"x": 1000.5, "y": 40.0, "z": 1000.5, "yaw": 30.0, "pitch": 0.0}, "inventory": [{"slot": 4, "item": {"id": "minecraft:dirt", "count": 1}}], "held_slot": 4, "health": 9.0}> but was: <{"world":{"kind":"core"},"pos":{"x":0.0,"y":42.0,"z":0.0,"yaw":0.0,"pitch":0.0},"inventory":[{"slot":4,"item":{"id":"minecraft:dirt","count":1}}],"held_slot":4,"health":9.0}>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition(PlayerStateSectionIntegrationTest.java:308)
+  ok   aSavedHealthAboveTheMaximumIsTheMaximum(Env)
+  ok   aMapShardTakesTheSavedPositionOnlyWhenAllThreeHold(Env)

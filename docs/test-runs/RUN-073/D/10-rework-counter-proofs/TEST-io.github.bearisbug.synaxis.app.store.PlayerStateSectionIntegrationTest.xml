@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" tests="12" skipped="0" failures="9" errors="0" timestamp="2026-10-11T01:23:27.535Z" hostname="Mac.local" time="0.566">
+  <properties/>
+  <testcase name="underTheRtsRuleThePluginSpawnDecidesThePosition(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.056"/>
+  <testcase name="aSecondFirstSpawnAppliesNothing(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.042"/>
+  <testcase name="aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.055">
+    <failure message="org.opentest4j.AssertionFailedError: a character captured once ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: a character captured once ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:266)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(PlayerStateSectionIntegrationTest.java:73)
+</failure>
+  </testcase>
+  <testcase name="aPlayerThatLeftOnTheDeathScreenComesBackAsARespawn(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.055">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;20.0&gt; but was: &lt;0.0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;20.0&gt; but was: &lt;0.0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:777)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aPlayerThatLeftOnTheDeathScreenComesBackAsARespawn(PlayerStateSectionIntegrationTest.java:171)
+</failure>
+  </testcase>
+  <testcase name="aSnapshotThatFindsNothingChangedWritesNothing(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.092">
+    <failure message="org.opentest4j.AssertionFailedError: five autosaves of a player that did not move ==&gt; expected: &lt;1&gt; but was: &lt;6&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: five autosaves of a player that did not move ==&gt; expected: &lt;1&gt; but was: &lt;6&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:705)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aSnapshotThatFindsNothingChangedWritesNothing(PlayerStateSectionIntegrationTest.java:90)
+</failure>
+  </testcase>
+  <testcase name="aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.021">
+    <failure message="org.opentest4j.AssertionFailedError: the saved state of the returning character ==&gt; expected: &lt;{&quot;world&quot;: {&quot;kind&quot;: &quot;core&quot;}, &quot;pos&quot;: {&quot;x&quot;: 8.5, &quot;y&quot;: 40.0, &quot;z&quot;: -3.5, &quot;yaw&quot;: 45.0, &quot;pitch&quot;: 10.0}, &quot;inventory&quot;: [{&quot;slot&quot;: 4, &quot;item&quot;: {&quot;id&quot;: &quot;minecraft:dirt&quot;, &quot;count&quot;: 1}}], &quot;held_slot&quot;: 4, &quot;health&quot;: 9.0}&gt; but was: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;core&quot;},&quot;pos&quot;:{&quot;x&quot;:0.0,&quot;y&quot;:0.0,&quot;z&quot;:0.0,&quot;yaw&quot;:0.0,&quot;pitch&quot;:0.0},&quot;inventory&quot;:[],&quot;held_slot&quot;:0,&quot;health&quot;:20.0}&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the saved state of the returning character ==&gt; expected: &lt;{&quot;world&quot;: {&quot;kind&quot;: &quot;core&quot;}, &quot;pos&quot;: {&quot;x&quot;: 8.5, &quot;y&quot;: 40.0, &quot;z&quot;: -3.5, &quot;yaw&quot;: 45.0, &quot;pitch&quot;: 10.0}, &quot;inventory&quot;: [{&quot;slot&quot;: 4, &quot;item&quot;: {&quot;id&quot;: &quot;minecraft:dirt&quot;, &quot;count&quot;: 1}}], &quot;held_slot&quot;: 4, &quot;health&quot;: 9.0}&gt; but was: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;core&quot;},&quot;pos&quot;:{&quot;x&quot;:0.0,&quot;y&quot;:0.0,&quot;z&quot;:0.0,&quot;yaw&quot;:0.0,&quot;pitch&quot;:0.0},&quot;inventory&quot;:[],&quot;held_slot&quot;:0,&quot;health&quot;:20.0}&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(PlayerStateSectionIntegrationTest.java:125)
+</failure>
+  </testcase>
+  <testcase name="theCoreRuleTakesOnlyAPositionSavedInTheCoreWorld(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.041">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]&gt; but was: &lt;Pos[x=8.5, y=40.0, z=-3.5, yaw=45.0, pitch=10.0]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]&gt; but was: &lt;Pos[x=8.5, y=40.0, z=-3.5, yaw=45.0, pitch=10.0]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.theCoreRuleTakesOnlyAPositionSavedInTheCoreWorld(PlayerStateSectionIntegrationTest.java:221)
+</failure>
+  </testcase>
+  <testcase name="aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.016">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;{&quot;world&quot;: {&quot;kind&quot;: &quot;core&quot;}, &quot;pos&quot;: {&quot;x&quot;: 8.5, &quot;y&quot;: 40.0, &quot;z&quot;: -3.5, &quot;yaw&quot;: 45.0, &quot;pitch&quot;: 10.0}, &quot;inventory&quot;: [{&quot;slot&quot;: 4, &quot;item&quot;: {&quot;id&quot;: &quot;minecraft:dirt&quot;, &quot;count&quot;: 1}}], &quot;held_slot&quot;: 4, &quot;health&quot;: 9.0}&gt; but was: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;core&quot;},&quot;pos&quot;:{&quot;x&quot;:0.0,&quot;y&quot;:0.0,&quot;z&quot;:0.0,&quot;yaw&quot;:0.0,&quot;pitch&quot;:0.0},&quot;inventory&quot;:[],&quot;held_slot&quot;:0,&quot;health&quot;:20.0}&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;{&quot;world&quot;: {&quot;kind&quot;: &quot;core&quot;}, &quot;pos&quot;: {&quot;x&quot;: 8.5, &quot;y&quot;: 40.0, &quot;z&quot;: -3.5, &quot;yaw&quot;: 45.0, &quot;pitch&quot;: 10.0}, &quot;inventory&quot;: [{&quot;slot&quot;: 4, &quot;item&quot;: {&quot;id&quot;: &quot;minecraft:dirt&quot;, &quot;count&quot;: 1}}], &quot;held_slot&quot;: 4, &quot;health&quot;: 9.0}&gt; but was: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;core&quot;},&quot;pos&quot;:{&quot;x&quot;:0.0,&quot;y&quot;:0.0,&quot;z&quot;:0.0,&quot;yaw&quot;:0.0,&quot;pitch&quot;:0.0},&quot;inventory&quot;:[],&quot;held_slot&quot;:0,&quot;health&quot;:20.0}&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone(PlayerStateSectionIntegrationTest.java:153)
+</failure>
+  </testcase>
+  <testcase name="theHostSectionIsTheHostsAlone(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.039">
+    <failure message="org.opentest4j.AssertionFailedError: a section outside synaxis: ==&gt; Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: a section outside synaxis: ==&gt; Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.theHostSectionIsTheHostsAlone(PlayerStateSectionIntegrationTest.java:274)
+</failure>
+  </testcase>
+  <testcase name="theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.055">
+    <failure message="org.opentest4j.AssertionFailedError: the saved state of a player that never got there ==&gt; expected: &lt;{&quot;world&quot;: {&quot;kind&quot;: &quot;core&quot;}, &quot;pos&quot;: {&quot;x&quot;: 1000.5, &quot;y&quot;: 40.0, &quot;z&quot;: 1000.5, &quot;yaw&quot;: 30.0, &quot;pitch&quot;: 0.0}, &quot;inventory&quot;: [{&quot;slot&quot;: 4, &quot;item&quot;: {&quot;id&quot;: &quot;minecraft:dirt&quot;, &quot;count&quot;: 1}}], &quot;held_slot&quot;: 4, &quot;health&quot;: 9.0}&gt; but was: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;core&quot;},&quot;pos&quot;:{&quot;x&quot;:0.0,&quot;y&quot;:42.0,&quot;z&quot;:0.0,&quot;yaw&quot;:0.0,&quot;pitch&quot;:0.0},&quot;inventory&quot;:[{&quot;slot&quot;:4,&quot;item&quot;:{&quot;id&quot;:&quot;minecraft:dirt&quot;,&quot;count&quot;:1}}],&quot;held_slot&quot;:4,&quot;health&quot;:9.0}&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the saved state of a player that never got there ==&gt; expected: &lt;{&quot;world&quot;: {&quot;kind&quot;: &quot;core&quot;}, &quot;pos&quot;: {&quot;x&quot;: 1000.5, &quot;y&quot;: 40.0, &quot;z&quot;: 1000.5, &quot;yaw&quot;: 30.0, &quot;pitch&quot;: 0.0}, &quot;inventory&quot;: [{&quot;slot&quot;: 4, &quot;item&quot;: {&quot;id&quot;: &quot;minecraft:dirt&quot;, &quot;count&quot;: 1}}], &quot;held_slot&quot;: 4, &quot;health&quot;: 9.0}&gt; but was: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;core&quot;},&quot;pos&quot;:{&quot;x&quot;:0.0,&quot;y&quot;:42.0,&quot;z&quot;:0.0,&quot;yaw&quot;:0.0,&quot;pitch&quot;:0.0},&quot;inventory&quot;:[{&quot;slot&quot;:4,&quot;item&quot;:{&quot;id&quot;:&quot;minecraft:dirt&quot;,&quot;count&quot;:1}}],&quot;held_slot&quot;:4,&quot;health&quot;:9.0}&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition(PlayerStateSectionIntegrationTest.java:308)
+</failure>
+  </testcase>
+  <testcase name="aSavedHealthAboveTheMaximumIsTheMaximum(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.042"/>
+  <testcase name="aMapShardTakesTheSavedPositionOnlyWhenAllThreeHold(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.048">
+    <failure message="org.opentest4j.AssertionFailedError: outside the bounds ==&gt; expected: &lt;Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]&gt; but was: &lt;Pos[x=64.5, y=40.0, z=40.5, yaw=0.0, pitch=0.0]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: outside the bounds ==&gt; expected: &lt;Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]&gt; but was: &lt;Pos[x=64.5, y=40.0, z=40.5, yaw=0.0, pitch=0.0]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aMapShardTakesTheSavedPositionOnlyWhenAllThreeHold(PlayerStateSectionIntegrationTest.java:248)
+</failure>
+  </testcase>
+  <system-out><![CDATA[09:23:27.575 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=34bac039-1359-4848-8181-770b999bf4d3 identifier=Commander
+09:23:27.590 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+09:23:27.591 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=5b3b26a1-0476-4880-a7bc-291ba0e9ac15 identifier=Commander reason=synaxis:server-stopping
+09:23:27.591 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=5b3b26a1-0476-4880-a7bc-291ba0e9ac15 identifier=Commander
+09:23:27.591 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+09:23:27.591 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+09:23:27.632 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+09:23:27.632 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=5cbdca51-e76f-422f-aefd-6aecabfb7f04 identifier=Reconfigured reason=synaxis:server-stopping
+09:23:27.632 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=5cbdca51-e76f-422f-aefd-6aecabfb7f04 identifier=Reconfigured
+09:23:27.634 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+09:23:27.634 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+09:23:27.674 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=2ed7dc68-baba-4c76-9e4a-416a4da5ce90 identifier=Returner
+09:23:27.688 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+09:23:27.688 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=aa0e34d3-aa8d-4861-8b18-70bd564e3b51 identifier=Returner reason=synaxis:server-stopping
+09:23:27.688 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=aa0e34d3-aa8d-4861-8b18-70bd564e3b51 identifier=Returner
+09:23:27.689 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+09:23:27.689 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+09:23:27.730 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=9f0c5d84-5a68-42ab-a7c8-b876314ee35a identifier=Fallen
+09:23:27.744 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+09:23:27.744 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=2b5b7307-d3be-4cf2-8832-ed1df245339e identifier=Fallen reason=synaxis:server-stopping
+09:23:27.744 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=2b5b7307-d3be-4cf2-8832-ed1df245339e identifier=Fallen
+09:23:27.745 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+09:23:27.745 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+09:23:27.837 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+09:23:27.837 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=c2ef298a-8565-42d8-b829-cdb26fe378bc identifier=Idler reason=synaxis:server-stopping
+09:23:27.837 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=c2ef298a-8565-42d8-b829-cdb26fe378bc identifier=Idler
+09:23:27.837 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+09:23:27.837 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+09:23:27.842 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=5fe254a8-7f7d-469b-80a5-a8bfc0c6ee64 identifier=Hasty
+09:23:27.843 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=59bb890e-330f-43d8-8cee-b172e280e6fc identifier=Hasty
+09:23:27.858 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+09:23:27.858 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+09:23:27.858 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+09:23:27.899 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+09:23:27.899 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=7bdbabc8-25f9-460f-9aeb-432c5d7bb093 identifier=Visitor reason=synaxis:server-stopping
+09:23:27.899 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=7bdbabc8-25f9-460f-9aeb-432c5d7bb093 identifier=Visitor
+09:23:27.900 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+09:23:27.900 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+09:23:27.905 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=b7d11bab-5fc5-4b36-88d9-d6ca212a92f0 identifier=Late reason=synaxis:server-stopping
+09:23:27.905 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=b7d11bab-5fc5-4b36-88d9-d6ca212a92f0 identifier=Late
+09:23:27.916 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+09:23:27.916 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+09:23:27.916 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+09:23:27.954 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+09:23:27.954 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=912f654d-6002-4a13-a41e-6cb1e1886ec8 identifier=Owner reason=synaxis:server-stopping
+09:23:27.954 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=912f654d-6002-4a13-a41e-6cb1e1886ec8 identifier=Owner
+09:23:27.955 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+09:23:27.955 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+09:23:27.995 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=27da0ba5-3d48-48b4-9da0-fec4956fad78 identifier=Hasty
+09:23:28.011 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+09:23:28.011 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+09:23:28.011 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+09:23:28.051 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+09:23:28.051 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=7d7836a9-b8d3-49bc-8258-5e2fca93e4d8 identifier=Hale reason=synaxis:server-stopping
+09:23:28.051 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=7d7836a9-b8d3-49bc-8258-5e2fca93e4d8 identifier=Hale
+09:23:28.052 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+09:23:28.053 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+09:23:28.100 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+09:23:28.100 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=378be5b8-4390-4fff-b6af-16f680c6e82c identifier=Traveller reason=synaxis:server-stopping
+09:23:28.100 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=378be5b8-4390-4fff-b6af-16f680c6e82c identifier=Traveller
+09:23:28.100 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=57757097-a82a-40e5-bdf2-12553af5c053 identifier=Traveller reason=synaxis:server-stopping
+09:23:28.100 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=57757097-a82a-40e5-bdf2-12553af5c053 identifier=Traveller
+09:23:28.101 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+09:23:28.101 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

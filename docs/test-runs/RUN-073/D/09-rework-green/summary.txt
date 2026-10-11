@@ -1,0 +1,13 @@
+io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest: tests=12 failures=0 errors=0 skipped=0
+  ok   underTheRtsRuleThePluginSpawnDecidesThePosition(Env)
+  ok   aSecondFirstSpawnAppliesNothing(Env)
+  ok   aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(Env)
+  ok   aPlayerThatLeftOnTheDeathScreenComesBackAsARespawn(Env)
+  ok   aSnapshotThatFindsNothingChangedWritesNothing(Env)
+  ok   aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)
+  ok   theCoreRuleTakesOnlyAPositionSavedInTheCoreWorld(Env)
+  ok   aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)
+  ok   theHostSectionIsTheHostsAlone(Env)
+  ok   theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition(Env)
+  ok   aSavedHealthAboveTheMaximumIsTheMaximum(Env)
+  ok   aMapShardTakesTheSavedPositionOnlyWhenAllThreeHold(Env)

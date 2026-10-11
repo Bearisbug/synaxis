@@ -57,10 +57,11 @@ import org.jspecify.annotations.Nullable;
  * <p>
  * Every assertion is one line {@code R<n> PASS|FAIL <evidence>} of
  * {@code synaxis-gametest/report.txt}, written in a {@code finally} so that a step that throws still
- * leaves the lines before it, and the ones it never reached as {@code FAIL}. The file is what CI
- * judges; the test then fails on any {@code FAIL} as well, but its exit code is only recorded,
- * because the client's exit code is wrong in both directions (a segfault in libopenal on the way
- * out in the container, success when the connection dropped).
+ * leaves the lines before it, and the ones it never reached as {@code FAIL} naming what it threw.
+ * The file is what CI judges, and the test never fails itself: Fabric's runner stops at the first
+ * test that throws, and {@link PlayableClientGameTest} runs after this one. The client's exit code
+ * is only recorded, because it is wrong in both directions (a segfault in libopenal on the way out
+ * in the container, success when the connection dropped).
  * <p>
  * Selecting and ordering go through {@link RtsClient#selectAt} and {@link RtsClient#orderAt}
  * directly, read by reflection off {@code SynaxisClientMod.RTS}: stage 6b has not wired mouse input
@@ -95,17 +96,19 @@ public final class RegressionClientGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext context) {
-        // A P10 run has no SYNAXIS_GAMETEST_SERVER, so R2 to R8 would fail, and a test that throws
-        // ends the whole run before TransferRoundTripClientGameTest gets its turn
+        // A P10 run has no SYNAXIS_GAMETEST_SERVER to run R2 to R8 against, and its judge reads
+        // p10.txt alone
         if (TransferRoundTripClientGameTest.enabled()) return;
         final Report report = new Report();
+        String ended = "the test ended before this assertion";
         try {
             run(context, report);
+        } catch (RuntimeException | AssertionError e) {
+            ended = "the test threw " + e;
         } finally {
-            report.write();
+            report.write(ended);
             leaveToTitle(context);
         }
-        report.assertAllPassed();
     }
 
     private static void run(ClientGameTestContext context, Report report) {
@@ -361,8 +364,9 @@ public final class RegressionClientGameTest implements FabricClientGameTest {
             for (int id = 1; id <= ASSERTIONS; id++) lines.putIfAbsent(id, "R" + id + " FAIL not reached: " + why);
         }
 
-        void write() {
-            skipRest("the test ended before this assertion");
+        /** Writes the file, every assertion not reached a {@code FAIL} that says why. */
+        void write(String why) {
+            skipRest(why);
             final Path file = FabricLoader.getInstance().getGameDir().resolve("synaxis-gametest/report.txt");
             try {
                 Files.createDirectories(file.getParent());
@@ -370,11 +374,6 @@ public final class RegressionClientGameTest implements FabricClientGameTest {
             } catch (IOException e) {
                 throw new IllegalStateException("could not write " + file, e);
             }
-        }
-
-        void assertAllPassed() {
-            final List<String> failed = lines.values().stream().filter(line -> !line.contains(" PASS ")).toList();
-            if (!failed.isEmpty()) throw new AssertionError("regression assertions failed:\n" + String.join("\n", failed));
         }
     }
 }

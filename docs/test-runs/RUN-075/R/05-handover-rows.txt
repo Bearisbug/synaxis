@@ -1,0 +1,47 @@
+# DESIGN-PROD §28.3: the rows handed to the light session that main 940ebcbced numbered 3572, 3578, 3579, 3581-3585, 3587, 3588
+# (fd7b8b211d did not touch DESIGN-PROD, so the numbers hold on it; on the branch they are one more, the v0.9.77 changelog row).
+# Each row checked against the documents on fd7b8b211d; the completing commit found with git log -S/-L. Read only.
+#### git show fd7b8b211d --stat
+fd7b8b211d 2026-10-11 13:28:22 +0800 docs: DESIGN-M3 v0.46 and TEST.md follow the RUN-073 handover
+
+ docs/DESIGN-M3.md | 25 +++++++++++++------------
+ docs/TEST.md      | 15 ++++++++-------
+ 2 files changed, 21 insertions(+), 19 deletions(-)
+#### 3572 (DESIGN-M3 §28.2 M3 v0.20 final column)
+  '①～⑤ ... v0.9.31 完成'             0b554bb0ed 2026-10-06 12:52:46 +0800 docs: DESIGN-M3 v0.38 designs the fixes for the M3 side security review (M3-S)
+  ':748-749' and ':978' (④)           0b554bb0ed 2026-10-06 12:52:46 +0800 docs: DESIGN-M3 v0.38 designs the fixes for the M3 side security review (M3-S)
+  '514 个' (⑤)                        0b554bb0ed 2026-10-06 12:52:46 +0800 docs: DESIGN-M3 v0.38 designs the fixes for the M3 side security review (M3-S)
+  TC-PROD-528 ':704' (five numbers)    fd7b8b211d 2026-10-11 13:28:22 +0800 docs: DESIGN-M3 v0.46 and TEST.md follow the RUN-073 handover
+#### 3578 (DESIGN.md §15, §5 REQ-017, §28)
+1
+1
+1
+  DESIGN.md v0.44                      b70c6b7f54 2026-10-07 17:46:13 +0800 docs: M3-S merge step, design docs and TEST.md follow the integrated tree
+#### 3579 (DESIGN-M3 review record, API-M3-010 Player.java, §2/§4/API-M3-006/API-M3-005/§16/§28.2)
+  DESIGN-M3 v0.40                      b70c6b7f54 2026-10-07 17:46:13 +0800 docs: M3-S merge step, design docs and TEST.md follow the integrated tree
+  'Player.java:985'                    ec9fd2b741 2026-10-07 19:26:50 +0800 docs: M3-S review follow-up on the tree merged with main
+1670:| 取包到入队之间有别的线程改方块 | `Player` 发区块（`g
+1
+#### 3581 (TEST.md TC-GAME-066/017, :loadtest TC-WORLD, TC-WORLD-100/101, ShardWorldTest lines)
+  '17 个类 199 条全绿'                   b70c6b7f54 2026-10-07 17:46:13 +0800 docs: M3-S merge step, design docs and TEST.md follow the integrated tree
+  'TC-WORLD-077' :loadtest sentence    b70c6b7f54 2026-10-07 17:46:13 +0800 docs: M3-S merge step, design docs and TEST.md follow the integrated tree
+  'Main.java:549'                      fd7b8b211d 2026-10-11 13:28:22 +0800 docs: DESIGN-M3 v0.46 and TEST.md follow the RUN-073 handover
+#### 3582 (DESIGN-M3 M3 v0.38 final column; DESIGN-M2 v0.56 twice)
+  '⑫⑬⑮⑯⑱（v0.9.52 ...）已随 RUN-071'    b70c6b7f54 2026-10-07 17:46:13 +0800 docs: M3-S merge step, design docs and TEST.md follow the integrated tree
+1
+1
+daa9370385 2026-10-07 14:50:57 +0800 Merge m3/fix-base: M3-S fix design (DESIGN-M3 v0.38, DESIGN.md v0.43, DESIGN-M2 v0.59, security review README)
+#### 3583 (DESIGN.md §16 row; TC-GAME-069 steps 2, 5)
+1
+  'compareAndSet(true, true)'          b70c6b7f54 2026-10-07 17:46:13 +0800 docs: M3-S merge step, design docs and TEST.md follow the integrated tree
+#### 3584 (LightShardFixture, FarViewShardFixture)
+server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/FarViewShardFixture.java:1
+server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/LightShardFixture.java:1
+  max-joins-per-tick in the fixtures   61c8d55c8c 2026-10-07 19:15:58 +0800 test: shard fixtures take ShardMain's join cap; the far view fixture keeps the map read only
+#### 3585 (DESIGN.md Gradle 9.8.0)
+110:| REQ-001 | 冻结：Minecraft 26.2（协议 776）、JDK 25、Gradle 9.8.
+145:    gradle[Gradle 9.8.0 · JDK 25<br/>阿里云镜像 init 脚本]
+450:| Gradle 9.8.0 + 阿里云镜像 init 脚本 | 依赖解析 | 镜像可用性由阿里云保证 | Gr
+  DESIGN.md v0.45                      ec9fd2b741 2026-10-07 19:26:50 +0800 docs: M3-S review follow-up on the tree merged with main
+#### 3587, 3588: done by fd7b8b211d (DESIGN-M3 v0.46; TEST.md TC-WORLD-032/100/101); prod/integrate-075 (v0.9.75) already marks both rows,
+#### 3587 with the exception of item 16 (client-gametest.yml:300-307 moves to :303-310 with v0.9.74), so this branch leaves them to that merge.

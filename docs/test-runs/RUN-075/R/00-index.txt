@@ -1,0 +1,22 @@
+RUN-075 group R: R1 to R8 only write the report and no longer end Fabric's gametest run before the playable script
+(docs/DESIGN-PROD.md v0.9.77, docs/TEST.md TC-PROD-757 to TC-PROD-759), the R8 entry of docs/TEST.md §7 reopened,
+docs/ENGINE.md §7 job p10, and DESIGN-PROD §28.3 rows marked done. Branch prod/r075-R on main fd7b8b211d, code commit a374b9f257. Not a
+registered round: the integration round registers RUN-075.
+
+00-index.txt              this file
+01-compile.txt            TC-PROD-757 step 1: compileGametestJava of client-fabric through the RUN-075 Gradle slot, and javap
+                          of RegressionClientGameTest$Report (write(String) only, no assertAllPassed)
+02-check-regression.txt   TC-PROD-757 steps 2 to 4: check-regression.sh on the file of fd7b8b211d (red, 2 MISSING), on the
+                          branch (green, 7 ok) and on two temporary copies (no leaveToTitle; a catch that rethrows)
+03-judge-cases.txt        TC-PROD-758: judge-cases.sh on judge.sh (unchanged), the counter-proof with the R line check always
+                          passing, and the judge of CI run 38118309531 attempt 1 that the case r8-threw reproduces line by line
+04-ci-r8.txt              the R8 failures for the §7 entry: run 38118309531 attempt 1 (main fd7b8b211d, push, second launch:
+                          the AssertionError that ended the run, the reports, the client's disconnect line), the RUN-071 (5)
+                          fixes in fd7b8b211d, and run 37581083878 (PR, merge 0fa9450 of 3077b68806 into 3be2fd114c, before
+                          the fixes)
+05-handover-rows.txt      DESIGN-PROD §28.3: each light session row checked and the commit that completed it
+check-regression.sh       the read-only check of RegressionClientGameTest (TC-PROD-757)
+judge-cases.sh            the five hand written two-launch runs of TC-PROD-758
+
+Not run here: TC-PROD-759 (GitHub Actions, the integration round's draft PR), TC-PROD-040 step 4 and TC-PROD-130
+step 4 (container, rewritten expectations), and the real client run of the changed test, which only CI does.

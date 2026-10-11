@@ -1,0 +1,61 @@
+# The R8 failures of Client gametest read for docs/TEST.md §7 (the R8 entry) and the decoupling of TC-PROD-757 to 759
+#### run 38118309531: gh run view 38118309531 --json headSha,headBranch,event,createdAt,conclusion,attempt
+{"attempt":2,"conclusion":"success","createdAt":"2026-10-11T06:30:54Z","event":"push","headBranch":"main","headSha":"fd7b8b211daee6f3766cb04a306ff43edd984b7a"}
+attempt 1 (gh run view 38118309531 --attempt 1 --json jobs,conclusion): failure; job 'Run the client gametests' 114407620921 failure 06:30:57Z-06:35:06Z, job 'Two shards, 2 round trips (P11 smoke)' success, P10 skipped
+#### attempt 1, job 114407620921 (gh api repos/Bearisbug/synaxis/actions/jobs/114407620921/logs): the second launch (runProductionClientGameTest)
+741:2026-10-11T06:33:09.7690265Z > Task :runClientGameTest
+1165:2026-10-11T06:34:46.6879911Z > Task :runProductionClientGameTest
+1465:2026-10-11T06:35:01.8930105Z > Task :runProductionClientGameTest FAILED
+2026-10-11T06:35:01.2832136Z [06:35:01] [Render thread/WARN]: Client disconnected with reason: Disconnected
+2026-10-11T06:35:01.4832816Z [06:35:01] [Test thread/ERROR]: Client gametests failed with an exception
+2026-10-11T06:35:01.4833412Z java.lang.AssertionError: regression assertions failed:
+2026-10-11T06:35:01.4833769Z R8 FAIL screen: Connection Lost. Disconnected
+2026-10-11T06:35:01.4834336Z 	at knot//io.github.bearisbug.synaxis.game.client.gametest.RegressionClientGameTest$Report.assertAllPassed(RegressionClientGameTest.java:377)
+2026-10-11T06:35:01.4834926Z 	at knot//io.github.bearisbug.synaxis.game.client.gametest.RegressionClientGameTest.runTest(RegressionClientGameTest.java:108)
+2026-10-11T06:35:01.4835507Z 	at knot//net.fabricmc.fabric.impl.client.gametest.FabricClientGameTestRunner.lambda$start$0(FabricClientGameTestRunner.java:54)
+2026-10-11T06:35:01.4836064Z 	at knot//net.fabricmc.fabric.impl.client.gametest.threading.ThreadingImpl.lambda$runTestThread$0(ThreadingImpl.java:139)
+2026-10-11T06:35:01.4836455Z 	at java.base/java.lang.Thread.run(Thread.java:1474)
+2026-10-11T06:35:01.4836704Z [06:35:01] [Render thread/ERROR]: ########## GL ERROR ##########
+2026-10-11T06:35:01.4836929Z [06:35:01] [Render thread/ERROR]: @ Render
+2026-10-11T06:35:01.4837183Z [06:35:01] [Render thread/ERROR]: 65547: X11: Standard cursor shape unavailable
+2026-10-11T06:35:01.4837462Z [06:35:01] [Render thread/ERROR]: Minecraft has crashed!
+2026-10-11T06:35:01.4837797Z net.fabricmc.loader.impl.FormattedException: java.lang.AssertionError: regression assertions failed:
+2026-10-11T06:35:01.4838111Z R8 FAIL screen: Connection Lost. Disconnected
+2026-10-11T06:35:01.8930105Z > Task :runProductionClientGameTest FAILED
+...  the reports as the job printed them:
+R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]
+R2 PASS state=VERIFIED schema_version=1
+R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://127.0.0.1:45529
+R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+R5 PASS unit_id=1 selected=1
+R6 PASS unit_id=1 answers [OK] target 263.50,40.00,255.50 moved 2.10 blocks (need 2.0)
+R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.
+== client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt
+R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]
+R2 PASS state=VERIFIED schema_version=1
+R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://127.0.0.1:45529
+R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+R5 PASS unit_id=2 selected=2
+R6 PASS unit_id=2 answers [OK] target 263.50,40.00,256.50 moved 2.10 blocks (need 2.0)
+R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+R8 FAIL screen: Connection Lost. Disconnected
+#### attempt 1, first launch: the R8 disconnect that passed
+2026-10-11T06:33:23.9697149Z [06:33:23] [Render thread/WARN] (Minecraft) Client disconnected with reason: The server rejected a message from this connection as malformed.
+#### the RUN-071 (5) fixes are in fd7b8b211d
+766f09a0bf 2026-10-06 15:27:58 +0800 Write everything queued before closing a kicked connection; p10.py writes shards.json 0644
+  ancestor of fd7b8b211d
+662f645ea4 2026-10-06 16:50:44 +0800 Start the closer thread when the write thread disconnects itself
+  ancestor of fd7b8b211d
+first main commit holding both: dcf16b9694 2026-10-06 23:34:54 +0800 Merge branch 'prod/r071-ops' into prod/integrate-071
+#### run 37581083878 (RUN-069 integrate/00-index.txt): gh run view 37581083878 --json headSha,headBranch,event,createdAt,conclusion,attempt
+{"attempt":1,"conclusion":"failure","createdAt":"2026-10-07T06:21:46Z","event":"pull_request","headBranch":"m3s/g-tests","headSha":"3077b68806537f7269d5048ce6c36d8a647097c8"}
+136:Run the client gametests	Checkout repository	2026-10-07T06:21:58.6672143Z HEAD is now at 0fa9450 Merge 3077b68806537f7269d5048ce6c36d8a647097c8 into 3be2fd114ccf50cee6f305eeffb016072a3b7178
+881:Run the client gametests	Run the client gametests against the production mod jar	2026-10-07T06:27:15.2905269Z R8 FAIL screen: Connection Lost. Disconnected
+892:Run the client gametests	Run the client gametests against the production mod jar	2026-10-07T06:27:15.3915739Z R8 FAIL screen: Connection Lost. Disconnected
+898:Run the client gametests	Run the client gametests against the production mod jar	2026-10-07T06:27:15.3936503Z R8 FAIL screen: Connection Lost. Disconnected
+766f09a0bf NOT an ancestor of 3077b68806
+766f09a0bf NOT an ancestor of 3be2fd114c
+662f645ea4 NOT an ancestor of 3077b68806
+662f645ea4 NOT an ancestor of 3be2fd114c
+3be2fd114c 2026-10-06 13:06:27 +0800 protocol: cap an announced far view object at 40 MiB

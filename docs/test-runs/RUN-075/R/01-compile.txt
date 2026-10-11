@@ -1,0 +1,29 @@
+# TC-PROD-757 step 1: compileGametestJava of client-fabric (zsh ~/.claude/r075/gradle.zsh <worktree>/client-fabric fix-R compileGametestJava,
+# i.e. ./gradlew compileGametestJava --max-workers=2 --no-daemon --init-script gametest-env/mirror.init.gradle.kts, JDK 25), on the branch's final source
+# (the first build of this branch, 15:48:52-15:49:32, compiled the same code before a javadoc reflow and was green as well)
+[fix-R] free=36% load=21 start 15:59:06
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :
+Fabric Loom: 1.17.21
+
+> Task :fetchDistantHorizons UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :compileGametestJava
+
+BUILD SUCCESSFUL in 17s
+4 actionable tasks: 1 executed, 3 up-to-date
+[fix-R] gradle exit=0 end 15:59:26
+#### javap -p -cp client-fabric/build/classes/java/gametest 'io.github.bearisbug.synaxis.game.client.gametest.RegressionClientGameTest$Report'
+Compiled from "RegressionClientGameTest.java"
+final class io.github.bearisbug.synaxis.game.client.gametest.RegressionClientGameTest$Report {
+  private static final int ASSERTIONS;
+  private final java.util.Map<java.lang.Integer, java.lang.String> lines;
+  private io.github.bearisbug.synaxis.game.client.gametest.RegressionClientGameTest$Report();
+  void put(int, boolean, java.lang.String);
+  void skipRest(java.lang.String);
+  void write(java.lang.String);
+}

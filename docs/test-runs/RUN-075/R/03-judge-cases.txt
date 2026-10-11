@@ -1,0 +1,170 @@
+# bash docs/test-runs/RUN-075/R/judge-cases.sh <judge.sh>, five hand written two-launch runs (TC-PROD-758)
+#### step 1: judge.sh is the one of main fd7b8b211d (git diff fd7b8b211d -- client-fabric/gametest-env/judge.sh | wc -l)
+0
+#### step 2: bash docs/test-runs/RUN-075/R/judge-cases.sh client-fabric/gametest-env/judge.sh
+== case all-pass exit=0
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   2 playable reports for 2 launches
+ok   client_verified 6, expected 6
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+ok   sessionserver join 10, expected 10
+ok   sessionserver hasJoined 200 10 of 10, expected 10 of 10
+client regression: all checks passed
+== case r8-threw exit=1
+FAIL client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 7 PASS, 1 FAIL
+     R8 FAIL screen: Connection Lost. Disconnected
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+FAIL no playable report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+FAIL 1 playable reports for 2 launches
+FAIL client_verified 4, expected 6
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+FAIL sessionserver join 6, expected 10
+FAIL sessionserver hasJoined 200 6 of 6, expected 10 of 10
+client regression: 6 check(s) failed
+== case r8-reported exit=1
+FAIL client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 7 PASS, 1 FAIL
+     R8 FAIL screen: Connection Lost. Disconnected
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   2 playable reports for 2 launches
+ok   client_verified 6, expected 6
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+ok   sessionserver join 10, expected 10
+ok   sessionserver hasJoined 200 10 of 10, expected 10 of 10
+client regression: 1 check(s) failed
+== case step-threw exit=1
+FAIL client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 4 PASS, 4 FAIL
+     R5 FAIL not reached: the test threw java.lang.IllegalStateException: SynaxisClientMod.RTS is not readable; the regression reads it by reflection
+     R6 FAIL not reached: the test threw java.lang.IllegalStateException: SynaxisClientMod.RTS is not readable; the regression reads it by reflection
+     R7 FAIL not reached: the test threw java.lang.IllegalStateException: SynaxisClientMod.RTS is not readable; the regression reads it by reflection
+     R8 FAIL not reached: the test threw java.lang.IllegalStateException: SynaxisClientMod.RTS is not readable; the regression reads it by reflection
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   2 playable reports for 2 launches
+ok   client_verified 6, expected 6
+ok   client_rejected 0, expected 0
+FAIL unit_order_issued 1, expected >= 2
+FAIL protocol-error kicks 1, expected 2
+ok   sessionserver join 10, expected 10
+ok   sessionserver hasJoined 200 10 of 10, expected 10 of 10
+client regression: 3 check(s) failed
+== case no-report exit=1
+FAIL no report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+FAIL 1 reports for 2 launches
+FAIL no playable report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+FAIL 1 playable reports for 2 launches
+ok   client_verified 6, expected 6
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+ok   sessionserver join 10, expected 10
+ok   sessionserver hasJoined 200 10 of 10, expected 10 of 10
+client regression: 4 check(s) failed
+#### step 3, counter-proof: a temporary copy of judge.sh whose R line check always passes
+38c38
+<   if [[ "$passed" -eq 8 && "$failed" -eq 0 ]]; then pass "$report: 8 PASS"
+---
+>   if true; then pass "$report: 8 PASS"
+== case all-pass exit=0
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   2 playable reports for 2 launches
+ok   client_verified 6, expected 6
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+ok   sessionserver join 10, expected 10
+ok   sessionserver hasJoined 200 10 of 10, expected 10 of 10
+client regression: all checks passed
+== case r8-threw exit=1
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+FAIL no playable report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+FAIL 1 playable reports for 2 launches
+FAIL client_verified 4, expected 6
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+FAIL sessionserver join 6, expected 10
+FAIL sessionserver hasJoined 200 6 of 6, expected 10 of 10
+client regression: 5 check(s) failed
+== case r8-reported exit=0
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   2 playable reports for 2 launches
+ok   client_verified 6, expected 6
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+ok   sessionserver join 10, expected 10
+ok   sessionserver hasJoined 200 10 of 10, expected 10 of 10
+client regression: all checks passed
+== case step-threw exit=1
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+ok   2 playable reports for 2 launches
+ok   client_verified 6, expected 6
+ok   client_rejected 0, expected 0
+FAIL unit_order_issued 1, expected >= 2
+FAIL protocol-error kicks 1, expected 2
+ok   sessionserver join 10, expected 10
+ok   sessionserver hasJoined 200 10 of 10, expected 10 of 10
+client regression: 2 check(s) failed
+== case no-report exit=1
+FAIL no report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+FAIL 1 reports for 2 launches
+FAIL no playable report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+FAIL 1 playable reports for 2 launches
+ok   client_verified 6, expected 6
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+ok   sessionserver join 10, expected 10
+ok   sessionserver hasJoined 200 10 of 10, expected 10 of 10
+client regression: 4 check(s) failed
+#### the CI judge of run 38118309531 attempt 1 (job 114407620921, gh api repos/Bearisbug/synaxis/actions/jobs/114407620921/logs), timestamps cut
+FAIL client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 7 PASS, 1 FAIL
+     R8 FAIL screen: Connection Lost. Disconnected
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+ok   2 reports for 2 launches
+FAIL no playable report at client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt
+ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+FAIL 1 playable reports for 2 launches
+FAIL client_verified 4, expected 6
+ok   client_rejected 0, expected 0
+ok   unit_order_issued 2, expected >= 2
+ok   protocol-error kicks 2, expected 2
+FAIL sessionserver join 6, expected 10
+FAIL sessionserver hasJoined 200 6 of 6, expected 10 of 10
+client regression: 6 check(s) failed

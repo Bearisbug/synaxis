@@ -52,3 +52,21 @@ SYNAXIS_TEST_PG_PASSWORD 给（docker inspect synaxis-pg 的 POSTGRES_PASSWORD�
 06-final/  第 6 次：还原后终跑，加 --rerun 强制执行
   gradle.txt：BUILD SUCCESSFUL，:server-app:test 真跑。PlayerStateSectionIntegrationTest 18、
   PlayerStatePostgresIntegrationTest 4，都 0 失败 0 跳过。
+
+07-strengthen/  集成分支 prod/integrate-076（185a297fca 之上）加强 whatThePlayerDrops…，本机 2026-10-11，两次 Gradle，
+  都经 zsh ~/.claude/r075/gradle.zsh <worktree> strengthen-076 :server-app:test --rerun --tests '*PlayerStateSectionIntegrationTest*'，
+  数据库环境变量与口令的给法同上（这个类只用内存后端，变量照给）。
+  起因：组 W 评审指出原测试在窗口里只改背包（拿走 4 格的泥土），选中格 4、生命值 9 与存档相同，断言背包为空；
+  把窗口分支的选中格、生命值换成存档值的变异抓不出来，「背包为空」也分不清捕获了真实背包还是捕获成空背包。
+  加强：窗口里同时拿走 4 格的泥土、往 0 格放进 63 个石头、选中格 4 → 2、生命值 9 → 5；库里那一段整串比对
+  （PlayerStateSectionIntegrationTest.java:507），再进服比对 46 格、选中格与生命值。测试第 476～519 行，其后行号加 8。
+  mutation.diff：相对 HEAD 的 <PS>，:150 窗口里（标签为 false）选中格与生命值取 hostValue 里的存档值。
+  red/gradle.txt：18 tests completed, 1 failed。whatThePlayerDrops… 红在 :507，
+    what it did meanwhile, at the saved position, not the respawn point it stood at ==> expected:
+    <{"world":{"kind":"core"},"pos":{"x":1000.5,"y":40.0,"z":1000.5,"yaw":30.0,"pitch":0.0},
+    "inventory":[{"slot":0,"item":{"id":"minecraft:stone","count":63}}],"held_slot":2,"health":5.0}> but was:
+    <{"world":{"kind":"core"},"pos":{"x":1000.5,"y":40.0,"z":1000.5,"yaw":30.0,"pitch":0.0},
+    "inventory":[{"slot":0,"item":{"id":"minecraft:stone","count":63}}],"held_slot":4,"health":9.0}>
+    位置与背包对，只有选中格与生命值是存档值。其余 17 条绿。
+  之后 git checkout HEAD -- server-app/src/main：git diff HEAD -- server-app/src/main 为空，grep -rn proof.never server-app/src/main 无输出。
+  green/gradle.txt：HEAD 的 <PS>，BUILD SUCCESSFUL，:server-app:test 真跑（--rerun，不是缓存），18 条 0 失败 0 跳过。

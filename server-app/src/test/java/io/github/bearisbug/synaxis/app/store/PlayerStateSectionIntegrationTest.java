@@ -475,7 +475,8 @@ class PlayerStateSectionIntegrationTest {
 
     /**
      * What a player does while the teleport to its saved position waits for the chunk is captured too, at the saved
-     * position: the dirt it dropped meanwhile is not in the stored section and does not come back with the player.
+     * position: the stone it picked up, the slot it switched to and the health it lost meanwhile are in the stored
+     * section and come back with the player, the dirt it dropped is not and does not.
      */
     @Test
     void whatThePlayerDropsWhileTheTeleportIsUnderWayDoesNotComeBack(Env env) throws Exception {
@@ -490,24 +491,31 @@ class PlayerStateSectionIntegrationTest {
             final Player dropper = online(env, memory.store(), instance, account, "Dropper");
             env.tick();
             assertEquals(false, dropper.getTag(PlayerStateSection.APPLIED), "the teleport is under way");
-            // What dropping it does to the inventory; the item entity is the default play layer's, not attached here
-            dropper.acquirable().sync(_ -> dropper.getInventory().setItemStack(4, ItemStack.AIR));
+            dropper.acquirable().sync(_ -> {
+                // What dropping the dirt does to the inventory; the item entity is the default play layer's, not
+                // attached here
+                dropper.getInventory().setItemStack(4, ItemStack.AIR);
+                dropper.getInventory().setItemStack(0, ItemStack.of(Material.STONE, 63));
+                dropper.setHeldItemSlot((byte) 2);
+                dropper.setHealth(5);
+            });
             leave(env, memory.store(), dropper);
         } finally {
             chunkLoads.countDown();
         }
 
-        final String written = stored(memory.backend(), account);
-        assertNotNull(written);
-        assertTrue(written.contains("\"inventory\":[]"), "the dirt it dropped: " + written);
-        assertTrue(written.contains("\"pos\":{\"x\":1000.5,\"y\":40.0,\"z\":1000.5,\"yaw\":30.0,\"pitch\":0.0}"),
-                "the saved position, not the respawn point it stood at: " + written);
+        assertEquals("{\"world\":{\"kind\":\"core\"},"
+                        + "\"pos\":{\"x\":1000.5,\"y\":40.0,\"z\":1000.5,\"yaw\":30.0,\"pitch\":0.0},"
+                        + "\"inventory\":[{\"slot\":0,\"item\":{\"id\":\"minecraft:stone\",\"count\":63}}],"
+                        + "\"held_slot\":2,\"health\":5.0}",
+                stored(memory.backend(), account),
+                "what it did meanwhile, at the saved position, not the respawn point it stood at");
         final Player again = online(env, memory.store(), instance, account, "Dropper");
         await(env, () -> Boolean.TRUE.equals(again.getTag(PlayerStateSection.APPLIED)), "back at its saved position");
         assertEquals(far, again.getPosition());
-        assertEquals(slots(Map.of()), slots(again), "the 46 slots");
-        assertEquals(4, again.getHeldSlot(), "the held slot");
-        assertEquals(9f, again.getHealth(), "the health");
+        assertEquals(slots(Map.of(0, ItemStack.of(Material.STONE, 63))), slots(again), "the 46 slots");
+        assertEquals(2, again.getHeldSlot(), "the held slot");
+        assertEquals(5f, again.getHealth(), "the health");
     }
 
     /**

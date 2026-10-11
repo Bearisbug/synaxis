@@ -1,0 +1,15 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
+index e8064ca838..25d754de95 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
+@@ -147,7 +147,9 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+         // it spawns at its respawn point on its way back
+         final Pos position = !applied ? store().hostValue(player, this).position()
+                 : player.getInstance() != null ? player.getPosition() : player.getRespawnPoint();
+-        return new PlayerState(world(current), position, slots, player.getHeldSlot(), player.getHealth());
++        return new PlayerState(world(current), position, slots,
++                (!applied && !Boolean.getBoolean("proof.never")) ? store().hostValue(player, this).heldSlot() : player.getHeldSlot(),
++                (!applied && !Boolean.getBoolean("proof.never")) ? store().hostValue(player, this).health() : player.getHealth());
+     }
+ 
+     private static PlayerState.World world(PositionRule rule) {

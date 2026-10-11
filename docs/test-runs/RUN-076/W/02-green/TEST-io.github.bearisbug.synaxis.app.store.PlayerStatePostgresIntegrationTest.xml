@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-11T13:22:25.414Z" hostname="Mac.local" time="1.737">
+  <properties/>
+  <testcase name="aLogoutBeforeTheFirstSpawnWritesNoSection(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest" time="0.751"/>
+  <testcase name="aRestartedShardGivesThePlayerBackItsState(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest" time="0.281"/>
+  <testcase name="anUndecodableSectionRefusesTheLoginAndStaysAsItIs(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest" time="0.314"/>
+  <testcase name="aTransferCarriesTheSectionToTheTargetShard(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest" time="0.388"/>
+  <system-out><![CDATA[21:22:25.703 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+21:22:25.728 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@5543800c
+21:22:25.728 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+21:22:25.786 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+21:22:25.824 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+21:22:25.826 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.013s)
+21:22:25.836 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+21:22:25.863 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+21:22:25.871 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+21:22:25.919 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+21:22:25.932 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+21:22:25.949 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+21:22:25.968 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+21:22:25.982 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+21:22:25.991 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.073s)
+21:22:26.020 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r1-c1 session_id=1 released -> active
+21:22:26.020 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r1-c1 session_id=1
+21:22:26.057 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=830dc4f6-e212-4cef-895f-13fab51e055a identifier=Hasty
+21:22:26.082 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=d28d7bb3-067e-4716-aaf8-65eab611eb66 identifier=Hasty
+21:22:26.103 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=f7a7b811-4679-4d0e-bf73-efed2890ce8c identifier=Hasty
+21:22:26.137 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+21:22:26.138 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+21:22:26.165 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:22:26.165 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:22:26.165 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:22:26.207 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+21:22:26.218 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@3dbdc020
+21:22:26.218 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+21:22:26.221 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+21:22:26.230 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+21:22:26.230 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.003s)
+21:22:26.236 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+21:22:26.251 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+21:22:26.255 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+21:22:26.285 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+21:22:26.297 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+21:22:26.315 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+21:22:26.329 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+21:22:26.340 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+21:22:26.347 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.054s)
+21:22:26.365 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r1-c1 session_id=1 released -> active
+21:22:26.365 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r1-c1 session_id=1
+21:22:26.400 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=5027cc44-758a-4042-be16-faa174204d04 identifier=Restarter
+21:22:26.430 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r1-c1 session_id=2 released -> active
+21:22:26.430 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r1-c1 session_id=2
+21:22:26.434 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+21:22:26.435 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+21:22:26.447 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:22:26.447 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=9a1925ff-5d26-4c66-aeef-4cae8e74e511 identifier=Restarter reason=synaxis:server-stopping
+21:22:26.447 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=9a1925ff-5d26-4c66-aeef-4cae8e74e511 identifier=Restarter
+21:22:26.448 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:22:26.448 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:22:26.448 [Syn-Store-Write] WARN  i.g.b.synaxis.app.store.PlayerStore - Saving a character failed: character_id=1 release=true (1 store failures since the last report)
+java.sql.SQLException: HikariDataSource HikariDataSource (synaxis-store) has been closed.
+	at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:95)
+	at io.github.bearisbug.synaxis.app.store.PostgresBackend.write(PostgresBackend.java:136)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.write(PlayerStore.java:1052)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.drain(PlayerStore.java:947)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.lambda$submit$0(PlayerStore.java:920)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:460)
+21:22:26.481 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+21:22:26.488 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@4e572e47
+21:22:26.488 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+21:22:26.490 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+21:22:26.498 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+21:22:26.498 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.002s)
+21:22:26.504 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+21:22:26.522 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+21:22:26.525 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+21:22:26.556 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+21:22:26.568 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+21:22:26.584 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+21:22:26.597 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+21:22:26.607 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+21:22:26.615 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.054s)
+21:22:26.631 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r1-c1 session_id=1 released -> active
+21:22:26.631 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r1-c1 session_id=1
+21:22:26.665 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=60f592ca-bbde-415b-90b8-ac50d566ba3f identifier=Broken
+21:22:26.700 [Test worker] ERROR i.g.b.synaxis.app.store.PlayerStore - Refusing a login: character_id=1 section_id=synaxis:player cannot be decoded
+java.lang.NullPointerException: Material cannot be null
+	at java.base/java.util.Objects.requireNonNull(Objects.java:246)
+	at io.github.bearisbug.synaxis.item.ItemStackImpl.<init>(ItemStackImpl.java:63)
+	at io.github.bearisbug.synaxis.item.ItemStackImpl.create(ItemStackImpl.java:55)
+	at io.github.bearisbug.synaxis.item.ItemStack.of(ItemStack.java:115)
+	at io.github.bearisbug.synaxis.codec.StructCodec$6.decodeFromMap(StructCodec.java:331)
+	at io.github.bearisbug.synaxis.item.ItemStack$1.decodeFromMap(ItemStack.java:79)
+	at io.github.bearisbug.synaxis.codec.StructCodec.lambda$decode$0(StructCodec.java:103)
+	at io.github.bearisbug.synaxis.codec.Result.map(Result.java:54)
+	at io.github.bearisbug.synaxis.codec.StructCodec.decode(StructCodec.java:103)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSection.decode(PlayerStateSection.java:278)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSection.decode(PlayerStateSection.java:40)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.decode(PlayerStore.java:572)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.loadWithin(PlayerStore.java:541)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.loadOrRefuse(PlayerStore.java:480)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.load(PlayerStore.java:441)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.load(PlayerStore.java:410)
+	at io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest.anUndecodableSectionRefusesTheLoginAndStaysAsItIs(PlayerStatePostgresIntegrationTest.java:179)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:700)
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:528)
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:53)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:124)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:256)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:228)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:189)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:109)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:168)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:137)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:126)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:100)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$0(InterceptingLauncher.java:46)
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:45)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.processAllTestDefinitions(JUnitPlatformTestDefinitionProcessor.java:206)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.access$000(JUnitPlatformTestDefinitionProcessor.java:123)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor.stop(JUnitPlatformTestDefinitionProcessor.java:117)
+	at org.gradle.api.internal.tasks.testing.SuiteTestDefinitionProcessor.stop(SuiteTestDefinitionProcessor.java:63)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.gradle.internal.dispatch.MethodInvocation.invokeOn(MethodInvocation.java:77)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:28)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:19)
+	at org.gradle.internal.dispatch.ContextClassLoaderDispatch.dispatch(ContextClassLoaderDispatch.java:33)
+	at org.gradle.internal.dispatch.ProxyDispatchAdapter$DispatchingInvocationHandler.invoke(ProxyDispatchAdapter.java:88)
+	at jdk.proxy2/jdk.proxy2.$Proxy6.stop(Unknown Source)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker$3.run(TestWorker.java:195)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.executeAndMaintainThreadName(TestWorker.java:126)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:103)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:63)
+	at org.gradle.process.internal.worker.child.ActionExecutionWorker.execute(ActionExecutionWorker.java:56)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:122)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:72)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.run(GradleWorkerMain.java:69)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.main(GradleWorkerMain.java:74)
+21:22:26.702 [Test worker] INFO  i.g.b.synaxis.app.store.PlayerStore - Refusing a login: connection_id=c6b86711-281f-4c81-9a62-c846bdd1c5bb reason=synaxis:state-unavailable cause=section synaxis:player cannot be decoded
+21:22:26.702 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=c6b86711-281f-4c81-9a62-c846bdd1c5bb identifier=Broken reason=synaxis:state-unavailable
+21:22:26.702 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=c6b86711-281f-4c81-9a62-c846bdd1c5bb identifier=Broken
+21:22:26.734 [Test worker] ERROR i.g.b.synaxis.app.store.PlayerStore - Refusing a login: character_id=1 section_id=synaxis:player cannot be decoded
+java.lang.IllegalArgumentException: held_slot 9 is not 0..8
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSection.decode(PlayerStateSection.java:285)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSection.decode(PlayerStateSection.java:40)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.decode(PlayerStore.java:572)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.loadWithin(PlayerStore.java:541)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.loadOrRefuse(PlayerStore.java:480)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.load(PlayerStore.java:441)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.load(PlayerStore.java:410)
+	at io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest.anUndecodableSectionRefusesTheLoginAndStaysAsItIs(PlayerStatePostgresIntegrationTest.java:179)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:700)
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:528)
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:53)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:124)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:256)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:228)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:189)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:109)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:168)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:137)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:126)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:100)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$0(InterceptingLauncher.java:46)
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:45)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.processAllTestDefinitions(JUnitPlatformTestDefinitionProcessor.java:206)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.access$000(JUnitPlatformTestDefinitionProcessor.java:123)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor.stop(JUnitPlatformTestDefinitionProcessor.java:117)
+	at org.gradle.api.internal.tasks.testing.SuiteTestDefinitionProcessor.stop(SuiteTestDefinitionProcessor.java:63)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.gradle.internal.dispatch.MethodInvocation.invokeOn(MethodInvocation.java:77)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:28)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:19)
+	at org.gradle.internal.dispatch.ContextClassLoaderDispatch.dispatch(ContextClassLoaderDispatch.java:33)
+	at org.gradle.internal.dispatch.ProxyDispatchAdapter$DispatchingInvocationHandler.invoke(ProxyDispatchAdapter.java:88)
+	at jdk.proxy2/jdk.proxy2.$Proxy6.stop(Unknown Source)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker$3.run(TestWorker.java:195)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.executeAndMaintainThreadName(TestWorker.java:126)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:103)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:63)
+	at org.gradle.process.internal.worker.child.ActionExecutionWorker.execute(ActionExecutionWorker.java:56)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:122)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:72)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.run(GradleWorkerMain.java:69)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.main(GradleWorkerMain.java:74)
+21:22:26.735 [Test worker] INFO  i.g.b.synaxis.app.store.PlayerStore - Refusing a login: connection_id=f673a104-cc29-4e98-b8aa-567845fd0395 reason=synaxis:state-unavailable cause=section synaxis:player cannot be decoded
+21:22:26.735 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=f673a104-cc29-4e98-b8aa-567845fd0395 identifier=Broken reason=synaxis:state-unavailable
+21:22:26.735 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=f673a104-cc29-4e98-b8aa-567845fd0395 identifier=Broken
+21:22:26.747 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+21:22:26.748 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+21:22:26.762 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:22:26.762 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:22:26.762 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:22:26.801 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+21:22:26.811 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@ace257b
+21:22:26.811 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+21:22:26.813 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+21:22:26.825 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+21:22:26.825 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.002s)
+21:22:26.830 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+21:22:26.845 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+21:22:26.848 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+21:22:26.880 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+21:22:26.893 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+21:22:26.911 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+21:22:26.926 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+21:22:26.938 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+21:22:26.953 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.062s)
+21:22:26.986 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r0-c1 session_id=1 released -> active
+21:22:26.986 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r0-c1 session_id=1
+21:22:27.109 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=01d47ee3-a1df-4b4d-b757-ccc0fa849aee identifier=Traveller
+21:22:27.132 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r1-c1 session_id=2 released -> active
+21:22:27.132 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r1-c1 session_id=2
+21:22:27.136 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+21:22:27.137 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+21:22:27.150 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:22:27.151 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=506d9a0f-e876-4a43-b01d-070783afa0d7 identifier=Traveller reason=synaxis:server-stopping
+21:22:27.151 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=506d9a0f-e876-4a43-b01d-070783afa0d7 identifier=Traveller
+21:22:27.151 [Syn-Store-Write] WARN  i.g.b.synaxis.app.store.PlayerStore - Saving a character failed: character_id=1 release=true (1 store failures since the last report)
+java.sql.SQLException: HikariDataSource HikariDataSource (synaxis-store) has been closed.
+	at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:95)
+	at io.github.bearisbug.synaxis.app.store.PostgresBackend.write(PostgresBackend.java:136)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.write(PlayerStore.java:1052)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.drain(PlayerStore.java:947)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.lambda$submit$0(PlayerStore.java:920)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:460)
+21:22:27.151 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:22:27.151 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

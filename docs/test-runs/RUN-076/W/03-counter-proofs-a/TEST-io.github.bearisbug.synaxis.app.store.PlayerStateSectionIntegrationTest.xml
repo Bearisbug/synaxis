@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" tests="18" skipped="0" failures="3" errors="0" timestamp="2026-10-11T13:24:01.422Z" hostname="Mac.local" time="1.112">
+  <properties/>
+  <testcase name="underTheRtsRuleThePluginSpawnDecidesThePosition(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.064"/>
+  <testcase name="aSecondFirstSpawnAppliesNothing(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.046"/>
+  <testcase name="aNegativePositionIsInTheChunkOfItsFlooredBlock(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.071"/>
+  <testcase name="aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.072"/>
+  <testcase name="whatThePlayerDropsWhileTheTeleportIsUnderWayDoesNotComeBack(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.058">
+    <failure message="org.opentest4j.AssertionFailedError: the dirt it dropped: {&quot;world&quot;: {&quot;kind&quot;: &quot;core&quot;}, &quot;pos&quot;: {&quot;x&quot;: 1000.5, &quot;y&quot;: 40.0, &quot;z&quot;: 1000.5, &quot;yaw&quot;: 30.0, &quot;pitch&quot;: 0.0}, &quot;inventory&quot;: [{&quot;slot&quot;: 4, &quot;item&quot;: {&quot;id&quot;: &quot;minecraft:dirt&quot;, &quot;count&quot;: 1}}], &quot;held_slot&quot;: 4, &quot;health&quot;: 9.0} ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the dirt it dropped: {&quot;world&quot;: {&quot;kind&quot;: &quot;core&quot;}, &quot;pos&quot;: {&quot;x&quot;: 1000.5, &quot;y&quot;: 40.0, &quot;z&quot;: 1000.5, &quot;yaw&quot;: 30.0, &quot;pitch&quot;: 0.0}, &quot;inventory&quot;: [{&quot;slot&quot;: 4, &quot;item&quot;: {&quot;id&quot;: &quot;minecraft:dirt&quot;, &quot;count&quot;: 1}}], &quot;held_slot&quot;: 4, &quot;health&quot;: 9.0} ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.whatThePlayerDropsWhileTheTeleportIsUnderWayDoesNotComeBack(PlayerStateSectionIntegrationTest.java:502)
+</failure>
+  </testcase>
+  <testcase name="untilTheTeleportLandsTheStateIsCapturedAtTheSavedPosition(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.06"/>
+  <testcase name="aRoundTripWhileTheTeleportIsUnderWayAppliesNothing(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.082"/>
+  <testcase name="aPlayerThatLeftOnTheDeathScreenComesBackAsARespawn(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.062"/>
+  <testcase name="aSnapshotThatFindsNothingChangedWritesNothing(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.171"/>
+  <testcase name="aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.048">
+    <failure message="org.opentest4j.AssertionFailedError: the saved state of the returning character ==&gt; expected: &lt;{&quot;world&quot;: {&quot;kind&quot;: &quot;core&quot;}, &quot;pos&quot;: {&quot;x&quot;: 8.5, &quot;y&quot;: 40.0, &quot;z&quot;: -3.5, &quot;yaw&quot;: 45.0, &quot;pitch&quot;: 10.0}, &quot;inventory&quot;: [{&quot;slot&quot;: 4, &quot;item&quot;: {&quot;id&quot;: &quot;minecraft:dirt&quot;, &quot;count&quot;: 1}}], &quot;held_slot&quot;: 4, &quot;health&quot;: 9.0}&gt; but was: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;core&quot;},&quot;pos&quot;:{&quot;x&quot;:0.0,&quot;y&quot;:0.0,&quot;z&quot;:0.0,&quot;yaw&quot;:0.0,&quot;pitch&quot;:0.0},&quot;inventory&quot;:[],&quot;held_slot&quot;:0,&quot;health&quot;:20.0}&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the saved state of the returning character ==&gt; expected: &lt;{&quot;world&quot;: {&quot;kind&quot;: &quot;core&quot;}, &quot;pos&quot;: {&quot;x&quot;: 8.5, &quot;y&quot;: 40.0, &quot;z&quot;: -3.5, &quot;yaw&quot;: 45.0, &quot;pitch&quot;: 10.0}, &quot;inventory&quot;: [{&quot;slot&quot;: 4, &quot;item&quot;: {&quot;id&quot;: &quot;minecraft:dirt&quot;, &quot;count&quot;: 1}}], &quot;held_slot&quot;: 4, &quot;health&quot;: 9.0}&gt; but was: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;core&quot;},&quot;pos&quot;:{&quot;x&quot;:0.0,&quot;y&quot;:0.0,&quot;z&quot;:0.0,&quot;yaw&quot;:0.0,&quot;pitch&quot;:0.0},&quot;inventory&quot;:[],&quot;held_slot&quot;:0,&quot;health&quot;:20.0}&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(PlayerStateSectionIntegrationTest.java:125)
+</failure>
+  </testcase>
+  <testcase name="aPlayerThatLeavesFromTheConfigurationPhaseComesBackAtItsRespawnPoint(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.072"/>
+  <testcase name="theCoreRuleTakesOnlyAPositionSavedInTheCoreWorld(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.042"/>
+  <testcase name="aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.021">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;{&quot;world&quot;: {&quot;kind&quot;: &quot;core&quot;}, &quot;pos&quot;: {&quot;x&quot;: 8.5, &quot;y&quot;: 40.0, &quot;z&quot;: -3.5, &quot;yaw&quot;: 45.0, &quot;pitch&quot;: 10.0}, &quot;inventory&quot;: [{&quot;slot&quot;: 4, &quot;item&quot;: {&quot;id&quot;: &quot;minecraft:dirt&quot;, &quot;count&quot;: 1}}], &quot;held_slot&quot;: 4, &quot;health&quot;: 9.0}&gt; but was: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;core&quot;},&quot;pos&quot;:{&quot;x&quot;:0.0,&quot;y&quot;:0.0,&quot;z&quot;:0.0,&quot;yaw&quot;:0.0,&quot;pitch&quot;:0.0},&quot;inventory&quot;:[],&quot;held_slot&quot;:0,&quot;health&quot;:20.0}&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;{&quot;world&quot;: {&quot;kind&quot;: &quot;core&quot;}, &quot;pos&quot;: {&quot;x&quot;: 8.5, &quot;y&quot;: 40.0, &quot;z&quot;: -3.5, &quot;yaw&quot;: 45.0, &quot;pitch&quot;: 10.0}, &quot;inventory&quot;: [{&quot;slot&quot;: 4, &quot;item&quot;: {&quot;id&quot;: &quot;minecraft:dirt&quot;, &quot;count&quot;: 1}}], &quot;held_slot&quot;: 4, &quot;health&quot;: 9.0}&gt; but was: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;core&quot;},&quot;pos&quot;:{&quot;x&quot;:0.0,&quot;y&quot;:0.0,&quot;z&quot;:0.0,&quot;yaw&quot;:0.0,&quot;pitch&quot;:0.0},&quot;inventory&quot;:[],&quot;held_slot&quot;:0,&quot;health&quot;:20.0}&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone(PlayerStateSectionIntegrationTest.java:153)
+</failure>
+  </testcase>
+  <testcase name="theHostSectionIsTheHostsAlone(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.04"/>
+  <testcase name="theLastBlockOfTheEdgeChunkIsInsideTheBoundsAndTheNextOneIsNot(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.067"/>
+  <testcase name="aRoundTripThroughTheConfigurationPhaseAppliesNothing(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.043"/>
+  <testcase name="aSavedHealthAboveTheMaximumIsTheMaximum(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.038"/>
+  <testcase name="aMapShardTakesTheSavedPositionOnlyWhenAllThreeHold(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest" time="0.051"/>
+  <system-out><![CDATA[21:24:01.469 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=84908602-99f0-443f-be3d-1c0cd3164e0d identifier=Commander
+21:24:01.486 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:01.486 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=a039d2e5-2f5d-484a-bca6-884bc8636bdf identifier=Commander reason=synaxis:server-stopping
+21:24:01.486 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=a039d2e5-2f5d-484a-bca6-884bc8636bdf identifier=Commander
+21:24:01.487 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:01.487 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:01.531 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:01.531 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=aa7836ca-7ff7-417d-96cd-c7232753f405 identifier=Reconfigured reason=synaxis:server-stopping
+21:24:01.532 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=aa7836ca-7ff7-417d-96cd-c7232753f405 identifier=Reconfigured
+21:24:01.533 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:01.533 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:01.600 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:01.600 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=9d75c4a8-efe8-4455-84f8-53574afe895c identifier=Edge reason=synaxis:server-stopping
+21:24:01.600 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=9d75c4a8-efe8-4455-84f8-53574afe895c identifier=Edge
+21:24:01.600 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=0ec1aa04-59b6-496b-8986-72ba438e22a1 identifier=Edge reason=synaxis:server-stopping
+21:24:01.600 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=0ec1aa04-59b6-496b-8986-72ba438e22a1 identifier=Edge
+21:24:01.600 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=cb1132ed-48de-4ce0-bfeb-32822377675b identifier=Edge reason=synaxis:server-stopping
+21:24:01.600 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=cb1132ed-48de-4ce0-bfeb-32822377675b identifier=Edge
+21:24:01.600 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=c30aaec3-1d6d-4e97-acff-8c93c5f9792b identifier=Edge reason=synaxis:server-stopping
+21:24:01.600 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=c30aaec3-1d6d-4e97-acff-8c93c5f9792b identifier=Edge
+21:24:01.603 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:01.604 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:01.657 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=ed0208ff-1c20-4885-a74b-735cb0f7b940 identifier=Returner
+21:24:01.674 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:01.674 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=f23e877b-195f-47a3-b57a-8158c5986e04 identifier=Returner reason=synaxis:server-stopping
+21:24:01.675 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=f23e877b-195f-47a3-b57a-8158c5986e04 identifier=Returner
+21:24:01.676 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:01.676 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:01.708 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=a505cf53-188d-4fa9-9113-b81acffa3b87 identifier=Dropper
+21:24:01.722 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:01.727 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:01.734 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:01.767 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=4123338e-fee4-4dca-b569-6abe32249285 identifier=Hasty
+21:24:01.793 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:01.793 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=3d1121c2-24dd-4ad1-946a-d6d054e71c68 identifier=Patient reason=synaxis:server-stopping
+21:24:01.793 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=3d1121c2-24dd-4ad1-946a-d6d054e71c68 identifier=Patient
+21:24:01.794 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:01.794 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:01.870 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:01.870 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=d91cde92-1af3-4bac-b50b-098eb3d2e710 identifier=Restless reason=synaxis:server-stopping
+21:24:01.870 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=d91cde92-1af3-4bac-b50b-098eb3d2e710 identifier=Restless
+21:24:01.877 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:01.877 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:01.921 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=96f1bdbd-d514-4c71-8a57-1bddc0267558 identifier=Fallen
+21:24:01.937 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:01.937 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=35cefe73-1feb-445d-b7b4-4a2b37e5585b identifier=Fallen reason=synaxis:server-stopping
+21:24:01.937 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=35cefe73-1feb-445d-b7b4-4a2b37e5585b identifier=Fallen
+21:24:01.939 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:01.939 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:02.078 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=3d24e459-9981-4693-a3c4-745f5872405d identifier=Idler
+21:24:02.103 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:02.103 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=54b385c4-7a66-419e-8b65-9e3a4c82f878 identifier=Idler reason=synaxis:server-stopping
+21:24:02.103 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=54b385c4-7a66-419e-8b65-9e3a4c82f878 identifier=Idler
+21:24:02.109 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:02.111 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:02.145 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=5744510e-e90f-4c14-9cc7-1f5aa1a21e74 identifier=Hasty
+21:24:02.146 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=d704eca9-cae5-4470-b52c-be2ebca68a28 identifier=Hasty
+21:24:02.158 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:02.159 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:02.159 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:02.216 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=505663c8-4f51-407e-92de-f5592ebcc213 identifier=Wanderer
+21:24:02.230 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:02.231 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=8351faed-4525-4e6c-b070-09b9ccf9201c identifier=Wanderer reason=synaxis:server-stopping
+21:24:02.231 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=8351faed-4525-4e6c-b070-09b9ccf9201c identifier=Wanderer
+21:24:02.232 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:02.232 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:02.273 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:02.273 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=5f6a9ac7-5426-46b9-8cd0-8e0a2845e327 identifier=Visitor reason=synaxis:server-stopping
+21:24:02.273 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=5f6a9ac7-5426-46b9-8cd0-8e0a2845e327 identifier=Visitor
+21:24:02.274 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:02.274 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:02.283 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=922a1356-3ddd-421b-ab92-228bd212409a identifier=Late reason=synaxis:server-stopping
+21:24:02.283 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=922a1356-3ddd-421b-ab92-228bd212409a identifier=Late
+21:24:02.295 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:02.295 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:02.296 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:02.334 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:02.334 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=0a376ac1-a408-4593-ba20-c09a6796af85 identifier=Owner reason=synaxis:server-stopping
+21:24:02.334 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=0a376ac1-a408-4593-ba20-c09a6796af85 identifier=Owner
+21:24:02.335 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:02.335 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:02.398 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:02.398 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=3154fd32-1da9-42ed-8d91-771a096f4823 identifier=Edge reason=synaxis:server-stopping
+21:24:02.398 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=3154fd32-1da9-42ed-8d91-771a096f4823 identifier=Edge
+21:24:02.398 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=a5db87c1-caa5-4e53-af55-84ab78ada948 identifier=Edge reason=synaxis:server-stopping
+21:24:02.398 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=a5db87c1-caa5-4e53-af55-84ab78ada948 identifier=Edge
+21:24:02.398 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=21ba0d03-501e-455e-b3cb-a1ab19eec55a identifier=Edge reason=synaxis:server-stopping
+21:24:02.398 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=21ba0d03-501e-455e-b3cb-a1ab19eec55a identifier=Edge
+21:24:02.398 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=0d0b0061-61b2-423f-9955-fd8e800db121 identifier=Edge reason=synaxis:server-stopping
+21:24:02.398 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=0d0b0061-61b2-423f-9955-fd8e800db121 identifier=Edge
+21:24:02.403 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:02.403 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:02.445 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:02.445 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=f14df87f-6018-452d-9fe4-fda6b781a57c identifier=Reconfigured reason=synaxis:server-stopping
+21:24:02.445 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=f14df87f-6018-452d-9fe4-fda6b781a57c identifier=Reconfigured
+21:24:02.446 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:02.446 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:02.482 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:02.482 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=38a631de-c8b0-497e-b736-9c169991ad5d identifier=Hale reason=synaxis:server-stopping
+21:24:02.482 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=38a631de-c8b0-497e-b736-9c169991ad5d identifier=Hale
+21:24:02.483 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:02.483 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+21:24:02.532 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+21:24:02.532 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=0920e9bf-0273-4f1c-a0a2-02cd3f62354c identifier=Traveller reason=synaxis:server-stopping
+21:24:02.532 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=0920e9bf-0273-4f1c-a0a2-02cd3f62354c identifier=Traveller
+21:24:02.532 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=2639b7ba-a725-499b-91ee-db19db4881a2 identifier=Traveller reason=synaxis:server-stopping
+21:24:02.532 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=2639b7ba-a725-499b-91ee-db19db4881a2 identifier=Traveller
+21:24:02.532 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=cd4200c5-5df9-4c69-9441-ca45e645db18 identifier=Traveller reason=synaxis:server-stopping
+21:24:02.532 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=cd4200c5-5df9-4c69-9441-ca45e645db18 identifier=Traveller
+21:24:02.532 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=db8005d4-1cd2-4255-92d6-42c8b38e02c3 identifier=Traveller reason=synaxis:server-stopping
+21:24:02.532 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=db8005d4-1cd2-4255-92d6-42c8b38e02c3 identifier=Traveller
+21:24:02.532 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=3e0f1275-4903-4496-a123-f28dfa3e5640 identifier=Traveller reason=synaxis:server-stopping
+21:24:02.532 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=3e0f1275-4903-4496-a123-f28dfa3e5640 identifier=Traveller
+21:24:02.532 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=1b6860b7-2029-48f6-ba85-2b95ecf48c45 identifier=Arrival reason=synaxis:server-stopping
+21:24:02.532 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=1b6860b7-2029-48f6-ba85-2b95ecf48c45 identifier=Arrival
+21:24:02.534 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+21:24:02.534 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

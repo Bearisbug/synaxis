@@ -1,0 +1,13 @@
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
+@@ -133,8 +133,8 @@
+      * What the snapshots of the store take: nothing before the first spawn applied the saved state.
+      */
+     private @Nullable PlayerState capture(Player player) {
+-        final Boolean applied = player.getTag(APPLIED);
+-        if (applied == null) return null;
++        final Boolean applied = (player.hasTag(APPLIED) || Boolean.getBoolean("proof.never")) ? player.getTag(APPLIED) : Boolean.TRUE;
++        if (applied == null || (!applied && !Boolean.getBoolean("proof.never"))) return null;
+         final PositionRule current = rule();
+         final PlayerInventory inventory = player.getInventory();
+         final Map<Integer, ItemStack> slots = new HashMap<>();

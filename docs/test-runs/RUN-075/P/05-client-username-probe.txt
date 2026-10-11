@@ -1,0 +1,61 @@
+# TC-PROD-755 step 4: what runProductionClientGameTest hands the game, read by the init script docs/test-runs/RUN-075/P/print-args.gradle
+# on Gradle's help task in client-fabric, through ~/.claude/r075/gradle.zsh (one Gradle build at a time); 2026-10-11
+# the build script of 940ebcbced has no programArgs; the working tree's adds --username from SYNAXIS_GAMETEST_USERNAME
+
+## red: 940ebcbced build.gradle.kts, SYNAXIS_GAMETEST_USERNAME=SynaxisP10
+$ zsh ~/.claude/r075/gradle.zsh <wt>/client-fabric fix-P help --init-script docs/test-runs/RUN-075/P/print-args.gradle
+[fix-P] free=51% load=6 start 13:24:41
+probe SYNAXIS_GAMETEST_USERNAME=SynaxisP10 programArgs=[] jvmArgs=[-Dfabric.client.gametest]
+BUILD SUCCESSFUL in 5s
+[fix-P] gradle exit=0 end 13:24:48
+
+## green: working tree, SYNAXIS_GAMETEST_USERNAME=SynaxisP10
+$ zsh ~/.claude/r075/gradle.zsh <wt>/client-fabric fix-P help --init-script docs/test-runs/RUN-075/P/print-args.gradle
+[fix-P] free=50% load=5 start 13:25:07
+probe SYNAXIS_GAMETEST_USERNAME=SynaxisP10 programArgs=[--username, SynaxisP10] jvmArgs=[-Dfabric.client.gametest]
+BUILD SUCCESSFUL in 6s
+[fix-P] gradle exit=0 end 13:25:15
+
+## unset: working tree, SYNAXIS_GAMETEST_USERNAME unset
+$ zsh ~/.claude/r075/gradle.zsh <wt>/client-fabric fix-P help --init-script docs/test-runs/RUN-075/P/print-args.gradle
+[fix-P] free=48% load=6 start 13:25:21
+probe SYNAXIS_GAMETEST_USERNAME=null programArgs=[] jvmArgs=[-Dfabric.client.gametest]
+BUILD SUCCESSFUL in 3s
+[fix-P] gradle exit=0 end 13:25:25
+
+## vanilla's choice without --username and --uuid (net.minecraft.client.main.Main of ~/.gradle/caches/fabric-loom/26.2/minecraft-client.jar, javap -c)
+       306: ldc           #125                // String username
+       308: invokevirtual #36                 // Method joptsimple/OptionParser.accepts:(Ljava/lang/String;)Ljoptsimple/OptionSpecBuilder;
+       311: invokevirtual #54                 // Method joptsimple/OptionSpecBuilder.withRequiredArg:()Ljoptsimple/ArgumentAcceptingOptionSpec;
+       314: invokestatic  #127                // Method java/lang/System.currentTimeMillis:()J
+       317: ldc2_w        #131                // long 1000l
+       320: lrem
+       321: invokedynamic #133,  0            // InvokeDynamic #0:makeConcatWithConstants:(J)Ljava/lang/String;
+       326: iconst_0
+       327: anewarray     #117                // class java/lang/String
+      1196: invokestatic  #433                // Method com/mojang/util/UndashedUuid.fromStringLenient:(Ljava/lang/String;)Ljava/util/UUID;
+      1199: goto          1217
+      1202: aload         19
+      1204: aload         33
+      1206: invokeinterface #427,  2          // InterfaceMethod joptsimple/OptionSpec.value:(Ljoptsimple/OptionSet;)Ljava/lang/Object;
+      1211: checkcast     #117                // class java/lang/String
+      1214: invokestatic  #439                // Method net/minecraft/core/UUIDUtil.createOfflinePlayerUUID:(Ljava/lang/String;)Ljava/util/UUID;
+      1217: astore        62
+
+## Loom 1.17.21 ClientProductionRunTask: the program arguments it adds itself (javap -c, string constants)
+        13: ldc_w         #281                // String --assetIndex
+        31: ldc_w         #283                // String --assetsDir
+        60: ldc_w         #295                // String --gameDir
+       112: ldc_w         #300                // String --tracy
+
+## the dev launch (runClientGameTest, what client-fabric/gametest-env/run.sh runs): Loom 1.17.21 FabricApiTesting sets GameTestSettings.username
+## to Player0 by convention and adds --username <it> to the run's program arguments, no --uuid (javap -c -constants)
+       135: ldc           #72                 // String Player0
+       106: ldc_w         #300                // String --username
+       109: aastore
+       110: dup
+       111: iconst_1
+       112: aload_3
+       113: invokeinterface #69,  1           // InterfaceMethod net/fabricmc/loom/api/fabricapi/GameTestSettings.getUsername:()Lorg/gradle/api/provider/Property;
+       118: invokeinterface #80,  1           // InterfaceMethod org/gradle/api/provider/Property.get:()Ljava/lang/Object;
+## offline UUIDs (p10.py offline_uuid): Player0 2654e3c3-150d-3857-a426-0b141796a4e0, SynaxisP10 78e622e9-9481-3cd8-b25c-09e5f10b4555

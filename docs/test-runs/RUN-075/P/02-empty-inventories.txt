@@ -1,0 +1,86 @@
+# TC-PROD-753 step 2: the record CI made until RUN-075, five worlds with an empty inventory and the arrival point (state lines as in
+# run 38096423208's p10.txt, docs/test-runs/RUN-073/G/06), judged by p10.py of 940ebcbced and by the working tree's with a seed record
+# (<s>/seed.json from 03-seed-sql-postgres.txt); 2026-10-11 13:24:15 CST
+$ cat <s>/p10.txt
+join 1 port=25611 at=1791676488199
+state 1 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+join 2 port=25612 at=1791676493799
+state 2 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+join 3 port=25611 at=1791676499399
+state 3 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+join 4 port=25612 at=1791676504999
+state 4 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+join 5 port=25611 at=1791676510599
+state 5 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+end done
+
+$ git show 940ebcbced:client-fabric/gametest-env/p10.py > <old>; <py> <old> judge --round-trips 2 --drive <s>/drive.json --ledger r0-c1=<s>/r0-c1 --ledger r0-c2=<s>/r0-c2 --client-report <s>/p10.txt
+ok   the driver ran to the end
+ok   4 of 4 transfers answered sent, expected 4 of 4
+ok   4 transfers arrived on their target shard, expected 4
+ok   character.version read 5 times, expected 5, larger after every transfer: True ([0] .. [4])
+ok   transfer_issued {'r0-c1': 2, 'r0-c2': 2}, 4 in all, expected 4
+ok   the client joined 5 worlds, expected 5
+ok   the client's joins alternate between two shards: ['25611', '25612']
+ok   the client recorded its state in 5 of 5 worlds
+ok   the inventory is the same in all 5 worlds: held=0 inventory=empty
+ok   the client's report ends with ['end done']
+P10: all checks passed
+exit=0
+
+$ <py> <P10> judge --round-trips 2 --drive <s>/drive.json --ledger r0-c1=<s>/r0-c1 --ledger r0-c2=<s>/r0-c2 --client-report <s>/p10.txt --seed <s>/seed.json
+ok   the driver ran to the end
+ok   4 of 4 transfers answered sent, expected 4 of 4
+ok   4 transfers arrived on their target shard, expected 4
+ok   character.version read 5 times, expected 5, larger after every transfer: True ([0] .. [4])
+ok   transfer_issued {'r0-c1': 2, 'r0-c2': 2}, 4 in all, expected 4
+ok   the client joined 5 worlds, expected 5
+ok   the client's joins alternate between two shards: ['25611', '25612']
+ok   the client recorded its state in 5 of 5 worlds
+FAIL the client stood 20.02 blocks from the saved position 100.50,79.00,120.50 in world 1, at 120.50,78.00,120.50 (0.5 at most)
+FAIL the inventory in world 1 is held=0 inventory=empty, the seeded one is held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1
+ok   the client's report ends with ['end done']
+P10: 2 check(s) failed
+exit=1
+
+# the same record with the seeded state in every world and the saved position in world 1, what CI is to show once the map shards apply synaxis:player
+$ cat <s>/p10.txt
+join 1 port=25611 at=1791676488199
+state 1 pos=100.50,79.00,120.50 yaw=90.0 pitch=0.0 held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1
+join 2 port=25612 at=1791676493799
+state 2 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1
+join 3 port=25611 at=1791676499399
+state 3 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1
+join 4 port=25612 at=1791676504999
+state 4 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1
+join 5 port=25611 at=1791676510599
+state 5 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1
+end done
+$ <py> <P10> judge --round-trips 2 ... --seed <s>/seed.json
+ok   the driver ran to the end
+ok   4 of 4 transfers answered sent, expected 4 of 4
+ok   4 transfers arrived on their target shard, expected 4
+ok   character.version read 5 times, expected 5, larger after every transfer: True ([0] .. [4])
+ok   transfer_issued {'r0-c1': 2, 'r0-c2': 2}, 4 in all, expected 4
+ok   the client joined 5 worlds, expected 5
+ok   the client's joins alternate between two shards: ['25611', '25612']
+ok   the client recorded its state in 5 of 5 worlds
+ok   the client stood 0.00 blocks from the saved position 100.50,79.00,120.50 in world 1, at 100.50,79.00,120.50 (0.5 at most)
+ok   the inventory is the seeded one in all 5 worlds: held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1
+ok   the client's report ends with ['end done']
+P10: all checks passed
+exit=0
+
+$ <py> <P10> judge --round-trips 2 ... --seed <s>/missing.json
+ok   the driver ran to the end
+ok   4 of 4 transfers answered sent, expected 4 of 4
+ok   4 transfers arrived on their target shard, expected 4
+ok   character.version read 5 times, expected 5, larger after every transfer: True ([0] .. [4])
+ok   transfer_issued {'r0-c1': 2, 'r0-c2': 2}, 4 in all, expected 4
+ok   the client joined 5 worlds, expected 5
+ok   the client's joins alternate between two shards: ['25611', '25612']
+ok   the client recorded its state in 5 of 5 worlds
+FAIL no seed record at <s>/missing.json
+ok   the client's report ends with ['end done']
+P10: 1 check(s) failed
+exit=1

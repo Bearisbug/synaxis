@@ -9,6 +9,15 @@ writes the shard directory of the fixture (docs/DESIGN-M3.md API-M3-010): one re
 chunks 0,0 to 15,15 with no gates, its channels r0-c1 and r0-c2 on those two ports; the file is
 0644 whatever the umask.
 
+    p10.py seed --name SynaxisP10 --manifest maps/p10/<build_id>/manifest.json \\
+        --psql 'psql -h 127.0.0.1 -U postgres -d postgres' --out p10/seed.json
+
+gives the character of the account the client plays a saved synaxis:player (docs/DESIGN-PROD.md
+API-PROD-032) before the client first joins: the map and build of the manifest, a position in r0's
+bounds away from its spawn, three stacks of items and the held slot on one of them. The account is
+the offline UUID of --name, which the client takes when it is started with --username and no --uuid.
+--out records the name, the account and the section once the database took it.
+
     SYNAXIS_MANAGEMENT_TOKEN=... p10.py drive --management r0-c1=127.0.0.1:25585 \\
         --management r0-c2=127.0.0.1:25586 --psql 'psql -h 127.0.0.1 -U postgres -d postgres' \\
         --done-file p10/done --out p10/drive.json
@@ -26,12 +35,14 @@ arrived within --arrival-timeout or not followed by a larger version. It always 
 creates --done-file, which ends the client's run; the exit code is 1 after a failure.
 
     p10.py judge --drive p10/drive.json --ledger r0-c1=p10/work-r0-c1/logs \\
-        --ledger r0-c2=p10/work-r0-c2/logs --client-report <run dir>/synaxis-gametest/p10.txt
+        --ledger r0-c2=p10/work-r0-c2/logs --client-report <run dir>/synaxis-gametest/p10.txt \\
+        --seed p10/seed.json
 
 judges by the scenario's Then, once the client and both shards have stopped: every transfer
 answered sent and arrived, character.version larger after each one, exactly 2 x --round-trips
 transfer_issued events over both ledgers; and the client joined 2 x --round-trips + 1 worlds,
-alternating between the two shards, with the same inventory in each, and left because the driver was done.
+alternating between the two shards, stood within half a block of the saved position in the first,
+held the seeded inventory, not empty, in each, and left because the driver was done.
 """
 
 from __future__ import annotations
@@ -39,7 +50,9 @@ from __future__ import annotations
 import argparse
 import base64
 import gzip
+import hashlib
 import json
+import math
 import os
 import shlex
 import socket
@@ -54,6 +67,17 @@ REGION = "r0"
 CHANNELS = ("r0-c1", "r0-c2")
 # Java-WebSocket closes a connection whose last pong is older than 1.5 times its 60 s timer
 KEEPALIVE_SECONDS = 20.0
+# The host's player section (docs/DESIGN-PROD.md API-PROD-032) and what seed saves in it. The position stands on
+# the grass of the column 100, 120 of generator:synthetic:1, the map the jobs bake: its top block is at y 78, as
+# are those of the 24 columns around it, none with a tree (SyntheticTerrain#surface). That is chunk 6, 7, inside
+# r0's bounds, 20 blocks west of and a block above the spawn, which stands on y 77 of the column 120, 120: the
+# first world shows this position, the others the arrival point.
+PLAYER_SECTION = "synaxis:player"
+SEED_POS = {"x": 100.5, "y": 79.0, "z": 120.5, "yaw": 90.0, "pitch": 0.0}
+# (slot of PlayerInventory, item id, count): two of the hotbar and one of the main inventory
+SEED_ITEMS = ((0, "minecraft:stone", 32), (1, "minecraft:iron_pickaxe", 1), (9, "minecraft:oak_log", 16))
+SEED_HELD_SLOT = 1
+SEED_HEALTH = 16.0
 
 
 class Failure(Exception):
@@ -214,6 +238,60 @@ def read_version(psql: str, player_id: str) -> int:
     return int(rows[0])
 
 
+def offline_uuid(name: str) -> str:
+    """The account of a client started with --username name and no --uuid: vanilla's Main takes
+    UUIDUtil.createOfflinePlayerUUID(name), which is Java's UUID.nameUUIDFromBytes of OfflinePlayer:<name>, and
+    the fake sessionserver hands the shards the profile the client joined with."""
+    return str(uuid.UUID(bytes=hashlib.md5(f"OfflinePlayer:{name}".encode()).digest(), version=3))
+
+
+def literal(text: str) -> str:
+    return "'" + text.replace("'", "''") + "'"
+
+
+def seed_sql(account: str, name: str, section: dict) -> str:
+    """The rows a shard's load makes for a new character (PostgresBackend: the account, the character at version 0
+    holding no lease), kept as they are if they are there, and the section put on that character, in one psql -c,
+    so one transaction."""
+    return "; ".join((
+        f"INSERT INTO account (account_uuid, last_name) VALUES ({literal(account)}, {literal(name)}) "
+        "ON CONFLICT (account_uuid) DO NOTHING",
+        f"INSERT INTO character (account_uuid, slot, version, lease_session_id) VALUES ({literal(account)}, 0, 0, NULL) "
+        "ON CONFLICT (account_uuid, slot) DO NOTHING",
+        "INSERT INTO character_section (character_id, section_id, schema_version, data) "
+        f"SELECT character_id, {literal(PLAYER_SECTION)}, 1, {literal(json.dumps(section))}::jsonb FROM character "
+        f"WHERE account_uuid = {literal(account)} AND slot = 0 "
+        "ON CONFLICT (character_id, section_id) DO UPDATE SET schema_version = EXCLUDED.schema_version, "
+        "data = EXCLUDED.data, updated_at = now()"))
+
+
+def summary(section: dict) -> str:
+    """What the client's state lines show of a synaxis:player section: the held slot, and the items by the slots of
+    the inventory menu, where PlayerInventory's hotbar 0 to 8 is 36 to 44 and its main inventory 9 to 35 keeps its
+    numbers (PlayerInventoryUtils); seed puts nothing in the other slots."""
+    items = sorted((entry["slot"] + 36 if entry["slot"] < 9 else entry["slot"], entry["item"]["id"], entry["item"]["count"])
+                   for entry in section["inventory"])
+    return f"held={section['held_slot']} inventory=" + (",".join(f"{slot}:{item}*{count}" for slot, item, count in items)
+                                                         or "empty")
+
+
+def seed(args: argparse.Namespace) -> None:
+    manifest = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
+    section = {"world": {"kind": "map", "map_id": manifest["map_id"], "build_id": manifest["build_id"]},
+               "pos": SEED_POS,
+               "inventory": [{"slot": slot, "item": {"id": item, "count": count}} for slot, item, count in SEED_ITEMS],
+               "held_slot": SEED_HELD_SLOT, "health": SEED_HEALTH}
+    account = offline_uuid(args.name)
+    out = subprocess.run(shlex.split(args.psql) + ["-c", seed_sql(account, args.name, section)],
+                         capture_output=True, text=True, timeout=30)
+    if out.returncode != 0:
+        raise SystemExit(f"writing {PLAYER_SECTION} of {account}: exit {out.returncode}, stderr {out.stderr.strip()!r}")
+    Path(args.out).write_text(json.dumps({"name": args.name, "account": account, "section": section}, indent=1) + "\n",
+                              encoding="utf-8")
+    print(f"{args.name} {account}: {summary(section)} at {SEED_POS['x']},{SEED_POS['y']},{SEED_POS['z']} "
+          f"of {manifest['build_id']}", flush=True)
+
+
 def drive(args: argparse.Namespace) -> int:
     token = os.environ.get("SYNAXIS_MANAGEMENT_TOKEN")
     if not token:
@@ -320,21 +398,40 @@ def judge(args: argparse.Namespace) -> int:
         alternate = all(a != b for a, b in zip(ports, ports[1:]))
         expect(len(ports) == transfers + 1, f"the client joined {len(ports)} worlds, expected {transfers + 1}")
         expect(alternate, f"the client's joins alternate between two shards: {sorted(set(ports))}")
-        # One state line per world, what the client held when it left it: a transfer carries the
-        # inventory over (synaxis:player, API-PROD-032), so every world shows the one before it
-        states = {}
+        # One state line per world, where the client stood and what it held when it left it
+        fields = {}
         for line in lines:
             if line.startswith("state "):
-                fields = dict(f.split("=", 1) for f in line.split(" ")[2:] if "=" in f)
-                if "inventory" in fields:
-                    states[line.split(" ")[1]] = f"held={fields.get('held')} inventory={fields['inventory']}"
+                parts = dict(f.split("=", 1) for f in line.split(" ")[2:] if "=" in f)
+                if "inventory" in parts:
+                    fields[line.split(" ")[1]] = parts
+        states = {n: f"held={parts.get('held')} inventory={parts['inventory']}" for n, parts in fields.items()}
         worlds = [line.split(" ")[1] for line in lines if line.startswith("join ")]
         recorded = [states[n] for n in worlds if n in states]
         expect(len(recorded) == len(worlds), f"the client recorded its state in {len(recorded)} of {len(worlds)} worlds")
-        changed = [(n, states[m], states[n]) for m, n in zip(worlds, worlds[1:]) if m in states and n in states
-                   and states[m] != states[n]]
-        expect(not changed, "the inventory changed on arriving in world {}: {} before, {} after".format(*changed[0])
-               if changed else f"the inventory is the same in all {len(worlds)} worlds: {recorded[0] if recorded else None}")
+        seed_file = Path(args.seed)
+        if seed_file.is_file():
+            section = json.loads(seed_file.read_text(encoding="utf-8"))["section"]
+            # The first join came with no ticket, so the shard took the saved position (API-PROD-032); every
+            # later world is an arrival, at the point the shard gives a ticket
+            saved = (section["pos"]["x"], section["pos"]["y"], section["pos"]["z"])
+            saved_text = ",".join(f"{c:.2f}" for c in saved)
+            first = fields.get(worlds[0], {}).get("pos") if worlds else None
+            if first is None:
+                expect(False, f"the client recorded no position in world 1, the saved one is {saved_text}")
+            else:
+                distance = math.dist(saved, [float(c) for c in first.split(",")])
+                expect(distance <= 0.5, f"the client stood {distance:.2f} blocks from the saved position {saved_text} "
+                                        f"in world 1, at {first} (0.5 at most)")
+            # A transfer carries the inventory over (synaxis:player, API-PROD-032), so every world shows the seeded one
+            seeded = summary(section)
+            differing = [(n, states[n]) for n in worlds if n in states and states[n] != seeded]
+            expect(bool(section["inventory"]) and not differing,
+                   "the seeded inventory is empty" if not section["inventory"]
+                   else "the inventory in world {} is {}, the seeded one is {}".format(*differing[0], seeded) if differing
+                   else f"the inventory is the seeded one in all {len(worlds)} worlds: {seeded}")
+        else:
+            expect(False, f"no seed record at {seed_file}")
         expect(bool(lines) and lines[-1] == "end done", f"the client's report ends with {lines[-1:]}")
     else:
         expect(False, f"no client report at {report}")
@@ -355,6 +452,12 @@ def main() -> int:
     p.add_argument("--ports", required=True, help="r0-c1's and r0-c2's game port, comma separated")
     p.add_argument("--out", required=True)
 
+    p = commands.add_parser("seed")
+    p.add_argument("--name", required=True, help="the name the client plays as, its --username")
+    p.add_argument("--manifest", required=True, help="the manifest.json of the map release the shards serve")
+    p.add_argument("--psql", required=True, help="the psql command line, -c <statements> is appended")
+    p.add_argument("--out", required=True)
+
     p = commands.add_parser("drive")
     p.add_argument("--management", type=pair, action="append", required=True,
                    help="<shard_id>=<host:port>, the shard the client joins first given first")
@@ -370,11 +473,15 @@ def main() -> int:
     p.add_argument("--drive", required=True)
     p.add_argument("--ledger", type=pair, action="append", required=True, help="<shard_id>=<logs dir>")
     p.add_argument("--client-report", required=True)
+    p.add_argument("--seed", required=True, help="the record p10.py seed wrote")
     p.add_argument("--round-trips", type=int, default=100)
 
     args = parser.parse_args()
     if args.command == "shards":
         shards(args)
+        return 0
+    if args.command == "seed":
+        seed(args)
         return 0
     return drive(args) if args.command == "drive" else judge(args)
 

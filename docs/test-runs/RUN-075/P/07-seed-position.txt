@@ -1,0 +1,6 @@
+# TC-PROD-754 step 5: where p10.py seed's position stands, by docs/test-runs/RUN-075/P/terrain.py; 2026-10-11 13:30:36 CST
+# the spawn line checks the port against CI: run 38096423208's arrivals stand at pos=120.50,78.00,120.50 (docs/test-runs/RUN-073/G/06)
+$ <py> docs/test-runs/RUN-075/P/terrain.py
+spawn column 120, 120: top block y 77, a player stands at y 78
+seed column 100, 120: top block y 78, a player stands at y 79; top blocks of the 5 x 5 columns around it [78]; trees within 3 blocks []; chunk 6, 7
+exit=0

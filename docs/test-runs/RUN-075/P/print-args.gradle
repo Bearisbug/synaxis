@@ -1,0 +1,5 @@
+// RUN-075 fix-P probe: what runProductionClientGameTest hands the game, read once the project is configured
+gradle.projectsEvaluated {
+    def task = rootProject.tasks.findByName('runProductionClientGameTest')
+    println "probe SYNAXIS_GAMETEST_USERNAME=${System.getenv('SYNAXIS_GAMETEST_USERNAME')} programArgs=${task.programArgs.get()} jvmArgs=${task.jvmArgs.get()}"
+}

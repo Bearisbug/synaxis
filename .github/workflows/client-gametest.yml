@@ -223,9 +223,10 @@ jobs:
 
   # P10 of docs/DESIGN-PROD.md §19 (REQ-PROD-031, API-PROD-026): the real client sent from one map
   # shard to the other and back 100 times through the management interface's synaxis:transfer, both
-  # shards in the directory mode. client-fabric/gametest-env/p10.py drives the transfers and judges
-  # by its own record, the two ledgers and the client's report; docs/TEST.md TC-PROD-550 runs the same
-  # locally. Not on pull requests: the 200 transfers alone hold the runner for about 1,100 s.
+  # shards in the directory mode. client-fabric/gametest-env/p10.py saves an inventory and a position
+  # for the client's character beforehand, drives the transfers and judges by its own records, the two
+  # ledgers and the client's report; docs/TEST.md TC-PROD-550 runs the same locally. Not on pull
+  # requests: the 200 transfers alone hold the runner for about 1,100 s.
   p10:
     name: Two shards, 100 round trips (P10)
     # Weekly on Sunday and by hand (workflow_dispatch with p10: true): not on pull requests or pushes
@@ -263,6 +264,8 @@ jobs:
       SYNAXIS_STATE_DB_PASSWORD: synaxis
       SYNAXIS_REDIS_URL: redis://127.0.0.1:6379
       PGPASSWORD: synaxis
+      # The name the client plays as (client-fabric/build.gradle.kts), whose character p10.py seed saves
+      SYNAXIS_GAMETEST_USERNAME: SynaxisP10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -341,6 +344,14 @@ jobs:
         env:
           JAVA_OPTS: -Xms256m -Xmx256m -XX:-AlwaysPreTouch
         run: server-app/build/install/server-app/bin/server-app --migrate-only --auth-mode=offline
+
+      # Before the client first joins: the shard applies a saved synaxis:player at the first spawn
+      # (docs/DESIGN-PROD.md API-PROD-032), and the judge holds every world to it
+      - name: Save an inventory and a position for the client's character
+        run: |
+          python3 client-fabric/gametest-env/p10.py seed --name "$SYNAXIS_GAMETEST_USERNAME" \
+            --manifest "$P10/maps/p10/$P10_BUILD/manifest.json" \
+            --psql "psql -h 127.0.0.1 -U postgres -d postgres" --out "$P10/seed.json"
 
       # Each in a working directory of its own (logs/ and overlay/ are relative to it, docs/DESIGN-M3.md
       # API-M3-007), on the port the directory gives its channel; JAVA_OPTS comes after the 4G default
@@ -428,7 +439,8 @@ jobs:
         run: |
           python3 client-fabric/gametest-env/p10.py judge --drive "$P10/drive.json" \
             --ledger r0-c1="$P10/work-r0-c1/logs" --ledger r0-c2="$P10/work-r0-c2/logs" \
-            --client-report client-fabric/build/run/productionClientGameTest/synaxis-gametest/p10.txt
+            --client-report client-fabric/build/run/productionClientGameTest/synaxis-gametest/p10.txt \
+            --seed "$P10/seed.json"
 
       - name: Upload the record, the logs and the ledgers
         if: always()
@@ -436,6 +448,7 @@ jobs:
         with:
           name: client-gametest-p10
           path: |
+            p10/seed.json
             p10/drive.json
             p10/client.log
             p10/maps/p10/shards.json
@@ -448,7 +461,7 @@ jobs:
 
   # Playable item P11 of docs/DESIGN-PROD.md §19 (REQ-PROD-031, REQ-PROD-047): the p10 job's fixture,
   # steps and judge with 2 round trips instead of 100, so that every change the workflow runs on
-  # crosses the shards: four transfers, each arrival with the inventory the client left with.
+  # crosses the shards: four transfers, the saved inventory in each of the five worlds.
   p11-smoke:
     name: Two shards, 2 round trips (P11 smoke)
     # Every pull request the workflow runs on and every push to main, beside the regression job
@@ -484,6 +497,8 @@ jobs:
       SYNAXIS_STATE_DB_PASSWORD: synaxis
       SYNAXIS_REDIS_URL: redis://127.0.0.1:6379
       PGPASSWORD: synaxis
+      # The name the client plays as (client-fabric/build.gradle.kts), whose character p10.py seed saves
+      SYNAXIS_GAMETEST_USERNAME: SynaxisP10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -562,6 +577,14 @@ jobs:
         env:
           JAVA_OPTS: -Xms256m -Xmx256m -XX:-AlwaysPreTouch
         run: server-app/build/install/server-app/bin/server-app --migrate-only --auth-mode=offline
+
+      # Before the client first joins: the shard applies a saved synaxis:player at the first spawn
+      # (docs/DESIGN-PROD.md API-PROD-032), and the judge holds every world to it
+      - name: Save an inventory and a position for the client's character
+        run: |
+          python3 client-fabric/gametest-env/p10.py seed --name "$SYNAXIS_GAMETEST_USERNAME" \
+            --manifest "$P10/maps/p10/$P10_BUILD/manifest.json" \
+            --psql "psql -h 127.0.0.1 -U postgres -d postgres" --out "$P10/seed.json"
 
       # Each in a working directory of its own (logs/ and overlay/ are relative to it, docs/DESIGN-M3.md
       # API-M3-007), on the port the directory gives its channel; JAVA_OPTS comes after the 4G default
@@ -650,7 +673,8 @@ jobs:
         run: |
           python3 client-fabric/gametest-env/p10.py judge --round-trips 2 --drive "$P10/drive.json" \
             --ledger r0-c1="$P10/work-r0-c1/logs" --ledger r0-c2="$P10/work-r0-c2/logs" \
-            --client-report client-fabric/build/run/productionClientGameTest/synaxis-gametest/p10.txt
+            --client-report client-fabric/build/run/productionClientGameTest/synaxis-gametest/p10.txt \
+            --seed "$P10/seed.json"
 
       - name: Upload the record, the logs and the ledgers
         if: always()
@@ -658,6 +682,7 @@ jobs:
         with:
           name: client-gametest-p11-smoke
           path: |
+            p10/seed.json
             p10/drive.json
             p10/client.log
             p10/maps/p10/shards.json

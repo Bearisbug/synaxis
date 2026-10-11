@@ -1,0 +1,13 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java
+index 09d168e1c4..8cf0dcd7f1 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java
+@@ -208,7 +208,7 @@ public final class DefaultPlay {
+             if (owned.isDead()) return;
+             final long now = owned.getAliveTicks();
+             final Long last = owned.getTag(MELEE_TICK);
+-            if (last != null && now - last < MELEE_COOLDOWN_TICKS) return;
++            if (Boolean.getBoolean("proof.never") && last != null && now - last < MELEE_COOLDOWN_TICKS) return;
+             if (!owned.damage(new Damage(DamageType.PLAYER_ATTACK, attacker, attacker, null, amount))) return;
+             owned.setTag(MELEE_TICK, now);
+             owned.takeKnockback(KNOCKBACK, Math.sin(yaw), -Math.cos(yaw));

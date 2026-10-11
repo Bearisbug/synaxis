@@ -1,0 +1,6 @@
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayMeleeIntegrationTest.xml tests=3 failures=1 errors=0 skipped=0 time=1.172
+   ok   aCancelledPlayerAttackNeitherHurtsNorKnocksBack(Env) 1.012
+   FAIL twoAttackersInOneTickLandOneHit(Env) 0.088
+         org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: Expected 1 element(s), got 2: [io.github.bearisbug.synaxis.event.entity.EntityDamageEvent@3a72517e, io.github.bearisbug.synaxis.event.entity.EntityDamageEvent@77a14911] ==> expected: <1> but was: <2>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayMeleeIntegrationTest.twoAttackersInOneTickLandOneHit(DefaultPlayMeleeIntegrationTest.java:129)
+   ok   aHitTakesTheAttackDamageAndKnocksBackOnceInTenTicks(Env) 0.065

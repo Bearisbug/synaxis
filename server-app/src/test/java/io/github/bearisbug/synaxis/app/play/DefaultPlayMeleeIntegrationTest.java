@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.app.play;
 
+import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.app.play.DefaultPlay.Feature;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.EntityType;
@@ -14,12 +15,14 @@ import io.github.bearisbug.synaxis.event.entity.EntityDamageEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientAttackPacket;
 import io.github.bearisbug.synaxis.testing.Collector;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -90,6 +93,41 @@ class DefaultPlayMeleeIntegrationTest {
 
         assertEquals(20f, target.getHealth());
         assertEquals(0, target.getVelocity().x(), "the velocity is " + target.getVelocity());
+    }
+
+    /**
+     * Two players attack the target in the same tick, each attack read off the attacker's own packet queue by
+     * {@code UseEntityListener}: the first to reach the target lands and the other falls in the cooldown, which is the
+     * target's whoever attacks ({@code docs/DESIGN-PROD.md} §16). With 4 tick threads on the grid
+     * ({@code -Dsynaxis.thread-provider=grid}, cells of 16 by 16 chunks) the target and the two attackers stand in three
+     * cells around the origin, so the two attacks run on two tick threads and meet in {@code Acquirable#sync} on the
+     * target's.
+     */
+    @Test
+    void twoAttackersInOneTickLandOneHit(Env env) {
+        final Instance instance = env.createFlatInstance();
+        PlayFixture.attach(env, PlayFixture.hostNode(env), EnumSet.of(Feature.MELEE), null);
+        final LivingEntity target = new LivingEntity(EntityType.ZOMBIE);
+        target.setInstance(instance, new Pos(0.5, 40, 0.5)).join();
+        // In cells (-1, 0) and (0, -1), each looking at the target in cell (0, 0)
+        final Player west = env.createPlayer(instance, new Pos(-1.5, 40, 0.5, -90, 0));
+        final Player north = env.createPlayer(instance, new Pos(0.5, 40, -1.5, 0, 0));
+        west.getInventory().setItemStack(0, ItemStack.of(Material.IRON_PICKAXE));
+        north.getInventory().setItemStack(0, ItemStack.of(Material.IRON_PICKAXE));
+        // Assigns the three to their tick threads, which an Acquirable#sync from another tick thread needs
+        env.tick();
+        final ServerConfig config = env.process().config();
+        if (config.threadProvider() == ServerConfig.ThreadProviderKind.GRID && config.dispatcherThreads() >= 4)
+            assertEquals(3, Stream.of(target, west, north).map(entity -> entity.acquirable().assignedThread())
+                    .distinct().count(), "the target and the two attackers on three tick threads");
+        final Collector<EntityDamageEvent> damages = env.trackEvent(EntityDamageEvent.class, EventFilter.ENTITY, target);
+
+        west.addPacketToQueue(new ClientAttackPacket(target.getEntityId()));
+        north.addPacketToQueue(new ClientAttackPacket(target.getEntityId()));
+        env.tick();
+
+        damages.assertSingle();
+        assertEquals(16f, target.getHealth(), "after the two hits of one tick");
     }
 
     private static LivingEntity target(Instance instance) {

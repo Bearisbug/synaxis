@@ -1,0 +1,283 @@
+RUN-073 gate: the integration branch prod/integrate-073 at a628f6f19c (prod/r073-docs 15b5487edc, which holds main
+a1bc25fea5 with M3-S, then prod/r073-B 2014491f18, prod/r073-C 94ac1eb2c1, prod/r073-F a542de645c and prod/r073-G
+f58514441e merged with --no-ff as 56fe856150, c8ada1c3ad, 72483fb8cd and e3a9218778, the docs commit cf838edc6d, group G's
+follow-up up to 7ec3baad12 as b83ca98354, prod/r073-A 67c7a17e93 as 57f5385de6 and prod/r073-D 514e68e300 as a628f6f19c;
+docs/DESIGN-PROD.md v0.9.63 to v0.9.72), run on GitHub Actions for draft PR #16. The groups' own cases, red runs and counter
+proofs are in ../commands, ../C, ../F, ../G, ../A and ../D; 00-index.txt to 02-compile.txt in this directory are the
+third merge's local gate and compile runs.
+
+On this machine for the gate: no Gradle, no containers, no server or client process. Only gh, git, read-only grep, sed and
+actionlint on the merged tree, the two read-only workflow checks of groups F and G, and the counting below (Python of the
+synaxis .venv). git fetch: origin/main is still a1bc25fea5; RUN-074 is taken by the lighting session and not merged yet.
+
+Runs (all on a628f6f19c, attempt 1; times UTC 2026-10-11)
+  CI 38106597170 (pull_request)               success  02:53:14-03:09:20
+    Check                                     success  02:53:17-03:06:29  ./gradlew check jacocoTestReport, BUILD
+                                                                          SUCCESSFUL in 12m 25s, database variables set
+                                                                          (PostgreSQL and Valkey services); "Check that the
+                                                                          player store tests ran against the database"
+                                                                          success; ABI gate of the stable surface success;
+                                                                          diff-cover of newly added lines success
+                                                                          (--fail-under=80): 310 lines, 22 missing, 92%;
+                                                                          Main.java 20.0% (missing 260, 264, 278, 313-316,
+                                                                          318, 335-336, 339-340, 903-906), DefaultPlay.java
+                                                                          97.3% (166-167), PlayerStore.java 81.0% (866-869),
+                                                                          the other nine files 100%
+    Test with 4 tick threads (strict)         success  02:53:17-03:09:17  BUILD SUCCESSFUL in 15m 19s; its thread check
+                                                                          success
+    Test with 4 tick threads (strict, grid)   success  02:53:17-03:09:20  BUILD SUCCESSFUL in 15m 33s; its thread check
+                                                                          success
+  Concurrency 38106597177 (pull_request)      success  02:53:14-02:58:46
+    jcstress                                  success  02:53:18-02:58:46
+  Client mod 38106597154 (pull_request)       success  02:53:14-02:54:28
+    Build the Fabric mod                      success  02:53:17-02:54:27  client-test-reports: 17 classes 199 tests,
+                                                                          0 failures 0 errors 0 skipped (as on M3-S)
+  Client gametest 38106597179 (pull_request)  success  02:53:14-02:58:31
+    Run the client gametests                  success  02:53:18-02:58:31  LAUNCHES=1 (production mod jar only)
+    Two shards, 2 round trips (P11 smoke)     success  02:53:17-02:57:20  ran beside the regression (TC-PROD-742 step 1)
+    Two shards, 100 round trips (P10)         skipped
+  Client gametest 38106599197 (workflow_dispatch, no inputs: LAUNCHES=2)
+                                              success  02:53:17-02:59:51
+    Run the client gametests                  success  02:53:21-02:59:51
+    P11 smoke, P10                            skipped
+  Client gametest 38106604498 (workflow_dispatch, p10=true)
+                                              success  02:53:22-03:16:08
+    Two shards, 100 round trips (P10)         success  02:53:26-03:16:08
+    Run the client gametests, P11 smoke       skipped
+  Five more workflow_dispatch runs with no inputs (LAUNCHES=2) for the flake baseline, each job "Run the client gametests"
+  success, P11 smoke and P10 skipped:
+    38107914875  03:17:47-03:24:17      38107919684  03:17:52-03:24:28      38107926345  03:17:59-03:24:27
+    38107930877  03:18:05-03:24:39      38107936235  03:18:11-03:23:42
+  No job was rerun; no attempt 2.
+
+Judge step of job "Run the client gametests" ("Judge the regression by the reports, the ledger and the server log")
+  38106597179 (one launch):
+    ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+    ok   1 reports for 1 launches
+    ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+    ok   1 playable reports for 1 launches
+    ok   client_verified 3, expected 3
+    ok   client_rejected 0, expected 0
+    ok   unit_order_issued 1, expected >= 1
+    ok   protocol-error kicks 1, expected 1
+    ok   sessionserver join 5, expected 5
+    ok   sessionserver hasJoined 200 5 of 5, expected 5 of 5
+    client regression: all checks passed
+  38106599197, 38107914875, 38107919684, 38107926345, 38107930877, 38107936235 (two launches each), the same 13 lines
+  in every one of the six:
+    ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+    ok   client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt: 8 PASS
+    ok   2 reports for 2 launches
+    ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+    ok   client-fabric/build/run/clientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+    ok   2 playable reports for 2 launches
+    ok   client_verified 6, expected 6
+    ok   client_rejected 0, expected 0
+    ok   unit_order_issued 2, expected >= 2
+    ok   protocol-error kicks 2, expected 2
+    ok   sessionserver join 10, expected 10
+    ok   sessionserver hasJoined 200 10 of 10, expected 10 of 10
+    client regression: all checks passed
+
+Flake baseline of the playable script (TC-PROD-734), from the judge lines above
+  run           event              launches  dev mod (clientGameTest)   production mod jar
+  38106597179   pull_request       1         -                          core 10 PASS, rts 5 PASS
+  38106599197   workflow_dispatch  2         core 10 PASS, rts 5 PASS   core 10 PASS, rts 5 PASS
+  38107914875   workflow_dispatch  2         core 10 PASS, rts 5 PASS   core 10 PASS, rts 5 PASS
+  38107919684   workflow_dispatch  2         core 10 PASS, rts 5 PASS   core 10 PASS, rts 5 PASS
+  38107926345   workflow_dispatch  2         core 10 PASS, rts 5 PASS   core 10 PASS, rts 5 PASS
+  38107930877   workflow_dispatch  2         core 10 PASS, rts 5 PASS   core 10 PASS, rts 5 PASS
+  38107936235   workflow_dispatch  2         core 10 PASS, rts 5 PASS   core 10 PASS, rts 5 PASS
+  The six workflow_dispatch runs: 12 of 12 launches all PASS. With the pull_request run: 7 runs, 13 launches, 13 of 13 all
+  PASS (no FAIL and no SKIP line in any playable.txt; R1-R8 8 PASS in every report.txt). No run was repeated to get green.
+  Not a judge failure, but recorded for the open TEST.md §7 entry of group F: the evidence of core G1 says
+  handshake=SENT in 4 of the 13 launches (38106599197 production, 38107914875 dev, 38107936235 dev and production) and
+  handshake=VERIFIED in the other 9; rts G1 is handshake=VERIFIED in all 13 and R2 is state=VERIFIED in all 13 reports.
+  G1 does not judge the handshake state (its criterion is encrypted=true online=true), so these launches still PASS.
+
+TC-PROD-734, read from 38106597179 (LAUNCHES=1) and 38106599197 (LAUNCHES=2), step "Show the reports and the server's event
+ledger" and artifact client-gametest-configuration (11689373223 and 11689623049, listed with unzip -l)
+  step 1  both judge steps end with "client regression: all checks passed"; every playable.txt core 10 PASS, rts 5 PASS
+  step 2  38106599197 core G9: dev mod "below y -64.0 after 605 ticks, death screen after 4 ticks, respawned at the spawn
+          with full health after 2 ticks"; production mod jar "below y -64.0 after 57 ticks, death screen after 5 ticks,
+          respawned at the spawn with full health after 2 ticks" (57 < 605: it fell down the shaft the first launch dug).
+          The same 605 / 57 in each of the five baseline runs.
+  step 3  core G5 "(1) stone=63 (2) pickaxe slot 1 (3) hotbar 0: 63 -> 31 (want 31), slot 9: 32 (want 32), cursor 0
+          (4) Q Drop[id=3, count=1] (5) slot 9 had 32, cursor 16, outside Drop[id=4, count=1], closing Drop[id=5,
+          count=15] (want 15), cursor after 0 (6) picked up after 12 ticks, stone 63 (want 63)" (dev mod of 38106599197;
+          the production one and the PR run read the same but for the drop ids and 15 ticks); core G10 "before
+          0.50,40.00,-5.60 yaw 45.0 selected 2 items 3; after 0.50,40.00,-5.60 yaw 45.0 selected 2 items 3 within 0 ticks"
+  step 4  core G1 and rts G1 "encrypted=true online=true" in every launch; core G8 "... no second drop; one hit on its own
+          4.0, the opening 4.0 (one hit), 6 hits, died, a fresh zombie at 3.50,40.00,0.50 health 20.0/20.0 after 100 ticks"
+  step 5  artifact root: client-fabric/build/run/{clientGameTest,productionClientGameTest}/..., server.log,
+          sessionserver.log, logs/events-local-20261011.jsonl, playable/server.log, playable/logs/events-core-20261011.jsonl,
+          playable/logs/latest.log; nothing under synaxis/synaxis/
+
+TC-PROD-742 and TC-PROD-744 step 7: job "Two shards, 2 round trips (P11 smoke)" of 38106597179, 02:53:17-02:57:20 (4 min 3 s;
+job "Run the client gametests" of the same run 02:53:18-02:58:31, 5 min 13 s, so the two ran at the same time)
+  "Unit tests of p10.py": Ran 6 tests in 0.351s, OK
+  "Send the client back and forth twice", runner timestamps:
+    02:56:46.481  Player59 76a85934-d1dc-3e22-b48f-18504df540b9 on r0-c1, character.version 0
+    02:56:53.122  transfer 1 r0-c1 -> r0-c2: sent in 80 ms, arrived in 1089 ms, character.version 1
+    02:56:58.185  transfer 2 r0-c2 -> r0-c1: sent in 75 ms, arrived in 577 ms, character.version 2
+    02:57:03.777  transfer 3 r0-c1 -> r0-c2: sent in 73 ms, arrived in 582 ms, character.version 3
+    02:57:09.328  transfer 4 r0-c2 -> r0-c1: sent in 76 ms, arrived in 579 ms, character.version 4
+    first line to transfer 1: 6.641 s >= 5.5 s + 1.089 s (TC-PROD-744 step 7)
+  "Judge P11 by the driver's record, the ledgers and the client's report":
+    ok   the driver ran to the end
+    ok   4 of 4 transfers answered sent, expected 4 of 4
+    ok   4 transfers arrived on their target shard, expected 4
+    ok   character.version read 5 times, expected 5, larger after every transfer: True ([0] .. [4])
+    ok   transfer_issued {'r0-c1': 2, 'r0-c2': 2}, 4 in all, expected 4
+    ok   the client joined 5 worlds, expected 5
+    ok   the client's joins alternate between two shards: ['25611', '25612']
+    ok   the client recorded its state in 5 of 5 worlds
+    ok   the inventory is the same in all 5 worlds: held=0 inventory=empty
+    ok   the client's report ends with ['end done']
+    P10: all checks passed
+  artifact client-gametest-p11-smoke (11689957963), client-fabric/build/run/productionClientGameTest/synaxis-gametest/p10.txt,
+  11 lines:
+    join 1 port=25611 at=1791687406046
+    state 1 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+    join 2 port=25612 at=1791687412733
+    state 2 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+    join 3 port=25611 at=1791687418032
+    state 3 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+    join 4 port=25612 at=1791687423693
+    state 4 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+    join 5 port=25611 at=1791687429215
+    state 5 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+    end done
+    state 1 is not "none"; join 1 to join 2 is 6.687 s (TC-PROD-744 step 7). The inventory is empty in every world: the
+    map shards register no synaxis:player and mount no play layer (TEST.md §7, the P11 entry stays open).
+
+P10, job "Two shards, 100 round trips (P10)" of 38106604498, 02:53:26-03:16:08 (22 min 42 s)
+  "Unit tests of p10.py": Ran 6 tests in 0.411s, OK (TC-PROD-660 step 1)
+  driver: 02:57:18.352 "Player125 5d6f5056-9d82-3950-9ee4-6a4e4ed3cf33 on r0-c1, character.version 0" ... 03:15:55.198
+  "transfer 200 r0-c2 -> r0-c1: sent in 53 ms, arrived in 556 ms, character.version 200"
+  "Judge P10 by the driver's record, the ledgers and the client's report" (TC-PROD-550 step 9, 10 ok lines):
+    ok   the driver ran to the end
+    ok   200 of 200 transfers answered sent, expected 200 of 200
+    ok   200 transfers arrived on their target shard, expected 200
+    ok   character.version read 201 times, expected 201, larger after every transfer: True ([0] .. [200])
+    ok   transfer_issued {'r0-c1': 100, 'r0-c2': 100}, 200 in all, expected 200
+    ok   the client joined 201 worlds, expected 201
+    ok   the client's joins alternate between two shards: ['25611', '25612']
+    ok   the client recorded its state in 201 of 201 worlds
+    ok   the inventory is the same in all 201 worlds: held=0 inventory=empty
+    ok   the client's report ends with ['end done']
+    P10: all checks passed
+
+Counts: artifacts test-reports (Check, id 11689254208), test-reports-multithreaded (strict, 11690410165) and
+test-reports-multithreaded-grid (strict grid, 11689854219) of run 38106597170, fetched with gh api .../actions/artifacts/<id>/zip
+(gh run download stops on two report HTML files whose names differ only in case on this file system), only the
+*build/test-results/ entries extracted. One row per module directory that holds build/test-results (":" is the root project);
+classes = TEST-*.xml testsuites; tests, fail, err, skip = sums of the testsuite attributes.
+
+  [test-reports], [test-reports-multithreaded], [test-reports-multithreaded-grid]: the same rows in all three, and the same
+  tests, failures, errors and skipped for every one of the 649 classes.
+  module                 classes  tests  fail  err  skip
+  :                          439   3217     0    0    21
+  :architecture-tests          7     20     0    0     0
+  :baker                       8     77     0    0     0
+  :game-rts                   14     93     0    0     0
+  :loadtest                    6     26     0    0     0
+  :plugin-api                  3     15     0    0     0
+  :protocol                    8    127     0    0     0
+  :server-app                134    695     0    0     0
+  :synx                       22    166     0    0     1
+  :testing                     8     11     0    0     0
+  TOTAL                      649   4447     0    0    22
+
+  Against RUN-072 (test-reports of run 37600103503, id 11472708941, fetched the same way: 625 classes 4,307, root 439 / 3,215,
+  server-app 117 / 593) 24 classes and 140 tests more, per class from the two sets of XML (no other class differs):
+    M3-S (merged into main a1bc25fea5, which TEST.md's full counts had not taken in): 13 classes 82 tests, the same classes
+    RUN-069 lists in docs/test-runs/RUN-069/integrate/13-ci-6f3ffa9c79.txt
+      server-app  new      app.store.ShardGatesRaceTest 15, app.shard.ShardWorldFileTrustTest 6,
+                           app.shard.MapShardPlayerAuthorityTest 4, app.shard.ShardDirectoryFileTrustTest 3,
+                           app.shard.MapFileTrustTest 2, app.shard.ShardInstanceTest 2
+                  changed  app.shard.FarViewShardFixtureTest 9 -> 14, app.shard.ShardServiceImplTest 6 -> 9,
+                           app.shard.ShardWorldAssemblyTest 8 -> 10, app.shard.ShardWorldFarViewTest 9 -> 11,
+                           app.ShardMainTest 10 -> 11, app.shard.ShardWorldTest 18 -> 19          (593 -> 639, 117 -> 123)
+      synx        new      SynxParserBoundaryTest 7, OverlayCrossCellWritersTest 5, SynxBlockEntityLimitsTest 2,
+                           SynxRelightBacklogTest 1 (skipped: @EnabledIfSystemProperty synaxis.relight.measure=true),
+                           SynxTruncatedMappingTest 1
+                  changed  OverlayStoreTest 28 -> 32, OverlayOptionsTest 3 -> 4, SynxBuildVerifierTest 9 -> 10,
+                           SynxChunkLoaderIntegrationTest 12 -> 13, SynxOverlayCombinedIntegrationTest 6 -> 7
+                                                                                                  (17 / 142 -> 22 / 166)
+      game-rts    new      UnitSnapshotIntegrationTest 3;  changed  RosterTest 5 -> 8                (13 / 87 -> 14 / 93)
+      protocol    new      FarViewDecoderBoundaryTest 3;  changed  FarViewAnnouncementTest 6 -> 7, FarViewVectorTest 25 -> 26
+                                                                                                   (7 / 122 -> 8 / 127)
+      baker       changed  GeneratorBakeTest 12 -> 13                                               (8 / 76 -> 8 / 77)
+    RUN-073 groups: 11 classes 58 tests
+      server-app  new      group A DefaultPlayHostIntegrationTest 5 and app.play DefaultPlayPickupIntegrationTest 5,
+                           DefaultPlayChatIntegrationTest 4, DefaultPlayTrainingDummyIntegrationTest 4,
+                           DefaultPlayDropIntegrationTest 3, DefaultPlayMeleeIntegrationTest 3,
+                           DefaultPlayStarterKitIntegrationTest 2, DefaultPlayVoidDamageIntegrationTest 1;
+                           group D app.store.PlayerStateSectionIntegrationTest 15, PlayerStateCodecIntegrationTest 4,
+                           PlayerStatePostgresIntegrationTest 4
+                  changed  group B CommandsIntegrationTest 10 -> 12, group C CoreModeIntegrationTest 4 -> 8
+                                                                                            (639 -> 695, 123 -> 134)
+      root        changed  group A inventory.CursorItemOnCloseIntegrationTest 2 -> 4                (3,215 -> 3,217)
+  Every class whose count changed is a test class that git diff 8220ef9d0f a1bc25fea5 (M3-S) or git diff a1bc25fea5
+  a628f6f19c (RUN-073) adds or changes; the other test files the two diffs touch keep their counts (RosterIntegrationTest 2,
+  SynxRelightIntegrationTest 10, ShardServiceHeartbeatDbTest 1, ShardWorldRelightTest 3, TranslationKeyGateTest 2) or hold
+  no tests (the fixtures, LogCapture, ShardSweepProbe).
+  The 21 skipped of the root project are the same as RUN-072's: the 15 of a local run (TestMojangUtils 9,
+  TranslationIntegrationTest 3, PlayerSkinTest 2, TagNbtTest 1) and ServerProcessTest 3 and ServerAddressTest 3, which
+  assumeTrue(GITHUB_ACTIONS == null). The 22nd is synx SynxRelightBacklogTest, skipped locally as well.
+  By package (the same in all three modes): root entity.* 78 classes 301 tests 2 skipped, entity.player.* 17 / 90,
+  network.* 69 / 892 3 skipped, listener.* 13 / 54, inventory.* 17 / 76 (all as in RUN-072 but inventory.* +2);
+  server-app app.management.* 15 / 45, app.play.* 7 / 22, app.store.* 22 / 122, app.shard.* 23 / 147.
+  Classes the RUN-073 cases name, all 0 failures in all three modes: CommandsIntegrationTest 12, CoreModeIntegrationTest 8,
+  CursorItemOnCloseIntegrationTest 4, InventoryCloseStateIntegrationTest 2, the seven app.play classes and
+  DefaultPlayHostIntegrationTest as above, PlayerStateCodecIntegrationTest 4, PlayerStatePostgresIntegrationTest 4,
+  PlayerStateSectionIntegrationTest 15, PlayerStoreIntegrationTest 23, PlayerDataIntegrationTest 7,
+  FreezeBeforePluginListenersIntegrationTest 4, PluginEventsIntegrationTest 9, PluginHostIntegrationTest 18,
+  ClientDrivenLogArchitectureTest 2, ShutdownBeforeTheWorldLaunchTest 4, ShutdownSignalLaunchTest 1, InventoryIntegrationTest
+  16, FarViewLaunchTest 4, OpsPortsLaunchTest 2, ShardGateLaunchTest 3, TransferCooldownTableIntegrationTest 3,
+  TranslationKeyGateTest 2, ConfigKeyGateTest 1; TC-PROD-252's four classes 12 + 1 + 3 + 8 = 24 with 0 skipped in the strict
+  job (database set); TC-PROD-671 step 2's seven classes 8, 11, 3, 11, 3, 8, 15 = 59 in the default and the strict grid job.
+  Gate outputs in all three sets: "translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 16 identifiers
+  left out" and "config key gate: 117 keys read, 117 in ConfigFile.KEYS, 21 meter names left out".
+  EnvDispatcherThreadsIntegrationTest output: test-reports "env dispatcher threads: 1", "env thread provider: counter";
+  test-reports-multithreaded 4, counter; test-reports-multithreaded-grid 4, grid.
+
+Read only on the merged tree (a628f6f19c, nothing written)
+  TC-PROD-042 steps 1-3 and TC-PROD-131 step 1: actionlint .github/workflows/client-gametest.yml prints only the two
+  shellcheck notes on line 119 ("Start server-app in game mode", SC2034 and SC2086); the on: block and the LAUNCHES /
+  SYNAXIS_SPIKES / CONNECTIONS_PER_LAUNCH / continue-on-error / judge.sh lines are as the two steps expect.
+  TC-PROD-131 step 2: the grep lists the fake sessionserver step and ": > sessionserver.log" of job gametest (99-100),
+  the online flags of the game-mode server (120-121) and of the core server (140-141), the two client steps (161, 174),
+  the judge SESSION_LOG (191), cat and upload (184, 218), and the same groups of job p10 (325-446) and job p11-smoke
+  (546-668); no auth=offline.
+  TC-PROD-656 step 1: CI_LIST prints nothing (five workflows, the nine jobs including p11-smoke).
+  TC-PROD-731 step 1: docs/test-runs/RUN-073/F/check-workflow.py on the merged workflow: 25 lines, all "ok".
+  TC-PROD-741 step 1: docs/test-runs/RUN-073/G/check-workflow.py on the merged workflow: exit 0, the 11 lines, no MISSING.
+  client-fabric/gametest-env/judge.sh and PlayableClientGameTest.java are byte for byte those of prod/r073-F;
+  p10.py, test_p10.py and TransferRoundTripClientGameTest.java those of 6b07085d31 (TC-PROD-730, 735, 740, 743, 744).
+  TC-PROD-432 step 1: grep -c of the 16 identifiers in en_us.json and zh_cn.json: 0 and 0.
+  Main.java: grep -n buildShutdownTask 346, 348, 350, 353, 354, 357, 358, 359, 361 (TC-PROD-498 step 3); store.cooldowns()
+  275 (TC-PROD-521 step 3); sed -n 779,781p the three TicketVerifier lines (TC-PROD-533 step 2); new ShardGates( 549
+  (TC-PROD-573 step 3); TC-PROD-671 step 4 reads the same four (its action named sed -n 768,770p, a range group D left behind
+  when it moved the reading to 779-781; TEST.md now says 779,781); directoryMode, store.store(), ledger 320; line 282 holds
+  "directoryMode == null ? null : directoryMode.service()" (TC-PROD-548 step 7, not run).
+
+Not rerun in this round, the expected text changed by reasoning from the code (TEST.md §6 RUN-073 detail rows, skipped):
+  the counter proofs of TC-PROD-068, 105, 162, 210, 233, 250, 295, 396 and 547 step 2 (the red line of a missing text moved
+  from TranslationKeyGateTest.java:91 to :92 when group D added synaxis:player to NOT_TEXT), TC-PROD-068 step 2's fixture
+  line :102 -> :103, TC-PROD-430 step 3, 431 step 1, 432 steps 2-3 and 433 step 2 (the integration of v0.9.72); group B's
+  test counts 10 -> 12 in TC-PROD-242, 243, 245 and 256 step 2, 246 and 255 steps 2-3 and 254 step 2; TC-PROD-548 step 7
+  (two shard processes and a database).
+Ran in this round on an earlier line number, the line later moved by reasoning (the check itself ran; counted as passed):
+  TC-PROD-702 steps 2-3, 706 step 3 and 713 steps 2-3 (group D's four imports in DefaultPlayHostIntegrationTest and its
+  Main.java lines; 713 step 5 group D reran), TC-PROD-714 step 2's lone run of TC-PROD-533 step 3 and TC-PROD-533 step 3
+  itself (group A ran it at Main.java:768, group D moved it to :779), TC-PROD-717 step 2 (group B ran it at :91),
+  TC-PROD-722 step 3 (:281), 723 step 3 (:198), 726 step 3 (:208, :200) and 727 step 5 (:176) (group D reran them at
+  :276, :193, :203, :195 and :173 with the same line content), and group A's own steps that name in brackets the line a
+  run measured.
+Not in the scope: TC-PROD-041 steps 2-4, TC-PROD-130 steps 3-6 (the judge.sh halves) and TC-PROD-688 step 3, which group F
+reran on its branch with stand-in reports; these cases did not change.
+
+Cleanup: /tmp/run073/register-073 (artifact zips, extracted XML, the CI, gametest and P10 logs, the counting scripts)
+deleted at the end.

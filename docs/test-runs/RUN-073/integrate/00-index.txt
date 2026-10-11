@@ -15,3 +15,6 @@ TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml
                :architecture-tests:compileTestJava :jcstress-tests:compileJcstressJava. BUILD SUCCESSFUL, 29 tasks
                (1 executed, 28 up-to-date): :server-app:compileJava had already run in run 1 on the same tree,
                :server-app:compileTestJava ran here; group D changes no root, loadtest or jcstress source.
+03-gate.txt    the GitHub Actions gate of a628f6f19c that registers RUN-073 (draft PR #16, 2026-10-11 02:53-03:24 UTC): the run
+               ids and job results, the judge lines of the playable script in 13 client launches (the flake baseline),
+               P11 smoke and P10, the counts of the three test modes, and what was read on the merged tree. No Gradle here.

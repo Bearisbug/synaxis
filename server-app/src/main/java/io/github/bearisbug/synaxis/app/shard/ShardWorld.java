@@ -515,6 +515,24 @@ public final class ShardWorld {
         }
     }
 
+    /** The {@code map_id} of the release. */
+    public String mapId() {
+        return manifest.mapId();
+    }
+
+    /** The {@code build_id} of the release. */
+    public String buildId() {
+        return manifest.buildId();
+    }
+
+    /**
+     * The bounds the shard serves in chunks, both ends included, which the world border is set from
+     * (step (3) of {@code API-M3-006}).
+     */
+    public SynxManifest.Bounds bounds() {
+        return bounds(manifest, directory);
+    }
+
     /**
      * The bounds the shard serves ({@code API-M3-005} {@code bounds}): the region of the shard in the
      * directory mode ({@code API-M3-010}), the release's otherwise.

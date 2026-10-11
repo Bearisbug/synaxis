@@ -224,6 +224,31 @@ public class ShardWorldTest {
         }
     }
 
+    /**
+     * {@code API-M3-006} 只读访问器: the map and the build of the release, and the bounds the shard serves:
+     * the release's without a directory, the shard's own region with one.
+     */
+    @Test
+    public void theWorldNamesItsMapItsBuildAndTheBoundsItServes() {
+        final Env alone = Env.create(config -> config.chunkViewDistance(12));
+        try {
+            final ShardWorld world = ShardWorld.prepare(alone.process(), release, SYNX, OVERLAY, null);
+            assertEquals(MapFixture.MAP_ID, world.mapId());
+            assertEquals(release.mapBuild(), world.buildId());
+            assertEquals(MapFixture.BOUNDS, world.bounds());
+        } finally {
+            alone.process().stop();
+        }
+        final Env inDirectory = Env.create(config -> config.chunkViewDistance(12));
+        try {
+            final ShardWorld world = ShardWorld.prepare(inDirectory.process(), release, SYNX, OVERLAY,
+                    halves(MapFixture.MAP_ID, List.of()));
+            assertEquals(new SynxManifest.Bounds(0, 0, 7, 15), world.bounds());
+        } finally {
+            inDirectory.process().stop();
+        }
+    }
+
     /** The directory does not know its file: the refusal of the check against the release names it. */
     @Test
     public void aShardDirectoryOfAnotherMapIsRefusedNamingItsFile() {

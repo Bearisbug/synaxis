@@ -54,6 +54,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * The player data of one shard ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-005} to
@@ -74,6 +75,8 @@ public final class PlayerStore implements ShutdownParticipant {
     private static final int DEFAULT_AUTOSAVE_SECONDS = 60;
     private static final long SAVE_ONLINE_BUDGET_SECONDS = 10;
     private static final String STOPPING = "the shard is stopping";
+    /** The namespace of the host's own sections; {@code synaxis} is the plugin id the host reserves. */
+    private static final String HOST_SECTION_PREFIX = "synaxis:";
 
     /**
      * The budgets of §17 {@code store.load} and {@code store.autosave}.
@@ -150,7 +153,10 @@ public final class PlayerStore implements ShutdownParticipant {
     private final BiConsumer<String, Map<String, ?>> analytics;
     private final Semaphore loads;
     private final LogBudget failures = new LogBudget(LOGGER, "store failures");
+    private final LogBudget captureFailures = new LogBudget(LOGGER, "section captures");
     private final Map<String, DataSection<?>> sections = new ConcurrentHashMap<>();
+    // The host's own sections and what takes their value off a player at every snapshot
+    private final Map<String, Function<Player, ?>> hostCaptures = new ConcurrentHashMap<>();
     private final List<Hook> shutdownHooks = new CopyOnWriteArrayList<>();
     private final Map<Player, Record> records = new ConcurrentHashMap<>();
     // The login of each account that is loading right now, completed when its load is over
@@ -318,6 +324,39 @@ public final class PlayerStore implements ShutdownParticipant {
 
     boolean isRegistered(DataSection<?> section) {
         return sections.get(section.id()) == section;
+    }
+
+    /**
+     * Registers one of the host's own sections ({@code docs/DESIGN-PROD.md} {@code API-PROD-032}), on the startup
+     * thread before the port is bound. It is loaded, written and versioned with the plugin sections; instead of being
+     * marked dirty, its value is taken off the player at the start of every snapshot, and the section is dirty when
+     * that value differs from the one it has.
+     *
+     * @param section the section, whose id is in the host's namespace {@code synaxis:}
+     * @param capture what takes the value off a player, on the thread of the snapshot; null leaves the section as it
+     *                is this time
+     * @param <T>     the in memory model of the section
+     * @throws IllegalArgumentException if the id is not in the host's namespace
+     * @throws IllegalStateException    if the id is already registered
+     */
+    public <T> void registerHostSection(DataSection<T> section, Function<Player, @Nullable T> capture) {
+        if (!section.id().startsWith(HOST_SECTION_PREFIX))
+            throw new IllegalArgumentException("host section " + section.id() + " is not in the namespace " + HOST_SECTION_PREFIX);
+        register(section);
+        hostCaptures.put(section.id(), capture);
+    }
+
+    /**
+     * The value a player's section has now: the one loaded, or the one the last snapshot captured.
+     *
+     * @param player  the player
+     * @param section the section
+     * @param <T>     the in memory model of the section
+     * @return the value
+     * @throws IllegalStateException if the player or the section is not loaded
+     */
+    public <T> T hostValue(Player player, DataSection<T> section) {
+        return get(player, section);
     }
 
     void addShutdownHook(String pluginId, Consumer<ShutdownNotice> hook) {
@@ -793,8 +832,9 @@ public final class PlayerStore implements ShutdownParticipant {
 
     // ---- saving ----
 
-    /** Encodes the dirty sections, on the tick thread that owns the player. */
+    /** Captures the host sections, then encodes the dirty sections, on the tick thread that owns the player. */
     private Map<String, Encoded> snapshot(Record record) {
+        capture(record);
         final long takenAt = record.commits.get();
         final Map<String, Encoded> out = new HashMap<>();
         for (String id : List.copyOf(record.dirty)) {
@@ -811,6 +851,27 @@ public final class PlayerStore implements ShutdownParticipant {
             }
         }
         return out;
+    }
+
+    /**
+     * Takes the value of every host section off the player: one that differs from the section's value replaces it and
+     * marks the section dirty, so a player whose state did not change writes nothing. A capture that throws leaves the
+     * section as it is.
+     */
+    private void capture(Record record) {
+        for (Map.Entry<String, Function<Player, ?>> host : hostCaptures.entrySet()) {
+            final Object captured;
+            try {
+                captured = host.getValue().apply(record.player);
+            } catch (RuntimeException e) {
+                captureFailures.error(e, "Capturing a section failed, it keeps its value: character_id={} section_id={}",
+                        record.characterId, host.getKey());
+                continue;
+            }
+            if (captured == null || captured.equals(record.values.get(host.getKey()))) continue;
+            record.values.put(host.getKey(), captured);
+            record.dirty.add(host.getKey());
+        }
     }
 
     private static StoreBackend.StoredSection encode(DataSection<?> section, Object value) {

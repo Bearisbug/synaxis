@@ -1,0 +1,58 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+index e3b2d41bfd..134336644e 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+@@ -222,7 +222,7 @@ public final class Main {
+         // Before the engine reads synaxis.max-players, which the directory sets
+         final @Nullable ShardDirectory directory = map == null ? null : shardDirectory(map.settings(), storeMode, shardId);
+         // After the directory, which writes the capacity the socket cap of a shard follows
+-        if (shard) ShardMain.gateDefaults(System::getProperty).forEach(System::setProperty);
++        if (Boolean.getBoolean("proof.never") && shard) ShardMain.gateDefaults(System::getProperty).forEach(System::setProperty);
+         applyViewRangeDefaults();
+ 
+         // (2) The engine facade, not a bare ServerProcess: MinecraftServer#start is the only public
+@@ -336,7 +336,7 @@ public final class Main {
+             playerState.useRule(mode == CoreMode.Mode.CORE ? new PositionRule.Core() : new PositionRule.Rts());
+         // The default play layer of the mode, on the host node and before the port opens
+         // (docs/DESIGN-PROD.md API-PROD-031)
+-        final Set<DefaultPlay.Feature> play = defaultPlay(mode, shardWorld != null);
++        final Set<DefaultPlay.Feature> play = defaultPlay(mode, false);
+         if (!play.isEmpty()) DefaultPlay.attach(process, host.hostNode(), play, Objects.requireNonNull(playerState,
+                 "a process with a play layer serves no map")::isFresh, coreWorld);
+ 
+@@ -364,7 +364,7 @@ public final class Main {
+         try {
+             server.start(BIND_ADDRESS, port);
+         } catch (RuntimeException e) {
+-            if (!(e.getCause() instanceof IOException cause)) throw e;
++            if (!Boolean.getBoolean("proof.never") || !(e.getCause() instanceof IOException cause)) throw e;
+             // Nothing ticks yet: the shutdown tasks above close what this start opened, the ledger
+             // among them, and main refuses the start as it does for a metrics or management port
+             process.scheduler().shutdown();
+@@ -638,7 +638,7 @@ public final class Main {
+      * @param served what every interface then serves
+      */
+     private static void warnOfTheWildcard(String key, InetSocketAddress bind, String served) {
+-        if (bind.getAddress() != null && bind.getAddress().isAnyLocalAddress())
++        if (Boolean.getBoolean("proof.never") && bind.getAddress() != null && bind.getAddress().isAnyLocalAddress())
+             LOGGER.warn("{}={} is the wildcard address: every interface of this host serves {}", key,
+                     BindAddress.format(bind), served);
+     }
+@@ -732,7 +732,7 @@ public final class Main {
+                     HostModeration.REFRESH, whitelist(), ledger::record);
+             return new StoreRuntime(PlayerStore.inMemory(process, ledger::record), null, null, null, null,
+                     HostPermissions.withoutDatabase(process), moderation, null, noRedis,
+-                    TransferCooldowns.fromSystemProperties());
++                    new TransferCooldowns(5_000, System::currentTimeMillis));
+         }
+         final StoreSettings settings = StoreSettings.fromEnvironment(environment);
+         final TransferKeys keys = TransferKeys.fromEnvironment(environment);
+@@ -778,7 +778,7 @@ public final class Main {
+                     new TicketIssuer(store, keys, cooldowns, shardId, ledger::record),
+                     new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,
+                             onClaimed),
+-                    permissions, moderation, session, redis, cooldowns);
++                    permissions, moderation, session, redis, TransferCooldowns.fromSystemProperties());
+         } catch (SQLException e) {
+             database.close();
+             throw new IllegalArgumentException("the player store database failed: " + e.getMessage(), e);

@@ -1,0 +1,43 @@
+io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest: tests=5 failures=1 errors=0 skipped=0
+  ok   aFrozenPlayerDropsNothing(Env)
+  ok   aGlobalPluginListenerOverridesTheDefaults(Env)
+  FAIL theStarterKitComesOnceEvenToAnEmptiedInventory(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the second login of the character got [ItemStackImpl[material=minecraft:stone, amount=64, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_pickaxe, amount=1, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComp
+       at at io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.theStarterKitComesOnceEvenToAnEmptiedInventory(DefaultPlayHostIntegrationTest.java:195)
+  ok   eachModeGetsItsPlayLayer()
+  ok   anInstancePluginListenerChoosesTheRecipientsFirst(Env)
+io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest: tests=4 failures=1 errors=0 skipped=0
+  FAIL aStoredSectionOutsideTheLayoutIsRefused(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: held_slot 9 ==> Expected java.lang.RuntimeException to be thrown, but nothing was thrown.
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.aStoredSectionOutsideTheLayoutIsRefused(PlayerStateCodecIntegrationTest.java:108)
+  ok   itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(Env)
+  ok   theCoreAndTheRtsWorldsCarryNoMap(Env)
+  ok   theLayoutIsTheOneOfTheDesign(Env)
+io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest: tests=4 failures=3 errors=0 skipped=0
+  FAIL aLogoutBeforeTheFirstSpawnWritesNoSection(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the returning character's synaxis:player ==> expected: <{"pos": {"x": 8.5, "y": 40.0, "z": -3.5, "yaw": 0.0, "pitch": 0.0}, "world": {"kind": "core"}, "health": 20.0, "held_slot": 0, "inventory": [{"item": {"id": "minecraft:stone", "count": 63}, "slot": 0}]}> but was: <{"pos": {"x": 0.0, "y": 0.0, "z": 0.0, "yaw": 0.0, "pitch": 0.0}, "world": {"kind": "core"}, "health": 20.0, "held_slot": 0, "inventory": []}>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest.aLogoutBeforeTheFirstSpawnWritesNoSection(PlayerStatePostgresIntegrationTest.java:220)
+  ok   aRestartedShardGivesThePlayerBackItsState(Env)
+  FAIL anUndecodableSectionRefusesTheLoginAndStaysAsItIs(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: {"world": {"kind": "core"}, "pos": {"x": 0.0, "y": 42.0, "z": 0.0, "yaw": 0.0, "pitch": 0.0}, "inventory": [{"slot": 4, "item": {"id": "minecraft:dirt", "count": 1}}], "held_slot": 9, "health": 9.0} ==> expected: <false> but was: <true>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest.anUndecodableSectionRefusesTheLoginAndStaysAsItIs(PlayerStatePostgresIntegrationTest.java:179)
+  FAIL aTransferCarriesTheSectionToTheTargetShard(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the arrival point, not the position saved on the source ==> expected: <Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]> but was: <Pos[x=40.5, y=40.0, z=40.5, yaw=0.0, pitch=0.0]>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest.aTransferCarriesTheSectionToTheTargetShard(PlayerStatePostgresIntegrationTest.java:155)
+io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest: tests=12 failures=9 errors=0 skipped=0
+  ok   underTheRtsRuleThePluginSpawnDecidesThePosition(Env)
+  ok   aSecondFirstSpawnAppliesNothing(Env)
+  FAIL aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a character captured once ==> expected: <false> but was: <true>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(PlayerStateSectionIntegrationTest.java:73)
+  FAIL aPlayerThatLeftOnTheDeathScreenComesBackAsARespawn(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <20.0> but was: <0.0>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aPlayerThatLeftOnTheDeathScreenComesBackAsARespawn(PlayerStateSectionIntegrationTest.java:171)
+  FAIL aSnapshotThatFindsNothingChangedWritesNothing(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: five autosaves of a player that did not move ==> expected: <1> but was: <6>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aSnapshotThatFindsNothingChangedWritesNothing(PlayerStateSectionIntegrationTest.java:90)
+  FAIL aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the saved state of the returning character ==> expected: <{"world": {"kind": "core"}, "pos": {"x": 8.5, "y": 40.0, "z": -3.5, "yaw": 45.0, "pitch": 10.0}, "inventory": [{"slot": 4, "item": {"id": "minecraft:dirt", "count": 1}}], "held_slot": 4, "health": 9.0}> but was: <{"world":{"kind":"core"},"pos":{"x":0.0,"y":0.0,"z":0.0,"yaw":0.0,"pitch":0.0},"inventory":[],"held_slot":0,"health":20.0}>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(PlayerStateSectionIntegrationTest.java:125)
+  FAIL theCoreRuleTakesOnlyAPositionSavedInTheCoreWorld(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]> but was: <Pos[x=8.5, y=40.0, z=-3.5, yaw=45.0, pitch=10.0]>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.theCoreRuleTakesOnlyAPositionSavedInTheCoreWorld(PlayerStateSectionIntegrationTest.java:221)
+  FAIL aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <{"world": {"kind": "core"}, "pos": {"x": 8.5, "y": 40.0, "z": -3.5, "yaw": 45.0, "pitch": 10.0}, "inventory": [{"slot": 4, "item": {"id": "minecraft:dirt", "count": 1}}], "held_slot": 4, "health": 9.0}> but was: <{"world":{"kind":"core"},"pos":{"x":0.0,"y":0.0,"z":0.0,"yaw":0.0,"pitch":0.0},"inventory":[],"held_slot":0,"health":20.0}>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone(PlayerStateSectionIntegrationTest.java:153)
+  FAIL theHostSectionIsTheHostsAlone(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a section outside synaxis: ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.theHostSectionIsTheHostsAlone(PlayerStateSectionIntegrationTest.java:274)
+  FAIL theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the saved state of a player that never got there ==> expected: <{"world": {"kind": "core"}, "pos": {"x": 1000.5, "y": 40.0, "z": 1000.5, "yaw": 30.0, "pitch": 0.0}, "inventory": [{"slot": 4, "item": {"id": "minecraft:dirt", "count": 1}}], "held_slot": 4, "health": 9.0}> but was: <{"world":{"kind":"core"},"pos":{"x":0.0,"y":42.0,"z":0.0,"yaw":0.0,"pitch":0.0},"inventory":[{"slot":4,"item":{"id":"minecraft:dirt","count":1}}],"held_slot":4,"health":9.0}>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition(PlayerStateSectionIntegrationTest.java:308)
+  ok   aSavedHealthAboveTheMaximumIsTheMaximum(Env)
+  FAIL aMapShardTakesTheSavedPositionOnlyWhenAllThreeHold(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: outside the bounds ==> expected: <Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]> but was: <Pos[x=64.5, y=40.0, z=40.5, yaw=0.0, pitch=0.0]>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aMapShardTakesTheSavedPositionOnlyWhenAllThreeHold(PlayerStateSectionIntegrationTest.java:248)

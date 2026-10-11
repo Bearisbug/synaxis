@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.ShutdownSignalLaunchTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-11T00:53:40.101Z" hostname="Mac.local" time="1.316">
+  <properties/>
+  <testcase name="aSignalDuringAConsoleCountdownCutsItAndWaitsForTheSequence(Path)" classname="io.github.bearisbug.synaxis.app.ShutdownSignalLaunchTest" time="1.316"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-11T00:35:00.575Z" hostname="Mac.local" time="1.935">
+  <properties/>
+  <testcase name="theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel()" classname="io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest" time="0.453"/>
+  <testcase name="everyKeyTheServerCanSendHasTextInBothLanguageFiles()" classname="io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest" time="1.473">
+    <failure message="org.opentest4j.AssertionFailedError: Problems of the translation key gate (2):&#10;en_us.json has no text for synaxis:player (from io.github.bearisbug.synaxis.app.store.PlayerStateSection)&#10;zh_cn.json has no text for synaxis:player (from io.github.bearisbug.synaxis.app.store.PlayerStateSection)&#10; ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Problems of the translation key gate (2):
+en_us.json has no text for synaxis:player (from io.github.bearisbug.synaxis.app.store.PlayerStateSection)
+zh_cn.json has no text for synaxis:player (from io.github.bearisbug.synaxis.app.store.PlayerStateSection)
+ ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:199)
+	at io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.everyKeyTheServerCanSendHasTextInBothLanguageFiles(TranslationKeyGateTest.java:91)
+</failure>
+  </testcase>
+  <system-out><![CDATA[08:35:00.594 [Test worker] INFO  c.tngtech.archunit.core.PluginLoader - Detected Java version 25.0.4.1
+translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,73 @@
+RUN-073 group D (player section synaxis:player), branch prod/r073-D, code commit 2822b00342, based on prod/r073-A 67c7a17e93.
+Every run: zsh ~/.claude/r073/gradle.zsh <worktree> fix-D ... (--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, JDK 25),
+default mode (no strict grid). PostgreSQL classes ran with SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres and the
+password passed only through the environment. No Redis was needed. Six Gradle runs in total.
+
+01-red/                  run 1, 08:34:48-08:35:19, the skeleton (01-red/skeleton.diff: API only, no capture, no apply, encode
+                         returns {}, decode returns the default, no namespace check) and the gate test before its new entry.
+                         server-app 23 tests, 17 failed; architecture-tests TranslationKeyGateTest 2 tests, 1 failed.
+                         Green on the skeleton: aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone, aSavedHealthAboveTheMaximumIsTheMaximum
+                         and the four DefaultPlayHostIntegrationTest cases of group A.
+02-green/                run 2, 08:36:34-08:37:17, the implementation plus the regression classes: 13 classes, all green.
+                         After this run the redundant Math.min of the health was dropped (LivingEntity#setHealth clamps) and the
+                         code committed as 2822b00342; runs 3-6 are on that commit.
+03-counter-proofs-a/     run 3, 08:39:35-08:39:47, nine mutations at once (counter-proofs.diff), 4 classes: 23 tests, 13 failed,
+                         each mutation red on its own assertions (docs/TEST.md TC-PROD-722..728), the other 10 green.
+04-counter-proofs-b/     run 4, 08:40:06-08:40:16, two mutations at once (registry-less transcoder, build_id not compared),
+                         3 classes: 18 tests, 3 failed.
+05-old-counter-proofs/   run 5, 08:43:32-08:43:50, the old counter-proofs whose Main.java lines moved (TC-PROD-521 step 4, 528 step 2,
+                         603 step 2, 604 step 2, 670 step 4, 713 step 5) at the new lines, 4 classes: 12 tests, 10 failed, the reds
+                         the old cases name; FarViewLaunchTest's message is now the NullPointerException of Main.start(Main.java:340).
+06-final/                run 6, 08:53:10-08:53:52, after restoring (git checkout HEAD -- server-app/src/main) and the doc changes:
+                         16 classes (server-app 14, architecture-tests 2), all green.
+
+Each directory holds the JUnit XML of its run and summary.txt (per test: ok / FAIL with message and first test frame).
+
+Review rework (label rework-D), five more Gradle runs, same wrapper and settings, default mode. The PostgreSQL runs (4 and 5
+below) again took the password only through the environment.
+
+07-rework-red-init/      rework run 1, 09:19:39-09:19:43, on 4e100fc6be, PlayerStateSectionIntegrationTest alone: 10 tests,
+                         10 failed, every one in the class initializer: ExceptionInInitializerError at
+                         PlayerStateSectionIntegrationTest.java:49 (the static PICKAXE), caused by IllegalStateException
+                         "Should have been bound" (RegistryData$MaterialEntry.prototype, RegistryData.java:561). Runs 2-6 above
+                         were green because another class of the same JVM had created a process first.
+08-rework-red-new/       rework run 2, 09:21:16-09:21:24, the test class fixed (inventory built in each test) plus two new tests,
+                         PlayerStateSection still the one of 2822b00342, the class alone: 12 tests, 2 failed, the ten old ones
+                         green: theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition at :308 (the logout wrote the
+                         respawn point over the saved position) and aSecondFirstSpawnAppliesNothing at :341 (the inventory
+                         rolled back to the loaded state).
+09-rework-green/         rework run 3, 09:21:46-09:21:53, the fix (committed as 5b6aeab02d), the class alone: 12 tests, all green.
+10-rework-counter-proofs/ rework run 4, 09:23:17-09:23:28, on 5b6aeab02d, the nine mutations of 03-counter-proofs-a at their new
+                         lines (counter-proofs.diff), 4 classes: 25 tests, 14 failed, each on its own assertion; the new
+                         capture test is red at :308 under the mutation that ignores the applied tag; restored with
+                         git checkout HEAD -- server-app/src/main. The two mutations of 04-counter-proofs-b were not rerun.
+11-rework-final/         rework run 5, 09:28:08-09:28:28, restored, 7 classes (PlayerStateSection, PlayerStatePostgres,
+                         PlayerStateCodec, DefaultPlayHost, DefaultPlayStarterKit, PlayerStore, PlayerData integration tests):
+                         57 tests, all green.
+
+Second review rework (label rework3-D), six more Gradle runs, same wrapper and settings, default mode. Runs 4-6 below took
+the PostgreSQL password only through the environment. The three new tests in PlayerStateSectionIntegrationTest go through
+the engine's own round trip to the configuration phase (Player#startConfigurationPhase, updateWaitingPlayers, then
+StoreFixture#spawn), without a client and without the AdmissionGate.
+
+(no directory)           rework3 run 1, 10:14:18-10:14:23, the new tests on 5b6aeab02d: the test sources did not compile
+                         (errorprone BooleanLiteral on Boolean.FALSE at PlayerStateSectionIntegrationTest.java:312); no test ran.
+(no directory)           rework3 run 2, 10:14:38-10:14:45, same code, the class alone: 15 tests, 4 failed. The two round-trip
+                         tests died in IllegalStateException "Known packs already pending": the fixture never answered the
+                         known packs query of the first configuration, and the engine refuses a second one. The helper
+                         reconfigure answers it since; the other two reds are the ones of run 3.
+12-rework3-red/          rework3 run 3, 10:15:26-10:15:33, PlayerStateSection still the one of 5b6aeab02d, the class alone:
+                         15 tests, 3 failed: aRoundTripWhileTheTeleportIsUnderWayAppliesNothing at :398 (applied a second
+                         time, slot 0 back to air), aPlayerThatLeavesFromTheConfigurationPhaseComesBackAtItsRespawnPoint at
+                         :425 (saved at (0, 0, 0) and teleported there),
+                         theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition at :312 (no tag while the teleport is
+                         under way). aRoundTripThroughTheConfigurationPhaseAppliesNothing is green on that code: position
+                         (0, 42, 0), slots and held slot kept, health 20.
+13-rework3-green/        rework3 run 4, 10:16:15-10:16:33, the fix (committed as d4603e9998), 7 classes: 60 tests, all green.
+14-rework3-counter-proofs/ rework3 run 5, 10:17:19-10:17:29, on d4603e9998, five mutations at once (counter-proofs.diff):
+                         the three of this rework (apply ignoring the tag, no false before the teleport, capture without
+                         the respawn point) and the two of 04-counter-proofs-b at their new lines; 3 classes: 23 tests,
+                         8 failed, each on the assertion docs/TEST.md TC-PROD-727 step 6 names; restored with
+                         git checkout HEAD -- server-app/src/main.
+15-rework3-final/        rework3 run 6, 10:25:08-10:25:28, restored, after the doc changes, the same 7 classes as run 4
+                         (--rerun): 60 tests, all green.

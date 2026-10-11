@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-11T00:53:30.415Z" hostname="Mac.local" time="9.686">
+  <properties/>
+  <testcase name="aClientThatNeverAnswersTheKnownPacksDoesNotHoldTheStop(Path)" classname="io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest" time="1.418"/>
+  <testcase name="aCountdownLeavesAClientThatStillConfiguresInTheShutdownSave(Path)" classname="io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest" time="3.378"/>
+  <testcase name="aClientThatNeverAcknowledgesTheEndOfItsConfigurationDoesNotHoldTheStop(Path)" classname="io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest" time="1.459"/>
+  <testcase name="aCountdownIsAnnouncedToAClientInThePlayState(Path)" classname="io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest" time="3.431"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

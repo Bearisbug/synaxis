@@ -68,7 +68,8 @@ public class TranslationKeyGateTest {
             Map.entry("synaxis:shard/drain", "JSON-RPC method of the management interface (API-PROD-022)"),
             Map.entry("synaxis:shard/status", "JSON-RPC method of the management interface (API-PROD-022)"),
             Map.entry("synaxis:broadcast", "JSON-RPC method of the management interface (API-PROD-022)"),
-            Map.entry("synaxis:profile", "JSON-RPC method of the management interface (API-PROD-022)"));
+            Map.entry("synaxis:profile", "JSON-RPC method of the management interface (API-PROD-022)"),
+            Map.entry("synaxis:player", "id of the host's player data section (API-PROD-032)"));
 
     /** The language files of the mod, in the directory the build passes as {@code synaxis.lang.dir}. */
     private static final List<String> LANGUAGE_FILES = List.of("en_us.json", "zh_cn.json");

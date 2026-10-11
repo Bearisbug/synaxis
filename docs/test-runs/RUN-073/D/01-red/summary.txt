@@ -1,0 +1,48 @@
+io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest: tests=5 failures=1 errors=0 skipped=0
+  ok   aFrozenPlayerDropsNothing(Env)
+  ok   aGlobalPluginListenerOverridesTheDefaults(Env)
+  FAIL theStarterKitComesOnceEvenToAnEmptiedInventory(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the second login of the character got [ItemStackImpl[material=minecraft:stone, amount=64, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_pickaxe, amount=1, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStack
+       at at io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.theStarterKitComesOnceEvenToAnEmptiedInventory(DefaultPlayHostIntegrationTest.java:195)
+  ok   eachModeGetsItsPlayLayer()
+  ok   anInstancePluginListenerChoosesTheRecipientsFirst(Env)
+io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest: tests=4 failures=4 errors=0 skipped=0
+  FAIL aStoredSectionOutsideTheLayoutIsRefused(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: no world ==> Expected java.lang.RuntimeException to be thrown, but nothing was thrown.
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.aStoredSectionOutsideTheLayoutIsRefused(PlayerStateCodecIntegrationTest.java:108)
+  FAIL itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: {} ==> expected: <PlayerState[world=Core[], position=Pos[x=8.5, y=40.0, z=-3.5, yaw=0.0, pitch=0.0], inventory={4=ItemStackImpl[material=minecraft:enchanted_book, amount=1, componentPatch=DataComponentMapImpl[components={42=>EnchantmentList[enchantments={RegistryKeyImpl[key=minecraft:efficiency]=3}]}]], 3=ItemStackImpl[material=minecraft:iron_sword, amount=1, c
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(PlayerStateCodecIntegrationTest.java:86)
+  FAIL theCoreAndTheRtsWorldsCarryNoMap(Env): java.lang.NullPointerException: java.lang.NullPointerException: Cannot invoke "com.google.gson.JsonObject.size()" because the return value of "com.google.gson.JsonObject.getAsJsonObject(String)" is null
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.theCoreAndTheRtsWorldsCarryNoMap(PlayerStateCodecIntegrationTest.java:64)
+  FAIL theLayoutIsTheOneOfTheDesign(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <{"world":{"kind":"map","map_id":"demo","build_id":"b20261011"},"pos":{"x":1024.5,"y":71.0,"z":-12.25,"yaw":90.0,"pitch":12.5},"inventory":[{"slot":0,"item":{"id":"minecraft:stone","count":63}},{"slot":1,"item":{"id":"minecraft:iron_pickaxe","count":1,"components":{"minecraft:damage":3}}}],"held_slot":1,"health":17.5}> but was: <{}>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.theLayoutIsTheOneOfTheDesign(PlayerStateCodecIntegrationTest.java:51)
+io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest: tests=4 failures=4 errors=0 skipped=0
+  FAIL aLogoutBeforeTheFirstSpawnWritesNoSection(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: not <null>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest.aLogoutBeforeTheFirstSpawnWritesNoSection(PlayerStatePostgresIntegrationTest.java:201)
+  FAIL aRestartedShardGivesThePlayerBackItsState(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the logout wrote synaxis:player ==> expected: not <null>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest.aRestartedShardGivesThePlayerBackItsState(PlayerStatePostgresIntegrationTest.java:108)
+  FAIL anUndecodableSectionRefusesTheLoginAndStaysAsItIs(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: {"world": {"kind": "core"}, "pos": {"x": 0.0, "y": 42.0, "z": 0.0, "yaw": 0.0, "pitch": 0.0}, "inventory": [{"slot": 4, "item": {"id": "minecraft:no_such_item", "count": 1}}], "held_slot": 4, "health": 9.0} ==> expected: <false> but was: <true>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest.anUndecodableSectionRefusesTheLoginAndStaysAsItIs(PlayerStatePostgresIntegrationTest.java:179)
+  FAIL aTransferCarriesTheSectionToTheTargetShard(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: synaxis:player in the transfer's write ==> expected: not <null>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest.aTransferCarriesTheSectionToTheTargetShard(PlayerStatePostgresIntegrationTest.java:140)
+io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest: tests=10 failures=8 errors=0 skipped=0
+  FAIL underTheRtsRuleThePluginSpawnDecidesThePosition(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <2> but was: <0>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.underTheRtsRuleThePluginSpawnDecidesThePosition(PlayerStateSectionIntegrationTest.java:201)
+  FAIL aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: where it left, facing the same way ==> expected: <Pos[x=8.5, y=40.0, z=-3.5, yaw=45.0, pitch=10.0]> but was: <Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(PlayerStateSectionIntegrationTest.java:66)
+  FAIL aPlayerThatLeftOnTheDeathScreenComesBackAsARespawn(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a death drops nothing ==> expected: <[ItemStackImpl[material=minecraft:stone, amount=63, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_pickaxe, amount=1, componentPatch=DataComponentMapImpl[components={3=>3}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemSt
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aPlayerThatLeftOnTheDeathScreenComesBackAsARespawn(PlayerStateSectionIntegrationTest.java:172)
+  FAIL aSnapshotThatFindsNothingChangedWritesNothing(Env): java.lang.AssertionError: java.lang.AssertionError: not within 10 s: the first autosave writes the state the player spawned in
+       at at io.github.bearisbug.synaxis.app.store.StoreFixture.await(StoreFixture.java:210)
+  FAIL aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <Pos[x=8.5, y=40.0, z=-3.5, yaw=45.0, pitch=10.0]> but was: <Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(PlayerStateSectionIntegrationTest.java:127)
+  FAIL theCoreRuleTakesOnlyAPositionSavedInTheCoreWorld(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a state saved on a map: the inventory ==> expected: <[ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemSt
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateFixture.assertSavedStateApplied(PlayerStateFixture.java:141)
+  ok   aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)
+  FAIL theHostSectionIsTheHostsAlone(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a section outside synaxis: ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.theHostSectionIsTheHostsAlone(PlayerStateSectionIntegrationTest.java:272)
+  ok   aSavedHealthAboveTheMaximumIsTheMaximum(Env)
+  FAIL aMapShardTakesTheSavedPositionOnlyWhenAllThreeHold(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: outside the bounds: the inventory ==> expected: <[ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackI
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateFixture.assertSavedStateApplied(PlayerStateFixture.java:141)
+io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest: tests=2 failures=1 errors=0 skipped=0
+  ok   theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel()
+  FAIL everyKeyTheServerCanSendHasTextInBothLanguageFiles(): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: Problems of the translation key gate (2): en_us.json has no text for synaxis:player (from io.github.bearisbug.synaxis.app.store.PlayerStateSection) zh_cn.json has no text for synaxis:player (from io.github.bearisbug.synaxis.app.store.PlayerStateSection)  ==> expected: <true> but was: <false>
+       at at io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.everyKeyTheServerCanSendHasTextInBothLanguageFiles(TranslationKeyGateTest.java:91)

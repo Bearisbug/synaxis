@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-11T00:36:48.857Z" hostname="Mac.local" time="0.033">
+  <properties/>
+  <testcase name="aStoredSectionOutsideTheLayoutIsRefused(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.01"/>
+  <testcase name="itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.01"/>
+  <testcase name="theCoreAndTheRtsWorldsCarryNoMap(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.006"/>
+  <testcase name="theLayoutIsTheOneOfTheDesign(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.007"/>
+  <system-out><![CDATA[08:36:48.867 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+08:36:48.868 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+08:36:48.868 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+08:36:48.877 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+08:36:48.877 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+08:36:48.877 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+08:36:48.884 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+08:36:48.884 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+08:36:48.884 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+08:36:48.890 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+08:36:48.890 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+08:36:48.890 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

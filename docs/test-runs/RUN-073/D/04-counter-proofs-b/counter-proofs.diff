@@ -1,0 +1,22 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
+index eac0425212..3395aad563 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
+@@ -64,7 +64,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+      * @param registries the process registries, which an item component that names a registry entry is encoded with
+      */
+     public PlayerStateSection(Registries registries) {
+-        this.json = new RegistryTranscoder<>(Transcoder.JSON, registries);
++        this.json = Boolean.getBoolean("proof.never") ? new RegistryTranscoder<>(Transcoder.JSON, registries) : Transcoder.JSON;
+     }
+ 
+     @Override
+@@ -188,7 +188,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+             case PositionRule.Rts _ -> false;
+             case PositionRule.MapShard map -> !arrived
+                     && saved.world() instanceof PlayerState.MapShard(String mapId, String buildId)
+-                    && mapId.equals(map.mapId()) && buildId.equals(map.buildId())
++                    && mapId.equals(map.mapId()) && (!Boolean.getBoolean("proof.never") || buildId.equals(map.buildId()))
+                     && inside(map.bounds(), Objects.requireNonNull(saved.position(), "a captured state has a position"));
+         };
+     }

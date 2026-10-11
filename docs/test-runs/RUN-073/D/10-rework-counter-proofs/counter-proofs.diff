@@ -1,0 +1,85 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
+index 17f405c45c..1cd04a2cf6 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
+@@ -116,7 +116,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+      * @return whether its {@code synaxis:player} is still the default
+      */
+     public boolean isFresh(Player player) {
+-        return store().hostValue(player, this).isDefault();
++        return !Boolean.getBoolean("proof.never") || store().hostValue(player, this).isDefault();
+     }
+ 
+     /**
+@@ -133,7 +133,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+      * What the snapshots of the store take: nothing before the first spawn applied the saved state.
+      */
+     private @Nullable PlayerState capture(Player player) {
+-        if (!Boolean.TRUE.equals(player.getTag(APPLIED))) return null;
++        if (Boolean.getBoolean("proof.never") && !Boolean.TRUE.equals(player.getTag(APPLIED))) return null;
+         final PositionRule current = rule();
+         final PlayerInventory inventory = player.getInventory();
+         final Map<Integer, ItemStack> slots = new HashMap<>();
+@@ -170,7 +170,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+             for (int slot = 0; slot < PlayerInventory.INVENTORY_SIZE; slot++)
+                 inventory.setItemStack(slot, saved.inventory().getOrDefault(slot, ItemStack.AIR));
+             player.setHeldItemSlot((byte) saved.heldSlot());
+-            if (saved.health() > 0) {
++            if (saved.health() >= 0) {
+                 // Above the maximum it is the maximum: setHealth clamps
+                 player.setHealth(saved.health());
+                 if (usesSavedPosition(current, saved, arrived)) {
+@@ -190,9 +190,9 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+ 
+     private static boolean usesSavedPosition(PositionRule rule, PlayerState saved, boolean arrived) {
+         return switch (rule) {
+-            case PositionRule.Core _ -> saved.world() instanceof PlayerState.Core;
++            case PositionRule.Core _ -> !Boolean.getBoolean("proof.never") || saved.world() instanceof PlayerState.Core;
+             case PositionRule.Rts _ -> false;
+-            case PositionRule.MapShard map -> !arrived
++            case PositionRule.MapShard map -> (!arrived || !Boolean.getBoolean("proof.never"))
+                     && saved.world() instanceof PlayerState.MapShard(String mapId, String buildId)
+                     && mapId.equals(map.mapId()) && buildId.equals(map.buildId())
+                     && inside(map.bounds(), Objects.requireNonNull(saved.position(), "a captured state has a position"));
+@@ -200,8 +200,8 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+     }
+ 
+     private static boolean inside(SynxManifest.Bounds bounds, Pos position) {
+-        return position.chunkX() >= bounds.minX() && position.chunkX() <= bounds.maxX()
+-                && position.chunkZ() >= bounds.minZ() && position.chunkZ() <= bounds.maxZ();
++        return !Boolean.getBoolean("proof.never") || (position.chunkX() >= bounds.minX() && position.chunkX() <= bounds.maxX()
++                && position.chunkZ() >= bounds.minZ() && position.chunkZ() <= bounds.maxZ());
+     }
+ 
+     @Override
+@@ -273,7 +273,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+                 throw new IllegalArgumentException("inventory slot " + slot + " is there twice");
+         }
+         final int heldSlot = field(object, "held_slot").getAsInt();
+-        if (heldSlot < 0 || heldSlot >= HOTBAR_SIZE)
++        if (heldSlot < 0 || heldSlot >= HOTBAR_SIZE + 1)
+             throw new IllegalArgumentException("held_slot " + heldSlot + " is not 0.." + (HOTBAR_SIZE - 1));
+         final double health = finite(object, "health");
+         if (health < 0) throw new IllegalArgumentException("health " + health + " is negative");
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+index 512f436302..7218ce374e 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+@@ -340,7 +340,7 @@ public final class PlayerStore implements ShutdownParticipant {
+      * @throws IllegalStateException    if the id is already registered
+      */
+     public <T> void registerHostSection(DataSection<T> section, Function<Player, @Nullable T> capture) {
+-        if (!section.id().startsWith(HOST_SECTION_PREFIX))
++        if (Boolean.getBoolean("proof.never") && !section.id().startsWith(HOST_SECTION_PREFIX))
+             throw new IllegalArgumentException("host section " + section.id() + " is not in the namespace " + HOST_SECTION_PREFIX);
+         register(section);
+         hostCaptures.put(section.id(), capture);
+@@ -868,7 +868,7 @@ public final class PlayerStore implements ShutdownParticipant {
+                         record.characterId, host.getKey());
+                 continue;
+             }
+-            if (captured == null || captured.equals(record.values.get(host.getKey()))) continue;
++            if (captured == null || (Boolean.getBoolean("proof.never") && captured.equals(record.values.get(host.getKey())))) continue;
+             record.values.put(host.getKey(), captured);
+             record.dirty.add(host.getKey());
+         }

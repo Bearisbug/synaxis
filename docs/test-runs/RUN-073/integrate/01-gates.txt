@@ -1,0 +1,61 @@
+zsh ~/.claude/r073/gradle.zsh <worktree> integrate3-073 :architecture-tests:test --rerun --tests '*TranslationKeyGateTest*' --tests '*ConfigKeyGateTest*'
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions UP-TO-DATE
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateEntrypointForLibs UP-TO-DATE
+> Task :build-src:generateEntrypointForLibsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-src:generateLibrariesForConventions UP-TO-DATE
+> Task :build-src:generateLibrariesForLibs UP-TO-DATE
+> Task :build-src:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-src:compilePluginsBlocks UP-TO-DATE
+> Task :build-src:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-src:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-src:verifyEarlyEvaluatedBuild UP-TO-DATE
+> Task :build-src:verifyTopLevelBuild UP-TO-DATE
+> Task :build-src:compileKotlin UP-TO-DATE
+> Task :build-src:compileJava UP-TO-DATE
+> Task :build-src:pluginDescriptors UP-TO-DATE
+> Task :build-src:processResources UP-TO-DATE
+> Task :build-src:classes UP-TO-DATE
+> Task :build-src:jar UP-TO-DATE
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :architecture-tests:compileJava NO-SOURCE
+> Task :architecture-tests:processResources NO-SOURCE
+> Task :architecture-tests:classes UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :architecture-tests:processTestResources NO-SOURCE
+> Task :baker:processResources UP-TO-DATE
+> Task :game-rts:processResources UP-TO-DATE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :server-app:buildInfo
+> Task :server-app:processResources
+> Task :synx:processResources NO-SOURCE
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :baker:compileJava UP-TO-DATE
+> Task :game-rts:compileJava UP-TO-DATE
+> Task :baker:classes UP-TO-DATE
+> Task :baker:jar
+> Task :game-rts:classes UP-TO-DATE
+> Task :game-rts:jar
+> Task :synx:classes UP-TO-DATE
+> Task :synx:jar
+> Task :server-app:compileJava
+> Task :server-app:classes
+> Task :server-app:jar
+> Task :architecture-tests:compileTestJava FROM-CACHE
+> Task :architecture-tests:testClasses UP-TO-DATE
+> Task :architecture-tests:test
+BUILD SUCCESSFUL in 11s
+40 actionable tasks: 8 executed, 1 from cache, 31 up-to-date
+[integrate3-073] gradle exit=0 end 10:46:09

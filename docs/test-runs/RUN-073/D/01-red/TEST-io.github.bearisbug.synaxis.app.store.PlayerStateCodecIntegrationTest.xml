@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" tests="4" skipped="0" failures="4" errors="0" timestamp="2026-10-11T00:35:07.209Z" hostname="Mac.local" time="0.037">
+  <properties/>
+  <testcase name="aStoredSectionOutsideTheLayoutIsRefused(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.01">
+    <failure message="org.opentest4j.AssertionFailedError: no world ==&gt; Expected java.lang.RuntimeException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: no world ==&gt; Expected java.lang.RuntimeException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.aStoredSectionOutsideTheLayoutIsRefused(PlayerStateCodecIntegrationTest.java:108)
+</failure>
+  </testcase>
+  <testcase name="itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.011">
+    <failure message="org.opentest4j.AssertionFailedError: {} ==&gt; expected: &lt;PlayerState[world=Core[], position=Pos[x=8.5, y=40.0, z=-3.5, yaw=0.0, pitch=0.0], inventory={4=ItemStackImpl[material=minecraft:enchanted_book, amount=1, componentPatch=DataComponentMapImpl[components={42=&gt;EnchantmentList[enchantments={RegistryKeyImpl[key=minecraft:efficiency]=3}]}]], 3=ItemStackImpl[material=minecraft:iron_sword, amount=1, componentPatch=DataComponentMapImpl[components={13=&gt;EnchantmentList[enchantments={RegistryKeyImpl[key=minecraft:sharpness]=5}]}]]}, heldSlot=0, health=20.0]&gt; but was: &lt;PlayerState[world=null, position=null, inventory={}, heldSlot=0, health=20.0]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: {} ==&gt; expected: &lt;PlayerState[world=Core[], position=Pos[x=8.5, y=40.0, z=-3.5, yaw=0.0, pitch=0.0], inventory={4=ItemStackImpl[material=minecraft:enchanted_book, amount=1, componentPatch=DataComponentMapImpl[components={42=&gt;EnchantmentList[enchantments={RegistryKeyImpl[key=minecraft:efficiency]=3}]}]], 3=ItemStackImpl[material=minecraft:iron_sword, amount=1, componentPatch=DataComponentMapImpl[components={13=&gt;EnchantmentList[enchantments={RegistryKeyImpl[key=minecraft:sharpness]=5}]}]]}, heldSlot=0, health=20.0]&gt; but was: &lt;PlayerState[world=null, position=null, inventory={}, heldSlot=0, health=20.0]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(PlayerStateCodecIntegrationTest.java:86)
+</failure>
+  </testcase>
+  <testcase name="theCoreAndTheRtsWorldsCarryNoMap(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.007">
+    <failure message="java.lang.NullPointerException: Cannot invoke &quot;com.google.gson.JsonObject.size()&quot; because the return value of &quot;com.google.gson.JsonObject.getAsJsonObject(String)&quot; is null" type="java.lang.NullPointerException">java.lang.NullPointerException: Cannot invoke &quot;com.google.gson.JsonObject.size()&quot; because the return value of &quot;com.google.gson.JsonObject.getAsJsonObject(String)&quot; is null
+	at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.theCoreAndTheRtsWorldsCarryNoMap(PlayerStateCodecIntegrationTest.java:64)
+</failure>
+  </testcase>
+  <testcase name="theLayoutIsTheOneOfTheDesign(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.007">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;map&quot;,&quot;map_id&quot;:&quot;demo&quot;,&quot;build_id&quot;:&quot;b20261011&quot;},&quot;pos&quot;:{&quot;x&quot;:1024.5,&quot;y&quot;:71.0,&quot;z&quot;:-12.25,&quot;yaw&quot;:90.0,&quot;pitch&quot;:12.5},&quot;inventory&quot;:[{&quot;slot&quot;:0,&quot;item&quot;:{&quot;id&quot;:&quot;minecraft:stone&quot;,&quot;count&quot;:63}},{&quot;slot&quot;:1,&quot;item&quot;:{&quot;id&quot;:&quot;minecraft:iron_pickaxe&quot;,&quot;count&quot;:1,&quot;components&quot;:{&quot;minecraft:damage&quot;:3}}}],&quot;held_slot&quot;:1,&quot;health&quot;:17.5}&gt; but was: &lt;{}&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;map&quot;,&quot;map_id&quot;:&quot;demo&quot;,&quot;build_id&quot;:&quot;b20261011&quot;},&quot;pos&quot;:{&quot;x&quot;:1024.5,&quot;y&quot;:71.0,&quot;z&quot;:-12.25,&quot;yaw&quot;:90.0,&quot;pitch&quot;:12.5},&quot;inventory&quot;:[{&quot;slot&quot;:0,&quot;item&quot;:{&quot;id&quot;:&quot;minecraft:stone&quot;,&quot;count&quot;:63}},{&quot;slot&quot;:1,&quot;item&quot;:{&quot;id&quot;:&quot;minecraft:iron_pickaxe&quot;,&quot;count&quot;:1,&quot;components&quot;:{&quot;minecraft:damage&quot;:3}}}],&quot;held_slot&quot;:1,&quot;health&quot;:17.5}&gt; but was: &lt;{}&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.theLayoutIsTheOneOfTheDesign(PlayerStateCodecIntegrationTest.java:51)
+</failure>
+  </testcase>
+  <system-out><![CDATA[08:35:07.220 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+08:35:07.220 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+08:35:07.220 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+08:35:07.231 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+08:35:07.231 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+08:35:07.231 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+08:35:07.238 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+08:35:07.238 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+08:35:07.239 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+08:35:07.245 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+08:35:07.245 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+08:35:07.245 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

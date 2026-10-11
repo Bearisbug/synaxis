@@ -1,0 +1,17 @@
+RUN-073 integration branch prod/integrate-073, the merge of prod/r073-D (group D, player section synaxis:player, branch head
+514e68e300) into 57f5385de6, docs/DESIGN-PROD.md v0.9.72. Both runs were on the merged tree before the merge commit (its code
+and test files are those of the commit). Every run: zsh ~/.claude/r073/gradle.zsh <worktree> integrate3-073 ...
+(--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, JDK 25), default mode. No database,
+no Redis. Two Gradle runs in total; no other test was run here, the full gates run on GitHub Actions (draft PR #16).
+
+01-gates.txt   run 1, 10:45:57-10:46:09, :architecture-tests:test --rerun, the translation key gate and the config key gate.
+               BUILD SUCCESSFUL; TranslationKeyGateTest tests="2" 0 failures, ConfigKeyGateTest tests="1" 0 failures.
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml
+               system-out: translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 16 identifiers left out
+               (group D added synaxis:player to NOT_TEXT: 15 -> 16; group B's synaxis:command-unknown made 61 keys).
+TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml
+               system-out: config key gate: 117 keys read, 117 in ConfigFile.KEYS, 21 meter names left out.
+02-compile.txt run 2, 10:49:13-10:49:20, compileJava compileTestJava :server-app:compileTestJava :loadtest:compileTestJava
+               :architecture-tests:compileTestJava :jcstress-tests:compileJcstressJava. BUILD SUCCESSFUL, 29 tasks
+               (1 executed, 28 up-to-date): :server-app:compileJava had already run in run 1 on the same tree,
+               :server-app:compileTestJava ran here; group D changes no root, loadtest or jcstress source.

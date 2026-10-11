@@ -100,3 +100,54 @@ FrozenBlockUseIntegrationTest 的用物品改走 UseItemListener.useItemListener
   - TC-PROD-748 第 3 步（优先级 3 不再取消）：FrozenBlockUseIntegrationTest.java:85，arrived cancelled=true、
     ended cancelled=false（三个事件都是）。
   跑完 git apply -R 还原，主代码与 HEAD 相同，rg proof.never 无输出；之后的代码与第 10 次逐字相同，没有再跑绿。
+
+第 12～16 次是组 X（标签 fix-X），在分支头 1caa5d472d 之上，docs/DESIGN-PROD.md v0.9.76，docs/TEST.md TC-PROD-750、TC-PROD-751。
+起因：PR #18 的 CI run 38120198898 job Check 的 diff-cover 新增 19 行覆盖 68%，缺的 6 行都在 Main.java
+（260、278、336～338、342），只有起子 JVM 的启动测试跑到。改法：步骤 (5) 的规则表达式原样提成 Main#positionRule。
+命令同上，只是 --tests 换成下面各次的类；都不要数据库。
+
+12-red/  第 12 次：改动前的红（新测试 app.MainPositionRuleTest，Main 还是 1caa5d472d 的）
+  gradle.txt：:server-app:compileTestJava FAILED，BUILD FAILED in 32s。MainPositionRuleTest.java:44、:49、:50
+  三处「找不到符号 方法 positionRule」。没跑到测试。
+
+13-green/  第 13 次：提出 Main#positionRule 之后
+  gradle.txt：BUILD SUCCESSFUL in 11s。MainPositionRuleTest 2 条 0 失败（1.9 s）；system-out 里
+  Map release fixture-53b7eb295525-p776 verified … bounds=Bounds[minX=0, minZ=0, maxX=15, maxZ=15]。
+
+14-counter-proofs/  第 14 次：两处反证（counter-proofs.diff，相对第 13 次的代码）
+  - Main.java:903 MapShard 的 mapId、buildId 两个实参对调；
+  - Main.java:901 的 mode != CoreMode.Mode.CORE 后面加 && Boolean.getBoolean("proof.never")。
+  gradle.txt：2 tests completed, 2 failed，BUILD FAILED in 15s。
+  - 挂地图那条红在 MainPositionRuleTest.java:43：expected MapShard[mapId=fixture, buildId=fixture-53b7eb295525-p776, …]
+    but was MapShard[mapId=fixture-53b7eb295525-p776, buildId=fixture, …]。
+  - 没挂地图那条红在 :50：a gameplay plugin ==> expected: <Rts[]> but was: <Core[]>。
+  跑完 patch -R 还原，Main.java 与第 13 次的逐字相同（cmp）。
+
+15-counter-proofs/  第 15 次：另两处反证（counter-proofs.diff，相对第 13 次的代码）
+  - Main.java:903 的 shardWorld.bounds() 换成只含区块 7, 7 的 SynxManifest.Bounds(7, 7, 7, 7)（另加一行导入）；
+  - Main.java:902 的 new PositionRule.Core() 换成不设 proof.never 时得 Rts()。
+  gradle.txt：2 tests completed, 2 failed，BUILD FAILED in 13s。
+  - 挂地图那条红在 :43：but was MapShard[…, bounds=Bounds[minX=7, minZ=7, maxX=7, maxZ=7]]。
+  - 没挂地图那条红在 :49：the core world ==> expected: <Core[]> but was: <Rts[]>。
+  跑完 patch -R 还原，Main.java 与第 13 次的逐字相同（cmp），grep -c proof.never 为 0。
+
+16-green-coverage/  第 16 次：还原后的绿连同 :server-app:jacocoTestReport
+  gradle.txt：BUILD SUCCESSFUL in 15s。MainPositionRuleTest 2、MainClaimedByIntegrationTest 1、
+  app.store.FrozenBlockUseIntegrationTest 1、app.store.PlayerStateSectionIntegrationTest 17，都 0 失败 0 跳过。
+  jacocoTestReport.xml（没放进来，780 KB）里 Main.java 第 901、902、903 行 ci 8、6、9，mi 0，901、902 两行 cb 2、mb 0；
+  第 917 行 ci 3；第 260、278、335、339 行 ci 0。
+  diff-cover.txt：提交 6b22e20f70 之后在 worktree 里 git fetch --no-tags origin main:refs/remotes/origin/main（fd7b8b211d），
+  再 diff-cover server-app/build/reports/jacoco/test/jacocoTestReport.xml --compare-branch=origin/main
+  --src-roots server-app/src/main/java --fail-under=80 --ignore-unstaged（diff-cover 10.6.0，仓库主目录的 .venv）：
+  Total 20 lines，Missing 4 lines，Coverage 80%，退出码 0；Main.java (50.0%) Missing lines 260,278,335,339，
+  PlayerStore.java (100%)。
+
+17-rework-green/  第 17 次：组 X 评审之后（标签 rework-X），代码与第 16 次相同（HEAD 9b8a03b68c，git status 只有文档改动）
+  评审的反证跑过一次（标签 review-X，902 行挂地图退回 Core，红在 MainPositionRuleTest.java:43），用 git checkout 还原，
+  server-app/build 里留下的是那次的产物，所以同一组类连同 :server-app:jacocoTestReport 再跑一次。
+  gradle.txt：BUILD SUCCESSFUL in 18s，:server-app:compileJava FROM-CACHE。MainPositionRuleTest 2、
+  MainClaimedByIntegrationTest 1、app.store.FrozenBlockUseIntegrationTest 1、app.store.PlayerStateSectionIntegrationTest 17，
+  都 0 失败 0 跳过。jacocoTestReport.xml 的读数与第 16 次相同：Main.java 第 901、902、903 行 ci 8、6、9，mi 0，
+  901、902 两行 cb 2、mb 0；第 917 行 ci 3；第 260、278、335、339 行 ci 0。
+  diff-cover.txt：origin/main 仍是 fd7b8b211d，命令同第 16 次：Total 20 lines，Missing 4 lines，Coverage 80%，退出码 0；
+  Main.java (50.0%) Missing lines 260,278,335,339，PlayerStore.java (100%)。

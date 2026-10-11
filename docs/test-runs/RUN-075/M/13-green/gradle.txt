@@ -1,0 +1,50 @@
+resource gate: free=32% load=39, waiting 30 s
+resource gate: free=34% load=30, waiting 30 s
+resource gate: free=38% load=25, waiting 30 s
+[fix-X] free=45% load=19 start 15:47:42
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :baker:processResources UP-TO-DATE
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :game-rts:processResources UP-TO-DATE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :server-app:buildInfo UP-TO-DATE
+> Task :server-app:processResources UP-TO-DATE
+> Task :server-app:processTestResources UP-TO-DATE
+> Task :synx:processResources NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :baker:compileJava UP-TO-DATE
+> Task :baker:classes UP-TO-DATE
+> Task :baker:jar UP-TO-DATE
+> Task :game-rts:compileJava UP-TO-DATE
+> Task :game-rts:classes UP-TO-DATE
+> Task :game-rts:jar UP-TO-DATE
+> Task :testing:compileJava UP-TO-DATE
+> Task :synx:classes UP-TO-DATE
+> Task :synx:jar UP-TO-DATE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar UP-TO-DATE
+> Task :server-app:compileJava
+> Task :server-app:classes
+> Task :server-app:compileTestJava
+> Task :server-app:testClasses
+> Task :server-app:test
+
+BUILD SUCCESSFUL in 11s
+24 actionable tasks: 3 executed, 21 up-to-date
+Configuration cache entry reused.
+[fix-X] gradle exit=0 end 15:47:54

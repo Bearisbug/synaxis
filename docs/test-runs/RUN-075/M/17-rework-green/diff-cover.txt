@@ -1,0 +1,12 @@
+-------------
+Diff Coverage
+Diff: origin/main...HEAD and staged changes
+-------------
+server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java (50.0%): Missing lines 260,278,335,339
+server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java (100%)
+-------------
+Total:   20 lines
+Missing: 4 lines
+Coverage: 80%
+-------------
+

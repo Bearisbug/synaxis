@@ -1,0 +1,14 @@
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java	2026-10-11 15:48:26
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java	2026-10-11 15:48:26
+@@ -898,9 +898,9 @@
+      * @return the rule to set
+      */
+     static PositionRule positionRule(CoreMode.Mode mode, @Nullable ShardWorld shardWorld) {
+-        return mode != CoreMode.Mode.CORE ? new PositionRule.Rts()
++        return mode != CoreMode.Mode.CORE && Boolean.getBoolean("proof.never") ? new PositionRule.Rts()
+                 : shardWorld == null ? new PositionRule.Core()
+-                : new PositionRule.MapShard(shardWorld.mapId(), shardWorld.buildId(), shardWorld.bounds());
++                : new PositionRule.MapShard(shardWorld.buildId(), shardWorld.mapId(), shardWorld.bounds());
+     }
+ 
+     /**

@@ -35,6 +35,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
@@ -218,7 +219,7 @@ public class ConfigFileLaunchTest {
         }
     }
 
-    private static Frame compressedFrame(InputStream in) throws IOException, DataFormatException {
+    static Frame compressedFrame(InputStream in) throws IOException, DataFormatException {
         final ByteArrayInputStream rest = new ByteArrayInputStream(frame(in));
         final int dataLength = readVarInt(rest);
         final byte[] compressed = rest.readAllBytes();
@@ -277,13 +278,20 @@ public class ConfigFileLaunchTest {
         }
 
         static Launched start(Path directory, String classPath, Class<?> launcher, String... properties) throws IOException {
+            return start(directory, classPath, Map.of(), launcher, properties);
+        }
+
+        /** With {@code environment} added to the variables the JVM inherits from this one. */
+        static Launched start(Path directory, String classPath, Map<String, String> environment, Class<?> launcher,
+                              String... properties) throws IOException {
             final List<String> command = new ArrayList<>(List.of(
                     Path.of(System.getProperty("java.home"), "bin", "java").toString(), "-Xmx1g",
                     "-cp", classPath, "-Dlogback.configurationFile=logback.xml"));
             command.addAll(List.of(properties));
             command.add(launcher.getName());
-            final Process process = new ProcessBuilder(command).directory(directory.toFile())
-                    .redirectErrorStream(true).start();
+            final ProcessBuilder builder = new ProcessBuilder(command).directory(directory.toFile()).redirectErrorStream(true);
+            builder.environment().putAll(environment);
+            final Process process = builder.start();
             final List<String> output = new CopyOnWriteArrayList<>();
             final Thread reader = Thread.ofPlatform().start(() -> {
                 try (BufferedReader lines = new BufferedReader(

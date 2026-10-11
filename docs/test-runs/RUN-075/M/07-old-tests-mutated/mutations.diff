@@ -1,0 +1,34 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+index b2522aada0..5e8d0e12f4 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+@@ -57,6 +57,7 @@ import io.github.bearisbug.synaxis.plugin.Admission;
+ import io.github.bearisbug.synaxis.plugin.PluginApi;
+ import io.github.bearisbug.synaxis.registry.RegistryKey;
+ import io.github.bearisbug.synaxis.synx.OverlayOptions;
++import io.github.bearisbug.synaxis.synx.SynxManifest;
+ import io.github.bearisbug.synaxis.synx.SynxOptions;
+ import io.github.bearisbug.synaxis.timer.TaskSchedule;
+ import io.github.bearisbug.synaxis.world.DimensionType;
+@@ -335,7 +336,7 @@ public final class Main {
+         // core mode, names the release and the bounds ShardWorld read in step (3)
+         playerState.useRule(mode != CoreMode.Mode.CORE ? new PositionRule.Rts()
+                 : shardWorld == null ? new PositionRule.Core()
+-                : new PositionRule.MapShard(shardWorld.mapId(), shardWorld.buildId(), shardWorld.bounds()));
++                : new PositionRule.MapShard(shardWorld.mapId(), shardWorld.buildId(), Boolean.getBoolean("proof.never") ? shardWorld.bounds() : new SynxManifest.Bounds(7, 7, 7, 7)));
+         // The default play layer of the mode, on the host node and before the port opens
+         // (docs/DESIGN-PROD.md API-PROD-031)
+         final Set<DefaultPlay.Feature> play = defaultPlay(mode, shardWorld != null);
+diff --git a/src/main/java/io/github/bearisbug/synaxis/listener/UseItemListener.java b/src/main/java/io/github/bearisbug/synaxis/listener/UseItemListener.java
+index dc38324cb8..53ad7014fb 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/listener/UseItemListener.java
++++ b/src/main/java/io/github/bearisbug/synaxis/listener/UseItemListener.java
+@@ -64,7 +64,7 @@ public class UseItemListener {
+         boolean usingMainHand = player.getItemUseHand() == PlayerHand.MAIN && hand == PlayerHand.OFF;
+         PlayerUseItemEvent useItemEvent = new PlayerUseItemEvent(player, hand, itemStack,
+                 usingMainHand ? 0 : useItemTime);
+-        player.process().eventHandler().call(useItemEvent);
++        if (Boolean.getBoolean("proof.never")) player.process().eventHandler().call(useItemEvent);
+ 
+         player.sendPacket(new AcknowledgeBlockChangePacket(packet.sequence()));
+         final PlayerInventory playerInventory = player.getInventory();

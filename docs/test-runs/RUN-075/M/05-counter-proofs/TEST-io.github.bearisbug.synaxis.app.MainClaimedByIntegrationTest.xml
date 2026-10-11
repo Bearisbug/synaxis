@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.MainClaimedByIntegrationTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-11T05:43:56.804Z" hostname="Mac.local" time="1.054">
+  <properties/>
+  <testcase name="aTransferredPlayerSpawnsAtTheGateWithTheInventoryHeldSlotAndHealthItLeftWith(Env)" classname="io.github.bearisbug.synaxis.app.MainClaimedByIntegrationTest" time="1.047">
+    <failure message="org.opentest4j.AssertionFailedError: spawned at the gate, not taken to the saved position ==&gt; expected: &lt;Pos[x=24.5, y=40.0, z=8.5, yaw=90.0, pitch=0.0]&gt; but was: &lt;Pos[x=40.5, y=40.0, z=40.5, yaw=180.0, pitch=0.0]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: spawned at the gate, not taken to the saved position ==&gt; expected: &lt;Pos[x=24.5, y=40.0, z=8.5, yaw=90.0, pitch=0.0]&gt; but was: &lt;Pos[x=40.5, y=40.0, z=40.5, yaw=180.0, pitch=0.0]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.MainClaimedByIntegrationTest.aTransferredPlayerSpawnsAtTheGateWithTheInventoryHeldSlotAndHealthItLeftWith(MainClaimedByIntegrationTest.java:110)
+</failure>
+  </testcase>
+  <system-out><![CDATA[13:43:57.823 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=09336d9d-c30a-4fb1-b73c-8a2b095dc79c identifier=Traveller
+13:43:57.851 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:43:57.852 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=e56e412e-8dfa-47ec-9375-f870f7dca42b identifier=Traveller reason=synaxis:server-stopping
+13:43:57.852 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=e56e412e-8dfa-47ec-9375-f870f7dca42b identifier=Traveller
+13:43:57.853 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:43:57.854 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

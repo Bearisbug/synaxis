@@ -263,6 +263,51 @@ class PlayerStateSectionIntegrationTest {
     }
 
     /**
+     * The bounds are chunks with both ends included, and a position is in the chunk of its floored block: the last
+     * block of the edge chunk 7 is inside the bounds 0..7, the first block past it is not, along x as along z.
+     */
+    @Test
+    void theLastBlockOfTheEdgeChunkIsInsideTheBoundsAndTheNextOneIsNot(Env env) throws Exception {
+        assertEdges(env, new SynxManifest.Bounds(0, 0, 7, 7), List.of(
+                new Edge("x 127.9", new Pos(127.9, 40, 64.5), true),
+                new Edge("x 128.0", new Pos(128.0, 40, 64.5), false),
+                new Edge("z 127.9", new Pos(64.5, 40, 127.9), true),
+                new Edge("z 128.0", new Pos(64.5, 40, 128.0), false)));
+    }
+
+    /**
+     * Below zero the chunk is floored as well, not truncated towards zero: x -128.0 is in chunk -8, the first chunk of
+     * the bounds -8..-1, and x -128.1 in chunk -9, past it.
+     */
+    @Test
+    void aNegativePositionIsInTheChunkOfItsFlooredBlock(Env env) throws Exception {
+        assertEdges(env, new SynxManifest.Bounds(-8, -8, -1, -1), List.of(
+                new Edge("x -128.0", new Pos(-128.0, 40, -64.5), true),
+                new Edge("x -128.1", new Pos(-128.1, 40, -64.5), false),
+                new Edge("z -128.0", new Pos(-64.5, 40, -128.0), true),
+                new Edge("z -128.1", new Pos(-64.5, 40, -128.1), false)));
+    }
+
+    private record Edge(String name, Pos saved, boolean inside) {
+    }
+
+    /** One character per edge, saved on the release of the rule: put back inside the bounds, left at the respawn point past them. */
+    private static void assertEdges(Env env, SynxManifest.Bounds bounds, List<Edge> edges) throws Exception {
+        final PlayerStateFixture.Memory memory = PlayerStateFixture.memory(env,
+                new PositionRule.MapShard("demo", "b1", bounds), PlayerStore.Options.DEFAULT);
+        final Instance instance = env.createFlatInstance();
+        for (Edge edge : edges) {
+            final UUID account = UUID.randomUUID();
+            seed(memory.backend(), account, saved("{\"kind\": \"map\", \"map_id\": \"demo\", \"build_id\": \"b1\"}",
+                    edge.saved()));
+            final Player player = online(env, memory.store(), instance, account, "Edge");
+            await(env, () -> Boolean.TRUE.equals(player.getTag(PlayerStateSection.APPLIED)), edge.name() + ": applied");
+            assertEquals(edge.inside() ? edge.saved() : RESPAWN, player.getPosition(), edge.name());
+            assertSavedStateApplied(player, edge.name());
+        }
+    }
+
+    /**
      * {@code synaxis:} is the host's namespace: the store takes no other host section and no section twice, a plugin
      * reaches none of them, and a section takes one position rule.
      */

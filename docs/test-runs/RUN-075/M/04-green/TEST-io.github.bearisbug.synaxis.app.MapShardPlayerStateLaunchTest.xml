@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-11T05:42:12.020Z" hostname="Mac.local" time="5.237">
+  <properties/>
+  <testcase name="theSectionComesBackOnItsOwnBuildAndNotOnAnother()" classname="io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest" time="5.229"/>
+  <system-out><![CDATA[13:42:13.307 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+13:42:13.343 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@42516ce2
+13:42:13.343 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+13:42:13.425 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+13:42:13.472 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+13:42:13.475 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.015s)
+13:42:13.487 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+13:42:13.513 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+13:42:13.521 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+13:42:13.558 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+13:42:13.571 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+13:42:13.587 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+13:42:13.600 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+13:42:13.612 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+13:42:13.621 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.059s)
+13:42:13.626 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+13:42:13.626 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+13:42:13.626 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Migrated the player store: auth_mode=offline
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

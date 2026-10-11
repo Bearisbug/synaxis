@@ -1,0 +1,102 @@
+RUN-075 组 M（挂地图分片的持久化接线与转服冻结的扩展）证据
+分支 prod/r075-M，基于 origin/main 940ebcbced；docs/DESIGN-PROD.md v0.9.73，docs/TEST.md TC-PROD-745～TC-PROD-749。
+本机，2026-10-11。每次 Gradle 都经 zsh ~/.claude/r075/gradle.zsh <worktree> fix-M :server-app:test --tests …
+（第 7～11 次的标签是 rework-M）
+（--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts，跑前拿 /tmp/synaxis-heavy.lock）。
+数据库：SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres，口令只经环境变量 SYNAXIS_TEST_PG_PASSWORD
+给（docker inspect synaxis-pg 的 POSTGRES_PASSWORD），不在命令行、日志与这些文件里；子 JVM 的日志只印 password=<set>。
+类全名前缀：app. = io.github.bearisbug.synaxis.app.，app.store. 同理。
+
+01-compile/gradle.txt
+  第 1 次。测试源集编译不过：FrozenBlockUseIntegrationTest 导入的 BlockFace 包写错（在 coordinate 包），
+  MapShardPlayerStateLaunchTest 用了过时的 Pos(Point, float, float)。没跑测试，不算红也不算绿。
+
+02-red-first-client/gradle.txt
+  第 2 次，origin/main 的 Main、PlayerStore 上。20 tests completed, 2 failed：
+  - app.store.FrozenBlockUseIntegrationTest 红在 :83（与第 3 次相同）。
+  - app.MapShardPlayerStateLaunchTest 红在客户端：EOFException: the server closed the connection（读第一批区块时）。
+    那一版客户端进 play 之后只读不答，也没有把分片日志附在失败上，读数作废；客户端改成答 keep alive、ping、
+    传送确认与区块批确认、报 ClientPlayerLoaded，失败时附上分片日志（第 3 次起）。这次的 JUnit XML 被第 3 次覆盖，没留。
+
+03-red/  第 3 次：改动前的红（origin/main 940ebcbced 的 Main、PlayerStore，测试是本组的）
+  gradle.txt：20 tests completed, 2 failed。
+  - app.MapShardPlayerStateLaunchTest：红在 MapShardPlayerStateLaunchTest.java:260（经 :135），
+    not within 20 s: the logout wrote synaxis:player; the section is null。挂了地图的进程不构造这一段，
+    登出只放租约。所附分片日志：Map mounted … spawn=Pos[x=120.5, y=40.0, z=120.5, …]、Login success: username=Keeper、
+    客户端断开时的 Connection closed。
+  - app.store.FrozenBlockUseIntegrationTest：红在 FrozenBlockUseIntegrationTest.java:83，frozen before the snapshot，
+    六个读数都是 cancelled=false（冻结之前那一段照过）。
+  - app.MainClaimedByIntegrationTest 1 条绿（TC-PROD-745 第 2 步：改动前的 claimedBy 已先后调两者，齿在反证）。
+  - app.store.PlayerStateSectionIntegrationTest 17 条绿（TC-PROD-747 第 2 步：本来就向下取整、两端都含，齿在反证）。
+
+04-green/  第 4 次：修后
+  gradle.txt：BUILD SUCCESSFUL。12 个类都 0 失败 0 跳过：
+  FrozenBlockUseIntegrationTest 1、PlayerStateSectionIntegrationTest 17、MainClaimedByIntegrationTest 1、
+  MapShardPlayerStateLaunchTest 1（5.2 s）、ConfigFileLaunchTest 2、MainTest 15、FarViewLaunchTest 4、
+  FreezeBeforePluginListenersIntegrationTest 4、PlayerStoreIntegrationTest 23、PlayerStatePostgresIntegrationTest 4、
+  DefaultPlayHostIntegrationTest 5、GateFreezeEarlyGrantTest 5。
+  PlayerStoreIntegrationTest 的 XML（283 KB，几乎都是 system-out）没放进来，读数：
+  <testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" tests="23" skipped="0" failures="0" errors="0" time="9.854">
+
+05-counter-proofs/  第 5 次：四处反证一次打上（counter-proofs.diff，相对修后的代码）
+  gradle.txt：20 tests completed, 6 failed，每条红在不同的断言上：
+  - TC-PROD-745 第 3 步（claimedBy 不告诉 synaxis:player）：MainClaimedByIntegrationTest.java:110，
+    spawned at the gate, not taken to the saved position，expected Pos[24.5, 40, 8.5, yaw 90] but was Pos[40.5, 40, 40.5, yaw 180]。
+  - TC-PROD-746 第 3 步（不比 build_id）：MapShardPlayerStateLaunchTest.java:165（经 :155），
+    left at the spawn of the region, not taken to the position saved on the other build，expected [120.5, 40.0, 120.5] but was [40.5, 40.0, 40.5]。
+    同一处让 PlayerStateSectionIntegrationTest 的 aMapShardTakes… 红在 :248，another build。
+  - TC-PROD-747 第 3 步（向零截断、上界不含）：PlayerStateSectionIntegrationTest.java:305，
+    正的一条经 :271，x 127.9 留在 (0, 42, 0)；负的一条经 :284，x -128.1 被传送到 (-128.1, 40, -64.5)。
+  - TC-PROD-748 第 3 步（优先级 3 不再取消）：FrozenBlockUseIntegrationTest.java:83，
+    arrived cancelled=true、ended cancelled=false（三个事件都是）。
+  其余 14 条绿。之后照 diff 逆向改回：rg proof.never 无输出，PlayerStateSection.java 与 origin/main 逐字相同，
+  Main.java、PlayerStore.java 与第 4 次运行的代码相同。
+
+06-tc713-step5/  第 6 次：TC-PROD-713 第 5 步的反证（tc713-step5.diff），同一次跑还原后的三个类
+  gradle.txt：23 tests completed, 3 failed。
+  - FarViewLaunchTest 起服的三条红在 :121、:159、:193（经 ConfigFileLaunchTest.java:317 的 awaitLine），
+    no line with "synaxis server-app listening on"，所附日志 Refusing to start: the training dummy needs the core world
+    （IllegalArgumentException，Main#main 按拒启以 1 退出）；URL 根那条绿。
+  - FrozenBlockUseIntegrationTest 1、PlayerStateSectionIntegrationTest 17、MainClaimedByIntegrationTest 1 都绿：
+    第 5 次反证还原之后的复跑。MapShardPlayerStateLaunchTest 在这个反证下起不了服，没放进这一次；
+    它在还原后的代码上的读数就是第 4 次（代码逐字相同）。
+  跑完 Main.java 拷回修后的那一份，cmp 相同。
+
+第 7～11 次补 TC-PROD-746、TC-PROD-748 的齿。改的只有两个测试类：MapShardPlayerStateLaunchTest 的客户端每次读包前
+看 30 s 截止（nextPosition、awaitChunks、awaitPosition 都经 until(type, deadline)，到时返回 null、由调用方以断言失败）；
+FrozenBlockUseIntegrationTest 的用物品改走 UseItemListener.useItemListener（一个 ClientUseItemPacket）。主代码不改。
+
+07-old-tests-mutated/  第 7 次：两个类的前一版（提交 b0ff2b2001 里的样子）上打两处反证（mutations.diff）
+  - Main.java:338 的 shardWorld.bounds() 换成只含区块 7, 7 的 SynxManifest.Bounds(7, 7, 7, 7)（另加一行导入）；
+  - UseItemListener.java:67 不再派发 PlayerUseItemEvent。
+  gradle.txt：2 tests completed, 1 failed，BUILD FAILED in 5m 11s。
+  - app.MapShardPlayerStateLaunchTest：300.1 s 后 TimeoutException: … timed out after 300 seconds（类上的 @Timeout(300)），
+    栈在 Client.until → nextPosition → awaitPosition（:342、:313、:326，经 :145），Suppressed ClosedByInterruptException：
+    存档位置不被采用之后客户端一直读包、答 keep alive，读超时触发不了，到类的时限才被打断，消息里没有原因。
+  - app.store.FrozenBlockUseIntegrationTest 1 条绿：用物品那时直接派发事件，不经 UseItemListener，守不住引擎那条路。
+
+08-new-tests-mutated/  第 8 次：两个类改过之后，同样两处反证（07 的 mutations.diff）
+  gradle.txt：2 tests completed, 2 failed，BUILD FAILED in 41s。
+  - app.MapShardPlayerStateLaunchTest（33.8 s）：红在 MapShardPlayerStateLaunchTest.java:325（经 :145），
+    put back where it was saved on this build inside the bounds: not within 30 s, the positions were
+    [Pos[x=120.5, y=40.0, z=120.5, yaw=0.0, pitch=0.0], Pos[x=120.5, y=40.0, z=120.5, yaw=0.0, pitch=0.0]]（TC-PROD-746 第 4 步）。
+  - app.store.FrozenBlockUseIntegrationTest：红在 FrozenBlockUseIntegrationTest.java:76，not frozen，
+    少了 use arrived / use ended 两条读数（TC-PROD-748 第 4 步）。
+  跑完 git apply -R 还原，主代码与 HEAD 相同，rg proof.never 无输出。
+
+09-red-frozen-use/  第 9 次：FrozenBlockUseIntegrationTest 现在的版本的「改动前的红」
+  PlayerStore.java 换成 origin/main 940ebcbced 的那一份（git show 940ebcbced:…），其余是本组代码。
+  gradle.txt：BUILD FAILED in 12s。红在 FrozenBlockUseIntegrationTest.java:85，frozen before the snapshot，
+  六个读数都是 cancelled=false（冻结之前那一段照过）。跑完 git checkout HEAD -- PlayerStore.java。
+
+10-green/  第 10 次：修后，主代码与 HEAD 相同
+  gradle.txt：BUILD SUCCESSFUL in 11s。MapShardPlayerStateLaunchTest 1 条 0 失败（5.4 s），
+  FrozenBlockUseIntegrationTest 1 条 0 失败。
+
+11-counter-proofs/  第 11 次：两个类现在的版本上复跑第 3 步的两处反证（counter-proofs.diff，与 05 的对应两处相同）
+  gradle.txt：2 tests completed, 2 failed，BUILD FAILED in 18s。
+  - TC-PROD-746 第 3 步（不比 build_id）：MapShardPlayerStateLaunchTest.java:165（经 :155），expected [120.5, 40.0, 120.5]
+    but was [40.5, 40.0, 40.5]，与 05 相同。
+  - TC-PROD-748 第 3 步（优先级 3 不再取消）：FrozenBlockUseIntegrationTest.java:85，arrived cancelled=true、
+    ended cancelled=false（三个事件都是）。
+  跑完 git apply -R 还原，主代码与 HEAD 相同，rg proof.never 无输出；之后的代码与第 10 次逐字相同，没有再跑绿。

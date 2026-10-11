@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-11T05:40:09.321Z" hostname="Mac.local" time="23.451">
+  <properties/>
+  <testcase name="theSectionComesBackOnItsOwnBuildAndNotOnAnother()" classname="io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest" time="23.44">
+    <failure message="java.lang.AssertionError: not within 20 s: the logout wrote synaxis:player; the section is null" type="java.lang.AssertionError">java.lang.AssertionError: not within 20 s: the logout wrote synaxis:player; the section is null
+	at io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest.awaitSection(MapShardPlayerStateLaunchTest.java:260)
+	at io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest.lambda$theSectionComesBackOnItsOwnBuildAndNotOnAnother$0(MapShardPlayerStateLaunchTest.java:135)
+	at io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest.against(MapShardPlayerStateLaunchTest.java:175)
+	at io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest.theSectionComesBackOnItsOwnBuildAndNotOnAnother(MapShardPlayerStateLaunchTest.java:128)
+	Suppressed: java.lang.AssertionError: the log of the shard:
+13:40:11.885 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-8071220147716499702/built/synaxis.properties does not exist
+13:40:11.886 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeout=5000, knownPacksResponseTimeout=300000, acceptTransfers=true, playerPacketPerTick=50, playerPacketQueueSize=1000, keepAliveDelay=10000, keepAliveKick=15000, playerChunkUpdateLimiterHistorySize=0, maxConnections=30, acceptBackoff=100, maxConnectionsPerIp=16, handshakeTimeout=5000, loginRatePerIp=0.5, loginBurstPerIp=3, statusRatePerIp=1.0, statusBurstPerIp=10, transferRatePerIp=2.0, transferBurstPerIp=10, connectionGateTrustedNetworks=, maxPlayers=10, maxJoinsPerTick=5, motd=synaxis, serverIcon=, hideOnlinePlayers=false, chatRatePerSecond=1, chatBurst=3, packetLimitWindow=7000, packetLimitMaxPackets=750, packetLimitAction=KICK, packetLimitOverrides=, maxInflatedBytesPerSecond=4194304, tabCompleteRatePerSecond=20, maxOutboundBacklogBytes=4194304, tabLatencyInterval=30000, compressionThreshold=256, suppressConnectionAcceptErrors=true, suppressConnectionIoErrors=true, suppressMalformedPacketErrorLevel=0, suppressMisusedPacketErrorLevel=0, rejectMalformedPacket=true, rejectMisusedPacket=false, socketSendBufferSize=262143, socketReceiveBufferSize=32767, socketNoDelay=true, socketTimeout=15000, pooledBufferSize=16383, minChunksPerTick=0.01, maxChunksPerTick=4.0, chunksPerTickMultiplier=1.0, viewablePacket=true, enforceInteractionLimit=true, maxVisibleEntitiesPerPlayer=100, watchdogEarlyWarning=10000, watchdogEarlyWarningEvery=5000, watchdogTimeout=60000, watchdogHaltAfter=15000, registryUnsafeOps=false, insideTest=false, fasterSocketWrites=false, proxyProtocol=false, proxyProtocolRequired=false, proxyProtocolTrustedNetworks=]
+13:40:11.900 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective JvmFlags[serverTicksPerSecond=20, automaticComponentTranslation=false, groupedPacket=true, cachedPacket=true, maxPacketSize=2097151, maxPacketSizePreAuth=8192, warnUnreadBytesPacket=true, eventNodeAllowMultipleParents=false, templateCompiler=false, nbtMaxDepth=512, nbtMaxBytes=2097152, compressionLevel=6]
+13:40:11.901 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective auth: mode=offline
+13:40:11.939 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release fixture-53b7eb295525-p776 verified in 26 ms: bounds=Bounds[minX=0, minZ=0, maxX=15, maxZ=15] world=World[minY=0, height=64]
+13:40:11.950 [main] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+13:40:12.056 [main] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@2c8c16c0
+13:40:12.057 [main] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+13:40:12.090 [main] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+13:40:12.132 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.016s)
+13:40:12.160 [main] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+13:40:12.181 [main] WARN  i.github.bearisbug.synaxis.app.Main - SYNAXIS_REDIS_URL is not set: a login of an account online on another shard is refused
+13:40:12.194 [main] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r0-c1 session_id=1 released -&gt; active
+13:40:12.194 [main] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r0-c1 session_id=1
+13:40:12.201 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective whitelist: off
+13:40:12.201 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=postgres auth_mode=offline StoreSettings[jdbcUrl=jdbc:postgresql://127.0.0.1:5440/w3a_4e845cb2d0804615, user=postgres, password=&lt;set&gt;, redis=off]
+13:40:12.201 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective transfers: TransferKeys[signing=1, ids=[1]] accept=true
+13:40:12.216 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+13:40:12.227 [main] INFO  i.github.bearisbug.synaxis.Watchdog - Tick watchdog on: stacks after 10000 ms and every 5000 ms after that, judged dead after 60000 ms, halted with exit code 70 15000 ms later
+13:40:12.281 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:52900/metrics
+13:40:12.284 [main] INFO  i.g.b.s.a.m.ManagementServer - Effective management: enabled=false bind=127.0.0.1:25585 token=unset
+13:40:12.291 [main] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay store overlay/fixture-53b7eb295525-p776: records of 0 chunks in 0 segments
+13:40:12.310 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=fixture-53b7eb295525-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=120.5, y=40.0, z=120.5, yaw=0.0, pitch=0.0] overlay=overlay/fixture-53b7eb295525-p776
+13:40:12.311 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Far view off: synaxis.farview.url-root is empty
+13:40:12.313 [main] INFO  i.github.bearisbug.synaxis.app.Main - Map mode (synaxis.app.core-mode=on): the host serves the map instance, no plugin is loaded, spawn=Pos[x=120.5, y=40.0, z=120.5, yaw=0.0, pitch=0.0]
+13:40:12.314 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Starting synaxis (dev) server.
+13:40:12.314 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Running in offline mode. Beware that this is not secure and players can impersonate each other.
+13:40:12.314 [main] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server started successfully.
+13:40:12.315 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:52896
+13:40:12.437 [virtual-83] INFO  i.g.b.s.network.ConnectionManager - Login success: username=Keeper connection_id=35d7cd33-c0fe-42a9-aa4a-d7f6c8a2fba6 remote_address=/127.0.0.1:52901
+13:40:12.679 [Syn-Socket-Reader-0] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=35d7cd33-c0fe-42a9-aa4a-d7f6c8a2fba6 identifier=Keeper
+		at io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest.against(MapShardPlayerStateLaunchTest.java:177)
+		... 1 more
+</failure>
+  </testcase>
+  <system-out><![CDATA[13:40:10.774 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+13:40:10.811 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@52539624
+13:40:10.812 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+13:40:10.888 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+13:40:10.931 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+13:40:10.934 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.013s)
+13:40:10.944 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+13:40:10.970 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+13:40:10.980 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+13:40:11.017 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+13:40:11.030 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+13:40:11.049 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+13:40:11.063 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+13:40:11.075 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+13:40:11.084 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.060s)
+13:40:11.090 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+13:40:11.091 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+13:40:11.091 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Migrated the player store: auth_mode=offline
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

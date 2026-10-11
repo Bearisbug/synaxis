@@ -1,0 +1,56 @@
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+@@ -902,7 +902,7 @@
+     static BiConsumer<Player, TransferTicket> claimedBy(@Nullable ShardArrivals arrivals, PlayerStateSection playerState) {
+         return (player, ticket) -> {
+             if (arrivals != null) arrivals.claimed(player, ticket);
+-            playerState.claimed(player);
++            if (Boolean.getBoolean("proof.never")) playerState.claimed(player);
+         };
+     }
+ 
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+@@ -296,12 +296,14 @@
+                 .handler(this::cancelAgain).build());
+         freeze.addListener(EventListener.builder(ItemDropEvent.class).ignoreCancelled(false)
+                 .handler(this::cancelAgain).build());
+-        freeze.addListener(EventListener.builder(PlayerBlockPlaceEvent.class).ignoreCancelled(false)
+-                .handler(this::cancelAgain).build());
+-        freeze.addListener(EventListener.builder(PlayerBlockInteractEvent.class).ignoreCancelled(false)
+-                .handler(this::cancelAgain).build());
+-        freeze.addListener(EventListener.builder(PlayerUseItemEvent.class).ignoreCancelled(false)
+-                .handler(this::cancelAgain).build());
++        if (Boolean.getBoolean("proof.never")) {
++            freeze.addListener(EventListener.builder(PlayerBlockPlaceEvent.class).ignoreCancelled(false)
++                    .handler(this::cancelAgain).build());
++            freeze.addListener(EventListener.builder(PlayerBlockInteractEvent.class).ignoreCancelled(false)
++                    .handler(this::cancelAgain).build());
++            freeze.addListener(EventListener.builder(PlayerUseItemEvent.class).ignoreCancelled(false)
++                    .handler(this::cancelAgain).build());
++        }
+         hostNode.addChild(freeze);
+         process.scheduler().scheduleTask(() -> {
+             autosaveTick();
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
+@@ -199,14 +199,16 @@
+             case PositionRule.Rts _ -> false;
+             case PositionRule.MapShard map -> !arrived
+                     && saved.world() instanceof PlayerState.MapShard(String mapId, String buildId)
+-                    && mapId.equals(map.mapId()) && buildId.equals(map.buildId())
++                    && mapId.equals(map.mapId()) && (buildId.equals(map.buildId()) || !Boolean.getBoolean("proof.never"))
+                     && inside(map.bounds(), Objects.requireNonNull(saved.position(), "a captured state has a position"));
+         };
+     }
+ 
+     private static boolean inside(SynxManifest.Bounds bounds, Pos position) {
+-        return position.chunkX() >= bounds.minX() && position.chunkX() <= bounds.maxX()
+-                && position.chunkZ() >= bounds.minZ() && position.chunkZ() <= bounds.maxZ();
++        final int chunkX = Boolean.getBoolean("proof.never") ? position.chunkX() : (int) (position.x() / 16);
++        final int chunkZ = Boolean.getBoolean("proof.never") ? position.chunkZ() : (int) (position.z() / 16);
++        return chunkX >= bounds.minX() && (chunkX < bounds.maxX() || (Boolean.getBoolean("proof.never") && chunkX <= bounds.maxX()))
++                && chunkZ >= bounds.minZ() && chunkZ <= bounds.maxZ();
+     }
+ 
+     @Override

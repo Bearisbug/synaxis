@@ -44,7 +44,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
 
     /**
      * True once the saved state is applied at the first spawn, false while the teleport to the saved position is under
-     * way: the state is captured only while true, applied only while unset. In memory only, it goes with the player.
+     * way: the state is captured once it is set, applied only while unset. In memory only, it goes with the player.
      * Not a {@code synaxis:} name, which the translation key and configuration key gates would take for a key.
      */
     static final Tag<Boolean> APPLIED = Tag.Boolean("player-state.applied");
@@ -133,7 +133,8 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
      * What the snapshots of the store take: nothing before the first spawn applied the saved state.
      */
     private @Nullable PlayerState capture(Player player) {
-        if (!Boolean.TRUE.equals(player.getTag(APPLIED))) return null;
+        final Boolean applied = player.getTag(APPLIED);
+        if (applied == null) return null;
         final PositionRule current = rule();
         final PlayerInventory inventory = player.getInventory();
         final Map<Integer, ItemStack> slots = new HashMap<>();
@@ -141,9 +142,11 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
             final ItemStack stack = inventory.getItemStack(slot);
             if (!stack.isAir()) slots.put(slot, stack);
         }
-        // Sent back to the configuration phase the player is in no instance, at the position the engine zeroed; it
-        // spawns at its respawn point on its way back
-        final Pos position = player.getInstance() != null ? player.getPosition() : player.getRespawnPoint();
+        // Until the teleport to the saved position lands the section keeps that position, which the player is not at
+        // yet. Sent back to the configuration phase the player is in no instance, at the position the engine zeroed;
+        // it spawns at its respawn point on its way back
+        final Pos position = !applied ? store().hostValue(player, this).position()
+                : player.getInstance() != null ? player.getPosition() : player.getRespawnPoint();
         return new PlayerState(world(current), position, slots, player.getHeldSlot(), player.getHealth());
     }
 

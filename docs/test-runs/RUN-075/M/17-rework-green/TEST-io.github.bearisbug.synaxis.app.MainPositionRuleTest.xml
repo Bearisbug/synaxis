@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.MainPositionRuleTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-11T08:20:33.259Z" hostname="Mac.local" time="3.807">
+  <properties/>
+  <testcase name="aMapShardNamesTheMapIdTheBuildIdAndTheBoundsOfShardWorld()" classname="io.github.bearisbug.synaxis.app.MainPositionRuleTest" time="0.673"/>
+  <testcase name="withoutAMapTheCoreWorldAndAGameplayPluginGetTheRuleOfTheirMode()" classname="io.github.bearisbug.synaxis.app.MainPositionRuleTest" time="0.005"/>
+  <system-out><![CDATA[16:20:36.970 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release fixture-53b7eb295525-p776 verified in 6 ms: bounds=Bounds[minX=0, minZ=0, maxX=15, maxZ=15] world=World[minY=0, height=64]
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

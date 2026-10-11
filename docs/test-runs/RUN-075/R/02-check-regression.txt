@@ -1,0 +1,43 @@
+# bash docs/test-runs/RUN-075/R/check-regression.sh <RegressionClientGameTest.java>, TC-PROD-757 steps 2 to 4 (read only; the temporary copies are under /tmp and removed)
+#### step 2, red: RegressionClientGameTest.java of fd7b8b211d (main), git show into a temporary file
+ok runTest is in the file
+MISSING no FAIL line is turned into an AssertionError
+MISSING runTest catches what the steps throw
+ok runTest throws nothing itself, the catch included
+ok the report is written in a finally
+ok the finally writes the report before it leaves to the title screen
+ok the client leaves to the title screen with no level
+exit=1
+#### step 3, green: the branch
+ok runTest is in the file
+ok no FAIL line is turned into an AssertionError
+ok runTest catches what the steps throw
+ok runTest throws nothing itself, the catch included
+ok the report is written in a finally
+ok the finally writes the report before it leaves to the title screen
+ok the client leaves to the title screen with no level
+exit=0
+#### step 4, counter-proof a: the branch's file without the line 'leaveToTitle(context);' of runTest's finally
+110d109
+<             leaveToTitle(context);
+ok runTest is in the file
+ok no FAIL line is turned into an AssertionError
+ok runTest catches what the steps throw
+ok runTest throws nothing itself, the catch included
+ok the report is written in a finally
+ok the finally writes the report before it leaves to the title screen
+MISSING the client leaves to the title screen with no level
+exit=1
+#### step 4, counter-proof b: the branch's file whose catch rethrows ('throw e;' for the line that sets ended)
+107c107
+<             ended = "the test threw " + e;
+---
+>             throw e;
+ok runTest is in the file
+ok no FAIL line is turned into an AssertionError
+ok runTest catches what the steps throw
+MISSING runTest throws nothing itself, the catch included
+ok the report is written in a finally
+ok the finally writes the report before it leaves to the title screen
+ok the client leaves to the title screen with no level
+exit=1

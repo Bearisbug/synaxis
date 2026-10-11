@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-10T22:58:47.405Z" hostname="Mac.local" time="1.785">
+  <properties/>
+  <testcase name="aPluginTransferCoolsTheTicketSideDown(Env)" classname="io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest" time="1.433"/>
+  <testcase name="aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env)" classname="io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest" time="0.015"/>
+  <testcase name="aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env)" classname="io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest" time="0.33"/>
+  <system-out><![CDATA[06:58:48.255 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+06:58:48.284 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@262ea940
+06:58:48.285 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+06:58:48.344 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+06:58:48.375 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+06:58:48.378 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.010s)
+06:58:48.386 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+06:58:48.410 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+06:58:48.418 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+06:58:48.450 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+06:58:48.464 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+06:58:48.479 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+06:58:48.491 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+06:58:48.502 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+06:58:48.511 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.053s)
+06:58:48.515 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+06:58:48.516 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+06:58:48.516 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Migrated the player store: auth_mode=offline
+06:58:48.520 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+06:58:48.526 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@b38dc7d
+06:58:48.526 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+06:58:48.528 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+06:58:48.539 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.004s)
+06:58:48.549 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+06:58:48.566 [Test worker] WARN  i.github.bearisbug.synaxis.app.Main - SYNAXIS_REDIS_URL is not set: a login of an account online on another shard is refused
+06:58:48.579 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r1-c1 session_id=1 released -> active
+06:58:48.579 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r1-c1 session_id=1
+06:58:48.587 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Effective whitelist: off
+06:58:48.587 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=postgres auth_mode=offline StoreSettings[jdbcUrl=jdbc:postgresql://127.0.0.1:5440/w3a_82a451570c1c42a7, user=postgres, password=<set>, redis=off]
+06:58:48.587 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Effective transfers: TransferKeys[signing=1, ids=[1]] accept=false
+06:58:48.810 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+06:58:48.815 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=probe version=1.0.0 enable_ms=1
+06:58:48.819 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+06:58:48.819 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+06:58:48.837 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:58:48.838 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=650be85e-627e-4cd7-94d8-0f369ece75a6 identifier=RandName reason=synaxis:server-stopping
+06:58:48.838 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=650be85e-627e-4cd7-94d8-0f369ece75a6 identifier=RandName reason=synaxis:server-stopping
+06:58:48.839 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:58:48.839 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:58:48.857 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=memory, player data lives as long as the process
+06:58:48.858 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=memory, player data lives as long as the process
+06:58:48.859 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:58:48.859 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:58:48.859 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:58:48.912 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+06:58:48.922 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@43b8a6de
+06:58:48.922 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+06:58:48.924 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+06:58:48.933 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+06:58:48.933 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.002s)
+06:58:48.939 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+06:58:48.955 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+06:58:48.958 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+06:58:48.987 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+06:58:48.997 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+06:58:49.011 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+06:58:49.021 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+06:58:49.031 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+06:58:49.039 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.045s)
+06:58:49.043 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+06:58:49.068 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+06:58:49.068 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Migrated the player store: auth_mode=offline
+06:58:49.069 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+06:58:49.075 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@1e954b94
+06:58:49.075 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+06:58:49.076 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+06:58:49.086 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.003s)
+06:58:49.095 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+06:58:49.107 [Test worker] WARN  i.github.bearisbug.synaxis.app.Main - SYNAXIS_REDIS_URL is not set: a login of an account online on another shard is refused
+06:58:49.115 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r1-c1 session_id=1 released -> active
+06:58:49.115 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r1-c1 session_id=1
+06:58:49.116 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Effective whitelist: off
+06:58:49.116 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=postgres auth_mode=offline StoreSettings[jdbcUrl=jdbc:postgresql://127.0.0.1:5440/w3a_008bb992b76540eb, user=postgres, password=<set>, redis=off]
+06:58:49.116 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Effective transfers: TransferKeys[signing=1, ids=[1]] accept=false
+06:58:49.167 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+06:58:49.167 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=probe version=1.0.0 enable_ms=0
+06:58:49.177 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+06:58:49.177 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+06:58:49.188 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:58:49.189 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=fa91c7e3-3f04-496b-b190-d2cdf5acca77 identifier=RandName reason=synaxis:server-stopping
+06:58:49.189 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=fa91c7e3-3f04-496b-b190-d2cdf5acca77 identifier=RandName reason=synaxis:server-stopping
+06:58:49.189 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:58:49.189 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

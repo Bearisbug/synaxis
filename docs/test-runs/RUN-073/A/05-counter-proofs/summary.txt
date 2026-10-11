@@ -1,0 +1,68 @@
+TEST-io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest.xml tests=4 failures=2 errors=0 skipped=0 time=1.293
+   FAIL closingTheOwnInventoryStoresACursorItemThatCannotBeDropped(Env) 1.089
+         org.opentest4j.AssertionFailedError: the cursor after closing window 0 ==> expected: <ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]]> but was: <ItemStackImpl[material=minecraft:diamond, amount=5, componentPatch=DataComponentMapImpl[components={}]]>
+         at io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest.closingTheOwnInventoryStoresACursorItemThatCannotBeDropped(CursorItemOnCloseIntegrationTest.java:90)
+   ok   cursorItemGoesBackIntoTheInventoryOnClose(Env) 0.073
+   FAIL closingTheOwnInventoryDropsTheCursorItem(Env) 0.063
+         org.opentest4j.AssertionFailedError: Expected 1 element, got [] ==> expected: <1> but was: <0>
+         at io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest.closingTheOwnInventoryDropsTheCursorItem(CursorItemOnCloseIntegrationTest.java:72)
+   ok   cursorItemIsNotDestroyedWhenItCannotBeStored(Env) 0.058
+TEST-io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.xml tests=5 failures=4 errors=0 skipped=0 time=0.505
+   ok   aFrozenPlayerDropsNothing(Env) 0.178
+   FAIL aCharacterIsNewWhileItsInventoryIsEmpty(Env) 0.063
+         org.opentest4j.AssertionFailedError: a stack in the off hand ==> expected: <false> but was: <true>
+         at io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.aCharacterIsNewWhileItsInventoryIsEmpty(DefaultPlayHostIntegrationTest.java:180)
+   FAIL aGlobalPluginListenerOverridesTheDefaults(Env) 0.133
+         org.opentest4j.AssertionFailedError: item entities after a drop a plugin cancelled ==> expected: <[]> but was: <[io.github.bearisbug.synaxis.entity.ItemEntity@31aec04a]>
+         at io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.aGlobalPluginListenerOverridesTheDefaults(DefaultPlayHostIntegrationTest.java:118)
+   FAIL eachModeGetsItsPlayLayer() 0.008
+         org.opentest4j.AssertionFailedError: a map shard ==> expected: <[]> but was: <[CHAT, DROP, PICKUP, MELEE, VOID_DAMAGE, STARTER_KIT, TRAINING_DUMMY]>
+         at io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.eachModeGetsItsPlayLayer(DefaultPlayHostIntegrationTest.java:86)
+   FAIL anInstancePluginListenerChoosesTheRecipientsFirst(Env) 0.119
+         org.opentest4j.AssertionFailedError: Expected 0 element(s), got 1: [SystemChatPacket[message=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=chat.type.text, fallback=null, args=
+         at io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.anInstancePluginListenerChoosesTheRecipientsFirst(DefaultPlayHostIntegrationTest.java:145)
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayChatIntegrationTest.xml tests=4 failures=1 errors=0 skipped=0 time=0.412
+   FAIL recipientsChosenBeforeTheHostAreKept(Env) 0.108
+         org.opentest4j.AssertionFailedError: Expected 0 element(s), got 1: [SystemChatPacket[message=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=chat.type.text, fallback=null, args=
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayChatIntegrationTest.recipientsChosenBeforeTheHostAreKept(DefaultPlayChatIntegrationTest.java:88)
+   ok   inTheCoreWorldChatReachesTheSendersInstance(Env) 0.1
+   ok   aListenerAfterTheHostCanEmptyTheRecipients(Env) 0.102
+   ok   underAGameplayPluginChatReachesTheSendersInstance(Env) 0.102
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayDropIntegrationTest.xml tests=3 failures=2 errors=0 skipped=0 time=0.154
+   ok   withoutTheFeatureADropSpawnsNothing(Env) 0.05
+   FAIL aDropCancelledAfterTheHostSpawnsNothing(Env) 0.051
+         org.opentest4j.AssertionFailedError: item entities after a cancelled drop ==> expected: <[]> but was: <[io.github.bearisbug.synaxis.entity.ItemEntity@6eaa5458]>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayDropIntegrationTest.aDropCancelledAfterTheHostSpawnsNothing(DefaultPlayDropIntegrationTest.java:108)
+   FAIL everyDropPathSpawnsAnItemEntityAtTheEyes(Env) 0.053
+         org.opentest4j.AssertionFailedError: the stacks of the item entities ==> expected: <[1, 1, 62]> but was: <[1, 62]>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayDropIntegrationTest.everyDropPathSpawnsAnItemEntityAtTheEyes(DefaultPlayDropIntegrationTest.java:72)
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayMeleeIntegrationTest.xml tests=2 failures=2 errors=0 skipped=0 time=0.115
+   FAIL aCancelledPlayerAttackNeitherHurtsNorKnocksBack(Env) 0.051
+         org.opentest4j.AssertionFailedError: expected: <20.0> but was: <19.0>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayMeleeIntegrationTest.aCancelledPlayerAttackNeitherHurtsNorKnocksBack(DefaultPlayMeleeIntegrationTest.java:91)
+   FAIL aHitTakesTheAttackDamageAndKnocksBackOnceInTenTicks(Env) 0.063
+         org.opentest4j.AssertionFailedError: after the hit of tick 5, within the cooldown ==> expected: <16.0> but was: <12.0>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayMeleeIntegrationTest.aHitTakesTheAttackDamageAndKnocksBackOnceInTenTicks(DefaultPlayMeleeIntegrationTest.java:59)
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.xml tests=4 failures=2 errors=0 skipped=0 time=0.205
+   FAIL aPickupThatNoLongerFitsWhenAppliedIsCancelled(Env) 0.057
+         org.opentest4j.AssertionFailedError: a pickup with no room left by the time it is applied ==> expected: <true> but was: <false>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.aPickupThatNoLongerFitsWhenAppliedIsCancelled(DefaultPlayPickupIntegrationTest.java:74)
+   FAIL aPickupCancelledAfterTheHostLeavesTheInventoryAlone(Env) 0.05
+         org.opentest4j.AssertionFailedError: the inventory after a cancelled pickup holds [ItemStackImpl[material=minecraft:stone, amount=1, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImp
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.aPickupCancelledAfterTheHostLeavesTheInventoryAlone(DefaultPlayPickupIntegrationTest.java:93)
+   ok   aPickupGoesIntoTheInventory(Env) 0.047
+   ok   aPickupTheInventoryCannotTakeIsCancelled(Env) 0.05
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayStarterKitIntegrationTest.xml tests=2 failures=1 errors=0 skipped=0 time=0.102
+   ok   aCharacterThatIsNotNewGetsNothing(Env) 0.051
+   FAIL aNewCharacterGetsTheKitOnItsFirstSpawnOnly(Env) 0.05
+         org.opentest4j.AssertionFailedError: a later spawn gave [ItemStackImpl[material=minecraft:stone, amount=64, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_pickaxe, amount=1, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minec
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayStarterKitIntegrationTest.aNewCharacterGetsTheKitOnItsFirstSpawnOnly(DefaultPlayStarterKitIntegrationTest.java:56)
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.xml tests=4 failures=1 errors=0 skipped=0 time=0.027
+   ok   aDeadDummyIsRemovedAfter20TicksAndReplacedAfter100(Env) 0.009
+   ok   theDummyNeedsTheCoreWorld(Env) 0.006
+   ok   theDummyStandsBesideTheSpawnFacingIt(Env) 0.005
+   FAIL aDummyBelowTheVoidLineDiesAndIsReplaced(Env) 0.006
+         org.opentest4j.AssertionFailedError: the dummy below the void line, at Pos[x=3.5, y=-129.0, z=0.5, yaw=0.0, pitch=0.0] ==> expected: <true> but was: <false>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.aDummyBelowTheVoidLineDiesAndIsReplaced(DefaultPlayTrainingDummyIntegrationTest.java:69)
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayVoidDamageIntegrationTest.xml tests=1 failures=0 errors=0 skipped=0 time=0.935
+   ok   belowTheVoidLineAPlayerTakesFourEveryTick(Env) 0.929

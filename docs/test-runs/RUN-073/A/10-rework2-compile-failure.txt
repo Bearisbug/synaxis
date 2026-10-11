@@ -1,0 +1,6 @@
+* What went wrong:
+Execution failed for task ':server-app:compileJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  /Users/bug/Documents/Projects/Minecraft/synaxis-wt/r073-A/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java:210: 警告: [deprecation] Tag中的getKey()已过时
+              final Long last = owned.getTag(Tag.Long(MELEE_TICK.getKey() + "/" + attacker.getUuid()));
+错误: 发现警告, 但指定了 -Werror

@@ -1,0 +1,44 @@
+TEST-io.github.bearisbug.synaxis.app.FarViewLaunchTest.xml tests=4 failures=3 errors=0 skipped=0 time=5.225
+   FAIL aMapShardWithoutAUrlRootAnnouncesNothing(Path) 2.257
+         java.lang.AssertionError: java.lang.AssertionError: no line with "synaxis server-app listening on": | 06:57:19.981 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-6413218319584410029/synaxis.properties does not exist | 06:57:19.982 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, login
+         at io.github.bearisbug.synaxis.app.ConfigFileLaunchTest$Launched.awaitLine(ConfigFileLaunchTest.java:309)
+   FAIL aMapShardAnnouncesItsTilesBeforeFinishConfiguration(Path) 1.364
+         java.lang.AssertionError: java.lang.AssertionError: no line with "synaxis server-app listening on": | 06:57:21.371 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-4347994596095508936/synaxis.properties does not exist | 06:57:21.372 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, login
+         at io.github.bearisbug.synaxis.app.ConfigFileLaunchTest$Launched.awaitLine(ConfigFileLaunchTest.java:309)
+   FAIL aShardOnAMapOfOneTileSendsThatTileBeforeFinishConfiguration(Path) 1.311
+         java.lang.AssertionError: java.lang.AssertionError: no line with "synaxis server-app listening on": | 06:57:22.686 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-413321877417062297/synaxis.properties does not exist | 06:57:22.687 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginT
+         at io.github.bearisbug.synaxis.app.ConfigFileLaunchTest$Launched.awaitLine(ConfigFileLaunchTest.java:309)
+   ok   aUrlRootThatIsNotAnHttpUrlRefusesTheStart(Path) 0.287
+TEST-io.github.bearisbug.synaxis.app.OpsPortsLaunchTest.xml tests=2 failures=2 errors=0 skipped=0 time=2.085
+   FAIL aWildcardBindOfEitherOperationsPortIsWarnedAboutAtTheStart(Path) 0.887
+         org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: 06:57:24.174 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-7210382801903820648/synaxis.properties does not exist | 06:57:24.176 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=10, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=1, threadProvider=COUNTER, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTime
+         at io.github.bearisbug.synaxis.app.OpsPortsLaunchTest.aWildcardBindOfEitherOperationsPortIsWarnedAboutAtTheStart(OpsPortsLaunchTest.java:89)
+   FAIL aGamePortTakenRefusesTheStart(Path) 1.197
+         org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: 06:57:25.067 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-1018865948312820926/synaxis.properties does not exist | 06:57:25.068 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=10, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=1, threadProvider=COUNTER, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTime
+         at io.github.bearisbug.synaxis.app.OpsPortsLaunchTest.aGamePortTakenRefusesTheStart(OpsPortsLaunchTest.java:50)
+TEST-io.github.bearisbug.synaxis.app.ShardGateLaunchTest.xml tests=3 failures=2 errors=0 skipped=0 time=2.375
+   ok   aShardTakesTheGateFromItsConfigFileOverItsDefaults(Path) 0.828
+   FAIL aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path) 0.818
+         org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: 06:57:27.086 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-4820631351375228005/synaxis.properties does not exist | 06:57:27.087 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeou
+         at io.github.bearisbug.synaxis.app.ShardGateLaunchTest.aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(ShardGateLaunchTest.java:38)
+   FAIL aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path) 0.729
+         org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: 06:57:27.909 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-91543752842358202/synaxis.properties does not exist | 06:57:27.910 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeout=
+         at io.github.bearisbug.synaxis.app.ShardGateLaunchTest.aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(ShardGateLaunchTest.java:66)
+TEST-io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest.xml tests=3 failures=3 errors=0 skipped=0 time=1.363
+   FAIL aPluginTransferCoolsTheTicketSideDown(Env) 1.02
+         org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <COOLDOWN> but was: <NOT_ONLINE>
+         at io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest.aPluginTransferCoolsTheTicketSideDown(TransferCooldownTableIntegrationTest.java:91)
+   FAIL aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) 0.009
+         org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+         at io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest.aProcessWithoutTransferKeysHasATableAndReadsItsKey(TransferCooldownTableIntegrationTest.java:132)
+   FAIL aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) 0.333
+         org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>
+         at io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest.aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(TransferCooldownTableIntegrationTest.java:113)
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.xml tests=5 failures=1 errors=0 skipped=0 time=0.32
+   FAIL thePluginListenersSeeAPickupTheInventoryCannotTakeCancelled(Env) 0.068
+         org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: whether LOWEST and MONITOR saw the pickup of a full inventory cancelled ==> expected: <[true, true]> but was: <[false, false]>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.thePluginListenersSeeAPickupTheInventoryCannotTakeCancelled(DefaultPlayPickupIntegrationTest.java:119)
+   ok   aPickupThatNoLongerFitsWhenAppliedIsCancelled(Env) 0.061
+   ok   aPickupCancelledAfterTheHostLeavesTheInventoryAlone(Env) 0.064
+   ok   aPickupGoesIntoTheInventory(Env) 0.064
+   ok   aPickupTheInventoryCannotTakeIsCancelled(Env) 0.063

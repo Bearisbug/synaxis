@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-10T22:06:58.718Z" hostname="Mac.local" time="0.799">
+  <properties/>
+  <testcase name="theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.115"/>
+  <testcase name="aCancelledEventSkipsTheListenersThatIgnoreCancelled(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.112"/>
+  <testcase name="anInstanceScopedListenerOnlyHearsItsInstanceOnItsTickThread(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.067"/>
+  <testcase name="disablingTakesBackEveryPriorityAndEveryInstanceScope(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.069"/>
+  <testcase name="aListenerThatIgnoresCancelledStillRunsBeforeALaterCancel(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.063"/>
+  <testcase name="theInstanceScopeRefusesWhatItCannotScope(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.063"/>
+  <testcase name="thePrioritiesOfEveryPluginRunInOneOrder(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.067"/>
+  <testcase name="callingForInstanceAgainSharesTheInstanceNodes(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.119"/>
+  <testcase name="theInstanceScopeRunsBeforeEveryGlobalPluginListener(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.123"/>
+  <system-out><![CDATA[06:06:58.775 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+06:06:58.776 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=plugin version=1.0.0 enable_ms=0
+06:06:58.776 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=plugin
+06:06:58.777 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=plugin: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:58.831 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:58.831 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=49ec4ffb-ae45-484a-810b-0493cbdfbbbb identifier=RandName reason=synaxis:server-stopping
+06:06:58.831 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=49ec4ffb-ae45-484a-810b-0493cbdfbbbb identifier=RandName reason=synaxis:server-stopping
+06:06:58.831 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:58.832 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:58.888 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+06:06:58.888 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=moderation version=1.0.0 enable_ms=0
+06:06:58.888 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=guilds version=1.0.0 enable_ms=0
+06:06:58.889 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=guilds
+06:06:58.889 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=guilds: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:58.889 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=moderation
+06:06:58.889 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=moderation: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:58.943 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:58.943 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=8a3c770c-f79b-4f39-9b9b-7119e2c7f5bd identifier=RandName reason=synaxis:server-stopping
+06:06:58.943 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=8a3c770c-f79b-4f39-9b9b-7119e2c7f5bd identifier=RandName reason=synaxis:server-stopping
+06:06:58.944 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:58.944 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:58.950 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+06:06:58.951 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=scoped version=1.0.0 enable_ms=0
+06:06:58.952 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=scoped
+06:06:58.952 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=scoped: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:59.010 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:59.011 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:59.011 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:59.018 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+06:06:59.018 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=plugin version=1.0.0 enable_ms=0
+06:06:59.019 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=plugin
+06:06:59.019 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=plugin: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:59.080 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:59.080 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:59.080 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:59.086 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+06:06:59.087 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=late version=1.0.0 enable_ms=0
+06:06:59.087 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=early version=1.0.0 enable_ms=0
+06:06:59.087 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=early
+06:06:59.087 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=early: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:59.087 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=late
+06:06:59.087 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=late: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:59.143 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:59.143 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:59.143 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:59.149 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+06:06:59.149 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=scoped version=1.0.0 enable_ms=0
+06:06:59.150 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=scoped
+06:06:59.150 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=scoped: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:59.205 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:59.206 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:59.206 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:59.212 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+06:06:59.212 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=first version=1.0.0 enable_ms=0
+06:06:59.213 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=second version=1.0.0 enable_ms=0
+06:06:59.213 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=second
+06:06:59.213 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=second: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:59.213 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=first
+06:06:59.213 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=first: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:59.273 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:59.273 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:59.273 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:59.329 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+06:06:59.329 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=p1 version=1.0.0 enable_ms=0
+06:06:59.330 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=p2 version=1.0.0 enable_ms=0
+06:06:59.330 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=p2
+06:06:59.330 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=p2: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:59.330 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=p1
+06:06:59.330 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=p1: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:59.392 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:59.392 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=5386abc1-ee94-4c33-be5b-aa00ddf9c6c7 identifier=RandName reason=synaxis:server-stopping
+06:06:59.392 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=5386abc1-ee94-4c33-be5b-aa00ddf9c6c7 identifier=RandName reason=synaxis:server-stopping
+06:06:59.393 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:59.393 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:59.449 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+06:06:59.449 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=global version=1.0.0 enable_ms=0
+06:06:59.449 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=scoped version=1.0.0 enable_ms=0
+06:06:59.449 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=scoped
+06:06:59.450 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=scoped: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:59.450 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=global
+06:06:59.450 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=global: event node, tasks, channels, admission provider, commands, tab list visibility
+06:06:59.514 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:59.515 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=240e058c-ea02-4cd2-a629-0914b9150508 identifier=RandName reason=synaxis:server-stopping
+06:06:59.515 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=240e058c-ea02-4cd2-a629-0914b9150508 identifier=RandName reason=synaxis:server-stopping
+06:06:59.515 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:59.515 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,90 @@
+TEST-io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest.xml tests=4 failures=0 errors=0 skipped=0 time=1.66
+   ok   closingTheOwnInventoryStoresACursorItemThatCannotBeDropped(Env) 1.307
+   ok   cursorItemGoesBackIntoTheInventoryOnClose(Env) 0.137
+   ok   closingTheOwnInventoryDropsTheCursorItem(Env) 0.089
+   ok   cursorItemIsNotDestroyedWhenItCannotBeStored(Env) 0.115
+TEST-io.github.bearisbug.synaxis.inventory.InventoryCloseStateIntegrationTest.xml tests=2 failures=0 errors=0 skipped=0 time=1.497
+   ok   clientCloseWindowZeroMustNotLeakOpenContainer(Env) 1.307
+   ok   doNotReceiveClosePacketFromServerWhenSendingClientCloseWindowPacket(Env) 0.179
+TEST-io.github.bearisbug.synaxis.inventory.InventoryIntegrationTest.xml tests=16 failures=0 errors=0 skipped=0 time=2.364
+   ok   clearInventoryTest(Env) 1.164
+   ok   openInventoryOnItemDropFromInventoryClosingTest(Env) 0.178
+   ok   testInnerInventorySlotSending(Env) 0.062
+   ok   bundleActivateTestInvalidPacketIgnoredContainer(Env) 0.102
+   ok   clearingPlayerInventoryClearsCursorTest(Env) 0.05
+   ok   setSlotDuplicateTest(Env) 0.048
+   ok   bundleActivateTestInvalidPacketIgnored(Env) 0.048
+   ok   bundleActivateTestUpperInventory(Env) 0.12
+   ok   closeInventoryTest(Env) 0.045
+   ok   testEventNode(Env) 0.06
+   ok   bundleActivateTestInventorySizeSlot(Env) 0.062
+   ok   containerInventoryIsBoundWhenOpened(Env) 0.046
+   ok   setCursorItemDuplicateTest(Env) 0.057
+   ok   bundleActivateTestInventorySizeSlotContainer(Env) 0.074
+   ok   bundleActivateTestNoContainerOpen(Env) 0.046
+   ok   bundleActivateTestLowerInventory(Env) 0.045
+TEST-io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.xml tests=5 failures=3 errors=0 skipped=0 time=1.849
+   FAIL aFrozenPlayerDropsNothing(Env) 1.5
+         org.opentest4j.AssertionFailedError: the starter kit, kept ==> expected: <ItemStackImpl[material=minecraft:stone, amount=64, componentPatch=DataComponentMapImpl[components={}]]> but was: <ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]]>
+         at io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.aFrozenPlayerDropsNothing(DefaultPlayHostIntegrationTest.java:167)
+   ok   aCharacterIsNewWhileItsInventoryIsEmpty(Env) 0.073
+   FAIL aGlobalPluginListenerOverridesTheDefaults(Env) 0.144
+         org.opentest4j.AssertionFailedError: the starter kit, kept ==> expected: <ItemStackImpl[material=minecraft:stone, amount=64, componentPatch=DataComponentMapImpl[components={}]]> but was: <ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]]>
+         at io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.aGlobalPluginListenerOverridesTheDefaults(DefaultPlayHostIntegrationTest.java:117)
+   FAIL eachModeGetsItsPlayLayer() 0.002
+         org.opentest4j.AssertionFailedError: the core world ==> expected: <[CHAT, DROP, PICKUP, MELEE, VOID_DAMAGE, STARTER_KIT, TRAINING_DUMMY]> but was: <[]>
+         at io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.eachModeGetsItsPlayLayer(DefaultPlayHostIntegrationTest.java:84)
+   ok   anInstancePluginListenerChoosesTheRecipientsFirst(Env) 0.123
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayChatIntegrationTest.xml tests=4 failures=2 errors=0 skipped=0 time=0.43
+   ok   recipientsChosenBeforeTheHostAreKept(Env) 0.11
+   FAIL inTheCoreWorldChatReachesTheSendersInstance(Env) 0.106
+         org.opentest4j.AssertionFailedError: Expected 1 element(s), got 0: [] ==> expected: <1> but was: <0>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayChatIntegrationTest.chatReachesTheSendersInstance(DefaultPlayChatIntegrationTest.java:51)
+   ok   aListenerAfterTheHostCanEmptyTheRecipients(Env) 0.106
+   FAIL underAGameplayPluginChatReachesTheSendersInstance(Env) 0.107
+         org.opentest4j.AssertionFailedError: Expected 1 element(s), got 0: [] ==> expected: <1> but was: <0>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayChatIntegrationTest.chatReachesTheSendersInstance(DefaultPlayChatIntegrationTest.java:51)
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayDropIntegrationTest.xml tests=3 failures=1 errors=0 skipped=0 time=0.168
+   ok   withoutTheFeatureADropSpawnsNothing(Env) 0.056
+   ok   aDropCancelledAfterTheHostSpawnsNothing(Env) 0.057
+   FAIL everyDropPathSpawnsAnItemEntityAtTheEyes(Env) 0.054
+         org.opentest4j.AssertionFailedError: item entities after the Q key ==> expected: <1> but was: <0>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayDropIntegrationTest.everyDropPathSpawnsAnItemEntityAtTheEyes(DefaultPlayDropIntegrationTest.java:58)
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayMeleeIntegrationTest.xml tests=2 failures=1 errors=0 skipped=0 time=0.106
+   ok   aCancelledPlayerAttackNeitherHurtsNorKnocksBack(Env) 0.052
+   FAIL aHitTakesTheAttackDamageAndKnocksBackOnceInTenTicks(Env) 0.053
+         org.opentest4j.AssertionFailedError: after the hit of tick 0 ==> expected: <16.0> but was: <20.0>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayMeleeIntegrationTest.aHitTakesTheAttackDamageAndKnocksBackOnceInTenTicks(DefaultPlayMeleeIntegrationTest.java:54)
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.xml tests=4 failures=3 errors=0 skipped=0 time=0.214
+   FAIL aPickupThatNoLongerFitsWhenAppliedIsCancelled(Env) 0.054
+         org.opentest4j.AssertionFailedError: a pickup with no room left by the time it is applied ==> expected: <true> but was: <false>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.aPickupThatNoLongerFitsWhenAppliedIsCancelled(DefaultPlayPickupIntegrationTest.java:74)
+   ok   aPickupCancelledAfterTheHostLeavesTheInventoryAlone(Env) 0.054
+   FAIL aPickupGoesIntoTheInventory(Env) 0.052
+         org.opentest4j.AssertionFailedError: expected: <ItemStackImpl[material=minecraft:stone, amount=1, componentPatch=DataComponentMapImpl[components={}]]> but was: <ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]]>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.aPickupGoesIntoTheInventory(DefaultPlayPickupIntegrationTest.java:44)
+   FAIL aPickupTheInventoryCannotTakeIsCancelled(Env) 0.053
+         org.opentest4j.AssertionFailedError: the pickup of a player whose 36 slots hold dirt ==> expected: <true> but was: <false>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.aPickupTheInventoryCannotTakeIsCancelled(DefaultPlayPickupIntegrationTest.java:56)
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayStarterKitIntegrationTest.xml tests=2 failures=1 errors=0 skipped=0 time=0.108
+   ok   aCharacterThatIsNotNewGetsNothing(Env) 0.053
+   FAIL aNewCharacterGetsTheKitOnItsFirstSpawnOnly(Env) 0.053
+         org.opentest4j.AssertionFailedError: asked whether the character is new ==> expected: <[io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl@2ca8bd50]> but was: <[]>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayStarterKitIntegrationTest.aNewCharacterGetsTheKitOnItsFirstSpawnOnly(DefaultPlayStarterKitIntegrationTest.java:45)
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.xml tests=4 failures=4 errors=0 skipped=0 time=0.021
+   FAIL aDeadDummyIsRemovedAfter20TicksAndReplacedAfter100(Env) 0.005
+         java.util.NoSuchElementException
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.aDeadDummyIsRemovedAfter20TicksAndReplacedAfter100(DefaultPlayTrainingDummyIntegrationTest.java:50)
+   FAIL theDummyNeedsTheCoreWorld(Env) 0.005
+         org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.theDummyNeedsTheCoreWorld(DefaultPlayTrainingDummyIntegrationTest.java:75)
+   FAIL theDummyStandsBesideTheSpawnFacingIt(Env) 0.005
+         org.opentest4j.AssertionFailedError: zombies in the world: [] ==> expected: <1> but was: <0>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.theDummyStandsBesideTheSpawnFacingIt(DefaultPlayTrainingDummyIntegrationTest.java:38)
+   FAIL aDummyBelowTheVoidLineDiesAndIsReplaced(Env) 0.005
+         java.util.NoSuchElementException
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.aDummyBelowTheVoidLineDiesAndIsReplaced(DefaultPlayTrainingDummyIntegrationTest.java:63)
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayVoidDamageIntegrationTest.xml tests=1 failures=1 errors=0 skipped=0 time=0.054
+   FAIL belowTheVoidLineAPlayerTakesFourEveryTick(Env) 0.054
+         org.opentest4j.AssertionFailedError: one tick below the void line ==> expected: <16.0> but was: <20.0>
+         at io.github.bearisbug.synaxis.app.play.DefaultPlayVoidDamageIntegrationTest.belowTheVoidLineAPlayerTakesFourEveryTick(DefaultPlayVoidDamageIntegrationTest.java:44)

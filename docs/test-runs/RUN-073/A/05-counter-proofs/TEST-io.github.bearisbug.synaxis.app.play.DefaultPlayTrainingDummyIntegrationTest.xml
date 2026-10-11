@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-10T22:06:00.813Z" hostname="Mac.local" time="0.027">
+  <properties/>
+  <testcase name="aDeadDummyIsRemovedAfter20TicksAndReplacedAfter100(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" time="0.009"/>
+  <testcase name="theDummyNeedsTheCoreWorld(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" time="0.006"/>
+  <testcase name="theDummyStandsBesideTheSpawnFacingIt(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" time="0.005"/>
+  <testcase name="aDummyBelowTheVoidLineDiesAndIsReplaced(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" time="0.006">
+    <failure message="org.opentest4j.AssertionFailedError: the dummy below the void line, at Pos[x=3.5, y=-129.0, z=0.5, yaw=0.0, pitch=0.0] ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the dummy below the void line, at Pos[x=3.5, y=-129.0, z=0.5, yaw=0.0, pitch=0.0] ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.aDummyBelowTheVoidLineDiesAndIsReplaced(DefaultPlayTrainingDummyIntegrationTest.java:69)
+</failure>
+  </testcase>
+  <system-out><![CDATA[06:06:00.823 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:00.824 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:00.824 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:00.829 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:00.829 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:00.829 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:00.834 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:00.834 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:00.835 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:00.840 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:00.840 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:00.840 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

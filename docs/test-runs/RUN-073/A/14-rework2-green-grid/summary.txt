@@ -1,0 +1,4 @@
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayMeleeIntegrationTest.xml tests=3 failures=0 errors=0 skipped=0 time=1.114
+   ok   aCancelledPlayerAttackNeitherHurtsNorKnocksBack(Env) 0.955
+   ok   twoAttackersInOneTickLandOneHit(Env) 0.09
+   ok   aHitTakesTheAttackDamageAndKnocksBackOnceInTenTicks(Env) 0.063

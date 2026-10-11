@@ -1,0 +1,22 @@
+TEST-io.github.bearisbug.synaxis.app.FarViewLaunchTest.xml tests=4 failures=0 errors=0 skipped=0 time=3.975
+   ok   aMapShardWithoutAUrlRootAnnouncesNothing(Path) 1.413
+   ok   aMapShardAnnouncesItsTilesBeforeFinishConfiguration(Path) 1.157
+   ok   aShardOnAMapOfOneTileSendsThatTileBeforeFinishConfiguration(Path) 1.111
+   ok   aUrlRootThatIsNotAnHttpUrlRefusesTheStart(Path) 0.292
+TEST-io.github.bearisbug.synaxis.app.OpsPortsLaunchTest.xml tests=2 failures=0 errors=0 skipped=0 time=1.762
+   ok   aWildcardBindOfEitherOperationsPortIsWarnedAboutAtTheStart(Path) 0.878
+   ok   aGamePortTakenRefusesTheStart(Path) 0.883
+TEST-io.github.bearisbug.synaxis.app.ShardGateLaunchTest.xml tests=3 failures=0 errors=0 skipped=0 time=3.154
+   ok   aShardTakesTheGateFromItsConfigFileOverItsDefaults(Path) 0.826
+   ok   aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path) 1.61
+   ok   aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path) 0.717
+TEST-io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest.xml tests=3 failures=0 errors=0 skipped=0 time=1.785
+   ok   aPluginTransferCoolsTheTicketSideDown(Env) 1.433
+   ok   aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) 0.015
+   ok   aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) 0.33
+TEST-io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest.xml tests=5 failures=0 errors=0 skipped=0 time=0.304
+   ok   thePluginListenersSeeAPickupTheInventoryCannotTakeCancelled(Env) 0.068
+   ok   aPickupThatNoLongerFitsWhenAppliedIsCancelled(Env) 0.059
+   ok   aPickupCancelledAfterTheHostLeavesTheInventoryAlone(Env) 0.058
+   ok   aPickupGoesIntoTheInventory(Env) 0.059
+   ok   aPickupTheInventoryCannotTakeIsCancelled(Env) 0.058

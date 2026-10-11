@@ -1,0 +1,17 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java
+index 09d168e1c4..962b8ad612 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java
+@@ -207,10 +207,10 @@ public final class DefaultPlay {
+         target.acquirable().sync(owned -> {
+             if (owned.isDead()) return;
+             final long now = owned.getAliveTicks();
+-            final Long last = owned.getTag(MELEE_TICK);
++            final Long last = owned.getTag(Tag.Long("default-play.melee-tick/" + attacker.getUuid()));
+             if (last != null && now - last < MELEE_COOLDOWN_TICKS) return;
+             if (!owned.damage(new Damage(DamageType.PLAYER_ATTACK, attacker, attacker, null, amount))) return;
+-            owned.setTag(MELEE_TICK, now);
++            owned.setTag(Tag.Long("default-play.melee-tick/" + attacker.getUuid()), now);
+             owned.takeKnockback(KNOCKBACK, Math.sin(yaw), -Math.cos(yaw));
+         });
+     }

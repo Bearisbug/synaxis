@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-10T22:06:56.881Z" hostname="Mac.local" time="0.036">
+  <properties/>
+  <testcase name="aDeadDummyIsRemovedAfter20TicksAndReplacedAfter100(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" time="0.014"/>
+  <testcase name="theDummyNeedsTheCoreWorld(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" time="0.006"/>
+  <testcase name="theDummyStandsBesideTheSpawnFacingIt(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" time="0.006"/>
+  <testcase name="aDummyBelowTheVoidLineDiesAndIsReplaced(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" time="0.01"/>
+  <system-out><![CDATA[06:06:56.894 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:56.894 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:56.894 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:56.900 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:56.900 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:56.901 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:56.906 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:56.906 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:56.906 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:06:56.916 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:06:56.917 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:06:56.917 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

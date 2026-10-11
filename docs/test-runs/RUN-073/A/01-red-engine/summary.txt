@@ -1,0 +1,11 @@
+TEST-io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest.xml tests=4 failures=2 errors=0 skipped=0 time=1.292
+   FAIL closingTheOwnInventoryStoresACursorItemThatCannotBeDropped(Env) 1.076
+         org.opentest4j.AssertionFailedError: the cursor after closing window 0 ==> expected: <ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]]> but was: <ItemStackImpl[material=minecraft:diamond, amount=5, componentPatch=DataComponentMapImpl[components={}]]>
+         at io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest.closingTheOwnInventoryStoresACursorItemThatCannotBeDropped(CursorItemOnCloseIntegrationTest.java:90)
+   ok   cursorItemGoesBackIntoTheInventoryOnClose(Env) 0.098
+   FAIL closingTheOwnInventoryDropsTheCursorItem(Env) 0.056
+         org.opentest4j.AssertionFailedError: Expected 1 element, got [] ==> expected: <1> but was: <0>
+         at io.github.bearisbug.synaxis.inventory.CursorItemOnCloseIntegrationTest.closingTheOwnInventoryDropsTheCursorItem(CursorItemOnCloseIntegrationTest.java:72)
+   ok   cursorItemIsNotDestroyedWhenItCannotBeStored(Env) 0.052
+TEST-io.github.bearisbug.synaxis.app.DefaultPlayHostIntegrationTest.xml tests=1 failures=0 errors=0 skipped=1 time=457.796
+   ok   aFrozenPlayerDropsNothing(Env) 457.79

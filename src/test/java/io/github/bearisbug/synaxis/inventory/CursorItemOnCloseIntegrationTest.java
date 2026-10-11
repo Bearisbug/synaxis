@@ -2,9 +2,11 @@ package io.github.bearisbug.synaxis.inventory;
 
 import net.kyori.adventure.text.Component;
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.item.ItemDropEvent;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientCloseWindowPacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
@@ -50,5 +52,42 @@ public class CursorItemOnCloseIntegrationTest {
         player.closeInventory();
 
         assertEquals(ItemStack.of(Material.DIAMOND, 5), playerInventory.getCursorItem());
+    }
+
+    /**
+     * Closing the player's own inventory (window 0, no container open) treats the cursor the way closing a container
+     * does ({@code docs/DESIGN-PROD.md} {@code API-PROD-031}): the item is dropped, and the server keeps no cursor item
+     * to send back with the inventory.
+     */
+    @Test
+    public void closingTheOwnInventoryDropsTheCursorItem(Env env) {
+        var instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, 42, 0));
+        var drops = env.trackEvent(ItemDropEvent.class, EventFilter.PLAYER, player);
+        player.getInventory().setCursorItem(ItemStack.of(Material.DIAMOND, 5));
+
+        player.addPacketToQueue(new ClientCloseWindowPacket(0));
+        player.interpretPacketQueue();
+
+        drops.assertSingle(event -> assertEquals(ItemStack.of(Material.DIAMOND, 5), event.getItemStack()));
+        assertEquals(ItemStack.AIR, player.getInventory().getCursorItem(), "the cursor after closing window 0");
+    }
+
+    /**
+     * A cursor item whose drop is cancelled goes back into the player's own inventory when it closes, as it does when
+     * a container closes.
+     */
+    @Test
+    public void closingTheOwnInventoryStoresACursorItemThatCannotBeDropped(Env env) {
+        var instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, 42, 0));
+
+        env.process().eventHandler().addListener(ItemDropEvent.class, event -> event.setCancelled(true));
+        player.getInventory().setCursorItem(ItemStack.of(Material.DIAMOND, 5));
+
+        player.closeInventory();
+
+        assertEquals(ItemStack.AIR, player.getInventory().getCursorItem(), "the cursor after closing window 0");
+        assertEquals(ItemStack.of(Material.DIAMOND, 5), player.getInventory().getItemStack(0));
     }
 }

@@ -1,0 +1,13 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+index ded2dfccb2..d0086450a7 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+@@ -765,7 +765,7 @@ public final class Main {
+             LOGGER.info("Effective transfers: {} accept={}", keys, process.config().acceptTransfers());
+             return new StoreRuntime(store, database, housekeeping,
+                     new TicketIssuer(store, keys, cooldowns, shardId, ledger::record),
+-                    new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,
++                    new TicketVerifier(database.pool(), session::sessionId, shardId, keys, TransferCooldowns.fromSystemProperties(), ledger::record,
+                             onClaimed),
+                     permissions, moderation, session, redis, cooldowns);
+         } catch (SQLException e) {

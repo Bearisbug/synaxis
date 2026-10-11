@@ -123,20 +123,7 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
         if (!this.viewers.remove(player)) return false;
 
         // Drop cursor item when closing inventory
-        final ItemStack cursorItem;
-        final PlayerInventory playerInventory = player.getInventory();
-        synchronized (playerInventory) {
-            cursorItem = playerInventory.getCursorItem();
-            playerInventory.setCursorItem(ItemStack.AIR);
-        }
-
-        if (!cursorItem.isAir()) {
-            // ALL_OR_NOTHING: keep the item on the cursor when it can neither be dropped nor stored,
-            // rather than destroying it
-            if (!player.dropItem(cursorItem) && !player.getInventory().addItemStack(cursorItem)) {
-                player.getInventory().setCursorItem(cursorItem);
-            }
-        }
+        player.dropCursorItem();
 
         if (player.didCloseInventory()) {
             player.sendPacket(new CloseWindowPacket(getWindowId()));

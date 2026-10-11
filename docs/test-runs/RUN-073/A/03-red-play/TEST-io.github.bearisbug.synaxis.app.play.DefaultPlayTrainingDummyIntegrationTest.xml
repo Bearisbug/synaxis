@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" tests="4" skipped="0" failures="4" errors="0" timestamp="2026-10-10T22:01:21.394Z" hostname="Mac.local" time="0.021">
+  <properties/>
+  <testcase name="aDeadDummyIsRemovedAfter20TicksAndReplacedAfter100(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" time="0.005">
+    <failure message="java.util.NoSuchElementException" type="java.util.NoSuchElementException">java.util.NoSuchElementException
+	at java.base/java.util.List.getFirst(List.java:823)
+	at io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.aDeadDummyIsRemovedAfter20TicksAndReplacedAfter100(DefaultPlayTrainingDummyIntegrationTest.java:50)
+</failure>
+  </testcase>
+  <testcase name="theDummyNeedsTheCoreWorld(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" time="0.005">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.theDummyNeedsTheCoreWorld(DefaultPlayTrainingDummyIntegrationTest.java:75)
+</failure>
+  </testcase>
+  <testcase name="theDummyStandsBesideTheSpawnFacingIt(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" time="0.005">
+    <failure message="org.opentest4j.AssertionFailedError: zombies in the world: [] ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: zombies in the world: [] ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.theDummyStandsBesideTheSpawnFacingIt(DefaultPlayTrainingDummyIntegrationTest.java:38)
+</failure>
+  </testcase>
+  <testcase name="aDummyBelowTheVoidLineDiesAndIsReplaced(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest" time="0.005">
+    <failure message="java.util.NoSuchElementException" type="java.util.NoSuchElementException">java.util.NoSuchElementException
+	at java.base/java.util.List.getFirst(List.java:823)
+	at io.github.bearisbug.synaxis.app.play.DefaultPlayTrainingDummyIntegrationTest.aDummyBelowTheVoidLineDiesAndIsReplaced(DefaultPlayTrainingDummyIntegrationTest.java:63)
+</failure>
+  </testcase>
+  <system-out><![CDATA[06:01:21.399 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:01:21.399 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:01:21.400 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:01:21.405 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:01:21.405 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:01:21.405 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:01:21.409 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:01:21.409 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:01:21.409 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:01:21.414 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:01:21.414 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:01:21.414 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

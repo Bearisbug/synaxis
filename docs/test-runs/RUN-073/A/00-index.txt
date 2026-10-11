@@ -1,0 +1,141 @@
+RUN-073 group A: the host's default play layer (branch prod/r073-A, base prod/r073-docs 15b5487edc,
+code commit 2a55883024). Local Gradle through ~/.claude/r073/gradle.zsh (JDK 25, --max-workers=2
+--no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts). Fifteen Gradle runs in all, listed
+in order: six in the first round, three in the rework after the first review (runs 7 to 9) and six in
+the second rework (runs 10 to 15). Runs 1 to 6 and 10 to 15 use no database; runs 7 to 9 do (see there).
+No run uses Redis. Every run is in the default mode (no -Dsynaxis.* round switches) except runs 12 and
+14, the strict grid. Each directory holds the JUnit XML reports of that run and summary.txt, one line per
+test with the failure message and the first test-class frame.
+
+Run 1 -> 01-red-engine/
+  Code: base Player.java and AbstractInventory.java (before the engine change), new engine tests only.
+  :test CursorItemOnCloseIntegrationTest: 4 tests, 2 failed
+    closingTheOwnInventoryDropsTheCursorItem at CursorItemOnCloseIntegrationTest.java:72
+      "Expected 1 element, got [] ==> expected: <1> but was: <0>"
+    closingTheOwnInventoryStoresACursorItemThatCannotBeDropped at :90
+      "the cursor after closing window 0 ==> expected: <...air...> but was: <...diamond, amount=5...>"
+  The :server-app:test half of this run hung in DefaultPlayHostIntegrationTest.aFrozenPlayerDropsNothing:
+  PlayerStore#saveAll(1 s, true).join() on the test thread waits for a snapshot queued on the player's
+  tick thread, and nothing ticked. The test executor was killed after 7 min (exit 143); no other
+  server-app class had run. The test now ticks while it waits (env.tickWhile until the future is done).
+
+Run 2 -> 02-compile-failure.txt
+  The first engine change synchronized on Player#inventory, a non-final field; Error Prone
+  SynchronizeOnNonFinalField failed :compileJava, nothing ran. Player#dropCursorItem now locks a local
+  taken from getInventory(), as AbstractInventory#removeViewer did.
+
+Run 3 -> 03-red-play/
+  Code: the engine change as committed; app.play as a skeleton (DefaultPlay with the Feature enum and an
+  empty attach, Main#defaultPlay returning Set.of(); PluginHost#hostNode and Main#emptyInventory as
+  committed). Engine: CursorItemOnCloseIntegrationTest 4/0, InventoryCloseStateIntegrationTest 2/0,
+  InventoryIntegrationTest 16/0. Server-app: the red lines of TC-PROD-701 to TC-PROD-713 step 2 (see
+  summary.txt; the tests asserting that nothing happens pass on the skeleton). DefaultPlayVoidDamage
+  IntegrationTest red at :44 in this version of the test, :45 in the committed one.
+
+Run 4 -> 04-green/
+  Code: the implementation. app.play, DefaultPlayHostIntegrationTest, CoreModeIntegrationTest,
+  ShutdownBeforeTheWorldLaunchTest (4), ShutdownSignalLaunchTest (1): all green but
+  DefaultPlayVoidDamageIntegrationTest, red at its last count, "Expected 5 element(s), got 0": the test
+  called Collector#assertEmpty() on the void line, and Collector#collect() unmaps the player's node, so
+  later damage events were not collected (the health asserts in between had passed). Test fixed to
+  listen on the player's own event node; production code unchanged. Committed as 2a55883024.
+
+Run 5 -> 05-counter-proofs/
+  Code: 2a55883024 with the ten temporary edits of counter-proofs.diff applied together, each aimed at
+  different tests:
+    a DefaultPlay.java:139  the drop spawned on the host node itself     -> aDropCancelledAfterTheHost..., aGlobalPluginListener...
+    b DefaultPlay.java:140  the pickup applied on the host node itself   -> aPickupThatNoLongerFits..., aPickupCancelledAfterTheHost...
+    c DefaultPlay.java:211  no melee cooldown                            -> aHitTakes... at :59
+    d DefaultPlay.java:212  EntityDamage (MOB_ATTACK) for the melee      -> aCancelledPlayerAttack... at :91
+    e DefaultPlay.java:152  recipients filled even when not empty        -> recipientsChosenBefore..., anInstancePluginListener...
+    f DefaultPlay.java:234  the kit on every spawn                       -> aNewCharacterGetsTheKit... at :56
+    g TrainingDummy.java:69 no fall-out check                            -> aDummyBelowTheVoidLine... at :69
+    h Main.java:876         a map shard gets every feature               -> eachModeGetsItsPlayLayer at :86
+    i Main.java:891         any empty slot counts as an empty inventory  -> aCharacterIsNewWhileItsInventoryIsEmpty at :180
+    j Player.java:2281      window 0 keeps the cursor item               -> CursorItemOnClose (2, :72 and :90), everyDropPath... at :72
+  Every other test of these classes stayed green in the same run, the fixed void damage test among them.
+  Restored with git checkout HEAD -- server-app/src/main src/main.
+
+Run 6 -> 06-final/
+  Code: 2a55883024 again (git status clean). All green, BUILD SUCCESSFUL:
+  :test CursorItemOnCloseIntegrationTest 4, InventoryCloseStateIntegrationTest 2;
+  :server-app:test app.play.* 20, DefaultPlayHostIntegrationTest 5, CoreModeIntegrationTest 4,
+  FreezeBeforePluginListenersIntegrationTest 4, PluginEventsIntegrationTest 9, PluginHostIntegrationTest 18,
+  ClientDrivenLogArchitectureTest 2;
+  :architecture-tests:test TranslationKeyGateTest 2, ConfigKeyGateTest 1.
+
+Rework after review (three more Gradle runs, the same script and flags). These three run with the
+database: SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres, the password from the
+environment only (TransferCooldownTableIntegrationTest needs it). No Redis. The test change: one test
+added to DefaultPlayPickupIntegrationTest (thePluginListenersSeeAPickupTheInventoryCannotTakeCancelled)
+with three imports, so the lines of the four older tests of that class moved down by 3 (:44, :56, :74,
+:93 of runs 3 and 5 are :47, :59, :77, :96 now). Production code unchanged.
+
+Run 7 -> 07-rework-counter-proofs/
+  Code: c7fc23068a plus the new test of d3780c21a3, with the seven temporary edits of counter-proofs.diff
+  applied together:
+    DefaultPlay.java:181 the decision stage of PICKUP off       -> Pickup thePluginListenersSee... at :119, [false, false]
+    Main.java:329        step (5) passes mapMounted=false       -> FarViewLaunchTest 3 of 4 (the map shards that must
+                                                                    listen refuse: "Refusing to start: the training dummy
+                                                                    needs the core world")
+    Main.java:630        TC-PROD-603 step 2                     -> OpsPortsLaunchTest :89
+    Main.java:356        TC-PROD-604 step 2                     -> OpsPortsLaunchTest :50
+    Main.java:224        TC-PROD-670 step 4                     -> ShardGateLaunchTest :38 and :66
+    Main.java:770        TC-PROD-521 step 4                     -> TransferCooldownTableIntegrationTest :91 and :113
+    Main.java:724        TC-PROD-528 step 2                     -> TransferCooldownTableIntegrationTest :132
+  17 tests, 11 failed, each where its case says; the other 4 Pickup tests and the two other tests stayed green.
+  Restored with git checkout HEAD -- server-app/src/main.
+
+Run 8 -> 08-rework-proof-533/
+  Code: the same with only TC-PROD-533 step 3 (Main.java:768, counter-proof-533.diff), run apart because
+  TC-PROD-521 step 4 also reddens :113. TransferCooldownTableIntegrationTest 3 tests, 1 failed at :113.
+  Restored.
+
+Run 9 -> 09-rework-green/
+  Code: the tree of d3780c21a3 (the new test was committed right after this run, unchanged). All green,
+  BUILD SUCCESSFUL: DefaultPlayPickupIntegrationTest 5, FarViewLaunchTest 4, OpsPortsLaunchTest 2,
+  ShardGateLaunchTest 3, TransferCooldownTableIntegrationTest 3.
+  Read-only checks of Main.java on the same tree: grep -n buildShutdownTask gives 335, 337, 339, 342, 343,
+  346, 347, 348, 350; grep -n 'store.cooldowns()' 271; sed -n 768,770p the three lines of TC-PROD-533 step 2;
+  grep -n 'new ShardGates(' 538; grep -n 'directoryMode, store.store(), ledger' 313.
+
+Second rework after the second review (six more Gradle runs, the same script and flags, no database).
+The test change: one test added to DefaultPlayMeleeIntegrationTest, twoAttackersInOneTickLandOneHit,
+with three imports, so the lines of the two older tests moved down by 3 (:54, :59 and :91 of runs 3 and
+5 are :57, :62 and :94 now). Two players with an iron pickaxe each, in cells (-1, 0) and (0, -1), attack
+a zombie at (0.5, 40, 0.5) in cell (0, 0) with a ClientAttackPacket in their own packet queues, which
+UseEntityListener reads in one env.tick(). On the grid with 4 tick threads (cells of 16 by 16 chunks,
+thread floorMod(3 cx + cz, 4)) the three stand on threads 0, 1 and 3; the test asserts that when the
+grid and at least 4 threads are configured. Production code unchanged.
+
+Run 10 -> 10-rework2-compile-failure.txt
+  The first per-attacker counter-proof built the tag key with Tag#getKey(), which is deprecated; -Werror
+  failed :server-app:compileJava, nothing ran. The counter-proof now spells the key out.
+
+Run 11 -> 11-rework2-proof-per-attacker/
+  Default mode. Code: f40a950951 with counter-proof-per-attacker.diff (DefaultPlay.java:210 and :213, the
+  cooldown tag keyed by the attacker's UUID, so each attacker has its own cooldown on the target).
+  DefaultPlayMeleeIntegrationTest 3 tests, 1 failed: twoAttackersInOneTickLandOneHit at :129,
+  "Expected 1 element(s), got 2: [...EntityDamageEvent@..., ...EntityDamageEvent@...] ==> expected: <1>
+  but was: <2>". The two single-attacker tests stayed green.
+
+Run 12 -> 12-rework2-proof-per-attacker-grid/
+  Strict grid: -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid,
+  forwarded to the test JVM by build-src synaxis.java-library.gradle.kts (gradle-config-cache.txt: Gradle
+  re-read the configuration because those properties changed). The same counter-proof: the same single
+  red, at :129 with the same message; the other two green.
+  Restored with git checkout HEAD -- server-app/src/main.
+
+Run 13 -> 13-rework2-green/
+  Default mode. Code: f40a950951 plus the new test, committed right after as 515d123ee0 unchanged. 3 tests, 0 failed.
+
+Run 14 -> 14-rework2-green-grid/
+  Strict grid as in run 12, with --info, which logged the command line of the test JVM
+  (test-jvm-command.txt: -Dsynaxis.acquirable-strict=true -Dsynaxis.dispatcher-threads=4
+  -Dsynaxis.thread-provider=grid, and -ea). 3 tests, 0 failed, so the three-thread assertion ran and held.
+
+Run 15 -> 15-rework2-proof-no-cooldown/
+  Default mode. Code: the tree of run 13 with counter-proof-no-cooldown.diff, the edit of TC-PROD-707
+  step 3 (DefaultPlay.java:211). 3 tests, 2 failed: aHitTakes... at :62, "after the hit of tick 5, within
+  the cooldown ==> expected: <16.0> but was: <12.0>", and twoAttackersInOneTickLandOneHit at :129 with the
+  message of run 11. Restored with git checkout HEAD -- server-app/src/main; the tree is run 13's again.

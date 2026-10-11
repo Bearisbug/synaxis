@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.play.DefaultPlayStarterKitIntegrationTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-10T22:02:55.185Z" hostname="Mac.local" time="0.098">
+  <properties/>
+  <testcase name="aCharacterThatIsNotNewGetsNothing(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayStarterKitIntegrationTest" time="0.05"/>
+  <testcase name="aNewCharacterGetsTheKitOnItsFirstSpawnOnly(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayStarterKitIntegrationTest" time="0.048"/>
+  <system-out><![CDATA[06:02:55.234 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:02:55.234 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=721946da-711f-4746-8d7b-e1453f628ddc identifier=RandName reason=synaxis:server-stopping
+06:02:55.234 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=721946da-711f-4746-8d7b-e1453f628ddc identifier=RandName reason=synaxis:server-stopping
+06:02:55.235 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:02:55.235 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:02:55.283 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:02:55.283 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=5e05b221-f673-4ee2-a637-e0ac2d368901 identifier=RandName reason=synaxis:server-stopping
+06:02:55.283 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=5e05b221-f673-4ee2-a637-e0ac2d368901 identifier=RandName reason=synaxis:server-stopping
+06:02:55.284 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:02:55.284 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

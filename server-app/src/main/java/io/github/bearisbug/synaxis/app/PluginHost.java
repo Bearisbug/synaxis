@@ -274,6 +274,16 @@ final class PluginHost {
         return admission.provider();
     }
 
+    /**
+     * The host node {@code synaxis-host}, which the default play layer of {@code docs/DESIGN-PROD.md}
+     * {@code API-PROD-031} attaches to: its own listeners run before the plugin priority nodes below it.
+     *
+     * @return the host node
+     */
+    EventNode<Event> hostNode() {
+        return hostNode;
+    }
+
     List<String> enabledPluginIds() {
         return enabled.stream().map(LoadedPlugin::id).toList();
     }

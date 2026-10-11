@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-10T22:58:58.081Z" hostname="Mac.local" time="0.304">
+  <properties/>
+  <testcase name="thePluginListenersSeeAPickupTheInventoryCannotTakeCancelled(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest" time="0.068"/>
+  <testcase name="aPickupThatNoLongerFitsWhenAppliedIsCancelled(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest" time="0.059"/>
+  <testcase name="aPickupCancelledAfterTheHostLeavesTheInventoryAlone(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest" time="0.058"/>
+  <testcase name="aPickupGoesIntoTheInventory(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest" time="0.059"/>
+  <testcase name="aPickupTheInventoryCannotTakeIsCancelled(Env)" classname="io.github.bearisbug.synaxis.app.play.DefaultPlayPickupIntegrationTest" time="0.058"/>
+  <system-out><![CDATA[06:58:58.148 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:58:58.148 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=85c5b42b-1494-4a34-8d67-2b9500bb953c identifier=RandName reason=synaxis:server-stopping
+06:58:58.148 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=85c5b42b-1494-4a34-8d67-2b9500bb953c identifier=RandName reason=synaxis:server-stopping
+06:58:58.150 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:58:58.150 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:58:58.208 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:58:58.208 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=2bc929c8-e370-4db3-b0a9-d89c462a91e6 identifier=RandName reason=synaxis:server-stopping
+06:58:58.208 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=2bc929c8-e370-4db3-b0a9-d89c462a91e6 identifier=RandName reason=synaxis:server-stopping
+06:58:58.209 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:58:58.209 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:58:58.267 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:58:58.267 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=1181b433-8301-4e58-9a1c-98ed5c4c0cf5 identifier=RandName reason=synaxis:server-stopping
+06:58:58.267 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=1181b433-8301-4e58-9a1c-98ed5c4c0cf5 identifier=RandName reason=synaxis:server-stopping
+06:58:58.268 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:58:58.268 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:58:58.325 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:58:58.325 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=5f38016d-7ab7-409b-be97-d0299e1095f0 identifier=RandName reason=synaxis:server-stopping
+06:58:58.325 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=5f38016d-7ab7-409b-be97-d0299e1095f0 identifier=RandName reason=synaxis:server-stopping
+06:58:58.327 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:58:58.327 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+06:58:58.384 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+06:58:58.384 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=324aae03-790a-4327-98b5-c87a76395b31 identifier=RandName reason=synaxis:server-stopping
+06:58:58.384 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=324aae03-790a-4327-98b5-c87a76395b31 identifier=RandName reason=synaxis:server-stopping
+06:58:58.385 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+06:58:58.385 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

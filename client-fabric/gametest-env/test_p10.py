@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Unit tests of p10.py, standard library only (docs/TEST.md TC-PROD-660, TC-PROD-740):
+"""Unit tests of p10.py, standard library only (docs/TEST.md TC-PROD-660, TC-PROD-740, TC-PROD-744):
 
     python3 -m unittest discover -s client-fabric/gametest-env -p 'test_*.py'
 """
 
 from __future__ import annotations
 
+import contextlib
+import importlib.util
+import io
 import json
 import os
 import stat
@@ -14,6 +17,8 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 P10 = Path(__file__).with_name("p10.py")
 
@@ -103,6 +108,73 @@ class JudgeTest(unittest.TestCase):
                 self.assertEqual(run.returncode, 1, run.stdout)
                 self.assertEqual(self.failures(run), ["FAIL the client recorded its state in 2 of 3 worlds"], run.stdout)
 
+
+class DriveTest(unittest.TestCase):
+    """p10.py drive --round-trips 2 --gap 5.5 against two fake shards on a fake clock: the first
+    shard lists the player at 0 s, and a transfer moves it to the target on the spot. Real shards
+    list the player before the client has handled the join, so whatever the driver does at once
+    after a listing can come before the client's first tick in that world."""
+
+    def drive(self) -> tuple[list[float], list[float]]:
+        """The times the four transfers were asked at, and the time the done file was there at."""
+        spec = importlib.util.spec_from_file_location("p10_under_test", P10)
+        p10 = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(p10)
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        directory = Path(temporary.name)
+        done = directory / "done"
+        clock = [0.0]
+        on = ["r0-c1"]
+        asked: list[float] = []
+        ended: list[float] = []
+        player = {"id": "00000000-0000-0000-0000-000000000001", "name": "Player1"}
+
+        class Shard:
+            def __init__(self, shard: str, address: str, token: str) -> None:
+                self.shard = shard
+
+            def call(self, method: str, params: dict | None = None) -> object:
+                if method == "minecraft:players":
+                    return [player] if on[0] == self.shard else []
+                asked.append(clock[0])
+                on[0] = params["shard"]
+                return "sent"
+
+            def keepalive(self) -> None:
+                pass
+
+            def close(self) -> None:
+                if done.exists() and not ended:
+                    ended.append(clock[0])
+
+        def sleep(seconds: float) -> None:
+            clock[0] += seconds
+
+        versions = iter(range(1, 10))
+        p10.Management = Shard
+        p10.read_version = lambda psql, player_id: next(versions)
+        p10.time = SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep)
+        args = SimpleNamespace(management=[("r0-c1", "127.0.0.1:25585"), ("r0-c2", "127.0.0.1:25586")],
+                               psql="psql", done_file=str(done), out=str(directory / "drive.json"),
+                               round_trips=2, gap=5.5, arrival_timeout=60, first_join_timeout=900)
+        with mock.patch.dict(os.environ, {"SYNAXIS_MANAGEMENT_TOKEN": "unused"}), \
+                contextlib.redirect_stdout(io.StringIO()):
+            code = p10.drive(args)
+        self.assertEqual(code, 0)
+        self.assertIsNone(json.loads((directory / "drive.json").read_text(encoding="utf-8"))["failure"])
+        return asked, ended
+
+    def test_the_first_transfer_waits_the_gap_like_every_other_one(self) -> None:
+        # Sent on at once, the client can leave the first world before its first tick there and
+        # write state 1 none (RUN-073, run 38096423208)
+        asked, _ = self.drive()
+        self.assertEqual(asked, [5.5, 11.0, 16.5, 22.0])
+
+    def test_the_run_ends_the_gap_after_the_last_transfer(self) -> None:
+        # Ended at once, the client can see the done file before it joins the last world
+        asked, ended = self.drive()
+        self.assertEqual(ended, [asked[-1] + 5.5])
 
 if __name__ == "__main__":
     unittest.main()

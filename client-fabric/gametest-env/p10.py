@@ -17,10 +17,13 @@ waits for the one player on the first shard's minecraft:players, then 2 x --roun
 the shard it is on for synaxis:transfer to the other one (ShardService#transferTo), waits for it on
 the target's minecraft:players and reads its character.version, which has to be larger every time.
 A transfer starts --gap seconds after the previous one was answered sent at the earliest: the answer
-comes after the ticket's issued_at, where the 5 s cooldown starts. It stops at the first transfer
-not answered sent, not arrived within --arrival-timeout or not followed by a larger version. It
-always writes --out and creates --done-file, which ends the client's run; the exit code is 1 after
-a failure.
+comes after the ticket's issued_at, where the 5 s cooldown starts. The first one starts --gap seconds
+after the first character.version was read, and --done-file is created --gap seconds after the last
+one was answered: the shards list the player before the client has handled the join, and a client
+sent on or ended at once can leave a world before its first tick there, without a state line for it,
+or end its run before it joins the last one. It stops at the first transfer not answered sent, not
+arrived within --arrival-timeout or not followed by a larger version. It always writes --out and
+creates --done-file, which ends the client's run; the exit code is 1 after a failure.
 
     p10.py judge --drive p10/drive.json --ledger r0-c1=p10/work-r0-c1/logs \\
         --ledger r0-c2=p10/work-r0-c2/logs --client-report <run dir>/synaxis-gametest/p10.txt
@@ -192,6 +195,14 @@ def wait_for_player(connections: dict[str, Management], shard: str, player_id: s
         time.sleep(interval)
 
 
+def wait_until(connections: dict[str, Management], ready: float) -> None:
+    """Sleeps until time.monotonic() reaches ready; the connections are kept alive meanwhile."""
+    while time.monotonic() < ready:
+        for connection in connections.values():
+            connection.keepalive()
+        time.sleep(min(0.5, max(0.0, ready - time.monotonic())))
+
+
 def read_version(psql: str, player_id: str) -> int:
     account = str(uuid.UUID(player_id))
     sql = f"SELECT version FROM character WHERE account_uuid = '{account}' AND slot = 0"
@@ -222,12 +233,12 @@ def drive(args: argparse.Namespace) -> int:
         summary["player"] = player
         summary["versions"].append(read_version(args.psql, player["id"]))
         print(f"{player['name']} {player['id']} on {here}, character.version {summary['versions'][0]}", flush=True)
-        ready = time.monotonic()
+        # The shards list the player before the client has handled the join. Sent on or ended at once,
+        # the client can leave a world before its first tick there and record no state for it, or end
+        # its run before it joins the last world; so it gets --gap in the first and the last world too
+        ready = time.monotonic() + args.gap
         for n in range(1, 2 * args.round_trips + 1):
-            while time.monotonic() < ready:
-                for connection in connections.values():
-                    connection.keepalive()
-                time.sleep(min(0.5, max(0.0, ready - time.monotonic())))
+            wait_until(connections, ready)
             asked = time.monotonic()
             result = connections[here].call("synaxis:transfer", {"player": {"id": player["id"]}, "shard": there})
             answered = time.monotonic()
@@ -247,6 +258,7 @@ def drive(args: argparse.Namespace) -> int:
                 raise Failure(f"transfer {n}: character.version {record['version']} is not larger than "
                               f"{summary['versions'][-2]}")
             here, there = there, here
+        wait_until(connections, ready)
     # Whatever stopped it goes into the record, which is what the judge and a reader look at
     except Exception as e:
         summary["failure"] = str(e) if isinstance(e, Failure) else f"{type(e).__name__}: {e}"

@@ -1,0 +1,51 @@
+# TC-PROD-740 steps 2-6 again, on p10.py and test_p10.py of the code commit (see 00-index.txt): the line numbers moved
+# command: .venv/bin/python -m unittest discover -s client-fabric/gametest-env -p 'test_*.py' -v  (Python 3.10.18), PYTHONDONTWRITEBYTECODE=1; messages as in 01 and 03
+
+## step 2: p10.py from 15b5487edc
+FAIL: test_the_first_transfer_waits_the_gap_like_every_other_one (test_p10.DriveTest)
+  test_p10.py line 172, in test_the_first_transfer_waits_the_gap_like_every_other_one
+FAIL: test_the_run_ends_the_gap_after_the_last_transfer (test_p10.DriveTest)
+  test_p10.py line 177, in test_the_run_ends_the_gap_after_the_last_transfer
+FAIL: test_a_world_without_a_state_fails (test_p10.JudgeTest) (states=['pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty', 'pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty', None])
+  test_p10.py line 108, in test_a_world_without_a_state_fails
+FAIL: test_a_world_without_a_state_fails (test_p10.JudgeTest) (states=['pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty', 'none', 'pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty'])
+  test_p10.py line 108, in test_a_world_without_a_state_fails
+FAIL: test_an_inventory_a_transfer_changed_fails (test_p10.JudgeTest) (changed='items')
+  test_p10.py line 98, in test_an_inventory_a_transfer_changed_fails
+FAIL: test_an_inventory_a_transfer_changed_fails (test_p10.JudgeTest) (changed='held slot')
+  test_p10.py line 98, in test_an_inventory_a_transfer_changed_fails
+FAIL: test_the_inventory_the_client_arrives_with_is_the_one_it_left_with (test_p10.JudgeTest) (inventory='empty')
+  test_p10.py line 88, in test_the_inventory_the_client_arrives_with_is_the_one_it_left_with
+FAIL: test_the_inventory_the_client_arrives_with_is_the_one_it_left_with (test_p10.JudgeTest) (inventory='36:minecraft:stone*64,37:minecraft:iron_pickaxe*1')
+  test_p10.py line 88, in test_the_inventory_the_client_arrives_with_is_the_one_it_left_with
+Ran 6 tests in 0.227s
+FAILED (failures=8)
+
+## step 3: :335 'and states[m] != states[n]]' -> 'and False]'
+                   and False]
+FAIL: test_an_inventory_a_transfer_changed_fails (test_p10.JudgeTest) (changed='items')
+  test_p10.py line 98, in test_an_inventory_a_transfer_changed_fails
+FAIL: test_an_inventory_a_transfer_changed_fails (test_p10.JudgeTest) (changed='held slot')
+  test_p10.py line 98, in test_an_inventory_a_transfer_changed_fails
+Ran 6 tests in 0.226s
+FAILED (failures=2)
+
+## step 4: :330 held={fields.get('held')} -> held=0
+                    states[line.split(" ")[1]] = f"held=0 inventory={fields['inventory']}"
+FAIL: test_an_inventory_a_transfer_changed_fails (test_p10.JudgeTest) (changed='held slot')
+  test_p10.py line 98, in test_an_inventory_a_transfer_changed_fails
+Ran 6 tests in 0.224s
+FAILED (failures=1)
+
+## step 5: :333 'expect(len(recorded) == len(worlds), ' -> 'expect(True, '
+        expect(True, f"the client recorded its state in {len(recorded)} of {len(worlds)} worlds")
+FAIL: test_a_world_without_a_state_fails (test_p10.JudgeTest) (states=['pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty', 'pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty', None])
+  test_p10.py line 108, in test_a_world_without_a_state_fails
+FAIL: test_a_world_without_a_state_fails (test_p10.JudgeTest) (states=['pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty', 'none', 'pos=0.50,40.00,0.50 yaw=0.0 pitch=0.0 held=0 inventory=empty'])
+  test_p10.py line 108, in test_a_world_without_a_state_fails
+Ran 6 tests in 0.228s
+FAILED (failures=2)
+
+## step 6: restored
+Ran 6 tests in 0.225s
+OK

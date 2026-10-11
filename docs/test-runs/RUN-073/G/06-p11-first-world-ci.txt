@@ -1,0 +1,78 @@
+# TC-PROD-744 step 1: where the P11 smoke job went red, and why
+# Run 38096423208 (pull_request, branch prod/integrate-073, head cf838edc6d, draft PR #16), job "Two shards, 2 round trips (P11 smoke)"
+# Sources: gh run view 38096423208 --log --job 114343144511; gh run download 38096423208 -n client-gametest-p11-smoke
+# Times are UTC on 2026-10-10. Lines are quoted as they appear, the runner's timestamps dropped.
+
+## Judge P11 by the driver's record, the ledgers and the client's report
+ok   the driver ran to the end
+ok   4 of 4 transfers answered sent, expected 4 of 4
+ok   4 transfers arrived on their target shard, expected 4
+ok   character.version read 5 times, expected 5, larger after every transfer: True ([0] .. [4])
+ok   transfer_issued {'r0-c1': 2, 'r0-c2': 2}, 4 in all, expected 4
+ok   the client joined 5 worlds, expected 5
+ok   the client's joins alternate between two shards: ['25611', '25612']
+FAIL the client recorded its state in 4 of 5 worlds
+ok   the inventory is the same in all 5 worlds: held=0 inventory=empty
+ok   the client's report ends with ['end done']
+P10: 1 check(s) failed
+
+## Send the client back and forth twice (the driver)
+Player998 5bd62aa7-8886-32aa-953e-97bdbc2a6931 on r0-c1, character.version 0
+transfer 1 r0-c1 -> r0-c2: sent in 107 ms, arrived in 1120 ms, character.version 1
+transfer 2 r0-c2 -> r0-c1: sent in 107 ms, arrived in 611 ms, character.version 2
+transfer 3 r0-c1 -> r0-c2: sent in 89 ms, arrived in 594 ms, character.version 3
+transfer 4 r0-c2 -> r0-c1: sent in 60 ms, arrived in 564 ms, character.version 4
+
+## client-fabric/build/run/productionClientGameTest/synaxis-gametest/p10.txt
+join 1 port=25611 at=1791676482599
+state 1 none
+join 2 port=25612 at=1791676483716
+state 2 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+join 3 port=25611 at=1791676488762
+state 3 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+join 4 port=25612 at=1791676494398
+state 4 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+join 5 port=25611 at=1791676499855
+state 5 pos=120.50,78.00,120.50 yaw=0.0 pitch=0.0 held=0 inventory=empty
+end done
+
+## World 1, in order (r0-c1 ledger events-r0-c1-20261010.jsonl, r0-c1 shard.log, the driver's stdout timestamp, p10.txt)
+23:54:41.056  r0-c1 shard.log   Login success: username=Player998 connection_id=2f9c3b51-...
+23:54:41.437  r0-c1 ledger      session_entered_configuration connection_id=2f9c3b51-...
+23:54:41.486  r0-c1 ledger      client_verified connection_id=2f9c3b51-...
+23:54:42.317  r0-c1 ledger      gm_command minecraft:players (the driver's poll that lists the player)
+23:54:42.525  driver            "Player998 5bd62aa7-8886-32aa-953e-97bdbc2a6931 on r0-c1, character.version 0"
+23:54:42.599  client p10.txt    join 1 port=25611 at=1791676482599 (ClientPlayConnectionEvents.JOIN, handling the join packet)
+23:54:42.627  r0-c1 ledger      transfer_issued transfer_ref=74903694 issued_at=1791676482627 (28 ms after join 1)
+23:54:42.660  r0-c1 shard.log   Connection closed: connection_id=2f9c3b51-... identifier=Player998
+23:54:43.716  client p10.txt    join 2 port=25612 at=1791676483716
+
+## World 5, the last one (r0-c1 ledger and shard.log, the driver's stdout timestamp, p10.txt)
+23:54:59.390  r0-c1 ledger      gm_command minecraft:players (the driver's arrival poll, the player not listed yet)
+23:54:59.575  r0-c1 shard.log   Login success: username=Player998 connection_id=f422dd9a-...
+23:54:59.855  client p10.txt    join 5 port=25611 at=1791676499855
+23:54:59.892  r0-c1 ledger      gm_command minecraft:players (the poll that lists the player)
+23:54:59.962  driver            "transfer 4 r0-c2 -> r0-c1: sent in 60 ms, arrived in 564 ms, character.version 4",
+                                then drive.json and the done file
+23:55:00.665  r0-c1 shard.log   Connection closed: connection_id=f422dd9a-... identifier=Player998
+
+World 1: the shard listed the player 282 ms before the client handled the join packet; the driver
+read character.version and asked for the transfer at once, with no wait before the first transfer
+(p10.py at f58514441e: ready = time.monotonic()). The ticket was issued 28 ms after join 1 and the
+connection closed 61 ms after it, about one frame at the harness's 20 frames a second. No
+END_CLIENT_TICK in world 1 saw a player, so the client wrote "state 1 none", and the judge counted 4
+states in 5 worlds. Worlds 2 to 4 were each left 4.5 s to 5.1 s after their join (transfer_issued at
+23:54:48.236, 23:54:53.827, 23:54:59.386), the --gap of 5.5 s from the answer to the previous
+transfer less the arrival time.
+
+World 5 had the same exposure at the other end: the driver created the done file right after the
+poll that listed the player and the version read, at least 107 ms after join 5 in this run. The poll
+runs every 0.5 s and the shard lists the player before the client's join (282 ms before in world 1),
+so a poll landing earlier would have created the done file before join 5; the client checks it
+every tick and would have ended with 4 joins ("the client joined 4 worlds, expected 5"). This is
+read from the timing, not seen in a run.
+
+The record condition and the judge are right. The fix is in the driver (code commit 6b07085d31): the
+first transfer starts --gap seconds after the first character.version was read, and the done file is
+created --gap seconds after the last transfer was answered, the wait it already kept between
+transfers.

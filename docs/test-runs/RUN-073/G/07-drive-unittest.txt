@@ -1,0 +1,45 @@
+# TC-PROD-744: the driver gives the client --gap in the first and the last world
+# p10.py and test_p10.py as in the code commit (see 00-index.txt); command: .venv/bin/python -m unittest discover -s client-fabric/gametest-env -p 'test_*.py' -v  (Python 3.10.18), PYTHONDONTWRITEBYTECODE=1
+
+## step 2: green
+test_the_first_transfer_waits_the_gap_like_every_other_one (test_p10.DriveTest) ... ok
+test_the_run_ends_the_gap_after_the_last_transfer (test_p10.DriveTest) ... ok
+test_a_world_without_a_state_fails (test_p10.JudgeTest) ... ok
+test_an_inventory_a_transfer_changed_fails (test_p10.JudgeTest) ... ok
+test_the_inventory_the_client_arrives_with_is_the_one_it_left_with (test_p10.JudgeTest) ... ok
+test_the_shard_directory_is_0644_whatever_the_umask (test_p10.ShardsTest) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.229s
+
+OK
+
+## step 3: red before the change: p10.py from f58514441e, test_p10.py as committed
+FAIL: test_the_first_transfer_waits_the_gap_like_every_other_one (test_p10.DriveTest)
+  test_p10.py line 172, in test_the_first_transfer_waits_the_gap_like_every_other_one
+AssertionError: Lists differ: [0.0, 5.5, 11.0, 16.5] != [5.5, 11.0, 16.5, 22.0]
+FAIL: test_the_run_ends_the_gap_after_the_last_transfer (test_p10.DriveTest)
+  test_p10.py line 177, in test_the_run_ends_the_gap_after_the_last_transfer
+AssertionError: Lists differ: [16.5] != [22.0]
+Ran 6 tests in 0.224s
+FAILED (failures=2)
+
+## step 4: counterproof, the first wait taken out: :239 'ready = time.monotonic() + args.gap' -> 'ready = time.monotonic()'
+        ready = time.monotonic()
+FAIL: test_the_first_transfer_waits_the_gap_like_every_other_one (test_p10.DriveTest)
+  test_p10.py line 172, in test_the_first_transfer_waits_the_gap_like_every_other_one
+AssertionError: Lists differ: [0.0, 5.5, 11.0, 16.5] != [5.5, 11.0, 16.5, 22.0]
+Ran 6 tests in 0.221s
+FAILED (failures=1)
+
+## step 5: counterproof, the last wait taken out: :261 'wait_until(connections, ready)' deleted
+        wait_until(connections, ready)
+FAIL: test_the_run_ends_the_gap_after_the_last_transfer (test_p10.DriveTest)
+  test_p10.py line 177, in test_the_run_ends_the_gap_after_the_last_transfer
+AssertionError: Lists differ: [22.0] != [27.5]
+Ran 6 tests in 0.225s
+FAILED (failures=1)
+
+## step 6: restored
+Ran 6 tests in 0.236s
+OK

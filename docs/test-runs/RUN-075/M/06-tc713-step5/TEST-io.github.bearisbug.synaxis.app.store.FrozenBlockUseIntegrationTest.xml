@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.FrozenBlockUseIntegrationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-11T05:50:55.976Z" hostname="Mac.local" time="0.069">
+  <properties/>
+  <testcase name="aPlayerFrozenByItsTransferPlacesNoBlockInteractsWithNoneAndUsesNoItem(Env)" classname="io.github.bearisbug.synaxis.app.store.FrozenBlockUseIntegrationTest" time="0.068"/>
+  <system-out><![CDATA[13:50:56.044 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:50:56.044 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=5cd8013c-155d-422c-af13-0da1cbff975b identifier=Leaver reason=synaxis:server-stopping
+13:50:56.044 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=5cd8013c-155d-422c-af13-0da1cbff975b identifier=Leaver
+13:50:56.045 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:50:56.045 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

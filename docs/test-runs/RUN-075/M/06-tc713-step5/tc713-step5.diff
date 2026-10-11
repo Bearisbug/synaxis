@@ -1,0 +1,11 @@
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+@@ -338,7 +338,7 @@
+                 : new PositionRule.MapShard(shardWorld.mapId(), shardWorld.buildId(), shardWorld.bounds()));
+         // The default play layer of the mode, on the host node and before the port opens
+         // (docs/DESIGN-PROD.md API-PROD-031)
+-        final Set<DefaultPlay.Feature> play = defaultPlay(mode, shardWorld != null);
++        final Set<DefaultPlay.Feature> play = defaultPlay(mode, false);
+         if (!play.isEmpty()) DefaultPlay.attach(process, host.hostNode(), play, playerState::isFresh, coreWorld);
+ 
+         // The only place the plugins are disabled, console and SIGINT alike: the engine drains its

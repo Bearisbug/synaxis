@@ -255,9 +255,9 @@ public final class Main {
         // ledger, and hears about its ticket from the verifier the store builds
         final @Nullable ShardArrivals arrivals = directory == null ? null
                 : new ShardArrivals(directory, ledger::record, System::currentTimeMillis);
-        // The host's player section, which the target side of a transfer tells about a claimed ticket. A map shard
-        // registers none until ShardWorld names its map, its build and its bounds (docs/DESIGN-PROD.md API-PROD-032)
-        final @Nullable PlayerStateSection playerState = map == null ? new PlayerStateSection(process.registries()) : null;
+        // The host's player section, which the target side of a transfer tells about a claimed ticket
+        // (docs/DESIGN-PROD.md API-PROD-032)
+        final PlayerStateSection playerState = new PlayerStateSection(process.registries());
         // The player store before the plugins, which register their sections in onEnable; a shard
         // whose database is not the one it expects refuses here, before anything is bound.
         final StoreRuntime store = openStore(storeMode, process, auth, shardId, ledger,
@@ -275,7 +275,7 @@ public final class Main {
                 store.permissions(), store.moderation(), store.cooldowns());
         // Before the plugins and the default play layer: the host node runs its own listeners in the order they were
         // added, so the saved state is applied at the first spawn before anything else of the host looks at it
-        if (playerState != null) playerState.install(store.store(), host.hostNode());
+        playerState.install(store.store(), host.hostNode());
         process.command().register(new RoleCommand(process, store.permissions(), ledger::record));
         new ModerationCommands(process, store.moderation(), store.permissions(), ledger::record).commands()
                 .forEach(process.command()::register);
@@ -331,14 +331,15 @@ public final class Main {
             }
             case REFUSED -> refuseToServe(host, ledger, runningMatches, port);
         }
-        // The position rule of the mode; a refused launch has exited in its branch above
-        if (playerState != null)
-            playerState.useRule(mode == CoreMode.Mode.CORE ? new PositionRule.Core() : new PositionRule.Rts());
+        // The position rule of the mode; a refused launch has exited in its branch above. A map shard, always in the
+        // core mode, names the release and the bounds ShardWorld read in step (3)
+        playerState.useRule(mode != CoreMode.Mode.CORE ? new PositionRule.Rts()
+                : shardWorld == null ? new PositionRule.Core()
+                : new PositionRule.MapShard(shardWorld.mapId(), shardWorld.buildId(), shardWorld.bounds()));
         // The default play layer of the mode, on the host node and before the port opens
         // (docs/DESIGN-PROD.md API-PROD-031)
         final Set<DefaultPlay.Feature> play = defaultPlay(mode, shardWorld != null);
-        if (!play.isEmpty()) DefaultPlay.attach(process, host.hostNode(), play, Objects.requireNonNull(playerState,
-                "a process with a play layer serves no map")::isFresh, coreWorld);
+        if (!play.isEmpty()) DefaultPlay.attach(process, host.hostNode(), play, playerState::isFresh, coreWorld);
 
         // The only place the plugins are disabled, console and SIGINT alike: the engine drains its
         // shutdown tasks after the players are saved and kicked, between two ticks, and before it
@@ -895,14 +896,13 @@ public final class Main {
      * player section, which leaves the player at its arrival point ({@code docs/DESIGN-PROD.md} {@code API-PROD-032}).
      *
      * @param arrivals    the arrivals of a shard in the directory mode, null outside it
-     * @param playerState the player section, null on a map shard
+     * @param playerState the player section
      * @return the callback {@code openStore} takes
      */
-    static BiConsumer<Player, TransferTicket> claimedBy(@Nullable ShardArrivals arrivals,
-                                                        @Nullable PlayerStateSection playerState) {
+    static BiConsumer<Player, TransferTicket> claimedBy(@Nullable ShardArrivals arrivals, PlayerStateSection playerState) {
         return (player, ticket) -> {
             if (arrivals != null) arrivals.claimed(player, ticket);
-            if (playerState != null) playerState.claimed(player);
+            playerState.claimed(player);
         };
     }
 

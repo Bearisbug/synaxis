@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.MainTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-10-11T05:42:24.752Z" hostname="Mac.local" time="0.059">
+  <properties/>
+  <testcase name="theShardIdDefaultsToLocalAndTakesTheProperty()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.0"/>
+  <testcase name="theDefaultLoginModeIsOnlineAgainstMojang()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.039"/>
+  <testcase name="anUnknownLoginModeOrSessionServerIsRefused()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.001"/>
+  <testcase name="theSessionServerCanBeOverriddenForTesting()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.014"/>
+  <testcase name="aShardIdThatCouldLeaveTheDirectoryIsRefused()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.001"/>
+  <testcase name="theSelectionPropertyIsACommaSeparatedList()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.0"/>
+  <testcase name="theDefaultPortIsUsedWhenThePropertyIsAbsent()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.001"/>
+  <testcase name="offlineModesAreAskedForByName()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.0"/>
+  <testcase name="aViewRangeTheOperatorPassedIsLeftAlone()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.0"/>
+  <testcase name="aLedgerCapThatIsNotAPositiveNumberIsRefused()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.001"/>
+  <testcase name="noSelectionPropertyMeansEveryDiscoveredPlugin()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.0"/>
+  <testcase name="theLedgerCapIsOneGibibyteUnlessThePropertySaysOtherwise()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.0"/>
+  <testcase name="theViewRangeOfTheRtsCameraIsSetBeforeTheProcessExists()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.0"/>
+  <testcase name="aPortThatIsNotANumberIsRefused()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.001"/>
+  <testcase name="thePropertyPicksThePort()" classname="io.github.bearisbug.synaxis.app.MainTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

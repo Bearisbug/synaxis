@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.MainClaimedByIntegrationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-11T05:50:54.844Z" hostname="Mac.local" time="1.131">
+  <properties/>
+  <testcase name="aTransferredPlayerSpawnsAtTheGateWithTheInventoryHeldSlotAndHealthItLeftWith(Env)" classname="io.github.bearisbug.synaxis.app.MainClaimedByIntegrationTest" time="1.12"/>
+  <system-out><![CDATA[13:50:55.946 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=62dded3e-dc76-4203-b11d-443b51eff033 identifier=Traveller
+13:50:55.970 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:50:55.970 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=d8590def-3efb-418f-bc9c-8e1d3582898f identifier=Traveller reason=synaxis:server-stopping
+13:50:55.970 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=d8590def-3efb-418f-bc9c-8e1d3582898f identifier=Traveller
+13:50:55.972 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:50:55.972 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

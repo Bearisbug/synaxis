@@ -1,0 +1,149 @@
+[fix-M] free=49% load=6 start 13:32:31
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as no cached configuration is available for tasks: :server-app:test --tests io.github.bearisbug.synaxis.app.store.FrozenBlockUseIntegrationTest --tests io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest --tests io.github.bearisbug.synaxis.app.MainClaimedByIntegrationTest --tests io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions FROM-CACHE
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock FROM-CACHE
+> Task :build-src:generateEntrypointForLibs FROM-CACHE
+> Task :build-src:generateEntrypointForLibsInPluginsBlock FROM-CACHE
+> Task :build-src:generateExternalPluginSpecBuilders FROM-CACHE
+> Task :build-src:generateLibrariesForConventions FROM-CACHE
+> Task :build-src:generateLibrariesForLibs FROM-CACHE
+> Task :build-src:extractPrecompiledScriptPluginPlugins FROM-CACHE
+> Task :build-src:compilePluginsBlocks FROM-CACHE
+> Task :build-src:generatePrecompiledScriptPluginAccessors FROM-CACHE
+> Task :build-src:generateScriptPluginAdapters FROM-CACHE
+> Task :build-src:verifyEarlyEvaluatedBuild FROM-CACHE
+> Task :build-src:verifyTopLevelBuild FROM-CACHE
+> Task :build-src:compileKotlin FROM-CACHE
+> Task :build-src:compileJava FROM-CACHE
+> Task :build-src:pluginDescriptors
+> Task :build-src:processResources
+> Task :build-src:classes
+> Task :build-src:jar
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :baker
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :loadtest
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :synx
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :generateJavaTemplates
+> Task :processResources
+> Task :protocol:compileJava FROM-CACHE
+> Task :baker:processResources
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar
+> Task :game-rts:processResources
+> Task :plugin-api:processResources NO-SOURCE
+> Task :server-app:buildInfo
+> Task :server-app:processResources
+> Task :server-app:processTestResources
+> Task :synx:processResources NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :compileJava FROM-CACHE
+> Task :classes
+> Task :synx:compileJava FROM-CACHE
+> Task :baker:compileJava FROM-CACHE
+> Task :baker:classes
+> Task :baker:jar
+> Task :synx:classes UP-TO-DATE
+> Task :synx:jar
+> Task :jar
+> Task :plugin-api:compileJava FROM-CACHE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar
+> Task :game-rts:compileJava FROM-CACHE
+> Task :game-rts:classes
+> Task :game-rts:jar
+> Task :testing:compileJava FROM-CACHE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar
+> Task :server-app:compileJava
+> Task :server-app:classes
+
+> Task :server-app:compileTestJava FAILED
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-M/server-app/src/test/java/io/github/bearisbug/synaxis/app/store/FrozenBlockUseIntegrationTest.java:15: 错误: 找不到符号
+import io.github.bearisbug.synaxis.instance.block.BlockFace;
+                                                 ^
+  符号:   类 BlockFace
+  位置: 程序包 io.github.bearisbug.synaxis.instance.block
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-M/server-app/src/test/java/io/github/bearisbug/synaxis/app/MapShardPlayerStateLaunchTest.java:284: 警告: [deprecation] Pos中的Pos(Point,float,float)已过时
+                    return new Pos(position.position(), position.yaw(), position.pitch());
+                           ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-M/server-app/src/test/java/io/github/bearisbug/synaxis/app/store/FrozenBlockUseIntegrationTest.java:105: 错误: 找不到符号
+                    BlockFace.TOP, 0.5f, 1f, 0.5f, false, false, sequence), player);
+                    ^
+  符号:   变量 BlockFace
+  位置: 类 FrozenBlockUseIntegrationTest
+2 个错误
+1 个警告
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-M/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':server-app:compileTestJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  /Users/bug/Documents/Projects/Minecraft/synaxis-wt/r075-M/server-app/src/test/java/io/github/bearisbug/synaxis/app/store/FrozenBlockUseIntegrationTest.java:15: 错误: 找不到符号
+  import io.github.bearisbug.synaxis.instance.block.BlockFace;
+                                                   ^
+    符号:   类 BlockFace
+    位置: 程序包 io.github.bearisbug.synaxis.instance.block
+  2 个错误
+  1 个警告
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 13s
+41 actionable tasks: 19 executed, 22 from cache
+Configuration cache entry stored.
+[fix-M] gradle exit=1 end 13:32:47
+exit=1

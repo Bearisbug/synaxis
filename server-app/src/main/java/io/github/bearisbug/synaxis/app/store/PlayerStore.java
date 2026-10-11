@@ -10,8 +10,12 @@ import io.github.bearisbug.synaxis.event.EventListener;
 import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.event.item.ItemDropEvent;
 import io.github.bearisbug.synaxis.event.item.PickupItemEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerBlockInteractEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerBlockPlaceEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerUseItemEvent;
 import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
+import io.github.bearisbug.synaxis.event.trait.PlayerEvent;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.plugin.DataSection;
@@ -164,12 +168,12 @@ public final class PlayerStore implements ShutdownParticipant {
     private final Queue<Record> autosaveOrder = new ConcurrentLinkedQueue<>();
     private final Map<Record, CompletableFuture<SaveResult>> shutdownSaves = new ConcurrentHashMap<>();
     private final AtomicBoolean directSnapshotWarned = new AtomicBoolean();
-    // The pickups and drops the root node cancelled for a frozen player, until the freeze node
+    // The pickups, drops and uses the root node cancelled for a frozen player, until the freeze node
     // cancels them again (attach): a dispatch runs on one thread, and by identity, since a listener
     // may dispatch another pickup or drop in the middle of one. Weak keys: a dispatch an exception
     // cuts short between the two never reaches the freeze node, and the store sees no end of the
-    // dispatch to clear it at. They compare by identity all the same, since only the two event
-    // classes themselves reach these listeners and neither overrides equals or hashCode
+    // dispatch to clear it at. They compare by identity all the same, since only the event classes
+    // themselves reach these listeners and none of them overrides equals or hashCode
     private final ThreadLocal<Set<CancellableEvent>> frozenAtRoot =
             ThreadLocal.withInitial(() -> Collections.newSetFromMap(new WeakHashMap<>()));
     // Only touched by the autosave task: online players summed per tick, one save per period
@@ -250,8 +254,9 @@ public final class PlayerStore implements ShutdownParticipant {
     }
 
     /**
-     * Hooks the store into the process: logout saves, the freeze of pickups and drops, the autosave
-     * and the presence refresh, and the kick requests of other shards.
+     * Hooks the store into the process: logout saves, the freeze of pickups, drops, placing and
+     * using blocks and using items, the autosave and the presence refresh, and the kick requests of
+     * other shards.
      *
      * @param hostNode the host's event node
      */
@@ -273,6 +278,12 @@ public final class PlayerStore implements ShutdownParticipant {
         final EventNode<Event> root = process.eventHandler();
         root.addListener(EventListener.builder(PickupItemEvent.class).ignoreCancelled(false).handler(pickups).build());
         root.addListener(EventListener.builder(ItemDropEvent.class).ignoreCancelled(false).handler(drops).build());
+        // Placing a block, using one and using an item the same way (API-PROD-005): a transfer's snapshot
+        // is the inventory the target restores, and a block placed after it would be in the world as
+        // well. The interaction too, as cancelling it alone does not stop the placement after it
+        root.addListener(cancelIfFrozen(PlayerBlockPlaceEvent.class));
+        root.addListener(cancelIfFrozen(PlayerBlockInteractEvent.class));
+        root.addListener(cancelIfFrozen(PlayerUseItemEvent.class));
         // Again at 3, after the plugin priorities LOWEST..HIGHEST (-2..2) and before MONITOR (4), see
         // PluginEventsImpl#tier: cancelled whatever a plugin made of it, and MONITOR sees it cancelled.
         // Only the events the root node cancelled, never on a second reading of the freeze: a transfer
@@ -284,6 +295,12 @@ public final class PlayerStore implements ShutdownParticipant {
         freeze.addListener(EventListener.builder(PickupItemEvent.class).ignoreCancelled(false)
                 .handler(this::cancelAgain).build());
         freeze.addListener(EventListener.builder(ItemDropEvent.class).ignoreCancelled(false)
+                .handler(this::cancelAgain).build());
+        freeze.addListener(EventListener.builder(PlayerBlockPlaceEvent.class).ignoreCancelled(false)
+                .handler(this::cancelAgain).build());
+        freeze.addListener(EventListener.builder(PlayerBlockInteractEvent.class).ignoreCancelled(false)
+                .handler(this::cancelAgain).build());
+        freeze.addListener(EventListener.builder(PlayerUseItemEvent.class).ignoreCancelled(false)
                 .handler(this::cancelAgain).build());
         hostNode.addChild(freeze);
         process.scheduler().scheduleTask(() -> {
@@ -297,6 +314,13 @@ public final class PlayerStore implements ShutdownParticipant {
             return TaskSchedule.seconds(10);
         }, TaskSchedule.seconds(10));
         redis.listen(this::kickRequested);
+    }
+
+    /** The root node's reading of the freeze for a player's event, built to run on cancelled events too. */
+    private <E extends PlayerEvent & CancellableEvent> EventListener<E> cancelIfFrozen(Class<E> type) {
+        return EventListener.builder(type).ignoreCancelled(false).handler(event -> {
+            if (isFrozen(event.getPlayer())) cancelAtRoot(event);
+        }).build();
     }
 
     private void cancelAtRoot(CancellableEvent event) {

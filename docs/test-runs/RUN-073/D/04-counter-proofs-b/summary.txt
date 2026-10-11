@@ -1,0 +1,24 @@
+io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest: tests=4 failures=1 errors=0 skipped=0
+  ok   aStoredSectionOutsideTheLayoutIsRefused(Env)
+  FAIL itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(Env): java.lang.IllegalArgumentException: java.lang.IllegalArgumentException: slot 3: components: minecraft:enchantments: Missing registries in transcoder
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(PlayerStateCodecIntegrationTest.java:84)
+  ok   theCoreAndTheRtsWorldsCarryNoMap(Env)
+  ok   theLayoutIsTheOneOfTheDesign(Env)
+io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest: tests=4 failures=1 errors=0 skipped=0
+  ok   aLogoutBeforeTheFirstSpawnWritesNoSection(Env)
+  FAIL aRestartedShardGivesThePlayerBackItsState(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the logout wrote synaxis:player ==> expected: not <null>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest.aRestartedShardGivesThePlayerBackItsState(PlayerStatePostgresIntegrationTest.java:108)
+  ok   anUndecodableSectionRefusesTheLoginAndStaysAsItIs(Env)
+  ok   aTransferCarriesTheSectionToTheTargetShard(Env)
+io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest: tests=10 failures=1 errors=0 skipped=0
+  ok   underTheRtsRuleThePluginSpawnDecidesThePosition(Env)
+  ok   aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(Env)
+  ok   aPlayerThatLeftOnTheDeathScreenComesBackAsARespawn(Env)
+  ok   aSnapshotThatFindsNothingChangedWritesNothing(Env)
+  ok   aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)
+  ok   theCoreRuleTakesOnlyAPositionSavedInTheCoreWorld(Env)
+  ok   aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)
+  ok   theHostSectionIsTheHostsAlone(Env)
+  ok   aSavedHealthAboveTheMaximumIsTheMaximum(Env)
+  FAIL aMapShardTakesTheSavedPositionOnlyWhenAllThreeHold(Env): org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: another build ==> expected: <Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]> but was: <Pos[x=40.5, y=40.0, z=40.5, yaw=90.0, pitch=0.0]>
+       at at io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest.aMapShardTakesTheSavedPositionOnlyWhenAllThreeHold(PlayerStateSectionIntegrationTest.java:246)

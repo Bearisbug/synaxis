@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-11T00:36:45.451Z" hostname="Mac.local" time="0.934">
+  <properties/>
+  <testcase name="theTableOfTheConfigFileIsEveryKeyTheCodeReads()" classname="io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest" time="0.934"/>
+  <system-out><![CDATA[config key gate: 117 keys read, 117 in ConfigFile.KEYS, 21 meter names left out
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

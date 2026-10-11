@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-11T00:36:56.243Z" hostname="Mac.local" time="9.789">
+  <properties/>
+  <testcase name="aClientThatNeverAnswersTheKnownPacksDoesNotHoldTheStop(Path)" classname="io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest" time="1.441"/>
+  <testcase name="aCountdownLeavesAClientThatStillConfiguresInTheShutdownSave(Path)" classname="io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest" time="3.432"/>
+  <testcase name="aClientThatNeverAcknowledgesTheEndOfItsConfigurationDoesNotHoldTheStop(Path)" classname="io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest" time="1.44"/>
+  <testcase name="aCountdownIsAnnouncedToAClientInThePlayState(Path)" classname="io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest" time="3.475"/>
+  <system-out><![CDATA[08:37:04.694 [Syn-Store-Write] WARN  i.g.b.synaxis.app.store.PlayerStore - Saving a character failed: character_id=1 release=true (4 store failures since the last report)
+java.sql.SQLException: HikariDataSource HikariDataSource (synaxis-store) has been closed.
+	at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:95)
+	at io.github.bearisbug.synaxis.app.store.PostgresBackend.write(PostgresBackend.java:136)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.write(PlayerStore.java:1028)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.drain(PlayerStore.java:923)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.lambda$submit$0(PlayerStore.java:896)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:460)
+08:37:05.259 [Syn-Store-Write] WARN  i.g.b.synaxis.app.store.PlayerStore - Saving a character failed: character_id=1 release=true (4 store failures since the last report)
+java.sql.SQLException: HikariDataSource HikariDataSource (synaxis-store) has been closed.
+	at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:95)
+	at io.github.bearisbug.synaxis.app.store.PostgresBackend.write(PostgresBackend.java:136)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.write(PlayerStore.java:1028)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.drain(PlayerStore.java:923)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.lambda$submit$0(PlayerStore.java:896)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:460)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

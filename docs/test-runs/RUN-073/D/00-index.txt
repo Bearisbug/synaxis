@@ -1,0 +1,24 @@
+RUN-073 group D (player section synaxis:player), branch prod/r073-D, code commit 2822b00342, based on prod/r073-A 67c7a17e93.
+Every run: zsh ~/.claude/r073/gradle.zsh <worktree> fix-D ... (--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, JDK 25),
+default mode (no strict grid). PostgreSQL classes ran with SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres and the
+password passed only through the environment. No Redis was needed. Six Gradle runs in total.
+
+01-red/                  run 1, 08:34:48-08:35:19, the skeleton (01-red/skeleton.diff: API only, no capture, no apply, encode
+                         returns {}, decode returns the default, no namespace check) and the gate test before its new entry.
+                         server-app 23 tests, 17 failed; architecture-tests TranslationKeyGateTest 2 tests, 1 failed.
+                         Green on the skeleton: aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone, aSavedHealthAboveTheMaximumIsTheMaximum
+                         and the four DefaultPlayHostIntegrationTest cases of group A.
+02-green/                run 2, 08:36:34-08:37:17, the implementation plus the regression classes: 13 classes, all green.
+                         After this run the redundant Math.min of the health was dropped (LivingEntity#setHealth clamps) and the
+                         code committed as 2822b00342; runs 3-6 are on that commit.
+03-counter-proofs-a/     run 3, 08:39:35-08:39:47, nine mutations at once (counter-proofs.diff), 4 classes: 23 tests, 13 failed,
+                         each mutation red on its own assertions (docs/TEST.md TC-PROD-722..728), the other 10 green.
+04-counter-proofs-b/     run 4, 08:40:06-08:40:16, two mutations at once (registry-less transcoder, build_id not compared),
+                         3 classes: 18 tests, 3 failed.
+05-old-counter-proofs/   run 5, 08:43:32-08:43:50, the old counter-proofs whose Main.java lines moved (TC-PROD-521 step 4, 528 step 2,
+                         603 step 2, 604 step 2, 670 step 4, 713 step 5) at the new lines, 4 classes: 12 tests, 10 failed, the reds
+                         the old cases name; FarViewLaunchTest's message is now the NullPointerException of Main.start(Main.java:340).
+06-final/                run 6, 08:53:10-08:53:52, after restoring (git checkout HEAD -- server-app/src/main) and the doc changes:
+                         16 classes (server-app 14, architecture-tests 2), all green.
+
+Each directory holds the JUnit XML of its run and summary.txt (per test: ok / FAIL with message and first test frame).

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-11T00:36:43.529Z" hostname="Mac.local" time="1.921">
+  <properties/>
+  <testcase name="theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel()" classname="io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest" time="0.457"/>
+  <testcase name="everyKeyTheServerCanSendHasTextInBothLanguageFiles()" classname="io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest" time="1.454"/>
+  <system-out><![CDATA[08:36:43.550 [Test worker] INFO  c.tngtech.archunit.core.PluginLoader - Detected Java version 25.0.4.1
+translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 16 identifiers left out
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

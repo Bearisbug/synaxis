@@ -1,0 +1,397 @@
+--- implementation/PlayerStateSection.java	2026-10-11 08:34:32
++++ server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java	2026-10-11 08:33:49
+@@ -1,70 +1,30 @@
+ package io.github.bearisbug.synaxis.app.store;
+ 
+-import com.google.gson.JsonArray;
+ import com.google.gson.JsonElement;
+ import com.google.gson.JsonObject;
+-import io.github.bearisbug.synaxis.codec.Transcoder;
+-import io.github.bearisbug.synaxis.coordinate.Pos;
+ import io.github.bearisbug.synaxis.entity.Player;
+-import io.github.bearisbug.synaxis.entity.attribute.Attribute;
+ import io.github.bearisbug.synaxis.event.Event;
+ import io.github.bearisbug.synaxis.event.EventNode;
+-import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
+-import io.github.bearisbug.synaxis.event.player.PlayerSpawnEvent;
+-import io.github.bearisbug.synaxis.inventory.PlayerInventory;
+-import io.github.bearisbug.synaxis.item.ItemStack;
+ import io.github.bearisbug.synaxis.plugin.DataSection;
+ import io.github.bearisbug.synaxis.registry.Registries;
+-import io.github.bearisbug.synaxis.registry.RegistryTranscoder;
+-import io.github.bearisbug.synaxis.synx.SynxManifest;
+-import io.github.bearisbug.synaxis.tag.Tag;
+ import org.jetbrains.annotations.Nullable;
+ 
+-import java.util.HashMap;
+-import java.util.Map;
+-import java.util.Objects;
+-import java.util.Set;
+-import java.util.TreeMap;
+-import java.util.concurrent.ConcurrentHashMap;
+-
+ /**
+- * The host's player section {@code synaxis:player} ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-047},
+- * {@code API-PROD-032}, §12.5): the position and the world it is in, the 46 inventory slots, the held slot and the
+- * health of a player, stored with the plugin sections of its character.
+- * <p>
+- * The store loads it with the other sections. It is applied once, at the player's first spawn, and only from then on
+- * captured, at the start of every snapshot: a player that leaves between its admission and its first spawn carries
+- * the engine's starting state, not its own, and leaves the stored section as it is. A capture equal to the value the
+- * section already has is not marked dirty, so a player that did nothing is not written.
++ * Skeleton for the red run: the API of {@code API-PROD-032} without its behaviour.
+  */
+ public final class PlayerStateSection implements DataSection<PlayerState> {
+ 
+     /** The id of the section, under the host's reserved plugin id. */
+     public static final String ID = "synaxis:player";
+ 
+-    /**
+-     * Set once the saved state is applied at the first spawn; only then is the state captured. In memory only, it goes
+-     * with the {@code Player}. Not a {@code synaxis:} name, which the translation key and configuration key gates would
+-     * take for a key.
+-     */
+-    static final Tag<Boolean> APPLIED = Tag.Boolean("player-state.applied");
+-
+-    private static final int SCHEMA_VERSION = 1;
+-    private static final int HOTBAR_SIZE = 9;
+-
+-    private final Transcoder<JsonElement> json;
+-    // The players that arrived with a transfer ticket, until their first spawn or their disconnect
+-    private final Set<Player> claimed = ConcurrentHashMap.newKeySet();
+     private volatile @Nullable PlayerStore store;
+-    private volatile @Nullable PositionRule rule;
+ 
+     /**
+-     * Creates the section of this process.
++     * Creates the section.
+      *
+-     * @param registries the process registries, which an item component that names a registry entry is encoded with
++     * @param registries the process registries
+      */
+     public PlayerStateSection(Registries registries) {
+-        this.json = new RegistryTranscoder<>(Transcoder.JSON, registries);
+     }
+ 
+     @Override
+@@ -74,7 +34,7 @@
+ 
+     @Override
+     public int schemaVersion() {
+-        return SCHEMA_VERSION;
++        return 1;
+     }
+ 
+     @Override
+@@ -83,217 +43,51 @@
+     }
+ 
+     /**
+-     * Registers the section with the store and hooks the first spawn and the disconnect, on the startup thread
+-     * ({@code Main} step (4)): after the store and before the plugins are enabled and the default play layer is
+-     * attached, so the host node runs this listener first among its own.
++     * Registers the section.
+      *
+      * @param store    the player store
+-     * @param hostNode the plugin host's node {@code synaxis-host}
++     * @param hostNode the host node
+      */
+     public void install(PlayerStore store, EventNode<Event> hostNode) {
+-        store.registerHostSection(this, this::capture);
++        store.registerHostSection(this, _ -> null);
+         this.store = store;
+-        hostNode.addListener(PlayerSpawnEvent.class, this::apply);
+-        hostNode.addListener(PlayerDisconnectEvent.class, event -> claimed.remove(event.getPlayer()));
+     }
+ 
+     /**
+-     * Sets the position rule of the mode, on the startup thread ({@code Main} step (5)) and before the port is bound.
++     * Sets the rule.
+      *
+      * @param rule the rule
+-     * @throws IllegalStateException if a rule is set already
+      */
+-    public synchronized void useRule(PositionRule rule) {
+-        if (this.rule != null) throw new IllegalStateException("the position rule is set already: " + this.rule);
+-        this.rule = rule;
++    public void useRule(PositionRule rule) {
+     }
+ 
+     /**
+-     * Whether a player plays a character nothing was ever captured for, which the starter kit of the default play
+-     * layer asks at the first spawn, on the tick scheduler thread.
++     * Whether the section is the default.
+      *
+      * @param player the player
+-     * @return whether its {@code synaxis:player} is still the default
++     * @return whether its value is the default
+      */
+     public boolean isFresh(Player player) {
+-        return store().hostValue(player, this).isDefault();
++        final PlayerStore installed = store;
++        if (installed == null) throw new IllegalStateException(ID + " is not installed");
++        return installed.hostValue(player, this).isDefault();
+     }
+ 
+     /**
+-     * Notes a player whose transfer ticket was accepted, on its configuration thread: it stays at the arrival point
+-     * the shard set as its respawn point instead of going to its saved position.
++     * Notes a claimed ticket.
+      *
+      * @param player the player
+      */
+     public void claimed(Player player) {
+-        claimed.add(player);
+     }
+ 
+-    /**
+-     * What the snapshots of the store take: nothing before the first spawn applied the saved state.
+-     */
+-    private @Nullable PlayerState capture(Player player) {
+-        if (!Boolean.TRUE.equals(player.getTag(APPLIED))) return null;
+-        final PositionRule current = rule();
+-        final PlayerInventory inventory = player.getInventory();
+-        final Map<Integer, ItemStack> slots = new HashMap<>();
+-        for (int slot = 0; slot < PlayerInventory.INVENTORY_SIZE; slot++) {
+-            final ItemStack stack = inventory.getItemStack(slot);
+-            if (!stack.isAir()) slots.put(slot, stack);
+-        }
+-        return new PlayerState(world(current), player.getPosition(), slots, player.getHeldSlot(), player.getHealth());
+-    }
+-
+-    private static PlayerState.World world(PositionRule rule) {
+-        return switch (rule) {
+-            case PositionRule.Core _ -> new PlayerState.Core();
+-            case PositionRule.Rts _ -> new PlayerState.Rts();
+-            case PositionRule.MapShard map -> new PlayerState.MapShard(map.mapId(), map.buildId());
+-        };
+-    }
+-
+-    /**
+-     * At the first spawn, on the tick scheduler thread: the player is in its instance at the engine's spawn position
+-     * and has its first chunks, and the snapshots of the store do not run until it is assigned a tick thread.
+-     */
+-    private void apply(PlayerSpawnEvent event) {
+-        if (!event.isFirstSpawn()) return;
+-        final Player player = event.getPlayer();
+-        final PositionRule current = rule();
+-        final boolean arrived = claimed.remove(player);
+-        final PlayerState saved = store().hostValue(player, this);
+-        if (!saved.isDefault()) {
+-            final PlayerInventory inventory = player.getInventory();
+-            for (int slot = 0; slot < PlayerInventory.INVENTORY_SIZE; slot++)
+-                inventory.setItemStack(slot, saved.inventory().getOrDefault(slot, ItemStack.AIR));
+-            player.setHeldItemSlot((byte) saved.heldSlot());
+-            final float maxHealth = (float) player.getAttributeValue(Attribute.MAX_HEALTH);
+-            if (saved.health() > 0) {
+-                player.setHealth(Math.min(saved.health(), maxHealth));
+-                if (usesSavedPosition(current, saved, arrived)) {
+-                    var _ = player.teleport(Objects.requireNonNull(saved.position(), "a captured state has a position"));
+-                }
+-            } else {
+-                // Left on the death screen: a respawn, at the respawn point
+-                player.setHealth(maxHealth);
+-            }
+-        }
+-        player.setTag(APPLIED, true);
+-    }
+-
+-    private static boolean usesSavedPosition(PositionRule rule, PlayerState saved, boolean arrived) {
+-        return switch (rule) {
+-            case PositionRule.Core _ -> saved.world() instanceof PlayerState.Core;
+-            case PositionRule.Rts _ -> false;
+-            case PositionRule.MapShard map -> !arrived
+-                    && saved.world() instanceof PlayerState.MapShard(String mapId, String buildId)
+-                    && mapId.equals(map.mapId()) && buildId.equals(map.buildId())
+-                    && inside(map.bounds(), Objects.requireNonNull(saved.position(), "a captured state has a position"));
+-        };
+-    }
+-
+-    private static boolean inside(SynxManifest.Bounds bounds, Pos position) {
+-        return position.chunkX() >= bounds.minX() && position.chunkX() <= bounds.maxX()
+-                && position.chunkZ() >= bounds.minZ() && position.chunkZ() <= bounds.maxZ();
+-    }
+-
+     @Override
+     public JsonElement encode(PlayerState value) {
+-        final JsonObject object = new JsonObject();
+-        final PlayerState.World savedWorld = Objects.requireNonNull(value.world(), "the default state is never stored");
+-        final JsonObject world = new JsonObject();
+-        world.addProperty("kind", switch (savedWorld) {
+-            case PlayerState.Core _ -> "core";
+-            case PlayerState.Rts _ -> "rts";
+-            case PlayerState.MapShard _ -> "map";
+-        });
+-        if (savedWorld instanceof PlayerState.MapShard(String mapId, String buildId)) {
+-            world.addProperty("map_id", mapId);
+-            world.addProperty("build_id", buildId);
+-        }
+-        object.add("world", world);
+-        final Pos position = Objects.requireNonNull(value.position(), "the default state is never stored");
+-        final JsonObject pos = new JsonObject();
+-        pos.addProperty("x", position.x());
+-        pos.addProperty("y", position.y());
+-        pos.addProperty("z", position.z());
+-        pos.addProperty("yaw", position.yaw());
+-        pos.addProperty("pitch", position.pitch());
+-        object.add("pos", pos);
+-        final JsonArray inventory = new JsonArray();
+-        for (Map.Entry<Integer, ItemStack> slot : new TreeMap<>(value.inventory()).entrySet()) {
+-            final JsonObject entry = new JsonObject();
+-            entry.addProperty("slot", slot.getKey());
+-            entry.add("item", ItemStack.CODEC.encode(json, slot.getValue()).orElseThrow("slot " + slot.getKey()));
+-            inventory.add(entry);
+-        }
+-        object.add("inventory", inventory);
+-        object.addProperty("held_slot", value.heldSlot());
+-        object.addProperty("health", value.health());
+-        return object;
++        return new JsonObject();
+     }
+ 
+-    /**
+-     * Decodes a stored section; a field that is missing, out of its range or not a finite number, a slot given twice
+-     * and an item that does not decode all refuse the login ({@code API-PROD-005}).
+-     *
+-     * @throws RuntimeException for every one of those
+-     */
+     @Override
+     public PlayerState decode(JsonElement stored, int storedVersion) {
+-        final JsonObject object = stored.getAsJsonObject();
+-        final JsonObject world = field(object, "world").getAsJsonObject();
+-        final String kind = field(world, "kind").getAsString();
+-        final PlayerState.World decodedWorld = switch (kind) {
+-            case "core" -> new PlayerState.Core();
+-            case "rts" -> new PlayerState.Rts();
+-            case "map" -> new PlayerState.MapShard(field(world, "map_id").getAsString(),
+-                    field(world, "build_id").getAsString());
+-            default -> throw new IllegalArgumentException("world.kind " + kind + " is not core, rts or map");
+-        };
+-        final JsonObject pos = field(object, "pos").getAsJsonObject();
+-        final Pos position = new Pos(finite(pos, "x"), finite(pos, "y"), finite(pos, "z"),
+-                (float) finite(pos, "yaw"), (float) finite(pos, "pitch"));
+-        final Map<Integer, ItemStack> inventory = new HashMap<>();
+-        for (JsonElement element : field(object, "inventory").getAsJsonArray()) {
+-            final JsonObject entry = element.getAsJsonObject();
+-            final int slot = field(entry, "slot").getAsInt();
+-            if (slot < 0 || slot >= PlayerInventory.INVENTORY_SIZE)
+-                throw new IllegalArgumentException("inventory slot " + slot + " is not 0.." + (PlayerInventory.INVENTORY_SIZE - 1));
+-            final ItemStack stack = ItemStack.CODEC.decode(json, field(entry, "item")).orElseThrow("inventory slot " + slot);
+-            if (stack.isAir()) throw new IllegalArgumentException("inventory slot " + slot + " holds air");
+-            if (inventory.put(slot, stack) != null)
+-                throw new IllegalArgumentException("inventory slot " + slot + " is there twice");
+-        }
+-        final int heldSlot = field(object, "held_slot").getAsInt();
+-        if (heldSlot < 0 || heldSlot >= HOTBAR_SIZE)
+-            throw new IllegalArgumentException("held_slot " + heldSlot + " is not 0.." + (HOTBAR_SIZE - 1));
+-        final double health = finite(object, "health");
+-        if (health < 0) throw new IllegalArgumentException("health " + health + " is negative");
+-        return new PlayerState(decodedWorld, position, inventory, heldSlot, (float) health);
++        return PlayerState.DEFAULT;
+     }
+-
+-    private static JsonElement field(JsonObject object, String name) {
+-        final JsonElement value = object.get(name);
+-        if (value == null || value.isJsonNull()) throw new IllegalArgumentException("no " + name);
+-        return value;
+-    }
+-
+-    private static double finite(JsonObject object, String name) {
+-        final double value = field(object, name).getAsDouble();
+-        if (!Double.isFinite(value)) throw new IllegalArgumentException(name + " " + value + " is not finite");
+-        return value;
+-    }
+-
+-    private PlayerStore store() {
+-        final PlayerStore installed = store;
+-        if (installed == null) throw new IllegalStateException(ID + " is not installed");
+-        return installed;
+-    }
+-
+-    private PositionRule rule() {
+-        final PositionRule current = rule;
+-        if (current == null) throw new IllegalStateException("no position rule is set for " + ID);
+-        return current;
+-    }
+ }
+--- implementation/PlayerStore.java	2026-10-11 08:33:12
++++ server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java	2026-10-11 08:33:59
+@@ -75,8 +75,6 @@
+     private static final int DEFAULT_AUTOSAVE_SECONDS = 60;
+     private static final long SAVE_ONLINE_BUDGET_SECONDS = 10;
+     private static final String STOPPING = "the shard is stopping";
+-    /** The namespace of the host's own sections; {@code synaxis} is the plugin id the host reserves. */
+-    private static final String HOST_SECTION_PREFIX = "synaxis:";
+ 
+     /**
+      * The budgets of §17 {@code store.load} and {@code store.autosave}.
+@@ -153,10 +151,7 @@
+     private final BiConsumer<String, Map<String, ?>> analytics;
+     private final Semaphore loads;
+     private final LogBudget failures = new LogBudget(LOGGER, "store failures");
+-    private final LogBudget captureFailures = new LogBudget(LOGGER, "section captures");
+     private final Map<String, DataSection<?>> sections = new ConcurrentHashMap<>();
+-    // The host's own sections and what takes their value off a player at every snapshot
+-    private final Map<String, Function<Player, ?>> hostCaptures = new ConcurrentHashMap<>();
+     private final List<Hook> shutdownHooks = new CopyOnWriteArrayList<>();
+     private final Map<Player, Record> records = new ConcurrentHashMap<>();
+     // The login of each account that is loading right now, completed when its load is over
+@@ -340,10 +335,7 @@
+      * @throws IllegalStateException    if the id is already registered
+      */
+     public <T> void registerHostSection(DataSection<T> section, Function<Player, @Nullable T> capture) {
+-        if (!section.id().startsWith(HOST_SECTION_PREFIX))
+-            throw new IllegalArgumentException("host section " + section.id() + " is not in the namespace " + HOST_SECTION_PREFIX);
+         register(section);
+-        hostCaptures.put(section.id(), capture);
+     }
+ 
+     /**
+@@ -834,7 +826,6 @@
+ 
+     /** Captures the host sections, then encodes the dirty sections, on the tick thread that owns the player. */
+     private Map<String, Encoded> snapshot(Record record) {
+-        capture(record);
+         final long takenAt = record.commits.get();
+         final Map<String, Encoded> out = new HashMap<>();
+         for (String id : List.copyOf(record.dirty)) {
+@@ -851,27 +842,6 @@
+             }
+         }
+         return out;
+-    }
+-
+-    /**
+-     * Takes the value of every host section off the player: one that differs from the section's value replaces it and
+-     * marks the section dirty, so a player whose state did not change writes nothing. A capture that throws leaves the
+-     * section as it is.
+-     */
+-    private void capture(Record record) {
+-        for (Map.Entry<String, Function<Player, ?>> host : hostCaptures.entrySet()) {
+-            final Object captured;
+-            try {
+-                captured = host.getValue().apply(record.player);
+-            } catch (RuntimeException e) {
+-                captureFailures.error(e, "Capturing a section failed, it keeps its value: character_id={} section_id={}",
+-                        record.characterId, host.getKey());
+-                continue;
+-            }
+-            if (captured == null || captured.equals(record.values.get(host.getKey()))) continue;
+-            record.values.put(host.getKey(), captured);
+-            record.dirty.add(host.getKey());
+-        }
+     }
+ 
+     private static StoreBackend.StoredSection encode(DataSection<?> section, Object value) {
+--- implementation/TranslationKeyGateTest.java	2026-10-11 08:33:12
++++ architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java	2026-10-11 08:33:22
+@@ -68,8 +68,7 @@
+             Map.entry("synaxis:shard/drain", "JSON-RPC method of the management interface (API-PROD-022)"),
+             Map.entry("synaxis:shard/status", "JSON-RPC method of the management interface (API-PROD-022)"),
+             Map.entry("synaxis:broadcast", "JSON-RPC method of the management interface (API-PROD-022)"),
+-            Map.entry("synaxis:profile", "JSON-RPC method of the management interface (API-PROD-022)"),
+-            Map.entry("synaxis:player", "id of the host's player data section (API-PROD-032)"));
++            Map.entry("synaxis:profile", "JSON-RPC method of the management interface (API-PROD-022)"));
+ 
+     /** The language files of the mod, in the directory the build passes as {@code synaxis.lang.dir}. */
+     private static final List<String> LANGUAGE_FILES = List.of("en_us.json", "zh_cn.json");

@@ -173,6 +173,12 @@ tasks.register<net.fabricmc.loom.task.prod.ClientProductionRunTask>("runProducti
     mods.from(gametestJar)
     jvmArgs.add("-Dfabric.client.gametest")
     jvmArgs.addAll(authlibHosts)
+    // Loom passes no --username, so the game names itself Player and the current milliseconds modulo
+    // 1000. SYNAXIS_GAMETEST_USERNAME=<name> plays as that name instead, with the offline UUID the game
+    // derives from it: the P10 jobs seed the character of that account before the client joins
+    // (docs/DESIGN-PROD.md API-PROD-026).
+    programArgs.addAll(providers.environmentVariable("SYNAXIS_GAMETEST_USERNAME").map { listOf("--username", it) }
+        .orElse(emptyList()))
     runDir = layout.buildDirectory.dir("run/productionClientGameTest")
 }
 

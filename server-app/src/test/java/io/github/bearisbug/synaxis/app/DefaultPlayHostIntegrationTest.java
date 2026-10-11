@@ -2,20 +2,23 @@ package io.github.bearisbug.synaxis.app;
 
 import io.github.bearisbug.synaxis.app.play.DefaultPlay;
 import io.github.bearisbug.synaxis.app.play.DefaultPlay.Feature;
+import io.github.bearisbug.synaxis.app.store.PlayerStateSection;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
+import io.github.bearisbug.synaxis.app.store.PositionRule;
 import io.github.bearisbug.synaxis.coordinate.BlockFace;
 import io.github.bearisbug.synaxis.coordinate.Vec;
+import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.ItemEntity;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.item.ItemDropEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerChatEvent;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
-import io.github.bearisbug.synaxis.inventory.PlayerInventoryUtils;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientChatMessagePacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerActionPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.SystemChatPacket;
+import io.github.bearisbug.synaxis.network.player.GameProfile;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.plugin.PluginContext;
 import io.github.bearisbug.synaxis.plugin.PluginDescriptor;
@@ -32,16 +35,17 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -101,7 +105,7 @@ class DefaultPlayHostIntegrationTest {
         final PlayerStore store = PlayerStore.inMemory(env.process(), (_, _) -> {
         });
         final PluginHost host = host(env, store, plugin);
-        final InstanceContainer world = coreWorld(env, host);
+        final InstanceContainer world = coreWorld(env, host, store);
         final TestConnection connectionA = env.createConnection();
         final TestConnection connectionB = env.createConnection();
         final Player a = connectionA.connect(world, CoreMode.SPAWN);
@@ -128,7 +132,7 @@ class DefaultPlayHostIntegrationTest {
         final PlayerStore store = PlayerStore.inMemory(env.process(), (_, _) -> {
         });
         final PluginHost host = host(env, store, new Plugin("whisper", context::set));
-        final InstanceContainer world = coreWorld(env, host);
+        final InstanceContainer world = coreWorld(env, host, store);
         final TestConnection connectionA = env.createConnection();
         final TestConnection connectionB = env.createConnection();
         final Player a = connectionA.connect(world, CoreMode.SPAWN);
@@ -156,7 +160,7 @@ class DefaultPlayHostIntegrationTest {
         final PlayerStore store = PlayerStore.inMemory(env.process(), (_, _) -> {
         });
         final PluginHost host = host(env, store);
-        final InstanceContainer world = coreWorld(env, host);
+        final InstanceContainer world = coreWorld(env, host, store);
         final Player player = env.createPlayer(world, CoreMode.SPAWN);
         // The shutdown save phase freezes every player; with the tick alive the snapshot runs on the player's tick
         final CompletableFuture<?> saved = store.saveAll(Duration.ofSeconds(1), true);
@@ -170,14 +174,27 @@ class DefaultPlayHostIntegrationTest {
     }
 
     /**
-     * Until {@code synaxis:player} is registered, a character counts as new while its inventory is empty.
+     * A character is new while its {@code synaxis:player} was never captured ({@code API-PROD-032}): the starter kit
+     * comes once, and a character that left with its inventory emptied comes back to it empty.
      */
     @Test
-    void aCharacterIsNewWhileItsInventoryIsEmpty(Env env) {
-        final Player player = env.createPlayer(env.createFlatInstance(), CoreMode.SPAWN);
-        assertTrue(Main.emptyInventory(player), "an empty inventory");
-        player.getInventory().setItemStack(PlayerInventoryUtils.OFFHAND_SLOT, ItemStack.of(Material.DIRT));
-        assertFalse(Main.emptyInventory(player), "a stack in the off hand");
+    void theStarterKitComesOnceEvenToAnEmptiedInventory(Env env) {
+        final PlayerStore store = PlayerStore.inMemory(env.process(), (_, _) -> {
+        });
+        final PluginHost host = host(env, store);
+        final InstanceContainer world = coreWorld(env, host, store);
+        final GameProfile profile = new GameProfile(UUID.randomUUID(), "Kit");
+        final Player first = env.createConnection(profile).connect(world, CoreMode.SPAWN);
+        assertEquals(ItemStack.of(Material.STONE, 64), first.getInventory().getItemStack(0), "the kit of a new character");
+        first.acquirable().sync(_ -> first.getInventory().clear());
+        first.scheduleNextTick(Entity::remove);
+        env.tick();
+
+        final Player again = env.createConnection(profile).connect(world, CoreMode.SPAWN);
+
+        assertTrue(Arrays.stream(again.getInventory().getItemStacks()).allMatch(ItemStack::isAir),
+                "the second login of the character got " + Arrays.toString(again.getInventory().getItemStacks()));
+        host.disableAll();
     }
 
     private PluginHost host(Env env, PlayerStore store, Plugin... plugins) {
@@ -191,13 +208,17 @@ class DefaultPlayHostIntegrationTest {
     }
 
     /**
-     * Step (5) of {@code Main} for the core world: the world, then the layer on the host node.
+     * Steps (4) and (5) of {@code Main} for the core world: the player section on the host node, the world, its
+     * position rule, then the layer.
      */
-    private static InstanceContainer coreWorld(Env env, PluginHost host) {
+    private static InstanceContainer coreWorld(Env env, PluginHost host, PlayerStore store) {
+        final PlayerStateSection playerState = new PlayerStateSection(env.process().registries());
+        playerState.install(store, host.hostNode());
         final InstanceContainer world = CoreMode.start(env.process(), host, Main.registerMatchDimensionType(env.process()),
                 CoreMode.Setting.ON);
+        playerState.useRule(new PositionRule.Core());
         DefaultPlay.attach(env.process(), host.hostNode(), Main.defaultPlay(CoreMode.Mode.CORE, false),
-                Main::emptyInventory, world);
+                playerState::isFresh, world);
         return world;
     }
 

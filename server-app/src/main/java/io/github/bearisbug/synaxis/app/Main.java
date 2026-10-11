@@ -32,7 +32,9 @@ import io.github.bearisbug.synaxis.app.shard.WorldFlagsImpl;
 import io.github.bearisbug.synaxis.app.store.AuthMode;
 import io.github.bearisbug.synaxis.app.store.Database;
 import io.github.bearisbug.synaxis.app.store.Migrations;
+import io.github.bearisbug.synaxis.app.store.PlayerStateSection;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
+import io.github.bearisbug.synaxis.app.store.PositionRule;
 import io.github.bearisbug.synaxis.app.store.PostgresBackend;
 import io.github.bearisbug.synaxis.app.store.RedisLink;
 import io.github.bearisbug.synaxis.app.store.ShardSession;
@@ -51,7 +53,6 @@ import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
 import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
 import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
-import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.plugin.Admission;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
@@ -254,10 +255,13 @@ public final class Main {
         // ledger, and hears about its ticket from the verifier the store builds
         final @Nullable ShardArrivals arrivals = directory == null ? null
                 : new ShardArrivals(directory, ledger::record, System::currentTimeMillis);
+        // The host's player section, which the target side of a transfer tells about a claimed ticket. A map shard
+        // registers none until ShardWorld names its map, its build and its bounds (docs/DESIGN-PROD.md API-PROD-032)
+        final @Nullable PlayerStateSection playerState = map == null ? new PlayerStateSection(process.registries()) : null;
         // The player store before the plugins, which register their sections in onEnable; a shard
         // whose database is not the one it expects refuses here, before anything is bound.
         final StoreRuntime store = openStore(storeMode, process, auth, shardId, ledger,
-                arrivals == null ? (_, _) -> {} : arrivals::claimed, System.getenv());
+                claimedBy(arrivals, playerState), System.getenv());
         // On the pool and the Redis link of the store; built only, nothing is read or started yet
         final @Nullable DirectoryMode directoryMode = directory == null || arrivals == null || map == null ? null
                 : DirectoryMode.build(directory, arrivals, store, map.settings(), process);
@@ -269,6 +273,9 @@ public final class Main {
         process.setShutdownParticipant(shutdown);
         final PluginHost host = new PluginHost(process, Path.of("plugins"), ledger, store.store(), store.verifier(),
                 store.permissions(), store.moderation(), store.cooldowns());
+        // Before the plugins and the default play layer: the host node runs its own listeners in the order they were
+        // added, so the saved state is applied at the first spawn before anything else of the host looks at it
+        if (playerState != null) playerState.install(store.store(), host.hostNode());
         process.command().register(new RoleCommand(process, store.permissions(), ledger::record));
         new ModerationCommands(process, store.moderation(), store.permissions(), ledger::record).commands()
                 .forEach(process.command()::register);
@@ -324,10 +331,14 @@ public final class Main {
             }
             case REFUSED -> refuseToServe(host, ledger, runningMatches, port);
         }
+        // The position rule of the mode; a refused launch has exited in its branch above
+        if (playerState != null)
+            playerState.useRule(mode == CoreMode.Mode.CORE ? new PositionRule.Core() : new PositionRule.Rts());
         // The default play layer of the mode, on the host node and before the port opens
         // (docs/DESIGN-PROD.md API-PROD-031)
         final Set<DefaultPlay.Feature> play = defaultPlay(mode, shardWorld != null);
-        if (!play.isEmpty()) DefaultPlay.attach(process, host.hostNode(), play, Main::emptyInventory, coreWorld);
+        if (!play.isEmpty()) DefaultPlay.attach(process, host.hostNode(), play, Objects.requireNonNull(playerState,
+                "a process with a play layer serves no map")::isFresh, coreWorld);
 
         // The only place the plugins are disabled, console and SIGINT alike: the engine drains its
         // shutdown tasks after the players are saved and kicked, between two ticks, and before it
@@ -703,7 +714,7 @@ public final class Main {
      * @param ledger      the event ledger
      * @param onClaimed   told about every transfer ticket the target side accepts
      *                    ({@code docs/DESIGN-M3.md} {@code API-M3-010}, the arrivals of a shard in the
-     *                    directory mode)
+     *                    directory mode; {@code API-PROD-032}, the player section)
      * @param environment where the database settings come from
      * @return the store
      * @throws IllegalArgumentException if the shard must not start
@@ -880,15 +891,19 @@ public final class Main {
     }
 
     /**
-     * Whether a character counts as new for the starter kit of the default play layer: while its inventory is empty.
-     * This stands in for {@code PlayerStateSection#isFresh} until {@code synaxis:player} is registered
-     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-032}).
+     * What the target side of a transfer tells about a claimed ticket: the arrivals of the directory mode, then the
+     * player section, which leaves the player at its arrival point ({@code docs/DESIGN-PROD.md} {@code API-PROD-032}).
      *
-     * @param player the player at its first spawn
-     * @return whether every slot of its inventory is air
+     * @param arrivals    the arrivals of a shard in the directory mode, null outside it
+     * @param playerState the player section, null on a map shard
+     * @return the callback {@code openStore} takes
      */
-    static boolean emptyInventory(Player player) {
-        return Arrays.stream(player.getInventory().getItemStacks()).allMatch(ItemStack::isAir);
+    static BiConsumer<Player, TransferTicket> claimedBy(@Nullable ShardArrivals arrivals,
+                                                        @Nullable PlayerStateSection playerState) {
+        return (player, ticket) -> {
+            if (arrivals != null) arrivals.claimed(player, ticket);
+            if (playerState != null) playerState.claimed(player);
+        };
     }
 
     /**

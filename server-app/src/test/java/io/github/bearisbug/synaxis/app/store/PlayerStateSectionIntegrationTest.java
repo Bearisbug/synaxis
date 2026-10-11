@@ -3,6 +3,9 @@ package io.github.bearisbug.synaxis.app.store;
 import io.github.bearisbug.synaxis.component.DataComponents;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.event.player.PlayerSpawnEvent;
+import io.github.bearisbug.synaxis.instance.Chunk;
+import io.github.bearisbug.synaxis.instance.ChunkLoader;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
@@ -10,6 +13,7 @@ import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -17,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 
 import static io.github.bearisbug.synaxis.app.store.PlayerStateFixture.RESPAWN;
 import static io.github.bearisbug.synaxis.app.store.PlayerStateFixture.assertSavedStateApplied;
@@ -46,9 +51,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PlayerStateSectionIntegrationTest {
 
     private static final Pos LEFT_AT = new Pos(8.5, 40, -3.5, 45, 10);
-    private static final ItemStack PICKAXE = ItemStack.builder(Material.IRON_PICKAXE).set(DataComponents.DAMAGE, 3).build();
-    private static final Map<Integer, ItemStack> INVENTORY = Map.of(0, ItemStack.of(Material.STONE, 63), 1, PICKAXE,
-            9, ItemStack.of(Material.DIRT, 9));
 
     @Test
     void aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(Env env) {
@@ -57,7 +59,7 @@ class PlayerStateSectionIntegrationTest {
         final UUID account = UUID.randomUUID();
         final Player first = online(env, memory.store(), instance, account, "Returner");
         assertTrue(memory.section().isFresh(first), "a character nothing was captured for");
-        play(first, LEFT_AT, 2, 13, INVENTORY);
+        play(first, LEFT_AT, 2, 13, inventory());
 
         leave(env, memory.store(), first);
         final Player again = online(env, memory.store(), instance, account, "Returner");
@@ -66,7 +68,7 @@ class PlayerStateSectionIntegrationTest {
         assertEquals(LEFT_AT, again.getPosition(), "where it left, facing the same way");
         assertEquals(2, again.getHeldSlot());
         assertEquals(13f, again.getHealth());
-        assertEquals(slots(INVENTORY), slots(again), "the 46 slots");
+        assertEquals(slots(inventory()), slots(again), "the 46 slots");
         assertEquals(1, memory.store().versionOf(again), "written once, by the logout");
         assertFalse(memory.section().isFresh(again), "a character captured once");
     }
@@ -87,7 +89,7 @@ class PlayerStateSectionIntegrationTest {
         idle(env, memory.store(), player);
         assertEquals(1, memory.store().versionOf(player), "five autosaves of a player that did not move");
 
-        play(player, LEFT_AT, 2, 13, INVENTORY);
+        play(player, LEFT_AT, 2, 13, inventory());
         await(env, () -> memory.store().versionOf(player) == 2 && !memory.store().isWriting(player),
                 "the next autosave writes the change");
         leave(env, memory.store(), player);
@@ -158,7 +160,7 @@ class PlayerStateSectionIntegrationTest {
         final Instance instance = env.createFlatInstance();
         final UUID account = UUID.randomUUID();
         final Player first = online(env, memory.store(), instance, account, "Fallen");
-        play(first, LEFT_AT, 0, 20, INVENTORY);
+        play(first, LEFT_AT, 0, 20, inventory());
         first.acquirable().sync(_ -> first.kill());
         assertTrue(first.isDead());
 
@@ -169,7 +171,7 @@ class PlayerStateSectionIntegrationTest {
         assertEquals(20f, again.getHealth());
         assertFalse(again.isDead());
         assertEquals(RESPAWN, again.getPosition(), "at the respawn point, not where it died");
-        assertEquals(slots(INVENTORY), slots(again), "a death drops nothing");
+        assertEquals(slots(inventory()), slots(again), "a death drops nothing");
     }
 
     /** A saved health above the maximum is applied as the maximum. */
@@ -191,7 +193,7 @@ class PlayerStateSectionIntegrationTest {
         final Instance instance = env.createFlatInstance();
         final UUID account = UUID.randomUUID();
         final Player first = online(env, memory.store(), instance, account, "Commander");
-        play(first, LEFT_AT, 2, 13, INVENTORY);
+        play(first, LEFT_AT, 2, 13, inventory());
 
         leave(env, memory.store(), first);
         final Player again = online(env, memory.store(), instance, account, "Commander");
@@ -200,7 +202,7 @@ class PlayerStateSectionIntegrationTest {
         assertEquals(RESPAWN, again.getPosition(), "the spawn the plugin set");
         assertEquals(2, again.getHeldSlot());
         assertEquals(13f, again.getHealth());
-        assertEquals(slots(INVENTORY), slots(again));
+        assertEquals(slots(inventory()), slots(again));
         final String written = stored(memory.backend(), account);
         assertNotNull(written);
         assertTrue(written.contains("\"kind\":\"rts\""), written);
@@ -280,9 +282,106 @@ class PlayerStateSectionIntegrationTest {
         assertThrows(IllegalStateException.class, () -> plugin.markDirty(player, memory.section()), "a plugin marking it");
     }
 
+    /**
+     * A saved position in a chunk still to load: the player stands at the respawn point until the chunk is loaded and
+     * the teleport moves it, and only from then on is its state captured. A player that leaves before leaves the
+     * stored section as it is instead of writing the respawn point over the saved position.
+     */
+    @Test
+    void theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition(Env env) throws Exception {
+        final PlayerStateFixture.Memory memory = PlayerStateFixture.memory(env, new PositionRule.Core(), PlayerStore.Options.DEFAULT);
+        final Pos far = new Pos(1000.5, 40, 1000.5, 30, 0);
+        final CountDownLatch chunkLoads = new CountDownLatch(1);
+        final Instance instance = env.createFlatInstance(new GatedChunkLoader(far.chunkX(), far.chunkZ(), chunkLoads));
+        final UUID leaving = UUID.randomUUID();
+        final UUID waiting = UUID.randomUUID();
+        seed(memory.backend(), leaving, saved("{\"kind\": \"core\"}", far));
+        seed(memory.backend(), waiting, saved("{\"kind\": \"core\"}", far));
+        final String before = stored(memory.backend(), leaving);
+
+        final Player patient;
+        try {
+            final Player hasty = online(env, memory.store(), instance, leaving, "Hasty");
+            env.tick();
+            assertEquals(RESPAWN, hasty.getPosition(), "waiting for the chunk of the saved position");
+            leave(env, memory.store(), hasty);
+            assertEquals(before, stored(memory.backend(), leaving), "the saved state of a player that never got there");
+
+            patient = online(env, memory.store(), instance, waiting, "Patient");
+            env.tick();
+            assertNull(patient.getTag(PlayerStateSection.APPLIED), "applied while still at the respawn point");
+        } finally {
+            chunkLoads.countDown();
+        }
+        await(env, () -> Boolean.TRUE.equals(patient.getTag(PlayerStateSection.APPLIED)), "applied once the chunk loaded");
+        assertEquals(far, patient.getPosition(), "where the state is captured from");
+        assertSavedStateApplied(patient, "a player that waited for its chunk");
+    }
+
+    /**
+     * Back from a reconfiguration ({@code Player#startConfigurationPhase}) the engine spawns the player again with
+     * {@code isFirstSpawn()} true, as it left its instance. The saved state is applied once: what the player did since
+     * stays.
+     */
+    @Test
+    void aSecondFirstSpawnAppliesNothing(Env env) throws Exception {
+        final PlayerStateFixture.Memory memory = PlayerStateFixture.memory(env, new PositionRule.Core(), PlayerStore.Options.DEFAULT);
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        // In the chunk of the respawn point, so the first teleport is done when the first spawn is
+        seed(memory.backend(), account, saved("{\"kind\": \"core\"}", new Pos(5.5, 40, 6.5)));
+        final Player player = online(env, memory.store(), instance, account, "Reconfigured");
+        env.tick();
+        assertSavedStateApplied(player, "the first spawn");
+        play(player, LEFT_AT, 2, 13, inventory());
+
+        // What Player#spawnPlayer dispatches when the player comes back from the configuration phase
+        player.acquirable().sync(_ -> env.process().eventHandler().call(new PlayerSpawnEvent(player, instance, true)));
+
+        assertEquals(slots(inventory()), slots(player), "the 46 slots");
+        assertEquals(2, player.getHeldSlot(), "the held slot");
+        assertEquals(13f, player.getHealth(), "the health");
+        assertEquals(LEFT_AT, player.getPosition(), "the position");
+    }
+
     /** Twenty ticks, five autosave periods of {@link StoreFixture#FAST}, and whatever they wrote written. */
     private static void idle(Env env, PlayerStore store, Player player) {
         for (int tick = 0; tick < 20; tick++) env.tick();
         await(env, () -> !store.isWriting(player), "the autosaves are over");
+    }
+
+    /**
+     * Stone 63 in slot 0, an iron pickaxe with damage 3 in slot 1 and dirt 9 in slot 9. Built in the test, never in a
+     * static field: the class initializer runs before any test started a process, and an item stack built there finds
+     * its material not bound yet, which fails every test of the class.
+     */
+    private static Map<Integer, ItemStack> inventory() {
+        return Map.of(0, ItemStack.of(Material.STONE, 63),
+                1, ItemStack.builder(Material.IRON_PICKAXE).set(DataComponents.DAMAGE, 3).build(),
+                9, ItemStack.of(Material.DIRT, 9));
+    }
+
+    /** Loads chunks off the requesting thread; the one chunk it gates waits for the latch, then is generated. */
+    private record GatedChunkLoader(int chunkX, int chunkZ, CountDownLatch gate) implements ChunkLoader {
+        @Override
+        public @Nullable Chunk loadChunk(Instance instance, int x, int z) {
+            if (x == chunkX && z == chunkZ) {
+                try {
+                    gate.await();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return null; // Let the generator take over
+        }
+
+        @Override
+        public void saveChunk(Chunk chunk) {
+        }
+
+        @Override
+        public boolean supportsParallelLoading() {
+            return true;
+        }
     }
 }

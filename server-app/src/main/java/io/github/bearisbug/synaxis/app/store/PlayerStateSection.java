@@ -43,9 +43,9 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
     public static final String ID = "synaxis:player";
 
     /**
-     * Set once the saved state is applied at the first spawn; only then is the state captured. In memory only, it goes
-     * with the {@code Player}. Not a {@code synaxis:} name, which the translation key and configuration key gates would
-     * take for a key.
+     * Set once the saved state is applied at the first spawn, the teleport to the saved position included when there
+     * is one; only then is the state captured. In memory only, it goes with the {@code Player}. Not a {@code synaxis:}
+     * name, which the translation key and configuration key gates would take for a key.
      */
     static final Tag<Boolean> APPLIED = Tag.Boolean("player-state.applied");
 
@@ -155,11 +155,13 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
     /**
      * At the first spawn, on the tick scheduler thread in the serial part of the tick: the player is in its instance at
      * the engine's spawn position with its first chunks and has no tick thread yet, so no snapshot of it runs
-     * alongside.
+     * alongside. Once: a player back from a reconfiguration spawns as a first spawn again, and applying the saved state
+     * then would roll back what it did since.
      */
     private void apply(PlayerSpawnEvent event) {
         if (!event.isFirstSpawn()) return;
         final Player player = event.getPlayer();
+        if (Boolean.TRUE.equals(player.getTag(APPLIED))) return;
         final PositionRule current = rule();
         final boolean arrived = claimed.remove(player);
         final PlayerState saved = store().hostValue(player, this);
@@ -172,7 +174,11 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
                 // Above the maximum it is the maximum: setHealth clamps
                 player.setHealth(saved.health());
                 if (usesSavedPosition(current, saved, arrived)) {
-                    var _ = player.teleport(Objects.requireNonNull(saved.position(), "a captured state has a position"));
+                    // Into a chunk still to load the teleport moves the player once the chunk is loaded; until then
+                    // it stands at the respawn point, which a capture would take for its position
+                    var _ = player.teleport(Objects.requireNonNull(saved.position(), "a captured state has a position"))
+                            .whenComplete((_, _) -> player.setTag(APPLIED, true));
+                    return;
                 }
             } else {
                 // Left on the death screen: a respawn, at the respawn point

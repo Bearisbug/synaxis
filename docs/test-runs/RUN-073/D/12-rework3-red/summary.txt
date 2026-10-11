@@ -1,0 +1,16 @@
+io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest: tests=15 failures=3 errors=0 skipped=0
+  ok   underTheRtsRuleThePluginSpawnDecidesThePosition(Env)
+  ok   aSecondFirstSpawnAppliesNothing(Env)
+  ok   aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(Env)
+  FAIL aRoundTripWhileTheTeleportIsUnderWayAppliesNothing(Env) [PlayerStateSectionIntegrationTest.java:398] org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the 46 slots ==> expected: <[ItemStackImpl[material=minecraft:stone, amount=63, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:dirt, amount=1, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=mi…
+  ok   aPlayerThatLeftOnTheDeathScreenComesBackAsARespawn(Env)
+  ok   aSnapshotThatFindsNothingChangedWritesNothing(Env)
+  ok   aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)
+  FAIL aPlayerThatLeavesFromTheConfigurationPhaseComesBackAtItsRespawnPoint(Env) [PlayerStateSectionIntegrationTest.java:425] org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the respawn point, not the zeroed position ==> expected: <Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]> but was: <Pos[x=0.0, y=0.0, z=0.0, yaw=0.0, pitch=0.0]>
+  ok   theCoreRuleTakesOnlyAPositionSavedInTheCoreWorld(Env)
+  ok   aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)
+  ok   theHostSectionIsTheHostsAlone(Env)
+  FAIL theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition(Env) [PlayerStateSectionIntegrationTest.java:312] org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the teleport is under way ==> expected: <false> but was: <null>
+  ok   aRoundTripThroughTheConfigurationPhaseAppliesNothing(Env)
+  ok   aSavedHealthAboveTheMaximumIsTheMaximum(Env)
+  ok   aMapShardTakesTheSavedPositionOnlyWhenAllThreeHold(Env)

@@ -1,0 +1,26 @@
+io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest: tests=4 failures=1 errors=0 skipped=0
+  ok   aStoredSectionOutsideTheLayoutIsRefused(Env)
+  FAIL itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(Env) [PlayerStateCodecIntegrationTest.java:84] java.lang.IllegalArgumentException: java.lang.IllegalArgumentException: slot 3: components: minecraft:enchantments: Missing registries in transcoder
+  ok   theCoreAndTheRtsWorldsCarryNoMap(Env)
+  ok   theLayoutIsTheOneOfTheDesign(Env)
+io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest: tests=4 failures=1 errors=0 skipped=0
+  ok   aLogoutBeforeTheFirstSpawnWritesNoSection(Env)
+  FAIL aRestartedShardGivesThePlayerBackItsState(Env) [PlayerStatePostgresIntegrationTest.java:108] org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the logout wrote synaxis:player ==> expected: not <null>
+  ok   anUndecodableSectionRefusesTheLoginAndStaysAsItIs(Env)
+  ok   aTransferCarriesTheSectionToTheTargetShard(Env)
+io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest: tests=15 failures=6 errors=0 skipped=0
+  ok   underTheRtsRuleThePluginSpawnDecidesThePosition(Env)
+  FAIL aSecondFirstSpawnAppliesNothing(Env) [PlayerStateSectionIntegrationTest.java:341] org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the 46 slots ==> expected: <[ItemStackImpl[material=minecraft:stone, amount=63, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_pickaxe, amount=1, componentPatch=DataComponentMapImpl[components={3=>3}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl…
+  ok   aPlayerComesBackWhereItLeftWithItsInventoryHeldSlotAndHealth(Env)
+  FAIL aRoundTripWhileTheTeleportIsUnderWayAppliesNothing(Env) [PlayerStateSectionIntegrationTest.java:398] org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the 46 slots ==> expected: <[ItemStackImpl[material=minecraft:stone, amount=63, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:dirt, amount=1, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=mi…
+  ok   aPlayerThatLeftOnTheDeathScreenComesBackAsARespawn(Env)
+  ok   aSnapshotThatFindsNothingChangedWritesNothing(Env)
+  ok   aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)
+  FAIL aPlayerThatLeavesFromTheConfigurationPhaseComesBackAtItsRespawnPoint(Env) [PlayerStateSectionIntegrationTest.java:425] org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the respawn point, not the zeroed position ==> expected: <Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]> but was: <Pos[x=0.0, y=0.0, z=0.0, yaw=0.0, pitch=0.0]>
+  ok   theCoreRuleTakesOnlyAPositionSavedInTheCoreWorld(Env)
+  ok   aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone(Env)
+  ok   theHostSectionIsTheHostsAlone(Env)
+  FAIL theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition(Env) [PlayerStateSectionIntegrationTest.java:312] org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the teleport is under way ==> expected: <false> but was: <null>
+  FAIL aRoundTripThroughTheConfigurationPhaseAppliesNothing(Env) [PlayerStateSectionIntegrationTest.java:365] org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: spawned at the respawn point ==> expected: <Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]> but was: <Pos[x=5.5, y=40.0, z=6.5, yaw=0.0, pitch=0.0]>
+  ok   aSavedHealthAboveTheMaximumIsTheMaximum(Env)
+  FAIL aMapShardTakesTheSavedPositionOnlyWhenAllThreeHold(Env) [PlayerStateSectionIntegrationTest.java:248] org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: another build ==> expected: <Pos[x=0.0, y=42.0, z=0.0, yaw=0.0, pitch=0.0]> but was: <Pos[x=40.5, y=40.0, z=40.5, yaw=90.0, pitch=0.0]>

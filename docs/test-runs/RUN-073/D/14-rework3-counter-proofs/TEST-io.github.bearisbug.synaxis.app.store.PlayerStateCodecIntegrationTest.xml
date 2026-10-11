@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-11T02:17:25.951Z" hostname="Mac.local" time="0.798">
+  <properties/>
+  <testcase name="aStoredSectionOutsideTheLayoutIsRefused(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.753"/>
+  <testcase name="itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.016">
+    <failure message="java.lang.IllegalArgumentException: slot 3: components: minecraft:enchantments: Missing registries in transcoder" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: slot 3: components: minecraft:enchantments: Missing registries in transcoder
+	at io.github.bearisbug.synaxis.codec.Result.orElseThrow(Result.java:124)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSection.encode(PlayerStateSection.java:239)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(PlayerStateCodecIntegrationTest.java:84)
+</failure>
+  </testcase>
+  <testcase name="theCoreAndTheRtsWorldsCarryNoMap(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.012"/>
+  <testcase name="theLayoutIsTheOneOfTheDesign(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.01"/>
+  <system-out><![CDATA[10:17:26.703 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:17:26.707 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:17:26.707 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:17:26.724 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:17:26.724 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:17:26.725 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:17:26.739 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:17:26.739 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:17:26.739 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:17:26.749 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:17:26.749 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:17:26.749 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -44,3 +44,30 @@ below) again took the password only through the environment.
 11-rework-final/         rework run 5, 09:28:08-09:28:28, restored, 7 classes (PlayerStateSection, PlayerStatePostgres,
                          PlayerStateCodec, DefaultPlayHost, DefaultPlayStarterKit, PlayerStore, PlayerData integration tests):
                          57 tests, all green.
+
+Second review rework (label rework3-D), six more Gradle runs, same wrapper and settings, default mode. Runs 4-6 below took
+the PostgreSQL password only through the environment. The three new tests in PlayerStateSectionIntegrationTest go through
+the engine's own round trip to the configuration phase (Player#startConfigurationPhase, updateWaitingPlayers, then
+StoreFixture#spawn), without a client and without the AdmissionGate.
+
+(no directory)           rework3 run 1, 10:14:18-10:14:23, the new tests on 5b6aeab02d: the test sources did not compile
+                         (errorprone BooleanLiteral on Boolean.FALSE at PlayerStateSectionIntegrationTest.java:312); no test ran.
+(no directory)           rework3 run 2, 10:14:38-10:14:45, same code, the class alone: 15 tests, 4 failed. The two round-trip
+                         tests died in IllegalStateException "Known packs already pending": the fixture never answered the
+                         known packs query of the first configuration, and the engine refuses a second one. The helper
+                         reconfigure answers it since; the other two reds are the ones of run 3.
+12-rework3-red/          rework3 run 3, 10:15:26-10:15:33, PlayerStateSection still the one of 5b6aeab02d, the class alone:
+                         15 tests, 3 failed: aRoundTripWhileTheTeleportIsUnderWayAppliesNothing at :398 (applied a second
+                         time, slot 0 back to air), aPlayerThatLeavesFromTheConfigurationPhaseComesBackAtItsRespawnPoint at
+                         :425 (saved at (0, 0, 0) and teleported there),
+                         theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition at :312 (no tag while the teleport is
+                         under way). aRoundTripThroughTheConfigurationPhaseAppliesNothing is green on that code: position
+                         (0, 42, 0), slots and held slot kept, health 20.
+13-rework3-green/        rework3 run 4, 10:16:15-10:16:33, the fix (committed as d4603e9998), 7 classes: 60 tests, all green.
+14-rework3-counter-proofs/ rework3 run 5, 10:17:19-10:17:29, on d4603e9998, five mutations at once (counter-proofs.diff):
+                         the three of this rework (apply ignoring the tag, no false before the teleport, capture without
+                         the respawn point) and the two of 04-counter-proofs-b at their new lines; 3 classes: 23 tests,
+                         8 failed, each on the assertion docs/TEST.md TC-PROD-727 step 6 names; restored with
+                         git checkout HEAD -- server-app/src/main.
+15-rework3-final/        rework3 run 6, 10:25:08-10:25:28, restored, after the doc changes, the same 7 classes as run 4
+                         (--rerun): 60 tests, all green.

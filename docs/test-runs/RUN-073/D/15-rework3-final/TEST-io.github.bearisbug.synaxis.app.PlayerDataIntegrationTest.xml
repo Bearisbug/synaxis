@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-11T02:25:18.344Z" hostname="Mac.local" time="0.515">
+  <properties/>
+  <testcase name="aLoadThatFailsTurnsTheConnectionAwayBeforeTheAdmission(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.067"/>
+  <testcase name="aPluginOnlyRegistersInItsNamespaceAndOnlyInOnEnable(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.063"/>
+  <testcase name="anAdmissionAnsweredAfterTheShutdownSaveStartedIsRefused(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.073"/>
+  <testcase name="aPluginThatFailsToEnableLeavesNoSectionAndNoShutdownHookBehind(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.073"/>
+  <testcase name="aRefusedAdmissionGivesTheLeaseBack(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.062"/>
+  <testcase name="aPluginCannotReadASectionItDidNotRegister(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.064"/>
+  <testcase name="aSectionIsTheLoadedValueInTheWorldAndSavesThroughTheStore(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.112"/>
+  <system-out><![CDATA[10:25:18.349 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+10:25:18.350 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=probe version=1.0.0 enable_ms=0
+10:25:18.350 [virtual-9276] WARN  i.g.b.synaxis.app.store.PlayerStore - Loading a character failed: connection_id=e46ae61e-1ffa-4c64-8722-7c6415dfedd1 (1 store failures since the last report)
+java.sql.SQLException: the test database is down
+	at io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest$FailingBackend.load(PlayerDataIntegrationTest.java:328)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.loadWithin(PlayerStore.java:486)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.loadOrRefuse(PlayerStore.java:456)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.load(PlayerStore.java:417)
+	at io.github.bearisbug.synaxis.app.AdmissionGate.admit(AdmissionGate.java:100)
+	at io.github.bearisbug.synaxis.event.EventListener.lambda$of$1(EventListener.java:53)
+	at io.github.bearisbug.synaxis.event.EventListener$Builder$ListenerImpl.run(EventListener.java:66)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.callListener(EventNodeImpl.java:594)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.lambda$listenersConsumer$2(EventNodeImpl.java:511)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.lambda$createConsumer$5(EventNodeImpl.java:482)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.lambda$createConsumer$5(EventNodeImpl.java:490)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.call(EventNodeImpl.java:413)
+	at io.github.bearisbug.synaxis.event.EventNode.call(EventNode.java:189)
+	at io.github.bearisbug.synaxis.network.ConnectionManager.doConfiguration(ConnectionManager.java:466)
+	at io.github.bearisbug.synaxis.testing.TestConnectionImpl.lambda$connect$1(TestConnectionImpl.java:64)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:460)
+10:25:18.351 [virtual-9276] INFO  i.g.b.synaxis.app.store.PlayerStore - Refusing a login: connection_id=e46ae61e-1ffa-4c64-8722-7c6415dfedd1 reason=synaxis:state-unavailable cause=the database failed
+10:25:18.351 [virtual-9276] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=e46ae61e-1ffa-4c64-8722-7c6415dfedd1 identifier=RandName reason=synaxis:state-unavailable
+10:25:18.351 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=probe
+10:25:18.351 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=probe: event node, tasks, channels, admission provider, commands, tab list visibility
+10:25:18.410 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:25:18.410 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=e46ae61e-1ffa-4c64-8722-7c6415dfedd1 identifier=RandName reason=synaxis:server-stopping
+10:25:18.410 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:25:18.410 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:25:18.416 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+10:25:18.417 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=mmo version=1.0.0 enable_ms=0
+10:25:18.417 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=mmo
+10:25:18.417 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=mmo: event node, tasks, channels, admission provider, commands, tab list visibility
+10:25:18.474 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:25:18.474 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:25:18.474 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:25:18.480 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+10:25:18.480 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=probe version=1.0.0 enable_ms=0
+10:25:18.481 [virtual-9287] INFO  i.g.b.synaxis.app.store.PlayerStore - Refusing a login: connection_id=0da7ba51-f6b9-4396-a28c-a90e9a78ac1f reason=synaxis:state-unavailable cause=the shard is stopping
+10:25:18.481 [virtual-9287] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=0da7ba51-f6b9-4396-a28c-a90e9a78ac1f identifier=RandName reason=synaxis:state-unavailable
+10:25:18.481 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=probe
+10:25:18.481 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=probe: event node, tasks, channels, admission provider, commands, tab list visibility
+10:25:18.547 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:25:18.547 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=0da7ba51-f6b9-4396-a28c-a90e9a78ac1f identifier=RandName reason=synaxis:server-stopping
+10:25:18.547 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:25:18.547 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:25:18.553 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+10:25:18.554 [Test worker] ERROR i.g.bearisbug.synaxis.app.PluginHost - Plugin failed to enable: plugin_id=broken
+java.lang.IllegalStateException: the test's plugin fails to enable
+	at io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest.lambda$aPluginThatFailsToEnableLeavesNoSectionAndNoShutdownHookBehind$0(PlayerDataIntegrationTest.java:295)
+	at io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest$Probe.onEnable(PlayerDataIntegrationTest.java:110)
+	at io.github.bearisbug.synaxis.app.PluginHost.enableOne(PluginHost.java:176)
+	at io.github.bearisbug.synaxis.app.PluginHost.enable(PluginHost.java:162)
+	at io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest.aPluginThatFailsToEnableLeavesNoSectionAndNoShutdownHookBehind(PlayerDataIntegrationTest.java:303)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:700)
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:528)
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:53)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:124)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:256)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:228)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:189)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:109)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:168)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:137)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:126)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:100)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$0(InterceptingLauncher.java:46)
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:45)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.processAllTestDefinitions(JUnitPlatformTestDefinitionProcessor.java:206)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.access$000(JUnitPlatformTestDefinitionProcessor.java:123)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor.stop(JUnitPlatformTestDefinitionProcessor.java:117)
+	at org.gradle.api.internal.tasks.testing.SuiteTestDefinitionProcessor.stop(SuiteTestDefinitionProcessor.java:63)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.gradle.internal.dispatch.MethodInvocation.invokeOn(MethodInvocation.java:77)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:28)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:19)
+	at org.gradle.internal.dispatch.ContextClassLoaderDispatch.dispatch(ContextClassLoaderDispatch.java:33)
+	at org.gradle.internal.dispatch.ProxyDispatchAdapter$DispatchingInvocationHandler.invoke(ProxyDispatchAdapter.java:88)
+	at jdk.proxy2/jdk.proxy2.$Proxy6.stop(Unknown Source)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker$3.run(TestWorker.java:195)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.executeAndMaintainThreadName(TestWorker.java:126)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:103)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:63)
+	at org.gradle.process.internal.worker.child.ActionExecutionWorker.execute(ActionExecutionWorker.java:56)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:122)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:72)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.run(GradleWorkerMain.java:69)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.main(GradleWorkerMain.java:74)
+10:25:18.555 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=broken: event node, tasks, channels, admission provider, commands, tab list visibility
+10:25:18.555 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=probe version=1.0.0 enable_ms=0
+10:25:18.603 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=probe
+10:25:18.603 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=probe: event node, tasks, channels, admission provider, commands, tab list visibility
+10:25:18.619 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:25:18.619 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=2b21b66c-84db-45d9-a2f5-5827896b20ae identifier=RandName reason=synaxis:server-stopping
+10:25:18.619 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=2b21b66c-84db-45d9-a2f5-5827896b20ae identifier=RandName reason=synaxis:server-stopping
+10:25:18.620 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:25:18.620 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:25:18.626 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+10:25:18.626 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=probe version=1.0.0 enable_ms=0
+10:25:18.627 [virtual-9661] INFO  i.g.b.synaxis.app.AdmissionGate - Refusing a connection: connection_id=367e574f-aba1-4288-8e46-f0b23423036a reason=synaxis:match-unavailable cause=the admission provider refused
+10:25:18.627 [virtual-9661] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=367e574f-aba1-4288-8e46-f0b23423036a identifier=RandName reason=synaxis:match-unavailable
+10:25:18.627 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=probe
+10:25:18.627 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=probe: event node, tasks, channels, admission provider, commands, tab list visibility
+10:25:18.681 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:25:18.681 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=367e574f-aba1-4288-8e46-f0b23423036a identifier=RandName reason=synaxis:server-stopping
+10:25:18.682 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:25:18.682 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:25:18.687 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+10:25:18.688 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=other version=1.0.0 enable_ms=0
+10:25:18.688 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=probe version=1.0.0 enable_ms=0
+10:25:18.735 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=probe
+10:25:18.735 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=probe: event node, tasks, channels, admission provider, commands, tab list visibility
+10:25:18.735 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=other
+10:25:18.735 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=other: event node, tasks, channels, admission provider, commands, tab list visibility
+10:25:18.745 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:25:18.745 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=98a2206e-08c1-4096-b7fc-eda3182cdddb identifier=RandName reason=synaxis:server-stopping
+10:25:18.745 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=98a2206e-08c1-4096-b7fc-eda3182cdddb identifier=RandName reason=synaxis:server-stopping
+10:25:18.746 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:25:18.746 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:25:18.751 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+10:25:18.752 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=probe version=1.0.0 enable_ms=0
+10:25:18.800 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=probe
+10:25:18.800 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=probe: event node, tasks, channels, admission provider, commands, tab list visibility
+10:25:18.857 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:25:18.857 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=f9692049-805a-43eb-8683-fc3790a7020b identifier=RandName reason=synaxis:server-stopping
+10:25:18.857 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=f9692049-805a-43eb-8683-fc3790a7020b identifier=RandName reason=synaxis:server-stopping
+10:25:18.858 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:25:18.858 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

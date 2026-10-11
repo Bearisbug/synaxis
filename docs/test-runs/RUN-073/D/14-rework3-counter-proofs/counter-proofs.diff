@@ -1,0 +1,49 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
+index a826e590f8..b3eba5fb8a 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
+@@ -64,7 +64,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+      * @param registries the process registries, which an item component that names a registry entry is encoded with
+      */
+     public PlayerStateSection(Registries registries) {
+-        this.json = new RegistryTranscoder<>(Transcoder.JSON, registries);
++        this.json = Boolean.getBoolean("proof.never") ? new RegistryTranscoder<>(Transcoder.JSON, registries) : Transcoder.JSON;
+     }
+ 
+     @Override
+@@ -143,7 +143,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+         }
+         // Sent back to the configuration phase the player is in no instance, at the position the engine zeroed; it
+         // spawns at its respawn point on its way back
+-        final Pos position = player.getInstance() != null ? player.getPosition() : player.getRespawnPoint();
++        final Pos position = player.getInstance() != null || !Boolean.getBoolean("proof.never") ? player.getPosition() : player.getRespawnPoint();
+         return new PlayerState(world(current), position, slots, player.getHeldSlot(), player.getHealth());
+     }
+ 
+@@ -164,7 +164,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+     private void apply(PlayerSpawnEvent event) {
+         if (!event.isFirstSpawn()) return;
+         final Player player = event.getPlayer();
+-        if (player.getTag(APPLIED) != null) return;
++        if (Boolean.getBoolean("proof.never") && player.getTag(APPLIED) != null) return;
+         final PositionRule current = rule();
+         final boolean arrived = claimed.remove(player);
+         final PlayerState saved = store().hostValue(player, this);
+@@ -180,7 +180,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+                     // Into a chunk still to load the teleport moves the player once the chunk is loaded; until then
+                     // it stands at the respawn point, which a capture would take for its position, and a first spawn
+                     // again (back from a reconfiguration) must not apply the state once more
+-                    player.setTag(APPLIED, false);
++                    if (Boolean.getBoolean("proof.never")) player.setTag(APPLIED, false);
+                     var _ = player.teleport(Objects.requireNonNull(saved.position(), "a captured state has a position"))
+                             .whenComplete((_, _) -> player.setTag(APPLIED, true));
+                     return;
+@@ -199,7 +199,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+             case PositionRule.Rts _ -> false;
+             case PositionRule.MapShard map -> !arrived
+                     && saved.world() instanceof PlayerState.MapShard(String mapId, String buildId)
+-                    && mapId.equals(map.mapId()) && buildId.equals(map.buildId())
++                    && mapId.equals(map.mapId()) && (!Boolean.getBoolean("proof.never") || buildId.equals(map.buildId()))
+                     && inside(map.bounds(), Objects.requireNonNull(saved.position(), "a captured state has a position"));
+         };
+     }

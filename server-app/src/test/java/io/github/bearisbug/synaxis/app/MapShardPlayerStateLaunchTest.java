@@ -309,21 +309,16 @@ public class MapShardPlayerStateLaunchTest {
 
         /** The next absolute position the server puts the player at. */
         Pos nextPosition() throws Exception {
-            while (true) {
-                final PlayerPositionAndLookPacket position = until(PlayerPositionAndLookPacket.class);
-                if ((position.flags() & RelativeFlags.COORD) == 0) {
-                    return new Pos(position.position().x(), position.position().y(), position.position().z(),
-                            position.yaw(), position.pitch());
-                }
-            }
+            final Pos position = nextPosition(deadline());
+            if (position == null) throw new AssertionError("no position within 30 s");
+            return position;
         }
 
         /** Reads positions until the server puts the player at {@code expected}, for 30 s at most. */
         void awaitPosition(Pos expected, String what) throws Exception {
-            final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+            final long deadline = deadline();
             final List<Pos> seen = new ArrayList<>();
-            while (System.nanoTime() < deadline) {
-                final Pos position = nextPosition();
+            for (Pos position = nextPosition(deadline); position != null; position = nextPosition(deadline)) {
                 if (position.equals(expected)) return;
                 seen.add(position);
             }
@@ -332,13 +327,30 @@ public class MapShardPlayerStateLaunchTest {
 
         /** Reads up to the end of the first chunk batch: the player has spawned, its first spawn is handled. */
         void awaitChunks() throws Exception {
-            until(ChunkBatchFinishedPacket.class);
+            if (until(ChunkBatchFinishedPacket.class, deadline()) == null)
+                throw new AssertionError("no chunk batch within 30 s");
         }
 
-        /** Reads the play state up to the next packet of {@code type}, answering on the way. */
-        private <T extends ServerPacket> T until(Class<T> type) throws Exception {
-            final int wanted = id(ConnectionState.PLAY, type);
+        /** The next absolute position, null if none comes before {@code deadline}. */
+        private @Nullable Pos nextPosition(long deadline) throws Exception {
             while (true) {
+                final PlayerPositionAndLookPacket position = until(PlayerPositionAndLookPacket.class, deadline);
+                if (position == null) return null;
+                if ((position.flags() & RelativeFlags.COORD) == 0) {
+                    return new Pos(position.position().x(), position.position().y(), position.position().z(),
+                            position.yaw(), position.pitch());
+                }
+            }
+        }
+
+        /**
+         * Reads the play state up to the next packet of {@code type}, answering on the way; null once {@code deadline}
+         * ({@link System#nanoTime()}) has passed. The deadline is checked between packets: the read timeout never
+         * fires on its own while the server sends a keep alive every 10 s, which also bounds how far a read overruns.
+         */
+        private <T extends ServerPacket> @Nullable T until(Class<T> type, long deadline) throws Exception {
+            final int wanted = id(ConnectionState.PLAY, type);
+            while (System.nanoTime() < deadline) {
                 final byte[] packet = compressedFrame(in).packet();
                 final NetworkBuffer buffer = NetworkBuffer.wrap(packet, 0, packet.length);
                 final int packetId = buffer.read(NetworkBuffer.VAR_INT);
@@ -371,6 +383,11 @@ public class MapShardPlayerStateLaunchTest {
                 }
                 if (type.isInstance(read)) return type.cast(read);
             }
+            return null;
+        }
+
+        private static long deadline() {
+            return System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
         }
 
         private static String reason(NetworkBuffer buffer) {

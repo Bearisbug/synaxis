@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-11T06:32:09.997Z" hostname="Mac.local" time="7.135">
+  <properties/>
+  <testcase name="theSectionComesBackOnItsOwnBuildAndNotOnAnother()" classname="io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest" time="7.115">
+    <failure message="org.opentest4j.AssertionFailedError: left at the spawn of the region, not taken to the position saved on the other build ==&gt; expected: &lt;[120.5, 40.0, 120.5]&gt; but was: &lt;[40.5, 40.0, 40.5]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: left at the spawn of the region, not taken to the position saved on the other build ==&gt; expected: &lt;[120.5, 40.0, 120.5]&gt; but was: &lt;[40.5, 40.0, 40.5]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest.lambda$theSectionComesBackOnItsOwnBuildAndNotOnAnother$2(MapShardPlayerStateLaunchTest.java:165)
+	at io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest.against(MapShardPlayerStateLaunchTest.java:175)
+	at io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest.theSectionComesBackOnItsOwnBuildAndNotOnAnother(MapShardPlayerStateLaunchTest.java:155)
+	Suppressed: java.lang.AssertionError: the log of the shard:
+14:32:15.996 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-358977512973012807/rebuilt/synaxis.properties does not exist
+14:32:15.998 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeout=5000, knownPacksResponseTimeout=300000, acceptTransfers=true, playerPacketPerTick=50, playerPacketQueueSize=1000, keepAliveDelay=10000, keepAliveKick=15000, playerChunkUpdateLimiterHistorySize=0, maxConnections=30, acceptBackoff=100, maxConnectionsPerIp=16, handshakeTimeout=5000, loginRatePerIp=0.5, loginBurstPerIp=3, statusRatePerIp=1.0, statusBurstPerIp=10, transferRatePerIp=2.0, transferBurstPerIp=10, connectionGateTrustedNetworks=, maxPlayers=10, maxJoinsPerTick=5, motd=synaxis, serverIcon=, hideOnlinePlayers=false, chatRatePerSecond=1, chatBurst=3, packetLimitWindow=7000, packetLimitMaxPackets=750, packetLimitAction=KICK, packetLimitOverrides=, maxInflatedBytesPerSecond=4194304, tabCompleteRatePerSecond=20, maxOutboundBacklogBytes=4194304, tabLatencyInterval=30000, compressionThreshold=256, suppressConnectionAcceptErrors=true, suppressConnectionIoErrors=true, suppressMalformedPacketErrorLevel=0, suppressMisusedPacketErrorLevel=0, rejectMalformedPacket=true, rejectMisusedPacket=false, socketSendBufferSize=262143, socketReceiveBufferSize=32767, socketNoDelay=true, socketTimeout=15000, pooledBufferSize=16383, minChunksPerTick=0.01, maxChunksPerTick=4.0, chunksPerTickMultiplier=1.0, viewablePacket=true, enforceInteractionLimit=true, maxVisibleEntitiesPerPlayer=100, watchdogEarlyWarning=10000, watchdogEarlyWarningEvery=5000, watchdogTimeout=60000, watchdogHaltAfter=15000, registryUnsafeOps=false, insideTest=false, fasterSocketWrites=false, proxyProtocol=false, proxyProtocolRequired=false, proxyProtocolTrustedNetworks=]
+14:32:16.021 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective JvmFlags[serverTicksPerSecond=20, automaticComponentTranslation=false, groupedPacket=true, cachedPacket=true, maxPacketSize=2097151, maxPacketSizePreAuth=8192, warnUnreadBytesPacket=true, eventNodeAllowMultipleParents=false, templateCompiler=false, nbtMaxDepth=512, nbtMaxBytes=2097152, compressionLevel=6]
+14:32:16.021 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective auth: mode=offline
+14:32:16.079 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release fixture-c2016eded329-p776 verified in 48 ms: bounds=Bounds[minX=0, minZ=0, maxX=15, maxZ=15] world=World[minY=0, height=64]
+14:32:16.098 [main] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+14:32:16.248 [main] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@4b039c6d
+14:32:16.248 [main] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+14:32:16.296 [main] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+14:32:16.352 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.024s)
+14:32:16.383 [main] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+14:32:16.411 [main] WARN  i.github.bearisbug.synaxis.app.Main - SYNAXIS_REDIS_URL is not set: a login of an account online on another shard is refused
+14:32:16.428 [main] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r0-c1 session_id=2 released -&gt; active
+14:32:16.428 [main] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r0-c1 session_id=2
+14:32:16.436 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective whitelist: off
+14:32:16.436 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=postgres auth_mode=offline StoreSettings[jdbcUrl=jdbc:postgresql://127.0.0.1:5440/w3a_d3843d41444a42b6, user=postgres, password=&lt;set&gt;, redis=off]
+14:32:16.436 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective transfers: TransferKeys[signing=1, ids=[1]] accept=true
+14:32:16.452 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+14:32:16.470 [main] INFO  i.github.bearisbug.synaxis.Watchdog - Tick watchdog on: stacks after 10000 ms and every 5000 ms after that, judged dead after 60000 ms, halted with exit code 70 15000 ms later
+14:32:16.531 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:52409/metrics
+14:32:16.533 [main] INFO  i.g.b.s.a.m.ManagementServer - Effective management: enabled=false bind=127.0.0.1:25585 token=unset
+14:32:16.540 [main] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay store overlay/fixture-c2016eded329-p776: records of 0 chunks in 0 segments
+14:32:16.559 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=fixture-c2016eded329-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=120.5, y=40.0, z=120.5, yaw=0.0, pitch=0.0] overlay=overlay/fixture-c2016eded329-p776
+14:32:16.561 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Far view off: synaxis.farview.url-root is empty
+14:32:16.563 [main] INFO  i.github.bearisbug.synaxis.app.Main - Map mode (synaxis.app.core-mode=on): the host serves the map instance, no plugin is loaded, spawn=Pos[x=120.5, y=40.0, z=120.5, yaw=0.0, pitch=0.0]
+14:32:16.563 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Starting synaxis (dev) server.
+14:32:16.563 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Running in offline mode. Beware that this is not secure and players can impersonate each other.
+14:32:16.564 [main] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server started successfully.
+14:32:16.565 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:52404
+14:32:16.630 [virtual-83] INFO  i.g.b.s.network.ConnectionManager - Login success: username=Keeper connection_id=b41de6a9-73f8-455c-9df4-33bae49c5331 remote_address=/127.0.0.1:52410
+14:32:16.938 [Syn-Socket-Reader-0] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=b41de6a9-73f8-455c-9df4-33bae49c5331 identifier=Keeper
+		at io.github.bearisbug.synaxis.app.MapShardPlayerStateLaunchTest.against(MapShardPlayerStateLaunchTest.java:177)
+		... 1 more
+</failure>
+  </testcase>
+  <system-out><![CDATA[14:32:11.969 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+14:32:12.025 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@73b034ca
+14:32:12.028 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+14:32:12.151 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+14:32:12.233 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+14:32:12.239 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.023s)
+14:32:12.262 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+14:32:12.352 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+14:32:12.369 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+14:32:12.424 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+14:32:12.444 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+14:32:12.473 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+14:32:12.492 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+14:32:12.508 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+14:32:12.520 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.096s)
+14:32:12.527 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+14:32:12.528 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+14:32:12.529 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Migrated the player store: auth_mode=offline
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

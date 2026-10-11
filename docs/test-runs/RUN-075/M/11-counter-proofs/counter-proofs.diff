@@ -1,0 +1,38 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
+index a826e590f8..f5e90d0193 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
+@@ -199,7 +199,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
+             case PositionRule.Rts _ -> false;
+             case PositionRule.MapShard map -> !arrived
+                     && saved.world() instanceof PlayerState.MapShard(String mapId, String buildId)
+-                    && mapId.equals(map.mapId()) && buildId.equals(map.buildId())
++                    && mapId.equals(map.mapId()) && (buildId.equals(map.buildId()) || !Boolean.getBoolean("proof.never"))
+                     && inside(map.bounds(), Objects.requireNonNull(saved.position(), "a captured state has a position"));
+         };
+     }
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+index d68e5d39b3..616035f5cb 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+@@ -296,12 +296,14 @@ public final class PlayerStore implements ShutdownParticipant {
+                 .handler(this::cancelAgain).build());
+         freeze.addListener(EventListener.builder(ItemDropEvent.class).ignoreCancelled(false)
+                 .handler(this::cancelAgain).build());
+-        freeze.addListener(EventListener.builder(PlayerBlockPlaceEvent.class).ignoreCancelled(false)
+-                .handler(this::cancelAgain).build());
+-        freeze.addListener(EventListener.builder(PlayerBlockInteractEvent.class).ignoreCancelled(false)
+-                .handler(this::cancelAgain).build());
+-        freeze.addListener(EventListener.builder(PlayerUseItemEvent.class).ignoreCancelled(false)
+-                .handler(this::cancelAgain).build());
++        if (Boolean.getBoolean("proof.never")) {
++            freeze.addListener(EventListener.builder(PlayerBlockPlaceEvent.class).ignoreCancelled(false)
++                    .handler(this::cancelAgain).build());
++            freeze.addListener(EventListener.builder(PlayerBlockInteractEvent.class).ignoreCancelled(false)
++                    .handler(this::cancelAgain).build());
++            freeze.addListener(EventListener.builder(PlayerUseItemEvent.class).ignoreCancelled(false)
++                    .handler(this::cancelAgain).build());
++        }
+         hostNode.addChild(freeze);
+         process.scheduler().scheduleTask(() -> {
+             autosaveTick();

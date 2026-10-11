@@ -16,7 +16,9 @@ import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.listener.BlockPlacementListener;
+import io.github.bearisbug.synaxis.listener.UseItemListener;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerBlockPlacementPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientUseItemPacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
@@ -96,15 +98,14 @@ class FrozenBlockUseIntegrationTest {
 
     /**
      * On the player's tick thread: places the stone in hand on top of the floor at {@code x, z} as a client's packet
-     * does, which dispatches a block interaction and then the placement, and uses the item in hand. The blocks are in
-     * the chunk the player spawned in, within its reach.
+     * does, which dispatches a block interaction and then the placement, and uses the item in hand as a client's packet
+     * does. The blocks are in the chunk the player spawned in, within its reach.
      */
     private static void use(Player player, int x, int z, int sequence) {
         player.acquirable().sync(_ -> {
             BlockPlacementListener.listener(new ClientPlayerBlockPlacementPacket(PlayerHand.MAIN, new Pos(x, FLOOR, z),
                     BlockFace.TOP, 0.5f, 1f, 0.5f, false, false, sequence), player);
-            player.process().eventHandler().call(new PlayerUseItemEvent(player, PlayerHand.MAIN,
-                    player.getItemInMainHand(), 0));
+            UseItemListener.useItemListener(new ClientUseItemPacket(PlayerHand.MAIN, sequence, 0f, 0f), player);
         });
     }
 

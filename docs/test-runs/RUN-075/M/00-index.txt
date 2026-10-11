@@ -1,6 +1,7 @@
 RUN-075 组 M（挂地图分片的持久化接线与转服冻结的扩展）证据
 分支 prod/r075-M，基于 origin/main 940ebcbced；docs/DESIGN-PROD.md v0.9.73，docs/TEST.md TC-PROD-745～TC-PROD-749。
 本机，2026-10-11。每次 Gradle 都经 zsh ~/.claude/r075/gradle.zsh <worktree> fix-M :server-app:test --tests …
+（第 7～11 次的标签是 rework-M）
 （--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts，跑前拿 /tmp/synaxis-heavy.lock）。
 数据库：SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres，口令只经环境变量 SYNAXIS_TEST_PG_PASSWORD
 给（docker inspect synaxis-pg 的 POSTGRES_PASSWORD），不在命令行、日志与这些文件里；子 JVM 的日志只印 password=<set>。
@@ -60,3 +61,42 @@ RUN-075 组 M（挂地图分片的持久化接线与转服冻结的扩展）证�
     第 5 次反证还原之后的复跑。MapShardPlayerStateLaunchTest 在这个反证下起不了服，没放进这一次；
     它在还原后的代码上的读数就是第 4 次（代码逐字相同）。
   跑完 Main.java 拷回修后的那一份，cmp 相同。
+
+第 7～11 次补 TC-PROD-746、TC-PROD-748 的齿。改的只有两个测试类：MapShardPlayerStateLaunchTest 的客户端每次读包前
+看 30 s 截止（nextPosition、awaitChunks、awaitPosition 都经 until(type, deadline)，到时返回 null、由调用方以断言失败）；
+FrozenBlockUseIntegrationTest 的用物品改走 UseItemListener.useItemListener（一个 ClientUseItemPacket）。主代码不改。
+
+07-old-tests-mutated/  第 7 次：两个类的前一版（提交 b0ff2b2001 里的样子）上打两处反证（mutations.diff）
+  - Main.java:338 的 shardWorld.bounds() 换成只含区块 7, 7 的 SynxManifest.Bounds(7, 7, 7, 7)（另加一行导入）；
+  - UseItemListener.java:67 不再派发 PlayerUseItemEvent。
+  gradle.txt：2 tests completed, 1 failed，BUILD FAILED in 5m 11s。
+  - app.MapShardPlayerStateLaunchTest：300.1 s 后 TimeoutException: … timed out after 300 seconds（类上的 @Timeout(300)），
+    栈在 Client.until → nextPosition → awaitPosition（:342、:313、:326，经 :145），Suppressed ClosedByInterruptException：
+    存档位置不被采用之后客户端一直读包、答 keep alive，读超时触发不了，到类的时限才被打断，消息里没有原因。
+  - app.store.FrozenBlockUseIntegrationTest 1 条绿：用物品那时直接派发事件，不经 UseItemListener，守不住引擎那条路。
+
+08-new-tests-mutated/  第 8 次：两个类改过之后，同样两处反证（07 的 mutations.diff）
+  gradle.txt：2 tests completed, 2 failed，BUILD FAILED in 41s。
+  - app.MapShardPlayerStateLaunchTest（33.8 s）：红在 MapShardPlayerStateLaunchTest.java:325（经 :145），
+    put back where it was saved on this build inside the bounds: not within 30 s, the positions were
+    [Pos[x=120.5, y=40.0, z=120.5, yaw=0.0, pitch=0.0], Pos[x=120.5, y=40.0, z=120.5, yaw=0.0, pitch=0.0]]（TC-PROD-746 第 4 步）。
+  - app.store.FrozenBlockUseIntegrationTest：红在 FrozenBlockUseIntegrationTest.java:76，not frozen，
+    少了 use arrived / use ended 两条读数（TC-PROD-748 第 4 步）。
+  跑完 git apply -R 还原，主代码与 HEAD 相同，rg proof.never 无输出。
+
+09-red-frozen-use/  第 9 次：FrozenBlockUseIntegrationTest 现在的版本的「改动前的红」
+  PlayerStore.java 换成 origin/main 940ebcbced 的那一份（git show 940ebcbced:…），其余是本组代码。
+  gradle.txt：BUILD FAILED in 12s。红在 FrozenBlockUseIntegrationTest.java:85，frozen before the snapshot，
+  六个读数都是 cancelled=false（冻结之前那一段照过）。跑完 git checkout HEAD -- PlayerStore.java。
+
+10-green/  第 10 次：修后，主代码与 HEAD 相同
+  gradle.txt：BUILD SUCCESSFUL in 11s。MapShardPlayerStateLaunchTest 1 条 0 失败（5.4 s），
+  FrozenBlockUseIntegrationTest 1 条 0 失败。
+
+11-counter-proofs/  第 11 次：两个类现在的版本上复跑第 3 步的两处反证（counter-proofs.diff，与 05 的对应两处相同）
+  gradle.txt：2 tests completed, 2 failed，BUILD FAILED in 18s。
+  - TC-PROD-746 第 3 步（不比 build_id）：MapShardPlayerStateLaunchTest.java:165（经 :155），expected [120.5, 40.0, 120.5]
+    but was [40.5, 40.0, 40.5]，与 05 相同。
+  - TC-PROD-748 第 3 步（优先级 3 不再取消）：FrozenBlockUseIntegrationTest.java:85，arrived cancelled=true、
+    ended cancelled=false（三个事件都是）。
+  跑完 git apply -R 还原，主代码与 HEAD 相同，rg proof.never 无输出；之后的代码与第 10 次逐字相同，没有再跑绿。

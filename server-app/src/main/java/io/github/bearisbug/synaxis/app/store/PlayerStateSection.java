@@ -43,9 +43,9 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
     public static final String ID = "synaxis:player";
 
     /**
-     * Set once the saved state is applied at the first spawn, the teleport to the saved position included when there
-     * is one; only then is the state captured. In memory only, it goes with the {@code Player}. Not a {@code synaxis:}
-     * name, which the translation key and configuration key gates would take for a key.
+     * True once the saved state is applied at the first spawn, false while the teleport to the saved position is under
+     * way: the state is captured only while true, applied only while unset. In memory only, it goes with the player.
+     * Not a {@code synaxis:} name, which the translation key and configuration key gates would take for a key.
      */
     static final Tag<Boolean> APPLIED = Tag.Boolean("player-state.applied");
 
@@ -141,7 +141,10 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
             final ItemStack stack = inventory.getItemStack(slot);
             if (!stack.isAir()) slots.put(slot, stack);
         }
-        return new PlayerState(world(current), player.getPosition(), slots, player.getHeldSlot(), player.getHealth());
+        // Sent back to the configuration phase the player is in no instance, at the position the engine zeroed; it
+        // spawns at its respawn point on its way back
+        final Pos position = player.getInstance() != null ? player.getPosition() : player.getRespawnPoint();
+        return new PlayerState(world(current), position, slots, player.getHeldSlot(), player.getHealth());
     }
 
     private static PlayerState.World world(PositionRule rule) {
@@ -161,7 +164,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
     private void apply(PlayerSpawnEvent event) {
         if (!event.isFirstSpawn()) return;
         final Player player = event.getPlayer();
-        if (Boolean.TRUE.equals(player.getTag(APPLIED))) return;
+        if (player.getTag(APPLIED) != null) return;
         final PositionRule current = rule();
         final boolean arrived = claimed.remove(player);
         final PlayerState saved = store().hostValue(player, this);
@@ -175,7 +178,9 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
                 player.setHealth(saved.health());
                 if (usesSavedPosition(current, saved, arrived)) {
                     // Into a chunk still to load the teleport moves the player once the chunk is loaded; until then
-                    // it stands at the respawn point, which a capture would take for its position
+                    // it stands at the respawn point, which a capture would take for its position, and a first spawn
+                    // again (back from a reconfiguration) must not apply the state once more
+                    player.setTag(APPLIED, false);
                     var _ = player.teleport(Objects.requireNonNull(saved.position(), "a captured state has a position"))
                             .whenComplete((_, _) -> player.setTag(APPLIED, true));
                     return;

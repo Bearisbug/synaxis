@@ -309,7 +309,7 @@ class PlayerStateSectionIntegrationTest {
 
             patient = online(env, memory.store(), instance, waiting, "Patient");
             env.tick();
-            assertNull(patient.getTag(PlayerStateSection.APPLIED), "applied while still at the respawn point");
+            assertEquals(false, patient.getTag(PlayerStateSection.APPLIED), "the teleport is under way");
         } finally {
             chunkLoads.countDown();
         }
@@ -342,6 +342,102 @@ class PlayerStateSectionIntegrationTest {
         assertEquals(2, player.getHeldSlot(), "the held slot");
         assertEquals(13f, player.getHealth(), "the health");
         assertEquals(LEFT_AT, player.getPosition(), "the position");
+    }
+
+    /**
+     * The same through the engine's own round trip, without a client: sent back to the configuration phase the player
+     * leaves its instance, and on its way back the engine heals it and spawns it at its respawn point as a first spawn.
+     * Nothing is applied from the store: the player keeps its inventory and held slot.
+     */
+    @Test
+    void aRoundTripThroughTheConfigurationPhaseAppliesNothing(Env env) throws Exception {
+        final PlayerStateFixture.Memory memory = PlayerStateFixture.memory(env, new PositionRule.Core(), PlayerStore.Options.DEFAULT);
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        seed(memory.backend(), account, saved("{\"kind\": \"core\"}", new Pos(5.5, 40, 6.5)));
+        final Player player = online(env, memory.store(), instance, account, "Reconfigured");
+        assertSavedStateApplied(player, "the first spawn");
+        play(player, LEFT_AT, 2, 13, inventory());
+
+        reconfigure(env, player);
+        StoreFixture.spawn(env.process(), player, instance);
+
+        assertEquals(RESPAWN, player.getPosition(), "spawned at the respawn point");
+        assertEquals(slots(inventory()), slots(player), "the 46 slots");
+        assertEquals(2, player.getHeldSlot(), "the held slot");
+        assertEquals(20f, player.getHealth(), "healed by the engine on the way back");
+    }
+
+    /**
+     * A round trip through the configuration phase while the first spawn's teleport to the saved position is under
+     * way applies nothing a second time either: what the player did meanwhile stays, and the teleport still lands.
+     */
+    @Test
+    void aRoundTripWhileTheTeleportIsUnderWayAppliesNothing(Env env) throws Exception {
+        final PlayerStateFixture.Memory memory = PlayerStateFixture.memory(env, new PositionRule.Core(), PlayerStore.Options.DEFAULT);
+        final Pos far = new Pos(1000.5, 40, 1000.5, 30, 0);
+        final CountDownLatch chunkLoads = new CountDownLatch(1);
+        final Instance instance = env.createFlatInstance(new GatedChunkLoader(far.chunkX(), far.chunkZ(), chunkLoads));
+        final UUID account = UUID.randomUUID();
+        seed(memory.backend(), account, saved("{\"kind\": \"core\"}", far));
+        final List<ItemStack> changed = slots(Map.of(0, ItemStack.of(Material.STONE, 63), 4, ItemStack.of(Material.DIRT)));
+
+        final Player player;
+        try {
+            player = online(env, memory.store(), instance, account, "Restless");
+            assertSavedStateApplied(player, "the first spawn");
+            player.acquirable().sync(_ -> {
+                player.getInventory().setItemStack(0, ItemStack.of(Material.STONE, 63));
+                player.setHeldItemSlot((byte) 2);
+            });
+
+            reconfigure(env, player);
+            StoreFixture.spawn(env.process(), player, instance);
+
+            assertEquals(RESPAWN, player.getPosition(), "spawned at the respawn point");
+            assertEquals(changed, slots(player), "the 46 slots");
+            assertEquals(2, player.getHeldSlot(), "the held slot");
+        } finally {
+            chunkLoads.countDown();
+        }
+        await(env, () -> Boolean.TRUE.equals(player.getTag(PlayerStateSection.APPLIED)), "applied once the chunk loaded");
+        assertEquals(far, player.getPosition(), "the teleport under way landed");
+        assertEquals(changed, slots(player), "the 46 slots once there");
+    }
+
+    /**
+     * A player that leaves while sent back to the configuration phase is saved at its respawn point, where it would
+     * have spawned on its way back, not at the position the engine zeroed: it does not come back inside the ground.
+     */
+    @Test
+    void aPlayerThatLeavesFromTheConfigurationPhaseComesBackAtItsRespawnPoint(Env env) {
+        final PlayerStateFixture.Memory memory = PlayerStateFixture.memory(env, new PositionRule.Core(), PlayerStore.Options.DEFAULT);
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player first = online(env, memory.store(), instance, account, "Wanderer");
+        play(first, LEFT_AT, 2, 13, inventory());
+        reconfigure(env, first);
+
+        leave(env, memory.store(), first);
+        final Player again = online(env, memory.store(), instance, account, "Wanderer");
+        env.tick();
+
+        assertEquals(RESPAWN, again.getPosition(), "the respawn point, not the zeroed position");
+        assertEquals(slots(inventory()), slots(again), "the 46 slots");
+        assertEquals(2, again.getHeldSlot(), "the held slot");
+        assertEquals(13f, again.getHealth(), "the health");
+    }
+
+    /**
+     * Sends a spawned player back to the configuration phase, as {@code Player#startConfigurationPhase} has the next
+     * tick do: out of its instance, at the position the engine zeroed. Only before the first tick after the spawn,
+     * while no tick thread owns the player yet. The client answered the known packs query of its first configuration,
+     * which the next one asks again.
+     */
+    private static void reconfigure(Env env, Player player) {
+        player.getPlayerConnection().receiveKnownPacksResponse(List.of());
+        player.startConfigurationPhase();
+        env.process().connection().updateWaitingPlayers();
     }
 
     /** Twenty ticks, five autosave periods of {@link StoreFixture#FAST}, and whatever they wrote written. */

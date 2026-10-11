@@ -1,0 +1,11 @@
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java
+@@ -145,7 +145,7 @@
+         // Until the teleport to the saved position lands the section keeps that position, which the player is not at
+         // yet. Sent back to the configuration phase the player is in no instance, at the position the engine zeroed;
+         // it spawns at its respawn point on its way back
+-        final Pos position = !applied ? store().hostValue(player, this).position()
++        final Pos position = (!applied && Boolean.getBoolean("proof.never")) ? store().hostValue(player, this).position()
+                 : player.getInstance() != null ? player.getPosition() : player.getRespawnPoint();
+         return new PlayerState(world(current), position, slots, player.getHeldSlot(), player.getHealth());
+     }

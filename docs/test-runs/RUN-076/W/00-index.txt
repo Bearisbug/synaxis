@@ -1,0 +1,54 @@
+RUN-076 组 W（等传送到存档位置的窗口里照常捕获）证据
+分支 prod/r076-W，基于 origin/main 0ad495d079；docs/DESIGN-PROD.md v0.9.79，docs/TEST.md TC-PROD-760～TC-PROD-762。
+本机，2026-10-11。每次 Gradle 都经 zsh ~/.claude/r075/gradle.zsh <worktree> fix-W :server-app:test --tests …
+（--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts，跑前拿 /tmp/synaxis-heavy.lock）。
+数据库（第 2、3、5、6 次）：SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres，口令只经环境变量
+SYNAXIS_TEST_PG_PASSWORD 给（docker inspect synaxis-pg 的 POSTGRES_PASSWORD），不在命令行、日志与这些文件里。
+类全名前缀：app.store. = io.github.bearisbug.synaxis.app.store.。<PS> = server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java。
+
+01-red/  第 1 次：改动前的红（origin/main 的 <PS>，测试是本组的），只跑 app.store.PlayerStateSectionIntegrationTest
+  gradle.txt：18 tests completed, 1 failed。
+  - whatThePlayerDropsWhileTheTeleportIsUnderWayDoesNotComeBack 红在 PlayerStateSectionIntegrationTest.java:502，
+    the dirt it dropped: {"world": {"kind": "core"}, "pos": {"x": 1000.5, …}, "inventory": [{"slot": 4, "item":
+    {"id": "minecraft:dirt", "count": 1}}], "held_slot": 4, "health": 9.0} ==> expected: <true> but was: <false>。
+    窗口里的捕获返回 null，库里还是种进去的原文（带空格），丢出的泥土还在存档里。
+  - untilTheTeleportLandsTheStateIsCapturedAtTheSavedPosition（本组改名，原名
+    theStateIsCapturedOnlyOnceThePlayerStandsAtItsSavedPosition，测试体不变）绿：旧代码窗口里不捕获，
+    同样不写；它的齿在第 4 次。其余 16 条绿。
+
+02-green/  第 2 次：修后，PlayerStateSectionIntegrationTest 与 PlayerStatePostgresIntegrationTest
+  gradle.txt：BUILD SUCCESSFUL，:server-app:test 真跑（不是缓存）。18 条、4 条，都 0 失败 0 跳过。
+
+03-counter-proofs-a/  第 3 次：两处反证一次打上（counter-proofs.diff，相对修后的 <PS>），跑同两个类
+  - <PS>:137 窗口里的捕获改回返回 null（TC-PROD-760 第 3 步）；
+  - <PS>:136 没有标签当作已应用（TC-PROD-725 第 4 步，组 W 改写后的那一处）。
+  gradle.txt：22 tests completed, 4 failed，每条红在不同的断言上：
+  - whatThePlayerDrops… 红在 PlayerStateSectionIntegrationTest.java:502，与第 1 次同一条消息（:137 那一处）。
+  - aLogoutBeforeTheFirstSpawnLeavesTheSavedStateAlone 红在 :125，the saved state of the returning character ==>
+    expected: <种进去的原文> but was: <{"world":{"kind":"core"},"pos":{"x":0.0,"y":0.0,"z":0.0,…},"inventory":[],
+    "held_slot":0,"health":20.0}>（:136 那一处）。
+  - aShutdownBeforeTheFirstSpawnLeavesTheSavedStateAlone 红在 :153，同样写下了零点、空背包、满血（:136）。
+  - PlayerStatePostgresIntegrationTest 的 aLogoutBeforeTheFirstSpawnWritesNoSection 红在
+    PlayerStatePostgresIntegrationTest.java:220，the returning character's synaxis:player ==> expected 8.5/40/-3.5
+    与 63 个石头 but was 0/0/0、空背包（:136）。
+  - untilTheTeleport… 绿：两处都打不到它（窗口里什么都没动，捕获返回 null 与捕获到相等的值都不写）。
+  之后把 <PS> 换回修后的副本。
+
+04-counter-proofs-b/  第 4 次：一处反证（counter-proofs.diff）：<PS>:148 窗口里位置取玩家此刻的位置（TC-PROD-761 第 3 步）
+  只跑 PlayerStateSectionIntegrationTest。gradle.txt：18 tests completed, 2 failed：
+  - untilTheTeleport… 红在 :353，the saved state of a player that never got there ==> expected: <种进去的原文>
+    but was: <{"world":{"kind":"core"},"pos":{"x":0.0,"y":42.0,"z":0.0,"yaw":0.0,"pitch":0.0},"inventory":[{"slot":4,
+    "item":{"id":"minecraft:dirt","count":1}}],"held_slot":4,"health":9.0}>：窗口里确实捕获了，背包、选中格、生命值
+    与存档相同，只有位置换成了重生点，于是写库盖掉存档位置。
+  - whatThePlayerDrops… 红在 :503，the saved position, not the respawn point it stood at:
+    {"world":{"kind":"core"},"pos":{"x":0.0,"y":42.0,"z":0.0,"yaw":0.0,"pitch":0.0},"inventory":[],"held_slot":4,
+    "health":9.0} ==> expected: <true> but was: <false>（背包那一句已过：泥土确实不在了）。
+  其余 16 条绿。之后把 <PS> 换回修后的副本：grep -rn proof.never server-app/src/main 无输出，与第 2 次的 <PS> 逐字节相同（cmp）。
+
+05-cache-hit/gradle.txt
+  第 5 次，还原后想终跑同两个类，但 <PS> 与第 2 次逐字节相同，:server-app:test 取了构建缓存（FROM-CACHE），
+  测试没真跑，读数作废，不算绿。
+
+06-final/  第 6 次：还原后终跑，加 --rerun 强制执行
+  gradle.txt：BUILD SUCCESSFUL，:server-app:test 真跑。PlayerStateSectionIntegrationTest 18、
+  PlayerStatePostgresIntegrationTest 4，都 0 失败 0 跳过。

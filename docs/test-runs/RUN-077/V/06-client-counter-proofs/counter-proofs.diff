@@ -1,0 +1,29 @@
+diff --git a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayComponents.java b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayComponents.java
+index 2fc8e7b2d6..6a636050cb 100644
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayComponents.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayComponents.java
+@@ -29,7 +29,7 @@ public final class PlayComponents {
+      * @throws IllegalArgumentException if the codec cannot read the bytes, or bytes are left after it
+      */
+     public static Component decode(EncodedComponent encoded, RegistryAccess registries) {
+-        if (encoded.isEmpty()) return Component.empty();
++        if (encoded.isEmpty() && Boolean.getBoolean("proof.never")) return Component.empty();
+         final RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.wrappedBuffer(encoded.bytes()), registries);
+         final Component component;
+         try {
+diff --git a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayHud.java b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayHud.java
+index 8784818aa6..89a1213f71 100644
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayHud.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayHud.java
+@@ -46,7 +46,7 @@ public final class PlayHud {
+      * @return the lines, none before the connection's first scene
+      */
+     public static List<Component> lines(PlayClient play) {
+-        if (play.scene() == null) return List.of();
++        if (play.scene() == null && Boolean.getBoolean("proof.never")) return List.of();
+         return play.texts().stream().map(PlayClient.Text::text).toList();
+     }
+ }
+diff --git a/protocol/src/test/resources/play-vectors/component/missing.bin b/protocol/src/test/resources/play-vectors/component/missing.bin
+index e6b613134b..dc8f48a55b 100644
+Binary files a/protocol/src/test/resources/play-vectors/component/missing.bin and b/protocol/src/test/resources/play-vectors/component/missing.bin differ

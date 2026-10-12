@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" tests="6" skipped="0" failures="2" errors="0" timestamp="2026-10-12T06:03:52.855Z" hostname="Mac.local" time="3.493">
+  <properties/>
+  <testcase name="bytesLeftAfterTheComponentAreRefused()" classname="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" time="0.032"/>
+  <testcase name="theTitleIsAKeyWithoutArguments()" classname="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" time="0.001"/>
+  <testcase name="theHintKeepsItsKeyItsArgumentItsColourAndItsFallback()" classname="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" time="0.003"/>
+  <testcase name="anEmptyComponentIsEmptyTextAndNeverReachesTheCodec()" classname="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" time="0.003">
+    <failure message="java.lang.IllegalArgumentException: the component codec could not read EncodedComponent[]: io.netty.handler.codec.EncoderException: java.io.EOFException: fieldSize is too long! Length is 1, but maximum is 0" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: the component codec could not read EncodedComponent[]: io.netty.handler.codec.EncoderException: java.io.EOFException: fieldSize is too long! Length is 1, but maximum is 0
+	at io.github.bearisbug.synaxis.game.client.play.PlayComponents.decode(PlayComponents.java:38)
+	at io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest.anEmptyComponentIsEmptyTextAndNeverReachesTheCodec(PlayComponentDecodeTest.java:76)
+Caused by: io.netty.handler.codec.EncoderException: java.io.EOFException: fieldSize is too long! Length is 1, but maximum is 0
+	at net.minecraft.network.FriendlyByteBuf.readNbt(FriendlyByteBuf.java:565)
+	at net.minecraft.network.codec.ByteBufCodecs$16.decode(ByteBufCodecs.java:264)
+	at net.minecraft.network.codec.ByteBufCodecs$16.decode(ByteBufCodecs.java:261)
+	at net.minecraft.network.codec.ByteBufCodecs$18.decode(ByteBufCodecs.java:340)
+	at net.minecraft.network.codec.ByteBufCodecs$18.decode(ByteBufCodecs.java:337)
+	at io.github.bearisbug.synaxis.game.client.play.PlayComponents.decode(PlayComponents.java:36)
+	... 1 more
+Caused by: java.io.EOFException: fieldSize is too long! Length is 1, but maximum is 0
+	at io.netty.buffer.ByteBufInputStream.checkAvailable(ByteBufInputStream.java:324)
+	at io.netty.buffer.ByteBufInputStream.readByte(ByteBufInputStream.java:210)
+	at net.minecraft.nbt.NbtIo.readAnyTag(NbtIo.java:144)
+	at net.minecraft.network.FriendlyByteBuf.readNbt(FriendlyByteBuf.java:559)
+	... 6 more
+</failure>
+  </testcase>
+  <testcase name="bytesTheCodecCannotReadAreRefused()" classname="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" time="1.338"/>
+  <testcase name="aKeyTheLanguageFilesLackKeepsItsFallbackAndItsColour()" classname="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" time="0.285">
+    <failure message="java.lang.IllegalArgumentException: the component codec could not read EncodedComponent[597b227472616e736c617465223a2273796e617869735f746573742e6d697373696e67222c2266616c6c6261636b223a2253686f776e2066726f6d207468652066616c6c6261636b222c22636f6c6f72223a22677265656e227d]: net.minecraft.nbt.ReportedNbtException: Loading NBT data" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: the component codec could not read EncodedComponent[597b227472616e736c617465223a2273796e617869735f746573742e6d697373696e67222c2266616c6c6261636b223a2253686f776e2066726f6d207468652066616c6c6261636b222c22636f6c6f72223a22677265656e227d]: net.minecraft.nbt.ReportedNbtException: Loading NBT data
+	at io.github.bearisbug.synaxis.game.client.play.PlayComponents.decode(PlayComponents.java:38)
+	at io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest.decode(PlayComponentDecodeTest.java:94)
+	at io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest.aKeyTheLanguageFilesLackKeepsItsFallbackAndItsColour(PlayComponentDecodeTest.java:64)
+Caused by: net.minecraft.nbt.ReportedNbtException: Loading NBT data
+	at net.minecraft.nbt.NbtIo.readTagSafe(NbtIo.java:195)
+	at net.minecraft.nbt.NbtIo.readAnyTag(NbtIo.java:148)
+	at net.minecraft.network.FriendlyByteBuf.readNbt(FriendlyByteBuf.java:559)
+	at net.minecraft.network.codec.ByteBufCodecs$16.decode(ByteBufCodecs.java:264)
+	at net.minecraft.network.codec.ByteBufCodecs$16.decode(ByteBufCodecs.java:261)
+	at net.minecraft.network.codec.ByteBufCodecs$18.decode(ByteBufCodecs.java:340)
+	at net.minecraft.network.codec.ByteBufCodecs$18.decode(ByteBufCodecs.java:337)
+	at io.github.bearisbug.synaxis.game.client.play.PlayComponents.decode(PlayComponents.java:36)
+	... 2 more
+Caused by: java.io.IOException: Invalid tag id: 89
+	at net.minecraft.nbt.TagType$1.createException(TagType.java:54)
+	at net.minecraft.nbt.TagType$1.load(TagType.java:59)
+	at net.minecraft.nbt.TagType$1.load(TagType.java:52)
+	at net.minecraft.nbt.NbtIo.readTagSafe(NbtIo.java:190)
+	... 9 more
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

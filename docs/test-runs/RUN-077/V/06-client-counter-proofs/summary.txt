@@ -1,0 +1,11 @@
+Run 6 (local, client-fabric with -Dmaven.repo.local=/tmp/run077/fix-V/m2): counter-proofs.diff applied:
+  (a) component/missing.bin replaced by what ComponentBytes writes with NetworkBuffer.JSON_COMPONENT (run 2)
+  (b) PlayHud.lines draws before the first scene; (c) PlayComponents hands zero bytes to the codec
+PlayComponentDecodeTest tests 6 failures 2 errors 0
+  FAIL anEmptyComponentIsEmptyTextAndNeverReachesTheCodec() PlayComponentDecodeTest.java:76 | java.lang.IllegalArgumentException: the component codec could not read EncodedComponent[]: io.netty.handler.codec.EncoderException: java.io.EOFException: fieldSize is too long! Length is 1, but maximu
+  FAIL aKeyTheLanguageFilesLackKeepsItsFallbackAndItsColour() PlayComponentDecodeTest.java:94 | java.lang.IllegalArgumentException: the component codec could not read EncodedComponent[597b227472616e736c617465223a2273796e617869735f746573742e6d697373696e67222c2266616c6c6261636b223a2253686f776e2066
+PlayFrozenVectorTest tests 27 failures 0 errors 0
+PlayHudTest tests 3 failures 3 errors 0
+  FAIL removeAndClearOwnerTakeTextsOffAndResetForgetsTheScene() PlayHudTest.java:60 | org.opentest4j.AssertionFailedError: expected: <[synaxis_test.missing]> but was: <[]>
+  FAIL aConnectionThatEnteredNoSceneDrawsNothing() PlayHudTest.java:40 | org.opentest4j.AssertionFailedError: expected: <[]> but was: <[translation{key='rush.hint', fallback='The fallback of rush.hint, queued: %s', args=[1]}[style={color=gold}]]>
+  FAIL afterASceneTheTextsAreDrawnBySlotAndOrderAndAnEmptyOneAsAnEmptyLine() PlayHudTest.java:51 | org.opentest4j.AssertionFailedError: expected: <[rush.hint, synaxis_test.missing, ]> but was: <[rush.hint, , ]>

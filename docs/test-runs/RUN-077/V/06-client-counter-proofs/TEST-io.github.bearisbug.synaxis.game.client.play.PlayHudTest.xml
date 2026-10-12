@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" tests="3" skipped="0" failures="3" errors="0" timestamp="2026-10-12T06:03:56.388Z" hostname="Mac.local" time="0.507">
+  <properties/>
+  <testcase name="removeAndClearOwnerTakeTextsOffAndResetForgetsTheScene()" classname="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" time="0.279">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[synaxis_test.missing]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[synaxis_test.missing]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayHudTest.removeAndClearOwnerTakeTextsOffAndResetForgetsTheScene(PlayHudTest.java:60)
+</failure>
+  </testcase>
+  <testcase name="aConnectionThatEnteredNoSceneDrawsNothing()" classname="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[]&gt; but was: &lt;[translation{key='rush.hint', fallback='The fallback of rush.hint, queued: %s', args=[1]}[style={color=gold}]]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[]&gt; but was: &lt;[translation{key='rush.hint', fallback='The fallback of rush.hint, queued: %s', args=[1]}[style={color=gold}]]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayHudTest.aConnectionThatEnteredNoSceneDrawsNothing(PlayHudTest.java:40)
+</failure>
+  </testcase>
+  <testcase name="afterASceneTheTextsAreDrawnBySlotAndOrderAndAnEmptyOneAsAnEmptyLine()" classname="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" time="0.226">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[rush.hint, synaxis_test.missing, ]&gt; but was: &lt;[rush.hint, , ]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[rush.hint, synaxis_test.missing, ]&gt; but was: &lt;[rush.hint, , ]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayHudTest.afterASceneTheTextsAreDrawnBySlotAndOrderAndAnEmptyOneAsAnEmptyLine(PlayHudTest.java:51)
+</failure>
+  </testcase>
+  <system-out><![CDATA[[14:03:56] [Test worker/WARN]: A play component could not be decoded, showing empty text: the component codec could not read EncodedComponent[]: io.netty.handler.codec.EncoderException: java.io.EOFException: fieldSize is too long! Length is 1, but maximum is 0
+[14:03:56] [Test worker/WARN]: A play component could not be decoded, showing empty text: the component codec could not read EncodedComponent[597b227472616e736c617465223a2273796e617869735f746573742e6d697373696e67222c2266616c6c6261636b223a2253686f776e2066726f6d207468652066616c6c6261636b222c22636f6c6f72223a22677265656e227d]: net.minecraft.nbt.ReportedNbtException: Loading NBT data
+[14:03:56] [Test worker/WARN]: A play component could not be decoded, showing empty text: the component codec could not read EncodedComponent[]: io.netty.handler.codec.EncoderException: java.io.EOFException: fieldSize is too long! Length is 1, but maximum is 0
+[14:03:56] [Test worker/WARN]: A play component could not be decoded, showing empty text: the component codec could not read EncodedComponent[]: io.netty.handler.codec.EncoderException: java.io.EOFException: fieldSize is too long! Length is 1, but maximum is 0
+[14:03:56] [Test worker/WARN]: A play component could not be decoded, showing empty text: the component codec could not read EncodedComponent[597b227472616e736c617465223a2273796e617869735f746573742e6d697373696e67222c2266616c6c6261636b223a2253686f776e2066726f6d207468652066616c6c6261636b222c22636f6c6f72223a22677265656e227d]: net.minecraft.nbt.ReportedNbtException: Loading NBT data
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

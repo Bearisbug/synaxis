@@ -1,0 +1,11 @@
+rush Q0a PASS scene 1 synaxis_test:play title key=rush.scene.lobby args=[] colour=none fallback=null; texts [hint key=rush.hint args=[1] colour=#ffaa00 fallback=The fallback of rush.hint, queued: %s drawn "Press action key 1 (default H) to join or leave the queue. Queued: 1", missing key=synaxis_test.missing args=[] colour=#55ff55 fallback=Shown from the fallback drawn "Shown from the fallback", empty text="" colour=none drawn ""]; language has rush.hint=true synaxis_test.missing=false; screenshot 0000_play-text.png 854x480 #ffaa00 2588 px in 4,4..693,19 #55ff55 968 px in 4,24..243,37
+rush Q0b PASS requested at tick 0, 18 ticks sampled; dimension synaxis_test:play_elsewhere from tick 15; screens [net.minecraft.client.gui.screens.LevelLoadingScreen ticks 15..17]; last screen closed at tick 18; hasChunk T1-14@synaxis_test:play_lobby T15-18@synaxis_test:play_elsewhere; ready at tick 18 after 1144 ms; answer "moved synaxis_test:play_elsewhere"; TEXTs after the move 3
+rush Q1 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q2 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q3 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q4 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q5 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q6 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q7 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q8 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q9 SKIP SYNAXIS_RUSH_SERVER not set

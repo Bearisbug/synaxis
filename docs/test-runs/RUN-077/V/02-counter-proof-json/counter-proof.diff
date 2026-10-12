@@ -1,0 +1,13 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ComponentBytes.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ComponentBytes.java
+index 4764bfe432..4667044b67 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ComponentBytes.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ComponentBytes.java
+@@ -27,7 +27,7 @@ public final class ComponentBytes {
+      * @throws IllegalArgumentException if they are more than {@value #MAX_BYTES}
+      */
+     public static byte[] encode(Component component) {
+-        final byte[] bytes = NetworkBuffer.makeArray(NetworkBuffer.COMPONENT, component);
++        final byte[] bytes = NetworkBuffer.makeArray(Boolean.getBoolean("proof.never") ? NetworkBuffer.COMPONENT : NetworkBuffer.JSON_COMPONENT, component);
+         if (bytes.length > MAX_BYTES)
+             throw new IllegalArgumentException("a component encodes to at most " + MAX_BYTES + " bytes, this one to "
+                     + bytes.length);

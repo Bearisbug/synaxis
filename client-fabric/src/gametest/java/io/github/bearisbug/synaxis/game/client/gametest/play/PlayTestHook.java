@@ -29,11 +29,13 @@ import org.jspecify.annotations.Nullable;
  * {@code synaxis:play} as the HUD draws it, read off {@code SynaxisClientMod.PLAY} by reflection the way the
  * regression reads {@code RTS}.
  * <p>
- * Once a script starts a recording, the end of every client tick also records what changed in the mirror since
- * the tick before ({@code docs/DESIGN-PLAY.md} §6.4.8): each SET that arrived, with the moment
- * {@code PlayClient} took it in and a {@code TIMER}'s {@code remaining_ms}; each action result; and the client as
- * {@code SceneReadyProbe} saw it when it sent a {@code C2S_SCENE_READY}. Two SETs of one widget inside one tick
- * show as the later one.
+ * Once a script starts a recording, the end of every client tick also records what arrived since the recording
+ * began ({@code docs/DESIGN-PLAY.md} §6.4.8): each SET, with the moment {@code PlayClient} took it in and a
+ * {@code TIMER}'s {@code remaining_ms}; each action result; and the client as {@code SceneReadyProbe} saw it when
+ * it sent a {@code C2S_SCENE_READY}. What the connection held when the recording began, its SETs, its last result
+ * and its last readiness, stays out. The recording samples the mirror once a tick: two SETs of one widget inside
+ * one tick show as the later one, and so do two action results, so a script that reads the results one by one
+ * waits for each before it presses again.
  */
 public final class PlayTestHook implements ClientModInitializer {
 
@@ -103,7 +105,10 @@ public final class PlayTestHook implements ClientModInitializer {
         final List<SetSeen> sets = new ArrayList<>();
         final List<PlayClient.Result> results = new ArrayList<>();
         final List<SceneReadyProbe.Sent> readies = new ArrayList<>();
+        // The newest SET number, result and readiness seen: the recording's own, or the ones there when it began
         long lastSet;
+        PlayClient.@Nullable Result lastResult;
+        SceneReadyProbe.@Nullable Sent lastReady;
     }
 
     static final BlockingQueue<byte[]> ANSWERS = new LinkedBlockingQueue<>();
@@ -125,8 +130,11 @@ public final class PlayTestHook implements ClientModInitializer {
 
     /** Starts a recording of the mirror's changes from now on; on the client thread. */
     static void startRecording() {
+        final PlayClient play = play();
         final Recording started = new Recording();
-        for (final PlayClient.Entry entry : play().widgets()) started.lastSet = Math.max(started.lastSet, entry.set());
+        for (final PlayClient.Entry entry : play.widgets()) started.lastSet = Math.max(started.lastSet, entry.set());
+        started.lastResult = play.lastResult();
+        started.lastReady = play.probe().last();
         recording = started;
     }
 
@@ -157,9 +165,11 @@ public final class PlayTestHook implements ClientModInitializer {
         }
         running.lastSet = last;
         final PlayClient.Result result = play.lastResult();
-        if (result != null && (running.results.isEmpty() || !running.results.getLast().equals(result))) running.results.add(result);
+        if (result != null && !result.equals(running.lastResult)) running.results.add(result);
+        running.lastResult = result;
         final SceneReadyProbe.Sent ready = play.probe().last();
-        if (ready != null && (running.readies.isEmpty() || !running.readies.getLast().equals(ready))) running.readies.add(ready);
+        if (ready != null && !ready.equals(running.lastReady)) running.readies.add(ready);
+        running.lastReady = ready;
     }
 
     /**

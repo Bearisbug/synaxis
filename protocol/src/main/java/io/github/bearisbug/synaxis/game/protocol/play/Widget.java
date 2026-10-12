@@ -101,7 +101,7 @@ public record Widget(int kind, int slot, int order, List<Prop> props) {
             final int declared = declaredType(kind, prop.id());
             // Skipped by its type: a newer sender adds props without a version bump, and a kind this version
             // does not know declares none (API-PLAY-003).
-            if (declared == UNDECLARED) throw new MalformedMessageException("undeclared prop " + prop.id());
+            if (declared == UNDECLARED) continue;
             if (prop.value().type() != declared) {
                 throw new MalformedMessageException("prop %d of kind %d carries value type %d, not %d"
                         .formatted(prop.id(), kind, prop.value().type(), declared));

@@ -1,6 +1,6 @@
 RUN-077 group P: synaxis:play v1 in :protocol and play-vectors/ (branch prod/r077-P, base prod/r077-docs
 184ad30370). Design commit 4f2dad04f2, red commit 438b206f47 (records, vectors and tests, PlayMessages.read a
-stub), green commit 05095f4699 (decoder, NOT_TEXT line, client test), then the test rework and docs.
+stub), green commit 05095f4699 (decoder, NOT_TEXT line, client test), then the test rework and TEST.md (ab3df924b4).
 Local Gradle through ~/.claude/r077/gradle.zsh (JDK 25, --max-workers=2 --no-daemon --init-script
 gradle/init/aliyun-mirror.init.gradle.kts), one heavy lock per run. No run uses a database or Redis; every run
 is in the default mode. Each directory holds the JUnit XML reports of that run and summary.txt, one line per
@@ -75,3 +75,10 @@ Run 7 -> 07-counter-proofs-2/   (counter-proofs.diff, four more edits at once)
 Not run here: client-fabric's PlayFrozenVectorTest (TC-PLAY-009). The client is a separate build that only
 runs on GitHub Actions; the test first runs on group V's draft PR. Before the push it was compiled and run in a
 plain JVM against this branch's protocol classes with -Dsynaxis.play-vectors.dir set: 27 tests, 0 failed.
+
+Run 8 -> 08-final/   (code ab3df924b4, after the restore of run 7)
+  The task list of run 3 again on the committed head (it also covers the reflowed Javadoc of Message):
+  PlayVectorTest 28/0, PlayMessagesTest 19/0, ProtocolVectorTest 21/0, TranslationKeyGateTest 2/0 ("61 keys
+  checked against [en_us.json, zh_cn.json], 17 identifiers left out"), testNamingCheck and
+  forbiddenImportsCheck of :protocol and :architecture-tests, :protocol:javadoc with the three pre-existing
+  "no comment" warnings only, ABI gate of :plugin-api and :protocol against v0.3.0: BUILD SUCCESSFUL.

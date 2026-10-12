@@ -1,0 +1,50 @@
+diff --git a/architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java b/architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
+index a7e71be038..3b5150c343 100644
+--- a/architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
++++ b/architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
+@@ -62,7 +62,6 @@ public class TranslationKeyGateTest {
+             Map.entry("synaxis:match", "dimension type every match is built on (API-M2-010)"),
+             Map.entry("synaxis:map", "dimension type of the map instance of a shard (API-M3-006)"),
+             Map.entry("synaxis:farview", "configuration channel of the far view announcement of a shard (API-M3-015)"),
+-            Map.entry("synaxis:play", "plugin message channel of the play layer (API-PLAY-002)"),
+             Map.entry("synaxis:hidden", "marker block of an Anvil map source, read by the baker (API-M3-003)"),
+             Map.entry("synaxis:door", "block handler key of a map source's data marker, in :game-rts (API-M3-003)"),
+             Map.entry("synaxis:loot", "block handler key of a map source's data marker, in :game-rts (API-M3-003)"),
+diff --git a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/PlayProtocol.java b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/PlayProtocol.java
+index 3df1db0a4d..05f01b6bf5 100644
+--- a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/PlayProtocol.java
++++ b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/PlayProtocol.java
+@@ -42,6 +42,6 @@ public final class PlayProtocol {
+      * @return the channel version
+      */
+     public static int version() {
+-        return 1;
++        return Boolean.getBoolean("proof.never") ? 1 : 2;
+     }
+ }
+diff --git a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CHud.java b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CHud.java
+index 3448c6b4a5..db3af5d69b 100644
+--- a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CHud.java
++++ b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CHud.java
+@@ -22,7 +22,7 @@ public record S2CHud(List<Op> ops) implements PlayMessage {
+     public static final int MSG_ID = 0x82;
+ 
+     /** The cap on the op count of one message. */
+-    public static final int MAX_OPS = 32;
++    public static final int MAX_OPS = Boolean.getBoolean("proof.never") ? 32 : Integer.MAX_VALUE;
+ 
+     /** The cap on an encoded {@code widget_id}. */
+     public static final int MAX_WIDGET_ID_BYTES = 32;
+diff --git a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/Widget.java b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/Widget.java
+index 9b07f8f37e..16fdd1132e 100644
+--- a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/Widget.java
++++ b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/Widget.java
+@@ -101,7 +101,7 @@ public record Widget(int kind, int slot, int order, List<Prop> props) {
+             final int declared = declaredType(kind, prop.id());
+             // Skipped by its type: a newer sender adds props without a version bump, and a kind this version
+             // does not know declares none (API-PLAY-003).
+-            if (declared == UNDECLARED) continue;
++            if (declared == UNDECLARED) throw new MalformedMessageException("undeclared prop " + prop.id());
+             if (prop.value().type() != declared) {
+                 throw new MalformedMessageException("prop %d of kind %d carries value type %d, not %d"
+                         .formatted(prop.id(), kind, prop.value().type(), declared));

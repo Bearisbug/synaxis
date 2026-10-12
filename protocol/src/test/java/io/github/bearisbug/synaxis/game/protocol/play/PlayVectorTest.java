@@ -27,6 +27,7 @@ import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.TreeSet;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -66,9 +67,10 @@ class PlayVectorTest {
     }
 
     /**
-     * One accepted vector and the record it must decode into.
+     * One accepted vector and the record it must decode into. The record is built in the test, after the
+     * decoder has run, so that a rule of the records that breaks shows up as the decoder refusing the vector.
      */
-    record Vector(String file, PlayMessage expected) {
+    record Vector(String file, Supplier<PlayMessage> expected) {
         @Override
         public String toString() {
             return file;
@@ -87,9 +89,9 @@ class PlayVectorTest {
 
     static List<Vector> vectors() {
         return List.of(
-                new Vector("s2c_scene.bin", new S2CScene(1, "rush:lobby", text("Lobby"), 0, 0,
+                new Vector("s2c_scene.bin", () -> new S2CScene(1, "rush:lobby", text("Lobby"), 0, 0,
                         List.of(new S2CScene.Action(0, "rush:queue", text("Queue"), 2000)))),
-                new Vector("s2c_hud.bin", new S2CHud(List.of(
+                new Vector("s2c_hud.bin", () -> new S2CHud(List.of(
                         new ClearOwner("rush"),
                         new SetWidget("rush", "hint", Widget.text(Widget.LEFT, 0, text("Press 1 to queue"), 0)),
                         new SetWidget("rush", "timer", Widget.timer(Widget.TOP_CENTER, 0, text("Time left"), 45_000, true)),
@@ -99,30 +101,30 @@ class PlayVectorTest {
                                 List.of(new Row(text("Steve"), "12", true)),
                                 List.of(new Button("rush:back", text("Back to lobby"))))),
                         new RemoveWidget("rush", "capture")))),
-                new Vector("s2c_action_result.bin", new S2CActionResult(1, ActionResultCode.OK, EncodedComponent.NONE, 2000)),
-                new Vector("c2s_scene_ready.bin", new C2SSceneReady(1)),
-                new Vector("c2s_action.bin", new C2SAction(1, 1, "rush:queue", new C2SAction.None())),
+                new Vector("s2c_action_result.bin", () -> new S2CActionResult(1, ActionResultCode.OK, EncodedComponent.NONE, 2000)),
+                new Vector("c2s_scene_ready.bin", () -> new C2SSceneReady(1)),
+                new Vector("c2s_action.bin", () -> new C2SAction(1, 1, "rush:queue", new C2SAction.None())),
 
-                new Vector("edge/s2c_scene.bin", new S2CScene(MAX, "edge:" + "s".repeat(59), text("a".repeat(2045)),
+                new Vector("edge/s2c_scene.bin", () -> new S2CScene(MAX, "edge:" + "s".repeat(59), text("a".repeat(2045)),
                         255, 255, edgeActions())),
-                new Vector("edge/s2c_hud.bin", new S2CHud(edgeOps())),
-                new Vector("edge/s2c_hud-unknown-prop.bin", new S2CHud(List.of(new SetWidget("rush", "timer",
+                new Vector("edge/s2c_hud.bin", () -> new S2CHud(edgeOps())),
+                new Vector("edge/s2c_hud-unknown-prop.bin", () -> new S2CHud(List.of(new SetWidget("rush", "timer",
                         new Widget(Widget.TIMER, Widget.TOP_CENTER, 0, List.of(
                                 new Prop(Widget.PROP_TEXT, new PropValue.Component(text("Time left"))),
                                 new Prop(Widget.PROP_REMAINING_MS, new PropValue.VarInt(45_000)),
                                 new Prop(Widget.PROP_RUNNING, new PropValue.Bool(true)),
                                 new Prop(99, new PropValue.VarInt(7)))))))),
-                new Vector("edge/s2c_hud-unknown-kind.bin", new S2CHud(List.of(new SetWidget("rush", "capture",
+                new Vector("edge/s2c_hud-unknown-kind.bin", () -> new S2CHud(List.of(new SetWidget("rush", "capture",
                         new Widget(3, Widget.BOTTOM, 0, List.of(
                                 new Prop(1, new PropValue.Component(text("Capture A"))),
                                 new Prop(4, new PropValue.F32(0.4f)),
                                 new Prop(5, new PropValue.F32(0.1f)),
                                 new Prop(6, new PropValue.VarLong(0xFF00FF00L)))))))),
-                new Vector("edge/s2c_action_result.bin", new S2CActionResult(MAX, 255, text("rush.reason"), 600_000)),
-                new Vector("edge/c2s_scene_ready.bin", new C2SSceneReady(MAX)),
-                new Vector("edge/c2s_action.bin", new C2SAction(MAX, MAX, "edge:" + "q".repeat(59),
+                new Vector("edge/s2c_action_result.bin", () -> new S2CActionResult(MAX, 255, text("rush.reason"), 600_000)),
+                new Vector("edge/c2s_scene_ready.bin", () -> new C2SSceneReady(MAX)),
+                new Vector("edge/c2s_action.bin", () -> new C2SAction(MAX, MAX, "edge:" + "q".repeat(59),
                         new C2SAction.OfBlock(MIN, -64, MAX))),
-                new Vector("edge/c2s_action-entity.bin", new C2SAction(0, 0, "x:y", new C2SAction.OfEntity(MAX))));
+                new Vector("edge/c2s_action-entity.bin", () -> new C2SAction(0, 0, "x:y", new C2SAction.OfEntity(MAX))));
     }
 
     static List<Refused> refused() {
@@ -197,11 +199,13 @@ class PlayVectorTest {
         final byte[] frozen = Files.readAllBytes(directory().resolve(vector.file()));
 
         final MsgBuf reader = MsgBuf.reading(frozen);
-        assertEquals(vector.expected(), PlayMessages.read(reader), vector.file());
+        final PlayMessage decoded = PlayMessages.read(reader);
+        final PlayMessage expected = vector.expected().get();
+        assertEquals(expected, decoded, vector.file());
         assertEquals(0, reader.remaining(), vector.file() + " has bytes the decoder never reads");
 
         final MsgBuf writer = MsgBuf.writing();
-        vector.expected().write(writer);
+        expected.write(writer);
         assertArrayEquals(frozen, writer.toByteArray(), vector.file());
     }
 

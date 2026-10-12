@@ -1,0 +1,77 @@
+RUN-077 group P: synaxis:play v1 in :protocol and play-vectors/ (branch prod/r077-P, base prod/r077-docs
+184ad30370). Design commit 4f2dad04f2, red commit 438b206f47 (records, vectors and tests, PlayMessages.read a
+stub), green commit 05095f4699 (decoder, NOT_TEXT line, client test), then the test rework and docs.
+Local Gradle through ~/.claude/r077/gradle.zsh (JDK 25, --max-workers=2 --no-daemon --init-script
+gradle/init/aliyun-mirror.init.gradle.kts), one heavy lock per run. No run uses a database or Redis; every run
+is in the default mode. Each directory holds the JUnit XML reports of that run and summary.txt, one line per
+test with the failure message and the first test-class frame. The ABI gate downloads plugin-api.jar and
+protocol.jar of release v0.3.0 with gh into a mktemp directory that a trap removes.
+
+play-vectors/ was frozen by an encoder written from the design text (a throwaway Python script, not kept),
+so the Java records and that encoder are two implementations; run 3 is the first time they met.
+
+Run 1 -> 01-compile-failure.txt
+  The first stub of PlayMessages.read only threw, and Error Prone DoNotCallSuggester failed
+  :protocol:compileJava under -Werror; nothing ran. The stub got @SuppressWarnings("DoNotCallSuggester").
+
+Run 2 -> 02-red/   (code 438b206f47, tests as in that commit)
+  :protocol:test PlayVectorTest + PlayMessagesTest: 47 tests, 39 failed. Every test that decodes fails with
+  UnsupportedOperationException "the synaxis:play decoder is not written yet" at PlayMessages.java:21. Green on
+  the stub: the six tests that only build records (theU8FieldsMustFit, theRecordsCheckWhatTheDecoderChecks,
+  theFactoriesFillTheDeclaredProps, theActionTableHasSixDistinctSlots, theChannelIsVersionOneOfSynaxisPlay,
+  aComponentIsCopiedAndComparedByItsBytes) and the two set checks (everyFrozenFileIsInTheTables...,
+  theFrozenVectorsAreBoundToThePlayVersion), since the records and the vectors are complete in that commit.
+  The reworked tests (after run 4) were checked against the same stub in a plain JVM, not Gradle: also 47/39.
+
+Run 3 -> 03-green/   (code 05095f4699)
+  PlayVectorTest 28/0, PlayMessagesTest 19/0, ProtocolVectorTest 21/0 (Message gained a permit),
+  TranslationKeyGateTest 2/0 ("61 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out"),
+  testNamingCheck and forbiddenImportsCheck of :protocol and :architecture-tests, :protocol:javadoc,
+  :plugin-api:checkBinaryCompatibility and :protocol:checkBinaryCompatibility against v0.3.0: BUILD SUCCESSFUL,
+  no ::error line. Javadoc warned "no comment" on EncodedComponent#bytes(); a comment was added after this run.
+
+Run 4 -> 04-counter-proofs/   (counter-proofs.diff, four edits at once)
+  P1 Widget.java:104 skips an undeclared prop -> throws; P2 S2CHud.java:25 MAX_OPS -> Integer.MAX_VALUE unless
+  proof.never; P3 PlayProtocol.java:45 version() -> 2 unless proof.never; P4 TranslationKeyGateTest.java:65
+  deleted. 35 protocol tests completed, 7 failed; the gate 2/1 ("62 keys ..., 16 identifiers left out",
+  "en_us.json has no text for synaxis:play (from ...PlayMessages, ...PlayProtocol)" and the same for zh_cn).
+  P2, P3, P4 turned their own tests red. P1 did too, but PlayVectorTest built every expected record eagerly in
+  its @MethodSource, so the edge TEXT with undeclared props threw in the test data: the parameterized test
+  failed as initializationError and everyFrozenFileIsInTheTables... failed in edgeOps(), not at the decoder.
+  The tests were reworked: Vector carries a Supplier, the decoder runs before the expected record is built,
+  and anUndeclaredPropIsKeptAndTheDeclaredOnesStillRead decodes hand written bytes.
+
+Run 5 -> 05-rework-counter-proofs/   (same diff, reworked tests)
+  47 protocol tests, 8 failed, each at its own line; the gate 2/1 as in run 4.
+    P1: edge/s2c_hud.bin, edge/s2c_hud-unknown-prop.bin, edge/s2c_hud-unknown-kind.bin red at
+        PlayVectorTest.java:202 (the decode) with "undeclared prop 0", "99", "1";
+        anUndeclaredPropIsKeptAndTheDeclaredOnesStillRead red at PlayMessagesTest.java:41 "undeclared prop 99".
+    P2: edge/refused-s2c_hud-33-ops.bin red at PlayVectorTest.java:217 (nothing thrown);
+        theRecordsCheckWhatTheDecoderChecks red at PlayMessagesTest.java:51 from :327 (nothing thrown).
+    P3: theFrozenVectorsAreBoundToThePlayVersion red at PlayVectorTest.java:241 "expected: <2> but was: <1>";
+        theChannelIsVersionOneOfSynaxisPlay red at PlayMessagesTest.java:71 "expected: <1> but was: <2>".
+    P4: TranslationKeyGateTest as in run 4.
+  Restored with git checkout HEAD -- protocol/src/main architecture-tests/src.
+
+Run 6 -> 06-final/   (main code 05095f4699, reworked tests, after the restore)
+  The task list of run 3 again: PlayVectorTest 28/0, PlayMessagesTest 19/0, ProtocolVectorTest 21/0,
+  TranslationKeyGateTest 2/0 (61 keys, 17 identifiers), the two source checks of both modules, javadoc with
+  the three pre-existing "no comment" warnings only, ABI gate against v0.3.0 green.
+
+Run 7 -> 07-counter-proofs-2/   (counter-proofs.diff, four more edits at once)
+  P5 S2CActionResult.java:72 does not write the reason; P6 S2CScene.java:31 MAX_ACTIONS -> 5 unless
+  proof.never; P7 PlayMessages.java:39 an unknown msg_id -> MalformedMessageException; P8 S2CHud.java:159 the
+  CLEAR_OWNER widget_id check off. 47 tests, 9 failed:
+    P5: s2c_action_result.bin and edge/s2c_action_result.bin red at PlayVectorTest.java:209 ("array lengths
+        differ, expected: <7> but was: <6>", "<26> but was: <11>"); everyMessageOfVersionOneRoundTrips and
+        theValuesTheClientFallsBackOnAreKeptAsReceived red at PlayMessagesTest.java:41 (truncated).
+    P6: edge/s2c_scene.bin red at PlayVectorTest.java:202 "count 6 is outside [0, 5]";
+        edge/refused-s2c_scene-7-actions.bin red at :219 (refused for [0, 5], not [0, 6]);
+        theActionTableHasSixDistinctSlots red at PlayMessagesTest.java:52 from :250.
+    P7: theMessagesOfLaterVersionsAreUnknownRatherThanMalformed red at PlayMessagesTest.java:102.
+    P8: aClearOwnerWithAWidgetIdIsMalformed red at PlayMessagesTest.java:51 from :241 (nothing thrown).
+  Restored with git checkout HEAD -- protocol/src/main.
+
+Not run here: client-fabric's PlayFrozenVectorTest (TC-PLAY-009). The client is a separate build that only
+runs on GitHub Actions; the test first runs on group V's draft PR. Before the push it was compiled and run in a
+plain JVM against this branch's protocol classes with -Dsynaxis.play-vectors.dir set: 27 tests, 0 failed.

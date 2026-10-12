@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" tests="28" skipped="0" failures="4" errors="0" timestamp="2026-10-12T03:59:42.843Z" hostname="Mac.local" time="0.062">
+  <properties/>
+  <testcase name="edge/refused-s2c_hud-33-ops.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.004"/>
+  <testcase name="edge/refused-s2c_scene-7-actions.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_scene-7-actions.bin was refused for count 7 is outside [0, 5], not for count 7 is outside [0, 6] ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_scene-7-actions.bin was refused for count 7 is outside [0, 5], not for count 7 is outside [0, 6] ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:199)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:219)
+</failure>
+  </testcase>
+  <testcase name="edge/refused-s2c_hud-17-props.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-scoreboard-17-rows.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-panel-13-rows.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-panel-5-buttons.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-panel-not-center.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-slot-7.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="edge/refused-s2c_hud-value-type-10.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="edge/refused-s2c_hud-component-2049.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="edge/refused-s2c_hud-declared-prop-wrong-type.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-op-4.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-c2s_action-target-3.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="everyFrozenFileIsInTheTablesAndEveryMessageHasTwoVectors()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.003"/>
+  <testcase name="s2c_scene.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="s2c_hud.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002"/>
+  <testcase name="s2c_action_result.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: s2c_action_result.bin ==&gt; array lengths differ, expected: &lt;7&gt; but was: &lt;6&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: s2c_action_result.bin ==&gt; array lengths differ, expected: &lt;7&gt; but was: &lt;6&gt;
+	at org.junit.jupiter.api.Assertions.assertArrayEquals(Assertions.java:1298)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:209)
+</failure>
+  </testcase>
+  <testcase name="c2s_scene_ready.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="c2s_action.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="edge/s2c_scene.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0">
+    <failure message="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: count 6 is outside [0, 5]" type="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException">io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: count 6 is outside [0, 5]
+	at io.github.bearisbug.synaxis.game.protocol.MsgBuf.readCount(MsgBuf.java:247)
+	at io.github.bearisbug.synaxis.game.protocol.play.S2CScene.read(S2CScene.java:96)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:34)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:202)
+</failure>
+  </testcase>
+  <testcase name="edge/s2c_hud.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002"/>
+  <testcase name="edge/s2c_hud-unknown-prop.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="edge/s2c_hud-unknown-kind.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="edge/s2c_action_result.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: edge/s2c_action_result.bin ==&gt; array lengths differ, expected: &lt;26&gt; but was: &lt;11&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/s2c_action_result.bin ==&gt; array lengths differ, expected: &lt;26&gt; but was: &lt;11&gt;
+	at org.junit.jupiter.api.Assertions.assertArrayEquals(Assertions.java:1298)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:209)
+</failure>
+  </testcase>
+  <testcase name="edge/c2s_scene_ready.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/c2s_action.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/c2s_action-entity.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="theFrozenVectorsAreBoundToThePlayVersion()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

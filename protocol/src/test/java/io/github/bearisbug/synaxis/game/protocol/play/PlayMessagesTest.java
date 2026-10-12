@@ -123,16 +123,29 @@ class PlayMessagesTest {
                 List.of(ActionResultCode.values()).stream().map(ActionResultCode::wireId).toList());
     }
 
-    /** DESIGN-PLAY §19 "未知属性被跳过": the prop stays in the record and the declared ones read as usual. */
+    /**
+     * DESIGN-PLAY §19 "未知属性被跳过": a TIMER written by hand with {@code prop_id=99} of type varint decodes,
+     * the prop stays in the record and the declared ones read as usual.
+     */
     @Test
     void anUndeclaredPropIsKeptAndTheDeclaredOnesStillRead() {
-        final Widget timer = new Widget(Widget.TIMER, Widget.TOP_CENTER, 0, List.of(
+        final MsgBuf buf = hudWithOneSet(Widget.TIMER, Widget.TOP_CENTER);
+        buf.writeVarInt(3);
+        buf.writeVarInt(Widget.PROP_TEXT);
+        buf.writeUnsignedByte(PropValue.TYPE_COMPONENT);
+        text("Time left").write(buf);
+        buf.writeVarInt(Widget.PROP_REMAINING_MS);
+        buf.writeUnsignedByte(PropValue.TYPE_VAR_INT);
+        buf.writeVarInt(45_000);
+        buf.writeVarInt(99);
+        buf.writeUnsignedByte(PropValue.TYPE_VAR_INT);
+        buf.writeVarInt(7);
+        final SetWidget set = (SetWidget) ((S2CHud) decode(buf)).ops().getFirst();
+
+        assertEquals(new Widget(Widget.TIMER, Widget.TOP_CENTER, 0, List.of(
                 new Prop(Widget.PROP_TEXT, new PropValue.Component(text("Time left"))),
                 new Prop(Widget.PROP_REMAINING_MS, new PropValue.VarInt(45_000)),
-                new Prop(99, new PropValue.VarInt(7))));
-        final SetWidget set = (SetWidget) ((S2CHud) roundTrip(new S2CHud(List.of(new SetWidget("rush", "timer", timer))))).ops().getFirst();
-
-        assertEquals(timer, set.widget());
+                new Prop(99, new PropValue.VarInt(7)))), set.widget());
         assertEquals(Optional.of(new PropValue.VarInt(45_000)), set.widget().prop(Widget.PROP_REMAINING_MS));
         assertEquals(Optional.of(new PropValue.VarInt(7)), set.widget().prop(99));
         assertEquals(Optional.empty(), set.widget().prop(Widget.PROP_RUNNING));

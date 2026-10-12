@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" tests="19" skipped="0" failures="3" errors="0" timestamp="2026-10-12T03:54:45.523Z" hostname="Mac.local" time="0.079">
+  <properties/>
+  <testcase name="theU8FieldsMustFit()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.017"/>
+  <testcase name="aClearOwnerWithAWidgetIdIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.006"/>
+  <testcase name="aCooldownOverTenMinutesIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.002"/>
+  <testcase name="aBoolIsZeroOrOne()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.003"/>
+  <testcase name="theRecordsCheckWhatTheDecoderChecks()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.009">
+    <failure message="org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.game.protocol.MalformedMessageException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.game.protocol.MalformedMessageException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.assertMalformed(PlayMessagesTest.java:51)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.theRecordsCheckWhatTheDecoderChecks(PlayMessagesTest.java:314)
+</failure>
+  </testcase>
+  <testcase name="theFactoriesFillTheDeclaredProps()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001"/>
+  <testcase name="theSceneNumbersHaveTheirFloors()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.006"/>
+  <testcase name="everyMessageOfVersionOneRoundTrips()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.003"/>
+  <testcase name="theIdsHaveTheirByteBudgets()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.003"/>
+  <testcase name="theValuesTheClientFallsBackOnAreKeptAsReceived()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.0"/>
+  <testcase name="theActionTableHasSixDistinctSlots()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.002"/>
+  <testcase name="aNegativeOrTruncatedComponentIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.0"/>
+  <testcase name="theChannelIsVersionOneOfSynaxisPlay()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;1&gt; but was: &lt;2&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;1&gt; but was: &lt;2&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.theChannelIsVersionOneOfSynaxisPlay(PlayMessagesTest.java:71)
+</failure>
+  </testcase>
+  <testcase name="aComponentIsCopiedAndComparedByItsBytes()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.005"/>
+  <testcase name="trailingUnknownBytesAreSkipped()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.0"/>
+  <testcase name="aTruncatedHudIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001"/>
+  <testcase name="aNonFiniteFloatIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.003"/>
+  <testcase name="theMessagesOfLaterVersionsAreUnknownRatherThanMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001"/>
+  <testcase name="anUndeclaredPropIsKeptAndTheDeclaredOnesStillRead()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001">
+    <failure message="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 99" type="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException">io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 99
+	at io.github.bearisbug.synaxis.game.protocol.play.Widget.&lt;init&gt;(Widget.java:104)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.anUndeclaredPropIsKeptAndTheDeclaredOnesStillRead(PlayMessagesTest.java:129)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

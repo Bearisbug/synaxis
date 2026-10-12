@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" tests="21" skipped="0" failures="0" errors="0" timestamp="2026-10-12T03:57:26.763Z" hostname="Mac.local" time="0.023">
+  <properties/>
+  <testcase name="c2s_hello.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.001"/>
+  <testcase name="s2c_hello.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.0"/>
+  <testcase name="c2s_camera.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.0"/>
+  <testcase name="c2s_select.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.0"/>
+  <testcase name="c2s_move_order.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.0"/>
+  <testcase name="s2c_order_result.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.001"/>
+  <testcase name="s2c_unit_spawn.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.0"/>
+  <testcase name="s2c_unit_state.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.0"/>
+  <testcase name="s2c_unit_despawn.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.001"/>
+  <testcase name="edge/c2s_hello.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.0"/>
+  <testcase name="edge/s2c_hello.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.0"/>
+  <testcase name="edge/c2s_camera.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.001"/>
+  <testcase name="edge/c2s_select.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.0"/>
+  <testcase name="edge/c2s_move_order.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.001"/>
+  <testcase name="edge/s2c_order_result.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.0"/>
+  <testcase name="edge/s2c_unit_spawn.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.0"/>
+  <testcase name="edge/s2c_unit_state.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.001"/>
+  <testcase name="edge/s2c_unit_despawn.bin" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.0"/>
+  <testcase name="theArchetypeBoxTableIsFrozenWithTheMessages()" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.0"/>
+  <testcase name="everyMessageHasACanonicalAndABoundaryVector()" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.001"/>
+  <testcase name="theFrozenVectorsAreBoundToTheSchemaVersion()" classname="io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

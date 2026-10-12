@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-12 | 分支 `prod/r077-P`（设计提交 `4f2dad04f2`、修前红提交 `438b206f47`、实现提交 `05095f4699`，基于 `prod/r077-docs` `184ad30370`），跟进 `docs/DESIGN-PLAY.md` v0.2 与 `docs/DESIGN-M2.md` v0.66（RUN-077 组 P，`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/P/`。**新增 §4「玩法架构 · RUN-077：P」九条 `TC-PLAY-001`～`TC-PLAY-009`**：常规向量（001）、边界向量（002）、未知属性与未知种类（003）、13 个 `refused-` 向量（004）、manifest 把向量绑在 `play_version` 上（005）、往返与后续版本的 `msg_id`（006）、向量没覆盖的畸形形状（007）、包导出、`NOT_TEXT`、ABI 门与 javadoc（008）、客户端 `PlayFrozenVectorTest`（009，只在 GitHub Actions 上跑，组 V 的草稿 PR 首跑，反证也在那里补）。改动前的红在桩上实跑（47 条 39 条红）；反证两批，每批四处一次打上，各打各的用例，还原后复绿；第一批第一次跑时一处红落在测试的参数构造上，测试改为先解码后重跑。`:protocol` 新类 2 个 47 条。**门禁读数**：`TranslationKeyGateTest` 的标识 16 → 17，键数仍是 61；`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717` 的读数与 `NOT_TEXT` 之后的红行行号本组不改，由集成轮按 CI 输出改，`TC-WORLD-032` 走交接行。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-docs`（基于 `main` `f9e002917b`：`docs/DESIGN-PLAY.md` v0.1 已签字，`docs/DESIGN.md` v0.46 已登记该分册），RUN-077（玩法架构最小样板 S1）的文档基线，跟进 `docs/DESIGN-PLAY.md` v0.1。不加用例、不执行用例、不登执行轮次。**§1**：「关联设计文档」加 `docs/DESIGN-PLAY.md`，写明 `REQ-PLAY-*` 对应 `TC-PLAY-*`，联检从此解析五份设计文档。**§2**：加玩法架构侧一段，写明 S1 覆盖的六条需求与尚未开工的十二条，后者在联检里报「无任何 TC 引用」属在途。**§4 末尾**：建好「玩法架构 · RUN-077」八节，节头写对应需求、`docs/DESIGN-PLAY.md` 的版本、用例号段与测试类名；号段按块预分，块内允许空号（P 001～009、K 010～019、V 020～029、H 030～049、I 050～069、C 070～089、R 090～109、G 110～129），各组只往自己的节里写 | Bearisbug |
 | 2026-10-11 | 分支 `m3/doc-sync-075`（基于 `main` `472985a38f`，RUN-075、RUN-076 已合入），按 `docs/DESIGN-PROD.md` §28.3 交给光照会话的一行改 `TC-WORLD-100`、`TC-WORLD-101` 第 2 步：`new ShardGates(` 在 `Main.java:547`（RUN-075 组 X 提出 `positionRule` 之后；括号里补一句沿革），调 `serveMap` 处传玩家存储的那一行仍是 `:320`，两处都在 `main` `472985a38f` 的代码上核过；跟进 `docs/DESIGN-M3.md` v0.47。本轮不执行用例、不登执行轮次 | Bearisbug |
 | 2026-10-11 | 集成分支 `prod/integrate-076` 的全量门禁、真客户端可玩项剧本与 P11 冒烟在 GitHub Actions 上跑完（草稿 PR #20，提交 `0cb791cd50`），登记 RUN-076（证据 `docs/test-runs/RUN-076/integrate/00-index.txt`）。**条数**（按 CI run `38145713518`「Check」的 JUnit XML，带数据库变量；4 线程严格与严格 grid 两份逐类相同）：`:server-app:test` 703 → 704、类仍是 138 个（组 W `PlayerStateSectionIntegrationTest` 17 → 18），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步、`636` 第 1 步，括注续上「v0.9.79～v0.9.80 加 1 个」一段；全部模块 653 个类 4,455 → 4,456（`TC-PROD-636` 第 1 步）；根项目与其余模块不变；`TC-PROD-575` 第 3 步不带数据库变量的 577 照原样保留，「577 不含」的清单补上组 W 的 1 个。§6 登记 RUN-076（通过 14/20 · 跳过 6：组 W 按 `git diff` 改了 `<PS>` 行号的六条旧用例，反证本轮没人复跑，见明细） | Bearisbug |
@@ -11053,6 +11054,129 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的线上部分：`synaxis:play` v1 的五条消息、小部件属性的 TLV 编码与冻结向量（`docs/DESIGN-PLAY.md` `API-PLAY-002`、`API-PLAY-003`；本组跟进该分册 v0.2 与 `docs/DESIGN-M2.md` v0.66 的 `API-M2-001`）。用例号段 001～009，由组 P 在分支 `prod/r077-P` 写入。测试类：`:protocol` 包 `io.github.bearisbug.synaxis.game.protocol.play` 的 `PlayMessagesTest`、`PlayVectorTest`；`client-fabric` 的 `PlayFrozenVectorTest`。
 
 「玩法架构 · RUN-077」八节共用的约定：用例号段指 `TC-PLAY-` 后的三位数，块内允许空号。「跑 `<类>`」即 `export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home` 之后 `./gradlew <模块>:test --rerun --tests '<类全名>' <模块>:testNamingCheck <模块>:forbiddenImportsCheck --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`<模块>` 如 `:protocol`、`:server-app`），结果看该模块的 `build/test-results/test/TEST-<类全名>.xml`。后两个任务只扫源码：带 `@EnvTest` 的类必须叫 `*IntegrationTest`，叫 `*IntegrationTest` 的类必须带 `@EnvTest`（`build-src/src/main/kotlin/CheckTestNamingTask.kt`），所以起真 `TickSchedulerThread`、不用 `Env` 的类叫普通的 `*Test`。`client-fabric` 是独立构建，不挂这两道门禁，它的 JUnit 与真客户端剧本只在 GitHub Actions 上跑。
+
+本节由组 P 写入，分支 `prod/r077-P`：设计提交 `4f2dad04f2`，修前红提交 `438b206f47`（record、向量与测试齐全，`PlayMessages.read` 是只抛异常的桩），实现提交 `05095f4699`，之后是测试返工与文档。改动：`:protocol` 新包 `<PK>`（`module-info` 导出），五条消息 `S2CScene`、`S2CHud`、`S2CActionResult`、`C2SSceneReady`、`C2SAction`，小部件 `Widget`、九种值类型 `PropValue`、`EncodedComponent`、`ActionResultCode`，`PlayProtocol` 给通道名 `synaxis:play` 与 `version()`（当前 1），`PlayMessages.read` 按 `msg_id` 分发；`Message` 的 permits 加 `PlayMessage`；`:architecture-tests` 的 `TranslationKeyGateTest` 在 `NOT_TEXT` 的 `synaxis:farview` 一行之后加 `synaxis:play` 一行；`client-fabric/build.gradle.kts` 给测试加系统属性 `synaxis.play-vectors.dir` 与对应的 inputs，新测试 `PlayFrozenVectorTest`。冻结向量 26 个：`<PV>` 根目录 5 个常规向量，`edge/` 下 8 个可接受的边界向量与 13 个 `refused-` 向量。向量由照设计文本另写的一个编码器生成（一次性脚本，不入库），所以第 3 次运行是 Java 的 record 与它第一次对拍。
+
+测试：`<PK>.PlayVectorTest` 28 条（参数化的 13 个可接受向量与 13 个 `refused-` 向量，另两条核对整套），`<PK>.PlayMessagesTest` 19 条，都不带 `@EnvTest`、不起服务端、不需要数据库；`client-fabric` 的 `io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest` 27 条，只在 GitHub Actions 上跑。「跑 P 两类」即照本节上面的约定，一条命令跑 `:protocol` 的这两个类：`./gradlew :protocol:test --rerun --tests '<PK>.PlayVectorTest' --tests '<PK>.PlayMessagesTest' :protocol:testNamingCheck :protocol:forbiddenImportsCheck --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `protocol/build/test-results/test/` 下这两个类的 XML。
+
+源文件代号：`<PK>` 是包名 `io.github.bearisbug.synaxis.game.protocol.play`，`<PW>` 是 `protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/`，`<PV>` 是 `protocol/src/test/resources/play-vectors/`；行号按本组分支头。「改动前的红」在桩上跑（第 2 次运行，测试是 `438b206f47` 的版本；返工后的测试在普通 JVM 里对同一个桩核过，同为 47 条 39 条红）。record 与向量在桩提交里已经完整，所以只构造 record 的用例与核对整套的用例在桩上就绿，各条写明。反证分两批，每批同时打上四处改动，每处打红的用例互不重叠（`docs/test-runs/RUN-077/P/05-rework-counter-proofs/` 与 `07-counter-proofs-2/` 下的 `counter-proofs.diff`），跑完 `git checkout HEAD -- protocol/src/main architecture-tests/src` 再复绿。第一批第一次跑（第 4 次运行）时 `PlayVectorTest` 在 `@MethodSource` 里先构造期望的 record，`TC-PLAY-003` 那一处的红落在参数构造上（`initializationError`），没落在解码器上；测试改为先解码、期望值延后构造，同一批重跑（第 5 次运行），各条按第 5 次写。本组 8 次 Gradle 运行与读数见 `docs/test-runs/RUN-077/P/00-index.txt`。
+
+#### `TC-PLAY-001` 常规向量：五条消息各一个，解成期望的 record 并逐字节写回 — 对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 P 两类，看 `PlayVectorTest` 的 `aFrozenVectorDecodesAndReEncodesByteForByte` 的五个常规参数 | `PlayVectorTest` `tests="28"` 0 失败。`s2c_scene.bin`（49 B）：`scene_seq=1`、`rush:lobby`、标题「Lobby」、`camera=0`、`cursor=0`，槽 0 的动作 `rush:queue`，冷却 2,000 ms；`s2c_hud.bin`（232 B）六个 op：`CLEAR_OWNER rush`，`SET` 了 `rush/hint`（`TEXT`，`LEFT`）、`rush/timer`（`TIMER`，45,000 ms，`running`）、`rush/score`（`SCOREBOARD`，2 行）、`rush/result`（`PANEL`，1 行，按钮 `rush:back`），`REMOVE rush/capture`；`s2c_action_result.bin`（7 B）：`action_seq=1`、`ok`、没有 reason、冷却 2,000 ms；`c2s_scene_ready.bin`（2 B）：`scene_seq=1`；`c2s_action.bin`（15 B）：`scene_seq=1`、`action_seq=1`、`rush:queue`、目标 0。每个都解成测试表里的 record、没有剩余字节，record 写出与文件逐字节相同 |
+| 2 | 改动前的红：`<PW>PlayMessages.java` 取 `438b206f47` 的桩，跑 P 两类 | `47 tests completed, 39 failed`；这五个参数都红在 `PlayVectorTest.java:200`（该版本里调解码器的一行），`UnsupportedOperationException: the synaxis:play decoder is not written yet`，抛自 `PlayMessages.java:21` |
+| 3 | 反证有齿（`S2C_ACTION_RESULT` 漏写 reason）：`<PW>S2CActionResult.java:72` 的 `reason.write(buf);` 改为 `if (Boolean.getBoolean("proof.never")) reason.write(buf);`，跑 P 两类，再还原 | `s2c_action_result.bin` 红在 `PlayVectorTest.java:209`，`array lengths differ, expected: <7> but was: <6>`；`edge/s2c_action_result.bin` 同一行，`<26> but was: <11>`：解码照常，写回少了 reason。`PlayMessagesTest` 的 `everyMessageOfVersionOneRoundTrips`、`theValuesTheClientFallsBackOnAreKeptAsReceived` 跟着红在 `:41`（`message is truncated`，`TC-PLAY-006` 的往返）。同批另三处见 `TC-PLAY-002`、`TC-PLAY-006`、`TC-PLAY-007` 第 3 步，这一批共 9 条红（第 7 次运行） |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 8 次运行） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-002` 边界向量：计数与长度取满、VarInt 取满五字节、`scene_seq` 为 0 的动作照常解出 — 对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 P 两类，看同一个方法的 `edge/` 下五个同名参数与 `edge/c2s_action-entity.bin` | 都绿。`edge/s2c_scene.bin`（2,575 B）：`scene_seq=2147483647`、64 B 的 `scene_id`、2,048 B 的标题、`camera=255` 与 `cursor=255` 原样保留，槽 5～0 六个动作（64 B 的动作 id，冷却 600,000 ms）；`edge/s2c_hud.bin`（1,134 B）：32 个 op，64 B 的 owner 与 32 B 的 `widget_id`，一个 16 个属性的 `TEXT`（其中 14 个未声明，覆盖九种值类型：`prop_id` 0 与 2147483647、64 B 的字符串、空 component、`Float.MAX_VALUE`），16 行的 `SCOREBOARD`，12 行 4 个按钮的 `PANEL`，停住的 `TIMER`（2147483647 ms），27 个 `REMOVE`；`edge/s2c_action_result.bin`：`code=255` 原样保留（`resultCode()` 是 `REJECTED`）、带 reason、冷却 600,000 ms；`edge/c2s_scene_ready.bin`：`scene_seq=2147483647`；`edge/c2s_action.bin`：64 B 的动作 id，方块目标 (−2147483648, −64, 2147483647)；`edge/c2s_action-entity.bin`：`scene_seq=0`、`action_seq=0`，实体目标 2147483647 |
+| 2 | 改动前的红：同 `TC-PLAY-001` 第 2 步 | 这六个参数都红在 `PlayVectorTest.java:200`，消息同 `TC-PLAY-001` 第 2 步 |
+| 3 | 反证有齿（动作表上限少一）：`<PW>S2CScene.java:31` 的 `MAX_ACTIONS = 6` 改为 `MAX_ACTIONS = Boolean.getBoolean("proof.never") ? 6 : 5`，与 `TC-PLAY-001` 第 3 步同批跑，再还原 | `edge/s2c_scene.bin` 红在 `PlayVectorTest.java:202`（解码这一行），`count 6 is outside [0, 5]`；`edge/refused-s2c_scene-7-actions.bin` 红在 `:219`，`was refused for count 7 is outside [0, 5], not for count 7 is outside [0, 6]`；`PlayMessagesTest.theActionTableHasSixDistinctSlots` 红在 `:52`（自 `:250`），`refused for action slot 6 is outside [0, 4]` |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 8 次运行） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-003` 未知属性与未知种类照类型读过、原样保留（§19 场景「未知属性被跳过」） — 对应 `REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。客户端怎样跳过它们属于组 C 的渲染；本条判的是解码层不拒收、不丢字节。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 P 两类，看 `edge/s2c_hud-unknown-prop.bin`、`edge/s2c_hud-unknown-kind.bin`、`edge/s2c_hud.bin` 三个参数与 `PlayMessagesTest.anUndeclaredPropIsKeptAndTheDeclaredOnesStillRead` | 都绿。第一个是一个 `TIMER` 带 `prop_id=99`、类型 varint、值 7（§19 场景原文）：解出的 `Widget` 有四个属性，第四个是 `(99, VarInt 7)`，写回逐字节相同；第二个是 `kind=3`（v2 的 `BAR`，v1 不认识），带一个 component、两个 f32、一个 varlong，整个保留；第三个里 `TEXT` 的 14 个未声明属性同样保留。`PlayMessagesTest` 那条解码手写的同一个 `TIMER`：`prop(PROP_REMAINING_MS)` 是 45,000，`prop(99)` 是 7，`prop(PROP_RUNNING)` 为空 |
+| 2 | 改动前的红：同 `TC-PLAY-001` 第 2 步 | 四条都红，消息同 `TC-PLAY-001` 第 2 步：三个参数红在 `PlayVectorTest.java:200`，`PlayMessagesTest` 那条（该版本经写出再读回）红在解码器 |
+| 3 | 反证有齿（未声明的属性不再跳过）：`<PW>Widget.java:104` 的 `if (declared == UNDECLARED) continue;` 改为 `if (declared == UNDECLARED) throw new MalformedMessageException("undeclared prop " + prop.id());`，与 `TC-PLAY-004`、`TC-PLAY-005`、`TC-PLAY-008` 第 3 步同批跑，再还原 | 四条都红，没有别的用例因这一处红：三个参数红在 `PlayVectorTest.java:202`（解码这一行），依次 `undeclared prop 99`、`undeclared prop 1`、`undeclared prop 0`；`PlayMessagesTest` 那条红在 `:41`（`decode`），`undeclared prop 99`。第 4 次运行的红落在 `edgeOps()` 与参数化的 `initializationError` 上，见本节开头 |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 6 次运行） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-004` 两端都必须按畸形拒收的 13 个 `refused-` 向量 — 对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 P 两类，看 `aRefusedVectorIsMalformed` 的 13 个参数 | 都绿，每个都抛 `MalformedMessageException`，消息含测试表里的原因：33 个 op（`count 33 is outside [0, 32]`）；7 个动作（`count 7 is outside [0, 6]`）；一个 `TEXT` 17 个属性（`count 17 is outside [0, 16]`）；一个 rows 值 17 行（同上）；`PANEL` 13 行（`a PANEL has 13 rows, over the cap of 12`）；一个 buttons 值 5 个（`count 5 is outside [0, 4]`）；`PANEL` 在 `TOP_LEFT`（`a PANEL is on slot 0, not CENTER`）；`slot=7`（`slot 7 is outside [0, 6]`）；值类型 10（`unknown value type: 10`）；2,049 B 的 component（`component length 2049 is outside [0, 2048]`）；`TIMER` 的 `remaining_ms` 写成 varlong（`prop 2 of kind 2 carries value type 2, not 1`）；`op=4`（`unknown op: 4`）；`target=3`（`unknown target: 3`） |
+| 2 | 改动前的红：同 `TC-PLAY-001` 第 2 步 | 13 个都红在 `PlayVectorTest.java:214`（该版本的 `assertThrows`），`Unexpected exception type thrown, expected: <…MalformedMessageException> but was: <java.lang.UnsupportedOperationException>` |
+| 3 | 反证有齿（去掉 op 的条数上限）：`<PW>S2CHud.java:25` 的 `MAX_OPS = 32` 改为 `MAX_OPS = Boolean.getBoolean("proof.never") ? 32 : Integer.MAX_VALUE`（解码的 `readCount` 与紧凑构造器共用这个上限），与 `TC-PLAY-003` 第 3 步同批跑，再还原 | `edge/refused-s2c_hud-33-ops.bin` 红在 `PlayVectorTest.java:217`，`Expected …MalformedMessageException to be thrown, but nothing was thrown`；`PlayMessagesTest.theRecordsCheckWhatTheDecoderChecks` 红在 `:51`（自 `:327`：33 个 op 的 `S2CHud` 构造不再抛）；其余 12 个 `refused-` 向量照旧绿 |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 6 次运行） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-005` manifest 把整套向量绑在 `play_version` 上，测试表列全每个文件 — 对应 `REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 P 两类，看 `PlayVectorTest` 的 `theFrozenVectorsAreBoundToThePlayVersion`、`everyFrozenFileIsInTheTablesAndEveryMessageHasTwoVectors` 与 `PlayMessagesTest.theChannelIsVersionOneOfSynaxisPlay`；`sed -n 13,14p <PV>manifest.txt` | 三条都绿。manifest 第 13、14 行是 `play_version=1` 与 `digest=05eee605151536a60eb1768349913d232b3ad00d8b5dfb426f8f974a8d0a333b`，后者等于根目录与 `edge/` 下 26 个 `.bin` 按相对路径排序后逐个喂进「路径加内容」的 SHA-256（`component/` 不在范围里，本组还没有这个目录）；26 个文件恰好是测试两张表的 13 加 13 个；根目录恰好是 `c2s_action.bin`、`c2s_scene_ready.bin`、`s2c_action_result.bin`、`s2c_hud.bin`、`s2c_scene.bin`，`edge/` 下都有同名的；`PlayProtocol.CHANNEL` 是 `synaxis:play`，`version()` 是 1 |
+| 2 | 改动前的红 | 不适用：向量、manifest 与 record 在同一个提交冻结（`438b206f47`），这三条在桩上就绿（第 2 次运行）；齿靠第 3 步 |
+| 3 | 反证有齿（升了版本没重新冻结）：`<PW>PlayProtocol.java:45` 的 `return 1;` 改为 `return Boolean.getBoolean("proof.never") ? 1 : 2;`，与 `TC-PLAY-003` 第 3 步同批跑，再还原 | `theFrozenVectorsAreBoundToThePlayVersion` 红在 `PlayVectorTest.java:241`，`manifest.txt froze the vectors of another synaxis:play version ==> expected: <2> but was: <1>`；`theChannelIsVersionOneOfSynaxisPlay` 红在 `PlayMessagesTest.java:71`，`expected: <1> but was: <2>` |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 6 次运行） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-006` 往返、尾部字节、后续版本的 `msg_id` 与客户端要退回的原值 — 对应 `REQ-PLAY-003`、`REQ-PLAY-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 P 两类，看 `PlayMessagesTest` 的 `everyMessageOfVersionOneRoundTrips`、`trailingUnknownBytesAreSkipped`、`theMessagesOfLaterVersionsAreUnknownRatherThanMalformed`、`theValuesTheClientFallsBackOnAreKeptAsReceived`、`theFactoriesFillTheDeclaredProps`、`aComponentIsCopiedAndComparedByItsBytes` | `PlayMessagesTest` `tests="19"` 0 失败。六条消息（含实体与方块目标的 `C2S_ACTION`）写出再读回相等；`C2S_SCENE_READY` 后面多 5 个字节时照常解出、剩下 5 个；`0x80`（W1 的 `S2C_GRANTS`）、`0x83`、`0x85`（W2 的 `S2C_NOTICE`、`S2C_SCENE_LEAVE`）与 `0x03` 都抛 `UnknownMessageException`，不是畸形，`msgId()` 是原值，消息含 `synaxis:play`；`camera=1`、`cursor=1` 往返不变，结果码 6 往返后 `code()` 仍是 6、`resultCode()` 是 `REJECTED`，0～5 与六个枚举一一对应；四个工厂方法给出表里声明的属性号，`PANEL` 恒在 `CENTER`；`EncodedComponent` 构造与取值都复制字节、按字节判等，超过 2,048 B 抛畸形 |
+| 2 | 改动前的红：同 `TC-PLAY-001` 第 2 步 | 前四条红在解码器（`UnsupportedOperationException`，`theMessagesOfLater…` 报 `Unexpected exception type thrown`）；后两条只构造 record，桩上就绿 |
+| 3 | 反证有齿（未知 `msg_id` 当畸形）：`<PW>PlayMessages.java:39` 的 `default -> throw new UnknownMessageException(PlayProtocol.CHANNEL, msgId);` 改为 `default -> throw new MalformedMessageException("unknown msg_id " + msgId);`，与 `TC-PLAY-001` 第 3 步同批跑，再还原 | `theMessagesOfLaterVersionsAreUnknownRatherThanMalformed` 红在 `:102`，`Unexpected exception type thrown, expected: <…UnknownMessageException> but was: <…MalformedMessageException>`：照这样写，W1、W2 的新消息会让 v1 的客户端以协议错误断线 |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 8 次运行） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-007` 向量没覆盖的畸形形状：record 与解码器同一套判据 — 对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 P 两类，看 `PlayMessagesTest` 其余 11 条：`aNegativeOrTruncatedComponentIsMalformed`、`theSceneNumbersHaveTheirFloors`、`theIdsHaveTheirByteBudgets`、`aClearOwnerWithAWidgetIdIsMalformed`、`theActionTableHasSixDistinctSlots`、`aCooldownOverTenMinutesIsMalformed`、`theU8FieldsMustFit`、`aBoolIsZeroOrOne`、`aNonFiniteFloatIsMalformed`、`theRecordsCheckWhatTheDecoderChecks`、`aTruncatedHudIsMalformed` | 都绿，每处都抛 `MalformedMessageException`，消息含预期的原因：component 长度 −1 与截断；`C2S_SCENE_READY` 的 `scene_seq` 0 与 −1、`S2C_SCENE` 的 0 都拒，`C2S_ACTION` 的 0 照常往返、−1 拒，`action_seq` −1 拒；空的 `scene_id`、`action_id`、owner、`widget_id`、按钮的 `action_id`，65 B 的 owner、33 B 的 `widget_id`、65 B 的字符串值、33 B 的行值，解码时 65 B 的动作 id；`CLEAR_OWNER` 带 `widget_id`（`CLEAR_OWNER carries widget_id hint`），`ClearOwner#widgetId()` 是空串；同一槽两个动作、槽 6 与 −1、7 个动作；冷却 600,001 与 −1（构造与解码）；`camera` 256、`cursor` −1、`code` 256、`kind` 256；bool 2 与 highlight 7；解码时 f32 的 NaN，构造时 +∞ 与 vec3f 里的 NaN；构造时 17 个属性、17 行、`PANEL` 13 行、5 个按钮、`PANEL` 不在 `CENTER`、`TEXT` 的 `text` 写成字符串、33 个 op；属性条数放得下、小部件却被截断 |
+| 2 | 改动前的红：同 `TC-PLAY-001` 第 2 步 | 要解码的 8 条红在解码器（`UnsupportedOperationException`）；只构造 record 的 `theU8FieldsMustFit`、`theActionTableHasSixDistinctSlots`、`theRecordsCheckWhatTheDecoderChecks` 桩上就绿，后两条的齿是 `TC-PLAY-002`、`TC-PLAY-004` 第 3 步 |
+| 3 | 反证有齿（`CLEAR_OWNER` 不查 `widget_id`）：`<PW>S2CHud.java:159` 的 `if (!widgetId.isEmpty()) {` 改为 `if (Boolean.getBoolean("proof.never") && !widgetId.isEmpty()) {`，与 `TC-PLAY-001` 第 3 步同批跑，再还原 | `aClearOwnerWithAWidgetIdIsMalformed` 红在 `:51`（自 `:241`），`Expected …MalformedMessageException to be thrown, but nothing was thrown` |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 8 次运行） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-008` 包导出、通道名登记进 `NOT_TEXT`、ABI 门与 javadoc — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。ABI 门的 baseline 照 `ci.yml` 的「Download the ABI baseline」一步取，但不下进仓库里的 `.abi-baseline/`（它不在 `.gitignore` 里）：`d=$(mktemp -d)`，`trap 'rm -rf "$d"' EXIT`，`gh release download v0.3.0 --repo Bearisbug/synaxis --dir "$d" --pattern plugin-api.jar --pattern protocol.jar`。`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717` 写死的门禁读数（标识 16 个）与 `NOT_TEXT` 之后的红行行号（多了一行）由 RUN-077 集成轮按 CI 输出改，`TC-WORLD-032` 走交接行，本条不改。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 在跑 P 两类的同一条命令里加上 `--tests 'io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest' :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' :architecture-tests:testNamingCheck :architecture-tests:forbiddenImportsCheck :protocol:javadoc :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir="$d"`；`grep -n exports protocol/src/main/java/module-info.java` | `BUILD SUCCESSFUL`。`ProtocolVectorTest` `tests="21"` 0 失败（`Message` 多了一个 permit，M2 的向量不变）；`TranslationKeyGateTest` `tests="2"` 0 失败，标准输出 `translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`（本组之前是 16 个标识）；两个 `checkBinaryCompatibility` 都执行、不是 `SKIPPED`，没有 `::error` 行；`:protocol:javadoc` 成功，`no comment` 警告只有三条旧的（`FarViewAnnouncement.java:87`、`module-info.java:1`、`UnknownMessageException.java:13`）；`module-info.java` 两行 `exports`：`io.github.bearisbug.synaxis.game.protocol` 与 `io.github.bearisbug.synaxis.game.protocol.play` |
+| 2 | 改动前的红 | 与第 3 步相同，没有单独跑：`438b206f47` 有 `PlayProtocol.CHANNEL`，`NOT_TEXT` 却还没有这一行 |
+| 3 | 反证有齿（`NOT_TEXT` 不登记 `synaxis:play`）：删掉 `architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java:65`，与 `TC-PLAY-003` 第 3 步同批跑 `TranslationKeyGateTest`，再还原 | `everyKeyTheServerCanSendHasTextInBothLanguageFiles` 红，`Problems of the translation key gate (2): en_us.json has no text for synaxis:play (from io.github.bearisbug.synaxis.game.protocol.play.PlayMessages, io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol)`，`zh_cn.json` 同一行；标准输出 `62 keys checked …, 16 identifiers left out` |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 6、8 次运行） |
+
+后置：`git status --short` 无输出；`$d` 已由 trap 删掉。
+
+#### `TC-PLAY-009` 客户端读同一个目录：`PlayFrozenVectorTest` 把向量绑在模组解析到的 `:protocol` jar 上 — 对应 `REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：`client-fabric` 是独立构建，只在 GitHub Actions 上跑。本条在组 V 的草稿 PR（base `prod/integrate-077`）上首跑：PR 触发 `client-mod.yml`，它先 `:protocol:publishToMavenLocal` 再构建模组、跑客户端 JUnit。`client-fabric/build.gradle.kts` 把 `synaxis.play-vectors.dir` 设成 `protocol/src/test/resources/play-vectors` 的绝对路径，目录本身是测试任务的 inputs（`PathSensitivity.RELATIVE`），改了 `.bin` 不会出现过期的绿。本组推送前在普通 JVM 里对本分支的 `:protocol` 类编译并跑过它，27 条 0 失败；那不是 Gradle 也不是 CI，不算本条的执行。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 在该 PR 的「Client mod」运行 `<run>` 里看 `TEST-io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest.xml` 或日志 | `tests="27"` 0 失败：`theVectorsAreTheOnesThisBuildsProtocolJarSpeaks`（manifest 的 `play_version` 等于 jar 的 `PlayProtocol.version()`，digest 相符），13 个可接受向量经 jar 的 `PlayMessages` 解码再写回逐字节相同，13 个 `refused-` 向量抛 `MalformedMessageException`。测试不写死条数，以后加向量不用改它 |
+| 2 | 改动前的红 | 不适用：测试与向量同一个提交进来；齿靠第 3 步 |
+| 3 | 反证有齿：在同一个 PR 上推一个临时提交，照 `TC-PLAY-003` 第 3 步改 `<PW>Widget.java:104`，看它的「Client mod」运行 `<run>`，再推还原提交 | `anAcceptedVectorSurvivesTheClientDecoderByteForByte` 的 `edge/s2c_hud.bin`、`edge/s2c_hud-unknown-kind.bin`、`edge/s2c_hud-unknown-prop.bin` 三个参数红（`MalformedMessageException: undeclared prop …`），其余 24 条绿 |
+| 4 | 还原提交的「Client mod」运行 | 与第 1 步相同 |
+
+后置：PR 照 RUN-077 的约定验完关掉、删远端分支；两个 run id 记进 RUN-077 的证据。
 
 ### 玩法架构 · RUN-077：K（插件面契约与宿主接线）
 

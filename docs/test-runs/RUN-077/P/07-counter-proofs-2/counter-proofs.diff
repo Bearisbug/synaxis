@@ -1,0 +1,52 @@
+diff --git a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/PlayMessages.java b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/PlayMessages.java
+index c69a714fb9..fd6784873a 100644
+--- a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/PlayMessages.java
++++ b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/PlayMessages.java
+@@ -36,7 +36,7 @@ public final class PlayMessages {
+             case S2CActionResult.MSG_ID -> S2CActionResult.read(buf);
+             case C2SSceneReady.MSG_ID -> C2SSceneReady.read(buf);
+             case C2SAction.MSG_ID -> C2SAction.read(buf);
+-            default -> throw new UnknownMessageException(PlayProtocol.CHANNEL, msgId);
++            default -> throw new MalformedMessageException("unknown msg_id " + msgId);
+         };
+     }
+ }
+diff --git a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CActionResult.java b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CActionResult.java
+index a3ba09b513..3c88a99e56 100644
+--- a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CActionResult.java
++++ b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CActionResult.java
+@@ -69,7 +69,7 @@ public record S2CActionResult(int actionSeq, int code, EncodedComponent reason,
+         buf.writeVarInt(MSG_ID);
+         buf.writeVarInt(actionSeq);
+         buf.writeUnsignedByte(code);
+-        reason.write(buf);
++        if (Boolean.getBoolean("proof.never")) reason.write(buf);
+         buf.writeVarInt(cooldownMs);
+     }
+ }
+diff --git a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CHud.java b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CHud.java
+index 3448c6b4a5..ac6aec0912 100644
+--- a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CHud.java
++++ b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CHud.java
+@@ -156,7 +156,7 @@ public record S2CHud(List<Op> ops) implements PlayMessage {
+                 case OP_SET -> new SetWidget(owner, widgetId, Widget.read(buf));
+                 case OP_REMOVE -> new RemoveWidget(owner, widgetId);
+                 case OP_CLEAR_OWNER -> {
+-                    if (!widgetId.isEmpty()) {
++                    if (Boolean.getBoolean("proof.never") && !widgetId.isEmpty()) {
+                         throw new MalformedMessageException("CLEAR_OWNER carries widget_id " + widgetId);
+                     }
+                     yield new ClearOwner(owner);
+diff --git a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CScene.java b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CScene.java
+index dcfeb4aad9..8f29bcd047 100644
+--- a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CScene.java
++++ b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CScene.java
+@@ -28,7 +28,7 @@ public record S2CScene(int sceneSeq, String sceneId, EncodedComponent title, int
+     public static final int MSG_ID = 0x81;
+ 
+     /** The cap on the action table, one entry per action key. */
+-    public static final int MAX_ACTIONS = 6;
++    public static final int MAX_ACTIONS = Boolean.getBoolean("proof.never") ? 6 : 5;
+ 
+     /** Camera profile 0, the vanilla camera. */
+     public static final int CAMERA_VANILLA = 0;

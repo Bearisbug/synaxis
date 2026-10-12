@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" tests="16" skipped="0" failures="4" errors="0" timestamp="2026-10-12T03:54:45.605Z" hostname="Mac.local" time="0.093">
+  <properties/>
+  <testcase name="edge/refused-s2c_hud-33-ops.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.009">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-33-ops.bin ==&gt; Expected io.github.bearisbug.synaxis.game.protocol.MalformedMessageException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-33-ops.bin ==&gt; Expected io.github.bearisbug.synaxis.game.protocol.MalformedMessageException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+</failure>
+  </testcase>
+  <testcase name="edge/refused-s2c_scene-7-actions.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002"/>
+  <testcase name="edge/refused-s2c_hud-17-props.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.003"/>
+  <testcase name="edge/refused-s2c_hud-scoreboard-17-rows.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.003"/>
+  <testcase name="edge/refused-s2c_hud-panel-13-rows.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002"/>
+  <testcase name="edge/refused-s2c_hud-panel-5-buttons.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-panel-not-center.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-slot-7.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002"/>
+  <testcase name="edge/refused-s2c_hud-value-type-10.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002"/>
+  <testcase name="edge/refused-s2c_hud-component-2049.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002"/>
+  <testcase name="edge/refused-s2c_hud-declared-prop-wrong-type.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-op-4.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-c2s_action-target-3.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="everyFrozenFileIsInTheTablesAndEveryMessageHasTwoVectors()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002">
+    <failure message="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 0" type="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException">io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 0
+	at io.github.bearisbug.synaxis.game.protocol.play.Widget.&lt;init&gt;(Widget.java:104)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.edgeOps(PlayVectorTest.java:162)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.vectors(PlayVectorTest.java:108)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.everyFrozenFileIsInTheTablesAndEveryMessageHasTwoVectors(PlayVectorTest.java:223)
+</failure>
+  </testcase>
+  <testcase name="initializationError" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 0" type="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException">io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 0
+	at io.github.bearisbug.synaxis.game.protocol.play.Widget.&lt;init&gt;(Widget.java:104)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.edgeOps(PlayVectorTest.java:162)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.vectors(PlayVectorTest.java:108)
+</failure>
+  </testcase>
+  <testcase name="theFrozenVectorsAreBoundToThePlayVersion()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.004">
+    <failure message="org.opentest4j.AssertionFailedError: manifest.txt froze the vectors of another synaxis:play version ==&gt; expected: &lt;2&gt; but was: &lt;1&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: manifest.txt froze the vectors of another synaxis:play version ==&gt; expected: &lt;2&gt; but was: &lt;1&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.theFrozenVectorsAreBoundToThePlayVersion(PlayVectorTest.java:237)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

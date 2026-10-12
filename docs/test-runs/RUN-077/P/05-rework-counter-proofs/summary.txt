@@ -1,0 +1,52 @@
+io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest: tests=19 failures=3 errors=0 skipped=0
+  ok    theU8FieldsMustFit()
+  ok    aClearOwnerWithAWidgetIdIsMalformed()
+  ok    aCooldownOverTenMinutesIsMalformed()
+  ok    aBoolIsZeroOrOne()
+  FAIL  theRecordsCheckWhatTheDecoderChecks(): org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.game.protocol.MalformedMessageException to be thrown, but nothing was thrown.  at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.assertMalformed(PlayMessagesTest.java:51)
+  ok    theFactoriesFillTheDeclaredProps()
+  ok    theSceneNumbersHaveTheirFloors()
+  ok    everyMessageOfVersionOneRoundTrips()
+  ok    theIdsHaveTheirByteBudgets()
+  ok    theValuesTheClientFallsBackOnAreKeptAsReceived()
+  ok    theActionTableHasSixDistinctSlots()
+  ok    aNegativeOrTruncatedComponentIsMalformed()
+  FAIL  theChannelIsVersionOneOfSynaxisPlay(): org.opentest4j.AssertionFailedError: expected: <1> but was: <2>  at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.theChannelIsVersionOneOfSynaxisPlay(PlayMessagesTest.java:71)
+  ok    aComponentIsCopiedAndComparedByItsBytes()
+  ok    trailingUnknownBytesAreSkipped()
+  ok    aTruncatedHudIsMalformed()
+  ok    aNonFiniteFloatIsMalformed()
+  ok    theMessagesOfLaterVersionsAreUnknownRatherThanMalformed()
+  FAIL  anUndeclaredPropIsKeptAndTheDeclaredOnesStillRead(): io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 99  at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest: tests=28 failures=5 errors=0 skipped=0
+  FAIL  edge/refused-s2c_hud-33-ops.bin: org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-33-ops.bin ==> Expected io.github.bearisbug.synaxis.game.protocol.MalformedMessageException to be thrown, but nothing was thrown.  at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:217)
+  ok    edge/refused-s2c_scene-7-actions.bin
+  ok    edge/refused-s2c_hud-17-props.bin
+  ok    edge/refused-s2c_hud-scoreboard-17-rows.bin
+  ok    edge/refused-s2c_hud-panel-13-rows.bin
+  ok    edge/refused-s2c_hud-panel-5-buttons.bin
+  ok    edge/refused-s2c_hud-panel-not-center.bin
+  ok    edge/refused-s2c_hud-slot-7.bin
+  ok    edge/refused-s2c_hud-value-type-10.bin
+  ok    edge/refused-s2c_hud-component-2049.bin
+  ok    edge/refused-s2c_hud-declared-prop-wrong-type.bin
+  ok    edge/refused-s2c_hud-op-4.bin
+  ok    edge/refused-c2s_action-target-3.bin
+  ok    everyFrozenFileIsInTheTablesAndEveryMessageHasTwoVectors()
+  ok    s2c_scene.bin
+  ok    s2c_hud.bin
+  ok    s2c_action_result.bin
+  ok    c2s_scene_ready.bin
+  ok    c2s_action.bin
+  ok    edge/s2c_scene.bin
+  FAIL  edge/s2c_hud.bin: io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 0  at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:202)
+  FAIL  edge/s2c_hud-unknown-prop.bin: io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 99  at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:202)
+  FAIL  edge/s2c_hud-unknown-kind.bin: io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 1  at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:202)
+  ok    edge/s2c_action_result.bin
+  ok    edge/c2s_scene_ready.bin
+  ok    edge/c2s_action.bin
+  ok    edge/c2s_action-entity.bin
+  FAIL  theFrozenVectorsAreBoundToThePlayVersion(): org.opentest4j.AssertionFailedError: manifest.txt froze the vectors of another synaxis:play version ==> expected: <2> but was: <1>  at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.theFrozenVectorsAreBoundToThePlayVersion(PlayVectorTest.java:241)
+io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest: tests=2 failures=1 errors=0 skipped=0
+  ok    theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel()
+  FAIL  everyKeyTheServerCanSendHasTextInBothLanguageFiles(): org.opentest4j.AssertionFailedError: Problems of the translation key gate (2): en_us.json has no text for synaxis:play (from io.github.bearisbug.synaxis.game.protocol.play.PlayMessages, io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol) zh_cn.json has no text for synaxis:play (from io.gith  at io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.everyKeyTheServerCanSendHasTextInBothLanguageFiles(TranslationKeyGateTest.java:92)

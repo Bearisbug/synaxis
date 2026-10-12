@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" tests="19" skipped="0" failures="13" errors="0" timestamp="2026-10-12T03:50:25.911Z" hostname="Mac.local" time="0.081">
+  <properties/>
+  <testcase name="theU8FieldsMustFit()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.014"/>
+  <testcase name="aClearOwnerWithAWidgetIdIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.012">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.assertMalformed(PlayMessagesTest.java:51)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.aClearOwnerWithAWidgetIdIsMalformed(PlayMessagesTest.java:228)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.lambda$aClearOwnerWithAWidgetIdIsMalformed$0(PlayMessagesTest.java:228)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 3 more
+</failure>
+  </testcase>
+  <testcase name="aCooldownOverTenMinutesIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.assertMalformed(PlayMessagesTest.java:51)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.aCooldownOverTenMinutesIsMalformed(PlayMessagesTest.java:253)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.lambda$aCooldownOverTenMinutesIsMalformed$2(PlayMessagesTest.java:253)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 3 more
+</failure>
+  </testcase>
+  <testcase name="aBoolIsZeroOrOne()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.assertMalformed(PlayMessagesTest.java:51)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.aBoolIsZeroOrOne(PlayMessagesTest.java:271)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.lambda$aBoolIsZeroOrOne$0(PlayMessagesTest.java:271)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 3 more
+</failure>
+  </testcase>
+  <testcase name="theRecordsCheckWhatTheDecoderChecks()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.011"/>
+  <testcase name="theFactoriesFillTheDeclaredProps()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.003"/>
+  <testcase name="theSceneNumbersHaveTheirFloors()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.assertMalformed(PlayMessagesTest.java:51)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.theSceneNumbersHaveTheirFloors(PlayMessagesTest.java:189)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.lambda$theSceneNumbersHaveTheirFloors$0(PlayMessagesTest.java:189)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 3 more
+</failure>
+  </testcase>
+  <testcase name="everyMessageOfVersionOneRoundTrips()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.004">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.roundTrip(PlayMessagesTest.java:47)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.everyMessageOfVersionOneRoundTrips(PlayMessagesTest.java:84)
+</failure>
+  </testcase>
+  <testcase name="theIdsHaveTheirByteBudgets()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.assertMalformed(PlayMessagesTest.java:51)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.theIdsHaveTheirByteBudgets(PlayMessagesTest.java:218)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.lambda$theIdsHaveTheirByteBudgets$9(PlayMessagesTest.java:218)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 3 more
+</failure>
+  </testcase>
+  <testcase name="theValuesTheClientFallsBackOnAreKeptAsReceived()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.roundTrip(PlayMessagesTest.java:47)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.theValuesTheClientFallsBackOnAreKeptAsReceived(PlayMessagesTest.java:112)
+</failure>
+  </testcase>
+  <testcase name="theActionTableHasSixDistinctSlots()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001"/>
+  <testcase name="aNegativeOrTruncatedComponentIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.assertMalformed(PlayMessagesTest.java:51)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.aNegativeOrTruncatedComponentIsMalformed(PlayMessagesTest.java:175)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.lambda$aNegativeOrTruncatedComponentIsMalformed$0(PlayMessagesTest.java:175)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 3 more
+</failure>
+  </testcase>
+  <testcase name="theChannelIsVersionOneOfSynaxisPlay()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.0"/>
+  <testcase name="aComponentIsCopiedAndComparedByItsBytes()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001"/>
+  <testcase name="trailingUnknownBytesAreSkipped()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.trailingUnknownBytesAreSkipped(PlayMessagesTest.java:94)
+</failure>
+  </testcase>
+  <testcase name="aTruncatedHudIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.assertMalformed(PlayMessagesTest.java:51)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.aTruncatedHudIsMalformed(PlayMessagesTest.java:324)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.lambda$aTruncatedHudIsMalformed$0(PlayMessagesTest.java:324)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 3 more
+</failure>
+  </testcase>
+  <testcase name="aNonFiniteFloatIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.assertMalformed(PlayMessagesTest.java:51)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.aNonFiniteFloatIsMalformed(PlayMessagesTest.java:291)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.lambda$aNonFiniteFloatIsMalformed$0(PlayMessagesTest.java:291)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 3 more
+</failure>
+  </testcase>
+  <testcase name="theMessagesOfLaterVersionsAreUnknownRatherThanMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.UnknownMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.UnknownMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.theMessagesOfLaterVersionsAreUnknownRatherThanMalformed(PlayMessagesTest.java:102)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.lambda$theMessagesOfLaterVersionsAreUnknownRatherThanMalformed$0(PlayMessagesTest.java:103)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="anUndeclaredPropIsKeptAndTheDeclaredOnesStillRead()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.roundTrip(PlayMessagesTest.java:47)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.anUndeclaredPropIsKeptAndTheDeclaredOnesStillRead(PlayMessagesTest.java:133)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

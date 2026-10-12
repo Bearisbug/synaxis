@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" tests="19" skipped="0" failures="0" errors="0" timestamp="2026-10-12T04:30:10.262Z" hostname="Mac.local" time="0.048">
+  <properties/>
+  <testcase name="theU8FieldsMustFit()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.013"/>
+  <testcase name="aClearOwnerWithAWidgetIdIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.006"/>
+  <testcase name="aCooldownOverTenMinutesIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001"/>
+  <testcase name="aBoolIsZeroOrOne()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.003"/>
+  <testcase name="theRecordsCheckWhatTheDecoderChecks()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.002"/>
+  <testcase name="theFactoriesFillTheDeclaredProps()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001"/>
+  <testcase name="theSceneNumbersHaveTheirFloors()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.003"/>
+  <testcase name="everyMessageOfVersionOneRoundTrips()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.002"/>
+  <testcase name="theIdsHaveTheirByteBudgets()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001"/>
+  <testcase name="theValuesTheClientFallsBackOnAreKeptAsReceived()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001"/>
+  <testcase name="theActionTableHasSixDistinctSlots()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001"/>
+  <testcase name="aNegativeOrTruncatedComponentIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.0"/>
+  <testcase name="theChannelIsVersionOneOfSynaxisPlay()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001"/>
+  <testcase name="aComponentIsCopiedAndComparedByItsBytes()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.002"/>
+  <testcase name="trailingUnknownBytesAreSkipped()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.0"/>
+  <testcase name="aTruncatedHudIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.0"/>
+  <testcase name="aNonFiniteFloatIsMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001"/>
+  <testcase name="theMessagesOfLaterVersionsAreUnknownRatherThanMalformed()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.001"/>
+  <testcase name="anUndeclaredPropIsKeptAndTheDeclaredOnesStillRead()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

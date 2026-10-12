@@ -1,0 +1,49 @@
+io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest: tests=19 failures=5 errors=0 skipped=0
+  ok    theU8FieldsMustFit()
+  FAIL  aClearOwnerWithAWidgetIdIsMalformed(): org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.game.protocol.MalformedMessageException to be thrown, but nothing was thrown.  at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.assertMalformed(PlayMessagesTest.java:51)
+  ok    aCooldownOverTenMinutesIsMalformed()
+  ok    aBoolIsZeroOrOne()
+  ok    theRecordsCheckWhatTheDecoderChecks()
+  ok    theFactoriesFillTheDeclaredProps()
+  ok    theSceneNumbersHaveTheirFloors()
+  FAIL  everyMessageOfVersionOneRoundTrips(): io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: message is truncated: 1500 bytes needed, 0 left  at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+  ok    theIdsHaveTheirByteBudgets()
+  FAIL  theValuesTheClientFallsBackOnAreKeptAsReceived(): io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: message is truncated: 1 bytes needed, 0 left  at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.decode(PlayMessagesTest.java:41)
+  FAIL  theActionTableHasSixDistinctSlots(): org.opentest4j.AssertionFailedError: refused for action slot 6 is outside [0, 4], not for action slot 6 is outside [0, 5] ==> expected: <true> but was: <false>  at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.assertMalformed(PlayMessagesTest.java:52)
+  ok    aNegativeOrTruncatedComponentIsMalformed()
+  ok    theChannelIsVersionOneOfSynaxisPlay()
+  ok    aComponentIsCopiedAndComparedByItsBytes()
+  ok    trailingUnknownBytesAreSkipped()
+  ok    aTruncatedHudIsMalformed()
+  ok    aNonFiniteFloatIsMalformed()
+  FAIL  theMessagesOfLaterVersionsAreUnknownRatherThanMalformed(): org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <io.github.bearisbug.synaxis.game.protocol.UnknownMessageException> but was: <io.github.bearisbug.synaxis.game.protocol.MalformedMessageException>  at io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest.theMessagesOfLaterVersionsAreUnknownRatherThanMalformed(PlayMessagesTest.java:102)
+  ok    anUndeclaredPropIsKeptAndTheDeclaredOnesStillRead()
+io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest: tests=28 failures=4 errors=0 skipped=0
+  ok    edge/refused-s2c_hud-33-ops.bin
+  FAIL  edge/refused-s2c_scene-7-actions.bin: org.opentest4j.AssertionFailedError: edge/refused-s2c_scene-7-actions.bin was refused for count 7 is outside [0, 5], not for count 7 is outside [0, 6] ==> expected: <true> but was: <false>  at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:219)
+  ok    edge/refused-s2c_hud-17-props.bin
+  ok    edge/refused-s2c_hud-scoreboard-17-rows.bin
+  ok    edge/refused-s2c_hud-panel-13-rows.bin
+  ok    edge/refused-s2c_hud-panel-5-buttons.bin
+  ok    edge/refused-s2c_hud-panel-not-center.bin
+  ok    edge/refused-s2c_hud-slot-7.bin
+  ok    edge/refused-s2c_hud-value-type-10.bin
+  ok    edge/refused-s2c_hud-component-2049.bin
+  ok    edge/refused-s2c_hud-declared-prop-wrong-type.bin
+  ok    edge/refused-s2c_hud-op-4.bin
+  ok    edge/refused-c2s_action-target-3.bin
+  ok    everyFrozenFileIsInTheTablesAndEveryMessageHasTwoVectors()
+  ok    s2c_scene.bin
+  ok    s2c_hud.bin
+  FAIL  s2c_action_result.bin: org.opentest4j.AssertionFailedError: s2c_action_result.bin ==> array lengths differ, expected: <7> but was: <6>  at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:209)
+  ok    c2s_scene_ready.bin
+  ok    c2s_action.bin
+  FAIL  edge/s2c_scene.bin: io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: count 6 is outside [0, 5]  at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:202)
+  ok    edge/s2c_hud.bin
+  ok    edge/s2c_hud-unknown-prop.bin
+  ok    edge/s2c_hud-unknown-kind.bin
+  FAIL  edge/s2c_action_result.bin: org.opentest4j.AssertionFailedError: edge/s2c_action_result.bin ==> array lengths differ, expected: <26> but was: <11>  at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:209)
+  ok    edge/c2s_scene_ready.bin
+  ok    edge/c2s_action.bin
+  ok    edge/c2s_action-entity.bin
+  ok    theFrozenVectorsAreBoundToThePlayVersion()

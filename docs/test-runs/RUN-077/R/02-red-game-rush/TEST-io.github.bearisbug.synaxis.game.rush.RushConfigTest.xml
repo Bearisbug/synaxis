@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rush.RushConfigTest" tests="5" skipped="0" failures="4" errors="0" timestamp="2026-10-12T05:58:23.465Z" hostname="Mac.local" time="0.004">
+  <properties/>
+  <testcase name="theValuesOfTheCiRunAreTaken()" classname="io.github.bearisbug.synaxis.game.rush.RushConfigTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;RushConfig[minPlayers=1, lobbyWait=PT3S, roundLength=PT45S, resultLength=PT10S, targetScore=150]&gt; but was: &lt;RushConfig[minPlayers=2, lobbyWait=PT10S, roundLength=PT4M, resultLength=PT15S, targetScore=150]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;RushConfig[minPlayers=1, lobbyWait=PT3S, roundLength=PT45S, resultLength=PT10S, targetScore=150]&gt; but was: &lt;RushConfig[minPlayers=2, lobbyWait=PT10S, roundLength=PT4M, resultLength=PT15S, targetScore=150]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.RushConfigTest.theValuesOfTheCiRunAreTaken(RushConfigTest.java:27)
+</failure>
+  </testcase>
+  <testcase name="aValueOutOfItsRangeIsRefusedWithTheKeyAndTheRange()" classname="io.github.bearisbug.synaxis.game.rush.RushConfigTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.rush.RushConfigTest.assertRefused(RushConfigTest.java:61)
+	at io.github.bearisbug.synaxis.game.rush.RushConfigTest.aValueOutOfItsRangeIsRefusedWithTheKeyAndTheRange(RushConfigTest.java:45)
+</failure>
+  </testcase>
+  <testcase name="aValueThatIsNoIntegerIsRefused()" classname="io.github.bearisbug.synaxis.game.rush.RushConfigTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.rush.RushConfigTest.assertRefused(RushConfigTest.java:61)
+	at io.github.bearisbug.synaxis.game.rush.RushConfigTest.aValueThatIsNoIntegerIsRefused(RushConfigTest.java:55)
+</failure>
+  </testcase>
+  <testcase name="theEdgesOfEachRangeAreTaken()" classname="io.github.bearisbug.synaxis.game.rush.RushConfigTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;RushConfig[minPlayers=1, lobbyWait=PT0S, roundLength=PT1S, resultLength=PT1S, targetScore=1]&gt; but was: &lt;RushConfig[minPlayers=2, lobbyWait=PT10S, roundLength=PT4M, resultLength=PT15S, targetScore=150]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;RushConfig[minPlayers=1, lobbyWait=PT0S, roundLength=PT1S, resultLength=PT1S, targetScore=1]&gt; but was: &lt;RushConfig[minPlayers=2, lobbyWait=PT10S, roundLength=PT4M, resultLength=PT15S, targetScore=150]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.RushConfigTest.theEdgesOfEachRangeAreTaken(RushConfigTest.java:38)
+</failure>
+  </testcase>
+  <testcase name="theDefaultsAreThoseOfTheDesign()" classname="io.github.bearisbug.synaxis.game.rush.RushConfigTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

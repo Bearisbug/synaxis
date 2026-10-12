@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-12T06:05:53.428Z" hostname="Mac.local" time="0.718">
+  <properties/>
+  <testcase name="synxLeavesLightingChunkAlone()" classname="io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest" time="0.159"/>
+  <testcase name="synxNamesOnlyListedInternalTypes()" classname="io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest" time="0.161"/>
+  <testcase name="synxTouchesOnlyListedInternalMembers()" classname="io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest" time="0.16"/>
+  <testcase name="rulesRejectUnlistedInternalsAndLightingChunk()" classname="io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest" time="0.081"/>
+  <testcase name="scanFindsTheSynxClasses()" classname="io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest" time="0.156"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

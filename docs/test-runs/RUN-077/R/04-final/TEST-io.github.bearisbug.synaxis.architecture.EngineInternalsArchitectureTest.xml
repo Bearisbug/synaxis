@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.architecture.EngineInternalsArchitectureTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-12T06:05:51.875Z" hostname="Mac.local" time="0.544">
+  <properties/>
+  <testcase name="theMemberRuleRejectsAGameClassCallingAnInternal()" classname="io.github.bearisbug.synaxis.architecture.EngineInternalsArchitectureTest" time="0.083"/>
+  <testcase name="theGameSideNamesNoEngineInternalType()" classname="io.github.bearisbug.synaxis.architecture.EngineInternalsArchitectureTest" time="0.154"/>
+  <testcase name="theGameSideTouchesNoEngineInternalMember()" classname="io.github.bearisbug.synaxis.architecture.EngineInternalsArchitectureTest" time="0.158"/>
+  <testcase name="theEnginePositionEntryPointStillHasTheSignaturePluginsWereGiven()" classname="io.github.bearisbug.synaxis.architecture.EngineInternalsArchitectureTest" time="0.127"/>
+  <testcase name="theTypeRuleRejectsAGameClassDeclaringAnInternal()" classname="io.github.bearisbug.synaxis.architecture.EngineInternalsArchitectureTest" time="0.02"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

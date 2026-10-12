@@ -1,0 +1,79 @@
+RUN-077 group R: the play kit (:play-kit), the sample game rush (:game-rush) and runRush (branch
+prod/r077-R, base prod/integrate-077 3cd20ff777). Commits: f30440e694 DESIGN-PLAY v0.7 and DESIGN-PROD
+v0.9.82 with PLUGINS.md and ENGINE.md, e07fb8b58a skeleton, tests and build wiring, 100cc8b061
+implementation (three tests adjusted, listed below), 02df5f9a37 two test additions. Local Gradle through
+~/.claude/r077/gradle.zsh (JDK 25, --max-workers=2 --no-daemon --init-script
+gradle/init/aliyun-mirror.init.gradle.kts, the heavy lock taken for each run only). Ten Gradle runs, none
+with a database or Redis. Each directory holds the JUnit XML reports of that run and summary.txt, one
+line per test with the failure message and the first frame in the test class.
+
+Runs 1 to 3 stopped at compile time and left no reports:
+  1, 2  :play-kit:compileJava, Error Prone DoNotCallSuggester on the skeleton methods that only threw
+        (also through a helper); the skeleton was rewritten to return neutral values.
+  3     :play-kit:compileTestJava UnnamedVariable (an unused catch parameter), :game-rush:compileTestJava
+        StringSplitter (String.split of the class path) and CanonicalDuration (ofSeconds(240)).
+
+Run 4 -> 01-red-play-kit/
+  Code: the skeleton of e07fb8b58a except one line of RushPluginIntegrationTest (Pattern.split, which
+  StringSplitter also refused; the committed test uses splitAsStream). :game-rush:compileTestJava failed
+  on that line, so only :play-kit ran. 27 tests, 24 failed; the 3 that pass are
+  nothingHappensWhileTheInstanceIsPrepared, aNewCountdownIsNotRunning and
+  aCancelledCountdownIsNeitherRunningNorDone, which a no-op skeleton satisfies.
+
+Run 5 -> 02-red-game-rush/
+  Code: e07fb8b58a. :game-rush 42 tests, 35 failed; the 7 that pass are the five ArchitectureTest rules
+  and fixtures (the skeleton writes no line and reads no tag), RushConfigTest.theDefaultsAreThoseOfTheDesign
+  (the skeleton's from() returns the defaults) and the descriptor and keys of RushPlugin, which the
+  skeleton already carries.
+
+Run 6 (no directory kept): code 100cc8b061 minus the three test adjustments. :play-kit 27/27,
+  :architecture-tests 20/20, :server-app ConfigFileTest 11/11, :game-rush 41/42: the disconnect step of
+  RushPluginIntegrationTest called getPlayerConnection().disconnect(), which does not dispatch
+  PlayerDisconnectEvent for a connection of the Env; the test now dispatches the event as the engine does.
+  :server-app:dependencies --configuration rush -> rush-configuration.txt (:game-rush, :play-kit,
+  :plugin-api, the engine).
+
+Run 7 -> 03-counter-proofs/
+  Code: 100cc8b061 with the seven edits of counter-proofs.diff at once. Reds, one set per edit:
+    RushRound.java:128 start before every move is done -> LobbyIntegrationTest.theRoundStartsOnlyOnceEveryMoveIsDone
+                       at :206 and RushRoundIntegrationTest.theRoundWaitsForEveryMoveAndIsCancelledWhenNoneSucceeded at :209
+    Lobby.java:151 arena while the previous round is ending -> LobbyIntegrationTest.noSecondArenaWhileThePreviousRoundHasNotClosed
+                       at :310, "expected: <1> but was: <2>"
+    RushRound.java:97 back button moves everyone -> RushRoundIntegrationTest.theBackButtonSendsOnlyThePresserOnce...
+                       at :189, "expected: <[move alice]> but was: <[move alice, move bob]>"
+    Round.java:251 a failed callback swallowed -> RoundTest: aTickThatThrows... :203, aResultThatThrows... :258,
+                       aCountdownThatThrows... :166, aStartThatThrows... :191
+    RushRound.java:151 + Lobby.java:202 round timer at enter -> RushRoundIntegrationTest.theTimerIsSet... at :62
+    RushPlugin.java:39 queue built lazily -> RushPluginIntegrationTest.discoveringRushNeedsThePlayKitOnTheClasspath
+                       at :268, "Expected java.lang.Throwable to be thrown, but nothing was thrown."
+    Beacon.java:120 two in a circle do not freeze -> BeaconTest.twoInTheCircleFreezeItAndNobodyLeavesItAsItIs
+                       at :67, "expected: <40> but was: <10>"
+  play-kit 27 tests 4 failed, game-rush 42 tests 7 failed, every other test passed (the disconnect step
+  among them). Restored with git checkout afterwards. Line numbers of the tests are those of 100cc8b061;
+  02df5f9a37 moved LobbyIntegrationTest :206 and :310 to :209 and :313, RushPluginIntegrationTest :268 to :269.
+
+Run 8 -> 04-final/
+  Code: 100cc8b061. :play-kit 27/27, :game-rush 42/42, :architecture-tests 20/20 (gates.txt:
+  "config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out",
+  "translation key gate: 74 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out"),
+  :server-app ConfigFileTest 11/11, testNamingCheck and forbiddenImportsCheck of both modules, the jars
+  game-rush-dev.jar and play-kit-dev.jar. play-kit line coverage 116/116 (coverage.txt).
+
+Run 9 -> 05-final-game-rush/
+  Code: 02df5f9a37. :game-rush 42/42 with the two test additions; line coverage 402/403, the one line
+  being the empty onCountdown of RushRound (a round of rush has no countdown of its own).
+
+Run 10 -> 06-strict-grid/
+  Code: 02df5f9a37, --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+  -Dsynaxis.thread-provider=grid. :play-kit 27/27, :game-rush 42/42. The JUnit XML does not record the
+  switches; the run's log shows the configuration cache recomputed for the changed synaxis.* property.
+
+Without Gradle:
+  fallbacks.py: 13 rush keys, every English fallback of RushHud equals en_us.json, both language files
+  carry exactly those keys -> exit 0; against a copy of the language files with rush.score changed to
+  "Scores" -> exit 1, "rush.score: fallback 'Score' is not en_us.json 'Scores'".
+  tools/pkgdeps.py on play-kit/src/main/java and game-rush/src/main/java: packages 1, edges 0 each.
+
+Not run here: TC-PROD-441 steps 2 to 4 (the gate's counter-proofs) and TC-PROD-569 steps 1 to 3 and 5
+(JMH and the other classes); the gate reading of 441 step 1 and 569 step 4 is gates.txt above. The
+real client job rush, the R1 command and the rollback rehearsal run on GitHub Actions (group G).

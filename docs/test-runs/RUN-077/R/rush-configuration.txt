@@ -1,0 +1,64 @@
+rush
+\--- project ':game-rush'
+     +--- org.jetbrains:annotations:26.1.0
+     +--- project ':plugin-api'
+     |    +--- org.jetbrains:annotations:26.1.0
+     |    +--- root project 'synaxis'
+     |    |    +--- org.jetbrains:annotations:26.1.0
+     |    |    +--- net.kyori:adventure-api:5.2.0
+     |    |    |    +--- net.kyori:adventure-bom:5.2.0
+     |    |    |    |    +--- net.kyori:adventure-api:5.2.0 (c)
+     |    |    |    |    +--- net.kyori:adventure-key:5.2.0 (c)
+     |    |    |    |    +--- net.kyori:adventure-nbt:5.2.0 (c)
+     |    |    |    |    +--- net.kyori:adventure-text-logger-slf4j:5.2.0 (c)
+     |    |    |    |    +--- net.kyori:adventure-text-serializer-commons:5.2.0 (c)
+     |    |    |    |    +--- net.kyori:adventure-text-serializer-ansi:5.2.0 (c)
+     |    |    |    |    +--- net.kyori:adventure-text-serializer-gson:5.2.0 (c)
+     |    |    |    |    +--- net.kyori:adventure-text-serializer-json:5.2.0 (c)
+     |    |    |    |    +--- net.kyori:adventure-text-serializer-legacy:5.2.0 (c)
+     |    |    |    |    \--- net.kyori:adventure-text-serializer-plain:5.2.0 (c)
+     |    |    |    \--- net.kyori:adventure-key:5.2.0
+     |    |    |         +--- net.kyori:adventure-bom:5.2.0 (*)
+     |    |    |         \--- org.jspecify:jspecify:1.0.0
+     |    |    +--- net.kyori:adventure-nbt:5.2.0
+     |    |    |    +--- net.kyori:adventure-bom:5.2.0 (*)
+     |    |    |    \--- org.jspecify:jspecify:1.0.0
+     |    |    +--- net.kyori:adventure-text-serializer-gson:5.2.0
+     |    |    |    +--- net.kyori:adventure-text-serializer-commons:5.2.0
+     |    |    |    |    +--- net.kyori:adventure-bom:5.2.0 (*)
+     |    |    |    |    \--- org.jspecify:jspecify:1.0.0
+     |    |    |    +--- net.kyori:adventure-bom:5.2.0 (*)
+     |    |    |    +--- net.kyori:adventure-text-serializer-json:5.2.0
+     |    |    |    |    +--- net.kyori:adventure-text-serializer-commons:5.2.0 (*)
+     |    |    |    |    +--- net.kyori:adventure-bom:5.2.0 (*)
+     |    |    |    |    +--- net.kyori:adventure-api:5.2.0 (*)
+     |    |    |    |    \--- net.kyori:option:1.1.0
+     |    |    |    \--- com.google.code.gson:gson:2.13.2 -> 2.14.0
+     |    |    |         \--- com.google.errorprone:error_prone_annotations:2.48.0
+     |    |    +--- net.kyori:adventure-text-serializer-legacy:5.2.0
+     |    |    |    +--- net.kyori:adventure-bom:5.2.0 (*)
+     |    |    |    \--- net.kyori:adventure-api:5.2.0 (*)
+     |    |    +--- net.kyori:adventure-text-serializer-plain:5.2.0
+     |    |    |    +--- net.kyori:adventure-bom:5.2.0 (*)
+     |    |    |    \--- net.kyori:adventure-api:5.2.0 (*)
+     |    |    +--- net.kyori:adventure-text-serializer-ansi:5.2.0
+     |    |    |    +--- net.kyori:adventure-bom:5.2.0 (*)
+     |    |    |    +--- net.kyori:adventure-api:5.2.0 (*)
+     |    |    |    \--- net.kyori:ansi:1.1.1
+     |    |    +--- net.kyori:adventure-text-logger-slf4j:5.2.0
+     |    |    |    +--- net.kyori:adventure-bom:5.2.0 (*)
+     |    |    |    \--- net.kyori:adventure-api:5.2.0 (*)
+     |    |    +--- com.google.code.gson:gson:2.14.0 (*)
+     |    |    +--- org.slf4j:slf4j-api:2.0.20
+     |    |    +--- it.unimi.dsi:fastutil:8.5.19
+     |    |    +--- space.vectrix.flare:flare:2.0.1
+     |    |    +--- space.vectrix.flare:flare-fastutil:2.0.1
+     |    |    |    \--- it.unimi.dsi:fastutil:8.5.6 -> 8.5.19
+     |    |    \--- org.jctools:jctools-core-jdk11:4.0.7
+     |    |         \--- org.jctools:jctools-core:4.0.7
+     |    +--- project ':protocol'
+     |    \--- org.slf4j:slf4j-api:2.0.20
+     \--- project ':play-kit'
+          +--- org.jetbrains:annotations:26.1.0
+          \--- project ':plugin-api' (*)
+

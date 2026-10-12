@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" tests="8" skipped="0" failures="3" errors="0" timestamp="2026-10-12T06:04:22.831Z" hostname="Mac.local" time="0.152">
+  <properties/>
+  <testcase name="theBackButtonSendsOnlyThePresserOnceAndOnlyWhileTheResultShows(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.024">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[move alice]&gt; but was: &lt;[move alice, move bob]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[move alice]&gt; but was: &lt;[move alice, move bob]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest.theBackButtonSendsOnlyThePresserOnceAndOnlyWhileTheResultShows(RushRoundIntegrationTest.java:189)
+</failure>
+  </testcase>
+  <testcase name="aParticipantWhoLeavesDropsOutOfTheScoresAndLetsGoOfTheBeacon(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.025"/>
+  <testcase name="aRoundEndsAtTheTimeLimitAndATieSharesTheRank(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.015"/>
+  <testcase name="theHigherScoreRanksFirstThenTheMoreCapturesAndOtherwiseTheRankIsShared(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.021"/>
+  <testcase name="aRoundNobodyIsLeftInEndsEmptyAndSettlesAtOnce(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.023"/>
+  <testcase name="aPlayerHoldingABeaconScoresEverySecondUntilTheTargetEndsTheRound(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.016"/>
+  <testcase name="theTimerIsSetWhenTheRoundStartsWithTheWholeLengthAndNotBefore(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.021">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[Timer[id=timer, slot=TOP_CENTER, order=0, label=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=rush.timer.round, fallback=Time left, args=[]], remaining=PT4M, running=true]]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[Timer[id=timer, slot=TOP_CENTER, order=0, label=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=rush.timer.round, fallback=Time left, args=[]], remaining=PT4M, running=true]]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest.theTimerIsSetWhenTheRoundStartsWithTheWholeLengthAndNotBefore(RushRoundIntegrationTest.java:62)
+</failure>
+  </testcase>
+  <testcase name="theRoundWaitsForEveryMoveAndIsCancelledWhenNoneSucceeded(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.007">
+    <failure message="org.opentest4j.AssertionFailedError: the round moved on before every move was done ==&gt; expected: &lt;[]&gt; but was: &lt;[cancel]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the round moved on before every move was done ==&gt; expected: &lt;[]&gt; but was: &lt;[cancel]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest.theRoundWaitsForEveryMoveAndIsCancelledWhenNoneSucceeded(RushRoundIntegrationTest.java:209)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

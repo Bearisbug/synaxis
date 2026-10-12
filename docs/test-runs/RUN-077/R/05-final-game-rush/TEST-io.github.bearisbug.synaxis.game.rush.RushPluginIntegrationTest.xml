@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-12T06:07:17.218Z" hostname="Mac.local" time="0.147">
+  <properties/>
+  <testcase name="theDescriptorAndTheKeysAreTheOnesTheHostAndTheGateRead()" classname="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" time="0.011"/>
+  <testcase name="discoveringRushNeedsThePlayKitOnTheClasspath()" classname="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" time="0.017"/>
+  <testcase name="aSpawnIntoTheLobbyEntersItsSceneAndTheActionsAndTheTaskDriveIt(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" time="0.096"/>
+  <testcase name="theAdmissionTurnsPlayersAwayWhileTheLobbyIsNotRunning(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" time="0.01"/>
+  <testcase name="enablingOpensTheLobbyAndTakesTheAdmissionSlot(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" time="0.007"/>
+  <testcase name="aConfigurationOutOfRangeFailsTheEnableBeforeAnythingIsBuilt(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

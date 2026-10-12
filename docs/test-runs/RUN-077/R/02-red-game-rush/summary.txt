@@ -1,0 +1,48 @@
+io.github.bearisbug.synaxis.game.rush.ArchitectureTest: tests=5 failures=0 errors=0 skipped=0
+  PASS gameSideDoesNotUseTheStructuredTags()
+  PASS theRuleRejectsAGameClassReferencingTheTagIndex()
+  PASS gameSidePathsDoNotWriteALinePerPacket()
+  PASS theRuleRejectsAGameClassCallingTheTagIndex()
+  PASS theGameSideLogRuleRejectsALinePerAction()
+io.github.bearisbug.synaxis.game.rush.BeaconTest: tests=7 failures=7 errors=0 skipped=0
+  FAIL theCircleIsThreeBlocksAcrossFromTheCentreAndTwoUpOrDown() at BeaconTest.java:31: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+  FAIL onePlayerAloneFillsItInTenSecondsAndOwnsItOnce() at BeaconTest.java:45: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <99> but was: <0>
+  FAIL halfwayIsFivePercentPerHalfSecond() at BeaconTest.java:58: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <50> but was: <0>
+  FAIL aParticipantWhoLeftLosesWhatTheyHeld() at BeaconTest.java:103: AssertionFailedError: org.opentest4j.AssertionFailedError: forgetting someone else changed the beacon ==> expected: <00000000-0000-0000-0000-000000000001> but was: <null>
+  FAIL aStepThatDrainsAndFillsCarriesTheRestOver() at BeaconTest.java:94: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <30> but was: <0>
+  FAIL twoInTheCircleFreezeItAndNobodyLeavesItAsItIs() at BeaconTest.java:67: AssertionFailedError: org.opentest4j.AssertionFailedError: the progress moved while two were in the circle ==> expected: <40> but was: <0>
+  FAIL someoneElsesBeaconDrainsAtTwentyPercentFirstAndStaysTheirsUntilEmpty() at BeaconTest.java:77: AssertionFailedError: org.opentest4j.AssertionFailedError: 2.5 s at 20% a second takes 50% off ==> expected: <50> but was: <0>
+io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest: tests=11 failures=11 errors=0 skipped=0
+  FAIL anArenaThatFailsToPrepareSendsTheQueueBackWithTheFailedHint(Env) at LobbyIntegrationTest.java:250: NoSuchElementException: java.util.NoSuchElementException
+  FAIL theQueueKeyTogglesAndTheHintFollowsTheCount(Env) at LobbyIntegrationTest.java:78: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <Text[id=hint, slot=LEFT, order=0, text=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set
+  FAIL noSecondArenaWhileThePreviousRoundHasNotClosed(Env) at LobbyIntegrationTest.java:295: NoSuchElementException: java.util.NoSuchElementException
+  FAIL anOpenArenaTakesAtMostEightAndPutsThemIntoTheRound(Env) at LobbyIntegrationTest.java:171: AssertionFailedError: org.opentest4j.AssertionFailedError: players were taken while the arena was prepared ==> expected: <9> but was: <0>
+  FAIL anArenaOpeningWithTooFewQueuedIsCancelledAndTheQueueStays(Env) at LobbyIntegrationTest.java:275: NoSuchElementException: java.util.NoSuchElementException
+  FAIL aMoveThatFailsPutsThePlayerBackIntoTheLobbyScene(Env) at LobbyIntegrationTest.java:225: NoSuchElementException: java.util.NoSuchElementException
+  FAIL leavingTheServerLeavesTheQueue(Env) at LobbyIntegrationTest.java:335: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <[io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl@1a190df7]> but was: <[]>
+  FAIL aCountdownRunningOutCreatesTheArena(Env) at LobbyIntegrationTest.java:134: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <1> but was: <0>
+  FAIL aPlayerArrivingEntersTheLobbySceneWithTheHint(Env) at LobbyIntegrationTest.java:66: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <SceneSpec[id=lobby, title=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent
+  FAIL theRoundStartsOnlyOnceEveryMoveIsDone(Env) at LobbyIntegrationTest.java:198: NoSuchElementException: java.util.NoSuchElementException
+  FAIL theCountdownReachesTheQueuedOnlyAndStopsBelowTheMinimum(Env) at LobbyIntegrationTest.java:103: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <Timer[id=timer, slot=TOP_CENTER, order=0, label=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, itali
+io.github.bearisbug.synaxis.game.rush.RushConfigTest: tests=5 failures=4 errors=0 skipped=0
+  FAIL theValuesOfTheCiRunAreTaken() at RushConfigTest.java:27: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <RushConfig[minPlayers=1, lobbyWait=PT3S, roundLength=PT45S, resultLength=PT10S, targetScore=150]> but was: <RushConfig[minPlayers=2, lobbyWait=PT10S, roundLength=PT4M, resultLength=PT15S, targetScore=150]>
+  FAIL aValueOutOfItsRangeIsRefusedWithTheKeyAndTheRange() at RushConfigTest.java:61: AssertionFailedError: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL aValueThatIsNoIntegerIsRefused() at RushConfigTest.java:61: AssertionFailedError: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL theEdgesOfEachRangeAreTaken() at RushConfigTest.java:38: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <RushConfig[minPlayers=1, lobbyWait=PT0S, roundLength=PT1S, resultLength=PT1S, targetScore=1]> but was: <RushConfig[minPlayers=2, lobbyWait=PT10S, roundLength=PT4M, resultLength=PT15S, targetScore=150]>
+  PASS theDefaultsAreThoseOfTheDesign()
+io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest: tests=6 failures=5 errors=0 skipped=0
+  PASS theDescriptorAndTheKeysAreTheOnesTheHostAndTheGateRead()
+  FAIL discoveringRushNeedsThePlayKitOnTheClasspath() at RushPluginIntegrationTest.java:267: AssertionFailedError: org.opentest4j.AssertionFailedError: Expected java.lang.Throwable to be thrown, but nothing was thrown.
+  FAIL aSpawnIntoTheLobbyEntersItsSceneAndTheActionsAndTheTaskDriveIt(Env) at RushPluginIntegrationTest.java:216: NoSuchElementException: java.util.NoSuchElementException
+  FAIL theAdmissionTurnsPlayersAwayWhileTheLobbyIsNotRunning(Env) at RushPluginIntegrationTest.java:206: NoSuchElementException: java.util.NoSuchElementException
+  FAIL enablingOpensTheLobbyAndTakesTheAdmissionSlot(Env) at RushPluginIntegrationTest.java:174: NoSuchElementException: java.util.NoSuchElementException
+  FAIL aConfigurationOutOfRangeFailsTheEnableBeforeAnythingIsBuilt(Env) at RushPluginIntegrationTest.java:245: AssertionFailedError: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest: tests=8 failures=8 errors=0 skipped=0
+  FAIL theBackButtonSendsOnlyThePresserOnceAndOnlyWhileTheResultShows(Env) at RushRoundIntegrationTest.java:183: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <ENDING> but was: <OPEN>
+  FAIL aParticipantWhoLeavesDropsOutOfTheScoresAndLetsGoOfTheBeacon(Env) at RushRoundIntegrationTest.java:256: AssertionError: java.lang.AssertionError: no label for beacon A
+  FAIL aRoundEndsAtTheTimeLimitAndATieSharesTheRank(Env) at RushRoundIntegrationTest.java:105: AssertionFailedError: org.opentest4j.AssertionFailedError: the round ended before its time was up ==> expected: <[start]> but was: <[]>
+  FAIL theHigherScoreRanksFirstThenTheMoreCapturesAndOtherwiseTheRankIsShared(Env) at RushRoundIntegrationTest.java:131: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <[1 alice, 1 carol, 3 bob, 4 dave]> but was: <[]>
+  FAIL aRoundNobodyIsLeftInEndsEmptyAndSettlesAtOnce(Env) at RushRoundIntegrationTest.java:143: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <[start, end EMPTY]> but was: <[]>
+  FAIL aPlayerHoldingABeaconScoresEverySecondUntilTheTargetEndsTheRound(Env) at RushRoundIntegrationTest.java:80: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <Text[id=capture, slot=BOTTOM, order=0, text=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=no
+  FAIL theTimerIsSetWhenTheRoundStartsWithTheWholeLengthAndNotBefore(Env) at RushRoundIntegrationTest.java:60: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <RUNNING> but was: <OPEN>
+  FAIL theRoundWaitsForEveryMoveAndIsCancelledWhenNoneSucceeded(Env) at RushRoundIntegrationTest.java:214: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <[cancel]> but was: <[]>

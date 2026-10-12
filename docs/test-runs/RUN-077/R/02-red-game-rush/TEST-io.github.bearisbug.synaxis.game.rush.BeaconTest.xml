@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rush.BeaconTest" tests="7" skipped="0" failures="7" errors="0" timestamp="2026-10-12T05:58:22.461Z" hostname="Mac.local" time="0.012">
+  <properties/>
+  <testcase name="theCircleIsThreeBlocksAcrossFromTheCentreAndTwoUpOrDown()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.006">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:190)
+	at io.github.bearisbug.synaxis.game.rush.BeaconTest.theCircleIsThreeBlocksAcrossFromTheCentreAndTwoUpOrDown(BeaconTest.java:31)
+</failure>
+  </testcase>
+  <testcase name="onePlayerAloneFillsItInTenSecondsAndOwnsItOnce()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;99&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;99&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+	at io.github.bearisbug.synaxis.game.rush.BeaconTest.onePlayerAloneFillsItInTenSecondsAndOwnsItOnce(BeaconTest.java:45)
+</failure>
+  </testcase>
+  <testcase name="halfwayIsFivePercentPerHalfSecond()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;50&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;50&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+	at io.github.bearisbug.synaxis.game.rush.BeaconTest.halfwayIsFivePercentPerHalfSecond(BeaconTest.java:58)
+</failure>
+  </testcase>
+  <testcase name="aParticipantWhoLeftLosesWhatTheyHeld()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: forgetting someone else changed the beacon ==&gt; expected: &lt;00000000-0000-0000-0000-000000000001&gt; but was: &lt;null&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: forgetting someone else changed the beacon ==&gt; expected: &lt;00000000-0000-0000-0000-000000000001&gt; but was: &lt;null&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.game.rush.BeaconTest.aParticipantWhoLeftLosesWhatTheyHeld(BeaconTest.java:103)
+</failure>
+  </testcase>
+  <testcase name="aStepThatDrainsAndFillsCarriesTheRestOver()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;30&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;30&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+	at io.github.bearisbug.synaxis.game.rush.BeaconTest.aStepThatDrainsAndFillsCarriesTheRestOver(BeaconTest.java:94)
+</failure>
+  </testcase>
+  <testcase name="twoInTheCircleFreezeItAndNobodyLeavesItAsItIs()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: the progress moved while two were in the circle ==&gt; expected: &lt;40&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the progress moved while two were in the circle ==&gt; expected: &lt;40&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.game.rush.BeaconTest.twoInTheCircleFreezeItAndNobodyLeavesItAsItIs(BeaconTest.java:67)
+</failure>
+  </testcase>
+  <testcase name="someoneElsesBeaconDrainsAtTwentyPercentFirstAndStaysTheirsUntilEmpty()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: 2.5 s at 20% a second takes 50% off ==&gt; expected: &lt;50&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: 2.5 s at 20% a second takes 50% off ==&gt; expected: &lt;50&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.game.rush.BeaconTest.someoneElsesBeaconDrainsAtTwentyPercentFirstAndStaysTheirsUntilEmpty(BeaconTest.java:77)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

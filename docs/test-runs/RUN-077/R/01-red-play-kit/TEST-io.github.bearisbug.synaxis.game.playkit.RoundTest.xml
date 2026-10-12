@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.playkit.RoundTest" tests="17" skipped="0" failures="16" errors="0" timestamp="2026-10-12T05:57:46.797Z" hostname="Mac.local" time="0.012">
+  <properties/>
+  <testcase name="aRoundWaitsUntilItIsReadyToStart()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[readyToStart, readyToStart, readyToStart, onStart]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[readyToStart, readyToStart, readyToStart, onStart]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.aRoundWaitsUntilItIsReadyToStart(RoundTest.java:96)
+</failure>
+  </testcase>
+  <testcase name="aTickThatThrowsEndsTheRoundWithErrorAndSettlesItWithoutAResult()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.started(RoundTest.java:289)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.aTickThatThrowsEndsTheRoundWithErrorAndSettlesItWithoutAResult(RoundTest.java:198)
+</failure>
+  </testcase>
+  <testcase name="aRoundEndsAtItsTimeLimit()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.started(RoundTest.java:289)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.aRoundEndsAtItsTimeLimit(RoundTest.java:125)
+</failure>
+  </testcase>
+  <testcase name="aReadyCheckThatThrowsCancelsTheRound()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[cancel]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[cancel]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.aReadyCheckThatThrowsCancelsTheRound(RoundTest.java:179)
+</failure>
+  </testcase>
+  <testcase name="anEndedRoundNobodyIsLeftInSettlesAtOnce()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.started(RoundTest.java:289)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.anEndedRoundNobodyIsLeftInSettlesAtOnce(RoundTest.java:138)
+</failure>
+  </testcase>
+  <testcase name="aResultThatThrowsSettlesTheRoundAtOnce()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.started(RoundTest.java:289)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.aResultThatThrowsSettlesTheRoundAtOnce(RoundTest.java:251)
+</failure>
+  </testcase>
+  <testcase name="aSettleIsNotRequestedTwiceWhileTheHostEvacuates()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.started(RoundTest.java:289)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.aSettleIsNotRequestedTwiceWhileTheHostEvacuates(RoundTest.java:148)
+</failure>
+  </testcase>
+  <testcase name="anExitThatThrowsKicksThatPlayer()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.started(RoundTest.java:289)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.anExitThatThrowsKicksThatPlayer(RoundTest.java:264)
+</failure>
+  </testcase>
+  <testcase name="theDurationsAreChecked()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.theDurationsAreChecked(RoundTest.java:278)
+</failure>
+  </testcase>
+  <testcase name="theCountdownRunsOutBeforeTheRoundStarts()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[onCountdown PT3S, onCountdown PT2S, onCountdown PT1S, readyToStart, onStart]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[onCountdown PT3S, onCountdown PT2S, onCountdown PT1S, readyToStart, onStart]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.theCountdownRunsOutBeforeTheRoundStarts(RoundTest.java:80)
+</failure>
+  </testcase>
+  <testcase name="aDecisionOfACauseThatEndsNoRoundCountsAsAFailedCallback()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.started(RoundTest.java:289)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.aDecisionOfACauseThatEndsNoRoundCountsAsAFailedCallback(RoundTest.java:224)
+</failure>
+  </testcase>
+  <testcase name="aCountdownThatThrowsCancelsTheRound()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[cancel]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[cancel]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.aCountdownThatThrowsCancelsTheRound(RoundTest.java:166)
+</failure>
+  </testcase>
+  <testcase name="nothingHappensWhileTheInstanceIsPrepared()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.001"/>
+  <testcase name="aDecisionOfErrorClosesTheRoundWithoutAResult()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.started(RoundTest.java:289)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.aDecisionOfErrorClosesTheRoundWithoutAResult(RoundTest.java:239)
+</failure>
+  </testcase>
+  <testcase name="aDecidedRoundShowsItsResultThenSettlesWithItsExits()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.started(RoundTest.java:289)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.aDecidedRoundShowsItsResultThenSettlesWithItsExits(RoundTest.java:102)
+</failure>
+  </testcase>
+  <testcase name="aDecisionThatThrowsEndsTheRoundWithError()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.started(RoundTest.java:289)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.aDecisionThatThrowsEndsTheRoundWithError(RoundTest.java:213)
+</failure>
+  </testcase>
+  <testcase name="aStartThatThrowsEndsTheRoundWithErrorAndSettlesIt()" classname="io.github.bearisbug.synaxis.game.playkit.RoundTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[start, end ERROR, settled]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[start, end ERROR, settled]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.playkit.RoundTest.aStartThatThrowsEndsTheRoundWithErrorAndSettlesIt(RoundTest.java:191)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,2 @@
+config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out
+translation key gate: 74 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out

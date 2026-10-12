@@ -1,0 +1,30 @@
+io.github.bearisbug.synaxis.game.playkit.CountdownTest: tests=5 failures=3 errors=0 skipped=0
+  PASS aNewCountdownIsNotRunning()
+  FAIL aCountdownOfZeroIsDoneAtOnceAndANegativeOneIsRefused() at CountdownTest.java:72: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+  FAIL startingAgainStartsFromTheTop() at CountdownTest.java:66: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <PT10S> but was: <PT0S>
+  PASS aCancelledCountdownIsNeitherRunningNorDone()
+  FAIL itCountsDownToZeroAndStaysThere() at CountdownTest.java:31: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+io.github.bearisbug.synaxis.game.playkit.LocalQueueTest: tests=5 failures=5 errors=0 skipped=0
+  FAIL joinsAndTakesOnManyThreadsLoseNobody() at LocalQueueTest.java:78: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <8000> but was: <0>
+  FAIL fewerThanTheMinimumAreNotTaken() at LocalQueueTest.java:46: AssertionFailedError: org.opentest4j.AssertionFailedError: a take that found too few players changed the queue ==> expected: <[a]> but was: <[]>
+  FAIL aPlayerIsQueuedOnceInTheOrderOfJoining() at LocalQueueTest.java:29: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+  FAIL theBoundsOfATakeAreChecked() at LocalQueueTest.java:65: AssertionFailedError: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL aTakeTakesAtMostTheMaximumFirstComeFirst() at LocalQueueTest.java:54: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <[1, 2, 3, 4, 5, 6, 7, 8]> but was: <[]>
+io.github.bearisbug.synaxis.game.playkit.RoundTest: tests=17 failures=16 errors=0 skipped=0
+  FAIL aRoundWaitsUntilItIsReadyToStart() at RoundTest.java:96: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <[readyToStart, readyToStart, readyToStart, onStart]> but was: <[]>
+  FAIL aTickThatThrowsEndsTheRoundWithErrorAndSettlesItWithoutAResult() at RoundTest.java:289: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <RUNNING> but was: <OPEN>
+  FAIL aRoundEndsAtItsTimeLimit() at RoundTest.java:289: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <RUNNING> but was: <OPEN>
+  FAIL aReadyCheckThatThrowsCancelsTheRound() at RoundTest.java:179: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <[cancel]> but was: <[]>
+  FAIL anEndedRoundNobodyIsLeftInSettlesAtOnce() at RoundTest.java:289: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <RUNNING> but was: <OPEN>
+  FAIL aResultThatThrowsSettlesTheRoundAtOnce() at RoundTest.java:289: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <RUNNING> but was: <OPEN>
+  FAIL aSettleIsNotRequestedTwiceWhileTheHostEvacuates() at RoundTest.java:289: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <RUNNING> but was: <OPEN>
+  FAIL anExitThatThrowsKicksThatPlayer() at RoundTest.java:289: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <RUNNING> but was: <OPEN>
+  FAIL theDurationsAreChecked() at RoundTest.java:278: AssertionFailedError: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL theCountdownRunsOutBeforeTheRoundStarts() at RoundTest.java:80: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <[onCountdown PT3S, onCountdown PT2S, onCountdown PT1S, readyToStart, onStart]> but was: <[]>
+  FAIL aDecisionOfACauseThatEndsNoRoundCountsAsAFailedCallback() at RoundTest.java:289: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <RUNNING> but was: <OPEN>
+  FAIL aCountdownThatThrowsCancelsTheRound() at RoundTest.java:166: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <[cancel]> but was: <[]>
+  PASS nothingHappensWhileTheInstanceIsPrepared()
+  FAIL aDecisionOfErrorClosesTheRoundWithoutAResult() at RoundTest.java:289: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <RUNNING> but was: <OPEN>
+  FAIL aDecidedRoundShowsItsResultThenSettlesWithItsExits() at RoundTest.java:289: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <RUNNING> but was: <OPEN>
+  FAIL aDecisionThatThrowsEndsTheRoundWithError() at RoundTest.java:289: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <RUNNING> but was: <OPEN>
+  FAIL aStartThatThrowsEndsTheRoundWithErrorAndSettlesIt() at RoundTest.java:191: AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <[start, end ERROR, settled]> but was: <[]>

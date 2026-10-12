@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-12 | 分支 `prod/r077-R`（设计提交 `f30440e694`、骨架提交 `e07fb8b58a`、实现提交 `100cc8b061`、测试补充 `02df5f9a37`，基于 `prod/integrate-077` `3cd20ff777`），跟进 `docs/DESIGN-PLAY.md` v0.7 与 `docs/DESIGN-PROD.md` v0.9.82（RUN-077 组 R，`:play-kit`、`:game-rush` 与 `runRush`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/R/`。**§4「玩法架构 · RUN-077：R」写入二十条 `TC-PLAY-090`～`TC-PLAY-109`**：`Round` 的状态推进（090）与回调兜底（091），`LocalQueue` 与 `Countdown`（092），信标（093），五个配置键（094），`onStart` 重设 `TIMER`（095），计分、名次与三种结束（096），结算中只送按钮的人（097），全部移入之后才开局（098），上一局没关闭时不开第二局（099），大厅其余规则（100），插件接线（101），发现插件就要 `:play-kit`（102），游戏侧两道 ArchUnit 规则（103），四道门禁（104），`runRush`（105），覆盖率门的 `--src-roots`（106），R1 命令与回滚演练的 jar（107），英文 fallback 与语言文件（108），严格 grid（109）。改动前的红在骨架上实跑（`:play-kit` 27 条 24 条红，`:game-rush` 42 条 35 条红），七处反证一次实跑，每处打红的用例互不相同，还原后复绿，另在严格 grid 下跑一遍两个模块；106 第 3 步与 107 第 2 步要等集成分支的 CI 与组 G。节头的测试类 `RushRoundTest` 改为带 `Env` 的 `RushRoundIntegrationTest`（计分与结算要真玩家），补列 `RushConfigTest`。**门禁读数**：配置键门禁 117 → 122 个键（`config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out`），翻译键门禁 61 → 74 个键、标识仍是 17 个（`translation key gate: 74 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`）；写着旧读数的 `TC-PROD-430`、`TC-PROD-441`、`TC-PROD-547`、`TC-PROD-569`、`TC-PROD-717` 本组不改，由集成轮按 CI 输出改，光照会话的 `TC-WORLD-032`、`TC-WORLD-041`、`TC-WORLD-098` 由集成轮写进 `docs/DESIGN-PROD.md` §28.3 交接；`TC-PROD-441` 第 2～4 步的反证本组没有重跑。**条数**本组不改，由集成轮统一改。本组 Gradle 共 10 次，前 3 次停在编译 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-K`（文档提交 `755ecf9d09`、骨架提交 `546ed30408`、实现提交 `cc2db356f1`，基于 `prod/r077-docs` `184ad30370`），跟进 `docs/DESIGN-PLAY.md` v0.3（RUN-077 组 K，插件面契约与宿主接线），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/K/`。**§4「玩法架构 · RUN-077：K」写入十条 `TC-PLAY-010`～`TC-PLAY-019`**：场景的动作槽（010）、v1 四种小部件不用编码就能查的上限（011）、`InstanceSpec` 的名字、半径、结算超时与短构造器的默认值（012）、宿主上下文的 `play()`、`instances()` 与 `synaxis:play` 的接线（013）、`ComponentBytes` 的编码与 2,048 B 上限（014）、稳定面门禁看得见两个新子包（015）、翻译键门禁的 `NOT_TEXT` 加 `synaxis:play`（016）、两份语言文件的 22 个 S1 键与默认键 H（017）、ABI 门对 `v0.3.0` 0 条违例（018）、插件宿主与核心模式的回归和 `PluginHost.java` 行号后移（019）；改动前的红在骨架上实跑，八处反证一次实跑，ABI 门的反证另跑一次，还原后复绿，语言文件用脚本核对。`:plugin-api` 新类 4 个 30 条，`:server-app` 新类 2 个 4 条；节头补列 `ComponentBytesTest`，测试类按实际的包写。**改旧用例**：`TC-PROD-521` 第 5 步 `PluginHost.java:102` → `:107`（本组在它上面加了三行导入与两个字段），按代码文本核对，没复跑。翻译键门禁的读数（标识 16 → 17）与 `TranslationKeyGateTest.java` 第 65 行之后的红行行号后移，与组 P 加的同一行一起由集成轮改（`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717`）。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-P`（设计提交 `4f2dad04f2`、修前红提交 `438b206f47`、实现提交 `05095f4699`，基于 `prod/r077-docs` `184ad30370`），跟进 `docs/DESIGN-PLAY.md` v0.2 与 `docs/DESIGN-M2.md` v0.66（RUN-077 组 P，`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/P/`。**新增 §4「玩法架构 · RUN-077：P」九条 `TC-PLAY-001`～`TC-PLAY-009`**：常规向量（001）、边界向量（002）、未知属性与未知种类（003）、13 个 `refused-` 向量（004）、manifest 把向量绑在 `play_version` 上（005）、往返与后续版本的 `msg_id`（006）、向量没覆盖的畸形形状（007）、包导出、`NOT_TEXT`、ABI 门与 javadoc（008）、客户端 `PlayFrozenVectorTest`（009，只在 GitHub Actions 上跑，组 V 的草稿 PR 首跑，反证也在那里补）。改动前的红在桩上实跑（47 条 39 条红）；反证两批，每批四处一次打上，各打各的用例，还原后复绿；第一批第一次跑时一处红落在测试的参数构造上，测试改为先解码后重跑。`:protocol` 新类 2 个 47 条。**门禁读数**：`TranslationKeyGateTest` 的标识 16 → 17，键数仍是 61；`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717` 的读数与 `NOT_TEXT` 之后的红行行号本组不改，由集成轮按 CI 输出改，`TC-WORLD-032` 走交接行。**条数**本组不改，由集成轮统一改。评审返工（同一分支）：`edge/s2c_scene.bin` 的 `cursor` 改为 254、`edge/c2s_action-entity.bin` 的 `action_seq` 改为 1，`S2C_SCENE` 的 `camera` 与 `cursor`、`C2S_ACTION` 的 `scene_seq` 与 `action_seq` 这两对相邻的同类型字段从此在向量里取不同的值，digest 改为 `f3eaee54…205e`；照设计文本写的向量编码器入库为 `protocol/tools/gen_play_vectors.py`；`TC-PLAY-002` 加第 4 步（读写顺序对调的反证：旧向量上全部存活，新向量上 2 条红），`TC-PLAY-005` 第 1 步改 digest 读数、写清取文件的次序、加脚本重新生成后 `diff` 无输出；本组 Gradle 共 11 次 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-docs`（基于 `main` `f9e002917b`：`docs/DESIGN-PLAY.md` v0.1 已签字，`docs/DESIGN.md` v0.46 已登记该分册），RUN-077（玩法架构最小样板 S1）的文档基线，跟进 `docs/DESIGN-PLAY.md` v0.1。不加用例、不执行用例、不登执行轮次。**§1**：「关联设计文档」加 `docs/DESIGN-PLAY.md`，写明 `REQ-PLAY-*` 对应 `TC-PLAY-*`，联检从此解析五份设计文档。**§2**：加玩法架构侧一段，写明 S1 覆盖的六条需求与尚未开工的十二条，后者在联检里报「无任何 TC 引用」属在途。**§4 末尾**：建好「玩法架构 · RUN-077」八节，节头写对应需求、`docs/DESIGN-PLAY.md` 的版本、用例号段与测试类名；号段按块预分，块内允许空号（P 001～009、K 010～019、V 020～029、H 030～049、I 050～069、C 070～089、R 090～109、G 110～129），各组只往自己的节里写 | Bearisbug |
@@ -11337,7 +11338,265 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 ### 玩法架构 · RUN-077：R（`:play-kit`、`:game-rush` 与 `runRush`）
 
-对应 `REQ-PLAY-007` 的 `Round`、`LocalQueue`、`Countdown` 与 `REQ-PLAY-008` 的服务端规则（`docs/DESIGN-PLAY.md` `API-PLAY-008`、`API-PLAY-010`，§6.7.3，§6.7.5，`ADR-PLAY-011`，§23；本组跟进该分册 v0.7 与 `docs/DESIGN-PROD.md` v0.9.82 的 `API-PROD-023`）。用例号段 090～109，由组 R 在分支 `prod/r077-R` 写入。测试类：`:play-kit` 包 `io.github.bearisbug.synaxis.game.playkit` 的 `RoundTest`、`LocalQueueTest`、`CountdownTest`；`:game-rush` 包 `io.github.bearisbug.synaxis.game.rush` 的 `BeaconTest`、`RushRoundTest`（纯单元），`LobbyIntegrationTest`、`RushPluginIntegrationTest`（带 `@EnvTest`）与 `ArchitectureTest`。
+对应 `REQ-PLAY-007` 的 `Round`、`LocalQueue`、`Countdown` 与 `REQ-PLAY-008` 的服务端规则（`docs/DESIGN-PLAY.md` `API-PLAY-008`、`API-PLAY-010`，§6.7.3，§6.7.5，`ADR-PLAY-011`，§23；本组跟进该分册 v0.7 与 `docs/DESIGN-PROD.md` v0.9.82 的 `API-PROD-023`）。用例号段 090～109，由组 R 在分支 `prod/r077-R` 写入，本组证据 `docs/test-runs/RUN-077/R/`。测试类：`:play-kit` 包 `io.github.bearisbug.synaxis.game.playkit` 的 `RoundTest`、`LocalQueueTest`、`CountdownTest`（纯单元，假 `ManagedInstance`、假时钟）；`:game-rush` 包 `io.github.bearisbug.synaxis.game.rush` 的 `BeaconTest`、`RushConfigTest`（纯单元），`RushRoundIntegrationTest`、`LobbyIntegrationTest`、`RushPluginIntegrationTest`（带 `@EnvTest`）与 `ArchitectureTest`。计划写的纯单元 `RushRoundTest` 改成了带 `Env` 的 `RushRoundIntegrationTest`：计分、名次、离场与结算面板都要真玩家的位置与名字，假的 `ManagedInstance` 拿不出 `Player`。
+
+改动：新模块 `:play-kit`（只以 `api` 依赖 `:plugin-api`）与 `:game-rush`（`implementation` 依赖 `:plugin-api`、`:play-kit`，`META-INF/services` 登记 `RushPlugin`），`settings.gradle.kts` 加两行 `include`；`architecture-tests/build.gradle.kts` 把两个模块加进测试依赖，四道门禁因此看得见它们；`server-app/build.gradle.kts` 末尾加 configuration `rush`（内容 `:game-rush`）与任务 `runRush`，`installDist`、`run` 不变；`ConfigFile.KEYS` 加五个 `synaxis.rush.*`（键数 117 → 122，排在 RTS 两个键之前，`TC-PROD-441` 第 3 步「键表末尾 `synaxis.app.units`」仍成立）；`.github/workflows/ci.yml` 的 diff-cover `--src-roots` 加两个模块。
+
+测试：`:play-kit` 3 个类 27 条（`RoundTest` 17、`LocalQueueTest` 5、`CountdownTest` 5）；`:game-rush` 6 个类 42 条（`ArchitectureTest` 5、`BeaconTest` 7、`LobbyIntegrationTest` 11、`RushConfigTest` 5、`RushPluginIntegrationTest` 6、`RushRoundIntegrationTest` 8）。`:game-rush` 测试源集里的 `FakePlay`、`FakeManaged`、`FakeInstances` 代替宿主的场景层与托管实例：`FakeManaged` 包住 `Env` 的真实例，`move` 真的换实例，可以把 move 挂起、由测试逐个完成，关闭时按 exit 撤离；`FakeInstances` 按 spec 的生成器真的生成半径内的区块。「跑 `<类>`」照本节上面 P 节写的共用约定，`:play-kit`、`:game-rush` 是 `<模块>`。不需要数据库前置。行覆盖：`:play-kit` 116/116，`:game-rush` 402/403（没覆盖的一行是 `RushRound#onCountdown` 的空方法体，样板的一局没有自己的倒计时），`docs/test-runs/RUN-077/R/coverage.txt`。
+
+源文件代号：`<PK>` 是 `play-kit/src/main/java/io/github/bearisbug/synaxis/game/playkit/`，`<GR>` 是 `game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/`，`<GT>` 是 `game-rush/src/test/java/io/github/bearisbug/synaxis/game/rush/`，`<py>` 是主工作副本的 `.venv/bin/python`。提交：设计 `f30440e694`，骨架 `e07fb8b58a`（全部签名、测试与构建接线，方法体只返回空值），实现 `100cc8b061`，测试补充 `02df5f9a37`。源码行号按 `02df5f9a37`；「改动前的红」里的测试行号按骨架 `e07fb8b58a`，「反证有齿」里的按 `100cc8b061`。「改动前的红」在骨架上跑：`:play-kit` 第 4 次运行 27 条 24 条红，`:game-rush` 第 5 次运行 42 条 35 条红。前三次运行停在编译：骨架里只抛异常的方法被 Error Prone `DoNotCallSuggester` 拦下（经辅助方法抛也一样），骨架改成返回空值；测试源码被 `UnnamedVariable`、`StringSplitter`、`CanonicalDuration` 拦下。反证一次跑完（第 7 次运行）：七处临时改动同时打上（`docs/test-runs/RUN-077/R/03-counter-proofs/counter-proofs.diff`），每处打红的用例互不相同，没被打到的用例同一次都绿，跑完 `git checkout -- play-kit game-rush`；那次的测试行号按 `100cc8b061`，`02df5f9a37` 之后 `LobbyIntegrationTest` 的 `:206`、`:310` 是 `:209`、`:313`，`RushPluginIntegrationTest` 的 `:268` 是 `:269`。实现提交改了三条测试：断线改为照引擎的做法派发 `PlayerDisconnectEvent`（`Env` 的连接 `disconnect()` 不派发它，第 6 次运行这一步红）；`Round` 默认的 `readyToStart()` 与 `arena()` 补上覆盖；`noSecondArenaWhileThePreviousRoundHasNotClosed` 把返回大厅那一步挪到「不开第二局」的断言之后，免得两处反证互相遮盖。10 次 Gradle 运行与各次读数见 `docs/test-runs/RUN-077/R/00-index.txt`。
+
+#### `TC-PLAY-090` `Round` 按托管实例的状态推进：倒计时、`readyToStart`、开局、提前结束或到时限、展示结算后 `settled`、实例空了立即 `settled`、只请求一次关闭 — 对应 `REQ-PLAY-007` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`RoundTest` 的假实例照 §11.1 的迁移表接受请求，状态不对时抛 `IllegalStateException`；它的 `players()` 只用来判空，有人时放一个占位元素。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:play-kit` 的 `io.github.bearisbug.synaxis.game.playkit.RoundTest` | `tests="17"` 0 失败。本条看其中 8 条：`PREPARING` 时什么都不做；3 s 倒计时依次回调 `onCountdown` 3 s、2 s、1 s，倒数完才问 `readyToStart`、`start()`、`onStart`；`readyToStart` 为 false 时一直不开局，为 true 的那个 tick 才开；`decided` 给 `OBJECTIVE` 时 `end(OBJECTIVE)` 并调 `onResult`，有人时结算展示满 3 s 才 `settled`，交给宿主的 exit 就是 `exitOf` 给的；到 10 s 时限 `end(TIME_LIMIT)`；`ENDING` 里没人时下一 tick 就 `settled`；宿主撤离期间状态停在 `ENDING`，`settled` 只请求一次；构造参数里倒计时或结算时长为负、局长不大于 0 抛 `IllegalArgumentException`；`aDecidedRoundShowsItsResultThenSettlesWithItsExits` 另判这一局没写日志 |
+| 2 | 改动前的红：在骨架上跑同一个类（第 4 次运行） | `tests="17" failures="16"`：骨架的 `tick()` 什么都不做，只有 `nothingHappensWhileTheInstanceIsPrepared` 绿；`theCountdownRunsOutBeforeTheRoundStarts` 红在 `RoundTest.java:80`，`aRoundWaitsUntilItIsReadyToStart` 红在 `:96`，其余经 `started()` 的红在 `:289`（`expected: <RUNNING> but was: <OPEN>`），`theDurationsAreChecked` 红在 `:278`（`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`） |
+| 3 | 反证有齿：本条的 8 条没有单独的反证运行；它们的齿就是第 2 步，状态推进一旦不做，7 条红。回调兜底的反证见 `TC-PLAY-091` | — |
+| 4 | 还原后跑第 1 步（第 8 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-091` `Round` 回调兜底：抛异常的回调关掉这一局、不结算，玩家照 `exitOf` 送回，记一行 ERROR（§19「Round 回调抛异常」）— 对应 `REQ-PLAY-007` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。日志器是 slf4j 的 `SubstituteLogger` 接一个事件队列，测试读出每一行的级别、参数与异常。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TC-PLAY-090` 第 1 步的类 | 本条看其余 9 条，0 失败：`onCountdown` 抛时 `cancel`；`readyToStart` 抛时 `cancel`；`onStart` 抛时 `start`、`end(ERROR)`、`settled`；`onTick` 抛时 `end(ERROR)` 后同一 tick `settled`、实例 `CLOSED`、`decided` 与 `onResult` 都没调、exit 仍是 `exitOf` 给的（§19 的场景）；`decided` 抛时同 `onTick`；`decided` 返回 `CANCELLED` 这种结束不了一局的原因时同样关掉，日志写 `does not end a round`；返回 `ERROR` 时关掉、不调 `onResult`、不写日志；`onResult` 抛时同一 tick `settled`；`exitOf` 抛时这名玩家的 exit 是 `Kick(synaxis:match-unavailable)`。每次失败恰好一行 ERROR，参数依次是实例 id、回调名、状态，异常是回调抛的那个 |
+| 2 | 改动前的红：同 `TC-PLAY-090` 第 2 步（第 4 次运行） | 这 9 条全红：`aCountdownThatThrowsCancelsTheRound` 红在 `:166`、`aReadyCheckThatThrowsCancelsTheRound` 红在 `:179`、`aStartThatThrowsEndsTheRoundWithErrorAndSettlesIt` 红在 `:191`（`expected: <[start, end ERROR, settled]> but was: <[]>`），其余 6 条红在 `started()` 的 `:289` |
+| 3 | 反证有齿（回调失败被吞掉）：`<PK>Round.java:251` 的 `return true;` 改为 `return Boolean.getBoolean("proof.never");`，与本节其余反证同一次跑（第 7 次运行），再还原 | 本类 4 条红：`aTickThatThrowsEndsTheRoundWithErrorAndSettlesItWithoutAResult` 红在 `:203`，`expected: <[start, end ERROR, settled]> but was: <[start]>`；`aResultThatThrowsSettlesTheRoundAtOnce` 红在 `:258`；`aCountdownThatThrowsCancelsTheRound` 红在 `:166`；`aStartThatThrowsEndsTheRoundWithErrorAndSettlesIt` 红在 `:191`。`readyToStart`、`decided` 与 `exitOf` 各有自己的 `try`，不经这个方法，那 5 条照旧绿 |
+| 4 | 还原后跑第 1 步（第 8 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-092` `LocalQueue` 每人至多一次、按入队顺序、一次取一局，多线程不丢不重；`Countdown` 按注入的时钟倒数 — 对应 `REQ-PLAY-007` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`LocalQueue` 写成泛型，测试用字符串与整数入队（`docs/DESIGN-PLAY.md` `API-PLAY-008`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:play-kit` 的 `io.github.bearisbug.synaxis.game.playkit.LocalQueueTest` 与 `io.github.bearisbug.synaxis.game.playkit.CountdownTest` | 各 `tests="5"` 0 失败。`LocalQueue`：重复入队返回 false，退一个不在队里的返回 false，`players()` 按入队顺序；不足 `min` 人时 `take` 返回空表、队列不变；10 人时 `take(2, 8)` 取前 8 个、剩 2 个，`take(0, Integer.MAX_VALUE)` 取光；`min` 为负或 `max < min` 抛 `IllegalArgumentException`；8 条线程同时各入队 1,000 个、再 8 条线程同时按 `take(1, 37)` 取光，共 8,000 个、不重复、队列为空。`Countdown`：新建时不在倒数；10 s 倒数在 4 s 后剩 6 s，到点后 `done()`、仍 `running()`，剩余 0；取消后既不在倒数也不 `done()`；倒数中再 `start` 从头倒数；0 立即 `done()`，负数抛 `IllegalArgumentException` |
+| 2 | 改动前的红：在骨架上跑同两个类（第 4 次运行） | `LocalQueueTest` `tests="5" failures="5"`（如 `aTakeTakesAtMostTheMaximumFirstComeFirst` 红在 `:54`，`expected: <[1, 2, 3, 4, 5, 6, 7, 8]> but was: <[]>`）；`CountdownTest` `tests="5" failures="3"`，骨架的空值恰好满足 `aNewCountdownIsNotRunning` 与 `aCancelledCountdownIsNeitherRunningNorDone` |
+| 3 | 反证有齿：本条没有单独的反证运行。多线程那一条在没有锁时多半会丢人，但不是确定的反证，不当齿用 | — |
+| 4 | 还原后跑第 1 步（第 8 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-093` 信标：圈的范围，一人独占 10 s 占满，两人同在冻结，别人的信标先以每秒 20% 退到 0 再涨，离场的人放掉进度 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`BeaconTest` 只给坐标与步长（`docs/DESIGN-PLAY.md` §6.7.2）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:game-rush` 的 `io.github.bearisbug.synaxis.game.rush.BeaconTest` | `tests="7"` 0 失败：信标方块 (−12, 40, −12) 的圈以 (−11.5, −11.5) 为心，水平 3 格在内、3.01 格在外，上下 2 格在内、2.01 格在外；199 个 50 ms 的步长后 99%、没有占领者，第 200 步返回占领者，再站 1 s 不算第二次占领；5 s 是 50%；两人同在 3 s 进度不动，没人时也不动；占满之后另一人站 2.5 s 退 50%、原占领者仍是占领者，再 2.5 s 退到 0、没有占领者，之后 10 s 才归新人；一步里先退后涨时余下的时间算给新人（20% 用 1 s 退完，余下 3 s 涨 30%）；`forget` 别人不改变信标，`forget` 占领者清空进度 |
+| 2 | 改动前的红：在骨架上跑同一个类（第 5 次运行） | `tests="7" failures="7"`，如 `theCircleIsThreeBlocksAcrossFromTheCentreAndTwoUpOrDown` 红在 `BeaconTest.java:31`，`expected: <true> but was: <false>` |
+| 3 | 反证有齿（两人同在不冻结）：`<GR>Beacon.java:120` 的 `if (inside.size() != 1) return null;` 改为 `if (inside.isEmpty() \|\| (Boolean.getBoolean("proof.never") && inside.size() != 1)) return null;`，与本节其余反证同一次跑（第 7 次运行），再还原 | 本类只红 `twoInTheCircleFreezeItAndNobodyLeavesItAsItIs`，在 `:67`，`the progress moved while two were in the circle ==> expected: <40> but was: <10>` |
+| 4 | 还原后跑第 1 步（第 9 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-094` 五个 `synaxis.rush.*` 键：默认值、CI 值、两端可取、越界与非整数各报一句，`onEnable` 因此失败、什么都不建 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。取值范围见 `docs/DESIGN-PLAY.md` `API-PLAY-010`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:game-rush` 的 `io.github.bearisbug.synaxis.game.rush.RushConfigTest`，与 `io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest` 的 `aConfigurationOutOfRangeFailsTheEnableBeforeAnythingIsBuilt` | `RushConfigTest` `tests="5"` 0 失败：什么都不给是 (2, 10 s, 240 s, 15 s, 150)；CI 值是 (1, 3 s, 45 s, 10 s, 150)；下限 (1, 0, 1, 1, 1) 与上限 (8, 3,600, 3,600, 600, 1,000,000) 都收下；`9`、`0`、`-1`、`601`、`1000001` 各报 `Property '<键>' is not from <下限> to <上限>: <值>`；`4m` 与带前导空格的 ` 150` 报 `Property '<键>' is not an integer: <值>`。插件那条：`synaxis.rush.min-players=9` 时 `onEnable` 抛 `IllegalArgumentException`，消息 `Property 'synaxis.rush.min-players' is not from 1 to 8: 9`，没有建大厅 |
+| 2 | 改动前的红：在骨架上跑（第 5 次运行） | `RushConfigTest` `tests="5" failures="4"`（骨架的 `from()` 恒返回默认值，`theDefaultsAreThoseOfTheDesign` 绿，`theValuesOfTheCiRunAreTaken` 红在 `:27`，两条拒绝红在 `:61`）；插件那条红在 `RushPluginIntegrationTest.java:245`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 3 | 反证有齿：本条没有单独的反证运行，第 2 步骨架不读键时 6 条里 5 条红（含插件那条）就是它的齿 | — |
+| 4 | 还原后跑第 1 步（第 9 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-095` 对局的 `TIMER` 在 `onStart` 里设一次，remaining 是整个 `round-seconds`、running 为真，move 与 enter 时不写 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。剧本 Q7 用这条 SET 的接收时刻加 remaining 推算结束时刻（`docs/DESIGN-PLAY.md` §6.7.3），所以 `TIMER` 只能在开局那一刻设。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:game-rush` 的 `io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest` | `tests="8"` 0 失败。本条看 `theTimerIsSetWhenTheRoundStartsWithTheWholeLengthAndNotBefore`：开局之前两名玩家都没收到 `timer`；开局那个 tick 竞技场转 `RUNNING`，每人恰好收到一条 `Timer(timer, TOP_CENTER, 0, rush.timer.round, 4 min, true)`，还有 `objective`（目标 150）与两行的 `score`；三个 `TEXT_DISPLAY` 标签写的是字面文本 `A`、`B`、`C` |
+| 2 | 改动前的红：在骨架上跑同一个类（第 5 次运行） | `tests="8" failures="8"`，这一条红在 `RushRoundIntegrationTest.java:60`，`expected: <RUNNING> but was: <OPEN>` |
+| 3 | 反证有齿（`TIMER` 改在 enter 时写）：`<GR>RushRound.java:151` 那一行前加 `if (Boolean.getBoolean("proof.never")) `，`<GR>Lobby.java:202` 的 `hud.enter(player, RushHud.ROUND);` 之后加一行 `hud.show(player, RushHud.timer("rush.timer.round", config.roundLength(), true));`，与本节其余反证同一次跑（第 7 次运行），再还原 | 只红这一条，在 `:62`：期望的 `[Timer[…remaining=PT4M, running=true]]` 与实际的空表不符。`LobbyIntegrationTest` 没有用例看对局的 `TIMER`，照旧绿 |
+| 4 | 还原后跑第 1 步（第 9 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-096` 一局的计分与结束：每个整秒按占领给分，`objective`、`time_limit`、`empty`，名次与并列，离场的人退出计分并放掉信标，`EVT:rush_round_ended` 的属性 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。真玩家站进信标圈靠 `teleport`，时间靠手拨的时钟，每 tick 50 ms。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TC-PLAY-095` 第 1 步的类 | 本条看 5 条，0 失败：alice 站在 A 上、目标 3 分：1 s 时 `capture` 是 `rush.capture`（A，10），bob 不在圈里没有这一项；10 s 占满，标签变成 `A: alice`；10、11、12 s 各得 1 分，12 s 以 `OBJECTIVE` 结束，台账一行 `{round_id=rush:round_1, players=2, winner=alice, cause=objective, duration_ms=12000}`，alice 的结算面板两行 `rush.result.row`（1，alice，1 次）值 3 高亮、（2，bob，0 次）值 0，按钮动作 `back`，`capture` 去掉，`timer` 停在 228 s、running 为假。5 s 一局没人得分：4.95 s 时还在跑，5 s 时以 `TIME_LIMIT` 结束，`cause=time_limit`、`winner=alice,bob`，两人都是第 1 名，`timer` 停在 0。名次：分数 5/5/5/3、占领 2/2/1/9 的 carol、alice、bob、dave 排成 `1 alice`、`1 carol`、`3 bob`、`4 dave`。两人都离开竞技场时下一 tick 以 `EMPTY` 结束，台账 `players=0`、`winner` 为空串、`duration_ms=0`，再下一 tick `settled`。alice 占着 A 离开竞技场后，A 的标签回到 `A`，bob 的计分板只剩自己一行，这一局照常 |
+| 2 | 改动前的红：同 `TC-PLAY-095` 第 2 步（第 5 次运行） | 这 5 条全红：`aPlayerHoldingABeaconScoresEverySecondUntilTheTargetEndsTheRound` 红在 `:80`（`capture` 不存在），`aRoundEndsAtTheTimeLimitAndATieSharesTheRank` 红在 `:105`，名次那条红在 `:131`（`but was: <[]>`），`aRoundNobodyIsLeftInEndsEmptyAndSettlesAtOnce` 红在 `:143`，离场那条红在 `:256`（`no label for beacon A`） |
+| 3 | 反证有齿：本条没有单独的反证运行，它的齿是第 2 步 | — |
+| 4 | 还原后跑第 1 步（第 9 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-097` 结算中只送按钮的人回大厅，每人一次，局在跑时按钮不起作用；最后一人离开后下一 tick 竞技场关闭（§19「结算中只送按钮的人回大厅」）— 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TC-PLAY-095` 第 1 步的类 | 本条看 `theBackButtonSendsOnlyThePresserOnceAndOnlyWhileTheResultShows`，0 失败：局在 `RUNNING` 时 alice 按钮，大厅没有收到 move；5 s 后转 `ENDING`；alice 连按两次，大厅只收到一次 `move alice`，alice 进了大厅，bob 仍在竞技场，竞技场仍是 `ENDING`；bob 按钮后的下一 tick 竞技场 `settled` |
+| 2 | 改动前的红：同 `TC-PLAY-095` 第 2 步（第 5 次运行） | 红在 `:183`，`expected: <ENDING> but was: <OPEN>` |
+| 3 | 反证有齿（按钮把所有人都送回）：`<GR>RushRound.java:97` 的 `var _ = lobby.move(player, Arena.SPAWN);` 改成对 `Boolean.getBoolean("proof.never") ? Set.of(player) : arena().players()` 里的每个人 move，与本节其余反证同一次跑（第 7 次运行），再还原 | 本类只红这一条，在 `:189`，`expected: <[move alice]> but was: <[move alice, move bob]>` |
+| 4 | 还原后跑第 1 步（第 9 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-098` 全部移入之后才开局，第一个 `RUNNING` tick 里两人都在；移入全部失败时取消竞技场（§19「全部移入之后才开局」）— 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`FakeManaged` 把 move 挂起，测试逐个完成。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:game-rush` 的 `io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest` 与 `TC-PLAY-095` 第 1 步的类 | `LobbyIntegrationTest` `tests="11"` 0 失败。本条看两条：`theRoundStartsOnlyOnceEveryMoveIsDone`：竞技场转 `OPEN`，大厅取了 alice、bob 并各挂起一个 move；alice 的完成后的 tick 竞技场仍是 `OPEN`，bob 的完成时也还是 `OPEN`，下一 tick 才转 `RUNNING`，alice 的计分板有两行，竞技场收到的请求依次是 `move alice`、`move bob`、`start`。`theRoundWaitsForEveryMoveAndIsCancelledWhenNoneSucceeded`：第一个 move 以 false 完成后的 tick 不发任何请求，第二个也以 false 完成后竞技场收到 `cancel`，台账没有结算行 |
+| 2 | 改动前的红：在骨架上跑（第 5 次运行） | `theRoundStartsOnlyOnceEveryMoveIsDone` 红在 `LobbyIntegrationTest.java:198`（骨架不建竞技场，`NoSuchElementException`），另一条红在 `RushRoundIntegrationTest.java:214`，`expected: <[cancel]> but was: <[]>` |
+| 3 | 反证有齿（不等全部 move 完成就开局）：`<GR>RushRound.java:128` 的 `!moves.stream().allMatch(CompletableFuture::isDone)` 改为 `(Boolean.getBoolean("proof.never") && !moves.stream().allMatch(CompletableFuture::isDone))`，与本节其余反证同一次跑（第 7 次运行），再还原 | 两条都红：`theRoundStartsOnlyOnceEveryMoveIsDone` 在 `:209`（那次是 `:206`），`the round started with a move still under way ==> expected: <OPEN> but was: <RUNNING>`；`theRoundWaits…` 在 `:209`，`the round moved on before every move was done ==> expected: <[]> but was: <[cancel]>` |
+| 4 | 还原后跑第 1 步（第 9 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-099` 上一局没关闭时不开第二局：倒计时到点作废，等上一局 `CLOSED` 后重新倒数（§19「上一局没关闭时不开第二局」）— 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。配置 `min-players=2`、倒计时 10 s、一局 5 s、结算 10 s；第二次倒计时在上一局第一个 `RUNNING` tick 开始，10 s 后到点，这时上一局在 `ENDING`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TC-PLAY-098` 第 1 步的 `LobbyIntegrationTest` | `noSecondArenaWhileThePreviousRoundHasNotClosed` 0 失败：第一局转 `RUNNING` 后 carol、dave 排队；第一局 5 s 后 `ENDING`；第二次倒计时到点时只建过一个竞技场，carol、dave 仍在队里，倒计时从他们屏幕上去掉；这时 alice 按「返回大厅」，大厅收到 `move alice`；第一局结算满 10 s 关闭的那个 tick 倒计时重新开始，carol 收到满 10 s 的 `timer`；再过 10 s 才建第二个竞技场 |
+| 2 | 改动前的红：在骨架上跑（第 5 次运行） | 红在 `LobbyIntegrationTest.java:295`，`NoSuchElementException`（骨架不建竞技场） |
+| 3 | 反证有齿（上一局还在就开新局）：`<GR>Lobby.java:151` 的 `if (round != null) waitingForRound = true;` 改为 `if (Boolean.getBoolean("proof.never") && round != null) waitingForRound = true;`，与本节其余反证同一次跑（第 7 次运行），再还原 | 本类这一条红，在 `:313`（那次是 `:310`），`a second arena was created while the first round was ending ==> expected: <1> but was: <2>` |
+| 4 | 还原后跑第 1 步（第 9 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-100` 大厅：进场景与提示、排队键开关、倒计时只给排队的人、到点建竞技场（含地图）、一次至多取 8 人、move 失败回大厅场景、准备失败的提示、开局时人不够就取消、断线出队 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`LobbyIntegrationTest` 手动调 `arrived`，代替插件对 `PlayerSpawnEvent` 的监听（那一半见 `TC-PLAY-101`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TC-PLAY-098` 第 1 步的 `LobbyIntegrationTest` | 其余 9 条 0 失败：进大厅后场景是 `rush:lobby`，只有一项 `hint`（`rush.hint`，0）；alice 排队后两人的 `hint` 都是 1，不变时不重发，再按退队回到 0；一人排队不起倒计时，两人排队时只有这两人收到 10 s 的 `timer`，4 s 后入队的 carol 收到 5.95 s，已在倒数的人不重发，carol 退队后只去掉她的，人数掉到下限以下时全部去掉；倒计时到点建一个竞技场：名字 `round`、维度类型 `synaxis:match`、半径 2、出生点 (0.5, 40, 0.5)、结算超时 25 s（结算 10 s 加 15 s）、强制关闭时送回大厅，倒计时从屏幕上去掉，两人仍在队里，三个信标方块在 y 40，地面是 y 36～39 的石头，屏障墙在地面最外一圈、高 4 格、厚 1 格；9 人排队、竞技场转 `OPEN` 时取前 8 人逐个 move，他们进了竞技场、场景是 `rush:round`，第 9 人留在队里、仍在大厅场景，下一 tick 开局；move 以 false 完成的 alice 回到大厅场景、收到 `hint`，进了竞技场的 bob 收不到大厅的 `hint`；竞技场准备失败后队列清空，两人的 `hint` 换成 `rush.hint.failed`，alice 再按排队键后她的恢复成 `rush.hint`（1），bob 的不变；竞技场转 `OPEN` 时只剩一人排队就 `cancel`，那人留在队里；断线的人出队，倒计时随之停下，没有一局时「返回大厅」也回 `ok` |
+| 2 | 改动前的红：在骨架上跑（第 5 次运行） | `LobbyIntegrationTest` `tests="11" failures="11"`，如 `aPlayerArrivingEntersTheLobbySceneWithTheHint` 红在 `:66`、`aCountdownRunningOutCreatesTheArena` 红在 `:134`（`expected: <1> but was: <0>`） |
+| 3 | 反证有齿：这 9 条没有单独的反证运行；本类另两条的反证见 `TC-PLAY-098`、`TC-PLAY-099` | — |
+| 4 | 还原后跑第 1 步（第 9 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-101` 插件接线：描述与 13 个键，`onEnable` 建大厅并 `start()`，两个动作、一个每 tick 任务，准入一律进同一个大厅、大厅不在 `RUNNING` 时拒绝，出生进大厅才进大厅场景，动作与任务驱动大厅，断线出队 — 对应 `REQ-PLAY-008` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头。`ProbeContext` 照 `RtsPluginIntegrationTest` 写，`play()`、`instances()` 换成本包的假实现，`instances()` 建出的实例直接是 `OPEN`（启动线程上的 `create`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:game-rush` 的 `io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest` | `tests="6"` 0 失败。本条看 4 条：描述 id 是 `rush`、API 版本是 `PluginApi.API_VERSION`，`translationKeys()` 正好是 `docs/DESIGN-PLAY.md` §6.7.5 的 13 个键；`onEnable` 建一个名字 `lobby`、半径 1、维度类型 `synaxis:match` 的实例并 `start()`，大厅地面铺满 3×3 区块、最外一圈立 4 格高的屏障墙，注册 `queue`、`back` 两个动作与一个 `tick(1)` 的任务，没写台账；同一连接两次准入都是 `Accept(大厅, 0)`；大厅转 `CLOSED` 后准入是 `Reject(synaxis:match-unavailable)`；两人出生进大厅时进入 `rush:lobby` 并收到 `hint`（0），出生在别的实例里的人没有任何调用；alice 按排队键回 `ok`，一个 tick 后 bob 的 `hint` 是 1，按「返回大厅」也回 `ok`；派发 alice 的 `PlayerDisconnectEvent` 后一个 tick，bob 的 `hint` 回到 0 |
+| 2 | 改动前的红：在骨架上跑（第 5 次运行） | `tests="6" failures="5"`：描述与键那条绿（骨架已带）；三条红在取大厅的 `NoSuchElementException`（`:174`、`:206`、`:216`），配置那条见 `TC-PLAY-094` |
+| 3 | 反证有齿：这 4 条没有单独的反证运行，第 2 步骨架的 `onEnable` 不做事时其中 3 条红 | — |
+| 4 | 还原后跑第 1 步（第 9 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-102` 发现插件就要 `:play-kit`：只有 `:game-rush` 的 jar 时 `PluginHost.discover()` 的做法抛 `ServiceConfigurationError`，白名单不含 `rush` 也一样（§23）— 对应 `REQ-PLAY-008` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。测试照 `PluginHost.discover()`（`ServiceLoader` 的每个 provider 都 `get()`）在一个独立的 `URLClassLoader` 里发现插件，类路径取测试 JVM 的 `java.class.path`，一次去掉路径里带 `/play-kit/` 的条目，一次全留；父加载器是平台加载器，`SynaxisPlugin` 也由这个加载器加载。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TC-PLAY-101` 第 1 步的类 | `discoveringRushNeedsThePlayKitOnTheClasspath` 0 失败：去掉的条目多于 0 个；少了 `:play-kit` 时抛 `ServiceConfigurationError`，异常链里有 `NoClassDefFoundError: io/github/bearisbug/synaxis/game/playkit/LocalQueue`；全留时发现到的插件正好是 `RushPlugin` 一个 |
+| 2 | 改动前的红：在骨架上跑（第 5 次运行） | 红在 `RushPluginIntegrationTest.java:267`，`Expected java.lang.Throwable to be thrown, but nothing was thrown.`（骨架的 `RushPlugin` 构造不碰 `:play-kit`） |
+| 3 | 反证有齿（队列改成在 `onEnable` 里才建）：`<GR>RushPlugin.java:39` 的字段改为 `private final @Nullable LocalQueue<Player> queue = Boolean.getBoolean("proof.never") ? new LocalQueue<>() : null;`，`onEnable` 用 `queue != null ? queue : new LocalQueue<>()`，与本节其余反证同一次跑（第 7 次运行），再还原 | 本类只红这一条，在 `:269`（那次是 `:268`），`Expected java.lang.Throwable to be thrown, but nothing was thrown.` |
+| 4 | 还原后跑第 1 步（第 9 次运行；断言收紧为 `ServiceConfigurationError` 是 `02df5f9a37`） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。真进程上的同一件事（回滚演练）在 GitHub Actions 的 job `rush` 里由组 G 做。
+
+#### `TC-PLAY-103` 游戏侧的两道 ArchUnit 规则跟着模块走：不用结构化标签，客户端可驱动的路径不逐包写日志 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`docs/DESIGN-PLAY.md` §6.8 第 2 步、`docs/DESIGN-M2.md` §24 规则 ③ 与 ⑤；规则从 `:game-rts` 的 `ArchitectureTest` 复制，豁免名单为空，`rush` 自己不写一行日志。导入去掉 jar，所以 `:play-kit` 的 `Round`（每次回调失败一行 ERROR，之后这一局就关了）不在扫描范围里。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:game-rush` 的 `io.github.bearisbug.synaxis.game.rush.ArchitectureTest` | `tests="5"` 0 失败：两条规则对 `:game-rush` 的主类成立；两个读标签的假类（直接调用与方法引用）与 `UnboundedRushLogFixture`（每按一次键写一行 WARN）都被规则拒绝，报错里有类名 |
+| 2 | 改动前的红：不适用。骨架同样不读标签、不写日志，规则在骨架上就是绿的（第 5 次运行 5 条都绿）；规则有齿由第 1 步里的三个假类证明 | — |
+| 3 | 反证有齿：见第 1 步的三条拒绝 | — |
+| 4 | 还原后跑第 1 步（第 9 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-104` 四道门禁带上两个新模块仍绿：翻译键 74 个键、17 个标识，配置键 122 个，持久化边界、引擎内部 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`:architecture-tests` 依赖了 `:play-kit`、`:game-rush`；翻译键门禁经 `ServiceLoader` 读到 `RushPlugin#translationKeys()` 的 13 个键，配置键门禁在 `RushConfig` 的常量池里读到五个 `synaxis.rush.*`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :architecture-tests:test :server-app:test --tests 'io.github.bearisbug.synaxis.app.ConfigFileTest' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（第 8 次运行） | `:architecture-tests` 7 个类 20 条 0 失败；`<system-out>` 有 `config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out` 与 `translation key gate: 74 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`；`ConfigFileTest` `tests="11"` 0 失败（多了五个键，未知键的最近键提示 `synaxis.max-players`、`synaxis.motd`、`synaxis.app.auth` 不变） |
+| 2 | 改动前的红：不适用。键与类在骨架里就齐了，门禁本身没改；它们的反证是 `TC-PROD-441`、`TC-PROD-432` 等既有用例 | — |
+| 3 | 反证有齿：本组没有重跑 `TC-PROD-441` 第 2～4 步的反证（Gradle 次数用完）；那三步打红的是门禁自身的比对，与键数无关，读数会从 117 变成 122 | — |
+
+后置：`git status --short` 无输出。写着 117 的门禁读数（`TC-PROD-441`、`TC-PROD-547`、`TC-PROD-569`，光照会话的 `TC-WORLD-041`、`TC-WORLD-098`）与翻译键门禁的键数由 RUN-077 集成轮按 CI 输出改。
+
+#### `TC-PLAY-105` `runRush`：configuration `rush` 解析出 `:game-rush`、`:play-kit` 与稳定面，任务照 `run` 写、默认白名单 `rush`，`installDist` 与 `run` 的 classpath 不变（`ADR-PLAY-011`）— 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。真起服务端的那一步在 GitHub Actions 的 job `rush` 里（组 G），本机不起服务端进程。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:dependencies --configuration rush --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（第 6 次运行，输出存为 `docs/test-runs/RUN-077/R/rush-configuration.txt`） | 树的根是 `project ':game-rush'`，其下有 `project ':plugin-api'`（含引擎）与 `project ':play-kit'` |
+| 2 | `grep -n 'game-rush\|runRush' server-app/build.gradle.kts` | 只在文件末尾那一段出现：`rush(project(":game-rush"))` 与 `tasks.register<JavaExec>("runRush")`；`dependencies` 块里的运行期依赖仍只有 `runtimeOnly(project(":game-rts"))`，`application`、`run`、`installDist` 没有提到 `rush`。`runRush` 的 classpath 是 `sourceSets.main.get().runtimeClasspath + rush`，先设 `synaxis.app.plugins=rush` 再透传 `synaxis.*`，所以命令行的白名单优先 |
+| 3 | 改动前的红：不适用（新任务） | — |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-106` 覆盖率门看得见两个新模块：`--src-roots` 列出它们，CI 的 diff-cover 输出里有两个模块的文件 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。先例是 `TC-GAME-004`。jacoco 不跨模块汇总，每个模块的新增行只靠本模块的测试覆盖。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `grep -c 'play-kit/src/main/java game-rush/src/main/java' .github/workflows/ci.yml docs/ENGINE.md` | 两个文件各 1：`ci.yml` 的 `Gate coverage of newly added lines` 一步与 `docs/ENGINE.md` §7 的本地等价命令 |
+| 2 | 看两个模块 `jacocoTestReport.xml` 的 `sourcefile`（第 8、9 次运行，`docs/test-runs/RUN-077/R/coverage.txt`） | 包名是 `io/github/bearisbug/synaxis/game/playkit` 与 `io/github/bearisbug/synaxis/game/rush`，拼上 `--src-roots` 的两项正是源文件的路径；行覆盖 116/116 与 402/403 |
+| 3 | 在集成分支的草稿 PR 上看 `CI` 工作流 `Gate coverage of newly added lines` 一步的日志（RUN-077 集成轮执行） | 列出的文件里有 `play-kit/src/main/java/io/github/bearisbug/synaxis/game/playkit/Round.java` 与 `game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/Lobby.java` 等两个模块的文件，各带覆盖率 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-107` R1 的起服命令与回滚演练用同一组 jar：`installDist` 的 `lib/` 加 `:game-rush`、`:play-kit` 两个 jar — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`docs/DESIGN-PLAY.md` §23 首段与检查单「回滚演练」一行、`docs/PLUGINS.md` §6；CI 的正向与回滚演练由组 G 写进 `.github/workflows/client-gametest.yml` 的 job `rush`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `grep -n 'play-kit-dev.jar\|:play-kit:jar' docs/PLUGINS.md`；`grep -n '两个 jar' docs/DESIGN-PLAY.md` | `docs/PLUGINS.md` §6 的命令 classpath 是 `server-app/build/install/server-app/lib/*`、`game-rush/build/libs/game-rush-dev.jar`、`play-kit/build/libs/play-kit-dev.jar`，构建命令是 `:server-app:installDist :game-rush:jar :play-kit:jar`；`docs/DESIGN-PLAY.md` §23 首段与「回滚演练」一行写的是同一组 jar，并写明白名单为 `rts` 时也要两个 jar（第 8 次运行打出的正是 `game-rush-dev.jar` 与 `play-kit-dev.jar`） |
+| 2 | 组 G 合入后：看 `client-gametest.yml` job `rush` 的演练一步 | `RUSH_CP` 是同一个 `lib/*` 加 `game-rush`、`play-kit` 两个主 jar，先 `-Dsynaxis.app.plugins=rush` 再 `-Dsynaxis.app.plugins=rts`；与第 1 步的命令一致 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-108` `rush` 文本的英文 fallback 与 `en_us.json` 同文，两份语言文件的 `rush.*` 键正好是 `translationKeys()` 的 13 个 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。脚本 `docs/test-runs/RUN-077/R/fallbacks.py` 只用标准库，从 `RushHud.java` 读出键与 fallback，参数是语言文件目录（默认 `client-fabric/src/main/resources/assets/synaxis/lang/`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<py> docs/test-runs/RUN-077/R/fallbacks.py` | 退出码 0，输出 `13 rush keys with a fallback; problems: []` |
+| 2 | 改动前的红：不适用（文本与语言文件在组 K 就有，本组只加 fallback） | — |
+| 3 | 反证有齿：把两份语言文件拷到 `mktemp -d` 建的目录，其中 `en_us.json` 的 `"rush.score": "Score"` 改成 `"Scores"`，以它作参数跑脚本，跑完删目录 | 退出码 1，`problems: ["rush.score: fallback 'Score' is not en_us.json 'Scores'"]` |
+
+后置：`git status --short` 无输出；删掉 `docs/test-runs/RUN-077/R/__pycache__/`（如有）。
+
+#### `TC-PLAY-109` 两个模块的测试在 4 条 tick 线程、所有权断言、grid 分格下照样全绿 — 对应 `REQ-PLAY-007`、`REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。CI 的两个多线程 job 用这两组参数跑全部测试；本机只跑严格 grid 一遍（它包含 4 条线程与所有权断言）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :play-kit:test :game-rush:test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（第 10 次运行） | `:play-kit` 27 条、`:game-rush` 42 条，都 0 失败；日志里有 `Calculating task graph as configuration cache cannot be reused because system property 'synaxis.dispatcher-threads' has changed.`，参数确实到了构建 |
+| 2 | 改动前的红：不适用（同一批测试换线程模式重跑） | — |
+
+后置：`git status --short` 无输出。4 线程严格（不加 grid）一遍本机没跑，由 CI 的 `Test with 4 tick threads (strict)` 跑。
 
 ### 玩法架构 · RUN-077：G（真客户端剧本 Q1～Q9、job `rush` 完整版与 judge）
 

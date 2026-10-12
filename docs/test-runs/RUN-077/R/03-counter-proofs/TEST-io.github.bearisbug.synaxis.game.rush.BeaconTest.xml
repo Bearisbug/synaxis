@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rush.BeaconTest" tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-12T06:04:22.545Z" hostname="Mac.local" time="0.004">
+  <properties/>
+  <testcase name="theCircleIsThreeBlocksAcrossFromTheCentreAndTwoUpOrDown()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.0"/>
+  <testcase name="onePlayerAloneFillsItInTenSecondsAndOwnsItOnce()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.001"/>
+  <testcase name="halfwayIsFivePercentPerHalfSecond()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.0"/>
+  <testcase name="aParticipantWhoLeftLosesWhatTheyHeld()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.0"/>
+  <testcase name="aStepThatDrainsAndFillsCarriesTheRestOver()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.0"/>
+  <testcase name="twoInTheCircleFreezeItAndNobodyLeavesItAsItIs()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: the progress moved while two were in the circle ==&gt; expected: &lt;40&gt; but was: &lt;10&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the progress moved while two were in the circle ==&gt; expected: &lt;40&gt; but was: &lt;10&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.game.rush.BeaconTest.twoInTheCircleFreezeItAndNobodyLeavesItAsItIs(BeaconTest.java:67)
+</failure>
+  </testcase>
+  <testcase name="someoneElsesBeaconDrainsAtTwentyPercentFirstAndStaysTheirsUntilEmpty()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

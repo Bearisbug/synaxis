@@ -142,7 +142,7 @@ final class PlayHudFixture {
         process.eventHandler().addListener(PlayerSpawnEvent.class, event -> {
             if (!event.isFirstSpawn()) return;
             final Player player = event.getPlayer();
-            // Both launches of job rush join under one offline name: each connection starts its own record
+            // Each connection starts its own record of readies and cooldown
             sessions.put(player.getUuid(), new Session());
             player.setGameMode(GameMode.CREATIVE);
             player.sendPluginMessage(PlayProtocol.CHANNEL, encode(scene()));

@@ -8,9 +8,10 @@ runner's python3, a local run with the repository's .venv.
 
 Every report has one line per step, in the order Q0a, Q0b, Q0c, Q1 to Q9, each `rush <step> PASS|FAIL|SKIP
 <evidence>`. This stage of the judge checks Q0 against the play fixture, the first step of §26 S1 (Q0a,
-Q0b) and the client widgets of group C (Q0c): Q0a, Q0b and Q0c PASS in every report. Q1 to Q9 may be SKIP, since the sample game's server is not in the
-job yet; a FAIL anywhere, a missing or doubled line, a line of another shape and a missing report are
-failures. Exit code 0 when every report holds, 1 otherwise; the reasons go to standard output.
+Q0b) and the client widgets of group C (Q0c): Q0a, Q0b and Q0c PASS in every report. Q1 to Q9 may be
+SKIP, since the sample game's server is not in the job yet; a FAIL anywhere, a missing or doubled line, a
+line of another shape and a missing report are failures. Exit code 0 when every report holds, 1 otherwise;
+the reasons go to standard output.
 """
 
 from __future__ import annotations

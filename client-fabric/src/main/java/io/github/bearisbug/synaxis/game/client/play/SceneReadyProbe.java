@@ -13,9 +13,9 @@ import org.jspecify.annotations.Nullable;
  * ③ the chunk under the player is in the level. A scene that arrives before the one before it was answered
  * replaces it, so only the newest is answered.
  * <p>
- * RUN-077 group V measured a move between instances of one dimension type on the real client: the loading
- * screen stays open three ticks while the chunk underfoot is there from the new level's first tick, so ② is
- * the condition that holds last.
+ * RUN-077 groups V and C measured a move between instances of one dimension type on the real client: the
+ * loading screen stays open three to seven ticks while the chunk underfoot is there from the new level's first
+ * tick, so ② is the condition that holds last.
  */
 public final class SceneReadyProbe {
 

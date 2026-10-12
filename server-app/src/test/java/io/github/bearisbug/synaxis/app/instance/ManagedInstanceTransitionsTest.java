@@ -7,6 +7,7 @@ import ch.qos.logback.core.read.ListAppender;
 import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.instance.generator.Generator;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
 import io.github.bearisbug.synaxis.plugin.instance.EndCause;
 import io.github.bearisbug.synaxis.plugin.instance.Exit;
@@ -319,5 +320,31 @@ class ManagedInstanceTransitionsTest {
                 () -> instances.create(new InstanceSpec("round", 0, FLAT, SPAWN)));
         assertTrue(refused.getMessage().contains("transitions"), refused.getMessage());
         assertEquals(List.of(), instances.owned());
+    }
+
+    /**
+     * Once the instance is open the host no longer keeps what the plugin's generator throws: a chunk off
+     * the map loaded later fails the way it would without the host, through the exception handler of
+     * the process, and the instance stays open.
+     */
+    @Test
+    void aGeneratorThatThrowsOnceTheInstanceIsOpenReachesTheExceptionHandler() {
+        final IllegalStateException failure = new IllegalStateException("probe generator failure off the map");
+        final Generator throwsOffTheMap = unit -> {
+            if (unit.absoluteStart().chunkX() != 0 || unit.absoluteStart().chunkZ() != 0) throw failure;
+            FLAT.generate(unit);
+        };
+        final ManagedInstance round = instances(Thread.currentThread()).create(new InstanceSpec("round", 0, throwsOffTheMap, SPAWN));
+        assertEquals(State.OPEN, round.state());
+        final List<Throwable> handled = new CopyOnWriteArrayList<>();
+        process.exception().setExceptionHandler(handled::add);
+        try {
+            var _ = round.instance().loadChunk(2, 2).join();
+        } finally {
+            process.exception().setExceptionHandler(null);
+        }
+
+        assertEquals(List.of(failure), handled);
+        assertEquals(State.OPEN, round.state(), "a chunk off the map does not close an open instance");
     }
 }

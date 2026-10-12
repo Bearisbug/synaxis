@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.app.instance;
 
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.app.scene.SceneService;
+import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
@@ -62,6 +63,20 @@ final class InstanceFixture {
                 throw new IllegalStateException(e);
             }
             FLAT.generate(unit);
+        };
+    }
+
+    /**
+     * The flat map, where a chunk farther than {@code radius} from the origin waits for {@code release}
+     * first, at most 10 s: a map of that radius prepares at once, and a chunk off it loaded later stays
+     * loading for as long as the test holds the latch.
+     */
+    static Generator stuckBeyond(int radius, CountDownLatch release) {
+        final Generator stuck = stuckUntil(release);
+        return unit -> {
+            final Point start = unit.absoluteStart();
+            final boolean onTheMap = Math.abs(start.chunkX()) <= radius && Math.abs(start.chunkZ()) <= radius;
+            (onTheMap ? FLAT : stuck).generate(unit);
         };
     }
 

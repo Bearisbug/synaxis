@@ -308,6 +308,24 @@ jobs:
           cat fixture.log
           exit 1
 
+      # In the repository's root like `run`, where the ledger the judge reads goes (logs/). The whitelist names rush
+      # alone, the five keys take their CI values of docs/DESIGN-PLAY.md §6.7.5, the store is the default in-memory
+      # one, and server-app reads commands from stdin, which `tail -f /dev/null` keeps open for the whole job.
+      - name: Start the sample server
+        run: |
+          (tail -f /dev/null | ./gradlew :server-app:runRush --console=plain -Dsynaxis.app.plugins=rush \
+            -Dsynaxis.app.port=25567 -Dsynaxis.app.auth=online \
+            -Dsynaxis.app.auth.session-server="$SESSION_HOST/session/minecraft/hasJoined" \
+            -Dsynaxis.rush.min-players=1 -Dsynaxis.rush.lobby-wait-seconds=3 -Dsynaxis.rush.round-seconds=45 \
+            -Dsynaxis.rush.result-seconds=10 -Dsynaxis.rush.target-score=150 \
+            > rush-server.log 2>&1 &)
+          for _ in $(seq 1 300); do
+            grep -q "server-app listening" rush-server.log && exit 0
+            sleep 1
+          done
+          cat rush-server.log
+          exit 1
+
       # The exit codes of the two client steps are recorded, not judged: the judge reads the reports and the ledger.
       - name: Run the client gametests
         continue-on-error: true

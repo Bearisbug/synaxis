@@ -6,14 +6,15 @@
 | --- | --- |
 | 状态 | 草稿 |
 | Owner | Bearisbug |
-| 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）与 `docs/DESIGN-PROD.md`（生产就绪分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*` |
+| 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）、`docs/DESIGN-PROD.md`（生产就绪分册）与 `docs/DESIGN-PLAY.md`（玩法架构分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*`，玩法架构侧写作 `REQ-PLAY-*`，对应用例写作 `TC-PLAY-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-10-11 |
+| 最后更新 | 2026-10-12 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-12 | 分支 `prod/r077-docs`（基于 `main` `f9e002917b`：`docs/DESIGN-PLAY.md` v0.1 已签字，`docs/DESIGN.md` v0.46 已登记该分册），RUN-077（玩法架构最小样板 S1）的文档基线，跟进 `docs/DESIGN-PLAY.md` v0.1。不加用例、不执行用例、不登执行轮次。**§1**：「关联设计文档」加 `docs/DESIGN-PLAY.md`，写明 `REQ-PLAY-*` 对应 `TC-PLAY-*`，联检从此解析五份设计文档。**§2**：加玩法架构侧一段，写明 S1 覆盖的六条需求与尚未开工的十二条，后者在联检里报「无任何 TC 引用」属在途。**§4 末尾**：建好「玩法架构 · RUN-077」八节，节头写对应需求、`docs/DESIGN-PLAY.md` 的版本、用例号段与测试类名；号段按块预分，块内允许空号（P 001～009、K 010～019、V 020～029、H 030～049、I 050～069、C 070～089、R 090～109、G 110～129），各组只往自己的节里写 | Bearisbug |
 | 2026-10-11 | 分支 `m3/doc-sync-075`（基于 `main` `472985a38f`，RUN-075、RUN-076 已合入），按 `docs/DESIGN-PROD.md` §28.3 交给光照会话的一行改 `TC-WORLD-100`、`TC-WORLD-101` 第 2 步：`new ShardGates(` 在 `Main.java:547`（RUN-075 组 X 提出 `positionRule` 之后；括号里补一句沿革），调 `serveMap` 处传玩家存储的那一行仍是 `:320`，两处都在 `main` `472985a38f` 的代码上核过；跟进 `docs/DESIGN-M3.md` v0.47。本轮不执行用例、不登执行轮次 | Bearisbug |
 | 2026-10-11 | 集成分支 `prod/integrate-076` 的全量门禁、真客户端可玩项剧本与 P11 冒烟在 GitHub Actions 上跑完（草稿 PR #20，提交 `0cb791cd50`），登记 RUN-076（证据 `docs/test-runs/RUN-076/integrate/00-index.txt`）。**条数**（按 CI run `38145713518`「Check」的 JUnit XML，带数据库变量；4 线程严格与严格 grid 两份逐类相同）：`:server-app:test` 703 → 704、类仍是 138 个（组 W `PlayerStateSectionIntegrationTest` 17 → 18），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步、`636` 第 1 步，括注续上「v0.9.79～v0.9.80 加 1 个」一段；全部模块 653 个类 4,455 → 4,456（`TC-PROD-636` 第 1 步）；根项目与其余模块不变；`TC-PROD-575` 第 3 步不带数据库变量的 577 照原样保留，「577 不含」的清单补上组 W 的 1 个。§6 登记 RUN-076（通过 14/20 · 跳过 6：组 W 按 `git diff` 改了 `<PS>` 行号的六条旧用例，反证本轮没人复跑，见明细） | Bearisbug |
 | 2026-10-11 | 集成分支 `prod/integrate-076`（`185a297fca` 之上）加强 `TC-PROD-760` 守的 `whatThePlayerDropsWhileTheTeleportIsUnderWayDoesNotComeBack`，跟进 `docs/DESIGN-PROD.md` v0.9.80 末句。起因是组 W 评审留下的缺口：窗口里只改背包、断言背包为空，窗口里选中格与生命值取存档值的变异抓不出来，也分不清捕获了真实背包还是捕获成空背包。不登执行轮次，条数不变（本类 18 条），证据 `docs/test-runs/RUN-076/W/07-strengthen/`。**改的用例**：`TC-PROD-760` 标题补上选中格与生命值，前置写明窗口里另往 0 格放进 63 个石头、选中格 4 → 2、生命值 9 → 5；第 1 步改为整串比对库里那一段（`PlayerStateSectionIntegrationTest.java:507`）与再进服的背包、选中格、生命值；新增第 4 步，窗口里选中格与生命值取存档值的变异红在 `:507`（`held_slot` 是 4、`health` 是 9.0，位置与背包对），其余 17 条绿；原第 4 步改为第 5 步，`HEAD` 上 18 条 0 失败 0 跳过。第 2、3 步与 `TC-PROD-761` 第 3 步引的 `:502`、`:503` 注明是加强前的测试体，加强后按代码读应红在 `:507`，没复跑。本节开头补一句加强与行号：这条测试在第 476～519 行，其后的行号加 8，没有用例引那之后的行号 | Bearisbug |
@@ -263,6 +264,8 @@
 - 机械校验口径：`bash ~/.claude/skills/test-doc/check.sh docs/TEST.md` 做 REQ 双向联检——本文档引用的每条 REQ 必须在某一份设计文档里存在，每份设计文档的每条 REQ 必须被至少一条 TC 引用。**三份设计文档一起联检**：`check.sh` 把上方元信息「关联设计文档」行里的**每一个** `*.md` 都解析出来，`REQ-001`～`REQ-017`、`REQ-M2-001`～`REQ-M2-025` 与 `REQ-M3-001`～`REQ-M3-034` 都在范围内。两处不能动，动了绿灯就不再代表已核：① ID 正则的域段是 `[A-Z][A-Z0-9]*`，收窄成纯字母会让带数字的 `M2`、`M3` 域段整块静默退出联检；② 元信息那一行必须保留三份文档的路径，少一份则那一份的 REQ 无人认领。M3 侧的反向联检是被下方对照表里的「未实现」行满足的，绿灯只说明每条 REQ 都登记了去向，不说明它有用例。下表因此不是唯一判据，留作可读索引——查一条 REQ 由哪些 TC 覆盖、哪些 TC 已废弃及原因。
 
 - 生产就绪侧（`docs/DESIGN-PROD.md`）：`TC-PROD-*` 随该分册 §26 的七个波次逐波补齐。尚未开工的波次，它的 `REQ-PROD-*` 在联检里报「无任何 TC 引用」是预期的在途状态；第 6 波合入后这一类提示必须为零。
+
+- 玩法架构侧（`docs/DESIGN-PLAY.md`）：`TC-PLAY-*` 随该分册 §26 的波次补齐。RUN-077 做最小样板 S1，覆盖需求编号 003～008 这六条，其中 003、004、007 按 §26 S1 行只覆盖 S1 部分（003 只有 `enter`、`leave`、`currentScene`、`hud`、`onAction`，004 只有 v1 的四种小部件，007 只有 `Round`、`LocalQueue`、`Countdown`），用例写在 §4「玩法架构 · RUN-077」八节里。编号 001、002 与 009～018 这十二条属 W0～W7 与完整档 S2，尚未开工，它们在联检里报「无任何 TC 引用」是预期的在途状态，随各自的波次清零。S1 六条在八节的节头里已经出现，联检因此不再对它们报提示，但节内用例要等各组写入，RUN-077 集成轮按用例标题行核对这六条确实有用例。本段只写编号、不写完整 ID：反向联检按全文字面匹配，写全了会让没有用例的需求显得已被引用。
 
 REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
@@ -11044,6 +11047,40 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | 3 | 还原后跑 `<S>.PlayerStateSectionIntegrationTest` 与 `<S>.PlayerStatePostgresIntegrationTest`（加 `--rerun`） | 18 条、4 条都 0 失败 0 跳过（`<W>` 第 6 次） |
 
 后置：`git status --short` 无输出。
+
+### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
+
+对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的线上部分：`synaxis:play` v1 的五条消息、小部件属性的 TLV 编码与冻结向量（`docs/DESIGN-PLAY.md` `API-PLAY-002`、`API-PLAY-003`；本组跟进该分册 v0.2 与 `docs/DESIGN-M2.md` v0.66 的 `API-M2-001`）。用例号段 001～009，由组 P 在分支 `prod/r077-P` 写入。测试类：`:protocol` 包 `io.github.bearisbug.synaxis.game.protocol.play` 的 `PlayMessagesTest`、`PlayVectorTest`；`client-fabric` 的 `PlayFrozenVectorTest`。
+
+「玩法架构 · RUN-077」八节共用的约定：用例号段指 `TC-PLAY-` 后的三位数，块内允许空号。「跑 `<类>`」即 `export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home` 之后 `./gradlew <模块>:test --rerun --tests '<类全名>' <模块>:testNamingCheck <模块>:forbiddenImportsCheck --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`<模块>` 如 `:protocol`、`:server-app`），结果看该模块的 `build/test-results/test/TEST-<类全名>.xml`。后两个任务只扫源码：带 `@EnvTest` 的类必须叫 `*IntegrationTest`，叫 `*IntegrationTest` 的类必须带 `@EnvTest`（`build-src/src/main/kotlin/CheckTestNamingTask.kt`），所以起真 `TickSchedulerThread`、不用 `Env` 的类叫普通的 `*Test`。`client-fabric` 是独立构建，不挂这两道门禁，它的 JUnit 与真客户端剧本只在 GitHub Actions 上跑。
+
+### 玩法架构 · RUN-077：K（插件面契约与宿主接线）
+
+对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005`、`REQ-PLAY-006` 的插件面：`PluginPlay`、`PluginInstances` 两项能力的 S1 子集，宿主构造 `SceneService` 与 `InstanceRegistry` 并接进 `PluginHost`，客户端两份语言文件的 S1 键（`docs/DESIGN-PLAY.md` `API-PLAY-005`、`API-PLAY-006`，§6.1，§8「演进与弃用」，§14；本组跟进该分册 v0.3）。用例号段 010～019，由组 K 在分支 `prod/r077-K` 写入。测试类：`:plugin-api` 包 `io.github.bearisbug.synaxis.plugin.play`、`io.github.bearisbug.synaxis.plugin.instance` 的记录校验与两个默认方法的测试；`:server-app` 包 `io.github.bearisbug.synaxis.app` 的 `PluginHostPlayWiringIntegrationTest`；另跑既有的 `:server-app` `StableSurfaceArchitectureTest` 与 `:architecture-tests` `TranslationKeyGateTest`。
+
+### 玩法架构 · RUN-077：V（第一步：组件解码与最小 `PlayHud`，组 C、G 的门）
+
+对应 `REQ-PLAY-004` 的 `TEXT` 与 `REQ-PLAY-003` 的客户端场景镜像：服务端经 `S2C_HUD` 下发带一个参数与颜色样式的翻译键，客户端用原版的组件流编解码器解出、由最小的 `PlayHud` 画出，并实测换实例时的载入画面（`docs/DESIGN-PLAY.md` §26 S1 行的第一步，§6.4.3，`ADR-PLAY-007` 的 fallback，§6.7.6；本组跟进该分册 v0.4）。用例号段 020～029，由组 V 在分支 `prod/r077-V` 写入。测试类：`:server-app` 的 `PlayComponentVectorTest` 与夹具 `PlayHudFixture`；`client-fabric` 的 `PlayComponentDecodeTest` 与真客户端剧本 `RushClientGameTest` 的 Q0（Q0a、Q0b）；`client-fabric/gametest-env/rush_judge.py` 与单测 `test_rush_judge.py`；`.github/workflows/client-gametest.yml` 的 job `rush` 骨架。
+
+### 玩法架构 · RUN-077：H（宿主场景层 `SceneService`）
+
+对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的宿主实现：每连接的场景与小部件表、每 tick 一个出口的待发队列、小部件大小校验、动作按过期场景、限速、未知动作、冷却、handler 的顺序分发（`docs/DESIGN-PLAY.md` `API-PLAY-002`、`API-PLAY-005`，§11.2，§15，§16，§19；本组跟进该分册 v0.5）。用例号段 030～049，由组 H 在分支 `prod/r077-H` 写入。测试类：`:server-app` 包 `io.github.bearisbug.synaxis.app.scene` 的 `SceneServiceIntegrationTest`、`SceneInboundIntegrationTest`（带 `@EnvTest`），`OutboxTest`、`WidgetEncoderTest`、`ActionGateTest`（纯单元）。
+
+### 玩法架构 · RUN-077：I（宿主托管实例 `InstanceRegistry`）
+
+对应 `REQ-PLAY-006`：五态状态机、两条 `create` 路径、撤离、结算超时、`onEnable` 失败与停机时收回、台账与 `PlayInstanceStateEvent`（`docs/DESIGN-PLAY.md` `API-PLAY-006`，§11.1，§15，§17，§19；本组跟进该分册 v0.6）。用例号段 050～069，由组 I 在分支 `prod/r077-I` 写入。测试类：`:server-app` 包 `io.github.bearisbug.synaxis.app.instance` 的 `ManagedInstanceIntegrationTest`、`EvacuationIntegrationTest`（带 `@EnvTest`），`ManagedInstanceTickThreadTest`（不带 `@EnvTest`，起真 `TickSchedulerThread`），`ManagedInstanceTransitionsTest`（纯单元）；包 `io.github.bearisbug.synaxis.app` 的 `PluginHostInstancesIntegrationTest`（带 `@EnvTest`）。
+
+### 玩法架构 · RUN-077：C（客户端 `PlayModule`）
+
+对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的客户端部分（场景镜像、`TIMER`、`SCOREBOARD`、`PANEL` 的渲染与槽位布局、动作键与本地冷却、换实例后的就绪判定）与 `REQ-PLAY-008` 的「专属客户端代码 0 行」（`docs/DESIGN-PLAY.md` §6.4.3，§6.4.8，§13；本组跟进该分册 v0.8）。用例号段 070～089，由组 C 在分支 `prod/r077-C` 写入。测试类：`client-fabric` 的 `PlayClientTest`、`WidgetLayoutTest`、`ActionKeysTest`、`PlayPayloadTest`、`SceneReadyProbeTest`。
+
+### 玩法架构 · RUN-077：R（`:play-kit`、`:game-rush` 与 `runRush`）
+
+对应 `REQ-PLAY-007` 的 `Round`、`LocalQueue`、`Countdown` 与 `REQ-PLAY-008` 的服务端规则（`docs/DESIGN-PLAY.md` `API-PLAY-008`、`API-PLAY-010`，§6.7.3，§6.7.5，`ADR-PLAY-011`，§23；本组跟进该分册 v0.7 与 `docs/DESIGN-PROD.md` v0.9.82 的 `API-PROD-023`）。用例号段 090～109，由组 R 在分支 `prod/r077-R` 写入。测试类：`:play-kit` 包 `io.github.bearisbug.synaxis.game.playkit` 的 `RoundTest`、`LocalQueueTest`、`CountdownTest`；`:game-rush` 包 `io.github.bearisbug.synaxis.game.rush` 的 `BeaconTest`、`RushRoundTest`（纯单元），`LobbyIntegrationTest`、`RushPluginIntegrationTest`（带 `@EnvTest`）与 `ArchitectureTest`。
+
+### 玩法架构 · RUN-077：G（真客户端剧本 Q1～Q9、job `rush` 完整版与 judge）
+
+对应 `REQ-PLAY-008` 的端到端验收：剧本 Q1～Q9、两次启动、正向与回滚演练、按台账判定的 judge（`docs/DESIGN-PLAY.md` §6.7.6，§19，§23 检查单；本组跟进该分册 v0.9）。用例号段 110～129，其中三条人工用例（两人争夺、同实例聊天、`TOP_CENTER` 与 Boss 血条让位），由组 G 在集成分支 `prod/integrate-077` 上写入。测试：`client-fabric` 的 `RushClientGameTest` Q1～Q9，`.github/workflows/client-gametest.yml` 的 job `rush`，`client-fabric/gametest-env/rush_judge.py` 与 `test_rush_judge.py`。
 
 ## 5. 回归策略
 

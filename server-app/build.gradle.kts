@@ -102,6 +102,17 @@ tasks.named<JavaExec>("run") {
     workingDir = layout.settingsDirectory.asFile
 }
 
+// The component bytes PlayComponentVectorTest holds ComponentBytes to (docs/DESIGN-PLAY.md §26 S1), kept in
+// :protocol's play-vectors/component/ where the client mod's decoder test reads them too. The directory is an
+// input by its relative paths, so a changed file runs the test again; the absolute path of play-vectors/
+// reaches the test JVM only as the argument -Dsynaxis.play-vectors.dir, outside the build cache key, the way
+// architecture-tests hands over the language files.
+class PlayComponentVectors(
+    @get:InputDirectory @get:PathSensitive(PathSensitivity.RELATIVE) val components: File,
+) : CommandLineArgumentProvider {
+    override fun asArguments() = listOf("-Dsynaxis.play-vectors.dir=${components.parentFile.absolutePath}")
+}
+
 // The store tests find synaxis-pg and synaxis-valkey through these (docs/TEST.md): a run without
 // them skips what a run with them executes, so they are inputs of the test results. Only whether
 // the password is set goes in, an input's value is kept in Gradle's task history.
@@ -111,6 +122,8 @@ tasks.named<Test>("test") {
     }
     inputs.property("SYNAXIS_TEST_PG_PASSWORD set",
         providers.environmentVariable("SYNAXIS_TEST_PG_PASSWORD").map { true }.orElse(false))
+    jvmArgumentProviders.add(PlayComponentVectors(
+        layout.settingsDirectory.dir("protocol/src/test/resources/play-vectors/component").asFile))
 }
 
 // The light fixture of M3-D (docs/DESIGN-M3.md §26 step 4) runs on the test runtime classpath, which

@@ -53,8 +53,9 @@ import org.jspecify.annotations.Nullable;
  * at the bottom and a {@code PANEL}; the panel opens without pausing and Esc closes it locally, screenshots
  * {@code play-panel} and {@code play-widgets} hold each widget's colour in its slot's part of the screen, the
  * timer counts down, the action key sends once and the local cooldown holds back the next press until it is
- * turned off, the panel opened again keeps a refused button's reason and closes on the accepted one, and the
- * fixture got one {@code C2S_SCENE_READY} for each scene. Q1 to Q9 are the steps of §6.7.6 against
+ * turned off, the panel opened again keeps a refused button's reason and closes on the accepted one, the
+ * fixture got one {@code C2S_SCENE_READY} for each scene, and {@link PlayTestHook}'s recording holds only what
+ * came after it began. Q1 to Q9 are the steps of §6.7.6 against
  * {@value #RUSH_VARIABLE}.
  * <p>
  * Every step is one line {@code rush Q<n> PASS|FAIL|SKIP <evidence>} of {@code synaxis-gametest/rush.txt},
@@ -367,6 +368,19 @@ public final class RushClientGameTest implements FabricClientGameTest {
         if (!readies.equals("ready 1 2")) problems.add("the fixture got the readies \"" + readies + "\"");
         final SceneReadyProbe.Sent second = sent.stream().filter(ready -> ready.sceneSeq() == 2).findFirst().orElse(null);
         if (second == null || second.screen() != null || !second.chunkUnderfoot()) problems.add("scene 2's ready was not sent in a loaded level");
+        // Scene 1 was answered before the recording began
+        if (sent.size() != 1) problems.add("the recording holds " + sent.size() + " readies, not scene 2's alone");
+
+        // A recording started now holds nothing the connection had before it
+        ctx().runOnClient(_ -> PlayTestHook.startRecording());
+        ctx().waitTicks(2);
+        final String carried = ctx().computeOnClient(_ -> {
+            final PlayTestHook.Recording late = PlayTestHook.recording();
+            return late.sets.size() + " SETs, " + late.results.size() + " results, " + late.readies.size() + " readies";
+        });
+        ctx().runOnClient(_ -> PlayTestHook.stopRecording());
+        evidence.add("a recording started after all this holds " + carried);
+        if (!carried.equals("0 SETs, 0 results, 0 readies")) problems.add("a recording started late holds " + carried + " from before it");
 
         line("Q0c", problems.isEmpty(), (problems.isEmpty() ? "" : "problems " + problems + "; ") + String.join("; ", evidence));
     }

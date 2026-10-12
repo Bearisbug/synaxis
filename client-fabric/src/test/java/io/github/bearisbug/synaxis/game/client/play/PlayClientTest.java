@@ -284,6 +284,17 @@ class PlayClientTest {
         assertEquals(new C2SAction(2, 2, "rush:queue", new C2SAction.None()), sent.get(1));
     }
 
+    @Test
+    void aCooldownAnsweringTheSceneBeforeLeavesTheNewTablesKeyFree() {
+        play.receive(scene(1, 2000), RegistryAccess.EMPTY);
+        play.press(0);
+        play.receive(scene(2, 2000), RegistryAccess.EMPTY);
+
+        play.receive(result(1, ActionResultCode.COOLDOWN, 1_500), RegistryAccess.EMPTY);
+        assertEquals(0, play.cooldownLeftMs(0));
+        assertEquals(PlayClient.Press.SENT, play.press(0));
+    }
+
     // ---- The panel
 
     @Test
@@ -337,6 +348,19 @@ class PlayClientTest {
         play.receive(result(4, ActionResultCode.OK, 0), RegistryAccess.EMPTY);
         assertNull(play.panel());
         assertEquals(1, play.widgets().size());
+    }
+
+    @Test
+    void anOkForAPanelThatWasSetAgainAfterTheClickLeavesTheNewContentShown() {
+        play.receive(scene(5, 0), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        final PlayClient.Entry clicked = present(play.panel());
+        play.click(clicked, ((PlayClient.Panel) clicked.content()).buttons().getFirst());
+        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        final PlayClient.Entry next = present(play.panel());
+
+        play.receive(result(1, ActionResultCode.OK, 0), RegistryAccess.EMPTY);
+        assertEquals(next, play.panel());
     }
 
     // ---- Readiness and a new connection

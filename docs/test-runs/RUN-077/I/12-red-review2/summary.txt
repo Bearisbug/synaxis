@@ -1,0 +1,36 @@
+io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest: tests=2 failures=1 errors=0 skipped=0 time=1.163
+  FAIL hostPathsDoNotWriteALinePerPacket() at ClientDrivenLogArchitectureTest.java:136: java.lang.AssertionError: java.lang.AssertionError: Architecture Violation [Priority: MEDIUM] - Rule 'no classes that reside in a package 'io.github.bearisbug.synaxis.app..' and not name 'io.github.bearisbug.synaxis.app.Main' or name 'io.github.bearisbug.synaxis.app.PluginHost' or name 'io.github.bearisbug.synaxis.app.AdmissionGate' or name 'io.github.bearisbug.synaxis.app.PluginSchedulerImpl' or name 'io.github.bearisbug.synaxis.app.CrashReports' or name 'io.github.bearisbug.synaxis.app.store.PlayerStore' or name 'io.github.bearisbug.synaxis.app.store.ShardSession' or name 'io.github.bearisbug.synaxis.app.transfer.TicketVerifier' or name 'io.github.bearisbug.synaxis.app.ShutdownSequence' or name 'io.github.bearisbug.synaxis.app.shard.ShardWorld' or name 'io.github.bearisbug.synaxis.app.shard.ShardHeartbeat' should call code unit where target owner assignable to org.slf4j.Logger and target name 'warn' or name 'error' or target owner assignable to java.lang.Throwable and target name 'printStackTrace' or target owner assignable to io.github.bearisbug.synaxis.exception.ExceptionManager and target name 'handleException', because a client decides how often these run, so the size of the log must not follow it' was violated (3 times): Method <io.github.bearisbug.synaxis.app.instance.Evacuation.send(io.github.bearisbug.synaxis.entity.Player)> calls method <org.slf4j.Logger.error(java.lang.String, [Ljava.lang.Object;)> in (Evacuation.java:94) Method <io.github.bearisbug.synaxis.app.instance.ManagedInstanceImpl.awaitSettlement()> calls method <org.slf4j.Logger.warn(java.lang.String, [Ljava.lang.Object;)> in (ManagedInstanceImpl.java:348) Method <io.github.bearisbug.synaxis.app.instance.ManagedInstanceImpl.failPreparation(java.lang.Throwable)> calls method <org.slf4j.Logger.error(java.lang.String, [Ljava.lang.Object;)> in (ManagedInstanceImpl.java:212)
+  PASS theHostLogRuleRejectsALinePerPayload()
+io.github.bearisbug.synaxis.app.instance.EvacuationIntegrationTest: tests=12 failures=2 errors=0 skipped=0 time=2.18
+  PASS aForcedCloseFromTheClosingEventFinishesTheEvacuation(Env)
+  PASS anExitThatGivesNothingKicksThePlayer(Env)
+  PASS aPlayerWhoArrivesWhileTheInstanceClosesGetsTheExitToo(Env)
+  PASS theEvacuationWaitsForAMoveStillLoadingItsChunks(Env)
+  PASS aKickExitDisconnectsWithItsOwnKey(Env)
+  PASS aPlayerWhoLeavesBeforeTheMoveRunsIsNotMoved(Env)
+  PASS theSettleTimeoutSendsThePlayersToTheFallbackExit(Env)
+  FAIL theEvacuationTimeLimitKicksAPlayerStillOnTheirWay(Env) at EvacuationIntegrationTest.java:386: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the move on its way held the instance past the evacuation time ==> expected: <false> but was: <true>
+  FAIL aPlayerWhoLandsAsTheInstanceClosesIsHandedTheExitOnce(Env) at EvacuationIntegrationTest.java:432: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the exit was asked for more than once ==> expected: <[io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl@42beff83]> but was: <[io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl@42beff83, io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl@42beff83]>
+  PASS whoeverIsStillInsideWhenTheEvacuationRunsOutIsKicked(Env)
+  PASS cancelSendsThePlayerToItsExitAndUnregistersOnceTheyAreOut(Env)
+  PASS anExitThatThrowsKicksThePlayer(Env)
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest: tests=19 failures=1 errors=0 skipped=0 time=0.042
+  FAIL aGeneratorThatThrowsOnceTheInstanceIsOpenReachesTheExceptionHandler() at ManagedInstanceTransitionsTest.java:347: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <[java.lang.IllegalStateException: probe generator failure off the map]> but was: <[]>
+  PASS aPreparingInstanceRefusesEveryRequest()
+  PASS openRunEndAndSettleWriteOneLineAndCallOneEventEach()
+  PASS aPluginTakenBackCreatesNoMoreInstances()
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  PASS anInstanceNotSettledInTimeIsClosedByTheHost()
+  PASS theClosingEventComesBeforeTheUnregistration()
+  PASS cancelClosesAnOpenInstance()
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  PASS [4] CLOSED
+  PASS [1] CANCELLED
+  PASS [2] PREPARE_FAILED
+  PASS [3] PLUGIN_DISABLED
+  PASS [4] SHUTDOWN
+  PASS aSettledInstanceIsNotClosedAgainByTheTimeout()

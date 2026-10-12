@@ -67,3 +67,60 @@ Run 9 -> 09-strict-4-threads-rework/
 
 Run 10 -> 10-strict-grid-rework/
   Code: 9d410b7479, strict grid. 72 tests, 0 failures. §15: 406 us, 82 us, 49.
+
+Second review round (runs 11 to 17). Commits: bc6ad6da4d DESIGN-PLAY v0.6, 95cbd063a6 five tests
+against the implementation of 9d410b7479, e5fdfd642f implementation, 26813ba5a2 one more test. The
+regression classes gain ClientDrivenLogArchitectureTest (package app, 2 tests). Same script, same
+flags; the heavy lock taken for each run only.
+
+Run 11 -> no directory
+  :server-app:compileTestJava failed: the new EvacuationIntegrationTest called the deprecated
+  PlayerSpawnEvent#getSpawnInstance under -Werror. No test ran. The call became getInstance and was
+  amended into the test commit, which is 95cbd063a6.
+
+Run 12 -> 12-red-review2/
+  Code: 95cbd063a6 (main code identical to 9d410b7479), default mode, EvacuationIntegrationTest,
+  ManagedInstanceTransitionsTest and ClientDrivenLogArchitectureTest. 33 tests, 4 failed:
+    ClientDrivenLogArchitectureTest.hostPathsDoNotWriteALinePerPacket at :136, 3 violations
+      (Evacuation.java:94 Logger.error, ManagedInstanceImpl.java:212 Logger.error, :348 Logger.warn)
+    EvacuationIntegrationTest.theEvacuationTimeLimitKicksAPlayerStillOnTheirWay at :386
+    EvacuationIntegrationTest.aPlayerWhoLandsAsTheInstanceClosesIsHandedTheExitOnce at :432 (exit asked twice)
+    ManagedInstanceTransitionsTest.aGeneratorThatThrowsOnceTheInstanceIsOpenReachesTheExceptionHandler at :347
+  EvacuationIntegrationTest.theEvacuationWaitsForAMoveStillLoadingItsChunks passes on this code; its
+  teeth are the counter-proof of run 14. testNamingCheck and forbiddenImportsCheck pass.
+
+Run 13 -> 13-green-review2/
+  Code: 26813ba5a2, default mode. The five classes (49), the three regression classes (28) and
+  ClientDrivenLogArchitectureTest (2): 79 tests, 0 failures. §15: create 358 us, registration 114 us,
+  prepare_ms 49.
+
+Run 14 -> 14-counter-proofs-c/
+  Code: 26813ba5a2 with the three edits of counter-proofs.diff at once (main line numbers as of e5fdfd642f):
+    ManagedInstanceImpl.java:316 movesPending() always false
+      -> EvacuationIntegrationTest.theEvacuationWaitsForAMoveStillLoadingItsChunks at :339
+      -> EvacuationIntegrationTest.theEvacuationTimeLimitKicksAPlayerStillOnTheirWay at :380
+      (aPlayerWhoArrivesWhileTheInstanceClosesGetsTheExitToo stays green: it closes on the player's tick
+      thread, the evacuation looks again only once the player has landed)
+    Evacuation.java:85 a late arrival is sent whether or not the close already took them
+      -> EvacuationIntegrationTest.aPlayerWhoLandsAsTheInstanceClosesIsHandedTheExitOnce at :470
+    ManagedInstanceImpl.java:112 the generator wrapper keeps every exception
+      -> ManagedInstanceTransitionsTest.aGeneratorThatThrowsOnceTheInstanceIsOpenReachesTheExceptionHandler at :347
+  Everything else green (five classes, PluginHostInstancesIntegrationTest included). §15 readings of
+  this run not counted. Reverted with git checkout -- server-app/src/main.
+
+Run 15 -> 15-counter-proofs-d/
+  Code: 26813ba5a2 with the two edits of counter-proofs.diff at once:
+    Evacuation.java:112 the sweep waits for moves on their way past the time limit
+      -> EvacuationIntegrationTest.theEvacuationTimeLimitKicksAPlayerStillOnTheirWay at :386
+    Evacuation.java:125 finish() kicks nobody on their way
+      -> EvacuationIntegrationTest.aForcedCloseKicksAPlayerStillOnTheirWay at :425
+  Everything else green. §15 readings of this run not counted. Reverted with git checkout -- server-app/src/main.
+
+Run 16 -> 16-strict-4-threads-review2/
+  Code: 26813ba5a2 restored, strict 4 threads. 79 tests, 0 failures. §15: create 3440 us,
+  registration 100 us, prepare_ms 46. The create reading is over the 1 ms of DESIGN-PLAY §15; one
+  reading, not repeated.
+
+Run 17 -> 17-strict-grid-review2/
+  Code: 26813ba5a2 restored, strict grid. 79 tests, 0 failures. §15: create 364 us, registration 156 us,
+  prepare_ms 49.

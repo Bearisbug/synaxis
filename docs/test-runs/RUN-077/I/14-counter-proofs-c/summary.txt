@@ -1,0 +1,55 @@
+io.github.bearisbug.synaxis.app.PluginHostInstancesIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=1.119
+  PASS theInstancesOfAPluginWhoseOnEnableThrewAreTakenBack(Env)
+  PASS theStartupDecisionCountsTheRegisteredInstancesOnly(Env)
+  PASS theShutdownTakesBackAnOpenInstance(Env)
+io.github.bearisbug.synaxis.app.instance.EvacuationIntegrationTest: tests=13 failures=3 errors=0 skipped=0 time=1.049
+  PASS aForcedCloseFromTheClosingEventFinishesTheEvacuation(Env)
+  PASS anExitThatGivesNothingKicksThePlayer(Env)
+  PASS aPlayerWhoArrivesWhileTheInstanceClosesGetsTheExitToo(Env)
+  FAIL theEvacuationWaitsForAMoveStillLoadingItsChunks(Env) at EvacuationIntegrationTest.java:339: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: unregistered while a move into it was still on its way ==> expected: <true> but was: <false>
+  PASS aKickExitDisconnectsWithItsOwnKey(Env)
+  PASS aPlayerWhoLeavesBeforeTheMoveRunsIsNotMoved(Env)
+  PASS theSettleTimeoutSendsThePlayersToTheFallbackExit(Env)
+  FAIL theEvacuationTimeLimitKicksAPlayerStillOnTheirWay(Env) at EvacuationIntegrationTest.java:380: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: unregistered before the evacuation time was up ==> expected: <true> but was: <false>
+  FAIL aPlayerWhoLandsAsTheInstanceClosesIsHandedTheExitOnce(Env) at EvacuationIntegrationTest.java:470: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the exit was asked for more than once ==> expected: <[io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl@4e6f3d08]> but was: <[io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl@4e6f3d08, io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl@4e6f3d08]>
+  PASS whoeverIsStillInsideWhenTheEvacuationRunsOutIsKicked(Env)
+  PASS cancelSendsThePlayerToItsExitAndUnregistersOnceTheyAreOut(Env)
+  PASS aForcedCloseKicksAPlayerStillOnTheirWay(Env)
+  PASS anExitThatThrowsKicksThePlayer(Env)
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=0.342
+  PASS aRadiusOf17NeverReachesCreate(Env)
+  PASS theStateEventReachesTheInstanceNodeAndTheGlobalOne(Env)
+  PASS aDimensionTypeNobodyRegisteredIsRefusedBeforeAnythingIsBuilt(Env)
+  PASS onTheStartupThreadCreateComesBackOpenWithTheWholeMapLit(Env)
+  PASS everyInstanceHasADimensionNameOfItsOwn(Env)
+  PASS chunksNotLoadedWithinTheBudgetCloseTheInstance(Env)
+  PASS createOnAnyOtherThreadIsRefused(Env)
+  PASS aMoveIntoAnEndingInstanceCompletesWithFalse(Env)
+  PASS aGeneratorThatThrowsClosesTheInstanceWithoutRegisteringIt(Env)
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest: tests=5 failures=0 errors=0 skipped=0 time=0.76
+  PASS theStartupThreadIsAnyOtherThreadOnceTheProcessRuns()
+  PASS aGeneratorThatThrowsOutsideTheTickClosesTheInstance()
+  PASS theShutdownDropsAPreparingInstanceAndItIsNeverRegistered()
+  PASS aPreparationOverTheBudgetClosesTheInstance()
+  PASS onTheTickSchedulerCreateComesBackPreparingAndOpensInALaterSerialPart()
+  §15 readings (chunkRadius=2, 25 chunks): create on the tick scheduler thread 459 us, registration in the serial part 162 us, prepare_ms 49
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest: tests=19 failures=1 errors=0 skipped=0 time=0.039
+  FAIL aGeneratorThatThrowsOnceTheInstanceIsOpenReachesTheExceptionHandler() at ManagedInstanceTransitionsTest.java:347: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <[java.lang.IllegalStateException: probe generator failure off the map]> but was: <[]>
+  PASS aPreparingInstanceRefusesEveryRequest()
+  PASS openRunEndAndSettleWriteOneLineAndCallOneEventEach()
+  PASS aPluginTakenBackCreatesNoMoreInstances()
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  PASS anInstanceNotSettledInTimeIsClosedByTheHost()
+  PASS theClosingEventComesBeforeTheUnregistration()
+  PASS cancelClosesAnOpenInstance()
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  PASS [4] CLOSED
+  PASS [1] CANCELLED
+  PASS [2] PREPARE_FAILED
+  PASS [3] PLUGIN_DISABLED
+  PASS [4] SHUTDOWN
+  PASS aSettledInstanceIsNotClosedAgainByTheTimeout()

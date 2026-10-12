@@ -1,0 +1,21 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java
+index cd409a1a15..bf03af4e35 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java
+@@ -109,6 +109,7 @@ final class Evacuation {
+     private TaskSchedule sweep() {
+         if (finished.get()) return TaskSchedule.stop();
+         final boolean timeUp = registry.now() - startedAt >= registry.durations().evacuation().toNanos();
++        if (managed.movesPending()) return TaskSchedule.nextTick();
+         if (!timeUp && !nobodyLeft()) return TaskSchedule.nextTick();
+         finish();
+         return TaskSchedule.stop();
+@@ -122,7 +123,7 @@ final class Evacuation {
+     void finish() {
+         if (!finished.compareAndSet(false, true)) return;
+         // Those on their way first: whoever lands after this snapshot is in it, whoever landed before is inside
+-        final Set<Player> kicked = new LinkedHashSet<>(managed.onTheirWay());
++        final Set<Player> kicked = new LinkedHashSet<>();
+         kicked.addAll(managed.online());
+         kicked.removeIf(player -> !player.isOnline());
+         for (Player player : kicked) player.kick(MATCH_UNAVAILABLE);

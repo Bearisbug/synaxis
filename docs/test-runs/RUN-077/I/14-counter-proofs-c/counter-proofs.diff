@@ -1,0 +1,35 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java
+index cd409a1a15..b3b2ce5f51 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java
+@@ -82,7 +82,8 @@ final class Evacuation {
+             player.kick(MATCH_UNAVAILABLE);
+             return;
+         }
+-        if (inside.add(player)) send(player);
++        inside.add(player);
++        send(player);
+     }
+ 
+     /** The exit of one player; one the plugin's function cannot give, by throwing or by giving null, is a kick. */
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
+index 144a637dc5..93cd12218d 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
+@@ -109,7 +109,6 @@ final class ManagedInstanceImpl implements ManagedInstance {
+                 generator.generate(unit);
+             } catch (Throwable throwable) {
+                 // Past the preparation it is the engine's to report, as it would be without the host
+-                if (state() != State.PREPARING) throw throwable;
+                 generatorFailure.compareAndSet(null, throwable);
+             }
+         });
+@@ -313,7 +312,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
+      * @return true while one is
+      */
+     synchronized boolean movesPending() {
+-        return !onTheirWay.isEmpty();
++        return false;
+     }
+ 
+     /**

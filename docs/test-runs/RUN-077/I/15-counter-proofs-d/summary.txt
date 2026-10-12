@@ -1,0 +1,55 @@
+io.github.bearisbug.synaxis.app.PluginHostInstancesIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=1.133
+  PASS theInstancesOfAPluginWhoseOnEnableThrewAreTakenBack(Env)
+  PASS theStartupDecisionCountsTheRegisteredInstancesOnly(Env)
+  PASS theShutdownTakesBackAnOpenInstance(Env)
+io.github.bearisbug.synaxis.app.instance.EvacuationIntegrationTest: tests=13 failures=2 errors=0 skipped=0 time=1.493
+  PASS aForcedCloseFromTheClosingEventFinishesTheEvacuation(Env)
+  PASS anExitThatGivesNothingKicksThePlayer(Env)
+  PASS aPlayerWhoArrivesWhileTheInstanceClosesGetsTheExitToo(Env)
+  PASS theEvacuationWaitsForAMoveStillLoadingItsChunks(Env)
+  PASS aKickExitDisconnectsWithItsOwnKey(Env)
+  PASS aPlayerWhoLeavesBeforeTheMoveRunsIsNotMoved(Env)
+  PASS theSettleTimeoutSendsThePlayersToTheFallbackExit(Env)
+  FAIL theEvacuationTimeLimitKicksAPlayerStillOnTheirWay(Env) at EvacuationIntegrationTest.java:386: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the move on its way held the instance past the evacuation time ==> expected: <false> but was: <true>
+  PASS aPlayerWhoLandsAsTheInstanceClosesIsHandedTheExitOnce(Env)
+  PASS whoeverIsStillInsideWhenTheEvacuationRunsOutIsKicked(Env)
+  PASS cancelSendsThePlayerToItsExitAndUnregistersOnceTheyAreOut(Env)
+  FAIL aForcedCloseKicksAPlayerStillOnTheirWay(Env) at EvacuationIntegrationTest.java:425: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the player on their way was left online ==> expected: <false> but was: <true>
+  PASS anExitThatThrowsKicksThePlayer(Env)
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=0.331
+  PASS aRadiusOf17NeverReachesCreate(Env)
+  PASS theStateEventReachesTheInstanceNodeAndTheGlobalOne(Env)
+  PASS aDimensionTypeNobodyRegisteredIsRefusedBeforeAnythingIsBuilt(Env)
+  PASS onTheStartupThreadCreateComesBackOpenWithTheWholeMapLit(Env)
+  PASS everyInstanceHasADimensionNameOfItsOwn(Env)
+  PASS chunksNotLoadedWithinTheBudgetCloseTheInstance(Env)
+  PASS createOnAnyOtherThreadIsRefused(Env)
+  PASS aMoveIntoAnEndingInstanceCompletesWithFalse(Env)
+  PASS aGeneratorThatThrowsClosesTheInstanceWithoutRegisteringIt(Env)
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest: tests=5 failures=0 errors=0 skipped=0 time=0.761
+  PASS theStartupThreadIsAnyOtherThreadOnceTheProcessRuns()
+  PASS aGeneratorThatThrowsOutsideTheTickClosesTheInstance()
+  PASS theShutdownDropsAPreparingInstanceAndItIsNeverRegistered()
+  PASS aPreparationOverTheBudgetClosesTheInstance()
+  PASS onTheTickSchedulerCreateComesBackPreparingAndOpensInALaterSerialPart()
+  §15 readings (chunkRadius=2, 25 chunks): create on the tick scheduler thread 462 us, registration in the serial part 81 us, prepare_ms 49
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest: tests=19 failures=0 errors=0 skipped=0 time=0.039
+  PASS aGeneratorThatThrowsOnceTheInstanceIsOpenReachesTheExceptionHandler()
+  PASS aPreparingInstanceRefusesEveryRequest()
+  PASS openRunEndAndSettleWriteOneLineAndCallOneEventEach()
+  PASS aPluginTakenBackCreatesNoMoreInstances()
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  PASS anInstanceNotSettledInTimeIsClosedByTheHost()
+  PASS theClosingEventComesBeforeTheUnregistration()
+  PASS cancelClosesAnOpenInstance()
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  PASS [4] CLOSED
+  PASS [1] CANCELLED
+  PASS [2] PREPARE_FAILED
+  PASS [3] PLUGIN_DISABLED
+  PASS [4] SHUTDOWN
+  PASS aSettledInstanceIsNotClosedAgainByTheTimeout()

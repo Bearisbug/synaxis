@@ -1,0 +1,20 @@
+
+> Task :plugin-api:compileTestJava FAILED
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-K/plugin-api/src/test/java/io/github/bearisbug/synaxis/plugin/play/SceneSpecTest.java:58: warning: [CanonicalDuration] Duration can be expressed more clearly with different units
+        assertEquals(Duration.ofSeconds(600), new ActionSlot(0, "queue", LABEL, Duration.ofSeconds(600)).cooldown());
+                                       ^
+    (see https://errorprone.info/bugpattern/CanonicalDuration)
+  Did you mean 'assertEquals(Duration.ofMinutes(10), new ActionSlot(0, "queue", LABEL, Duration.ofSeconds(600)).cooldown());'?
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-K/plugin-api/src/test/java/io/github/bearisbug/synaxis/plugin/play/SceneSpecTest.java:58: warning: [CanonicalDuration] Duration can be expressed more clearly with different units
+        assertEquals(Duration.ofSeconds(600), new ActionSlot(0, "queue", LABEL, Duration.ofSeconds(600)).cooldown());
+                                                                                                  ^
+    (see https://errorprone.info/bugpattern/CanonicalDuration)
+  Did you mean 'assertEquals(Duration.ofSeconds(600), new ActionSlot(0, "queue", LABEL, Duration.ofMinutes(10)).cooldown());'?
+error: warnings found and -Werror specified
+1 error
+2 warnings
+
+> Task :game-rts:compileJava
+--
+Execution failed for task ':plugin-api:compileTestJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.

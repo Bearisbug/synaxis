@@ -1,0 +1,5 @@
+> Task :protocol:checkBinaryCompatibility
+> Task :plugin-api:checkBinaryCompatibility FAILED
+Method made abstract: io/github/bearisbug/synaxis/plugin/PluginContext#playerData()Lio/github/bearisbug/synaxis/plugin/PlayerDataStore; (breaks implementing classes/subclasses)
+> ABI Check failed with 1 binary compatibility violations.
+BUILD FAILED in 7s

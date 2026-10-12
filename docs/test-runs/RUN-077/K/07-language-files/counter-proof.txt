@@ -1,0 +1,2 @@
+22 keys checked; missing: ['zh_cn.json rush.result.row'] ; in one file only: ['rush.result.row']
+exit=1 (zh_cn.json with the rush.result.row line deleted and the comma of the line above dropped)

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-12T04:00:16.644Z" hostname="Mac.local" time="1.407">
+  <properties/>
+  <testcase name="aPayloadOnThePlayChannelReachesTheSceneLayer(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest" time="1.321">
+    <failure message="org.opentest4j.AssertionFailedError: the payload was dropped as one on an unregistered channel ==&gt; expected: &lt;[]&gt; but was: &lt;[Dropped a payload on an unregistered channel: connection_id=41f3706c-45f7-49d7-99d9-fdb4fedb8ce8 channel=synaxis:play bytes=2 (1 payloads since the last report)]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the payload was dropped as one on an unregistered channel ==&gt; expected: &lt;[]&gt; but was: &lt;[Dropped a payload on an unregistered channel: connection_id=41f3706c-45f7-49d7-99d9-fdb4fedb8ce8 channel=synaxis:play bytes=2 (1 payloads since the last report)]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest.aPayloadOnThePlayChannelReachesTheSceneLayer(PluginHostPlayWiringIntegrationTest.java:113)
+</failure>
+  </testcase>
+  <testcase name="theHostsContextHandsEachPluginItsOwnPlayAndInstances(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest" time="0.076"/>
+  <system-out><![CDATA[12:00:17.814 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+12:00:17.836 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=probe version=1.0.0 enable_ms=2
+12:00:17.901 [virtual-50] INFO  i.g.b.synaxis.app.AdmissionGate - Refusing a connection: connection_id=41f3706c-45f7-49d7-99d9-fdb4fedb8ce8 reason=synaxis:match-unavailable cause=no admission provider is registered
+12:00:17.902 [virtual-50] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=41f3706c-45f7-49d7-99d9-fdb4fedb8ce8 identifier=RandName reason=synaxis:match-unavailable
+12:00:17.904 [Test worker] WARN  i.g.b.s.app.PluginChannelRouter - Dropped a payload on an unregistered channel: connection_id=41f3706c-45f7-49d7-99d9-fdb4fedb8ce8 channel=synaxis:play bytes=2 (1 payloads since the last report)
+12:00:17.959 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:00:17.959 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=41f3706c-45f7-49d7-99d9-fdb4fedb8ce8 identifier=RandName reason=synaxis:server-stopping
+12:00:17.960 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:00:17.960 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:00:17.989 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+12:00:17.990 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=first version=1.0.0 enable_ms=0
+12:00:17.990 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=second version=1.0.0 enable_ms=0
+12:00:17.991 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=second
+12:00:17.992 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=second: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+12:00:17.992 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=first
+12:00:17.992 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=first: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+12:00:18.049 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:00:18.050 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:00:18.050 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

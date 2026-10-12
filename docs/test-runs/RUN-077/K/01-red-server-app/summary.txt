@@ -1,0 +1,6 @@
+io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest: tests=2 failures=2 errors=0 skipped=0
+  FAIL aPayloadOnThePlayChannelReachesTheSceneLayer(Env) at PluginHostPlayWiringIntegrationTest.java:113: org.opentest4j.AssertionFailedError: the payload was dropped as one on an unregistered channel ==> expected: <[]> but was: <[Dropped a payload on an unregistered channel: connection_id=8a6bab58-d062-4735-a52e-6ac35c8daa93 channel=synaxis:play bytes=2 (1 payloads since the last report)]>
+  FAIL theHostsContextHandsEachPluginItsOwnPlayAndInstances(Env) at PluginHostPlayWiringIntegrationTest.java:94: org.opentest4j.AssertionFailedError: the context of the host refused a capability ==> expected: <null> but was: <java.lang.UnsupportedOperationException: only the host's plugin context has play>
+io.github.bearisbug.synaxis.app.scene.ComponentBytesTest: tests=2 failures=1 errors=0 skipped=0
+  PASS aComponentIsWrittenInTheNetworkFormatAndReadsBackAsItself()
+  FAIL aComponentOf2048BytesIsTakenAndOneByteMoreIsNot() at ComponentBytesTest.java:37: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.

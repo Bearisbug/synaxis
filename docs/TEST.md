@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-12 | 分支 `prod/r077-K`（文档提交 `755ecf9d09`、骨架提交 `546ed30408`、实现提交 `cc2db356f1`，基于 `prod/r077-docs` `184ad30370`），跟进 `docs/DESIGN-PLAY.md` v0.3（RUN-077 组 K，插件面契约与宿主接线），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/K/`。**§4「玩法架构 · RUN-077：K」写入十条 `TC-PLAY-010`～`TC-PLAY-019`**：场景的动作槽（010）、v1 四种小部件不用编码就能查的上限（011）、`InstanceSpec` 的名字、半径、结算超时与短构造器的默认值（012）、宿主上下文的 `play()`、`instances()` 与 `synaxis:play` 的接线（013）、`ComponentBytes` 的编码与 2,048 B 上限（014）、稳定面门禁看得见两个新子包（015）、翻译键门禁的 `NOT_TEXT` 加 `synaxis:play`（016）、两份语言文件的 22 个 S1 键与默认键 H（017）、ABI 门对 `v0.3.0` 0 条违例（018）、插件宿主与核心模式的回归和 `PluginHost.java` 行号后移（019）；改动前的红在骨架上实跑，八处反证一次实跑，ABI 门的反证另跑一次，还原后复绿，语言文件用脚本核对。`:plugin-api` 新类 4 个 30 条，`:server-app` 新类 2 个 4 条；节头补列 `ComponentBytesTest`，测试类按实际的包写。**改旧用例**：`TC-PROD-521` 第 5 步 `PluginHost.java:102` → `:107`（本组在它上面加了三行导入与两个字段），按代码文本核对，没复跑。翻译键门禁的读数（标识 16 → 17）与 `TranslationKeyGateTest.java` 第 65 行之后的红行行号后移，与组 P 加的同一行一起由集成轮改（`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717`）。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-docs`（基于 `main` `f9e002917b`：`docs/DESIGN-PLAY.md` v0.1 已签字，`docs/DESIGN.md` v0.46 已登记该分册），RUN-077（玩法架构最小样板 S1）的文档基线，跟进 `docs/DESIGN-PLAY.md` v0.1。不加用例、不执行用例、不登执行轮次。**§1**：「关联设计文档」加 `docs/DESIGN-PLAY.md`，写明 `REQ-PLAY-*` 对应 `TC-PLAY-*`，联检从此解析五份设计文档。**§2**：加玩法架构侧一段，写明 S1 覆盖的六条需求与尚未开工的十二条，后者在联检里报「无任何 TC 引用」属在途。**§4 末尾**：建好「玩法架构 · RUN-077」八节，节头写对应需求、`docs/DESIGN-PLAY.md` 的版本、用例号段与测试类名；号段按块预分，块内允许空号（P 001～009、K 010～019、V 020～029、H 030～049、I 050～069、C 070～089、R 090～109、G 110～129），各组只往自己的节里写 | Bearisbug |
 | 2026-10-11 | 分支 `m3/doc-sync-075`（基于 `main` `472985a38f`，RUN-075、RUN-076 已合入），按 `docs/DESIGN-PROD.md` §28.3 交给光照会话的一行改 `TC-WORLD-100`、`TC-WORLD-101` 第 2 步：`new ShardGates(` 在 `Main.java:547`（RUN-075 组 X 提出 `positionRule` 之后；括号里补一句沿革），调 `serveMap` 处传玩家存储的那一行仍是 `:320`，两处都在 `main` `472985a38f` 的代码上核过；跟进 `docs/DESIGN-M3.md` v0.47。本轮不执行用例、不登执行轮次 | Bearisbug |
 | 2026-10-11 | 集成分支 `prod/integrate-076` 的全量门禁、真客户端可玩项剧本与 P11 冒烟在 GitHub Actions 上跑完（草稿 PR #20，提交 `0cb791cd50`），登记 RUN-076（证据 `docs/test-runs/RUN-076/integrate/00-index.txt`）。**条数**（按 CI run `38145713518`「Check」的 JUnit XML，带数据库变量；4 线程严格与严格 grid 两份逐类相同）：`:server-app:test` 703 → 704、类仍是 138 个（组 W `PlayerStateSectionIntegrationTest` 17 → 18），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步、`636` 第 1 步，括注续上「v0.9.79～v0.9.80 加 1 个」一段；全部模块 653 个类 4,455 → 4,456（`TC-PROD-636` 第 1 步）；根项目与其余模块不变；`TC-PROD-575` 第 3 步不带数据库变量的 577 照原样保留，「577 不含」的清单补上组 W 的 1 个。§6 登记 RUN-076（通过 14/20 · 跳过 6：组 W 按 `git diff` 改了 `<PS>` 行号的六条旧用例，反证本轮没人复跑，见明细） | Bearisbug |
@@ -8228,7 +8229,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | 2 | 跑 `TransferCooldownTableIntegrationTest`，看 `aPluginTransferCoolsTheTicketSideDown` | `tests="3"` 0 失败 0 跳过（本类约 0.5～1.8 s）。`--migrate-only --auth-mode=offline` 之后，`Main.openStore("postgres", …)` 带 `SYNAXIS_TRANSFER_HMAC_KEYS` 开出的 `StoreRuntime` 交给八参 `PluginHost`；探针插件经 `transfers()` 对世界里的 PLAY 玩家 `transfer` 判定为 true；随即 `runtime.issuer().transfer(玩家, "r1-c2", "127.0.0.1", 25566)` 在 5 s 内以 `COOLDOWN` 完成；全程恰一个 `TransferPacket[host=lobby.example, port=25565]` |
 | 3 | `grep -n 'store.cooldowns()' server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 恰一行 `275`：进程装配里 `new PluginHost(…)` 的最后一个实参，与第 2 步走的是同一个构造器 |
 | 4 | 反证有齿（签发端与插件面各一张表）：把 `Main.java:779` `new StoreRuntime(…)` 实参末尾的 `cooldowns` 换成 `TransferCooldowns.fromSystemProperties()`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 2 failed`：本条红在 `TransferCooldownTableIntegrationTest.java:91` `expected: <COOLDOWN> but was: <NOT_ONLINE>`（签发端查自己那张表不在冷却，往下查到这名玩家不在存储里）；`TC-PROD-533` 那条红在 `:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`（验票端与签发端仍共用一张，插件面那张没记） |
-| 5 | 反证有齿（宿主不用传进来的表）：把 `PluginHost.java:102` 的 `this.cooldowns = cooldowns;` 换成 `this.cooldowns = TransferCooldowns.fromSystemProperties();`，跑 `TransferCooldownTableIntegrationTest` | 与第 4 步相同：`3 tests completed, 2 failed`，`:91` 与 `:113` |
+| 5 | 反证有齿（宿主不用传进来的表）：把 `PluginHost.java:107` 的 `this.cooldowns = cooldowns;` 换成 `this.cooldowns = TransferCooldowns.fromSystemProperties();`，跑 `TransferCooldownTableIntegrationTest` | 与第 4 步相同：`3 tests completed, 2 failed`，`:91` 与 `:113` |
 
 后置：`git status --short` 无输出；测试建的库由 `TestDatabase` 删掉。
 
@@ -11056,7 +11057,142 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 ### 玩法架构 · RUN-077：K（插件面契约与宿主接线）
 
-对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005`、`REQ-PLAY-006` 的插件面：`PluginPlay`、`PluginInstances` 两项能力的 S1 子集，宿主构造 `SceneService` 与 `InstanceRegistry` 并接进 `PluginHost`，客户端两份语言文件的 S1 键（`docs/DESIGN-PLAY.md` `API-PLAY-005`、`API-PLAY-006`，§6.1，§8「演进与弃用」，§14；本组跟进该分册 v0.3）。用例号段 010～019，由组 K 在分支 `prod/r077-K` 写入。测试类：`:plugin-api` 包 `io.github.bearisbug.synaxis.plugin.play`、`io.github.bearisbug.synaxis.plugin.instance` 的记录校验与两个默认方法的测试；`:server-app` 包 `io.github.bearisbug.synaxis.app` 的 `PluginHostPlayWiringIntegrationTest`；另跑既有的 `:server-app` `StableSurfaceArchitectureTest` 与 `:architecture-tests` `TranslationKeyGateTest`。
+对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005`、`REQ-PLAY-006` 的插件面：`PluginPlay`、`PluginInstances` 两项能力的 S1 子集，宿主构造 `SceneService` 与 `InstanceRegistry` 并接进 `PluginHost`，客户端两份语言文件的 S1 键（`docs/DESIGN-PLAY.md` `API-PLAY-005`、`API-PLAY-006`，§6.1，§6.4.5，§6.7.5，§8「演进与弃用」，§14；本组跟进该分册 v0.3）。用例号段 010～019，由组 K 在分支 `prod/r077-K` 写入，本组证据 `docs/test-runs/RUN-077/K/`。测试类：`:plugin-api` 的 `io.github.bearisbug.synaxis.plugin.PluginContextDefaultsTest`（两个默认方法），包 `io.github.bearisbug.synaxis.plugin.play` 的 `SceneSpecTest`、`WidgetTest` 与包 `io.github.bearisbug.synaxis.plugin.instance` 的 `InstanceSpecTest`（记录校验）；`:server-app` 包 `io.github.bearisbug.synaxis.app` 的 `PluginHostPlayWiringIntegrationTest` 与包 `io.github.bearisbug.synaxis.app.scene` 的 `ComponentBytesTest`；另跑既有的 `:server-app` `StableSurfaceArchitectureTest`、`PluginHostIntegrationTest`、`CoreModeIntegrationTest`，`:architecture-tests` `TranslationKeyGateTest` 与 ABI 门。
+
+改动：`:plugin-api` 新包 `plugin.play`（`PluginPlay`、`Hud`、`SceneSpec`、`CameraSpec`、`CursorMode`、`ActionSlot`、`HudSlot`、`Widget`、`ActionHandler`、`ActionRequest`、`Target`、`ActionResult`）与 `plugin.instance`（`PluginInstances`、`InstanceSpec`、`ManagedInstance`、`EndCause`、`Exit`、`PlayInstanceStateEvent`），模块描述符导出这两个包；只由宿主实现的 `PluginPlay`、`Hud`、`PluginInstances`、`ManagedInstance` 在第一个提交里就标了 `@ApiStatus.NonExtendable`；`PluginContext` 加默认方法 `play()`、`instances()`，写法同 `playerData()`。`server-app` 新包 `app.scene`（`SceneService`、`ComponentBytes`）与 `app.instance`（`InstanceRegistry`）。两个服务只有接线用的空实现：按插件分出的视图每个方法都抛 `UnsupportedOperationException`，`attach`、`receive`、`sealActions`、`reclaim`、`holdUntil` 什么都不做，由组 H、I 填实；所以「`onEnable` 之后封住动作注册」「拆插件时收回动作与实例」的效果由 H、I 的用例判定，本组只判接线。`ComponentBytes` 是完整实现。`PluginContextImpl` 加 `play`、`instances` 两个组件；`PluginHost` 在构造里建两个服务（启动线程取构造时的当前线程），用 `registerHostChannel` 注册 `synaxis:play`，`onEnable` 正常返回后调 `sealActions`，拆插件时调两个服务的 `reclaim`（`onEnable` 失败为 `PLUGIN_DISABLED`，`disableAll` 为 `SHUTDOWN`），收回那一行日志末尾补上 `actions, managed instances`。`TranslationKeyGateTest` 的 `NOT_TEXT` 在 `synaxis:farview` 之后加 `synaxis:play` 一行，与组 P 一字不差。客户端两份语言文件各加 22 个键，即 `docs/DESIGN-PLAY.md` §6.4.5、§6.7.5 两张表里的键。
+
+测试：`:plugin-api` 新类 4 个 30 条：`PluginContextDefaultsTest` 2 条、`SceneSpecTest` 5、`WidgetTest` 10、`InstanceSpecTest` 13，都是纯单元测试，`:plugin-api` 全模块因此是 45 条。`:server-app` 新类 2 个 4 条：`PluginHostPlayWiringIntegrationTest` 2 条（`@EnvTest`，真 `PluginHost`，事件台账写在 JUnit 临时目录、`@AfterEach` 关掉写线程），`ComponentBytesTest` 2 条（不用 `Env`）。节头原先没列 `ComponentBytesTest`：`ComponentBytes` 的 2,048 B 校验只有它守。「跑 `<类>`」照本节上面 P 节写的共用约定，本组每次运行都带上三个模块的 `testNamingCheck` 与 `forbiddenImportsCheck`。ABI 门照 `.github/workflows/ci.yml` 的「ABI gate of the stable surface」一步：`gh release download v0.3.0 --repo Bearisbug/synaxis --pattern plugin-api.jar --pattern protocol.jar --dir <abi>`（`<abi>` 用 `mktemp -d` 建，跑完删；`.abi-baseline` 不在 `.gitignore` 里，所以不往仓库里下），再跑 `./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<abi> --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`。语言文件的核对不起 Gradle，`<py>` 是主工作副本的 `.venv/bin/python`。都不需要数据库前置。
+
+源文件代号：`<PA>` 是 `plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/`，`<SA>` 是 `server-app/src/main/java/io/github/bearisbug/synaxis/app/`，`<TK>` 是 `architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java`，`<LANG>` 是 `client-fabric/src/main/resources/assets/synaxis/lang/`。行号按本组的实现提交 `cc2db356f1`。「改动前的红」在骨架提交 `546ed30408` 上跑：记录类没有紧凑构造器，`ComponentBytes` 没有大小校验，`PluginContextImpl` 没有两个新组件，`PluginHost` 没有接线，测试与 `NOT_TEXT` 那一行已是本组的。第 1 次运行时 `:plugin-api` 的测试源码被 Error Prone 的 `CanonicalDuration` 拦在编译（`Duration.ofSeconds(600)` 改写成 `ofMinutes(10)` 之后才提交骨架），那次只跑了 `:server-app` 一半，`:plugin-api` 的红在第 2 次运行。反证一次跑完：`TC-PLAY-010`～`TC-PLAY-016` 的八处临时改动同时打上（`docs/test-runs/RUN-077/K/04-counter-proofs/counter-proofs.diff`），每处打红的用例互不相同，没被打到的用例同一次都绿，跑完 `git checkout -- .`；ABI 门的反证另跑一次，它把 `PluginContext` 的一个默认方法改成抽象，会让 `PluginContextDefaultsTest` 编译不过。6 次 Gradle 运行与各次读数见 `docs/test-runs/RUN-077/K/00-index.txt`。
+
+#### `TC-PLAY-010` 场景的动作槽：键位 0～5 各用一次，冷却 0～600 s，场景拿的是动作表的副本 — 对应 `REQ-PLAY-003`、`REQ-PLAY-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。七个动作必然有一个键位用了两次，所以 `SceneSpec` 不另设「至多 6 个」的条数校验，这一条由第 1 步的重复键位守。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:plugin-api` 的 `io.github.bearisbug.synaxis.plugin.play.SceneSpecTest` | `tests="5"` 0 失败：键位 0～5 各一个动作的场景建得出来，之后清空调用方的列表，`actions()` 仍是 6 个，对它 `add` 抛 `UnsupportedOperationException`；同一键位用两次抛 `IllegalArgumentException`；键位 −1、6 抛 `IllegalArgumentException`；冷却 0 与 10 min 建得出来，−1 ms 与 600,001 ms 抛 `IllegalArgumentException` |
+| 2 | 改动前的红：在骨架 `546ed30408` 上跑同一个类（第 2 次运行） | `tests="5" failures="5"`：`aSlotUsedTwiceIsRefused` 红在 `SceneSpecTest.java:46`，`anActionKeyOutsideZeroToFiveIsRefused` 两组参数都红在 `:52`，`aCooldownOutsideZeroTo600SecondsIsRefused` 红在 `:60`，消息都是 `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；`aSceneTakesSixActionsInDistinctSlotsAndKeepsItsOwnCopy` 红在 `:40`，`the caller's list changed after the scene was built ==> expected: <6> but was: <0>` |
+| 3 | 反证有齿（不查重复键位）：`<PA>play/SceneSpec.java:28` 的 `if (taken[action.slot()])` 改为 `if (Boolean.getBoolean("proof.never") && taken[action.slot()])`，与本节其余七处反证同一次跑（第 4 次运行），再还原 | 本类只红 `aSlotUsedTwiceIsRefused`，在 `:46`，消息同第 2 步 |
+| 4 | 还原后跑第 1 步（第 6 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-011` v1 四种小部件不用编码就能查的上限：id 1～32 B，时长装得进 varint，计分板 16 行，面板 12 行 4 个按钮，行值 32 B — 对应 `REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。编码后的大小（单个 component 2,048 B、整个小部件 4,096 B）要宿主编码才知道，由组 H 的用例判。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:plugin-api` 的 `io.github.bearisbug.synaxis.plugin.play.WidgetTest` | `tests="10"` 0 失败：`TEXT`、`TIMER`、`SCOREBOARD`、`PANEL` 四种都收 32 个 ASCII 字节与 10 个「信」（30 B）的 id，都拒空串、33 个 ASCII 字节与 11 个「信」（33 B）；`TEXT` 的 ttl、`TIMER` 的 remaining 收 0 与 `Integer.MAX_VALUE` ms，拒 −1 ms 与 `Integer.MAX_VALUE + 1` ms；计分板 16 行建得出来、17 行拒；面板 12 行 4 个按钮建得出来，`slot()` 是 `CENTER`、`order()` 是 0，13 行或 5 个按钮拒；行值 32 个 ASCII 字节建得出来，33 个 ASCII 字节或 11 个「分」拒；计分板与面板建好之后清空调用方的列表，三个列表不变，对面板的按钮列表 `add` 抛 `UnsupportedOperationException`。拒绝一律是 `IllegalArgumentException` |
+| 2 | 改动前的红：在骨架 `546ed30408` 上跑同一个类（第 2 次运行） | `tests="10" failures="9"`：`everyKindRefusesAnEmptyIdOrOneOver32Bytes` 三组参数都红在 `WidgetTest.java:48`，`Text ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；`aTextLives…` 红在 `:57`、`aTimerHolds…` `:67`、`aScoreboardTakes16RowsAndNoMore` `:77`、`aPanelTakes12RowsAnd4ButtonsAndSitsInTheCentre` `:89`、`aRowValueIsAtMost32BytesOfUtf8` `:99`，都是 `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；`theListsOfAWidgetAreItsOwn` 红在 `:112`，`expected: <[Row[…]]> but was: <[]>`。只有 `everyKindTakesAnIdOfOneTo32BytesOfUtf8` 绿 |
+| 3 | 反证有齿（两处，与本节其余反证同一次跑，第 4 次运行）：`<PA>play/Widget.java:184` 的 `if (bytes < 1 \|\| bytes > 32)` 改为 `if (Boolean.getBoolean("proof.never") && (bytes < 1 \|\| bytes > 32))`；`:135` 的 `if (buttons.size() > 4)` 改为 `if (Boolean.getBoolean("proof.never") && buttons.size() > 4)`；再还原 | `tests="10" failures="4"`：`everyKindRefuses…` 三组参数红在 `:48`，消息同第 2 步；`aPanelTakes12RowsAnd4ButtonsAndSitsInTheCentre` 红在 `:91`（5 个按钮那一行；`:89` 的 13 行照旧被拒），`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 4 | 还原后跑第 1 步（第 6 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-012` `InstanceSpec` 在构造时校验名字、半径与结算超时，短构造器补默认值 — 对应 `REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。§19「超出半径上限」场景的插件面一半：`chunkRadius=17` 的 spec 建不出来，`create` 收不到它；`create` 自己判的维度类型与调用线程由组 I 的用例判。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:plugin-api` 的 `io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest` | `tests="13"` 0 失败：名字 `round`、`lobby_2`、`0` 与 32 个字符的 `abcdefghijklmnopqrstuvwxyz012345` 建得出来；空串、`Round`、`round-1`、`rush:round`、33 个字符、`回合` 抛 `IllegalArgumentException`；半径 0 与 16 建得出来，−1 与 17 抛 `IllegalArgumentException`；结算超时 1 ms 建得出来，0 与 −1 s 抛 `IllegalArgumentException`；四参数构造器给出维度类型 `synaxis:match`、结算超时 30 s，`fallbackExit` 对任何玩家都给 `Kick(synaxis:match-unavailable)`，名字 `Round` 同样被拒 |
+| 2 | 改动前的红：在骨架 `546ed30408` 上跑同一个类（第 2 次运行） | `tests="13" failures="9"`：`anyOtherNameIsRefused` 六组参数都红在 `InstanceSpecTest.java:39`，`theChunkRadiusIsZeroTo16` 红在 `:47`，`theSettleTimeoutIsAboveZero` 红在 `:55`，`theShortConstructor…` 红在 `:67`，消息都是 `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；收下的四个名字绿 |
+| 3 | 反证有齿（不查半径）：`<PA>instance/InstanceSpec.java:41` 的 `if (chunkRadius < 0 \|\| chunkRadius > 16)` 改为 `if (Boolean.getBoolean("proof.never") && (chunkRadius < 0 \|\| chunkRadius > 16))`，与本节其余反证同一次跑（第 4 次运行），再还原 | 本类只红 `theChunkRadiusIsZeroTo16`，在 `:47`，消息同第 2 步 |
+| 4 | 还原后跑第 1 步（第 6 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-013` 宿主给插件的上下文有本插件自己的 `play()` 与 `instances()`，`synaxis:play` 的上行到得了场景层 — 对应 `REQ-PLAY-003`、`REQ-PLAY-006` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头。两个服务此时是空实现，本条只判接线：上下文给的不是默认方法的拒绝、两个插件拿到的不是同一个对象、`synaxis:play` 已注册为宿主通道。上行用一条手拼的 `C2S_SCENE_READY`（`msg_id` 0x01，`scene_seq` 1，玩家不在这个场景里），组 H 填实 `receive` 之后它仍是「什么都不做」的合法上行，本条不用跟着改。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:plugin-api` 的 `io.github.bearisbug.synaxis.plugin.PluginContextDefaultsTest` | `tests="2"` 0 失败：只实现了抽象方法的上下文（插件给自己测试写的那种）调 `play()` 抛 `UnsupportedOperationException`，消息 `only the host's plugin context has play`；调 `instances()` 同样抛，消息 `only the host's plugin context has instances` |
+| 2 | 跑 `:server-app` 的 `io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest` | `tests="2"` 0 失败：真 `PluginHost` 启用插件 `first`、`second`，两者在 `onEnable` 里调 `play()`、`instances()` 都没被拒，`first` 拿到的两个对象非空，且分别不是 `second` 拿到的那个；一名玩家在 `synaxis:play` 上发 `{0x01, 0x01}`，`PluginChannelRouter` 没有 WARN（没被当成未注册通道丢掉），也没有 ERROR |
+| 3 | 改动前的红：在骨架 `546ed30408` 上跑第 2 步的类（第 1 次运行） | `tests="2" failures="2"`：`theHostsContextHandsEachPluginItsOwnPlayAndInstances` 红在 `PluginHostPlayWiringIntegrationTest.java:94`，`the context of the host refused a capability ==> expected: <null> but was: <java.lang.UnsupportedOperationException: only the host's plugin context has play>`；`aPayloadOnThePlayChannelReachesTheSceneLayer` 红在 `:113`，`the payload was dropped as one on an unregistered channel ==> expected: <[]> but was: <[Dropped a payload on an unregistered channel: connection_id=… channel=synaxis:play bytes=2 (1 payloads since the last report)]>` |
+| 4 | 反证有齿（宿主不注册通道）：`<SA>PluginHost.java:127` 的 `registerHostChannel(SceneService.CHANNEL, scenes::receive);` 改为 `if (Boolean.getBoolean("proof.never")) registerHostChannel(SceneService.CHANNEL, scenes::receive);`，与本节其余反证同一次跑（第 4 次运行），再还原 | 本类只红 `aPayloadOnThePlayChannelReachesTheSceneLayer`，在 `:113`，消息同第 3 步；`theHostsContext…` 绿 |
+| 5 | 还原后跑第 1、2 步（第 6 次运行） | 与第 1、2 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-014` `ComponentBytes` 用引擎的网络格式编码，读得回原样，超过 2,048 B 拒绝 — 对应 `REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。客户端用原版编解码器读不读得出这些字节，是组 V 的第一步（`docs/DESIGN-PLAY.md` §26 S1 行），不在本条。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:server-app` 的 `io.github.bearisbug.synaxis.app.scene.ComponentBytesTest` | `tests="2"` 0 失败：金色的翻译键 `rush.hint`，带一个文本参数与 fallback，编出的字节用 `NetworkBuffer.COMPONENT` 读回来与原组件相等；逐个加长文本组件，找到恰好编成 2,048 B 的那一个，`encode` 收下、长度 2,048，再多一个字符抛 `IllegalArgumentException` |
+| 2 | 改动前的红：在骨架 `546ed30408` 上跑同一个类（第 1 次运行） | `tests="2" failures="1"`：`aComponentOf2048BytesIsTakenAndOneByteMoreIsNot` 红在 `ComponentBytesTest.java:37`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；读回的一条绿（编码本身骨架里就有） |
+| 3 | 反证有齿（不查大小）：`<SA>scene/ComponentBytes.java:31` 的 `if (bytes.length > MAX_BYTES)` 改为 `if (Boolean.getBoolean("proof.never") && bytes.length > MAX_BYTES)`，与本节其余反证同一次跑（第 4 次运行），再还原 | 与第 2 步同一条红、同一行同一消息 |
+| 4 | 还原后跑第 1 步（第 6 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-015` 稳定面门禁看得见两个新子包，签名里没有引擎内部类型 — 对应 `REQ-PLAY-003`、`REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`StableSurfaceArchitectureTest` 按 `io.github.bearisbug.synaxis.plugin..` 导入，含子包；新签名里出现的引擎类型 `Player`、`InstanceContainer`、`Instance`、`Generator`、`Pos`、`InstanceEvent` 都没有 `@ApiStatus.Internal`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:server-app` 的 `io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest` | `tests="4"` 0 失败 |
+| 2 | 改动前的红：不适用。新包加进来之前这道门禁同样绿；本条要证明的是它扫到了两个子包，见第 3 步 | — |
+| 3 | 反证有齿（子包里漏出一个内部类型）：`<PA>play/Hud.java` 加 `import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;`，在 `:37` 的 `void clear();` 之后加 `default CachedPacket proofLeak() { throw new UnsupportedOperationException(); }`，与本节其余反证同一次跑（第 4 次运行），再还原 | `tests="4" failures="1"`：`theStableSurfaceReturnsNoEngineInternal` 红在 `StableSurfaceArchitectureTest.java:60`，`Method <io.github.bearisbug.synaxis.plugin.play.Hud.proofLeak()> has raw return type annotated with @Internal in (Hud.java:40)`，`was violated (1 times)` |
+| 4 | 还原后跑第 1 步（第 6 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-016` 翻译键门禁把通道名 `synaxis:play` 登记为非文本 — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`SceneService.CHANNEL` 是编译期常量，`PluginHost` 里也有它的字面量，门禁把整串 `synaxis:play` 当成翻译键（`docs/DESIGN-PLAY.md` §24 翻译一条）。本组没有在代码里加翻译键，键数不变；`NOT_TEXT` 从 16 个标识变成 17 个。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:architecture-tests` 的 `io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest` | `tests="2"` 0 失败；`<system-out>` 是 `translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out` |
+| 2 | 改动前的红：骨架提交里常量与 `NOT_TEXT` 那一行是一起进来的，没有「只有常量、没有这一行」的提交；第 3 步去掉这一行就是那个状态 | 见第 3 步 |
+| 3 | 反证有齿：删去 `<TK>:65` 的 `Map.entry("synaxis:play", "plugin message channel of the play layer (API-PLAY-002)"),` 一行，与本节其余反证同一次跑（第 4 次运行），再还原 | `tests="2" failures="1"`：`everyKeyTheServerCanSendHasTextInBothLanguageFiles` 红在 `TranslationKeyGateTest.java:92`（删了一行之后的行号；在的时候是 `:93`），`Problems of the translation key gate (2):` 下两行 `en_us.json has no text for synaxis:play (from io.github.bearisbug.synaxis.app.PluginHost, io.github.bearisbug.synaxis.app.scene.SceneService)` 与 `zh_cn.json has no text for synaxis:play (from …同上)` |
+| 4 | 还原后跑第 1 步（第 6 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-017` 客户端两份语言文件一次加齐 S1 的 22 个键，提到默认键的文案写 H — 对应 `REQ-PLAY-005`、`REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。翻译键门禁只查「服务端会发的键都有译文」这一个方向，客户端专用的键与暂时还没有代码发的键（`synaxis:action-cooldown` 归组 H，`rush.*` 归组 R）它查不到，所以用脚本核对。脚本是 `docs/test-runs/RUN-077/K/07-language-files/langcheck.py`，只用标准库，参数是语言文件所在目录（默认 `<LANG>`），要求的 22 个键：`synaxis:action-cooldown`，`synaxis.action.` 后接 `ok`、`rejected`、`cooldown`、`rate-limited`、`stale-scene`、`unknown-action`，`key.synaxis.action_1`、`key.category.synaxis.play`，`rush.` 后接 `scene.lobby`、`scene.round`、`action.queue`、`action.back`、`hint`、`hint.failed`、`timer.countdown`、`timer.round`、`objective`、`score`、`capture`、`result`、`result.row`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<py> docs/test-runs/RUN-077/K/07-language-files/langcheck.py`；再 `grep -cE 'default G\|默认 G' <LANG>en_us.json <LANG>zh_cn.json` | 脚本退出码 0，第一行 `22 keys checked; missing: [] ; in one file only: []`，后两行列出 `rush.hint`、`rush.hint.failed` 两份译文，英文都含 `(default H)`、中文都含 `（默认 H）`；`grep` 两个文件都是 0。两份文件各 88 个键，键集合相同 |
+| 2 | 改动前的红：`git show 546ed30408:client-fabric/src/main/resources/assets/synaxis/lang/en_us.json`、`zh_cn.json` 存进 `mktemp -d` 建的目录，以它作参数跑脚本，跑完删目录 | 退出码 1，`missing:` 列出 44 项（两个文件各 22 个），`rush.hint` 两份都是 `None` |
+| 3 | 反证有齿：删去 `<LANG>zh_cn.json` 里 `rush.result.row` 那一行，并去掉上一行（`rush.result`）末尾的逗号，跑第 1 步的脚本，再 `git checkout -- client-fabric` | 退出码 1，`22 keys checked; missing: ['zh_cn.json rush.result.row'] ; in one file only: ['rush.result.row']` |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-018` ABI 门：`:plugin-api` 与 `:protocol` 对 `v0.3.0` 0 条违例 — 对应 `REQ-PLAY-003`、`REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头的 ABI 门做法。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 ABI 门（第 6 次运行） | `> Task :plugin-api:checkBinaryCompatibility` 与 `> Task :protocol:checkBinaryCompatibility` 都执行（没有 `SKIPPED`），`BUILD SUCCESSFUL`：两个新包是新类型，`PluginContext#play()`、`#instances()` 是默认方法，`PluginApi.API_VERSION` 仍是 2 |
+| 2 | 改动前的红：不适用。`build-src/src/main/kotlin/CheckAbiTask.kt` 只拿 baseline 里有的类比，新类型总是兼容；`PluginContext` 标了 `@ApiStatus.NonExtendable`，加抽象方法也不报 | — |
+| 3 | 反证有齿（门禁真的在比 `v0.3.0`）：`<PA>PluginContext.java:88`～`:90` 的 `default PlayerDataStore playerData() { … }` 三行改成 `PlayerDataStore playerData();`，只跑 ABI 门（第 5 次运行），再还原 | `> Task :plugin-api:checkBinaryCompatibility FAILED`：`Method made abstract: io/github/bearisbug/synaxis/plugin/PluginContext#playerData()Lio/github/bearisbug/synaxis/plugin/PlayerDataStore; (breaks implementing classes/subclasses)`、`ABI Check failed with 1 binary compatibility violations.`；`:protocol` 那个照旧通过 |
+| 4 | 还原后跑第 1 步，删 `<abi>` | 与第 1 步相同 |
+
+后置：`git status --short` 无输出；`<abi>` 已删。
+
+#### `TC-PLAY-019` 宿主接线之后的回归：插件宿主与核心模式的既有测试，`PluginHost.java` 行号后移的旧用例 — 对应 `REQ-PLAY-003`、`REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。每个 `PluginHost` 多注册一条宿主通道，日志多一行 `Registered channel: plugin_id=synaxis channel=synaxis:play`；收回那一行末尾多 `actions, managed instances`。`grep -rn 'Took back the capabilities' server-app/src/test` 无命中，没有用例判收回那一行；既有用例只判 `Registered channel` 行在不在，不判条数。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:server-app` 的 `io.github.bearisbug.synaxis.app.PluginHostIntegrationTest` 与 `io.github.bearisbug.synaxis.app.CoreModeIntegrationTest`（第 3、6 次运行） | 18 条、8 条，都 0 失败 0 跳过 |
+| 2 | 只读核对：`grep -n 'this.cooldowns = cooldowns;' <SA>PluginHost.java` | 恰一行 107（本组之前是 102：上面加了三行导入与两个字段）。`TC-PROD-521` 第 5 步引的行号已改成 `:107`；那一步的反证要数据库，本组没复跑，改的那一行内容不变 |
+
+后置：`git status --short` 无输出。
 
 ### 玩法架构 · RUN-077：V（第一步：组件解码与最小 `PlayHud`，组 C、G 的门）
 

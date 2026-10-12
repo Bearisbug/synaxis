@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.plugin.BanTargetTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-12T03:56:19.052Z" hostname="Mac.local" time="0.017">
+  <properties/>
+  <testcase name="aNetworkIsKeptWithItsHostBitsCleared()" classname="io.github.bearisbug.synaxis.plugin.BanTargetTest" time="0.003"/>
+  <testcase name="[1] &quot;example.org&quot;" classname="io.github.bearisbug.synaxis.plugin.BanTargetTest" time="0.0"/>
+  <testcase name="[2] &quot;10.0.0.0/7&quot;" classname="io.github.bearisbug.synaxis.plugin.BanTargetTest" time="0.001"/>
+  <testcase name="[3] &quot;10.0.0.0/33&quot;" classname="io.github.bearisbug.synaxis.plugin.BanTargetTest" time="0.0"/>
+  <testcase name="[4] &quot;2001:db8::/31&quot;" classname="io.github.bearisbug.synaxis.plugin.BanTargetTest" time="0.001"/>
+  <testcase name="[5] &quot;2001:db8::/129&quot;" classname="io.github.bearisbug.synaxis.plugin.BanTargetTest" time="0.0"/>
+  <testcase name="[6] &quot;10.0.0/8&quot;" classname="io.github.bearisbug.synaxis.plugin.BanTargetTest" time="0.001"/>
+  <testcase name="[7] &quot;10.0.0.0/x&quot;" classname="io.github.bearisbug.synaxis.plugin.BanTargetTest" time="0.001"/>
+  <testcase name="[8] &quot;&quot;" classname="io.github.bearisbug.synaxis.plugin.BanTargetTest" time="0.0"/>
+  <testcase name="[9] &quot;10.0.0.0/&quot;" classname="io.github.bearisbug.synaxis.plugin.BanTargetTest" time="0.0"/>
+  <testcase name="aNetworkCoversTheAddressesUnderItsPrefixOnly()" classname="io.github.bearisbug.synaxis.plugin.BanTargetTest" time="0.002"/>
+  <testcase name="anAccountCoversItselfWhereverItConnectsFrom()" classname="io.github.bearisbug.synaxis.plugin.BanTargetTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-12T04:01:51.909Z" hostname="Mac.local" time="1.236">
+  <properties/>
+  <testcase name="theStableSurfaceReturnsNoEngineInternal()" classname="io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest" time="0.933"/>
+  <testcase name="theReturnTypeRuleRejectsALeakedInternal()" classname="io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest" time="0.062"/>
+  <testcase name="theStableSurfaceAsksForNoEngineInternal()" classname="io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest" time="0.2"/>
+  <testcase name="theParameterRuleRejectsALeakedInternal()" classname="io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest" time="0.036"/>
+  <system-out><![CDATA[12:01:51.942 [Test worker] INFO  c.tngtech.archunit.core.PluginLoader - Detected Java version 25.0.4.1
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

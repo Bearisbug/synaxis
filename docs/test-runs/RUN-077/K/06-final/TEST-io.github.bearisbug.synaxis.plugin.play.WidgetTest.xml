@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.plugin.play.WidgetTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-12T04:01:50.330Z" hostname="Mac.local" time="0.012">
+  <properties/>
+  <testcase name="everyKindTakesAnIdOfOneTo32BytesOfUtf8()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.001"/>
+  <testcase name="aRowValueIsAtMost32BytesOfUtf8()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.002"/>
+  <testcase name="aScoreboardTakes16RowsAndNoMore()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.002"/>
+  <testcase name="aTextLivesFromZeroToTheLargestVarintOfMilliseconds()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.0"/>
+  <testcase name="aTimerHoldsFromZeroToTheLargestVarintOfMilliseconds()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.0"/>
+  <testcase name="aPanelTakes12RowsAnd4ButtonsAndSitsInTheCentre()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.0"/>
+  <testcase name="[1] &quot;&quot;" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.0"/>
+  <testcase name="[2] &quot;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&quot;" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.0"/>
+  <testcase name="[3] &quot;信信信信信信信信信信信&quot;" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.001"/>
+  <testcase name="theListsOfAWidgetAreItsOwn()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

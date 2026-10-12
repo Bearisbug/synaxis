@@ -1,0 +1,45 @@
+io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest: tests=2 failures=1 errors=0 skipped=0
+  FAIL aPayloadOnThePlayChannelReachesTheSceneLayer(Env) at PluginHostPlayWiringIntegrationTest.java:113: org.opentest4j.AssertionFailedError: the payload was dropped as one on an unregistered channel ==> expected: <[]> but was: <[Dropped a payload on an unregistered channel: connection_id=41f3706c-45f7-49d7-99d9-fdb4fedb8ce8 channel=synaxis:play bytes=2 (1 payloads since the last report)]>
+  PASS theHostsContextHandsEachPluginItsOwnPlayAndInstances(Env)
+io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest: tests=4 failures=1 errors=0 skipped=0
+  FAIL theStableSurfaceReturnsNoEngineInternal() at StableSurfaceArchitectureTest.java:60: java.lang.AssertionError: Architecture Violation [Priority: MEDIUM] - Rule 'no methods that are declared in classes that reside in a package 'io.github.bearisbug.synaxis.plugin..' and are declared in classes that are public and are public should have raw return type annotated with @Internal, because
+  PASS theReturnTypeRuleRejectsALeakedInternal()
+  PASS theStableSurfaceAsksForNoEngineInternal()
+  PASS theParameterRuleRejectsALeakedInternal()
+io.github.bearisbug.synaxis.app.scene.ComponentBytesTest: tests=2 failures=1 errors=0 skipped=0
+  PASS aComponentIsWrittenInTheNetworkFormatAndReadsBackAsItself()
+  FAIL aComponentOf2048BytesIsTakenAndOneByteMoreIsNot() at ComponentBytesTest.java:37: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest: tests=2 failures=1 errors=0 skipped=0
+  PASS theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel()
+  FAIL everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:92: org.opentest4j.AssertionFailedError: Problems of the translation key gate (2): en_us.json has no text for synaxis:play (from io.github.bearisbug.synaxis.app.PluginHost, io.github.bearisbug.synaxis.app.scene.SceneService) zh_cn.json has no text for synaxis:play (from io.github.bearisbug.synaxis.app.P
+io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest: tests=13 failures=1 errors=0 skipped=0
+  PASS theShortConstructorBuildsOnTheMatchTypeSettlesIn30SecondsAndKicks()
+  PASS [1] "round"
+  PASS [2] "lobby_2"
+  PASS [3] "0"
+  PASS [4] "abcdefghijklmnopqrstuvwxyz012345"
+  FAIL theChunkRadiusIsZeroTo16() at InstanceSpecTest.java:47: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  PASS theSettleTimeoutIsAboveZero()
+  PASS [1] ""
+  PASS [2] "Round"
+  PASS [3] "round-1"
+  PASS [4] "rush:round"
+  PASS [5] "abcdefghijklmnopqrstuvwxyz0123456"
+  PASS [6] "回合"
+io.github.bearisbug.synaxis.plugin.play.SceneSpecTest: tests=5 failures=1 errors=0 skipped=0
+  PASS [1] -1
+  PASS [2] 6
+  PASS aSceneTakesSixActionsInDistinctSlotsAndKeepsItsOwnCopy()
+  PASS aCooldownOutsideZeroTo600SecondsIsRefused()
+  FAIL aSlotUsedTwiceIsRefused() at SceneSpecTest.java:46: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+io.github.bearisbug.synaxis.plugin.play.WidgetTest: tests=10 failures=4 errors=0 skipped=0
+  PASS everyKindTakesAnIdOfOneTo32BytesOfUtf8()
+  PASS aRowValueIsAtMost32BytesOfUtf8()
+  PASS aScoreboardTakes16RowsAndNoMore()
+  PASS aTextLivesFromZeroToTheLargestVarintOfMilliseconds()
+  PASS aTimerHoldsFromZeroToTheLargestVarintOfMilliseconds()
+  FAIL aPanelTakes12RowsAnd4ButtonsAndSitsInTheCentre() at WidgetTest.java:91: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL [1] "" at WidgetTest.java:48: org.opentest4j.AssertionFailedError: Text ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL [2] "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" at WidgetTest.java:48: org.opentest4j.AssertionFailedError: Text ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL [3] "信信信信信信信信信信信" at WidgetTest.java:48: org.opentest4j.AssertionFailedError: Text ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  PASS theListsOfAWidgetAreItsOwn()

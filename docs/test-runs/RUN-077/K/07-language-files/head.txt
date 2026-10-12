@@ -1,0 +1,4 @@
+22 keys checked; missing: [] ; in one file only: []
+en_us.json ['Press action key 1 (default H) to join or leave the queue. Queued: %s', 'The arena could not be prepared. Press action key 1 (default H) to queue again.']
+zh_cn.json ['按动作键 1（默认 H）排队或退队。排队人数：%s', '竞技场没能准备好。按动作键 1（默认 H）重新排队。']
+exit=0

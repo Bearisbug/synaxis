@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.plugin.play.SceneSpecTest" tests="5" skipped="0" failures="5" errors="0" timestamp="2026-10-12T03:52:31.448Z" hostname="Mac.local" time="0.02">
+  <properties/>
+  <testcase name="[1] -1" classname="io.github.bearisbug.synaxis.plugin.play.SceneSpecTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.plugin.play.SceneSpecTest.anActionKeyOutsideZeroToFiveIsRefused(SceneSpecTest.java:52)
+</failure>
+  </testcase>
+  <testcase name="[2] 6" classname="io.github.bearisbug.synaxis.plugin.play.SceneSpecTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.plugin.play.SceneSpecTest.anActionKeyOutsideZeroToFiveIsRefused(SceneSpecTest.java:52)
+</failure>
+  </testcase>
+  <testcase name="aSceneTakesSixActionsInDistinctSlotsAndKeepsItsOwnCopy()" classname="io.github.bearisbug.synaxis.plugin.play.SceneSpecTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: the caller's list changed after the scene was built ==&gt; expected: &lt;6&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the caller's list changed after the scene was built ==&gt; expected: &lt;6&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.plugin.play.SceneSpecTest.aSceneTakesSixActionsInDistinctSlotsAndKeepsItsOwnCopy(SceneSpecTest.java:40)
+</failure>
+  </testcase>
+  <testcase name="aCooldownOutsideZeroTo600SecondsIsRefused()" classname="io.github.bearisbug.synaxis.plugin.play.SceneSpecTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.plugin.play.SceneSpecTest.aCooldownOutsideZeroTo600SecondsIsRefused(SceneSpecTest.java:60)
+</failure>
+  </testcase>
+  <testcase name="aSlotUsedTwiceIsRefused()" classname="io.github.bearisbug.synaxis.plugin.play.SceneSpecTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.plugin.play.SceneSpecTest.aSlotUsedTwiceIsRefused(SceneSpecTest.java:46)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

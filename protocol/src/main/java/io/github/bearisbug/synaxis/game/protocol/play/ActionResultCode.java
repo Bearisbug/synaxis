@@ -3,8 +3,9 @@ package io.github.bearisbug.synaxis.game.protocol.play;
 /**
  * The {@code code} of {@link S2CActionResult}, {@code docs/DESIGN-PLAY.md} §9 and §14.
  * <p>
- * The values follow the order the host judges an action in: stale scene, rate limit, unknown action,
- * cooldown, then the plugin's handler. None of them disconnects anybody; every action is answered in band.
+ * The wire values are the table of §9. The host judges an action as stale scene, rate limit, unknown action,
+ * cooldown, then the plugin's handler ({@code API-PLAY-002}) and answers with the first that applies. None of
+ * them disconnects anybody; every action is answered in band.
  */
 public enum ActionResultCode {
 

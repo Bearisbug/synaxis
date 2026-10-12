@@ -37,14 +37,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The frozen vectors of {@code synaxis:play} ({@code docs/DESIGN-PLAY.md} {@code API-PLAY-002},
- * {@code API-PLAY-003} and §24; {@code docs/TEST.md} TC-PLAY-001 to TC-PLAY-003).
+ * {@code API-PLAY-003} and §24; {@code docs/TEST.md} TC-PLAY-001 to TC-PLAY-005).
  * <p>
  * This class is where the expected value of every vector is written down. Each accepted vector decodes into
  * the record below and re-encodes byte for byte; each {@code edge/refused-} vector is malformed, with the
- * reason named here. The bytes were frozen by a second encoder written from the design text rather than from
- * these records, so a record that drifted from the table fails here. The digest of the whole set is bound to
- * {@link PlayProtocol#version()} in {@code manifest.txt}; the client mod runs the same directory in
- * {@code PlayFrozenVectorTest}.
+ * reason named here. The bytes come from {@code protocol/tools/gen_play_vectors.py}, written from the design
+ * text rather than from these records, and neighbouring fields of one type differ in at least one vector, so
+ * a record that drifted from the table, field order included, fails here. {@code manifest.txt} binds the digest
+ * to {@link PlayProtocol#version()}; the client mod runs the same directory in {@code PlayFrozenVectorTest}.
  */
 class PlayVectorTest {
 
@@ -106,7 +106,7 @@ class PlayVectorTest {
                 new Vector("c2s_action.bin", () -> new C2SAction(1, 1, "rush:queue", new C2SAction.None())),
 
                 new Vector("edge/s2c_scene.bin", () -> new S2CScene(MAX, "edge:" + "s".repeat(59), text("a".repeat(2045)),
-                        255, 255, edgeActions())),
+                        255, 254, edgeActions())),
                 new Vector("edge/s2c_hud.bin", () -> new S2CHud(edgeOps())),
                 new Vector("edge/s2c_hud-unknown-prop.bin", () -> new S2CHud(List.of(new SetWidget("rush", "timer",
                         new Widget(Widget.TIMER, Widget.TOP_CENTER, 0, List.of(
@@ -124,7 +124,7 @@ class PlayVectorTest {
                 new Vector("edge/c2s_scene_ready.bin", () -> new C2SSceneReady(MAX)),
                 new Vector("edge/c2s_action.bin", () -> new C2SAction(MAX, MAX, "edge:" + "q".repeat(59),
                         new C2SAction.OfBlock(MIN, -64, MAX))),
-                new Vector("edge/c2s_action-entity.bin", () -> new C2SAction(0, 0, "x:y", new C2SAction.OfEntity(MAX))));
+                new Vector("edge/c2s_action-entity.bin", () -> new C2SAction(0, 1, "x:y", new C2SAction.OfEntity(MAX))));
     }
 
     static List<Refused> refused() {
@@ -254,7 +254,7 @@ class PlayVectorTest {
                 .orElseThrow(() -> new IllegalStateException("manifest.txt has no " + key));
     }
 
-    /** Every {@code .bin} of the root and of {@code edge/}, by relative path then content; {@code component/} is not in it. */
+    /** The root's {@code .bin} files by name, then those of {@code edge/}: each one's relative path, then its bytes. */
     private static String digest() throws IOException {
         final MessageDigest digest;
         try {

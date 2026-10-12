@@ -12,7 +12,8 @@ import java.util.HexFormat;
  * <p>
  * The bytes are the vanilla network format the engine's {@code NetworkBuffer.COMPONENT} writes. This module
  * has no dependency, so it never looks inside them; the client decodes them with the game's own codec. Zero
- * bytes is no component, which only {@link S2CActionResult#reason()} uses.
+ * bytes is no text and is accepted wherever a component goes: {@link S2CActionResult#reason()} uses it for no
+ * reason, and the client shows it anywhere else as empty text without decoding it ({@code API-PLAY-002}).
  *
  * @param bytes the encoded component
  */

@@ -6,12 +6,16 @@
 # 客户端模组的 PlayFrozenVectorTest 经系统属性 synaxis.play-vectors.dir 读同一目录。component 一律用网络格式
 # NBT 的字符串标签（08、两字节长度、UTF-8），:protocol 只把它当不透明字节。
 #
-# digest 是根目录与 edge/ 下全部 .bin 按「相对路径 + 内容」顺序喂进 SHA-256 的结果，与 play_version 绑在一起：
-# 向量变了就改 digest；布局、小部件种类或值类型变了，还要在同一个改动里升 PlayProtocol.version() 与 play_version。
+# 本文件与全部 .bin 由 protocol/tools/gen_play_vectors.py 照设计文本生成，不经 :protocol 的 record。同一条消息里
+# 相邻的同类型字段（如 camera 与 cursor、scene_seq 与 action_seq）至少在一个向量里取不同的值，否则读写顺序对调了也测不出来。
+#
+# digest：先取根目录的 .bin、再取 edge/ 的 .bin，两组各按文件名排序，逐个把相对路径（UTF-8，如 edge/s2c_hud.bin）
+# 与文件内容依次喂进同一个 SHA-256。它与 play_version 绑在一起：向量变了就改 digest；布局、小部件种类或值类型变了，
+# 还要在同一个改动里升 PlayProtocol.version() 与 play_version。
 # component/ 子目录（组件解码的冻结字节）不进 digest、不绑 play_version。
 
 play_version=1
-digest=05eee605151536a60eb1768349913d232b3ad00d8b5dfb426f8f974a8d0a333b
+digest=f3eaee54b87163e45bbd30ab3df6c5230a1c6a8236142c464ef279f69883205e
 
 ## c2s_action.bin  (15 字节)
 内容: C2S_ACTION scene_seq=1 action_seq=1 rush:queue target none
@@ -34,8 +38,8 @@ digest=05eee605151536a60eb1768349913d232b3ad00d8b5dfb426f8f974a8d0a333b
 字节:   81 01 01 0A 72 75 73 68 3A 6C 6F 62 62 79 08 08 00 05 4C 6F 62 62 79 00 00 01 00 0A 72 75 73 68 3A 71 75 65 75 65 08 08 00 05 51 75 65 75 65 D0 …
 
 ## edge/c2s_action-entity.bin  (13 字节)
-内容: C2S_ACTION scene_seq=0 (no scene yet) action_seq=0, entity target MAX_INT
-字节:   02 00 00 03 78 3A 79 01 FF FF FF FF 07
+内容: C2S_ACTION scene_seq=0 (no scene yet) action_seq=1, entity target MAX_INT; scene_seq and action_seq differ so that their order is pinned
+字节:   02 00 01 03 78 3A 79 01 FF FF FF FF 07
 
 ## edge/c2s_action.bin  (92 字节)
 内容: C2S_ACTION scene_seq=MAX_INT action_seq=MAX_INT, a 64 B action id, block target (MIN_INT, -64, MAX_INT)
@@ -114,5 +118,5 @@ digest=05eee605151536a60eb1768349913d232b3ad00d8b5dfb426f8f974a8d0a333b
 字节:   82 01 20 03 40 65 64 67 65 3A 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F …
 
 ## edge/s2c_scene.bin  (2575 字节)
-内容: S2C_SCENE at its caps: scene_seq=MAX_INT, 64 B scene_id, a 2,048 B title, camera=255 and cursor=255 kept as received, six actions on slots 5..0 with 64 B ids and cooldown 600,000 ms
+内容: S2C_SCENE at its caps: scene_seq=MAX_INT, 64 B scene_id, a 2,048 B title, camera=255 and cursor=254 kept as received (they differ so that their order is pinned), six actions on slots 5..0 with 64 B ids and cooldown 600,000 ms
 字节:   81 01 FF FF FF FF 07 40 65 64 67 65 3A 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 73 …

@@ -89,7 +89,7 @@ class PlayFrozenVectorTest {
         return file.startsWith("edge/" + REFUSED);
     }
 
-    /** The same digest the server computes: every {@code .bin} of the root and {@code edge/}, by relative path then content. */
+    /** The digest the server computes: the root's {@code .bin} files by name, then {@code edge/}'s, path then bytes. */
     private static String digest() throws IOException {
         final MessageDigest digest;
         try {

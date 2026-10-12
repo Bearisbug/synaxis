@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.game.client.gametest.play;
 
+import io.github.bearisbug.synaxis.game.client.ClientHandshake;
 import io.github.bearisbug.synaxis.game.client.SynaxisClientMod;
 import io.github.bearisbug.synaxis.game.client.play.PlayClient;
 import io.github.bearisbug.synaxis.game.client.play.PlayHud;
@@ -27,7 +28,7 @@ import org.jspecify.annotations.Nullable;
  * test hook ({@code docs/DESIGN-PLAY.md} §6.4.8): the client end of the test channel {@code synaxis_test:play}
  * of {@code PlayHudFixture}, the client state of every tick while a sampling runs, and the scene mirror of
  * {@code synaxis:play} as the HUD draws it, read off {@code SynaxisClientMod.PLAY} by reflection the way the
- * regression reads {@code RTS}.
+ * regression reads {@code RTS}, with {@code HANDSHAKE} beside it.
  * <p>
  * Once a script starts a recording, the end of every client tick also records what arrived since the recording
  * began ({@code docs/DESIGN-PLAY.md} §6.4.8): each SET, with the moment {@code PlayClient} took it in and a
@@ -35,7 +36,8 @@ import org.jspecify.annotations.Nullable;
  * it sent a {@code C2S_SCENE_READY}. What the connection held when the recording began, its SETs, its last result
  * and its last readiness, stays out. The recording samples the mirror once a tick: two SETs of one widget inside
  * one tick show as the later one, and so do two action results, so a script that reads the results one by one
- * waits for each before it presses again.
+ * waits for each before it presses again. The SETs are told apart by their number on the connection, which a new
+ * connection starts again from 1, so a script starts its recording once it is on the server it records.
  */
 public final class PlayTestHook implements ClientModInitializer {
 
@@ -277,13 +279,31 @@ public final class PlayTestHook implements ClientModInitializer {
         return seen;
     }
 
-    private static PlayClient play() {
+    /**
+     * The scene mirror, for what the other readers here do not give: the action table, a widget's content.
+     *
+     * @return {@code SynaxisClientMod.PLAY}; on the client thread only
+     */
+    static PlayClient play() {
+        return field("PLAY", PlayClient.class);
+    }
+
+    /**
+     * The client's end of the handshake (§6.7.6 Q1).
+     *
+     * @return {@code SynaxisClientMod.HANDSHAKE}; on the client thread only
+     */
+    static ClientHandshake handshake() {
+        return field("HANDSHAKE", ClientHandshake.class);
+    }
+
+    private static <T> T field(String name, Class<T> type) {
         try {
-            final Field field = SynaxisClientMod.class.getDeclaredField("PLAY");
+            final Field field = SynaxisClientMod.class.getDeclaredField(name);
             field.setAccessible(true);
-            return (PlayClient) field.get(null);
+            return type.cast(field.get(null));
         } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("SynaxisClientMod.PLAY is not readable; the play hook reads it by reflection", e);
+            throw new IllegalStateException("SynaxisClientMod." + name + " is not readable; the play hook reads it by reflection", e);
         }
     }
 }

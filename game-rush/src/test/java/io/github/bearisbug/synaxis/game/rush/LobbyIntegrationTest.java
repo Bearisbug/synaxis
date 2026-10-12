@@ -109,8 +109,11 @@ class LobbyIntegrationTest {
         assertEquals(RushHud.timer("rush.timer.countdown", Duration.ofMillis(5_950), true), play.widgets(carol).get(RushHud.TIMER),
                 "a player joining the countdown got another time left than the others");
         assertEquals(1, play.sets(alice, RushHud.TIMER).size(), "a running countdown was sent again");
-
         setup.rules().toggleQueue(carol);
+        tick(setup);
+        assertNull(play.widgets(carol).get(RushHud.TIMER), "a player who left the queue kept the countdown");
+        assertEquals(1, play.sets(bob, RushHud.TIMER).size(), "the countdown of those still queued was touched");
+
         setup.rules().toggleQueue(bob);
         tick(setup);
 

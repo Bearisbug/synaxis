@@ -45,6 +45,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.UUID;
@@ -265,7 +266,7 @@ class RushPluginIntegrationTest {
         assertTrue(withoutTheKit.size() < everything.size(), "the play kit is not on this classpath: " + everything);
 
         try (URLClassLoader loader = new URLClassLoader(withoutTheKit.toArray(URL[]::new), ClassLoader.getPlatformClassLoader())) {
-            final Throwable failure = assertThrows(Throwable.class, () -> discover(loader));
+            final Throwable failure = assertThrows(ServiceConfigurationError.class, () -> discover(loader));
             assertTrue(causes(failure).stream().anyMatch(cause -> cause instanceof NoClassDefFoundError
                             && String.valueOf(cause.getMessage()).contains("io/github/bearisbug/synaxis/game/playkit/LocalQueue")),
                     () -> "discovery failed for another reason: " + causes(failure));

@@ -16,10 +16,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * The texts, scenes and widgets of rush ({@code docs/DESIGN-PLAY.md} §6.7.5); in the skeleton of RUN-077
- * group R the texts and the widget factories are real and the record of what each player was sent is not.
+ * The texts, scenes and widgets of rush, and the widgets each player was last sent
+ * ({@code docs/DESIGN-PLAY.md} §6.7.5).
  * <p>
  * A widget is only set again when it differs from the one the player has, and a timer only when the
  * player has none, since the client counts it down by itself. Entering a scene through
@@ -71,7 +73,11 @@ final class RushHud {
     static final SceneSpec ROUND = new SceneSpec("round", text("rush.scene.round"), new CameraSpec.Vanilla(),
             CursorMode.LOCKED, List.of());
 
+    private final PluginPlay play;
+    private final Map<UUID, Map<String, Widget>> shown = new ConcurrentHashMap<>();
+
     RushHud(PluginPlay play) {
+        this.play = play;
     }
 
     /**
@@ -130,18 +136,65 @@ final class RushHud {
                 List.of(new Widget.Button(BACK, text("rush.action.back"))));
     }
 
+    /**
+     * Puts a player into a scene and forgets the widgets the player had.
+     *
+     * @param player the player
+     * @param scene  the scene
+     */
     void enter(Player player, SceneSpec scene) {
+        play.enter(player, scene);
+        shown.remove(player.getUuid());
     }
 
+    /**
+     * Sets a widget unless the player has the same one.
+     *
+     * @param player the player
+     * @param widget the widget
+     */
     void show(Player player, Widget widget) {
+        final Map<String, Widget> widgets = widgets(player);
+        if (widget.equals(widgets.get(widget.id()))) return;
+        play.hud(player).set(widget);
+        widgets.put(widget.id(), widget);
     }
 
+    /**
+     * Sets a widget unless the player has one with its id, whatever it shows: a running timer.
+     *
+     * @param player the player
+     * @param widget the widget
+     */
     void showOnce(Player player, Widget widget) {
+        final Map<String, Widget> widgets = widgets(player);
+        if (widgets.containsKey(widget.id())) return;
+        play.hud(player).set(widget);
+        widgets.put(widget.id(), widget);
     }
 
+    /**
+     * Removes a widget the player has.
+     *
+     * @param player   the player
+     * @param widgetId the id of the widget
+     */
     void hide(Player player, String widgetId) {
+        final Map<String, Widget> widgets = shown.get(player.getUuid());
+        if (widgets == null || widgets.remove(widgetId) == null) return;
+        play.hud(player).remove(widgetId);
     }
 
+    /**
+     * Forgets a player who left the server.
+     *
+     * @param player the player
+     */
     void forget(Player player) {
+        shown.remove(player.getUuid());
+    }
+
+    private Map<String, Widget> widgets(Player player) {
+        return shown.computeIfAbsent(player.getUuid(), _ -> new ConcurrentHashMap<>());
     }
 }

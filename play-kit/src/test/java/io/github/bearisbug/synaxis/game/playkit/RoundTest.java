@@ -286,7 +286,8 @@ class RoundTest {
         final Probe round = new Probe(Duration.ZERO);
         arena.state = ManagedInstance.State.OPEN;
         round.tick();
-        assertEquals(ManagedInstance.State.RUNNING, arena.state);
+        assertEquals(ManagedInstance.State.RUNNING, arena.state, "the default readyToStart() held the start");
+        assertSame(arena, round.arena());
         return round;
     }
 
@@ -314,7 +315,8 @@ class RoundTest {
 
         final List<String> calls = new ArrayList<>();
         final Exit exit = new Exit.Kick("probe:exit");
-        boolean ready = true;
+        /** Null for the default answer of {@link Round#readyToStart()}. */
+        @Nullable Boolean ready;
         @Nullable EndCause decision;
         @Nullable String failing;
 
@@ -329,7 +331,8 @@ class RoundTest {
         @Override
         protected boolean readyToStart() {
             call("readyToStart");
-            return ready;
+            final Boolean answer = ready;
+            return answer == null ? super.readyToStart() : answer;
         }
 
         @Override

@@ -303,8 +303,6 @@ class LobbyIntegrationTest {
         setup.rules().toggleQueue(dave);
         run(setup, Duration.ofSeconds(5));
         assertEquals(ManagedInstance.State.ENDING, first.state);
-        setup.rules().backToLobby(alice);
-        assertEquals(List.of("move alice"), setup.lobby().requests, "the back button did not reach the round");
 
         // The second countdown started with the first running tick of the round and runs out now
         run(setup, Duration.ofSeconds(6));
@@ -312,6 +310,8 @@ class LobbyIntegrationTest {
         assertEquals(1, setup.arenas().specs.size(), "a second arena was created while the first round was ending");
         assertEquals(List.of(carol, dave), queue.players());
         assertNull(play.widgets(carol).get(RushHud.TIMER), "the countdown stayed on screen while it waited");
+        setup.rules().backToLobby(alice);
+        assertEquals(List.of("move alice"), setup.lobby().requests, "the back button did not reach the round");
         run(setup, Duration.ofSeconds(5));
         assertEquals(ManagedInstance.State.CLOSED, first.state);
         assertEquals(1, setup.arenas().specs.size(), "the countdown did not start over once the round closed");

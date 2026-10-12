@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.game.rush;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.Event;
+import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
@@ -230,8 +231,8 @@ class RushPluginIntegrationTest {
         assertInstanceOf(ActionResult.Ok.class, context.play.actions.get("back")
                 .handle(bob, new ActionRequest("rush:back", 1, new Target.None())));
 
-        alice.getPlayerConnection().disconnect();
-        env.tick();
+        // What the engine dispatches when a connection goes away; a connection of the Env does not
+        env.process().eventHandler().call(new PlayerDisconnectEvent(alice));
         env.tick();
         assertEquals(RushHud.hint(0), context.play.widgets(bob).get(RushHud.HINT), "a player who left stayed in the queue");
     }

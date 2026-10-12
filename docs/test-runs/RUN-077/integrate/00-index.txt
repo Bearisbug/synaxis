@@ -25,3 +25,227 @@ draft PR of the integration branch and on the two counter-proof branches tmp/r07
 tmp/r077-proof-client (docs/DESIGN-PLAY.md §6.7.6; docs/TEST.md TC-PLAY-112, TC-PLAY-113).
 
 02-pkgdeps.txt  tools/pkgdeps.py per module for docs/ENGINE.md §3.6 and the handover of TC-GAME-001 step 7
+
+====================================================================================================================
+RUN-077 gate and registration: the integration branch prod/integrate-077 at e7483eaeb0 (0100d0b0b2 above, then the docs
+commit 75fdfcf06b and the test commit e7483eaeb0 that starts the respawn watchdog right before respawn(), see
+../respawn-flake), run on GitHub Actions for draft PR #26 (base main f9e002917b). Registered in docs/TEST.md section 6.
+
+On this machine for the registration: no Gradle, no containers, no server or client process. Only gh (run and job
+metadata, job logs fetched with gh api .../actions/jobs/<id>/logs, artifacts fetched with gh api
+.../actions/artifacts/<id>/zip and only the JUnit XML entries extracted), git, read-only grep and sed on the merged
+tree, and the counting below (Python of the synaxis .venv). git fetch before registering: origin/main is still
+f9e002917b and its TEST.md section 6 ends at RUN-076, so this round is RUN-077. Times are UTC, 2026-10-12.
+
+Runs on e7483eaeb0 (pull_request, attempt 1 each, none rerun)
+  CI 38253741356                               success  13:09:40-13:26:39
+    Check                                      success  13:09:43-13:26:38  ./gradlew check jacocoTestReport, BUILD
+                                                                           SUCCESSFUL in 16m 1s, database variables set;
+                                                                           "Check that the player store tests ran against
+                                                                           the database" success; "ABI gate of the stable
+                                                                           surface" success; "Gate coverage of newly
+                                                                           added lines" success, see below
+    Test with 4 tick threads (strict)          success  13:09:43-13:25:26  BUILD SUCCESSFUL in 15m 10s; "Check that the
+                                                                           tests ran with 4 tick threads" success
+    Test with 4 tick threads (strict, grid)    success  13:09:43-13:23:32  BUILD SUCCESSFUL in 13m 11s; "Check that the
+                                                                           tests ran with 4 tick threads on the grid"
+                                                                           success
+  Concurrency 38253741568                      success  13:09:40-13:15:24
+    jcstress                                   success  13:09:43-13:15:24  BUILD SUCCESSFUL in 5m 16s
+  Client mod 38253741473                       success  13:09:40-13:11:02
+    Build the Fabric mod                       success  13:09:43-13:11:01  client-test-reports (11749531718): 25 classes
+                                                                           276 tests, 0 failures 0 errors 0 skipped;
+                                                                           "mod jar: minecraft=26.2, 108 entries, ships
+                                                                           META-INF/jars/protocol-dev.jar"
+  Client gametest 38253741451 (LAUNCHES=1)     success  13:09:40-13:15:52
+    Run the client gametests                   success  13:09:43-13:15:18  dev launch skipped (LAUNCHES=1); production
+                                                                           launch BUILD SUCCESSFUL in 3m 6s
+    Run the rush script                        success  13:09:44-13:15:52  6 min 8 s, see below
+    Two shards, 2 round trips (P11 smoke)      success  13:09:44-13:15:20
+    Two shards, 100 round trips (P10)          skipped
+  Not dispatched: the gametest workflow with LAUNCHES=2 and P10 (p10=true). RUN-077 does not change the transfer path;
+  job rush runs two launches on PRs by itself.
+
+diff-cover (CI step "Gate coverage of newly added lines", compared with origin/main f9e002917b, --fail-under=80), exit 0:
+  10 files of :play-kit and :game-rush, all 100% except
+    game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/RushRound.java (99.3%): Missing lines 140
+  :plugin-api lines under 100%: EndCause.java 0.0% (9 lines), ManagedInstance.java 0.0% (6, the State enum),
+    PlayInstanceStateEvent.java 0.0% (2), ActionRequest.java 0.0% (1), ActionResult.java 0.0% (2), Target.java 0.0%
+    (3), Exit.java 50.0% (1)
+  :protocol under 100%: C2SAction 97.3%, C2SSceneReady 87.5%, S2CActionResult 94.1%, S2CHud 98.0%, S2CScene 98.0%,
+    Widget 97.3%
+  :server-app under 100%: Evacuation 95.9% (82-83), ManagedInstanceImpl 94.7% (128-131, 201-202, 270-271, 274-275,
+    285), Outbox 97.8% (91), PlayIds 93.8% (48), SceneService 95.3% (306-308, 375, 391-392, 399-400)
+  Total:   1758 lines
+  Missing: 55 lines
+  Coverage: 96%
+  (TC-PLAY-106 step 3: Round.java (100%) and Lobby.java (100%) are listed.)
+
+Job "Run the rush script" of 38253741451 (TC-PLAY-110 to TC-PLAY-122, the integration-branch reading)
+  Steps: publish :protocol 31 s, judge unit tests "Ran 30 tests" OK, fake sessionserver 1 s, build 58 s, fixture 2 s,
+  sample server 9 s, dev launch 152 s, production launch 71 s, ledger 3 s, judge, rehearsal 6 s.
+  Both reports: Q0a, Q0b, Q0c, Q1-Q9 PASS (12 lines each). Readings, dev / production jar:
+    Q0b  LevelLoadingScreen ticks 5..15 / 2..4, ready at tick 16 after 1239 ms / tick 5 after 405 ms
+    Q3   first press OK 59 / 58 ms after it, hint count 1, countdown TIMER set 2 remaining_ms 2999
+    Q4   second press 240 / 239 ms after the first, actions sent 1 -> 1; third press 387 / 391 ms after the first,
+         action_seq 2 COOLDOWN cooldown_ms 1602 / 1601 reason key=synaxis:action-cooldown args=[2]
+    Q5   rush:round_1 335 ms / rush:round_2 200 ms after the countdown ran out; LevelLoadingScreen ticks 57..59 /
+         56..58; ready screen=null chunkUnderfoot=true 3 ticks 230 ms / 3 ticks 198 ms after the new level; TIMER
+         44541 / 44719 ms; 0.00 blocks from the spawn; labels [A, B, C]
+    Q6   1.60 / 1.60 blocks from beacon A, capture 1% -> 22% / 3% -> 23%, own score 1 at 9750 / 9949 ms
+    Q7   off by 12 / 25 ms
+    Q8   own row *1. Player0 (1 captures)=32 / *1. Player262 (1 captures)=32, pressed "Back to the lobby"
+    Q9   rush:lobby_1, scene 3 rush:lobby 199 / 171 ms after the button, ready screen=null chunkUnderfoot=true
+  Judge, verbatim: note ... Q0b screens [...LevelLoadingScreen ticks 5..15] and [... ticks 2..4];
+    note arena 034f9769-00d3-45c7-b616-a943e6ced306: prepare_ms 148; note arena
+    fe3bbe4d-2b43-46ba-b660-d842a95553a9: prepare_ms 49; rush judge: PASS (2 reports, 0 problems)
+  Ledger printed by the job (36 events): rush:lobby created, opened (prepare_ms 158), started; two rush:round arenas,
+  each created, opened, started, ended, closed in order with cause time_limit; ended to closed 0.80 s and 0.75 s; four
+  play_instance_moved, each followed on the same connection by play_scene_ready after 0.39, 0.25, 0.35, 0.25 s;
+  play_scene_ready 6, client_verified 2; rush_round_ended rush:round_1 and rush:round_2, players=1, cause=time_limit,
+  duration_ms 45049 each.
+  Rehearsal: ok rush: Plugin enabled: plugin_id=rush; ok rush: synaxis server-app listening on; ok rts: Plugin
+  enabled: plugin_id=rts; ok rts: synaxis server-app listening on.
+
+Job "Run the client gametests" of 38253741451, judge verbatim:
+  ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt: 8 PASS
+  ok   1 reports for 1 launches
+  ok   client-fabric/build/run/productionClientGameTest/synaxis-gametest/playable.txt: core 10 PASS, rts 5 PASS
+  ok   1 playable reports for 1 launches
+  ok   client_verified 3, expected 3
+  ok   client_rejected 0, expected 0
+  ok   unit_order_issued 1, expected >= 1
+  ok   protocol-error kicks 1, expected 1
+  ok   sessionserver join 5, expected 5
+  ok   sessionserver hasJoined 200 5 of 5, expected 5 of 5
+  client regression: all checks passed
+  The job log has no "AssertionError" and no "regression assertions failed". core G1 says handshake=VERIFIED in this
+  production launch (recorded for the open TEST.md section 7 entry of group F, not changed).
+
+Job "Two shards, 2 round trips (P11 smoke)" of 38253741451 (TC-PROD-742)
+  "Unit tests of p10.py": Ran 42 tests
+  transfers 1-4: sent in 72, 76, 70, 78 ms, arrived in 1082, 578, 582, 580 ms, character.version 1-4
+  Judge: 11 lines "ok" (the driver ran to the end; 4 of 4 transfers answered sent; 4 arrived; character.version read 5
+  times and larger after every transfer; transfer_issued 2 + 2; 5 worlds; joins alternate between 25611 and 25612;
+  state recorded in 5 of 5 worlds; 0.00 blocks from the saved position 100.50,79.00,120.50 in world 1; the inventory is
+  the seeded one in all 5 worlds; the report ends with end done), last line "P10: all checks passed".
+
+Counts: artifacts test-reports (Check, id 11749936985), test-reports-multithreaded (strict, 11749712105) and
+test-reports-multithreaded-grid (strict grid, 11749591852) of run 38253741356, only the */build/test-results/test/*.xml
+entries extracted. One row per module directory that holds build/test-results (":" is the root project); classes =
+TEST-*.xml testsuites; tests, fail, err, skip = sums of the testsuite attributes.
+
+  The three sets have the same rows, and the same tests, failures, errors and skipped for every one of the 682 classes.
+  module                 classes  tests  fail  err  skip
+  :                          439   3217     0    0    21
+  :architecture-tests          7     20     0    0     0
+  :baker                       8     77     0    0     0
+  :game-rts                   14     93     0    0     0
+  :game-rush                   6     42     0    0     0
+  :loadtest                    6     26     0    0     0
+  :play-kit                    3     27     0    0     0
+  :plugin-api                  7     45     0    0     0
+  :protocol                   10    174     0    0     0
+  :server-app                152    804     0    0     0
+  :synx                       22    166     0    0     1
+  :testing                     8     11     0    0     0
+  TOTAL                      682   4702     0    0    22
+  client-fabric (client-test-reports 11749531718 of Client mod 38253741473): 25 classes, 276 tests, 0 0 0.
+
+  Against RUN-076's CI run 38145713518 (0cb791cd50; test-reports id 11704672950, fetched the same way: 653 classes
+  4,456 tests) and its Client mod run 38145713466 (client-test-reports 11704412137: 17 classes 199 tests), per class
+  from the two sets of XML: no class that existed before changed its count; the new classes, by the group whose merge
+  added the file (git diff of each merge's two parents):
+    server-app  K  app.PluginHostPlayWiringIntegrationTest 2, app.scene.ComponentBytesTest 2
+                V  app.scene.PlayComponentVectorTest 4
+                H  app.scene.SceneServiceIntegrationTest 12, app.scene.SceneInboundIntegrationTest 10,
+                   app.scene.OutboxTest 8, app.scene.WidgetEncoderTest 5, app.scene.ActionGateTest 5,
+                   app.SceneOwnerlessIntegrationTest 3
+                I  app.instance.ManagedInstanceTransitionsTest 19, app.instance.EvacuationIntegrationTest 13,
+                   app.instance.ManagedInstanceIntegrationTest 9, app.instance.ManagedInstanceTickThreadTest 5,
+                   app.PluginHostInstancesIntegrationTest 3                      (138 / 704 -> 152 / 804)
+    protocol    P  game.protocol.play.PlayVectorTest 28, PlayMessagesTest 19      (8 / 127 -> 10 / 174)
+    plugin-api  K  plugin.instance.InstanceSpecTest 13, plugin.play.WidgetTest 10, plugin.play.SceneSpecTest 5,
+                   plugin.PluginContextDefaultsTest 2                             (3 / 15 -> 7 / 45)
+    game-rush   R  LobbyIntegrationTest 11, RushRoundIntegrationTest 8, BeaconTest 7, RushPluginIntegrationTest 6,
+                   ArchitectureTest 5, RushConfigTest 5                           (new module, 6 / 42)
+    play-kit    R  RoundTest 17, CountdownTest 5, LocalQueueTest 5                (new module, 3 / 27)
+    client      P  PlayFrozenVectorTest 27; V PlayComponentDecodeTest 6, PlayHudTest 5 (C changed it too);
+                C  PlayClientTest 21, PlayPayloadTest 6, SceneReadyProbeTest 5, WidgetLayoutTest 4, ActionKeysTest 3
+                                                                                  (17 / 199 -> 25 / 276)
+  None of the 14 new server-app classes needs the database (no assumption or JDBC in them; 0 skipped in all modes).
+  The 22 skipped are those of RUN-075 and RUN-076: root ServerProcessTest 3, ServerAddressTest 3, TestMojangUtils 9,
+  TranslationIntegrationTest 3, PlayerSkinTest 2, TagNbtTest 1, and synx SynxRelightBacklogTest 1.
+  Gate outputs in all three sets: "translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17
+  identifiers left out" and "config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out", the
+  readings of run 1 above. EnvDispatcherThreadsIntegrationTest: test-reports 1, counter; multithreaded 4, counter;
+  multithreaded-grid 4, grid. PlayerRespawnChunkIntegrationTest 4 tests 0 failures in all three.
+  TC-PROD-569 step 4's classes (root thread.*, ServerProcess*, WatchdogTest, entity.*Concurrency*,
+  AcquirableStrictIntegrationTest; server-app app.metrics.*; loadtest Sample*; ConfigKeyGateTest): 27 classes 84 tests,
+  0 failures, 3 skipped (ServerProcessTest, skipped on CI as in RUN-075 and RUN-076).
+
+Section 15 readings (DESIGN-PLAY section 15, TEST.md TC-PLAY-055 step 7 and TC-PLAY-047 step 1), from the
+<system-out> of ManagedInstanceTickThreadTest and SceneServiceIntegrationTest:
+  e7483eaeb0, run 38253741356, attempt 1:
+    test-reports        create 343 us, registration 174 us, prepare_ms 99; scene layer exit mean 0.0046 ms, p99
+                        0.0099 ms, max 0.0864 ms over 10000 ticks, the two sets mean 0.0126 ms p99 0.0312 ms
+    multithreaded       create 346 us, registration 145 us, prepare_ms 49; exit 0.0035 / 0.0070 / 0.0614 ms, sets
+                        mean 0.0096 ms p99 0.0247 ms
+    multithreaded-grid  create 363 us, registration 150 us, prepare_ms 99; exit 0.0028 / 0.0056 / 0.0494 ms, sets
+                        mean 0.0081 ms p99 0.0198 ms
+  75fdfcf06b, run 38238937144 (artifacts 11742563421, 11748711446, 11742902912; the strict job's attempt 1 artifact
+  11742262413 holds no server-app results: its root :test failed first, TEST.md section 7):
+    test-reports (attempt 1)        create 2583 us, registration 149 us, prepare_ms 49; exit 0.0050 / 0.0140 / 0.5562
+                                    ms, sets mean 0.0124 ms
+    multithreaded (attempt 2)       create 338 us, registration 155 us, prepare_ms 99; exit 0.0050 / 0.0062 / 17.5444
+                                    ms, sets mean 0.0097 ms
+    multithreaded-grid (attempt 1)  create 399 us, registration 159 us, prepare_ms 99; exit 0.0047 / 0.0148 / 0.0749
+                                    ms, sets mean 0.0135 ms
+  One of the six CI readings of create is over the 1 ms target (2,583 us, default mode, one tick thread); with group
+  I's local 3,440 us, 2 of 16 readings. Not attributed; the test times only the first create of its JVM.
+
+End-to-end counter-proofs (TC-PLAY-112 step 3, TC-PLAY-113 step 4). Both branched from 75fdfcf06b, one line each,
+dispatched separately (workflow_dispatch of client-gametest.yml); both branches deleted afterwards.
+  tmp/r077-proof-host 422261e93c: SceneService.java:349 "if (left > 0) {" -> "if (Boolean.getBoolean("proof.never") &&
+  left > 0) {". Client gametest 38238974364, failure (job rush failure, job gametest success, P10 and P11 skipped):
+    both reports Q0a-Q2 PASS; Q3 FAIL "first press action_seq 1 OK cooldown_ms 2000 61 ms after it; actions sent 0 ->
+    1; hint count 0; countdown TIMER set 2 remaining_ms 2999" (production 39 ms); Q4 FAIL "second press 232 ms after the
+    first: actions sent 1 -> 1 (the local cooldown); third press with the local cooldown off 382 ms after the first:
+    action_seq 2 OK cooldown_ms 2000; hint count 0" (production 237 ms, 386 ms); Q5 FAIL "problems [not in a round with
+    its TIMER 6234 ms after the countdown ran out, ...]"; Q6-Q9 FAIL "not reached: Q5 found no round".
+    rush judge: FAIL (2 reports, 18 problems): 7 report lines each, plus ledger: 0 arenas (rush:round), expected 2;
+    normal end rate 0/0, expected 2/2; play_scene_ready 2 times, expected at least 4; rush_round_ended 0 times,
+    expected 2. Q3 fails with Q4 because its hint check reads the mirror after the third press
+    (RushClientGameTest.java:557-560), when the OK of the third press has already taken the player out of the queue.
+  tmp/r077-proof-client 20626c4e80: SceneReadyProbe.java:63 "|| !ready(view)" -> "|| (Boolean.getBoolean("proof.never")
+  && !ready(view))". Client gametest 38239031218, failure (job rush failure, job gametest success):
+    both reports: only Q5 FAIL "problems [sent ready with the loading screen open]"; dev screens LevelLoadingScreen
+    ticks 57..58, "ready screen=net.minecraft.client.gui.screens.LevelLoadingScreen chunkUnderfoot=true 1 ticks 0 ms
+    after the new level"; production ticks 55..55, "0 ticks 0 ms". Q0a-Q4 and Q6-Q9 PASS (Q9's ready line also shows
+    screen=LevelLoadingScreen; Q9 does not judge the screen). rush judge: FAIL (2 reports, 2 problems), the two Q5.
+    note ... Q0b screens [... ticks 2..8] and [... ticks 3..4]; prepare_ms 99 and 49.
+
+Other runs read for the registration
+  75fdfcf06b: Client gametest 38238936696 success (job rush: both reports Q0a-Q9 PASS, judge PASS (2 reports, 0
+  problems), Q0b LevelLoadingScreen ticks 8..10 and 3..5); Client mod 38238937004, Concurrency 38238936712 success; CI
+  38238937144 success on attempt 2 (attempt 1: the strict job red on PlayerRespawnChunkIntegrationTest, TEST.md
+  section 7, ../respawn-flake).
+  Far view gametest 38239255982 (75fdfcf06b, pull_request) success: Far view cases (light) 10:54:41-11:03:38,
+  (hidden) -11:36:36, (synthetic) -11:49:04, (baked) -12:38:31. Checked by the lighting session.
+  TC-PLAY-009 (group V's draft PR #22, recorded here as its post-condition asks): Client mod 38209505076 (head
+  1250f4d888, failure, the counter-proof) and 38210149163 (head 07f5053f90, success, 27/0).
+
+Read only on the merged tree (e7483eaeb0, nothing written)
+  RushClientGameTest.java:431 and :442 are the two checks of TC-PLAY-086 step 1, PlayTestHook.java:138-139 its
+  baseline, RushClientGameTest.java:177 the early return of TC-PLAY-023; PluginHost.java:107 is "this.cooldowns =
+  cooldowns;" (TC-PLAY-019 step 2, TC-PROD-521 step 5); the code of RushClientGameTest, PlayTestHook, rush_judge.py and
+  client-gametest.yml is that of group G's e467542943 (git diff empty), so the G section's line numbers hold.
+  TC-PROD-432 step 1: grep -c of the 17 identifiers in en_us.json and zh_cn.json, 0 and 0.
+
+Not run in this round (TEST.md section 6 RUN-077 detail rows):
+  TC-PLAY-110 step 3 (the DEBUG key counter-proof, by reasoning); TC-PLAY-123 to TC-PLAY-125 (manual); the counter
+  proofs and readings of 17 older cases that the groups or the integration moved by reasoning: TC-PROD-068, 105, 162,
+  210, 233, 250, 295, 396, 430, 431, 432 step 3, 433, 441 steps 2-4, 521 step 5, 547, 569 (steps 1-3 and 5; step 4 on
+  CI has 3 skipped), 717.
+
+Cleanup: /tmp/run077/register-077 (artifact zips, extracted XML, job logs, the counting scripts) deleted at the end.

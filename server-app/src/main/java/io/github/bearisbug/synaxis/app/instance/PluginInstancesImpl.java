@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.app.instance;
 
 import io.github.bearisbug.synaxis.TickSchedulerThread;
+import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.instance.EndCause;
 import io.github.bearisbug.synaxis.plugin.instance.InstanceSpec;
 import io.github.bearisbug.synaxis.plugin.instance.ManagedInstance;
@@ -8,6 +9,7 @@ import io.github.bearisbug.synaxis.plugin.instance.PluginInstances;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.world.DimensionType;
 import net.kyori.adventure.key.Key;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
@@ -33,6 +35,19 @@ final class PluginInstancesImpl implements PluginInstances {
     private final Map<String, AtomicInteger> serials = new ConcurrentHashMap<>();
     /** Set once the plugin is taken back: an instance it created afterwards would never be closed by force. */
     private volatile boolean tornDown;
+
+    /*
+     * The WARN and ERROR lines of the plugin's instances, one budget per kind of line: the host's log rule
+     * (ClientDrivenLogArchitectureTest) lets no class of this package write one itself. Per plugin, so
+     * that one plugin whose instances keep failing cannot hide another's; each keeps the logger of the
+     * class whose line it is.
+     */
+    final LogBudget prepareFailures =
+            new LogBudget(LoggerFactory.getLogger(ManagedInstanceImpl.class), "managed instances that failed to prepare");
+    final LogBudget settleTimeouts =
+            new LogBudget(LoggerFactory.getLogger(ManagedInstanceImpl.class), "managed instances closed at their settle timeout");
+    final LogBudget missingExits =
+            new LogBudget(LoggerFactory.getLogger(Evacuation.class), "players kicked for want of an exit");
 
     PluginInstancesImpl(String pluginId, InstanceRegistry registry) {
         this.pluginId = pluginId;

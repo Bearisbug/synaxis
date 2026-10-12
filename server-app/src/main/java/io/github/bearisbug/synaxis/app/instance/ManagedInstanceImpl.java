@@ -7,6 +7,7 @@ import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.LightingChunk;
 import io.github.bearisbug.synaxis.instance.generator.Generator;
+import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.instance.EndCause;
 import io.github.bearisbug.synaxis.plugin.instance.Exit;
 import io.github.bearisbug.synaxis.plugin.instance.InstanceSpec;
@@ -17,8 +18,6 @@ import io.github.bearisbug.synaxis.timer.TaskSchedule;
 import io.github.bearisbug.synaxis.world.DimensionType;
 import net.kyori.adventure.key.Key;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -51,8 +50,6 @@ import java.util.function.Function;
  */
 final class ManagedInstanceImpl implements ManagedInstance {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ManagedInstanceImpl.class);
-
     /** The causes a plugin may end an instance with; the others belong to the host. */
     private static final Set<EndCause> PLUGIN_ENDS =
             EnumSet.of(EndCause.OBJECTIVE, EndCause.TIME_LIMIT, EndCause.EMPTY, EndCause.ERROR);
@@ -78,9 +75,9 @@ final class ManagedInstanceImpl implements ManagedInstance {
     private final long createdAt;
     private final AtomicReference<Status> status = new AtomicReference<>(new Status(State.PREPARING, null));
     /**
-     * The first exception the plugin's generator threw. The engine hands a generator's exception to the
-     * exception handler of the process and counts the chunk as loaded, so without this the host would
-     * open an instance whose map is missing.
+     * The first exception the plugin's generator threw while the instance prepared. The engine hands a
+     * generator's exception to the exception handler of the process and counts the chunk as loaded, so
+     * without this the host would open an instance whose map is missing.
      */
     private final AtomicReference<Throwable> generatorFailure = new AtomicReference<>();
     /** Completes once every chunk is loaded and lit, exceptionally when that failed. */
@@ -89,8 +86,8 @@ final class ManagedInstanceImpl implements ManagedInstance {
     private volatile long registerNanos = -1;
     /** Set together with the swap into {@code CLOSED}, under the monitor; null for a dropped instance. */
     private volatile @Nullable Evacuation evacuation;
-    /** Moves that passed the state check and have not landed yet; guarded by the monitor. */
-    private int pendingMoves;
+    /** The players of the moves that passed the state check and have not landed yet, once per move; guarded by the monitor. */
+    private final List<Player> onTheirWay = new ArrayList<>();
 
     /**
      * Builds the unregistered engine instance; nothing is loaded until one of the two prepare methods.
@@ -111,6 +108,8 @@ final class ManagedInstanceImpl implements ManagedInstance {
             try {
                 generator.generate(unit);
             } catch (Throwable throwable) {
+                // Past the preparation it is the engine's to report, as it would be without the host
+                if (state() != State.PREPARING) throw throwable;
                 generatorFailure.compareAndSet(null, throwable);
             }
         });
@@ -209,7 +208,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
 
     private void failPreparation(Throwable failure) {
         if (!swap(State.PREPARING, State.CLOSED, EndCause.PREPARE_FAILED)) return;
-        LOGGER.error("Managed instance failed to prepare: plugin_id={} instance={}", owner.pluginId(), id, failure);
+        owner.prepareFailures.error(failure, "Managed instance failed to prepare: plugin_id={} instance={}", owner.pluginId(), id);
         closed(0, 0, 0, false);
         dispatch(State.PREPARING, State.CLOSED);
     }
@@ -271,18 +270,19 @@ final class ManagedInstanceImpl implements ManagedInstance {
             moved.complete(takesPlayers());
             return;
         }
-        if (!player.isOnline() || !admit()) {
+        if (!player.isOnline() || !admit(player)) {
             moved.complete(false);
             return;
         }
         var _ = player.setInstance(instance, at).whenComplete((_, failure) -> {
-            final Evacuation closing = landed();
-            if (failure != null) {
-                moved.completeExceptionally(failure);
-            } else if (closing != null) {
-                // Closed while the move was on its way: the player gets the exit like those who were inside
-                closing.arrived(player);
+            final Evacuation closing = landed(player);
+            if (closing != null) {
+                // Closed while the move was on its way: a player who got in gets the exit like those who were
+                // inside, one the unregistration beat stays where they were
+                if (failure == null) closing.arrived(player);
                 moved.complete(false);
+            } else if (failure != null) {
+                moved.completeExceptionally(failure);
             } else {
                 registry.ledger().moved(this, player, from);
                 moved.complete(true);
@@ -290,9 +290,9 @@ final class ManagedInstanceImpl implements ManagedInstance {
         });
     }
 
-    private synchronized boolean admit() {
+    private synchronized boolean admit(Player player) {
         if (!takesPlayers()) return false;
-        pendingMoves++;
+        onTheirWay.add(player);
         return true;
     }
 
@@ -301,19 +301,30 @@ final class ManagedInstanceImpl implements ManagedInstance {
      *
      * @return the evacuation if the instance closed while the move was on its way
      */
-    private synchronized @Nullable Evacuation landed() {
-        pendingMoves--;
+    private synchronized @Nullable Evacuation landed(Player player) {
+        onTheirWay.remove(player);
         return evacuation;
     }
 
     /**
      * Whether a move admitted before the instance closed is still on its way: the evacuation waits for
-     * it, so that its player is handed the exit instead of being left in an unregistered instance.
+     * it, up to its time limit, so that its player is handed the exit instead of being left behind.
      *
      * @return true while one is
      */
     synchronized boolean movesPending() {
-        return pendingMoves > 0;
+        return !onTheirWay.isEmpty();
+    }
+
+    /**
+     * The players whose move into this instance passed the state check and has not landed yet. The
+     * engine puts a player in the instance before their move lands, so a player not in this snapshot
+     * who lands at all is in any later snapshot of {@link #online}, unless they left again.
+     *
+     * @return a snapshot of them
+     */
+    synchronized List<Player> onTheirWay() {
+        return List.copyOf(onTheirWay);
     }
 
     @Override
@@ -345,7 +356,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
         if (registry.now() - endingAt < spec.settleTimeout().toNanos()) return TaskSchedule.nextTick();
         final Evacuation closing = beginClose(State.ENDING, null, spec.fallbackExit(), true);
         if (closing != null) {
-            LOGGER.warn("Managed instance was not settled within its settle timeout, closing it: plugin_id={} "
+            owner.settleTimeouts.warn("Managed instance was not settled within its settle timeout, closing it: plugin_id={} "
                     + "instance={} settle_timeout_ms={}", owner.pluginId(), id, spec.settleTimeout().toMillis());
             dispatch(State.ENDING, State.CLOSED);
             closing.start();
@@ -422,6 +433,11 @@ final class ManagedInstanceImpl implements ManagedInstance {
 
     String pluginId() {
         return owner.pluginId();
+    }
+
+    /** The budget of the line of a player kicked for want of an exit, shared by the instances of the plugin. */
+    LogBudget missingExits() {
+        return owner.missingExits;
     }
 
     String kindId() {

@@ -7,8 +7,12 @@ is in the default mode. Each directory holds the JUnit XML reports of that run a
 test with the failure message and the first test-class frame. The ABI gate downloads plugin-api.jar and
 protocol.jar of release v0.3.0 with gh into a mktemp directory that a trap removes.
 
-play-vectors/ was frozen by an encoder written from the design text (a throwaway Python script, not kept),
-so the Java records and that encoder are two implementations; run 3 is the first time they met.
+play-vectors/ was frozen by an encoder written from the design text, not from the records, so the Java
+records and that encoder are two implementations; run 3 is the first time they met. The first freeze used a
+throwaway script. After review the encoder was written again from the design text and checked in as
+protocol/tools/gen_play_vectors.py: it regenerates 24 of the 26 files of the first freeze byte for byte, and
+the other two differ only in the values changed on purpose (edge/s2c_scene.bin cursor 255 -> 254 at offset
+2124, edge/c2s_action-entity.bin action_seq 0 -> 1 at offset 3), see runs 9 to 11.
 
 Run 1 -> 01-compile-failure.txt
   The first stub of PlayMessages.read only threw, and Error Prone DoNotCallSuggester failed
@@ -82,3 +86,28 @@ Run 8 -> 08-final/   (code ab3df924b4, after the restore of run 7)
   checked against [en_us.json, zh_cn.json], 17 identifiers left out"), testNamingCheck and
   forbiddenImportsCheck of :protocol and :architecture-tests, :protocol:javadoc with the three pre-existing
   "no comment" warnings only, ABI gate of :plugin-api and :protocol against v0.3.0: BUILD SUCCESSFUL.
+
+Review rework (runs 9 to 11). The review found two pairs of neighbouring fields of one type to which every
+vector gave equal values: S2C_SCENE camera/cursor (0/0 and 255/255) and C2S_ACTION scene_seq/action_seq (1/1,
+MAX/MAX, 0/0), so swapping the read and the write of either pair left every test green. counter-proof.diff in 09 and 10 is that swap: S2CScene.java:94-95 and :116-117, C2SAction.java:87-88
+and :108-109.
+
+Run 9 -> 09-order-swap-old-vectors/   (code 71ce9dd029 plus counter-proof.diff, vectors as frozen first)
+  :protocol:test PlayVectorTest + PlayMessagesTest with testNamingCheck and forbiddenImportsCheck: BUILD
+  SUCCESSFUL, 47 tests, 0 failed. Every swap survives.
+
+Run 10 -> 10-order-swap-new-vectors/   (same diff; edge/s2c_scene.bin cursor 254, edge/c2s_action-entity.bin
+  action_seq 1, regenerated with gen_play_vectors.py; PlayVectorTest expects the new values)
+  47 tests, 2 failed, both at PlayVectorTest.java:204 (the record comparison): edge/s2c_scene.bin decodes as
+  camera=254, cursor=255 against 255/254; edge/c2s_action-entity.bin as sceneSeq=1, actionSeq=0 against 0/1.
+  The other vectors give each pair equal values and PlayMessagesTest round trips through one encoder, so they
+  stay green. Restored with git checkout HEAD -- protocol/src/main.
+
+Run 11 -> 11-final/   (code 0805b5e15e)
+  The task list of run 3 on the committed head: PlayVectorTest 28/0, PlayMessagesTest 19/0,
+  ProtocolVectorTest 21/0, TranslationKeyGateTest 2/0 ("61 keys checked against [en_us.json, zh_cn.json], 17
+  identifiers left out"), testNamingCheck and forbiddenImportsCheck of :protocol and :architecture-tests,
+  :protocol:javadoc with the three pre-existing "no comment" warnings only, ABI gate of :plugin-api and
+  :protocol against v0.3.0 executed with no ::error line: BUILD SUCCESSFUL. Outside Gradle, the generator
+  written into a mktemp directory matches play-vectors/ with diff -r -x component (no output), and an
+  independent Python digest over the root then edge/ gives the manifest's f3eaee54...205e.

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" tests="28" skipped="0" failures="0" errors="0" timestamp="2026-10-12T04:28:14.878Z" hostname="Mac.local" time="0.057">
+  <properties/>
+  <testcase name="edge/refused-s2c_hud-33-ops.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.003"/>
+  <testcase name="edge/refused-s2c_scene-7-actions.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-17-props.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="edge/refused-s2c_hud-scoreboard-17-rows.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="edge/refused-s2c_hud-panel-13-rows.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-panel-5-buttons.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-panel-not-center.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="edge/refused-s2c_hud-slot-7.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-value-type-10.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-s2c_hud-component-2049.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="edge/refused-s2c_hud-declared-prop-wrong-type.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="edge/refused-s2c_hud-op-4.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/refused-c2s_action-target-3.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="everyFrozenFileIsInTheTablesAndEveryMessageHasTwoVectors()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.003"/>
+  <testcase name="s2c_scene.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="s2c_hud.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="s2c_action_result.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="c2s_scene_ready.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="c2s_action.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/s2c_scene.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/s2c_hud.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002"/>
+  <testcase name="edge/s2c_hud-unknown-prop.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/s2c_hud-unknown-kind.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/s2c_action_result.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="edge/c2s_scene_ready.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="edge/c2s_action.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001"/>
+  <testcase name="edge/c2s_action-entity.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0"/>
+  <testcase name="theFrozenVectorsAreBoundToThePlayVersion()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

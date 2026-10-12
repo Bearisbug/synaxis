@@ -1,0 +1,48 @@
+diff --git a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/C2SAction.java b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/C2SAction.java
+index 9689efb552..78910eb4ab 100644
+--- a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/C2SAction.java
++++ b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/C2SAction.java
+@@ -84,8 +84,8 @@ public record C2SAction(int sceneSeq, int actionSeq, String actionId, Target tar
+      * @return the decoded message
+      */
+     public static C2SAction read(MsgBuf buf) {
+-        final int sceneSeq = buf.readVarInt();
+         final int actionSeq = buf.readVarInt();
++        final int sceneSeq = buf.readVarInt();
+         final String actionId = buf.readString(PlayProtocol.MAX_ID_BYTES);
+         final int code = buf.readUnsignedByte();
+         final Target target = switch (code) {
+@@ -105,8 +105,8 @@ public record C2SAction(int sceneSeq, int actionSeq, String actionId, Target tar
+     @Override
+     public void write(MsgBuf buf) {
+         buf.writeVarInt(MSG_ID);
+-        buf.writeVarInt(sceneSeq);
+         buf.writeVarInt(actionSeq);
++        buf.writeVarInt(sceneSeq);
+         buf.writeString(actionId);
+         buf.writeUnsignedByte(target.code());
+         switch (target) {
+diff --git a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CScene.java b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CScene.java
+index dcfeb4aad9..5716013968 100644
+--- a/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CScene.java
++++ b/protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/S2CScene.java
+@@ -91,8 +91,8 @@ public record S2CScene(int sceneSeq, String sceneId, EncodedComponent title, int
+         final int sceneSeq = buf.readVarInt();
+         final String sceneId = buf.readString(PlayProtocol.MAX_ID_BYTES);
+         final EncodedComponent title = EncodedComponent.read(buf);
+-        final int camera = buf.readUnsignedByte();
+         final int cursor = buf.readUnsignedByte();
++        final int camera = buf.readUnsignedByte();
+         final int count = buf.readCount(MAX_ACTIONS);
+         final List<Action> actions = new ArrayList<>(count);
+         for (int i = 0; i < count; i++) {
+@@ -113,8 +113,8 @@ public record S2CScene(int sceneSeq, String sceneId, EncodedComponent title, int
+         buf.writeVarInt(sceneSeq);
+         buf.writeString(sceneId);
+         title.write(buf);
+-        buf.writeUnsignedByte(camera);
+         buf.writeUnsignedByte(cursor);
++        buf.writeUnsignedByte(camera);
+         buf.writeVarInt(actions.size());
+         for (final Action action : actions) {
+             buf.writeUnsignedByte(action.slot());

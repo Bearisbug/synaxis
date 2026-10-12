@@ -1,0 +1,12 @@
+ABI gate (baseline v0.3.0 from gh release download, -PbaselineJarDir=<mktemp dir>):
+> Task :plugin-api:checkBinaryCompatibility
+> Task :protocol:checkBinaryCompatibility
+BUILD SUCCESSFUL in 13s
+
+javadoc warnings (all three predate this group):
+protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/FarViewAnnouncement.java:87: warning: no comment
+protocol/src/main/java/module-info.java:1: warning: no comment
+protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/UnknownMessageException.java:13: warning: no comment
+
+translation key gate (TEST-...TranslationKeyGateTest.xml system-out):
+translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out

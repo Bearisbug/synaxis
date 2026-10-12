@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.game.client.play;
 
 import io.github.bearisbug.synaxis.game.protocol.play.Widget;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
@@ -70,7 +71,35 @@ public final class WidgetLayout {
      * @return where each goes, in the order of {@code boxes}
      */
     public static List<Placement> place(List<Box> boxes, int guiWidth, int guiHeight, int bossBars) {
-        throw new UnsupportedOperationException("not yet");
+        final Integer[] sorted = new Integer[boxes.size()];
+        for (int i = 0; i < sorted.length; i++) sorted[i] = i;
+        Arrays.sort(sorted, Comparator.comparing(boxes::get, ORDER));
+        final Placement[] placed = new Placement[boxes.size()];
+        int from = 0;
+        while (from < sorted.length) {
+            final int slot = boxes.get(sorted[from]).slot();
+            int to = from;
+            int stack = -GAP;
+            while (to < sorted.length && boxes.get(sorted[to]).slot() == slot) stack += boxes.get(sorted[to++]).height() + GAP;
+            int y = switch (slot) {
+                case Widget.TOP_CENTER -> topCenterTop(bossBars, guiHeight);
+                case Widget.LEFT, Widget.RIGHT, Widget.CENTER -> (guiHeight - stack) / 2;
+                case Widget.BOTTOM -> guiHeight - ACTION_BAR_TOP - GAP - stack;
+                default -> MARGIN;
+            };
+            for (int i = from; i < to; i++) {
+                final Box box = boxes.get(sorted[i]);
+                final int x = switch (slot) {
+                    case Widget.TOP_RIGHT, Widget.RIGHT -> guiWidth - MARGIN - box.width();
+                    case Widget.TOP_CENTER, Widget.BOTTOM, Widget.CENTER -> (guiWidth - box.width()) / 2;
+                    default -> MARGIN;
+                };
+                placed[sorted[i]] = new Placement(x, y);
+                y += box.height() + GAP;
+            }
+            from = to;
+        }
+        return List.of(placed);
     }
 
     /**
@@ -82,6 +111,14 @@ public final class WidgetLayout {
      * @return the top edge of the slot
      */
     public static int topCenterTop(int bossBars, int guiHeight) {
-        throw new UnsupportedOperationException("not yet");
+        if (bossBars <= 0) return MARGIN;
+        int y = BOSS_FIRST_Y;
+        int last = y;
+        for (int i = 0; i < bossBars; i++) {
+            last = y;
+            y += BOSS_STEP;
+            if (y >= guiHeight / 3) break;
+        }
+        return last + BOSS_BAR_HEIGHT + GAP;
     }
 }

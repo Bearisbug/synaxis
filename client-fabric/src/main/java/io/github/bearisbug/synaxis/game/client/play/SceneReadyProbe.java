@@ -60,7 +60,11 @@ public final class SceneReadyProbe {
      * @return whether it sent a {@code C2S_SCENE_READY}
      */
     public boolean tick(PlayClient.@Nullable Scene scene, View view, long nanos) {
-        return false;
+        if (scene == null || scene.seq() == answered || !ready(view)) return false;
+        answered = scene.seq();
+        last = new Sent(scene.seq(), view.screen() == null ? null : view.screen().getName(), view.chunkUnderfoot(), nanos);
+        sender.accept(new C2SSceneReady(scene.seq()));
+        return true;
     }
 
     /**
@@ -70,7 +74,8 @@ public final class SceneReadyProbe {
      * @return whether the client stands in a loaded level
      */
     public static boolean ready(View view) {
-        return false;
+        return view.inWorld() && (view.screen() == null || !LevelLoadingScreen.class.isAssignableFrom(view.screen()))
+                && view.chunkUnderfoot();
     }
 
     /**

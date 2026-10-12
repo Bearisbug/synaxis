@@ -304,11 +304,20 @@ public final class PlayClient {
     }
 
     private static @Nullable Content content(Widget widget, RegistryAccess registries) {
-        // Only TEXT so far
-        if (widget.kind() != Widget.TEXT) return null;
-        return new Text(component(widget.prop(Widget.PROP_TEXT)
+        final Component title = component(widget.prop(Widget.PROP_TEXT)
                 .map(value -> value instanceof PropValue.Component c ? c.value() : null)
-                .orElse(EncodedComponent.NONE), registries), 0);
+                .orElse(EncodedComponent.NONE), registries);
+        return switch (widget.kind()) {
+            case Widget.TEXT -> new Text(title, Math.max(0, varInt(widget, Widget.PROP_TTL_MS)));
+            case Widget.TIMER -> new Timer(title, Math.max(0, varInt(widget, Widget.PROP_REMAINING_MS)),
+                    widget.prop(Widget.PROP_RUNNING).map(value -> value instanceof PropValue.Bool b && b.value()).orElse(false));
+            case Widget.SCOREBOARD -> new Scoreboard(title, rows(widget, registries));
+            case Widget.PANEL -> new Panel(title, rows(widget, registries), widget.prop(Widget.PROP_BUTTONS)
+                    .map(value -> value instanceof PropValue.Buttons buttons ? buttons.buttons() : List.<PropValue.Button>of())
+                    .orElse(List.of()).stream()
+                    .map(button -> new Button(button.actionId(), component(button.label(), registries))).toList());
+            default -> null;
+        };
     }
 
     private static int varInt(Widget widget, int prop) {
@@ -323,6 +332,42 @@ public final class PlayClient {
     }
 
     private void result(S2CActionResult result, RegistryAccess registries) {
+        final long now = clock.getAsLong();
+        final ActionResultCode code = result.resultCode();
+        final Component said = component(result.reason(), registries);
+        lastResult = new Result(result.actionSeq(), code, result.cooldownMs(), said, now);
+        final Pending sent = pending.remove(result.actionSeq());
+        if (sent == null) return;
+        final boolean hasReason = !result.reason().isEmpty();
+        if (sent.panel() != null) {
+            panelResult(sent, code, hasReason ? said : null, result.cooldownMs());
+            return;
+        }
+        // A result that belongs to a scene already replaced leaves the new table's cooldowns alone
+        final boolean current = scene != null && scene.seq() == sent.sceneSeq();
+        switch (code) {
+            case OK -> {
+                if (current) cool(sent.slot(), now, result.cooldownMs());
+            }
+            case COOLDOWN -> {
+                if (current) cool(sent.slot(), now, result.cooldownMs());
+                notices.accept(hasReason ? said : cooldownText(result.cooldownMs()));
+            }
+            case REJECTED -> {
+                if (current) cooling[sent.slot()] = false;
+                notices.accept(hasReason ? said : Component.translatable(REJECTED_KEY));
+            }
+            case RATE_LIMITED -> {
+                if (current) cooling[sent.slot()] = false;
+            }
+            case STALE_SCENE -> {
+                // Dropped without a word (§14): the action belonged to the scene before
+            }
+            case UNKNOWN_ACTION -> {
+                if (current) cooling[sent.slot()] = false;
+                LOGGER.warn("The server knows no such action: action_seq={} scene_seq={}", result.actionSeq(), sent.sceneSeq());
+            }
+        }
     }
 
     private void panelResult(Pending sent, ActionResultCode code, @Nullable Component said, int cooldownMs) {
@@ -372,7 +417,18 @@ public final class PlayClient {
      * @return what the press did
      */
     public Press press(int slot) {
-        return Press.NO_ACTION;
+        final Scene current = scene;
+        final Action action = current == null ? null : current.action(slot);
+        if (current == null || action == null) return Press.NO_ACTION;
+        final long time = clock.getAsLong();
+        final long left = cooling[slot] ? coolUntil[slot] - time : 0;
+        if (localCooldown && left > 0) {
+            notices.accept(cooldownText(Math.ceilDiv(left, NANOS_PER_MS)));
+            return Press.COOLING_DOWN;
+        }
+        send(action.actionId(), new Pending(slot, current.seq(), null, 0));
+        cool(slot, time, action.cooldownMs());
+        return Press.SENT;
     }
 
     /**
@@ -382,6 +438,9 @@ public final class PlayClient {
      * @param button the button
      */
     public void click(Entry panel, Button button) {
+        final Address address = new Address(panel.owner(), panel.widgetId());
+        if (address.equals(reasonPanel)) reason = null;
+        send(button.actionId(), new Pending(-1, scene == null ? 0 : scene.seq(), address, panel.set()));
     }
 
     private void send(String actionId, Pending from) {
@@ -398,6 +457,7 @@ public final class PlayClient {
      * @param panel the panel's widget
      */
     public void dismiss(Entry panel) {
+        dismissed.put(new Address(panel.owner(), panel.widgetId()), panel.set());
     }
 
     /**
@@ -406,6 +466,9 @@ public final class PlayClient {
      * @param view the client as the probe sees it
      */
     public void tick(SceneReadyProbe.View view) {
+        final long now = clock.getAsLong();
+        widgets.values().removeIf(entry -> expired(entry, now));
+        probe.tick(scene, view, now);
     }
 
     private static boolean expired(Entry entry, long now) {
@@ -450,6 +513,13 @@ public final class PlayClient {
      * @return the panel's widget, null when there is none or the connection has no scene
      */
     public @Nullable Entry panel() {
+        if (scene == null) return null;
+        for (final Entry entry : widgets()) {
+            if (entry.content() instanceof Panel
+                    && !Objects.equals(dismissed.get(new Address(entry.owner(), entry.widgetId())), entry.set())) {
+                return entry;
+            }
+        }
         return null;
     }
 
@@ -460,7 +530,8 @@ public final class PlayClient {
      * @return the reason, null when nothing was refused on this content of the panel
      */
     public @Nullable Component panelReason(Entry panel) {
-        return null;
+        return reason != null && new Address(panel.owner(), panel.widgetId()).equals(reasonPanel) && panel.set() == reasonSet
+                ? reason : null;
     }
 
     /**
@@ -471,7 +542,9 @@ public final class PlayClient {
      * @return the milliseconds left
      */
     public long remainingMs(Entry timer) {
-        throw new UnsupportedOperationException("not yet");
+        if (!(timer.content() instanceof Timer content)) throw new IllegalArgumentException("not a TIMER: " + timer);
+        if (!content.running()) return content.remainingMs();
+        return Math.max(0, content.remainingMs() - (clock.getAsLong() - timer.receivedNanos()) / NANOS_PER_MS);
     }
 
     /**
@@ -481,7 +554,8 @@ public final class PlayClient {
      * @return the milliseconds left, rounded up, 0 when it is not cooling down
      */
     public long cooldownLeftMs(int slot) {
-        return 0;
+        final long left = cooling[slot] ? coolUntil[slot] - clock.getAsLong() : 0;
+        return left > 0 ? Math.ceilDiv(left, NANOS_PER_MS) : 0;
     }
 
     /**
@@ -491,20 +565,21 @@ public final class PlayClient {
      * @param on whether a press inside the local cooldown is held back
      */
     public void localCooldown(boolean on) {
+        localCooldown = on;
     }
 
     /**
      * @return how many actions this connection sent
      */
     public int actionsSent() {
-        return 0;
+        return actionsSent;
     }
 
     /**
      * @return the last action result that arrived, null before the first
      */
     public @Nullable Result lastResult() {
-        return null;
+        return lastResult;
     }
 
     /**

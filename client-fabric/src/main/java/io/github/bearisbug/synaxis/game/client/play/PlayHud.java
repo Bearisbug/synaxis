@@ -77,7 +77,20 @@ public final class PlayHud {
         if (play.scene() == null) return List.of();
         final List<Block> blocks = new ArrayList<>();
         for (final PlayClient.Entry entry : play.widgets()) {
-            if (entry.content() instanceof PlayClient.Text text) blocks.add(new Block(entry, false, List.of(new Line(text.text(), null, false))));
+            switch (entry.content()) {
+                case PlayClient.Text text -> blocks.add(new Block(entry, false, List.of(new Line(text.text(), null, false))));
+                case PlayClient.Timer timer -> blocks.add(new Block(entry, false,
+                        List.of(new Line(timerLine(timer.label(), play.remainingMs(entry)), null, false))));
+                case PlayClient.Scoreboard board -> {
+                    final List<Line> lines = new ArrayList<>();
+                    lines.add(new Line(board.title(), null, false));
+                    for (final PlayClient.Row row : board.rows()) lines.add(new Line(row.label(), row.value(), row.highlight()));
+                    blocks.add(new Block(entry, true, lines));
+                }
+                case PlayClient.Panel _ -> {
+                    // A screen of its own
+                }
+            }
         }
         return blocks;
     }
@@ -90,7 +103,8 @@ public final class PlayHud {
      * @return the line
      */
     static Component timerLine(Component label, long remainingMs) {
-        throw new UnsupportedOperationException("not yet");
+        final Component time = Component.literal(clock(remainingMs));
+        return label.getString().isEmpty() ? time : Component.empty().append(label).append(" ").append(time);
     }
 
     /**
@@ -100,14 +114,51 @@ public final class PlayHud {
      * @return the text
      */
     static String clock(long remainingMs) {
-        throw new UnsupportedOperationException("not yet");
+        final long seconds = Math.ceilDiv(Math.max(0, remainingMs), 1000L);
+        return String.format(Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60);
     }
 
     private static void draw(GuiGraphicsExtractor graphics, Font font, PlayClient play, int bossBars) {
-        int y = PAD;
-        for (final Block block : blocks(play)) {
-            graphics.text(font, block.lines().getFirst().text(), PAD, y, WHITE);
-            y += font.lineHeight + 1;
+        final List<Block> blocks = blocks(play);
+        if (blocks.isEmpty()) return;
+        final String owner = play.scene() == null ? "" : play.scene().owner();
+        final int lineHeight = font.lineHeight + 1;
+        final List<WidgetLayout.Box> boxes = new ArrayList<>();
+        for (final Block block : blocks) {
+            int width = 0;
+            for (final Line line : block.lines()) {
+                width = Math.max(width, font.width(line.text()) + (line.value() == null ? 0 : VALUE_GAP + font.width(line.value())));
+            }
+            final int frame = block.framed() ? 2 * PAD : 0;
+            boxes.add(block.entry().box(block.entry().owner().equals(owner), width + frame,
+                    block.lines().size() * lineHeight - 1 + frame));
+        }
+        final List<WidgetLayout.Placement> placed = WidgetLayout.place(boxes, graphics.guiWidth(), graphics.guiHeight(), bossBars);
+        for (int i = 0; i < blocks.size(); i++) {
+            final Block block = blocks.get(i);
+            final WidgetLayout.Box box = boxes.get(i);
+            final int x = placed.get(i).x(), y = placed.get(i).y();
+            if (!block.framed()) {
+                int lineY = y;
+                for (final Line line : block.lines()) {
+                    graphics.text(font, line.text(), x, lineY, WHITE);
+                    lineY += lineHeight;
+                }
+                continue;
+            }
+            graphics.fill(x, y, x + box.width(), y + box.height(), FRAME);
+            graphics.fill(x, y, x + box.width(), y + PAD + lineHeight - 1, TITLE_BAND);
+            int lineY = y + PAD;
+            final List<Line> lines = block.lines();
+            graphics.centeredText(font, lines.getFirst().text(), x + box.width() / 2, lineY, WHITE);
+            for (final Line line : lines.subList(1, lines.size())) {
+                lineY += lineHeight;
+                if (line.highlight()) graphics.fill(x, lineY - 1, x + box.width(), lineY + lineHeight - 1, HIGHLIGHT_BAND);
+                graphics.text(font, line.text(), x + PAD, lineY, WHITE);
+                if (line.value() != null) {
+                    graphics.text(font, line.value(), x + box.width() - PAD - font.width(line.value()), lineY, VALUE);
+                }
+            }
         }
     }
 }

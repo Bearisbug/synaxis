@@ -48,6 +48,19 @@ public final class PanelScreen extends Screen {
      * @param play   the connection's mirror
      */
     public static void sync(Minecraft client, PlayClient play) {
+        final PlayClient.Entry wanted = play.panel();
+        final Screen open = client.gui.screen();
+        if (open instanceof PanelScreen screen) {
+            if (wanted == null) {
+                client.gui.setScreen(null);
+            } else if (wanted.set() != screen.entry.set() || !wanted.widgetId().equals(screen.entry.widgetId())
+                    || !wanted.owner().equals(screen.entry.owner())) {
+                screen.entry = wanted;
+                screen.rebuildWidgets();
+            }
+        } else if (open == null && wanted != null && client.level != null) {
+            client.gui.setScreen(new PanelScreen(play, wanted));
+        }
     }
 
     /**

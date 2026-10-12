@@ -41,6 +41,11 @@ public final class ActionKeys {
      * @return how many presses there were
      */
     public static int tick(PlayClient play) {
-        return 0;
+        int presses = 0;
+        while (KEY_1.consumeClick()) {
+            play.press(0);
+            presses++;
+        }
+        return presses;
     }
 }

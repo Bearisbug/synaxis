@@ -75,13 +75,19 @@ class WidgetEncoderTest {
         return new Widget.Panel("big", Component.text("t".repeat(titleLength)), rows, buttons);
     }
 
+    private static boolean fits(Widget widget) {
+        try {
+            return WidgetEncoder.encode("rush", widget).bytes() <= PlayProtocol.MAX_WIDGET_BYTES;
+        } catch (IllegalArgumentException _) {
+            return false;
+        }
+    }
+
     @Test
     void aWidgetOf4096BytesIsTakenAndOneByteMoreIsNot() {
         // The title stays under the 2,048 bytes of a component: the widget reaches 4,096 near 1,700 characters
         int titleLength = 1;
-        while (titleLength < 2_000
-                && WidgetEncoder.encode("rush", panel(titleLength + 1)).bytes() <= PlayProtocol.MAX_WIDGET_BYTES)
-            titleLength++;
+        while (titleLength < 2_000 && fits(panel(titleLength + 1))) titleLength++;
 
         assertEquals(PlayProtocol.MAX_WIDGET_BYTES, WidgetEncoder.encode("rush", panel(titleLength)).bytes());
         final int longer = titleLength + 1;

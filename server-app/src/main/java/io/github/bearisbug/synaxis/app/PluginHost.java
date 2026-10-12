@@ -275,7 +275,7 @@ final class PluginHost {
     }
 
     /**
-     * Registers a channel of the host's own reserved namespace, which only the core mode does.
+     * Registers a channel of the host's reserved namespace: handshake and scene layer always, the echo in core mode.
      *
      * @param name    the channel id, inside the reserved namespace
      * @param handler the inbound handler

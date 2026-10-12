@@ -61,7 +61,9 @@ final class SceneTestKit {
     }
 
     /**
-     * @return the messages of {@code synaxis:play} among what the collector caught, in order
+     * Reads back what a client got on {@code synaxis:play}.
+     *
+     * @return the messages of the channel among what the collector caught, in order
      */
     static List<PlayMessage> messages(Collector<PluginMessagePacket> packets) {
         return packets.collect().stream().filter(packet -> packet.channel().equals(SceneService.CHANNEL))

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-12T07:04:42.332Z" hostname="Mac.local" time="0.003">
+  <properties/>
+  <testcase name="theChannelIdIsTheOneTheHostRoutesOn()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.0"/>
+  <testcase name="aTruncatedMessageThrowsOutOfTheDecoder()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.001"/>
+  <testcase name="theThreeDownwardMessagesComeBackAsTheySent()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.0"/>
+  <testcase name="aMessageOfALaterVersionIsDroppedRatherThanBreakingTheConnection()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.0"/>
+  <testcase name="theTwoUpwardMessagesGoOutAsTheSharedCodecWritesThem()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.001"/>
+  <testcase name="aMessageBrokenInsideThrowsToo()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.0"/>
+  <system-out><![CDATA[[15:04:42] [Test worker/WARN]: Dropped an unknown play message: msg_id=0x83
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

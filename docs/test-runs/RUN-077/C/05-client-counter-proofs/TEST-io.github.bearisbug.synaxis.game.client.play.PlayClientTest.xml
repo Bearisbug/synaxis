@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" tests="19" skipped="0" failures="7" errors="0" timestamp="2026-10-12T07:04:40.843Z" hostname="Mac.local" time="0.025">
+  <properties/>
+  <testcase name="thePanelIsShownUntilItIsClosedLocallyAndItsNextSetShowsItAgain()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.006">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;null&gt; but was: &lt;Entry[owner=rush, widgetId=result, slot=6, order=0, first=1, set=1, receivedNanos=1000000000, content=Panel[title=literal{Round over}, rows=[], buttons=[Button[actionId=rush:back, label=literal{Back}]]]]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;null&gt; but was: &lt;Entry[owner=rush, widgetId=result, slot=6, order=0, first=1, set=1, receivedNanos=1000000000, content=Panel[title=literal{Round over}, rows=[], buttons=[Button[actionId=rush:back, label=literal{Back}]]]]&gt;
+	at org.junit.jupiter.api.Assertions.assertNull(Assertions.java:308)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.thePanelIsShownUntilItIsClosedLocallyAndItsNextSetShowsItAgain(PlayClientTest.java:298)
+</failure>
+  </testcase>
+  <testcase name="aRunningTimerCountsDownFromItsSetAndAStoppedOneDoesNot()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;7500&gt; but was: &lt;10000&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;7500&gt; but was: &lt;10000&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aRunningTimerCountsDownFromItsSetAndAStoppedOneDoesNot(PlayClientTest.java:142)
+</failure>
+  </testcase>
+  <testcase name="aPressSendsTheActionOfItsSlotWithTheSceneAndARisingNumberAndStartsTheLocalCooldown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;COOLING_DOWN&gt; but was: &lt;SENT&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;COOLING_DOWN&gt; but was: &lt;SENT&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aPressSendsTheActionOfItsSlotWithTheSceneAndARisingNumberAndStartsTheLocalCooldown(PlayClientTest.java:180)
+</failure>
+  </testcase>
+  <testcase name="aKeyWithoutAnActionOrAConnectionWithoutASceneSendsNothing()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aCooldownWithTheHostsReasonShowsTheReason()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.003"/>
+  <testcase name="removeAndClearOwnerTakeWidgetsOffAndAnUnknownKindReplacesWhatWasThere()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.004"/>
+  <testcase name="withTheLocalCooldownOffAPressGoesOutWhateverTheCooldown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="resetForgetsTheSceneTheWidgetsTheActionsAndTheReadiness()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="okRestartsTheCooldownFromTheServersAndCooldownFromWhatIsLeft()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;2000&gt; but was: &lt;1500&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;2000&gt; but was: &lt;1500&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.okRestartsTheCooldownFromTheServersAndCooldownFromWhatIsLeft(PlayClientTest.java:216)
+</failure>
+  </testcase>
+  <testcase name="rejectedClearsTheCooldownAndShowsTheReasonOrTheClientsTextWhenThereIsNone()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aClickedButtonThatIsRefusedKeepsThePanelWithTheReasonAndOkClosesIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="java.lang.AssertionError: expected a value, got null" type="java.lang.AssertionError">java.lang.AssertionError: expected a value, got null
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.present(PlayClientTest.java:428)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aClickedButtonThatIsRefusedKeepsThePanelWithTheReasonAndOkClosesIt(PlayClientTest.java:325)
+</failure>
+  </testcase>
+  <testcase name="rateLimitedAndUnknownActionClearTheCooldownSilentlyAndStaleSceneLeavesIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="theTickAnswersTheSceneOnceTheClientStandsInALoadedLevel()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aPanelWithoutASceneIsNotShown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="theFourKindsAreKeptWithTheirPropsAndAnUnknownKindIsDropped()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002"/>
+  <testcase name="widgetsComeBySlotThenTheSceneOwnersFirstThenByOrderThenByTheirFirstSet()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[top, first, b, a, o]&gt; but was: &lt;[top, o, first, b, a]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[top, first, b, a, o]&gt; but was: &lt;[top, o, first, b, a]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.widgetsComeBySlotThenTheSceneOwnersFirstThenByOrderThenByTheirFirstSet(PlayClientTest.java:119)
+</failure>
+  </testcase>
+  <testcase name="aSceneBringsItsTitleAndItsActionTableAndItsOwnerIsTheNamespaceOfItsId()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aTextShowsForItsTimeToLiveAndTheTickAfterThatDropsIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[kept]&gt; but was: &lt;[brief, kept]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[kept]&gt; but was: &lt;[brief, kept]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aTextShowsForItsTimeToLiveAndTheTickAfterThatDropsIt(PlayClientTest.java:162)
+</failure>
+  </testcase>
+  <testcase name="aNewSceneEndsEveryCooldownAndAResultOfTheSceneBeforeLeavesTheNewOneAlone()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <system-out><![CDATA[[15:04:40] [Test worker/WARN]: Dropped a widget of unknown kind 5: owner=rush widget_id=b
+[15:04:40] [Test worker/WARN]: The server knows no such action: action_seq=2 scene_seq=1
+[15:04:40] [Test worker/WARN]: Dropped a widget of unknown kind 3: owner=rush widget_id=bar
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

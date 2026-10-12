@@ -223,9 +223,10 @@ jobs:
             playable/logs/
           retention-days: 14
 
-  # The sample game rush of docs/DESIGN-PLAY.md §6.7.6 (REQ-PLAY-008), beside the regression job. So far it runs Q0,
-  # the first step of §26 S1: the real client joins PlayHudFixture of the server test sources, which sends a scene and
-  # three TEXTs on synaxis:play and on request moves the player to an instance of another dimension name.
+  # The sample game rush of docs/DESIGN-PLAY.md §6.7.6 (REQ-PLAY-008), beside the regression job. So far it runs Q0:
+  # the real client joins PlayHudFixture of the server test sources, which sends a scene and three TEXTs on
+  # synaxis:play and on request moves the player to an instance of another dimension name (Q0a, Q0b, the first step
+  # of §26 S1), then enters it into a second scene with an action key, a TIMER, a SCOREBOARD, a TEXT and a PANEL (Q0c).
   # RushClientGameTest writes synaxis-gametest/rush.txt and client-fabric/gametest-env/rush_judge.py judges both
   # launches' reports; every other job starts the same entry points without SYNAXIS_RUSH_SERVER and
   # SYNAXIS_PLAY_FIXTURE_SERVER, where it returns at once. Both launches on every trigger, pull requests included:

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" tests="19" skipped="0" failures="1" errors="0" timestamp="2026-10-12T07:08:29.852Z" hostname="Mac.local" time="0.021">
+  <properties/>
+  <testcase name="thePanelIsShownUntilItIsClosedLocallyAndItsNextSetShowsItAgain()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.003"/>
+  <testcase name="aRunningTimerCountsDownFromItsSetAndAStoppedOneDoesNot()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aPressSendsTheActionOfItsSlotWithTheSceneAndARisingNumberAndStartsTheLocalCooldown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aKeyWithoutAnActionOrAConnectionWithoutASceneSendsNothing()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aCooldownWithTheHostsReasonShowsTheReason()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.003"/>
+  <testcase name="removeAndClearOwnerTakeWidgetsOffAndAnUnknownKindReplacesWhatWasThere()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.003"/>
+  <testcase name="withTheLocalCooldownOffAPressGoesOutWhateverTheCooldown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="resetForgetsTheSceneTheWidgetsTheActionsAndTheReadiness()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;null&gt; but was: &lt;Sent[sceneSeq=1, screen=null, chunkUnderfoot=true, nanos=1000000000]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;null&gt; but was: &lt;Sent[sceneSeq=1, screen=null, chunkUnderfoot=true, nanos=1000000000]&gt;
+	at org.junit.jupiter.api.Assertions.assertNull(Assertions.java:308)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.resetForgetsTheSceneTheWidgetsTheActionsAndTheReadiness(PlayClientTest.java:368)
+</failure>
+  </testcase>
+  <testcase name="okRestartsTheCooldownFromTheServersAndCooldownFromWhatIsLeft()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="rejectedClearsTheCooldownAndShowsTheReasonOrTheClientsTextWhenThereIsNone()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aClickedButtonThatIsRefusedKeepsThePanelWithTheReasonAndOkClosesIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="rateLimitedAndUnknownActionClearTheCooldownSilentlyAndStaleSceneLeavesIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="theTickAnswersTheSceneOnceTheClientStandsInALoadedLevel()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aPanelWithoutASceneIsNotShown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="theFourKindsAreKeptWithTheirPropsAndAnUnknownKindIsDropped()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="widgetsComeBySlotThenTheSceneOwnersFirstThenByOrderThenByTheirFirstSet()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aSceneBringsItsTitleAndItsActionTableAndItsOwnerIsTheNamespaceOfItsId()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aTextShowsForItsTimeToLiveAndTheTickAfterThatDropsIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aNewSceneEndsEveryCooldownAndAResultOfTheSceneBeforeLeavesTheNewOneAlone()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <system-out><![CDATA[[15:08:29] [Test worker/WARN]: Dropped a widget of unknown kind 5: owner=rush widget_id=b
+[15:08:29] [Test worker/WARN]: The server knows no such action: action_seq=2 scene_seq=1
+[15:08:29] [Test worker/WARN]: Dropped a widget of unknown kind 3: owner=rush widget_id=bar
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" tests="4" skipped="0" failures="4" errors="0" timestamp="2026-10-12T07:04:22.665Z" hostname="runnervmmprz5" time="0.001">
+  <properties/>
+  <testcase name="topCenterStartsBelowTheBossBarsVanillaDraws()" classname="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: not yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: not yet
+	at io.github.bearisbug.synaxis.game.client.play.WidgetLayout.topCenterTop(WidgetLayout.java:85)
+	at io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest.topCenterStartsBelowTheBossBarsVanillaDraws(WidgetLayoutTest.java:71)
+</failure>
+  </testcase>
+  <testcase name="bottomEndsAboveTheActionBarAndIsCentred()" classname="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: not yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: not yet
+	at io.github.bearisbug.synaxis.game.client.play.WidgetLayout.place(WidgetLayout.java:73)
+	at io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest.bottomEndsAboveTheActionBarAndIsCentred(WidgetLayoutTest.java:61)
+</failure>
+  </testcase>
+  <testcase name="eachSlotStacksFromItsOwnEdge()" classname="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: not yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: not yet
+	at io.github.bearisbug.synaxis.game.client.play.WidgetLayout.place(WidgetLayout.java:73)
+	at io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest.eachSlotStacksFromItsOwnEdge(WidgetLayoutTest.java:44)
+</failure>
+  </testcase>
+  <testcase name="withinASlotTheSceneOwnersComeFirstThenOrderThenTheFirstSet()" classname="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: not yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: not yet
+	at io.github.bearisbug.synaxis.game.client.play.WidgetLayout.place(WidgetLayout.java:73)
+	at io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest.withinASlotTheSceneOwnersComeFirstThenOrderThenTheFirstSet(WidgetLayoutTest.java:27)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

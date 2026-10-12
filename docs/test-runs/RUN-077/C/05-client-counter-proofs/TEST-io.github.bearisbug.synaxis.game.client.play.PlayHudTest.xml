@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" tests="5" skipped="0" failures="1" errors="0" timestamp="2026-10-12T07:04:42.328Z" hostname="Mac.local" time="0.003">
+  <properties/>
+  <testcase name="theTimeLeftIsMinutesAndSecondsRoundedUp()" classname="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" time="0.001"/>
+  <testcase name="aTimerShowsItsLabelAndTheTimeLeftAndAScoreboardItsTitleAndRowsButAPanelIsNotOnTheHud()" classname="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[Time left 0:44]&gt; but was: &lt;[Time left 0:45]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[Time left 0:44]&gt; but was: &lt;[Time left 0:45]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayHudTest.aTimerShowsItsLabelAndTheTimeLeftAndAScoreboardItsTitleAndRowsButAPanelIsNotOnTheHud(PlayHudTest.java:93)
+</failure>
+  </testcase>
+  <testcase name="removeAndClearOwnerTakeTextsOffAndResetForgetsTheScene()" classname="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" time="0.001"/>
+  <testcase name="aConnectionThatEnteredNoSceneDrawsNothing()" classname="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" time="0.0"/>
+  <testcase name="afterASceneTheTextsAreDrawnBySlotAndOrderAndAnEmptyOneAsAnEmptyLine()" classname="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,23 @@
+ActionKeysTest tests 3 failures 1 errors 0
+   aPressSendsTheSceneActionAndASecondInsideTheCooldownIsHeldBack() | ActionKeysTest.java:72 | org.opentest4j.AssertionFailedError: expected: <[C2SAction[sceneSeq=1, actionSeq=1, actionId=rush:queue, target=None[]]]> but was: <[C2SAction[sceneSeq=1, actionSeq=1, actionId=rush:queue, target=None[]], C2SAction[sceneSeq=1, actionSeq=2, actionId=rush:queue, target=None[]]]>
+PlayClientTest tests 19 failures 7 errors 0
+   thePanelIsShownUntilItIsClosedLocallyAndItsNextSetShowsItAgain() | PlayClientTest.java:298 | org.opentest4j.AssertionFailedError: expected: <null> but was: <Entry[owner=rush, widgetId=result, slot=6, order=0, first=1, set=1, receivedNanos=1000000000, content=Panel[title=literal{Round over}, rows=[], buttons=[Button[actionId=rush:back, label=literal{Back}]]]]>
+   aRunningTimerCountsDownFromItsSetAndAStoppedOneDoesNot() | PlayClientTest.java:142 | org.opentest4j.AssertionFailedError: expected: <7500> but was: <10000>
+   aPressSendsTheActionOfItsSlotWithTheSceneAndARisingNumberAndStartsTheLocalCooldown() | PlayClientTest.java:180 | org.opentest4j.AssertionFailedError: expected: <COOLING_DOWN> but was: <SENT>
+   okRestartsTheCooldownFromTheServersAndCooldownFromWhatIsLeft() | PlayClientTest.java:216 | org.opentest4j.AssertionFailedError: expected: <2000> but was: <1500>
+   aClickedButtonThatIsRefusedKeepsThePanelWithTheReasonAndOkClosesIt() | PlayClientTest.java:428 | java.lang.AssertionError: expected a value, got null
+   widgetsComeBySlotThenTheSceneOwnersFirstThenByOrderThenByTheirFirstSet() | PlayClientTest.java:119 | org.opentest4j.AssertionFailedError: expected: <[top, first, b, a, o]> but was: <[top, o, first, b, a]>
+   aTextShowsForItsTimeToLiveAndTheTickAfterThatDropsIt() | PlayClientTest.java:162 | org.opentest4j.AssertionFailedError: expected: <[kept]> but was: <[brief, kept]>
+PlayComponentDecodeTest tests 6 failures 0 errors 0
+PlayFrozenVectorTest tests 27 failures 0 errors 0
+PlayHudTest tests 5 failures 1 errors 0
+   aTimerShowsItsLabelAndTheTimeLeftAndAScoreboardItsTitleAndRowsButAPanelIsNotOnTheHud() | PlayHudTest.java:93 | org.opentest4j.AssertionFailedError: expected: <[Time left 0:44]> but was: <[Time left 0:45]>
+PlayPayloadTest tests 6 failures 0 errors 0
+SceneReadyProbeTest tests 5 failures 3 errors 0
+   theWorldLoadingScreenHoldsItBackWhileAnyOtherScreenDoesNot() | SceneReadyProbeTest.java:43 | org.opentest4j.AssertionFailedError: expected: <false> but was: <true>
+   aSceneIsAnsweredOnceAtTheFirstTickAllThreeHold() | SceneReadyProbeTest.java:32 | org.opentest4j.AssertionFailedError: expected: <false> but was: <true>
+   aSceneThatReplacesOneNotYetAnsweredIsTheOnlyOneAnswered() | SceneReadyProbeTest.java:65 | org.opentest4j.AssertionFailedError: expected: <[C2SSceneReady[sceneSeq=2], C2SSceneReady[sceneSeq=3]]> but was: <[C2SSceneReady[sceneSeq=1], C2SSceneReady[sceneSeq=2], C2SSceneReady[sceneSeq=3]]>
+WidgetLayoutTest tests 4 failures 3 errors 0
+   topCenterStartsBelowTheBossBarsVanillaDraws() | WidgetLayoutTest.java:81 | org.opentest4j.AssertionFailedError: expected: <Placement[x=173, y=38]> but was: <Placement[x=173, y=2]>
+   bottomEndsAboveTheActionBarAndIsCentred() | WidgetLayoutTest.java:64 | org.opentest4j.AssertionFailedError: expected: <Placement[x=153, y=146]> but was: <Placement[x=153, y=216]>
+   withinASlotTheSceneOwnersComeFirstThenOrderThenTheFirstSet() | WidgetLayoutTest.java:30 | org.opentest4j.AssertionFailedError: expected: <[35, 24, 13, 2]> but was: <[2, 35, 24, 13]>

@@ -1,0 +1,8 @@
+play fixture: synaxis_test:poke action_seq=1 scene_seq=2 -> OK cooldown_ms=2000
+play fixture: synaxis_test:poke action_seq=2 scene_seq=2 -> COOLDOWN cooldown_ms=1701
+play fixture: synaxis_test:refuse action_seq=3 scene_seq=2 -> REJECTED cooldown_ms=0
+play fixture: synaxis_test:close action_seq=4 scene_seq=2 -> OK cooldown_ms=0
+play fixture: synaxis_test:poke action_seq=1 scene_seq=2 -> OK cooldown_ms=2000
+play fixture: synaxis_test:poke action_seq=2 scene_seq=2 -> COOLDOWN cooldown_ms=1752
+play fixture: synaxis_test:refuse action_seq=3 scene_seq=2 -> REJECTED cooldown_ms=0
+play fixture: synaxis_test:close action_seq=4 scene_seq=2 -> OK cooldown_ms=0

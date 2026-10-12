@@ -1,0 +1,85 @@
+RUN-077 group C: the client PlayModule (branch prod/r077-C, base prod/integrate-077 3cd20ff777 with group V's
+prod/r077-V 93b70462a0 merged by fast-forward). Commits: 271acc617f DESIGN-PLAY v0.8 (contract), 507763f7ee the
+red commit (the new client classes as stubs that return nothing or throw UnsupportedOperationException, all the
+new tests, Q0c in RushClientGameTest, its part of PlayHudFixture, the judge's Q0c), c8a6c7ed67 the implementation.
+Local Gradle through ~/.claude/r077/gradle.zsh (JDK 25, --max-workers=2 --no-daemon, the heavy lock taken for
+each run only), six runs, none with a database or a -Dsynaxis.* switch. client-fabric runs used
+-Dmaven.repo.local=/tmp/run077/fix-C/m2 for :protocol (deleted afterwards). CI ran on draft PR #23 (base
+prod/integrate-077), two pushes.
+
+Run 1: :protocol:publishToMavenLocal -Dmaven.repo.local=/tmp/run077/fix-C/m2 (no tests).
+
+Run 2: client-fabric compileJava compileGametestJava test on the implementation before it was committed: failed
+  at compileJava, SceneReadyProbe.java:62 wrote @Nullable PlayClient.Scene where a qualified type takes
+  PlayClient.@Nullable Scene. Fixed; no test ran.
+
+Run 3 -> 03-fixture/
+  :server-app PlayComponentVectorTest 4 tests 0 failed with the Q0c additions to PlayHudFixture (its scene()
+  and hud() are unchanged, so the frozen components still match); :server-app:testNamingCheck and
+  :server-app:forbiddenImportsCheck passed; the test sources compiled under Error Prone.
+
+Run 4 -> 04-client-local/
+  client-fabric compileJava compileGametestJava test --tests 'io.github.bearisbug.synaxis.game.client.play.*'
+  on the implementation: 75 tests 0 failed in 8 classes (ActionKeysTest 3, PlayClientTest 19,
+  PlayComponentDecodeTest 6, PlayFrozenVectorTest 27, PlayHudTest 5, PlayPayloadTest 6, SceneReadyProbeTest 5,
+  WidgetLayoutTest 4).
+
+Run 5 -> 05-client-counter-proofs/
+  Ten counter-proofs at once (counter-proofs.diff), each line guarded by Boolean.getBoolean("proof.never"):
+  (1) readiness ignores LevelLoadingScreen, (2) ok does not restart the cooldown, (3) BOTTOM does not make room
+  for the action bar, (4) TOP_CENTER does not make room for boss bars, (5) the scene owner's widgets do not come
+  first, (6) the local cooldown holds nothing back, (7) Esc does not close the panel locally, (8) a running
+  TIMER does not count down, (9) a TEXT never runs out, (10) a refused button leaves no reason. 75 tests, 15
+  failed, each change on its own tests (summary.txt). Restored with git checkout.
+
+Run 6 -> 06-client-counter-proofs-2/
+  Three more (counter-proofs.diff): (11) action key 1 defaults to G, (12) PlayPayload drops a malformed message
+  instead of throwing, (13) a new connection keeps the probe's last answer. 75 tests, 4 failed (summary.txt).
+  Restored with git checkout.
+
+Judge -> 08-judge-red/
+  Not Gradle: the new test_rush_judge.py run beside the judge of 271acc617f (before Q0c): 10 tests, 13
+  failures with subtests (summary.txt), since every report now has a Q0c line the old judge calls "not a step
+  line". The new judge: 10 tests OK; with -p 'test_*.py' 22 tests OK. __pycache__ deleted.
+
+CI round 1 (head 507763f7ee, the stubs) -> 07-ci-red/
+  client-mod run 38215632527: failure, 274 tests 25 failed, all of them this group's new tests (summary.txt);
+    group V's PlayComponentDecodeTest 6, PlayFrozenVectorTest 27 and PlayHudTest's three V tests passed.
+  client-gametest run 38215632670: job rush failure (judge.txt: Q0c FAIL in both reports, no PanelScreen, the
+    TIMER, SCOREBOARD and BOTTOM TEXT 0 px, the fixture got no C2S_SCENE_READY; Q0a and Q0b PASS), job gametest
+    success ("client regression: all checks passed", sessionserver join 5 of 5 expected), job p11-smoke
+    success ("P10: all checks passed").
+  Concurrency run 38215632643: success. CI run 38215632709: success (Check, both 4 tick thread jobs).
+
+CI round 2 (head c8a6c7ed67, the implementation) -> 09-ci-green/
+  client-mod run 38216321030: success, 274 tests 0 failed in 25 classes; verifyModJar "minecraft=26.2, 108
+    entries, ships META-INF/jars/protocol-dev.jar".
+  client-gametest run 38216321013: job rush success in 4 min 45 s (judge.txt: rush judge: PASS (2 reports, 0
+    problems)); dev launch 111 s, production jar launch 27 s; job gametest success ("client regression: all
+    checks passed", sessionserver join 5 of 5 expected), job p11-smoke success ("P10: all checks passed").
+  Concurrency run 38216320996: success. CI run 38216320881: success (Check, both 4 tick thread jobs).
+  Screenshots: artifact client-gametest-rush of run 38216321013 (14 days), screenshots/0001_play-panel.png and
+  0002_play-widgets.png of both launches, 854x480, not committed.
+
+Review rework. Commits: eb06d2431f DESIGN-PLAY v0.8 (PlayTestHook's recording leaves out what the connection
+held when it began and samples once a tick; Q0c checks it; the action bar top is computed), aae05556ce the red
+commit (two PlayClientTest tests, Q0c's two checks), 3bd8f94762 the hook's fix, 4149e4462e SceneReadyProbe's
+Javadoc and rush_judge.py's docstring. Four more local Gradle runs with -Dmaven.repo.local=/tmp/run077/rework-C/m2
+(deleted afterwards); CI on draft PR #24 (base prod/integrate-077), two pushes.
+
+Run 7: :protocol:publishToMavenLocal -Dmaven.repo.local=/tmp/run077/rework-C/m2 (no tests).
+
+Run 8: client-fabric compileJava compileGametestJava test: failed at compileGametestJava, the new local variable
+  of Q0c clashed with the existing "again" in RushClientGameTest.q0c(); renamed "late". No test ran.
+
+Run 9 -> 10-client-local/
+  client-fabric compileJava compileGametestJava test --tests 'io.github.bearisbug.synaxis.game.client.play.*'
+  on the tree of 4149e4462e: 77 tests 0 failed (PlayClientTest 21, the rest as in run 4).
+
+Run 10 -> 11-client-counter-proofs-3/
+  Two counter-proofs at once (counter-proofs.diff): (14) a cooldown for the scene before restarts the new
+  table's cooldown, (15) an ok closes a panel set again after the click. 77 tests, 2 failed, each on its new
+  test (summary.txt). Restored with git checkout HEAD --.
+
+CI round 3 (head aae05556ce, new checks with the old hook) -> 12-ci-red-rework/
+CI round 4 (head 4149e4462e, the fixed hook) -> 13-ci-green-rework/

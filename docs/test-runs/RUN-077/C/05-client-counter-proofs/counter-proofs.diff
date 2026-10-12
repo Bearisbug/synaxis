@@ -1,0 +1,95 @@
+diff --git a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
+index a96dd29f32..e109ab731c 100644
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
+@@ -347,7 +347,7 @@ public final class PlayClient {
+         final boolean current = scene != null && scene.seq() == sent.sceneSeq();
+         switch (code) {
+             case OK -> {
+-                if (current) cool(sent.slot(), now, result.cooldownMs());
++                if (current && Boolean.getBoolean("proof.never")) cool(sent.slot(), now, result.cooldownMs());
+             }
+             case COOLDOWN -> {
+                 if (current) cool(sent.slot(), now, result.cooldownMs());
+@@ -385,6 +385,7 @@ public final class PlayClient {
+     }
+ 
+     private void showOnPanel(Pending sent, Component text) {
++        if (!Boolean.getBoolean("proof.never")) return;
+         reasonPanel = sent.panel();
+         reasonSet = sent.panelSet();
+         reason = text;
+@@ -422,7 +423,7 @@ public final class PlayClient {
+         if (current == null || action == null) return Press.NO_ACTION;
+         final long time = clock.getAsLong();
+         final long left = cooling[slot] ? coolUntil[slot] - time : 0;
+-        if (localCooldown && left > 0) {
++        if (localCooldown && left > 0 && Boolean.getBoolean("proof.never")) {
+             notices.accept(cooldownText(Math.ceilDiv(left, NANOS_PER_MS)));
+             return Press.COOLING_DOWN;
+         }
+@@ -457,7 +458,7 @@ public final class PlayClient {
+      * @param panel the panel's widget
+      */
+     public void dismiss(Entry panel) {
+-        dismissed.put(new Address(panel.owner(), panel.widgetId()), panel.set());
++        if (Boolean.getBoolean("proof.never")) dismissed.put(new Address(panel.owner(), panel.widgetId()), panel.set());
+     }
+ 
+     /**
+@@ -472,7 +473,7 @@ public final class PlayClient {
+     }
+ 
+     private static boolean expired(Entry entry, long now) {
+-        return entry.content() instanceof Text text && text.ttlMs() > 0
++        return Boolean.getBoolean("proof.never") && entry.content() instanceof Text text && text.ttlMs() > 0
+                 && now - entry.receivedNanos() >= text.ttlMs() * NANOS_PER_MS;
+     }
+ 
+@@ -543,7 +544,7 @@ public final class PlayClient {
+      */
+     public long remainingMs(Entry timer) {
+         if (!(timer.content() instanceof Timer content)) throw new IllegalArgumentException("not a TIMER: " + timer);
+-        if (!content.running()) return content.remainingMs();
++        if (!content.running() || !Boolean.getBoolean("proof.never")) return content.remainingMs();
+         return Math.max(0, content.remainingMs() - (clock.getAsLong() - timer.receivedNanos()) / NANOS_PER_MS);
+     }
+ 
+diff --git a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/SceneReadyProbe.java b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/SceneReadyProbe.java
+index 47718b6f73..50ff9a3198 100644
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/SceneReadyProbe.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/SceneReadyProbe.java
+@@ -74,7 +74,7 @@ public final class SceneReadyProbe {
+      * @return whether the client stands in a loaded level
+      */
+     public static boolean ready(View view) {
+-        return view.inWorld() && (view.screen() == null || !LevelLoadingScreen.class.isAssignableFrom(view.screen()))
++        return view.inWorld() && (view.screen() == null || !Boolean.getBoolean("proof.never") || !LevelLoadingScreen.class.isAssignableFrom(view.screen()))
+                 && view.chunkUnderfoot();
+     }
+ 
+diff --git a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/WidgetLayout.java b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/WidgetLayout.java
+index 1874088ffa..79d2423754 100644
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/WidgetLayout.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/WidgetLayout.java
+@@ -54,7 +54,7 @@ public final class WidgetLayout {
+ 
+     /** The order of the widgets: by slot, the scene owner's first, by {@code order}, by the first SET. */
+     public static final Comparator<Box> ORDER = Comparator.comparingInt(Box::slot)
+-            .thenComparing(Box::sceneOwner, Comparator.reverseOrder())
++            .thenComparing(box -> Boolean.getBoolean("proof.never") && box.sceneOwner(), Comparator.reverseOrder())
+             .thenComparingInt(Box::order)
+             .thenComparingLong(Box::first);
+ 
+@@ -82,9 +82,9 @@ public final class WidgetLayout {
+             int stack = -GAP;
+             while (to < sorted.length && boxes.get(sorted[to]).slot() == slot) stack += boxes.get(sorted[to++]).height() + GAP;
+             int y = switch (slot) {
+-                case Widget.TOP_CENTER -> topCenterTop(bossBars, guiHeight);
++                case Widget.TOP_CENTER -> Boolean.getBoolean("proof.never") ? topCenterTop(bossBars, guiHeight) : MARGIN;
+                 case Widget.LEFT, Widget.RIGHT, Widget.CENTER -> (guiHeight - stack) / 2;
+-                case Widget.BOTTOM -> guiHeight - ACTION_BAR_TOP - GAP - stack;
++                case Widget.BOTTOM -> guiHeight - (Boolean.getBoolean("proof.never") ? ACTION_BAR_TOP : MARGIN) - GAP - stack;
+                 default -> MARGIN;
+             };
+             for (int i = from; i < to; i++) {

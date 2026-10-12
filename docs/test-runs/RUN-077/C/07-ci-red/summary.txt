@@ -1,0 +1,31 @@
+ActionKeysTest tests 3 failures 1 errors 0
+   aPressSendsTheSceneActionAndASecondInsideTheCooldownIsHeldBack() | ActionKeysTest.java:66 | org.opentest4j.AssertionFailedError: expected: <1> but was: <0>
+PlayClientTest tests 19 failures 14 errors 0
+   thePanelIsShownUntilItIsClosedLocallyAndItsNextSetShowsItAgain() | PlayClientTest.java:428 | java.lang.AssertionError: expected a value, got null
+   aRunningTimerCountsDownFromItsSetAndAStoppedOneDoesNot() | PlayClientTest.java:384 | java.lang.AssertionError: no widget run
+   aPressSendsTheActionOfItsSlotWithTheSceneAndARisingNumberAndStartsTheLocalCooldown() | PlayClientTest.java:174 | org.opentest4j.AssertionFailedError: expected: <SENT> but was: <NO_ACTION>
+   aCooldownWithTheHostsReasonShowsTheReason() | PlayClientTest.java:237 | org.opentest4j.AssertionFailedError: expected: <[synaxis:action-cooldown [2]]> but was: <[]>
+   withTheLocalCooldownOffAPressGoesOutWhateverTheCooldown() | PlayClientTest.java:205 | org.opentest4j.AssertionFailedError: expected: <SENT> but was: <NO_ACTION>
+   resetForgetsTheSceneTheWidgetsTheActionsAndTheReadiness() | PlayClientTest.java:375 | java.util.NoSuchElementException
+   okRestartsTheCooldownFromTheServersAndCooldownFromWhatIsLeft() | PlayClientTest.java:216 | org.opentest4j.AssertionFailedError: expected: <2000> but was: <0>
+   rejectedClearsTheCooldownAndShowsTheReasonOrTheClientsTextWhenThereIsNone() | PlayClientTest.java:254 | org.opentest4j.AssertionFailedError: expected: <[rush.hint.failed [], synaxis.action.rejected [], synaxis.action.rejected []]> but was: <[]>
+   aClickedButtonThatIsRefusedKeepsThePanelWithTheReasonAndOkClosesIt() | PlayClientTest.java:428 | java.lang.AssertionError: expected a value, got null
+   rateLimitedAndUnknownActionClearTheCooldownSilentlyAndStaleSceneLeavesIt() | PlayClientTest.java:270 | org.opentest4j.AssertionFailedError: expected: <2000> but was: <0>
+   theTickAnswersTheSceneOnceTheClientStandsInALoadedLevel() | PlayClientTest.java:352 | org.opentest4j.AssertionFailedError: expected: <[C2SSceneReady[sceneSeq=1]]> but was: <[]>
+   theFourKindsAreKeptWithTheirPropsAndAnUnknownKindIsDropped() | PlayClientTest.java:92 | org.opentest4j.AssertionFailedError: expected: <[timer, score, hint, result]> but was: <[hint]>
+   aTextShowsForItsTimeToLiveAndTheTickAfterThatDropsIt() | PlayClientTest.java:162 | org.opentest4j.AssertionFailedError: expected: <[kept]> but was: <[brief, kept]>
+   aNewSceneEndsEveryCooldownAndAResultOfTheSceneBeforeLeavesTheNewOneAlone() | PlayClientTest.java:283 | org.opentest4j.AssertionFailedError: expected: <SENT> but was: <NO_ACTION>
+PlayHudTest tests 5 failures 2 errors 0
+   theTimeLeftIsMinutesAndSecondsRoundedUp() | PlayHudTest.java:101 | java.lang.UnsupportedOperationException: not yet
+   aTimerShowsItsLabelAndTheTimeLeftAndAScoreboardItsTitleAndRowsButAPanelIsNotOnTheHud() | PlayHudTest.java:92 | org.opentest4j.AssertionFailedError: expected: <[timer, score]> but was: <[]>
+PlayPayloadTest tests 6 failures 0 errors 0
+SceneReadyProbeTest tests 5 failures 4 errors 0
+   theWorldLoadingScreenHoldsItBackWhileAnyOtherScreenDoesNot() | SceneReadyProbeTest.java:44 | org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+   aSceneIsAnsweredOnceAtTheFirstTickAllThreeHold() | SceneReadyProbeTest.java:34 | org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+   resetLetsTheNextConnectionsFirstSceneBeAnswered() | SceneReadyProbeTest.java:74 | org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+   aSceneThatReplacesOneNotYetAnsweredIsTheOnlyOneAnswered() | SceneReadyProbeTest.java:65 | org.opentest4j.AssertionFailedError: expected: <[C2SSceneReady[sceneSeq=2], C2SSceneReady[sceneSeq=3]]> but was: <[]>
+WidgetLayoutTest tests 4 failures 4 errors 0
+   topCenterStartsBelowTheBossBarsVanillaDraws() | WidgetLayoutTest.java:71 | java.lang.UnsupportedOperationException: not yet
+   bottomEndsAboveTheActionBarAndIsCentred() | WidgetLayoutTest.java:61 | java.lang.UnsupportedOperationException: not yet
+   eachSlotStacksFromItsOwnEdge() | WidgetLayoutTest.java:44 | java.lang.UnsupportedOperationException: not yet
+   withinASlotTheSceneOwnersComeFirstThenOrderThenTheFirstSet() | WidgetLayoutTest.java:27 | java.lang.UnsupportedOperationException: not yet

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-12T07:03:50.293Z" hostname="Mac.local" time="0.002">
+  <properties/>
+  <testcase name="topCenterStartsBelowTheBossBarsVanillaDraws()" classname="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" time="0.001"/>
+  <testcase name="bottomEndsAboveTheActionBarAndIsCentred()" classname="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" time="0.0"/>
+  <testcase name="eachSlotStacksFromItsOwnEdge()" classname="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" time="0.0"/>
+  <testcase name="withinASlotTheSceneOwnersComeFirstThenOrderThenTheFirstSet()" classname="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

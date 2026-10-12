@@ -1,0 +1,12 @@
+ActionKeysTest tests 3 failures 1 errors 0
+   actionKeyOneIsOnHInTheCategoryOfThePlayLayer() | ActionKeysTest.java:44 | org.opentest4j.AssertionFailedError: expected: <key.keyboard.h> but was: <key.keyboard.g>
+PlayClientTest tests 19 failures 1 errors 0
+   resetForgetsTheSceneTheWidgetsTheActionsAndTheReadiness() | PlayClientTest.java:368 | org.opentest4j.AssertionFailedError: expected: <null> but was: <Sent[sceneSeq=1, screen=null, chunkUnderfoot=true, nanos=1000000000]>
+PlayComponentDecodeTest tests 6 failures 0 errors 0
+PlayFrozenVectorTest tests 27 failures 0 errors 0
+PlayHudTest tests 5 failures 0 errors 0
+PlayPayloadTest tests 6 failures 2 errors 0
+   aTruncatedMessageThrowsOutOfTheDecoder() | PlayPayloadTest.java:73 | org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.game.protocol.MalformedMessageException to be thrown, but nothing was thrown.
+   aMessageBrokenInsideThrowsToo() | PlayPayloadTest.java:88 | org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.game.protocol.MalformedMessageException to be thrown, but nothing was thrown.
+SceneReadyProbeTest tests 5 failures 0 errors 0
+WidgetLayoutTest tests 4 failures 0 errors 0

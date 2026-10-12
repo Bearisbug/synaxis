@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-12T07:04:40.868Z" hostname="Mac.local" time="1.429">
+  <properties/>
+  <testcase name="bytesLeftAfterTheComponentAreRefused()" classname="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" time="0.002"/>
+  <testcase name="theTitleIsAKeyWithoutArguments()" classname="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" time="0.0"/>
+  <testcase name="theHintKeepsItsKeyItsArgumentItsColourAndItsFallback()" classname="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" time="0.001"/>
+  <testcase name="anEmptyComponentIsEmptyTextAndNeverReachesTheCodec()" classname="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" time="0.001"/>
+  <testcase name="bytesTheCodecCannotReadAreRefused()" classname="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" time="1.425"/>
+  <testcase name="aKeyTheLanguageFilesLackKeepsItsFallbackAndItsColour()" classname="io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

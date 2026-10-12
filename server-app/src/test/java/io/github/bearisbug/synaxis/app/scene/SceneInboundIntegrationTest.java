@@ -219,13 +219,17 @@ class SceneInboundIntegrationTest {
         rush.enter(client.player(), LOBBY);
         env.tick();
         final Collector<PluginMessagePacket> packets = client.track();
-        final byte[][] eleven = new byte[11][];
-        for (int i = 0; i < 11; i++) eleven[i] = action(1, i, "rush:queue");
+        // Eleven of the scene before, then eleven of the current one, all in the window [100 s, 101 s)
+        final byte[][] payloads = new byte[22][];
+        for (int i = 0; i < 11; i++) payloads[i] = action(1, i, "rush:queue");
+        for (int i = 11; i < 22; i++) payloads[i] = action(2, i, "rush:nope");
 
-        send(env, client, eleven);
+        send(env, client, payloads);
 
-        assertEquals(times(11, ActionResultCode.STALE_SCENE), codes(results(packets)),
-                "a stale action took a place in the window of the rate limit");
+        final List<Integer> expected = new ArrayList<>(times(11, ActionResultCode.STALE_SCENE));
+        expected.addAll(times(10, ActionResultCode.UNKNOWN_ACTION));
+        expected.add(ActionResultCode.RATE_LIMITED.wireId());
+        assertEquals(expected, codes(results(packets)), "a stale action took a place in the window of the rate limit");
         assertEquals(0, queued.get());
     }
 

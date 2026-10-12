@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.app.scene;
 
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.PlayerTickEvent;
 import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
@@ -51,8 +52,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The scene layer of the host as the plugins drive it ({@code docs/DESIGN-PLAY.md} {@code API-PLAY-005},
  * §6.4.3, the host integration row of §19): one exit at the end of each player's tick, the scene before the
  * HUD, the whole queue held while a move is under way, a scene change clearing the scene owner's widgets and
- * keeping the overlays', a scene left keeping its number, the sizes refused before anything changes, and the
- * actions of a plugin taken back when it is torn down. It also times the exit (§15), printed only.
+ * keeping the overlays', a scene left keeping its number, the sizes refused before anything changes, the
+ * actions of a plugin taken back when it is torn down, and the scene layer of a connection dropped when it
+ * goes. It also times the exit (§15), printed only.
  */
 @EnvTest
 class SceneServiceIntegrationTest {
@@ -144,7 +146,7 @@ class SceneServiceIntegrationTest {
         env.tick();
         assertEquals(List.of(), SceneTestKit.messages(held), "sent while the move was under way");
 
-        // A move completes on the player's thread, not on the one that queued the scene
+        // A move completes on another thread than the one that queued the scene
         Thread.ofVirtual().start(() -> move.complete(true)).join();
         final Collector<PluginMessagePacket> released = client.track();
         env.tick();
@@ -312,6 +314,25 @@ class SceneServiceIntegrationTest {
                 new S2CActionResult(2, ActionResultCode.UNKNOWN_ACTION, EncodedComponent.NONE, 0),
                 new S2CHud(List.of(new S2CHud.ClearOwner("x")))), SceneTestKit.messages(packets));
         assertEquals(List.of(), ledger.of("play_scene_ready"), "a ready of the scene left was recorded");
+    }
+
+    @Test
+    void aConnectionThatGoesTakesItsSceneLayerAlongAndCannotEnterAnother(Env env) {
+        final SceneService scenes = SceneTestKit.service(env, "rush", ledger, System::nanoTime);
+        final PluginPlay rush = scenes.forPlugin("rush");
+        final Player player = join(env, env.createFlatInstance()).player();
+        rush.enter(player, LOBBY);
+        env.tick();
+        assertEquals(Optional.of("rush:lobby"), rush.currentScene(player));
+
+        // A test connection only goes offline; the removal on the player's next tick, which fires
+        // PlayerDisconnectEvent, is what a real connection's disconnect adds in the play state
+        player.getPlayerConnection().disconnect();
+        assertThrows(IllegalStateException.class, () -> rush.enter(player, ROUND), "a scene layer made for a connection offline");
+        player.scheduleNextTick(Entity::remove);
+        env.tick();
+
+        assertEquals(Optional.empty(), rush.currentScene(player), "the scene layer of a connection gone was kept");
     }
 
     @Test

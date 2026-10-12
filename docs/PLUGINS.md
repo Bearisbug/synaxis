@@ -82,6 +82,17 @@ java -Dsynaxis.app.auth=offline \
 
 只想启用一部分插件时用 `-Dsynaxis.app.plugins=hello,rts`（留空即全部）。注意去掉 `rts` 就没有玩法了——它是唯一创建对局、唯一注册准入回调的插件，没有它没人知道玩家该进哪个对局。默认配置下进程不会因此退出，而是落进**核心模式**：宿主自建一张平坦世界、任何连接一律放行、只有 `synaxis:main` 这一条 echo 通道，端口照常 bind（日志第一眼就能认出来，见 `docs/ENGINE.md` 3.4）。要让它像以前那样拒启（两行 ERROR + 非零码退出 + 端口不 bind），得同时给 `-Dsynaxis.app.core-mode=off`。插件 id 写错（比如把 `rts` 写成 `rst`）同样不会退出，只会多一行点名没匹配上的 id 的 WARN 然后进核心模式——起服后没人能进对局时先看这行。
 
+classpath 上有不止一个注册准入的玩法插件时，白名单必须给：一个进程只有一个准入槽，两个插件都启用时，后注册准入的那个在 `onEnable` 里抛异常（`docs/DESIGN-PLAY.md` §6.2）。服务端的 `lib/` 里恒有 `rts`，所以带样板玩法 `rush` 起服（`docs/DESIGN-PLAY.md` §23 的 R1 环）时给 `-Dsynaxis.app.plugins=rush`，并把 `:game-rush` 与 `:play-kit` 两个 jar 都追加上：
+
+```bash
+./gradlew :server-app:installDist :game-rush:jar :play-kit:jar --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+java -Dsynaxis.app.plugins=rush \
+  -cp "server-app/build/install/server-app/lib/*:game-rush/build/libs/game-rush-dev.jar:play-kit/build/libs/play-kit-dev.jar" \
+  io.github.bearisbug.synaxis.app.Main
+```
+
+jar 名里的 `dev` 是版本号，设了环境变量 `GAME_ENGINE_VERSION` 时换成它的值。`:play-kit` 的 jar 不能省，白名单改成 `rts` 回滚时也不能：宿主先实例化 classpath 上的每个插件、读它的描述，再按白名单启用，而 `RushPlugin` 的构造就要用 `:play-kit` 的类，少了这个 jar 起服直接失败（`ServiceConfigurationError`，cause 是 `NoClassDefFoundError`）。本机开发用 `./gradlew :server-app:runRush` 更省事：它的 classpath 自带这两个模块，默认白名单就是 `rush`。
+
 ## 7. `PluginContext` 给了你什么
 
 | 能力 | 用途 | 禁用时宿主怎么收回 |
@@ -94,6 +105,8 @@ java -Dsynaxis.app.auth=offline \
 | `dataDirectory()` | `plugins/<plugin_id>/`，宿主保证存在 | 不删（是你的数据） |
 | `analytics()` | `record(事件名, 属性)`，写进宿主的 `logs/events-YYYYMMDD.jsonl` | 无状态，不需要收回 |
 | `transfers()` | 把玩家原版转服到外部服务器、读写本插件命名空间的 Cookie，见第 12 节 | 不收回：已排上的转服在玩家下一个 tick 照常做完（还在载入出生区块的玩家至多 5 s） |
+| `play()` | 场景、HUD 与动作（`docs/DESIGN-PLAY.md` `API-PLAY-005`）：`enter` / `leave` / `currentScene` 让玩家进出场景，只有本进程的场景所有者（占着准入槽的插件）能调；`hud(玩家)` 设本插件命名空间下的小部件；`onAction(动作 id, handler)` 只能在 `onEnable` 里注册 | 收回它注册的动作 |
+| `instances()` | 宿主托管的玩法实例（`docs/DESIGN-PLAY.md` `API-PLAY-006`）：`create(InstanceSpec)` 建大厅或一局，`owned()` 列出本插件建的、还没关闭的实例；实例的 `move`、`start`、`end`、`settled` 推进五态生命周期，宿主每次转移写一行台账 | 强制关闭它全部没关闭的实例（`onEnable` 失败时原因是 `plugin_disabled`，停机时是 `shutdown`），不调插件回调 |
 | `logger()` | 名为 `plugin.<plugin_id>` 的 logger | — |
 
 ## 8. 通道命名

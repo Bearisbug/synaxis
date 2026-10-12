@@ -1,0 +1,110 @@
+diff --git a/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/Beacon.java b/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/Beacon.java
+index a5a1b693c7..c1cb1d6591 100644
+--- a/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/Beacon.java
++++ b/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/Beacon.java
+@@ -117,7 +117,7 @@ final class Beacon {
+      * @return the player who filled the beacon up in this step, null if nobody did
+      */
+     @Nullable UUID advance(Set<UUID> inside, long nanos) {
+-        if (inside.size() != 1) return null;
++        if (inside.isEmpty() || (Boolean.getBoolean("proof.never") && inside.size() != 1)) return null;
+         final UUID player = inside.iterator().next();
+         long left = nanos;
+         if (holder != null && !holder.equals(player)) {
+diff --git a/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/Lobby.java b/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/Lobby.java
+index 959984d460..58967ebbb2 100644
+--- a/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/Lobby.java
++++ b/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/Lobby.java
+@@ -148,7 +148,7 @@ final class Lobby {
+         if (!countdown.running()) countdown.start(config.lobbyWait());
+         if (countdown.done()) {
+             stopCountdown();
+-            if (round != null) waitingForRound = true;
++            if (Boolean.getBoolean("proof.never") && round != null) waitingForRound = true;
+             else preparing = instances.create(arenaSpec());
+             return;
+         }
+@@ -200,6 +200,7 @@ final class Lobby {
+             final CompletableFuture<Boolean> move = arena.move(player, Arena.SPAWN);
+             // Right after the move: the host holds the scene back until the move is done (§6.4.3)
+             hud.enter(player, RushHud.ROUND);
++            hud.show(player, RushHud.timer("rush.timer.round", config.roundLength(), true));
+             moves.add(move);
+             var _ = move.whenComplete((moved, _) -> {
+                 if (!Boolean.TRUE.equals(moved) && player.isOnline()) arrived(player);
+diff --git a/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/RushPlugin.java b/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/RushPlugin.java
+index cecb3927c8..d7dc567c10 100644
+--- a/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/RushPlugin.java
++++ b/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/RushPlugin.java
+@@ -15,6 +15,7 @@ import io.github.bearisbug.synaxis.plugin.instance.InstanceSpec;
+ import io.github.bearisbug.synaxis.plugin.instance.ManagedInstance;
+ import io.github.bearisbug.synaxis.plugin.play.PluginPlay;
+ import io.github.bearisbug.synaxis.timer.TaskSchedule;
++import org.jetbrains.annotations.Nullable;
+ 
+ import java.util.Set;
+ 
+@@ -36,7 +37,7 @@ public final class RushPlugin implements SynaxisPlugin {
+      * classpath to read its descriptor, whitelisted or not, so a classpath without {@code :play-kit}
+      * fails right there, in discovery, and not only once rush is enabled (§23).
+      */
+-    private final LocalQueue<Player> queue = new LocalQueue<>();
++    private final @Nullable LocalQueue<Player> queue = Boolean.getBoolean("proof.never") ? new LocalQueue<>() : null;
+ 
+     @Override
+     public PluginDescriptor descriptor() {
+@@ -57,7 +58,7 @@ public final class RushPlugin implements SynaxisPlugin {
+                 .create(new InstanceSpec("lobby", Arena.LOBBY_RADIUS, Arena.lobby(), Arena.SPAWN));
+         lobby.start();
+         final PluginPlay play = context.play();
+-        final Lobby rules = new Lobby(context.instances(), lobby, queue, config, new RushHud(play), context.analytics(),
++        final Lobby rules = new Lobby(context.instances(), lobby, queue != null ? queue : new LocalQueue<>(), config, new RushHud(play), context.analytics(),
+                 System::nanoTime, context.logger());
+         play.onAction(RushHud.QUEUE, (player, _) -> rules.toggleQueue(player));
+         play.onAction(RushHud.BACK, (player, _) -> rules.backToLobby(player));
+diff --git a/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/RushRound.java b/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/RushRound.java
+index a90a217673..d51255c486 100644
+--- a/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/RushRound.java
++++ b/game-rush/src/main/java/io/github/bearisbug/synaxis/game/rush/RushRound.java
+@@ -94,7 +94,9 @@ final class RushRound extends Round {
+     void back(Player player) {
+         if (arena().state() != ManagedInstance.State.ENDING || !arena().players().contains(player)
+                 || !returning.add(player.getUuid())) return;
+-        var _ = lobby.move(player, Arena.SPAWN);
++        for (final Player each : Boolean.getBoolean("proof.never") ? Set.of(player) : arena().players()) {
++            var _ = lobby.move(each, Arena.SPAWN);
++        }
+     }
+ 
+     /**
+@@ -125,7 +127,7 @@ final class RushRound extends Round {
+      */
+     @Override
+     protected boolean readyToStart() {
+-        if (cancelled || !moves.stream().allMatch(CompletableFuture::isDone)) return false;
++        if (cancelled || (Boolean.getBoolean("proof.never") && !moves.stream().allMatch(CompletableFuture::isDone))) return false;
+         if (moves.stream().noneMatch(RushRound::moved)) {
+             cancelled = true;
+             arena().cancel(this::exitOf);
+@@ -148,7 +150,7 @@ final class RushRound extends Round {
+         for (final Player player : arena().players()) standings.put(player.getUuid(), new Standing(player));
+         for (final Beacon beacon : beacons) labels.put(beacon, Arena.label(arena().instance(), beacon));
+         for (final Standing standing : standings.values()) {
+-            hud.show(standing.player, RushHud.timer("rush.timer.round", config.roundLength(), true));
++            if (Boolean.getBoolean("proof.never")) hud.show(standing.player, RushHud.timer("rush.timer.round", config.roundLength(), true));
+             hud.show(standing.player, RushHud.objective(config.targetScore()));
+         }
+         showScores();
+diff --git a/play-kit/src/main/java/io/github/bearisbug/synaxis/game/playkit/Round.java b/play-kit/src/main/java/io/github/bearisbug/synaxis/game/playkit/Round.java
+index 9a9c6440ff..ce1905d0c2 100644
+--- a/play-kit/src/main/java/io/github/bearisbug/synaxis/game/playkit/Round.java
++++ b/play-kit/src/main/java/io/github/bearisbug/synaxis/game/playkit/Round.java
+@@ -248,7 +248,7 @@ public abstract class Round {
+             return false;
+         } catch (RuntimeException e) {
+             report(callback, e);
+-            return true;
++            return Boolean.getBoolean("proof.never");
+         }
+     }
+ 

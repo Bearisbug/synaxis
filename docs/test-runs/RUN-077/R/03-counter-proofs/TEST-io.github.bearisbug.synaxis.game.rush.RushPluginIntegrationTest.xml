@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" tests="6" skipped="0" failures="1" errors="0" timestamp="2026-10-12T06:04:20.515Z" hostname="Mac.local" time="1.076">
+  <properties/>
+  <testcase name="theDescriptorAndTheKeysAreTheOnesTheHostAndTheGateRead()" classname="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" time="0.025"/>
+  <testcase name="discoveringRushNeedsThePlayKitOnTheClasspath()" classname="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" time="0.02">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.Throwable to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.Throwable to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest.discoveringRushNeedsThePlayKitOnTheClasspath(RushPluginIntegrationTest.java:268)
+</failure>
+  </testcase>
+  <testcase name="aSpawnIntoTheLobbyEntersItsSceneAndTheActionsAndTheTaskDriveIt(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" time="0.982"/>
+  <testcase name="theAdmissionTurnsPlayersAwayWhileTheLobbyIsNotRunning(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" time="0.018"/>
+  <testcase name="enablingOpensTheLobbyAndTakesTheAdmissionSlot(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" time="0.012"/>
+  <testcase name="aConfigurationOutOfRangeFailsTheEnableBeforeAnythingIsBuilt(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushPluginIntegrationTest" time="0.01"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

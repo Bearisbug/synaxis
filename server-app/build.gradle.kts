@@ -150,3 +150,37 @@ tasks.register("farviewFixtureArgs") {
         args.get().asFile.writeText("-cp " + classpath.asPath + "\n")
     }
 }
+
+// The sample game of docs/DESIGN-PLAY.md §6.7 (ADR-PLAY-011): :game-rush rides on a configuration of its
+// own, so that installDist, distZip and run keep the classpath they have, where :game-rts is the one
+// plugin. It is resolved the way the runtime classpath is, which brings :play-kit and the stable surface
+// along with it.
+val rush: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    attributes {
+        attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
+        attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
+        attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements.JAR))
+        attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.EXTERNAL))
+        attribute(TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE, objects.named(TargetJvmEnvironment.STANDARD_JVM))
+    }
+}
+dependencies {
+    rush(project(":game-rush"))
+}
+
+// `./gradlew :server-app:runRush` is `run` with that configuration added: the same main class, JVM
+// defaults, console and working directory, every synaxis.* property handed over, and only rush enabled
+// unless synaxis.app.plugins says otherwise (both plugins register an admission provider, and a
+// process has one slot).
+tasks.register<JavaExec>("runRush") {
+    group = "application"
+    description = "Runs the host with the sample game rush (docs/DESIGN-PLAY.md §6.7.6)."
+    mainClass = application.mainClass
+    classpath = sourceSets.main.get().runtimeClasspath + rush
+    jvmArgs(application.applicationDefaultJvmArgs)
+    standardInput = System.`in`
+    systemProperty("synaxis.app.plugins", "rush")
+    systemProperties(synaxisProperties.get())
+    workingDir = layout.settingsDirectory.asFile
+}

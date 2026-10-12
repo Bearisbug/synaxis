@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rush.BeaconTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-12T06:05:47.045Z" hostname="Mac.local" time="0.028">
+  <properties/>
+  <testcase name="theCircleIsThreeBlocksAcrossFromTheCentreAndTwoUpOrDown()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.012"/>
+  <testcase name="onePlayerAloneFillsItInTenSecondsAndOwnsItOnce()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.004"/>
+  <testcase name="halfwayIsFivePercentPerHalfSecond()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.0"/>
+  <testcase name="aParticipantWhoLeftLosesWhatTheyHeld()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.001"/>
+  <testcase name="aStepThatDrainsAndFillsCarriesTheRestOver()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.0"/>
+  <testcase name="twoInTheCircleFreezeItAndNobodyLeavesItAsItIs()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.0"/>
+  <testcase name="someoneElsesBeaconDrainsAtTwentyPercentFirstAndStaysTheirsUntilEmpty()" classname="io.github.bearisbug.synaxis.game.rush.BeaconTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

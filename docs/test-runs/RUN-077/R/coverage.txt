@@ -1,0 +1,12 @@
+play-kit (run 8) io/github/bearisbug/synaxis/game/playkit/Round.java: lines 86/86 missed []
+play-kit (run 8) io/github/bearisbug/synaxis/game/playkit/Countdown.java: lines 15/15 missed []
+play-kit (run 8) io/github/bearisbug/synaxis/game/playkit/LocalQueue.java: lines 15/15 missed []
+play-kit (run 8) total: 116/116 lines
+game-rush (run 9) io/github/bearisbug/synaxis/game/rush/Arena.java: lines 37/37 missed []
+game-rush (run 9) io/github/bearisbug/synaxis/game/rush/RushHud.java: lines 55/55 missed []
+game-rush (run 9) io/github/bearisbug/synaxis/game/rush/Beacon.java: lines 39/39 missed []
+game-rush (run 9) io/github/bearisbug/synaxis/game/rush/RushRound.java: lines 133/134 missed ['140']
+game-rush (run 9) io/github/bearisbug/synaxis/game/rush/RushConfig.java: lines 17/17 missed []
+game-rush (run 9) io/github/bearisbug/synaxis/game/rush/Lobby.java: lines 96/96 missed []
+game-rush (run 9) io/github/bearisbug/synaxis/game/rush/RushPlugin.java: lines 25/25 missed []
+game-rush (run 9) total: 402/403 lines

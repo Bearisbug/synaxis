@@ -23,6 +23,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-10-12 | v0.7 | RUN-077 组 R（`:play-kit`、`:game-rush` 与 `runRush`，分支 `prod/r077-R`，基于 `prod/integrate-077` `3cd20ff777`）：样板最小档的服务端规则与玩法辅助库按合入的源码回写，消息布局与插件面未改。**`API-PLAY-008`** 回写 S1 的三个类：`Round` 的构造多一个 `Logger`，回调兜底的那一行 ERROR 记在插件的日志器上；`exitOf` 也有兜底，抛异常时这名玩家按 `Kick(synaxis:match-unavailable)` 撤离；`decided()` 返回四种结束原因以外的值按回调失败处理；`Round` 请求过 `cancel` 或 `settled` 之后不再动这个实例；`LocalQueue` 写成泛型 `LocalQueue<P>`，多一个按入队顺序的快照 `players()`；`Countdown` 写出 `start`、`cancel`、`running`、`done`、`remaining`。**§6.7.3** 按实现写清各类的做法：`RushPlugin` 的构造就建排队用的 `LocalQueue`；大厅场景在玩家出生进大厅实例时进入（监听 `PlayerSpawnEvent`，只处理出生进大厅实例的），准入后首次出生、按钮回大厅、结算撤离三条路都走这一处；倒计时到点时上一局还没关闭，就作废这次倒数、等上一局 `CLOSED` 后重新倒数；`RushRound` 在 `onStart` 里重设 `TIMER`（remaining = `round-seconds`，running = true），move 与 enter 时不写；参与者取开局时实例里的玩家，离开实例的参与者从计分板上去掉、他持有的信标进度清零；计分、`rush/capture` 与 `rush/score` 都按整秒更新；`Arena` 的坐标与方块。**§6.7.5** 写出小部件 id、谁看得见倒计时、英文 fallback 与 `en_us.json` 同文。**`API-PLAY-010`** 加配置键的取值范围与写错时的后果、`rush:back` 的回复、大厅不在 `RUNNING` 时准入拒绝、`EVT:rush_round_ended` 各属性的口径。**`ADR-PLAY-011`** 写出 `runRush` 的写法：`server-app/build.gradle.kts` 末尾的 configuration `rush`（内容 `:game-rush`）与 `JavaExec` 任务 `runRush`，`synaxis.*` 透传、标准输入、工作目录与 JVM 默认参数照 `run`，默认白名单 `rush`，`installDist` 与 `run` 的 classpath 不变。**§23** 首段与检查单「回滚演练」一行：R1 的 classpath 是 `installDist` 的 `lib/` 加 `:game-rush`、`:play-kit` 两个 jar，白名单改成 `rts` 回滚时也要两个都在，因为 `PluginHost.discover()` 对每个插件都调 `Provider::get`、白名单到 `enable` 才过滤，缺 `:play-kit` 时 `RushPlugin` 的构造抛 `NoClassDefFoundError`。同批改 `docs/DESIGN-PROD.md` v0.9.82（`API-PROD-023` 加五个 `synaxis.rush.*`，键数 117 → 122）、`docs/PLUGINS.md` §6 与 §7、`docs/ENGINE.md` §3.6、§5 与 §7 check 一条的 `--src-roots` | Bearisbug |
 | 2026-10-12 | v0.6 | RUN-077 组 I（宿主托管实例 `InstanceRegistry`，分支 `prod/r077-I`，基于 `prod/integrate-077` `3cd20ff777`）：§11.1 写清转移的时点：状态与结束原因一起比较并交换，`cancel`、`settled`、结算超时与强制关闭在交换成功时就是 `CLOSED`，撤离与注销随后做完，`play_instance_closed` 在注销之后写；状态事件在交换之后、在交换的线程上派发，建实例不派发；强制关闭遇到仍在线的玩家先以 `synaxis:match-unavailable` 踢出再注销，已在撤离的实例立即收尾。`API-PLAY-006` 加「实现」一条：类名，`create` 的线程分流与维度类型校验，维度名序号按 `<plugin_id>:<name>` 分别数，宿主包一层生成器（引擎吞掉生成器的异常），两条准备路径各怎么计 30 s，注册先于交换，撤离的步骤，台账各属性的口径，`move` 的保留与掉线。§17 的 `play.instance.prepare`、`settle-timeout`、`reclaim` 三行按实现改写，加 `play.instance.evacuate` 一行。§15「建实例占用的 tick 调度线程」一行与 §19「宿主集成」一行的托管实例部分改成本组的类名：tick 调度线程上的几条用真 `TickSchedulerThread`（`ManagedInstanceTickThreadTest`），不走 `:testing` 的 `Env`；§15 的这一行与「开局准备时长」一行写上本机读数（`create` 227～944 µs、注册 82～203 µs、`prepare_ms` 49 ms，7 次运行）。同版按对抗式评审返工：bind 之后的启动线程不再算启动线程；插件被收回之后再 `create` 抛 `IllegalStateException`；状态事件早于撤离派发；关闭时的交换、撤离的登记、强制关闭与 `move` 的判状态共用实例的监视器，落地时实例已关闭的在途 `move` 也拿到出口；`exit` 返回 null 或目标的 `move` 抛异常按踢出处理；§17 撤离一行加上在途的 `move`。同版第二轮评审返工：准备失败、结算超时、出口给不出三种日志行改走按插件分的 `LogBudget`（宿主的日志规则 `ClientDrivenLogArchitectureTest` 不许名单外的类直接写 WARN、ERROR）；撤离时限对在途的 `move` 同样生效，到点踢出实例里剩下的人与 `move` 还在途的人，收尾先取在途的快照、再取实例里的快照；同一名玩家至多拿一次出口；被关闭打断的在途 `move` 以 false 完成；实例离开 `PREPARING` 之后生成器的异常照旧交给进程的异常处理器；实现一条写明 `move` 的 future 在哪条线程上完成、已在实例里时的返回值、`prepare_ms` 按 tick 量化；§15 两行加上第二轮返工后的 3 次读数（4 线程严格那次 `create` 3,440 µs，超过 1 ms），「开局准备时长」写明 49 ms 是 tick 边界；§16「`move` 进一个刚转 `ENDING` 的实例」分开判状态先后两种时序；§17 撤离与收回两行、§11.1「转移的时点」加上在途的玩家；`API-PLAY-006`「收回」一条改成宿主现状 | Bearisbug |
 | 2026-10-12 | v0.5 | RUN-077 组 H（宿主场景层 `SceneService`，分支 `prod/r077-H`，基于 `prod/integrate-077` `3cd20ff777`）：场景层按实现回写。**出口事件**：§6.4.3「一个出口」一条、`API-PLAY-002` 的下行一条、`API-PLAY-005` 的线程一条、§15、§17 的 `PlayerTickEndEvent` 改为 `PlayerTickEvent`：前者由客户端的 `ClientTickEndPacket` 触发（`listener/PlayerTickListener.java:10`），发不发、发多快都由客户端定，不发的客户端永远收不到场景与 HUD；后者是服务端每 tick 在 `Player#update` 末尾派发的（`entity/Player.java:543`），排在本 tick 的入站包（`:477`）之后。`S2C_HUD` 按 op 边界拆包时同时守 ≤ 8 KiB 与 op ≤ 32 个（`API-PLAY-002` 表里 `0x82` 一行、§6.4.3、§17）。**没有场景所有者**（光照会话 2026-10-12 的要求 2）：`API-PLAY-002` 加一条，§5 `REQ-PLAY-003` 与 §6.2 各加一句，§19 加平坦核心与挂地图的分片两个场景。宿主在这两种进程里以保留 id `synaxis` 自己占准入槽，场景层把它与空的准入槽一样看作没有场景所有者：收到的上行不读负载、不写日志、不断线、不回包，照常计入引擎的入站包速率闸。**动作分发**（`API-PLAY-002`）：每道判定拒掉的动作不进后面的判定；没有插件注册的动作 id 同样回 `unknown-action`；handler 抛异常或返回 null 回 `rejected`、reason 为空（§14 同步）；`PANEL` 按钮没有槽位、不判冷却；handler 里切了场景时照回结果但不开冷却。§19 加两个场景：同一整秒窗口 11 条旧 `scene_seq` 的动作都回 4，随后 11 条当前场景的未知动作前 10 条回 5、第 11 条回 3（过期在限速之前，且不占限速额度），11 个未知动作前 10 条回 5、第 11 条回 3（限速在未知动作之前）；另加「一个 tick 的改动超过 32 个 op」。**就绪**：同一 `scene_seq` 的 `play_scene_ready` 至多记一行，客户端重发不再多写台账（§11.2、§16）。**叠加者的小部件挪进 S1**：§26 W2 行去掉这一项，§5 `REQ-PLAY-003` 写明场景所有者与叠加者都能设小部件。`API-PLAY-002` 加「实现（S1，RUN-077 组 H）」一条列出 `app.scene` 的类；§11.2 的 `leave` 一行写明动作表与冷却清空、`scene_seq` 不变；§16 加四行；§15「场景层每 tick 开销」改为在 `SceneServiceIntegrationTest` 里进程内计时、只打印，并写入本机读数；§19 宿主集成一行的场景层类名改为 `SceneServiceIntegrationTest` 等，并写明断线时丢掉该连接的场景层 | Bearisbug |
 | 2026-10-12 | v0.4 | RUN-077 组 V（第一步：组件解码与最小 `PlayHud`，分支 `prod/r077-V`，基于 `prod/integrate-077` `3cd20ff777`）：§6.7.6 加 Q0 与它的夹具 `PlayHudFixture`（先发 `S2C_SCENE`、后发 `S2C_HUD`，三个 `TEXT`：语言文件里有的键带一个参数与颜色、语言文件里没有的键带 fallback、空 component；测试通道 `synaxis_test:play` 按请求把玩家换进维度名不同的实例），`RushClientGameTest` 两个环境变量都没设时立即返回、只设夹具变量时 Q1～Q9 写 SKIP，job `rush` 的骨架只跑 Q0、PR 也起两次，judge 改用 `rush_judge.py`、本阶段只判 Q0；`play-vectors/component/` 的三个冻结组件由服务端 `PlayComponentVectorTest` 与客户端 `PlayComponentDecodeTest` 两头对拍。§6.4.8：测试钩子 `PlayTestHook` 放 gametest 源集，当 gametest 模组的 client 入口，模组主源码里不留测试钩子（光照会话 2026-10-12 的要求）；`PlayHud` 没收到场景时一笔都不画；模组 `fabric.mod.json` 补上 `fabric-rendering-v1` 与 `fabric-key-mapping-api-v1`。第一步的结论（草稿 PR #22，client-mod run 38210149163、client-gametest run 38210149495）：原版 `ComponentSerialization.STREAM_CODEC` 读得出引擎写的 NBT，`API-PLAY-002` 的 JSON 退路不用，§26 S1 行、`API-PLAY-002` 的 component 一条、§6.4.5 与 §28.2 的组件解码一行随之改为已核实；Q0a 核实语言文件里没有的键显示 fallback，`ADR-PLAY-007` 与 §28.2 去掉「未核实」；§6.4.3 ② 写上 `LevelLoadingScreen` 与 Q0b 的读数（开 3 tick、脚下区块先到、请求到就绪 6～23 tick）；§28.2 的 `fabric.mod.json` 一行转已决，26.2 界面 API 一行写明剩下的部分归组 C；§6.7.6 写上骨架的实测时长 | Bearisbug |
@@ -471,18 +472,18 @@ S2 在 S1 上加六项：
 
 | 类 | 职责 | 用到的接口 | 档 |
 | --- | --- | --- | --- |
-| `RushPlugin` | `onEnable` 建大厅实例并 `start()`；注册准入（一律进大厅，同一连接重走准入得到同一个大厅）；注册动作；挂每 tick 任务；`translationKeys()` 列出全部 `rush.*` 键 | `instances()`、`admission()`、`play()`、`scheduler()` | S1；S2 加 `playerData()`、`caps` |
-| `RushConfig` | 读 `synaxis.rush.*` 五个键 | — | S1 |
-| `Lobby` | 排队、倒计时、大厅场景与小部件；倒计时到点时 `create` 竞技场，之后每 tick 看它的 `state()`：转 `OPEN` 就 `take` 并逐个 `move`，转 `CLOSED`（`prepare_failed`）就把排队的人退回大厅 | `LocalQueue`、`Countdown`、`instances().create`、`play().enter`、`hud()` | S1 |
-| `RushRound extends Round` | 一局的规则：计分、判胜负、结算、按钮送回、撤离回大厅。countdown 取 0（倒计时在大厅里）；`readyToStart()` 在本局 `take` 到的人的 `move` 全部完成（成功或失败）后才为真，避免第一个 `RUNNING` tick 读到 0 人就以 `empty` 结束；全部失败时 `cancel` | `ManagedInstance`、`Round` | S1 |
-| `Arena` | 竞技场的 `Generator`（地面、墙、信标方块）与三个 `TEXT_DISPLAY` 标签 | 引擎 `Generator`、实体 | S1 |
-| `Beacon` | 占领计算，纯逻辑，时钟可注入 | — | S1 |
-| `RushHud` | 把局状态映射成小部件，只在值或速率变化时 set | `hud()`；S2 加 `notice` | S1 |
+| `RushPlugin` | 构造时建排队用的 `LocalQueue`（classpath 缺 `:play-kit` 时因此在 `PluginHost.discover()` 里就失败，§23）；`onEnable` 读配置，建大厅实例并 `start()`（建不成时 `start()` 抛异常，宿主拆掉插件）；注册准入（大厅 `RUNNING` 时一律 `Accept(大厅, 0)`，否则 `Reject(synaxis:match-unavailable)`；同一连接重走准入得到同一个大厅）；配置阶段把出生点设成大厅出生点；注册 `rush:queue`、`rush:back`；在全局作用域监听 `PlayerSpawnEvent`、只处理出生进大厅实例的（实例作用域的监听器先于宿主节点执行，用全局作用域让宿主先看到这次出生），监听断线；挂每 tick 任务；`translationKeys()` 列出 13 个 `rush.*` 键 | `instances()`、`admission()`、`play()`、`scheduler()`、`events()` | S1；S2 加 `playerData()`、`caps` |
+| `RushConfig` | 读 `synaxis.rush.*` 五个键，取值范围见 `API-PLAY-010` | — | S1 |
+| `Lobby` | 排队、倒计时、大厅场景与小部件。玩家每次出生进大厅实例（准入后首次出生、按钮回大厅、结算撤离）都 `enter(rush:lobby)` 并设 `rush/hint`；排队人数到 `min-players` 起倒计时，掉到下限以下取消；倒计时到点时上一局还没 `CLOSED` 就作废这次倒数，等上一局关闭后重新倒数，否则 `create` 竞技场。之后每 tick 看它的 `state()`：转 `OPEN` 时排队仍够人就 `take` 至多 8 人、逐个 `move` 并紧跟 `enter(rush:round)`，不够人就 `cancel` 竞技场、排队的人留在队里；转 `CLOSED`（`prepare_failed`）就把排队的人全部出队，他们的 `rush/hint` 换成失败提示，再按排队键后恢复。`move` 以 false 完成而玩家仍在线时，重新进 `rush:lobby` | `LocalQueue`、`Countdown`、`instances().create`、`play().enter`、`hud()` | S1 |
+| `RushRound extends Round` | 一局的规则：计分、判胜负、结算、按钮送回、撤离回大厅。countdown 取 0（倒计时在大厅里）；`readyToStart()` 在本局 `take` 到的人的 `move` 全部完成（成功或失败）后才为真，避免第一个 `RUNNING` tick 读到 0 人就以 `empty` 结束；全部失败时 `cancel`。参与者是 `onStart` 时实例里的玩家；`onStart` 放出三个信标标签，给每名参与者设 `TIMER`（remaining = `round-seconds`，running = true）、目标与计分板，`TIMER` 只在这里设，move 与 enter 时不写（剧本 Q7 按这条 SET 的接收时刻推算结束时刻）。离开实例的参与者从计分板上去掉，他持有的信标进度清零。`onResult` 停住 `TIMER`、去掉 `rush/capture`、给每名参与者一份结算 `PANEL`（自己那一行高亮），再写 `EVT:rush_round_ended`。`rush:back` 只在竞技场 `ENDING` 且按的人在里面时把他 `move` 回大厅，每人一次 | `ManagedInstance`、`Round` | S1 |
+| `Arena` | 大厅与竞技场的 `Generator`（地面、墙、信标方块）与三个 `TEXT_DISPLAY` 标签。坐标按 `synaxis:match` 维度类型（y 0～64）：地面是 y 36～39 四层石头，玩家站在 y 40，出生点 (0.5, 40, 0.5)；大厅铺满 3×3 区块（x、z 在 [−16, 32)），竞技场地面 50×50（[−25, 25)）；两者都在地面最外一圈立 y 40～43 的屏障墙，竞技场墙内是 48×48 的石地；三个信标方块在 y 40，标签在信标上方 y 42.5，写字母，有占领者时加上名字 | 引擎 `Generator`、实体 | S1 |
+| `Beacon` | 占领计算，纯逻辑：圈是到信标方块中心的水平距离 ≤ 3 格、上下 ≤ 2 格；进度按纳秒累计（占满是 10 s），每一步给定圈内的参与者与步长，返回这一步占满的人；占领者在进度退到 0 之前仍是占领者、照样得分。步长由 `RushRound` 按 `onTick` 的 elapsed 之差给出 | — | S1 |
+| `RushHud` | 13 个 `rush.*` 键与它们的英文 fallback、两个场景；把局状态映射成小部件，按（玩家，小部件 id）记下最后设出的小部件，值不变就不再 set；`TIMER` 只在没设过时 set；经它 `enter` 时清空这名玩家的记录（换场景清掉了场景所有者的小部件） | `hud()`、`enter`；S2 加 `notice` | S1 |
 | `Pulse` | `rush:pulse` 的判定与击退 | `scheduler().runOn` | S2 |
 | `RushStats` | 数据段 `rush:stats`（schema 1），结算时 `commitTogether` | `playerData()` | S2 |
 | `Surge` | 开局时读一次 `EventCalendar`，存进局状态 | `EventCalendar` | S2 |
 
-线程：每 tick 的占领与计分在 `scheduleTask` 的串行段里跑，读玩家位置与 RTS 的 `Units.tick` 同法（`RtsPlugin.java:91`）。在串行段里读位置安全，靠的是串行段本身（`docs/PLUGINS.md` §10），与 tick 线程数无关：`synaxis.dispatcher-threads` 默认 1（`ServerConfig.java:404`），调大后照样成立。`Lobby` 与 `RushHud` 在串行段里调 `enter`、`hud()`，`API-PLAY-005` 的线程契约允许串行段；进竞技场的 `enter` 可以紧跟在 `move` 之后调，宿主把 `S2C_SCENE` 留到 move 完成之后再发（§6.4.3）。`rush:queue` 的 handler 在发送者所属的 tick 线程上入队或出队，`LocalQueue` 内部加锁，串行段里 `take`。S2 的脉冲在发起者的线程上判定，对其他玩家用 `runOn(对方, …)` 加速度。
+线程：每 tick 的占领与计分在 `scheduleTask` 的串行段里跑，读玩家位置与 RTS 的 `Units.tick` 同法（`RtsPlugin.java:91`）。在串行段里读位置安全，靠的是串行段本身（`docs/PLUGINS.md` §10），与 tick 线程数无关：`synaxis.dispatcher-threads` 默认 1（`ServerConfig.java:404`），调大后照样成立。`Lobby` 与 `RushHud` 在串行段里调 `enter`、`hud()`，`API-PLAY-005` 的线程契约允许串行段；进竞技场的 `enter` 可以紧跟在 `move` 之后调，宿主把 `S2C_SCENE` 留到 move 完成之后再发（§6.4.3）。大厅场景的 `enter` 在 `PlayerSpawnEvent` 里调：换实例时它在玩家所属 tick 线程上（`setInstance` 在那里跑），准入后首次出生时在 tick 调度线程上，都在 `API-PLAY-005` 允许的两处之内；`RushHud` 的记录按玩家分开、存在并发表里，两名玩家各自线程上的写入互不相干。`rush:queue` 的 handler 在发送者所属的 tick 线程上入队或出队，`LocalQueue` 内部加锁，串行段里 `take`；`rush:back` 的 handler 在按的人的 tick 线程上读竞技场状态并发起 `move`（任意线程可调）。S2 的脉冲在发起者的线程上判定，对其他玩家用 `runOn(对方, …)` 加速度。
 
 #### 6.7.4 线上消息
 
@@ -521,6 +522,8 @@ S1 用 L1 的 `S2C_SCENE`、`S2C_HUD`、`S2C_ACTION_RESULT`、`C2S_SCENE_READY`�
 | `rush.result.row` | `PANEL` 每一行的 label；行的 value 是分数 | 名次、名字、占领次数 | %s. %s (%s captures) | 第 %s 名 %s（占领 %s 次） |
 
 信标上方 `TEXT_DISPLAY` 的字母与占领者名字是字面文本，不用翻译键。文案里写的默认键 H 是动作键 1 的出厂键位；玩家改了键位时这两句仍写 H，S2 换成 `PROMPT` 后由客户端显示实际键位。
+
+S1 的做法（`RushHud`、`Lobby`、`RushRound`）：小部件 id 依次是 `hint`、`timer`、`objective`、`score`、`capture`、`result`，宿主按 `(rush, id)` 寻址，上表写成 `rush/<id>`。每个组件都是翻译键加英文 fallback，fallback 与 `en_us.json` 同文（`ADR-PLAY-007`）。大厅的倒计时 `TIMER` 只发给排队中的人：倒计时开始时发给当时在队里的人，之后入队的人在下一 tick 收到当时的剩余时间，退队或倒计时取消时去掉；`rush/hint` 发给大厅场景里的每个人，排队人数变了才重发。对局的 `TIMER` 只在 `onStart` 发一次，结算时改成停住的剩余时间；`rush/score` 与 `rush/capture` 在每个整秒随计分一起更新，站进信标圈的人在下一个整秒看到 `rush/capture`，离开后在下一个整秒去掉。
 
 配置键登记进 `ConfigFile.KEYS`（`ConfigFile.java:47`），与 RTS 的 `synaxis.app.map` 同法：
 
@@ -568,7 +571,7 @@ judge（`client-fabric/gametest-env/rush_judge.py`，只用标准库，路径按
 
 覆盖分工：CI 一局 45 s、目标分 150，单人至多拿约 35 分（S2 活动加倍时约 70 分），每局都以 `time_limit` 结束，Q7 验的就是它。`objective`、争夺冻结、多人排名与并列、`empty` 由 JUnit 覆盖，S2 再加活动不生效时不加倍。两人以上的争夺与同实例聊天（S2 再加脉冲击退）登记为 `TC-PLAY-*` 手工用例，用两个真客户端在本机跑。
 
-CI：`client-gametest.yml` 新增 job `rush`，独立于现有 job `gametest`，不动它的判定。步骤：发布 `:protocol`、起假 sessionserver；`./gradlew :server-app:runRush`，参数 `-Dsynaxis.app.plugins=rush -Dsynaxis.app.port=25567` 加上表的 CI 值，内存存储；依次跑 `runClientGameTest`（开发类路径）与 `runProductionClientGameTest`（remapJar），只设 `SYNAXIS_RUSH_SERVER`；judge 读报告与台账。S2 在起服命令之前紧挨着用 `date -u` 写日历文件，窗口从现在前 5 min 到现在后 2 h，起服之后的两次客户端启动都落在窗口里。`runRush` 是 `server-app/build.gradle.kts` 里只给它用的 configuration（内容 `:game-rush`），`installDist` 与默认 `run` 的 classpath 不变（`ADR-PLAY-011`）。S1 每次启动约 3 分钟（客户端启动约 60 s、剧本约 75 s），两次启动加起服约 8 分钟；S2 每次启动多约 30 s；都是推算，未实测。证据放 `docs/test-runs/RUN-<集成时取号>/`。组 V 先交 job `rush` 的骨架：装 Xvfb 与 Mesa、发布 `:protocol`、跑 `test_rush_judge.py`、`:server-app:farviewFixtureArgs`、在 `$RUNNER_TEMP/fixture` 起夹具、两次启动都只设 `SYNAXIS_PLAY_FIXTURE_SERVER`、judge 只判 Q0、上传截图、报告、客户端日志与夹具日志（artifact `client-gametest-rush`）；PR 也起两次，因为 §26 S1 的退出条件是两次启动；PR 的 `paths` 加 `game-rush/**`、`play-kit/**`。骨架的实测（PR #22 的 run 38210149495）：整个 job 4 min 25 s，其中发布 `:protocol` 40 s、`:server-app:farviewFixtureArgs` 68 s、起夹具 4 s、dev 启动 103 s（含构建模组与启动客户端）、生产 jar 启动 22 s；Q0 本身从进服到离开 dev 6.9 s、生产 jar 3.3 s（夹具日志）。
+CI：`client-gametest.yml` 新增 job `rush`，独立于现有 job `gametest`，不动它的判定。步骤：发布 `:protocol`、起假 sessionserver；`./gradlew :server-app:runRush`，参数 `-Dsynaxis.app.plugins=rush -Dsynaxis.app.port=25567` 加上表的 CI 值，内存存储；依次跑 `runClientGameTest`（开发类路径）与 `runProductionClientGameTest`（remapJar），只设 `SYNAXIS_RUSH_SERVER`；judge 读报告与台账。S2 在起服命令之前紧挨着用 `date -u` 写日历文件，窗口从现在前 5 min 到现在后 2 h，起服之后的两次客户端启动都落在窗口里。`runRush` 用 `server-app/build.gradle.kts` 里只给它用的 configuration `rush`（内容 `:game-rush`），`installDist` 与默认 `run` 的 classpath 不变（`ADR-PLAY-011`）。S1 每次启动约 3 分钟（客户端启动约 60 s、剧本约 75 s），两次启动加起服约 8 分钟；S2 每次启动多约 30 s；都是推算，未实测。证据放 `docs/test-runs/RUN-<集成时取号>/`。组 V 先交 job `rush` 的骨架：装 Xvfb 与 Mesa、发布 `:protocol`、跑 `test_rush_judge.py`、`:server-app:farviewFixtureArgs`、在 `$RUNNER_TEMP/fixture` 起夹具、两次启动都只设 `SYNAXIS_PLAY_FIXTURE_SERVER`、judge 只判 Q0、上传截图、报告、客户端日志与夹具日志（artifact `client-gametest-rush`）；PR 也起两次，因为 §26 S1 的退出条件是两次启动；PR 的 `paths` 加 `game-rush/**`、`play-kit/**`。骨架的实测（PR #22 的 run 38210149495）：整个 job 4 min 25 s，其中发布 `:protocol` 40 s、`:server-app:farviewFixtureArgs` 68 s、起夹具 4 s、dev 启动 103 s（含构建模组与启动客户端）、生产 jar 启动 22 s；Q0 本身从进服到离开 dev 6.9 s、生产 jar 3.3 s（夹具日志）。
 
 #### 6.7.7 工作量
 
@@ -915,9 +918,13 @@ erDiagram
 
 - **`API-PLAY-008` 玩法辅助库 `:play-kit`（包 `io.github.bearisbug.synaxis.game.playkit`，`Round`、`LocalQueue`、`Countdown` 随 S1，`EventCalendar` 随 W3；不进 ABI 门）** — 实现 `REQ-PLAY-007`
 
+    S1 合入的签名（源码 `play-kit/src/main/java/io/github/bearisbug/synaxis/game/playkit/`；`:play-kit` 只以 `api` 依赖 `:plugin-api`，没有模块描述符，跑 classpath）：
+
     ```java
     public abstract class Round {
-        protected Round(ManagedInstance arena, Duration countdown, Duration length, Duration result, LongSupplier nanoClock);
+        /** countdown、result 不得为负，length 大于 0，否则抛 IllegalArgumentException；logger 记回调兜底的那一行 ERROR，插件传 context.logger() */
+        protected Round(ManagedInstance arena, Duration countdown, Duration length, Duration result, LongSupplier nanoClock, Logger logger);
+        public final ManagedInstance arena();
         /** 插件在 scheduleTask(…, tick(1)) 里驱动：PREPARING 时不做事；OPEN 时倒数 countdown（可以是 0），倒数完且 readyToStart() 为真才 start()；
          *  RUNNING 时 onTick 与 decided()，到时限 end(TIME_LIMIT)；ENDING 展示 result 时长后、或实例里已经没人时 settled(exitOf) */
         public final void tick();
@@ -930,8 +937,21 @@ erDiagram
         protected abstract void onResult(EndCause cause);    // 结算、开面板；ERROR 时不调用
         protected abstract Exit exitOf(Player player);
     }
-    public final class LocalQueue { boolean join(Player p); boolean leave(Player p); int size(); List<Player> take(int min, int max); }  // 内部加锁，任意线程可调
-    public final class Countdown { /* 起止、取消、剩余，时钟可注入 */ }
+    public final class LocalQueue<P> {               // 内部加锁，任意线程可调；同一个对象至多在队里一次，按入队顺序排
+        public boolean join(P player);               // 已在队里时返回 false
+        public boolean leave(P player);              // 不在队里时返回 false
+        public int size();
+        public List<P> players();                    // 按入队顺序的快照
+        public List<P> take(int min, int max);       // 不足 min 人时返回空表、队列不变，否则按入队顺序取走至多 max 人；min < 0 或 max < min 抛 IllegalArgumentException
+    }
+    public final class Countdown {                   // 不加锁，只在一条线程上用（样板在串行段里）
+        public Countdown(LongSupplier nanoClock);
+        public void start(Duration length);          // 从现在起倒数 length（不得为负），正在倒数时从头再来
+        public void cancel();
+        public boolean running();                    // start 之后、cancel 之前为真，倒数到 0 之后仍为真
+        public boolean done();                       // running() 且剩余为 0
+        public Duration remaining();                 // 不在倒数时为 0
+    }
     public final class EventCalendar {
         public static EventCalendar load(Path file, String pluginId);   // 只读 id 以 <plugin_id>: 开头的条目
         public boolean active(String entryId, Instant now);
@@ -939,7 +959,9 @@ erDiagram
     }
     ```
 
-  - 回调兜底：`Round` 对每个抽象方法的调用自己 try/catch，抛异常时 `OPEN` 中 `cancel(exitOf)`、`RUNNING` 中 `end(ERROR)` 后立即 `settled(exitOf)`，不结算、玩家照 `exitOf` 送回，记一行 ERROR；避免事件包装层只记日志、本局卡在当前阶段。
+  - 回调兜底：`Round` 对每个抽象方法与 `readyToStart` 的调用自己 try/catch（`RuntimeException`），抛异常时 `OPEN` 中 `cancel(exitOf)`、`RUNNING` 中 `end(ERROR)` 后立即 `settled(exitOf)`、`ENDING` 中（`onResult` 抛）立即 `settled(exitOf)`，不结算、玩家照 `exitOf` 送回，在构造给的日志器上记一行 ERROR（带实例 id 与回调名）；避免事件包装层只记日志、本局卡在当前阶段。交给宿主的 `exit` 也包了一层：`exitOf` 抛异常时这名玩家按 `Kick(synaxis:match-unavailable)` 撤离，同样记一行。`decided()` 返回 `OBJECTIVE`、`TIME_LIMIT`、`EMPTY`、`ERROR` 以外的原因按回调失败处理；返回 `ERROR` 时 `end(ERROR)` 后立即 `settled`，不调 `onResult`。
+  - 只请求一次：`Round` 请求过 `cancel` 或 `settled` 之后，`tick` 不再动这个实例。宿主撤离期间实例可能还没转 `CLOSED`，再请求一次会抛 `IllegalStateException`。
+  - `LocalQueue` 是泛型：样板里是 `LocalQueue<Player>`，单元测试不必起服务端造玩家。
   - 活动快照：`EventCalendar#active` 在 `onStart` 里读一次存进局状态，到结束不变；要实时生效的玩法自己每 tick 读。
   - `EventCalendar` 在 `onEnable` 里读文件（启动线程，允许阻塞）；局中不读文件。
 
@@ -956,11 +978,12 @@ erDiagram
   - 一个进程一份文件，各插件只读自己命名空间的条目。
 
 - **`API-PLAY-010` 样板 `rush` 的动作、数据段与配置（`:game-rush`，S1，S2 部分随 W3）** — 实现 `REQ-PLAY-008`、`REQ-PLAY-018`
-  - 动作：`rush:queue`（大厅槽 0，冷却 2 s）、`rush:back`（结算面板按钮，只把按的人 `move` 回大厅）；S2 加 `rush:pulse`（对局槽 0，冷却 8 s）。
+  - 动作：`rush:queue`（大厅槽 0，冷却 2 s）、`rush:back`（结算面板按钮，只把按的人 `move` 回大厅）；S2 加 `rush:pulse`（对局槽 0，冷却 8 s）。S1 的两个 handler 都回 `ok`：`rush:queue` 在队里就退队、不在就入队，并清掉这个人的开局失败提示；`rush:back` 在竞技场不是 `ENDING`、按的人不在竞技场里或已经按过时什么都不做，照样回 `ok`（宿主只在玩家的面板上有这个按钮时才受理它，`API-PLAY-002`）。
   - 数据段 `rush:stats`（S2）：schemaVersion 1，JSON `{played, wins, best, captures}`，全部非负整数；默认值全 0。
-  - 配置键：§6.7.5 的五个 `synaxis.rush.*` 键。
-  - 台账：`EVT:rush_round_ended`（§20）。
-  - 准入：一律 `Accept(大厅, 0)`；同一连接回到配置阶段重走准入时得到同一个大厅（`AdmissionGate` 不看 `isFirstConfig`，`AdmissionGate.java:66`）。
+  - 配置键：§6.7.5 的五个 `synaxis.rush.*` 键，`onEnable` 时由 `RushConfig` 读一次：`min-players` 1～8（一局至多 8 人），`lobby-wait-seconds` 0～3,600，`round-seconds` 1～3,600，`result-seconds` 1～600，`target-score` 1～1,000,000。不是整数报 `Property '<键>' is not an integer: <值>`，越界报 `Property '<键>' is not from <下限> to <上限>: <值>`，都是 `IllegalArgumentException`：`onEnable` 失败，宿主拆掉 `rush`，进程照 `docs/DESIGN-M2.md` `API-M2-010` 第 ⑤ 步拒启。
+  - 实例：大厅用 `InstanceSpec` 的四参数构造器，名字 `lobby`、半径 1；竞技场名字 `round`、维度类型 `synaxis:match`、半径 2，`settleTimeout` 取 `result-seconds` 加 15 s，`fallbackExit` 把人送回大厅出生点。
+  - 台账：`EVT:rush_round_ended`（§20）在 `onResult` 里写，即一局转 `ENDING` 时、`settled` 之前；以 `error` 结束的局不调 `onResult`，不写这一行。属性：`round_id` 是竞技场实例 id（如 `rush:round_1`），`players` 是这时的参与者数，`winner` 是名次第 1 的参与者名字，按名字排序、以逗号连接（并列时有多个，没有参与者时为空串），`cause` 是小写的结束原因，`duration_ms` 是开局到最后一次 `onTick` 的毫秒数。名次：分数高的在前，同分比占领次数，再相同则并列同一个名次，下一个名次跳过并列的人数（1、1、3）。
+  - 准入：大厅 `RUNNING` 时一律 `Accept(大厅, 0)`，否则 `Reject(synaxis:match-unavailable)`；同一连接回到配置阶段重走准入时得到同一个大厅（`AdmissionGate` 不看 `isFirstConfig`，`AdmissionGate.java:66`）。
 
 - **`API-PLAY-011` 地图分片加载玩法插件（W5，规划；需签字）** — 实现 `REQ-PLAY-013`
   - 改判 `docs/DESIGN-M3.md` §28.1 L3770：挂地图时按 `synaxis.app.plugins` 白名单发现插件（白名单为空时一个都不发现，与今天相同）；白名单里的插件注册准入即拒启（准入仍归 `serveMap`，`Main.java:545`）；场景所有者由新键 `synaxis.app.scene-owner` 指定，其余插件是叠加者。M3 自估：发现插件约 1～2 天，世界状态标志进 `:plugin-api` 约半天（`docs/DESIGN-M3.md` §28.1 L3770）。
@@ -1449,7 +1472,7 @@ flowchart LR
 
 - **`ADR-PLAY-011` 样板走独立的 `runRush` configuration，不进 `server-app` 默认的运行期依赖** — Status: Accepted（用户 2026-10-12 签字）
   - Context：`server-app` 运行期恒带 `:game-rts`（`server-app/build.gradle.kts:29`）；再加一个注册准入的插件，`core-mode=auto` 下两者同时启用、撞上唯一准入槽。
-  - Decision：§6.7.6 的 CI 一段。
+  - Decision：`server-app/build.gradle.kts` 末尾加 configuration `rush`（只给 `runRush` 用，内容 `:game-rush`，按运行期 classpath 的属性解析，带上 `:play-kit` 与 `:plugin-api`）与 `JavaExec` 任务 `runRush`：classpath 是 `main` 的运行期 classpath 加 `rush`；主类、JVM 默认参数（`applicationDefaultJvmArgs`）、标准输入、`synaxis.*` 系统属性透传与工作目录（仓库根）照 `run` 写；默认 `-Dsynaxis.app.plugins=rush`，命令行给了 `synaxis.app.plugins` 时以命令行为准。`installDist`、`distZip` 与 `run` 的 classpath 不变。CI 怎么用见 §6.7.6；R1 环不用 `runRush`，用 `installDist` 的产物加两个 jar（§23）。
   - Alternatives：进默认运行期依赖并要求白名单必填（现有 CI 的玩法模式那台没传白名单，`client-gametest.yml:122`，要跟着改，开发脚本也要改）。
   - Consequences：+ 现有用例与 CI 一个参数不改；− 生产发行版怎么带第二个玩法另行拍板（§28.1 D7，默认一个发行包加白名单必填）。
 
@@ -1779,7 +1802,7 @@ flowchart LR
 
 ## 23. 发布: Feature Flag / 灰度 / 回滚
 
-项目没有运行期 feature flag 系统；应用层开关是插件白名单 `synaxis.app.plugins`。样板的 `runRush` configuration 只给 CI 与本机开发用（`ADR-PLAY-011`）；R1 环照 `docs/PLUGINS.md` §6 起 `rush`：用 `installDist` 的产物，把 `:game-rush` 的 jar 追加到 classpath，并给 `-Dsynaxis.app.plugins=rush`。`installDist` 的 `lib/` 里恒有 `:game-rts`（`server-app/build.gradle.kts:29`），白名单必须给，否则两个注册准入的插件撞上唯一的准入槽（W0 之前谁占到取决于 ServiceLoader 的顺序，W0 起按 `API-PLAY-007` 拒启）。
+项目没有运行期 feature flag 系统；应用层开关是插件白名单 `synaxis.app.plugins`。样板的 `runRush` 任务只给 CI 与本机开发用（`ADR-PLAY-011`）；R1 环照 `docs/PLUGINS.md` §6 起 `rush`：用 `installDist` 的产物，把 `:game-rush` 与 `:play-kit` 两个 jar 追加到 classpath（`./gradlew :server-app:installDist :game-rush:jar :play-kit:jar` 产出，jar 在各模块的 `build/libs/` 下），并给 `-Dsynaxis.app.plugins=rush`。两个 jar 缺一不可，白名单不含 `rush` 时也一样：`PluginHost.discover()` 对 ServiceLoader 找到的每个插件都调 `Provider::get`（`PluginHost.java:144-148`），白名单到 `enable` 才过滤（`:171`），而 `RushPlugin` 的构造就建它的 `LocalQueue`（`:play-kit` 的类）；classpath 上只有 `:game-rush` 的 jar 时，`discover()` 抛 `ServiceConfigurationError`（cause 是 `NoClassDefFoundError: io/github/bearisbug/synaxis/game/playkit/LocalQueue`），起服走不到就绪日志。`installDist` 的 `lib/` 里恒有 `:game-rts`（`server-app/build.gradle.kts:29`），白名单必须给，否则两个注册准入的插件撞上唯一的准入槽（W0 之前谁占到取决于 ServiceLoader 的顺序，W0 起按 `API-PLAY-007` 拒启）。
 
 | 环 | 放量 | 进入门槛（指标） | 回滚动作 |
 | --- | --- | --- | --- |
@@ -1796,7 +1819,7 @@ flowchart LR
 | 验收用例全量通过（见 §19） | 待各 W 波填 |
 | 告警 ↔ Runbook 双向就绪（§21、§22） | 待 W3 填（指标随 W3 加） |
 | 容量按 §15 验证（建实例占用的 tick 调度线程、开局准备时长、每 tick 开销） | 待 S1 填 |
-| 回滚演练：R1 的起服命令里白名单改为 `-Dsynaxis.app.plugins=rts`（`rush` 的 jar 仍在 classpath 上），进程照常起服：日志有 `Plugin enabled: plugin_id=rts`、没有 `plugin_id=rush`，就绪日志 `synaxis server-app listening on` 出现 | 待 S1 填 |
+| 回滚演练：R1 的起服命令（classpath 是 `installDist` 的 `lib/` 加 `:game-rush`、`:play-kit` 两个 jar）里白名单改为 `-Dsynaxis.app.plugins=rts`，两个 jar 仍在 classpath 上，进程照常起服：日志有 `Plugin enabled: plugin_id=rts`、没有 `plugin_id=rush`，就绪日志 `synaxis server-app listening on` 出现。`discover()` 照样实例化 `RushPlugin`，所以少一个 jar 时这一步同样起不来（首段） | 待 S1 填 |
 | 用户文档同步：`docs/PLUGINS.md`（`REQ-PLAY-011`）；面向玩家的使用文档 N-A（项目还没有玩家手册） | 待 S1、W0、W3 填 |
 | 整合包先于服务端发布（W1 之后每次通道升版） | 待 W1 填 |
 

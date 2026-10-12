@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.playkit.CountdownTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-12T06:04:20.131Z" hostname="Mac.local" time="0.029">
+  <properties/>
+  <testcase name="aNewCountdownIsNotRunning()" classname="io.github.bearisbug.synaxis.game.playkit.CountdownTest" time="0.014"/>
+  <testcase name="aCountdownOfZeroIsDoneAtOnceAndANegativeOneIsRefused()" classname="io.github.bearisbug.synaxis.game.playkit.CountdownTest" time="0.004"/>
+  <testcase name="startingAgainStartsFromTheTop()" classname="io.github.bearisbug.synaxis.game.playkit.CountdownTest" time="0.0"/>
+  <testcase name="aCancelledCountdownIsNeitherRunningNorDone()" classname="io.github.bearisbug.synaxis.game.playkit.CountdownTest" time="0.0"/>
+  <testcase name="itCountsDownToZeroAndStaysThere()" classname="io.github.bearisbug.synaxis.game.playkit.CountdownTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

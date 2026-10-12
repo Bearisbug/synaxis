@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" tests="8" skipped="0" failures="8" errors="0" timestamp="2026-10-12T05:58:23.505Z" hostname="Mac.local" time="0.121">
+  <properties/>
+  <testcase name="theBackButtonSendsOnlyThePresserOnceAndOnlyWhileTheResultShows(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.016">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;ENDING&gt; but was: &lt;OPEN&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;ENDING&gt; but was: &lt;OPEN&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest.theBackButtonSendsOnlyThePresserOnceAndOnlyWhileTheResultShows(RushRoundIntegrationTest.java:183)
+</failure>
+  </testcase>
+  <testcase name="aParticipantWhoLeavesDropsOutOfTheScoresAndLetsGoOfTheBeacon(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.017">
+    <failure message="java.lang.AssertionError: no label for beacon A" type="java.lang.AssertionError">java.lang.AssertionError: no label for beacon A
+	at io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest.label(RushRoundIntegrationTest.java:256)
+	at io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest.aParticipantWhoLeavesDropsOutOfTheScoresAndLetsGoOfTheBeacon(RushRoundIntegrationTest.java:161)
+</failure>
+  </testcase>
+  <testcase name="aRoundEndsAtTheTimeLimitAndATieSharesTheRank(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.013">
+    <failure message="org.opentest4j.AssertionFailedError: the round ended before its time was up ==&gt; expected: &lt;[start]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the round ended before its time was up ==&gt; expected: &lt;[start]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest.aRoundEndsAtTheTimeLimitAndATieSharesTheRank(RushRoundIntegrationTest.java:105)
+</failure>
+  </testcase>
+  <testcase name="theHigherScoreRanksFirstThenTheMoreCapturesAndOtherwiseTheRankIsShared(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.015">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[1 alice, 1 carol, 3 bob, 4 dave]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[1 alice, 1 carol, 3 bob, 4 dave]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest.theHigherScoreRanksFirstThenTheMoreCapturesAndOtherwiseTheRankIsShared(RushRoundIntegrationTest.java:131)
+</failure>
+  </testcase>
+  <testcase name="aRoundNobodyIsLeftInEndsEmptyAndSettlesAtOnce(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.025">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[start, end EMPTY]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[start, end EMPTY]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest.aRoundNobodyIsLeftInEndsEmptyAndSettlesAtOnce(RushRoundIntegrationTest.java:143)
+</failure>
+  </testcase>
+  <testcase name="aPlayerHoldingABeaconScoresEverySecondUntilTheTargetEndsTheRound(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.012">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Text[id=capture, slot=BOTTOM, order=0, text=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=rush.capture, fallback=Capturing %s: %s%%, args=[TranslationArgumentImpl[value=TextComponentImpl{content='A', children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}}], TranslationArgumentImpl[value=TextComponentImpl{content='10', children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}}]]], ttl=PT0S]&gt; but was: &lt;null&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Text[id=capture, slot=BOTTOM, order=0, text=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=rush.capture, fallback=Capturing %s: %s%%, args=[TranslationArgumentImpl[value=TextComponentImpl{content='A', children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}}], TranslationArgumentImpl[value=TextComponentImpl{content='10', children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}}]]], ttl=PT0S]&gt; but was: &lt;null&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest.aPlayerHoldingABeaconScoresEverySecondUntilTheTargetEndsTheRound(RushRoundIntegrationTest.java:80)
+</failure>
+  </testcase>
+  <testcase name="theTimerIsSetWhenTheRoundStartsWithTheWholeLengthAndNotBefore(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.012">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;RUNNING&gt; but was: &lt;OPEN&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest.theTimerIsSetWhenTheRoundStartsWithTheWholeLengthAndNotBefore(RushRoundIntegrationTest.java:60)
+</failure>
+  </testcase>
+  <testcase name="theRoundWaitsForEveryMoveAndIsCancelledWhenNoneSucceeded(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.006">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[cancel]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[cancel]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest.theRoundWaitsForEveryMoveAndIsCancelledWhenNoneSucceeded(RushRoundIntegrationTest.java:214)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

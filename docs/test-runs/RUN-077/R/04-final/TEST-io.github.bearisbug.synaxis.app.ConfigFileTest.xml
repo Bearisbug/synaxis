@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.ConfigFileTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-12T06:05:50.839Z" hostname="Mac.local" time="0.076">
+  <properties/>
+  <testcase name="theCommandLineWinsOverTheFile()" classname="io.github.bearisbug.synaxis.app.ConfigFileTest" time="0.035"/>
+  <testcase name="aNamedFileIsReadInsteadOfTheOneInTheWorkingDirectory()" classname="io.github.bearisbug.synaxis.app.ConfigFileTest" time="0.005"/>
+  <testcase name="aFileThatIsNotUtf8IsRefused()" classname="io.github.bearisbug.synaxis.app.ConfigFileTest" time="0.002"/>
+  <testcase name="everyUnknownKeyIsListedAndTheFileCannotNameItself()" classname="io.github.bearisbug.synaxis.app.ConfigFileTest" time="0.005"/>
+  <testcase name="anUnknownKeyIsRefusedWithTheNearestKnownKeyAndNothingIsSet()" classname="io.github.bearisbug.synaxis.app.ConfigFileTest" time="0.003"/>
+  <testcase name="aNamedFileThatDoesNotExistIsRefused()" classname="io.github.bearisbug.synaxis.app.ConfigFileTest" time="0.002"/>
+  <testcase name="theFileWinsOverTheShardDefaults()" classname="io.github.bearisbug.synaxis.app.ConfigFileTest" time="0.002"/>
+  <testcase name="theNearestKnownKeyIsTheFewestEditsAwayAndTheFirstOfATie()" classname="io.github.bearisbug.synaxis.app.ConfigFileTest" time="0.003"/>
+  <testcase name="aKeyGivenTwiceIsRefused()" classname="io.github.bearisbug.synaxis.app.ConfigFileTest" time="0.001"/>
+  <testcase name="noFileWhereNoneWasNamedIsNoFile()" classname="io.github.bearisbug.synaxis.app.ConfigFileTest" time="0.001"/>
+  <testcase name="theFileIsUtf8InThePropertiesFormat()" classname="io.github.bearisbug.synaxis.app.ConfigFileTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

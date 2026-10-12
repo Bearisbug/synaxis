@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" tests="11" skipped="0" failures="11" errors="0" timestamp="2026-10-12T05:58:22.476Z" hostname="Mac.local" time="0.989">
+  <properties/>
+  <testcase name="anArenaThatFailsToPrepareSendsTheQueueBackWithTheFailedHint(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.8">
+    <failure message="java.util.NoSuchElementException" type="java.util.NoSuchElementException">java.util.NoSuchElementException
+	at java.base/java.util.concurrent.CopyOnWriteArrayList.getLast(CopyOnWriteArrayList.java:436)
+	at io.github.bearisbug.synaxis.game.rush.FakeInstances.last(FakeInstances.java:60)
+	at io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest.anArenaThatFailsToPrepareSendsTheQueueBackWithTheFailedHint(LobbyIntegrationTest.java:250)
+</failure>
+  </testcase>
+  <testcase name="theQueueKeyTogglesAndTheHintFollowsTheCount(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.035">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Text[id=hint, slot=LEFT, order=0, text=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=rush.hint, fallback=Press action key 1 (default H) to join or leave the queue. Queued: %s, args=[TranslationArgumentImpl[value=TextComponentImpl{content='1', children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}}]]], ttl=PT0S]&gt; but was: &lt;null&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Text[id=hint, slot=LEFT, order=0, text=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=rush.hint, fallback=Press action key 1 (default H) to join or leave the queue. Queued: %s, args=[TranslationArgumentImpl[value=TextComponentImpl{content='1', children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}}]]], ttl=PT0S]&gt; but was: &lt;null&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest.theQueueKeyTogglesAndTheHintFollowsTheCount(LobbyIntegrationTest.java:78)
+</failure>
+  </testcase>
+  <testcase name="noSecondArenaWhileThePreviousRoundHasNotClosed(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.021">
+    <failure message="java.util.NoSuchElementException" type="java.util.NoSuchElementException">java.util.NoSuchElementException
+	at java.base/java.util.concurrent.CopyOnWriteArrayList.getLast(CopyOnWriteArrayList.java:436)
+	at io.github.bearisbug.synaxis.game.rush.FakeInstances.last(FakeInstances.java:60)
+	at io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest.noSecondArenaWhileThePreviousRoundHasNotClosed(LobbyIntegrationTest.java:295)
+</failure>
+  </testcase>
+  <testcase name="anOpenArenaTakesAtMostEightAndPutsThemIntoTheRound(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.031">
+    <failure message="org.opentest4j.AssertionFailedError: players were taken while the arena was prepared ==&gt; expected: &lt;9&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: players were taken while the arena was prepared ==&gt; expected: &lt;9&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest.anOpenArenaTakesAtMostEightAndPutsThemIntoTheRound(LobbyIntegrationTest.java:171)
+</failure>
+  </testcase>
+  <testcase name="anArenaOpeningWithTooFewQueuedIsCancelledAndTheQueueStays(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.017">
+    <failure message="java.util.NoSuchElementException" type="java.util.NoSuchElementException">java.util.NoSuchElementException
+	at java.base/java.util.concurrent.CopyOnWriteArrayList.getLast(CopyOnWriteArrayList.java:436)
+	at io.github.bearisbug.synaxis.game.rush.FakeInstances.last(FakeInstances.java:60)
+	at io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest.anArenaOpeningWithTooFewQueuedIsCancelledAndTheQueueStays(LobbyIntegrationTest.java:275)
+</failure>
+  </testcase>
+  <testcase name="aMoveThatFailsPutsThePlayerBackIntoTheLobbyScene(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.014">
+    <failure message="java.util.NoSuchElementException" type="java.util.NoSuchElementException">java.util.NoSuchElementException
+	at java.base/java.util.concurrent.CopyOnWriteArrayList.getLast(CopyOnWriteArrayList.java:436)
+	at io.github.bearisbug.synaxis.game.rush.FakeInstances.last(FakeInstances.java:60)
+	at io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest.aMoveThatFailsPutsThePlayerBackIntoTheLobbyScene(LobbyIntegrationTest.java:225)
+</failure>
+  </testcase>
+  <testcase name="leavingTheServerLeavesTheQueue(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.014">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl@1a190df7]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl@1a190df7]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest.leavingTheServerLeavesTheQueue(LobbyIntegrationTest.java:335)
+</failure>
+  </testcase>
+  <testcase name="aCountdownRunningOutCreatesTheArena(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.014">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;1&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;1&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+	at io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest.aCountdownRunningOutCreatesTheArena(LobbyIntegrationTest.java:134)
+</failure>
+  </testcase>
+  <testcase name="aPlayerArrivingEntersTheLobbySceneWithTheHint(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.013">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;SceneSpec[id=lobby, title=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=rush.scene.lobby, fallback=Beacon Rush: lobby, args=[]], camera=Vanilla[], cursor=LOCKED, actions=[ActionSlot[slot=0, actionId=queue, label=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=rush.action.queue, fallback=Join or leave the queue, args=[]], cooldown=PT2S]]]&gt; but was: &lt;null&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;SceneSpec[id=lobby, title=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=rush.scene.lobby, fallback=Beacon Rush: lobby, args=[]], camera=Vanilla[], cursor=LOCKED, actions=[ActionSlot[slot=0, actionId=queue, label=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=rush.action.queue, fallback=Join or leave the queue, args=[]], cooldown=PT2S]]]&gt; but was: &lt;null&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest.aPlayerArrivingEntersTheLobbySceneWithTheHint(LobbyIntegrationTest.java:66)
+</failure>
+  </testcase>
+  <testcase name="theRoundStartsOnlyOnceEveryMoveIsDone(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.013">
+    <failure message="java.util.NoSuchElementException" type="java.util.NoSuchElementException">java.util.NoSuchElementException
+	at java.base/java.util.concurrent.CopyOnWriteArrayList.getLast(CopyOnWriteArrayList.java:436)
+	at io.github.bearisbug.synaxis.game.rush.FakeInstances.last(FakeInstances.java:60)
+	at io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest.theRoundStartsOnlyOnceEveryMoveIsDone(LobbyIntegrationTest.java:198)
+</failure>
+  </testcase>
+  <testcase name="theCountdownReachesTheQueuedOnlyAndStopsBelowTheMinimum(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.016">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Timer[id=timer, slot=TOP_CENTER, order=0, label=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=rush.timer.countdown, fallback=Round starts in, args=[]], remaining=PT10S, running=true]&gt; but was: &lt;null&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Timer[id=timer, slot=TOP_CENTER, order=0, label=TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, hoverEvent=null, insertion=null}, key=rush.timer.countdown, fallback=Round starts in, args=[]], remaining=PT10S, running=true]&gt; but was: &lt;null&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest.theCountdownReachesTheQueuedOnlyAndStopsBelowTheMinimum(LobbyIntegrationTest.java:103)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

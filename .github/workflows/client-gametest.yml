@@ -223,14 +223,16 @@ jobs:
             playable/logs/
           retention-days: 14
 
-  # The sample game rush of docs/DESIGN-PLAY.md §6.7.6 (REQ-PLAY-008), beside the regression job. So far it runs Q0:
-  # the real client joins PlayHudFixture of the server test sources, which sends a scene and three TEXTs on
-  # synaxis:play and on request moves the player to an instance of another dimension name (Q0a, Q0b, the first step
-  # of §26 S1), then enters it into a second scene with an action key, a TIMER, a SCOREBOARD, a TEXT and a PANEL (Q0c).
-  # RushClientGameTest writes synaxis-gametest/rush.txt and client-fabric/gametest-env/rush_judge.py judges both
-  # launches' reports; every other job starts the same entry points without SYNAXIS_RUSH_SERVER and
-  # SYNAXIS_PLAY_FIXTURE_SERVER, where it returns at once. Both launches on every trigger, pull requests included:
-  # the exit condition of §26 S1 is two launches.
+  # The sample game rush of docs/DESIGN-PLAY.md §6.7.6 (REQ-PLAY-008), beside the regression job. The real client
+  # runs RushClientGameTest twice, the dev class path and the production mod jar: Q0 against PlayHudFixture of the
+  # server test sources (the scene, the TEXTs, the move between instances and the client widgets), then Q1 to Q9
+  # against the sample server, `:server-app:runRush` in online mode at the fake sessionserver, where it plays one
+  # round alone, from the lobby back to the lobby. client-fabric/gametest-env/rush_judge.py judges the two reports,
+  # the sample server's ledger and log, the sessionserver's log and the client mod's sources; then the rollout
+  # rehearsal of §23 starts the R1 command forward and rolled back. Every other job starts the same entry points
+  # without SYNAXIS_RUSH_SERVER and SYNAXIS_PLAY_FIXTURE_SERVER, where it returns at once. Both launches on every
+  # trigger, pull requests included: the exit condition of §26 S1 is two launches. Ports: the sample server 25567,
+  # the fixture 25568, the rehearsal 25569, none of them the regression job's.
   rush:
     name: Run the rush script
     # The same triggers as the regression job
@@ -263,13 +265,33 @@ jobs:
       - name: Publish :protocol to the local repository
         run: env -u CI ./gradlew :protocol:publishToMavenLocal
 
-      # Standard library only, so nothing to install (docs/TEST.md TC-PLAY-028)
+      # Standard library only, so nothing to install (docs/TEST.md TC-PLAY-119)
       - name: Unit tests of rush_judge.py
         run: python3 -m unittest discover -s client-fabric/gametest-env -p 'test_rush_judge.py'
 
-      # The fixture runs on the server's test runtime classpath, which this writes as a java argument file
-      - name: Build the play fixture's classpath
-        run: ./gradlew :server-app:farviewFixtureArgs
+      # Its first line names the port it took; the client's authlib and the sample server both go there.
+      - name: Start the fake sessionserver in record mode
+        run: |
+          # The background fork opens the log on its own schedule; without the file the sed below exits 2 under bash -e
+          : > sessionserver.log
+          (java tools/fake-sessionserver/FakeSessionServer.java --mode record --port 0 > sessionserver.log 2>&1 &)
+          for _ in $(seq 1 60); do
+            port=$(sed -n 's|.*listening on http://127.0.0.1:\([0-9]*\),.*|\1|p' sessionserver.log)
+            if [ -n "$port" ]; then
+              echo "SESSION_HOST=http://127.0.0.1:$port" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat sessionserver.log
+          exit 1
+
+      # Everything the job runs outside Gradle, built before the sample server starts, so that no second build runs
+      # beside the one `:server-app:runRush` keeps busy: the fixture's class path as a java argument file, and the
+      # rehearsal's distribution with its two jars. :play-kit:jar is named because builds downstream of it compile
+      # against its classes directory and never make the jar.
+      - name: Build the fixture's class path and the rehearsal's jars
+        run: ./gradlew :server-app:farviewFixtureArgs :server-app:installDist :game-rush:jar :play-kit:jar
 
       # Offline, port 25568, in a working directory of its own
       - name: Start the play fixture
@@ -286,12 +308,14 @@ jobs:
           cat fixture.log
           exit 1
 
-      # The exit codes of the two client steps are recorded, not judged: the judge reads the reports.
+      # The exit codes of the two client steps are recorded, not judged: the judge reads the reports and the ledger.
       - name: Run the client gametests
         continue-on-error: true
         working-directory: client-fabric
         env:
+          SYNAXIS_RUSH_SERVER: 127.0.0.1:25567
           SYNAXIS_PLAY_FIXTURE_SERVER: 127.0.0.1:25568
+          SYNAXIS_GAMETEST_SESSION_HOST: ${{ env.SESSION_HOST }}
           LIBGL_ALWAYS_SOFTWARE: "1"
           GALLIUM_DRIVER: llvmpipe
         run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest --console=plain --stacktrace
@@ -301,24 +325,76 @@ jobs:
         continue-on-error: true
         working-directory: client-fabric
         env:
+          SYNAXIS_RUSH_SERVER: 127.0.0.1:25567
           SYNAXIS_PLAY_FIXTURE_SERVER: 127.0.0.1:25568
+          SYNAXIS_GAMETEST_SESSION_HOST: ${{ env.SESSION_HOST }}
           LIBGL_ALWAYS_SOFTWARE: "1"
           GALLIUM_DRIVER: llvmpipe
         run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runProductionClientGameTest --console=plain --stacktrace
 
-      - name: Judge the rush script by its reports
+      - name: Show the sample server's ledger and the sessionserver's log
+        if: always()
+        run: |
+          cat logs/events-*.jsonl || true
+          cat sessionserver.log || true
+
+      - name: Judge the rush script by its reports, the ledger and the logs
         if: success() || failure()
         run: |
-          python3 client-fabric/gametest-env/rush_judge.py \
+          python3 client-fabric/gametest-env/rush_judge.py --ledger-dir logs --server-log rush-server.log \
+            --session-log sessionserver.log \
             client-fabric/build/run/clientGameTest/synaxis-gametest/rush.txt \
             client-fabric/build/run/productionClientGameTest/synaxis-gametest/rush.txt
 
+      # docs/DESIGN-PLAY.md §23: the R1 command of docs/PLUGINS.md §6 started forward, then rolled back to rts with the
+      # same class path. The host builds every plugin on the class path to read its descriptor, so a jar missing
+      # from it fails the rollback too. Offline, port 25569, any free port for the metrics, its own directory.
+      - name: Rehearse the rollout forward and rolled back
+        if: success() || failure()
+        run: |
+          mkdir -p "$RUNNER_TEMP/rollback" && cd "$RUNNER_TEMP/rollback"
+          main_jar() {
+            local found=() file
+            for file in "$GITHUB_WORKSPACE/$1"/build/libs/*.jar; do
+              case "$file" in *-sources.jar | *-javadoc.jar) ;; *) found+=("$file") ;; esac
+            done
+            [ "${#found[@]}" -eq 1 ] || { echo "not one main jar in $1/build/libs: ${found[*]}" >&2; return 1; }
+            echo "${found[0]}"
+          }
+          rush_jar=$(main_jar game-rush)
+          kit_jar=$(main_jar play-kit)
+          RUSH_CP="$GITHUB_WORKSPACE/server-app/build/install/server-app/lib/*:$rush_jar:$kit_jar"
+          echo "class path: $RUSH_CP"
+          start() {
+            nohup java -cp "$RUSH_CP" -Dsynaxis.app.plugins="$1" -Dsynaxis.app.auth=offline -Dsynaxis.app.port=25569 \
+              -Dsynaxis.app.metrics.bind=127.0.0.1:0 io.github.bearisbug.synaxis.app.Main < /dev/null > "$1.log" 2>&1 &
+            local pid=$!
+            for _ in $(seq 1 180); do
+              grep -q 'synaxis server-app listening on' "$1.log" && break
+              kill -0 "$pid" 2>/dev/null || break
+              sleep 1
+            done
+            kill -TERM "$pid" 2>/dev/null || true
+            wait "$pid" || true
+          }
+          failures=0
+          check() { if grep -q "$2" "$1.log"; then echo "ok   $1: $2"; else echo "FAIL $1: no $2"; failures=$((failures + 1)); fi; }
+          start rush
+          check rush 'Plugin enabled: plugin_id=rush'
+          check rush 'synaxis server-app listening on'
+          start rts
+          check rts 'Plugin enabled: plugin_id=rts'
+          check rts 'synaxis server-app listening on'
+          if grep -q 'Plugin enabled: plugin_id=rush' rts.log; then echo "FAIL rts: rush enabled too"; failures=$((failures + 1)); fi
+          if [ "$failures" -gt 0 ]; then cat rush.log rts.log; exit 1; fi
+
       # A path outside the workspace in the upload list would move the artifact's root up to the common ancestor
-      - name: Copy the fixture's log into the workspace
+      - name: Copy the fixture's and the rehearsal's logs into the workspace
         if: always()
         run: |
-          mkdir -p fixture
+          mkdir -p fixture rollback
           cp "$RUNNER_TEMP/fixture/fixture.log" fixture/ || true
+          cp "$RUNNER_TEMP/rollback/"*.log rollback/ || true
 
       - name: Upload screenshots, reports and logs
         if: always()
@@ -329,7 +405,11 @@ jobs:
             client-fabric/build/run/**/screenshots/
             client-fabric/build/run/**/synaxis-gametest/rush.txt
             client-fabric/build/run/**/logs/
+            rush-server.log
+            logs/events-*.jsonl
             fixture/fixture.log
+            rollback/
+            sessionserver.log
           retention-days: 14
 
   # P10 of docs/DESIGN-PROD.md §19 (REQ-PROD-031, API-PROD-026): the real client sent from one map

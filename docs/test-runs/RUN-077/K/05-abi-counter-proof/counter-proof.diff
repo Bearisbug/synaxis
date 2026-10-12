@@ -1,0 +1,15 @@
+diff --git a/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginContext.java b/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginContext.java
+index b14fd64abf..010dbee76f 100644
+--- a/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginContext.java
++++ b/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginContext.java
+@@ -85,9 +85,7 @@ public interface PluginContext {
+      * @return the player data capability of this plugin
+      * @throws UnsupportedOperationException from a context that is not the host's
+      */
+-    default PlayerDataStore playerData() {
+-        throw new UnsupportedOperationException("only the host's plugin context has a player store");
+-    }
++    PlayerDataStore playerData();
+ 
+     /**
+      * Lifecycle hooks beyond enable and disable, such as the shutdown save

@@ -1,0 +1,94 @@
+io.github.bearisbug.synaxis.app.CoreModeIntegrationTest: tests=8 failures=0 errors=0 skipped=0
+  PASS everyConnectionIsAdmittedIntoTheCoreWorld(Env)
+  PASS theChunksAroundTheSpawnAreLitBeforeAnybodyJoins(Env)
+  PASS aPlayerWhoJoinsIsPutAtTheSpawn(Env)
+  PASS theDiagnosticChannelEchoesThePayloadBack(Env)
+  PASS aChunkGeneratedAfterTheStartIsLitWhenItIsFirstSent(Env)
+  PASS theChunkAPlayerSpawnsInIsSentLit(Env)
+  PASS theCoreWorldIsRegisteredAndHasGroundToStandOn(Env)
+  PASS theCoreWorldEndsAtAWorldBorder(Env)
+io.github.bearisbug.synaxis.app.PluginHostIntegrationTest: tests=18 failures=0 errors=0 skipped=0
+  PASS aPluginFailingToEnableIsTornDownWhileTheProcessGoesOn(Env)
+  PASS aPayloadOnAnUnregisteredChannelIsDroppedWithOneWarning(Env)
+  PASS discoveryFindsTheCompileTimePlugin()
+  PASS anAcceptedConnectionIsLetThrough(Env)
+  PASS theSelectionPropertyPicksWhichPluginsAreEnabled(Env)
+  PASS aSelectedIdNoPluginAnswersToIsNamedInAWarning(Env)
+  PASS theProcessAcceptsOnlyOneAdmissionProvider(Env)
+  PASS eachWrapperLogsTheExceptionOnceAgainstThePlugin(Env)
+  PASS anAdmissionProviderThatThrowsTurnsTheConnectionAwayAgainstItsPlugin(Env)
+  PASS enablesInOrderAndDisablesInReverse(Env)
+  PASS aPluginThrowingFromOnDisableIsTornDownLikeTheOthers(Env)
+  PASS disablingTakesBackEventsTasksChannelsAndAdmission(Env)
+  PASS anIllegalDescriptorStopsTheStartupBeforeAnyPluginIsEnabled(Env)
+  PASS anAdmissionProviderSlowerThanItsBudgetStillDecidesAndIsWarnedAbout(Env)
+  PASS aPluginSetsTheTrackingRangeOfAnEntityType(Env)
+  PASS enablingRecordsOneLedgerLine(Env)
+  PASS aPluginHangingInOnDisableDoesNotHoldTheShutdown(Env)
+  PASS aConnectionIsTurnedAwayWhileNoPluginHoldsTheAdmissionSlot(Env)
+io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest: tests=2 failures=0 errors=0 skipped=0
+  PASS aPayloadOnThePlayChannelReachesTheSceneLayer(Env)
+  PASS theHostsContextHandsEachPluginItsOwnPlayAndInstances(Env)
+io.github.bearisbug.synaxis.app.StableSurfaceArchitectureTest: tests=4 failures=0 errors=0 skipped=0
+  PASS theStableSurfaceReturnsNoEngineInternal()
+  PASS theReturnTypeRuleRejectsALeakedInternal()
+  PASS theStableSurfaceAsksForNoEngineInternal()
+  PASS theParameterRuleRejectsALeakedInternal()
+io.github.bearisbug.synaxis.app.scene.ComponentBytesTest: tests=2 failures=0 errors=0 skipped=0
+  PASS aComponentIsWrittenInTheNetworkFormatAndReadsBackAsItself()
+  PASS aComponentOf2048BytesIsTakenAndOneByteMoreIsNot()
+io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest: tests=2 failures=0 errors=0 skipped=0
+  PASS theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel()
+  PASS everyKeyTheServerCanSendHasTextInBothLanguageFiles()
+io.github.bearisbug.synaxis.plugin.BanTargetTest: tests=12 failures=0 errors=0 skipped=0
+  PASS aNetworkIsKeptWithItsHostBitsCleared()
+  PASS [1] "example.org"
+  PASS [2] "10.0.0.0/7"
+  PASS [3] "10.0.0.0/33"
+  PASS [4] "2001:db8::/31"
+  PASS [5] "2001:db8::/129"
+  PASS [6] "10.0.0/8"
+  PASS [7] "10.0.0.0/x"
+  PASS [8] ""
+  PASS [9] "10.0.0.0/"
+  PASS aNetworkCoversTheAddressesUnderItsPrefixOnly()
+  PASS anAccountCoversItselfWhereverItConnectsFrom()
+io.github.bearisbug.synaxis.plugin.LogBudgetTest: tests=2 failures=0 errors=0 skipped=0
+  PASS whatOneIntervalSwallowsIsCountedByTheNextLine()
+  PASS theReportedFailureKeepsItsStack()
+io.github.bearisbug.synaxis.plugin.PluginContextDefaultsTest: tests=2 failures=0 errors=0 skipped=0
+  PASS aContextThatIsNotTheHostsHasNoPlay()
+  PASS aContextThatIsNotTheHostsHasNoInstances()
+io.github.bearisbug.synaxis.plugin.SynaxisPluginTest: tests=1 failures=0 errors=0 skipped=0
+  PASS aPluginDeclaresNoTranslationKeyUnlessItSaysSo()
+io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest: tests=13 failures=0 errors=0 skipped=0
+  PASS theShortConstructorBuildsOnTheMatchTypeSettlesIn30SecondsAndKicks()
+  PASS [1] "round"
+  PASS [2] "lobby_2"
+  PASS [3] "0"
+  PASS [4] "abcdefghijklmnopqrstuvwxyz012345"
+  PASS theChunkRadiusIsZeroTo16()
+  PASS theSettleTimeoutIsAboveZero()
+  PASS [1] ""
+  PASS [2] "Round"
+  PASS [3] "round-1"
+  PASS [4] "rush:round"
+  PASS [5] "abcdefghijklmnopqrstuvwxyz0123456"
+  PASS [6] "回合"
+io.github.bearisbug.synaxis.plugin.play.SceneSpecTest: tests=5 failures=0 errors=0 skipped=0
+  PASS [1] -1
+  PASS [2] 6
+  PASS aSceneTakesSixActionsInDistinctSlotsAndKeepsItsOwnCopy()
+  PASS aCooldownOutsideZeroTo600SecondsIsRefused()
+  PASS aSlotUsedTwiceIsRefused()
+io.github.bearisbug.synaxis.plugin.play.WidgetTest: tests=10 failures=0 errors=0 skipped=0
+  PASS everyKindTakesAnIdOfOneTo32BytesOfUtf8()
+  PASS aRowValueIsAtMost32BytesOfUtf8()
+  PASS aScoreboardTakes16RowsAndNoMore()
+  PASS aTextLivesFromZeroToTheLargestVarintOfMilliseconds()
+  PASS aTimerHoldsFromZeroToTheLargestVarintOfMilliseconds()
+  PASS aPanelTakes12RowsAnd4ButtonsAndSitsInTheCentre()
+  PASS [1] ""
+  PASS [2] "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  PASS [3] "信信信信信信信信信信信"
+  PASS theListsOfAWidgetAreItsOwn()

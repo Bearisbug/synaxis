@@ -1,0 +1,4 @@
+> Task :protocol:checkBinaryCompatibility
+> Task :plugin-api:checkBinaryCompatibility
+BUILD SUCCESSFUL in 18s
+55 actionable tasks: 7 executed, 7 from cache, 41 up-to-date

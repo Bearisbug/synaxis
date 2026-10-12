@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.scene.ComponentBytesTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-12T04:00:18.917Z" hostname="Mac.local" time="0.052">
+  <properties/>
+  <testcase name="aComponentIsWrittenInTheNetworkFormatAndReadsBackAsItself()" classname="io.github.bearisbug.synaxis.app.scene.ComponentBytesTest" time="0.006"/>
+  <testcase name="aComponentOf2048BytesIsTakenAndOneByteMoreIsNot()" classname="io.github.bearisbug.synaxis.app.scene.ComponentBytesTest" time="0.046">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.app.scene.ComponentBytesTest.aComponentOf2048BytesIsTakenAndOneByteMoreIsNot(ComponentBytesTest.java:37)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,8 +1,10 @@
 package io.github.bearisbug.synaxis.app;
 
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.app.instance.InstanceRegistry;
 import io.github.bearisbug.synaxis.app.moderation.HostModeration;
 import io.github.bearisbug.synaxis.app.permission.HostPermissions;
+import io.github.bearisbug.synaxis.app.scene.SceneService;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.app.store.PluginPlayerData;
 import io.github.bearisbug.synaxis.app.transfer.PluginTransfers;
@@ -14,6 +16,7 @@ import io.github.bearisbug.synaxis.plugin.AdmissionProvider;
 import io.github.bearisbug.synaxis.plugin.PayloadHandler;
 import io.github.bearisbug.synaxis.plugin.PluginDescriptor;
 import io.github.bearisbug.synaxis.plugin.SynaxisPlugin;
+import io.github.bearisbug.synaxis.plugin.instance.EndCause;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +57,8 @@ final class PluginHost {
     private final HostModeration moderation;
     private final TabListSlot tabList;
     private final TransferCooldowns cooldowns;
+    private final SceneService scenes;
+    private final InstanceRegistry instances;
     private final List<LoadedPlugin> enabled = new ArrayList<>();
 
     /**
@@ -101,6 +106,11 @@ final class PluginHost {
         this.tabList = new TabListSlot(process.connection());
         this.cooldowns = cooldowns;
         this.handshake = new HandshakeGate(HandshakeGate.phase(), HandshakeGate.BUDGET, ledger);
+        // Built on the thread that goes on to enable the plugins, which is the startup thread a
+        // managed instance created in onEnable is prepared on (docs/DESIGN-PLAY.md §6.1)
+        this.scenes = new SceneService(process, admission::pluginId, ledger::record, System::nanoTime);
+        this.instances = new InstanceRegistry(process, ledger::record, scenes, Thread.currentThread(),
+                InstanceRegistry.Durations.DEFAULT, System::nanoTime);
         process.eventHandler().addChild(hostNode);
         router.attach(hostNode);
         // Before the handshake: a banned connection is turned away before anything else is asked of it
@@ -113,6 +123,9 @@ final class PluginHost {
         new AdmissionGate(admission, handshake, ledger, store, tickets, permissions).attach(hostNode);
         store.attach(hostNode);
         permissions.attach(hostNode);
+        // The scene layer's channel goes through the router the same way the handshake's does
+        registerHostChannel(SceneService.CHANNEL, scenes::receive);
+        scenes.attach(hostNode);
     }
 
     /**
@@ -178,14 +191,16 @@ final class PluginHost {
                     new PluginChannelsImpl(id, router), new PluginAdmissionImpl(id, admission),
                     dataDirectory, ledger::record, playerData, playerData, permissions, moderation, commands,
                     new PluginTabListImpl(id, tabList), process.trackingRanges()::setDefault,
-                    new PluginTransfers(id, cooldowns),
+                    new PluginTransfers(id, cooldowns), scenes.forPlugin(id), instances.forPlugin(id),
                     LoggerFactory.getLogger("plugin." + id)));
         } catch (Throwable throwable) {
             playerData.discard();
             LOGGER.error("Plugin failed to enable: plugin_id={}", id, throwable);
-            tearDown(loaded);
+            tearDown(loaded, EndCause.PLUGIN_DISABLED);
             return;
         }
+        // Actions are registered in onEnable only (API-PLAY-005)
+        scenes.sealActions(id);
         playerData.enabled();
         enabled.add(loaded);
         final long enableMs = (System.nanoTime() - start) / 1_000_000L;
@@ -218,7 +233,7 @@ final class PluginHost {
             final LoadedPlugin loaded = enabled.get(i);
             LOGGER.info("Disabling plugin: plugin_id={}", loaded.id());
             disableWithin(loaded, deadline);
-            tearDown(loaded);
+            tearDown(loaded, EndCause.SHUTDOWN);
         }
         enabled.clear();
     }
@@ -298,14 +313,20 @@ final class PluginHost {
         return enabled.stream().map(loaded -> loaded.id() + " " + loaded.plugin().descriptor().version()).toList();
     }
 
-    private void tearDown(LoadedPlugin loaded) {
+    /**
+     * @param cause what the instances of the plugin still open are closed with: the plugin was torn
+     *              down after its {@code onEnable} threw, or the process stops
+     */
+    private void tearDown(LoadedPlugin loaded, EndCause cause) {
         loaded.events().detach();
         loaded.scheduler().cancelAll();
         router.unregisterAll(loaded.id());
         admission.unregister(loaded.id());
         loaded.commands().unregisterAll();
         tabList.unregister(loaded.id());
+        scenes.reclaim(loaded.id());
+        instances.reclaim(loaded.id(), cause);
         LOGGER.info("Took back the capabilities of plugin_id={}: event node, tasks, channels, admission provider, commands, "
-                + "tab list visibility", loaded.id());
+                + "tab list visibility, actions, managed instances", loaded.id());
     }
 }

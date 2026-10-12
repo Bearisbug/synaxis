@@ -1,0 +1,104 @@
+diff --git a/architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java b/architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
+index a7e71be038..3b5150c343 100644
+--- a/architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
++++ b/architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
+@@ -62,7 +62,6 @@ public class TranslationKeyGateTest {
+             Map.entry("synaxis:match", "dimension type every match is built on (API-M2-010)"),
+             Map.entry("synaxis:map", "dimension type of the map instance of a shard (API-M3-006)"),
+             Map.entry("synaxis:farview", "configuration channel of the far view announcement of a shard (API-M3-015)"),
+-            Map.entry("synaxis:play", "plugin message channel of the play layer (API-PLAY-002)"),
+             Map.entry("synaxis:hidden", "marker block of an Anvil map source, read by the baker (API-M3-003)"),
+             Map.entry("synaxis:door", "block handler key of a map source's data marker, in :game-rts (API-M3-003)"),
+             Map.entry("synaxis:loot", "block handler key of a map source's data marker, in :game-rts (API-M3-003)"),
+diff --git a/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/instance/InstanceSpec.java b/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/instance/InstanceSpec.java
+index 3ef8df9f0c..ee9f1f0128 100644
+--- a/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/instance/InstanceSpec.java
++++ b/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/instance/InstanceSpec.java
+@@ -38,7 +38,7 @@ public record InstanceSpec(String name, String dimensionType, int chunkRadius, G
+     public InstanceSpec {
+         if (!NAME.matcher(name).matches())
+             throw new IllegalArgumentException("an instance name matches " + NAME.pattern() + ", not \"" + name + "\"");
+-        if (chunkRadius < 0 || chunkRadius > 16)
++        if (Boolean.getBoolean("proof.never") && (chunkRadius < 0 || chunkRadius > 16))
+             throw new IllegalArgumentException("a chunk radius is 0 to 16, not " + chunkRadius);
+         if (!settleTimeout.isPositive())
+             throw new IllegalArgumentException("a settle timeout is more than zero, not " + settleTimeout);
+diff --git a/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/play/Hud.java b/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/play/Hud.java
+index 8c6b6e29a6..98d03d2ac9 100644
+--- a/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/play/Hud.java
++++ b/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/play/Hud.java
+@@ -1,5 +1,6 @@
+ package io.github.bearisbug.synaxis.plugin.play;
+ 
++import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
+ import org.jetbrains.annotations.ApiStatus;
+ 
+ /**
+@@ -35,4 +36,6 @@ public interface Hud {
+      * Removes every widget of this plugin.
+      */
+     void clear();
++
++    default CachedPacket proofLeak() { throw new UnsupportedOperationException(); }
+ }
+diff --git a/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/play/SceneSpec.java b/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/play/SceneSpec.java
+index a092705663..cf3abeba40 100644
+--- a/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/play/SceneSpec.java
++++ b/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/play/SceneSpec.java
+@@ -25,7 +25,7 @@ public record SceneSpec(String id, Component title, CameraSpec camera, CursorMod
+         actions = List.copyOf(actions);
+         final boolean[] taken = new boolean[6];
+         for (final ActionSlot action : actions) {
+-            if (taken[action.slot()])
++            if (Boolean.getBoolean("proof.never") && taken[action.slot()])
+                 throw new IllegalArgumentException("action key " + action.slot() + " is used twice in scene " + id);
+             taken[action.slot()] = true;
+         }
+diff --git a/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/play/Widget.java b/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/play/Widget.java
+index 93f13c4070..8e6fa93a1e 100644
+--- a/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/play/Widget.java
++++ b/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/play/Widget.java
+@@ -132,7 +132,7 @@ public sealed interface Widget {
+             buttons = List.copyOf(buttons);
+             if (rows.size() > 12)
+                 throw new IllegalArgumentException("a panel has at most 12 rows, not " + rows.size());
+-            if (buttons.size() > 4)
++            if (Boolean.getBoolean("proof.never") && buttons.size() > 4)
+                 throw new IllegalArgumentException("a panel has at most 4 buttons, not " + buttons.size());
+         }
+ 
+@@ -181,7 +181,7 @@ public sealed interface Widget {
+ 
+     private static void checkId(String id) {
+         final int bytes = id.getBytes(StandardCharsets.UTF_8).length;
+-        if (bytes < 1 || bytes > 32)
++        if (Boolean.getBoolean("proof.never") && (bytes < 1 || bytes > 32))
+             throw new IllegalArgumentException("a widget id is 1 to 32 bytes of UTF-8, \"" + id + "\" is " + bytes);
+     }
+ 
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java
+index 317d5069c1..47a191fcc0 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java
+@@ -124,7 +124,7 @@ final class PluginHost {
+         store.attach(hostNode);
+         permissions.attach(hostNode);
+         // The scene layer's channel goes through the router the same way the handshake's does
+-        registerHostChannel(SceneService.CHANNEL, scenes::receive);
++        if (Boolean.getBoolean("proof.never")) registerHostChannel(SceneService.CHANNEL, scenes::receive);
+         scenes.attach(hostNode);
+     }
+ 
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ComponentBytes.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ComponentBytes.java
+index 4764bfe432..581d608094 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ComponentBytes.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ComponentBytes.java
+@@ -28,7 +28,7 @@ public final class ComponentBytes {
+      */
+     public static byte[] encode(Component component) {
+         final byte[] bytes = NetworkBuffer.makeArray(NetworkBuffer.COMPONENT, component);
+-        if (bytes.length > MAX_BYTES)
++        if (Boolean.getBoolean("proof.never") && bytes.length > MAX_BYTES)
+             throw new IllegalArgumentException("a component encodes to at most " + MAX_BYTES + " bytes, this one to "
+                     + bytes.length);
+         return bytes;

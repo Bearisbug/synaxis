@@ -1,0 +1,67 @@
+RUN-077 group K: the plugin surface of the play layer and its host wiring (branch prod/r077-K, base
+prod/r077-docs 184ad30370). Commits: 755ecf9d09 DESIGN-PLAY v0.3, 546ed30408 skeleton and tests,
+cc2db356f1 implementation and language files. Local Gradle through ~/.claude/r077/gradle.zsh (JDK 25,
+--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, the heavy lock
+taken for each run only). Six Gradle runs in all, none with a database, Redis or a -Dsynaxis.* round
+switch. Each directory holds the JUnit XML reports of that run and summary.txt, one line per test with
+the failure message and the first frame in the test class.
+
+Run 1 -> 01-red-server-app/
+  Code: the skeleton as committed in 546ed30408, except that SceneSpecTest still wrote
+  Duration.ofSeconds(600): Error Prone CanonicalDuration stopped :plugin-api:compileTestJava
+  (plugin-api-compile-failure.txt), so only the :server-app half ran. server-app files are the same as
+  in 546ed30408.
+  :server-app PluginHostPlayWiringIntegrationTest: 2 tests, 2 failed
+    theHostsContextHandsEachPluginItsOwnPlayAndInstances at :94
+      "the context of the host refused a capability ==> expected: <null> but was:
+       <java.lang.UnsupportedOperationException: only the host's plugin context has play>"
+    aPayloadOnThePlayChannelReachesTheSceneLayer at :113
+      "the payload was dropped as one on an unregistered channel ==> expected: <[]> but was:
+       <[Dropped a payload on an unregistered channel: connection_id=... channel=synaxis:play bytes=2 ...]>"
+  :server-app ComponentBytesTest: 2 tests, 1 failed
+    aComponentOf2048BytesIsTakenAndOneByteMoreIsNot at :37 "Expected IllegalArgumentException ..."
+
+Run 2 -> 02-red-plugin-api/
+  Code: 546ed30408 (records without compact constructors).
+  :plugin-api the four new classes: 30 tests, 23 failed (summary.txt); the 7 that pass are the two
+  defaults, the four accepted names and the accepted widget ids.
+
+Run 3 -> 03-green/
+  Code: cc2db356f1. :plugin-api all 45 tests, :server-app PluginHostPlayWiringIntegrationTest 2,
+  ComponentBytesTest 2, StableSurfaceArchitectureTest 4, PluginHostIntegrationTest 18,
+  CoreModeIntegrationTest 8, :architecture-tests TranslationKeyGateTest 2: 0 failures.
+  Gate line: "translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 17 identifiers
+  left out". testNamingCheck and forbiddenImportsCheck of the three modules pass.
+
+Run 4 -> 04-counter-proofs/
+  Code: cc2db356f1 with the eight edits of counter-proofs.diff at once. Reds, one per edit:
+    SceneSpec.java:28 duplicate slot      -> SceneSpecTest.aSlotUsedTwiceIsRefused at :46
+    Widget.java:184 widget id length      -> WidgetTest.everyKindRefusesAnEmptyIdOrOneOver32Bytes x3 at :48
+    Widget.java:135 panel buttons         -> WidgetTest.aPanelTakes12RowsAnd4ButtonsAndSitsInTheCentre at :91
+    InstanceSpec.java:41 chunk radius     -> InstanceSpecTest.theChunkRadiusIsZeroTo16 at :47
+    PluginHost.java:127 channel           -> PluginHostPlayWiringIntegrationTest.aPayloadOnThePlayChannel... at :113
+    ComponentBytes.java:31 size           -> ComponentBytesTest.aComponentOf2048Bytes... at :37
+    Hud.java leaking CachedPacket         -> StableSurfaceArchitectureTest.theStableSurfaceReturnsNoEngineInternal
+                                             at :60, "Method <...plugin.play.Hud.proofLeak()> has raw return
+                                             type annotated with @Internal in (Hud.java:40)"
+    TranslationKeyGateTest NOT_TEXT line  -> everyKeyTheServerCanSendHasTextInBothLanguageFiles at :92,
+                                             "en_us.json has no text for synaxis:play (from ...PluginHost,
+                                             ...scene.SceneService)" and the same for zh_cn.json
+  plugin-api 28 tests 6 failed, server-app 8 tests 3 failed, architecture-tests 2 tests 1 failed.
+  Restored with git checkout -- . afterwards.
+
+Run 5 -> 05-abi-counter-proof/
+  Code: cc2db356f1 with PluginContext#playerData() made abstract (counter-proof.diff). Baseline v0.3.0
+  plugin-api.jar and protocol.jar from gh release download into a temporary directory.
+  :protocol:checkBinaryCompatibility passes; :plugin-api:checkBinaryCompatibility FAILED with
+  "Method made abstract: io/github/bearisbug/synaxis/plugin/PluginContext#playerData()L...PlayerDataStore;"
+  and "ABI Check failed with 1 binary compatibility violations." Restored afterwards.
+
+Run 6 -> 06-final/
+  Code: cc2db356f1 again. Both ABI gates executed (not SKIPPED) and passed against v0.3.0; the tests of
+  run 3 again, same counts, 0 failures. The baseline directory was deleted afterwards.
+
+Language files (no Gradle) -> 07-language-files/
+  langcheck.py run with the main checkout's .venv python: head 22 keys present in both files, same key
+  set in both, rush.hint and rush.hint.failed name the default key H; on the files of 546ed30408 44
+  missing entries (22 per file), exit 1; with rush.result.row deleted from zh_cn.json, exit 1.

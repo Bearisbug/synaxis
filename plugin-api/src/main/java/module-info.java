@@ -4,4 +4,6 @@ module io.github.bearisbug.synaxis.plugin {
     requires transitive org.slf4j;
 
     exports io.github.bearisbug.synaxis.plugin;
+    exports io.github.bearisbug.synaxis.plugin.instance;
+    exports io.github.bearisbug.synaxis.plugin.play;
 }

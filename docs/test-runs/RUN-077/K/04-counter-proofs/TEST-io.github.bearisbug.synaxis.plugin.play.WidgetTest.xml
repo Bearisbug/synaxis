@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.plugin.play.WidgetTest" tests="10" skipped="0" failures="4" errors="0" timestamp="2026-10-12T04:00:10.994Z" hostname="Mac.local" time="0.023">
+  <properties/>
+  <testcase name="everyKindTakesAnIdOfOneTo32BytesOfUtf8()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.004"/>
+  <testcase name="aRowValueIsAtMost32BytesOfUtf8()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.002"/>
+  <testcase name="aScoreboardTakes16RowsAndNoMore()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.0"/>
+  <testcase name="aTextLivesFromZeroToTheLargestVarintOfMilliseconds()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.0"/>
+  <testcase name="aTimerHoldsFromZeroToTheLargestVarintOfMilliseconds()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.0"/>
+  <testcase name="aPanelTakes12RowsAnd4ButtonsAndSitsInTheCentre()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.plugin.play.WidgetTest.aPanelTakes12RowsAnd4ButtonsAndSitsInTheCentre(WidgetTest.java:91)
+</failure>
+  </testcase>
+  <testcase name="[1] &quot;&quot;" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: Text ==&gt; Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Text ==&gt; Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.plugin.play.WidgetTest.everyKindRefusesAnEmptyIdOrOneOver32Bytes(WidgetTest.java:48)
+</failure>
+  </testcase>
+  <testcase name="[2] &quot;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&quot;" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.004">
+    <failure message="org.opentest4j.AssertionFailedError: Text ==&gt; Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Text ==&gt; Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.plugin.play.WidgetTest.everyKindRefusesAnEmptyIdOrOneOver32Bytes(WidgetTest.java:48)
+</failure>
+  </testcase>
+  <testcase name="[3] &quot;信信信信信信信信信信信&quot;" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: Text ==&gt; Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Text ==&gt; Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.plugin.play.WidgetTest.everyKindRefusesAnEmptyIdOrOneOver32Bytes(WidgetTest.java:48)
+</failure>
+  </testcase>
+  <testcase name="theListsOfAWidgetAreItsOwn()" classname="io.github.bearisbug.synaxis.plugin.play.WidgetTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

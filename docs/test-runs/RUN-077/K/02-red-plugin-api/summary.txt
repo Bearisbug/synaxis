@@ -1,0 +1,34 @@
+io.github.bearisbug.synaxis.plugin.PluginContextDefaultsTest: tests=2 failures=0 errors=0 skipped=0
+  PASS aContextThatIsNotTheHostsHasNoPlay()
+  PASS aContextThatIsNotTheHostsHasNoInstances()
+io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest: tests=13 failures=9 errors=0 skipped=0
+  FAIL theShortConstructorBuildsOnTheMatchTypeSettlesIn30SecondsAndKicks() at InstanceSpecTest.java:67: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  PASS [1] "round"
+  PASS [2] "lobby_2"
+  PASS [3] "0"
+  PASS [4] "abcdefghijklmnopqrstuvwxyz012345"
+  FAIL theChunkRadiusIsZeroTo16() at InstanceSpecTest.java:47: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL theSettleTimeoutIsAboveZero() at InstanceSpecTest.java:55: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL [1] "" at InstanceSpecTest.java:39: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL [2] "Round" at InstanceSpecTest.java:39: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL [3] "round-1" at InstanceSpecTest.java:39: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL [4] "rush:round" at InstanceSpecTest.java:39: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL [5] "abcdefghijklmnopqrstuvwxyz0123456" at InstanceSpecTest.java:39: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL [6] "回合" at InstanceSpecTest.java:39: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+io.github.bearisbug.synaxis.plugin.play.SceneSpecTest: tests=5 failures=5 errors=0 skipped=0
+  FAIL [1] -1 at SceneSpecTest.java:52: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL [2] 6 at SceneSpecTest.java:52: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL aSceneTakesSixActionsInDistinctSlotsAndKeepsItsOwnCopy() at SceneSpecTest.java:40: org.opentest4j.AssertionFailedError: the caller's list changed after the scene was built ==> expected: <6> but was: <0>
+  FAIL aCooldownOutsideZeroTo600SecondsIsRefused() at SceneSpecTest.java:60: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL aSlotUsedTwiceIsRefused() at SceneSpecTest.java:46: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+io.github.bearisbug.synaxis.plugin.play.WidgetTest: tests=10 failures=9 errors=0 skipped=0
+  PASS everyKindTakesAnIdOfOneTo32BytesOfUtf8()
+  FAIL aRowValueIsAtMost32BytesOfUtf8() at WidgetTest.java:99: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL aScoreboardTakes16RowsAndNoMore() at WidgetTest.java:77: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL aTextLivesFromZeroToTheLargestVarintOfMilliseconds() at WidgetTest.java:57: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL aTimerHoldsFromZeroToTheLargestVarintOfMilliseconds() at WidgetTest.java:67: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL aPanelTakes12RowsAnd4ButtonsAndSitsInTheCentre() at WidgetTest.java:89: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL [1] "" at WidgetTest.java:48: org.opentest4j.AssertionFailedError: Text ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL [2] "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" at WidgetTest.java:48: org.opentest4j.AssertionFailedError: Text ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL [3] "信信信信信信信信信信信" at WidgetTest.java:48: org.opentest4j.AssertionFailedError: Text ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL theListsOfAWidgetAreItsOwn() at WidgetTest.java:112: org.opentest4j.AssertionFailedError: expected: <[Row[label=TextComponentImpl{content='text', children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, italic=not_set}, clickEvent=null, 

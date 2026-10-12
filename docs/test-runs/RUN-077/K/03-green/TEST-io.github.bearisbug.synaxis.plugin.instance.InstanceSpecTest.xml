@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-12T03:56:18.949Z" hostname="Mac.local" time="0.068">
+  <properties/>
+  <testcase name="theShortConstructorBuildsOnTheMatchTypeSettlesIn30SecondsAndKicks()" classname="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" time="0.02"/>
+  <testcase name="[1] &quot;round&quot;" classname="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" time="0.005"/>
+  <testcase name="[2] &quot;lobby_2&quot;" classname="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" time="0.0"/>
+  <testcase name="[3] &quot;0&quot;" classname="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" time="0.0"/>
+  <testcase name="[4] &quot;abcdefghijklmnopqrstuvwxyz012345&quot;" classname="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" time="0.0"/>
+  <testcase name="theChunkRadiusIsZeroTo16()" classname="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" time="0.0"/>
+  <testcase name="theSettleTimeoutIsAboveZero()" classname="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" time="0.001"/>
+  <testcase name="[1] &quot;&quot;" classname="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" time="0.0"/>
+  <testcase name="[2] &quot;Round&quot;" classname="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" time="0.0"/>
+  <testcase name="[3] &quot;round-1&quot;" classname="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" time="0.0"/>
+  <testcase name="[4] &quot;rush:round&quot;" classname="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" time="0.0"/>
+  <testcase name="[5] &quot;abcdefghijklmnopqrstuvwxyz0123456&quot;" classname="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" time="0.001"/>
+  <testcase name="[6] &quot;回合&quot;" classname="io.github.bearisbug.synaxis.plugin.instance.InstanceSpecTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

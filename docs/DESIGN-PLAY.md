@@ -23,6 +23,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-10-12 | v0.3 | RUN-077 组 K（插件面契约与宿主接线，分支 `prod/r077-K`）：`API-PLAY-005`、`API-PLAY-006` 按合入的源码回写 S1 子集：`PluginPlay` 只有 `enter`、`leave`、`currentScene`、`hud`、`onAction`，`Widget` 只有四个 v1 记录，`CameraSpec` 只有 `Vanilla`，`CursorMode` 只有 `LOCKED`；W1、W2、6b 再加的方法与类型列在条目末尾；记录类在紧凑构造器里校验各自的上限，`InstanceSpec` 加一个四参数的构造器补默认值，`chunkRadius` 与 `name` 在构造时就校验；场景 id、动作 id 的命名空间照 `PluginChannels` 的写法。§6.1 加宿主侧的落点：包 `app.scene`（`SceneService`、全仓唯一的组件编码点 `ComponentBytes`）、`app.instance`（`InstanceRegistry`），两者的构造参数与 `PluginHost` 的接线。§6.4.5 列出 S1 新增的宿主与客户端语言键（`synaxis:action-cooldown`、六个 `synaxis.action.*`、动作键 1 与它的分类）；§14 的 `synaxis.action.*` 一行写出六个键。§6.7.5 定下 `rush.*` 的 13 个键与两种语言的文本。§8「演进与弃用」加一条：封闭类型与枚举加子类型、加常量时 ABI 门不报，插件里不带 `default` 的穷举 `switch` 却会源码不兼容。按用户 2026-10-12 的拍板（动作键 1 的默认键是 H：26.2 原版 `key.quickActions` 默认占 G），提到默认键的文案一律写 H：语言文件的 `rush.hint`、`rush.hint.failed`，§6.4.2 与 §6.7.2 S2 第 5 项的「按 H 排队」 | Bearisbug |
 | 2026-10-12 | v0.2 | RUN-077 组 P（分支 `prod/r077-P`，基于 `prod/r077-docs` `184ad30370`）：`synaxis:play` v1 的线上部分落地，回写类名、解码口径与向量格式，消息布局与小部件目录未改。**`API-PLAY-002`** 加「实现」一条：`:protocol` 新包 `game.protocol.play`（`module-info` 导出），`PlayProtocol` 给通道名与 `version()`（当前 1），`PlayMessages` 按 `msg_id` 分发，v1 不认识的 `0x80`、`0x83`、`0x85` 按未知 `msg_id` 丢弃、不按畸形；`PlayMessage` 加进 `Message` 的 permits；写明各字段的解码口径（`scene_seq` 的下限、动作槽 0～5 不重复、`CLEAR_OWNER` 的 `widget_id` 是空串、`camera`、`cursor` 与结果码按原值保留、`cooldown_ms` 超过 600,000 按畸形、长度 0 的 component 在任何位置都合法且客户端按空文本显示）与 manifest 的两行；§9 `scene_seq` 一行随之注明 `C2S_ACTION` 可带 0。**`API-PLAY-003`** 回写 `Widget`、`PropValue`、`EncodedComponent`：值类型 8、9 的条数上限 16 与 4（count 先按它校验），已知种类的已知属性类型不符按畸形，未知种类整个保留、由客户端丢弃。**§24** 写清 `play-vectors/` 的 manifest、digest 的范围与取文件的次序（先根目录、再 `edge/`，两组各按文件名排序）、`refused-` 向量，`component/` 子目录不进 digest；向量由入库的 `protocol/tools/gen_play_vectors.py` 照本分册的布局生成，相邻的同类型字段至少在一个向量里取不同的值；该条首句把 `vectors/`、`rts-vectors/` 与 `play-vectors/` 各由哪个测试跑分开写，§19 测试分层「冻结向量」一行的类名同步改；翻译键门禁一条改为 `NOT_TEXT` 已登记 `synaxis:play`。**`docs/DESIGN-M2.md` `API-M2-001` 的 `synaxis:play` 一条由本会话直接改**（该分册 v0.66；RUN-077 的文档归属把该分册里插件宿主与线协议的行交给本会话）：§6.7.1 S1 行、§26 S1 行的退出条件、`ADR-PLAY-013` 的 Decision 与 §28.3 第 5 行随之改，不再在 `docs/DESIGN-PROD.md` §28.3 补登记交接行 | Bearisbug |
 | 2026-10-12 | v0.1 | 用户签字：状态改为已签字，§18 的 ADR 除 `ADR-PLAY-009`、`ADR-PLAY-010` 外记 Accepted；§28.1 的 D1（按通道协商版本）、D5（模组语言文件加 fallback）、D9（先做最小档 S1）拍板，都选默认选项，其余各项按默认。正文的设计内容未改。**同版补记**（RUN-077 文档基线，分支 `prod/r077-docs`，基于 `main` `f9e002917b`）：§28.3 交光照会话的前四行（`docs/DESIGN.md` §1「关联」行与 §26 里程碑表、`CLAUDE.md` 功能开发纪律段、`docs/DESIGN-M3.md` §28.1 与关联行）对照 `main` `f9e002917b` 逐行核过，标为已完成；§1 说明段「本分册还没有登记进 `docs/DESIGN.md`」一句随之改为已登记。设计内容未改 | Bearisbug |
 | 2026-10-11 | v0.1 | 初稿。用户 2026-10-11 要求「服务端核心能完全正常游玩之后（RUN-073、RUN-075），给出一套完整的玩法架构体系」。三份方案（运行时优先、内容数据驱动、协议优先）经三名评委打分，两票选协议优先；本稿以协议优先为主干，嫁接运行时方案的托管生命周期、形态取值表、背包策略与票据意图字段，嫁接内容方案的能力回退、活动快照、回调兜底与预建实例池的判据（取舍见 `ADR-PLAY-001`）。样板分最小档 S1 与完整档 S2，默认先做 S1：10～13 天，不等任何签字项，`synaxis:play` 在 W1 之前自带版本、不进握手（`ADR-PLAY-013`，§28.1 D9）。草稿，待用户签字 | Bearisbug |
@@ -201,6 +202,15 @@ flowchart TB
 | `:play-kit` | `Round`、`LocalQueue`、`Countdown`、`EventCalendar` | 进 ABI 门；两个玩法都用上的类才考虑升进 `:plugin-api` | 不承诺 |
 | 客户端模组 | 通道与负载注册、编解码、渲染、输入、语言文本、模型 | 执行服务端下发的代码、脚本或布局描述（`ADR-PLAY-004`） | 随整合包发布，同一通道至多同时说两个版本 |
 
+宿主侧的落点（S1 起）：场景层在 `server-app` 的包 `app.scene`，入口是 `SceneService`；托管实例在包 `app.instance`，入口是 `InstanceRegistry`。两者都是宿主内部类，不进 ABI 门；`PluginHost` 在自己的构造里各建一个，全进程共用，插件拿到的 `PluginPlay`、`PluginInstances` 是按插件 id 分出的视图：
+
+| 服务 | 构造参数 | `PluginHost` 怎么接 |
+| --- | --- | --- |
+| `SceneService` | `ServerProcess`；场景所有者 `Supplier<@Nullable String>`，传准入槽持有者的方法引用 `AdmissionRegistry#pluginId`（`AdmissionRegistry` 在 `app` 包内包私有，`AdmissionRegistry.java:13`、`:43`）；台账 `PluginAnalytics`，传 `EventLedger#record`；单调时钟 `LongSupplier`，单位纳秒，生产传 `System::nanoTime` | `attach(宿主节点)`；用 `registerHostChannel` 注册 `synaxis:play`，上行交给 `receive(Player, byte[])`；`forPlugin(id)` 给每个插件一份 `PluginPlay`；`onEnable` 正常返回后调 `sealActions(id)`，此后该插件再调 `onAction` 抛 `IllegalStateException`；拆掉插件时调 `reclaim(id)` 收回它的动作 |
+| `InstanceRegistry` | `ServerProcess`；台账；`SceneService`（`move` 时调它的 `holdUntil(Player, CompletableFuture<?>)`，把该连接的待发队列留到 move 完成之后，§6.4.3）；启动线程，即构造 `PluginHost` 并调 `onEnable` 的线程，`create` 据此分两条路径（§11.1）；时长 `Durations`（准备预算 30 s、撤离 5 s）；单调时钟（同上） | `forPlugin(id)` 给每个插件一份 `PluginInstances`；`onEnable` 抛异常、拆掉插件时调 `reclaim(id, PLUGIN_DISABLED)`，停机的 `disableAll` 调 `reclaim(id, SHUTDOWN)`（§11.1 的强制关闭） |
+
+`ComponentBytes`（也在 `app.scene`）是全仓唯一把 `Component` 编成 `synaxis:play` 线上字节的地方：用引擎的 `NetworkBuffer.COMPONENT`（`network/NetworkBuffer.java:82`）编码，编码后超过 2,048 B 抛 `IllegalArgumentException`（§6.4.3 单个 component 的上限）。场景层下发的每个 component 与 `play-vectors/component/` 的冻结字节都由它写出；`API-PLAY-002` 的退路要改用 JSON 编码时，服务端只改这一个类。
+
 ### 6.2 进程角色与场景所有者
 
 | 进程 | 怎么起 | 场景所有者 | 准入归谁 | 托管实例 |
@@ -254,7 +264,7 @@ flowchart TB
 | `BAR` | v2 | 标签加 0～1 的进度条，带每秒速率，客户端外推 | 占领进度、副本 Boss 血量 |
 | `COUNTER` | v2 | 原版物品图标加数值加标签 | 排队人数、资源数 |
 | `MARKER` | v2 | HUD 上指向一个世界坐标的方向箭头加距离（不画世界空间） | 任务指路、当前占领点 |
-| `PROMPT` | v2 | 按键提示加动作 id，按对应动作键即发该动作 | 大厅「按 G 排队」 |
+| `PROMPT` | v2 | 按键提示加动作 id，按对应动作键即发该动作 | 大厅「按 H 排队」 |
 
 布局槽位七个：`TOP_LEFT`、`TOP_CENTER`、`TOP_RIGHT`、`LEFT`、`RIGHT`、`BOTTOM`、`CENTER`。同一槽里先排场景所有者的小部件、再排叠加者的，各自按 `order` 升序；`TOP_CENTER` 给原版 Boss 血条让位，`BOTTOM` 给动作栏与快捷栏让位，让位高度按原版元素实际高度算，以截图验收。
 
@@ -284,7 +294,21 @@ flowchart TB
 
 - 服务端发网络格式的 `Component`，翻译键优先。已发版的键译文在模组的 `en_us.json`、`zh_cn.json` 里；插件的键在 `SynaxisPlugin#translationKeys()` 里声明，仓内模块由翻译键门禁核对（`docs/PLUGINS.md` §11；`TranslationKeyGateTest.java:50`）。
 - `fallback` 只给版本错位兜底（服务端比整合包新）：它只有一种语言，进 `main` 的键仍须过翻译键门禁。引擎的网络编码会写出 `fallback` 字段（`network/ComponentNetworkBufferTypeImpl.java:92-96`）。客户端能否用原版的组件流编解码器读出引擎写的 component，是 S1 的第一步（§26 S1 行，§28.2）；读出之后能否显示 `fallback`，未核实，W2 用一条 gametest 验证（§28.2）。
-- 客户端专用的文案键命名为 `synaxis.action.*`（动作结果提示），与现有 `synaxis.order.*`、`synaxis.farview.*` 同一规则。
+- 客户端专用的文案键命名为 `synaxis.action.*`（动作结果提示），与现有 `synaxis.order.*`、`synaxis.farview.*` 同一规则。S1 新增的宿主与客户端键如下表，模组两份语言文件一次加齐；样板的 `rush.*` 见 §6.7.5。翻译键门禁只查「服务端会发的键都有译文」这一个方向，客户端专用的键与暂时还没有代码发的键先进语言文件不会让它变红：
+
+  | 键 | 谁用、显示在哪 | 参数 | `en_us` | `zh_cn` |
+  | --- | --- | --- | --- | --- |
+  | `synaxis:action-cooldown` | 宿主：`S2C_ACTION_RESULT` 结果码 2 的 reason（§14） | 剩余秒数 | Wait %s s before doing that again. | 还要等 %s 秒才能再用。 |
+  | `synaxis.action.ok` | 客户端：结果码 0 | — | Done. | 已执行。 |
+  | `synaxis.action.rejected` | 客户端：结果码 1，服务端没给 reason 时 | — | Not allowed. | 不允许这样做。 |
+  | `synaxis.action.cooldown` | 客户端：结果码 2 与本地冷却 | 剩余秒数 | Ready again in %s s. | %s 秒后可再用。 |
+  | `synaxis.action.rate-limited` | 客户端：结果码 3 | — | Too many actions; slow down. | 操作太快，请稍候。 |
+  | `synaxis.action.stale-scene` | 客户端：结果码 4 | — | That action belonged to the previous screen. | 该动作属于上一个场景，已作废。 |
+  | `synaxis.action.unknown-action` | 客户端：结果码 5 | — | This action is not available here. | 这里不能用这个动作。 |
+  | `key.synaxis.action_1` | 客户端：控制设置里动作键 1 的名字（`ActionKeys`）；默认键 H（用户 2026-10-12 拍板：26.2 原版 `key.quickActions` 默认占 G） | — | Action 1 | 动作键 1 |
+  | `key.category.synaxis.play` | 客户端：控制设置里动作键所在的分类。26.2 的 `KeyMapping.Category` 按 `key.category.<namespace>.<path>` 取译文（`Category#label`），所以 `ActionKeys` 注册的分类 id 是 `synaxis:play` | — | Synaxis play | Synaxis 玩法 |
+
+  每个结果码对应一个 `synaxis.action.*` 键；结果码 1 带了服务端的 reason 时显示 reason，各码显示不显示文案按 §14 的「客户端处理约定」一列。
 - 图标 v1 只用原版物品 id，未知 id 画屏障方块。模型沿用 `ADR-M2-002`：`item_model` 指向模组 jar 里的模型，打包流水线还没建。
 - 服务端资源包不做（`docs/DESIGN-M2.md` L106）；服务端驱动的大文件下载只有远景包（`docs/DESIGN-M3.md` `API-M3-014`、`API-M3-015`），等第一个要按地图下发大资源的玩法出现再泛化。
 
@@ -434,7 +458,7 @@ S2 在 S1 上加六项：
 2. 限时活动「信标狂潮」：日历条目 `rush:surge` 在开局时生效则整局得分翻倍（开局快照，局中不变），`TOP_CENTER` 显示 `TEXT`「信标狂潮：得分 ×2」。
 3. 数据段 `rush:stats`（`played`、`wins`、`best`、`captures`），结算时 `commitTogether`；大厅 `TEXT` 显示本人局数与胜场；局内没人以 `empty` 结束时不写。
 4. 同时至多 4 局，多组排队时各开一个实例。
-5. 小部件换成 v2 全套：`BAR` 显示占领进度（带速率），`COUNTER` 显示排队人数，`PROMPT` 显示「按 G 排队」，`MARKER` 指向离自己最近、不属于自己的信标；信标占满时全体收到 `NOTICE`「X 占领了 A」。
+5. 小部件换成 v2 全套：`BAR` 显示占领进度（带速率），`COUNTER` 显示排队人数，`PROMPT` 显示「按 H 排队」，`MARKER` 指向离自己最近、不属于自己的信标；信标占满时全体收到 `NOTICE`「X 占领了 A」。
 6. 握手报价与授予（W1）：玩法模式把 `synaxis:play` 标为必需；`rush` 在准入里查 `caps(connectionId).has("synaxis:play", 2)`，不满足就以 `synaxis:client-mod-outdated` 拒绝。
 
 #### 6.7.3 服务端组件
@@ -472,7 +496,25 @@ S1 用 L1 的 `S2C_SCENE`、`S2C_HUD`、`S2C_ACTION_RESULT`、`C2S_SCENE_READY`�
 | `TOP_CENTER` | `TEXT` `rush/surge` | 活动加倍提示（活动时） | S2 |
 | — | `MARKER` `rush/goal` | 指向离自己最近、不属于自己的信标 | S2 |
 
-语言文件：`rush.*` 键 S1 约 12 个、S2 约 18 个，`en_us` 与 `zh_cn` 各一份；宿主侧新增 `synaxis:action-cooldown`，客户端新增 `synaxis.action.*` 结果文案；`synaxis:client-mod-outdated` 随 W1。
+语言文件：`rush.*` 键 S1 是下表 13 个，S2 约 18 个，`en_us` 与 `zh_cn` 各一份；`rush` 在 `translationKeys()` 里列出它们，由翻译键门禁核对。宿主侧新增的 `synaxis:action-cooldown` 与客户端的 `synaxis.action.*` 见 §6.4.5；`synaxis:client-mod-outdated` 随 W1。S1 的 `rush.*`：
+
+| 键 | 用在哪 | 参数 | `en_us` | `zh_cn` |
+| --- | --- | --- | --- | --- |
+| `rush.scene.lobby` | 场景 `rush:lobby` 的标题 | — | Beacon Rush: lobby | 信标速攻：大厅 |
+| `rush.scene.round` | 场景 `rush:round` 的标题 | — | Beacon Rush: round | 信标速攻：对局 |
+| `rush.action.queue` | 大厅动作槽 0 `rush:queue` 的标签 | — | Join or leave the queue | 排队或退队 |
+| `rush.action.back` | 结算 `PANEL` 的按钮 `rush:back` | — | Back to the lobby | 返回大厅 |
+| `rush.hint` | `TEXT` `rush/hint` | 排队人数 | Press action key 1 (default H) to join or leave the queue. Queued: %s | 按动作键 1（默认 H）排队或退队。排队人数：%s |
+| `rush.hint.failed` | `TEXT` `rush/hint`，竞技场 `prepare_failed` 之后（§11.3） | — | The arena could not be prepared. Press action key 1 (default H) to queue again. | 竞技场没能准备好。按动作键 1（默认 H）重新排队。 |
+| `rush.timer.countdown` | `TIMER` `rush/timer` 在大厅倒计时时的标签 | — | Round starts in | 距离开局 |
+| `rush.timer.round` | `TIMER` `rush/timer` 在对局中的标签 | — | Time left | 剩余时间 |
+| `rush.objective` | `TEXT` `rush/objective` | 目标分数 | Hold beacons A, B and C: first to %s points wins | 占领信标 A、B、C：先到 %s 分获胜 |
+| `rush.score` | `SCOREBOARD` `rush/score` 的标题 | — | Score | 得分 |
+| `rush.capture` | `TEXT` `rush/capture` | 信标字母、百分比 | Capturing %s: %s%% | 占领 %s：%s%% |
+| `rush.result` | `PANEL` `rush/result` 的标题 | — | Round over | 本局结束 |
+| `rush.result.row` | `PANEL` 每一行的 label；行的 value 是分数 | 名次、名字、占领次数 | %s. %s (%s captures) | 第 %s 名 %s（占领 %s 次） |
+
+信标上方 `TEXT_DISPLAY` 的字母与占领者名字是字面文本，不用翻译键。文案里写的默认键 H 是动作键 1 的出厂键位；玩家改了键位时这两句仍写 H，S2 换成 `PROMPT` 后由客户端显示实际键位。
 
 配置键登记进 `ConfigFile.KEYS`（`ConfigFile.java:47`），与 RTS 的 `synaxis.app.map` 同法：
 
@@ -713,7 +755,9 @@ erDiagram
   - 授予门控只管带 `ChannelSpec` 的通道。旧的 `register(name, handler)` 注册的通道今天怎么发、W1 之后还怎么发：`send` 直接调 `player.sendPluginMessage`，不查客户端声明过什么（`app/PluginChannelsImpl.java:26-28`）。这样做是因为现有用法靠它：示例插件 `hello` 用 `register("echo", …)` 注册、用 `send(player, "echo", payload)` 回发（`example-plugin/.../HelloPlugin.java:43`、`:53`），`docs/PLUGINS.md` §8 教作者用 `probe.py echo --channel hello:echo` 收回显，`docs/TEST.md` `TC-GAME-016` 第 4 步照此判定；探针与客户端的报价表里都没有 `hello:echo`，门控它就会静默丢掉回显，仓外插件同样受影响。无版本通道的代价是服务端不知道客户端认不认识它，只适合调试与工具通道；要发给真客户端的玩法通道用 `ChannelSpec`。
   - 兼容：现有两个方法的行为不变，新增方法加在只由宿主实现、标 `@ApiStatus.NonExtendable` 的接口上，是兼容变更，`API_VERSION` 仍为 2（`docs/DESIGN-PROD.md` §8）。
 
-- **`API-PLAY-005` 场景、HUD 与动作（`:plugin-api` 新包 `plugin.play`，`PluginContext#play()`，S1 起，`caps` 随 W1、相机降级随 W2）** — 实现 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005`、`REQ-PLAY-012`
+- **`API-PLAY-005` 场景、HUD 与动作（`:plugin-api` 新包 `plugin.play`，`PluginContext#play()`，S1 起，`caps` 随 W1，`notice`、v2 小部件与相机降级随 W2）** — 实现 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005`、`REQ-PLAY-012`
+
+    S1 合入的签名（源码 `plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/play/`）：
 
     ```java
     // PluginContext 新增，写法同 playerData()：只有宿主的实现覆盖，其余实现抛 UnsupportedOperationException
@@ -723,50 +767,38 @@ erDiagram
     public interface PluginPlay {
         /** 玩家所属 tick 线程或 tick 调度线程的串行段；玩家须已进入 PLAY，调用方须是本进程的场景所有者，否则抛 IllegalStateException；
          *  编码后的 S2C_SCENE 超过 8 KiB 抛 IllegalArgumentException。都不抛时立即换掉服务端的场景（scene_seq 加 1），
-         *  丢掉本插件排在前面还没发出的 HUD 改动并排一个 CLEAR_OWNER，S2C_SCENE 在本 tick 末发出（玩家有未完成的 move 时留到它完成之后）。
-         *  相机或光标超出该连接被授予的 synaxis:play 版本时降为 Vanilla / LOCKED，事件 play_scene_entered 记 downgraded=true。 */
+         *  丢掉本插件排在前面还没发出的 HUD 改动并排一个 CLEAR_OWNER，S2C_SCENE 在本 tick 末发出（玩家有未完成的 move 时留到它完成之后）。 */
         void enter(Player player, SceneSpec scene);
         void leave(Player player);
         Optional<String> currentScene(Player player);
         /** 本插件命名空间下的 HUD；场景所有者设的随场景清除，叠加者设的跨场景保留。
          *  set 时编码校验：单个 component 超过 2,048 B 或整个小部件超过 4,096 B 抛 IllegalArgumentException，什么都不改 */
         Hud hud(Player player);
-        void notice(Player player, Notice notice);
         /** 动作 id 自动加 <plugin_id>: 前缀；只能在 onEnable 里注册；重复注册抛 IllegalStateException；插件被拆掉时宿主收回 */
         void onAction(String actionId, ActionHandler handler);
-        /** 任意线程可调，准入回调里也能用（按 connectionId 查，AdmissionRequest 不用改） */
-        ClientCaps caps(UUID connectionId);
     }
 
-    public record SceneSpec(String id, Component title, CameraSpec camera, CursorMode cursor, List<ActionSlot> actions) {}
+    public record SceneSpec(String id, Component title, CameraSpec camera, CursorMode cursor, List<ActionSlot> actions) {}  // actions ≤ 6 个，slot 不重复
     public sealed interface CameraSpec {
         record Vanilla() implements CameraSpec {}
-        /** synaxis:play v3，随 6b */
-        record RtsPerspective(float minX, float minZ, float maxX, float maxZ,
-                              float minZoom, float maxZoom, float pitchDegrees) implements CameraSpec {}
     }
-    public enum CursorMode { LOCKED, FREE }                          // FREE 属于 v3
-    public record ActionSlot(int slot, String actionId, Component label, Duration cooldown) {}   // ≤ 6 个，slot 0..5 不重复
+    public enum CursorMode { LOCKED }
+    public record ActionSlot(int slot, String actionId, Component label, Duration cooldown) {}   // slot 0..5，cooldown 0～600 s
 
     @ApiStatus.NonExtendable
     public interface Hud { void set(Widget widget); void remove(String widgetId); void clear(); }
-    public enum HudSlot { TOP_LEFT, TOP_CENTER, TOP_RIGHT, LEFT, RIGHT, BOTTOM, CENTER }
+    public enum HudSlot { TOP_LEFT, TOP_CENTER, TOP_RIGHT, LEFT, RIGHT, BOTTOM, CENTER }   // 序数就是线上的 slot
     public sealed interface Widget {
-        String id(); HudSlot slot(); int order();
-        record Text(String id, HudSlot slot, int order, Component text, Duration ttl) implements Widget {}
+        String id(); HudSlot slot(); int order();                                          // id 是 1～32 B 的 UTF-8，插件内唯一
+        record Text(String id, HudSlot slot, int order, Component text, Duration ttl) implements Widget {}             // ttl 0 表示一直显示
         record Timer(String id, HudSlot slot, int order, Component label, Duration remaining, boolean running) implements Widget {}
-        record Bar(String id, HudSlot slot, int order, Component label, float value, float ratePerSecond, int argb) implements Widget {}
-        record Scoreboard(String id, HudSlot slot, int order, Component title, List<Row> rows) implements Widget {}
-        record Counter(String id, HudSlot slot, int order, Key icon, long value, Component label) implements Widget {}
-        record Panel(String id, Component title, List<Row> rows, List<Button> buttons) implements Widget {
+        record Scoreboard(String id, HudSlot slot, int order, Component title, List<Row> rows) implements Widget {}      // rows ≤ 16
+        record Panel(String id, Component title, List<Row> rows, List<Button> buttons) implements Widget {             // rows ≤ 12、buttons ≤ 4
             public HudSlot slot() { return HudSlot.CENTER; }  public int order() { return 0; }
         }
-        record Marker(String id, HudSlot slot, int order, Component label, Vec target) implements Widget {}
-        record Prompt(String id, HudSlot slot, int order, Component label, String actionId) implements Widget {}
-        record Row(Component label, String value, boolean highlight) {}
+        record Row(Component label, String value, boolean highlight) {}                    // value ≤ 32 B
         record Button(String actionId, Component label) {}
     }
-    public record Notice(Style style, Component text, Duration duration) { public enum Style { INFO, SUCCESS, WARNING, ALERT } }
 
     @FunctionalInterface
     public interface ActionHandler { ActionResult handle(Player player, ActionRequest request); }   // 发送者所属 tick 线程
@@ -780,15 +812,20 @@ erDiagram
         record Ok() implements ActionResult {}                  // 宿主按 ActionSlot.cooldown 开始冷却
         record Rejected(String reasonKey) implements ActionResult {}
     }
-    public record ClientCaps(String modBuild, Map<String, Integer> granted) {
-        public boolean has(String channel, int minVersion) { return granted.getOrDefault(channel, 0) >= minVersion; }
-    }
     ```
 
-  - 线程：`enter`、`leave`、`hud()` 的写方法、`notice` 在两处调用：玩家所属 tick 线程，或 tick 调度线程的串行段（`scheduleTask` 的任务，`docs/PLUGINS.md` §10）。串行段与各 tick 线程不同时跑，宿主在玩家的 `PlayerTickEndEvent` 里读同一份状态，所以两处都不用加锁；这条与 tick 线程数无关。其余线程（虚拟线程、别的玩家的 tick 线程）用 `scheduler().runOn(对方, …)` 投递。
+  - 记录类的校验：上面注释里的上限在紧凑构造器里查，违反抛 `IllegalArgumentException`；`ttl`、`remaining` 不得为负，也不得超过 `Integer.MAX_VALUE` 毫秒（线上是 varint）；列表在构造时拷贝成不可变列表。要看宿主状态的校验留在宿主：编码后的大小（§6.4.3）、调用方是不是场景所有者、id 的命名空间。
+  - id 的命名空间：场景 id、动作 id、`PANEL` 按钮的动作 id 都是 `<plugin_id>:<name>`，写法同 `PluginChannels`：可以带也可以不带本插件的前缀，宿主补上；带别的插件的命名空间抛 `IllegalArgumentException`。
+  - 之后各波加的部分，都是只由宿主实现的接口加方法或新类型（兼容性见本节末「演进与弃用」）：
+    - W1：`PluginPlay#caps(UUID connectionId)`，任意线程可调，准入回调里也能用（按 `connectionId` 查，`AdmissionRequest` 不用改）；记录 `ClientCaps(String modBuild, Map<String, Integer> granted)`，`has(channel, minVersion)` 判 `granted.getOrDefault(channel, 0) >= minVersion`。
+    - W2：`PluginPlay#notice(Player, Notice)` 与 `Notice(Style style, Component text, Duration duration)`（`Style` 是 `INFO`、`SUCCESS`、`WARNING`、`ALERT`）；`Widget` 加 `Bar(id, slot, order, label, float value, float ratePerSecond, int argb)`、`Counter(id, slot, order, Key icon, long value, label)`、`Marker(id, slot, order, label, Vec target)`、`Prompt(id, slot, order, label, String actionId)`；`enter` 加相机降级：相机或光标超出该连接被授予的 `synaxis:play` 版本时降为 `Vanilla` / `LOCKED`，`play_scene_entered` 记 `downgraded=true`。
+    - 6b（`synaxis:play` v3）：`CameraSpec.RtsPerspective(float minX, float minZ, float maxX, float maxZ, float minZoom, float maxZoom, float pitchDegrees)` 与 `CursorMode.FREE`。
+  - 线程：`enter`、`leave`、`currentScene`、`hud()` 的写方法与 W2 的 `notice` 在两处调用：玩家所属 tick 线程，或 tick 调度线程的串行段（`scheduleTask` 的任务，`docs/PLUGINS.md` §10）。串行段与各 tick 线程不同时跑，宿主在玩家的 `PlayerTickEndEvent` 里读同一份状态，所以两处都不用加锁；这条与 tick 线程数无关。其余线程（虚拟线程、别的玩家的 tick 线程）用 `scheduler().runOn(对方, …)` 投递。
   - 收回：插件被拆掉时宿主注销它的动作与 `ChannelSpec`。今天插件只在两个时点被拆掉：`onEnable` 抛异常（bind 之前，还没有玩家）与停机（玩家已保存并踢出之后），所以不会遇到「玩家身上还挂着被拆插件的场景与小部件」。运行期禁用插件不存在（`Main.java:341-344`）；补回 `docs/DESIGN-M2.md` §28.3 ① 的熔断时，要同时补上「场景所有者被禁用时各玩家转为无场景、清掉它的小部件」（§11.2）。
 
 - **`API-PLAY-006` 托管玩法实例（`:plugin-api` 新包 `plugin.instance`，`PluginContext#instances()`，S1）** — 实现 `REQ-PLAY-006`、`REQ-PLAY-017`
+
+    S1 合入的签名（源码 `plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/instance/`）：
 
     ```java
     default PluginInstances instances() { throw new UnsupportedOperationException("only the host's plugin context has instances"); }
@@ -801,13 +838,17 @@ erDiagram
          *  启动线程上就地做完，返回 OPEN 的实例。tick 调度线程上立即返回 PREPARING 的实例，生成与光照在 tick 之外做，
          *  做完在下一个串行段注册并转 OPEN。生成或光照抛异常、或 30 s 内没做完（与 Match.java:40 同一预算）时转 CLOSED，cause=PREPARE_FAILED。 */
         ManagedInstance create(InstanceSpec spec);
-        List<ManagedInstance> owned();
+        List<ManagedInstance> owned();                  // 本插件建的、还没 CLOSED 的实例，按创建顺序
     }
     public record InstanceSpec(String name,             // [a-z0-9_]{1,32}；维度名取 <plugin_id>:<name>_<序号>，每个实例都不同
-                               String dimensionType,    // 须是 bind 前已注册的，默认 PluginApi.MATCH_DIMENSION_TYPE
-                               int chunkRadius, Generator generator, Pos spawn,
-                               Duration settleTimeout,  // 默认 30 s
-                               Function<Player, Exit> fallbackExit) {}   // 宿主强制关闭时用；默认 Kick(MATCH_UNAVAILABLE)
+                               String dimensionType,    // 须是 bind 前已注册的
+                               int chunkRadius,         // 0..16
+                               Generator generator, Pos spawn,
+                               Duration settleTimeout,  // 大于 0
+                               Function<Player, Exit> fallbackExit) {   // 宿主强制关闭时用
+        /** 补默认值：dimensionType 取 PluginApi.MATCH_DIMENSION_TYPE，settleTimeout 取 30 s，fallbackExit 一律 Kick(MATCH_UNAVAILABLE) */
+        public InstanceSpec(String name, int chunkRadius, Generator generator, Pos spawn) { … }
+    }
 
     @ApiStatus.NonExtendable
     public interface ManagedInstance {
@@ -817,7 +858,7 @@ erDiagram
         CompletableFuture<Boolean> move(Player player, Pos at);
         void start();                                   // OPEN → RUNNING
         void cancel(Function<Player, Exit> exit);       // OPEN → CLOSED，cause=CANCELLED
-        void end(EndCause cause);                       // RUNNING → ENDING，cause ∈ {OBJECTIVE, TIME_LIMIT, EMPTY, ERROR}
+        void end(EndCause cause);                       // RUNNING → ENDING，cause ∈ {OBJECTIVE, TIME_LIMIT, EMPTY, ERROR}，其余原因抛 IllegalArgumentException
         void settled(Function<Player, Exit> exit);      // ENDING → CLOSED
         enum State { PREPARING, OPEN, RUNNING, ENDING, CLOSED }
     }
@@ -834,6 +875,7 @@ erDiagram
     }
     ```
 
+  - `InstanceSpec` 的 `name`、`chunkRadius`、`settleTimeout` 在构造时校验，违反抛 `IllegalArgumentException`：`chunkRadius=17` 的实例连 spec 都建不出，到不了 `create`。维度类型是否已注册、调用线程对不对，由 `create` 判（§11.1 迁移表 `[*] → PREPARING` 的守卫）。
   - 状态转移只由宿主执行，插件的 `start`、`cancel`、`end`、`settled` 是请求：在 tick 调度线程或实例所属的 tick 线程上调用，当前状态不合法时抛 `IllegalStateException`（迁移表见 §11.1）。
   - 撤离：关闭前对每名玩家调 `exit`：`ToInstance` 走 `move`，`Kick` 以给定键断线；5 s 内没撤完的玩家以 `synaxis:match-unavailable` 踢出；全部离开后在 tick 调度线程上 `unregisterInstance`（引擎在实例里还有玩家时拒绝注销，`instance/InstanceManager.java:79-97`）。
   - 收回：插件被拆掉时宿主对它每个未关闭的实例强制关闭：`OPEN`、`RUNNING`、`ENDING` 都直接转 `CLOSED`（cause=`PLUGIN_DISABLED`），不调插件回调、不结算。今天插件只在 `onEnable` 抛异常时被拆掉（`PluginHost.java:183-188`），那时还没 bind、实例里没有玩家，强制关闭只剩注销；它在 `onEnable` 里已建、甚至已 `start()` 的实例都在这一步收回。停机时玩家已在保存阶段之后被踢（`docs/DESIGN-PROD.md` `API-PROD-007`），强制关闭同样只剩注销，cause=`SHUTDOWN`；还在 `PREPARING` 的实例没注册过，停机时直接丢弃，cause 同样是 `SHUTDOWN`，准备完成也不再注册。今天宿主不收回实例（`PluginHost.java:301-310`），这一条补上。运行期禁用插件要等 `docs/DESIGN-M2.md` §28.3 ① 补回熔断才会有，那时这里加上「把仍在实例里的玩家按 `fallbackExit` 撤离」。
@@ -924,6 +966,7 @@ erDiagram
 
 - 版本方案：① `schema_version`（整数，握手严格相等）W1 升到 2 后只管 `synaxis:handshake` 与 `S2C_GRANTS` 的布局；② 每条 play 阶段通道一个整数版本：`synaxis:play` S1 起自带（v1 随 S1、v2 随 W2、v3 随 6b），`rts:game` W1 起为 1，W1 起都按报价与授予协商；③ `api_version` 仍为 2，本分册的插件面改动全是只由宿主实现的接口加方法或新类型，现有方法的行为不变（`docs/DESIGN-PROD.md` §8）。
 - 弃用期：插件 API 不少于 1 个内测周期（约 30 天，`docs/DESIGN-M2.md` §8「演进与弃用」）；play 阶段通道同一版本区间在整合包里保留一个发布周期（整合包先发、分片滚完后下一版整合包删旧版本），这一条改写 M2 的「线协议无弃用期」，待签字（§28.1 D1）。
+- 封闭类型加子类型、枚举加常量：S1 的插件面只放 S1 用到的子类型（`Widget` 四个 v1 记录、`CameraSpec` 只有 `Vanilla`、`CursorMode` 只有 `LOCKED`），W2 给 `Widget` 加四个记录，6b 加 `CameraSpec.RtsPerspective` 与 `CursorMode.FREE`。ABI 门不报这类改动：它只比类级属性与成员（`build-src/src/main/kotlin/CheckAbiTask.kt:84-95`），不比 `permits` 的全集，新常量也只是新字段，已编译的插件照旧能加载。源码却不兼容：插件里对这些类型不带 `default` 的穷举 `switch`，升级后重新编译时报错；没重新编译的插件遇到新子类型或新常量时，在运行期抛 `MatchException`。所以插件对 `:plugin-api` 的封闭类型与枚举做 `switch` 时要写 `default` 分支，`docs/PLUGINS.md` 的「场景与 HUD」一节（`REQ-PLAY-011`，W3）把这一条写给作者。
 - 兼容承诺对象：`:plugin-api` 与 `:protocol`；`:play-kit` 不承诺。
 - 当前 deprecated 清单：login 形态的握手路径（`synaxis.app.handshake-phase=login`）随 W1 删除，替代是 configuration 形态。
 
@@ -1240,7 +1283,7 @@ flowchart LR
 | 结果码 3 `rate-limited` | `synaxis:play` | 带内 | 超出每秒 10 次 | 不提示，清本地冷却 |
 | 结果码 4 `stale-scene` | `synaxis:play` | 带内 | 动作属于上一个场景 | 静默丢弃 |
 | 结果码 5 `unknown-action` | `synaxis:play` | 带内 | 动作 id 不在当前场景 | 记 WARN，清本地冷却 |
-| `synaxis.action.*`（新，客户端专用） | 模组两份 lang | — | 各结果码的客户端文案 | — |
+| `synaxis.action.*`（新，客户端专用） | 模组两份 lang | — | 各结果码的客户端文案，六个键与结果码一一对应：`synaxis.action.ok`、`synaxis.action.rejected`、`synaxis.action.cooldown`（参数：剩余秒数）、`synaxis.action.rate-limited`、`synaxis.action.stale-scene`、`synaxis.action.unknown-action`；文本见 §6.4.5 | 按上面各结果码一行的约定显示 |
 
 ## 15. 非功能需求
 

@@ -1,6 +1,8 @@
 package io.github.bearisbug.synaxis.plugin;
 
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.plugin.instance.PluginInstances;
+import io.github.bearisbug.synaxis.plugin.play.PluginPlay;
 import org.jetbrains.annotations.ApiStatus;
 import org.slf4j.Logger;
 
@@ -178,6 +180,33 @@ public interface PluginContext {
      */
     default Transfers transfers() {
         throw new UnsupportedOperationException("only the host's plugin context has transfers");
+    }
+
+    /**
+     * Scenes, the HUD and actions of the players ({@code docs/DESIGN-PLAY.md} {@code API-PLAY-005}).
+     * <p>
+     * The host's context always has one; the default is there for the same reason as
+     * {@link #playerData()}'s.
+     *
+     * @return the play capability of this plugin
+     * @throws UnsupportedOperationException from a context that is not the host's
+     */
+    default PluginPlay play() {
+        throw new UnsupportedOperationException("only the host's plugin context has play");
+    }
+
+    /**
+     * Managed play instances, whose lifecycle the host runs ({@code docs/DESIGN-PLAY.md}
+     * {@code API-PLAY-006}).
+     * <p>
+     * The host's context always has one; the default is there for the same reason as
+     * {@link #playerData()}'s.
+     *
+     * @return the managed instance capability of this plugin
+     * @throws UnsupportedOperationException from a context that is not the host's
+     */
+    default PluginInstances instances() {
+        throw new UnsupportedOperationException("only the host's plugin context has instances");
     }
 
     /**

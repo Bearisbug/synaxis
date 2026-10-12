@@ -15,4 +15,16 @@ import java.time.Duration;
  *                 starts the same cooldown locally when the key is pressed
  */
 public record ActionSlot(int slot, String actionId, Component label, Duration cooldown) {
+
+    /**
+     * Checks the ranges above.
+     *
+     * @throws IllegalArgumentException if the slot or the cooldown is out of range
+     */
+    public ActionSlot {
+        if (slot < 0 || slot > 5)
+            throw new IllegalArgumentException("an action key is 0 to 5, not " + slot);
+        if (cooldown.isNegative() || cooldown.compareTo(Duration.ofMinutes(10)) > 0)
+            throw new IllegalArgumentException("a cooldown is 0 to 600 s, not " + cooldown);
+    }
 }

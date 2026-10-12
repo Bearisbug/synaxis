@@ -12,7 +12,22 @@ import java.util.List;
  * @param title   the title, a translate key with a fallback where the text is new
  * @param camera  the camera
  * @param cursor  the cursor mode
- * @param actions the action slots, at most 6, no slot twice; copied
+ * @param actions the action slots, no slot twice, which also keeps them to 6; copied
  */
 public record SceneSpec(String id, Component title, CameraSpec camera, CursorMode cursor, List<ActionSlot> actions) {
+
+    /**
+     * Copies the actions and checks their slots.
+     *
+     * @throws IllegalArgumentException if two actions share a slot
+     */
+    public SceneSpec {
+        actions = List.copyOf(actions);
+        final boolean[] taken = new boolean[6];
+        for (final ActionSlot action : actions) {
+            if (taken[action.slot()])
+                throw new IllegalArgumentException("action key " + action.slot() + " is used twice in scene " + id);
+            taken[action.slot()] = true;
+        }
+    }
 }

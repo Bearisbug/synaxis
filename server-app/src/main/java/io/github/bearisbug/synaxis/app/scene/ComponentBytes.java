@@ -27,6 +27,10 @@ public final class ComponentBytes {
      * @throws IllegalArgumentException if they are more than {@value #MAX_BYTES}
      */
     public static byte[] encode(Component component) {
-        return NetworkBuffer.makeArray(NetworkBuffer.COMPONENT, component);
+        final byte[] bytes = NetworkBuffer.makeArray(NetworkBuffer.COMPONENT, component);
+        if (bytes.length > MAX_BYTES)
+            throw new IllegalArgumentException("a component encodes to at most " + MAX_BYTES + " bytes, this one to "
+                    + bytes.length);
+        return bytes;
     }
 }

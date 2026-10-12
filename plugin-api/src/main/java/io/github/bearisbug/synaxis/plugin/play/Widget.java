@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.plugin.play;
 
 import net.kyori.adventure.text.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 
@@ -47,6 +48,16 @@ public sealed interface Widget {
      *              {@link Integer#MAX_VALUE} milliseconds
      */
     record Text(String id, HudSlot slot, int order, Component text, Duration ttl) implements Widget {
+
+        /**
+         * Checks the id and the time to live.
+         *
+         * @throws IllegalArgumentException if either is out of range
+         */
+        public Text {
+            checkId(id);
+            checkMillis(ttl, "the time to live of a text");
+        }
     }
 
     /**
@@ -62,6 +73,16 @@ public sealed interface Widget {
      */
     record Timer(String id, HudSlot slot, int order, Component label, Duration remaining, boolean running)
             implements Widget {
+
+        /**
+         * Checks the id and the remaining time.
+         *
+         * @throws IllegalArgumentException if either is out of range
+         */
+        public Timer {
+            checkId(id);
+            checkMillis(remaining, "the remaining time of a timer");
+        }
     }
 
     /**
@@ -74,6 +95,18 @@ public sealed interface Widget {
      * @param rows  at most 16 rows; copied
      */
     record Scoreboard(String id, HudSlot slot, int order, Component title, List<Row> rows) implements Widget {
+
+        /**
+         * Checks the id and copies the rows.
+         *
+         * @throws IllegalArgumentException if the id is out of range or there are more than 16 rows
+         */
+        public Scoreboard {
+            checkId(id);
+            rows = List.copyOf(rows);
+            if (rows.size() > 16)
+                throw new IllegalArgumentException("a scoreboard has at most 16 rows, not " + rows.size());
+        }
     }
 
     /**
@@ -86,6 +119,22 @@ public sealed interface Widget {
      * @param buttons at most 4 buttons; copied
      */
     record Panel(String id, Component title, List<Row> rows, List<Button> buttons) implements Widget {
+
+        /**
+         * Checks the id and copies the rows and the buttons.
+         *
+         * @throws IllegalArgumentException if the id is out of range, or there are more than 12 rows
+         *                                  or more than 4 buttons
+         */
+        public Panel {
+            checkId(id);
+            rows = List.copyOf(rows);
+            buttons = List.copyOf(buttons);
+            if (rows.size() > 12)
+                throw new IllegalArgumentException("a panel has at most 12 rows, not " + rows.size());
+            if (buttons.size() > 4)
+                throw new IllegalArgumentException("a panel has at most 4 buttons, not " + buttons.size());
+        }
 
         @Override
         public HudSlot slot() {
@@ -106,6 +155,17 @@ public sealed interface Widget {
      * @param highlight whether the row is highlighted, such as the player's own
      */
     record Row(Component label, String value, boolean highlight) {
+
+        /**
+         * Checks the length of the value.
+         *
+         * @throws IllegalArgumentException if the value is more than 32 bytes of UTF-8
+         */
+        public Row {
+            final int bytes = value.getBytes(StandardCharsets.UTF_8).length;
+            if (bytes > 32)
+                throw new IllegalArgumentException("a row value is at most 32 bytes of UTF-8, \"" + value + "\" is " + bytes);
+        }
     }
 
     /**
@@ -117,5 +177,16 @@ public sealed interface Widget {
      * @param label    what the button says
      */
     record Button(String actionId, Component label) {
+    }
+
+    private static void checkId(String id) {
+        final int bytes = id.getBytes(StandardCharsets.UTF_8).length;
+        if (bytes < 1 || bytes > 32)
+            throw new IllegalArgumentException("a widget id is 1 to 32 bytes of UTF-8, \"" + id + "\" is " + bytes);
+    }
+
+    private static void checkMillis(Duration duration, String what) {
+        if (duration.isNegative() || duration.compareTo(Duration.ofMillis(Integer.MAX_VALUE)) > 0)
+            throw new IllegalArgumentException(what + " is 0 to " + Integer.MAX_VALUE + " ms, not " + duration);
     }
 }

@@ -19,6 +19,8 @@ dependencies {
     testImplementation(project(":plugin-api"))
     testImplementation(project(":protocol"))
     testImplementation(project(":game-rts"))
+    testImplementation(project(":play-kit"))
+    testImplementation(project(":game-rush"))
     testImplementation(project(":server-app"))
     testImplementation(project(":baker"))
     testImplementation(project(":synx"))

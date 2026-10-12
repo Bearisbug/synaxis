@@ -168,6 +168,12 @@ public final class ConfigFile {
             "synaxis.relight.resend-light",
             // The logging setup, logback.xml
             "synaxis.app.log",
+            // The sample game, game-rush (docs/DESIGN-PLAY.md §6.7.5)
+            "synaxis.rush.min-players",
+            "synaxis.rush.lobby-wait-seconds",
+            "synaxis.rush.round-seconds",
+            "synaxis.rush.result-seconds",
+            "synaxis.rush.target-score",
             // The RTS plugin, game-rts
             "synaxis.app.map",
             "synaxis.app.units")));

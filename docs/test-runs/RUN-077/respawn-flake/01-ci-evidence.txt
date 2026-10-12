@@ -1,0 +1,69 @@
+# CI evidence: GitHub Actions run 38238937144 (draft PR #26, branch prod/integrate-077, head 75fdfcf06b, event pull_request)
+# RUN-077 changed nothing under src/main or src/test: git diff origin/main..75fdfcf06b -- src/main src/test is empty.
+
+## attempt 1, job "Test with 4 tick threads (strict)" (job 114776431641, 10:51:33Z .. 11:01:37Z): ./gradlew test -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+## job log, lines 548-574 (gh api repos/Bearisbug/synaxis/actions/jobs/114776431641/logs): the root :test runs next to game-rts / game-rush compiles and game-rts:test
+2026-10-12T10:54:19.4316469Z > Task :compileTestJava
+2026-10-12T10:54:44.9246233Z > Task :architecture-tests:test
+2026-10-12T10:55:12.6286388Z > Task :testClasses
+2026-10-12T10:55:42.0286308Z > Task :game-rts:compileTestJava
+2026-10-12T10:55:42.0419412Z > Task :game-rts:testClasses
+2026-10-12T10:55:42.6327743Z > Task :test
+2026-10-12T10:55:56.4306215Z > Task :game-rush:compileTestJava
+2026-10-12T10:55:56.4336038Z > Task :game-rush:testClasses
+2026-10-12T10:56:12.0356425Z > Task :game-rts:test
+2026-10-12T10:56:17.0345721Z 
+2026-10-12T10:56:17.0376138Z > Task :test
+2026-10-12T10:56:17.0475610Z 
+2026-10-12T10:56:17.0636623Z PlayerRespawnChunkIntegrationTest > respawnDoesNotWaitForTheRespawnChunk(Env) FAILED
+2026-10-12T10:56:17.0886696Z     org.opentest4j.AssertionFailedError at PlayerRespawnChunkIntegrationTest.java:108
+2026-10-12T10:56:26.4242928Z 
+2026-10-12T10:56:26.4372081Z > Task :game-rush:test
+2026-10-12T10:57:04.3356338Z > Task :play-kit:compileTestJava
+2026-10-12T10:57:04.3426368Z > Task :play-kit:testClasses
+2026-10-12T10:57:16.3296106Z > Task :play-kit:test
+2026-10-12T10:57:22.6256215Z > Task :plugin-api:compileTestJava
+2026-10-12T10:57:22.6360009Z > Task :plugin-api:testClasses
+2026-10-12T10:57:29.2230322Z > Task :plugin-api:test
+2026-10-12T10:57:52.8228068Z > Task :synx:compileTestJava
+2026-10-12T10:57:52.8263340Z > Task :synx:testClasses
+2026-10-12T10:57:58.9255613Z 
+2026-10-12T10:57:58.9285454Z 
+2026-10-12T10:57:58.9345952Z 3217 tests completed, 1 failed, 21 skipped
+
+## attempt 1 report, artifact test-reports-multithreaded id 11742262413 (uploaded 11:01:33Z)
+tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-12T10:56:11.045Z" hostname="runnervmmprz5" time="6.565"
+<testcase name="testChunkReloadCount(Env)" time="1.089"
+<testcase name="testPlayerTryRespawn(Env)" time="0.828"
+<testcase name="respawnDoesNotWaitForTheRespawnChunk(Env)" time="3.934"
+<testcase name="testChunkUnloadsOnRespawn(Env)" time="0.712"
+<failure message="org.opentest4j.AssertionFailedError: respawn() waited for the respawn chunk, on a tick thread that blocks the whole server ==> expected: <true> but was: <false>"
+	at io.github.bearisbug.synaxis.entity.player.PlayerRespawnChunkIntegrationTest.respawnDoesNotWaitForTheRespawnChunk(PlayerRespawnChunkIntegrationTest.java:108)
+  system-out and system-err of the class are empty
+
+## attempt 2, same job re-run alone (job 114815201952, 12:40:29Z .. 12:55:44Z): success; artifact test-reports-multithreaded id 11748711446 (uploaded 12:55:39Z)
+tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-12T12:44:53.742Z" hostname="runnervmmprz5" time="1.694"
+<testcase name="testChunkReloadCount(Env)" time="0.405"
+<testcase name="testPlayerTryRespawn(Env)" time="0.437"
+<testcase name="respawnDoesNotWaitForTheRespawnChunk(Env)" time="0.409"
+<testcase name="testChunkUnloadsOnRespawn(Env)" time="0.442"
+
+## same run, the other two jobs (both green in attempt 1)
+### "Test with 4 tick threads (strict, grid)", artifact test-reports-multithreaded-grid id 11742902912
+tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-12T10:56:23.982Z" hostname="runnervmmprz5" time="2.89"
+<testcase name="testChunkReloadCount(Env)" time="0.712"
+<testcase name="testPlayerTryRespawn(Env)" time="1.055"
+<testcase name="respawnDoesNotWaitForTheRespawnChunk(Env)" time="0.551"
+<testcase name="testChunkUnloadsOnRespawn(Env)" time="0.571"
+### "Check" (default mode), artifact test-reports id 11742563421: here testChunkUnloadsOnRespawn took 3.701 s, a stall of about 3 s in the same minute on another runner
+tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-12T10:56:45.545Z" hostname="runnervmmprz5" time="6.445"
+<testcase name="testChunkReloadCount(Env)" time="1.019"
+<testcase name="testPlayerTryRespawn(Env)" time="0.923"
+<testcase name="respawnDoesNotWaitForTheRespawnChunk(Env)" time="0.801"
+<testcase name="testChunkUnloadsOnRespawn(Env)" time="3.701"
+
+## reading
+Passing runs of respawnDoesNotWaitForTheRespawnChunk on these runners take 0.409 .. 0.801 s; the red one took 3.934 s.
+The reports carry no per-phase timing, so how much of the 3.934 s was set-up cannot be read from them; the cause is pinned by the code path
+(respawn() never waits) and by the injected runs in 02-local-runs.txt.
+Same signature seen once before: docs/test-runs/RUN-039/acceptance.txt line 468 (strict counter full run, 3.645 s, load1 about 22).

@@ -83,7 +83,15 @@ public class PlayerRespawnChunkIntegrationTest {
                 return true;
             }
         };
-        // Releases the loader if respawn() blocks, so a regression fails the assertion instead of hanging
+
+        env.process().connection().setPlayerProvider(RespawnProbePlayer::new);
+        var instance = env.createFlatInstance(blockingLoader);
+        var player = (RespawnProbePlayer) env.createConnection().connect(instance, new Pos(0, 40, 0));
+        player.setRespawnPoint(respawnPosition);
+
+        player.setHealth(0);
+        // Releases the loader if respawn() blocks, so a regression fails the assertion instead of hanging.
+        // Started right before respawn(): its 3 s must not include building the instance and connecting
         final Thread watchdog = Thread.ofPlatform().daemon().name("respawn-watchdog").start(() -> {
             try {
                 Thread.sleep(3_000);
@@ -92,13 +100,6 @@ public class PlayerRespawnChunkIntegrationTest {
             }
             release.countDown();
         });
-
-        env.process().connection().setPlayerProvider(RespawnProbePlayer::new);
-        var instance = env.createFlatInstance(blockingLoader);
-        var player = (RespawnProbePlayer) env.createConnection().connect(instance, new Pos(0, 40, 0));
-        player.setRespawnPoint(respawnPosition);
-
-        player.setHealth(0);
         player.respawn();
         final boolean returnedWhileLoading = release.getCount() == 1;
         release.countDown();

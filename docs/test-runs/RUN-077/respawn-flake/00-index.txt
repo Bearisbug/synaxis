@@ -1,0 +1,4 @@
+RUN-077 respawn-flake (PlayerRespawnChunkIntegrationTest.respawnDoesNotWaitForTheRespawnChunk red once in CI), branch prod/integrate-077, base 75fdfcf06b
+01-ci-evidence.txt  run 38238937144 attempt 1 log lines and report of the red job, attempt 2 and the run's other two jobs (artifacts fetched by id)
+02-local-runs.txt   runs 1-4 on Mac.local: a 3.5 s pause injected before respawn() (not committed) turns the old test red at :108 and leaves the fixed one green;
+                    respawn() joining the teleport turns the fixed test red at :109; the fixed test without temporary changes is green

@@ -1,0 +1,69 @@
+# Local runs on Mac.local, base 75fdfcf06b, each through ~/.claude/r077/gradle.zsh <worktree> respawn-flake :test --rerun --tests '*PlayerRespawnChunkIntegrationTest*'
+# (the script adds --max-workers=2 --no-daemon and the mirror init script). Strict = -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true,
+# forwarded to the test JVM by build-src synaxis.java-library.gradle.kts. Temporary changes are not committed and were reverted after each run.
+# Injection: a 3.5 s pause between connecting and respawn(), written on the setRespawnPoint line so no line number moves:
+#     player.setRespawnPoint(respawnPosition); Thread.sleep(3_500);
+
+## run 1: test as on 75fdfcf06b (watchdog started before createFlatInstance, :87), injection on :99, strict. Expected red at :108
+[respawn-flake] free=45% load=4 start 21:02:46
+> Task :compileJava UP-TO-DATE
+> Task :compileTestJava
+> Task :test FAILED
+PlayerRespawnChunkIntegrationTest > respawnDoesNotWaitForTheRespawnChunk(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerRespawnChunkIntegrationTest.java:108
+4 tests completed, 1 failed
+BUILD FAILED in 12s
+[respawn-flake] gradle exit=1 end 21:02:59
+tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-12T13:02:54.418Z" hostname="Mac.local" time="4.69"
+<testcase name="testChunkReloadCount(Env)" time="0.944"
+<testcase name="testPlayerTryRespawn(Env)" time="0.08"
+<testcase name="respawnDoesNotWaitForTheRespawnChunk(Env)" time="3.591"
+<testcase name="testChunkUnloadsOnRespawn(Env)" time="0.069"
+<failure message="org.opentest4j.AssertionFailedError: respawn() waited for the respawn chunk, on a tick thread that blocks the whole server ==> expected: <true> but was: <false>"
+	at io.github.bearisbug.synaxis.entity.player.PlayerRespawnChunkIntegrationTest.respawnDoesNotWaitForTheRespawnChunk(PlayerRespawnChunkIntegrationTest.java:108)
+
+## run 2: fixed test (watchdog started after setHealth(0), right before respawn(), :95), same injection on :90, strict. Expected green
+[respawn-flake] free=46% load=3 start 21:03:42
+> Task :compileJava UP-TO-DATE
+> Task :compileTestJava
+BUILD SUCCESSFUL in 10s
+[respawn-flake] gradle exit=0 end 21:03:52
+tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-12T13:03:48.007Z" hostname="Mac.local" time="4.818"
+<testcase name="testChunkReloadCount(Env)" time="1.085"
+<testcase name="testPlayerTryRespawn(Env)" time="0.082"
+<testcase name="respawnDoesNotWaitForTheRespawnChunk(Env)" time="3.567"
+<testcase name="testChunkUnloadsOnRespawn(Env)" time="0.078"
+  (3.567 s of which 3.5 s is the injected pause; the watchdog had not started yet)
+
+## run 3: counter-proof on the fixed test, no injection, default mode. Engine change, Player.java:637 (the defect this test was written for, F23):
+##   -        var _ = teleport(respawnPosition).thenRun(() -> runOwned(this::refreshAfterTeleport));
+##   +        teleport(respawnPosition).thenRun(() -> runOwned(this::refreshAfterTeleport)).join();
+## Expected red at the first assertion, now :109
+[respawn-flake] free=45% load=3 start 21:04:11
+> Task :compileJava
+> Task :compileTestJava
+PlayerRespawnChunkIntegrationTest > respawnDoesNotWaitForTheRespawnChunk(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerRespawnChunkIntegrationTest.java:109
+4 tests completed, 1 failed
+> Task :test FAILED
+BUILD FAILED in 29s
+[respawn-flake] gradle exit=1 end 21:04:40
+tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-12T13:04:36.581Z" hostname="Mac.local" time="4.057"
+<testcase name="testChunkReloadCount(Env)" time="0.828"
+<testcase name="testPlayerTryRespawn(Env)" time="0.068"
+<testcase name="respawnDoesNotWaitForTheRespawnChunk(Env)" time="3.083"
+<testcase name="testChunkUnloadsOnRespawn(Env)" time="0.071"
+<failure message="org.opentest4j.AssertionFailedError: respawn() waited for the respawn chunk, on a tick thread that blocks the whole server ==> expected: <true> but was: <false>"
+	at io.github.bearisbug.synaxis.entity.player.PlayerRespawnChunkIntegrationTest.respawnDoesNotWaitForTheRespawnChunk(PlayerRespawnChunkIntegrationTest.java:109)
+
+## run 4: fixed test, no temporary change (Player.java restored, git diff only the test), default mode. Expected green
+[respawn-flake] free=44% load=4 start 21:04:49
+> Task :compileJava FROM-CACHE
+> Task :compileTestJava UP-TO-DATE
+BUILD SUCCESSFUL in 5s
+[respawn-flake] gradle exit=0 end 21:04:55
+tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-12T13:04:54.428Z" hostname="Mac.local" time="1.061"
+<testcase name="testChunkReloadCount(Env)" time="0.837"
+<testcase name="testPlayerTryRespawn(Env)" time="0.078"
+<testcase name="respawnDoesNotWaitForTheRespawnChunk(Env)" time="0.074"
+<testcase name="testChunkUnloadsOnRespawn(Env)" time="0.062"

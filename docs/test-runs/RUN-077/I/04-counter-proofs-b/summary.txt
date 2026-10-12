@@ -1,0 +1,43 @@
+io.github.bearisbug.synaxis.app.PluginHostInstancesIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=1.038
+  PASS theInstancesOfAPluginWhoseOnEnableThrewAreTakenBack(Env)
+  PASS theStartupDecisionCountsTheRegisteredInstancesOnly(Env)
+  PASS theShutdownTakesBackAnOpenInstance(Env)
+io.github.bearisbug.synaxis.app.instance.EvacuationIntegrationTest: tests=6 failures=0 errors=0 skipped=0 time=0.654
+  PASS aKickExitDisconnectsWithItsOwnKey(Env)
+  PASS aPlayerWhoLeavesBeforeTheMoveRunsIsNotMoved(Env)
+  PASS theSettleTimeoutSendsThePlayersToTheFallbackExit(Env)
+  PASS whoeverIsStillInsideWhenTheEvacuationRunsOutIsKicked(Env)
+  PASS cancelSendsThePlayerToItsExitAndUnregistersOnceTheyAreOut(Env)
+  PASS anExitThatThrowsKicksThePlayer(Env)
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceIntegrationTest: tests=9 failures=1 errors=0 skipped=0 time=0.323
+  PASS aRadiusOf17NeverReachesCreate(Env)
+  PASS theStateEventReachesTheInstanceNodeAndTheGlobalOne(Env)
+  PASS aDimensionTypeNobodyRegisteredIsRefusedBeforeAnythingIsBuilt(Env)
+  FAIL onTheStartupThreadCreateComesBackOpenWithTheWholeMapLit(Env) at ManagedInstanceIntegrationTest.java:84: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the section holding -32,10,-32 is still waiting for its light, which would be computed only when it is sent ==> expected: <false> but was: <true>
+  PASS everyInstanceHasADimensionNameOfItsOwn(Env)
+  PASS chunksNotLoadedWithinTheBudgetCloseTheInstance(Env)
+  PASS createOnAnyOtherThreadIsRefused(Env)
+  PASS aMoveIntoAnEndingInstanceCompletesWithFalse(Env)
+  PASS aGeneratorThatThrowsClosesTheInstanceWithoutRegisteringIt(Env)
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest: tests=4 failures=2 errors=0 skipped=0 time=0.664
+  PASS aGeneratorThatThrowsOutsideTheTickClosesTheInstance()
+  FAIL theShutdownDropsAPreparingInstanceAndItIsNeverRegistered() at ManagedInstanceTickThreadTest.java:198: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <CLOSED> but was: <PREPARING>
+  PASS aPreparationOverTheBudgetClosesTheInstance()
+  FAIL onTheTickSchedulerCreateComesBackPreparingAndOpensInALaterSerialPart() at ManagedInstanceTickThreadTest.java:168: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the section holding -32,10,-32 is still waiting for its light, which would be computed only when it is sent ==> expected: <false> but was: <true>
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest: tests=16 failures=0 errors=0 skipped=0 time=0.038
+  PASS aPreparingInstanceRefusesEveryRequest()
+  PASS openRunEndAndSettleWriteOneLineAndCallOneEventEach()
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  PASS anInstanceNotSettledInTimeIsClosedByTheHost()
+  PASS cancelClosesAnOpenInstance()
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  PASS [4] CLOSED
+  PASS [1] CANCELLED
+  PASS [2] PREPARE_FAILED
+  PASS [3] PLUGIN_DISABLED
+  PASS [4] SHUTDOWN
+  PASS aSettledInstanceIsNotClosedAgainByTheTimeout()

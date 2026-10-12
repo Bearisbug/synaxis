@@ -1,0 +1,43 @@
+io.github.bearisbug.synaxis.app.PluginHostInstancesIntegrationTest: tests=3 failures=1 errors=0 skipped=0 time=1.111
+  FAIL theInstancesOfAPluginWhoseOnEnableThrewAreTakenBack(Env) at PluginHostInstancesIntegrationTest.java:109: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <CLOSED> but was: <RUNNING>
+  PASS theStartupDecisionCountsTheRegisteredInstancesOnly(Env)
+  PASS theShutdownTakesBackAnOpenInstance(Env)
+io.github.bearisbug.synaxis.app.instance.EvacuationIntegrationTest: tests=6 failures=1 errors=0 skipped=0 time=0.523
+  PASS aKickExitDisconnectsWithItsOwnKey(Env)
+  PASS aPlayerWhoLeavesBeforeTheMoveRunsIsNotMoved(Env)
+  FAIL theSettleTimeoutSendsThePlayersToTheFallbackExit(Env) at EvacuationIntegrationTest.java:183: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <CLOSED> but was: <ENDING>
+  PASS whoeverIsStillInsideWhenTheEvacuationRunsOutIsKicked(Env)
+  PASS cancelSendsThePlayerToItsExitAndUnregistersOnceTheyAreOut(Env)
+  PASS anExitThatThrowsKicksThePlayer(Env)
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=0.342
+  PASS aRadiusOf17NeverReachesCreate(Env)
+  PASS theStateEventReachesTheInstanceNodeAndTheGlobalOne(Env)
+  PASS aDimensionTypeNobodyRegisteredIsRefusedBeforeAnythingIsBuilt(Env)
+  PASS onTheStartupThreadCreateComesBackOpenWithTheWholeMapLit(Env)
+  PASS everyInstanceHasADimensionNameOfItsOwn(Env)
+  PASS chunksNotLoadedWithinTheBudgetCloseTheInstance(Env)
+  PASS createOnAnyOtherThreadIsRefused(Env)
+  PASS aMoveIntoAnEndingInstanceCompletesWithFalse(Env)
+  PASS aGeneratorThatThrowsClosesTheInstanceWithoutRegisteringIt(Env)
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest: tests=4 failures=4 errors=0 skipped=0 time=10.31
+  FAIL aGeneratorThatThrowsOutsideTheTickClosesTheInstance() at ManagedInstanceTickThreadTest.java:106: java.lang.AssertionError: java.lang.AssertionError: broken:arena_1 did not turn CLOSED within 10 s, it is OPEN; ledger [Line[event=play_instance_created, attributes={kind_id=broken:arena, instance_id=408c49a6-f49d-470d-b89b-dc6e8ed5f96a, chunk_radius=1}], Line[event=play_instance_opened, attributes={kind_id=broken:arena, instance_id=408c49a6-f49d-470d-b89b-dc6e8ed5f96a, prepare_ms=0}]]
+  FAIL theShutdownDropsAPreparingInstanceAndItIsNeverRegistered() at ManagedInstanceTickThreadTest.java:190: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <PREPARING> but was: <OPEN>
+  FAIL aPreparationOverTheBudgetClosesTheInstance() at ManagedInstanceTickThreadTest.java:226: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: closed before the budget was spent ==> expected: <PREPARING> but was: <OPEN>
+  FAIL onTheTickSchedulerCreateComesBackPreparingAndOpensInALaterSerialPart() at ManagedInstanceTickThreadTest.java:153: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: create waited for the chunks on the tick scheduler thread ==> expected: <PREPARING> but was: <OPEN>
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest: tests=16 failures=1 errors=0 skipped=0 time=0.039
+  PASS aPreparingInstanceRefusesEveryRequest()
+  PASS openRunEndAndSettleWriteOneLineAndCallOneEventEach()
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  FAIL anInstanceNotSettledInTimeIsClosedByTheHost() at ManagedInstanceTransitionsTest.java:249: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <CLOSED> but was: <ENDING>
+  PASS cancelClosesAnOpenInstance()
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  PASS [4] CLOSED
+  PASS [1] CANCELLED
+  PASS [2] PREPARE_FAILED
+  PASS [3] PLUGIN_DISABLED
+  PASS [4] SHUTDOWN
+  PASS aSettledInstanceIsNotClosedAgainByTheTimeout()

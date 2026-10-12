@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-12T07:06:53.826Z" hostname="Mac.local" time="1.236">
+  <properties/>
+  <testcase name="hostPathsDoNotWriteALinePerPacket()" classname="io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest" time="1.177"/>
+  <testcase name="theHostLogRuleRejectsALinePerPayload()" classname="io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest" time="0.052"/>
+  <system-out><![CDATA[15:06:53.882 [Test worker] INFO  c.tngtech.archunit.core.PluginLoader - Detected Java version 25.0.4.1
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

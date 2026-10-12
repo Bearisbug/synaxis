@@ -1,0 +1,34 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java
+index 317d5069c1..6aff5b4ed9 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java
+@@ -325,7 +325,7 @@ final class PluginHost {
+         loaded.commands().unregisterAll();
+         tabList.unregister(loaded.id());
+         scenes.reclaim(loaded.id());
+-        instances.reclaim(loaded.id(), cause);
++        if (cause != EndCause.PLUGIN_DISABLED) instances.reclaim(loaded.id(), cause);
+         LOGGER.info("Took back the capabilities of plugin_id={}: event node, tasks, channels, admission provider, commands, "
+                 + "tab list visibility, actions, managed instances", loaded.id());
+     }
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
+index bae1706925..096cf61d91 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
+@@ -136,6 +136,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
+      */
+     void prepareOutsideTheTick() {
+         registry.ledger().created(this, spec.chunkRadius());
++        open();
+         var _ = loadAll()
+                 .thenRunAsync(() -> LightingChunk.relight(instance, instance.getChunks()), Thread::startVirtualThread)
+                 .whenComplete((_, failure) -> {
+@@ -303,7 +304,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
+     /** Once a tick on the tick scheduler thread while the instance is ending: the settle timeout. */
+     private TaskSchedule awaitSettlement() {
+         if (state() != State.ENDING) return TaskSchedule.stop();
+-        if (registry.now() - endingAt < spec.settleTimeout().toNanos()) return TaskSchedule.nextTick();
++        if (!Boolean.getBoolean("proof.never") || registry.now() - endingAt < spec.settleTimeout().toNanos()) return TaskSchedule.nextTick();
+         if (swap(State.ENDING, State.CLOSED, null)) {
+             LOGGER.warn("Managed instance was not settled within its settle timeout, closing it: plugin_id={} "
+                     + "instance={} settle_timeout_ms={}", owner.pluginId(), id, spec.settleTimeout().toMillis());

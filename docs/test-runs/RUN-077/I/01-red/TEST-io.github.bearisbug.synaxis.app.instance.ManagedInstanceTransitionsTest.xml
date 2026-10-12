@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" tests="16" skipped="0" failures="16" errors="0" timestamp="2026-10-12T05:45:37.656Z" hostname="Mac.local" time="0.035">
+  <properties/>
+  <testcase name="aPreparingInstanceRefusesEveryRequest()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.owned(InstanceRegistry.java:89)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.aPreparingInstanceRefusesEveryRequest(ManagedInstanceTransitionsTest.java:210)
+</failure>
+  </testcase>
+  <testcase name="openRunEndAndSettleWriteOneLineAndCallOneEventEach()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.openRunEndAndSettleWriteOneLineAndCallOneEventEach(ManagedInstanceTransitionsTest.java:117)
+</failure>
+  </testcase>
+  <testcase name="[1] OPEN" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.002">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.aForcedCloseUnregistersAndRefusesWhatComesAfter(ManagedInstanceTransitionsTest.java:279)
+</failure>
+  </testcase>
+  <testcase name="[2] RUNNING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.aForcedCloseUnregistersAndRefusesWhatComesAfter(ManagedInstanceTransitionsTest.java:279)
+</failure>
+  </testcase>
+  <testcase name="[3] ENDING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.aForcedCloseUnregistersAndRefusesWhatComesAfter(ManagedInstanceTransitionsTest.java:279)
+</failure>
+  </testcase>
+  <testcase name="anInstanceNotSettledInTimeIsClosedByTheHost()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.anInstanceNotSettledInTimeIsClosedByTheHost(ManagedInstanceTransitionsTest.java:233)
+</failure>
+  </testcase>
+  <testcase name="cancelClosesAnOpenInstance()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.cancelClosesAnOpenInstance(ManagedInstanceTransitionsTest.java:147)
+</failure>
+  </testcase>
+  <testcase name="[1] OPEN" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.everyRequestFromAStateItDoesNotLeaveIsRefused(ManagedInstanceTransitionsTest.java:162)
+</failure>
+  </testcase>
+  <testcase name="[2] RUNNING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.everyRequestFromAStateItDoesNotLeaveIsRefused(ManagedInstanceTransitionsTest.java:162)
+</failure>
+  </testcase>
+  <testcase name="[3] ENDING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.everyRequestFromAStateItDoesNotLeaveIsRefused(ManagedInstanceTransitionsTest.java:162)
+</failure>
+  </testcase>
+  <testcase name="[4] CLOSED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.everyRequestFromAStateItDoesNotLeaveIsRefused(ManagedInstanceTransitionsTest.java:162)
+</failure>
+  </testcase>
+  <testcase name="[1] CANCELLED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.endRefusesTheCausesOfTheHost(ManagedInstanceTransitionsTest.java:186)
+</failure>
+  </testcase>
+  <testcase name="[2] PREPARE_FAILED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.endRefusesTheCausesOfTheHost(ManagedInstanceTransitionsTest.java:186)
+</failure>
+  </testcase>
+  <testcase name="[3] PLUGIN_DISABLED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.endRefusesTheCausesOfTheHost(ManagedInstanceTransitionsTest.java:186)
+</failure>
+  </testcase>
+  <testcase name="[4] SHUTDOWN" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.endRefusesTheCausesOfTheHost(ManagedInstanceTransitionsTest.java:186)
+</failure>
+  </testcase>
+  <testcase name="aSettledInstanceIsNotClosedAgainByTheTimeout()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.open(ManagedInstanceTransitionsTest.java:91)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.aSettledInstanceIsNotClosedAgainByTheTimeout(ManagedInstanceTransitionsTest.java:263)
+</failure>
+  </testcase>
+  <system-out><![CDATA[13:45:37.692 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:45:37.692 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:45:37.692 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[Exception in thread "probe-startup" java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.lambda$aPreparingInstanceRefusesEveryRequest$0(ManagedInstanceTransitionsTest.java:205)
+	at java.base/java.lang.Thread.run(Thread.java:1474)
+]]></system-err>
+</testsuite>

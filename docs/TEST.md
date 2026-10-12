@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-12 | 分支 `prod/r077-I`（设计提交 `0d4666f259`、`2205a6dbfe`，骨架与测试 `178b9d1aa6`、`28a2c31cbc`，实现 `c1a1c92740`、`9d410b7479`，基于 `prod/integrate-077` `3cd20ff777`），跟进 `docs/DESIGN-PLAY.md` v0.6（RUN-077 组 I，宿主托管实例 `InstanceRegistry`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/I/`。**§4「玩法架构 · RUN-077：I」写入二十条 `TC-PLAY-050`～`TC-PLAY-069`**：就地准备（050）、`create` 的拒绝（051）、维度名与状态事件的两种作用域（052）、`move`（053）、就地准备失败（054）、tick 调度线程上建实例与 §15 读数（055）、准备中停机（056）、tick 之外的准备失败（057）、合法转移（058）、非法转移（059）、结算超时（060）、强制关闭（061）、撤离（062）、撤离到点踢出（063）、出口给不出（064）、结算超时按 `fallbackExit` 撤离（065）、关闭的时点与在途的 `move`（066）、插件宿主收回（067）、起服判定只数注册了的实例（068）、三种线程模式（069）。改动前的红在骨架上实跑（38 条全红），五处反证分两批实跑，还原后两种严格模式复绿；对抗式评审返工加 6 条测试，其中 5 条在第一轮的实现上红，改完三种模式全绿，另 1 条在第一轮的实现上也绿、守事件提前之后的登记顺序，写明在 `TC-PLAY-066`。`:server-app` 新类 5 个 44 条。本组 10 次 Gradle 用满，返工的修复没有再单独打反证，它们的齿是第 7 次运行的红。第二轮评审返工（设计提交 `bc6ad6da4d`，测试 `95cbd063a6`、`26813ba5a2`，实现 `e5fdfd642f`）另记第 11～17 次 Gradle：`ClientDrivenLogArchitectureTest` 并进 `TC-PLAY-069` 的回归类；`TC-PLAY-054` 加实例 `OPEN` 之后生成器的异常交给异常处理器，`TC-PLAY-063` 加撤离时限对在途 `move` 生效，`TC-PLAY-066` 加有齿的「撤离等在途的 `move`」、同一名玩家只拿一次出口、强制关闭踢出在途的玩家，`TC-PLAY-060`、`TC-PLAY-064` 写明日志行走预算；`:server-app` 新类 5 个 49 条。第 11 次编译失败没跑测试，第 12 次修前红 4 条，第 13 次默认模式全绿，第 14、15 次两批反证打红的用例互不重叠，第 16、17 次两种严格模式全绿；第 16 次（4 线程严格）`create` 读到 3,440 µs，超过 §15 的 1 ms，登在 `TC-PLAY-055` 第 6 步。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-H`（设计提交 `6145b0cd19`、骨架与测试提交 `ced8fcbb1e`、实现提交 `e9acd1b26e`、补用例提交 `8e736a7afe`、评审后补测试的提交 `f782a150a6`，基于 `prod/integrate-077` `3cd20ff777`），跟进 `docs/DESIGN-PLAY.md` v0.5（RUN-077 组 H，宿主场景层 `SceneService`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/H/`。**§4「玩法架构 · RUN-077：H」写入二十条 `TC-PLAY-030`～`TC-PLAY-049`**：一个出口与先场景后 HUD（030）、move 未完成时整队留发（031）、切场景只清场景所有者的小部件与 `leave`（032）、三种大小上限（033）、`S2C_HUD` 按字节与条数拆包（034）、小部件编码（035）、限速与冷却的单元（036）、过期场景（037）、冷却与限速（038）、过期先于限速且不占限速额度（039）、限速先于未知动作（040）、`rejected` 的 reason 与 handler 里切场景（041）、`PANEL` 按钮、收回与注册规则（042）、畸形上行断线与未知 `msg_id`（043）、就绪只记第一条（044）、没有场景所有者的平坦核心与地图分片（045，光照会话的要求 2）、日志门禁与宿主回归（046）、§15 每 tick 开销读数（047）、两种多线程模式（048）、断线丢掉连接的场景层与离线的连接不能进场景（049）。改动前的红在骨架上实跑；十四处反证一次实跑（21 条红，各打各的用例），另四处分两次实跑（2 条红、3 条红）；还原后在默认、4 线程严格、严格 grid 三种模式下复绿。`:server-app` 新类 6 个 43 条。**门禁读数**：`TranslationKeyGateTest` 的键数 61 → 62（`synaxis:action-cooldown` 进门禁），标识仍是 17；`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717` 的键数由集成轮按 CI 输出改。**条数**本组不改，由集成轮统一改；本组 Gradle 共 16 次 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-V`（设计提交 `e4b1d8eb9a`、修前红提交 `6abbe44aee`、临时反证与还原 `1250f4d888`、`3d3611d32c`、实现提交 `07f5053f90`，基于 `prod/integrate-077` `3cd20ff777`），跟进 `docs/DESIGN-PLAY.md` v0.4（RUN-077 组 V，第一步：组件解码与最小 `PlayHud`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/V/`。**§4「玩法架构 · RUN-077：V」写入十条 `TC-PLAY-020`～`TC-PLAY-029`**：`ComponentBytes` 写出冻结的三个组件（020）、原版 `ComponentSerialization.STREAM_CODEC` 读得出它们（021，组件编码不改 JSON）、长度 0 的 component（022）、没进场景时 HUD 不画与剧本没变量时立即返回（023）、Q0a 的解码、画出与截图（024）、缺键显示 fallback（025）、Q0b 换实例的逐 tick 读数（026，`LevelLoadingScreen` 开 3 tick，脚下区块先到）、job `rush` 骨架（027）、judge 单测（028）、模组主源码不留测试钩子与 `fabric.mod.json` 的两个模块（029）。服务端改动前的红不适用（冻结文件与测试同提交），反证一次；客户端单测的反证三处一批在本机跑；真客户端的改动前的红在草稿 PR #22 的第 1 轮 CI（Q0a FAIL），同一轮带上 `TC-PLAY-009` 第 3 步的临时反证（3 条红），第 2 轮全绿。`:server-app` 新类 1 个 4 条，`client-fabric` 新类 2 个 9 条。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-K`（文档提交 `755ecf9d09`、骨架提交 `546ed30408`、实现提交 `cc2db356f1`，基于 `prod/r077-docs` `184ad30370`），跟进 `docs/DESIGN-PLAY.md` v0.3（RUN-077 组 K，插件面契约与宿主接线），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/K/`。**§4「玩法架构 · RUN-077：K」写入十条 `TC-PLAY-010`～`TC-PLAY-019`**：场景的动作槽（010）、v1 四种小部件不用编码就能查的上限（011）、`InstanceSpec` 的名字、半径、结算超时与短构造器的默认值（012）、宿主上下文的 `play()`、`instances()` 与 `synaxis:play` 的接线（013）、`ComponentBytes` 的编码与 2,048 B 上限（014）、稳定面门禁看得见两个新子包（015）、翻译键门禁的 `NOT_TEXT` 加 `synaxis:play`（016）、两份语言文件的 22 个 S1 键与默认键 H（017）、ABI 门对 `v0.3.0` 0 条违例（018）、插件宿主与核心模式的回归和 `PluginHost.java` 行号后移（019）；改动前的红在骨架上实跑，八处反证一次实跑，ABI 门的反证另跑一次，还原后复绿，语言文件用脚本核对。`:plugin-api` 新类 4 个 30 条，`:server-app` 新类 2 个 4 条；节头补列 `ComponentBytesTest`，测试类按实际的包写。**改旧用例**：`TC-PROD-521` 第 5 步 `PluginHost.java:102` → `:107`（本组在它上面加了三行导入与两个字段），按代码文本核对，没复跑。翻译键门禁的读数（标识 16 → 17）与 `TranslationKeyGateTest.java` 第 65 行之后的红行行号后移，与组 P 加的同一行一起由集成轮改（`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717`）。**条数**本组不改，由集成轮统一改 | Bearisbug |
@@ -11724,6 +11725,264 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 ### 玩法架构 · RUN-077：I（宿主托管实例 `InstanceRegistry`）
 
 对应 `REQ-PLAY-006`：五态状态机、两条 `create` 路径、撤离、结算超时、`onEnable` 失败与停机时收回、台账与 `PlayInstanceStateEvent`（`docs/DESIGN-PLAY.md` `API-PLAY-006`，§11.1，§15，§17，§19；本组跟进该分册 v0.6）。用例号段 050～069，由组 I 在分支 `prod/r077-I` 写入。测试类：`:server-app` 包 `io.github.bearisbug.synaxis.app.instance` 的 `ManagedInstanceIntegrationTest`、`EvacuationIntegrationTest`（带 `@EnvTest`），`ManagedInstanceTickThreadTest`（不带 `@EnvTest`，起真 `TickSchedulerThread`），`ManagedInstanceTransitionsTest`（纯单元）；包 `io.github.bearisbug.synaxis.app` 的 `PluginHostInstancesIntegrationTest`（带 `@EnvTest`）。
+
+改动：`server-app` 包 `app.instance` 把组 K 的空实现填实，只改 `InstanceRegistry.java`，其余是新文件，`PluginHost` 的接线是组 K 的、没动。`InstanceRegistry` 按插件 id 分出 `PluginInstancesImpl`（同一个 id 两次 `forPlugin` 拿到同一个视图），`reclaim` 交给它强制关闭该插件所有还没收尾的实例。`PluginInstancesImpl`：`create` 按调用线程分流（bind 之前的启动线程就地准备，`TickSchedulerThread` 走 tick 之外的路径，其余线程抛 `IllegalStateException`），维度类型不是合法的 key 或没注册抛 `IllegalArgumentException`，维度名序号按名字分别数，插件被收回之后再 `create` 抛 `IllegalStateException`。`ManagedInstanceImpl`：五态，状态与结束原因放在一个不可变对象里比较并交换；宿主包一层生成器；就地路径对区块到齐做 30 s 有界等待，tick 之外的路径在串行段里每 tick 看一次准备是否做完、按注入的单调时钟计 30 s；注册先于交换；结算超时每 tick 按注入的时钟比一次；关闭时的交换与撤离的登记、强制关闭、`move` 的判状态共用实例的监视器，在途的 `move` 落地时实例已关闭也拿到出口；状态事件早于撤离派发。`Evacuation`：按出口撤离，`exit` 给不出出口时踢出，没人、也没有在途的 `move` 了就注销，到撤离时限踢出剩下的人。`InstanceLedger`：六种台账行。第二轮评审返工：准备失败、结算超时、出口给不出三种日志行走按插件分的 `LogBudget`；撤离时限对在途的 `move` 同样生效，收尾先取在途玩家的快照、再取实例里在线玩家的快照，一并踢出再注销；同一名玩家至多拿一次出口；被关闭打断的在途 `move` 以 false 完成；实例离开 `PREPARING` 之后生成器的异常原样抛回引擎。行为与口径见 `docs/DESIGN-PLAY.md` `API-PLAY-006` 的「实现」一条与 §11.1 迁移表下的「转移的时点」。
+
+测试：`:server-app` 新类 5 个 49 条，另有不算测试类的共用夹具 `InstanceFixture`（match 维度类型、平地生成器、卡在门闩上的生成器、只让地图外区块卡在门闩上的生成器、按 section 读天光、记下台账行的 `PluginAnalytics`）。包 `io.github.bearisbug.synaxis.app.instance`：`ManagedInstanceIntegrationTest` 9 条（`@EnvTest`，`Env` 的测试线程就是启动线程，`Env` 的进程不调 `start`，`isAlive` 一直是 false）、`EvacuationIntegrationTest` 13 条（`@EnvTest`，真玩家，撤离时限从构造参数注入、时钟由测试拨）、`ManagedInstanceTickThreadTest` 5 条（不带 `@EnvTest`，照 `ShardWorldAssemblyTest#startTicking` 起真 `TickSchedulerThread` 与 tick 线程，类结束时停进程；每个等待 10 s 上限，`PREPARING` 用门闩造；进程的异常处理器收到任何异常即判红）、`ManagedInstanceTransitionsTest` 19 条（不用 `Env`，进程只建不起、不 tick，假时钟，串行段由测试线程手动推进调度器；参数化的三个方法分别 4、4、3 组）；包 `io.github.bearisbug.synaxis.app` 的 `PluginHostInstancesIntegrationTest` 3 条（`@EnvTest`，真 `PluginHost`，事件台账写在 JUnit 临时目录）。「跑 `<类>`」照本节上面 P 节写的共用约定，每次带 `:server-app:testNamingCheck :server-app:forbiddenImportsCheck`。五个类与三个回归类（`PluginHostPlayWiringIntegrationTest` 2 条、`PluginHostIntegrationTest` 18 条、`CoreModeIntegrationTest` 8 条）在默认、4 线程严格（命令加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`）与严格 grid（再加 `-Dsynaxis.thread-provider=grid`）下各跑过一次，返工前后各一轮；第二轮评审返工加 `io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest`（2 条）作第四个回归类，三种模式再各跑一次；两组参数由 `build-src/src/main/kotlin/synaxis.java-library.gradle.kts:77-79` 转给测试 JVM，与 `ci.yml` 的两个多线程 job 相同。都不需要数据库前置。
+
+源文件代号：`<IA>` 是 `server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/`，`<IT>` 是 `server-app/src/test/java/io/github/bearisbug/synaxis/app/instance/`，`<PH>` 是 `server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java`。本组 10 次 Gradle 运行分两轮。第一轮：第 1 次运行在骨架 `178b9d1aa6` 上跑「改动前的红」（`InstanceRegistry` 仍是组 K 的空实现，`ManagedInstanceImpl` 只是让测试能编译的桩，测试已是本组的），五个类 38 条全红；第 2 次在实现提交 `c1a1c92740` 上默认模式全绿；第 3、4 次是两批反证，每批同时打上几处改动，每处打红的用例互不相同，没被打到的用例同一次都绿（`docs/test-runs/RUN-077/I/03-counter-proofs-a/` 与 `04-counter-proofs-b/` 下的 `counter-proofs.diff`，行号按 `c1a1c92740`），跑完 `git checkout -- server-app/src/main`；第 5、6 次在复原的代码（与第 2 次逐字相同）上跑两种严格模式。第二轮是对抗式评审返工：`28a2c31cbc` 加 6 条测试，第 7 次运行在第一轮的实现上跑，其中 5 条红；`9d410b7479` 改实现，第 8～10 次三种模式全绿。行号：第 1～6 次运行引的测试行号按 `178b9d1aa6`，第 7～10 次按 `28a2c31cbc`，后者 `EvacuationIntegrationTest` 加了 4 行导入、`ManagedInstanceTickThreadTest` 加了 1 行，两类原有方法的行号分别后移 4 行、1 行，`ManagedInstanceIntegrationTest` 与 `ManagedInstanceTransitionsTest` 原有的行不变。第三轮是第二轮评审返工，第 11～17 次运行：第 11 次 `compileTestJava` 失败（新测试调了已弃用的 `PlayerSpawnEvent#getSpawnInstance`，`-Werror`），没跑测试，改用 `getInstance` 后 amend 进测试提交；第 12 次在测试提交 `95cbd063a6`（主代码与 `9d410b7479` 相同）上跑修前红；第 13 次在 `26813ba5a2` 上默认模式全绿；第 14、15 次是两批反证（`14-counter-proofs-c/`、`15-counter-proofs-d/` 下的 `counter-proofs.diff`，主代码行号按 `e5fdfd642f`），跑完 `git checkout -- server-app/src/main`；第 16、17 次在复原的代码上跑两种严格模式。测试行号：第 12 次按 `95cbd063a6`，第 13～17 次按 `26813ba5a2`，后者在 `aPlayerWhoLandsAsTheInstanceClosesIsHandedTheExitOnce` 之前插入 `aForcedCloseKicksAPlayerStillOnTheirWay`，那一条后移 38 行，其余行不变。各次读数见 `docs/test-runs/RUN-077/I/00-index.txt`。
+
+#### `TC-PLAY-050` 启动线程上 `create` 就地准备完，返回 `OPEN`，整图天光已算好 — 对应 `REQ-PLAY-006` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头。§19「tick 调度线程上建实例不占 tick」的启动线程一半，天光照 `MatchIntegrationTest#theMapIsLitBeforeTheMatchRuns` 直接读 section（`InstanceFixture#computedSkyLight`），`Instance#getSkyLight` 会当场算一个过期的 section，没算光也能过。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:server-app` 的 `io.github.bearisbug.synaxis.app.instance.ManagedInstanceIntegrationTest`（第 8 次运行），看 `onTheStartupThreadCreateComesBackOpenWithTheWholeMapLit` | 本条绿：半径 2 的 `probe:arena` 返回时就是 `OPEN`，已注册，25 个区块，自动载入已关；x、z 从 −32 起每 7、5 格取一列（覆盖 5×5 个区块），y=10（石头之上第一格空气）的天光都是 15，y=8 都是 0，读到的 section 都不再等光照；`owned()` 只有它；台账依次 `play_instance_created`（属性恰为 `kind_id=probe:arena`、`instance_id`、`chunk_radius=2`）、`play_instance_opened`（`prepare_ms=0`，注入的时钟没动）；全局监听器只收到一次 `PREPARING → OPEN` |
+| 2 | 改动前的红：在骨架 `178b9d1aa6` 上跑同一个类（第 1 次运行） | 本条红在 `ManagedInstanceIntegrationTest.java:74`（`create`），`UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet` |
+| 3 | 反证有齿（不算光照）：`<IA>ManagedInstanceImpl.java:119` 与 `:140` 两处 `LightingChunk.relight(instance, instance.getChunks())` 只在 `Boolean.getBoolean("proof.never")` 时调，与 `TC-PLAY-056` 的反证同一批（第 4 次运行），再还原 | 本类只红本条，在 `:84`，`the section holding -32,10,-32 is still waiting for its light, which would be computed only when it is sent ==> expected: <false> but was: <true>`；tick 之外的那一半见 `TC-PLAY-055` 第 4 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-051` `create` 的拒绝：半径 17 的 spec 建不出，维度类型没注册，调用线程不对，插件已被收回 — 对应 `REQ-PLAY-006` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。§19「超出半径上限」与 §11.1 迁移表 `[*] → PREPARING` 的守卫、`plugin.tornDown`；每种拒绝都发生在建任何东西之前，所以台账与 `owned()` 都是空的。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `ManagedInstanceIntegrationTest` 的 `aRadiusOf17NeverReachesCreate`、`aDimensionTypeNobodyRegisteredIsRefusedBeforeAnythingIsBuilt`、`createOnAnyOtherThreadIsRefused` | 三条都绿：`new InstanceSpec("arena", 17, …)` 抛 `IllegalArgumentException`，`owned()` 与台账为空、注册的实例数不变；维度类型 `probe:nowhere`（合法 key、没注册）与 `Not A Key`（不是合法 key）都抛 `IllegalArgumentException`，消息含该字符串；在名为 `probe-other` 的平台线程上 `create` 抛 `IllegalStateException`，消息含 `probe-other` |
+| 2 | 改动前的红（第 1 次运行） | 三条都红：`aRadiusOf17…` 在 `:111`（spec 照样被拒，红在其后的 `owned()`，`UnsupportedOperationException`）；`aDimensionType…` 在 `:124`，`Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.UnsupportedOperationException>`；`createOnAnyOtherThread…` 在 `:146`，`Unexpected type, expected: <java.lang.IllegalStateException> but was: <java.lang.UnsupportedOperationException>` |
+| 3 | 第 8 次运行，看 `ManagedInstanceTickThreadTest#theStartupThreadIsAnyOtherThreadOnceTheProcessRuns` 与 `ManagedInstanceTransitionsTest#aPluginTakenBackCreatesNoMoreInstances` | 两条都绿：在已经 `start` 的进程上，以测试线程为启动线程建的注册表，测试线程上 `create` 抛 `IllegalStateException`，消息含测试线程名，`owned()` 为空；插件被 `reclaim(PLUGIN_DISABLED)` 之后，它的实例已 `CLOSED`，再 `create` 抛 `IllegalStateException`，消息含插件 id `transitions` |
+| 4 | 改动前的红：在第一轮的实现上跑第 3 步的两条（第 7 次运行） | 两条都红，消息都是 `Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.`：前者在 `ManagedInstanceTickThreadTest.java:267`（bind 之后的启动线程照旧就地准备），后者在 `ManagedInstanceTransitionsTest.java:318`（被收回的插件照旧建出实例） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-052` 维度名是 `<plugin_id>:<name>_<n>`，序号按名字分别数；状态事件经实例节点与全局节点都收得到 — 对应 `REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`PluginEvents#forInstance` 把监听器挂在 `instance.eventNode()` 之下（`PluginEventsImpl.java:118-121`），本条直接挂在这个节点上；`PlayInstanceStateEvent` 实现 `InstanceEvent`，引擎按实例映射节点（`instance/Instance.java:197`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `ManagedInstanceIntegrationTest` 的 `everyInstanceHasADimensionNameOfItsOwn`、`theStateEventReachesTheInstanceNodeAndTheGlobalOne` | 两条都绿：依次建 `arena`、`arena`、`lobby`，id 是 `probe:arena_1`、`probe:arena_2`、`probe:lobby_1`，各自的 `instance().getDimensionName()` 等于 id，`owned()` 按创建顺序列出三个；对一个 `OPEN` 的实例 `start()`，实例节点与全局节点各收到一次事件，`managed()` 是它、`getInstance()` 是它的引擎实例、`OPEN → RUNNING` |
+| 2 | 改动前的红（第 1 次运行） | 两条都红，在 `:208`、`:186`（`create`），`UnsupportedOperationException` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-053` `move`：`OPEN` 时移入并写 `play_instance_moved`；`ENDING` 时当场以 false 完成；玩家在执行前下线也以 false 完成 — 对应 `REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。§16「`move` 进一个刚转 `ENDING` 的实例」与「玩家在 `move` 途中断线」。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `ManagedInstanceIntegrationTest#aMoveIntoAnEndingInstanceCompletesWithFalse` 与 `EvacuationIntegrationTest#aPlayerWhoLeavesBeforeTheMoveRunsIsNotMoved` | 两条都绿：平地世界里的玩家 `move` 进 `OPEN` 的实例，tick 到完成，future 为 true，玩家在实例里、`players()` 恰是他，`moved` 行的 `connection_id` 是他的连接、`from_instance_id` 是平地世界的 UUID；`start()`、`end(OBJECTIVE)` 之后另一名玩家 `move`，future 当场已完成、为 false，再 tick 一次他仍在原地，`moved` 行仍只有 1 条；另一条里 `move` 之后立刻 `kick`，tick 到完成，future 为 false，实例里没有玩家，没有 `moved` 行 |
+| 2 | 改动前的红（第 1 次运行） | 两条都红，在 `ManagedInstanceIntegrationTest.java:156`、`EvacuationIntegrationTest.java:197`（`create`），`UnsupportedOperationException` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-054` 就地准备失败：生成器抛异常、区块超出预算都转 `CLOSED`（`prepare_failed`），不注册 — 对应 `REQ-PLAY-006` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。引擎把生成器的异常交给进程的异常处理器、区块照常算载入完成（`instance/InstanceContainer.java:529`）；`Env` 的异常处理器收到异常会让测试失败，宿主包的那一层在 `PREPARING` 期间把异常记下、不交出去，所以这两条也守着「没交给异常处理器」。实例 `OPEN` 之后那一层把异常原样抛回引擎（第二轮评审返工，第 3～5 步）。准备失败的 ERROR 走按插件分的 `LogBudget`，每个测试新建注册表，第一行总是写出。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `ManagedInstanceIntegrationTest` 的 `aGeneratorThatThrowsClosesTheInstanceWithoutRegisteringIt`、`chunksNotLoadedWithinTheBudgetCloseTheInstance` | 两条都绿：生成器抛 `IllegalStateException` 时 `create` 返回 `CLOSED`、`endCause()` 是 `PREPARE_FAILED`、没注册、`owned()` 为空，台账恰为 `created`、`closed`（`cause=prepare_failed`、`players=0`、`settle_timeout=false`）；准备预算设为 200 ms、生成器卡在门闩上时，同样返回 `CLOSED` / `PREPARE_FAILED`、没注册、`closed` 行 `cause=prepare_failed`，门闩在 `finally` 里放开 |
+| 2 | 改动前的红（第 1 次运行） | 两条都红，在 `:225`、`:248`（`create`），`UnsupportedOperationException` |
+| 3 | 第 13 次运行，看 `ManagedInstanceTransitionsTest#aGeneratorThatThrowsOnceTheInstanceIsOpenReachesTheExceptionHandler` | 本条绿：生成器只在区块 (0, 0) 铺平地、别处抛 `IllegalStateException`，半径 0 的实例就地准备完是 `OPEN`；换上记录用的异常处理器后显式 `loadChunk(2, 2)`，处理器恰收到这一个异常，实例仍是 `OPEN`；处理器在 `finally` 里换回默认 |
+| 4 | 改动前的红：在第二轮的实现上（第 12 次运行） | 红在 `ManagedInstanceTransitionsTest.java:347`，`expected: <[java.lang.IllegalStateException: probe generator failure off the map]> but was: <[]>`：第二轮的实现不分状态都把异常记下 |
+| 5 | 反证有齿：删掉 `<IA>ManagedInstanceImpl.java:112` 的 `if (state() != State.PREPARING) throw throwable;`，与 `TC-PLAY-066` 第 5、7 步的反证同一批（第 14 次运行），再还原 | 本类只红本条，在 `:347`，消息同第 4 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-055` tick 调度线程上 `create` 先返回 `PREPARING`，准备做完后的串行段转 `OPEN`；§15 的两段耗时与 `prepare_ms` — 对应 `REQ-PLAY-006` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头。§19「tick 调度线程上建实例不占 tick」。`create` 在 `scheduleNextTick` 的任务里调，返回那一刻的状态与是否注册在同一个任务里记下（之后的 tick 可能已经把它转成 `OPEN`）；转 `OPEN` 的线程由全局监听器记下。耗时只打印、不断言，本机读数受 `--max-workers=2` 与别的负载影响，只当量级看。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:server-app` 的 `io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest`（第 8 次运行），看 `onTheTickSchedulerCreateComesBackPreparingAndOpensInALaterSerialPart` 与 XML 的 `system-out` | 本条绿：返回时 `PREPARING`、没注册；转 `OPEN` 发生在 `Syn-TickScheduler` 线程上；之后已注册、25 个区块、自动载入已关，天光同 `TC-PLAY-050` 第 1 步；台账恰为 `created`、`opened`；`system-out` 有一行 `§15 readings (chunkRadius=2, 25 chunks): create on the tick scheduler thread 230 us, registration in the serial part 125 us, prepare_ms 49` |
+| 2 | 改动前的红（第 1 次运行） | 本类当时 4 条全红，都在 `ManagedInstanceTickThreadTest.java:121`（等 tick 调度线程上的任务），`ExecutionException: java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet` |
+| 3 | 反证有齿（在 tick 调度线程上就地注册）：`<IA>ManagedInstanceImpl.java:138` 之后加一行 `open();`，与 `TC-PLAY-060`、`TC-PLAY-067` 的反证同一批（第 3 次运行），再还原 | 本类当时 4 条全红，别的类没有红在这一处：本条在 `:153`，`create waited for the chunks on the tick scheduler thread ==> expected: <PREPARING> but was: <OPEN>`；`theShutdownDrops…` 在 `:190`、`aPreparationOverTheBudget…` 在 `:226`，都是 `expected: <PREPARING> but was: <OPEN>`；`aGeneratorThatThrowsOutsideTheTick…` 等满 10 s 红在 `:106`，`broken:arena_1 did not turn CLOSED within 10 s, it is OPEN` |
+| 4 | 反证有齿（不算光照）：`TC-PLAY-050` 第 3 步那一批（第 4 次运行） | 本条红在 `:168`，消息同 `TC-PLAY-050` 第 3 步 |
+| 5 | 其余运行的读数（第 2、5、6、7、9、10 次） | 本条都绿；`create` 依次 680、860、654、944、227、406 µs，注册 119、203、183、86、83、82 µs，`prepare_ms` 都是 49。返工前的 4 次 `create` 在 654～944 µs，返工后本类多了一条测试，后 3 次在 227～406 µs，`docs/DESIGN-PLAY.md` §15 两行据此写，差别的原因没有单独核实 |
+| 6 | 第二轮评审返工后的读数（第 13、16、17 次运行；两批反证的第 14、15 次不计） | 本条都绿；`create` 依次 358、3,440、364 µs，注册 114、100、156 µs，`prepare_ms` 依次 49、46、49。第 16 次（4 线程严格）的 `create` 超过 §15 的 1 ms；同一次 `prepare_ms` 读 46，`create` 晚于 tick 起点约 3.4 ms，与按 tick 量化的口径对得上。每种组合只有一个读数，能否复现没有核实，`docs/DESIGN-PLAY.md` §15 两行如实登记 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-056` 准备中停机：实例被丢弃，`closed` 的 `cause=shutdown`，放开门闩之后也不注册 — 对应 `REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。§19「准备中停机」。生成器卡在门闩上，`PREPARING` 是确定的；停机的停机任务在 tick 调度线程上、两个 tick 之间跑（`ServerProcessImpl.java:540`），本条在 `scheduleNextTick` 的任务里调 `reclaim("stuck", SHUTDOWN)`，与 `PluginHost#disableAll` 的线程相同。放开门闩后先等准备做完（`ManagedInstanceImpl#preparation`），再等两个串行段，注册的检查每个串行段跑一次。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `ManagedInstanceTickThreadTest#theShutdownDropsAPreparingInstanceAndItIsNeverRegistered` | 本条绿：`create` 之后 `PREPARING`；收回之后 `CLOSED`、`SHUTDOWN`，台账恰为 `created`、`closed`（`cause=shutdown`）；放开门闩、准备做完、两个串行段之后仍没注册，进程的实例表里没有它，台账仍恰为那两行 |
+| 2 | 改动前的红（第 1 次运行） | 红在 `:121`，同 `TC-PLAY-055` 第 2 步 |
+| 3 | 反证有齿（停机不丢弃 `PREPARING`）：`<IA>ManagedInstanceImpl.java:55` 的 `CLOSABLE` 去掉 `State.PREPARING`，与 `TC-PLAY-050` 的反证同一批（第 4 次运行），再还原 | 本条红在 `:198`，`expected: <CLOSED> but was: <PREPARING>` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-057` tick 之外的准备失败：按注入的时钟超过 30 s、生成器抛异常，都在 tick 调度线程上转 `CLOSED`（`prepare_failed`） — 对应 `REQ-PLAY-006` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。注册表的时钟是系统时钟加一个偏移，超时这一条把偏移拨过 30 s，`finally` 里拨回来。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `ManagedInstanceTickThreadTest` 的 `aPreparationOverTheBudgetClosesTheInstance`、`aGeneratorThatThrowsOutsideTheTickClosesTheInstance` | 两条都绿：门闩卡住时过两个串行段仍是 `PREPARING`，拨过 30 s 后在 `Syn-TickScheduler` 线程上转 `CLOSED`、`PREPARE_FAILED`，`closed` 行 `cause=prepare_failed`，放开门闩、准备做完、两个串行段之后仍没注册；生成器抛异常时同样在 `Syn-TickScheduler` 上转 `CLOSED`、`PREPARE_FAILED`、没注册，台账恰为 `created`、`closed`；类末尾的检查确认进程的异常处理器什么都没收到 |
+| 2 | 改动前的红（第 1 次运行） | 两条都红在 `:121`，同 `TC-PLAY-055` 第 2 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-058` 合法转移走一遍：每次转移一行台账、一个状态事件，`cancel` 关闭 `OPEN` 的实例 — 对应 `REQ-PLAY-006` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头。`ManagedInstanceTransitionsTest` 的实例半径都是 0，测试线程是启动线程，空实例关闭时当场注销。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `ManagedInstanceTransitionsTest` 的 `openRunEndAndSettleWriteOneLineAndCallOneEventEach`、`cancelClosesAnOpenInstance` | 两条都绿：拨钟 2 s 后 `start`、再拨 3 s 后 `end(TIME_LIMIT)`、再 `settled`：状态依次 `RUNNING`、`ENDING`、`CLOSED`，`endCause()` 一直是 `TIME_LIMIT`，关闭后没注册；状态事件恰为 `PREPARING>OPEN`、`OPEN>RUNNING`、`RUNNING>ENDING`、`ENDING>CLOSED`；台账恰为 `created`、`opened`、`started`（`players=0`）、`ended`（`cause=time_limit`、`duration_ms=5000`）、`closed`（`cause=time_limit`、`players`、`evacuated`、`kicked` 都是 0、`settle_timeout=false`）；`cancel` 之后 `CLOSED`、`CANCELLED`、没注册，`closed` 行 `cause=cancelled`，事件恰为 `PREPARING>OPEN`、`OPEN>CLOSED` |
+| 2 | 改动前的红（第 1 次运行） | 两条都红在 `ManagedInstanceTransitionsTest.java:91`（`create`），`UnsupportedOperationException` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-059` 非法转移：每个状态都拒绝它不离开的请求，`end` 拒宿主的原因，`PREPARING` 拒全部 — 对应 `REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。§19「非法转移」与 §11.1 迁移表的其余各行。`PREPARING` 只在 `create` 还没返回时存在，所以那一条的启动线程是另一个平台线程，卡在门闩上，测试线程经 `owned()` 拿到实例。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `ManagedInstanceTransitionsTest` 的 `everyRequestFromAStateItDoesNotLeaveIsRefused`（4 组）、`endRefusesTheCausesOfTheHost`（4 组）、`aPreparingInstanceRefusesEveryRequest` | 9 组都绿：`OPEN` 拒 `end`、`settled`，`RUNNING` 拒 `start`、`cancel`、`settled`，`ENDING` 拒 `start`、`cancel`、`end`，`CLOSED` 拒全部四个，每次都抛 `IllegalStateException`、状态不变，台账与状态事件都没有多出来；`RUNNING` 时 `end(CANCELLED)`、`end(PREPARE_FAILED)`、`end(PLUGIN_DISABLED)`、`end(SHUTDOWN)` 抛 `IllegalArgumentException`，状态仍是 `RUNNING`、`endCause()` 仍是 null；`PREPARING` 时四个请求都抛 `IllegalStateException`、没注册，放开门闩后 `create` 返回 `OPEN` |
+| 2 | 改动前的红（第 1 次运行） | 9 组都红：参数化的 8 组在 `:91`，`aPreparingInstance…` 在 `:210`，都是 `UnsupportedOperationException` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-060` 结算超时：恰在 `settleTimeout` 由宿主关闭，记 WARN，`settle_timeout=true`；先 `settled` 的不会再被超时关一次 — 对应 `REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。§19「结算超时强制关闭」与 §16「`settled` 与结算超时同时到」；`settleTimeout` 是短构造器的 30 s，串行段由测试线程推进。第二轮评审返工起这行 WARN 走按插件分的 `LogBudget`，仍记在 `ManagedInstanceImpl` 的 logger 上；每个测试新建注册表，预算从空的开始，第一行总是写出，行尾多一段次数。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `ManagedInstanceTransitionsTest` 的 `anInstanceNotSettledInTimeIsClosedByTheHost`、`aSettledInstanceIsNotClosedAgainByTheTimeout` | 两条都绿：`end` 之后拨 30 s 减 1 ns、推进一个串行段仍是 `ENDING`；再拨 1 ns、推进一个串行段转 `CLOSED`，`endCause()` 仍是 `OBJECTIVE`，没注册，`closed` 行 `cause=objective`、`settle_timeout=true`，`ManagedInstanceImpl` 的日志恰有一行含实例 id 的 WARN，之后 `settled` 抛 `IllegalStateException`；另一条先 `settled` 再拨 30 s、推进两个串行段，`closed` 行恰 1 条、`settle_timeout=false`，状态事件恰为四次转移 |
+| 2 | 改动前的红（第 1 次运行） | 两条都红在 `:91`，`UnsupportedOperationException` |
+| 3 | 反证有齿（结算计时永不到点）：`<IA>ManagedInstanceImpl.java:306` 的条件改为 `!Boolean.getBoolean("proof.never") \|\| registry.now() - endingAt < spec.settleTimeout().toNanos()`，与 `TC-PLAY-055`、`TC-PLAY-067` 的反证同一批（第 3 次运行），再还原 | 本类只红 `anInstanceNotSettledInTimeIsClosedByTheHost`，在 `:249`，`expected: <CLOSED> but was: <ENDING>`；同一处还打红 `TC-PLAY-065` 那一条 |
+| 4 | WARN 改走预算之后（第 13、16、17 次运行） | 两条都绿，「恰有一行含实例 id 的 WARN」不变 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-061` 强制关闭：`OPEN`、`RUNNING`、`ENDING` 都当场注销，结束原因换成强制关闭的，再收一次不重写，之后的请求被拒 — 对应 `REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。§11.1 三行强制关闭与 §16「`end` 与停机的强制关闭同时到」。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `ManagedInstanceTransitionsTest#aForcedCloseUnregistersAndRefusesWhatComesAfter`（3 组） | 3 组都绿：连收两次 `reclaim("transitions", SHUTDOWN)`，实例 `CLOSED`、`endCause()` 是 `SHUTDOWN`（`ENDING` 那组原来的 `OBJECTIVE` 被换掉）、没注册，`closed` 行恰 1 条、`cause=shutdown`，最后一个状态事件是 `<状态>>CLOSED`，之后 `end(OBJECTIVE)` 抛 `IllegalStateException` |
+| 2 | 改动前的红（第 1 次运行） | 3 组都红在 `:91`，`UnsupportedOperationException` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-062` 撤离：`cancel` 当场 `CLOSED`，玩家按出口走掉之后才注销 — 对应 `REQ-PLAY-006` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头。`API-PLAY-006` 撤离一条；`Env` 的测试线程上关闭，玩家还在，所以等玩家离开再注销。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `EvacuationIntegrationTest#cancelSendsThePlayerToItsExitAndUnregistersOnceTheyAreOut` | 本条绿：玩家在 `arena` 里时 `cancel(ToInstance(lobby))`，当场 `CLOSED`、`owned()` 只剩 `lobby`、`arena` 仍注册着；tick 到注销，玩家在 `lobby` 里且在线；`closed` 行 `cause=cancelled`、`players=1`、`evacuated=1`、`kicked=0`；`lobby` 的 `moved` 行 `from_instance_id` 是 `arena` 的 UUID |
+| 2 | 改动前的红（第 1 次运行） | 红在 `EvacuationIntegrationTest.java:78`（`create`），`UnsupportedOperationException` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-063` 撤离到点：撤离时限内没走的玩家以 `synaxis:match-unavailable` 踢出，再注销 — 对应 `REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。出口指向一个已关闭的实例，目标的 `move` 以 false 完成，玩家留在原地；撤离时限 5 s 从注册表构造参数注入，时钟由测试拨。第 3～5 步是第二轮评审返工加的「到点不再等在途的 `move`」：`arena` 打开自动载入，生成器让地图外的区块卡在门闩上（`InstanceFixture.stuckBeyond`），`setInstance` 于是走引擎的异步路径（`entity/Player.java:756-798`），`move` 停在途中，直到测试放开门闩。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `EvacuationIntegrationTest#whoeverIsStillInsideWhenTheEvacuationRunsOutIsKicked` | 本条绿：`settled` 之后 tick 5 次、拨钟 5 s 减 1 ns 再 tick，实例仍注册、玩家仍在线；再拨 1 ns、tick 一次，玩家下线、实例注销，玩家收到的断线原因恰为一个翻译键 `synaxis:match-unavailable`；`closed` 行 `cause=time_limit`、`players=1`、`evacuated=0`、`kicked=1`、`settle_timeout=false` |
+| 2 | 改动前的红（第 1 次运行） | 红在 `EvacuationIntegrationTest.java:102`（`create`），`UnsupportedOperationException` |
+| 3 | 第 13 次运行，看 `EvacuationIntegrationTest#theEvacuationTimeLimitKicksAPlayerStillOnTheirWay` | 本条绿：玩家的 `move` 停在途中时 `cancel`；拨钟 5 s 减 1 ns 再 tick，实例仍注册、玩家仍在线；再拨 1 ns、tick 一次，实例注销、玩家下线，断线原因恰为一个 `synaxis:match-unavailable`，`closed` 行 `players=1`、`evacuated=0`、`kicked=1`；放开门闩后 tick 到 `move` 完成，future 为 false（不是异常），`closed` 行仍只有 1 条 |
+| 4 | 改动前的红：在第二轮的实现上（第 12 次运行） | 红在 `EvacuationIntegrationTest.java:386`，`the move on its way held the instance past the evacuation time ==> expected: <false> but was: <true>` |
+| 5 | 反证有齿（到点仍等在途的 `move`）：`<IA>Evacuation.java:112` 之前加回 `if (managed.movesPending()) return TaskSchedule.nextTick();`，与 `TC-PLAY-066` 第 9 步的反证同一批（第 15 次运行），再还原 | 本类只红本条与 `TC-PLAY-066` 第 9 步那条；本条在 `:386`，消息同第 4 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-064` 出口给不出：`Kick` 出口用插件给的键，`exit` 抛异常或返回 null 时以 `synaxis:match-unavailable` 踢出，请求照常成功 — 对应 `REQ-PLAY-006` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。记 ERROR 的那一行走按插件分的 `LogBudget`（第二轮评审返工），本条不数日志行。`Function<Player, Exit>` 按 `@NotNullByDefault` 不该返回 null，本条照样守着它：返回 null 时宿主不把异常抛回插件的请求，否则状态已经 `CLOSED`，撤离、注销、`closed` 行与状态事件都不会再发生。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `EvacuationIntegrationTest` 的 `aKickExitDisconnectsWithItsOwnKey`、`anExitThatThrowsKicksThePlayer`、`anExitThatGivesNothingKicksThePlayer` | 三条都绿：`cancel(Kick("evacuation:closed"))` 之后玩家当场下线、实例当场注销（没人了，测试线程是启动线程），断线原因恰为 `evacuation:closed`，`closed` 行 `evacuated=1`、`kicked=0`；`exit` 抛 `IllegalStateException` 与返回 null 的两条，玩家都以 `synaxis:match-unavailable` 下线、实例注销，返回 null 那条 `cancel` 没有抛异常、`closed` 行 `cause=cancelled` |
+| 2 | 改动前的红：前两条在骨架上（第 1 次运行） | 两条都红，在 `:137`、`:156`（`create`），`UnsupportedOperationException` |
+| 3 | 改动前的红：返回 null 那条在第一轮的实现上（第 7 次运行） | 红在 `EvacuationIntegrationTest.java:223`（`cancel`），`java.lang.NullPointerException`：第一轮只接住了 `exit` 抛的异常 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-065` 结算超时按 spec 的 `fallbackExit` 把真玩家送走 — 对应 `REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。spec 的结算超时 15 s，`fallbackExit` 指向 `lobby`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `EvacuationIntegrationTest#theSettleTimeoutSendsThePlayersToTheFallbackExit` | 本条绿：`end(OBJECTIVE)` 后拨 15 s、tick 一次即 `CLOSED`；tick 到注销，玩家在 `lobby` 里；`closed` 行 `cause=objective`、`settle_timeout=true`、`evacuated=1` |
+| 2 | 改动前的红（第 1 次运行） | 红在 `:174`（`create`），`UnsupportedOperationException` |
+| 3 | 反证有齿：`TC-PLAY-060` 第 3 步那一处（第 3 次运行） | 本类只红本条，在 `:183`，`expected: <CLOSED> but was: <ENDING>` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-066` 关闭的时点：状态事件早于撤离与注销，事件里调强制关闭当场收尾，在途的 `move` 落地时实例已关闭也拿到出口、撤离等它落地，同一名玩家只拿一次出口，强制关闭踢出在途的玩家 — 对应 `REQ-PLAY-006` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。§11.1 迁移表下的「转移的时点」与 `API-PLAY-006` 实现一条的「在途的 `move`」，都是第二轮评审返工加的。在途的那条在 `arena` 的实例节点上挂 `AddEntityToInstanceEvent` 的监听器，它在玩家线程上、玩家加进实例之前被调（`entity/Entity.java:1161`），在那里 `cancel`，确定地造出「判状态时还 `OPEN`、落地时已 `CLOSED`」；时钟不拨，撤离时限到不了，所以第一轮的实现会让这名玩家一直留在实例里。
+
+第 4～10 步是第二轮评审返工加的。第 1 步的 `aPlayerWhoArrives…` 只守住「落地时拿到出口」那一半，守不住「撤离等在途的 `move`」那一半：`cancel` 发生在玩家所在的 tick 线程上，不是启动线程，撤离要等测试线程 tick 时才看是否没人了，那时同步路径上的玩家早已落地；第 14 次运行把 `movesPending()` 改成恒为 false，这一条仍绿。第 4 步改走异步路径：`arena` 打开自动载入，生成器让地图外的区块卡在门闩上（`InstanceFixture.stuckBeyond`，`setInstance` 的异步路径在 `entity/Player.java:756-798`），`move` 停在途中时在测试线程（启动线程）上 `cancel`，撤离当场就会看一次。第 6 步在 `PlayerSpawnEvent` 里 `cancel`：引擎先把玩家放进实例、派发这个事件，`setInstance` 才完成，所以关闭时的快照已收进这名玩家，他落地时又报到一次。第 8 步在 `move` 停在途中时直接 `reclaim(SHUTDOWN)`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `ManagedInstanceTransitionsTest#theClosingEventComesBeforeTheUnregistration`、`EvacuationIntegrationTest` 的 `aForcedCloseFromTheClosingEventFinishesTheEvacuation`、`aPlayerWhoArrivesWhileTheInstanceClosesGetsTheExitToo` | 三条都绿：空实例 `cancel` 时，监听器看到 `→ CLOSED` 那一刻实例还注册着，`cancel` 返回后已注销；玩家在 `arena` 里时 `cancel(ToInstance(lobby))`，监听器看到玩家还在、实例还注册着，在事件里调 `reclaim(SHUTDOWN)`，`cancel` 返回时 `arena` 已注销、玩家已被踢下线，`endCause()` 仍是 `CANCELLED`，`closed` 行恰 1 条、`kicked=1`、`evacuated=0`；在途的那条 tick 到 `move` 完成且 `arena` 注销，future 为 false，玩家在 `lobby` 里且在线，`closed` 行 `players=1`、`evacuated=1`、`kicked=0` |
+| 2 | 改动前的红：在第一轮的实现上（第 7 次运行） | `theClosingEventComesBeforeTheUnregistration` 红在 `ManagedInstanceTransitionsTest.java:305`，`expected: <[true]> but was: <[false]>`（第一轮先撤离、空实例当场注销，再派发事件）；`aPlayerWhoArrives…` 等满 10 s 红在 `EvacuationIntegrationTest.java:254`，`the instance was never unregistered: the player who arrived late was left inside ==> expected: <true> but was: <false>`；`aForcedCloseFromTheClosingEvent…` 在第一轮的实现上也绿，第一轮在派发事件之前已登记撤离，这一条守的是「事件提前之后，撤离仍在事件之前登记」 |
+| 3 | 两种严格模式（第 9、10 次运行） | 三条都绿 |
+| 4 | 第 13 次运行，看 `EvacuationIntegrationTest#theEvacuationWaitsForAMoveStillLoadingItsChunks` | 本条绿：`move` 停在途中时 `cancel(ToInstance(lobby))`，再 tick 5 次实例仍注册着、出口一次也没被调；放开门闩后 tick 到 `move` 完成且 `arena` 注销，future 为 false，出口恰被调一次、给的是这名玩家，玩家在 `lobby` 里且在线，`closed` 行 `players=1`、`evacuated=1`、`kicked=0` |
+| 5 | 反证有齿（撤离不等在途的 `move`）：`<IA>ManagedInstanceImpl.java:316` 的 `movesPending()` 改为恒返回 false，与 `TC-PLAY-054` 第 5 步、本条第 7 步同一批（第 14 次运行），再还原 | 本条红在 `:339`，`unregistered while a move into it was still on its way ==> expected: <true> but was: <false>`；同一处还打红 `TC-PLAY-063` 第 3 步那条（`:380`，`unregistered before the evacuation time was up`）；第 1 步的 `aPlayerWhoArrives…` 仍绿。本条在第二轮的实现上也绿（第 12 次运行），它的齿只有这一处反证 |
+| 6 | 第 13 次运行，看 `EvacuationIntegrationTest#aPlayerWhoLandsAsTheInstanceClosesIsHandedTheExitOnce` | 本条绿：监听器在 `PlayerSpawnEvent` 里看到玩家已在 `arena.players()` 中（记下的列表恰为 `[true]`），随即 `cancel(ToInstance(lobby))`；tick 到 `move` 完成且 `arena` 注销，future 为 false，出口恰被调一次，玩家在 `lobby` 里，`closed` 行 `players=1`、`evacuated=1`、`kicked=0` |
+| 7 | 改动前的红（第 12 次运行）与反证有齿（`<IA>Evacuation.java:85` 的 `if (inside.add(player)) send(player);` 改回先 `inside.add(player)` 再无条件 `send(player)`，第 14 次运行，再还原） | 两次都红，`the exit was asked for more than once`，列表里同一名玩家两次；第 12 次在 `EvacuationIntegrationTest.java:432`（行号按 `95cbd063a6`），第 14 次在 `:470` |
+| 8 | 第 13 次运行，看 `EvacuationIntegrationTest#aForcedCloseKicksAPlayerStillOnTheirWay` | 本条绿：`move` 停在途中时 `reclaim("evacuation", SHUTDOWN)`，返回时 `arena` 已注销、玩家已下线，断线原因恰为一个 `synaxis:match-unavailable`，`closed` 行 `cause=shutdown`、`players=1`、`evacuated=0`、`kicked=1`；放开门闩后 tick 到 `move` 完成，future 为 false |
+| 9 | 反证有齿（收尾不踢在途的玩家）：`<IA>Evacuation.java:125` 的在途快照换成空集合，与 `TC-PLAY-063` 第 5 步同一批（第 15 次运行），再还原 | 本条红在 `:425`，`the player on their way was left online ==> expected: <false> but was: <true>`。本条在 `26813ba5a2` 才加，没在第二轮的实现上跑过；这处反证换回的正是第二轮实现的踢出范围（只踢实例里在线的），代替修前红 |
+| 10 | 两种严格模式（第 16、17 次运行） | 第 4、6、8 步的三条与第 1 步的三条都绿 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-067` 插件宿主收回：`onEnable` 失败时收回已建的实例，停机收回 `OPEN` 的实例 — 对应 `REQ-PLAY-006` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头。§19「onEnable 失败时收回已建的实例」与 `API-PLAY-006` 收回一条；真 `PluginHost`，台账从 JUnit 临时目录里的事件文件读（先关掉写线程）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `io.github.bearisbug.synaxis.app.PluginHostInstancesIntegrationTest` 的 `theInstancesOfAPluginWhoseOnEnableThrewAreTakenBack`、`theShutdownTakesBackAnOpenInstance` | 两条都绿：插件在 `onEnable` 里建实例、`start()`、再抛异常，实例 `CLOSED`、`PLUGIN_DISABLED`、没注册，进程注册的实例数为 0，`CoreMode.decide(AUTO, 1, false, 0)` 是 `REFUSED`，事件文件里 `play_instance_closed` 恰 1 行、含 `"cause":"plugin_disabled"` 与 `"kind_id":"probe:arena"`；另一条 `disableAll` 之后 `CLOSED`、`SHUTDOWN`、没注册，`play_instance_closed` 恰 1 行、含 `"cause":"shutdown"` |
+| 2 | 改动前的红（第 1 次运行） | 两条都红：`onEnable` 里的 `create` 抛 `UnsupportedOperationException`，插件被拆掉，测试取第一个实例时红，在 `PluginHostInstancesIntegrationTest.java:108`、`:130`，`java.util.NoSuchElementException` |
+| 3 | 反证有齿（拆插件不收回）：`<PH>:328` 改为 `if (cause != EndCause.PLUGIN_DISABLED) instances.reclaim(loaded.id(), cause);`，与 `TC-PLAY-055`、`TC-PLAY-060` 的反证同一批（第 3 次运行），再还原 | 本类只红 `theInstancesOfAPluginWhoseOnEnableThrewAreTakenBack`，在 `:109`，`expected: <CLOSED> but was: <RUNNING>`；停机那条仍绿 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-068` 起服判定只数注册了的实例：准备失败的实例没注册过，不算「恰好一个实例」 — 对应 `REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。起服判定的计数是进程注册的实例数（`Main.java:313` 调 `CoreMode.decide`，计数在 `:930`）；本条照这个计数调 `CoreMode.decide`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 8 次运行，看 `PluginHostInstancesIntegrationTest#theStartupDecisionCountsTheRegisteredInstancesOnly` | 本条绿：插件在 `onEnable` 里建 `lobby`（`OPEN`）与生成器抛异常的 `broken`（`CLOSED`、`PREPARE_FAILED`），并注册准入；进程注册的实例数为 1，`CoreMode.decide(AUTO, 1, true, 1)` 是 `GAMEPLAY` |
+| 2 | 改动前的红（第 1 次运行） | 红在 `:158`，`IndexOutOfBoundsException: Index 0 out of bounds for length 0`（`create` 被拒，插件被拆掉，列表为空） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-069` 三种线程模式：五个类与回归类在默认、4 线程严格、严格 grid 下都绿，宿主的日志规则不报 — 对应 `REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`ci.yml` 的两个多线程 job 用后两种模式跑全部测试，宿主实例的注册、注销与玩家的 `setInstance` 都在所有权检查之下。`ClientDrivenLogArchitectureTest` 扫 `io.github.bearisbug.synaxis.app..` 下全部主源码，名单（`boundedReporters`）之外的类不得直接调 `Logger.warn`、`Logger.error`；`ci.yml` 的 `check` 与两个多线程 job 都跑它，第二轮评审返工起并进本条。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑五个类与 `PluginHostPlayWiringIntegrationTest`、`PluginHostIntegrationTest`、`CoreModeIntegrationTest`，默认模式（第 8 次运行） | 8 个类 72 条 0 失败（五个类 44 条，三个回归类 28 条） |
+| 2 | 同样 8 个类，4 线程严格（第 9 次运行）、严格 grid（第 10 次运行） | 两次都是 8 个类 72 条 0 失败；`ManagedInstanceTickThreadTest` 末尾的检查确认进程的异常处理器什么都没收到 |
+| 3 | 第一轮的同样三种模式（第 2、5、6 次运行，当时五个类 38 条） | 三次都是 8 个类 66 条 0 失败 |
+| 4 | 第二轮评审返工：五个类、三个回归类与 `ClientDrivenLogArchitectureTest`，默认（第 13 次）、4 线程严格（第 16 次）、严格 grid（第 17 次） | 三次都是 9 个类 79 条 0 失败（五个类 49 条，回归类 30 条）；`testNamingCheck`、`forbiddenImportsCheck` 通过 |
+| 5 | 改动前的红：`ClientDrivenLogArchitectureTest` 在第二轮的实现上（第 12 次运行） | `hostPathsDoNotWriteALinePerPacket` 红在 `ClientDrivenLogArchitectureTest.java:136`，违例 3 处：`Evacuation.java:94` 与 `ManagedInstanceImpl.java:212` 的 `Logger.error`、`ManagedInstanceImpl.java:348` 的 `Logger.warn`；`theHostLogRuleRejectsALinePerPayload` 绿 |
+
+后置：`git status --short` 无输出。
 
 ### 玩法架构 · RUN-077：C（客户端 `PlayModule`）
 

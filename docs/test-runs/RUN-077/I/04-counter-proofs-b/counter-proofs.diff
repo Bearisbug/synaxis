@@ -1,0 +1,33 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
+index bae1706925..7667ff1881 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
+@@ -52,7 +52,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
+             EnumSet.of(EndCause.OBJECTIVE, EndCause.TIME_LIMIT, EndCause.EMPTY, EndCause.ERROR);
+ 
+     /** The states a forced close leaves, in the order it tries them. */
+-    private static final List<State> CLOSABLE = List.of(State.PREPARING, State.OPEN, State.RUNNING, State.ENDING);
++    private static final List<State> CLOSABLE = List.of(State.OPEN, State.RUNNING, State.ENDING);
+ 
+     /**
+      * The state and the end cause as one value, so that no reader sees a cause without its state.
+@@ -116,7 +116,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
+         registry.ledger().created(this, spec.chunkRadius());
+         try {
+             loadAll().get(registry.durations().prepareBudget().toNanos(), TimeUnit.NANOSECONDS);
+-            LightingChunk.relight(instance, instance.getChunks());
++            if (Boolean.getBoolean("proof.never")) LightingChunk.relight(instance, instance.getChunks());
+         } catch (InterruptedException e) {
+             Thread.currentThread().interrupt();
+             failInPlace(e);
+@@ -137,7 +137,9 @@ final class ManagedInstanceImpl implements ManagedInstance {
+     void prepareOutsideTheTick() {
+         registry.ledger().created(this, spec.chunkRadius());
+         var _ = loadAll()
+-                .thenRunAsync(() -> LightingChunk.relight(instance, instance.getChunks()), Thread::startVirtualThread)
++                .thenRunAsync(() -> {
++                    if (Boolean.getBoolean("proof.never")) LightingChunk.relight(instance, instance.getChunks());
++                }, Thread::startVirtualThread)
+                 .whenComplete((_, failure) -> {
+                     if (failure == null) preparation.complete(null);
+                     else preparation.completeExceptionally(failure);

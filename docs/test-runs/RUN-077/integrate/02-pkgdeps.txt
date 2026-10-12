@@ -1,0 +1,21 @@
+$ python3 tools/pkgdeps.py protocol/src/main/java --root-package io.github.bearisbug.synaxis.game.protocol --skip-lower-layer
+source roots: protocol/src/main/java   root package: io.github.bearisbug.synaxis.game.protocol
+packages: 2   edges: 2   imports: 23
+$ python3 tools/pkgdeps.py plugin-api/src/main/java --root-package io.github.bearisbug.synaxis.plugin --skip-lower-layer
+source roots: plugin-api/src/main/java   root package: io.github.bearisbug.synaxis.plugin
+packages: 3   edges: 3   imports: 4
+$ python3 tools/pkgdeps.py server-app/src/main/java --root-package io.github.bearisbug.synaxis.app --skip-lower-layer
+source roots: server-app/src/main/java   root package: io.github.bearisbug.synaxis.app
+packages: 12   edges: 28   imports: 86
+$ python3 tools/pkgdeps.py game-rts/src/main/java --root-package io.github.bearisbug.synaxis.game.rts --skip-lower-layer
+source roots: game-rts/src/main/java   root package: io.github.bearisbug.synaxis.game.rts
+packages: 2   edges: 0   imports: 0
+$ python3 tools/pkgdeps.py play-kit/src/main/java --root-package io.github.bearisbug.synaxis.game.playkit --skip-lower-layer
+source roots: play-kit/src/main/java   root package: io.github.bearisbug.synaxis.game.playkit
+packages: 1   edges: 0   imports: 0
+$ python3 tools/pkgdeps.py game-rush/src/main/java --root-package io.github.bearisbug.synaxis.game.rush --skip-lower-layer
+source roots: game-rush/src/main/java   root package: io.github.bearisbug.synaxis.game.rush
+packages: 1   edges: 0   imports: 0
+
+main f9e002917b, same commands (git archive of the four modules it has):
+  protocol packages: 1 edges: 0; plugin-api packages: 1 edges: 0; server-app packages: 10 edges: 25; game-rts packages: 2 edges: 0

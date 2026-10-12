@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-12 | 集成分支 `prod/integrate-077` 合入组 G（`0100d0b0b2`，没有冲突）之后的文档收口，跟进 `docs/DESIGN-PLAY.md` v0.10 与 `docs/DESIGN-PROD.md` v0.9.83，不登执行轮次（集成分支草稿 PR 的 CI 跑完后登记 RUN-077），证据 `docs/test-runs/RUN-077/integrate/`。**§2** 玩法架构一段写明 S1 六条都有用例，加 REQ-PLAY ↔ TC 对照表（只列 S1 六条）。**§5** 全量轮加玩法架构域的波次，局部轮加「玩法架构域」一组按改动文件圈定的映射，人工收口轮加 `TC-PLAY-123`～`TC-PLAY-125`。**门禁读数**（集成分支实跑：翻译键门禁 75 个键、17 个标识，配置键门禁 122 个键；删掉 `NOT_TEXT` 一行的同形状反证两次，都红在 `:92`、`76 keys …, 16 identifiers left out`）：`TC-PROD-068`、`105`、`162`、`210`（两处）、`233`、`250`、`295`、`396`、`430`、`431`、`433`、`547`、`717` 缺译文反证的红行 `:92` → `:93`（`TC-PROD-068` 夹具那条 `:103` → `:104`）；`TC-PROD-430` 标题与第 1 步改为 75 个键、17 个标识，写明 75 = 两份语言文件里 62 个 `synaxis:` 键加 13 个 `rush.*`，第 3 步键数 62 → 76；`TC-PROD-432` 前置、第 1 步（grep 加 `play`，17 个标识）、第 2 步（实跑：红在 `:92` 与 `:103`，`76 keys …, 16 identifiers left out`；此前写的 `61 keys …, 15 identifiers` 漏算了被删的标识变成的那个键）、第 3 步（`:94`，`75 keys …, 18 identifiers`，推算）；`TC-PROD-433` 键数 76；`TC-PROD-441` 标题与三步改为 122（第 1 步实跑，第 2、3 步推算）；`TC-PROD-547`、`TC-PROD-569`、`TC-PROD-717` 的读数；6F 节开头的非文字标识 15 → 17。**组节**：`TC-PLAY-008` 与 `TC-PLAY-016` 写明分工（同一处反证，集成之后只按 `TC-PLAY-016` 第 3 步跑，那里换成集成分支的实测：四个类、`76 keys …, 16 identifiers`）；`TC-PLAY-008`、`TC-PLAY-016`、`TC-PLAY-046`、`TC-PLAY-104` 的门禁读数改为集成分支的 75 个键，组分支上的读数留在括注；`TC-PLAY-009` 的 `<run>` 填上 38210149163（第 1、4 步）与 38209505076（第 3 步）；`TC-PLAY-023` 改为组 C 之后的 `PlayHud.java:77`、`PlayHudTest.java:49` 与组 G 之后的 `RushClientGameTest.java:177`，`TC-PLAY-021` 第 3 步、`TC-PLAY-086` 第 1 步补上集成分支的行号。交光照会话的 `TC-WORLD-032`、`TC-WORLD-041`、`TC-WORLD-098` 与 `TC-GAME-001` 第 7 步写在 `docs/DESIGN-PROD.md` §28.3，本文档不改；写死的全量条数（`TC-PROD-486` 等）与 RUN-077 的登记等集成分支的 CI 跑完再改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-G`（设计提交 `7e3cef8c7d`、judge 单测提交 `09b183ab93`、judge 提交 `cd83b97c0d`、修前红提交 `a5587875f0`、起样板服务端的提交 `29f2e5caf0`、修复提交 `e467542943`，基于 `prod/integrate-077` `f54b122cf5`），跟进 `docs/DESIGN-PLAY.md` v0.9（RUN-077 组 G，真客户端剧本 Q1～Q9、job `rush` 完整版与 judge），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/G/`。**§4「玩法架构 · RUN-077：G」写入十六条 `TC-PLAY-110`～`TC-PLAY-125`**：Q1 的握手、负载、版本与默认键（110）、Q2 大厅（111）、Q3 与 Q4 的两道冷却（112）、Q5 进竞技场与就绪（113）、Q6 占领（114）、Q7 `TIMER` 外推（115）、Q8 结算面板（116）、Q9 回大厅（117）、job `rush` 完整版（118）、judge 单测（119）、judge 在 CI 上读的台账与日志（120）、§23 的正向与回滚演练（121）、别的 job 读数不变（122），人工三条：两人争夺（123）、同实例聊天（124）、`TOP_CENTER` 给 Boss 血条让位（125）。**§3** 加玩法架构样板一条（job `rush` 的三个进程、三个端口与演练目录，judge 在本机对着 artifact 跑的命令）。judge 单测 10 → 30 条，改动前的红是新单测对着旧 judge（33 处 `TypeError`），反证八处各打各的单测；真客户端的改动前的红在草稿 PR #25 第 1 轮（不起样板服务端，Q1～Q9 全 FAIL），第 2 轮红在剧本读记录早了一个 tick 与台账没落盘，第 3 轮全绿。端到端反证两条（宿主不判冷却、客户端不等载入画面）按计划由集成轮在反证分支上跑。`TC-PLAY-027`、`TC-PLAY-028`、`TC-PLAY-084` 的前置各补一句：它们是骨架与只判 Q0 的阶段，现行的见本组的 118～120。**条数**本组不改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-C` 评审返工（设计提交 `eb06d2431f`、修前红提交 `aae05556ce`、修复提交 `3bd8f94762`），跟进 `docs/DESIGN-PLAY.md` v0.8 的同一行，不登执行轮次。**新增 `TC-PLAY-086`**：`PlayTestHook` 的记录不含开始记录之前连接上已有的 SET、动作结果与就绪。`TC-PLAY-076`、`TC-PLAY-078` 各加一条 `PlayClientTest` 用例与反证三批的一处；`TC-PLAY-079` 第 5 步与 `TC-PLAY-083` 第 1 步补第 4 轮读数；`TC-PLAY-072` 第 5 步写明动作栏起点是按常数算的；`TC-PLAY-023`、`TC-PLAY-024` 补上组 C 之后的方法名、行号与 `LEFT` 槽读数。改动前的红在草稿 PR #24 第 3 轮（job `rush` 两份 Q0c 只因两项新检查 FAIL），第 4 轮全绿 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-C`（设计提交 `271acc617f`、修前红提交 `507763f7ee`、实现提交 `c8a6c7ed67`，基于 `prod/integrate-077` `3cd20ff777` 并快进合入 `prod/r077-V` `93b70462a0`），跟进 `docs/DESIGN-PLAY.md` v0.8（RUN-077 组 C，客户端 `PlayModule`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/C/`。**§4「玩法架构 · RUN-077：C」写入十六条 `TC-PLAY-070`～`TC-PLAY-085`**：场景镜像与四种小部件的表（070）、槽位内的次序（071）、七个槽位的位置与两处让位（072）、`TIMER` 外推与 `SCOREBOARD` 的画法（073）、`TEXT` 的存活时长（074）、动作键与本地冷却（075）、动作结果重设冷却与提示（076）、面板的打开与本地关闭（077）、面板按钮的结果（078）、场景就绪三条件（079）、新连接清空（080）、动作键 1 的定义与默认键 H 的 javap 核对（081）、`PlayPayload` 的两个方向与畸形下行（082）、真客户端 Q0c（083）、judge 的 Q0c（084）、模组主源码与别的 job 读数不变（085）。改动前的红在草稿 PR #23 第 1 轮的桩上（client-mod 274 条红 25 条，job `rush` 两份 Q0c FAIL）；反证两批在本机跑，十三处各打各的用例，还原后复绿；第 2 轮全绿。`client-fabric` 新类 5 个 37 条，`PlayHudTest` 加 2 条。**条数**本组不改，由集成轮统一改 | Bearisbug |
@@ -274,7 +275,18 @@
 
 - 生产就绪侧（`docs/DESIGN-PROD.md`）：`TC-PROD-*` 随该分册 §26 的七个波次逐波补齐。尚未开工的波次，它的 `REQ-PROD-*` 在联检里报「无任何 TC 引用」是预期的在途状态；第 6 波合入后这一类提示必须为零。
 
-- 玩法架构侧（`docs/DESIGN-PLAY.md`）：`TC-PLAY-*` 随该分册 §26 的波次补齐。RUN-077 做最小样板 S1，覆盖需求编号 003～008 这六条，其中 003、004、007 按 §26 S1 行只覆盖 S1 部分（003 只有 `enter`、`leave`、`currentScene`、`hud`、`onAction`，004 只有 v1 的四种小部件，007 只有 `Round`、`LocalQueue`、`Countdown`），用例写在 §4「玩法架构 · RUN-077」八节里。编号 001、002 与 009～018 这十二条属 W0～W7 与完整档 S2，尚未开工，它们在联检里报「无任何 TC 引用」是预期的在途状态，随各自的波次清零。S1 六条在八节的节头里已经出现，联检因此不再对它们报提示，但节内用例要等各组写入，RUN-077 集成轮按用例标题行核对这六条确实有用例。本段只写编号、不写完整 ID：反向联检按全文字面匹配，写全了会让没有用例的需求显得已被引用。
+- 玩法架构侧（`docs/DESIGN-PLAY.md`）：`TC-PLAY-*` 随该分册 §26 的波次补齐。RUN-077 做最小样板 S1，覆盖需求编号 003～008 这六条，其中 003、004、007 按 §26 S1 行只覆盖 S1 部分（003 只有 `enter`、`leave`、`currentScene`、`hud`、`onAction`，004 只有 v1 的四种小部件，007 只有 `Round`、`LocalQueue`、`Countdown`），用例写在 §4「玩法架构 · RUN-077」八节里。编号 001、002 与 009～018 这十二条属 W0～W7 与完整档 S2，尚未开工，它们在联检里报「无任何 TC 引用」是预期的在途状态，随各自的波次清零。S1 六条在八节的节头里已经出现，联检因此不对它们报提示；RUN-077 集成轮按用例标题行的「对应」核过，六条都有用例，对照见下表。本段只写编号、不写完整 ID：反向联检按全文字面匹配，写全了会让没有用例的需求显得已被引用；下表只列 S1 的六条，同一个理由。
+
+REQ-PLAY ↔ TC 对照（可读索引，按 §4「玩法架构 · RUN-077」八节的标题行生成；覆盖与否由上述联检判）：
+
+| REQ | TC |
+| --- | --- |
+| REQ-PLAY-003 宿主场景层（S1：`enter`、`leave`、`currentScene`、`hud`、`onAction`，叠加者的小部件，没有场景所有者时静默丢弃） | TC-PLAY-001、TC-PLAY-002、TC-PLAY-004、TC-PLAY-006～TC-PLAY-008、TC-PLAY-010、TC-PLAY-013、TC-PLAY-015、TC-PLAY-016、TC-PLAY-018、TC-PLAY-019、TC-PLAY-023、TC-PLAY-024、TC-PLAY-026、TC-PLAY-030～TC-PLAY-032、TC-PLAY-042～TC-PLAY-049、TC-PLAY-070、TC-PLAY-079、TC-PLAY-080、TC-PLAY-082、TC-PLAY-083、TC-PLAY-111、TC-PLAY-113 |
+| REQ-PLAY-004 小部件目录（S1：v1 的 `TEXT`、`TIMER`、`SCOREBOARD`、`PANEL`） | TC-PLAY-001～TC-PLAY-005、TC-PLAY-007、TC-PLAY-009、TC-PLAY-011、TC-PLAY-014、TC-PLAY-020～TC-PLAY-022、TC-PLAY-024、TC-PLAY-025、TC-PLAY-030、TC-PLAY-032～TC-PLAY-035、TC-PLAY-070～TC-PLAY-074、TC-PLAY-077、TC-PLAY-083、TC-PLAY-114～TC-PLAY-116、TC-PLAY-125（人工） |
+| REQ-PLAY-005 动作 | TC-PLAY-001、TC-PLAY-002、TC-PLAY-004、TC-PLAY-006、TC-PLAY-007、TC-PLAY-010、TC-PLAY-017、TC-PLAY-036～TC-PLAY-042、TC-PLAY-075、TC-PLAY-076、TC-PLAY-078、TC-PLAY-081、TC-PLAY-083、TC-PLAY-110、TC-PLAY-112、TC-PLAY-116 |
+| REQ-PLAY-006 托管玩法实例 | TC-PLAY-012、TC-PLAY-013、TC-PLAY-015、TC-PLAY-018、TC-PLAY-019、TC-PLAY-026、TC-PLAY-050～TC-PLAY-069、TC-PLAY-113、TC-PLAY-117、TC-PLAY-120 |
+| REQ-PLAY-007 `:play-kit`（S1：`Round`、`LocalQueue`、`Countdown`） | TC-PLAY-090～TC-PLAY-092、TC-PLAY-109 |
+| REQ-PLAY-008 样板最小档 S1 | TC-PLAY-017、TC-PLAY-027～TC-PLAY-029、TC-PLAY-084～TC-PLAY-086、TC-PLAY-093～TC-PLAY-114、TC-PLAY-116～TC-PLAY-122、TC-PLAY-123、TC-PLAY-124（人工） |
 
 REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
@@ -4531,7 +4543,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（翻译键门禁，见 §4「生产就绪 · 第 6 波 6F」） | `BUILD SUCCESSFUL`，`tests="2"` 全绿：`synaxis:too-many-connections`、`synaxis:login-throttled`、`synaxis:shard-full`、`synaxis:keep-alive-timeout` 是引擎 `DisconnectReasons` 的常量，门禁逐个核对模组的两份语言文件 |
-| 2 | 反证有齿：删掉 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 里 `synaxis:shard-full` 那一行，重跑第 1 步，再 `git checkout --` 该文件 | `2 tests completed, 2 failed`：门禁那条红在 `TranslationKeyGateTest.java:92`，`zh_cn.json has no text for synaxis:shard-full (from io.github.bearisbug.synaxis.network.DisconnectReasons)`；夹具那条也红在 `:103`（夹具拿 `synaxis:shard-full` 当「有译文的键」）。还原后复绿 |
+| 2 | 反证有齿：删掉 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 里 `synaxis:shard-full` 那一行，重跑第 1 步，再 `git checkout --` 该文件 | `2 tests completed, 2 failed`：门禁那条红在 `TranslationKeyGateTest.java:93`，`zh_cn.json has no text for synaxis:shard-full (from io.github.bearisbug.synaxis.network.DisconnectReasons)`；夹具那条也红在 `:104`（夹具拿 `synaxis:shard-full` 当「有译文的键」）。还原后复绿 |
 
 后置：`git status` 干净。
 
@@ -4796,7 +4808,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（翻译键门禁，见 §4「生产就绪 · 第 6 波 6F」） | `BUILD SUCCESSFUL`，`tests="2"` 全绿：`synaxis:auth-failed`、`synaxis:auth-unavailable`、`synaxis:logged-in-elsewhere`、`synaxis:state-unavailable` 在门禁核对的键里（都是 `DisconnectReasons` 的常量，最后一个也在 `DisconnectKeys`） |
-| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:auth-failed` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:92`：`zh_cn.json has no text for synaxis:auth-failed (from io.github.bearisbug.synaxis.network.DisconnectReasons)`。还原后复绿 |
+| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:auth-failed` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:93`：`zh_cn.json has no text for synaxis:auth-failed (from io.github.bearisbug.synaxis.network.DisconnectReasons)`。还原后复绿 |
 
 后置：确认 `zh_cn.json` 没有残留改动。
 
@@ -5172,7 +5184,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（翻译键门禁，见 §4「生产就绪 · 第 6 波 6F」） | `BUILD SUCCESSFUL`，`tests="2"` 全绿：`synaxis:transfer-rejected`（`DisconnectKeys`、`TicketVerifier`）、`synaxis:transfer-failed`（`TicketIssuer`）、`synaxis:server-stopping-in`（`PlayerStore`）在门禁核对的键里 |
-| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:transfer-rejected` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:92`：`zh_cn.json has no text for synaxis:transfer-rejected (from io.github.bearisbug.synaxis.app.transfer.TicketIssuer, io.github.bearisbug.synaxis.app.transfer.TicketVerifier$Reason, io.github.bearisbug.synaxis.plugin.DisconnectKeys)`（`TicketIssuer` 是 v0.9.40 起断开签票后不走的连接时用这个键）。还原后复绿 |
+| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:transfer-rejected` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:93`：`zh_cn.json has no text for synaxis:transfer-rejected (from io.github.bearisbug.synaxis.app.transfer.TicketIssuer, io.github.bearisbug.synaxis.app.transfer.TicketVerifier$Reason, io.github.bearisbug.synaxis.plugin.DisconnectKeys)`（`TicketIssuer` 是 v0.9.40 起断开签票后不走的连接时用这个键）。还原后复绿 |
 
 后置：确认 `zh_cn.json` 没有残留改动。
 
@@ -5624,8 +5636,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（翻译键门禁，见 §4「生产就绪 · 第 6 波 6F」） | `BUILD SUCCESSFUL`，`tests="2"` 全绿：`RoleCommand` 回执的八个键 `synaxis:role-granted`、`synaxis:role-revoked`、`synaxis:role-list`、`synaxis:role-unknown`、`synaxis:role-not-granted`、`synaxis:role-no-target`、`synaxis:role-unavailable`、`synaxis:role-above-sender` 在门禁核对的键里 |
-| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:role-no-target` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:92`：`zh_cn.json has no text for synaxis:role-no-target (from io.github.bearisbug.synaxis.app.permission.RoleCommand)`。还原后复绿 |
-| 3 | 反证有齿（v0.7.1 的新键）：删掉 `en_us.json` 的 `synaxis:role-above-sender` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:92`：`en_us.json has no text for synaxis:role-above-sender (from io.github.bearisbug.synaxis.app.permission.RoleCommand)`。还原后复绿 |
+| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:role-no-target` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:93`：`zh_cn.json has no text for synaxis:role-no-target (from io.github.bearisbug.synaxis.app.permission.RoleCommand)`。还原后复绿 |
+| 3 | 反证有齿（v0.7.1 的新键）：删掉 `en_us.json` 的 `synaxis:role-above-sender` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:93`：`en_us.json has no text for synaxis:role-above-sender (from io.github.bearisbug.synaxis.app.permission.RoleCommand)`。还原后复绿 |
 
 后置：确认 `zh_cn.json`、`en_us.json` 没有残留改动。
 
@@ -5852,7 +5864,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（翻译键门禁，见 §4「生产就绪 · 第 6 波 6F」） | `BUILD SUCCESSFUL`，`tests="2"` 全绿：`synaxis:banned`、`synaxis:banned-until`、`synaxis:not-whitelisted`（`DisconnectKeys`、`HostModeration`）与 `ModerationCommands` 回执的 `synaxis:ban-done`、`synaxis:unban-done`、`synaxis:unban-none`、`synaxis:whitelist-added`、`synaxis:whitelist-removed`、`synaxis:moderation-no-target`、`synaxis:moderation-bad-duration`、`synaxis:moderation-bad-reason`、`synaxis:moderation-unavailable` 在门禁核对的键里 |
-| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:banned-until` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:92`：`zh_cn.json has no text for synaxis:banned-until (from io.github.bearisbug.synaxis.app.moderation.HostModeration)`。还原后复绿 |
+| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:banned-until` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:93`：`zh_cn.json has no text for synaxis:banned-until (from io.github.bearisbug.synaxis.app.moderation.HostModeration)`。还原后复绿 |
 
 后置：确认 `zh_cn.json` 没有残留改动。
 
@@ -6018,7 +6030,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（翻译键门禁，见 §4「生产就绪 · 第 6 波 6F」） | `BUILD SUCCESSFUL`，`tests="2"` 全绿：`HostCommands` 回执的九个键 `synaxis:command-list`、`synaxis:command-no-player`、`synaxis:command-kicked`、`synaxis:command-broadcast`、`synaxis:command-saved`、`synaxis:command-stopping`、`synaxis:command-stop-usage`、`synaxis:command-already-stopping`、`synaxis:command-tps` 在门禁核对的键里 |
-| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:command-stop-usage` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:92`：`zh_cn.json has no text for synaxis:command-stop-usage (from io.github.bearisbug.synaxis.app.command.HostCommands)`。还原后复绿 |
+| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:command-stop-usage` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:93`：`zh_cn.json has no text for synaxis:command-stop-usage (from io.github.bearisbug.synaxis.app.command.HostCommands)`。还原后复绿 |
 
 后置：确认 `zh_cn.json` 没有残留改动。
 
@@ -6375,7 +6387,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | 1 | 同一类，看 `movementIsShedBeforeTheConnectionIsKicked` | 通过：先发 100 个 16 KiB 移动包、再发 200 个 16 KiB 的 `FramedPacket`（共 4.69 MiB）：越限时丢掉 100 个移动包，剩 200 × 16,384 = 3,276,800 B，连接在线、计数 0；再发 57 个 `FramedPacket`（257 × 16 KiB > 4 MiB）：连接离线，`backlogKicks` 1，冲刷后对端收到的 `DisconnectPacket` 键 `synaxis:outbound-backlog` |
 | 2 | 反证有齿（断线不计数）：删去 `checkBacklog` 里的 `traffic.backlogKicked();`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `:81`：`expected: <1> but was: <0>`。还原后复绿 |
 | 3 | `./gradlew :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（翻译键门禁，见 §4「生产就绪 · 第 6 波 6F」） | `BUILD SUCCESSFUL`，`tests="2"` 全绿：`synaxis:outbound-backlog` 是 `DisconnectReasons` 的常量，在门禁核对的键里 |
-| 4 | 反证有齿（缺文案）：删去 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 的 `synaxis:outbound-backlog` 一行，重跑第 3 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:92`：`zh_cn.json has no text for synaxis:outbound-backlog (from io.github.bearisbug.synaxis.network.DisconnectReasons)`。还原后复绿 |
+| 4 | 反证有齿（缺文案）：删去 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 的 `synaxis:outbound-backlog` 一行，重跑第 3 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:93`：`zh_cn.json has no text for synaxis:outbound-backlog (from io.github.bearisbug.synaxis.network.DisconnectReasons)`。还原后复绿 |
 
 后置：确认 `PlayerSocketConnection.java` 与 `zh_cn.json` 没有残留改动。
 
@@ -7194,22 +7206,22 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 对应 `REQ-PROD-041`（G38，`API-PROD-029`，§19 三条翻译键场景，§24 翻译键门禁）。实现：
 
-- 门禁是 `:architecture-tests` 的 `TranslationKeyGateTest`，两条测试。`everyKeyTheServerCanSendHasTextInBothLanguageFiles` 读 classpath 上 `io.github.bearisbug.synaxis` 包下全部主类的常量池，取整串匹配 `synaxis:[a-z0-9_./-]+` 的字符串常量，去掉 `NOT_TEXT` 里的 15 个非文字标识（M3-C 加了 `synaxis:map`、`synaxis:door`、`synaxis:loot`，M3-G 加了 `synaxis:farview`），加上 `ServiceLoader` 找到的插件的 `translationKeys()`，逐个核对模组的 `en_us.json`、`zh_cn.json`，缺一处报一行。`theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel` 只对夹具类 `GameClassNamingAKeyWithoutText`（带一个有译文的键、一个没有译文的键、一个频道名）与夹具插件 `GamePluginDeclaringAKeyWithoutText`（声明 `fixture:declared-without-text`，没登记成服务）跑同一套函数。
+- 门禁是 `:architecture-tests` 的 `TranslationKeyGateTest`，两条测试。`everyKeyTheServerCanSendHasTextInBothLanguageFiles` 读 classpath 上 `io.github.bearisbug.synaxis` 包下全部主类的常量池，取整串匹配 `synaxis:[a-z0-9_./-]+` 的字符串常量，去掉 `NOT_TEXT` 里的 17 个非文字标识（M3-C 加了 `synaxis:map`、`synaxis:door`、`synaxis:loot`，M3-G 加了 `synaxis:farview`，RUN-073 组 D 加了 `synaxis:player`，RUN-077 组 P、K 加了 `synaxis:play`），加上 `ServiceLoader` 找到的插件的 `translationKeys()`，逐个核对模组的 `en_us.json`、`zh_cn.json`，缺一处报一行。`theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel` 只对夹具类 `GameClassNamingAKeyWithoutText`（带一个有译文的键、一个没有译文的键、一个频道名）与夹具插件 `GamePluginDeclaringAKeyWithoutText`（声明 `fixture:declared-without-text`，没登记成服务）跑同一套函数。
 - 语言目录由 `architecture-tests/build.gradle.kts` 的参数提供器 `ModLanguageFiles` 以系统属性 `synaxis.lang.dir` 传给测试 JVM；目录是 `test` 任务的输入（`@InputDirectory`，相对路径），绝对路径不进构建缓存的键。
 - `:plugin-api` 的 `SynaxisPlugin` 加默认方法 `translationKeys()`（`SynaxisPluginTest` 一条）。
 - 模组测试里手写的服务端键清单删除：六个测试类 `ConnectionGateTextTest`、`LoginVerificationTextTest`、`PlayerStoreTextTest`、`RoleCommandTextTest`、`ModerationTextTest`、`HostCommandTextTest`，与 `ClientHandshakeTest#everyRefusalTheHandshakeCanEarnHasTextInTheModJar`。引用它们的 `TC-PROD-068`、`TC-PROD-105`、`TC-PROD-162`、`TC-PROD-210`、`TC-PROD-233`、`TC-PROD-250` 与 `TC-PROD-295` 第 3、4 步改为跑本门禁，`TC-GAME-066` 第 3 步的模组测试数随之改为 90。
 
 下文「跑门禁」指 `./gradlew :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `architecture-tests/build/test-results/test/TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml` 的 `tests`、`failures`、`<failure message>` 与 `<system-out>`；红的行号指 `TranslationKeyGateTest.java`。门禁不连数据库、不起进程。反证一律是「临时改一处、跑门禁、看红、`git checkout --` 还原、重跑复绿」。
 
-#### `TC-PROD-430` 门禁随 `check` 运行，现有 61 个键两份语言文件都有；引擎新增的键缺 `zh_cn` 时门禁列出键与文件（§19 场景） — 对应 `REQ-PROD-041` · 级别: 冒烟 · 执行者: AI
+#### `TC-PROD-430` 门禁随 `check` 运行，现有 75 个键两份语言文件都有；引擎新增的键缺 `zh_cn` 时门禁列出键与文件（§19 场景） — 对应 `REQ-PROD-041` · 级别: 冒烟 · 执行者: AI
 
 前置：工作副本干净。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑门禁 | `BUILD SUCCESSFUL`，`tests="2"` 全绿；`<system-out>` 有一行 `translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 16 identifiers left out`（两份语言文件里 `synaxis:` 开头的 61 个键正好是这 61 个，另 5 个点号写法的是模组自己的键：`synaxis.order.*` 3 个与 M3-G 的 HUD 键 `synaxis.farview.downloading`、`synaxis.farview.preparing`；6A 其余部分加了 `transfer` 命令的 4 个回执键，M3-G 加了标识 `synaxis:farview`，RUN-067 实跑 60 个键；RUN-073 组 B 加了 `synaxis:command-unknown`，61 个键，`TC-PROD-717` 第 1 步实跑；RUN-073 组 D 把宿主数据段 ID `synaxis:player` 加进非文字标识名单，标识 15 → 16，集成分支在 `docs/DESIGN-PROD.md` v0.9.72 实跑） |
+| 1 | 跑门禁 | `BUILD SUCCESSFUL`，`tests="2"` 全绿；`<system-out>` 有一行 `translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`（两份语言文件各 88 个键：`synaxis:` 开头的 62 个与 `rush.` 开头的 13 个正好是这 75 个；另 13 个是模组自己的键：点号写法的 `synaxis.order.*` 3 个、M3-G 的 HUD 键 `synaxis.farview.downloading`、`synaxis.farview.preparing`、RUN-077 的 `synaxis.action.*` 6 个，与动作键的 `key.synaxis.action_1`、`key.category.synaxis.play`；RUN-077 加了宿主的冷却回执 `synaxis:action-cooldown` 与插件 `rush` 经 `translationKeys()` 声明的 13 个 `rush.*`，标识加了 `synaxis:play`，集成分支在 `docs/DESIGN-PROD.md` v0.9.83 实跑；此前 61 个键、16 个标识：6A 其余部分加了 `transfer` 命令的 4 个回执键，M3-G 加了标识 `synaxis:farview`，RUN-067 实跑 60 个键；RUN-073 组 B 加了 `synaxis:command-unknown`，61 个键，`TC-PROD-717` 第 1 步实跑；RUN-073 组 D 把宿主数据段 ID `synaxis:player` 加进非文字标识名单，标识 15 → 16，集成分支在 `docs/DESIGN-PROD.md` v0.9.72 实跑） |
 | 2 | `./gradlew check --dry-run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts \| grep -E '^:architecture-tests:(test\|check) '` | 两行：`:architecture-tests:test SKIPPED`、`:architecture-tests:check SKIPPED`（CI `check` job 的 `./gradlew check` 带着门禁） |
-| 3 | 反证（§19 场景）：`src/main/java/io/github/bearisbug/synaxis/network/DisconnectReasons.java` 在私有构造器前加 `public static final TranslatableComponent GATE_PROBE = Component.translatable("synaxis:gate-probe");`，`client-fabric/src/main/resources/assets/synaxis/lang/en_us.json` 在 `synaxis:shard-full` 一行后加 `"synaxis:gate-probe": "probe",`，跑门禁，再 `git checkout --` 这两个文件 | `2 tests completed, 1 failed`：`everyKeyTheServerCanSendHasTextInBothLanguageFiles` 红在 `:92`，`Problems of the translation key gate (1):` 下一行 `zh_cn.json has no text for synaxis:gate-probe (from io.github.bearisbug.synaxis.network.DisconnectReasons)`；`<system-out>` 的键数为 62 |
+| 3 | 反证（§19 场景）：`src/main/java/io/github/bearisbug/synaxis/network/DisconnectReasons.java` 在私有构造器前加 `public static final TranslatableComponent GATE_PROBE = Component.translatable("synaxis:gate-probe");`，`client-fabric/src/main/resources/assets/synaxis/lang/en_us.json` 在 `synaxis:shard-full` 一行后加 `"synaxis:gate-probe": "probe",`，跑门禁，再 `git checkout --` 这两个文件 | `2 tests completed, 1 failed`：`everyKeyTheServerCanSendHasTextInBothLanguageFiles` 红在 `:93`，`Problems of the translation key gate (1):` 下一行 `zh_cn.json has no text for synaxis:gate-probe (from io.github.bearisbug.synaxis.network.DisconnectReasons)`；`<system-out>` 的键数为 76 |
 | 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
 | 5 | 在仓库根跑 `./gradlew :protocol:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `cd client-fabric && ./gradlew build --no-daemon`（JVM 带代理，不带镜像脚本：`client-fabric` 要 `maven.fabricmc.net`）；然后 `grep -rl 'has no text for' client-fabric/src/test` | `BUILD SUCCESSFUL`，模组 17 个测试类共 199 个测试 0 失败（M3-S 合入后，CI run `37585114670`：轨道 C 加了 `FarViewClientTest` 4 与 `FarViewDownloaderLimitsTest` 3 两个类，`FarViewCacheTest` 14 → 17、`FarViewDownloaderTest` 15 → 19，第 0 步加了一个远景边界向量，`FrozenVectorTest` 40 → 41；此前 15 个类 184 个，RUN-070 在 `14437d0b78` 上实跑：`ClientHandshakeTest` 11，M3-G 轨道 C 加了 `farview` 与 `farview.dh` 两个包的 8 个类 74 个，`FrozenVectorTest` 20 → 40）；`grep` 无输出，模组测试里不再有服务端键的清单 |
 
@@ -7221,7 +7233,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 反证（缺 `en_us`）：删掉 `client-fabric/src/main/resources/assets/synaxis/lang/en_us.json` 里 `"synaxis:command-tps"` 那一行，跑门禁 | `2 tests completed, 1 failed`：红在 `:92`，`Problems of the translation key gate (1):` 下一行 `en_us.json has no text for synaxis:command-tps (from io.github.bearisbug.synaxis.app.command.HostCommands)`。这个键只在 `HostCommands` 的回执调用里以字面量出现，不在 `DisconnectReasons`、`DisconnectKeys` 里 |
+| 1 | 反证（缺 `en_us`）：删掉 `client-fabric/src/main/resources/assets/synaxis/lang/en_us.json` 里 `"synaxis:command-tps"` 那一行，跑门禁 | `2 tests completed, 1 failed`：红在 `:93`，`Problems of the translation key gate (1):` 下一行 `en_us.json has no text for synaxis:command-tps (from io.github.bearisbug.synaxis.app.command.HostCommands)`。这个键只在 `HostCommands` 的回执调用里以字面量出现，不在 `DisconnectReasons`、`DisconnectKeys` 里 |
 | 2 | `git checkout --` 该文件，跑门禁 | `BUILD SUCCESSFUL`，`tests="2"` 全绿 |
 | 3 | 反证（语言文件不是输入）：`architecture-tests/build.gradle.kts` 里 `ModLanguageFiles` 的 `@get:InputDirectory @get:PathSensitive(PathSensitivity.RELATIVE)` 改成 `@get:Internal`，跑门禁；再照第 1 步删掉 `en_us.json` 的那一行，再跑门禁 | 第一次 `> Task :architecture-tests:test` 执行、全绿（构建脚本变了）；第二次 `> Task :architecture-tests:test UP-TO-DATE`、`BUILD SUCCESSFUL`：只改语言文件时门禁不重跑，缺的译文漏过 |
 | 4 | 只 `git checkout --` `build.gradle.kts`（`en_us.json` 仍缺那一行），跑门禁 | `> Task :architecture-tests:test` 重新执行，红法与第 1 步相同 |
@@ -7234,13 +7246,13 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 #### `TC-PROD-432` 与翻译键同命名空间的频道、Cookie 键不算键；非文字标识名单不留死条目（§19 场景） — 对应 `REQ-PROD-041` · 级别: 回归 · 执行者: AI
 
-前置：工作副本干净。第 2、3 步的断言行与读数是按 RUN-073 组 D 在 `NOT_TEXT` 加的一行（`synaxis:player`）推算的，集成分支在 `docs/DESIGN-PROD.md` v0.9.72 只实跑了门禁本身（`61 keys …, 16 identifiers left out`），这两步的反证没有重跑。
+前置：工作副本干净。第 2 步在 RUN-077 集成分支上实跑（`docs/DESIGN-PROD.md` v0.9.83，`docs/test-runs/RUN-077/integrate/`）；第 3 步的断言行与读数按 RUN-077 组 P、K 在 `NOT_TEXT` 加的一行（`synaxis:play`）推算，没有重跑。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `grep -c -E '"synaxis:(handshake\|main\|permission\|moderation\|transfer\|match\|map\|farview\|hidden\|door\|loot\|shard/drain\|shard/status\|broadcast\|profile\|player)"' client-fabric/src/main/resources/assets/synaxis/lang/en_us.json client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json`，再跑门禁 | 两个文件都是 `0`：16 个标识没有一个有译文；门禁 `tests="2"` 全绿，频道 `synaxis:handshake`（`HandshakeGate`）与 Cookie 键 `synaxis:transfer`（`TransferTicket`）都没被报；夹具那条通过，夹具类的频道名与有译文的 `synaxis:shard-full` 不在它报出的 4 行里 |
-| 2 | 反证（频道被当成键）：`architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java` 的 `NOT_TEXT` 删掉 `Map.entry("synaxis:handshake", …)` 那一行，跑门禁 | `2 tests completed, 2 failed`。`everyKeyTheServerCanSendHasTextInBothLanguageFiles` 红在 `:91`，`(2)` 下两行：`en_us.json has no text for synaxis:handshake (from io.github.bearisbug.synaxis.app.HandshakeGate, io.github.bearisbug.synaxis.app.Main, io.github.bearisbug.synaxis.app.PluginHost)` 与同样来源的 `zh_cn.json` 一行，`<system-out>` 为 `61 keys …, 15 identifiers left out`；`theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel` 红在 `:102`，实际结果比预期多出夹具类 `synaxis:handshake` 的两行 |
-| 3 | 还原后，反证（死条目）：`NOT_TEXT` 在 `synaxis:handshake` 那一行后加 `Map.entry("synaxis:gone", "a channel that was removed"),`，跑门禁 | `2 tests completed, 1 failed`：红在 `:93`，`(1)` 下一行 `synaxis:gone is listed as no text in NOT_TEXT, but no class names it any more`；`<system-out>` 为 `61 keys …, 17 identifiers left out` |
+| 1 | `grep -c -E '"synaxis:(handshake\|main\|permission\|moderation\|transfer\|match\|map\|farview\|hidden\|door\|loot\|shard/drain\|shard/status\|broadcast\|profile\|player\|play)"' client-fabric/src/main/resources/assets/synaxis/lang/en_us.json client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json`，再跑门禁 | 两个文件都是 `0`：17 个标识没有一个有译文；门禁 `tests="2"` 全绿，频道 `synaxis:handshake`（`HandshakeGate`）与 Cookie 键 `synaxis:transfer`（`TransferTicket`）都没被报；夹具那条通过，夹具类的频道名与有译文的 `synaxis:shard-full` 不在它报出的 4 行里 |
+| 2 | 反证（频道被当成键）：`architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java` 的 `NOT_TEXT` 删掉 `Map.entry("synaxis:handshake", …)` 那一行，跑门禁 | `2 tests completed, 2 failed`。`everyKeyTheServerCanSendHasTextInBothLanguageFiles` 红在 `:92`，`(2)` 下两行：`en_us.json has no text for synaxis:handshake (from io.github.bearisbug.synaxis.app.HandshakeGate, io.github.bearisbug.synaxis.app.Main, io.github.bearisbug.synaxis.app.PluginHost)` 与同样来源的 `zh_cn.json` 一行，`<system-out>` 为 `76 keys …, 16 identifiers left out`；`theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel` 红在 `:103`，实际结果比预期多出夹具类 `synaxis:handshake` 的两行 |
+| 3 | 还原后，反证（死条目）：`NOT_TEXT` 在 `synaxis:handshake` 那一行后加 `Map.entry("synaxis:gone", "a channel that was removed"),`，跑门禁 | `2 tests completed, 1 failed`：红在 `:94`，`(1)` 下一行 `synaxis:gone is listed as no text in NOT_TEXT, but no class names it any more`；`<system-out>` 为 `75 keys …, 18 identifiers left out` |
 | 4 | 还原后跑门禁 | `tests="2"` 全绿 |
 
 后置：`git status --short` 无输出。
@@ -7252,7 +7264,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑门禁；再 `./gradlew :plugin-api:test --tests 'io.github.bearisbug.synaxis.plugin.SynaxisPluginTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 门禁全绿；夹具那条断言的 4 行里有 `en_us.json has no text for fixture:declared-without-text (from plugin fixture)` 与同样的 `zh_cn.json` 一行（夹具插件的键不在 `synaxis:` 命名空间，只能靠声明被看见）。`SynaxisPluginTest` `tests="1"` 全绿：不覆盖的插件 `translationKeys()` 是空集合 |
-| 2 | 反证：`game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/RtsPlugin.java` 加 `import java.util.Set;` 与覆盖方法 `@Override public Set<String> translationKeys() { return Set.of("rts:victory"); }`（`@Override` 不能省：Error Prone 的 `MissingOverride` 是 error 级，省了 `:game-rts:compileJava` 就失败，门禁跑不起来），跑门禁，再 `git checkout --` 该文件 | `2 tests completed, 1 failed`：红在 `:92`，`(2)` 下两行 `en_us.json has no text for rts:victory (from plugin rts)`、`zh_cn.json has no text for rts:victory (from plugin rts)`；`<system-out>` 键数 62（RUN-073 组 B 加 `synaxis:command-unknown` 之前是 61，按增减推算）。`rts` 是门禁用 `ServiceLoader` 在 `:architecture-tests` 的 classpath 上找到的，与宿主读的是同一个服务文件 |
+| 2 | 反证：`game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/RtsPlugin.java` 加 `import java.util.Set;` 与覆盖方法 `@Override public Set<String> translationKeys() { return Set.of("rts:victory"); }`（`@Override` 不能省：Error Prone 的 `MissingOverride` 是 error 级，省了 `:game-rts:compileJava` 就失败，门禁跑不起来），跑门禁，再 `git checkout --` 该文件 | `2 tests completed, 1 failed`：红在 `:93`，`(2)` 下两行 `en_us.json has no text for rts:victory (from plugin rts)`、`zh_cn.json has no text for rts:victory (from plugin rts)`；`<system-out>` 键数 76（门禁本身 75 个键，`docs/DESIGN-PROD.md` v0.9.83 实跑；这一步按增减推算）。`rts` 是门禁用 `ServiceLoader` 在 `:architecture-tests` 的 classpath 上找到的，与宿主读的是同一个服务文件 |
 | 3 | 还原后跑门禁 | 全绿 |
 
 后置：`git status --short` 无输出。
@@ -7468,7 +7480,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（翻译键门禁，见 §4「生产就绪 · 第 6 波 6F」） | `BUILD SUCCESSFUL`，`tests="2"` 全绿：`HostCommands` 的五条 `profile` 回执键 `synaxis:command-profile-started`、`synaxis:command-profile-done`、`synaxis:command-profile-busy`、`synaxis:command-profile-usage`、`synaxis:command-profile-failed` 在门禁核对的键里 |
-| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:command-profile-busy` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:92`：`zh_cn.json has no text for synaxis:command-profile-busy (from io.github.bearisbug.synaxis.app.command.HostCommands)`。还原后复绿 |
+| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:command-profile-busy` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:93`：`zh_cn.json has no text for synaxis:command-profile-busy (from io.github.bearisbug.synaxis.app.command.HostCommands)`。还原后复绿 |
 
 后置：确认两份 lang 没有残留改动。
 
@@ -7532,15 +7544,15 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：`git status --short` 无输出。
 
-#### `TC-PROD-441` 配置键门禁：键表正好是代码读的 116 个键；代码新读的键不在表里、表里的键没有类读、`logback.xml` 换了键名都被报（§24） — 对应 `REQ-PROD-033` · 级别: 回归 · 执行者: AI
+#### `TC-PROD-441` 配置键门禁：键表正好是代码读的 122 个键；代码新读的键不在表里、表里的键没有类读、`logback.xml` 换了键名都被报（§24） — 对应 `REQ-PROD-033` · 级别: 回归 · 执行者: AI
 
 前置：工作副本干净。下文「跑门禁」指跑单测 `:architecture-tests:test` 的 `io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest`；门禁不连数据库、不起进程。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑门禁；再 `./gradlew check --dry-run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts \| grep -E '^:architecture-tests:test '` | `tests="1"` 全绿，`<system-out>` 有一行 `config key gate: 117 keys read, 117 in ConfigFile.KEYS, 21 meter names left out`（M3-S 加了 `synaxis.overlay.max-bytes`，轨道 S 在 `3d0e711288` 之后与 RUN-069 合并树上实跑；之前是 116，M3-G 加了 `synaxis.farview.url-root`，再之前是 115；v0.9.36 的 `HostMetrics.NAMES` 多了 `synaxis_tick_acquire_seconds`，之前是 20；门禁与 dry-run 两半都在 RUN-067 重跑）；dry-run 输出 `:architecture-tests:test SKIPPED`（门禁随 `check` 运行） |
-| 2 | 反证（新键没进表）：删掉 `ConfigFile.java` 键表里 `"synaxis.compression-level",` 一行，跑门禁，再还原 | `BUILD FAILED`：红在 `ConfigKeyGateTest.java:74`，`Problems of the config key gate (1):` 下一行 `synaxis.compression-level is read (io.github.bearisbug.synaxis.JvmFlags) but not in ConfigFile.KEYS, so the config file refuses it`；`<system-out>` 为 `117 keys read, 116 in ConfigFile.KEYS, 21 meter names left out`（M3-S 轨道 S 实跑；116 个键时 RUN-067 读到 `116 keys read, 115 …`） |
-| 3 | 反证（表里的键没有类读）：键表末尾 `"synaxis.app.units"` 后加一项 `"synaxis.gone"`，跑门禁，再还原 | 红在 `:74`，`(1)` 下一行 `synaxis.gone is in ConfigFile.KEYS, but no class reads it any more`；`117 keys read, 118 in ConfigFile.KEYS`（M3-S 轨道 S 实跑）。键表类 `ConfigFile` 不算读者：它的常量池里有全部键，把它算进来这一行就永远报不出 |
+| 1 | 跑门禁；再 `./gradlew check --dry-run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts \| grep -E '^:architecture-tests:test '` | `tests="1"` 全绿，`<system-out>` 有一行 `config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out`（RUN-077 组 R 加了五个 `synaxis.rush.*`，集成分支在 `docs/DESIGN-PROD.md` v0.9.83 实跑门禁这一半；之前是 117，M3-S 加了 `synaxis.overlay.max-bytes`，轨道 S 在 `3d0e711288` 之后与 RUN-069 合并树上实跑；再之前是 116，M3-G 加了 `synaxis.farview.url-root`，再之前是 115；v0.9.36 的 `HostMetrics.NAMES` 多了 `synaxis_tick_acquire_seconds`，之前是 20；门禁与 dry-run 两半都在 RUN-067 重跑）；dry-run 输出 `:architecture-tests:test SKIPPED`（门禁随 `check` 运行） |
+| 2 | 反证（新键没进表）：删掉 `ConfigFile.java` 键表里 `"synaxis.compression-level",` 一行，跑门禁，再还原 | `BUILD FAILED`：红在 `ConfigKeyGateTest.java:74`，`Problems of the config key gate (1):` 下一行 `synaxis.compression-level is read (io.github.bearisbug.synaxis.JvmFlags) but not in ConfigFile.KEYS, so the config file refuses it`；`<system-out>` 为 `122 keys read, 121 in ConfigFile.KEYS, 21 meter names left out`（按 RUN-077 的增减推算，没有重跑；117 个键时 M3-S 轨道 S 实跑 `117 keys read, 116 …`，116 个键时 RUN-067 读到 `116 keys read, 115 …`） |
+| 3 | 反证（表里的键没有类读）：键表末尾 `"synaxis.app.units"` 后加一项 `"synaxis.gone"`，跑门禁，再还原 | 红在 `:74`，`(1)` 下一行 `synaxis.gone is in ConfigFile.KEYS, but no class reads it any more`；`122 keys read, 123 in ConfigFile.KEYS`（按增减推算；117 个键时 M3-S 轨道 S 实跑 `117 keys read, 118 …`）。键表类 `ConfigFile` 不算读者：它的常量池里有全部键，把它算进来这一行就永远报不出 |
 | 4 | 反证（只由 logback 读的键）：`server-app/src/main/resources/logback.xml` 的 `${synaxis.app.log:-file}` 改成 `${synaxis.app.logs:-file}`，跑门禁，再还原 | 红在 `:74`，`(2)` 下两行：`synaxis.app.logs is read (logback.xml) but not in ConfigFile.KEYS, so the config file refuses it`、`synaxis.app.log is in ConfigFile.KEYS, but no class reads it any more` |
 | 5 | 还原后跑门禁 | 与第 1 步相同 |
 
@@ -8477,8 +8489,8 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `./gradlew :architecture-tests:test --rerun --tests '*TranslationKeyGateTest' --tests '*ConfigKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两类共 3 个 0 失败；标准输出 `translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 16 identifiers left out`（6A 之前 56 个，加 `synaxis:command-transfer-result`、`-no-target`、`-unavailable`、`-error` 为 60 个；M3-G 加了标识 `synaxis:farview`，键数不变；RUN-073 组 B 加 `synaxis:command-unknown` 为 61 个，`TC-PROD-717` 第 1 步实跑）与 `config key gate: 117 keys read, 117 in ConfigFile.KEYS, 21 meter names left out`（本组没有新配置键；6A 时 113 个，M3-D 加 2 个，M3-G 加 `synaxis.farview.url-root`，M3-S 加 `synaxis.overlay.max-bytes`；v0.9.36 的 `HostMetrics.NAMES` 多了 `synaxis_tick_acquire_seconds`，指标名由 20 个变为 21 个）；方法名 `synaxis:transfer` 与票据 Cookie 同名，仍是名单上的一条，本组没有改变标识的个数（RUN-067 实跑）；RUN-073 组 D 加宿主数据段 ID `synaxis:player`，标识 15 → 16（集成分支在 `docs/DESIGN-PROD.md` v0.9.72 实跑） |
-| 2 | 反证有齿：删掉 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 里 `"synaxis:command-transfer-error"` 一行，跑第 1 步的门禁，再 `git checkout --` 该文件 | `3 tests completed, 1 failed`（配置键门禁照常过）：`TranslationKeyGateTest.java:92`，列出 `zh_cn.json has no text for synaxis:command-transfer-error (from io.github.bearisbug.synaxis.app.command.TransferCommand)` |
+| 1 | `./gradlew :architecture-tests:test --rerun --tests '*TranslationKeyGateTest' --tests '*ConfigKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两类共 3 个 0 失败；标准输出 `translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`（6A 之前 56 个，加 `synaxis:command-transfer-result`、`-no-target`、`-unavailable`、`-error` 为 60 个；M3-G 加了标识 `synaxis:farview`，键数不变；RUN-073 组 B 加 `synaxis:command-unknown` 为 61 个，`TC-PROD-717` 第 1 步实跑）与 `config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out`（本组没有新配置键；6A 时 113 个，M3-D 加 2 个，M3-G 加 `synaxis.farview.url-root`，M3-S 加 `synaxis.overlay.max-bytes`；v0.9.36 的 `HostMetrics.NAMES` 多了 `synaxis_tick_acquire_seconds`，指标名由 20 个变为 21 个）；方法名 `synaxis:transfer` 与票据 Cookie 同名，仍是名单上的一条，本组没有改变标识的个数（RUN-067 实跑）；RUN-073 组 D 加宿主数据段 ID `synaxis:player`，标识 15 → 16（集成分支在 `docs/DESIGN-PROD.md` v0.9.72 实跑）；RUN-077 加了 14 个键（`synaxis:action-cooldown` 与插件 `rush` 声明的 13 个 `rush.*`）、标识 `synaxis:play` 与五个配置键 `synaxis.rush.*`，两行读数在集成分支上实跑（`docs/DESIGN-PROD.md` v0.9.83） |
+| 2 | 反证有齿：删掉 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 里 `"synaxis:command-transfer-error"` 一行，跑第 1 步的门禁，再 `git checkout --` 该文件 | `3 tests completed, 1 failed`（配置键门禁照常过）：`TranslationKeyGateTest.java:93`，列出 `zh_cn.json has no text for synaxis:command-transfer-error (from io.github.bearisbug.synaxis.app.command.TransferCommand)` |
 
 后置：`git status --short` 无输出。
 
@@ -8600,7 +8612,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | 1 | `<G> :jmh-benchmarks:jmhJar`，把 `jmh-benchmarks/build/libs/jmh-benchmarks-dev-jmh.jar` 拷成 `<new>`；`git checkout <B> -- src/main/java` 后再 `<G> :jmh-benchmarks:jmhJar` 拷成 `<base>`，`git checkout HEAD -- src/main/java` 还原；`javap -p -cp <jar> io.github.bearisbug.synaxis.thread.AcquirableImpl` | `<B>` 为 `0e919cce6a` 时 `<base>` 里有 `static final java.util.concurrent.atomic.AtomicLong WAIT_COUNTER_NANO`、没有 `lockTimed`；`<new>` 里有 `static long lockTimed(java.util.concurrent.locks.ReentrantLock)`、没有 `WAIT_COUNTER_NANO`；还原后 `git status --short` 为空。`AcquireWaitBenchmark` 只用两版都有的接口，两个 jar 跑的是同一份基准。不能用 `git stash` 取 `<base>`：改动已提交时 stash 什么也不存，两个 jar 由同一份源码构建，随后的 `git stash pop` 会弹出本仓所有 worktree 共用的 stash 列表最上面那一条 |
 | 2 | `$JAVA_HOME/bin/java -jar <jar> AcquireWaitBenchmark -f 3 -wi 5 -i 10 -prof gc -rf json -rff <文件>`，先 `<base>` 后 `<new>`，再先 `<new>` 后 `<base>` 各一轮；从 JSON 取每档 30 个迭代值的中位数与最小值 | 两轮 `load1` 40～52。`plainThreadSync`（JMH 线程 `sync` 一个没在 tick 的 tick 线程的元素）：改前中位 129.9 / 233.4 ns、最小 49.8 / 47.0 ns，改后中位 21.0 / 42.3 ns、最小 12.7 / 15.0 ns。`tickThreadSync`（另一条 tick 线程持着自己的锁连做 100 万次）：改前中位 90.6 / 69.8 ns、最小 53.1 / 40.1 ns，改后中位 19.7 / 18.4 ns、最小 13.3 / 15.1 ns。`gc.alloc.rate.norm` 两版四档都 ≤ 0.002 B/op：`sync` 本身 0 字节，余数是 JMH 与每次调用起线程的摊销。机器忙时两版的中位数都被拉高，按最小值比，改后每次获取少 25～40 ns（四档依次少 37.1、32.0、39.8、25.0 ns） |
 | 3 | 用 `server-app/build/install/server-app/lib/*` 作类路径跑一段单文件 Java：一个带 p50 / p95 / p99 的 `Timer`（与 `HostMetrics#acquireTimer` 同配置），15 轮各 `record` 200 万次，取后 10 轮的最小值 | 149.6 ns/次（`load1` 180～215）。宿主每条 tick 线程与调度线程每 tick 各多一次，10 条 tick 线程的分片每 tick 约 1.6 µs，是 50 ms 的 0.003% |
-| 4 | 默认模式跑：根项目 `io.github.bearisbug.synaxis.thread.*`、`ServerProcess*`、`WatchdogTest`、`entity.*Concurrency*`、`entity.AcquirableStrictIntegrationTest`；`server-app` 的 `app.metrics.*`；`:loadtest` 的 `Sample*`；`:architecture-tests` 的 `ConfigKeyGateTest` | 27 个类 84 个 0 失败 0 跳过（根项目 19 个类 67 个，`server-app` 10 个，`:loadtest` 6 个，门禁 1 个；v0.9.41 加 `MetricsEndpointGuardsTest` 2 个，v0.9.43 加 `ItemEntityCrossCellConcurrencyTest` 2 个）；门禁输出 `config key gate: 117 keys read, 117 in ConfigFile.KEYS, 21 meter names left out`（M3-G 加了 `synaxis.farview.url-root`，M3-S 加了 `synaxis.overlay.max-bytes`）。另跑 `:architecture-tests:test` 全量（ArchUnit 分层与各门禁），20 个 0 失败 |
+| 4 | 默认模式跑：根项目 `io.github.bearisbug.synaxis.thread.*`、`ServerProcess*`、`WatchdogTest`、`entity.*Concurrency*`、`entity.AcquirableStrictIntegrationTest`；`server-app` 的 `app.metrics.*`；`:loadtest` 的 `Sample*`；`:architecture-tests` 的 `ConfigKeyGateTest` | 27 个类 84 个 0 失败 0 跳过（根项目 19 个类 67 个，`server-app` 10 个，`:loadtest` 6 个，门禁 1 个；v0.9.41 加 `MetricsEndpointGuardsTest` 2 个，v0.9.43 加 `ItemEntityCrossCellConcurrencyTest` 2 个）；门禁输出 `config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out`（M3-G 加了 `synaxis.farview.url-root`，M3-S 加了 `synaxis.overlay.max-bytes`，RUN-077 组 R 加了五个 `synaxis.rush.*`；122 由集成分支在 `docs/DESIGN-PROD.md` v0.9.83 实跑，本步其余类没有重跑，RUN-077 也没有改它们）。另跑 `:architecture-tests:test` 全量（ArchUnit 分层与各门禁），20 个 0 失败 |
 | 5 | 同第 4 步前三组以严格 grid 跑 | 79 个里 78 个通过；那一次（`load1` 170 以上）`MetadataHolderConcurrencyTest#concurrentWritesAreNotLost` 红在 `:34`（两个虚拟线程 5 s 内没写完，`done.await` 为 false），同一时段以严格 grid 单独重跑仍红；`load1` 降到 36 时严格 grid 单独重跑通过，默认模式在 `load1` 47 时单独也通过（第 4 步那一轮在 `load1` 170～215 时也通过）。这条测的是 `MetadataHolder`（`synchronized` 加两个虚拟线程），不经 `Acquirable`、不经 tick 线程，与本节改动无关，登记为负载下的偶发红（§7） |
 
 后置：删掉两个 jar 与 JMH 输出；`git diff` 与改前相同。
@@ -10256,14 +10268,14 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：`git status --short` 无输出。
 
-#### `TC-PROD-717` 模组两份语言文件都有 `synaxis:command-unknown`，翻译键门禁核对 61 个键 — 对应 `REQ-PROD-012`、`REQ-PROD-041` · 级别: 回归 · 执行者: AI
+#### `TC-PROD-717` 模组两份语言文件都有 `synaxis:command-unknown`，翻译键门禁核对 75 个键 — 对应 `REQ-PROD-012`、`REQ-PROD-041` · 级别: 回归 · 执行者: AI
 
 前置：本节开头。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `TC-PROD-715` 第 1 步那次运行，看门禁 | `TranslationKeyGateTest` `tests="2"` 0 失败；`<system-out>` 有 `translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 16 identifiers left out`：基线 60 个键加 `synaxis:command-unknown`（`en_us.json` 为 `Unknown command: %s`，`zh_cn.json` 为 `未知命令：%s`）。门禁这一行另有三处写键数：`TC-PROD-430` 第 1 步与 `TC-PROD-547` 第 1 步随集成（`docs/DESIGN-PROD.md` v0.9.68）改为 61，`TC-WORLD-032` 第 1 步归光照会话（`docs/DESIGN-PROD.md` §28.3）。同一行的标识数在持久化段 `synaxis:player` 进 `NOT_TEXT` 之后变为 16（`docs/DESIGN-PROD.md` `API-PROD-029`）：`prod/r073-B` 上那次运行是 15 个，RUN-073 组 D 随 `docs/DESIGN-PROD.md` v0.9.72 合入集成分支之后实跑 16 个，本步与 `TC-PROD-430`、`TC-PROD-547` 第 1 步同批改为 16，`TC-WORLD-032` 第 1 步归光照会话（§28.3） |
-| 2 | 反证有齿：删掉 `<ZH>` 的 `synaxis:command-unknown` 一行，跑门禁，再还原（`TC-PROD-715` 第 3 步那次运行） | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:92`：`Problems of the translation key gate (1):` 之后一行 `zh_cn.json has no text for synaxis:command-unknown (from io.github.bearisbug.synaxis.app.command.HostCommands)` |
+| 1 | `TC-PROD-715` 第 1 步那次运行，看门禁 | `TranslationKeyGateTest` `tests="2"` 0 失败；`<system-out>` 有 `translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`，其中有 `synaxis:command-unknown`（`en_us.json` 为 `Unknown command: %s`，`zh_cn.json` 为 `未知命令：%s`）：`prod/r073-B` 上那次运行是基线 60 个键加这一个；RUN-077 又加了 14 个键与标识 `synaxis:play`，集成分支在 `docs/DESIGN-PROD.md` v0.9.83 实跑 75 个键、17 个标识。门禁这一行另有三处写键数：`TC-PROD-430` 第 1 步与 `TC-PROD-547` 第 1 步随集成（`docs/DESIGN-PROD.md` v0.9.68）改为 61，`TC-WORLD-032` 第 1 步归光照会话（`docs/DESIGN-PROD.md` §28.3）。同一行的标识数在持久化段 `synaxis:player` 进 `NOT_TEXT` 之后变为 16（`docs/DESIGN-PROD.md` `API-PROD-029`）：`prod/r073-B` 上那次运行是 15 个，RUN-073 组 D 随 `docs/DESIGN-PROD.md` v0.9.72 合入集成分支之后实跑 16 个，本步与 `TC-PROD-430`、`TC-PROD-547` 第 1 步同批改为 16，`TC-WORLD-032` 第 1 步归光照会话（§28.3） |
+| 2 | 反证有齿：删掉 `<ZH>` 的 `synaxis:command-unknown` 一行，跑门禁，再还原（`TC-PROD-715` 第 3 步那次运行） | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:93`：`Problems of the translation key gate (1):` 之后一行 `zh_cn.json has no text for synaxis:command-unknown (from io.github.bearisbug.synaxis.app.command.HostCommands)` |
 | 3 | 还原后 `git status --short` 不列 `<ZH>` | 第 1 步的结果即复绿 |
 
 后置：`git status --short` 无输出。
@@ -11164,11 +11176,11 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 #### `TC-PLAY-008` 包导出、通道名登记进 `NOT_TEXT`、ABI 门与 javadoc — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
 
-前置：本节开头。ABI 门的 baseline 照 `ci.yml` 的「Download the ABI baseline」一步取，但不下进仓库里的 `.abi-baseline/`（它不在 `.gitignore` 里）：`d=$(mktemp -d)`，`trap 'rm -rf "$d"' EXIT`，`gh release download v0.3.0 --repo Bearisbug/synaxis --dir "$d" --pattern plugin-api.jar --pattern protocol.jar`。`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717` 写死的门禁读数（标识 16 个）与 `NOT_TEXT` 之后的红行行号（多了一行）由 RUN-077 集成轮按 CI 输出改，`TC-WORLD-032` 走交接行，本条不改。
+前置：本节开头。ABI 门的 baseline 照 `ci.yml` 的「Download the ABI baseline」一步取，但不下进仓库里的 `.abi-baseline/`（它不在 `.gitignore` 里）：`d=$(mktemp -d)`，`trap 'rm -rf "$d"' EXIT`，`gh release download v0.3.0 --repo Bearisbug/synaxis --dir "$d" --pattern plugin-api.jar --pattern protocol.jar`。`NOT_TEXT` 多了这一行之后，`TC-PROD-430`～`TC-PROD-433`、`TC-PROD-547`、`TC-PROD-717` 等用例写死的门禁读数与红行行号随 `docs/DESIGN-PROD.md` v0.9.83 改过，`TC-WORLD-032` 交光照会话（该分册 §28.3）。`NOT_TEXT` 这一行的反证与 `TC-PLAY-016` 第 3 步是同一处改动：本条第 3 步记的是组 P 分支上的读数（字面量只在 `:protocol` 的两个类里），集成之后只按 `TC-PLAY-016` 第 3 步跑一次，那里列全四个类。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 在跑 P 两类的同一条命令里加上 `--tests 'io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest' :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' :architecture-tests:testNamingCheck :architecture-tests:forbiddenImportsCheck :protocol:javadoc :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir="$d"`；`grep -n exports protocol/src/main/java/module-info.java` | `BUILD SUCCESSFUL`。`ProtocolVectorTest` `tests="21"` 0 失败（`Message` 多了一个 permit，M2 的向量不变）；`TranslationKeyGateTest` `tests="2"` 0 失败，标准输出 `translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`（本组之前是 16 个标识）；两个 `checkBinaryCompatibility` 都执行、不是 `SKIPPED`，没有 `::error` 行；`:protocol:javadoc` 成功，`no comment` 警告只有三条旧的（`FarViewAnnouncement.java:87`、`module-info.java:1`、`UnknownMessageException.java:13`）；`module-info.java` 两行 `exports`：`io.github.bearisbug.synaxis.game.protocol` 与 `io.github.bearisbug.synaxis.game.protocol.play` |
+| 1 | 在跑 P 两类的同一条命令里加上 `--tests 'io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest' :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' :architecture-tests:testNamingCheck :architecture-tests:forbiddenImportsCheck :protocol:javadoc :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir="$d"`；`grep -n exports protocol/src/main/java/module-info.java` | `BUILD SUCCESSFUL`。`ProtocolVectorTest` `tests="21"` 0 失败（`Message` 多了一个 permit，M2 的向量不变）；`TranslationKeyGateTest` `tests="2"` 0 失败，标准输出 `translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`（集成分支，`docs/DESIGN-PROD.md` v0.9.83 实跑；组 P 分支上是 61 个键，本组之前是 16 个标识）；两个 `checkBinaryCompatibility` 都执行、不是 `SKIPPED`，没有 `::error` 行；`:protocol:javadoc` 成功，`no comment` 警告只有三条旧的（`FarViewAnnouncement.java:87`、`module-info.java:1`、`UnknownMessageException.java:13`）；`module-info.java` 两行 `exports`：`io.github.bearisbug.synaxis.game.protocol` 与 `io.github.bearisbug.synaxis.game.protocol.play` |
 | 2 | 改动前的红 | 与第 3 步相同，没有单独跑：`438b206f47` 有 `PlayProtocol.CHANNEL`，`NOT_TEXT` 却还没有这一行 |
 | 3 | 反证有齿（`NOT_TEXT` 不登记 `synaxis:play`）：删掉 `architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java:65`，与 `TC-PLAY-003` 第 3 步同批跑 `TranslationKeyGateTest`，再还原 | `everyKeyTheServerCanSendHasTextInBothLanguageFiles` 红，`Problems of the translation key gate (2): en_us.json has no text for synaxis:play (from io.github.bearisbug.synaxis.game.protocol.play.PlayMessages, io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol)`，`zh_cn.json` 同一行；标准输出 `62 keys checked …, 16 identifiers left out` |
 | 4 | 还原后跑第 1 步 | 与第 1 步相同（第 6、8、11 次运行） |
@@ -11181,10 +11193,10 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 在该 PR 的「Client mod」运行 `<run>` 里看 `TEST-io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest.xml` 或日志 | `tests="27"` 0 失败：`theVectorsAreTheOnesThisBuildsProtocolJarSpeaks`（manifest 的 `play_version` 等于 jar 的 `PlayProtocol.version()`，digest 相符），13 个可接受向量经 jar 的 `PlayMessages` 解码再写回逐字节相同，13 个 `refused-` 向量抛 `MalformedMessageException`。测试不写死条数，以后加向量不用改它 |
+| 1 | 在该 PR（草稿 PR #22）的「Client mod」运行 run 38210149163（head `07f5053f90`）里看 `TEST-io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest.xml` 或日志 | `tests="27"` 0 失败：`theVectorsAreTheOnesThisBuildsProtocolJarSpeaks`（manifest 的 `play_version` 等于 jar 的 `PlayProtocol.version()`，digest 相符），13 个可接受向量经 jar 的 `PlayMessages` 解码再写回逐字节相同，13 个 `refused-` 向量抛 `MalformedMessageException`。测试不写死条数，以后加向量不用改它 |
 | 2 | 改动前的红 | 不适用：测试与向量同一个提交进来；齿靠第 3 步 |
-| 3 | 反证有齿：在同一个 PR 上推一个临时提交，照 `TC-PLAY-003` 第 3 步改 `<PW>Widget.java:104`，看它的「Client mod」运行 `<run>`，再推还原提交 | `anAcceptedVectorSurvivesTheClientDecoderByteForByte` 的 `edge/s2c_hud.bin`、`edge/s2c_hud-unknown-kind.bin`、`edge/s2c_hud-unknown-prop.bin` 三个参数红（`MalformedMessageException: undeclared prop …`），其余 24 条绿 |
-| 4 | 还原提交的「Client mod」运行 | 与第 1 步相同 |
+| 3 | 反证有齿：在同一个 PR 上推一个临时提交，照 `TC-PLAY-003` 第 3 步改 `<PW>Widget.java:104`，看它的「Client mod」运行（run 38209505076，head `1250f4d888`：这一轮同时带着组 V 的红骨架，客户端其余 223 条照常绿），再推还原提交 | `anAcceptedVectorSurvivesTheClientDecoderByteForByte` 的 `edge/s2c_hud.bin`、`edge/s2c_hud-unknown-kind.bin`、`edge/s2c_hud-unknown-prop.bin` 三个参数红（`MalformedMessageException: undeclared prop …`），其余 24 条绿 |
+| 4 | 还原提交之后的「Client mod」运行：就是第 1 步的 run 38210149163（head `07f5053f90` 在还原提交 `3d3611d32c` 之后） | 与第 1 步相同 |
 
 后置：PR 照 RUN-077 的约定验完关掉、删远端分支；两个 run id 记进 RUN-077 的证据。
 
@@ -11283,9 +11295,9 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `:architecture-tests` 的 `io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest` | `tests="2"` 0 失败；`<system-out>` 是 `translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out` |
+| 1 | 跑 `:architecture-tests` 的 `io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest` | `tests="2"` 0 失败；`<system-out>` 是 `translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`（集成分支，`docs/DESIGN-PROD.md` v0.9.83 实跑；组 K 分支上是 61 个键） |
 | 2 | 改动前的红：骨架提交里常量与 `NOT_TEXT` 那一行是一起进来的，没有「只有常量、没有这一行」的提交；第 3 步去掉这一行就是那个状态 | 见第 3 步 |
-| 3 | 反证有齿：删去 `<TK>:65` 的 `Map.entry("synaxis:play", "plugin message channel of the play layer (API-PLAY-002)"),` 一行，与本节其余反证同一次跑（第 4 次运行），再还原 | `tests="2" failures="1"`：`everyKeyTheServerCanSendHasTextInBothLanguageFiles` 红在 `TranslationKeyGateTest.java:92`（删了一行之后的行号；在的时候是 `:93`），`Problems of the translation key gate (2):` 下两行 `en_us.json has no text for synaxis:play (from io.github.bearisbug.synaxis.app.PluginHost, io.github.bearisbug.synaxis.app.scene.SceneService)` 与 `zh_cn.json has no text for synaxis:play (from …同上)` |
+| 3 | 反证有齿：删去 `<TK>:65` 的 `Map.entry("synaxis:play", "plugin message channel of the play layer (API-PLAY-002)"),` 一行，与本节其余反证同一次跑（第 4 次运行），再还原 | `tests="2" failures="1"`：`everyKeyTheServerCanSendHasTextInBothLanguageFiles` 红在 `TranslationKeyGateTest.java:92`（删了一行之后的行号；在的时候是 `:93`），`Problems of the translation key gate (2):` 下两行 `en_us.json has no text for synaxis:play (from io.github.bearisbug.synaxis.app.PluginHost, io.github.bearisbug.synaxis.app.scene.SceneService, io.github.bearisbug.synaxis.game.protocol.play.PlayMessages, io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol)` 与 `zh_cn.json has no text for synaxis:play (from …同上)`，`<system-out>` 为 `76 keys checked …, 16 identifiers left out`（集成分支实跑，`docs/test-runs/RUN-077/integrate/`；组 K 分支上没有 `:protocol` 的两个类，组 P 分支上只有它们，见 `TC-PLAY-008` 第 3 步） |
 | 4 | 还原后跑第 1 步（第 6 次运行） | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -11360,7 +11372,7 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 | --- | --- | --- |
 | 1 | 在 PR #22 第 2 轮的「Client mod」运行 run 38210149163 看 `TEST-io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest.xml` | `tests="6"` 0 失败：`theTitleIsAKeyWithoutArguments`（键 `rush.scene.lobby`，没有参数、fallback 与颜色）、`theHintKeepsItsKeyItsArgumentItsColourAndItsFallback`（`rush.hint`，参数 `["1"]`，fallback `The fallback of rush.hint, queued: %s`，颜色 `0xFFAA00`）、`aKeyTheLanguageFilesLackKeepsItsFallbackAndItsColour`（`synaxis_test.missing`，fallback `Shown from the fallback`，颜色 `0x55FF55`）、两条拒收（不完整的 NBT、末尾多一个字节，都抛 `IllegalArgumentException`）与 `TC-PLAY-022` 的一条。解码在 `<CP>PlayComponents.java`，用 `ComponentSerialization.STREAM_CODEC`。同一运行里客户端共 20 个测试类 235 条 0 失败；本机等价（第 4 次运行）同为 6/0 |
 | 2 | 改动前的红 | 不适用：测试与 `PlayComponents` 同一个提交进来，齿靠第 3 步 |
-| 3 | 反证有齿（服务端换了编码、客户端没跟）：`<PC>missing.bin` 换成 `ComponentBytes` 用 `JSON_COMPONENT` 写出的 90 B（`TC-PLAY-020` 第 3 步的输出），与 `TC-PLAY-022`、`TC-PLAY-023` 第 3 步同批在本机跑「跑 V 客户端」，再还原 | `36 tests completed, 5 failed`。这一处打红三条：`aKeyTheLanguageFilesLackKeepsItsFallbackAndItsColour` 在 `PlayComponentDecodeTest.java:94`（`IllegalArgumentException: the component codec could not read EncodedComponent[597b2274…]`），`PlayHudTest` 用到 `missing.bin` 的两条在 `:51`（`expected: <[rush.hint, synaxis_test.missing, ]> but was: <[rush.hint, , ]>`）与 `:60`：解不出的 component 显示为空文本，连接照旧。`PlayFrozenVectorTest` 仍 27/0：`component/` 不进 digest（第 6 次运行，`06-client-counter-proofs/`） |
+| 3 | 反证有齿（服务端换了编码、客户端没跟）：`<PC>missing.bin` 换成 `ComponentBytes` 用 `JSON_COMPONENT` 写出的 90 B（`TC-PLAY-020` 第 3 步的输出），与 `TC-PLAY-022`、`TC-PLAY-023` 第 3 步同批在本机跑「跑 V 客户端」，再还原 | `36 tests completed, 5 failed`。这一处打红三条：`aKeyTheLanguageFilesLackKeepsItsFallbackAndItsColour` 在 `PlayComponentDecodeTest.java:94`（`IllegalArgumentException: the component codec could not read EncodedComponent[597b2274…]`），`PlayHudTest` 用到 `missing.bin` 的两条在 `:51`（`expected: <[rush.hint, synaxis_test.missing, ]> but was: <[rush.hint, , ]>`）与 `:60`（组 C 之后这两处断言在 `:58` 与 `:66`）：解不出的 component 显示为空文本，连接照旧。`PlayFrozenVectorTest` 仍 27/0：`component/` 不进 digest（第 6 次运行，`06-client-counter-proofs/`） |
 | 4 | 还原后 | `git diff` 无输出；第 2 轮 CI 跑的就是还原后的代码，读数同第 1 步 |
 
 后置：`git status --short` 无输出；`<m2>` 已删。
@@ -11384,9 +11396,9 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 同 `TC-PLAY-021` 第 1 步，看 `TEST-io.github.bearisbug.synaxis.game.client.play.PlayHudTest.xml`；再看 run 38210149495 的 job `gametest` 与 `p11-smoke` | `PlayHudTest` `tests="3"` 0 失败：连接收到 `TEXT`、没收到 `S2C_SCENE` 时 `PlayHud.lines` 为空（`<CP>PlayHud.java:49`；组 C 起方法改名 `PlayHud.blocks`，这一判断在 `prod/r077-C` 上是 `:77`）；进场景后三行按槽位与 order 排好，空 component 一行空串；`REMOVE`、`CLEAR_OWNER`、`reset` 之后不再画。两个 job 都绿：`gametest` 的判定末行 `client regression: all checks passed`，`sessionserver join 5, expected 5`（没有多出的连接）；`p11-smoke` 的判定末行 `P10: all checks passed`。入口清单里有 `RushClientGameTest`，两个变量都没设时它第一行就返回（`<GP>RushClientGameTest.java:87`） |
+| 1 | 同 `TC-PLAY-021` 第 1 步，看 `TEST-io.github.bearisbug.synaxis.game.client.play.PlayHudTest.xml`；再看 run 38210149495 的 job `gametest` 与 `p11-smoke` | `PlayHudTest` `tests="3"` 0 失败：连接收到 `TEXT`、没收到 `S2C_SCENE` 时 `PlayHud.blocks` 为空（`<CP>PlayHud.java:77`；组 V 时方法叫 `PlayHud.lines`，这一判断在 `:49`）；进场景后三行按槽位与 order 排好，空 component 一行空串；`REMOVE`、`CLEAR_OWNER`、`reset` 之后不再画。两个 job 都绿：`gametest` 的判定末行 `client regression: all checks passed`，`sessionserver join 5, expected 5`（没有多出的连接）；`p11-smoke` 的判定末行 `P10: all checks passed`。入口清单里有 `RushClientGameTest`，两个变量都没设时它第一行就返回（`<GP>RushClientGameTest.java:177`；组 V 时在 `:87`） |
 | 2 | 改动前的红 | 不适用：这是对别的 job 不变的约束，齿靠第 3 步 |
-| 3 | 反证有齿：`<CP>PlayHud.java:49` 改为 `if (play.scene() == null && Boolean.getBoolean("proof.never")) return List.of();`，与 `TC-PLAY-021` 第 3 步同批跑，再还原 | 这一处只打红 `aConnectionThatEnteredNoSceneDrawsNothing`，在 `PlayHudTest.java:40`：`expected: <[]> but was: <[translation{key='rush.hint', fallback='The fallback of rush.hint, queued: %s', args=[1]}[style={color=gold}]]>` |
+| 3 | 反证有齿：`<CP>PlayHud.java:77` 改为 `if (play.scene() == null && Boolean.getBoolean("proof.never")) return List.of();`，跑「跑 V 客户端」，再还原 | 这一处只打红 `aConnectionThatEnteredNoSceneDrawsNothing`，在 `PlayHudTest.java:49`：期望空列表，实际有 `rush.hint` 那一个 `Block`（组 C 评审在 `prod/r077-C` 上复跑过，红在 `:49`；组 V 时改的是 `:49` 的 `PlayHud.lines`，与 `TC-PLAY-021` 第 3 步同批跑，红在 `PlayHudTest.java:40`：`expected: <[]> but was: <[translation{key='rush.hint', fallback='The fallback of rush.hint, queued: %s', args=[1]}[style={color=gold}]]>`） |
 | 4 | 还原后 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -11681,13 +11693,13 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 
 后置：`git status --short` 无输出。
 
-#### `TC-PLAY-046` 场景层的日志门禁与宿主回归，翻译键门禁读数 62 键 — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
+#### `TC-PLAY-046` 场景层的日志门禁与宿主回归，翻译键门禁收下 `synaxis:action-cooldown` — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
 
 前置：本节开头。`ClientDrivenLogArchitectureTest` 的规则覆盖整个 `app` 包树，`app.scene` 不在豁免名单里，本组的日志全部经 `LogBudget`。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `:server-app` 的 `io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest`、`PluginHostPlayWiringIntegrationTest`、`PluginHostIntegrationTest`、`CoreModeIntegrationTest` 与 `:architecture-tests` 的 `io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest`（第 6、10 次运行） | 2、2、18、8、2 条，都 0 失败；门禁的 `<system-out>` 是 `translation key gate: 62 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`。组 K 之后是 61 键，多出的是 `SceneService` 发的 `synaxis:action-cooldown`，两份语言文件组 K 已加齐。`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717` 里的键数由集成轮按 CI 输出统一改 |
+| 1 | 跑 `:server-app` 的 `io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest`、`PluginHostPlayWiringIntegrationTest`、`PluginHostIntegrationTest`、`CoreModeIntegrationTest` 与 `:architecture-tests` 的 `io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest`（第 6、10 次运行） | 2、2、18、8、2 条，都 0 失败；门禁的 `<system-out>` 在组 H 分支上是 `translation key gate: 62 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`：组 K 之后是 61 键，多出的是 `SceneService` 发的 `synaxis:action-cooldown`，两份语言文件组 K 已加齐。集成分支再加上组 R 的 13 个 `rush.*`，是 `75 keys …, 17 identifiers left out`（`docs/DESIGN-PROD.md` v0.9.83 实跑），`TC-PROD-430`、`TC-PROD-547`、`TC-PROD-717` 等用例的键数同批改过 |
 | 2 | 改动前的红：不适用，都是既有门禁与回归，本组没改它们 | — |
 | 3 | 反证有齿：不另做；`ClientDrivenLogArchitectureTest#theHostLogRuleRejectsALinePerPayload` 自带反证 fixture | — |
 
@@ -12217,7 +12229,7 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 在 PR #24 第 4 轮（head `4149e4462e`）的 client-gametest run 38221157191 看 job `rush` 两份 Q0c 的最后两段（检查在 `<GP>RushClientGameTest.java:372`、`:383`，基线在 `<GP>PlayTestHook.java:136`～`:137`） | 两份都 PASS：`probe sent [Sent[sceneSeq=2, screen=null, chunkUnderfoot=true, …]]`，记录里只有场景 2 的就绪，夹具一侧仍是 `ready 1 2`；点完 `close`、问过 `ready?` 之后重新开始记录，这时连接上已有 `close` 的 `ok` 与场景 2 的就绪，2 tick 后读到 `a recording started after all this holds 0 SETs, 0 results, 0 readies`。judge 末行 `rush judge: PASS (2 reports, 0 problems)` |
+| 1 | 在 PR #24 第 4 轮（head `4149e4462e`）的 client-gametest run 38221157191 看 job `rush` 两份 Q0c 的最后两段（检查在 `<GP>RushClientGameTest.java:372`、`:383`，基线在 `<GP>PlayTestHook.java:136`～`:137`；组 G 改过这两个文件，集成分支上是 `:431`、`:442` 与 `:138`～`:139`） | 两份都 PASS：`probe sent [Sent[sceneSeq=2, screen=null, chunkUnderfoot=true, …]]`，记录里只有场景 2 的就绪，夹具一侧仍是 `ready 1 2`；点完 `close`、问过 `ready?` 之后重新开始记录，这时连接上已有 `close` 的 `ok` 与场景 2 的就绪，2 tick 后读到 `a recording started after all this holds 0 SETs, 0 results, 0 readies`。judge 末行 `rush judge: PASS (2 reports, 0 problems)` |
 | 2 | 改动前的红：PR #24 第 3 轮（head `aae05556ce`：两项检查已在剧本里，钩子开始记录时只给 SET 设基线）的 client-gametest run 38220396035 | job `rush` 判红：两份 Q0c 都是 `FAIL problems [the recording holds 2 readies, not scene 2's alone, a recording started late holds 0 SETs, 1 results, 1 readies from before it]`，记录里是 `[Sent[sceneSeq=1, …], Sent[sceneSeq=2, …]]`，场景 1 的就绪比场景 2 早 3.4 s（dev）与 1.4 s（生产 jar）；Q0a、Q0b PASS，Q0c 其余读数与第 1 步相同。judge 末行 `rush judge: FAIL (2 reports, 2 problems)`，只点名两份 Q0c。PR #23 第 2 轮 run 38216321013 的 Q0c 记录里同样有场景 1 的就绪，那时剧本还没有这两项检查 |
 | 3 | 反证有齿 | 第 2 步即是：同一份剧本对旧钩子判红。记录按 tick 采样、同一 tick 里到达的两条结果只留后一条，这一点没有用例，写在 §6.4.8 与 `PlayTestHook` 的 Javadoc 里 |
 
@@ -12415,17 +12427,17 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 
 后置：`git status --short` 无输出。
 
-#### `TC-PLAY-104` 四道门禁带上两个新模块仍绿：翻译键 74 个键、17 个标识，配置键 122 个，持久化边界、引擎内部 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+#### `TC-PLAY-104` 四道门禁带上两个新模块仍绿：翻译键 75 个键、17 个标识，配置键 122 个，持久化边界、引擎内部 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
 
 前置：本节开头。`:architecture-tests` 依赖了 `:play-kit`、`:game-rush`；翻译键门禁经 `ServiceLoader` 读到 `RushPlugin#translationKeys()` 的 13 个键，配置键门禁在 `RushConfig` 的常量池里读到五个 `synaxis.rush.*`。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `./gradlew :architecture-tests:test :server-app:test --tests 'io.github.bearisbug.synaxis.app.ConfigFileTest' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（第 8 次运行） | `:architecture-tests` 7 个类 20 条 0 失败；`<system-out>` 有 `config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out` 与 `translation key gate: 74 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`；`ConfigFileTest` `tests="11"` 0 失败（多了五个键，未知键的最近键提示 `synaxis.max-players`、`synaxis.motd`、`synaxis.app.auth` 不变） |
+| 1 | `./gradlew :architecture-tests:test :server-app:test --tests 'io.github.bearisbug.synaxis.app.ConfigFileTest' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（第 8 次运行） | `:architecture-tests` 7 个类 20 条 0 失败；`<system-out>` 有 `config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out` 与 `translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`（集成分支，`docs/DESIGN-PROD.md` v0.9.83 实跑；`prod/r077-R` 上是 74 个键：组 H 的 `synaxis:action-cooldown` 还没合入）；`ConfigFileTest` `tests="11"` 0 失败（多了五个键，未知键的最近键提示 `synaxis.max-players`、`synaxis.motd`、`synaxis.app.auth` 不变） |
 | 2 | 改动前的红：不适用。键与类在骨架里就齐了，门禁本身没改；它们的反证是 `TC-PROD-441`、`TC-PROD-432` 等既有用例 | — |
 | 3 | 反证有齿：本组没有重跑 `TC-PROD-441` 第 2～4 步的反证（Gradle 次数用完）；那三步打红的是门禁自身的比对，与键数无关，读数会从 117 变成 122 | — |
 
-后置：`git status --short` 无输出。写着 117 的门禁读数（`TC-PROD-441`、`TC-PROD-547`、`TC-PROD-569`，光照会话的 `TC-WORLD-041`、`TC-WORLD-098`）与翻译键门禁的键数由 RUN-077 集成轮按 CI 输出改。
+后置：`git status --short` 无输出。写着 117 的门禁读数（`TC-PROD-441`、`TC-PROD-547`、`TC-PROD-569`）与翻译键门禁的键数随 `docs/DESIGN-PROD.md` v0.9.83 改过，光照会话的 `TC-WORLD-041`、`TC-WORLD-098` 走该分册 §28.3 的交接行。
 
 #### `TC-PLAY-105` `runRush`：configuration `rush` 解析出 `:game-rush`、`:play-kit` 与稳定面，任务照 `run` 写、默认白名单 `rush`，`installDist` 与 `run` 的 classpath 不变（`ADR-PLAY-011`）— 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
 
@@ -12692,7 +12704,7 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 
 ## 5. 回归策略
 
-- **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G 与 M3-S）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
+- **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G 与 M3-S；玩法架构域 `docs/DESIGN-PLAY.md` §26 的 S1 与各 W 波）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
   - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-037、TC-036（TC-020 已废弃），命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-038、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035，tick 多线程（`thread` 包、`Entity` / `Player` 的 `setInstance` / `teleport`、`EnvTestExt`、测试 JVM 参数）→ TC-PROD-030～TC-PROD-033，其中动了 `ThreadProvider`、`ServerConfig` 的 `synaxis.thread-*` 键、`ServerProcessImpl` 建 dispatcher 的一处、`EnvTestExt` 或测试 JVM 参数再加 TC-PROD-330～TC-PROD-332 与 TC-PROD-335。
   - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059、TC-GAME-067、TC-GAME-072，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064、TC-GAME-073～TC-GAME-075（TC-GAME-021、TC-GAME-023、TC-GAME-025、TC-GAME-064 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065、TC-GAME-068，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
@@ -12774,9 +12786,17 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-075 组 P，P11 冒烟与 P10 验背包随转服携带（`REQ-PROD-031`、`REQ-PROD-047`，v0.9.74）→ TC-PROD-753～TC-PROD-756；改了 `p10.py` 的 `seed`、`judge` 或 `test_p10.py` 跑 TC-PROD-753、TC-PROD-754 第 1、4 步与 TC-PROD-660、TC-PROD-744 第 2 步（同一组单测，不起进程，1 s 内跑完）；改了 `seed` 写的语句再跑 TC-PROD-754 第 3 步（要 `synaxis-pg`）；改了 `client-gametest.yml` 的 job `p10` 或 `p11-smoke` 跑 TC-PROD-755 第 1～4 步与 TC-PROD-741；改了 `client-fabric/build.gradle.kts` 的 `runProductionClientGameTest` 或升 Loom、Minecraft 版本跑 TC-PROD-755 第 5、6 步；换了 P10 的烘焙参数（种子、范围或生成器）按 TC-PROD-754 第 5 步重选存档位置；CI 上 TC-PROD-742 每个 PR 跑，TC-PROD-756 在合入转服链路的改动之前手动触发。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-075 组 R，R1～R8 只写报告、不挡可玩项剧本（`REQ-PROD-030`、`REQ-PROD-046`，v0.9.77）→ TC-PROD-757～TC-PROD-759；改了 `RegressionClientGameTest#runTest` 或它的 `Report` 就跑 TC-PROD-757（一次 Gradle 编译与只读核对），再在 GitHub Actions 上跑 TC-PROD-759；改了 `judge.sh` 判 R 行的那几行跑 TC-PROD-758（手写的报告，不起进程，几秒跑完），连同上面 RUN-073 组 F 一行列的旧用例。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-076 组 W，等传送到存档位置的窗口里照常捕获（`REQ-PROD-047`，v0.9.79）→ TC-PROD-760～TC-PROD-762；动了 `PlayerStateSection#capture`，或 `#apply` 里打 false、在传送完成时改 true 的那几行，就跑 TC-PROD-760、TC-PROD-761 第 1 步（同一个类，连同上面 RUN-073 组 D 一行列的 TC-PROD-725、TC-PROD-727 第 1 步）；`PlayerStateSection.java` 的行号变了，按 TC-PROD-762 第 1 步核对并改各旧用例引的 `<PS>` 行号。
+  - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125（087～089、126～129 是空号），按改动的文件圈定：
+    - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
+    - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。
+    - 动了 `server-app` 的 `app.scene` → TC-PLAY-030～TC-PLAY-049，TC-PLAY-048 的 4 线程严格与严格 grid 两遍由 CI 的两个多线程 job 跑；动了 `app.instance` → TC-PLAY-050～TC-PLAY-069（TC-PLAY-051、TC-PLAY-055～TC-PLAY-057 用起真 `TickSchedulerThread` 的 `ManagedInstanceTickThreadTest`，TC-PLAY-069 是三种线程模式）。
+    - 动了 `client-fabric` 的 `game.client.play` 包、`SynaxisClientMod` 的注册或模组的 `fabric.mod.json` → TC-PLAY-021～TC-PLAY-029、TC-PLAY-070～TC-PLAY-086，客户端 JUnit 与 job `rush` 都只在 GitHub Actions 上跑；动了动作键的默认键或分类 → 加 TC-PLAY-017、TC-PLAY-081、TC-PLAY-110。
+    - 动了 `:play-kit` → TC-PLAY-090～TC-PLAY-092、TC-PLAY-109；动了 `:game-rush`、`server-app/build.gradle.kts` 的 `runRush` 或 `ConfigFile` 的 `synaxis.rush.*` → TC-PLAY-093～TC-PLAY-108，并跑 TC-PROD-441 第 1 步。
+    - 动了 `RushClientGameTest`、`PlayTestHook`、`PlayHudFixture`、`rush_judge.py` 或 `client-gametest.yml` 的 job `rush` → TC-PLAY-110～TC-PLAY-122（judge 单测 TC-PLAY-028、TC-PLAY-119 本机跑，不起 Gradle）；剧本或 HUD 布局改了，人工的 TC-PLAY-123～TC-PLAY-125 进人工收口轮。
+    - 跨域牵连：动了 `TranslationKeyGateTest` 的 `NOT_TEXT`、模组语言文件或 `RushPlugin#translationKeys()` → TC-PLAY-016、TC-PLAY-017、TC-PLAY-108 与 TC-PROD-430～TC-PROD-434；动了 `client-gametest.yml` 的触发或别的 job → 加 TC-PLAY-122（别的 job 读数不变）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
-- **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-038、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级；真机用例（TC-WORLD-123、TC-WORLD-124、TC-WORLD-144～TC-WORLD-149）等用户的机器，单独成轮。
+- **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-038、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级；真机用例（TC-WORLD-123、TC-WORLD-124、TC-WORLD-144～TC-WORLD-149）等用户的机器，单独成轮；玩法架构的人工用例 TC-PLAY-123～TC-PLAY-125 按各条前置在本机起服务端与真客户端，同样单独成轮。
 - **未实现即阻塞**：`TC-GAME-*` 的前置多数要求对应 `REQ-M2-*` 已合入；`REQ-M3-*` 同理，§2 REQ-M3 对照表里标「未实现」的 REQ 落地时先派生用例，TC-WORLD-008 的前置（美术地图与读入作业）未满足时登记「阻塞」；未合入时该用例登记「阻塞」并写明缺哪条 REQ，不得臆测通过，也不得因此把它从范围里悄悄删掉。
 
 ## 6. 执行记录

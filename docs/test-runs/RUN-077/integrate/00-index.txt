@@ -1,0 +1,27 @@
+RUN-077 integration round 3: group G merged, docs closed out, local gates
+Branch prod/integrate-077. Merge 0100d0b0b2 = git merge --no-ff prod/r077-G (130c609a9b) on f54b122cf5:
+no conflicts, the merged tree is byte for byte the tree of prod/r077-G (git diff HEAD prod/r077-G empty),
+rg for conflict markers over the worktree empty. origin/main f9e002917b is an ancestor of the branch.
+The runs below are on 0100d0b0b2 plus the two Javadoc changes of the commit that adds this directory
+(PluginHost#registerHostAdmission, plugin-api ManagedInstance), whose code is what was compiled.
+Registered as a run later, after the CI of the integration branch's draft PR.
+
+Local Gradle, each through ~/.claude/r077/gradle.zsh under /tmp/synaxis-heavy.lock, label integrate-077c (5 of 10)
+  1  compileJava compileTestJava testNamingCheck forbiddenImportsCheck (every project) :architecture-tests:test
+     :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<v0.3.0 jars> --continue
+       BUILD SUCCESSFUL; both ABI checks executed, no violation; :architecture-tests 7 classes 20 tests 0 failed
+       (gate readings in 01-gates.txt). The v0.3.0 jars came from gh release download into /tmp, deleted after.
+  2  :architecture-tests:test --tests TranslationKeyGateTest with the NOT_TEXT line of synaxis:play deleted
+       (TC-PLAY-016 step 3, TC-PLAY-008 step 3): red as in 01-gates.txt, file restored with git checkout
+  3  the same with the NOT_TEXT line of synaxis:handshake deleted (TC-PROD-432 step 2): red as in 01-gates.txt,
+       restored with git checkout
+  4  :protocol:publishToMavenLocal -Dmaven.repo.local=/tmp/run077/integrate-077c/m2      BUILD SUCCESSFUL
+  5  client-fabric: compileJava compileTestJava compileGametestJava -Dmaven.repo.local=/tmp/run077/integrate-077c/m2
+       BUILD SUCCESSFUL (compileGametestJava executed; the other two up to date)
+  /tmp/run077/integrate-077c (temporary repository, baseline jars, work files) deleted at the end.
+
+Not run here: the full test suites, client JUnit and the real client jobs. They run on GitHub Actions on the
+draft PR of the integration branch and on the two counter-proof branches tmp/r077-proof-host and
+tmp/r077-proof-client (docs/DESIGN-PLAY.md §6.7.6; docs/TEST.md TC-PLAY-112, TC-PLAY-113).
+
+02-pkgdeps.txt  tools/pkgdeps.py per module for docs/ENGINE.md §3.6 and the handover of TC-GAME-001 step 7

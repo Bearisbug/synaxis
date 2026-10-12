@@ -265,8 +265,8 @@ final class PluginHost {
     }
 
     /**
-     * Takes the admission slot for the host itself, which only the core mode does: the reserved id
-     * belongs to no plugin, so nothing ever takes this registration back.
+     * Takes the admission slot for the host itself, as the core mode and a map mounted shard do: the
+     * reserved id belongs to no plugin, so nothing ever takes this registration back.
      *
      * @param provider the provider to register
      */

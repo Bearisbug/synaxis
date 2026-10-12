@@ -41,7 +41,8 @@ public interface ManagedInstance {
 
     /**
      * The engine instance. It is unregistered until the instance turns {@link State#OPEN}, and again
-     * once it is {@link State#CLOSED}.
+     * once the evacuation that follows {@link State#CLOSED} is done: a closed instance stays
+     * registered while its players are sent away, at most for the host's evacuation time limit.
      *
      * @return the engine instance
      */
@@ -75,8 +76,12 @@ public interface ManagedInstance {
      *
      * @param player the player
      * @param at     where the player lands
-     * @return completes on the player's tick thread with true once the player is in, with false if
-     *         the instance is not {@link State#OPEN} or {@link State#RUNNING} or the player left
+     * @return completes with true once the player is in, with false if the instance is not
+     *         {@link State#OPEN} or {@link State#RUNNING} or the player left. It completes on the
+     *         calling thread when the instance takes nobody at the call, on the tick scheduler thread
+     *         when the player left before the move ran, and otherwise where the engine finishes
+     *         setting the instance: the player's tick thread when the landing chunks are loaded,
+     *         the tick scheduler thread when they have to be loaded first
      */
     CompletableFuture<Boolean> move(Player player, Pos at);
 
@@ -129,7 +134,10 @@ public interface ManagedInstance {
         RUNNING,
         /** Ended by the plugin, waiting for it to settle; no more players are moved in. */
         ENDING,
-        /** Evacuated and unregistered, or dropped before it was ever registered. */
+        /**
+         * Closed: no more players are moved in, and the host evacuates and then unregisters it
+         * within its evacuation time limit; or dropped before it was ever registered.
+         */
         CLOSED
     }
 }

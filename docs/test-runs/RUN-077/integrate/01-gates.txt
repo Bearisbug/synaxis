@@ -1,0 +1,20 @@
+run 1: TranslationKeyGateTest tests=2 failures=0 errors=0
+  stdout: translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out
+run 1: ConfigKeyGateTest tests=1 failures=0 errors=0
+  stdout: config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out
+run 2 (NOT_TEXT without synaxis:play): TranslationKeyGateTest tests=2 failures=1 errors=0
+  FAILED everyKeyTheServerCanSendHasTextInBothLanguageFiles() at io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.everyKeyTheServerCanSendHasTextInBothLanguageFiles(TranslationKeyGateTest.java:92)
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (2):
+    en_us.json has no text for synaxis:play (from io.github.bearisbug.synaxis.app.PluginHost, io.github.bearisbug.synaxis.app.scene.SceneService, io.github.bearisbug.synaxis.game.protocol.play.PlayMessages, io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol)
+    zh_cn.json has no text for synaxis:play (from io.github.bearisbug.synaxis.app.PluginHost, io.github.bearisbug.synaxis.app.scene.SceneService, io.github.bearisbug.synaxis.game.protocol.play.PlayMessages, io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol)
+     ==> expected: <true> but was: <false>
+  stdout: translation key gate: 76 keys checked against [en_us.json, zh_cn.json], 16 identifiers left out
+run 3 (NOT_TEXT without synaxis:handshake): TranslationKeyGateTest tests=2 failures=2 errors=0
+  FAILED theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel() at io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel(TranslationKeyGateTest.java:103)
+    org.opentest4j.AssertionFailedError: expected: <[en_us.json has no text for fixture:declared-without-text (from plugin fixture), en_us.json has no text for synaxis:fixture-without-text (from io.github.bearisbug.synaxis.game.fixture.GameClassNamingAKeyWithoutText), zh_cn.json has no text for fixture:declared-without-text (from plugin fixture), zh_cn.json has no text for synaxis:fixture-without-text
+  FAILED everyKeyTheServerCanSendHasTextInBothLanguageFiles() at io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.everyKeyTheServerCanSendHasTextInBothLanguageFiles(TranslationKeyGateTest.java:92)
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (2):
+    en_us.json has no text for synaxis:handshake (from io.github.bearisbug.synaxis.app.HandshakeGate, io.github.bearisbug.synaxis.app.Main, io.github.bearisbug.synaxis.app.PluginHost)
+    zh_cn.json has no text for synaxis:handshake (from io.github.bearisbug.synaxis.app.HandshakeGate, io.github.bearisbug.synaxis.app.Main, io.github.bearisbug.synaxis.app.PluginHost)
+     ==> expected: <true> but was: <false>
+  stdout: translation key gate: 76 keys checked against [en_us.json, zh_cn.json], 16 identifiers left out

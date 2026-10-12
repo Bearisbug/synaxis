@@ -1,0 +1,9 @@
+> Task :protocol:forbiddenImportsCheck
+
+> Task :protocol:compileJava FAILED
+protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/PlayMessages.java:19: warning: [DoNotCallSuggester] Methods that always throw an exception should be annotated with @DoNotCall to prevent calls at compilation time vs. at runtime (note that adding @DoNotCall will break any existing callers of this API).
+    public static PlayMessage read(MsgBuf buf) {
+                              ^
+    (see https://errorprone.info/bugpattern/DoNotCallSuggester)
+  Did you mean '@DoNotCall("Always throws java.lang.UnsupportedOperationException") public static PlayMessage read(MsgBuf buf) {'?
+error: warnings found and -Werror specified

@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" tests="28" skipped="0" failures="26" errors="0" timestamp="2026-10-12T03:50:25.993Z" hostname="Mac.local" time="0.097">
+  <properties/>
+  <testcase name="edge/refused-s2c_hud-33-ops.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.006">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-33-ops.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-33-ops.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.lambda$aRefusedVectorIsMalformed$0(PlayVectorTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="edge/refused-s2c_scene-7-actions.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_scene-7-actions.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_scene-7-actions.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.lambda$aRefusedVectorIsMalformed$0(PlayVectorTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="edge/refused-s2c_hud-17-props.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-17-props.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-17-props.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.lambda$aRefusedVectorIsMalformed$0(PlayVectorTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="edge/refused-s2c_hud-scoreboard-17-rows.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-scoreboard-17-rows.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-scoreboard-17-rows.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.lambda$aRefusedVectorIsMalformed$0(PlayVectorTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="edge/refused-s2c_hud-panel-13-rows.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-panel-13-rows.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-panel-13-rows.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.lambda$aRefusedVectorIsMalformed$0(PlayVectorTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="edge/refused-s2c_hud-panel-5-buttons.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-panel-5-buttons.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-panel-5-buttons.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.lambda$aRefusedVectorIsMalformed$0(PlayVectorTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="edge/refused-s2c_hud-panel-not-center.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-panel-not-center.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-panel-not-center.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.lambda$aRefusedVectorIsMalformed$0(PlayVectorTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="edge/refused-s2c_hud-slot-7.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-slot-7.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-slot-7.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.lambda$aRefusedVectorIsMalformed$0(PlayVectorTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="edge/refused-s2c_hud-value-type-10.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-value-type-10.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-value-type-10.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.lambda$aRefusedVectorIsMalformed$0(PlayVectorTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="edge/refused-s2c_hud-component-2049.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-component-2049.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-component-2049.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.lambda$aRefusedVectorIsMalformed$0(PlayVectorTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="edge/refused-s2c_hud-declared-prop-wrong-type.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-declared-prop-wrong-type.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-declared-prop-wrong-type.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.lambda$aRefusedVectorIsMalformed$0(PlayVectorTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="edge/refused-s2c_hud-op-4.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-op-4.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-s2c_hud-op-4.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.lambda$aRefusedVectorIsMalformed$0(PlayVectorTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="edge/refused-c2s_action-target-3.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: edge/refused-c2s_action-target-3.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: edge/refused-c2s_action-target-3.bin ==&gt; Unexpected exception type thrown, expected: &lt;io.github.bearisbug.synaxis.game.protocol.MalformedMessageException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aRefusedVectorIsMalformed(PlayVectorTest.java:213)
+Caused by: java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.lambda$aRefusedVectorIsMalformed$0(PlayVectorTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="everyFrozenFileIsInTheTablesAndEveryMessageHasTwoVectors()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.006"/>
+  <testcase name="s2c_scene.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:200)
+</failure>
+  </testcase>
+  <testcase name="s2c_hud.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:200)
+</failure>
+  </testcase>
+  <testcase name="s2c_action_result.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:200)
+</failure>
+  </testcase>
+  <testcase name="c2s_scene_ready.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:200)
+</failure>
+  </testcase>
+  <testcase name="c2s_action.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:200)
+</failure>
+  </testcase>
+  <testcase name="edge/s2c_scene.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.0">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:200)
+</failure>
+  </testcase>
+  <testcase name="edge/s2c_hud.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:200)
+</failure>
+  </testcase>
+  <testcase name="edge/s2c_hud-unknown-prop.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:200)
+</failure>
+  </testcase>
+  <testcase name="edge/s2c_hud-unknown-kind.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:200)
+</failure>
+  </testcase>
+  <testcase name="edge/s2c_action_result.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:200)
+</failure>
+  </testcase>
+  <testcase name="edge/c2s_scene_ready.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:200)
+</failure>
+  </testcase>
+  <testcase name="edge/c2s_action.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:200)
+</failure>
+  </testcase>
+  <testcase name="edge/c2s_action-entity.bin" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.001">
+    <failure message="java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the synaxis:play decoder is not written yet
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:21)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest.aFrozenVectorDecodesAndReEncodesByteForByte(PlayVectorTest.java:200)
+</failure>
+  </testcase>
+  <testcase name="theFrozenVectorsAreBoundToThePlayVersion()" classname="io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest" time="0.009"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

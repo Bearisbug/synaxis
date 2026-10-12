@@ -1,0 +1,11 @@
+Run 10: client-fabric test --tests 'io.github.bearisbug.synaxis.game.client.play.*' with counter-proofs.diff applied
+(each changed line guarded by Boolean.getBoolean("proof.never")):
+  (14) PlayClient.java:353, a COOLDOWN for an action of a scene already replaced restarts the new table's cooldown
+  (15) PlayClient.java:377, an ok for a panel button closes the panel even when a newer SET of it came after the click
+77 tests completed, 2 failed:
+  PlayClientTest > aCooldownAnsweringTheSceneBeforeLeavesTheNewTablesKeyFree() at PlayClientTest.java:294
+    expected: <0> but was: <1500>
+  PlayClientTest > anOkForAPanelThatWasSetAgainAfterTheClickLeavesTheNewContentShown() at PlayClientTest.java:363
+    expected: <Entry[owner=rush, widgetId=result, slot=6, order=0, first=1, set=2, receivedNanos=1000000000,
+    content=Panel[...]]> but was: <null>
+Every other test of the 77 passed. Restored with git checkout HEAD -- PlayClient.java.

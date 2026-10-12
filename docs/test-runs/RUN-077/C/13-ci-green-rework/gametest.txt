@@ -1,0 +1,2 @@
+Run the client gametests	Judge the regression by the reports, the ledger and the server log	2026-10-12T08:07:37.9010447Z ok   sessionserver join 5, expected 5
+Run the client gametests	Judge the regression by the reports, the ledger and the server log	2026-10-12T08:07:37.9012115Z client regression: all checks passed

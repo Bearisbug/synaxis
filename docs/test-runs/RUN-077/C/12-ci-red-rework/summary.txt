@@ -1,0 +1,8 @@
+CI round 3 on draft PR #24, head aae05556ce: the two new PlayClientTest tests and the two new Q0c checks, with
+PlayTestHook as it was (its recording took only the SETs as a baseline).
+client-mod run 38220396055: success, 276 tests 0 failed in 25 classes (PlayClientTest 21).
+client-gametest run 38220396035: job rush failure (judge.txt): Q0c FAIL in both reports with exactly the two new
+  problems, "the recording holds 2 readies, not scene 2's alone" and "a recording started late holds 0 SETs,
+  1 results, 1 readies from before it"; Q0a and Q0b PASS. Job gametest success, job p11-smoke success.
+Concurrency run 38220396012: success.
+CI run 38220396021: success.

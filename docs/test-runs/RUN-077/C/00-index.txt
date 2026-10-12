@@ -60,3 +60,26 @@ CI round 2 (head c8a6c7ed67, the implementation) -> 09-ci-green/
   Concurrency run 38216320996: success. CI run 38216320881: success (Check, both 4 tick thread jobs).
   Screenshots: artifact client-gametest-rush of run 38216321013 (14 days), screenshots/0001_play-panel.png and
   0002_play-widgets.png of both launches, 854x480, not committed.
+
+Review rework. Commits: eb06d2431f DESIGN-PLAY v0.8 (PlayTestHook's recording leaves out what the connection
+held when it began and samples once a tick; Q0c checks it; the action bar top is computed), aae05556ce the red
+commit (two PlayClientTest tests, Q0c's two checks), 3bd8f94762 the hook's fix, 4149e4462e SceneReadyProbe's
+Javadoc and rush_judge.py's docstring. Four more local Gradle runs with -Dmaven.repo.local=/tmp/run077/rework-C/m2
+(deleted afterwards); CI on draft PR #24 (base prod/integrate-077), two pushes.
+
+Run 7: :protocol:publishToMavenLocal -Dmaven.repo.local=/tmp/run077/rework-C/m2 (no tests).
+
+Run 8: client-fabric compileJava compileGametestJava test: failed at compileGametestJava, the new local variable
+  of Q0c clashed with the existing "again" in RushClientGameTest.q0c(); renamed "late". No test ran.
+
+Run 9 -> 10-client-local/
+  client-fabric compileJava compileGametestJava test --tests 'io.github.bearisbug.synaxis.game.client.play.*'
+  on the tree of 4149e4462e: 77 tests 0 failed (PlayClientTest 21, the rest as in run 4).
+
+Run 10 -> 11-client-counter-proofs-3/
+  Two counter-proofs at once (counter-proofs.diff): (14) a cooldown for the scene before restarts the new
+  table's cooldown, (15) an ok closes a panel set again after the click. 77 tests, 2 failed, each on its new
+  test (summary.txt). Restored with git checkout HEAD --.
+
+CI round 3 (head aae05556ce, new checks with the old hook) -> 12-ci-red-rework/
+CI round 4 (head 4149e4462e, the fixed hook) -> 13-ci-green-rework/

@@ -1,0 +1,12 @@
+CI round 4 on draft PR #24, head 4149e4462e: PlayTestHook's recording takes the connection's last result and
+last readiness as a baseline as well as its SETs.
+client-mod run 38221157177: success, 276 tests 0 failed in 25 classes; verifyModJar "minecraft=26.2, 108
+  entries, ships META-INF/jars/protocol-dev.jar".
+client-gametest run 38221157191: job rush success in 5 min 34 s (judge.txt: rush judge: PASS (2 reports, 0
+  problems)); dev launch 164 s, production jar launch 28 s; both Q0c: probe sent [Sent[sceneSeq=2, ...]] only,
+  "a recording started after all this holds 0 SETs, 0 results, 0 readies"; the reports are rush-dev.txt and
+  rush-production.txt, the fixture's action lines fixture-actions.txt (no ERROR in its log). Job gametest
+  success (gametest.txt), job p11-smoke success (p11-smoke.txt). Unit tests of rush_judge.py: 10 tests OK.
+Concurrency run 38221157205: success.
+Screenshots: artifact client-gametest-rush of run 38221157191 (14 days), not committed.
+CI run 38221157180: success (Check, both 4 tick thread jobs).

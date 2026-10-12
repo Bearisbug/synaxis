@@ -1,0 +1,22 @@
+diff --git a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
+index a96dd29f32..8fbf08da42 100644
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
+@@ -350,7 +350,7 @@ public final class PlayClient {
+                 if (current) cool(sent.slot(), now, result.cooldownMs());
+             }
+             case COOLDOWN -> {
+-                if (current) cool(sent.slot(), now, result.cooldownMs());
++                if (current || !Boolean.getBoolean("proof.never")) cool(sent.slot(), now, result.cooldownMs());
+                 notices.accept(hasReason ? said : cooldownText(result.cooldownMs()));
+             }
+             case REJECTED -> {
+@@ -374,7 +374,7 @@ public final class PlayClient {
+         switch (code) {
+             case OK -> {
+                 final Entry panel = widgets.get(sent.panel());
+-                if (panel != null && panel.set() == sent.panelSet()) dismissed.put(sent.panel(), panel.set());
++                if (panel != null && (panel.set() == sent.panelSet() || !Boolean.getBoolean("proof.never"))) dismissed.put(sent.panel(), panel.set());
+             }
+             case REJECTED -> showOnPanel(sent, said != null ? said : Component.translatable(REJECTED_KEY));
+             case COOLDOWN -> showOnPanel(sent, said != null ? said : cooldownText(cooldownMs));

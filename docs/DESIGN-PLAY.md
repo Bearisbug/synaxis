@@ -23,6 +23,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-10-12 | v0.2 | RUN-077 组 P（分支 `prod/r077-P`，基于 `prod/r077-docs` `184ad30370`）：`synaxis:play` v1 的线上部分落地，回写类名、解码口径与向量格式，消息布局与小部件目录未改。**`API-PLAY-002`** 加「实现」一条：`:protocol` 新包 `game.protocol.play`（`module-info` 导出），`PlayProtocol` 给通道名与 `version()`（当前 1），`PlayMessages` 按 `msg_id` 分发，v1 不认识的 `0x80`、`0x83`、`0x85` 按未知 `msg_id` 丢弃、不按畸形；`PlayMessage` 加进 `Message` 的 permits；写明各字段的解码口径（`scene_seq` 的下限、动作槽 0～5 不重复、`CLEAR_OWNER` 的 `widget_id` 是空串、`camera`、`cursor` 与结果码按原值保留、`cooldown_ms` 超过 600,000 按畸形）与 manifest 的两行。**`API-PLAY-003`** 回写 `Widget`、`PropValue`、`EncodedComponent`：值类型 8、9 的条数上限 16 与 4（count 先按它校验），已知种类的已知属性类型不符按畸形，未知种类整个保留、由客户端丢弃。**§24** 写清 `play-vectors/` 的 manifest、digest 的范围与 `refused-` 向量，`component/` 子目录不进 digest；翻译键门禁一条改为 `NOT_TEXT` 已登记 `synaxis:play`。**`docs/DESIGN-M2.md` `API-M2-001` 的 `synaxis:play` 一条由本会话直接改**（该分册 v0.66；RUN-077 的文档归属把该分册里插件宿主与线协议的行交给本会话）：§6.7.1 S1 行、§26 S1 行的退出条件、`ADR-PLAY-013` 的 Decision 与 §28.3 第 5 行随之改，不再在 `docs/DESIGN-PROD.md` §28.3 补登记交接行 | Bearisbug |
 | 2026-10-12 | v0.1 | 用户签字：状态改为已签字，§18 的 ADR 除 `ADR-PLAY-009`、`ADR-PLAY-010` 外记 Accepted；§28.1 的 D1（按通道协商版本）、D5（模组语言文件加 fallback）、D9（先做最小档 S1）拍板，都选默认选项，其余各项按默认。正文的设计内容未改。**同版补记**（RUN-077 文档基线，分支 `prod/r077-docs`，基于 `main` `f9e002917b`）：§28.3 交光照会话的前四行（`docs/DESIGN.md` §1「关联」行与 §26 里程碑表、`CLAUDE.md` 功能开发纪律段、`docs/DESIGN-M3.md` §28.1 与关联行）对照 `main` `f9e002917b` 逐行核过，标为已完成；§1 说明段「本分册还没有登记进 `docs/DESIGN.md`」一句随之改为已登记。设计内容未改 | Bearisbug |
 | 2026-10-11 | v0.1 | 初稿。用户 2026-10-11 要求「服务端核心能完全正常游玩之后（RUN-073、RUN-075），给出一套完整的玩法架构体系」。三份方案（运行时优先、内容数据驱动、协议优先）经三名评委打分，两票选协议优先；本稿以协议优先为主干，嫁接运行时方案的托管生命周期、形态取值表、背包策略与票据意图字段，嫁接内容方案的能力回退、活动快照、回调兜底与预建实例池的判据（取舍见 `ADR-PLAY-001`）。样板分最小档 S1 与完整档 S2，默认先做 S1：10～13 天，不等任何签字项，`synaxis:play` 在 W1 之前自带版本、不进握手（`ADR-PLAY-013`，§28.1 D9）。草稿，待用户签字 | Bearisbug |
 
@@ -406,7 +407,7 @@ interface ClientModule {
 
 | 档 | 验证到的部分 | 不验证 | 前置与签字 | 工作量（自估） |
 | --- | --- | --- | --- | --- |
-| S1 最小档（默认，`REQ-PLAY-008`） | L1 场景层：场景切换、`synaxis:play` v1 的四种小部件、动作的一问一答与本地加服务端两道冷却、`TIMER` 外推；托管实例的整条生命周期：按需建、移入、开局、结束、结算、撤离、注销、台账；`Round` 驱动一局；真客户端剧本与 judge | 按通道协商与授予表、v2 小部件与通知、对其他玩家生效的动作、限时活动、数据段、多局并发 | 不依赖 W0～W3，也不依赖 §28.1 除 D9 以外的任何签字项；握手与 `schema_version` 不动。另有一项登记：`docs/DESIGN-M2.md` `API-M2-001` 的通道清单要加 `synaxis:play` 一条（§28.3），默认照分册归属由光照会话改；S1 合入时那一行还没改，就先以本分册 `API-PLAY-002` 为准，S1 合入的同一个提交在 `docs/DESIGN-PROD.md` §28.3 补登记交接行，S1 不等那一行改完 | 10～13 天（§6.7.7） |
+| S1 最小档（默认，`REQ-PLAY-008`） | L1 场景层：场景切换、`synaxis:play` v1 的四种小部件、动作的一问一答与本地加服务端两道冷却、`TIMER` 外推；托管实例的整条生命周期：按需建、移入、开局、结束、结算、撤离、注销、台账；`Round` 驱动一局；真客户端剧本与 judge | 按通道协商与授予表、v2 小部件与通知、对其他玩家生效的动作、限时活动、数据段、多局并发 | 不依赖 W0～W3，也不依赖 §28.1 除 D9 以外的任何签字项；握手与 `schema_version` 不动。`docs/DESIGN-M2.md` `API-M2-001` 的通道清单加 `synaxis:play` 一条，由本会话直接改（该分册 v0.66，§28.3） | 10～13 天（§6.7.7） |
 | S2 完整档（`REQ-PLAY-018`） | S1 全部，加授予表与必需通道、v2 的四种小部件与 `S2C_NOTICE`、`rush:pulse` 经 `runOn` 推开其他玩家、限时活动的开局快照、数据段与 `commitTogether`、同进程 4 局 | — | W0～W3（§26）；W1 要 §28.1 D1 签字，W3 要 D10 签字 | 在 S1 之上 9～12 天（§26） |
 
 #### 6.7.2 规则
@@ -671,6 +672,7 @@ erDiagram
   - `component` 的编码：varint 长度加字节，内容是引擎 `NetworkBuffer.COMPONENT`（`network/NetworkBuffer.java:82`）写出的原版网络格式，单个 ≤ 2,048 B。`:protocol` 零依赖，只把它当不透明字节；客户端用原版的组件流编解码器读。这一点未核实，S1 的第一步就核：服务端经 `S2C_HUD` 下发一个 `TEXT`，客户端解出来交给最小的 `PlayHud` 画出，CI 上截图并比对解出的与发出的相同（§26 S1 行）。读不出时改用引擎的 JSON 编码 `NetworkBuffer.JSON_COMPONENT`（`NetworkBuffer.java:83`），客户端按 JSON 解析，线上仍是「varint 长度加字节」，只改编码，S1 多约 0.5 天（§28.2）。
   - 动作分发顺序（宿主）：`scene_seq` 不等于当前场景 → `stale-scene`；超出每秒 10 次 → `rate-limited`；动作 id 不在当前场景动作表、也不是 `PANEL` 按钮 → `unknown-action`；冷却未到 → `cooldown`；否则在发送者所属的 tick 线程上调插件的 handler（`API-PLAY-005`），按返回值回 `ok` 或 `rejected`。
   - 下行：`S2C_SCENE` 与小部件改动在玩家的 `PlayerTickEndEvent` 里从同一个待发队列按序发出（`event/player/PlayerTickEndEvent.java`，§6.4.3）。`S2C_GRANTS` 由两件事里后发生的那一件发：首次出生时握手已判定就发；握手判定时玩家已首次出生就发。首次出生在 tick 调度线程的串行段里，玩家这时还没有 tick 线程（`PlayerStateSection.java:161-166` 的注释；`ConnectionManager#tick` 先 `updateWaitingPlayers`，`ConnectionManager.java:642`）；握手判定在解释 configuration 包队列时，通常在同一个方法的末尾（`:661`），玩家已离开 configuration 时留在队列里的包由哪条线程解释未核实。按连接一个状态字，两侧各自比较并交换，不依赖是哪条线程，保证恰好发一次；没发 hello 的连接（核心模式下的工具）不发。
+  - 实现（S1，RUN-077 组 P）：`:protocol` 包 `io.github.bearisbug.synaxis.game.protocol.play`，`module-info` 导出它。`PlayProtocol.CHANNEL` 是整串 `synaxis:play`，版本是静态方法 `PlayProtocol.version()`（§6.4.7，当前 1）；`PlayProtocol` 另给两个写入侧上限 `MAX_MESSAGE_BYTES`（8,192）与 `MAX_WIDGET_BYTES`（4,096），由宿主编码时校验，解码器不判。五条消息是 record `S2CScene`、`S2CHud`、`S2CActionResult`、`C2SSceneReady`、`C2SAction`，同属 sealed 接口 `PlayMessage`，它扩展 `Message`，`Message` 的 permits 随之加一项。`PlayMessages.read` 读 `msg_id` 分发；`0x80`、`0x83`、`0x85` 在 v1 里抛 `UnknownMessageException`（丢弃加 WARN，不断线），W1、W2 的新消息到了 v1 的客户端因此不会断线。component 是 `EncodedComponent`：varint 长度加至多 2,048 B 的不透明字节。解码口径：`S2C_SCENE` 与 `C2S_SCENE_READY` 的 `scene_seq` ≥ 1，`C2S_ACTION` 的 `scene_seq` ≥ 0（还没进过场景的连接点 `PANEL` 按钮时带 0）；`action_seq` ≥ 0；`scene_id`、`action_id`、`owner` 1～64 B；SET 与 REMOVE 的 `widget_id` 1～32 B，`CLEAR_OWNER` 的 `widget_id` 写空串，读到非空按畸形；动作表的 `slot` 在 0～5 且不重复；`cooldown_ms` 在 0～600,000；`op` 不是 1～3、`target` 不是 0～2 都按畸形。`camera`、`cursor` 与结果码 `code` 按收到的 u8 原样保留：v1 只认 `camera=0`、`cursor=0` 与结果码 0～5，其余值由客户端按 §9 退回（相机与光标退回 0，结果码经 `ActionResultCode.fromWireId` 按 `rejected` 显示），不按畸形。违反上述口径一律抛 `MalformedMessageException`，宿主映射为 `synaxis:protocol-error`（`docs/DESIGN-M2.md` `API-M2-001`）。manifest 的格式见 §24。
 
 - **`API-PLAY-003` 小部件目录与 TLV 编码（`:protocol` 包 `game.protocol.play`，v1 随 S1，v2 随 W2）** — 实现 `REQ-PLAY-004`
   - `widget = kind u8, slot u8, order varint, props count(≤16) × {prop_id varint, type u8, value}`；`slot`：0 `TOP_LEFT`、1 `TOP_CENTER`、2 `TOP_RIGHT`、3 `LEFT`、4 `RIGHT`、5 `BOTTOM`、6 `CENTER`。
@@ -691,6 +693,8 @@ erDiagram
   - 值类型 1～9 在 v1 就全部定义（v2 的四种小部件只用到已有的值类型），v2 不加值类型。
 
   - 客户端遇到未知 `kind` 丢弃该小部件并记 WARN，不断线；未知 `prop_id` 按类型跳过。
+
+  - 实现（S1，RUN-077 组 P）：小部件是 record `Widget(kind, slot, order, props)`，属性是 `Widget.Prop(id, value)`，九种值类型是 sealed 接口 `PropValue` 的九个 record（`VarInt`、`VarLong`、`F32`、`Str`、`Component`、`Bool`、`Vec3f`、`Rows`、`Buttons`，`type()` 即上面的类型号）。值类型层的上限：string ≤ 64 B，component ≤ 2,048 B，rows 每个值至多 16 行（行的 `value` ≤ 32 B），buttons 至多 4 个（`action_id` 1～64 B），bool 与 `highlight` 只能是 0 或 1，f32 与 vec3f 须有限；count 先按这些上限与剩余字节校验。v1 认识的种类（1、2、4、6）上，表里列出的属性带了别的值类型按畸形；表里没有的 `prop_id` 照类型读过、原样保留，客户端跳过它，给已有种类加属性因此不升版。未知 `kind`（含 v2 的 3、5、7、8）的小部件整个读出、原样保留，由客户端丢弃并记 WARN。`slot` 超出 0～6、`PANEL` 的 `slot` 不是 `CENTER`、`PANEL` 的 rows 超过 12 都按畸形。`Widget.text`、`timer`、`scoreboard`、`panel` 四个工厂方法按上表填 v1 四种的属性。
 
 - **`API-PLAY-004` 通道带版本注册（`:plugin-api` `PluginChannels` 加重载，W1）** — 实现 `REQ-PLAY-001`、`REQ-PLAY-012`
 
@@ -1383,7 +1387,7 @@ flowchart LR
 
 - **`ADR-PLAY-013` 样板分两档，先做最小档 S1；S1 的 `synaxis:play` 自带版本、不进握手** — Status: Accepted（用户 2026-10-12 签字，§28.1 D9 已拍板）
   - Context：完整样板依赖 W0→W1→W2→W3 串行，合计 15.5～21 天；W1 还卡在 D1 签字与 `docs/DESIGN-M2.md` §8 的归属确认上（§28.2）。用户要的是约 5 分钟的最小样板，端到端验证架构（服务端规则加客户端 HUD）。
-  - Decision：S1（§6.7.1）：`synaxis:play` v1 的五条消息与四种小部件、一个动作键、同时 1 局、不写数据段、没有活动、不做报价与授予；托管实例做全。`synaxis:play` 照 `synaxis:farview` 的先例自带版本，向量放单独的 `play-vectors/`，不计入 `schema_version`（`docs/DESIGN-M2.md` `API-M2-001` 的 `synaxis:farview` 一条；`protocol/src/test/resources/farview-vectors/manifest.txt:1-2`）。`docs/DESIGN-M2.md` `API-M2-001` 要加 `synaxis:play` 一条，默认由光照会话照分册归属改；S1 合入时还没改就先以本分册 `API-PLAY-002` 为准，合入的同一个提交在 `docs/DESIGN-PROD.md` §28.3 补登记（§6.7.1）。S2 在 W1～W3 之后补齐。
+  - Decision：S1（§6.7.1）：`synaxis:play` v1 的五条消息与四种小部件、一个动作键、同时 1 局、不写数据段、没有活动、不做报价与授予；托管实例做全。`synaxis:play` 照 `synaxis:farview` 的先例自带版本，向量放单独的 `play-vectors/`，不计入 `schema_version`（`docs/DESIGN-M2.md` `API-M2-001` 的 `synaxis:farview` 一条；`protocol/src/test/resources/farview-vectors/manifest.txt:1-2`）。`docs/DESIGN-M2.md` `API-M2-001` 的 `synaxis:play` 一条由本会话直接改（该分册 v0.66，§6.7.1）。S2 在 W1～W3 之后补齐。
   - Alternatives：
     - 直接做完整样板：第一个可玩版本最早 15.5 天后，且卡在 D1 上。
     - S1 按现行单轴规则把 `schema_version` 升到 2：服务端能直接拒掉旧整合包；代价是整合包与全部进程同时发布、多换一次 ABI baseline（`SCHEMA_VERSION` 常量值变化）、和阶段 6b 原定同一 PR 把 `schema_version` 升到 2 的计划撞号（`docs/DESIGN-M2.md` §28.2 L1460），W1 还得再升一次。S1 只有 `rush` 用 `synaxis:play`，旧整合包的损失只落在 R1 环里进 `rush` 的人身上，不值得为它付这三样。
@@ -1697,9 +1701,9 @@ flowchart LR
 
 ## 24. 契约同步与防漂移机制
 
-- 线协议：每条通道一个向量目录，各带 manifest（digest 覆盖本目录全部 `.bin` 并绑本通道版本）；`ProtocolVectorTest` 是期望值的事实源，客户端 `FrozenVectorTest` 经系统属性 `synaxis.vectors.dir` 读同一组目录，逐目录读 manifest、不写死条数（§6.4.7）。
+- 线协议：每条通道一个向量目录，各带 manifest（digest 覆盖本目录全部 `.bin` 并绑本通道版本）；`ProtocolVectorTest` 是期望值的事实源，客户端 `FrozenVectorTest` 经系统属性 `synaxis.vectors.dir` 读同一组目录，逐目录读 manifest、不写死条数（§6.4.7）。S1 起的 `protocol/src/test/resources/play-vectors/`：`manifest.txt` 有 `play_version=<n>` 与 `digest=<十六进制>` 两行，digest 是根目录与 `edge/` 下全部 `.bin` 按相对路径排序后逐个喂进「路径加内容」的 SHA-256（与 `vectors/` 同一算法），`play_version` 须等于 `PlayProtocol.version()`。根目录每条消息一个常规向量；`edge/` 放同名的边界向量（计数取满、VarInt 取满五字节）、另外几条可接受的边界向量（未知属性、未知种类），以及文件名以 `refused-` 开头、两端都必须按畸形拒收的向量。期望值写在服务端的 `PlayVectorTest` 里，客户端的 `PlayFrozenVectorTest` 经系统属性 `synaxis.play-vectors.dir` 读同一目录，按 manifest 判 `play_version` 与 digest，再逐个解码。向量变了就改 digest；布局、小部件种类或值类型变了，还要在同一个改动里升 `PlayProtocol.version()` 与 `play_version`（加属性不升，§6.4.1）。`component/` 子目录放组件解码的冻结字节（§26 S1 行的第一步），不进 digest、不绑 `play_version`。
 - 插件面：`:plugin-api` 与 `:protocol` 接 ABI 门（baseline `v0.3.0`，`docs/DESIGN-M2.md` §24）；新接口在第一次提交时就标 `@ApiStatus.NonExtendable`（补标本身判破坏）；通道版本号用静态方法，不写成常量。
-- 翻译：插件的键在 `translationKeys()` 里声明，`TranslationKeyGateTest` 逐个核对模组两份语言文件；宿主新增的 `synaxis:client-mod-outdated`、`synaxis:action-cooldown` 是 `synaxis:` 常量，门禁自动扫到。门禁把整串形如 `synaxis:[a-z0-9_./-]+` 的字符串都当作翻译键（`TranslationKeyGateTest.java:50`），所以新通道名 `synaxis:play` 要照 `synaxis:handshake` 那一行登记进非文本名单 `NOT_TEXT`（`:56`）；`rush:` 命名空间的维度名前缀、动作 id、日历条目 id 不在门禁的扫描范围里。§28.2 退路里的维度类型 `synaxis:lobby` 真要加时同样登记。
+- 翻译：插件的键在 `translationKeys()` 里声明，`TranslationKeyGateTest` 逐个核对模组两份语言文件；宿主新增的 `synaxis:client-mod-outdated`、`synaxis:action-cooldown` 是 `synaxis:` 常量，门禁自动扫到。门禁把整串形如 `synaxis:[a-z0-9_./-]+` 的字符串都当作翻译键（`TranslationKeyGateTest.java:50`），所以新通道名 `synaxis:play`（`PlayProtocol.CHANNEL`）照 `synaxis:handshake` 那一行登记在非文本名单 `NOT_TEXT` 里（`:56`，RUN-077 组 P 加）；`rush:` 命名空间的维度名前缀、动作 id、日历条目 id 不在门禁的扫描范围里。§28.2 退路里的维度类型 `synaxis:lobby` 真要加时同样登记。
 - 配置键：`synaxis.rush.*` 与 `synaxis.play.calendar` 登记进 `ConfigFile.KEYS`，配置键门禁核对。
 - 模块边界：`:game-rush`、`:play-kit` 加进 `architecture-tests` 的依赖；包名在 `io.github.bearisbug.synaxis.game..` 下。新包要加进模块的 `exports`：`plugin-api/src/main/java/module-info.java` 加 `plugin.play` 与 `plugin.instance`，`protocol/src/main/java/module-info.java` 加 `game.protocol.play`（两个文件今天各只导出一个包）。
 - 客户端代码边界：judge 断言 `client-fabric/src/main/java` 下没有样板专属代码；§26「各玩法专属客户端代码量」表随每个新玩法登记。
@@ -1720,7 +1724,7 @@ flowchart LR
 
 | 波 | 内容 | 退出条件（验证） | 估时（自估） |
 | --- | --- | --- | --- |
-| S1 最小样板（默认，§28.1 D9） | `REQ-PLAY-008`；`REQ-PLAY-003` 的 `enter`、`leave`、`currentScene`、`hud`、`onAction`；`REQ-PLAY-004` 的 v1 四种小部件；`REQ-PLAY-005`；`REQ-PLAY-006`；`REQ-PLAY-007` 的 `Round`、`LocalQueue`、`Countdown`；`synaxis:play` v1 与 `play-vectors/`；客户端 `PlayModule` 的 v1 部分 | 第一步：服务端经 `S2C_HUD` 下发一个 `TEXT`（带一个参数与颜色样式的翻译键），客户端用原版的组件流编解码器解出来、由最小的 `PlayHud` 画出，CI gametest 截图并比对解出的与发出的相同，过了再铺开四种小部件（读不出时按 `API-PLAY-002` 改 JSON 编码，多约 0.5 天）；§19 中 S1 涉及的各层全绿；job `rush`（S1 剧本）两次启动全部 PASS；job `gametest` R1～R8 与可玩项全绿；合入的同一个提交在 `docs/DESIGN-PROD.md` §28.3 登记 `API-M2-001` 加 `synaxis:play` 一行（§6.7.1） | 10～13 天（§6.7.7） |
+| S1 最小样板（默认，§28.1 D9） | `REQ-PLAY-008`；`REQ-PLAY-003` 的 `enter`、`leave`、`currentScene`、`hud`、`onAction`；`REQ-PLAY-004` 的 v1 四种小部件；`REQ-PLAY-005`；`REQ-PLAY-006`；`REQ-PLAY-007` 的 `Round`、`LocalQueue`、`Countdown`；`synaxis:play` v1 与 `play-vectors/`；客户端 `PlayModule` 的 v1 部分 | 第一步：服务端经 `S2C_HUD` 下发一个 `TEXT`（带一个参数与颜色样式的翻译键），客户端用原版的组件流编解码器解出来、由最小的 `PlayHud` 画出，CI gametest 截图并比对解出的与发出的相同，过了再铺开四种小部件（读不出时按 `API-PLAY-002` 改 JSON 编码，多约 0.5 天）；§19 中 S1 涉及的各层全绿；job `rush`（S1 剧本）两次启动全部 PASS；job `gametest` R1～R8 与可玩项全绿；`docs/DESIGN-M2.md` `API-M2-001` 已有 `synaxis:play` 一条（该分册 v0.66，§6.7.1） | 10～13 天（§6.7.7） |
 | W0 前置 | `REQ-PLAY-010` 调度器出列；`REQ-PLAY-009` 准入冲突拒启；`REQ-PLAY-011` 的 §7 能力表 | server-app 单测（任务表长度、冲突拒启）；`./gradlew check` 绿 | 1 天 |
 | W1 协议 | `REQ-PLAY-001`、`REQ-PLAY-002`、`REQ-PLAY-012` 的通道注册、`ClientModule`；`schema_version` 1 → 2；向量分目录；删 login 形态及其连带（`API-PLAY-001` 列的各项）；`:loadtest` 的 Bot 与 `probe.py` 跟着改 hello，报 `:protocol` 定义的全部带版本通道（含玩法模式的两条必需通道），`probe.py` 加 `--offer`（`API-PLAY-001`）；打新 ABI baseline tag | 向量两端对拍；`probe.py` 的 `handshake`、`bad-schema` 与 `echo --channel hello:echo` 照旧通过，`handshake --offer synaxis:play=1-1` 在玩法模式下以 `synaxis:client-mod-outdated` 被拒；job `gametest` R1～R8 与可玩项全绿（证明 RTS 没变）；需 §28.1 D1 签字 | 3～4 天 |
 | W2 场景层补齐 | `synaxis:play` v2：`REQ-PLAY-004` 的 `BAR`、`COUNTER`、`MARKER`、`PROMPT`，`S2C_NOTICE`、`S2C_SCENE_LEAVE`；`REQ-PLAY-003` 的 `caps`、相机降级、叠加者小部件；`EVT:play_traffic` | 单测与 v2 向量；fallback 显示与 `ActionKeys` 默认键核对 | 2～3 天 |
@@ -1797,7 +1801,7 @@ N/A — 本分册是草稿，没有任何部分上线。W3 合入且 R2 运行�
 | `docs/DESIGN.md` | §26 里程碑表 | 加一行「玩法架构 \| 见 `docs/DESIGN-PLAY.md` \| 见该分册 §26 \| 见该分册 §26」，表后一段补「按能力划范围」 | 已完成（`main` `f9e002917b`：`docs/DESIGN.md` v0.46） |
 | `CLAUDE.md` | 「功能开发纪律」段 | 分册清单加 `docs/DESIGN-PLAY.md` 与它的范围句 | 已完成（`main` `f9e002917b`） |
 | `docs/DESIGN-M3.md` | §28.1 L3765 Open Question、L12「关联」行 | L3765 的「暂名 DESIGN-PLAY……main 上还没有」改为指向本分册 §6.5 MMO 的分阶段规则与 §28.1 D3 的签字状态；关联行加本分册 | 已完成（`main` `f9e002917b`：`docs/DESIGN-M3.md` v0.48；该版多一行变更记录，L3765 那一行现在是 L3766） |
-| `docs/DESIGN-M2.md` | `API-M2-001` 通道清单 | 加 `synaxis:play` 一条：宿主保留命名空间，自带版本、单独的向量目录，写法照同一条里的 `synaxis:farview`，契约见本分册 `API-PLAY-002` | 默认光照会话（照分册归属，§28.2 那一条 Open Question 确认前都按它）。S1 合入时还没改就先以本分册 `API-PLAY-002` 为准，S1 合入的同一个提交在 `docs/DESIGN-PROD.md` §28.3 登记交接行 |
+| `docs/DESIGN-M2.md` | `API-M2-001` 通道清单 | 加 `synaxis:play` 一条：宿主保留命名空间，自带版本、单独的向量目录，写法照同一条里的 `synaxis:farview`，契约见本分册 `API-PLAY-002` | 本会话直接改（RUN-077 的文档归属：`docs/DESIGN-M2.md` 里插件宿主与线协议的行归本会话）；已完成（`docs/DESIGN-M2.md` v0.66，RUN-077 组 P），同一版的 §24 线协议条写上 `play-vectors/` |
 | `docs/DESIGN-M2.md` | §8「演进与弃用」、握手布局；§24 向量条；§28.2 L1491、L1460；§28.3 ① | 按 `ADR-PLAY-003`、`ADR-PLAY-006` 与 §28.1 D1、D2 的签字结果改 | 归属待确认（§28.2） |
 | `docs/DESIGN-M2.md` | §28.2 L1476 技术债（握手两条阶段路径收敛） | 随 W1 删 login 形态：按该行自己列的各项改（`ADR-M2-010` 转 Accepted、`API-M2-002` 的「阶段」行、§14 两处括注、§17 `handshake.await` 行），该行转已决 | 归属待确认（§28.2）；W1 合入前 |
 | `docs/DESIGN-PROD.md` | `ADR-PROD-017`、`API-PROD-031` 与 §28.3 里写着「尚未建」的三处 | 改为指向本分册 | 本会话；本分册签字后 |

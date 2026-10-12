@@ -1,5 +1,9 @@
 package io.github.bearisbug.synaxis.game.client.gametest.play;
 
+import io.github.bearisbug.synaxis.game.client.SynaxisClientMod;
+import io.github.bearisbug.synaxis.game.client.play.PlayClient;
+import io.github.bearisbug.synaxis.game.client.play.PlayHud;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -114,20 +118,38 @@ public final class PlayTestHook implements ClientModInitializer {
     }
 
     /**
-     * The scene; on the client thread. The mod has no scene mirror yet.
+     * The scene; on the client thread.
      *
-     * @return null
+     * @return the scene, null before the connection's first {@code S2C_SCENE}
      */
     static @Nullable SceneSeen scene() {
-        return null;
+        final PlayClient.Scene scene = play().scene();
+        return scene == null ? null : new SceneSeen(scene.seq(), scene.id(), scene.title());
     }
 
     /**
-     * The {@code TEXT}s and what the HUD draws for each; on the client thread. The mod has no scene mirror yet.
+     * The {@code TEXT}s and what the HUD draws for each; on the client thread.
      *
-     * @return none
+     * @return them top to bottom, none before the connection's first scene
      */
     static List<TextSeen> texts() {
-        return List.of();
+        final PlayClient play = play();
+        final List<Component> lines = PlayHud.lines(play);
+        final List<PlayClient.Text> texts = play.texts();
+        final List<TextSeen> seen = new ArrayList<>();
+        for (int i = 0; i < lines.size(); i++) {
+            seen.add(new TextSeen(texts.get(i).widgetId(), texts.get(i).text(), lines.get(i).getString()));
+        }
+        return seen;
+    }
+
+    private static PlayClient play() {
+        try {
+            final Field field = SynaxisClientMod.class.getDeclaredField("PLAY");
+            field.setAccessible(true);
+            return (PlayClient) field.get(null);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("SynaxisClientMod.PLAY is not readable; the play hook reads it by reflection", e);
+        }
     }
 }

@@ -1,0 +1,69 @@
+RUN-077 group I: the managed play instances of the host, InstanceRegistry (branch prod/r077-I, base
+prod/integrate-077 3cd20ff777). Commits: 0d4666f259 DESIGN-PLAY v0.6, 178b9d1aa6 tests against a stub
+of ManagedInstanceImpl, c1a1c92740 implementation, 28a2c31cbc six tests from the adversarial review,
+2205a6dbfe DESIGN-PLAY v0.6 rework, 9d410b7479 implementation rework. Local Gradle through
+~/.claude/r077/gradle.zsh (JDK 25, --max-workers=2 --no-daemon --init-script
+gradle/init/aliyun-mirror.init.gradle.kts, the heavy lock taken for each run only). Ten Gradle runs in
+all, none with a database or Redis. Each directory holds the JUnit XML reports of that run and
+summary.txt, one line per test with the failure message and the first frame in the test class, plus
+the "§15 readings" line ManagedInstanceTickThreadTest prints. The five classes: ManagedInstanceIntegrationTest,
+ManagedInstanceTickThreadTest, ManagedInstanceTransitionsTest, EvacuationIntegrationTest (package
+app.instance) and PluginHostInstancesIntegrationTest (package app). The three regression classes:
+PluginHostPlayWiringIntegrationTest, PluginHostIntegrationTest, CoreModeIntegrationTest.
+Strict 4 threads = -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true; strict grid adds
+-Dsynaxis.thread-provider=grid.
+
+Run 1 -> 01-red/
+  Code: 178b9d1aa6 (InstanceRegistry is group K's empty implementation, ManagedInstanceImpl a stub).
+  The five classes: 38 tests, 38 failed. testNamingCheck and forbiddenImportsCheck pass.
+
+Run 2 -> 02-green/
+  Code: c1a1c92740, default mode. The five classes (38) and the three regression classes (28): 66 tests,
+  0 failures. §15: create 680 us, registration 119 us, prepare_ms 49.
+
+Run 3 -> 03-counter-proofs-a/
+  Code: c1a1c92740 with the three edits of counter-proofs.diff at once. Reds, one set per edit:
+    ManagedInstanceImpl.java:138 open() in create on the tick scheduler thread
+      -> ManagedInstanceTickThreadTest, all 4 (:153, :190, :226, and :106 after the 10 s wait)
+    PluginHost.java:328 no reclaim after a failed onEnable
+      -> PluginHostInstancesIntegrationTest.theInstancesOfAPluginWhoseOnEnableThrewAreTakenBack at :109
+    ManagedInstanceImpl.java:306 the settle timeout never fires
+      -> ManagedInstanceTransitionsTest.anInstanceNotSettledInTimeIsClosedByTheHost at :249
+      -> EvacuationIntegrationTest.theSettleTimeoutSendsThePlayersToTheFallbackExit at :183
+  Everything else green. Reverted with git checkout -- server-app/src/main.
+
+Run 4 -> 04-counter-proofs-b/
+  Code: c1a1c92740 with the two edits of counter-proofs.diff at once:
+    ManagedInstanceImpl.java:119, :140 no relight on either path
+      -> ManagedInstanceIntegrationTest.onTheStartupThreadCreateComesBackOpenWithTheWholeMapLit at :84
+      -> ManagedInstanceTickThreadTest.onTheTickSchedulerCreateComesBackPreparingAndOpensInALaterSerialPart at :168
+    ManagedInstanceImpl.java:55 a forced close leaves PREPARING alone
+      -> ManagedInstanceTickThreadTest.theShutdownDropsAPreparingInstanceAndItIsNeverRegistered at :198
+  Everything else green. Reverted with git checkout -- server-app/src/main.
+
+Run 5 -> 05-strict-4-threads/
+  Code: c1a1c92740 restored, strict 4 threads. 66 tests, 0 failures. §15: 860 us, 203 us, 49.
+
+Run 6 -> 06-strict-grid/
+  Code: c1a1c92740 restored, strict grid. 66 tests, 0 failures. §15: 654 us, 183 us, 49.
+
+Run 7 -> 07-red-rework/
+  Code: c1a1c92740 with the tests of 28a2c31cbc, default mode, the three classes that got new tests.
+  In those three classes 32 tests, 5 failed, all of them new:
+    EvacuationIntegrationTest.anExitThatGivesNothingKicksThePlayer at :223 NullPointerException
+    EvacuationIntegrationTest.aPlayerWhoArrivesWhileTheInstanceClosesGetsTheExitToo at :254 (10 s wait)
+    ManagedInstanceTickThreadTest.theStartupThreadIsAnyOtherThreadOnceTheProcessRuns at :267
+    ManagedInstanceTransitionsTest.aPluginTakenBackCreatesNoMoreInstances at :318
+    ManagedInstanceTransitionsTest.theClosingEventComesBeforeTheUnregistration at :305
+  EvacuationIntegrationTest.aForcedCloseFromTheClosingEventFinishesTheEvacuation passes on this code too.
+  §15: 944 us, 86 us, 49.
+
+Run 8 -> 08-green-rework/
+  Code: 9d410b7479, default mode. The five classes (44) and the three regression classes (28): 72 tests,
+  0 failures. §15: 230 us, 125 us, 49.
+
+Run 9 -> 09-strict-4-threads-rework/
+  Code: 9d410b7479, strict 4 threads. 72 tests, 0 failures. §15: 227 us, 83 us, 49.
+
+Run 10 -> 10-strict-grid-rework/
+  Code: 9d410b7479, strict grid. 72 tests, 0 failures. §15: 406 us, 82 us, 49.

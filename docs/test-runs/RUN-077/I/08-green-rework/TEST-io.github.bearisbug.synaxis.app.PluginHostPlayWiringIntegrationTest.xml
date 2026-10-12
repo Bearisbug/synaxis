@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-12T06:17:18.748Z" hostname="Mac.local" time="0.129">
+  <properties/>
+  <testcase name="aPayloadOnThePlayChannelReachesTheSceneLayer(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest" time="0.064"/>
+  <testcase name="theHostsContextHandsEachPluginItsOwnPlayAndInstances(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest" time="0.065"/>
+  <system-out><![CDATA[14:17:18.753 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+14:17:18.753 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+14:17:18.753 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=probe version=1.0.0 enable_ms=0
+14:17:18.754 [virtual-7692] INFO  i.g.b.synaxis.app.AdmissionGate - Refusing a connection: connection_id=ee3e1aec-830b-4852-b085-c6812a3c326e reason=synaxis:match-unavailable cause=no admission provider is registered
+14:17:18.754 [virtual-7692] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=ee3e1aec-830b-4852-b085-c6812a3c326e identifier=RandName reason=synaxis:match-unavailable
+14:17:18.754 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=probe
+14:17:18.754 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=probe: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+14:17:18.811 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:17:18.811 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=ee3e1aec-830b-4852-b085-c6812a3c326e identifier=RandName reason=synaxis:server-stopping
+14:17:18.811 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:17:18.811 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+14:17:18.817 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+14:17:18.817 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+14:17:18.817 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=first version=1.0.0 enable_ms=0
+14:17:18.817 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=second version=1.0.0 enable_ms=0
+14:17:18.818 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=second
+14:17:18.818 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=second: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+14:17:18.818 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=first
+14:17:18.818 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=first: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+14:17:18.876 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:17:18.876 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:17:18.876 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

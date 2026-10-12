@@ -1,0 +1,36 @@
+io.github.bearisbug.synaxis.app.instance.EvacuationIntegrationTest: tests=9 failures=2 errors=0 skipped=0 time=11.63
+  PASS aForcedCloseFromTheClosingEventFinishesTheEvacuation(Env)
+  FAIL anExitThatGivesNothingKicksThePlayer(Env) at EvacuationIntegrationTest.java:223: java.lang.NullPointerException: java.lang.NullPointerException
+  FAIL aPlayerWhoArrivesWhileTheInstanceClosesGetsTheExitToo(Env) at EvacuationIntegrationTest.java:254: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the instance was never unregistered: the player who arrived late was left inside ==> expected: <true> but was: <false>
+  PASS aKickExitDisconnectsWithItsOwnKey(Env)
+  PASS aPlayerWhoLeavesBeforeTheMoveRunsIsNotMoved(Env)
+  PASS theSettleTimeoutSendsThePlayersToTheFallbackExit(Env)
+  PASS whoeverIsStillInsideWhenTheEvacuationRunsOutIsKicked(Env)
+  PASS cancelSendsThePlayerToItsExitAndUnregistersOnceTheyAreOut(Env)
+  PASS anExitThatThrowsKicksThePlayer(Env)
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest: tests=5 failures=1 errors=0 skipped=0 time=0.764
+  FAIL theStartupThreadIsAnyOtherThreadOnceTheProcessRuns() at ManagedInstanceTickThreadTest.java:267: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.
+  PASS aGeneratorThatThrowsOutsideTheTickClosesTheInstance()
+  PASS theShutdownDropsAPreparingInstanceAndItIsNeverRegistered()
+  PASS aPreparationOverTheBudgetClosesTheInstance()
+  PASS onTheTickSchedulerCreateComesBackPreparingAndOpensInALaterSerialPart()
+  §15 readings (chunkRadius=2, 25 chunks): create on the tick scheduler thread 944 us, registration in the serial part 86 us, prepare_ms 49
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest: tests=18 failures=2 errors=0 skipped=0 time=0.048
+  PASS aPreparingInstanceRefusesEveryRequest()
+  PASS openRunEndAndSettleWriteOneLineAndCallOneEventEach()
+  FAIL aPluginTakenBackCreatesNoMoreInstances() at ManagedInstanceTransitionsTest.java:318: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  PASS anInstanceNotSettledInTimeIsClosedByTheHost()
+  FAIL theClosingEventComesBeforeTheUnregistration() at ManagedInstanceTransitionsTest.java:305: org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <[true]> but was: <[false]>
+  PASS cancelClosesAnOpenInstance()
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  PASS [4] CLOSED
+  PASS [1] CANCELLED
+  PASS [2] PREPARE_FAILED
+  PASS [3] PLUGIN_DISABLED
+  PASS [4] SHUTDOWN
+  PASS aSettledInstanceIsNotClosedAgainByTheTimeout()

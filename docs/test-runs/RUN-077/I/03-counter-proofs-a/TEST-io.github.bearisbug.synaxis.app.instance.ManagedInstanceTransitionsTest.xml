@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" tests="16" skipped="0" failures="1" errors="0" timestamp="2026-10-12T05:54:49.484Z" hostname="Mac.local" time="0.039">
+  <properties/>
+  <testcase name="aPreparingInstanceRefusesEveryRequest()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="openRunEndAndSettleWriteOneLineAndCallOneEventEach()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[1] OPEN" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.002"/>
+  <testcase name="[2] RUNNING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[3] ENDING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="anInstanceNotSettledInTimeIsClosedByTheHost()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;CLOSED&gt; but was: &lt;ENDING&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;CLOSED&gt; but was: &lt;ENDING&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.anInstanceNotSettledInTimeIsClosedByTheHost(ManagedInstanceTransitionsTest.java:249)
+</failure>
+  </testcase>
+  <testcase name="cancelClosesAnOpenInstance()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[1] OPEN" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[2] RUNNING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0"/>
+  <testcase name="[3] ENDING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0"/>
+  <testcase name="[4] CLOSED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0"/>
+  <testcase name="[1] CANCELLED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[2] PREPARE_FAILED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0"/>
+  <testcase name="[3] PLUGIN_DISABLED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0"/>
+  <testcase name="[4] SHUTDOWN" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="aSettledInstanceIsNotClosedAgainByTheTimeout()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <system-out><![CDATA[13:54:49.523 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:54:49.524 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:54:49.524 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

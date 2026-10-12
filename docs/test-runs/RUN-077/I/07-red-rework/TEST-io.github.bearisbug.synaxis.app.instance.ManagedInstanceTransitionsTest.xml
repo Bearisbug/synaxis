@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" tests="18" skipped="0" failures="2" errors="0" timestamp="2026-10-12T06:13:40.847Z" hostname="Mac.local" time="0.048">
+  <properties/>
+  <testcase name="aPreparingInstanceRefusesEveryRequest()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.003"/>
+  <testcase name="openRunEndAndSettleWriteOneLineAndCallOneEventEach()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="aPluginTakenBackCreatesNoMoreInstances()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalStateException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.aPluginTakenBackCreatesNoMoreInstances(ManagedInstanceTransitionsTest.java:318)
+</failure>
+  </testcase>
+  <testcase name="[1] OPEN" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.002"/>
+  <testcase name="[2] RUNNING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[3] ENDING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="anInstanceNotSettledInTimeIsClosedByTheHost()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="theClosingEventComesBeforeTheUnregistration()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[true]&gt; but was: &lt;[false]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[true]&gt; but was: &lt;[false]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest.theClosingEventComesBeforeTheUnregistration(ManagedInstanceTransitionsTest.java:305)
+</failure>
+  </testcase>
+  <testcase name="cancelClosesAnOpenInstance()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0"/>
+  <testcase name="[1] OPEN" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[2] RUNNING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[3] ENDING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[4] CLOSED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[1] CANCELLED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[2] PREPARE_FAILED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[3] PLUGIN_DISABLED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0"/>
+  <testcase name="[4] SHUTDOWN" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="aSettledInstanceIsNotClosedAgainByTheTimeout()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <system-out><![CDATA[14:13:40.884 [Test worker] WARN  i.g.b.s.a.i.ManagedInstanceImpl - Managed instance was not settled within its settle timeout, closing it: plugin_id=transitions instance=transitions:round_1 settle_timeout_ms=30000
+14:13:40.895 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:13:40.895 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:13:40.895 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

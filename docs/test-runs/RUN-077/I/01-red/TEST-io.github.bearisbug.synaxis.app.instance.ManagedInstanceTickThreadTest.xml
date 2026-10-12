@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest" tests="4" skipped="0" failures="4" errors="0" timestamp="2026-10-12T05:45:37.345Z" hostname="Mac.local" time="0.21">
+  <properties/>
+  <testcase name="aGeneratorThatThrowsOutsideTheTickClosesTheInstance()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest" time="0.052">
+    <failure message="java.util.concurrent.ExecutionException: java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.util.concurrent.ExecutionException">java.util.concurrent.ExecutionException: java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at java.base/java.util.concurrent.CompletableFuture.wrapInExecutionException(CompletableFuture.java:345)
+	at java.base/java.util.concurrent.CompletableFuture.reportGet(CompletableFuture.java:440)
+	at java.base/java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2117)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.onTheTickScheduler(ManagedInstanceTickThreadTest.java:121)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.create(ManagedInstanceTickThreadTest.java:138)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.aGeneratorThatThrowsOutsideTheTickClosesTheInstance(ManagedInstanceTickThreadTest.java:248)
+Caused by: java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.lambda$create$0(ManagedInstanceTickThreadTest.java:140)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.lambda$onTheTickScheduler$0(ManagedInstanceTickThreadTest.java:115)
+</failure>
+  </testcase>
+  <testcase name="theShutdownDropsAPreparingInstanceAndItIsNeverRegistered()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest" time="0.049">
+    <failure message="java.util.concurrent.ExecutionException: java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.util.concurrent.ExecutionException">java.util.concurrent.ExecutionException: java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at java.base/java.util.concurrent.CompletableFuture.wrapInExecutionException(CompletableFuture.java:345)
+	at java.base/java.util.concurrent.CompletableFuture.reportGet(CompletableFuture.java:440)
+	at java.base/java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2117)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.onTheTickScheduler(ManagedInstanceTickThreadTest.java:121)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.create(ManagedInstanceTickThreadTest.java:138)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.theShutdownDropsAPreparingInstanceAndItIsNeverRegistered(ManagedInstanceTickThreadTest.java:188)
+Caused by: java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.lambda$create$0(ManagedInstanceTickThreadTest.java:140)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.lambda$onTheTickScheduler$0(ManagedInstanceTickThreadTest.java:115)
+</failure>
+  </testcase>
+  <testcase name="aPreparationOverTheBudgetClosesTheInstance()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest" time="0.05">
+    <failure message="java.util.concurrent.ExecutionException: java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.util.concurrent.ExecutionException">java.util.concurrent.ExecutionException: java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at java.base/java.util.concurrent.CompletableFuture.wrapInExecutionException(CompletableFuture.java:345)
+	at java.base/java.util.concurrent.CompletableFuture.reportGet(CompletableFuture.java:440)
+	at java.base/java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2117)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.onTheTickScheduler(ManagedInstanceTickThreadTest.java:121)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.create(ManagedInstanceTickThreadTest.java:138)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.aPreparationOverTheBudgetClosesTheInstance(ManagedInstanceTickThreadTest.java:223)
+Caused by: java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.lambda$create$0(ManagedInstanceTickThreadTest.java:140)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.lambda$onTheTickScheduler$0(ManagedInstanceTickThreadTest.java:115)
+</failure>
+  </testcase>
+  <testcase name="onTheTickSchedulerCreateComesBackPreparingAndOpensInALaterSerialPart()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest" time="0.05">
+    <failure message="java.util.concurrent.ExecutionException: java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet" type="java.util.concurrent.ExecutionException">java.util.concurrent.ExecutionException: java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at java.base/java.util.concurrent.CompletableFuture.wrapInExecutionException(CompletableFuture.java:345)
+	at java.base/java.util.concurrent.CompletableFuture.reportGet(CompletableFuture.java:440)
+	at java.base/java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2117)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.onTheTickScheduler(ManagedInstanceTickThreadTest.java:121)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.create(ManagedInstanceTickThreadTest.java:138)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.onTheTickSchedulerCreateComesBackPreparingAndOpensInALaterSerialPart(ManagedInstanceTickThreadTest.java:150)
+Caused by: java.lang.UnsupportedOperationException: the managed instances of API-PLAY-006 are not implemented yet
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.unimplemented(InstanceRegistry.java:79)
+	at io.github.bearisbug.synaxis.app.instance.InstanceRegistry$Unimplemented.create(InstanceRegistry.java:84)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.lambda$create$0(ManagedInstanceTickThreadTest.java:140)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.lambda$onTheTickScheduler$0(ManagedInstanceTickThreadTest.java:115)
+</failure>
+  </testcase>
+  <system-out><![CDATA[13:45:37.354 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Starting synaxis (dev) server.
+13:45:37.354 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Running in offline mode. Beware that this is not secure and players can impersonate each other.
+13:45:37.355 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server started successfully.
+13:45:37.556 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:45:37.655 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:45:37.656 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

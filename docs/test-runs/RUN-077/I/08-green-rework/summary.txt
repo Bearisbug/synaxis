@@ -1,0 +1,81 @@
+io.github.bearisbug.synaxis.app.CoreModeIntegrationTest: tests=8 failures=0 errors=0 skipped=0 time=1.855
+  PASS everyConnectionIsAdmittedIntoTheCoreWorld(Env)
+  PASS theChunksAroundTheSpawnAreLitBeforeAnybodyJoins(Env)
+  PASS aPlayerWhoJoinsIsPutAtTheSpawn(Env)
+  PASS theDiagnosticChannelEchoesThePayloadBack(Env)
+  PASS aChunkGeneratedAfterTheStartIsLitWhenItIsFirstSent(Env)
+  PASS theChunkAPlayerSpawnsInIsSentLit(Env)
+  PASS theCoreWorldIsRegisteredAndHasGroundToStandOn(Env)
+  PASS theCoreWorldEndsAtAWorldBorder(Env)
+io.github.bearisbug.synaxis.app.PluginHostInstancesIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=0.236
+  PASS theInstancesOfAPluginWhoseOnEnableThrewAreTakenBack(Env)
+  PASS theStartupDecisionCountsTheRegisteredInstancesOnly(Env)
+  PASS theShutdownTakesBackAnOpenInstance(Env)
+io.github.bearisbug.synaxis.app.PluginHostIntegrationTest: tests=18 failures=0 errors=0 skipped=0 time=6.293
+  PASS aPluginFailingToEnableIsTornDownWhileTheProcessGoesOn(Env)
+  PASS aPayloadOnAnUnregisteredChannelIsDroppedWithOneWarning(Env)
+  PASS discoveryFindsTheCompileTimePlugin()
+  PASS anAcceptedConnectionIsLetThrough(Env)
+  PASS theSelectionPropertyPicksWhichPluginsAreEnabled(Env)
+  PASS aSelectedIdNoPluginAnswersToIsNamedInAWarning(Env)
+  PASS theProcessAcceptsOnlyOneAdmissionProvider(Env)
+  PASS eachWrapperLogsTheExceptionOnceAgainstThePlugin(Env)
+  PASS anAdmissionProviderThatThrowsTurnsTheConnectionAwayAgainstItsPlugin(Env)
+  PASS enablesInOrderAndDisablesInReverse(Env)
+  PASS aPluginThrowingFromOnDisableIsTornDownLikeTheOthers(Env)
+  PASS disablingTakesBackEventsTasksChannelsAndAdmission(Env)
+  PASS anIllegalDescriptorStopsTheStartupBeforeAnyPluginIsEnabled(Env)
+  PASS anAdmissionProviderSlowerThanItsBudgetStillDecidesAndIsWarnedAbout(Env)
+  PASS aPluginSetsTheTrackingRangeOfAnEntityType(Env)
+  PASS enablingRecordsOneLedgerLine(Env)
+  PASS aPluginHangingInOnDisableDoesNotHoldTheShutdown(Env)
+  PASS aConnectionIsTurnedAwayWhileNoPluginHoldsTheAdmissionSlot(Env)
+io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest: tests=2 failures=0 errors=0 skipped=0 time=0.129
+  PASS aPayloadOnThePlayChannelReachesTheSceneLayer(Env)
+  PASS theHostsContextHandsEachPluginItsOwnPlayAndInstances(Env)
+io.github.bearisbug.synaxis.app.instance.EvacuationIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=1.636
+  PASS aForcedCloseFromTheClosingEventFinishesTheEvacuation(Env)
+  PASS anExitThatGivesNothingKicksThePlayer(Env)
+  PASS aPlayerWhoArrivesWhileTheInstanceClosesGetsTheExitToo(Env)
+  PASS aKickExitDisconnectsWithItsOwnKey(Env)
+  PASS aPlayerWhoLeavesBeforeTheMoveRunsIsNotMoved(Env)
+  PASS theSettleTimeoutSendsThePlayersToTheFallbackExit(Env)
+  PASS whoeverIsStillInsideWhenTheEvacuationRunsOutIsKicked(Env)
+  PASS cancelSendsThePlayerToItsExitAndUnregistersOnceTheyAreOut(Env)
+  PASS anExitThatThrowsKicksThePlayer(Env)
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=0.333
+  PASS aRadiusOf17NeverReachesCreate(Env)
+  PASS theStateEventReachesTheInstanceNodeAndTheGlobalOne(Env)
+  PASS aDimensionTypeNobodyRegisteredIsRefusedBeforeAnythingIsBuilt(Env)
+  PASS onTheStartupThreadCreateComesBackOpenWithTheWholeMapLit(Env)
+  PASS everyInstanceHasADimensionNameOfItsOwn(Env)
+  PASS chunksNotLoadedWithinTheBudgetCloseTheInstance(Env)
+  PASS createOnAnyOtherThreadIsRefused(Env)
+  PASS aMoveIntoAnEndingInstanceCompletesWithFalse(Env)
+  PASS aGeneratorThatThrowsClosesTheInstanceWithoutRegisteringIt(Env)
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest: tests=5 failures=0 errors=0 skipped=0 time=0.763
+  PASS theStartupThreadIsAnyOtherThreadOnceTheProcessRuns()
+  PASS aGeneratorThatThrowsOutsideTheTickClosesTheInstance()
+  PASS theShutdownDropsAPreparingInstanceAndItIsNeverRegistered()
+  PASS aPreparationOverTheBudgetClosesTheInstance()
+  PASS onTheTickSchedulerCreateComesBackPreparingAndOpensInALaterSerialPart()
+  §15 readings (chunkRadius=2, 25 chunks): create on the tick scheduler thread 230 us, registration in the serial part 125 us, prepare_ms 49
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest: tests=18 failures=0 errors=0 skipped=0 time=0.059
+  PASS aPreparingInstanceRefusesEveryRequest()
+  PASS openRunEndAndSettleWriteOneLineAndCallOneEventEach()
+  PASS aPluginTakenBackCreatesNoMoreInstances()
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  PASS anInstanceNotSettledInTimeIsClosedByTheHost()
+  PASS theClosingEventComesBeforeTheUnregistration()
+  PASS cancelClosesAnOpenInstance()
+  PASS [1] OPEN
+  PASS [2] RUNNING
+  PASS [3] ENDING
+  PASS [4] CLOSED
+  PASS [1] CANCELLED
+  PASS [2] PREPARE_FAILED
+  PASS [3] PLUGIN_DISABLED
+  PASS [4] SHUTDOWN
+  PASS aSettledInstanceIsNotClosedAgainByTheTimeout()

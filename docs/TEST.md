@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-12 | 分支 `prod/r077-V`（设计提交 `e4b1d8eb9a`、修前红提交 `6abbe44aee`、临时反证与还原 `1250f4d888`、`3d3611d32c`、实现提交 `07f5053f90`，基于 `prod/integrate-077` `3cd20ff777`），跟进 `docs/DESIGN-PLAY.md` v0.4（RUN-077 组 V，第一步：组件解码与最小 `PlayHud`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/V/`。**§4「玩法架构 · RUN-077：V」写入十条 `TC-PLAY-020`～`TC-PLAY-029`**：`ComponentBytes` 写出冻结的三个组件（020）、原版 `ComponentSerialization.STREAM_CODEC` 读得出它们（021，组件编码不改 JSON）、长度 0 的 component（022）、没进场景时 HUD 不画与剧本没变量时立即返回（023）、Q0a 的解码、画出与截图（024）、缺键显示 fallback（025）、Q0b 换实例的逐 tick 读数（026，`LevelLoadingScreen` 开 3 tick，脚下区块先到）、job `rush` 骨架（027）、judge 单测（028）、模组主源码不留测试钩子与 `fabric.mod.json` 的两个模块（029）。服务端改动前的红不适用（冻结文件与测试同提交），反证一次；客户端单测的反证三处一批在本机跑；真客户端的改动前的红在草稿 PR #22 的第 1 轮 CI（Q0a FAIL），同一轮带上 `TC-PLAY-009` 第 3 步的临时反证（3 条红），第 2 轮全绿。`:server-app` 新类 1 个 4 条，`client-fabric` 新类 2 个 9 条。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-K`（文档提交 `755ecf9d09`、骨架提交 `546ed30408`、实现提交 `cc2db356f1`，基于 `prod/r077-docs` `184ad30370`），跟进 `docs/DESIGN-PLAY.md` v0.3（RUN-077 组 K，插件面契约与宿主接线），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/K/`。**§4「玩法架构 · RUN-077：K」写入十条 `TC-PLAY-010`～`TC-PLAY-019`**：场景的动作槽（010）、v1 四种小部件不用编码就能查的上限（011）、`InstanceSpec` 的名字、半径、结算超时与短构造器的默认值（012）、宿主上下文的 `play()`、`instances()` 与 `synaxis:play` 的接线（013）、`ComponentBytes` 的编码与 2,048 B 上限（014）、稳定面门禁看得见两个新子包（015）、翻译键门禁的 `NOT_TEXT` 加 `synaxis:play`（016）、两份语言文件的 22 个 S1 键与默认键 H（017）、ABI 门对 `v0.3.0` 0 条违例（018）、插件宿主与核心模式的回归和 `PluginHost.java` 行号后移（019）；改动前的红在骨架上实跑，八处反证一次实跑，ABI 门的反证另跑一次，还原后复绿，语言文件用脚本核对。`:plugin-api` 新类 4 个 30 条，`:server-app` 新类 2 个 4 条；节头补列 `ComponentBytesTest`，测试类按实际的包写。**改旧用例**：`TC-PROD-521` 第 5 步 `PluginHost.java:102` → `:107`（本组在它上面加了三行导入与两个字段），按代码文本核对，没复跑。翻译键门禁的读数（标识 16 → 17）与 `TranslationKeyGateTest.java` 第 65 行之后的红行行号后移，与组 P 加的同一行一起由集成轮改（`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717`）。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-P`（设计提交 `4f2dad04f2`、修前红提交 `438b206f47`、实现提交 `05095f4699`，基于 `prod/r077-docs` `184ad30370`），跟进 `docs/DESIGN-PLAY.md` v0.2 与 `docs/DESIGN-M2.md` v0.66（RUN-077 组 P，`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/P/`。**新增 §4「玩法架构 · RUN-077：P」九条 `TC-PLAY-001`～`TC-PLAY-009`**：常规向量（001）、边界向量（002）、未知属性与未知种类（003）、13 个 `refused-` 向量（004）、manifest 把向量绑在 `play_version` 上（005）、往返与后续版本的 `msg_id`（006）、向量没覆盖的畸形形状（007）、包导出、`NOT_TEXT`、ABI 门与 javadoc（008）、客户端 `PlayFrozenVectorTest`（009，只在 GitHub Actions 上跑，组 V 的草稿 PR 首跑，反证也在那里补）。改动前的红在桩上实跑（47 条 39 条红）；反证两批，每批四处一次打上，各打各的用例，还原后复绿；第一批第一次跑时一处红落在测试的参数构造上，测试改为先解码后重跑。`:protocol` 新类 2 个 47 条。**门禁读数**：`TranslationKeyGateTest` 的标识 16 → 17，键数仍是 61；`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717` 的读数与 `NOT_TEXT` 之后的红行行号本组不改，由集成轮按 CI 输出改，`TC-WORLD-032` 走交接行。**条数**本组不改，由集成轮统一改。评审返工（同一分支）：`edge/s2c_scene.bin` 的 `cursor` 改为 254、`edge/c2s_action-entity.bin` 的 `action_seq` 改为 1，`S2C_SCENE` 的 `camera` 与 `cursor`、`C2S_ACTION` 的 `scene_seq` 与 `action_seq` 这两对相邻的同类型字段从此在向量里取不同的值，digest 改为 `f3eaee54…205e`；照设计文本写的向量编码器入库为 `protocol/tools/gen_play_vectors.py`；`TC-PLAY-002` 加第 4 步（读写顺序对调的反证：旧向量上全部存活，新向量上 2 条红），`TC-PLAY-005` 第 1 步改 digest 读数、写清取文件的次序、加脚本重新生成后 `diff` 无输出；本组 Gradle 共 11 次 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-docs`（基于 `main` `f9e002917b`：`docs/DESIGN-PLAY.md` v0.1 已签字，`docs/DESIGN.md` v0.46 已登记该分册），RUN-077（玩法架构最小样板 S1）的文档基线，跟进 `docs/DESIGN-PLAY.md` v0.1。不加用例、不执行用例、不登执行轮次。**§1**：「关联设计文档」加 `docs/DESIGN-PLAY.md`，写明 `REQ-PLAY-*` 对应 `TC-PLAY-*`，联检从此解析五份设计文档。**§2**：加玩法架构侧一段，写明 S1 覆盖的六条需求与尚未开工的十二条，后者在联检里报「无任何 TC 引用」属在途。**§4 末尾**：建好「玩法架构 · RUN-077」八节，节头写对应需求、`docs/DESIGN-PLAY.md` 的版本、用例号段与测试类名；号段按块预分，块内允许空号（P 001～009、K 010～019、V 020～029、H 030～049、I 050～069、C 070～089、R 090～109、G 110～129），各组只往自己的节里写 | Bearisbug |
@@ -11322,6 +11323,135 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 ### 玩法架构 · RUN-077：V（第一步：组件解码与最小 `PlayHud`，组 C、G 的门）
 
 对应 `REQ-PLAY-004` 的 `TEXT` 与 `REQ-PLAY-003` 的客户端场景镜像：服务端经 `S2C_HUD` 下发带一个参数与颜色样式的翻译键，客户端用原版的组件流编解码器解出、由最小的 `PlayHud` 画出，并实测换实例时的载入画面（`docs/DESIGN-PLAY.md` §26 S1 行的第一步，§6.4.3，`ADR-PLAY-007` 的 fallback，§6.7.6；本组跟进该分册 v0.4）。用例号段 020～029，由组 V 在分支 `prod/r077-V` 写入。测试类：`:server-app` 的 `PlayComponentVectorTest` 与夹具 `PlayHudFixture`；`client-fabric` 的 `PlayComponentDecodeTest` 与真客户端剧本 `RushClientGameTest` 的 Q0（Q0a、Q0b）；`client-fabric/gametest-env/rush_judge.py` 与单测 `test_rush_judge.py`；`.github/workflows/client-gametest.yml` 的 job `rush` 骨架。
+
+本节由组 V 写入，分支 `prod/r077-V`：设计提交 `e4b1d8eb9a`；修前红提交 `6abbe44aee`（夹具、冻结组件、剧本、judge 与 job `rush` 的骨架齐全，模组还没注册 `synaxis:play`，`PlayTestHook` 读不到场景镜像）；临时反证提交 `1250f4d888` 与它的还原提交 `3d3611d32c`（`TC-PLAY-009` 第 3 步）；实现提交 `07f5053f90`；之后是文档。改动：`:server-app` 测试源码集加夹具 `PlayHudFixture`（裸 `MinecraftServer`，在 configuration 线程上应答 `C2S_HELLO`，首次出生时先发 `S2C_SCENE`、再发带三个 `TEXT` 的 `S2C_HUD`，测试通道 `synaxis_test:play` 收到 `move` 时把玩家换进维度名 `synaxis_test:play_elsewhere` 的实例）与 `PlayComponentVectorTest`；`server-app/build.gradle.kts` 的 `test` 任务把 `<PC>` 设为 inputs、把 `play-vectors/` 的绝对路径作为系统属性 `synaxis.play-vectors.dir` 传进测试 JVM；`<PC>` 下三个冻结组件与说明；模组新包 `play`（`PlayPayload`、`PlayComponents`、`PlayClient`、`PlayHud`），`SynaxisClientMod` 注册 `synaxis:play` 两个方向、在 `ClientPlayConnectionEvents.INIT` 时清空场景镜像、注册 HUD 元素 `synaxis:play`；模组 `fabric.mod.json` 补上 `fabric-rendering-v1` 与 `fabric-key-mapping-api-v1`；gametest 源集新包 `play`（client 入口 `PlayTestHook`，gametest 入口 `RushClientGameTest`）；`client-fabric/gametest-env/rush_judge.py` 与 `test_rush_judge.py`；`client-gametest.yml` 新增 job `rush`（现阶段只跑 Q0），PR 的 `paths` 加 `game-rush/**`、`play-kit/**`。
+
+测试：`:server-app` 包 `io.github.bearisbug.synaxis.app.scene` 的 `PlayComponentVectorTest` 4 条（不带 `@EnvTest`、不起服务端、不需要数据库）；`client-fabric` 包 `io.github.bearisbug.synaxis.game.client.play` 的 `PlayComponentDecodeTest` 6 条、`PlayHudTest` 3 条；真客户端剧本 `RushClientGameTest` 的 Q0a、Q0b；judge 单测 10 条。「跑 V 服务端」即照 P 节的共用约定跑 `:server-app` 的 `io.github.bearisbug.synaxis.app.scene.PlayComponentVectorTest`。「跑 V 客户端」：`client-fabric` 是独立构建，在 GitHub Actions 上由 `client-mod.yml` 的 `./gradlew build` 跑；本机等价是先 `./gradlew :protocol:publishToMavenLocal -Dmaven.repo.local=<m2>`，再在 `client-fabric` 里 `./gradlew test --tests 'io.github.bearisbug.synaxis.game.client.play.*' -Dmaven.repo.local=<m2> --max-workers=2 --no-daemon --init-script gametest-env/mirror.init.gradle.kts`，`<m2>` 是 `mktemp -d` 建的临时目录（不覆盖 `~/.m2` 里共用的 `:protocol` jar），跑完删；`client-fabric/build/dh/` 里要先有钉死的 Distant Horizons jar（`client-fabric/build.gradle.kts` 的 `dhUrl`，SHA-1 `51cdbdd9…4889`）。「job `rush`」即 `.github/workflows/client-gametest.yml` 的 job `rush`，报告在 `client-fabric/build/run/{clientGameTest,productionClientGameTest}/synaxis-gametest/rush.txt`，截图、报告、客户端日志与夹具日志在 artifact `client-gametest-rush`（保留 14 天）。`<py>` 是主工作副本的 `.venv/bin/python`。
+
+源文件代号：`<SC>` 是 `server-app/src/test/java/io/github/bearisbug/synaxis/app/scene/`，`<CP>` 是 `client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/`，`<CT>` 是 `client-fabric/src/test/java/io/github/bearisbug/synaxis/game/client/play/`，`<GP>` 是 `client-fabric/src/gametest/java/io/github/bearisbug/synaxis/game/client/gametest/play/`，`<PC>` 是 `protocol/src/test/resources/play-vectors/component/`；行号按实现提交 `07f5053f90`。本机 Gradle 6 次；GitHub Actions 两轮，都在草稿 PR #22（base `prod/integrate-077`，验完关闭、远端分支删掉）上：第 1 轮 head `1250f4d888`（修前红加 `TC-PLAY-009` 的临时反证），client-mod run 38209505076、client-gametest run 38209505064；第 2 轮 head `07f5053f90`，client-mod run 38210149163、client-gametest run 38210149495。组分支 PR 上的 `ci.yml` 与 `concurrency.yml` 不作门禁（计划：diff-cover 因组 K 的空实现判红）。各次读数与原始报告见 `docs/test-runs/RUN-077/V/00-index.txt`。
+
+Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadingScreen` 都开 3 tick，脚下区块都在新世界的第一个 tick 就已到，所以 `SceneReadyProbe` 以 `LevelLoadingScreen` 判 `docs/DESIGN-PLAY.md` §6.4.3 的 ②；客户端那次端到端反证（`tmp/r077-proof-client`）有齿，它的证据会是 `LevelLoadingScreen`，不会是 `hasChunk=false`。截图里原版的「Social Interactions」提示框盖住了右上角（854×480 的约 `536,0..853,62`），组 C 验收 `TOP_RIGHT` 的截图时要避开或先关掉它。
+
+#### `TC-PLAY-020` `ComponentBytes` 写出的字节等于冻结的三个组件 — 对应 `REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 V 服务端，同一条命令加 `--tests 'io.github.bearisbug.synaxis.app.scene.ComponentBytesTest'` | `PlayComponentVectorTest` `tests="4"` 0 失败：`<PC>title.bin`（53 B，翻译键 `rush.scene.lobby`）、`hint.bin`（146 B，`rush.hint`、参数 `1`、`gold`、与译文不同的 fallback）、`missing.bin`（108 B，`synaxis_test.missing`、`green`、fallback）与 `ComponentBytes` 对夹具三个组件写出的逐字节相同；夹具的 `S2C_SCENE` 与 `S2C_HUD` 经 `PlayMessages` 解回，标题是 `title.bin`，三个 `TEXT` 依次是 `hint.bin`、`missing.bin` 与长度 0 的 component，`S2C_HUD` ≤ 8,192 B。`ComponentBytesTest` `tests="2"` 0 失败；`testNamingCheck`、`forbiddenImportsCheck` 通过（第 1 次运行） |
+| 2 | 改动前的红 | 不适用：冻结文件与测试同一个提交进来，提交之前红只是找不到文件，没有齿，齿靠第 3 步。三个文件先由一个照引擎 NBT 写法（`ComponentNetworkBufferTypeImpl`）写的 Python 编码器生成，第 1 次运行是它与 `ComponentBytes` 的第一次对拍 |
+| 3 | 反证有齿（换成 JSON 编码）：`server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ComponentBytes.java:30` 的 `NetworkBuffer.COMPONENT` 改为 `Boolean.getBoolean("proof.never") ? NetworkBuffer.COMPONENT : NetworkBuffer.JSON_COMPONENT`，跑第 1 步，再还原 | `6 tests completed, 6 failed`：`PlayComponentVectorTest` 三条比对红在 `PlayComponentVectorTest.java:72`，消息带 `ComponentBytes` 现在写出的十六进制（`title.bin` 写成 `207b227472616e736c617465…`：varint 长度加一串 JSON），夹具那条红在 `:57`；`ComponentBytesTest` 红在 `:25`（`Invalid NBT type id: -120`）与 `:36`（`expected: <2048> but was: <2028>`）（第 2 次运行，`docs/test-runs/RUN-077/V/02-counter-proof-json/`） |
+| 4 | 还原后 | `git diff` 无输出，代码回到第 1 次运行时的样子 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-021` 原版的组件流编解码器读得出引擎写的 component — 对应 `REQ-PLAY-004` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头。这一条决定组件编码的去向：第 1 步绿，`docs/DESIGN-PLAY.md` `API-PLAY-002` 的 JSON 退路不用。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 在 PR #22 第 2 轮的「Client mod」运行 run 38210149163 看 `TEST-io.github.bearisbug.synaxis.game.client.play.PlayComponentDecodeTest.xml` | `tests="6"` 0 失败：`theTitleIsAKeyWithoutArguments`（键 `rush.scene.lobby`，没有参数、fallback 与颜色）、`theHintKeepsItsKeyItsArgumentItsColourAndItsFallback`（`rush.hint`，参数 `["1"]`，fallback `The fallback of rush.hint, queued: %s`，颜色 `0xFFAA00`）、`aKeyTheLanguageFilesLackKeepsItsFallbackAndItsColour`（`synaxis_test.missing`，fallback `Shown from the fallback`，颜色 `0x55FF55`）、两条拒收（不完整的 NBT、末尾多一个字节，都抛 `IllegalArgumentException`）与 `TC-PLAY-022` 的一条。解码在 `<CP>PlayComponents.java`，用 `ComponentSerialization.STREAM_CODEC`。同一运行里客户端共 20 个测试类 235 条 0 失败；本机等价（第 4 次运行）同为 6/0 |
+| 2 | 改动前的红 | 不适用：测试与 `PlayComponents` 同一个提交进来，齿靠第 3 步 |
+| 3 | 反证有齿（服务端换了编码、客户端没跟）：`<PC>missing.bin` 换成 `ComponentBytes` 用 `JSON_COMPONENT` 写出的 90 B（`TC-PLAY-020` 第 3 步的输出），与 `TC-PLAY-022`、`TC-PLAY-023` 第 3 步同批在本机跑「跑 V 客户端」，再还原 | `36 tests completed, 5 failed`。这一处打红三条：`aKeyTheLanguageFilesLackKeepsItsFallbackAndItsColour` 在 `PlayComponentDecodeTest.java:94`（`IllegalArgumentException: the component codec could not read EncodedComponent[597b2274…]`），`PlayHudTest` 用到 `missing.bin` 的两条在 `:51`（`expected: <[rush.hint, synaxis_test.missing, ]> but was: <[rush.hint, , ]>`）与 `:60`：解不出的 component 显示为空文本，连接照旧。`PlayFrozenVectorTest` 仍 27/0：`component/` 不进 digest（第 6 次运行，`06-client-counter-proofs/`） |
+| 4 | 还原后 | `git diff` 无输出；第 2 轮 CI 跑的就是还原后的代码，读数同第 1 步 |
+
+后置：`git status --short` 无输出；`<m2>` 已删。
+
+#### `TC-PLAY-022` 长度 0 的 component 显示为空文本，不交给编解码器，不断线 — 对应 `REQ-PLAY-004` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。契约见 `docs/DESIGN-PLAY.md` `API-PLAY-002` 实现条（v0.2）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-021` 第 1 步，看 `anEmptyComponentIsEmptyTextAndNeverReachesTheCodec`；再看 run 38210149495 job `rush` 两份报告 Q0a 里的 `empty` 一项与之后的 Q0b | 单测绿：注册表传 `null` 时长度 0 的 component 照样返回 `Component.empty()`，编解码器没被调用（`<CP>PlayComponents.java:32`）。两份 Q0a 都有 `empty text="" colour=none drawn ""`，客户端随后跑完 Q0b，没有断线 |
+| 2 | 改动前的红 | 不适用：单测与实现同一个提交进来，齿靠第 3 步 |
+| 3 | 反证有齿：`<CP>PlayComponents.java:32` 改为 `if (encoded.isEmpty() && Boolean.getBoolean("proof.never")) return Component.empty();`，与 `TC-PLAY-021` 第 3 步同批跑，再还原 | 这一处只打红 `anEmptyComponentIsEmptyTextAndNeverReachesTheCodec`，在 `PlayComponentDecodeTest.java:76`：`IllegalArgumentException: the component codec could not read EncodedComponent[]: io.netty.handler.codec.EncoderException: java.io.EOFException…`。`PlayHudTest` 里的空 `TEXT` 经 `PlayClient` 兜成空文本，照旧绿 |
+| 4 | 还原后 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-023` 没进场景时 `PlayHud` 一笔都不画，剧本没有自己的环境变量时立即返回 — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。光照会话 2026-10-12 的要求 1：光照与远景的容器、job `gametest`、`p10`、`p11-smoke` 跑同一份入口清单，它们的截图与报告不能变。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-021` 第 1 步，看 `TEST-io.github.bearisbug.synaxis.game.client.play.PlayHudTest.xml`；再看 run 38210149495 的 job `gametest` 与 `p11-smoke` | `PlayHudTest` `tests="3"` 0 失败：连接收到 `TEXT`、没收到 `S2C_SCENE` 时 `PlayHud.lines` 为空（`<CP>PlayHud.java:49`）；进场景后三行按槽位与 order 排好，空 component 一行空串；`REMOVE`、`CLEAR_OWNER`、`reset` 之后不再画。两个 job 都绿：`gametest` 的判定末行 `client regression: all checks passed`，`sessionserver join 5, expected 5`（没有多出的连接）；`p11-smoke` 的判定末行 `P10: all checks passed`。入口清单里有 `RushClientGameTest`，两个变量都没设时它第一行就返回（`<GP>RushClientGameTest.java:87`） |
+| 2 | 改动前的红 | 不适用：这是对别的 job 不变的约束，齿靠第 3 步 |
+| 3 | 反证有齿：`<CP>PlayHud.java:49` 改为 `if (play.scene() == null && Boolean.getBoolean("proof.never")) return List.of();`，与 `TC-PLAY-021` 第 3 步同批跑，再还原 | 这一处只打红 `aConnectionThatEnteredNoSceneDrawsNothing`，在 `PlayHudTest.java:40`：`expected: <[]> but was: <[translation{key='rush.hint', fallback='The fallback of rush.hint, queued: %s', args=[1]}[style={color=gold}]]>` |
+| 4 | 还原后 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-024` Q0a：真客户端解出的与夹具发出的相同，HUD 画出语言文件的译文，截图里有它的颜色 — 对应 `REQ-PLAY-003`、`REQ-PLAY-004` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头；只在 GitHub Actions 上跑。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 在 PR #22 第 2 轮的「Client gametest」运行 run 38210149495 看 job `rush` 的两份 `rush.txt`（dev 与生产 jar 各一次启动）、judge 一步与 artifact 里两张 `screenshots/0000_play-text.png` | 两份的 Q0a 都 PASS：场景 `1 synaxis_test:play`，标题 `key=rush.scene.lobby args=[]`；`hint key=rush.hint args=[1] colour=#ffaa00 fallback=The fallback of rush.hint, queued: %s`，画出 `Press action key 1 (default H) to join or leave the queue. Queued: 1`（`en_us.json` 的译文代入参数，没有用 fallback），`language has rush.hint=true`；截图 854×480，`#ffaa00` 2,588 px 在 `4,4..693,19`，`#55ff55` 968 px 在 `4,24..243,37`：左上角两行，`PlayHud` 从 GUI 坐标 (2, 2) 起画，GUI 缩放 2。judge 末行 `rush judge: PASS (2 reports, 0 problems)` |
+| 2 | 改动前的红：PR #22 第 1 轮（head `1250f4d888`，模组还没注册 `PlayPayload`）的 client-gametest run 38209505064 | job `rush` 判红：两份 Q0a 都是 `FAIL problems [the scene and three TEXTs did not arrive in 400 ticks, no scene, TEXTs [], not [hint, missing, empty], the screenshot has 0 px of #ffaa00, the screenshot has 0 px of #55ff55]`。负载被原版当 `DiscardedPayload` 丢掉，客户端日志里一行都没有（`docs/DESIGN-PLAY.md` `ADR-PLAY-002`）。judge 末行 `rush judge: FAIL (2 reports, 2 problems)`，只点名两份 Q0a，Q0b 的 PASS 与 Q1～Q9 的 SKIP 不算问题 |
+| 3 | 反证有齿 | 第 2 步即是：同一份剧本与 judge 对没注册负载的模组判红。解码一侧的齿在 `TC-PLAY-021` 第 3 步 |
+
+后置：无本机改动。
+
+#### `TC-PLAY-025` Q0a：语言文件里没有的键显示 fallback — 对应 `REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；核实 `docs/DESIGN-PLAY.md` `ADR-PLAY-007`（§28.1 D5 的前提）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-024` 第 1 步，看两份 Q0a 的 `missing` 一项 | 都是 `missing key=synaxis_test.missing args=[] colour=#55ff55 fallback=Shown from the fallback drawn "Shown from the fallback"`，`language has synaxis_test.missing=false`：客户端语言里没有这个键，画出的是 fallback，颜色照样生效（截图 `#55ff55` 968 px） |
+| 2 | 改动前的红 | 同 `TC-PLAY-024` 第 2 步（`#55ff55` 0 px） |
+| 3 | 对照 | 同一报告的 `hint`：语言文件里有 `rush.hint`，它的 fallback 与译文不同，画出的是译文。fallback 只在缺键时才用 |
+
+后置：无本机改动。
+
+#### `TC-PLAY-026` Q0b：换进维度名不同的实例时，载入画面与脚下区块的逐 tick 读数 — 对应 `REQ-PLAY-003`、`REQ-PLAY-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；读数用法见本节开头的 Q0b 一段与 `docs/DESIGN-PLAY.md` §6.4.3。Q0b 不依赖 `synaxis:play`，两轮 CI 都有读数。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-024` 第 1 步，看两份的 Q0b | 都 PASS。dev：`requested at tick 0, 18 ticks sampled; dimension synaxis_test:play_elsewhere from tick 15; screens [net.minecraft.client.gui.screens.LevelLoadingScreen ticks 15..17]; last screen closed at tick 18; hasChunk T1-14@synaxis_test:play_lobby T15-18@synaxis_test:play_elsewhere; ready at tick 18 after 1144 ms; answer "moved synaxis_test:play_elsewhere"; TEXTs after the move 3`。生产 jar：维度从 tick 3 起变，`LevelLoadingScreen` 开在 tick 3..5，tick 6 关，`hasChunk` 全程为真，tick 6 就绪（456 ms），换实例后三个 `TEXT` 仍在（同一连接，Respawn 不清空场景镜像） |
+| 2 | 看第 1 轮 run 38209505064 的同一行 | 都 PASS，读数同形：dev 维度 tick 20 起变，`LevelLoadingScreen` 20..22，tick 23 就绪（1,316 ms）；生产 jar tick 3 起变，3..5，tick 6 就绪（570 ms）；`TEXTs after the move 0`（那一轮没有场景镜像） |
+
+后置：无本机改动。
+
+#### `TC-PLAY-027` job `rush` 的骨架：两次启动、judge、artifact 与各步时长 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 看 run 38210149495 的 job `rush` 各步 | 依次是 checkout、JDK 25、setup-gradle（只读缓存）、Xvfb 与 Mesa、发布 `:protocol`（40 s）、`test_rush_judge.py`（`Ran 10 tests` `OK`）、`:server-app:farviewFixtureArgs`（68 s）、起夹具（4 s）、dev 启动（103 s，含构建模组与启动客户端）、生产 jar 启动（22 s）、judge（PASS）、拷夹具日志、上传 artifact `client-gametest-rush`；整个 job 4 min 25 s，时限 30 min，runner `ubuntu-24.04`。夹具日志：`play fixture ready`，两次 `Login success` 到 `Connection closed` 各 6.9 s 与 3.3 s，没有 `no C2S_HELLO` 一行（握手已应答） |
+| 2 | 改动前的红：第 1 轮 run 38209505064 的 job `rush` | 5 min 12 s，judge 之前各步都绿，红只在 judge 一步（Q0a） |
+| 3 | `actionlint .github/workflows/client-gametest.yml` | 只有改动前就有的两条（job `gametest` 起服一步的 SC2034、SC2086），job `rush` 没有告警 |
+
+后置：无本机改动。
+
+#### `TC-PLAY-028` judge 单测：Q0 两行都要 PASS，任何 FAIL、缺行、重复行、缺报告都判红 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。不起 Gradle，不借锁。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 在仓库之外的目录跑 `<py> -m unittest discover -s <仓库>/client-fabric/gametest-env -p 'test_rush_judge.py' -v`，跑完删 `client-fabric/gametest-env/__pycache__/` | `Ran 10 tests` `OK`：两份 Q0 PASS、其余 SKIP 的报告判过；Q0b FAIL、Q5 FAIL、Q0a SKIP、缺一份报告、没给报告、缺 Q7 一行、Q0a 两行与三种不合形状的行都判红；命令行退出码 0 与 1。脚本按自身路径定位，与当前目录无关。`-p 'test_*.py'`（job `p10`、`p11-smoke` 的写法）连 `test_p10.py` 一起 `Ran 22 tests` `OK`；两轮 CI 的 job `rush` 同为 10 条 `OK` |
+| 2 | 改动前的红 | 不适用：脚本与单测同一个提交进来；端到端的齿见 `TC-PLAY-024` 第 2 步（真报告里的 Q0a FAIL 让 judge 退出 1） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-029` 模组主源码不留测试钩子、不出现 rush，`fabric.mod.json` 声明 rendering 与 key-mapping 两个模块 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。光照会话 2026-10-12 的要求 4；`grep -rlw rush` 是 `docs/DESIGN-PLAY.md` §6.7.6 judge 的「专属客户端代码 0 行」。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `grep -rln 'PlayTestHook\|synaxis_test' client-fabric/src/main`；`grep -rlw rush client-fabric/src/main/java`；`grep -n 'gametest.play' client-fabric/src/gametest/resources/fabric.mod.json` | 前两条无输出；gametest 模组的 `client` 入口有 `io.github.bearisbug.synaxis.game.client.gametest.play.PlayTestHook`，`fabric-client-gametest` 入口末尾有 `io.github.bearisbug.synaxis.game.client.gametest.play.RushClientGameTest` |
+| 2 | `grep -n 'fabric-' client-fabric/src/main/resources/fabric.mod.json`；看 run 38210149163 的 `verifyModJar` 一行 | `depends` 有 `fabric-networking-api-v1`、`fabric-rendering-v1`、`fabric-key-mapping-api-v1`；`mod jar: minecraft=26.2, 85 entries, ships META-INF/jars/protocol-dev.jar`，模组 jar 只有客户端包（`verifyModJar`），两轮 CI 的客户端都照常启动 |
+
+后置：无本机改动。
 
 ### 玩法架构 · RUN-077：H（宿主场景层 `SceneService`）
 

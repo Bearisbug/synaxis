@@ -1,0 +1,11 @@
+rush Q0a FAIL problems [the scene and three TEXTs did not arrive in 400 ticks, no scene, TEXTs [], not [hint, missing, empty], the screenshot has 0 px of #ffaa00, the screenshot has 0 px of #55ff55]; scene none; texts []; language has rush.hint=true synaxis_test.missing=false; screenshot 0000_play-text.png 854x480 #ffaa00 0 px #55ff55 0 px
+rush Q0b PASS requested at tick 0, 6 ticks sampled; dimension synaxis_test:play_elsewhere from tick 3; screens [net.minecraft.client.gui.screens.LevelLoadingScreen ticks 3..5]; last screen closed at tick 6; hasChunk T1-2@synaxis_test:play_lobby T3-6@synaxis_test:play_elsewhere; ready at tick 6 after 570 ms; answer "moved synaxis_test:play_elsewhere"; TEXTs after the move 0
+rush Q1 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q2 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q3 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q4 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q5 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q6 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q7 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q8 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q9 SKIP SYNAXIS_RUSH_SERVER not set

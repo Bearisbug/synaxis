@@ -9,6 +9,8 @@ on:
       - protocol/**
       - server-app/**
       - game-rts/**
+      - game-rush/**
+      - play-kit/**
       - plugin-api/**
       - src/main/java/**/network/**
       - src/main/java/**/listener/**
@@ -219,6 +221,114 @@ jobs:
             logs/events-*.jsonl
             playable/server.log
             playable/logs/
+          retention-days: 14
+
+  # The sample game rush of docs/DESIGN-PLAY.md §6.7.6 (REQ-PLAY-008), beside the regression job. So far it runs Q0,
+  # the first step of §26 S1: the real client joins PlayHudFixture of the server test sources, which sends a scene and
+  # three TEXTs on synaxis:play and on request moves the player to an instance of another dimension name.
+  # RushClientGameTest writes synaxis-gametest/rush.txt and client-fabric/gametest-env/rush_judge.py judges both
+  # launches' reports; every other job starts the same entry points without SYNAXIS_RUSH_SERVER and
+  # SYNAXIS_PLAY_FIXTURE_SERVER, where it returns at once. Both launches on every trigger, pull requests included:
+  # the exit condition of §26 S1 is two launches.
+  rush:
+    name: Run the rush script
+    # The same triggers as the regression job
+    if: github.event.schedule != '0 19 * * 0' && !(github.event_name == 'workflow_dispatch' && inputs.p10)
+    # Pinned for the same reason as the regression job
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
+
+      - name: Install Xvfb and Mesa
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            xvfb xauth libgl1 libgl1-mesa-dri libegl1 libglx-mesa0 mesa-utils
+
+      # `env -u CI`: the publishing convention requires signing whenever CI is set (see client-mod.yml).
+      - name: Publish :protocol to the local repository
+        run: env -u CI ./gradlew :protocol:publishToMavenLocal
+
+      # Standard library only, so nothing to install (docs/TEST.md TC-PLAY-028)
+      - name: Unit tests of rush_judge.py
+        run: python3 -m unittest discover -s client-fabric/gametest-env -p 'test_rush_judge.py'
+
+      # The fixture runs on the server's test runtime classpath, which this writes as a java argument file
+      - name: Build the play fixture's classpath
+        run: ./gradlew :server-app:farviewFixtureArgs
+
+      # Offline, port 25568, in a working directory of its own
+      - name: Start the play fixture
+        run: |
+          mkdir -p "$RUNNER_TEMP/fixture" && cd "$RUNNER_TEMP/fixture"
+          nohup java "@$GITHUB_WORKSPACE/server-app/build/farview-fixture.args" -Xms1G -Xmx1G \
+            io.github.bearisbug.synaxis.app.scene.PlayHudFixture 25568 < /dev/null > fixture.log 2>&1 &
+          echo $! > fixture.pid
+          for _ in $(seq 1 120); do
+            grep -q 'play fixture ready' fixture.log && exit 0
+            kill -0 "$(cat fixture.pid)" 2>/dev/null || break
+            sleep 1
+          done
+          cat fixture.log
+          exit 1
+
+      # The exit codes of the two client steps are recorded, not judged: the judge reads the reports.
+      - name: Run the client gametests
+        continue-on-error: true
+        working-directory: client-fabric
+        env:
+          SYNAXIS_PLAY_FIXTURE_SERVER: 127.0.0.1:25568
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          GALLIUM_DRIVER: llvmpipe
+        run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest --console=plain --stacktrace
+
+      - name: Run the client gametests against the production mod jar
+        if: success() || failure()
+        continue-on-error: true
+        working-directory: client-fabric
+        env:
+          SYNAXIS_PLAY_FIXTURE_SERVER: 127.0.0.1:25568
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          GALLIUM_DRIVER: llvmpipe
+        run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runProductionClientGameTest --console=plain --stacktrace
+
+      - name: Judge the rush script by its reports
+        if: success() || failure()
+        run: |
+          python3 client-fabric/gametest-env/rush_judge.py \
+            client-fabric/build/run/clientGameTest/synaxis-gametest/rush.txt \
+            client-fabric/build/run/productionClientGameTest/synaxis-gametest/rush.txt
+
+      # A path outside the workspace in the upload list would move the artifact's root up to the common ancestor
+      - name: Copy the fixture's log into the workspace
+        if: always()
+        run: |
+          mkdir -p fixture
+          cp "$RUNNER_TEMP/fixture/fixture.log" fixture/ || true
+
+      - name: Upload screenshots, reports and logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-gametest-rush
+          path: |
+            client-fabric/build/run/**/screenshots/
+            client-fabric/build/run/**/synaxis-gametest/rush.txt
+            client-fabric/build/run/**/logs/
+            fixture/fixture.log
           retention-days: 14
 
   # P10 of docs/DESIGN-PROD.md §19 (REQ-PROD-031, API-PROD-026): the real client sent from one map

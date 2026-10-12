@@ -1,0 +1,5 @@
+== client-fabric/build/run/clientGameTest/synaxis-gametest/rush.txt
+== client-fabric/build/run/productionClientGameTest/synaxis-gametest/rush.txt
+FAIL client-fabric/build/run/clientGameTest/synaxis-gametest/rush.txt:1: rush Q0a FAIL problems [the scene and three TEXTs did not arrive in 400 ticks, no scene, TEXTs [], not [hint, missing, empty], the screenshot has 0 px of #ffaa00, the screenshot has 0 px of #55ff55]; scene none; texts []; language has rush.hint=true synaxis_test.missing=false; screenshot 0000_play-text.png 854x480 #ffaa00 0 px #55ff55 0 px
+FAIL client-fabric/build/run/productionClientGameTest/synaxis-gametest/rush.txt:1: rush Q0a FAIL problems [the scene and three TEXTs did not arrive in 400 ticks, no scene, TEXTs [], not [hint, missing, empty], the screenshot has 0 px of #ffaa00, the screenshot has 0 px of #55ff55]; scene none; texts []; language has rush.hint=true synaxis_test.missing=false; screenshot 0000_play-text.png 854x480 #ffaa00 0 px #55ff55 0 px
+rush judge: FAIL (2 reports, 2 problems)

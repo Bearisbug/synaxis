@@ -1,0 +1,39 @@
+2026-10-12T06:00:40.1125728Z ##[group]Run python3 client-fabric/gametest-env/rush_judge.py \
+^[[36;1mpython3 client-fabric/gametest-env/rush_judge.py \^[[0m
+^[[36;1m  client-fabric/build/run/clientGameTest/synaxis-gametest/rush.txt \^[[0m
+^[[36;1m  client-fabric/build/run/productionClientGameTest/synaxis-gametest/rush.txt^[[0m
+env:
+  JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/25.0.4-1/x64
+  JAVA_HOME_25_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/25.0.4-1/x64
+  MAVEN_ARGS: -ntp
+  GRADLE_ACTION_ID: gradle/actions/setup-gradle
+  GRADLE_USER_HOME: /home/runner/.gradle
+  GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+  DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+  DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+  GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+== client-fabric/build/run/clientGameTest/synaxis-gametest/rush.txt
+rush Q0a PASS scene 1 synaxis_test:play title key=rush.scene.lobby args=[] colour=none fallback=null; texts [hint key=rush.hint args=[1] colour=#ffaa00 fallback=The fallback of rush.hint, queued: %s drawn "Press action key 1 (default H) to join or leave the queue. Queued: 1", missing key=synaxis_test.missing args=[] colour=#55ff55 fallback=Shown from the fallback drawn "Shown from the fallback", empty text="" colour=none drawn ""]; language has rush.hint=true synaxis_test.missing=false; screenshot 0000_play-text.png 854x480 #ffaa00 2588 px in 4,4..693,19 #55ff55 968 px in 4,24..243,37
+rush Q0b PASS requested at tick 0, 18 ticks sampled; dimension synaxis_test:play_elsewhere from tick 15; screens [net.minecraft.client.gui.screens.LevelLoadingScreen ticks 15..17]; last screen closed at tick 18; hasChunk T1-14@synaxis_test:play_lobby T15-18@synaxis_test:play_elsewhere; ready at tick 18 after 1144 ms; answer "moved synaxis_test:play_elsewhere"; TEXTs after the move 3
+rush Q1 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q2 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q3 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q4 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q5 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q6 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q7 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q8 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q9 SKIP SYNAXIS_RUSH_SERVER not set
+== client-fabric/build/run/productionClientGameTest/synaxis-gametest/rush.txt
+rush Q0a PASS scene 1 synaxis_test:play title key=rush.scene.lobby args=[] colour=none fallback=null; texts [hint key=rush.hint args=[1] colour=#ffaa00 fallback=The fallback of rush.hint, queued: %s drawn "Press action key 1 (default H) to join or leave the queue. Queued: 1", missing key=synaxis_test.missing args=[] colour=#55ff55 fallback=Shown from the fallback drawn "Shown from the fallback", empty text="" colour=none drawn ""]; language has rush.hint=true synaxis_test.missing=false; screenshot 0000_play-text.png 854x480 #ffaa00 2588 px in 4,4..693,19 #55ff55 968 px in 4,24..243,37
+rush Q0b PASS requested at tick 0, 6 ticks sampled; dimension synaxis_test:play_elsewhere from tick 3; screens [net.minecraft.client.gui.screens.LevelLoadingScreen ticks 3..5]; last screen closed at tick 6; hasChunk T1-2@synaxis_test:play_lobby T3-6@synaxis_test:play_elsewhere; ready at tick 6 after 456 ms; answer "moved synaxis_test:play_elsewhere"; TEXTs after the move 3
+rush Q1 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q2 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q3 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q4 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q5 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q6 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q7 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q8 SKIP SYNAXIS_RUSH_SERVER not set
+rush Q9 SKIP SYNAXIS_RUSH_SERVER not set
+rush judge: PASS (2 reports, 0 problems)

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" tests="27" skipped="0" failures="3" errors="0" timestamp="2026-10-12T05:48:47.851Z" hostname="runnervmmprz5" time="0.03">
+  <properties/>
+  <testcase name="&quot;edge/refused-c2s_action-target-3.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.001"/>
+  <testcase name="&quot;edge/refused-s2c_hud-17-props.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.001"/>
+  <testcase name="&quot;edge/refused-s2c_hud-33-ops.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;edge/refused-s2c_hud-component-2049.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.001"/>
+  <testcase name="&quot;edge/refused-s2c_hud-declared-prop-wrong-type.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;edge/refused-s2c_hud-op-4.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.001"/>
+  <testcase name="&quot;edge/refused-s2c_hud-panel-13-rows.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;edge/refused-s2c_hud-panel-5-buttons.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;edge/refused-s2c_hud-panel-not-center.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;edge/refused-s2c_hud-scoreboard-17-rows.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;edge/refused-s2c_hud-slot-7.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;edge/refused-s2c_hud-value-type-10.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;edge/refused-s2c_scene-7-actions.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;c2s_action.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.001"/>
+  <testcase name="&quot;c2s_scene_ready.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;s2c_action_result.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.001"/>
+  <testcase name="&quot;s2c_hud.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;s2c_scene.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;edge/c2s_action-entity.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;edge/c2s_action.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;edge/c2s_scene_ready.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;edge/s2c_action_result.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="&quot;edge/s2c_hud-unknown-kind.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.006">
+    <failure message="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 1" type="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException">io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 1
+	at io.github.bearisbug.synaxis.game.protocol.play.Widget.&lt;init&gt;(Widget.java:104)
+	at io.github.bearisbug.synaxis.game.protocol.play.Widget.read(Widget.java:214)
+	at io.github.bearisbug.synaxis.game.protocol.play.S2CHud.read(S2CHud.java:156)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:35)
+	at io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest.anAcceptedVectorSurvivesTheClientDecoderByteForByte(PlayFrozenVectorTest.java:73)
+</failure>
+  </testcase>
+  <testcase name="&quot;edge/s2c_hud-unknown-prop.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.002">
+    <failure message="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 99" type="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException">io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 99
+	at io.github.bearisbug.synaxis.game.protocol.play.Widget.&lt;init&gt;(Widget.java:104)
+	at io.github.bearisbug.synaxis.game.protocol.play.Widget.read(Widget.java:214)
+	at io.github.bearisbug.synaxis.game.protocol.play.S2CHud.read(S2CHud.java:156)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:35)
+	at io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest.anAcceptedVectorSurvivesTheClientDecoderByteForByte(PlayFrozenVectorTest.java:73)
+</failure>
+  </testcase>
+  <testcase name="&quot;edge/s2c_hud.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.001">
+    <failure message="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 0" type="io.github.bearisbug.synaxis.game.protocol.MalformedMessageException">io.github.bearisbug.synaxis.game.protocol.MalformedMessageException: undeclared prop 0
+	at io.github.bearisbug.synaxis.game.protocol.play.Widget.&lt;init&gt;(Widget.java:104)
+	at io.github.bearisbug.synaxis.game.protocol.play.Widget.read(Widget.java:214)
+	at io.github.bearisbug.synaxis.game.protocol.play.S2CHud.read(S2CHud.java:156)
+	at io.github.bearisbug.synaxis.game.protocol.play.PlayMessages.read(PlayMessages.java:35)
+	at io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest.anAcceptedVectorSurvivesTheClientDecoderByteForByte(PlayFrozenVectorTest.java:73)
+</failure>
+  </testcase>
+  <testcase name="&quot;edge/s2c_scene.bin&quot;" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.0"/>
+  <testcase name="theVectorsAreTheOnesThisBuildsProtocolJarSpeaks()" classname="io.github.bearisbug.synaxis.game.client.play.PlayFrozenVectorTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,50 @@
+RUN-077 group V: component decoding and the minimal PlayHud, the first step of DESIGN-PLAY §26 S1 (branch
+prod/r077-V, base prod/integrate-077 3cd20ff777). Commits: e4b1d8eb9a DESIGN-PLAY v0.4 (contract), 6abbe44aee
+the red skeleton (fixture, frozen components, rush script, judge, job rush; the mod does not register
+synaxis:play), 1250f4d888 a temporary counter-proof of PlayFrozenVectorTest and 3d3611d32c its revert,
+07f5053f90 the client implementation. Local Gradle through ~/.claude/r077/gradle.zsh (JDK 25, --max-workers=2
+--no-daemon, the heavy lock taken for each run only), six runs, none with a database or a -Dsynaxis.* switch.
+client-fabric runs locally used -Dmaven.repo.local=/tmp/run077/fix-V/m2 for :protocol (deleted afterwards).
+CI ran on draft PR #22 (base prod/integrate-077), two pushes.
+
+Run 1 -> 01-server-green/
+  :server-app PlayComponentVectorTest 4 tests 0 failed, ComponentBytesTest 2 tests 0 failed;
+  :server-app:testNamingCheck and :server-app:forbiddenImportsCheck passed. The frozen files were written by
+  an encoder of the engine's NBT layout in Python beforehand; this run is the first comparison with
+  ComponentBytes, byte for byte equal.
+
+Run 2 -> 02-counter-proof-json/
+  ComponentBytes writes NetworkBuffer.JSON_COMPONENT (counter-proof.diff): 6 tests, 6 failed (summary.txt).
+  Restored with git checkout.
+
+Run 3: :protocol:publishToMavenLocal -Dmaven.repo.local=/tmp/run077/fix-V/m2 (no tests).
+
+Run 4 -> 04-client-local/
+  client-fabric compileJava compileGametestJava test --tests 'io.github.bearisbug.synaxis.game.client.play.*'
+  on the implementation: PlayComponentDecodeTest 6/0, PlayHudTest 3/0, PlayFrozenVectorTest 27/0.
+
+Run 5: client-fabric compileJava compileGametestJava on the red commit 6abbe44aee (implementation stashed):
+  BUILD SUCCESSFUL, so the red push could only fail at Q0a, not at compilation.
+
+Run 6 -> 06-client-counter-proofs/
+  Three counter-proofs at once (counter-proofs.diff): (a) component/missing.bin replaced by the engine's JSON
+  encoding of the same component, (b) PlayHud draws before the first scene, (c) PlayComponents hands zero bytes
+  to the codec. 36 tests, 5 failed, each change on its own tests (summary.txt); PlayFrozenVectorTest stayed
+  27/0 with (a), so component/ is outside the digest. Restored with git checkout.
+
+CI round 1 (head 1250f4d888, red skeleton plus the temporary Widget counter-proof) -> 05-ci-red/
+  client-mod run 38209505076: failure, PlayFrozenVectorTest 27 tests 3 failed at PlayFrozenVectorTest.java:73
+    (edge/s2c_hud.bin, edge/s2c_hud-unknown-kind.bin, edge/s2c_hud-unknown-prop.bin: undeclared prop ...),
+    the other 223 client tests passed.
+  client-gametest run 38209505064: job rush failure (judge: Q0a FAIL in both reports, no scene, 0 px of either
+    colour; Q0b PASS), job gametest success, job p11-smoke success.
+
+CI round 2 (head 07f5053f90) -> 07-ci-green/
+  client-mod run 38210149163: success, 235 tests 0 failed in 20 classes (PlayComponentDecodeTest 6,
+    PlayHudTest 3, PlayFrozenVectorTest 27), verifyModJar "minecraft=26.2, 85 entries, ships
+    META-INF/jars/protocol-dev.jar".
+  client-gametest run 38210149495: job rush success in 4 min 25 s (rush judge: PASS (2 reports, 0 problems)),
+    job gametest success ("client regression: all checks passed", sessionserver join 5 of 5 expected),
+    job p11-smoke success ("P10: all checks passed").
+  Screenshots: artifact client-gametest-rush of run 38210149495 (14 days), screenshots/0000_play-text.png of
+  both launches, 854x480.

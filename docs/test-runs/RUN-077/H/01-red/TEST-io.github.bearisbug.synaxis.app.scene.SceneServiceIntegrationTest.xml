@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" tests="10" skipped="0" failures="10" errors="0" timestamp="2026-10-12T05:33:33.721Z" hostname="Mac.local" time="0.404">
+  <properties/>
+  <testcase name="aPanelOf5000BytesIsRefusedAndChangesNothing(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.058">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalArgumentException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalArgumentException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.aPanelOf5000BytesIsRefusedAndChangesNothing(SceneServiceIntegrationTest.java:202)
+Caused by: java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.hud(SceneService.java:125)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.lambda$aPanelOf5000BytesIsRefusedAndChangesNothing$0(SceneServiceIntegrationTest.java:202)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="anOverlayCanNeitherEnterNorLeaveAScene(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.055">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalStateException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalStateException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.anOverlayCanNeitherEnterNorLeaveAScene(SceneServiceIntegrationTest.java:183)
+Caused by: java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.enter(SceneService.java:110)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.lambda$anOverlayCanNeitherEnterNorLeaveAScene$0(SceneServiceIntegrationTest.java:183)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="theActionsOfAPluginTornDownAreTakenBack(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.006">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.onAction(SceneService.java:130)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.theActionsOfAPluginTornDownAreTakenBack(SceneServiceIntegrationTest.java:259)
+</failure>
+  </testcase>
+  <testcase name="aSceneChangeClearsTheSceneOwnersWidgetsAndKeepsTheOverlays(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.054">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.enter(SceneService.java:110)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.aSceneChangeClearsTheSceneOwnersWidgetsAndKeepsTheOverlays(SceneServiceIntegrationTest.java:158)
+</failure>
+  </testcase>
+  <testcase name="everyChangeOfATickLeavesAtItsEndAndTheSceneGoesFirst(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.051">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.hud(SceneService.java:125)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.everyChangeOfATickLeavesAtItsEndAndTheSceneGoesFirst(SceneServiceIntegrationTest.java:102)
+</failure>
+  </testcase>
+  <testcase name="aSceneOver8KibIsRefusedAndChangesNothing(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.052">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalArgumentException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalArgumentException&gt; but was: &lt;java.lang.UnsupportedOperationException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.aSceneOver8KibIsRefusedAndChangesNothing(SceneServiceIntegrationTest.java:222)
+Caused by: java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.enter(SceneService.java:110)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.lambda$aSceneOver8KibIsRefusedAndChangesNothing$0(SceneServiceIntegrationTest.java:222)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="aMoveUnderWayHoldsTheWholeQueueUntilItCompletes(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.05">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.enter(SceneService.java:110)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.aMoveUnderWayHoldsTheWholeQueueUntilItCompletes(SceneServiceIntegrationTest.java:133)
+</failure>
+  </testcase>
+  <testcase name="timesTheExitOfTheSceneLayerPerPlayerPerTick(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.058">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.enter(SceneService.java:110)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.timesTheExitOfTheSceneLayerPerPlayerPerTick(SceneServiceIntegrationTest.java:305)
+</failure>
+  </testcase>
+  <testcase name="actionsAreRegisteredInOnEnableOnlyOnceEachAndInTheirOwnNamespace(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.009">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.onAction(SceneService.java:130)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.actionsAreRegisteredInOnEnableOnlyOnceEachAndInTheirOwnNamespace(SceneServiceIntegrationTest.java:283)
+</failure>
+  </testcase>
+  <testcase name="aPanelButtonIsAnActionTheHostTakes(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.009">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.onAction(SceneService.java:130)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.aPanelButtonIsAnActionTheHostTakes(SceneServiceIntegrationTest.java:235)
+</failure>
+  </testcase>
+  <system-out><![CDATA[13:33:33.779 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.779 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=8ddd4c6c-d92f-43b0-b322-e6f03d459c7c identifier=RandName reason=synaxis:server-stopping
+13:33:33.779 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=8ddd4c6c-d92f-43b0-b322-e6f03d459c7c identifier=RandName reason=synaxis:server-stopping
+13:33:33.779 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.779 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.833 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.834 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=6997e881-ce1f-43a0-b9dc-8ffce6013d98 identifier=RandName reason=synaxis:server-stopping
+13:33:33.834 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=6997e881-ce1f-43a0-b9dc-8ffce6013d98 identifier=RandName reason=synaxis:server-stopping
+13:33:33.834 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.834 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.840 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.841 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.841 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.894 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.894 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=71fe0921-4ad8-4d1e-9e4b-4d8d8d373f81 identifier=RandName reason=synaxis:server-stopping
+13:33:33.894 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=71fe0921-4ad8-4d1e-9e4b-4d8d8d373f81 identifier=RandName reason=synaxis:server-stopping
+13:33:33.895 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.895 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.945 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.945 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=8cb47a66-03c6-44d4-9c07-8dc20c6af651 identifier=RandName reason=synaxis:server-stopping
+13:33:33.946 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=8cb47a66-03c6-44d4-9c07-8dc20c6af651 identifier=RandName reason=synaxis:server-stopping
+13:33:33.946 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.946 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.998 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.998 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=923a1afa-5caf-4486-9d43-cda2f711a423 identifier=RandName reason=synaxis:server-stopping
+13:33:33.998 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=923a1afa-5caf-4486-9d43-cda2f711a423 identifier=RandName reason=synaxis:server-stopping
+13:33:33.999 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.999 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:34.048 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:34.048 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=46d57588-8849-40ae-8cca-eb9e88862552 identifier=RandName reason=synaxis:server-stopping
+13:33:34.048 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=46d57588-8849-40ae-8cca-eb9e88862552 identifier=RandName reason=synaxis:server-stopping
+13:33:34.049 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:34.049 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:34.105 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:34.105 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=9005fbf5-975d-4d81-ad42-7828a63b0187 identifier=RandName reason=synaxis:server-stopping
+13:33:34.105 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=9005fbf5-975d-4d81-ad42-7828a63b0187 identifier=RandName reason=synaxis:server-stopping
+13:33:34.106 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:34.106 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:34.115 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:34.116 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:34.116 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:34.124 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:34.124 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:34.125 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" tests="10" skipped="0" failures="6" errors="0" timestamp="2026-10-12T05:58:55.562Z" hostname="Mac.local" time="0.585">
+  <properties/>
+  <testcase name="aPanelOf5000BytesIsRefusedAndChangesNothing(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.053">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.aPanelOf5000BytesIsRefusedAndChangesNothing(SceneServiceIntegrationTest.java:202)
+</failure>
+  </testcase>
+  <testcase name="anOverlayCanNeitherEnterNorLeaveAScene(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.052">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalStateException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.anOverlayCanNeitherEnterNorLeaveAScene(SceneServiceIntegrationTest.java:183)
+</failure>
+  </testcase>
+  <testcase name="theActionsOfAPluginTornDownAreTakenBack(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.052">
+    <failure message="org.opentest4j.AssertionFailedError: the handler of a plugin torn down was called ==&gt; expected: &lt;0&gt; but was: &lt;1&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the handler of a plugin torn down was called ==&gt; expected: &lt;0&gt; but was: &lt;1&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.theActionsOfAPluginTornDownAreTakenBack(SceneServiceIntegrationTest.java:272)
+</failure>
+  </testcase>
+  <testcase name="aSceneChangeClearsTheSceneOwnersWidgetsAndKeepsTheOverlays(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.053"/>
+  <testcase name="everyChangeOfATickLeavesAtItsEndAndTheSceneGoesFirst(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.052">
+    <failure message="org.opentest4j.AssertionFailedError: the hint set before the scene was entered reached the new scene ==&gt; expected: &lt;[S2CScene[sceneSeq=1, sceneId=rush:lobby, title=EncodedComponent[0a080004747970650004746578740800047465787400054c6f62627900], camera=0, cursor=0, actions=[Action[slot=0, actionId=rush:queue, label=EncodedComponent[0a08000474797065000474657874080004746578740005517565756500], cooldownMs=2000]]], S2CHud[ops=[ClearOwner[owner=rush], SetWidget[owner=rush, widgetId=timer, widget=Widget[kind=2, slot=1, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[0a08000474797065000474657874080004746578740005526f756e6400]]], Prop[id=2, value=VarInt[value=45000]], Prop[id=3, value=Bool[value=true]]]]]]]]&gt; but was: &lt;[S2CScene[sceneSeq=1, sceneId=rush:lobby, title=EncodedComponent[0a080004747970650004746578740800047465787400054c6f62627900], camera=0, cursor=0, actions=[Action[slot=0, actionId=rush:queue, label=EncodedComponent[0a08000474797065000474657874080004746578740005517565756500], cooldownMs=2000]]], S2CHud[ops=[SetWidget[owner=rush, widgetId=hint, widget=Widget[kind=1, slot=5, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[0a080004747970650004746578740800047465787400075072657373204800]]], Prop[id=13, value=VarInt[value=0]]]]], ClearOwner[owner=rush], SetWidget[owner=rush, widgetId=timer, widget=Widget[kind=2, slot=1, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[0a08000474797065000474657874080004746578740005526f756e6400]]], Prop[id=2, value=VarInt[value=45000]], Prop[id=3, value=Bool[value=true]]]]]]]]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the hint set before the scene was entered reached the new scene ==&gt; expected: &lt;[S2CScene[sceneSeq=1, sceneId=rush:lobby, title=EncodedComponent[0a080004747970650004746578740800047465787400054c6f62627900], camera=0, cursor=0, actions=[Action[slot=0, actionId=rush:queue, label=EncodedComponent[0a08000474797065000474657874080004746578740005517565756500], cooldownMs=2000]]], S2CHud[ops=[ClearOwner[owner=rush], SetWidget[owner=rush, widgetId=timer, widget=Widget[kind=2, slot=1, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[0a08000474797065000474657874080004746578740005526f756e6400]]], Prop[id=2, value=VarInt[value=45000]], Prop[id=3, value=Bool[value=true]]]]]]]]&gt; but was: &lt;[S2CScene[sceneSeq=1, sceneId=rush:lobby, title=EncodedComponent[0a080004747970650004746578740800047465787400054c6f62627900], camera=0, cursor=0, actions=[Action[slot=0, actionId=rush:queue, label=EncodedComponent[0a08000474797065000474657874080004746578740005517565756500], cooldownMs=2000]]], S2CHud[ops=[SetWidget[owner=rush, widgetId=hint, widget=Widget[kind=1, slot=5, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[0a080004747970650004746578740800047465787400075072657373204800]]], Prop[id=13, value=VarInt[value=0]]]]], ClearOwner[owner=rush], SetWidget[owner=rush, widgetId=timer, widget=Widget[kind=2, slot=1, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[0a08000474797065000474657874080004746578740005526f756e6400]]], Prop[id=2, value=VarInt[value=45000]], Prop[id=3, value=Bool[value=true]]]]]]]]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.everyChangeOfATickLeavesAtItsEndAndTheSceneGoesFirst(SceneServiceIntegrationTest.java:110)
+</failure>
+  </testcase>
+  <testcase name="aSceneOver8KibIsRefusedAndChangesNothing(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.051">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.aSceneOver8KibIsRefusedAndChangesNothing(SceneServiceIntegrationTest.java:222)
+</failure>
+  </testcase>
+  <testcase name="aMoveUnderWayHoldsTheWholeQueueUntilItCompletes(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.052">
+    <failure message="org.opentest4j.AssertionFailedError: sent while the move was under way ==&gt; expected: &lt;[]&gt; but was: &lt;[S2CScene[sceneSeq=1, sceneId=rush:round, title=EncodedComponent[0a08000474797065000474657874080004746578740005526f756e6400], camera=0, cursor=0, actions=[]], S2CHud[ops=[ClearOwner[owner=rush], SetWidget[owner=rush, widgetId=timer, widget=Widget[kind=2, slot=1, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[0a08000474797065000474657874080004746578740005526f756e6400]]], Prop[id=2, value=VarInt[value=45000]], Prop[id=3, value=Bool[value=true]]]]]]]]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: sent while the move was under way ==&gt; expected: &lt;[]&gt; but was: &lt;[S2CScene[sceneSeq=1, sceneId=rush:round, title=EncodedComponent[0a08000474797065000474657874080004746578740005526f756e6400], camera=0, cursor=0, actions=[]], S2CHud[ops=[ClearOwner[owner=rush], SetWidget[owner=rush, widgetId=timer, widget=Widget[kind=2, slot=1, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[0a08000474797065000474657874080004746578740005526f756e6400]]], Prop[id=2, value=VarInt[value=45000]], Prop[id=3, value=Bool[value=true]]]]]]]]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.aMoveUnderWayHoldsTheWholeQueueUntilItCompletes(SceneServiceIntegrationTest.java:138)
+</failure>
+  </testcase>
+  <testcase name="timesTheExitOfTheSceneLayerPerPlayerPerTick(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.164"/>
+  <testcase name="actionsAreRegisteredInOnEnableOnlyOnceEachAndInTheirOwnNamespace(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.005"/>
+  <testcase name="aPanelButtonIsAnActionTheHostTakes(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.047"/>
+  <system-out><![CDATA[13:58:55.615 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:58:55.615 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=037478e4-1d62-4cd3-81f9-e6154d5d6461 identifier=RandName reason=synaxis:server-stopping
+13:58:55.615 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=037478e4-1d62-4cd3-81f9-e6154d5d6461 identifier=RandName reason=synaxis:server-stopping
+13:58:55.616 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:58:55.616 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:58:55.667 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:58:55.667 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=555e6e6b-62b3-45dd-86d2-e7921ec4f58a identifier=RandName reason=synaxis:server-stopping
+13:58:55.667 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=555e6e6b-62b3-45dd-86d2-e7921ec4f58a identifier=RandName reason=synaxis:server-stopping
+13:58:55.668 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:58:55.668 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:58:55.719 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:58:55.720 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=53f4acb5-d8ba-434b-bac4-0ab648ea8292 identifier=RandName reason=synaxis:server-stopping
+13:58:55.720 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=53f4acb5-d8ba-434b-bac4-0ab648ea8292 identifier=RandName reason=synaxis:server-stopping
+13:58:55.720 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:58:55.720 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:58:55.773 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:58:55.773 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=4afb2d83-d4d8-41e9-a017-ba87bbe95270 identifier=RandName reason=synaxis:server-stopping
+13:58:55.773 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=4afb2d83-d4d8-41e9-a017-ba87bbe95270 identifier=RandName reason=synaxis:server-stopping
+13:58:55.774 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:58:55.774 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:58:55.826 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:58:55.826 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=c80f8166-9094-4ea1-9772-25355b951f61 identifier=RandName reason=synaxis:server-stopping
+13:58:55.826 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=c80f8166-9094-4ea1-9772-25355b951f61 identifier=RandName reason=synaxis:server-stopping
+13:58:55.826 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:58:55.826 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:58:55.877 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:58:55.877 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=7939ae64-93fa-4cb0-8bd6-66cae1e6fed9 identifier=RandName reason=synaxis:server-stopping
+13:58:55.877 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=7939ae64-93fa-4cb0-8bd6-66cae1e6fed9 identifier=RandName reason=synaxis:server-stopping
+13:58:55.877 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:58:55.877 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:58:55.929 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:58:55.930 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=2892e81c-5ef5-47de-b054-50b871e4e459 identifier=RandName reason=synaxis:server-stopping
+13:58:55.930 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=2892e81c-5ef5-47de-b054-50b871e4e459 identifier=RandName reason=synaxis:server-stopping
+13:58:55.930 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:58:55.930 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+scene layer exit per player per tick: mean=0.0015 ms p99=0.0026 ms max=0.0538 ms over 10000 ticks; the two sets before it: mean=0.0061 ms p99=0.0128 ms
+13:58:56.093 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:58:56.093 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=2e1f3efb-9af4-4834-a7de-86979bc65431 identifier=RandName reason=synaxis:server-stopping
+13:58:56.093 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=2e1f3efb-9af4-4834-a7de-86979bc65431 identifier=RandName reason=synaxis:server-stopping
+13:58:56.094 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:58:56.094 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:58:56.100 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:58:56.100 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:58:56.100 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:58:56.147 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:58:56.147 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=6d16fb48-d4d5-493a-a120-2c95b328177a identifier=RandName reason=synaxis:server-stopping
+13:58:56.147 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=6d16fb48-d4d5-493a-a120-2c95b328177a identifier=RandName reason=synaxis:server-stopping
+13:58:56.147 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:58:56.147 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

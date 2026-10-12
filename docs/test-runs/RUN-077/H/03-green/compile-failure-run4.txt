@@ -1,0 +1,9 @@
+server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ActionGate.java:50: error: [MissingSummary] A summary fragment is required; consider using the value of the @return block as a summary fragment instead.
+server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ActionRegistry.java:79: error: [MissingSummary] A summary fragment is required; consider using the value of the @return block as a summary fragment instead.
+server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/Outbox.java:132: error: [MissingSummary] A summary fragment is required; consider using the value of the @return block as a summary fragment instead.
+server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/PlayerScene.java:112: error: [MissingSummary] A summary fragment is required; consider using the value of the @return block as a summary fragment instead.
+server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/PlayerScene.java:122: error: [MissingSummary] A summary fragment is required; consider using the value of the @return block as a summary fragment instead.
+server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/PlayerScene.java:133: error: [MissingSummary] A summary fragment is required; consider using the value of the @return block as a summary fragment instead.
+server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/PlayerScene.java:40: error: [MissingSummary] A summary fragment is required; consider using the value of the @return block as a summary fragment instead.
+server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/PlayerScene.java:47: error: [MissingSummary] A summary fragment is required; consider using the value of the @return block as a summary fragment instead.
+server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java:391: error: [UnnamedVariable] Consider renaming unused variables and lambda parameters to _

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest" tests="10" skipped="0" failures="10" errors="0" timestamp="2026-10-12T05:33:33.655Z" hostname="Mac.local" time="0.066">
+  <properties/>
+  <testcase name="anActionOfAnEarlierSceneIsAnsweredStaleAndNeverReachesTheHandler(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest" time="0.01">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.onAction(SceneService.java:130)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.start(SceneInboundIntegrationTest.java:106)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.anActionOfAnEarlierSceneIsAnsweredStaleAndNeverReachesTheHandler(SceneInboundIntegrationTest.java:176)
+</failure>
+  </testcase>
+  <testcase name="withoutASceneOwnerEveryPayloadIsDroppedUnreadUnloggedAndUnanswered(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest" time="0.008">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.onAction(SceneService.java:130)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.start(SceneInboundIntegrationTest.java:106)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.withoutASceneOwnerEveryPayloadIsDroppedUnreadUnloggedAndUnanswered(SceneInboundIntegrationTest.java:331)
+</failure>
+  </testcase>
+  <testcase name="aHandlerThatChangesTheSceneIsAnsweredWithoutStartingACooldown(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest" time="0.007">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.onAction(SceneService.java:130)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.start(SceneInboundIntegrationTest.java:106)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.aHandlerThatChangesTheSceneIsAnsweredWithoutStartingACooldown(SceneInboundIntegrationTest.java:265)
+</failure>
+  </testcase>
+  <testcase name="aKeyStillCoolingDownIsAnsweredCooldownAndTheEleventhActionOfTheWindowIsRateLimited(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest" time="0.006">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.onAction(SceneService.java:130)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.start(SceneInboundIntegrationTest.java:106)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.aKeyStillCoolingDownIsAnsweredCooldownAndTheEleventhActionOfTheWindowIsRateLimited(SceneInboundIntegrationTest.java:190)
+</failure>
+  </testcase>
+  <testcase name="onlyTheFirstReadyOfTheCurrentSceneReachesTheLedger(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest" time="0.006">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.onAction(SceneService.java:130)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.start(SceneInboundIntegrationTest.java:106)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.onlyTheFirstReadyOfTheCurrentSceneReachesTheLedger(SceneInboundIntegrationTest.java:317)
+</failure>
+  </testcase>
+  <testcase name="anUnknownMessageIsDroppedWithoutAnAnswerAndItsLineIsWithinTheBudget(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest" time="0.005">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.onAction(SceneService.java:130)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.start(SceneInboundIntegrationTest.java:106)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.anUnknownMessageIsDroppedWithoutAnAnswerAndItsLineIsWithinTheBudget(SceneInboundIntegrationTest.java:298)
+</failure>
+  </testcase>
+  <testcase name="aPayloadThatDoesNotDecodeOrIsAMessageOfOursDisconnects(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest" time="0.005">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.onAction(SceneService.java:130)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.start(SceneInboundIntegrationTest.java:106)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.aPayloadThatDoesNotDecodeOrIsAMessageOfOursDisconnects(SceneInboundIntegrationTest.java:279)
+</failure>
+  </testcase>
+  <testcase name="aRefusalCarriesThePluginsReasonAndAFailingHandlerIsRefusedWithoutOne(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest" time="0.006">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.onAction(SceneService.java:130)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.start(SceneInboundIntegrationTest.java:106)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.aRefusalCarriesThePluginsReasonAndAFailingHandlerIsRefusedWithoutOne(SceneInboundIntegrationTest.java:249)
+</failure>
+  </testcase>
+  <testcase name="theRateLimitIsJudgedBeforeTheActionIsLookedUp(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest" time="0.005">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.onAction(SceneService.java:130)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.start(SceneInboundIntegrationTest.java:106)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.theRateLimitIsJudgedBeforeTheActionIsLookedUp(SceneInboundIntegrationTest.java:234)
+</failure>
+  </testcase>
+  <testcase name="aStaleActionIsJudgedBeforeTheRateLimit(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest" time="0.006">
+    <failure message="java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.unimplemented(SceneService.java:105)
+	at io.github.bearisbug.synaxis.app.scene.SceneService$Unimplemented.onAction(SceneService.java:130)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.start(SceneInboundIntegrationTest.java:106)
+	at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.aStaleActionIsJudgedBeforeTheRateLimit(SceneInboundIntegrationTest.java:217)
+</failure>
+  </testcase>
+  <system-out><![CDATA[13:33:33.665 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.666 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.666 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.673 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.674 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.674 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.680 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.681 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.681 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.686 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.686 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.687 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.692 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.692 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.693 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.698 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.698 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.698 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.703 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.703 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.703 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.709 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.709 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.709 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.715 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.715 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.715 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:33:33.720 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:33:33.720 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:33:33.720 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

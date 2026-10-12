@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.scene.ActionGateTest" tests="5" skipped="0" failures="4" errors="0" timestamp="2026-10-12T05:33:33.601Z" hostname="Mac.local" time="0.007">
+  <properties/>
+  <testcase name="tenActionsFitAWholeSecondWindowAndTheEleventhDoesNot()" classname="io.github.bearisbug.synaxis.app.scene.ActionGateTest" time="0.004">
+    <failure message="org.opentest4j.AssertionFailedError: the eleventh action of the window ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the eleventh action of the window ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:266)
+	at io.github.bearisbug.synaxis.app.scene.ActionGateTest.tenActionsFitAWholeSecondWindowAndTheEleventhDoesNot(ActionGateTest.java:26)
+</failure>
+  </testcase>
+  <testcase name="aClockBelowZeroStillCutsWholeSeconds()" classname="io.github.bearisbug.synaxis.app.scene.ActionGateTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:257)
+	at io.github.bearisbug.synaxis.app.scene.ActionGateTest.aClockBelowZeroStillCutsWholeSeconds(ActionGateTest.java:44)
+</failure>
+  </testcase>
+  <testcase name="aSceneChangeEndsEveryCooldownAndAZeroCooldownIsNone()" classname="io.github.bearisbug.synaxis.app.scene.ActionGateTest" time="0.0"/>
+  <testcase name="aKeyCoolsDownForItsDurationAndTheOtherKeysDoNot()" classname="io.github.bearisbug.synaxis.app.scene.ActionGateTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;2000000000&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;2000000000&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.bearisbug.synaxis.app.scene.ActionGateTest.aKeyCoolsDownForItsDurationAndTheOtherKeysDoNot(ActionGateTest.java:55)
+</failure>
+  </testcase>
+  <testcase name="theWindowIsTheWholeSecondNotTheLastSecond()" classname="io.github.bearisbug.synaxis.app.scene.ActionGateTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:257)
+	at io.github.bearisbug.synaxis.app.scene.ActionGateTest.theWindowIsTheWholeSecondNotTheLastSecond(ActionGateTest.java:34)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

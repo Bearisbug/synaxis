@@ -1299,7 +1299,7 @@ flowchart LR
 | 开局准备时长 | `prepare_ms`，tick 之外，S1 竞技场 5×5 = 25 个区块，P95 | ≤ 1 s | 已有实测只有 RTS 地形，口径都含地形、导航网格、区块生成与整图光照，起服时测：`rts-512`（1,024 区块）771 / 968 ms，`rts-128`（64 区块）228 / 189 ms（`docs/DESIGN-M2.md` §15「地图生成」行）。按前者折合 0.75～0.95 ms/区块，25 区块约 19～24 ms；按后者折合 3.0～3.6 ms/区块（小图摊不开固定开销，起服时 JIT 也还冷），25 区块约 74～89 ms。平坦竞技场没有地形与导航网格，真实值由 S1 的 judge 抄进证据（§6.7.6）。超过 1 s 时改为起服时预建实例池（§3） |
 | 换实例就绪 | `move` 完成到客户端回 `C2S_SCENE_READY`（含载入画面关闭与脚下区块到达），P95 | ≤ 100 tick | §3「换实例就绪时延」 |
 | 场景层下行 | 每连接 | 单包 ≤ 8 KiB；样板平均 ≤ 2 KiB/s | §2 请求量；台账 `EVT:play_traffic` 实测超过 20 KiB/s 重估 |
-| 场景层每 tick 开销 | `SceneService` 在 `PlayerTickEvent` 里合并发送，每名玩家 | ≤ 0.05 ms | 进程内计时，只打印不断言：`SceneServiceIntegrationTest` 每 tick 改一个 `TIMER` 与一个 8 行的 `SCOREBOARD`，量出场景层的出口每名玩家每 tick 的耗时，读数见 §15 表后；超过时改为每 2 tick 合并。不用 JMH：`jmh-benchmarks` 只依赖引擎与 `:testing`，场景层是 `server-app` 的内部类 |
+| 场景层每 tick 开销 | `SceneService` 在 `PlayerTickEvent` 里合并发送，每名玩家 | ≤ 0.05 ms | 进程内计时，只打印不断言：`SceneServiceIntegrationTest#timesTheExitOfTheSceneLayerPerPlayerPerTick` 每 tick 设一个 `TIMER` 与一个 8 行的 `SCOREBOARD`，再派发该玩家的 `PlayerTickEvent`，只量出口这一段，预热 2,000 次后量 10,000 次。RUN-077 组 H 本机 4 次运行（默认两次、4 线程严格、严格 grid，`--max-workers=2`）：均值 0.0013～0.0024 ms，P99 0.0023～0.0028 ms，单次最大 0.03～8.98 ms（长尾没有归因）；同一 tick 两次 `set` 本身均值 0.0039～0.0048 ms（`docs/test-runs/RUN-077/H/`）。均值与 P99 都在目标之内；超过时改为每 2 tick 合并。不用 JMH：`jmh-benchmarks` 只依赖引擎与 `:testing`，场景层是 `server-app` 的内部类 |
 | 并发局数 | 每个玩法进程 | 样板 S2 ≤ 4 局（S1 为 1 局）、≤ 32 人 | §2 用户量；玩法进程默认 1 条 tick 线程 |
 | 限流 | `C2S_ACTION` 每连接 | ≤ 10 次/秒，超出回 `rate-limited`；更快的上行由引擎入站包速率闸（7 s 窗口 750 包）断线 | `API-PLAY-002`；`docs/DESIGN-PROD.md` `API-PROD-012` |
 | 撤离 | `cancel`、`settled`、强制关闭 | 5 s 内撤完，否则踢出 | `API-PLAY-006` |

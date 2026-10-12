@@ -1,0 +1,4 @@
+server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/WidgetEncoder.java:21: warning: [DoNotCallSuggester] Methods that always throw an exception should be annotated with @DoNotCall to prevent calls at compilation time vs. at runtime (note that adding @DoNotCall will break any existing callers of this API).
+  Did you mean '@DoNotCall("Always throws java.lang.UnsupportedOperationException") static Encoded encode(String pluginId, Widget widget) {'?
+error: warnings found and -Werror specified
+  server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/WidgetEncoder.java:21: warning: [DoNotCallSuggester] Methods that always throw an exception should be annotated with @DoNotCall to prevent calls at compilation time vs. at runtime (note that adding @DoNotCall will break any existing callers of this API).

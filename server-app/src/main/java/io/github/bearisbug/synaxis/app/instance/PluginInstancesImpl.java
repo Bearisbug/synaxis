@@ -31,6 +31,8 @@ final class PluginInstancesImpl implements PluginInstances {
     private final List<ManagedInstanceImpl> live = new CopyOnWriteArrayList<>();
     /** The last number handed out per instance name, so that each dimension name is used once. */
     private final Map<String, AtomicInteger> serials = new ConcurrentHashMap<>();
+    /** Set once the plugin is taken back: an instance it created afterwards would never be closed by force. */
+    private volatile boolean tornDown;
 
     PluginInstancesImpl(String pluginId, InstanceRegistry registry) {
         this.pluginId = pluginId;
@@ -39,6 +41,8 @@ final class PluginInstancesImpl implements PluginInstances {
 
     @Override
     public ManagedInstance create(InstanceSpec spec) {
+        if (tornDown)
+            throw new IllegalStateException("plugin_id=" + pluginId + " was taken back and creates no more managed instances");
         final boolean inPlace = registry.onStartupThread();
         if (!inPlace && !(Thread.currentThread() instanceof TickSchedulerThread))
             throw new IllegalStateException("a managed instance is created on the startup thread or the tick scheduler "
@@ -73,11 +77,12 @@ final class PluginInstancesImpl implements PluginInstances {
     }
 
     /**
-     * Closes by force every instance of the plugin not finished closing yet.
+     * Closes by force every instance of the plugin not finished closing yet; the plugin creates no more.
      *
      * @param cause {@link EndCause#PLUGIN_DISABLED} or {@link EndCause#SHUTDOWN}
      */
     void reclaim(EndCause cause) {
+        this.tornDown = true;
         for (ManagedInstanceImpl managed : live) managed.reclaim(cause);
     }
 

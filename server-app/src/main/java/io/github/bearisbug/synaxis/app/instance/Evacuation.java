@@ -11,6 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
@@ -18,9 +20,10 @@ import java.util.function.Function;
  * Sends the players of a closing managed instance away and unregisters it once they are gone
  * ({@code docs/DESIGN-PLAY.md} {@code API-PLAY-006}, internal task {@code play.instance.evacuate}).
  * <p>
- * Each player online inside when the instance closed gets the exit the plugin chose. The instance is
- * unregistered as soon as nobody is left, on the startup thread or in a serial part of the tick
- * scheduler thread; whoever is still inside when the evacuation time runs out is kicked with
+ * Each player online inside when the instance closed gets the exit the plugin chose, and so does a
+ * player whose move was admitted before the close and lands after it. The instance is unregistered as
+ * soon as nobody is left and no such move is on its way, on the startup thread or in a serial part of
+ * the tick scheduler thread; whoever is still inside when the evacuation time runs out is kicked with
  * {@code synaxis:match-unavailable} first.
  */
 final class Evacuation {
@@ -30,58 +33,80 @@ final class Evacuation {
 
     private final ManagedInstanceImpl managed;
     private final InstanceRegistry registry;
+    private final Function<Player, Exit> exit;
     private final boolean settleTimeout;
-    private final List<Player> inside;
+    /** The players handed the exit: those online inside when the instance closed, then the late arrivals. */
+    private final Set<Player> inside = ConcurrentHashMap.newKeySet();
     private final long startedAt;
     private final AtomicBoolean finished = new AtomicBoolean();
 
     /**
-     * Takes the players online inside the instance, which has just turned {@code CLOSED}.
+     * Takes the players online inside the instance, which is turning {@code CLOSED} under its monitor.
      *
+     * @param exit          where each player goes
      * @param settleTimeout whether the instance closes because its plugin did not settle it in time
      */
-    Evacuation(ManagedInstanceImpl managed, InstanceRegistry registry, boolean settleTimeout) {
+    Evacuation(ManagedInstanceImpl managed, InstanceRegistry registry, Function<Player, Exit> exit, boolean settleTimeout) {
         this.managed = managed;
         this.registry = registry;
+        this.exit = exit;
         this.settleTimeout = settleTimeout;
-        this.inside = online();
+        this.inside.addAll(managed.online());
         this.startedAt = registry.now();
     }
 
     /**
      * Hands every player their exit, then unregisters the instance at once if nobody is left and the
-     * calling thread may, or watches it once a tick until then.
-     *
-     * @param exit where each player goes
+     * calling thread may, or watches it once a tick until then. Does nothing once a forced close
+     * finished the evacuation, which a listener of the closing event may have done.
      */
-    void start(Function<Player, Exit> exit) {
-        for (Player player : inside) send(player, exit);
-        if (registry.inSerialPart() && online().isEmpty()) finish();
+    void start() {
+        if (finished.get()) return;
+        for (Player player : inside) send(player);
+        if (registry.inSerialPart() && nobodyLeft()) finish();
         else registry.process().scheduler().scheduleTask(this::sweep, TaskSchedule.nextTick());
     }
 
-    private void send(Player player, Function<Player, Exit> exit) {
-        Exit target;
+    /**
+     * A player whose move was admitted before the instance closed has landed in it.
+     *
+     * @param player the player, on their tick thread
+     */
+    void arrived(Player player) {
+        if (finished.get()) {
+            player.kick(MATCH_UNAVAILABLE);
+            return;
+        }
+        inside.add(player);
+        send(player);
+    }
+
+    /** The exit of one player; one the plugin's function cannot give, by throwing or by giving null, is a kick. */
+    private void send(Player player) {
         try {
-            target = exit.apply(player);
-        } catch (RuntimeException e) {
-            LOGGER.error("The exit of a closing managed instance threw, kicking the player: plugin_id={} instance={} "
-                    + "connection_id={}", managed.pluginId(), managed.id(), player.getPlayerConnection().connectionId(), e);
-            target = new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE);
-        }
-        switch (target) {
-            case Exit.ToInstance(ManagedInstance to, Pos at) -> {
-                var _ = to.move(player, at);
+            switch (exit.apply(player)) {
+                case Exit.ToInstance(ManagedInstance to, Pos at) -> {
+                    var _ = to.move(player, at);
+                }
+                case Exit.Kick(String reasonKey) -> player.kick(Component.translatable(reasonKey));
             }
-            case Exit.Kick(String reasonKey) -> player.kick(Component.translatable(reasonKey));
+        } catch (RuntimeException e) {
+            LOGGER.error("No exit for a player of a closing managed instance, kicking them: plugin_id={} instance={} "
+                    + "connection_id={}", managed.pluginId(), managed.id(), player.getPlayerConnection().connectionId(), e);
+            player.kick(MATCH_UNAVAILABLE);
         }
+    }
+
+    private boolean nobodyLeft() {
+        return managed.online().isEmpty() && !managed.movesPending();
     }
 
     /** Once a tick, in the serial part of the tick scheduler thread. */
     private TaskSchedule sweep() {
         if (finished.get()) return TaskSchedule.stop();
-        if (!online().isEmpty() && registry.now() - startedAt < registry.durations().evacuation().toNanos())
-            return TaskSchedule.nextTick();
+        final boolean timeUp = registry.now() - startedAt >= registry.durations().evacuation().toNanos();
+        if (managed.movesPending()) return TaskSchedule.nextTick();
+        if (!managed.online().isEmpty() && !timeUp) return TaskSchedule.nextTick();
         finish();
         return TaskSchedule.stop();
     }
@@ -93,14 +118,10 @@ final class Evacuation {
      */
     void finish() {
         if (!finished.compareAndSet(false, true)) return;
-        final List<Player> left = online();
+        final List<Player> left = managed.online();
         for (Player player : left) player.kick(MATCH_UNAVAILABLE);
         registry.process().instance().unregisterInstance(managed.instance());
         final int evacuated = (int) inside.stream().filter(player -> !left.contains(player)).count();
         managed.closed(inside.size(), evacuated, left.size(), settleTimeout);
-    }
-
-    private List<Player> online() {
-        return managed.instance().getPlayers().stream().filter(Player::isOnline).toList();
     }
 }

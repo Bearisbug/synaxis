@@ -108,18 +108,19 @@ public final class InstanceRegistry {
     }
 
     /**
-     * Whether the calling thread may create an instance in place, waiting for its chunks.
+     * Whether the calling thread may create an instance in place, waiting for its chunks: the thread that
+     * enables the plugins, until the process starts and the tick threads run.
      *
-     * @return true on the thread that enables the plugins
+     * @return true on the startup thread before the port is bound
      */
     boolean onStartupThread() {
-        return Thread.currentThread() == startupThread;
+        return Thread.currentThread() == startupThread && !process.isAlive();
     }
 
     /**
      * Whether the calling thread runs alongside no tick thread, where registering and unregistering an
-     * instance is safe: the startup thread, before any tick, or the tick scheduler thread, which only
-     * runs code of its own while the tick threads wait.
+     * instance is safe: the startup thread before the process starts, or the tick scheduler thread,
+     * which only runs code of its own while the tick threads wait.
      *
      * @return true on either of them
      */

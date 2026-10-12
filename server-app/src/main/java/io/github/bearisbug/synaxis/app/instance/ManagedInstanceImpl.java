@@ -41,7 +41,13 @@ import java.util.function.Function;
  * <p>
  * The state and the end cause are swapped together, and a transition is done once the swap is: a
  * closing instance is {@link State#CLOSED} from then on while its players are sent away and it is
- * unregistered. The state event is called after the swap, on the thread that made it.
+ * unregistered. The state event is called after the swap, on the thread that made it, and before the
+ * players are sent away.
+ * <p>
+ * The swap into {@code CLOSED} of an open, running or ending instance, the admission of a move and
+ * the forced close share the monitor of this object: a move either lands before the evacuation takes
+ * its players or is known to it, and a forced close never finds the instance closed without its
+ * evacuation.
  */
 final class ManagedInstanceImpl implements ManagedInstance {
 
@@ -81,7 +87,10 @@ final class ManagedInstanceImpl implements ManagedInstance {
     private final CompletableFuture<Void> preparation = new CompletableFuture<>();
     private volatile long endingAt;
     private volatile long registerNanos = -1;
+    /** Set together with the swap into {@code CLOSED}, under the monitor; null for a dropped instance. */
     private volatile @Nullable Evacuation evacuation;
+    /** Moves that passed the state check and have not landed yet; guarded by the monitor. */
+    private int pendingMoves;
 
     /**
      * Builds the unregistered engine instance; nothing is loaded until one of the two prepare methods.
@@ -257,23 +266,54 @@ final class ManagedInstanceImpl implements ManagedInstance {
 
     /** The move itself, on the tick thread that owns the player. */
     private void moveNow(Player player, Pos at, CompletableFuture<Boolean> moved) {
-        if (!takesPlayers() || !player.isOnline()) {
+        final Instance from = player.getInstance();
+        if (from == instance) {
+            moved.complete(takesPlayers());
+            return;
+        }
+        if (!player.isOnline() || !admit()) {
             moved.complete(false);
             return;
         }
-        final Instance from = player.getInstance();
-        if (from == instance) {
-            moved.complete(true);
-            return;
-        }
         var _ = player.setInstance(instance, at).whenComplete((_, failure) -> {
+            final Evacuation closing = landed();
             if (failure != null) {
                 moved.completeExceptionally(failure);
-                return;
+            } else if (closing != null) {
+                // Closed while the move was on its way: the player gets the exit like those who were inside
+                closing.arrived(player);
+                moved.complete(false);
+            } else {
+                registry.ledger().moved(this, player, from);
+                moved.complete(true);
             }
-            registry.ledger().moved(this, player, from);
-            moved.complete(true);
         });
+    }
+
+    private synchronized boolean admit() {
+        if (!takesPlayers()) return false;
+        pendingMoves++;
+        return true;
+    }
+
+    /**
+     * A move {@link #admit admitted} landed, or failed.
+     *
+     * @return the evacuation if the instance closed while the move was on its way
+     */
+    private synchronized @Nullable Evacuation landed() {
+        pendingMoves--;
+        return evacuation;
+    }
+
+    /**
+     * Whether a move admitted before the instance closed is still on its way: the evacuation waits for
+     * it, so that its player is handed the exit instead of being left in an unregistered instance.
+     *
+     * @return true while one is
+     */
+    synchronized boolean movesPending() {
+        return pendingMoves > 0;
     }
 
     @Override
@@ -285,8 +325,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
 
     @Override
     public void cancel(Function<Player, Exit> exit) {
-        request(State.OPEN, State.CLOSED, EndCause.CANCELLED, "cancel");
-        evacuate(State.OPEN, exit, false);
+        close(State.OPEN, EndCause.CANCELLED, exit, "cancel");
     }
 
     @Override
@@ -304,25 +343,40 @@ final class ManagedInstanceImpl implements ManagedInstance {
     private TaskSchedule awaitSettlement() {
         if (state() != State.ENDING) return TaskSchedule.stop();
         if (registry.now() - endingAt < spec.settleTimeout().toNanos()) return TaskSchedule.nextTick();
-        if (swap(State.ENDING, State.CLOSED, null)) {
+        final Evacuation closing = beginClose(State.ENDING, null, spec.fallbackExit(), true);
+        if (closing != null) {
             LOGGER.warn("Managed instance was not settled within its settle timeout, closing it: plugin_id={} "
                     + "instance={} settle_timeout_ms={}", owner.pluginId(), id, spec.settleTimeout().toMillis());
-            evacuate(State.ENDING, spec.fallbackExit(), true);
+            dispatch(State.ENDING, State.CLOSED);
+            closing.start();
         }
         return TaskSchedule.stop();
     }
 
     @Override
     public void settled(Function<Player, Exit> exit) {
-        request(State.ENDING, State.CLOSED, null, "settled");
-        evacuate(State.ENDING, exit, false);
+        close(State.ENDING, null, exit, "settled");
     }
 
-    private void evacuate(State from, Function<Player, Exit> exit, boolean settleTimeout) {
-        final Evacuation started = new Evacuation(this, registry, settleTimeout);
-        this.evacuation = started;
-        started.start(exit);
+    private void close(State from, @Nullable EndCause cause, Function<Player, Exit> exit, String request) {
+        final Evacuation closing = beginClose(from, cause, exit, false);
+        if (closing == null)
+            throw new IllegalStateException(request + " needs a managed instance in " + from + ", " + id + " is " + state());
         dispatch(from, State.CLOSED);
+        closing.start();
+    }
+
+    /**
+     * The swap into {@code CLOSED} of a registered instance and its evacuation, in one step.
+     *
+     * @return the evacuation, null if the state was not {@code from}
+     */
+    private synchronized @Nullable Evacuation beginClose(State from, @Nullable EndCause cause, Function<Player, Exit> exit,
+                                                         boolean settleTimeout) {
+        if (!swap(from, State.CLOSED, cause)) return null;
+        final Evacuation started = new Evacuation(this, registry, exit, settleTimeout);
+        this.evacuation = started;
+        return started;
     }
 
     /**
@@ -333,20 +387,27 @@ final class ManagedInstanceImpl implements ManagedInstance {
      * @param cause {@link EndCause#PLUGIN_DISABLED} or {@link EndCause#SHUTDOWN}
      */
     void reclaim(EndCause cause) {
-        for (State from : CLOSABLE) {
-            if (!swap(from, State.CLOSED, cause)) continue;
-            if (from == State.PREPARING) {
-                closed(0, 0, 0, false);
-            } else {
-                final Evacuation forced = new Evacuation(this, registry, false);
-                this.evacuation = forced;
-                forced.finish();
+        State closedFrom = null;
+        final Evacuation closing;
+        synchronized (this) {
+            for (State from : CLOSABLE) {
+                if (swap(from, State.CLOSED, cause)) {
+                    closedFrom = from;
+                    break;
+                }
             }
-            dispatch(from, State.CLOSED);
+            // Nobody is sent anywhere: the evacuation is finished as soon as it is made
+            if (closedFrom != null && closedFrom != State.PREPARING)
+                this.evacuation = new Evacuation(this, registry, spec.fallbackExit(), false);
+            closing = this.evacuation;
+        }
+        if (closedFrom == State.PREPARING) {
+            closed(0, 0, 0, false);
+            dispatch(State.PREPARING, State.CLOSED);
             return;
         }
-        final Evacuation running = this.evacuation;
-        if (running != null) running.finish();
+        if (closedFrom != null) dispatch(closedFrom, State.CLOSED);
+        if (closing != null) closing.finish();
     }
 
     /**
@@ -391,7 +452,17 @@ final class ManagedInstanceImpl implements ManagedInstance {
     }
 
     private int onlinePlayers() {
-        return (int) instance.getPlayers().stream().filter(Player::isOnline).count();
+        return online().size();
+    }
+
+    /**
+     * The players inside whose connection is still up, the ones the engine refuses to unregister an
+     * instance with.
+     *
+     * @return a snapshot of them
+     */
+    List<Player> online() {
+        return instance.getPlayers().stream().filter(Player::isOnline).toList();
     }
 
     private long millisSinceCreated() {

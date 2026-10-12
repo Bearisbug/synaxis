@@ -69,6 +69,11 @@ public record EncodedComponent(byte[] bytes) {
         return bytes.length == 0;
     }
 
+    /**
+     * The encoded component.
+     *
+     * @return a copy of the bytes
+     */
     @Override
     public byte[] bytes() {
         return bytes.clone();

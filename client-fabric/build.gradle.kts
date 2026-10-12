@@ -193,6 +193,8 @@ tasks.withType<JavaCompile>().configureEach {
 val frozenVectors = layout.projectDirectory.asFile.parentFile.resolve("protocol/src/test/resources/vectors")
 // The far view vectors of docs/DESIGN-M3.md §24, with a format_version of their own
 val farviewVectors = layout.projectDirectory.asFile.parentFile.resolve("protocol/src/test/resources/farview-vectors")
+// The synaxis:play vectors of docs/DESIGN-PLAY.md §24, with a play_version of their own
+val playVectors = layout.projectDirectory.asFile.parentFile.resolve("protocol/src/test/resources/play-vectors")
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
@@ -200,6 +202,8 @@ tasks.withType<Test>().configureEach {
     inputs.dir(frozenVectors).withPropertyName("frozenVectors").withPathSensitivity(PathSensitivity.RELATIVE)
     systemProperty("synaxis.farview-vectors.dir", farviewVectors.absolutePath)
     inputs.dir(farviewVectors).withPropertyName("farviewVectors").withPathSensitivity(PathSensitivity.RELATIVE)
+    systemProperty("synaxis.play-vectors.dir", playVectors.absolutePath)
+    inputs.dir(playVectors).withPropertyName("playVectors").withPathSensitivity(PathSensitivity.RELATIVE)
     // Loading Minecraft classes brings its log4j2 configuration along, which writes `logs/` under
     // the working directory; keep that inside the build directory so `clean` takes it away.
     workingDir = layout.buildDirectory.dir("test-workdir").get().asFile

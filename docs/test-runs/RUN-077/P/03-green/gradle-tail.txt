@@ -1,0 +1,11 @@
+ABI gate (baseline v0.3.0 from gh release download, -PbaselineJarDir=<mktemp dir>):
+Calculating task graph as no cached configuration is available for tasks: :protocol:test --rerun --tests io.github.bearisbug.synaxis.game.protocol.play.PlayVectorTest --tests io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest --tests io.github.bearisbug.synaxis.game.protocol.ProtocolVectorTest :protocol:testNamingCheck :protocol:forbiddenImportsCheck :architecture-tests:test --rerun --tests io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest :architecture-tests:testNamingCheck :architecture-tests:forbiddenImportsCheck :protocol:javadoc :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility
+> Task :plugin-api:checkBinaryCompatibility
+> Task :protocol:checkBinaryCompatibility
+BUILD SUCCESSFUL in 19s
+
+javadoc warnings:
+protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/play/EncodedComponent.java:73: warning: no comment
+protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/FarViewAnnouncement.java:87: warning: no comment
+protocol/src/main/java/module-info.java:1: warning: no comment
+protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/UnknownMessageException.java:13: warning: no comment

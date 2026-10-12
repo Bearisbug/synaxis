@@ -207,7 +207,7 @@ unset JAVA_TOOL_OPTIONS
 
 ### 3.6 包依赖矩阵（改动包结构之后）
 
-**按模块分别跑**，不要一次扫全仓：五个模块的包名都在 `io.github.bearisbug.synaxis` 之下，一次扫完会把四个新模块折叠进引擎的两三个桶里，各自的内部结构反而看不见。
+**按模块分别跑**，不要一次扫全仓：七个模块的包名都在 `io.github.bearisbug.synaxis` 之下，一次扫完会把六个新模块折叠进引擎的两三个桶里，各自的内部结构反而看不见。
 
 ```bash
 python3 tools/pkgdeps.py                                     # 引擎（含底层出向上层报告）
@@ -215,9 +215,11 @@ python3 tools/pkgdeps.py protocol/src/main/java   --root-package io.github.beari
 python3 tools/pkgdeps.py plugin-api/src/main/java --root-package io.github.bearisbug.synaxis.plugin        --skip-lower-layer
 python3 tools/pkgdeps.py server-app/src/main/java --root-package io.github.bearisbug.synaxis.app           --skip-lower-layer
 python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.bearisbug.synaxis.game.rts      --skip-lower-layer
+python3 tools/pkgdeps.py play-kit/src/main/java   --root-package io.github.bearisbug.synaxis.game.playkit  --skip-lower-layer
+python3 tools/pkgdeps.py game-rush/src/main/java  --root-package io.github.bearisbug.synaxis.game.rush     --skip-lower-layer
 ```
 
-引擎那一跑要看的是最后一段 `lower layer edges into the rest of the engine: 0`（`--detail` 会把违规文件逐个列出来）；`--skip-lower-layer` 把这段去掉，因为底层 9 包的分层只是引擎的，四个新模块没有对应的层。四个新模块当前各自只有一个扁平包，矩阵为空是正常输出。`architecture-tests/` 没有主源码，没有它的一条。
+引擎那一跑要看的是最后一段 `lower layer edges into the rest of the engine: 0`（`--detail` 会把违规文件逐个列出来）；`--skip-lower-layer` 把这段去掉，因为底层 9 包的分层只是引擎的，其余模块没有对应的层。四个新模块当前各自只有一个扁平包，矩阵为空是正常输出。`:play-kit`、`:game-rush` 也各只有一个包，矩阵同样为空。`architecture-tests/` 没有主源码，没有它的一条。
 
 ---
 
@@ -246,6 +248,8 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 | `plugin-api/` | M2 子项目：唯一稳定面，引擎与 `protocol` 类型的受控再导出；接 ABI 门 |
 | `server-app/` | M2 子项目：插件宿主与装配层（唯一启动入口），跑 classpath，不出模块 |
 | `game-rts/` | M2 子项目：RTS 玩法插件，由宿主用 `ServiceLoader` 发现 |
+| `play-kit/` | 玩法辅助库 `Round`、`LocalQueue`、`Countdown`（`docs/DESIGN-PLAY.md` `API-PLAY-008`）：只依赖 `:plugin-api`，不进 ABI 门、不作兼容承诺 |
+| `game-rush/` | 样板玩法插件 `rush`「信标速攻」（`docs/DESIGN-PLAY.md` §6.7）：不进 `server-app` 默认的运行期依赖，`./gradlew :server-app:runRush` 带着它起服（`ADR-PLAY-011`）；R1 环的起法见 `docs/PLUGINS.md` §6 |
 | `loadtest/` | 压测 harness（`docs/DESIGN-PROD.md` `API-PROD-025`）：Java 机器人（真握手、可选加密、回 `ChunkBatchReceived`、walk / ride / fly）与 `sample`、`merge`、`flood` 三个子命令；不发布、没有模块依赖它。`./gradlew :loadtest:installDist` 后跑 `loadtest/build/install/loadtest/bin/loadtest run …`。`tools/loadtest/soak.py` 只留给 50 人以下的冒烟、RTS `play` 画像与攻击探针 |
 | `synx/` | M3 子项目：`.synx` 区域文件与清单的编解码、起服校验函数 `SynxBuildVerifier` 与冻结的测试向量（`synx/src/test/resources/vectors/`），`docs/DESIGN-M3.md` `API-M3-001`、`API-M3-002` |
 | `baker/` | M3 子项目：离线烘焙器（`docs/DESIGN-M3.md` `API-M3-003`），把原版 26.2 Anvil 存档或生成器预设烘成 `.synx` 地图版本；Anvil 读取器在 `baker.anvil` 包；`./gradlew :baker:run --args="bake …"`，工作目录是 `baker/`，路径参数写绝对路径 |
@@ -289,7 +293,7 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 `.github/workflows/` 下的工作流：`ci.yml`、`concurrency.yml`、`client-mod.yml` 在 push 到 `main` 与每个 PR 上触发，`client-gametest.yml` 的触发见它那一条；GitHub 运行器直连 Maven Central，**不用**镜像 init 脚本。
 
 - `ci.yml`：每个 job 都是 temurin JDK 25、`gradle/actions/setup-gradle` 缓存（非 `main` 只读），都带 PostgreSQL 16 与 Valkey 8 服务容器并设 `SYNAXIS_TEST_PG_URL` 等四个变量（设了变量而连不上库时数据库用例失败，不跳过）。
-  - job `check`（「Check」）：跑 `./gradlew check jacocoTestReport -Dsynaxis.synx.require-frozen-zlib=true`，再查 store 包 7 个数据库测试类的结果都是 `skipped="0"`，上传测试报告与 JaCoCo XML（保留 14 天），然后跑 ABI 门（§7.1）；PR 上另跑 `diff-cover` 对新增行做 80% 覆盖率门（需要 `fetch-depth: 0`）。本地等价：`./gradlew check jacocoTestReport -Dsynaxis.synx.require-frozen-zlib=true --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `diff-cover $(find . -path '*/build/reports/jacoco/test/jacocoTestReport.xml' | sort) --compare-branch=origin/main --src-roots src/main/java testing/src/main/java protocol/src/main/java plugin-api/src/main/java server-app/src/main/java game-rts/src/main/java synx/src/main/java baker/src/main/java --fail-under=80`（`pip install diff-cover`）——覆盖率门读**全部模块**的报告，少一个 `--src-roots` 就会让那个模块的新增行在本地隐形、与 CI 得出不同的绿。
+  - job `check`（「Check」）：跑 `./gradlew check jacocoTestReport -Dsynaxis.synx.require-frozen-zlib=true`，再查 store 包 7 个数据库测试类的结果都是 `skipped="0"`，上传测试报告与 JaCoCo XML（保留 14 天），然后跑 ABI 门（§7.1）；PR 上另跑 `diff-cover` 对新增行做 80% 覆盖率门（需要 `fetch-depth: 0`）。本地等价：`./gradlew check jacocoTestReport -Dsynaxis.synx.require-frozen-zlib=true --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `diff-cover $(find . -path '*/build/reports/jacoco/test/jacocoTestReport.xml' | sort) --compare-branch=origin/main --src-roots src/main/java testing/src/main/java protocol/src/main/java plugin-api/src/main/java server-app/src/main/java game-rts/src/main/java play-kit/src/main/java game-rush/src/main/java synx/src/main/java baker/src/main/java --fail-under=80`（`pip install diff-cover`）——覆盖率门读**全部模块**的报告，少一个 `--src-roots` 就会让那个模块的新增行在本地隐形、与 CI 得出不同的绿。
   - job `multithreaded`（「Test with 4 tick threads (strict)」，`docs/DESIGN-PROD.md` `REQ-PROD-019`）：`./gradlew test -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`，全部测试在 4 条 tick 线程（`counter` 分配）与所有权断言下再跑一遍；随后在 `:testing` 的 `EnvDispatcherThreadsIntegrationTest` 结果里查 `env dispatcher threads: 4`，构建不再把这两个属性转给测试 JVM 时这一步红，不会在 1 条线程上照绿。
   - job `multithreaded-grid`（「Test with 4 tick threads (strict, grid)」，`REQ-PROD-020`）：同一条命令再加 `-Dsynaxis.thread-provider=grid`（分片用的 16×16 区块分格），结果里另查 `env thread provider: grid`。
 

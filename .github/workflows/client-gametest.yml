@@ -350,9 +350,12 @@ jobs:
           GALLIUM_DRIVER: llvmpipe
         run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runProductionClientGameTest --console=plain --stacktrace
 
+      # The ledger goes to disk at most once a second (EventLedger.FLUSH_INTERVAL_MS), and the second launch's last
+      # C2S_SCENE_READY comes less than that before its client quits
       - name: Show the sample server's ledger and the sessionserver's log
         if: always()
         run: |
+          sleep 3
           cat logs/events-*.jsonl || true
           cat sessionserver.log || true
 

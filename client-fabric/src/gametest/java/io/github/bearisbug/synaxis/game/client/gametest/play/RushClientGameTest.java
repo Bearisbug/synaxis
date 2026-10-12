@@ -556,11 +556,11 @@ public final class RushClientGameTest implements FabricClientGameTest {
 
         // Q3: by 2 s after the first press the hint counts one queued and the countdown shows
         final long waited = (System.nanoTime() - pressed) / NANOS_PER_MS;
-        final boolean queued = waitUntil(_ -> "1".equals(argument(entry(HINT), 0)) && timer(entry(TIMER)) != null,
+        // The recording takes a SET in at the end of the tick it came in, which may be after this check sees the mirror
+        final boolean queued = waitUntil(_ -> "1".equals(argument(entry(HINT), 0)) && recorded(TIMER) != null,
                 (int) Math.max(1, (QUEUED_MS - waited) / TICK_MS));
         final String count = ctx().computeOnClient(_ -> argument(entry(HINT), 0));
-        final PlayTestHook.SetSeen countdown = ctx().computeOnClient(_ -> PlayTestHook.recording().sets.stream()
-                .filter(set -> set.owner().equals(RUSH) && set.widgetId().equals(TIMER)).findFirst().orElse(null));
+        final PlayTestHook.SetSeen countdown = ctx().computeOnClient(_ -> recorded(TIMER));
         final boolean ok = first != null && first.code() == ActionResultCode.OK
                 && first.receivedNanos() - pressed <= QUEUED_MS * NANOS_PER_MS;
         line("Q3", ok && queued && countdown != null, "first press " + describe(first) + " "
@@ -652,7 +652,7 @@ public final class RushClientGameTest implements FabricClientGameTest {
 
     /** Q7: the result against the moment the round's TIMER ran out, both from the recording. */
     private boolean q7() {
-        final boolean ended = waitUntil(_ -> entry(RESULT) != null, ROUND_END_TICKS);
+        final boolean ended = waitUntil(_ -> recorded(RESULT) != null, ROUND_END_TICKS);
         final List<PlayTestHook.SetSeen> sets = ctx().computeOnClient(_ -> List.copyOf(PlayTestHook.recording().sets));
         final PlayTestHook.SetSeen round = sets.stream().filter(set -> set.owner().equals(RUSH) && set.widgetId().equals(TIMER))
                 .max(Comparator.comparingInt(PlayTestHook.SetSeen::remainingMs)).orElse(null);
@@ -801,6 +801,12 @@ public final class RushClientGameTest implements FabricClientGameTest {
         } catch (NumberFormatException _) {
             return -1;
         }
+    }
+
+    /** The first SET of one of rush's widgets in the recording, null before it is there. */
+    private static PlayTestHook.@Nullable SetSeen recorded(String widgetId) {
+        return PlayTestHook.recording().sets.stream().filter(set -> set.owner().equals(RUSH) && set.widgetId().equals(widgetId))
+                .findFirst().orElse(null);
     }
 
     private static SceneReadyProbe.@Nullable Sent readyFor(int sceneSeq) {

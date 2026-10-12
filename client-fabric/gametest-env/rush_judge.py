@@ -6,9 +6,9 @@ runner's python3, a local run with the repository's .venv.
 
     rush_judge.py <rush.txt> [<rush.txt> ...]
 
-Every report has one line per step, in the order Q0a, Q0b, Q1 to Q9, each `rush <step> PASS|FAIL|SKIP
-<evidence>`. This stage of the judge checks Q0, the first step of §26 S1 against the play fixture:
-Q0a and Q0b PASS in every report. Q1 to Q9 may be SKIP, since the sample game's server is not in the
+Every report has one line per step, in the order Q0a, Q0b, Q0c, Q1 to Q9, each `rush <step> PASS|FAIL|SKIP
+<evidence>`. This stage of the judge checks Q0 against the play fixture, the first step of §26 S1 (Q0a,
+Q0b) and the client widgets of group C (Q0c): Q0a, Q0b and Q0c PASS in every report. Q1 to Q9 may be SKIP, since the sample game's server is not in the
 job yet; a FAIL anywhere, a missing or doubled line, a line of another shape and a missing report are
 failures. Exit code 0 when every report holds, 1 otherwise; the reasons go to standard output.
 """
@@ -19,8 +19,8 @@ import re
 import sys
 from pathlib import Path
 
-STEPS = ["Q0a", "Q0b"] + [f"Q{n}" for n in range(1, 10)]
-MUST_PASS = {"Q0a", "Q0b"}
+STEPS = ["Q0a", "Q0b", "Q0c"] + [f"Q{n}" for n in range(1, 10)]
+MUST_PASS = {"Q0a", "Q0b", "Q0c"}
 LINE = re.compile(r"rush (Q\d+[a-z]?) (PASS|FAIL|SKIP)(?: (.*))?")
 
 

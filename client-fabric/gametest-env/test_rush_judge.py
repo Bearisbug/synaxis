@@ -24,9 +24,9 @@ def load_judge():
 
 
 def report(**statuses: str) -> str:
-    """A report of every step, Q0a and Q0b PASS and Q1 to Q9 SKIP unless a keyword says otherwise."""
+    """A report of every step, Q0a to Q0c PASS and Q1 to Q9 SKIP unless a keyword says otherwise."""
     lines = []
-    for step in ["Q0a", "Q0b"] + [f"Q{n}" for n in range(1, 10)]:
+    for step in ["Q0a", "Q0b", "Q0c"] + [f"Q{n}" for n in range(1, 10)]:
         status = statuses.get(step, "PASS" if step.startswith("Q0") else "SKIP")
         lines.append(f"rush {step} {status} evidence of {step}")
     return "\n".join(lines) + "\n"
@@ -58,9 +58,11 @@ class JudgeTest(unittest.TestCase):
         self.assertEqual(len(self.judge.judge([self.write("dev.txt", report(Q5="FAIL"))])), 1)
 
     def test_a_skipped_q0_fails(self) -> None:
-        problems = self.judge.judge([self.write("dev.txt", report(Q0a="SKIP"))])
-        self.assertEqual(len(problems), 1)
-        self.assertIn("Q0a must run", problems[0])
+        for step in ["Q0a", "Q0b", "Q0c"]:
+            with self.subTest(step=step):
+                problems = self.judge.judge([self.write("dev.txt", report(**{step: "SKIP"}))])
+                self.assertEqual(len(problems), 1)
+                self.assertIn(f"{step} must run", problems[0])
 
     def test_a_missing_report_fails(self) -> None:
         problems = self.judge.judge([self.write("dev.txt", report()), self.directory / "production.txt"])

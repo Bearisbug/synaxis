@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.game.client.gametest.play;
 import io.github.bearisbug.synaxis.game.client.SynaxisClientMod;
 import io.github.bearisbug.synaxis.game.client.play.PlayClient;
 import io.github.bearisbug.synaxis.game.client.play.PlayHud;
+import io.github.bearisbug.synaxis.game.client.play.SceneReadyProbe;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +28,12 @@ import org.jspecify.annotations.Nullable;
  * of {@code PlayHudFixture}, the client state of every tick while a sampling runs, and the scene mirror of
  * {@code synaxis:play} as the HUD draws it, read off {@code SynaxisClientMod.PLAY} by reflection the way the
  * regression reads {@code RTS}.
+ * <p>
+ * Once a script starts a recording, the end of every client tick also records what changed in the mirror since
+ * the tick before ({@code docs/DESIGN-PLAY.md} §6.4.8): each SET that arrived, with the moment
+ * {@code PlayClient} took it in and a {@code TIMER}'s {@code remaining_ms}; each action result; and the client as
+ * {@code SceneReadyProbe} saw it when it sent a {@code C2S_SCENE_READY}. Two SETs of one widget inside one tick
+ * show as the later one.
  */
 public final class PlayTestHook implements ClientModInitializer {
 
@@ -78,10 +85,34 @@ public final class PlayTestHook implements ClientModInitializer {
     public record TextSeen(String widgetId, Component text, String drawn) {
     }
 
+    /**
+     * One SET the mirror took in.
+     *
+     * @param owner         the widget's owner
+     * @param widgetId      its widget id
+     * @param kind          its kind, the simple name of the content's class
+     * @param set           the number of the SET on this connection
+     * @param receivedNanos the client clock when {@code PlayClient} took it in
+     * @param remainingMs   a {@code TIMER}'s {@code remaining_ms}, -1 for the other kinds
+     */
+    public record SetSeen(String owner, String widgetId, String kind, long set, long receivedNanos, int remainingMs) {
+    }
+
+    /** What a recording holds; client thread only. */
+    static final class Recording {
+        final List<SetSeen> sets = new ArrayList<>();
+        final List<PlayClient.Result> results = new ArrayList<>();
+        final List<SceneReadyProbe.Sent> readies = new ArrayList<>();
+        long lastSet;
+    }
+
     static final BlockingQueue<byte[]> ANSWERS = new LinkedBlockingQueue<>();
 
     /** The samples of the running sampling, null when none runs; client thread only. */
     private static @Nullable List<Sample> samples;
+
+    /** The running recording, null when none runs; client thread only. */
+    private static @Nullable Recording recording;
 
     @Override
     public void onInitializeClient() {
@@ -89,6 +120,101 @@ public final class PlayTestHook implements ClientModInitializer {
         PayloadTypeRegistry.clientboundPlay().register(Payload.TYPE, Payload.CODEC);
         ClientPlayNetworking.registerGlobalReceiver(Payload.TYPE, (payload, _) -> ANSWERS.add(payload.data()));
         ClientTickEvents.END_CLIENT_TICK.register(PlayTestHook::sample);
+        ClientTickEvents.END_CLIENT_TICK.register(_ -> record());
+    }
+
+    /** Starts a recording of the mirror's changes from now on; on the client thread. */
+    static void startRecording() {
+        final Recording started = new Recording();
+        for (final PlayClient.Entry entry : play().widgets()) started.lastSet = Math.max(started.lastSet, entry.set());
+        recording = started;
+    }
+
+    /**
+     * The running recording; on the client thread.
+     *
+     * @return it, or an empty one when none runs
+     */
+    static Recording recording() {
+        return recording == null ? new Recording() : recording;
+    }
+
+    /** Ends the recording; on the client thread. */
+    static void stopRecording() {
+        recording = null;
+    }
+
+    private static void record() {
+        final Recording running = recording;
+        if (running == null) return;
+        final PlayClient play = play();
+        long last = running.lastSet;
+        for (final PlayClient.Entry entry : play.widgets()) {
+            if (entry.set() <= running.lastSet) continue;
+            running.sets.add(new SetSeen(entry.owner(), entry.widgetId(), entry.content().getClass().getSimpleName(), entry.set(),
+                    entry.receivedNanos(), entry.content() instanceof PlayClient.Timer timer ? timer.remainingMs() : -1));
+            last = Math.max(last, entry.set());
+        }
+        running.lastSet = last;
+        final PlayClient.Result result = play.lastResult();
+        if (result != null && (running.results.isEmpty() || !running.results.getLast().equals(result))) running.results.add(result);
+        final SceneReadyProbe.Sent ready = play.probe().last();
+        if (ready != null && (running.readies.isEmpty() || !running.readies.getLast().equals(ready))) running.readies.add(ready);
+    }
+
+    /**
+     * Turns the local cooldown of the action keys on or off; on the client thread.
+     *
+     * @param on whether a press inside the local cooldown is held back, the mod's default
+     */
+    static void localCooldown(boolean on) {
+        play().localCooldown(on);
+    }
+
+    /**
+     * @return how many actions the connection sent; on the client thread
+     */
+    static int actionsSent() {
+        return play().actionsSent();
+    }
+
+    /**
+     * Whether the mirror holds a panel at all, shown or closed locally; on the client thread.
+     *
+     * @return true when it does
+     */
+    static boolean holdsPanel() {
+        return play().widgets().stream().anyMatch(entry -> entry.content() instanceof PlayClient.Panel);
+    }
+
+    /**
+     * @return the reason shown on the panel the mirror shows, null for none; on the client thread
+     */
+    static @Nullable Component panelReason() {
+        final PlayClient play = play();
+        final PlayClient.Entry panel = play.panel();
+        return panel == null ? null : play.panelReason(panel);
+    }
+
+    /**
+     * What one {@code TIMER} shows now; on the client thread.
+     *
+     * @param widgetId the timer's widget id
+     * @return the milliseconds left, -1 when there is no such timer
+     */
+    static long timerLeft(String widgetId) {
+        final PlayClient play = play();
+        return play.widgets().stream().filter(entry -> entry.widgetId().equals(widgetId) && entry.content() instanceof PlayClient.Timer)
+                .findFirst().map(play::remainingMs).orElse(-1L);
+    }
+
+    /**
+     * The widgets the mirror holds; on the client thread.
+     *
+     * @return {@code widget_id=Kind} in layout order
+     */
+    static List<String> widgets() {
+        return play().widgets().stream().map(entry -> entry.widgetId() + "=" + entry.content().getClass().getSimpleName()).toList();
     }
 
     /** Starts a sampling of every client tick; on the client thread. */
@@ -133,12 +259,10 @@ public final class PlayTestHook implements ClientModInitializer {
      * @return them top to bottom, none before the connection's first scene
      */
     static List<TextSeen> texts() {
-        final PlayClient play = play();
-        final List<Component> lines = PlayHud.lines(play);
-        final List<PlayClient.Text> texts = play.texts();
         final List<TextSeen> seen = new ArrayList<>();
-        for (int i = 0; i < lines.size(); i++) {
-            seen.add(new TextSeen(texts.get(i).widgetId(), texts.get(i).text(), lines.get(i).getString()));
+        for (final PlayHud.Block block : PlayHud.blocks(play())) {
+            if (!(block.entry().content() instanceof PlayClient.Text text)) continue;
+            seen.add(new TextSeen(block.entry().widgetId(), text.text(), block.lines().getFirst().text().getString()));
         }
         return seen;
     }

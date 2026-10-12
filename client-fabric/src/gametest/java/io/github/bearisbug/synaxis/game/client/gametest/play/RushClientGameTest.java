@@ -1,5 +1,10 @@
 package io.github.bearisbug.synaxis.game.client.gametest.play;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import io.github.bearisbug.synaxis.game.client.play.PanelScreen;
+import io.github.bearisbug.synaxis.game.client.play.PlayClient;
+import io.github.bearisbug.synaxis.game.client.play.SceneReadyProbe;
+import io.github.bearisbug.synaxis.game.protocol.play.ActionResultCode;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -19,9 +24,11 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.locale.Language;
@@ -41,8 +48,14 @@ import org.jspecify.annotations.Nullable;
  * component, and screenshot {@code play-text} holds the two colours. Q0b: once the client asks over the test
  * channel, the fixture moves the player into an instance of another dimension name; every client tick from the
  * request on records the open screen, the level's dimension and whether the chunk under the player is there,
- * until the client stands in the new level with no screen open and that chunk loaded. Q1 to Q9 are the steps of
- * §6.7.6 against {@value #RUSH_VARIABLE}.
+ * until the client stands in the new level with no screen open and that chunk loaded. Q0c (group C): the fixture
+ * enters the player into a second scene with one action key, a {@code TIMER}, a {@code SCOREBOARD}, a {@code TEXT}
+ * at the bottom and a {@code PANEL}; the panel opens without pausing and Esc closes it locally, screenshots
+ * {@code play-panel} and {@code play-widgets} hold each widget's colour in its slot's part of the screen, the
+ * timer counts down, the action key sends once and the local cooldown holds back the next press until it is
+ * turned off, the panel opened again keeps a refused button's reason and closes on the accepted one, and the
+ * fixture got one {@code C2S_SCENE_READY} for each scene. Q1 to Q9 are the steps of §6.7.6 against
+ * {@value #RUSH_VARIABLE}.
  * <p>
  * Every step is one line {@code rush Q<n> PASS|FAIL|SKIP <evidence>} of {@code synaxis-gametest/rush.txt},
  * written in a {@code finally}; the test catches what its steps throw and never fails itself, and
@@ -53,7 +66,7 @@ public final class RushClientGameTest implements FabricClientGameTest {
     static final String FIXTURE_VARIABLE = "SYNAXIS_PLAY_FIXTURE_SERVER";
 
     /** The lines of the report, in the order they are written. */
-    private static final List<String> STEPS = List.of("Q0a", "Q0b", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9");
+    private static final List<String> STEPS = List.of("Q0a", "Q0b", "Q0c", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9");
 
     // What PlayHudFixture sends, the components frozen under play-vectors/component/
     private static final String SCENE_ID = "synaxis_test:play";
@@ -67,6 +80,19 @@ public final class RushClientGameTest implements FabricClientGameTest {
     private static final String MISSING_FALLBACK = "Shown from the fallback";
     private static final List<String> WIDGETS = List.of("hint", "missing", "empty");
     private static final String ELSEWHERE = "synaxis_test:play_elsewhere";
+    // Q0c: the second scene of PlayHudFixture, its widgets' colours and its panel's two buttons
+    private static final String WIDGETS_SCENE_ID = "synaxis_test:widgets";
+    private static final int TIMER_COLOUR = 0x55FFFF;
+    private static final int SCORE_COLOUR = 0xFFFF55;
+    private static final int VALUE_COLOUR = 0xFF5555;
+    private static final int CAPTURE_COLOUR = 0xFF55FF;
+    private static final int REFUSE_BUTTON = 0;
+    private static final int CLOSE_BUTTON = 1;
+    private static final int POKE_COOLDOWN_MS = 2000;
+    /** How far above the bottom edge the action bar starts, in GUI pixels (WidgetLayout.ACTION_BAR_TOP). */
+    private static final int ACTION_BAR_TOP = 72;
+    private static final int PANEL_TIMEOUT_TICKS = 20 * 5;
+    private static final int RESULT_TIMEOUT_TICKS = 20 * 2;
 
     private static final int CONNECT_TIMEOUT_TICKS = 20 * 120;
     private static final int HUD_TIMEOUT_TICKS = 20 * 20;
@@ -90,13 +116,13 @@ public final class RushClientGameTest implements FabricClientGameTest {
         try {
             context.waitForScreen(TitleScreen.class);
             if (fixture.isBlank()) {
-                skip(List.of("Q0a", "Q0b"), FIXTURE_VARIABLE + " not set");
+                skip(STEPS.subList(0, 3), FIXTURE_VARIABLE + " not set");
             } else {
                 q0(fixture);
                 leave();
             }
-            if (rush.isBlank()) skip(STEPS.subList(2, STEPS.size()), RUSH_VARIABLE + " not set");
-            else for (String step : STEPS.subList(2, STEPS.size())) line(step, false, "not in this build of the script");
+            if (rush.isBlank()) skip(STEPS.subList(3, STEPS.size()), RUSH_VARIABLE + " not set");
+            else for (String step : STEPS.subList(3, STEPS.size())) line(step, false, "not in this build of the script");
         } catch (RuntimeException | AssertionError e) {
             ended = "the script threw " + e;
         } finally {
@@ -120,10 +146,12 @@ public final class RushClientGameTest implements FabricClientGameTest {
             final String why = "not in the world of " + server + ", screen " + ctx().computeOnClient(RushClientGameTest::screen);
             line("Q0a", false, why);
             line("Q0b", false, why);
+            line("Q0c", false, why);
             return;
         }
         q0a();
         q0b();
+        q0c();
     }
 
     /** Q0a: decoded as sent, drawn from the language file or the fallback, both colours on the screenshot. */
@@ -226,6 +254,158 @@ public final class RushClientGameTest implements FabricClientGameTest {
                 + "; ready " + (readyTick > 0 ? "at tick " + readyTick + " after "
                 + String.format(Locale.ROOT, "%.0f", (readyNanos - requested) / 1e6) + " ms" : "never")
                 + "; answer \"" + answer + "\"; TEXTs after the move " + texts);
+    }
+
+    /**
+     * Q0c: the second scene's widgets on the real client. Every reading goes into the evidence; any that misses
+     * its mark adds a problem.
+     */
+    private void q0c() {
+        final List<String> problems = new ArrayList<>();
+        final List<String> evidence = new ArrayList<>();
+        ctx().runOnClient(_ -> PlayTestHook.startRecording());
+        final String widgets = request("widgets");
+        evidence.add("answer \"" + widgets + "\"");
+
+        // The panel opens on its own, over a world that keeps running
+        final boolean opened = waitUntil(client -> client.gui.screen() instanceof PanelScreen, PANEL_TIMEOUT_TICKS);
+        final String scene = ctx().computeOnClient(_ -> {
+            final PlayTestHook.SceneSeen seen = PlayTestHook.scene();
+            return seen == null ? "none" : seen.seq() + " " + seen.id();
+        });
+        final boolean pauses = ctx().computeOnClient(client -> client.gui.screen() != null && client.gui.screen().isPauseScreen());
+        evidence.add("scene " + scene + "; panel " + (opened ? "open" : "not open") + " pause=" + pauses
+                + "; widgets " + ctx().computeOnClient(_ -> PlayTestHook.widgets()));
+        if (!scene.equals("2 " + WIDGETS_SCENE_ID)) problems.add("scene " + scene);
+        if (!opened) problems.add("no PanelScreen in " + PANEL_TIMEOUT_TICKS + " ticks");
+        if (pauses) problems.add("the panel pauses the game");
+        clearToasts();
+        final Path panelShot = ctx().takeScreenshot("play-panel");
+        evidence.add("screenshot " + panelShot.getFileName());
+
+        // Esc closes it here only: the mirror still holds it
+        ctx().getInput().pressKey(InputConstants.KEY_ESCAPE);
+        final boolean closed = waitUntil(client -> client.gui.screen() == null, RESULT_TIMEOUT_TICKS);
+        final boolean held = ctx().computeOnClient(_ -> PlayTestHook.holdsPanel());
+        evidence.add("Esc: screen " + (closed ? "closed" : "still open") + ", panel in the mirror " + held);
+        if (!closed) problems.add("Esc left the panel open");
+        if (!held) problems.add("Esc took the panel out of the mirror");
+
+        // Each widget's colour in its slot's part of the screen; the timer counts down
+        clearToasts();
+        final long before = ctx().computeOnClient(_ -> PlayTestHook.timerLeft("timer"));
+        final Path shot = ctx().takeScreenshot("play-widgets");
+        final int[] gui = ctx().computeOnClient(client -> new int[]{client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight()});
+        final BufferedImage image = read(shot);
+        final double scale = (double) image.getWidth() / gui[0];
+        final int w = image.getWidth(), h = image.getHeight();
+        final Pixels timer = Pixels.near(image, TIMER_COLOUR), score = Pixels.near(image, SCORE_COLOUR),
+                values = Pixels.near(image, VALUE_COLOUR), capture = Pixels.near(image, CAPTURE_COLOUR);
+        evidence.add("screenshot " + shot.getFileName() + " " + w + "x" + h + " gui " + gui[0] + "x" + gui[1]
+                + "; TIMER " + hex(TIMER_COLOUR) + " " + timer + "; SCOREBOARD title " + hex(SCORE_COLOUR) + " " + score
+                + " values " + hex(VALUE_COLOUR) + " " + values + "; BOTTOM TEXT " + hex(CAPTURE_COLOUR) + " " + capture
+                + " (action bar starts at y " + Math.round((gui[1] - ACTION_BAR_TOP) * scale) + ")");
+        if (timer.count() < MIN_PIXELS || timer.x0() < w / 4 || timer.x1() > w * 3 / 4 || timer.y1() > h / 4) {
+            problems.add("the TIMER is not at the top centre");
+        }
+        if (score.count() < MIN_PIXELS || score.x0() < w / 2 || score.y1() > h / 3) problems.add("the SCOREBOARD title is not at the top right");
+        if (values.count() < MIN_PIXELS || values.x0() < w / 2 || values.y1() > h / 3) problems.add("the SCOREBOARD values are not at the top right");
+        if (capture.count() < MIN_PIXELS || capture.x0() < w / 4 || capture.x1() > w * 3 / 4 || capture.y0() < h / 2
+                || capture.y1() > (gui[1] - ACTION_BAR_TOP) * scale) {
+            problems.add("the BOTTOM TEXT is not centred above the action bar");
+        }
+        ctx().waitTicks(20);
+        final long after = ctx().computeOnClient(_ -> PlayTestHook.timerLeft("timer"));
+        evidence.add("TIMER shows " + before + " ms, a second later " + after + " ms");
+        if (before <= 0 || after >= before) problems.add("the TIMER does not count down");
+
+        // The action key: sent once, held back inside the local cooldown, answered by the server's with it off
+        final int sentBefore = ctx().computeOnClient(_ -> PlayTestHook.actionsSent());
+        ctx().getInput().pressKey(InputConstants.KEY_H);
+        final PlayClient.Result first = result(1);
+        final int sentFirst = ctx().computeOnClient(_ -> PlayTestHook.actionsSent());
+        ctx().getInput().pressKey(InputConstants.KEY_H);
+        ctx().waitTicks(2);
+        final int sentSecond = ctx().computeOnClient(_ -> PlayTestHook.actionsSent());
+        ctx().runOnClient(_ -> PlayTestHook.localCooldown(false));
+        ctx().getInput().pressKey(InputConstants.KEY_H);
+        final PlayClient.Result third = result(2);
+        ctx().runOnClient(_ -> PlayTestHook.localCooldown(true));
+        evidence.add("action key: sent " + sentBefore + " -> " + sentFirst + " -> " + sentSecond + " (inside the local cooldown)"
+                + "; first " + describe(first) + "; with the local cooldown off " + describe(third));
+        if (sentFirst != sentBefore + 1 || first == null || first.code() != ActionResultCode.OK) problems.add("the first press did not come back ok");
+        if (sentSecond != sentFirst) problems.add("the local cooldown did not hold the second press back");
+        if (third == null || third.code() != ActionResultCode.COOLDOWN || third.cooldownMs() < 1 || third.cooldownMs() > POKE_COOLDOWN_MS) {
+            problems.add("the third press was not answered with the server's cooldown");
+        }
+
+        // The panel again: a refused button keeps it with the reason, the accepted one closes it
+        final String again = request("panel");
+        final boolean reopened = waitUntil(client -> client.gui.screen() instanceof PanelScreen, PANEL_TIMEOUT_TICKS);
+        final String refuse = press(REFUSE_BUTTON);
+        final PlayClient.Result refused = result(3);
+        ctx().waitTicks(2);
+        final boolean stays = ctx().computeOnClient(client -> client.gui.screen() instanceof PanelScreen);
+        final Component reason = ctx().computeOnClient(_ -> PlayTestHook.panelReason());
+        final String close = press(CLOSE_BUTTON);
+        final boolean gone = waitUntil(client -> client.gui.screen() == null, RESULT_TIMEOUT_TICKS);
+        final boolean emptied = !ctx().computeOnClient(_ -> PlayTestHook.holdsPanel());
+        evidence.add("panel again: answer \"" + again + "\" " + (reopened ? "open" : "not open") + "; " + refuse + " -> " + describe(refused)
+                + ", panel " + (stays ? "stays" : "closed") + " reason " + (reason == null ? "none" : describe(reason))
+                + "; " + close + " -> panel " + (gone ? "closed" : "open") + ", in the mirror " + !emptied);
+        if (!reopened) problems.add("the panel's next SET did not open it again");
+        if (refused == null || refused.code() != ActionResultCode.REJECTED || !stays || reason == null) {
+            problems.add("the refused button did not keep the panel with its reason");
+        }
+        if (!gone || !emptied) problems.add("the accepted button did not close the panel");
+
+        // One C2S_SCENE_READY per scene, the second sent with no screen open and the chunk underfoot
+        final String readies = request("ready?");
+        final List<SceneReadyProbe.Sent> sent = ctx().computeOnClient(_ -> List.copyOf(PlayTestHook.recording().readies));
+        ctx().runOnClient(_ -> PlayTestHook.stopRecording());
+        evidence.add("fixture \"" + readies + "\"; probe sent " + sent);
+        if (!readies.equals("ready 1 2")) problems.add("the fixture got the readies \"" + readies + "\"");
+        final SceneReadyProbe.Sent second = sent.stream().filter(ready -> ready.sceneSeq() == 2).findFirst().orElse(null);
+        if (second == null || second.screen() != null || !second.chunkUnderfoot()) problems.add("scene 2's ready was not sent in a loaded level");
+
+        line("Q0c", problems.isEmpty(), (problems.isEmpty() ? "" : "problems " + problems + "; ") + String.join("; ", evidence));
+    }
+
+    /** Sends a request on the test channel and waits for the fixture's answer. */
+    private String request(String text) {
+        PlayTestHook.ANSWERS.clear();
+        ctx().runOnClient(_ -> ClientPlayNetworking.send(new PlayTestHook.Payload(text.getBytes(StandardCharsets.UTF_8))));
+        return answer();
+    }
+
+    /** The {@code n}th action result of the recording, waited for; null when it did not come. */
+    private PlayClient.@Nullable Result result(int n) {
+        final boolean came = waitUntil(_ -> PlayTestHook.recording().results.size() >= n, RESULT_TIMEOUT_TICKS);
+        return came ? ctx().computeOnClient(_ -> PlayTestHook.recording().results.get(n - 1)) : null;
+    }
+
+    /** Presses one button of the open panel the way a click does; what was pressed, or why nothing was. */
+    private String press(int index) {
+        return ctx().computeOnClient(client -> {
+            if (!(client.gui.screen() instanceof PanelScreen screen)) return "no panel to press button " + index + " on";
+            final List<Button> buttons = screen.children().stream().filter(Button.class::isInstance).map(Button.class::cast).toList();
+            if (index >= buttons.size()) return "the panel has " + buttons.size() + " buttons, not " + (index + 1);
+            final Button button = buttons.get(index);
+            button.onPress(new KeyEvent(InputConstants.KEY_RETURN, 0, 0));
+            return "pressed \"" + button.getMessage().getString() + "\"";
+        });
+    }
+
+    private void clearToasts() {
+        // The Social Interactions toast covers the top right corner after joining (TC-PLAY-020 section)
+        ctx().runOnClient(client -> client.gui.toastManager().clear());
+        ctx().waitTicks(FRAME_TICKS);
+    }
+
+    private static String describe(PlayClient.@Nullable Result result) {
+        return result == null ? "no result in " + RESULT_TIMEOUT_TICKS + " ticks"
+                : "action_seq " + result.actionSeq() + " " + result.code() + " cooldown_ms " + result.cooldownMs()
+                + (result.reason().getString().isEmpty() ? "" : " reason " + describe(result.reason()));
     }
 
     /** The answer of the fixture, or why there is none. */

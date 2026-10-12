@@ -1,0 +1,39 @@
+test_a_connection_not_verified_or_rejected_fails (test_rush_judge.JudgeTest) ... ok
+test_a_day_already_gzipped_is_read_too (test_rush_judge.JudgeTest) ... ok
+test_a_doubled_line_fails (test_rush_judge.JudgeTest) ... ok
+test_a_failed_step_fails (test_rush_judge.JudgeTest) ... ok
+test_a_good_run_passes (test_rush_judge.JudgeTest) ... ok
+test_a_has_joined_not_answered_200_fails (test_rush_judge.JudgeTest) ... ok
+test_a_join_the_sessionserver_did_not_see_fails (test_rush_judge.JudgeTest) ... ok
+test_a_line_of_another_shape_fails (test_rush_judge.JudgeTest) ... ok
+test_a_missing_line_fails (test_rush_judge.JudgeTest) ... ok
+test_a_missing_report_fails (test_rush_judge.JudgeTest) ... ok
+test_a_move_no_ready_follows_fails (test_rush_judge.JudgeTest) ... ok
+test_a_plugin_channel_handler_failure_fails (test_rush_judge.JudgeTest) ... ok
+test_a_prepare_time_over_1000_ms_fails (test_rush_judge.JudgeTest) ... ok
+test_a_ready_6_s_after_the_move_fails (test_rush_judge.JudgeTest) ... ok
+test_a_round_closed_by_the_settle_timeout_is_not_a_normal_end (test_rush_judge.JudgeTest) ... ok
+test_a_round_ended_by_its_objective_fails (test_rush_judge.JudgeTest) ... ok
+test_a_round_of_two_players_fails (test_rush_judge.JudgeTest) ... ok
+test_a_skipped_step_fails (test_rush_judge.JudgeTest) ... ok
+test_an_arena_closed_16_s_after_it_ended_fails (test_rush_judge.JudgeTest) ... ok
+test_an_arena_more_than_the_launches_fails (test_rush_judge.JudgeTest) ... ok
+test_an_arena_whose_states_come_out_of_order_fails (test_rush_judge.JudgeTest) ... ok
+test_an_arena_without_its_closed_line_fails (test_rush_judge.JudgeTest) ... ok
+test_an_error_line_in_the_server_log_fails (test_rush_judge.JudgeTest) ... ok
+test_fewer_readies_than_two_a_launch_fails (test_rush_judge.JudgeTest) ... ok
+test_no_report_named_fails (test_rush_judge.JudgeTest) ... ok
+test_rush_in_the_client_source_fails (test_rush_judge.JudgeTest) ... ok
+test_the_client_source_defaults_to_the_mod_beside_the_script (test_rush_judge.JudgeTest) ... ok
+test_the_exit_code_is_0_when_it_holds_and_1_when_it_does_not (test_rush_judge.JudgeTest) ... ok
+test_the_prepare_times_and_the_screens_of_q0b_go_into_the_notes (test_rush_judge.JudgeTest) ... ok
+test_three_rounds_ended_fail (test_rush_judge.JudgeTest) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.161s
+
+OK
+== -p test_*.py
+Ran 42 tests in 0.650s
+
+OK

@@ -1,0 +1,44 @@
+RUN-077 group G: the real client script Q1 to Q9, job rush in full and rush_judge.py
+Branch prod/r077-G, from prod/integrate-077 f54b122cf5. Registered as a run by the integration round, not here.
+
+Commits
+  7e3cef8c7d  docs: DESIGN-PLAY v0.9 (§6.7.6 Q1 to Q9, the judge, job rush, no bot)
+  09b183ab93  test_rush_judge.py, 30 tests (red against the judge before it: 01-judge-red.txt)
+  cd83b97c0d  rush_judge.py, the full S1 checks (green: 02-judge-green.txt)
+  a5587875f0  RushClientGameTest Q1 to Q9, PlayTestHook play() and handshake(), job rush in full but no sample server (CI round 1, red)
+  29f2e5caf0  job rush starts the sample server (CI round 2)
+  e467542943  Q3 and Q7 wait for the recording itself, job rush waits 3 s for the ledger (CI round 3, green)
+  later       docs only (DESIGN-PLAY measured paragraph and §23 rows, TEST.md TC-PLAY-110 to 125, ENGINE.md §7, this directory)
+
+Local Gradle, each through ~/.claude/r077/gradle.zsh under /tmp/synaxis-heavy.lock (5 of 10 allowed)
+  1  :protocol:publishToMavenLocal -Dmaven.repo.local=/tmp/run077/fix-G/m2                          BUILD SUCCESSFUL
+  2  client-fabric compileJava compileGametestJava -Dmaven.repo.local=/tmp/run077/fix-G/m2           BUILD SUCCESSFUL
+  3  :server-app:farviewFixtureArgs :server-app:installDist :game-rush:jar :play-kit:jar
+     :server-app:runRush --dry-run -Dsynaxis.app.plugins=rush -Dsynaxis.app.port=25567 ...       BUILD SUCCESSFUL, all SKIPPED, configuration cache stored
+  4  client-fabric compileGametestJava (after Q8 returns the press time)                           BUILD SUCCESSFUL
+  5  client-fabric compileGametestJava (after Q3 and Q7 wait for the recording)                    BUILD SUCCESSFUL
+  /tmp/run077/fix-G (temporary repository and work files) deleted at the end.
+
+Judge unit tests, local, <py> = the main working copy's .venv/bin/python (3.10), no Gradle
+  01-judge-red.txt            new tests against the old judge: Ran 30, FAILED (failures=1, errors=34)
+  02-judge-green.txt          Ran 30 OK; with -p 'test_*.py' Ran 42 OK
+  03-judge-counter-proofs.txt eight changes to a copy of the judge, each red in its own test only
+
+GitHub Actions, draft PR #25 (base prod/integrate-077), closed after round 3, remote branch deleted
+  round 1  head a5587875f0  client-mod 38229238102 success, client-gametest 38229238270 failure
+           (job rush: Q0 PASS, Q1 to Q9 FAIL not reached, judge 27 problems, rehearsal ok)   04-ci-round1-no-server.txt
+           CI 38229238104 success, Concurrency 38229238252 success
+  round 2  head 29f2e5caf0  client-mod 38230015107 success, client-gametest 38230014989 failure
+           (job rush: Q7 FAIL in both reports, ledger: no play_scene_ready after the last move)  05-ci-round2.txt
+           CI 38230014975 success, Concurrency 38230014968 success
+  round 3  head e467542943  client-mod 38231119045 success, client-gametest 38231119013 success
+           (job rush: both launches Q0a to Q9 PASS, rush judge: PASS (2 reports, 0 problems))
+           CI 38231118972 success, Concurrency 38231119168 success
+           06-ci-round3-green/
+             rush-job.txt            step times, both reports, the judge's output, the rehearsal
+             rush-dev.txt, rush-production.txt   the two reports
+             events.jsonl            the sample server's ledger
+             rush-server.log         the sample server's output
+             sessionserver.log       the fake sessionserver's log
+             rehearsal-rush.log, rehearsal-rts.log   the two rehearsal starts
+  The screenshots stay in artifact client-gametest-rush of each run (14 days).

@@ -1,0 +1,546 @@
+EEEEEEEEEEEEEEEEEEEEEEEEFEE
+======================================================================
+ERROR: test_a_connection_not_verified_or_rejected_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 277, in test_a_connection_not_verified_or_rejected_fails
+    self.assert_one_problem("client_verified 1 times, expected 2")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_day_already_gzipped_is_read_too (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 169, in test_a_day_already_gzipped_is_read_too
+    problems = self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_doubled_line_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 200, in test_a_doubled_line_fails
+    self.assert_one_problem("Q0a a second time")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_failed_step_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 177, in test_a_failed_step_fails
+    self.assert_one_problem("rush Q5 FAIL")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_good_run_passes (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 156, in test_a_good_run_passes
+    self.assertEqual(self.problems(), [])
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_has_joined_not_answered_200_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 290, in test_a_has_joined_not_answered_200_fails
+    self.assert_one_problem("hasJoined 200 1 of 2")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_join_the_sessionserver_did_not_see_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 285, in test_a_join_the_sessionserver_did_not_see_fails
+    self.assert_one_problem("sessionserver join 1, expected 2")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_line_of_another_shape_fails (test_rush_judge.JudgeTest) (line='rush Q0a OK fine')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 206, in test_a_line_of_another_shape_fails
+    self.assert_one_problem("not a step line")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_line_of_another_shape_fails (test_rush_judge.JudgeTest) (line='rush Q10 PASS no such step')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 206, in test_a_line_of_another_shape_fails
+    self.assert_one_problem("not a step line")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_line_of_another_shape_fails (test_rush_judge.JudgeTest) (line='Q0a PASS no prefix')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 206, in test_a_line_of_another_shape_fails
+    self.assert_one_problem("not a step line")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_missing_line_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 196, in test_a_missing_line_fails
+    self.assert_one_problem("no line for Q7")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_missing_report_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 187, in test_a_missing_report_fails
+    self.assert_one_problem(f"{self.reports[1]}: no report")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_move_no_ready_follows_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 251, in test_a_move_no_ready_follows_fails
+    self.assert_one_problem("no play_scene_ready after", last["connection_id"])
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_plugin_channel_handler_failure_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 305, in test_a_plugin_channel_handler_failure_fails
+    self.assert_one_problem("Plugin channel handler failed")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_prepare_time_over_1000_ms_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 228, in test_a_prepare_time_over_1000_ms_fails
+    self.assert_one_problem("prepare_ms 1200")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_ready_6_s_after_the_move_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 245, in test_a_ready_6_s_after_the_move_fails
+    self.assert_one_problem("6.0 s after", moved["connection_id"])
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_round_closed_by_the_settle_timeout_is_not_a_normal_end (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 237, in test_a_round_closed_by_the_settle_timeout_is_not_a_normal_end
+    self.assert_one_problem("normal end rate 1/2")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_round_ended_by_its_objective_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 269, in test_a_round_ended_by_its_objective_fails
+    self.assert_one_problem("cause=objective")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_round_of_two_players_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 273, in test_a_round_of_two_players_fails
+    self.assert_one_problem("players=2")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_skipped_step_fails (test_rush_judge.JudgeTest) (step='Q0a')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 183, in test_a_skipped_step_fails
+    self.assert_one_problem(f"{step} was skipped")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_skipped_step_fails (test_rush_judge.JudgeTest) (step='Q3')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 183, in test_a_skipped_step_fails
+    self.assert_one_problem(f"{step} was skipped")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_a_skipped_step_fails (test_rush_judge.JudgeTest) (step='Q9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 183, in test_a_skipped_step_fails
+    self.assert_one_problem(f"{step} was skipped")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_an_arena_closed_16_s_after_it_ended_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 224, in test_an_arena_closed_16_s_after_it_ended_fails
+    self.assert_one_problem("16.0 s from ended to closed")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_an_arena_more_than_the_launches_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 232, in test_an_arena_more_than_the_launches_fails
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_an_arena_whose_states_come_out_of_order_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 214, in test_an_arena_whose_states_come_out_of_order_fails
+    self.assert_one_problem("out of order", started["instance_id"])
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_an_arena_without_its_closed_line_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 218, in test_an_arena_without_its_closed_line_fails
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_an_error_line_in_the_server_log_fails (test_rush_judge.JudgeTest) (logger='plugin.rush')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 299, in test_an_error_line_in_the_server_log_fails
+    self.assert_one_problem("ERROR", logger)
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_an_error_line_in_the_server_log_fails (test_rush_judge.JudgeTest) (logger='i.g.b.synaxis.app.scene.SceneService')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 299, in test_an_error_line_in_the_server_log_fails
+    self.assert_one_problem("ERROR", logger)
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_fewer_readies_than_two_a_launch_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 257, in test_fewer_readies_than_two_a_launch_fails
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_no_report_named_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 191, in test_no_report_named_fails
+    self.assertIn("no report named", self.problems())
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_rush_in_the_client_source_fails (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 310, in test_rush_in_the_client_source_fails
+    self.assert_one_problem("Hud.java")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_the_client_source_defaults_to_the_mod_beside_the_script (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 329, in test_the_client_source_defaults_to_the_mod_beside_the_script
+    self.assertEqual(self.judge.CLIENT_SOURCE, JUDGE.resolve().parent.parent / "src" / "main" / "java")
+AttributeError: module 'rush_judge_under_test' has no attribute 'CLIENT_SOURCE'
+
+======================================================================
+ERROR: test_the_prepare_times_and_the_screens_of_q0b_go_into_the_notes (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 159, in test_the_prepare_times_and_the_screens_of_q0b_go_into_the_notes
+    notes = "\n".join(self.verdict().notes)
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+ERROR: test_three_rounds_ended_fail (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 265, in test_three_rounds_ended_fail
+    self.assert_one_problem("rush_round_ended 3 times, expected 2")
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 148, in assert_one_problem
+    problems = self.problems()
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 145, in problems
+    return self.verdict().problems
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 141, in verdict
+    return self.judge.judge(self.reports, ledger_dir=self.ledger_dir, server_log=self.server_log,
+TypeError: judge() got an unexpected keyword argument 'ledger_dir'
+
+======================================================================
+FAIL: test_the_exit_code_is_0_when_it_holds_and_1_when_it_does_not (test_rush_judge.JudgeTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r077-G/client-fabric/gametest-env/test_rush_judge.py", line 322, in test_the_exit_code_is_0_when_it_holds_and_1_when_it_does_not
+    self.assertEqual(passed.returncode, 0, passed.stdout + passed.stderr)
+AssertionError: 1 != 0 : == --ledger-dir
+== /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/logs
+== --server-log
+== /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log
+> Task :server-app:runRush
+08:00:00.001 [main] INFO  i.g.b.synaxis.app.PluginHost - Plugin enabled: plugin_id=rush version=0.1.0 enable_ms=120
+08:00:00.002 [main] INFO  i.g.b.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25567
+08:01:40.500 [Ms-Tick-0] WARN  plugin.rush - a warning is not an error
+== --session-log
+== /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log
+fake sessionserver listening on http://127.0.0.1:40000, mode record
+1 POST /session/minecraft/join -> 204
+2 GET /session/minecraft/hasJoined?username=Player&serverId=abc -> 200
+3 POST /session/minecraft/join -> 204
+4 GET /session/minecraft/hasJoined?username=Player&serverId=def -> 200
+== --client-source
+== /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/java
+== /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/dev.txt
+rush Q0a PASS evidence of Q0a
+rush Q0b PASS requested at tick 0; screens [net.minecraft.client.gui.screens.LevelLoadingScreen ticks 3..5]; ready at tick 6
+rush Q0c PASS evidence of Q0c
+rush Q1 PASS evidence of Q1
+rush Q2 PASS evidence of Q2
+rush Q3 PASS evidence of Q3
+rush Q4 PASS evidence of Q4
+rush Q5 PASS evidence of Q5
+rush Q6 PASS evidence of Q6
+rush Q7 PASS evidence of Q7
+rush Q8 PASS evidence of Q8
+rush Q9 PASS evidence of Q9
+== /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/production.txt
+rush Q0a PASS evidence of Q0a
+rush Q0b PASS requested at tick 0; screens [net.minecraft.client.gui.screens.LevelLoadingScreen ticks 3..5]; ready at tick 6
+rush Q0c PASS evidence of Q0c
+rush Q1 PASS evidence of Q1
+rush Q2 PASS evidence of Q2
+rush Q3 PASS evidence of Q3
+rush Q4 PASS evidence of Q4
+rush Q5 PASS evidence of Q5
+rush Q6 PASS evidence of Q6
+rush Q7 PASS evidence of Q7
+rush Q8 PASS evidence of Q8
+rush Q9 PASS evidence of Q9
+FAIL --ledger-dir: no report
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/logs: no report
+FAIL --server-log: no report
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log:1: not a step line: '> Task :server-app:runRush'
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log:2: not a step line: '08:00:00.001 [main] INFO  i.g.b.synaxis.app.PluginHost - Plugin enabled: plugin_id=rush version=0.1.0 enable_ms=120'
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log:3: not a step line: '08:00:00.002 [main] INFO  i.g.b.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25567'
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log:4: not a step line: '08:01:40.500 [Ms-Tick-0] WARN  plugin.rush - a warning is not an error'
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log: no line for Q0a
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log: no line for Q0b
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log: no line for Q0c
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log: no line for Q1
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log: no line for Q2
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log: no line for Q3
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log: no line for Q4
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log: no line for Q5
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log: no line for Q6
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log: no line for Q7
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log: no line for Q8
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/rush-server.log: no line for Q9
+FAIL --session-log: no report
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log:1: not a step line: 'fake sessionserver listening on http://127.0.0.1:40000, mode record'
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log:2: not a step line: '1 POST /session/minecraft/join -> 204'
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log:3: not a step line: '2 GET /session/minecraft/hasJoined?username=Player&serverId=abc -> 200'
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log:4: not a step line: '3 POST /session/minecraft/join -> 204'
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log:5: not a step line: '4 GET /session/minecraft/hasJoined?username=Player&serverId=def -> 200'
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log: no line for Q0a
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log: no line for Q0b
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log: no line for Q0c
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log: no line for Q1
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log: no line for Q2
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log: no line for Q3
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log: no line for Q4
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log: no line for Q5
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log: no line for Q6
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log: no line for Q7
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log: no line for Q8
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/sessionserver.log: no line for Q9
+FAIL --client-source: no report
+FAIL /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/tmp96af1ln1/java: no report
+rush judge: FAIL (10 reports, 39 problems)
+
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.077s
+
+FAILED (failures=1, errors=34)

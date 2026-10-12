@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-12 | 分支 `prod/r077-G`（设计提交 `7e3cef8c7d`、judge 单测提交 `09b183ab93`、judge 提交 `cd83b97c0d`、修前红提交 `a5587875f0`、起样板服务端的提交 `29f2e5caf0`、修复提交 `e467542943`，基于 `prod/integrate-077` `f54b122cf5`），跟进 `docs/DESIGN-PLAY.md` v0.9（RUN-077 组 G，真客户端剧本 Q1～Q9、job `rush` 完整版与 judge），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/G/`。**§4「玩法架构 · RUN-077：G」写入十六条 `TC-PLAY-110`～`TC-PLAY-125`**：Q1 的握手、负载、版本与默认键（110）、Q2 大厅（111）、Q3 与 Q4 的两道冷却（112）、Q5 进竞技场与就绪（113）、Q6 占领（114）、Q7 `TIMER` 外推（115）、Q8 结算面板（116）、Q9 回大厅（117）、job `rush` 完整版（118）、judge 单测（119）、judge 在 CI 上读的台账与日志（120）、§23 的正向与回滚演练（121）、别的 job 读数不变（122），人工三条：两人争夺（123）、同实例聊天（124）、`TOP_CENTER` 给 Boss 血条让位（125）。**§3** 加玩法架构样板一条（job `rush` 的三个进程、三个端口与演练目录，judge 在本机对着 artifact 跑的命令）。judge 单测 10 → 30 条，改动前的红是新单测对着旧 judge（33 处 `TypeError`），反证八处各打各的单测；真客户端的改动前的红在草稿 PR #25 第 1 轮（不起样板服务端，Q1～Q9 全 FAIL），第 2 轮红在剧本读记录早了一个 tick 与台账没落盘，第 3 轮全绿。端到端反证两条（宿主不判冷却、客户端不等载入画面）按计划由集成轮在反证分支上跑。`TC-PLAY-027`、`TC-PLAY-028`、`TC-PLAY-084` 的前置各补一句：它们是骨架与只判 Q0 的阶段，现行的见本组的 118～120。**条数**本组不改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-C` 评审返工（设计提交 `eb06d2431f`、修前红提交 `aae05556ce`、修复提交 `3bd8f94762`），跟进 `docs/DESIGN-PLAY.md` v0.8 的同一行，不登执行轮次。**新增 `TC-PLAY-086`**：`PlayTestHook` 的记录不含开始记录之前连接上已有的 SET、动作结果与就绪。`TC-PLAY-076`、`TC-PLAY-078` 各加一条 `PlayClientTest` 用例与反证三批的一处；`TC-PLAY-079` 第 5 步与 `TC-PLAY-083` 第 1 步补第 4 轮读数；`TC-PLAY-072` 第 5 步写明动作栏起点是按常数算的；`TC-PLAY-023`、`TC-PLAY-024` 补上组 C 之后的方法名、行号与 `LEFT` 槽读数。改动前的红在草稿 PR #24 第 3 轮（job `rush` 两份 Q0c 只因两项新检查 FAIL），第 4 轮全绿 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-C`（设计提交 `271acc617f`、修前红提交 `507763f7ee`、实现提交 `c8a6c7ed67`，基于 `prod/integrate-077` `3cd20ff777` 并快进合入 `prod/r077-V` `93b70462a0`），跟进 `docs/DESIGN-PLAY.md` v0.8（RUN-077 组 C，客户端 `PlayModule`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/C/`。**§4「玩法架构 · RUN-077：C」写入十六条 `TC-PLAY-070`～`TC-PLAY-085`**：场景镜像与四种小部件的表（070）、槽位内的次序（071）、七个槽位的位置与两处让位（072）、`TIMER` 外推与 `SCOREBOARD` 的画法（073）、`TEXT` 的存活时长（074）、动作键与本地冷却（075）、动作结果重设冷却与提示（076）、面板的打开与本地关闭（077）、面板按钮的结果（078）、场景就绪三条件（079）、新连接清空（080）、动作键 1 的定义与默认键 H 的 javap 核对（081）、`PlayPayload` 的两个方向与畸形下行（082）、真客户端 Q0c（083）、judge 的 Q0c（084）、模组主源码与别的 job 读数不变（085）。改动前的红在草稿 PR #23 第 1 轮的桩上（client-mod 274 条红 25 条，job `rush` 两份 Q0c FAIL）；反证两批在本机跑，十三处各打各的用例，还原后复绿；第 2 轮全绿。`client-fabric` 新类 5 个 37 条，`PlayHudTest` 加 2 条。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-R`（设计提交 `f30440e694`、骨架提交 `e07fb8b58a`、实现提交 `100cc8b061`、测试补充 `02df5f9a37`，基于 `prod/integrate-077` `3cd20ff777`），跟进 `docs/DESIGN-PLAY.md` v0.7 与 `docs/DESIGN-PROD.md` v0.9.82（RUN-077 组 R，`:play-kit`、`:game-rush` 与 `runRush`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/R/`。**§4「玩法架构 · RUN-077：R」写入二十条 `TC-PLAY-090`～`TC-PLAY-109`**：`Round` 的状态推进（090）与回调兜底（091），`LocalQueue` 与 `Countdown`（092），信标（093），五个配置键（094），`onStart` 重设 `TIMER`（095），计分、名次与三种结束（096），结算中只送按钮的人（097），全部移入之后才开局（098），上一局没关闭时不开第二局（099），大厅其余规则（100），插件接线（101），发现插件就要 `:play-kit`（102），游戏侧两道 ArchUnit 规则（103），四道门禁（104），`runRush`（105），覆盖率门的 `--src-roots`（106），R1 命令与回滚演练的 jar（107），英文 fallback 与语言文件（108），严格 grid（109）。改动前的红在骨架上实跑（`:play-kit` 27 条 24 条红，`:game-rush` 42 条 35 条红），七处反证一次实跑，每处打红的用例互不相同，还原后复绿，另在严格 grid 下跑一遍两个模块；106 第 3 步与 107 第 2 步要等集成分支的 CI 与组 G。节头的测试类 `RushRoundTest` 改为带 `Env` 的 `RushRoundIntegrationTest`（计分与结算要真玩家），补列 `RushConfigTest`。**门禁读数**：配置键门禁 117 → 122 个键（`config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out`），翻译键门禁 61 → 74 个键、标识仍是 17 个（`translation key gate: 74 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`）；写着旧读数的 `TC-PROD-430`、`TC-PROD-441`、`TC-PROD-547`、`TC-PROD-569`、`TC-PROD-717` 本组不改，由集成轮按 CI 输出改，光照会话的 `TC-WORLD-032`、`TC-WORLD-041`、`TC-WORLD-098` 由集成轮写进 `docs/DESIGN-PROD.md` §28.3 交接；`TC-PROD-441` 第 2～4 步的反证本组没有重跑。**条数**本组不改，由集成轮统一改。本组 Gradle 共 10 次，前 3 次停在编译 | Bearisbug |
@@ -447,6 +448,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 - 运行时光照（M3-D，2026-09-29 写入；JUnit 部分随 RUN-052 实跑过，容器与真进程部分 2026-09-30 随 RUN-054 实跑核对过）：JUnit 的写法同上，`WorldFlagsReplayTest` 要数据库前置，其余不要。**磁盘门槛**：起 Gradle 之前 `df -m /System/Volumes/Data` 的可用 ≥ 1,500 MB，不满足不起；跑的过程中另起一个看门狗，每 10 s 读一次，低于 1,000 MB 就按 pid 停掉本轮的 Gradle，并在执行记录里登记（RUN-052 的门禁跑到一半磁盘写满，`No space left on device` 会让本机所有会话写不了文件）。依据是实测：RUN-054 的三道全量门禁起跑时可用 82,981～84,023 MB，过程中比起跑时少 468～2,007 MB，这个差值里有别的会话的写入与 swap 扩容（`/System/Volumes/VM` 的 swap 文件与数据盘同在一个 APFS 容器、共用可用空间，那一轮 swap 从 22,528 MB 扩到 23,552 MB），不全是 Gradle 自己的。所以起跑门槛只挡明显不够的情况，防写满靠看门狗：读到低于 1,000 MB 就停，给同时在写盘的别的会话留约 1 GB。**容器门槛**：`memory_pressure` 输出的 `System-wide memory free percentage` ≥ 25%，且没有别的 worktree 的 Gradle 或 java（`ps` 找进程，`lsof -a -p <pid> -d cwd` 看工作目录，不在本 worktree 下的是别人的，只看不碰；本轮自己起的夹具与分片按 pid 排除，分片的工作目录在 `<L>/shard`，按目录判会把它算成别人的）。`sysctl vm.swapusage` 的 `free` 只记录、不作门槛：macOS 的 swap 按需扩容，`free` 小不说明内存紧（RUN-052、RUN-053 的读数 swap 空余 450～1,740 MB，按原先的 2,048 MB 门槛一次都没起跑）。不满足每 5 分钟复查、最多 90 分钟，仍不满足登记阻塞。镜像 `synaxis-mc-client:dev` 与卷 `synaxis-mc-gradle` 复用，不建新的 tag 与卷，同一时刻只有一个容器挂这个卷；镜像不在本机时（`docker image ls synaxis-mc-client:dev` 没有这一行）按同一个 tag 重建：`docker build --build-arg APT_MIRROR=http://mirrors.ustc.edu.cn/ubuntu-ports -t synaxis-mc-client:dev client-fabric/gametest-env`（RUN-054 用时 55 s，镜像 894 MB），卷不重建；`client-fabric/gametest-env/run.sh` 起的容器带 `--rm`，退出码恒为 1（libopenal 段错误，已知），判定看 `$OUT/synaxis-gametest/light-report.txt`。不在 macOS 桌面起客户端；客户端的放置与挖掘由用例经 `MultiPlayerGameMode` 程序化调用，不合成鼠标键盘。宿主上构建 `client-fabric`（`compileGametestJava check`）用 `--init-script gametest-env/mirror.init.gradle.kts`，不用根项目的镜像脚本（它会丢掉 Loom 的 Fabric 仓库），先 `<G> :protocol:publishToMavenLocal`。光照夹具 `LightShardFixture` 用端口 25740，真进程分片用 25741（避开 2566x、2569x），都按 pid 停。用完删 `<L>`（地图、覆盖存储、JFR、容器输出）。
 - 远景（M3-G，2026-10-02 随 RUN-064 实跑核对过）：JUnit 分在 `:protocol`、`:synx`、`:baker`、`server-app` 与 `client-fabric` 五处，都不连数据库；`client-fabric` 的测试先在仓库根 `./gradlew :protocol:publishToMavenLocal`，再在 `client-fabric/` 里用它自己的 `gametest-env/mirror.init.gradle.kts` 跑，第一次构建由任务 `fetchDistantHorizons` 按 SHA-1 把 DH 3.3.2 jar 取进 `client-fabric/build/dh/`（已 gitignore，不入库）。**重活锁**：任何 Gradle 任务、夹具 JVM 与容器开始前 `mkdir /tmp/synaxis-heavy.lock`，成功才开工，往 `owner` 写「会话名 pid 开始时刻 任务」，用脚本顶层的 `trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT` 放锁（zsh 里写在函数里的 `EXIT` trap 在函数返回时就触发，锁会立刻没了）；拿不到每 60 s 重试，`owner` 里的 pid 已不在时才能删这把陈旧的锁。**容器门槛**：拿锁之后、起夹具之前 `memory_pressure` 的 `System-wide memory free percentage` ≥ 30%，不满足先放锁再等。**夹具**：`./gradlew :protocol:publishToMavenLocal :server-app:farviewFixtureArgs` 之后 `java @server-app/build/farview-fixture.args -Xms1G -Xmx1G -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 io.github.bearisbug.synaxis.app.shard.FarViewShardFixture 25750 25751 <L>/work <synthetic|baked|break-sha|half> [urlRoot]`（`java` 必须是 JDK 25，PATH 上的旧 JDK 起不来；不设 `JAVA_TOOL_OPTIONS`），按 pid 停；`baked` 第一次起先烘 3×3 瓦片测试图（本机 3 线程 321～339 s、RSS 峰值 2.3～2.9 GB、约 1.9 GB 磁盘），之后在 `<L>/work` 里复用。**容器**：`SYNAXIS_FARVIEW_SERVER=host.docker.internal:25750 SYNAXIS_FARVIEW_HTTP=http://host.docker.internal:25751 SYNAXIS_FARVIEW_MODE=<模式，逗号分隔> SYNAXIS_FARVIEW_MODS=<dh|dh-iris|空> [SYNAXIS_GAMETEST_ARGS="--width 1920 --height 1080"] OUT=<L>/out client-fabric/gametest-env/run.sh`；镜像 `synaxis-mc-client:dev` 与卷 `synaxis-mc-gradle` 复用、不建新的 tag 与卷，容器带 `--rm`，同一时刻只一个容器挂这个卷；退出码恒为 1（libopenal 段错误），看 `<L>/out/synaxis-gametest/farview-report.txt`；从 Docker 连接时服务端要到保活超时（约 23 s）才放掉上一个玩家，gametest 每个模式最多重连 6 次、每次隔 10 s，报告里的 `# attempt …` 行不影响判定。端口：夹具 25750（游戏）与 25751（HTTP），`server-shard` 用 25752 与 25753（指标），都避开 2566x、2569x、2574x。真客户端只在容器里跑，本机桌面不起客户端；真机用例由用户在自己的机器上启动。用完删 `<L>`（含烘出的地图、截图与 DH 库）。
 - 安全修复（M3-S，2026-10-07 写入；RUN-069 按本条实跑核对过：本机的定向类在重活锁下跑，四个工作流与打标签的远景容器在草稿 PR #12 上跑）：JUnit 分在 `:protocol`、`:synx`、`:baker`、`server-app` 与 `client-fabric` 五处，`ShardGatesRaceTest`、`GateFreezeEarlyGrantTest`、`ShardServiceHeartbeatDbTest` 要数据库前置（同 3A 一节的四个变量）。**本机只跑单个测试类**：拿 `/tmp/synaxis-heavy.lock`（写法同上一条），起 Gradle 之前 `memory_pressure` 的空闲 ≥ 30%、`uptime` 的 1 分钟负载 ≤ 24，不够就每 5 分钟复查；Gradle 一律 `--max-workers=2`、`--no-daemon` 加镜像 init 脚本，`JAVA_HOME` 指向 JDK 25。**全量门禁、`client-fabric` 构建、真客户端回归与远景容器在 GitHub Actions 的草稿 PR 上跑**：`ci.yml`（Check、4 线程严格、严格 grid）、`client-mod.yml`、`concurrency.yml`、`client-gametest.yml` 随 `pull_request` 自动跑，`farview-gametest.yml` 只在给 PR 打标签 `farview-gametest` 时跑（一轮约 260 个 job 分钟，攒齐再打）；结果用 `gh run watch`、`gh run view --log-failed`、`gh run download` 取，测试 XML 在 artifact `test-reports`、`test-reports-multithreaded`、`test-reports-multithreaded-grid` 与 `client-mod` 的测试报告里，远景容器的报告在 `farview-gametest-<组>`。扫图测量（`TC-WORLD-128`）要 4k 合成测试图（约 213 MB，测完删）。真机用例（`TC-WORLD-144`～`TC-WORLD-149`、`TC-WORLD-123`、`TC-WORLD-124`）按 `docs/test-runs/RUN-069/track-c/real-machine-steps.txt` 由用户执行。
+- 玩法架构样板（RUN-077 组 G，2026-10-12 随草稿 PR #25 实跑核对过）：真客户端剧本只在 GitHub Actions 的 job `rush` 里跑，本机不起客户端。job 起三个进程：假 sessionserver（`tools/fake-sessionserver`，`record` 模式，端口随机，日志 `sessionserver.log`）、夹具 `PlayHudFixture`（`java @server-app/build/farview-fixture.args … PlayHudFixture 25568`，工作目录 `$RUNNER_TEMP/fixture`，离线）、样板服务端（仓库根 `tail -f /dev/null | ./gradlew :server-app:runRush -Dsynaxis.app.plugins=rush -Dsynaxis.app.port=25567 -Dsynaxis.app.auth=online -Dsynaxis.app.auth.session-server=<假 sessionserver>/session/minecraft/hasJoined` 加五个 `synaxis.rush.*` 的 CI 值，内存存储，台账写仓库根的 `logs/`）；演练在 `$RUNNER_TEMP/rollback` 里用 `installDist` 的 `lib/*` 加 `game-rush-dev.jar`、`play-kit-dev.jar` 先后以 `rush`、`rts` 离线起服（端口 25569，指标端点 `127.0.0.1:0`）。三个端口与 job `gametest` 的 25565、25566 不重叠。judge 在本机可以对着下载下来的 artifact 跑：`<py> client-fabric/gametest-env/rush_judge.py --ledger-dir <artifact>/logs --server-log <artifact>/rush-server.log --session-log <artifact>/sessionserver.log <两份 rush.txt>`，`<py>` 是主工作副本的 `.venv/bin/python`；人工用例的两个客户端照 `TC-PLAY-123` 的前置在本机起样板服务端。
 - 种子数据与重置：没有持久数据。反证步骤改的源码与资源一律用 `git checkout -- <路径>` 还原，后置统一判 `git status --porcelain -- src` 为空（`.synx` 与烘焙器的用例判 `-- synx`、`-- baker`）。
 
 ## 4. 用例库
@@ -11426,7 +11428,7 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 
 #### `TC-PLAY-027` job `rush` 的骨架：两次启动、judge、artifact 与各步时长 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
 
-前置：本节开头。
+前置：本节开头。本条是组 V 交的骨架；组 G 起 job `rush` 是完整版（样板服务端、两次启动的 Q1～Q9、按台账判定、§23 演练），现行的步骤与读数见 `TC-PLAY-118`。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -11438,7 +11440,7 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 
 #### `TC-PLAY-028` judge 单测：Q0 两行都要 PASS，任何 FAIL、缺行、重复行、缺报告都判红 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
 
-前置：本节开头。不起 Gradle，不借锁。
+前置：本节开头。不起 Gradle，不借锁。本条是组 V 阶段的 judge（只判 Q0、Q1～Q9 可以 SKIP、单测 10 条）；组 G 起 judge 是 S1 的完整判定，SKIP 一律判红、单测 30 条，现行判法见 `TC-PLAY-119`、`TC-PLAY-120`。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -12188,7 +12190,7 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 
 #### `TC-PLAY-084` judge 把 Q0c 列为必过 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
 
-前置：本节开头。不起 Gradle，不借锁。
+前置：本节开头。不起 Gradle，不借锁。本条是组 C 阶段的 judge；组 G 起 Q0c 仍是必过的一步，judge 的现行判法见 `TC-PLAY-119`。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -12485,7 +12487,208 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 
 ### 玩法架构 · RUN-077：G（真客户端剧本 Q1～Q9、job `rush` 完整版与 judge）
 
-对应 `REQ-PLAY-008` 的端到端验收：剧本 Q1～Q9、两次启动、正向与回滚演练、按台账判定的 judge（`docs/DESIGN-PLAY.md` §6.7.6，§19，§23 检查单；本组跟进该分册 v0.9）。用例号段 110～129，其中三条人工用例（两人争夺、同实例聊天、`TOP_CENTER` 与 Boss 血条让位），由组 G 在集成分支 `prod/integrate-077` 上写入。测试：`client-fabric` 的 `RushClientGameTest` Q1～Q9，`.github/workflows/client-gametest.yml` 的 job `rush`，`client-fabric/gametest-env/rush_judge.py` 与 `test_rush_judge.py`。
+对应 `REQ-PLAY-008` 的端到端验收：剧本 Q1～Q9、两次启动、正向与回滚演练、按台账判定的 judge（`docs/DESIGN-PLAY.md` §6.7.6，§19，§23 检查单；本组跟进该分册 v0.9）。用例号段 110～129，其中三条人工用例（两人争夺、同实例聊天、`TOP_CENTER` 与 Boss 血条让位），由组 G 在分支 `prod/r077-G` 写入（计划写的是在集成分支上写；本轮按派单开组分支、草稿 PR 跑 CI）。测试：`client-fabric` 的 `RushClientGameTest` Q1～Q9，`.github/workflows/client-gametest.yml` 的 job `rush`，`client-fabric/gametest-env/rush_judge.py` 与 `test_rush_judge.py`。
+
+本节由组 G 写入，分支 `prod/r077-G`（基于 `prod/integrate-077` `f54b122cf5`）：设计提交 `7e3cef8c7d`；judge 单测提交 `09b183ab93` 与 judge 提交 `cd83b97c0d`；剧本与 job 的修前红提交 `a5587875f0`（剧本 Q1～Q9、`PlayTestHook` 的两个读口、job `rush` 完整版都在，只是不起样板服务端）；起样板服务端的提交 `29f2e5caf0`；修复提交 `e467542943`（Q3、Q7 改为等记录本身收到 SET，job 在 judge 之前等台账落盘）；之后是文档。改动：`client-fabric/gametest-env/rush_judge.py` 改成 S1 的完整判定（报告、台账、样板服务端日志、假 sessionserver 日志与模组主源码，命令行见 `docs/DESIGN-PLAY.md` §6.7.6），`test_rush_judge.py` 改写为 30 条；gametest 的 `RushClientGameTest` 在 Q0 之后接 Q1～Q9，`PlayTestHook` 的 `play()` 改为包内可见、加 `handshake()`；`client-gametest.yml` 的 job `rush` 改成完整版（假 sessionserver、起服之前一次构建、样板服务端 `:server-app:runRush`、两次启动、judge、§23 的正向与回滚演练、artifact）。没有主代码改动。
+
+测试：真客户端剧本 `RushClientGameTest` 的 Q1～Q9（Q0a～Q0c 不变）；judge 单测 30 条；job `rush`。「job `rush`」即 `.github/workflows/client-gametest.yml` 的 job `rush`，报告同 V 节；截图、报告、客户端日志、样板服务端日志 `rush-server.log`、台账 `logs/events-*.jsonl`、夹具日志、演练日志（`rollback/`）与 `sessionserver.log` 在 artifact `client-gametest-rush`（保留 14 天）。「跑 judge 单测」：在仓库之外的目录跑 `<py> -m unittest discover -s <仓库>/client-fabric/gametest-env -p 'test_rush_judge.py' -v`，跑完删 `client-fabric/gametest-env/__pycache__/`，不起 Gradle、不借锁。`<py>` 同 V 节。CI 的两次启动各自独打一局（`min-players` 取 1），不做服务端假玩家陪练，理由见 `docs/DESIGN-PLAY.md` §6.7.6「覆盖分工」；两人争夺与同实例聊天是本节的人工用例。
+
+源文件代号：`<GP>` 同 V 节，`<GE>` 是 `client-fabric/gametest-env/`，`<WF>` 是 `.github/workflows/client-gametest.yml`；行号按修复提交 `e467542943`。本机 Gradle 5 次，都经重活锁：第 1 次把 `:protocol` 发布到临时仓 `/tmp/run077/fix-G/m2`；第 2、4、5 次在 `client-fabric` 里用同一个临时仓编译（第 2 次 `compileJava compileGametestJava`，后两次 `compileGametestJava`），都成功；第 3 次是 job 构建一步的四个任务加 `:server-app:runRush --dry-run`，任务图在配置缓存下建得出，没有起进程。GitHub Actions 三轮，都在草稿 PR #25（base `prod/integrate-077`，验完关闭、远端分支删掉）上：第 1 轮 head `a5587875f0`，client-mod run 38229238102、client-gametest run 38229238270；第 2 轮 head `29f2e5caf0`，client-mod run 38230015107、client-gametest run 38230014989；第 3 轮 head `e467542943`，client-mod run 38231119045、client-gametest run 38231119013。三轮的 client-mod 都绿；组分支 PR 上的 `ci.yml` 与 `concurrency.yml` 不作门禁，三轮都绿（CI run 38229238104、38230014975、38231118972，Concurrency run 38229238252、38230014968、38231119168）。各次读数与原始报告见 `docs/test-runs/RUN-077/G/00-index.txt`。
+
+#### `TC-PLAY-110` Q1：握手、`synaxis:play` 的负载与版本、动作键 1 的默认键上没有别的映射 — 对应 `REQ-PLAY-005`、`REQ-PLAY-008` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头；只在 GitHub Actions 上跑。剧本在 `<GP>RushClientGameTest.java:497`，查默认键时排除 `KeyMapping.Category.DEBUG` 在 `:507`（组 C 交来的要求：F3+H 不算冲突）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 看第 3 轮 run 38231119013 的 job `rush` 两份 `rush.txt` 的 Q1 行 | 两份都是 `rush Q1 PASS handshake VERIFIED; synaxis:play payload registered true; play_version 1; key.synaxis.action_1 in the controls true, default key.keyboard.h, other mappings on it [] (DEBUG left out: [key.debug.showAdvancedTooltips])`：在线模式下经假 sessionserver 握手通过，`ClientPlayNetworking.getGlobalReceivers()` 有 `synaxis:play`，H 上除了 DEBUG 分类的 F3+H 没有别的映射。第 2 轮读数相同 |
+| 2 | 改动前的红：第 1 轮 run 38229238270（job 里不起样板服务端） | 两份都是 `rush Q1 FAIL not reached: not in the world of 127.0.0.1:25567, screen net.minecraft.client.gui.screens.DisconnectedScreen`，judge 退出码 1 |
+| 3 | 反证有齿 | 默认键一项：第 1 步的证据里 H 上确有一条 DEBUG 分类的映射，`:507` 不排除 DEBUG 时它进 `clashes`、Q1 判 FAIL（按代码与读数推得，没有单独在 CI 上跑）。握手与负载注册的齿在 `TC-PLAY-013`、`TC-PLAY-024`，默认键 H 不撞原版普通键在 `TC-PLAY-081` |
+
+后置：无本机改动。
+
+#### `TC-PLAY-111` Q2：大厅场景、`rush/hint` 与槽 0 的 `rush:queue` — 对应 `REQ-PLAY-003`、`REQ-PLAY-008` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头；只在 GitHub Actions 上跑。剧本在 `<GP>RushClientGameTest.java:518`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 3 轮两份 Q2 行与 artifact 里两张 `0003_rush-lobby.png` | `rush Q2 PASS scene 1 rush:lobby within 200 ticks true; slot 0 rush:queue; hint key=rush.hint args=[0] colour=none fallback=Press action key 1 (default H) to join or leave the queue. Queued: %s; screenshot 0003_rush-lobby.png`；截图左侧中部（`LEFT` 槽）是「Press action key 1 (default H) to join or leave the queue. Queued: 0」。dev 那张的动作栏还留着 Q0c 末尾夹具冷却的提示「Wait 2 s before doing that again.」，是原版动作栏的消息跨连接留存了几秒，与样板无关 |
+| 2 | 改动前的红：第 1 轮 | 两份 Q2 `FAIL not reached …` |
+| 3 | 反证有齿 | 场景与动作表的齿在 `TC-PLAY-030`、`TC-PLAY-070`；本条只证真客户端连样板服务端时拿得到大厅场景 |
+
+后置：无本机改动。
+
+#### `TC-PLAY-112` Q3、Q4：按一次等一次，排队得 `ok`，本地冷却挡下第二次，服务端冷却回第三次 — 对应 `REQ-PLAY-005`、`REQ-PLAY-008` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头；只在 GitHub Actions 上跑。剧本在 `<GP>RushClientGameTest.java:540`～`:581`：开始记录在进大厅之后（`:462`），每按一次都等到这一次的结果（组 C 交来的要求：记录按 tick 采样）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 3 轮两份 Q3、Q4 行 | Q3：`first press action_seq 1 OK cooldown_ms 2000 90 ms after it`（生产 jar 31 ms），`actions sent 0 -> 1; hint count 1; countdown TIMER set 2 remaining_ms 2999`。Q4：`second press 231 ms after the first: actions sent 1 -> 1 (the local cooldown)`（234 ms），`third press with the local cooldown off 380 ms after the first: action_seq 2 COOLDOWN cooldown_ms 1651 reason key=synaxis:action-cooldown args=[2]`（386 ms、1601），`hint count 1`。第 2 轮的形状相同（19 ms 与 32 ms 收到 `ok`，`cooldown_ms` 1,601 与 1,601） |
+| 2 | 改动前的红：第 1 轮 | 两份 Q3、Q4 `FAIL not reached …` |
+| 3 | 反证有齿 | 宿主不判冷却时第三次回 `ok`、玩家被 `rush:queue` 退队，Q4 判 FAIL：这一齿由集成轮的反证分支 `tmp/r077-proof-host` 在 CI 上跑（计划「端到端反证」），本组没跑。本地冷却的齿在 `TC-PLAY-075`，服务端冷却的齿在 `TC-PLAY-038` |
+
+后置：无本机改动。
+
+#### `TC-PLAY-113` Q5：倒计时结束后进竞技场，就绪在载入画面关闭、脚下区块已到之后发，100 tick 以内 — 对应 `REQ-PLAY-003`、`REQ-PLAY-006`、`REQ-PLAY-008` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头；只在 GitHub Actions 上跑。剧本在 `<GP>RushClientGameTest.java:583`；就绪那一刻的两项在 `:609`～`:610`，tick 数在 `:612`～`:613`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 3 轮两份 Q5 行 | dev：`dimension rush:round_1 298 ms after the countdown ran out; scene 2 rush:round; screens [net.minecraft.client.gui.screens.LevelLoadingScreen ticks 58..61]; hasChunk T1-57@rush:lobby_1 T58-63@rush:round_1; ready screen=null chunkUnderfoot=true 5 ticks 390 ms after the new level; TIMER 44304 ms; 0.00 blocks from the spawn; labels [A, B, C]`。生产 jar：`rush:round_2` 361 ms，`LevelLoadingScreen ticks 57..59`，`3 ticks 249 ms`，`TIMER 44608 ms` |
+| 2 | 第 3 轮台账（`docs/test-runs/RUN-077/G/06-ci-round3-green/events.jsonl`） | 两次进竞技场：`play_instance_moved` 到同一连接下一条 `play_scene_ready` 0.59 s 与 0.50 s；`play_scene_entered`（`scene_seq=2`）早于 `play_instance_moved` 约 10 ms 与 2 ms 记下，`S2C_SCENE` 由宿主留到移入完成之后才发 |
+| 3 | 改动前的红：第 1 轮 | 两份 Q5 `FAIL not reached …` |
+| 4 | 反证有齿 | 客户端一收到 `S2C_SCENE` 就发就绪时，那一刻的 Screen 是 `LevelLoadingScreen`（第 1 步：新维度的前 3～4 tick 它都开着），Q5 判 FAIL：这一齿由集成轮的反证分支 `tmp/r077-proof-client` 在 CI 上跑，本组没跑。它的前提每轮都抄得到：judge 输出的 `note … Q0b screens […LevelLoadingScreen ticks 3..8]` 与 Q5 证据里的 `screens`，三轮都有载入画面。就绪三条件的单元齿在 `TC-PLAY-079` |
+
+后置：无本机改动。
+
+#### `TC-PLAY-114` Q6：走到信标 A 旁占领，`rush/capture` 的百分比上涨，分数到 1 — 对应 `REQ-PLAY-004`、`REQ-PLAY-008` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头；只在 GitHub Actions 上跑。剧本在 `<GP>RushClientGameTest.java:631`，走路照 `PlayableClientGameTest#walkTo`（`:716`），停点是信标 A 方块中心朝出生点方向 1.5 格。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 3 轮两份 Q6 行与两张 `0004_rush-capture.png` | `stopped 1.44 blocks from beacon A (reached true); rush/capture 9% then 29% 2 s later; own score 1 at 10405 ms`（生产 jar 1.60 格，2% → 22%，9805 ms）；截图下方 `BOTTOM` 槽是「Capturing A: 9%」，在动作栏之上，顶部是 `TIMER`「Time left 0:40」与目标一行，右上角计分板一行「Player0 0」 |
+| 2 | 改动前的红：第 1 轮 | 两份 Q6 `FAIL not reached …` |
+| 3 | 反证有齿 | 占领、冻结与计分的齿在 `TC-PLAY-093`（`BeaconTest`）与 `TC-PLAY-096`（`RushRoundIntegrationTest`）；本条证真客户端走得到、看得见、分数按秒到 |
+
+后置：无本机改动。
+
+#### `TC-PLAY-115` Q7：对局 `TIMER` 的外推与结算到达的时刻相差 ≤ 500 ms — 对应 `REQ-PLAY-004` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头；只在 GitHub Actions 上跑。剧本在 `<GP>RushClientGameTest.java:654`：`t0`、`remaining_ms` 取记录里剩余时间最大的那条 `rush/timer` SET，`t1` 取 `rush/result` 那条 SET，接收时刻都是 `PlayClient` 收包时打的。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 3 轮两份 Q7 行 | `round TIMER set 4 remaining_ms 45000; rush/result set 50 44960 ms after it; off by -39 ms`；生产 jar `set 51 44975 ms after it; off by -24 ms` |
+| 2 | 改动前的红：第 1 轮两份 `FAIL not reached …`；第 2 轮 run 38230014989 两份 `rush Q7 FAIL the recording has the round TIMER SetSeen[owner=rush, widgetId=timer, kind=Timer, set=4, …, remainingMs=45000] and the result null (46 SETs)`（生产 jar 47 SETs） | 第 2 轮的红是剧本自己的缺陷：在镜像里一见到 `rush/result` 就读记录，而记录要到那个 tick 末才采样，这条 SET 还没进去；同一轮 Q8 读得到面板。修复提交 `e467542943` 改为等记录收到这条 SET（`:655`，Q3 的倒计时 `TIMER` 同改），第 3 轮过 |
+| 3 | 反证有齿 | 第 2 步的第 2 轮即是：记录里没有 `rush/result` 时判 FAIL。外推本身的齿在 `TC-PLAY-073`，`onStart` 才设对局 `TIMER` 的齿在 `TC-PLAY-095` |
+
+后置：无本机改动。
+
+#### `TC-PLAY-116` Q8：结算面板有本人一行，按「返回大厅」 — 对应 `REQ-PLAY-004`、`REQ-PLAY-005`、`REQ-PLAY-008` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头；只在 GitHub Actions 上跑。剧本在 `<GP>RushClientGameTest.java:677`，按钮的按法同 Q0c。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 3 轮两份 Q8 行与两张 `0005_rush-result.png` | `PanelScreen open; rows [*1. Player0 (1 captures)=31] (own row marked *, player Player0); screenshot 0005_rush-result.png; pressed "Back to the lobby"`（生产 jar `Player528`、32）；截图中央是标题「Round over」的面板，一行高亮，分数红字在右，下面一个按钮「Back to the lobby」 |
+| 2 | 改动前的红：第 1 轮 | 两份 Q8 `FAIL not reached …` |
+| 3 | 反证有齿 | 面板的打开、按钮与结果的齿在 `TC-PLAY-077`、`TC-PLAY-078`，结算中只送按按钮的人回大厅在 `TC-PLAY-097` |
+
+后置：无本机改动。
+
+#### `TC-PLAY-117` Q9：回到大厅并就绪，竞技场随即关闭 — 对应 `REQ-PLAY-006`、`REQ-PLAY-008` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头；只在 GitHub Actions 上跑。剧本在 `<GP>RushClientGameTest.java:697`，等记录里有大厅场景的就绪再离开，台账里这次移动才有对应的 `play_scene_ready`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 3 轮两份 Q9 行 | `dimension rush:lobby_1, scene 3 rush:lobby 145 ms after the button; ready screen=null chunkUnderfoot=true`（生产 jar 147 ms） |
+| 2 | 第 3 轮台账 | 回大厅的 `play_instance_moved` 到下一条 `play_scene_ready` 0.35 s 与 0.35 s；同一时刻竞技场 `play_instance_closed`（`cause=time_limit`、`players=0`、`evacuated=0`、`kicked=0`、`settle_timeout=false`），`ended` 到 `closed` 0.81 s 与 0.75 s：人一走空，`Round` 就 `settled`，没等 10 s 的结算时长 |
+| 3 | 改动前的红：第 1 轮两份 `FAIL not reached …`；第 2 轮 judge | 第 2 轮两份 Q9 PASS，judge 却红在 `ledger: no play_scene_ready after the move of connection_id=edf94985-… at 2026-10-12T09:34:19.221432599Z`：第二次启动回大厅之后的就绪在 judge 读台账时还没落盘（台账每秒最多写一次，客户端在就绪后不到 1 s 就退出）。job 在 judge 前等 3 s（`<WF>:358`）后第 3 轮过 |
+
+后置：无本机改动。
+
+#### `TC-PLAY-118` job `rush` 完整版：步骤、端口、两次启动与时长 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。job 在 `<WF>:236` 起，样板服务端一步在 `:314`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 看第 3 轮 run 38231119013 的 job `rush` 各步 | 依次是 checkout、JDK 25、setup-gradle（只读缓存）、Xvfb 与 Mesa、发布 `:protocol`（40 s）、judge 单测（`Ran 30 tests` `OK`）、假 sessionserver（1 s）、`:server-app:farviewFixtureArgs :server-app:installDist :game-rush:jar :play-kit:jar`（86 s）、起夹具（3 s）、起样板服务端（11 s）、dev 启动（161 s）、生产 jar 启动（78 s）、等台账并打印（3 s）、judge、演练（8 s）、拷日志、上传 artifact `client-gametest-rush`；整个 job 6 min 56 s，时限 30 min，runner `ubuntu-24.04`。`rush-server.log`：`Running in online mode, logins are verified against http://127.0.0.1:33087/session/minecraft/hasJoined`，`Plugin enabled: plugin_id=rush`，就绪日志在 25567；两次连接从 `Login success` 到 `Connection closed` 51.4 s 与 50.8 s |
+| 2 | `actionlint .github/workflows/client-gametest.yml` | 只有改动前就有的两条（job `gametest` 起服一步的 SC2034、SC2086），job `rush` 没有告警 |
+| 3 | 改动前的红：第 1 轮 run 38229238270 | 少「Start the sample server」一步：两次启动的 Q0a～Q0c 照常 PASS，Q1～Q9 全 FAIL，judge `FAIL (2 reports, 27 problems)`：18 行报告、台账 6 条（没有台账目录、0 个竞技场、局正常结束率 0/0、`play_scene_ready` 0 条、`rush_round_ended` 0 条、`client_verified` 0 条）、sessionserver 2 条、没有服务端日志 1 条；job 共 4 min 22 s |
+
+后置：无本机改动。
+
+#### `TC-PLAY-119` judge 单测：报告、台账、日志与客户端源码，一处坏就判红 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。不起 Gradle，不借锁。单测在 `<GE>test_rush_judge.py`，每条先写一份两次启动的好运行，再改坏一处。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 judge 单测；再把 `-p` 换成 `'test_*.py'` 跑一次 | `Ran 30 tests` `OK`（`docs/test-runs/RUN-077/G/02-judge-green.txt`）：好运行判过，`prepare_ms` 与 Q0b 的 Screen 抄进输出，跨日的 `.jsonl.gz` 也读；判红的有报告里的 FAIL、SKIP（Q0a、Q3、Q9 三个子用例）、缺报告、没给报告、缺行、重复行、三种不合形状的行，台账里状态顺序错、缺 `closed`、`ended` 到 `closed` 16 s、`prepare_ms` 1,200、竞技场比启动多、`settle_timeout=true`、移动 6 s 后才就绪、移动之后没有就绪、`play_scene_ready` 只有 3 条、`rush_round_ended` 3 条、`cause=objective`、`players=2`、少一条 `client_verified` 与多一条 `client_rejected`，sessionserver 少一次 `join`、`hasJoined` 回 204，服务端日志里两个日志器的 ERROR 行、`Plugin channel handler failed`，客户端源码里出现 rush；命令行退出码 0 与 1，客户端源码默认按脚本位置定位。`-p 'test_*.py'` 连 `test_p10.py` `Ran 42 tests` `OK`；三轮 CI 的 job `rush` 都是 30 条 `OK`，第 3 轮 job `p11-smoke` 的 discover `Ran 42 tests` |
+| 2 | 改动前的红：把 `09b183ab93` 的 `test_rush_judge.py` 对着它之前的 `rush_judge.py` 跑 | `Ran 30 tests`，`FAILED (failures=1, errors=34)`（含子用例）：33 处 `TypeError: judge() got an unexpected keyword argument 'ledger_dir'`，一处 `module … has no attribute 'CLIENT_SOURCE'`，命令行那条退出码 1（`01-judge-red.txt`） |
+| 3 | 反证有齿：把 judge 与单测复制进临时目录，八处各改一处、各跑一次（`03-judge-counter-proofs.txt`） | 每处只红对应的那一条：SKIP 不判红 → `test_a_skipped_step_fails`（3 个子用例）；`ended` 到 `closed` 的门槛 16.5 s → 16 s 那条；`prepare_ms` 门槛 1,500 → 1,200 那条；不查状态先后 → 顺序那条；移动到就绪的门槛 6.5 s → 6 s 那条；不数 `rush_round_ended` → 3 条那条；ERROR 行不判 → ERROR 那条（2 个子用例）；不查 rush → 客户端源码那条 |
+
+后置：`git status --short` 无输出；临时目录与 `__pycache__/` 已删。
+
+#### `TC-PLAY-120` judge 在 CI 上读的台账、日志与客户端源码 — 对应 `REQ-PLAY-006`、`REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。判定在 `<GE>rush_judge.py:277`，门槛在 `:48`～`:50`，ERROR 白名单 `:57` 为空。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 3 轮 judge 一步 | `note … Q0b screens [net.minecraft.client.gui.screens.LevelLoadingScreen ticks 3..8]`（生产 jar `3..5`），`note arena 8f4423da-7b29-4de3-8066-84d12d25cb96: prepare_ms 99`、`note arena 365a4271-a747-436a-b807-4f5c4888879a: prepare_ms 99`，末行 `rush judge: PASS (2 reports, 0 problems)`。第 2 轮的两局 `prepare_ms` 是 149 与 49 |
+| 2 | 第 3 轮的台账、`rush-server.log` 与 `sessionserver.log`（`06-ci-round3-green/`） | 两个 `kind_id=rush:round` 实例各有 `created`、`opened`、`started`、`ended`、`closed` 一条且按序；`rush_round_ended` 两条都是 `players=1`、`cause=time_limit`，`winner` 是本人；`play_instance_closed` 两条 `cause=time_limit`、`settle_timeout=false`，局正常结束率 2/2；四次移动到就绪 0.35～0.59 s；`play_scene_ready` 6 条；`client_verified` 2 条、没有 `client_rejected`；sessionserver `join` 2 次、`hasJoined` 2 次都回 200；服务端日志没有 ERROR 行，WARN 三行：假 sessionserver 不是 Mojang 的，两次连接的 `minecraft:brand` 落在未注册的通道。大厅实例只有 `created`、`opened`（`prepare_ms` 217）、`started`，不在竞技场之列 |
+| 3 | 改动前的红：第 1、2 轮的 judge | 第 1 轮 27 个问题（`TC-PLAY-118` 第 3 步）；第 2 轮 3 个：两份 Q7 与台账一条（`TC-PLAY-115`、`TC-PLAY-117`） |
+| 4 | 反证有齿 | 见 `TC-PLAY-119` 第 3 步 |
+
+后置：无本机改动。
+
+#### `TC-PLAY-121` §23 的演练：同一个 classpath 先以 `rush`、再以 `rts` 起服 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。演练一步在 `<WF>:373`，在 `$RUNNER_TEMP/rollback` 里离线起服（端口 25569，指标端点 `127.0.0.1:0`），正向与回滚之间停服。本步也就是 `TC-PLAY-107` 第 2 步。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 三轮 job `rush` 的「Rehearse the rollout forward and rolled back」 | 三轮都过：`class path: …/server-app/build/install/server-app/lib/*:…/game-rush/build/libs/game-rush-dev.jar:…/play-kit/build/libs/play-kit-dev.jar`，`ok   rush: Plugin enabled: plugin_id=rush`、`ok   rush: synaxis server-app listening on`、`ok   rts: Plugin enabled: plugin_id=rts`、`ok   rts: synaxis server-app listening on`，回滚的日志里没有 `plugin_id=rush`。第 3 轮两段日志（`06-ci-round3-green/rehearsal-rush.log`、`rehearsal-rts.log`）：正向从起进程到就绪 0.6 s，回滚 1.3 s（`rts` 的 `enable_ms` 990） |
+| 2 | 对照 `docs/PLUGINS.md` §6 与 `docs/DESIGN-PLAY.md` §23 | classpath 与 R1 命令是同一组：`lib/*` 加 `game-rush-dev.jar`、`play-kit-dev.jar` |
+| 3 | 改动前的红 | 不适用：演练与 job 同一个提交进来，三轮都过；少 `:play-kit` 的 jar 时 `discover()` 失败的齿在 `TC-PLAY-102` |
+
+后置：无本机改动。
+
+#### `TC-PLAY-122` 别的 job 读数不变，模组主源码没有 rush — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。光照会话 2026-10-12 的要求 1。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 3 轮 run 38231119013 的 job `gametest` 与 `p11-smoke` | `gametest` 判定末行 `client regression: all checks passed`，`sessionserver join 5, expected 5`；`p11-smoke` 末行 `P10: all checks passed`。三轮都绿：这些 job 不设 `SYNAXIS_RUSH_SERVER` 与 `SYNAXIS_PLAY_FIXTURE_SERVER`，`RushClientGameTest` 第一行就返回 |
+| 2 | `grep -rlw rush client-fabric/src/main/java`；第 3 轮 client-mod run 38231119045 的 `verifyModJar` 一行 | 无输出（judge 的 ⑧ 同判）；`mod jar: minecraft=26.2, 108 entries, ships META-INF/jars/protocol-dev.jar`，与组 C 的读数相同，本组没改模组 |
+| 3 | 改动前的红 | 不适用：这是对别的 job 不变的约束 |
+
+后置：无本机改动。
+
+#### `TC-PLAY-123` 两人争夺：同在圈内冻结、换人先退后涨、名次按分数 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: 人工
+
+前置：本机两个装了模组的 26.2 客户端（§3 ROLE-Player，用户名 `tester1`、`tester2`，离线）；仓库根起样板服务端 `./gradlew :server-app:runRush -Dsynaxis.app.auth=offline -Dsynaxis.app.port=25567 -Dsynaxis.rush.min-players=2 -Dsynaxis.rush.lobby-wait-seconds=3 -Dsynaxis.rush.round-seconds=120 -Dsynaxis.rush.result-seconds=10`，多人游戏直连 `127.0.0.1:25567`。规则见 `docs/DESIGN-PLAY.md` §6.7.2。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 两个客户端都进服，先后各按一次 H | 两人左侧的排队人数先 1 后 2；人数到 2 时两人顶部都出现「Round starts in」倒计时，3 s 后一起进竞技场 |
+| 2 | 两人一起走进信标 A 的圈（离信标水平 ≤ 3 格）站 5 s | 两人底部的「Capturing A」百分比都不变（两人同在圈内冻结） |
+| 3 | `tester2` 走出圈，`tester1` 留下，等到占满 | `tester1` 的百分比每秒涨约 10%，到 100% 后信标上方的字变成「A: tester1」，`tester1` 的分数每秒加 1 |
+| 4 | `tester1` 走出圈，`tester2` 单独进 A 的圈 | `tester2` 看到的百分比先以每秒约 20% 退到 0，再朝 `tester2` 涨；退到 0 之前 `tester1` 的分数仍每秒加 1 |
+| 5 | 等时间耗尽 | 两人都弹出「Round over」面板，按分数排名，各自那一行高亮；`tester1` 按「Back to the lobby」只有他回大厅，`tester2` 留在竞技场，10 s 后被送回大厅 |
+
+后置：两个客户端退出，控制台 `stop` 停服；仓库根 `logs/` 下本次的台账删掉。
+
+#### `TC-PLAY-124` 同实例聊天：收件人按实例 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: 人工
+
+前置：同 `TC-PLAY-123`，`-Dsynaxis.rush.min-players=1`。玩法进程的默认玩法层只开聊天，收件人是发送者所在实例的玩家（`server-app/src/main/java/io/github/bearisbug/synaxis/app/play/DefaultPlay.java:150`，`Main.java:883`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 两人都在大厅，各发一条聊天 | 两人都看到两条 |
+| 2 | `tester1` 按 H 排队并进竞技场，`tester2` 留在大厅；两人各发一条 | 各自只看到自己那条：两人不在同一实例 |
+| 3 | 结算时 `tester1` 按「Back to the lobby」回大厅，两人再各发一条 | 两人都看到两条 |
+
+后置：同 `TC-PLAY-123`。
+
+#### `TC-PLAY-125` `TOP_CENTER` 给原版 Boss 血条让位（真客户端截图） — 对应 `REQ-PLAY-004` · 级别: 回归 · 执行者: 人工
+
+前置：S1 的服务端没有发 Boss 血条的命令或玩法，本用例借夹具：在本机工作副本里临时给 `PlayHudFixture` 处理 `widgets` 请求的分支加一行，给请求的玩家 `showBossBar(BossBar.bossBar(Component.text("boss"), 1f, BossBar.Color.RED, BossBar.Overlay.PROGRESS))`；再按 `docs/DESIGN-PLAY.md` §6.7.6 的夹具起法在本机起夹具（端口 25568），在 `client-fabric` 里设 `SYNAXIS_PLAY_FIXTURE_SERVER=127.0.0.1:25568` 跑 `./gradlew runClientGameTest`。按常数的让位由 `TC-PLAY-072` 的 `WidgetLayoutTest` 覆盖，本条看真客户端画出来的样子。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 看 `client-fabric/build/run/clientGameTest/screenshots/` 里的 `0002_play-widgets.png` | 顶部正中先是红色的 Boss 血条与它的名字「boss」，`TIMER` 的标签与剩余时间排在血条之下，两者不重叠；`rush.txt` 的 Q0c 仍 PASS（`TIMER` 仍在上四分之一） |
+| 2 | 对照没有 Boss 血条时的截图（`TC-PLAY-072` 第 5 步：`TIMER` 在 y 4..17） | 有血条时 `TIMER` 整体下移约一条血条的高度（GUI 19 像素，854×480 下约 38 像素） |
+
+后置：`git checkout -- server-app/src/test`，停夹具，`git status --short` 无输出。
 
 ## 5. 回归策略
 

@@ -401,6 +401,44 @@ class EvacuationIntegrationTest {
     }
 
     /**
+     * A forced close with a move still on its way, a plugin taken back while its players are being
+     * moved in: the player on their way is kicked with match-unavailable before the instance is
+     * unregistered on the spot, and counts as kicked.
+     */
+    @Test
+    void aForcedCloseKicksAPlayerStillOnTheirWay(Env env) {
+        final InstanceRegistry registry = new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(env.process()),
+                Thread.currentThread(), new InstanceRegistry.Durations(Duration.ofSeconds(30), EVACUATION), clock::get);
+        InstanceFixture.registerMatchDimension(env.process());
+        final CountDownLatch release = new CountDownLatch(1);
+        try {
+            final ManagedInstance arena = registry.forPlugin("evacuation").create(new InstanceSpec("arena", 1,
+                    InstanceFixture.stuckBeyond(1, release), SPAWN));
+            final TestConnection connection = env.createConnection();
+            final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
+            final Player player = connection.connect(env.createFlatInstance(), new Pos(0, 41, 0));
+            final CompletableFuture<Boolean> moved = onItsWay(env, arena, player);
+
+            registry.reclaim("evacuation", EndCause.SHUTDOWN);
+
+            assertFalse(arena.instance().isRegistered());
+            assertFalse(player.isOnline(), "the player on their way was left online");
+            assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(disconnects));
+            final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
+            assertEquals("shutdown", closed.get("cause"));
+            assertEquals(1, closed.get("players"));
+            assertEquals(0, closed.get("evacuated"));
+            assertEquals(1, closed.get("kicked"));
+
+            release.countDown();
+            assertTrue(env.tickWhile(() -> !moved.isDone(), TEN_SECONDS), "the move never completed");
+            assertFalse(moved.join());
+        } finally {
+            release.countDown();
+        }
+    }
+
+    /**
      * A player the engine already put in the instance when it closes, whose move has not completed yet:
      * the snapshot of the players inside takes them and the move reports them as a late arrival, yet
      * the plugin's exit is asked for once. The instance closes from {@code PlayerSpawnEvent}, which the

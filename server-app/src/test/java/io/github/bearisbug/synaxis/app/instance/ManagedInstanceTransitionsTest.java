@@ -290,4 +290,34 @@ class ManagedInstanceTransitionsTest {
         assertEquals(state + ">CLOSED", transitions().getLast());
         assertThrows(IllegalStateException.class, () -> round.end(EndCause.OBJECTIVE));
     }
+
+    /** The closing event is called after the swap and before the evacuation, so the instance is still registered then. */
+    @Test
+    void theClosingEventComesBeforeTheUnregistration() {
+        final ManagedInstance round = open();
+        final List<Boolean> registeredWhenCalled = new CopyOnWriteArrayList<>();
+        round.instance().eventNode().addListener(PlayInstanceStateEvent.class, event -> {
+            if (event.to() == State.CLOSED) registeredWhenCalled.add(event.getInstance().isRegistered());
+        });
+
+        round.cancel(KICK);
+
+        assertEquals(List.of(true), registeredWhenCalled);
+        assertFalse(round.instance().isRegistered());
+    }
+
+    /** §11.1 {@code plugin.tornDown}: a plugin taken back creates no more instances, which nothing would take back. */
+    @Test
+    void aPluginTakenBackCreatesNoMoreInstances() {
+        final ManagedInstance round = open();
+        final PluginInstances instances = Objects.requireNonNull(registry).forPlugin("transitions");
+
+        registry.reclaim("transitions", EndCause.PLUGIN_DISABLED);
+
+        assertEquals(State.CLOSED, round.state());
+        final IllegalStateException refused = assertThrows(IllegalStateException.class,
+                () -> instances.create(new InstanceSpec("round", 0, FLAT, SPAWN)));
+        assertTrue(refused.getMessage().contains("transitions"), refused.getMessage());
+        assertEquals(List.of(), instances.owned());
+    }
 }

@@ -37,6 +37,7 @@ import static io.github.bearisbug.synaxis.app.instance.InstanceFixture.computedS
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -254,5 +255,19 @@ class ManagedInstanceTickThreadTest {
         assertEquals(EndCause.PREPARE_FAILED, arena.endCause());
         assertFalse(arena.instance().isRegistered());
         assertEquals(List.of("play_instance_created", "play_instance_closed"), ledger.events(arena));
+    }
+
+    /** The startup thread prepares in place only before the process runs; afterwards it is any other thread. */
+    @Test
+    void theStartupThreadIsAnyOtherThreadOnceTheProcessRuns() {
+        final InstanceRegistry late = new InstanceRegistry(process, ledger, InstanceFixture.scenes(process),
+                Thread.currentThread(), InstanceRegistry.Durations.DEFAULT, System::nanoTime);
+        final PluginInstances instances = late.forPlugin("late");
+
+        final IllegalStateException refused = assertThrows(IllegalStateException.class,
+                () -> instances.create(new InstanceSpec("arena", 0, FLAT, SPAWN)));
+
+        assertTrue(refused.getMessage().contains(Thread.currentThread().getName()), refused.getMessage());
+        assertEquals(List.of(), instances.owned());
     }
 }

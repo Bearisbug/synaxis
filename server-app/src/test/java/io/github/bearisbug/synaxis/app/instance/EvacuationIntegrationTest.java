@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.app.instance;
 
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.event.instance.AddEntityToInstanceEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.packet.server.common.DisconnectPacket;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
@@ -11,6 +12,7 @@ import io.github.bearisbug.synaxis.plugin.instance.Exit;
 import io.github.bearisbug.synaxis.plugin.instance.InstanceSpec;
 import io.github.bearisbug.synaxis.plugin.instance.ManagedInstance;
 import io.github.bearisbug.synaxis.plugin.instance.ManagedInstance.State;
+import io.github.bearisbug.synaxis.plugin.instance.PlayInstanceStateEvent;
 import io.github.bearisbug.synaxis.plugin.instance.PluginInstances;
 import io.github.bearisbug.synaxis.testing.Collector;
 import io.github.bearisbug.synaxis.testing.Env;
@@ -18,11 +20,13 @@ import io.github.bearisbug.synaxis.testing.EnvTest;
 import io.github.bearisbug.synaxis.testing.TestConnection;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static io.github.bearisbug.synaxis.app.instance.InstanceFixture.FLAT;
@@ -205,5 +209,91 @@ class EvacuationIntegrationTest {
         assertFalse(moved.join());
         assertEquals(List.of(), List.copyOf(arena.players()));
         assertEquals(List.of(), ledger.of(arena).stream().filter(line -> line.event().equals("play_instance_moved")).toList());
+    }
+
+    /** A plugin's exit that gives no exit at all: the player is kicked, the request still succeeds and the instance closes. */
+    @Test
+    void anExitThatGivesNothingKicksThePlayer(Env env) {
+        final PluginInstances instances = instances(env);
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final TestConnection connection = env.createConnection();
+        final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
+        final Player player = joinInto(env, arena, connection);
+
+        arena.cancel(_ -> nothing());
+
+        assertFalse(player.isOnline());
+        assertFalse(arena.instance().isRegistered());
+        assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(disconnects));
+        assertEquals("cancelled", ledger.last(arena, "play_instance_closed").get("cause"));
+    }
+
+    /** What a plugin's exit returns when it breaks the not-null contract of {@code Function<Player, Exit>}. */
+    private static @Nullable Exit nothing() {
+        return null;
+    }
+
+    /**
+     * A player whose move passed the state check while the instance was open and who arrives after
+     * it closed, here because the instance is cancelled from inside the move on the player's tick
+     * thread: the player gets the exit like those already inside, and counts as one of them.
+     */
+    @Test
+    void aPlayerWhoArrivesWhileTheInstanceClosesGetsTheExitToo(Env env) {
+        final PluginInstances instances = instances(env);
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        // Called on the player's tick thread before the player is added to the instance
+        arena.instance().eventNode().addListener(AddEntityToInstanceEvent.class, event -> {
+            if (event.getEntity() instanceof Player && arena.state() == State.OPEN)
+                arena.cancel(_ -> new Exit.ToInstance(lobby, SPAWN));
+        });
+        final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 41, 0));
+
+        final CompletableFuture<Boolean> moved = arena.move(player, SPAWN);
+        assertTrue(env.tickWhile(() -> !moved.isDone() || arena.instance().isRegistered(), TEN_SECONDS),
+                "the instance was never unregistered: the player who arrived late was left inside");
+
+        assertFalse(moved.join(), "the instance had closed by the time the player was in");
+        assertSame(lobby.instance(), player.getInstance());
+        assertTrue(player.isOnline());
+        final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
+        assertEquals(1, closed.get("players"));
+        assertEquals(1, closed.get("evacuated"));
+        assertEquals(0, closed.get("kicked"));
+    }
+
+    /**
+     * The closing event comes while the players are still inside and the instance registered, and a
+     * forced close called from it finds the evacuation already known: it is finished at once, and the
+     * exits handed out after the event do nothing more.
+     */
+    @Test
+    void aForcedCloseFromTheClosingEventFinishesTheEvacuation(Env env) {
+        final InstanceRegistry registry = new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(env.process()),
+                Thread.currentThread(), new InstanceRegistry.Durations(Duration.ofSeconds(30), EVACUATION), clock::get);
+        InstanceFixture.registerMatchDimension(env.process());
+        final PluginInstances instances = registry.forPlugin("evacuation");
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final Player player = joinInto(env, arena, env.createConnection());
+        final List<Boolean> insideWhenCalled = new CopyOnWriteArrayList<>();
+        arena.instance().eventNode().addListener(PlayInstanceStateEvent.class, event -> {
+            if (event.to() != State.CLOSED) return;
+            insideWhenCalled.add(arena.players().contains(player) && arena.instance().isRegistered());
+            registry.reclaim("evacuation", EndCause.SHUTDOWN);
+        });
+
+        arena.cancel(_ -> new Exit.ToInstance(lobby, SPAWN));
+
+        assertEquals(List.of(true), insideWhenCalled, "the closing event came after the players were sent away");
+        assertFalse(arena.instance().isRegistered(), "the forced close did not finish the evacuation");
+        assertFalse(player.isOnline());
+        assertEquals(EndCause.CANCELLED, arena.endCause());
+        final List<InstanceFixture.Line> closed = ledger.of(arena).stream()
+                .filter(line -> line.event().equals("play_instance_closed")).toList();
+        assertEquals(1, closed.size(), closed.toString());
+        assertEquals(1, closed.getFirst().get("kicked"));
+        assertEquals(0, closed.getFirst().get("evacuated"));
     }
 }

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest" tests="3" skipped="0" failures="2" errors="0" timestamp="2026-10-12T05:58:53.396Z" hostname="Mac.local" time="1.553">
+  <properties/>
+  <testcase name="aShardServingAMapDropsEveryPlayPayloadSilently(Env)" classname="io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest" time="1.091">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[]&gt; but was: &lt;[Dropped an unknown play message: connection_id=d8f72b84-6382-4994-aa97-8b1758aa0c1e msg_id=0x7f (1 unknown play messages since the last report), Refusing a play payload: connection_id=d8f72b84-6382-4994-aa97-8b1758aa0c1e reason=synaxis:protocol-error cause=msg_id=0x84 is a message of ours, not a request (1 refused play payloads since the last report)]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[]&gt; but was: &lt;[Dropped an unknown play message: connection_id=d8f72b84-6382-4994-aa97-8b1758aa0c1e msg_id=0x7f (1 unknown play messages since the last report), Refusing a play payload: connection_id=d8f72b84-6382-4994-aa97-8b1758aa0c1e reason=synaxis:protocol-error cause=msg_id=0x84 is a message of ours, not a request (1 refused play payloads since the last report)]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest.floodAndExpectNothing(SceneOwnerlessIntegrationTest.java:96)
+	at io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest.aShardServingAMapDropsEveryPlayPayloadSilently(SceneOwnerlessIntegrationTest.java:122)
+</failure>
+  </testcase>
+  <testcase name="theCoreModeDropsEveryPlayPayloadSilently(Env)" classname="io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest" time="0.443">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[]&gt; but was: &lt;[Dropped an unknown play message: connection_id=b0247576-be2d-4e63-9592-4b397ecb7ae5 msg_id=0x7f (1 unknown play messages since the last report), Refusing a play payload: connection_id=b0247576-be2d-4e63-9592-4b397ecb7ae5 reason=synaxis:protocol-error cause=msg_id=0x84 is a message of ours, not a request (1 refused play payloads since the last report)]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[]&gt; but was: &lt;[Dropped an unknown play message: connection_id=b0247576-be2d-4e63-9592-4b397ecb7ae5 msg_id=0x7f (1 unknown play messages since the last report), Refusing a play payload: connection_id=b0247576-be2d-4e63-9592-4b397ecb7ae5 reason=synaxis:protocol-error cause=msg_id=0x84 is a message of ours, not a request (1 refused play payloads since the last report)]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest.floodAndExpectNothing(SceneOwnerlessIntegrationTest.java:96)
+	at io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest.theCoreModeDropsEveryPlayPayloadSilently(SceneOwnerlessIntegrationTest.java:112)
+</failure>
+  </testcase>
+  <testcase name="thePayloadsOfThePlayChannelCountAgainstTheInboundPacketLimit(Env)" classname="io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest" time="0.013"/>
+  <system-out><![CDATA[13:58:54.153 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+13:58:54.161 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+13:58:54.387 [Test worker] WARN  i.g.b.synaxis.app.scene.SceneService - Dropped an unknown play message: connection_id=d8f72b84-6382-4994-aa97-8b1758aa0c1e msg_id=0x7f (1 unknown play messages since the last report)
+13:58:54.387 [Test worker] WARN  i.g.b.synaxis.app.scene.SceneService - Refusing a play payload: connection_id=d8f72b84-6382-4994-aa97-8b1758aa0c1e reason=synaxis:protocol-error cause=msg_id=0x84 is a message of ours, not a request (1 refused play payloads since the last report)
+13:58:54.475 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:58:54.475 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=d8f72b84-6382-4994-aa97-8b1758aa0c1e identifier=RandName reason=synaxis:server-stopping
+13:58:54.475 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=d8f72b84-6382-4994-aa97-8b1758aa0c1e identifier=RandName reason=synaxis:server-stopping
+13:58:54.483 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:58:54.484 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:58:54.505 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+13:58:54.505 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+13:58:54.821 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:main
+13:58:54.821 [Test worker] INFO  i.g.bearisbug.synaxis.app.CoreMode - Core mode (synaxis.app.core-mode=auto): no plugin is serving gameplay, so the host serves its own flat world. spawn=Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0] channel=synaxis:main (echoes every payload back)
+13:58:54.866 [Test worker] WARN  i.g.b.synaxis.app.scene.SceneService - Dropped an unknown play message: connection_id=b0247576-be2d-4e63-9592-4b397ecb7ae5 msg_id=0x7f (1 unknown play messages since the last report)
+13:58:54.866 [Test worker] WARN  i.g.b.synaxis.app.scene.SceneService - Refusing a play payload: connection_id=b0247576-be2d-4e63-9592-4b397ecb7ae5 reason=synaxis:protocol-error cause=msg_id=0x84 is a message of ours, not a request (1 refused play payloads since the last report)
+13:58:54.933 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:58:54.933 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=b0247576-be2d-4e63-9592-4b397ecb7ae5 identifier=RandName reason=synaxis:server-stopping
+13:58:54.933 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=b0247576-be2d-4e63-9592-4b397ecb7ae5 identifier=RandName reason=synaxis:server-stopping
+13:58:54.934 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:58:54.934 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:58:54.948 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:58:54.948 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:58:54.949 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

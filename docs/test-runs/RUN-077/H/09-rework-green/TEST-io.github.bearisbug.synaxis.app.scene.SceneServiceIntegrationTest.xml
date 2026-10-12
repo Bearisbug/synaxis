@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-12T06:32:08.373Z" hostname="Mac.local" time="1.651">
+  <properties/>
+  <testcase name="aPanelOf5000BytesIsRefusedAndChangesNothing(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.938"/>
+  <testcase name="anOverlayCanNeitherEnterNorLeaveAScene(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.077"/>
+  <testcase name="theActionsOfAPluginTornDownAreTakenBack(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.062"/>
+  <testcase name="aSceneChangeClearsTheSceneOwnersWidgetsAndKeepsTheOverlays(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.06"/>
+  <testcase name="everyChangeOfATickLeavesAtItsEndAndTheSceneGoesFirst(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.054"/>
+  <testcase name="aSceneOver8KibIsRefusedAndChangesNothing(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.054"/>
+  <testcase name="aMoveUnderWayHoldsTheWholeQueueUntilItCompletes(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.055"/>
+  <testcase name="leavingASceneKeepsItsNumberAndDropsItsKeysAndTheSceneOwnersWidgets(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.054"/>
+  <testcase name="timesTheExitOfTheSceneLayerPerPlayerPerTick(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.173"/>
+  <testcase name="actionsAreRegisteredInOnEnableOnlyOnceEachAndInTheirOwnNamespace(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.006"/>
+  <testcase name="aConnectionThatGoesTakesItsSceneLayerAlongAndCannotEnterAnother(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.05"/>
+  <testcase name="aPanelButtonIsAnActionTheHostTakes(Env)" classname="io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest" time="0.047"/>
+  <system-out><![CDATA[14:32:09.321 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:32:09.324 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=d8f279b1-afc0-4fe2-bb5e-a19ca5b43184 identifier=RandName reason=synaxis:server-stopping
+14:32:09.325 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=d8f279b1-afc0-4fe2-bb5e-a19ca5b43184 identifier=RandName reason=synaxis:server-stopping
+14:32:09.325 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:32:09.325 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+14:32:09.405 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:32:09.405 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=10bd3c5e-8fa3-4654-8468-21d4179fb643 identifier=RandName reason=synaxis:server-stopping
+14:32:09.405 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=10bd3c5e-8fa3-4654-8468-21d4179fb643 identifier=RandName reason=synaxis:server-stopping
+14:32:09.406 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:32:09.406 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+14:32:09.468 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:32:09.468 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=6c812332-ed72-4cc5-af1b-3899c68d0045 identifier=RandName reason=synaxis:server-stopping
+14:32:09.468 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=6c812332-ed72-4cc5-af1b-3899c68d0045 identifier=RandName reason=synaxis:server-stopping
+14:32:09.468 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:32:09.468 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+14:32:09.528 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:32:09.528 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=75651d5f-4a5b-4df5-a3f5-db46a47744a8 identifier=RandName reason=synaxis:server-stopping
+14:32:09.528 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=75651d5f-4a5b-4df5-a3f5-db46a47744a8 identifier=RandName reason=synaxis:server-stopping
+14:32:09.528 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:32:09.528 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+14:32:09.582 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:32:09.582 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=3aaf1b3f-9664-4cea-bafb-b1bd555a6f09 identifier=RandName reason=synaxis:server-stopping
+14:32:09.582 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=3aaf1b3f-9664-4cea-bafb-b1bd555a6f09 identifier=RandName reason=synaxis:server-stopping
+14:32:09.583 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:32:09.583 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+14:32:09.637 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:32:09.637 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=02bab004-0e09-4cbb-b8b8-02eb8ac8505b identifier=RandName reason=synaxis:server-stopping
+14:32:09.637 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=02bab004-0e09-4cbb-b8b8-02eb8ac8505b identifier=RandName reason=synaxis:server-stopping
+14:32:09.637 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:32:09.637 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+14:32:09.692 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:32:09.692 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=7ef53ac2-6f5d-4acb-ad76-131d667747ef identifier=RandName reason=synaxis:server-stopping
+14:32:09.692 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=7ef53ac2-6f5d-4acb-ad76-131d667747ef identifier=RandName reason=synaxis:server-stopping
+14:32:09.693 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:32:09.693 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+14:32:09.746 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:32:09.746 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=29064143-064d-44f0-8a24-8507efedae53 identifier=RandName reason=synaxis:server-stopping
+14:32:09.746 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=29064143-064d-44f0-8a24-8507efedae53 identifier=RandName reason=synaxis:server-stopping
+14:32:09.746 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:32:09.746 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+scene layer exit per player per tick: mean=0.0026 ms p99=0.0038 ms max=7.9590 ms over 10000 ticks; the two sets before it: mean=0.0051 ms p99=0.0161 ms
+14:32:09.919 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:32:09.919 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=9206bd2f-bcc0-4496-846f-f34a0bc0503f identifier=RandName reason=synaxis:server-stopping
+14:32:09.919 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=9206bd2f-bcc0-4496-846f-f34a0bc0503f identifier=RandName reason=synaxis:server-stopping
+14:32:09.920 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:32:09.920 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+14:32:09.927 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:32:09.927 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:32:09.927 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+14:32:09.977 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:32:09.977 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:32:09.977 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+14:32:10.025 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:32:10.025 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=337863d9-a70f-4cc8-b8da-f709adfbbf48 identifier=RandName reason=synaxis:server-stopping
+14:32:10.025 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=337863d9-a70f-4cc8-b8da-f709adfbbf48 identifier=RandName reason=synaxis:server-stopping
+14:32:10.025 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:32:10.025 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

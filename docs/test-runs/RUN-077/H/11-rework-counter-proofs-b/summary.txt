@@ -1,0 +1,57 @@
+total tests=47 failures=3 errors=0 skipped=0
+io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest: tests=2 failures=0 errors=0 skipped=0
+  PASS aPayloadOnThePlayChannelReachesTheSceneLayer(Env)
+  PASS theHostsContextHandsEachPluginItsOwnPlayAndInstances(Env)
+io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest: tests=3 failures=0 errors=0 skipped=0
+  PASS aShardServingAMapDropsEveryPlayPayloadSilently(Env)
+  PASS theCoreModeDropsEveryPlayPayloadSilently(Env)
+  PASS thePayloadsOfThePlayChannelCountAgainstTheInboundPacketLimit(Env)
+io.github.bearisbug.synaxis.app.scene.ActionGateTest: tests=5 failures=0 errors=0 skipped=0
+  PASS tenActionsFitAWholeSecondWindowAndTheEleventhDoesNot()
+  PASS aClockBelowZeroStillCutsWholeSeconds()
+  PASS aSceneChangeEndsEveryCooldownAndAZeroCooldownIsNone()
+  PASS aKeyCoolsDownForItsDurationAndTheOtherKeysDoNot()
+  PASS theWindowIsTheWholeSecondNotTheLastSecond()
+io.github.bearisbug.synaxis.app.scene.ComponentBytesTest: tests=2 failures=0 errors=0 skipped=0
+  PASS aComponentIsWrittenInTheNetworkFormatAndReadsBackAsItself()
+  PASS aComponentOf2048BytesIsTakenAndOneByteMoreIsNot()
+io.github.bearisbug.synaxis.app.scene.OutboxTest: tests=8 failures=0 errors=0 skipped=0
+  PASS thirtyTwoScoreboardsOfAboutOneKibSplitOnTheByteCap()
+  PASS thirtyThreeSmallTextsSplitOnTheOpCap()
+  PASS ofTwoScenesInOneTickOnlyTheLaterGoesOut()
+  PASS twoChangesOfOneWidgetInOneTickReachTheClientAsTheLaterOne()
+  PASS aClearOfOneOwnerKeepsTheOtherOwnersChanges()
+  PASS theSceneGoesFirstAndAChangeTheSceneOwnerQueuedBeforeItIsGone()
+  PASS aMoveUnderWayHoldsTheWholeQueueUntilEveryMoveIsDone()
+  PASS anEmptyQueueSendsNothingAndAFlushEmptiesIt()
+io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest: tests=10 failures=2 errors=0 skipped=0
+  FAILURE anActionOfAnEarlierSceneIsAnsweredStaleAndNeverReachesTheHandler(Env) :: org.opentest4j.AssertionFailedError :: org.opentest4j.AssertionFailedError: expected: <[S2CActionResult[actionSeq=1, code=4, reason=EncodedComponent[], cooldownMs=0]]> but was: <[S2CActionResult[actionSeq=1, code=0, reason=EncodedComponent[], cooldownMs=0]]> :: at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.anActionOfAnEarlierSceneIsAnsweredStaleAndNeverReachesTheHandler(SceneInboundIntegrationTest.java:184)
+  PASS withoutASceneOwnerEveryPayloadIsDroppedUnreadUnloggedAndUnanswered(Env)
+  PASS aHandlerThatChangesTheSceneIsAnsweredWithoutStartingACooldown(Env)
+  PASS aKeyStillCoolingDownIsAnsweredCooldownAndTheEleventhActionOfTheWindowIsRateLimited(Env)
+  PASS onlyTheFirstReadyOfTheCurrentSceneReachesTheLedger(Env)
+  PASS anUnknownMessageIsDroppedWithoutAnAnswerAndItsLineIsWithinTheBudget(Env)
+  PASS aPayloadThatDoesNotDecodeOrIsAMessageOfOursDisconnects(Env)
+  PASS aRefusalCarriesThePluginsReasonAndAFailingHandlerIsRefusedWithoutOne(Env)
+  PASS theRateLimitIsJudgedBeforeTheActionIsLookedUp(Env)
+  FAILURE aStaleActionIsJudgedBeforeTheRateLimit(Env) :: org.opentest4j.AssertionFailedError :: org.opentest4j.AssertionFailedError: a stale action took a place in the window of the rate limit ==> expected: <[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 3]> but was: <[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]> :: at io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest.aStaleActionIsJudgedBeforeTheRateLimit(SceneInboundIntegrationTest.java:232)
+io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest: tests=12 failures=1 errors=0 skipped=0
+  PASS aPanelOf5000BytesIsRefusedAndChangesNothing(Env)
+  PASS anOverlayCanNeitherEnterNorLeaveAScene(Env)
+  PASS theActionsOfAPluginTornDownAreTakenBack(Env)
+  PASS aSceneChangeClearsTheSceneOwnersWidgetsAndKeepsTheOverlays(Env)
+  PASS everyChangeOfATickLeavesAtItsEndAndTheSceneGoesFirst(Env)
+  PASS aSceneOver8KibIsRefusedAndChangesNothing(Env)
+  PASS aMoveUnderWayHoldsTheWholeQueueUntilItCompletes(Env)
+  PASS leavingASceneKeepsItsNumberAndDropsItsKeysAndTheSceneOwnersWidgets(Env)
+  PASS timesTheExitOfTheSceneLayerPerPlayerPerTick(Env)
+  PASS actionsAreRegisteredInOnEnableOnlyOnceEachAndInTheirOwnNamespace(Env)
+  FAILURE aConnectionThatGoesTakesItsSceneLayerAlongAndCannotEnterAnother(Env) :: org.opentest4j.AssertionFailedError :: org.opentest4j.AssertionFailedError: a scene layer made for a connection offline ==> Expected java.lang.IllegalStateException to be thrown, but nothing was thrown. :: at io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest.aConnectionThatGoesTakesItsSceneLayerAlongAndCannotEnterAnother(SceneServiceIntegrationTest.java:331)
+  PASS aPanelButtonIsAnActionTheHostTakes(Env)
+  OUT scene layer exit per player per tick: mean=0.0016 ms p99=0.0028 ms max=0.0255 ms over 10000 ticks; the two sets before it: mean=0.0041 ms p99=0.0096 ms
+io.github.bearisbug.synaxis.app.scene.WidgetEncoderTest: tests=5 failures=0 errors=0 skipped=0
+  PASS aPanelOf5000BytesIsRefused()
+  PASS aWidgetOf4096BytesIsTakenAndOneByteMoreIsNot()
+  PASS aComponentOver2048BytesIsRefused()
+  PASS eachKindBecomesItsWireWidget()
+  PASS aButtonGetsThePluginsPrefixAndAnotherPluginsIsRefused()

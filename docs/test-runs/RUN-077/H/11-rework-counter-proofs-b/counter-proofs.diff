@@ -1,0 +1,22 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java
+index eb306b83e5..0c8c27d3e0 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java
+@@ -293,7 +293,7 @@ public final class SceneService {
+      */
+     private @Nullable PlayerScene sceneOf(Player player) {
+         final PlayerConnection connection = player.getPlayerConnection();
+-        if (!connection.isOnline()) return null;
++        if (Boolean.getBoolean("proof.never") && !connection.isOnline()) return null;
+         return scenes.computeIfAbsent(connection.connectionId(), _ -> new PlayerScene());
+     }
+ 
+@@ -329,7 +329,7 @@ public final class SceneService {
+         if (scene == null) return;
+         final long now = nanoClock.getAsLong();
+         final int actionSeq = action.actionSeq();
+-        if (action.sceneSeq() != scene.sceneSeq()) {
++        if (Boolean.getBoolean("proof.never") && action.sceneSeq() != scene.sceneSeq()) {
+             answer(player, actionSeq, ActionResultCode.STALE_SCENE, EncodedComponent.NONE, 0);
+             return;
+         }

@@ -1,0 +1,163 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ActionGate.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ActionGate.java
+index 589d835f31..0b8c683f90 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ActionGate.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ActionGate.java
+@@ -36,7 +36,7 @@ final class ActionGate {
+      * @return false when the window already holds {@value #PER_SECOND} actions
+      */
+     boolean admit(long now) {
+-        final long second = Math.floorDiv(now, SECOND);
++        final long second = now / SECOND;
+         if (second != window) {
+             window = second;
+             inWindow = 0;
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ActionRegistry.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ActionRegistry.java
+index fca739cfb0..b911550160 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ActionRegistry.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/ActionRegistry.java
+@@ -74,7 +74,7 @@ final class ActionRegistry {
+      */
+     void reclaim(String pluginId) {
+         sealed.add(pluginId);
+-        byId.values().removeIf(registration -> registration.pluginId().equals(pluginId));
++        if (Boolean.getBoolean("proof.never")) byId.values().removeIf(registration -> registration.pluginId().equals(pluginId));
+     }
+ 
+     /**
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/Outbox.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/Outbox.java
+index aa1b725b53..6b7995ca5b 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/Outbox.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/Outbox.java
+@@ -74,7 +74,7 @@ final class Outbox {
+      * @param owner the plugin
+      */
+     void clearOwner(String owner) {
+-        ops.removeIf(op -> op.owner().equals(owner));
++        if (Boolean.getBoolean("proof.never")) ops.removeIf(op -> op.owner().equals(owner));
+         ops.add(new S2CHud.ClearOwner(owner));
+     }
+ 
+@@ -98,14 +98,14 @@ final class Outbox {
+      * @return how many messages it was handed
+      */
+     int flush(Consumer<byte[]> sink) {
+-        if (!hold.get().isDone() || (scene == null && ops.isEmpty())) return 0;
++        if ((Boolean.getBoolean("proof.never") && !hold.get().isDone()) || (scene == null && ops.isEmpty())) return 0;
+         final List<byte[]> messages = new ArrayList<>();
+         if (scene != null) messages.add(bytes(scene));
+         List<S2CHud.Op> batch = new ArrayList<>();
+         int batchBytes = HUD_HEADER_BYTES;
+         for (final S2CHud.Op op : ops) {
+             final int opBytes = bytes(new S2CHud(List.of(op))).length - HUD_HEADER_BYTES;
+-            if (!batch.isEmpty() && (batch.size() == S2CHud.MAX_OPS
++            if (!batch.isEmpty() && ((Boolean.getBoolean("proof.never") && batch.size() == S2CHud.MAX_OPS)
+                     || batchBytes + opBytes > PlayProtocol.MAX_MESSAGE_BYTES)) {
+                 messages.add(bytes(new S2CHud(batch)));
+                 batch = new ArrayList<>();
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/PlayerScene.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/PlayerScene.java
+index 6275f1f4b7..74c0373bb9 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/PlayerScene.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/PlayerScene.java
+@@ -144,7 +144,7 @@ final class PlayerScene {
+      * @return whether that is the current scene, ready for the first time
+      */
+     boolean ready(int sceneSeq) {
+-        if (sceneId == null || sceneSeq != this.sceneSeq || readySeq == sceneSeq) return false;
++        if (sceneId == null || sceneSeq != this.sceneSeq || (Boolean.getBoolean("proof.never") && readySeq == sceneSeq)) return false;
+         readySeq = sceneSeq;
+         return true;
+     }
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java
+index eb306b83e5..72563e0405 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java
+@@ -207,7 +207,7 @@ public final class SceneService {
+ 
+     void enter(String pluginId, Player player, SceneSpec spec) {
+         final String owner = owner();
+-        if (!pluginId.equals(owner))
++        if (Boolean.getBoolean("proof.never") && !pluginId.equals(owner))
+             throw new IllegalStateException("plugin_id=" + pluginId + " is not the scene owner of this process"
+                     + (owner == null ? ", which has none" : ", plugin_id=" + owner + " is"));
+         final PlayerConnection connection = player.getPlayerConnection();
+@@ -232,7 +232,7 @@ public final class SceneService {
+         final S2CScene message = new S2CScene(scene.sceneSeq() + 1, sceneId, WidgetEncoder.component(spec.title()),
+                 camera, cursor, table);
+         final int bytes = Outbox.bytes(message).length;
+-        if (bytes > PlayProtocol.MAX_MESSAGE_BYTES)
++        if (Boolean.getBoolean("proof.never") && bytes > PlayProtocol.MAX_MESSAGE_BYTES)
+             throw new IllegalArgumentException("scene " + sceneId + " encodes to " + bytes + " bytes, over the "
+                     + PlayProtocol.MAX_MESSAGE_BYTES + " a scene may take");
+         scene.enter(message, pluginId, slots);
+@@ -284,7 +284,7 @@ public final class SceneService {
+      */
+     private @Nullable String owner() {
+         final String holder = sceneOwner.get();
+-        return holder == null || holder.equals(HOST_ID) ? null : holder;
++        return holder == null || (Boolean.getBoolean("proof.never") && holder.equals(HOST_ID)) ? null : holder;
+     }
+ 
+     /**
+@@ -329,24 +329,24 @@ public final class SceneService {
+         if (scene == null) return;
+         final long now = nanoClock.getAsLong();
+         final int actionSeq = action.actionSeq();
+-        if (action.sceneSeq() != scene.sceneSeq()) {
+-            answer(player, actionSeq, ActionResultCode.STALE_SCENE, EncodedComponent.NONE, 0);
++        final String actionId = action.actionId();
++        final PlayerScene.Slot slot = scene.slotOf(actionId);
++        final ActionRegistry.Registration registration = actions.find(actionId);
++        if ((slot == null && !scene.hasButton(actionId)) || registration == null) {
++            answer(player, actionSeq, ActionResultCode.UNKNOWN_ACTION, EncodedComponent.NONE, 0);
+             return;
+         }
+         if (!scene.gate().admit(now)) {
+             answer(player, actionSeq, ActionResultCode.RATE_LIMITED, EncodedComponent.NONE, 0);
+             return;
+         }
+-        final String actionId = action.actionId();
+-        final PlayerScene.Slot slot = scene.slotOf(actionId);
+-        final ActionRegistry.Registration registration = actions.find(actionId);
+-        if ((slot == null && !scene.hasButton(actionId)) || registration == null) {
+-            answer(player, actionSeq, ActionResultCode.UNKNOWN_ACTION, EncodedComponent.NONE, 0);
++        if (action.sceneSeq() != scene.sceneSeq()) {
++            answer(player, actionSeq, ActionResultCode.STALE_SCENE, EncodedComponent.NONE, 0);
+             return;
+         }
+         if (slot != null) {
+             final long left = scene.gate().cooldownLeft(slot.slot(), now);
+-            if (left > 0) {
++            if (Boolean.getBoolean("proof.never") && left > 0) {
+                 final int leftMs = (int) Math.min(PlayProtocol.MAX_COOLDOWN_MS,
+                         Math.ceilDiv(left, TimeUnit.MILLISECONDS.toNanos(1)));
+                 answer(player, actionSeq, ActionResultCode.COOLDOWN, WidgetEncoder.component(Component.translatable(
+@@ -366,7 +366,7 @@ public final class SceneService {
+         switch (result) {
+             case ActionResult.Ok _ -> {
+                 // A handler that changed the scene started the new one with no cooldowns (§11.2)
+-                final int cooldownMs = slot != null && scene.sceneSeq() == action.sceneSeq() ? slot.cooldownMs() : 0;
++                final int cooldownMs = slot != null && (scene.sceneSeq() == action.sceneSeq() || !Boolean.getBoolean("proof.never")) ? slot.cooldownMs() : 0;
+                 if (cooldownMs > 0) scene.gate().startCooldown(slot.slot(), now, TimeUnit.MILLISECONDS.toNanos(cooldownMs));
+                 answer(player, actionSeq, ActionResultCode.OK, EncodedComponent.NONE, cooldownMs);
+             }
+@@ -404,6 +404,6 @@ public final class SceneService {
+     private void refuse(PlayerConnection connection, String cause) {
+         refusals.warn("Refusing a play payload: connection_id={} reason={} cause={}",
+                 connection.connectionId(), "synaxis:protocol-error", cause);
+-        connection.kick(DisconnectReasons.PROTOCOL_ERROR);
++        if (Boolean.getBoolean("proof.never")) connection.kick(DisconnectReasons.PROTOCOL_ERROR);
+     }
+ }
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/WidgetEncoder.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/WidgetEncoder.java
+index b9eacc9b2b..5eaa9b484d 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/WidgetEncoder.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/WidgetEncoder.java
+@@ -69,7 +69,7 @@ final class WidgetEncoder {
+         final MsgBuf buf = MsgBuf.writing();
+         encoded.write(buf);
+         final int bytes = buf.toByteArray().length;
+-        if (bytes > PlayProtocol.MAX_WIDGET_BYTES)
++        if (Boolean.getBoolean("proof.never") && bytes > PlayProtocol.MAX_WIDGET_BYTES)
+             throw new IllegalArgumentException("widget " + widget.id() + " of plugin_id=" + pluginId + " encodes to "
+                     + bytes + " bytes, over the " + PlayProtocol.MAX_WIDGET_BYTES + " a widget may take");
+         return new Encoded(encoded, bytes, Set.copyOf(buttonActions));

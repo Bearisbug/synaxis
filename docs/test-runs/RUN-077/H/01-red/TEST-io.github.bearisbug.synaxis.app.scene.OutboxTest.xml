@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.scene.OutboxTest" tests="8" skipped="0" failures="8" errors="0" timestamp="2026-10-12T05:33:33.644Z" hostname="Mac.local" time="0.011">
+  <properties/>
+  <testcase name="thirtyTwoScoreboardsOfAboutOneKibSplitOnTheByteCap()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: 32 widgets of about 1 KiB went out in 0 ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: 32 widgets of about 1 KiB went out in 0 ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.app.scene.OutboxTest.thirtyTwoScoreboardsOfAboutOneKibSplitOnTheByteCap(OutboxTest.java:90)
+</failure>
+  </testcase>
+  <testcase name="thirtyThreeSmallTextsSplitOnTheOpCap()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: 33 ops in one tick ==&gt; expected: &lt;2&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: 33 ops in one tick ==&gt; expected: &lt;2&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.app.scene.OutboxTest.thirtyThreeSmallTextsSplitOnTheOpCap(OutboxTest.java:114)
+</failure>
+  </testcase>
+  <testcase name="ofTwoScenesInOneTickOnlyTheLaterGoesOut()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[S2CScene[sceneSeq=2, sceneId=rush:round, title=EncodedComponent[7469746c65], camera=0, cursor=0, actions=[Action[slot=0, actionId=rush:queue, label=EncodedComponent[7175657565], cooldownMs=2000]]]]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[S2CScene[sceneSeq=2, sceneId=rush:round, title=EncodedComponent[7469746c65], camera=0, cursor=0, actions=[Action[slot=0, actionId=rush:queue, label=EncodedComponent[7175657565], cooldownMs=2000]]]]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.scene.OutboxTest.ofTwoScenesInOneTickOnlyTheLaterGoesOut(OutboxTest.java:174)
+</failure>
+  </testcase>
+  <testcase name="twoChangesOfOneWidgetInOneTickReachTheClientAsTheLaterOne()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[SetWidget[owner=x, widgetId=banner, widget=Widget[kind=1, slot=0, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[62616e6e6572]]], Prop[id=13, value=VarInt[value=0]]]]], SetWidget[owner=rush, widgetId=timer, widget=Widget[kind=1, slot=0, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[7365636f6e64]]], Prop[id=13, value=VarInt[value=0]]]]], RemoveWidget[owner=x, widgetId=gone]]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[SetWidget[owner=x, widgetId=banner, widget=Widget[kind=1, slot=0, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[62616e6e6572]]], Prop[id=13, value=VarInt[value=0]]]]], SetWidget[owner=rush, widgetId=timer, widget=Widget[kind=1, slot=0, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[7365636f6e64]]], Prop[id=13, value=VarInt[value=0]]]]], RemoveWidget[owner=x, widgetId=gone]]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.scene.OutboxTest.twoChangesOfOneWidgetInOneTickReachTheClientAsTheLaterOne(OutboxTest.java:151)
+</failure>
+  </testcase>
+  <testcase name="aClearOfOneOwnerKeepsTheOtherOwnersChanges()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[SetWidget[owner=x, widgetId=banner, widget=Widget[kind=1, slot=0, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[62616e6e6572]]], Prop[id=13, value=VarInt[value=0]]]]], ClearOwner[owner=rush]]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[SetWidget[owner=x, widgetId=banner, widget=Widget[kind=1, slot=0, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[62616e6e6572]]], Prop[id=13, value=VarInt[value=0]]]]], ClearOwner[owner=rush]]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.scene.OutboxTest.aClearOfOneOwnerKeepsTheOtherOwnersChanges(OutboxTest.java:163)
+</failure>
+  </testcase>
+  <testcase name="theSceneGoesFirstAndAChangeTheSceneOwnerQueuedBeforeItIsGone()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[S2CScene[sceneSeq=1, sceneId=rush:lobby, title=EncodedComponent[7469746c65], camera=0, cursor=0, actions=[Action[slot=0, actionId=rush:queue, label=EncodedComponent[7175657565], cooldownMs=2000]]], S2CHud[ops=[ClearOwner[owner=rush], SetWidget[owner=rush, widgetId=timer, widget=Widget[kind=1, slot=0, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[74696d6572]]], Prop[id=13, value=VarInt[value=0]]]]]]]]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[S2CScene[sceneSeq=1, sceneId=rush:lobby, title=EncodedComponent[7469746c65], camera=0, cursor=0, actions=[Action[slot=0, actionId=rush:queue, label=EncodedComponent[7175657565], cooldownMs=2000]]], S2CHud[ops=[ClearOwner[owner=rush], SetWidget[owner=rush, widgetId=timer, widget=Widget[kind=1, slot=0, order=0, props=[Prop[id=1, value=Component[value=EncodedComponent[74696d6572]]], Prop[id=13, value=VarInt[value=0]]]]]]]]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.scene.OutboxTest.theSceneGoesFirstAndAChangeTheSceneOwnerQueuedBeforeItIsGone(OutboxTest.java:76)
+</failure>
+  </testcase>
+  <testcase name="aMoveUnderWayHoldsTheWholeQueueUntilEveryMoveIsDone()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;2&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;2&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+	at io.github.bearisbug.synaxis.app.scene.OutboxTest.aMoveUnderWayHoldsTheWholeQueueUntilEveryMoveIsDone(OutboxTest.java:137)
+</failure>
+  </testcase>
+  <testcase name="anEmptyQueueSendsNothingAndAFlushEmptiesIt()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;1&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;1&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+	at io.github.bearisbug.synaxis.app.scene.OutboxTest.anEmptyQueueSendsNothingAndAFlushEmptiesIt(OutboxTest.java:182)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

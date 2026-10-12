@@ -1,0 +1,57 @@
+total tests=47 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.app.PluginHostPlayWiringIntegrationTest: tests=2 failures=0 errors=0 skipped=0
+  PASS aPayloadOnThePlayChannelReachesTheSceneLayer(Env)
+  PASS theHostsContextHandsEachPluginItsOwnPlayAndInstances(Env)
+io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest: tests=3 failures=0 errors=0 skipped=0
+  PASS aShardServingAMapDropsEveryPlayPayloadSilently(Env)
+  PASS theCoreModeDropsEveryPlayPayloadSilently(Env)
+  PASS thePayloadsOfThePlayChannelCountAgainstTheInboundPacketLimit(Env)
+io.github.bearisbug.synaxis.app.scene.ActionGateTest: tests=5 failures=0 errors=0 skipped=0
+  PASS tenActionsFitAWholeSecondWindowAndTheEleventhDoesNot()
+  PASS aClockBelowZeroStillCutsWholeSeconds()
+  PASS aSceneChangeEndsEveryCooldownAndAZeroCooldownIsNone()
+  PASS aKeyCoolsDownForItsDurationAndTheOtherKeysDoNot()
+  PASS theWindowIsTheWholeSecondNotTheLastSecond()
+io.github.bearisbug.synaxis.app.scene.ComponentBytesTest: tests=2 failures=0 errors=0 skipped=0
+  PASS aComponentIsWrittenInTheNetworkFormatAndReadsBackAsItself()
+  PASS aComponentOf2048BytesIsTakenAndOneByteMoreIsNot()
+io.github.bearisbug.synaxis.app.scene.OutboxTest: tests=8 failures=0 errors=0 skipped=0
+  PASS thirtyTwoScoreboardsOfAboutOneKibSplitOnTheByteCap()
+  PASS thirtyThreeSmallTextsSplitOnTheOpCap()
+  PASS ofTwoScenesInOneTickOnlyTheLaterGoesOut()
+  PASS twoChangesOfOneWidgetInOneTickReachTheClientAsTheLaterOne()
+  PASS aClearOfOneOwnerKeepsTheOtherOwnersChanges()
+  PASS theSceneGoesFirstAndAChangeTheSceneOwnerQueuedBeforeItIsGone()
+  PASS aMoveUnderWayHoldsTheWholeQueueUntilEveryMoveIsDone()
+  PASS anEmptyQueueSendsNothingAndAFlushEmptiesIt()
+io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest: tests=10 failures=0 errors=0 skipped=0
+  PASS anActionOfAnEarlierSceneIsAnsweredStaleAndNeverReachesTheHandler(Env)
+  PASS withoutASceneOwnerEveryPayloadIsDroppedUnreadUnloggedAndUnanswered(Env)
+  PASS aHandlerThatChangesTheSceneIsAnsweredWithoutStartingACooldown(Env)
+  PASS aKeyStillCoolingDownIsAnsweredCooldownAndTheEleventhActionOfTheWindowIsRateLimited(Env)
+  PASS onlyTheFirstReadyOfTheCurrentSceneReachesTheLedger(Env)
+  PASS anUnknownMessageIsDroppedWithoutAnAnswerAndItsLineIsWithinTheBudget(Env)
+  PASS aPayloadThatDoesNotDecodeOrIsAMessageOfOursDisconnects(Env)
+  PASS aRefusalCarriesThePluginsReasonAndAFailingHandlerIsRefusedWithoutOne(Env)
+  PASS theRateLimitIsJudgedBeforeTheActionIsLookedUp(Env)
+  PASS aStaleActionIsJudgedBeforeTheRateLimit(Env)
+io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest: tests=12 failures=0 errors=0 skipped=0
+  PASS aPanelOf5000BytesIsRefusedAndChangesNothing(Env)
+  PASS anOverlayCanNeitherEnterNorLeaveAScene(Env)
+  PASS theActionsOfAPluginTornDownAreTakenBack(Env)
+  PASS aSceneChangeClearsTheSceneOwnersWidgetsAndKeepsTheOverlays(Env)
+  PASS everyChangeOfATickLeavesAtItsEndAndTheSceneGoesFirst(Env)
+  PASS aSceneOver8KibIsRefusedAndChangesNothing(Env)
+  PASS aMoveUnderWayHoldsTheWholeQueueUntilItCompletes(Env)
+  PASS leavingASceneKeepsItsNumberAndDropsItsKeysAndTheSceneOwnersWidgets(Env)
+  PASS timesTheExitOfTheSceneLayerPerPlayerPerTick(Env)
+  PASS actionsAreRegisteredInOnEnableOnlyOnceEachAndInTheirOwnNamespace(Env)
+  PASS aConnectionThatGoesTakesItsSceneLayerAlongAndCannotEnterAnother(Env)
+  PASS aPanelButtonIsAnActionTheHostTakes(Env)
+  OUT scene layer exit per player per tick: mean=0.0026 ms p99=0.0038 ms max=7.9590 ms over 10000 ticks; the two sets before it: mean=0.0051 ms p99=0.0161 ms
+io.github.bearisbug.synaxis.app.scene.WidgetEncoderTest: tests=5 failures=0 errors=0 skipped=0
+  PASS aPanelOf5000BytesIsRefused()
+  PASS aWidgetOf4096BytesIsTakenAndOneByteMoreIsNot()
+  PASS aComponentOver2048BytesIsRefused()
+  PASS eachKindBecomesItsWireWidget()
+  PASS aButtonGetsThePluginsPrefixAndAnotherPluginsIsRefused()

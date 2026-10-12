@@ -23,6 +23,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-10-12 | v0.5 | RUN-077 组 H（宿主场景层 `SceneService`，分支 `prod/r077-H`，基于 `prod/integrate-077` `3cd20ff777`）：场景层按实现回写。**出口事件**：§6.4.3「一个出口」一条、`API-PLAY-002` 的下行一条、`API-PLAY-005` 的线程一条、§15、§17 的 `PlayerTickEndEvent` 改为 `PlayerTickEvent`：前者由客户端的 `ClientTickEndPacket` 触发（`listener/PlayerTickListener.java:10`），发不发、发多快都由客户端定，不发的客户端永远收不到场景与 HUD；后者是服务端每 tick 在 `Player#update` 末尾派发的（`entity/Player.java:543`），排在本 tick 的入站包（`:477`）之后。`S2C_HUD` 按 op 边界拆包时同时守 ≤ 8 KiB 与 op ≤ 32 个（`API-PLAY-002` 表里 `0x82` 一行、§6.4.3、§17）。**没有场景所有者**（光照会话 2026-10-12 的要求 2）：`API-PLAY-002` 加一条，§5 `REQ-PLAY-003` 与 §6.2 各加一句，§19 加平坦核心与挂地图的分片两个场景。宿主在这两种进程里以保留 id `synaxis` 自己占准入槽，场景层把它与空的准入槽一样看作没有场景所有者：收到的上行不读负载、不写日志、不断线、不回包，照常计入引擎的入站包速率闸。**动作分发**（`API-PLAY-002`）：每道判定拒掉的动作不进后面的判定；没有插件注册的动作 id 同样回 `unknown-action`；handler 抛异常或返回 null 回 `rejected`、reason 为空（§14 同步）；`PANEL` 按钮没有槽位、不判冷却；handler 里切了场景时照回结果但不开冷却。§19 加两个场景：同一整秒窗口 11 条旧 `scene_seq` 的动作都回 4，随后 11 条当前场景的未知动作前 10 条回 5、第 11 条回 3（过期在限速之前，且不占限速额度），11 个未知动作前 10 条回 5、第 11 条回 3（限速在未知动作之前）；另加「一个 tick 的改动超过 32 个 op」。**就绪**：同一 `scene_seq` 的 `play_scene_ready` 至多记一行，客户端重发不再多写台账（§11.2、§16）。**叠加者的小部件挪进 S1**：§26 W2 行去掉这一项，§5 `REQ-PLAY-003` 写明场景所有者与叠加者都能设小部件。`API-PLAY-002` 加「实现（S1，RUN-077 组 H）」一条列出 `app.scene` 的类；§11.2 的 `leave` 一行写明动作表与冷却清空、`scene_seq` 不变；§16 加四行；§15「场景层每 tick 开销」改为在 `SceneServiceIntegrationTest` 里进程内计时、只打印，并写入本机读数；§19 宿主集成一行的场景层类名改为 `SceneServiceIntegrationTest` 等，并写明断线时丢掉该连接的场景层 | Bearisbug |
 | 2026-10-12 | v0.4 | RUN-077 组 V（第一步：组件解码与最小 `PlayHud`，分支 `prod/r077-V`，基于 `prod/integrate-077` `3cd20ff777`）：§6.7.6 加 Q0 与它的夹具 `PlayHudFixture`（先发 `S2C_SCENE`、后发 `S2C_HUD`，三个 `TEXT`：语言文件里有的键带一个参数与颜色、语言文件里没有的键带 fallback、空 component；测试通道 `synaxis_test:play` 按请求把玩家换进维度名不同的实例），`RushClientGameTest` 两个环境变量都没设时立即返回、只设夹具变量时 Q1～Q9 写 SKIP，job `rush` 的骨架只跑 Q0、PR 也起两次，judge 改用 `rush_judge.py`、本阶段只判 Q0；`play-vectors/component/` 的三个冻结组件由服务端 `PlayComponentVectorTest` 与客户端 `PlayComponentDecodeTest` 两头对拍。§6.4.8：测试钩子 `PlayTestHook` 放 gametest 源集，当 gametest 模组的 client 入口，模组主源码里不留测试钩子（光照会话 2026-10-12 的要求）；`PlayHud` 没收到场景时一笔都不画；模组 `fabric.mod.json` 补上 `fabric-rendering-v1` 与 `fabric-key-mapping-api-v1`。第一步的结论（草稿 PR #22，client-mod run 38210149163、client-gametest run 38210149495）：原版 `ComponentSerialization.STREAM_CODEC` 读得出引擎写的 NBT，`API-PLAY-002` 的 JSON 退路不用，§26 S1 行、`API-PLAY-002` 的 component 一条、§6.4.5 与 §28.2 的组件解码一行随之改为已核实；Q0a 核实语言文件里没有的键显示 fallback，`ADR-PLAY-007` 与 §28.2 去掉「未核实」；§6.4.3 ② 写上 `LevelLoadingScreen` 与 Q0b 的读数（开 3 tick、脚下区块先到、请求到就绪 6～23 tick）；§28.2 的 `fabric.mod.json` 一行转已决，26.2 界面 API 一行写明剩下的部分归组 C；§6.7.6 写上骨架的实测时长 | Bearisbug |
 | 2026-10-12 | v0.3 | RUN-077 组 K（插件面契约与宿主接线，分支 `prod/r077-K`）：`API-PLAY-005`、`API-PLAY-006` 按合入的源码回写 S1 子集：`PluginPlay` 只有 `enter`、`leave`、`currentScene`、`hud`、`onAction`，`Widget` 只有四个 v1 记录，`CameraSpec` 只有 `Vanilla`，`CursorMode` 只有 `LOCKED`；W1、W2、6b 再加的方法与类型列在条目末尾；记录类在紧凑构造器里校验各自的上限，`InstanceSpec` 加一个四参数的构造器补默认值，`chunkRadius` 与 `name` 在构造时就校验；场景 id、动作 id 的命名空间照 `PluginChannels` 的写法。§6.1 加宿主侧的落点：包 `app.scene`（`SceneService`、全仓唯一的组件编码点 `ComponentBytes`）、`app.instance`（`InstanceRegistry`），两者的构造参数与 `PluginHost` 的接线。§6.4.5 列出 S1 新增的宿主与客户端语言键（`synaxis:action-cooldown`、六个 `synaxis.action.*`、动作键 1 与它的分类）；§14 的 `synaxis.action.*` 一行写出六个键。§6.7.5 定下 `rush.*` 的 13 个键与两种语言的文本。§8「演进与弃用」加一条：封闭类型与枚举加子类型、加常量时 ABI 门不报，插件里不带 `default` 的穷举 `switch` 却会源码不兼容。按用户 2026-10-12 的拍板（动作键 1 的默认键是 H：26.2 原版 `key.quickActions` 默认占 G），提到默认键的文案一律写 H：语言文件的 `rush.hint`、`rush.hint.failed`，§6.4.2 与 §6.7.2 S2 第 5 项的「按 H 排队」 | Bearisbug |
 | 2026-10-12 | v0.2 | RUN-077 组 P（分支 `prod/r077-P`，基于 `prod/r077-docs` `184ad30370`）：`synaxis:play` v1 的线上部分落地，回写类名、解码口径与向量格式，消息布局与小部件目录未改。**`API-PLAY-002`** 加「实现」一条：`:protocol` 新包 `game.protocol.play`（`module-info` 导出），`PlayProtocol` 给通道名与 `version()`（当前 1），`PlayMessages` 按 `msg_id` 分发，v1 不认识的 `0x80`、`0x83`、`0x85` 按未知 `msg_id` 丢弃、不按畸形；`PlayMessage` 加进 `Message` 的 permits；写明各字段的解码口径（`scene_seq` 的下限、动作槽 0～5 不重复、`CLEAR_OWNER` 的 `widget_id` 是空串、`camera`、`cursor` 与结果码按原值保留、`cooldown_ms` 超过 600,000 按畸形、长度 0 的 component 在任何位置都合法且客户端按空文本显示）与 manifest 的两行；§9 `scene_seq` 一行随之注明 `C2S_ACTION` 可带 0。**`API-PLAY-003`** 回写 `Widget`、`PropValue`、`EncodedComponent`：值类型 8、9 的条数上限 16 与 4（count 先按它校验），已知种类的已知属性类型不符按畸形，未知种类整个保留、由客户端丢弃。**§24** 写清 `play-vectors/` 的 manifest、digest 的范围与取文件的次序（先根目录、再 `edge/`，两组各按文件名排序）、`refused-` 向量，`component/` 子目录不进 digest；向量由入库的 `protocol/tools/gen_play_vectors.py` 照本分册的布局生成，相邻的同类型字段至少在一个向量里取不同的值；该条首句把 `vectors/`、`rts-vectors/` 与 `play-vectors/` 各由哪个测试跑分开写，§19 测试分层「冻结向量」一行的类名同步改；翻译键门禁一条改为 `NOT_TEXT` 已登记 `synaxis:play`。**`docs/DESIGN-M2.md` `API-M2-001` 的 `synaxis:play` 一条由本会话直接改**（该分册 v0.66；RUN-077 的文档归属把该分册里插件宿主与线协议的行交给本会话）：§6.7.1 S1 行、§26 S1 行的退出条件、`ADR-PLAY-013` 的 Decision 与 §28.3 第 5 行随之改，不再在 `docs/DESIGN-PROD.md` §28.3 补登记交接行 | Bearisbug |
@@ -112,7 +113,7 @@
 | --- | --- | --- | --- |
 | REQ-PLAY-001 | 按通道协商版本（W1）：`C2S_HELLO` 带报价表、`S2C_HELLO` 带授予表，`SCHEMA_VERSION` 最后一次全局升版到 2，此后只管握手布局；冻结向量按通道分目录；必需通道没被授予时以 `synaxis:client-mod-outdated` 断线（`API-PLAY-001`、`API-PLAY-004`；需签字，见 §28.1 D1） | 客户端协作 | P0 |
 | REQ-PLAY-002 | 授予表在 play 阶段重发：首次出生与握手判定都已发生之后，`synaxis:play` 上发一条 `S2C_GRANTS`，恰好一次；平坦核心与地图分片上 `S2C_HELLO` 被模组丢掉时客户端照样知道授予（`API-PLAY-002`） | 客户端协作 | P0 |
-| REQ-PLAY-003 | 宿主场景层：宿主通道 `synaxis:play` 与插件面 `PluginPlay`，承载场景、小部件、通知、动作；三种进程模式都装；`synaxis:play` 自带版本（`API-PLAY-002`、`API-PLAY-005`） | 新玩法的写法、客户端协作 | P0 |
+| REQ-PLAY-003 | 宿主场景层：宿主通道 `synaxis:play` 与插件面 `PluginPlay`，承载场景、小部件、通知、动作；场景所有者与叠加者都能设小部件，叠加者只在自己的命名空间里；三种进程模式都装，没有场景所有者的进程（平坦核心、挂地图的分片）收到的上行一律静默丢弃；`synaxis:play` 自带版本（`API-PLAY-002`、`API-PLAY-005`） | 新玩法的写法、客户端协作 | P0 |
 | REQ-PLAY-004 | 小部件目录：`synaxis:play` v1 有 `TEXT`、`TIMER`、`SCOREBOARD`、`PANEL` 四种，v2 加 `BAR`、`COUNTER`、`MARKER`、`PROMPT`；属性用 TLV 编码，按 `(owner, widget_id)` 寻址，场景所有者的小部件随场景清掉、叠加者的跨场景保留（`API-PLAY-003`、`API-PLAY-005`） | 客户端协作 | P0 |
 | REQ-PLAY-005 | 动作：6 个动作键（菜单也是一个动作：它的 handler 开一个 `PANEL`）；上行带 `scene_seq`、`action_seq`、目标；宿主依次判过期场景、限速、未知动作、冷却，每条恰好回一条结果；客户端本地先开冷却（`API-PLAY-002`、`API-PLAY-005`） | 客户端协作 | P0 |
 | REQ-PLAY-006 | 托管玩法实例：`PluginInstances` / `ManagedInstance`，五态状态机；区块用 `LightingChunk`、注册前整图光照，bind 之后建的实例在 tick 之外准备、下一个串行段注册；每次转移写台账并派发状态事件，撤离后再注销，插件被拆掉（`onEnable` 失败）与停机时宿主收回（`API-PLAY-006`） | 统一生命周期 | P0 |
@@ -222,6 +223,8 @@ flowchart TB
 
 每个进程至多一个场景所有者，其余插件都是叠加者（`ADR-PLAY-006`）。这条按进程回答了 `docs/DESIGN-M2.md` §28.2 L1491「多插件时谁提供对局」：选路在部署层（哪个进程装哪个插件），`API-M2-011` 的签名不改。第二个插件注册准入仍按现状抛 `IllegalStateException`（`AdmissionRegistry.java:20-26`）；宿主另外记下这次冲突，步骤 (5) 判 `REFUSED` 并在日志里点名两个插件（`API-PLAY-007`）。今天冲突时谁占到准入槽由 ServiceLoader 给的启用顺序决定（`PluginHost.java:131-163`），后注册的插件被拆掉、它已建的实例不收回。
 
+没有场景所有者的两种进程（平坦核心、W5 之前的地图分片）照样注册 `synaxis:play`：每个进程都构造 `PluginHost`（`Main.java:274`）。场景层对它们收到的上行一律静默丢弃，在这个通道上一个字节都不发，见 `API-PLAY-002`「没有场景所有者时」一条。
+
 同进程两个插件今天已有一种用法：`docs/PLUGINS.md` §6 与 `docs/TEST.md` `TC-GAME-016` 让示例插件 `hello`（独立构建 `example-plugin/`，不在 `settings.gradle.kts` 里）与 `rts` 同进程启用，`hello` 不注册准入，按本节的说法它是叠加者。这是开发用法，生产部署里同一进程启用第二个插件会触发 `docs/DESIGN-M2.md` §28.3 ① 的补回（§28.1 D2）。
 
 ### 6.3 三层线路
@@ -273,7 +276,7 @@ flowchart TB
 
 - 以连接为界：每个连接一份场景状态（`ENT-PlayScene`）与一张小部件表。转服与重连都算新连接，两边的表都从空开始，之后按改动逐条同步；客户端在 `ClientPlayConnectionEvents.INIT` 时清空（与 `RtsClient` 的重置同一时点，`SynaxisClientMod.java:72-82`），不跨连接保留任何玩法状态。同一连接回到 configuration 阶段（重新配置）不在支持范围内，见 §28.2。
 - 按 `(owner, widget_id)` 寻址：`owner` 由宿主填成调用方插件 id，插件之间互不覆盖。每次改动下发该小部件的完整内容，不做字段级增量；小部件都很小（16 行的 `SCOREBOARD` 约 1 KiB），全量下发省掉增量协议的序号与补发。
-- 一个出口，每 tick 一次：`enter`、`leave` 与小部件改动都不立即发包，只排进该连接的待发队列。宿主在每名玩家的 tick 末（`PlayerTickEndEvent`，在该玩家所属的 tick 线程上）按顺序发出：本 tick 有过 `enter` 就先发一条 `S2C_SCENE`，再把其余改动合并成 `S2C_HUD`，按 op 边界拆成每条 ≤ 8 KiB。`enter` 丢掉该场景所有者排在它之前、还没发出的改动，并排进一个 `CLEAR_OWNER`。所以同一 tick 里先 set 再 `enter`，旧场景的小部件不会带进新场景；先 `enter` 再 set，小部件跟在 `S2C_SCENE` 后面到达。
+- 一个出口，每 tick 一次：`enter`、`leave` 与小部件改动都不立即发包，只排进该连接的待发队列。宿主在每名玩家的 tick 末（`PlayerTickEvent`：服务端每 tick 在 `Player#update` 末尾派发，排在本 tick 的入站包之后，在该玩家所属的 tick 线程上）按顺序发出：本 tick 有过 `enter` 就先发一条 `S2C_SCENE`，再把其余改动合并成 `S2C_HUD`，按 op 边界拆成每条 ≤ 8 KiB 且 op ≤ 32 个。`enter` 丢掉该场景所有者排在它之前、还没发出的改动，并排进一个 `CLEAR_OWNER`。所以同一 tick 里先 set 再 `enter`，旧场景的小部件不会带进新场景；先 `enter` 再 set，小部件跟在 `S2C_SCENE` 后面到达。
 - 换实例先于场景：玩家有一次还没完成的 `ManagedInstance#move` 时，宿主把该连接的整个待发队列留到 move 完成之后的第一次 tick 末再发。Respawn 由 `Player#setInstance` 在玩家线程上发出（`entity/Player.java:730`），因此总排在 `S2C_SCENE` 之前。插件绕开托管实例、经 `process()` 自己换实例时宿主看不到，要在换完之后再 `enter`。
 - 场景就绪：客户端对每条 `S2C_SCENE` 至多回一条 `C2S_SCENE_READY`，每个客户端 tick 判一次，三条同时成立才发：① 这条 `S2C_SCENE` 已应用（场景头与动作表已换上）；② `client.level` 与 `client.player` 非空，且当前没有打开原版换维度时的世界载入画面（26.2 里是 `net.minecraft.client.gui.screens.LevelLoadingScreen`）；③ 玩家脚下的区块已在 `client.level` 里（`hasChunk`，写法同 `PlayableClientGameTest.java:317`）。还没发就又来了新的 `S2C_SCENE` 时，只为新的那条发。`S2C_SCENE` 先到、Respawn 在判到就绪之前才到（只会发生在宿主之外的换实例路径上）时，②③ 按新世界重判，自然等新世界载入完。服务端只记 `scene_seq` 等于当前场景的就绪（§11.2）。RUN-077 组 V 的 Q0b 实测了 ② 与 ③ 在换实例时的先后（§6.7.6，两次 CI 运行、每次 dev 与生产 jar 各一次启动，四次读数一致）：同一维度类型、维度名不同的 Respawn 会打开 `LevelLoadingScreen`，每次开 3 个客户端 tick；新世界的第一个 tick 起脚下区块就已在，载入画面晚 3 tick 才关，所以换实例时 ② 是最后成立的一条。从客户端请求换实例算起，dev 启动用了 18～23 tick（1,144～1,316 ms），生产 jar 启动用了 6 tick（456～570 ms）；差在 Respawn 之前，dev 等了 14～19 tick、生产 jar 等了 2 tick。dev 是每次运行里第一个进新实例的，按推断这段时间花在服务端载入新实例视距内的区块上，没有单独计时。
 - 大小上限在写入时校验：单个 component ≤ 2,048 B，单个小部件编码后 ≤ 4,096 B（`hud().set` 时校验），一条 `S2C_SCENE` ≤ 8 KiB（`enter` 时校验）；超限抛 `IllegalArgumentException`，状态不变，什么都不发。单个 SET 至多约 4.2 KiB，`S2C_HUD` 按 op 边界总能拆进 8 KiB。
@@ -708,7 +711,7 @@ erDiagram
     | --- | --- | --- | --- | --- | --- |
     | 0x80 | S2C_GRANTS | 下 | W1 | grants count(≤16) × {channel string(≤64), version varint} | 首次出生与握手判定都已发生之后发一次（§6.4.1）；布局绑定 `schema_version`，不随本通道版本变 |
     | 0x81 | S2C_SCENE | 下 | v1 | scene_seq varint, scene_id string(≤64), title component, camera u8, cursor u8, actions count(≤6) × {slot u8, action_id string(≤64), label component, cooldown_ms varint} | ≤ 8 KiB，`enter` 时校验；只换场景头与动作表，不动小部件（场景所有者的小部件由同一 tick 末紧跟的 `S2C_HUD` 里的 `CLEAR_OWNER` 清掉，§6.4.3）；玩家有未完成的 `move` 时留到 move 完成之后发 |
-    | 0x82 | S2C_HUD | 下 | v1 | ops count(≤32) × {op u8（1 SET / 2 REMOVE / 3 CLEAR_OWNER）, owner string(≤64), widget_id string(≤32), SET 时再跟 widget} | 每名玩家每 tick 一批，按 op 边界拆成每条 ≤ 8 KiB；单个 widget ≤ 4,096 B，`hud().set` 时校验 |
+    | 0x82 | S2C_HUD | 下 | v1 | ops count(≤32) × {op u8（1 SET / 2 REMOVE / 3 CLEAR_OWNER）, owner string(≤64), widget_id string(≤32), SET 时再跟 widget} | 每名玩家每 tick 一批，按 op 边界拆成每条 ≤ 8 KiB 且 op ≤ 32 个；单个 widget ≤ 4,096 B，`hud().set` 时校验 |
     | 0x83 | S2C_NOTICE | 下 | v2 | style u8（0 INFO / 1 SUCCESS / 2 WARNING / 3 ALERT）, text component, duration_ms varint(≤10,000) | — |
     | 0x84 | S2C_ACTION_RESULT | 下 | v1 | action_seq varint, code u8（见 §14）, reason component（长度 0 表示没有）, cooldown_ms varint | 每条 C2S_ACTION 恰好一条 |
     | 0x85 | S2C_SCENE_LEAVE | 下 | v2 | scene_seq varint | — |
@@ -718,9 +721,12 @@ erDiagram
     W1 之前没有授予表，服务端不知道客户端说哪个版本，所以 v2 的消息与小部件排在 W1 之后（W2）才加。
 
   - `component` 的编码：varint 长度加字节，内容是引擎 `NetworkBuffer.COMPONENT`（`network/NetworkBuffer.java:82`）写出的原版网络格式，单个 ≤ 2,048 B。`:protocol` 零依赖，只把它当不透明字节；客户端 `PlayComponents` 用原版的 `ComponentSerialization.STREAM_CODEC`（原版读不可信 component 用的那一个，NBT 读取上限 2 MiB）在连接的注册表上读；长度 0 不交给它。S1 的第一步核实了这条路（RUN-077 组 V）：服务端 `PlayComponentVectorTest` 判 `ComponentBytes` 写出的字节等于 `play-vectors/component/` 的三个冻结文件，客户端 `PlayComponentDecodeTest` 用这个编解码器把它们解回原样的键、参数、颜色与 fallback，job `rush` 的 Q0a 在真客户端上画出并截图（§6.7.6），所以不改用引擎的 JSON 编码 `NetworkBuffer.JSON_COMPONENT`。这个编解码器读不出 JSON 编码写的字节（`docs/TEST.md` `TC-PLAY-021` 的反证），服务端换编码时 `ComponentBytes` 与 `PlayComponents` 要同一个提交改。
-  - 动作分发顺序（宿主）：`scene_seq` 不等于当前场景 → `stale-scene`；超出每秒 10 次 → `rate-limited`；动作 id 不在当前场景动作表、也不是 `PANEL` 按钮 → `unknown-action`；冷却未到 → `cooldown`；否则在发送者所属的 tick 线程上调插件的 handler（`API-PLAY-005`），按返回值回 `ok` 或 `rejected`。
-  - 下行：`S2C_SCENE` 与小部件改动在玩家的 `PlayerTickEndEvent` 里从同一个待发队列按序发出（`event/player/PlayerTickEndEvent.java`，§6.4.3）。`S2C_GRANTS` 由两件事里后发生的那一件发：首次出生时握手已判定就发；握手判定时玩家已首次出生就发。首次出生在 tick 调度线程的串行段里，玩家这时还没有 tick 线程（`PlayerStateSection.java:161-166` 的注释；`ConnectionManager#tick` 先 `updateWaitingPlayers`，`ConnectionManager.java:642`）；握手判定在解释 configuration 包队列时，通常在同一个方法的末尾（`:661`），玩家已离开 configuration 时留在队列里的包由哪条线程解释未核实。按连接一个状态字，两侧各自比较并交换，不依赖是哪条线程，保证恰好发一次；没发 hello 的连接（核心模式下的工具）不发。
+  - 动作分发顺序（宿主）：`scene_seq` 不等于该连接当前的 `scene_seq` → `stale-scene`；这一条是本整秒窗口里的第 11 条或更多 → `rate-limited`；动作 id 不在当前场景动作表里、也不是该连接某个 `PANEL` 小部件的按钮，或者没有插件注册这个动作 → `unknown-action`；它来自动作表的某个槽位且该槽还在冷却 → `cooldown`（`cooldown_ms` 是剩余毫秒，reason 是 `synaxis:action-cooldown`，参数是向上取整的剩余秒数）；否则在发送者所属的 tick 线程上调插件的 handler（`API-PLAY-005`）：返回 `Ok` 回 `ok`，`cooldown_ms` 是该槽的冷却，同时开始计冷却（`PANEL` 按钮没有槽位，不计冷却，回 0）；返回 `Rejected` 回 `rejected`，reason 是插件给的翻译键；抛异常或返回 null 也回 `rejected`、reason 为空，异常记一行受 `LogBudget` 限制的 ERROR。每道判定拒掉的动作不进后面的判定：过期的动作不占限速额度，被限速的动作不查动作表，所以一个窗口里 11 条过期动作都回 `stale-scene`，11 个未知动作前 10 条回 `unknown-action`、第 11 条回 `rate-limited`。handler 里切了场景（返回时 `scene_seq` 已变）照回结果，但不开冷却、`cooldown_ms` 回 0，新场景的冷却从空开始（§11.2）。`leave` 之后 `scene_seq` 保持原值、动作表为空，带这个 `scene_seq` 的动作只剩 `PANEL` 按钮可用。
+  - 没有场景所有者时（光照会话 2026-10-12 的要求 2）：场景所有者取准入槽的持有者（§6.2）。平坦核心与挂地图的分片里宿主以保留 id `synaxis` 自己占准入槽（`CoreMode.java:163`、`Main.java:545`），它不是插件，场景层把它与空的准入槽一样看作没有场景所有者。这两种进程不启用任何插件（`CoreMode.decide` 只在没有插件参与时判 `CORE`，`CoreMode.java:132-138`；挂地图的分片不加载插件），没人调 `PluginPlay`，宿主自己也不主动在 `synaxis:play` 上发包。通道照常注册（每个进程都构造 `PluginHost`，`Main.java:274`），收到的上行一律静默丢弃：不读负载的任何一个字节，解码的上界因此是 0（负载本身受原版插件消息 32,767 B 的上限）；不写日志、不写台账、不断线，也不回任何下行，`C2S_ACTION` 因此没有 `S2C_ACTION_RESULT`（「每条恰好一条」只在有场景所有者时成立）。这些包照常计入引擎的入站包速率闸（`docs/DESIGN-PROD.md` `API-PROD-012`：读线程在交给 `Player` 入站队列之前按包计数，不看通道），场景层不另设阈值，洪水照旧以 `synaxis:protocol-error` 断线。结果是这两种进程在 `synaxis:play` 上一个字节都不发，光照与远景的截图读数不受场景层影响。
+  - 下行：`S2C_SCENE` 与小部件改动在玩家的 `PlayerTickEvent` 里从同一个待发队列按序发出（`entity/Player.java:543`，§6.4.3）。这里不能用 `PlayerTickEndEvent`：它由客户端每发一个 `ClientTickEndPacket` 触发一次（`listener/PlayerTickListener.java:10`），出口的频率就落到了客户端手里。`S2C_GRANTS` 由两件事里后发生的那一件发：首次出生时握手已判定就发；握手判定时玩家已首次出生就发。首次出生在 tick 调度线程的串行段里，玩家这时还没有 tick 线程（`PlayerStateSection.java:161-166` 的注释；`ConnectionManager#tick` 先 `updateWaitingPlayers`，`ConnectionManager.java:642`）；握手判定在解释 configuration 包队列时，通常在同一个方法的末尾（`:661`），玩家已离开 configuration 时留在队列里的包由哪条线程解释未核实。按连接一个状态字，两侧各自比较并交换，不依赖是哪条线程，保证恰好发一次；没发 hello 的连接（核心模式下的工具）不发。
   - 实现（S1，RUN-077 组 P）：`:protocol` 包 `io.github.bearisbug.synaxis.game.protocol.play`，`module-info` 导出它。`PlayProtocol.CHANNEL` 是整串 `synaxis:play`，版本是静态方法 `PlayProtocol.version()`（§6.4.7，当前 1）；`PlayProtocol` 另给两个写入侧上限 `MAX_MESSAGE_BYTES`（8,192）与 `MAX_WIDGET_BYTES`（4,096），由宿主编码时校验，解码器不判。五条消息是 record `S2CScene`、`S2CHud`、`S2CActionResult`、`C2SSceneReady`、`C2SAction`，同属 sealed 接口 `PlayMessage`，它扩展 `Message`，`Message` 的 permits 随之加一项。`PlayMessages.read` 读 `msg_id` 分发；`0x80`、`0x83`、`0x85` 在 v1 里抛 `UnknownMessageException`（丢弃加 WARN，不断线），W1、W2 的新消息到了 v1 的客户端因此不会断线。component 是 `EncodedComponent`：varint 长度加至多 2,048 B 的不透明字节；长度 0 在任何位置都合法，表示没有文本：`reason` 用它表示没有原因，其余位置（标题、动作标签、component 类型的属性值）客户端按空文本显示，不交给原版解码器，也不断线。解码口径：`S2C_SCENE` 与 `C2S_SCENE_READY` 的 `scene_seq` ≥ 1，`C2S_ACTION` 的 `scene_seq` ≥ 0（还没进过场景的连接点 `PANEL` 按钮时带 0）；`action_seq` ≥ 0；`scene_id`、`action_id`、`owner` 1～64 B；SET 与 REMOVE 的 `widget_id` 1～32 B，`CLEAR_OWNER` 的 `widget_id` 写空串，读到非空按畸形；动作表的 `slot` 在 0～5 且不重复；`cooldown_ms` 在 0～600,000；`op` 不是 1～3、`target` 不是 0～2 都按畸形。`camera`、`cursor` 与结果码 `code` 按收到的 u8 原样保留：v1 只认 `camera=0`、`cursor=0` 与结果码 0～5，其余值由客户端按 §9 退回（相机与光标退回 0，结果码经 `ActionResultCode.fromWireId` 按 `rejected` 显示），不按畸形。违反上述口径一律抛 `MalformedMessageException`，宿主映射为 `synaxis:protocol-error`（`docs/DESIGN-M2.md` `API-M2-001`）。manifest 的格式见 §24。
+
+  - 实现（S1，RUN-077 组 H）：`server-app` 包 `app.scene`。`SceneService` 持有按连接的 `PlayerScene`（`scene_seq`、场景 id、动作表、小部件表、`ActionGate`、`Outbox`），连接断开（`PlayerDisconnectEvent`）时丢掉；`Outbox` 是每连接一个的待发队列，`PlayerTickEvent` 里由 `SceneService` 交给它一个字节汇点按序发出，move 的 future 没完成时整队留发；`WidgetEncoder` 把插件面的 `Widget` 转成 `:protocol` 的 `Widget`，`set` 时校验大小；`ActionGate` 管整秒窗口的限速与按槽位的冷却，时刻由调用方传入（单调时钟，纳秒）；`ActionRegistry` 管动作的注册、封口与收回；`PlayIds` 给场景 id 与动作 id 补前缀，名字部分与 `PluginChannels` 同一条规则 `[a-z0-9._/-]+`，补上前缀后超过 64 B 抛 `IllegalArgumentException`；`PluginPlayImpl`、`HudImpl` 是按插件分出的视图。有场景所有者时的上行：未知 `msg_id` 丢弃并记受 `LogBudget` 限制的 WARN；解不开的负载与客户端发来的下行消息以 `synaxis:protocol-error` 断线，WARN 同样受限；还在 configuration 阶段的连接发来的上行丢弃。这个包里的日志全部经 `LogBudget`：`ClientDrivenLogArchitectureTest` 的规则覆盖整个 `app` 包树，`app.scene` 不在豁免名单里。
 
 - **`API-PLAY-003` 小部件目录与 TLV 编码（`:protocol` 包 `game.protocol.play`，v1 随 S1，v2 随 W2）** — 实现 `REQ-PLAY-004`
   - `widget = kind u8, slot u8, order varint, props count(≤16) × {prop_id varint, type u8, value}`；`slot`：0 `TOP_LEFT`、1 `TOP_CENTER`、2 `TOP_RIGHT`、3 `LEFT`、4 `RIGHT`、5 `BOTTOM`、6 `CENTER`。
@@ -826,7 +832,7 @@ erDiagram
     - W1：`PluginPlay#caps(UUID connectionId)`，任意线程可调，准入回调里也能用（按 `connectionId` 查，`AdmissionRequest` 不用改）；记录 `ClientCaps(String modBuild, Map<String, Integer> granted)`，`has(channel, minVersion)` 判 `granted.getOrDefault(channel, 0) >= minVersion`。
     - W2：`PluginPlay#notice(Player, Notice)` 与 `Notice(Style style, Component text, Duration duration)`（`Style` 是 `INFO`、`SUCCESS`、`WARNING`、`ALERT`）；`Widget` 加 `Bar(id, slot, order, label, float value, float ratePerSecond, int argb)`、`Counter(id, slot, order, Key icon, long value, label)`、`Marker(id, slot, order, label, Vec target)`、`Prompt(id, slot, order, label, String actionId)`；`enter` 加相机降级：相机或光标超出该连接被授予的 `synaxis:play` 版本时降为 `Vanilla` / `LOCKED`，`play_scene_entered` 记 `downgraded=true`。
     - 6b（`synaxis:play` v3）：`CameraSpec.RtsPerspective(float minX, float minZ, float maxX, float maxZ, float minZoom, float maxZoom, float pitchDegrees)` 与 `CursorMode.FREE`。
-  - 线程：`enter`、`leave`、`currentScene`、`hud()` 的写方法与 W2 的 `notice` 在两处调用：玩家所属 tick 线程，或 tick 调度线程的串行段（`scheduleTask` 的任务，`docs/PLUGINS.md` §10）。串行段与各 tick 线程不同时跑，宿主在玩家的 `PlayerTickEndEvent` 里读同一份状态，所以两处都不用加锁；这条与 tick 线程数无关。其余线程（虚拟线程、别的玩家的 tick 线程）用 `scheduler().runOn(对方, …)` 投递。
+  - 线程：`enter`、`leave`、`currentScene`、`hud()` 的写方法与 W2 的 `notice` 在两处调用：玩家所属 tick 线程，或 tick 调度线程的串行段（`scheduleTask` 的任务，`docs/PLUGINS.md` §10）。串行段与各 tick 线程不同时跑，宿主在玩家的 `PlayerTickEvent` 里读同一份状态，所以两处都不用加锁；这条与 tick 线程数无关。其余线程（虚拟线程、别的玩家的 tick 线程）用 `scheduler().runOn(对方, …)` 投递。
   - 收回：插件被拆掉时宿主注销它的动作与 `ChannelSpec`。今天插件只在两个时点被拆掉：`onEnable` 抛异常（bind 之前，还没有玩家）与停机（玩家已保存并踢出之后），所以不会遇到「玩家身上还挂着被拆插件的场景与小部件」。运行期禁用插件不存在（`Main.java:341-344`）；补回 `docs/DESIGN-M2.md` §28.3 ① 的熔断时，要同时补上「场景所有者被禁用时各玩家转为无场景、清掉它的小部件」（§11.2）。
 
 - **`API-PLAY-006` 托管玩法实例（`:plugin-api` 新包 `plugin.instance`，`PluginContext#instances()`，S1）** — 实现 `REQ-PLAY-006`、`REQ-PLAY-017`
@@ -1104,9 +1110,9 @@ stateDiagram-v2
 | [*] → NONE | 进入 PLAY | 首次出生 | 记下首次出生；W1 起握手已判定时发 `S2C_GRANTS`，握手晚到时由握手判定那一侧发（`API-PLAY-002`） | 宿主 | `API-PLAY-002`（`S2C_GRANTS`） |
 | NONE → ACTIVE | enter | 调用方 = 场景所有者 ∧ 玩家在 PLAY | `scene_seq` 加 1；按授予降级相机与光标；丢掉本插件排在前面还没发出的 HUD 改动、排一个 `CLEAR_OWNER`；`S2C_SCENE` 在本 tick 末发（玩家有未完成的 `move` 时留到它完成之后，§6.4.3）；记 `EVT:play_scene_entered` | `ROLE-SceneOwner` | `API-PLAY-005` `enter`、`API-PLAY-002`（`S2C_SCENE`） |
 | ACTIVE → ACTIVE | enter 切换场景 | 调用方 = 场景所有者 | `scene_seq` 加 1；清掉场景所有者的小部件（排 `CLEAR_OWNER`）与动作冷却，保留叠加者的；`S2C_SCENE` 同上在本 tick 末发；记 `EVT:play_scene_entered` | `ROLE-SceneOwner` | `API-PLAY-005` `enter` |
-| ACTIVE → NONE | leave | 调用方 = 场景所有者 | 清掉场景所有者的小部件（排 `CLEAR_OWNER`）；W2 起在本 tick 末发 `S2C_SCENE_LEAVE`（v1 客户端靠下一条 `S2C_SCENE` 覆盖） | `ROLE-SceneOwner` | `API-PLAY-005` `leave`、`API-PLAY-002`（`S2C_SCENE_LEAVE`） |
+| ACTIVE → NONE | leave | 调用方 = 场景所有者 | 清掉场景所有者的小部件（排 `CLEAR_OWNER`）；动作表与动作冷却清空，`scene_seq` 不变；W2 起在本 tick 末发 `S2C_SCENE_LEAVE`（v1 客户端靠下一条 `S2C_SCENE` 覆盖） | `ROLE-SceneOwner` | `API-PLAY-005` `leave`、`API-PLAY-002`（`S2C_SCENE_LEAVE`） |
 
-连接断开时场景随连接丢弃（纯终态，不列）。没有「场景所有者被禁用」这条转移：运行期禁用插件不存在（`Main.java:341-344`），插件被拆掉时进程里没有玩家（`API-PLAY-005` 收回一条）；补回 `docs/DESIGN-M2.md` §28.3 ① 的熔断时，在这里加 `ACTIVE → NONE`（事件「场景所有者被禁用」，动作同 leave）。也没有「回到 configuration 阶段」这条转移：主代码不触发重新配置，场景层不支持它，见 §28.2「场景层不支持重新配置」一行。客户端 `C2S_SCENE_READY` 不改状态，`scene_seq` 等于当前场景时才记 `EVT:play_scene_ready`，旧的丢弃；带旧 `scene_seq` 的 `C2S_ACTION` 回 `stale-scene`（`API-PLAY-002`）。
+连接断开时场景随连接丢弃（纯终态，不列）。没有「场景所有者被禁用」这条转移：运行期禁用插件不存在（`Main.java:341-344`），插件被拆掉时进程里没有玩家（`API-PLAY-005` 收回一条）；补回 `docs/DESIGN-M2.md` §28.3 ① 的熔断时，在这里加 `ACTIVE → NONE`（事件「场景所有者被禁用」，动作同 leave）。也没有「回到 configuration 阶段」这条转移：主代码不触发重新配置，场景层不支持它，见 §28.2「场景层不支持重新配置」一行。客户端 `C2S_SCENE_READY` 不改状态，状态为 `ACTIVE` 且 `scene_seq` 等于当前场景时才记 `EVT:play_scene_ready`，同一 `scene_seq` 至多记一行，旧的与重发的丢弃；带旧 `scene_seq` 的 `C2S_ACTION` 回 `stale-scene`（`API-PLAY-002`）。
 
 ### 11.3 样板参与者 `ENT-RushParticipant`
 
@@ -1285,7 +1291,7 @@ flowchart LR
 | `synaxis:match-unavailable`（现有） | `DisconnectKeys` | Disconnect | 本分册加一种来源：托管实例撤离 5 s 没撤完 | 提示对局已结束，重连 |
 | `synaxis:action-cooldown`（新） | `server-app`（`SceneService`），模组两份 lang | 不断线；`S2C_ACTION_RESULT` 的 reason | 结果码 2 `cooldown`，参数：剩余秒数 | 显示剩余冷却 |
 | 结果码 0 `ok` | `synaxis:play` | 带内 | 动作已执行 | 按服务端冷却重设本地冷却 |
-| 结果码 1 `rejected` | `synaxis:play` | 带内，reason 是插件给的翻译键 | 插件拒绝 | 显示 reason，清本地冷却 |
+| 结果码 1 `rejected` | `synaxis:play` | 带内，reason 是插件给的翻译键；handler 抛异常或返回 null 时 reason 为空 | 插件拒绝 | 显示 reason，清本地冷却 |
 | 结果码 3 `rate-limited` | `synaxis:play` | 带内 | 超出每秒 10 次 | 不提示，清本地冷却 |
 | 结果码 4 `stale-scene` | `synaxis:play` | 带内 | 动作属于上一个场景 | 静默丢弃 |
 | 结果码 5 `unknown-action` | `synaxis:play` | 带内 | 动作 id 不在当前场景 | 记 WARN，清本地冷却 |
@@ -1299,7 +1305,7 @@ flowchart LR
 | 开局准备时长 | `prepare_ms`，tick 之外，S1 竞技场 5×5 = 25 个区块，P95 | ≤ 1 s | 已有实测只有 RTS 地形，口径都含地形、导航网格、区块生成与整图光照，起服时测：`rts-512`（1,024 区块）771 / 968 ms，`rts-128`（64 区块）228 / 189 ms（`docs/DESIGN-M2.md` §15「地图生成」行）。按前者折合 0.75～0.95 ms/区块，25 区块约 19～24 ms；按后者折合 3.0～3.6 ms/区块（小图摊不开固定开销，起服时 JIT 也还冷），25 区块约 74～89 ms。平坦竞技场没有地形与导航网格，真实值由 S1 的 judge 抄进证据（§6.7.6）。超过 1 s 时改为起服时预建实例池（§3） |
 | 换实例就绪 | `move` 完成到客户端回 `C2S_SCENE_READY`（含载入画面关闭与脚下区块到达），P95 | ≤ 100 tick | §3「换实例就绪时延」 |
 | 场景层下行 | 每连接 | 单包 ≤ 8 KiB；样板平均 ≤ 2 KiB/s | §2 请求量；台账 `EVT:play_traffic` 实测超过 20 KiB/s 重估 |
-| 场景层每 tick 开销 | `SceneService` 在 `PlayerTickEndEvent` 里合并发送，每名玩家 | ≤ 0.05 ms | 推算，没测；S1 用 JMH 量一次（`jmh-benchmarks`），超过时改为每 2 tick 合并 |
+| 场景层每 tick 开销 | `SceneService` 在 `PlayerTickEvent` 里合并发送，每名玩家 | ≤ 0.05 ms | 进程内计时，只打印不断言：`SceneServiceIntegrationTest#timesTheExitOfTheSceneLayerPerPlayerPerTick` 每 tick 设一个 `TIMER` 与一个 8 行的 `SCOREBOARD`，再派发该玩家的 `PlayerTickEvent`，只量出口这一段，预热 2,000 次后量 10,000 次。RUN-077 组 H 本机 7 次运行（默认三次、4 线程严格两次、严格 grid 两次，`--max-workers=2`）：均值 0.0013～0.0026 ms，P99 0.0023～0.0038 ms，单次最大 0.03～8.98 ms（长尾没有归因）；同一 tick 两次 `set` 本身均值 0.0039～0.0053 ms（`docs/test-runs/RUN-077/H/`）。均值与 P99 都在目标之内；超过时改为每 2 tick 合并。不用 JMH：`jmh-benchmarks` 只依赖引擎与 `:testing`，场景层是 `server-app` 的内部类 |
 | 并发局数 | 每个玩法进程 | 样板 S2 ≤ 4 局（S1 为 1 局）、≤ 32 人 | §2 用户量；玩法进程默认 1 条 tick 线程 |
 | 限流 | `C2S_ACTION` 每连接 | ≤ 10 次/秒，超出回 `rate-limited`；更快的上行由引擎入站包速率闸（7 s 窗口 750 包）断线 | `API-PLAY-002`；`docs/DESIGN-PROD.md` `API-PROD-012` |
 | 撤离 | `cancel`、`settled`、强制关闭 | 5 s 内撤完，否则踢出 | `API-PLAY-006` |
@@ -1322,6 +1328,10 @@ flowchart LR
 | 场景切换后才到的动作 | `API-PLAY-002` `C2S_ACTION` | 回 `stale-scene`，不调 handler | `scene_seq` 比较 |
 | 同一 tick 里先 `hud().set` 再 `enter` | `API-PLAY-005` | 客户端依次收到 `S2C_SCENE`、`S2C_HUD`（先 `CLEAR_OWNER`，再 `enter` 之后 set 的小部件）；`enter` 之前 set 的场景所有者小部件不出现 | 每连接一个待发队列，`enter` 丢掉该所有者排在前面的改动（§6.4.3） |
 | `move` 还没完成就 `enter` | `API-PLAY-005`、`API-PLAY-006` | `S2C_SCENE` 排在 Respawn 之后；客户端在新世界载入完之前不发就绪 | 宿主见到该玩家有未完成的 move，整个待发队列留到 move 完成之后（§6.4.3） |
+| `holdUntil` 与 tick 末发包在不同线程 | `API-PLAY-006` `move`、`API-PLAY-002` | move 的 future 完成之前每个 tick 末都整队留发，完成之后的第一个 tick 末发出 | 留发条件是原子引用里的 future，`holdUntil` 任意线程可调；待发队列本身只在玩家线程与串行段上改 |
+| 同一 tick 两次 `enter` | `API-PLAY-005` | `scene_seq` 加 2，tick 末只发后一条 `S2C_SCENE`；带前一个 `scene_seq` 的动作回 `stale-scene` | 待发队列只留最后一条场景头 |
+| 动作的 handler 里切了场景 | `API-PLAY-002`、`API-PLAY-005` | 结果照回；不开冷却，`cooldown_ms` 回 0，新场景的冷却从空开始 | 开冷却前比较 `scene_seq` |
+| 客户端对同一场景重发 `C2S_SCENE_READY` | `API-PLAY-002` | 台账只记第一条 | 按连接记下已记过就绪的 `scene_seq` |
 | 实例还在 `PREPARING` 时停机 | `API-PLAY-006` | 丢弃，cause=`shutdown`；准备之后做完也不注册 | 状态字段比较并交换，注册前守卫 state=PREPARING |
 | 同一动作连按 | `API-PLAY-002` | 冷却内第二次回 `cooldown`（客户端本地冷却通常先挡下） | 宿主冷却表按 `(连接, slot)` |
 | 两名玩家同时站进信标 | `rush` | 进度冻结，谁都不涨 | §6.7.2 规则，`Beacon` 纯逻辑 |
@@ -1350,7 +1360,7 @@ flowchart LR
 
 | 任务 | 触发 | 批量/互斥 | 超时 | 失败策略 | 对应告警 |
 | --- | --- | --- | --- | --- | --- |
-| `play.hud.flush` | 每名玩家的 `PlayerTickEndEvent` | 每玩家一次，在该玩家的 tick 线程上；按序发出待发队列（先 `S2C_SCENE` 再 `S2C_HUD`），玩家有未完成的 `move` 时整队留到下次 | 无（同步） | 编码异常记一行受 LogBudget 限制的 ERROR，丢弃本 tick 的改动 | 见 `RB-PLAY-003` |
+| `play.hud.flush` | 每名玩家的 `PlayerTickEvent` | 每玩家一次，在该玩家的 tick 线程上；按序发出待发队列（先 `S2C_SCENE` 再 `S2C_HUD`，`S2C_HUD` 每条 ≤ 8 KiB 且 op ≤ 32 个），玩家有未完成的 `move` 时整队留到下次 | 无（同步） | 编码异常记一行受 LogBudget 限制的 ERROR，丢弃本 tick 的改动 | 见 `RB-PLAY-003` |
 | `play.instance.prepare` | tick 调度线程上的 `create` | 每实例一个：区块生成在引擎的虚拟线程上，到齐后在一条虚拟线程上 `relight`；注册排进下一个串行段 | 30 s | 抛异常或超时转 `CLOSED`（`prepare_failed`）；停机时丢弃 | 见 `RB-PLAY-001` |
 | `play.instance.settle-timeout` | `RUNNING → ENDING` 时起计时，`settleTimeout` 后 | 每实例一个，tick 调度线程 | — | 强制按 `fallbackExit` 关闭 | 见 `RB-PLAY-001` |
 | `play.instance.reclaim` | 插件被拆掉（`onEnable` 失败）或停机 | 该插件全部实例，tick 调度线程上逐个 | 撤离 5 s | 撤不完的踢出 | 见 `RB-PLAY-002` |
@@ -1451,7 +1461,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | 单元 | JUnit（假时钟） | 授予规则；TLV 编解码与跳过未知属性；`PlayClient`（含场景就绪三条件的判定与「只为最新一条发」）、`WidgetLayout`、`ActionKeys`；小部件与 `S2C_SCENE` 的大小校验；`ManagedInstance` 的全部转移（含两条短路、结算超时、强制关闭）；`Round` 的回调兜底；`EventCalendar` 的窗口边界与重叠拒绝；`Beacon` 的独占、争夺、退旧占领者；`RushRound` 的 `objective`、`time_limit`、`empty`、并列 | `./gradlew check`（本机 `--max-workers=2`） |
 | 冻结向量 | `play-vectors/` 由 `PlayVectorTest`（服务端事实源）与 `PlayFrozenVectorTest`（客户端读同一目录）跑，`vectors/` 与 `rts-vectors/` 由 `ProtocolVectorTest` 与 `FrozenVectorTest` 跑 | S1 起 `synaxis:play` 每个版本的每条消息（`play-vectors/`）；W1 起握手的报价与授予、`S2C_GRANTS`、`rts:game` 搬目录后字节不变 | `./gradlew check`、`client-fabric` 的 `test` |
-| 宿主集成 | 真 `server-app` 进程内测试、`:testing` | `SceneServiceTest`：每 tick 一个出口且先 `S2C_SCENE` 后 `S2C_HUD`、同一 tick 先 set 再 `enter` 不带出旧小部件、move 未完成时整队留发、切场景只清场景所有者的小部件、叠加者小部件跨场景保留、冷却、限速、过期场景各回一次结果；`ManagedInstanceTest`：tick 调度线程上 `create` 先返回 `PREPARING`、下一个串行段转 `OPEN`，竞技场区块的天光已算好（照 `MatchIntegrationTest#theMapIsLitBeforeTheMatchRuns` 直接读 section），量 tick 调度线程上的两段耗时（§15）；撤离后注销、`onEnable` 失败时收回已建的实例、`PREPARING` 时停机丢弃；准入冲突拒启；同一连接重走准入得到同一大厅 | `./gradlew check` |
+| 宿主集成 | 真 `server-app` 进程内测试、`:testing` | `SceneServiceIntegrationTest`：每 tick 一个出口且先 `S2C_SCENE` 后 `S2C_HUD`、同一 tick 先 set 再 `enter` 不带出旧小部件、move 未完成时整队留发、切场景只清场景所有者的小部件、叠加者小部件跨场景保留、断线时丢掉该连接的场景层，量场景层出口的每 tick 耗时（§15）；`SceneInboundIntegrationTest`：冷却、限速、过期场景各回一次结果，分发顺序，畸形上行断线，只记当前 `scene_seq` 的就绪；`app` 包的 `SceneOwnerlessIntegrationTest`：平坦核心与挂地图的分片收到上行时静默丢弃；`OutboxTest`、`WidgetEncoderTest`、`ActionGateTest` 是不用 `Env` 的单元测试；`ManagedInstanceTest`：tick 调度线程上 `create` 先返回 `PREPARING`、下一个串行段转 `OPEN`，竞技场区块的天光已算好（照 `MatchIntegrationTest#theMapIsLitBeforeTheMatchRuns` 直接读 section），量 tick 调度线程上的两段耗时（§15）；撤离后注销、`onEnable` 失败时收回已建的实例、`PREPARING` 时停机丢弃；准入冲突拒启；同一连接重走准入得到同一大厅 | `./gradlew check` |
 | 门禁 | `:architecture-tests` | `:game-rush`、`:play-kit` 加进依赖后过翻译键、配置键、持久化边界、引擎内部四道门禁；ABI 门：`:plugin-api` 对 `v0.3.0` 0 条违例（新增全在 `@ApiStatus.NonExtendable` 接口与新类型上）；`:protocol` 在 S1 只有新增类型、0 条违例，在 W1 有一条 `SCHEMA_VERSION` 常量值变化（`CheckAbiTask.kt:124`），按 `docs/ENGINE.md` §7.1 打新 baseline tag 后 0 条 | `./gradlew check` |
 | 真客户端 | `client-gametest.yml` 新 job `rush`：`RushClientGameTest`：S1 跑 Q0～Q9（Q0 连夹具 `PlayHudFixture`），S2 按 §6.7.6 的改动跑 | S1：`REQ-PLAY-003`～`REQ-PLAY-008` 的端到端；S2 加 `REQ-PLAY-001`、`REQ-PLAY-002`、`REQ-PLAY-018` | GitHub Actions，跑 PR 与 push `main` |
 | 回归 | 现有 job `gametest`（R1～R8、可玩项 G1～G10）、`p11-smoke` | W1 之后 RTS 行为不变 | GitHub Actions |
@@ -1539,6 +1549,11 @@ flowchart LR
   When 插件 hud().set 一个编码后 5,000 B 的 PANEL
   Then 抛 IllegalArgumentException，服务端小部件表不变，客户端什么都没收到
 
+场景: 一个 tick 的改动超过 32 个 op (REQ-PLAY-004)
+  Given 场景所有者在同一 tick 里设了 33 个很小的 TEXT
+  When 该玩家的 tick 末发包
+  Then 客户端收到 2 条 S2C_HUD，每条 op ≤ 32 个且 ≤ 8 KiB，合起来是 33 个 SET
+
 场景: 未知属性被跳过 (REQ-PLAY-004)
   Given 一个 TIMER 小部件带 prop_id=99、类型 varint 的属性
   When 客户端解码
@@ -1553,6 +1568,28 @@ flowchart LR
   Given 动作 rush:queue 冷却 2 s，在 t=0.9 s 执行过一次（整秒窗口 [0, 1) 里的唯一一条）
   When 同一连接在 t=1.0 s 到 1.5 s 之间再发 11 条 rush:queue（都在窗口 [1, 2) 里，都还在冷却内）
   Then 前 10 条回 code=2（cooldown），第 11 条回 code=3（rate-limited）
+
+场景: 过期场景先于限速 (REQ-PLAY-005)
+  Given 当前 scene_seq=5，当前场景的动作表里没有 rush:nope，也没有插件注册它
+  When 同一连接在同一个整秒窗口里先发 11 条 scene_seq=4 的 C2S_ACTION，再发 11 条动作 id 为 rush:nope、scene_seq=5 的 C2S_ACTION
+  Then 前 11 条都回 code=4（stale-scene），不调插件 handler
+  And 后 11 条的前 10 条回 code=5（unknown-action），第 11 条回 code=3（rate-limited）：过期的动作不占限速额度
+
+场景: 限速先于未知动作 (REQ-PLAY-005)
+  Given 当前场景的动作表里没有 rush:nope，也没有插件注册它
+  When 同一连接在同一个整秒窗口里发 11 条动作 id 为 rush:nope、scene_seq 为当前值的 C2S_ACTION
+  Then 前 10 条回 code=5（unknown-action），第 11 条回 code=3（rate-limited）
+
+场景: 平坦核心收到 synaxis:play 的上行 (REQ-PLAY-003)
+  Given 平坦核心，宿主以保留 id synaxis 占着准入槽，没有插件
+  When 一名玩家在 synaxis:play 上连发 C2S_ACTION、C2S_SCENE_READY、未知 msg_id、下行消息与解不开的字节
+  Then 玩家不断线，synaxis:play 上一条下行都没有，宿主没写 WARN 或 ERROR
+
+场景: 挂地图的分片收到 synaxis:play 的上行 (REQ-PLAY-003)
+  Given 挂地图的分片，宿主以保留 id synaxis 占着地图实例的准入槽，不加载插件
+  When 一名玩家在 synaxis:play 上连发 C2S_ACTION、C2S_SCENE_READY、未知 msg_id、下行消息与解不开的字节
+  Then 玩家不断线，synaxis:play 上一条下行都没有，宿主没写 WARN 或 ERROR
+  And 这些包照常计入入站包速率闸：7 s 窗口里第 751 个 synaxis:play 包判断线
 
 场景: onEnable 失败时收回已建的实例 (REQ-PLAY-006)
   Given 插件在 onEnable 里 create 了一个实例并 start()，随后抛异常
@@ -1776,7 +1813,7 @@ flowchart LR
 | S1 最小样板（默认，§28.1 D9） | `REQ-PLAY-008`；`REQ-PLAY-003` 的 `enter`、`leave`、`currentScene`、`hud`、`onAction`；`REQ-PLAY-004` 的 v1 四种小部件；`REQ-PLAY-005`；`REQ-PLAY-006`；`REQ-PLAY-007` 的 `Round`、`LocalQueue`、`Countdown`；`synaxis:play` v1 与 `play-vectors/`；客户端 `PlayModule` 的 v1 部分 | 第一步：服务端经 `S2C_HUD` 下发一个 `TEXT`（带一个参数与颜色样式的翻译键），客户端用原版的组件流编解码器解出来、由最小的 `PlayHud` 画出，CI gametest 截图并比对解出的与发出的相同，过了再铺开四种小部件（RUN-077 组 V 已过：原版 `ComponentSerialization.STREAM_CODEC` 读得出引擎写的 NBT，不改 JSON 编码；job `rush` 的 Q0a、Q0b 在 dev 与生产 jar 两次启动上都 PASS，§6.7.6）；§19 中 S1 涉及的各层全绿；job `rush`（S1 剧本）两次启动全部 PASS；job `gametest` R1～R8 与可玩项全绿；`docs/DESIGN-M2.md` `API-M2-001` 已有 `synaxis:play` 一条（该分册 v0.66，§6.7.1） | 10～13 天（§6.7.7） |
 | W0 前置 | `REQ-PLAY-010` 调度器出列；`REQ-PLAY-009` 准入冲突拒启；`REQ-PLAY-011` 的 §7 能力表 | server-app 单测（任务表长度、冲突拒启）；`./gradlew check` 绿 | 1 天 |
 | W1 协议 | `REQ-PLAY-001`、`REQ-PLAY-002`、`REQ-PLAY-012` 的通道注册、`ClientModule`；`schema_version` 1 → 2；向量分目录；删 login 形态及其连带（`API-PLAY-001` 列的各项）；`:loadtest` 的 Bot 与 `probe.py` 跟着改 hello，报 `:protocol` 定义的全部带版本通道（含玩法模式的两条必需通道），`probe.py` 加 `--offer`（`API-PLAY-001`）；打新 ABI baseline tag | 向量两端对拍；`probe.py` 的 `handshake`、`bad-schema` 与 `echo --channel hello:echo` 照旧通过，`handshake --offer synaxis:play=1-1` 在玩法模式下以 `synaxis:client-mod-outdated` 被拒；job `gametest` R1～R8 与可玩项全绿（证明 RTS 没变）；需 §28.1 D1 签字 | 3～4 天 |
-| W2 场景层补齐 | `synaxis:play` v2：`REQ-PLAY-004` 的 `BAR`、`COUNTER`、`MARKER`、`PROMPT`，`S2C_NOTICE`、`S2C_SCENE_LEAVE`；`REQ-PLAY-003` 的 `caps`、相机降级、叠加者小部件；`EVT:play_traffic` | 单测与 v2 向量；fallback 显示与 `ActionKeys` 默认键核对 | 2～3 天 |
+| W2 场景层补齐 | `synaxis:play` v2：`REQ-PLAY-004` 的 `BAR`、`COUNTER`、`MARKER`、`PROMPT`，`S2C_NOTICE`、`S2C_SCENE_LEAVE`；`REQ-PLAY-003` 的 `caps`、相机降级；`EVT:play_traffic` | 单测与 v2 向量；fallback 显示与 `ActionKeys` 默认键核对 | 2～3 天 |
 | W3 完整样板 | `REQ-PLAY-018`；`REQ-PLAY-007` 的 `EventCalendar` 与日历文件；宿主三项指标；`REQ-PLAY-011` 的两节 | §19 全部层；job `rush`（S2 剧本）两次启动全部 PASS；需 §28.1 D10 签字 | 3～4 天 |
 | W4a RTS 场景 | `REQ-PLAY-012` 的场景与小部件 | job `gametest` 的 rts 段加 HUD 截图 | 3 天 |
 | 6b RTS 相机 | 透视相机、输入、`rts:game` v2、`synaxis:play` v3 | `docs/DESIGN-M2.md` §26 阶段 6b 的退出条件 | 见该分册 |

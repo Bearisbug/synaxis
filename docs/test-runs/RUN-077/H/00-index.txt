@@ -1,0 +1,130 @@
+RUN-077 group H: the host's scene layer SceneService (branch prod/r077-H, base prod/integrate-077
+3cd20ff777). Commits: 6145b0cd19 DESIGN-PLAY v0.5, ced8fcbb1e skeleton and tests, e9acd1b26e
+implementation, 8e736a7afe one more case (leave and Hud#clear), f782a150a6 the tests reworked after the
+implementation review. Local Gradle through ~/.claude/r077/gradle.zsh (JDK 25, --max-workers=2
+--no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, the heavy lock taken for each run
+only). Sixteen Gradle runs in all, none with a database or Redis. Runs 1 to 12 carry
+:server-app:testNamingCheck and :server-app:forbiddenImportsCheck. Each directory holds the JUnit XML reports of that run and
+summary.txt, one line per test with the failure message and the first frame in the test class; the
+line numbers are those of the code the run was on.
+
+Run 1 -> 01-red/compile-failure-run1.txt
+  Code: the skeleton with a WidgetEncoder.encode stub that always threw. Error Prone DoNotCallSuggester
+  stopped :server-app:compileJava; no test ran. The stub was changed to return an empty TEXT of 0 bytes.
+
+Run 2 -> 01-red/
+  Code: ced8fcbb1e except that WidgetEncoderTest#aWidgetOf4096BytesIsTakenAndOneByteMoreIsNot had no
+  bound on its size search. SceneService is group K's wiring stub; Outbox queues nothing, ActionGate
+  limits nothing, WidgetEncoder answers an empty TEXT of 0 bytes.
+  The unbounded search never ended on the 0 byte stub; the test worker was killed by hand after about
+  11 minutes, so WidgetEncoderTest has 2 results here (1 red, 1 cut off) and its red is run 3.
+  SceneServiceIntegrationTest 10/10 red, SceneInboundIntegrationTest 10/10 red (UnsupportedOperationException
+  from PluginPlay), OutboxTest 8/8 red, ActionGateTest 4/5 red, SceneOwnerlessIntegrationTest 3/3 green
+  (the stub does nothing, which is what those cases ask for; their teeth are in run 7).
+
+Run 3 -> 02-red-widget-encoder/
+  Code: ced8fcbb1e (search bounded at 2,000 characters). WidgetEncoderTest 5/5 red.
+
+Run 4 -> 03-green/compile-failure-run4.txt
+  Code: the first draft of the implementation. Error Prone MissingSummary at 8 places and UnnamedVariable
+  at 1 stopped :server-app:compileJava; no test ran.
+
+Run 5 (no XML kept)
+  Code: the draft with the Javadoc fixed. 73 tests, 1 red: WidgetEncoderTest#aWidgetOf4096... at its own
+  search loop, which took the refusal past 4,096 bytes as an exception ("widget big of plugin_id=rush
+  encodes to 4097 bytes, over the 4096 a widget may take"). The test now takes the refusal as the end of
+  the search.
+
+Run 6 -> 03-green/
+  Code: e9acd1b26e. :server-app scene.* (SceneServiceIntegrationTest 10, SceneInboundIntegrationTest 10,
+  OutboxTest 8, WidgetEncoderTest 5, ActionGateTest 5, ComponentBytesTest 2), SceneOwnerlessIntegrationTest
+  3, PluginHostPlayWiringIntegrationTest 2, ClientDrivenLogArchitectureTest 2, PluginHostIntegrationTest
+  18, CoreModeIntegrationTest 8, :architecture-tests TranslationKeyGateTest 2: 75 tests, 0 failures.
+  Gate line: "translation key gate: 62 keys checked against [en_us.json, zh_cn.json], 17 identifiers
+  left out". Scene layer exit: mean=0.0013 ms p99=0.0023 ms max=0.0286 ms over 10000 ticks.
+
+Run 7 -> 04-counter-proofs/
+  Code: e9acd1b26e with the fourteen edits of counter-proofs.diff at once. 41 tests, 21 red:
+    Outbox.java:77 clearOwner keeps queued changes -> OutboxTest#theSceneGoesFirst..., #aClearOfOneOwner...,
+                                                      SceneServiceIntegrationTest#everyChangeOfATick...
+    Outbox.java:101 no hold                         -> OutboxTest#aMoveUnderWay..., SceneServiceIntegrationTest#aMoveUnderWay...
+    Outbox.java:108 split on bytes only             -> OutboxTest#thirtyThreeSmallTextsSplitOnTheOpCap
+    SceneService.java:210 no owner check in enter   -> SceneServiceIntegrationTest#anOverlayCanNeitherEnterNorLeaveAScene
+    SceneService.java:235 no scene size check       -> SceneServiceIntegrationTest#aSceneOver8KibIsRefusedAndChangesNothing
+    SceneService.java:287 host id is an owner       -> SceneOwnerlessIntegrationTest core mode and map shard
+    SceneService.java:332-346 unknown, rate, stale  -> SceneInboundIntegrationTest#aStaleActionIsJudgedBeforeTheRateLimit
+                                                      (rate before stale) and #theRateLimitIsJudgedBeforeTheActionIsLookedUp
+                                                      (unknown before rate)
+    SceneService.java:349 no cooldown check         -> SceneInboundIntegrationTest#aKeyStillCoolingDown...
+    SceneService.java:369 cooldown after a switch   -> SceneInboundIntegrationTest#aHandlerThatChangesTheScene...
+    SceneService.java:407 no kick                   -> SceneInboundIntegrationTest#aPayloadThatDoesNotDecode...
+    ActionGate.java:39 truncating division          -> ActionGateTest#aClockBelowZeroStillCutsWholeSeconds
+    WidgetEncoder.java:72 no widget size check      -> WidgetEncoderTest#aWidgetOf4096..., #aPanelOf5000BytesIsRefused,
+                                                      SceneServiceIntegrationTest#aPanelOf5000BytesIsRefusedAndChangesNothing
+    PlayerScene.java:147 every ready recorded       -> SceneInboundIntegrationTest#onlyTheFirstReady...
+    ActionRegistry.java:77 actions kept at teardown -> SceneServiceIntegrationTest#theActionsOfAPluginTornDownAreTakenBack
+  Restored with git checkout -- server-app afterwards.
+
+Run 8 -> 05-four-threads-strict/
+  Code: e9acd1b26e, -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true. scene.*,
+  SceneOwnerlessIntegrationTest, PluginHostPlayWiringIntegrationTest: 45 tests, 0 failures.
+  Scene layer exit: mean=0.0024 ms p99=0.0028 ms max=8.9841 ms.
+
+Run 9 -> 06-grid-strict/
+  Code: e9acd1b26e, run 8's properties plus -Dsynaxis.thread-provider=grid. 45 tests, 0 failures.
+  Scene layer exit: mean=0.0015 ms p99=0.0028 ms max=0.0642 ms.
+
+Run 10 -> 07-final/
+  Code: 8e736a7afe (SceneServiceIntegrationTest#leavingASceneKeepsItsNumber... added), default mode,
+  run 6's classes: 76 tests, 0 failures, same gate line. Scene layer exit: mean=0.0020 ms p99=0.0023 ms
+  max=6.2744 ms. The added case has not run in the two multi-threaded modes on this machine.
+
+Rework after the first implementation review (runs 11 to 16, commit f782a150a6 for the tests; the main
+code is that of e9acd1b26e, unchanged). Every run: scene.*, SceneOwnerlessIntegrationTest,
+PluginHostPlayWiringIntegrationTest; runs 11 and 12 also carry :server-app:testNamingCheck and
+:server-app:forbiddenImportsCheck. Line numbers are those of f782a150a6.
+
+Run 11 -> 08-rework-disconnect-red/
+  Code: the tests of f782a150a6 except that the new case took the connection down with
+  PlayerConnection#disconnect only. 47 tests, 1 red: aConnectionThatGoesTakesItsSceneLayerAlong... at
+  its wait, "the scene layer of a connection gone was kept ==> expected: <true> but was: <false>", after
+  5 s of ticks. The test connection's disconnect only marks it offline (testing TestConnectionImpl.java:131-133):
+  it removes no player and fires no PlayerDisconnectEvent, so neither that case nor a kicked test
+  connection ever reached the listener of SceneService.java:130-131. The case now also schedules the
+  player's removal on its next tick, which is what a real connection's disconnect adds in the play
+  state (PlayerConnection.java:274; the removal fires the event at Player.java:678), and ticks once.
+
+Run 12 -> 09-rework-green/
+  Code: f782a150a6, default mode. 47 tests, 0 failures (SceneServiceIntegrationTest 12,
+  SceneInboundIntegrationTest 10, OutboxTest 8, WidgetEncoderTest 5, ActionGateTest 5,
+  ComponentBytesTest 2, SceneOwnerlessIntegrationTest 3, PluginHostPlayWiringIntegrationTest 2).
+  Scene layer exit: mean=0.0026 ms p99=0.0038 ms max=7.9590 ms; the two sets mean=0.0051 ms.
+
+Run 13 -> 10-rework-counter-proofs-a/ (counter-proofs.diff)
+  Code: f782a150a6 with two edits at once:
+    SceneService.java:332-336 the rate limit counted before the stale check (admit, then judge stale)
+      -> SceneInboundIntegrationTest#aStaleActionIsJudgedBeforeTheRateLimit at :232,
+         expected [4 x11, 5 x10, 3] but was [4 x11, 3 x11]
+    SceneService.java:130 no PlayerDisconnectEvent listener
+      -> SceneServiceIntegrationTest#aConnectionThatGoesTakesItsSceneLayerAlong... at :335,
+         expected <Optional.empty> but was <Optional[rush:lobby]>
+  47 tests, exactly these 2 red. Restored with git checkout -- server-app/src/main.
+
+Run 14 -> 11-rework-counter-proofs-b/ (counter-proofs.diff)
+  Code: f782a150a6 with two edits at once (the stale check is the line run 13 moved, so not in the same run):
+    SceneService.java:332 no stale check at all
+      -> SceneInboundIntegrationTest#anActionOfAnEarlierSceneIsAnsweredStale... at :184 (code 0, the
+         handler ran) and #aStaleActionIsJudgedBeforeTheRateLimit at :232 ([0 x10, 3 x12])
+    SceneService.java:296 a scene layer made for a connection offline
+      -> SceneServiceIntegrationTest#aConnectionThatGoesTakesItsSceneLayerAlong... at :331,
+         "Expected java.lang.IllegalStateException to be thrown, but nothing was thrown."
+  47 tests, exactly these 3 red. Restored with git checkout -- server-app/src/main.
+
+Run 15 -> 12-rework-four-threads-strict/
+  Code: f782a150a6, -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true. 47 tests, 0 failures,
+  leavingASceneKeepsItsNumber... and aConnectionThatGoesTakesItsSceneLayerAlong... among them.
+  Scene layer exit: mean=0.0015 ms p99=0.0025 ms max=0.0278 ms; the two sets mean=0.0039 ms.
+
+Run 16 -> 13-rework-grid-strict/
+  Code: f782a150a6, run 15's properties plus -Dsynaxis.thread-provider=grid. 47 tests, 0 failures.
+  Scene layer exit: mean=0.0026 ms p99=0.0032 ms max=7.8768 ms; the two sets mean=0.0053 ms.

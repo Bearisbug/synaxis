@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-12 | 分支 `prod/r077-H`（设计提交 `6145b0cd19`、骨架与测试提交 `ced8fcbb1e`、实现提交 `e9acd1b26e`、补用例提交 `8e736a7afe`、评审后补测试的提交 `f782a150a6`，基于 `prod/integrate-077` `3cd20ff777`），跟进 `docs/DESIGN-PLAY.md` v0.5（RUN-077 组 H，宿主场景层 `SceneService`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/H/`。**§4「玩法架构 · RUN-077：H」写入二十条 `TC-PLAY-030`～`TC-PLAY-049`**：一个出口与先场景后 HUD（030）、move 未完成时整队留发（031）、切场景只清场景所有者的小部件与 `leave`（032）、三种大小上限（033）、`S2C_HUD` 按字节与条数拆包（034）、小部件编码（035）、限速与冷却的单元（036）、过期场景（037）、冷却与限速（038）、过期先于限速且不占限速额度（039）、限速先于未知动作（040）、`rejected` 的 reason 与 handler 里切场景（041）、`PANEL` 按钮、收回与注册规则（042）、畸形上行断线与未知 `msg_id`（043）、就绪只记第一条（044）、没有场景所有者的平坦核心与地图分片（045，光照会话的要求 2）、日志门禁与宿主回归（046）、§15 每 tick 开销读数（047）、两种多线程模式（048）、断线丢掉连接的场景层与离线的连接不能进场景（049）。改动前的红在骨架上实跑；十四处反证一次实跑（21 条红，各打各的用例），另四处分两次实跑（2 条红、3 条红）；还原后在默认、4 线程严格、严格 grid 三种模式下复绿。`:server-app` 新类 6 个 43 条。**门禁读数**：`TranslationKeyGateTest` 的键数 61 → 62（`synaxis:action-cooldown` 进门禁），标识仍是 17；`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717` 的键数由集成轮按 CI 输出改。**条数**本组不改，由集成轮统一改；本组 Gradle 共 16 次 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-V`（设计提交 `e4b1d8eb9a`、修前红提交 `6abbe44aee`、临时反证与还原 `1250f4d888`、`3d3611d32c`、实现提交 `07f5053f90`，基于 `prod/integrate-077` `3cd20ff777`），跟进 `docs/DESIGN-PLAY.md` v0.4（RUN-077 组 V，第一步：组件解码与最小 `PlayHud`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/V/`。**§4「玩法架构 · RUN-077：V」写入十条 `TC-PLAY-020`～`TC-PLAY-029`**：`ComponentBytes` 写出冻结的三个组件（020）、原版 `ComponentSerialization.STREAM_CODEC` 读得出它们（021，组件编码不改 JSON）、长度 0 的 component（022）、没进场景时 HUD 不画与剧本没变量时立即返回（023）、Q0a 的解码、画出与截图（024）、缺键显示 fallback（025）、Q0b 换实例的逐 tick 读数（026，`LevelLoadingScreen` 开 3 tick，脚下区块先到）、job `rush` 骨架（027）、judge 单测（028）、模组主源码不留测试钩子与 `fabric.mod.json` 的两个模块（029）。服务端改动前的红不适用（冻结文件与测试同提交），反证一次；客户端单测的反证三处一批在本机跑；真客户端的改动前的红在草稿 PR #22 的第 1 轮 CI（Q0a FAIL），同一轮带上 `TC-PLAY-009` 第 3 步的临时反证（3 条红），第 2 轮全绿。`:server-app` 新类 1 个 4 条，`client-fabric` 新类 2 个 9 条。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-K`（文档提交 `755ecf9d09`、骨架提交 `546ed30408`、实现提交 `cc2db356f1`，基于 `prod/r077-docs` `184ad30370`），跟进 `docs/DESIGN-PLAY.md` v0.3（RUN-077 组 K，插件面契约与宿主接线），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/K/`。**§4「玩法架构 · RUN-077：K」写入十条 `TC-PLAY-010`～`TC-PLAY-019`**：场景的动作槽（010）、v1 四种小部件不用编码就能查的上限（011）、`InstanceSpec` 的名字、半径、结算超时与短构造器的默认值（012）、宿主上下文的 `play()`、`instances()` 与 `synaxis:play` 的接线（013）、`ComponentBytes` 的编码与 2,048 B 上限（014）、稳定面门禁看得见两个新子包（015）、翻译键门禁的 `NOT_TEXT` 加 `synaxis:play`（016）、两份语言文件的 22 个 S1 键与默认键 H（017）、ABI 门对 `v0.3.0` 0 条违例（018）、插件宿主与核心模式的回归和 `PluginHost.java` 行号后移（019）；改动前的红在骨架上实跑，八处反证一次实跑，ABI 门的反证另跑一次，还原后复绿，语言文件用脚本核对。`:plugin-api` 新类 4 个 30 条，`:server-app` 新类 2 个 4 条；节头补列 `ComponentBytesTest`，测试类按实际的包写。**改旧用例**：`TC-PROD-521` 第 5 步 `PluginHost.java:102` → `:107`（本组在它上面加了三行导入与两个字段），按代码文本核对，没复跑。翻译键门禁的读数（标识 16 → 17）与 `TranslationKeyGateTest.java` 第 65 行之后的红行行号后移，与组 P 加的同一行一起由集成轮改（`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717`）。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-P`（设计提交 `4f2dad04f2`、修前红提交 `438b206f47`、实现提交 `05095f4699`，基于 `prod/r077-docs` `184ad30370`），跟进 `docs/DESIGN-PLAY.md` v0.2 与 `docs/DESIGN-M2.md` v0.66（RUN-077 组 P，`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/P/`。**新增 §4「玩法架构 · RUN-077：P」九条 `TC-PLAY-001`～`TC-PLAY-009`**：常规向量（001）、边界向量（002）、未知属性与未知种类（003）、13 个 `refused-` 向量（004）、manifest 把向量绑在 `play_version` 上（005）、往返与后续版本的 `msg_id`（006）、向量没覆盖的畸形形状（007）、包导出、`NOT_TEXT`、ABI 门与 javadoc（008）、客户端 `PlayFrozenVectorTest`（009，只在 GitHub Actions 上跑，组 V 的草稿 PR 首跑，反证也在那里补）。改动前的红在桩上实跑（47 条 39 条红）；反证两批，每批四处一次打上，各打各的用例，还原后复绿；第一批第一次跑时一处红落在测试的参数构造上，测试改为先解码后重跑。`:protocol` 新类 2 个 47 条。**门禁读数**：`TranslationKeyGateTest` 的标识 16 → 17，键数仍是 61；`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717` 的读数与 `NOT_TEXT` 之后的红行行号本组不改，由集成轮按 CI 输出改，`TC-WORLD-032` 走交接行。**条数**本组不改，由集成轮统一改。评审返工（同一分支）：`edge/s2c_scene.bin` 的 `cursor` 改为 254、`edge/c2s_action-entity.bin` 的 `action_seq` 改为 1，`S2C_SCENE` 的 `camera` 与 `cursor`、`C2S_ACTION` 的 `scene_seq` 与 `action_seq` 这两对相邻的同类型字段从此在向量里取不同的值，digest 改为 `f3eaee54…205e`；照设计文本写的向量编码器入库为 `protocol/tools/gen_play_vectors.py`；`TC-PLAY-002` 加第 4 步（读写顺序对调的反证：旧向量上全部存活，新向量上 2 条红），`TC-PLAY-005` 第 1 步改 digest 读数、写清取文件的次序、加脚本重新生成后 `diff` 无输出；本组 Gradle 共 11 次 | Bearisbug |
@@ -11455,7 +11456,270 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 
 ### 玩法架构 · RUN-077：H（宿主场景层 `SceneService`）
 
-对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的宿主实现：每连接的场景与小部件表、每 tick 一个出口的待发队列、小部件大小校验、动作按过期场景、限速、未知动作、冷却、handler 的顺序分发（`docs/DESIGN-PLAY.md` `API-PLAY-002`、`API-PLAY-005`，§11.2，§15，§16，§19；本组跟进该分册 v0.5）。用例号段 030～049，由组 H 在分支 `prod/r077-H` 写入。测试类：`:server-app` 包 `io.github.bearisbug.synaxis.app.scene` 的 `SceneServiceIntegrationTest`、`SceneInboundIntegrationTest`（带 `@EnvTest`），`OutboxTest`、`WidgetEncoderTest`、`ActionGateTest`（纯单元）。
+对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的宿主实现：每连接的场景与小部件表、每 tick 一个出口的待发队列、小部件大小校验、动作按过期场景、限速、未知动作、冷却、handler 的顺序分发，以及没有场景所有者的进程（平坦核心、挂地图的分片）对上行的静默丢弃（`docs/DESIGN-PLAY.md` `API-PLAY-002`、`API-PLAY-005`，§6.2，§11.2，§15，§16，§19；本组跟进该分册 v0.5）。用例号段 030～049，由组 H 在分支 `prod/r077-H` 写入，本组证据 `docs/test-runs/RUN-077/H/`。测试类：`:server-app` 包 `io.github.bearisbug.synaxis.app.scene` 的 `SceneServiceIntegrationTest`、`SceneInboundIntegrationTest`（带 `@EnvTest`），`OutboxTest`、`WidgetEncoderTest`、`ActionGateTest`（纯单元）；包 `io.github.bearisbug.synaxis.app` 的 `SceneOwnerlessIntegrationTest`（带 `@EnvTest`，要用包私有的 `PluginHost`）。`SceneTestKit` 是同包的测试辅助类，不是测试。
+
+改动：`server-app` 只改 `app/scene/SceneService.java`（把组 K 的空实现填实），`app/scene/` 下新建 `PlayerScene`、`Outbox`、`WidgetEncoder`、`ActionGate`、`ActionRegistry`、`PlayIds`、`PluginPlayImpl`、`HudImpl`；`PluginHost.java:278` 一行 Javadoc 改为「握手与场景层的通道每个进程都注册、核心模式另有回显通道」（集成评审留给本组的一条），行数不变。出口挂在 `PlayerTickEvent`（服务端在 `Player#update` 末尾派发），不挂客户端驱动的 `PlayerTickEndEvent`，设计文档同步改。场景所有者取 `PluginHost` 传入的准入槽持有者；持有者为空或是宿主的保留 id `synaxis`（平坦核心与挂地图的分片里宿主自己占准入槽）时没有场景所有者，`receive` 在读负载之前就返回。
+
+测试：`:server-app` 新类 6 个 43 条：`SceneServiceIntegrationTest` 12 条、`SceneInboundIntegrationTest` 10、`OutboxTest` 8、`WidgetEncoderTest` 5、`ActionGateTest` 5、`SceneOwnerlessIntegrationTest` 3。「跑 `<类>`」照 P 节写的共用约定（`:server-app`），每次都带 `:server-app:testNamingCheck` 与 `:server-app:forbiddenImportsCheck`。`SceneInboundIntegrationTest` 的上行经玩家的入站包队列（`Player#addPacketToQueue`）进来，由该玩家所属的 tick 线程处理，路由器换成测试里的一个同形监听器；`SceneServiceIntegrationTest` 与 `SceneOwnerlessIntegrationTest` 在测试线程上直接派发。时钟：`SceneInboundIntegrationTest` 用可设的假时钟（从 100 s 起），其余用 `System::nanoTime`。都不需要数据库前置。
+
+源文件代号：`<SS>` 是 `server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/`，`<ST>` 是 `server-app/src/test/java/io/github/bearisbug/synaxis/app/scene/`。主代码行号按实现提交 `e9acd1b26e`，之后主代码没再改；测试行号按该次运行的提交（第 7 次运行是 `e9acd1b26e`，`SceneServiceIntegrationTest` 在 `8e736a7afe` 加了一条用例，其后的行号后移；第 12～16 次运行是 `f782a150a6`）。「改动前的红」在骨架上跑：骨架提交 `ced8fcbb1e` 里 `SceneService` 仍是组 K 的空实现（按插件分出的 `PluginPlay` 每个方法都抛 `UnsupportedOperationException`），`Outbox` 什么都不排、`ActionGate` 什么都不限、`WidgetEncoder` 把任何小部件编成同一个空 `TEXT`、报 0 B。反证一次跑完（第 7 次）：十四处临时改动同时打上（`docs/test-runs/RUN-077/H/04-counter-proofs/counter-proofs.diff`），其中把分发顺序改成「未知动作 → 限速 → 过期场景」的一处同时给 `TC-PLAY-039` 与 `TC-PLAY-040` 两条换序作齿，两条用例各自的输入只让其中一道换序起作用；每处打红的用例互不相同，21 条红，其余同一次都绿，跑完 `git checkout -- server-app`。另四处反证分两次跑（第 13、14 次，`10-rework-counter-proofs-a/` 与 `11-rework-counter-proofs-b/` 里各有一份 `counter-proofs.diff`）：两组都改 `act` 里过期判定那几行，不能同一次打上；每次打红的用例同样互不相同，跑完 `git checkout -- server-app/src/main`。
+
+运行（都经 `~/.claude/r077/gradle.zsh`，单次借 `/tmp/synaxis-heavy.lock`），共 16 次，读数见 `docs/test-runs/RUN-077/H/00-index.txt`：第 1 次骨架里 `WidgetEncoder.encode` 的桩总是抛异常，被 Error Prone 的 `DoNotCallSuggester` 拦在编译；第 2 次在骨架上跑红，`WidgetEncoderTest` 的尺寸搜索当时没有上界，在报 0 B 的桩上停不下来，手动结束了测试进程，该类只留下 2 条；第 3 次在 `ced8fcbb1e` 上只跑 `WidgetEncoderTest`，5 条全红；第 4 次实现初稿被 Error Prone 拦在编译（`MissingSummary` 8 处、`UnnamedVariable` 1 处）；第 5 次 73 条 1 条红，红的是 `WidgetEncoderTest` 自己的搜索循环把 4,097 B 时的拒绝当成异常抛出，测试改为把拒绝当搜索终点，那次的 XML 没留；第 6 次在 `e9acd1b26e` 上全绿；第 7 次反证；第 8、9 次还原之后在 4 线程严格与严格 grid 下跑；第 10 次在 `8e736a7afe`（加了 `leave` 的用例）上默认模式全绿；第 11 次的断线用例只调 `disconnect()`（其余与 `f782a150a6` 相同），红在等场景层被丢掉那一句，原因见 `TC-PLAY-049` 的前置，用例改为再让玩家在下一个 tick 移除自己；第 12 次在 `f782a150a6` 上默认模式 47 条全绿；第 13、14 次反证；第 15、16 次还原之后在 4 线程严格与严格 grid 下跑。
+
+#### `TC-PLAY-030` 一个出口：本 tick 的改动在玩家的 tick 末一起发出，先 `S2C_SCENE` 后 `S2C_HUD`，`enter` 之前设的场景所有者小部件不进新场景 — 对应 `REQ-PLAY-003`、`REQ-PLAY-004` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头。§19「同一 tick 先设小部件再切场景」。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest` 与 `io.github.bearisbug.synaxis.app.scene.OutboxTest`（第 6、10 次运行） | 0 失败。`everyChangeOfATickLeavesAtItsEndAndTheSceneGoesFirst`：同一 tick 里先设 `rush/hint`、再 `enter` 大厅、再设 `rush/timer`，tick 之前客户端在 `synaxis:play` 上什么都没收到；tick 之后恰好两条：`S2C_SCENE`（`scene_seq` 1，`rush:lobby`，动作表只有槽 0 `rush:queue`、冷却 2,000 ms），`S2C_HUD`（`CLEAR_OWNER rush`，`SET rush/timer`），没有 `rush/hint`；台账 `play_scene_entered` 一行，属性是 `connection_id`、`scene_id` `rush:lobby`、`scene_seq` 1、`owner` `rush`、`downgraded` false；下一个 tick 什么都不发。`OutboxTest` 的 8 条全绿，其中同一小部件一 tick 设两次只发后一次、一 tick 两次场景只发后一条、清一个所有者不碰别人的改动 |
+| 2 | 改动前的红：在骨架上跑同两个类（第 2 次运行） | `SceneServiceIntegrationTest` 10 条全红，`PluginPlay` 的方法抛 `UnsupportedOperationException: the scene layer of API-PLAY-005 is not implemented yet`；`OutboxTest` 8 条全红，桩什么都不发（如 `expected: <2> but was: <0>`） |
+| 3 | 反证有齿（`enter` 不丢掉排在前面的改动）：`<SS>Outbox.java:77` 的 `ops.removeIf(op -> op.owner().equals(owner));` 改为 `if (Boolean.getBoolean("proof.never")) ops.removeIf(op -> op.owner().equals(owner));`，与本节其余反证同一次跑（第 7 次运行），再还原 | 与它有关的红恰好三条：`SceneServiceIntegrationTest#everyChangeOfATickLeavesAtItsEndAndTheSceneGoesFirst`，`the hint set before the scene was entered reached the new scene`；`OutboxTest#theSceneGoesFirstAndAChangeTheSceneOwnerQueuedBeforeItIsGone` 与 `#aClearOfOneOwnerKeepsTheOtherOwnersChanges`，实际多出排在前面的 `SetWidget[owner=rush…]` |
+| 4 | 还原后跑第 1 步（第 10 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-031` 玩家有未完成的 move 时整个待发队列留到 move 完成之后 — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。组 I 的 `move` 调 `SceneService#holdUntil`，本条直接调它。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `SceneServiceIntegrationTest` 与 `OutboxTest`（第 6、10 次运行） | `aMoveUnderWayHoldsTheWholeQueueUntilItCompletes`：`holdUntil` 一个没完成的 future 之后 `enter` `rush:round` 并设 `rush/timer`，连续两个 tick 什么都不发；在另一条虚拟线程上完成 future，下一个 tick 发出 `S2C_SCENE`（`rush:round`）与 `S2C_HUD`（`CLEAR_OWNER rush`，`SET rush/timer`）。`OutboxTest#aMoveUnderWayHoldsTheWholeQueueUntilEveryMoveIsDone`：叠两次留发，第一个完成后仍不发，两个都完成才发 2 条，场景在前 |
+| 2 | 改动前的红（第 2 次运行） | 前一条抛 `UnsupportedOperationException`，后一条 `expected: <2> but was: <0>` |
+| 3 | 反证有齿（不留发）：`<SS>Outbox.java:101` 的 `if (!hold.get().isDone() \|\| (scene == null && ops.isEmpty())) return 0;` 改为 `if ((Boolean.getBoolean("proof.never") && !hold.get().isDone()) \|\| (scene == null && ops.isEmpty())) return 0;`（第 7 次运行），再还原 | 恰好这两条红，消息都含 `sent while the move was under way`：`OutboxTest` 在 `OutboxTest.java:130`，`expected: <0> but was: <2>` |
+| 4 | 还原后跑第 1 步（第 8、9、10 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-032` 切场景只清场景所有者的小部件，叠加者的保留；叠加者不能 `enter`、`leave`；`leave` 之后 `scene_seq` 不变、动作表清空 — 对应 `REQ-PLAY-003`、`REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。§19「切场景只清场景所有者的小部件」「叠加者不能让玩家进场景」，§11.2 的 `leave` 一行。叠加者的小部件按 v0.5 属于 S1。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `SceneServiceIntegrationTest`（第 6、10 次运行） | `aSceneChangeClearsTheSceneOwnersWidgetsAndKeepsTheOverlays`：`rush` 设 `rush/timer`、叠加者 `x` 设 `x/banner`，`rush` 先后进 `rush:lobby`、`rush:round`，照客户端的做法按 `(owner, widget_id)` 套用全部 `S2C_HUD` 之后只剩 `x/banner`；`x` 再 `remove` 发一条 `REMOVE x/banner`。`anOverlayCanNeitherEnterNorLeaveAScene`：`x` 调 `enter`、`leave` 都抛 `IllegalStateException`，`currentScene` 为空，客户端与台账都没有东西。`leavingASceneKeepsItsNumberAndDropsItsKeysAndTheSceneOwnersWidgets`（第 10 次才有）：`rush` `leave` 之后 `currentScene` 为空，客户端只收到 `S2C_HUD`（`CLEAR_OWNER rush`），没有 `S2C_SCENE`；带原 `scene_seq` 1 的 `rush:queue` 回 code 5，不是 4；这时的 `C2S_SCENE_READY` 1 不进台账；再 `leave` 一次不发东西；`x` 的 `hud().clear()` 发 `CLEAR_OWNER x`，第二次 `clear` 不发 |
+| 2 | 改动前的红（第 2 次运行） | 前两条都抛 `UnsupportedOperationException`；`leaving…` 一条是第 10 次运行前加的，没在骨架上跑过 |
+| 3 | 反证有齿（不判场景所有者）：`<SS>SceneService.java:210`（`enter` 里那一处）的 `if (!pluginId.equals(owner))` 改为 `if (Boolean.getBoolean("proof.never") && !pluginId.equals(owner))`（第 7 次运行），再还原 | 只红 `anOverlayCanNeitherEnterNorLeaveAScene`，在 `SceneServiceIntegrationTest.java:183`，`Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.` |
+| 4 | 还原后跑第 1 步（第 10 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-033` 大小上限：component 2,048 B 与小部件 4,096 B 在 `set` 时、`S2C_SCENE` 8 KiB 在 `enter` 时校验，超限抛 `IllegalArgumentException`，什么都不改 — 对应 `REQ-PLAY-004` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。§19「超限的小部件」，§6.4.3 大小上限一条。组 K 的 `TC-PLAY-011` 只判不用编码就能查的上限。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `WidgetEncoderTest` 与 `SceneServiceIntegrationTest`（第 6、10 次运行） | `aWidgetOf4096BytesIsTakenAndOneByteMoreIsNot`：逐个加长 `PANEL` 的标题（12 行、4 个按钮），恰好 4,096 B 的收下、报 4,096，多一个字符抛 `IllegalArgumentException`，消息含 `4097 bytes`；`aPanelOf5000BytesIsRefused`、`aComponentOver2048BytesIsRefused` 抛 `IllegalArgumentException`。`aPanelOf5000BytesIsRefusedAndChangesNothing`：`set` 抛异常，tick 之后再 `remove` 这个 id 也不发 `REMOVE`（表里没有它）；`aSceneOver8KibIsRefusedAndChangesNothing`：标题与 4 个动作标签各 2,000 个字符，`enter` 抛异常，`currentScene` 为空，没发包、没写台账 |
+| 2 | 改动前的红：`WidgetEncoderTest` 在第 3 次运行，两条 `SceneServiceIntegrationTest` 在第 2 次运行 | `WidgetEncoderTest` 5 条全红，如 `aWidgetOf4096…` 的 `expected: <4096> but was: <0>`；`SceneServiceIntegrationTest` 两条 `Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.UnsupportedOperationException>` |
+| 3 | 反证有齿（两处，第 7 次运行）：`<SS>WidgetEncoder.java:72` 的 `if (bytes > PlayProtocol.MAX_WIDGET_BYTES)` 改为 `if (Boolean.getBoolean("proof.never") && bytes > PlayProtocol.MAX_WIDGET_BYTES)`；`<SS>SceneService.java:235` 的 `if (bytes > PlayProtocol.MAX_MESSAGE_BYTES)` 同样加 `Boolean.getBoolean("proof.never") &&`；再还原 | 第一处红 `WidgetEncoderTest#aWidgetOf4096…`（`WidgetEncoderTest.java:94`）、`#aPanelOf5000BytesIsRefused`（`:105`）与 `SceneServiceIntegrationTest#aPanelOf5000BytesIsRefusedAndChangesNothing`（`:202`），都是 `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；第二处只红 `aSceneOver8KibIsRefusedAndChangesNothing`（`:222`），消息同上；`aComponentOver2048…` 绿（2,048 B 由 `ComponentBytes` 守，`TC-PLAY-014`） |
+| 4 | 还原后跑第 1 步（第 10 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-034` `S2C_HUD` 按 op 边界拆包，字节上限与条数上限各自生效 — 对应 `REQ-PLAY-004` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。§19「一个 tick 的改动超过 32 个 op」。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `OutboxTest`（第 6、10 次运行） | `thirtyTwoScoreboardsOfAboutOneKibSplitOnTheByteCap`：32 个约 1 KiB 的 `SCOREBOARD` 拆成至少 4 条，每条 ≤ 8,192 B，且每条再加下一条的第一个 op 就会超过 8,192 B，32 个 op 保持原序；`thirtyThreeSmallTextsSplitOnTheOpCap`：33 个很小的 `TEXT` 拆成 32 个与 1 个两条，都远小于 8,192 B |
+| 2 | 改动前的红（第 2 次运行） | 两条都红：`32 widgets of about 1 KiB went out in 0`、`33 ops in one tick ==> expected: <2> but was: <0>` |
+| 3 | 反证有齿（只按字节拆）：`<SS>Outbox.java:108` 的 `batch.size() == S2CHud.MAX_OPS` 改为 `(Boolean.getBoolean("proof.never") && batch.size() == S2CHud.MAX_OPS)`（第 7 次运行），再还原 | 只红 `thirtyThreeSmallTextsSplitOnTheOpCap`：`MalformedMessageException: 33 ops are over the cap of 32`；32 个 `SCOREBOARD` 那条仍绿 |
+| 4 | 还原后跑第 1 步（第 10 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-035` 小部件编码：插件面的四种小部件对上线上布局，`PANEL` 按钮补本插件的前缀 — 对应 `REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `WidgetEncoderTest`（第 6、10 次运行） | `eachKindBecomesItsWireWidget`：`TEXT`（`TOP_CENTER`、order 3、ttl 5 s）、`TIMER`（45 s、running）、`SCOREBOARD`、`PANEL` 分别等于 `:protocol` 的工厂方法用 `ComponentBytes` 编出的 `Widget`，槽位取序数，`Encoded.bytes` 等于实际编码长度，`PANEL` 的按钮 `back` 变成 `rush:back`；`aButtonGetsThePluginsPrefixAndAnotherPluginsIsRefused`：`back`、`rush:again` 收下，`rts:back` 与 `Back Home` 抛 `IllegalArgumentException` |
+| 2 | 改动前的红（第 3 次运行） | 两条都红，如 `expected: <[rush:again, rush:back]> but was: <[]>` |
+| 3 | 反证有齿：不另做，第 2 步的骨架就是「不编码」的情形 | — |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-036` 限速与冷却的单元：整秒窗口 10 次，按槽位冷却，时钟为负也按整秒切 — 对应 `REQ-PLAY-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`System.nanoTime` 可以是负数。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ActionGateTest`（第 6、10 次运行） | `tests="5"` 0 失败：100.0～100.81 s 的 10 次收下、100.95 s 的第 11 次拒、101.0 s 收下；100.95 s 的 10 次之后 101.0 s 收下；−0.95～−0.14 s 的 10 次之后 −0.01 s 拒、0 收下；冷却 2 s 在 1.5 s 后剩 0.5 s、2 s 后为 0，别的槽为 0；换场景清掉全部冷却，冷却 0 顶掉在跑的冷却 |
+| 2 | 改动前的红（第 2 次运行） | 4 条红；`aSceneChangeEndsEveryCooldownAndAZeroCooldownIsNone` 绿（桩恒报 0） |
+| 3 | 反证有齿（整秒用截断除法）：`<SS>ActionGate.java:39` 的 `Math.floorDiv(now, SECOND)` 改为 `now / SECOND`（第 7 次运行），再还原 | 只红 `aClockBelowZeroStillCutsWholeSeconds`，在 `ActionGateTest.java:46`，`expected: <true> but was: <false>` |
+| 4 | 还原后跑第 1 步（第 10 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-037` 过期场景的动作回 4，不调 handler — 对应 `REQ-PLAY-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。§19「过期场景的动作」。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.scene.SceneInboundIntegrationTest`（第 6、10 次运行） | `anActionOfAnEarlierSceneIsAnsweredStaleAndNeverReachesTheHandler`：玩家第二次进大厅（`scene_seq` 2）之后，带 `scene_seq` 1 的 `rush:queue` 回 `S2CActionResult(1, 4, 空, 0)`，handler 一次都没跑 |
+| 2 | 改动前的红（第 2 次运行） | `SceneInboundIntegrationTest` 10 条全红，都在 `start` 里注册动作时抛 `UnsupportedOperationException` |
+| 3 | 反证有齿（去掉过期判定）：`<SS>SceneService.java:332` 的 `if (action.sceneSeq() != scene.sceneSeq()) {` 改为 `if (Boolean.getBoolean("proof.never") && action.sceneSeq() != scene.sceneSeq()) {`（第 14 次运行，与 `TC-PLAY-049` 的一处同次），再还原。第 7 次运行的换序（未知动作 → 限速 → 过期场景）里本条是绿的：换序后过期一道仍在，一条动作也用不满限速，那次换序只给 `TC-PLAY-039` 作齿 | 本条红在 `SceneInboundIntegrationTest.java:184`：`expected: <[S2CActionResult[actionSeq=1, code=4, reason=EncodedComponent[], cooldownMs=0]]> but was: <[S2CActionResult[actionSeq=1, code=0, reason=EncodedComponent[], cooldownMs=0]]>`，handler 跑了；同一处也让 `TC-PLAY-039` 红（该条第 5 步） |
+| 4 | 还原后跑第 1 步（第 15、16 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-038` 冷却与限速：冷却内回 2 并带剩余时间，同一整秒窗口的第 11 条回 3 — 对应 `REQ-PLAY-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。§19「冷却与限速」。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `SceneInboundIntegrationTest`（第 6、10 次运行） | `aKeyStillCoolingDownIsAnsweredCooldownAndTheEleventhActionOfTheWindowIsRateLimited`：时钟 100.9 s 发 `rush:queue`，回 ok、`cooldown_ms` 2,000；时钟 101.2 s 同一 tick 再发 11 条：前 10 条回 2，reason 是带参数 2 的 `synaxis:action-cooldown`，`cooldown_ms` 1,700，第 11 条回 3；handler 只跑了 1 次 |
+| 2 | 改动前的红（第 2 次运行） | 同 `TC-PLAY-037` 第 2 步 |
+| 3 | 反证有齿（不判冷却）：`<SS>SceneService.java:349` 的 `if (left > 0) {` 改为 `if (Boolean.getBoolean("proof.never") && left > 0) {`（第 7 次运行），再还原 | 只红本条：`expected: <[2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3]> but was: <[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3]>` |
+| 4 | 还原后跑第 1 步（第 10 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-039` 过期场景先于限速且不占限速额度：同一整秒窗口里 11 条旧 `scene_seq` 的动作都回 4，随后 11 条当前场景的未知动作前 10 条回 5、第 11 条回 3 — 对应 `REQ-PLAY-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。§19「过期场景先于限速」。第一轮计划评审指出：§19「冷却与限速」那 11 条动作都带当前 `scene_seq`，过期与限速谁先谁后结果都一样，拿它作这处换序的反证没有齿，所以单设本条。只发过期动作也不够：先计入限速窗口、后判过期的实现同样回 11 个 4，所以同一窗口随后再发 11 条当前场景的动作，看前面那 11 条有没有占掉额度。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `SceneInboundIntegrationTest`（第 12、15、16 次运行） | `aStaleActionIsJudgedBeforeTheRateLimit`：当前 `scene_seq` 2，同一 tick（假时钟停在 100 s，同一整秒窗口）先发 11 条带 `scene_seq` 1 的 `rush:queue`，再发 11 条带 `scene_seq` 2 的 `rush:nope`（不在动作表、也没有插件注册）；22 个结果依次是 11 个 4、10 个 5、1 个 3，handler 0 次 |
+| 2 | 改动前的红（第 2 次运行，当时用例只发前 11 条） | 同 `TC-PLAY-037` 第 2 步 |
+| 3 | 反证有齿（限速排到过期之前）：把 `<SS>SceneService.java:332`～`:346` 的三道判定改成「未知动作 → 限速 → 过期场景」（`04-counter-proofs/counter-proofs.diff` 里 `act` 那一处），第 7 次运行（当时用例只发前 11 条），再还原。限速挪到过期之前是本条的齿；本条的 11 条动作都在动作表里、都已注册，挪到最前的未知动作一道对它不起作用 | 红在 `SceneInboundIntegrationTest.java:227`：`a stale action took a place in the window of the rate limit ==> expected: <[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]> but was: <[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3]>` |
+| 4 | 反证有齿（先计入限速窗口、后判过期）：`<SS>SceneService.java:332`～`:336` 改成先 `final boolean admitted = scene.gate().admit(now);`、再判过期、最后判 `!admitted`（`10-rework-counter-proofs-a/counter-proofs.diff`，第 13 次运行，与 `TC-PLAY-049` 的一处同次），再还原。过期与限速的结果码先后不变，只差过期的动作占不占额度 | 本条红在 `SceneInboundIntegrationTest.java:232`：`a stale action took a place in the window of the rate limit ==> expected: <[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 3]> but was: <[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]>`；同一次本节其余用例只有 `TC-PLAY-049` 那条红 |
+| 5 | 反证有齿（去掉过期判定）：与 `TC-PLAY-037` 第 3 步同一处（第 14 次运行），再还原 | 本条红在 `:232`：`but was: <[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]>`：旧场景的 `rush:queue` 进了 handler，`scene_seq` 不等所以不开冷却，前 10 条回 0，额度用完后其余都回 3 |
+| 6 | 还原后跑第 1 步（第 15、16 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-040` 限速先于未知动作：11 个未知动作前 10 条回 5、第 11 条回 3 — 对应 `REQ-PLAY-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。§19「限速先于未知动作」。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `SceneInboundIntegrationTest`（第 6、10 次运行） | `theRateLimitIsJudgedBeforeTheActionIsLookedUp`：同一 tick 发 11 条 `scene_seq` 为当前值的 `rush:nope`（不在动作表、也没有插件注册），前 10 条回 5，第 11 条回 3 |
+| 2 | 改动前的红（第 2 次运行） | 同 `TC-PLAY-037` 第 2 步 |
+| 3 | 反证有齿（未知动作排到限速之前）：与 `TC-PLAY-039` 第 3 步同一处换序。未知动作挪到限速之前是本条的齿；本条的动作都带当前 `scene_seq`，挪到最后的过期一道对它不起作用 | 红在 `SceneInboundIntegrationTest.java:244`：`an unknown action escaped the rate limit ==> expected: <[5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 3]> but was: <[5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]>` |
+| 4 | 还原后跑第 1 步（第 10 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-041` 结果：`rejected` 带插件给的 reason，handler 抛异常回不带 reason 的 `rejected` 且 ERROR 受限；handler 里切了场景不开冷却 — 对应 `REQ-PLAY-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `SceneInboundIntegrationTest`（第 6、10 次运行） | `aRefusalCarriesThePluginsReasonAndAFailingHandlerIsRefusedWithoutOne`：`rush:deny` 回 `S2CActionResult(4, 1, rush.no 的翻译键组件, 0)`，`rush:boom` 回 `(5, 1, 空, 0)`，两条动作恰好两条结果；`SceneService` 的日志器恰好 1 行 ERROR，含 `action_id=rush:boom`。`aHandlerThatChangesTheSceneIsAnsweredWithoutStartingACooldown`：`rush:switch`（槽 3，冷却 5 s）的 handler 里 `enter` `rush:round`，结果 ok、`cooldown_ms` 0，随后同一 tick 末发出 `scene_seq` 2 的 `S2C_SCENE` |
+| 2 | 改动前的红（第 2 次运行） | 同 `TC-PLAY-037` 第 2 步 |
+| 3 | 反证有齿（切了场景照样开冷却）：`<SS>SceneService.java:369` 的 `slot != null && scene.sceneSeq() == action.sceneSeq()` 改为 `slot != null && (scene.sceneSeq() == action.sceneSeq() \|\| !Boolean.getBoolean("proof.never"))`（第 7 次运行），再还原 | 只红 `aHandlerThatChanges…`：`expected: <S2CActionResult[actionSeq=9, code=0, reason=EncodedComponent[], cooldownMs=0]> but was: <…cooldownMs=5000]>` |
+| 4 | 还原后跑第 1 步（第 10 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-042` `PANEL` 按钮的动作被受理；插件被拆掉后动作被收回；`onAction` 只在 `onEnable` 里、每个 id 一次、只在本命名空间 — 对应 `REQ-PLAY-003`、`REQ-PLAY-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`API-PLAY-005` 的收回一条。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `SceneServiceIntegrationTest`（第 6、10 次运行） | `aPanelButtonIsAnActionTheHostTakes`：`rush:round` 没有动作槽，`PANEL` 带按钮 `back`；`C2S_ACTION(1, 7, rush:back)` 让 handler 收到 `ActionRequest(rush:back, 7, None)`，回 `(7, 0, 空, 0)`。`theActionsOfAPluginTornDownAreTakenBack`：`reclaim("rush")` 之后 `rush:queue` 回 5、handler 没跑，再 `onAction` 抛 `IllegalStateException`。`actionsAreRegisteredInOnEnableOnlyOnceEachAndInTheirOwnNamespace`：同一 id 第二次 `IllegalStateException`，`rts:` 前缀 `IllegalArgumentException`，`sealActions` 之后 `IllegalStateException`，另一个插件照样能注册 |
+| 2 | 改动前的红（第 2 次运行） | 三条都抛 `UnsupportedOperationException` |
+| 3 | 反证有齿（拆插件不收回动作）：`<SS>ActionRegistry.java:77` 的 `byId.values().removeIf(…)` 改为 `if (Boolean.getBoolean("proof.never")) byId.values().removeIf(…)`（第 7 次运行），再还原 | 只红 `theActionsOfAPluginTornDownAreTakenBack`，在 `SceneServiceIntegrationTest.java:272`，`the handler of a plugin torn down was called ==> expected: <0> but was: <1>` |
+| 4 | 还原后跑第 1 步（第 10 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-043` 解不开的上行与客户端发来的下行消息以 `synaxis:protocol-error` 断线；未知 `msg_id` 丢弃，日志受 `LogBudget` 限制 — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`API-PLAY-002` 的三条硬性行为与 v0.5 的实现一条。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `SceneInboundIntegrationTest`（第 6、10 次运行） | `aPayloadThatDoesNotDecodeOrIsAMessageOfOursDisconnects`：一名玩家发 `{0x02, 0x01}`（截断的 `C2S_ACTION`），另一名发一条 `S2C_ACTION_RESULT`，各收到一个 `DisconnectPacket`，内容是翻译键 `synaxis:protocol-error`，连接下线。`anUnknownMessageIsDroppedWithoutAnAnswerAndItsLineIsWithinTheBudget`：200 条 `msg_id` 0x7f 分 4 个 tick 进来，不断线、不回包，WARN 恰好 1 行 |
+| 2 | 改动前的红（第 2 次运行） | 同 `TC-PLAY-037` 第 2 步 |
+| 3 | 反证有齿（不断线）：`<SS>SceneService.java:407` 的 `connection.kick(DisconnectReasons.PROTOCOL_ERROR);` 改为 `if (Boolean.getBoolean("proof.never")) connection.kick(DisconnectReasons.PROTOCOL_ERROR);`（第 7 次运行），再还原 | 只红 `aPayloadThatDoesNotDecode…`，在 `SceneInboundIntegrationTest.java:290`，`Expected 1 element, got [] ==> expected: <1> but was: <0>` |
+| 4 | 还原后跑第 1 步（第 10 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-044` 台账只记当前 `scene_seq` 的第一条就绪 — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。§11.2 表后一段、§16「客户端对同一场景重发 `C2S_SCENE_READY`」。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `SceneInboundIntegrationTest`（第 6、10 次运行） | `onlyTheFirstReadyOfTheCurrentSceneReachesTheLedger`：当前 `scene_seq` 2 时依次收到就绪 1、2、2、3，`play_scene_ready` 恰好一行，属性 `connection_id` 与 `scene_seq` 2 |
+| 2 | 改动前的红（第 2 次运行） | 同 `TC-PLAY-037` 第 2 步 |
+| 3 | 反证有齿（重发的就绪照记）：`<SS>PlayerScene.java:147` 的 `\|\| readySeq == sceneSeq) return false;` 改为 `\|\| (Boolean.getBoolean("proof.never") && readySeq == sceneSeq)) return false;`（第 7 次运行），再还原 | 只红本条：实际多出第二行 `scene_seq=2` |
+| 4 | 还原后跑第 1 步（第 10 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-045` 没有场景所有者：平坦核心与挂地图的分片收到的上行静默丢弃，不写日志、不回包、不断线，照常计入入站包速率闸 — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。光照会话 2026-10-12 的要求 2（`docs/DESIGN-PLAY.md` `API-PLAY-002`「没有场景所有者时」一条，§19 两个场景）。挂地图的分片用真 `PluginHost` 照 `Main#serveMap` 以宿主保留 id 占准入槽，不起真分片进程。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest` 与 `SceneInboundIntegrationTest`（第 6、10 次运行） | `theCoreModeDropsEveryPlayPayloadSilently`（真 `PluginHost` 加 `CoreMode.start`）与 `aShardServingAMapDropsEveryPlayPayloadSilently`：经插件宿主的路由器在 `synaxis:play` 上连发 10,000 条，六种负载轮换（`C2S_ACTION`、`C2S_SCENE_READY`、未知 `msg_id` 0x7f、`S2C_ACTION_RESULT`、`{0x02, 0x01}`、空负载），测试线程上任何日志器都没有 INFO、WARN、ERROR；随后一个 tick，`synaxis:play` 上一条下行都没有，没有 `DisconnectPacket`，连接在线。`thePayloadsOfThePlayChannelCountAgainstTheInboundPacketLimit`：进程自己的入站包速率闸对 `synaxis:play` 的 `ClientPluginMessagePacket` 前 750 个判 `ACCEPT`、第 751 个判 `KICK`；这一条只调引擎的 `InboundPacketLimits.Limiter`，不经场景层，在组 K 的空实现与本组的实现上都绿，它证明引擎的入站闸不按通道豁免 `synaxis:play`，不是场景层的行为。`withoutASceneOwnerEveryPayloadIsDroppedUnreadUnloggedAndUnanswered`：准入槽空着（场景所有者给 null）时同样六种负载都不回包、不断线，`SceneService` 的日志器一行都没有，台账没有行 |
+| 2 | 改动前的红：不适用。组 K 的空实现什么都不做，这几条在骨架上本来就绿（第 2 次运行 `SceneOwnerlessIntegrationTest` 3 条绿）；本条要证明实现之后仍然什么都不做，齿在第 3 步 | — |
+| 3 | 反证有齿（把宿主的保留 id 当成场景所有者）：`<SS>SceneService.java:287` 的 `holder.equals(HOST_ID)` 改为 `(Boolean.getBoolean("proof.never") && holder.equals(HOST_ID))`（第 7 次运行），再还原 | 恰好核心模式与地图分片两条红，在 `SceneOwnerlessIntegrationTest.java:96`：`expected: <[]> but was: <[Dropped an unknown play message: connection_id=… msg_id=0x7f (1 unknown play messages since the last report), Refusing a play payload: connection_id=… reason=synaxis:protocol-error …]>`；入站闸那条与准入槽空着那条绿 |
+| 4 | 还原后跑第 1 步（第 8、9、10 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-046` 场景层的日志门禁与宿主回归，翻译键门禁读数 62 键 — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`ClientDrivenLogArchitectureTest` 的规则覆盖整个 `app` 包树，`app.scene` 不在豁免名单里，本组的日志全部经 `LogBudget`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:server-app` 的 `io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest`、`PluginHostPlayWiringIntegrationTest`、`PluginHostIntegrationTest`、`CoreModeIntegrationTest` 与 `:architecture-tests` 的 `io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest`（第 6、10 次运行） | 2、2、18、8、2 条，都 0 失败；门禁的 `<system-out>` 是 `translation key gate: 62 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`。组 K 之后是 61 键，多出的是 `SceneService` 发的 `synaxis:action-cooldown`，两份语言文件组 K 已加齐。`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717` 里的键数由集成轮按 CI 输出统一改 |
+| 2 | 改动前的红：不适用，都是既有门禁与回归，本组没改它们 | — |
+| 3 | 反证有齿：不另做；`ClientDrivenLogArchitectureTest#theHostLogRuleRejectsALinePerPayload` 自带反证 fixture | — |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-047` 场景层出口每名玩家每 tick 的耗时（§15），只打印不断言 — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。读数只当量级看：本机 `--max-workers=2`，同机还有别的组在排锁。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 读 `SceneServiceIntegrationTest` 报告的 `<system-out>`（`timesTheExitOfTheSceneLayerPerPlayerPerTick`：每 tick 设一个 `TIMER` 与一个 8 行的 `SCOREBOARD`，再派发该玩家的 `PlayerTickEvent`，预热 2,000 次后量 10,000 次） | 一行 `scene layer exit per player per tick: mean=… ms p99=… ms max=… ms over 10000 ticks; the two sets before it: …`，最后一个 tick 恰好发出 1 条含 2 个 op 的 `S2C_HUD`。本组读数（mean / p99 / max，ms）：第 6 次 0.0013 / 0.0023 / 0.0286，第 8 次（4 线程严格）0.0024 / 0.0028 / 8.9841，第 9 次（严格 grid）0.0015 / 0.0028 / 0.0642，第 10 次 0.0020 / 0.0023 / 6.2744，第 12 次 0.0026 / 0.0038 / 7.9590，第 15 次（4 线程严格）0.0015 / 0.0025 / 0.0278，第 16 次（严格 grid）0.0026 / 0.0032 / 7.8768；两次 `set` 均值 0.0039～0.0053 ms。均值与 P99 都在 §15 的 0.05 ms 之内，长尾没有归因 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-048` 多线程：本组改到的类在 4 线程严格与严格 grid 下各跑一遍 — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`ci.yml` 的两个多线程 job 用同样的参数跑全部测试。`SceneInboundIntegrationTest` 的上行在这两种模式下由玩家所属的 tick 线程处理，`SceneServiceIntegrationTest` 的 move 由另一条虚拟线程完成。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.scene.*`、`SceneOwnerlessIntegrationTest`、`PluginHostPlayWiringIntegrationTest`，加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`（第 8 次运行在 `e9acd1b26e` 上，第 15 次在 `f782a150a6` 上，都在反证还原之后） | 第 8 次 45 条、第 15 次 47 条，都 0 失败；第 15 次含 `TC-PLAY-032` 的 `leavingASceneKeepsItsNumberAndDropsItsKeysAndTheSceneOwnersWidgets` 与 `TC-PLAY-049` 的 `aConnectionThatGoesTakesItsSceneLayerAlongAndCannotEnterAnother` |
+| 2 | 同第 1 步，再加 `-Dsynaxis.thread-provider=grid`（第 9、16 次运行） | 第 9 次 45 条、第 16 次 47 条，都 0 失败 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-049` 断线时丢掉该连接的场景层，离线的连接不能再进场景 — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`docs/DESIGN-PLAY.md` `API-PLAY-002`「实现（S1，RUN-077 组 H）」一条的「连接断开（`PlayerDisconnectEvent`）时丢掉」，§19 宿主集成一行。`:testing` 的测试连接调 `disconnect()` 只把连接标成离线（`testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnectionImpl.java:131-133`），不移除玩家、不派发 `PlayerDisconnectEvent`，被踢的测试连接同样走不到 `SceneService` 的断线监听；要测断线清理，得照真连接在 PLAY 阶段的做法（`network/player/PlayerConnection.java:274`）再让玩家在下一个 tick 移除自己，移除时派发该事件（`entity/Player.java:678`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `SceneServiceIntegrationTest`（第 12、15、16 次运行） | `aConnectionThatGoesTakesItsSceneLayerAlongAndCannotEnterAnother`：进大厅后 `currentScene` 是 `rush:lobby`；连接离线后 `enter` `rush:round` 抛 `IllegalStateException`（离线的连接不再建场景层）；`scheduleNextTick(Entity::remove)` 再 tick 一次之后 `currentScene` 为空 |
+| 2 | 改动前的红：不适用。断线清理在实现提交 `e9acd1b26e` 里就有，本条补的是断言，齿在第 3 步 | — |
+| 3 | 反证有齿（两处，分两次跑）：① 不挂断线监听：`<SS>SceneService.java:130` 的 `hostNode.addListener(PlayerDisconnectEvent.class,` 改为 `if (Boolean.getBoolean("proof.never")) hostNode.addListener(PlayerDisconnectEvent.class,`（第 13 次运行）；② 离线的连接照样建场景层：`<SS>SceneService.java:296` 的 `if (!connection.isOnline()) return null;` 改为 `if (Boolean.getBoolean("proof.never") && !connection.isOnline()) return null;`（第 14 次运行）；各自再还原 | ① 本条红在 `SceneServiceIntegrationTest.java:335`：`the scene layer of a connection gone was kept ==> expected: <Optional.empty> but was: <Optional[rush:lobby]>`；② 本条红在 `:331`：`a scene layer made for a connection offline ==> Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.`。两次另红的用例都是同次另一处改动打的：第 13 次另红 `TC-PLAY-039` 第 4 步那条，第 14 次另红 `TC-PLAY-037` 第 3 步与 `TC-PLAY-039` 第 5 步那两条 |
+| 4 | 还原后跑第 1 步（第 15、16 次运行） | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
 
 ### 玩法架构 · RUN-077：I（宿主托管实例 `InstanceRegistry`）
 

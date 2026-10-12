@@ -1,0 +1,27 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java
+index eb306b83e5..95db9fd283 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java
+@@ -127,7 +127,7 @@ public final class SceneService {
+      */
+     public void attach(EventNode<Event> hostNode) {
+         hostNode.addListener(PlayerTickEvent.class, event -> flush(event.getPlayer()));
+-        hostNode.addListener(PlayerDisconnectEvent.class,
++        if (Boolean.getBoolean("proof.never")) hostNode.addListener(PlayerDisconnectEvent.class,
+                 event -> scenes.remove(event.getPlayer().getPlayerConnection().connectionId()));
+     }
+ 
+@@ -329,11 +329,12 @@ public final class SceneService {
+         if (scene == null) return;
+         final long now = nanoClock.getAsLong();
+         final int actionSeq = action.actionSeq();
++        final boolean admitted = scene.gate().admit(now);
+         if (action.sceneSeq() != scene.sceneSeq()) {
+             answer(player, actionSeq, ActionResultCode.STALE_SCENE, EncodedComponent.NONE, 0);
+             return;
+         }
+-        if (!scene.gate().admit(now)) {
++        if (!admitted) {
+             answer(player, actionSeq, ActionResultCode.RATE_LIMITED, EncodedComponent.NONE, 0);
+             return;
+         }

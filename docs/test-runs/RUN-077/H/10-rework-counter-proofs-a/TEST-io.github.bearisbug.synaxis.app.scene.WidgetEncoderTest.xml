@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.scene.WidgetEncoderTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-12T06:32:50.939Z" hostname="Mac.local" time="0.023">
+  <properties/>
+  <testcase name="aPanelOf5000BytesIsRefused()" classname="io.github.bearisbug.synaxis.app.scene.WidgetEncoderTest" time="0.0"/>
+  <testcase name="aWidgetOf4096BytesIsTakenAndOneByteMoreIsNot()" classname="io.github.bearisbug.synaxis.app.scene.WidgetEncoderTest" time="0.021"/>
+  <testcase name="aComponentOver2048BytesIsRefused()" classname="io.github.bearisbug.synaxis.app.scene.WidgetEncoderTest" time="0.0"/>
+  <testcase name="eachKindBecomesItsWireWidget()" classname="io.github.bearisbug.synaxis.app.scene.WidgetEncoderTest" time="0.001"/>
+  <testcase name="aButtonGetsThePluginsPrefixAndAnotherPluginsIsRefused()" classname="io.github.bearisbug.synaxis.app.scene.WidgetEncoderTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

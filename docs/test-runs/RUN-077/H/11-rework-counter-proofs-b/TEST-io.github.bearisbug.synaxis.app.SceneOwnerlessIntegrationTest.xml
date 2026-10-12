@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-12T06:33:12.926Z" hostname="Mac.local" time="0.465">
+  <properties/>
+  <testcase name="aShardServingAMapDropsEveryPlayPayloadSilently(Env)" classname="io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest" time="0.072"/>
+  <testcase name="theCoreModeDropsEveryPlayPayloadSilently(Env)" classname="io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest" time="0.386"/>
+  <testcase name="thePayloadsOfThePlayChannelCountAgainstTheInboundPacketLimit(Env)" classname="io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest" time="0.007"/>
+  <system-out><![CDATA[14:33:12.932 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+14:33:12.932 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+14:33:12.997 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:33:12.997 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=d046e83a-92eb-41bd-9abe-a86afb0cfd37 identifier=RandName reason=synaxis:server-stopping
+14:33:12.997 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=d046e83a-92eb-41bd-9abe-a86afb0cfd37 identifier=RandName reason=synaxis:server-stopping
+14:33:12.998 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:33:12.998 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+14:33:13.004 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+14:33:13.004 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+14:33:13.322 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:main
+14:33:13.323 [Test worker] INFO  i.g.bearisbug.synaxis.app.CoreMode - Core mode (synaxis.app.core-mode=auto): no plugin is serving gameplay, so the host serves its own flat world. spawn=Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0] channel=synaxis:main (echoes every payload back)
+14:33:13.382 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:33:13.382 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=f5150b80-e4ea-48a2-aeed-ec76eb2e5654 identifier=RandName reason=synaxis:server-stopping
+14:33:13.382 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=f5150b80-e4ea-48a2-aeed-ec76eb2e5654 identifier=RandName reason=synaxis:server-stopping
+14:33:13.383 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:33:13.383 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+14:33:13.390 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:33:13.390 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:33:13.391 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

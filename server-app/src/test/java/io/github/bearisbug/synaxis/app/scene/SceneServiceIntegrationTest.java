@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.event.player.PlayerTickEvent;
 import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
 import io.github.bearisbug.synaxis.game.protocol.play.ActionResultCode;
 import io.github.bearisbug.synaxis.game.protocol.play.C2SAction;
+import io.github.bearisbug.synaxis.game.protocol.play.C2SSceneReady;
 import io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent;
 import io.github.bearisbug.synaxis.game.protocol.play.PlayMessage;
 import io.github.bearisbug.synaxis.game.protocol.play.S2CActionResult;
@@ -50,8 +51,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The scene layer of the host as the plugins drive it ({@code docs/DESIGN-PLAY.md} {@code API-PLAY-005},
  * §6.4.3, the host integration row of §19): one exit at the end of each player's tick, the scene before the
  * HUD, the whole queue held while a move is under way, a scene change clearing the scene owner's widgets and
- * keeping the overlays', the sizes refused before anything changes, and the actions of a plugin taken back
- * when it is torn down. It also times the exit (§15), printed only.
+ * keeping the overlays', a scene left keeping its number, the sizes refused before anything changes, and the
+ * actions of a plugin taken back when it is torn down. It also times the exit (§15), printed only.
  */
 @EnvTest
 class SceneServiceIntegrationTest {
@@ -85,6 +86,12 @@ class SceneServiceIntegrationTest {
     private static byte[] action(int sceneSeq, int actionSeq, String actionId) {
         final MsgBuf buf = MsgBuf.writing();
         new C2SAction(sceneSeq, actionSeq, actionId, new C2SAction.None()).write(buf);
+        return buf.toByteArray();
+    }
+
+    private static byte[] ready(int sceneSeq) {
+        final MsgBuf buf = MsgBuf.writing();
+        new C2SSceneReady(sceneSeq).write(buf);
         return buf.toByteArray();
     }
 
@@ -273,6 +280,38 @@ class SceneServiceIntegrationTest {
         assertEquals(List.of(new S2CActionResult(3, ActionResultCode.UNKNOWN_ACTION, EncodedComponent.NONE, 0)),
                 SceneTestKit.messages(packets));
         assertThrows(IllegalStateException.class, () -> rush.onAction("again", (_, _) -> new ActionResult.Ok()));
+    }
+
+    @Test
+    void leavingASceneKeepsItsNumberAndDropsItsKeysAndTheSceneOwnersWidgets(Env env) {
+        final SceneService scenes = SceneTestKit.service(env, "rush", ledger, System::nanoTime);
+        final PluginPlay rush = scenes.forPlugin("rush");
+        final PluginPlay overlay = scenes.forPlugin("x");
+        rush.onAction("queue", (_, _) -> new ActionResult.Ok());
+        scenes.sealActions("rush");
+        final Client client = join(env, env.createFlatInstance());
+        rush.enter(client.player(), LOBBY);
+        rush.hud(client.player()).set(TIMER);
+        overlay.hud(client.player()).set(BANNER);
+        env.tick();
+        final Collector<PluginMessagePacket> packets = client.track();
+
+        rush.leave(client.player());
+        env.tick();
+        // The number stays: an action of the scene left is unknown now, not stale
+        scenes.receive(client.player(), action(1, 2, "rush:queue"));
+        scenes.receive(client.player(), ready(1));
+        rush.leave(client.player());
+        overlay.hud(client.player()).clear();
+        env.tick();
+        overlay.hud(client.player()).clear();
+        env.tick();
+
+        assertEquals(Optional.empty(), rush.currentScene(client.player()));
+        assertEquals(List.of(new S2CHud(List.of(new S2CHud.ClearOwner("rush"))),
+                new S2CActionResult(2, ActionResultCode.UNKNOWN_ACTION, EncodedComponent.NONE, 0),
+                new S2CHud(List.of(new S2CHud.ClearOwner("x")))), SceneTestKit.messages(packets));
+        assertEquals(List.of(), ledger.of("play_scene_ready"), "a ready of the scene left was recorded");
     }
 
     @Test

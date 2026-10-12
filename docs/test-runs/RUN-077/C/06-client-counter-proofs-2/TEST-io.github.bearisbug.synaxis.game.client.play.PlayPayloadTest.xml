@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" tests="6" skipped="0" failures="2" errors="0" timestamp="2026-10-12T07:08:31.577Z" hostname="Mac.local" time="0.005">
+  <properties/>
+  <testcase name="theChannelIdIsTheOneTheHostRoutesOn()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.001"/>
+  <testcase name="aTruncatedMessageThrowsOutOfTheDecoder()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.game.protocol.MalformedMessageException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.game.protocol.MalformedMessageException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest.aTruncatedMessageThrowsOutOfTheDecoder(PlayPayloadTest.java:73)
+</failure>
+  </testcase>
+  <testcase name="theThreeDownwardMessagesComeBackAsTheySent()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.0"/>
+  <testcase name="aMessageOfALaterVersionIsDroppedRatherThanBreakingTheConnection()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.0"/>
+  <testcase name="theTwoUpwardMessagesGoOutAsTheSharedCodecWritesThem()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.001"/>
+  <testcase name="aMessageBrokenInsideThrowsToo()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.game.protocol.MalformedMessageException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.game.protocol.MalformedMessageException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest.aMessageBrokenInsideThrowsToo(PlayPayloadTest.java:88)
+</failure>
+  </testcase>
+  <system-out><![CDATA[[15:08:31] [Test worker/WARN]: Dropped an unknown play message: msg_id=0x83
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

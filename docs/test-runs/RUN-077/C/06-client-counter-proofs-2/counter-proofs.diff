@@ -1,0 +1,39 @@
+diff --git a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/ActionKeys.java b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/ActionKeys.java
+index 01e9206974..a2791d7f36 100644
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/ActionKeys.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/ActionKeys.java
+@@ -24,7 +24,7 @@ public final class ActionKeys {
+             KeyMapping.Category.register(Identifier.fromNamespaceAndPath("synaxis", "play"));
+ 
+     /** Action key 1, the scene's action slot 0. */
+-    public static final KeyMapping KEY_1 = new KeyMapping(ACTION_1, InputConstants.Type.KEYSYM, InputConstants.KEY_H, CATEGORY);
++    public static final KeyMapping KEY_1 = new KeyMapping(ACTION_1, InputConstants.Type.KEYSYM, Boolean.getBoolean("proof.never") ? InputConstants.KEY_H : InputConstants.KEY_G, CATEGORY);
+ 
+     private ActionKeys() {
+     }
+diff --git a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
+index a96dd29f32..09e3409a78 100644
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
+@@ -602,6 +602,6 @@ public final class PlayClient {
+         sets = 0;
+         actionSeq = 0;
+         actionsSent = 0;
+-        probe.reset();
++        if (Boolean.getBoolean("proof.never")) probe.reset();
+     }
+ }
+diff --git a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayPayload.java b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayPayload.java
+index c79e0efd80..b76cbd4916 100644
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayPayload.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayPayload.java
+@@ -48,6 +48,9 @@ public record PlayPayload(@Nullable PlayMessage message) implements CustomPacket
+         } catch (UnknownMessageException e) {
+             LOGGER.warn("Dropped an unknown play message: msg_id=0x{}", Integer.toHexString(e.msgId()));
+             return new PlayPayload(null);
++        } catch (io.github.bearisbug.synaxis.game.protocol.MalformedMessageException e) {
++            if (Boolean.getBoolean("proof.never")) throw e;
++            return new PlayPayload(null);
+         }
+     }
+ 

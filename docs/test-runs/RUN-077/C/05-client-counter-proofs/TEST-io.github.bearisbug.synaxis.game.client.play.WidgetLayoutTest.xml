@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" tests="4" skipped="0" failures="3" errors="0" timestamp="2026-10-12T07:04:42.343Z" hostname="Mac.local" time="0.002">
+  <properties/>
+  <testcase name="topCenterStartsBelowTheBossBarsVanillaDraws()" classname="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Placement[x=173, y=38]&gt; but was: &lt;Placement[x=173, y=2]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Placement[x=173, y=38]&gt; but was: &lt;Placement[x=173, y=2]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest.topCenterStartsBelowTheBossBarsVanillaDraws(WidgetLayoutTest.java:81)
+</failure>
+  </testcase>
+  <testcase name="bottomEndsAboveTheActionBarAndIsCentred()" classname="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" time="0.0">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Placement[x=153, y=146]&gt; but was: &lt;Placement[x=153, y=216]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Placement[x=153, y=146]&gt; but was: &lt;Placement[x=153, y=216]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest.bottomEndsAboveTheActionBarAndIsCentred(WidgetLayoutTest.java:64)
+</failure>
+  </testcase>
+  <testcase name="eachSlotStacksFromItsOwnEdge()" classname="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" time="0.0"/>
+  <testcase name="withinASlotTheSceneOwnersComeFirstThenOrderThenTheFirstSet()" classname="io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[35, 24, 13, 2]&gt; but was: &lt;[2, 35, 24, 13]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[35, 24, 13, 2]&gt; but was: &lt;[2, 35, 24, 13]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.WidgetLayoutTest.withinASlotTheSceneOwnersComeFirstThenOrderThenTheFirstSet(WidgetLayoutTest.java:30)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

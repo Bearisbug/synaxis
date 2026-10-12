@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.ActionKeysTest" tests="3" skipped="0" failures="1" errors="0" timestamp="2026-10-12T07:04:38.962Z" hostname="Mac.local" time="1.881">
+  <properties/>
+  <testcase name="actionKeyOneIsOnHInTheCategoryOfThePlayLayer()" classname="io.github.bearisbug.synaxis.game.client.play.ActionKeysTest" time="0.005"/>
+  <testcase name="bothLanguageFilesNameTheKeyAndItsCategory()" classname="io.github.bearisbug.synaxis.game.client.play.ActionKeysTest" time="0.001"/>
+  <testcase name="aPressSendsTheSceneActionAndASecondInsideTheCooldownIsHeldBack()" classname="io.github.bearisbug.synaxis.game.client.play.ActionKeysTest" time="0.032">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[C2SAction[sceneSeq=1, actionSeq=1, actionId=rush:queue, target=None[]]]&gt; but was: &lt;[C2SAction[sceneSeq=1, actionSeq=1, actionId=rush:queue, target=None[]], C2SAction[sceneSeq=1, actionSeq=2, actionId=rush:queue, target=None[]]]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[C2SAction[sceneSeq=1, actionSeq=1, actionId=rush:queue, target=None[]]]&gt; but was: &lt;[C2SAction[sceneSeq=1, actionSeq=1, actionId=rush:queue, target=None[]], C2SAction[sceneSeq=1, actionSeq=2, actionId=rush:queue, target=None[]]]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.ActionKeysTest.aPressSendsTheSceneActionAndASecondInsideTheCooldownIsHeldBack(ActionKeysTest.java:72)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

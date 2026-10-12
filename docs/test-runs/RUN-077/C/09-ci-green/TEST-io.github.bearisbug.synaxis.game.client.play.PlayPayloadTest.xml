@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-12T07:12:27.970Z" hostname="runnervmmprz5" time="0.009">
+  <properties/>
+  <testcase name="theChannelIdIsTheOneTheHostRoutesOn()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.001"/>
+  <testcase name="aTruncatedMessageThrowsOutOfTheDecoder()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.001"/>
+  <testcase name="theThreeDownwardMessagesComeBackAsTheySent()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.002"/>
+  <testcase name="aMessageOfALaterVersionIsDroppedRatherThanBreakingTheConnection()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.001"/>
+  <testcase name="theTwoUpwardMessagesGoOutAsTheSharedCodecWritesThem()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.003"/>
+  <testcase name="aMessageBrokenInsideThrowsToo()" classname="io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

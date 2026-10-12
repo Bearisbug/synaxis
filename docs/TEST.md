@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-12 | 分支 `prod/r077-C`（设计提交 `271acc617f`、修前红提交 `507763f7ee`、实现提交 `c8a6c7ed67`，基于 `prod/integrate-077` `3cd20ff777` 并快进合入 `prod/r077-V` `93b70462a0`），跟进 `docs/DESIGN-PLAY.md` v0.8（RUN-077 组 C，客户端 `PlayModule`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/C/`。**§4「玩法架构 · RUN-077：C」写入十六条 `TC-PLAY-070`～`TC-PLAY-085`**：场景镜像与四种小部件的表（070）、槽位内的次序（071）、七个槽位的位置与两处让位（072）、`TIMER` 外推与 `SCOREBOARD` 的画法（073）、`TEXT` 的存活时长（074）、动作键与本地冷却（075）、动作结果重设冷却与提示（076）、面板的打开与本地关闭（077）、面板按钮的结果（078）、场景就绪三条件（079）、新连接清空（080）、动作键 1 的定义与默认键 H 的 javap 核对（081）、`PlayPayload` 的两个方向与畸形下行（082）、真客户端 Q0c（083）、judge 的 Q0c（084）、模组主源码与别的 job 读数不变（085）。改动前的红在草稿 PR #23 第 1 轮的桩上（client-mod 274 条红 25 条，job `rush` 两份 Q0c FAIL）；反证两批在本机跑，十三处各打各的用例，还原后复绿；第 2 轮全绿。`client-fabric` 新类 5 个 37 条，`PlayHudTest` 加 2 条。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-V`（设计提交 `e4b1d8eb9a`、修前红提交 `6abbe44aee`、临时反证与还原 `1250f4d888`、`3d3611d32c`、实现提交 `07f5053f90`，基于 `prod/integrate-077` `3cd20ff777`），跟进 `docs/DESIGN-PLAY.md` v0.4（RUN-077 组 V，第一步：组件解码与最小 `PlayHud`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/V/`。**§4「玩法架构 · RUN-077：V」写入十条 `TC-PLAY-020`～`TC-PLAY-029`**：`ComponentBytes` 写出冻结的三个组件（020）、原版 `ComponentSerialization.STREAM_CODEC` 读得出它们（021，组件编码不改 JSON）、长度 0 的 component（022）、没进场景时 HUD 不画与剧本没变量时立即返回（023）、Q0a 的解码、画出与截图（024）、缺键显示 fallback（025）、Q0b 换实例的逐 tick 读数（026，`LevelLoadingScreen` 开 3 tick，脚下区块先到）、job `rush` 骨架（027）、judge 单测（028）、模组主源码不留测试钩子与 `fabric.mod.json` 的两个模块（029）。服务端改动前的红不适用（冻结文件与测试同提交），反证一次；客户端单测的反证三处一批在本机跑；真客户端的改动前的红在草稿 PR #22 的第 1 轮 CI（Q0a FAIL），同一轮带上 `TC-PLAY-009` 第 3 步的临时反证（3 条红），第 2 轮全绿。`:server-app` 新类 1 个 4 条，`client-fabric` 新类 2 个 9 条。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-K`（文档提交 `755ecf9d09`、骨架提交 `546ed30408`、实现提交 `cc2db356f1`，基于 `prod/r077-docs` `184ad30370`），跟进 `docs/DESIGN-PLAY.md` v0.3（RUN-077 组 K，插件面契约与宿主接线），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/K/`。**§4「玩法架构 · RUN-077：K」写入十条 `TC-PLAY-010`～`TC-PLAY-019`**：场景的动作槽（010）、v1 四种小部件不用编码就能查的上限（011）、`InstanceSpec` 的名字、半径、结算超时与短构造器的默认值（012）、宿主上下文的 `play()`、`instances()` 与 `synaxis:play` 的接线（013）、`ComponentBytes` 的编码与 2,048 B 上限（014）、稳定面门禁看得见两个新子包（015）、翻译键门禁的 `NOT_TEXT` 加 `synaxis:play`（016）、两份语言文件的 22 个 S1 键与默认键 H（017）、ABI 门对 `v0.3.0` 0 条违例（018）、插件宿主与核心模式的回归和 `PluginHost.java` 行号后移（019）；改动前的红在骨架上实跑，八处反证一次实跑，ABI 门的反证另跑一次，还原后复绿，语言文件用脚本核对。`:plugin-api` 新类 4 个 30 条，`:server-app` 新类 2 个 4 条；节头补列 `ComponentBytesTest`，测试类按实际的包写。**改旧用例**：`TC-PROD-521` 第 5 步 `PluginHost.java:102` → `:107`（本组在它上面加了三行导入与两个字段），按代码文本核对，没复跑。翻译键门禁的读数（标识 16 → 17）与 `TranslationKeyGateTest.java` 第 65 行之后的红行行号后移，与组 P 加的同一行一起由集成轮改（`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717`）。**条数**本组不改，由集成轮统一改 | Bearisbug |
 | 2026-10-12 | 分支 `prod/r077-P`（设计提交 `4f2dad04f2`、修前红提交 `438b206f47`、实现提交 `05095f4699`，基于 `prod/r077-docs` `184ad30370`），跟进 `docs/DESIGN-PLAY.md` v0.2 与 `docs/DESIGN-M2.md` v0.66（RUN-077 组 P，`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`），不登执行轮次（集成后登记 RUN-077），本组证据 `docs/test-runs/RUN-077/P/`。**新增 §4「玩法架构 · RUN-077：P」九条 `TC-PLAY-001`～`TC-PLAY-009`**：常规向量（001）、边界向量（002）、未知属性与未知种类（003）、13 个 `refused-` 向量（004）、manifest 把向量绑在 `play_version` 上（005）、往返与后续版本的 `msg_id`（006）、向量没覆盖的畸形形状（007）、包导出、`NOT_TEXT`、ABI 门与 javadoc（008）、客户端 `PlayFrozenVectorTest`（009，只在 GitHub Actions 上跑，组 V 的草稿 PR 首跑，反证也在那里补）。改动前的红在桩上实跑（47 条 39 条红）；反证两批，每批四处一次打上，各打各的用例，还原后复绿；第一批第一次跑时一处红落在测试的参数构造上，测试改为先解码后重跑。`:protocol` 新类 2 个 47 条。**门禁读数**：`TranslationKeyGateTest` 的标识 16 → 17，键数仍是 61；`TC-PROD-430`、`TC-PROD-432`、`TC-PROD-547`、`TC-PROD-717` 的读数与 `NOT_TEXT` 之后的红行行号本组不改，由集成轮按 CI 输出改，`TC-WORLD-032` 走交接行。**条数**本组不改，由集成轮统一改。评审返工（同一分支）：`edge/s2c_scene.bin` 的 `cursor` 改为 254、`edge/c2s_action-entity.bin` 的 `action_seq` 改为 1，`S2C_SCENE` 的 `camera` 与 `cursor`、`C2S_ACTION` 的 `scene_seq` 与 `action_seq` 这两对相邻的同类型字段从此在向量里取不同的值，digest 改为 `f3eaee54…205e`；照设计文本写的向量编码器入库为 `protocol/tools/gen_play_vectors.py`；`TC-PLAY-002` 加第 4 步（读写顺序对调的反证：旧向量上全部存活，新向量上 2 条红），`TC-PLAY-005` 第 1 步改 digest 读数、写清取文件的次序、加脚本重新生成后 `diff` 无输出；本组 Gradle 共 11 次 | Bearisbug |
@@ -11463,7 +11464,225 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 
 ### 玩法架构 · RUN-077：C（客户端 `PlayModule`）
 
-对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的客户端部分（场景镜像、`TIMER`、`SCOREBOARD`、`PANEL` 的渲染与槽位布局、动作键与本地冷却、换实例后的就绪判定）与 `REQ-PLAY-008` 的「专属客户端代码 0 行」（`docs/DESIGN-PLAY.md` §6.4.3，§6.4.8，§13；本组跟进该分册 v0.8）。用例号段 070～089，由组 C 在分支 `prod/r077-C` 写入。测试类：`client-fabric` 的 `PlayClientTest`、`WidgetLayoutTest`、`ActionKeysTest`、`PlayPayloadTest`、`SceneReadyProbeTest`。
+对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的客户端部分（场景镜像、`TIMER`、`SCOREBOARD`、`PANEL` 的渲染与槽位布局、动作键与本地冷却、换实例后的就绪判定）与 `REQ-PLAY-008` 的「专属客户端代码 0 行」（`docs/DESIGN-PLAY.md` §6.4.3，§6.4.8，§13；本组跟进该分册 v0.8）。用例号段 070～089，由组 C 在分支 `prod/r077-C` 写入。测试类：`client-fabric` 的 `PlayClientTest`、`WidgetLayoutTest`、`ActionKeysTest`、`PlayPayloadTest`、`SceneReadyProbeTest` 与 `PlayHudTest` 的新用例；真客户端剧本 `RushClientGameTest` 的 Q0c 与夹具 `PlayHudFixture` 的 Q0c 部分；`client-fabric/gametest-env/rush_judge.py` 的 Q0c。
+
+本节由组 C 写入，分支 `prod/r077-C`（基于 `prod/integrate-077` `3cd20ff777`，先快进合入组 V 的 `prod/r077-V` `93b70462a0`）：设计提交 `271acc617f`；修前红提交 `507763f7ee`（新类都是桩，返回空或抛 `UnsupportedOperationException`；新测试、剧本的 Q0c、夹具的 Q0c 部分与 judge 的 Q0c 都在这一提交）；实现提交 `c8a6c7ed67`；之后是文档。改动：模组包 `play` 新增 `WidgetLayout`、`SceneReadyProbe`、`PanelScreen`、`ActionKeys`，`PlayClient` 扩成四种小部件、动作、本地冷却与面板，`PlayHud` 按槽位画 `TEXT`、`TIMER`、`SCOREBOARD`；模组包 `mixin` 新增访问器 `BossHealthOverlayAccessor`；`SynaxisClientMod` 注册动作键，在每个客户端 tick 末依次处理动作键、`TEXT` 过期、就绪判定与面板；模组 `fabric.mod.json` 加 `fabric-lifecycle-events-v1`；gametest 的 `PlayTestHook` 加本地冷却开关与三项记录，`RushClientGameTest` 加 Q0c；`PlayHudFixture` 加 Q0c 的三个请求与三个动作的应答；`rush_judge.py` 与 `test_rush_judge.py` 把 Q0c 列为必过。
+
+测试：`client-fabric` 包 `io.github.bearisbug.synaxis.game.client.play` 的 `PlayClientTest` 19 条、`WidgetLayoutTest` 4 条、`ActionKeysTest` 3 条、`PlayPayloadTest` 6 条、`SceneReadyProbeTest` 5 条、`PlayHudTest` 5 条（组 V 的 3 条改用 `PlayHud.blocks`，本组加 2 条）；真客户端剧本 `RushClientGameTest` 的 Q0c；judge 单测 10 条。「跑 C 客户端」即 V 节的「跑 V 客户端」那条命令（同样的 `--tests 'io.github.bearisbug.synaxis.game.client.play.*'`）。「跑 C 服务端」即照 P 节的共用约定跑 `:server-app` 的 `io.github.bearisbug.synaxis.app.scene.PlayComponentVectorTest`。「job `rush`」与 `<py>` 同 V 节。
+
+源文件代号：`<CP>`、`<CT>`、`<GP>`、`<SC>` 同 V 节；行号按实现提交 `c8a6c7ed67`。本机 Gradle 6 次，其中第 2 次在 `compileJava` 就失败（`SceneReadyProbe.java:62` 把 `@Nullable` 写在限定类型前面，改成 `PlayClient.@Nullable Scene`），没跑到测试。GitHub Actions 两轮，都在草稿 PR #23（base `prod/integrate-077`，验完关闭、远端分支删掉）上：第 1 轮 head `507763f7ee`（桩），client-mod run 38215632527、client-gametest run 38215632670；第 2 轮 head `c8a6c7ed67`，client-mod run 38216321030、client-gametest run 38216321013。组分支 PR 上的 `ci.yml` 与 `concurrency.yml` 不作门禁，两轮都绿（CI run 38215632709、38216320881，Concurrency run 38215632643、38216320996）。各次读数与原始报告见 `docs/test-runs/RUN-077/C/00-index.txt`。
+
+「反证一批」指第 5 次运行：十处改动一起打上（`docs/test-runs/RUN-077/C/05-client-counter-proofs/counter-proofs.diff`），每处都把原来的一行用 `Boolean.getBoolean("proof.never")` 关掉，跑「跑 C 客户端」，`75 tests completed, 15 failed`，各处只打红下面各条预测的用例，跑完 `git checkout` 还原。「反证二批」指第 6 次运行，另外三处（`06-client-counter-proofs-2/counter-proofs.diff`），`75 tests completed, 4 failed`。
+
+#### `TC-PLAY-070` 场景镜像与四种小部件的表：v1 四种原样保留，未知种类丢弃，`REMOVE`、`CLEAR_OWNER` 移出 — 对应 `REQ-PLAY-003`、`REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 C 客户端（第 4 次运行），看 `TEST-io.github.bearisbug.synaxis.game.client.play.PlayClientTest.xml` 的 `aSceneBringsItsTitleAndItsActionTableAndItsOwnerIsTheNamespaceOfItsId`、`theFourKindsAreKeptWithTheirPropsAndAnUnknownKindIsDropped`、`removeAndClearOwnerTakeWidgetsOffAndAnUnknownKindReplacesWhatWasThere`；再看第 2 轮 client-mod run 38216321030 的同一文件 | 本机与 CI 都是 `PlayClientTest` `tests="19"` 0 失败。场景 `3 rush:lobby`，标题键 `rush.scene.lobby`，所有者 `rush`（场景 id 冒号前一段），动作槽 0 是 `rush:queue`、标签键 `rush.action.queue`、冷却 2,000，槽 1 没有动作；`TIMER`（标签、45,000、running）、`SCOREBOARD`（两行，第二行高亮）、`PANEL`（一个按钮 `rush:back`）都按属性解出，kind 3 的小部件不进表；同一地址再来一条未知 kind 的 SET 把原来的移走，`REMOVE` 与叠加者的 `CLEAR_OWNER` 之后表空 |
+| 2 | 改动前的红：第 1 轮 client-mod run 38215632527 的同一文件 | `tests="19"` 14 条红，其中 `theFourKindsAreKept…` 红在 `PlayClientTest.java:92`：`expected: <[timer, score, hint, result]> but was: <[hint]>`（桩只认 `TEXT`）。场景头与 `REMOVE`、`CLEAR_OWNER` 是组 V 已有的行为，那两条在桩上也绿 |
+| 3 | 反证有齿 | 不单列：四种小部件各自的行为由 `TC-PLAY-073`、`TC-PLAY-074`、`TC-PLAY-077` 的反证覆盖 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-071` 槽位内的次序：场景所有者在前，再按 `order`，再按第一次 SET — 对应 `REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。契约见 `docs/DESIGN-PLAY.md` §6.4.2、§6.4.8。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-070` 第 1 步，看 `WidgetLayoutTest` 的 `withinASlotTheSceneOwnersComeFirstThenOrderThenTheFirstSet` 与 `PlayClientTest` 的 `widgetsComeBySlotThenTheSceneOwnersFirstThenByOrderThenByTheirFirstSet` | `WidgetLayoutTest` `tests="4"` 0 失败：`TOP_LEFT` 里四个高 9 的框依次落在 y 2、13、24、35（所有者 order 1 先 SET 的、所有者 order 1 后 SET 的、所有者 order 2、叠加者 order 0）。`PlayClientTest`：`[top, first, b, a, o]`，`b` 第二次 SET 后仍排在 `a` 前面 |
+| 2 | 改动前的红：第 1 轮 run 38215632527 | `WidgetLayoutTest` 4 条全红（`UnsupportedOperationException: not yet`，`WidgetLayoutTest.java:27`）。`PlayClientTest` 那条在桩上是绿的：排序用的 `WidgetLayout.ORDER` 是一行声明，桩里就是实的 |
+| 3 | 反证有齿：反证一批的第 (5) 处，`<CP>WidgetLayout.java:57` 的 `.thenComparing(Box::sceneOwner, Comparator.reverseOrder())` 改为 `.thenComparing(box -> Boolean.getBoolean("proof.never") && box.sceneOwner(), Comparator.reverseOrder())` | 这一处只打红上面两条：`WidgetLayoutTest.java:30` `expected: <[35, 24, 13, 2]> but was: <[2, 35, 24, 13]>`；`PlayClientTest.java:119` `expected: <[top, first, b, a, o]> but was: <[top, o, first, b, a]>` |
+| 4 | 还原后 | `git diff` 无输出，读数同第 1 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-072` 七个槽位的位置，`TOP_CENTER` 让 Boss 血条、`BOTTOM` 让动作栏 — 对应 `REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。GUI 427×240（gametest 窗口 854×480，缩放 2）；让位的常数见 `docs/DESIGN-PLAY.md` §6.4.8。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-070` 第 1 步，看 `WidgetLayoutTest` 的 `eachSlotStacksFromItsOwnEdge`、`bottomEndsAboveTheActionBarAndIsCentred`、`topCenterStartsBelowTheBossBarsVanillaDraws` | 0 失败：`TOP_RIGHT` 宽 100 的框在 (325, 2)；`LEFT` 两个高 9 的框整列居中于 (2, 110)、(2, 121)；`RIGHT`、`CENTER` 同理；`BOTTOM` 两个框在 y 146、157，底边 166 = 240 − 72 − 2；`TOP_CENTER` 的起点：没有血条 2，一条 19，两条 38，四条与九条都是 76（血条画到 y 69 为止，第五条起点 88 ≥ 80 就不画） |
+| 2 | 改动前的红 | 同 `TC-PLAY-071` 第 2 步（4 条全红） |
+| 3 | 反证有齿：反证一批的第 (3)、(4) 处，`<CP>WidgetLayout.java:87` 的 `ACTION_BAR_TOP` 改为 `(Boolean.getBoolean("proof.never") ? ACTION_BAR_TOP : MARGIN)`，`:85` 改为 `Boolean.getBoolean("proof.never") ? topCenterTop(bossBars, guiHeight) : MARGIN` | 第 (3) 处只打红 `bottomEndsAboveTheActionBarAndIsCentred`（`WidgetLayoutTest.java:64` `expected: <Placement[x=153, y=146]> but was: <Placement[x=153, y=216]>`）；第 (4) 处只打红 `topCenterStartsBelowTheBossBarsVanillaDraws`（`:81` `expected: <Placement[x=173, y=38]> but was: <Placement[x=173, y=2]>`） |
+| 4 | 还原后 | 与第 1 步相同 |
+| 5 | 真客户端：第 2 轮 client-gametest run 38216321013 的两份 Q0c，截图 `0002_play-widgets.png` | `TIMER #55ffff 348 px in 360,4..441,17`（顶部居中）；`SCOREBOARD title #ffff55 248 px in 768,8..825,21 values #ff5555 216 px in 822,28..843,81`（右上角，「Social Interactions」提示框已先清掉）；`BOTTOM TEXT #ff55ff 684 px in 344,314..505,329 (action bar starts at y 336)`：底边在动作栏之上，快捷栏露在下面。Boss 血条下的真客户端截图不在本组，是组 G 的人工用例 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-073` `TIMER` 从收到 SET 起本地倒数，`SCOREBOARD` 画标题与各行，`PANEL` 不进 HUD — 对应 `REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。外推公式见 `docs/DESIGN-PLAY.md` §6.4.4。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-070` 第 1 步，看 `PlayClientTest` 的 `aRunningTimerCountsDownFromItsSetAndAStoppedOneDoesNot`，`PlayHudTest` 的 `aTimerShowsItsLabelAndTheTimeLeftAndAScoreboardItsTitleAndRowsButAPanelIsNotOnTheHud`、`theTimeLeftIsMinutesAndSecondsRoundedUp` | 0 失败：running 的 10,000 过 2.5 s 是 7,500，不 running 的仍是 10,000，过 60 s 到 0 为止；新 SET 从它自己到达时起算。HUD 只有 `timer`、`score` 两块，`Time left 0:44`（45,000 过 1.2 s，秒向上取整），计分板 `Score`、`Ann 12`、`Bob 7`（高亮）；`clock`：0 → `0:00`，1 → `0:01`，59,001 → `1:00`，240,000 → `4:00` |
+| 2 | 改动前的红：第 1 轮 run 38215632527 | `aRunningTimer…` 红在 `PlayClientTest.java:384`（`no widget run`：桩不认 `TIMER`）；`PlayHudTest` 两条红（`:92` `expected: <[timer, score]> but was: <[]>`、`:101` `UnsupportedOperationException`） |
+| 3 | 反证有齿：反证一批的第 (8) 处，`<CP>PlayClient.java:546` 改为 `if (!content.running() \|\| !Boolean.getBoolean("proof.never")) return content.remainingMs();` | 只打红两条：`PlayClientTest.java:142` `expected: <7500> but was: <10000>`；`PlayHudTest.java:93` `expected: <[Time left 0:44]> but was: <[Time left 0:45]>` |
+| 4 | 还原后 | 与第 1 步相同 |
+| 5 | 真客户端：第 2 轮两份 Q0c | `TIMER shows 43860 ms, a second later 42762 ms`（生产 jar `43801`、`42691`）；截图里 `TIMER` 一行是 `Time left 0:44`，计分板三行，`Player` 一行带浅色底 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-074` `TEXT` 的 `ttl_ms`：到期不再画，下一个客户端 tick 从表里删掉 — 对应 `REQ-PLAY-004` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-070` 第 1 步，看 `aTextShowsForItsTimeToLiveAndTheTickAfterThatDropsIt` | 绿：`ttl_ms` 1,500 的 `brief` 过 1,499 ms 还在，过 1,500 ms 就不在；`tick` 之后把时钟拨回 10 ms，`brief` 也不回来（已从表里删掉）；`ttl_ms` 0 的 `kept` 一直在 |
+| 2 | 改动前的红：第 1 轮 run 38215632527 | 红在 `PlayClientTest.java:162`：`expected: <[kept]> but was: <[brief, kept]>` |
+| 3 | 反证有齿：反证一批的第 (9) 处，`<CP>PlayClient.java:475` 前面加 `Boolean.getBoolean("proof.never") &&` | 只打红这一条，读数同第 2 步 |
+| 4 | 还原后 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-075` 动作键：按下发当前场景该槽的动作，`action_seq` 从 1 起，本地冷却挡下冷却中的按键，关掉本地冷却照发 — 对应 `REQ-PLAY-005` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头。契约见 `docs/DESIGN-PLAY.md` §6.4.4、§6.4.8。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-070` 第 1 步，看 `PlayClientTest` 的 `aPressSendsTheActionOfItsSlotWithTheSceneAndARisingNumberAndStartsTheLocalCooldown`、`aKeyWithoutAnActionOrAConnectionWithoutASceneSendsNothing`、`withTheLocalCooldownOffAPressGoesOutWhateverTheCooldown` 与 `ActionKeysTest` 的 `aPressSendsTheSceneActionAndASecondInsideTheCooldownIsHeldBack` | 0 失败：第一次按发出 `C2SAction[sceneSeq=4, actionSeq=1, actionId=rush:queue, target=None]`，本地冷却剩 2,000 ms；200 ms 后再按被挡下，发出数仍是 1，动作栏提示 `synaxis.action.cooldown [2]`；2 s 后再按发出 `actionSeq=2`。没有场景或该槽没有动作时什么都不发。关掉本地冷却后 200 ms 内照发、不提示。`ActionKeysTest`：两次 `KeyMapping.click(H)` 经 `ActionKeys.tick` 各算一次按键，只发出一个动作 |
+| 2 | 改动前的红：第 1 轮 run 38215632527 | `aPressSends…` 红在 `PlayClientTest.java:174`（`expected: <SENT> but was: <NO_ACTION>`），`withTheLocalCooldownOff…` 红在 `:205`，`ActionKeysTest` 那条红在 `ActionKeysTest.java:66`（`expected: <1> but was: <0>`）；没有动作的那条在桩上也绿 |
+| 3 | 反证有齿：反证一批的第 (6) 处，`<CP>PlayClient.java:425` 改为 `if (localCooldown && left > 0 && Boolean.getBoolean("proof.never")) {` | 只打红两条：`PlayClientTest.java:180` `expected: <COOLING_DOWN> but was: <SENT>`；`ActionKeysTest.java:72` 期望一个动作、实际发出两个 |
+| 4 | 还原后 | 与第 1 步相同 |
+| 5 | 真客户端：第 2 轮两份 Q0c 的动作键一段 | 都是 `action key: sent 0 -> 1 -> 1 (inside the local cooldown); first action_seq 1 OK cooldown_ms 2000; with the local cooldown off action_seq 2 COOLDOWN cooldown_ms 1703`（生产 jar `1750`）：`TestInput` 按 H 发出一个动作，200 ms 内第二次被本地冷却挡下，经 `PlayTestHook.localCooldown(false)` 关掉后第三次发出，夹具回代码 2，`reason` 是 `synaxis:action-cooldown [2]`。夹具日志 `synaxis_test:poke action_seq=1 scene_seq=2 -> OK cooldown_ms=2000`、`action_seq=2 … -> COOLDOWN cooldown_ms=1703` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-076` 动作结果：`ok`、`cooldown` 按回传的 `cooldown_ms` 重设，`rejected` 清除并提示，`rate-limited`、`unknown-action` 静默清除，`stale-scene` 不动，换场景清掉冷却 — 对应 `REQ-PLAY-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。各结果码的显示按 `docs/DESIGN-PLAY.md` §14 的「客户端处理约定」与 §6.4.8。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-070` 第 1 步，看 `PlayClientTest` 的 `okRestartsTheCooldownFromTheServersAndCooldownFromWhatIsLeft`、`aCooldownWithTheHostsReasonShowsTheReason`、`rejectedClearsTheCooldownAndShowsTheReasonOrTheClientsTextWhenThereIsNone`、`rateLimitedAndUnknownActionClearTheCooldownSilentlyAndStaleSceneLeavesIt`、`aNewSceneEndsEveryCooldownAndAResultOfTheSceneBeforeLeavesTheNewOneAlone` | 0 失败：按下 500 ms 后收到 `ok`（2,000），冷却从收到时起重设为 2,000；`cooldown` 1,300 → 剩 1,300，提示 `synaxis.action.cooldown [2]`，带宿主 reason 时提示 `synaxis:action-cooldown [2]`；`rejected` 清掉冷却，提示 reason（`rush.hint.failed`），没有 reason 时提示 `synaxis.action.rejected`，未知结果码 200 同样按 `rejected`；`rate-limited`、`unknown-action` 清掉冷却、不提示；`stale-scene` 冷却仍是 2,000；新的 `S2C_SCENE` 清掉冷却，旧场景动作的 `ok` 不给新场景重设，之后的按键带新的 `scene_seq` |
+| 2 | 改动前的红：第 1 轮 run 38215632527 | 五条都红：`okRestarts…` 在 `PlayClientTest.java:216`（`expected: <2000> but was: <0>`），其余在 `:237`、`:254`、`:270`、`:283` |
+| 3 | 反证有齿：反证一批的第 (2) 处，`<CP>PlayClient.java:350` 改为 `if (current && Boolean.getBoolean("proof.never")) cool(sent.slot(), now, result.cooldownMs());` | 只打红 `okRestarts…`：`PlayClientTest.java:216` `expected: <2000> but was: <1500>`（本地冷却没按服务端的重设，还是按下时开始的那一段） |
+| 4 | 还原后 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-077` 面板：表里有就打开，Esc 只在本地关闭，到它的下一条 SET 才再打开，移出表就关闭，没有场景时不打开 — 对应 `REQ-PLAY-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。页态见 `docs/DESIGN-PLAY.md` §13 `PAGE-PLAY-PANEL`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-070` 第 1 步，看 `thePanelIsShownUntilItIsClosedLocallyAndItsNextSetShowsItAgain`、`aPanelWithoutASceneIsNotShown` | 0 失败：`panel()` 给出 `result`；`dismiss` 之后为空但表里仍有它；同一面板再来一条 SET 又给出；`REMOVE` 之后为空；没收到场景时有面板也不给出 |
+| 2 | 改动前的红：第 1 轮 run 38215632527 | `thePanelIsShown…` 红在 `PlayClientTest.java:428`（`expected a value, got null`：桩的 `panel()` 恒为空）；没有场景的那条在桩上也绿 |
+| 3 | 反证有齿：反证一批的第 (7) 处，`<CP>PlayClient.java:460` 前面加 `if (Boolean.getBoolean("proof.never"))` | 只打红 `thePanelIsShown…`：`PlayClientTest.java:298` `expected: <null> but was: <Entry[owner=rush, widgetId=result, …]>` |
+| 4 | 还原后 | 与第 1 步相同 |
+| 5 | 真客户端：第 2 轮两份 Q0c | `scene 2 synaxis_test:widgets; panel open pause=false; widgets [timer=Timer, score=Scoreboard, capture=Text, result=Panel]`；`Esc: screen closed, panel in the mirror true`；再发 `panel` 后 `open`；截图 `0001_play-panel.png` 是面板盖在 HUD 上、世界照常（面板标题 `Round over`，两行，`1. Player (2 captures)` 一行带浅色底，两个按钮）。第 1 轮（桩）两份都是 `no PanelScreen in 100 ticks`，Esc 打开的是暂停菜单 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-078` 面板按钮：被拒时面板保持打开并显示原因，`ok` 时本地关闭 — 对应 `REQ-PLAY-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-070` 第 1 步，看 `aClickedButtonThatIsRefusedKeepsThePanelWithTheReasonAndOkClosesIt` | 绿：点按钮发出 `C2SAction[sceneSeq=5, actionSeq=1, actionId=rush:back, target=None]`；`rejected`（reason `rush.hint.failed`）后面板仍给出，`panelReason` 是这个 reason，动作栏不提示；再点时原因先清空，`cooldown` 3,000 后原因是 `synaxis.action.cooldown [3]`；`rate-limited` 后面板照旧；`ok` 后 `panel()` 为空、表里仍有它 |
+| 2 | 改动前的红：第 1 轮 run 38215632527 | 红在 `PlayClientTest.java:428`（`expected a value, got null`） |
+| 3 | 反证有齿：反证一批的第 (10) 处，`<CP>PlayClient.java:387` 的方法体开头加 `if (!Boolean.getBoolean("proof.never")) return;` | 只打红这一条：`PlayClientTest.java:428` `expected a value, got null`（被拒后没有原因） |
+| 4 | 还原后 | 与第 1 步相同 |
+| 5 | 真客户端：第 2 轮两份 Q0c 的面板一段 | `pressed "Refuse" -> action_seq 3 REJECTED cooldown_ms 0 reason key=synaxis_test.refused … fallback=Refused by the fixture, panel stays reason key=synaxis_test.refused …`；`pressed "Back to the lobby" -> panel closed, in the mirror false`（夹具回 `ok` 并 `REMOVE`）。按钮经原版 `Button#onPress` 按下，走的是 `PanelScreen` 的按钮接线 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-079` 场景就绪：三条同时成立才发 `C2S_SCENE_READY`，载入画面挡住、别的 Screen 不挡，只为最新一条场景发 — 对应 `REQ-PLAY-003` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头。条件见 `docs/DESIGN-PLAY.md` §6.4.3「场景就绪」；② 认 `LevelLoadingScreen` 来自组 V 的 Q0b。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-070` 第 1 步，看 `SceneReadyProbeTest` 与 `PlayClientTest` 的 `theTickAnswersTheSceneOnceTheClientStandsInALoadedLevel` | `SceneReadyProbeTest` `tests="5"` 0 失败：不在世界、开着 `LevelLoadingScreen`、脚下区块没到这三个 tick 都不发，第一个三条都成立的 tick 发一次，之后不再发，记下 `Sent[sceneSeq=1, screen=null, chunkUnderfoot=true, nanos=40]`；`ChatScreen`、`PanelScreen` 开着不挡；没有场景不发；场景 1 还没发就来了场景 2，只为 2 发；`reset` 后新连接的场景 1 照发。`PlayClient#tick` 同样只发一条 |
+| 2 | 改动前的红：第 1 轮 run 38215632527 | `SceneReadyProbeTest` 4 条红（`:34`、`:44`、`:65`、`:74`，桩从不发），「没有场景」那条在桩上也绿；`theTickAnswers…` 红在 `PlayClientTest.java:352` |
+| 3 | 反证有齿：反证一批的第 (1) 处，`<CP>SceneReadyProbe.java:77` 改为 `(view.screen() == null \|\| !Boolean.getBoolean("proof.never") \|\| !LevelLoadingScreen.class.isAssignableFrom(view.screen()))`：判定不看载入画面 | 只打红 `SceneReadyProbeTest` 3 条：`:32`（开着载入画面那个 tick 就发了）、`:43`（`ready` 对 `LevelLoadingScreen` 为真）、`:65`（`expected: <[C2SSceneReady[sceneSeq=2], C2SSceneReady[sceneSeq=3]]> but was: <[C2SSceneReady[sceneSeq=1], …`） |
+| 4 | 还原后 | 与第 1 步相同 |
+| 5 | 真客户端：第 2 轮两份 Q0c 的最后一段 | `fixture "ready 1 2"`：夹具收到的就绪正好是场景 1 与场景 2 各一条；`probe sent [Sent[sceneSeq=1, screen=null, chunkUnderfoot=true, …], Sent[sceneSeq=2, screen=null, chunkUnderfoot=true, …]]`：场景 1 在进服的载入画面关掉之后才发，场景 2 在面板打开之前那个 tick 发。第 1 轮（桩）两份都是 `fixture "ready "` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-080` 新连接全部清空：场景、小部件、动作序号与发出数、冷却、结果与就绪 — 对应 `REQ-PLAY-003` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-070` 第 1 步，看 `resetForgetsTheSceneTheWidgetsTheActionsAndTheReadiness` | 绿：`reset` 之后场景、表、面板、最后结果、就绪记录都为空，发出数与冷却为 0；之后的第一个动作是 `actionSeq=1`，新场景 1 照样发就绪 |
+| 2 | 改动前的红：第 1 轮 run 38215632527 | 红在 `PlayClientTest.java:375`（`NoSuchElementException`：桩什么都没发） |
+| 3 | 反证有齿：反证二批的第 (13) 处，`<CP>PlayClient.java:605` 改为 `if (Boolean.getBoolean("proof.never")) probe.reset();` | 只打红这一条：`PlayClientTest.java:368` `expected: <null> but was: <Sent[sceneSeq=1, screen=null, chunkUnderfoot=true, nanos=1000000000]>` |
+| 4 | 还原后 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-081` 动作键 1：名字、默认键 H、分类 `synaxis:play` 与两份语言文件，H 不撞 26.2 原版的普通键 — 对应 `REQ-PLAY-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。用户 2026-10-12 拍板默认键是 H；核对方法见 `docs/DESIGN-PLAY.md` §6.4.8。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-070` 第 1 步，看 `ActionKeysTest` 的 `actionKeyOneIsOnHInTheCategoryOfThePlayLayer`、`bothLanguageFilesNameTheKeyAndItsCategory` | 0 失败：`key.synaxis.action_1`，默认键 `key.keyboard.h`，分类 `synaxis:play`；`en_us.json`、`zh_cn.json` 都有 `key.synaxis.action_1` 与 `key.category.synaxis.play` |
+| 2 | `javap -c -p -cp ~/.gradle/caches/fabric-loom/26.2/minecraft-merged.jar net.minecraft.client.Options`，在构造里逐个 `key.*` 名字后读压栈的键码（JDK 25 的 `javap`） | 普通键占的字母：W、A、S、D、E、F、Q、T、O、P、L、G（`key.quickActions`）、C、X；`key.debug.*`（`KeyMapping.Category.DEBUG`，按住 F3 才生效）占 A、B、C、D、G、H、I、L、N、P、S、T、V。H、J、K、U、I、R 都不在普通键里；H、I 与 F3 组合同键，原版控制设置不把两边都是出厂键位的重叠标成冲突（`javap -c` `KeyBindsList$KeyEntry`：`same` 之后再判两边 `isDefault`） |
+| 3 | 改动前的红 | 不适用：这两条在桩上也绿（名字、默认键与分类是声明，桩里就是实的），齿靠第 4 步 |
+| 4 | 反证有齿：反证二批的第 (11) 处，`<CP>ActionKeys.java:27` 的 `InputConstants.KEY_H` 改为 `Boolean.getBoolean("proof.never") ? InputConstants.KEY_H : InputConstants.KEY_G` | 只打红 `actionKeyOneIsOnH…`：`ActionKeysTest.java:44` `expected: <key.keyboard.h> but was: <key.keyboard.g>` |
+| 5 | 还原后 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-082` `PlayPayload`：两个上行照共享编解码写出，三个下行原样解回，畸形下行从解码器抛出，v1 不认识的 `msg_id` 丢弃 — 对应 `REQ-PLAY-003` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。`PlayPayload` 是组 V 的类，本组补它的单测（照 `GamePayloadTest`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-070` 第 1 步，看 `TEST-io.github.bearisbug.synaxis.game.client.play.PlayPayloadTest.xml` | `tests="6"` 0 失败：`C2S_SCENE_READY` 与带方块目标的 `C2S_ACTION` 写出的字节等于 `:protocol` 写的；`S2C_SCENE`、带 `TIMER` 与 `CLEAR_OWNER` 的 `S2C_HUD`、`S2C_ACTION_RESULT` 解回相等、没有剩余字节；少一个字节与 op 9 都抛 `MalformedMessageException`（Fabric 因此断线，同 `rts:game`）；`0x83`（v2 的 `S2C_NOTICE`）解成空消息；通道 id `synaxis:play` |
+| 2 | 改动前的红 | 不适用：被测的 `PlayPayload` 是组 V 已合入的实现，6 条在桩上也绿；齿靠第 3 步 |
+| 3 | 反证有齿：反证二批的第 (12) 处，`<CP>PlayPayload.java` 在 `catch (UnknownMessageException e)`（`:48`）之后加一个 `catch (MalformedMessageException e) { if (Boolean.getBoolean("proof.never")) throw e; return new PlayPayload(null); }` | 只打红两条：`aTruncatedMessageThrowsOutOfTheDecoder` 在 `PlayPayloadTest.java:73`、`aMessageBrokenInsideThrowsToo`，都是 `Expected … MalformedMessageException to be thrown, but nothing was thrown` |
+| 4 | 还原后 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PLAY-083` Q0c：真客户端上的三种小部件、面板、动作键与就绪 — 对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` · 级别: 冒烟 · 执行者: AI
+
+前置：本节开头；只在 GitHub Actions 上跑。剧本与夹具的这一段见 `docs/DESIGN-PLAY.md` §6.7.6 的 Q0c 一行。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 在 PR #23 第 2 轮的 client-gametest run 38216321013 看 job `rush` 的两份 `rush.txt`、judge 一步、夹具日志与 artifact 里两张 `0001_play-panel.png`、`0002_play-widgets.png` | 两份的 Q0a、Q0b、Q0c 都 PASS，judge 末行 `rush judge: PASS (2 reports, 0 problems)`。Q0c 各段的读数见 `TC-PLAY-072`、`TC-PLAY-073`、`TC-PLAY-075`、`TC-PLAY-077`～`TC-PLAY-079` 的第 5 步。夹具日志两次连接各有 `poke` 两条（`OK`、`COOLDOWN`）、`refuse` 一条（`REJECTED`）、`close` 一条（`OK`），没有 ERROR |
+| 2 | 改动前的红：PR #23 第 1 轮（head `507763f7ee`，桩）的 client-gametest run 38215632670 | job `rush` 判红：两份 Q0c 都 FAIL，`problems [no PanelScreen in 100 ticks, …, the TIMER is not at the top centre, the SCOREBOARD title is not at the top right, …, the fixture got the readies "ready ", scene 2's ready was not sent in a loaded level]`；Q0a、Q0b 照旧 PASS（桩的 `PlayHud` 仍从左上角画 `TEXT`）。judge 末行 `rush judge: FAIL (2 reports, 2 problems)`，只点名两份 Q0c |
+| 3 | 反证有齿 | 第 2 步即是：同一份剧本与 judge 对桩判红 |
+
+后置：无本机改动。
+
+#### `TC-PLAY-084` judge 把 Q0c 列为必过 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。不起 Gradle，不借锁。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PLAY-028` 第 1 步 | `Ran 10 tests` `OK`：每份报告要有 Q0a、Q0b、Q0c、Q1～Q9 各一行；`test_a_skipped_q0_fails` 对 Q0a、Q0b、Q0c 三个子用例各判红。`-p 'test_*.py'` 连 `test_p10.py` `Ran 22 tests` `OK`；两轮 CI 的 job `rush` 同为 10 条 `OK` |
+| 2 | 改动前的红：把设计提交 `271acc617f` 的 `rush_judge.py` 与本组的 `test_rush_judge.py` 放进同一个临时目录，照第 1 步跑 | `Ran 10 tests`，`FAILED (failures=13)`（含子用例）：旧 judge 不认 Q0c，每份带 Q0c 一行的报告都被判「not a step line」（`docs/test-runs/RUN-077/C/08-judge-red/summary.txt`） |
+
+后置：`git status --short` 无输出；临时目录与 `__pycache__/` 已删。
+
+#### `TC-PLAY-085` 模组主源码不含 rush 与测试钩子，`fabric.mod.json` 声明 lifecycle 模块，别的 job 读数不变 — 对应 `REQ-PLAY-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。光照会话 2026-10-12 的要求 1、4。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `grep -rlw rush client-fabric/src/main/java`；`grep -rln 'PlayTestHook\|synaxis_test' client-fabric/src/main`；`grep -n 'fabric-' client-fabric/src/main/resources/fabric.mod.json`；`grep -n Accessor client-fabric/src/main/resources/synaxis.mixins.json` | 前两条无输出；`depends` 有 `fabric-networking-api-v1`、`fabric-rendering-v1`、`fabric-key-mapping-api-v1`、`fabric-lifecycle-events-v1`（fabric-api 0.161.0+26.2 的 POM 里是 4.1.4）；mixin 清单有 `BossHealthOverlayAccessor` |
+| 2 | 看 run 38216321030 的 `verifyModJar` 一行，与 run 38216321013 的 job `gametest`、`p11-smoke` | `mod jar: minecraft=26.2, 108 entries, ships META-INF/jars/protocol-dev.jar`；`gametest` 判定末行 `client regression: all checks passed`，`sessionserver join 5, expected 5`；`p11-smoke` 末行 `P10: all checks passed`。这些 job 跑同一份入口清单，没有场景层的服务端上 `PlayHud` 不画、面板不开、就绪不发，`RushClientGameTest` 第一行就返回 |
+| 3 | 改动前的红 | 不适用：这是对别的 job 不变的约束；没有场景时不画的齿在 `TC-PLAY-023` 第 3 步 |
+
+后置：无本机改动。
 
 ### 玩法架构 · RUN-077：R（`:play-kit`、`:game-rush` 与 `runRush`）
 

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" tests="5" skipped="0" failures="2" errors="0" timestamp="2026-10-12T07:04:22.644Z" hostname="runnervmmprz5" time="0.008">
+  <properties/>
+  <testcase name="theTimeLeftIsMinutesAndSecondsRoundedUp()" classname="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" time="0.002">
+    <failure message="java.lang.UnsupportedOperationException: not yet" type="java.lang.UnsupportedOperationException">java.lang.UnsupportedOperationException: not yet
+	at io.github.bearisbug.synaxis.game.client.play.PlayHud.clock(PlayHud.java:103)
+	at io.github.bearisbug.synaxis.game.client.play.PlayHudTest.theTimeLeftIsMinutesAndSecondsRoundedUp(PlayHudTest.java:101)
+</failure>
+  </testcase>
+  <testcase name="aTimerShowsItsLabelAndTheTimeLeftAndAScoreboardItsTitleAndRowsButAPanelIsNotOnTheHud()" classname="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[timer, score]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[timer, score]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayHudTest.aTimerShowsItsLabelAndTheTimeLeftAndAScoreboardItsTitleAndRowsButAPanelIsNotOnTheHud(PlayHudTest.java:92)
+</failure>
+  </testcase>
+  <testcase name="removeAndClearOwnerTakeTextsOffAndResetForgetsTheScene()" classname="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" time="0.001"/>
+  <testcase name="aConnectionThatEnteredNoSceneDrawsNothing()" classname="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" time="0.003"/>
+  <testcase name="afterASceneTheTextsAreDrawnBySlotAndOrderAndAnEmptyOneAsAnEmptyLine()" classname="io.github.bearisbug.synaxis.game.client.play.PlayHudTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

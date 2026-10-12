@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" tests="19" skipped="0" failures="14" errors="0" timestamp="2026-10-12T07:04:22.113Z" hostname="runnervmmprz5" time="0.036">
+  <properties/>
+  <testcase name="thePanelIsShownUntilItIsClosedLocallyAndItsNextSetShowsItAgain()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.005">
+    <failure message="java.lang.AssertionError: expected a value, got null" type="java.lang.AssertionError">java.lang.AssertionError: expected a value, got null
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.present(PlayClientTest.java:428)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.thePanelIsShownUntilItIsClosedLocallyAndItsNextSetShowsItAgain(PlayClientTest.java:294)
+</failure>
+  </testcase>
+  <testcase name="aRunningTimerCountsDownFromItsSetAndAStoppedOneDoesNot()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002">
+    <failure message="java.lang.AssertionError: no widget run" type="java.lang.AssertionError">java.lang.AssertionError: no widget run
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.lambda$entry$1(PlayClientTest.java:384)
+	at java.base/java.util.Optional.orElseThrow(Optional.java:403)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.entry(PlayClientTest.java:384)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aRunningTimerCountsDownFromItsSetAndAStoppedOneDoesNot(PlayClientTest.java:142)
+</failure>
+  </testcase>
+  <testcase name="aPressSendsTheActionOfItsSlotWithTheSceneAndARisingNumberAndStartsTheLocalCooldown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;SENT&gt; but was: &lt;NO_ACTION&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;SENT&gt; but was: &lt;NO_ACTION&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aPressSendsTheActionOfItsSlotWithTheSceneAndARisingNumberAndStartsTheLocalCooldown(PlayClientTest.java:174)
+</failure>
+  </testcase>
+  <testcase name="aKeyWithoutAnActionOrAConnectionWithoutASceneSendsNothing()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aCooldownWithTheHostsReasonShowsTheReason()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.006">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[synaxis:action-cooldown [2]]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[synaxis:action-cooldown [2]]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aCooldownWithTheHostsReasonShowsTheReason(PlayClientTest.java:237)
+</failure>
+  </testcase>
+  <testcase name="removeAndClearOwnerTakeWidgetsOffAndAnUnknownKindReplacesWhatWasThere()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="withTheLocalCooldownOffAPressGoesOutWhateverTheCooldown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;SENT&gt; but was: &lt;NO_ACTION&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;SENT&gt; but was: &lt;NO_ACTION&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.withTheLocalCooldownOffAPressGoesOutWhateverTheCooldown(PlayClientTest.java:205)
+</failure>
+  </testcase>
+  <testcase name="resetForgetsTheSceneTheWidgetsTheActionsAndTheReadiness()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.003">
+    <failure message="java.util.NoSuchElementException" type="java.util.NoSuchElementException">java.util.NoSuchElementException
+	at java.base/java.util.ArrayList.getLast(ArrayList.java:455)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.resetForgetsTheSceneTheWidgetsTheActionsAndTheReadiness(PlayClientTest.java:375)
+</failure>
+  </testcase>
+  <testcase name="okRestartsTheCooldownFromTheServersAndCooldownFromWhatIsLeft()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;2000&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;2000&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.okRestartsTheCooldownFromTheServersAndCooldownFromWhatIsLeft(PlayClientTest.java:216)
+</failure>
+  </testcase>
+  <testcase name="rejectedClearsTheCooldownAndShowsTheReasonOrTheClientsTextWhenThereIsNone()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[rush.hint.failed [], synaxis.action.rejected [], synaxis.action.rejected []]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[rush.hint.failed [], synaxis.action.rejected [], synaxis.action.rejected []]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.rejectedClearsTheCooldownAndShowsTheReasonOrTheClientsTextWhenThereIsNone(PlayClientTest.java:254)
+</failure>
+  </testcase>
+  <testcase name="aClickedButtonThatIsRefusedKeepsThePanelWithTheReasonAndOkClosesIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="java.lang.AssertionError: expected a value, got null" type="java.lang.AssertionError">java.lang.AssertionError: expected a value, got null
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.present(PlayClientTest.java:428)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aClickedButtonThatIsRefusedKeepsThePanelWithTheReasonAndOkClosesIt(PlayClientTest.java:317)
+</failure>
+  </testcase>
+  <testcase name="rateLimitedAndUnknownActionClearTheCooldownSilentlyAndStaleSceneLeavesIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;2000&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;2000&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.rateLimitedAndUnknownActionClearTheCooldownSilentlyAndStaleSceneLeavesIt(PlayClientTest.java:270)
+</failure>
+  </testcase>
+  <testcase name="theTickAnswersTheSceneOnceTheClientStandsInALoadedLevel()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[C2SSceneReady[sceneSeq=1]]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[C2SSceneReady[sceneSeq=1]]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.theTickAnswersTheSceneOnceTheClientStandsInALoadedLevel(PlayClientTest.java:352)
+</failure>
+  </testcase>
+  <testcase name="aPanelWithoutASceneIsNotShown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="theFourKindsAreKeptWithTheirPropsAndAnUnknownKindIsDropped()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[timer, score, hint, result]&gt; but was: &lt;[hint]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[timer, score, hint, result]&gt; but was: &lt;[hint]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.theFourKindsAreKeptWithTheirPropsAndAnUnknownKindIsDropped(PlayClientTest.java:92)
+</failure>
+  </testcase>
+  <testcase name="widgetsComeBySlotThenTheSceneOwnersFirstThenByOrderThenByTheirFirstSet()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aSceneBringsItsTitleAndItsActionTableAndItsOwnerIsTheNamespaceOfItsId()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aTextShowsForItsTimeToLiveAndTheTickAfterThatDropsIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[kept]&gt; but was: &lt;[brief, kept]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[kept]&gt; but was: &lt;[brief, kept]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aTextShowsForItsTimeToLiveAndTheTickAfterThatDropsIt(PlayClientTest.java:162)
+</failure>
+  </testcase>
+  <testcase name="aNewSceneEndsEveryCooldownAndAResultOfTheSceneBeforeLeavesTheNewOneAlone()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;SENT&gt; but was: &lt;NO_ACTION&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;SENT&gt; but was: &lt;NO_ACTION&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aNewSceneEndsEveryCooldownAndAResultOfTheSceneBeforeLeavesTheNewOneAlone(PlayClientTest.java:283)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

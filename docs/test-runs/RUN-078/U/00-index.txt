@@ -1,0 +1,73 @@
+RUN-078 group U: the client's scene mirror PlayClient, item 7 of the S1 test debt row in docs/DESIGN-PLAY.md
+§28.2 (branch prod/r078-U, base main 62ae65f89c). Commit 9b422b94a9 adds nine PlayClientTest cases; the main code
+is not changed. Local Gradle through ~/.claude/r077/gradle.zsh (JDK 25, --max-workers=2 --no-daemon, the heavy
+lock taken for each run only). client-fabric is its own build: run 1 published :protocol from this worktree to
+-Dmaven.repo.local=/tmp/run078/fix-U/m2 and runs 2 to 4 resolved it from there (the init script is
+client-fabric/gametest-env/mirror.init.gradle.kts, the one the wrapper picks for that directory). Four Gradle runs
+in all, none with a database, Redis or a real client. Each directory holds the JUnit XML reports of that run and
+summary.txt, one line per test with the failure message and the first frame in the test class; line numbers are
+those of 9b422b94a9 for PlayClientTest.java and of 62ae65f89c for PlayClient.java (the commit does not touch it).
+PlayClient is single threaded (its class Javadoc: everything runs on the client thread), so the three thread
+modes do not apply.
+
+Runs 2 and 3 take the four test classes that drive PlayClient (PlayClientTest, PlayHudTest, ActionKeysTest,
+SceneReadyProbeTest), so that a green old test under a counter-proof shows the gap was there in the whole mod
+suite of the play package, not just in PlayClientTest.
+
+Run 1 -> (no directory)
+  ":protocol:publishToMavenLocal -Dmaven.repo.local=/tmp/run078/fix-U/m2" in the worktree root. BUILD SUCCESSFUL;
+  protocol-dev.jar has the 35 entries of protocol/play/ (the ~/.m2 copy of 2026-10-07 has none, it predates S1).
+
+Run 2 -> 01-counter-proof-panel-reason/
+  Code: 9b422b94a9 with counter-proof.diff: PlayClient.java:533 "&& panel.set() == reasonSet" becomes "&& true",
+  the debt row's "always true". 43 tests, 1 red:
+    aRefusalShowsOnlyOnTheContentWhoseButtonWasClicked at PlayClientTest.java:430,
+    "expected: <null> but was: <translation{key='rush.hint.failed', args=[]}>"
+  (the refusal on the clicked content still shows after the next SET of the same panel). The 21 PlayClientTest
+  cases of RUN-077 and the 13 of the other three classes stay green, as the debt row said; so do the other eight
+  new cases. Restored with git apply -R.
+
+Run 3 -> 02-counter-proof-branches/
+  Code: 9b422b94a9 with counter-proof.diff, eight sites at once, each the branch one new case pins. 43 tests,
+  8 red, one per site, each message pointing at its own site:
+    A PlayClient.java:295 CLEAR_OWNER takes every owner ("if (true) forget(key);")
+      clearOwnerLeavesTheWidgetsOfEveryOtherOwner at :143, "expected: <[a]> but was: <[]>"
+    B :404-409 the catch of component() is gone
+      aComponentTheCodecCannotReadShowsAsEmptyTextAndTheRestOfTheMessageStillApplies at :149,
+      IllegalArgumentException "the component codec could not read EncodedComponent[0a0800]: ..."
+    C :340 "if (sent == null) return;" is gone
+      aResultForNoActionThisConnectionSentIsOnlyRecorded at :341, NullPointerException
+      'Cannot invoke "...PlayClient$Pending.panel()" because "sent" is null'
+    D :357, :361, :367 lose "if (current)" (rejected, rate-limited, unknown-action of the scene before)
+      aRefusalAnsweringTheSceneBeforeLeavesTheCooldownsTheNewTableStarted at :334,
+      "expected: <[2000, 2000, 2000]> but was: <[0, 0, 0]>"
+    E :377 loses "panel != null &&"
+      anOkForAPanelNoLongerInTheTableChangesNothing at :469, NullPointerException
+      'Cannot invoke "...PlayClient$Entry.set()" because "panel" is null'
+    F :379 passes the reason as is (null without one), :380 always the client's cooldown text
+      aRefusedButtonWithoutAReasonShowsTheClientsTextAndACooldownWithTheHostsReasonShowsThatReason at :456,
+      "expected: <[synaxis.action.rejected [], synaxis:action-cooldown [2]]> but was: <[none, synaxis.action.cooldown [3]]>"
+    G :596 "dismissed.clear();" is gone
+      resetForgetsThePanelsClosedLocallySoTheNewConnectionsPanelShows at :523 (through present() at :594),
+      "expected a value, got null"
+    H :599-600 "reasonPanel = null; reason = null;" are gone
+      resetForgetsWhatWasRefusedOnAPanel at :538,
+      "expected: <null> but was: <translation{key='rush.hint.failed', args=[]}>"
+  The other 35 stay green, among them all 21 PlayClientTest cases of RUN-077 and aRefusalShowsOnly...: none of
+  these eight branches had a case before. Restored with git apply -R; PlayClient.java then compares equal to the
+  copy taken before run 2.
+
+Run 4 -> 03-green/
+  Code: 9b422b94a9. PlayClientTest 30 tests, 0 failures.
+
+Checked and left without a case (PlayClient.java at 62ae65f89c):
+  - The fallbacks for a prop of another value type (:308, :313, :316, :324, :329): API-PLAY-003 makes a listed
+    prop with another value type malformed, so the codec refuses it and these never see one.
+  - Math.max(0, ...) on ttl_ms and remaining_ms (:311, :312): a TEXT with ttl <= 0 never expires either way; a
+    stopped TIMER below 0 is drawn as 0:00 by PlayHud.clock (PlayHudTest theTimeLeftIsMinutesAndSecondsRoundedUp).
+  - click() with no scene (:443, scene_seq 0): panel() gives nothing without a scene, and PanelScreen.sync closes
+    the screen on the tick after reset(); only a click between reset() and that tick reaches it.
+  - reset()'s pending.clear() and sets = 0, forget()'s dismissed.remove(): a new connection's action numbers and
+    SET numbers overwrite or outnumber what is left, so no reading changes.
+  - cool()'s "cooldownMs > 0" (:394): with 0 the deadline is now, so the time left is 0 either way.
+  - receive()'s default branch (:269): does nothing for the two upward messages.

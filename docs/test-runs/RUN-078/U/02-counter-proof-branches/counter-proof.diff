@@ -1,0 +1,80 @@
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
+@@ -292,7 +292,7 @@
+             case S2CHud.RemoveWidget _ -> forget(address);
+             case S2CHud.ClearOwner clear -> {
+                 for (final Address key : List.copyOf(widgets.keySet())) {
+-                    if (key.owner().equals(clear.owner())) forget(key);
++                    if (true) forget(key);
+                 }
+             }
+         }
+@@ -337,7 +337,6 @@
+         final Component said = component(result.reason(), registries);
+         lastResult = new Result(result.actionSeq(), code, result.cooldownMs(), said, now);
+         final Pending sent = pending.remove(result.actionSeq());
+-        if (sent == null) return;
+         final boolean hasReason = !result.reason().isEmpty();
+         if (sent.panel() != null) {
+             panelResult(sent, code, hasReason ? said : null, result.cooldownMs());
+@@ -354,17 +353,17 @@
+                 notices.accept(hasReason ? said : cooldownText(result.cooldownMs()));
+             }
+             case REJECTED -> {
+-                if (current) cooling[sent.slot()] = false;
++                cooling[sent.slot()] = false;
+                 notices.accept(hasReason ? said : Component.translatable(REJECTED_KEY));
+             }
+             case RATE_LIMITED -> {
+-                if (current) cooling[sent.slot()] = false;
++                cooling[sent.slot()] = false;
+             }
+             case STALE_SCENE -> {
+                 // Dropped without a word (§14): the action belonged to the scene before
+             }
+             case UNKNOWN_ACTION -> {
+-                if (current) cooling[sent.slot()] = false;
++                cooling[sent.slot()] = false;
+                 LOGGER.warn("The server knows no such action: action_seq={} scene_seq={}", result.actionSeq(), sent.sceneSeq());
+             }
+         }
+@@ -374,10 +373,10 @@
+         switch (code) {
+             case OK -> {
+                 final Entry panel = widgets.get(sent.panel());
+-                if (panel != null && panel.set() == sent.panelSet()) dismissed.put(sent.panel(), panel.set());
++                if (panel.set() == sent.panelSet()) dismissed.put(sent.panel(), panel.set());
+             }
+-            case REJECTED -> showOnPanel(sent, said != null ? said : Component.translatable(REJECTED_KEY));
+-            case COOLDOWN -> showOnPanel(sent, said != null ? said : cooldownText(cooldownMs));
++            case REJECTED -> showOnPanel(sent, said);
++            case COOLDOWN -> showOnPanel(sent, cooldownText(cooldownMs));
+             default -> {
+                 // rate-limited, stale scene, unknown action: the panel stays as it is (§13)
+             }
+@@ -401,12 +400,7 @@
+ 
+     /** A component the codec cannot read shows as empty text, with one warning, and keeps the connection. */
+     private static Component component(EncodedComponent encoded, RegistryAccess registries) {
+-        try {
+-            return PlayComponents.decode(encoded, registries);
+-        } catch (IllegalArgumentException e) {
+-            LOGGER.warn("A play component could not be decoded, showing empty text: {}", e.getMessage());
+-            return Component.empty();
+-        }
++        return PlayComponents.decode(encoded, registries);
+     }
+ 
+     /**
+@@ -593,11 +587,8 @@
+     public void reset() {
+         scene = null;
+         widgets.clear();
+-        dismissed.clear();
+         Arrays.fill(cooling, false);
+         pending.clear();
+-        reasonPanel = null;
+-        reason = null;
+         lastResult = null;
+         sets = 0;
+         actionSeq = 0;

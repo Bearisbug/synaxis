@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" tests="30" skipped="0" failures="8" errors="0" timestamp="2026-10-13T06:13:25.071Z" hostname="Mac.local" time="2.22">
+  <properties/>
+  <testcase name="thePanelIsShownUntilItIsClosedLocallyAndItsNextSetShowsItAgain()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.034"/>
+  <testcase name="resetForgetsWhatWasRefusedOnAPanel()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.004">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;null&gt; but was: &lt;translation{key='rush.hint.failed', args=[]}&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;null&gt; but was: &lt;translation{key='rush.hint.failed', args=[]}&gt;
+	at org.junit.jupiter.api.Assertions.assertNull(Assertions.java:308)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.resetForgetsWhatWasRefusedOnAPanel(PlayClientTest.java:538)
+</failure>
+  </testcase>
+  <testcase name="aRunningTimerCountsDownFromItsSetAndAStoppedOneDoesNot()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aPressSendsTheActionOfItsSlotWithTheSceneAndARisingNumberAndStartsTheLocalCooldown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aCooldownAnsweringTheSceneBeforeLeavesTheNewTablesKeyFree()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aKeyWithoutAnActionOrAConnectionWithoutASceneSendsNothing()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aCooldownWithTheHostsReasonShowsTheReason()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002"/>
+  <testcase name="aComponentTheCodecCannotReadShowsAsEmptyTextAndTheRestOfTheMessageStillApplies()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.391">
+    <failure message="java.lang.IllegalArgumentException: the component codec could not read EncodedComponent[0a0800]: net.minecraft.nbt.ReportedNbtException: Loading NBT data" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: the component codec could not read EncodedComponent[0a0800]: net.minecraft.nbt.ReportedNbtException: Loading NBT data
+	at io.github.bearisbug.synaxis.game.client.play.PlayComponents.decode(PlayComponents.java:38)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClient.component(PlayClient.java:403)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClient.content(PlayClient.java:307)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClient.apply(PlayClient.java:280)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClient.receive(PlayClient.java:266)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aComponentTheCodecCannotReadShowsAsEmptyTextAndTheRestOfTheMessageStillApplies(PlayClientTest.java:149)
+Caused by: net.minecraft.nbt.ReportedNbtException: Loading NBT data
+	at net.minecraft.nbt.NbtIo.readTagSafe(NbtIo.java:195)
+	at net.minecraft.nbt.NbtIo.readAnyTag(NbtIo.java:148)
+	at net.minecraft.network.FriendlyByteBuf.readNbt(FriendlyByteBuf.java:559)
+	at net.minecraft.network.codec.ByteBufCodecs$16.decode(ByteBufCodecs.java:264)
+	at net.minecraft.network.codec.ByteBufCodecs$16.decode(ByteBufCodecs.java:261)
+	at net.minecraft.network.codec.ByteBufCodecs$18.decode(ByteBufCodecs.java:340)
+	at net.minecraft.network.codec.ByteBufCodecs$18.decode(ByteBufCodecs.java:337)
+	at io.github.bearisbug.synaxis.game.client.play.PlayComponents.decode(PlayComponents.java:36)
+	... 5 more
+Caused by: java.io.EOFException: fieldSize is too long! Length is 2, but maximum is 1
+	at io.netty.buffer.ByteBufInputStream.checkAvailable(ByteBufInputStream.java:324)
+	at io.netty.buffer.ByteBufInputStream.readShort(ByteBufInputStream.java:292)
+	at io.netty.buffer.ByteBufInputStream.readUnsignedShort(ByteBufInputStream.java:308)
+	at java.base/java.io.DataInputStream.readUTF(DataInputStream.java:580)
+	at io.netty.buffer.ByteBufInputStream.readUTF(ByteBufInputStream.java:298)
+	at net.minecraft.nbt.CompoundTag$1.readString(CompoundTag.java:162)
+	at net.minecraft.nbt.CompoundTag$1.loadCompound(CompoundTag.java:82)
+	at net.minecraft.nbt.CompoundTag$1.load(CompoundTag.java:70)
+	at net.minecraft.nbt.CompoundTag$1.load(CompoundTag.java:65)
+	at net.minecraft.nbt.NbtIo.readTagSafe(NbtIo.java:190)
+	... 12 more
+</failure>
+  </testcase>
+  <testcase name="removeAndClearOwnerTakeWidgetsOffAndAnUnknownKindReplacesWhatWasThere()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.004"/>
+  <testcase name="withTheLocalCooldownOffAPressGoesOutWhateverTheCooldown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aResultForNoActionThisConnectionSentIsOnlyRecorded()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="java.lang.NullPointerException: Cannot invoke &quot;io.github.bearisbug.synaxis.game.client.play.PlayClient$Pending.panel()&quot; because &quot;sent&quot; is null" type="java.lang.NullPointerException">java.lang.NullPointerException: Cannot invoke &quot;io.github.bearisbug.synaxis.game.client.play.PlayClient$Pending.panel()&quot; because &quot;sent&quot; is null
+	at io.github.bearisbug.synaxis.game.client.play.PlayClient.result(PlayClient.java:341)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClient.receive(PlayClient.java:268)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aResultForNoActionThisConnectionSentIsOnlyRecorded(PlayClientTest.java:341)
+</failure>
+  </testcase>
+  <testcase name="resetForgetsTheSceneTheWidgetsTheActionsAndTheReadiness()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="okRestartsTheCooldownFromTheServersAndCooldownFromWhatIsLeft()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="rejectedClearsTheCooldownAndShowsTheReasonOrTheClientsTextWhenThereIsNone()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="resetForgetsThePanelsClosedLocallySoTheNewConnectionsPanelShows()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="java.lang.AssertionError: expected a value, got null" type="java.lang.AssertionError">java.lang.AssertionError: expected a value, got null
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.present(PlayClientTest.java:594)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.resetForgetsThePanelsClosedLocallySoTheNewConnectionsPanelShows(PlayClientTest.java:523)
+</failure>
+  </testcase>
+  <testcase name="aClickedButtonThatIsRefusedKeepsThePanelWithTheReasonAndOkClosesIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="anOkForAPanelNoLongerInTheTableChangesNothing()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0">
+    <failure message="java.lang.NullPointerException: Cannot invoke &quot;io.github.bearisbug.synaxis.game.client.play.PlayClient$Entry.set()&quot; because &quot;panel&quot; is null" type="java.lang.NullPointerException">java.lang.NullPointerException: Cannot invoke &quot;io.github.bearisbug.synaxis.game.client.play.PlayClient$Entry.set()&quot; because &quot;panel&quot; is null
+	at io.github.bearisbug.synaxis.game.client.play.PlayClient.panelResult(PlayClient.java:376)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClient.result(PlayClient.java:342)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClient.receive(PlayClient.java:268)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.anOkForAPanelNoLongerInTheTableChangesNothing(PlayClientTest.java:469)
+</failure>
+  </testcase>
+  <testcase name="rateLimitedAndUnknownActionClearTheCooldownSilentlyAndStaleSceneLeavesIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aRefusalAnsweringTheSceneBeforeLeavesTheCooldownsTheNewTableStarted()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[2000, 2000, 2000]&gt; but was: &lt;[0, 0, 0]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[2000, 2000, 2000]&gt; but was: &lt;[0, 0, 0]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aRefusalAnsweringTheSceneBeforeLeavesTheCooldownsTheNewTableStarted(PlayClientTest.java:334)
+</failure>
+  </testcase>
+  <testcase name="theTickAnswersTheSceneOnceTheClientStandsInALoadedLevel()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="clearOwnerLeavesTheWidgetsOfEveryOtherOwner()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[a]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[a]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.clearOwnerLeavesTheWidgetsOfEveryOtherOwner(PlayClientTest.java:143)
+</failure>
+  </testcase>
+  <testcase name="aPanelWithoutASceneIsNotShown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="theFourKindsAreKeptWithTheirPropsAndAnUnknownKindIsDropped()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002"/>
+  <testcase name="widgetsComeBySlotThenTheSceneOwnersFirstThenByOrderThenByTheirFirstSet()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aRefusalShowsOnlyOnTheContentWhoseButtonWasClicked()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aSceneBringsItsTitleAndItsActionTableAndItsOwnerIsTheNamespaceOfItsId()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aTextShowsForItsTimeToLiveAndTheTickAfterThatDropsIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aNewSceneEndsEveryCooldownAndAResultOfTheSceneBeforeLeavesTheNewOneAlone()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="anOkForAPanelThatWasSetAgainAfterTheClickLeavesTheNewContentShown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aRefusedButtonWithoutAReasonShowsTheClientsTextAndACooldownWithTheHostsReasonShowsThatReason()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[synaxis.action.rejected [], synaxis:action-cooldown [2]]&gt; but was: &lt;[none, synaxis.action.cooldown [3]]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[synaxis.action.rejected [], synaxis:action-cooldown [2]]&gt; but was: &lt;[none, synaxis.action.cooldown [3]]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.game.client.play.PlayClientTest.aRefusedButtonWithoutAReasonShowsTheClientsTextAndACooldownWithTheHostsReasonShowsThatReason(PlayClientTest.java:456)
+</failure>
+  </testcase>
+  <system-out><![CDATA[[14:13:27] [Test worker/WARN]: Dropped a widget of unknown kind 5: owner=rush widget_id=b
+[14:13:27] [Test worker/WARN]: The server knows no such action: action_seq=2 scene_seq=1
+[14:13:27] [Test worker/WARN]: The server knows no such action: action_seq=3 scene_seq=1
+[14:13:27] [Test worker/WARN]: Dropped a widget of unknown kind 3: owner=rush widget_id=bar
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -95,7 +95,7 @@ final class Evacuation {
                 }
                 case Exit.Kick(String reasonKey) -> player.kick(Component.translatable(reasonKey));
             }
-        } catch (RuntimeException e) {
+        } catch (Throwable e) {
             managed.missingExits().error(e, "No exit for a player of a closing managed instance, kicking them: plugin_id={} "
                     + "instance={} connection_id={}", managed.pluginId(), managed.id(), player.getPlayerConnection().connectionId());
             player.kick(MATCH_UNAVAILABLE);

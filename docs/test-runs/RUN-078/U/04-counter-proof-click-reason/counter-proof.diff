@@ -1,0 +1,13 @@
+diff --git a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
+index a96dd29f32..4bcdd8da6b 100644
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
+@@ -439,7 +439,7 @@ public final class PlayClient {
+      */
+     public void click(Entry panel, Button button) {
+         final Address address = new Address(panel.owner(), panel.widgetId());
+-        if (address.equals(reasonPanel)) reason = null;
++        if (true) reason = null;
+         send(button.actionId(), new Pending(-1, scene == null ? 0 : scene.seq(), address, panel.set()));
+     }
+ 

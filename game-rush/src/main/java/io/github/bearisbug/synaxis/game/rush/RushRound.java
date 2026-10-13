@@ -88,6 +88,11 @@ final class RushRound extends Round {
     /**
      * The back button of the result panel, on the tick thread of the player who pressed it: sends that
      * player back to the lobby, once, while the round shows its result.
+     * <p>
+     * Once the round is settled the arena is {@code CLOSED} and the button does nothing: the host's
+     * evacuation sends the player. A round settled after the button and before its move ran hands that
+     * player the exit too; both moves then run in turn on the player's tick thread, and the later one
+     * finds the player in the lobby and moves nobody ({@code docs/DESIGN-PLAY.md} §16).
      *
      * @param player the player
      */

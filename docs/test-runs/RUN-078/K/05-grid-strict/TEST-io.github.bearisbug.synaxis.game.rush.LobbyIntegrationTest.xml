@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-13T06:22:49.695Z" hostname="Mac.local" time="1.326">
+  <properties/>
+  <testcase name="anArenaThatFailsToPrepareSendsTheQueueBackWithTheFailedHint(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.972"/>
+  <testcase name="theQueueKeyTogglesAndTheHintFollowsTheCount(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.038"/>
+  <testcase name="noSecondArenaWhileThePreviousRoundHasNotClosed(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.076"/>
+  <testcase name="anOpenArenaTakesAtMostEightAndPutsThemIntoTheRound(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.062"/>
+  <testcase name="anArenaOpeningWithTooFewQueuedIsCancelledAndTheQueueStays(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.025"/>
+  <testcase name="aMoveThatFailsPutsThePlayerBackIntoTheLobbyScene(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.031"/>
+  <testcase name="leavingTheServerLeavesTheQueue(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.018"/>
+  <testcase name="aCountdownRunningOutCreatesTheArena(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.021"/>
+  <testcase name="aPlayerArrivingEntersTheLobbySceneWithTheHint(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.016"/>
+  <testcase name="theRoundStartsOnlyOnceEveryMoveIsDone(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.027"/>
+  <testcase name="theCountdownReachesTheQueuedOnlyAndStopsBelowTheMinimum(Env)" classname="io.github.bearisbug.synaxis.game.rush.LobbyIntegrationTest" time="0.029"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

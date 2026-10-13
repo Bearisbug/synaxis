@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.playkit.LocalQueueTest" tests="7" skipped="0" failures="3" errors="0" timestamp="2026-10-13T06:21:26.302Z" hostname="Mac.local" time="0.044">
+  <properties/>
+  <testcase name="aTakeWaitsForAJoinUnderWayAndTakesThatPlayer()" classname="io.github.bearisbug.synaxis.game.playkit.LocalQueueTest" time="0.021">
+    <failure message="org.opentest4j.AssertionFailedError: a take went through while a call stopped inside the queue ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: a take went through while a call stopped inside the queue ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:266)
+	at io.github.bearisbug.synaxis.game.playkit.LocalQueueTest.assertWaitsFor(LocalQueueTest.java:202)
+	at io.github.bearisbug.synaxis.game.playkit.LocalQueueTest.aTakeWaitsForAJoinUnderWayAndTakesThatPlayer(LocalQueueTest.java:117)
+</failure>
+  </testcase>
+  <testcase name="fewerThanTheMinimumAreNotTaken()" classname="io.github.bearisbug.synaxis.game.playkit.LocalQueueTest" time="0.004"/>
+  <testcase name="aPlayerIsQueuedOnceInTheOrderOfJoining()" classname="io.github.bearisbug.synaxis.game.playkit.LocalQueueTest" time="0.0"/>
+  <testcase name="theBoundsOfATakeAreChecked()" classname="io.github.bearisbug.synaxis.game.playkit.LocalQueueTest" time="0.004"/>
+  <testcase name="aTakeWaitsForALeaveUnderWayAndLeavesThatPlayerOut()" classname="io.github.bearisbug.synaxis.game.playkit.LocalQueueTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: a take went through while a call stopped inside the queue ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: a take went through while a call stopped inside the queue ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:266)
+	at io.github.bearisbug.synaxis.game.playkit.LocalQueueTest.assertWaitsFor(LocalQueueTest.java:202)
+	at io.github.bearisbug.synaxis.game.playkit.LocalQueueTest.aTakeWaitsForALeaveUnderWayAndLeavesThatPlayerOut(LocalQueueTest.java:161)
+</failure>
+  </testcase>
+  <testcase name="aSecondJoinOfAPlayerWaitsForTheFirstAndIsRefused()" classname="io.github.bearisbug.synaxis.game.playkit.LocalQueueTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: the second join went through while a call stopped inside the queue ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the second join went through while a call stopped inside the queue ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:266)
+	at io.github.bearisbug.synaxis.game.playkit.LocalQueueTest.assertWaitsFor(LocalQueueTest.java:202)
+	at io.github.bearisbug.synaxis.game.playkit.LocalQueueTest.aSecondJoinOfAPlayerWaitsForTheFirstAndIsRefused(LocalQueueTest.java:136)
+</failure>
+  </testcase>
+  <testcase name="aTakeTakesAtMostTheMaximumFirstComeFirst()" classname="io.github.bearisbug.synaxis.game.playkit.LocalQueueTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

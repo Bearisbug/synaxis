@@ -565,6 +565,7 @@ class PlayClientTest {
         play.receive(new S2CActionResult(1, ActionResultCode.REJECTED, encode(Component.translatable("rush.hint.failed")), 0),
                 RegistryAccess.EMPTY);
         play.reset();
+        assertNull(play.lastResult());
 
         play.receive(scene(1, 0), RegistryAccess.EMPTY);
         play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);

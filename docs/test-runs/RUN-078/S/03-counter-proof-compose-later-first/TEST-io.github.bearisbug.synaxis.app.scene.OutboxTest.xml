@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.scene.OutboxTest" tests="11" skipped="0" failures="1" errors="0" timestamp="2026-10-13T07:56:21.150Z" hostname="Mac.local" time="0.15">
+  <properties/>
+  <testcase name="thirtyTwoScoreboardsOfAboutOneKibSplitOnTheByteCap()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.069"/>
+  <testcase name="theLaterMoveDoneFirstStillHoldsTheQueueUntilTheEarlierIsDone()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.014"/>
+  <testcase name="thirtyThreeSmallTextsSplitOnTheOpCap()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.003"/>
+  <testcase name="ofTwoScenesInOneTickOnlyTheLaterGoesOut()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.002"/>
+  <testcase name="anEarlierMoveThatFailsStillHoldsTheQueueUntilTheLaterIsDone()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.002"/>
+  <testcase name="twoChangesOfOneWidgetInOneTickReachTheClientAsTheLaterOne()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.003"/>
+  <testcase name="aClearOfOneOwnerKeepsTheOtherOwnersChanges()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.003"/>
+  <testcase name="theSceneGoesFirstAndAChangeTheSceneOwnerQueuedBeforeItIsGone()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.002"/>
+  <testcase name="aMoveUnderWayHoldsTheWholeQueueUntilEveryMoveIsDone()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.001"/>
+  <testcase name="aLaterMoveThatFailsStillHoldsTheQueueUntilTheEarlierIsDone()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.016">
+    <failure message="org.opentest4j.AssertionFailedError: sent while the first move was under way ==&gt; expected: &lt;0&gt; but was: &lt;1&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: sent while the first move was under way ==&gt; expected: &lt;0&gt; but was: &lt;1&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.app.scene.OutboxTest.aLaterMoveThatFailsStillHoldsTheQueueUntilTheEarlierIsDone(OutboxTest.java:189)
+</failure>
+  </testcase>
+  <testcase name="anEmptyQueueSendsNothingAndAFlushEmptiesIt()" classname="io.github.bearisbug.synaxis.app.scene.OutboxTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

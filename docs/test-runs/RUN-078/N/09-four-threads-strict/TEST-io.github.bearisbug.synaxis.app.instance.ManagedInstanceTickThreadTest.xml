@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-13T07:58:50.922Z" hostname="Mac.local" time="1.433">
+  <properties/>
+  <testcase name="onTheTickSchedulerCreateComesBackPreparingAndOpensInALaterSerialPart()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest" time="0.756"/>
+  <testcase name="theStartupThreadIsAnyOtherThreadOnceTheProcessRuns()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest" time="0.006"/>
+  <testcase name="aGeneratorThatThrowsOutsideTheTickClosesTheInstance()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest" time="0.095"/>
+  <testcase name="theShutdownDropsAPreparingInstanceAndItIsNeverRegistered()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest" time="0.248"/>
+  <testcase name="aPreparationOverTheBudgetClosesTheInstance()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest" time="0.293"/>
+  <system-out><![CDATA[15:58:50.943 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Starting synaxis (dev) server.
+15:58:50.944 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Running in offline mode. Beware that this is not secure and players can impersonate each other.
+15:58:50.947 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server started successfully.
+§15 readings (chunkRadius=2, 25 chunks), create 1 of 5: create on the tick scheduler thread 898 us, registration in the serial part 156 us, prepare_ms 45, classes loaded meanwhile 4, garbage collections meanwhile 0
+§15 readings (chunkRadius=2, 25 chunks), create 2 of 5: create on the tick scheduler thread 765 us, registration in the serial part 202 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+§15 readings (chunkRadius=2, 25 chunks), create 3 of 5: create on the tick scheduler thread 465 us, registration in the serial part 74 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+§15 readings (chunkRadius=2, 25 chunks), create 4 of 5: create on the tick scheduler thread 269 us, registration in the serial part 80 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+§15 readings (chunkRadius=2, 25 chunks), create 5 of 5: create on the tick scheduler thread 1538 us, registration in the serial part 88 us, prepare_ms 48, classes loaded meanwhile 0, garbage collections meanwhile 0
+15:58:51.808 [Syn-TickScheduler] ERROR i.g.b.s.a.i.ManagedInstanceImpl - Managed instance failed to prepare: plugin_id=broken instance=broken:arena_1 (1 managed instances that failed to prepare since the last report)
+java.lang.IllegalStateException: probe generator failure
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest.lambda$aGeneratorThatThrowsOutsideTheTickClosesTheInstance$0(ManagedInstanceTickThreadTest.java:293)
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceImpl.lambda$new$0(ManagedInstanceImpl.java:110)
+	at io.github.bearisbug.synaxis.instance.InstanceContainer.generateChunk(InstanceContainer.java:485)
+	at io.github.bearisbug.synaxis.instance.InstanceContainer.createChunk(InstanceContainer.java:470)
+	at io.github.bearisbug.synaxis.instance.InstanceContainer.lambda$retrieveChunk$2(InstanceContainer.java:430)
+	at java.base/java.util.concurrent.CompletableFuture$UniApply.tryFire(CompletableFuture.java:667)
+	at java.base/java.util.concurrent.CompletableFuture$Completion.run(CompletableFuture.java:503)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:460)
+15:58:52.255 [Syn-TickScheduler] ERROR i.g.b.s.a.i.ManagedInstanceImpl - Managed instance failed to prepare: plugin_id=slow instance=slow:arena_1 (1 managed instances that failed to prepare since the last report)
+java.util.concurrent.TimeoutException: not prepared within PT30S
+	at io.github.bearisbug.synaxis.app.instance.ManagedInstanceImpl.awaitPreparation(ManagedInstanceImpl.java:186)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:77)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:68)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.handleTask(SchedulerImpl.java:127)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.runTasks(SchedulerImpl.java:85)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTickTasks(SchedulerImpl.java:70)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:53)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:49)
+	at io.github.bearisbug.synaxis.timer.SchedulerManager.processTick(SchedulerManager.java:24)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tickWatched(ServerProcessImpl.java:622)
+	at io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tick(ServerProcessImpl.java:611)
+	at io.github.bearisbug.synaxis.TickSchedulerThread.run(TickSchedulerThread.java:38)
+15:58:52.356 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+15:58:52.457 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+15:58:52.460 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

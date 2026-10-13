@@ -1,0 +1,12 @@
+total tests=10 failures=1 errors=0 skipped=0
+io.github.bearisbug.synaxis.app.scene.OutboxTest: tests=10 failures=1 errors=0 skipped=0
+  PASS thirtyTwoScoreboardsOfAboutOneKibSplitOnTheByteCap()
+  PASS theLaterMoveDoneFirstStillHoldsTheQueueUntilTheEarlierIsDone()
+  PASS thirtyThreeSmallTextsSplitOnTheOpCap()
+  PASS ofTwoScenesInOneTickOnlyTheLaterGoesOut()
+  FAILURE anEarlierMoveThatFailsStillHoldsTheQueueUntilTheLaterIsDone() :: org.opentest4j.AssertionFailedError :: org.opentest4j.AssertionFailedError: sent while the second move was under way ==> expected: <0> but was: <1> :: at io.github.bearisbug.synaxis.app.scene.OutboxTest.anEarlierMoveThatFailsStillHoldsTheQueueUntilTheLaterIsDone(OutboxTest.java:173)
+  PASS twoChangesOfOneWidgetInOneTickReachTheClientAsTheLaterOne()
+  PASS aClearOfOneOwnerKeepsTheOtherOwnersChanges()
+  PASS theSceneGoesFirstAndAChangeTheSceneOwnerQueuedBeforeItIsGone()
+  PASS aMoveUnderWayHoldsTheWholeQueueUntilEveryMoveIsDone()
+  PASS anEmptyQueueSendsNothingAndAFlushEmptiesIt()

@@ -1,0 +1,14 @@
+command: :server-app:test --tests io.github.bearisbug.synaxis.app.scene.OutboxTest :server-app:testNamingCheck :server-app:forbiddenImportsCheck (no -D properties)
+total tests=11 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.app.scene.OutboxTest: tests=11 failures=0 errors=0 skipped=0
+  PASS thirtyTwoScoreboardsOfAboutOneKibSplitOnTheByteCap()
+  PASS theLaterMoveDoneFirstStillHoldsTheQueueUntilTheEarlierIsDone()
+  PASS thirtyThreeSmallTextsSplitOnTheOpCap()
+  PASS ofTwoScenesInOneTickOnlyTheLaterGoesOut()
+  PASS anEarlierMoveThatFailsStillHoldsTheQueueUntilTheLaterIsDone()
+  PASS twoChangesOfOneWidgetInOneTickReachTheClientAsTheLaterOne()
+  PASS aClearOfOneOwnerKeepsTheOtherOwnersChanges()
+  PASS theSceneGoesFirstAndAChangeTheSceneOwnerQueuedBeforeItIsGone()
+  PASS aMoveUnderWayHoldsTheWholeQueueUntilEveryMoveIsDone()
+  PASS aLaterMoveThatFailsStillHoldsTheQueueUntilTheEarlierIsDone()
+  PASS anEmptyQueueSendsNothingAndAFlushEmptiesIt()

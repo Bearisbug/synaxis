@@ -1,0 +1,14 @@
+command: :server-app:test --tests io.github.bearisbug.synaxis.app.scene.OutboxTest :server-app:testNamingCheck :server-app:forbiddenImportsCheck (no -D properties)
+total tests=11 failures=2 errors=0 skipped=0
+io.github.bearisbug.synaxis.app.scene.OutboxTest: tests=11 failures=2 errors=0 skipped=0
+  PASS thirtyTwoScoreboardsOfAboutOneKibSplitOnTheByteCap()
+  FAILURE theLaterMoveDoneFirstStillHoldsTheQueueUntilTheEarlierIsDone() :: org.opentest4j.AssertionFailedError :: org.opentest4j.AssertionFailedError: sent while the first move was under way ==> expected: <0> but was: <2> :: at io.github.bearisbug.synaxis.app.scene.OutboxTest.theLaterMoveDoneFirstStillHoldsTheQueueUntilTheEarlierIsDone(OutboxTest.java:153)
+  PASS thirtyThreeSmallTextsSplitOnTheOpCap()
+  PASS ofTwoScenesInOneTickOnlyTheLaterGoesOut()
+  PASS anEarlierMoveThatFailsStillHoldsTheQueueUntilTheLaterIsDone()
+  PASS twoChangesOfOneWidgetInOneTickReachTheClientAsTheLaterOne()
+  PASS aClearOfOneOwnerKeepsTheOtherOwnersChanges()
+  PASS theSceneGoesFirstAndAChangeTheSceneOwnerQueuedBeforeItIsGone()
+  PASS aMoveUnderWayHoldsTheWholeQueueUntilEveryMoveIsDone()
+  FAILURE aLaterMoveThatFailsStillHoldsTheQueueUntilTheEarlierIsDone() :: org.opentest4j.AssertionFailedError :: org.opentest4j.AssertionFailedError: sent while the first move was under way ==> expected: <0> but was: <1> :: at io.github.bearisbug.synaxis.app.scene.OutboxTest.aLaterMoveThatFailsStillHoldsTheQueueUntilTheEarlierIsDone(OutboxTest.java:189)
+  PASS anEmptyQueueSendsNothingAndAFlushEmptiesIt()

@@ -1,0 +1,13 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/Outbox.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/Outbox.java
+index aa1b725b53..715fb9200c 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/Outbox.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/Outbox.java
+@@ -87,7 +87,7 @@ final class Outbox {
+     void holdUntil(CompletableFuture<?> move) {
+         while (true) {
+             final CompletableFuture<?> current = hold.get();
+-            if (hold.compareAndSet(current, current.isDone() ? move : CompletableFuture.allOf(current, move))) return;
++            if (hold.compareAndSet(current, move)) return;
+         }
+     }
+ 

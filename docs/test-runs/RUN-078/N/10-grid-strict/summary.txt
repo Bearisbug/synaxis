@@ -1,0 +1,8 @@
+EvacuationIntegrationTest tests 18 failures 0 errors 0 skipped 0 started 2026-10-13T07:59:55.091Z time 17.038
+ManagedInstanceTickThreadTest tests 5 failures 0 errors 0 skipped 0 started 2026-10-13T08:00:12.133Z time 1.382
+    §15 readings (chunkRadius=2, 25 chunks), create 1 of 5: create on the tick scheduler thread 683 us, registration in the serial part 178 us, prepare_ms 46, classes loaded meanwhile 4, garbage collections meanwhile 0
+    §15 readings (chunkRadius=2, 25 chunks), create 2 of 5: create on the tick scheduler thread 380 us, registration in the serial part 119 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+    §15 readings (chunkRadius=2, 25 chunks), create 3 of 5: create on the tick scheduler thread 359 us, registration in the serial part 115 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+    §15 readings (chunkRadius=2, 25 chunks), create 4 of 5: create on the tick scheduler thread 262 us, registration in the serial part 132 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+    §15 readings (chunkRadius=2, 25 chunks), create 5 of 5: create on the tick scheduler thread 306 us, registration in the serial part 72 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+ManagedInstanceTransitionsTest tests 20 failures 0 errors 0 skipped 0 started 2026-10-13T08:00:13.615Z time 0.096

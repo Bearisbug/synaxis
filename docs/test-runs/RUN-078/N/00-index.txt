@@ -5,14 +5,16 @@ Commits:
   8f56eb21b6  tests, and the package-private pause of InstanceRegistry (pauseWith, five Window values, called at
               five places of ManagedInstanceImpl and Evacuation; nothing happens there outside tests)
   7c645b587b  fix: Evacuation#send catches Throwable instead of RuntimeException
-Test line numbers below are those of 8f56eb21b6 (7c645b587b changes no test); main code line numbers are those of
-7c645b587b.
+  8d4df2b3cd  test: ManagedInstanceTickThreadTest counts only the classes loaded during the create call
+Test line numbers below are those of 8f56eb21b6 (7c645b587b changes no test; 8d4df2b3cd moves the lines of
+ManagedInstanceTickThreadTest from its create helper on down by 2, and none of them is cited here); main code line
+numbers are those of 7c645b587b.
 
 Local Gradle through ~/.claude/r077/gradle.zsh (JDK 25, --max-workers=2 --no-daemon --init-script
-gradle/init/aliyun-mirror.init.gradle.kts, the heavy lock taken for each run only). Six Gradle runs, each
+gradle/init/aliyun-mirror.init.gradle.kts, the heavy lock taken for each run only). Ten Gradle runs, each
 ":server-app:test --rerun --tests io.github.bearisbug.synaxis.app.instance.EvacuationIntegrationTest
 --tests ...ManagedInstanceTickThreadTest --tests ...ManagedInstanceTransitionsTest :server-app:testNamingCheck
-:server-app:forbiddenImportsCheck", none with a database or Redis. Each directory holds the JUnit XML reports of
+:server-app:forbiddenImportsCheck" (run 7 with the first --tests only), none with a database or Redis. Each directory holds the JUnit XML reports of
 that run and summary.txt (one line per red test with the first frame in the test class, and the §15 lines of
 ManagedInstanceTickThreadTest).
 
@@ -63,21 +65,57 @@ Run 6 -> 06-grid-strict/        (run 5's properties plus -Dsynaxis.thread-provid
   ManagedInstanceTransitionsTest 20, 0 failures; testNamingCheck and forbiddenImportsCheck pass. In runs 5 and 6
   the three classes ran one after another (XML timestamps), not side by side.
 
+Run 7 -> 07-counter-proof-c/    (default mode, EvacuationIntegrationTest only)
+  Code: 8d4df2b3cd with counter-proof.diff: M8 Evacuation.java:98 catches RuntimeException | Error instead of
+  Throwable, the half fix that covers the Error but not the checked exception (item 4).
+  18 tests, 1 red: anExitThatThrowsAnErrorOrACheckedExceptionKicksThePlayer, "java.io.IOException: probe checked
+  exit failure", thrown from the exit lambda (EvacuationIntegrationTest.java:267, the second player's) through
+  Evacuation.send (:92), Evacuation.start (:69), ManagedInstanceImpl.close (:381) and ManagedInstanceImpl.cancel
+  (:343) out of cancel (EvacuationIntegrationTest.java:265). The first player's StackOverflowError was caught.
+  testNamingCheck and forbiddenImportsCheck pass. Restored with git checkout -- server-app/src/main.
+
+Run 8 -> 08-green/              (default mode)
+Run 9 -> 09-four-threads-strict/  (-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true)
+Run 10 -> 10-grid-strict/       (run 9's properties plus -Dsynaxis.thread-provider=grid)
+  Code: 8d4df2b3cd. Each run: EvacuationIntegrationTest 18, ManagedInstanceTickThreadTest 5,
+  ManagedInstanceTransitionsTest 20, 0 failures; testNamingCheck and forbiddenImportsCheck pass. The three classes
+  ran one after another (XML timestamps). The resource gate of gradle.zsh read a load average of 16-20 at the
+  start of runs 7-10, from other agents' builds.
+
 Item 12, the §15 readings of ManagedInstanceTickThreadTest (its §15 test runs first in the class and creates five
 instances one after another, each once the one before is open). create us / registration us / prepare_ms /
-classes loaded during the create call; no garbage collection ran during any of the 30 calls:
-  run 1 default   543/144/48/18   199/101/49/0   326/75/49/0    204/78/49/0    203/81/49/0
-  run 2 default  3086/135/43/18   502/101/49/0   238/74/49/0    232/91/49/0    284/70/49/0
-  run 3 default  1286/179/42/18   318/93/49/0    255/93/49/0    905/173/49/0   300/104/49/0
-  run 4 default   444/164/48/18   279/130/49/0   215/75/49/0    206/67/49/0    230/73/49/0
-  run 5 4-strict  407/128/48/18   275/100/49/0   243/109/49/0  1694/84/43/0    231/68/49/0
-  run 6 grid      353/118/48/18   206/58/49/0    213/58/49/0    225/72/49/0    204/64/49/0
-  The counter-proofs of runs 2 and 3 do not touch the path of create, so their readings count.
-  First create: 353-3,086 us, 2 of 6 over 1 ms, each loading 18 classes. Later creates: 199-1,694 us, 1 of 24 over
-  1 ms (run 5, the fourth create, no class loaded, no collection); one more at 905 us. Registration 58-179 us.
-  The three readings over 1 ms have prepare_ms 42-43 where the others have 48-49: counted on the 50 ms tick, the
-  instance object was built 7-8 ms into the tick instead of 1-2 ms, later than the whole create call (1.3-3.1 ms)
-  explains, so the serial part was already late before the create task ran. What held the tick scheduler thread
-  back was not verified.
-  Outcome (b) of the RUN-078 brief: a later create is over 1 ms as well, so the threshold is not split into a first
+classes loaded during the create call; no garbage collection ran during any of the 45 calls:
+  run 1 default   543/144/48/18*  199/101/49/0   326/75/49/0    204/78/49/0    203/81/49/0
+  run 2 default  3086/135/43/18*  502/101/49/0   238/74/49/0    232/91/49/0    284/70/49/0
+  run 3 default  1286/179/42/18*  318/93/49/0    255/93/49/0    905/173/49/0   300/104/49/0
+  run 4 default   444/164/48/18*  279/130/49/0   215/75/49/0    206/67/49/0    230/73/49/0
+  run 5 4-strict  407/128/48/18*  275/100/49/0   243/109/49/0  1694/84/43/0    231/68/49/0
+  run 6 grid      353/118/48/18*  206/58/49/0    213/58/49/0    225/72/49/0    204/64/49/0
+  run 8 default   760/162/47/4    591/353/49/0   282/196/49/0   825/157/49/0   358/121/49/0
+  run 9 4-strict  898/156/45/4    765/202/49/0   465/74/49/0    269/80/49/0   1538/88/48/0
+  run 10 grid     683/178/46/4    380/119/49/0   359/115/49/0   262/132/49/0   306/72/49/0
+  * Not a count of create's classes. Up to 7c645b587b the test read the class count before its first call of
+    collections(), and that first call loads the classes of the garbage collector beans, so each run's first
+    create was charged with the measurer's own classes as well (the review's probe on JDK 25.0.4.1, create
+    replaced by nothing: 17 classes the first time, 0 the second, at least 14 of them GC and JMX classes).
+    8d4df2b3cd reads the collections first and the class count last; with it the first create loads 4 classes
+    and the later ones 0 (runs 8-10). The create and registration times of runs 1-6 are not affected: the
+    measurer's calls lie outside the timed span.
+  "First" is the first create of this class, not of the JVM: in every run the class ran after
+  EvacuationIntegrationTest in the same test JVM (run 3 also after ManagedInstanceTransitionsTest), which had
+  already created managed instances on the same code path.
+  The counter-proofs of runs 2 and 3 leave create alone, so all their create readings count. M6 of run 2 changes
+  open(), which the registration reading times, so run 2's registrations ran on changed code; without run 2 the
+  registrations of runs 1-6 are still 58-179 us.
+  First create: 353-3,086 us, 2 of 9 over 1 ms (runs 2 and 3); runs 8-10 give 683-898 us. Later creates:
+  199-1,694 us, 2 of 36 over 1 ms, both 4-thread strict with no class loaded and no collection: run 5's fourth
+  (1,694 us) and run 9's fifth (1,538 us); two more at 825 and 905 us. Registration 58-353 us.
+  prepare_ms runs from the end of the ManagedInstanceImpl constructor, partway through create, to the opening in
+  the next tick's serial part. Three of the four readings over 1 ms have prepare_ms 42-43 where the others have
+  45-49: on the 50 ms tick their instance object was built at least 6 ms into the tick; even with the whole create
+  call (1.3-3.1 ms) before that point, the create task started at least about 3 ms into the tick, so their serial
+  part was already late. Run 9's 1,538 us has prepare_ms 48, within the range of the others, so it does not show
+  a late serial part. What held the tick scheduler thread back, and what made that one call slow, was not
+  verified.
+  Outcome (b) of the RUN-078 brief: later creates are over 1 ms as well, so the threshold is not split into a first
   and a later figure here, and nothing is pre-built; the decision is the user's.

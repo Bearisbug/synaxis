@@ -1,0 +1,8 @@
+Run 7, default mode, EvacuationIntegrationTest only, code 8d4df2b3cd with counter-proof.diff (Evacuation#send catches
+RuntimeException | Error instead of Throwable).
+EvacuationIntegrationTest tests 18 failures 1 errors 0 skipped 0
+  RED anExitThatThrowsAnErrorOrACheckedExceptionKicksThePlayer: java.io.IOException: probe checked exit failure
+      at the exit lambda (EvacuationIntegrationTest.java:267), through Evacuation.send (:92), Evacuation.start (:69),
+      ManagedInstanceImpl.close (:381) and ManagedInstanceImpl.cancel (:343), out of cancel at
+      EvacuationIntegrationTest.java:265
+testNamingCheck and forbiddenImportsCheck ran before the test task and passed.

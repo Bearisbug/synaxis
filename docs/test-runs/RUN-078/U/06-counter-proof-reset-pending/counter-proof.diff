@@ -1,0 +1,12 @@
+diff --git a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
+index a96dd29f32..53a47bd5cb 100644
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
+@@ -595,7 +595,6 @@ public final class PlayClient {
+         widgets.clear();
+         dismissed.clear();
+         Arrays.fill(cooling, false);
+-        pending.clear();
+         reasonPanel = null;
+         reason = null;
+         lastResult = null;

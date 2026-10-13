@@ -1,0 +1,13 @@
+diff --git a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
+index a96dd29f32..6ef5b1536d 100644
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/PlayClient.java
+@@ -515,7 +515,7 @@ public final class PlayClient {
+     public @Nullable Entry panel() {
+         if (scene == null) return null;
+         for (final Entry entry : widgets()) {
+-            if (entry.content() instanceof Panel
++            if (true
+                     && !Objects.equals(dismissed.get(new Address(entry.owner(), entry.widgetId())), entry.set())) {
+                 return entry;
+             }

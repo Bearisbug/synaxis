@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" tests="33" skipped="0" failures="0" errors="0" timestamp="2026-10-13T08:05:34.780Z" hostname="Mac.local" time="10.435">
+  <properties/>
+  <testcase name="thePanelIsShownUntilItIsClosedLocallyAndItsNextSetShowsItAgain()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.071"/>
+  <testcase name="resetForgetsTheActionsStillWaitingForTheirResult()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002"/>
+  <testcase name="resetForgetsWhatWasRefusedOnAPanel()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aRunningTimerCountsDownFromItsSetAndAStoppedOneDoesNot()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002"/>
+  <testcase name="aPressSendsTheActionOfItsSlotWithTheSceneAndARisingNumberAndStartsTheLocalCooldown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002"/>
+  <testcase name="aCooldownAnsweringTheSceneBeforeLeavesTheNewTablesKeyFree()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aKeyWithoutAnActionOrAConnectionWithoutASceneSendsNothing()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aCooldownWithTheHostsReasonShowsTheReason()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.007"/>
+  <testcase name="aComponentTheCodecCannotReadShowsAsEmptyTextAndTheRestOfTheMessageStillApplies()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="3.945"/>
+  <testcase name="removeAndClearOwnerTakeWidgetsOffAndAnUnknownKindReplacesWhatWasThere()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.004"/>
+  <testcase name="withTheLocalCooldownOffAPressGoesOutWhateverTheCooldown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="thePanelSkipsTheOtherKindsThatComeBeforeItInLayoutOrder()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aResultForNoActionThisConnectionSentIsOnlyRecorded()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="resetForgetsTheSceneTheWidgetsTheActionsAndTheReadiness()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.005"/>
+  <testcase name="okRestartsTheCooldownFromTheServersAndCooldownFromWhatIsLeft()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002"/>
+  <testcase name="rejectedClearsTheCooldownAndShowsTheReasonOrTheClientsTextWhenThereIsNone()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="resetForgetsThePanelsClosedLocallySoTheNewConnectionsPanelShows()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aClickedButtonThatIsRefusedKeepsThePanelWithTheReasonAndOkClosesIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002"/>
+  <testcase name="anOkForAPanelNoLongerInTheTableChangesNothing()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="rateLimitedAndUnknownActionClearTheCooldownSilentlyAndStaleSceneLeavesIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002"/>
+  <testcase name="aRefusalAnsweringTheSceneBeforeLeavesTheCooldownsTheNewTableStarted()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002"/>
+  <testcase name="theTickAnswersTheSceneOnceTheClientStandsInALoadedLevel()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002"/>
+  <testcase name="clearOwnerLeavesTheWidgetsOfEveryOtherOwner()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.002"/>
+  <testcase name="aPanelWithoutASceneIsNotShown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="theFourKindsAreKeptWithTheirPropsAndAnUnknownKindIsDropped()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.004"/>
+  <testcase name="widgetsComeBySlotThenTheSceneOwnersFirstThenByOrderThenByTheirFirstSet()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aClickOnAnotherPanelLeavesTheReasonOnThePanelThatWasRefused()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aRefusalShowsOnlyOnTheContentWhoseButtonWasClicked()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <testcase name="aSceneBringsItsTitleAndItsActionTableAndItsOwnerIsTheNamespaceOfItsId()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aTextShowsForItsTimeToLiveAndTheTickAfterThatDropsIt()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aNewSceneEndsEveryCooldownAndAResultOfTheSceneBeforeLeavesTheNewOneAlone()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="anOkForAPanelThatWasSetAgainAfterTheClickLeavesTheNewContentShown()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.0"/>
+  <testcase name="aRefusedButtonWithoutAReasonShowsTheClientsTextAndACooldownWithTheHostsReasonShowsThatReason()" classname="io.github.bearisbug.synaxis.game.client.play.PlayClientTest" time="0.001"/>
+  <system-out><![CDATA[[16:05:45] [Test worker/WARN]: A play component could not be decoded, showing empty text: the component codec could not read EncodedComponent[0a0800]: net.minecraft.nbt.ReportedNbtException: Loading NBT data
+[16:05:45] [Test worker/WARN]: Dropped a widget of unknown kind 5: owner=rush widget_id=b
+[16:05:45] [Test worker/WARN]: The server knows no such action: action_seq=2 scene_seq=1
+[16:05:45] [Test worker/WARN]: The server knows no such action: action_seq=3 scene_seq=1
+[16:05:45] [Test worker/WARN]: Dropped a widget of unknown kind 3: owner=rush widget_id=bar
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

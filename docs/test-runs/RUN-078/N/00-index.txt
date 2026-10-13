@@ -1,0 +1,83 @@
+RUN-078 group N: the managed instances app/instance, items 2, 3, 4 and 12 of the S1 test debt row in
+docs/DESIGN-PLAY.md §28.2 (branch prod/r078-N, base origin/main 62ae65f89c).
+
+Commits:
+  8f56eb21b6  tests, and the package-private pause of InstanceRegistry (pauseWith, five Window values, called at
+              five places of ManagedInstanceImpl and Evacuation; nothing happens there outside tests)
+  7c645b587b  fix: Evacuation#send catches Throwable instead of RuntimeException
+Test line numbers below are those of 8f56eb21b6 (7c645b587b changes no test); main code line numbers are those of
+7c645b587b.
+
+Local Gradle through ~/.claude/r077/gradle.zsh (JDK 25, --max-workers=2 --no-daemon --init-script
+gradle/init/aliyun-mirror.init.gradle.kts, the heavy lock taken for each run only). Six Gradle runs, each
+":server-app:test --rerun --tests io.github.bearisbug.synaxis.app.instance.EvacuationIntegrationTest
+--tests ...ManagedInstanceTickThreadTest --tests ...ManagedInstanceTransitionsTest :server-app:testNamingCheck
+:server-app:forbiddenImportsCheck", none with a database or Redis. Each directory holds the JUnit XML reports of
+that run and summary.txt (one line per red test with the first frame in the test class, and the §15 lines of
+ManagedInstanceTickThreadTest).
+
+Run 1 -> 01-red/            (default mode)
+  Code: 8f56eb21b6, Evacuation#send still catches RuntimeException only. 43 tests, 1 red:
+    anExitThatThrowsAnErrorOrACheckedExceptionKicksThePlayer, "java.lang.StackOverflowError: probe exit error",
+    thrown from the exit lambda (EvacuationIntegrationTest.java:266) through Evacuation.send (:92),
+    Evacuation.start (:69) and ManagedInstanceImpl.close (:381) out of cancel.
+  Every other test green, the new race tests included.
+
+Run 2 -> 02-counter-proofs-a/   (default mode)
+  Code: 7c645b587b with counter-proofs.diff, six changes at once, each aimed at one test:
+    M1 Evacuation.java:68 drops "if (finished.get()) return;"                       (item 2)
+    M2 ManagedInstanceImpl.java:308 landed without synchronized                       (item 3, monitor)
+    M3 ManagedInstanceImpl.java:408 "synchronized (this)" in reclaim made a plain block (item 3, monitor)
+    M4 ManagedInstanceImpl.java:296 admit without synchronized                        (item 3, monitor)
+    M5 Evacuation.java:126-128 the two snapshots of finish the other way round        (item 3, order)
+    M6 ManagedInstanceImpl.java:200-205 swap first (return when it fails), then register (item 3, order)
+  43 tests, exactly the six targeted ones red:
+    M1 aForcedCloseFromTheClosingEventFinishesTheEvacuation at EvacuationIntegrationTest.java:372,
+       "the exit was asked for after the forced close had finished the evacuation ==> expected: <[]> but was:
+       <[...TestPlayerImpl@170937fe]>"
+    M4 aCloseWaitsWhileAMoveIsBetweenItsStateCheckAndItsRecord at :579,
+       "unregistered while a move checked before the close was on its way ==> expected: <true> but was: <false>"
+    M2 aMoveThatLandsWhileTheCloseIsPublishingItsEvacuationGetsTheExit at :630,
+       "the move that landed in the closing instance was taken for a plain move ==> expected: <false> but was: <true>"
+    M3 aForcedCloseWhileTheCloseIsPublishingItsEvacuationFinishesIt at :670,
+       "the forced close found the instance closed and no evacuation ==> expected: <false> but was: <true>"
+    M5 aPlayerWhoLandsBetweenTheTwoSnapshotsOfTheEndIsKickedBeforeTheUnregistration at :728 (join of the forced
+       close, failing in the helper at :772), "the forced close threw java.lang.IllegalStateException: You cannot
+       unregister an instance with players inside."
+    M6 ManagedInstanceTransitionsTest#aForcedCloseBetweenTheRegistrationAndTheSwapLeavesNothingRegistered at
+       ManagedInstanceTransitionsTest.java:328, "a closed instance was left registered ==> expected: <false> but
+       was: <true>"
+  Restored with git checkout -- server-app/src/main.
+
+Run 3 -> 03-counter-proof-b/    (default mode)
+  Code: 7c645b587b with counter-proof.diff: M7 ManagedInstanceImpl.java:389 beginClose without synchronized.
+  43 tests, 2 red: aMoveThatLandsWhileTheCloseIsPublishingItsEvacuationGetsTheExit at :630 and
+  aForcedCloseWhileTheCloseIsPublishingItsEvacuationFinishesIt at :670, same messages as in run 2.
+  aCloseWaitsWhileAMoveIsBetweenItsStateCheckAndItsRecord stays green: the cancel still waits for admit in
+  movesPending(), which takes the monitor. Restored with git checkout -- server-app/src/main.
+
+Run 4 -> 04-green/              (default mode)
+Run 5 -> 05-four-threads-strict/  (-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true)
+Run 6 -> 06-grid-strict/        (run 5's properties plus -Dsynaxis.thread-provider=grid)
+  Code: 7c645b587b. Each run: EvacuationIntegrationTest 18, ManagedInstanceTickThreadTest 5,
+  ManagedInstanceTransitionsTest 20, 0 failures; testNamingCheck and forbiddenImportsCheck pass. In runs 5 and 6
+  the three classes ran one after another (XML timestamps), not side by side.
+
+Item 12, the §15 readings of ManagedInstanceTickThreadTest (its §15 test runs first in the class and creates five
+instances one after another, each once the one before is open). create us / registration us / prepare_ms /
+classes loaded during the create call; no garbage collection ran during any of the 30 calls:
+  run 1 default   543/144/48/18   199/101/49/0   326/75/49/0    204/78/49/0    203/81/49/0
+  run 2 default  3086/135/43/18   502/101/49/0   238/74/49/0    232/91/49/0    284/70/49/0
+  run 3 default  1286/179/42/18   318/93/49/0    255/93/49/0    905/173/49/0   300/104/49/0
+  run 4 default   444/164/48/18   279/130/49/0   215/75/49/0    206/67/49/0    230/73/49/0
+  run 5 4-strict  407/128/48/18   275/100/49/0   243/109/49/0  1694/84/43/0    231/68/49/0
+  run 6 grid      353/118/48/18   206/58/49/0    213/58/49/0    225/72/49/0    204/64/49/0
+  The counter-proofs of runs 2 and 3 do not touch the path of create, so their readings count.
+  First create: 353-3,086 us, 2 of 6 over 1 ms, each loading 18 classes. Later creates: 199-1,694 us, 1 of 24 over
+  1 ms (run 5, the fourth create, no class loaded, no collection); one more at 905 us. Registration 58-179 us.
+  The three readings over 1 ms have prepare_ms 42-43 where the others have 48-49: counted on the 50 ms tick, the
+  instance object was built 7-8 ms into the tick instead of 1-2 ms, later than the whole create call (1.3-3.1 ms)
+  explains, so the serial part was already late before the create task ran. What held the tick scheduler thread
+  back was not verified.
+  Outcome (b) of the RUN-078 brief: a later create is over 1 ms as well, so the threshold is not split into a first
+  and a later figure here, and nothing is pre-built; the decision is the user's.

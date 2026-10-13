@@ -22,8 +22,9 @@ import java.util.function.Function;
 /**
  * The host's managed instance as rush sees it ({@code docs/DESIGN-PLAY.md} {@code API-PLAY-006}, §11.1)
  * over a real engine instance of the test's {@code Env}: the requests are recorded and refused from a
- * state they do not leave, a move really moves the player, and a close evacuates through the exits.
- * Moves may be held for the test to finish one at a time.
+ * state they do not leave, a move really moves the player, and a close evacuates through the exits
+ * without waiting for the moves, as the host does. Moves may be held for the test to finish one at a
+ * time.
  */
 final class FakeManaged implements ManagedInstance {
 
@@ -133,7 +134,9 @@ final class FakeManaged implements ManagedInstance {
     private void evacuate(Function<Player, Exit> exit) {
         for (final Player player : players()) {
             switch (exit.apply(player)) {
-                case Exit.ToInstance to -> to.target().move(player, to.at()).join();
+                case Exit.ToInstance to -> {
+                    var _ = to.target().move(player, to.at());
+                }
                 case Exit.Kick kick -> player.kick(Component.translatable(kick.reasonKey()));
             }
         }

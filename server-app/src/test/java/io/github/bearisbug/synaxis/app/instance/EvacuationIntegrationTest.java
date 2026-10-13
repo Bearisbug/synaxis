@@ -210,6 +210,47 @@ class EvacuationIntegrationTest {
         assertEquals(1, closed.get("evacuated"));
     }
 
+    /**
+     * §16 「结算中按『返回大厅』与结算到点同时到」: the back button of a result asked for a move into the
+     * lobby, and the instance is settled before that move ran, so the evacuation hands the player an
+     * exit into the same lobby. Both moves run in turn on the player's tick thread: the first lands, the
+     * second finds the player there and moves nobody. The test asks for both on the startup thread
+     * before the player's next tick, the order they come in from the button and the serial part.
+     */
+    @Test
+    void aPlayerAlreadyMovingToTheExitWhenTheInstanceSettlesLandsThereOnce(Env env) {
+        final PluginInstances instances = instances(env);
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final Player player = joinInto(env, arena, env.createConnection());
+        arena.start();
+        arena.end(EndCause.OBJECTIVE);
+        final List<Player> handed = new CopyOnWriteArrayList<>();
+        final List<Player> spawned = new CopyOnWriteArrayList<>();
+        env.process().eventHandler().addListener(PlayerSpawnEvent.class, event -> {
+            if (event.getInstance() == lobby.instance()) spawned.add(event.getPlayer());
+        });
+
+        final CompletableFuture<Boolean> button = lobby.move(player, SPAWN);
+        arena.settled(leaving -> {
+            handed.add(leaving);
+            return new Exit.ToInstance(lobby, SPAWN);
+        });
+        assertEquals(List.of(player), handed, "the evacuation did not hand the player the exit");
+        assertSame(arena.instance(), player.getInstance(), "a move ran before the player's tick");
+        assertTrue(env.tickWhile(() -> arena.instance().isRegistered(), TEN_SECONDS), "never unregistered");
+
+        assertTrue(button.join());
+        assertSame(lobby.instance(), player.getInstance());
+        assertEquals(List.of(player), spawned, "the player landed in the lobby more than once");
+        assertFalse(((ManagedInstanceImpl) lobby).movesPending(), "the move of the exit is still on its way");
+        assertEquals(1, ledger.of(lobby).stream().filter(line -> line.event().equals("play_instance_moved")).count());
+        final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
+        assertEquals(1, closed.get("players"));
+        assertEquals(1, closed.get("evacuated"));
+        assertEquals(0, closed.get("kicked"));
+    }
+
     /** §16 「玩家在 move 途中断线」: the move completes with false and nobody is moved. */
     @Test
     void aPlayerWhoLeavesBeforeTheMoveRunsIsNotMoved(Env env) {

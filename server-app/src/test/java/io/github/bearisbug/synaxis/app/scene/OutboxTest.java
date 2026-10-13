@@ -177,6 +177,22 @@ class OutboxTest {
     }
 
     @Test
+    void aLaterMoveThatFailsStillHoldsTheQueueUntilTheEarlierIsDone() {
+        final Outbox outbox = new Outbox();
+        final CompletableFuture<Boolean> first = new CompletableFuture<>();
+        final CompletableFuture<Boolean> second = new CompletableFuture<>();
+        outbox.holdUntil(first);
+        outbox.holdUntil(second);
+        outbox.scene(LOBBY);
+
+        second.completeExceptionally(new IllegalStateException("setInstance failed"));
+        assertEquals(0, flush(outbox).payloads().size(), "sent while the first move was under way");
+        first.complete(true);
+
+        assertEquals(List.of(LOBBY), flush(outbox).messages());
+    }
+
+    @Test
     void twoChangesOfOneWidgetInOneTickReachTheClientAsTheLaterOne() {
         final Outbox outbox = new Outbox();
         outbox.set("rush", "timer", line("first"));

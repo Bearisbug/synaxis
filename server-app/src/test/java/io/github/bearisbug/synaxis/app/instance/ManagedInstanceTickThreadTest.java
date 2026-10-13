@@ -154,14 +154,16 @@ class ManagedInstanceTickThreadTest {
     private static Created create(PluginInstances instances, InstanceSpec spec)
             throws InterruptedException, ExecutionException {
         return onTheTickScheduler(() -> {
-            final long classesBefore = ManagementFactory.getClassLoadingMXBean().getTotalLoadedClassCount();
+            // The first call of collections() loads the classes of the collector beans, and Created is loaded
+            // when first built: both happen outside the class count, which spans the create call alone
             final long collectionsBefore = collections();
+            final long classesBefore = ManagementFactory.getClassLoadingMXBean().getTotalLoadedClassCount();
             final long start = System.nanoTime();
             final ManagedInstance managed = instances.create(spec);
             final long nanos = System.nanoTime() - start;
+            final long classesAfter = ManagementFactory.getClassLoadingMXBean().getTotalLoadedClassCount();
             return new Created(managed, managed.state(), managed.instance().isRegistered(), nanos,
-                    ManagementFactory.getClassLoadingMXBean().getTotalLoadedClassCount() - classesBefore,
-                    collections() - collectionsBefore);
+                    classesAfter - classesBefore, collections() - collectionsBefore);
         });
     }
 

@@ -373,6 +373,17 @@ class PlayClientTest {
     }
 
     @Test
+    void thePanelSkipsTheOtherKindsThatComeBeforeItInLayoutOrder() {
+        play.receive(scene(1, 0), RegistryAccess.EMPTY);
+        play.receive(hud(set("hint", Widget.text(Widget.TOP_LEFT, 0, EncodedComponent.NONE, 0)),
+                set("timer", Widget.timer(Widget.TOP_CENTER, 0, EncodedComponent.NONE, 10_000, true)),
+                set("score", Widget.scoreboard(Widget.TOP_RIGHT, 0, EncodedComponent.NONE, List.of())),
+                panel("result", "rush:back")), RegistryAccess.EMPTY);
+
+        assertEquals("result", present(play.panel()).widgetId());
+    }
+
+    @Test
     void aClickedButtonThatIsRefusedKeepsThePanelWithTheReasonAndOkClosesIt() {
         play.receive(scene(5, 0), RegistryAccess.EMPTY);
         play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
@@ -435,6 +446,28 @@ class PlayClientTest {
         final PlayClient.Entry third = present(play.panel());
         play.receive(result(2, ActionResultCode.COOLDOWN, 3_000), RegistryAccess.EMPTY);
         assertNull(play.panelReason(third));
+    }
+
+    @Test
+    void aClickOnAnotherPanelLeavesTheReasonOnThePanelThatWasRefused() {
+        play.receive(scene(5, 0), RegistryAccess.EMPTY);
+        play.receive(hud(new S2CHud.SetWidget("overlay", "invite", Widget.panel(encode(Component.literal("Invite")), List.of(),
+                List.of(new PropValue.Button("overlay:join", encode(Component.literal("Join"))))))), RegistryAccess.EMPTY);
+        final PlayClient.Entry invite = present(play.panel());
+        play.click(invite, ((PlayClient.Panel) invite.content()).buttons().getFirst());
+        play.receive(new S2CActionResult(1, ActionResultCode.REJECTED, encode(Component.translatable("overlay.invite.full")), 0),
+                RegistryAccess.EMPTY);
+
+        // The scene owner's panel comes first (§6.4.8), and the ok of its button closes it here
+        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        final PlayClient.Entry front = present(play.panel());
+        assertEquals("result", front.widgetId());
+        play.click(front, ((PlayClient.Panel) front.content()).buttons().getFirst());
+        play.receive(result(2, ActionResultCode.OK, 0), RegistryAccess.EMPTY);
+
+        // The overlay's panel is back, still showing why its own button was refused
+        assertEquals(invite, play.panel());
+        assertEquals("overlay.invite.full", key(present(play.panelReason(invite))));
     }
 
     @Test
@@ -536,6 +569,23 @@ class PlayClientTest {
         play.receive(scene(1, 0), RegistryAccess.EMPTY);
         play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
         assertNull(play.panelReason(present(play.panel())));
+    }
+
+    @Test
+    void resetForgetsTheActionsStillWaitingForTheirResult() {
+        play.receive(scene(1, 0), RegistryAccess.EMPTY);
+        play.press(0);
+        play.press(0);
+        play.reset();
+
+        // The new connection sent action 1 only, so a result for action 2 answers nothing it sent
+        play.receive(scene(1, 2000), RegistryAccess.EMPTY);
+        play.press(0);
+        play.receive(new S2CActionResult(2, ActionResultCode.REJECTED, encode(Component.translatable("rush.hint.failed")), 0),
+                RegistryAccess.EMPTY);
+
+        assertEquals(2000, play.cooldownLeftMs(0));
+        assertEquals(List.of(), notices);
     }
 
     // ---- Helpers

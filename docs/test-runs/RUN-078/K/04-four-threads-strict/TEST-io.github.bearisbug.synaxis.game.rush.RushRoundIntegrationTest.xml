@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-13T06:22:35.591Z" hostname="Mac.local" time="0.21">
+  <properties/>
+  <testcase name="theBackButtonDoesNothingWhileTheHostEvacuatesTheSettledArena(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.025"/>
+  <testcase name="theBackButtonSendsOnlyThePresserOnceAndOnlyWhileTheResultShows(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.025"/>
+  <testcase name="aParticipantWhoLeavesDropsOutOfTheScoresAndLetsGoOfTheBeacon(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.028"/>
+  <testcase name="aRoundEndsAtTheTimeLimitAndATieSharesTheRank(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.019"/>
+  <testcase name="theHigherScoreRanksFirstThenTheMoreCapturesAndOtherwiseTheRankIsShared(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.024"/>
+  <testcase name="aRoundNobodyIsLeftInEndsEmptyAndSettlesAtOnce(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.029"/>
+  <testcase name="aPlayerHoldingABeaconScoresEverySecondUntilTheTargetEndsTheRound(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.019"/>
+  <testcase name="theTimerIsSetWhenTheRoundStartsWithTheWholeLengthAndNotBefore(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.03"/>
+  <testcase name="theRoundWaitsForEveryMoveAndIsCancelledWhenNoneSucceeded(Env)" classname="io.github.bearisbug.synaxis.game.rush.RushRoundIntegrationTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

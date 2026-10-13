@@ -1,0 +1,60 @@
+RUN-078 group K: :play-kit and :game-rush, items 5 and 6 of the S1 test debt row in docs/DESIGN-PLAY.md
+§28.2 (branch prod/r078-K, base origin/main 62ae65f89c). Commit 528a6881e2 adds three LocalQueueTest
+cases, one RushRoundIntegrationTest case and one EvacuationIntegrationTest case, makes FakeManaged hand
+out the exits without waiting for the moves, and adds a Javadoc paragraph to RushRound#back; no main code
+behaviour changes. Local Gradle through ~/.claude/r077/gradle.zsh (JDK 25, --max-workers=2 --no-daemon
+--init-script gradle/init/aliyun-mirror.init.gradle.kts, the heavy lock taken for each run only), none
+with a database or Redis. Each directory holds the JUnit XML reports of that run and summary.txt, one
+line per test with the failure message and the first frame in the test class (and the frame of the test
+method when the first one is a helper); the line numbers are those of 528a6881e2.
+
+The classes run: LocalQueueTest (:play-kit), RushRoundIntegrationTest plus LobbyIntegrationTest and
+RushPluginIntegrationTest, which also use the changed FakeManaged (:game-rush), and
+EvacuationIntegrationTest (:server-app). LocalQueueTest starts threads of its own and the evacuation runs
+on tick threads, so the classes ran in the default, four thread strict and strict grid modes (runs 3 to 5).
+
+Run 1 -> no directory
+  Code: 528a6881e2 before its last edit. :play-kit:compileTestJava failed on Error Prone
+  SuperCallToObjectMethod ("super.hashCode()" in LocalQueueTest.Gate; the test now returns
+  System.identityHashCode(this)). The :game-rush and :server-app classes ran green; run 3 restored
+  their results from the build cache.
+
+Run 2 -> 02-counter-proofs/
+  Code: 528a6881e2 with counter-proof.diff, three counter-proofs at once:
+    LocalQueue.java:28, :38, :69 without "synchronized" (join, leave, take);
+    RushRound.java:100 "arena().state().compareTo(ManagedInstance.State.ENDING) < 0" in place of
+      "arena().state() != ManagedInstance.State.ENDING", which refuses a running round and lets a
+      CLOSED arena through;
+    ManagedInstanceImpl.java:269 "if (Boolean.getBoolean("proof.never") && from == instance) {", so a move
+      of a player already in the target goes through the admission and setInstance again.
+  LocalQueueTest ran without joinsAndTakesOnManyThreadsLoseNobody (filters a*, fewer*, the*): with no lock
+  the eight threads may corrupt the linked list of the LinkedHashMap and spin in take. 30 tests, 5 red:
+    aTakeWaitsForAJoinUnderWayAndTakesThatPlayer at LocalQueueTest.java:202 via :117,
+    aSecondJoinOfAPlayerWaitsForTheFirstAndIsRefused at :202 via :136,
+    aTakeWaitsForALeaveUnderWayAndLeavesThatPlayerOut at :202 via :161,
+      "a take went through while a call stopped inside the queue ==> expected: <false> but was: <true>"
+      ("the second join went through ..." for the second);
+    theBackButtonDoesNothingWhileTheHostEvacuatesTheSettledArena at RushRoundIntegrationTest.java:220,
+      "the button sent alice back while the evacuation was sending her ==> expected: <[move alice]> but
+      was: <[move alice, move alice]>";
+    aPlayerAlreadyMovingToTheExitWhenTheInstanceSettlesLandsThereOnce at EvacuationIntegrationTest.java:246,
+      "the move of the exit is still on its way ==> expected: <false> but was: <true>", with a suppressed
+      "Server threw exception" caused by "IllegalArgumentException: Instance should be different than
+      the current one".
+  Every other test of the three classes is green, theBackButtonSendsOnlyThePresserOnceAndOnlyWhileTheResultShows
+  among them. Restored with git checkout -- play-kit/src/main game-rush/src/main server-app/src/main.
+
+Run 3 -> 03-green/
+  Code: 528a6881e2. LocalQueueTest 8, RushRoundIntegrationTest 9, LobbyIntegrationTest 11,
+  RushPluginIntegrationTest 6, EvacuationIntegrationTest 14: 48 tests, 0 failures. testNamingCheck and
+  forbiddenImportsCheck of the three modules pass. :play-kit:test ran; :game-rush:test and
+  :server-app:test came FROM-CACHE with the reports of run 1, which ran them on the same inputs (the
+  timestamps in the XML are those of run 1).
+
+Run 4 -> 04-four-threads-strict/
+  Code: 528a6881e2, -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true. The same five
+  classes, 48 tests, 0 failures.
+
+Run 5 -> 05-grid-strict/
+  Code: 528a6881e2, run 4's properties plus -Dsynaxis.thread-provider=grid. The same five classes,
+  48 tests, 0 failures.

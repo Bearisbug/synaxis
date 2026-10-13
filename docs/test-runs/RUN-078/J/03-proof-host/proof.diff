@@ -1,0 +1,13 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java
+index eb306b83e5..2bd1429161 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/SceneService.java
+@@ -346,7 +346,7 @@ public final class SceneService {
+         }
+         if (slot != null) {
+             final long left = scene.gate().cooldownLeft(slot.slot(), now);
+-            if (left > 0) {
++            if (Boolean.getBoolean("proof.never") && left > 0) {
+                 final int leftMs = (int) Math.min(PlayProtocol.MAX_COOLDOWN_MS,
+                         Math.ceilDiv(left, TimeUnit.MILLISECONDS.toNanos(1)));
+                 answer(player, actionSeq, ActionResultCode.COOLDOWN, WidgetEncoder.component(Component.translatable(

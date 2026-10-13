@@ -1,0 +1,13 @@
+diff --git a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/SceneReadyProbe.java b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/SceneReadyProbe.java
+index 5b31279685..0c639fba39 100644
+--- a/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/SceneReadyProbe.java
++++ b/client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/play/SceneReadyProbe.java
+@@ -60,7 +60,7 @@ public final class SceneReadyProbe {
+      * @return whether it sent a {@code C2S_SCENE_READY}
+      */
+     public boolean tick(PlayClient.@Nullable Scene scene, View view, long nanos) {
+-        if (scene == null || scene.seq() == answered || !ready(view)) return false;
++        if (scene == null || scene.seq() == answered || (Boolean.getBoolean("proof.never") && !ready(view))) return false;
+         answered = scene.seq();
+         last = new Sent(scene.seq(), view.screen() == null ? null : view.screen().getName(), view.chunkUnderfoot(), nanos);
+         sender.accept(new C2SSceneReady(scene.seq()));

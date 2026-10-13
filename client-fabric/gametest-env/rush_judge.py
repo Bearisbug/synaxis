@@ -3,7 +3,7 @@
 library only: CI runs it with the runner's python3, a local run with the repository's .venv.
 
     rush_judge.py --ledger-dir logs --server-log rush-server.log --session-log sessionserver.log \\
-        [--client-source <dir>] <rush.txt> [<rush.txt> ...]
+        [--client-source <dir>] [--wait-s <seconds>] <rush.txt> [<rush.txt> ...]
 
 The reports are what RushClientGameTest writes, one per client launch, at
 client-fabric/build/run/<run>/synaxis-gametest/rush.txt; the ledger directory, the sample server's log and
@@ -25,6 +25,11 @@ output, unless all of these hold:
 8. the client mod's main sources hold the word rush nowhere.
 
 Every arena's prepare_ms and what Q0b saw of the screens go into the notes, which it prints either way.
+
+The ledger goes to disk at most once a second (EventLedger.FLUSH_INTERVAL_MS), and the last client quits less than
+that after its last C2S_SCENE_READY. With --wait-s the judge first polls the ledger until the last connection's
+play_scene_ready after its move back to the lobby is in it, the last line a run writes, at most that many seconds;
+then it judges what is there.
 """
 
 from __future__ import annotations
@@ -34,6 +39,7 @@ import gzip
 import json
 import re
 import sys
+import time
 from calendar import timegm
 from pathlib import Path
 from typing import Iterator
@@ -43,11 +49,13 @@ LINE = re.compile(r"rush (Q\d+[a-z]?) (PASS|FAIL|SKIP)(?: (.*))?")
 Q0B_SCREENS = re.compile(r"screens (\[[^\]]*\])")
 
 ARENA_KIND = "rush:round"
+LOBBY_KIND = "rush:lobby"
 LIFECYCLE = ["play_instance_created", "play_instance_opened", "play_instance_started", "play_instance_ended",
              "play_instance_closed"]
 ENDED_TO_CLOSED_S = 15.0
 PREPARE_LIMIT_MS = 1000
 MOVE_TO_READY_S = 5.0
+WAIT_POLL_S = 0.2
 NORMAL_CAUSES = {"objective", "time_limit"}
 COUNTED_CAUSES = {"objective", "time_limit", "error", "prepare_failed"}
 
@@ -219,6 +227,31 @@ def judge_readiness(events: list[Event], launches: int, verdict: Verdict) -> Non
         verdict.problems.append(f"ledger: play_scene_ready {len(readies)} times, expected at least {2 * launches}")
 
 
+def back_in_lobby(events: list[Event]) -> bool:
+    """Whether the ledger holds the last connection's play_scene_ready after its move back to the lobby."""
+    verified = named(events, "client_verified")
+    if not verified:
+        return False
+    connection = verified[-1].attributes.get("connection_id")
+    lobbies = {event.attributes.get("instance_id") for event in named(events, "play_instance_created")
+               if event.attributes.get("kind_id") == LOBBY_KIND}
+    back = [moved for moved in named(events, "play_instance_moved")
+            if moved.attributes.get("connection_id") == connection and moved.attributes.get("instance_id") in lobbies]
+    return bool(back) and any(ready.attributes.get("connection_id") == connection and ready.nanos >= back[-1].nanos
+                              for ready in named(events, "play_scene_ready"))
+
+
+def wait_for_ledger(directory: Path, seconds: float, clock=time.monotonic, sleep=time.sleep) -> float | None:
+    """Polls the ledger until back_in_lobby holds, at most `seconds`; how long that took, None when it never did."""
+    start = clock()
+    while True:
+        if directory.is_dir() and back_in_lobby(read_ledger(directory, Verdict())):
+            return clock() - start
+        if clock() - start >= seconds:
+            return None
+        sleep(WAIT_POLL_S)
+
+
 def judge_rounds_and_logins(events: list[Event], launches: int, verdict: Verdict) -> None:
     """Criteria 5 and the ledger half of 6."""
     ended = named(events, "rush_round_ended")
@@ -299,8 +332,14 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--server-log", type=Path, required=True, help="the sample server's standard output")
     parser.add_argument("--session-log", type=Path, required=True, help="the fake sessionserver's output")
     parser.add_argument("--client-source", type=Path, default=CLIENT_SOURCE, help="the client mod's main sources")
+    parser.add_argument("--wait-s", type=float, default=0,
+                        help="how long to wait for the last connection's ready back in the lobby to reach the ledger")
     parser.add_argument("reports", type=Path, nargs="*", help="rush.txt of every client launch")
     arguments = parser.parse_args(argv)
+    if arguments.wait_s > 0:
+        took = wait_for_ledger(arguments.ledger_dir, arguments.wait_s)
+        print(f"waited {arguments.wait_s if took is None else took:.1f} s for the ledger: the last connection's "
+              f"play_scene_ready back in the lobby is {'not in' if took is None else 'in'}")
     for path in arguments.reports:
         print(f"== {path}")
         if path.is_file():

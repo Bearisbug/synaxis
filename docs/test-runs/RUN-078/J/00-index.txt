@@ -1,0 +1,82 @@
+RUN-078 group J: the script, the judge and job rush, items 8 to 11 of the S1 test debt row in
+docs/DESIGN-PLAY.md §28.2 (branch prod/r078-J, base origin/main 62ae65f89c). Times are UTC, 2026-10-13.
+
+Commits
+  86e616d3b4  test_rush_judge.py: three tests for the judge criteria no test pinned (item 8) and three for the
+              ledger wait (item 10); 30 -> 36 tests
+  62f847c25a  rush_judge.py polls the ledger with --wait-s; job rush passes --wait-s 10 in place of sleep 3 and
+              prints the ledger after the judge (item 10)
+  fc41810d92  RushClientGameTest: Q3 judged before Q4's second press (item 9); Q5 sent ready with any screen open
+              is red and its sampling has to begin in the lobby, Q9 judges the screen and the chunk underfoot at
+              its ready (item 11)
+  Line numbers below are those of fc41810d92.
+
+Local, on this machine
+  Judge unit tests and the changed copies of the judge: 01-judge-unit.txt (no Gradle).
+  Gradle (~/.claude/r077/gradle.zsh, label fix-J, heavy lock taken for each run only):
+    1  :protocol:publishToMavenLocal -Dmaven.repo.local=/tmp/run078/fix-J/m2           BUILD SUCCESSFUL
+    2  client-fabric compileJava compileGametestJava with the same repository: started by an earlier session
+       of this group that stopped; it left no class files (client-fabric/build held an empty dh/ only)
+    3  client-fabric compileJava compileGametestJava -Dmaven.repo.local=/tmp/run078/fix-J/m2
+       BUILD SUCCESSFUL in 33s, 4 tasks executed (fetchDistantHorizons, compileJava, processResources,
+       compileGametestJava)
+  No class of this group runs on the tick threads, so the three thread modes do not apply; no Java test class
+  changed, so testNamingCheck has nothing new. actionlint .github/workflows/client-gametest.yml: the two notes
+  of job gametest's server step that were there before (SC2034, SC2086), none in job rush.
+  /tmp/run078/fix-J (the temporary repository, the judge copies, the job logs) deleted at the end.
+
+GitHub Actions
+  Draft PR #28 (base main, head fc41810d92), attempt 1 each:
+    Client gametest 38355508678  success: Run the rush script 06:13:27-06:20:33, Run the client gametests
+                                 06:13:27-06:19:24, P11 smoke 06:13:27-06:18:53, P10 skipped
+    Client mod 38355508714 success, Concurrency 38355508804 success, CI 38355508790 success (Check
+    06:13:27-06:28:25, 4 tick threads strict 06:13:27-06:25:48, strict grid 06:13:27-06:27:21; the coverage
+    step of Check: "No lines with coverage information in this diff.", the branch changes no class JaCoCo
+    measures)
+  Job rush of 38355508678 -> 02-ci-pr28/ (the two reports, the judge's output, the ledger the job printed):
+    Steps: publish :protocol 35 s, judge unit tests "Ran 36 tests" OK, build 98 s, fixture 3 s, sample server
+    10 s, dev launch 171 s, production launch 79 s, judge 0 s, ledger 0 s, rehearsal 8 s; job 7 min 6 s.
+    Both reports Q0a-Q9 PASS. Judge: "waited 0.2 s for the ledger: the last connection's play_scene_ready back
+    in the lobby is in" (the first read did not have it: the line is at 06:20:21.62 in the ledger, the judge step
+    began at 06:20:22), notes, "rush judge: PASS (2 reports, 0 problems)".
+    Q3   first press OK 25 / 51 ms after it, hint count 1, countdown TIMER set 2 remaining_ms 2999
+    Q4   second press 227 / 232 ms after the first, actions sent 1 -> 1; third press 378 / 379 ms after the
+         first, action_seq 2 COOLDOWN cooldown_ms 1601 / 1601; hint count 1
+    Q5   rush:round_1 416 ms / rush:round_2 212 ms after the countdown ran out; LevelLoadingScreen ticks 57..59 /
+         54..56; hasChunk T1-56@rush:lobby_1 T57-60@rush:round_1 / T1-53@rush:lobby_1 T54-57@rush:round_2 (the
+         sampling began in the lobby); ready screen=null chunkUnderfoot=true 3 ticks 300 ms / 3 ticks 270 ms
+         after the new level
+    Q7   off by -70 / -64 ms
+    Q9   rush:lobby_1, scene 3 rush:lobby 265 / 225 ms after the button; ready screen=null chunkUnderfoot=true
+    Ledger (36 lines): two rush:round arenas, prepare_ms 99 and 49, ended to closed 0.81 s and 0.75 s; four
+    moves, each followed by the same connection's play_scene_ready after 0.59, 0.44, 0.50, 0.35 s;
+    play_scene_ready 6; rush_round_ended rush:round_1 and rush:round_2, players=1, cause=time_limit.
+
+  Counter-proofs, each a branch from fc41810d92 with one line changed (proof.diff), dispatched with
+  gh workflow run client-gametest.yml --ref <branch>; both branches deleted afterwards.
+  tmp/r078-J-proof-host b5c771ae09: SceneService.java:349 "if (left > 0) {" -> "if (Boolean.getBoolean(
+  "proof.never") && left > 0) {". Client gametest 38356197267 failure (job rush failure, job gametest success,
+  P10 and P11 skipped) -> 03-proof-host/
+    Both reports: Q0a-Q3 PASS; Q3 "first press action_seq 1 OK cooldown_ms 2000 38 ms after it; actions sent 0 ->
+    1; hint count 1; countdown TIMER set 2 remaining_ms 2999" (production 40 ms). Q4 FAIL "second press 252 ms
+    after the first: actions sent 1 -> 1 (the local cooldown); third press with the local cooldown off 406 ms
+    after the first: action_seq 2 OK cooldown_ms 2000; hint count 0" (production 223 ms, 375 ms). Q5 FAIL
+    "problems [not in a round with its TIMER 7679 ms after the countdown ran out, ...]" (production 7663 ms);
+    Q6-Q9 FAIL "not reached: Q5 found no round".
+    Judge: "waited 10.0 s for the ledger: the last connection's play_scene_ready back in the lobby is not in"
+    (no one went back to the lobby), "rush judge: FAIL (2 reports, 16 problems)": 6 report lines each (Q4-Q9)
+    and 4 of the ledger (0 arenas, normal end rate 0/0, play_scene_ready 2 times, rush_round_ended 0 times).
+    Against RUN-077's proof of the same line (run 38238974364): Q3 was red there, it is green here.
+  tmp/r078-J-proof-client 8912c1bc5e: SceneReadyProbe.java:63 "|| !ready(view)" -> "|| (Boolean.getBoolean(
+  "proof.never") && !ready(view))". Client gametest 38356192395 failure (job rush failure, job gametest
+  success) -> 04-proof-client/
+    Both reports: only Q5 and Q9 FAIL. Q5 "problems [sent ready with net.minecraft.client.gui.screens.
+    LevelLoadingScreen open]", ready "screen=net.minecraft.client.gui.screens.LevelLoadingScreen
+    chunkUnderfoot=true 1 ticks 0 ms after the new level" (production "0 ticks 0 ms"); Q9 "dimension
+    rush:lobby_1, scene 3 rush:lobby 136 ms after the button; ready screen=net.minecraft.client.gui.screens.
+    LevelLoadingScreen chunkUnderfoot=true" (production 191 ms). Q0a-Q4 and Q6-Q8 PASS.
+    Judge: "waited 0.0 s ...: is in", "rush judge: FAIL (2 reports, 4 problems)", the two Q5 and the two Q9.
+    Against RUN-077's proof of the same line (run 38239031218): Q9 was green there, it is red here.
+
+  Not run on CI: a counter-proof of Q5's "the sampling began in the lobby" check. Every Q5 line above shows the
+  first sampled tick in rush:lobby_1 (hasChunk T1-...@rush:lobby_1); the check is read from the code.

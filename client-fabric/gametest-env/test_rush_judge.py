@@ -110,6 +110,23 @@ fake sessionserver listening on http://127.0.0.1:40000, mode record
 """
 
 
+class Clock:
+    """A clock that moves only when the code under test sleeps, and runs `at_sleep` with the count of sleeps then."""
+
+    def __init__(self, at_sleep=lambda sleeps: None) -> None:
+        self.now = 0.0
+        self.sleeps = 0
+        self.at_sleep = at_sleep
+
+    def time(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.now += seconds
+        self.sleeps += 1
+        self.at_sleep(self.sleeps)
+
+
 class JudgeTest(unittest.TestCase):
 
     def setUp(self) -> None:
@@ -223,6 +240,11 @@ class JudgeTest(unittest.TestCase):
         closed["ts"] = ts(100 + 50.5 + 16)
         self.assert_one_problem("16.0 s from ended to closed")
 
+    def test_an_arena_ended_twice_fails(self) -> None:
+        ended = self.ledger.of("play_instance_ended", "rush:round")[0]
+        self.ledger.events.append(dict(ended))
+        self.assert_one_problem("play_instance_ended 2 times", ended["instance_id"])
+
     def test_a_prepare_time_over_1000_ms_fails(self) -> None:
         self.ledger.of("play_instance_opened", "rush:round")[1]["prepare_ms"] = 1200
         self.assert_one_problem("prepare_ms 1200")
@@ -234,6 +256,10 @@ class JudgeTest(unittest.TestCase):
 
     def test_a_round_closed_by_the_settle_timeout_is_not_a_normal_end(self) -> None:
         self.ledger.of("play_instance_closed", "rush:round")[0]["settle_timeout"] = "true"
+        self.assert_one_problem("normal end rate 1/2")
+
+    def test_a_round_closed_by_an_error_is_not_a_normal_end(self) -> None:
+        self.ledger.of("play_instance_closed", "rush:round")[1]["cause"] = "error"
         self.assert_one_problem("normal end rate 1/2")
 
     # ---- moves and readiness
@@ -256,6 +282,33 @@ class JudgeTest(unittest.TestCase):
                                       and line["ts"] >= ts(300))]
         problems = self.problems()
         self.assertTrue(any("play_scene_ready 3 times, expected at least 4" in problem for problem in problems), problems)
+
+    # ---- waiting for the ledger, which goes to disk at most once a second
+
+    def test_the_wait_ends_once_the_last_connections_ready_back_in_the_lobby_is_in(self) -> None:
+        events = list(self.ledger.events)
+        move, ready = self.ledger.of("play_instance_moved")[-1], self.ledger.of("play_scene_ready")[-1]
+        # What the ledger holds at each poll: neither line (the connection's earlier move and ready do not count, nor
+        # the first connection's move back), the move alone twice, then both
+        held_back = [[move, ready], [ready], [ready], []]
+
+        def show(poll: int) -> None:
+            self.ledger.events = [line for line in events if not any(line is held for held in held_back[poll])]
+            self.write_ledger()
+
+        show(0)
+        clock = Clock(lambda sleeps: show(min(sleeps, 3)))
+        took = self.judge.wait_for_ledger(self.ledger_dir, 10, clock.time, clock.sleep)
+        self.assertEqual(clock.sleeps, 3)
+        self.assertAlmostEqual(took, 3 * self.judge.WAIT_POLL_S)
+
+    def test_the_wait_gives_up_after_its_seconds(self) -> None:
+        self.ledger.events.remove(self.ledger.of("play_scene_ready")[-1])
+        self.write_ledger()
+        clock = Clock()
+        self.assertIsNone(self.judge.wait_for_ledger(self.ledger_dir, 10, clock.time, clock.sleep))
+        self.assertGreaterEqual(clock.now, 10)
+        self.assertLess(clock.now, 10 + 1.5 * self.judge.WAIT_POLL_S)
 
     # ---- rush_round_ended, the handshake and the sessionserver
 
@@ -288,6 +341,11 @@ class JudgeTest(unittest.TestCase):
         self.session_log.write_text(GOOD_SESSION_LOG.replace("serverId=def -> 200", "serverId=def -> 204"),
                                     encoding="utf-8")
         self.assert_one_problem("hasJoined 200 1 of 2")
+
+    def test_one_has_joined_more_than_the_launches_fails(self) -> None:
+        self.session_log.write_text(GOOD_SESSION_LOG + "5 GET /session/minecraft/hasJoined?username=Player&serverId=ghi -> 204\n",
+                                    encoding="utf-8")
+        self.assert_one_problem("hasJoined 200 2 of 3")
 
     # ---- the server log and the client source
 
@@ -324,6 +382,16 @@ class JudgeTest(unittest.TestCase):
         self.assertIn("prepare_ms 49", passed.stdout)
         self.assertEqual(failed.returncode, 1, failed.stdout + failed.stderr)
         self.assertIn("rush judge: FAIL (2 reports, 1 problems)", failed.stdout)
+
+    def test_the_command_line_waits_for_the_ledger_when_asked(self) -> None:
+        self.write_ledger()
+        done = subprocess.run([sys.executable, str(JUDGE), "--ledger-dir", str(self.ledger_dir), "--server-log",
+                               str(self.server_log), "--session-log", str(self.session_log), "--client-source",
+                               str(self.client_source), "--wait-s", "10"] + [str(path) for path in self.reports],
+                              capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("waited 0.0 s for the ledger: the last connection's play_scene_ready back in the lobby is in",
+                      done.stdout)
 
     def test_the_client_source_defaults_to_the_mod_beside_the_script(self) -> None:
         self.assertEqual(self.judge.CLIENT_SOURCE, JUDGE.resolve().parent.parent / "src" / "main" / "java")

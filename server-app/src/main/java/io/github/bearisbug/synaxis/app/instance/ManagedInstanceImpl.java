@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.app.instance;
 
+import io.github.bearisbug.synaxis.app.instance.InstanceRegistry.Window;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.instance.Chunk;
@@ -197,6 +198,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
         final long start = System.nanoTime();
         instance.enableAutoChunkLoad(false);
         registry.process().instance().registerInstance(instance);
+        registry.reached(Window.OPEN);
         if (!swap(State.PREPARING, State.OPEN, null)) {
             registry.process().instance().unregisterInstance(instance);
             return;
@@ -276,6 +278,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
         }
         var _ = player.setInstance(instance, at).whenComplete((_, failure) -> {
             final Evacuation closing = landed(player);
+            registry.reached(Window.LANDED);
             if (closing != null) {
                 // Closed while the move was on its way: a player who got in gets the exit like those who were
                 // inside, one the unregistration beat stays where they were
@@ -292,6 +295,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
 
     private synchronized boolean admit(Player player) {
         if (!takesPlayers()) return false;
+        registry.reached(Window.ADMIT);
         onTheirWay.add(player);
         return true;
     }
@@ -386,6 +390,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
                                                          boolean settleTimeout) {
         if (!swap(from, State.CLOSED, cause)) return null;
         final Evacuation started = new Evacuation(this, registry, exit, settleTimeout);
+        registry.reached(Window.CLOSE);
         this.evacuation = started;
         return started;
     }

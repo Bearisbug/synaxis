@@ -24,12 +24,30 @@ import net.kyori.adventure.text.TranslatableComponent;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.lang.management.LockInfo;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
+import java.util.function.BooleanSupplier;
 
 import static io.github.bearisbug.synaxis.app.instance.InstanceFixture.FLAT;
 import static io.github.bearisbug.synaxis.app.instance.InstanceFixture.SPAWN;
@@ -227,6 +245,49 @@ class EvacuationIntegrationTest {
         assertEquals(List.of(), ledger.of(arena).stream().filter(line -> line.event().equals("play_instance_moved")).toList());
     }
 
+    /**
+     * A plugin's exit that throws what is no {@code RuntimeException}, an {@code Error} for the first
+     * player asked about and a checked exception for the second: both are kicked with match-unavailable
+     * like for any other failure, the request does not throw and the instance closes.
+     */
+    @Test
+    void anExitThatThrowsAnErrorOrACheckedExceptionKicksThePlayer(Env env) {
+        final PluginInstances instances = instances(env);
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final TestConnection first = env.createConnection();
+        final Collector<DisconnectPacket> firstDisconnects = first.trackIncoming(DisconnectPacket.class);
+        final Player one = joinInto(env, arena, first);
+        final TestConnection second = env.createConnection();
+        final Collector<DisconnectPacket> secondDisconnects = second.trackIncoming(DisconnectPacket.class);
+        final Player other = joinInto(env, arena, second);
+        final AtomicInteger asked = new AtomicInteger();
+
+        arena.cancel(_ -> asked.getAndIncrement() == 0
+                ? thrown(new StackOverflowError("probe exit error"))
+                : thrown(new IOException("probe checked exit failure")));
+
+        assertEquals(2, asked.get(), "the exit was not asked for every player");
+        assertFalse(one.isOnline());
+        assertFalse(other.isOnline());
+        assertFalse(arena.instance().isRegistered());
+        assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(firstDisconnects));
+        assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(secondDisconnects));
+        final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
+        assertEquals("cancelled", closed.get("cause"));
+        assertEquals(2, closed.get("players"));
+        assertEquals(2, closed.get("evacuated"));
+        assertEquals(0, closed.get("kicked"));
+    }
+
+    /**
+     * Throws {@code throwable} from where the compiler takes no checked exception, as code written in
+     * another JVM language can.
+     */
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> Exit thrown(Throwable throwable) throws T {
+        throw (T) throwable;
+    }
+
     /** A plugin's exit that gives no exit at all: the player is kicked, the request still succeeds and the instance closes. */
     @Test
     void anExitThatGivesNothingKicksThePlayer(Env env) {
@@ -282,7 +343,7 @@ class EvacuationIntegrationTest {
     /**
      * The closing event comes while the players are still inside and the instance registered, and a
      * forced close called from it finds the evacuation already known: it is finished at once, and the
-     * exits handed out after the event do nothing more.
+     * plugin's exit is not asked for once the event returns.
      */
     @Test
     void aForcedCloseFromTheClosingEventFinishesTheEvacuation(Env env) {
@@ -300,9 +361,15 @@ class EvacuationIntegrationTest {
             registry.reclaim("evacuation", EndCause.SHUTDOWN);
         });
 
-        arena.cancel(_ -> new Exit.ToInstance(lobby, SPAWN));
+        final List<Player> handed = new CopyOnWriteArrayList<>();
+
+        arena.cancel(leaving -> {
+            handed.add(leaving);
+            return new Exit.ToInstance(lobby, SPAWN);
+        });
 
         assertEquals(List.of(true), insideWhenCalled, "the closing event came after the players were sent away");
+        assertEquals(List.of(), handed, "the exit was asked for after the forced close had finished the evacuation");
         assertFalse(arena.instance().isRegistered(), "the forced close did not finish the evacuation");
         assertFalse(player.isOnline());
         assertEquals(EndCause.CANCELLED, arena.endCause());
@@ -473,5 +540,261 @@ class EvacuationIntegrationTest {
         assertEquals(1, closed.get("players"));
         assertEquals(1, closed.get("evacuated"));
         assertEquals(0, closed.get("kicked"));
+    }
+
+    /**
+     * §16: a request that closes the instance cannot come between the state check of a move and the
+     * record of its player as on their way. The move into {@code arena} is held in that window on the
+     * player's tick thread while the startup thread cancels, which would unregister an instance it finds
+     * empty with no move on its way at once; the cancel has to wait for the monitor, finds the move on
+     * its way, and the player lands, gets the exit and is counted.
+     */
+    @Test
+    void aCloseWaitsWhileAMoveIsBetweenItsStateCheckAndItsRecord(Env env) {
+        final ExecutorService startup = Executors.newSingleThreadExecutor(Thread.ofPlatform().name("probe-startup").factory());
+        final CountDownLatch release = new CountDownLatch(1);
+        try {
+            final InstanceRegistry registry = registry(env, onStartup(startup, Thread::currentThread));
+            final ManagedInstance lobby = onStartup(startup,
+                    () -> registry.forPlugin("lobby").create(new InstanceSpec("lobby", 1, FLAT, SPAWN)));
+            final ManagedInstance arena = onStartup(startup, () -> registry.forPlugin("race")
+                    .create(new InstanceSpec("arena", 1, InstanceFixture.stuckBeyond(1, release), SPAWN)));
+            final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 41, 0));
+            final List<Player> handed = new CopyOnWriteArrayList<>();
+            final AtomicReference<Future<?>> closing = new AtomicReference<>();
+            registry.pauseWith(window -> {
+                if (window != InstanceRegistry.Window.ADMIT || closing.get() != null) return;
+                final Future<?> cancel = startup.submit(() -> arena.cancel(leaving -> {
+                    handed.add(leaving);
+                    return new Exit.ToInstance(lobby, SPAWN);
+                }));
+                closing.set(cancel);
+                await("the cancel to wait for the monitor", () -> someoneWaitsFor(arena) || cancel.isDone());
+            });
+
+            final CompletableFuture<Boolean> moved = onItsWay(env, arena, player);
+            join(Objects.requireNonNull(closing.get(), "the move never reached its state check"), "the cancel");
+
+            assertEquals(State.CLOSED, arena.state());
+            assertTrue(arena.instance().isRegistered(), "unregistered while a move checked before the close was on its way");
+            release.countDown();
+            assertTrue(env.tickWhile(() -> !moved.isDone() || arena.instance().isRegistered(), TEN_SECONDS),
+                    "the instance was never unregistered");
+            assertFalse(moved.join());
+            assertEquals(List.of(player), handed);
+            assertSame(lobby.instance(), player.getInstance());
+            final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
+            assertEquals(1, closed.get("players"));
+            assertEquals(1, closed.get("evacuated"));
+            assertEquals(0, closed.get("kicked"));
+        } finally {
+            release.countDown();
+            startup.shutdownNow();
+        }
+    }
+
+    /**
+     * §16: a move that lands while a request closing the instance is between its swap into
+     * {@code CLOSED} and the publication of its evacuation waits for the monitor, then finds the
+     * evacuation: the player gets the exit, the move completes with false. Without the wait the move
+     * would read no evacuation, count as a plain move into a closed instance and leave the player
+     * inside, past the snapshot the evacuation took.
+     */
+    @Test
+    void aMoveThatLandsWhileTheCloseIsPublishingItsEvacuationGetsTheExit(Env env) {
+        final InstanceRegistry registry = registry(env, Thread.currentThread());
+        final CountDownLatch release = new CountDownLatch(1);
+        try {
+            final ManagedInstance lobby = registry.forPlugin("lobby").create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+            final ManagedInstance arena = registry.forPlugin("race").create(new InstanceSpec("arena", 1,
+                    InstanceFixture.stuckBeyond(1, release), SPAWN));
+            final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 41, 0));
+            final List<Player> handed = new CopyOnWriteArrayList<>();
+            final CompletableFuture<Boolean> moved = onItsWay(env, arena, player);
+            final CountDownLatch inTheWindow = new CountDownLatch(1);
+            registry.pauseWith(window -> {
+                if (window != InstanceRegistry.Window.CLOSE) return;
+                inTheWindow.countDown();
+                await("the landing to wait for the monitor", () -> someoneWaitsFor(arena) || moved.isDone());
+            });
+
+            final CompletableFuture<Void> closing = onAnotherThread(() -> arena.cancel(leaving -> {
+                handed.add(leaving);
+                return new Exit.ToInstance(lobby, SPAWN);
+            }));
+            await("the cancel to reach its window", () -> inTheWindow.getCount() == 0);
+            release.countDown();
+            assertTrue(env.tickWhile(() -> !moved.isDone(), TEN_SECONDS), "the move never completed");
+            join(closing, "the cancel");
+
+            assertFalse(moved.join(), "the move that landed in the closing instance was taken for a plain move");
+            assertTrue(env.tickWhile(() -> arena.instance().isRegistered(), TEN_SECONDS), "never unregistered");
+            assertEquals(List.of(player), handed);
+            assertSame(lobby.instance(), player.getInstance());
+            final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
+            assertEquals(1, closed.get("players"));
+            assertEquals(1, closed.get("evacuated"));
+            assertEquals(0, closed.get("kicked"));
+        } finally {
+            release.countDown();
+        }
+    }
+
+    /**
+     * §16 「end 与停机的强制关闭同时到」: a forced close while a request closing the instance is between
+     * its swap and the publication of its evacuation waits for the monitor, then finds the evacuation
+     * and finishes it on the spot. Without the wait it would find the instance closed and no
+     * evacuation, do nothing and leave the instance registered.
+     */
+    @Test
+    void aForcedCloseWhileTheCloseIsPublishingItsEvacuationFinishesIt(Env env) {
+        final InstanceRegistry registry = registry(env, Thread.currentThread());
+        final ManagedInstance lobby = registry.forPlugin("lobby").create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+        final ManagedInstance arena = registry.forPlugin("race").create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final TestConnection connection = env.createConnection();
+        final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
+        final Player player = joinInto(env, arena, connection);
+        final CountDownLatch inTheWindow = new CountDownLatch(1);
+        final AtomicBoolean reclaimed = new AtomicBoolean();
+        registry.pauseWith(window -> {
+            if (window != InstanceRegistry.Window.CLOSE) return;
+            inTheWindow.countDown();
+            await("the forced close to wait for the monitor", () -> someoneWaitsFor(arena) || reclaimed.get());
+        });
+
+        final CompletableFuture<Void> closing = onAnotherThread(() -> arena.cancel(_ -> new Exit.ToInstance(lobby, SPAWN)));
+        await("the cancel to reach its window", () -> inTheWindow.getCount() == 0);
+        registry.reclaim("race", EndCause.SHUTDOWN);
+        reclaimed.set(true);
+
+        assertFalse(arena.instance().isRegistered(), "the forced close found the instance closed and no evacuation");
+        assertFalse(player.isOnline());
+        join(closing, "the cancel");
+        assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(disconnects));
+        final List<InstanceFixture.Line> closed = ledger.of(arena).stream()
+                .filter(line -> line.event().equals("play_instance_closed")).toList();
+        assertEquals(1, closed.size(), closed.toString());
+        assertEquals("cancelled", closed.getFirst().get("cause"));
+        assertEquals(1, closed.getFirst().get("players"));
+        assertEquals(0, closed.getFirst().get("evacuated"));
+        assertEquals(1, closed.getFirst().get("kicked"));
+    }
+
+    /**
+     * The end of an evacuation takes the players on their way before the players inside: a player whose
+     * move lands between the two snapshots is in the second one and kicked, so the instance has nobody
+     * online inside when it is unregistered. The forced close is held after its first snapshot while the
+     * player lands, and the landing is held before it reaches the evacuation until the forced close is
+     * done; the other order of the two snapshots would miss the player, and the engine would refuse to
+     * unregister an instance with them inside.
+     */
+    @Test
+    void aPlayerWhoLandsBetweenTheTwoSnapshotsOfTheEndIsKickedBeforeTheUnregistration(Env env) {
+        final InstanceRegistry registry = registry(env, Thread.currentThread());
+        final CountDownLatch release = new CountDownLatch(1);
+        try {
+            final ManagedInstance arena = registry.forPlugin("race").create(new InstanceSpec("arena", 1,
+                    InstanceFixture.stuckBeyond(1, release), SPAWN));
+            final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 41, 0));
+            final CompletableFuture<Boolean> moved = onItsWay(env, arena, player);
+            final CountDownLatch between = new CountDownLatch(1);
+            final CountDownLatch landed = new CountDownLatch(1);
+            final CountDownLatch finished = new CountDownLatch(1);
+            registry.pauseWith(window -> {
+                switch (window) {
+                    case FINISH -> {
+                        between.countDown();
+                        await("the player to land", () -> landed.getCount() == 0);
+                    }
+                    case LANDED -> {
+                        landed.countDown();
+                        await("the forced close to finish", () -> finished.getCount() == 0);
+                    }
+                    default -> {
+                    }
+                }
+            });
+
+            final CompletableFuture<Void> reclaiming = onAnotherThread(() -> {
+                try {
+                    registry.reclaim("race", EndCause.SHUTDOWN);
+                } finally {
+                    finished.countDown();
+                }
+            });
+            await("the forced close to take its first snapshot", () -> between.getCount() == 0);
+            release.countDown();
+            assertTrue(env.tickWhile(() -> !moved.isDone(), TEN_SECONDS), "the move never completed");
+            join(reclaiming, "the forced close");
+
+            assertFalse(arena.instance().isRegistered());
+            assertFalse(player.isOnline(), "the player who landed between the two snapshots was left online");
+            assertFalse(moved.join());
+            final List<InstanceFixture.Line> closed = ledger.of(arena).stream()
+                    .filter(line -> line.event().equals("play_instance_closed")).toList();
+            assertEquals(1, closed.size(), closed.toString());
+            assertEquals("shutdown", closed.getFirst().get("cause"));
+            assertEquals(1, closed.getFirst().get("players"));
+            assertEquals(0, closed.getFirst().get("evacuated"));
+            assertEquals(1, closed.getFirst().get("kicked"));
+        } finally {
+            release.countDown();
+        }
+    }
+
+    /** A registry like that of {@link #instances} whose startup thread is {@code startupThread}. */
+    private InstanceRegistry registry(Env env, Thread startupThread) {
+        InstanceFixture.registerMatchDimension(env.process());
+        return new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(env.process()), startupThread,
+                new InstanceRegistry.Durations(Duration.ofSeconds(30), EVACUATION), clock::get);
+    }
+
+    /** Runs {@code task} on {@code startup}, the startup thread of the test, and returns what it returned. */
+    private static <T> T onStartup(ExecutorService startup, Callable<T> task) {
+        final Future<T> result = startup.submit(task);
+        join(result, "the task on the startup thread");
+        return result.resultNow();
+    }
+
+    /** Runs {@code task} on a platform thread of its own. */
+    private static CompletableFuture<Void> onAnotherThread(Runnable task) {
+        return CompletableFuture.runAsync(task, command -> Thread.ofPlatform().name("probe-closer").start(command));
+    }
+
+    /** Waits at most 10 s for {@code future}, and fails with what it threw. */
+    private static void join(Future<?> future, String what) {
+        try {
+            future.get(TEN_SECONDS.toSeconds(), TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(what + " was interrupted", e);
+        } catch (ExecutionException e) {
+            throw new AssertionError(what + " threw " + e.getCause(), e.getCause());
+        } catch (TimeoutException e) {
+            throw new AssertionError(what + " did not return within " + TEN_SECONDS, e);
+        }
+    }
+
+    /** Waits on the calling thread until {@code condition} holds, at most 10 s. */
+    private static void await(String what, BooleanSupplier condition) {
+        final long deadline = System.nanoTime() + TEN_SECONDS.toNanos();
+        while (!condition.getAsBoolean()) {
+            if (System.nanoTime() - deadline >= 0) throw new AssertionError("not within " + TEN_SECONDS + ": " + what);
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
+        }
+    }
+
+    /**
+     * Whether another thread is blocked on the monitor of {@code monitor}, which the calling thread
+     * holds; false when the calling thread does not hold it.
+     */
+    private static boolean someoneWaitsFor(Object monitor) {
+        final ThreadMXBean threads = ManagementFactory.getThreadMXBean();
+        for (ThreadInfo info : threads.getThreadInfo(threads.getAllThreadIds(), 0)) {
+            if (info == null || info.getLockOwnerId() != Thread.currentThread().threadId()) continue;
+            final LockInfo lock = info.getLockInfo();
+            if (lock != null && lock.getIdentityHashCode() == System.identityHashCode(monitor)) return true;
+        }
+        return false;
     }
 }

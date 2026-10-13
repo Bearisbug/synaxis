@@ -6,10 +6,12 @@ import io.github.bearisbug.synaxis.app.scene.SceneService;
 import io.github.bearisbug.synaxis.plugin.PluginAnalytics;
 import io.github.bearisbug.synaxis.plugin.instance.EndCause;
 import io.github.bearisbug.synaxis.plugin.instance.PluginInstances;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
 /**
@@ -36,6 +38,27 @@ public final class InstanceRegistry {
         public static final Durations DEFAULT = new Durations(Duration.ofSeconds(30), Duration.ofSeconds(5));
     }
 
+    /**
+     * The places where a managed instance takes two steps that no other thread may come between. Outside
+     * tests nothing happens there; a test holds a thread in one with {@link #pauseWith} and brings the
+     * other thread in, so that dropping what keeps the two steps together turns the test red.
+     */
+    enum Window {
+        /** A move: after its state check, before its player is recorded as on their way; under the monitor. */
+        ADMIT,
+        /** A move that landed: after its player is taken off those on their way, before the evacuation gets them. */
+        LANDED,
+        /**
+         * A request that closes the instance: after the swap into {@code CLOSED} and the evacuation it builds,
+         * before the evacuation is published; under the monitor.
+         */
+        CLOSE,
+        /** The end of an evacuation: after the snapshot of the players on their way, before that of those inside. */
+        FINISH,
+        /** {@code PREPARING → OPEN}: after the registration, before the swap. */
+        OPEN
+    }
+
     private final ServerProcess process;
     private final InstanceLedger ledger;
     private final SceneService scenes;
@@ -43,6 +66,7 @@ public final class InstanceRegistry {
     private final Durations durations;
     private final LongSupplier nanoClock;
     private final Map<String, PluginInstancesImpl> plugins = new ConcurrentHashMap<>();
+    private volatile @Nullable Consumer<Window> pause;
 
     /**
      * @param process       the engine process
@@ -105,6 +129,25 @@ public final class InstanceRegistry {
 
     long now() {
         return nanoClock.getAsLong();
+    }
+
+    /**
+     * Lets a test hold a thread in a {@link Window}.
+     *
+     * @param pause called on the thread that reaches a window, with that window, before it goes on
+     */
+    void pauseWith(Consumer<Window> pause) {
+        this.pause = pause;
+    }
+
+    /**
+     * The calling thread is in {@code window}: holds it there for as long as the pause of the test says.
+     *
+     * @param window where the calling thread is
+     */
+    void reached(Window window) {
+        final Consumer<Window> current = pause;
+        if (current != null) current.accept(window);
     }
 
     /**

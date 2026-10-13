@@ -13,9 +13,14 @@ import io.github.bearisbug.synaxis.plugin.instance.PluginInstances;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.Timeout;
 
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -49,12 +54,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * thread, so this class starts a real {@link TickSchedulerThread} and its tick threads the way
  * ShardWorldAssemblyTest#startTicking does, and stops the process when it is done. Every wait is
  * bounded at 10 s; a preparing instance is held there by a generator waiting on a latch, not by timing.
- * The clock of the registry is the system's plus an offset the budget test moves.
+ * The clock of the registry is the system's plus an offset the budget test moves. The test of the §15
+ * figures runs first, so that its first {@code create} is the first of the class.
  */
 @Timeout(60)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ManagedInstanceTickThreadTest {
 
     private static final long WAIT_SECONDS = 10;
+    /** How many instances the test of the §15 figures creates one after another. */
+    private static final int CREATES = 5;
 
     private static ServerProcess process;
     private static InstanceRegistry registry;
@@ -131,54 +140,86 @@ class ManagedInstanceTickThreadTest {
         onTheTickScheduler(() -> null);
     }
 
-    private record Created(ManagedInstance managed, State state, boolean registered, long nanos) {
+    /**
+     * What {@code create} gave back on the tick scheduler thread.
+     *
+     * @param nanos         how long the call took
+     * @param classesLoaded how many classes the JVM loaded meanwhile, on any thread
+     * @param collections   how many garbage collections ran meanwhile
+     */
+    private record Created(ManagedInstance managed, State state, boolean registered, long nanos, long classesLoaded,
+                           long collections) {
     }
 
     private static Created create(PluginInstances instances, InstanceSpec spec)
             throws InterruptedException, ExecutionException {
         return onTheTickScheduler(() -> {
+            final long classesBefore = ManagementFactory.getClassLoadingMXBean().getTotalLoadedClassCount();
+            final long collectionsBefore = collections();
             final long start = System.nanoTime();
             final ManagedInstance managed = instances.create(spec);
             final long nanos = System.nanoTime() - start;
-            return new Created(managed, managed.state(), managed.instance().isRegistered(), nanos);
+            return new Created(managed, managed.state(), managed.instance().isRegistered(), nanos,
+                    ManagementFactory.getClassLoadingMXBean().getTotalLoadedClassCount() - classesBefore,
+                    collections() - collectionsBefore);
         });
     }
 
-    /** §19 「tick 调度线程上建实例不占 tick」 and the two figures of §15. */
+    /** The garbage collections the JVM ran so far, all collectors together. */
+    private static long collections() {
+        long count = 0;
+        for (GarbageCollectorMXBean collector : ManagementFactory.getGarbageCollectorMXBeans()) {
+            count += Math.max(0, collector.getCollectionCount());
+        }
+        return count;
+    }
+
+    /**
+     * §19 「tick 调度线程上建实例不占 tick」 and the two figures of §15, for the first {@code create} of the
+     * class and the ones after it: each instance is created once the one before is open, and each prints
+     * its own line, with the classes the JVM loaded and the garbage collections that ran during the call.
+     */
     @Test
+    @Order(1)
     void onTheTickSchedulerCreateComesBackPreparingAndOpensInALaterSerialPart()
             throws InterruptedException, ExecutionException {
-        final Created created = create(registry.forPlugin("tick"), new InstanceSpec("arena", 2, FLAT, SPAWN));
-        final ManagedInstance arena = created.managed();
+        final PluginInstances instances = registry.forPlugin("tick");
+        for (int ordinal = 1; ordinal <= CREATES; ordinal++) {
+            final Created created = create(instances, new InstanceSpec("arena", 2, FLAT, SPAWN));
+            final ManagedInstance arena = created.managed();
 
-        assertEquals(State.PREPARING, created.state(), "create waited for the chunks on the tick scheduler thread");
-        assertFalse(created.registered(), "registered before its chunks were generated and lit");
-        assertEquals(TickSchedulerThread.THREAD_NAME_TICK_SCHEDULER, awaitTransition(arena, State.OPEN),
-                "registered outside the serial part");
-        // The registration measures itself up to the state event's return, which is after the event above
-        onTheTickScheduler(() -> null);
+            assertEquals(State.PREPARING, created.state(), "create waited for the chunks on the tick scheduler thread");
+            assertFalse(created.registered(), "registered before its chunks were generated and lit");
+            assertEquals(TickSchedulerThread.THREAD_NAME_TICK_SCHEDULER, awaitTransition(arena, State.OPEN),
+                    "registered outside the serial part");
+            // The registration measures itself up to the state event's return, which is after the event above
+            onTheTickScheduler(() -> null);
 
-        assertEquals(State.OPEN, arena.state());
-        final InstanceContainer instance = arena.instance();
-        assertTrue(instance.isRegistered());
-        assertTrue(process.instance().getInstances().contains(instance));
-        assertEquals(25, instance.getChunks().size());
-        assertFalse(instance.hasEnabledAutoChunkLoad());
-        for (int x = -32; x < 48; x += 7) {
-            for (int z = -32; z < 48; z += 5) {
-                assertEquals(15, computedSkyLight(instance, x, FLOOR, z),
-                        "column " + x + "," + z + ": the air above the map is not lit by the sky");
-                assertEquals(0, computedSkyLight(instance, x, FLOOR - 2, z),
-                        "column " + x + "," + z + ": sky light leaked into the stone");
+            assertEquals(State.OPEN, arena.state());
+            final InstanceContainer instance = arena.instance();
+            assertTrue(instance.isRegistered());
+            assertTrue(process.instance().getInstances().contains(instance));
+            assertEquals(25, instance.getChunks().size());
+            assertFalse(instance.hasEnabledAutoChunkLoad());
+            for (int x = -32; x < 48; x += 7) {
+                for (int z = -32; z < 48; z += 5) {
+                    assertEquals(15, computedSkyLight(instance, x, FLOOR, z),
+                            "column " + x + "," + z + ": the air above the map is not lit by the sky");
+                    assertEquals(0, computedSkyLight(instance, x, FLOOR - 2, z),
+                            "column " + x + "," + z + ": sky light leaked into the stone");
+                }
             }
+            assertEquals(List.of("play_instance_created", "play_instance_opened"), ledger.events(arena));
+            final long prepareMs = ((Number) ledger.last(arena, "play_instance_opened").get("prepare_ms")).longValue();
+            final long registerNanos = ((ManagedInstanceImpl) arena).registerNanos();
+            assertTrue(registerNanos >= 0, "the registration did not measure itself");
+            System.out.printf("§15 readings (chunkRadius=2, 25 chunks), create %d of %d: create on the tick scheduler "
+                            + "thread %d us, registration in the serial part %d us, prepare_ms %d, classes loaded "
+                            + "meanwhile %d, garbage collections meanwhile %d%n",
+                    ordinal, CREATES, TimeUnit.NANOSECONDS.toMicros(created.nanos()),
+                    TimeUnit.NANOSECONDS.toMicros(registerNanos), prepareMs, created.classesLoaded(),
+                    created.collections());
         }
-        assertEquals(List.of("play_instance_created", "play_instance_opened"), ledger.events(arena));
-        final long prepareMs = ((Number) ledger.last(arena, "play_instance_opened").get("prepare_ms")).longValue();
-        final long registerNanos = ((ManagedInstanceImpl) arena).registerNanos();
-        assertTrue(registerNanos >= 0, "the registration did not measure itself");
-        System.out.printf("§15 readings (chunkRadius=2, 25 chunks): create on the tick scheduler thread %d us, "
-                        + "registration in the serial part %d us, prepare_ms %d%n",
-                TimeUnit.NANOSECONDS.toMicros(created.nanos()), TimeUnit.NANOSECONDS.toMicros(registerNanos), prepareMs);
     }
 
     /** §19 「准备中停机」: dropped, closed with cause shutdown, and still not registered once the chunks arrive. */

@@ -249,8 +249,8 @@ public class ShardWorldFarViewTest {
         final Started noTile = start(new ShardSettings(fixture.mapRoot(), fixture.mapBuild(), 4, 100, URL_ROOT), null);
         assertNull(noTile.farView());
         assertEquals(1, farViewLines(noTile, Level.INFO).size(), noTile.log().toString());
-        assertTrue(farViewLines(noTile, Level.INFO).getFirst().startsWith("Far view off: no far view tile of "),
-                farViewLines(noTile, Level.INFO).toString());
+        assertTrue(farViewLines(noTile, Level.INFO).getFirst().startsWith("Far view off: " + fixture.mapBuild()
+                + " has no far view packs (baker_version "), farViewLines(noTile, Level.INFO).toString());
         assertEquals(0, noTile.attributes().get("farview_tiles"));
     }
 

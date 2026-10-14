@@ -319,8 +319,8 @@ public final class FarViewCache {
     /**
      * Removes every {@code .part}, then holds the cache to {@code limit}: while it is over, removes the
      * library least recently used (one without a marker counts as the oldest) other than {@code inUse},
-     * then every object no remaining marker names. It runs once a bake succeeded, when this connection
-     * has nothing downloading.
+     * then every object no remaining marker names. It runs after every bake that was not cancelled, a
+     * failed one too, when this connection has nothing downloading.
      *
      * @param limit the bytes the cache may hold
      * @param inUse the key of the library this connection uses, never removed

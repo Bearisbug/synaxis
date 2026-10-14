@@ -66,6 +66,7 @@
 	"synaxis.order.busy": "服务器忙，请重试。",
 	"synaxis.farview.downloading": "正在下载远景：%s%%",
 	"synaxis.farview.preparing": "正在准备远景：%s%%",
+	"synaxis.farview.finishing": "正在完成远景…",
 	"synaxis.action.ok": "已执行。",
 	"synaxis.action.rejected": "不允许这样做。",
 	"synaxis.action.cooldown": "%s 秒后可再用。",

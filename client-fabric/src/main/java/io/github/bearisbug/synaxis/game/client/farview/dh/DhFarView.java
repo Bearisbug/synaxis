@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.game.client.farview.dh;
 
 import com.seibel.distanthorizons.api.DhApi;
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiLevelType;
 import com.seibel.distanthorizons.api.interfaces.override.levelHandling.IDhApiSaveStructure;
 import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiAfterDhInitEvent;
@@ -21,10 +22,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Distant Horizons 3.3.2 for the far view ({@code docs/DESIGN-M3.md} {@code API-M3-015}): the version
- * lock and the probe of the DH core members the bake relies on ({@link #SURFACE}, the 否 rows of the
- * DH 接入面 table), and, once both hold, the save folder override and the five events. Every class of
- * this mod that names a DH type is in this package; {@link FarViewClient} loads this one by name.
+ * Distant Horizons 3.3.2 for the far view ({@code docs/DESIGN-M3.md} {@code API-M3-015}): what
+ * {@link FarViewClient#gate(boolean, java.util.function.Supplier)} asks of DH, its version and the probe of
+ * the DH core members the bake relies on ({@link #SURFACE}, the 否 rows of the DH 接入面 table), and the
+ * save folder override and the five events it installs once all of them hold. Every class of this mod
+ * that names a DH type is in this package; {@link FarViewClient} loads this one by name.
  */
 public final class DhFarView implements FarViewDh {
 
@@ -39,11 +41,11 @@ public final class DhFarView implements FarViewDh {
 
     /** How a member of the surface is looked up. */
     public enum Kind {
-        /** A public method, static or not, by name and parameter types, with its return type. */
+        /** A public instance method, by name and parameter types, with its return type. */
         METHOD,
         /** A public static method. */
         STATIC_METHOD,
-        /** A public field, with its type. */
+        /** A public instance field, with its type. */
         FIELD,
         /** {@code type} is a supertype of the owner. */
         SUPERTYPE
@@ -94,7 +96,7 @@ public final class DhFarView implements FarViewDh {
 
     private static volatile @Nullable IDhApiLevelWrapper level;
 
-    /** Fabric loads this by name, once DH is known to be there. */
+    /** {@link FarViewClient} loads this by name, only once Fabric reports DH. */
     public DhFarView() {
     }
 
@@ -151,13 +153,8 @@ public final class DhFarView implements FarViewDh {
     }
 
     private static Class<?> type(String name, ClassLoader loader) throws ClassNotFoundException {
-        return switch (name) {
-            case "byte" -> byte.class;
-            case "int" -> int.class;
-            case "long" -> long.class;
-            case "boolean" -> boolean.class;
-            default -> Class.forName(name, false, loader);
-        };
+        final Class<?> primitive = Class.forPrimitiveName(name);
+        return primitive != null ? primitive : Class.forName(name, false, loader);
     }
 
     @Override
@@ -185,8 +182,10 @@ public final class DhFarView implements FarViewDh {
         DhApi.events.bind(DhApiLevelLoadEvent.class, new DhApiLevelLoadEvent() {
             @Override
             public void onLevelLoad(DhApiEventParam<DhApiLevelLoadEvent.EventParam> event) {
-                if (!FarViewClient.synaxisConnection()) return;
                 final IDhApiLevelWrapper loaded = event.value.levelWrapper;
+                // An integrated server's levels load before the client logs in, while the last connection's handshake
+                // and announcement are still there: never a Synaxis connection's
+                if (loaded.getLevelType() == EDhApiLevelType.SERVER_LEVEL || !FarViewClient.synaxisConnection()) return;
                 level = loaded;
                 FarViewClient.levelLoaded(loaded, DhLibraryBaker::start);
             }

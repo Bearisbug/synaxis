@@ -24,11 +24,14 @@ import org.jspecify.annotations.Nullable;
 /**
  * The static hook the client gametests of M3-G ({@code FarViewClientGameTest}) reach the far view's
  * DH side through: switches that take one step of the bake away for a counter-proof, holds that stop
- * the bake at a chosen point, and queries on DH's library. With nothing set, which is how the mod
- * ships, every switch is the designed behaviour and nothing waits.
+ * the bake at a chosen point, queries on DH's library, DH's config as the far view leaves it, and
+ * {@link #unloadLevel}, which stands in for DH's own cleanup of an earlier connection's level. With
+ * nothing set, which is how the mod ships, every switch is the designed behaviour and nothing waits.
  * <p>
- * The queries run on the calling thread, on DH's own connection to the library of the level loaded
- * last; a gametest calls them from a platform thread of its own, never the render thread.
+ * The library queries ({@link #count}, {@link #topPoint}) run on the calling thread, on DH's own
+ * connection to the library of the level loaded last; a gametest calls them from a platform thread of
+ * its own, never the render thread. The config reads and overrides ({@link #graphics}, {@link #threads},
+ * {@link #overdrawPreventionRadius}, {@link #renderingEnabled}) are the opposite: client thread only.
  */
 public final class DhTestHook {
 
@@ -48,7 +51,7 @@ public final class DhTestHook {
     public static volatile @Nullable CountDownLatch holdBeforeLast;
     /** Counted down when the bake reaches {@link #holdBeforeLast}. */
     public static volatile @Nullable CountDownLatch reachedLast;
-    /** The bake thread last started. */
+    /** The bake thread last started, while it runs; null once it ended, so it keeps no level alive. */
     public static volatile @Nullable Thread bakeThread;
 
     private DhTestHook() {
@@ -82,8 +85,8 @@ public final class DhTestHook {
      * The topmost non-air data point DH holds for a block column, read back through
      * {@code FullDataSourceProviderV2#get} from the data source the bake wrote it into.
      *
-     * @param x         the block column
-     * @param z         the block column
+     * @param x         the block column's x
+     * @param z         the block column's z
      * @param baseLevel the level the column was written at
      * @return {@code state}, {@code block}, {@code bottom}, {@code top} (exclusive), {@code sky}, {@code light},
      *         {@code biome} (DH's serial string) and {@code points} of that point; empty when the column holds only air; null without a level
@@ -91,8 +94,9 @@ public final class DhTestHook {
     public static @Nullable Map<String, Object> topPoint(int x, int z, int baseLevel) {
         final IDhApiLevelWrapper level = DhFarView.level();
         if (level == null) return null;
-        final int shift = FarViewColumns.SECTION_BLOCK_DETAIL + baseLevel;
-        final long position = DhSectionPos.encode((byte) shift, x >> shift, z >> shift);
+        // A section at detail level d is 2^d blocks a side, so d also shifts a block coordinate to the section's
+        final int sectionDetail = FarViewColumns.SECTION_BLOCK_DETAIL + baseLevel;
+        final long position = DhSectionPos.encode((byte) sectionDetail, x >> sectionDetail, z >> sectionDetail);
         final FullDataSourceV2 source = ((ILevelWrapper) level).getDhLevel().getFullDataProvider().get(position);
         try {
             final List<DhApiTerrainDataPoint> column = source.getApiDataPointColumn((x >> baseLevel) & (FarViewColumns.WIDTH - 1),
@@ -167,8 +171,10 @@ public final class DhTestHook {
     }
 
     /**
-     * The graphics settings the far view overrides, each as its API value, its value in effect and
-     * whether the API may set it. Call on the client thread.
+     * The graphics settings the far view sets ({@code chunkRenderDistance}, {@code maxHorizontalResolution})
+     * and the two it must leave alone ({@code renderingEnabled}, see {@link DhSession};
+     * {@code overdrawPreventionRadius}), each as its API value, its value in effect and whether the API may
+     * set it. Call on the client thread.
      *
      * @return by name
      */

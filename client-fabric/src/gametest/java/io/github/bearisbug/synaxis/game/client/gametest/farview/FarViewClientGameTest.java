@@ -607,7 +607,7 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
 
         FarViewPack.Reader reader(FarViewAnnouncement.Tile tile) {
             try {
-                return FarViewPack.Reader.read(Files.readAllBytes(cache().pack(FarViewConnection.hex(tile))));
+                return FarViewPack.Reader.read(Files.readAllBytes(cache().pack(FarViewCache.hex(tile))));
             } catch (IOException | FarViewPack.Invalid e) {
                 throw new IllegalStateException(e);
             }
@@ -1151,7 +1151,7 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             final FarViewConnection c = Objects.requireNonNull(connection());
             final FarViewAnnouncement.Tile whole = c.announcement().tiles().stream()
                     .filter(tile -> tile.layer() == FarViewAnnouncement.LAYER_FULL).findFirst().orElseThrow();
-            final String hex = FarViewConnection.hex(whole);
+            final String hex = FarViewCache.hex(whole);
             final List<String> requests = accessLog().subList(access, accessLog().size()).stream()
                     .filter(line -> line.contains(hex)).toList();
             final String warn = find(logSince(logFrom), "Far view pack " + hex.substring(0, 12) + " failed after 3 attempts");

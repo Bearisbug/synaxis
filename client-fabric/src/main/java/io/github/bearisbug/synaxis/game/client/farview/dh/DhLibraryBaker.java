@@ -24,7 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -36,7 +36,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +45,8 @@ import org.slf4j.LoggerFactory;
  * thread of its own, the packs of an announcement become data sources at section detail level
  * {@code 6 + b}, handed to the running DH level with {@code applyToParent} set; then the rows are
  * counted on DH's own connection, the parent propagation waited for, and only then the completion
- * marker written. A library whose marker matched is only counted ({@code 载入核对}).
+ * marker written. A library whose marker matched is counted first ({@code 载入核对}); only when the
+ * count misses is it downloaded as needed and baked again.
  */
 final class DhLibraryBaker implements Runnable {
 
@@ -77,7 +77,7 @@ final class DhLibraryBaker implements Runnable {
      *
      * @param connection the connection
      * @param level      the {@link IDhApiLevelWrapper} DH loaded
-     * @param loadCheck  whether only the rows of a ready library are to be checked
+     * @param loadCheck  whether the marker matched, so the rows are counted before anything is baked
      */
     static void start(FarViewConnection connection, Object level, boolean loadCheck) {
         final Thread thread = Thread.ofPlatform().name("synaxis-farview-bake").daemon()
@@ -98,152 +98,181 @@ final class DhLibraryBaker implements Runnable {
             final FarViewAnnouncement announcement = connection.announcement();
             final FarViewCache cache = connection.cache();
             if (loadCheck) {
-                if (!connection.loadChecked(count(repo, "DetailLevel = " + announcement.baseLevel()))) return;
+                if (!connection.rebakeAfterLoadCheck(rowsAt(repo, announcement.baseLevel()))) return;
                 final List<FarViewAnnouncement.Tile> missing = cache.missing(announcement.tiles());
                 if (!missing.isEmpty() && !connection.download(missing)) return;
             }
             if (!connection.baking()) return;
-            bake(dhLevel, repo, started);
+            try {
+                bake(dhLevel, repo, announcement, cache, key, started);
+            } finally {
+                // Every bake that ran holds the cache to its limit, a failed one too, so a client whose bakes keep
+                // failing does not grow it without end; this connection has nothing downloading by now (缓存条)
+                if (!stopped()) clean(cache, key);
+            }
         } catch (Exception | LinkageError e) {
             if (stopped()) return;
             connection.state(FarViewConnection.State.ABSENT);
             connection.failure("bake failed");
             LOGGER.warn("{}view {} bake failed", FarViewClient.PREFIX, key, e);
         } finally {
+            // An Error (OutOfMemoryError, StackOverflowError) skips the catch: the state never stays baking
+            if (connection.state() == FarViewConnection.State.BAKING) connection.state(FarViewConnection.State.ABSENT);
+            // The thread, its task and the level wrapper that holds the client level need not outlive the bake
+            if (DhTestHook.bakeThread == Thread.currentThread()) DhTestHook.bakeThread = null;
             connection.settle();
         }
-    }
-
-    /** One pack as read off the cache, with the tile it was announced as. */
-    private record Pack(FarViewAnnouncement.Tile tile, FarViewPack.Reader reader) {
     }
 
     /** A data source handed to DH and the future of its write. */
     private record InFlight(CompletableFuture<Void> future, FullDataSourceV2 source) {
     }
 
-    private void bake(IDhLevel dhLevel, FullDataSourceV2Repo repo, long started) throws IOException, FarViewPack.Invalid,
-            InterruptedException {
-        final FarViewAnnouncement announcement = connection.announcement();
-        final FarViewCache cache = connection.cache();
-        final String key = connection.viewKey();
+    private void bake(IDhLevel dhLevel, FullDataSourceV2Repo repo, FarViewAnnouncement announcement, FarViewCache cache,
+                      String key, long started) throws IOException, InterruptedException {
         final int baseLevel = announcement.baseLevel();
         // The world height: DH 3.3.2 deprecates getHeight() for getMaxHeight(), which on a client level is ClientLevel#getHeight
         final int height = level.getMaxHeight();
 
-        // 1. Every pack against the level, before anything is written
-        final List<Pack> packs = new ArrayList<>();
+        // 1. Every pack against the level, before anything is written; only its block count is kept, so here and in
+        // step 2 at most one pack (≤ 40 MiB) is on the heap, however large the announcement
+        long fineBlocks = 0;
+        long coarseBlocks = 0;
         for (FarViewAnnouncement.Tile tile : announcement.tiles()) {
-            final String hex = FarViewConnection.hex(tile);
-            final FarViewPack.Reader reader = FarViewPack.Reader.read(Files.readAllBytes(cache.pack(hex)));
+            final FarViewPack.Reader reader = read(cache, tile);
+            if (reader == null) return;
             final FarViewPack.Header header = reader.header();
             if (header.minY() != level.getMinHeight() || header.height() != height
                     || header.blockStates() != Block.BLOCK_STATE_REGISTRY.size()) {
                 LOGGER.warn("{}Far view off: pack {} does not match the level (min_y {} height {} block_states {}; the level {}, {}, {})",
-                        FarViewClient.PREFIX, hex.substring(0, 12), header.minY(), header.height(), header.blockStates(),
-                        level.getMinHeight(), height, Block.BLOCK_STATE_REGISTRY.size());
+                        FarViewClient.PREFIX, FarViewCache.hex(tile).substring(0, 12), header.minY(), header.height(),
+                        header.blockStates(), level.getMinHeight(), height, Block.BLOCK_STATE_REGISTRY.size());
                 connection.state(FarViewConnection.State.ABSENT);
                 connection.failure("pack does not match the level");
                 return;
             }
-            packs.add(new Pack(tile, reader));
+            if (whole(tile)) fineBlocks += reader.blocks(FarViewPack.Layer.FINE).size();
+            else coarseBlocks += reader.blocks(FarViewPack.Layer.COARSE).size();
         }
 
-        // 2. The whole tiles' fine layers first, then the coarse tiles, in announcement order
+        // 2. and 3. The whole tiles' fine layers first, then the coarse tiles, in announcement order
         final boolean expand = DhTestHook.expandCoarse;
         final int perCoarseBlock = expand ? FarViewColumns.expansion(baseLevel) * FarViewColumns.expansion(baseLevel) : 1;
-        long fineBlocks = 0;
-        long coarseBlocks = 0;
-        for (Pack pack : packs) {
-            if (whole(pack)) fineBlocks += pack.reader().blocks(FarViewPack.Layer.FINE).size();
-            else coarseBlocks += pack.reader().blocks(FarViewPack.Layer.COARSE).size();
-        }
         final long sources = fineBlocks + coarseBlocks * perCoarseBlock;
-        final long rowsAtBase = fineBlocks + (expand ? coarseBlocks * perCoarseBlock : 0);
+        // Unexpanded (v1-coarse-only), a coarse source sits at the coarse level, not among the rows at b
+        final long rowsAtBase = expand ? sources : fineBlocks;
         connection.progress(0, sources);
+        if (!handOver(dhLevel, announcement, cache, height, expand, sources)) return;
 
+        // 4. A completed future says nothing about the library: count its rows, then wait for the parents
+        if (DhTestHook.writeCheck && !rowsWritten(repo, key, baseLevel, rowsAtBase)) return;
+        final long writeMillis = FarViewConnection.millisSince(started);
+        if (DhTestHook.writeCheck && !parentsDone(repo, key)) return;
+        if (stopped()) return;
+
+        // 5. Complete
+        complete(announcement, cache, key, sources, started, writeMillis);
+    }
+
+    /**
+     * Steps 2 and 3: every data source made and handed to DH, at most {@value #IN_FLIGHT} in flight, the
+     * cancel flag checked before each.
+     *
+     * @return whether every one completed; false when the bake is to stop
+     */
+    private boolean handOver(IDhLevel dhLevel, FarViewAnnouncement announcement, FarViewCache cache, int height,
+                             boolean expand, long sources) throws IOException, InterruptedException {
+        final int baseLevel = announcement.baseLevel();
+        // Whole tiles first, each group in announcement order: List.sort is stable
+        final List<FarViewAnnouncement.Tile> tiles = new ArrayList<>(announcement.tiles());
+        tiles.sort(Comparator.comparing((FarViewAnnouncement.Tile tile) -> !whole(tile)));
         final Wrappers wrappers = new Wrappers(level);
         final Deque<InFlight> inFlight = new ArrayDeque<>();
         long handed = 0;
-        for (boolean wholeTiles : new boolean[]{true, false}) {
-            for (Pack pack : packs) {
-                if (whole(pack) != wholeTiles) continue;
-                final FarViewPack.Layer layer = wholeTiles ? FarViewPack.Layer.FINE : FarViewPack.Layer.COARSE;
-                final FarViewAnnouncement.Tile tile = pack.tile();
-                for (FarViewPack.Block block : pack.reader().blocks(layer)) {
-                    final List<Sample> samples = pack.reader().samples(block);
-                    final List<FarViewColumns.Source> made = wholeTiles
-                            ? List.of(FarViewColumns.fine(tile.tileX(), tile.tileZ(), baseLevel, block.bx(), block.bz(), samples))
-                            : expand ? FarViewColumns.coarse(tile.tileX(), tile.tileZ(), baseLevel, block.bx(), block.bz(), samples)
-                            : List.of(FarViewColumns.coarseUnexpanded(tile.tileX(), tile.tileZ(), block.bx(), block.bz(), samples));
-                    for (FarViewColumns.Source source : made) {
-                        // 3. Handed over one by one, checking the cancel flag before each
-                        if (stopped()) return;
-                        final FullDataSourceV2 dataSource = build(source, pack.reader().biomes(), height, wrappers);
-                        if (handed == sources - 1 && DhTestHook.holdBeforeLast != null) {
-                            while (!inFlight.isEmpty()) {
-                                if (!completeOldest(inFlight)) return;
-                            }
-                            final CountDownLatch reached = DhTestHook.reachedLast;
-                            if (reached != null) reached.countDown();
-                            await(DhTestHook.holdBeforeLast);
-                        }
-                        inFlight.addLast(new InFlight(dhLevel.updateDataSourcesAsync(dataSource), dataSource));
-                        connection.progress(++handed, sources);
-                        while (inFlight.size() >= IN_FLIGHT) {
-                            if (!completeOldest(inFlight)) return;
-                        }
-                    }
+        for (FarViewAnnouncement.Tile tile : tiles) {
+            // Read again, one pack at a time (step 1)
+            final FarViewPack.Reader reader = read(cache, tile);
+            if (reader == null) return false;
+            final boolean wholeTile = whole(tile);
+            final FarViewPack.Layer layer = wholeTile ? FarViewPack.Layer.FINE : FarViewPack.Layer.COARSE;
+            for (FarViewPack.Block block : reader.blocks(layer)) {
+                final List<Sample> samples = samples(cache, tile, reader, block);
+                if (samples == null) return false;
+                final List<FarViewColumns.Source> made = wholeTile
+                        ? List.of(FarViewColumns.fine(tile.tileX(), tile.tileZ(), baseLevel, block.bx(), block.bz(), samples))
+                        : expand ? FarViewColumns.coarse(tile.tileX(), tile.tileZ(), baseLevel, block.bx(), block.bz(), samples)
+                        : List.of(FarViewColumns.coarseUnexpanded(tile.tileX(), tile.tileZ(), block.bx(), block.bz(), samples));
+                for (FarViewColumns.Source source : made) {
+                    if (stopped()) return false;
+                    final FullDataSourceV2 dataSource = build(source, reader.biomes(), height, wrappers);
+                    if (handed == sources - 1 && DhTestHook.holdBeforeLast != null && !holdBeforeLast(inFlight)) return false;
+                    inFlight.addLast(new InFlight(dhLevel.updateDataSourcesAsync(dataSource), dataSource));
+                    connection.progress(++handed, sources);
+                    if (!completeUntil(inFlight, IN_FLIGHT - 1)) return false;
                 }
             }
         }
-        while (!inFlight.isEmpty()) {
-            if (!completeOldest(inFlight)) return;
-        }
+        return completeUntil(inFlight, 0);
+    }
 
-        // 4. A completed future says nothing about the library: count its rows, then wait for the parents
-        if (DhTestHook.writeCheck) {
-            final Long rows = count(repo, "DetailLevel = " + baseLevel);
-            if (rows == null || rows != rowsAtBase) {
-                LOGGER.warn("{}view {} incomplete: {} of {} sources in the library", FarViewClient.PREFIX, key,
-                        rows == null ? "no answer, so none" : rows, rowsAtBase);
-                connection.state(FarViewConnection.State.ABSENT);
-                connection.failure("incomplete");
-                return;
-            }
-        }
-        final long writeMillis = FarViewConnection.millisSince(started);
-        if (DhTestHook.writeCheck) {
-            final long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(PARENTS_MILLIS);
-            Long pending = count(repo, "ApplyToParent = 1");
-            while (pending != null && pending > 0 && System.nanoTime() < deadline) {
-                if (stopped()) return;
-                Thread.sleep(POLL_MILLIS);
-                pending = count(repo, "ApplyToParent = 1");
-            }
-            if (pending == null || pending > 0) {
-                LOGGER.warn("{}view {} parents pending: {}", FarViewClient.PREFIX, key, pending == null ? "no answer" : pending);
-                connection.state(FarViewConnection.State.ABSENT);
-                connection.failure("parents pending");
-                return;
-            }
-        }
-        if (stopped()) return;
+    /**
+     * Step 4, the rows: DH's rows at b against the sources counted there. No answer or a short count on a
+     * connection that ended stops the bake without a WARN line: DH closes the library as the connection or
+     * the level ends, so that says nothing about the library.
+     *
+     * @return whether the rows are all there; false when the bake is to stop
+     */
+    private boolean rowsWritten(FullDataSourceV2Repo repo, String key, int baseLevel, long rowsAtBase) {
+        final Long rows = rowsAt(repo, baseLevel);
+        if (rows != null && rows == rowsAtBase) return true;
+        if (stopped()) return false;
+        LOGGER.warn("{}view {} incomplete: {} of {} sources in the library", FarViewClient.PREFIX, key,
+                rows == null ? "no answer, so none" : rows, rowsAtBase);
+        connection.state(FarViewConnection.State.ABSENT);
+        connection.failure("incomplete");
+        return false;
+    }
 
-        // 5. Complete: the marker, the bake line, the cache held to its limit
+    /**
+     * Step 4, the parents: waits until DH propagated every row up, at most {@value #PARENTS_MILLIS} ms;
+     * a connection that ended stops it without a WARN line, as {@link #rowsWritten} does.
+     *
+     * @return whether no row waits for its parents; false when the bake is to stop
+     */
+    private boolean parentsDone(FullDataSourceV2Repo repo, String key) throws InterruptedException {
+        final long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(PARENTS_MILLIS);
+        Long pending;
+        while ((pending = count(repo, "ApplyToParent = 1")) != null && pending > 0 && System.nanoTime() < deadline) {
+            if (stopped()) return false;
+            Thread.sleep(POLL_MILLIS);
+        }
+        if (pending != null && pending <= 0) return true;
+        if (stopped()) return false;
+        LOGGER.warn("{}view {} parents pending: {}", FarViewClient.PREFIX, key, pending == null ? "no answer" : pending);
+        connection.state(FarViewConnection.State.ABSENT);
+        connection.failure("parents pending");
+        return false;
+    }
+
+    /** Step 5: the marker, the readings and the bake line; the library is ready. */
+    private void complete(FarViewAnnouncement announcement, FarViewCache cache, String key, long sources, long started,
+                          long writeMillis) throws IOException {
         final long millis = FarViewConnection.millisSince(started);
         final long visible = FarViewConnection.millisSince(connection.announcedNanos());
         final long now = System.currentTimeMillis();
-        cache.writeMarker(new FarViewCache.Marker(FarViewCache.MARKER_FORMAT, key, connection.dhVersion(),
+        cache.writeMarker(new FarViewCache.Marker(FarViewCache.MARKER_FORMAT, key, FarViewClient.DH_VERSION,
                 FarViewClient.BAKE_CODE_VERSION, announcement.tiles().stream().map(FarViewCache.MarkerTile::of).toList(),
                 sources, millis, now, now));
         final long databaseBytes = databaseBytes(cache.library(key));
-        final long levelLoaded = connection.levelLoadedNanos();
         connection.timings(new FarViewConnection.Timings(millis, writeMillis, visible, databaseBytes, sources,
-                levelLoaded == 0 ? -1 : FarViewConnection.millisSince(levelLoaded)));
+                FarViewConnection.millisSince(connection.levelLoadedNanos())));
         connection.state(FarViewConnection.State.READY);
         LOGGER.info("{}view {} baked in {} ms: {} sources, {} B; written {} ms, visible {} ms after the announcement",
                 FarViewClient.PREFIX, key, millis, sources, databaseBytes, writeMillis, visible);
+    }
+
+    /** The cache held to its limit after a bake ({@code API-M3-015} 缓存条). */
+    private static void clean(FarViewCache cache, String key) {
         try {
             final FarViewCache.Cleaned cleaned = cache.clean(FarViewCache.LIMIT_BYTES, key);
             if (!cleaned.libraries().isEmpty() || !cleaned.packs().isEmpty()) {
@@ -255,32 +284,97 @@ final class DhLibraryBaker implements Runnable {
         }
     }
 
-    private static boolean whole(Pack pack) {
-        return pack.tile().layer() == FarViewAnnouncement.LAYER_FULL;
+    /**
+     * One pack off the cache. One that cannot be read or parsed is removed, so the next connection downloads
+     * it again ({@code API-M3-015} 写库条第 1 步): {@code packs/} knows an object by its name alone.
+     *
+     * @return the pack, null when it could not be read and the bake is to stop
+     */
+    private FarViewPack.@Nullable Reader read(FarViewCache cache, FarViewAnnouncement.Tile tile) throws IOException {
+        try {
+            return FarViewPack.Reader.read(Files.readAllBytes(cache.pack(FarViewCache.hex(tile))));
+        } catch (IOException | FarViewPack.Invalid e) {
+            damaged(cache, tile, e);
+            return null;
+        }
+    }
+
+    /**
+     * The samples of one block of a pack; a block that does not inflate is a damaged pack, removed as
+     * {@link #read} removes one.
+     *
+     * @return the samples, null when the bake is to stop
+     */
+    private @Nullable List<Sample> samples(FarViewCache cache, FarViewAnnouncement.Tile tile, FarViewPack.Reader reader,
+                                           FarViewPack.Block block) throws IOException {
+        try {
+            return reader.samples(block);
+        } catch (FarViewPack.Invalid e) {
+            damaged(cache, tile, e);
+            return null;
+        }
+    }
+
+    /** Removes a pack the cache holds and the bake cannot read, and takes this connection's far view off. */
+    private void damaged(FarViewCache cache, FarViewAnnouncement.Tile tile, Exception e) throws IOException {
+        final String hex = FarViewCache.hex(tile);
+        Files.deleteIfExists(cache.pack(hex));
+        LOGGER.warn("{}Far view off: pack {} in the cache cannot be read, removed: {}", FarViewClient.PREFIX,
+                hex.substring(0, 12), e.toString());
+        connection.state(FarViewConnection.State.ABSENT);
+        connection.failure("pack damaged");
+    }
+
+    private static boolean whole(FarViewAnnouncement.Tile tile) {
+        return tile.layer() == FarViewAnnouncement.LAYER_FULL;
     }
 
     private boolean stopped() {
-        return connection.cancelled().get() && !DhTestHook.ignoreCancel;
+        return connection.cancelled() && !DhTestHook.ignoreCancel;
     }
 
-    /** Waits for the oldest write, waking every {@value #POLL_MILLIS} ms for the cancel flag, then closes its source. */
-    private boolean completeOldest(Deque<InFlight> inFlight) throws InterruptedException {
-        final InFlight oldest = inFlight.getFirst();
-        while (true) {
-            try {
-                oldest.future().get(POLL_MILLIS, TimeUnit.MILLISECONDS);
-                break;
-            } catch (TimeoutException _) {
-                if (stopped()) return false;
-            } catch (ExecutionException e) {
-                // DH logs its own failures; the row count after the last one is what decides
-                LOGGER.debug("{}a write of view {} failed: {}", FarViewClient.PREFIX, connection.viewKey(), e.getCause());
-                break;
+    /**
+     * The gametests' hold before the last source ({@link DhTestHook#holdBeforeLast}), every earlier one
+     * completed first.
+     *
+     * @return false when the bake is to stop
+     */
+    private boolean holdBeforeLast(Deque<InFlight> inFlight) throws InterruptedException {
+        if (!completeUntil(inFlight, 0)) return false;
+        final CountDownLatch reached = DhTestHook.reachedLast;
+        if (reached != null) reached.countDown();
+        await(DhTestHook.holdBeforeLast);
+        return true;
+    }
+
+    /**
+     * Waits for the oldest writes until at most {@code most} are in flight, waking every
+     * {@value #POLL_MILLIS} ms for the cancel flag.
+     *
+     * @param inFlight the writes in flight, oldest first
+     * @param most     how many may stay
+     * @return true once at most {@code most} are left, the source of each one that completed (or failed)
+     *         closed and removed; false when the bake stopped while waiting, the oldest left where it is
+     */
+    private boolean completeUntil(Deque<InFlight> inFlight, int most) throws InterruptedException {
+        while (inFlight.size() > most) {
+            final InFlight oldest = inFlight.getFirst();
+            while (true) {
+                try {
+                    oldest.future().get(POLL_MILLIS, TimeUnit.MILLISECONDS);
+                    break;
+                } catch (TimeoutException _) {
+                    if (stopped()) return false;
+                } catch (ExecutionException e) {
+                    // DH logs its own failures; the row count after the last one is what decides
+                    LOGGER.debug("{}a write of view {} failed: {}", FarViewClient.PREFIX, connection.viewKey(), e.getCause());
+                    break;
+                }
             }
+            inFlight.removeFirst();
+            // DH closes the copy it took out of its library, never the source it was handed (FullDataUpdaterV2)
+            oldest.source().close();
         }
-        inFlight.removeFirst();
-        // DH closes the copy it took out of its library, never the source it was handed (FullDataUpdaterV2)
-        oldest.source().close();
         return true;
     }
 
@@ -313,18 +407,18 @@ final class DhLibraryBaker implements Runnable {
         private final IDhApiWrapperFactory factory = DhApi.Delayed.wrapperFactory;
         private final IDhApiBlockStateWrapper air = factory.getAirBlockStateWrapper();
         private final IDhApiBlockStateWrapper[] states = new IDhApiBlockStateWrapper[Block.BLOCK_STATE_REGISTRY.size()];
-        private final int[] emission = new int[Block.BLOCK_STATE_REGISTRY.size()];
         private final Map<String, IDhApiBiomeWrapper> biomes = new HashMap<>();
 
         Wrappers(IDhApiLevelWrapper level) {
             this.level = level;
-            Arrays.fill(emission, -1);
         }
 
         List<DhApiTerrainDataPoint> points(Sample sample, List<String> table, int height) {
             final IDhApiBiomeWrapper biome = biome(table.get(sample.biome()));
             final List<DhApiTerrainDataPoint> points = new ArrayList<>(3);
-            for (FarViewColumns.Point point : FarViewColumns.points(sample, height, this::emission)) {
+            for (FarViewColumns.Point point : FarViewColumns.points(sample, height,
+                    id -> Block.BLOCK_STATE_REGISTRY.byId(id).getLightEmission())) {
+                // Detail level 0: bottom and top are y indices in blocks; setApiDataPointColumn throws on any other
                 points.add(DhApiTerrainDataPoint.create((byte) 0, point.blockLight(), point.skyLight(), point.bottom(), point.top(),
                         point.air() ? air : state(point.state()), biome));
             }
@@ -334,21 +428,11 @@ final class DhLibraryBaker implements Runnable {
         private IDhApiBlockStateWrapper state(int id) {
             IDhApiBlockStateWrapper wrapper = states[id];
             if (wrapper == null) {
-                wrapper = factory.getBlockStateWrapper(new Object[]{blockState(id)}, level);
+                // Step 1 held the pack's block_states to the registry and the pack reader to block_states: every id is one
+                wrapper = factory.getBlockStateWrapper(new Object[]{Block.BLOCK_STATE_REGISTRY.byId(id)}, level);
                 states[id] = wrapper;
             }
             return wrapper;
-        }
-
-        private int emission(int id) {
-            if (emission[id] < 0) emission[id] = blockState(id).getLightEmission();
-            return emission[id];
-        }
-
-        private static BlockState blockState(int id) {
-            final BlockState state = Block.BLOCK_STATE_REGISTRY.byId(id);
-            if (state == null) throw new IllegalArgumentException("block state " + id + " is not one of this client's");
-            return state;
         }
 
         private IDhApiBiomeWrapper biome(String name) {
@@ -360,6 +444,19 @@ final class DhLibraryBaker implements Runnable {
                 }
             });
         }
+    }
+
+    /**
+     * DH's rows at data detail level b, the {@code DetailLevel} of its {@code FullData} table: DH's data
+     * detail level is its section detail level less 6, so every data source handed over at section detail
+     * level {@code 6 + b} is one row there ({@code API-M3-015} 写库条第 4 步).
+     *
+     * @param repo      DH's repository of the table
+     * @param baseLevel b
+     * @return the count, null when the connection gives no answer
+     */
+    private static @Nullable Long rowsAt(FullDataSourceV2Repo repo, int baseLevel) {
+        return count(repo, "DetailLevel = " + baseLevel);
     }
 
     /**

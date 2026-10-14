@@ -348,7 +348,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | REQ-M3-022 编辑源交付规范 | TC-WORLD-019（标记解析）、TC-WORLD-029、TC-WORLD-030（`docs/MAP-SOURCE.md` 第 6 节的自检命令）、TC-WORLD-031、TC-WORLD-032、TC-WORLD-055、TC-WORLD-105（隐藏区域在远景里的替换）、TC-WORLD-NEW-baker-cli-farview-2（贴着地图边的隐藏区域）（TC-WORLD-025 已废弃） |
 | REQ-M3-023 世界状态标志 | TC-WORLD-066～TC-WORLD-070、TC-WORLD-NEW-shard-flags-1（§28.2 登记的五项补测）、TC-WORLD-NEW-shard-flags-2（订阅后第一个 tick 兜底、管辖格重叠、重放里 handler 抛异常、值解析不了、副本、冲突日志的 SNBT）、TC-WORLD-079（真进程只到装配）、TC-WORLD-088、TC-WORLD-094（只读世界里标志改方块后的光照） |
 | REQ-M3-024 远景高度场包 | TC-WORLD-102～TC-WORLD-109（编解码与向量、烘焙产出、采样与粗层、隐藏区域、校验、导出、分片宣告、命令行与夹具）、TC-WORLD-NEW-baker-cli-farview-2（贴着地图边的隐藏区域只取 `bounds` 以内的外沿）；端到端的读回由 TC-WORLD-117 覆盖 |
-| REQ-M3-025 客户端远景 | TC-WORLD-110～TC-WORLD-116（JUnit）、TC-WORLD-117～TC-WORLD-122（无头容器，TC-WORLD-121 只登记读数）、TC-WORLD-123、TC-WORLD-124（真机，执行者人工，待用户的机器）；TC-WORLD-102 的宣告与向量两端共用；M3-S 加 TC-WORLD-140～TC-WORLD-143（容器：设时间、四个反证、隐藏替换端到端、带 url-root 的 `server-shard`，在 GitHub Actions 上跑）、TC-WORLD-146、TC-WORLD-149（真机低配档与 Vulkan，执行者人工）；`TC-WORLD-NEW-client-download-cache-1`（JUnit：下载器哪些失败当场结束、哪些算一次失败） |
+| REQ-M3-025 客户端远景 | TC-WORLD-110～TC-WORLD-116（JUnit）、TC-WORLD-117～TC-WORLD-122（无头容器，TC-WORLD-121 只登记读数）、TC-WORLD-123、TC-WORLD-124（真机，执行者人工，待用户的机器）；TC-WORLD-102 的宣告与向量两端共用；M3-S 加 TC-WORLD-140～TC-WORLD-143（容器：设时间、四个反证、隐藏替换端到端、带 url-root 的 `server-shard`，在 GitHub Actions 上跑）、TC-WORLD-146、TC-WORLD-149（真机低配档与 Vulkan，执行者人工）；`TC-WORLD-NEW-client-download-cache-1`（JUnit：下载器哪些失败当场结束、哪些算一次失败）；`TC-WORLD-NEW-client-connection-dh-1`（JUnit：档位文件按字节读） |
 | REQ-M3-026 光影检测与引导 | 未实现 |
 | REQ-M3-027 光照面遮挡按原版 | TC-WORLD-002、TC-WORLD-004 |
 | REQ-M3-028 `fullyLit` 重算 | TC-WORLD-026（TC-WORLD-005 已废弃） |
@@ -3774,14 +3774,25 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 
 后置：同 `TC-WORLD-110`。
 
+#### `TC-WORLD-NEW-client-connection-dh-1` 档位文件按字节读：不是 UTF-8 的注释不让档位作废 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-110`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<GC> test --tests '<CV>.FarViewClientTest.aSettingsFileWithACommentInAnotherEncodingKeepsItsRadius'` | `tests="1"` 0 失败：档位文件第一行是按 GBK 存下的中文注释（`# 低配`，字节 `B5 CD C5 E4` 不是合法的 UTF-8），第二行 `farview.radius=0`，读出的档位是 0 |
+| 2 | 反证（按严格 UTF-8 读）：`<FV>/FarViewSettings.java` 的 `try (InputStream in = Files.newInputStream(file)) {` 改成 `try (java.io.Reader in = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {`，重跑第 1 步，再 `git checkout -- <FV>` | `1 test completed, 1 failed`，红在 `FarViewClientTest.java:345`：`expected: <0> but was: <4096>`（`MalformedInputException` 让整份设置作废；实现者在 Gradle 之外用 javac 与 JUnit 启动器实跑） |
+
+后置：同 `TC-WORLD-110`。
+
 #### `TC-WORLD-115` 取消与进入 `baking` 同锁，载入核对时断开不删好库的标记 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
 
 前置：同 `TC-WORLD-110`。`FarViewConnectionTest` 用替身烘焙与临时缓存目录。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `<GC> test --tests '<CV>.FarViewConnectionTest'` | `tests="5"` 0 失败：行数等于标记的库留在 `ready` 并更新 `last_used`；连接还在时查询返回 null 即删标记、要重烘；取消之后查询返回 null 时标记保留、不重烘；取消之后烘焙线程才调 `baking()` 时返回假、状态是 `absent`；层级载入之前就取消时什么都不起 |
-| 2 | 反证（`baking()` 与 `loadChecked` 都不看取消标志）：`<FV>/FarViewConnection.java` 的 `        if (cancelled.get()) return false;` 改成 `        if (cancelled.get() && Boolean.getBoolean("proof.never")) return false;`，`if (rows == null && cancelled.get()) return false;` 改成 `if (rows == null && cancelled.get() && Boolean.getBoolean("proof.never")) return false;`，重跑第 1 步，再 `git checkout -- <FV>` | `5 tests completed, 3 failed`：`FarViewConnectionTest.java:110` `expected: <false> but was: <true>`；`:95` `nothing is baked on a connection that ended ==> expected: <false> but was: <true>`；`:121` `expected: <false> but was: <true>` |
+| 1 | `<GC> test --tests '<CV>.FarViewConnectionTest'` | `tests="8"` 0 失败：行数等于标记的库留在 `ready` 并更新 `last_used`；连接还在时查询返回 null 即删标记、要重烘；取消之后查询返回 null 时标记保留、不重烘；取消之后烘焙线程才调 `baking()` 时返回假、状态是 `absent`；层级载入之前就取消时什么都不起；下载留下的进度（2000 of 2000）在进入 `baking` 时清零，`progressDone()` 为 0，HUD 行是 `synaxis.farview.preparing` 0%，交出 2303 of 2304 时 99%，全部交出后换成不带参数的 `synaxis.farview.finishing`；行数不等时标记删掉、状态是 `absent`；行数相符而完成标记重写不了（`.tmp` 的位置被一个目录占着）时仍是 `ready`，WARN 一行 `view <view_key> last_used not updated: …`，标记的 `last_used` 原样 |
+| 2 | 反证（`baking()` 与 `rebakeAfterLoadCheck` 都不看取消标志）：`<FV>/FarViewConnection.java` 的 `        if (cancelled.get()) return false;` 改成 `        if (cancelled.get() && Boolean.getBoolean("proof.never")) return false;`，`if (rows == null && cancelled.get()) return false;` 改成 `if (rows == null && cancelled.get() && Boolean.getBoolean("proof.never")) return false;`，重跑第 1 步，再 `git checkout -- <FV>` | `8 tests completed, 3 failed`（新加的三条不看取消标志，照绿；实现者在 Gradle 之外用 javac 与 JUnit 启动器实跑）：`FarViewConnectionTest.java:110` `expected: <false> but was: <true>`；`:95` `nothing is baked on a connection that ended ==> expected: <false> but was: <true>`；`:121` `expected: <false> but was: <true>` |
 
 后置：同 `TC-WORLD-110`。
 
@@ -3924,6 +3935,7 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 | 宣告合计超过缓存上限时不下载 | `REQ-M3-032` | `TC-WORLD-137` 第 1、2 步 | 有 |
 | 坏 URL 与 3xx 当场失败，重定向不跟随 | `REQ-M3-032` | `TC-WORLD-137` 第 1、3 步；响应体不结束的 302 是 `TC-WORLD-NEW-client-download-cache-1` 第 1、3 步 | 有 |
 | 宣告里的主机不一致或解析到本地地址时不下载 | `REQ-M3-032` | `TC-WORLD-137` 第 1、4 步 | 有 |
+| 两项同摘要的宣告与同一连接的第二条宣告不收 | `REQ-M3-032` | `TC-WORLD-137` 第 1 步 | 有 |
 | 一次下载超过总时限即停 | `REQ-M3-032` | `TC-WORLD-137` 第 1、5 步 | 有 |
 | 收到宣告与客户端启动时清理残留的 .part | `REQ-M3-032` | `TC-WORLD-137` 第 1、6、7 步 | 有 |
 | 下载时边写边算摘要 | `REQ-M3-032` | `TC-WORLD-137` 第 1、8 步 | 有 |
@@ -4127,10 +4139,10 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `<GC> test --tests '<CV>.FarViewClientTest' --tests '<CV>.FarViewDownloaderTest' --tests '<CV>.FarViewCacheTest' --tests '<CV>.FarViewDownloaderLimitsTest'` | 0 失败：`FarViewClientTest` `tests="4"`（32 项各 40 MiB、合计 1,342,177,280 B 的宣告不下载，库钉 `dh/off/`，WARN `Far view announcement of 1342177280 bytes is over the cache limit of 1073741824 bytes: ignored`；两项主机不同整条不认，WARN `… names more than one host: ignored`；服务器 203.0.113.5 时指向 192.168.1.1 与 127.0.0.1 的都不下载，WARN `… resolves to the local address …`，服务器是 127.0.0.1 时照常下载；收到宣告时删掉没被点名的与 25 h 前的 `.part`，1 h 前被点名的留着）；`FarViewDownloaderTest` `tests="21"`（M3-S 加 4 条：`ftp://`、带空格的 URL、302 三个各只尝试 1 次，前两个原因以 `the url cannot be requested` 开头、没有 `.part`，第三个原因 `HTTP 302`、另一个端口没收到请求；每 20 s 一个字节的服务、总时限 2 s 时 2 s 停下、`success=false`、原因写超时、`.part` 留着；30 MiB 对象 `.part` 已有 10 MiB 时续传下完、摘要边写边算、等于宣告；服务端改一个字节时摘要不符、`.part` 删掉、算一次失败）；`FarViewCacheTest` `tests="17"`（启动时只删 24 h 前的 `.part`；删不掉的记 WARN `Far view cache … cannot be deleted` 并跳过；`clean()` 删全部 `.part`）；`FarViewDownloaderLimitsTest` `tests="3"`（`m3/sec-r2` 的 `FarViewDownloaderSizePocTest` 翻转：40 MiB 以上的 `Tile` 构造即拒；比宣告大的 `.part` 下载时删掉、从头下；`clean()` 带走超上限的 `.part`） |
+| 1 | `<GC> test --tests '<CV>.FarViewClientTest' --tests '<CV>.FarViewDownloaderTest' --tests '<CV>.FarViewCacheTest' --tests '<CV>.FarViewDownloaderLimitsTest'` | 0 失败：`FarViewClientTest` `tests="8"`（32 项各 40 MiB、合计 1,342,177,280 B 的宣告不下载，库钉 `dh/off/`，WARN `Far view announcement of 1342177280 bytes is over the cache limit of 1073741824 bytes: ignored`；两项主机不同整条不认，WARN `… names more than one host: ignored`；服务器 203.0.113.5 时指向 192.168.1.1 与 127.0.0.1 的都不下载，WARN `… resolves to the local address …`，服务器是 127.0.0.1 时照常下载；收到宣告时删掉没被点名的与 25 h 前的 `.part`，1 h 前被点名的留着；两项摘要相同整条不认，库钉 `dh/off/`，不下载，WARN `Far view announcement names object <前 12 位> for two tiles: ignored`；同一连接已有宣告时再来的一条不收，WARN `Far view announcement repeated on one connection: ignored`，第一条没被取消；100.64.0.1、100.100.100.100、100.127.255.254 算本地地址，100.63.255.254、100.128.0.1、203.0.113.5 不算；另 1 条归 `TC-WORLD-NEW-client-connection-dh-1`）；`FarViewDownloaderTest` `tests="21"`（M3-S 加 4 条：`ftp://`、带空格的 URL、302 三个各只尝试 1 次，前两个原因以 `the url cannot be requested` 开头、没有 `.part`，第三个原因 `HTTP 302`、另一个端口没收到请求；每 20 s 一个字节的服务、总时限 2 s 时 2 s 停下、`success=false`、原因写超时、`.part` 留着；30 MiB 对象 `.part` 已有 10 MiB 时续传下完、摘要边写边算、等于宣告；服务端改一个字节时摘要不符、`.part` 删掉、算一次失败）；`FarViewCacheTest` `tests="17"`（启动时只删 24 h 前的 `.part`；删不掉的记 WARN `Far view cache … cannot be deleted` 并跳过；`clean()` 删全部 `.part`）；`FarViewDownloaderLimitsTest` `tests="3"`（`m3/sec-r2` 的 `FarViewDownloaderSizePocTest` 翻转：40 MiB 以上的 `Tile` 构造即拒；比宣告大的 `.part` 下载时删掉、从头下；`clean()` 带走超上限的 `.part`） |
 | 2 | 反证（去掉合计判定）：`<FC>` 的 `if (bytes > FarViewCache.LIMIT_BYTES) {` 改成 `if (bytes > FarViewCache.LIMIT_BYTES && Boolean.getBoolean("proof.never")) {`，重跑第 1 步，再 `git checkout -- <FC>` | 红在 `FarViewClientTest.java:177`：`taken as no announcement`（这条宣告被接受，库不钉 `dh/off/`；轨道 C 实跑） |
 | 3 | 反证（跟随重定向）：`<FD>` 的 `.followRedirects(HttpClient.Redirect.NEVER)` 改成 `.followRedirects(HttpClient.Redirect.NORMAL)`，重跑第 1 步，再 `git checkout -- <FD>` | 红在 `FarViewDownloaderTest.java:466`：`expected: <HTTP 302> but was: <the pack is of tile -1,0, not the announced 0,0>`（跟随 302 之后，另一个端口回了 `pack-small.hfp`：大小与摘要都与宣告相符，包头瓦片却是 -1,0、不是宣告的 0,0，摘要相符之后的不符当场失败，只尝试 1 次，所以 `:464` 照过、红在下一条断言。按代码推算，没有实跑；摘要相符之后的不符还重试 3 次时，轨道 C 实跑红在 `:464` 的尝试次数断言，审查者复核同一行） |
-| 4 | 反证（去掉本地地址的判定）：`<FC>` 判「解析出的地址是本地、服务器不是本地」的那一处改成恒为假，重跑第 1 步，再还原 | 红在 `FarViewClientTest.java:218`：`192.168.1.1 for the server /203.0.113.5`（服务器是公网地址也向 192.168.1.1 发了请求；轨道 C 实跑，审查者复核同一行） |
+| 4 | 反证（去掉本地地址的判定）：`<FV>/FarViewConnection.java` 的 `localRefusal` 里判「解析出的地址是本地、服务器不是本地」的那一处（`if (local(address)) {`）改成恒为假，重跑第 1 步，再还原 | 红在 `FarViewClientTest.java:218`：`192.168.1.1 for the server /203.0.113.5`（服务器是公网地址也向 192.168.1.1 发了请求；轨道 C 实跑，审查者复核同一行） |
 | 5 | 反证（去掉总时限）：`<FD>` 的 `final long deadline = started + totalTimeout.toNanos();` 改成 `final long deadline = started + Long.MAX_VALUE / 2;`，重跑第 1 步，再还原 | 红在 `FarViewDownloaderTest.java:507`：`no result within 5 s`（测试等满 5 s 后自己取消；轨道 C 实跑） |
 | 6 | 反证（收到宣告时不清 `.part`）：删掉 `<FC>` 里 `store.dropStaleParts(named, System.currentTimeMillis());` 一行（收到宣告的那一处，不是启动时 `dropStaleParts(null, …)` 那一处），重跑第 1 步，再还原 | 红在 `FarViewClientTest.java:255`：A、B 两个 `.part` 留着（应在收到宣告时删掉；轨道 C 实跑） |
 | 7 | 反证（`clean()` 只删 `*.hfp`）：`<FK>` 的 `clean` 里删 `.part` 的那一步去掉，重跑第 1 步，再还原 | 红 3 处：`FarViewCacheTest.java:310`（`.part` 没清掉）、`FarViewDownloaderLimitsTest.java:117`（`the cleaning takes the .part`）、`FarViewClientTest.java:259`（实现者实跑；审查者复核时红在后两处） |

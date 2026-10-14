@@ -625,4 +625,250 @@ public class WorldFlagsReplayTest {
         assertEquals(0, instance.chunkTicketCount(0, 0), "the dropped application gave its ticket back too");
         assertEquals(0, flags.stats().conflicts());
     }
+
+    /**
+     * §19 「跨频道同步与 Redis 不可用时收敛」 at start: a value another channel wrote after the read at start
+     * and before the subscription is in neither the replay nor a message; the read of every flag on the
+     * first tick after {@code start} applies it.
+     */
+    @Test
+    public void aValueWrittenBeforeTheSubscriptionIsAppliedOnTheFirstTick() throws Exception {
+        row(GATE, "closed", 2);
+        final WorldFlagsImpl flags = flags();
+        flags.register(GATE, WorldFlagsReplayTest::gate);
+        final Mounted mounted = mount(release, WRITABLE, flags);
+        final InstanceContainer instance = mounted.instance();
+        instance.setChunkUnloadGraceTicks(-1);
+        assertDoorway(instance, Block.IRON_BARS);
+        database.execute("UPDATE world_flag SET value = '\"open\"', version = 3 WHERE flag_key = '" + GATE + "'");
+
+        flags.start(instance);
+        tickUntil(mounted.env(), () -> new FlagValue(json("open"), 3).equals(flags.get(GATE)), Duration.ofSeconds(10),
+                "the first tick reads every flag");
+
+        assertDoorway(instance, Block.AIR);
+        assertTrue(flags.syncScheduled(), "and again every 60 s");
+    }
+
+    /**
+     * Two keys must not give the same cell: one warning names both, and the key applied last holds the
+     * cell, the same one on every channel because the read orders the rows by key.
+     */
+    @Test
+    public void twoFlagsGivingTheSameCellAreAWarningAndTheLastKeyHoldsIt() throws Exception {
+        // Written b before a: the read orders the rows by key
+        row("quest:wall_b", "up", 1);
+        row("quest:wall_a", "up", 1);
+        final WorldFlagsImpl flags = flags();
+        flags.register("quest:wall_a", _ -> List.of(new FlagCell(5, BRIDGE_Y, BRIDGE_Z, Block.OAK_PLANKS),
+                new FlagCell(6, BRIDGE_Y, BRIDGE_Z, Block.OAK_PLANKS)));
+        flags.register("quest:wall_b", _ -> List.of(new FlagCell(6, BRIDGE_Y, BRIDGE_Z, Block.STONE),
+                new FlagCell(7, BRIDGE_Y, BRIDGE_Z, Block.STONE)));
+
+        final Mounted mounted = mount(release, WRITABLE, flags);
+
+        assertEquals(Block.STONE, mounted.instance().getBlock(6, BRIDGE_Y, BRIDGE_Z), "quest:wall_b is applied last");
+        assertEquals(Block.OAK_PLANKS, mounted.instance().getBlock(5, BRIDGE_Y, BRIDGE_Z));
+        assertEquals(2, flags.stats().replayed());
+        assertEquals(1, warnings().stream().filter(line -> line.startsWith(
+                "World flags give the same cells, the one applied last holds them: [quest:wall_b over quest:wall_a 1 cells]"))
+                .count(), warnings().toString());
+    }
+
+    /**
+     * §28.2 「标志的测试缺口」 an applier that throws at run time, here because it builds a cell of the null
+     * {@code Block.fromKey} gives for a name it does not know: one ERROR names the key and the version, the
+     * flag stays where it was and the ticks go on; another value that throws changes nothing either.
+     */
+    @Test
+    public void anApplierThatThrowsAtRunTimeLeavesTheFlagWhereItWas() throws Exception {
+        row(GATE, "closed", 2);
+        final WorldFlagsImpl flags = flags();
+        flags.register(GATE, value -> switch (value.getAsString()) {
+            case "rusted" -> List.of(new FlagCell(GATE_X, FLOOR, GATE_Z, Block.fromKey("minecraft:iron_bar")));
+            case "jammed" -> throw new IllegalStateException("the test applier throws on jammed");
+            default -> gate(value);
+        });
+        final Mounted mounted = mount(release, WRITABLE, flags);
+        final InstanceContainer instance = mounted.instance();
+        instance.setChunkUnloadGraceTicks(-1);
+        final WorldFlagsImpl other = flags();
+        final FlagValue closed = new FlagValue(json("closed"), 2);
+
+        assertEquals(new FlagWrite.Written(3), other.set(GATE, json("rusted"), 2).join());
+        flags.syncNow();
+        mounted.env().tick();
+        mounted.env().tick();
+
+        assertEquals(closed, flags.get(GATE));
+        assertDoorway(instance, Block.IRON_BARS);
+        final List<ILoggingEvent> errors = errors();
+        assertEquals(1, errors.size(), errors.toString());
+        assertTrue(errors.getFirst().getFormattedMessage().startsWith(
+                "The applier of world flag quest:gate failed on version 3, the flag stays at version 2"), errors.toString());
+        assertEquals(NullPointerException.class.getName(), errors.getFirst().getThrowableProxy().getClassName());
+
+        assertEquals(new FlagWrite.Written(4), other.set(GATE, json("jammed"), 3).join());
+        flags.syncNow();
+        mounted.env().tick();
+        mounted.env().tick();
+
+        assertEquals(closed, flags.get(GATE));
+        assertDoorway(instance, Block.IRON_BARS);
+    }
+
+    /** A block handler that throws while the replay sets its cell: one ERROR names the key, the start goes on. */
+    @Test
+    public void aHandlerThatThrowsInTheReplaySkipsItsFlagAndTheStartGoesOn() throws Exception {
+        row(GATE, "closed", 2);
+        row(LAMP, "lit", 1);
+        final WorldFlagsImpl flags = flags();
+        flags.register(GATE, WorldFlagsReplayTest::gate);
+        flags.register(LAMP, _ -> List.of(new FlagCell(3, FLOOR, 14, Block.STONE.withHandler(new FaultyHandler()))));
+
+        final Mounted mounted = mount(release, WRITABLE, flags);
+
+        assertDoorway(mounted.instance(), Block.IRON_BARS);
+        assertEquals(1, flags.stats().replayed(), "quest:gate only");
+        assertNull(flags.get(LAMP));
+        final List<ILoggingEvent> errors = errors();
+        assertEquals(1, errors.size(), errors.toString());
+        assertTrue(errors.getFirst().getFormattedMessage().startsWith("The world flags [" + LAMP + "] failed in the replay"),
+                errors.toString());
+    }
+
+    /** A handler whose {@code onPlace} throws. */
+    private static final class FaultyHandler implements BlockHandler {
+        @Override
+        public Key getKey() {
+            return Key.key("synaxis_test", "faulty");
+        }
+
+        @Override
+        public void onPlace(BlockHandler.Placement placement) {
+            throw new IllegalStateException("the test handler throws on place");
+        }
+    }
+
+    /**
+     * §28.2 「标志的测试缺口」 the check after a read takes 1,024 governed cells a tick, chunk by chunk: 1,280
+     * cells of chunks 0,0 to 4,0 changed around the protection are set back over two ticks, the four
+     * chunks 0,0 to 3,0 on the first.
+     */
+    @Test
+    public void theCheckSetsBack1024CellsATickChunkByChunk() throws Exception {
+        final String deck = "quest:deck";
+        row(deck, "laid", 1);
+        final WorldFlagsImpl flags = flags();
+        flags.register(deck, _ -> IntStream.range(0, 80 * 16)
+                .mapToObj(i -> new FlagCell(i / 16, BRIDGE_Y, i % 16, Block.OAK_PLANKS)).toList());
+        final Mounted mounted = mount(release, WRITABLE, flags);
+        final InstanceContainer instance = mounted.instance();
+        instance.setChunkUnloadGraceTicks(-1);
+        for (int x = 0; x < 80; x++) {
+            for (int z = 0; z < 16; z++) instance.setBlock(x, BRIDGE_Y, z, Block.AIR);
+        }
+        final long before = flags.stats().conflicts();
+
+        flags.syncNow();
+        mounted.env().tick();
+
+        assertEquals(WorldFlagsImpl.CHECKED_PER_TICK, flags.stats().conflicts() - before);
+        for (int x = 0; x < 80; x++) {
+            for (int z = 0; z < 16; z++) {
+                assertEquals(x < 64 ? Block.OAK_PLANKS : Block.AIR, instance.getBlock(x, BRIDGE_Y, z),
+                        "the cell " + x + " " + z);
+            }
+        }
+
+        mounted.env().tick();
+
+        assertEquals(80 * 16, flags.stats().conflicts() - before);
+        for (int x = 64; x < 80; x++) {
+            for (int z = 0; z < 16; z++) assertEquals(Block.OAK_PLANKS, instance.getBlock(x, BRIDGE_Y, z));
+        }
+    }
+
+    /** §28.2 「标志的测试缺口」 the 5th failed read in a row is the first warning. */
+    @Test
+    public void theFifthFailedReadInARowIsTheFirstWarning() {
+        final WorldFlagStoreDbTest.Unreachable down = new WorldFlagStoreDbTest.Unreachable();
+        final WorldFlagsImpl flags = track(new WorldFlagsImpl(down, RedisLink.disabled(REGION + "-c1"), MapFixture.MAP_ID,
+                REGION, MapFixture.BOUNDS));
+        for (int read = 1; read < WorldFlagsImpl.READ_FAILURES_WARNED; read++) flags.syncNow();
+        assertEquals(List.of(), warnings(), "4 failed reads");
+
+        flags.syncNow();
+
+        assertEquals(1, warnings().size(), warnings().toString());
+        assertTrue(warnings().getFirst().startsWith("The world flags of map fixture region r0 were not read 5 times in a "
+                + "row: java.sql.SQLException: the test cut the database off"), warnings().toString());
+        assertEquals(5, down.connections.get());
+    }
+
+    /**
+     * A value PostgreSQL takes and Gson cannot read back, nested past its 255 levels, fails the read at
+     * start like a database that does not answer, naming its key.
+     */
+    @Test
+    public void aValueTooDeepToParseRefusesTheStartNamingItsKey() throws Exception {
+        pool();
+        database.execute("INSERT INTO world_flag (map_id, region_id, flag_key, value, version) VALUES ('"
+                + MapFixture.MAP_ID + "', '" + REGION + "', 'quest:deep', '" + "[".repeat(300) + "]".repeat(300) + "', 1)");
+        final WorldFlagsImpl flags = track(new WorldFlagsImpl(pool(), RedisLink.disabled(REGION + "-c1"), MapFixture.MAP_ID,
+                REGION, MapFixture.BOUNDS, List.of(Duration.ZERO, Duration.ZERO, Duration.ZERO)));
+
+        final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class, flags::load);
+
+        assertTrue(refused.getMessage().startsWith("synx-world-flags-unavailable: "), refused.getMessage());
+        assertTrue(refused.getMessage().contains("the value of world flag quest:deep does not parse"), refused.getMessage());
+    }
+
+    /** {@code get} hands out a copy and {@code set} keeps one: changing either object afterwards changes nothing applied. */
+    @Test
+    public void getAndSetHandOutAndKeepCopiesOfTheValue() throws Exception {
+        pool();
+        database.execute("INSERT INTO world_flag (map_id, region_id, flag_key, value, version) VALUES ('"
+                + MapFixture.MAP_ID + "', '" + REGION + "', '" + GATE + "', '{\"state\": \"closed\"}', 1)");
+        final WorldFlagsImpl flags = flags();
+        flags.register(GATE, value -> gate(value.getAsJsonObject().get("state")));
+        final Mounted mounted = mount(release, WRITABLE, flags);
+        mounted.instance().setChunkUnloadGraceTicks(-1);
+
+        final JsonElement read = flags.get(GATE).value();
+        read.getAsJsonObject().addProperty("state", "open");
+        assertEquals("{\"state\":\"closed\"}", flags.get(GATE).value().toString(), "the object get gave is changed");
+
+        assertEquals(new FlagWrite.Written(2), flags.set(GATE, read, 1).join());
+        read.getAsJsonObject().addProperty("state", "jammed");
+        tickUntil(mounted.env(), () -> flags.get(GATE).version() == 2, Duration.ofSeconds(10), "the write is applied");
+
+        assertEquals("{\"state\":\"open\"}", flags.get(GATE).value().toString(), "the object set took is changed");
+        assertDoorway(mounted.instance(), Block.AIR);
+    }
+
+    /** The warning of a conflict writes a non-empty NBT as SNBT, and an empty one not at all. */
+    @Test
+    public void aConflictWarningWritesTheNbtAsSnbtAndNoEmptyOne() throws Exception {
+        row(CHEST, "placed", 1);
+        final WorldFlagsImpl flags = flags();
+        flags.register(CHEST, WorldFlagsReplayTest::chests);
+        final Mounted mounted = mount(release, WRITABLE, flags);
+        final InstanceContainer instance = mounted.instance();
+        instance.setChunkUnloadGraceTicks(-1);
+
+        instance.setBlock(5, FLOOR, CHEST_Z, Block.CHEST.withNbt(CompoundBinaryTag.empty()));
+        flags.syncNow();
+        mounted.env().tick();
+
+        final List<String> lines = warnings().stream().filter(line -> line.contains(CHEST)).toList();
+        assertEquals(1, lines.size(), warnings().toString());
+        final String line = lines.getFirst();
+        assertTrue(line.contains("synaxis_note:") && line.contains("kept"), line);
+        assertFalse(line.contains("BinaryTag") || line.contains("{}"), line);
+    }
+
+    private List<ILoggingEvent> errors() {
+        return log.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
+    }
 }

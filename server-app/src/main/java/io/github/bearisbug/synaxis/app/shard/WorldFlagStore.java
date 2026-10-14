@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.app.shard;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import org.jetbrains.annotations.Nullable;
 
@@ -15,14 +16,14 @@ import java.util.List;
 /**
  * The SQL of the world state flags ({@code docs/DESIGN-M3.md} {@code API-M3-013}): the rows of
  * {@code world_flag} of one map and one region. Every statement carries both, so that a shard reads and
- * writes the flags of its own region only (§10), and times out after {@value #TIMEOUT_SECONDS} s.
+ * writes the flags of its own region only (§10). The statements run on the pool of the player store,
+ * whose connections carry the statement timeout of 2 s ({@code docs/DESIGN-PROD.md} {@code API-PROD-004}).
  */
 final class WorldFlagStore {
 
-    static final int TIMEOUT_SECONDS = 2;
-
+    // Ordered by key, so that every channel replays the keys in the same order
     private static final String READ_ALL = """
-            SELECT flag_key, value::text, version FROM world_flag WHERE map_id = ? AND region_id = ?""";
+            SELECT flag_key, value::text, version FROM world_flag WHERE map_id = ? AND region_id = ? ORDER BY flag_key""";
     private static final String READ = """
             SELECT flag_key, value::text, version FROM world_flag WHERE map_id = ? AND region_id = ? AND flag_key = ?""";
     private static final String INSERT = """
@@ -55,11 +56,10 @@ final class WorldFlagStore {
         this.regionId = regionId;
     }
 
-    /** Every flag of the region. */
+    /** Every flag of the region, by key; a value that does not parse fails the read. */
     List<Row> readAll() throws SQLException {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement select = connection.prepareStatement(READ_ALL)) {
-            select.setQueryTimeout(TIMEOUT_SECONDS);
             select.setString(1, mapId);
             select.setString(2, regionId);
             final List<Row> rows = new ArrayList<>();
@@ -74,7 +74,6 @@ final class WorldFlagStore {
     @Nullable Row read(String key) throws SQLException {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement select = connection.prepareStatement(READ)) {
-            select.setQueryTimeout(TIMEOUT_SECONDS);
             select.setString(1, mapId);
             select.setString(2, regionId);
             select.setString(3, key);
@@ -92,7 +91,6 @@ final class WorldFlagStore {
     boolean insert(String key, JsonElement value) throws SQLException {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement insert = connection.prepareStatement(INSERT)) {
-            insert.setQueryTimeout(TIMEOUT_SECONDS);
             insert.setString(1, mapId);
             insert.setString(2, regionId);
             insert.setString(3, key);
@@ -109,7 +107,6 @@ final class WorldFlagStore {
     boolean update(String key, JsonElement value, long expectedVersion) throws SQLException {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement update = connection.prepareStatement(UPDATE)) {
-            update.setQueryTimeout(TIMEOUT_SECONDS);
             update.setString(1, value.toString());
             update.setString(2, mapId);
             update.setString(3, regionId);
@@ -120,6 +117,12 @@ final class WorldFlagStore {
     }
 
     private static Row row(ResultSet result) throws SQLException {
-        return new Row(result.getString(1), JsonParser.parseString(result.getString(2)), result.getLong(3));
+        final String key = result.getString(1);
+        try {
+            return new Row(key, JsonParser.parseString(result.getString(2)), result.getLong(3));
+        } catch (JsonParseException e) {
+            // PostgreSQL takes a jsonb Gson cannot read back, nested past its 255 levels
+            throw new SQLException("the value of world flag " + key + " does not parse: " + e.getMessage(), e);
+        }
     }
 }

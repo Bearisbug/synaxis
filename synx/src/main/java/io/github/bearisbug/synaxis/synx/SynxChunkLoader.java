@@ -103,7 +103,8 @@ public final class SynxChunkLoader implements ChunkLoader {
                 final String file = "the overlay segment " + OverlaySegment.fileName(hit.segment());
                 try {
                     return handle(instance, chunkX, chunkZ, true, file, hit.record(),
-                            new SectionCache.Key(hit.segment(), hit.offset()), hit.generation());
+                            new SectionCache.Key(hit.segment(), hit.offset()),
+                            hit.generation());
                 } catch (InternalError _) {
                     return faulted(instance, chunkX, chunkZ, true, file);
                 }

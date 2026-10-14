@@ -28,9 +28,11 @@ import java.lang.foreign.Arena;
 import com.sun.management.OperatingSystemMXBean;
 import java.lang.management.ManagementFactory;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -314,8 +316,9 @@ public final class Baker {
                 verify);
     }
 
+    /** Writes {@code manifest.json} forced to disk, as the build directory may be renamed into place next. */
     private static void writeManifest(Path buildDir, SynxManifest manifest) throws IOException {
-        publishedFile(Files.writeString(buildDir.resolve(SynxManifest.FILE_NAME), manifest.toJson()));
+        forced(publishedFile(Files.writeString(buildDir.resolve(SynxManifest.FILE_NAME), manifest.toJson())));
     }
 
     /** The regions overlapping the bounds, in (rx, rz) order. */
@@ -666,6 +669,17 @@ public final class Baker {
     /** A file of the release, 0644 where the file system has POSIX permissions, see {@link #publishedDirectory}. */
     static Path publishedFile(Path file) throws IOException {
         return publishedMode(file, "rw-r--r--");
+    }
+
+    /**
+     * A file forced to disk before it gets its name in a release or an export by a rename or a link, so that a
+     * power loss cannot leave the name on an empty or cut file.
+     */
+    static Path forced(Path file) throws IOException {
+        try (FileChannel channel = FileChannel.open(file, StandardOpenOption.WRITE)) {
+            channel.force(true);
+        }
+        return file;
     }
 
     private static Path publishedMode(Path path, String permissions) throws IOException {

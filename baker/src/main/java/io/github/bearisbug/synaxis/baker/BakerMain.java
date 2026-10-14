@@ -7,6 +7,7 @@ import io.github.bearisbug.synaxis.synx.SynxBuildVerifier;
 import io.github.bearisbug.synaxis.synx.SynxDigests;
 import io.github.bearisbug.synaxis.synx.SynxException;
 import io.github.bearisbug.synaxis.synx.SynxExpectations;
+import io.github.bearisbug.synaxis.synx.SynxFormat;
 import io.github.bearisbug.synaxis.synx.SynxHandlers;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import net.kyori.adventure.key.InvalidKeyException;
@@ -188,32 +189,37 @@ public final class BakerMain {
      * {@code farview-export} of API-M3-003: every pack of {@code farview[]} as two objects named by their digest,
      * the whole pack and its coarse prefix, under {@code <out>/<map_id>/farview/}. Every pack is checked against
      * the manifest before anything is written; an object that is already there is kept when its bytes are the
-     * same and refuses the export when they are not.
+     * same and refuses the export when they are not. A release without packs exports nothing and says so.
      */
     private static int farViewExport(Map<String, String> options) {
         final Path build = Path.of(required(options, "build"));
         final Path out = Path.of(required(options, "out"));
         try {
             final SynxManifest manifest = SynxManifest.fromJson(Files.readString(build.resolve(SynxManifest.FILE_NAME)));
-            final String directory = manifest.mapId() + "/farview/";
+            if (manifest.farview().isEmpty()) {
+                System.out.println("baker: " + build + " lists no far view packs (baker_version " + manifest.bakerVersion()
+                        + "), nothing to export");
+                return Baker.EXIT_PUBLISHED;
+            }
             final List<Export> exports = new ArrayList<>();
             for (SynxManifest.FarView entry : manifest.farview()) {
-                final String file = FarViewAssembler.fileName(entry.tileX(), entry.tileZ());
+                final String file = SynxFormat.farViewFileName(entry.tileX(), entry.tileZ());
                 final byte[] pack = Files.readAllBytes(build.resolve("farview").resolve(file));
                 if (pack.length != entry.bytes() || !Arrays.equals(SynxDigests.sha256(pack), entry.sha256())) {
                     System.err.println("baker: farview/" + file + " does not have the size and SHA-256 of the manifest");
                     return Baker.EXIT_VERIFY;
                 }
-                final byte[] prefix = Arrays.copyOf(pack, (int) Math.min(entry.coarseBytes(), pack.length));
+                // Clamped into the pack: a coarse_bytes outside it gives a prefix of another length, refused below
+                final byte[] prefix = Arrays.copyOf(pack, Math.clamp(entry.coarseBytes(), 0, pack.length));
                 if (prefix.length != entry.coarseBytes() || !Arrays.equals(SynxDigests.sha256(prefix), entry.coarseSha256())) {
                     System.err.println("baker: the coarse prefix of farview/" + file
                             + " does not have the coarse_bytes and coarse_sha256 of the manifest");
                     return Baker.EXIT_VERIFY;
                 }
-                exports.add(new Export(file, false, directory + SynxDigests.hex(entry.sha256()) + ".hfp", pack));
-                exports.add(new Export(file, true, directory + SynxDigests.hex(entry.coarseSha256()) + ".hfp", prefix));
+                exports.add(new Export(file, false, SynxFormat.farViewObject(manifest.mapId(), entry.sha256()), pack));
+                exports.add(new Export(file, true, SynxFormat.farViewObject(manifest.mapId(), entry.coarseSha256()), prefix));
             }
-            Files.createDirectories(out.resolve(directory));
+            Files.createDirectories(out.resolve(manifest.mapId()).resolve("farview"));
             for (Export export : exports) {
                 final Path target = out.resolve(export.relative());
                 final String line = export.file() + (export.coarse() ? " coarse" : "") + " -> " + export.relative()
@@ -226,9 +232,10 @@ public final class BakerMain {
                     System.out.println("kept " + line);
                     continue;
                 }
-                final Path staging = Files.createTempFile(target.getParent(), ".export-", ".part");
+                // 0644 like the files of a release (REQ-M3-031), and on disk before it has the object's name
+                final Path staging = Baker.publishedFile(Files.createTempFile(target.getParent(), ".export-", ".part"));
                 try {
-                    Files.write(staging, export.bytes());
+                    Baker.forced(Files.write(staging, export.bytes()));
                     Files.move(staging, target, StandardCopyOption.ATOMIC_MOVE);
                 } finally {
                     Files.deleteIfExists(staging);
@@ -236,8 +243,11 @@ public final class BakerMain {
                 System.out.println("exported " + line);
             }
             return Baker.EXIT_PUBLISHED;
-        } catch (IOException | SynxException e) {
+        } catch (SynxException e) {
             System.err.println("baker: " + e.getMessage());
+            return Baker.EXIT_VERIFY;
+        } catch (IOException e) {
+            System.err.println("baker: " + Baker.describe(e));
             return Baker.EXIT_VERIFY;
         }
     }

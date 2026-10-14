@@ -37,9 +37,10 @@ import java.util.Set;
  * players from breaking or turning the frame, as a static entity never lets them, and is no metadata the
  * client sees. The source NBT hangs on {@link #SOURCE} for plugins. Any other type is skipped with one
  * WARN per type, and so is an entity without a {@code Pos} of three numbers or a {@code Rotation} of two,
- * or with a {@code Pos} outside the chunk that holds it, with a WARN each. Passengers never spawn, with one WARN per type of entity carrying them. The first
- * field that does not read ends the mapping with a WARN: it and the fields after it keep their defaults,
- * and the entity still spawns. Changes at run time are not kept: the entities go with the chunk.
+ * or with a {@code Pos} outside the chunk that holds it, with a WARN each. Passengers never spawn, with
+ * one WARN per type of entity carrying them. The first field that does not read ends the mapping with a
+ * WARN: it and the fields after it keep their defaults, and the entity still spawns. Changes at run time
+ * are not kept: the entities go with the chunk.
  */
 final class SynxStaticEntities {
     /** The complete source NBT of a static entity. */

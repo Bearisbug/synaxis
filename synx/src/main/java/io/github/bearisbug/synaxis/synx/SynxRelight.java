@@ -62,7 +62,10 @@ import java.util.concurrent.locks.ReentrantLock;
 public final class SynxRelight {
     private static final Logger LOGGER = LoggerFactory.getLogger(SynxRelight.class);
 
-    /** From this many target entries waiting for the install on, the recomputation threads take no new center ({@link #awaitRoom}). */
+    /**
+     * From this many target entries waiting for the install on, the recomputation threads take no new
+     * center ({@link #awaitRoom}).
+     */
     static final int INSTALL_BACKLOG = 256;
     /** Target entries an install handles at most; it stops earlier once it took {@link #INSTALL_BUDGET_NANOS}. */
     static final int INSTALL_ENTRIES_PER_TICK = 64;
@@ -510,7 +513,8 @@ public final class SynxRelight {
                     done = install(target);
                 } catch (RuntimeException e) {
                     // Left at the head, it would throw again every tick and hold up every target behind it
-                    LOGGER.error("The light install of {},{} failed, it keeps its old light", target.x(), target.z(), e);
+                    LOGGER.error("The light install of {},{} failed, it keeps its old light", target.x(), target.z(),
+                            e);
                     done = true;
                 }
                 if (!done) break;
@@ -682,7 +686,8 @@ public final class SynxRelight {
      * @return completes once nothing is pending, or at the deadline
      */
     public CompletableFuture<?> drain(Duration remaining, boolean tickAlive) {
-        // Light only shows, the final flush is the world's data: the drain takes only what the final flush's own cap leaves
+        // Light only shows, the final flush is the world's data: the drain takes only what the final
+        // flush's own cap leaves
         final long budget = Math.min(DRAIN_CAP_NANOS, Math.max(0, remaining.toNanos() - OverlayStore.FINAL_CAP_NANOS));
         final long now = System.nanoTime();
         if (drainStart == 0) drainStart = now;

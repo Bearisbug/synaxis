@@ -98,8 +98,8 @@ public final class SynxRelight {
 
     /**
      * A position of a snapshot: the chunk object with its {@code block_changes} at the time and the
-     * palettes it had; chunk null for a missing position, palettes null for air and once the light is
-     * computed.
+     * palettes it had. Chunk null where the loader had nothing and the instance filled in air of its own;
+     * palettes null for a failed chunk, which is air, and once the light is computed.
      */
     private record Taken(@Nullable SynxChunk chunk, long blockChanges, Palette @Nullable [] blocks) {
     }
@@ -389,9 +389,9 @@ public final class SynxRelight {
     }
 
     /**
-     * Tickets on the 5×5 around the center within {@code view_bounds}, whose chunks load if they are
-     * not; then the blocks of each under its read-lock. A position past {@code view_bounds}, or one the
-     * loader has nothing for and the instance filled with air of its own, is missing.
+     * Tickets on the 5×5 around the center, whose chunks load if they are not; then the blocks of each
+     * under its read-lock. A position the loader has nothing for, and the instance filled with air of
+     * its own, is missing.
      */
     private void snapshot(Task task) {
         final int centerX = task.center.x, centerZ = task.center.z;
@@ -399,19 +399,13 @@ public final class SynxRelight {
         for (int dx = -2; dx <= 2; dx++) {
             for (int dz = -2; dz <= 2; dz++) {
                 final int x = centerX + dx, z = centerZ + dz;
-                if (!loader.inView(x, z)) {
-                    loads.add(null);
-                    continue;
-                }
                 instance.addChunkTicket(x, z, task);
                 task.tickets.add(key(x, z));
                 loads.add(instance.loadChunk(x, z));
             }
         }
         for (int i = 0; i < 25; i++) {
-            final CompletableFuture<Chunk> load = loads.get(i);
-            if (load == null) continue;
-            if (!(load.join() instanceof SynxChunk chunk)) {
+            if (!(loads.get(i).join() instanceof SynxChunk chunk)) {
                 task.taken[i] = new Taken(null, 0, null);
                 continue;
             }
@@ -435,6 +429,7 @@ public final class SynxRelight {
         final List<Target> targets = new ArrayList<>(9);
         for (int x = centerX - 1; x <= centerX + 1; x++) {
             for (int z = centerZ - 1; z <= centerZ + 1; z++) {
+                // Never null: the snapshot takes every position of the 5×5, which holds the 3×3
                 final Taken taken = Objects.requireNonNull(task.at(x, z));
                 final SynxChunk chunk = taken.chunk();
                 if (chunk == null || !chunk.lightWritable()) {

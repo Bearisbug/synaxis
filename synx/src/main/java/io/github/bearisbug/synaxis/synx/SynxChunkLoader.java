@@ -297,11 +297,6 @@ public final class SynxChunkLoader implements ChunkLoader {
         return manifest.world();
     }
 
-    /** Whether a chunk position is in {@code view_bounds}, where this loader has anything to load. */
-    boolean inView(int chunkX, int chunkZ) {
-        return viewBounds.contains(chunkX, chunkZ);
-    }
-
     OverlayTracker tracker() {
         return tracker;
     }

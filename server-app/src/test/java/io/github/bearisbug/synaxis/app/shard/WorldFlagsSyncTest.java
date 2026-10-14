@@ -1,5 +1,9 @@
 package io.github.bearisbug.synaxis.app.shard;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import io.github.bearisbug.synaxis.ShutdownParticipant;
@@ -20,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 
 import java.net.URI;
@@ -44,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * The world state flags of two channels of one region ({@code docs/DESIGN-M3.md} {@code API-M3-013},
  * §12.6, §19 「跨频道同步与 Redis 不可用时收敛」) on the shared PostgreSQL and Valkey: a write of channel 1
  * reaches channel 2 through the Redis channel of the region, and without it the read every 60 s
- * catches up; a closed channel takes neither.
+ * catches up; a closed channel takes neither; a malformed message is a warning.
  * <p>
  * Channel 2 mounts the baked fixture and ticks by hand; channel 1 only writes. The region gets a name
  * of its own per run, so that the Redis channel is this test's alone on a Valkey other runs share.
@@ -67,6 +72,7 @@ public class WorldFlagsSyncTest {
     private Database pool;
     private final List<AutoCloseable> opened = new ArrayList<>();
     private final List<Env> envs = new ArrayList<>();
+    private final ListAppender<ILoggingEvent> log = new ListAppender<>();
 
     @BeforeAll
     static void bake() {
@@ -75,6 +81,8 @@ public class WorldFlagsSyncTest {
 
     @BeforeEach
     void create() throws SQLException {
+        log.start();
+        ((Logger) LoggerFactory.getLogger(WorldFlagsImpl.class)).addAppender(log);
         database = TestDatabase.create();
         pool = new Database(database.settings());
         Migrations.migrate(pool.pool(), AuthMode.OFFLINE);
@@ -82,6 +90,8 @@ public class WorldFlagsSyncTest {
 
     @AfterEach
     void drop() throws Exception {
+        ((Logger) LoggerFactory.getLogger(WorldFlagsImpl.class)).detachAppender(log);
+        log.stop();
         for (AutoCloseable closeable : opened.reversed()) closeable.close();
         for (Env env : envs) env.process().stop();
         if (pool != null) pool.close();
@@ -180,6 +190,10 @@ public class WorldFlagsSyncTest {
         assertEquals(Block.IRON_BARS, instance.getBlock(WorldFlagsReplayTest.GATE_X, MapFixture.FLOOR,
                 WorldFlagsReplayTest.GATE_Z));
         assertEquals(1, bridgeApplied.get(), "replayed");
+        // Changed before the first tick: the read of every flag on that tick sets it back, which shows the read done
+        instance.setBlock(WorldFlagsReplayTest.GATE_X, MapFixture.FLOOR + 1, WorldFlagsReplayTest.GATE_Z, Block.STONE);
+        assertTrue(tickUntil(env, () -> second.stats().conflicts() == 1, Duration.ofSeconds(10)),
+                "the first tick reads every flag and checks the governed cells");
         awaitSubscribers(1);
 
         final WorldFlagsImpl first = channel(track(RedisLink.connect(TestDatabase.redisUrl(), region + "-c1")));
@@ -206,7 +220,7 @@ public class WorldFlagsSyncTest {
                 WorldFlagsReplayTest.GATE_Z));
         assertEquals(1, bridgeApplied.get(), "a key whose version did not change is not applied again");
         assertEquals(new FlagValue(json("repaired"), 1), second.get(BRIDGE));
-        assertEquals(0, second.stats().conflicts());
+        assertEquals(1, second.stats().conflicts(), "the cell changed before the first tick only");
     }
 
     /**
@@ -225,8 +239,10 @@ public class WorldFlagsSyncTest {
         awaitSubscribers(1);
         final FlagValue replayed = new FlagValue(json("closed"), 1);
         assertEquals(replayed, second.get(GATE));
+        assertTrue(second.syncScheduled(), "the read every 60 s is scheduled");
 
         second.close();
+        assertFalse(second.syncScheduled(), "close() cancels the read every 60 s");
         final WorldFlagsImpl first = channel(track(RedisLink.connect(TestDatabase.redisUrl(), region + "-c1")));
         first.register(GATE, WorldFlagsReplayTest::gate);
         assertEquals(new FlagWrite.Written(2), first.set(GATE, json("open"), 1).join());
@@ -244,5 +260,33 @@ public class WorldFlagsSyncTest {
                 WorldFlagsReplayTest.GATE_Z));
         assertEquals(0, second.stats().conflicts());
         assertEquals(0, instance.chunkTicketCount(0, 0), "no application holds the chunk of the doorway");
+    }
+
+    /**
+     * §28.2 「标志的测试缺口」 a message of the region's Redis channel that is not JSON is one warning that
+     * names the channel, and the channel stays subscribed.
+     */
+    @Test
+    void aMalformedMessageIsAWarningAndTheChannelStaysSubscribed() throws Exception {
+        final WorldFlagsImpl second = channel(track(RedisLink.connect(TestDatabase.redisUrl(), region + "-c2")));
+        second.register(GATE, WorldFlagsReplayTest::gate);
+        mount(second);
+        awaitSubscribers(1);
+
+        final URI uri = URI.create(TestDatabase.redisUrl());
+        try (Jedis single = new Jedis(uri.getHost(), uri.getPort())) {
+            assertEquals(1, single.publish(redisChannel(), "not json"));
+        }
+        for (int i = 0; i < 500 && malformed().isEmpty(); i++) TimeUnit.MILLISECONDS.sleep(10);
+
+        final List<ILoggingEvent> warnings = malformed();
+        assertEquals(1, warnings.size(), log.list.toString());
+        assertEquals("com.google.gson.JsonSyntaxException", warnings.getFirst().getThrowableProxy().getClassName());
+        assertEquals(1, subscribers(), "still subscribed");
+    }
+
+    private List<ILoggingEvent> malformed() {
+        return log.list.stream().filter(event -> event.getLevel() == Level.WARN && event.getFormattedMessage()
+                .startsWith("Ignoring a malformed world flag message on " + redisChannel())).toList();
     }
 }

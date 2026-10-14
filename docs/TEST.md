@@ -2374,8 +2374,8 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `<G> :synx:test --tests '<S>.SynxChunkPacketTest' --tests '<S>.SynxEntitiesTest'` | `BUILD SUCCESSFUL`；`SynxChunkPacketTest` `tests="6"`（含 `sameContentWrittenInAnotherOrderEncodesToTheSameBytes`、`directPaletteIsWrittenIndirect`、`contentHashDoesNotDependOnTheCompressedBytes`、`chunkDataPacketIdIsTheEnginesPlayId`），`SynxEntitiesTest` `tests="2"`（含 `equalNbtBuiltInAnotherOrderEncodesToTheSameBytes`），0 失败 |
-| 2 | 反证（只 `optimize`、不先 `setAll`）：`<CP>` 的 `canonical(Palette palette, Palette empty)` 方法体换成 `if (empty == palette) throw new IllegalStateException();`、`palette.optimize(Palette.Optimization.SIZE);`、`return palette;` 三行（保留对 `empty` 的引用，否则 Error Prone 的 `UnusedVariable` 让编译失败），只跑 `SynxChunkPacketTest`，再 `git checkout -- <CP>` | `6 tests completed, 1 failed`：`sameContentWrittenInAnotherOrderEncodesToTheSameBytes` 红在 `SynxChunkPacketTest.java:49`，`array lengths differ, expected: <625> but was: <632>` |
+| 1 | `<G> :synx:test --tests '<S>.SynxChunkPacketTest' --tests '<S>.SynxEntitiesTest'` | `BUILD SUCCESSFUL`；`SynxChunkPacketTest` `tests="7"`（含 `sameContentWrittenInAnotherOrderEncodesToTheSameBytes`、`directPaletteIsWrittenIndirect`、`contentHashDoesNotDependOnTheCompressedBytes`、`chunkDataPacketIdIsTheEnginesPlayId`；`packetOverTheUncompressedCapIsRefusedNamingTheChunk` 归 `TC-WORLD-134`），`SynxEntitiesTest` `tests="2"`（含 `equalNbtBuiltInAnotherOrderEncodesToTheSameBytes`），0 失败 |
+| 2 | 反证（只 `optimize`、不先 `setAll`）：`<CP>` 的 `canonical(Palette palette, Palette empty)` 方法体换成 `if (empty == palette) throw new IllegalStateException();`、`palette.optimize(Palette.Optimization.SIZE);`、`return palette;` 三行（保留对 `empty` 的引用，否则 Error Prone 的 `UnusedVariable` 让编译失败），只跑 `SynxChunkPacketTest`，再 `git checkout -- <CP>` | `7 tests completed, 1 failed`：`sameContentWrittenInAnotherOrderEncodesToTheSameBytes` 红在 `SynxChunkPacketTest.java:52`，`array lengths differ, expected: <625> but was: <632>` |
 | 3 | 反证（NBT 键不排序）：`<EN>` 的 `keys.sort(Comparator.naturalOrder());` 改成 `keys.sort((_, _) -> 0);`，只跑 `SynxEntitiesTest`，再 `git checkout -- <EN>` | `2 tests completed, 1 failed`：`equalNbtBuiltInAnotherOrderEncodesToTheSameBytes` 红在 `SynxEntitiesTest.java:37`，`array contents differ at index [15], expected: <9> but was: <10>` |
 | 4 | 重跑第 1 步 | 与第 1 步相同 |
 
@@ -2454,7 +2454,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | --- | --- | --- |
 | 1 | `<G> :baker:test --tests '<BT>.GeneratorBakeTest.aParallelBakeEqualsASerialOne'` | `tests="1"` 0 失败：3×3 区域的合成图，1 线程与 9 线程的 `content_hash`、`build_id` 相同，9 个区域文件逐字节相同 |
 | 2 | 反证（压缩级别随线程数变）：`<K>` 构造器里 `COMPRESSION_THRESHOLD, COMPRESSION_LEVEL,` 改成 `COMPRESSION_THRESHOLD, request.threads() > 1 ? 9 : COMPRESSION_LEVEL,`，重跑第 1 步，再 `git checkout -- <K>` | 1 条红：`r.0.0.synx ==> array lengths differ, expected: <19428> but was: <19348>`。它前面的 `content_hash` 断言是过的：`region_content_hash` 按解压后的段① 算，只有逐字节比较整个文件才拦得住 |
-| 3 | 反证（压缩阈值随线程数变）：`<K>` 构造器里同一处改成 `request.threads() > 1 ? 512 : COMPRESSION_THRESHOLD, COMPRESSION_LEVEL,`，重跑第 1 步，再 `git checkout -- <K>` | 1 条红：9 线程那次在发布前的校验就被拦下，`digest check: synx-compression-mismatch: r.0.0.synx: compression_threshold 512, process 256 ==> expected: <0> but was: <4>` |
+| 3 | 反证（压缩阈值随线程数变）：`<K>` 构造器里同一处改成 `request.threads() > 1 ? 512 : COMPRESSION_THRESHOLD, COMPRESSION_LEVEL,`，重跑第 1 步，再 `git checkout -- <K>` | 1 条红：9 线程那次在发布前的校验就被拦下，`digest check: synx-compression-mismatch: r.0.0.synx: compression_threshold 512, process 256 (synaxis.compression-threshold) ==> expected: <0> but was: <4>` |
 | 4 | 重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --porcelain -- baker` 无输出。
@@ -3939,9 +3939,9 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 
 后置：`git status --porcelain` 无输出。
 
-#### `TC-WORLD-134` 解析器先核长度再分配；段③ 的 NBT 照常往返、读不回的写不进 — 对应 `REQ-M3-031` · 级别: 回归 · 执行者: AI
+#### `TC-WORLD-134` 解析器先核长度再分配；段③ 的 NBT 照常往返、读不回的写不进，段① 解压后超限的包同样写不进 — 对应 `REQ-M3-031` · 级别: 回归 · 执行者: AI
 
-前置：工作副本干净。`SynxParserBoundaryTest` 由 `m3/sec-r2` `a61412e212` 的 `SynxParserBoundaryPocTest` 翻转而来（4 条翻转、2 条原样，另加 1 条清单数字）。
+前置：工作副本干净。`SynxParserBoundaryTest` 由 `m3/sec-r2` `a61412e212` 的 `SynxParserBoundaryPocTest` 翻转而来（4 条翻转、2 条原样，另加 1 条清单数字）。`<CP>` 代表 `synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunkPacket.java`。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -3949,7 +3949,9 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 | 2 | 反证（修复前的读取器）：把本类放进修复前的工作副本（`git worktree add <W> 3be2fd114c`，`m3s/base`，轨道 S 之前），在那里跑本类与 `SynxChunkLoaderIntegrationTest` 的帧头那一条，跑完删掉 `<W>` | `SynxParserBoundaryTest` 7 条红 5 条：`:137` `allocated 67241304`（64 MiB 那一帧先分配才拒）；`:174` 清单同名键没拒；`:157` 2 MiB 以上的帧没拒；`:104` 段③ 解出 16 MiB 以上没拒；`:120` 抛的是 `NegativeArraySizeException`；`SynxChunkLoaderIntegrationTest.java:569` `expected: <FAILED> but was: <HANDLE>`（轨道 S 实跑） |
 | 3 | 反证（段③ 换回默认读取器）：`<EN>` 的 `readNbt` 里 `BinaryTagIO.reader(MAX_BYTES)` 改成 `BinaryTagIO.reader()`，只跑 `SynxBlockEntityLimitsTest`，再 `git checkout -- <EN>` | 红在 `SynxBlockEntityLimitsTest.java:154`：`segment ③ does not read back: unreadable NBT in segment ③`，3 个区块失败。写入侧用同一个读者读回，所以是烘焙先失败，到不了载入（轨道 S 实跑；与 `docs/DESIGN-M3.md` §19 v0.40 改后的写法相同） |
 | 4 | 反证（编完不读回）：`<EN>` 的 `encode` 末尾读回段③ 的那个 `try`（抛 `segment ③ does not read back` 的那一处）整段删掉，只跑 `SynxBlockEntityLimitsTest`，再还原 | 红在 `:192`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（轨道 S 实跑） |
-| 5 | 重跑第 1 步 | 与第 1 步相同 |
+| 5 | `<G> :synx:test --tests '<S>.SynxChunkPacketTest'` | 0 失败，`tests="7"`。本用例看 `packetOverTheUncompressedCapIsRefusedNamingTheChunk`：区块 3, −2 的段① 带一个不挂 handler 的箱子，NBT 里一个 8,388,608 B 的字节数组（段① 原样带整份 NBT），包体解压后超过 8,388,608 B、压缩后很小；`SynxChunkPacket.encode` 在成帧之前抛 `IllegalArgumentException`，信息以 `chunk 3,-2: the packet is ` 开头、以 ` bytes uncompressed, over 8388608` 结尾 |
+| 6 | 反证（写入侧不核未压缩长度）：`<CP>` 的 `if (body.length > MAX_UNCOMPRESSED_BYTES) {` 改成 `if (body.length > MAX_UNCOMPRESSED_BYTES && Boolean.getBoolean("proof.never")) {`，重跑第 5 步，再 `git checkout -- <CP>` | `7 tests completed, 1 failed`：红在 `SynxChunkPacketTest.java:121`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`，这样的包照常成帧，覆盖层会把它写进段文件、载入时才被 `checkFrame` 拒收（`m3o/synx-format` 实跑） |
+| 7 | 重跑第 1、5 步 | 与第 1、5 步相同 |
 
 后置：`git worktree list` 里没有 `<W>`；`git status --porcelain` 无输出。
 

@@ -25,7 +25,10 @@ public record AnvilChunk(int chunkX, int chunkZ, boolean lightOn, List<AnvilSect
         markerCells = Set.copyOf(markerCells);
     }
 
-    /** A block of a chunk: its section and its index in there, {@code ((y & 15) * 16 + z) * 16 + x}. */
+    /**
+     * A block of a chunk: {@code sectionY} above the 12 bits of {@link AnvilBlockEntity#index}, so keys order by
+     * section, then index.
+     */
     public static long cellKey(int sectionY, int index) {
         return ((long) sectionY << 12) | index;
     }

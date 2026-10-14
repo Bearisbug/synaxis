@@ -52,7 +52,10 @@ public class AnvilFarViewTest {
             return fine.get(z * FarViewPack.BLOCK_SIDE + x);
         }
 
-        /** The lowest top of the ring of fine samples 0..3 × 0..3 of chunk 0, 0; outside the chunk an empty column, 0. */
+        /**
+         * The lowest top of the ring of fine samples 0..3 × 0..3 of chunk 0, 0, which is the whole map: a ring wholly
+         * outside it has no ring sample and gives 0. The tests only ask for rings wholly inside or wholly outside.
+         */
         int ring(int minX, int minZ, int maxX, int maxZ) {
             int lowest = Integer.MAX_VALUE;
             for (int x = minX - 1; x <= maxX + 1; x++) {
@@ -97,7 +100,7 @@ public class AnvilFarViewTest {
 
     /**
      * §19: every fine sample of chunk 0, 0 meets blocks 0..15 × 0..15 and becomes stone of plains without fluid at
-     * the lowest top of its ring, which lies outside the bounds and so is 0; the chunk's coarse sample likewise.
+     * height 0, since its ring lies outside the bounds and so has no ring sample; the chunk's coarse sample likewise.
      * The region file keeps the chunk's blocks, only the marker is air.
      */
     @Test
@@ -135,7 +138,7 @@ public class AnvilFarViewTest {
     /**
      * A hidden area inside the chunk, its corners written the other way round: the fine sample 1, 1 it meets
      * takes the lowest top of its ring in the chunk, the other fine samples stay as they are, and the coarse
-     * sample of the chunk, which it meets too, takes the ring outside the bounds.
+     * sample of the chunk, which it meets too, has no ring sample inside the bounds and so takes height 0.
      */
     @Test
     public void aHiddenAreaInsideTheChunkTakesItsRingFromTheChunk() throws Exception {

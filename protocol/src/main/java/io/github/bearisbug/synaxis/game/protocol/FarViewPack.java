@@ -7,6 +7,7 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.zip.DataFormatException;
@@ -15,17 +16,17 @@ import java.util.zip.Inflater;
 
 /**
  * The far view height field pack of {@code docs/DESIGN-M3.md} {@code API-M3-014}: one file per
- * far view tile of 4,096 × 4,096 blocks ({@code tile = chunk >> 8}), which the baker writes and the
- * client reads. This class is the only codec of the layout, and the coarse sample rule
+ * far view tile of 4,096 × 4,096 world blocks ({@code tile = chunk >> 8}), which the baker writes and
+ * the client reads. This class is the only codec of the layout, and the coarse sample rule
  * {@link #coarsen} lives here too, so that the baker and the test fixtures take it from one place.
  * <p>
- * A pack holds two layers of samples. A fine sample covers {@code 2^b × 2^b} blocks
+ * A pack holds two layers of samples. A fine sample covers {@code 2^b × 2^b} world blocks
  * ({@code b = base_level}, 1 or 2), a coarse sample one chunk ({@value #COARSE_LEVEL}). Each layer is cut
- * into blocks of 64 × 64 samples, each block one zlib stream. The file is the header, the biome table,
- * the coarse block index and the coarse blocks, and from {@code fine_offset} on the fine block index
- * and the fine blocks. The first {@code fine_offset} bytes, the coarse prefix, are a pack of their
- * own with the coarse layer alone, distributed as an object of their own. Every number is little
- * endian, as in {@code .synx}.
+ * into pack blocks of 64 × 64 samples, each one zlib stream; "block" alone below means a pack block.
+ * The file is the header, the biome table, the coarse block index and the coarse blocks, and from
+ * {@code fine_offset} on the fine block index and the fine blocks. The first {@code fine_offset}
+ * bytes, the coarse prefix, are a pack of their own with the coarse layer alone, distributed as an
+ * object of their own. Every number is little endian, as in {@code .synx}.
  * <p>
  * Pure JDK like the rest of this package: {@link Deflater} and {@link Inflater} only.
  */
@@ -37,7 +38,7 @@ public final class FarViewPack {
     public static final String MAGIC = "SHFP";
     /** The fixed header in front of the biome table. */
     public static final int HEADER_BYTES = 64;
-    /** A tile is this many blocks square. */
+    /** A tile is this many world blocks square; {@link #blocksPerSide} counts pack blocks. */
     public static final int TILE_BLOCKS = 4096;
     /** {@code tile = chunk >> TILE_SHIFT}: a tile is 256 chunks square. */
     public static final int TILE_SHIFT = 8;
@@ -76,7 +77,7 @@ public final class FarViewPack {
     }
 
     /**
-     * How many blocks a layer has on each side of the tile: 4 for the coarse layer, 16 for base
+     * How many pack blocks a layer has on each side of the tile: 4 for the coarse layer, 16 for base
      * level 2 and 32 for base level 1.
      *
      * @param level the level of the layer: a base level 1 or 2, or the coarse level 4
@@ -87,14 +88,27 @@ public final class FarViewPack {
         if (level != 1 && level != 2 && level != COARSE_LEVEL) {
             throw new IllegalArgumentException("level " + level + " is not 1, 2 or " + COARSE_LEVEL);
         }
-        return TILE_BLOCKS >> (level + 6);
+        return (TILE_BLOCKS >> level) / BLOCK_SIDE;
+    }
+
+    /**
+     * Reads {@code fine_offset} from the header of a pack, for a reader that streams the pack
+     * instead of handing it whole to {@link Reader#read}. The header is not checked.
+     *
+     * @param header the pack from its first byte at index 0, at least 36 bytes of it; its position
+     *               and byte order do not matter and are left as they are
+     * @return {@code fine_offset}, the u32 at byte 32: where the fine block index starts, which is the
+     * length of the coarse prefix
+     */
+    public static long fineOffset(ByteBuffer header) {
+        return Integer.toUnsignedLong(header.duplicate().order(ByteOrder.LITTLE_ENDIAN).getInt(32));
     }
 
     /** The two layers of a pack. */
     public enum Layer {
         /** One sample per chunk, level {@value #COARSE_LEVEL}; all of it is in the coarse prefix. */
         COARSE,
-        /** One sample per {@code 2^base_level} blocks square, from {@code fine_offset} on. */
+        /** One sample per {@code 2^base_level} world blocks square, from {@code fine_offset} on. */
         FINE
     }
 
@@ -176,12 +190,17 @@ public final class FarViewPack {
          * -1 for an empty column
          */
         public int top() {
+            // With ground under it the fluid starts at ground_y + 1, so fluid_top is the larger
             if (hasFluid()) return fluidTop;
             return hasGround() ? groundY : -1;
         }
 
-        /** The sample as its 8 bytes read as one little endian long. */
-        long packed() {
+        /**
+         * The sample as the pack stores it.
+         *
+         * @return its 8 bytes read as one little endian long
+         */
+        public long packed() {
             return groundState | (long) fluidState << 16 | (long) groundY << 32 | (long) fluidBottom << 40
                     | (long) fluidTop << 48 | (long) biome << 56;
         }
@@ -266,8 +285,9 @@ public final class FarViewPack {
          * Starts a pack with every block absent.
          *
          * @param baseLevel       b, 1 or 2
-         * @param tileX           the tile
-         * @param tileZ           the tile
+         * @param tileX           the tile's x, {@code chunk_x >> 8} ({@link #tile}), as in the header and
+         *                        the file name
+         * @param tileZ           the tile's z, the same way
          * @param minY            {@code world.min_y}, a 16 bit signed number
          * @param height          {@code world.height}, 1 to 256: a y index is one byte
          * @param blockStates     the block state count of the registry, at least 1
@@ -377,6 +397,7 @@ public final class FarViewPack {
                     .putInt(blockStates)
                     .putInt(protocolVersion)
                     .putInt((int) fineOffset);
+            // Bytes 36 to 63 are reserved: allocate leaves them 0
             final ByteArrayOutputStream out = new ByteArrayOutputStream((int) fineOffset);
             out.writeBytes(header.array());
             out.writeBytes(table.toByteArray());
@@ -491,12 +512,15 @@ public final class FarViewPack {
             if (biomeCount == 0) throw new Invalid("biome_count is 0");
             final int coarseLevel = Byte.toUnsignedInt(buffer.get(10));
             if (coarseLevel != COARSE_LEVEL) throw new Invalid("coarse_level " + coarseLevel + " is not " + COARSE_LEVEL);
-            final long fineOffset = Integer.toUnsignedLong(buffer.getInt(32));
+            final long fineOffset = fineOffset(buffer);
             if (fineOffset > pack.length) {
                 throw new Invalid("fine_offset " + fineOffset + " is past the end of the " + pack.length + " byte pack");
             }
-            final Header header = new Header(baseLevel, coarseLevel, buffer.getInt(12), buffer.getInt(16), buffer.getShort(20),
-                    Short.toUnsignedInt(buffer.getShort(22)), Integer.toUnsignedLong(buffer.getInt(24)), buffer.getInt(28),
+            final int tileX = buffer.getInt(12), tileZ = buffer.getInt(16);
+            final int minY = buffer.getShort(20), height = Short.toUnsignedInt(buffer.getShort(22));
+            final long blockStates = Integer.toUnsignedLong(buffer.getInt(24));
+            final int protocolVersion = buffer.getInt(28);
+            final Header header = new Header(baseLevel, coarseLevel, tileX, tileZ, minY, height, blockStates, protocolVersion,
                     fineOffset);
 
             final List<String> biomes = new ArrayList<>(biomeCount);
@@ -555,10 +579,11 @@ public final class FarViewPack {
                     if (offset == 0 && length == 0) continue;
                     if (length == 0 || offset < first || offset + length > end) {
                         final String where = name(layer) + " block " + bx + "," + bz + " at " + offset + "+" + length;
-                        throw new Invalid(layer == Layer.COARSE
-                                ? where + " is not between the end of its index " + first + " and fine_offset " + end
-                                : offset + length > end ? where + " is past the end of the " + end + " byte pack"
-                                : where + " is not after the end of its index " + first);
+                        if (layer == Layer.COARSE) {
+                            throw new Invalid(where + " is not between the end of its index " + first + " and fine_offset " + end);
+                        }
+                        if (offset + length > end) throw new Invalid(where + " is past the end of the " + end + " byte pack");
+                        throw new Invalid(where + " is not after the end of its index " + first);
                     }
                     blocks.add(new Block(layer, bx, bz, offset, length));
                 }
@@ -657,6 +682,7 @@ public final class FarViewPack {
             final Inflater inflater = new Inflater();
             try {
                 inflater.setInput(pack, (int) block.offset(), (int) block.length());
+                // One byte over a block: a stream that inflates to more fills it and fails the check below
                 final byte[] out = new byte[BLOCK_BYTES + 1];
                 int inflated = 0;
                 while (inflated < out.length && !inflater.finished()) {
@@ -668,9 +694,7 @@ public final class FarViewPack {
                     throw new Invalid(what + " does not inflate to exactly " + BLOCK_BYTES + " bytes in one zlib stream of "
                             + block.length() + " bytes");
                 }
-                final byte[] raw = new byte[BLOCK_BYTES];
-                System.arraycopy(out, 0, raw, 0, BLOCK_BYTES);
-                return raw;
+                return Arrays.copyOf(out, BLOCK_BYTES);
             } catch (DataFormatException e) {
                 throw new Invalid(what + " is not a zlib stream: " + e.getMessage());
             } finally {

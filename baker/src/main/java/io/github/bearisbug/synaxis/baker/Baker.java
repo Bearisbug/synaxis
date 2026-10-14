@@ -81,14 +81,24 @@ public final class Baker {
      * @param handlers              the handler of a namespace, null when it has none; segment ① carries only its tags
      * @param verifiedLightVersions {@link LightVersions#verified()} outside of tests
      * @param samplesPerRegion      chunks per region the verification bakes again and compares byte for byte
+     * @param sourceSpec            the {@code --source} of the command line, which {@code EVT:map_build_started}
+     *                              records as {@code source_spec}; null for a bake that does not come from it
      */
     public record Request(String mapId, BakeSource source, Path mapsRoot, int threads, Path logDir,
                           Registries registries, Function<String, @Nullable BlockHandler> handlers,
-                          Set<Integer> verifiedLightVersions, int samplesPerRegion) {
+                          Set<Integer> verifiedLightVersions, int samplesPerRegion, @Nullable String sourceSpec) {
         public Request {
             if (threads < 1) throw new IllegalArgumentException("threads >= 1: " + threads);
             if (samplesPerRegion < 1) throw new IllegalArgumentException("samples per region >= 1: " + samplesPerRegion);
             verifiedLightVersions = Set.copyOf(verifiedLightVersions);
+        }
+
+        /** A request with no {@code --source} to record, as the tests and fixtures make one. */
+        public Request(String mapId, BakeSource source, Path mapsRoot, int threads, Path logDir, Registries registries,
+                       Function<String, @Nullable BlockHandler> handlers, Set<Integer> verifiedLightVersions,
+                       int samplesPerRegion) {
+            this(mapId, source, mapsRoot, threads, logDir, registries, handlers, verifiedLightVersions, samplesPerRegion,
+                    null);
         }
     }
 
@@ -135,7 +145,7 @@ public final class Baker {
             request.source().checkGate(request.threads());
         } catch (IOException e) {
             return new Result(EXIT_SOURCE, null, null, e instanceof AnvilSourceException ? e.getMessage()
-                    : "the source cannot be read: " + e.getMessage());
+                    : "the source cannot be read: " + describe(e));
         }
         final ExecutorService executor = Executors.newFixedThreadPool(request.threads());
         try {
@@ -149,6 +159,7 @@ public final class Baker {
         final JsonObject started = new JsonObject();
         started.addProperty("map_id", request.mapId());
         started.addProperty("source", source.kind());
+        if (request.sourceSpec() != null) started.addProperty("source_spec", request.sourceSpec());
         if (source.dataVersion() != null) started.addProperty("source_data_version", source.dataVersion());
         started.addProperty("threads", request.threads());
         started.addProperty("baker_version", VERSION);
@@ -629,6 +640,14 @@ public final class Baker {
         private static long key(int x, int z) {
             return (long) x << 32 | (z & 0xFFFF_FFFFL);
         }
+    }
+
+    /**
+     * An I/O failure for a message: a JDK exception with its class, as {@code NoSuchFileException} and
+     * {@code AccessDeniedException} say no more than a path; one the baker words itself as it is.
+     */
+    static String describe(IOException e) {
+        return e.getClass() == IOException.class || e instanceof AnvilSourceException ? e.getMessage() : e.toString();
     }
 
     private static long processCpuNanos() {

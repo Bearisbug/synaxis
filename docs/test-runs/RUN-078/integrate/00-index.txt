@@ -1,0 +1,95 @@
+RUN-078 gate and registration: the integration branch prod/integrate-078 at 9d73d8d9e8, run on GitHub Actions for draft
+PR #29 (base main 630abbc142). Registered in docs/TEST.md section 6.
+
+The branch: main 630abbc142, then git merge --no-ff of the five groups in this order, then the docs commit 9d73d8d9e8
+(docs/DESIGN-PLAY.md v0.17; its change log row lists the local gates of the integration):
+  d396b649a9  prod/r078-N  7531821b5b   (../N/00-index.txt)
+  783e1c60b9  prod/r078-S  d435fa48fc   (../S/00-index.txt)
+  e04491acfb  prod/r078-K  590c2bae7a   (../K/00-index.txt)
+  6129ab3b29  prod/r078-U  d1e79fcd82   (../U/00-index.txt)
+  cb5e6ed578  prod/r078-J  58cf479f7b   (../J/00-index.txt)
+
+On this machine for the registration: no Gradle, no containers, no server or client process. Only gh (run and job
+metadata, the log of job rush fetched with gh run view 38386483950 --log --job 115259435644), git, and read-only grep
+on the merged tree. git fetch before registering: origin/main is still 630abbc142 and its TEST.md section 6 ends at
+RUN-077, so this round is RUN-078. Times are UTC, 2026-10-13.
+
+Runs on 9d73d8d9e8 (pull_request, attempt 1 each, none rerun)
+  CI 38386484038                               success
+    Check                                      success  10:53:55-11:09:20
+    Test with 4 tick threads (strict)          success  10:53:55-11:09:42
+    Test with 4 tick threads (strict, grid)    success  10:53:55-11:07:17
+  Concurrency 38386483897                      success
+    jcstress                                   success  10:53:54-10:59:30
+  Client mod 38386483895                       success
+    Build the Fabric mod                       success  10:53:55-10:55:07  (client test counts not read for this
+                                                                           registration)
+  Client gametest 38386483950                  success
+    Run the client gametests                   success  10:53:54-10:58:57
+    Two shards, 2 round trips (P11 smoke)      success  10:53:55-10:57:33
+    Run the rush script                        success  10:53:55-11:00:05  6 min 10 s, see below
+    Two shards, 100 round trips (P10)          skipped  (runs only when dispatched by hand; RUN-078 does not
+                                                         change the transfer path)
+
+Counts: the JUnit XML of the three artifacts of run 38386484038 (test-reports for Check, test-reports-multithreaded
+for the strict job, test-reports-multithreaded-grid for the strict grid job), read by the integration session; not
+re-read for this registration.
+  Each of the three jobs: 682 classes, 4,716 tests, 0 failures, 0 errors, 22 skipped.
+  Against RUN-077 (CI 38253741356: 682 classes, 4,702 tests): 14 more tests, no new class. By the groups' own
+  counts: EvacuationIntegrationTest 13 -> 19 (group N 5, group K 1), ManagedInstanceTransitionsTest 19 -> 20 (N),
+  OutboxTest 8 -> 11 (S), LocalQueueTest 5 -> 8 and RushRoundIntegrationTest 8 -> 9 (K); 14 in all, the same as the
+  difference of the totals. Not checked class by class.
+
+Section 15 readings (docs/DESIGN-PLAY.md section 15, docs/TEST.md TC-PLAY-055 step 11), from the <system-out> of
+ManagedInstanceTickThreadTest in the three artifacts. chunkRadius=2, 25 chunks; each job creates 5 instances one after
+another, numbered 1 to 5. create us / registration us; prepare_ms 99 for all 15; the first create loads 4 classes, the
+later ones 0; no garbage collection during any of the 15 calls.
+  test-reports (Check, default)         1076/142  340/100  330/97  290/89  320/93
+  test-reports-multithreaded (strict)   3261/133  304/90   301/92  271/94  249/69
+  test-reports-multithreaded-grid       761/129   295/110  298/101 292/103 327/90
+  Threshold decided by the user on 2026-10-14 (docs/DESIGN-PLAY.md v0.18): create on the tick scheduler thread at most
+  5 ms the first time in the JVM and at most 1 ms each time after that; the registration in the serial part at most
+  1 ms; judged on the three CI modes only, local readings are recorded and not judged.
+  All 15 readings meet it: first create at most 3,261 us, later creates 249-340 us, registrations 69-142 us.
+
+Job "Run the rush script" of 38386483950 (TC-PLAY-110 to TC-PLAY-122 and TC-PLAY-155, the integration-branch reading)
+  Steps: publish :protocol 31 s, judge unit tests 0 s "Ran 36 tests" OK, fake sessionserver 1 s, build 63 s, fixture
+  3 s, sample server 10 s, dev launch 143 s, production launch 75 s, judge 0 s, ledger 0 s, rehearsal 7 s.
+  Both reports: Q0a, Q0b, Q0c, Q1-Q9 PASS (12 lines each). Readings, dev / production jar:
+    Q0b  LevelLoadingScreen ticks 15..15 / 2..4, ready at tick 16 after 1049 ms / tick 5 after 447 ms
+    Q3   first press OK 29 / 57 ms after it, hint count 1, countdown TIMER set 2 remaining_ms 2999
+    Q4   second press 231 / 235 ms after the first, actions sent 1 -> 1; third press 378 / 389 ms after the first,
+         action_seq 2 COOLDOWN cooldown_ms 1601 / 1599 reason key=synaxis:action-cooldown args=[2]
+    Q5   rush:round_1 203 ms / rush:round_2 258 ms after the countdown ran out; LevelLoadingScreen ticks 55..58 /
+         55..57; hasChunk T1-54@rush:lobby_1 on both; ready screen=null chunkUnderfoot=true 4 ticks 318 ms / 3 ticks
+         217 ms after the new level; TIMER 44452 / 44682 ms; 0.00 blocks from the spawn
+    Q6   1.60 / 1.60 blocks from beacon A, capture 1% -> 21% / 4% -> 24%, own score 1 at 9608 / 9898 ms
+    Q7   off by -4 / 15 ms
+    Q8   own row *1. Player0 (1 captures)=32 / *1. Player915 (1 captures)=32, pressed "Back to the lobby"
+    Q9   rush:lobby_1, scene 3 rush:lobby 169 / 235 ms after the button, ready screen=null chunkUnderfoot=true
+  Judge, verbatim:
+    waited 0.0 s for the ledger: the last connection's play_scene_ready back in the lobby is in
+    note client-fabric/build/run/clientGameTest/synaxis-gametest/rush.txt: Q0b screens
+      [net.minecraft.client.gui.screens.LevelLoadingScreen ticks 15..15]
+    note client-fabric/build/run/productionClientGameTest/synaxis-gametest/rush.txt: Q0b screens
+      [net.minecraft.client.gui.screens.LevelLoadingScreen ticks 2..4]
+    note arena 53153436-d435-4438-9e34-dea84bf64fe9: prepare_ms 98
+    note arena 3f69f6a5-de64-4a9e-8f51-5ae1890b6613: prepare_ms 49
+    rush judge: PASS (2 reports, 0 problems)
+  Ledger printed by the job after the judge (36 events): rush:lobby created (chunk_radius 1), opened (prepare_ms 238),
+  started; two rush:round arenas (chunk_radius 2), each created, opened (prepare_ms 98, 49), started, ended, closed in
+  order with cause time_limit, evacuated 0, kicked 0, settle_timeout false; ended to closed 0.81 s and 0.80 s;
+  rush_round_ended rush:round_1 (winner Player0) and rush:round_2 (winner Player915), players=1, cause=time_limit,
+  duration_ms 45049 each; client_verified 2, play_scene_ready 6. sessionserver: 2 joins (204), 2 hasJoined (200).
+  Rehearsal: ok rush: Plugin enabled: plugin_id=rush; ok rush: synaxis server-app listening on; ok rts: Plugin
+  enabled: plugin_id=rts; ok rts: synaxis server-app listening on.
+
+Jobs "Run the client gametests" and "Two shards, 2 round trips (P11 smoke)": success; their logs were not read for this
+registration.
+
+Not run in this round: a counter-proof of Q5's "the sampling began in the lobby" check (../J/00-index.txt; every Q5
+line above shows the first sampled tick in rush:lobby_1). The test counts written into older cases (server-app 804,
+4,702 in all, the mod's 276 in TC-PROD-430 step 5 and TC-GAME-066 step 3) were not updated: the per-module and the
+client counts were not read from the artifacts.
+
+Cleanup: /tmp/run078-register (the job log, the lint output) deleted at the end.

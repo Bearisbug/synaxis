@@ -563,6 +563,11 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
         final String host = fields.string("host");
         if (host.isEmpty() || host.length() > MAX_HOST_LENGTH)
             throw fields.invalid("host is not 1 to " + MAX_HOST_LENGTH + " characters");
+        if (host.chars().anyMatch(Character::isWhitespace))
+            throw fields.invalid("host " + host + " is not a host name or address: it has whitespace");
+        // A host name and IPv4 have no colon, an IPv6 literal at least two: one is a port written into the host
+        if (host.indexOf(':') >= 0 && host.indexOf(':') == host.lastIndexOf(':'))
+            throw fields.invalid("host " + host + " is not a host name or address: the port goes in port");
         final int port = fields.integer("port");
         if (port < 1 || port > MAX_PORT) throw fields.invalid("port " + port + " is not from 1 to " + MAX_PORT);
         final int capacity = fields.integer("capacity");

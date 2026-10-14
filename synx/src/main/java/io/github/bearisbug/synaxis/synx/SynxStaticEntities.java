@@ -32,10 +32,14 @@ import java.util.Set;
 
 /**
  * Spawns the static entities of segment ③ when a chunk of the region loads ({@code docs/DESIGN-M3.md}
- * API-M3-005 静态实体, §28.1 静态实体还原范围): type, position and rotation always, and for six types
- * the fields the table lists; the source NBT hangs on {@link #SOURCE} for plugins. Any other type is
- * skipped with one WARN per type; a field that does not read is skipped with a WARN, the entity still
- * spawns. Changes at run time are not kept: the entities go with the chunk.
+ * API-M3-005 静态实体, §28.1 静态实体还原范围): the six types the table lists, each with its type,
+ * position and rotation and the fields the table lists but an item frame's {@code Fixed}, which only keeps
+ * players from breaking or turning the frame, as a static entity never lets them, and is no metadata the
+ * client sees. The source NBT hangs on {@link #SOURCE} for plugins. Any other type is skipped with one
+ * WARN per type, and so is an entity without a {@code Pos} of three numbers or a {@code Rotation} of two,
+ * with a WARN each. Passengers never spawn, with one WARN per type of entity carrying them. The first
+ * field that does not read ends the mapping with a WARN: it and the fields after it keep their defaults,
+ * and the entity still spawns. Changes at run time are not kept: the entities go with the chunk.
  */
 final class SynxStaticEntities {
     /** The complete source NBT of a static entity. */
@@ -57,22 +61,32 @@ final class SynxStaticEntities {
     /**
      * Spawns {@code entities} into {@code instance}, on the thread that loads their chunk.
      *
-     * @param warned the types already reported as not covered, shared by the loader
+     * @param warned what is reported once only, shared by the loader: the types not covered, and the types
+     *               seen carrying passengers, as {@code <type> Passengers}
      */
     static void spawn(Instance instance, List<CompoundBinaryTag> entities, Set<String> warned) {
         for (CompoundBinaryTag nbt : entities) {
             final String id = nbt.getString("id");
+            final ListBinaryTag pos = nbt.getList("Pos");
+            final ListBinaryTag rotation = nbt.getList("Rotation");
+            if (pos.size() < 3 || rotation.size() < 2) {
+                LOGGER.warn("Static entity {} has no Pos of 3 or Rotation of 2 numbers, skipped", id);
+                continue;
+            }
+            final Pos position = new Pos(pos.getDouble(0), pos.getDouble(1), pos.getDouble(2),
+                    rotation.getFloat(0), rotation.getFloat(1));
+            if (!nbt.getList("Passengers").isEmpty() && warned.add(id + " Passengers")) {
+                LOGGER.warn("Static entity {} at {} carries passengers, which the shard does not spawn; later ones of "
+                        + "the type are not logged (docs/DESIGN-M3.md §28.1)", id, position);
+            }
             final EntityType type = EntityType.fromKey(id);
             if (type == null || !COVERED.contains(type)) {
                 if (warned.add(id)) {
-                    LOGGER.warn("Static entity type {} is not one the shard spawns, skipped (docs/DESIGN-M3.md §28.1)", id);
+                    LOGGER.warn("Static entity type {} at {} is not one the shard spawns: skipped, and so is every other "
+                            + "one of the type without a line (docs/DESIGN-M3.md §28.1)", id, position);
                 }
                 continue;
             }
-            final ListBinaryTag pos = nbt.getList("Pos");
-            final ListBinaryTag rotation = nbt.getList("Rotation");
-            final Pos position = new Pos(pos.getDouble(0), pos.getDouble(1), pos.getDouble(2),
-                    rotation.getFloat(0), rotation.getFloat(1));
             final boolean frame = type == EntityType.ITEM_FRAME || type == EntityType.GLOW_ITEM_FRAME;
             final Direction facing = frame ? facing(nbt) : null;
             final SynxStaticEntity entity = new SynxStaticEntity(instance.process(), type,
@@ -102,7 +116,6 @@ final class SynxStaticEntities {
             }
             entity.setMetadata(FRAME_ROTATION, (int) nbt.getByte("ItemRotation"));
             entity.setInvisible(nbt.getBoolean("Invisible"));
-            // Fixed only keeps players from breaking or turning the frame, which a static entity never lets them
         } else if (type == EntityType.TEXT_DISPLAY) {
             final TextDisplayMeta meta = (TextDisplayMeta) entity.getEntityMeta();
             final BinaryTag text = nbt.get("text");

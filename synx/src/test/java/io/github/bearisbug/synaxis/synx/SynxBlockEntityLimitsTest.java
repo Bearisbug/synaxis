@@ -175,8 +175,9 @@ public class SynxBlockEntityLimitsTest {
 
     /**
      * §19 「读不回的段③ 写不进区域文件」: a block entity with 160 strings of 60,000 characters, about 9.6 MB
-     * of segment ③, within its 16 MiB, but about 19.2 MB as adventure-nbt counts: the writer refuses it, so
-     * the baker fails the region instead of writing a chunk a shard would not read.
+     * of segment ③, within its 16 MiB, but about 19.2 MB as adventure-nbt counts: the writer refuses it,
+     * naming the reason adventure-nbt gives and where the block entity is in its chunk, so the baker fails
+     * the region instead of writing a chunk a shard would not read.
      */
     @Test
     public void aSegmentThreeThatDoesNotReadBackIsNotWritten(@TempDir Path dir) {
@@ -192,6 +193,8 @@ public class SynxBlockEntityLimitsTest {
         final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
                 () -> writer.encode(dir.resolve("region.part")));
         assertTrue(refused.getMessage().startsWith("chunk " + flat.chunkX() + "," + flat.chunkZ() + ": ")
-                && refused.getMessage().contains("segment ③ does not read back"), refused.getMessage());
+                && refused.getMessage().contains("segment ③ does not read back: unreadable NBT in segment ③: "
+                + "The read NBT was longer than the maximum allowed size of 16777216 bytes!")
+                && refused.getMessage().endsWith(" (block entity at x 1, y 64, z 1 of the chunk)"), refused.getMessage());
     }
 }

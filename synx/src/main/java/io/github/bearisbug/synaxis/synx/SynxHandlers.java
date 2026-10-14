@@ -7,6 +7,7 @@ import net.kyori.adventure.key.Key;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 
@@ -25,7 +26,9 @@ public final class SynxHandlers {
      *
      * @return the registered keys
      * @throws IllegalArgumentException when two services have the same key, naming the key and both
-     *                                  classes; then nothing is registered
+     *                                  classes, or when a service does not load (a class without a public
+     *                                  constructor without parameters, one that throws, or one the service
+     *                                  file names and the class path lacks); then nothing is registered
      */
     public static Set<Key> registerAll(BlockManager blocks) {
         return registerAll(blocks, ServiceLoader.load(BlockHandler.class));
@@ -33,12 +36,17 @@ public final class SynxHandlers {
 
     static Set<Key> registerAll(BlockManager blocks, Iterable<? extends BlockHandler> handlers) {
         final Map<Key, BlockHandler> byKey = new LinkedHashMap<>();
-        for (BlockHandler handler : handlers) {
-            final BlockHandler first = byKey.putIfAbsent(handler.getKey(), handler);
-            if (first != null) {
-                throw new IllegalArgumentException("two block handlers have the key " + handler.getKey().asString()
-                        + ": " + first.getClass().getName() + " and " + handler.getClass().getName());
+        try {
+            for (BlockHandler handler : handlers) {
+                final BlockHandler first = byKey.putIfAbsent(handler.getKey(), handler);
+                if (first != null) {
+                    throw new IllegalArgumentException("two block handlers have the key " + handler.getKey().asString()
+                            + ": " + first.getClass().getName() + " and " + handler.getClass().getName());
+                }
             }
+        } catch (ServiceConfigurationError e) {
+            // ServiceLoader loads and makes each service as the iteration reaches it
+            throw new IllegalArgumentException("a block handler service does not load: " + e.getMessage(), e);
         }
         byKey.forEach((key, handler) -> blocks.registerHandler(key, () -> handler));
         return Collections.unmodifiableSet(byKey.keySet());

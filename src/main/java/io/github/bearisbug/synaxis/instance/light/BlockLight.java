@@ -148,7 +148,7 @@ final class BlockLight implements Light {
         ShortArrayFIFOQueue queue = buildExternalQueue(blockPalette, neighbors, content, lightLookup, paletteLookup);
         final byte[] contentPropagationTemp = LightCompute.compute(blockPalette, queue);
         this.contentPropagationSwap = LightCompute.bake(contentPropagationSwap, contentPropagationTemp);
-        // Propagate changes to neighbors and self
+        // Neighbours whose border with this section got brighter must recompute their external light
         Set<Point> toUpdate = new HashSet<>();
         for (int i = 0; i < neighbors.length; i++) {
             final Point neighbor = neighbors[i];

@@ -21,7 +21,7 @@ import static io.github.bearisbug.synaxis.instance.light.LightCompute.buildExter
 import static io.github.bearisbug.synaxis.instance.light.LightCompute.lazyArray;
 
 final class SkyLight implements Light {
-    private byte[] content;
+    private byte @Nullable [] content;
     private byte @Nullable [] contentPropagation;
     private byte @Nullable [] contentPropagationSwap;
 
@@ -45,7 +45,7 @@ final class SkyLight implements Light {
             for (int z = 0; z < 16; z++) {
                 final int height = heightmap[z << 4 | x];
                 for (int y = Math.min(sectionMaxY, maxY); y >= Math.max(height, sectionMinY); y--) {
-                    final int index = x | (z << 4) | ((y % 16) << 8);
+                    final int index = x | (z << 4) | ((y & 15) << 8);
                     lightSources.enqueue((short) (index | (15 << 12)));
                 }
             }
@@ -109,19 +109,12 @@ final class SkyLight implements Light {
         this.isValidBorders = true;
 
         // Update single section with base lighting changes
-        int queueSize = SECTION_BLOCK_COUNT;
-        ShortArrayFIFOQueue queue = new ShortArrayFIFOQueue(0);
         if (!fullyLit) {
-            queue = buildInternalQueue(heightmap, maxY, chunkY);
-            queueSize = queue.size();
+            final ShortArrayFIFOQueue queue = buildInternalQueue(heightmap, maxY, chunkY);
+            this.fullyLit = queue.size() == SECTION_BLOCK_COUNT;
+            if (!fullyLit) this.content = LightCompute.compute(blockPalette, queue);
         }
-
-        if (queueSize == SECTION_BLOCK_COUNT) {
-            this.fullyLit = true;
-            this.content = CONTENT_FULLY_LIT;
-        } else {
-            this.content = LightCompute.compute(blockPalette, queue);
-        }
+        if (fullyLit) this.content = CONTENT_FULLY_LIT;
 
         // Propagate changes to neighbors and self
         Set<Point> toUpdate = new HashSet<>();
@@ -156,7 +149,7 @@ final class SkyLight implements Light {
         } else {
             this.contentPropagationSwap = null;
         }
-        // Propagate changes to neighbors and self
+        // Neighbours whose border with this section got brighter must recompute their external light
         Set<Point> toUpdate = new HashSet<>();
         for (int i = 0; i < neighbors.length; i++) {
             final Point neighbor = neighbors[i];

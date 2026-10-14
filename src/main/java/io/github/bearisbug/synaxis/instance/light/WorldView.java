@@ -9,6 +9,7 @@ import org.jetbrains.annotations.ApiStatus;
  */
 @ApiStatus.Experimental
 public interface WorldView {
+    /** Lowest block y of the world, a multiple of 16. */
     int minY();
 
     /** World height in blocks, a multiple of 16. */

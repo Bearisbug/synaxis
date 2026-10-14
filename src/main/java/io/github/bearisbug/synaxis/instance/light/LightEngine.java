@@ -43,6 +43,7 @@ public final class LightEngine {
         EMISSION = new byte[states];
         SHAPED = new boolean[states];
         SKY_EDGE_UNDER_AIR = new boolean[states];
+        // Compared by identity: LightBlocks#shape returns this one instance for every state without faces
         final Object noFaces = LightBlocks.shape(Block.AIR);
         for (int stateId = 0; stateId < states; stateId++) {
             final Block block = Objects.requireNonNull(Block.fromStateId(stateId));
@@ -60,17 +61,17 @@ public final class LightEngine {
 
     /**
      * Light of chunks {@code chunkMinX..chunkMaxX} by {@code chunkMinZ..chunkMaxZ}. The view must hold every
-     * chunk it has within one chunk of that rectangle; light from further away cannot reach it. A chunk the view
-     * does not have neither emits nor passes light. The rectangle with that ring holds at most
+     * chunk of the world that lies within one chunk of that rectangle; light from further away cannot reach it. A
+     * chunk the view does not have neither emits nor passes light. The rectangle with that ring holds at most
      * {@value #MAX_SECTIONS} sections, 147 x 147 chunks at a height of 384.
      */
     public static LightResult computeArea(WorldView view, int chunkMinX, int chunkMinZ, int chunkMaxX, int chunkMaxZ) {
         if (chunkMaxX < chunkMinX || chunkMaxZ < chunkMinZ) {
             throw new IllegalArgumentException("empty area " + chunkMinX + "," + chunkMinZ + ".." + chunkMaxX + "," + chunkMaxZ);
         }
-        final long sections = ((long) chunkMaxX - chunkMinX + 3) * ((long) chunkMaxZ - chunkMinZ + 3) * (view.height() >> 4);
-        if (sections > MAX_SECTIONS) {
-            throw new IllegalArgumentException(sections + " sections with the ring around the area, more than " + MAX_SECTIONS);
+        final long areaSections = ((long) chunkMaxX - chunkMinX + 3) * ((long) chunkMaxZ - chunkMinZ + 3) * (view.height() >> 4);
+        if (areaSections > MAX_SECTIONS) {
+            throw new IllegalArgumentException(areaSections + " sections with the ring around the area, more than " + MAX_SECTIONS);
         }
         return new Area(view, chunkMinX - 1, chunkMinZ - 1, chunkMaxX - chunkMinX + 3, chunkMaxZ - chunkMinZ + 3)
                 .compute(chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ);
@@ -91,6 +92,10 @@ public final class LightEngine {
         private final int originX, originZ, width, depth, sections;
         private final boolean[] loaded;
         private final char[][] states;
+        /**
+         * Per block column of the area, x fastest: the local y of its lowest sky source, {@code height} when the top
+         * block stops the sky.
+         */
         private final int[] skyHeight;
         private byte[][] light;
         private final int[][] queues = new int[16][];
@@ -116,6 +121,7 @@ public final class LightEngine {
 
             light = new byte[states.length][];
             skySources();
+            queueSkySpread();
             propagate();
             collect(sky, chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ);
 
@@ -179,9 +185,9 @@ public final class LightEngine {
             return Objects.requireNonNull(Block.fromStateId(stateId));
         }
 
-        /** Level 15 from the top of every column down to its first sky edge, queued where it can spread. */
+        /** Level 15 from the top of every column down to its first sky edge. */
         private void skySources() {
-            final int columns = width * 16;
+            final int rowLength = width * 16;
             final int height = sections << 4;
             for (int cx = 0; cx < width; cx++) {
                 for (int cz = 0; cz < depth; cz++) {
@@ -207,7 +213,7 @@ public final class LightEngine {
                             y--;
                         }
                         final int sourceFrom = y + 1;
-                        skyHeight[(cz * 16 + z) * columns + cx * 16 + x] = sourceFrom;
+                        skyHeight[(cz * 16 + z) * rowLength + cx * 16 + x] = sourceFrom;
                         lowest = Math.min(lowest, sourceFrom);
                         highest = Math.max(highest, sourceFrom);
                     }
@@ -218,26 +224,33 @@ public final class LightEngine {
                             continue;
                         }
                         for (int column = 0; column < 256; column++) {
-                            final int from = skyHeight[(cz * 16 + (column >> 4)) * columns + cx * 16 + (column & 15)];
+                            final int from = skyHeight[(cz * 16 + (column >> 4)) * rowLength + cx * 16 + (column & 15)];
                             for (int y = Math.max(from, sy << 4); y < (sy + 1) << 4; y++) setLevel(s, column | (y & 15) << 8, 15);
                         }
                     }
                 }
             }
-            // A source spreads only into a cell that is not a source itself: the one under the column, and the
-            // cells beside it that sit below the neighbouring column's sources.
+        }
+
+        /**
+         * Queues the sky sources that can spread. A source spreads only into a cell that is not a source itself: the
+         * one under the column, and the cells beside it that sit below the neighbouring column's sources.
+         */
+        private void queueSkySpread() {
+            final int rowLength = width * 16;
+            final int height = sections << 4;
             for (int cx = 0; cx < width; cx++) {
                 for (int cz = 0; cz < depth; cz++) {
                     final int chunk = cx * depth + cz;
                     if (!loaded[chunk]) continue;
                     for (int column = 0; column < 256; column++) {
-                        final int x = cx * 16 + (column & 15), z = cz * 16 + (column >> 4);
-                        final int from = skyHeight[z * columns + x];
+                        final int ax = cx * 16 + (column & 15), az = cz * 16 + (column >> 4);
+                        final int from = skyHeight[az * rowLength + ax];
                         int to = from + 1;
-                        if (x > 0 && loaded[((x - 1) >> 4) * depth + cz]) to = Math.max(to, skyHeight[z * columns + x - 1]);
-                        if (x < columns - 1 && loaded[((x + 1) >> 4) * depth + cz]) to = Math.max(to, skyHeight[z * columns + x + 1]);
-                        if (z > 0 && loaded[cx * depth + ((z - 1) >> 4)]) to = Math.max(to, skyHeight[(z - 1) * columns + x]);
-                        if (z < depth * 16 - 1 && loaded[cx * depth + ((z + 1) >> 4)]) to = Math.max(to, skyHeight[(z + 1) * columns + x]);
+                        if (ax > 0 && loaded[((ax - 1) >> 4) * depth + cz]) to = Math.max(to, skyHeight[az * rowLength + ax - 1]);
+                        if (ax < rowLength - 1 && loaded[((ax + 1) >> 4) * depth + cz]) to = Math.max(to, skyHeight[az * rowLength + ax + 1]);
+                        if (az > 0 && loaded[cx * depth + ((az - 1) >> 4)]) to = Math.max(to, skyHeight[(az - 1) * rowLength + ax]);
+                        if (az < depth * 16 - 1 && loaded[cx * depth + ((az + 1) >> 4)]) to = Math.max(to, skyHeight[(az + 1) * rowLength + ax]);
                         for (int y = from; y < Math.min(to, height); y++) {
                             enqueue(15, (chunk * sections + (y >> 4)) << 12 | column | (y & 15) << 8);
                         }
@@ -254,12 +267,15 @@ public final class LightEngine {
                     final int emission = EMISSION[section[i]];
                     if (emission <= 0) continue;
                     setLevel(s, i, emission);
-                    enqueue(emission, s << 12 | i);
+                    if (emission > 1) enqueue(emission, s << 12 | i);
                 }
             }
         }
 
-        /** Spreads the queued levels, highest first, so every cell is final when it is taken off its queue. */
+        /**
+         * Spreads the queued levels, highest first, so every cell is final when it is taken off its queue. Levels 0 and
+         * 1 are never queued: every block takes at least 1 ({@link LightBlocks#opacity}), so they reach nothing.
+         */
         private void propagate() {
             for (int level = 15; level > 1; level--) {
                 final int[] queue = queues[level];
@@ -278,6 +294,8 @@ public final class LightEngine {
                         final int to = state(ns, ni);
                         final int reached = level - OPACITY[to];
                         if (reached <= current) continue;
+                        // A state with no light shape has AIR's, and two of those never occlude: only a shaped side
+                        // needs the test
                         if ((SHAPED[from] || SHAPED[to]) && LightBlocks.occludes(block(from), block(to), FACES[d])) continue;
                         setLevel(ns, ni, reached);
                         if (reached > 1) enqueue(reached, neighbour);
@@ -328,7 +346,8 @@ public final class LightEngine {
                 for (int chunkZ = chunkMinZ; chunkZ <= chunkMaxZ; chunkZ++) {
                     final int chunk = (chunkX - originX) * depth + chunkZ - originZ;
                     for (int sy = 0; sy < sections; sy++) {
-                        final byte[] levels = loaded[chunk] ? light[chunk * sections + sy] : null;
+                        // Light is only ever set in loaded chunks: a chunk the view does not have stays null
+                        final byte[] levels = light[chunk * sections + sy];
                         out[k++] = levels == null ? LightCompute.EMPTY_CONTENT
                                 : levels == SKY_SOURCES ? LightCompute.CONTENT_FULLY_LIT : pack(levels);
                     }

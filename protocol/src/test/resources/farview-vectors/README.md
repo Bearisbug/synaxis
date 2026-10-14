@@ -41,9 +41,9 @@ hold the five kinds of column (ground alone, ground under fluid, fluid hanging i
 to the bottom of the world, an empty column), a tie for the coarse sample of chunk (-1, 0) that goes
 to the first by z and then x, and a hidden area of blocks x -12..-5, z 20..27: its fine samples are
 stone of plains at the top of the pond on their rim, and its chunk's coarse sample is stone at 0, as
-that rim reaches past the map. The tower of red concrete under it shows in neither layer. Block states
-are the 26.2 global palette ids (stone 1, grass block 9, dirt 10, water 86, sand 118, red concrete
-15044) of 32,366.
+no sample of the coarse ring around it lies inside the map. The tower of red concrete under it shows
+in neither layer. Block states are the 26.2 global palette ids (stone 1, grass block 9, dirt 10,
+water 86, sand 118, red concrete 15044) of 32,366.
 
 ## Edge vectors
 

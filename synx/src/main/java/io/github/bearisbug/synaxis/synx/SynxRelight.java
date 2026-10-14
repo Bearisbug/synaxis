@@ -197,7 +197,6 @@ public final class SynxRelight {
 
     private final CompletableFuture<Void> drained = new CompletableFuture<>();
     private final AtomicLong drainDeadline = new AtomicLong(Long.MAX_VALUE);
-    private volatile boolean draining;
     private volatile long drainStart;
 
     SynxRelight(SynxChunkLoader loader, InstanceContainer instance, @Nullable Executor computeExecutor) {
@@ -526,7 +525,8 @@ public final class SynxRelight {
             }
             installMaxNanos.accumulateAndGet(System.nanoTime() - start, Math::max);
         }
-        if (draining) completeDrain();
+        // Read again, not drain above: a drain that began during this install completes once nothing is pending
+        if (drainDeadline.get() != Long.MAX_VALUE) completeDrain();
         return handled;
     }
 
@@ -665,16 +665,20 @@ public final class SynxRelight {
 
     /**
      * The shutdown step {@code relight}, shaped as {@code ShutdownSequence.Step#run} and registered
-     * before {@code overlay}: waits at most min(500 ms, {@code remaining}) for every pending target to be
-     * installed, so that the final flush writes the new light. With {@code tickAlive} the install at
-     * the end of the tick does it; otherwise this thread installs. What is left at the deadline is
-     * written with its old light, and a WARN counts it. Changes after the drain began are queued as
-     * ever, with no promise to be installed before the final flush.
+     * before {@code overlay}: waits at most min(500 ms, {@code remaining} − the final flush's cap of 2 s)
+     * for every pending target to be installed, so that the final flush writes the new light. With
+     * {@code tickAlive} the install at the end of the tick does it; otherwise this thread installs. What
+     * is left at the deadline is written with its old light, and a WARN counts it. Changes after the
+     * drain began are queued as ever, with no promise to be installed before the final flush.
+     * <p>
+     * Called a second time with {@code tickAlive} false once the watchdog judges the tick dead
+     * ({@code ShutdownSequence.Step}): the start and the earlier deadline stay, and this thread installs.
      *
      * @return completes once nothing is pending, or at the deadline
      */
     public CompletableFuture<?> drain(Duration remaining, boolean tickAlive) {
-        final long budget = Math.min(DRAIN_CAP_NANOS, Math.max(0, remaining.toNanos()));
+        // Light only shows, the final flush is the world's data: the drain takes only what the final flush's own cap leaves
+        final long budget = Math.min(DRAIN_CAP_NANOS, Math.max(0, remaining.toNanos() - OverlayStore.FINAL_CAP_NANOS));
         final long now = System.nanoTime();
         if (drainStart == 0) drainStart = now;
         final long deadline = drainDeadline.accumulateAndGet(now + budget, Math::min);
@@ -689,8 +693,6 @@ public final class SynxRelight {
             if (left <= 0) {
                 timedOut();
             } else {
-                draining = true;
-                completeDrain();
                 var _ = CompletableFuture.runAsync(this::timedOut, CompletableFuture.delayedExecutor(left, TimeUnit.NANOSECONDS));
             }
         }

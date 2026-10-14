@@ -88,12 +88,27 @@ public class ShardSettingsTest {
                 read(with(map, "synaxis.farview.url-root", "https://127.0.0.1:25751")).farviewUrlRoot());
     }
 
-    /** §9 远景地址根: an http(s) URL without a trailing slash, anything else refuses the start. */
+    /** §9 远景地址根: read without the whitespace around it, which {@code synaxis.properties} keeps in the value. */
+    @Test
+    public void theFarViewUrlRootIsReadWithoutTheWhitespaceAroundIt() {
+        final Map<String, String> map = Map.of("synaxis.map.root", "maps", "synaxis.map.build", "b");
+        assertEquals("https://cdn.test/synaxis",
+                read(with(map, "synaxis.farview.url-root", " https://cdn.test/synaxis \t")).farviewUrlRoot());
+        assertEquals("", read(with(map, "synaxis.farview.url-root", "  ")).farviewUrlRoot());
+        assertEquals("synaxis.farview.url-root must be an http(s) URL without a trailing slash: https://cdn.test/synaxis/",
+                assertThrows(IllegalArgumentException.class,
+                        () -> read(with(map, "synaxis.farview.url-root", "https://cdn.test/synaxis/ "))).getMessage());
+    }
+
+    /**
+     * §9 远景地址根: an http(s) URL without a trailing slash that every client can request, a
+     * {@code java.net.URI} with a host and without a query or fragment; anything else refuses the start.
+     */
     @Test
     public void aFarViewUrlRootThatIsNotAnHttpUrlWithoutATrailingSlashIsRefused() {
         final Map<String, String> map = Map.of("synaxis.map.root", "maps", "synaxis.map.build", "b");
         for (String root : new String[]{"cdn.test/synaxis", "https://cdn.test/synaxis/", "ftp://cdn.test", "HTTP://cdn.test",
-                " http://cdn.test", "http://"}) {
+                "http://", "https://cdn.test/a b", "http://farview_cdn:8080", "https://cdn.test?x", "https://cdn.test/synaxis#x"}) {
             assertEquals("synaxis.farview.url-root must be an http(s) URL without a trailing slash: " + root,
                     assertThrows(IllegalArgumentException.class,
                             () -> read(with(map, "synaxis.farview.url-root", root))).getMessage(), root);

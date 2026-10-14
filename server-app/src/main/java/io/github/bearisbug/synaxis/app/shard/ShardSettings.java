@@ -2,6 +2,8 @@ package io.github.bearisbug.synaxis.app.shard;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -39,10 +41,12 @@ public record ShardSettings(@Nullable Path mapRoot, @Nullable String mapBuild, i
     /**
      * Reads the keys from the system properties.
      *
-     * @throws IllegalArgumentException naming the key: one of the two map keys without the other, a
-     *                                  value that is not an integer, a grace period that is neither -1
-     *                                  nor at least 1, a far view url root that is not an http(s) URL
-     *                                  without a trailing slash
+     * @throws IllegalArgumentException naming the key: one of the two map keys without the other, an
+     *                                  empty map key, a build_id that is not one directory name, a map
+     *                                  root that is not a path, a value that is not an integer, a grace
+     *                                  period that is neither -1 nor at least 1, a far view url root that
+     *                                  is not an http(s) URL without a trailing slash every client can
+     *                                  request
      */
     public static ShardSettings fromSystemProperties() {
         return from(System::getProperty);
@@ -75,9 +79,10 @@ public record ShardSettings(@Nullable Path mapRoot, @Nullable String mapBuild, i
             throw new IllegalArgumentException("Property '" + CHUNK_UNLOAD_GRACE_TICKS + "' is neither -1 nor at least 1: "
                     + grace);
         }
-        final String urlRoot = Objects.requireNonNullElse(properties.apply(FARVIEW_URL_ROOT), "");
+        // synaxis.properties keeps the whitespace at the end of a line in the value
+        final String urlRoot = Objects.requireNonNullElse(properties.apply(FARVIEW_URL_ROOT), "").strip();
         final boolean http = urlRoot.startsWith("http://") || urlRoot.startsWith("https://");
-        if (!urlRoot.isEmpty() && (!http || urlRoot.endsWith("/"))) {
+        if (!urlRoot.isEmpty() && (!http || urlRoot.endsWith("/") || !requestable(urlRoot))) {
             throw new IllegalArgumentException(FARVIEW_URL_ROOT + " must be an http(s) URL without a trailing slash: " + urlRoot);
         }
         return new ShardSettings(mapRoot, build, simulationDistance, grace, urlRoot);
@@ -96,6 +101,20 @@ public record ShardSettings(@Nullable Path mapRoot, @Nullable String mapBuild, i
     public Path buildDir() {
         if (mapRoot == null || mapBuild == null) throw new IllegalStateException("no map is mounted");
         return mapRoot.resolve(mapBuild);
+    }
+
+    /**
+     * Whether the clients can request the URLs built on the url root: they take none that
+     * {@link URI} cannot parse or that has no host ({@code docs/DESIGN-M3.md} {@code REQ-M3-032}),
+     * and the path of an object appended to a query or fragment would end up in it.
+     */
+    private static boolean requestable(String urlRoot) {
+        try {
+            final URI uri = new URI(urlRoot);
+            return uri.getHost() != null && uri.getRawQuery() == null && uri.getRawFragment() == null;
+        } catch (URISyntaxException _) {
+            return false;
+        }
     }
 
     private static int intProperty(UnaryOperator<String> properties, String name, int defaultValue) {

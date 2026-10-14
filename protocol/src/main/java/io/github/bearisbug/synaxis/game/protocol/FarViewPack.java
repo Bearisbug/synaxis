@@ -15,17 +15,17 @@ import java.util.zip.Inflater;
 
 /**
  * The far view height field pack of {@code docs/DESIGN-M3.md} {@code API-M3-014}: one file per
- * far view tile of 4,096 × 4,096 blocks ({@code tile = chunk >> 8}), which the baker writes and the
- * client reads. This class is the only codec of the layout, and the coarse sample rule
+ * far view tile of 4,096 × 4,096 world blocks ({@code tile = chunk >> 8}), which the baker writes and
+ * the client reads. This class is the only codec of the layout, and the coarse sample rule
  * {@link #coarsen} lives here too, so that the baker and the test fixtures take it from one place.
  * <p>
- * A pack holds two layers of samples. A fine sample covers {@code 2^b × 2^b} blocks
+ * A pack holds two layers of samples. A fine sample covers {@code 2^b × 2^b} world blocks
  * ({@code b = base_level}, 1 or 2), a coarse sample one chunk ({@value #COARSE_LEVEL}). Each layer is cut
- * into blocks of 64 × 64 samples, each block one zlib stream. The file is the header, the biome table,
- * the coarse block index and the coarse blocks, and from {@code fine_offset} on the fine block index
- * and the fine blocks. The first {@code fine_offset} bytes, the coarse prefix, are a pack of their
- * own with the coarse layer alone, distributed as an object of their own. Every number is little
- * endian, as in {@code .synx}.
+ * into pack blocks of 64 × 64 samples, each one zlib stream; "block" alone below means a pack block.
+ * The file is the header, the biome table, the coarse block index and the coarse blocks, and from
+ * {@code fine_offset} on the fine block index and the fine blocks. The first {@code fine_offset}
+ * bytes, the coarse prefix, are a pack of their own with the coarse layer alone, distributed as an
+ * object of their own. Every number is little endian, as in {@code .synx}.
  * <p>
  * Pure JDK like the rest of this package: {@link Deflater} and {@link Inflater} only.
  */
@@ -37,7 +37,7 @@ public final class FarViewPack {
     public static final String MAGIC = "SHFP";
     /** The fixed header in front of the biome table. */
     public static final int HEADER_BYTES = 64;
-    /** A tile is this many blocks square. */
+    /** A tile is this many world blocks square; {@link #blocksPerSide} counts pack blocks. */
     public static final int TILE_BLOCKS = 4096;
     /** {@code tile = chunk >> TILE_SHIFT}: a tile is 256 chunks square. */
     public static final int TILE_SHIFT = 8;
@@ -76,7 +76,7 @@ public final class FarViewPack {
     }
 
     /**
-     * How many blocks a layer has on each side of the tile: 4 for the coarse layer, 16 for base
+     * How many pack blocks a layer has on each side of the tile: 4 for the coarse layer, 16 for base
      * level 2 and 32 for base level 1.
      *
      * @param level the level of the layer: a base level 1 or 2, or the coarse level 4
@@ -94,7 +94,7 @@ public final class FarViewPack {
     public enum Layer {
         /** One sample per chunk, level {@value #COARSE_LEVEL}; all of it is in the coarse prefix. */
         COARSE,
-        /** One sample per {@code 2^base_level} blocks square, from {@code fine_offset} on. */
+        /** One sample per {@code 2^base_level} world blocks square, from {@code fine_offset} on. */
         FINE
     }
 
@@ -176,6 +176,7 @@ public final class FarViewPack {
          * -1 for an empty column
          */
         public int top() {
+            // With ground under it the fluid starts at ground_y + 1, so fluid_top is the larger
             if (hasFluid()) return fluidTop;
             return hasGround() ? groundY : -1;
         }
@@ -266,8 +267,9 @@ public final class FarViewPack {
          * Starts a pack with every block absent.
          *
          * @param baseLevel       b, 1 or 2
-         * @param tileX           the tile
-         * @param tileZ           the tile
+         * @param tileX           the tile's x, {@code chunk_x >> 8} ({@link #tile}), as in the header and
+         *                        the file name
+         * @param tileZ           the tile's z, the same way
          * @param minY            {@code world.min_y}, a 16 bit signed number
          * @param height          {@code world.height}, 1 to 256: a y index is one byte
          * @param blockStates     the block state count of the registry, at least 1

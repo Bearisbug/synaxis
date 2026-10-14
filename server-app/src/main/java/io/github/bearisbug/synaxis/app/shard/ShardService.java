@@ -23,7 +23,9 @@ public interface ShardService {
      *
      * @param player   the player
      * @param regionId the target region
-     * @return completes once the transfer packet is sent, or the transfer is known to have failed
+     * @return completes once the transfer packet is sent, or the transfer is known to have failed; completes
+     *         exceptionally, the cause wrapped in a {@code CompletionException}, when the source side of the
+     *         transfer threw, which a caller logs as an ERROR
      */
     CompletableFuture<ShardTransferResult> transfer(Player player, String regionId);
 
@@ -34,7 +36,9 @@ public interface ShardService {
      *
      * @param player  the player
      * @param shardId the target shard
-     * @return completes once the transfer packet is sent, or the transfer is known to have failed
+     * @return completes once the transfer packet is sent, or the transfer is known to have failed; completes
+     *         exceptionally, the cause wrapped in a {@code CompletionException}, when the source side of the
+     *         transfer threw, which a caller logs as an ERROR
      */
     CompletableFuture<ShardTransferResult> transferTo(Player player, String shardId);
 }

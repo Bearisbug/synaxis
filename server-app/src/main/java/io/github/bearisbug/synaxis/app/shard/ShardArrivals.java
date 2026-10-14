@@ -5,6 +5,8 @@ import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.PlayerChunkLoadEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -19,19 +21,26 @@ import java.util.function.LongSupplier;
  * from, and {@code EVT:transfer_completed} is written once its first 9 chunks are sent.
  * <p>
  * Without a gate back to the source region the player keeps the spawn of the region. An arrival
- * whose player leaves before its 9th chunk writes nothing, and one still short of it 60 s after its
- * claim is dropped at the next claim: both count as transfers that did not complete. A player that
+ * whose player leaves before its 9th chunk writes no event, and one still short of it 60 s after its
+ * claim is dropped at the next claim: both count as transfers that did not complete, and each is an
+ * INFO line with its {@code transfer_ref}, one per ticket claimed at most. A player that
  * leaves before it is in the map instance, still in the configuration phase, is not seen leaving by
  * the instance's node: its arrival, and the player it holds, go with the 60 s rule.
  */
 public final class ShardArrivals {
 
-    /** The chunks of the first batch, the 9 a vanilla client waits for. */
+    private static final Logger LOGGER = LoggerFactory.getLogger(ShardArrivals.class);
+
+    /**
+     * The chunks {@code first_batch_ms} counts to (§3): the 9 the engine sends first
+     * ({@code Player#targetChunksPerTick}). A shard caps a batch at 4 chunks by
+     * default ({@code synaxis.chunk-queue.max-per-tick}), so they arrive over 3 batches or more.
+     */
     private static final int FIRST_BATCH = 9;
-    /** How long an arrival waits for its first batch before it is dropped. */
+    /** How long an arrival waits for its first 9 chunks before it is dropped. */
     private static final long FORGET_AFTER_MILLIS = 60_000;
 
-    /** An arrival waiting for its first batch; its chunks are counted on the player's tick thread. */
+    /** An arrival waiting for its first 9 chunks; its chunks are counted on the player's tick thread. */
     private record Arrival(String transferRef, long issuedAt, String sourceShard, long claimedAt, AtomicInteger chunks) {
     }
 
@@ -64,7 +73,10 @@ public final class ShardArrivals {
         // The spawn serveMap set on the root node came first, this one wins
         if (back != null) player.setRespawnPoint(back.arrival());
         final long now = clock.getAsLong();
-        arrivals.values().removeIf(arrival -> now - arrival.claimedAt() >= FORGET_AFTER_MILLIS);
+        arrivals.forEach((waiting, arrival) -> {
+            if (now - arrival.claimedAt() >= FORGET_AFTER_MILLIS && arrivals.remove(waiting, arrival))
+                notCompleted(arrival, "expired");
+        });
         arrivals.put(player, new Arrival(ticket.reference(), ticket.issuedAt(), ticket.sourceShard(), now,
                 new AtomicInteger()));
     }
@@ -76,7 +88,16 @@ public final class ShardArrivals {
      */
     public void attach(Instance instance) {
         instance.eventNode().addListener(PlayerChunkLoadEvent.class, event -> chunkSent(event.getPlayer()))
-                .addListener(PlayerDisconnectEvent.class, event -> arrivals.remove(event.getPlayer()));
+                .addListener(PlayerDisconnectEvent.class, event -> {
+                    final Arrival gone = arrivals.remove(event.getPlayer());
+                    if (gone != null) notCompleted(gone, "left");
+                });
+    }
+
+    /** An arrival dropped before its 9th chunk; the event ledger has no line for it. */
+    private static void notCompleted(Arrival arrival, String reason) {
+        LOGGER.info("A transfer did not complete: transfer_ref={} source_shard={} chunks={} reason={}",
+                arrival.transferRef(), arrival.sourceShard(), arrival.chunks().get(), reason);
     }
 
     private void chunkSent(Player player) {

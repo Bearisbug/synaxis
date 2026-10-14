@@ -12,6 +12,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -21,6 +22,7 @@ import static io.github.bearisbug.synaxis.baker.BakeTesting.list;
 import static io.github.bearisbug.synaxis.baker.BakeTesting.request;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -61,6 +63,15 @@ public class FarViewExportTest {
         return SynxManifest.fromJson(Files.readString(build.resolve(SynxManifest.FILE_NAME)));
     }
 
+    /** The manifest of a release with another {@code farview[]}. */
+    private static void rewrite(Path build, List<SynxManifest.FarView> farview) throws Exception {
+        final SynxManifest manifest = manifest(build);
+        Files.writeString(build.resolve(SynxManifest.FILE_NAME), new SynxManifest(manifest.mapId(), manifest.buildId(),
+                manifest.contentHash(), manifest.mcVersion(), manifest.protocolVersion(), manifest.registryDigest(),
+                manifest.lightEngineVersion(), manifest.bakerVersion(), manifest.world(), manifest.bounds(), manifest.regions(),
+                farview, manifest.source(), manifest.bake(), manifest.verify()).toJson());
+    }
+
     @Test
     public void theFirstExportWritesTwoObjectsAPackAndTheSecondKeepsThem() throws Exception {
         final Path build = release();
@@ -78,6 +89,12 @@ public class FarViewExportTest {
             final String coarse = "export/farview/" + SynxDigests.hex(entry.coarseSha256()) + ".hfp";
             assertArrayEquals(pack, Files.readAllBytes(out.resolve(whole)), whole);
             assertArrayEquals(Arrays.copyOf(pack, (int) entry.coarseBytes()), Files.readAllBytes(out.resolve(coarse)), coarse);
+            if (out.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+                for (String object : List.of(whole, coarse)) {
+                    assertEquals("rw-r--r--", PosixFilePermissions.toString(Files.getPosixFilePermissions(out.resolve(object))),
+                            object + " is readable by all, as the files of a release");
+                }
+            }
             exported.add("exported " + file + " -> " + whole + " (" + pack.length + " B)");
             exported.add("exported " + file + " coarse -> " + coarse + " (" + entry.coarseBytes() + " B)");
             kept.add("kept " + file + " -> " + whole + " (" + pack.length + " B)");
@@ -117,6 +134,43 @@ public class FarViewExportTest {
         assertEquals(Baker.EXIT_VERIFY, run.exitCode());
         assertTrue(run.err().contains("farview/t.1.0.hfp does not have the size and SHA-256 of the manifest"), run.err());
         assertEquals(List.of(), list(out));
+    }
+
+    /**
+     * A coarse_bytes below 0 in the manifest makes no prefix of the pack: the coarse prefix does not match the
+     * manifest, exit code 4, nothing written.
+     */
+    @Test
+    public void aNegativeCoarseBytesExitsFourBeforeAnythingIsWritten() throws Exception {
+        final Path build = release();
+        final List<SynxManifest.FarView> farview = new ArrayList<>(manifest(build).farview());
+        final SynxManifest.FarView entry = farview.get(2);
+        farview.set(2, new SynxManifest.FarView(entry.tileX(), entry.tileZ(), entry.baseLevel(), entry.coarseLevel(),
+                entry.bytes(), entry.sha256(), -1, entry.coarseSha256()));
+        rewrite(build, farview);
+        final Path out = temp.resolve("cdn");
+
+        final Run run = run("farview-export", "--build", build.toString(), "--out", out.toString());
+        assertEquals(Baker.EXIT_VERIFY, run.exitCode(), run.err());
+        assertTrue(run.err().contains("the coarse prefix of farview/t." + entry.tileX() + "." + entry.tileZ()
+                + ".hfp does not have the coarse_bytes and coarse_sha256 of the manifest"), run.err());
+        assertEquals(List.of(), list(out));
+    }
+
+    /**
+     * A release whose {@code farview[]} is empty, as those before baker_version 2 are, has nothing to export: one
+     * line, exit code 0, no directory.
+     */
+    @Test
+    public void aReleaseWithoutPacksExportsNothingAndSaysSo() throws Exception {
+        final Path build = release();
+        rewrite(build, List.of());
+        final Path out = temp.resolve("cdn");
+
+        final Run run = run("farview-export", "--build", build.toString(), "--out", out.toString());
+        assertEquals(Baker.EXIT_PUBLISHED, run.exitCode(), run.err());
+        assertEquals(List.of("baker: " + build + " lists no far view packs (baker_version 2), nothing to export"), run.out());
+        assertFalse(Files.exists(out));
     }
 
     @Test

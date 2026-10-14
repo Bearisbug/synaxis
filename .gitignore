@@ -55,6 +55,9 @@ GEMINI.md
 /logs/
 /crash-reports/
 
+# The baker's events under :baker:run, whose working directory is baker/
+/baker/logs/
+
 # JFR
 /.profileconfig.json
 

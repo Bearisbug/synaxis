@@ -69,6 +69,16 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
                 throw new IllegalArgumentException("bounds " + minX + "," + minZ + "," + maxX + "," + maxZ + " are empty");
             }
         }
+
+        /** Whether a chunk is inside, both ends included. */
+        public boolean contains(int chunkX, int chunkZ) {
+            return chunkX >= minX && chunkX <= maxX && chunkZ >= minZ && chunkZ <= maxZ;
+        }
+
+        /** These bounds grown by {@code chunks} on every side. */
+        public Bounds grow(int chunks) {
+            return new Bounds(minX - chunks, minZ - chunks, maxX + chunks, maxZ + chunks);
+        }
     }
 
     /** One {@code regions/r.<rx>.<rz>.synx}: its size, {@code payload_sha256} and number of chunk records. */

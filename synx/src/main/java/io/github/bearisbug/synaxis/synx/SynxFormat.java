@@ -25,8 +25,10 @@ public final class SynxFormat {
     /** The four {@code u32} segment lengths in front of every record. */
     public static final int SEGMENT_TABLE_BYTES = 16;
 
+    /** Where segment ② keeps its 256 {@code i16} surface heights, after the 32 byte walkable bit set. */
+    public static final int NAVIGATION_SURFACE_Y = 32;
     /** Segment ②: the walkable bit set (32 B) and 256 {@code i16} surface heights. */
-    public static final int NAVIGATION_BYTES = 32 + 256 * 2;
+    public static final int NAVIGATION_BYTES = NAVIGATION_SURFACE_Y + 256 * 2;
     /** Segment ④: 256 columns of surface height {@code u16}, surface state id {@code u16}, sky light {@code u8}. */
     public static final int COLUMN_BYTES = 256 * 5;
 
@@ -57,5 +59,15 @@ public final class SynxFormat {
     /** {@code r.<rx>.<rz>.synx}. */
     public static String regionFileName(int regionX, int regionZ) {
         return "r." + regionX + "." + regionZ + ".synx";
+    }
+
+    /** {@code t.<tile_x>.<tile_z>.hfp}, a far view pack under {@code farview/} of the release directory, API-M3-014. */
+    public static String farViewFileName(int tileX, int tileZ) {
+        return "t." + tileX + "." + tileZ + ".hfp";
+    }
+
+    /** {@code <map_id>/farview/<sha256 hex>.hfp}, a far view object under the export directory and the url root. */
+    public static String farViewObject(String mapId, byte[] sha256) {
+        return mapId + "/farview/" + SynxDigests.hex(sha256) + ".hfp";
     }
 }

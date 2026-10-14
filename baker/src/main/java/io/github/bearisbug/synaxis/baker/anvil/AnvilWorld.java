@@ -91,9 +91,13 @@ public final class AnvilWorld implements AutoCloseable {
     public static AnvilWorld open(Path world, Key dimension, DynamicRegistry<Biome> biomes,
                                   Predicate<String> registeredHandlers) throws IOException {
         final Path dimensionDir = world.resolve("dimensions").resolve(dimension.namespace()).resolve(dimension.value());
-        if (!Files.isDirectory(dimensionDir.resolve("region"))) {
-            throw new IOException("no " + dimensionDir.resolve("region") + ": a 26.2 save keeps each dimension under"
-                    + " dimensions/<namespace>/<path>/, an older save must be upgraded by the vanilla server first");
+        final Path region = dimensionDir.resolve("region");
+        if (!Files.isDirectory(region)) {
+            throw new IOException("no " + region.toAbsolutePath() + (Files.isDirectory(world.resolve("region"))
+                    ? ": a 26.2 save keeps each dimension under dimensions/<namespace>/<path>/, an older save must be"
+                    + " upgraded by the vanilla server first"
+                    : Files.isRegularFile(world.resolve("level.dat")) ? ": the save has not generated " + dimension.asString()
+                    : ": " + world.toAbsolutePath() + " is not a save, give the directory that holds level.dat"));
         }
         return new AnvilWorld(dimensionDir, biomes, registeredHandlers);
     }
@@ -140,7 +144,9 @@ public final class AnvilWorld implements AutoCloseable {
                 : data.get("status") instanceof StringBinaryTag lower ? lower.value() : null;
         if (!FULL.equals(status)) {
             throw new AnvilSourceException(chunkX, chunkZ, "status " + (status == null ? "missing" : status)
-                    + ", not " + FULL + "; pregenerate the source with the vanilla 26.2 server until every chunk is full");
+                    + ", not " + FULL + "; pregenerate the source with the vanilla 26.2 server until every chunk inside the"
+                    + " bounds is full, or give --bounds that leave this chunk out (without --bounds every chunk of the save"
+                    + " is inside)");
         }
         if (data.getInt("xPos", chunkX) != chunkX || data.getInt("zPos", chunkZ) != chunkZ) {
             throw new AnvilSourceException(chunkX, chunkZ, "the region entry holds chunk "
@@ -193,8 +199,10 @@ public final class AnvilWorld implements AutoCloseable {
         final int dataVersion = data.getInt("DataVersion", -1);
         if (dataVersion != MinecraftServer.DATA_VERSION) {
             throw new AnvilSourceException(chunkX, chunkZ, what + "DataVersion " + dataVersion + ", not "
-                    + MinecraftServer.DATA_VERSION + " (26.2); upgrade the source with the vanilla 26.2 dedicated"
-                    + " server --forceUpgrade --eraseCache, then pregenerate it again");
+                    + MinecraftServer.DATA_VERSION + " (26.2); " + (dataVersion > MinecraftServer.DATA_VERSION
+                    ? "a later Minecraft saved it and the vanilla server does not downgrade, use a copy last opened with 26.2"
+                    : "upgrade the source with the vanilla 26.2 dedicated server --forceUpgrade --eraseCache, then"
+                    + " pregenerate it again"));
         }
     }
 
@@ -428,8 +436,16 @@ public final class AnvilWorld implements AutoCloseable {
                     : "entities: the entry has no Position");
         }
         final List<CompoundBinaryTag> entities = new ArrayList<>();
-        for (BinaryTag entity : data.getList("Entities", BinaryTagTypes.COMPOUND)) {
-            entities.add((CompoundBinaryTag) entity);
+        for (BinaryTag tag : data.getList("Entities", BinaryTagTypes.COMPOUND)) {
+            final CompoundBinaryTag entity = (CompoundBinaryTag) tag;
+            // The window check reads the y of Pos, a shard places the entity at Pos turned by Rotation
+            final ListBinaryTag pos = entity.getList("Pos", BinaryTagTypes.DOUBLE);
+            if (pos.size() != 3 || !Double.isFinite(pos.getDouble(0)) || !Double.isFinite(pos.getDouble(1))
+                    || !Double.isFinite(pos.getDouble(2)) || entity.getList("Rotation", BinaryTagTypes.FLOAT).size() != 2) {
+                throw new AnvilSourceException(chunkX, chunkZ, "entities: " + entity.getString("id")
+                        + " has no Pos of three finite doubles and Rotation of two floats");
+            }
+            entities.add(entity);
         }
         return List.copyOf(entities);
     }

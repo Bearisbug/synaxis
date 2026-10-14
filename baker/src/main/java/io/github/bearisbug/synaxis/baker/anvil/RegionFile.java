@@ -24,7 +24,8 @@ final class RegionFile implements AutoCloseable {
     private static final int ENTRY_COUNT = 1024;
     private static final int HEADER_LENGTH = 2 * SECTOR_SIZE;
 
-    private static final BinaryTagIO.Reader TAG_READER = BinaryTagIO.unlimitedReader();
+    // A chunk compound decodes into at most 64 MiB; adventure checks a declared array length before allocating it
+    private static final BinaryTagIO.Reader TAG_READER = BinaryTagIO.reader(64L << 20);
 
     static String fileName(int regionX, int regionZ) {
         return "r." + regionX + "." + regionZ + ".mca";
@@ -68,7 +69,13 @@ final class RegionFile implements AutoCloseable {
         }
         final ByteBuffer head = read(offset, 5);
         final int length = head.getInt();
-        final int compression = head.get();
+        final int compression = head.get() & 0xFF;
+        // +128 on the compression is a stub: vanilla wrote the chunk to c.<x>.<z>.mcc beside the region file
+        if ((compression & 0x80) != 0) {
+            throw new IOException(where(chunkX, chunkZ) + " is stored in its own c." + chunkX + "." + chunkZ
+                    + ".mcc, which vanilla does for a chunk over 1 MiB compressed; make the chunk hold less"
+                    + " (block entities, entities, item data) until vanilla saves it inside the region file");
+        }
         // An unchecked length either allocates a negative array or an arbitrarily large one
         if (length < 1 || length > sectors * SECTOR_SIZE - 4 || offset + 4 + length > size) {
             throw new IOException(where(chunkX, chunkZ) + " declares a length of " + length
@@ -78,13 +85,21 @@ final class RegionFile implements AutoCloseable {
             case 1 -> BinaryTagIO.Compression.GZIP;
             case 2 -> BinaryTagIO.Compression.ZLIB;
             case 3 -> BinaryTagIO.Compression.NONE;
-            // 4 is LZ4 (server.properties region-file-compression=lz4), +128 an oversized chunk in c.<x>.<z>.mcc
+            // server.properties region-file-compression=lz4; vanilla keeps a written chunk as it is when that changes
+            case 4 -> throw new IOException(where(chunkX, chunkZ) + " is LZ4 compressed, only gzip, zlib and none are"
+                    + " read; set region-file-compression=deflate and rewrite the save with the vanilla 26.2 server"
+                    + " --forceUpgrade --recreateRegionFiles");
             default -> throw new IOException(where(chunkX, chunkZ) + " uses compression " + compression
                     + ", only gzip, zlib and none are read; save the source with region-file-compression=deflate");
         };
         final byte[] data = new byte[length - 1];
         readFully(ByteBuffer.wrap(data), offset + 5);
-        return TAG_READER.read(new ByteArrayInputStream(data), codec);
+        try {
+            return TAG_READER.read(new ByteArrayInputStream(data), codec);
+        } catch (IOException | RuntimeException e) {
+            // A damaged entry: a broken deflate stream, a truncated tag, an unknown tag id, a length over the limit
+            throw new IOException(where(chunkX, chunkZ) + " does not decode: " + e, e);
+        }
     }
 
     @Override

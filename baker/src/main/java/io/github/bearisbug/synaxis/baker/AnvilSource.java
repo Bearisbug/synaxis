@@ -68,7 +68,9 @@ public final class AnvilSource implements BakeSource {
     public static AnvilSource open(Path save, Key dimension, @Nullable SynxManifest.Bounds bounds, int minY,
                                    Registries registries, Predicate<String> registeredHandlers) throws IOException {
         if (minY % 16 != 0) throw new IllegalArgumentException("--min-y must be a multiple of 16, got " + minY);
-        if (!Files.isDirectory(save)) throw new IOException("no source save at " + save);
+        if (!Files.isDirectory(save)) {
+            throw new IOException("no source save at " + save.toAbsolutePath() + "; give the directory holding level.dat");
+        }
         final AnvilWorld world = AnvilWorld.open(save, dimension, registries.biome(), registeredHandlers);
         try {
             SynxManifest.Bounds effective = bounds;
@@ -211,7 +213,7 @@ public final class AnvilSource implements BakeSource {
         if (chunk == null) {
             throw new AnvilSourceException(chunkX, chunkZ, "missing from the source, every chunk inside the bounds "
                     + bounds.minX() + ", " + bounds.minZ() + " .. " + bounds.maxX() + ", " + bounds.maxZ()
-                    + " must be generated to full");
+                    + " must be generated to full (without --bounds every chunk of the save is inside)");
         }
         checkWindow(chunk);
         return chunk;
@@ -240,7 +242,12 @@ public final class AnvilSource implements BakeSource {
             final int y = blockEntity.y();
             if ((y < minY || y >= minY + height) && y < outsideY) {
                 outsideY = y;
-                outside = "block entity " + blockEntity.nbt().getString("id");
+                final String id = blockEntity.nbt().getString("id");
+                // A record a data marker made has no id; the marker stands on the block above
+                outside = id.isEmpty() && blockEntity.handler() != null
+                        ? "the target of data marker " + blockEntity.handler() + " (the structure block is at y "
+                        + (y + 1) + ")"
+                        : "block entity " + id;
             }
         }
         for (CompoundBinaryTag entity : chunk.entities()) {

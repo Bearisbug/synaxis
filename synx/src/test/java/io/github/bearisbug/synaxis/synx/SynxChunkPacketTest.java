@@ -1,10 +1,12 @@
 package io.github.bearisbug.synaxis.synx;
 
+import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.palette.Palette;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.PacketVanilla;
 import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.ChunkData;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -14,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -100,6 +103,25 @@ public class SynxChunkPacketTest {
         final byte[] truncated = Arrays.copyOf(SynxChunkPacket.encode(SynxVectors.chunk(0, 0, false, false).packet(),
                 SynxVectors.settings(), SynxVectors.REGISTRIES), 40);
         assertThrows(IllegalArgumentException.class, () -> SynxChunkPacket.body(truncated));
+    }
+
+    /**
+     * API-M3-001 长度上限, writing side: a body the client would not take is refused before it is framed,
+     * however small it compresses. A chest without a handler sends its whole NBT in segment ①.
+     */
+    @Test
+    public void packetOverTheUncompressedCapIsRefusedNamingTheChunk() {
+        final ChunkDataPacket input = SynxVectors.chunk(3, -2, false, false).packet();
+        final CompoundBinaryTag nbt = CompoundBinaryTag.builder()
+                .putByteArray("filler", new byte[SynxChunkPacket.MAX_UNCOMPRESSED_BYTES]).build();
+        final ChunkData data = input.chunkData();
+        final ChunkDataPacket oversized = new ChunkDataPacket(input.chunkX(), input.chunkZ(),
+                new ChunkData(data.heightmaps(), data.data(), Map.of(0, Block.CHEST.withNbt(nbt))), input.lightData());
+
+        final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> SynxChunkPacket.encode(oversized, SynxVectors.settings(), SynxVectors.REGISTRIES));
+        assertTrue(refused.getMessage().startsWith("chunk 3,-2: the packet is "), refused.getMessage());
+        assertTrue(refused.getMessage().endsWith(" bytes uncompressed, over 8388608"), refused.getMessage());
     }
 
     /** The same packet with every section palette rebuilt from a shuffled write order. */

@@ -177,11 +177,15 @@ public final class FarViewDownloader {
         final LongConsumer[] perObject = new LongConsumer[tiles.size()];
         for (int i = 0; i < tiles.size(); i++) {
             final int index = i;
+            // One lock for the update, the sum and the report: the last report then carries the latest sum,
+            // never one a slower thread summed before another object's bytes came in
             perObject[i] = bytes -> {
-                received.set(index, bytes);
-                long sum = 0;
-                for (int j = 0; j < received.length(); j++) sum += received.get(j);
-                progress.accept(sum);
+                synchronized (received) {
+                    received.set(index, bytes);
+                    long sum = 0;
+                    for (int j = 0; j < received.length(); j++) sum += received.get(j);
+                    progress.accept(sum);
+                }
             };
         }
         final ExecutorService pool = Executors.newFixedThreadPool(Math.max(1, Math.min(CONCURRENCY, tiles.size())),

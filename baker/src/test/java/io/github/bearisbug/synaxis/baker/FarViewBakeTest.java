@@ -332,8 +332,8 @@ public class FarViewBakeTest {
         assertEquals(Baker.EXIT_PUBLISHED, result.exitCode(), result.message());
         final Path build = result.directory();
         final SynxManifest manifest = manifest(build);
-        final Baker.SampledFarView check = new Baker.SampledFarView(build, manifest, new FarViewAssembler(FOUR_TILES, 0,
-                SyntheticTerrain.HEIGHT, manifest.protocolVersion(), List.of(), REGISTRIES.biome()), List.of());
+        final Baker.SampledFarView check = new Baker.SampledFarView(build, new FarViewAssembler(FOUR_TILES, 0,
+                SyntheticTerrain.HEIGHT, manifest.protocolVersion(), List.of(), REGISTRIES.biome()));
         for (int[] chunk : List.of(new int[]{255, -1}, new int[]{256, 0})) {
             final String name = "chunk " + chunk[0] + "," + chunk[1];
             assertTrue(check.matches(chunk[0], chunk[1], packed(build, chunk[0], chunk[1])), name);
@@ -354,7 +354,7 @@ public class FarViewBakeTest {
                     oneChunk), temp.resolve(layer.name()), 1), (_, _, coarse, fine) -> {
                 final long[] grid = layer == Layer.COARSE ? coarse : fine;
                 final Sample sample = FarViewAssembler.sample(grid[0]);
-                grid[0] = FarViewAssembler.packed(new Sample(sample.groundState(), 0, sample.groundY() - 1, 0, 0, sample.biome()));
+                grid[0] = new Sample(sample.groundState(), 0, sample.groundY() - 1, 0, 0, sample.biome()).packed();
             });
 
             assertEquals(Baker.EXIT_VERIFY, result.exitCode(), result.message());
@@ -532,5 +532,62 @@ public class FarViewBakeTest {
                 new HiddenArea(20, 20, 23, 23)), 2, top);
         assertEquals(0, inside.get(1).height());
         assertEquals(0, FarViewAssembler.replacedHeight(inside, 5, 5));
+    }
+
+    /**
+     * §28.1, API-M3-014 隐藏区域: a sample outside the bounds is no ring sample. On 4 × 4 chunks with ground
+     * everywhere a hidden area at blocks 0,20 to 7,27 lies on the west edge: its fine samples 0..1 × 5..6 and its
+     * chunk 0 × 1 take the lowest top of the ring inside the bounds on their own layer, not the 0 of the empty
+     * columns past the edge. The verification takes the same ring, samples every chunk and passes.
+     */
+    @Test
+    public void aHiddenAreaAtTheEdgeOfTheMapTakesItsRingInsideTheBounds() throws Exception {
+        final SynxManifest.Bounds bounds = new SynxManifest.Bounds(0, 0, 3, 3);
+        final Generator terrain = unit -> {
+            final int originX = unit.absoluteStart().blockX(), originZ = unit.absoluteStart().blockZ();
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    for (int y = 0; y <= ground(originX + x, originZ + z); y++) {
+                        unit.modifier().setBlock(originX + x, y, originZ + z, Block.STONE);
+                    }
+                }
+            }
+        };
+        final BakeSource source = new Hiding(source(terrain, bounds), List.of(new HiddenArea(0, 20, 7, 27)));
+        final Baker.Result result = Baker.bake(new Baker.Request("edge", source, temp.resolve("maps"), 2,
+                temp.resolve("logs"), REGISTRIES, Map.<String, BlockHandler>of()::get, Set.of(LightEngine.VERSION), 16));
+        assertEquals(Baker.EXIT_PUBLISHED, result.exitCode(), result.message());
+        assertEquals(new SynxManifest.Verify(16, 0, null), result.manifest().verify());
+
+        final FarViewPack.Reader reader = pack(result.directory(), 0, 0);
+        final List<Sample> fine = reader.samples(reader.blocks(Layer.FINE).getFirst());
+        final List<Sample> coarse = reader.samples(reader.blocks(Layer.COARSE).getFirst());
+        final int plains = reader.biomes().indexOf("minecraft:plains");
+
+        // Fine: the ring inside the bounds is samples 0..2 × 4..7 around 0..1 × 5..6
+        int fineRing = Integer.MAX_VALUE;
+        for (int x = 0; x <= 2; x++) {
+            for (int z = 4; z <= 7; z++) {
+                if (x <= 1 && z >= 5 && z <= 6) continue;
+                fineRing = Math.min(fineRing, fine.get(z * 64 + x).top());
+            }
+        }
+        assertTrue(fineRing >= 10, "the ring inside the bounds has ground: " + fineRing);
+        for (int x = 0; x <= 1; x++) {
+            for (int z = 5; z <= 6; z++) {
+                assertEquals(new Sample(Block.STONE.stateId(), 0, fineRing, 0, 0, plains), fine.get(z * 64 + x), x + "," + z);
+            }
+        }
+
+        // Coarse: the ring inside the bounds is chunks 0..1 × 0..2 around 0 × 1
+        int coarseRing = Integer.MAX_VALUE;
+        for (int x = 0; x <= 1; x++) {
+            for (int z = 0; z <= 2; z++) {
+                if (x == 0 && z == 1) continue;
+                coarseRing = Math.min(coarseRing, coarse.get(z * 64 + x).top());
+            }
+        }
+        assertTrue(coarseRing >= 10, "the ring inside the bounds has ground: " + coarseRing);
+        assertEquals(new Sample(Block.STONE.stateId(), 0, coarseRing, 0, 0, plains), coarse.get(64));
     }
 }

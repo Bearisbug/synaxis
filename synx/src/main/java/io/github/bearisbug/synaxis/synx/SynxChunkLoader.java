@@ -207,8 +207,8 @@ public final class SynxChunkLoader implements ChunkLoader {
         return cache.get(source.key(), source.slot().packet(), instance.registries(), manifest.world().height() / 16);
     }
 
-    void spawnStatics(Instance instance, List<CompoundBinaryTag> entities) {
-        SynxStaticEntities.spawn(instance, entities, staticEntityWarnings);
+    void spawnStatics(Instance instance, int chunkX, int chunkZ, List<CompoundBinaryTag> entities) {
+        SynxStaticEntities.spawn(instance, chunkX, chunkZ, entities, staticEntityWarnings);
     }
 
     /**
@@ -295,11 +295,6 @@ public final class SynxChunkLoader implements ChunkLoader {
     /** The world of the release. */
     SynxManifest.World world() {
         return manifest.world();
-    }
-
-    /** Whether a chunk position is in {@code view_bounds}, where this loader has anything to load. */
-    boolean inView(int chunkX, int chunkZ) {
-        return viewBounds.contains(chunkX, chunkZ);
     }
 
     OverlayTracker tracker() {

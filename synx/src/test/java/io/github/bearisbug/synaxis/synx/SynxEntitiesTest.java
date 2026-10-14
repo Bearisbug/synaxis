@@ -120,6 +120,43 @@ public class SynxEntitiesTest {
         }
     }
 
+    /**
+     * {@code docs/DESIGN-M3.md} API-M3-005 静态实体: an entity whose Pos lies in another chunk than the one
+     * that holds it is skipped with a WARN; spawned there, it would not go with its chunk and would come
+     * again on every reload.
+     */
+    @Test
+    public void aStaticEntityOutsideTheChunkThatHoldsItIsSkippedWithAWarn() {
+        final Env env = Env.create(UnaryOperator.identity());
+        try {
+            final int chunkX = 10, chunkZ = 5;
+            final double x = chunkX * 16 + 8.5, y = SynxTestMap.FEATURE_Y, z = chunkZ * 16 + 8.5;
+            final List<CompoundBinaryTag> statics = List.of(
+                    SynxTestMap.entity("minecraft:text_display", x, y, z, 0f, 0f).build(),
+                    SynxTestMap.entity("minecraft:text_display", x + 16, y, z, 0f, 0f).build());
+            final SynxChunkRecord plain = SynxTestMap.get().record(chunkX, chunkZ);
+            final MemoryOverlay overlay = new MemoryOverlay();
+            overlay.put(MemoryOverlay.hit(new SynxChunkRecord(chunkX, chunkZ, plain.packet(), plain.navigation(),
+                    plain.blockEntities(), statics, plain.columns()), 0, 0, 256));
+            final Instance instance = SynxWorlds.instance(env.process(),
+                    SynxWorlds.loader(SynxWorlds.WRITABLE, overlay));
+            final SynxChunk chunk;
+            final List<String> warnings;
+            try (LogCapture logs = LogCapture.of(SynxStaticEntities.class)) {
+                chunk = (SynxChunk) instance.loadChunk(chunkX, chunkZ).join();
+                warnings = logs.messagesAt(Level.WARN);
+            }
+            final Set<Entity> entities = instance.getChunkEntities(chunk);
+            assertEquals(1, entities.size(), entities.toString());
+            assertEquals(new Pos(x, y, z, 0f, 0f), entities.iterator().next().getPosition());
+            assertEquals(List.of("Static entity minecraft:text_display at " + new Pos(x + 16, y, z, 0f, 0f)
+                    + " lies outside chunk 10,5 that holds it, skipped"), warnings);
+            assertEquals(1, instance.getEntities().size(), "nothing spawned into 11,5 either");
+        } finally {
+            env.process().stop();
+        }
+    }
+
     /** {@code Aa} holds a compound, {@code BB} a list of it; {@code bbFirst} puts {@code BB} in first, at every level. */
     private static CompoundBinaryTag compound(boolean bbFirst) {
         final CompoundBinaryTag.Builder inner = CompoundBinaryTag.builder();

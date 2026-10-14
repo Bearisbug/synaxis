@@ -40,7 +40,10 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
+
+import static io.github.bearisbug.synaxis.synx.SynxBlockEntity.withoutRecordKeys;
 
 /**
  * A chunk of a {@code .synx} map ({@code docs/DESIGN-M3.md} API-M3-005, {@code ADR-M3-016}). Handle,
@@ -48,14 +51,17 @@ import java.util.stream.IntStream;
  * <ul>
  *     <li>Handle: the sections of {@link DynamicChunk} stay empty and are neither read nor sent. Blocks
  *     come from the section cache of the loader, block entities from segment ③, and the full data
- *     packet is segment ① as it is, a {@link BufferedPacket} over the mapping.</li>
- *     <li>Overlay: the first change fills the sections from segment ① and segment ③, light included,
- *     and the chunk is a {@code DynamicChunk} from then on; the overlay store writes it out.</li>
- *     <li>Failed: a record that does not read loads as air with full sky light, read only.</li>
+ *     packet is segment ① as it is, a {@link BufferedPacket} over the record.</li>
+ *     <li>Overlay: the first change, or new light of a recomputation (§11.1 为光照物化), fills the sections
+ *     from segment ① and segment ③, light included; the overlay store writes it out, and its eviction
+ *     demotes the chunk back to handle mode on the record written.</li>
+ *     <li>Failed: a record that does not read, a mapping that faults, or no record inside the region,
+ *     loads as air with full sky light, read only.</li>
  * </ul>
- * A chunk outside the region ({@code bounds}) or in a world that is not writable is read only as well:
- * changes are ignored silently, as the engine ignores them on any read only chunk. A world state flag
- * still changes a world that is not writable ({@link #asWorldFlag}).
+ * A chunk outside the region ({@code bounds}), in a world that is not writable or with the overlay
+ * store full is read only as well: changes are ignored silently, as the engine ignores them on any read
+ * only chunk. A world state flag still changes a chunk of the region in the last two cases
+ * ({@link #asWorldFlag}).
  */
 public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     enum Mode {HANDLE, OVERLAY, FAILED}
@@ -103,8 +109,6 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     private static final byte[] FULL_LIGHT = new byte[2048];
     /** Bound while this thread applies a world state flag ({@link #asWorldFlag}). */
     private static final ScopedValue<Boolean> WORLD_FLAG = ScopedValue.newInstance();
-    /** The keys of a block entity record the block carries itself; the baker leaves them out of segment ①. */
-    private static final List<String> RECORD_KEYS = List.of("id", "x", "y", "z", "keepPacked");
     /** The states the client and the baker count as air besides air itself, state 0. */
     private static final int[] OTHER_AIR = IntStream.range(1, Block.statesCount())
             .filter(state -> Objects.requireNonNull(Block.fromStateId(state)).air()).toArray();
@@ -193,8 +197,9 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     /**
      * Runs {@code action} as the application of a world state flag ({@code docs/DESIGN-M3.md}
      * {@code API-M3-005}, {@code API-M3-013}): on this thread and for as long as it runs,
-     * {@link #isReadOnly()} leaves {@code synaxis.world-writable} out, so that a flag changes a world
-     * nothing else may change. Outside the region and in failed mode a chunk stays read only.
+     * {@link #isReadOnly()} leaves {@code synaxis.world-writable} and a full overlay store
+     * ({@link OverlayTracker#full()}) out, so that a flag changes a world nothing else may change.
+     * Outside the region and in failed mode a chunk stays read only.
      *
      * @param action what changes the blocks
      */
@@ -221,12 +226,6 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
         if (handler == null ? targetHandler != null
                 : targetHandler == null || !handler.getKey().equals(targetHandler.getKey())) return false;
         return withoutRecordKeys(block.nbtOrEmpty()).equals(withoutRecordKeys(target.nbtOrEmpty()));
-    }
-
-    private static CompoundBinaryTag withoutRecordKeys(CompoundBinaryTag nbt) {
-        CompoundBinaryTag without = nbt;
-        for (String key : RECORD_KEYS) without = without.remove(key);
-        return without;
     }
 
     /**
@@ -428,7 +427,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     protected void onLoad() {
         final Source source = this.source;
         if (!inRegion || source == null || source.staticEntities().isEmpty()) return;
-        loader.spawnStatics(instance, source.staticEntities());
+        loader.spawnStatics(instance, chunkX, chunkZ, source.staticEntities());
     }
 
     @Override
@@ -436,8 +435,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
         final long wait = Math.min(deadlineNanos - System.nanoTime(), LOCK_WAIT_NANOS);
         if (!tryLockWriteLock(Duration.ofNanos(Math.max(0, wait)))) return null;
         try {
-            final Source source = this.source;
-            if (source == null) return null;
+            final Source source = Objects.requireNonNull(this.source);
             final long generation = this.generation.get();
             if (mode == Mode.HANDLE) {
                 // Nothing changed since the source: its record as it is
@@ -494,24 +492,24 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     private void materialize() {
         assert holdsWriteLock() : "materializing chunk " + chunkX + "," + chunkZ + " without its write-lock";
         final Source source = Objects.requireNonNull(this.source);
-        final SynxPacketDecoder.Full decoded = SynxPacketDecoder.full(source.slot().packet(), instance.registries(),
-                sections.size());
+        final SynxPacketDecoder.Full full = mapped(source, () -> SynxPacketDecoder.full(source.slot().packet(),
+                instance.registries(), sections.size()));
         for (int i = 0; i < sections.size(); i++) {
             final Section section = sections.get(i);
-            section.blockPalette().copyFrom(decoded.sections().blocks()[i]);
-            final Palette biomes = decoded.sections().biomes()[i];
+            section.blockPalette().copyFrom(full.sections().blocks()[i]);
+            final Palette biomes = full.sections().biomes()[i];
             // A direct biome palette of the packet is as wide as the biome registry needs, not the storage width
             if (biomes.bitsPerEntry() <= Palette.BIOME_PALETTE_MAX_BITS) section.biomePalette().copyFrom(biomes);
             else section.biomePalette().setAll(biomes::get);
-            section.setSkyLight(Objects.requireNonNullElse(decoded.sky()[i], NO_LIGHT));
-            section.setBlockLight(Objects.requireNonNullElse(decoded.block()[i], NO_LIGHT));
+            section.setSkyLight(Objects.requireNonNullElse(full.sky()[i], NO_LIGHT));
+            section.setBlockLight(Objects.requireNonNullElse(full.block()[i], NO_LIGHT));
         }
         entries.clear();
         tickableMap.clear();
         for (Int2ObjectMap.Entry<BlockEntity> entry : Int2ObjectMaps.fastIterable(source.blockEntities())) {
             final int index = entry.getIntKey();
             final int y = CoordConversion.chunkBlockIndexGetY(index);
-            final int state = decoded.sections().blocks()[sectionIndex(y)].get(
+            final int state = full.sections().blocks()[sectionIndex(y)].get(
                     CoordConversion.chunkBlockIndexGetX(index), y & 15, CoordConversion.chunkBlockIndexGetZ(index));
             final Block block = entry.getValue().block(state);
             entries.put(index, block);
@@ -528,8 +526,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     /** Overlay back to handle on {@code source}, under the write-lock; the sections go back to empty. */
     private void demote(Source source) {
         for (Section section : sections) {
-            section.blockPalette().fill(0);
-            section.biomePalette().fill(0);
+            section.clear();
             section.setSkyLight(NO_LIGHT);
             section.setBlockLight(NO_LIGHT);
         }
@@ -603,16 +600,27 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
      * segment ① in handle mode, the sections under the read-lock otherwise.
      */
     LightData currentLight() {
-        final Source handle = this.source;
-        if (mode == Mode.HANDLE && handle != null) return SynxPacketDecoder.light(handle.slot().packet(), instance.registries());
+        final LightData handle = handleLight();
+        if (handle != null) return handle;
         lockReadLock();
         try {
-            final Source now = this.source;
-            if (mode == Mode.HANDLE && now != null) return SynxPacketDecoder.light(now.slot().packet(), instance.registries());
-            return createLightData(false);
+            return heldLight();
         } finally {
             unlockReadLock();
         }
+    }
+
+    /** Segment ①'s light in handle mode, null otherwise; mode first, as {@link #getFullDataPacket} reads it. */
+    private @Nullable LightData handleLight() {
+        if (mode != Mode.HANDLE) return null;
+        final Source source = Objects.requireNonNull(this.source);
+        return mapped(source, () -> SynxPacketDecoder.light(source.slot().packet(), instance.registries()));
+    }
+
+    /** {@link #handleLight}, the sections otherwise; the caller holds a lock of the chunk. */
+    private LightData heldLight() {
+        final LightData handle = handleLight();
+        return handle != null ? handle : createLightData(false);
     }
 
     /**
@@ -663,9 +671,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     @Nullable Installed installLight(byte[] @Nullable [] sky, byte[] @Nullable [] block) {
         if (!tryLockWriteLock(Duration.ZERO)) return null;
         try {
-            final Source handle = this.source;
-            final LightData held = mode == Mode.HANDLE && handle != null
-                    ? SynxPacketDecoder.light(handle.slot().packet(), instance.registries()) : createLightData(false);
+            final LightData held = heldLight();
             final int count = sections.size();
             final byte[][] heldSky = SynxPacketDecoder.sky(held, count), heldBlock = SynxPacketDecoder.block(held, count);
             final byte[][] swapSky = new byte[count][], swapBlock = new byte[count][];
@@ -697,20 +703,31 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
 
     /**
      * The full light for a resend of an install that changed nothing: segment ① in handle mode, the
-     * sections otherwise, under the write-lock, which is only tried.
+     * sections otherwise, under the write-lock, which is only tried. The write-lock because the engine
+     * has no timed read-lock, and the install must not wait on the tick scheduling thread.
      *
      * @return null without the write-lock
      */
     @Nullable LightData lightForResend() {
-        final Source handle = this.source;
-        if (mode == Mode.HANDLE && handle != null) return SynxPacketDecoder.light(handle.slot().packet(), instance.registries());
+        final LightData handle = handleLight();
+        if (handle != null) return handle;
         if (!tryLockWriteLock(Duration.ZERO)) return null;
         try {
-            final Source now = this.source;
-            if (mode == Mode.HANDLE && now != null) return SynxPacketDecoder.light(now.slot().packet(), instance.registries());
-            return createLightData(false);
+            return heldLight();
         } finally {
             unlockWriteLock();
+        }
+    }
+
+    /**
+     * Reads the mapping of {@code source}: a fault there ({@code API-M3-005} 映射读取出错) throws as
+     * {@link SectionCache#get} throws it, an {@link IllegalStateException} the callers handle.
+     */
+    private static <T> T mapped(Source source, Supplier<T> read) {
+        try {
+            return read.get();
+        } catch (InternalError e) {
+            throw new IllegalStateException(source.key().file() + " faulted on read", e);
         }
     }
 

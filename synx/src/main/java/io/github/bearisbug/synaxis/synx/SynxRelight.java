@@ -62,7 +62,10 @@ import java.util.concurrent.locks.ReentrantLock;
 public final class SynxRelight {
     private static final Logger LOGGER = LoggerFactory.getLogger(SynxRelight.class);
 
-    /** Target entries waiting for the install from which on the recomputation threads take no new center. */
+    /**
+     * From this many target entries waiting for the install on, the recomputation threads take no new
+     * center ({@link #awaitRoom}).
+     */
     static final int INSTALL_BACKLOG = 256;
     /** Target entries an install handles at most; it stops earlier once it took {@link #INSTALL_BUDGET_NANOS}. */
     static final int INSTALL_ENTRIES_PER_TICK = 64;
@@ -76,6 +79,10 @@ public final class SynxRelight {
     private static final Duration MATERIALIZE_WAIT = Duration.ofMillis(50);
     private static final long SLOW_NANOS = TimeUnit.MILLISECONDS.toNanos(200);
     private static final long DRAIN_CAP_NANOS = TimeUnit.MILLISECONDS.toNanos(500);
+    /**
+     * Samples one window keeps at most, so that a window holds bounded memory whoever reads
+     * {@link #stats()}; later samples of the window are dropped, its P99 covers the first 65,536.
+     */
     private static final int WINDOW_SAMPLES = 1 << 16;
     private static final byte[] DARK = new byte[2048];
     private static final byte[][] NONE = new byte[0][];
@@ -85,7 +92,9 @@ public final class SynxRelight {
         final int x;
         final int z;
         final long firstChange;
+        /** From its snapshot until every target of the run is handled, the wait for the install included. */
         boolean running;
+        /** A change came while running: the center runs once more instead of leaving. */
         boolean again;
         @Nullable Task task;
 
@@ -98,8 +107,8 @@ public final class SynxRelight {
 
     /**
      * A position of a snapshot: the chunk object with its {@code block_changes} at the time and the
-     * palettes it had; chunk null for a missing position, palettes null for air and once the light is
-     * computed.
+     * palettes it had. Chunk null where the loader had nothing and the instance filled in air of its own;
+     * palettes null for a failed chunk, which is air, and once the light is computed.
      */
     private record Taken(@Nullable SynxChunk chunk, long blockChanges, Palette @Nullable [] blocks) {
     }
@@ -118,9 +127,8 @@ public final class SynxRelight {
         final Center center;
         final Taken[] taken = new Taken[25];
         final LongArrayList tickets = new LongArrayList(25);
-        // The install's, but read by a drain on another thread
+        // Targets of this run not handled yet, counted down by the install; read by a drain on another thread
         final AtomicInteger left = new AtomicInteger(9);
-        volatile boolean computed;
 
         Task(Center center) {
             this.center = center;
@@ -181,7 +189,8 @@ public final class SynxRelight {
     private final Map<Long, Integer> pending = new ConcurrentHashMap<>();
 
     private final Queue<Target> installs = new ConcurrentLinkedQueue<>();
-    private final AtomicInteger waiting = new AtomicInteger();
+    private final AtomicInteger backlog = new AtomicInteger();
+    // The recomputation threads wait on it in awaitRoom; the install notifies it
     private final Object room = new Object();
     // A drain on a dead tick installs on the shutdown thread, maybe while the tick scheduler still does
     private final ReentrantLock installing = new ReentrantLock();
@@ -197,7 +206,6 @@ public final class SynxRelight {
 
     private final CompletableFuture<Void> drained = new CompletableFuture<>();
     private final AtomicLong drainDeadline = new AtomicLong(Long.MAX_VALUE);
-    private volatile boolean draining;
     private volatile long drainStart;
 
     SynxRelight(SynxChunkLoader loader, InstanceContainer instance, @Nullable Executor computeExecutor) {
@@ -261,7 +269,8 @@ public final class SynxRelight {
      * or longer, none of them with them in its {@code light_stale}. The center is in T's 3×3, so such a
      * player holds it and gets the block change. The others go into T's {@code light_stale}, a resend
      * due whatever the install finds if they hold the center: they computed the light from partial
-     * input. Each player is looked at once for the 5×5.
+     * input. Each player is looked at once for the 5×5. Players gone offline are dropped from
+     * {@code delivered} and {@code light_stale} of the targets on the way.
      */
     private void judge(SynxChunk center) {
         final long now = instance.getWorldAge();
@@ -339,6 +348,7 @@ public final class SynxRelight {
     // ---- The recomputation, on a recomputation thread
 
     private void run(Task task) {
+        // Not with an executor of the tests: it runs tasks on the thread that installs, which would wait forever
         if (pool != null) awaitRoom();
         synchronized (lock) {
             task.center.running = true;
@@ -350,11 +360,12 @@ public final class SynxRelight {
             failed(task, e);
             return;
         }
-        if (pool != null) computed(task, start);
-        else executor.execute(() -> computed(task, start));
+        final long snapshotNanos = System.nanoTime() - start;
+        if (pool != null) computed(task, start, snapshotNanos);
+        else executor.execute(() -> computed(task, start, snapshotNanos));
     }
 
-    private void computed(Task task, long start) {
+    private void computed(Task task, long start, long snapshotNanos) {
         final List<Target> targets;
         try {
             targets = compute(task);
@@ -365,20 +376,20 @@ public final class SynxRelight {
         final long took = System.nanoTime() - start;
         sample(relightSamples, took);
         if (took > SLOW_NANOS) {
-            LOGGER.warn("The light recomputation of center {},{} took {} ms", task.center.x, task.center.z,
-                    TimeUnit.NANOSECONDS.toMillis(took));
+            LOGGER.warn("The light recomputation of center {},{} took {} ms, {} ms of it taking the blocks of the 5×5",
+                    task.center.x, task.center.z, TimeUnit.NANOSECONDS.toMillis(took),
+                    TimeUnit.NANOSECONDS.toMillis(snapshotNanos));
         }
         relights.increment();
         task.dropBlocks();
-        task.computed = true;
-        waiting.addAndGet(targets.size());
+        backlog.addAndGet(targets.size());
         installs.addAll(targets);
     }
 
     /** Waits while {@value #INSTALL_BACKLOG} target entries or more wait for the install. */
     private void awaitRoom() {
         synchronized (room) {
-            while (waiting.get() >= INSTALL_BACKLOG) {
+            while (backlog.get() >= INSTALL_BACKLOG) {
                 try {
                     room.wait();
                 } catch (InterruptedException _) {
@@ -390,9 +401,9 @@ public final class SynxRelight {
     }
 
     /**
-     * Tickets on the 5×5 around the center within {@code view_bounds}, whose chunks load if they are
-     * not; then the blocks of each under its read-lock. A position past {@code view_bounds}, or one the
-     * loader has nothing for and the instance filled with air of its own, is missing.
+     * Tickets on the 5×5 around the center, whose chunks load if they are not; then the blocks of each
+     * under its read-lock. A position the loader has nothing for, and the instance filled with air of
+     * its own, is missing.
      */
     private void snapshot(Task task) {
         final int centerX = task.center.x, centerZ = task.center.z;
@@ -400,19 +411,13 @@ public final class SynxRelight {
         for (int dx = -2; dx <= 2; dx++) {
             for (int dz = -2; dz <= 2; dz++) {
                 final int x = centerX + dx, z = centerZ + dz;
-                if (!loader.inView(x, z)) {
-                    loads.add(null);
-                    continue;
-                }
                 instance.addChunkTicket(x, z, task);
                 task.tickets.add(key(x, z));
                 loads.add(instance.loadChunk(x, z));
             }
         }
         for (int i = 0; i < 25; i++) {
-            final CompletableFuture<Chunk> load = loads.get(i);
-            if (load == null) continue;
-            if (!(load.join() instanceof SynxChunk chunk)) {
+            if (!(loads.get(i).join() instanceof SynxChunk chunk)) {
                 task.taken[i] = new Taken(null, 0, null);
                 continue;
             }
@@ -436,6 +441,7 @@ public final class SynxRelight {
         final List<Target> targets = new ArrayList<>(9);
         for (int x = centerX - 1; x <= centerX + 1; x++) {
             for (int z = centerZ - 1; z <= centerZ + 1; z++) {
+                // Never null: the snapshot takes every position of the 5×5, which holds the 3×3
                 final Taken taken = Objects.requireNonNull(task.at(x, z));
                 final SynxChunk chunk = taken.chunk();
                 if (chunk == null || !chunk.lightWritable()) {
@@ -481,13 +487,15 @@ public final class SynxRelight {
     // ---- The install, at the end of the tick on the tick scheduling thread
 
     /**
-     * Installs the results in the order they came, at most {@value #INSTALL_ENTRIES_PER_TICK} target
-     * entries, and stops once it took 1 ms; the rest waits for the next tick. While a drain runs neither
-     * limit holds: it installs every result there is and stops at the deadline of the drain only, the
-     * players frozen by then. A target whose write-lock the encode pool holds waits for the next tick as
-     * well, and the ones behind it with it.
+     * Run by the host once per tick at {@code TICK_END}, on the tick scheduling thread. Installs the
+     * results in the order they came, at most {@value #INSTALL_ENTRIES_PER_TICK} target entries, and
+     * stops once it took 1 ms; the rest waits for the next tick. While a drain runs neither limit holds:
+     * it installs every result there is and stops at the deadline of the drain only, the players frozen
+     * by then. A target whose write-lock the encode pool holds waits for the next tick as well, and the
+     * ones behind it with it. A target whose install throws is logged and handled: it keeps its old
+     * light, and its {@code light_stale} waits for the next install that works.
      *
-     * @return the target entries it handled: installed, found unchanged or skipped
+     * @return the target entries it handled: installed, found unchanged, skipped or failed
      */
     public int installPhase() {
         if (!installing.tryLock()) return 0;
@@ -500,7 +508,16 @@ public final class SynxRelight {
         try {
             Target target;
             while (handled < most && (target = installs.peek()) != null) {
-                if (!install(target)) break;
+                boolean done;
+                try {
+                    done = install(target);
+                } catch (RuntimeException e) {
+                    // Left at the head, it would throw again every tick and hold up every target behind it
+                    LOGGER.error("The light install of {},{} failed, it keeps its old light", target.x(), target.z(),
+                            e);
+                    done = true;
+                }
+                if (!done) break;
                 installs.poll();
                 handled++;
                 if (target.task().left.decrementAndGet() == 0) finish(target.task());
@@ -509,14 +526,15 @@ public final class SynxRelight {
         } finally {
             installing.unlock();
             if (handled > 0) {
-                waiting.addAndGet(-handled);
+                backlog.addAndGet(-handled);
                 synchronized (room) {
                     room.notifyAll();
                 }
             }
             installMaxNanos.accumulateAndGet(System.nanoTime() - start, Math::max);
         }
-        if (draining) completeDrain();
+        // Read again, not drain above: a drain that began during this install completes once nothing is pending
+        if (drainDeadline.get() != Long.MAX_VALUE) completeDrain();
         return handled;
     }
 
@@ -534,9 +552,9 @@ public final class SynxRelight {
             if (installed.materialized()) lightMaterialized.increment();
             final Set<Player> resent = resend(chunk, installed.light(), installed.swapped(), now);
             if (installed.swapped() && loader.options().resendLight()) {
-                final LightData changed = changedSections(installed.sky(), installed.block());
+                final LightData swappedOnly = changedSections(installed.sky(), installed.block());
                 for (Player player : chunk.delivered().keySet()) {
-                    if (!resent.contains(player) && online(player)) send(player, chunk, changed, now);
+                    if (!resent.contains(player) && online(player)) send(player, chunk, swappedOnly, now);
                 }
             }
         } else {
@@ -566,15 +584,16 @@ public final class SynxRelight {
 
     /**
      * The full light to the players of {@code light_stale} still online and holding the chunk: all of
-     * them if the light changed, the ones a resend is due to otherwise; then {@code light_stale} is empty.
+     * them if the install swapped a section, the ones a resend is due to otherwise; then
+     * {@code light_stale} is empty.
      *
      * @return the players it was sent to
      */
-    private Set<Player> resend(SynxChunk chunk, LightData light, boolean changed, long now) {
+    private Set<Player> resend(SynxChunk chunk, LightData light, boolean swapped, long now) {
         final Set<Player> sent = new HashSet<>();
         for (Map.Entry<Player, Boolean> stale : chunk.lightStale().entrySet()) {
             final Player player = stale.getKey();
-            if (!changed && !stale.getValue()) continue;
+            if (!swapped && !stale.getValue()) continue;
             if (!online(player) || !chunk.delivered().containsKey(player)) continue;
             send(player, chunk, light, now);
             sent.add(player);
@@ -655,16 +674,21 @@ public final class SynxRelight {
 
     /**
      * The shutdown step {@code relight}, shaped as {@code ShutdownSequence.Step#run} and registered
-     * before {@code overlay}: waits at most min(500 ms, {@code remaining}) for every pending target to be
-     * installed, so that the final flush writes the new light. With {@code tickAlive} the install at
-     * the end of the tick does it; otherwise this thread installs. What is left at the deadline is
-     * written with its old light, and a WARN counts it. Changes after the drain began are queued as
-     * ever, with no promise to be installed before the final flush.
+     * before {@code overlay}: waits at most min(500 ms, {@code remaining} − the final flush's cap of 2 s)
+     * for every pending target to be installed, so that the final flush writes the new light. With
+     * {@code tickAlive} the install at the end of the tick does it; otherwise this thread installs. What
+     * is left at the deadline is written with its old light, and a WARN counts it. Changes after the
+     * drain began are queued as ever, with no promise to be installed before the final flush.
+     * <p>
+     * Called a second time with {@code tickAlive} false once the watchdog judges the tick dead
+     * ({@code ShutdownSequence.Step}): the start and the earlier deadline stay, and this thread installs.
      *
      * @return completes once nothing is pending, or at the deadline
      */
     public CompletableFuture<?> drain(Duration remaining, boolean tickAlive) {
-        final long budget = Math.min(DRAIN_CAP_NANOS, Math.max(0, remaining.toNanos()));
+        // Light only shows, the final flush is the world's data: the drain takes only what the final
+        // flush's own cap leaves
+        final long budget = Math.min(DRAIN_CAP_NANOS, Math.max(0, remaining.toNanos() - OverlayStore.FINAL_CAP_NANOS));
         final long now = System.nanoTime();
         if (drainStart == 0) drainStart = now;
         final long deadline = drainDeadline.accumulateAndGet(now + budget, Math::min);
@@ -679,8 +703,6 @@ public final class SynxRelight {
             if (left <= 0) {
                 timedOut();
             } else {
-                draining = true;
-                completeDrain();
                 var _ = CompletableFuture.runAsync(this::timedOut, CompletableFuture.delayedExecutor(left, TimeUnit.NANOSECONDS));
             }
         }
@@ -711,10 +733,7 @@ public final class SynxRelight {
     private int targetsLeft() {
         synchronized (lock) {
             int left = 0;
-            for (Center center : centers.values()) {
-                final Task task = center.task;
-                left += task == null || !task.computed ? 9 : task.left.get();
-            }
+            for (Center center : centers.values()) left += Objects.requireNonNull(center.task).left.get();
             return left;
         }
     }
@@ -747,7 +766,7 @@ public final class SynxRelight {
 
     /** The target entries waiting for the install now, which the recomputation threads hold under {@value #INSTALL_BACKLOG} plus what one task adds each. */
     int installBacklog() {
-        return waiting.get();
+        return backlog.get();
     }
 
     /** {@code relight_pending} of a chunk position. */

@@ -7,6 +7,7 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.zip.DataFormatException;
@@ -87,7 +88,7 @@ public final class FarViewPack {
         if (level != 1 && level != 2 && level != COARSE_LEVEL) {
             throw new IllegalArgumentException("level " + level + " is not 1, 2 or " + COARSE_LEVEL);
         }
-        return TILE_BLOCKS >> (level + 6);
+        return (TILE_BLOCKS >> level) / BLOCK_SIDE;
     }
 
     /** The two layers of a pack. */
@@ -379,6 +380,7 @@ public final class FarViewPack {
                     .putInt(blockStates)
                     .putInt(protocolVersion)
                     .putInt((int) fineOffset);
+            // Bytes 36 to 63 are reserved: allocate leaves them 0
             final ByteArrayOutputStream out = new ByteArrayOutputStream((int) fineOffset);
             out.writeBytes(header.array());
             out.writeBytes(table.toByteArray());
@@ -497,8 +499,11 @@ public final class FarViewPack {
             if (fineOffset > pack.length) {
                 throw new Invalid("fine_offset " + fineOffset + " is past the end of the " + pack.length + " byte pack");
             }
-            final Header header = new Header(baseLevel, coarseLevel, buffer.getInt(12), buffer.getInt(16), buffer.getShort(20),
-                    Short.toUnsignedInt(buffer.getShort(22)), Integer.toUnsignedLong(buffer.getInt(24)), buffer.getInt(28),
+            final int tileX = buffer.getInt(12), tileZ = buffer.getInt(16);
+            final int minY = buffer.getShort(20), height = Short.toUnsignedInt(buffer.getShort(22));
+            final long blockStates = Integer.toUnsignedLong(buffer.getInt(24));
+            final int protocolVersion = buffer.getInt(28);
+            final Header header = new Header(baseLevel, coarseLevel, tileX, tileZ, minY, height, blockStates, protocolVersion,
                     fineOffset);
 
             final List<String> biomes = new ArrayList<>(biomeCount);
@@ -557,10 +562,11 @@ public final class FarViewPack {
                     if (offset == 0 && length == 0) continue;
                     if (length == 0 || offset < first || offset + length > end) {
                         final String where = name(layer) + " block " + bx + "," + bz + " at " + offset + "+" + length;
-                        throw new Invalid(layer == Layer.COARSE
-                                ? where + " is not between the end of its index " + first + " and fine_offset " + end
-                                : offset + length > end ? where + " is past the end of the " + end + " byte pack"
-                                : where + " is not after the end of its index " + first);
+                        if (layer == Layer.COARSE) {
+                            throw new Invalid(where + " is not between the end of its index " + first + " and fine_offset " + end);
+                        }
+                        if (offset + length > end) throw new Invalid(where + " is past the end of the " + end + " byte pack");
+                        throw new Invalid(where + " is not after the end of its index " + first);
                     }
                     blocks.add(new Block(layer, bx, bz, offset, length));
                 }
@@ -659,6 +665,7 @@ public final class FarViewPack {
             final Inflater inflater = new Inflater();
             try {
                 inflater.setInput(pack, (int) block.offset(), (int) block.length());
+                // One byte over a block: a stream that inflates to more fills it and fails the check below
                 final byte[] out = new byte[BLOCK_BYTES + 1];
                 int inflated = 0;
                 while (inflated < out.length && !inflater.finished()) {
@@ -670,9 +677,7 @@ public final class FarViewPack {
                     throw new Invalid(what + " does not inflate to exactly " + BLOCK_BYTES + " bytes in one zlib stream of "
                             + block.length() + " bytes");
                 }
-                final byte[] raw = new byte[BLOCK_BYTES];
-                System.arraycopy(out, 0, raw, 0, BLOCK_BYTES);
-                return raw;
+                return Arrays.copyOf(out, BLOCK_BYTES);
             } catch (DataFormatException e) {
                 throw new Invalid(what + " is not a zlib stream: " + e.getMessage());
             } finally {

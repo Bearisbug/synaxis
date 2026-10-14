@@ -62,7 +62,8 @@ public final class SynxRegionWriter {
      * by every shard and written by its owner alone (M3-S, {@code API-M3-002} 文件信任). It is deleted
      * if encoding fails.
      *
-     * @throws IllegalArgumentException if a segment ① is not a well formed frame
+     * @throws IllegalArgumentException if a record would not read back ({@link SynxChunkRecord#encode(SynxSettings)})
+     *                                  or its segment ① is not a well formed frame
      */
     public Encoded encode(Path staging) throws IOException {
         final ByteBuffer index = ByteBuffer.allocate(SynxFormat.INDEX_BYTES).order(ByteOrder.LITTLE_ENDIAN);
@@ -84,8 +85,8 @@ public final class SynxRegionWriter {
                 position = aligned;
 
                 // Segment ③ once, uncompressed for the content hash and compressed for the record
-                final byte[] entities = record.entities();
-                final byte[] bytes = record.encode(entities, settings.compressionLevel());
+                final byte[] entityTables = record.entityTables();
+                final byte[] bytes = record.encode(entityTables, settings.compressionLevel());
                 final CRC32C crc = new CRC32C();
                 crc.update(bytes);
                 index.putLong(i * SynxFormat.INDEX_ENTRY_BYTES, position)
@@ -97,7 +98,7 @@ public final class SynxRegionWriter {
 
                 content.update(SynxChunkPacket.body(record.packet()));
                 content.update(record.navigation());
-                content.update(entities);
+                content.update(entityTables);
                 content.update(record.columns());
                 chunks++;
             }

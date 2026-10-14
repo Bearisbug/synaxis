@@ -10,8 +10,8 @@ import org.jetbrains.annotations.Nullable;
  * @param sectionY   section coordinate, {@code y >> 4}
  * @param blocks     block state ids
  * @param biomes     biome ids in the registry the world was opened with
- * @param skyLight   the source's {@code SkyLight}, or null when absent
- * @param blockLight the source's {@code BlockLight}, or null when absent
+ * @param skyLight   the source's {@code SkyLight}, or null when absent or not 2,048 bytes long
+ * @param blockLight the source's {@code BlockLight}, or null when absent or not 2,048 bytes long
  */
 public record AnvilSection(int sectionY, Palette blocks, Palette biomes,
                            byte @Nullable [] skyLight,

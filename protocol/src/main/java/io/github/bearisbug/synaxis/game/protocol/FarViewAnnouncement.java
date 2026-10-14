@@ -51,8 +51,9 @@ public record FarViewAnnouncement(String buildId, int baseLevel, int coarseLevel
     /**
      * One object to download: the whole pack of a tile or its coarse prefix.
      *
-     * @param tileX  the tile
-     * @param tileZ  the tile
+     * @param tileX  the tile's x, {@code chunk_x >> 8} ({@link FarViewPack#tile}), as in the pack's header
+     *               and file name
+     * @param tileZ  the tile's z, the same way
      * @param layer  {@link #LAYER_FULL} or {@link #LAYER_COARSE}
      * @param bytes  the size of the object, at least 1 and at most {@value #MAX_OBJECT_BYTES}
      * @param sha256 the SHA-256 of the object, which names it

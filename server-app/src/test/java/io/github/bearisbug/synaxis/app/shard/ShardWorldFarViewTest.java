@@ -232,8 +232,9 @@ public class ShardWorldFarViewTest {
     }
 
     /**
-     * §19 「分片不宣告远景的情形」: no url root; a release baked before M3-G, whose {@code farview[]} is empty
-     * (a pack that does not match is {@link #aPackThatDoesNotMatchItsManifestStopsTheWholeAnnouncement}).
+     * §19 「分片不宣告远景的情形」: no url root; a release baked before M3-G, whose {@code farview[]} is empty; one
+     * none of whose tiles meets the bounds, a tile within the coarse reach alone (a pack that does not match is
+     * {@link #aPackThatDoesNotMatchItsManifestStopsTheWholeAnnouncement}).
      */
     @Test
     public void aShardWithoutAUrlRootOrAPackToAnnounceAnnouncesNothing(@TempDir Path maps)
@@ -249,9 +250,19 @@ public class ShardWorldFarViewTest {
         final Started noTile = start(new ShardSettings(fixture.mapRoot(), fixture.mapBuild(), 4, 100, URL_ROOT), null);
         assertNull(noTile.farView());
         assertEquals(1, farViewLines(noTile, Level.INFO).size(), noTile.log().toString());
-        assertTrue(farViewLines(noTile, Level.INFO).getFirst().startsWith("Far view off: no far view tile of "),
-                farViewLines(noTile, Level.INFO).toString());
+        assertTrue(farViewLines(noTile, Level.INFO).getFirst().startsWith("Far view off: " + fixture.mapBuild()
+                + " has no far view packs (baker_version "), farViewLines(noTile, Level.INFO).toString());
         assertEquals(0, noTile.attributes().get("farview_tiles"));
+
+        // Tile -1,0 alone: within the coarse reach of the bounds 0,0,15,15, but no tile to announce whole
+        final SynxManifest aroundOnly = withFarView(SynxManifest.fromJson(Files.readString(manifestFile)),
+                List.of(entry(-1, 0)));
+        Files.writeString(manifestFile, aroundOnly.toJson());
+        final Started noneMeets = start(new ShardSettings(fixture.mapRoot(), fixture.mapBuild(), 4, 100, URL_ROOT), null);
+        assertNull(noneMeets.farView());
+        assertEquals(List.of("Far view off: no far view tile of " + fixture.mapBuild() + " meets the bounds "
+                + aroundOnly.bounds()), farViewLines(noneMeets, Level.INFO));
+        assertEquals(0, noneMeets.attributes().get("farview_tiles"));
     }
 
     @Test

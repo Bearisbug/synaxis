@@ -44,6 +44,8 @@ public final class ShardHeartbeat implements HeartbeatReader, AutoCloseable {
     private static final Duration STATEMENT_TIMEOUT = Duration.ofSeconds(2);
     /** A WARN for every this many failed writes in a row. */
     private static final int FAILURES_PER_WARN = 3;
+    /** How old a row may be and still be live, by the database clock. */
+    private static final int LIVE_SECONDS = 15;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ShardHeartbeat.class);
 
@@ -54,7 +56,7 @@ public final class ShardHeartbeat implements HeartbeatReader, AutoCloseable {
             + "online = EXCLUDED.online, capacity = EXCLUDED.capacity, accepting = EXCLUDED.accepting, "
             + "started_at = EXCLUDED.started_at, updated_at = EXCLUDED.updated_at";
     private static final String READ = "SELECT shard_id, region_id, channel, host, port, online, capacity, accepting, "
-            + "updated_at > now() - interval '15 seconds' AS live FROM shard_heartbeat ";
+            + "updated_at > now() - interval '" + LIVE_SECONDS + " seconds' AS live FROM shard_heartbeat ";
     private static final String READ_REGION = READ + "WHERE map_id = ? AND region_id = ?";
     private static final String READ_SHARD = READ + "WHERE map_id = ? AND shard_id = ?";
 
@@ -73,6 +75,7 @@ public final class ShardHeartbeat implements HeartbeatReader, AutoCloseable {
     private boolean closed;
     // Only touched by the writing thread, and by the tests calling beat() instead of it
     private int failuresInARow;
+    private boolean written;
 
     /**
      * Builds the heartbeat; reads nothing and starts no thread.
@@ -129,12 +132,20 @@ public final class ShardHeartbeat implements HeartbeatReader, AutoCloseable {
             write.setBoolean(10, !gate.isClosed());
             write.setObject(11, startedAt);
             write.executeUpdate();
+            // The first row, and the first after a run of failures that was a WARN: the one line that names the
+            // address the other shards send players to, which need not be the bound one
+            if (!written || failuresInARow >= FAILURES_PER_WARN) {
+                LOGGER.info("Shard heartbeat written: shard_id={} region_id={} address={}:{} capacity={}; other shards "
+                        + "send players to this address", channel.shardId(), channel.regionId(), channel.host(),
+                        channel.port(), channel.capacity());
+            }
+            written = true;
             failuresInARow = 0;
         } catch (SQLException | RuntimeException e) {
             failuresInARow++;
             if (failuresInARow % FAILURES_PER_WARN == 0) {
                 LOGGER.warn("Shard heartbeat not written {} times in a row: shard_id={}; the other shards take this one "
-                        + "for gone once its row is 15 s old", failuresInARow, channel.shardId(), e);
+                        + "for gone once its row is " + LIVE_SECONDS + " s old", failuresInARow, channel.shardId(), e);
             } else {
                 LOGGER.debug("Shard heartbeat not written: shard_id={}", channel.shardId(), e);
             }

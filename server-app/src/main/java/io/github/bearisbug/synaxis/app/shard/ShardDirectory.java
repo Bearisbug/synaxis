@@ -7,7 +7,6 @@ import com.google.gson.JsonParseException;
 import com.google.gson.Strictness;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import org.jetbrains.annotations.Nullable;
@@ -51,6 +50,8 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
     private static final int FORMAT_VERSION = 1;
     /** §9: how a {@code region_id} and a {@code gate_id} are written. */
     private static final Pattern ID = Pattern.compile("[a-z0-9][a-z0-9_-]{0,31}");
+    // The CHECKs of shard_heartbeat (V5__shard_heartbeat.sql): a channel the directory takes can always
+    // write its heartbeat row, so a change here needs a migration
     private static final int MAX_CHANNEL = 999;
     private static final int MAX_HOST_LENGTH = 253;
     private static final int MAX_PORT = 65_535;
@@ -74,6 +75,23 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
     public record Region(String regionId, SynxManifest.Bounds bounds, List<Gate> gates) {
         public Region {
             gates = List.copyOf(gates);
+        }
+
+        /**
+         * The gate whose frame holds a block. {@link ShardDirectory#load} refuses frames of one region
+         * that overlap, so a loaded region has at most one; otherwise it is the first in the order of the
+         * file.
+         *
+         * @param x the block x
+         * @param y the block y
+         * @param z the block z
+         * @return the gate, null if no frame holds the block
+         */
+        public @Nullable Gate gateAt(int x, int y, int z) {
+            for (Gate gate : gates) {
+                if (gate.frame().contains(x, y, z)) return gate;
+            }
+            return null;
         }
     }
 
@@ -173,7 +191,8 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
         return directory;
     }
 
-    private static String refusal(Path absolute) {
+    /** The prefix of a refused start over the file, {@code the shard directory <path> is not valid: }. */
+    static String refusal(Path absolute) {
         return "the shard directory " + absolute + " is not valid: ";
     }
 
@@ -211,7 +230,7 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
                 if (frame.minY() < minY || frame.maxY() > maxY) {
                     throw new IllegalArgumentException(at + ": the frame y " + frame.minY() + ".." + frame.maxY() + world);
                 }
-                final int arrivalY = (int) Math.floor(gate.arrival().y());
+                final int arrivalY = gate.arrival().blockY();
                 if (arrivalY < minY || arrivalY > maxY) {
                     throw new IllegalArgumentException(at + ": arrival y " + gate.arrival().y() + world);
                 }
@@ -222,6 +241,12 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
     /** The bounds as the design writes them, {@code min_x,min_z,max_x,max_z}. */
     private static String text(SynxManifest.Bounds bounds) {
         return bounds.minX() + "," + bounds.minZ() + "," + bounds.maxX() + "," + bounds.maxZ();
+    }
+
+    /** The blocks of a frame, {@code x min..max, y min..max, z min..max}. */
+    private static String text(Frame frame) {
+        return "x " + frame.minX() + ".." + frame.maxX() + ", y " + frame.minY() + ".." + frame.maxY() + ", z "
+                + frame.minZ() + ".." + frame.maxZ();
     }
 
     /** What is wrong in the file, the detail after the prefix of the refusal. */
@@ -280,8 +305,8 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
         final JsonElement root;
         try {
             root = JSON.read(reader);
-            if (reader.peek() != JsonToken.END_DOCUMENT) throw new Invalid("not JSON: more after the document at "
-                    + reader.getPath());
+            // In Strictness.STRICT anything after the document throws a MalformedJsonException
+            var _ = reader.peek();
         } catch (NameGivenTwice e) {
             throw new Invalid(e.getMessage() + " is given twice");
         } catch (IOException | JsonParseException e) {
@@ -475,6 +500,16 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
                 throw gate.invalid("the frame x " + frame.minX() + ".." + frame.maxX() + ", z " + frame.minZ() + ".."
                         + frame.maxZ() + " is not within " + blocks);
             }
+            // ShardGates sends a player in two frames through the first one, whichever it walked into
+            for (int k = 0; k < gates.size(); k++) {
+                final Frame other = gates.get(k).frame();
+                if (frame.minX() <= other.maxX() && other.minX() <= frame.maxX() && frame.minY() <= other.maxY()
+                        && other.minY() <= frame.maxY() && frame.minZ() <= other.maxZ()
+                        && other.minZ() <= frame.maxZ()) {
+                    throw gate.invalid("the frame " + text(frame) + " overlaps the frame " + text(other) + " of gates["
+                            + k + "] " + gates.get(k).gateId());
+                }
+            }
             final String targetRegion = gate.string("target_region");
             for (int k = 0; k < gates.size(); k++) {
                 if (gates.get(k).targetRegion().equals(targetRegion)) {
@@ -483,26 +518,28 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
                             + " would be ambiguous");
                 }
             }
-            final double[] arrival = gate.finiteNumbers("arrival", 4);
-            final String at = arrival[0] + ", " + arrival[1] + ", " + arrival[2];
-            final int arrivalX = (int) Math.floor(arrival[0]), arrivalZ = (int) Math.floor(arrival[2]);
+            final double[] numbers = gate.finiteNumbers("arrival", 4);
+            final Pos arrival = new Pos(numbers[0], numbers[1], numbers[2], (float) numbers[3], 0f);
+            // A finite double past the range of a float is an infinite yaw, which Pos wraps into NaN
+            if (!Float.isFinite(arrival.yaw())) throw gate.invalid("arrival is not 4 finite numbers");
+            final int arrivalX = arrival.blockX(), arrivalZ = arrival.blockZ();
             if (arrivalX < blockMinX || arrivalX > blockMaxX || arrivalZ < blockMinZ || arrivalZ > blockMaxZ)
-                throw gate.invalid("arrival " + at + " is not within " + blocks);
-            gates.add(new Gate(gateId, frame, targetRegion,
-                    new Pos(arrival[0], arrival[1], arrival[2], (float) arrival[3], 0f)));
+                throw gate.invalid("arrival " + arrival.x() + ", " + arrival.y() + ", " + arrival.z() + " is not within "
+                        + blocks);
+            gates.add(new Gate(gateId, frame, targetRegion, arrival));
         }
-        // Every frame of the region is known now: no arrival may stand in one of them
+        final Region region = new Region(regionId, box, gates);
+        // Every frame of the region is known now: no arrival may stand in one of them, judged by the block
+        // ShardGates judges a walk in by, or a player arriving there would be sent away at its first move
         for (int j = 0; j < gates.size(); j++) {
             final Pos arrival = gates.get(j).arrival();
-            final int x = (int) Math.floor(arrival.x()), y = (int) Math.floor(arrival.y()), z = (int) Math.floor(arrival.z());
-            for (Gate gate : gates) {
-                if (gate.frame().contains(x, y, z)) {
-                    throw fields.invalid("gates[" + j + "] " + gates.get(j).gateId() + ": arrival " + arrival.x() + ", "
-                            + arrival.y() + ", " + arrival.z() + " is inside the gate " + gate.gateId());
-                }
+            final Gate inside = region.gateAt(arrival.blockX(), arrival.blockY(), arrival.blockZ());
+            if (inside != null) {
+                throw fields.invalid("gates[" + j + "] " + gates.get(j).gateId() + ": arrival " + arrival.x() + ", "
+                        + arrival.y() + ", " + arrival.z() + " is inside the gate " + inside.gateId());
             }
         }
-        return new Region(regionId, box, gates);
+        return region;
     }
 
     private static Channel channel(JsonObject object, String where, List<Region> regions, List<Channel> before)
@@ -526,6 +563,14 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
         final String host = fields.string("host");
         if (host.isEmpty() || host.length() > MAX_HOST_LENGTH)
             throw fields.invalid("host is not 1 to " + MAX_HOST_LENGTH + " characters");
+        if (host.chars().anyMatch(Character::isWhitespace))
+            throw fields.invalid("host " + host + " is not a host name or address: it has whitespace");
+        // A host name and IPv4 have no colon, an IPv6 literal at least two: one is a port written into the host
+        if (host.indexOf(':') >= 0 && host.indexOf(':') == host.lastIndexOf(':'))
+            throw fields.invalid("host " + host + " is not a host name or address: the port goes in port");
+        // So is anything after the ] of a bracketed IPv6 literal, as in [2001:db8::7]:25601
+        if (host.startsWith("[") && host.indexOf(']') >= 0 && host.indexOf(']') < host.length() - 1)
+            throw fields.invalid("host " + host + " is not a host name or address: the port goes in port");
         final int port = fields.integer("port");
         if (port < 1 || port > MAX_PORT) throw fields.invalid("port " + port + " is not from 1 to " + MAX_PORT);
         final int capacity = fields.integer("capacity");
@@ -590,7 +635,8 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
      * The region a shard id names: what comes before its last {@code -c}.
      *
      * @param shardId a shard id, {@code <region_id>-c<channel>}
-     * @return the region id, null if the shard id is not written that way
+     * @return the region id, null if there is no {@code -c} past its first character; the channel
+     *         number after it is not checked
      */
     public static @Nullable String regionOfShard(String shardId) {
         final int separator = shardId.lastIndexOf(CHANNEL_SEPARATOR);

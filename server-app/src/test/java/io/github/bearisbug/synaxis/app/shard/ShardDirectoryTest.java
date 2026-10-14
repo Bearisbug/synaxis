@@ -99,7 +99,7 @@ public class ShardDirectoryTest {
         assertEquals("r1", ShardDirectory.load(resource(ShardDirectory.FILE_NAME), "r1-c1").ownRegion().regionId());
     }
 
-    /** §19: the eight bad versions, of which the last one only fails against the map release. */
+    /** §19: eight of the nine bad versions, of which the last one only fails against the map release. */
     @Test
     public void theBadVersionsOfTheDesignAreRefusedNamingWhatIsWrong() {
         final String overlapping = refused(resource("overlapping-bounds.json"));
@@ -250,6 +250,46 @@ public class ShardDirectoryTest {
     public void aGateLeadsToAnotherRegionOfTheDirectory() throws IOException {
         assertEquals("regions[1] r1: gates[0] r1-west: target_region r9 is not a region of the directory",
                 refused("\"target_region\": \"r0\"", "\"target_region\": \"r9\""));
+    }
+
+    /** §9: the yaw is a float, so a finite number past the range of a float is no finite yaw. */
+    @Test
+    public void aYawPastTheRangeOfAFloatIsRefused() throws IOException {
+        assertEquals("regions[0] r0: gates[0] r0-east: arrival is not 4 finite numbers",
+                refused("[2024.5, 200.0, 1024.5, 90.0]", "[2024.5, 200.0, 1024.5, 1e39]"));
+        assertEquals("regions[0] r0: gates[0] r0-east: arrival is not 4 finite numbers",
+                refused("[2024.5, 200.0, 1024.5, 90.0]", "[2024.5, 200.0, 1024.5, -1e39]"));
+    }
+
+    /**
+     * The example with a second gate of r0, r0-south to a region r2, whose frame takes x 2032 to 2047 like
+     * r0-east, and z from {@code minZ} to {@code maxZ}.
+     */
+    private Path withSecondGate(int minZ, int maxZ) throws IOException {
+        final String east = "\"arrival\": [2024.5, 200.0, 1024.5, 90.0]}";
+        final String west = "\"arrival\": [2071.5, 200.0, 1024.5, -90.0]}]}";
+        final String example = example();
+        assertTrue(example.contains(east) && example.contains(west));
+        final Path file = directory.resolve(ShardDirectory.FILE_NAME);
+        Files.writeString(file, example
+                .replace(east, east + ", {\"gate_id\": \"r0-south\", \"min\": [2032, 0, " + minZ + "], "
+                        + "\"max\": [2047, 255, " + maxZ + "], \"target_region\": \"r2\", "
+                        + "\"arrival\": [2024.5, 200.0, 1040.5, 90.0]}")
+                .replace(west, west + ", {\"region_id\": \"r2\", \"bounds\": {\"min_x\": 0, \"min_z\": 128, "
+                        + "\"max_x\": 127, \"max_z\": 255}, \"gates\": []}"));
+        return file;
+    }
+
+    /** §19: a block in two frames would send a player through the first one, whichever it walked into. */
+    @Test
+    public void theFramesOfARegionDoNotOverlap() throws IOException {
+        final ShardDirectory.Region r0 = ShardDirectory.load(withSecondGate(1032, 1047), "r0-c1").ownRegion();
+        assertEquals("r0-east", Objects.requireNonNull(r0.gateAt(2040, 70, 1031)).gateId());
+        assertEquals("r0-south", Objects.requireNonNull(r0.gateAt(2040, 70, 1032)).gateId());
+        assertNull(r0.gateAt(2031, 70, 1031));
+
+        assertEquals("regions[0] r0: gates[1] r0-south: the frame x 2032..2047, y 0..255, z 1031..1046 overlaps the "
+                + "frame x 2032..2047, y 0..255, z 1016..1031 of gates[0] r0-east", refused(withSecondGate(1031, 1046)));
     }
 
     @Test

@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,7 +40,8 @@ import org.slf4j.LoggerFactory;
 public final class FarViewCache {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("synaxis");
-    private static final String PART = ".hfp.part";
+    private static final String PACK = ".hfp";
+    private static final String PART = PACK + ".part";
 
     /** The completion marker in a library directory. */
     public static final String MARKER = "synaxis-library.json";
@@ -75,7 +77,7 @@ public final class FarViewCache {
      * @return {@code packs/<sha256>.hfp}
      */
     public Path pack(String sha256) {
-        return root.resolve("packs").resolve(sha256 + ".hfp");
+        return root.resolve("packs").resolve(sha256 + PACK);
     }
 
     /**
@@ -85,7 +87,17 @@ public final class FarViewCache {
      * @return {@code packs/<sha256>.hfp.part}
      */
     public Path part(String sha256) {
-        return root.resolve("packs").resolve(sha256 + ".hfp.part");
+        return root.resolve("packs").resolve(sha256 + PART);
+    }
+
+    /**
+     * The lower case hex of an announced object's digest, the name {@link #pack} and {@link #part} take.
+     *
+     * @param tile the object
+     * @return 64 hex digits
+     */
+    public static String hex(FarViewAnnouncement.Tile tile) {
+        return HexFormat.of().formatHex(tile.sha256());
     }
 
     /**
@@ -116,7 +128,7 @@ public final class FarViewCache {
         ordered.sort(Comparator.comparingInt(FarViewAnnouncement.Tile::tileX).thenComparingInt(FarViewAnnouncement.Tile::tileZ));
         for (FarViewAnnouncement.Tile tile : ordered) {
             text.append(tile.tileX()).append(' ').append(tile.tileZ()).append(' ').append(tile.layer()).append(' ')
-                    .append(HexFormat.of().formatHex(tile.sha256())).append('\n');
+                    .append(hex(tile)).append('\n');
         }
         return HexFormat.of().formatHex(sha256(text.toString().getBytes(StandardCharsets.UTF_8))).substring(0, 16);
     }
@@ -146,7 +158,7 @@ public final class FarViewCache {
          * @return its marker form
          */
         public static MarkerTile of(FarViewAnnouncement.Tile tile) {
-            return new MarkerTile(tile.tileX(), tile.tileZ(), tile.layer(), HexFormat.of().formatHex(tile.sha256()));
+            return new MarkerTile(tile.tileX(), tile.tileZ(), tile.layer(), hex(tile));
         }
     }
 
@@ -275,7 +287,7 @@ public final class FarViewCache {
      * @return those whose object is missing, in announcement order
      */
     public List<FarViewAnnouncement.Tile> missing(List<FarViewAnnouncement.Tile> tiles) {
-        return tiles.stream().filter(tile -> !Files.isRegularFile(pack(HexFormat.of().formatHex(tile.sha256())))).toList();
+        return tiles.stream().filter(tile -> !Files.isRegularFile(pack(hex(tile)))).toList();
     }
 
     /**
@@ -307,8 +319,8 @@ public final class FarViewCache {
     /**
      * Removes every {@code .part}, then holds the cache to {@code limit}: while it is over, removes the
      * library least recently used (one without a marker counts as the oldest) other than {@code inUse},
-     * then every object no remaining marker names. It runs once a bake succeeded, when this connection
-     * has nothing downloading.
+     * then every object no remaining marker names. It runs after every bake that was not cancelled, a
+     * failed one too, when this connection has nothing downloading.
      *
      * @param limit the bytes the cache may hold
      * @param inUse the key of the library this connection uses, never removed
@@ -316,35 +328,40 @@ public final class FarViewCache {
      * @throws IOException if the cache cannot be walked
      */
     public Cleaned clean(long limit, String inUse) throws IOException {
-        final List<String> partsDropped = new ArrayList<>();
-        for (Path part : parts()) {
-            if (delete(part)) partsDropped.add(sha256Of(part));
-        }
-        final List<String> libraries = new ArrayList<>();
-        final List<String> packs = new ArrayList<>();
-        long size = size();
-        while (size > limit) {
-            // Every library but the one in use, least recently used first; one without a marker before any with one
-            final List<String> candidates = new ArrayList<>();
-            final Path dh = root.resolve("dh");
-            if (Files.isDirectory(dh)) {
-                try (Stream<Path> dirs = Files.list(dh)) {
-                    for (Path dir : dirs.filter(Files::isDirectory).toList()) {
-                        final String key = dir.getFileName().toString();
-                        if (!key.equals(inUse)) candidates.add(key);
+        try {
+            final List<String> partsDropped = new ArrayList<>();
+            for (Path part : parts()) {
+                if (delete(part)) partsDropped.add(sha256Of(part));
+            }
+            final List<String> libraries = new ArrayList<>();
+            final List<String> packs = new ArrayList<>();
+            long size = size();
+            while (size > limit) {
+                // Every library but the one in use, least recently used first; one without a marker before any with one
+                final List<String> candidates = new ArrayList<>();
+                final Path dh = root.resolve("dh");
+                if (Files.isDirectory(dh)) {
+                    try (Stream<Path> dirs = Files.list(dh)) {
+                        for (Path dir : dirs.filter(Files::isDirectory).toList()) {
+                            final String key = dir.getFileName().toString();
+                            if (!key.equals(inUse)) candidates.add(key);
+                        }
                     }
                 }
+                if (candidates.isEmpty()) break;
+                candidates.sort(Comparator.comparingLong((String key) -> marker(key).map(Marker::lastUsed).orElse(Long.MIN_VALUE))
+                        .thenComparing(Comparator.naturalOrder()));
+                final String oldest = candidates.getFirst();
+                deleteTree(library(oldest));
+                libraries.add(oldest);
+                packs.addAll(dropUnnamedPacks());
+                size = size();
             }
-            if (candidates.isEmpty()) break;
-            candidates.sort(Comparator.comparingLong((String key) -> marker(key).map(Marker::lastUsed).orElse(Long.MIN_VALUE))
-                    .thenComparing(Comparator.naturalOrder()));
-            final String oldest = candidates.getFirst();
-            deleteTree(library(oldest));
-            libraries.add(oldest);
-            packs.addAll(dropUnnamedPacks());
-            size = size();
+            return new Cleaned(List.copyOf(libraries), List.copyOf(packs), List.copyOf(partsDropped), size);
+        } catch (UncheckedIOException e) {
+            // Files.walk and Files.list report a file they cannot read on their way in this form
+            throw e.getCause();
         }
-        return new Cleaned(List.copyOf(libraries), List.copyOf(packs), List.copyOf(partsDropped), size);
     }
 
     /**
@@ -419,8 +436,8 @@ public final class FarViewCache {
         try (Stream<Path> files = Files.list(packs)) {
             for (Path file : files.sorted().toList()) {
                 final String name = file.getFileName().toString();
-                if (!name.endsWith(".hfp")) continue;
-                final String sha256 = name.substring(0, name.length() - ".hfp".length());
+                if (!name.endsWith(PACK)) continue;
+                final String sha256 = name.substring(0, name.length() - PACK.length());
                 if (named.contains(sha256)) continue;
                 Files.deleteIfExists(file);
                 dropped.add(sha256);

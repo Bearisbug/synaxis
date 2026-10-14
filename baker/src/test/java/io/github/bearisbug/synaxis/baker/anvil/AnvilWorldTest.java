@@ -7,11 +7,13 @@ import io.github.bearisbug.synaxis.world.biome.Biome;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.BinaryTagTypes;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
+import net.kyori.adventure.nbt.DoubleBinaryTag;
 import net.kyori.adventure.nbt.ListBinaryTag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -19,6 +21,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
@@ -223,6 +226,22 @@ public class AnvilWorldTest {
         }
     }
 
+    /**
+     * Vanilla only upgrades, so a chunk a later Minecraft saved cannot go back to 26.2: the fix is a backup.
+     */
+    @Test
+    public void rejectsALaterDataVersionAndNamesTheBackup() throws IOException {
+        Path world = RegionFixtures.copyWorld(temp);
+        RegionFixtures.rewriteChunk(world.resolve(RegionFixtures.REGION), 0, 0, chunk ->
+                chunk.putInt("DataVersion", 5000));
+        try (AnvilWorld anvil = open(world)) {
+            AnvilSourceException error = assertThrows(AnvilSourceException.class, () -> anvil.readChunk(0, 0));
+            assertTrue(error.getMessage().contains("5000") && error.getMessage().contains("last opened with 26.2"),
+                    error.getMessage());
+            assertFalse(error.getMessage().contains("--forceUpgrade"), error.getMessage());
+        }
+    }
+
     @Test
     public void rejectsEntitiesOfAnotherDataVersion() throws IOException {
         Path world = RegionFixtures.copyWorld(temp);
@@ -231,6 +250,36 @@ public class AnvilWorldTest {
         try (AnvilWorld anvil = open(world)) {
             AnvilSourceException error = assertThrows(AnvilSourceException.class, () -> anvil.readChunk(0, 0));
             assertTrue(error.getMessage().contains("entities"), error.getMessage());
+        }
+    }
+
+    /**
+     * The window check reads the y of {@code Pos} and a shard spawns the entity at {@code Pos} turned by
+     * {@code Rotation}, so a static entity without them is refused with its chunk instead of failing later.
+     */
+    @Test
+    public void rejectsAStaticEntityWithoutThreeFinitePosOrTwoRotation() throws IOException {
+        List<Map.Entry<String, UnaryOperator<CompoundBinaryTag>>> edits = List.of(
+                Map.entry("no-pos", entity -> entity.remove("Pos")),
+                Map.entry("two-pos", entity -> entity.put("Pos", ListBinaryTag.from(List.of(
+                        DoubleBinaryTag.doubleBinaryTag(8.5), DoubleBinaryTag.doubleBinaryTag(-59.0))))),
+                Map.entry("nan-pos", entity -> entity.put("Pos", ListBinaryTag.from(List.of(DoubleBinaryTag.doubleBinaryTag(8.5),
+                        DoubleBinaryTag.doubleBinaryTag(Double.NaN), DoubleBinaryTag.doubleBinaryTag(8.5))))),
+                Map.entry("no-rotation", entity -> entity.remove("Rotation")));
+        for (Map.Entry<String, UnaryOperator<CompoundBinaryTag>> edit : edits) {
+            Path world = RegionFixtures.copyWorld(Files.createDirectory(temp.resolve(edit.getKey())));
+            RegionFixtures.rewriteChunk(world.resolve(RegionFixtures.ENTITIES), 0, 0, chunk ->
+                    chunk.put("Entities", ListBinaryTag.from(chunk.getList("Entities", BinaryTagTypes.COMPOUND).stream()
+                            .map(CompoundBinaryTag.class::cast)
+                            .map(entity -> entity.getString("id").equals("minecraft:text_display")
+                                    ? edit.getValue().apply(entity) : entity)
+                            .toList())));
+            try (AnvilWorld anvil = open(world)) {
+                AnvilSourceException error = assertThrows(AnvilSourceException.class, () -> anvil.readChunk(0, 0),
+                        edit.getKey());
+                assertTrue(error.getMessage().contains("chunk 0, 0")
+                        && error.getMessage().contains("minecraft:text_display"), error.getMessage());
+            }
         }
     }
 
@@ -402,6 +451,80 @@ public class AnvilWorldTest {
         }
     }
 
+    /**
+     * A damaged entry, as a copy taken while vanilla was writing leaves: a broken zlib stream, an uncompressed tag cut
+     * short (an {@code EOFException} without a message) and an unknown tag id (adventure's
+     * {@code IllegalArgumentException}) all name the chunk and the region file.
+     */
+    @Test
+    public void rejectsAnEntryThatDoesNotDecodeAndNamesItsChunkAndFile() throws IOException {
+        List<Map.Entry<String, byte[]>> entries = List.of(
+                Map.entry("zlib", new byte[]{2, 1, 2, 3, 4}),
+                Map.entry("cut", new byte[]{3, 10, 0, 0, 1, 0, 1, 'b'}),
+                Map.entry("tag", new byte[]{3, 10, 0, 0, 99}));
+        for (Map.Entry<String, byte[]> entry : entries) {
+            Path world = RegionFixtures.copyWorld(Files.createDirectory(temp.resolve(entry.getKey())));
+            writeEntry(world.resolve(RegionFixtures.REGION), entry.getValue());
+            try (AnvilWorld anvil = open(world)) {
+                IOException error = assertThrows(IOException.class, () -> anvil.readChunk(0, 0), entry.getKey());
+                assertTrue(String.valueOf(error.getMessage()).contains("chunk 0, 0 of ")
+                        && error.getMessage().contains("r.0.0.mca does not decode"), entry.getKey() + ": " + error);
+            }
+        }
+    }
+
+    /**
+     * Twelve bytes declare a long array of 128 MiB: the reader refuses the length before it allocates the array.
+     */
+    @Test
+    public void refusesAnEntryWhoseNbtGoesPastTheReadLimit() throws IOException {
+        Path world = RegionFixtures.copyWorld(temp);
+        writeEntry(world.resolve(RegionFixtures.REGION), new byte[]{3, 10, 0, 0, 12, 0, 1, 'd', 1, 0, 0, 0});
+        try (AnvilWorld anvil = open(world)) {
+            IOException error = assertThrows(IOException.class, () -> anvil.readChunk(0, 0));
+            assertTrue(String.valueOf(error.getMessage()).contains("chunk 0, 0 of ")
+                    && error.getMessage().contains("67108864"), String.valueOf(error));
+        }
+    }
+
+    /**
+     * An oversized chunk vanilla moved to {@code c.<x>.<z>.mcc} and an LZ4 chunk each name what to do about them.
+     */
+    @Test
+    public void namesTheFixForAnOversizedOrLz4Chunk() throws IOException {
+        Path oversized = RegionFixtures.copyWorld(Files.createDirectory(temp.resolve("mcc")));
+        writeEntry(oversized.resolve(RegionFixtures.REGION), new byte[]{(byte) 0x82});
+        try (AnvilWorld anvil = open(oversized)) {
+            IOException error = assertThrows(IOException.class, () -> anvil.readChunk(0, 0));
+            assertTrue(error.getMessage().contains("c.0.0.mcc") && error.getMessage().contains("over 1 MiB"),
+                    error.getMessage());
+        }
+        Path lz4 = RegionFixtures.copyWorld(Files.createDirectory(temp.resolve("lz4")));
+        writeEntry(lz4.resolve(RegionFixtures.REGION), new byte[]{4, 0});
+        try (AnvilWorld anvil = open(lz4)) {
+            IOException error = assertThrows(IOException.class, () -> anvil.readChunk(0, 0));
+            assertTrue(error.getMessage().contains("LZ4") && error.getMessage().contains("--recreateRegionFiles"),
+                    error.getMessage());
+        }
+    }
+
+    /**
+     * Points chunk 0, 0 of {@code regionFile} at an entry appended to it: the compression byte and the data in
+     * {@code entry}, after the length vanilla writes.
+     */
+    private static void writeEntry(Path regionFile, byte[] entry) throws IOException {
+        final int sector = 4096;
+        byte[] file = Files.readAllBytes(regionFile);
+        int firstSector = (file.length + sector - 1) / sector;
+        int sectors = (4 + entry.length + sector - 1) / sector;
+        ByteBuffer out = ByteBuffer.allocate((firstSector + sectors) * sector);
+        out.put(file);
+        out.putInt(0, (firstSector << 8) | sectors);
+        out.position(firstSector * sector);
+        out.putInt(entry.length).put(entry);
+        Files.write(regionFile, out.array());
+    }
+
     private static CompoundBinaryTag editBlockEntities(CompoundBinaryTag chunk,
                                                        UnaryOperator<List<CompoundBinaryTag>> edit) {
         List<CompoundBinaryTag> blockEntities = chunk.getList("block_entities", BinaryTagTypes.COMPOUND).stream()
@@ -454,6 +577,24 @@ public class AnvilWorldTest {
         Files.copy(RegionFixtures.world().resolve(RegionFixtures.REGION), legacy.resolve("region/r.0.0.mca"));
         IOException error = assertThrows(IOException.class, () -> open(legacy));
         assertTrue(error.getMessage().contains("dimensions"), error.getMessage());
+    }
+
+    /**
+     * Only a save in the pre-26.1 layout is told to upgrade: a directory one level off and a save without the
+     * dimension each name their own fix.
+     */
+    @Test
+    public void refusesADirectoryThatIsNotASaveOrLacksTheDimension() throws IOException {
+        Path notASave = Files.createDirectory(temp.resolve("saves"));
+        IOException error = assertThrows(IOException.class, () -> open(notASave));
+        assertTrue(error.getMessage().contains("is not a save, give the directory that holds level.dat"),
+                error.getMessage());
+
+        Path noDimension = Files.createDirectory(temp.resolve("map"));
+        Files.write(noDimension.resolve("level.dat"), new byte[0]);
+        error = assertThrows(IOException.class, () -> open(noDimension));
+        assertTrue(error.getMessage().contains("has not generated minecraft:overworld"), error.getMessage());
+        assertFalse(error.getMessage().contains("upgraded"), error.getMessage());
     }
 
     private static byte[] sha256(Path file) throws IOException, NoSuchAlgorithmException {

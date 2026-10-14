@@ -11,8 +11,9 @@ import org.jetbrains.annotations.Nullable;
  * The baker's own test map, {@code --source generator:synthetic:<seed>}: 4,096 × 4,096 blocks (chunks 0 to 255
  * on both axes), 256 high from y 0, the natural terrain of the world benchmark ({@code LargeWorldBench}'s
  * {@code SyntheticTerrain}): value noise hills and mountains, bedrock, stone with ores and noise tunnels, dirt,
- * grass, sand beaches, water up to y 62 and an oak tree on about one column in 256. A pure function of the
- * position and the seed. Each section is written with {@code setAllRelative}, so the generator hands the baker
+ * grass, sand beaches, water up to y 62 and about one oak tree per two chunks of land (one in 256 of the columns
+ * at least two blocks from the chunk edge with the surface at y 64 or higher). A pure function of the position
+ * and the seed. Each section is written with {@code setAllRelative}, so the generator hands the baker
  * direct palettes, the case its palette canonicalisation exists for.
  */
 public final class SyntheticTerrain implements Generator, BakeGeneratorProvider {
@@ -21,6 +22,11 @@ public final class SyntheticTerrain implements Generator, BakeGeneratorProvider 
     public static final int HEIGHT = 256;
 
     private static final int SEA_LEVEL = 62;
+    /**
+     * The y arguments of {@link #hash} for a column's tree and seabed rolls: fixed salts, not heights; the benchmark
+     * terrain's values.
+     */
+    private static final int TREE_ROLL_Y = 1, SEABED_ROLL_Y = 3;
 
     private final long seed;
 
@@ -74,7 +80,7 @@ public final class SyntheticTerrain implements Generator, BakeGeneratorProvider 
             for (int x = 2; x < 14; x++) {
                 final int s = surface[z << 4 | x];
                 if (s <= SEA_LEVEL + 1) continue;
-                if ((hash(chunkMinX + x, 1, chunkMinZ + z) & 255) != 0) continue;
+                if ((hash(chunkMinX + x, TREE_ROLL_Y, chunkMinZ + z) & 255) != 0) continue;
                 placeTree(unit, chunkMinX + x, s + 1, chunkMinZ + z);
             }
         }
@@ -84,7 +90,7 @@ public final class SyntheticTerrain implements Generator, BakeGeneratorProvider 
         if (y > surface) return y <= SEA_LEVEL ? Block.WATER : Block.AIR;
         if (y == 0 || (y < 5 && Math.floorMod(hash(x, y, z), 5) >= y)) return Block.BEDROCK;
         if (y == surface) {
-            if (surface < SEA_LEVEL) return Math.floorMod(hash(x, 3, z), 3) == 0 ? Block.GRAVEL : Block.SAND;
+            if (surface < SEA_LEVEL) return Math.floorMod(hash(x, SEABED_ROLL_Y, z), 3) == 0 ? Block.GRAVEL : Block.SAND;
             return surface <= SEA_LEVEL + 2 ? Block.SAND : Block.GRASS_BLOCK;
         }
         if (y > surface - 4) return surface <= SEA_LEVEL + 2 ? Block.SAND : Block.DIRT;

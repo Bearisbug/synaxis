@@ -3,9 +3,10 @@ package io.github.bearisbug.synaxis.app.shard;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.bearisbug.synaxis.adventure.EngineAdventure;
 import io.github.bearisbug.synaxis.app.store.RedisLink;
+import io.github.bearisbug.synaxis.coordinate.BlockVec;
 import io.github.bearisbug.synaxis.coordinate.CoordConversion;
-import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.event.player.PlayerBlockBreakEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerBlockPlaceEvent;
 import io.github.bearisbug.synaxis.instance.Chunk;
@@ -23,13 +24,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -62,8 +66,10 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
     static final Duration SYNC_INTERVAL = Duration.ofSeconds(60);
     /** The governed cells the check after a read looks at in one tick. */
     static final int CHECKED_PER_TICK = 1_024;
-    /** The failed reads in a row after which each one is a warning. */
+    /** The failed reads in a row from which on each one is a warning: the 5th and every one after it. */
     static final int READ_FAILURES_WARNED = 5;
+    /** The levels of arrays and objects a value may nest: Gson's {@code JsonReader} reads no deeper. */
+    static final int MAX_NESTING = 255;
     /** The waits before the 3 retries of the read at start. */
     private static final List<Duration> RETRY_BACKOFF = List.of(Duration.ofSeconds(1), Duration.ofSeconds(2),
             Duration.ofSeconds(4));
@@ -80,43 +86,29 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
     public record Stats(int replayed, long replayMillis, long conflicts) {
     }
 
-    /** A cell of the world, written {@code x y z}. */
-    private record Cell(int x, int y, int z) {
-        int chunkX() {
-            return CoordConversion.globalToChunk(x);
-        }
-
-        int chunkZ() {
-            return CoordConversion.globalToChunk(z);
-        }
-
-        @Override
-        public String toString() {
-            return x + " " + y + " " + z;
-        }
-    }
-
     /** What a governed cell is to hold, and the key that governs it. */
     private record Target(String key, Block block) {
     }
 
     /**
-     * One application of a value: the cells of the region it sets and the chunks they are in. It owns
-     * the tickets on those chunks, compared by identity, so two applications of the same value hold a
-     * ticket each.
+     * One application of a value: the cells of the region it sets, the chunks they are in and how many
+     * cells it left alone outside. It owns the tickets on those chunks, compared by identity, so two
+     * applications of the same value hold a ticket each.
      */
     private static final class Application {
         final String key;
         final JsonElement value;
         final long version;
-        final Map<Cell, Block> cells;
+        final Map<BlockVec, Block> cells;
+        final int outside;
         final long[] chunks;
 
-        Application(String key, JsonElement value, long version, Map<Cell, Block> cells) {
+        Application(String key, JsonElement value, long version, Map<BlockVec, Block> cells, int outside) {
             this.key = key;
             this.value = value;
             this.version = version;
             this.cells = cells;
+            this.outside = outside;
             this.chunks = cells.keySet().stream().mapToLong(cell -> CoordConversion.chunkIndex(cell.chunkX(), cell.chunkZ()))
                     .distinct().toArray();
         }
@@ -131,22 +123,22 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
     private final List<Duration> retryBackoff;
     private final Map<String, FlagApplier> appliers = new ConcurrentHashMap<>();
     // Written by the thread that applies (the startup thread, then the tick scheduling thread), read by any
-    private final Map<String, FlagValue> applied = new ConcurrentHashMap<>();
-    private final Map<String, Map<Cell, Block>> governedByKey = new ConcurrentHashMap<>();
-    private final Map<Cell, Target> governed = new ConcurrentHashMap<>();
+    private final Map<String, Application> applied = new ConcurrentHashMap<>();
+    private final Map<BlockVec, Target> governed = new ConcurrentHashMap<>();
     private final AtomicLong conflicts = new AtomicLong();
     private final AtomicInteger readFailures = new AtomicInteger();
     private final AtomicBoolean syncing = new AtomicBoolean();
     private final AtomicBoolean closed = new AtomicBoolean();
     private final LogBudget conflictLog = new LogBudget(LOGGER, "world flag conflicts");
     private final LogBudget outsideLog = new LogBudget(LOGGER, "world flag applications with cells outside the region");
+    private final LogBudget overlapLog = new LogBudget(LOGGER, "world flag applications taking cells of another flag");
     private final LogBudget applierLog = new LogBudget(LOGGER, "failed world flag appliers");
     private final LogBudget syncLog = new LogBudget(LOGGER, "world flag sync failures");
     private final LogBudget replayLog = new LogBudget(LOGGER, "world flag replay warnings");
     // The startup thread only, before the process ticks
     private @Nullable List<WorldFlagStore.Row> loaded;
     private long loadNanos;
-    private volatile boolean replayed;
+    private volatile boolean replayStarted;
     private volatile int replayedKeys;
     private volatile long replayMillis;
     private volatile @Nullable InstanceContainer instance;
@@ -180,35 +172,36 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
 
     @Override
     public void register(String key, FlagApplier applier) {
-        if (replayed) throw new IllegalStateException("world flag " + key + " registered after the replay");
+        if (replayStarted) throw new IllegalStateException("world flag " + key + " registered after the replay");
         appliers.put(Objects.requireNonNull(key, "key"), Objects.requireNonNull(applier, "applier"));
     }
 
     @Override
     public @Nullable FlagValue get(String key) {
-        return applied.get(key);
+        final Application last = applied.get(key);
+        return last == null ? null : new FlagValue(last.value.deepCopy(), last.version);
     }
 
     /**
      * {@inheritDoc}
      * <p>
-     * Written, the value is applied here and announced to the other channels; a message that is lost
-     * is made up for by their next read of every flag.
+     * Written, the value is handed to the application here and announced to the other channels: its chunks
+     * load, then a later tick sets the blocks, so {@link #get} gives the new value only from that tick on.
+     * A message that is lost is made up for by their next read of every flag.
      */
     @Override
     public CompletableFuture<FlagWrite> set(String key, JsonElement value, long expectedVersion) {
-        final CompletableFuture<FlagWrite> result = new CompletableFuture<>();
-        Thread.ofVirtual().name("Syn-WorldFlag-Write").start(() -> {
-            try {
-                result.complete(write(key, value, expectedVersion));
-            } catch (RuntimeException e) {
-                result.completeExceptionally(e);
-            }
-        });
-        return result;
+        final JsonElement copy = value.deepCopy();
+        return CompletableFuture.supplyAsync(() -> write(key, copy, expectedVersion),
+                task -> Thread.ofVirtual().name("Syn-WorldFlag-Write").start(task));
     }
 
     private FlagWrite write(String key, JsonElement value, long expectedVersion) {
+        // PostgreSQL takes a deeper jsonb, and then every read of the region's flags fails on it
+        if (nestedPast(value, MAX_NESTING)) {
+            return new FlagWrite.Failed("the value of world flag " + key + " nests arrays and objects deeper than "
+                    + MAX_NESTING + " levels, which a read cannot parse back");
+        }
         try {
             final boolean written = expectedVersion == 0 ? store.insert(key, value) : store.update(key, value, expectedVersion);
             if (!written) {
@@ -265,8 +258,10 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
     /**
      * Applies what {@link #load} read to the map instance, on the calling thread, before the process
      * ticks: after the instance is built, before the world border, the spawn point and the bind.
-     * Reads no database and refuses nothing. A key without an applier, or whose applier throws, keeps
-     * the blocks the map and the overlay give it. No conflict is counted: there is no earlier value.
+     * Reads no database and refuses nothing. A key without an applier keeps the blocks the map and the
+     * overlay give it; one whose applier or block handlers throw, or whose chunks do not load, may keep
+     * some of them, and is applied again by the first read of every flag after {@link #start}. No
+     * conflict is counted: there is no earlier value.
      *
      * @param instance the map instance
      */
@@ -274,10 +269,12 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
         final List<WorldFlagStore.Row> rows = this.loaded;
         if (rows == null) throw new IllegalStateException("the world flags are replayed before they are read");
         final long started = System.nanoTime();
-        this.replayed = true;
+        this.replayStarted = true;
         this.instance = instance;
         final List<String> unregistered = new ArrayList<>();
         final List<String> failed = new ArrayList<>();
+        final List<String> outside = new ArrayList<>();
+        final List<String> taken = new ArrayList<>();
         RuntimeException failure = null;
         int count = 0;
         for (WorldFlagStore.Row row : rows) {
@@ -286,25 +283,30 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
                 unregistered.add(row.key());
                 continue;
             }
-            final Application application;
             try {
-                application = application(instance, row.key(), row.value(), row.version(), applier);
+                final Application application = application(instance, row.key(), row.value(), row.version(), applier);
+                if (application.outside > 0) outside.add(row.key() + " " + application.outside + " cells outside");
+                // No ticket: chunks unload once a tick, and the process does not tick yet
+                loadChunks(instance, application);
+                setBlocks(instance, application);
+                taken.addAll(record(application));
+                count++;
             } catch (RuntimeException e) {
                 failed.add(row.key());
                 if (failure == null) failure = e;
-                continue;
             }
-            load(instance, application);
-            setBlocks(instance, application);
-            record(application);
-            count++;
         }
         if (!unregistered.isEmpty()) {
             replayLog.warn("World flags without an applier keep the blocks of the map and the overlay: {}", unregistered);
         }
+        if (!outside.isEmpty()) {
+            outsideLog.warn("Replayed world flags ask for cells outside region {} or the world height, they are left "
+                    + "alone: {}", regionId, outside);
+        }
+        warnTaken(taken);
         if (failure != null) {
-            applierLog.error(failure, "The appliers of world flags {} failed, they keep the blocks of the map and the overlay",
-                    failed);
+            applierLog.error(failure, "The world flags {} failed in the replay, the first read of every flag after the "
+                    + "start applies them again", failed);
         }
         this.loaded = null;
         this.replayedKeys = count;
@@ -313,7 +315,7 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
 
     /**
      * Protects the governed cells from the players, subscribes to the region's Redis channel and
-     * schedules the read of every flag each 60 s; step (5) of {@code Main}.
+     * schedules the read of every flag, on the next tick and then each 60 s; step (5) of {@code Main}.
      *
      * @param instance the map instance
      */
@@ -321,18 +323,15 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
         this.instance = instance;
         instance.eventNode()
                 .addListener(PlayerBlockBreakEvent.class, event -> {
-                    if (governs(event.getBlockPosition())) event.setCancelled(true);
+                    if (governed.containsKey(event.getBlockPosition())) event.setCancelled(true);
                 })
                 .addListener(PlayerBlockPlaceEvent.class, event -> {
-                    if (governs(event.getBlockPosition())) event.setCancelled(true);
+                    if (governed.containsKey(event.getBlockPosition())) event.setCancelled(true);
                 });
         redis.listenWorldFlags(channel, this::received);
-        this.syncTask = instance.process().scheduler().buildTask(this::syncInBackground)
-                .delay(SYNC_INTERVAL).repeat(SYNC_INTERVAL).schedule();
-    }
-
-    private boolean governs(Point position) {
-        return governed.containsKey(new Cell(position.blockX(), position.blockY(), position.blockZ()));
+        // A first read on the next tick: what another channel wrote after the read at start and before
+        // the subscription is neither in the replay nor in a message
+        this.syncTask = instance.process().scheduler().buildTask(this::syncInBackground).repeat(SYNC_INTERVAL).schedule();
     }
 
     /** Returns what the flags did so far. */
@@ -340,7 +339,10 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
         return new Stats(replayedKeys, replayMillis, conflicts.get());
     }
 
-    /** A message of the region's Redis channel: the key is read again if its version is new here. */
+    /**
+     * A message of the region's Redis channel: the key is read again if it has an applier here and its
+     * version is new here.
+     */
     private void received(String message) {
         if (closed.get()) return;
         final String key;
@@ -383,9 +385,15 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
         sync();
     }
 
+    /** Whether the read every 60 s is still scheduled, for the tests. */
+    boolean syncScheduled() {
+        final Task task = this.syncTask;
+        return task != null && task.isAlive();
+    }
+
     /**
      * The read every 60 s: applies every flag whose version is new here, then checks the governed
-     * cells of the loaded chunks from the next tick on.
+     * cells of the loaded chunks from the next tick on, chunk by chunk.
      */
     private void sync() {
         final List<WorldFlagStore.Row> rows;
@@ -398,7 +406,10 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
         readFailures.set(0);
         for (WorldFlagStore.Row row : rows) apply(row.key(), row.value(), row.version());
         final InstanceContainer instance = this.instance;
-        final List<Cell> cells = List.copyOf(governed.keySet());
+        // By chunk, sorted here and not on the tick: the cells a tick checks are in as few chunks as can be,
+        // each of which may have its segment ① decoded to read a block
+        final List<BlockVec> cells = governed.keySet().stream()
+                .sorted(Comparator.comparingInt(BlockVec::chunkX).thenComparingInt(BlockVec::chunkZ)).toList();
         if (instance == null || cells.isEmpty() || closed.get()) return;
         instance.process().scheduler().scheduleNextTick(() -> check(instance, cells, 0));
     }
@@ -414,30 +425,30 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
     /**
      * Sets the governed cells of loaded chunks that hold something else ({@link SynxChunk#sameBlock}) back
      * to their target, at most {@value #CHECKED_PER_TICK} a tick, each a conflict. On the tick scheduling
-     * thread.
+     * thread; a block handler that throws ends this tick's cells, not the ticks after it.
      */
-    private void check(InstanceContainer instance, List<Cell> cells, int from) {
+    private void check(InstanceContainer instance, List<BlockVec> cells, int from) {
         if (closed.get()) return;
         final int to = Math.min(cells.size(), from + CHECKED_PER_TICK);
-        SynxChunk.asWorldFlag(() -> {
-            for (int i = from; i < to; i++) {
-                final Cell cell = cells.get(i);
-                final Target target = governed.get(cell);
-                if (target == null) continue;
-                final Chunk chunk = instance.getChunk(cell.chunkX(), cell.chunkZ());
-                if (chunk == null || chunk.isReadOnly()) continue;
-                final Block now = instance.getBlock(cell.x(), cell.y(), cell.z());
-                if (SynxChunk.sameBlock(now, target.block())) continue;
-                conflict(target.key(), cell, now, target.block());
-                instance.setBlock(cell.x(), cell.y(), cell.z(), target.block());
-            }
-        });
-        if (to < cells.size()) instance.process().scheduler().scheduleNextTick(() -> check(instance, cells, to));
+        try {
+            SynxChunk.asWorldFlag(() -> {
+                for (int i = from; i < to; i++) {
+                    final BlockVec cell = cells.get(i);
+                    final Target target = governed.get(cell);
+                    // What a cell is held to is also what was applied to it last
+                    if (target != null) setCell(instance, target.key(), cell, target.block(), target.block());
+                }
+            });
+        } finally {
+            if (to < cells.size()) instance.process().scheduler().scheduleNextTick(() -> check(instance, cells, to));
+        }
     }
 
     /**
      * Applies a value whose version is new here: takes a ticket on each of its chunks, loads them on a
-     * virtual thread, then hands the application to the next tick. Any thread.
+     * virtual thread, then hands the application to the next tick. Any thread. Does nothing, and logs
+     * nothing, before the replay (the first read of every flag after it brings the value), for a key
+     * without an applier here, once closed, or for a version not newer than the applied one.
      */
     private void apply(String key, JsonElement value, long version) {
         final InstanceContainer instance = this.instance;
@@ -451,10 +462,11 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
                     version, appliedVersion(key));
             return;
         }
+        warnOutside(application);
         hold(instance, application);
         Thread.ofVirtual().name("Syn-WorldFlag-Load").start(() -> {
             try {
-                load(instance, application);
+                loadChunks(instance, application);
             } catch (RuntimeException e) {
                 release(instance, application);
                 syncLog.warn(e, "The chunks of world flag {} version {} did not load, the next read tries again", key,
@@ -477,8 +489,9 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
         final InstanceContainer instance = Objects.requireNonNull(this.instance, "the flags are not replayed");
         final Application application = application(instance, key, value, version,
                 Objects.requireNonNull(appliers.get(key), key));
+        warnOutside(application);
         hold(instance, application);
-        load(instance, application);
+        loadChunks(instance, application);
         instance.process().scheduler().scheduleNextTick(() -> execute(instance, application));
     }
 
@@ -493,7 +506,7 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
         } finally {
             release(instance, application);
         }
-        if (newer) record(application);
+        if (newer) warnTaken(record(application));
     }
 
     /**
@@ -501,36 +514,56 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
      * that holds neither the new target nor the one applied last was changed another way: a conflict.
      */
     private void setBlocks(InstanceContainer instance, Application application) {
-        final Map<Cell, Block> previous = governedByKey.get(application.key);
-        SynxChunk.asWorldFlag(() -> {
-            for (Map.Entry<Cell, Block> entry : application.cells.entrySet()) {
-                final Cell cell = entry.getKey();
-                final Block target = entry.getValue();
-                final Chunk chunk = instance.getChunk(cell.chunkX(), cell.chunkZ());
-                // A failed chunk: nothing changes it
-                if (chunk == null || chunk.isReadOnly()) continue;
-                final Block now = instance.getBlock(cell.x(), cell.y(), cell.z());
-                if (SynxChunk.sameBlock(now, target)) continue;
-                final Block last = previous == null ? null : previous.get(cell);
-                if (last != null && !SynxChunk.sameBlock(now, last)) conflict(application.key, cell, now, target);
-                instance.setBlock(cell.x(), cell.y(), cell.z(), target);
-            }
-        });
+        final Application last = applied.get(application.key);
+        SynxChunk.asWorldFlag(() -> application.cells.forEach((cell, target) ->
+                setCell(instance, application.key, cell, target, last == null ? null : last.cells.get(cell))));
     }
 
-    /** The applied version of the key and the cells it governs, after its blocks are set. */
-    private void record(Application application) {
-        final Map<Cell, Block> previous = governedByKey.put(application.key, application.cells);
+    /**
+     * Sets a cell of a loaded chunk that holds something else than {@code target} to it: a conflict if
+     * it held neither that nor {@code last}, the target applied to it last. Inside
+     * {@link SynxChunk#asWorldFlag}.
+     */
+    private void setCell(InstanceContainer instance, String key, BlockVec cell, Block target, @Nullable Block last) {
+        final Chunk chunk = instance.getChunkAt(cell);
+        // Not loaded, or failed: inside asWorldFlag the only read only chunks of the region are failed ones, while
+        // outside it a world that is not writable makes them all read only, so this test has to stay inside
+        if (chunk == null || chunk.isReadOnly()) return;
+        final Block now = instance.getBlock(cell);
+        if (SynxChunk.sameBlock(now, target)) return;
+        if (last != null && !SynxChunk.sameBlock(now, last)) conflict(key, cell, now, target);
+        instance.setBlock(cell, target);
+    }
+
+    /**
+     * The applied version of the key and the cells it governs, after its blocks are set. A cell another
+     * key governed goes to this one, the key applied last.
+     *
+     * @return what it took from the other keys, one {@code <key> over <other key> <n> cells} for each
+     */
+    private List<String> record(Application application) {
+        final Application previous = applied.put(application.key, application);
         if (previous != null) {
-            for (Cell cell : previous.keySet()) {
+            for (BlockVec cell : previous.cells.keySet()) {
                 final Target target = governed.get(cell);
                 if (target != null && target.key().equals(application.key)) governed.remove(cell);
             }
         }
-        for (Map.Entry<Cell, Block> entry : application.cells.entrySet()) {
-            governed.put(entry.getKey(), new Target(application.key, entry.getValue()));
-        }
-        applied.put(application.key, new FlagValue(application.value, application.version));
+        final Map<String, Integer> taken = new TreeMap<>();
+        application.cells.forEach((cell, block) -> {
+            final Target replaced = governed.put(cell, new Target(application.key, block));
+            if (replaced != null && !replaced.key().equals(application.key)) taken.merge(replaced.key(), 1, Integer::sum);
+        });
+        return taken.entrySet().stream()
+                .map(entry -> application.key + " over " + entry.getKey() + " " + entry.getValue() + " cells").toList();
+    }
+
+    /**
+     * One line for the cells taken from other keys: two keys must not give the same cell, the earlier key
+     * would count it a conflict on its next value.
+     */
+    private void warnTaken(List<String> taken) {
+        if (!taken.isEmpty()) overlapLog.warn("World flags give the same cells, the one applied last holds them: {}", taken);
     }
 
     /** The cells of a value inside the region and the world height; the others are left alone. */
@@ -538,44 +571,56 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
                                     FlagApplier applier) {
         final List<FlagCell> cells = applier.cells(value);
         final DimensionType dimension = instance.getCachedDimensionType();
-        final Map<Cell, Block> inside = new LinkedHashMap<>();
+        final Map<BlockVec, Block> inside = new LinkedHashMap<>();
         int outside = 0;
         for (FlagCell cell : cells) {
             final int chunkX = CoordConversion.globalToChunk(cell.x());
             final int chunkZ = CoordConversion.globalToChunk(cell.z());
-            if (chunkX < regionBounds.minX() || chunkX > regionBounds.maxX() || chunkZ < regionBounds.minZ()
-                    || chunkZ > regionBounds.maxZ() || cell.y() < dimension.minY() || cell.y() >= dimension.maxY()) {
+            if (!regionBounds.contains(chunkX, chunkZ) || cell.y() < dimension.minY() || cell.y() >= dimension.maxY()) {
                 outside++;
                 continue;
             }
-            inside.put(new Cell(cell.x(), cell.y(), cell.z()), cell.block());
+            inside.put(new BlockVec(cell.x(), cell.y(), cell.z()), cell.block());
         }
-        if (outside > 0) {
+        return new Application(key, value, version, inside, outside);
+    }
+
+    /** One line for an application at run time with cells outside; the replay writes one for all its keys. */
+    private void warnOutside(Application application) {
+        if (application.outside > 0) {
             outsideLog.warn("World flag {} version {} asks for {} cells outside region {} or the world height, they are "
-                    + "left alone", key, version, outside, regionId);
+                    + "left alone", application.key, application.version, application.outside, regionId);
         }
-        return new Application(key, value, version, inside);
     }
 
-    private void conflict(String key, Cell cell, Block found, Block target) {
+    private void conflict(String key, BlockVec cell, Block found, Block target) {
         conflicts.incrementAndGet();
-        conflictLog.warn("World flag {}: the cell {} held {}, changed another way, set to {}", key, cell, describe(found),
-                describe(target));
+        conflictLog.warn("World flag {}: the cell {} {} {} held {}, changed another way, set to {}", key, cell.blockX(),
+                cell.blockY(), cell.blockZ(), describe(found), describe(target));
     }
 
-    /** The state with its properties, then the NBT and the handler namespace of a block that has them. */
+    /** The state with its properties, then the NBT as SNBT and the handler namespace of a block that has them. */
     private static String describe(Block block) {
         final StringBuilder text = new StringBuilder(block.state());
         final CompoundBinaryTag nbt = block.nbt();
-        if (nbt != null) text.append(' ').append(nbt);
+        // An empty compound is no NBT, as for SynxChunk#sameBlock
+        if (nbt != null && nbt.size() > 0) text.append(' ').append(snbt(nbt));
         final BlockHandler handler = block.handler();
         if (handler != null) text.append(" handler ").append(handler.getKey().asString());
         return text.toString();
     }
 
+    private static String snbt(CompoundBinaryTag nbt) {
+        try {
+            return EngineAdventure.tagStringIO().asString(nbt);
+        } catch (IOException _) {
+            return nbt.toString();
+        }
+    }
+
     private long appliedVersion(String key) {
-        final FlagValue value = applied.get(key);
-        return value == null ? 0 : value.version();
+        final Application last = applied.get(key);
+        return last == null ? 0 : last.version;
     }
 
     private static void hold(InstanceContainer instance, Application application) {
@@ -591,7 +636,7 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
         }
     }
 
-    private static void load(InstanceContainer instance, Application application) {
+    private static void loadChunks(InstanceContainer instance, Application application) {
         final CompletableFuture<?>[] loads = new CompletableFuture<?>[application.chunks.length];
         for (int i = 0; i < loads.length; i++) {
             final long chunk = application.chunks[i];
@@ -600,9 +645,27 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
         CompletableFuture.allOf(loads).join();
     }
 
+    /** Whether {@code value} nests arrays and objects more than {@code levels} deep; it looks no deeper than that. */
+    private static boolean nestedPast(JsonElement value, int levels) {
+        final Iterable<JsonElement> children;
+        if (value.isJsonArray()) {
+            children = value.getAsJsonArray();
+        } else if (value.isJsonObject()) {
+            children = value.getAsJsonObject().asMap().values();
+        } else {
+            return false;
+        }
+        if (levels == 0) return true;
+        for (JsonElement child : children) {
+            if (nestedPast(child, levels - 1)) return true;
+        }
+        return false;
+    }
+
     /**
-     * Stops the 60 s read and drops what the region's Redis channel still brings; before the player
-     * store closes its pool and its Redis link, which ends the subscription.
+     * Stops the 60 s read; from then on nothing is applied, neither what the region's Redis channel still
+     * brings, nor what a read finds, nor an application already queued, and no governed cell is checked.
+     * Runs before the player store closes its pool and its Redis link, which ends the subscription.
      */
     @Override
     public void close() {

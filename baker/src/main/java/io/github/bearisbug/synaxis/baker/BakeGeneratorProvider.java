@@ -5,7 +5,12 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Supplies the presets of {@code --source generator:<preset>:<seed>}. The baker finds providers with
  * {@link java.util.ServiceLoader}, so a game module offers its generators without the baker depending on
- * it ({@code docs/DESIGN-M3.md} §6).
+ * it at compile time ({@code docs/DESIGN-M3.md} §6). List the class in
+ * {@code META-INF/services/io.github.bearisbug.synaxis.baker.BakeGeneratorProvider}, with a public no-argument
+ * constructor, and add its module to {@code baker/build.gradle.kts} as {@code runtimeOnly}. An id holds no
+ * {@code ':'} (the command line splits {@code generator:<preset>:<seed>} on it) and belongs to one provider: the
+ * first provider on the class path that returns a preset wins. What a generator must be is on
+ * {@link GeneratorPreset}.
  */
 public interface BakeGeneratorProvider {
     /**

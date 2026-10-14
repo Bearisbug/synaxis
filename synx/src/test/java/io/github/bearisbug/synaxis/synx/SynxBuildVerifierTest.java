@@ -109,6 +109,16 @@ public class SynxBuildVerifierTest {
         ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).putInt(8, 776);
         Files.write(file, bytes);
         assertEquals(SynxError.MANIFEST, refused(SynxVectors.expectations()).error());
+
+        // Another world in the header than the manifest's, which the process takes on
+        final int minY = manifest.world().minY(), height = manifest.world().height();
+        bytes[64] ^= 0x01;
+        ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).putShort(20, (short) (height + 16));
+        Files.write(file, bytes);
+        final SynxException world = refused(SynxVectors.expectations());
+        assertEquals(SynxError.WORLD_MISMATCH, world.error());
+        assertTrue(world.getMessage().endsWith("r.0.0.synx: min_y " + minY + " height " + (height + 16)
+                + ", the manifest says " + minY + " " + height), world.getMessage());
     }
 
     @Test

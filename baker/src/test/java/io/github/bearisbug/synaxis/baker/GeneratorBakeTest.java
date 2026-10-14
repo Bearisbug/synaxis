@@ -1,6 +1,8 @@
 package io.github.bearisbug.synaxis.baker;
 
 import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.instance.block.BlockHandler;
+import io.github.bearisbug.synaxis.instance.generator.GenerationUnit;
 import io.github.bearisbug.synaxis.instance.generator.Generator;
 import io.github.bearisbug.synaxis.instance.light.LightEngine;
 import io.github.bearisbug.synaxis.instance.light.LightResult;
@@ -12,6 +14,7 @@ import io.github.bearisbug.synaxis.synx.SynxChunkRecord;
 import io.github.bearisbug.synaxis.synx.SynxExpectations;
 import io.github.bearisbug.synaxis.synx.SynxFormat;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
+import net.kyori.adventure.key.Key;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -37,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -198,6 +202,8 @@ public class GeneratorBakeTest {
 
         assertEquals(Baker.EXIT_REGION, result.exitCode());
         assertTrue(result.message().contains("chunk 0, 0 section 0 holds 300 block states"), result.message());
+        assertTrue(result.message().startsWith("1 region(s) failed:\nregion 0, 0: "), result.message());
+        assertTrue(result.message().endsWith("of an indirect palette (blocks 0..15, 0..15, 0..15)"), result.message());
         assertTrue(events(temp).get(1).contains("\"outcome\":\"failed\""), events(temp).toString());
         assertNotNull(result.directory(), "a failed bake keeps its work directory for inspection");
     }
@@ -256,6 +262,62 @@ public class GeneratorBakeTest {
 
         assertEquals(Baker.EXIT_REGION, result.exitCode());
         assertTrue(result.message().contains("forked"), result.message());
+    }
+
+    /** A fork on a section of {@code subdivide()} is kept by the section, not the chunk; it fails all the same. */
+    @Test
+    public void aGeneratorThatForksOnASectionFailsItsRegion() throws Exception {
+        final Generator forking = unit -> {
+            final GenerationUnit section = unit.subdivide().getFirst();
+            section.fork(setter -> setter.setBlock(section.absoluteStart().add(1, 1, 1), Block.STONE));
+        };
+        final Baker.Result result = Baker.bake(request("fork", source(forking, new SynxManifest.Bounds(0, 0, 0, 0)), temp, 1));
+
+        assertEquals(Baker.EXIT_REGION, result.exitCode(), result.message());
+        assertTrue(result.message().contains("forked"), result.message());
+    }
+
+    /**
+     * API-M3-003: a generator's handler is checked on every block, a plain one included; without a gate, the encoder
+     * is where it is checked.
+     */
+    @Test
+    public void anUnregisteredHandlerOnAPlainBlockFailsItsRegion() throws Exception {
+        final BlockHandler gate = new BakeTesting.TestHandler(Key.key("synaxis:gate"), List.of());
+        final Generator handled = unit -> unit.modifier().setBlock(unit.absoluteStart().add(3, 5, 7),
+                Block.STONE.withHandler(gate));
+        final Baker.Result result = Baker.bake(request("handler", source(handled, new SynxManifest.Bounds(0, 0, 0, 0)),
+                temp, 1));
+
+        assertEquals(Baker.EXIT_REGION, result.exitCode(), result.message());
+        assertTrue(result.message().contains("chunk 0, 0: the block at 3, 5, 7 has handler namespace 'synaxis:gate'"),
+                result.message());
+    }
+
+    /** What the generator throws fails its region and names the chunk, not only the region it was read for. */
+    @Test
+    public void aGeneratorThatThrowsNamesTheChunk() throws Exception {
+        final Generator failing = unit -> {
+            if (unit.absoluteStart().blockX() == 16) throw new IllegalArgumentException("no ore here");
+            unit.modifier().fillHeight(0, 1, Block.STONE);
+        };
+        final Baker.Result result = Baker.bake(request("throws", source(failing, new SynxManifest.Bounds(0, 0, 1, 0)),
+                temp, 1));
+
+        assertEquals(Baker.EXIT_REGION, result.exitCode(), result.message());
+        assertTrue(result.message().contains("chunk 1, 0: the generator failed: java.lang.IllegalArgumentException: no ore"
+                + " here"), result.message());
+    }
+
+    /** API-M3-003: a preset the far view packs cannot hold, or without a height, is refused before anything is made. */
+    @Test
+    public void aPresetOverTwoHundredFiftySixHighIsRefused() {
+        for (int height : new int[]{272, 0}) {
+            final IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> new GeneratorSource(
+                    new GeneratorPreset(new SyntheticTerrain(7), 0, height, FOUR_REGIONS), REGISTRIES));
+            assertTrue(e.getMessage().contains("min_y 0 and height " + height) && e.getMessage().contains("16 to 256"),
+                    e.getMessage());
+        }
     }
 
     /** The sampled re-bake catches a source that does not give the same chunk twice. */

@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executor;
@@ -39,21 +38,28 @@ public final class FarViewConnection {
         ABSENT,
         /** Objects are being downloaded. */
         DOWNLOADING,
-        /** Data sources are being handed to DH, or the library is being checked. */
+        /**
+         * Data sources are being handed to DH, or their rows counted and the parent propagation waited for. A ready
+         * library's load check runs in {@code READY}.
+         */
         BAKING,
         /** The library holds the whole announcement. */
         READY
     }
 
-    /** The DH side's bake, started on a thread of its own once objects and level are both there. */
+    /**
+     * The DH side's bake. {@link #start} is called holding this connection's lock, the one
+     * {@link FarViewConnection#cancel} takes, so it only hands the work to a thread of its own and returns.
+     */
     @FunctionalInterface
     public interface Baker {
         /**
-         * Starts the bake or, with a matching marker, the load check.
+         * Starts the bake or, with a matching marker, the load check, which goes on to download and bake
+         * when the library fails it ({@code API-M3-015} 写库条第 8 步).
          *
          * @param connection this connection
          * @param level      DH's level wrapper, an {@code IDhApiLevelWrapper}
-         * @param loadCheck  whether the marker matched and only the library's rows are to be checked
+         * @param loadCheck  whether the marker matched, so the library's rows are counted before anything is baked
          */
         void start(FarViewConnection connection, Object level, boolean loadCheck);
     }
@@ -76,7 +82,6 @@ public final class FarViewConnection {
     private final FarViewSettings settings;
     private final boolean available;
     private final String viewKey;
-    private final String dhVersion;
     private final FarViewCache cache;
     private final FarViewDownloader downloader;
     private final @Nullable InetAddress server;
@@ -89,7 +94,6 @@ public final class FarViewConnection {
     private volatile long downloadMillis = -1;
     private volatile long levelLoadedNanos;
     private volatile @Nullable String failure;
-    private volatile boolean settled;
     private volatile long settledNanos;
     private volatile long cancelledNanos;
 
@@ -104,20 +108,19 @@ public final class FarViewConnection {
      * @param announcedNanos {@link System#nanoTime()} when it was handled
      * @param settings       the player's setting
      * @param available      whether this connection draws a far view
-     * @param dhVersion      the DH version the key is made with
      * @param cache          the cache
      * @param downloader     the downloads
      * @param server         the address of the server of this connection, null when unknown
      */
     FarViewConnection(@Nullable FarViewAnnouncement announcement, long announcedNanos, FarViewSettings settings,
-                      boolean available, String dhVersion, FarViewCache cache, FarViewDownloader downloader,
+                      boolean available, FarViewCache cache, FarViewDownloader downloader,
                       @Nullable InetAddress server) {
         this.announcement = announcement;
         this.announcedNanos = announcedNanos;
         this.settings = settings;
         this.available = available && announcement != null;
-        this.dhVersion = dhVersion;
-        this.viewKey = this.available ? FarViewCache.viewKey(dhVersion, FarViewClient.BAKE_CODE_VERSION, announcement.tiles()) : "";
+        this.viewKey = this.available ? FarViewCache.viewKey(FarViewClient.DH_VERSION, FarViewClient.BAKE_CODE_VERSION,
+                announcement.tiles()) : "";
         this.cache = cache;
         this.downloader = downloader;
         this.server = server;
@@ -140,8 +143,8 @@ public final class FarViewConnection {
         if (!available) return;
         final FarViewAnnouncement announced = announcement();
         final Optional<FarViewCache.Marker> found = cache.marker(viewKey);
-        if (found.isPresent() && FarViewCache.matches(found.get(), viewKey, dhVersion, FarViewClient.BAKE_CODE_VERSION,
-                announced.tiles())) {
+        if (found.isPresent() && FarViewCache.matches(found.get(), viewKey, FarViewClient.DH_VERSION,
+                FarViewClient.BAKE_CODE_VERSION, announced.tiles())) {
             marker = found.get();
             state.set(State.READY);
             return;
@@ -162,21 +165,23 @@ public final class FarViewConnection {
      * when their host resolves to a local address and the server is not local ({@code API-M3-015}
      * 下载条 ⑥).
      *
-     * @param missing the objects
+     * @param missing the objects, at least one
      * @return whether all are in the cache now
      */
     public boolean download(List<FarViewAnnouncement.Tile> missing) {
         state.set(State.DOWNLOADING);
-        final String local = localRefusal(missing);
-        if (local != null) {
+        final String refusal = localRefusal(missing);
+        if (refusal != null) {
             failure = "local address";
-            LOGGER.warn("{}Far view off: {}", FarViewClient.PREFIX, local);
+            LOGGER.warn("{}Far view off: {}", FarViewClient.PREFIX, refusal);
             state.compareAndSet(State.DOWNLOADING, State.ABSENT);
             return false;
         }
         done.set(0);
         total.set(missing.stream().mapToLong(FarViewAnnouncement.Tile::bytes).sum());
-        LOGGER.info("{}view {} downloading {} object(s), {} B", FarViewClient.PREFIX, viewKey, missing.size(), total.get());
+        // Where the objects come from, so a failure in a player's log points at a host: admitted() holds them to one
+        LOGGER.info("{}view {} downloading {} object(s), {} B from {}", FarViewClient.PREFIX, viewKey, missing.size(),
+                total.get(), FarViewClient.origin(missing.getFirst().url()));
         final FarViewDownloader.Result result = downloader.download(missing, cancelled, done::set);
         downloadMillis = result.millis();
         if (result.success()) {
@@ -198,33 +203,25 @@ public final class FarViewConnection {
         return false;
     }
 
-    /** Why the host of these objects may not be asked on this connection, null when it may. */
+    /**
+     * Why the host of these objects may not be asked on this connection, null when it may: the local address
+     * rule ({@code API-M3-015} 下载条 ⑥). A host that resolves to a {@link #local} address is asked only when
+     * the server is at one too, so a server cannot point the client at the player's own network. The first URL
+     * stands for all: {@link FarViewClient#admitted} takes an announcement only when its URLs share one scheme,
+     * host and port.
+     *
+     * @param tiles the objects, at least one, of an admitted announcement
+     * @return why the host may not be asked, null when it may
+     */
     private @Nullable String localRefusal(List<FarViewAnnouncement.Tile> tiles) {
-        if (tiles.isEmpty()) return null;
-        final String host;
+        final String host = URI.create(tiles.getFirst().url()).getHost();
         final InetAddress[] resolved;
         try {
-            host = URI.create(tiles.getFirst().url()).getHost();
-            if (host == null) return null;
             resolved = InetAddress.getAllByName(host);
-        } catch (IllegalArgumentException | UnknownHostException _) {
+        } catch (UnknownHostException _) {
             // The downloads fail on their own
             return null;
         }
-        return localRefusal(host, resolved, server);
-    }
-
-    /**
-     * The local address rule ({@code API-M3-015} 下载条 ⑥): a host that resolves to a loopback, private,
-     * link local or unspecified address is asked only when the server is at one too, so a server cannot
-     * point the client at the player's own network.
-     *
-     * @param host     the host of the announced URLs
-     * @param resolved what it resolved to
-     * @param server   the address of the server, null when unknown
-     * @return why the host may not be asked, null when it may
-     */
-    static @Nullable String localRefusal(String host, InetAddress[] resolved, @Nullable InetAddress server) {
         if (server != null && local(server)) return null;
         for (InetAddress address : resolved) {
             if (local(address)) {
@@ -236,8 +233,9 @@ public final class FarViewConnection {
     }
 
     /**
-     * Whether an address is loopback (127/8, ::1), private (10/8, 172.16/12, 192.168/16, fc00::/7), link
-     * local (169.254/16, fe80::/10) or unspecified.
+     * Whether an address is loopback (127/8, ::1), private (10/8, 172.16/12, 192.168/16, fc00::/7), shared
+     * (100.64/10, RFC 6598: carrier grade NAT, and Tailscale's tailnet), link local (169.254/16, fe80::/10) or
+     * unspecified.
      *
      * @param address the address
      * @return whether it is
@@ -246,7 +244,10 @@ public final class FarViewConnection {
         if (address.isLoopbackAddress() || address.isAnyLocalAddress() || address.isLinkLocalAddress()
                 || address.isSiteLocalAddress()) return true;
         final byte[] bytes = address.getAddress();
-        return bytes.length == 16 && (bytes[0] & 0xFE) == 0xFC;
+        // fc00::/7, unique local: isSiteLocalAddress covers only the old IPv6 site local fec0::/10
+        if (bytes.length == 16) return (bytes[0] & 0xFE) == 0xFC;
+        // 100.64.0.0/10, shared: no public address, and not site local to the JDK either
+        return (bytes[0] & 0xFF) == 100 && (bytes[1] & 0xC0) == 64;
     }
 
     private synchronized void packsReady() {
@@ -255,13 +256,16 @@ public final class FarViewConnection {
     }
 
     /**
-     * DH has loaded the level: the bake starts now if the objects are there, else once they are.
+     * DH has loaded the level: a matching marker's load check starts now; otherwise the bake starts now if
+     * the objects are there, else once they are. Only the connection's first level load counts: once its
+     * level is unloaded within the connection (a dimension change, a new configuration phase), which cancels
+     * it, the connection draws no far view, the known limitation of {@code docs/DESIGN-M3.md} §28.2.
      *
      * @param levelWrapper DH's level wrapper
      * @param baker        the DH side's bake
      */
     public synchronized void levelLoaded(Object levelWrapper, Baker baker) {
-        if (!available || level != null) return;
+        if (!available || level != null || cancelled.get()) return;
         this.level = levelWrapper;
         this.baker = baker;
         levelLoadedNanos = System.nanoTime();
@@ -282,37 +286,48 @@ public final class FarViewConnection {
     /**
      * Moves to {@code baking} unless the connection or the level has ended. It holds the lock
      * {@link #cancel} takes, so a cancel either finds {@code baking} and ends it or comes first and
-     * keeps the bake from starting; the state never stays {@code baking} after a cancel.
+     * keeps the bake from starting; the state never stays {@code baking} after a cancel. The HUD line
+     * starts the bake from nothing handed over, not from the download's bytes.
      *
      * @return whether it did
      */
     public synchronized boolean baking() {
         if (cancelled.get()) return false;
+        done.set(0);
         state.set(State.BAKING);
         return true;
     }
 
     /**
-     * The load check of a ready library ({@code API-M3-015} 写库条第 8 步), given what DH's library
-     * holds: a library holding the marker's sources stays ready, any other is baked again.
+     * Runs the load check of a ready library ({@code API-M3-015} 写库条第 8 步) on what DH's library holds;
+     * true when the library is to be baked again. A library holding the marker's sources stays ready with
+     * its {@code last_used} updated; a marker that cannot be rewritten costs only a WARN line, since
+     * {@code last_used} only orders the cleaning. Any other library loses its marker, which puts it back
+     * to {@code absent}.
      *
      * @param rows the library's rows at the base level, null when DH's connection gave no answer
      * @return whether the library is to be baked again
-     * @throws IOException if the marker cannot be rewritten or removed
+     * @throws IOException if the marker cannot be removed
      */
-    public boolean loadChecked(@Nullable Long rows) throws IOException {
+    public boolean rebakeAfterLoadCheck(@Nullable Long rows) throws IOException {
         final FarViewCache.Marker matched = marker;
         if (matched != null && rows != null && rows == matched.sources()) {
-            cache.touch(viewKey, System.currentTimeMillis());
             state.set(State.READY);
             LOGGER.info("{}view {} ready ({} tiles)", FarViewClient.PREFIX, viewKey, announcement().tiles().size());
+            try {
+                cache.touch(viewKey, System.currentTimeMillis());
+            } catch (IOException e) {
+                // The library checked out: last_used only orders the cleaning
+                LOGGER.warn("{}view {} last_used not updated: {}", FarViewClient.PREFIX, viewKey, e.toString());
+            }
             return false;
         }
         // DH closes the library as the connection or the level ends: no answer then says nothing about the library
         if (rows == null && cancelled.get()) return false;
-        cache.deleteMarker(viewKey);
         LOGGER.warn("{}view {} library does not match its marker: {} of {}", FarViewClient.PREFIX, viewKey,
                 rows == null ? "no answer" : rows, matched == null ? "?" : matched.sources());
+        cache.deleteMarker(viewKey);
+        state.set(State.ABSENT);
         return true;
     }
 
@@ -324,6 +339,9 @@ public final class FarViewConnection {
     public synchronized void cancel(String why) {
         if (!cancelled.compareAndSet(false, true)) return;
         cancelledNanos = System.nanoTime();
+        // Nothing starts after a cancel: DH's level wrapper, and the client level it holds, need not outlive the connection
+        level = null;
+        baker = null;
         final State was = state.get();
         if (was == State.DOWNLOADING || was == State.BAKING) {
             state.compareAndSet(was, State.ABSENT);
@@ -333,17 +351,21 @@ public final class FarViewConnection {
     }
 
     /**
-     * The HUD line of {@code API-M3-015} (进度与日志): download progress, then bake progress, then nothing.
+     * The HUD line of {@code API-M3-015} (进度与日志): download progress, then bake progress, then the
+     * finishing line once every source is handed over, then nothing.
      *
      * @return the line, null when there is none
      */
     public @Nullable Component hudLine() {
         final long all = total.get();
         if (all <= 0) return null;
-        final long percent = Math.min(100, done.get() * 100 / all);
+        final long handed = done.get();
+        final long percent = Math.min(100, handed * 100 / all);
         return switch (state.get()) {
             case DOWNLOADING -> Component.translatable("synaxis.farview.downloading", percent);
-            case BAKING -> Component.translatable("synaxis.farview.preparing", percent);
+            // Every source handed over: the row check and the parent propagation left are DH's, with nothing to count
+            case BAKING -> handed >= all ? Component.translatable("synaxis.farview.finishing")
+                    : Component.translatable("synaxis.farview.preparing", percent);
             default -> null;
         };
     }
@@ -379,19 +401,14 @@ public final class FarViewConnection {
         return settings;
     }
 
-    /** @return the DH version the key was made with */
-    public String dhVersion() {
-        return dhVersion;
-    }
-
     /** @return the cache */
     public FarViewCache cache() {
         return cache;
     }
 
-    /** @return set once the connection or the level ended */
-    public AtomicBoolean cancelled() {
-        return cancelled;
+    /** @return whether the connection or the level ended */
+    public boolean cancelled() {
+        return cancelled.get();
     }
 
     /** @return the state */
@@ -400,7 +417,8 @@ public final class FarViewConnection {
     }
 
     /**
-     * Moves the state.
+     * Moves the state from the bake thread, to {@code ready} or {@code absent}. Entering {@code baking}
+     * goes through {@link #baking()} only, under the lock {@link #cancel} takes (§11.3).
      *
      * @param next the new state
      */
@@ -422,16 +440,6 @@ public final class FarViewConnection {
     /** @return the bytes downloaded, or the data sources handed over while baking */
     public long progressDone() {
         return done.get();
-    }
-
-    /** @return the bytes to download, or the data sources to hand over while baking */
-    public long progressTotal() {
-        return total.get();
-    }
-
-    /** @return the marker that matched at the announcement, null when none did */
-    public FarViewCache.@Nullable Marker marker() {
-        return marker;
     }
 
     /** @return {@link System#nanoTime()} when the announcement was handled */
@@ -465,13 +473,12 @@ public final class FarViewConnection {
 
     /** @return whether the bake thread of this connection has finished, whatever its outcome */
     public boolean settled() {
-        return settled;
+        return settledNanos != 0;
     }
 
     /** Marks the bake thread of this connection finished. */
     public void settle() {
         settledNanos = System.nanoTime();
-        settled = true;
     }
 
     /** @return {@link System#nanoTime()} when the bake thread finished, 0 before */
@@ -496,16 +503,6 @@ public final class FarViewConnection {
      */
     public void failure(String reason) {
         failure = reason;
-    }
-
-    /**
-     * The lower case hex of an announced object's digest.
-     *
-     * @param tile the object
-     * @return 64 hex digits
-     */
-    public static String hex(FarViewAnnouncement.Tile tile) {
-        return HexFormat.of().formatHex(tile.sha256());
     }
 
     /**

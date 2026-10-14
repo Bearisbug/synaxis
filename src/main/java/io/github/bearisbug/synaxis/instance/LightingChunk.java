@@ -39,10 +39,12 @@ import java.util.concurrent.locks.ReentrantLock;
 import static io.github.bearisbug.synaxis.instance.light.LightCompute.EMPTY_CONTENT;
 
 /**
- * A chunk which supports lighting computation.
+ * A chunk that holds sky and block light in its sections and sends it with its packets.
  * <p>
- * This chunk is used to compute the light data for each block.
- * <p>
+ * Two paths compute that light. {@link #relight(Instance, Collection)} lights whole areas through
+ * {@link LightEngine} on a copy of the blocks, with no instance-wide lock. A section whose light a block change or
+ * {@link #onGenerate} marked for update is lit lazily by {@code relightSection}, under the instance monitor, when a
+ * packet is built ({@link #createLightData}) or {@code Instance#getSkyLight}/{@code getBlockLight} reads it.
  */
 public class LightingChunk extends DynamicChunk {
 
@@ -55,8 +57,6 @@ public class LightingChunk extends DynamicChunk {
     final CachedPacket partialLightCache = new CachedPacket(this::createLightPacket);
     private @Nullable LightData partialLightData;
     private @Nullable LightData fullLightData;
-
-    private boolean freezeInvalidation = false;
 
     private final ReentrantLock packetGenerationLock = new ReentrantLock();
     private final AtomicInteger resendTimer = new AtomicInteger(-1);
@@ -89,15 +89,7 @@ public class LightingChunk extends DynamicChunk {
         super(instance, chunkX, chunkZ, sections);
     }
 
-    public void setFreezeInvalidation(boolean freezeInvalidation) {
-        this.freezeInvalidation = freezeInvalidation;
-    }
-
-    public void invalidateNeighborsSection(int coordinate) {
-        if (freezeInvalidation) {
-            return;
-        }
-
+    private void invalidateNeighborsSection(int coordinate) {
         for (int i = -1; i <= 1; i++) {
             for (int j = -1; j <= 1; j++) {
                 Chunk neighborChunk = instance.getChunk(chunkX + i, chunkZ + j);
@@ -116,11 +108,7 @@ public class LightingChunk extends DynamicChunk {
         }
     }
 
-    public void invalidateResendDelay() {
-        if (!doneInit || freezeInvalidation) {
-            return;
-        }
-
+    private void invalidateResendDelay() {
         for (int i = -1; i <= 1; i++) {
             for (int j = -1; j <= 1; j++) {
                 Chunk neighborChunk = instance.getChunk(chunkX + i, chunkZ + j);
@@ -140,7 +128,7 @@ public class LightingChunk extends DynamicChunk {
 
         // Invalidate neighbor chunks, since they can be updated by this block change
         int coordinate = CoordConversion.globalToChunk(y);
-        if (doneInit && !freezeInvalidation) {
+        if (doneInit) {
             invalidateNeighborsSection(coordinate);
             invalidateResendDelay();
             this.partialLightCache.invalidate();
@@ -266,6 +254,8 @@ public class LightingChunk extends DynamicChunk {
 
             int index = 0;
             for (Section section : sections) {
+                // Bit i of the light masks is section minSection - 1 + i: bit 0 is the section below the world
+                final int bit = index + 1;
                 boolean wasUpdatedBlock = false;
                 boolean wasUpdatedSky = false;
 
@@ -284,16 +274,15 @@ public class LightingChunk extends DynamicChunk {
                 }
 
                 final int sectionMinY = index * 16 + chunkMin;
-                index++;
 
                 if (wasUpdatedSky && this.instance.getCachedDimensionType().hasSkylight() && sectionMinY <= highestNeighborBlock + 16) {
                     final byte[] skyLight = section.skyLight().array();
 
                     if (skyLight.length != 0 && skyLight != EMPTY_CONTENT) {
                         skyLights.add(skyLight);
-                        skyMask.set(index);
+                        skyMask.set(bit);
                     } else {
-                        emptySkyMask.set(index);
+                        emptySkyMask.set(bit);
                     }
                 }
 
@@ -302,11 +291,12 @@ public class LightingChunk extends DynamicChunk {
 
                     if (blockLight.length != 0 && blockLight != EMPTY_CONTENT) {
                         blockLights.add(blockLight);
-                        blockMask.set(index);
+                        blockMask.set(bit);
                     } else {
-                        emptyBlockMask.set(index);
+                        emptyBlockMask.set(bit);
                     }
                 }
+                index++;
             }
 
             LightData lightData = new LightData(skyMask, blockMask,
@@ -337,10 +327,10 @@ public class LightingChunk extends DynamicChunk {
         }
     }
 
-    private static Set<Chunk> flushQueue(Instance instance, Set<Point> queue, LightType type, QueueType queueType) {
+    // A point here is a section: x and z are chunk coordinates, y the section y (as Light#getNeighbors builds them)
+    private static void flushQueue(Instance instance, Set<Point> queue, LightType type, QueueType queueType) {
         Set<Point> newQueue = ConcurrentHashMap.newKeySet();
 
-        Set<Chunk> responseChunks = ConcurrentHashMap.newKeySet();
         List<CompletableFuture<Void>> tasks = new ArrayList<>();
 
         Light.LightLookup lightLookup = (x, y, z) -> {
@@ -368,7 +358,6 @@ public class LightingChunk extends DynamicChunk {
             if (!(chunk instanceof LightingChunk lightingChunk)) continue;
 
             Section section = chunk.getSection(point.blockY());
-            responseChunks.add(chunk);
 
             Light light = switch (type) {
                 case BLOCK -> section.blockLight();
@@ -415,11 +404,8 @@ public class LightingChunk extends DynamicChunk {
         tasks.forEach(CompletableFuture::join);
 
         if (!newQueue.isEmpty()) {
-            var newResponse = flushQueue(instance, newQueue, type, QueueType.EXTERNAL);
-            responseChunks.addAll(newResponse);
+            flushQueue(instance, newQueue, type, QueueType.EXTERNAL);
         }
-
-        return responseChunks;
     }
 
     /**
@@ -521,7 +507,7 @@ public class LightingChunk extends DynamicChunk {
         /** The copied chunks of {@code minX..maxX} by {@code minZ..maxZ} and the ring around it, indexed by array. */
         WorldView around(int minX, int minZ, int maxX, int maxZ) {
             final int originX = minX - 1, originZ = minZ - 1, width = maxX - minX + 3, depth = maxZ - minZ + 3;
-            final @Nullable Palette[][] area = new Palette[width * depth][];
+            final Palette[] @Nullable [] area = new Palette[width * depth][];
             for (int x = 0; x < width; x++) {
                 for (int z = 0; z < depth; z++) {
                     area[z * width + x] = chunks.get(CoordConversion.chunkIndex(originX + x, originZ + z));
@@ -600,6 +586,7 @@ public class LightingChunk extends DynamicChunk {
         return collected;
     }
 
+    // A point here is a section: x and z are chunk coordinates, y the section y (as Light#getNeighbors builds them)
     private static Set<Point> collectRequiredNearby(Instance instance, Point point, LightType type) {
         final Set<Point> found = new HashSet<>();
         final ArrayDeque<Point> toCheck = new ArrayDeque<>();
@@ -621,25 +608,20 @@ public class LightingChunk extends DynamicChunk {
         return found;
     }
 
-    static Set<Chunk> relightSection(Instance instance, int chunkX, int sectionY, int chunkZ) {
-        var res = new HashSet<>(relightSection(instance, chunkX, sectionY, chunkZ, LightType.BLOCK));
-        res.addAll(relightSection(instance, chunkX, sectionY, chunkZ, LightType.SKY));
-        return res;
+    static void relightSection(Instance instance, int chunkX, int sectionY, int chunkZ) {
+        relightSection(instance, chunkX, sectionY, chunkZ, LightType.BLOCK);
+        relightSection(instance, chunkX, sectionY, chunkZ, LightType.SKY);
     }
 
-    private static Set<Chunk> relightSection(Instance instance, int chunkX, int sectionY, int chunkZ, LightType type) {
+    private static void relightSection(Instance instance, int chunkX, int sectionY, int chunkZ, LightType type) {
         Chunk c = instance.getChunk(chunkX, chunkZ);
-        if (c == null) return Set.of();
-        if (!(c instanceof LightingChunk)) return Set.of();
+        if (c == null) return;
+        if (!(c instanceof LightingChunk)) return;
 
         synchronized (instance) {
             Set<Point> collected = collectRequiredNearby(instance, new Vec(chunkX, sectionY, chunkZ), type);
-            return relight(instance, collected, type);
+            flushQueue(instance, collected, type, QueueType.INTERNAL);
         }
-    }
-
-    private static Set<Chunk> relight(Instance instance, Set<Point> queue, LightType type) {
-        return flushQueue(instance, queue, type, QueueType.INTERNAL);
     }
 
     @Override

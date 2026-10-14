@@ -12,8 +12,9 @@ import java.nio.file.Path;
  * Who may have written the files of a map release ({@code docs/DESIGN-M3.md} {@code API-M3-002} 文件信任):
  * the map maker is trusted as the operator is, so a file of the release is only taken from its owner.
  * On top of {@link FileTrust}, whose rule it does not change, it checks the real path, a symbolic link
- * by where it points and in the directory it really is in, and the owner: root, or the owner of
- * {@code synaxis.map.root}. A file system without the {@code unix} attribute view leaves both out.
+ * by where it points and in the directory it really is in, the directory the link itself is in by the
+ * rule of the directory of a file, and the owner: root, or the owner of {@code synaxis.map.root}. A file
+ * system without the {@code unix} attribute view leaves both out.
  * <p>
  * A path that does not exist is passed over: the step that reads it reports it as missing.
  */
@@ -35,8 +36,8 @@ final class MapFileTrust {
     }
 
     private final Owners owners;
-    private final Path root;
-    private final @Nullable Integer rootUid;
+    private final Path mapRoot;
+    private final @Nullable Integer mapRootUid;
 
     /**
      * @param mapRoot {@code synaxis.map.root}, whose owner the files may have besides root
@@ -46,8 +47,8 @@ final class MapFileTrust {
     MapFileTrust(Path mapRoot, Owners owners) {
         this.owners = owners;
         try {
-            this.root = mapRoot.toRealPath();
-            this.rootUid = owners.uid(root);
+            this.mapRoot = mapRoot.toRealPath();
+            this.mapRootUid = owners.uid(this.mapRoot);
         } catch (IOException e) {
             throw new IllegalArgumentException(mapRoot.toAbsolutePath() + ": cannot be read: " + e, e);
         }
@@ -55,12 +56,13 @@ final class MapFileTrust {
 
     /** Whether the permissions and owners are checked at all: the file system of the map root has POSIX permissions. */
     boolean checked() {
-        return rootUid != null;
+        return mapRootUid != null;
     }
 
     /**
      * Checks one path of the release: its real path may be written by its owner alone, the directory it
-     * really is in replaced only by them, and its owner is root or the owner of the map root.
+     * really is in replaced only by them, as is the directory the path is in when it is a symbolic link,
+     * and its owner is root or the owner of the map root.
      *
      * @param path a file or directory of the release
      * @throws IllegalArgumentException for a refused start, which starts with the real path
@@ -76,13 +78,19 @@ final class MapFileTrust {
         }
         try {
             final Integer uid = owners.uid(real);
-            final Integer allowed = rootUid;
+            final Integer allowed = mapRootUid;
             if (uid == null || allowed == null) return;
             final String writable = FileTrust.writableByOthers(real, WHO_WRITES);
             if (writable != null) throw new IllegalArgumentException(real + ": " + writable);
+            final Path linkDir = path.toAbsolutePath().getParent().toRealPath();
+            if (!linkDir.equals(real.getParent())) {
+                // Whoever may write the directory of the link may point it elsewhere
+                final String link = FileTrust.writableByOthers(linkDir.resolve(path.getFileName()), WHO_WRITES);
+                if (link != null) throw new IllegalArgumentException(real + ": " + link);
+            }
             if (uid != 0 && !uid.equals(allowed)) {
                 throw new IllegalArgumentException(real + ": owned by uid " + uid + ", neither root nor uid " + allowed
-                        + " that owns synaxis.map.root " + root);
+                        + " that owns " + ShardSettings.MAP_ROOT + " " + mapRoot);
             }
         } catch (IOException e) {
             throw new IllegalArgumentException(real + ": cannot be read: " + e, e);

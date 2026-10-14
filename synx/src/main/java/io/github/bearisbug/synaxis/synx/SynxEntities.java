@@ -30,19 +30,21 @@ import java.util.zip.Inflater;
  * The uncompressed content of segment ③, little endian: block entity table {@code count u32} +
  * {@code {index u16, section_y i8, handler_len u8, handler, nbt_len u32, nbt}}, then static entity
  * table {@code count u32} + {@code {nbt_len u32, nbt}}. NBT is the uncompressed binary form with an
- * empty root name and the keys of each compound sorted; static entities keep the order the baker
+ * empty root name, the keys of each compound sorted, and a list whose elements differ in type written
+ * wrapped, each element in a compound under the empty key; static entities keep the order the baker
  * gives them in. The file stores it as one zlib stream, or nothing when both tables are empty.
  */
 final class SynxEntities {
     /**
      * The most segment ③ inflates to, 16 MiB, and the accounting cap each of its NBT is read with (M3-S,
-     * {@code API-M3-001} 长度上限): adventure-nbt counts before it allocates, so a stated length never
-     * allocates more than this. Its default cap, 131,082, refuses a chest full of written books.
+     * {@code API-M3-001} 长度上限). Its default cap, 131,082, refuses a chest full of written books.
+     * Adventure-nbt checks a stated length against the cap before it allocates, but only compares: each
+     * list of a nest of lists passes on its own and allocates what it states, so each NBT is walked first
+     * ({@link #checkShape}).
      */
     static final int MAX_BYTES = 16 << 20;
-    /** Block entities in {@code (section_y, index)} order, which is the order they are written in. */
-    static final Comparator<SynxBlockEntity> ORDER =
-            Comparator.comparingInt(SynxBlockEntity::sectionY).thenComparingInt(SynxBlockEntity::index);
+    /** How deep NBT nests, as adventure-nbt reads it. */
+    private static final int MAX_DEPTH = 512;
 
     record Tables(List<SynxBlockEntity> blockEntities, List<CompoundBinaryTag> staticEntities) {
     }
@@ -72,7 +74,7 @@ final class SynxEntities {
 
     private static byte[] write(List<SynxBlockEntity> blockEntities, List<CompoundBinaryTag> staticEntities) {
         final List<SynxBlockEntity> sorted = new ArrayList<>(blockEntities);
-        sorted.sort(ORDER);
+        sorted.sort(SynxBlockEntity.ORDER);
         final ByteArrayOutputStream output = new ByteArrayOutputStream();
         writeInt(output, sorted.size());
         for (SynxBlockEntity entity : sorted) {
@@ -109,25 +111,39 @@ final class SynxEntities {
     }
 
     private static Tables decode(ByteBuffer buffer) {
+        // Not sized by the counts: a count only has to fit the bytes left, an entry takes 4 bytes or more
         final int blockCount = count(buffer);
-        final List<SynxBlockEntity> blockEntities = new ArrayList<>(blockCount);
+        final List<SynxBlockEntity> blockEntities = new ArrayList<>();
         for (int i = 0; i < blockCount; i++) {
             final int index = Short.toUnsignedInt(buffer.getShort());
             final int sectionY = buffer.get();
             final byte[] handler = new byte[Byte.toUnsignedInt(buffer.get())];
             buffer.get(handler);
-            blockEntities.add(new SynxBlockEntity(sectionY, index, new String(handler, StandardCharsets.UTF_8),
-                    readNbt(buffer)));
+            final CompoundBinaryTag nbt;
+            try {
+                nbt = readNbt(buffer);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(e.getMessage() + " (block entity at x " + (index & 15) + ", y "
+                        + (sectionY * 16 + (index >> 8)) + ", z " + ((index >> 4) & 15) + " of the chunk)", e);
+            }
+            blockEntities.add(new SynxBlockEntity(sectionY, index, new String(handler, StandardCharsets.UTF_8), nbt));
         }
         final int staticCount = count(buffer);
-        final List<CompoundBinaryTag> staticEntities = new ArrayList<>(staticCount);
-        for (int i = 0; i < staticCount; i++) staticEntities.add(readNbt(buffer));
+        final List<CompoundBinaryTag> staticEntities = new ArrayList<>();
+        for (int i = 0; i < staticCount; i++) {
+            try {
+                staticEntities.add(readNbt(buffer));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(e.getMessage() + " (static entity " + (i + 1) + " of " + staticCount + ")", e);
+            }
+        }
         if (buffer.hasRemaining()) throw new IllegalArgumentException(buffer.remaining() + " bytes after segment ③");
         return new Tables(blockEntities, staticEntities);
     }
 
     /**
-     * Inflates a whole zlib stream whose length is not stored anywhere, to {@value #MAX_BYTES} bytes at most.
+     * Inflates segment ③, one zlib stream that fills {@code input}. The record does not store how long it
+     * inflates, so it stops at {@value #MAX_BYTES} bytes.
      *
      * @throws IllegalArgumentException if it is not one zlib stream, or inflates to more
      */
@@ -170,10 +186,75 @@ final class SynxEntities {
         final byte[] nbt = new byte[count(buffer)];
         buffer.get(nbt);
         try {
+            checkShape(nbt);
             return BinaryTagIO.reader(MAX_BYTES).read((DataInput) new DataInputStream(new ByteArrayInputStream(nbt)));
-        } catch (IOException e) {
-            throw new IllegalArgumentException("unreadable NBT in segment ③", e);
+        } catch (IOException | RuntimeException e) {
+            throw new IllegalArgumentException("unreadable NBT in segment ③: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Walks {@code nbt} without allocating: every list and array has the elements it states, a list of end
+     * tags is empty, and it nests {@value #MAX_DEPTH} deep at most. Adventure-nbt then allocates in
+     * proportion to the bytes, as each element it reads takes one byte or more.
+     *
+     * @throws IllegalArgumentException if it does not
+     */
+    private static void checkShape(byte[] nbt) {
+        final ByteBuffer shape = ByteBuffer.wrap(nbt);
+        try {
+            if (shape.get() != BinaryTagTypes.COMPOUND.id()) throw new IllegalArgumentException("the root is not a compound");
+            skip(shape, Short.toUnsignedInt(shape.getShort()));
+            walk(shape, BinaryTagTypes.COMPOUND.id(), 1);
+        } catch (BufferUnderflowException _) {
+            throw new IllegalArgumentException("cut short");
+        }
+    }
+
+    /**
+     * Moves {@code nbt} past one payload of {@code type}, which nests {@code depth} deep. The tag ids of the
+     * binary form: 1 byte, 2 short, 3 int, 4 long, 5 float, 6 double, 7 byte array, 8 string, 9 list,
+     * 10 compound, 11 int array, 12 long array.
+     */
+    private static void walk(ByteBuffer nbt, byte type, int depth) {
+        if (depth > MAX_DEPTH) throw new IllegalArgumentException("nested deeper than " + MAX_DEPTH);
+        switch (type) {
+            case 1 -> skip(nbt, 1);
+            case 2 -> skip(nbt, 2);
+            case 3, 5 -> skip(nbt, 4);
+            case 4, 6 -> skip(nbt, 8);
+            case 7 -> skip(nbt, stated(nbt, 1));
+            case 8 -> skip(nbt, Short.toUnsignedInt(nbt.getShort()));
+            case 9 -> {
+                final byte element = nbt.get();
+                final int size = stated(nbt, 1);
+                if (element == 0 && size != 0) throw new IllegalArgumentException("a list of " + size + " end tags");
+                for (int i = 0; i < size; i++) walk(nbt, element, depth + 1);
+            }
+            case 10 -> {
+                for (byte entry = nbt.get(); entry != 0; entry = nbt.get()) {
+                    skip(nbt, Short.toUnsignedInt(nbt.getShort()));
+                    walk(nbt, entry, depth + 1);
+                }
+            }
+            case 11 -> skip(nbt, stated(nbt, 4) * 4);
+            case 12 -> skip(nbt, stated(nbt, 8) * 8);
+            default -> throw new IllegalArgumentException("tag type " + type);
+        }
+    }
+
+    /** A stated number of elements of {@code width} bytes or more each, which can never exceed the bytes left. */
+    private static int stated(ByteBuffer nbt, int width) {
+        final int size = nbt.getInt();
+        if (size < 0 || (long) size * width > nbt.remaining()) {
+            throw new IllegalArgumentException("length " + size + " with " + nbt.remaining() + " bytes left");
+        }
+        return size;
+    }
+
+    private static void skip(ByteBuffer nbt, int bytes) {
+        if (bytes > nbt.remaining()) throw new BufferUnderflowException();
+        nbt.position(nbt.position() + bytes);
     }
 
     /**
@@ -209,6 +290,7 @@ final class SynxEntities {
         switch (tag) {
             case CompoundBinaryTag compound -> writeCompound(compound, output);
             case ListBinaryTag list -> {
+                // The binary form has one element type per list: a mixed list goes out wrapped in compounds
                 final ListBinaryTag wrapped = list.wrapHeterogeneity();
                 output.writeByte(wrapped.elementType().id());
                 output.writeInt(wrapped.size());

@@ -14,10 +14,8 @@ import io.github.bearisbug.synaxis.world.biome.Biome;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -32,15 +30,18 @@ import java.util.Objects;
  * and writes one pack for every tile meeting the bounds, each with its own biome table.
  * <p>
  * Until a tile's table exists a sample's {@code biome} is the biome's registry id. In the part files and the
- * grids of a tile a sample is one long, {@link #packed}; a slot left 0 is an empty column of biome 0, which is
+ * grids of a tile a sample is one long, {@link Sample#packed}; a slot left 0 is an empty column of biome 0, which is
  * what every sample outside the bounds is.
  */
 final class FarViewAssembler {
     /** {@code base_level} of every pack the baker writes (§28.1). */
     static final int BASE_LEVEL = 2;
-    /** Fine samples along one side of a chunk. */
+    /** Fine samples along one side of a chunk; {@link #PER_CHUNK} counts all of them. */
     static final int CHUNK_SAMPLES = 16 >> BASE_LEVEL;
-    /** {@code chunk = fine sample >> CHUNK_SHIFT}. */
+    /**
+     * {@code chunk = fine sample >> CHUNK_SHIFT}, fine samples to chunks; the private one of {@link FarViewPack}
+     * goes from blocks to chunks.
+     */
     static final int CHUNK_SHIFT = 4 - BASE_LEVEL;
     /** The directory of the part files in the work directory. */
     static final String PARTS = "farview-parts";
@@ -49,8 +50,10 @@ final class FarViewAssembler {
     private static final int TILE_FINE = FarViewPack.TILE_BLOCKS >> BASE_LEVEL;
     /** Chunks, which are coarse samples, along one side of a tile. */
     private static final int TILE_CHUNKS = 1 << FarViewPack.TILE_SHIFT;
+    /** Fine samples of one chunk, {@code sz × CHUNK_SAMPLES + sx}. */
     private static final int PER_CHUNK = CHUNK_SAMPLES * CHUNK_SAMPLES;
-    private static final int PART_HEADER = 16;
+    /** The chunk rectangle in front of a part's samples: minX, minZ, maxX, maxZ. */
+    private static final int PART_HEADER = 4 * Integer.BYTES;
 
     /**
      * A test's change to the samples of a tile just before they are written; a bake passes {@link #NONE}.
@@ -63,13 +66,16 @@ final class FarViewAssembler {
         /**
          * Changes the samples of one tile.
          *
-         * @param coarse the coarse samples of the tile, {@code cz × 256 + cx}
-         * @param fine   the fine samples of the tile, {@code sz × 1024 + sx}
+         * @param coarse the coarse samples of the tile, {@code cz × TILE_CHUNKS + cx}
+         * @param fine   the fine samples of the tile, {@code sz × TILE_FINE + sx}
          */
         void apply(int tileX, int tileZ, long[] coarse, long[] fine);
     }
 
-    /** The top of a sample of one layer by its grid coordinates, an empty column counting as 0. */
+    /**
+     * The top of a sample of one layer by its grid coordinates, an empty column counting as 0; {@link #hide} takes
+     * {@link Integer#MAX_VALUE} for no ring sample.
+     */
     @FunctionalInterface
     interface CellTop {
         int top(int x, int z) throws IOException;
@@ -121,22 +127,19 @@ final class FarViewAssembler {
         return tiles;
     }
 
-    /** {@code farview/t.<tile_x>.<tile_z>.hfp}, relative to the build directory. */
-    static String fileName(int tileX, int tileZ) {
-        return "t." + tileX + "." + tileZ + ".hfp";
-    }
-
     // Samples as longs
-
-    /** The 8 bytes of a sample read as one little endian long, as the pack stores it. */
-    static long packed(Sample sample) {
-        return sample.groundState() | (long) sample.fluidState() << 16 | (long) sample.groundY() << 32
-                | (long) sample.fluidBottom() << 40 | (long) sample.fluidTop() << 48 | (long) sample.biome() << 56;
-    }
 
     static Sample sample(long packed) {
         return new Sample((int) (packed & 0xFFFF), (int) (packed >>> 16 & 0xFFFF), (int) (packed >>> 32 & 0xFF),
                 (int) (packed >>> 40 & 0xFF), (int) (packed >>> 48 & 0xFF), (int) (packed >>> 56));
+    }
+
+    /**
+     * {@link Sample#biome()} of a packed sample, without making the sample: the biome table of a tile looks at
+     * every sample of it.
+     */
+    static int biome(long packed) {
+        return (int) (packed >>> 56);
     }
 
     /** {@link Sample#top()}, an empty column counting as 0, which is what the hidden rule takes it for. */
@@ -147,17 +150,18 @@ final class FarViewAssembler {
     // Part files
 
     /**
-     * Writes the part of one region: the chunk rectangle, then for each of its chunks, x before z, the fine
-     * samples by z and then x.
+     * Writes the part of one region: the chunk rectangle, then for each of its chunks by x and then z, the fine
+     * samples by z and then x, each one {@link Sample#packed} long.
      *
      * @param chunks the fine samples of every chunk of the rectangle, in that order
      */
     static void writePart(Path work, int regionX, int regionZ, int minX, int minZ, int maxX, int maxZ,
                           List<List<Sample>> chunks) throws IOException {
-        final ByteBuffer part = ByteBuffer.allocate(PART_HEADER + chunks.size() * PER_CHUNK * 8).order(ByteOrder.LITTLE_ENDIAN);
+        final ByteBuffer part = ByteBuffer.allocate(PART_HEADER + chunks.size() * PER_CHUNK * Long.BYTES)
+                .order(ByteOrder.LITTLE_ENDIAN);
         part.putInt(minX).putInt(minZ).putInt(maxX).putInt(maxZ);
         for (List<Sample> chunk : chunks) {
-            for (Sample sample : chunk) part.putLong(packed(sample));
+            for (Sample sample : chunk) part.putLong(sample.packed());
         }
         Files.write(partFile(work.resolve(PARTS), regionX, regionZ), part.array());
     }
@@ -166,9 +170,14 @@ final class FarViewAssembler {
         return parts.resolve("r." + regionX + "." + regionZ + ".part");
     }
 
-    /** The samples of one region part, {@link #sample(int, int, int)}. */
+    /** The packed fine samples of one region part, as {@link #writePart} lays them out. */
     private record Part(int minX, int minZ, int maxX, int maxZ, long[] samples) {
-        long sample(int chunkX, int chunkZ, int index) {
+        /**
+         * The packed fine sample of a chunk of the part.
+         *
+         * @param index the sample in the chunk, {@code sz × CHUNK_SAMPLES + sx}
+         */
+        long packedAt(int chunkX, int chunkZ, int index) {
             return samples[((chunkX - minX) * (maxZ - minZ + 1) + chunkZ - minZ) * PER_CHUNK + index];
         }
     }
@@ -177,13 +186,14 @@ final class FarViewAssembler {
         final ByteBuffer bytes = ByteBuffer.wrap(Files.readAllBytes(partFile(parts, regionX, regionZ)))
                 .order(ByteOrder.LITTLE_ENDIAN);
         final int minX = bytes.getInt(), minZ = bytes.getInt(), maxX = bytes.getInt(), maxZ = bytes.getInt();
-        final long[] samples = new long[bytes.remaining() / 8];
+        final long[] samples = new long[bytes.remaining() / Long.BYTES];
         bytes.asLongBuffer().get(samples);
         return new Part(minX, minZ, maxX, maxZ, samples);
     }
 
-    private boolean inBounds(int chunkX, int chunkZ) {
-        return chunkX >= bounds.minX() && chunkX <= bounds.maxX() && chunkZ >= bounds.minZ() && chunkZ <= bounds.maxZ();
+    /** The bounds of the bake, in chunks. */
+    SynxManifest.Bounds bounds() {
+        return bounds;
     }
 
     // The hidden rule
@@ -191,7 +201,7 @@ final class FarViewAssembler {
     /**
      * {@code API-M3-014} 隐藏区域 on one layer: the samples of the layer's grid meeting a hidden area are replaced;
      * the replacement height of an area is the lowest top among the samples of its ring (the eight neighbours of
-     * its samples) that no area meets, 0 without any.
+     * its samples) that no area meets, 0 without any. A top of {@link Integer#MAX_VALUE} is no ring sample.
      *
      * @param areas block coordinates, corners as min and max
      * @param level the layer's level, a sample is {@code 2^level} blocks square
@@ -199,25 +209,44 @@ final class FarViewAssembler {
      * @return one replacement per area, in grid coordinates
      */
     static List<Replacement> hide(List<HiddenArea> areas, int level, CellTop top) throws IOException {
-        final List<Replacement> cells = new ArrayList<>(areas.size());
+        // The areas on this layer's grid; their heights are found below
+        final List<Replacement> rects = new ArrayList<>(areas.size());
         for (HiddenArea area : areas) {
-            cells.add(new Replacement(area.x1() >> level, area.z1() >> level, area.x2() >> level, area.z2() >> level, 0));
+            rects.add(new Replacement(area.x1() >> level, area.z1() >> level, area.x2() >> level, area.z2() >> level, 0));
         }
-        final List<Replacement> replacements = new ArrayList<>(cells.size());
-        for (Replacement cell : cells) {
+        final List<Replacement> replacements = new ArrayList<>(rects.size());
+        for (Replacement rect : rects) {
+            // One side after the other: a top read from one tile at a time then changes tile at most once a side
             int lowest = Integer.MAX_VALUE;
-            for (int x = cell.minX() - 1; x <= cell.maxX() + 1; x++) {
-                lowest = Math.min(lowest, ringTop(cells, top, x, cell.minZ() - 1));
-                lowest = Math.min(lowest, ringTop(cells, top, x, cell.maxZ() + 1));
+            for (int x = rect.minX() - 1; x <= rect.maxX() + 1; x++) {
+                lowest = Math.min(lowest, ringTop(rects, top, x, rect.minZ() - 1));
             }
-            for (int z = cell.minZ(); z <= cell.maxZ(); z++) {
-                lowest = Math.min(lowest, ringTop(cells, top, cell.minX() - 1, z));
-                lowest = Math.min(lowest, ringTop(cells, top, cell.maxX() + 1, z));
+            for (int x = rect.minX() - 1; x <= rect.maxX() + 1; x++) {
+                lowest = Math.min(lowest, ringTop(rects, top, x, rect.maxZ() + 1));
             }
-            replacements.add(new Replacement(cell.minX(), cell.minZ(), cell.maxX(), cell.maxZ(),
+            for (int z = rect.minZ(); z <= rect.maxZ(); z++) {
+                lowest = Math.min(lowest, ringTop(rects, top, rect.minX() - 1, z));
+            }
+            for (int z = rect.minZ(); z <= rect.maxZ(); z++) {
+                lowest = Math.min(lowest, ringTop(rects, top, rect.maxX() + 1, z));
+            }
+            replacements.add(new Replacement(rect.minX(), rect.minZ(), rect.maxX(), rect.maxZ(),
                     lowest == Integer.MAX_VALUE ? 0 : lowest));
         }
         return List.copyOf(replacements);
+    }
+
+    /**
+     * {@link #hide} for the hidden areas of this bake on one layer, where a sample outside the bounds is no ring
+     * sample: an area at the edge of the map takes its height from the ring inside it (§28.1). The assembly and
+     * the sampled check of {@code verify} both take their replacements from here.
+     *
+     * @param top the top of a sample of the layer inside the bounds, before any replacement
+     */
+    List<Replacement> replacements(int level, CellTop top) throws IOException {
+        // A chunk is 16 = 1 << 4 blocks across, a sample of the layer 1 << level
+        final int shift = 4 - level;
+        return hide(hidden, level, (x, z) -> bounds.contains(x >> shift, z >> shift) ? top.top(x, z) : Integer.MAX_VALUE);
     }
 
     /** The top of a ring sample, or {@link Integer#MAX_VALUE} for a sample an area meets, which is no ring sample. */
@@ -241,12 +270,12 @@ final class FarViewAssembler {
         return lowest;
     }
 
-    /** What a hidden sample becomes: the default stone at the replacement height, no fluid, plains. */
-    long hiddenSample(int height) {
-        return packed(new Sample(Block.STONE.stateId(), 0, height, 0, 0, plains));
+    /** What a hidden sample becomes: the default stone with its top at {@code groundY}, no fluid, plains. */
+    long hiddenSample(int groundY) {
+        return new Sample(Block.STONE.stateId(), 0, groundY, 0, 0, plains).packed();
     }
 
-    /** Biome names by registry id. */
+    /** The name of the biome with this registry id. */
     String biomeName(int registryId) {
         return biomeNames[registryId];
     }
@@ -262,28 +291,27 @@ final class FarViewAssembler {
      */
     List<SynxManifest.FarView> assemble(Path work, Path farview, Tamper tamper) throws IOException {
         final Path parts = work.resolve(PARTS);
-        final long[] coarse = coarseGrid(parts);
-        final int width = bounds.maxX() - bounds.minX() + 1;
-        final Map<Long, Part> ring = new HashMap<>();
-        final List<Replacement> fineHidden = hide(hidden, BASE_LEVEL, (x, z) -> {
+        final long[] coarseGrid = coarseGrid(parts);
+        final Map<Long, Part> loadedParts = new HashMap<>();
+        final List<Replacement> fineHidden = replacements(BASE_LEVEL, (x, z) -> {
             final int chunkX = x >> CHUNK_SHIFT, chunkZ = z >> CHUNK_SHIFT;
-            if (!inBounds(chunkX, chunkZ)) return 0;
             final int regionX = SynxFormat.region(chunkX), regionZ = SynxFormat.region(chunkZ);
-            Part part = ring.get(key(regionX, regionZ));
+            Part part = loadedParts.get(key(regionX, regionZ));
             if (part == null) {
                 part = part(parts, regionX, regionZ);
-                ring.put(key(regionX, regionZ), part);
+                loadedParts.put(key(regionX, regionZ), part);
             }
-            return hiddenTop(part.sample(chunkX, chunkZ, (z & (CHUNK_SAMPLES - 1)) * CHUNK_SAMPLES + (x & (CHUNK_SAMPLES - 1))));
+            return hiddenTop(part.packedAt(chunkX, chunkZ, (z & (CHUNK_SAMPLES - 1)) * CHUNK_SAMPLES + (x & (CHUNK_SAMPLES - 1))));
         });
-        ring.clear();
-        final List<Replacement> coarseHidden = hide(hidden, FarViewPack.COARSE_LEVEL, (x, z) -> inBounds(x, z)
-                ? hiddenTop(coarse[(z - bounds.minZ()) * width + x - bounds.minX()]) : 0);
+        // The tiles read their parts again one at a time; let these go
+        loadedParts.clear();
+        final List<Replacement> coarseHidden = replacements(FarViewPack.COARSE_LEVEL,
+                (x, z) -> hiddenTop(coarseGrid[coarseIndex(x, z)]));
 
         Baker.publishedDirectory(Files.createDirectories(farview));
         final List<SynxManifest.FarView> entries = new ArrayList<>();
         for (int[] tile : tiles(bounds)) {
-            entries.add(tile(parts, tile[0], tile[1], coarse, fineHidden, coarseHidden, tamper, farview));
+            entries.add(tile(parts, tile[0], tile[1], coarseGrid, fineHidden, coarseHidden, tamper, farview));
         }
         Baker.deleteTree(parts);
         return List.copyOf(entries);
@@ -293,7 +321,12 @@ final class FarViewAssembler {
         return (long) x << 32 | (z & 0xFFFF_FFFFL);
     }
 
-    /** The coarse sample of every chunk of the bounds, {@code (z - minZ) × width + x - minX}. */
+    /** The index of a chunk of the bounds in the grid of {@link #coarseGrid}. */
+    private int coarseIndex(int chunkX, int chunkZ) {
+        return (chunkZ - bounds.minZ()) * (bounds.maxX() - bounds.minX() + 1) + chunkX - bounds.minX();
+    }
+
+    /** The coarse sample of every chunk of the bounds, at its {@link #coarseIndex}. */
     private long[] coarseGrid(Path parts) throws IOException {
         final int width = bounds.maxX() - bounds.minX() + 1, depth = bounds.maxZ() - bounds.minZ() + 1;
         final long[] coarse = new long[width * depth];
@@ -303,9 +336,8 @@ final class FarViewAssembler {
                 final Part part = part(parts, regionX, regionZ);
                 for (int chunkX = part.minX(); chunkX <= part.maxX(); chunkX++) {
                     for (int chunkZ = part.minZ(); chunkZ <= part.maxZ(); chunkZ++) {
-                        for (int i = 0; i < PER_CHUNK; i++) fine[i] = sample(part.sample(chunkX, chunkZ, i));
-                        coarse[(chunkZ - bounds.minZ()) * width + chunkX - bounds.minX()] =
-                                packed(FarViewPack.coarsen(BASE_LEVEL, Arrays.asList(fine)));
+                        for (int i = 0; i < PER_CHUNK; i++) fine[i] = sample(part.packedAt(chunkX, chunkZ, i));
+                        coarse[coarseIndex(chunkX, chunkZ)] = FarViewPack.coarsen(BASE_LEVEL, Arrays.asList(fine)).packed();
                     }
                 }
             }
@@ -318,7 +350,6 @@ final class FarViewAssembler {
         final int originX = tileX << FarViewPack.TILE_SHIFT, originZ = tileZ << FarViewPack.TILE_SHIFT;
         final int minX = Math.max(originX, bounds.minX()), maxX = Math.min(originX + TILE_CHUNKS - 1, bounds.maxX());
         final int minZ = Math.max(originZ, bounds.minZ()), maxZ = Math.min(originZ + TILE_CHUNKS - 1, bounds.maxZ());
-        final int width = bounds.maxX() - bounds.minX() + 1;
 
         final long[] coarse = new long[TILE_CHUNKS * TILE_CHUNKS];
         final long[] fine = new long[TILE_FINE * TILE_FINE];
@@ -328,12 +359,11 @@ final class FarViewAssembler {
                 for (int chunkX = part.minX(); chunkX <= part.maxX(); chunkX++) {
                     for (int chunkZ = part.minZ(); chunkZ <= part.maxZ(); chunkZ++) {
                         final int localX = chunkX - originX, localZ = chunkZ - originZ;
-                        coarse[localZ * TILE_CHUNKS + localX] =
-                                coarseGrid[(chunkZ - bounds.minZ()) * width + chunkX - bounds.minX()];
+                        coarse[localZ * TILE_CHUNKS + localX] = coarseGrid[coarseIndex(chunkX, chunkZ)];
                         for (int i = 0; i < PER_CHUNK; i++) {
                             final int sx = localX * CHUNK_SAMPLES + i % CHUNK_SAMPLES;
                             final int sz = localZ * CHUNK_SAMPLES + i / CHUNK_SAMPLES;
-                            fine[sz * TILE_FINE + sx] = part.sample(chunkX, chunkZ, i);
+                            fine[sz * TILE_FINE + sx] = part.packedAt(chunkX, chunkZ, i);
                         }
                     }
                 }
@@ -345,18 +375,8 @@ final class FarViewAssembler {
         replace(coarse, coarseHidden, originX, originZ, TILE_CHUNKS, minX, minZ, maxX, maxZ);
         tamper.apply(tileX, tileZ, coarse, fine);
 
-        // The biome table: every biome a sample inside the bounds names, on either layer
-        final boolean[] used = new boolean[biomeNames.length];
-        for (int chunkZ = minZ; chunkZ <= maxZ; chunkZ++) {
-            for (int chunkX = minX; chunkX <= maxX; chunkX++) {
-                used[(int) (coarse[(chunkZ - originZ) * TILE_CHUNKS + chunkX - originX] >>> 56)] = true;
-                for (int i = 0; i < PER_CHUNK; i++) {
-                    final int sx = (chunkX - originX) * CHUNK_SAMPLES + i % CHUNK_SAMPLES;
-                    final int sz = (chunkZ - originZ) * CHUNK_SAMPLES + i / CHUNK_SAMPLES;
-                    used[(int) (fine[sz * TILE_FINE + sx] >>> 56)] = true;
-                }
-            }
-        }
+        // The biome table
+        final boolean[] used = usedBiomes(coarse, fine, originX, originZ, minX, minZ, maxX, maxZ);
         final List<String> table = new ArrayList<>();
         for (int id = 0; id < used.length; id++) {
             if (used[id]) table.add(biomeNames[id]);
@@ -372,8 +392,7 @@ final class FarViewAssembler {
         final int coarseSide = FarViewPack.blocksPerSide(FarViewPack.COARSE_LEVEL);
         for (int bz = 0; bz < coarseSide; bz++) {
             for (int bx = 0; bx < coarseSide; bx++) {
-                final int blockX = originX + bx * FarViewPack.BLOCK_SIDE, blockZ = originZ + bz * FarViewPack.BLOCK_SIDE;
-                if (!meets(blockX, blockZ, FarViewPack.BLOCK_SIDE)) continue;
+                if (!meets(originX + bx * FarViewPack.BLOCK_SIDE, originZ + bz * FarViewPack.BLOCK_SIDE, FarViewPack.BLOCK_SIDE)) continue;
                 writer.block(Layer.COARSE, bx, bz, block(coarse, TILE_CHUNKS, bx, bz, index, originX, originZ, 0));
             }
         }
@@ -387,20 +406,46 @@ final class FarViewAssembler {
 
         final byte[] prefix = writer.coarsePrefix();
         final byte[] whole = writer.write();
-        final Path staging = parts.resolve(fileName(tileX, tileZ) + ".staging");
-        try {
-            // 0644 before the link: the pack in the release is the same file (API-M3-002 文件信任)
-            Baker.publishedFile(Files.write(staging, whole));
-            try (FileChannel channel = FileChannel.open(staging, StandardOpenOption.WRITE)) {
-                channel.force(true);
+        publish(parts, farview.resolve(SynxFormat.farViewFileName(tileX, tileZ)), whole);
+        return new SynxManifest.FarView(tileX, tileZ, BASE_LEVEL, FarViewPack.COARSE_LEVEL, whole.length,
+                SynxDigests.sha256(whole), prefix.length, SynxDigests.sha256(prefix));
+    }
+
+    /**
+     * Every biome a sample of a tile inside the bounds names, on either layer, by registry id.
+     *
+     * @param originX the tile's first chunk
+     * @param minX    the tile's first chunk inside the bounds
+     */
+    private boolean[] usedBiomes(long[] coarse, long[] fine, int originX, int originZ, int minX, int minZ, int maxX,
+                                 int maxZ) {
+        final boolean[] used = new boolean[biomeNames.length];
+        for (int chunkZ = minZ; chunkZ <= maxZ; chunkZ++) {
+            for (int chunkX = minX; chunkX <= maxX; chunkX++) {
+                used[biome(coarse[(chunkZ - originZ) * TILE_CHUNKS + chunkX - originX])] = true;
+                for (int i = 0; i < PER_CHUNK; i++) {
+                    final int sx = (chunkX - originX) * CHUNK_SAMPLES + i % CHUNK_SAMPLES;
+                    final int sz = (chunkZ - originZ) * CHUNK_SAMPLES + i / CHUNK_SAMPLES;
+                    used[biome(fine[sz * TILE_FINE + sx])] = true;
+                }
             }
-            // A hard link fails on an existing name, where a rename would replace it
-            Files.createLink(farview.resolve(fileName(tileX, tileZ)), staging);
+        }
+        return used;
+    }
+
+    /**
+     * Writes a pack through a staging file in the parts directory: 0644 before the link, as the pack in the
+     * release is the same file (API-M3-002 文件信任), and forced to disk; then hard linked to {@code target},
+     * which fails on an existing name where a rename would replace it.
+     */
+    private static void publish(Path parts, Path target, byte[] pack) throws IOException {
+        final Path staging = parts.resolve(target.getFileName().toString() + ".staging");
+        try {
+            Baker.forced(Baker.publishedFile(Files.write(staging, pack)));
+            Files.createLink(target, staging);
         } finally {
             Files.deleteIfExists(staging);
         }
-        return new SynxManifest.FarView(tileX, tileZ, BASE_LEVEL, FarViewPack.COARSE_LEVEL, whole.length,
-                SynxDigests.sha256(whole), prefix.length, SynxDigests.sha256(prefix));
     }
 
     /** Whether the square of {@code side} chunks from the given one meets the bounds. */
@@ -438,7 +483,7 @@ final class FarViewAssembler {
             for (int sx = 0; sx < FarViewPack.BLOCK_SIDE; sx++) {
                 final int x = bx * FarViewPack.BLOCK_SIDE + sx, z = bz * FarViewPack.BLOCK_SIDE + sz;
                 Sample sample = Sample.EMPTY;
-                if (inBounds(originX + (x >> shift), originZ + (z >> shift))) {
+                if (bounds.contains(originX + (x >> shift), originZ + (z >> shift))) {
                     final Sample named = sample(grid[z * side + x]);
                     sample = new Sample(named.groundState(), named.fluidState(), named.groundY(), named.fluidBottom(),
                             named.fluidTop(), index[named.biome()]);

@@ -91,6 +91,8 @@ public final class FarViewClient {
         cache = store;
         // What a connection left over a day ago goes now; the rest waits for the next announcement
         store.dropStaleParts(null, System.currentTimeMillis());
+        // The settings file is there from the first start, before any far view downloads; every announcement reads it again
+        FarViewSettings.load(FabricLoader.getInstance().getConfigDir());
         ClientConfigurationNetworking.registerGlobalReceiver(FarViewPayload.TYPE, (payload, context) ->
                 onAnnouncement(payload, server(context.packetContext().orElse(PacketContext.CONNECTION, null))));
         // A connection attempt starts with login: whatever the last connection had under way stops there,
@@ -155,7 +157,8 @@ public final class FarViewClient {
             return Gate.SUPPORTED;
         } catch (RuntimeException | LinkageError e) {
             // The far view is optional: a DH that cannot be reached never stops the client from starting
-            LOGGER.warn("{}Far view off: Distant Horizons could not be reached: {}", PREFIX, e.toString());
+            // With its cause: the DH class that is missing, or the initializer that failed
+            LOGGER.warn("{}Far view off: Distant Horizons could not be reached: {}", PREFIX, e.toString(), e);
             return Gate.UNSUPPORTED;
         }
     }
@@ -175,15 +178,28 @@ public final class FarViewClient {
 
     private static void onAnnouncement(FarViewPayload payload, @Nullable InetAddress server) {
         final FarViewCache store = cache;
-        if (store == null) return;
-        final FarViewConnection before = current;
-        if (before != null) before.cancel("a new announcement");
+        if (store == null || !takesAnnouncement(current)) return;
         final FarViewSettings settings = FarViewSettings.load(FabricLoader.getInstance().getConfigDir());
         final FarViewConnection connection = announced(payload.announcement(), System.nanoTime(), gate, settings, store,
                 FarViewDownloader.standard(store), server);
         current = connection;
         last = connection;
         connection.begin();
+    }
+
+    /**
+     * Whether the connection of this moment takes an announcement: only its first ({@code API-M3-015} 宣告条,
+     * at most one a connection, kept until the next login starts). A repeated one is ignored with a WARN line
+     * and the first one's far view goes on, so a server cannot start a download, its threads and its requests
+     * over and over, or have two downloads write one {@code .part}.
+     *
+     * @param current the far view of the connection of this moment, null before its announcement
+     * @return whether the announcement is taken
+     */
+    static boolean takesAnnouncement(@Nullable FarViewConnection current) {
+        if (current == null) return true;
+        LOGGER.warn("{}Far view announcement repeated on one connection: ignored", PREFIX);
+        return false;
     }
 
     /**
@@ -204,10 +220,10 @@ public final class FarViewClient {
                                        FarViewCache store, FarViewDownloader downloader, @Nullable InetAddress server) {
         final FarViewAnnouncement announcement = admitted(received);
         final Set<String> named = new HashSet<>();
-        if (announcement != null) announcement.tiles().forEach(tile -> named.add(FarViewConnection.hex(tile)));
+        if (announcement != null) announcement.tiles().forEach(tile -> named.add(FarViewCache.hex(tile)));
         store.dropStaleParts(named, System.currentTimeMillis());
         final boolean on = available(gate, settings, announcement);
-        final FarViewConnection connection = new FarViewConnection(announcement, now, settings, on, DH_VERSION, store,
+        final FarViewConnection connection = new FarViewConnection(announcement, now, settings, on, store,
                 downloader, server);
         if (received == null) {
             LOGGER.info("{}announcement received, but it could not be read: far view off", PREFIX);
@@ -215,15 +231,15 @@ public final class FarViewClient {
             final long coarse = announcement.tiles().stream().filter(t -> t.layer() == FarViewAnnouncement.LAYER_COARSE).count();
             LOGGER.info("{}announcement received: build {}, {} tile(s), {} coarse, view {}{}", PREFIX, announcement.buildId(),
                     announcement.tiles().size(), coarse, on ? connection.viewKey() : "-",
-                    on ? "" : "; far view off (" + reason(gate, settings) + ")");
+                    on ? "" : "; far view off (" + reason(gate) + ")");
         }
         return connection;
     }
 
     /**
      * An announcement as this client takes it ({@code API-M3-015}, M3-S {@code REQ-M3-032}): none when its
-     * objects together are over the cache limit, or when its URLs are not all absolute http(s) URLs of
-     * one scheme, host and port. Each refusal is one WARN line.
+     * objects together are over the cache limit, when its URLs are not all absolute http(s) URLs of one
+     * scheme, host and port, or when two of its tiles name one object. Each refusal is one WARN line.
      *
      * @param announcement the announcement, null for none
      * @return it, or null
@@ -237,6 +253,7 @@ public final class FarViewClient {
             return null;
         }
         String first = null;
+        final Set<String> digests = new HashSet<>();
         for (FarViewAnnouncement.Tile tile : announcement.tiles()) {
             final String origin;
             try {
@@ -251,12 +268,25 @@ public final class FarViewClient {
                 LOGGER.warn("{}Far view announcement names more than one host: ignored", PREFIX);
                 return null;
             }
+            // A pack's header names its own tile, so no shard announces one object for two tiles; the two downloads
+            // would write one .part, named by the digest alone
+            final String hex = FarViewCache.hex(tile);
+            if (!digests.add(hex)) {
+                LOGGER.warn("{}Far view announcement names object {} for two tiles: ignored", PREFIX, hex.substring(0, 12));
+                return null;
+            }
         }
         return announcement;
     }
 
-    /** {@code scheme://host:port} of an absolute http(s) URL, the default port written out. */
-    private static String origin(String url) {
+    /**
+     * {@code scheme://host:port} of an absolute http(s) URL, the default port written out; no user info.
+     *
+     * @param url the URL
+     * @return its origin
+     * @throws IllegalArgumentException if it is no absolute http(s) URL with a host
+     */
+    static String origin(String url) {
         final URI uri = URI.create(url);
         final String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
         if (!scheme.equals("http") && !scheme.equals("https")) throw new IllegalArgumentException(url + " is not http or https");
@@ -265,9 +295,13 @@ public final class FarViewClient {
         return scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT) + ":" + port;
     }
 
-    private static String reason(Gate gate, FarViewSettings settings) {
-        if (gate != Gate.SUPPORTED) return gate == Gate.ABSENT ? "no Distant Horizons" : "unsupported Distant Horizons";
-        return settings.on() ? "no announcement" : FarViewSettings.KEY + " is 0";
+    /** Why a connection whose announcement was taken draws no far view. */
+    private static String reason(Gate gate) {
+        return switch (gate) {
+            case ABSENT -> "no Distant Horizons";
+            case UNSUPPORTED -> "unsupported Distant Horizons";
+            case SUPPORTED -> FarViewSettings.KEY + " is 0";
+        };
     }
 
     private static void cancel(String why) {
@@ -312,7 +346,10 @@ public final class FarViewClient {
     /**
      * The library directory the connection of this moment pins DH to: the far view's, or on a Synaxis
      * connection without a far view the empty {@value #NO_FAR_VIEW} library, which read only keeps
-     * empty, so DH has nothing to draw there and the player's own DH settings stay as they are.
+     * empty, so DH has nothing to draw there and the player's own DH settings stay as they are. A
+     * Synaxis connection whose far view was cancelled with its level gets {@value #NO_FAR_VIEW} too
+     * ({@code docs/DESIGN-M3.md} §28.2). With {@link FarViewTestHook#pinOff} off ({@code counter-off})
+     * a Synaxis connection without a far view leaves DH its own folder.
      *
      * @return {@code synaxis/farview/dh/<view_key>} or {@code synaxis/farview/dh/off}, null on any other
      *         connection, where DH keeps its own folder
@@ -320,7 +357,7 @@ public final class FarViewClient {
     public static @Nullable Path libraryDirectory() {
         final FarViewCache store = cache;
         if (store == null) return null;
-        return library(store, current, synaxisConnection());
+        return library(store, current, synaxisConnection() && FarViewTestHook.pinOff);
     }
 
     /**
@@ -329,17 +366,19 @@ public final class FarViewClient {
      * @param store      the cache
      * @param connection the far view of the connection, null before an announcement
      * @param synaxis    whether the connection is a Synaxis one
-     * @return {@code dh/<view_key>} for a far view, {@code dh/off} for a Synaxis connection without one, else null
+     * @return {@code dh/<view_key>} for a far view not cancelled; {@code dh/off} for a Synaxis connection
+     *         without one, or whose far view was cancelled with its level (§28.2); else null
      */
     static @Nullable Path library(FarViewCache store, @Nullable FarViewConnection connection, boolean synaxis) {
-        if (connection != null && connection.available() && !connection.cancelled().get()) {
+        if (connection != null && connection.available() && !connection.cancelled()) {
             return store.library(connection.viewKey());
         }
         return synaxis ? store.library(NO_FAR_VIEW) : null;
     }
 
     /**
-     * DH loaded a level: the connection's bake starts when its objects are there.
+     * DH loaded a level: a matching marker's load check starts now; otherwise the connection's bake
+     * starts when its objects are there.
      *
      * @param levelWrapper DH's level wrapper
      * @param baker        the DH side's bake

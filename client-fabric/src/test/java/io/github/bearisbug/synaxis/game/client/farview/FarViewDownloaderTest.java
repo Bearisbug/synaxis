@@ -191,9 +191,9 @@ class FarViewDownloaderTest {
         assertEquals(2, result.objects());
         assertEquals(whole.length + coarse.length, result.bytes());
         assertEquals(whole.length + coarse.length, progress.get());
-        assertArrayEquals(whole, Files.readAllBytes(cache.pack(FarViewConnection.hex(wholeTile))));
-        assertArrayEquals(coarse, Files.readAllBytes(cache.pack(FarViewConnection.hex(coarseTile))));
-        assertFalse(Files.exists(cache.part(FarViewConnection.hex(wholeTile))));
+        assertArrayEquals(whole, Files.readAllBytes(cache.pack(FarViewCache.hex(wholeTile))));
+        assertArrayEquals(coarse, Files.readAllBytes(cache.pack(FarViewCache.hex(coarseTile))));
+        assertFalse(Files.exists(cache.part(FarViewCache.hex(wholeTile))));
         assertEquals(List.of(), cache.missing(List.of(wholeTile, coarseTile)));
     }
 
@@ -218,7 +218,7 @@ class FarViewDownloaderTest {
         assertTrue(second.matches(), "the second request asks for the rest: " + requests.get(1));
         final int resumedAt = Integer.parseInt(second.group(1));
         assertTrue(resumedAt > 0 && resumedAt <= half, "resumed at " + resumedAt + " of the " + half + " bytes sent");
-        assertArrayEquals(whole, Files.readAllBytes(cache.pack(FarViewConnection.hex(tile))));
+        assertArrayEquals(whole, Files.readAllBytes(cache.pack(FarViewCache.hex(tile))));
     }
 
     @Test
@@ -235,7 +235,7 @@ class FarViewDownloaderTest {
 
         assertTrue(result.success(), result.toString());
         assertEquals(2, requests.size(), requests.toString());
-        assertArrayEquals(whole, Files.readAllBytes(cache.pack(FarViewConnection.hex(tile))));
+        assertArrayEquals(whole, Files.readAllBytes(cache.pack(FarViewCache.hex(tile))));
     }
 
     @Test
@@ -247,12 +247,12 @@ class FarViewDownloaderTest {
             else out.whole(object);
         };
         final Tile tile = serve("whole", whole, FarViewAnnouncement.LAYER_FULL);
-        Files.createDirectories(cache.part(FarViewConnection.hex(tile)).getParent());
-        Files.write(cache.part(FarViewConnection.hex(tile)), Arrays.copyOf(whole, 1000));
+        Files.createDirectories(cache.part(FarViewCache.hex(tile)).getParent());
+        Files.write(cache.part(FarViewCache.hex(tile)), Arrays.copyOf(whole, 1000));
 
         assertTrue(download(cache, List.of(tile)).success());
         assertEquals(List.of("/m/farview/whole bytes=1000-"), requests);
-        assertArrayEquals(whole, Files.readAllBytes(cache.pack(FarViewConnection.hex(tile))));
+        assertArrayEquals(whole, Files.readAllBytes(cache.pack(FarViewCache.hex(tile))));
     }
 
     @Test
@@ -271,11 +271,11 @@ class FarViewDownloaderTest {
         final FarViewDownloader.Result result = download(cache, List.of(tile));
 
         assertFalse(result.success());
-        assertEquals(FarViewConnection.hex(tile), result.failed());
+        assertEquals(FarViewCache.hex(tile), result.failed());
         assertTrue(result.reason().contains("SHA-256"), result.reason());
         assertEquals(3, requests.size(), requests.toString());
-        assertFalse(Files.exists(cache.pack(FarViewConnection.hex(tile))));
-        assertFalse(Files.exists(cache.part(FarViewConnection.hex(tile))));
+        assertFalse(Files.exists(cache.pack(FarViewCache.hex(tile))));
+        assertFalse(Files.exists(cache.part(FarViewCache.hex(tile))));
     }
 
     @Test
@@ -290,7 +290,7 @@ class FarViewDownloaderTest {
         assertFalse(result.success());
         assertTrue(result.reason().contains("more"), result.reason());
         assertEquals(3, requests.size(), requests.toString());
-        assertFalse(Files.exists(cache.part(FarViewConnection.hex(tile))));
+        assertFalse(Files.exists(cache.part(FarViewCache.hex(tile))));
     }
 
     @Test
@@ -319,7 +319,7 @@ class FarViewDownloaderTest {
         final FarViewDownloader.Result result = download(cache, List.of(tile));
         assertFalse(result.success());
         assertTrue(result.reason().contains("magic"), result.reason());
-        assertEquals(3, requests.size());
+        assertEquals(1, requests.size(), "the same bytes fail the same way: no retry");
     }
 
     @Test
@@ -330,7 +330,7 @@ class FarViewDownloaderTest {
                 + "/m/farview/gone");
         final FarViewDownloader.Result result = download(cache, List.of(gone, good));
         assertFalse(result.success());
-        assertEquals(FarViewConnection.hex(gone), result.failed());
+        assertEquals(FarViewCache.hex(gone), result.failed());
         assertTrue(result.reason().contains("404"), result.reason());
     }
 
@@ -394,8 +394,8 @@ class FarViewDownloaderTest {
         final long until = System.nanoTime() + Duration.ofSeconds(5).toNanos();
         while (late.get() < 3 && System.nanoTime() < until) Thread.sleep(50);
         Thread.sleep(300);
-        assertFalse(Files.exists(cache.part(FarViewConnection.hex(tile))), "an attempt given up on writes nothing later");
-        assertFalse(Files.exists(cache.pack(FarViewConnection.hex(tile))));
+        assertFalse(Files.exists(cache.part(FarViewCache.hex(tile))), "an attempt given up on writes nothing later");
+        assertFalse(Files.exists(cache.pack(FarViewCache.hex(tile))));
     }
 
     @Test
@@ -423,7 +423,7 @@ class FarViewDownloaderTest {
         assertNull(result.failed());
         assertEquals("cancelled", result.reason());
         assertTrue(Duration.ofNanos(System.nanoTime() - started).toMillis() < 2500, "it stopped before the server finished");
-        assertTrue(Files.exists(cache.part(FarViewConnection.hex(tile))), "the .part stays for the next connection");
+        assertTrue(Files.exists(cache.part(FarViewCache.hex(tile))), "the .part stays for the next connection");
         assertEquals(1, requests.size());
     }
 
@@ -460,14 +460,14 @@ class FarViewDownloaderTest {
                 final FarViewDownloader.Result result = downloader.download(List.of(tile), new AtomicBoolean(), _ -> {
                 });
                 assertFalse(result.success(), url);
-                assertEquals(FarViewConnection.hex(tile), result.failed(), url);
+                assertEquals(FarViewCache.hex(tile), result.failed(), url);
                 assertEquals(1, result.attempts(), url + ": " + result);
                 if (url.endsWith("/moved") && url.startsWith("http")) {
                     assertEquals("HTTP 302", result.reason());
                 } else {
                     assertTrue(result.reason().startsWith("the url cannot be requested: "), result.reason());
                 }
-                assertFalse(Files.exists(cache.part(FarViewConnection.hex(tile))), url);
+                assertFalse(Files.exists(cache.part(FarViewCache.hex(tile))), url);
             }
             assertEquals(List.of("/m/farview/moved -"), requests, "the redirect was asked for once");
             assertEquals(List.of(), elsewhereAsked, "and not followed");
@@ -512,7 +512,7 @@ class FarViewDownloaderTest {
         assertFalse(result.success());
         assertNull(result.failed());
         assertEquals("the download took over 2 s", result.reason());
-        assertTrue(Files.exists(cache.part(FarViewConnection.hex(tile))), "the .part stays");
+        assertTrue(Files.exists(cache.part(FarViewCache.hex(tile))), "the .part stays");
         assertEquals(1, requests.size());
     }
 
@@ -525,14 +525,14 @@ class FarViewDownloaderTest {
             else out.whole(object);
         };
         final Tile tile = serve("big", big, FarViewAnnouncement.LAYER_FULL);
-        Files.createDirectories(cache.part(FarViewConnection.hex(tile)).getParent());
-        Files.write(cache.part(FarViewConnection.hex(tile)), Arrays.copyOf(big, TEN_MIB));
+        Files.createDirectories(cache.part(FarViewCache.hex(tile)).getParent());
+        Files.write(cache.part(FarViewCache.hex(tile)), Arrays.copyOf(big, TEN_MIB));
 
         final FarViewDownloader.Result result = download(cache, List.of(tile));
 
         assertTrue(result.success(), result.toString());
         assertEquals(List.of("/m/farview/big bytes=" + TEN_MIB + "-"), requests, "one request for the rest");
-        assertArrayEquals(sha256(big), sha256(Files.readAllBytes(cache.pack(FarViewConnection.hex(tile)))));
+        assertArrayEquals(sha256(big), sha256(Files.readAllBytes(cache.pack(FarViewCache.hex(tile)))));
     }
 
     @Test
@@ -546,8 +546,8 @@ class FarViewDownloaderTest {
             else out.whole(object);
         };
         final Tile tile = serve("big", changed, FarViewAnnouncement.LAYER_FULL, big.length, big);
-        Files.createDirectories(cache.part(FarViewConnection.hex(tile)).getParent());
-        Files.write(cache.part(FarViewConnection.hex(tile)), Arrays.copyOf(big, TEN_MIB));
+        Files.createDirectories(cache.part(FarViewCache.hex(tile)).getParent());
+        Files.write(cache.part(FarViewCache.hex(tile)), Arrays.copyOf(big, TEN_MIB));
 
         final FarViewDownloader.Result result = download(cache, List.of(tile));
 
@@ -555,8 +555,51 @@ class FarViewDownloaderTest {
         assertTrue(result.reason().contains("SHA-256"), result.reason());
         assertEquals(List.of("/m/farview/big bytes=" + TEN_MIB + "-", "/m/farview/big -", "/m/farview/big -"), requests,
                 "the part is dropped after the first attempt, the next ones start over");
-        assertFalse(Files.exists(cache.part(FarViewConnection.hex(tile))));
-        assertFalse(Files.exists(cache.pack(FarViewConnection.hex(tile))));
+        assertFalse(Files.exists(cache.part(FarViewCache.hex(tile))));
+        assertFalse(Files.exists(cache.pack(FarViewCache.hex(tile))));
+    }
+
+    @Test
+    void aRedirectWhoseBodyNeverEndsFailsAtItsFirstAttempt() throws IOException {
+        final FarViewCache cache = new FarViewCache(dir);
+        answer = (_, _, _, out) -> {
+            // A 302 whose body runs on: one byte, then nothing until the test ends
+            out.exchange().sendResponseHeaders(302, 0);
+            out.exchange().getResponseBody().write('x');
+            out.exchange().getResponseBody().flush();
+            try {
+                release.await(20, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        };
+        final Tile tile = serve("moved", vector("pack-small.hfp"), FarViewAnnouncement.LAYER_FULL);
+        final long started = System.nanoTime();
+
+        final FarViewDownloader.Result result = download(cache, List.of(tile));
+
+        final long millis = Duration.ofNanos(System.nanoTime() - started).toMillis();
+        assertEquals("HTTP 302", result.reason(), result.toString());
+        assertEquals(1, result.attempts(), result.toString());
+        assertEquals(1, requests.size(), requests.toString());
+        assertTrue(millis < 4000, "the body was not waited for on the 5 s idle clock: " + millis + " ms");
+        assertFalse(Files.exists(cache.part(FarViewCache.hex(tile))));
+    }
+
+    @Test
+    void aFileErrorOfAnAttemptIsAFailedAttemptThatKeepsThePart() throws IOException {
+        final FarViewCache cache = new FarViewCache(dir);
+        final Tile tile = serve("whole", vector("pack-small.hfp"), FarViewAnnouncement.LAYER_FULL);
+        // A directory where the object goes: no attempt can rename the .part into packs/
+        Files.createDirectories(cache.pack(FarViewCache.hex(tile)));
+
+        final FarViewDownloader.Result result = download(cache, List.of(tile));
+
+        assertFalse(result.success());
+        assertEquals(FarViewCache.hex(tile), result.failed(), result.toString());
+        assertEquals(3, result.attempts(), result.toString());
+        assertEquals(1, requests.size(), "the next attempts digest the .part kept for them: " + requests);
+        assertFalse(Files.exists(cache.part(FarViewCache.hex(tile))), "the last attempt removes it");
     }
 
     private static final int TEN_MIB = 10 << 20;

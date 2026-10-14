@@ -19,6 +19,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -45,7 +46,6 @@ public final class AnvilSource implements BakeSource {
     private final AnvilWorld world;
     private final SynxManifest.Bounds bounds;
     private final int minY;
-    private final int height;
     private volatile @Nullable Double lightCoverage;
     private volatile List<HiddenArea> hiddenAreas = List.of();
 
@@ -53,13 +53,12 @@ public final class AnvilSource implements BakeSource {
         this.world = world;
         this.bounds = bounds;
         this.minY = minY;
-        this.height = HEIGHT;
     }
 
     /**
      * Opens a save.
      *
-     * @param bounds             the chunks to bake, or null for every chunk of the save
+     * @param bounds             the chunks to bake, or null for the rectangle around every chunk the save has
      * @param minY               the lowest y of the window baked, a multiple of 16
      * @param registeredHandlers the handler namespaces a data marker may name
      * @throws IOException when the save or the dimension cannot be opened, or has no chunk at all
@@ -68,7 +67,9 @@ public final class AnvilSource implements BakeSource {
     public static AnvilSource open(Path save, Key dimension, @Nullable SynxManifest.Bounds bounds, int minY,
                                    Registries registries, Predicate<String> registeredHandlers) throws IOException {
         if (minY % 16 != 0) throw new IllegalArgumentException("--min-y must be a multiple of 16, got " + minY);
-        if (!Files.isDirectory(save)) throw new IOException("no source save at " + save);
+        if (!Files.isDirectory(save)) {
+            throw new IOException("no source save at " + save.toAbsolutePath() + "; give the directory holding level.dat");
+        }
         final AnvilWorld world = AnvilWorld.open(save, dimension, registries.biome(), registeredHandlers);
         try {
             SynxManifest.Bounds effective = bounds;
@@ -103,7 +104,7 @@ public final class AnvilSource implements BakeSource {
 
     @Override
     public int height() {
-        return height;
+        return HEIGHT;
     }
 
     @Override
@@ -127,13 +128,18 @@ public final class AnvilSource implements BakeSource {
 
     /**
      * Reads every chunk inside the bounds once, collecting the hidden areas of its markers. The first failure in
-     * (x, z) order is thrown, so the same save always names the same chunk.
+     * (x, z) order is thrown, so the same save always names the same chunk. Reads are submitted in that order with
+     * at most four per thread in flight, so the gate's memory does not grow with the bounds and stops at the first
+     * failure.
      */
     @Override
     public void checkGate(int threads) throws IOException {
         final ExecutorService executor = Executors.newFixedThreadPool(threads);
         try {
-            final List<Future<Gated>> reads = new ArrayList<>();
+            final int window = threads * 4;
+            final ArrayDeque<Future<Gated>> reads = new ArrayDeque<>(window);
+            final List<HiddenArea> hidden = new ArrayList<>();
+            long total = 0, lit = 0;
             for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
                 for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
                     final int chunkX = x, chunkZ = z;
@@ -141,24 +147,14 @@ public final class AnvilSource implements BakeSource {
                         final AnvilChunk chunk = chunk(chunkX, chunkZ);
                         return new Gated(chunk.lightOn(), chunk.hiddenAreas());
                     }));
+                    total++;
+                    if (reads.size() == window && collect(reads.removeFirst(), hidden)) lit++;
                 }
             }
-            int lit = 0;
-            final List<HiddenArea> hidden = new ArrayList<>();
-            for (Future<Gated> read : reads) {
-                try {
-                    final Gated gated = read.get();
-                    if (gated.lightOn()) lit++;
-                    for (HiddenArea area : gated.hiddenAreas()) {
-                        hidden.add(new HiddenArea(Math.min(area.x1(), area.x2()), Math.min(area.z1(), area.z2()),
-                                Math.max(area.x1(), area.x2()), Math.max(area.z1(), area.z2())));
-                    }
-                } catch (ExecutionException e) {
-                    if (e.getCause() instanceof IOException io) throw io;
-                    throw new IOException(e.getCause());
-                }
+            while (!reads.isEmpty()) {
+                if (collect(reads.removeFirst(), hidden)) lit++;
             }
-            lightCoverage = (double) lit / reads.size();
+            lightCoverage = (double) lit / total;
             hidden.sort(Comparator.comparingInt(HiddenArea::x1).thenComparingInt(HiddenArea::z1)
                     .thenComparingInt(HiddenArea::x2).thenComparingInt(HiddenArea::z2));
             hiddenAreas = List.copyOf(hidden);
@@ -170,6 +166,21 @@ public final class AnvilSource implements BakeSource {
         }
     }
 
+    /** Waits for one read and adds its hidden areas, corners as min and max; returns whether the chunk is lit. */
+    private static boolean collect(Future<Gated> read, List<HiddenArea> hidden) throws IOException, InterruptedException {
+        try {
+            final Gated gated = read.get();
+            for (HiddenArea area : gated.hiddenAreas()) {
+                hidden.add(new HiddenArea(Math.min(area.x1(), area.x2()), Math.min(area.z1(), area.z2()),
+                        Math.max(area.x1(), area.x2()), Math.max(area.z1(), area.z2())));
+            }
+            return gated.lightOn();
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof IOException io) throw io;
+            throw new IOException(e.getCause());
+        }
+    }
+
     @Override
     public List<HiddenArea> hiddenAreas() {
         return hiddenAreas;
@@ -178,18 +189,18 @@ public final class AnvilSource implements BakeSource {
     @Override
     public SourceChunk read(int chunkX, int chunkZ) throws IOException {
         final AnvilChunk chunk = chunk(chunkX, chunkZ);
-        final int sections = height / 16, minSection = minY >> 4;
+        final int sections = HEIGHT / 16, minSection = minY >> 4;
         final Palette[] blocks = new Palette[sections];
         final Palette[] biomes = new Palette[sections];
-        final byte[][] sky = new byte[sections][];
-        final byte[][] block = new byte[sections][];
+        final byte[][] sourceSky = new byte[sections][];
+        final byte[][] sourceBlock = new byte[sections][];
         for (AnvilSection section : chunk.sections()) {
             final int i = section.sectionY() - minSection;
             if (i < 0 || i >= sections) continue; // all air, checked by chunk()
             blocks[i] = section.blocks();
             biomes[i] = section.biomes();
-            sky[i] = section.skyLight();
-            block[i] = section.blockLight();
+            sourceSky[i] = section.skyLight();
+            sourceBlock[i] = section.blockLight();
         }
         for (int i = 0; i < sections; i++) {
             if (blocks[i] == null) {
@@ -202,8 +213,8 @@ public final class AnvilSource implements BakeSource {
             blockEntities.add(new SynxBlockEntity(blockEntity.sectionY(), blockEntity.index(),
                     blockEntity.handler() == null ? "" : blockEntity.handler(), blockEntity.nbt()));
         }
-        return new SourceChunk(chunkX, chunkZ, blocks, biomes, blockEntities, chunk.entities(), chunk.lightOn(), sky, block,
-                chunk.markerCells());
+        return new SourceChunk(chunkX, chunkZ, blocks, biomes, blockEntities, chunk.entities(), chunk.lightOn(),
+                sourceSky, sourceBlock, chunk.markerCells());
     }
 
     private AnvilChunk chunk(int chunkX, int chunkZ) throws IOException {
@@ -211,7 +222,7 @@ public final class AnvilSource implements BakeSource {
         if (chunk == null) {
             throw new AnvilSourceException(chunkX, chunkZ, "missing from the source, every chunk inside the bounds "
                     + bounds.minX() + ", " + bounds.minZ() + " .. " + bounds.maxX() + ", " + bounds.maxZ()
-                    + " must be generated to full");
+                    + " must be generated to full (without --bounds every chunk of the save is inside)");
         }
         checkWindow(chunk);
         return chunk;
@@ -223,7 +234,7 @@ public final class AnvilSource implements BakeSource {
         int outsideY = Integer.MAX_VALUE;
         for (AnvilSection section : chunk.sections()) {
             final int sectionMinY = section.sectionY() * 16;
-            if (sectionMinY >= minY && sectionMinY < minY + height) continue;
+            if (sectionMinY >= minY && sectionMinY < minY + HEIGHT) continue;
             final int[] lowest = {Integer.MAX_VALUE, 0};
             section.blocks().getAllPresent((_, y, _, state) -> {
                 if (y < lowest[0] && !Objects.requireNonNull(Block.fromStateId(state)).air()) {
@@ -238,21 +249,26 @@ public final class AnvilSource implements BakeSource {
         }
         for (AnvilBlockEntity blockEntity : chunk.blockEntities()) {
             final int y = blockEntity.y();
-            if ((y < minY || y >= minY + height) && y < outsideY) {
+            if ((y < minY || y >= minY + HEIGHT) && y < outsideY) {
                 outsideY = y;
-                outside = "block entity " + blockEntity.nbt().getString("id");
+                final String id = blockEntity.nbt().getString("id");
+                // A record a data marker made has no id; the marker stands on the block above
+                outside = id.isEmpty() && blockEntity.handler() != null
+                        ? "the target of data marker " + blockEntity.handler() + " (the structure block is at y "
+                        + (y + 1) + ")"
+                        : "block entity " + id;
             }
         }
         for (CompoundBinaryTag entity : chunk.entities()) {
             final int y = (int) Math.floor(entity.getList("Pos").getDouble(1));
-            if ((y < minY || y >= minY + height) && y < outsideY) {
+            if ((y < minY || y >= minY + HEIGHT) && y < outsideY) {
                 outsideY = y;
                 outside = "entity " + entity.getString("id");
             }
         }
         if (outside != null) {
             throw new AnvilSourceException(chunk.chunkX(), chunk.chunkZ(), outside + " at y " + outsideY
-                    + " lies outside of the baked window, y " + minY + " to " + (minY + height - 1)
+                    + " lies outside of the baked window, y " + minY + " to " + (minY + HEIGHT - 1)
                     + "; clear it from the source or move the window with --min-y");
         }
     }

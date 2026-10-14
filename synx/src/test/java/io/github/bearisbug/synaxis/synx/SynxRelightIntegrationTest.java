@@ -306,8 +306,9 @@ public class SynxRelightIntegrationTest {
         world.instance.setBlock(center(3), Y, center(3), Block.TORCH);
 
         try (LogCapture logs = LogCapture.of(SynxRelight.class)) {
-            final CompletableFuture<?> drained = world.relight.drain(Duration.ZERO, true);
-            assertTrue(drained.isDone(), "no budget: done at once");
+            final CompletableFuture<?> drained =
+                    world.relight.drain(Duration.ofNanos(OverlayStore.FINAL_CAP_NANOS), true);
+            assertTrue(drained.isDone(), "the final flush's cap takes all that is left: no budget, done at once");
             assertTrue(logs.messagesAt(Level.WARN).stream().anyMatch(line -> line.contains(" 9 targets")),
                     logs.messagesAt(Level.WARN).toString());
         }

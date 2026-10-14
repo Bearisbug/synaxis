@@ -10,7 +10,6 @@ import com.google.gson.JsonPrimitive;
 import com.google.gson.Strictness;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -27,7 +26,7 @@ import java.util.function.Function;
 /**
  * {@code manifest.json} of a map release, API-M3-002. Field names on disk are the snake case ones of
  * the design; digests are lower case hex. {@link #toJson()} writes the fields in a fixed order, so
- * a manifest read and written back is byte for byte the same file.
+ * a manifest toJson wrote reads back and writes again byte for byte the same.
  *
  * @param contentHash    the map wide content hash, {@link SynxDigests#contentHash}
  * @param registryDigest {@link SynxDigests#registryDigest}
@@ -65,7 +64,19 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
     /** Inclusive chunk coordinates. */
     public record Bounds(int minX, int minZ, int maxX, int maxZ) {
         public Bounds {
-            if (minX > maxX || minZ > maxZ) throw new IllegalArgumentException("empty bounds");
+            if (minX > maxX || minZ > maxZ) {
+                throw new IllegalArgumentException("bounds " + minX + "," + minZ + "," + maxX + "," + maxZ + " are empty");
+            }
+        }
+
+        /** Whether a chunk is inside, both ends included. */
+        public boolean contains(int chunkX, int chunkZ) {
+            return chunkX >= minX && chunkX <= maxX && chunkZ >= minZ && chunkZ <= maxZ;
+        }
+
+        /** These bounds grown by {@code chunks} on every side. */
+        public Bounds grow(int chunks) {
+            return new Bounds(minX - chunks, minZ - chunks, maxX + chunks, maxZ + chunks);
         }
     }
 
@@ -198,8 +209,8 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
      * Parses a manifest.
      *
      * @throws SynxException {@link SynxError#MANIFEST} if the text is not strict JSON, an object of it gives
-     *                       a name twice, a required field is missing or has the wrong type, or a digest is not 32
-     *                       bytes of hex
+     *                       a name twice, a required field is missing or has the wrong type, a digest is not 32
+     *                       bytes of hex, an integer field has a fraction or does not fit, or the bounds are empty
      */
     public static SynxManifest fromJson(String text) throws SynxException {
         try {
@@ -227,7 +238,7 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
                             longInteger(bakeJson, "cpu_ms"), integer(bakeJson, "threads"), string(bakeJson, "jdk")),
                     new Verify(integer(verifyJson, "samples"), integer(verifyJson, "diffs"),
                             verifyJson.has("source_light_diff") ? longInteger(verifyJson, "source_light_diff") : null));
-        } catch (JsonParseException | IllegalStateException | IllegalArgumentException | ArithmeticException e) {
+        } catch (IOException | JsonParseException | IllegalStateException | IllegalArgumentException e) {
             throw new SynxException(SynxError.MANIFEST, FILE_NAME, String.valueOf(e.getMessage()));
         }
     }
@@ -237,17 +248,11 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
      * document and nothing after it, and no name twice in one object (M3-S): a lenient reader takes the
      * later of two, which the shard directory refuses as well.
      */
-    private static JsonObject parse(String text) {
+    private static JsonObject parse(String text) throws IOException {
         final UniqueNamesReader reader = new UniqueNamesReader(text);
-        final JsonElement root;
-        try {
-            root = JSON.read(reader);
-            if (reader.peek() != JsonToken.END_DOCUMENT) {
-                throw new IllegalArgumentException("more after the document at " + reader.getPath());
-            }
-        } catch (IOException e) {
-            throw new IllegalArgumentException(e.getMessage(), e);
-        }
+        final JsonElement root = JSON.read(reader);
+        // In Strictness.STRICT anything after the document throws a MalformedJsonException
+        var _ = reader.peek();
         if (!root.isJsonObject()) throw new IllegalArgumentException("not a JSON object");
         return root.getAsJsonObject();
     }
@@ -309,18 +314,34 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
         return value.getAsNumber();
     }
 
-    /** @throws ArithmeticException if the number has a fraction or does not fit an int */
+    /** A whole number that fits an int, read from its text: 4.0 is 4, 4.5 is refused naming the field. */
     private static int integer(JsonObject json, String name) {
-        return new BigDecimal(number(json, name).toString()).intValueExact();
+        final Number number = number(json, name);
+        try {
+            return new BigDecimal(number.toString()).intValueExact();
+        } catch (ArithmeticException _) {
+            throw new IllegalArgumentException(name + " is not an integer: " + number);
+        }
     }
 
-    /** @throws ArithmeticException if the number has a fraction or does not fit a long */
+    /** {@link #integer} for a long. */
     private static long longInteger(JsonObject json, String name) {
-        return new BigDecimal(number(json, name).toString()).longValueExact();
+        final Number number = number(json, name);
+        try {
+            return new BigDecimal(number.toString()).longValueExact();
+        } catch (ArithmeticException _) {
+            throw new IllegalArgumentException(name + " is not an integer: " + number);
+        }
     }
 
     private static byte[] digest(JsonObject json, String name) {
-        final byte[] bytes = SynxDigests.unhex(string(json, name));
+        final String text = string(json, name);
+        final byte[] bytes;
+        try {
+            bytes = SynxDigests.unhex(text);
+        } catch (IllegalArgumentException _) {
+            throw new IllegalArgumentException(name + " is not hex: " + text);
+        }
         if (bytes.length != 32) throw new IllegalArgumentException(name + " is not 32 bytes");
         return bytes;
     }

@@ -45,7 +45,7 @@ import org.jspecify.annotations.Nullable;
  * proxy settings. An object gets {@value #ATTEMPTS} attempts, waiting {@link #RETRY_WAITS} before the
  * second and the third; a {@code .part} left by an earlier attempt or connection is resumed with
  * {@code Range}. An object is kept only when its size and SHA-256 are the announced ones and
- * {@code FarViewPack.Reader} reads its header and indexes as the layer it was announced as.
+ * {@code FarViewPack.Reader} reads its header and indexes as the layer and the tile it was announced as.
  * <p>
  * The limits of M3-S ({@code REQ-M3-032}): no redirect is followed; a URL that cannot be requested and
  * a 3xx answer end the object at its first attempt; the SHA-256 is taken as the bytes are written,
@@ -108,19 +108,27 @@ public final class FarViewDownloader {
     }
 
     /**
-     * The downloader of the design: the JVM's proxy selector, no redirect followed, the timeouts and
-     * waits above.
+     * The downloader of the design: the client the process shares, with the JVM's proxy selector and
+     * no redirect followed, and the timeouts and waits above.
      *
      * @param cache where the objects go
      * @return the downloader
      */
     public static FarViewDownloader standard(FarViewCache cache) {
-        return new FarViewDownloader(cache, http().proxy(ProxySelector.getDefault()).build(), RETRY_WAITS, IDLE_TIMEOUT);
+        return new FarViewDownloader(cache, Shared.HTTP, RETRY_WAITS, IDLE_TIMEOUT);
+    }
+
+    /** The client every {@link #standard} downloader shares, one for the process: built with the first, never closed. */
+    private static final class Shared {
+        static final HttpClient HTTP = http().proxy(ProxySelector.getDefault()).build();
     }
 
     /**
-     * The client of {@link #standard} but its proxy: a redirect is never followed, since an object is
-     * named by its digest and the CDN answers with it, so a redirect gives the same on every retry.
+     * The client of {@link #standard} without its proxy. A redirect is never followed: the one-host and
+     * local-address rules ({@link FarViewClient#admitted}, {@link FarViewConnection#localRefusal}) see
+     * the announced URL only, and a redirect could send the request to any other host. A 3xx ends its
+     * object at the first attempt ({@link PartWriter}): objects are named by their digest and the CDN
+     * answers with the object itself, so the same redirect would come back on every retry.
      *
      * @return a builder to set the proxy on
      */
@@ -169,11 +177,15 @@ public final class FarViewDownloader {
         final LongConsumer[] perObject = new LongConsumer[tiles.size()];
         for (int i = 0; i < tiles.size(); i++) {
             final int index = i;
+            // One lock for the update, the sum and the report: the last report then carries the latest sum,
+            // never one a slower thread summed before another object's bytes came in
             perObject[i] = bytes -> {
-                received.set(index, bytes);
-                long sum = 0;
-                for (int j = 0; j < received.length(); j++) sum += received.get(j);
-                progress.accept(sum);
+                synchronized (received) {
+                    received.set(index, bytes);
+                    long sum = 0;
+                    for (int j = 0; j < received.length(); j++) sum += received.get(j);
+                    progress.accept(sum);
+                }
             };
         }
         final ExecutorService pool = Executors.newFixedThreadPool(Math.max(1, Math.min(CONCURRENCY, tiles.size())),
@@ -188,7 +200,8 @@ public final class FarViewDownloader {
                     final Outcome outcome = object(tile, bytes, stopped);
                     if (outcome.reason().isEmpty()) return true;
                     if (!outcome.reason().equals(CANCELLED)) {
-                        failure.compareAndSet(null, new Result(false, 0, 0, 0, hex(tile), outcome.reason(), outcome.attempts()));
+                        failure.compareAndSet(null, new Result(false, 0, 0, 0, FarViewCache.hex(tile), outcome.reason(),
+                                outcome.attempts()));
                         stop.set(true);
                     }
                     return false;
@@ -234,11 +247,13 @@ public final class FarViewDownloader {
     }
 
     /**
-     * One object, up to {@value #ATTEMPTS} attempts; a URL that cannot be requested and a 3xx answer end it
-     * at the first. A runtime exception of an attempt is a failed attempt, its {@code .part} removed.
+     * One object, up to {@value #ATTEMPTS} attempts; a URL that cannot be requested, a 3xx answer and bytes
+     * of the announced digest that are not the announced pack end it at the first. A runtime exception of
+     * an attempt is a failed attempt, its {@code .part} removed; an I/O exception is one that keeps the
+     * {@code .part} for the next attempt to resume or digest again.
      */
     private Outcome object(FarViewAnnouncement.Tile tile, LongConsumer progress, BooleanSupplier stopped) throws IOException {
-        final String hex = hex(tile);
+        final String hex = FarViewCache.hex(tile);
         final Path part = cache.part(hex);
         Files.createDirectories(part.getParent());
         String reason = "";
@@ -253,12 +268,18 @@ public final class FarViewDownloader {
                 if (stopped.getAsBoolean()) return new Outcome(CANCELLED, attempt);
                 final String wrong = check(tile, part, digest);
                 if (wrong.isEmpty()) {
+                    // What packs/ holds is never checked again: its bytes reach the disk before its name does
+                    try (FileChannel out = FileChannel.open(part, StandardOpenOption.WRITE)) {
+                        out.force(true);
+                    }
                     Files.move(part, cache.pack(hex), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
                     return new Outcome("", attempt);
                 }
                 Files.deleteIfExists(part);
                 progress.accept(0);
                 reason = wrong;
+                // The same bytes fail the same way: only bytes of another digest are worth another attempt
+                if (Arrays.equals(digest, tile.sha256())) break;
             } catch (Failed e) {
                 if (e.cancelled) return new Outcome(CANCELLED, attempt);
                 if (e.discard) {
@@ -270,6 +291,9 @@ public final class FarViewDownloader {
             } catch (RuntimeException e) {
                 Files.deleteIfExists(part);
                 progress.accept(0);
+                reason = e.toString();
+            } catch (IOException e) {
+                // A file the system would not move or read this time: the next attempt resumes or digests the .part again
                 reason = e.toString();
             }
         }
@@ -333,22 +357,24 @@ public final class FarViewDownloader {
                     break;
                 } catch (TimeoutException _) {
                     if (stopped.getAsBoolean()) {
-                        writer.abort("cancelled");
+                        writer.abort();
                         throw new Failed(CANCELLED, false, true, false);
                     }
+                    // A refused answer's body is not waited for: the refusal is already in done
+                    if (writer.done.isCompletedExceptionally()) break;
                     if (System.nanoTime() - writer.lastByte() > idleTimeout.toNanos()) {
-                        writer.abort("no byte for " + idleTimeout.toSeconds() + " s");
+                        writer.abort();
                         throw new Failed("no byte for " + idleTimeout.toSeconds() + " s", false, false, false);
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    writer.abort("cancelled");
+                    writer.abort();
                     throw new Failed(CANCELLED, false, true, false);
                 } catch (ExecutionException e) {
                     throw failed(e.getCause());
                 }
             }
-            // A refused response completes the request normally, with the refusal in the writer's body
+            // A refusal is in the writer's body: the response completes normally or is left at the next poll
             if (writer.done.isCompletedExceptionally()) {
                 try {
                     writer.done.join();
@@ -368,19 +394,24 @@ public final class FarViewDownloader {
 
     private static Failed failed(Throwable cause) {
         if (cause instanceof Refused refused) return new Failed(refused.getMessage(), refused.discard, false, refused.fatal);
-        return new Failed(String.valueOf(cause), false, false, false);
+        // HttpClient reports a host it cannot resolve as a ConnectException without a message, the reason in its cause
+        final Throwable inner = cause.getCause();
+        return new Failed(inner == null ? String.valueOf(cause) : cause + " (" + inner + ")", false, false, false);
     }
 
     /**
-     * Size, digest, then the header and indexes as the layer it was announced as: only an object whose
-     * digest is the announced one is read, and that one is at most 40 MiB.
+     * Size, digest, then the header and indexes as the layer and the tile it was announced as. Only an
+     * object of the announced size and digest is read whole, and that size is at most
+     * {@link FarViewAnnouncement#MAX_OBJECT_BYTES}, which {@code FarViewAnnouncement.Tile} holds to.
+     *
+     * @return empty when the object is the announced one, else why it is not
      */
     private static String check(FarViewAnnouncement.Tile tile, Path part, byte[] digest) throws IOException {
         final long size = Files.size(part);
         if (size != tile.bytes()) return size + " bytes, not the announced " + tile.bytes();
         if (FarViewTestHook.digest && !Arrays.equals(digest, tile.sha256())) {
             return "its SHA-256 is " + HexFormat.of().formatHex(digest).substring(0, 12) + ", not the announced "
-                    + hex(tile).substring(0, 12);
+                    + FarViewCache.hex(tile).substring(0, 12);
         }
         final FarViewPack.Reader reader;
         try {
@@ -502,7 +533,7 @@ public final class FarViewDownloader {
                     written = from;
                 }
             } catch (IOException e) {
-                return refuse("the .part cannot be written: " + e.getMessage(), false, false);
+                return refuse("the .part cannot be written: " + e, false, false);
             }
             progress.accept(from);
             return new HttpResponse.BodySubscriber<>() {
@@ -540,7 +571,7 @@ public final class FarViewDownloader {
                         final Flow.Subscription s = subscription;
                         if (s != null) s.request(1);
                     } catch (IOException e) {
-                        abort(new Refused("the .part cannot be written: " + e.getMessage(), false, false));
+                        abort(new Refused("the .part cannot be written: " + e, false, false));
                     }
                 }
 
@@ -562,8 +593,9 @@ public final class FarViewDownloader {
             return HttpResponse.BodySubscribers.replacing(null);
         }
 
-        void abort(String why) {
-            abort(new Refused(why, false, false));
+        /** Gives up on the attempt: the body stops, what {@link #done} holds is never read. */
+        void abort() {
+            abort(new Refused("the attempt was given up on", false, false));
         }
 
         private void abort(Refused why) {
@@ -596,10 +628,6 @@ public final class FarViewDownloader {
             Thread.currentThread().interrupt();
             return false;
         }
-    }
-
-    private static String hex(FarViewAnnouncement.Tile tile) {
-        return HexFormat.of().formatHex(tile.sha256());
     }
 
     private static MessageDigest sha256() {

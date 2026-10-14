@@ -6,7 +6,7 @@ package io.github.bearisbug.synaxis.synx;
  *
  * @param resident         {@code overlay_resident}, current
  * @param evicted          chunks evicted back to handle mode, since the store opened
- * @param evictFailed      failed writes, since the store opened
+ * @param evictFailed      batches that failed to append or fsync, since the store opened
  * @param flushAppended    records appended, since the store opened
  * @param flushFsyncs      {@code fsync} calls, since the store opened
  * @param flushLagSMax     the longest a dirty chunk waited to be written, since the last call; reading clears it

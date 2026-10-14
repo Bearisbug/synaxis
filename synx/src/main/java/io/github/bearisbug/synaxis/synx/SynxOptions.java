@@ -48,17 +48,8 @@ public record SynxOptions(boolean worldWritable, long sectionCacheBytes, int rel
 
     static SynxOptions from(UnaryOperator<String> properties) {
         final boolean worldWritable = booleanProperty(properties, WORLD_WRITABLE, true);
-        final String cache = properties.apply(SECTION_CACHE_BYTES);
-        long sectionCacheBytes = DEFAULT_SECTION_CACHE_BYTES;
-        if (cache != null) {
-            try {
-                sectionCacheBytes = Long.parseLong(cache);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Property '" + SECTION_CACHE_BYTES + "' is not a number of bytes: " + cache, e);
-            }
-            if (sectionCacheBytes < 1)
-                throw new IllegalArgumentException("Property '" + SECTION_CACHE_BYTES + "' is below 1: " + cache);
-        }
+        final long sectionCacheBytes = OverlayOptions.bytesProperty(properties, SECTION_CACHE_BYTES,
+                DEFAULT_SECTION_CACHE_BYTES);
         final String threads = properties.apply(RELIGHT_THREADS);
         int relightThreads = defaultRelightThreads();
         if (threads != null) {

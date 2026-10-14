@@ -17,13 +17,14 @@ import java.util.Objects;
 
 /**
  * How a block state interacts with light, following the vanilla 26.2 light engine
- * ({@code LightEngine}, {@code ChunkSkyLightSources}).
+ * ({@code net.minecraft.world.level.lighting.LightEngine}, {@code ChunkSkyLightSources}); this package's
+ * {@link LightEngine} takes its rules from here.
  * <ul>
  *     <li>Light entering a block loses {@code max(1, lightBlock)} levels; lightBlock comes from the registry.</li>
- *     <li>Only states with {@code useShapeForLightOcclusion} (slabs, stairs, snow layers, farmland, ...) use their
- *     occlusion shape for light; every other state is treated as having no faces. The registry data does not carry
- *     that flag, so the state ids are read from {@code light_shape_states.txt}, generated from the vanilla server by
- *     {@code tools/light-oracle/gen.sh}.</li>
+ *     <li>Only states that {@code canOcclude} and have {@code useShapeForLightOcclusion} (slabs, stairs, snow layers,
+ *     farmland, ...) use their occlusion shape for light; every other state is treated as having no faces. The
+ *     registry data does not carry {@code useShapeForLightOcclusion}, so the state ids are read from
+ *     {@code light_shape_states.txt}, generated from the vanilla server by {@code tools/light-oracle/gen.sh}.</li>
  * </ul>
  */
 @ApiStatus.Internal

@@ -10,7 +10,9 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ServiceConfigurationError;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -66,6 +68,39 @@ public class SynxHandlersTest {
         assertTrue(message.contains(OtherDoor.class.getName()), message);
         assertNull(blocks.getHandler("synaxis:door"));
         assertNull(blocks.getHandler("synaxis:loot"));
+    }
+
+    /**
+     * The service lookup makes each service as the iteration reaches it, and throws a
+     * {@link ServiceConfigurationError} for one that does not load: the handlers seen before it are not
+     * registered either.
+     */
+    @Test
+    public void aServiceThatDoesNotLoadIsRefusedBeforeAnyIsRegistered() {
+        final BlockManager blocks = new BlockManager();
+        final Iterable<BlockHandler> handlers = () -> new Iterator<>() {
+            private boolean first = true;
+
+            @Override
+            public boolean hasNext() {
+                return true;
+            }
+
+            @Override
+            public BlockHandler next() {
+                if (!first) {
+                    throw new ServiceConfigurationError("io.github.bearisbug.synaxis.Broken: no public constructor");
+                }
+                first = false;
+                return new Named(Key.key("synaxis:door"));
+            }
+        };
+        final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> SynxHandlers.registerAll(blocks, handlers));
+
+        assertTrue(refused.getMessage().startsWith("a block handler service does not load: "), refused.getMessage());
+        assertInstanceOf(ServiceConfigurationError.class, refused.getCause());
+        assertNull(blocks.getHandler("synaxis:door"));
     }
 
     /**

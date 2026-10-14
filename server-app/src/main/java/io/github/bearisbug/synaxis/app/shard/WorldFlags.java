@@ -23,7 +23,7 @@ public interface WorldFlags {
     void register(String key, FlagApplier applier);
 
     /**
-     * The value and version this process applied last.
+     * The value and version this process applied last, as a copy of its own.
      *
      * @param key the flag key
      * @return the value, null if this process has none for the key
@@ -32,7 +32,15 @@ public interface WorldFlags {
 
     /**
      * A conditional write: only when the version in the database is {@code expectedVersion} (0 for a
-     * new key), written as that version plus one. Callable from any thread.
+     * new key), written as that version plus one. Callable from any thread; the value is copied first.
+     * <p>
+     * Written means the row is in the database: the blocks change, and {@link #get} returns the value,
+     * on a later tick once its chunks have loaded. A key with no applier registered in this process is
+     * written and announced but never applied here, and {@link #get} stays null for it. A new key that is
+     * not {@code <namespace>:<name>} in lower case or is over 64 characters, a value too long for the
+     * table, or one nesting arrays and objects deeper than 255 levels, fails for good
+     * ({@link FlagWrite.Failed}); with an {@code expectedVersion} above 0 such a key is a
+     * {@link FlagWrite.Conflict} with no current value.
      *
      * @param key             the flag key
      * @param value           the new value

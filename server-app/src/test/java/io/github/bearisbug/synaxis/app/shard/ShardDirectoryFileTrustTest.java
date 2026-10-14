@@ -60,15 +60,26 @@ public class ShardDirectoryFileTrustTest {
         }
     }
 
-    /** The host is held to 1 to 253 characters and nothing else: no hostname or address syntax. */
+    /**
+     * The host is held to 1 to 253 characters without whitespace, not with exactly one colon nor anything after the
+     * ] of a bracketed literal, a port written into it ({@code docs/DESIGN-M3.md} {@code API-M3-010}); there is no
+     * further hostname or address syntax, and an IPv6 literal, which has two colons or more, passes.
+     */
     @Test
-    public void theHostIsCheckedForItsLengthOnly() throws IOException {
-        for (String host : new String[]{"例子.测试", "a b", "host:25565", "-", "\\u0007"}) {
+    public void theHostIsCheckedForItsLengthWhitespaceAndAPortInIt() throws IOException {
+        for (String host : new String[]{"例子.测试", "-", "\\u0007", "::1", "[2001:db8::7]"}) {
             final Path file = write(example().replace("\"host\": \"127.0.0.1\", \"port\": 25601",
                     "\"host\": \"" + host + "\", \"port\": 25601"));
             final String read = ShardDirectory.load(file, "r0-c1").ownChannel().host();
             assertTrue(!read.isEmpty() && read.length() <= 253, host);
         }
+        final String address = "\"host\": \"127.0.0.1\", \"port\": 25601";
+        refused(example().replace(address, "\"host\": \"a b\", \"port\": 25601"),
+                "host a b is not a host name or address: it has whitespace");
+        refused(example().replace(address, "\"host\": \"host:25565\", \"port\": 25601"),
+                "host host:25565 is not a host name or address: the port goes in port");
+        refused(example().replace(address, "\"host\": \"[2001:db8::7]:25601\", \"port\": 25601"),
+                "host [2001:db8::7]:25601 is not a host name or address: the port goes in port");
     }
 
     private void refused(String text, String expected) throws IOException {

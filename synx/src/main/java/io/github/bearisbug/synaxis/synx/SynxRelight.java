@@ -357,11 +357,12 @@ public final class SynxRelight {
             failed(task, e);
             return;
         }
-        if (pool != null) computed(task, start);
-        else executor.execute(() -> computed(task, start));
+        final long snapshotNanos = System.nanoTime() - start;
+        if (pool != null) computed(task, start, snapshotNanos);
+        else executor.execute(() -> computed(task, start, snapshotNanos));
     }
 
-    private void computed(Task task, long start) {
+    private void computed(Task task, long start, long snapshotNanos) {
         final List<Target> targets;
         try {
             targets = compute(task);
@@ -372,8 +373,9 @@ public final class SynxRelight {
         final long took = System.nanoTime() - start;
         sample(relightSamples, took);
         if (took > SLOW_NANOS) {
-            LOGGER.warn("The light recomputation of center {},{} took {} ms", task.center.x, task.center.z,
-                    TimeUnit.NANOSECONDS.toMillis(took));
+            LOGGER.warn("The light recomputation of center {},{} took {} ms, {} ms of it taking the blocks of the 5×5",
+                    task.center.x, task.center.z, TimeUnit.NANOSECONDS.toMillis(took),
+                    TimeUnit.NANOSECONDS.toMillis(snapshotNanos));
         }
         relights.increment();
         task.dropBlocks();

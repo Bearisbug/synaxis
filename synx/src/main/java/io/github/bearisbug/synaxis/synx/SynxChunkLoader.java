@@ -207,8 +207,8 @@ public final class SynxChunkLoader implements ChunkLoader {
         return cache.get(source.key(), source.slot().packet(), instance.registries(), manifest.world().height() / 16);
     }
 
-    void spawnStatics(Instance instance, List<CompoundBinaryTag> entities) {
-        SynxStaticEntities.spawn(instance, entities, staticEntityWarnings);
+    void spawnStatics(Instance instance, int chunkX, int chunkZ, List<CompoundBinaryTag> entities) {
+        SynxStaticEntities.spawn(instance, chunkX, chunkZ, entities, staticEntityWarnings);
     }
 
     /**

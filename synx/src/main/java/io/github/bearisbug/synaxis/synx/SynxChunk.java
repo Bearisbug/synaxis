@@ -428,7 +428,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     protected void onLoad() {
         final Source source = this.source;
         if (!inRegion || source == null || source.staticEntities().isEmpty()) return;
-        loader.spawnStatics(instance, source.staticEntities());
+        loader.spawnStatics(instance, chunkX, chunkZ, source.staticEntities());
     }
 
     @Override

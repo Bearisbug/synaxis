@@ -37,7 +37,7 @@ import java.util.Set;
  * players from breaking or turning the frame, as a static entity never lets them, and is no metadata the
  * client sees. The source NBT hangs on {@link #SOURCE} for plugins. Any other type is skipped with one
  * WARN per type, and so is an entity without a {@code Pos} of three numbers or a {@code Rotation} of two,
- * with a WARN each. Passengers never spawn, with one WARN per type of entity carrying them. The first
+ * or with a {@code Pos} outside the chunk that holds it, with a WARN each. Passengers never spawn, with one WARN per type of entity carrying them. The first
  * field that does not read ends the mapping with a WARN: it and the fields after it keep their defaults,
  * and the entity still spawns. Changes at run time are not kept: the entities go with the chunk.
  */
@@ -61,10 +61,12 @@ final class SynxStaticEntities {
     /**
      * Spawns {@code entities} into {@code instance}, on the thread that loads their chunk.
      *
+     * @param chunkX the chunk that holds {@code entities}
+     * @param chunkZ the chunk that holds {@code entities}
      * @param warned what is reported once only, shared by the loader: the types not covered, and the types
      *               seen carrying passengers, as {@code <type> Passengers}
      */
-    static void spawn(Instance instance, List<CompoundBinaryTag> entities, Set<String> warned) {
+    static void spawn(Instance instance, int chunkX, int chunkZ, List<CompoundBinaryTag> entities, Set<String> warned) {
         for (CompoundBinaryTag nbt : entities) {
             final String id = nbt.getString("id");
             final ListBinaryTag pos = nbt.getList("Pos");
@@ -75,6 +77,11 @@ final class SynxStaticEntities {
             }
             final Pos position = new Pos(pos.getDouble(0), pos.getDouble(1), pos.getDouble(2),
                     rotation.getFloat(0), rotation.getFloat(1));
+            // Spawned into another chunk, it would not go with this one and come again on every reload of it
+            if (position.chunkX() != chunkX || position.chunkZ() != chunkZ) {
+                LOGGER.warn("Static entity {} at {} lies outside chunk {},{} that holds it, skipped", id, position, chunkX, chunkZ);
+                continue;
+            }
             if (!nbt.getList("Passengers").isEmpty() && warned.add(id + " Passengers")) {
                 LOGGER.warn("Static entity {} at {} carries passengers, which the shard does not spawn; later ones of "
                         + "the type are not logged (docs/DESIGN-M3.md §28.1)", id, position);

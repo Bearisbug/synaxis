@@ -35,8 +35,8 @@ final class MapFileTrust {
     }
 
     private final Owners owners;
-    private final Path root;
-    private final @Nullable Integer rootUid;
+    private final Path mapRoot;
+    private final @Nullable Integer mapRootUid;
 
     /**
      * @param mapRoot {@code synaxis.map.root}, whose owner the files may have besides root
@@ -46,8 +46,8 @@ final class MapFileTrust {
     MapFileTrust(Path mapRoot, Owners owners) {
         this.owners = owners;
         try {
-            this.root = mapRoot.toRealPath();
-            this.rootUid = owners.uid(root);
+            this.mapRoot = mapRoot.toRealPath();
+            this.mapRootUid = owners.uid(this.mapRoot);
         } catch (IOException e) {
             throw new IllegalArgumentException(mapRoot.toAbsolutePath() + ": cannot be read: " + e, e);
         }
@@ -55,7 +55,7 @@ final class MapFileTrust {
 
     /** Whether the permissions and owners are checked at all: the file system of the map root has POSIX permissions. */
     boolean checked() {
-        return rootUid != null;
+        return mapRootUid != null;
     }
 
     /**
@@ -76,13 +76,13 @@ final class MapFileTrust {
         }
         try {
             final Integer uid = owners.uid(real);
-            final Integer allowed = rootUid;
+            final Integer allowed = mapRootUid;
             if (uid == null || allowed == null) return;
             final String writable = FileTrust.writableByOthers(real, WHO_WRITES);
             if (writable != null) throw new IllegalArgumentException(real + ": " + writable);
             if (uid != 0 && !uid.equals(allowed)) {
                 throw new IllegalArgumentException(real + ": owned by uid " + uid + ", neither root nor uid " + allowed
-                        + " that owns synaxis.map.root " + root);
+                        + " that owns " + ShardSettings.MAP_ROOT + " " + mapRoot);
             }
         } catch (IOException e) {
             throw new IllegalArgumentException(real + ": cannot be read: " + e, e);

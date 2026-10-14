@@ -73,6 +73,7 @@ final class SkyLight implements Light {
         this.contentPropagation = this.content;
         this.isValidBorders = true;
         this.needsSend.set(true);
+        fullyLit = false;
     }
 
     @Override
@@ -91,10 +92,13 @@ final class SkyLight implements Light {
 
     @Override
     public int getLevel(int x, int y, int z) {
+        // Read once: invalidate() and a neighbour's calculateInternal null contentPropagation from other threads
+        final byte @Nullable [] content = this.content;
         if (content == null) return 0;
-        int index = x | (z << 4) | (y << 8);
-        if (contentPropagation == null) return LightCompute.getLight(content, index);
-        return Math.max(LightCompute.getLight(contentPropagation, index), LightCompute.getLight(content, index));
+        final int index = x | (z << 4) | (y << 8);
+        final byte @Nullable [] propagation = this.contentPropagation;
+        if (propagation == null) return LightCompute.getLight(content, index);
+        return Math.max(LightCompute.getLight(propagation, index), LightCompute.getLight(content, index));
     }
 
     @Override

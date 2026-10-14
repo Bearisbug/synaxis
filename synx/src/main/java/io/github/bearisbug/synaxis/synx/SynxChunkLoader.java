@@ -230,26 +230,28 @@ public final class SynxChunkLoader implements ChunkLoader {
      * queues a recomputation of the 3×3 around its chunk, on a pool of
      * {@link SynxOptions#relightThreads()} platform threads of its own. Without it no change queues one,
      * as in M3-C.
+     * <p>
+     * The caller runs {@link SynxRelight#installPhase()} once at the end of every tick on the tick
+     * scheduling thread, and registers {@link SynxRelight#drain} as a shutdown step before the final
+     * flush of the overlay store ({@code ShardWorld#start} does both). Until a tick installs them no result
+     * goes in: {@code relight_pending} stays above 0 and the chunks around each change stay loaded.
      *
      * @throws IllegalStateException on a second call
      */
     public SynxRelight startRelight(InstanceContainer instance) {
-        return start(new SynxRelight(this, instance, null));
+        return startRelight(instance, null);
     }
 
     /**
      * {@link #startRelight(InstanceContainer)} with the snapshot and the computation of each
-     * recomputation handed to {@code computeExecutor} instead of a pool: the tests stop a
-     * recomputation after its snapshot that way.
+     * recomputation handed to {@code computeExecutor} instead of a pool, unless it is null: the tests stop
+     * a recomputation after its snapshot that way.
      *
      * @throws IllegalStateException on a second call
      */
-    public SynxRelight startRelight(InstanceContainer instance, Executor computeExecutor) {
-        return start(new SynxRelight(this, instance, computeExecutor));
-    }
-
-    private synchronized SynxRelight start(SynxRelight started) {
+    public synchronized SynxRelight startRelight(InstanceContainer instance, @Nullable Executor computeExecutor) {
         if (relight != null) throw new IllegalStateException("the runtime light of this loader has started already");
+        final SynxRelight started = new SynxRelight(this, instance, computeExecutor);
         this.relight = started;
         started.listen();
         return started;

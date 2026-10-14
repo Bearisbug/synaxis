@@ -158,7 +158,7 @@ final class RelightWorld {
                     store, store);
             final InstanceContainer instance = env.process().instance().createInstanceContainer(dimension(env.process()), loader);
             final ManualExecutor executor = manual ? new ManualExecutor() : null;
-            final SynxRelight relight = executor != null ? loader.startRelight(instance, executor) : loader.startRelight(instance);
+            final SynxRelight relight = loader.startRelight(instance, executor);
             return new RelightWorld(env, store, loader, instance, relight, executor);
         } catch (Exception e) {
             throw new AssertionError(e);

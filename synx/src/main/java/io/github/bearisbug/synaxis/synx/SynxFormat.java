@@ -3,9 +3,12 @@ package io.github.bearisbug.synaxis.synx;
 /**
  * Layout constants of the {@code .synx} region file, {@code docs/DESIGN-M3.md} API-M3-001.
  * <p>
- * Every multi-byte integer in the file is little endian. A change to anything in here is a layout
- * change: it bumps {@link #FORMAT_VERSION} and refreezes the test vectors in the same change
- * ({@code docs/DESIGN-M3.md} §24).
+ * Every multi-byte integer of the container (header, offset index, segment length table, segments ②
+ * and ④, the tables of segment ③) is little endian; segment ① is the protocol's own big endian and
+ * VarInt encoding, and NBT is big endian. A change to a layout constant is a layout change: it bumps
+ * {@link #FORMAT_VERSION} and refreezes the test vectors in the same change ({@code docs/DESIGN-M3.md}
+ * §24). {@link #CHUNK_DATA_PACKET_ID} follows the protocol instead: it changes with
+ * {@code protocol_version} and a rebake, the vectors refrozen, {@code format_version} as it is.
  */
 public final class SynxFormat {
     /** {@code SYNX} read as a little endian {@code int}. */

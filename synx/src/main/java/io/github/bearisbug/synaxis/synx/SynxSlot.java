@@ -4,12 +4,13 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 
-/** What the offset index holds for one chunk of a region. */
+/** One chunk's record in a region file, an overlay segment or the pending table of the overlay store. */
 public sealed interface SynxSlot {
     /**
      * Reads the segment length table of one record and slices its four segments out. Region files
      * and overlay segment files lay a record out the same way (API-M3-001, API-M3-007); the caller
-     * has checked the record's range and {@code crc32c}.
+     * has checked the record's range and {@code crc32c} where it reads it from a file; the pending table
+     * parses an encoding it has just made.
      *
      * @param record     the record, from its segment length table to its last byte
      * @param hasColumns whether every record of the file carries segment ④
@@ -41,9 +42,9 @@ public sealed interface SynxSlot {
     }
 
     /**
-     * A record that passed the range, {@code crc32c} and segment table checks. The four segments
-     * are views into the mapping and live as long as its arena; {@link #packet()} is the framed
-     * segment ① a shard writes to the socket as it is.
+     * A record whose segment table checks, and, read from a file, its range and {@code crc32c}. The four
+     * segments are views into its memory: a mapping, alive as long as its arena, or the heap array of a
+     * pending encoding; {@link #packet()} is the framed segment ① a shard writes to the socket as it is.
      */
     record Present(int chunkX, int chunkZ, MemorySegment packet, MemorySegment navigation,
                    MemorySegment entities, MemorySegment columns) implements SynxSlot {
@@ -61,7 +62,7 @@ public sealed interface SynxSlot {
         }
     }
 
-    /** {@code offset = 0}: the file has no record for this chunk. */
+    /** No record for this chunk: {@code offset = 0}, or no region file at all. */
     record Absent() implements SynxSlot {
     }
 

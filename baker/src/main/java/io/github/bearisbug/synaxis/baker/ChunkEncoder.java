@@ -176,7 +176,8 @@ final class ChunkEncoder {
      * type, without the record keys and with its handler. A record on a block without one (a data marker's or a
      * generator's handler on a plain block) stays in segment ③ only; the client has nothing to attach it to.
      *
-     * @param states        the chunk's block states, laid out as in {@link #encode}
+     * @param states        the chunk's block states at {@code y << 8 | z << 4 | x}, y counted from the bottom of
+     *                      the world, so a record's block is at {@code (sectionY - minSection) << 12 | index}
      * @param blockEntities the records of segment ③, in its order
      * @throws IllegalStateException if a record names a handler namespace that has no handler
      */
@@ -211,7 +212,7 @@ final class ChunkEncoder {
      * column without a top is empty. The biome is that of the top's cell, or of the world's highest cell for a
      * column without a top.
      *
-     * @param states the chunk's block states, laid out as in {@link #encode}
+     * @param states the chunk's block states at {@code y << 8 | z << 4 | x}, y counted from the bottom of the world
      * @param top    the top's y index, -1 for an empty column
      */
     private static FarViewPack.Sample farViewColumn(int[] states, Palette[] biomes, int column, int top, int height) {

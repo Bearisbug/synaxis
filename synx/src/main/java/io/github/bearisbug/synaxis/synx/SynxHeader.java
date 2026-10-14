@@ -7,8 +7,8 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 
 /**
- * The fixed 256 byte header of a {@code .synx} file, API-M3-001. Offsets in the comments of
- * {@link #encode()} are the ones of the design table.
+ * The fixed 256 byte header of a {@code .synx} file, API-M3-001. The offsets in {@link #encode()} and
+ * {@link #decode} are the ones of the design table; the two change together.
  */
 public record SynxHeader(int formatVersion, int flags, int protocolVersion, int compressionThreshold,
                          int compressionLevel, int minY, int height, int regionX, int regionZ,
@@ -50,8 +50,10 @@ public record SynxHeader(int formatVersion, int flags, int protocolVersion, int 
         buffer.putInt(8, protocolVersion);
         buffer.putInt(12, compressionThreshold);
         buffer.put(16, (byte) compressionLevel);
+        // 17 padding, zero
         buffer.putShort(18, (short) minY);
         buffer.putShort(20, (short) height);
+        // 22..23 padding, zero
         buffer.putInt(24, regionX);
         buffer.putInt(28, regionZ);
         buffer.put(32, registryDigest);
@@ -77,7 +79,8 @@ public record SynxHeader(int formatVersion, int flags, int protocolVersion, int 
         }
         final int magic = segment.get(INT, 0);
         if (magic != SynxFormat.MAGIC) {
-            throw new SynxException(SynxError.MAGIC, file, "magic " + Integer.toHexString(magic));
+            throw new SynxException(SynxError.MAGIC, file, "magic %08x, a .synx file starts with 53594e58 (SYNX)"
+                    .formatted(Integer.reverseBytes(magic)));
         }
         final int formatVersion = Short.toUnsignedInt(segment.get(SHORT, 4));
         if (formatVersion != SynxFormat.FORMAT_VERSION) {
@@ -86,7 +89,8 @@ public record SynxHeader(int formatVersion, int flags, int protocolVersion, int 
         }
         final int flags = Short.toUnsignedInt(segment.get(SHORT, 6));
         if ((flags & ~SynxFormat.KNOWN_FLAGS) != 0) {
-            throw new SynxException(SynxError.MAGIC, file, "unknown flags " + Integer.toBinaryString(flags));
+            throw new SynxException(SynxError.MAGIC, file, "flags " + Integer.toBinaryString(flags)
+                    + ", this reader knows " + Integer.toBinaryString(SynxFormat.KNOWN_FLAGS));
         }
         return new SynxHeader(formatVersion, flags,
                 segment.get(INT, 8), segment.get(INT, 12), segment.get(ValueLayout.JAVA_BYTE, 16),

@@ -28,7 +28,8 @@ public record SynxExpectations(int protocolVersion, byte[] registryDigest, int c
     }
 
     /**
-     * Compares a region header, in the order of the {@code docs/DESIGN-M3.md} §14 table.
+     * Compares a region header with this process: protocol version, registry digest, compression
+     * threshold, world, light engine version (API-M3-001 读取规则); the first that differs throws.
      *
      * @param file the file name the failure message carries
      */
@@ -43,11 +44,12 @@ public record SynxExpectations(int protocolVersion, byte[] registryDigest, int c
         }
         if (header.compressionThreshold() != compressionThreshold) {
             throw new SynxException(SynxError.COMPRESSION_MISMATCH, file,
-                    "compression_threshold " + header.compressionThreshold() + ", process " + compressionThreshold);
+                    "compression_threshold " + header.compressionThreshold() + ", process " + compressionThreshold
+                            + " (synaxis.compression-threshold)");
         }
         if (header.minY() != minY || header.height() != height) {
             throw new SynxException(SynxError.WORLD_MISMATCH, file,
-                    "min_y " + header.minY() + " height " + header.height() + ", process " + minY + " " + height);
+                    "min_y " + header.minY() + " height " + header.height() + ", the manifest says " + minY + " " + height);
         }
         if (header.lightEngineVersion() != lightEngineVersion) {
             throw new SynxException(SynxError.LIGHT_ENGINE_MISMATCH, file,

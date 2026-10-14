@@ -32,7 +32,7 @@ public final class VerifiedBuild {
         return manifest;
     }
 
-    /** The mapped region file of a region, null when the scope did not reach it. */
+    /** The mapped region file of a region, null for a region outside the scope or the manifest bounds. */
     public @Nullable SynxRegion region(int regionX, int regionZ) {
         return regions.get(key(regionX, regionZ));
     }

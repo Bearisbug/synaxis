@@ -20,8 +20,8 @@ import java.util.function.UnaryOperator;
  * leaves the terrain to the map, which only this launcher does. The connection gate of a shard holds
  * 3 sockets a seat of its capacity and lets 5 players into the game a tick ({@code API-PROD-003}).
  * <p>
- * A value the operator passed on the command line wins, {@code -Dsynaxis.thread-provider=counter}
- * takes a shard back to the engine provider.
+ * A value the operator set on the command line or in {@code synaxis.properties} wins,
+ * {@code -Dsynaxis.thread-provider=counter} takes a shard back to the engine provider.
  */
 public final class ShardMain {
 
@@ -34,9 +34,6 @@ public final class ShardMain {
     static final String MAX_PLAYERS = "synaxis.max-players";
     static final String MAX_CONNECTIONS = "synaxis.max-connections";
     static final String MAX_JOINS_PER_TICK = "synaxis.max-joins-per-tick";
-    static final String MAP_ROOT = ShardSettings.MAP_ROOT;
-    static final String MAP_BUILD = ShardSettings.MAP_BUILD;
-    static final String WORLD_WRITABLE = SynxOptions.WORLD_WRITABLE;
 
     private ShardMain() {
     }
@@ -55,7 +52,8 @@ public final class ShardMain {
     }
 
     /**
-     * Returns the thread properties to set, the ones the command line left out.
+     * Returns the thread properties to set, the ones the command line and {@code synaxis.properties} left
+     * out.
      *
      * @param properties the system properties already set
      * @param cores      the processors of the machine
@@ -71,7 +69,7 @@ public final class ShardMain {
 
     /**
      * Returns the view distance and the caps on chunks sent and entities shown to set, the ones the
-     * command line left out.
+     * command line and {@code synaxis.properties} left out.
      *
      * @param properties the system properties already set
      * @return the properties and their values
@@ -86,8 +84,8 @@ public final class ShardMain {
 
     /**
      * Returns {@code synaxis.accept-transfers=true} when the shard stores in PostgreSQL and the
-     * command line left the property out. A shard storing in memory is left on the engine value,
-     * {@link Main} refuses to start one that takes transfers.
+     * command line and {@code synaxis.properties} left the property out. A shard storing in memory is
+     * left on the engine value, {@link Main} refuses to start one that takes transfers.
      *
      * @param properties the system properties already set
      * @return the property and its value, or nothing
@@ -101,11 +99,11 @@ public final class ShardMain {
 
     /**
      * Returns the socket cap and the cap on joins a tick of the connection gate to set, the ones the
-     * command line left out ({@code docs/DESIGN-PROD.md} {@code API-PROD-003}): 3 sockets a seat of
-     * {@code synaxis.max-players}, the capacity of the shard, and 5 joins a tick. Without a capacity,
-     * or with one that is not a positive integer, the socket cap stays the engine's; {@code ServerConfig}
-     * refuses one that is not an integer. Called by {@link Main} once the shard directory has written
-     * the capacity of its channel, not before it like the others.
+     * command line and {@code synaxis.properties} left out ({@code docs/DESIGN-PROD.md} {@code API-PROD-003}):
+     * 3 sockets a seat of {@code synaxis.max-players}, the capacity of the shard, and 5 joins a tick.
+     * Without a capacity, or with one that is not a positive integer, the socket cap stays the engine's;
+     * {@code ServerConfig} refuses one that is not an integer. Called by {@link Main} once the shard
+     * directory has written the capacity of its channel, not before it like the others.
      *
      * @param properties the system properties already set
      * @return the properties and their values
@@ -127,19 +125,20 @@ public final class ShardMain {
 
     /**
      * Returns the defaults of a shard mounting a map ({@code docs/DESIGN-M3.md} {@code API-M3-006}), both
-     * map keys given, each of the two only when the command line left it out: {@code synaxis.app.core-mode=on}
-     * and {@code synaxis.world-writable=false} (M3-S, {@code REQ-M3-029}: players do not change the terrain
-     * of a map shard). A map shard loads no plugin; {@link Main} refuses one given another core mode, and
-     * one given a single map key.
+     * map keys given, each of the two only when the command line and {@code synaxis.properties} left it
+     * out: {@code synaxis.app.core-mode=on} and {@code synaxis.world-writable=false} (M3-S,
+     * {@code REQ-M3-029}: players do not change the terrain of a map shard). A map shard loads no plugin;
+     * {@link Main} refuses one given another core mode, and one given a single map key.
      *
      * @param properties the system properties already set
      * @return the properties and their values, or nothing
      */
     static Map<String, String> mapDefaults(UnaryOperator<String> properties) {
-        if (properties.apply(MAP_ROOT) == null || properties.apply(MAP_BUILD) == null) return Map.of();
+        if (properties.apply(ShardSettings.MAP_ROOT) == null || properties.apply(ShardSettings.MAP_BUILD) == null)
+            return Map.of();
         final Map<String, String> defaults = new LinkedHashMap<>();
         if (properties.apply(CoreMode.PROPERTY) == null) defaults.put(CoreMode.PROPERTY, "on");
-        if (properties.apply(WORLD_WRITABLE) == null) defaults.put(WORLD_WRITABLE, "false");
+        if (properties.apply(SynxOptions.WORLD_WRITABLE) == null) defaults.put(SynxOptions.WORLD_WRITABLE, "false");
         return defaults;
     }
 }

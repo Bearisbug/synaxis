@@ -2,9 +2,8 @@ package io.github.bearisbug.synaxis.app.shard;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
 
 /**
@@ -13,27 +12,22 @@ import java.nio.channels.SeekableByteChannel;
  * path and reading by the path again would let a file swapped in between pass the cap.
  */
 final class BoundedRead {
-    private static final int CHUNK = 64 * 1024;
 
     private BoundedRead() {
     }
 
     /**
      * The bytes of the channel, unless there are more than {@code max}: its size first, before a byte is
-     * read, then at most {@code max + 1} bytes, in case it grew since.
+     * read, then at most {@code max + 1} bytes, in case it grew since. A file that grows while it is read
+     * may come back cut short.
      *
      * @return the bytes, null when the channel holds more than {@code max}
      * @throws IOException if it cannot be read
      */
     static byte @Nullable [] readAtMost(SeekableByteChannel channel, int max) throws IOException {
         if (channel.size() > max) return null;
-        final ByteArrayOutputStream bytes = new ByteArrayOutputStream((int) channel.size());
-        final ByteBuffer chunk = ByteBuffer.allocate(CHUNK);
-        while (true) {
-            chunk.clear().limit((int) Math.min(CHUNK, (long) max + 1 - bytes.size()));
-            if (channel.read(chunk) < 0) return bytes.toByteArray();
-            bytes.write(chunk.array(), 0, chunk.position());
-            if (bytes.size() > max) return null;
-        }
+        // Not closed: the caller owns the channel
+        final byte[] bytes = Channels.newInputStream(channel).readNBytes(max + 1);
+        return bytes.length > max ? null : bytes;
     }
 }

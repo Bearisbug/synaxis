@@ -8,18 +8,22 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.synx.OverlayOptions;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import io.github.bearisbug.synaxis.synx.SynxOptions;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -74,6 +78,58 @@ public class MapFileTrustTest {
         final List<String> checked = verifiedLines(MapFileTrust::unixUid);
         assertEquals(1, checked.size(), checked.toString());
         assertTrue(checked.getFirst().endsWith("world=World[minY=0, height=64]"), checked.getFirst());
+    }
+
+    /**
+     * §19 「符号链接按它指向的位置查」, the directory the link itself is in: whoever may write it may point
+     * the link elsewhere, so it is held to the rule of the directory of a file.
+     */
+    @Test
+    public void theDirectoryASymbolicLinkIsInIsCheckedToo(@TempDir Path maps) throws IOException {
+        final ShardSettings copy = MapFixture.copy(release, maps);
+        final Path regions = copy.buildDir().resolve("regions");
+        final Path region = regions.resolve("r.0.0.synx");
+        final Path elsewhere = Files.createDirectories(maps.resolve("elsewhere"));
+        mode(elsewhere, "rwxr-xr-x");
+        final Path target = Files.move(region, elsewhere.resolve(region.getFileName()));
+        Files.createSymbolicLink(region, target);
+        assertNull(refusal(copy), "a link in a directory of its owner alone");
+        mode(regions, "rwxrwxr-x");
+        assertEquals(target.toRealPath() + ": its directory " + regions.toRealPath()
+                + " is writable by group or others without the sticky bit (rwxrwxr-x); they may replace the file",
+                refusal(copy));
+        Files.setAttribute(regions, "unix:mode", 01775);
+        assertNull(refusal(copy), "the sticky bit lets it pass, as it does the directory of a file");
+
+        // The release directory a link in a map root of its own, read without shards.json
+        final Path linked = Files.createDirectories(maps.resolve("linked"));
+        Files.createSymbolicLink(linked.resolve(copy.mapBuild()), copy.buildDir());
+        final ShardSettings link = new ShardSettings(linked, copy.mapBuild(), 4, 100);
+        mode(linked, "rwxr-xr-x");
+        assertNull(refusal(link), "a map root of its owner alone");
+        mode(linked, "rwxrwxr-x");
+        assertEquals(copy.buildDir().toRealPath() + ": its directory " + linked.toRealPath()
+                + " is writable by group or others without the sticky bit (rwxrwxr-x); they may replace the file",
+                refusal(link));
+    }
+
+    private static void mode(Path path, String permissions) throws IOException {
+        Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions));
+    }
+
+    /** Step (3) of {@code Main} on a shard storing in memory: the refusal, or null when the release passes. */
+    private static @Nullable String refusal(ShardSettings settings) {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true).shutdownOnSignal(false)
+                .chunkViewDistance(12).build());
+        try {
+            ShardWorld.prepare(process, settings, new SynxOptions(true, 1 << 20, 1, false), new OverlayOptions(16_384, 10),
+                    null);
+            return null;
+        } catch (IllegalArgumentException e) {
+            return e.getMessage();
+        } finally {
+            process.stop();
+        }
     }
 
     /** The {@code Map release … verified} line of step (3) with the owners read by {@code owners}. */

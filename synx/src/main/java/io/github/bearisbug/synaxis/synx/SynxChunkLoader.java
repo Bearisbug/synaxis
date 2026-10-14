@@ -29,8 +29,8 @@ import java.util.concurrent.atomic.LongAdder;
  * <table>
  *     <caption>What {@link #loadChunk} returns</caption>
  *     <tr><th>Chunk</th><th>Looks up</th><th>Found</th><th>Returns</th></tr>
- *     <tr><td>in {@code bounds}</td><td>the overlay store first</td><td>a hit</td><td>handle mode on the
- *     overlay record, {@code generation} going on from it</td></tr>
+ *     <tr><td>in {@code bounds}</td><td>the overlay store first</td><td>a hit</td><td>handle mode on the overlay
+ *     record, {@code generation} going on from it; failed mode if the record does not place</td></tr>
  *     <tr><td>in {@code bounds}</td><td>then the region file</td><td>a record</td><td>handle mode,
  *     {@code generation} 0</td></tr>
  *     <tr><td>in {@code bounds}</td><td>the region file</td><td>none, or a broken record</td><td>failed

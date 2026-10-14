@@ -318,11 +318,13 @@ final class DhLibraryBaker implements Runnable {
     /** Removes a pack the cache holds and the bake cannot read, and takes this connection's far view off. */
     private void damaged(FarViewCache cache, FarViewAnnouncement.Tile tile, Exception e) throws IOException {
         final String hex = FarViewCache.hex(tile);
-        Files.deleteIfExists(cache.pack(hex));
+        // Logged before the delete: a pack another process holds fails the read and the delete alike, and the
+        // delete's IOException then fails the bake in run(), which would leave the read cause out of the log
         LOGGER.warn("{}Far view off: pack {} in the cache cannot be read, removed: {}", FarViewClient.PREFIX,
                 hex.substring(0, 12), e.toString());
         connection.state(FarViewConnection.State.ABSENT);
         connection.failure("pack damaged");
+        Files.deleteIfExists(cache.pack(hex));
     }
 
     private static boolean whole(FarViewAnnouncement.Tile tile) {

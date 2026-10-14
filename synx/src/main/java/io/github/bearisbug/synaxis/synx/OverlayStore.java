@@ -235,11 +235,11 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     }
 
     /**
-     * Opens the overlay of {@code manifest}'s release under {@code overlayRoot}, the shard's
-     * {@code overlay/}, before the port is bound: deletes the directories of every other
-     * {@code build_id} (F1), makes {@code <build_id>/} and rebuilds the index from its segment files,
-     * the record of the highest {@code generation} of each chunk. The first record appended later
-     * starts a new segment.
+     * Opens the overlay of {@code manifest}'s release under {@code overlayRoot}, the shard's {@code overlay/},
+     * before the port is bound: deletes the directories of every other {@code build_id} (F1), makes
+     * {@code <build_id>/} and rebuilds the index from its segment files, the record of the highest
+     * {@code generation} of each chunk, then unlinks the segments the index names no record of (a final flush can
+     * leave one behind). The first record appended later starts a new segment.
      *
      * @param settings what segment ① is framed with; the process's protocol, registries, compression
      *                 and world, which the segment headers must match

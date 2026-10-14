@@ -32,11 +32,11 @@ import java.util.regex.Pattern;
  * verify --build &lt;maps_root&gt;/&lt;map_id&gt;/&lt;build_id&gt;
  * farview-export --build &lt;maps_root&gt;/&lt;map_id&gt;/&lt;build_id&gt; --out &lt;dir&gt;
  * </pre>
- * The exit code is the bake's (API-M3-003); a command line that does not parse, or two handlers with one key,
- * exit with 1. Not parsing includes an option the command does not take or one given twice, a number or a key
- * that is not one, and a map id other than {@code [a-z0-9][a-z0-9_-]{0,31}} (§9). Handler namespaces are those
- * {@link SynxHandlers#registerAll} registers, the same list a shard registers; generator presets are the
- * {@link BakeGeneratorProvider}s.
+ * The exit code is the bake's (API-M3-003); a command line that does not parse, two handlers with one key, or a
+ * block handler service that does not load, exit with 1. Not parsing includes an option the command does not take
+ * or one given twice, a number or a key that is not one, and a map id other than {@code [a-z0-9][a-z0-9_-]{0,31}}
+ * (§9). Handler namespaces are those {@link SynxHandlers#registerAll} registers, the same list a shard registers;
+ * generator presets are the {@link BakeGeneratorProvider}s.
  */
 public final class BakerMain {
     static final int EXIT_USAGE = 1;
@@ -235,9 +235,9 @@ public final class BakerMain {
                     continue;
                 }
                 // 0644 like the files of a release (REQ-M3-031), and on disk before it has the object's name
-                final Path staging = Baker.publishedFile(Files.createTempFile(target.getParent(), ".export-", ".part"));
+                final Path staging = Files.createTempFile(target.getParent(), ".export-", ".part");
                 try {
-                    Baker.forced(Files.write(staging, export.bytes()));
+                    Baker.forced(Baker.publishedFile(Files.write(staging, export.bytes())));
                     Files.move(staging, target, StandardCopyOption.ATOMIC_MOVE);
                 } finally {
                     Files.deleteIfExists(staging);

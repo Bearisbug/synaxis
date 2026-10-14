@@ -1,6 +1,5 @@
 package io.github.bearisbug.synaxis.synx;
 
-import io.github.bearisbug.synaxis.coordinate.CoordConversion;
 import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.ChunkLoader;
 import io.github.bearisbug.synaxis.instance.Instance;
@@ -87,8 +86,7 @@ public final class SynxChunkLoader implements ChunkLoader {
         this.verified = verified;
         this.manifest = verified.manifest();
         this.bounds = bounds;
-        this.viewBounds = new SynxManifest.Bounds(bounds.minX() - VIEW_MARGIN, bounds.minZ() - VIEW_MARGIN,
-                bounds.maxX() + VIEW_MARGIN, bounds.maxZ() + VIEW_MARGIN);
+        this.viewBounds = bounds.grow(VIEW_MARGIN);
         this.options = options;
         this.overlay = overlay;
         this.tracker = tracker;
@@ -97,33 +95,36 @@ public final class SynxChunkLoader implements ChunkLoader {
 
     @Override
     public @Nullable Chunk loadChunk(Instance instance, int chunkX, int chunkZ) {
-        if (!contains(viewBounds, chunkX, chunkZ)) return null;
-        final boolean inRegion = contains(bounds, chunkX, chunkZ);
+        if (!viewBounds.contains(chunkX, chunkZ)) return null;
+        final boolean inRegion = bounds.contains(chunkX, chunkZ);
         if (inRegion) {
             final OverlayHit hit = overlay.find(chunkX, chunkZ);
             if (hit != null) {
+                final String file = "the overlay segment " + OverlaySegment.fileName(hit.segment());
                 try {
-                    return handle(instance, chunkX, chunkZ, true, hit.record(), new SectionCache.Key(hit.segment(), hit.offset()),
+                    return handle(instance, chunkX, chunkZ, true, file, hit.record(), new SectionCache.Key(hit.segment(), hit.offset()),
                             hit.generation());
                 } catch (InternalError _) {
-                    return faulted(instance, chunkX, chunkZ, true, "the overlay segment " + OverlaySegment.fileName(hit.segment()));
+                    return faulted(instance, chunkX, chunkZ, true, file);
                 }
             }
         }
         final int regionX = SynxFormat.region(chunkX), regionZ = SynxFormat.region(chunkZ);
         final SynxRegion region = verified.region(regionX, regionZ);
+        final String file = "the region file " + SynxFormat.regionFileName(regionX, regionZ);
         try {
             final SynxSlot slot = region != null ? region.slot(chunkX, chunkZ) : new SynxSlot.Absent();
             return switch (slot) {
-                case SynxSlot.Present present -> handle(instance, chunkX, chunkZ, inRegion, present,
+                case SynxSlot.Present present -> handle(instance, chunkX, chunkZ, inRegion, file, present,
                         SectionCache.Key.regionFile(chunkX, chunkZ), 0);
-                case SynxSlot.Failed broken -> failed(instance, chunkX, chunkZ, inRegion, broken.fault() + " " + broken.detail());
+                case SynxSlot.Failed broken -> failed(instance, chunkX, chunkZ, inRegion,
+                        file + ": " + broken.fault() + " " + broken.detail());
                 case SynxSlot.Absent _ -> inRegion
                         ? failed(instance, chunkX, chunkZ, true, region != null ? "no record" : "no region file")
                         : null;
             };
         } catch (InternalError _) {
-            return faulted(instance, chunkX, chunkZ, inRegion, "the region file " + SynxFormat.regionFileName(regionX, regionZ));
+            return faulted(instance, chunkX, chunkZ, inRegion, file);
         }
     }
 
@@ -136,22 +137,30 @@ public final class SynxChunkLoader implements ChunkLoader {
         return failed(instance, chunkX, chunkZ, inRegion, file + " faulted on read");
     }
 
-    private SynxChunk handle(Instance instance, int chunkX, int chunkZ, boolean inRegion, SynxSlot.Present record,
-                             SectionCache.Key key, long generation) {
+    /** A handle chunk on {@code record}, read from {@code file}, or a failed one when the record does not read. */
+    private SynxChunk handle(Instance instance, int chunkX, int chunkZ, boolean inRegion, String file,
+                             SynxSlot.Present record, SectionCache.Key key, long generation) {
         try {
             // The two VarInts of the frame, before anything reads the packet (M3-S, API-M3-001 长度上限)
             SynxChunkPacket.checkFrame(record.packet());
         } catch (IllegalArgumentException e) {
-            return failed(instance, chunkX, chunkZ, inRegion, "segment ①: " + e.getMessage());
+            return failed(instance, chunkX, chunkZ, inRegion, file + ", segment ①: " + e.getMessage());
         }
         final SynxChunk.Source source;
         try {
             source = source(record, key, instance.process().block());
         } catch (IllegalArgumentException e) {
-            return failed(instance, chunkX, chunkZ, inRegion, "segment ③: " + e.getMessage());
+            return failed(instance, chunkX, chunkZ, inRegion, file + ", segment ③: " + e.getMessage());
+        }
+        final SynxChunk chunk;
+        try {
+            // A handler that ticks takes its block from segment ① here, the first read of its body
+            chunk = SynxChunk.handle(instance, chunkX, chunkZ, this, inRegion, source, generation);
+        } catch (IllegalArgumentException | IllegalStateException | IndexOutOfBoundsException e) {
+            return failed(instance, chunkX, chunkZ, inRegion, file + ", segment ①: " + e.getMessage());
         }
         loaded.increment();
-        return SynxChunk.handle(instance, chunkX, chunkZ, this, inRegion, source, generation);
+        return chunk;
     }
 
     private SynxChunk failed(Instance instance, int chunkX, int chunkZ, boolean inRegion, String detail) {
@@ -166,16 +175,20 @@ public final class SynxChunkLoader implements ChunkLoader {
      * What a chunk reads and sends from {@code record}: segment ③ decoded, the handlers of its block
      * entities taken from {@code blocks}, segment ① wrapped for the socket as it is.
      *
-     * @throws IllegalArgumentException if segment ③ does not decode
+     * @throws IllegalArgumentException if segment ③ does not decode, or has a block entity outside the world
      */
     SynxChunk.Source source(SynxSlot.Present record, SectionCache.Key key, BlockManager blocks) {
         final SynxEntities.Tables tables = SynxEntities.decode(record.entityTables());
         final Int2ObjectMap<SynxChunk.BlockEntity> blockEntities = tables.blockEntities().isEmpty()
                 ? Int2ObjectMaps.emptyMap() : new Int2ObjectOpenHashMap<>(tables.blockEntities().size());
+        final int minSection = manifest.world().minY() >> 4, maxSection = minSection + manifest.world().height() / 16;
         for (SynxBlockEntity entity : tables.blockEntities()) {
-            final int y = entity.sectionY() * 16 + (entity.index() >> 8);
-            blockEntities.put(CoordConversion.chunkBlockIndex(entity.index() & 15, y, (entity.index() >> 4) & 15),
-                    SynxChunk.BlockEntity.of(entity, blocks));
+            // The chunk indexes its sections by it: one outside them would throw on every read and change
+            if (entity.sectionY() < minSection || entity.sectionY() >= maxSection) {
+                throw new IllegalArgumentException("a block entity in section " + entity.sectionY()
+                        + ", the world is sections " + minSection + " to " + (maxSection - 1));
+            }
+            blockEntities.put(entity.chunkBlockIndex(), SynxChunk.BlockEntity.of(entity, blocks));
         }
         final long length = record.packet().byteSize();
         final BufferedPacket packet = new BufferedPacket(NetworkBuffer.wrap(record.packet(), 0, length), 0, length, false);
@@ -218,7 +231,7 @@ public final class SynxChunkLoader implements ChunkLoader {
     @Override
     public void unloadChunk(Chunk chunk) {
         unloaded.increment();
-        if (chunk instanceof SynxChunk synx && contains(bounds, synx.chunkX(), synx.chunkZ())
+        if (chunk instanceof SynxChunk synx && bounds.contains(synx.chunkX(), synx.chunkZ())
                 && synx.mode() != SynxChunk.Mode.FAILED) {
             tracker.unloaded(synx);
         }
@@ -279,7 +292,7 @@ public final class SynxChunkLoader implements ChunkLoader {
 
     /** Whether a chunk position is in {@code view_bounds}, where this loader has anything to load. */
     boolean inView(int chunkX, int chunkZ) {
-        return contains(viewBounds, chunkX, chunkZ);
+        return viewBounds.contains(chunkX, chunkZ);
     }
 
     OverlayTracker tracker() {
@@ -293,9 +306,5 @@ public final class SynxChunkLoader implements ChunkLoader {
 
     void overlaySent() {
         overlaySent.increment();
-    }
-
-    private static boolean contains(SynxManifest.Bounds bounds, int chunkX, int chunkZ) {
-        return chunkX >= bounds.minX() && chunkX <= bounds.maxX() && chunkZ >= bounds.minZ() && chunkZ <= bounds.maxZ();
     }
 }

@@ -1,6 +1,10 @@
 package io.github.bearisbug.synaxis.synx;
 
+import ch.qos.logback.classic.Level;
 import com.sun.management.ThreadMXBean;
+import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.testing.Env;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -9,10 +13,13 @@ import java.lang.foreign.Arena;
 import java.lang.management.ManagementFactory;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.UnaryOperator;
 import java.util.zip.CRC32C;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -22,8 +29,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Security review 2026-10 (surface 2): the readers of a map release and of segment ③ against
- * malformed bytes. A broken index entry or segment table has to come back as {@link SynxSlot.Failed}, and
- * every length is held to its cap before anything is allocated for it (M3-S, {@code API-M3-001} 长度上限).
+ * malformed bytes. A broken index entry or segment table has to come back as {@link SynxSlot.Failed}, a
+ * record the loader cannot place loads as failed, and every length is held to its cap before anything is
+ * allocated for it (M3-S, {@code API-M3-001} 长度上限).
  */
 public class SynxParserBoundaryTest {
 
@@ -102,6 +110,127 @@ public class SynxParserBoundaryTest {
         final byte[] over = SynxChunkPacket.deflate(new byte[(16 << 20) + 1], 9);
         System.out.println("segment 3: " + over.length + " B that inflate to 16777217 B");
         assertThrows(IllegalArgumentException.class, () -> SynxEntities.inflate(ByteBuffer.wrap(over)));
+    }
+
+    /**
+     * What segment ③ states has to be there before anything is allocated for it. Adventure-nbt only
+     * compares a stated length with its accounting cap, so each list of a nest passes on its own and
+     * allocates what it states: 8 MB a level for 2,000,000 elements, about 4.29 GB for 512 levels in 2.6 KB.
+     * A table count only has to fit the bytes left, an entry takes 8 bytes or more.
+     */
+    @Test
+    public void segmentThreeThatStatesMoreThanItHoldsIsRefusedBeforeItIsAllocated() {
+        final ByteArrayOutputStream nested = new ByteArrayOutputStream();
+        nested.writeBytes(new byte[]{10, 0, 0, 9, 0, 1, 'a'});
+        for (int level = 0; level < 8; level++) {
+            nested.write(9);
+            nested.writeBytes(ByteBuffer.allocate(4).putInt(2_000_000).array());
+        }
+        final byte[] lists = segmentThree(List.of(), List.of(nested.toByteArray()));
+        final byte[] table = new byte[16 << 20];
+        ByteBuffer.wrap(table).order(ByteOrder.LITTLE_ENDIAN).putInt(table.length - 4);
+        final ThreadMXBean threads = (ThreadMXBean) ManagementFactory.getThreadMXBean();
+        for (byte[] raw : new byte[][]{lists, table}) {
+            final long before = threads.getCurrentThreadAllocatedBytes();
+            assertThrows(IllegalArgumentException.class, () -> SynxEntities.decode(raw));
+            final long allocated = threads.getCurrentThreadAllocatedBytes() - before;
+            System.out.println("segment 3: " + raw.length + " B stating more than they hold allocated " + allocated
+                    + " B before they were refused");
+            assertTrue(allocated < 1L << 20, "allocated " + allocated);
+        }
+    }
+
+    /**
+     * Segment ③ content that would fail later, or not as malformed, is malformed like the rest
+     * ({@code API-M3-001}): a byte array of length −1, a list of 1,000 end tags, and a handler that is
+     * not a key, which the engine's dummy handler throws on when the chunk loads.
+     */
+    @Test
+    public void malformedSegmentThreeContentIsRefusedAsAnIllegalArgument() {
+        final byte[] negative = {10, 0, 0, 7, 0, 1, 'a', -1, -1, -1, -1, 0};
+        final IllegalArgumentException array = assertThrows(IllegalArgumentException.class,
+                () -> SynxEntities.decode(segmentThree(List.of(), List.of(negative))));
+        assertTrue(array.getMessage().startsWith("unreadable NBT in segment ③: ")
+                && array.getMessage().endsWith(" (static entity 1 of 1)"), array.getMessage());
+        final byte[] ends = {10, 0, 0, 9, 0, 1, 'a', 0, 0, 0, 3, -24, 0};
+        assertThrows(IllegalArgumentException.class, () -> SynxEntities.decode(segmentThree(List.of(), List.of(ends))));
+        final IllegalArgumentException handler = assertThrows(IllegalArgumentException.class,
+                () -> SynxEntities.decode(segmentThree(List.of("Bad Handler"), List.of())));
+        assertEquals("handler is not a key: Bad Handler", handler.getMessage());
+    }
+
+    /**
+     * The loader ({@code docs/DESIGN-M3.md} §11.1 {@code [*] → failed}): a block entity outside the sections
+     * of the world, and a segment ① whose frame is fine but whose data is no zlib stream in a chunk with a
+     * handler that ticks, which reads its block as the chunk loads. Both load as failed, the ERROR naming
+     * the file the record came from.
+     */
+    @Test
+    public void recordsTheLoaderCannotPlaceLoadAsFailed() {
+        final Env env = Env.create(UnaryOperator.identity());
+        try {
+            final SynxTestMap map = SynxTestMap.get();
+            final SynxWorlds.Ticker ticker = new SynxWorlds.Ticker(SynxTestMap.TICKER_HANDLER);
+            env.process().block().registerHandler(SynxTestMap.TICKER_HANDLER, () -> ticker);
+            final SynxChunkRecord plain = map.record(10, 5);
+            final SynxChunkRecord outside = new SynxChunkRecord(10, 5, plain.packet(), plain.navigation(),
+                    List.of(new SynxBlockEntity(100, 0, "", CompoundBinaryTag.empty())), List.of(), plain.columns());
+            final ByteArrayOutputStream noZlib = new ByteArrayOutputStream();
+            final byte[] data = new byte[16];
+            Arrays.fill(data, (byte) 1);
+            SynxChunkPacket.writeVarInt(noZlib, SynxChunkPacket.varIntSize(100) + data.length);
+            SynxChunkPacket.writeVarInt(noZlib, 100);
+            noZlib.writeBytes(data);
+            final SynxChunkRecord ticking = map.record(SynxTestMap.TICKER_CHUNK_X, SynxTestMap.TICKER_CHUNK_Z);
+            final SynxChunkRecord undecodable = new SynxChunkRecord(ticking.chunkX(), ticking.chunkZ(), noZlib.toByteArray(),
+                    ticking.navigation(), ticking.blockEntities(), ticking.staticEntities(), ticking.columns());
+            final MemoryOverlay overlay = new MemoryOverlay();
+            overlay.put(MemoryOverlay.hit(outside, 0, 3, 256));
+            overlay.put(MemoryOverlay.hit(undecodable, 0, 4, 256));
+            final SynxChunkLoader loader = SynxWorlds.loader(SynxWorlds.WRITABLE, overlay);
+            final Instance instance = SynxWorlds.instance(env.process(), loader);
+            try (LogCapture logs = LogCapture.of(SynxChunkLoader.class)) {
+                assertEquals(SynxChunk.Mode.FAILED, ((SynxChunk) instance.loadChunk(10, 5).join()).mode());
+                assertEquals(SynxChunk.Mode.FAILED,
+                        ((SynxChunk) instance.loadChunk(ticking.chunkX(), ticking.chunkZ()).join()).mode());
+                final List<String> errors = logs.messagesAt(Level.ERROR);
+                assertEquals(2, errors.size(), errors.toString());
+                assertTrue(errors.get(0).endsWith(" it loads as read only air: the overlay segment seg.3.synx, segment ③: "
+                        + "a block entity in section 100, the world is sections 0 to 15"), errors.get(0));
+                assertTrue(errors.get(1).endsWith(" it loads as read only air: the overlay segment seg.4.synx, segment ①: "
+                        + "not a zlib stream"), errors.get(1));
+            }
+            assertEquals(2, loader.stats().failed());
+        } finally {
+            env.process().stop();
+        }
+    }
+
+    /**
+     * Segment ③ uncompressed: a block entity at index 0 of section 0 with an empty compound for each of
+     * {@code handlers}, then the static entities {@code nbt}, each the bytes of one NBT.
+     */
+    private static byte[] segmentThree(List<String> handlers, List<byte[]> nbt) {
+        final ByteArrayOutputStream raw = new ByteArrayOutputStream();
+        final byte[] empty = {10, 0, 0, 0};
+        raw.writeBytes(littleEndian(handlers.size()));
+        for (String handler : handlers) {
+            final byte[] name = handler.getBytes(StandardCharsets.UTF_8);
+            raw.writeBytes(new byte[]{0, 0, 0, (byte) name.length});
+            raw.writeBytes(name);
+            raw.writeBytes(littleEndian(empty.length));
+            raw.writeBytes(empty);
+        }
+        raw.writeBytes(littleEndian(nbt.size()));
+        for (byte[] entity : nbt) {
+            raw.writeBytes(littleEndian(entity.length));
+            raw.writeBytes(entity);
+        }
+        return raw.toByteArray();
+    }
+
+    private static byte[] littleEndian(int value) {
+        return ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(value).array();
     }
 
     /** A frame of segment ①: frame length, the uncompressed length as given, then {@code data}. */

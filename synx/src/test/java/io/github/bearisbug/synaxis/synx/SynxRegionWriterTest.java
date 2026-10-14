@@ -191,5 +191,7 @@ public class SynxRegionWriterTest {
                 List.of(), List.of(), new byte[0]));
         assertThrows(IllegalArgumentException.class, () -> new SynxBlockEntity(0, 0, "x".repeat(256), CompoundBinaryTag.empty()));
         assertThrows(IllegalArgumentException.class, () -> new SynxBlockEntity(128, 0, "", CompoundBinaryTag.empty()));
+        assertThrows(IllegalArgumentException.class, () -> new SynxBlockEntity(0, 0, "Synaxis:Door", CompoundBinaryTag.empty()),
+                "a handler that is not a key");
     }
 }

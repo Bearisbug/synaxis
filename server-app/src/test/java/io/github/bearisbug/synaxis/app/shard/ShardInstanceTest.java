@@ -13,8 +13,13 @@ import io.github.bearisbug.synaxis.baker.Baker;
 import io.github.bearisbug.synaxis.baker.GeneratorPreset;
 import io.github.bearisbug.synaxis.baker.GeneratorSource;
 import io.github.bearisbug.synaxis.baker.LightVersions;
+import io.github.bearisbug.synaxis.instance.Chunk;
+import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.data.LightData;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.synx.OverlayOptions;
+import io.github.bearisbug.synaxis.synx.SynxChunk;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import io.github.bearisbug.synaxis.synx.SynxOptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -30,15 +35,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The map instance of a shard, M3-S ({@code docs/DESIGN-M3.md} {@code REQ-M3-029}): the chunks asked for
- * outside {@code view_bounds}, and what the start says: of a map players may change, of the settings in
- * effect and of a spawn column without ground.
+ * outside {@code view_bounds}, the light of the air chunks the engine builds, and what the start says: of a
+ * map players may change, of the settings in effect and of a spawn column without ground.
  */
 public class ShardInstanceTest {
 
@@ -139,6 +146,59 @@ public class ShardInstanceTest {
             assertTrue(lines.stream().skip(1).allMatch(line -> line.getThrowableProxy() == null), "the later ones have none");
             instance.loadChunk(5, 5).join();
             assertEquals(2, instance.voidChunks(), "a chunk of the map does not count");
+        } finally {
+            stopListening(appender, ShardInstance.class);
+            process.stop();
+        }
+    }
+
+    /**
+     * §19 「view_bounds 外的区块请求被计数并带请求方的栈」, two requests at once: the budget of the later lines
+     * already taken by the other one, the first line still carries the stack.
+     */
+    @Test
+    public void theFirstVoidChunkLineKeepsItsStackWhenARequestAtTheSameTimeTookTheTurn() {
+        final ServerProcess process = process();
+        final ListAppender<ILoggingEvent> appender = listen(ShardInstance.class);
+        try {
+            final Started started = start(process, new SynxOptions(false, 1 << 20, 1, false), appender);
+            final ShardInstance instance = assertInstanceOf(ShardInstance.class, started.started().instance());
+            // The other request, past the stack line's check but first to the budget
+            instance.voidRequests.warn("Another request");
+            instance.loadChunk(200, 0).join();
+            final List<ILoggingEvent> lines = appender.list.stream()
+                    .filter(event -> event.getFormattedMessage().startsWith("Void chunk requested at ")).toList();
+            assertEquals(1, lines.size(), "the stack line is written: " + appender.list);
+            assertNotNull(lines.getFirst().getThrowableProxy(), "with its stack");
+        } finally {
+            stopListening(appender, ShardInstance.class);
+            process.stop();
+        }
+    }
+
+    /**
+     * §19 「地图外缘与 view_bounds 外的空气区块满天光」: where the loader has no record, at the edge of the map
+     * and outside {@code view_bounds}, the engine builds an air chunk whose every section has sky light 15.
+     */
+    @Test
+    public void theAirChunksAtTheEdgeOfTheMapAndPastTheViewBoundsAreLitByTheSky() {
+        final ServerProcess process = process();
+        final ListAppender<ILoggingEvent> appender = listen(ShardInstance.class);
+        try {
+            final Started started = start(process, new SynxOptions(false, 1 << 20, 1, false), appender);
+            final ShardInstance instance = assertInstanceOf(ShardInstance.class, started.started().instance());
+            final byte[] full = new byte[2048];
+            Arrays.fill(full, (byte) 0xFF);
+            // Inside view_bounds west of the bounds 0..15, without the region file r.-1.0; then outside view_bounds
+            for (int[] at : new int[][]{{-1, 3}, {200, 0}}) {
+                final Chunk chunk = instance.loadChunk(at[0], at[1]).join();
+                assertFalse(chunk instanceof SynxChunk, Arrays.toString(at));
+                final LightData light = ((ChunkDataPacket) ((CachedPacket) chunk.getFullDataPacket()).packet()).lightData();
+                assertTrue(light.emptySkyMask().isEmpty(), Arrays.toString(at) + ": no section without sky light, "
+                        + light.emptySkyMask());
+                assertEquals(chunk.getSections().size(), light.skyLight().size(), Arrays.toString(at));
+                for (byte[] sky : light.skyLight()) assertArrayEquals(full, sky, Arrays.toString(at) + ": sky light 15");
+            }
         } finally {
             stopListening(appender, ShardInstance.class);
             process.stop();

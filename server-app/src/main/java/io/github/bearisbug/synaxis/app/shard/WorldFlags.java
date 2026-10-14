@@ -36,8 +36,11 @@ public interface WorldFlags {
      * <p>
      * Written means the row is in the database: the blocks change, and {@link #get} returns the value,
      * on a later tick once its chunks have loaded. A key with no applier registered in this process is
-     * written and announced but never applied here, and {@link #get} stays null for it. A key that is
-     * not {@code <namespace>:<name>}, or a value too long for the table, fails for good.
+     * written and announced but never applied here, and {@link #get} stays null for it. A new key that is
+     * not {@code <namespace>:<name>} in lower case or is over 64 characters, a value too long for the
+     * table, or one nesting arrays and objects deeper than 255 levels, fails for good
+     * ({@link FlagWrite.Failed}); with an {@code expectedVersion} above 0 such a key is a
+     * {@link FlagWrite.Conflict} with no current value.
      *
      * @param key             the flag key
      * @param value           the new value

@@ -68,6 +68,8 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
     static final int CHECKED_PER_TICK = 1_024;
     /** The failed reads in a row from which on each one is a warning: the 5th and every one after it. */
     static final int READ_FAILURES_WARNED = 5;
+    /** The levels of arrays and objects a value may nest: Gson's {@code JsonReader} reads no deeper. */
+    static final int MAX_NESTING = 255;
     /** The waits before the 3 retries of the read at start. */
     private static final List<Duration> RETRY_BACKOFF = List.of(Duration.ofSeconds(1), Duration.ofSeconds(2),
             Duration.ofSeconds(4));
@@ -195,6 +197,11 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
     }
 
     private FlagWrite write(String key, JsonElement value, long expectedVersion) {
+        // PostgreSQL takes a deeper jsonb, and then every read of the region's flags fails on it
+        if (nestedPast(value, MAX_NESTING)) {
+            return new FlagWrite.Failed("the value of world flag " + key + " nests arrays and objects deeper than "
+                    + MAX_NESTING + " levels, which a read cannot parse back");
+        }
         try {
             final boolean written = expectedVersion == 0 ? store.insert(key, value) : store.update(key, value, expectedVersion);
             if (!written) {
@@ -636,6 +643,23 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
             loads[i] = instance.loadChunk(CoordConversion.chunkIndexGetX(chunk), CoordConversion.chunkIndexGetZ(chunk));
         }
         CompletableFuture.allOf(loads).join();
+    }
+
+    /** Whether {@code value} nests arrays and objects more than {@code levels} deep; it looks no deeper than that. */
+    private static boolean nestedPast(JsonElement value, int levels) {
+        final Iterable<JsonElement> children;
+        if (value.isJsonArray()) {
+            children = value.getAsJsonArray();
+        } else if (value.isJsonObject()) {
+            children = value.getAsJsonObject().asMap().values();
+        } else {
+            return false;
+        }
+        if (levels == 0) return true;
+        for (JsonElement child : children) {
+            if (nestedPast(child, levels - 1)) return true;
+        }
+        return false;
     }
 
     /**

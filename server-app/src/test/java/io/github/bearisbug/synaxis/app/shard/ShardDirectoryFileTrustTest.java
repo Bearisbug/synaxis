@@ -61,9 +61,9 @@ public class ShardDirectoryFileTrustTest {
     }
 
     /**
-     * The host is held to 1 to 253 characters without whitespace and not with exactly one colon, a port
-     * written into it ({@code docs/DESIGN-M3.md} {@code API-M3-010}); there is no further hostname or address
-     * syntax, and an IPv6 literal, which has two colons or more, passes.
+     * The host is held to 1 to 253 characters without whitespace, not with exactly one colon nor anything after the
+     * ] of a bracketed literal, a port written into it ({@code docs/DESIGN-M3.md} {@code API-M3-010}); there is no
+     * further hostname or address syntax, and an IPv6 literal, which has two colons or more, passes.
      */
     @Test
     public void theHostIsCheckedForItsLengthWhitespaceAndAPortInIt() throws IOException {
@@ -78,6 +78,8 @@ public class ShardDirectoryFileTrustTest {
                 "host a b is not a host name or address: it has whitespace");
         refused(example().replace(address, "\"host\": \"host:25565\", \"port\": 25601"),
                 "host host:25565 is not a host name or address: the port goes in port");
+        refused(example().replace(address, "\"host\": \"[2001:db8::7]:25601\", \"port\": 25601"),
+                "host [2001:db8::7]:25601 is not a host name or address: the port goes in port");
     }
 
     private void refused(String text, String expected) throws IOException {

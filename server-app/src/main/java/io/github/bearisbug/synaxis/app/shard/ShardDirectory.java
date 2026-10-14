@@ -568,6 +568,9 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
         // A host name and IPv4 have no colon, an IPv6 literal at least two: one is a port written into the host
         if (host.indexOf(':') >= 0 && host.indexOf(':') == host.lastIndexOf(':'))
             throw fields.invalid("host " + host + " is not a host name or address: the port goes in port");
+        // So is anything after the ] of a bracketed IPv6 literal, as in [2001:db8::7]:25601
+        if (host.startsWith("[") && host.indexOf(']') >= 0 && host.indexOf(']') < host.length() - 1)
+            throw fields.invalid("host " + host + " is not a host name or address: the port goes in port");
         final int port = fields.integer("port");
         if (port < 1 || port > MAX_PORT) throw fields.invalid("port " + port + " is not from 1 to " + MAX_PORT);
         final int capacity = fields.integer("capacity");

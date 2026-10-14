@@ -19,6 +19,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -129,13 +130,18 @@ public final class AnvilSource implements BakeSource {
 
     /**
      * Reads every chunk inside the bounds once, collecting the hidden areas of its markers. The first failure in
-     * (x, z) order is thrown, so the same save always names the same chunk.
+     * (x, z) order is thrown, so the same save always names the same chunk. Reads are submitted in that order with
+     * at most four per thread in flight, so the gate's memory does not grow with the bounds and stops at the first
+     * failure.
      */
     @Override
     public void checkGate(int threads) throws IOException {
         final ExecutorService executor = Executors.newFixedThreadPool(threads);
         try {
-            final List<Future<Gated>> reads = new ArrayList<>();
+            final int window = threads * 4;
+            final ArrayDeque<Future<Gated>> reads = new ArrayDeque<>(window);
+            final List<HiddenArea> hidden = new ArrayList<>();
+            long total = 0, lit = 0;
             for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
                 for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
                     final int chunkX = x, chunkZ = z;
@@ -143,24 +149,14 @@ public final class AnvilSource implements BakeSource {
                         final AnvilChunk chunk = chunk(chunkX, chunkZ);
                         return new Gated(chunk.lightOn(), chunk.hiddenAreas());
                     }));
+                    total++;
+                    if (reads.size() == window && collect(reads.removeFirst(), hidden)) lit++;
                 }
             }
-            int lit = 0;
-            final List<HiddenArea> hidden = new ArrayList<>();
-            for (Future<Gated> read : reads) {
-                try {
-                    final Gated gated = read.get();
-                    if (gated.lightOn()) lit++;
-                    for (HiddenArea area : gated.hiddenAreas()) {
-                        hidden.add(new HiddenArea(Math.min(area.x1(), area.x2()), Math.min(area.z1(), area.z2()),
-                                Math.max(area.x1(), area.x2()), Math.max(area.z1(), area.z2())));
-                    }
-                } catch (ExecutionException e) {
-                    if (e.getCause() instanceof IOException io) throw io;
-                    throw new IOException(e.getCause());
-                }
+            while (!reads.isEmpty()) {
+                if (collect(reads.removeFirst(), hidden)) lit++;
             }
-            lightCoverage = (double) lit / reads.size();
+            lightCoverage = (double) lit / total;
             hidden.sort(Comparator.comparingInt(HiddenArea::x1).thenComparingInt(HiddenArea::z1)
                     .thenComparingInt(HiddenArea::x2).thenComparingInt(HiddenArea::z2));
             hiddenAreas = List.copyOf(hidden);
@@ -169,6 +165,21 @@ public final class AnvilSource implements BakeSource {
             throw new IOException("interrupted", e);
         } finally {
             executor.shutdownNow();
+        }
+    }
+
+    /** Waits for one read and adds its hidden areas, corners as min and max; returns whether the chunk is lit. */
+    private static boolean collect(Future<Gated> read, List<HiddenArea> hidden) throws IOException, InterruptedException {
+        try {
+            final Gated gated = read.get();
+            for (HiddenArea area : gated.hiddenAreas()) {
+                hidden.add(new HiddenArea(Math.min(area.x1(), area.x2()), Math.min(area.z1(), area.z2()),
+                        Math.max(area.x1(), area.x2()), Math.max(area.z1(), area.z2())));
+            }
+            return gated.lightOn();
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof IOException io) throw io;
+            throw new IOException(e.getCause());
         }
     }
 

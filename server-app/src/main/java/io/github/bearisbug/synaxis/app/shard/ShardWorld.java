@@ -53,7 +53,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -69,8 +68,9 @@ import java.util.function.LongSupplier;
 /**
  * The map mounting mode of the shard host ({@code docs/DESIGN-M3.md} {@code API-M3-006}): checks the
  * map release, builds the map instance on {@link SynxChunkLoader} with the overlay store behind it,
- * and reports the streaming counters. {@code Main} drives it at two steps of its startup, and keeps
- * the admission, the spawn listener and the event ledger, which are the host's own.
+ * and reports the streaming counters. {@code Main} drives it at three steps of its startup, (3)
+ * {@link #prepare}, (5) {@link #start} and (7) {@link #startedAttributes}, and keeps the admission,
+ * the spawn listener and the event ledger, which are the host's own.
  * <p>
  * Every refusal is an {@link IllegalArgumentException}, whose message a {@link SynxException} leads
  * with its synx code; {@code Main} turns it into {@code Refusing to start: …} and exit code 1. All of
@@ -79,20 +79,26 @@ import java.util.function.LongSupplier;
 public final class ShardWorld {
     /** The dimension type of the map instance, one whole string for the translation key gate. */
     public static final String DIMENSION_TYPE = "synaxis:map";
-    /** The largest chunk view distance a map shard serves: {@code view_bounds} reach 17 chunks past the bounds. */
-    static final int MAX_VIEW_DISTANCE = 16;
+    /**
+     * The largest chunk view distance a map shard serves: {@code view_bounds} reach one ring past it, the ring
+     * the engine sends past the view distance.
+     */
+    static final int MAX_VIEW_DISTANCE = SynxChunkLoader.VIEW_MARGIN - 1;
     /** Where the overlay store lives, under the working directory. */
     static final Path OVERLAY_ROOT = Path.of("overlay");
     /** How often {@code EVT:chunk_stream_stats} is written. */
     static final Duration STATS_INTERVAL = Duration.ofSeconds(60);
-    /** §9: the column a player spawns on, the center of the center chunk of the bounds. */
-    private static final int SPAWN_COLUMN = 8 * 16 + 8;
+    /**
+     * §28.1, {@code API-M3-006}: where segment ② holds the {@code surface_y} of the spawn column, x 8 and z 8 of
+     * the center chunk: after the walkable bit set, one little endian i16 per column by z × 16 + x.
+     */
+    private static final long SPAWN_SURFACE_Y_OFFSET = SynxFormat.NAVIGATION_SURFACE_Y + (8 * 16 + 8) * 2L;
     /** {@code API-M3-015}: the coarse prefixes of the tiles up to 256 chunks, 4,096 blocks, past the bounds are announced. */
     static final int COARSE_REACH = 256;
     /** {@code API-M3-002} 只读一次: the largest manifest read, 16 MiB. */
     static final int MAX_MANIFEST_BYTES = 16 << 20;
-    /** The block a far view pack is read in while its digests are computed. */
-    private static final int DIGEST_BLOCK = 1 << 20;
+    /** The buffer a far view pack is read into while its digests are computed. */
+    private static final int DIGEST_BUFFER_BYTES = 1 << 20;
     /** How {@link FileTrust} ends the refusal of an overlay directory or segment group or others may write. */
     private static final String OVERLAY_WRITER = "only the service user may write it";
     /**
@@ -122,14 +128,14 @@ public final class ShardWorld {
     private @Nullable SynxChunkLoader loader;
     private @Nullable OverlayStore overlay;
     private @Nullable WorldFlagsImpl flags;
+    private @Nullable SynxRelight relight;
+    private @Nullable ShardInstance instance;
     private int farViewTiles;
-    // Read and replaced by the statistics task only, on the tick scheduler thread
+    // First read by #start, then read and replaced by the statistics task only, on the tick scheduler thread
     private @Nullable SynxStreamStats lastStream;
     private @Nullable OverlayStats lastOverlay;
     private @Nullable RelightStats lastRelight;
-    private @Nullable SynxRelight relight;
     private long lastFlagConflicts;
-    private @Nullable ShardInstance instance;
     private long lastVoidChunks;
 
     /**
@@ -162,8 +168,7 @@ public final class ShardWorld {
      * @return the tiles to announce, by x and then z
      */
     static List<AnnouncedTile> announcedTiles(List<SynxManifest.FarView> farview, SynxManifest.Bounds bounds) {
-        final SynxManifest.Bounds reach = new SynxManifest.Bounds(bounds.minX() - COARSE_REACH, bounds.minZ() - COARSE_REACH,
-                bounds.maxX() + COARSE_REACH, bounds.maxZ() + COARSE_REACH);
+        final SynxManifest.Bounds reach = bounds.grow(COARSE_REACH);
         final List<AnnouncedTile> tiles = new ArrayList<>();
         for (SynxManifest.FarView pack : farview) {
             if (meets(pack, bounds)) tiles.add(new AnnouncedTile(pack, FarViewAnnouncement.LAYER_FULL));
@@ -189,10 +194,10 @@ public final class ShardWorld {
      * {@code coarse_sha256} against its first {@code coarse_bytes} bytes. Who may have written the packs
      * was checked in step (3) ({@code API-M3-002} 文件信任). A url root of plain http to another host than
      * this one is announced all the same, with a WARN: it lets anyone on the way see which tiles a player
-     * loads. Nothing is announced without a
-     * url root, without a tile meeting the bounds, when one pack does not match, or when the tiles make
-     * no announcement (over 64 of them, a url over 1,024 bytes); one line of the log says which, a WARN
-     * for the last two. None of it refuses the start: the far view is optional.
+     * loads. Nothing is announced without a url root, without a tile meeting the bounds, when one pack
+     * does not match, when the tiles to announce differ in {@code base_level} or {@code coarse_level}, or
+     * when they make no announcement (over 64 of them, a url over 1,024 bytes); one line of the log says
+     * which, a WARN for the last three. None of it refuses the start: the far view is optional.
      *
      * @return the announcement, null when there is none
      */
@@ -229,7 +234,7 @@ public final class ShardWorld {
                 final byte[] digest = whole ? pack.sha256() : pack.coarseSha256();
                 announced.add(new FarViewAnnouncement.Tile(pack.tileX(), pack.tileZ(), tile.layer(),
                         whole ? pack.bytes() : pack.coarseBytes(), digest,
-                        urlRoot + "/" + manifest.mapId() + "/farview/" + SynxDigests.hex(digest) + ".hfp"));
+                        urlRoot + "/" + SynxFormat.farViewObject(manifest.mapId(), digest)));
             }
             announcement = new FarViewAnnouncement(manifest.buildId(), first.baseLevel(), first.coarseLevel(),
                     manifest.world().minY(), manifest.world().height(), announced);
@@ -249,7 +254,7 @@ public final class ShardWorld {
 
     /** The path of the pack of a tile under the release directory, {@code farview/t.<tx>.<tz>.hfp}. */
     static String packFile(SynxManifest.FarView pack) {
-        return "farview/t." + pack.tileX() + "." + pack.tileZ() + ".hfp";
+        return "farview/" + SynxFormat.farViewFileName(pack.tileX(), pack.tileZ());
     }
 
     /** How the pack in {@code file} differs from its manifest entry, empty when it does not. */
@@ -265,7 +270,8 @@ public final class ShardWorld {
      * {@link #mismatch(Path, SynxManifest.FarView, int)} on a channel of the pack (M3-S, {@code API-M3-015}
      * 宣告条): its size first, held to the manifest and to {@link FarViewAnnouncement#MAX_OBJECT_BYTES}
      * before a byte is read; then its SHA-256, and that of its first {@code coarse_bytes} bytes for a tile
-     * announced by its coarse prefix, computed {@value #DIGEST_BLOCK} bytes at a time on the same channel.
+     * announced by its coarse prefix, computed {@value #DIGEST_BUFFER_BYTES} bytes at a time on the same
+     * channel.
      */
     static String mismatch(SeekableByteChannel channel, SynxManifest.FarView pack, int layer) throws IOException {
         final long size = channel.size();
@@ -274,25 +280,25 @@ public final class ShardWorld {
             return "is " + size + " bytes, over the " + FarViewAnnouncement.MAX_OBJECT_BYTES + " bytes a far view object may have";
         }
         final boolean coarse = layer == FarViewAnnouncement.LAYER_COARSE;
-        final MessageDigest whole = sha256();
-        final MessageDigest prefix = sha256();
+        final MessageDigest whole = SynxDigests.sha256();
+        final MessageDigest prefix = SynxDigests.sha256();
         final ByteBuffer header = ByteBuffer.allocate(FarViewPack.HEADER_BYTES).order(ByteOrder.LITTLE_ENDIAN);
-        final ByteBuffer block = ByteBuffer.allocate(DIGEST_BLOCK);
+        final ByteBuffer buffer = ByteBuffer.allocate(DIGEST_BUFFER_BYTES);
         long read = 0;
-        while (channel.read(block.clear()) >= 0) {
-            block.flip();
-            if (header.hasRemaining()) header.put(block.duplicate().limit(Math.min(block.limit(), header.remaining())));
+        while (channel.read(buffer.clear()) >= 0) {
+            buffer.flip();
+            if (header.hasRemaining()) header.put(buffer.duplicate().limit(Math.min(buffer.limit(), header.remaining())));
             if (coarse && read < pack.coarseBytes()) {
-                prefix.update(block.duplicate().limit((int) Math.min(block.limit(), pack.coarseBytes() - read)));
+                prefix.update(buffer.duplicate().limit((int) Math.min(buffer.limit(), pack.coarseBytes() - read)));
             }
-            read += block.remaining();
-            whole.update(block);
+            read += buffer.remaining();
+            whole.update(buffer);
         }
         if (read != size) return "is " + read + " bytes read, " + size + " bytes long";
         if (!MessageDigest.isEqual(whole.digest(), pack.sha256())) return "does not match the sha256 of the manifest";
         if (!coarse) return "";
         if (header.hasRemaining()) return "is not a far view pack: shorter than its " + FarViewPack.HEADER_BYTES + " byte header";
-        final long fineOffset = Integer.toUnsignedLong(header.getInt(32));
+        final long fineOffset = FarViewPack.fineOffset(header);
         if (fineOffset != pack.coarseBytes()) {
             return "has its coarse prefix in " + fineOffset + " bytes, the manifest says coarse_bytes " + pack.coarseBytes();
         }
@@ -300,14 +306,6 @@ public final class ShardWorld {
             return "has a coarse prefix that does not match the coarse_sha256 of the manifest";
         }
         return "";
-    }
-
-    private static MessageDigest sha256() {
-        try {
-            return MessageDigest.getInstance("SHA-256");
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("every JDK has SHA-256", e);
-        }
     }
 
     /** The host of a url root of plain http, null for https. */
@@ -388,10 +386,11 @@ public final class ShardWorld {
                     + ": the simulation distance cannot exceed the view distance");
         }
         final long started = System.nanoTime();
-        final MapFileTrust trust = new MapFileTrust(Objects.requireNonNull(settings.mapRoot(), "no map is mounted"), owners);
+        final Path mapRoot = Objects.requireNonNull(settings.mapRoot(), "no map is mounted");
+        final MapFileTrust trust = new MapFileTrust(mapRoot, owners);
         final VerifiedBuild verified;
         try {
-            verified = verify(process, settings, directory, trust);
+            verified = verify(process, settings, directory, trust, mapRoot);
         } catch (SynxException e) {
             throw new IllegalArgumentException(e.getMessage(), e);
         }
@@ -423,12 +422,11 @@ public final class ShardWorld {
      * directory mode. A shard directory is checked against the manifest right after it is read.
      */
     private static VerifiedBuild verify(ServerProcess process, ShardSettings settings, @Nullable ShardDirectory directory,
-                                        MapFileTrust trust) throws SynxException {
+                                        MapFileTrust trust, Path mapRoot) throws SynxException {
         final Path buildDir = settings.buildDir();
         final Path manifestFile = buildDir.resolve(SynxManifest.FILE_NAME);
-        if (directory != null) {
-            trust.check(Objects.requireNonNull(settings.mapRoot(), "no map is mounted").resolve(ShardDirectory.FILE_NAME));
-        }
+        final Path directoryFile = mapRoot.resolve(ShardDirectory.FILE_NAME);
+        if (directory != null) trust.check(directoryFile);
         trust.check(buildDir);
         trust.check(manifestFile);
         if (!Files.isRegularFile(manifestFile)) {
@@ -440,7 +438,7 @@ public final class ShardWorld {
         } catch (IOException e) {
             throw new IllegalArgumentException(SynxError.MANIFEST.code() + ": " + buildDir + ": " + e.getMessage(), e);
         }
-        if (directory != null) checkDirectory(directory, declared, settings);
+        if (directory != null) checkDirectory(directory, declared, directoryFile);
         final SynxManifest.Bounds bounds = bounds(declared, directory);
         final SynxManifest.Bounds scope = viewBounds(bounds);
         for (Path region : SynxBuildVerifier.regionFiles(buildDir, declared, scope)) trust.check(region);
@@ -482,13 +480,11 @@ public final class ShardWorld {
      * against the gates of the region. The directory does not know its file, so the prefix every
      * refusal about it starts with goes in front of the detail {@link ShardDirectory#checkAgainst} gives.
      */
-    private static void checkDirectory(ShardDirectory directory, SynxManifest declared, ShardSettings settings) {
+    private static void checkDirectory(ShardDirectory directory, SynxManifest declared, Path directoryFile) {
         try {
             directory.checkAgainst(declared);
         } catch (IllegalArgumentException e) {
-            final Path file = Objects.requireNonNull(settings.mapRoot(), "no map is mounted")
-                    .resolve(ShardDirectory.FILE_NAME).toAbsolutePath();
-            throw new IllegalArgumentException("the shard directory " + file + " is not valid: " + e.getMessage(), e);
+            throw new IllegalArgumentException(ShardDirectory.refusal(directoryFile.toAbsolutePath()) + e.getMessage(), e);
         }
         checkSpawnColumn(directory);
     }
@@ -504,8 +500,8 @@ public final class ShardWorld {
     static void checkSpawnColumn(ShardDirectory directory) {
         final ShardDirectory.Region region = directory.ownRegion();
         final SynxManifest.Bounds bounds = region.bounds();
-        final int x = centerChunk(bounds.minX(), bounds.maxX()) * 16 + 8;
-        final int z = centerChunk(bounds.minZ(), bounds.maxZ()) * 16 + 8;
+        final int x = spawnColumn(bounds.minX(), bounds.maxX());
+        final int z = spawnColumn(bounds.minZ(), bounds.maxZ());
         for (ShardDirectory.Gate gate : region.gates()) {
             final ShardDirectory.Frame frame = gate.frame();
             if (x >= frame.minX() && x <= frame.maxX() && z >= frame.minZ() && z <= frame.maxZ()) {
@@ -526,8 +522,8 @@ public final class ShardWorld {
     }
 
     /**
-     * The bounds the shard serves in chunks, both ends included, which the world border is set from
-     * (step (3) of {@code API-M3-006}).
+     * The bounds the shard serves in chunks, both ends included, which step (5) of {@code API-M3-006} sets
+     * the world border from; known from step (3) on.
      */
     public SynxManifest.Bounds bounds() {
         return bounds(manifest, directory);
@@ -546,10 +542,13 @@ public final class ShardWorld {
         return Math.floorDiv(min + max, 2);
     }
 
+    /** §28.1: the block column players spawn on, on one axis: the center column of the center chunk of the bounds. */
+    private static int spawnColumn(int min, int max) {
+        return centerChunk(min, max) * 16 + 8;
+    }
+
     static SynxManifest.Bounds viewBounds(SynxManifest.Bounds bounds) {
-        final int margin = SynxChunkLoader.VIEW_MARGIN;
-        return new SynxManifest.Bounds(bounds.minX() - margin, bounds.minZ() - margin,
-                bounds.maxX() + margin, bounds.maxZ() + margin);
+        return bounds.grow(SynxChunkLoader.VIEW_MARGIN);
     }
 
     /**
@@ -632,11 +631,10 @@ public final class ShardWorld {
         this.instance = instance;
         instance.setSimulationDistance(settings.simulationDistance());
         instance.setChunkUnloadGraceTicks(settings.chunkUnloadGraceTicks());
-        final SynxRelight relight = relightExecutor == null ? loader.startRelight(instance)
-                : loader.startRelight(instance, relightExecutor);
+        final SynxRelight relight = loader.startRelight(instance, relightExecutor);
         relightStep.relight = relight;
         this.relight = relight;
-        // Before the world border, the spawn point and the bind
+        // Before the world border and the spawn point below, and before Main binds the port in step (6)
         if (flags != null) flags.replay(instance);
         instance.setWorldBorder(worldBorder(bounds));
         if (bounds.maxX() - bounds.minX() != bounds.maxZ() - bounds.minZ()) {
@@ -677,15 +675,16 @@ public final class ShardWorld {
     }
 
     /**
-     * Runs the write phase of the overlay store at the end of every tick. A throw is reported to the
-     * exception handler of the process and the next tick runs it again. The scheduler stops a repeating
-     * task that throws, after which no dirty chunk would be written or unloaded again, and the final
-     * flush that a stop with a live tick hands to this phase would never run.
+     * Runs {@code tickEnd} at the end of every tick: in a map shard the install phase of the runtime light,
+     * then the write phase of the overlay store ({@link #start}). A throw is reported to the exception
+     * handler of the process and the next tick runs it again. The scheduler stops a repeating task that
+     * throws, after which no dirty chunk would be written or unloaded again, and the final flush that a
+     * stop with a live tick hands to the write phase would never run.
      */
-    static void scheduleWritePhase(ServerProcess process, Runnable writePhase) {
+    static void scheduleWritePhase(ServerProcess process, Runnable tickEnd) {
         process.scheduler().scheduleTask(() -> {
             try {
-                writePhase.run();
+                tickEnd.run();
             } catch (RuntimeException e) {
                 process.exception().handleException(e);
             }
@@ -766,22 +765,22 @@ public final class ShardWorld {
     private void recordStreamStats(BiConsumer<String, Map<String, ?>> events) {
         final SynxChunkLoader loader = this.loader;
         final OverlayStore overlay = this.overlay;
-        final SynxStreamStats lastStream = this.lastStream;
-        final OverlayStats lastOverlay = this.lastOverlay;
+        final SynxStreamStats streamBefore = this.lastStream;
+        final OverlayStats overlayBefore = this.lastOverlay;
         final SynxRelight relight = this.relight;
-        final RelightStats lastRelight = this.lastRelight;
+        final RelightStats relightBefore = this.lastRelight;
         final ShardInstance instance = this.instance;
-        if (loader == null || overlay == null || lastStream == null || lastOverlay == null || relight == null
-                || lastRelight == null || instance == null) return;
+        if (loader == null || overlay == null || streamBefore == null || overlayBefore == null || relight == null
+                || relightBefore == null || instance == null) return;
         final SynxStreamStats stream = loader.stats();
-        final OverlayStats overlayStats = overlay.stats();
-        final RelightStats relightStats = relight.stats();
-        this.lastStream = stream;
-        this.lastOverlay = overlayStats;
-        this.lastRelight = relightStats;
+        final OverlayStats overlayNow = overlay.stats();
+        final RelightStats relightNow = relight.stats();
         final long voidChunks = instance.voidChunks();
-        final Map<String, Object> attributes = streamStats(lastStream, stream, lastOverlay, overlayStats, lastRelight,
-                relightStats, voidChunks - lastVoidChunks);
+        final Map<String, Object> attributes = streamStats(streamBefore, stream, overlayBefore, overlayNow,
+                relightBefore, relightNow, voidChunks - lastVoidChunks);
+        this.lastStream = stream;
+        this.lastOverlay = overlayNow;
+        this.lastRelight = relightNow;
         this.lastVoidChunks = voidChunks;
         final WorldFlagsImpl flags = this.flags;
         if (flags != null) {
@@ -863,11 +862,11 @@ public final class ShardWorld {
         final SynxManifest manifest = verified.manifest();
         final int chunkX = centerChunk(bounds.minX(), bounds.maxX());
         final int chunkZ = centerChunk(bounds.minZ(), bounds.maxZ());
-        final double x = chunkX * 16 + 8.5, z = chunkZ * 16 + 8.5;
+        final double x = spawnColumn(bounds.minX(), bounds.maxX()) + 0.5, z = spawnColumn(bounds.minZ(), bounds.maxZ()) + 0.5;
         final SynxRegion region = verified.region(SynxFormat.region(chunkX), SynxFormat.region(chunkZ));
         if (region != null && region.slot(chunkX, chunkZ) instanceof SynxSlot.Present present) {
             final short surfaceY = present.navigation().get(
-                    ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN), 32 + SPAWN_COLUMN * 2L);
+                    ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN), SPAWN_SURFACE_Y_OFFSET);
             return new Pos(x, surfaceY, z);
         }
         final int top = manifest.world().minY() + manifest.world().height();
@@ -879,11 +878,11 @@ public final class ShardWorld {
     /**
      * {@code API-M3-002} 覆盖层: the overlay store, written by the shard itself, is read back and sent to
      * the players as the map is. So {@code overlay/}, {@code overlay/<build_id>/} and its segment files,
-     * those that are there, go through {@link FileTrust} by their real paths before the store opens: a
-     * file group or others may write, or a directory they may write without the sticky bit, refuses the
-     * start. The owner is not looked at: the working directory is the service user's alone
-     * ({@code docs/DESIGN-PROD.md} §23). A file system without the {@code unix} attribute view is not
-     * checked.
+     * those that are there, go through {@link FileTrust} by their real paths before the store opens: one of
+     * them group or others may write, sticky bit or not, or one whose directory they may write without the
+     * sticky bit, refuses the start. The owner is not looked at: the working directory is the service
+     * user's alone ({@code docs/DESIGN-PROD.md} §23). A file system without the {@code unix} attribute view
+     * is not checked.
      *
      * @throws IllegalArgumentException for a refused start, which starts with the real path
      */

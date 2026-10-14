@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executor;
@@ -496,16 +495,6 @@ public final class FarViewConnection {
      */
     public void failure(String reason) {
         failure = reason;
-    }
-
-    /**
-     * The lower case hex of an announced object's digest.
-     *
-     * @param tile the object
-     * @return 64 hex digits
-     */
-    public static String hex(FarViewAnnouncement.Tile tile) {
-        return HexFormat.of().formatHex(tile.sha256());
     }
 
     /**

@@ -134,7 +134,7 @@ final class DhLibraryBaker implements Runnable {
         // 1. Every pack against the level, before anything is written
         final List<Pack> packs = new ArrayList<>();
         for (FarViewAnnouncement.Tile tile : announcement.tiles()) {
-            final String hex = FarViewConnection.hex(tile);
+            final String hex = FarViewCache.hex(tile);
             final FarViewPack.Reader reader = FarViewPack.Reader.read(Files.readAllBytes(cache.pack(hex)));
             final FarViewPack.Header header = reader.header();
             if (header.minY() != level.getMinHeight() || header.height() != height

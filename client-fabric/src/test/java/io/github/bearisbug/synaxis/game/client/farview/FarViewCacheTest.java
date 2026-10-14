@@ -170,8 +170,8 @@ class FarViewCacheTest {
         final FarViewCache cache = new FarViewCache(dir);
         final List<Tile> tiles = nine(-1);
         Files.createDirectories(cache.pack("x").getParent());
-        Files.write(cache.pack(FarViewConnection.hex(tiles.get(0))), new byte[]{1});
-        Files.write(cache.part(FarViewConnection.hex(tiles.get(1))), new byte[]{1});
+        Files.write(cache.pack(FarViewCache.hex(tiles.get(0))), new byte[]{1});
+        Files.write(cache.part(FarViewCache.hex(tiles.get(1))), new byte[]{1});
         assertEquals(tiles.subList(1, 9), cache.missing(tiles), "a .part is not an object yet");
     }
 
@@ -209,7 +209,7 @@ class FarViewCacheTest {
         final byte[] block = new byte[100 * 1024];
         for (Tile object : List.of(shared, onlyA, onlyB, onlyC, onlyD)) {
             Files.createDirectories(cache.pack("x").getParent());
-            Files.write(cache.pack(FarViewConnection.hex(object)), block);
+            Files.write(cache.pack(FarViewCache.hex(object)), block);
         }
         final String keyA = FarViewCache.viewKey(DH, 1, a);
         final String keyB = FarViewCache.viewKey(DH, 1, b);
@@ -228,13 +228,13 @@ class FarViewCacheTest {
         final FarViewCache.Cleaned cleaned = cache.clean(750 * 1024 + markers, keyD);
 
         assertEquals(List.of("ffffffffffffffff", keyA), cleaned.libraries());
-        assertEquals(List.of(FarViewConnection.hex(onlyA)), cleaned.packs());
+        assertEquals(List.of(FarViewCache.hex(onlyA)), cleaned.packs());
         assertFalse(Files.exists(cache.library(keyA)));
         assertFalse(Files.exists(cache.library("ffffffffffffffff")));
-        assertFalse(Files.exists(cache.pack(FarViewConnection.hex(onlyA))));
+        assertFalse(Files.exists(cache.pack(FarViewCache.hex(onlyA))));
         for (String kept : List.of(keyB, keyC, keyD)) assertTrue(Files.exists(cache.library(kept)), kept);
         for (Tile kept : List.of(shared, onlyB, onlyC, onlyD)) {
-            assertTrue(Files.exists(cache.pack(FarViewConnection.hex(kept))), kept.toString());
+            assertTrue(Files.exists(cache.pack(FarViewCache.hex(kept))), kept.toString());
         }
         assertEquals(cache.size(), cleaned.size());
         assertTrue(cleaned.size() <= 750 * 1024 + markers);
@@ -248,7 +248,7 @@ class FarViewCacheTest {
         cache.writeMarker(marker(key, tiles, 1, 1));
         Files.write(cache.library(key).resolve("DistantHorizons.sqlite"), new byte[4096]);
         Files.createDirectories(cache.pack("x").getParent());
-        Files.write(cache.pack(FarViewConnection.hex(tiles.getFirst())), new byte[4096]);
+        Files.write(cache.pack(FarViewCache.hex(tiles.getFirst())), new byte[4096]);
         final FarViewCache.Cleaned cleaned = cache.clean(10, key);
         assertEquals(List.of(), cleaned.libraries());
         assertEquals(List.of(), cleaned.packs(), "an object the library in use names stays");

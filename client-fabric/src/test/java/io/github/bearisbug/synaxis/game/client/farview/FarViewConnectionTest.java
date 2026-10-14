@@ -43,7 +43,7 @@ class FarViewConnectionTest {
     void packs() throws IOException {
         cache = new FarViewCache(dir);
         Files.createDirectories(cache.pack("x").getParent());
-        for (Tile tile : tiles) Files.write(cache.pack(FarViewConnection.hex(tile)), new byte[]{1});
+        for (Tile tile : tiles) Files.write(cache.pack(FarViewCache.hex(tile)), new byte[]{1});
     }
 
     private FarViewConnection connection() {

@@ -234,8 +234,8 @@ class FarViewClientTest {
         final byte[] b = object(0), c = object(1), d = object(2);
         assertTrue(c.length > 1000, "C is longer than its part: " + c.length);
         final List<Tile> tiles = List.of(serve(0, b, root()), serve(1, c, root()), serve(2, d, root()));
-        final String hexA = "a".repeat(64), hexB = FarViewConnection.hex(tiles.get(0)), hexC = FarViewConnection.hex(tiles.get(1)),
-                hexD = FarViewConnection.hex(tiles.get(2));
+        final String hexA = "a".repeat(64), hexB = FarViewCache.hex(tiles.get(0)), hexC = FarViewCache.hex(tiles.get(1)),
+                hexD = FarViewCache.hex(tiles.get(2));
         final long now = System.currentTimeMillis();
         final FileTime dayAndAHourAgo = FileTime.fromMillis(now - Duration.ofHours(25).toMillis());
         final FileTime anHourAgo = FileTime.fromMillis(now - Duration.ofHours(1).toMillis());

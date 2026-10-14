@@ -204,7 +204,7 @@ public final class FarViewClient {
                                        FarViewCache store, FarViewDownloader downloader, @Nullable InetAddress server) {
         final FarViewAnnouncement announcement = admitted(received);
         final Set<String> named = new HashSet<>();
-        if (announcement != null) announcement.tiles().forEach(tile -> named.add(FarViewConnection.hex(tile)));
+        if (announcement != null) announcement.tiles().forEach(tile -> named.add(FarViewCache.hex(tile)));
         store.dropStaleParts(named, System.currentTimeMillis());
         final boolean on = available(gate, settings, announcement);
         final FarViewConnection connection = new FarViewConnection(announcement, now, settings, on, DH_VERSION, store,

@@ -3,7 +3,10 @@ package io.github.bearisbug.synaxis.app.shard;
 import io.github.bearisbug.synaxis.app.transfer.TransferOutcome;
 import io.github.bearisbug.synaxis.app.transfer.TransferTickets;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.plugin.LogBudget;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Comparator;
 import java.util.List;
@@ -23,14 +26,20 @@ import java.util.function.LongSupplier;
  * nothing. The choice is advice: the heartbeats are up to 5 s old, and the connection gate of the
  * target seats the player or not.
  * <p>
- * A gate reads the heartbeats of its target region at most once a second, however many players walk
- * into it ({@code REQ-M3-033}): a read in flight, or one done less than 1,000 ms ago, answers
- * {@link #transfer} again, its failure included. {@link #transferTo}, which a GM or the management
- * interface calls, always reads.
+ * Every {@link #transfer} to one target region, from a gate, {@code gm.transfer} or
+ * {@code synaxis:transfer}, shares one heartbeat read ({@code REQ-M3-033}): a read in flight, or one
+ * done less than 1,000 ms ago, answers it again, its failure included, so this shard reads a target
+ * region at most once a second however many players walk into its gate. {@link #transferTo} always reads.
+ * A read that fails is a WARN through a budget, once per read, not once per transfer it answers.
  */
 public final class ShardServiceImpl implements ShardService {
 
-    /** How long a heartbeat read may take, on top of its own statement timeout. */
+    private static final Logger LOGGER = LoggerFactory.getLogger(ShardServiceImpl.class);
+
+    /**
+     * How long a heartbeat read may take in all, the wait for a connection included: the statement
+     * timeout of the pool bounds the statement alone.
+     */
     private static final long HEARTBEAT_TIMEOUT_MILLIS = 2_000;
     /** How long a done read of a region's heartbeats answers the transfers to that region. */
     private static final long REUSE_NANOS = TimeUnit.MILLISECONDS.toNanos(1_000);
@@ -50,6 +59,7 @@ public final class ShardServiceImpl implements ShardService {
     private final String regionId;
     private final LongSupplier clock;
     private final Map<String, Read> reads = new ConcurrentHashMap<>();
+    private final LogBudget readFailures = new LogBudget(LOGGER, "heartbeat reads that failed");
 
     /**
      * @param directory  the shard directory of this shard
@@ -80,17 +90,21 @@ public final class ShardServiceImpl implements ShardService {
     }
 
     @Override
-    public CompletableFuture<ShardTransferResult> transfer(Player player, String regionId) {
-        if (regionId.equals(this.regionId)) return CompletableFuture.completedFuture(ShardTransferResult.SAME_TARGET);
-        if (directory.region(regionId) == null) return CompletableFuture.completedFuture(ShardTransferResult.UNKNOWN_TARGET);
-        return send(player, region(regionId), ShardServiceImpl::choose);
+    public CompletableFuture<ShardTransferResult> transfer(Player player, String targetRegion) {
+        if (targetRegion.equals(regionId)) return CompletableFuture.completedFuture(ShardTransferResult.SAME_TARGET);
+        if (directory.region(targetRegion) == null) return CompletableFuture.completedFuture(ShardTransferResult.UNKNOWN_TARGET);
+        return send(player, heartbeatsOf(targetRegion), ShardServiceImpl::choose);
     }
 
     @Override
     public CompletableFuture<ShardTransferResult> transferTo(Player player, String shardId) {
         if (shardId.equals(directory.shardId())) return CompletableFuture.completedFuture(ShardTransferResult.SAME_TARGET);
         return send(player, heartbeats.shard(directory.mapId(), shardId)
-                .orTimeout(HEARTBEAT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS), ShardServiceImpl::check);
+                .orTimeout(HEARTBEAT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)
+                .whenComplete((_, error) -> {
+                    if (error != null) readFailures.warn(error, "Reading the heartbeat of shard {} failed, the transfer "
+                            + "is directory_unavailable", shardId);
+                }), ShardServiceImpl::check);
     }
 
     /**
@@ -98,7 +112,7 @@ public final class ShardServiceImpl implements ShardService {
      * {@link #REUSE_NANOS} ago, whether it read the rows or failed; otherwise a new read, which takes the
      * place of the last one with one compare and set. Its 2 s timeout is set once, here.
      */
-    private CompletableFuture<List<HeartbeatRow>> region(String target) {
+    private CompletableFuture<List<HeartbeatRow>> heartbeatsOf(String target) {
         while (true) {
             final Read last = reads.get(target);
             if (last != null && (!last.rows.isDone() || clock.getAsLong() - last.doneAt < REUSE_NANOS)) return last.rows;
@@ -106,18 +120,21 @@ public final class ShardServiceImpl implements ShardService {
             if (last == null ? reads.putIfAbsent(target, next) != null : !reads.replace(target, last, next)) continue;
             try {
                 var _ = heartbeats.region(directory.mapId(), target).orTimeout(HEARTBEAT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)
-                        .whenComplete((rows, error) -> done(next, rows, error));
+                        .whenComplete((rows, error) -> done(target, next, rows, error));
             } catch (RuntimeException e) {
-                done(next, null, e);
+                done(target, next, null, e);
             }
             return next.rows;
         }
     }
 
-    private void done(Read read, @Nullable List<HeartbeatRow> rows, @Nullable Throwable error) {
+    private void done(String target, Read read, @Nullable List<HeartbeatRow> rows, @Nullable Throwable error) {
         read.doneAt = clock.getAsLong();
-        if (error != null) read.rows.completeExceptionally(error);
-        else read.rows.complete(rows);
+        if (error != null) {
+            readFailures.warn(error, "Reading the heartbeats of region {} failed, transfers there are "
+                    + "directory_unavailable", target);
+            read.rows.completeExceptionally(error);
+        } else read.rows.complete(rows);
     }
 
     /** What the heartbeats say: the channel to send the player to, or why there is none. */
@@ -145,9 +162,13 @@ public final class ShardServiceImpl implements ShardService {
         return new Choice.Channel(row);
     }
 
-    /** {@code read} with its timeout set already. */
+    /**
+     * Sends the player where {@code choice} picks on what {@code read} read: a read that failed or timed
+     * out is {@code DIRECTORY_UNAVAILABLE}, a refusal its result, a channel the outcome of the tickets.
+     * {@code read} comes with its 2 s timeout set already.
+     */
     private <T> CompletableFuture<ShardTransferResult> send(Player player, CompletableFuture<T> read, Function<T, Choice> choice) {
-        return read.handle((rows, error) -> error == null ? choice.apply(rows)
+        return read.handle((found, error) -> error == null ? choice.apply(found)
                         : new Choice.Refused(ShardTransferResult.DIRECTORY_UNAVAILABLE))
                 .thenCompose(chosen -> switch (chosen) {
                     case Choice.Refused(ShardTransferResult result) -> CompletableFuture.completedFuture(result);

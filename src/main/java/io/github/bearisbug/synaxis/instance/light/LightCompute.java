@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.coordinate.BlockFace;
 import io.github.bearisbug.synaxis.instance.palette.Palette;
 import io.github.bearisbug.synaxis.coordinate.Direction;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -14,12 +15,17 @@ import static io.github.bearisbug.synaxis.coordinate.CoordConversion.SECTION_BLO
 
 public final class LightCompute {
     static final Direction[] DIRECTIONS = Direction.values();
+    // FACES[i] is the face of DIRECTIONS[i]: BlockFace declares its constants in Direction's order
     static final BlockFace[] FACES = BlockFace.values();
     static final int LIGHT_LENGTH = SECTION_BLOCK_COUNT / 2;
     static final int SECTION_SIZE = 16;
 
+    /**
+     * No light data, sent as an empty mask: {@link Light#array} of a section never computed, or of a dark one (which
+     * may also be {@link #EMPTY_CONTENT}).
+     */
     public static final byte[] UNSET_CONTENT = new byte[0];
-    // Shared sentinel arrays compared by identity
+    // Shared sentinel arrays compared by identity; never written
     @SuppressWarnings("MutablePublicArray")
     public static final byte[] EMPTY_CONTENT = new byte[LIGHT_LENGTH];
     @SuppressWarnings("MutablePublicArray")
@@ -29,7 +35,8 @@ public final class LightCompute {
         Arrays.fill(CONTENT_FULLY_LIT, (byte) -1);
     }
 
-    static byte[] lazyArray(byte[] content) {
+    /** A copy of {@code content}, or the shared constant equal to it; null or empty is {@link #EMPTY_CONTENT}. */
+    static byte[] lazyArray(byte @Nullable [] content) {
         if (content == null || content.length == 0) return EMPTY_CONTENT;
         else if (Arrays.equals(content, EMPTY_CONTENT)) return EMPTY_CONTENT;
         else if (Arrays.equals(content, CONTENT_FULLY_LIT)) return CONTENT_FULLY_LIT;
@@ -37,7 +44,7 @@ public final class LightCompute {
     }
 
     static ShortArrayFIFOQueue buildExternalQueue(Palette blockPalette,
-                                                  Point[] neighbors, byte[] content,
+                                                  Point[] neighbors, byte @Nullable [] content,
                                                   Light.LightLookup lightLookup,
                                                   Light.PaletteLookup paletteLookup) {
         ShortArrayFIFOQueue lightSources = new ShortArrayFIFOQueue();
@@ -50,49 +57,24 @@ public final class LightCompute {
             if (otherLight == null) continue;
 
             final BlockFace face = FACES[i];
-            final int k = switch (face) {
-                case WEST, BOTTOM, NORTH -> 0;
-                case EAST, TOP, SOUTH -> 15;
-            };
-            for (int bx = 0; bx < 16; bx++) {
-                for (int by = 0; by < 16; by++) {
-                    final int fromLevel = switch (face) {
-                        case NORTH, SOUTH -> otherLight.getLevel(bx, by, 15 - k);
-                        case WEST, EAST -> otherLight.getLevel(15 - k, bx, by);
-                        default -> otherLight.getLevel(bx, 15 - k, by);
-                    };
+            final int layer = borderLayer(face);
+            for (int a = 0; a < SECTION_SIZE; a++) {
+                for (int b = 0; b < SECTION_SIZE; b++) {
+                    // The cell of this section's border and the one across it in the neighbour's
+                    final int posTo = borderIndex(face, layer, a, b);
+                    final int posFrom = borderIndex(face, 15 - layer, a, b);
+                    final int fromLevel = otherLight.getLevel(posFrom & 15, posFrom >> 8, (posFrom >> 4) & 15);
                     if (fromLevel <= 1) continue;
 
-                    final int posTo = switch (face) {
-                        case NORTH, SOUTH -> bx | (k << 4) | (by << 8);
-                        case WEST, EAST -> k | (by << 4) | (bx << 8);
-                        default -> bx | (by << 4) | (k << 8);
-                    };
+                    final Block blockTo = getBlock(blockPalette, posTo & 15, posTo >> 8, (posTo >> 4) & 15);
+                    final int reached = fromLevel - LightBlocks.opacity(blockTo);
+                    if (reached <= 0) continue;
+                    if (content != null && reached < getLight(content, posTo)) continue;
 
-                    final Block blockTo = Objects.requireNonNullElse(switch (face) {
-                        case NORTH, SOUTH -> getBlock(blockPalette, bx, by, k);
-                        case WEST, EAST -> getBlock(blockPalette, k, bx, by);
-                        default -> getBlock(blockPalette, bx, k, by);
-                    }, Block.AIR);
-
-                    final int lightEmission = fromLevel - LightBlocks.opacity(blockTo);
-                    if (lightEmission <= 0) continue;
-
-                    if (content != null) {
-                        final int internalEmission = (byte) Math.max(getLight(content, posTo) - 1, 0);
-                        if (lightEmission <= internalEmission) continue;
-                    }
-
-                    final Block blockFrom = Objects.requireNonNullElse(switch (face) {
-                        case NORTH, SOUTH -> getBlock(otherPalette, bx, by, 15 - k);
-                        case WEST, EAST -> getBlock(otherPalette, 15 - k, bx, by);
-                        default -> getBlock(otherPalette, bx, 15 - k, by);
-                    }, Block.AIR);
-
+                    final Block blockFrom = getBlock(otherPalette, posFrom & 15, posFrom >> 8, (posFrom >> 4) & 15);
                     if (LightBlocks.occludes(blockFrom, blockTo, face.getOppositeFace())) continue;
 
-                    final int index = posTo | (lightEmission << 12);
-                    lightSources.enqueue((short) index);
+                    lightSources.enqueue((short) (posTo | (reached << 12)));
                 }
             }
         }
@@ -100,13 +82,11 @@ public final class LightCompute {
     }
 
     /**
-     * Computes light in one section
-     * <p>
-     * Takes queue of lights positions and spreads light from this positions in 3d using Breadth-first search
+     * Spreads light inside one section, breadth first, from the queued cells.
      *
-     * @param blockPalette blocks placed in section
-     * @param lightPre     shorts queue in format: [4bit light level][4bit y][4bit z][4bit x]
-     * @return lighting wrapped in Result
+     * @param blockPalette the section's blocks
+     * @param lightPre     cells as shorts {@code [4 bit level][4 bit y][4 bit z][4 bit x]}
+     * @return the section's nibble array; {@link #EMPTY_CONTENT}, which must not be written, when the queue is empty
      */
     static byte [] compute(Palette blockPalette, ShortArrayFIFOQueue lightPre) {
         if (lightPre.isEmpty()) return EMPTY_CONTENT;
@@ -137,26 +117,25 @@ public final class LightCompute {
             final int lightLevel = (index >> 12) & 15;
             if (lightLevel <= 1) continue;
 
+            final Block currentBlock = getBlock(blockPalette, x, y, z);
             for (Direction direction : DIRECTIONS) {
                 final int xO = x + direction.normalX();
                 final int yO = y + direction.normalY();
                 final int zO = z + direction.normalZ();
 
-                // Handler border
+                // Stay inside the section
                 if (xO < 0 || xO >= SECTION_SIZE || yO < 0 || yO >= SECTION_SIZE || zO < 0 || zO >= SECTION_SIZE) {
                     continue;
                 }
 
-                // Section
                 final int newIndex = xO | (zO << 4) | (yO << 8);
                 final int oldLightLevel = getLight(lightArray, newIndex);
                 if (oldLightLevel >= lightLevel - 1) continue;
 
-                final Block propagatedBlock = Objects.requireNonNullElse(getBlock(blockPalette, xO, yO, zO), Block.AIR);
+                final Block propagatedBlock = getBlock(blockPalette, xO, yO, zO);
                 final int newLightLevel = lightLevel - LightBlocks.opacity(propagatedBlock);
                 if (oldLightLevel >= newLightLevel) continue;
 
-                final Block currentBlock = Objects.requireNonNullElse(getBlock(blockPalette, x, y, z), Block.AIR);
                 if (LightBlocks.occludes(currentBlock, propagatedBlock, BlockFace.fromDirection(direction))) continue;
 
                 placeLight(lightArray, newIndex, newLightLevel);
@@ -183,72 +162,63 @@ public final class LightCompute {
     }
 
     public static Block getBlock(Palette palette, int x, int y, int z) {
-        return Block.fromStateId(palette.get(x, y, z));
+        return Objects.requireNonNullElse(Block.fromStateId(palette.get(x, y, z)), Block.AIR);
     }
 
-    public static byte[] bake(byte[] content1, byte[] content2) {
-        if (content1 == null && content2 == null) return EMPTY_CONTENT;
-        if (content1 == EMPTY_CONTENT && content2 == EMPTY_CONTENT) return EMPTY_CONTENT;
-
-        if (content1 == CONTENT_FULLY_LIT) return CONTENT_FULLY_LIT;
-        if (content2 == CONTENT_FULLY_LIT) return CONTENT_FULLY_LIT;
-
-        if (content1 == null) return content2;
-        if (content2 == null) return content1;
-
-        if (content1 == content2) return content1;
-
+    /**
+     * Cell-wise max of two nibble arrays, a null {@code content1} counting as all 0. May return an argument or a
+     * shared constant: do not write the result.
+     */
+    public static byte[] bake(byte @Nullable [] content1, byte[] content2) {
+        if (content1 == CONTENT_FULLY_LIT || content2 == CONTENT_FULLY_LIT) return CONTENT_FULLY_LIT;
+        if (content1 == null || content1 == content2) return content2;
         if (Arrays.equals(content1, EMPTY_CONTENT) && Arrays.equals(content2, EMPTY_CONTENT)) return EMPTY_CONTENT;
+        if (Arrays.equals(content1, CONTENT_FULLY_LIT) || Arrays.equals(content2, CONTENT_FULLY_LIT)) return CONTENT_FULLY_LIT;
 
-        if (Arrays.equals(content1, CONTENT_FULLY_LIT)) return CONTENT_FULLY_LIT;
-        if (Arrays.equals(content2, CONTENT_FULLY_LIT)) return CONTENT_FULLY_LIT;
-
-        byte[] lightMax = new byte[LIGHT_LENGTH];
+        final byte[] lightMax = new byte[LIGHT_LENGTH];
         for (int i = 0; i < LIGHT_LENGTH; i++) {
-            final byte c1 = content1[i];
-            final byte c2 = content2[i];
-
-            // Lower
-            final byte l1 = (byte) (c1 & 0x0F);
-            final byte l2 = (byte) (c2 & 0x0F);
-
-            // Upper
-            final byte u1 = (byte) ((c1 >> 4) & 0x0F);
-            final byte u2 = (byte) ((c2 >> 4) & 0x0F);
-
-            final byte lower = (byte) Math.max(l1, l2);
-            final byte upper = (byte) Math.max(u1, u2);
-
-            lightMax[i] = (byte) (lower | (upper << 4));
+            final int c1 = content1[i], c2 = content2[i];
+            lightMax[i] = (byte) (Math.max(c1 & 0x0F, c2 & 0x0F) | Math.max(c1 & 0xF0, c2 & 0xF0));
         }
         return lightMax;
     }
 
-    public static boolean compareBorders(byte[] content, byte[] contentPropagation, byte[] contentPropagationTemp, BlockFace face) {
-        if (content == null && contentPropagation == null && contentPropagationTemp == null) return true;
-
-        final int k = switch (face) {
-            case WEST, BOTTOM, NORTH -> 0;
-            case EAST, TOP, SOUTH -> 15;
-        };
-        for (int bx = 0; bx < SECTION_SIZE; bx++) {
-            for (int by = 0; by < SECTION_SIZE; by++) {
-                final int posFrom = switch (face) {
-                    case NORTH, SOUTH -> bx | (k << 4) | (by << 8);
-                    case WEST, EAST -> k | (by << 4) | (bx << 8);
-                    default -> bx | (by << 4) | (k << 8);
-                };
-
-                int valueFrom;
-                if (content == null && contentPropagation == null) valueFrom = 0;
-                else if (content != null && contentPropagation == null) valueFrom = getLight(content, posFrom);
-                else if (content == null) valueFrom = getLight(contentPropagation, posFrom);
-                else valueFrom = Math.max(getLight(content, posFrom), getLight(contentPropagation, posFrom));
-
-                final int valueTo = getLight(contentPropagationTemp, posFrom);
-                if (valueFrom < valueTo) return false;
+    /**
+     * Whether no cell of this section's border towards {@code face} is brighter in {@code contentPropagationTemp}
+     * than in {@code content} and {@code contentPropagation} together, so the neighbour across {@code face} needs no
+     * update.
+     */
+    public static boolean compareBorders(byte @Nullable [] content, byte @Nullable [] contentPropagation,
+                                         byte[] contentPropagationTemp, BlockFace face) {
+        final int layer = borderLayer(face);
+        for (int a = 0; a < SECTION_SIZE; a++) {
+            for (int b = 0; b < SECTION_SIZE; b++) {
+                final int index = borderIndex(face, layer, a, b);
+                final int valueFrom = Math.max(level(content, index), level(contentPropagation, index));
+                if (valueFrom < getLight(contentPropagationTemp, index)) return false;
             }
         }
         return true;
+    }
+
+    private static int level(byte @Nullable [] light, int index) {
+        return light == null ? 0 : getLight(light, index);
+    }
+
+    /** The layer of a section, along the axis of {@code face}, that borders the section across {@code face}. */
+    private static int borderLayer(BlockFace face) {
+        return switch (face) {
+            case WEST, BOTTOM, NORTH -> 0;
+            case EAST, TOP, SOUTH -> 15;
+        };
+    }
+
+    /** Index {@code x | z << 4 | y << 8} of cell {@code (a, b)} of layer {@code layer} along the axis of {@code face}. */
+    private static int borderIndex(BlockFace face, int layer, int a, int b) {
+        return switch (face) {
+            case NORTH, SOUTH -> a | layer << 4 | b << 8;
+            case WEST, EAST -> layer | b << 4 | a << 8;
+            case BOTTOM, TOP -> a | b << 4 | layer << 8;
+        };
     }
 }

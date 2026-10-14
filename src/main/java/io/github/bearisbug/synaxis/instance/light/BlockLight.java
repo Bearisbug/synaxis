@@ -102,10 +102,13 @@ final class BlockLight implements Light {
 
     @Override
     public int getLevel(int x, int y, int z) {
+        // Read once: invalidate() and a neighbour's calculateInternal null contentPropagation from other threads
+        final byte @Nullable [] content = this.content;
         if (content == null) return 0;
-        int index = x | (z << 4) | (y << 8);
-        if (contentPropagation == null) return LightCompute.getLight(content, index);
-        return Math.max(LightCompute.getLight(contentPropagation, index), LightCompute.getLight(content, index));
+        final int index = x | (z << 4) | (y << 8);
+        final byte @Nullable [] propagation = this.contentPropagation;
+        if (propagation == null) return LightCompute.getLight(content, index);
+        return Math.max(LightCompute.getLight(propagation, index), LightCompute.getLight(content, index));
     }
 
     @Override
@@ -118,6 +121,7 @@ final class BlockLight implements Light {
         ShortArrayFIFOQueue queue = buildInternalQueue(blockPalette);
         this.content = LightCompute.compute(blockPalette, queue);
         // Propagate changes to neighbors and self
+        Set<Point> toUpdate = new HashSet<>();
         for (int i = -1; i <= 1; i++) {
             for (int j = -1; j <= 1; j++) {
                 for (int k = -1; k <= 1; k++) {
@@ -127,10 +131,12 @@ final class BlockLight implements Light {
                     if (!(lightLookup.light(neighborX, neighborY, neighborZ) instanceof BlockLight blockLight))
                         continue;
                     blockLight.contentPropagation = null;
+                    toUpdate.add(new BlockVec(neighborX, neighborY, neighborZ));
                 }
             }
         }
-        return Set.of(new BlockVec(chunkX, chunkY, chunkZ));
+        toUpdate.add(new BlockVec(chunkX, chunkY, chunkZ));
+        return toUpdate;
     }
 
     @Override
@@ -142,7 +148,7 @@ final class BlockLight implements Light {
         ShortArrayFIFOQueue queue = buildExternalQueue(blockPalette, neighbors, content, lightLookup, paletteLookup);
         final byte[] contentPropagationTemp = LightCompute.compute(blockPalette, queue);
         this.contentPropagationSwap = LightCompute.bake(contentPropagationSwap, contentPropagationTemp);
-        // Propagate changes to neighbors and self
+        // Neighbours whose border with this section got brighter must recompute their external light
         Set<Point> toUpdate = new HashSet<>();
         for (int i = 0; i < neighbors.length; i++) {
             final Point neighbor = neighbors[i];

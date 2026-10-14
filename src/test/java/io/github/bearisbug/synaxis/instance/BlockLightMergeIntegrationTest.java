@@ -589,6 +589,34 @@ public class BlockLightMergeIntegrationTest {
         assertLightInstance(instance, expectedLights);
     }
 
+    @Test
+    public void torchLightSurvivesABlockChangeTwoChunksAway(Env env) {
+        Instance instance = env.createFlatInstance();
+        instance.setChunkSupplier(LightingChunk::new);
+        for (int x = -2; x <= 5; x++) {
+            for (int z = -2; z <= 2; z++) {
+                instance.loadChunk(x, z).join();
+            }
+        }
+
+        instance.setBlock(15, 64, 8, Block.TORCH);
+        LightingChunk.relightSection(instance, 0, 4, 0);
+
+        // The torch's light in chunk 1, which comes in from chunk 0
+        Map<Vec, Integer> expectedLights = new HashMap<>();
+        for (int x = 16; x <= 28; x++) {
+            expectedLights.put(new Vec(x, 64, 8), 29 - x);
+        }
+        assertLightInstance(instance, expectedLights);
+
+        // Invalidates the sections around it in chunks 2 to 4, not those of chunk 1, whose external light
+        // lighting chunk 2 drops
+        instance.setBlock(56, 64, 8, Block.STONE);
+        LightingChunk.relightSection(instance, 3, 4, 0);
+
+        assertLightInstance(instance, expectedLights);
+    }
+
     static byte lightVal(Instance instance, Vec pos) {
         final Vec modPos = new Vec(((pos.blockX() % 16) + 16) % 16, ((pos.blockY() % 16) + 16) % 16, ((pos.blockZ() % 16) + 16) % 16);
         Chunk chunk = instance.getChunkAt(pos.blockX(), pos.blockZ());

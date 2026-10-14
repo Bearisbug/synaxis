@@ -9,7 +9,13 @@ import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.ShutdownParticipant;
 import io.github.bearisbug.synaxis.app.ShutdownSequence;
+import io.github.bearisbug.synaxis.baker.Baker;
+import io.github.bearisbug.synaxis.baker.GeneratorPreset;
+import io.github.bearisbug.synaxis.baker.GeneratorSource;
+import io.github.bearisbug.synaxis.baker.LightVersions;
+import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.synx.OverlayOptions;
+import io.github.bearisbug.synaxis.synx.SynxManifest;
 import io.github.bearisbug.synaxis.synx.SynxOptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -21,6 +27,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,7 +37,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The map instance of a shard, M3-S ({@code docs/DESIGN-M3.md} {@code REQ-M3-029}): the chunks asked for
- * outside {@code view_bounds}, and what the start says of a map players may change.
+ * outside {@code view_bounds}, and what the start says: of a map players may change, of the settings in
+ * effect and of a spawn column without ground.
  */
 public class ShardInstanceTest {
 
@@ -66,7 +74,13 @@ public class ShardInstanceTest {
 
     /** Steps (3) and (5) of {@code Main} on the fixture map, the lines of {@code ShardWorld} and {@code ShardInstance} kept. */
     private Started start(ServerProcess process, SynxOptions options, ListAppender<ILoggingEvent> appender) {
-        final ShardWorld world = ShardWorld.prepare(process, release, options, new OverlayOptions(16_384, 10), null);
+        return start(process, release, options, new OverlayOptions(16_384, 10), appender);
+    }
+
+    /** {@link #start(ServerProcess, SynxOptions, ListAppender)} on another map and other overlay settings. */
+    private Started start(ServerProcess process, ShardSettings map, SynxOptions options, OverlayOptions overlay,
+                          ListAppender<ILoggingEvent> appender) {
+        final ShardWorld world = ShardWorld.prepare(process, map, options, overlay, null);
         final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
         process.setShutdownParticipant(shutdown);
         final ShardWorld.Started started = world.start(shutdown, (_, _) -> {
@@ -151,6 +165,68 @@ public class ShardInstanceTest {
                             + "players' digging and placing go into the overlay"), warnings);
                 } else {
                     assertEquals(List.of(), warnings, "no WARN for a map nobody changes");
+                }
+            } finally {
+                stopListening(appender, ShardWorld.class);
+                process.stop();
+            }
+        }
+    }
+
+    /**
+     * §19 「挂地图的分片起服」, the settings: {@code Map mounted} names the six overlay and light settings in
+     * effect, {@code EVT:shard_started} the three that §21 and {@code RB-M3-003} read.
+     */
+    @Test
+    public void theStartNamesTheSettingsInEffect() {
+        final ServerProcess process = process();
+        final ListAppender<ILoggingEvent> appender = listen(ShardWorld.class);
+        try {
+            final Started started = start(process, release, new SynxOptions(false, 3 << 20, 3, true),
+                    new OverlayOptions(1_000, 7, 123_456_789), appender);
+            final Map<String, Object> attributes = started.world().startedAttributes();
+            assertEquals(1_000, attributes.get("overlay_cap"));
+            assertEquals(123_456_789L, attributes.get("overlay_max_bytes"));
+            assertEquals(3, attributes.get("relight_threads"));
+            assertEquals(0L, ((Number) attributes.get("overlay_records")).longValue());
+            final List<String> mounted = appender.list.stream().map(ILoggingEvent::getFormattedMessage)
+                    .filter(line -> line.startsWith("Map mounted: ")).toList();
+            assertEquals(1, mounted.size(), mounted.toString());
+            assertTrue(mounted.getFirst().endsWith(" overlay_cap=1000 flush_interval_s=7 overlay_max_bytes=123456789 "
+                    + "relight_threads=3 resend_light=true section_cache_bytes=3145728"), mounted.getFirst());
+        } finally {
+            stopListening(appender, ShardWorld.class);
+            process.stop();
+        }
+    }
+
+    /**
+     * §19 「出生列整列是空气时起服记 WARN」: a release whose spawn column has nothing to stand on starts, the
+     * spawn point at the bottom of the world, with one WARN; the fixture map, ground at y 40, has none.
+     */
+    @Test
+    public void aSpawnColumnOfAirIsWarnedAboutAtTheStart(@TempDir Path maps) {
+        final Baker.Result air = Baker.bake(new Baker.Request("air", new GeneratorSource(new GeneratorPreset(_ -> {
+        }, 0, 64, new SynxManifest.Bounds(0, 0, 0, 0)), Registries.vanilla()), maps, 1, maps.resolve("logs"),
+                Registries.vanilla(), _ -> null, LightVersions.verified(), 1));
+        assertEquals(Baker.EXIT_PUBLISHED, air.exitCode(), air.toString());
+        final ShardSettings airMap = new ShardSettings(maps.resolve("air"),
+                Objects.requireNonNull(air.directory()).getFileName().toString(), 4, 100);
+        for (boolean overAir : new boolean[]{false, true}) {
+            final ServerProcess process = process();
+            final ListAppender<ILoggingEvent> appender = listen(ShardWorld.class);
+            try {
+                final Started started = start(process, overAir ? airMap : release, new SynxOptions(false, 1 << 20, 1, false),
+                        new OverlayOptions(16_384, 10), appender);
+                final List<String> warnings = appender.list.stream().map(ILoggingEvent::getFormattedMessage)
+                        .filter(line -> line.startsWith("The center column ")).toList();
+                if (overAir) {
+                    assertEquals(0, started.started().spawn().y(), "the bottom of the world");
+                    assertEquals(List.of("The center column 8,8 of " + airMap.mapBuild() + " has no block to stand on, "
+                            + "players spawn at the bottom of the world, y 0"), warnings);
+                } else {
+                    assertEquals(MapFixture.FLOOR, started.started().spawn().y());
+                    assertEquals(List.of(), warnings, "ground to stand on");
                 }
             } finally {
                 stopListening(appender, ShardWorld.class);

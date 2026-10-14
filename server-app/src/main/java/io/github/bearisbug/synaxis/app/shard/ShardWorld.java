@@ -64,6 +64,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.LongSupplier;
+import java.util.stream.Stream;
 
 /**
  * The map mounting mode of the shard host ({@code docs/DESIGN-M3.md} {@code API-M3-006}): checks the
@@ -131,6 +132,7 @@ public final class ShardWorld {
     private @Nullable SynxRelight relight;
     private @Nullable ShardInstance instance;
     private int farViewTiles;
+    private long overlayRecords;
     // First read by #start, then read and replaced by the statistics task only, on the tick scheduler thread
     private @Nullable SynxStreamStats lastStream;
     private @Nullable OverlayStats lastOverlay;
@@ -194,10 +196,11 @@ public final class ShardWorld {
      * {@code coarse_sha256} against its first {@code coarse_bytes} bytes. Who may have written the packs
      * was checked in step (3) ({@code API-M3-002} 文件信任). A url root of plain http to another host than
      * this one is announced all the same, with a WARN: it lets anyone on the way see which tiles a player
-     * loads. Nothing is announced without a url root, without a tile meeting the bounds, when one pack
-     * does not match, when the tiles to announce differ in {@code base_level} or {@code coarse_level}, or
-     * when they make no announcement (over 64 of them, a url over 1,024 bytes); one line of the log says
-     * which, a WARN for the last three. None of it refuses the start: the far view is optional.
+     * loads. Nothing is announced without a url root, when the manifest lists no pack (a release baked
+     * before M3-G), without a tile meeting the bounds, when one pack does not match, when the tiles to
+     * announce differ in {@code base_level} or {@code coarse_level}, or when they make no announcement (over
+     * 64 of them, a url over 1,024 bytes); one line of the log says which, a WARN for the last three. None
+     * of it refuses the start: the far view is optional.
      *
      * @return the announcement, null when there is none
      */
@@ -205,6 +208,11 @@ public final class ShardWorld {
                                                             SynxManifest.Bounds bounds, String urlRoot) {
         if (urlRoot.isEmpty()) {
             LOGGER.info("Far view off: {} is empty", ShardSettings.FARVIEW_URL_ROOT);
+            return null;
+        }
+        if (manifest.farview().isEmpty()) {
+            LOGGER.info("Far view off: {} has no far view packs (baker_version {}); rebake it for a far view",
+                    manifest.buildId(), manifest.bakerVersion());
             return null;
         }
         final List<AnnouncedTile> tiles = announcedTiles(manifest.farview(), bounds);
@@ -382,8 +390,9 @@ public final class ShardWorld {
         final int simulationDistance = settings.simulationDistance();
         if (simulationDistance < 1 || simulationDistance > viewDistance) {
             throw new IllegalArgumentException(ShardSettings.SIMULATION_DISTANCE + "=" + simulationDistance
-                    + " is not from 1 to the chunk view distance " + viewDistance
-                    + ": the simulation distance cannot exceed the view distance");
+                    + " is not from 1 to the chunk view distance " + viewDistance + ": " + (simulationDistance < 1
+                    ? "a map shard always limits its simulation, -1 (no limit) is the engine's default only"
+                    : "the simulation distance cannot exceed the view distance"));
         }
         final long started = System.nanoTime();
         final Path mapRoot = Objects.requireNonNull(settings.mapRoot(), "no map is mounted");
@@ -430,13 +439,17 @@ public final class ShardWorld {
         trust.check(buildDir);
         trust.check(manifestFile);
         if (!Files.isRegularFile(manifestFile)) {
-            throw new SynxException(SynxError.MANIFEST, SynxManifest.FILE_NAME, "missing in " + buildDir);
+            // No release directory at all: synaxis.map.build is typed wrong, which redistributing (§14) does not fix
+            final String release = Files.isDirectory(buildDir) ? ""
+                    : "; no such release, " + mapRoot + " has " + releaseNames(mapRoot);
+            throw new SynxException(SynxError.MANIFEST, SynxManifest.FILE_NAME, "missing in " + buildDir + release);
         }
         final SynxManifest declared;
         try (FileChannel channel = FileChannel.open(manifestFile, StandardOpenOption.READ)) {
             declared = readManifest(channel);
         } catch (IOException e) {
-            throw new IllegalArgumentException(SynxError.MANIFEST.code() + ": " + buildDir + ": " + e.getMessage(), e);
+            throw new IllegalArgumentException(SynxError.MANIFEST.code() + ": " + SynxManifest.FILE_NAME
+                    + ": cannot be read in " + buildDir + ": " + e, e);
         }
         if (directory != null) checkDirectory(directory, declared, directoryFile);
         final SynxManifest.Bounds bounds = bounds(declared, directory);
@@ -453,8 +466,20 @@ public final class ShardWorld {
         try {
             return SynxBuildVerifier.open(buildDir, declared, expectations, scope);
         } catch (IOException e) {
-            throw new IllegalArgumentException("the map release " + declared.buildId() + " cannot be opened: "
-                    + e.getMessage(), e);
+            throw new IllegalArgumentException("the map release " + declared.buildId() + " cannot be opened: " + e, e);
+        }
+    }
+
+    /**
+     * The release directories under {@code mapRoot} by name, those starting with a dot left out, for a
+     * {@code synaxis.map.build} that names none of them. Only the names are read.
+     */
+    private static String releaseNames(Path mapRoot) {
+        try (Stream<Path> entries = Files.list(mapRoot)) {
+            return entries.filter(Files::isDirectory).map(entry -> entry.getFileName().toString())
+                    .filter(name -> !name.startsWith(".")).sorted().toList().toString();
+        } catch (IOException e) {
+            return "nothing that can be listed: " + e;
         }
     }
 
@@ -609,10 +634,10 @@ public final class ShardWorld {
         try {
             overlay = OverlayStore.open(overlayRoot, manifest, overlaySettings, overlayOptions);
         } catch (SynxException e) {
-            throw new IllegalArgumentException(e.getMessage(), e);
+            // The dispositions of §14 for these codes are about the release directory, not this one
+            throw new IllegalArgumentException(e.getMessage() + " (in the overlay store " + overlayDirectory + ")", e);
         } catch (IOException e) {
-            throw new IllegalArgumentException("the overlay store " + overlayDirectory + " cannot be opened: "
-                    + e.getMessage(), e);
+            throw new IllegalArgumentException("the overlay store " + overlayDirectory + " cannot be opened: " + e, e);
         }
         // The runtime light drains before the final flush writes the chunks: it is built with the instance,
         // below, and until then its step has nothing to wait for
@@ -658,14 +683,22 @@ public final class ShardWorld {
             overlay.tickEnd();
         });
         this.lastStream = loader.stats();
-        this.lastOverlay = overlay.stats();
+        final OverlayStats overlayStats = overlay.stats();
+        this.lastOverlay = overlayStats;
+        // EVT:shard_started takes the records from here: a read once the process ticks would take the
+        // window maxima of the overlay store away from the first EVT:chunk_stream_stats
+        this.overlayRecords = overlayStats.records();
         this.lastRelight = relight.stats();
         this.lastFlagConflicts = flags == null ? 0 : flags.stats().conflicts();
         this.lastVoidChunks = instance.voidChunks();
         process.scheduler().buildTask(() -> recordStreamStats(events))
                 .delay(STATS_INTERVAL).repeat(STATS_INTERVAL).schedule();
-        LOGGER.info("Map mounted: build_id={} simulation_distance={} chunk_unload_grace_ticks={} spawn={} overlay={}",
-                manifest.buildId(), settings.simulationDistance(), settings.chunkUnloadGraceTicks(), spawn, overlayDirectory);
+        LOGGER.info("Map mounted: build_id={} simulation_distance={} chunk_unload_grace_ticks={} spawn={} overlay={} "
+                + "overlay_cap={} flush_interval_s={} overlay_max_bytes={} relight_threads={} resend_light={} "
+                + "section_cache_bytes={}", manifest.buildId(), settings.simulationDistance(),
+                settings.chunkUnloadGraceTicks(), spawn, overlayDirectory, overlayOptions.cap(),
+                overlayOptions.flushIntervalSeconds(), overlayOptions.maxBytes(), synxOptions.relightThreads(),
+                synxOptions.resendLight(), synxOptions.sectionCacheBytes());
         final FarViewAnnouncement farView = farViewAnnouncement(settings.buildDir(), manifest, bounds,
                 settings.farviewUrlRoot());
         this.farViewTiles = farView == null ? 0 : farView.tiles().size();
@@ -734,7 +767,9 @@ public final class ShardWorld {
     }
 
     /**
-     * What {@code EVT:shard_started} carries, which {@code Main} writes once the port is bound.
+     * What {@code EVT:shard_started} carries, which {@code Main} writes once the port is bound: the records of
+     * the overlay store as {@link #start} read them before the process ticked, and the overlay and light
+     * settings in effect, the denominators of the overlay SLIs of §21.
      *
      * @return the attributes
      * @throws IllegalStateException before {@link #start}
@@ -749,7 +784,7 @@ public final class ShardWorld {
         attributes.put("verify_ms", verifyMillis);
         attributes.put("regions", stream.regionsMapped());
         attributes.put("bytes_mapped", stream.bytesMapped());
-        attributes.put("overlay_records", overlay.stats().records());
+        attributes.put("overlay_records", overlayRecords);
         final WorldFlagsImpl flags = this.flags;
         final WorldFlagsImpl.Stats flagStats = flags == null ? null : flags.stats();
         attributes.put("flags_replayed", flagStats == null ? 0 : flagStats.replayed());
@@ -759,6 +794,9 @@ public final class ShardWorld {
         attributes.put("capacity", channel == null ? null : channel.capacity());
         attributes.put("farview_tiles", farViewTiles);
         attributes.put("world_writable", synxOptions.worldWritable());
+        attributes.put("overlay_cap", overlayOptions.cap());
+        attributes.put("overlay_max_bytes", overlayOptions.maxBytes());
+        attributes.put("relight_threads", synxOptions.relightThreads());
         return attributes;
     }
 
@@ -855,23 +893,35 @@ public final class ShardWorld {
 
     /**
      * §28.1 the spawn point: the column at the center of the center chunk of the bounds, standing on
-     * its {@code surface_y} of segment ②, read from the mapping the start-up check made. A center chunk
-     * without a readable record puts the spawn at the top of the world.
+     * its {@code surface_y} of segment ②, read from the mapping the start-up check made. A column without
+     * a block to stand on, whose {@code surface_y} is {@code min_y}, keeps the spawn at the bottom of the
+     * world with a WARN; a center chunk without a readable record puts it at the top of the world, with a
+     * WARN that says why: no region file, no record, or the fault of a record that does not read.
      */
     static Pos spawn(VerifiedBuild verified, SynxManifest.Bounds bounds) {
         final SynxManifest manifest = verified.manifest();
         final int chunkX = centerChunk(bounds.minX(), bounds.maxX());
         final int chunkZ = centerChunk(bounds.minZ(), bounds.maxZ());
-        final double x = spawnColumn(bounds.minX(), bounds.maxX()) + 0.5, z = spawnColumn(bounds.minZ(), bounds.maxZ()) + 0.5;
+        final int columnX = spawnColumn(bounds.minX(), bounds.maxX()), columnZ = spawnColumn(bounds.minZ(), bounds.maxZ());
+        final double x = columnX + 0.5, z = columnZ + 0.5;
         final SynxRegion region = verified.region(SynxFormat.region(chunkX), SynxFormat.region(chunkZ));
-        if (region != null && region.slot(chunkX, chunkZ) instanceof SynxSlot.Present present) {
+        final SynxSlot slot = region == null ? null : region.slot(chunkX, chunkZ);
+        if (slot instanceof SynxSlot.Present present) {
             final short surfaceY = present.navigation().get(
                     ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN), SPAWN_SURFACE_Y_OFFSET);
+            // The baker writes min_y for a column without a block that blocks motion, and only for one
+            if (surfaceY == manifest.world().minY()) {
+                LOGGER.warn("The center column {},{} of {} has no block to stand on, players spawn at the bottom of the "
+                        + "world, y {}", columnX, columnZ, manifest.buildId(), surfaceY);
+            }
             return new Pos(x, surfaceY, z);
         }
         final int top = manifest.world().minY() + manifest.world().height();
+        // The offset index is not under payload_sha256, so a damaged entry passes the start-up check
+        final String why = slot == null ? "no region file"
+                : slot instanceof SynxSlot.Failed failed ? failed.fault() + ": " + failed.detail() : "no record";
         LOGGER.warn("The center chunk {},{} of {} has no readable record ({}), players spawn at the top of the world, y {}",
-                chunkX, chunkZ, manifest.buildId(), region == null ? "no region file" : "no record", top);
+                chunkX, chunkZ, manifest.buildId(), why, top);
         return new Pos(x, top, z);
     }
 
@@ -895,8 +945,7 @@ public final class ShardWorld {
                 for (Path segment : segments) checkOverlayPath(segment);
             }
         } catch (IOException e) {
-            throw new IllegalArgumentException("the overlay store " + overlayDirectory + " cannot be opened: "
-                    + e.getMessage(), e);
+            throw new IllegalArgumentException("the overlay store " + overlayDirectory + " cannot be opened: " + e, e);
         }
     }
 

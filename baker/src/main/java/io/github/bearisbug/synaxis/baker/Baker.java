@@ -49,8 +49,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Function;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import java.util.zip.Deflater;
 
 /**
  * {@code bake} of API-M3-003 and the {@code ENT-MapBuild} life cycle of §11.2 up to {@code published} or
@@ -59,22 +59,39 @@ import java.util.stream.Stream;
  * the manifest, verify, and move the build directory into place.
  * <p>
  * Everything is written under {@code <maps_root>/<map_id>/.baking-*}, on the file system of the release, so
- * the last step is one atomic rename. A bake that fails in a region or in the verification leaves that
- * directory behind for inspection (§11.2); every other refusal leaves nothing.
+ * the last step is one atomic rename. Exit codes 3 and 4 leave that directory behind for inspection (§11.2),
+ * unless it could not be created; every other refusal leaves nothing.
  */
 public final class Baker {
     /** {@code baker_version}: raised by every change to what the baker writes for the same input. */
     public static final int VERSION = 2;
     /** The first {@code baker_version} that writes far view packs; the builds of earlier ones have none. */
     static final int FAR_VIEW_SINCE = 2;
+    /**
+     * {@code compression_threshold} of every region header: segment ① is framed for it, and a shard whose process
+     * runs another refuses the build (synx-compression-mismatch).
+     */
     public static final int COMPRESSION_THRESHOLD = 256;
-    public static final int COMPRESSION_LEVEL = -1;
+    /** {@code compression_level} of every region header, the Deflater level of segments ① and ③. */
+    public static final int COMPRESSION_LEVEL = Deflater.DEFAULT_COMPRESSION;
 
+    /** 0: published; {@code verify} and {@code farview-export} exit with it too when they pass. */
     public static final int EXIT_PUBLISHED = 0;
+    /** 2: the source cannot be read or fails the gate; nothing is written (§11.2). */
     public static final int EXIT_SOURCE = 2;
+    /**
+     * 3: baking → failed: a region task, or creating the work directory, writing the regions, the far view packs
+     * or the draft manifest.
+     */
     public static final int EXIT_REGION = 3;
+    /**
+     * 4: verifying → failed, or the verified build cannot be written or moved into place; also a {@code verify}
+     * or {@code farview-export} that does not pass.
+     */
     public static final int EXIT_VERIFY = 4;
+    /** 5: the same build_id is already published; the work directory is deleted. */
     public static final int EXIT_EXISTS = 5;
+    /** 6: {@code LightEngine.VERSION} has not passed the light parity test; refused before anything is read. */
     public static final int EXIT_LIGHT_VERSION = 6;
 
     /**
@@ -116,6 +133,7 @@ public final class Baker {
     private record RegionOutcome(int regionX, int regionZ, SynxRegionWriter.Encoded encoded, long sourceLightDiff) {
     }
 
+    /** What {@link #verify} found: the problem is null when the build passes, and names the first differing chunk. */
     private record Verification(int samples, int diffs, @Nullable String problem) {
     }
 
@@ -202,11 +220,12 @@ public final class Baker {
             }
         }
         if (!failures.isEmpty()) {
-            return finish(new Result(EXIT_REGION, work, null, failures.size() + " region(s) failed; first "
-                    + failures.getFirst()), null, failures.size(), 0);
+            // Every task has run, so the message lists every failed region, one per line
+            return finish(new Result(EXIT_REGION, work, null, failures.size() + " region(s) failed:\n"
+                    + String.join("\n", failures)), null, failures.size(), 0);
         }
 
-        // baking -> verifying: content hash, region files, manifest draft
+        // baking -> verifying: content hash, region files, far view packs, manifest draft
         final List<SynxDigests.RegionHash> hashes = new ArrayList<>(outcomes.size());
         long sourceLightDiff = 0;
         for (RegionOutcome outcome : outcomes) {
@@ -243,6 +262,8 @@ public final class Baker {
         }
         final long assemblyMs = (System.nanoTime() - assemblyStart) / 1_000_000;
         final boolean anvil = source.dataVersion() != null;
+        // SynxBuildVerifier reads manifest.json from the build, so a draft goes there before verifying; it is
+        // written again with the verification's counts (§12.3)
         SynxManifest manifest = manifest(buildId, contentHash, manifestRegions, farview, startedAt, wallStart, cpuStart,
                 new SynxManifest.Verify(0, 0, anvil ? sourceLightDiff : null));
         try {
@@ -260,10 +281,8 @@ public final class Baker {
         } catch (IOException e) {
             return finish(new Result(EXIT_VERIFY, work, manifest, "cannot write the manifest: " + e), buildId, 0, 0);
         }
-        if (verification.problem() != null || verification.diffs() != 0) {
-            return finish(new Result(EXIT_VERIFY, work, manifest, verification.problem() != null ? verification.problem()
-                    : verification.diffs() + " of " + verification.samples() + " sampled chunks differ"), buildId, 0,
-                    verification.diffs());
+        if (verification.problem() != null) {
+            return finish(new Result(EXIT_VERIFY, work, manifest, verification.problem()), buildId, 0, verification.diffs());
         }
 
         // verifying -> published
@@ -334,8 +353,9 @@ public final class Baker {
 
     /**
      * One region: its chunks inside the bounds plus the ring around them that lies inside the bounds, lit in one
-     * computation, encoded in index order into a staging file; their far view samples go into the region's part
-     * file.
+     * computation and encoded into a staging file, which the writer lays out in index order; their far view samples
+     * go into the region's part file. The loop takes the chunks by x and then z, the order
+     * {@link FarViewAssembler#writePart} takes.
      */
     private RegionOutcome bakeRegion(int regionX, int regionZ, Path work) throws IOException {
         final SynxManifest.Bounds bounds = source.bounds();
@@ -380,24 +400,23 @@ public final class Baker {
     }
 
     /**
-     * {@code verify} of API-M3-003. Digests: the start-up check a shard runs ({@link SynxBuildVerifier}), every
-     * {@code region_content_hash} recomputed from the written records, a record for every chunk inside the
-     * bounds, and the far view packs ({@link #checkFarView}). Samples: chunks picked from each region's content
-     * hash, baked again on their own with just their 3×3 neighbourhood and compared with the written record,
-     * segment ① byte for byte, and with their fine and coarse samples in the packs ({@link SampledFarView}).
+     * {@code verify} of API-M3-003. Digests: {@link #checkDigests}, then every {@code region_content_hash}
+     * recomputed from the written records and a record for every chunk inside the bounds. Samples: chunks picked
+     * from each region's content hash, baked again on their own with just their 3×3 neighbourhood and compared
+     * with the written record in all four segments ({@link SynxChunkRecord#equals}: ①, ② and ④ byte for byte, ③ as
+     * decoded tables), and with their fine and coarse samples in the packs ({@link SampledFarView}).
      */
     private Verification verify(Path buildDir, SynxManifest manifest, List<RegionOutcome> outcomes,
                                 ExecutorService executor) {
         try {
-            SynxBuildVerifier.verify(buildDir, SynxExpectations.of(request.registries(), COMPRESSION_THRESHOLD,
-                    source.minY(), source.height(), LightEngine.VERSION), manifest.bounds());
-            final String farView = checkFarView(buildDir, manifest);
+            final String farView = checkDigests(buildDir, manifest, request.registries());
             if (farView != null) return new Verification(0, 0, "digest check: " + farView);
-        } catch (IOException | SynxException e) {
+        } catch (SynxException e) {
             return new Verification(0, 0, "digest check: " + e.getMessage());
+        } catch (IOException e) {
+            return new Verification(0, 0, "digest check: " + describe(e));
         }
         final List<SynxChunkRecord> written = new ArrayList<>();
-        final List<Callable<ChunkEncoder.Encoded>> samples = new ArrayList<>();
         final SynxManifest.Bounds bounds = source.bounds();
         try (Arena arena = Arena.ofShared()) {
             for (RegionOutcome outcome : outcomes) {
@@ -406,48 +425,57 @@ public final class Baker {
                 if (!Arrays.equals(region.computeRegionContentHash(), region.header().regionContentHash())) {
                     return new Verification(0, 0, name + ": region_content_hash does not match the records");
                 }
-                final List<int[]> present = new ArrayList<>();
+                final List<SynxSlot.Present> present = new ArrayList<>();
                 final int baseX = outcome.regionX() << SynxFormat.REGION_SHIFT, baseZ = outcome.regionZ() << SynxFormat.REGION_SHIFT;
-                for (int x = Math.max(baseX, bounds.minX()); x <= Math.min(baseX + 31, bounds.maxX()); x++) {
-                    for (int z = Math.max(baseZ, bounds.minZ()); z <= Math.min(baseZ + 31, bounds.maxZ()); z++) {
-                        if (!(region.slot(x, z) instanceof SynxSlot.Present)) {
+                final int lastX = baseX + SynxFormat.CHUNKS_PER_SIDE - 1, lastZ = baseZ + SynxFormat.CHUNKS_PER_SIDE - 1;
+                for (int x = Math.max(baseX, bounds.minX()); x <= Math.min(lastX, bounds.maxX()); x++) {
+                    for (int z = Math.max(baseZ, bounds.minZ()); z <= Math.min(lastZ, bounds.maxZ()); z++) {
+                        if (!(region.slot(x, z) instanceof SynxSlot.Present slot)) {
                             return new Verification(0, 0, name + ": no readable record for chunk " + x + ", " + z);
                         }
-                        present.add(new int[]{x, z});
+                        present.add(slot);
                     }
                 }
                 final Random random = new Random(ByteBuffer.wrap(region.header().regionContentHash()).getLong());
                 for (int i = 0; i < request.samplesPerRegion() && !present.isEmpty(); i++) {
-                    final int[] chunk = present.remove(random.nextInt(present.size()));
-                    written.add(((SynxSlot.Present) region.slot(chunk[0], chunk[1])).record());
-                    samples.add(() -> {
-                        final AreaView view = read(chunk[0], chunk[1], chunk[0], chunk[1]);
-                        final LightResult light = LightEngine.computeArea(view, chunk[0], chunk[1], chunk[0], chunk[1]);
-                        final SourceChunk sample = view.chunk(chunk[0], chunk[1]);
-                        assert sample != null;
-                        return ChunkEncoder.encode(sample, light, source.minY(), settings, request.registries(),
-                                request.handlers());
-                    });
+                    written.add(present.remove(random.nextInt(present.size())).record());
                 }
             }
-        } catch (IOException | SynxException | RuntimeException e) {
+        } catch (SynxException e) {
+            return new Verification(0, 0, "digest check: " + e.getMessage());
+        } catch (IOException | RuntimeException e) {
             return new Verification(0, 0, "digest check: " + e);
         }
+        // Tile by tile, so that the comparison reads each pack once and holds one at a time
+        written.sort(Comparator.comparingInt((SynxChunkRecord record) -> FarViewPack.tile(record.chunkX()))
+                .thenComparingInt(record -> FarViewPack.tile(record.chunkZ())));
+        final List<Callable<ChunkEncoder.Encoded>> samples = new ArrayList<>(written.size());
+        for (SynxChunkRecord record : written) {
+            final int x = record.chunkX(), z = record.chunkZ();
+            samples.add(() -> {
+                final AreaView view = read(x, z, x, z);
+                final LightResult light = LightEngine.computeArea(view, x, z, x, z);
+                final SourceChunk sample = view.chunk(x, z);
+                assert sample != null;
+                return ChunkEncoder.encode(sample, light, source.minY(), settings, request.registries(), request.handlers());
+            });
+        }
         int diffs = 0;
+        String first = "";
         try {
             final List<Future<ChunkEncoder.Encoded>> again = executor.invokeAll(samples);
             final SampledFarView packs = new SampledFarView(buildDir, manifest, new FarViewAssembler(manifest.bounds(),
                     source.minY(), source.height(), settings.protocolVersion(), source.hiddenAreas(),
                     request.registries().biome()), source.hiddenAreas());
-            // Tile by tile, so that the far view check reads each pack once and holds one at a time
-            final List<Integer> byTile = IntStream.range(0, again.size()).boxed()
-                    .sorted(Comparator.comparingInt((Integer i) -> FarViewPack.tile(written.get(i).chunkX()))
-                            .thenComparingInt(i -> FarViewPack.tile(written.get(i).chunkZ())))
-                    .toList();
-            for (int i : byTile) {
+            for (int i = 0; i < again.size(); i++) {
                 final ChunkEncoder.Encoded encoded = again.get(i).get();
                 final SynxChunkRecord record = encoded.record();
-                if (!record.equals(written.get(i)) || !packs.matches(record.chunkX(), record.chunkZ(), encoded.farView())) {
+                // The record first: when it differs, its far view samples are not compared
+                final boolean recordDiffers = !record.equals(written.get(i));
+                if (recordDiffers || !packs.matches(record.chunkX(), record.chunkZ(), encoded.farView())) {
+                    if (diffs == 0) {
+                        first = record.chunkX() + ", " + record.chunkZ() + (recordDiffers ? " (record)" : " (far view samples)");
+                    }
                     diffs++;
                 }
             }
@@ -459,7 +487,22 @@ public final class Baker {
         } catch (IOException e) {
             return new Verification(samples.size(), diffs, "the far view packs cannot be read: " + e);
         }
-        return new Verification(samples.size(), diffs, null);
+        return new Verification(samples.size(), diffs, diffs == 0 ? null
+                : diffs + " of " + samples.size() + " sampled chunks differ; first chunk " + first);
+    }
+
+    /**
+     * The digests of {@code verify} that {@code verify --build} checks too: what a shard checks at start-up
+     * ({@link SynxBuildVerifier}), then the far view packs ({@link #checkFarView}).
+     *
+     * @return what does not match in the far view packs, null when everything does
+     * @throws SynxException what does not match in the regions or the manifest
+     */
+    static @Nullable String checkDigests(Path buildDir, SynxManifest manifest, Registries registries)
+            throws IOException, SynxException {
+        SynxBuildVerifier.verify(buildDir, SynxExpectations.of(registries, COMPRESSION_THRESHOLD,
+                manifest.world().minY(), manifest.world().height(), LightEngine.VERSION), manifest.bounds());
+        return checkFarView(buildDir, manifest);
     }
 
     /**
@@ -478,7 +521,7 @@ public final class Baker {
         final List<String> listed = manifest.farview().stream().map(p -> p.tileX() + "," + p.tileZ()).toList();
         if (!listed.equals(tiles)) return "farview[] lists the tiles " + listed + ", the bounds meet " + tiles;
         for (SynxManifest.FarView entry : manifest.farview()) {
-            final String name = "farview/" + FarViewAssembler.fileName(entry.tileX(), entry.tileZ());
+            final String name = "farview/" + SynxFormat.farViewFileName(entry.tileX(), entry.tileZ());
             final Path file = buildDir.resolve(name);
             if (!Files.isRegularFile(file)) return name + " is missing";
             final byte[] pack = Files.readAllBytes(file);

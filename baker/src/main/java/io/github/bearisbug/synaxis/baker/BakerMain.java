@@ -1,12 +1,9 @@
 package io.github.bearisbug.synaxis.baker;
 
 import io.github.bearisbug.synaxis.instance.block.BlockManager;
-import io.github.bearisbug.synaxis.instance.light.LightEngine;
 import io.github.bearisbug.synaxis.registry.Registries;
-import io.github.bearisbug.synaxis.synx.SynxBuildVerifier;
 import io.github.bearisbug.synaxis.synx.SynxDigests;
 import io.github.bearisbug.synaxis.synx.SynxException;
-import io.github.bearisbug.synaxis.synx.SynxExpectations;
 import io.github.bearisbug.synaxis.synx.SynxFormat;
 import io.github.bearisbug.synaxis.synx.SynxHandlers;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
@@ -161,22 +158,27 @@ public final class BakerMain {
         throw new IllegalArgumentException("--source is anvil:<dir> or generator:<preset>:<seed>, got " + spec);
     }
 
-    /** The digest half of {@code verify}: what a shard checks at start-up and the far view packs, over the whole build. */
+    /**
+     * {@code verify --build}: what a shard checks at start-up and the far view packs ({@link Baker#checkDigests}),
+     * over the whole build. Unlike a bake's own verification it does not recompute region_content_hash from the
+     * records or look for a record of every chunk, and it bakes nothing again (API-M3-003).
+     */
     private static int verify(Map<String, String> options) {
         final Path build = Path.of(required(options, "build"));
         try {
             final SynxManifest manifest = SynxManifest.fromJson(Files.readString(build.resolve(SynxManifest.FILE_NAME)));
-            SynxBuildVerifier.verify(build, SynxExpectations.of(Registries.vanilla(), Baker.COMPRESSION_THRESHOLD,
-                    manifest.world().minY(), manifest.world().height(), LightEngine.VERSION), manifest.bounds());
-            final String farView = Baker.checkFarView(build, manifest);
+            final String farView = Baker.checkDigests(build, manifest, Registries.vanilla());
             if (farView != null) {
                 System.err.println("baker: " + farView);
                 return Baker.EXIT_VERIFY;
             }
             System.out.println("baker: " + build + " verified");
             return Baker.EXIT_PUBLISHED;
-        } catch (IOException | SynxException e) {
+        } catch (SynxException e) {
             System.err.println("baker: " + e.getMessage());
+            return Baker.EXIT_VERIFY;
+        } catch (IOException e) {
+            System.err.println("baker: " + Baker.describe(e));
             return Baker.EXIT_VERIFY;
         }
     }

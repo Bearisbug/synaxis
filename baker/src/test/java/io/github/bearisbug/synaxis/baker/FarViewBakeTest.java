@@ -358,6 +358,7 @@ public class FarViewBakeTest {
             });
 
             assertEquals(Baker.EXIT_VERIFY, result.exitCode(), result.message());
+            assertEquals("1 of 1 sampled chunks differ; first chunk 0, 0 (far view samples)", result.message(), layer.name());
             final SynxManifest manifest = result.manifest();
             assertNotNull(manifest);
             assertEquals(new SynxManifest.Verify(1, 1, null), manifest.verify(), layer.name());

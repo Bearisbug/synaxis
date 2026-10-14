@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -47,7 +46,7 @@ public final class ShardGates {
 
     private final LogBudget errors = new LogBudget(LOGGER, "gate transfers that failed or led nowhere");
 
-    private final List<ShardDirectory.Gate> gates;
+    private final ShardDirectory.Region region;
     private final ShardService service;
     private final String shardId;
     private final BiConsumer<String, Map<String, ?>> events;
@@ -66,7 +65,7 @@ public final class ShardGates {
      */
     public ShardGates(ShardDirectory directory, ShardService service, BiConsumer<String, Map<String, ?>> events,
                       Predicate<Player> online) {
-        this.gates = directory.ownRegion().gates();
+        this.region = directory.ownRegion();
         this.service = service;
         this.shardId = directory.shardId();
         this.events = events;
@@ -87,18 +86,13 @@ public final class ShardGates {
     private void moved(PlayerMoveEvent event) {
         final Player player = event.getPlayer();
         final Pos to = event.getNewPosition();
-        final ShardDirectory.Gate gate = gateAt(to.blockX(), to.blockY(), to.blockZ());
+        final ShardDirectory.Gate gate = region.gateAt(to.blockX(), to.blockY(), to.blockZ());
         final ShardDirectory.Gate before = gate == null ? inside.remove(player) : inside.put(player, gate);
+        // The frame is recorded whatever follows, and online is asked before underWay.add, which comes last:
+        // only finished() takes the player out of underWay again
         if (gate == null || gate.equals(before) || !online.test(player) || !underWay.add(player)) return;
         var _ = service.transfer(player, gate.targetRegion())
                 .whenComplete((result, error) -> finished(player, gate, result, error));
-    }
-
-    private @Nullable ShardDirectory.Gate gateAt(int x, int y, int z) {
-        for (ShardDirectory.Gate gate : gates) {
-            if (gate.frame().contains(x, y, z)) return gate;
-        }
-        return null;
     }
 
     private void finished(Player player, ShardDirectory.Gate gate, @Nullable ShardTransferResult result,

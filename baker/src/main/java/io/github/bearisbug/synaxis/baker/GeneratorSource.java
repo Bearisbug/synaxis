@@ -14,23 +14,28 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 /**
  * An engine {@link io.github.bearisbug.synaxis.instance.generator.Generator} as a bake source: each chunk is
- * generated on its own, the way an instance generates it, into fresh sections. A generator that forks into
- * other chunks is refused: the baker reads chunks independently and in any order, so a fork would make a
- * chunk depend on which neighbour happened to be generated first.
+ * generated on its own, the way an instance generates it, into fresh sections. A generator that calls fork is
+ * refused, even for blocks inside its own chunk: the baker does not apply forks, it reads chunks independently
+ * and in any order, so a fork would make a chunk depend on which neighbour happened to be generated first.
  */
 public final class GeneratorSource implements BakeSource {
     private final GeneratorPreset preset;
     private final Registries registries;
 
+    /**
+     * Takes a preset whose world the baker can write.
+     *
+     * @throws IllegalArgumentException if min_y is not a multiple of 16 or the height is not one from 16 to 256
+     */
     public GeneratorSource(GeneratorPreset preset, Registries registries) {
-        if (preset.minY() % 16 != 0 || preset.height() <= 0 || preset.height() % 16 != 0) {
-            throw new IllegalArgumentException("min_y and height must be multiples of 16: " + preset.minY() + ", "
-                    + preset.height());
+        if (preset.minY() % 16 != 0 || preset.height() <= 0 || preset.height() % 16 != 0 || preset.height() > 256) {
+            throw new IllegalArgumentException("the generator preset has min_y " + preset.minY() + " and height "
+                    + preset.height() + "; both must be multiples of 16 and the height 16 to 256 (a far view y index"
+                    + " is one byte)");
         }
         this.preset = preset;
         this.registries = registries;
@@ -71,7 +76,9 @@ public final class GeneratorSource implements BakeSource {
     }
 
     /**
-     * @throws IllegalStateException if the generator forked into another chunk
+     * Generates one chunk into fresh sections.
+     *
+     * @throws IllegalStateException if the generator throws, or calls fork on the chunk or on one of its sections
      */
     @Override
     public SourceChunk read(int chunkX, int chunkZ) {
@@ -79,10 +86,18 @@ public final class GeneratorSource implements BakeSource {
         final GeneratorImpl.GenSection[] generated = new GeneratorImpl.GenSection[sections];
         for (int i = 0; i < sections; i++) generated[i] = new GeneratorImpl.GenSection();
         final GeneratorImpl.UnitImpl unit = GeneratorImpl.chunk(registries.biome(), generated, chunkX, minSection, chunkZ);
-        preset.generator().generate(unit);
-        if (!unit.forks().isEmpty()) {
-            throw new IllegalStateException("chunk " + chunkX + ", " + chunkZ + ": the generator forked into other"
-                    + " chunks, which the baker does not support");
+        try {
+            preset.generator().generate(unit);
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("chunk " + chunkX + ", " + chunkZ + ": the generator failed: " + e, e);
+        }
+        // A section of subdivide() keeps the forks made on it, the chunk unit does not see them
+        final boolean forked = !unit.forks().isEmpty() || unit.subdivide().stream()
+                .anyMatch(section -> !((GeneratorImpl.UnitImpl) section).forks().isEmpty());
+        if (forked) {
+            throw new IllegalStateException("chunk " + chunkX + ", " + chunkZ + ": the generator forked"
+                    + " (GenerationUnit#fork), which the baker does not apply even inside the chunk; write through"
+                    + " unit.modifier() instead");
         }
 
         final Palette[] blocks = new Palette[sections];
@@ -99,13 +114,14 @@ public final class GeneratorSource implements BakeSource {
                 final int x = CoordConversion.chunkBlockIndexGetX(index);
                 final int y = CoordConversion.chunkBlockIndexGetY(index);
                 final int z = CoordConversion.chunkBlockIndexGetZ(index);
-                final CompoundBinaryTag nbt = Objects.requireNonNullElseGet(block.nbt(), CompoundBinaryTag::empty);
+                final CompoundBinaryTag nbt = block.nbtOrEmpty();
                 final CompoundBinaryTag full = block.blockEntityType() == null ? nbt
                         : nbt.putString("id", block.blockEntityType().key().asString());
                 blockEntities.add(new SynxBlockEntity(minSection + i, SynxBlockEntity.index(x, y, z),
                         handler == null ? "" : handler.getKey().asString(), full));
             }
         }
+        // A generator has no static entities, no light of its own and no data markers
         return new SourceChunk(chunkX, chunkZ, blocks, biomes, blockEntities, List.of(), false, null, null, Set.of());
     }
 

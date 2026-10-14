@@ -16,6 +16,7 @@ public interface BakeSource extends AutoCloseable {
     /** {@code anvil} or {@code generator}, the manifest's {@code source.kind}. */
     String kind();
 
+    /** The lowest block y of the world, a multiple of 16. */
     int minY();
 
     /** World height in blocks, a multiple of 16. */
@@ -32,8 +33,10 @@ public interface BakeSource extends AutoCloseable {
 
     /**
      * Refuses the source before anything is written: every chunk inside {@link #bounds()} must be readable and
-     * acceptable (for an Anvil save: DataVersion, status full, markers mappable).
+     * acceptable (for an Anvil save, every source error of API-M3-003, exit code 2; a generator checks nothing
+     * here, a fork or an unregistered handler namespace fails its region while baking).
      *
+     * @param threads the threads the gate reads chunks with
      * @throws io.github.bearisbug.synaxis.baker.anvil.AnvilSourceException naming the first chunk that is not
      */
     void checkGate(int threads) throws IOException;

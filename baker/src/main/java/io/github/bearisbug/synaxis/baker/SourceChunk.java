@@ -15,7 +15,9 @@ import java.util.Set;
  * @param blocks         block state palettes
  * @param biomes         biome palettes, ids of the registry the bake runs with
  * @param blockEntities  every block entity with its complete NBT and handler namespace
- * @param entities       static entities, each a complete compound with {@code id} and {@code Pos}
+ * @param entities       static entities, each a complete compound with {@code id}, {@code Pos} of three finite
+ *                       doubles and {@code Rotation} of two floats (the Anvil source refuses any other, see
+ *                       {@code AnvilWorld#readEntities})
  * @param lightOn        whether the source says its own light is complete ({@code isLightOn})
  * @param sourceSky      the source's sky light per section, null entries where it has none; null for a source without light
  * @param sourceBlock    the source's block light, as {@code sourceSky}

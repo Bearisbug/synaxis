@@ -1,0 +1,13 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java
+index 2dd8112d1b..7051efd0d0 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java
+@@ -95,7 +95,7 @@ final class Evacuation {
+                 }
+                 case Exit.Kick(String reasonKey) -> player.kick(Component.translatable(reasonKey));
+             }
+-        } catch (Throwable e) {
++        } catch (RuntimeException | Error e) {
+             managed.missingExits().error(e, "No exit for a player of a closing managed instance, kicking them: plugin_id={} "
+                     + "instance={} connection_id={}", managed.pluginId(), managed.id(), player.getPlayerConnection().connectionId());
+             player.kick(MATCH_UNAVAILABLE);

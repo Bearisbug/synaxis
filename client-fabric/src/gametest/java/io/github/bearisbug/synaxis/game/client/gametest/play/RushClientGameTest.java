@@ -35,7 +35,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
-import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.multiplayer.ServerData;
@@ -532,7 +531,8 @@ public final class RushClientGameTest implements FabricClientGameTest {
     }
 
     /**
-     * Q3 and Q4, one press at a time: the recording keeps one result a tick, so each press waits for its own.
+     * Q3 and Q4, one press at a time: the recording keeps one result a tick, so each press waits for its own. Q3 is
+     * judged before the second press, so that what the later presses do to the queue does not reach it.
      *
      * @return when the countdown runs out, {@link System#nanoTime} of the client, null when the first press queued
      * nobody
@@ -543,16 +543,6 @@ public final class RushClientGameTest implements FabricClientGameTest {
         ctx().getInput().pressKey(ActionKeys.KEY_1);
         final PlayClient.Result first = result(1);
         final int afterFirst = ctx().computeOnClient(_ -> PlayTestHook.actionsSent());
-        while (System.nanoTime() - pressed < SECOND_PRESS_MS * NANOS_PER_MS) ctx().waitTick();
-        final long second = System.nanoTime();
-        ctx().getInput().pressKey(ActionKeys.KEY_1);
-        ctx().waitTicks(2);
-        final int afterSecond = ctx().computeOnClient(_ -> PlayTestHook.actionsSent());
-        ctx().runOnClient(_ -> PlayTestHook.localCooldown(false));
-        final long third = System.nanoTime();
-        ctx().getInput().pressKey(ActionKeys.KEY_1);
-        final PlayClient.Result answer = result(2);
-        ctx().runOnClient(_ -> PlayTestHook.localCooldown(true));
 
         // Q3: by 2 s after the first press the hint counts one queued and the countdown shows
         final long waited = (System.nanoTime() - pressed) / NANOS_PER_MS;
@@ -568,6 +558,17 @@ public final class RushClientGameTest implements FabricClientGameTest {
                 + "; hint count " + count + "; countdown TIMER " + (countdown == null ? "none"
                 : "set " + countdown.set() + " remaining_ms " + countdown.remainingMs()));
 
+        // Q4: the second press inside the local cooldown, the third with it off
+        while (System.nanoTime() - pressed < SECOND_PRESS_MS * NANOS_PER_MS) ctx().waitTick();
+        final long second = System.nanoTime();
+        ctx().getInput().pressKey(ActionKeys.KEY_1);
+        ctx().waitTicks(2);
+        final int afterSecond = ctx().computeOnClient(_ -> PlayTestHook.actionsSent());
+        ctx().runOnClient(_ -> PlayTestHook.localCooldown(false));
+        final long third = System.nanoTime();
+        ctx().getInput().pressKey(ActionKeys.KEY_1);
+        final PlayClient.Result answer = result(2);
+        ctx().runOnClient(_ -> PlayTestHook.localCooldown(true));
         final long gap = (third - pressed) / NANOS_PER_MS;
         final boolean cooldown = answer != null && answer.code() == ActionResultCode.COOLDOWN
                 && answer.cooldownMs() >= 1 && answer.cooldownMs() <= QUEUE_COOLDOWN_MS;
@@ -579,7 +580,10 @@ public final class RushClientGameTest implements FabricClientGameTest {
         return ok && countdown != null ? countdown.receivedNanos() + countdown.remainingMs() * NANOS_PER_MS : null;
     }
 
-    /** Q5: into the arena within 5 s of the countdown's end, ready there once the level is in, within 100 ticks. */
+    /**
+     * Q5: into the arena within 5 s of the countdown's end, ready there once the level is in with no screen open,
+     * within 100 ticks; the sampling begins in the lobby, so that it holds the tick the new level came in.
+     */
     private boolean q5(long countdownEnd) {
         ctx().runOnClient(_ -> PlayTestHook.startSampling());
         final long budget = (countdownEnd - System.nanoTime()) / NANOS_PER_MS + ROUND_ENTER_MS + 2 * TICK_MS;
@@ -598,7 +602,9 @@ public final class RushClientGameTest implements FabricClientGameTest {
 
         final PlayTestHook.Sample arrived = samples.stream().filter(sample -> sample.dimension() != null
                 && sample.dimension().startsWith(ROUND_DIMENSION)).findFirst().orElse(null);
+        final String began = samples.isEmpty() ? "no tick" : samples.getFirst().dimension();
         final List<String> problems = new ArrayList<>();
+        if (began == null || !began.startsWith(LOBBY_DIMENSION)) problems.add("the sampling began in " + began + ", not in the lobby");
         if (!entered) problems.add("not in a round with its TIMER " + budget + " ms after the countdown ran out");
         final long late = arrived == null ? Long.MAX_VALUE : (arrived.nanos() - countdownEnd) / NANOS_PER_MS;
         if (late > ROUND_ENTER_MS) problems.add("the round's level came " + late + " ms after the countdown ran out");
@@ -606,7 +612,7 @@ public final class RushClientGameTest implements FabricClientGameTest {
         if (!answered || ready == null) {
             problems.add("no C2S_SCENE_READY for scene " + seq);
         } else {
-            if (LevelLoadingScreen.class.getName().equals(ready.screen())) problems.add("sent ready with the loading screen open");
+            if (ready.screen() != null) problems.add("sent ready with " + ready.screen() + " open");
             if (!ready.chunkUnderfoot()) problems.add("sent ready with the chunk underfoot missing");
             if (arrived != null) {
                 ticks = (int) samples.stream().filter(sample -> sample.tick() >= arrived.tick() && sample.nanos() < ready.nanos()).count();
@@ -693,7 +699,7 @@ public final class RushClientGameTest implements FabricClientGameTest {
         return pressed ? at : null;
     }
 
-    /** Q9: back in the lobby within 5 s of the button, and ready there. */
+    /** Q9: back in the lobby within 5 s of the button, and ready there once the level is in with no screen open. */
     private void q9(long pressed) {
         final boolean back = waitUntil(client -> dimension(client).startsWith(LOBBY_DIMENSION) && inScene(LOBBY_SCENE), BACK_TICKS);
         final long took = (System.nanoTime() - pressed) / NANOS_PER_MS;
@@ -702,7 +708,8 @@ public final class RushClientGameTest implements FabricClientGameTest {
         final boolean answered = back && waitUntil(_ -> readyFor(seq) != null, READY_TICKS + 20);
         final SceneReadyProbe.Sent ready = ctx().computeOnClient(_ -> readyFor(seq));
         ctx().runOnClient(_ -> PlayTestHook.stopRecording());
-        line("Q9", back, "dimension " + ctx().computeOnClient(RushClientGameTest::dimension) + ", scene "
+        final boolean loaded = answered && ready != null && ready.screen() == null && ready.chunkUnderfoot();
+        line("Q9", back && loaded, "dimension " + ctx().computeOnClient(RushClientGameTest::dimension) + ", scene "
                 + ctx().computeOnClient(_ -> sceneSeen()) + (back ? " " + took + " ms after the button" : " not within " + BACK_TICKS + " ticks")
                 + "; ready " + (answered && ready != null ? "screen=" + ready.screen() + " chunkUnderfoot=" + ready.chunkUnderfoot() : "none"));
     }

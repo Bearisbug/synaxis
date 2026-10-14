@@ -1,0 +1,14 @@
+EvacuationIntegrationTest tests 18 failures 5 errors 0 skipped 0
+  RED aForcedCloseFromTheClosingEventFinishesTheEvacuation(Env) (EvacuationIntegrationTest.java:372) | org.opentest4j.AssertionFailedError: the exit was asked for after the forced close had finished the evacuation ==> expected: <[]> but was: <[io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl@170937fe]>
+  RED aCloseWaitsWhileAMoveIsBetweenItsStateCheckAndItsRecord(Env) (EvacuationIntegrationTest.java:579) | org.opentest4j.AssertionFailedError: unregistered while a move checked before the close was on its way ==> expected: <true> but was: <false>
+  RED aMoveThatLandsWhileTheCloseIsPublishingItsEvacuationGetsTheExit(Env) (EvacuationIntegrationTest.java:630) | org.opentest4j.AssertionFailedError: the move that landed in the closing instance was taken for a plain move ==> expected: <false> but was: <true>
+  RED aPlayerWhoLandsBetweenTheTwoSnapshotsOfTheEndIsKickedBeforeTheUnregistration(Env) (EvacuationIntegrationTest.java:772) | java.lang.AssertionError: the forced close threw java.lang.IllegalStateException: You cannot unregister an instance with players inside.
+  RED aForcedCloseWhileTheCloseIsPublishingItsEvacuationFinishesIt(Env) (EvacuationIntegrationTest.java:670) | org.opentest4j.AssertionFailedError: the forced close found the instance closed and no evacuation ==> expected: <false> but was: <true>
+ManagedInstanceTickThreadTest tests 5 failures 0 errors 0 skipped 0
+    §15 readings (chunkRadius=2, 25 chunks), create 1 of 5: create on the tick scheduler thread 3086 us, registration in the serial part 135 us, prepare_ms 43, classes loaded meanwhile 18, garbage collections meanwhile 0
+    §15 readings (chunkRadius=2, 25 chunks), create 2 of 5: create on the tick scheduler thread 502 us, registration in the serial part 101 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+    §15 readings (chunkRadius=2, 25 chunks), create 3 of 5: create on the tick scheduler thread 238 us, registration in the serial part 74 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+    §15 readings (chunkRadius=2, 25 chunks), create 4 of 5: create on the tick scheduler thread 232 us, registration in the serial part 91 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+    §15 readings (chunkRadius=2, 25 chunks), create 5 of 5: create on the tick scheduler thread 284 us, registration in the serial part 70 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+ManagedInstanceTransitionsTest tests 20 failures 1 errors 0 skipped 0
+  RED aForcedCloseBetweenTheRegistrationAndTheSwapLeavesNothingRegistered() (ManagedInstanceTransitionsTest.java:328) | org.opentest4j.AssertionFailedError: a closed instance was left registered ==> expected: <false> but was: <true>

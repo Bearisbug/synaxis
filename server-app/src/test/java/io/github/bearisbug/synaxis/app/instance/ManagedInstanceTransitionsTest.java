@@ -307,6 +307,30 @@ class ManagedInstanceTransitionsTest {
         assertFalse(round.instance().isRegistered());
     }
 
+    /**
+     * §11.1 {@code PREPARING → OPEN} against a forced close: the instance is registered before the swap, so
+     * a forced close that comes between the two finds it preparing and drops it, the swap fails and the
+     * instance is unregistered again. The registration holds no lock, so the forced close comes in on the
+     * same thread, from the window between the two steps, in the order another thread could take.
+     */
+    @Test
+    void aForcedCloseBetweenTheRegistrationAndTheSwapLeavesNothingRegistered() {
+        final PluginInstances instances = instances(Thread.currentThread());
+        final InstanceRegistry reclaiming = Objects.requireNonNull(registry);
+        reclaiming.pauseWith(window -> {
+            if (window == InstanceRegistry.Window.OPEN) reclaiming.reclaim("transitions", EndCause.SHUTDOWN);
+        });
+
+        final ManagedInstance round = instances.create(new InstanceSpec("round", 0, FLAT, SPAWN));
+
+        assertEquals(State.CLOSED, round.state());
+        assertEquals(EndCause.SHUTDOWN, round.endCause());
+        assertFalse(round.instance().isRegistered(), "a closed instance was left registered");
+        assertFalse(process.instance().getInstances().contains(round.instance()));
+        assertEquals(List.of("play_instance_created", "play_instance_closed"), ledger.events(round));
+        assertEquals(List.of("PREPARING>CLOSED"), transitions());
+    }
+
     /** §11.1 {@code plugin.tornDown}: a plugin taken back creates no more instances, which nothing would take back. */
     @Test
     void aPluginTakenBackCreatesNoMoreInstances() {

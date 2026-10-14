@@ -1,0 +1,67 @@
+RUN-078 group S: the scene layer app/scene, item 1 of the S1 test debt row in docs/DESIGN-PLAY.md §28.2
+(branch prod/r078-S, base origin/main 62ae65f89c). Commits 923661f44a and 92d7b71d2e add three OutboxTest
+cases on the hold merge of Outbox#holdUntil (Outbox.java:90); the main code is not changed. Local Gradle
+through ~/.claude/r077/gradle.zsh (JDK 25, --max-workers=2 --no-daemon --init-script
+gradle/init/aliyun-mirror.init.gradle.kts, the heavy lock taken for each run only). Seven Gradle runs, all
+on the test code of 92d7b71d2e, each ":server-app:test --tests io.github.bearisbug.synaxis.app.scene.OutboxTest
+:server-app:testNamingCheck :server-app:forbiddenImportsCheck", none with a database or Redis. Each
+directory holds the JUnit XML report of that run and summary.txt: the command with its -D properties first
+(Gradle hands them to the test JVM, the XML's <properties/> does not list them), then one line per test
+with the failure message and the first frame in the test class. Line numbers are those of 92d7b71d2e.
+An earlier round of this group ran five Gradle runs on 923661f44a (the first two cases only); its evidence
+is in this directory at bbf69354c3.
+
+The hold of Outbox may be taken from any thread, so OutboxTest also ran in the four thread strict and strict
+grid modes (runs 6 and 7), after the four counter-proofs were restored.
+
+Run 1 -> 01-counter-proof-later-only/
+  Code: counter-proof.diff, Outbox.java:90 keeps only the later move
+  ("if (hold.compareAndSet(current, move)) return;"). 11 tests, 2 red:
+    theLaterMoveDoneFirstStillHoldsTheQueueUntilTheEarlierIsDone at OutboxTest.java:153,
+    "sent while the first move was under way ==> expected: <0> but was: <2>";
+    aLaterMoveThatFailsStillHoldsTheQueueUntilTheEarlierIsDone at OutboxTest.java:189,
+    "sent while the first move was under way ==> expected: <0> but was: <1>".
+  aMoveUnderWayHoldsTheWholeQueueUntilEveryMoveIsDone (the earlier move done first) stays green, as the
+  debt row said. Restored with git checkout -- server-app/src/main.
+
+Run 2 -> 02-counter-proof-compose-earlier-first/
+  Code: counter-proof.diff, Outbox.java:90 waits for the earlier move and then the later one
+  ("current.thenCompose(_ -> move)" in place of "CompletableFuture.allOf(current, move)"), which no longer
+  waits for the later move once the earlier one fails. 11 tests, 1 red:
+    anEarlierMoveThatFailsStillHoldsTheQueueUntilTheLaterIsDone at OutboxTest.java:173,
+    "sent while the second move was under way ==> expected: <0> but was: <1>".
+  Restored with git checkout -- server-app/src/main.
+
+Run 3 -> 03-counter-proof-compose-later-first/
+  Code: counter-proof.diff, Outbox.java:90 waits for the later move and then the earlier one
+  ("move.thenCompose(_ -> current)"), which no longer waits for the earlier move once the later one fails.
+  11 tests, 1 red:
+    aLaterMoveThatFailsStillHoldsTheQueueUntilTheEarlierIsDone at OutboxTest.java:189,
+    "sent while the first move was under way ==> expected: <0> but was: <1>".
+  Restored with git checkout -- server-app/src/main.
+
+Run 4 -> 04-counter-proof-never-hold/
+  Code: counter-proof.diff, the counter-proof of docs/TEST.md TC-PLAY-031 step 3 alone: Outbox.java:101
+  never holds (the same hunk as in docs/test-runs/RUN-077/H/04-counter-proofs/counter-proofs.diff), run
+  without -Dproof.never. 11 tests, 4 red, the hold cases:
+    aMoveUnderWayHoldsTheWholeQueueUntilEveryMoveIsDone at OutboxTest.java:130,
+    "sent while the move was under way ==> expected: <0> but was: <2>" (the one red of RUN-077 group H);
+    theLaterMoveDoneFirstStillHoldsTheQueueUntilTheEarlierIsDone at OutboxTest.java:153,
+    "sent while the first move was under way ==> expected: <0> but was: <2>";
+    anEarlierMoveThatFailsStillHoldsTheQueueUntilTheLaterIsDone at OutboxTest.java:173,
+    "sent while the second move was under way ==> expected: <0> but was: <1>";
+    aLaterMoveThatFailsStillHoldsTheQueueUntilTheEarlierIsDone at OutboxTest.java:189,
+    "sent while the first move was under way ==> expected: <0> but was: <1>".
+  The other two Outbox hunks of that combined diff (clearOwner, the 32 op cut) cannot turn these three new
+  cases red: none of them calls clearOwner and each queues at most one op. Restored with
+  git checkout -- server-app/src/main.
+
+Run 5 -> 05-green/
+  Code: 92d7b71d2e. OutboxTest 11 tests, 0 failures; testNamingCheck and forbiddenImportsCheck pass.
+
+Run 6 -> 06-four-threads-strict/
+  Code: 92d7b71d2e, -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true. OutboxTest 11 tests,
+  0 failures.
+
+Run 7 -> 07-grid-strict/
+  Code: 92d7b71d2e, run 6's properties plus -Dsynaxis.thread-provider=grid. OutboxTest 11 tests, 0 failures.

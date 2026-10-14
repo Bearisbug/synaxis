@@ -1,0 +1,12 @@
+{"ts":"2026-10-13T06:23:01.918117927Z","event":"play_instance_created","kind_id":"rush:lobby","instance_id":"35108744-3360-4987-9046-1bc3bcb5e36e","chunk_radius":1}
+{"ts":"2026-10-13T06:23:02.070516805Z","event":"play_instance_opened","kind_id":"rush:lobby","instance_id":"35108744-3360-4987-9046-1bc3bcb5e36e","prepare_ms":152}
+{"ts":"2026-10-13T06:23:02.075590717Z","event":"play_instance_started","kind_id":"rush:lobby","instance_id":"35108744-3360-4987-9046-1bc3bcb5e36e","players":0}
+{"ts":"2026-10-13T06:23:02.082375930Z","event":"plugin_enabled","plugin_id":"rush","version":"0.1.0","enable_ms":183}
+{"ts":"2026-10-13T06:24:49.235158326Z","event":"session_entered_configuration","connection_id":"894c8d75-48e0-4501-864c-22e5593080c7","protocol_version":776}
+{"ts":"2026-10-13T06:24:49.290419327Z","event":"client_verified","connection_id":"894c8d75-48e0-4501-864c-22e5593080c7","mod_version":1,"schema_version":1}
+{"ts":"2026-10-13T06:24:49.503605640Z","event":"play_scene_entered","connection_id":"894c8d75-48e0-4501-864c-22e5593080c7","scene_id":"rush:lobby","scene_seq":1,"owner":"rush","downgraded":"false"}
+{"ts":"2026-10-13T06:24:49.817635854Z","event":"play_scene_ready","connection_id":"894c8d75-48e0-4501-864c-22e5593080c7","scene_seq":1}
+{"ts":"2026-10-13T06:25:21.033353816Z","event":"session_entered_configuration","connection_id":"27443917-e398-4629-842b-b5486b8361b6","protocol_version":776}
+{"ts":"2026-10-13T06:25:21.089497771Z","event":"client_verified","connection_id":"27443917-e398-4629-842b-b5486b8361b6","mod_version":1,"schema_version":1}
+{"ts":"2026-10-13T06:25:21.193568258Z","event":"play_scene_entered","connection_id":"27443917-e398-4629-842b-b5486b8361b6","scene_id":"rush:lobby","scene_seq":1,"owner":"rush","downgraded":"false"}
+{"ts":"2026-10-13T06:25:21.491136061Z","event":"play_scene_ready","connection_id":"27443917-e398-4629-842b-b5486b8361b6","scene_seq":1}

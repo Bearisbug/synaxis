@@ -1,0 +1,13 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
+index 6b09397153..56299dbdc0 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
+@@ -386,7 +386,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
+      *
+      * @return the evacuation, null if the state was not {@code from}
+      */
+-    private synchronized @Nullable Evacuation beginClose(State from, @Nullable EndCause cause, Function<Player, Exit> exit,
++    private @Nullable Evacuation beginClose(State from, @Nullable EndCause cause, Function<Player, Exit> exit,
+                                                          boolean settleTimeout) {
+         if (!swap(from, State.CLOSED, cause)) return null;
+         final Evacuation started = new Evacuation(this, registry, exit, settleTimeout);

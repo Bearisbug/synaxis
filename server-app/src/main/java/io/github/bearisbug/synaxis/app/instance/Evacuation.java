@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.app.instance;
 
+import io.github.bearisbug.synaxis.app.instance.InstanceRegistry.Window;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
@@ -94,7 +95,7 @@ final class Evacuation {
                 }
                 case Exit.Kick(String reasonKey) -> player.kick(Component.translatable(reasonKey));
             }
-        } catch (RuntimeException e) {
+        } catch (Throwable e) {
             managed.missingExits().error(e, "No exit for a player of a closing managed instance, kicking them: plugin_id={} "
                     + "instance={} connection_id={}", managed.pluginId(), managed.id(), player.getPlayerConnection().connectionId());
             player.kick(MATCH_UNAVAILABLE);
@@ -123,6 +124,7 @@ final class Evacuation {
         if (!finished.compareAndSet(false, true)) return;
         // Those on their way first: whoever lands after this snapshot is in it, whoever landed before is inside
         final Set<Player> kicked = new LinkedHashSet<>(managed.onTheirWay());
+        registry.reached(Window.FINISH);
         kicked.addAll(managed.online());
         kicked.removeIf(player -> !player.isOnline());
         for (Player player : kicked) player.kick(MATCH_UNAVAILABLE);

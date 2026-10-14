@@ -1,0 +1,70 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java
+index 2dd8112d1b..695a9cdf6e 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/Evacuation.java
+@@ -65,7 +65,6 @@ final class Evacuation {
+      * finished the evacuation, which a listener of the closing event may have done.
+      */
+     void start() {
+-        if (finished.get()) return;
+         for (Player player : atTheClose) send(player);
+         if (registry.inSerialPart() && nobodyLeft()) finish();
+         else registry.process().scheduler().scheduleTask(this::sweep, TaskSchedule.nextTick());
+@@ -123,9 +122,9 @@ final class Evacuation {
+     void finish() {
+         if (!finished.compareAndSet(false, true)) return;
+         // Those on their way first: whoever lands after this snapshot is in it, whoever landed before is inside
+-        final Set<Player> kicked = new LinkedHashSet<>(managed.onTheirWay());
++        final Set<Player> kicked = new LinkedHashSet<>(managed.online());
+         registry.reached(Window.FINISH);
+-        kicked.addAll(managed.online());
++        kicked.addAll(managed.onTheirWay());
+         kicked.removeIf(player -> !player.isOnline());
+         for (Player player : kicked) player.kick(MATCH_UNAVAILABLE);
+         registry.process().instance().unregisterInstance(managed.instance());
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
+index 6b09397153..cf8bc4d19b 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/ManagedInstanceImpl.java
+@@ -197,12 +197,9 @@ final class ManagedInstanceImpl implements ManagedInstance {
+     private void open() {
+         final long start = System.nanoTime();
+         instance.enableAutoChunkLoad(false);
+-        registry.process().instance().registerInstance(instance);
++        if (!swap(State.PREPARING, State.OPEN, null)) return;
+         registry.reached(Window.OPEN);
+-        if (!swap(State.PREPARING, State.OPEN, null)) {
+-            registry.process().instance().unregisterInstance(instance);
+-            return;
+-        }
++        registry.process().instance().registerInstance(instance);
+         registry.ledger().opened(this, millisSinceCreated());
+         dispatch(State.PREPARING, State.OPEN);
+         this.registerNanos = System.nanoTime() - start;
+@@ -293,7 +290,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
+         });
+     }
+ 
+-    private synchronized boolean admit(Player player) {
++    private boolean admit(Player player) {
+         if (!takesPlayers()) return false;
+         registry.reached(Window.ADMIT);
+         onTheirWay.add(player);
+@@ -305,7 +302,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
+      *
+      * @return the evacuation if the instance closed while the move was on its way
+      */
+-    private synchronized @Nullable Evacuation landed(Player player) {
++    private @Nullable Evacuation landed(Player player) {
+         onTheirWay.remove(player);
+         return evacuation;
+     }
+@@ -405,7 +402,7 @@ final class ManagedInstanceImpl implements ManagedInstance {
+     void reclaim(EndCause cause) {
+         State closedFrom = null;
+         final Evacuation closing;
+-        synchronized (this) {
++        {
+             for (State from : CLOSABLE) {
+                 if (swap(from, State.CLOSED, cause)) {
+                     closedFrom = from;

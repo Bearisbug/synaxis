@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" tests="20" skipped="0" failures="0" errors="0" timestamp="2026-10-13T06:41:22.057Z" hostname="Mac.local" time="0.046">
+  <properties/>
+  <testcase name="aGeneratorThatThrowsOnceTheInstanceIsOpenReachesTheExceptionHandler()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.002"/>
+  <testcase name="aPreparingInstanceRefusesEveryRequest()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.002"/>
+  <testcase name="openRunEndAndSettleWriteOneLineAndCallOneEventEach()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="aPluginTakenBackCreatesNoMoreInstances()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[1] OPEN" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.003"/>
+  <testcase name="[2] RUNNING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[3] ENDING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0"/>
+  <testcase name="anInstanceNotSettledInTimeIsClosedByTheHost()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="theClosingEventComesBeforeTheUnregistration()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="cancelClosesAnOpenInstance()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0"/>
+  <testcase name="[1] OPEN" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[2] RUNNING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[3] ENDING" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[4] CLOSED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[1] CANCELLED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="[2] PREPARE_FAILED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0"/>
+  <testcase name="[3] PLUGIN_DISABLED" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.0"/>
+  <testcase name="[4] SHUTDOWN" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="aForcedCloseBetweenTheRegistrationAndTheSwapLeavesNothingRegistered()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <testcase name="aSettledInstanceIsNotClosedAgainByTheTimeout()" classname="io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest" time="0.001"/>
+  <system-out><![CDATA[14:41:22.091 [Test worker] WARN  i.g.b.s.a.i.ManagedInstanceImpl - Managed instance was not settled within its settle timeout, closing it: plugin_id=transitions instance=transitions:round_1 settle_timeout_ms=30000 (1 managed instances closed at their settle timeout since the last report)
+14:41:22.103 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:41:22.103 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:41:22.103 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

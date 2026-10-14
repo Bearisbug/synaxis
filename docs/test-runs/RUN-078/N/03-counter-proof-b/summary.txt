@@ -1,0 +1,10 @@
+EvacuationIntegrationTest tests 18 failures 2 errors 0 skipped 0
+  RED aMoveThatLandsWhileTheCloseIsPublishingItsEvacuationGetsTheExit(Env) (EvacuationIntegrationTest.java:630) | org.opentest4j.AssertionFailedError: the move that landed in the closing instance was taken for a plain move ==> expected: <false> but was: <true>
+  RED aForcedCloseWhileTheCloseIsPublishingItsEvacuationFinishesIt(Env) (EvacuationIntegrationTest.java:670) | org.opentest4j.AssertionFailedError: the forced close found the instance closed and no evacuation ==> expected: <false> but was: <true>
+ManagedInstanceTickThreadTest tests 5 failures 0 errors 0 skipped 0
+    §15 readings (chunkRadius=2, 25 chunks), create 1 of 5: create on the tick scheduler thread 1286 us, registration in the serial part 179 us, prepare_ms 42, classes loaded meanwhile 18, garbage collections meanwhile 0
+    §15 readings (chunkRadius=2, 25 chunks), create 2 of 5: create on the tick scheduler thread 318 us, registration in the serial part 93 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+    §15 readings (chunkRadius=2, 25 chunks), create 3 of 5: create on the tick scheduler thread 255 us, registration in the serial part 93 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+    §15 readings (chunkRadius=2, 25 chunks), create 4 of 5: create on the tick scheduler thread 905 us, registration in the serial part 173 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+    §15 readings (chunkRadius=2, 25 chunks), create 5 of 5: create on the tick scheduler thread 300 us, registration in the serial part 104 us, prepare_ms 49, classes loaded meanwhile 0, garbage collections meanwhile 0
+ManagedInstanceTransitionsTest tests 20 failures 0 errors 0 skipped 0

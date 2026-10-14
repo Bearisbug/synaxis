@@ -1,0 +1,81 @@
+Items 8 and 10 of the S1 test debt row (docs/DESIGN-PLAY.md §28.2): the unit tests of rush_judge.py,
+RUN-078 group J, branch prod/r078-J (base origin/main 62ae65f89c). No Gradle, no lock: each block copies
+rush_judge.py and test_rush_judge.py into a temporary directory, changes the one line shown in the copy of the
+judge (- old, + new), and runs python -m unittest discover -s <copy> -p 'test_rush_judge.py' from /tmp with the
+synaxis .venv's Python 3.10.18. "origin/main" is 62ae65f89c (30 tests); "the branch" is 62f847c25a, whose
+test_rush_judge.py (36 tests) and rush_judge.py are those of fc41810d92. Only the FAIL / ERROR lines, the first
+line of each traceback's message and the summary are kept.
+
+== item 8, copy 1: every state of an arena at least once, in place of exactly once
+-- the 30 tests of origin/main, the same change in the judge of origin/main
+Ran 30 tests in 0.105s
+OK
+-- the 36 tests of the branch
+-            if len(states[state]) != 1:
++            if not states[state]:
+FAIL: test_an_arena_ended_twice_fails (test_rush_judge.JudgeTest)
+AssertionError: 0 != 1 : []
+Ran 36 tests in 0.141s
+FAILED (failures=1)
+== item 8, copy 2: cause=error counted as a normal end
+-- the 30 tests of origin/main, the same change in the judge of origin/main
+Ran 30 tests in 0.099s
+OK
+-- the 36 tests of the branch
+-NORMAL_CAUSES = {"objective", "time_limit"}
++NORMAL_CAUSES = {"objective", "time_limit", "error"}
+FAIL: test_a_round_closed_by_an_error_is_not_a_normal_end (test_rush_judge.JudgeTest)
+AssertionError: 0 != 1 : []
+Ran 36 tests in 0.150s
+FAILED (failures=1)
+== item 8, copy 3: only the hasJoined answered 200 counted, not every hasJoined
+-- the 30 tests of origin/main, the same change in the judge of origin/main
+Ran 30 tests in 0.098s
+OK
+-- the 36 tests of the branch
+-    if asked != launches or answered != launches:
++    if answered != launches:
+FAIL: test_one_has_joined_more_than_the_launches_fails (test_rush_judge.JudgeTest)
+AssertionError: 0 != 1 : []
+Ran 36 tests in 0.139s
+FAILED (failures=1)
+== item 10, red: the 36 tests of the branch against the judge of origin/main
+ERROR: test_the_wait_ends_once_the_last_connections_ready_back_in_the_lobby_is_in (test_rush_judge.JudgeTest)
+AttributeError: module 'rush_judge_under_test' has no attribute 'wait_for_ledger'
+ERROR: test_the_wait_gives_up_after_its_seconds (test_rush_judge.JudgeTest)
+AttributeError: module 'rush_judge_under_test' has no attribute 'wait_for_ledger'
+FAIL: test_the_command_line_waits_for_the_ledger_when_asked (test_rush_judge.JudgeTest)
+AssertionError: 2 != 0 : usage: rush_judge.py [-h] --ledger-dir LEDGER_DIR --server-log SERVER_LOG
+rush_judge.py: error: unrecognized arguments: --wait-s
+Ran 36 tests in 0.133s
+FAILED (failures=1, errors=2)
+== item 10, copy A: the move back not required to be into the lobby
+-            if moved.attributes.get("connection_id") == connection and moved.attributes.get("instance_id") in lobbies]
++            if moved.attributes.get("connection_id") == connection]
+FAIL: test_the_wait_ends_once_the_last_connections_ready_back_in_the_lobby_is_in (test_rush_judge.JudgeTest)
+AssertionError: 0 != 3
+Ran 36 tests in 0.141s
+FAILED (failures=1)
+== item 10, copy B: the first connection in place of the last
+-    connection = verified[-1].attributes.get("connection_id")
++    connection = verified[0].attributes.get("connection_id")
+FAIL: test_the_wait_ends_once_the_last_connections_ready_back_in_the_lobby_is_in (test_rush_judge.JudgeTest)
+AssertionError: 0 != 3
+FAIL: test_the_wait_gives_up_after_its_seconds (test_rush_judge.JudgeTest)
+AssertionError: 0.0 is not None
+Ran 36 tests in 0.134s
+FAILED (failures=2)
+== item 10, copy C: twice the seconds
+-        if clock() - start >= seconds:
++        if clock() - start >= 2 * seconds:
+FAIL: test_the_wait_gives_up_after_its_seconds (test_rush_judge.JudgeTest)
+AssertionError: 20.19999999999996 not less than 10.3
+Ran 36 tests in 0.149s
+FAILED (failures=1)
+== the branch: judge and tests as committed
+Ran 36 tests in 0.142s
+OK
+
+The whole of gametest-env on the branch (python -m unittest discover -s client-fabric/gametest-env
+-p 'test_*.py', test_p10.py included): Ran 48 tests, OK. The judge step of the three CI runs ran the 36 tests:
+"Ran 36 tests", OK (PR #28 run 38355508678 and both counter-proof runs).

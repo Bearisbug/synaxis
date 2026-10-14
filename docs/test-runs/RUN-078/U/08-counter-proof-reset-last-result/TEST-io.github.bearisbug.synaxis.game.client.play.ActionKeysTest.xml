@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.client.play.ActionKeysTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-13T08:02:20.788Z" hostname="Mac.local" time="0.026">
+  <properties/>
+  <testcase name="actionKeyOneIsOnHInTheCategoryOfThePlayLayer()" classname="io.github.bearisbug.synaxis.game.client.play.ActionKeysTest" time="0.007"/>
+  <testcase name="bothLanguageFilesNameTheKeyAndItsCategory()" classname="io.github.bearisbug.synaxis.game.client.play.ActionKeysTest" time="0.008"/>
+  <testcase name="aPressSendsTheSceneActionAndASecondInsideTheCooldownIsHeldBack()" classname="io.github.bearisbug.synaxis.game.client.play.ActionKeysTest" time="0.01"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

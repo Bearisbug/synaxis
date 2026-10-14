@@ -196,6 +196,33 @@ class RushRoundIntegrationTest {
                 "the arena outlived its last player by more than one tick");
     }
 
+    /**
+     * Once the round is settled the arena is {@code CLOSED} and the host evacuates it, and until the move
+     * of the evacuation lands the player is still inside: the back button does nothing then, the exit
+     * alone sends the player back (§16).
+     */
+    @Test
+    void theBackButtonDoesNothingWhileTheHostEvacuatesTheSettledArena(Env env) {
+        final Setup setup = setup(env, "alice");
+        final Player alice = setup.players().getFirst();
+        final RushRound round = round(setup, config(5, 150));
+        round.tick();
+        run(round, Duration.ofSeconds(5));
+        assertEquals(ManagedInstance.State.ENDING, setup.arena().state());
+        setup.lobby().holdMoves = true;
+        run(round, Duration.ofSeconds(10));
+        assertEquals(ManagedInstance.State.CLOSED, setup.arena().state());
+        assertEquals(List.of("move alice"), setup.lobby().requests, "the evacuation did not send alice back");
+        assertEquals(setup.arena().instance(), alice.getInstance(), "the move of the evacuation was not held");
+
+        round.back(alice);
+
+        assertEquals(List.of("move alice"), setup.lobby().requests,
+                "the button sent alice back while the evacuation was sending her");
+        setup.lobby().finish(alice, true);
+        assertEquals(setup.lobby().instance(), alice.getInstance());
+    }
+
     @Test
     void theRoundWaitsForEveryMoveAndIsCancelledWhenNoneSucceeded(Env env) {
         final Setup setup = setup(env);

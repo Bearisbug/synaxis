@@ -351,21 +351,20 @@ jobs:
         run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runProductionClientGameTest --console=plain --stacktrace
 
       # The ledger goes to disk at most once a second (EventLedger.FLUSH_INTERVAL_MS), and the second launch's last
-      # C2S_SCENE_READY comes less than that before its client quits
-      - name: Show the sample server's ledger and the sessionserver's log
-        if: always()
-        run: |
-          sleep 3
-          cat logs/events-*.jsonl || true
-          cat sessionserver.log || true
-
+      # C2S_SCENE_READY comes less than that before its client quits: the judge polls the ledger for it, 10 s at most
       - name: Judge the rush script by its reports, the ledger and the logs
         if: success() || failure()
         run: |
           python3 client-fabric/gametest-env/rush_judge.py --ledger-dir logs --server-log rush-server.log \
-            --session-log sessionserver.log \
+            --session-log sessionserver.log --wait-s 10 \
             client-fabric/build/run/clientGameTest/synaxis-gametest/rush.txt \
             client-fabric/build/run/productionClientGameTest/synaxis-gametest/rush.txt
+
+      - name: Show the sample server's ledger and the sessionserver's log
+        if: always()
+        run: |
+          cat logs/events-*.jsonl || true
+          cat sessionserver.log || true
 
       # docs/DESIGN-PLAY.md §23: the R1 command of docs/PLUGINS.md §6 started forward, then rolled back to rts with the
       # same class path. The host builds every plugin on the class path to read its descriptor, so a jar missing

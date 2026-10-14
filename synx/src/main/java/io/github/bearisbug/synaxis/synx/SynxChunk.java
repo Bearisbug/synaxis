@@ -40,6 +40,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 /**
@@ -494,24 +495,24 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     private void materialize() {
         assert holdsWriteLock() : "materializing chunk " + chunkX + "," + chunkZ + " without its write-lock";
         final Source source = Objects.requireNonNull(this.source);
-        final SynxPacketDecoder.Full decoded = SynxPacketDecoder.full(source.slot().packet(), instance.registries(),
-                sections.size());
+        final SynxPacketDecoder.Full full = mapped(source, () -> SynxPacketDecoder.full(source.slot().packet(),
+                instance.registries(), sections.size()));
         for (int i = 0; i < sections.size(); i++) {
             final Section section = sections.get(i);
-            section.blockPalette().copyFrom(decoded.sections().blocks()[i]);
-            final Palette biomes = decoded.sections().biomes()[i];
+            section.blockPalette().copyFrom(full.sections().blocks()[i]);
+            final Palette biomes = full.sections().biomes()[i];
             // A direct biome palette of the packet is as wide as the biome registry needs, not the storage width
             if (biomes.bitsPerEntry() <= Palette.BIOME_PALETTE_MAX_BITS) section.biomePalette().copyFrom(biomes);
             else section.biomePalette().setAll(biomes::get);
-            section.setSkyLight(Objects.requireNonNullElse(decoded.sky()[i], NO_LIGHT));
-            section.setBlockLight(Objects.requireNonNullElse(decoded.block()[i], NO_LIGHT));
+            section.setSkyLight(Objects.requireNonNullElse(full.sky()[i], NO_LIGHT));
+            section.setBlockLight(Objects.requireNonNullElse(full.block()[i], NO_LIGHT));
         }
         entries.clear();
         tickableMap.clear();
         for (Int2ObjectMap.Entry<BlockEntity> entry : Int2ObjectMaps.fastIterable(source.blockEntities())) {
             final int index = entry.getIntKey();
             final int y = CoordConversion.chunkBlockIndexGetY(index);
-            final int state = decoded.sections().blocks()[sectionIndex(y)].get(
+            final int state = full.sections().blocks()[sectionIndex(y)].get(
                     CoordConversion.chunkBlockIndexGetX(index), y & 15, CoordConversion.chunkBlockIndexGetZ(index));
             final Block block = entry.getValue().block(state);
             entries.put(index, block);
@@ -603,16 +604,27 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
      * segment ① in handle mode, the sections under the read-lock otherwise.
      */
     LightData currentLight() {
-        final Source handle = this.source;
-        if (mode == Mode.HANDLE && handle != null) return SynxPacketDecoder.light(handle.slot().packet(), instance.registries());
+        final LightData handle = handleLight();
+        if (handle != null) return handle;
         lockReadLock();
         try {
-            final Source now = this.source;
-            if (mode == Mode.HANDLE && now != null) return SynxPacketDecoder.light(now.slot().packet(), instance.registries());
-            return createLightData(false);
+            return heldLight();
         } finally {
             unlockReadLock();
         }
+    }
+
+    /** Segment ①'s light in handle mode, null otherwise; mode first, as {@link #getFullDataPacket} reads it. */
+    private @Nullable LightData handleLight() {
+        if (mode != Mode.HANDLE) return null;
+        final Source source = Objects.requireNonNull(this.source);
+        return mapped(source, () -> SynxPacketDecoder.light(source.slot().packet(), instance.registries()));
+    }
+
+    /** {@link #handleLight}, the sections otherwise; the caller holds a lock of the chunk. */
+    private LightData heldLight() {
+        final LightData handle = handleLight();
+        return handle != null ? handle : createLightData(false);
     }
 
     /**
@@ -663,9 +675,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     @Nullable Installed installLight(byte[] @Nullable [] sky, byte[] @Nullable [] block) {
         if (!tryLockWriteLock(Duration.ZERO)) return null;
         try {
-            final Source handle = this.source;
-            final LightData held = mode == Mode.HANDLE && handle != null
-                    ? SynxPacketDecoder.light(handle.slot().packet(), instance.registries()) : createLightData(false);
+            final LightData held = heldLight();
             final int count = sections.size();
             final byte[][] heldSky = SynxPacketDecoder.sky(held, count), heldBlock = SynxPacketDecoder.block(held, count);
             final byte[][] swapSky = new byte[count][], swapBlock = new byte[count][];
@@ -697,20 +707,31 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
 
     /**
      * The full light for a resend of an install that changed nothing: segment ① in handle mode, the
-     * sections otherwise, under the write-lock, which is only tried.
+     * sections otherwise, under the write-lock, which is only tried. The write-lock because the engine
+     * has no timed read-lock, and the install must not wait on the tick scheduling thread.
      *
      * @return null without the write-lock
      */
     @Nullable LightData lightForResend() {
-        final Source handle = this.source;
-        if (mode == Mode.HANDLE && handle != null) return SynxPacketDecoder.light(handle.slot().packet(), instance.registries());
+        final LightData handle = handleLight();
+        if (handle != null) return handle;
         if (!tryLockWriteLock(Duration.ZERO)) return null;
         try {
-            final Source now = this.source;
-            if (mode == Mode.HANDLE && now != null) return SynxPacketDecoder.light(now.slot().packet(), instance.registries());
-            return createLightData(false);
+            return heldLight();
         } finally {
             unlockWriteLock();
+        }
+    }
+
+    /**
+     * Reads the mapping of {@code source}: a fault there ({@code API-M3-005} 映射读取出错) throws as
+     * {@link SectionCache#get} throws it, an {@link IllegalStateException} the callers handle.
+     */
+    private static <T> T mapped(Source source, Supplier<T> read) {
+        try {
+            return read.get();
+        } catch (InternalError e) {
+            throw new IllegalStateException(source.key().file() + " faulted on read", e);
         }
     }
 

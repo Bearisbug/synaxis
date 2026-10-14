@@ -2,6 +2,8 @@ package io.github.bearisbug.synaxis.synx;
 
 import ch.qos.logback.classic.Level;
 import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.instance.InstanceContainer;
+import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.server.BufferedPacket;
 import io.github.bearisbug.synaxis.testing.Env;
@@ -17,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.function.UnaryOperator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * §19 「已映射的区域文件被截断之后载入转 failed」 ({@code docs/DESIGN-M3.md} {@code API-M3-005} 映射读取出错,
  * M3-S): a region file cut to nothing under a loader that mapped it. A read of the mapping faults with an
- * {@link InternalError}; the three kinds of thread that read it come out as the design says, the write
+ * {@link InternalError}; the kinds of thread that read it come out as the design says, the write
  * thread's kind as it is, written to the test output.
  */
 public class SynxTruncatedMappingTest {
@@ -81,6 +84,82 @@ public class SynxTruncatedMappingTest {
         final String result = output.lines().filter(line -> line.startsWith("copy:") || line.contains("SIGBUS")).findFirst()
                 .orElse(output.lines().findFirst().orElse("no output"));
         System.out.println("truncated mapping, the copy of segment 1 a write thread makes: exit " + exit + ", " + result);
+    }
+
+    /**
+     * §19 「已映射的区域文件被截断之后运行时光照照常」: the runtime light reads segment ① of handle chunks
+     * from the mapping as well. Cut short, the install of a handle target fails as that one target, and a
+     * recomputation that takes the light of a handle target fails as that one task; nothing else stops.
+     */
+    @Test
+    public void aRegionFileCutShortUnderTheRuntimeLightFailsOneInstallAndOneRecomputation(@TempDir Path dir) throws Exception {
+        final Env env = Env.create(UnaryOperator.identity());
+        try {
+            cutShortUnderTheLight(env, dir);
+        } finally {
+            env.process().stop();
+        }
+    }
+
+    private static void cutShortUnderTheLight(Env env, Path dir) throws Exception {
+        final Path build = SynxTestMap.get().copyTo(dir);
+        final SynxChunkLoader loader = SynxWorlds.loader(build, SynxTestMap.REGION, SynxWorlds.WRITABLE, new MemoryOverlay());
+        final InstanceContainer instance = env.process().instance().createInstanceContainer(
+                SynxWorlds.dimension(env.process()), loader);
+        final RelightWorld.ManualExecutor executor = new RelightWorld.ManualExecutor();
+        final SynxRelight relight = loader.startRelight(instance, executor);
+        for (int chunkX = 8; chunkX <= 12; chunkX++) {
+            for (int chunkZ = 8; chunkZ <= 12; chunkZ++) instance.loadChunk(chunkX, chunkZ).join();
+        }
+        // A torch on the east edge of 10,10, far above the terrain: the block light of 11,10 changes
+        final int x = 10 * 16 + 15, y = SynxTestMap.FEATURE_Y + 10, z = 10 * 16 + 8;
+        instance.setBlock(x, y, z, Block.TORCH);
+        assertTrue(executor.runNext(), "the snapshot of 10,10");
+
+        // The computation cannot have the write-lock of 11,10 within its 50 ms: 11,10 stays a handle chunk
+        final SynxChunk east = (SynxChunk) instance.getChunk(11, 10);
+        final CountDownLatch locked = new CountDownLatch(1), release = new CountDownLatch(1);
+        final Thread holder = Thread.ofPlatform().start(() -> {
+            east.lockWriteLock();
+            try {
+                locked.countDown();
+                release.await();
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+            } finally {
+                east.unlockWriteLock();
+            }
+        });
+        locked.await();
+        try {
+            assertTrue(executor.runNext(), "the computation of 10,10");
+        } finally {
+            release.countDown();
+            holder.join();
+        }
+        assertEquals(SynxChunk.Mode.HANDLE, east.mode(), "11,10 was not materialized for its light");
+
+        try (FileChannel file = FileChannel.open(SynxTestMap.regionFile(build, 10, 10), StandardOpenOption.WRITE)) {
+            file.truncate(0);
+        }
+
+        // The install of 11,10 decodes its light from the mapping
+        try (LogCapture logs = LogCapture.of(SynxRelight.class)) {
+            for (int tick = 0; tick < 100 && relight.pendingCenters() > 0; tick++) relight.installPhase();
+            assertEquals(List.of("The light install of 11,10 failed, it keeps its old light"), logs.messagesAt(Level.ERROR));
+        }
+        assertEquals(0, relight.pendingCenters(), "the other eight targets are handled, the task is done");
+        assertEquals(SynxChunk.Mode.HANDLE, east.mode(), "11,10 keeps its old light");
+        assertEquals(0, relight.stats().skipped(), "a failed install is no skipped target");
+
+        // The recomputation takes the light of the handle targets 9,9 to 9,11 and 11,10 from the mapping
+        try (LogCapture logs = LogCapture.of(SynxRelight.class)) {
+            instance.setBlock(x, y, z, Block.AIR);
+            executor.runAll();
+            assertEquals(List.of("The light recomputation of center 10,10 failed, its 3×3 keeps its old light"),
+                    logs.messagesAt(Level.ERROR));
+        }
+        assertEquals(0, relight.pendingCenters(), "the center has left");
     }
 
     /**

@@ -481,13 +481,15 @@ public final class SynxRelight {
     // ---- The install, at the end of the tick on the tick scheduling thread
 
     /**
-     * Installs the results in the order they came, at most {@value #INSTALL_ENTRIES_PER_TICK} target
-     * entries, and stops once it took 1 ms; the rest waits for the next tick. While a drain runs neither
-     * limit holds: it installs every result there is and stops at the deadline of the drain only, the
-     * players frozen by then. A target whose write-lock the encode pool holds waits for the next tick as
-     * well, and the ones behind it with it.
+     * Run by the host once per tick at {@code TICK_END}, on the tick scheduling thread. Installs the
+     * results in the order they came, at most {@value #INSTALL_ENTRIES_PER_TICK} target entries, and
+     * stops once it took 1 ms; the rest waits for the next tick. While a drain runs neither limit holds:
+     * it installs every result there is and stops at the deadline of the drain only, the players frozen
+     * by then. A target whose write-lock the encode pool holds waits for the next tick as well, and the
+     * ones behind it with it. A target whose install throws is logged and handled: it keeps its old
+     * light, and its {@code light_stale} waits for the next install that works.
      *
-     * @return the target entries it handled: installed, found unchanged or skipped
+     * @return the target entries it handled: installed, found unchanged, skipped or failed
      */
     public int installPhase() {
         if (!installing.tryLock()) return 0;
@@ -500,7 +502,15 @@ public final class SynxRelight {
         try {
             Target target;
             while (handled < most && (target = installs.peek()) != null) {
-                if (!install(target)) break;
+                boolean done;
+                try {
+                    done = install(target);
+                } catch (RuntimeException e) {
+                    // Left at the head, it would throw again every tick and hold up every target behind it
+                    LOGGER.error("The light install of {},{} failed, it keeps its old light", target.x(), target.z(), e);
+                    done = true;
+                }
+                if (!done) break;
                 installs.poll();
                 handled++;
                 if (target.task().left.decrementAndGet() == 0) finish(target.task());

@@ -32,8 +32,9 @@ import java.util.zip.Deflater;
  * z 0..1: 8 × 8 fine samples in fine block (15, 0) and 2 × 2 coarse samples in coarse block (3, 0),
  * every other sample of those two blocks an empty column of biome 0, every other block absent. The
  * fine samples cover the five kinds of column, a tie for the coarse sample and a hidden area of
- * blocks x -12..-5, z 20..27 replaced by the rule of {@code API-M3-014}. The block states are the
- * 26.2 global palette ids, {@value #BLOCK_STATES} of them.
+ * blocks x -12..-5, z 20..27 replaced by the rule of {@code API-M3-014} as it stood before DESIGN-M3
+ * v0.50 (see {@link #coarse()}). The block states are the 26.2 global palette ids, {@value #BLOCK_STATES}
+ * of them.
  */
 final class FarViewVectors {
     static final int STONE = 1, GRASS = 9, DIRT = 10, WATER = 86, SAND = 118, RED_CONCRETE = 15_044;
@@ -113,7 +114,10 @@ final class FarViewVectors {
     /**
      * The 2 × 2 coarse samples, {@code [z][x]}: each chunk's through {@link FarViewPack#coarsen} from
      * the fine samples before the hidden area, the chunk of the hidden area then replaced on the coarse
-     * grid. Its rim reaches past the bounds, empty columns that count as 0, so it is stone at 0.
+     * grid. Its rim reaches past the bounds, and before DESIGN-M3 v0.50 those ring samples counted as
+     * empty columns of height 0, so it is stone at 0. The baker now leaves samples outside the bounds out
+     * of the ring and writes stone at 129, the lowest top of chunks (-2, 0), (-1, 0) and (-2, 1); the
+     * frozen vector keeps the old value, which the codec does not depend on.
      */
     static Sample[][] coarse() {
         final Sample[][] fine = fineBeforeHidden();

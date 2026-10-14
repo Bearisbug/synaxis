@@ -60,17 +60,26 @@ public class SynxManifestTest {
         assertEquals(json, manifest.toJson());
     }
 
+    /** Each refusal is {@code synx-manifest} and names the field and the value it refuses. */
     @Test
     public void unreadableManifestIsRefused() throws Exception {
         final String json = Files.readString(SynxVectors.DIR.resolve(SynxManifest.FILE_NAME));
-        assertEquals(SynxError.MANIFEST, assertThrows(SynxException.class, () -> SynxManifest.fromJson("{")).error());
-        assertEquals(SynxError.MANIFEST, assertThrows(SynxException.class,
-                () -> SynxManifest.fromJson(json.replace("\"protocol_version\"", "\"protocol\""))).error());
-        assertEquals(SynxError.MANIFEST, assertThrows(SynxException.class,
-                () -> SynxManifest.fromJson(json.replace("\"content_hash\": \"", "\"content_hash\": \"zz"))).error());
-        assertEquals(SynxError.MANIFEST, assertThrows(SynxException.class,
-                () -> SynxManifest.fromJson(json.replace("\"chunks\": 4", "\"chunks\": 4.5"))).error(), "chunks is an integer");
-        assertEquals(SynxError.MANIFEST, assertThrows(SynxException.class,
-                () -> SynxManifest.fromJson(json.replace("\"wall_ms\": 1234", "\"wall_ms\": 1234.5"))).error(), "wall_ms is an integer");
+        refused("{");
+        refused(json.replace("\"protocol_version\"", "\"protocol\""));
+        final String hex = refused(json.replace("\"content_hash\": \"", "\"content_hash\": \"zz"));
+        assertTrue(hex.contains("content_hash is not hex: zz"), hex);
+        final String chunks = refused(json.replace("\"chunks\": 4", "\"chunks\": 4.5"));
+        assertTrue(chunks.contains("chunks is not an integer: 4.5"), chunks);
+        final String wallMs = refused(json.replace("\"wall_ms\": 1234", "\"wall_ms\": 1234.5"));
+        assertTrue(wallMs.contains("wall_ms is not an integer: 1234.5"), wallMs);
+        final String bounds = refused(json.replace("\"min_x\": -32", "\"min_x\": 32"));
+        assertTrue(bounds.contains("bounds 32,-32,31,31 are empty"), bounds);
+    }
+
+    /** The message of the {@code synx-manifest} refusal of {@code json}. */
+    private static String refused(String json) {
+        final SynxException refused = assertThrows(SynxException.class, () -> SynxManifest.fromJson(json));
+        assertEquals(SynxError.MANIFEST, refused.error());
+        return refused.getMessage();
     }
 }

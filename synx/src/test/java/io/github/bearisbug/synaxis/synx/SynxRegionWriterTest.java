@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The layout rules of API-M3-001 that the vectors do not spell out on their own. */
 public class SynxRegionWriterTest {
@@ -153,18 +154,24 @@ public class SynxRegionWriterTest {
             assertEquals(SynxError.MAGIC, assertThrows(SynxException.class, () -> SynxRegion.open(overlay, arena)).error());
         }
 
-        // Another magic, a newer format_version, and a file shorter than the header
+        // Another magic, a newer format_version, an unknown flag and a file shorter than the header
         file[6] &= (byte) ~SynxFormat.FLAG_OVERLAY;
         final byte[] newer = file.clone();
         newer[4] = 2;
         final byte[] magic = file.clone();
         magic[0] = 's';
-        for (byte[] bytes : new byte[][]{newer, magic, Arrays.copyOf(file, 100)}) {
+        final byte[] flag = file.clone();
+        flag[6] |= 4;
+        final String[] details = {"format_version 2, this reader knows 1",
+                "magic 73594e58, a .synx file starts with 53594e58 (SYNX)", ", this reader knows 11", ""};
+        final byte[][] refused = {newer, magic, flag, Arrays.copyOf(file, 100)};
+        for (int i = 0; i < refused.length; i++) {
             final Path path = dir.resolve("refused.synx");
-            Files.write(path, bytes);
+            Files.write(path, refused[i]);
             try (Arena arena = Arena.ofConfined()) {
-                final SynxError error = assertThrows(SynxException.class, () -> SynxRegion.open(path, arena)).error();
-                assertEquals(bytes.length == 100 ? SynxError.TRUNCATED : SynxError.MAGIC, error);
+                final SynxException error = assertThrows(SynxException.class, () -> SynxRegion.open(path, arena));
+                assertEquals(refused[i].length == 100 ? SynxError.TRUNCATED : SynxError.MAGIC, error.error());
+                assertTrue(error.getMessage().contains(details[i]), error.getMessage());
             }
         }
     }

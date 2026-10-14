@@ -123,7 +123,7 @@ class FarViewConnectionTest {
     }
 
     @Test
-    void enteringBakingStartsTheProgressFromNothingHandedOver() {
+    void theBakeHudLineStartsFromNothingAndEndsOnFinishing() {
         final FarViewConnection c = connection();
         c.begin();
         // As a download leaves it: every byte in
@@ -131,6 +131,12 @@ class FarViewConnectionTest {
         c.levelLoaded("level", (_, _, loadCheck) -> started.add(loadCheck));
         assertEquals(FarViewConnection.State.BAKING, c.state());
         assertEquals(0, c.progressDone(), "no source is handed over yet, whatever the download had");
+        assertEquals(net.minecraft.network.chat.Component.translatable("synaxis.farview.preparing", 0L), c.hudLine());
+        c.progress(SOURCES - 1, SOURCES);
+        assertEquals(net.minecraft.network.chat.Component.translatable("synaxis.farview.preparing", 99L), c.hudLine());
+        // Every source handed over: the row check and the parent propagation left have nothing to count
+        c.progress(SOURCES, SOURCES);
+        assertEquals(net.minecraft.network.chat.Component.translatable("synaxis.farview.finishing"), c.hudLine());
     }
 
     @Test

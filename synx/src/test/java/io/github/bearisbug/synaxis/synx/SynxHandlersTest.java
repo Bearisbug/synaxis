@@ -88,7 +88,9 @@ public class SynxHandlersTest {
 
             @Override
             public BlockHandler next() {
-                if (!first) throw new ServiceConfigurationError("io.github.bearisbug.synaxis.Broken: no public constructor");
+                if (!first) {
+                    throw new ServiceConfigurationError("io.github.bearisbug.synaxis.Broken: no public constructor");
+                }
                 first = false;
                 return new Named(Key.key("synaxis:door"));
             }

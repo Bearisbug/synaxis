@@ -80,7 +80,8 @@ final class SynxStaticEntities {
                     rotation.getFloat(0), rotation.getFloat(1));
             // Spawned into another chunk, it would not go with this one and come again on every reload of it
             if (position.chunkX() != chunkX || position.chunkZ() != chunkZ) {
-                LOGGER.warn("Static entity {} at {} lies outside chunk {},{} that holds it, skipped", id, position, chunkX, chunkZ);
+                LOGGER.warn("Static entity {} at {} lies outside chunk {},{} that holds it, skipped", id, position,
+                        chunkX, chunkZ);
                 continue;
             }
             if (!nbt.getList("Passengers").isEmpty() && warned.add(id + " Passengers")) {

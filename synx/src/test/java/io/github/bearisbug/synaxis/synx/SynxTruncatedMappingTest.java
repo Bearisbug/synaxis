@@ -92,7 +92,8 @@ public class SynxTruncatedMappingTest {
      * recomputation that takes the light of a handle target fails as that one task; nothing else stops.
      */
     @Test
-    public void aRegionFileCutShortUnderTheRuntimeLightFailsOneInstallAndOneRecomputation(@TempDir Path dir) throws Exception {
+    public void aRegionFileCutShortUnderTheRuntimeLightFailsOneInstallAndOneRecomputation(@TempDir Path dir)
+            throws Exception {
         final Env env = Env.create(UnaryOperator.identity());
         try {
             cutShortUnderTheLight(env, dir);
@@ -103,7 +104,8 @@ public class SynxTruncatedMappingTest {
 
     private static void cutShortUnderTheLight(Env env, Path dir) throws Exception {
         final Path build = SynxTestMap.get().copyTo(dir);
-        final SynxChunkLoader loader = SynxWorlds.loader(build, SynxTestMap.REGION, SynxWorlds.WRITABLE, new MemoryOverlay());
+        final SynxChunkLoader loader = SynxWorlds.loader(build, SynxTestMap.REGION, SynxWorlds.WRITABLE,
+                new MemoryOverlay());
         final InstanceContainer instance = env.process().instance().createInstanceContainer(
                 SynxWorlds.dimension(env.process()), loader);
         final RelightWorld.ManualExecutor executor = new RelightWorld.ManualExecutor();
@@ -146,7 +148,8 @@ public class SynxTruncatedMappingTest {
         // The install of 11,10 decodes its light from the mapping
         try (LogCapture logs = LogCapture.of(SynxRelight.class)) {
             for (int tick = 0; tick < 100 && relight.pendingCenters() > 0; tick++) relight.installPhase();
-            assertEquals(List.of("The light install of 11,10 failed, it keeps its old light"), logs.messagesAt(Level.ERROR));
+            assertEquals(List.of("The light install of 11,10 failed, it keeps its old light"),
+                    logs.messagesAt(Level.ERROR));
         }
         assertEquals(0, relight.pendingCenters(), "the other eight targets are handled, the task is done");
         assertEquals(SynxChunk.Mode.HANDLE, east.mode(), "11,10 keeps its old light");

@@ -138,7 +138,8 @@ public class SynxEntitiesTest {
             final MemoryOverlay overlay = new MemoryOverlay();
             overlay.put(MemoryOverlay.hit(new SynxChunkRecord(chunkX, chunkZ, plain.packet(), plain.navigation(),
                     plain.blockEntities(), statics, plain.columns()), 0, 0, 256));
-            final Instance instance = SynxWorlds.instance(env.process(), SynxWorlds.loader(SynxWorlds.WRITABLE, overlay));
+            final Instance instance = SynxWorlds.instance(env.process(),
+                    SynxWorlds.loader(SynxWorlds.WRITABLE, overlay));
             final SynxChunk chunk;
             final List<String> warnings;
             try (LogCapture logs = LogCapture.of(SynxStaticEntities.class)) {

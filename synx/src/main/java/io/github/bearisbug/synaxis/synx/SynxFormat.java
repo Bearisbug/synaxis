@@ -32,7 +32,10 @@ public final class SynxFormat {
     public static final int NAVIGATION_SURFACE_Y = 32;
     /** Segment ②: the walkable bit set (32 B) and 256 {@code i16} surface heights. */
     public static final int NAVIGATION_BYTES = NAVIGATION_SURFACE_Y + 256 * 2;
-    /** Segment ④: 256 columns of surface height {@code u16}, surface state id {@code u16}, sky light {@code u8}. */
+    /**
+     * Segment ④: 256 columns of the surface y index {@code u16} (y - min_y, 0 for an empty column), surface state
+     * id {@code u16}, sky light {@code u8}.
+     */
     public static final int COLUMN_BYTES = 256 * 5;
 
     /** Header flag bit0: an overlay segment file of API-M3-007, which has no offset index. */

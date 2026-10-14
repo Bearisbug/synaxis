@@ -10,7 +10,6 @@ import com.google.gson.JsonPrimitive;
 import com.google.gson.Strictness;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -252,9 +251,8 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
     private static JsonObject parse(String text) throws IOException {
         final UniqueNamesReader reader = new UniqueNamesReader(text);
         final JsonElement root = JSON.read(reader);
-        if (reader.peek() != JsonToken.END_DOCUMENT) {
-            throw new IllegalArgumentException("more after the document at " + reader.getPath());
-        }
+        // In Strictness.STRICT anything after the document throws a MalformedJsonException
+        var _ = reader.peek();
         if (!root.isJsonObject()) throw new IllegalArgumentException("not a JSON object");
         return root.getAsJsonObject();
     }

@@ -290,4 +290,58 @@ class FarViewClientTest {
                     .map(name -> name.substring(0, name.length() - ".hfp.part".length())).sorted().toList();
         }
     }
+
+    @Test
+    void anAnnouncementNamingOneObjectForTwoTilesIsTakenAsNone() {
+        final FarViewCache cache = new FarViewCache(dir);
+        final Tile whole = serve(0, object(0), root());
+        // Tile 1 announces the object of tile 0, whose header names tile 0: no shard announces that
+        final Tile same = new Tile(1, 0, layer(1), whole.bytes(), whole.sha256(), whole.url());
+        try (LogLines log = new LogLines()) {
+            final FarViewConnection c = announced(announcement(List.of(whole, same)), cache, LOCAL);
+            assertFalse(c.available(), "taken as no announcement");
+            assertEquals(cache.library(FarViewClient.NO_FAR_VIEW), FarViewClient.library(cache, c, true), "pinned to dh/off");
+            c.begin(Runnable::run);
+            assertTrue(log.warnings().stream().anyMatch(line -> line.contains("Far view announcement names object "
+                    + FarViewCache.hex(whole).substring(0, 12) + " for two tiles: ignored")), log.warnings().toString());
+        }
+        assertEquals(List.of(), requests, "nothing is downloaded");
+    }
+
+    @Test
+    void aSecondAnnouncementOnOneConnectionIsIgnored() {
+        final FarViewCache cache = new FarViewCache(dir);
+        final List<Tile> tiles = List.of(serve(0, object(0), root()), serve(1, object(1), root()));
+        try (LogLines log = new LogLines()) {
+            assertTrue(FarViewClient.takesAnnouncement(null), "the first one of a connection");
+            assertEquals(List.of(), log.warnings());
+            final FarViewConnection first = announced(announcement(tiles), cache, LOCAL);
+            assertFalse(FarViewClient.takesAnnouncement(first), "another one on the same connection");
+            assertTrue(log.warnings().stream().anyMatch(line -> line.contains("Far view announcement repeated on one connection: ignored")),
+                    log.warnings().toString());
+            assertFalse(first.cancelled(), "the first one's far view goes on");
+        }
+    }
+
+    @Test
+    void theSharedAddressSpaceIsLocal() {
+        // 100.64.0.0/10 (RFC 6598): carrier grade NAT, and Tailscale's tailnet with its DNS at 100.100.100.100
+        for (String inside : List.of("100.64.0.1", "100.100.100.100", "100.127.255.254")) {
+            assertTrue(FarViewConnection.local(address(inside)), inside);
+        }
+        for (String outside : List.of("100.63.255.254", "100.128.0.1", "203.0.113.5")) {
+            assertFalse(FarViewConnection.local(address(outside)), outside);
+        }
+    }
+
+    @Test
+    void aSettingsFileWithACommentInAnotherEncodingKeepsItsRadius() throws IOException {
+        // "# 低配" as an editor on a Chinese Windows saves it (GBK), which is no UTF-8, then the radius
+        final byte[] comment = {'#', ' ', (byte) 0xB5, (byte) 0xCD, (byte) 0xC5, (byte) 0xE4, '\n'};
+        final byte[] radius = "farview.radius=0\n".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        final byte[] file = Arrays.copyOf(comment, comment.length + radius.length);
+        System.arraycopy(radius, 0, file, comment.length, radius.length);
+        Files.write(dir.resolve(FarViewSettings.FILE), file);
+        assertEquals(FarViewSettings.OFF, FarViewSettings.load(dir).radius());
+    }
 }

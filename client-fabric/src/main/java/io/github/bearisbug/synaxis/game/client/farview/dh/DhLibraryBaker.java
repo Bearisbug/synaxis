@@ -98,7 +98,7 @@ final class DhLibraryBaker implements Runnable {
             final FarViewAnnouncement announcement = connection.announcement();
             final FarViewCache cache = connection.cache();
             if (loadCheck) {
-                if (!connection.loadChecked(count(repo, "DetailLevel = " + announcement.baseLevel()))) return;
+                if (!connection.rebakeAfterLoadCheck(count(repo, "DetailLevel = " + announcement.baseLevel()))) return;
                 final List<FarViewAnnouncement.Tile> missing = cache.missing(announcement.tiles());
                 if (!missing.isEmpty() && !connection.download(missing)) return;
             }
@@ -234,7 +234,7 @@ final class DhLibraryBaker implements Runnable {
         final long millis = FarViewConnection.millisSince(started);
         final long visible = FarViewConnection.millisSince(connection.announcedNanos());
         final long now = System.currentTimeMillis();
-        cache.writeMarker(new FarViewCache.Marker(FarViewCache.MARKER_FORMAT, key, connection.dhVersion(),
+        cache.writeMarker(new FarViewCache.Marker(FarViewCache.MARKER_FORMAT, key, FarViewClient.DH_VERSION,
                 FarViewClient.BAKE_CODE_VERSION, announcement.tiles().stream().map(FarViewCache.MarkerTile::of).toList(),
                 sources, millis, now, now));
         final long databaseBytes = databaseBytes(cache.library(key));
@@ -260,7 +260,7 @@ final class DhLibraryBaker implements Runnable {
     }
 
     private boolean stopped() {
-        return connection.cancelled().get() && !DhTestHook.ignoreCancel;
+        return connection.cancelled() && !DhTestHook.ignoreCancel;
     }
 
     /** Waits for the oldest write, waking every {@value #POLL_MILLIS} ms for the cancel flag, then closes its source. */

@@ -48,7 +48,7 @@ class FarViewConnectionTest {
 
     private FarViewConnection connection() {
         return new FarViewConnection(new FarViewAnnouncement("b1", 2, 4, -64, 256, tiles), System.nanoTime(),
-                new FarViewSettings(FarViewSettings.DEFAULT_RADIUS), true, FarViewClient.DH_VERSION, cache,
+                new FarViewSettings(FarViewSettings.DEFAULT_RADIUS), true, cache,
                 FarViewDownloader.standard(cache), null);
     }
 
@@ -75,7 +75,7 @@ class FarViewConnectionTest {
     @Test
     void aLibraryHoldingTheMarkersSourcesStaysReady() throws IOException {
         final FarViewConnection c = loadChecking();
-        assertFalse(c.loadChecked(SOURCES));
+        assertFalse(c.rebakeAfterLoadCheck(SOURCES));
         assertEquals(FarViewConnection.State.READY, c.state());
         assertTrue(cache.marker(key()).orElseThrow().lastUsed() > 1, "last_used is updated");
     }
@@ -83,7 +83,7 @@ class FarViewConnectionTest {
     @Test
     void noAnswerOnALiveConnectionRemovesTheMarkerAndBakesAgain() throws IOException {
         final FarViewConnection c = loadChecking();
-        assertTrue(c.loadChecked(null));
+        assertTrue(c.rebakeAfterLoadCheck(null));
         assertTrue(cache.marker(key()).isEmpty());
     }
 
@@ -92,7 +92,7 @@ class FarViewConnectionTest {
         final FarViewConnection c = loadChecking();
         // DH closes the library as the level or the connection ends, and the count gets no answer
         c.cancel("Distant Horizons unloaded the level");
-        assertFalse(c.loadChecked(null), "nothing is baked on a connection that ended");
+        assertFalse(c.rebakeAfterLoadCheck(null), "nothing is baked on a connection that ended");
         assertTrue(cache.marker(key()).isPresent(), "the next connection takes the library as it is");
         assertTrue(c.state() != FarViewConnection.State.BAKING, c.state().toString());
     }
@@ -120,5 +120,38 @@ class FarViewConnectionTest {
         assertEquals(List.of(), started);
         assertFalse(c.baking());
         assertEquals(FarViewConnection.State.ABSENT, c.state());
+    }
+
+    @Test
+    void enteringBakingStartsTheProgressFromNothingHandedOver() {
+        final FarViewConnection c = connection();
+        c.begin();
+        // As a download leaves it: every byte in
+        c.progress(2000, 2000);
+        c.levelLoaded("level", (_, _, loadCheck) -> started.add(loadCheck));
+        assertEquals(FarViewConnection.State.BAKING, c.state());
+        assertEquals(0, c.progressDone(), "no source is handed over yet, whatever the download had");
+    }
+
+    @Test
+    void aLibraryFailingTheLoadCheckIsAbsentOnceItsMarkerIsGone() throws IOException {
+        final FarViewConnection c = loadChecking();
+        assertTrue(c.rebakeAfterLoadCheck(SOURCES - 1));
+        assertTrue(cache.marker(key()).isEmpty());
+        assertEquals(FarViewConnection.State.ABSENT, c.state(), "a cancel before the bake leaves it absent, not ready");
+    }
+
+    @Test
+    void aLibraryThatChecksOutStaysReadyWhenItsLastUsedCannotBeWritten() throws IOException {
+        final FarViewConnection c = loadChecking();
+        // The marker is rewritten through a .tmp beside it: a directory in its place fails the rewrite
+        Files.createDirectories(cache.library(key()).resolve(FarViewCache.MARKER + ".tmp"));
+        try (LogLines log = new LogLines()) {
+            assertFalse(c.rebakeAfterLoadCheck(SOURCES));
+            assertEquals(FarViewConnection.State.READY, c.state());
+            assertTrue(log.warnings().stream().anyMatch(line -> line.contains("view " + key() + " last_used not updated: ")),
+                    log.warnings().toString());
+        }
+        assertEquals(1, cache.marker(key()).orElseThrow().lastUsed(), "the marker as it was");
     }
 }

@@ -1,7 +1,7 @@
 package io.github.bearisbug.synaxis.game.client.farview;
 
 import java.io.IOException;
-import java.io.Reader;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,8 +11,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The player's far view setting of {@code docs/DESIGN-M3.md} {@code API-M3-015} (客户端配置):
- * {@value #KEY} in {@code <gameDir>/config/}{@value #FILE}, read again at every announcement so a
- * change takes effect on the next connection.
+ * {@value #KEY} in {@code <gameDir>/config/}{@value #FILE}, written with its comments at the client's start
+ * when it is not there and read again at every announcement, so a change takes effect on the next
+ * connection.
  *
  * @param radius the far view radius in blocks: {@value #DEFAULT_RADIUS}, {@value #LOW_RADIUS} or
  *               {@value #OFF}
@@ -78,8 +79,10 @@ public record FarViewSettings(int radius) {
             return new FarViewSettings(DEFAULT_RADIUS);
         }
         final Properties properties = new Properties();
-        try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
-            properties.load(reader);
+        // As bytes (ISO-8859-1, the Properties rule): the key and its values are ASCII, and a comment saved in another
+        // encoding than UTF-8 does not void the file
+        try (InputStream in = Files.newInputStream(file)) {
+            properties.load(in);
         } catch (IOException | IllegalArgumentException e) {
             LOGGER.warn("{}could not read {}, taking {} {}: {}", FarViewClient.PREFIX, file, KEY, DEFAULT_RADIUS, e.toString());
             return new FarViewSettings(DEFAULT_RADIUS);

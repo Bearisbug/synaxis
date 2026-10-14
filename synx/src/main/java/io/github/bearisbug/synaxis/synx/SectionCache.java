@@ -67,6 +67,7 @@ final class SectionCache {
 
         /** The palettes, marking the entry as read. */
         SynxPacketDecoder.Sections sections() {
+            // Read first: a volatile write on every block read would bounce the line between the tick threads
             if (!referenced) this.referenced = true;
             return sections;
         }

@@ -43,20 +43,25 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
+import static io.github.bearisbug.synaxis.synx.SynxBlockEntity.withoutRecordKeys;
+
 /**
  * A chunk of a {@code .synx} map ({@code docs/DESIGN-M3.md} API-M3-005, {@code ADR-M3-016}). Handle,
  * overlay and failed mode are states of the one object, which switches in place under its write-lock.
  * <ul>
  *     <li>Handle: the sections of {@link DynamicChunk} stay empty and are neither read nor sent. Blocks
  *     come from the section cache of the loader, block entities from segment ③, and the full data
- *     packet is segment ① as it is, a {@link BufferedPacket} over the mapping.</li>
- *     <li>Overlay: the first change fills the sections from segment ① and segment ③, light included,
- *     and the chunk is a {@code DynamicChunk} from then on; the overlay store writes it out.</li>
- *     <li>Failed: a record that does not read loads as air with full sky light, read only.</li>
+ *     packet is segment ① as it is, a {@link BufferedPacket} over the record.</li>
+ *     <li>Overlay: the first change, or new light of a recomputation (§11.1 为光照物化), fills the sections
+ *     from segment ① and segment ③, light included; the overlay store writes it out, and its eviction
+ *     demotes the chunk back to handle mode on the record written.</li>
+ *     <li>Failed: a record that does not read, a mapping that faults, or no record inside the region,
+ *     loads as air with full sky light, read only.</li>
  * </ul>
- * A chunk outside the region ({@code bounds}) or in a world that is not writable is read only as well:
- * changes are ignored silently, as the engine ignores them on any read only chunk. A world state flag
- * still changes a world that is not writable ({@link #asWorldFlag}).
+ * A chunk outside the region ({@code bounds}), in a world that is not writable or with the overlay
+ * store full is read only as well: changes are ignored silently, as the engine ignores them on any read
+ * only chunk. A world state flag still changes a chunk of the region in the last two cases
+ * ({@link #asWorldFlag}).
  */
 public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     enum Mode {HANDLE, OVERLAY, FAILED}
@@ -104,8 +109,6 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     private static final byte[] FULL_LIGHT = new byte[2048];
     /** Bound while this thread applies a world state flag ({@link #asWorldFlag}). */
     private static final ScopedValue<Boolean> WORLD_FLAG = ScopedValue.newInstance();
-    /** The keys of a block entity record the block carries itself; the baker leaves them out of segment ①. */
-    private static final List<String> RECORD_KEYS = List.of("id", "x", "y", "z", "keepPacked");
     /** The states the client and the baker count as air besides air itself, state 0. */
     private static final int[] OTHER_AIR = IntStream.range(1, Block.statesCount())
             .filter(state -> Objects.requireNonNull(Block.fromStateId(state)).air()).toArray();
@@ -194,8 +197,9 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     /**
      * Runs {@code action} as the application of a world state flag ({@code docs/DESIGN-M3.md}
      * {@code API-M3-005}, {@code API-M3-013}): on this thread and for as long as it runs,
-     * {@link #isReadOnly()} leaves {@code synaxis.world-writable} out, so that a flag changes a world
-     * nothing else may change. Outside the region and in failed mode a chunk stays read only.
+     * {@link #isReadOnly()} leaves {@code synaxis.world-writable} and a full overlay store
+     * ({@link OverlayTracker#full()}) out, so that a flag changes a world nothing else may change.
+     * Outside the region and in failed mode a chunk stays read only.
      *
      * @param action what changes the blocks
      */
@@ -222,12 +226,6 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
         if (handler == null ? targetHandler != null
                 : targetHandler == null || !handler.getKey().equals(targetHandler.getKey())) return false;
         return withoutRecordKeys(block.nbtOrEmpty()).equals(withoutRecordKeys(target.nbtOrEmpty()));
-    }
-
-    private static CompoundBinaryTag withoutRecordKeys(CompoundBinaryTag nbt) {
-        CompoundBinaryTag without = nbt;
-        for (String key : RECORD_KEYS) without = without.remove(key);
-        return without;
     }
 
     /**
@@ -437,8 +435,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
         final long wait = Math.min(deadlineNanos - System.nanoTime(), LOCK_WAIT_NANOS);
         if (!tryLockWriteLock(Duration.ofNanos(Math.max(0, wait)))) return null;
         try {
-            final Source source = this.source;
-            if (source == null) return null;
+            final Source source = Objects.requireNonNull(this.source);
             final long generation = this.generation.get();
             if (mode == Mode.HANDLE) {
                 // Nothing changed since the source: its record as it is
@@ -529,8 +526,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     /** Overlay back to handle on {@code source}, under the write-lock; the sections go back to empty. */
     private void demote(Source source) {
         for (Section section : sections) {
-            section.blockPalette().fill(0);
-            section.biomePalette().fill(0);
+            section.clear();
             section.setSkyLight(NO_LIGHT);
             section.setBlockLight(NO_LIGHT);
         }

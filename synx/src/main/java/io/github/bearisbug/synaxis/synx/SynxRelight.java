@@ -62,7 +62,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public final class SynxRelight {
     private static final Logger LOGGER = LoggerFactory.getLogger(SynxRelight.class);
 
-    /** Target entries waiting for the install from which on the recomputation threads take no new center. */
+    /** From this many target entries waiting for the install on, the recomputation threads take no new center ({@link #awaitRoom}). */
     static final int INSTALL_BACKLOG = 256;
     /** Target entries an install handles at most; it stops earlier once it took {@link #INSTALL_BUDGET_NANOS}. */
     static final int INSTALL_ENTRIES_PER_TICK = 64;
@@ -76,6 +76,10 @@ public final class SynxRelight {
     private static final Duration MATERIALIZE_WAIT = Duration.ofMillis(50);
     private static final long SLOW_NANOS = TimeUnit.MILLISECONDS.toNanos(200);
     private static final long DRAIN_CAP_NANOS = TimeUnit.MILLISECONDS.toNanos(500);
+    /**
+     * Samples one window keeps at most, so that a window holds bounded memory whoever reads
+     * {@link #stats()}; later samples of the window are dropped, its P99 covers the first 65,536.
+     */
     private static final int WINDOW_SAMPLES = 1 << 16;
     private static final byte[] DARK = new byte[2048];
     private static final byte[][] NONE = new byte[0][];
@@ -85,7 +89,9 @@ public final class SynxRelight {
         final int x;
         final int z;
         final long firstChange;
+        /** From its snapshot until every target of the run is handled, the wait for the install included. */
         boolean running;
+        /** A change came while running: the center runs once more instead of leaving. */
         boolean again;
         @Nullable Task task;
 
@@ -118,9 +124,8 @@ public final class SynxRelight {
         final Center center;
         final Taken[] taken = new Taken[25];
         final LongArrayList tickets = new LongArrayList(25);
-        // The install's, but read by a drain on another thread
+        // Targets of this run not handled yet, counted down by the install; read by a drain on another thread
         final AtomicInteger left = new AtomicInteger(9);
-        volatile boolean computed;
 
         Task(Center center) {
             this.center = center;
@@ -181,7 +186,8 @@ public final class SynxRelight {
     private final Map<Long, Integer> pending = new ConcurrentHashMap<>();
 
     private final Queue<Target> installs = new ConcurrentLinkedQueue<>();
-    private final AtomicInteger waiting = new AtomicInteger();
+    private final AtomicInteger backlog = new AtomicInteger();
+    // The recomputation threads wait on it in awaitRoom; the install notifies it
     private final Object room = new Object();
     // A drain on a dead tick installs on the shutdown thread, maybe while the tick scheduler still does
     private final ReentrantLock installing = new ReentrantLock();
@@ -260,7 +266,8 @@ public final class SynxRelight {
      * or longer, none of them with them in its {@code light_stale}. The center is in T's 3×3, so such a
      * player holds it and gets the block change. The others go into T's {@code light_stale}, a resend
      * due whatever the install finds if they hold the center: they computed the light from partial
-     * input. Each player is looked at once for the 5×5.
+     * input. Each player is looked at once for the 5×5. Players gone offline are dropped from
+     * {@code delivered} and {@code light_stale} of the targets on the way.
      */
     private void judge(SynxChunk center) {
         final long now = instance.getWorldAge();
@@ -338,6 +345,7 @@ public final class SynxRelight {
     // ---- The recomputation, on a recomputation thread
 
     private void run(Task task) {
+        // Not with an executor of the tests: it runs tasks on the thread that installs, which would wait forever
         if (pool != null) awaitRoom();
         synchronized (lock) {
             task.center.running = true;
@@ -369,15 +377,14 @@ public final class SynxRelight {
         }
         relights.increment();
         task.dropBlocks();
-        task.computed = true;
-        waiting.addAndGet(targets.size());
+        backlog.addAndGet(targets.size());
         installs.addAll(targets);
     }
 
     /** Waits while {@value #INSTALL_BACKLOG} target entries or more wait for the install. */
     private void awaitRoom() {
         synchronized (room) {
-            while (waiting.get() >= INSTALL_BACKLOG) {
+            while (backlog.get() >= INSTALL_BACKLOG) {
                 try {
                     room.wait();
                 } catch (InterruptedException _) {
@@ -513,7 +520,7 @@ public final class SynxRelight {
         } finally {
             installing.unlock();
             if (handled > 0) {
-                waiting.addAndGet(-handled);
+                backlog.addAndGet(-handled);
                 synchronized (room) {
                     room.notifyAll();
                 }
@@ -539,9 +546,9 @@ public final class SynxRelight {
             if (installed.materialized()) lightMaterialized.increment();
             final Set<Player> resent = resend(chunk, installed.light(), installed.swapped(), now);
             if (installed.swapped() && loader.options().resendLight()) {
-                final LightData changed = changedSections(installed.sky(), installed.block());
+                final LightData swappedOnly = changedSections(installed.sky(), installed.block());
                 for (Player player : chunk.delivered().keySet()) {
-                    if (!resent.contains(player) && online(player)) send(player, chunk, changed, now);
+                    if (!resent.contains(player) && online(player)) send(player, chunk, swappedOnly, now);
                 }
             }
         } else {
@@ -571,15 +578,16 @@ public final class SynxRelight {
 
     /**
      * The full light to the players of {@code light_stale} still online and holding the chunk: all of
-     * them if the light changed, the ones a resend is due to otherwise; then {@code light_stale} is empty.
+     * them if the install swapped a section, the ones a resend is due to otherwise; then
+     * {@code light_stale} is empty.
      *
      * @return the players it was sent to
      */
-    private Set<Player> resend(SynxChunk chunk, LightData light, boolean changed, long now) {
+    private Set<Player> resend(SynxChunk chunk, LightData light, boolean swapped, long now) {
         final Set<Player> sent = new HashSet<>();
         for (Map.Entry<Player, Boolean> stale : chunk.lightStale().entrySet()) {
             final Player player = stale.getKey();
-            if (!changed && !stale.getValue()) continue;
+            if (!swapped && !stale.getValue()) continue;
             if (!online(player) || !chunk.delivered().containsKey(player)) continue;
             send(player, chunk, light, now);
             sent.add(player);
@@ -718,10 +726,7 @@ public final class SynxRelight {
     private int targetsLeft() {
         synchronized (lock) {
             int left = 0;
-            for (Center center : centers.values()) {
-                final Task task = center.task;
-                left += task == null || !task.computed ? 9 : task.left.get();
-            }
+            for (Center center : centers.values()) left += Objects.requireNonNull(center.task).left.get();
             return left;
         }
     }
@@ -754,7 +759,7 @@ public final class SynxRelight {
 
     /** The target entries waiting for the install now, which the recomputation threads hold under {@value #INSTALL_BACKLOG} plus what one task adds each. */
     int installBacklog() {
-        return waiting.get();
+        return backlog.get();
     }
 
     /** {@code relight_pending} of a chunk position. */

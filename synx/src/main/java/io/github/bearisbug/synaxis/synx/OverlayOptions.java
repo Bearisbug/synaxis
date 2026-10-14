@@ -16,7 +16,11 @@ public record OverlayOptions(int cap, int flushIntervalSeconds, long maxBytes) {
     public static final String MAX_BYTES = "synaxis.overlay.max-bytes";
     public static final int DEFAULT_CAP = 16_384;
     public static final int DEFAULT_FLUSH_INTERVAL_SECONDS = 10;
-    /** 4 GiB: twice the live records of a 4k region changed everywhere, less than its saturation (API-M3-007). */
+    /**
+     * 4 GiB: over ten times the about 0.35 GB a shard that cannot change the terrain writes; a writable
+     * 4k region needs twice its live records plus 256 MiB, 5.1 to 7.3 GB at saturation, so set this key
+     * then (API-M3-007).
+     */
     public static final long DEFAULT_MAX_BYTES = 4L << 30;
 
     public OverlayOptions {
@@ -65,8 +69,11 @@ public record OverlayOptions(int cap, int flushIntervalSeconds, long maxBytes) {
         return parsed;
     }
 
-    /** A number of bytes, at least 1, written as {@code synaxis.synx.section-cache-bytes} is. */
-    private static long bytesProperty(UnaryOperator<String> properties, String name, long defaultValue) {
+    /**
+     * A number of bytes, at least 1: how the byte keys of {@code :synx} read, {@value #MAX_BYTES} and
+     * {@value SynxOptions#SECTION_CACHE_BYTES}.
+     */
+    static long bytesProperty(UnaryOperator<String> properties, String name, long defaultValue) {
         final String value = properties.apply(name);
         if (value == null) return defaultValue;
         final long parsed;

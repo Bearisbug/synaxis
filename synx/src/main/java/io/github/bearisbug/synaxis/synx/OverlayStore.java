@@ -25,7 +25,6 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -52,11 +51,12 @@ import java.util.stream.Stream;
  * looks up their latest record through {@link OverlayIndex}. Writing happens in one place, the write
  * phase the shard host runs at the end of every tick ({@link #tickEnd()}): it picks the batch
  * (encodings of chunks unloaded dirty, evictions over the cap, flushes before unload, chunks dirty
- * for {@code flush_interval_s} less a write phase, compaction), encodes on a pool of platform threads for at most 20 ms,
- * appends in order, makes it durable with one {@code fsync}, and only then points the index at the
- * new records and tells the chunks. At shutdown {@link #finalFlush} writes every dirty chunk once
- * more, done by the write phase while the tick runs and by the shutdown thread once the watchdog
- * judged the tick dead; the write right decides which one, and after it nothing is written.
+ * for {@code flush_interval_s} less {@link #DUE_LEAD_NANOS}, compaction), encodes on a pool of
+ * platform threads for at most 20 ms, appends in order, makes it durable with one {@code fsync}, and
+ * only then points the index at the new records and tells the chunks. At shutdown
+ * {@link #finalFlush} writes every dirty chunk once more, done by the write phase while the tick
+ * runs and by the shutdown thread once the watchdog judged the tick dead; the write right decides
+ * which one, and after it nothing is written.
  */
 public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private static final Logger LOGGER = LoggerFactory.getLogger(OverlayStore.class);
@@ -64,7 +64,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
 
     private static final int EVICT_PER_TICK = 64;
     private static final int UNLOAD_FLUSH_PER_TICK = 256;
-    private static final int FLUSH_PER_TICK = 64;
+    private static final int DUE_PER_TICK = 64;
     private static final int COPY_PER_TICK = 64;
     /**
      * How long before its {@code flush_interval_s} is up a dirty chunk is due, so that a kill loses at
@@ -72,8 +72,15 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
      * an encoding over the 20 ms of that phase waits for the next one, and then comes the fsync.
      */
     private static final long DUE_LEAD_NANOS = TimeUnit.MILLISECONDS.toNanos(250);
-    private static final long FINAL_CAP_NANOS = TimeUnit.SECONDS.toNanos(2);
+    /** The cap of the final flush, min(2 s, the remaining budget) (API-M3-007). */
+    static final long FINAL_CAP_NANOS = TimeUnit.SECONDS.toNanos(2);
+    /**
+     * The deadline an unload encodes by (API-M3-007); {@link OverlayChunk#encodeOverlay} waits for the
+     * write-lock 50 ms at most anyway.
+     */
     private static final long UNLOAD_ENCODE_NANOS = TimeUnit.SECONDS.toNanos(1);
+    /** {@link OverlayHit#segment()} of an encoding in the pending table: segment numbers start at 0. */
+    private static final int PENDING_SEGMENT = -1;
     private static final long NO_DEADLINE = Long.MAX_VALUE;
 
     // The write right: whoever appends and forces holds it
@@ -114,10 +121,11 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     }
 
     /**
-     * A cap a tick of the write phase, on the encodings it submits for one kind of chunk and no
-     * phase has harvested yet, those earlier phases left in flight included: a batch then holds no
-     * more of that kind than the cap, however many the encode pool finished between two phases.
-     * The holder of the write right's.
+     * The per-tick limit of one kind of write (evictions, flushes before unload, due flushes):
+     * {@code inFlight} counts the encodings of that kind submitted and not yet harvested, those that
+     * earlier phases left running included, so that one batch never holds more of that kind than
+     * {@code perTick}, however many the encode pool finished between two phases. Touched only by the
+     * holder of the write right.
      */
     private static final class Cap {
         private final int perTick;
@@ -136,14 +144,17 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private static final class Resident {
         private final OverlayChunk chunk;
         private final long key;
-        // Guarded by this
+        // Guarded by this, but selectDue reads dirtySince without it. lruKey and dirtyKey are the keys in lru and
+        // dirtyQueue, 0 while the resident is in neither: sequence hands out keys from 1
         private long lruKey;
         private long dirtyKey;
         private volatile long dirtySince;
         private boolean removed;
         // The holder of the write right's
-        private @Nullable Future<Encoded> inFlight;
+        private @Nullable Future<Encoded> encodeTask;
         private @Nullable Cap cap;
+        // The encodings of this chunk that threw since the last one that did not
+        private int encodeFailures;
 
         private Resident(OverlayChunk chunk, long key) {
             this.chunk = chunk;
@@ -186,12 +197,16 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private @Nullable OverlaySegment active;
     private int nextSegment;
     private @Nullable OverlaySegment compacting;
-    private final Set<Resident> inFlight = new LinkedHashSet<>();
+    // The residents with an encode task not harvested yet, in submission order
+    private final Set<Resident> submitted = new LinkedHashSet<>();
     private final Cap evictCap = new Cap(EVICT_PER_TICK);
     private final Cap unloadCap = new Cap(UNLOAD_FLUSH_PER_TICK);
-    private final Cap dueCap = new Cap(FLUSH_PER_TICK);
+    private final Cap dueCap = new Cap(DUE_PER_TICK);
+    // The write phases failed since the last one that did not
+    private long failedInARow;
 
     private final LongAdder evicted = new LongAdder();
+    // evict_failed (§20): one per batch that failed to append or fsync, whatever it held
     private final LongAdder evictFailed = new LongAdder();
     private final LongAdder flushAppended = new LongAdder();
     private final LongAdder flushFsyncs = new LongAdder();
@@ -208,7 +223,8 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         this.settings = settings;
         this.options = options;
         this.tuning = tuning;
-        // Segment ④ is always empty in the overlay, whatever the settings say about region files
+        // Segment ④ is always empty in the overlay, whatever the settings say about region files; a segment is no
+        // region's, so region_x, region_z, region_content_hash and payload_sha256 are zeros
         this.header = new SynxHeader(SynxFormat.FORMAT_VERSION, SynxFormat.FLAG_OVERLAY, settings.protocolVersion(),
                 settings.compressionThreshold(), settings.compressionLevel(), settings.minY(), settings.height(), 0, 0,
                 settings.registryDigest(), manifest.contentHash(), new byte[32], new byte[32],
@@ -237,7 +253,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
 
     static OverlayStore open(Path overlayRoot, SynxManifest manifest, SynxSettings settings, OverlayOptions options,
                              OverlayTuning tuning) throws IOException, SynxException {
-        Files.createDirectories(overlayRoot, ownerOnly(overlayRoot));
+        Files.createDirectories(overlayRoot, ownerOnly(overlayRoot, "rwx------"));
         final List<Path> stale = new ArrayList<>();
         try (DirectoryStream<Path> entries = Files.newDirectoryStream(overlayRoot)) {
             for (Path entry : entries) {
@@ -252,7 +268,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
             LOGGER.info("Overlay of {} deleted: the shard runs {} now", directory.getFileName(), manifest.buildId());
         }
         final Path own = overlayRoot.resolve(manifest.buildId());
-        final OverlayStore store = new OverlayStore(Files.createDirectories(own, ownerOnly(own)),
+        final OverlayStore store = new OverlayStore(Files.createDirectories(own, ownerOnly(own, "rwx------")),
                 manifest, settings, options, tuning);
         store.load(new SynxExpectations(settings.protocolVersion(), settings.registryDigest(),
                 settings.compressionThreshold(), settings.minY(), settings.height(), settings.lightEngineVersion()),
@@ -261,17 +277,15 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     }
 
     /**
-     * What the directories of the store are made with: 0700 where the file system has POSIX permissions
-     * (M3-S, {@code API-M3-002} 覆盖层), so that nobody but the service user writes what the shard sends
-     * to the players; the shard host checks the ones that are there before it opens the store.
+     * What the directories (0700) and segment files (0600) of the store are made with: {@code permissions}
+     * where the file system has POSIX permissions (M3-S, {@code API-M3-002} 覆盖层), so that nobody but
+     * the service user writes what the shard sends to the players; the shard host checks the ones that
+     * are there before it opens the store.
      */
-    private static FileAttribute<?>[] ownerOnly(Path path) {
-        return posix(path) ? new FileAttribute<?>[]{PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"))}
+    static FileAttribute<?>[] ownerOnly(Path path, String permissions) {
+        return path.getFileSystem().supportedFileAttributeViews().contains("posix")
+                ? new FileAttribute<?>[]{PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString(permissions))}
                 : new FileAttribute<?>[0];
-    }
-
-    static boolean posix(Path path) {
-        return path.getFileSystem().supportedFileAttributeViews().contains("posix");
     }
 
     private static void deleteTree(Path directory) throws IOException {
@@ -307,6 +321,9 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         }
         nextSegment = files.isEmpty() ? 0 : files.lastKey() + 1;
         for (Indexed indexed : index.values()) indexed.segment().live++;
+        // The segments the index names no record of, which a final flush leaves behind: otherwise only the next
+        // batch written would unlink them
+        unlinkEmptySegments();
         judgeFull();
         LOGGER.info("Overlay store {}: records of {} chunks in {} segments", directory, index.size(), segments.size());
     }
@@ -415,7 +432,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
                         chunk.chunkX(), chunk.chunkZ());
             } else {
                 final byte[] record = record(chunk, encoding);
-                unloaded = new Unloaded(new OverlayHit(present(chunk, record), encoding.generation(), -1,
+                unloaded = new Unloaded(new OverlayHit(present(chunk, record), encoding.generation(), PENDING_SEGMENT,
                         pendingSequence.incrementAndGet()), record);
             }
         } catch (RuntimeException e) {
@@ -461,6 +478,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     }
 
     private void release(int holder) {
+        // A CAS: the final flush leaves CLOSED, which no release undoes
         writeRight.compareAndSet(holder, IDLE);
         synchronized (rightReleased) {
             rightReleased.notifyAll();
@@ -476,9 +494,9 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         awaitEncodings(deadline);
         final List<Item> batch = new ArrayList<>();
         takePending(batch);
-        harvest(batch, false, false);
+        harvest(batch, /* finalFlush= */ false, /* staleToo= */ false);
         selectCopies(batch);
-        if (!batch.isEmpty() && write(batch) != null) {
+        if (!batch.isEmpty() && write(batch, /* finalFlush= */ false) != null) {
             final OverlaySegment current = active;
             if (current != null && current.records() >= tuning.segmentRecords()) {
                 current.seal();
@@ -505,7 +523,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         int count = Math.min(evictCap.left(), residents.size() - options.cap() - evictCap.inFlight);
         for (Iterator<Resident> it = lru.values().iterator(); count > 0 && it.hasNext(); ) {
             final Resident resident = it.next();
-            if (resident.inFlight != null || resident.chunk.relightPending() || !taken.add(resident)) continue;
+            if (resident.encodeTask != null || resident.chunk.relightPending() || !taken.add(resident)) continue;
             count--;
             final OverlayChunk chunk = resident.chunk;
             final long generation = chunk.generation();
@@ -523,7 +541,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private void selectUnloads(Set<Resident> taken, long deadline) {
         for (Iterator<Resident> it = unloadQueue.iterator(); unloadCap.left() > 0 && it.hasNext(); ) {
             final Resident resident = it.next();
-            if (resident.inFlight != null || !resident.chunk.dirty() || !taken.add(resident)) continue;
+            if (resident.encodeTask != null || !resident.chunk.dirty() || !taken.add(resident)) continue;
             submit(resident, unloadCap, deadline);
         }
     }
@@ -538,7 +556,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         for (Iterator<Resident> it = dirtyQueue.values().iterator(); dueCap.left() > 0 && it.hasNext(); ) {
             final Resident resident = it.next();
             if (now - resident.dirtySince < interval) break;
-            if (resident.inFlight != null || !taken.add(resident)) continue;
+            if (resident.encodeTask != null || !taken.add(resident)) continue;
             submit(resident, dueCap, deadline);
         }
     }
@@ -546,10 +564,10 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     /** {@code cap} is null for the final flush, which has none. */
     private void submit(Resident resident, @Nullable Cap cap, long deadline) {
         final OverlayChunk chunk = resident.chunk;
-        resident.inFlight = encoders.submit(() -> encode(chunk, deadline));
+        resident.encodeTask = encoders.submit(() -> encode(chunk, deadline));
         resident.cap = cap;
         if (cap != null) cap.inFlight++;
-        inFlight.add(resident);
+        submitted.add(resident);
     }
 
     /** On an encode thread; null when the chunk's write-lock was not had in time, or the final flush's deadline passed before it started. */
@@ -559,6 +577,8 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         final OverlayEncoding encoding = chunk.encodeOverlay(settings, deadline);
         if (encoding == null) return null;
         final byte[] record = record(chunk, encoding);
+        // Parsed before it is appended: after the fsync, index() reads every record of the batch back with
+        // OverlaySegment#present, which must not fail halfway through the batch
         present(chunk, record);
         return new Encoded(encoding.generation(), record);
     }
@@ -583,14 +603,14 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
 
     /** Waits for the encodings in flight until {@code deadline}, the oldest first. */
     private void awaitEncodings(long deadline) {
-        for (Resident resident : inFlight) {
+        for (Resident resident : submitted) {
             final long left = deadline - System.nanoTime();
             if (left <= 0) return;
             try {
-                Objects.requireNonNull(resident.inFlight).get(left, TimeUnit.NANOSECONDS);
+                Objects.requireNonNull(resident.encodeTask).get(left, TimeUnit.NANOSECONDS);
             } catch (TimeoutException _) {
                 return;
-            } catch (ExecutionException | CancellationException _) {
+            } catch (ExecutionException _) {
                 // harvest reports it
             } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();
@@ -603,40 +623,40 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
      * Takes the finished encodings into {@code batch}, in the order they were submitted: those still
      * at the chunk's {@code generation}, or with {@code staleToo} every one, content of a real
      * generation newer than the index's. The chunks of the others stay dirty and are encoded again.
-     * Evictions demote, but not in the final flush.
+     * Evictions demote, but not in the final flush. Of a chunk whose encodings keep throwing, the
+     * first failure is logged, and the encoding after the last one.
      */
     private void harvest(List<Item> batch, boolean finalFlush, boolean staleToo) {
-        for (Iterator<Resident> it = inFlight.iterator(); it.hasNext(); ) {
+        for (Iterator<Resident> it = submitted.iterator(); it.hasNext(); ) {
             final Resident resident = it.next();
-            final Future<Encoded> future = Objects.requireNonNull(resident.inFlight);
+            final Future<Encoded> future = Objects.requireNonNull(resident.encodeTask);
             if (!future.isDone()) continue;
             it.remove();
-            resident.inFlight = null;
+            resident.encodeTask = null;
             final Cap cap = resident.cap;
             if (cap != null) cap.inFlight--;
-            final Encoded encoded = result(resident.chunk, future);
+            final OverlayChunk chunk = resident.chunk;
+            if (future.state() == Future.State.FAILED) {
+                if (resident.encodeFailures++ == 0) {
+                    LOGGER.error("Chunk {},{} does not encode into an overlay record: it stays dirty, and its next "
+                            + "failures are not logged until it encodes", chunk.chunkX(), chunk.chunkZ(),
+                            future.exceptionNow());
+                }
+                continue;
+            }
+            final Encoded encoded = future.resultNow();
             if (encoded == null) continue;
+            if (resident.encodeFailures > 0) {
+                LOGGER.info("Chunk {},{} encodes into an overlay record again after {} failed encodings", chunk.chunkX(),
+                        chunk.chunkZ(), resident.encodeFailures);
+                resident.encodeFailures = 0;
+            }
             synchronized (resident) {
                 // Unloaded since: the pending table has its latest content
                 if (resident.removed) continue;
             }
             if (!staleToo && encoded.generation() != resident.chunk.generation()) continue;
             batch.add(new ChunkItem(resident, encoded, cap == evictCap && !finalFlush));
-        }
-    }
-
-    private static @Nullable Encoded result(OverlayChunk chunk, Future<Encoded> future) {
-        try {
-            return future.get();
-        } catch (ExecutionException e) {
-            LOGGER.error("Chunk {},{} does not encode into an overlay record, it stays dirty", chunk.chunkX(),
-                    chunk.chunkZ(), e.getCause());
-            return null;
-        } catch (CancellationException _) {
-            return null;
-        } catch (InterruptedException _) {
-            Thread.currentThread().interrupt();
-            return null;
         }
     }
 
@@ -674,12 +694,13 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     /**
      * Appends {@code batch} in order and forces every segment it went into, the group commit; then
      * the index names the new records, the pending entries written leave the table, and the chunks
-     * hear about their records.
+     * hear about their records. Of a run of write phases that fail, the first is logged, and the write
+     * after the last one; a final flush that fails always is, as nothing writes after it.
      *
      * @return null if the batch failed: then nothing of it is indexed, the chunks stay dirty, and the
      *         segments it went into take no more records
      */
-    private @Nullable Commit write(List<Item> batch) {
+    private @Nullable Commit write(List<Item> batch, boolean finalFlush) {
         final List<Appended> appended = new ArrayList<>(batch.size());
         final Set<OverlaySegment> touched = new LinkedHashSet<>();
         long bytes = 0;
@@ -695,10 +716,19 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
             fsyncNanos = System.nanoTime() - start;
         } catch (IOException e) {
             evictFailed.increment();
-            LOGGER.error("The overlay write phase failed in {}: none of its {} records is indexed, the chunks stay dirty "
-                    + "and are written again", directory, batch.size(), e);
+            if (finalFlush) {
+                LOGGER.error("The overlay final flush failed in {}: none of its {} records is indexed, the store closes "
+                        + "and their changes are lost when the process exits", directory, batch.size(), e);
+            } else if (failedInARow++ == 0) {
+                LOGGER.error("The overlay write phase failed in {}: none of its {} records is indexed, the chunks stay "
+                        + "dirty and are written again", directory, batch.size(), e);
+            }
             abandon(touched);
             return null;
+        }
+        if (failedInARow > 0) {
+            LOGGER.info("Overlay writes succeed again in {} after {} failed write phases", directory, failedInARow);
+            failedInARow = 0;
         }
         flushFsyncs.add(touched.size());
         flushAppended.add(appended.size());
@@ -712,8 +742,11 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         for (int i = 0; i < appended.size(); i++) {
             if (appended.get(i).item() instanceof ChunkItem written) {
                 final Resident resident = written.resident();
-                if (resident.chunk.written(written.encoded().generation(), hits.get(i), written.demote())) {
-                    afterWritten(resident, written.demote(), writtenAt);
+                // An encoding harvested ticks after its eviction was picked: a change next to the chunk may have
+                // queued a light recomputation on it since, and none may wait to install into a demoted chunk (M3-D)
+                final boolean demote = written.demote() && !resident.chunk.relightPending();
+                if (resident.chunk.written(written.encoded().generation(), hits.get(i), demote)) {
+                    afterWritten(resident, demote, writtenAt);
                 }
             }
         }
@@ -728,11 +761,11 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
             case PendingItem written -> {
                 final OverlayHit hit = written.unloaded().hit();
                 yield appendRecord(item, hit.record().chunkX(), hit.record().chunkZ(), hit.generation(),
-                        MemorySegment.ofArray(written.unloaded().record()), touched);
+                        written.unloaded().record(), touched);
             }
             case ChunkItem written -> appendRecord(item, written.resident().chunk.chunkX(),
                     written.resident().chunk.chunkZ(), written.encoded().generation(),
-                    MemorySegment.ofArray(written.encoded().record()), touched);
+                    written.encoded().record(), touched);
             case CopyItem copy -> {
                 final OverlaySegment from = copy.from().segment();
                 final long offset = copy.from().hit().offset();
@@ -742,9 +775,9 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         };
     }
 
-    private Appended appendRecord(Item item, int chunkX, int chunkZ, long generation, MemorySegment record,
+    private Appended appendRecord(Item item, int chunkX, int chunkZ, long generation, byte[] record,
                                   Set<OverlaySegment> touched) throws IOException {
-        final OverlaySegment segment = active(record.byteSize(), touched);
+        final OverlaySegment segment = active(record.length, touched);
         return new Appended(item, segment, segment.append(tuning.disk(), chunkX, chunkZ, generation, record), generation);
     }
 
@@ -752,6 +785,11 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private OverlaySegment active(long length, Set<OverlaySegment> touched) throws IOException {
         OverlaySegment segment = active;
         if (segment == null || !segment.fits(length)) {
+            // A full segment this batch wrote to is sealed after the fsync; one it did not write to, here
+            if (segment != null && !touched.contains(segment)) {
+                segment.seal();
+                active = null;
+            }
             segment = OverlaySegment.create(directory, nextSegment++, header, tuning.segmentBytes(), tuning.disk());
             segments.put(segment.number, segment);
             active = segment;
@@ -798,7 +836,12 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         return to;
     }
 
-    /** A chunk heard about its record: clean now unless it changed since, and out of the residents if evicted. */
+    /**
+     * A chunk heard about its record: clean now unless it changed since, and out of the residents if evicted.
+     *
+     * @param writtenAt when the batch was forced, on {@code tuning.clock()}; 0 for a clean chunk demoted without
+     *                  a write, which has no flush lag
+     */
     private void afterWritten(Resident resident, boolean demote, long writtenAt) {
         synchronized (resident) {
             // Changed after the encoding: still dirty
@@ -916,7 +959,8 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
                 }
                 return;
             }
-            // The write phase runs: judged dead is not stopped
+            // A write phase holds the right: a tick judged dead may still run it. Wait for it to release or close the
+            // store, until the deadline, without writing
             final long left = finalDeadline.get() - System.nanoTime();
             if (left <= 0) return;
             synchronized (rightReleased) {
@@ -952,20 +996,20 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         final List<Item> batch = new ArrayList<>();
         takePending(batch);
         awaitEncodings(deadline);
-        harvest(batch, true, false);
+        harvest(batch, /* finalFlush= */ true, /* staleToo= */ false);
         final Set<Resident> taken = new HashSet<>();
         for (Item item : batch) {
             if (item instanceof ChunkItem written) taken.add(written.resident());
         }
         for (Resident resident : residents.values()) {
             if (System.nanoTime() - deadline >= 0) break;
-            if (resident.inFlight == null && resident.chunk.dirty() && !taken.contains(resident)) {
+            if (resident.encodeTask == null && resident.chunk.dirty() && !taken.contains(resident)) {
                 submit(resident, null, deadline);
             }
         }
         awaitEncodings(deadline);
-        harvest(batch, true, true);
-        final Commit written = batch.isEmpty() ? new Commit(0, 0) : write(batch);
+        harvest(batch, /* finalFlush= */ true, /* staleToo= */ true);
+        final Commit written = batch.isEmpty() ? new Commit(0, 0) : write(batch, /* finalFlush= */ true);
         writeRight.set(CLOSED);
         encoders.shutdownNow();
         final OverlaySegment current = active;
@@ -998,7 +1042,9 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
 
     /**
      * The counters of {@code EVT:chunk_stream_stats}; reading resets {@code flushLagSMax} and
-     * {@code writePhaseMsMax}, so only the shard host's 60 s task calls it.
+     * {@code writePhaseMsMax}, so a read takes the maxima since the read before away from the next one.
+     * The shard host reads it in its 60 s task, and once more at start, before the process ticks, for
+     * the baseline (API-M3-007).
      */
     public OverlayStats stats() {
         return new OverlayStats(residents.size(), evicted.sum(), evictFailed.sum(), flushAppended.sum(),

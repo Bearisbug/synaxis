@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletionException;
 import java.util.function.UnaryOperator;
 import java.util.zip.CRC32C;
 
@@ -31,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Security review 2026-10 (surface 2): the readers of a map release and of segment ③ against
  * malformed bytes. A broken index entry or segment table has to come back as {@link SynxSlot.Failed}, a
  * record the loader cannot place loads as failed, and every length is held to its cap before anything is
- * allocated for it (M3-S, {@code API-M3-001} 长度上限).
+ * allocated for it (M3-S, {@code API-M3-001} 长度上限). The failed loads name the file they read, or miss.
  */
 public class SynxParserBoundaryTest {
 
@@ -201,6 +202,51 @@ public class SynxParserBoundaryTest {
                         + "not a zlib stream"), errors.get(1));
             }
             assertEquals(2, loader.stats().failed());
+        } finally {
+            env.process().stop();
+        }
+    }
+
+    /** A chunk of the region whose region file the release does not have loads as failed, the ERROR naming the file. */
+    @Test
+    public void aChunkOfTheRegionWithoutItsRegionFileNamesTheFile() {
+        final Env env = Env.create(UnaryOperator.identity());
+        try {
+            final SynxChunkLoader loader = SynxWorlds.loader(SynxTestMap.get().buildDir,
+                    new SynxManifest.Bounds(0, 0, 31, 40), SynxWorlds.WRITABLE, new MemoryOverlay());
+            final Instance instance = SynxWorlds.instance(env.process(), loader);
+            try (LogCapture logs = LogCapture.of(SynxChunkLoader.class)) {
+                assertEquals(SynxChunk.Mode.FAILED, ((SynxChunk) instance.loadChunk(5, 35).join()).mode());
+                final List<String> errors = logs.messagesAt(Level.ERROR);
+                assertEquals(1, errors.size(), errors.toString());
+                assertTrue(errors.getFirst().endsWith(
+                        " it loads as read only air: the region file r.0.1.synx is missing"), errors.getFirst());
+            }
+            assertEquals(1, loader.stats().failed());
+        } finally {
+            env.process().stop();
+        }
+    }
+
+    /**
+     * An instance of another world than the release's is a mistake of the caller, not a record that does not
+     * read: the load throws, and no chunk is logged or counted as failed.
+     */
+    @Test
+    public void anInstanceOfAnotherWorldThrowsWithoutAFailedChunk() {
+        final Env env = Env.create(UnaryOperator.identity());
+        try {
+            final SynxChunkLoader loader = SynxWorlds.loader(SynxWorlds.WRITABLE, new MemoryOverlay());
+            final Instance overworld = env.process().instance().createInstanceContainer(loader);
+            try (LogCapture logs = LogCapture.of(SynxChunkLoader.class)) {
+                final CompletionException thrown = assertThrows(CompletionException.class,
+                        () -> overworld.loadChunk(10, 5).join());
+                final IllegalStateException world = assertInstanceOf(IllegalStateException.class, thrown.getCause());
+                assertTrue(world.getMessage().startsWith("an instance of y -64 height 384, the release "),
+                        world.getMessage());
+                assertEquals(List.of(), logs.messagesAt(Level.ERROR));
+            }
+            assertEquals(0, loader.stats().failed());
         } finally {
             env.process().stop();
         }

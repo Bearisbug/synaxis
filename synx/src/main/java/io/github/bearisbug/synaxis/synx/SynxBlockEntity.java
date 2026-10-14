@@ -16,7 +16,10 @@ import java.util.List;
  * @param nbt      the full NBT
  */
 public record SynxBlockEntity(int sectionY, int index, String handler, CompoundBinaryTag nbt) {
-    /** The order of the block entity table of segment ③, by {@code section_y}, then {@code index}: the order it is written and read back in. */
+    /**
+     * The order of the block entity table of segment ③, by {@code section_y}, then {@code index}: the order
+     * it is written and read back in.
+     */
     public static final Comparator<SynxBlockEntity> ORDER =
             Comparator.comparingInt(SynxBlockEntity::sectionY).thenComparingInt(SynxBlockEntity::index);
     /** The keys of a block entity record that the block carries itself: segment ① and the blocks of a shard leave them out. */

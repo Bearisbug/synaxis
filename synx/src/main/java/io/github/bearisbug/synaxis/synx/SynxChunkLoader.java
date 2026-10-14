@@ -60,7 +60,7 @@ public final class SynxChunkLoader implements ChunkLoader {
     private final OverlayTracker tracker;
     private final VerifiedBuild verified;
     private final SectionCache cache;
-    private final Set<String> warnedEntityTypes = ConcurrentHashMap.newKeySet();
+    private final Set<String> staticEntityWarnings = ConcurrentHashMap.newKeySet();
 
     private final LongAdder handleSent = new LongAdder();
     private final LongAdder overlaySent = new LongAdder();
@@ -102,8 +102,8 @@ public final class SynxChunkLoader implements ChunkLoader {
             if (hit != null) {
                 final String file = "the overlay segment " + OverlaySegment.fileName(hit.segment());
                 try {
-                    return handle(instance, chunkX, chunkZ, true, file, hit.record(), new SectionCache.Key(hit.segment(), hit.offset()),
-                            hit.generation());
+                    return handle(instance, chunkX, chunkZ, true, file, hit.record(),
+                            new SectionCache.Key(hit.segment(), hit.offset()), hit.generation());
                 } catch (InternalError _) {
                     return faulted(instance, chunkX, chunkZ, true, file);
                 }
@@ -120,7 +120,8 @@ public final class SynxChunkLoader implements ChunkLoader {
                 case SynxSlot.Failed broken -> failed(instance, chunkX, chunkZ, inRegion,
                         file + ": " + broken.fault() + " " + broken.detail());
                 case SynxSlot.Absent _ -> inRegion
-                        ? failed(instance, chunkX, chunkZ, true, region != null ? "no record" : "no region file")
+                        ? failed(instance, chunkX, chunkZ, true,
+                                file + (region != null ? ": no record" : " is missing"))
                         : null;
             };
         } catch (InternalError _) {
@@ -156,8 +157,13 @@ public final class SynxChunkLoader implements ChunkLoader {
         try {
             // A handler that ticks takes its block from segment ① here, the first read of its body
             chunk = SynxChunk.handle(instance, chunkX, chunkZ, this, inRegion, source, generation);
-        } catch (IllegalArgumentException | IllegalStateException | IndexOutOfBoundsException e) {
+        } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
             return failed(instance, chunkX, chunkZ, inRegion, file + ", segment ①: " + e.getMessage());
+        } catch (IllegalStateException e) {
+            // The section cache throws this for a faulted mapping; any other, as for an instance of
+            // another world, is no fault of the record
+            if (!(e.getCause() instanceof InternalError)) throw e;
+            return faulted(instance, chunkX, chunkZ, inRegion, file);
         }
         loaded.increment();
         return chunk;
@@ -201,7 +207,7 @@ public final class SynxChunkLoader implements ChunkLoader {
     }
 
     void spawnStatics(Instance instance, List<CompoundBinaryTag> entities) {
-        SynxStaticEntities.spawn(instance, entities, warnedEntityTypes);
+        SynxStaticEntities.spawn(instance, entities, staticEntityWarnings);
     }
 
     /**

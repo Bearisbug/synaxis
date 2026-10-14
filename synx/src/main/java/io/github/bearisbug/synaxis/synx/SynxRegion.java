@@ -16,10 +16,11 @@ import java.util.zip.CRC32C;
  * A memory mapped, read only {@code .synx} region file, API-M3-001.
  * <p>
  * The mapping belongs to the arena the caller passes in: the shard maps its region files into
- * {@code Arena.ofShared()} and keeps them for the life of the process (API-M3-005), overlay segment
- * files go into {@code Arena.ofAuto()} (API-M3-007). Every {@link SynxSlot.Present} is a view into
- * the mapping and is only valid while that arena is open. The mapping is lazy; opening reads the
- * header and nothing else.
+ * {@code Arena.ofShared()} once, in {@link SynxBuildVerifier#open}, and keeps them for the life of
+ * the process (API-M3-002); the baker's verify maps them into an arena it closes when done. Every
+ * {@link SynxSlot.Present} is a view into the mapping and is only valid while that arena is open.
+ * Overlay segment files are not region files: {@link #of} refuses them. The mapping is lazy;
+ * opening reads the header and nothing else.
  */
 public final class SynxRegion {
     private static final ValueLayout.OfLong LONG = ValueLayout.JAVA_LONG_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
@@ -111,7 +112,9 @@ public final class SynxRegion {
         if (offset < SynxFormat.RECORDS_START || offset % SynxFormat.RECORD_ALIGNMENT != 0
                 || length < SynxFormat.SEGMENT_TABLE_BYTES || offset > file.byteSize() - length) {
             return new SynxSlot.Failed(SynxFault.OFFSET_OUT_OF_RANGE, "offset " + Long.toUnsignedString(offset)
-                    + " length " + length + " in a file of " + file.byteSize() + " bytes");
+                    + " length " + length + " in a file of " + file.byteSize() + " bytes; a record starts at "
+                    + SynxFormat.RECORDS_START + " or later on the " + SynxFormat.RECORD_ALIGNMENT
+                    + " byte grid, is at least " + SynxFormat.SEGMENT_TABLE_BYTES + " bytes and ends inside the file");
         }
         final MemorySegment record = file.asSlice(offset, length);
         final CRC32C actual = new CRC32C();

@@ -18,8 +18,9 @@ import java.util.zip.Inflater;
 
 /**
  * Segment ① of API-M3-001: a {@code ChunkDataPacket} framed the way a compressed connection sends
- * it, frame length VarInt, uncompressed length VarInt, zlib data. A shard writes these bytes to the
- * socket unchanged, so the frame follows the protocol, not this file format.
+ * it, frame length VarInt, uncompressed length VarInt, zlib data. Below {@code compression_threshold} the
+ * body goes as it is, after an uncompressed length of 0, as the protocol has it. A shard writes these
+ * bytes to the socket unchanged, so the frame follows the protocol, not this file format.
  * <p>
  * The body is canonical: every section palette is rebuilt from its content before it is written,
  * so the bytes depend on what the chunk holds and not on the order it was written in or the
@@ -37,13 +38,18 @@ public final class SynxChunkPacket {
     /**
      * Frames the canonical form of {@code packet}.
      *
-     * @throws IllegalArgumentException if the packet does not hold {@link SynxSettings#sectionCount()} sections
+     * @throws IllegalArgumentException if the packet does not hold {@link SynxSettings#sectionCount()} sections,
+     *                                  or its body is over {@link #MAX_UNCOMPRESSED_BYTES}, naming the chunk
      */
     public static byte[] encode(ChunkDataPacket packet, SynxSettings settings, Registries registries) {
-        final byte[] body = body(canonical(packet, settings, registries), registries);
+        final byte[] body = serialize(canonical(packet, settings, registries), registries);
+        if (body.length > MAX_UNCOMPRESSED_BYTES) {
+            throw new IllegalArgumentException("chunk " + packet.chunkX() + "," + packet.chunkZ() + ": the packet is "
+                    + body.length + " bytes uncompressed, over " + MAX_UNCOMPRESSED_BYTES);
+        }
         final ByteArrayOutputStream frame = new ByteArrayOutputStream(body.length / 2 + 16);
         if (body.length < settings.compressionThreshold()) {
-            writeVarInt(frame, 1 + body.length);
+            writeVarInt(frame, varIntSize(0) + body.length);
             writeVarInt(frame, 0);
             frame.writeBytes(body);
         } else {
@@ -157,7 +163,7 @@ public final class SynxChunkPacket {
         return empty;
     }
 
-    private static byte[] body(ChunkDataPacket packet, Registries registries) {
+    private static byte[] serialize(ChunkDataPacket packet, Registries registries) {
         return NetworkBuffer.makeArray(buffer -> {
             buffer.write(NetworkBuffer.VAR_INT, SynxFormat.CHUNK_DATA_PACKET_ID);
             buffer.write(ChunkDataPacket.SERIALIZER, packet);

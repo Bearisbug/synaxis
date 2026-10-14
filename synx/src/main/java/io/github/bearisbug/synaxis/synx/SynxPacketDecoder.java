@@ -31,7 +31,7 @@ final class SynxPacketDecoder {
 
     /**
      * The palettes and the light of every section; a null light array is a section the packet marks
-     * empty.
+     * empty or leaves out, as {@link #sky}.
      */
     record Full(Sections sections, byte[] @Nullable [] sky, byte[] @Nullable [] block) {
     }
@@ -43,7 +43,8 @@ final class SynxPacketDecoder {
      * The section palettes of a framed segment ①. Stops after the section data: heightmaps are
      * skipped, block entities and light are not read at all.
      *
-     * @throws IllegalArgumentException if the bytes are not a chunk packet of {@code sectionCount} sections
+     * @throws IllegalArgumentException  if the bytes are not a chunk packet of {@code sectionCount} sections
+     * @throws IndexOutOfBoundsException if the body ends before a field it states
      */
     static Sections sections(MemorySegment framed, Registries registries, int sectionCount) {
         final NetworkBuffer buffer = body(framed, registries);
@@ -54,7 +55,8 @@ final class SynxPacketDecoder {
     /**
      * The section palettes and the light of a framed segment ①.
      *
-     * @throws IllegalArgumentException if the bytes are not a chunk packet of {@code sectionCount} sections
+     * @throws IllegalArgumentException  if the bytes are not a chunk packet of {@code sectionCount} sections
+     * @throws IndexOutOfBoundsException if the body ends before a field it states
      */
     static Full full(MemorySegment framed, Registries registries, int sectionCount) {
         final NetworkBuffer buffer = body(framed, registries);
@@ -62,15 +64,15 @@ final class SynxPacketDecoder {
         final LightData light = buffer.read(LightData.NETWORK_TYPE);
         if (buffer.readableBytes() != 0) throw new IllegalArgumentException(buffer.readableBytes() + " bytes after the packet");
         return new Full(sections(chunkData.data(), registries, sectionCount),
-                light(light.skyMask(), light.skyLight(), sectionCount),
-                light(light.blockMask(), light.blockLight(), sectionCount));
+                sky(light, sectionCount), block(light, sectionCount));
     }
 
     /**
      * The light of a framed segment ①, as the packet carries it: the chunk data is read past without
      * decoding the palettes.
      *
-     * @throws IllegalArgumentException if the bytes are not a chunk packet
+     * @throws IllegalArgumentException  if the bytes are not a chunk packet
+     * @throws IndexOutOfBoundsException if the body ends before a field it states
      */
     static LightData light(MemorySegment framed, Registries registries) {
         final NetworkBuffer buffer = body(framed, registries);
@@ -80,12 +82,12 @@ final class SynxPacketDecoder {
 
     /** The sky arrays of a light payload by section, bottom up; null for a section the payload marks empty or leaves out. */
     static byte[] @Nullable [] sky(LightData light, int sectionCount) {
-        return light(light.skyMask(), light.skyLight(), sectionCount);
+        return bySection(light.skyMask(), light.skyLight(), sectionCount);
     }
 
     /** The block arrays of a light payload by section, as {@link #sky}. */
     static byte[] @Nullable [] block(LightData light, int sectionCount) {
-        return light(light.blockMask(), light.blockLight(), sectionCount);
+        return bySection(light.blockMask(), light.blockLight(), sectionCount);
     }
 
     /** The packet id and chunk coordinates read, the rest of the body left. */
@@ -115,7 +117,7 @@ final class SynxPacketDecoder {
     }
 
     /** Mask bit {@code i + 1} is section {@code i}; bit 0 and the last bit are the sections below and above the world. */
-    private static byte[] @Nullable [] light(BitSet mask, List<byte[]> arrays, int sectionCount) {
+    private static byte[] @Nullable [] bySection(BitSet mask, List<byte[]> arrays, int sectionCount) {
         final byte[][] result = new byte[sectionCount][];
         int next = 0;
         for (int bit = mask.nextSetBit(0); bit >= 0; bit = mask.nextSetBit(bit + 1)) {

@@ -3,9 +3,12 @@ package io.github.bearisbug.synaxis.synx;
 /**
  * Layout constants of the {@code .synx} region file, {@code docs/DESIGN-M3.md} API-M3-001.
  * <p>
- * Every multi-byte integer in the file is little endian. A change to anything in here is a layout
- * change: it bumps {@link #FORMAT_VERSION} and refreezes the test vectors in the same change
- * ({@code docs/DESIGN-M3.md} §24).
+ * Every multi-byte integer of the container (header, offset index, segment length table, segments ②
+ * and ④, the tables of segment ③) is little endian; segment ① is the protocol's own big endian and
+ * VarInt encoding, and NBT is big endian. A change to a layout constant is a layout change: it bumps
+ * {@link #FORMAT_VERSION} and refreezes the test vectors in the same change ({@code docs/DESIGN-M3.md}
+ * §24). {@link #CHUNK_DATA_PACKET_ID} follows the protocol instead: it changes with
+ * {@code protocol_version} and a rebake, the vectors refrozen, {@code format_version} as it is.
  */
 public final class SynxFormat {
     /** {@code SYNX} read as a little endian {@code int}. */
@@ -25,8 +28,10 @@ public final class SynxFormat {
     /** The four {@code u32} segment lengths in front of every record. */
     public static final int SEGMENT_TABLE_BYTES = 16;
 
+    /** Where segment ② keeps its 256 {@code i16} surface heights, after the 32 byte walkable bit set. */
+    public static final int NAVIGATION_SURFACE_Y = 32;
     /** Segment ②: the walkable bit set (32 B) and 256 {@code i16} surface heights. */
-    public static final int NAVIGATION_BYTES = 32 + 256 * 2;
+    public static final int NAVIGATION_BYTES = NAVIGATION_SURFACE_Y + 256 * 2;
     /** Segment ④: 256 columns of surface height {@code u16}, surface state id {@code u16}, sky light {@code u8}. */
     public static final int COLUMN_BYTES = 256 * 5;
 
@@ -57,5 +62,15 @@ public final class SynxFormat {
     /** {@code r.<rx>.<rz>.synx}. */
     public static String regionFileName(int regionX, int regionZ) {
         return "r." + regionX + "." + regionZ + ".synx";
+    }
+
+    /** {@code t.<tile_x>.<tile_z>.hfp}, a far view pack under {@code farview/} of the release directory, API-M3-014. */
+    public static String farViewFileName(int tileX, int tileZ) {
+        return "t." + tileX + "." + tileZ + ".hfp";
+    }
+
+    /** {@code <map_id>/farview/<sha256 hex>.hfp}, a far view object under the export directory and the url root. */
+    public static String farViewObject(String mapId, byte[] sha256) {
+        return mapId + "/farview/" + SynxDigests.hex(sha256) + ".hfp";
     }
 }

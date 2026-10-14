@@ -39,13 +39,13 @@ public record SynxChunkRecord(int chunkX, int chunkZ, byte[] packet, byte[] navi
      * The record as a file stores it (API-M3-001): the segment length table, then the four
      * segments, segment ③ compressed at the level of {@code settings}. Region files and overlay
      * segment files write a record this way. A record a shard would not read is not written (M3-S,
-     * {@code API-M3-001} 长度上限): a segment ① frame longer than {@link SynxChunkPacket#MAX_FRAME_BYTES}, a
-     * segment ③ over 16 MiB or one that does not read back.
+     * {@code API-M3-001} 长度上限): a segment ① longer than the longest frame, a segment ③ over 16 MiB or
+     * one that does not read back.
      *
      * @throws IllegalArgumentException for such a record, naming the chunk
      */
     public byte[] encode(SynxSettings settings) {
-        return encode(entities(), settings.compressionLevel());
+        return encode(entityTables(), settings.compressionLevel());
     }
 
     /**
@@ -53,7 +53,7 @@ public record SynxChunkRecord(int chunkX, int chunkZ, byte[] packet, byte[] navi
      *
      * @throws IllegalArgumentException if it is over 16 MiB or does not read back, naming the chunk
      */
-    byte[] entities() {
+    byte[] entityTables() {
         try {
             return SynxEntities.encode(blockEntities, staticEntities);
         } catch (IllegalArgumentException e) {
@@ -62,13 +62,14 @@ public record SynxChunkRecord(int chunkX, int chunkZ, byte[] packet, byte[] navi
     }
 
     /** {@link #encode(SynxSettings)} with segment ③ encoded already, uncompressed. */
-    byte[] encode(byte[] entities, int compressionLevel) {
-        // A frame length over the cap takes a 4 byte VarInt: 3 bytes of VarInt and the cap are the longest frame
-        if (packet.length > SynxChunkPacket.MAX_FRAME_BYTES + 3) {
+    byte[] encode(byte[] entityTables, int compressionLevel) {
+        // The longest frame the client takes: a 3 byte frame length and MAX_FRAME_BYTES after it
+        if (packet.length > SynxChunkPacket.varIntSize(SynxChunkPacket.MAX_FRAME_BYTES) + SynxChunkPacket.MAX_FRAME_BYTES) {
             throw new IllegalArgumentException("chunk " + chunkX + "," + chunkZ + ": segment ① is " + packet.length
                     + " bytes, a frame length over " + SynxChunkPacket.MAX_FRAME_BYTES);
         }
-        final byte[] storedEntities = entities.length == 0 ? entities : SynxChunkPacket.deflate(entities, compressionLevel);
+        final byte[] storedEntities = entityTables.length == 0 ? entityTables
+                : SynxChunkPacket.deflate(entityTables, compressionLevel);
         final ByteBuffer bytes = ByteBuffer.allocate(SynxFormat.SEGMENT_TABLE_BYTES + packet.length
                 + navigation.length + storedEntities.length + columns.length).order(ByteOrder.LITTLE_ENDIAN);
         bytes.putInt(packet.length).putInt(navigation.length).putInt(storedEntities.length).putInt(columns.length);

@@ -90,10 +90,11 @@ public final class SynxBuildVerifier {
     }
 
     /**
-     * Checks {@code <maps_root>/<map_id>/<build_id>/}, reading its manifest. Only the regions
-     * overlapping both {@code scope} (the shard's {@code view_bounds}) and the manifest bounds are
+     * Checks {@code <maps_root>/<map_id>/<build_id>/}, reading its manifest: the baker's check before and
+     * after publishing. Only the regions overlapping both {@code scope} and the manifest bounds are
      * opened; each of those is hashed in full and unmapped again.
      *
+     * @param scope the chunks whose regions are checked; the baker passes the manifest bounds, the whole release
      * @return the manifest that passed
      * @throws SynxException with the error code of {@code docs/DESIGN-M3.md} §14 and the offending file
      */

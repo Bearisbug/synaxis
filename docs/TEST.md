@@ -332,7 +332,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | REQ-M3-005 天光整列按 `lightBlock` 与面遮挡停止 | TC-WORLD-003 |
 | REQ-M3-006 BFS 按 `lightBlock` 衰减 | TC-WORLD-003 |
 | REQ-M3-007 与原版 26.2 逐值对拍 | TC-WORLD-001、TC-WORLD-002 |
-| REQ-M3-008 `SynxChunkLoader` 与 `SynxChunk` | TC-WORLD-032、TC-WORLD-034～TC-WORLD-041、TC-WORLD-047、TC-WORLD-048、TC-WORLD-052、TC-WORLD-053、TC-WORLD-056（测试连接追踪句柄区块的 `BufferedPacket`）、TC-WORLD-099（TC-WORLD-054 已废弃） |
+| REQ-M3-008 `SynxChunkLoader` 与 `SynxChunk` | TC-WORLD-032、TC-WORLD-034～TC-WORLD-041、TC-WORLD-NEW-synx-loader-entities-2（缺 Pos 或 Rotation 的静态实体与乘客）、TC-WORLD-047、TC-WORLD-048、TC-WORLD-052、TC-WORLD-053、TC-WORLD-056（测试连接追踪句柄区块的 `BufferedPacket`）、TC-WORLD-099（TC-WORLD-054 已废弃） |
 | REQ-M3-009 视距与模拟距离分离 | TC-WORLD-010、TC-WORLD-011（分片宿主视距 12）、TC-WORLD-041、TC-WORLD-044、TC-WORLD-047、TC-WORLD-048、TC-WORLD-050、TC-WORLD-052、TC-WORLD-145（真机 P1③ 的填满耗时，只登记，执行者人工） |
 | REQ-M3-010 按观察者引用计数自动卸载 | TC-WORLD-045、TC-WORLD-046、TC-WORLD-049、TC-WORLD-050 |
 | REQ-M3-011 覆盖层 | TC-WORLD-039、TC-WORLD-041、TC-WORLD-042、TC-WORLD-043、TC-WORLD-049、TC-WORLD-051、TC-WORLD-091（§19 标「A、C 合并后」的六条的真组合）、TC-WORLD-097（真进程最终落盘）、TC-WORLD-NEW-overlay-store-1（失败日志、起服 unlink 空段、换段封口、淘汰复查重算） |
@@ -354,7 +354,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | REQ-M3-028 `fullyLit` 重算 | TC-WORLD-026（TC-WORLD-005 已废弃） |
 | REQ-M3-029 地图分片上玩家位置、改地形与 `view_bounds` 外的区块 | TC-WORLD-125～TC-WORLD-127；TC-WORLD-128（扫图测量） |
 | REQ-M3-030 覆盖层的磁盘上限 | TC-WORLD-129、TC-WORLD-130、TC-WORLD-NEW-overlay-store-1（起服 unlink 没有存活记录的段） |
-| REQ-M3-031 地图文件的信任与解析上限 | TC-WORLD-131～TC-WORLD-135 |
+| REQ-M3-031 地图文件的信任与解析上限 | TC-WORLD-131～TC-WORLD-135、TC-WORLD-NEW-synx-loader-entities-1（段③ 声明多于实有的内容、畸形内容与载入时放不下的记录） |
 | REQ-M3-032 远景下载的限制 | TC-WORLD-135（url-root 的 WARN）、TC-WORLD-136、TC-WORLD-137、TC-WORLD-143、`TC-WORLD-NEW-client-download-cache-1`（响应体不结束的 3xx） |
 | REQ-M3-033 关卡门读心跳的复用 | TC-WORLD-138 |
 | REQ-M3-034 地图分片的日夜 | TC-WORLD-150 |
@@ -2376,7 +2376,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `<G> :synx:test --tests '<S>.SynxEdgeVectorTest' --tests '<S>.SynxRegionWriterTest' --tests '<S>.SynxEntitiesTest'` | `BUILD SUCCESSFUL`，三个 XML 全部 0 失败。`SynxEdgeVectorTest` `tests="8"`，对应 `<X>/edge/` 的八个向量：`fileEndingInsideTheIndexIsRefused`（`synx-truncated`）、`fileEndingInsideARecordFailsTheCutChunksAndThePayloadHash`、`indexEntryPastTheEndFailsThatChunkOnly`、`flippedRecordByteFailsThatChunkOnly`（这两条只让对应区块进 failed、同文件其他区块照常读出）、`payloadHashThatDoesNotMatchTheBytesIsRefused`、`otherProtocolVersionIsRefused`、`otherRegistryDigestIsRefused`、`unknownFlagIsRefusedOnOpen`（`synx-magic`）。`SynxRegionWriterTest` `tests="9"`，含 `readerFailsARecordWhoseSegmentTableDisagrees`（段长表不符判 `MALFORMED`）、`finishedRegionNeverReplacesAnExistingFile`、`failedEncodeLeavesNoStagingFile`、`settingsCompareByContent`、`writerRejectsWhatTheFormatCannotHold`。`SynxEntitiesTest` `tests="2"`，含 `malformedTablesAreRefusedAsIllegalArguments`（损坏的段③ 在分配内存前按剩余字节拒绝，统一抛 `IllegalArgumentException`） |
+| 1 | `<G> :synx:test --tests '<S>.SynxEdgeVectorTest' --tests '<S>.SynxRegionWriterTest' --tests '<S>.SynxEntitiesTest'` | `BUILD SUCCESSFUL`，三个 XML 全部 0 失败。`SynxEdgeVectorTest` `tests="8"`，对应 `<X>/edge/` 的八个向量：`fileEndingInsideTheIndexIsRefused`（`synx-truncated`）、`fileEndingInsideARecordFailsTheCutChunksAndThePayloadHash`、`indexEntryPastTheEndFailsThatChunkOnly`、`flippedRecordByteFailsThatChunkOnly`（这两条只让对应区块进 failed、同文件其他区块照常读出）、`payloadHashThatDoesNotMatchTheBytesIsRefused`、`otherProtocolVersionIsRefused`、`otherRegistryDigestIsRefused`、`unknownFlagIsRefusedOnOpen`（`synx-magic`）。`SynxRegionWriterTest` `tests="9"`，含 `readerFailsARecordWhoseSegmentTableDisagrees`（段长表不符判 `MALFORMED`；另一个魔数、更新的 `format_version`、未知 flag 位都按 `synx-magic` 拒，信息依次含 `magic 73594e58, a .synx file starts with 53594e58 (SYNX)`、`format_version 2, this reader knows 1`、`, this reader knows 11`）、`finishedRegionNeverReplacesAnExistingFile`、`failedEncodeLeavesNoStagingFile`、`settingsCompareByContent`、`writerRejectsWhatTheFormatCannotHold`（含 handler 不是合法键的 `Synaxis:Door`）。`SynxEntitiesTest` `tests="3"`，含 `malformedTablesAreRefusedAsIllegalArguments`（损坏的段③ 在分配内存前按剩余字节拒绝，统一抛 `IllegalArgumentException`；`staticEntitiesAShardCannotPlaceAreSkippedWithAWarn` 归 `TC-WORLD-NEW-synx-loader-entities-2`） |
 
 后置：无。
 
@@ -2386,9 +2386,9 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `<G> :synx:test --tests '<S>.SynxChunkPacketTest' --tests '<S>.SynxEntitiesTest'` | `BUILD SUCCESSFUL`；`SynxChunkPacketTest` `tests="7"`（含 `sameContentWrittenInAnotherOrderEncodesToTheSameBytes`、`directPaletteIsWrittenIndirect`、`contentHashDoesNotDependOnTheCompressedBytes`、`chunkDataPacketIdIsTheEnginesPlayId`；`packetOverTheUncompressedCapIsRefusedNamingTheChunk` 归 `TC-WORLD-134`），`SynxEntitiesTest` `tests="2"`（含 `equalNbtBuiltInAnotherOrderEncodesToTheSameBytes`），0 失败 |
+| 1 | `<G> :synx:test --tests '<S>.SynxChunkPacketTest' --tests '<S>.SynxEntitiesTest'` | `BUILD SUCCESSFUL`；`SynxChunkPacketTest` `tests="7"`（含 `sameContentWrittenInAnotherOrderEncodesToTheSameBytes`、`directPaletteIsWrittenIndirect`、`contentHashDoesNotDependOnTheCompressedBytes`、`chunkDataPacketIdIsTheEnginesPlayId`；`packetOverTheUncompressedCapIsRefusedNamingTheChunk` 归 `TC-WORLD-134`），`SynxEntitiesTest` `tests="3"`（含 `equalNbtBuiltInAnotherOrderEncodesToTheSameBytes`），0 失败 |
 | 2 | 反证（只 `optimize`、不先 `setAll`）：`<CP>` 的 `canonical(Palette palette, Palette empty)` 方法体换成 `if (empty == palette) throw new IllegalStateException();`、`palette.optimize(Palette.Optimization.SIZE);`、`return palette;` 三行（保留对 `empty` 的引用，否则 Error Prone 的 `UnusedVariable` 让编译失败），只跑 `SynxChunkPacketTest`，再 `git checkout -- <CP>` | `7 tests completed, 1 failed`：`sameContentWrittenInAnotherOrderEncodesToTheSameBytes` 红在 `SynxChunkPacketTest.java:52`，`array lengths differ, expected: <625> but was: <632>` |
-| 3 | 反证（NBT 键不排序）：`<EN>` 的 `keys.sort(Comparator.naturalOrder());` 改成 `keys.sort((_, _) -> 0);`，只跑 `SynxEntitiesTest`，再 `git checkout -- <EN>` | `2 tests completed, 1 failed`：`equalNbtBuiltInAnotherOrderEncodesToTheSameBytes` 红在 `SynxEntitiesTest.java:37`，`array contents differ at index [15], expected: <9> but was: <10>` |
+| 3 | 反证（NBT 键不排序）：`<EN>` 的 `keys.sort(Comparator.naturalOrder());` 改成 `keys.sort((_, _) -> 0);`，只跑 `SynxEntitiesTest`，再 `git checkout -- <EN>` | `3 tests completed, 1 failed`：`equalNbtBuiltInAnotherOrderEncodesToTheSameBytes` 红在 `SynxEntitiesTest.java:49`，`array contents differ at index [15], expected: <9> but was: <10>` |
 | 4 | 重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --porcelain -- synx` 无输出。
@@ -2399,7 +2399,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `<G> :synx:test --tests '<S>.SynxManifestTest' --tests '<S>.SynxBuildVerifierTest'` | `BUILD SUCCESSFUL`，0 失败。`SynxManifestTest` `tests="4"`：`vectorManifestReadsAndWritesBackUnchanged`、`buildIdCarriesTheContentHashAndTheProtocol`、`anvilSourceKeepsItsDataVersionAndCoverage`、`unreadableManifestIsRefused`（缺字段、摘要不是 hex、`"chunks": 4.5`、`"wall_ms": 1234.5` 都得 `synx-manifest`）。`SynxBuildVerifierTest` `tests="10"`（M3-S 加的 `openChecksOnTheMappingItHandsOnAndAFileRenamedOverItChangesNothing` 归 `TC-WORLD-133`）：`consistentReleaseVerifies`、`oneChangedByteRefusesWithThePayloadHashAndTheFileName`（改 1 个字节得 `synx-payload-hash`，消息含 `r.-1.0.synx`）、`lightEngineVersionOneBehindForcesARebake`（`synx-light-engine-mismatch`）、`processOnAnotherProtocolOrRegistryIsRefused`、`headerThatDisagreesWithTheManifestIsRefused`、`missingRegionFileIsRefused`、`truncatedRegionIsRefused`、`directoryThatIsNotTheBuildIdIsRefused`、`onlyRegionsInScopeAreChecked` |
+| 1 | `<G> :synx:test --tests '<S>.SynxManifestTest' --tests '<S>.SynxBuildVerifierTest'` | `BUILD SUCCESSFUL`，0 失败。`SynxManifestTest` `tests="4"`：`vectorManifestReadsAndWritesBackUnchanged`、`buildIdCarriesTheContentHashAndTheProtocol`、`anvilSourceKeepsItsDataVersionAndCoverage`、`unreadableManifestIsRefused`（缺字段、摘要不是 hex、`"chunks": 4.5`、`"wall_ms": 1234.5`、`min_x` 大于 `max_x` 都得 `synx-manifest`，信息点名字段与值：`content_hash is not hex: zz…`、`chunks is not an integer: 4.5`、`wall_ms is not an integer: 1234.5`、`bounds 32,-32,31,31 are empty`）。`SynxBuildVerifierTest` `tests="10"`（M3-S 加的 `openChecksOnTheMappingItHandsOnAndAFileRenamedOverItChangesNothing` 归 `TC-WORLD-133`）：`consistentReleaseVerifies`、`oneChangedByteRefusesWithThePayloadHashAndTheFileName`（改 1 个字节得 `synx-payload-hash`，消息含 `r.-1.0.synx`）、`lightEngineVersionOneBehindForcesARebake`（`synx-light-engine-mismatch`）、`processOnAnotherProtocolOrRegistryIsRefused`、`headerThatDisagreesWithTheManifestIsRefused`、`missingRegionFileIsRefused`、`truncatedRegionIsRefused`、`directoryThatIsNotTheBuildIdIsRefused`、`onlyRegionsInScopeAreChecked` |
 
 后置：无。
 
@@ -2668,6 +2668,18 @@ JUnit 与反证的纪律同 3A 一节：反证一律「临时改一处实现、�
 | --- | --- | --- |
 | 1 | 跑 A 组 | 同 `TC-WORLD-034` 第 1 步。本用例看 `staticEntitiesOutsideTheListAreSkipped`（段③ 有 1 个 `item_frame` 与 1 个 `minecraft:minecart`：生成 1 个 `item_frame`，挂 `synx_source` 标签且 NBT 与源相等；minecart 没生成，WARN 1 行含它的类型名；区块不是 failed）与 `staticEntitiesKeepTheMappedFields` |
 | 2 | 反证（minecart 进名单）：`<SE>` 的 `EntityType.BLOCK_DISPLAY, EntityType.ARMOR_STAND);` 改成 `EntityType.BLOCK_DISPLAY, EntityType.ARMOR_STAND, EntityType.MINECART);`，跑 A 组，再 `git checkout -- <SE>` | `27 tests completed, 1 failed`：`SynxChunkLoaderIntegrationTest.java:347` `[] ==> expected: <1> but was: <0>`（没有 WARN 行） |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：同 `TC-WORLD-034`。
+
+#### `TC-WORLD-NEW-synx-loader-entities-2` 静态实体：缺 Pos 或 Rotation 的跳过、乘客不生成、不做周期位置同步 — 对应 `REQ-M3-008`、`REQ-M3-020` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-034`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :synx:test --tests '<S>.SynxEntitiesTest'` | `BUILD SUCCESSFUL`，`tests="3"` 0 失败。本用例看 `staticEntitiesAShardCannotPlaceAreSkippedWithAWarn`：覆盖记录里区块 10,5 的段③ 有 1 个 `text_display`、1 个去掉 `Rotation` 的 `item_frame`、1 个 `Pos` 只有两项的 `armor_stand`、2 个各带 1 名 `text_display` 乘客的 `block_display` 与 1 个 `minecraft:minecart`。区块以 handle 载入；生成的实体恰为 2 个 `block_display` 与 1 个 `text_display`（乘客没生成），同步间隔都是 `Integer.MAX_VALUE`；`SynxStaticEntities` 的 WARN 恰 4 行，依次是 `Static entity minecraft:item_frame has no Pos of 3 or Rotation of 2 numbers, skipped`、`minecraft:armor_stand` 的同一句、以 `Static entity minecraft:block_display at Pos[x=168.5, y=200.0, z=88.5, yaw=0.0, pitch=0.0] carries passengers` 开头的一行（第二个 `block_display` 不再记）、以 `Static entity type minecraft:minecart at Pos[x=172.5, y=200.0, z=88.5, yaw=0.0, pitch=0.0] is not one the shard spawns` 开头的一行 |
+| 2 | 反证（本集之前的静态实体）：`git checkout cdeb619ab5 -- <SE> synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxStaticEntity.java`，重跑第 1 步，再 `git checkout HEAD -- <SE> synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxStaticEntity.java` | `3 tests completed, 1 failed`：`staticEntitiesAShardCannotPlaceAreSkippedWithAWarn` 报 `java.util.concurrent.CompletionException: java.lang.ArrayIndexOutOfBoundsException: Index 0 out of bounds for length 0`，栈里是 `SynxStaticEntities.spawn` 读 `Rotation` 的第 0 项，经 `SynxChunk.onLoad` 冲出，加载 future 异常完成（`m3o/synx-loader-entities` 实跑，当时 `synx/src/main` 整个是本集之前的版本） |
 | 3 | 重跑第 1 步 | 与第 1 步相同 |
 
 后置：同 `TC-WORLD-034`。
@@ -4000,15 +4012,28 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `<G> :synx:test --tests '<S>.SynxParserBoundaryTest' --tests '<S>.SynxChunkLoaderIntegrationTest' --tests '<S>.SynxBlockEntityLimitsTest' -Dsynaxis.synx.require-frozen-zlib=true` | 0 失败：`SynxParserBoundaryTest` `tests="7"`：段① 帧声明的未压缩长度 64 MiB、−1、8,388,609 与帧长 2,097,152 都抛 `IllegalArgumentException`，64 MiB 那一帧抛出之前本线程分配 < 1 MiB；段③ 解出 16,777,217 B 拒；清单同一对象里两个 `map_id` 按 `synx-manifest` 拒；损坏的索引项读成 failed。`SynxChunkLoaderIntegrationTest` `tests="13"`，`aRecordWhoseFrameHeaderIsOutOfItsBoundsLoadsAsFailed`：帧头不合法的记录载入即 failed，ERROR 带区块坐标，计入 `failed`。`SynxBlockEntityLimitsTest` `tests="2"`：装 27 本成书（每本 30 页 × 256 字符）的箱子以 handle 载入、物化、落盘、重启再载入，两次都与烘焙输入相同，区块不进 failed；一个带 160 项、每项 60,000 字符字符串列表的方块实体写区域时抛 `IllegalArgumentException`，信息带区块坐标与 `segment ③ does not read back` |
-| 2 | 反证（修复前的读取器）：把本类放进修复前的工作副本（`git worktree add <W> 3be2fd114c`，`m3s/base`，轨道 S 之前），在那里跑本类与 `SynxChunkLoaderIntegrationTest` 的帧头那一条，跑完删掉 `<W>` | `SynxParserBoundaryTest` 7 条红 5 条：`:137` `allocated 67241304`（64 MiB 那一帧先分配才拒）；`:174` 清单同名键没拒；`:157` 2 MiB 以上的帧没拒；`:104` 段③ 解出 16 MiB 以上没拒；`:120` 抛的是 `NegativeArraySizeException`；`SynxChunkLoaderIntegrationTest.java:569` `expected: <FAILED> but was: <HANDLE>`（轨道 S 实跑） |
-| 3 | 反证（段③ 换回默认读取器）：`<EN>` 的 `readNbt` 里 `BinaryTagIO.reader(MAX_BYTES)` 改成 `BinaryTagIO.reader()`，只跑 `SynxBlockEntityLimitsTest`，再 `git checkout -- <EN>` | 红在 `SynxBlockEntityLimitsTest.java:154`：`segment ③ does not read back: unreadable NBT in segment ③`，3 个区块失败。写入侧用同一个读者读回，所以是烘焙先失败，到不了载入（轨道 S 实跑；与 `docs/DESIGN-M3.md` §19 v0.40 改后的写法相同） |
-| 4 | 反证（编完不读回）：`<EN>` 的 `encode` 末尾读回段③ 的那个 `try`（抛 `segment ③ does not read back` 的那一处）整段删掉，只跑 `SynxBlockEntityLimitsTest`，再还原 | 红在 `:192`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（轨道 S 实跑） |
+| 1 | `<G> :synx:test --tests '<S>.SynxParserBoundaryTest' --tests '<S>.SynxChunkLoaderIntegrationTest' --tests '<S>.SynxBlockEntityLimitsTest' -Dsynaxis.synx.require-frozen-zlib=true` | 0 失败：`SynxParserBoundaryTest` `tests="10"`（后加的 3 条归 `TC-WORLD-NEW-synx-loader-entities-1`），本用例看 M3-S 的 7 条：段① 帧声明的未压缩长度 64 MiB、−1、8,388,609 与帧长 2,097,152 都抛 `IllegalArgumentException`，64 MiB 那一帧抛出之前本线程分配 < 1 MiB；段③ 解出 16,777,217 B 拒；清单同一对象里两个 `map_id` 按 `synx-manifest` 拒；损坏的索引项读成 failed。`SynxChunkLoaderIntegrationTest` `tests="13"`，`aRecordWhoseFrameHeaderIsOutOfItsBoundsLoadsAsFailed`：帧头不合法的记录载入即 failed，ERROR 带区块坐标，计入 `failed`。`SynxBlockEntityLimitsTest` `tests="2"`：装 27 本成书（每本 30 页 × 256 字符）的箱子以 handle 载入、物化、落盘、重启再载入，两次都与烘焙输入相同，区块不进 failed；一个带 160 项、每项 60,000 字符字符串列表的方块实体写区域时抛 `IllegalArgumentException`，信息带区块坐标与 `segment ③ does not read back`，后面接 adventure-nbt 给的原因与方块实体在区块内的位置（`… unreadable NBT in segment ③: The read NBT was longer than the maximum allowed size of 16777216 bytes! (block entity at x 1, y 64, z 1 of the chunk)`） |
+| 2 | 反证（修复前的读取器）：把本类放进修复前的工作副本（`git worktree add <W> 3be2fd114c`，`m3s/base`，轨道 S 之前），在那里跑本类与 `SynxChunkLoaderIntegrationTest` 的帧头那一条，跑完删掉 `<W>`。本类后来加的 3 条有自己的反证（`TC-WORLD-NEW-synx-loader-entities-1` 第 2 步），这里只看 M3-S 的 7 条 | `SynxParserBoundaryTest` 7 条红 5 条：`:137` `allocated 67241304`（64 MiB 那一帧先分配才拒）；`:174` 清单同名键没拒；`:157` 2 MiB 以上的帧没拒；`:104` 段③ 解出 16 MiB 以上没拒；`:120` 抛的是 `NegativeArraySizeException`；`SynxChunkLoaderIntegrationTest.java:569` `expected: <FAILED> but was: <HANDLE>`（轨道 S 实跑） |
+| 3 | 反证（段③ 换回默认读取器）：`<EN>` 的 `readNbt` 里 `BinaryTagIO.reader(MAX_BYTES)` 改成 `BinaryTagIO.reader()`，只跑 `SynxBlockEntityLimitsTest`，再 `git checkout -- <EN>` | 红在 `SynxBlockEntityLimitsTest.java:154`：`1 region(s) failed; first region 0, 0: java.lang.IllegalArgumentException: chunk 0,0: segment ③ does not read back: unreadable NBT in segment ③: The read NBT was longer than the maximum allowed size of 131082 bytes! (block entity at x 8, y 41, z 8 of the chunk) ==> expected: <0> but was: <3>`（烘焙退出码 3）。写入侧用同一个读者读回，所以是烘焙先失败，到不了载入（轨道 S 实跑；原因与位置的后缀由 `m3o/synx-loader-entities` 实跑） |
+| 4 | 反证（编完不读回）：`<EN>` 的 `encode` 末尾读回段③ 的那个 `try`（抛 `segment ③ does not read back` 的那一处）整段删掉，只跑 `SynxBlockEntityLimitsTest`，再还原 | 红在 `:193`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（轨道 S 实跑） |
 | 5 | `<G> :synx:test --tests '<S>.SynxChunkPacketTest'` | 0 失败，`tests="7"`。本用例看 `packetOverTheUncompressedCapIsRefusedNamingTheChunk`：区块 3, −2 的段① 带一个不挂 handler 的箱子，NBT 里一个 8,388,608 B 的字节数组（段① 原样带整份 NBT），包体解压后超过 8,388,608 B、压缩后很小；`SynxChunkPacket.encode` 在成帧之前抛 `IllegalArgumentException`，信息以 `chunk 3,-2: the packet is ` 开头、以 ` bytes uncompressed, over 8388608` 结尾 |
 | 6 | 反证（写入侧不核未压缩长度）：`<CP>` 的 `if (body.length > MAX_UNCOMPRESSED_BYTES) {` 改成 `if (body.length > MAX_UNCOMPRESSED_BYTES && Boolean.getBoolean("proof.never")) {`，重跑第 5 步，再 `git checkout -- <CP>` | `7 tests completed, 1 failed`：红在 `SynxChunkPacketTest.java:121`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`，这样的包照常成帧，覆盖层会把它写进段文件、载入时才被 `checkFrame` 拒收（`m3o/synx-format` 实跑） |
 | 7 | 重跑第 1、5 步 | 与第 1、5 步相同 |
 
 后置：`git worktree list` 里没有 `<W>`；`git status --porcelain` 无输出。
+
+#### `TC-WORLD-NEW-synx-loader-entities-1` 段③ 声明多于实有的内容在分配之前被拒，畸形内容与载入时放不下的记录进 failed、ERROR 写明来源文件 — 对应 `REQ-M3-031`、`REQ-M3-008` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`<EN>` 同 `TC-WORLD-134`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :synx:test --tests '<S>.SynxParserBoundaryTest' --tests '<S>.SynxBlockEntityLimitsTest' --tests '<S>.SynxRegionWriterTest'` | 0 失败。`SynxParserBoundaryTest` `tests="10"`，本用例看后加的 3 条：`segmentThreeThatStatesMoreThanItHoldsIsRefusedBeforeItIsAllocated`（59 B 的段③ 里一条静态实体 NBT 是 8 层嵌套列表、每层声明 2,000,000 项、没有元素；16,777,216 B 的段③ 方块实体表头声明 16,777,212 项、后面全是零字节：两份都抛 `IllegalArgumentException`，`<system-out>` 各一行 `segment 3: <n> B stating more than they hold allocated <m> B before they were refused`，m < 1,048,576，`m3o/synx-loader-entities` 实跑 38,224 与 11,680）；`malformedSegmentThreeContentIsRefusedAsAnIllegalArgument`（字节数组声明长度 −1 的静态实体抛 `IllegalArgumentException`，信息以 `unreadable NBT in segment ③: ` 开头、以 ` (static entity 1 of 1)` 结尾；1,000 个 END 的列表同样抛；handler 为 `Bad Handler` 的方块实体信息恰为 `handler is not a key: Bad Handler`）；`recordsTheLoaderCannotPlaceLoadAsFailed`（覆盖段 3 里区块 10,5 的段③ 有一个 `section_y` 100 的方块实体，覆盖段 4 里区块 7,5 有会 tick 的 handler、段① 帧头合法而数据不是 zlib 流：两个区块都以 FAILED 载入，`SynxChunkLoader` 的 ERROR 恰 2 行，依次以 ` it loads as read only air: the overlay segment seg.3.synx, segment ③: a block entity in section 100, the world is sections 0 to 15` 与 ` it loads as read only air: the overlay segment seg.4.synx, segment ①: not a zlib stream` 结尾，`failed` 计 2）。`SynxBlockEntityLimitsTest` `tests="2"`，`aSegmentThreeThatDoesNotReadBackIsNotWritten` 的信息含 `The read NBT was longer than the maximum allowed size of 16777216 bytes!`、以 ` (block entity at x 1, y 64, z 1 of the chunk)` 结尾。`SynxRegionWriterTest` `tests="9"`，`writerRejectsWhatTheFormatCannotHold` 对 handler `Synaxis:Door` 抛 `IllegalArgumentException` |
+| 2 | 反证（本集之前的读取器与加载器）：`git checkout cdeb619ab5 -- synx/src/main/java/io/github/bearisbug/synaxis/synx/`，重跑第 1 步，再 `git checkout HEAD -- synx/src/main` | `BUILD FAILED`，`21 tests completed, 5 failed`：`SynxParserBoundaryTest` 红 3 条：`:139` `allocated 64035504`（8 层嵌套列表每层先按声明分配约 8 MB，第二份没轮到）；`:151` `Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.NegativeArraySizeException>`；`:193` `expected: <FAILED> but was: <HANDLE>`（`section_y` 100 的区块照常以 handle 载入）。`SynxBlockEntityLimitsTest.java:195`：`chunk 5,7: segment ③ does not read back: unreadable NBT in segment ③ ==> expected: <true> but was: <false>`。`SynxRegionWriterTest.java:201`：`a handler that is not a key ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（`m3o/synx-loader-entities` 实跑） |
+| 3 | 反证（按表头计数预分配）：`<EN>` 的 `final List<SynxBlockEntity> blockEntities = new ArrayList<>();` 改成 `final List<SynxBlockEntity> blockEntities = new ArrayList<>(blockCount);`，只跑 `SynxParserBoundaryTest`，再 `git checkout -- <EN>` | `10 tests completed, 1 failed`：红在 `:139`，`allocated 67120600`（第二份段③ 先分配 16,777,212 个引用槽；`m3o/synx-loader-entities` 实跑） |
+| 4 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain` 无输出。
 
 #### `TC-WORLD-135` 读文件之前先比大小；url-root 是非回环的明文 http 时起服记 WARN — 对应 `REQ-M3-031`、`REQ-M3-032` · 级别: 回归 · 执行者: AI
 

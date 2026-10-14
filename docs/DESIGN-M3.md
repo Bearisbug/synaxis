@@ -3169,17 +3169,17 @@ M3-G 场景同样写明入口：
 
 场景: 段③ 的畸形内容按损坏处理，载入进 failed (REQ-M3-031)
   Given :synx 单元测试与集成测试：一条静态实体 NBT 里字节数组声明长度 −1；一个列表元素类型为 END、声明 1,000 项；一个方块实体的 handler 是 Bad Handler；覆盖记录里一个方块实体的 section_y 为 100（世界只有 section 0～15）；一个区块有会 tick 的 handler，段① 帧头合法而包体解不出
-  When 解码段③；载入后两个区块
+  When 解码前三条所在的段③；载入后两个区块
   Then 前三个解码都抛 IllegalArgumentException（unreadable NBT in segment ③: …，静态实体那条以 (static entity 1 of 1) 结尾；handler is not a key: Bad Handler）
   And 后两个区块载入进 failed，ERROR 带区块坐标与来源文件（the overlay segment seg.<n>.synx, segment ③: a block entity in section 100, the world is sections 0 to 15；…, segment ①: …），计入 failed
-  And 修复前（反证）负长度抛 NegativeArraySizeException，handler 那条照常解出，两个区块的载入抛出 loadChunk、不进 failed
+  And 修复前（反证）负长度抛 NegativeArraySizeException；handler 不是合法键的记录照常构造；section_y 为 100 的区块照常以 handle 载入
 
 场景: 缺 Pos 或 Rotation 的静态实体与乘客 (REQ-M3-008)
   Given :synx 集成测试：覆盖记录里一个区块的段③ 有 1 个 text_display、1 个缺 Rotation 的 item_frame、1 个 Pos 只有两项的 armor_stand、2 个各带 1 名乘客的 block_display 与 1 个 minecart
   When 区块以 handle 模式加载
   Then 生成 text_display 与两个 block_display，乘客不生成，区块不是 failed；WARN 4 行：缺 Pos 或 Rotation 的两行、block_display 带乘客一行（第二个不再记）、minecart 一行且带它的位置
   And 生成的静态实体同步间隔为 Integer.MAX_VALUE
-  And 修复前（反证）缺 Rotation 的 item_frame 让 onLoad 抛 IndexOutOfBoundsException，区块的加载 future 异常完成
+  And 修复前（反证）缺 Rotation 的 item_frame 让 onLoad 抛 ArrayIndexOutOfBoundsException（Index 0 out of bounds for length 0），区块的加载 future 异常完成
 
 场景: 读文件之前先比大小 (REQ-M3-031)
   Given server-app 测试：清单 16,777,217 B；shards.json 1,048,577 B；一个要宣告的高度场包是 41,943,041 B 的稀疏文件，清单里它的 bytes 与 sha256 都与文件相符

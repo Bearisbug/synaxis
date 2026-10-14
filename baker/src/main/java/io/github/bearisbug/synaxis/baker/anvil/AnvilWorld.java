@@ -91,9 +91,13 @@ public final class AnvilWorld implements AutoCloseable {
     public static AnvilWorld open(Path world, Key dimension, DynamicRegistry<Biome> biomes,
                                   Predicate<String> registeredHandlers) throws IOException {
         final Path dimensionDir = world.resolve("dimensions").resolve(dimension.namespace()).resolve(dimension.value());
-        if (!Files.isDirectory(dimensionDir.resolve("region"))) {
-            throw new IOException("no " + dimensionDir.resolve("region") + ": a 26.2 save keeps each dimension under"
-                    + " dimensions/<namespace>/<path>/, an older save must be upgraded by the vanilla server first");
+        final Path region = dimensionDir.resolve("region");
+        if (!Files.isDirectory(region)) {
+            throw new IOException("no " + region.toAbsolutePath() + (Files.isDirectory(world.resolve("region"))
+                    ? ": a 26.2 save keeps each dimension under dimensions/<namespace>/<path>/, an older save must be"
+                    + " upgraded by the vanilla server first"
+                    : Files.isRegularFile(world.resolve("level.dat")) ? ": the save has not generated " + dimension.asString()
+                    : ": " + world.toAbsolutePath() + " is not a save, give the directory that holds level.dat"));
         }
         return new AnvilWorld(dimensionDir, biomes, registeredHandlers);
     }
@@ -126,8 +130,8 @@ public final class AnvilWorld implements AutoCloseable {
      * Reads one chunk with its static entities, markers applied.
      *
      * @return the chunk, or null when the save has no such chunk
-     * @throws AnvilSourceException when the chunk or its entities fail a gate, or a marker cannot be mapped
-     * @throws IOException          when a region file cannot be read
+     * @throws AnvilSourceException when the chunk or its entities are refused, see {@link AnvilSourceException}
+     * @throws IOException          when a region file or one of its entries cannot be read
      */
     public @Nullable AnvilChunk readChunk(int chunkX, int chunkZ) throws IOException {
         final String fileName = RegionFile.fileName(chunkX >> 5, chunkZ >> 5);
@@ -140,7 +144,9 @@ public final class AnvilWorld implements AutoCloseable {
                 : data.get("status") instanceof StringBinaryTag lower ? lower.value() : null;
         if (!FULL.equals(status)) {
             throw new AnvilSourceException(chunkX, chunkZ, "status " + (status == null ? "missing" : status)
-                    + ", not " + FULL + "; pregenerate the source with the vanilla 26.2 server until every chunk is full");
+                    + ", not " + FULL + "; pregenerate the source with the vanilla 26.2 server until every chunk inside the"
+                    + " bounds is full, or give --bounds that leave this chunk out (without --bounds every chunk of the save"
+                    + " is inside)");
         }
         if (data.getInt("xPos", chunkX) != chunkX || data.getInt("zPos", chunkZ) != chunkZ) {
             throw new AnvilSourceException(chunkX, chunkZ, "the region entry holds chunk "
@@ -193,8 +199,10 @@ public final class AnvilWorld implements AutoCloseable {
         final int dataVersion = data.getInt("DataVersion", -1);
         if (dataVersion != MinecraftServer.DATA_VERSION) {
             throw new AnvilSourceException(chunkX, chunkZ, what + "DataVersion " + dataVersion + ", not "
-                    + MinecraftServer.DATA_VERSION + " (26.2); upgrade the source with the vanilla 26.2 dedicated"
-                    + " server --forceUpgrade --eraseCache, then pregenerate it again");
+                    + MinecraftServer.DATA_VERSION + " (26.2); " + (dataVersion > MinecraftServer.DATA_VERSION
+                    ? "a later Minecraft saved it and the vanilla server does not downgrade, use a copy last opened with 26.2"
+                    : "upgrade the source with the vanilla 26.2 dedicated server --forceUpgrade --eraseCache, then"
+                    + " pregenerate it again"));
         }
     }
 
@@ -207,13 +215,13 @@ public final class AnvilWorld implements AutoCloseable {
             if (!(section.get("block_states") instanceof CompoundBinaryTag blockStates)) continue;
             final int sectionY = section.getByte("Y");
 
-            final Palette blocks = Palette.blocks();
-            final ListBinaryTag blockPalette = blockStates.getList("palette", BinaryTagTypes.COMPOUND);
-            final int[] blockIds = new int[blockPalette.size()];
+            final Palette blockPalette = Palette.blocks();
+            final ListBinaryTag blockEntries = blockStates.getList("palette", BinaryTagTypes.COMPOUND);
+            final int[] blockIds = new int[blockEntries.size()];
             for (int i = 0; i < blockIds.length; i++) {
-                blockIds[i] = blockState(chunkX, chunkZ, sectionY, blockPalette.getCompound(i));
+                blockIds[i] = blockState(chunkX, chunkZ, sectionY, blockEntries.getCompound(i));
             }
-            load(chunkX, chunkZ, sectionY, "block_states", blocks, Palette.BLOCK_PALETTE_MIN_BITS, blockIds, blockStates);
+            load(chunkX, chunkZ, sectionY, "block_states", blockPalette, Palette.BLOCK_PALETTE_MIN_BITS, blockIds, blockStates);
 
             final Palette biomePalette = Palette.biomes();
             final CompoundBinaryTag biomeTag = section.getCompound("biomes");
@@ -224,7 +232,7 @@ public final class AnvilWorld implements AutoCloseable {
             }
             load(chunkX, chunkZ, sectionY, "biomes", biomePalette, Palette.BIOME_PALETTE_MIN_BITS, biomeIds, biomeTag);
 
-            sections.put(sectionY, new AnvilSection(sectionY, blocks, biomePalette,
+            sections.put(sectionY, new AnvilSection(sectionY, blockPalette, biomePalette,
                     light(section, "SkyLight"), light(section, "BlockLight")));
         }
         return sections;
@@ -239,7 +247,9 @@ public final class AnvilWorld implements AutoCloseable {
             palette.fill(ids[0]);
             return;
         }
-        // Palette.load trusts its input: a short array throws out of bounds, an index past the palette reads as 0
+        // Palette.load does not check its input: with a palette (up to 256 block states or 8 biomes) it pads or cuts
+        // the packed array silently and an index past the palette throws on a later read; beyond that a short array
+        // throws and an index past the palette reads as 0
         final long[] packed = container.getLongArray("data");
         final int bits = Math.max(minBits, 32 - Integer.numberOfLeadingZeros(ids.length - 1));
         final int perLong = 64 / bits, entries = palette.maxSize();
@@ -302,12 +312,16 @@ public final class AnvilWorld implements AutoCloseable {
         return id;
     }
 
+    /**
+     * The section's light array {@code name}, or null when it is absent or not 2,048 bytes long: the source light
+     * parity indexes the computed 2,048 byte array by the source's.
+     */
     private static byte @Nullable [] light(CompoundBinaryTag section, String name) {
         return section.get(name) instanceof ByteArrayBinaryTag light && light.size() == 2048 ? light.value() : null;
     }
 
     /**
-     * Keyed by {@link #blockKey(int, int)}, which orders by section then index.
+     * Keyed by {@link AnvilChunk#cellKey}, which orders by section then index.
      */
     private static Map<Long, AnvilBlockEntity> readBlockEntities(int chunkX, int chunkZ, CompoundBinaryTag data)
             throws AnvilSourceException {
@@ -320,13 +334,9 @@ public final class AnvilWorld implements AutoCloseable {
                         + x + ", " + y + ", " + z + " lies outside of the chunk");
             }
             final AnvilBlockEntity blockEntity = new AnvilBlockEntity(y >> 4, AnvilBlockEntity.index(x, y, z), null, nbt);
-            blockEntities.put(blockKey(blockEntity.sectionY(), blockEntity.index()), blockEntity);
+            blockEntities.put(AnvilChunk.cellKey(blockEntity.sectionY(), blockEntity.index()), blockEntity);
         }
         return blockEntities;
-    }
-
-    private static long blockKey(int sectionY, int index) {
-        return ((long) sectionY << 12) | index;
     }
 
     private List<HiddenArea> applyMarkers(int chunkX, int chunkZ, Map<Integer, AnvilSection> sections,
@@ -337,7 +347,7 @@ public final class AnvilWorld implements AutoCloseable {
             final CompoundBinaryTag nbt = blockEntity.nbt();
             if (nbt.getString("id").equals(STRUCTURE_BLOCK) && nbt.getString("mode").equals("DATA")) {
                 markers.add(blockEntity);
-                markerKeys.add(blockKey(blockEntity.sectionY(), blockEntity.index()));
+                markerKeys.add(AnvilChunk.cellKey(blockEntity.sectionY(), blockEntity.index()));
             }
         }
 
@@ -350,10 +360,14 @@ public final class AnvilWorld implements AutoCloseable {
             final String namespace = split < 0 ? metadata : metadata.substring(0, split);
             final String argument = split < 0 ? "" : metadata.substring(split + 1).strip();
 
-            blockEntities.remove(blockKey(marker.sectionY(), marker.index()));
+            final long markerKey = AnvilChunk.cellKey(marker.sectionY(), marker.index());
+            final int belowSection = (y - 1) >> 4, belowIndex = AnvilBlockEntity.index(x, y - 1, z);
+            final long below = AnvilChunk.cellKey(belowSection, belowIndex);
+
+            blockEntities.remove(markerKey);
             section(chunkX, chunkZ, sections, y, where).blocks().set(x & 15, y & 15, z & 15, Block.AIR.stateId());
-            markerCells.add(AnvilChunk.cellKey(marker.sectionY(), marker.index()));
-            markerCells.add(AnvilChunk.cellKey((y - 1) >> 4, AnvilBlockEntity.index(x, y - 1, z)));
+            markerCells.add(markerKey);
+            markerCells.add(below);
 
             if (namespace.equals(HIDDEN_MARKER)) {
                 hiddenAreas.add(hiddenArea(chunkX, chunkZ, where, argument));
@@ -379,16 +393,15 @@ public final class AnvilWorld implements AutoCloseable {
                 }
             }
 
-            final int targetY = y - 1;
-            section(chunkX, chunkZ, sections, targetY, where + " marks the block below it, which");
-            final int sectionY = targetY >> 4, index = AnvilBlockEntity.index(x, targetY, z);
-            if (markerKeys.contains(blockKey(sectionY, index))) {
+            // Called for its check only: refuses a marker whose block below lies outside of every section
+            section(chunkX, chunkZ, sections, y - 1, where + " marks the block below it, which");
+            if (markerKeys.contains(below)) {
                 throw new AnvilSourceException(chunkX, chunkZ, where + " stands on another data marker");
             }
-            final AnvilBlockEntity existing = blockEntities.get(blockKey(sectionY, index));
+            final AnvilBlockEntity existing = blockEntities.get(below);
             final CompoundBinaryTag merged = existing == null ? markerNbt
                     : CompoundBinaryTag.builder().put(existing.nbt()).put(markerNbt).build();
-            blockEntities.put(blockKey(sectionY, index), new AnvilBlockEntity(sectionY, index, namespace, merged));
+            blockEntities.put(below, new AnvilBlockEntity(belowSection, belowIndex, namespace, merged));
         }
         return hiddenAreas;
     }
@@ -428,8 +441,16 @@ public final class AnvilWorld implements AutoCloseable {
                     : "entities: the entry has no Position");
         }
         final List<CompoundBinaryTag> entities = new ArrayList<>();
-        for (BinaryTag entity : data.getList("Entities", BinaryTagTypes.COMPOUND)) {
-            entities.add((CompoundBinaryTag) entity);
+        for (BinaryTag tag : data.getList("Entities", BinaryTagTypes.COMPOUND)) {
+            final CompoundBinaryTag entity = (CompoundBinaryTag) tag;
+            // The window check reads the y of Pos, a shard places the entity at Pos turned by Rotation
+            final ListBinaryTag pos = entity.getList("Pos", BinaryTagTypes.DOUBLE);
+            if (pos.size() != 3 || !Double.isFinite(pos.getDouble(0)) || !Double.isFinite(pos.getDouble(1))
+                    || !Double.isFinite(pos.getDouble(2)) || entity.getList("Rotation", BinaryTagTypes.FLOAT).size() != 2) {
+                throw new AnvilSourceException(chunkX, chunkZ, "entities: " + entity.getString("id")
+                        + " has no Pos of three finite doubles and Rotation of two floats");
+            }
+            entities.add(entity);
         }
         return List.copyOf(entities);
     }

@@ -1,0 +1,32 @@
+RUN-079: M3 review optimization, integration branch m3o/integrate b867c21a51
+(origin/main 630abbc142 + 16 change sets merged in three dependency waves + docs passes, then
+origin/main 2ff6483b16 (RUN-078) merged in as 4e45a082c3, then the final-review fixes; docs/DESIGN-M3.md v0.50).
+
+Review that produced the work: 199 read-only agents on 630abbc142 (16 units x 4 lenses + gap finders,
+6 cross-cutting themes, 3 independent verifiers per unit or theme, a coverage critic and one gap round);
+475 findings survived, the user decided all 61 open questions as recommended on 2026-10-14.
+
+Local (macOS, JDK 25, one Gradle build at a time under /tmp/synaxis-heavy.lock, --max-workers=2):
+  02-local-runs.txt   every set's own test classes and its counter-proofs (exit=1 lines are the
+                      intended red runs), plus the per-wave integration builds
+                      (compileJava compileTestJava :architecture-tests:test, all exit 0).
+  After the waves, on m3o/integrate:
+    :synx:test SynxManifestTest                                   4 tests, 0 failed
+    TC-WORLD-134 step 3 counter-proof (SynxEntities readNbt on the default reader):
+      SynxBlockEntityLimitsTest 2 completed, 2 failed, red at :154 and :195, restored with git checkout
+    final-review fixes: FarViewExportTest 6/0, ShardDirectoryFileTrustTest 3/0, WorldFlagsWriteTest 1/0,
+      ShardWorldFarViewTest 11/0, WorldFlagsReplayTest 21 (19 skipped: no local database);
+      counter-proofs of the three new checks red at WorldFlagsWriteTest.java:44,
+      ShardDirectoryFileTrustTest.java:87 (via :81) and ShardWorldFarViewTest.java:263, restored.
+  client-fabric is never built locally; database-backed tests skip locally.
+
+GitHub Actions (01-ci.txt): every workflow green on b867c21a51, including the far view gametest
+(four groups) and a manual P10 (100 round trips). Per-module counts are in 01-ci.txt.
+
+Earlier CI on this branch:
+  cdeb619ab5 (wave 1 only): CI, Concurrency, Client mod, Client gametest all green.
+  99cf7ae6cc (all waves): everything green except Client mod, FarViewDownloaderTest
+    aWholePackAndACoarsePrefixLandInTheCacheUnderTheirDigests at :193 (expected 2897, was 2572):
+    two download threads summed the per-object progress outside a lock, so a slower thread could
+    report an older sum last. Not changed this round, intermittent (green on cdeb619ab5).
+    Fixed in b867c21a51 (update, sum and report under one lock); green on b867c21a51.

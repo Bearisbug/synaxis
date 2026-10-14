@@ -2960,7 +2960,7 @@ M3-G 场景同样写明入口：
   Given FarViewConnectionTest，替身烘焙与替身缓存
   When 取消之后烘焙线程才调 baking()；取消在层级载入之前；载入核对的查询返回 null 时取消标志已置或未置；行数等于标记
   Then 取消之后 baking() 返回假、状态是 absent、烘焙不起；取消标志已置时完成标记保留；未置时标记删掉、要重烘；行数等于标记时留在 ready 并更新 last_used
-  And 下载完进入 baking 时已交出的进度是 0，不沿用下载的字节数；行数不等时标记删掉、状态是 absent；行数等于标记而完成标记重写不了时仍是 ready，WARN 一行 last_used not updated，标记原样
+  And 下载完进入 baking 时已交出的进度是 0，不沿用下载的字节数，HUD 行从 preparing 0% 起，全部交出后换成 finishing；行数不等时标记删掉、状态是 absent；行数等于标记而完成标记重写不了时仍是 ready，WARN 一行 last_used not updated，标记原样
   And 反证：baking() 不看取消标志、rebakeAfterLoadCheck 不看取消标志时，前三种红
 
 场景: 服务端迟迟不回响应头时按空闲时钟放弃 (REQ-M3-025)

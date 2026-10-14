@@ -3709,7 +3709,7 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `<GC> test --tests '<CV>.FarViewClientTest.aSettingsFileWithACommentInAnotherEncodingKeepsItsRadius'` | `tests="1"` 0 失败：档位文件第一行是按 GBK 存下的中文注释（`# 低配`，字节 `B5 CD C5 E4` 不是合法的 UTF-8），第二行 `farview.radius=0`，读出的档位是 0 |
-| 2 | 反证（按严格 UTF-8 读）：`<FV>/FarViewSettings.java` 的 `try (InputStream in = Files.newInputStream(file)) {` 改成 `try (java.io.Reader in = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {`，重跑第 1 步，再 `git checkout -- <FV>` | `1 test completed, 1 failed`，红在 `FarViewClientTest.java:345`：`expected: <0> but was: <4096>`（`MalformedInputException` 让整份设置作废；按代码推算，没有实跑） |
+| 2 | 反证（按严格 UTF-8 读）：`<FV>/FarViewSettings.java` 的 `try (InputStream in = Files.newInputStream(file)) {` 改成 `try (java.io.Reader in = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {`，重跑第 1 步，再 `git checkout -- <FV>` | `1 test completed, 1 failed`，红在 `FarViewClientTest.java:345`：`expected: <0> but was: <4096>`（`MalformedInputException` 让整份设置作废；实现者在 Gradle 之外用 javac 与 JUnit 启动器实跑） |
 
 后置：同 `TC-WORLD-110`。
 
@@ -3719,8 +3719,8 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `<GC> test --tests '<CV>.FarViewConnectionTest'` | `tests="8"` 0 失败：行数等于标记的库留在 `ready` 并更新 `last_used`；连接还在时查询返回 null 即删标记、要重烘；取消之后查询返回 null 时标记保留、不重烘；取消之后烘焙线程才调 `baking()` 时返回假、状态是 `absent`；层级载入之前就取消时什么都不起；下载留下的进度（2000 of 2000）在进入 `baking` 时清零，`progressDone()` 为 0；行数不等时标记删掉、状态是 `absent`；行数相符而完成标记重写不了（`.tmp` 的位置被一个目录占着）时仍是 `ready`，WARN 一行 `view <view_key> last_used not updated: …`，标记的 `last_used` 原样 |
-| 2 | 反证（`baking()` 与 `rebakeAfterLoadCheck` 都不看取消标志）：`<FV>/FarViewConnection.java` 的 `        if (cancelled.get()) return false;` 改成 `        if (cancelled.get() && Boolean.getBoolean("proof.never")) return false;`，`if (rows == null && cancelled.get()) return false;` 改成 `if (rows == null && cancelled.get() && Boolean.getBoolean("proof.never")) return false;`，重跑第 1 步，再 `git checkout -- <FV>` | `8 tests completed, 3 failed`（新加的三条不看取消标志，照绿；按代码推算，没有实跑）：`FarViewConnectionTest.java:110` `expected: <false> but was: <true>`；`:95` `nothing is baked on a connection that ended ==> expected: <false> but was: <true>`；`:121` `expected: <false> but was: <true>` |
+| 1 | `<GC> test --tests '<CV>.FarViewConnectionTest'` | `tests="8"` 0 失败：行数等于标记的库留在 `ready` 并更新 `last_used`；连接还在时查询返回 null 即删标记、要重烘；取消之后查询返回 null 时标记保留、不重烘；取消之后烘焙线程才调 `baking()` 时返回假、状态是 `absent`；层级载入之前就取消时什么都不起；下载留下的进度（2000 of 2000）在进入 `baking` 时清零，`progressDone()` 为 0，HUD 行是 `synaxis.farview.preparing` 0%，交出 2303 of 2304 时 99%，全部交出后换成不带参数的 `synaxis.farview.finishing`；行数不等时标记删掉、状态是 `absent`；行数相符而完成标记重写不了（`.tmp` 的位置被一个目录占着）时仍是 `ready`，WARN 一行 `view <view_key> last_used not updated: …`，标记的 `last_used` 原样 |
+| 2 | 反证（`baking()` 与 `rebakeAfterLoadCheck` 都不看取消标志）：`<FV>/FarViewConnection.java` 的 `        if (cancelled.get()) return false;` 改成 `        if (cancelled.get() && Boolean.getBoolean("proof.never")) return false;`，`if (rows == null && cancelled.get()) return false;` 改成 `if (rows == null && cancelled.get() && Boolean.getBoolean("proof.never")) return false;`，重跑第 1 步，再 `git checkout -- <FV>` | `8 tests completed, 3 failed`（新加的三条不看取消标志，照绿；实现者在 Gradle 之外用 javac 与 JUnit 启动器实跑）：`FarViewConnectionTest.java:110` `expected: <false> but was: <true>`；`:95` `nothing is baked on a connection that ended ==> expected: <false> but was: <true>`；`:121` `expected: <false> but was: <true>` |
 
 后置：同 `TC-WORLD-110`。
 

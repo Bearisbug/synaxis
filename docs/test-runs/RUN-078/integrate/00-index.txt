@@ -22,8 +22,8 @@ Runs on 9d73d8d9e8 (pull_request, attempt 1 each, none rerun)
   Concurrency 38386483897                      success
     jcstress                                   success  10:53:54-10:59:30
   Client mod 38386483895                       success
-    Build the Fabric mod                       success  10:53:55-10:55:07  (client test counts not read for this
-                                                                           registration)
+    Build the Fabric mod                       success  10:53:55-10:55:07  (artifact client-test-reports: 25 classes,
+                                                                           288 tests, 0 failures; RUN-077 had 276)
   Client gametest 38386483950                  success
     Run the client gametests                   success  10:53:54-10:58:57
     Two shards, 2 round trips (P11 smoke)      success  10:53:55-10:57:33
@@ -35,6 +35,10 @@ Counts: the JUnit XML of the three artifacts of run 38386484038 (test-reports fo
 for the strict job, test-reports-multithreaded-grid for the strict grid job), read by the integration session; not
 re-read for this registration.
   Each of the three jobs: 682 classes, 4,716 tests, 0 failures, 0 errors, 22 skipped.
+  Per module in test-reports (Check): root 439 classes 3,217 tests (21 skipped), server-app 152 classes 814 tests,
+  protocol 10/174, synx 22/166 (1 skipped), game-rts 14/93, baker 8/77, plugin-api 7/45, game-rush 6/43,
+  play-kit 3/30, loadtest 6/26, architecture-tests 7/20, testing 8/11. Read from the artifact zip for the
+  closing commit, because extracting it with gh run download fails on a case-insensitive file system.
   Against RUN-077 (CI 38253741356: 682 classes, 4,702 tests): 14 more tests, no new class. By the groups' own
   counts: EvacuationIntegrationTest 13 -> 19 (group N 5, group K 1), ManagedInstanceTransitionsTest 19 -> 20 (N),
   OutboxTest 8 -> 11 (S), LocalQueueTest 5 -> 8 and RushRoundIntegrationTest 8 -> 9 (K); 14 in all, the same as the

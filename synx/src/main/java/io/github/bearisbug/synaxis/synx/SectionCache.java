@@ -143,14 +143,15 @@ final class SectionCache {
 
     /**
      * What a decoded palette holds: its value array, and for an indirect palette the largest list of
-     * values its width allows; 32 bytes for the object.
+     * values its width allows and the value-to-index map beside it; 32 bytes for the object.
      */
     private static long size(Palette palette, int maxIndirectBits) {
         final int bits = palette.bitsPerEntry();
         if (bits == 0) return 32;
         final int perLong = 64 / bits;
         final int longs = (palette.maxSize() + perLong - 1) / perLong;
-        final long values = bits <= maxIndirectBits ? (1L << bits) * Integer.BYTES : 0;
+        // The value list and the value-to-index map, whose two arrays have up to twice as many slots each
+        final long values = bits <= maxIndirectBits ? 5 * (1L << bits) * Integer.BYTES : 0;
         return 32 + (long) longs * Long.BYTES + values;
     }
 }

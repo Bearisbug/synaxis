@@ -118,6 +118,7 @@ final class BlockLight implements Light {
         ShortArrayFIFOQueue queue = buildInternalQueue(blockPalette);
         this.content = LightCompute.compute(blockPalette, queue);
         // Propagate changes to neighbors and self
+        Set<Point> toUpdate = new HashSet<>();
         for (int i = -1; i <= 1; i++) {
             for (int j = -1; j <= 1; j++) {
                 for (int k = -1; k <= 1; k++) {
@@ -127,10 +128,12 @@ final class BlockLight implements Light {
                     if (!(lightLookup.light(neighborX, neighborY, neighborZ) instanceof BlockLight blockLight))
                         continue;
                     blockLight.contentPropagation = null;
+                    toUpdate.add(new BlockVec(neighborX, neighborY, neighborZ));
                 }
             }
         }
-        return Set.of(new BlockVec(chunkX, chunkY, chunkZ));
+        toUpdate.add(new BlockVec(chunkX, chunkY, chunkZ));
+        return toUpdate;
     }
 
     @Override

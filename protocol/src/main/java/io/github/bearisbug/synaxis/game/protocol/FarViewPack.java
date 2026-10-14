@@ -91,6 +91,19 @@ public final class FarViewPack {
         return (TILE_BLOCKS >> level) / BLOCK_SIDE;
     }
 
+    /**
+     * Reads {@code fine_offset} from the header of a pack, for a reader that streams the pack
+     * instead of handing it whole to {@link Reader#read}. The header is not checked.
+     *
+     * @param header the pack from its first byte at index 0, at least 36 bytes of it; its position
+     *               and byte order do not matter and are left as they are
+     * @return {@code fine_offset}, the u32 at byte 32: where the fine block index starts, which is the
+     * length of the coarse prefix
+     */
+    public static long fineOffset(ByteBuffer header) {
+        return Integer.toUnsignedLong(header.duplicate().order(ByteOrder.LITTLE_ENDIAN).getInt(32));
+    }
+
     /** The two layers of a pack. */
     public enum Layer {
         /** One sample per chunk, level {@value #COARSE_LEVEL}; all of it is in the coarse prefix. */
@@ -182,8 +195,12 @@ public final class FarViewPack {
             return hasGround() ? groundY : -1;
         }
 
-        /** The sample as its 8 bytes read as one little endian long. */
-        long packed() {
+        /**
+         * The sample as the pack stores it.
+         *
+         * @return its 8 bytes read as one little endian long
+         */
+        public long packed() {
             return groundState | (long) fluidState << 16 | (long) groundY << 32 | (long) fluidBottom << 40
                     | (long) fluidTop << 48 | (long) biome << 56;
         }
@@ -495,7 +512,7 @@ public final class FarViewPack {
             if (biomeCount == 0) throw new Invalid("biome_count is 0");
             final int coarseLevel = Byte.toUnsignedInt(buffer.get(10));
             if (coarseLevel != COARSE_LEVEL) throw new Invalid("coarse_level " + coarseLevel + " is not " + COARSE_LEVEL);
-            final long fineOffset = Integer.toUnsignedLong(buffer.getInt(32));
+            final long fineOffset = fineOffset(buffer);
             if (fineOffset > pack.length) {
                 throw new Invalid("fine_offset " + fineOffset + " is past the end of the " + pack.length + " byte pack");
             }

@@ -46,7 +46,6 @@ public final class AnvilSource implements BakeSource {
     private final AnvilWorld world;
     private final SynxManifest.Bounds bounds;
     private final int minY;
-    private final int height;
     private volatile @Nullable Double lightCoverage;
     private volatile List<HiddenArea> hiddenAreas = List.of();
 
@@ -54,13 +53,12 @@ public final class AnvilSource implements BakeSource {
         this.world = world;
         this.bounds = bounds;
         this.minY = minY;
-        this.height = HEIGHT;
     }
 
     /**
      * Opens a save.
      *
-     * @param bounds             the chunks to bake, or null for every chunk of the save
+     * @param bounds             the chunks to bake, or null for the rectangle around every chunk the save has
      * @param minY               the lowest y of the window baked, a multiple of 16
      * @param registeredHandlers the handler namespaces a data marker may name
      * @throws IOException when the save or the dimension cannot be opened, or has no chunk at all
@@ -106,7 +104,7 @@ public final class AnvilSource implements BakeSource {
 
     @Override
     public int height() {
-        return height;
+        return HEIGHT;
     }
 
     @Override
@@ -191,18 +189,18 @@ public final class AnvilSource implements BakeSource {
     @Override
     public SourceChunk read(int chunkX, int chunkZ) throws IOException {
         final AnvilChunk chunk = chunk(chunkX, chunkZ);
-        final int sections = height / 16, minSection = minY >> 4;
+        final int sections = HEIGHT / 16, minSection = minY >> 4;
         final Palette[] blocks = new Palette[sections];
         final Palette[] biomes = new Palette[sections];
-        final byte[][] sky = new byte[sections][];
-        final byte[][] block = new byte[sections][];
+        final byte[][] sourceSky = new byte[sections][];
+        final byte[][] sourceBlock = new byte[sections][];
         for (AnvilSection section : chunk.sections()) {
             final int i = section.sectionY() - minSection;
             if (i < 0 || i >= sections) continue; // all air, checked by chunk()
             blocks[i] = section.blocks();
             biomes[i] = section.biomes();
-            sky[i] = section.skyLight();
-            block[i] = section.blockLight();
+            sourceSky[i] = section.skyLight();
+            sourceBlock[i] = section.blockLight();
         }
         for (int i = 0; i < sections; i++) {
             if (blocks[i] == null) {
@@ -215,8 +213,8 @@ public final class AnvilSource implements BakeSource {
             blockEntities.add(new SynxBlockEntity(blockEntity.sectionY(), blockEntity.index(),
                     blockEntity.handler() == null ? "" : blockEntity.handler(), blockEntity.nbt()));
         }
-        return new SourceChunk(chunkX, chunkZ, blocks, biomes, blockEntities, chunk.entities(), chunk.lightOn(), sky, block,
-                chunk.markerCells());
+        return new SourceChunk(chunkX, chunkZ, blocks, biomes, blockEntities, chunk.entities(), chunk.lightOn(),
+                sourceSky, sourceBlock, chunk.markerCells());
     }
 
     private AnvilChunk chunk(int chunkX, int chunkZ) throws IOException {
@@ -236,7 +234,7 @@ public final class AnvilSource implements BakeSource {
         int outsideY = Integer.MAX_VALUE;
         for (AnvilSection section : chunk.sections()) {
             final int sectionMinY = section.sectionY() * 16;
-            if (sectionMinY >= minY && sectionMinY < minY + height) continue;
+            if (sectionMinY >= minY && sectionMinY < minY + HEIGHT) continue;
             final int[] lowest = {Integer.MAX_VALUE, 0};
             section.blocks().getAllPresent((_, y, _, state) -> {
                 if (y < lowest[0] && !Objects.requireNonNull(Block.fromStateId(state)).air()) {
@@ -251,7 +249,7 @@ public final class AnvilSource implements BakeSource {
         }
         for (AnvilBlockEntity blockEntity : chunk.blockEntities()) {
             final int y = blockEntity.y();
-            if ((y < minY || y >= minY + height) && y < outsideY) {
+            if ((y < minY || y >= minY + HEIGHT) && y < outsideY) {
                 outsideY = y;
                 final String id = blockEntity.nbt().getString("id");
                 // A record a data marker made has no id; the marker stands on the block above
@@ -263,14 +261,14 @@ public final class AnvilSource implements BakeSource {
         }
         for (CompoundBinaryTag entity : chunk.entities()) {
             final int y = (int) Math.floor(entity.getList("Pos").getDouble(1));
-            if ((y < minY || y >= minY + height) && y < outsideY) {
+            if ((y < minY || y >= minY + HEIGHT) && y < outsideY) {
                 outsideY = y;
                 outside = "entity " + entity.getString("id");
             }
         }
         if (outside != null) {
             throw new AnvilSourceException(chunk.chunkX(), chunk.chunkZ(), outside + " at y " + outsideY
-                    + " lies outside of the baked window, y " + minY + " to " + (minY + height - 1)
+                    + " lies outside of the baked window, y " + minY + " to " + (minY + HEIGHT - 1)
                     + "; clear it from the source or move the window with --min-y");
         }
     }

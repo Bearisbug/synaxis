@@ -934,4 +934,232 @@ public class OverlayStoreTest {
                     + ", changes to the map are refused"), log.messagesAt(Level.ERROR));
         }
     }
+
+    /**
+     * API-M3-007 启动: a segment whose last live records the final flush wrote over is no record's of
+     * the index; the next start unlinks it before it judges the cap, as no write of an empty batch would.
+     */
+    @Test
+    public void aSegmentTheFinalFlushWroteOverIsUnlinkedAtTheNextStart() throws Exception {
+        final OverlayStore store = openCapped(1L << 30, 2);
+        final List<FakeChunk> chunks = OverlayFixture.chunks(store, 0, 2);
+        writeOnce(store, chunks); // two records seal segment 0
+        chunks.forEach(FakeChunk::change);
+        store.finalFlush(Duration.ofSeconds(2), false).get(5, TimeUnit.SECONDS); // both again, in segment 1
+        assertTrue(Files.exists(OverlayFixture.segment(root, manifest, 0)), "the final flush unlinks nothing");
+
+        final OverlayStore reopened = openCapped(1L << 30, 2);
+
+        assertFalse(Files.exists(OverlayFixture.segment(root, manifest, 0)), "no record of segment 0 is the latest");
+        assertEquals(HEADER + 2L * RECORD, reopened.stats().writtenBytes(), "overlay_bytes without segment 0");
+        for (FakeChunk chunk : chunks) assertEquals(2, generation(reopened, chunk));
+    }
+
+    /**
+     * A full volume fails every write phase, 20 a second: the run logs one ERROR, its first, and one
+     * INFO with its length once a write succeeds again; {@code evict_failed} counts every one (API-M3-007).
+     */
+    @Test
+    public void aRunOfFailedWritePhasesLogsItsFirstFailureAndItsEnd() throws Exception {
+        final OverlayStore store = open(16_384, 1);
+        final FakeChunk chunk = new FakeChunk(store, 0, 0, 0);
+        chunk.change();
+        clock.advance(Duration.ofSeconds(10));
+        disk.failWrite = new IOException("No space left on device");
+
+        try (LogCapture log = LogCapture.of(OverlayStore.class)) {
+            for (int i = 0; i < 3; i++) store.tickEnd();
+            assertEquals(3, store.stats().evictFailed());
+            assertEquals(1, log.messagesAt(Level.ERROR).size(), log.messagesAt(Level.ERROR)::toString);
+            disk.failWrite = null;
+            store.tickEnd();
+            assertFalse(chunk.dirty(), "written once the disk takes it");
+            assertEquals(List.of("Overlay writes succeed again in " + root.resolve(manifest.buildId())
+                    + " after 3 failed write phases"), log.messagesAt(Level.INFO).stream()
+                    .filter(line -> line.startsWith("Overlay writes succeed again")).toList());
+        }
+    }
+
+    /**
+     * A chunk whose encoding throws for as long as its content stays, every write phase: one ERROR for
+     * the run, with its coordinates, and one INFO once it encodes again (API-M3-007 第 4 步).
+     */
+    @Test
+    public void aChunkThatKeepsFailingToEncodeLogsItsFirstFailureAndItsEnd() throws Exception {
+        final OverlayStore store = open(16_384, 1);
+        final FakeChunk chunk = new FakeChunk(store, 5, 0, 0);
+        chunk.change();
+        chunk.encoding = FakeChunk.Encoding.THROW;
+        clock.advance(Duration.ofSeconds(10));
+
+        try (LogCapture log = LogCapture.of(OverlayStore.class)) {
+            for (int i = 0; i < 3; i++) store.tickEnd();
+            assertEquals(3, chunk.encodes.get(), "encoded again by every phase");
+            assertTrue(chunk.dirty());
+            final List<String> errors = log.messagesAt(Level.ERROR);
+            assertEquals(1, errors.size(), errors::toString);
+            assertTrue(errors.getFirst().contains("5,0"), errors::toString);
+            chunk.encoding = FakeChunk.Encoding.NORMAL;
+            store.tickEnd();
+            assertFalse(chunk.dirty());
+            assertEquals(List.of("Chunk 5,0 encodes into an overlay record again after 3 failed encodings"),
+                    log.messagesAt(Level.INFO).stream().filter(line -> line.startsWith("Chunk 5,0")).toList());
+        }
+    }
+
+    /**
+     * The final flush is not retried: its failure is logged even in a run of failed write phases, and
+     * says the changes are lost, not that they are written again.
+     */
+    @Test
+    public void aFinalFlushThatCannotWriteSaysItsChangesAreLost() throws Exception {
+        final OverlayStore store = open(16_384, 1);
+        final FakeChunk chunk = new FakeChunk(store, 0, 0, 0);
+        chunk.change();
+        clock.advance(Duration.ofSeconds(10));
+        disk.failWrite = new IOException("No space left on device");
+
+        try (LogCapture log = LogCapture.of(OverlayStore.class)) {
+            store.tickEnd(); // a run of failed write phases begins
+            store.finalFlush(Duration.ofSeconds(2), false).get(5, TimeUnit.SECONDS);
+            final List<String> errors = log.messagesAt(Level.ERROR);
+            assertEquals(3, errors.size(), errors::toString);
+            assertTrue(errors.get(0).startsWith("The overlay write phase failed"), errors::toString);
+            assertTrue(errors.get(1).startsWith("The overlay final flush failed")
+                    && errors.get(1).endsWith("their changes are lost when the process exits"), errors::toString);
+            assertTrue(errors.get(2).startsWith("Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=1"), errors::toString);
+        }
+        assertTrue(chunk.dirty());
+    }
+
+    /**
+     * A batch whose first record does not fit behind the last one of a segment the count has not
+     * sealed goes on in a new segment; the full one is sealed then, its channel closed.
+     */
+    @Test
+    public void aFullSegmentTheNextBatchDoesNotGoIntoIsSealed() throws Exception {
+        final List<FileChannel> channels = new ArrayList<>();
+        final OverlayTuning.Disk recording = new OverlayTuning.Disk() {
+            @Override
+            public void write(FileChannel channel, ByteBuffer bytes, long position) throws IOException {
+                if (!channels.contains(channel)) channels.add(channel);
+                disk.write(channel, bytes, position);
+            }
+
+            @Override
+            public void force(FileChannel channel) throws IOException {
+                disk.force(channel);
+            }
+        };
+        // Room for three records, and far more records than three before the count seals a segment
+        final OverlayStore store = open(16_384, new OverlayTuning(1, HEADER + 3 * RECORD, OverlayTuning.SEGMENT_RECORDS,
+                OverlayFixture.TEST_PHASE_NANOS, clock, recording));
+        writeOnce(store, OverlayFixture.chunks(store, 0, 3)); // segment 0 full, and not sealed
+        assertTrue(channels.getFirst().isOpen(), "segment 0 still takes records");
+
+        writeOnce(store, OverlayFixture.chunks(store, 10, 1));
+
+        assertEquals(1, store.find(10, 0).segment(), "the record goes into segment 1");
+        assertEquals(2, channels.size());
+        assertFalse(channels.getFirst().isOpen(), "segment 0 sealed, its channel closed");
+    }
+
+    /**
+     * §11.1 LRU 淘汰, {@code relight_pending = 0} when the chunk goes back to handle mode: a light
+     * recomputation queued on a chunk after its eviction was picked, while it encoded, keeps it a
+     * resident, written and clean; the next eviction demotes it on that record without encoding it.
+     */
+    @Test
+    public void anEvictedChunkALightRecomputationWaitsForIsWrittenButNotDemoted() throws Exception {
+        final OverlayStore store = open(1, 1);
+        final RelitChunk evicted = new RelitChunk(store, 0, 0);
+        final FakeChunk other = new FakeChunk(store, 1, 0, 0);
+        evicted.chunk.change();
+        other.change(); // two residents over a cap of 1, the one changed first to evict; none due
+        evicted.chunk.inEncoding = () -> evicted.relightPending.set(true);
+
+        store.tickEnd();
+
+        assertEquals(1, generation(store, evicted.chunk), "written");
+        assertFalse(evicted.chunk.dirty());
+        assertEquals(List.of(false), evicted.chunk.written.stream().map(FakeChunk.Written::demote).toList());
+        assertTrue(evicted.chunk.overlay(), "still a resident");
+        OverlayStats stats = store.stats();
+        assertEquals(0, stats.evicted());
+        assertEquals(2, stats.resident());
+
+        evicted.relightPending.set(false);
+        store.tickEnd();
+
+        assertFalse(evicted.chunk.overlay(), "demoted once nothing waits to install into it");
+        assertEquals(1, evicted.chunk.encodes.get(), "on the record it was written to, not encoded again");
+        stats = store.stats();
+        assertEquals(1, stats.evicted());
+        assertEquals(1, stats.flushAppended());
+    }
+
+    /** A {@link FakeChunk} a light recomputation can wait to install into; the store tracks this object in its place. */
+    private static final class RelitChunk implements OverlayChunk {
+        final FakeChunk chunk;
+        final AtomicBoolean relightPending = new AtomicBoolean();
+
+        RelitChunk(OverlayStore store, int chunkX, int chunkZ) {
+            this.chunk = new FakeChunk(new OverlayTracker() {
+                @Override
+                public void materialized(OverlayChunk changed) {
+                    store.materialized(RelitChunk.this);
+                }
+
+                @Override
+                public void modified(OverlayChunk changed) {
+                    store.modified(RelitChunk.this);
+                }
+
+                @Override
+                public void unloadRequested(OverlayChunk changed) {
+                    store.unloadRequested(RelitChunk.this);
+                }
+
+                @Override
+                public void unloaded(OverlayChunk changed) {
+                    store.unloaded(RelitChunk.this);
+                }
+            }, chunkX, chunkZ, 0);
+        }
+
+        @Override
+        public int chunkX() {
+            return chunk.chunkX();
+        }
+
+        @Override
+        public int chunkZ() {
+            return chunk.chunkZ();
+        }
+
+        @Override
+        public long generation() {
+            return chunk.generation();
+        }
+
+        @Override
+        public boolean dirty() {
+            return chunk.dirty();
+        }
+
+        @Override
+        public OverlayEncoding encodeOverlay(SynxSettings settings, long deadlineNanos) {
+            return chunk.encodeOverlay(settings, deadlineNanos);
+        }
+
+        @Override
+        public boolean written(long generation, OverlayHit hit, boolean demote) {
+            return chunk.written(generation, hit, demote);
+        }
+
+        @Override
+        public boolean relightPending() {
+            return relightPending.get();
+        }
+    }
 }

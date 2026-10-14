@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.synx;
 
 import io.github.bearisbug.synaxis.coordinate.CoordConversion;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,8 +16,6 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.FileAttribute;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.zip.CRC32C;
@@ -36,8 +35,11 @@ import java.util.zip.CRC32C;
 final class OverlaySegment {
     static final int RECORD_HEADER_BYTES = 24;
     private static final int CRC_COVERED_HEADER_BYTES = 20;
+    /** Where a record header holds the length of the record. */
+    private static final int LENGTH_AT = 16;
     private static final ValueLayout.OfInt INT = ValueLayout.JAVA_INT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
     private static final ValueLayout.OfLong LONG = ValueLayout.JAVA_LONG_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
+    // The store's logger: what a segment logs belongs to the store's log (OverlayStoreTest captures it there)
     private static final Logger LOGGER = LoggerFactory.getLogger(OverlayStore.class);
 
     /** What a store being opened learns from each record found. */
@@ -51,22 +53,20 @@ final class OverlaySegment {
     private final MemorySegment mapping;
     // Open while the segment takes records
     private @Nullable FileChannel channel;
-    private long position;
+    private long position = SynxFormat.HEADER_BYTES;
     // The records an fsync confirmed, or the start-up found, in file order
-    private long[] keys = new long[64];
-    private long[] offsets = new long[64];
-    private int records;
+    private final LongArrayList keys = new LongArrayList();
+    private final LongArrayList offsets = new LongArrayList();
     /** The index entries naming a record of this segment. */
     int live;
     /** The records compaction has looked at. */
     int compacted;
 
-    private OverlaySegment(int number, Path path, MemorySegment mapping, @Nullable FileChannel channel, long position) {
+    private OverlaySegment(int number, Path path, MemorySegment mapping, @Nullable FileChannel channel) {
         this.number = number;
         this.path = path;
         this.mapping = mapping;
         this.channel = channel;
-        this.position = position;
     }
 
     static String fileName(int number) {
@@ -81,16 +81,13 @@ final class OverlaySegment {
     static OverlaySegment create(Path directory, int number, SynxHeader header, long size, OverlayTuning.Disk disk)
             throws IOException {
         final Path path = directory.resolve(fileName(number));
-        final FileAttribute<?>[] attributes = OverlayStore.posix(path)
-                ? new FileAttribute<?>[]{PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"))}
-                : new FileAttribute<?>[0];
         final FileChannel channel = FileChannel.open(path, Set.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.READ,
-                StandardOpenOption.WRITE), attributes);
+                StandardOpenOption.WRITE), OverlayStore.ownerOnly(path, "rw-------"));
         try {
             channel.write(ByteBuffer.allocate(1), size - 1);
             disk.write(channel, ByteBuffer.wrap(header.encode()), 0);
             final MemorySegment mapping = channel.map(FileChannel.MapMode.READ_ONLY, 0, size, Arena.ofAuto());
-            return new OverlaySegment(number, path, mapping, channel, SynxFormat.HEADER_BYTES);
+            return new OverlaySegment(number, path, mapping, channel);
         } catch (IOException | RuntimeException e) {
             channel.close();
             Files.deleteIfExists(path);
@@ -101,8 +98,9 @@ final class OverlaySegment {
     /**
      * Maps segment {@code number} of a store being opened and hands its records to {@code sink} in
      * file order. The records end at the first record header of a length below the segment length
-     * table, the zeros after the last record; a record that runs past the file or whose
-     * {@code crc32c} does not match, a record a crash cut short, ends them too, with an ERROR.
+     * table, the zeros after the last record; a record that runs past the file, whose {@code crc32c}
+     * does not match or that does not parse as an overlay record ends them too, with an ERROR: a
+     * record a crash cut short, or bytes that are not one.
      *
      * @return the segment, sealed; null for a file shorter than a header or with a header of zeros,
      *         which a crash left while it was made
@@ -111,10 +109,7 @@ final class OverlaySegment {
     static @Nullable OverlaySegment scan(Path path, int number, SynxExpectations expectations, byte[] contentHash,
                                          Sink sink) throws IOException, SynxException {
         final String name = path.getFileName().toString();
-        final MemorySegment mapping;
-        try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
-            mapping = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size(), Arena.ofAuto());
-        }
+        final MemorySegment mapping = SynxRegion.map(path, Arena.ofAuto());
         if (mapping.byteSize() < SynxFormat.HEADER_BYTES
                 || mapping.asSlice(0, SynxFormat.HEADER_BYTES).mismatch(MemorySegment.ofArray(new byte[SynxFormat.HEADER_BYTES])) == -1) {
             return null;
@@ -129,10 +124,10 @@ final class OverlaySegment {
             throw new SynxException(SynxError.MANIFEST, name, "content_hash " + SynxDigests.hex(header.contentHash())
                     + ", the release is " + SynxDigests.hex(contentHash));
         }
-        final OverlaySegment segment = new OverlaySegment(number, path, mapping, null, mapping.byteSize());
+        final OverlaySegment segment = new OverlaySegment(number, path, mapping, null);
         long offset = SynxFormat.HEADER_BYTES;
         while (offset + RECORD_HEADER_BYTES <= mapping.byteSize()) {
-            final long length = Integer.toUnsignedLong(mapping.get(INT, offset + 16));
+            final long length = segment.length(offset);
             if (length < SynxFormat.SEGMENT_TABLE_BYTES) break;
             final int chunkX = mapping.get(INT, offset);
             final int chunkZ = mapping.get(INT, offset + 4);
@@ -188,29 +183,28 @@ final class OverlaySegment {
     }
 
     /** Writes a record of {@code record} behind the last one, not forced, and returns its offset. */
-    long append(OverlayTuning.Disk disk, int chunkX, int chunkZ, long generation, MemorySegment record) throws IOException {
-        final int length = Math.toIntExact(record.byteSize());
-        final ByteBuffer bytes = ByteBuffer.allocate(Math.toIntExact(align(RECORD_HEADER_BYTES + length)))
+    long append(OverlayTuning.Disk disk, int chunkX, int chunkZ, long generation, byte[] record) throws IOException {
+        final ByteBuffer bytes = ByteBuffer.allocate(Math.toIntExact(align(RECORD_HEADER_BYTES + record.length)))
                 .order(ByteOrder.LITTLE_ENDIAN);
-        bytes.putInt(chunkX).putInt(chunkZ).putLong(generation).putInt(length).putInt(0).put(record.asByteBuffer());
+        bytes.putInt(chunkX).putInt(chunkZ).putLong(generation).putInt(record.length).putInt(0).put(record);
         final CRC32C crc = new CRC32C();
         crc.update(bytes.array(), 0, CRC_COVERED_HEADER_BYTES);
-        crc.update(bytes.array(), RECORD_HEADER_BYTES, length);
+        crc.update(bytes.array(), RECORD_HEADER_BYTES, record.length);
         bytes.putInt(CRC_COVERED_HEADER_BYTES, (int) crc.getValue()).clear();
         return write(disk, bytes);
     }
 
     /** Writes the record at {@code offset} of {@code from} behind the last one as it is, record header included. */
     long copy(OverlayTuning.Disk disk, OverlaySegment from, long offset) throws IOException {
-        final long length = RECORD_HEADER_BYTES + Integer.toUnsignedLong(from.mapping.get(INT, offset + 16));
-        final ByteBuffer bytes = ByteBuffer.allocate(Math.toIntExact(align(length)));
-        bytes.put(from.mapping.asSlice(offset, length).asByteBuffer()).clear();
+        final long size = RECORD_HEADER_BYTES + from.length(offset);
+        final ByteBuffer bytes = ByteBuffer.allocate(Math.toIntExact(align(size)));
+        bytes.put(from.mapping.asSlice(offset, size).asByteBuffer()).clear();
         return write(disk, bytes);
     }
 
     /** The length of the record body at {@code offset}. */
     long length(long offset) {
-        return Integer.toUnsignedLong(mapping.get(INT, offset + 16));
+        return Integer.toUnsignedLong(mapping.get(INT, offset + LENGTH_AT));
     }
 
     private long write(OverlayTuning.Disk disk, ByteBuffer bytes) throws IOException {
@@ -232,25 +226,20 @@ final class OverlaySegment {
 
     /** Counts the record at {@code offset} as confirmed. */
     void confirmed(long key, long offset) {
-        if (records == keys.length) {
-            keys = Arrays.copyOf(keys, records * 2);
-            offsets = Arrays.copyOf(offsets, records * 2);
-        }
-        keys[records] = key;
-        offsets[records] = offset;
-        records++;
+        keys.add(key);
+        offsets.add(offset);
     }
 
     int records() {
-        return records;
+        return keys.size();
     }
 
     long key(int record) {
-        return keys[record];
+        return keys.getLong(record);
     }
 
     long offset(int record) {
-        return offsets[record];
+        return offsets.getLong(record);
     }
 
     /** The record at {@code offset}, a view of the mapping; any thread. */

@@ -372,7 +372,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     /**
      * Damages the entity by a value, the type of the damage also has to be specified.
      * <p>
-     * A negative amount heals the entity, without any healing event.
+     * A negative amount heals without any healing event, or adds to the additional hearts of a player who has some.
      *
      * @param damage the damage to be applied
      * @return true if damage has been applied, false if it didn't

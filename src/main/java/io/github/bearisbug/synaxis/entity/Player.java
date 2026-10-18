@@ -208,7 +208,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     // Counts the instance changes, the continuation of one that a later one superseded gives up. Read and
     // written by whoever owns the player
     private int instanceSwitch;
-    // The death screen of the last death was sent: #respawn answers it even if the player was healed since
+    // The client shows the death screen of the last death until a respawn packet or a join: #respawn answers it
     private boolean deathScreenShown;
     private int dimensionTypeId;
     private volatile GameMode gameMode; // Read from the read thread to decide whether to decode a creative packet
@@ -452,6 +452,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 // relayed as system messages, never as signed player chat (docs/DESIGN-PROD.md ADR-PROD-009).
                 true, false);
         this.joinedGame = true;
+        this.deathScreenShown = false;
         sendPacket(joinGamePacket);
 
         // Start sending inventory updates. The equipment put in before only counts from now on, once:
@@ -687,7 +688,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         PlayerRespawnEvent respawnEvent = new PlayerRespawnEvent(this);
         process().eventHandler().call(respawnEvent);
         refreshIsDead(false);
-        this.deathScreenShown = false;
         updatePose();
 
         Pos respawnPosition = respawnEvent.getRespawnPosition();
@@ -716,6 +716,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      * Sends necessary packets to synchronize player data after a {@link RespawnPacket}
      */
     private void refreshClientStateAfterRespawn() {
+        this.deathScreenShown = false; // The respawn packet takes the client off its death screen
         sendPacket(new ChangeGameStatePacket(ChangeGameStatePacket.Reason.LEVEL_CHUNKS_LOAD_START, 0));
         sendPacket(new ServerDifficultyPacket(process().difficulty(), false));
         sendPacket(new UpdateHealthPacket(this.getHealth(), food, foodSaturation));

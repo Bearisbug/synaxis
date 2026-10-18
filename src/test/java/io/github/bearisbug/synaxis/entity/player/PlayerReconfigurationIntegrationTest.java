@@ -18,6 +18,7 @@ import io.github.bearisbug.synaxis.network.packet.server.play.ChangeGameStatePac
 import io.github.bearisbug.synaxis.network.packet.server.play.EntityStatusPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.HeldItemChangePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.PlayerAbilitiesPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.RespawnPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.SetExperiencePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.SystemChatPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.UpdateHealthPacket;
@@ -185,5 +186,36 @@ public class PlayerReconfigurationIntegrationTest {
 
         assertTrue(player.isOnline(), "the second spawn kept the player");
         assertSame(instance, player.getInstance(), "the player spawned again in the instance of its configuration");
+    }
+
+    /** Joining again takes the client off its death screen: the healed player no longer asks to respawn. */
+    @Test
+    public void aPlayerBackFromConfigurationIsOffItsDeathScreen(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        Player player = connection.connect(instance, new Pos(0, 40, 0));
+        var connections = env.process().connection();
+
+        player.kill();
+        player.startConfigurationPhase();
+        connections.updateWaitingPlayers();
+        player.getPlayerConnection().receiveKnownPacksResponse(List.of());
+        var configured = new CompletableFuture<Void>();
+        Thread.startVirtualThread(() -> {
+            try {
+                connections.doConfiguration(player, false);
+                connections.transitionConfigToPlay(player);
+                configured.complete(null);
+            } catch (Throwable t) {
+                configured.completeExceptionally(t);
+            }
+        });
+        configured.join();
+        connections.updateWaitingPlayers();
+        assertFalse(player.isDead(), "joining again heals the player");
+
+        var respawns = connection.trackIncoming(RespawnPacket.class);
+        player.acquirable().sync(Player::respawn);
+        respawns.assertEmpty();
     }
 }

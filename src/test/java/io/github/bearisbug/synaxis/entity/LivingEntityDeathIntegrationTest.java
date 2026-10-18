@@ -5,11 +5,13 @@ import io.github.bearisbug.synaxis.entity.damage.Damage;
 import io.github.bearisbug.synaxis.entity.damage.DamageType;
 import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.entity.EntityDeathEvent;
+import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.network.packet.server.play.DeathCombatEventPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.RespawnPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.SystemChatPacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
+import io.github.bearisbug.synaxis.world.DimensionType;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -93,6 +95,40 @@ public class LivingEntityDeathIntegrationTest {
         var again = connection.trackIncoming(RespawnPacket.class); // A collector stops once read
         player.respawn(); // Respawned, the client is off its death screen
         again.assertEmpty();
+    }
+
+    /** The respawn packet of a change of dimension takes the client off its death screen. */
+    @Test
+    public void aHealedPlayerSentToAnotherDimensionNoLongerRespawns(Env env) {
+        var overworld = env.createFlatInstance();
+        var nether = env.process().instance().createInstanceContainer(DimensionType.THE_NETHER);
+        nether.setGenerator(unit -> unit.modifier().fillHeight(0, 40, Block.STONE));
+        var connection = env.createConnection();
+        Player player = connection.connect(overworld, new Pos(0, 42, 0));
+
+        player.kill();
+        player.heal();
+        player.setInstance(nether, new Pos(0, 42, 0)).join();
+        var respawns = connection.trackIncoming(RespawnPacket.class);
+        player.respawn();
+
+        respawns.assertEmpty();
+    }
+
+    /** So does the respawn packet that shows a new skin. */
+    @Test
+    public void aHealedPlayerGivenANewSkinNoLongerRespawns(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        Player player = connection.connect(instance, new Pos(0, 42, 0));
+
+        player.kill();
+        player.heal();
+        player.setSkin(null);
+        var respawns = connection.trackIncoming(RespawnPacket.class);
+        player.respawn();
+
+        respawns.assertEmpty();
     }
 
     @Test

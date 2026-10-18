@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-18 | 分支 `prod/r081-PHYS`（基于 `main` `965c3bddae`），跟进 `docs/DESIGN-PROD.md` v0.9.102（RUN-081 组 PHYS），不登执行轮次（集成轮登记）。**新增 §4「生产就绪 · RUN-081：PHYS」十条 `TC-PROD-940`～`TC-PROD-949`**：视角与 `withDirection`（940）、零向量的 `normalize()`（941）、`Area.cube`、`Area.box` 的对称展开（942）、大范围的实体查找与 `ChunkRange`（943）、非有限速度与倒置包围盒（944）、放置判定覆盖大体型实体（945）、视线与实体碰撞结果（946）、投射物（947）、经验球与 `EntityFinder`（948）、三种线程模式回归与新增行覆盖率（949），改动前的红都实跑过。新类 `collision.BlockCollisionTest`、`collision.PhysicsUtilsTest`、`entity.ExperienceOrbIntegrationTest`；`coordinate.PositionUtilsTest` 随 `PositionUtils` 的三个方法删除，两条用例并入 `PosTest`；`PosViewDirectionTest`、`EntityViewDirectionIntegrationTest` 斜向目标的 pitch 期望按欧氏水平距离改，`EntityEntityCollisionIntegrationTest#entityCollisionDetailsTest` 的 `direction` 期望改为面法线。§5 局部轮加一行 | Bearisbug |
 | 2026-10-18 | 集成分支 `prod/integrate-080` 的全量门禁、Concurrency、Client mod 与 Client gametest（job `gametest`、`rush`、`p11-smoke`）在 GitHub Actions 上对 `8000c5b332` 跑完（草稿 PR #33，四个工作流都是第 1 次尝试；`c42208b6b2` 上的 CI 三个测试 job 红在 `BotSocketTest` 一条，由 `8000c5b332` 修，见 `TC-PROD-797`），§6 登记 RUN-080（通过 49/49，证据 `docs/test-runs/RUN-080/integrate/00-index.txt`）。写死条数的旧用例按 artifact 的实数改：`TC-PROD-486`、`505`、`510`、`529`、`549`、`585`、`596`、`607`、`618`、`636` 的 `server-app` 814 → 849（RUN-079 加 1 个类 19 个，RUN-080 加 1 个类 16 个），`TC-PROD-505`、`585`、`618`、`636`、`654` 的根项目 3,217 → 3,283（RUN-079 加 1 个，RUN-080 加 4 个类 65 个），`TC-PROD-636` 第 1 步的全部模块 682 个类 4,702 → 688 个类 4,850（`synx`、`baker`、`game-rush`、`play-kit` 一并改成实数），`TC-PROD-430` 第 5 步的模组测试 288 → 297（RUN-079 加 9 个，RUN-080 不变）；`TC-GAME-070` 第 2 步归光照会话，经 `docs/DESIGN-PROD.md` §28.3 交接。`TC-PROD-783` 的生成器等到三次等待都试过才生成目标区块，加第 5 步记下 4 线程严格下的偶发红 | Bearisbug |
 | 2026-10-18 | 集成分支 `prod/integrate-080`（基于 `main` `a211a45ca1`）依次 `--no-ff` 合入 `prod/r080-NET`、`prod/r080-THREAD`、`prod/r080-WORLD`、`prod/r080-CODEC`、`prod/r080-ITEMNET`、`prod/r080-CMD`、`prod/r080-STORE`、`prod/r080-HOST`，跟进 `docs/DESIGN-PROD.md` v0.9.92 与 `docs/DESIGN-PLAY.md` v0.20，不登执行轮次（草稿 PR 的 CI 跑完后登记 RUN-080）。**冲突**：每次合并本文档的变更记录都冲突，按合并的倒序排在顶部（NET 在下、HOST 在上）；§4 各组的新节、§5 各组加的一行、§7 THREAD 加的一条（紧挨着 WORLD 改了行号的 `PlayerRespawnChunkIntegrationTest` 一条）与「玩法架构 · RUN-077：H」节的前置一行（NET、WORLD 各改一处行号，按词合并）两边都留。**§4 的次序**：NET、ITEMNET、CMD 三组把新节放在 §4 末尾，另几组放在「生产就绪 · RUN-076：W」之后；合并后「生产就绪 · RUN-080」八节按合并顺序（NET、THREAD、WORLD、CODEC、ITEMNET、CMD、STORE、HOST）接在 RUN-076 W 之后，「玩法架构 · RUN-080：HOST」留在 §4 末尾，各节内容取自各组分支。**`TC-PROD-793`**：组 CMD 合入后命令 condition 的异常只隐藏节点、不再让出生失败，本条原来的触发在三种线程模式下都红在 `PlayerSpawnFailureIntegrationTest.java:70`；前置改用 Tab 列表的可见性抛异常，第 2～4 步写明是 WORLD 分支上 condition 触发时的读数，加第 5 步：集成分支上默认与严格 grid 都绿、反证红在 `:67`（证据 `docs/test-runs/RUN-080/integrate/`）。各组节写明行号按各组提交，别组移动的行不改。草稿 PR #33 的 CI 在 `c42208b6b2` 上三个测试 job 都红在 `loadtest` 的 `BotSocketTest`（`TC-WORLD-074`）：重新配置之后的再出生在等候队列的线程上写血量，玩家仍指派给第一次出生的 tick 线程，所有权断言抛出，组 WORLD 的出生失败处理随即踢人；`Player#UNSAFE_init` 对已有指派的玩家改为在那条线程的持有下出生，加 `TC-PROD-797`；`TC-PROD-793` 两个第 5 步的后一个改为第 6 步 | Bearisbug |
 | 2026-10-18 | 分支 `prod/r080-HOST`（基于 `main` `cb969826b7`），跟进 `docs/DESIGN-PLAY.md` v0.19，不登执行轮次（本组 8 次 Gradle 运行的读数写在两节各步里）。**新增 `TC-PROD-840`**（§4「生产就绪 · RUN-080：HOST」）：`runOn` 投给到期前就被移除的实体、被注销的实例的任务，以及被插件取消的任务，不再留在插件的任务表里，目标随之可回收（`REQ-PROD-021`）。**新增 `TC-PLAY-170`**（§4「玩法架构 · RUN-080：HOST」）：刚断线的连接 `enter` 什么都不做，在线却不在 PLAY 的被拒并写出阶段，开局那一刻断线的排队玩家不让竞技场停在 `OPEN`（`REQ-PLAY-003`、`REQ-PLAY-008`）。**随改**：`TC-PLAY-049` 第 1 步断线之后那一句改为不抛、台账不变；第 3 步 ② 的改动行 `:296` → `:300`，红点改为 `:335` 的台账断言，① 的红行 `:335` → `:339`；「玩法架构 · RUN-077：H」节头注明 `SceneService.java` 从组 HOST 起第 216 行之后的行号加 4；§2 对照表 `REQ-PLAY-003`、`REQ-PLAY-008` 两行加 `TC-PLAY-170`；§5 局部轮 `PluginSchedulerImpl` 一句加 `TC-PROD-840`，玩法架构域三处加 `TC-PLAY-170` | Bearisbug |
@@ -12024,6 +12025,126 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：`grep -rn proof.never server-app/src/main` 无输出；`git status --short` 无输出。
 
+### 生产就绪 · RUN-081：PHYS（视角与零向量、方块区域、大范围的实体查找、碰撞与物理、放置判定与视线、投射物、经验球与实体查找）
+
+对应 `REQ-003`、`REQ-PROD-013`、`REQ-PROD-019`、`REQ-PROD-039`、`REQ-PROD-046`（`docs/DESIGN-PROD.md` v0.9.102）。修引擎坐标、碰撞、投射物、经验球与实体查找里的缺陷，逐条见设计文档那一行；`game-rts` 原地命令保持朝向的一行交光照会话（该分册 §28.3）。
+
+测试：根项目 19 个类与 `server-app`、`game-rts` 的回归，「跑 `<类>`」= `./gradlew :test --tests 'io.github.bearisbug.synaxis.<类>' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（本机带 `--max-workers=2`）。新类三个：`collision.BlockCollisionTest`（3 条）、`collision.PhysicsUtilsTest`（2 条）、`entity.ExperienceOrbIntegrationTest`（3 条，带 `@EnvTest`）；`coordinate.PositionUtilsTest` 随 `PositionUtils` 的三个方法删除，它的两条挪进 `coordinate.PosTest` 的 `testWithDirectionYaw`、`testWithDirectionPitch`（±180° 两处按等价角比较）。其余各类加的用例写在下面各条。本组 6 次 Gradle：第 1 次测试编译不过（Error Prone `NarrowCalculation`，`EntityFinderIntegrationTest` 一处整数除法），没有跑测试；第 2 次改动前的红（`965c3bddae` 的主代码，测试是本组的）；第 3 次主代码编译不过（Error Prone `IdentityHashMapUsage`，`EntityFinder` 的排序改用局部 record 之后过了），没有跑测试；第 4 次修后默认模式，同次带 `:testNamingCheck`、`:jacocoTestReport`、`server-app` 的两个 M3 回归类（带数据库）与 `:game-rts:test`；第 5、6 次 4 线程严格与严格 grid。改动前的红就是各条测试有齿的证据，修后没有再改测试，没有另做反证。第 2 次与第 4 次之间把 `EntityProjectileCollisionIntegrationTest#stuckProjectileStopsOnlyOnce` 的 `projectile.tick(ticks++ * tick)` 拆成两句（行为不变），该类其后三条的行号 +4，下面写的是现在的行号。
+
+#### `TC-PROD-940` 视角：`lookAt` 的 pitch 按欧氏水平距离，`withDirection` 收方向向量、零向量不改视角 — 对应 `REQ-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `coordinate.PosTest`、`coordinate.PosViewDirectionTest`、`entity.EntityViewDirectionIntegrationTest`（第 4 次运行） | `PosTest` `tests="25"`、`PosViewDirectionTest` `tests="3"`、`EntityViewDirectionIntegrationTest` `tests="4"`，0 失败。`testWithDirection`：(0, 0, 0, 37, 12) 收零向量后等于自身；(100, 0, 100) 收 (1, 0, 0) 得 yaw −90、pitch 0，与位置无关。`testWithDirectionYaw`、`testWithDirectionPitch`：原 `PositionUtilsTest` 的七个 yaw 与四个 pitch 断言改走 `withDirection`，(1, −1, 1) 的 pitch 为 35.264。`withLookAtPos`：从 (0, 40, 0) 看 (48, 36, 48)、(48, 36, −17)、(−25, 42, 4)、(1, 39, 1) 的 pitch 为 3.37、4.49、−4.52、35.26；`withLookAtLooksAlongTheDirectionToThePoint`：两个目标上 `withLookAt` 与 `withDirection(target.sub(origin))` 的 yaw、pitch 差都在 1e-4 内。`lookAtPos` 两处 pitch 4.83、6.43，`lookAtEntityDifferentType` 两处 2.77、−15.11，其余不变 |
+| 2 | 改动前的红（第 2 次运行） | 这三个类红 6 条：`PosTest.java:155`（`expected: <Pos[… yaw=37.0, pitch=12.0]> but was: <Pos[… yaw=37.0, pitch=90.0]>`）、`:438`（属 `TC-PROD-941`）；`PosViewDirectionTest.java:30`（`expected: <3.37> but was: <4.763642>`）、`:56`（`expected: <3.372286796569824> but was: <4.763641834259033>`）；`EntityViewDirectionIntegrationTest.java:100`（`expected: <4.83> but was: <6.8192377>`）、`:183`（`expected: <2.77> but was: <3.9186394>`）。`testWithDirectionYaw`、`testWithDirectionPitch` 修前修后都绿（只是挪位） |
+| 3 | `game-rts` 是 `withDirection` 唯一的生产调用方（`Unit.java:151`、`:155`），跑 `:game-rts:test`（第 4 次运行） | 14 个类 93 条，0 失败；`UnitMovementIntegrationTest` 7 条绿。原地命令保持朝向的那一行与它的用例由光照会话补（`docs/DESIGN-PROD.md` §28.3） |
+
+后置：无。
+
+#### `TC-PROD-941` 零向量：`normalize()` 返回零向量，零方向的击退、方块触碰与视线不再出 NaN — 对应 `REQ-003`、`REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `coordinate.VecTest`、`coordinate.BlockVecTest`、`coordinate.PosTest`、`entity.EntityVelocityIntegrationTest`、`collision.EntityBlockTouchTickIntegrationTest`、`entity.EntityLineOfSightIntegrationTest`（第 4 次运行） | `VecTest` `tests="26"`、`BlockVecTest` `tests="15"`、`PosTest` `tests="25"`、`EntityVelocityIntegrationTest` `tests="9"`、`EntityBlockTouchTickIntegrationTest` `tests="5"`、`EntityLineOfSightIntegrationTest` `tests="10"`，0 失败。`Vec.ZERO.normalize()`、`BlockVec.ZERO.normalize()` 等于 `Vec.ZERO`，(0, 0, 0, 45, 30) 的 `normalize()` 等于自身；`testRotateAroundZeroAxis`：(1, 2, 3) 绕零轴转 π/3 得原向量。`knockbackWithoutADirectionOnlyLifts`：着地的僵尸在 (5, 40, 5) 受 `takeKnockback(0.4f, 0, 0)`，速度三个分量有限、x 与 z 为 0，tick 一次后 x、z 仍为 5、y 高于 40。`entityOnTheCornerOfABlockTouchesIt`：僵尸站在 (0, 42, 0)，正是带 handler 的石头 (0, 42, 0) 的坐标，`tick(0)` 之后 `onTouch` 只收到这一格。`entityPhysicsCheckLineOfSightSameEyes`：两只僵尸同一位置，`hasLineOfSight(…, false)` 为 false（修前也是 false，方向由 NaN 变为零向量） |
+| 2 | 改动前的红（第 2 次运行） | 红 5 条：`VecTest.java:228`、`BlockVecTest.java:361`、`PosTest.java:438` 都是 `but was: <…[x=NaN, y=NaN, z=NaN…]>`；`VecTest.java:234`（绕零轴转出 NaN）；`EntityVelocityIntegrationTest.java:124`（`velocity Vec[x=NaN, y=7.216, z=NaN]`）；`EntityBlockTouchTickIntegrationTest.java:87`（`expected: <[Vec[x=0.0, y=42.0, z=0.0]]> but was: <[]>`）。同眼位一条修前也绿 |
+
+后置：无。
+
+#### `TC-PROD-942` `Area.cube`、`Area.box` 以中心方块对称展开 — 对应 `REQ-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `coordinate.AreaTest`（第 4 次运行） | `tests="80"` 0 失败。`cubeOddSizeIsCenteredOnTheCenterBlock`：`cube(BlockVec.ZERO, 3)` 为 (−1, −1, −1)～(1, 1, 1) 共 27 格，`cube(ZERO, 1)` 1 格，中心 (0.7, 0.7, 0.7) 的 `cube(…, 3)` 与之相同，`cube(…, 2)` 27 格。`boxRadiusIsHalfTheSizeFloored`：`box(ZERO, (3, 2, 2))` 与 `box((0.9, 0.9, 0.9), (2.5, 2.5, 2.5))` 都是 (−1, −1, −1)～(1, 1, 1)。原有的 `cubeArea`（`cube(ZERO, 2)` 27 格）、`boxArea`、零尺寸与负数拒收不变 |
+| 2 | 改动前的红（第 2 次运行） | 红 2 条：`AreaTest.java:822`（`expected: <BlockVec[blockX=-1, blockY=-1, blockZ=-1]> but was: <BlockVec[blockX=-2, blockY=-2, blockZ=-2]>`）、`:837`（`but was: <BlockVec[blockX=-2, blockY=-1, blockZ=-1]>`）。中心带小数、整数偶数尺寸的 `cube(…, 2)` 修前也是 27 格：整数偶数尺寸的半径是整数，floor(c ± h) = floor(c) ± h，结果不变 |
+
+后置：无。
+
+#### `TC-PROD-943` 大范围的实体查找返回全部命中，`ChunkRange` 对负 range 不回调、对溢出的 range 拒收 — 对应 `REQ-PROD-039`、`REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `coordinate.CoordinateTest`、`instance.ChunkUtilsTest`、`instance.EntityTrackerTest`（第 4 次运行） | `CoordinateTest` `tests="16"`、`ChunkUtilsTest` `tests="10"`、`EntityTrackerTest` `tests="8"`，0 失败。`chunksInRangeVisitsTheSquareOnce`：range 0～5 各恰好回调 `chunksCount(range)` 次、无重复、都在方形内；`chunksInRangeWithANegativeRangeVisitsNothing`：range −1、−2 与两回调 `chunksInRangeDiffering` 的 −1 一次都不回调；`chunksInRangeRefusesARangeItsCountOverflows`：range 23170 时两个方法都抛 `IllegalArgumentException`，信息含 `23170`；`chunksInRangeDifferingSplitsEnteringAndLeaving`：中心 (0, 0) → (1, 0)、range 1，进入的是 x = 2 一列 3 个，离开的是 x = −1 一列 3 个；`chunkCount` 的 −1 报错信息含 `-1`。`nearbyWithARangeBeyondTheChunkRangeFindsEveryEntity`：(0, 0, 0) 与 (1600, 0, 1600) 各一个实体，range 取 `Double.MAX_VALUE`、正无穷、1e6、1e5 都返回这两个，range 2000 只返回近的；`nearbyWithMoreEntitiesThanChunksInRange`：31 个实体、range 20（5 × 5 个区块，少于实体数，走逐区块遍历）返回 x = 1 与 x = 20 的 30 个，不含 (0, 0, 40) |
+| 2 | 改动前的红（第 2 次运行） | 红 4 条：`CoordinateTest.java:82`（`expected: <[]> but was: <[0, 0, 4294967295, 8589934591, …]>`：−1 回调了中心区块，−2 回调了 9 个）、`:87`（`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`）、`:58`（信息是 `Range cannot be negative`，不含实际值）；`EntityTrackerTest.java:206`（`range 1.7976931348623157E308 ==> expected: <[…, …]> but was: <[…]>`：只扫了中心区块） |
+| 3 | 负的实例视距与区块环：跑 `entity.player.ChunkQueueBoundIntegrationTest`（`TC-PROD-650`～`TC-PROD-652`）、`entity.player.PlayerMovementIntegrationTest`、`instance.ChunkViewerIntegrationTest`、`instance.EntityTrackerIntegrationTest`、`listener.PlayerMovementAuthorityIntegrationTest`（第 4 次运行） | `ChunkQueueBoundIntegrationTest` `tests="6"`（含 `aNegativeInstanceViewDistanceLeavesThePlayerTicking`：实例视距 −2、区块环半径 −1，20 tick 0 个异常）、`PlayerMovementIntegrationTest` `tests="12"`、`ChunkViewerIntegrationTest` `tests="4"`、`EntityTrackerIntegrationTest` `tests="3"`、`PlayerMovementAuthorityIntegrationTest` `tests="7"`，0 失败 |
+
+后置：无。
+
+#### `TC-PROD-944` 非有限速度原位停下，倒置的包围盒构造即拒，`PhysicsUtils` 按文档的行为 — 对应 `REQ-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`BlockCollisionTest` 的方块来源全是空气，被问满 100,000 次就抛 `IllegalStateException`，代替「扫掠不停」的观察。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `collision.BlockCollisionTest`、`collision.PhysicsUtilsTest`、`collision.EntityBlockPhysicsIntegrationTest`、`entity.EntityPhysicsIntegrationTest`、`entity.EntityBoundingBoxIntegrationTest`（第 4 次运行） | `BlockCollisionTest` `tests="3"`、`PhysicsUtilsTest` `tests="2"`、`EntityBlockPhysicsIntegrationTest` `tests="75"`、`EntityPhysicsIntegrationTest` `tests="2"`、`EntityBoundingBoxIntegrationTest` `tests="3"`，0 失败。`nonFiniteVelocityLeavesTheBoxWhereItIs`：(+∞, 0, 0)、(0, −∞, 0)、(0, 0, NaN)、(NaN, NaN, NaN) 四种速度下 `handlePhysics` 返回原位置（含视角）、速度 `Vec.ZERO`，方块来源一次都没被问；同样四种速度带直径 64 的世界边界也返回原位置。`finiteVelocityStillMoves`：(20, 0, 20) 走到起点加速度处（1e-3 内）。`invertedBoundingBoxIsRefused`：`new BoundingBox(-2, 1, 1)`、`(1, -0.5, 1)`、0.6 宽的盒子 `contract(2, 0, 2)`、起点 y 为 NaN、起点 (1, 1, 1) 终点 (0, 0, 0) 都抛 `IllegalArgumentException`，`new BoundingBox(0, 0, 0)` 合法。`PhysicsUtilsTest` 钉住文档写的行为：位置没变时 x、z 置 0，不飞行有重力得 y = −0.08 × 0.98，无重力或飞行得零向量；位置变了时飞行且无重力 y 保持 0.5，飞行有重力 y 乘 0.6 |
+| 2 | 改动前的红（第 2 次运行） | 红 2 条：`nonFiniteVelocityLeavesTheBoxWhereItIs` 抛 `IllegalStateException: the sweep does not end`（`BlockCollisionTest.java:27`，+∞ 那一种让扫掠把空气方块来源问满 100,000 次）；`BlockCollisionTest.java:59`（`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`）。`finiteVelocityStillMoves` 与 `PhysicsUtilsTest` 两条修前修后都绿 |
+
+后置：无。
+
+#### `TC-PROD-945` 放置判定覆盖大体型实体 — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `collision.PlacementCollisionIntegrationTest`、`entity.player.PlayerBlockPlacementIntegrationTest`、`instance.BlockPlaceIntegrationTest`（第 4 次运行） | `PlacementCollisionIntegrationTest` `tests="6"`、`PlayerBlockPlacementIntegrationTest` `tests="9"`、`BlockPlaceIntegrationTest` `tests="5"`，0 失败。`largeEntityReachingFarFromItsFeet`：铁傀儡站在 (1.65, 40, 1.65)（碰撞箱 0.95～2.35 × 40～42.7 × 0.95～2.35，脚底离方块角 3.07 格），对 (0, 42, 0) 放石头返回这只铁傀儡，对 (0, 43, 0) 返回 null。`giantReachingIntoABlockAboveIt`：巨人（宽 3.6、高 12）站在 (2.5, 40, 2.5)，对 (0, 51, 0) 放石头返回巨人。原有的空地、僵尸、半砖、玩家脚下四条不变 |
+| 2 | 改动前的红（第 2 次运行） | 红 2 条：`PlacementCollisionIntegrationTest.java:45`、`:55`，都是 `expected: <…Entity@…> but was: <null>` |
+| 3 | 挂地图分片的放置与挖掘（光照会话的类，只跑不改）：`./gradlew :server-app:test --tests io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest --tests io.github.bearisbug.synaxis.app.shard.WorldFlagsReplayTest`，按 §3 的数据库前置设 `SYNAXIS_TEST_PG_URL`（第 4 次运行） | `MapShardPlayerAuthorityTest` `tests="4"`、`WorldFlagsReplayTest` `tests="21"`，0 跳过、0 失败 |
+
+后置：无。
+
+#### `TC-PROD-946` 视线停在第一次命中，实体碰撞的方向是命中面的法线、结果排序且不含自身 — 对应 `REQ-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.EntityLineOfSightIntegrationTest`、`collision.EntityEntityCollisionIntegrationTest`、`collision.RayUtilsTest`（第 4 次运行） | `EntityLineOfSightIntegrationTest` `tests="10"`、`EntityEntityCollisionIntegrationTest` `tests="6"`、`RayUtilsTest` `tests="7"`，0 失败。`entityPhysicsCheckLineOfSightGrazingAPillar`：僵尸在 (3.0, 42, 0.5) 看 (5.29, 42, 7.37) 的僵尸，空地上看得见；x = 5、z = 5～6、y = 40～45 立起石柱后看不见（射线在 z = 6.5 撞上柱子的西面，停在那里）。`entityCollisionDetailsTest`：沿 +Z 撞上前方僵尸，`direction` 为 (0, 0, −1)；`entityCollisionDirectionIsTheHitFace`：沿 −X 撞上得 (1, 0, 0)，向下落到下方僵尸身上得 (0, 1, 0)；`entityCollisionsLeaveOutTheMovingEntityAndAreSorted`：过滤器放行一切，结果依次是起点就重叠的（`percentage` 0、`direction` 零向量）、近的、远的，不含移动的实体本身。原有三条沿轴视线用例不变 |
+| 2 | 改动前的红（第 2 次运行） | 红 4 条：`EntityLineOfSightIntegrationTest.java:214`（`expected: <false> but was: <true>`）；`EntityEntityCollisionIntegrationTest.java:82`（`expected: <Vec[x=0.0, y=0.0, z=-1.0]> but was: <Vec[x=0.0, y=42.0, z=1.399986]>`：存的是碰撞点）、`:101`（`but was: <Vec[x=-1.399986, y=45.0, z=0.0]>`）、`:125`（结果里有移动的实体本身，顺序按登记） |
+
+后置：无。
+
+#### `TC-PROD-947` 投射物：零宽不卡死 tick，命中按采样点所在区块，卡住只停一次，取消的命中每 tick 一次，无射手照常发射 — 对应 `REQ-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.EntityProjectileIntegrationTest`、`collision.EntityProjectileCollisionIntegrationTest`、`instance.SimulationDistanceTest`（第 4 次运行） | `EntityProjectileIntegrationTest` `tests="5"`、`EntityProjectileCollisionIntegrationTest` `tests="6"`、`SimulationDistanceTest` `tests="9"`，0 失败。`zeroWidthProjectileTicks`：无射手的 `ITEM_DISPLAY` 投射物以 (0, 0, 20) 格/秒在实例里，`env.tick()` 5 s 内返回，z 前进了。`projectileWithoutShooterShootsFromItself`：无射手的箭 `shoot((0, 42, 10), 1, 0)` 不抛，`EntityShootEvent#getEntity()` 是箭本身，速度有限、z 分量为正。`shootRefusesWhatItCannotAimWith`：射向射手自己的眼睛抛 `IllegalArgumentException`，信息带眼睛的 y；power 为 NaN、spread 为正无穷各抛一次；监听器把 power 改成正无穷时同样抛。`stuckProjectileStopsOnlyOnce`：无重力的箭以 20 格/秒射进 (3, 41, 0) 的石头，卡住后再 tick 20 次，每次之间 `isOnGround()` 为真、`hasNoGravity()` 为真，旁观的玩家收到这支箭的 `EntityVelocityPacket` 不超过 2 个；拆掉石头后一 tick 派发 `ProjectileUncollideEvent`，`isOnGround()` 与 `hasNoGravity()` 都为假。`entityHitInTheChunkTheProjectileLeft`：箭以每 tick 2 格从 (15, 41, 0.5) 飞进区块 1，区块 0 里 (15.6, 41, 0.5) 的兔子收到 `ProjectileCollideWithEntityEvent`。`cancelledHitIsDispatchedOncePerTick`：同一 tick 有 3 个采样点与兔子重叠，监听器每次取消，事件只派发 1 次，箭照常飞过（x > 2）。`SimulationDistanceTest` 里靠 `isOnGround()` 判卡住的两条照旧绿（`docs/DESIGN-M3.md` ADR-M3-017） |
+| 2 | 改动前的红（第 2 次运行） | 红 6 条：`EntityProjectileIntegrationTest.java:93`（`execution timed out after 5000 ms`：采样步长为 0，约 21 亿次循环）、`:105`（`NullPointerException: Cannot invoke "…Entity.getPosition()" because "this.shooter" is null`）、`:123`（`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`）；`EntityProjectileCollisionIntegrationTest.java:188`（`21 velocity packets while stuck`）、`:218`（`the rabbit in chunk 0 was missed`）、`:242`（`expected: <1> but was: <3>`）——这三处在第 2 次运行时是 `:184`、`:214`、`:238`，见本节开头 |
+
+后置：无。
+
+#### `TC-PROD-948` 经验球不再自带半成品的物理、改数量不动观察者，`EntityFinder` 的偏移量与排序 — 对应 `REQ-003`、`REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.ExperienceOrbIntegrationTest`、`entity.EntityFinderIntegrationTest`（第 4 次运行） | `ExperienceOrbIntegrationTest` `tests="3"`、`EntityFinderIntegrationTest` `tests="16"`，0 失败。`orbWithoutGravityStaysInTheAir`：无重力的经验球在 (0.5, 45, 0.5) 过 20 tick，y 仍为 45、速度为零。`orbFallsOntoTheGround`：(0.5, 42, 0.5) 的经验球 20 tick 内落到 y = 40 并着地。`experienceCountKeepsTheViewers`：附近的玩家自动看见经验球，远处 (z = 5,000) 的玩家是手动观察者；`setExperienceCount(5)` 之后数量为 5，两人仍是观察者，附近的玩家没收到这颗球的第二个 `SpawnEntityPacket`；附近的玩家传送到 z = 5,000 之后不再是观察者。`differenceIsAnOffsetFromTheStart`：起点 (100, 40, 100)、`setDifference(5, 5, 5)` 只选中 (102, 42, 102) 的实体，不选 (50, 40, 50) 的。`sortReadsEachDistanceOnce`：64 个实体（覆写 `getDistanceSquared(Point)` 计数）按 NEAREST、limit 10 排序，恰好读 64 次距离，结果按距离递增 |
+| 2 | 改动前的红（第 2 次运行） | 红 5 条：`ExperienceOrbIntegrationTest.java:26`（`expected: <45.0> but was: <42.5154091053266>`：无重力反而每 tick 加下坠）、`:38`（`expected: <40.0> but was: <40.05872783491547>`：落地后还在弹）、`:57`（`the manual viewer still sees the orb ==> expected: <true> but was: <false>`）；`EntityFinderIntegrationTest.java:243`（选中的是 (50, 40, 50) 的实体）、`:269`（`expected: <64> but was: <620>`） |
+
+后置：无。
+
+#### `TC-PROD-949` 三种线程模式下的回归、命名门与新增行覆盖率 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。本组碰到 tick 线程之间共享的状态有两处：`EntityTrackerImpl#nearbyEntities` 的整表遍历读追踪器的并发集合（弱一致，不加锁不做快照，本 tick 里正在换区块的实体可能漏掉或多出一次，与逐区块遍历相同），放置判定与投射物的命中扫描经它与 `chunkEntities` 读别的线程上的实体。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 4 次运行的根项目 36 个类（本节改到的 19 个类，加 `TC-PROD-943`～`TC-PROD-947` 列的旧类与 `entity.GridItemRaceTest`、`entity.ItemEntityClaimIntegrationTest`、`entity.ItemEntityCrossCellConcurrencyTest`、`entity.player.PlayerIntegrationTest`）加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 跑一次（第 5 次运行），再加 `-Dsynaxis.thread-provider=grid` 跑一次（第 6 次运行） | 两次都是 36 个类 425 条，0 失败、0 跳过；第 4 次默认模式的同一批也是 425 条 0 失败。配置缓存按改了的系统属性重算（第 6 次运行的日志 `configuration cache cannot be reused because system property 'synaxis.thread-provider' has changed`），三种模式各跑了一遍 |
+| 2 | 第 4 次运行的 `:testNamingCheck` | `:testNamingCheck` 通过：新类 `BlockCollisionTest`、`PhysicsUtilsTest` 不带 `@EnvTest`，`ExperienceOrbIntegrationTest` 带 |
+| 3 | 新增行覆盖率：第 4 次运行的 `build/reports/jacoco/test/jacocoTestReport.xml` 对 `965c3bddae` 跑 `diff-cover --compare-branch=965c3bddae --src-roots src/main/java --fail-under=80` | `Total: 100 lines`、`Missing: 0 lines`、`Coverage: 100%`，改到的 13 个主代码文件都是 100% |
+
+后置：无。
+
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
 对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的线上部分：`synaxis:play` v1 的五条消息、小部件属性的 TLV 编码与冻结向量（`docs/DESIGN-PLAY.md` `API-PLAY-002`、`API-PLAY-003`；本组跟进该分册 v0.2 与 `docs/DESIGN-M2.md` v0.66 的 `API-M2-001`）。用例号段 001～009，由组 P 在分支 `prod/r077-P` 写入。测试类：`:protocol` 包 `io.github.bearisbug.synaxis.game.protocol.play` 的 `PlayMessagesTest`、`PlayVectorTest`；`client-fabric` 的 `PlayFrozenVectorTest`。
@@ -13880,6 +14001,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 ITEMNET，物品与聊天组件写给 26.2 客户端的四处断线（`REQ-001`、`REQ-PROD-047`，v0.9.89）→ TC-PROD-810～TC-PROD-814；动了 `ItemStack#asHoverEvent` 或 `ComponentNetworkBufferTypeImpl` 写悬停事件的部分就跑 TC-PROD-810 与 TC-PROD-685；动了 `Particle.Item`、`ParticleImpl` 的默认值或 `DataComponents` 里 `use_remainder`、`sulfur_cube_content`、`bundle_contents`、`charged_projectiles` 的注册就跑 TC-PROD-811；动了 `container` 的注册、`ItemStackTemplate` 或组件补丁的读写就跑 TC-PROD-812；动了 custom 点击事件的写法（`ComponentNetworkBufferTypeImpl`、`ComponentCodecs#CLICK_EVENT`）或 `EngineAdventure#unwrapNbt` 就跑 TC-PROD-813；以上任一处都加跑 TC-PROD-814
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 CMD 组，命令的 condition、参数的包装、目标选择器与参数的错误回调（`REQ-PROD-012`、`REQ-PROD-011`，v0.9.90）→ TC-PROD-820～TC-PROD-826；动了引擎 `GraphConverter`（建命令包时接住 condition 的异常、按 `Argument#unwrap` 取节点形状、没有 parser 的节点不写进包）、`CommandParserImpl`（解析失败的归属、错误回调与调它之前看的语法 condition）、`Argument` 的 `unwrap`、`suggestionType`、`hasSuggestion` 或 `map`、`filter` 的包装类、`ArgumentEntity` 的参数名单，或宿主 `PluginCommandsImpl#guard`，就跑 TC-PROD-820～TC-PROD-825 第 1 步（五个类一次 Gradle），再按上面「控制台与插件命令」一行跑 TC-PROD-240～TC-PROD-247；动了 `Player#UNSAFE_init` 里 `refreshCommands` 与 `setInstance` 的先后，或 `ConnectionManager#updateWaitingPlayers` 对出生时同步异常的处理，再加 TC-PROD-826 的两遍。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 STORE，Redis 往返离开登录路径、载入名额只包语句、`commitTogether` 的 `apply` 与插件段回调抛 `Error`（`REQ-PROD-004`、`REQ-PROD-006`、`REQ-PROD-007`、`REQ-PROD-008`，v0.9.91）→ TC-PROD-830～TC-PROD-839；动了 `RedisLink` 的 `presence`、`clearPresence`、`dropOldest`、`close` 或连接池配置，就跑 TC-PROD-830～TC-PROD-832 与 TC-PROD-839（`RedisLinkTest` 不要数据库，另两个类要数据库前置与 Valkey）；动了 `PlayerStore` 的 `loadOrRefuse`、`takeLoadSlot` 或 `loadWithin` 里取还名额的几处，就跑 TC-PROD-833、TC-PROD-834、TC-PROD-171 与 TC-PROD-157 的 `TransferTicketsIntegrationTest`；动了 `commitTogether` 排 `apply` 的那一行，跑 TC-PROD-835、TC-PROD-836 与 TC-PROD-148，三种线程模式各一次；动了 `snapshot`、`decode` 的捕获或调 `createDefault()` 的那一处，跑 TC-PROD-837、TC-PROD-838 与 RUN-073 组 D 一行的 TC-PROD-728 第 4 步。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 PHYS，坐标、碰撞与物理、投射物、经验球与实体查找（`REQ-003`、`REQ-PROD-013`、`REQ-PROD-019`、`REQ-PROD-039`、`REQ-PROD-046`，v0.9.102）→ TC-PROD-940～TC-PROD-949；动了 `coordinate` 包的 `Pos`、`Vec`、`BlockVec`、`Point#normalize`、`Area`、`AreaImpl` 或 `ChunkRange`，跑 TC-PROD-940～TC-PROD-943；动了 `collision` 包的 `BlockCollision`、`BoundingBox`、`CollisionUtils`、`EntityCollision`、`RayUtils` 或 `PhysicsUtils`，跑 TC-PROD-944～TC-PROD-946，放置判定改了再加 TC-PROD-945 第 3 步（带数据库）；动了 `EntityProjectile`、`ExperienceOrb` 或 `EntityFinder`，跑 TC-PROD-947、TC-PROD-948；动了 `EntityTrackerImpl#nearbyEntities`，跑 TC-PROD-943 与 TC-PROD-949 第 1 步的三种线程模式；`Pos#withDirection` 的语义变了，加跑 TC-PROD-940 第 3 步（`:game-rts:test`）。
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

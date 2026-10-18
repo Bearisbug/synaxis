@@ -15,6 +15,7 @@ import io.github.bearisbug.synaxis.color.TeamColor;
 import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
 import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentEnum;
 import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType;
+import io.github.bearisbug.synaxis.command.builder.arguments.minecraft.ArgumentEntity;
 import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException;
 import io.github.bearisbug.synaxis.component.DataComponents;
 import io.github.bearisbug.synaxis.coordinate.Vec;
@@ -37,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ArgumentTypeTest {
     private static final ServerProcess PROCESS = ServerProcess.of();
@@ -134,6 +136,25 @@ public class ArgumentTypeTest {
         assertInvalidArg(arg, "@e[type=pig,garbage]");
         assertInvalidArg(arg, "@e[type=pig,]");
         assertInvalidArg(arg, "@e[garbage]");
+    }
+
+    /**
+     * A vanilla selector argument the parser does not implement is refused instead of dropped: dropped, a tag or a
+     * name would select every entity, and a name read up to the bracket swallowed the arguments after it.
+     */
+    @Test
+    public void testArgumentEntityRefusesTheVanillaArgumentsItDoesNotImplement() {
+        var arg = ArgumentType.Entity("entity");
+        for (String input : List.of("@e[tag=boss]", "@a[name=Notch,limit=1]", "@e[x=0,y=64,z=0,distance=..5]",
+                "@e[scores={a=1}]", "@e[type=pig,nbt={NoAI:1b}]", "@e[limit=1,team=red]")) {
+            final ArgumentSyntaxException refused = assertThrows(ArgumentSyntaxException.class,
+                    () -> arg.parse(new ServerSender(PROCESS), input), input);
+            assertEquals(ArgumentEntity.INVALID_ARGUMENT_NAME, refused.getErrorCode(), input);
+            assertTrue(refused.getMessage().endsWith("' is not supported"), input + ": " + refused.getMessage());
+        }
+        final ArgumentSyntaxException unknown = assertThrows(ArgumentSyntaxException.class,
+                () -> arg.parse(new ServerSender(PROCESS), "@e[colour=red]"));
+        assertEquals("Argument name 'colour' does not exist", unknown.getMessage());
     }
 
     @Test

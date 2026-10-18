@@ -1,10 +1,18 @@
 package io.github.bearisbug.synaxis.command;
 
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.command.builder.Command;
+import io.github.bearisbug.synaxis.command.builder.CommandDispatcher;
+import io.github.bearisbug.synaxis.command.builder.CommandResult;
+import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
 import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType;
+import io.github.bearisbug.synaxis.command.builder.arguments.number.ArgumentNumber;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.Literal;
@@ -138,6 +146,117 @@ public class CommandParseTest {
         assertValid(foo, "bar 1", b);
         assertSyntaxError(foo, "foo");
         assertSyntaxError(foo, "bar");
+    }
+
+    /**
+     * An argument that fails to parse calls its error callback with its own error code, in place of the default
+     * executor of the command.
+     */
+    @Test
+    public void anArgumentThatFailsCallsItsErrorCallbackInPlaceOfTheDefaultExecutor() {
+        final List<Integer> codes = new CopyOnWriteArrayList<>();
+        final AtomicInteger defaults = new AtomicInteger();
+        final Command foo = new Command("foo");
+        foo.setDefaultExecutor((_, _) -> defaults.incrementAndGet());
+        final Argument<Integer> number = ArgumentType.Integer("n").between(1, 10);
+        foo.setArgumentCallback((_, exception) -> codes.add(exception.getErrorCode()), number);
+        foo.addSyntax((_, _) -> { }, number);
+        final CommandDispatcher dispatcher = new CommandDispatcher(PROCESS);
+        dispatcher.register(foo);
+        final ServerSender sender = new ServerSender(PROCESS);
+
+        assertEquals(CommandResult.Type.INVALID_SYNTAX, dispatcher.execute(sender, "foo 11").getType());
+        assertEquals(CommandResult.Type.INVALID_SYNTAX, dispatcher.execute(sender, "foo abc").getType());
+        assertEquals(List.of(ArgumentNumber.TOO_HIGH_ERROR, ArgumentNumber.NOT_NUMBER_ERROR), codes);
+        assertEquals(0, defaults.get(), "the default executor ran in place of the callback");
+
+        // A missing argument is no error of the argument
+        assertEquals(CommandResult.Type.SUCCESS, dispatcher.execute(sender, "foo").getType());
+        assertEquals(1, defaults.get());
+        assertEquals(2, codes.size());
+    }
+
+    /**
+     * Without a callback, or when two syntaxes fail on the same word so that none of them owns the error, the
+     * default executor still runs.
+     */
+    @Test
+    public void theDefaultExecutorRunsWhenNoSingleArgumentOwnsTheError() {
+        final List<Integer> codes = new CopyOnWriteArrayList<>();
+        final AtomicInteger defaults = new AtomicInteger();
+        final Command plain = new Command("plain");
+        plain.setDefaultExecutor((_, _) -> defaults.incrementAndGet());
+        plain.addSyntax((_, _) -> { }, ArgumentType.Integer("n").between(1, 10));
+        final Command shared = new Command("shared");
+        shared.setDefaultExecutor((_, _) -> defaults.incrementAndGet());
+        final Argument<Integer> number = ArgumentType.Integer("n").between(1, 10);
+        number.setCallback((_, exception) -> codes.add(exception.getErrorCode()));
+        shared.addSyntax((_, _) -> { }, number);
+        shared.addSyntax((_, _) -> { }, ArgumentType.Word("mode").from("on", "off"));
+        final CommandDispatcher dispatcher = new CommandDispatcher(PROCESS);
+        dispatcher.register(plain);
+        dispatcher.register(shared);
+        final ServerSender sender = new ServerSender(PROCESS);
+
+        assertEquals(CommandResult.Type.SUCCESS, dispatcher.execute(sender, "plain 11").getType());
+        assertEquals(CommandResult.Type.SUCCESS, dispatcher.execute(sender, "shared 11").getType());
+        assertEquals(2, defaults.get());
+        assertEquals(List.of(), codes, "11 is no mode either, the error is not the number's alone");
+    }
+
+    @Test
+    public void aCallbackThatThrowsCancelsTheCommand() {
+        final Command foo = new Command("foo");
+        final Argument<Integer> number = ArgumentType.Integer("n").between(1, 10);
+        number.setCallback((_, _) -> {
+            throw new IllegalStateException("the callback failed");
+        });
+        foo.addSyntax((_, _) -> { }, number);
+        final CommandDispatcher dispatcher = new CommandDispatcher(PROCESS);
+        dispatcher.register(foo);
+
+        assertEquals(CommandResult.Type.CANCELLED, dispatcher.execute(new ServerSender(PROCESS), "foo 11").getType());
+    }
+
+    /**
+     * The error callback belongs to the syntax holding the argument: a sender its condition refuses does not get the
+     * callback, the default executor runs as it does without one.
+     */
+    @Test
+    public void aSenderTheSyntaxRefusesDoesNotGetTheCallback() {
+        final List<Integer> codes = new CopyOnWriteArrayList<>();
+        final AtomicInteger defaults = new AtomicInteger();
+        final Command foo = new Command("foo");
+        foo.setDefaultExecutor((_, _) -> defaults.incrementAndGet());
+        final Argument<Integer> number = ArgumentType.Integer("n").between(1, 10);
+        number.setCallback((_, exception) -> codes.add(exception.getErrorCode()));
+        foo.addConditionalSyntax((_, _) -> false, (_, _) -> { }, number);
+        final CommandDispatcher dispatcher = new CommandDispatcher(PROCESS);
+        dispatcher.register(foo);
+        final ServerSender sender = new ServerSender(PROCESS);
+
+        assertEquals(CommandResult.Type.CANCELLED, dispatcher.execute(sender, "foo 5").getType());
+        assertEquals(CommandResult.Type.SUCCESS, dispatcher.execute(sender, "foo 11").getType());
+        assertEquals(List.of(), codes, "the syntax refuses the sender, the callback of its argument is not for it");
+        assertEquals(1, defaults.get());
+    }
+
+    /**
+     * An argument read across spaces is tried on ever longer input; its callback gets the error of the longest.
+     */
+    @Test
+    public void theCallbackOfAnArgumentReadAcrossSpacesGetsTheErrorOfTheLongestInput() {
+        final List<String> inputs = new CopyOnWriteArrayList<>();
+        final Command foo = new Command("foo");
+        final Argument<String> text = ArgumentType.String("text");
+        text.setCallback((_, exception) -> inputs.add(exception.getInput()));
+        foo.addSyntax((_, _) -> { }, text);
+        final CommandDispatcher dispatcher = new CommandDispatcher(PROCESS);
+        dispatcher.register(foo);
+
+        assertEquals(CommandResult.Type.INVALID_SYNTAX,
+                dispatcher.execute(new ServerSender(PROCESS), "foo \"abc def").getType());
+        assertEquals(List.of("\"abc def"), inputs);
     }
 
     private static void assertSyntaxError(Graph graph, String input) {

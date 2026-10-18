@@ -91,7 +91,14 @@ public abstract class Argument<T> {
      */
     public abstract T parse(CommandSender sender, String input) throws ArgumentSyntaxException;
 
-    public abstract ArgumentParserType parser();
+    /**
+     * The parser the client is told to use for this argument.
+     *
+     * @return the parser; null only for the arguments the commands packet writes in a shape of their own: a literal,
+     * an enum, a command, a group or a loop. The node of any other argument returning null is left out of the commands
+     * packet, with an ERROR line each time a packet is built
+     */
+    public abstract @Nullable ArgumentParserType parser();
 
     public byte @Nullable [] nodeProperties() {
         return null;
@@ -144,6 +151,13 @@ public abstract class Argument<T> {
 
     /**
      * Sets the {@link ArgumentCallback}.
+     * <p>
+     * It is called when a command fails to parse at this argument, with the exception of this argument, instead of
+     * running an executor (the default executor of the command, or the one of the node the parse stopped at); on the
+     * thread executing the command. It is not called when the input also fails at a sibling argument of the same
+     * depth, which leaves no single argument owning the error, nor for a sender the condition of every syntax holding
+     * this argument refuses (asked with no command string, as for the completions): the command then runs as it does
+     * for an argument without a callback.
      *
      * @param callback the argument callback, null to do not have one
      */
@@ -238,11 +252,24 @@ public abstract class Argument<T> {
      * @return If this argument has a suggestion.
      */
     public boolean hasSuggestion() {
-        return suggestionType != null;
+        return suggestionType() != null;
+    }
+
+    /**
+     * The argument that decides how this one is written in the commands packet.
+     *
+     * @return the argument {@link #map} or {@link #filter} wrapped, this argument otherwise
+     */
+    @ApiStatus.Internal
+    public Argument<?> unwrap() {
+        return this;
     }
 
     /**
      * Maps this argument's output to another result.
+     * <p>
+     * The default value and the suggestion callback of this argument are copied when this is called, so set them
+     * first; the error callback is not, set it on the returned argument.
      *
      * @param mapper The mapper to use (this argument's input = desired output)
      * @param <O>    The type of output expected.
@@ -258,6 +285,8 @@ public abstract class Argument<T> {
 
     /**
      * Maps this argument's output to another result.
+     * <p>
+     * As with {@link #map(Function)}, the default value and the suggestion callback are copied when this is called.
      *
      * @param predicate the argument predicate
      * @return A new ArgumentMap that filters using this filterer.
@@ -310,13 +339,24 @@ public abstract class Argument<T> {
         }
 
         @Override
-        public ArgumentParserType parser() {
+        public @Nullable ArgumentParserType parser() {
             return argument.parser();
         }
 
         @Override
         public byte @Nullable [] nodeProperties() {
             return argument.nodeProperties();
+        }
+
+        @Override
+        public @Nullable SuggestionType suggestionType() {
+            final SuggestionType own = super.suggestionType();
+            return own != null ? own : argument.suggestionType();
+        }
+
+        @Override
+        public Argument<?> unwrap() {
+            return argument.unwrap();
         }
     }
 
@@ -344,13 +384,24 @@ public abstract class Argument<T> {
         }
 
         @Override
-        public ArgumentParserType parser() {
+        public @Nullable ArgumentParserType parser() {
             return argument.parser();
         }
 
         @Override
         public byte @Nullable [] nodeProperties() {
             return argument.nodeProperties();
+        }
+
+        @Override
+        public @Nullable SuggestionType suggestionType() {
+            final SuggestionType own = super.suggestionType();
+            return own != null ? own : argument.suggestionType();
+        }
+
+        @Override
+        public Argument<?> unwrap() {
+            return argument.unwrap();
         }
     }
 }

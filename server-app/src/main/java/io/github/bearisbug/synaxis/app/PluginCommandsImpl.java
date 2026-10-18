@@ -3,14 +3,19 @@ package io.github.bearisbug.synaxis.app;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.command.CommandManager;
 import io.github.bearisbug.synaxis.command.CommandSender;
+import io.github.bearisbug.synaxis.command.builder.ArgumentCallback;
 import io.github.bearisbug.synaxis.command.builder.Command;
 import io.github.bearisbug.synaxis.command.builder.CommandContext;
 import io.github.bearisbug.synaxis.command.builder.CommandExecutor;
 import io.github.bearisbug.synaxis.command.builder.CommandSyntax;
+import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
+import io.github.bearisbug.synaxis.command.builder.condition.CommandCondition;
+import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.PluginCommands;
 import net.kyori.adventure.text.Component;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,9 +30,11 @@ import java.util.Map;
  * <p>
  * The engine command cannot be renamed, so what the command manager holds is a host command named
  * {@code <plugin_id>:<name>} that carries the plugin command's condition, default executor,
- * syntaxes and subcommands as they are at {@link #register}. Their executors are wrapped in place
- * first: a plugin executor that throws is reported through one {@link LogBudget} per command
- * instead of the engine's line per run, because a client picks how often a command runs.
+ * syntaxes and subcommands as they are at {@link #register}. Their executors, conditions and
+ * argument error callbacks are wrapped in place first: what the plugin's code throws there is
+ * reported through one {@link LogBudget} per command instead of the engine's line per run, because
+ * a client picks how often a command runs. A condition that throws counts as refused, which also
+ * keeps it from failing the spawn of every player, whose commands are built while it spawns.
  * <p>
  * Checking that a bare name is free and taking it happen under the command manager's monitor, which
  * its own methods synchronise on as well, so two plugins cannot both take one.
@@ -71,7 +78,7 @@ final class PluginCommandsImpl implements PluginCommands {
             }
             aliases.addAll(bare);
             final LogBudget failures = new LogBudget(LOGGER, "failures");
-            guard(command, failures);
+            guard(command, pluginId + ":" + command.getName(), failures);
             namespaced = new Namespaced(pluginId + ":" + command.getName(), aliases.toArray(String[]::new), command,
                     pluginId, failures);
             manager.register(namespaced);
@@ -114,16 +121,34 @@ final class PluginCommandsImpl implements PluginCommands {
         for (Player player : process.connection().getOnlinePlayers()) player.refreshCommands();
     }
 
-    private void guard(Command command, LogBudget failures) {
+    /**
+     * @param name the name the command manager holds the plugin's command by, the one a failure is
+     *             reported under
+     */
+    private void guard(Command command, String name, LogBudget failures) {
+        command.setCondition(guarded(command.getCondition(), name, failures));
         final CommandExecutor defaultExecutor = command.getDefaultExecutor();
         if (defaultExecutor != null) command.setDefaultExecutor(guarded(defaultExecutor, failures));
-        for (CommandSyntax syntax : command.getSyntaxes()) syntax.setExecutor(guarded(syntax.getExecutor(), failures));
-        for (Command subcommand : command.getSubcommands()) guard(subcommand, failures);
+        for (CommandSyntax syntax : command.getSyntaxes()) {
+            syntax.setExecutor(guarded(syntax.getExecutor(), failures));
+            syntax.setCommandCondition(guarded(syntax.getCommandCondition(), name, failures));
+            for (Argument<?> argument : syntax.getArguments()) {
+                final ArgumentCallback callback = argument.getCallback();
+                if (callback != null && !(callback instanceof GuardedCallback))
+                    argument.setCallback(new GuardedCallback(callback, name, pluginId, failures));
+            }
+        }
+        for (Command subcommand : command.getSubcommands()) guard(subcommand, name, failures);
     }
 
     private CommandExecutor guarded(CommandExecutor executor, LogBudget failures) {
         if (executor instanceof Guarded) return executor;
         return new Guarded(executor, pluginId, failures);
+    }
+
+    private @Nullable CommandCondition guarded(@Nullable CommandCondition condition, String name, LogBudget failures) {
+        if (condition == null || condition instanceof GuardedCondition) return condition;
+        return new GuardedCondition(condition, name, pluginId, failures);
     }
 
     /**
@@ -134,6 +159,33 @@ final class PluginCommandsImpl implements PluginCommands {
         @Override
         public void apply(CommandSender sender, CommandContext context) {
             run(() -> executor.apply(sender, context), sender, context.getInput(), pluginId, failures);
+        }
+    }
+
+    /**
+     * A condition of a plugin whose exception ends here, in the plugin's budget, as a refusal.
+     */
+    private record GuardedCondition(CommandCondition condition, String name, String pluginId, LogBudget failures)
+            implements CommandCondition {
+        @Override
+        public boolean canUse(CommandSender sender, @Nullable String commandString) {
+            try {
+                return condition.canUse(sender, commandString);
+            } catch (RuntimeException e) {
+                failures.error(e, "Plugin command condition failed: plugin_id={} command={}", pluginId, name);
+                return false;
+            }
+        }
+    }
+
+    /**
+     * The error callback of a plugin's argument, its exception ending as that of an executor.
+     */
+    private record GuardedCallback(ArgumentCallback callback, String name, String pluginId, LogBudget failures)
+            implements ArgumentCallback {
+        @Override
+        public void apply(CommandSender sender, ArgumentSyntaxException exception) {
+            run(() -> callback.apply(sender, exception), sender, name, pluginId, failures);
         }
     }
 

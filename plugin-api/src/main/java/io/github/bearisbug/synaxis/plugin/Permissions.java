@@ -23,6 +23,10 @@ public interface Permissions {
 
     /**
      * Whether a player holds a node.
+     * <p>
+     * A node that is not lower case and dotted throws on every call. The condition of a command is
+     * asked at every player's spawn and every time its completions are sent again, so write nodes as
+     * constants.
      *
      * @param player an online player
      * @param node   a node without {@code *}

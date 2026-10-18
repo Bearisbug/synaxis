@@ -17,6 +17,11 @@ public interface CommandCondition {
      * {@code commandString} will be null in this case. (It is also possible for the command string
      * to be null if a new command packet is built)
      * <p>
+     * That first call happens while the player spawns, before it has an instance:
+     * {@code getInstance()} is null then. A packet can be built again on any thread, such as the one
+     * reloading permissions. A condition that throws while a packet is built hides the command or
+     * syntax from that player, with one WARN line per throw.
+     * <p>
      * Otherwise, {@code commandString} will never be null
      * but will instead be the raw command string given by the sender.
      * You should in this case warn the sender (eg by sending a message) if the condition is unsuccessful.

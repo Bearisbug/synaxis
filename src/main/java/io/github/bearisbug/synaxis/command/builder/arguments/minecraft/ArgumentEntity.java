@@ -21,6 +21,10 @@ import java.util.regex.Pattern;
 /**
  * Represents the target selector argument.
  * <a href="https://minecraft.wiki/w/Target_selectors">Target selectors</a>
+ * <p>
+ * Of the selector arguments, {@code type}, {@code gamemode}, {@code limit}, {@code sort}, {@code level} and
+ * {@code distance} are implemented. Any other vanilla one ({@code x}, {@code tag}, {@code name}, ...) fails the parse
+ * with {@link #INVALID_ARGUMENT_NAME} rather than being ignored, which would widen what the selector picks.
  */
 public class ArgumentEntity extends Argument<EntityFinder> {
 
@@ -35,19 +39,11 @@ public class ArgumentEntity extends Argument<EntityFinder> {
     private static final List<String> SELECTOR_VARIABLES = Arrays.asList("@p", "@r", "@a", "@e", "@s", "@n");
     private static final List<String> PLAYERS_ONLY_SELECTOR = Arrays.asList("@p", "@r", "@a", "@s");
     private static final List<String> SINGLE_ONLY_SELECTOR = Arrays.asList("@p", "@r", "@s", "@n");
-    // List with all the valid arguments
-    private static final List<String> VALID_ARGUMENTS = Arrays.asList(
-            "x", "y", "z",
-            "distance", "dx", "dy", "dz",
-            "scores", "tag", "team", "limit", "sort", "level", "gamemode", "name",
-            "x_rotation", "y_rotation", "type", "nbt", "advancements", "predicate");
-
-    // List with all the easily parsable arguments which only require reading until a specific character (comma)
-    private static final List<String> SIMPLE_ARGUMENTS = Arrays.asList(
-            "x", "y", "z",
-            "distance", "dx", "dy", "dz",
-            "scores", "tag", "team", "limit", "sort", "level", "gamemode",
-            "x_rotation", "y_rotation", "type", "advancements", "predicate");
+    // The vanilla arguments not parsed here, refused with their own message
+    private static final List<String> UNSUPPORTED_VANILLA_ARGUMENTS = Arrays.asList(
+            "x", "y", "z", "dx", "dy", "dz",
+            "scores", "tag", "team", "name",
+            "x_rotation", "y_rotation", "nbt", "advancements", "predicate");
 
     private boolean onlySingleEntity;
     private boolean onlyPlayers;
@@ -173,8 +169,8 @@ public class ArgumentEntity extends Argument<EntityFinder> {
                 // Replace all unnecessary spaces
                 currentArgument = currentArgument.trim();
 
-                if (!VALID_ARGUMENTS.contains(currentArgument))
-                    throw new ArgumentSyntaxException("Argument name '" + currentArgument + "' does not exist", input, INVALID_ARGUMENT_NAME);
+                if (UNSUPPORTED_VANILLA_ARGUMENTS.contains(currentArgument))
+                    throw new ArgumentSyntaxException("Selector argument '" + currentArgument + "' is not supported", input, INVALID_ARGUMENT_NAME);
 
                 i = parseArgument(sender, entityFinder, currentArgument, input, structureData, i);
                 danglingComma = i < structureData.length() && structureData.charAt(i) == ',';
@@ -205,7 +201,6 @@ public class ArgumentEntity extends Argument<EntityFinder> {
                                      String input,
                                      String structureData, int beginIndex) throws ArgumentSyntaxException {
         final char comma = ',';
-        final boolean isSimple = SIMPLE_ARGUMENTS.contains(argumentName);
 
         int finalIndex = beginIndex + 1;
         StringBuilder valueBuilder = new StringBuilder();
@@ -213,7 +208,7 @@ public class ArgumentEntity extends Argument<EntityFinder> {
             final char c = structureData.charAt(finalIndex);
 
             // Command is parsed
-            if (isSimple && c == comma)
+            if (c == comma)
                 break;
 
             valueBuilder.append(c);
@@ -287,8 +282,7 @@ public class ArgumentEntity extends Argument<EntityFinder> {
 
                 entityFinder.setDistance(new Range.Double(minDistance, maxDistance));
             }
-            default -> {
-            }
+            default -> throw new ArgumentSyntaxException("Argument name '" + argumentName + "' does not exist", input, INVALID_ARGUMENT_NAME);
         }
 
         return finalIndex;

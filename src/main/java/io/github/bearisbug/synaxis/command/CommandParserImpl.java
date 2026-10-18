@@ -34,6 +34,11 @@ final class CommandParserImpl implements CommandParser {
         final ArrayDeque<NodeResult> nodeResults = new ArrayDeque<>();
         final List<CommandCondition> conditions = new ArrayList<>();
         final List<CommandExecutor> globalListeners = new ArrayList<>();
+        /**
+         * The node whose argument failed to parse deepest down this chain, with its exception. Null when none did, or
+         * when a sibling failed as deep, so that the error belongs to no single argument. A fork does not inherit it.
+         */
+        @Nullable Failure failure = null;
 
         void append(NodeResult result) {
             this.nodeResults.add(result);
@@ -172,6 +177,16 @@ final class CommandParserImpl implements CommandParser {
         if (lastNodeResult == null) return UnknownCommandResult.INSTANCE;
         Node lastNode = lastNodeResult.node;
 
+        // The error callback of the argument that alone failed deepest is called instead of any executor, for a sender
+        // its syntax lets see the argument
+        final Failure failure = chain.failure;
+        if (failure != null) {
+            final ArgumentCallback callback = failure.node().argument().getCallback();
+            final Graph.Execution execution = failure.node().execution();
+            if (callback != null && (execution == null || execution.test(sender)))
+                return InvalidCommand.failed(input, chain, callback, failure.exception());
+        }
+
         if (result.argumentResult instanceof ArgumentResult.Success<?>) {
             CommandExecutor executor = nullSafeGetter(lastNode.execution(), Graph.Execution::executor);
             if (executor != null) return ValidCommand.executor(input, chain, executor);
@@ -210,6 +225,8 @@ final class CommandParserImpl implements CommandParser {
                 reader.cursor(start);
             } else {
                 if (!(result instanceof ArgumentResult.Success<?>)) {
+                    if (result instanceof ArgumentResult.IncompatibleType<?> incompatible)
+                        chain.failure = new Failure(node, incompatible.exception());
                     reader.cursor(start);
                     return nodeResult;
                 }
@@ -256,10 +273,12 @@ final class CommandParserImpl implements CommandParser {
                         // If the last successful result is null, throw an exception instead of having unintended behaviour
                         NodeResult lastSuccess = Objects.requireNonNull(childResult.chain().lastSuccessfulResult());
                         final SuggestionCallback deepestSuggestion = childResult.chain().suggestionCallback;
+                        final Failure failure = childResult.chain().failure;
 
-                        if (deepestSuggestion != null) {
+                        if (deepestSuggestion != null || failure != null) {
                             final Chain errorChain = lastSuccess.chain().fork();
-                            errorChain.suggestionCallback = deepestSuggestion;
+                            if (deepestSuggestion != null) errorChain.suggestionCallback = deepestSuggestion;
+                            errorChain.failure = failure;
 
                             lastSuccess = new NodeResult(
                                     lastSuccess.node(),
@@ -270,6 +289,9 @@ final class CommandParserImpl implements CommandParser {
                         }
                         error = lastSuccess.asPartial();
                     }
+                } else if (error != null && childDepth == error.chain().depth()) {
+                    // A sibling failed as deep: the error belongs to no single argument
+                    error.chain().failure = null;
                 }
                 reader.cursor(start);
             }
@@ -370,6 +392,12 @@ final class CommandParserImpl implements CommandParser {
                     chain.collectArguments(), chain.mergedGlobalExecutors(), chain.suggestionCallback, chain.getArgs());
         }
 
+        static InvalidCommand failed(String input, Chain chain, ArgumentCallback callback, ArgumentSyntaxException exception) {
+            return new InvalidCommand(input, chain.mergedConditions(), callback,
+                    new ArgumentResult.SyntaxError<>(exception.getMessage(), exception.getInput(), exception.getErrorCode()),
+                    chain.collectArguments(), chain.mergedGlobalExecutors(), chain.suggestionCallback, chain.getArgs());
+        }
+
         @Override
         public ExecutableCommand executable() {
             return new InvalidExecutableCmd(condition, globalListener, callback, error, input, arguments);
@@ -448,8 +476,14 @@ final class CommandParserImpl implements CommandParser {
             if (condition != null && !condition.canUse(sender, input())) {
                 return ExecutionResultImpl.PRECONDITION_FAILED;
             }
-            if (callback != null)
-                callback.apply(sender, new ArgumentSyntaxException(error.message(), error.input(), error.code()));
+            if (callback != null) {
+                try {
+                    callback.apply(sender, new ArgumentSyntaxException(error.message(), error.input(), error.code()));
+                } catch (Exception e) {
+                    LOGGER.error("An exception was encountered while executing command: {}", input(), e);
+                    return ExecutionResultImpl.EXECUTOR_EXCEPTION;
+                }
+            }
             return ExecutionResultImpl.INVALID_SYNTAX;
         }
     }
@@ -494,6 +528,9 @@ final class CommandParserImpl implements CommandParser {
         String name() {
             return node.argument().getId();
         }
+    }
+
+    private record Failure(Node node, ArgumentSyntaxException exception) {
     }
 
     static final class CommandStringReader {
@@ -554,23 +591,26 @@ final class CommandParserImpl implements CommandParser {
                 final String remaining = reader.readRemaining();
                 return new ArgumentResult.Success<>(argument.parse(sender, remaining), remaining);
             }
-        } catch (ArgumentSyntaxException _) {
-            return new ArgumentResult.IncompatibleType<>();
+        } catch (ArgumentSyntaxException e) {
+            return new ArgumentResult.IncompatibleType<>(e);
         }
         // Bruteforce
         assert argument.allowSpace() && !argument.useRemaining();
         StringBuilder current = new StringBuilder(reader.readWord());
+        ArgumentSyntaxException last;
         while (true) {
             try {
                 final String input = current.toString();
                 return new ArgumentResult.Success<>(argument.parse(sender, input), input);
-            } catch (ArgumentSyntaxException _) {
+            } catch (ArgumentSyntaxException e) {
+                // The longest input tried is the one the error is reported for
+                last = e;
                 if (!reader.hasRemaining()) break;
                 current.append(" ");
                 current.append(reader.readWord());
             }
         }
-        return new ArgumentResult.IncompatibleType<>();
+        return new ArgumentResult.IncompatibleType<>(last);
     }
 
     private sealed interface ArgumentResult<R> {
@@ -578,7 +618,7 @@ final class CommandParserImpl implements CommandParser {
                 implements ArgumentResult<T> {
         }
 
-        record IncompatibleType<T>()
+        record IncompatibleType<T>(ArgumentSyntaxException exception)
                 implements ArgumentResult<T> {
         }
 

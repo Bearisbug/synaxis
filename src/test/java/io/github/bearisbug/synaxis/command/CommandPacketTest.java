@@ -3,10 +3,13 @@ package io.github.bearisbug.synaxis.command;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.command.builder.Command;
 import io.github.bearisbug.synaxis.command.builder.CommandContext;
+import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
 import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType;
+import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.server.play.DeclareCommandsPacket;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -231,6 +234,51 @@ public class CommandPacketTest {
                 foo->msg
                 msg=! STRING 1
                 """, foo, bar);
+    }
+
+    /**
+     * map and filter wrap an argument in a class of their own; the packet keeps the nodes of the wrapped one. An
+     * enum, a literal or a command argument has no parser to write, a word with restrictions is its literals.
+     */
+    @Test
+    public void aMappedOrFilteredArgumentWritesTheNodesOfTheArgumentItWraps() {
+        assertSameNodes(ArgumentType.Enum("bar", Letter.class), ArgumentType.Enum("bar", Letter.class).map(x -> x));
+        assertSameNodes(ArgumentType.Enum("bar", Letter.class), ArgumentType.Enum("bar", Letter.class).filter(_ -> true));
+        assertSameNodes(ArgumentType.Literal("bar"), ArgumentType.Literal("bar").map(x -> x));
+        assertSameNodes(ArgumentType.Command("bar"), ArgumentType.Command("bar").map(x -> x));
+        assertSameNodes(ArgumentType.Word("bar").from("a", "b"), ArgumentType.Word("bar").from("a", "b").filter(_ -> true));
+    }
+
+    @Test
+    public void aMappedOrFilteredArgumentKeepsTheSuggestionTypeOfTheArgumentItWraps() {
+        assertEquals("minecraft:summonable_entities", suggestionType(ArgumentType.EntityType("bar").map(x -> x)),
+                "map dropped the suggestion type");
+        assertEquals("minecraft:summonable_entities", suggestionType(ArgumentType.EntityType("bar").filter(_ -> true)),
+                "filter dropped the suggestion type");
+    }
+
+    private static String suggestionType(Argument<?> argument) {
+        final Command foo = new Command("foo");
+        foo.addSyntax(CommandPacketTest::dummyExecutor, argument);
+        final DeclareCommandsPacket packet = GraphConverter.createPacket(new CommandManager(PROCESS),
+                Graph.merge(Graph.fromCommand(foo)), null);
+        final DeclareCommandsPacket.Node bar = packet.nodes().stream().filter(node -> "bar".equals(node.name))
+                .findFirst().orElseThrow();
+        assertEquals(!bar.suggestionsType.isEmpty(), (bar.flags & DeclareCommandsPacket.HAS_SUGGESTION_TYPE) != 0,
+                "the flag and the suggestion type differ");
+        return bar.suggestionsType;
+    }
+
+    private static void assertSameNodes(Argument<?> plain, Argument<?> wrapped) {
+        assertArrayEquals(packetBytes(plain), packetBytes(wrapped), "the nodes of " + wrapped);
+    }
+
+    private static byte[] packetBytes(Argument<?> argument) {
+        final Command foo = new Command("foo");
+        foo.addSyntax(CommandPacketTest::dummyExecutor, argument);
+        final DeclareCommandsPacket packet = GraphConverter.createPacket(new CommandManager(PROCESS),
+                Graph.merge(Graph.fromCommand(foo)), null);
+        return NetworkBuffer.makeArray(buffer -> buffer.write(DeclareCommandsPacket.SERIALIZER, packet));
     }
 
     static void assertPacketGraph(String expected, Graph... graphs) {

@@ -132,7 +132,8 @@ public final class SceneService {
     }
 
     /**
-     * Handles one payload a client sent on {@link #CHANNEL}, on the player's tick thread.
+     * Handles one payload a client sent on {@link #CHANNEL}, on the player's tick thread. The router
+     * hands over the payloads of a connection in the play state only.
      * <p>
      * Without a scene owner the payload is dropped unread, unlogged and unanswered (§6.2). Otherwise
      * an unknown {@code msg_id} is dropped, a payload that does not decode or carries a message of
@@ -144,7 +145,7 @@ public final class SceneService {
     public void receive(Player player, byte[] payload) {
         if (owner() == null) return;
         final PlayerConnection connection = player.getPlayerConnection();
-        if (!connection.isOnline() || connection.getServerState() != ConnectionState.PLAY) return;
+        if (!connection.isOnline()) return;
         final PlayMessage message;
         try {
             message = PlayMessages.read(MsgBuf.reading(payload));

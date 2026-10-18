@@ -19,6 +19,7 @@ public interface PluginAdmission {
      * @param provider the provider
      * @throws IllegalStateException if a provider is already registered; the whole process accepts
      *                               exactly one, and the host refuses to start without it
+     * @throws NullPointerException  if the provider is null
      */
     void register(AdmissionProvider provider);
 }

@@ -111,7 +111,7 @@ jar 名里的 `dev` 是版本号，设了环境变量 `GAME_ENGINE_VERSION` 时�
 
 ## 8. 通道命名
 
-通道 id 一律是 `<plugin_id>:<name>`。`register("echo", ...)` 实际注册的是 `hello:echo`；写成别人的命名空间（`register("rts:game", ...)`）或宿主保留的 `synaxis:*` 一律抛 `IllegalArgumentException`。入站负载由宿主的单个监听器按前缀分发，没人注册的通道直接丢弃并记一行带 `connection_id` 的 WARN，不断线也不回错。
+通道 id 一律是 `<plugin_id>:<name>`。`register("echo", ...)` 实际注册的是 `hello:echo`；写成别人的命名空间（`register("rts:game", ...)`）或宿主保留的 `synaxis:*` 一律抛 `IllegalArgumentException`。入站负载由宿主的单个监听器按前缀分发。handler 只在玩家进入 PLAY 之后、在发送者所属的 tick 线程上收到负载：configuration 阶段（握手与准入还没做完、玩家不在任何实例里）到的负载直接丢弃，handler 收不到，所以不用自己判连接状态。没人注册的通道直接丢弃并记一行带 `connection_id` 的 WARN，不断线也不回错；`minecraft:` 命名空间的不记，原版与 Fabric 客户端每次登录都发 `minecraft:brand`。通道名不是合法 identifier 的负载由引擎以 `synaxis:protocol-error` 断开。
 
 在第 6 步起的服务端上给它发一条消息（不需要客户端，仓内探针就够）：
 

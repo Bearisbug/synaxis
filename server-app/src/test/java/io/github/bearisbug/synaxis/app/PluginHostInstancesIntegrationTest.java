@@ -1,6 +1,10 @@
 package io.github.bearisbug.synaxis.app;
 
+import ch.qos.logback.classic.Level;
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.instance.Chunk;
+import io.github.bearisbug.synaxis.instance.ChunkLoader;
+import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.generator.Generator;
 import io.github.bearisbug.synaxis.plugin.Admission;
@@ -138,6 +142,59 @@ class PluginHostInstancesIntegrationTest {
         final List<String> closed = closedLines(readLedger());
         assertEquals(1, closed.size(), closed.toString());
         assertTrue(closed.getFirst().contains("\"cause\":\"shutdown\""), closed.getFirst());
+    }
+
+    /**
+     * The shutdown takes every plugin back even when one teardown throws, here the forced close of an instance
+     * whose chunk loader fails to unload: one ERROR line names that plugin, and the plugin enabled before it,
+     * disabled after it, is still taken back.
+     */
+    @Test
+    void aTeardownThatThrowsLeavesTheOtherPluginsTakenBack(Env env) {
+        final List<ManagedInstance> created = new ArrayList<>();
+        final PluginHost host = host(env);
+        host.enable(List.of(
+                new ProbePlugin(new PluginDescriptor("first", "1.0.0", PluginApi.API_VERSION), context -> {
+                    final ManagedInstance lobby = context.instances().create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+                    created.add(lobby);
+                    context.admission().register(_ -> new Admission.Accept(lobby.instance(), 0));
+                }),
+                new ProbePlugin(new PluginDescriptor("second", "1.0.0", PluginApi.API_VERSION), context -> {
+                    final ManagedInstance arena = context.instances().create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+                    arena.instance().setChunkLoader(new FailingToUnload());
+                    created.add(arena);
+                })), Set.of());
+
+        try (LogCapture logs = LogCapture.of(PluginHost.class)) {
+            host.disableAll();
+
+            final List<String> errors = logs.messagesAt(Level.ERROR);
+            assertEquals(1, errors.size(), errors.toString());
+            assertTrue(errors.getFirst().startsWith("Plugin teardown failed: plugin_id=second"), errors.getFirst());
+        }
+        final ManagedInstance lobby = created.getFirst();
+        assertEquals(EndCause.SHUTDOWN, lobby.endCause());
+        assertFalse(lobby.instance().isRegistered(), "the plugin after the failing teardown was not taken back");
+        assertFalse(host.hasAdmissionProvider());
+        assertEquals(List.of(), host.enabledPluginIds());
+    }
+
+    /** A chunk loader that loads nothing, and throws when a chunk is unloaded. */
+    private static final class FailingToUnload implements ChunkLoader {
+
+        @Override
+        public @Nullable Chunk loadChunk(Instance instance, int chunkX, int chunkZ) {
+            return null;
+        }
+
+        @Override
+        public void saveChunk(Chunk chunk) {
+        }
+
+        @Override
+        public void unloadChunk(Chunk chunk) {
+            throw new IllegalStateException("probe unload failure");
+        }
     }
 
     /** {@code API-PLAY-006} 起服判定: an instance that failed to prepare was never registered, so it is not counted. */

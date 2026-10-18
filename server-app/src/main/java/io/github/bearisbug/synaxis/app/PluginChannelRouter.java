@@ -4,6 +4,8 @@ import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
+import io.github.bearisbug.synaxis.network.ConnectionState;
+import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.PayloadHandler;
 import org.slf4j.Logger;
@@ -19,10 +21,18 @@ import java.util.regex.Pattern;
  * <p>
  * Channel ids are always {@code <plugin_id>:<name>}, so the namespace of a payload already names
  * the plugin that has to handle it. A payload on a channel nobody registered is dropped with a
- * warning instead of an error: an unknown channel is a client side fact, not a server fault.
+ * warning instead of an error: an unknown channel is a client side fact, not a server fault. The
+ * channels of the {@code minecraft} namespace every client sends, such as {@code minecraft:brand},
+ * are dropped without one.
  * <p>
- * Which is also why both lines of this class are written through a {@link LogBudget}: a client
- * picks the channel of every payload it sends and how many it sends, so neither the drop nor a
+ * A handler only gets the payloads of a connection in the play state, on the tick thread that owns the
+ * sender ({@code docs/DESIGN-M2.md} {@code API-M2-001}): in a gameplay process a connection reaches the
+ * play state only once its handshake and its admission are through. The
+ * channels of the host that speak during the configuration, the handshake and the diagnostic echo of
+ * the core mode, are registered as such and get those payloads too.
+ * <p>
+ * Which is also why every line of this class is written through a {@link LogBudget}: a client
+ * picks the channel of every payload it sends and how many it sends, so neither a drop nor a
  * handler failure may be written once per payload ({@code docs/DESIGN.md} §15).
  */
 final class PluginChannelRouter {
@@ -44,11 +54,18 @@ final class PluginChannelRouter {
      */
     private final LogBudget drops = new LogBudget(LOGGER, "payloads");
 
+    /** The budget of the line of a payload dropped before the play state, shared by every channel. */
+    private final LogBudget early = new LogBudget(LOGGER, "payloads outside the play state");
+
     /**
-     * @param failures the budget of this handler's failures, one per registration so that a plugin
-     *                 failing on every payload cannot silence another plugin's first stack
+     * @param failures             the budget of this handler's failures, one per registration so that a
+     *                             plugin failing on every payload cannot silence another plugin's first
+     *                             stack
+     * @param configurationAllowed whether the handler also gets the payloads of a connection that is not
+     *                             in the play state, which only a channel of the host does
      */
-    private record Registration(String pluginId, PayloadHandler handler, LogBudget failures) {
+    private record Registration(String pluginId, PayloadHandler handler, LogBudget failures,
+                                boolean configurationAllowed) {
     }
 
     /**
@@ -92,7 +109,8 @@ final class PluginChannelRouter {
     }
 
     /**
-     * Registers one channel of one plugin.
+     * Registers one channel of one plugin, whose handler gets the payloads of a connection in the play
+     * state only.
      *
      * @param pluginId the owning plugin
      * @param name     the channel name, with or without the owning namespace
@@ -100,9 +118,23 @@ final class PluginChannelRouter {
      * @return the resolved channel id
      */
     String register(String pluginId, String name, PayloadHandler handler) {
+        return register(pluginId, name, handler, false);
+    }
+
+    /**
+     * Registers one channel.
+     *
+     * @param pluginId             the owning plugin, the reserved id for a channel of the host
+     * @param name                 the channel name, with or without the owning namespace
+     * @param handler              the inbound handler
+     * @param configurationAllowed whether the handler also gets the payloads of a connection that is not
+     *                             in the play state
+     * @return the resolved channel id
+     */
+    String register(String pluginId, String name, PayloadHandler handler, boolean configurationAllowed) {
         final String channelId = channelId(pluginId, name);
         final Registration previous = registrations.putIfAbsent(channelId,
-                new Registration(pluginId, handler, new LogBudget(LOGGER, "failures")));
+                new Registration(pluginId, handler, new LogBudget(LOGGER, "failures"), configurationAllowed));
         if (previous != null)
             throw new IllegalStateException("Channel " + channelId + " is already registered by plugin_id="
                     + previous.pluginId());
@@ -122,9 +154,17 @@ final class PluginChannelRouter {
         final Player player = event.getPlayer();
         final String channel = event.getIdentifier();
         final Registration registration = registrations.get(channel);
+        final PlayerConnection connection = player.getPlayerConnection();
         if (registration == null) {
-            drops.warn("Dropped a payload on an unregistered channel: connection_id={} channel={} bytes={}",
-                    player.getPlayerConnection().connectionId(), channel, event.getMessage().length);
+            // Looked up first: a plugin may have the id minecraft, and its channels are registered
+            if (channel.startsWith("minecraft:")) return;
+            drops.warn("Dropped a payload on an unregistered channel: connection_id={} bytes={} channel={}",
+                    connection.connectionId(), event.getMessage().length, channel);
+            return;
+        }
+        if (!registration.configurationAllowed() && connection.getServerState() != ConnectionState.PLAY) {
+            early.warn("Dropped a payload outside the play state: connection_id={} state={} channel={}",
+                    connection.connectionId(), connection.getServerState(), channel);
             return;
         }
         try {

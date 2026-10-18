@@ -3,6 +3,8 @@ package io.github.bearisbug.synaxis.app;
 import io.github.bearisbug.synaxis.plugin.AdmissionProvider;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
+
 /**
  * The one admission provider slot of the process (API-M2-011).
  * <p>
@@ -17,7 +19,12 @@ final class AdmissionRegistry {
 
     private volatile @Nullable Registration registration;
 
+    /**
+     * @throws NullPointerException if the provider is null, which would hold the slot and turn every
+     *                              connection away
+     */
     void register(String pluginId, AdmissionProvider provider) {
+        Objects.requireNonNull(provider, "provider");
         final Registration current = this.registration;
         if (current != null)
             throw new IllegalStateException("The process accepts one admission provider: plugin_id=" + pluginId

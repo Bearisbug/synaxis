@@ -166,7 +166,7 @@
 | REQ-M2-003 | 插件发现与生命周期：`ServiceLoader` 发现、descriptor 校验（含非法 / 保留 id 与 `api_version`）、construct / onEnable / onDisable 三段。**不做依赖解析**——M2 只有一个编译期插件，`depends` 拓扑排序与环检测推到第二个插件出现时（见 §28.3） | 目标 2 | P0 | `API-M2-007`；状态机见 §11.2 |
 | REQ-M2-004 | 插件能力边界：`PluginContext` 八项能力全部组合包装，其中事件节点 / 任务 / 通道 / 准入回调四项在禁用时一次性摘干净（`analytics()` 无状态，无物可摘） | 目标 2 | P0 | `API-M2-008` |
 | REQ-M2-005 | 插件异常归因：事件、任务、通道三个包装层各 catch 一次并各打一次 `plugin_id`，异常不外溢、进程继续。**不做熔断器**——滑窗统计与自动禁用推到第二个插件出现时（见 §28.3） | 目标 2 | P0 | `API-M2-008`；状态机见 §11.2 |
-| REQ-M2-006 | 通道命名空间：通道 id 强制 `<plugin_id>:<name>`，宿主单监听器前缀路由，未注册通道丢弃并记 WARN；`synaxis` 前缀为宿主保留 | 目标 2 | P0 | `API-M2-001` |
+| REQ-M2-006 | 通道命名空间：通道 id 强制 `<plugin_id>:<name>`，宿主单监听器前缀路由，未注册通道丢弃并记 WARN（`minecraft:` 命名空间只丢弃、不记）；`synaxis` 前缀为宿主保留 | 目标 2 | P0 | `API-M2-001` |
 | REQ-M2-007 | `:protocol` 模块：零第三方依赖的手写编解码（`MsgBuf` + record 的静态 read/write），测试向量两端各跑一遍 | 目标 3 | P0 | `API-M2-001` |
 | REQ-M2-008 | 握手与客户端模组校验：configuration 阶段等 `C2S_HELLO`，超时或 schema 不等即踢，新增两个 `synaxis:*` 原因键；**同一交付内让 `tools/protocol-probe/probe.py` 实现 `C2S_HELLO`**，否则依赖它的七条 TC 整块失效 | 目标 3 | P0 | `API-M2-002`；状态机见 §11.1 |
 | REQ-M2-009 | 切片消息集：`rts:game` 通道 7 条消息（镜头 / 选中 / 下令 / 生成 / 快照 / 移除 / 指令结果）与每类消息的服务端权威校验与速率限制 | 目标 3 | P0 | `API-M2-003`、`API-M2-004`、`API-M2-005`、`API-M2-006` |
@@ -307,10 +307,10 @@ M2 的对外契约有两类，都不是 HTTP：① 两端共享的**自定义负
 - **`API-M2-001` 自定义负载通道与消息信封** — 实现 `REQ-M2-006`、`REQ-M2-007`、`REQ-M2-020`
   - 方法/路径：`CustomPayload` 包。通道 id 为 `<plugin_id>:<name>`；宿主保留 `synaxis` 命名空间。M2 存在两个通道：`synaxis:handshake`（宿主级握手）与 `rts:game`（RTS 插件的全部游戏消息）；核心模式下另有宿主自注册的 `synaxis:main` 诊断通道（见 `API-M2-010` 第 ⑤ 步）；挂地图的分片另有宿主下行的 `synaxis:farview`；玩法架构 S1 起三种进程模式下宿主都注册 play 阶段双向的 `synaxis:play`（两者见本条末两项）。
   - 信封：`msg_id`（VarInt，见 §9）+ 消息体；`msg_id` 的作用域**只在该通道内**，因此不需要全局消息号注册表——通道命名空间归插件，插件自己分配自己的号段。
-  - 鉴权/权限：见 §10；入站消息在 `session_state=verified` 之前只接受 `synaxis:handshake` 通道，其它通道的入站包一律丢弃并计数。
+  - 鉴权/权限：见 §10；宿主路由器只把已进 PLAY 的连接的入站负载交给插件通道，PLAY 之前（configuration 阶段）到的插件通道负载丢弃，经 `LogBudget` 计数（每 10 s 至多一行 WARN，带 `connection_id`、连接状态与通道）。configuration 阶段收负载的只有宿主登记为可在 configuration 收的保留通道：`synaxis:handshake`，与核心模式的 `synaxis:main`（`docs/DESIGN.md` `API-002` 规定它两个状态都可用）；`synaxis:play` 与插件通道一样只收 PLAY 的。玩法模式下握手阻塞在 configuration 虚拟线程上，连接进 PLAY 必先 `session_state=verified` 并过准入，所以「进了 PLAY」就是「verified 之后」；核心模式不要求握手（`API-M2-010` 第 ⑤ 步）。通道名不是合法 identifier 的入站负载由引擎在派发之前以 `synaxis:protocol-error` 断开（`docs/DESIGN.md` `API-002`）。
   - 请求/响应：见 `API-M2-002`～`API-M2-006`；编解码由 `:protocol` 的 `MsgBuf`（VarInt / VarLong / f32 / UTF-8 / 定长数组 / 列表）与每条消息 record 的 `read`（静态，读消息体）/ `write`（写 `msg_id` 与消息体）完成。**解码器对入站字节有三条硬性行为**：① 未知 `msg_id` 与畸形输入是两类结果——前者丢弃并 WARN（§9）、后者 `synaxis:protocol-error`（§14），因此编解码层用两个不同的异常表达，宿主不必靠解析消息文本区分；② 任何 `count` 先按自身上限与**剩余字节数**双重校验再分配，发送方不能让解码器替它分配内存；③ 非有限的 f32（NaN / ±Inf）按畸形处理——线上没有任何字段承认这三个值，放过去就会变成一个 NaN 坐标。字段取值越界（`hp < 0`、`team` 不是 u8、`unit_id < 1` 等）在 record 的紧凑构造器里判，因此收发两侧同一套判据。
   - 幂等：除 `API-M2-005` 外全部消息幂等（状态上报与快照天然幂等）。
-  - 缓存与超时：不缓存（每条消息都是当帧事实）；未注册通道的入站包直接丢弃，不回错。
+  - 缓存与超时：不缓存（每条消息都是当帧事实）；未注册通道的入站包直接丢弃，不回错，并记 WARN（全进程一个预算）；`minecraft:` 命名空间的只丢弃、不记，原版与 Fabric 客户端每次进 configuration 都发 `minecraft:brand`。这一判放在查表之后：插件 id 可以叫 `minecraft`，它注册的通道照常收到负载。
   - 版本演进：解码器**只读自己认识的字段，尾部未知字节一律 skip 不报错**；新增字段一律追加在尾部；删字段或改字段语义 = 破坏性变更，必须升 `schema_version`（见「演进与弃用」）。
   - **`synaxis:farview` 远景宣告（M3-G）**：宿主保留命名空间下的通道，只由挂地图的分片在 configuration 阶段发给客户端，每条连接至多一条，客户端不发。编解码是 `:protocol` 的 `FarViewAnnouncement`：用 `MsgBuf` 的原语，但不走本条的 `msg_id` 信封、不计入 `schema_version`，有自己的 `format_version`（当前 1），向量单独冻结（§24）。内容列出与本分片边界（目录模式下是本大区边界）相交的整包瓦片和边界四周 4,096 格以内的粗层瓦片，每项带 `layer`（0 整包、1 只有粗层）。布局、上限与解码规则以 `docs/DESIGN-M3.md` `API-M3-015` 为准，本分册不复述；客户端侧的登记见 `REQ-M2-020`。
   - **`synaxis:play` 宿主场景层（玩法架构 S1）**：宿主保留命名空间下的 play 阶段双向通道，宿主经 `PluginHost#registerHostChannel` 注册，三种进程模式都装；承载场景、小部件与动作（`docs/DESIGN-PLAY.md` `REQ-PLAY-003`～`REQ-PLAY-005`）。编解码是 `:protocol` 包 `game.protocol.play` 的 `PlayMessages`：走本条的 `msg_id` 信封（号段只在本通道内有效）与三条硬性解码行为，但不计入 `schema_version`，有自己的版本 `PlayProtocol.version()`（当前 1），向量单独冻结在 `play-vectors/`（§24）。消息布局、上限、小部件目录与解码口径以 `docs/DESIGN-PLAY.md` `API-PLAY-002`、`API-PLAY-003` 为准，本分册不复述。
@@ -364,7 +364,7 @@ M2 的对外契约有两类，都不是 HTTP：① 两端共享的**自定义负
   - 方法：`interface SynaxisPlugin { PluginDescriptor descriptor(); default Set<String> translationKeys() { return Set.of(); } void onEnable(PluginContext ctx); default void onDisable() {} }`；`record PluginDescriptor(String id, String version, int apiVersion)`。**M2 的 descriptor 里没有 `depends` / `softDepends`**——只有一个编译期插件，声明式依赖与它的解析一起推到第二个插件出现时（那时按「新增字段 + `api_version` 加 1」补回，见 §28.3 与「演进与弃用」）。
   - 发现：`ServiceLoader.load(SynaxisPlugin.class)`（M2 阶段只有编译期插件，见 `ADR-M2-006`）。
   - 翻译键（生产就绪第 6 波 6F 加，`docs/DESIGN-PROD.md` `API-PROD-029`）：`translationKeys()` 列出插件发给玩家、又不是 `DisconnectKeys` 常量的翻译键（自己的断线原因、准入拒绝与系统消息），命名空间不限，默认空集合。宿主不调用它；`:architecture-tests` 的翻译键门禁在按宿主的做法（`ServiceLoader`、无参构造器）建出的实例上调用，逐个核对客户端模组的 `en_us.json` 与 `zh_cn.json` 都有译文，缺一处报一行、来源写插件 id。`SynaxisPlugin` 由插件实现，按 §24 的判定口径只能加默认方法；它对 `v0.3.0` 的 ABI 门 0 违例，写成抽象方法即报 `New abstract method added to interface`（`docs/TEST.md` TC-PROD-434），`api_version` 仍为 `2`。
-  - 约束：`id` 必须匹配 `[a-z0-9][a-z0-9_-]{0,63}` 且不得为 `synaxis`；**无参构造器里禁止注册任何东西**（注册一律在 `onEnable`）；`api_version` 与宿主不匹配时拒绝加载并阻止启动（只写日志，不下发客户端）。
+  - 约束：`id` 必须匹配 `[a-z0-9][a-z0-9_-]{0,63}` 且不得为 `synaxis`，而且全进程唯一：两个选中的插件声明同一个 id 时，宿主在启用任何插件之前抛 `IllegalArgumentException`，消息点名这个 id 与两个类名，走非法 descriptor 的拒启路径（端口不 bind）——通道、准入槽、动作与托管实例都按 id 记账，同 id 的一个被拆掉会把另一个的一起收走；**无参构造器里禁止注册任何东西**（注册一律在 `onEnable`）；`api_version` 与宿主不匹配时拒绝加载并阻止启动（只写日志，不下发客户端）。
   - 顺序：M2 不做依赖解析——`ServiceLoader` 给出的顺序即启用顺序，`onDisable` 按启用逆序调用，由引擎的 `scheduler.shutdown()` 驱动（宿主把逆序禁用注册成 shutdown task），所以控制台 `stop` 与 SIGINT 两条停机路径的时序一致。
   - 版本：`api_version` 是整数，破坏性变更时加 1，见「演进与弃用」。
 
@@ -404,7 +404,7 @@ M2 的对外契约有两类，都不是 HTTP：① 两端共享的**自定义负
   - 方法：`admission().register(AdmissionProvider provider)`。`interface AdmissionProvider { Admission admit(AdmissionRequest request); }`；`record AdmissionRequest(UUID connectionId, String username, int modVersion, int schemaVersion)`；`sealed interface Admission permits Admission.Accept, Admission.Reject`，`record Accept(Instance instance, int team)`、`record Reject(String reasonKey)`（`reasonKey` 必须是 §14 的某个 `synaxis:*` 键）。
   - **为什么需要它**：`§11.1` 要求宿主在 configuration 阶段决定「玩家落到哪个对局实例」并在没有可用对局时踢人，而「插件的内容引擎与宿主都不知道」——对局是插件造的，宿主无从得知。本接口就是把这个决定权交回插件的入口，同时让宿主保留唯一的 `setSpawningInstance` 调用点。
   - 唯一性：**全进程只接受一个 provider**。第二次 `register` 抛 `IllegalStateException`；宿主在全部 `onEnable` 之后检查这个槽（`API-M2-010` 启动序列第 ⑤ 步），**有插件参与了启动却没人注册 → 以非零码退出**；**一个插件都没有参与启动 → 核心模式，宿主用保留 id `synaxis` 自己占这个槽**（任何连接一律 `Accept` 到核心世界、`team=0`），槽位仍然只有一个占用者，插件侧的这条约束不因此松动——核心模式下本来就没有插件在争。多插件同时想提供对局是 M3 的问题（见 §28）。
-  - 调用线程与时机：宿主在 `AsyncPlayerConfigurationEvent` 处理器所在的 **configuration 虚拟线程**上、拿到握手结果之后、`setSpawningInstance` 之前**内联**调用一次。provider 内**禁止阻塞、禁止碰实体与区块**（此时既没有该实体的 tick 线程所有权，玩家也还不在任何实例里）——它只做「取自己那个 `running` 对局的实例并定队伍」这种纯查表工作（M2 只有一局；接口按「一张对局表」设计，多局时 provider 内部改选路即可，不动签名）。`admit` **抛异常**按 `Reject("synaxis:match-unavailable")` 处理并记一行带 `plugin_id` 的 ERROR。**200 ms 是事后测量的软预算，不是硬超时**：同一条线程内联调用一个同步方法，中途没有任何地方能把它中止，宿主只能在 `admit` 返回后测耗时——超过 200 ms 记一行带 `plugin_id` 与实测耗时的 WARN，**返回值照常生效**（此时结果已经拿到，再改判成 `Reject` 只是凭空多踢一个本可放行的玩家）。要做硬超时就得把 `admit` 丢到另一条虚拟线程上 `get(200, MILLISECONDS)`，代价是被弃的那条线程仍在跑、事后返回的 `Accept` 还要有人处置（玩家早已放行或断线），为一次纯查表引入这套机制不划算，**本设计不做**。真卡住的 provider 占的是这条连接自己的 configuration 虚拟线程：只拖慢这一条握手，不占 tick 线程、不影响其他连接；它落在 3 s 有界等待之外（那 3 s 只覆盖等 `C2S_HELLO`），所以对「慢」的兜底只有那行 WARN，不是断线。
+  - 调用线程与时机：宿主在 `AsyncPlayerConfigurationEvent` 处理器所在的 **configuration 虚拟线程**上、拿到握手结果之后、`setSpawningInstance` 之前**内联**调用一次。provider 内**禁止阻塞、禁止碰实体与区块**（此时既没有该实体的 tick 线程所有权，玩家也还不在任何实例里）——它只做「取自己那个 `running` 对局的实例并定队伍」这种纯查表工作（M2 只有一局；接口按「一张对局表」设计，多局时 provider 内部改选路即可，不动签名）。`admit` **抛异常**按 `Reject("synaxis:match-unavailable")` 处理并记一行带 `plugin_id` 的 ERROR；**返回 null 与抛异常同样处理**，在回调里构造出非法答案也一样（`Accept` 的 `instance`、`Reject` 的 `reasonKey` 为 null 时两个 record 的构造器抛 `NullPointerException`），这时宿主放弃这名玩家的载入、照常写 `client_rejected`。`register(null)` 抛 `NullPointerException`：插件的 `onEnable` 随之失败、被拆掉，槽位不被占住。**200 ms 是事后测量的软预算，不是硬超时**：同一条线程内联调用一个同步方法，中途没有任何地方能把它中止，宿主只能在 `admit` 返回后测耗时——超过 200 ms 记一行带 `plugin_id` 与实测耗时的 WARN，**返回值照常生效**（此时结果已经拿到，再改判成 `Reject` 只是凭空多踢一个本可放行的玩家）。要做硬超时就得把 `admit` 丢到另一条虚拟线程上 `get(200, MILLISECONDS)`，代价是被弃的那条线程仍在跑、事后返回的 `Accept` 还要有人处置（玩家早已放行或断线），为一次纯查表引入这套机制不划算，**本设计不做**。真卡住的 provider 占的是这条连接自己的 configuration 虚拟线程：只拖慢这一条握手，不占 tick 线程、不影响其他连接；它落在 3 s 有界等待之外（那 3 s 只覆盖等 `C2S_HELLO`），所以对「慢」的兜底只有那行 WARN，不是断线。
   - **provider 在回调里按 `connection_id` 建的表项，判活与建表必须在同一个临界区里**，而且它自己的断线回收要进同一把锁：这条回调跑在 configuration 虚拟线程上，而回收它的 `PlayerDisconnectEvent` 跑在别的线程上，连接在握手完成之后、`admit` 之前断开时断线回调先跑、那时表里还没有这一项，于是回收什么也没删、随后建出来的表项永不回收——客户端「发完 `C2S_HELLO` 立刻关 socket」一轮留一项，§15 的堆上界就成了只与对端连多少次有关的数。判活问引擎的 `ConnectionManager#isConnected(connection_id)`（`PlayerConnection#disconnect` 先丢连接、后发事件，所以它在断线回调之前就翻假）；同锁使得两个顺序都收敛：断线在前则建表被跳过，建表在前则断线照常收走。引擎的 `ConnectionManager#trackPlayer` 是同一形状。
   - **握手结果的跨线程交接（本接口的另一半，`REQ-M2-024` 的第 ② 项）**：
     - 连接进入 configuration 时（§11.1 `[*] → awaiting_hello`），宿主按 `connection_id` 建一个 `CompletableFuture<HelloResult>`；
@@ -1016,6 +1016,12 @@ flowchart LR
   Then 该插件被拒绝加载并打印正则约束
   And id 为 "synaxis" 时同样被拒绝（宿主保留）
 
+场景: 两个插件同 id 时拒启 (REQ-M2-003)
+  Given 两个选中的插件都声明 id "dup"
+  When server-app 启用插件
+  Then 抛出 IllegalArgumentException，消息点名 "dup" 与两个类名
+  And 两个插件的 onEnable 都没有被调用，端口不 bind
+
 场景: 插件禁用后不再有任何回调 (REQ-M2-004)
   Given 插件 a 已 enabled 且注册了一个事件监听器、一个每 tick 任务、一个通道、一个准入回调
   When 宿主禁用插件 a（M2 的唯一触发路径是停机，没有熔断）
@@ -1041,6 +1047,18 @@ flowchart LR
   Given 没有任何插件注册通道 "zz:game"
   When 客户端往 "zz:game" 发一条负载
   Then 服务端不抛异常、不断线，并按 connection_id 记一行 WARN
+  And 客户端发的 "minecraft:brand" 同样丢弃，但不记日志；id 为 minecraft 的插件注册的 "minecraft:probe" 照常收到负载
+
+场景: PLAY 之前的插件通道负载被丢弃 (REQ-M2-006)
+  Given 插件 a 注册了通道 "a:probe"
+  When 一条还在 configuration 阶段的连接往 "a:probe" 发负载
+  Then handler 不被调用，记一行带 connection_id 与连接状态的 WARN（预算内）
+  And 同一条连接进 PLAY 之后的负载照常交给 handler
+  And synaxis:handshake 在 configuration 阶段照常收到负载
+
+场景: 通道名不是 identifier 的入站负载断线 (REQ-M2-006)
+  When 客户端发一条通道名带换行的负载
+  Then 引擎以 synaxis:protocol-error 断开这条连接，不派发 PlayerPluginMessageEvent，日志里没有这个通道名
 
 场景: 示例插件能被社区照着跑起来 (REQ-M2-023)
   Given 按插件开发说明创建一个只实现 SynaxisPlugin 的模块
@@ -1310,7 +1328,7 @@ flowchart LR
   When 玩家握手通过
   Then 玩家被断开且原因键是 synaxis:match-unavailable
   And 服务端日志里没有 spawningInstance 相关的 NullPointerException，也没有 synaxis:internal-error
-  And AdmissionProvider 抛异常时走同样的 Reject 路径，并记一行带 plugin_id 的 ERROR
+  And AdmissionProvider 抛异常时走同样的 Reject 路径，并记一行带 plugin_id 的 ERROR；返回 null、构造 Accept(null, 1) 或 Reject(null) 时也一样，台账照常记 client_rejected reason=match-unavailable
   And AdmissionProvider 慢于 200 ms 返回时它的返回值照常生效（内联调用中止不了它），只多一行带 plugin_id 与实测耗时的 WARN，该连接的握手被拖慢，而并发的其他连接各自独立承担这段耗时、不被它串行阻塞
 
 场景: 单位位置推进走公开入口而不是引擎内部 API (REQ-M2-025)

@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
@@ -110,10 +111,11 @@ final class AdmissionGate {
         final Admission admission;
         final long start = System.nanoTime();
         try {
-            admission = provider.admit(new AdmissionRequest(connectionId, player.getUsername(),
+            // No answer is a failure to decide, as an exception is; Accept and Reject check their own fields
+            admission = Objects.requireNonNull(provider.admit(new AdmissionRequest(connectionId, player.getUsername(),
                     hello.modVersion(), hello.schemaVersion(), player.getUuid(),
                     player.getPlayerConnection().getRemoteAddress() instanceof InetSocketAddress inet
-                            ? inet.getAddress() : null));
+                            ? inet.getAddress() : null)), "the admission provider returned null");
         } catch (Throwable throwable) {
             LOGGER.error("Admission provider failed: plugin_id={} connection_id={}",
                     registry.pluginId(), connectionId, throwable);

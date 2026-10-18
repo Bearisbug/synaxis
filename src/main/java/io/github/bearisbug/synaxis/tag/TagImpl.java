@@ -25,26 +25,43 @@ record TagImpl<T>(int index, String key,
                   // Optional properties
                   @Nullable Supplier<@Nullable T> defaultValue,
                   PathEntry @Nullable [] path,
-                  @Nullable UnaryOperator<T> copy, int listScope) implements Tag<T> {
+                  @Nullable UnaryOperator<T> copy, int listScope,
+                  boolean view) implements Tag<T> {
     private static final AutoIncrementMap<String> INDEX_MAP = new AutoIncrementMap<>();
 
     public TagImpl {
         assert index == INDEX_MAP.get(key);
     }
 
-    @SuppressWarnings("unchecked")
     static <T, N extends BinaryTag> TagImpl<T> tag(String key, Serializers.Entry<T, N> entry) {
-        return new TagImpl<>(INDEX_MAP.get(key), key, entry.reader(), (Serializers.Entry<T, BinaryTag>) entry,
-                null, null, null, 0);
+        return tag(key, entry, false);
+    }
+
+    static <T> TagImpl<T> fromSerializer(String key, TagSerializer<T> serializer) {
+        return fromSerializer(key, serializer, false);
+    }
+
+    /**
+     * Creates the tag of {@link Tag#View(TagSerializer)}: a view is marked as such, an empty key alone is an ordinary
+     * key of the compound.
+     */
+    static <T> TagImpl<T> view(TagSerializer<T> serializer) {
+        return fromSerializer("", serializer, true);
     }
 
     @SuppressWarnings("unchecked")
-    static <T> TagImpl<T> fromSerializer(String key, TagSerializer<T> serializer) {
+    private static <T, N extends BinaryTag> TagImpl<T> tag(String key, Serializers.Entry<T, N> entry, boolean view) {
+        return new TagImpl<>(INDEX_MAP.get(key), key, entry.reader(), (Serializers.Entry<T, BinaryTag>) entry,
+                null, null, null, 0, view);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> TagImpl<T> fromSerializer(String key, TagSerializer<T> serializer, boolean view) {
         if (serializer instanceof TagRecord.Serializer<?> recordSerializer) {
             // Allow fast retrieval
-            return (TagImpl<T>) tag(key, recordSerializer.serializerEntry);
+            return (TagImpl<T>) tag(key, recordSerializer.serializerEntry, view);
         }
-        return tag(key, Serializers.fromTagSerializer(serializer));
+        return tag(key, Serializers.fromTagSerializer(serializer), view);
     }
 
     @Deprecated
@@ -61,7 +78,7 @@ record TagImpl<T>(int index, String key,
     @Contract(value = "_ -> new", pure = true)
     @Override
     public Tag<T> defaultValue(Supplier<T> defaultValue) {
-        return new TagImpl<>(index, key, readComparator, entry, defaultValue, path, copy, listScope);
+        return new TagImpl<>(index, key, readComparator, entry, defaultValue, path, copy, listScope, view);
     }
 
     @Contract(value = "_ -> new", pure = true)
@@ -88,7 +105,7 @@ record TagImpl<T>(int index, String key,
                     if (defaultValue == null) return null;
                     return readMap.apply(defaultValue);
                 },
-                path, null, listScope);
+                path, null, listScope, view);
     }
 
     @Contract(value = "-> new", pure = true)
@@ -125,14 +142,14 @@ record TagImpl<T>(int index, String key,
             return shallowCopy ? List.copyOf(ts) : List.of(array);
         } : List::copyOf;
         return new TagImpl<>(index, key, readComparator, (Serializers.Entry) listEntry,
-                null, path, co, listScope + 1);
+                null, path, co, listScope + 1, view);
     }
 
     @Contract(value = "_ -> new", pure = true)
     @Override
     public Tag<T> path(String @Nullable ... path) {
         if (path == null || path.length == 0) {
-            return new TagImpl<>(index, key, readComparator, entry, defaultValue, null, copy, listScope);
+            return new TagImpl<>(index, key, readComparator, entry, defaultValue, null, copy, listScope, view);
         }
         PathEntry[] pathEntries = new PathEntry[path.length];
         for (int i = 0; i < path.length; i++) {
@@ -141,7 +158,7 @@ record TagImpl<T>(int index, String key,
                 throw new IllegalArgumentException("Path must not be empty: " + Arrays.toString(path));
             pathEntries[i] = new PathEntry(name, INDEX_MAP.get(name));
         }
-        return new TagImpl<>(index, key, readComparator, entry, defaultValue, pathEntries, copy, listScope);
+        return new TagImpl<>(index, key, readComparator, entry, defaultValue, pathEntries, copy, listScope, view);
     }
 
     @Override
@@ -181,7 +198,7 @@ record TagImpl<T>(int index, String key,
 
     @Override
     public boolean isView() {
-        return key.isEmpty();
+        return view;
     }
 
     @Override
@@ -211,6 +228,7 @@ record TagImpl<T>(int index, String key,
         if (!(o instanceof TagImpl<?> tag)) return false;
         return index == tag.index &&
                 listScope == tag.listScope &&
+                view == tag.view &&
                 readComparator.equals(tag.readComparator) &&
                 Objects.equals(defaultValue, tag.defaultValue) &&
                 Arrays.equals(path, tag.path) && Objects.equals(copy, tag.copy);

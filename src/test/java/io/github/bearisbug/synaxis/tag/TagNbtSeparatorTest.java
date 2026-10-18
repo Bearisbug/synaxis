@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TagNbtSeparatorTest {
 
@@ -53,6 +55,37 @@ public class TagNbtSeparatorTest {
     public void list() {
         assertSeparation(new TagNbtSeparator.Entry<>(Tag.Integer("key").list(), List.of(1)),
                 "key", ListBinaryTag.listBinaryTag(BinaryTagTypes.INT, List.of(IntBinaryTag.intBinaryTag(1))));
+    }
+
+    // An empty key is a valid NBT key: only Tag.View makes a view
+    @Test
+    public void emptyKeyRoundTrip() {
+        final TagHandler handler = TagHandler.fromCompound(CompoundBinaryTag.builder().putInt("", 1).build());
+        assertEquals(1, handler.getTag(Tag.Integer("")));
+
+        // A write makes the handler build its compound again from the separated tags
+        handler.setTag(Tag.Integer("b"), 2);
+        assertEquals(CompoundBinaryTag.builder().putInt("", 1).putInt("b", 2).build(), handler.asCompound());
+    }
+
+    @Test
+    public void emptyCompoundUnderAnEmptyKeyIsAnOrdinaryEntry() {
+        final TagHandler handler = TagHandler.fromCompound(CompoundBinaryTag.builder()
+                .putInt("a", 1)
+                .put("", CompoundBinaryTag.empty())
+                .build());
+
+        assertEquals(1, handler.getTag(Tag.Integer("a")));
+        assertEquals(CompoundBinaryTag.empty(), handler.getTag(Tag.NBT("")));
+    }
+
+    @Test
+    public void onlyViewTagsAreViews() {
+        assertFalse(Tag.Integer("").isView());
+        assertFalse(Tag.Structure("", TagSerializer.COMPOUND).isView());
+        assertTrue(Tag.View(TagSerializer.COMPOUND).isView());
+        assertTrue(Tag.View(TagSerializer.COMPOUND).path("p").isView());
+        assertTrue(Tag.View(TagSerializer.COMPOUND).defaultValue(CompoundBinaryTag.empty()).isView());
     }
 
     void assertSeparation(Set<TagNbtSeparator.Entry<?>> expected, String key, BinaryTag nbt) {

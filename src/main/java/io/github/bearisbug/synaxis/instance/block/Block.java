@@ -124,6 +124,13 @@ public sealed interface Block extends StaticProtocolObject<Block>, TagReadable, 
 
     /**
      * Creates a new block with a tag modified.
+     * <p>
+     * The tag is written under its {@link Tag#path(String...) path}, the way the custom data of an item stack is, and
+     * a {@link Tag#View(io.github.bearisbug.synaxis.tag.TagSerializer) view} tag replaces the whole NBT. When
+     * {@link #blockEntityType()} is not null and the block has no {@link #handler() handler}, its whole NBT goes to
+     * every client that can see the block, with the chunk and with each block entity update: to keep data on the
+     * server, give the block a handler and list only what the client needs in
+     * {@link BlockHandler#getBlockEntityTags()}.
      *
      * @param tag   the tag to modify
      * @param value the tag value, null to remove
@@ -135,6 +142,9 @@ public sealed interface Block extends StaticProtocolObject<Block>, TagReadable, 
 
     /**
      * Creates a new block with different nbt data.
+     * <p>
+     * When {@link #blockEntityType()} is not null and the block has no {@link #handler() handler}, the whole NBT goes
+     * to every client that can see the block, see {@link #withTag(Tag, Object)}.
      *
      * @param compound the new block nbt, null to remove
      * @return a new block with different nbt

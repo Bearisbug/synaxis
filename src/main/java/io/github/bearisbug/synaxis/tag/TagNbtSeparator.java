@@ -27,6 +27,10 @@ import static java.util.Map.entry;
 
 /**
  * Handles conversion of {@link BinaryTag} subtypes into one or multiple primitive {@link Tag tags}.
+ * <p>
+ * An empty key is an ordinary key: {@code {"":1}} separates into {@code Tag.Integer("")}, which is not a view. A
+ * non-empty compound under an empty key, as in {@code {"":{x:1}}}, cannot be separated: its entries would need an
+ * empty path segment, which {@link Tag#path(String...)} refuses with an {@link IllegalArgumentException}.
  */
 final class TagNbtSeparator {
     static final Map<BinaryTagType<?>, Function<String, Tag<?>>> SUPPORTED_TYPES = Map.ofEntries(

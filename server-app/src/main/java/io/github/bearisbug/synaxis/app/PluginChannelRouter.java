@@ -8,6 +8,7 @@ import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.PayloadHandler;
+import io.github.bearisbug.synaxis.utils.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,7 +160,7 @@ final class PluginChannelRouter {
             // Looked up first: a plugin may have the id minecraft, and its channels are registered
             if (channel.startsWith("minecraft:")) return;
             drops.warn("Dropped a payload on an unregistered channel: connection_id={} bytes={} channel={}",
-                    connection.connectionId(), event.getMessage().length, channel);
+                    connection.connectionId(), event.getMessage().length, StringUtils.escapeForLog(channel));
             return;
         }
         if (!registration.configurationAllowed() && connection.getServerState() != ConnectionState.PLAY) {

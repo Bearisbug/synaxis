@@ -170,7 +170,7 @@ public abstract class Round {
         }
         final Duration left = countdown.minusNanos(now - openedAt);
         if (left.isPositive()) {
-            if (failed("onCountdown", () -> onCountdown(left))) cancel();
+            if (failed("onCountdown", () -> onCountdown(left))) cancelIfOpen();
             return;
         }
         final boolean ready;
@@ -178,7 +178,7 @@ public abstract class Round {
             ready = readyToStart();
         } catch (Throwable e) {
             report("readyToStart", e);
-            cancel();
+            cancelIfOpen();
             return;
         }
         if (!ready) return;
@@ -231,11 +231,17 @@ public abstract class Round {
      * or {@link #readyToStart()}; the instance is {@code CLOSED} once this returns, so {@link #tick()}
      * does nothing more with it. A {@link #readyToStart()} that cancels then answers false: true would
      * start an instance that is no longer {@code OPEN}, and {@link #tick()} throws the instance's
-     * {@link IllegalStateException}. Called while it runs, the instance refuses with an
+     * {@link IllegalStateException}. A callback that throws after it cancelled is written as a failed
+     * callback, and the instance is not asked again. Called while it runs, the instance refuses with an
      * {@link IllegalStateException}, which from a callback closes the round as a failed callback.
      */
     protected final void cancel() {
         arena.cancel(this::exit);
+    }
+
+    /** The guard of a callback that failed while the instance was open, and may have cancelled it already. */
+    private void cancelIfOpen() {
+        if (arena.state() == ManagedInstance.State.OPEN) cancel();
     }
 
     private void settle() {

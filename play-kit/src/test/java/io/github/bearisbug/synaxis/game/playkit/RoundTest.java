@@ -174,6 +174,25 @@ class RoundTest {
         assertTrue(logged.isEmpty(), "nothing failed, yet a line was written");
     }
 
+    /**
+     * A callback that gives the round up and throws after it: the guard finds the instance closed already,
+     * asks for nothing more and writes the failure.
+     */
+    @Test
+    void aCountdownThatCancelsAndThenThrowsIsCancelledOnce() {
+        final Probe round = new Probe(Duration.ofSeconds(3));
+        arena.state = ManagedInstance.State.OPEN;
+        round.cancelOnCountdown = true;
+        round.failing = "onCountdown";
+
+        round.tick();
+        round.tick();
+
+        assertEquals(List.of("cancel"), arena.requests);
+        assertSame(round.exit, exitOf(null));
+        assertOneFailure("onCountdown");
+    }
+
     /** {@code cancel()} once the round runs: the instance refuses it, which closes the round as a failed callback. */
     @Test
     void aCancelWhileTheRoundRunsClosesItAsAFailedCallback() {
@@ -390,6 +409,8 @@ class RoundTest {
         boolean giveUp;
         /** {@code onTick} asks for a cancel. */
         boolean cancelOnTick;
+        /** {@code onCountdown} asks for a cancel before it records the call. */
+        boolean cancelOnCountdown;
 
         Probe(Duration countdown) {
             this(countdown, LENGTH, RESULT);
@@ -412,6 +433,7 @@ class RoundTest {
 
         @Override
         protected void onCountdown(Duration left) {
+            if (cancelOnCountdown) cancel();
             call("onCountdown " + left);
         }
 

@@ -972,7 +972,7 @@ erDiagram
         protected abstract void onResult(EndCause cause);    // 结算、开面板；ERROR 时不调用
         protected abstract Exit exitOf(Player player);
         /** 放弃一局：cancel(exitOf)（带兜底），只在实例 OPEN 时调，即 onCountdown 或 readyToStart 里；返回时实例已是 CLOSED，tick 不再动它；
-         *  RUNNING 时调由宿主抛 IllegalStateException，在回调里抛出按回调失败收局 */
+         *  调过之后回调再抛异常，按回调失败记一行 ERROR，不再请求宿主；RUNNING 时调由宿主抛 IllegalStateException，在回调里抛出按回调失败收局 */
         protected final void cancel();
     }
     public final class LocalQueue<P> {               // 内部加锁，任意线程可调；同一个对象至多在队里一次，按入队顺序排
@@ -997,7 +997,7 @@ erDiagram
     }
     ```
 
-  - 回调兜底：`Round` 对每个抽象方法与 `readyToStart` 的调用自己 try/catch（`Throwable`，`Error` 与受检异常也算），抛异常时 `OPEN` 中 `cancel(exitOf)`、`RUNNING` 中 `end(ERROR)` 后立即 `settled(exitOf)`、`ENDING` 中（`onResult` 抛）立即 `settled(exitOf)`，不结算、玩家照 `exitOf` 送回，在构造给的日志器上记一行 ERROR（带实例 id 与回调名）；避免事件包装层只记日志、本局卡在当前阶段。交给宿主的 `exit` 也包了一层：`exitOf` 抛异常时这名玩家按 `Kick(synaxis:match-unavailable)` 撤离，同样记一行。`decided()` 返回 `OBJECTIVE`、`TIME_LIMIT`、`EMPTY`、`ERROR` 以外的原因按回调失败处理；返回 `ERROR` 时 `end(ERROR)` 后立即 `settled`，不调 `onResult`。
+  - 回调兜底：`Round` 对每个抽象方法与 `readyToStart` 的调用自己 try/catch（`Throwable`，`Error` 与受检异常也算），抛异常时 `OPEN` 中 `cancel(exitOf)`（回调自己已经 `cancel()`、实例已是 `CLOSED` 时不再请求）、`RUNNING` 中 `end(ERROR)` 后立即 `settled(exitOf)`、`ENDING` 中（`onResult` 抛）立即 `settled(exitOf)`，不结算、玩家照 `exitOf` 送回，在构造给的日志器上记一行 ERROR（带实例 id 与回调名）；避免事件包装层只记日志、本局卡在当前阶段。交给宿主的 `exit` 也包了一层：`exitOf` 抛异常时这名玩家按 `Kick(synaxis:match-unavailable)` 撤离，同样记一行。`decided()` 返回 `OBJECTIVE`、`TIME_LIMIT`、`EMPTY`、`ERROR` 以外的原因按回调失败处理；返回 `ERROR` 时 `end(ERROR)` 后立即 `settled`，不调 `onResult`。
   - 只请求一次：宿主在 `cancel`、`settled` 交换成功的那一刻就把实例转成 `CLOSED`，撤离与注销随后做完（§11.1「转移的时点」），请求返回时状态已是 `CLOSED`；`Round` 下一次 `tick` 落进 `CLOSED` 分支什么都不做，所以不另设标志也只请求一次。
   - `LocalQueue` 是泛型：样板里是 `LocalQueue<Player>`，单元测试不必起服务端造玩家。
   - 活动快照：`EventCalendar#active` 在 `onStart` 里读一次存进局状态，到结束不变；要实时生效的玩法自己每 tick 读。
@@ -1750,6 +1750,7 @@ flowchart LR
   Given OPEN 的局，readyToStart 里调 cancel() 后返回 false
   When Round.tick 连跑三次
   Then 宿主只收到一次 cancel，出口是 Round 的，readyToStart 只问了一次
+  And onCountdown 里调 cancel() 之后又抛异常时，宿主同样只收到一次 cancel，记一行回调失败的 ERROR，tick 不抛异常
   And 在 onTick 里调 cancel() 时宿主拒绝，本局按回调失败以 cause=error 收局
 
 场景: 活动开局快照 (REQ-PLAY-007)

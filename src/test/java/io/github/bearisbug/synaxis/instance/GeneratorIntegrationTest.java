@@ -23,7 +23,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @EnvTest
 public class GeneratorIntegrationTest {
@@ -146,15 +145,36 @@ public class GeneratorIntegrationTest {
 
     @Test
     public void chunkReadLockCannotUpgradeToWriteLock(Env env) {
-        assumeTrue(Chunk.class.desiredAssertionStatus(), "Chunk lock contract checks require assertions");
         var instance = env.createEmptyInstance();
         var chunk = instance.loadChunk(0, 0).join();
         chunk.lockReadLock();
         try {
-            assertThrows(AssertionError.class, chunk::lockWriteLock);
+            assertThrows(IllegalStateException.class, chunk::lockWriteLock);
         } finally {
             chunk.unlockReadLock();
         }
+    }
+
+    /**
+     * A block set under the read-lock of its chunk throws, instead of waiting for the write-lock the
+     * caller keeps from itself, and leaves the instance free: another thread sets a block of another
+     * chunk while the read-lock is still held.
+     */
+    @Test
+    public void aBlockSetUnderTheReadLockOfItsChunkThrows(Env env) {
+        var instance = env.createFlatInstance();
+        var chunk = instance.loadChunk(0, 0).join();
+        instance.loadChunk(1, 0).join();
+        chunk.lockReadLock();
+        try {
+            assertThrows(IllegalStateException.class, () -> instance.setBlock(0, 41, 0, Block.GOLD_BLOCK));
+            assertTimeoutPreemptively(Duration.ofSeconds(1),
+                    () -> CompletableFuture.runAsync(() -> instance.setBlock(16, 41, 0, Block.GOLD_BLOCK)).join());
+        } finally {
+            chunk.unlockReadLock();
+        }
+        assertEquals(Block.AIR, instance.getBlock(0, 41, 0));
+        assertEquals(Block.GOLD_BLOCK, instance.getBlock(16, 41, 0));
     }
 
     @ParameterizedTest

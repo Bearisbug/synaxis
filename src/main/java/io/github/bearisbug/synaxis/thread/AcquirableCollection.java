@@ -21,19 +21,33 @@ public class AcquirableCollection<E> implements Collection<Acquirable<E>> {
     }
 
     public void acquireSync(Consumer<E> consumer) {
-        final Map<TickThread, List<E>> threadEntitiesMap = retrieveOptionalThreadMap(acquirableCollection, consumer);
+        // Separate the elements by thread, to acquire each thread once
+        final Map<TickThread, List<Acquirable<E>>> threadElementsMap = new HashMap<>();
+        for (Acquirable<E> element : acquirableCollection) {
+            final TickThread elementThread = element.assignedThread();
+            if (elementThread == null || Thread.currentThread() == elementThread) {
+                // Never dispatched (sync falls back to its init thread) or managed in the current thread
+                element.sync(consumer);
+            } else {
+                threadElementsMap.computeIfAbsent(elementThread, _ -> new ArrayList<>()).add(element);
+            }
+        }
         // Acquire all the threads one by one
-        for (Map.Entry<TickThread, List<E>> entry : threadEntitiesMap.entrySet()) {
+        for (Map.Entry<TickThread, List<Acquirable<E>>> entry : threadElementsMap.entrySet()) {
             final TickThread tickThread = entry.getKey();
+            final List<Acquirable<E>> moved = new ArrayList<>();
             ReentrantLock lock = AcquirableImpl.enter(tickThread);
             try {
-                final List<E> values = entry.getValue();
-                for (E value : values) {
-                    consumer.accept(value);
+                for (Acquirable<E> element : entry.getValue()) {
+                    // Handed to another thread since it was read: the dispatcher no longer moves it now
+                    // that the global lock is held, it is acquired on its own thread below
+                    if (element.assignedThread() == tickThread) consumer.accept(element.unwrap());
+                    else moved.add(element);
                 }
             } finally {
                 AcquirableImpl.leave(lock);
             }
+            for (Acquirable<E> element : moved) element.sync(consumer);
         }
     }
 

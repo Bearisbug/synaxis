@@ -337,16 +337,29 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
         assert holdsReadLock() : "Not holding read-lock for chunk " + chunkX + "," + chunkZ;
     }
 
+    /**
+     * Takes the write-lock of this chunk, waiting as long as it takes. Reentrant, and its holder may
+     * take the read-lock too. The read-lock cannot be upgraded: a thread holding it and not the
+     * write-lock would wait for itself forever, and gets an exception instead. The instance methods
+     * changing a chunk ({@link Instance#setBlock}, {@link Instance#setBiome}) take it: a check followed
+     * by a change takes the write-lock from the start.
+     *
+     * @throws IllegalStateException if the calling thread holds the read-lock and not the write-lock
+     */
     @ApiStatus.Experimental
     public final void lockWriteLock() {
-        assert holdsWriteLock() || lock.getReadHoldCount() == 0 : "Cannot acquire write-lock while holding read-lock for chunk " + chunkX + "," + chunkZ;
+        if (lock.getReadHoldCount() > 0 && !lock.isWriteLockedByCurrentThread())
+            throw new IllegalStateException("Chunk " + chunkX + "," + chunkZ + ": this thread holds the read-lock, "
+                    + "which cannot be upgraded to the write-lock; take the write-lock from the start");
         lock.writeLock().lock();
     }
 
     /**
      * Takes the write-lock {@link #lockWriteLock()} takes, waiting at most {@code timeout} for it.
      * Reentrant like that one. An interrupt ends the wait: the method returns false and the
-     * interrupt stays set.
+     * interrupt stays set. A thread holding the read-lock and not the write-lock waits out the whole
+     * timeout and gets false, the read-lock cannot be upgraded (with assertions enabled it fails an
+     * assertion right away).
      *
      * @param timeout how long to wait at most, zero or negative to only try once
      * @return whether the calling thread holds the write-lock now; it has to unlock it then
@@ -367,6 +380,11 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
         lock.writeLock().unlock();
     }
 
+    /**
+     * Takes the read-lock of this chunk, shared with other readers. It cannot be upgraded: while the
+     * calling thread holds it and not the write-lock, {@link #lockWriteLock()}, and every instance
+     * method changing this chunk, throws.
+     */
     @ApiStatus.Experimental
     public final void lockReadLock() {
         lock.readLock().lock();

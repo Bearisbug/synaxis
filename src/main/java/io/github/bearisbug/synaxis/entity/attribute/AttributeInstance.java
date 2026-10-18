@@ -17,8 +17,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 /**
- * Represents an instance of an attribute and its modifiers. This class is thread-safe (you do not need to acquire the
- * entity to modify its attributes).
+ * Represents an instance of an attribute and its modifiers. Its value, base value and modifiers can be read from any
+ * thread, and an instance without a listener can be modified from any thread. The instances of a
+ * {@link LivingEntity} ({@link LivingEntity#getAttribute(Attribute)}) are modified on the thread owning the entity:
+ * every change calls the entity back on the modifying thread, which sends the attribute packet. When the maximum
+ * health drops below the health, the health is lowered, at the next tick of the entity if another thread modified it.
  */
 public final class AttributeInstance {
     public static final NetworkBuffer.Type<AttributeInstance> NETWORK_TYPE = NetworkBufferTemplate.template(

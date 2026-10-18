@@ -113,6 +113,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -469,6 +471,11 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * @param flags         flags used to teleport the entity relatively rather than absolutely
      *                      use {@link RelativeFlags} to see available flags
      * @param shouldConfirm if false, the teleportation will be done without confirmation
+     * @return a future completed once the entity has been teleported. While chunks still have to load
+     * it must not be joined on the thread owning the entity (its tick thread, or a thread holding it
+     * through {@link Acquirable#sync(Consumer)}): the teleport waits for that thread. Joining this
+     * future there throws {@link IllegalStateException} instead, a future chained on it would wait
+     * forever; chain the next step with {@link CompletableFuture#thenRun(Runnable)}
      * @throws IllegalStateException if you try to teleport an entity before settings its instance
      */
     public CompletableFuture<Void> teleport(Pos position, Vec velocity, long @Nullable [] chunks,
@@ -498,13 +505,13 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
         if (chunks != null && chunks.length > 0) {
             // Chunks need to be loaded before the teleportation can happen
-            return ChunkUtils.optionalLoadAll(instance, chunks, null).thenRun(() -> runOwned(endCallback));
+            return continuation(ChunkUtils.optionalLoadAll(instance, chunks, null).thenRun(() -> runOwned(endCallback)));
         }
         // Assumes globalPosition is already clamped
         final Pos currentPosition = this.position;
         if (!currentPosition.sameChunk(globalPosition)) {
             // Ensure that the chunk is loaded
-            return instance.loadOptionalChunk(globalPosition).thenRun(() -> runOwned(endCallback));
+            return continuation(instance.loadOptionalChunk(globalPosition).thenRun(() -> runOwned(endCallback)));
         } else {
             // Position is in the same chunk, keep it sync
             runOwned(endCallback);
@@ -1122,6 +1129,54 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         else acquirable.sync(_ -> callback.run());
     }
 
+    /**
+     * The future of {@code continuation}, a continuation {@link #runOwned} runs once chunks are
+     * loaded, whose {@code join} and {@code get} refuse to wait on the thread owning this entity.
+     */
+    private CompletableFuture<Void> continuation(CompletableFuture<Void> continuation) {
+        final ContinuationFuture future = new ContinuationFuture();
+        var _ = continuation.whenComplete((_, failure) -> {
+            if (failure != null) future.completeExceptionally(failure);
+            else future.complete(null);
+        });
+        return future;
+    }
+
+    /**
+     * The future of a continuation, which throws instead of blocking when it is waited for on the
+     * thread owning this entity before it is done. The continuation waits for the lock of that
+     * thread: it would never complete, and with the tick thread never ending its tick, the whole
+     * process would stop ticking. An entity no tick thread owns yet is not waited for, its
+     * continuation runs without a lock.
+     */
+    private final class ContinuationFuture extends CompletableFuture<Void> {
+        @Override
+        public Void join() {
+            refuseOwner();
+            return super.join();
+        }
+
+        @Override
+        public Void get() throws InterruptedException, ExecutionException {
+            refuseOwner();
+            return super.get();
+        }
+
+        @Override
+        public Void get(long timeout, java.util.concurrent.TimeUnit unit)
+                throws InterruptedException, ExecutionException, TimeoutException {
+            refuseOwner();
+            return super.get(timeout, unit);
+        }
+
+        private void refuseOwner() {
+            if (!isDone() && acquirable.assignedThread() != null && acquirable.isOwned())
+                throw new IllegalStateException("Joining the teleport or instance change of entity " + getEntityId()
+                        + " on the thread owning it would never end, the change waits for that thread;"
+                        + " chain on the future with thenRun instead");
+        }
+    }
+
     @ApiStatus.Internal
     protected void refreshCurrentChunk(Chunk currentChunk) {
         this.currentChunk = currentChunk;
@@ -1146,7 +1201,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * this is due to chunks needing to load. It completes exceptionally when the spawn fails, for
      * instance when the tracker refuses the entity, and the caller must observe it: a discarded
      * future turns such a failure into an entity that is in the world but untracked, without a
-     * single line of log
+     * single line of log. While the chunk still has to load it must not be joined on the thread
+     * owning the entity, see {@link #teleport(Pos, Vec, long[], int, boolean)}
      * @throws IllegalStateException if {@code instance} has not been registered in {@link InstanceManager}
      */
     public CompletableFuture<Void> setInstance(Instance instance, Pos spawnPosition) {
@@ -1178,14 +1234,16 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.lastSyncedPosition = spawnPosition;
         this.previousPhysicsResult = null;
         this.instance = instance;
-        return instance.loadOptionalChunk(spawnPosition).thenAccept(chunk -> runOwned(() -> {
+        return continuation(instance.loadOptionalChunk(spawnPosition).thenAccept(chunk -> runOwned(() -> {
             try {
                 // The entity may have been removed, or sent to another instance, while the spawn chunk
                 // was loading; registering it now would leave a ghost entity that #remove can never
                 // reach again, since it only ever unregisters from the instance the entity ended up in
                 if (isRemoved() || this.instance != instance) return;
                 Objects.requireNonNull(chunk, "Entity has been placed in an unloaded chunk!");
-                refreshCurrentChunk(chunk);
+                // The dispatcher is told last: an entity no tick thread owns yet runs this without a
+                // lock, and a tick thread it were handed to meanwhile would tick it during its spawn
+                this.currentChunk = chunk;
                 if (this instanceof Player player) {
                     player.sendPacket(instance.createInitializeWorldBorderPacket());
                     player.sendPacket(instance.createTimePacket());
@@ -1194,13 +1252,15 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
                 instance.getEntityTracker().register(this, position, trackingTarget, trackingUpdate);
                 spawn();
                 callEvent(new EntitySpawnEvent(this, instance));
+                // In the chunk it is in now: a listener may have moved it, or removed it, or sent it elsewhere
+                if (!isRemoved() && this.instance == instance) refreshCurrentChunk(this.currentChunk);
             } catch (Exception e) {
                 // Reported through the future, which the caller uses to undo the spawn. Swallowing
                 // it left the entity in the instance while the tracker had never heard of it:
                 // nothing could move or remove it again, yet it kept taking packets.
                 throw new CompletionException(e);
             }
-        }));
+        })));
     }
 
     public CompletableFuture<Void> setInstance(Instance instance, Point spawnPosition) {

@@ -5,9 +5,13 @@ import io.github.bearisbug.synaxis.entity.attribute.Attribute;
 import io.github.bearisbug.synaxis.network.packet.server.play.UpdateHealthPacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
+import io.github.bearisbug.synaxis.thread.TickThread;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 @EnvTest
 public class LivingEntityHealthIntegrationTest {
@@ -38,5 +42,33 @@ public class LivingEntityHealthIntegrationTest {
 
         zombie.getAttribute(Attribute.MAX_HEALTH).setBaseValue(5);
         assertEquals(5f, zombie.getHealth(), "current health was left above the new maximum");
+    }
+
+    /**
+     * A thread that does not own the entity lowers its maximum health: the health is left to the
+     * thread owning it, which lowers it at its next tick.
+     */
+    @Test
+    public void loweringMaxHealthFromAnotherThreadClampsOnTheOwningThread(Env env) {
+        var instance = env.createFlatInstance();
+        var zombie = new LivingEntity(EntityType.ZOMBIE) {
+            volatile @Nullable Thread loweredOn;
+
+            @Override
+            public void setHealth(float health) {
+                if (health < getHealth()) loweredOn = Thread.currentThread();
+                super.setHealth(health);
+            }
+        };
+        zombie.setInstance(instance, new Pos(0, 42, 0)).join();
+        env.tick(); // Let the dispatcher assign a tick thread
+        final TickThread owner = zombie.acquirable().assignedThread();
+        assertNotNull(owner);
+
+        zombie.getAttribute(Attribute.MAX_HEALTH).setBaseValue(5); // From this thread, which does not own it
+        assertEquals(20f, zombie.getHealth(), "lowered by a thread that does not own the zombie");
+        env.tick();
+        assertEquals(5f, zombie.getHealth(), "current health was left above the new maximum");
+        assertSame(owner, zombie.loweredOn);
     }
 }

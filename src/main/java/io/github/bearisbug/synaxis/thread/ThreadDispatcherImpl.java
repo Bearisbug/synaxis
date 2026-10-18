@@ -53,19 +53,26 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
 
     @Override
     public synchronized void updateAndAwait(long time) {
-        // Update dispatcher
-        this.updates.drain(update -> {
-            switch (update) {
-                case Update.PartitionLoad<P, E> chunkUpdate -> processLoadedPartition(chunkUpdate.partition());
-                case Update.PartitionUnload<P, E> partitionUnload ->
-                        processUnloadedPartition(partitionUnload.partition());
-                case Update.ElementUpdate<P, E> elementUpdate ->
-                        processUpdatedElement(elementUpdate.element(), elementUpdate.partition());
-                case Update.ElementRemove<P, E> elementRemove -> processRemovedElement(elementRemove.element());
-                case null, default -> throw new IllegalStateException("Unknown update type: " +
-                        (update == null ? "null" : update.getClass().getSimpleName()));
-            }
-        });
+        // Update dispatcher. Elements change threads only under the global lock: whoever holds an
+        // element through its acquirable holds that lock too, and the element stays on its thread
+        // until it is released (docs/DESIGN-PROD.md API-PROD-016)
+        AcquirableImpl.lockGlobal();
+        try {
+            this.updates.drain(update -> {
+                switch (update) {
+                    case Update.PartitionLoad<P, E> chunkUpdate -> processLoadedPartition(chunkUpdate.partition());
+                    case Update.PartitionUnload<P, E> partitionUnload ->
+                            processUnloadedPartition(partitionUnload.partition());
+                    case Update.ElementUpdate<P, E> elementUpdate ->
+                            processUpdatedElement(elementUpdate.element(), elementUpdate.partition());
+                    case Update.ElementRemove<P, E> elementRemove -> processRemovedElement(elementRemove.element());
+                    case null, default -> throw new IllegalStateException("Unknown update type: " +
+                            (update == null ? "null" : update.getClass().getSimpleName()));
+                }
+            });
+        } finally {
+            AcquirableImpl.GLOBAL_LOCK.unlock();
+        }
         // Tick all partitions
         CountDownLatch latch = new CountDownLatch(threads.size());
         for (TickThread thread : threads) thread.startTick(latch, time);
@@ -98,11 +105,17 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
                         previous.entries.remove(partitionEntry);
                         next.entries.add(partitionEntry);
                         // Acquirable ownership must follow the partition, otherwise sync() would lock
-                        // the thread that no longer ticks the element.
-                        for (Tickable element : partitionEntry.elements) {
-                            if (element instanceof AcquirableSource<?> acquirableSource) {
-                                ((AcquirableImpl<?>) acquirableSource.acquirable()).assign(next);
+                        // the thread that no longer ticks the element. Under the global lock, as in
+                        // updateAndAwait.
+                        AcquirableImpl.lockGlobal();
+                        try {
+                            for (Tickable element : partitionEntry.elements) {
+                                if (element instanceof AcquirableSource<?> acquirableSource) {
+                                    ((AcquirableImpl<?>) acquirableSource.acquirable()).assign(next);
+                                }
                             }
+                        } finally {
+                            AcquirableImpl.GLOBAL_LOCK.unlock();
                         }
                     }
                     this.partitionUpdateQueue.addLast(partition);

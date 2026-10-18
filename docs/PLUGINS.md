@@ -134,7 +134,7 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 | 实体与玩家的事件（含 `transfers().transfer(…)` 让宿主派发的 `OutgoingTransferEvent`，不论从哪条线程调用）、实体的休眠策略（`Entity#setDormancyPolicy`）、玩家发来的通道负载、`scheduler().runOn(实体, …)` | 该实体所属的 tick 线程 | 读写这个实体 |
 | `scheduler().scheduleTask(…)` | tick 调度线程，所有插件的任务一个接一个跑 | 每 tick 的全局逻辑；它是整个 tick 的串行段，要扩到几百人就按格或按实体拆开 |
 | `playerData().commitTogether(…, apply)` 的 `apply` | tick 调度线程，提交写进库之后下一个 tick 的串行段，只跑一次 | 改每个参与者，不论他们分在哪条 tick 线程；参与者这时可能已经离开，先查 `isRemoved()`（`docs/DESIGN-PROD.md` `API-PROD-005`） |
-| `playerData().saveNow(…)` 与 `commitTogether(…)` 返回的 future 的回调 | 玩家冻结、不在线或没有载入时 future 拿到手就已完成，回调在调用线程上；其余在宿主的虚拟线程上 | 不碰实体也不阻塞：碰实体用 `runOn` 送回，阻塞用 `runAsync`；`saveNow` 本身哪条线程都能调，快照总在玩家所属的 tick 线程上取（`docs/DESIGN-PROD.md` `API-PROD-005`） |
+| `playerData().saveNow(…)` 与 `commitTogether(…)` 返回的 future 的回调 | 玩家冻结、不在线或没有载入时 future 拿到手就已完成，回调在调用线程上；数据库返回得快时也可能在调用返回前就已完成，同样在调用线程上；从不拥有玩家的线程调 `saveNow`、到玩家下一个 tick 时玩家已离开或已冻结，在玩家所属的 tick 线程上；10 s 内没有这个 tick，在 JDK 的 `CompletableFuture` 定时线程上；其余在宿主的虚拟线程上 | 不碰实体也不阻塞：碰实体用 `runOn` 送回，阻塞用 `runAsync`；`saveNow` 本身哪条线程都能调，快照总在玩家所属的 tick 线程上取（`docs/DESIGN-PROD.md` `API-PROD-005`） |
 | `scheduler().runAsync(…)` | 自己的虚拟线程 | 阻塞的活（读写库、HTTP）；不碰实体与实例，结果用 `runOn` 送回去 |
 | 服务器列表事件 `ServerListPingEvent` | 发请求那条连接的读线程（虚拟线程） | 只改事件本身（MOTD、人数、样本、图标，`docs/DESIGN-PROD.md` `API-PROD-024`）；不碰实体与实例 |
 

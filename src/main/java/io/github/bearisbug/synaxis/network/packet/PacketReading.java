@@ -208,12 +208,14 @@ public final class PacketReading {
         try {
             packetLength = buffer.read(VAR_INT);
         } catch (IndexOutOfBoundsException _) {
-            // Either the segment ends before a complete var-int, or the var-int is malformed.
-            // The buffer can only be at fault if a full var-int does not fit past the read index.
-            final long requiredCapacity = beginMark + MAX_VAR_INT_SIZE;
-            if (requiredCapacity <= buffer.capacity())
+            // Either the segment ends before a complete var-int, or the var-int is malformed. The
+            // read is bounded by the capacity, not the write index: past the write index lie bytes
+            // left over from earlier frames. Only a var-int whose five bytes all came from the peer
+            // is malformed, a shorter one is waiting for the rest of its bytes.
+            if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE)
                 throw new DataFormatException("Packet length is not a valid var-int");
-            return new Result.Failure<>(requiredCapacity);
+            final long requiredCapacity = beginMark + MAX_VAR_INT_SIZE;
+            return requiredCapacity > buffer.capacity() ? new Result.Failure<>(requiredCapacity) : emptyResult();
         }
         final long readerStart = buffer.readIndex();
         if (readerStart > buffer.writeIndex()) {

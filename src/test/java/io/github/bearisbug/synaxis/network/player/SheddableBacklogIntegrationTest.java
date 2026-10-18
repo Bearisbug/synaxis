@@ -40,8 +40,8 @@ public class SheddableBacklogIntegrationTest {
 
     @Test
     public void onlySheddablePacketsAreShed(@TempDir Path dir) throws Exception {
-        final Env env = Env.create(builder -> builder.maxOutboundBacklogBytes(BACKLOG_64_KIB));
-        try (Arena arena = Arena.ofShared();
+        try (Env env = Env.create(builder -> builder.maxOutboundBacklogBytes(BACKLOG_64_KIB));
+             Arena arena = Arena.ofShared();
              OutboundBacklogIntegrationTest.Harness harness = new OutboundBacklogIntegrationTest.Harness(env)) {
             final List<byte[]> chunks = queueMovementThenChunks(harness, false, dir, arena);
             // One more 16 KiB of movement: 70 KiB queued, over the 64 KiB limit
@@ -59,16 +59,14 @@ public class SheddableBacklogIntegrationTest {
             assertArrayEquals(expected, harness.receivedBytes(), "the 20 chunk packets in queue order, nothing else");
             assertEquals(0, harness.connection.backlogBytes());
             assertTrue(harness.connection.isOnline());
-        } finally {
-            env.close();
         }
     }
 
     /** The counter proof: built sheddable, the chunk packets are shed with the movement. */
     @Test
     public void chunkPacketsBuiltSheddableAreShedWithTheMovement(@TempDir Path dir) throws Exception {
-        final Env env = Env.create(builder -> builder.maxOutboundBacklogBytes(BACKLOG_64_KIB));
-        try (Arena arena = Arena.ofShared();
+        try (Env env = Env.create(builder -> builder.maxOutboundBacklogBytes(BACKLOG_64_KIB));
+             Arena arena = Arena.ofShared();
              OutboundBacklogIntegrationTest.Harness harness = new OutboundBacklogIntegrationTest.Harness(env)) {
             queueMovementThenChunks(harness, true, dir, arena);
             harness.connection.sendPacket(OutboundBacklogIntegrationTest.Harness.movement(LAST_MOVEMENT_BYTES));
@@ -76,8 +74,6 @@ public class SheddableBacklogIntegrationTest {
             assertEquals(0, harness.connection.backlogBytes());
             harness.flushUntil(() -> harness.flushes() >= 3);
             assertEquals(0, harness.received.get(), "the chunk packets were shed with the movement");
-        } finally {
-            env.close();
         }
     }
 

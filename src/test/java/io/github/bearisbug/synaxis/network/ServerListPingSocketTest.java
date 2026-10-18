@@ -68,8 +68,7 @@ public class ServerListPingSocketTest {
         final byte[] png = Pngs.solid(64, 64);
         final Path icon = Files.write(directory.resolve("icon.png"), png);
         final String motd = "Synaxis 内测\n第二行";
-        final Env env = listening(config -> config.maxPlayers(300).motd(motd).serverIcon(icon.toString()));
-        try {
+        try (Env env = listening(config -> config.maxPlayers(300).motd(motd).serverIcon(icon.toString()))) {
             final JsonObject status = ping(env.process());
             final JsonObject version = status.getAsJsonObject("version");
             assertEquals(MinecraftServer.VERSION_NAME, version.get("name").getAsString());
@@ -81,23 +80,18 @@ public class ServerListPingSocketTest {
             assertEquals(Component.text(motd), description(status));
             assertEquals("data:image/png;base64," + Base64.getEncoder().encodeToString(png),
                     status.get("favicon").getAsString());
-        } finally {
-            env.close();
         }
     }
 
     /** Nothing configured: the engine defaults, which are the MOTD {@code synaxis} and no icon. */
     @Test
     public void withNothingConfiguredTheListShowsTheEngineDefaults() throws IOException {
-        final Env env = listening(UnaryOperator.identity());
-        try {
+        try (Env env = listening(UnaryOperator.identity())) {
             final JsonObject status = ping(env.process());
             // No seat limit: the socket limit of the gate is the real one
             assertEquals(1024, status.getAsJsonObject("players").get("max").getAsInt());
             assertEquals(Component.text("synaxis"), description(status));
             assertFalse(status.has("favicon"), status.toString());
-        } finally {
-            env.close();
         }
     }
 
@@ -108,26 +102,25 @@ public class ServerListPingSocketTest {
     @Test
     public void aListenerChangesTheAnswerButCannotShowALowerLimit() throws IOException {
         final Path icon = Files.write(directory.resolve("icon.png"), Pngs.solid(64, 64));
-        final Env env = listening(config -> config.maxPlayers(300).serverIcon(icon.toString()));
         final UUID gm = UUID.randomUUID();
         final AtomicReference<String> refusal = new AtomicReference<>();
         final AtomicInteger limitAfterRefusal = new AtomicInteger();
         final AtomicReference<String> asker = new AtomicReference<>();
-        env.process().eventHandler().addListener(ServerListPingEvent.class, event -> {
-            asker.set(event.getConnection().getRemoteAddress().toString());
-            event.setDescription(Component.translatable("synaxis:server-list.motd"));
-            event.setOnlinePlayers(42);
-            event.setSample(List.of(new SamplePlayer("GM on duty", gm)));
-            event.setFavicon(null);
-            try {
-                event.setMaxPlayers(100);
-            } catch (IllegalArgumentException e) {
-                refusal.set(e.getMessage());
-            }
-            limitAfterRefusal.set(event.getMaxPlayers());
-            event.setMaxPlayers(450);
-        });
-        try {
+        try (Env env = listening(config -> config.maxPlayers(300).serverIcon(icon.toString()))) {
+            env.process().eventHandler().addListener(ServerListPingEvent.class, event -> {
+                asker.set(event.getConnection().getRemoteAddress().toString());
+                event.setDescription(Component.translatable("synaxis:server-list.motd"));
+                event.setOnlinePlayers(42);
+                event.setSample(List.of(new SamplePlayer("GM on duty", gm)));
+                event.setFavicon(null);
+                try {
+                    event.setMaxPlayers(100);
+                } catch (IllegalArgumentException e) {
+                    refusal.set(e.getMessage());
+                }
+                limitAfterRefusal.set(event.getMaxPlayers());
+                event.setMaxPlayers(450);
+            });
             final JsonObject status = ping(env.process());
             assertEquals("the server list must not show a player limit below the real one, 300, but was given 100",
                     refusal.get());
@@ -139,8 +132,6 @@ public class ServerListPingSocketTest {
             assertEquals(Component.translatable("synaxis:server-list.motd"), description(status));
             assertFalse(status.has("favicon"), "the listener took the configured icon away");
             assertTrue(asker.get().contains("127.0.0.1"), "the connection that asked: " + asker.get());
-        } finally {
-            env.close();
         }
     }
 
@@ -150,8 +141,7 @@ public class ServerListPingSocketTest {
      */
     @Test
     public void theSampleListsTwelvePlayersAndHidesThoseWhoAskedNotToBeListed() throws IOException {
-        final Env env = listening(UnaryOperator.identity());
-        try {
+        try (Env env = listening(UnaryOperator.identity())) {
             final List<Player> players = joinPlayers(env, 13);
             doNotList(players.get(1));
 
@@ -167,22 +157,17 @@ public class ServerListPingSocketTest {
                         : List.of(player.getUsername(), player.getUuid().toString()));
             }
             assertEquals(expected, sample, "the first 12 players in the order they entered play");
-        } finally {
-            env.close();
         }
     }
 
     /** {@code synaxis.hide-online-players} means what it means in vanilla: no sample, the count stays. */
     @Test
     public void hidingTheOnlinePlayersLeavesTheCountAndDropsTheSample() throws IOException {
-        final Env env = listening(config -> config.hideOnlinePlayers(true));
-        try {
+        try (Env env = listening(config -> config.hideOnlinePlayers(true))) {
             joinPlayers(env, 2);
             final JsonObject players = ping(env.process()).getAsJsonObject("players");
             assertEquals(2, players.get("online").getAsInt());
             assertFalse(players.has("sample"), players.toString());
-        } finally {
-            env.close();
         }
     }
 

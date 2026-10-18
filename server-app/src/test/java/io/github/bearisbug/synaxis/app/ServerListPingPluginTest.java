@@ -62,11 +62,11 @@ class ServerListPingPluginTest {
 
     @Test
     void aPluginCannotLowerTheLimitAndTheAnswerStillGoesOut() throws ExecutionException, InterruptedException {
-        final Env env = Env.create(config -> config.maxPlayers(300));
         final EventLedger ledger = new EventLedger(workingDirectory.resolve("logs"), "test",
                 EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
         ledger.start();
-        try (LogCapture log = LogCapture.of(PluginEventsImpl.class)) {
+        try (Env env = Env.create(config -> config.maxPlayers(300));
+             LogCapture log = LogCapture.of(PluginEventsImpl.class)) {
             new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger)
                     .enable(List.of(new Lister()), Set.of());
 
@@ -100,7 +100,6 @@ class ServerListPingPluginTest {
                     + " (1 failures since the last report)"), log.messagesAt(Level.ERROR));
         } finally {
             ledger.close();
-            env.close();
         }
     }
 }

@@ -90,15 +90,13 @@ public class InboundPacketLimitIntegrationTest {
      */
     @Test
     public void pingsOverADropLimitAreNotAnswered() throws IOException {
-        final Env env = Env.create(settings -> settings.packetLimitAction(PacketLimitAction.DROP));
-        try (Harness harness = new Harness(env, false)) {
+        try (Env env = Env.create(settings -> settings.packetLimitAction(PacketLimitAction.DROP));
+             Harness harness = new Harness(env, false)) {
             harness.send(pings(1_000), 0);
             harness.connection.flushSync();
 
             assertTrue(harness.connection.isOnline(), "a dropped ping does not kick");
             assertEquals(750, harness.sent(PingResponsePacket.class), "pongs");
-        } finally {
-            env.close();
         }
     }
 

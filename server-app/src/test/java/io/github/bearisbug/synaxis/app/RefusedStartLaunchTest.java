@@ -37,6 +37,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class RefusedStartLaunchTest {
 
     private static final String SHARD = "r1-c1";
+    /** What HikariCP logs when it builds the pool of the store, which connects to the database. */
+    private static final String POOL_STARTING = "synaxis-store - Starting";
 
     private TestDatabase database;
     /** The output of the last {@link #refused} JVM. */
@@ -105,12 +107,14 @@ public class RefusedStartLaunchTest {
         assertEquals(1, refused(directory.resolve("whitelist"), "-Dsynaxis.app.metrics.bind=127.0.0.1:0",
                 "-Dsynaxis.app.whitelist=yes"), lastLog);
         assertTrue(lastLog.contains("Refusing to start: synaxis.app.whitelist=yes is not on or off"), lastLog);
+        assertFalse(lastLog.contains(POOL_STARTING), lastLog);
         assertEquals(List.of(), sessions(), "refused before the store was opened");
 
         assertEquals(1, refused(directory.resolve("phase"), "-Dsynaxis.app.metrics.bind=127.0.0.1:0",
                 "-Dsynaxis.app.handshake-phase=play"), lastLog);
         assertTrue(lastLog.contains("Refusing to start: synaxis.app.handshake-phase=play is not one of configuration, "
                 + "login"), lastLog);
+        assertFalse(lastLog.contains(POOL_STARTING), lastLog);
         assertEquals(List.of(), sessions(), "refused before the store was opened");
     }
 }

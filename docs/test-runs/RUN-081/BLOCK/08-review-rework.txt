@@ -1,0 +1,68 @@
+Review rework of group BLOCK: code commit 51eea9c5d9 on top of 554f8e2b3e. Four Gradle runs, each in one of the two
+Gradle slots of this round with --max-workers=2 --no-daemon and the mirror init script, default mode.
+<P> is io.github.bearisbug.synaxis.
+
+== Run 1: red before the fix
+Code: the main code of 554f8e2b3e, except src/main/java/io/github/bearisbug/synaxis/potion/CustomPotionEffect.java
+taken from 965c3bddae; the two new tests of 51eea9c5d9.
+Command: ./gradlew --continue :test --rerun --tests <P>.item.component.ItemComponentDecodingRegistriesTest \
+  :server-app:test --rerun --tests <P>.app.store.PlayerStateCodecIntegrationTest --max-workers=2 --no-daemon \
+  --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+ItemComponentDecodingRegistriesTest   1 test, 1 failed
+  aRefusedComponentValueInAnItemArgumentIsASyntaxError:
+  stone[use_cooldown={seconds:1f,cooldown_group:"Fire Ball"}] ==> Unexpected exception type thrown,
+  expected: <...ArgumentSyntaxException> but was: <java.lang.IllegalArgumentException>
+  (the test still looped over the inputs and stopped at the first one; it was then changed to assertAll so that
+  every input reports, and run 3 is the counterproof of that form)
+PlayerStateCodecIntegrationTest       6 tests, 1 failed
+  aPotionEffectAboveAmplifier127SurvivesTheRoundTrip at PlayerStateCodecIntegrationTest.java:120:
+  expected: <200> but was: <-56>; the stored item was
+  {count:1,components:{"minecraft:potion_contents":{custom_effects:[{duration:600,amplifier:-56b,show_icon:1b,
+  id:"minecraft:speed"}]}},id:"minecraft:potion"}
+CustomPotionEffect.java was restored with git checkout HEAD afterwards.
+
+== Run 2: green, first attempt
+Code: the main code of 51eea9c5d9 with StringTest still at its earlier sample value.
+Command: ./gradlew --continue :testNamingCheck --rerun :test --rerun :server-app:test --rerun \
+  --tests <P>.app.store.PlayerStateCodecIntegrationTest --tests <P>.app.store.PlayerStateSectionIntegrationTest ...
+
+:testNamingCheck   passed
+root :test         449 classes, 3355 tests, 1 failed, 15 skipped
+  StringTest > directReadWriteTest > "instance": Expected Ok but got Error: IllegalArgumentException:
+  minecraft:note_block_sound must be a namespaced id such as synaxis:unit/archer (a-z 0-9 . _ - /), got: hello, world
+  note_block_sound is an identifier in 26.2 and is now checked when it is decoded; the sample value of StringTest
+  became minecraft:block.note_block.bell.
+server-app         PlayerStateCodecIntegrationTest 6, PlayerStateSectionIntegrationTest 18, 0 failed
+
+== Run 3: counterproof of the decode checks
+Code: component/DataComponents.java, item/component/UseCooldown.java, item/component/Equippable.java,
+item/component/WrittenBookContent.java and item/component/WritableBookContent.java taken from 554f8e2b3e, the
+rest as in 51eea9c5d9; afterwards restored with git checkout HEAD.
+Command: ./gradlew :test --rerun --tests <P>.item.component.ItemComponentDecodingRegistriesTest \
+  --tests <P>.item.component.StringTest ...
+
+2 tests, 1 failed
+  aRefusedComponentValueInAnItemArgumentIsASyntaxError: Multiple Failures (8 failures), every input
+  ==> Unexpected exception type thrown, expected: <...ArgumentSyntaxException> but was:
+  <java.lang.IllegalArgumentException>:
+    stone[use_cooldown=...]  stone[equippable=... asset_id]  stone[equippable=... camera_overlay]
+    stone[written_book_content=...]  stone[writable_book_content=...]  stone[item_model=...]
+    stone[tooltip_style=...]  stone[note_block_sound=...]
+  StringTest passed (the earlier code does not check note_block_sound when it is decoded).
+
+== Run 4: final
+Code: the tree of 51eea9c5d9.
+Command: ./gradlew --continue :testNamingCheck --rerun :test --rerun :server-app:test --rerun \
+  --tests <P>.app.store.PlayerStateCodecIntegrationTest --tests <P>.app.store.PlayerStateSectionIntegrationTest \
+  :synx:test --rerun ...
+
+:testNamingCheck   passed
+root :test         449 classes, 3355 tests, 0 failed, 15 skipped (the database tests without the database variables)
+server-app         2 classes, 24 tests, 0 failed
+:synx:test         22 classes, 182 tests, 0 failed, 1 skipped
+BUILD SUCCESSFUL
+
+51eea9c5d9 changes no tick thread code (four codecs, three component registrations, a Javadoc, a constructor
+message and tests), so the strict and grid modes of 04-strict.txt and 05-grid.txt were not run again; the synx
+tests belong to the lighting session and were only run.

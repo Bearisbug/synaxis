@@ -1,0 +1,18 @@
+4 tick threads, strict ownership, grid thread provider (the CI job multithreaded-grid)
+Command: ./gradlew --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid \
+  :test --rerun --tests <the five root classes below> \
+  :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.instance.*' --tests '*.PluginHostInstancesIntegrationTest' \
+  :game-rts:test --rerun --tests '*.MatchIntegrationTest' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+Code: the tree of 554f8e2b3e; the configuration was calculated afresh for this command line.
+io.github.bearisbug.synaxis.app.PluginHostInstancesIntegrationTest tests= 3 failures= 0 skipped= 0 timestamp= 2026-10-18T16:04:05.443Z
+io.github.bearisbug.synaxis.app.instance.EvacuationIntegrationTest tests= 19 failures= 0 skipped= 0 timestamp= 2026-10-18T16:04:08.189Z
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceIntegrationTest tests= 9 failures= 0 skipped= 0 timestamp= 2026-10-18T16:04:13.363Z
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest tests= 5 failures= 0 skipped= 0 timestamp= 2026-10-18T16:04:13.856Z
+io.github.bearisbug.synaxis.app.instance.ManagedInstanceTransitionsTest tests= 20 failures= 0 skipped= 0 timestamp= 2026-10-18T16:04:15.323Z
+io.github.bearisbug.synaxis.game.rts.MatchIntegrationTest tests= 11 failures= 0 skipped= 0 timestamp= 2026-10-18T16:04:09.530Z
+io.github.bearisbug.synaxis.instance.InstanceEventsIntegrationTest tests= 1 failures= 0 skipped= 0 timestamp= 2026-10-18T16:04:03.922Z
+io.github.bearisbug.synaxis.instance.InstanceUnregisterIntegrationTest tests= 5 failures= 0 skipped= 0 timestamp= 2026-10-18T16:04:03.921Z
+io.github.bearisbug.synaxis.instance.UnloadChunkIntegrationTest tests= 6 failures= 0 skipped= 0 timestamp= 2026-10-18T16:04:03.922Z
+io.github.bearisbug.synaxis.instance.block.handler.BlockHandlerIntegrationTest tests= 6 failures= 0 skipped= 0 timestamp= 2026-10-18T16:04:03.921Z
+io.github.bearisbug.synaxis.listener.UseItemListenerIntegrationTest tests= 6 failures= 0 skipped= 0 timestamp= 2026-10-18T16:04:03.922Z
+total 91 tests, 0 failed; BUILD SUCCESSFUL

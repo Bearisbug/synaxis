@@ -1,0 +1,57 @@
+Counterproofs: one batch of three temporary changes to the main code of 554f8e2b3e, each on a different test, run
+together, then reverted with git checkout HEAD -- src.
+Command: ./gradlew --continue :test --rerun --tests <P>.item.component.TooltipDisplayTest --tests <P>.item.ItemStackRegistriesTest \
+  --tests <P>.item.ItemStackHashRegistriesTest --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+== The changes
+diff --git a/src/main/java/io/github/bearisbug/synaxis/item/ItemStack.java b/src/main/java/io/github/bearisbug/synaxis/item/ItemStack.java
+index 13f08facd3..b7d1a595b6 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/item/ItemStack.java
++++ b/src/main/java/io/github/bearisbug/synaxis/item/ItemStack.java
+@@ -197,7 +197,6 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
+      */
+     default <T> ItemStack update(DataComponent<T> component, UnaryOperator<T> operator) {
+         T value = get(component);
+-        if (value == null) return this;
+         return with(component, operator.apply(value));
+     }
+ 
+diff --git a/src/main/java/io/github/bearisbug/synaxis/item/ItemStackHashImpl.java b/src/main/java/io/github/bearisbug/synaxis/item/ItemStackHashImpl.java
+index 276f63bd4a..40c5595aa0 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/item/ItemStackHashImpl.java
++++ b/src/main/java/io/github/bearisbug/synaxis/item/ItemStackHashImpl.java
+@@ -24,7 +24,7 @@ final class ItemStackHashImpl {
+             if (!entry.component().isSerialized()) continue;
+             if (entry.value() != null) {
+                 addedComponents.put(entry.component(), ((DataComponent<Object>) entry.component()).encode(hashCoder, entry.value())
+-                        .orElseThrow("hash of component " + entry.component().name()));
++                        .orElseThrow(Boolean.getBoolean("proof.never") ? "hash of component " + entry.component().name() : ""));
+             } else {
+                 removedComponents.add(entry.component());
+             }
+diff --git a/src/main/java/io/github/bearisbug/synaxis/item/component/TooltipDisplay.java b/src/main/java/io/github/bearisbug/synaxis/item/component/TooltipDisplay.java
+index d59a685d35..50a1121c59 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/item/component/TooltipDisplay.java
++++ b/src/main/java/io/github/bearisbug/synaxis/item/component/TooltipDisplay.java
+@@ -37,7 +37,6 @@ public record TooltipDisplay(boolean hideTooltip, Set<DataComponent<?>> hiddenCo
+      * @return the display, this one when nothing changes
+      */
+     public TooltipDisplay withHidden(DataComponent<?> component, boolean hidden) {
+-        if (hiddenComponents.contains(component) == hidden) return this;
+ 
+         var newHiddenComponents = new HashSet<>(hiddenComponents);
+         if (hidden) newHiddenComponents.add(component);
+
+== Result: 13 tests completed, 4 failed
+ItemStackHashRegistriesTest tests= 3 failures= 1
+   aComponentThatDoesNotEncodeIsNamed(Registries) | org.opentest4j.AssertionFailedError: : IllegalArgumentException: a container holds at most 256 slots, got 257 ==> expected: <true> but was: <false> | ItemStackHashRegistriesTest.java:66
+ItemStackRegistriesTest tests= 7 failures= 1
+   updateTakesAnImplicitlyTypedLambda() | java.lang.NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.item.component.Equippable.withSwappable(boolean)" because "e" is null | ItemStackRegistriesTest.java:111
+TooltipDisplayTest tests= 3 failures= 2
+   anUnchangedDisplayIsReturnedAsItIs() | org.opentest4j.AssertionFailedError: expected: io.github.bearisbug.synaxis.item.component.TooltipDisplay@10f8005a<TooltipDisplay[hideTooltip=false, hiddenComponents=[]]> but was: io.github.bearisbug.synaxis.item.component.TooltipDisplay@35ebb54a<TooltipDisplay | TooltipDisplayTest.java:35
+   withHiddenHidesAndShowsAComponent() | org.opentest4j.AssertionFailedError: expected: io.github.bearisbug.synaxis.item.component.TooltipDisplay@445133<TooltipDisplay[hideTooltip=false, hiddenComponents=[minecraft:enchantments]]> but was: io.github.bearisbug.synaxis.item.component.TooltipDisplay@219 | TooltipDisplayTest.java:19
+
+TooltipDisplay.java:40 removed: withHidden makes a new display when nothing changes (two reds).
+ItemStack.java:200 removed: update calls the operator with null when the component is absent (one red).
+ItemStackHashImpl.java:27 without the component name (the counterproof of TC-PROD-801 step 3, rerun on the container
+version of the test): one red.

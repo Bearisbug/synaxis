@@ -1,0 +1,52 @@
+How the Minecraft 26.2 client reads the item components, particle options and potion settings this group
+changed. This file records the conclusions and how to reproduce them; it does not reproduce Mojang's code.
+
+Source: the 26.2 client jar
+  https://piston-data.mojang.com/v1/objects/2dc72797acbc1b63fc16a11c4ac393605f453754/client.jar
+  sha1 2dc72797acbc1b63fc16a11c4ac393605f453754 (the object name in the 26.2 version manifest)
+Reproduce: javap of JDK 25 against that jar, for example
+  javap -c -p -constants -cp client.jar net.minecraft.world.item.JukeboxPlayable
+Each section names the class and members read and states what they show.
+
+== 1. net.minecraft.world.item.JukeboxPlayable and JukeboxSong, static initializers
+JukeboxPlayable.STREAM_CODEC is StreamCodec.composite(JukeboxSong.STREAM_CODEC, ...): the component is the song
+holder and nothing else. JukeboxSong.STREAM_CODEC is ByteBufCodecs.holder(Registries.JUKEBOX_SONG,
+DIRECT_STREAM_CODEC): a VarInt, the registry id plus one, or 0 followed by an inline song. There is no either
+boolean in front of it.
+
+== 2. net.minecraft.world.item.enchantment.ItemEnchantments
+The private constructor throws IllegalArgumentException for a level below 0 or above 255 (iflt, sipush 255,
+if_icmple); the network codec builds the component through that constructor. LEVEL_CODEC is
+Codec.intRange(1, 255), the persistent form.
+
+== 3. net.minecraft.world.item.component.WrittenBookContent, WritableBookContent, ItemLore
+WrittenBookContent.TITLE_MAX_LENGTH = 32; the stream codec reads the title with ByteBufCodecs.stringUtf8(32).
+WritableBookContent.MAX_PAGES = 100 and PAGE_EDIT_LENGTH = 1024; the stream codec reads the pages with
+stringUtf8(1024) and ByteBufCodecs.list(100).
+ItemLore.MAX_LINES = 256; the stream codec reads the lines with ByteBufCodecs.list(256).
+
+== 4. Identifiers
+DataComponents.ITEM_MODEL, TOOLTIP_STYLE and NOTE_BLOCK_SOUND are DataComponentType<Identifier>;
+UseCooldown.cooldownGroup is Optional<Identifier>; Equippable.assetId is Optional<ResourceKey<EquipmentAsset>> and
+cameraOverlay Optional<Identifier>. Identifier.STREAM_CODEC is ByteBufCodecs.STRING_UTF8 mapped with
+Identifier::parse and Identifier::toString (bootstrap method 10 resolves to Identifier.parse), and parse throws
+IdentifierException for a character an identifier does not allow, an upper case letter or a space for instance.
+
+== 5. net.minecraft.world.effect.MobEffectInstance$Details
+The amplifier field of the codec is ExtraCodecs.UNSIGNED_BYTE: 0 to 255 stored in a byte.
+
+== 6. net.minecraft.core.particles.ColorParticleOption and SpellParticleOption
+ColorParticleOption (flash, entity_effect, tinted_leaves) reads "color" with ExtraCodecs.ARGB_COLOR_CODEC.
+SpellParticleOption (effect, instant_effect) reads "color" with RGB_COLOR_CODEC.optionalFieldOf("color", -1)
+(white) and "power" with FLOAT.optionalFieldOf("power", 1.0F): both may be left out.
+
+== 7. net.minecraft.world.item.ItemInstance and ItemStack
+ItemInstance#getMaxStackSize is getOrDefault(MAX_STACK_SIZE, 1).
+ItemStack#isDamageableItem checks MAX_DAMAGE, then UNBREAKABLE, then DAMAGE.
+ItemStack#addDetailsToTooltip reads these 31 components: BANNER_PATTERNS BEES BLOCK_ENTITY_DATA BLOCK_STATE
+CAN_BREAK CAN_PLACE_ON CHARGED_PROJECTILES CONTAINER CONTAINER_LOOT DAMAGE DYED_COLOR ENCHANTMENTS ENTITY_DATA
+FIREWORK_EXPLOSION FIREWORKS INSTRUMENT INTANGIBLE_PROJECTILE JUKEBOX_PLAYABLE LORE MAP_ID
+OMINOUS_BOTTLE_AMPLIFIER POT_DECORATIONS POTION_CONTENTS PROFILE STORED_ENCHANTMENTS SULFUR_CUBE_CONTENT
+SUSPICIOUS_STEW_EFFECTS TRIM TROPICAL_FISH_PATTERN UNBREAKABLE WRITTEN_BOOK_CONTENT; addAttributeTooltips reads
+ATTRIBUTE_MODIFIERS. ItemStackImpl.Builder#EXTRA_TOOLTIP_HIDE holds all of them but LORE, plus BUNDLE_CONTENTS
+and PAINTING_VARIANT that it held before: 33 components.

@@ -222,7 +222,20 @@ public final class CoordConversion {
         return encodeSectionBlockChange(sectionBlockIndex(localX, localY, localZ), value);
     }
 
+    /**
+     * Encodes a move along one axis in 1/4096 of a block, as the relative entity move packets carry it.
+     * <p>
+     * Only correct for a move shorter than 8 blocks either way: 8 blocks are 32768, which no longer fits in a
+     * short and silently wraps around, a move of +8 reaching the client as -8. A caller with a longer move
+     * sends an absolute teleport instead.
+     *
+     * @param newCoordinate the coordinate moved to
+     * @param oldCoordinate the coordinate moved from
+     * @return the move in 1/4096 of a block
+     */
     public static short deltaShort4096(double newCoordinate, double oldCoordinate) {
+        assert Math.abs(newCoordinate - oldCoordinate) < 8
+                : "a relative move of " + (newCoordinate - oldCoordinate) + " blocks does not fit in a short";
         return (short) ((newCoordinate - oldCoordinate) * 4096);
     }
 

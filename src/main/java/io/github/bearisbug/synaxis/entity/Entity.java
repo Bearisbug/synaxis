@@ -138,6 +138,10 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     // within this many ticks
     private static final int DORMANCY_EVALUATION_TICKS = 5;
 
+    // A relative move packet carries a short in 1/4096 of a block, at most 32767 or 7.99976 blocks:
+    // from 8 blocks on, the move is sent as a teleport
+    private static final double MAX_RELATIVE_MOVE = 8;
+
     // Protected due to PointersSupplier.Builder#parent
     protected static final PointersSupplier<Entity> ENTITY_POINTERS_SUPPLIER = PointersSupplier.<Entity>builder()
             .resolving(Identity.DISPLAY_NAME, (entity) -> entity.get(DataComponents.CUSTOM_NAME))
@@ -435,24 +439,64 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         }
     }
 
+    /**
+     * Teleports the entity keeping its current velocity, see {@link #teleport(Pos, Vec, long[], int, boolean)}.
+     *
+     * @param position the teleport position
+     * @return a future completed once the entity has been teleported
+     */
     public CompletableFuture<Void> teleport(Pos position) {
         return teleport(position, null, RelativeFlags.NONE);
     }
 
+    /**
+     * Teleports the entity and sets its velocity, see {@link #teleport(Pos, Vec, long[], int, boolean)}.
+     *
+     * @param position the teleport position
+     * @param velocity the velocity after the teleport
+     * @return a future completed once the entity has been teleported
+     */
     public CompletableFuture<Void> teleport(Pos position, Vec velocity) {
         return teleport(position, velocity, null, RelativeFlags.NONE);
     }
 
+    /**
+     * Teleports the entity keeping its current velocity, see {@link #teleport(Pos, Vec, long[], int, boolean)}.
+     *
+     * @param position the teleport position
+     * @param chunks   the chunk indexes to load before teleporting the entity
+     * @param flags    flags used to teleport the entity relatively rather than absolutely
+     * @return a future completed once the entity has been teleported
+     */
     public CompletableFuture<Void> teleport(Pos position, long @Nullable [] chunks,
                                             @MagicConstant(flagsFromClass = RelativeFlags.class) int flags) {
         return teleport(position, chunks, flags, true);
     }
 
+    /**
+     * Teleports the entity and sets its velocity, see {@link #teleport(Pos, Vec, long[], int, boolean)}.
+     *
+     * @param position the teleport position
+     * @param velocity the velocity after the teleport
+     * @param chunks   the chunk indexes to load before teleporting the entity
+     * @param flags    flags used to teleport the entity relatively rather than absolutely
+     * @return a future completed once the entity has been teleported
+     */
     public CompletableFuture<Void> teleport(Pos position, Vec velocity, long @Nullable [] chunks,
                                             @MagicConstant(flagsFromClass = RelativeFlags.class) int flags) {
         return teleport(position, velocity, chunks, flags, true);
     }
 
+    /**
+     * Teleports the entity keeping its current velocity ({@link RelativeFlags#DELTA_COORD}), see
+     * {@link #teleport(Pos, Vec, long[], int, boolean)}.
+     *
+     * @param position      the teleport position
+     * @param chunks        the chunk indexes to load before teleporting the entity
+     * @param flags         flags used to teleport the entity relatively rather than absolutely
+     * @param shouldConfirm if false, the teleportation will be done without confirmation
+     * @return a future completed once the entity has been teleported
+     */
     public CompletableFuture<Void> teleport(Pos position, long @Nullable [] chunks,
                                             @MagicConstant(flagsFromClass = RelativeFlags.class) int flags,
                                             boolean shouldConfirm) {
@@ -461,10 +505,14 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Teleports the entity only if the chunk at {@code position} is loaded or if
-     * {@link Instance#hasEnabledAutoChunkLoad()} returns true.
+     * Teleports the entity once the chunk at {@code position} is loaded, loading it when
+     * {@link Instance#hasEnabledAutoChunkLoad()} returns true. When it is not loaded and does not load, the
+     * future completes exceptionally with {@link IllegalStateException} and the entity is left unchanged:
+     * load it first, or pass it in {@code chunks}.
      *
      * @param position      the teleport position
+     * @param velocity      the velocity after the teleport, relative to the current one when {@code flags}
+     *                      carry {@link RelativeFlags#DELTA_COORD}
      * @param chunks        the chunk indexes to load before teleporting the entity,
      *                      indexes are from {@link CoordConversion#chunkIndex(int, int)},
      *                      can be null or empty to only load the chunk at {@code position}
@@ -491,6 +539,12 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         final Vec globalVelocity = PositionUtils.getVelocityWithRelativeFlags(this.velocity, velocity, flags);
 
         final Runnable endCallback = () -> {
+            // Before any state changes: moving into a chunk that is not there fails halfway, the position and
+            // the tracker at the new point while the chunk and the tick thread stay with the old one
+            if (!ChunkUtils.isLoaded(instance, globalPosition)) {
+                throw new IllegalStateException("cannot teleport entity " + getEntityId() + " to " + globalPosition
+                        + ": its chunk is not loaded and auto chunk load is off; load it first or pass it in chunks");
+            }
             final float previousHeadRotation = this.headRotation;
             this.previousPosition = this.position;
             setPositionInternal(globalPosition, globalPosition.yaw());
@@ -1719,16 +1773,18 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * as opposed to {@link #teleport(Pos)}, which dispatches an {@code EntityTeleportEvent} and loads
      * chunks asynchronously. The caller must own the tick thread of this entity and the chunk covering
      * {@code position} must already be loaded; moving outside of the loaded area throws a
-     * {@link NullPointerException} rather than failing silently.
+     * {@link NullPointerException} rather than failing silently, and throwing leaves the entity unchanged.
      * <p>
      * It belongs to the stable surface even though it lives in the engine, which no binary
      * compatibility gate covers: changing its signature or its semantics is a breaking change
      * of {@code plugin-api} (see {@code docs/DESIGN-M2.md} §24).
      *
      * @param position the position to move to, whose view is applied to the entity
-     * @throws NullPointerException if the chunk covering {@code position} is not loaded
+     * @throws IllegalStateException if this entity is not in an instance
+     * @throws NullPointerException  if the chunk covering {@code position} is not loaded
      */
     public void moveTo(final Pos position) {
+        Check.stateCondition(instance == null, "moveTo needs the entity to be in an instance");
         refreshPosition(position, false, true);
     }
 
@@ -1736,6 +1792,13 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * Updates internal fields and sends updates.
      *
      * @param newPosition the new position
+     * @param ignoreView  true to only take the coordinates of {@code newPosition}, keeping the current view
+     *                    and head rotation
+     * @param sendPackets false to send no relative move, leaving the position to the scheduled
+     *                    synchronization; what {@link #movementTick()} passes for the types only synchronized
+     *                    that way
+     * @throws NullPointerException if the chunk covering {@code newPosition} is not loaded, the entity is
+     *                              then left unchanged
      */
     @ApiStatus.Internal
     public void refreshPosition(final Pos newPosition, boolean ignoreView, boolean sendPackets) {
@@ -1745,15 +1808,20 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         // The synced position lags behind the real one whenever packets are skipped, so it alone
         // cannot tell whether the entity actually has to move
         if (position.equals(lastSyncedPosition) && position.equals(previousPosition)) return;
+        // Before any state changes: refreshCoordinate throws the same once the passengers and the tracker moved
+        if (!position.sameChunk(previousPosition))
+            Check.notNull(instance.getChunk(position.chunkX(), position.chunkZ()),
+                    "The entity {0} tried to move in an unloaded chunk at {1}", getEntityId(), position);
         setPositionInternal(position, ignoreView ? headRotation : position.yaw());
         this.previousPosition = previousPosition;
         if (!position.samePoint(previousPosition)) refreshCoordinate(position);
-        // A dormant entity sends no scheduled synchronization, its moves go out below
-        if ((dormancyInterval == 1 && nextSynchronizationTick <= ticks + 1) || !sendPackets) {
-            // The entity will be synchronized at the end of its tick
-            // not returning here will duplicate position packets
-            return;
-        }
+        // Only synchronized on schedule, see SYNCHRONIZE_ONLY_ENTITIES
+        if (!sendPackets) return;
+        // The scheduled synchronization due by the next tick sends this position, sending it here too would
+        // duplicate it: called from #tick before ticks++, the one at the end of this tick
+        // (ticks >= nextSynchronizationTick), called after it, the one of the next tick. A dormant entity
+        // has no scheduled synchronization, its moves go out below
+        if (dormancyInterval == 1 && nextSynchronizationTick <= ticks + 1) return;
         // Update viewers
         final boolean viewChange = !position.sameView(lastSyncedPosition);
         final double distanceX = Math.abs(position.x() - lastSyncedPosition.x());
@@ -1763,7 +1831,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
         final Chunk chunk = getChunk();
         assert chunk != null;
-        if (distanceX > 8 || distanceY > 8 || distanceZ > 8) {
+        if (distanceX >= MAX_RELATIVE_MOVE || distanceY >= MAX_RELATIVE_MOVE || distanceZ >= MAX_RELATIVE_MOVE) {
             // Send relative 0 velocity to avoid affecting it in this case
             process().viewablePackets().prepareViewablePacket(chunk, new EntityTeleportPacket(getEntityId(), position,
                     Vec.ZERO, RelativeFlags.DELTA_COORD, isOnGround()), this);

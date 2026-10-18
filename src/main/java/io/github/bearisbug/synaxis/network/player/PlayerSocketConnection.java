@@ -81,9 +81,9 @@ public class PlayerSocketConnection extends PlayerConnection {
             ClientFinishConfigurationPacket.class, // Enter play state
             // Back to the configuration state. A packet that switches the decoding state is handled as it
             // arrives, the next read decodes in the state it leaves: queued until the next tick, it left
-            // the configuration packets right behind it to decode as play ones. The play packets queued
-            // before it are then handled in the configuration state, find no listener (one warning per
-            // packet class) and are dropped; the player has left its instance, they have nothing to act on.
+            // the configuration packets right behind it to decode as play ones. Those queued before it are
+            // then handled in the configuration state, a common one by its configuration listener and with no
+            // PlayerPacketEvent; a play only one finds no listener (warned once per class) and is dropped.
             ClientConfigurationAckPacket.class
     );
 

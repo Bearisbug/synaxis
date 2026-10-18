@@ -150,7 +150,7 @@ public class DuplicateUuidLoginIntegrationTest {
             this(process, SocketChannel.open());
         }
 
-        private KickCapturingConnection(ServerProcess process, SocketChannel channel) {
+        KickCapturingConnection(ServerProcess process, SocketChannel channel) {
             super(process, channel, new InetSocketAddress("localhost", 25565),
                     Thread.currentThread(), Thread.currentThread());
             this.channel = channel;

@@ -80,7 +80,8 @@ public final class SessionClient {
     private final AtomicLong quietUntil = new AtomicLong(System.nanoTime());
 
     private final AtomicLong verified = new AtomicLong(), unverified = new AtomicLong(), unavailable = new AtomicLong();
-    // The cause of the last unavailable answer in the current report
+    // The cause of the last unavailable answer, set before the answer is counted: a report that counted
+    // one has a cause, whichever thread wins the race between counting and reporting
     private final AtomicReference<@Nullable String> lastUnavailableCause = new AtomicReference<>();
     // Since the process started, for the metrics endpoint (API-PROD-015); the three above are per report
     private final AtomicLong verifiedTotal = new AtomicLong(), unverifiedTotal = new AtomicLong(),
@@ -286,8 +287,8 @@ public final class SessionClient {
 
     /**
      * Writes the outcomes counted over the last 10 seconds as one line, if a login failed
-     * verification in that time, ending with the cause of the last unavailable answer ({@code -}
-     * without one). Called once per tick.
+     * verification in that time, ending with the cause of the last unavailable answer ({@code -} if
+     * the line counts none). Called once per tick.
      *
      * @param nanoTime the time of the tick, {@link System#nanoTime()}
      */
@@ -302,11 +303,10 @@ public final class SessionClient {
         final long verifiedCount = verified.getAndSet(0);
         final long unverifiedCount = unverified.getAndSet(0);
         final long unavailableCount = unavailable.getAndSet(0);
-        final String cause = lastUnavailableCause.getAndSet(null);
         if (unverifiedCount == 0 && unavailableCount == 0) return;
         LOGGER.warn("Session verification in the last 10 s: verified={} unverified={} unavailable={} session_server={} "
                         + "last_unavailable_cause={}", verifiedCount, unverifiedCount, unavailableCount, server.hasJoinedUrl(),
-                cause == null ? "-" : cause);
+                unavailableCount == 0 ? "-" : lastUnavailableCause.get());
     }
 
     /**

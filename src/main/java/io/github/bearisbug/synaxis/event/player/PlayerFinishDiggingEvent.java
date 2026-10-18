@@ -8,11 +8,11 @@ import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.block.Block;
 
 /**
- * Called when the client of a {@link Player} reports it finished digging a block that takes time to
- * break. The engine does not check how long the player dug, a client can report the end without
- * having reported a start ({@code docs/DESIGN-PROD.md} §28.2, digging time not checked); a block
- * broken instantly does not call this event. The engine then calls {@code Instance#breakBlock},
- * whose {@link PlayerBlockBreakEvent} can still be cancelled.
+ * Called when the client of a {@link Player} reports it finished digging a block. The engine does not
+ * check how long the player dug, a client can report the end without having reported a start
+ * ({@code docs/DESIGN-PROD.md} §28.2, digging time not checked), and a modified client can report it
+ * for a block that breaks instantly, which a vanilla client breaks with the start alone. The engine
+ * then calls {@code Instance#breakBlock}, whose {@link PlayerBlockBreakEvent} can still be cancelled.
  */
 public class PlayerFinishDiggingEvent implements PlayerInstanceEvent, BlockEvent {
     private final Player player;
@@ -33,11 +33,12 @@ public class PlayerFinishDiggingEvent implements PlayerInstanceEvent, BlockEvent
     }
 
     /**
-     * Changes the block a cancelled break is judged by: when the break is cancelled, a player standing
-     * right on top of the position is teleported back where it stands if this block is solid. It
-     * changes neither the block that is broken nor the block {@link PlayerBlockBreakEvent} sees.
+     * Changes the block a refused break is judged by: when {@code Instance#breakBlock} refuses the
+     * break, its {@link PlayerBlockBreakEvent} cancelled or the chunk read-only, a player standing right
+     * on top of the position is teleported back where it stands if this block is solid. It changes
+     * neither the block that is broken nor the block {@link PlayerBlockBreakEvent} sees.
      *
-     * @param block the block to judge a cancelled break by
+     * @param block the block to judge a refused break by
      */
     public void setBlock(Block block) {
         this.block = block;

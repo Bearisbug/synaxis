@@ -16,7 +16,7 @@ import java.util.List;
  * Commonly used transcoders are accessible through static fields like {@link Transcoder#JSON}
  * <p>
  * The message of a {@link Result.Error} may end up in a log line or a disconnect reason, and the value
- * being read may come from a client: a message never holds an unbounded part of that value, at most
+ * being read may come from a client: a message must not hold an unbounded part of that value, at most
  * a short preview of it.
  * @param <D> the intermediary type used by the transcoder
  */

@@ -48,6 +48,16 @@ public class HandChangedDuringEventIntegrationTest {
         send(player, new ClientPlayerActionPacket(status, Vec.ZERO, BlockFace.BOTTOM, 0));
     }
 
+    /**
+     * Takes the 64 stone out of the hand and puts another 64 stone in. The inventory keeps the
+     * instance it holds when handed an equal one, so the hand empties first: it then holds an equal
+     * item that is not the one it held before the event.
+     */
+    private static void putAnEqualCopyBack(Player player) {
+        player.setItemInMainHand(ItemStack.AIR);
+        player.setItemInMainHand(ItemStack.of(Material.STONE, 64));
+    }
+
     @Test
     public void aHandTheBlockPlaceListenerChangedIsKept(Env env) {
         final Instance instance = env.createFlatInstance();
@@ -69,7 +79,7 @@ public class HandChangedDuringEventIntegrationTest {
         final Player player = env.createConnection().connect(instance, SPAWN);
         player.setItemInMainHand(ItemStack.of(Material.STONE, 64));
         env.process().eventHandler().addListener(PlayerBlockPlaceEvent.class,
-                event -> event.getPlayer().setItemInMainHand(ItemStack.of(Material.STONE, 64)));
+                event -> putAnEqualCopyBack(event.getPlayer()));
 
         placeOnTheFloor(player);
 
@@ -97,7 +107,7 @@ public class HandChangedDuringEventIntegrationTest {
         final Player player = env.createConnection().connect(env.createFlatInstance(), SPAWN);
         player.setItemInMainHand(ItemStack.of(Material.STONE, 64));
         env.process().eventHandler().addListener(ItemDropEvent.class,
-                event -> event.getPlayer().setItemInMainHand(ItemStack.of(Material.STONE, 64)));
+                event -> putAnEqualCopyBack(event.getPlayer()));
 
         drop(player, ClientPlayerActionPacket.Status.DROP_ITEM);
 

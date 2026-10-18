@@ -192,6 +192,10 @@ public final class ConnectionManager {
     // I(mattw) could not come up with a better way to express this besides completely splitting client/server
     // states. Perhaps there will be an improvement in the future.
     private final Set<Player> keepAlivePlayers = new CopyOnWriteArraySet<>();
+    // When the players in that gap were sent finish configuration. With no keep alive, nothing else
+    // ends a client that never acknowledges it, or a peer gone without a reset; the tick kicks them
+    // once the keep alive kick delay has passed.
+    private final Map<Player, Long> finishingSince = new ConcurrentHashMap<>();
 
     private final Set<Player> unmodifiableConfigurationPlayers = Collections.unmodifiableSet(configurationPlayers);
     private final Set<Player> unmodifiablePlayPlayers = Collections.unmodifiableSet(playPlayers);
@@ -504,11 +508,14 @@ public final class ConnectionManager {
 
         keepAlivePlayers.remove(player);
         player.setPendingOptions(spawningInstance, event.isHardcore());
+        // Under the same lock as #removePlayer, and before the packet the acknowledgement answers
+        trackPlayer(player, () -> finishingSince.put(player, System.nanoTime()));
         player.sendPacket(new FinishConfigurationPacket());
     }
 
     @ApiStatus.Internal
     public void transitionConfigToPlay(Player player) {
+        this.finishingSince.remove(player);
         this.playWaitingPlayers.relaxedOffer(player);
     }
 
@@ -542,6 +549,7 @@ public final class ConnectionManager {
         this.configurationPlayers.remove(player);
         this.playPlayers.remove(player);
         this.keepAlivePlayers.remove(player);
+        this.finishingSince.remove(player);
         // The client is gone and will never answer what #doConfiguration waits for
         player.releaseResourcePackWait();
         connection.releaseKnownPacksWait();
@@ -643,6 +651,7 @@ public final class ConnectionManager {
 
         // Send keep alive packets
         handleKeepAlive(keepAlivePlayers, tickStart);
+        handleFinishConfigurationTimeout(tickStart);
 
         // The latencies the keep alives measured, all players in one packet
         final long interval = TimeUnit.MILLISECONDS.toNanos(process.config().tabLatencyInterval());
@@ -794,6 +803,19 @@ public final class ConnectionManager {
                 player.kick(DisconnectReasons.KEEP_ALIVE_TIMEOUT);
             }
         }
+    }
+
+    /**
+     * Kicks the players that were sent {@code FinishConfigurationPacket} at least the keep alive
+     * kick delay ago and have not acknowledged it.
+     *
+     * @param tickStart the time of the update in nanoseconds
+     */
+    private void handleFinishConfigurationTimeout(long tickStart) {
+        final long kickAfter = TimeUnit.MILLISECONDS.toNanos(process.config().keepAliveKick());
+        finishingSince.forEach((player, sentAt) -> {
+            if (tickStart - sentAt >= kickAfter) player.kick(DisconnectReasons.KEEP_ALIVE_TIMEOUT);
+        });
     }
 
 }

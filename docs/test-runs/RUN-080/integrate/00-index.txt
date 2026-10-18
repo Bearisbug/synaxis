@@ -57,3 +57,63 @@ Gradle, one build at a time through ~/.claude/r077/gradle.zsh (--max-workers=2 -
                         -Dsynaxis.thread-provider=grid: the same 15 tests, 0 failures (08-grid/)
 The adapted class in 4-thread strict mode, the full suites, Concurrency, Client mod and Client gametest run on the
 draft PR; RUN-080 is registered in docs/TEST.md section 6 after them.
+
+On the draft PR #33 (GitHub Actions; times local, UTC+8, 2026-10-18).
+
+First round, head 103580c554:
+  CI run 39098644263, attempt 1, 12:53-13:05: Check, Test with 4 tick threads (strict) and Test with 4 tick threads
+  (strict, grid) all failure, one failed test each, the same one in all three: loadtest BotSocketTest
+  aGateBotInConfigurationAtTheFrameTimesItsTryFromTheFirstPositionItSends (TC-WORLD-074) at BotSocketTest.java:303,
+  the trip was timed: {"count":1,"completed":0,"failed_by_reason":{"internal-error":1},...} ==> expected: <1> but was: <0>
+  (in the strict job count 2, internal-error 2). Gradle stopped after :loadtest:test failed: none of the three
+  artifacts has results for server-app, synx or testing; the modules that ran have no other failure (root 443 classes,
+  3,282 tests, 0 failures).
+  Concurrency 39098644256, Client gametest 39098644336 and Client mod 39098644356 on the same head: success.
+Cause and fix: after a reconfiguration the second spawn ran on the thread draining the waiting players and wrote the
+  player's health while the player was still assigned to the tick thread of its first spawn; with assertions or the
+  strict acquirable mode the ownership assertion threw, the spawn failed and the bot was kicked with
+  synaxis:internal-error. 6a6775d59b: Player#UNSAFE_init spawns a player that already has a tick thread on the hold of
+  that thread; PlayerReconfigurationIntegrationTest 1 -> 2 tests, docs/TEST.md TC-PROD-797 (its steps 2 to 4 hold the
+  red before the change and the local runs). b98ccffdaf moves the Player.java line numbers in the documents,
+  b587b2c9d7 rewrites ../ITEMNET/01-javap-26.2.txt; neither changes code.
+
+Judged on 6a6775d59b, attempt 1 of every workflow, 13:26-13:44:
+  CI 39100543872: Check (./gradlew check jacocoTestReport with the database variables, BUILD SUCCESSFUL in 14m 50s;
+    ABI gate success; diff coverage 399 lines, 18 missing, 95%, gate 80%), Test with 4 tick threads (strict)
+    (BUILD SUCCESSFUL in 17m 5s), Test with 4 tick threads (strict, grid) (BUILD SUCCESSFUL in 17m 30s): success
+  Concurrency 39100543884: jcstress success
+  Client mod 39100543821: Build the Fabric mod success;
+    mod jar: minecraft=26.2, 108 entries, ships META-INF/jars/protocol-dev.jar
+  Client gametest 39100543809: Run the client gametests, Run the rush script, Two shards, 2 round trips (P11 smoke):
+    success; Two shards, 100 round trips (P10): skipped, it runs on a manual trigger only
+Counts from the JUnit XML in the artifacts (gh api .../actions/artifacts/<id>/zip, read with Python zipfile without
+unpacking: the archives hold file names that differ only in case):
+  test-reports, test-reports-multithreaded, test-reports-multithreaded-grid of 39100543872: equal class by class,
+  688 classes, 4,850 tests, 0 failures, 0 errors, 22 skipped (root 21, synx 1; the same 7 classes as on main)
+    module               classes   tests
+    root                     443   3,283
+    server-app               154     849
+    synx                      22     182
+    protocol                  10     174
+    baker                      8      93
+    game-rts                  14      93
+    plugin-api                 7      45
+    game-rush                  6      44
+    play-kit                   3      30
+    loadtest                   6      26
+    architecture-tests         7      20
+    testing                    8      11
+  Against main a211a45ca1 (CI run 39088690810, 683 classes, 4,768 tests): 5 classes and 82 tests more, root 4 classes
+  and 65 tests, server-app 1 class and 16 tests (class by class in docs/TEST.md TC-PROD-505 step 3), game-rush
+  LobbyIntegrationTest 11 -> 12; no other class changed its count.
+  client-test-reports of 39100543821: 25 classes, 297 tests, 0 failures, as in RUN-079.
+  In all three modes: translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out;
+  config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out.
+Rush job (5 min 50 s): judge unit tests Ran 36 tests, OK; Q0a to Q9 PASS in both launches; rush judge: PASS (2 reports,
+  0 problems); prepare_ms 49 and 49; the four checks of the forward and rollback rehearsal ok.
+Client gametests: client regression: all checks passed; report 8 PASS; playable.txt core 10 PASS, rts 5 PASS.
+P11 smoke (TC-PROD-742): p10.py unit tests Ran 48 tests; 11 checks ok; P10: all checks passed.
+Later heads change documents and evidence only; all four workflows success on attempt 1:
+  b98ccffdaf: CI 39100776850, Client mod 39100776859, Concurrency 39100776841, Client gametest 39100776833
+  b587b2c9d7: CI 39100886382, Client mod 39100886348, Concurrency 39100886472, Client gametest 39100886324
+RUN-080 is registered in docs/TEST.md section 6: passed 49/49.

@@ -202,8 +202,10 @@ public final class PacketWriting {
                 success = false;
             } catch (RuntimeException e) {
                 // A packet that fails to be written fails again: taken off the queue before the
-                // failure goes up, so that nothing runs it again
+                // failure goes up, so that nothing runs it again. What it wrote is cut off, the
+                // buffer keeps only the packets before it
                 queue.poll();
+                buffer.writeIndex(index);
                 throw e;
             }
             // A writer may take a packet off the queue without writing it: cancelled by a listener, or

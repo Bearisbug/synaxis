@@ -102,4 +102,23 @@ public class PacketWriteQueueTest {
         assertEquals(2, queue.size(), "only the failed packet left the queue");
         assertNotSame(failing, queue.peek());
     }
+
+    @Test
+    public void aPacketTheWriterFailsOnHalfWayLeavesOnlyThePacketsBeforeIt() {
+        final var queue = queueOf(2, 8);
+        final ClientPacket first = queue.peek();
+        final NetworkBuffer buffer = NetworkBuffer.staticBuffer(1024);
+
+        assertThrows(IllegalStateException.class, () -> PacketWriting.writeQueue(buffer, queue, 1, (b, packet) -> {
+            final boolean written = write(b, packet);
+            if (packet != first) throw new IllegalStateException("the writer failed after writing its frame");
+            return written;
+        }));
+
+        final long written = buffer.writeIndex();
+        buffer.readIndex(0);
+        final int frameLength = buffer.read(NetworkBuffer.VAR_INT);
+        assertEquals(written - buffer.readIndex(), frameLength,
+                "the buffer holds the first frame and nothing of the second");
+    }
 }

@@ -388,6 +388,13 @@ public sealed interface EventNode<T extends Event> permits EventNodeImpl {
     @ApiStatus.Experimental
     void unmap(Object value);
 
+    /**
+     * Registers the consumers of a binding, one per event type it binds.
+     *
+     * @param binding the binding
+     * @throws IllegalArgumentException if one of its event types is an interface, or an abstract class that is not a
+     *                                  {@code RecursiveEvent}, as for {@link #addListener(EventListener)}
+     */
     @ApiStatus.Experimental
     void register(EventBinding<? extends T> binding);
 

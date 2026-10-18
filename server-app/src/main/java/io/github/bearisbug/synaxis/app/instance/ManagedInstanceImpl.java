@@ -274,9 +274,9 @@ final class ManagedInstanceImpl implements ManagedInstance {
 
     /**
      * The move itself, on the tick thread that owns the player. It is a move only if the player is in
-     * this instance once the engine is done: a listener of {@code AddEntityToInstanceEvent} can keep the
-     * player out without failing the future, and a failure is a false too, so that the future of
-     * {@link #move} never completes exceptionally.
+     * this instance once the engine is done, and anything else is a false, so that the future of
+     * {@link #move} never completes exceptionally: a listener of {@code AddEntityToInstanceEvent} keeping
+     * the player out fails the engine's future like any other failure.
      */
     private void moveNow(Player player, Pos at, CompletableFuture<Boolean> moved) {
         final Instance from = player.getInstance();
@@ -288,7 +288,14 @@ final class ManagedInstanceImpl implements ManagedInstance {
             moved.complete(false);
             return;
         }
-        var _ = player.setInstance(instance, at).whenComplete((_, failure) -> {
+        CompletableFuture<Void> change;
+        try {
+            change = player.setInstance(instance, at);
+        } catch (IllegalStateException e) {
+            // Unregistered by a close finishing on another thread since the admission: settled like a failed change
+            change = CompletableFuture.failedFuture(e);
+        }
+        var _ = change.whenComplete((_, failure) -> {
             final boolean in = failure == null && player.getInstance() == instance;
             final Evacuation closing = landed(player);
             registry.reached(Window.LANDED);
@@ -301,8 +308,8 @@ final class ManagedInstanceImpl implements ManagedInstance {
                 registry.ledger().moved(this, player, from);
                 moved.complete(true);
             } else {
-                // Kept out by a listener, or failed; a cancelled change of instance is one a later change took
-                // the place of, or whose player was removed on the way, which is no failure to report
+                // Failed, a listener keeping the player out included; a cancelled change of instance is one a
+                // later change took the place of, or whose player was removed on the way, which is no failure to report
                 if (failure != null && !(failure instanceof CancellationException))
                     owner.failedMoves.error(failure, "Move into a managed instance failed: plugin_id={} instance={} "
                             + "connection_id={}", owner.pluginId(), id, player.getPlayerConnection().connectionId());

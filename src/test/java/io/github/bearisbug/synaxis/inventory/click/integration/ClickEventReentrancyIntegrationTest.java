@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -96,6 +97,33 @@ public class ClickEventReentrancyIntegrationTest {
         assertTrue(closed.get(), "no InventoryClickEvent was dispatched");
         assertEquals(21, stone(inventory) + inventory.getCursorItem().amount() + dropped.get(),
                 "slots + cursor + dropped after the double click");
+    }
+
+    /**
+     * The drop of a click is decided by its {@link ItemDropEvent}, dispatched before the click is committed: a listener
+     * closing the container there has the cursor taken off once the click wrote it, not dropped a second time.
+     */
+    @Test
+    public void closingTheContainerFromTheDropOfItsCursorDropsTheCursorOnce(Env env) {
+        var instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, 42, 0));
+        var container = new Inventory(InventoryType.CHEST_1_ROW, Component.empty());
+        player.openInventory(container);
+        var playerInventory = player.getInventory();
+        playerInventory.setCursorItem(ItemStack.of(Material.DIAMOND, 64));
+
+        var dropped = new AtomicInteger();
+        env.process().eventHandler().addListener(ItemDropEvent.class, event -> {
+            dropped.addAndGet(event.getItemStack().amount());
+            if (player.getOpenInventory() != null) player.closeInventory();
+        });
+
+        assertTrue(container.handleClick(player, new Click.LeftDropCursor()));
+
+        assertEquals(64, dropped.get(), "diamonds dropped");
+        assertEquals(ItemStack.AIR, playerInventory.getCursorItem());
+        assertEquals(0, diamonds(playerInventory), "diamonds stored in the player inventory");
+        assertNull(player.getOpenInventory());
     }
 
     private static AtomicInteger countDrops(Env env) {

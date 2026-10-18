@@ -204,6 +204,62 @@ public class DisconnectFlushSocketTest {
         }
     }
 
+    /**
+     * The packets written into the same buffer ahead of one that fails still reach the peer, ahead of the reason it
+     * is disconnected. On an encrypted connection they are encrypted already, the cipher has moved past them: dropped,
+     * the peer could not decrypt what follows.
+     */
+    @Test
+    public void thePacketsWrittenBeforeOneThatFailsInTheSameFlushReachThePeer() throws Exception {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().compressionThreshold(0).build());
+        final List<Throwable> reported = new CopyOnWriteArrayList<>();
+        process.exception().setExceptionHandler(reported::add);
+        final CompletableFuture<PlayerSocketConnection> accepted = new CompletableFuture<>();
+        final CountDownLatch done = new CountDownLatch(1);
+        process.eventHandler().addListener(AsyncPlayerPreLoginEvent.class, event -> {
+            accepted.complete((PlayerSocketConnection) event.getConnection());
+            await(done);
+        });
+        process.server().init(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
+        process.server().start();
+        try (SocketChannel peer = SocketChannel.open(
+                new InetSocketAddress(InetAddress.getLoopbackAddress(), process.server().getPort()))) {
+            peer.socket().setSoTimeout(10_000);
+            send(peer, ConnectionState.HANDSHAKE, new ClientHandshakePacket(MinecraftServer.PROTOCOL_VERSION,
+                    "localhost", process.server().getPort(), ClientHandshakePacket.Intent.LOGIN));
+            send(peer, ConnectionState.LOGIN, new ClientLoginStartPacket("Failing", UUID.randomUUID()));
+            final PlayerSocketConnection connection = accepted.get(10, TimeUnit.SECONDS);
+
+            // Held inside the flush until the two packets behind it are queued, so that the three share its buffer
+            final CountDownLatch held = new CountDownLatch(1);
+            final CountDownLatch release = new CountDownLatch(1);
+            connection.sendPacket(new CachedPacket(() -> {
+                held.countDown();
+                await(release);
+                return new LoginPluginRequestPacket(1, CHANNEL, new byte[0]);
+            }));
+            assertTrue(held.await(10, TimeUnit.SECONDS), "the write thread never took the first packet");
+            connection.sendPacket(new LoginPluginRequestPacket(2, CHANNEL, new byte[0]));
+            final IllegalStateException failure = new IllegalStateException("the packet could not be built");
+            connection.sendPacket(new CachedPacket(() -> {
+                throw failure;
+            }));
+            release.countDown();
+
+            final List<ServerPacket> packets = readUntilClosed(peer, process);
+            assertEquals(List.of(1, 2), packets.stream().filter(LoginPluginRequestPacket.class::isInstance)
+                    .map(packet -> ((LoginPluginRequestPacket) packet).messageId()).toList(), "the peer read " + packets);
+            final LoginDisconnectPacket disconnect = assertInstanceOf(LoginDisconnectPacket.class, packets.getLast(),
+                    "the peer read " + packets);
+            assertEquals(DisconnectReasons.INTERNAL_ERROR.key(),
+                    assertInstanceOf(TranslatableComponent.class, disconnect.kickMessage()).key());
+            assertEquals(List.of(failure), reported);
+        } finally {
+            done.countDown();
+            process.stop();
+        }
+    }
+
     private static void send(SocketChannel peer, ConnectionState state, ClientPacket packet) throws IOException {
         final NetworkBuffer framed = PacketWriting.allocateTrimmedPacket(state, packet, null, 0);
         while (!framed.writeChannel(peer)) {

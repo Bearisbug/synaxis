@@ -63,14 +63,14 @@ public record WindowItemsPacket(int windowId, int stateId, List<ItemStack> items
                 this.windowId,
                 this.stateId,
                 this.items.stream().map(stack -> stack
-                                .with(DataComponents.ITEM_NAME, operator)
-                                .with(DataComponents.CUSTOM_NAME, operator)
-                                .with(DataComponents.LORE, loreOperator))
+                                .update(DataComponents.ITEM_NAME, operator)
+                                .update(DataComponents.CUSTOM_NAME, operator)
+                                .update(DataComponents.LORE, loreOperator))
                         .toList(),
                 this.carriedItem
-                        .with(DataComponents.ITEM_NAME, operator)
-                        .with(DataComponents.CUSTOM_NAME, operator)
-                        .with(DataComponents.LORE, loreOperator)
+                        .update(DataComponents.ITEM_NAME, operator)
+                        .update(DataComponents.CUSTOM_NAME, operator)
+                        .update(DataComponents.LORE, loreOperator)
         );
     }
 }

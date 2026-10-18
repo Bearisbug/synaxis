@@ -773,11 +773,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         // Remove from the tab-list
         PacketSendingUtils.broadcastPlayPacket(process(), getRemovePlayerToList());
 
-        // Manual viewers are only tracked on the viewed entity, so nothing else would ever drop this
-        // player from the entities it was manually added to, keeping it (and its connection) alive
-        final Instance currentInstance = this.instance;
-        if (currentInstance != null) currentInstance.getEntities().forEach(entity -> entity.removeViewer(this));
-
         super.remove(permanent);
         // Prevent the player from being stuck in loading screen, or just unable to interact with the server
         // This should be considered as a bug, since the player will ultimately time out anyway.
@@ -801,7 +796,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      * than turned into a teleport. A later call supersedes one still waiting for its chunks, and the
      * removal of the player gives it up: the future of the change given up fails with a
      * {@link CancellationException}, the player gets no view ticket in that instance and no
-     * {@link PlayerSpawnEvent}.
+     * {@link PlayerSpawnEvent}. A listener cancelling
+     * {@link io.github.bearisbug.synaxis.event.instance.AddEntityToInstanceEvent} fails it with an
+     * {@link IllegalStateException}: the player stays where it was and its client is sent nothing.
      * <p>
      * Joined on the thread that called this method, the future runs the continuation of this change
      * there once the chunks are loaded, and only it; that thread waits for the chunks meanwhile, a
@@ -934,6 +931,11 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      */
     private void spawnPlayer(Instance instance, Pos spawnPosition,
                              boolean firstSpawn, boolean dimensionChange) {
+        // The instance may have been unregistered while the chunks loaded
+        Check.stateCondition(!instance.isRegistered(),
+                "Instances need to be registered, please use InstanceManager#registerInstance");
+        // Asked before the client hears of the new instance: a cancelled change leaves it where it was
+        if (!admitTo(instance)) throw new IllegalStateException("AddEntityToInstanceEvent has been cancelled");
         // JoinGame told the client the view distance of the instance it spawned in, the new one may differ.
         // Before the ring changes, as in #updateViewDistance(int, int, int)
         if (!firstSpawn) tellViewDistance(Math.min(instance.viewDistance(), maxViewDistance));
@@ -966,11 +968,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         if (dimensionChange) sendDimension(instance.getDimensionType(), instance.getDimensionName());
 
-        final CompletableFuture<Void> spawn = super.setInstance(instance, spawnPosition);
-        // AddEntityToInstanceEvent may have been cancelled, do not continue with a half-spawned player
-        if (this.instance != instance) return;
+        final CompletableFuture<Void> spawn = setInstanceAdmitted(instance, spawnPosition);
         // This is only reached once #setInstance has awaited the whole view distance range, spawn
-        // chunk included, so the continuation of super#setInstance already ran on this very thread
+        // chunk included, so the continuation of setInstanceAdmitted already ran on this very thread
         // and the future is settled. Reading it back is what surfaces a failed registration, which
         // dropping the future used to hide (the player stayed in the world, untracked)
         spawn.getNow(null);
@@ -1139,10 +1139,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      * center the ring has left, so trimming from {@link #sendChunk(Chunk)} would drop chunks of the ring.
      */
     private void trimChunkQueue() {
-        final int radius = effectiveViewDistance();
-        // Nothing refuses an instance view distance below -1: the radius is then negative, which ChunkRange#chunksCount refuses
-        if (radius < 0) return;
-        final int ringChunks = ChunkRange.chunksCount(radius);
+        final int ringChunks = ChunkRange.chunksCount(effectiveViewDistance());
         chunkQueueLock.lock();
         try {
             if (queuedChunks.size() <= ringChunks) return;
@@ -1482,6 +1479,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         // TODO: when adventure updates, delete this
         String title = PlainTextComponentSerializer.plainText().serialize(book.title());
+        // A written book holds a title of at most 32 characters, which the client does not show on an open book
+        if (title.length() > 32) title = title.substring(0, Character.isHighSurrogate(title.charAt(31)) ? 31 : 32);
         String author = PlainTextComponentSerializer.plainText().serialize(book.author());
         final ItemStack writtenBook = ItemStack.builder(Material.WRITTEN_BOOK)
                 .set(DataComponents.WRITTEN_BOOK_CONTENT, new WrittenBookContent(title, author, 0, book.pages(), false))
@@ -2454,6 +2453,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      */
     @ApiStatus.Internal
     public void dropCursorItem() {
+        // A listener closing an inventory from an event of a click, such as the ItemDropEvent of a drop, would find the
+        // cursor the click has not written yet: taken off once the click is committed
+        if (AbstractInventory.deferredUntilTheClickCommits(this::dropCursorItem)) return;
         final PlayerInventory playerInventory = getInventory();
         final ItemStack cursorItem;
         synchronized (playerInventory) {

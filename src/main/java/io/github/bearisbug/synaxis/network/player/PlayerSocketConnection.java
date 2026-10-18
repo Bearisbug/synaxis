@@ -81,9 +81,10 @@ public class PlayerSocketConnection extends PlayerConnection {
             ClientFinishConfigurationPacket.class, // Enter play state
             // Back to the configuration state. A packet that switches the decoding state is handled as it
             // arrives, the next read decodes in the state it leaves: queued until the next tick, it left
-            // the configuration packets right behind it to decode as play ones. Those queued before it are
-            // then handled in the configuration state, a common one by its configuration listener and with no
-            // PlayerPacketEvent; a play only one finds no listener (warned once per class) and is dropped.
+            // the configuration packets right behind it to decode as play ones. Those still queued when it
+            // arrives are then handled in the configuration state, a common one by its configuration listener
+            // and with no PlayerPacketEvent; a play only one finds no listener (warned once per class) and is
+            // dropped. Those an earlier end of tick took off the queue were handled as play ones.
             ClientConfigurationAckPacket.class
     );
 
@@ -822,13 +823,27 @@ public class PlayerSocketConnection extends PlayerConnection {
         NetworkBuffer buffer = PacketVanilla.PACKET_POOL.get();
         buffer.registries(process().registries());
         // Write to buffer
-        PacketWriting.writeQueue(buffer, packetQueue, 1, (b, packet) -> {
-            if (packet instanceof BufferedPacket movement && movement.sheddable()) return writeMovement(b, movement);
-            final boolean success = writeCounted(b, packet);
-            if (success) backlogBytes.addAndGet(-backlogSize(packet));
-            return success;
-        });
-        // Write to channel
+        try {
+            PacketWriting.writeQueue(buffer, packetQueue, 1, (b, packet) -> {
+                if (packet instanceof BufferedPacket movement && movement.sheddable()) return writeMovement(b, movement);
+                final boolean success = writeCounted(b, packet);
+                if (success) backlogBytes.addAndGet(-backlogSize(packet));
+                return success;
+            });
+        } catch (RuntimeException e) {
+            // The packets written before the one that failed are encrypted already, the cipher has moved past
+            // them: they go out ahead of what follows, the disconnect included, or the peer cannot decrypt it
+            try {
+                writeOrKeep(buffer);
+            } catch (IOException io) {
+                e.addSuppressed(io);
+            }
+            throw e;
+        }
+        writeOrKeep(buffer);
+    }
+
+    private void writeOrKeep(NetworkBuffer buffer) throws IOException {
         final boolean success = buffer.writeChannel(channel);
         // Keep the buffer if not fully written
         if (success) PacketVanilla.PACKET_POOL.add(buffer);

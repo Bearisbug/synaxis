@@ -288,6 +288,26 @@ class EvacuationIntegrationTest {
         }
     }
 
+    /**
+     * {@code API-PLAY-006} 实现: the instance is unregistered between the admission of a move and its change of
+     * instance, which the engine then refuses on the spot. The move completes with false and is no longer on its way.
+     */
+    @Test
+    void aMoveWhoseInstanceIsUnregisteredAfterItsAdmissionCompletesWithFalse(Env env) {
+        final InstanceRegistry registry = registry(env, Thread.currentThread());
+        final ManagedInstance arena = registry.forPlugin("race").create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 41, 0));
+        registry.pauseWith(window -> {
+            if (window == InstanceRegistry.Window.ADMIT) env.destroyInstance(arena.instance());
+        });
+
+        final CompletableFuture<Boolean> moved = arena.move(player, SPAWN);
+        assertTrue(env.tickWhile(() -> !moved.isDone(), TEN_SECONDS), "the move never completed");
+
+        assertFalse(moved.join());
+        assertFalse(((ManagedInstanceImpl) arena).movesPending(), "the move is still on its way");
+    }
+
     /** A chunk loader that fails every load, on a virtual thread of its own as a parallel loader does. */
     private static final class FailingLoader implements ChunkLoader {
 

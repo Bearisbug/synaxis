@@ -204,6 +204,21 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
     }
 
     /**
+     * Holds {@code action} back until the click this thread is handling has been committed, behind the events it
+     * raised so far, see {@link #handleClick(Player, Click)}.
+     *
+     * @param action what has to see the committed click
+     * @return true if it was held back, false if this thread handles no click and the caller runs it now
+     */
+    @ApiStatus.Internal
+    public static boolean deferredUntilTheClickCommits(Runnable action) {
+        final List<Runnable> pending = PENDING_CLICK_EVENTS.get();
+        if (pending == null) return false;
+        pending.add(action);
+        return true;
+    }
+
+    /**
      * Sets an {@link ItemStack} at the specified slot and send relevant update to the viewer(s).
      *
      * @param slot      the slot to set the item

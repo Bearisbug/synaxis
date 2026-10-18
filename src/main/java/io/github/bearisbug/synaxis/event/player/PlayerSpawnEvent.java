@@ -10,8 +10,8 @@ import io.github.bearisbug.synaxis.instance.Instance;
  * <p>
  * A listener owns the player: it runs on the player's tick thread, or on a thread holding the
  * player. The first spawn is dispatched on the tick scheduler thread in the serial part of the tick,
- * before the player is assigned to a tick thread; a listener must not block there, every tick of the
- * process waits for it.
+ * before the player is assigned to a tick thread, or, for a player back from the configuration, while
+ * that thread holds the player; a listener must not block there, every tick of the process waits for it.
  */
 public class PlayerSpawnEvent implements PlayerInstanceEvent {
     private final Player player;

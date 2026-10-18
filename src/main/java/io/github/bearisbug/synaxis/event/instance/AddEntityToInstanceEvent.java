@@ -9,6 +9,11 @@ import io.github.bearisbug.synaxis.instance.Instance;
 /**
  * Called by an Instance when an entity is added to it.
  * Can be used attach data.
+ * <p>
+ * Called before anything of the change is done: cancelled, the entity stays where it was and the future of
+ * {@link Entity#setInstance(Instance, io.github.bearisbug.synaxis.coordinate.Pos)} fails with an
+ * {@link IllegalStateException}. A player is asked once the chunks around its new position are loaded, before its
+ * client is told of the new instance, so a cancelled change sends it nothing.
  */
 public class AddEntityToInstanceEvent implements InstanceEvent, EntityEvent, CancellableEvent {
 

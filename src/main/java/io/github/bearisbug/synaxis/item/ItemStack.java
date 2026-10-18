@@ -211,7 +211,9 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
      * @param operator  The transformation function
      * @param <T>       The component type
      * @return A new ItemStack if the component was transformed, otherwise this.
+     * @deprecated use {@link #update(DataComponent, UnaryOperator)}
      */
+    @Deprecated(forRemoval = true)
     default <T> ItemStack with(DataComponent<T> component, UnaryOperator<T> operator) {
         return update(component, operator);
     }

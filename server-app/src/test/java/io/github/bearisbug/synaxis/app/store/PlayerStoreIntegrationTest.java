@@ -1439,6 +1439,43 @@ class PlayerStoreIntegrationTest {
                 "what the shutdown save wrote stands: the kick comes after it");
     }
 
+    /**
+     * The commit thread is held after the commit is written, past the next ticks: {@code apply} still waits until the
+     * freeze is over and the future is answered, as {@code PlayerDataStore#commitTogether} says.
+     */
+    @Test
+    void theApplyOfACommitWaitsForTheEndOfTheFreeze(Env env) throws Exception {
+        final CountDownLatch recorded = new CountDownLatch(1);
+        final CountDownLatch letGo = new CountDownLatch(1);
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, new PostgresBackend(pool.pool()), line -> {
+                    if (!line.startsWith("critical_commit ") || !line.contains("result=saved")) return;
+                    recorded.countDown();
+                    try {
+                        letGo.await();
+                    } catch (InterruptedException e) {
+                        throw new AssertionError(e);
+                    }
+                });
+        shards.add(shard);
+        final Player seller = online(env, shard, env.createFlatInstance(), UUID.randomUUID(), "Seller");
+        final AtomicReference<CompletableFuture<SaveResult>> trade = new AtomicReference<>();
+        final List<String> seenByApply = new CopyOnWriteArrayList<>();
+
+        try {
+            trade.set(shard.store().commitTogether(Map.of(seller, Map.<DataSection<?>, Object>of(PURSE, purse(10))),
+                    () -> seenByApply.add("frozen=" + shard.store().isFrozen(seller) + " answered=" + trade.get().isDone())));
+            assertTrue(recorded.await(10, TimeUnit.SECONDS), "the commit is written");
+            for (int i = 0; i < 3; i++) env.tick();
+        } finally {
+            letGo.countDown();
+        }
+        assertEquals(SaveResult.SAVED, trade.get().get(5, TimeUnit.SECONDS));
+        await(env, () -> !seenByApply.isEmpty(), "apply runs");
+
+        assertEquals(List.of("frozen=false answered=true"), seenByApply);
+    }
+
     @Test
     void aCommitWithoutParticipantsWritesNothingAndStillApplies(Env env) throws Exception {
         final AtomicInteger writes = new AtomicInteger();

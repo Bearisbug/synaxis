@@ -38,6 +38,10 @@
  *     <li>the {@code apply} of {@link io.github.bearisbug.synaxis.plugin.PlayerDataStore#commitTogether}
  *     runs there too, once, in the serial part of the tick after the commit was written: it may
  *     touch every participant, and checks first that each of them is still there;</li>
+ *     <li>the futures of {@link io.github.bearisbug.synaxis.plugin.PlayerDataStore#saveNow} and
+ *     {@code commitTogether} complete on a virtual thread of the host, or on the calling thread when
+ *     they are complete already (see those methods for the other cases): their callbacks touch no
+ *     entity and do not block;</li>
  *     <li>{@link io.github.bearisbug.synaxis.plugin.PluginScheduler#runAsync} runs on a virtual
  *     thread of its own and touches no entity and no instance;</li>
  *     <li>the server list event {@code ServerListPingEvent} runs on the read thread of the
@@ -48,7 +52,17 @@
  *     the host takes the capabilities back anyway;</li>
  *     <li>the predicates of {@code Entity#updateViewableRule} and {@code Entity#updateViewerRule}
  *     run on the thread that changes the visibility, holding the view locks of both entities, and
- *     call no visibility method of any entity (see those methods).</li>
+ *     call no visibility method of any entity (see those methods);</li>
+ *     <li>block callbacks ({@code BlockHandler#onPlace}, {@code #onDestroy},
+ *     {@code BlockPlacementRule#blockPlace}, {@code #blockUpdate}) run within the call that sets the
+ *     block, holding the write lock of its chunk and, set through the instance, the monitor of the
+ *     instance; {@code InstanceBlockUpdateEvent} and {@code InstanceChunkUnloadEvent} are dispatched
+ *     under that monitor too, {@code InstanceUnregisterEvent} is not. There a plugin neither takes an
+ *     entity of another tick thread ({@code Acquirable#sync}, {@code lock}) nor joins a future that is
+ *     not complete, {@code loadChunk(…).join()} included, and hands an effect on another entity over
+ *     with {@code runOn};</li>
+ *     <li>the content of a chunk is changed under its write lock: {@code Chunk#setBlock} and
+ *     {@code Chunk#setBiome} without it throw {@code IllegalStateException}.</li>
  * </ul>
  * Exceptions, player events that are not dispatched on the player's tick thread, or only for some
  * packets; state their listeners share with code on the tick threads needs a concurrent structure
@@ -67,7 +81,8 @@
  *     virtual thread of the connection, where a listener may block;</li>
  *     <li>{@code PlayerSkinInitEvent} and the {@code PlayerSpawnEvent} of a first spawn run in the
  *     serial part of the tick on the tick scheduler thread, before the player is assigned to a tick
- *     thread: a listener may change the player but must not block, the whole tick waits for it;</li>
+ *     thread (a player back from the configuration is held by that thread instead): a listener may
+ *     change the player but must not block, the whole tick waits for it;</li>
  *     <li>{@code PlayerDisconnectEvent} runs on the tick scheduler thread for a player that reached
  *     the play state without spawning, and on whichever thread drops the connection for one that
  *     leaves before the play state.</li>

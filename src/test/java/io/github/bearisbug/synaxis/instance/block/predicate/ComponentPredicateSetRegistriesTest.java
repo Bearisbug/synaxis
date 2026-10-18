@@ -76,6 +76,15 @@ public class ComponentPredicateSetRegistriesTest {
                 JsonParser.parseString("{\"minecraft:enchantments\": {\"levels\": 1}}")));
     }
 
+    /** A name that is neither a predicate type nor a component is an error of the read, not an exception out of it. */
+    @Test
+    public void aNameThatIsNeitherAPredicateTypeNorAComponentIsAnError(Registries registries) {
+        final Transcoder<JsonElement> coder = new RegistryTranscoder<>(Transcoder.JSON, registries);
+
+        assertInstanceOf(Result.Error.class, ComponentPredicateSet.CODEC.decode(coder,
+                JsonParser.parseString("{\"synaxis:no_such_component\": {}}")));
+    }
+
     private static ComponentPredicateSet roundTrip(Transcoder<JsonElement> coder, DataComponent<?> component) {
         final ComponentPredicateSet stored = ComponentPredicateSet.EMPTY.add(new DataComponentPredicate.Exists(component));
         return assertOk(ComponentPredicateSet.CODEC.decode(coder, assertOk(ComponentPredicateSet.CODEC.encode(coder, stored))));

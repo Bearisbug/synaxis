@@ -37,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -115,9 +116,21 @@ final class StoreFixture {
     /** The same with the session's clock and the backend chosen by the test. */
     static Shard shard(Env env, Database pool, String shardId, boolean displace, RedisLink redis,
                        PlayerStore.Options options, ShardSession.Timing timing, StoreBackend backend) throws SQLException {
+        return shard(env, pool, shardId, displace, redis, options, timing, backend, _ -> {
+        });
+    }
+
+    /** The same, handing each ledger line to the test before it is recorded, on the thread that writes it. */
+    static Shard shard(Env env, Database pool, String shardId, boolean displace, RedisLink redis,
+                       PlayerStore.Options options, ShardSession.Timing timing, StoreBackend backend,
+                       Consumer<String> beforeLine) throws SQLException {
         final List<String> ledger = new CopyOnWriteArrayList<>();
-        final PlayerStore store = new PlayerStore(env.process(), backend, redis, shardId,
-                displace, options, (event, attributes) -> ledger.add(event + " " + attributes));
+        final PlayerStore store = new PlayerStore(env.process(), backend, redis, shardId, displace, options,
+                (event, attributes) -> {
+                    final String line = event + " " + attributes;
+                    beforeLine.accept(line);
+                    ledger.add(line);
+                });
         final ShardSession session = new ShardSession(pool::dedicated, shardId, timing, System::nanoTime,
                 store::sessionChanged);
         store.useSession(session);

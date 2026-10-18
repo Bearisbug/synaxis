@@ -866,9 +866,6 @@ public final class PlayerStore implements ShutdownParticipant {
                     for (DataSection<?> section : values.get(record).keySet())
                         record.committedAt.put(section.id(), commit);
                 }
-                // On the serial part of the next tick, which may touch every participant whichever tick
-                // thread it is on, and runs whoever of them left meanwhile (API-PROD-005)
-                process.scheduler().scheduleNextTick(apply);
                 critical("commit", SaveResult.SAVED, null, start, ordered.size());
                 result = SaveResult.SAVED;
             } catch (StoreBackend.FencedException e) {
@@ -888,6 +885,10 @@ public final class PlayerStore implements ShutdownParticipant {
                 // Once the locks are free and the freeze is over: a callback may save or commit again
                 metrics.saved(result);
                 done.complete(result);
+                // On the serial part of the next tick, which may touch every participant whichever tick
+                // thread it is on, and runs whoever of them left meanwhile (API-PROD-005). Not before the
+                // freeze is over: this thread may be held past that tick
+                if (result == SaveResult.SAVED) process.scheduler().scheduleNextTick(apply);
             }
         });
         return done;

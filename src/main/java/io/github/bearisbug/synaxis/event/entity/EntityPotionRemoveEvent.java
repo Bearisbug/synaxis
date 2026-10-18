@@ -4,6 +4,10 @@ import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.event.trait.EntityInstanceEvent;
 import io.github.bearisbug.synaxis.potion.Potion;
 
+/**
+ * Called once a potion effect has been taken off an entity, expired, removed or cleared: the entity no longer has
+ * it ({@link Entity#hasEffect} is false), and a listener may add an effect.
+ */
 public class EntityPotionRemoveEvent implements EntityInstanceEvent {
 
     private final Entity entity;

@@ -63,7 +63,10 @@ public final class JvmFlags {
      * Event nodes always have at most one parent; this constant is no longer read and will be removed.
      * Setting {@code synaxis.event.multiple-parents} only logs a warning at the start
      * ({@link ServerConfig#fromSystemProperties()}).
+     *
+     * @deprecated nothing reads it, there is no replacement
      */
+    @Deprecated(forRemoval = true)
     public static final boolean EVENT_NODE_ALLOW_MULTIPLE_PARENTS = false;
 
     /**

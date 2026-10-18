@@ -25,6 +25,8 @@ import java.util.Map;
 import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -101,5 +103,41 @@ class ComponentHoverItemRegistriesTest {
     void aRemovedValueIsWrittenAsARemoval(Registries registries) {
         assertEquals(CompoundBinaryTag.empty(), writtenComponent(registries,
                 showStone(DataComponents.DAMAGE_TYPE.key(), EngineDataComponentValue.removed()), "!" + DAMAGE_TYPE));
+    }
+
+    /**
+     * Removing a prototype component puts a removal into the patch. Handed over as an engine value of null, it failed
+     * to encode on the write thread, which drops the connection of every player the message was sent to.
+     */
+    @Test
+    void aComponentRemovedFromTheItemIsHandedOverAsARemoval(Registries registries) {
+        final HoverEvent<HoverEvent.ShowItem> hoverEvent =
+                ItemStack.of(Material.APPLE).without(DataComponents.FOOD).asHoverEvent();
+
+        assertInstanceOf(DataComponentValue.Removed.class,
+                hoverEvent.value().dataComponents().get(DataComponents.FOOD.key()));
+        assertEquals(CompoundBinaryTag.empty(),
+                writtenComponent(registries, hoverEvent, "!" + DataComponents.FOOD.key().asString()));
+    }
+
+    /**
+     * A component registered without a codec has no NBT form, so the hover event leaves it out instead of failing to
+     * encode it on the write thread.
+     */
+    @Test
+    void aComponentWithoutCodecIsLeftOut(Registries registries) {
+        final String key = DataComponents.ADDITIONAL_TRADE_COST.key().asString();
+        final HoverEvent<HoverEvent.ShowItem> hoverEvent =
+                ItemStack.of(Material.STONE).with(DataComponents.ADDITIONAL_TRADE_COST, 3).asHoverEvent();
+
+        assertFalse(hoverEvent.value().dataComponents().containsKey(DataComponents.ADDITIONAL_TRADE_COST.key()));
+        assertNull(writtenComponent(registries, hoverEvent, key));
+    }
+
+    @Test
+    void anEngineValueOfNullIsWrittenAsARemoval(Registries registries) {
+        assertEquals(CompoundBinaryTag.empty(), writtenComponent(registries,
+                showStone(DataComponents.DAMAGE_TYPE.key(), EngineDataComponentValue.dataComponentValue(null)),
+                "!" + DAMAGE_TYPE));
     }
 }

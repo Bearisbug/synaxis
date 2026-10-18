@@ -27,7 +27,8 @@ public final class EngineAdventure {
             .build();
 
     /**
-     * A codec to convert between strings and NBT.
+     * A codec to convert between strings and compound NBT. It refuses SNBT of any other tag; {@link #unwrapNbt}
+     * reads those.
      */
     public static final Codec<CompoundBinaryTag, String, IOException, IOException> NBT_CODEC
             = Codec.codec(tagStringIO::asCompound, tagStringIO::asString);
@@ -74,13 +75,21 @@ public final class EngineAdventure {
         return new BinaryTagHolderImpl(nbt);
     }
 
-    public static BinaryTag unwrapNbt(BinaryTagHolder holder) {
+    /**
+     * Unwraps the tag held by {@code holder}, which can be any tag, not only a compound.
+     *
+     * @param holder the holder, or {@code null} for an absent tag (the optional payload of a custom click event)
+     * @return the held tag, or {@code null} if {@code holder} is {@code null}
+     * @throws IllegalArgumentException if the holder's string is not valid SNBT
+     */
+    public static @Nullable BinaryTag unwrapNbt(@Nullable BinaryTagHolder holder) {
+        if (holder == null) return null;
         if (holder instanceof BinaryTagHolderImpl(BinaryTag nbt))
             return nbt;
         try {
-            return holder.get(EngineAdventure.NBT_CODEC);
+            return tagStringIO.asTag(holder.string());
         } catch (IOException e) {
-            throw new RuntimeException("Failed to unwrap BinaryTagHolder", e);
+            throw new IllegalArgumentException("BinaryTagHolder does not hold valid SNBT: " + holder.string(), e);
         }
     }
 }

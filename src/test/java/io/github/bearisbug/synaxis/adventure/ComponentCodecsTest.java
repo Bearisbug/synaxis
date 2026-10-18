@@ -1,8 +1,11 @@
 package io.github.bearisbug.synaxis.adventure;
 
+import com.google.gson.JsonElement;
 import net.kyori.adventure.key.Key;
+import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.nbt.IntBinaryTag;
+import net.kyori.adventure.nbt.api.BinaryTagHolder;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -18,7 +21,9 @@ import java.io.IOException;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ComponentCodecsTest {
 
@@ -75,6 +80,42 @@ class ComponentCodecsTest {
         var expected = Component.text("Click me!").clickEvent(ClickEvent.custom(
                 Key.key("hello:world"), EngineAdventure.wrapNbt(IntBinaryTag.intBinaryTag(55))));
         assertEquals(expected, actual);
+    }
+
+    /**
+     * The payload of a custom click event is optional in 26.2, and Adventure's {@code ClickEvent.custom(Key)} leaves
+     * it out.
+     */
+    @Test
+    void customClickEventWithoutPayloadRoundTrips() {
+        var component = Component.text("Click me!").clickEvent(ClickEvent.custom(Key.key("hello:world")));
+
+        final BinaryTag nbt = ComponentCodecs.COMPONENT.encode(Transcoder.NBT, component).orElseThrow();
+        assertFalse(((CompoundBinaryTag) nbt).getCompound("click_event").keySet().contains("payload"));
+        assertEquals(component, ComponentCodecs.COMPONENT.decode(Transcoder.NBT, nbt).orElseThrow());
+
+        final JsonElement json = ComponentCodecs.COMPONENT.encode(Transcoder.JSON, component).orElseThrow();
+        assertFalse(json.getAsJsonObject().getAsJsonObject("click_event").has("payload"));
+        assertEquals(component, ComponentCodecs.COMPONENT.decode(Transcoder.JSON, json).orElseThrow());
+    }
+
+    /**
+     * 26.2 takes any tag as the payload, not only a compound.
+     */
+    @Test
+    void customClickEventPayloadCanBeAnyTag() {
+        var component = Component.text("Click me!").clickEvent(ClickEvent.custom(
+                Key.key("hello:world"), BinaryTagHolder.binaryTagHolder("5")));
+
+        final BinaryTag nbt = ComponentCodecs.COMPONENT.encode(Transcoder.NBT, component).orElseThrow();
+        assertEquals(IntBinaryTag.intBinaryTag(5), ((CompoundBinaryTag) nbt).getCompound("click_event").get("payload"));
+    }
+
+    @Test
+    void unwrapNbtNamesTheStringItCannotRead() {
+        var error = assertThrows(IllegalArgumentException.class,
+                () -> EngineAdventure.unwrapNbt(BinaryTagHolder.binaryTagHolder("{")));
+        assertEquals("BinaryTagHolder does not hold valid SNBT: {", error.getMessage());
     }
 
     @Test

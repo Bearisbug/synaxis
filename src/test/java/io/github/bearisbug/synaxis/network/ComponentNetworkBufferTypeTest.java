@@ -2,7 +2,10 @@ package io.github.bearisbug.synaxis.network;
 
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
+import net.kyori.adventure.nbt.IntBinaryTag;
+import net.kyori.adventure.nbt.api.BinaryTagHolder;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.object.ObjectContents;
 import io.github.bearisbug.synaxis.adventure.ComponentCodecs;
 import io.github.bearisbug.synaxis.codec.Transcoder;
@@ -109,6 +112,25 @@ public class ComponentNetworkBufferTypeTest {
         final CompoundBinaryTag written = write(comp);
         assertInstanceOf(CompoundBinaryTag.class, written.get("fallback"));
         assertEquals(comp, ComponentCodecs.COMPONENT.decode(Transcoder.NBT, written).orElseThrow());
+    }
+
+    /**
+     * Written on the write thread of every player a message goes to, so a payload it cannot write drops all of them.
+     */
+    @Test
+    void customClickEventWithoutPayload() {
+        var comp = Component.text("hello").clickEvent(ClickEvent.custom(Key.key("hello:world")));
+
+        assertFalse(write(comp).getCompound("click_event").keySet().contains("payload"));
+        assertWriteReadEquality(comp);
+    }
+
+    @Test
+    void customClickEventWithATagThatIsNotACompound() {
+        var comp = Component.text("hello").clickEvent(ClickEvent.custom(
+                Key.key("hello:world"), BinaryTagHolder.binaryTagHolder("5")));
+
+        assertEquals(IntBinaryTag.intBinaryTag(5), write(comp).getCompound("click_event").get("payload"));
     }
 
     private static void assertWriteReadEquality(Component comp) {

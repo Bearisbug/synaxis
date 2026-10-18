@@ -315,8 +315,13 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
             return HoverEvent.showItem(op.apply(HoverEvent.ShowItem.showItem(material(), amount())));
 
         final Map<Key, DataComponentValue> dataComponents = new HashMap<>();
-        for (final DataComponent.Value entry : componentPatch().entrySet())
-            dataComponents.put(entry.component().key(), EngineDataComponentValue.dataComponentValue(entry.value()));
+        for (final DataComponent.Value entry : componentPatch().entrySet()) {
+            // A component without a codec has no NBT form for the client to read
+            if (!entry.component().isSerialized()) continue;
+            dataComponents.put(entry.component().key(), entry.value() == null
+                    ? EngineDataComponentValue.removed()
+                    : EngineDataComponentValue.dataComponentValue(entry.value()));
+        }
         return HoverEvent.showItem(op.apply(HoverEvent.ShowItem.showItem(material(), amount(), dataComponents)));
     }
 

@@ -1,0 +1,212 @@
+Counter-proofs. Each batch changes the fixed code in places that no two tests share, runs the six classes of 02 once,
+then the fixed code is restored (git checkout -- src/main and the fix reapplied, sha1 of every file checked).
+
+=== Batch A: the changes
+== src/main/java/io/github/bearisbug/synaxis/adventure/ComponentCodecs.java
+--- src/main/java/io/github/bearisbug/synaxis/adventure/ComponentCodecs.java
++++ src/main/java/io/github/bearisbug/synaxis/adventure/ComponentCodecs.java
+@@ -161,7 +161,6 @@
+                 case ClickEvent.Payload.Custom custom -> {
+                     map.put("id", coder.createString(custom.key().asString()));
+                     final BinaryTag nbt = EngineAdventure.unwrapNbt(custom.nbt());
+-                    if (nbt == null) yield new Result.Ok<>(map.build());
+                     final RawValue payloadRawValue = RawValue.of(Transcoder.NBT, nbt);
+                     final Result<D> payloadResult = Codec.RAW_VALUE.encode(coder, payloadRawValue);
+                     if (!(payloadResult instanceof Result.Ok(D customPayload)))
+== src/main/java/io/github/bearisbug/synaxis/adventure/EngineAdventure.java
+--- src/main/java/io/github/bearisbug/synaxis/adventure/EngineAdventure.java
++++ src/main/java/io/github/bearisbug/synaxis/adventure/EngineAdventure.java
+@@ -87,9 +87,9 @@
+         if (holder instanceof BinaryTagHolderImpl(BinaryTag nbt))
+             return nbt;
+         try {
+-            return tagStringIO.asTag(holder.string());
++            return holder.get(EngineAdventure.NBT_CODEC);
+         } catch (IOException e) {
+-            throw new IllegalArgumentException("BinaryTagHolder does not hold valid SNBT: " + holder.string(), e);
++            throw new RuntimeException("Failed to unwrap BinaryTagHolder", e);
+         }
+     }
+ }
+== src/main/java/io/github/bearisbug/synaxis/component/DataComponents.java
+--- src/main/java/io/github/bearisbug/synaxis/component/DataComponents.java
++++ src/main/java/io/github/bearisbug/synaxis/component/DataComponents.java
+@@ -215,7 +215,7 @@
+     // components holding templates refuse air when they are set rather than when the item reaches a client.
+     private static UnaryOperator<ItemStack> notAir(String name) {
+         return item -> {
+-            if (item.isAir())
++            if (item.isAir() && name.isEmpty())
+                 throw new IllegalArgumentException("minecraft:" + name + " cannot hold air; remove the component with without() instead");
+             return item;
+         };
+@@ -225,7 +225,7 @@
+         return items -> {
+             final List<ItemStack> copy = List.copyOf(items);
+             for (int i = 0; i < copy.size(); i++) {
+-                if (copy.get(i).isAir())
++                if (copy.get(i).isAir() && name.isEmpty())
+                     throw new IllegalArgumentException("minecraft:" + name + " cannot hold air (index " + i + "); leave the empty slots out instead");
+             }
+             return copy;
+@@ -237,9 +237,7 @@
+      * slot is air.
+      */
+     private static NetworkBuffer.Type<List<ItemStack>> containerNetworkType() {
+-        return ItemStackTemplate.NETWORK_TYPE.optional()
+-                .transform(item -> item == null ? ItemStack.AIR : item, item -> item.isAir() ? null : item)
+-                .list(CONTAINER_SIZE);
++        return ItemStackTemplate.NETWORK_TYPE.list(CONTAINER_SIZE);
+     }
+ 
+     /**
+@@ -248,8 +246,7 @@
+      */
+     private static Codec<List<ItemStack>> containerCodec() {
+         return ContainerSlot.CODEC.list(CONTAINER_SIZE)
+-                .transform(DataComponents::containerFromSlots, DataComponents::containerToSlots)
+-                .orElse(ItemStackTemplate.CODEC.list(CONTAINER_SIZE));
++                .transform(DataComponents::containerFromSlots, DataComponents::containerToSlots);
+     }
+ 
+     private static List<ItemStack> containerFromSlots(List<ContainerSlot> slots) {
+== src/main/java/io/github/bearisbug/synaxis/item/ItemStack.java
+--- src/main/java/io/github/bearisbug/synaxis/item/ItemStack.java
++++ src/main/java/io/github/bearisbug/synaxis/item/ItemStack.java
+@@ -312,13 +312,8 @@
+             return HoverEvent.showItem(op.apply(HoverEvent.ShowItem.showItem(material(), amount())));
+ 
+         final Map<Key, DataComponentValue> dataComponents = new HashMap<>();
+-        for (final DataComponent.Value entry : componentPatch().entrySet()) {
+-            // A component without a codec has no NBT form for the client to read
+-            if (!entry.component().isSerialized()) continue;
+-            dataComponents.put(entry.component().key(), entry.value() == null
+-                    ? EngineDataComponentValue.removed()
+-                    : EngineDataComponentValue.dataComponentValue(entry.value()));
+-        }
++        for (final DataComponent.Value entry : componentPatch().entrySet())
++            dataComponents.put(entry.component().key(), EngineDataComponentValue.dataComponentValue(entry.value()));
+         return HoverEvent.showItem(op.apply(HoverEvent.ShowItem.showItem(material(), amount(), dataComponents)));
+     }
+ 
+== src/main/java/io/github/bearisbug/synaxis/network/ComponentNetworkBufferTypeImpl.java
+--- src/main/java/io/github/bearisbug/synaxis/network/ComponentNetworkBufferTypeImpl.java
++++ src/main/java/io/github/bearisbug/synaxis/network/ComponentNetworkBufferTypeImpl.java
+@@ -379,7 +379,7 @@
+                 buffer.write(STRING_IO_UTF8, payload.key().asString());
+ 
+                 final BinaryTag nbt = EngineAdventure.unwrapNbt(payload.nbt());
+-                if (nbt != null) BinaryTagTypeImpl.writeNamed(buffer, "payload", nbt);
++                BinaryTagTypeImpl.writeNamed(buffer, "payload", nbt);
+             }
+             default -> throw new UnsupportedOperationException("Unknown click event action: " + clickEvent.action());
+         }
+@@ -468,7 +468,6 @@
+     @SuppressWarnings("unchecked")
+     private static @Nullable BinaryTag hoverDataComponentValue(NetworkBuffer buffer, Key key, DataComponentValue value) {
+         if (value instanceof DataComponentValue.Removed) return null;
+-        if (value instanceof EngineDataComponentValue engineValue && engineValue.value() == null) return null;
+         if (value instanceof NbtDataComponentValue nbtValue) return nbtValue.value();
+         final Registries registries = Objects.requireNonNull(buffer.registries(),
+                 "Registries required to convert hover item data components");
+== src/main/java/io/github/bearisbug/synaxis/particle/Particle.java
+--- src/main/java/io/github/bearisbug/synaxis/particle/Particle.java
++++ src/main/java/io/github/bearisbug/synaxis/particle/Particle.java
+@@ -336,10 +336,6 @@
+                 "item", ItemStackTemplate.CODEC, Item::item,
+                 (type, item) -> ParticleImpl.<Item>get(type).withItem(item));
+ 
+-        public Item {
+-            Check.argCondition(item.isAir(), "Particle.Item cannot show air, 26.2 clients fail to decode it");
+-        }
+-
+         @Contract(pure = true)
+         public Item withItem(ItemStack item) {
+             return new Item(key(), id(), item);
+== src/main/java/io/github/bearisbug/synaxis/particle/ParticleImpl.java
+--- src/main/java/io/github/bearisbug/synaxis/particle/ParticleImpl.java
++++ src/main/java/io/github/bearisbug/synaxis/particle/ParticleImpl.java
+@@ -38,7 +38,7 @@
+             case "dust_color_transition" ->
+                     new Particle.DustColorTransition(key, id, Color.WHITE, Color.WHITE, 1);
+             case "sculk_charge" -> new Particle.SculkCharge(key, id, 0);
+-            case "item" -> new Particle.Item(key, id, ItemStack.of(Material.STONE));
++            case "item" -> new Particle.Item(key, id, ItemStack.of(Material.AIR, 0));
+             case "vibration" ->
+                     new Particle.Vibration(key, id, Particle.Vibration.SourceType.BLOCK, Vec.ZERO, 0, 0, 0);
+             case "shriek" -> new Particle.Shriek(key, id, 0);
+
+=== Batch A: result
+63 tests completed, 14 failed
+BUILD FAILED in 25s
+ComponentCodecsTest tests= 13 failures= 3 errors= 0
+   unwrapNbtNamesTheStringItCannotRead() | org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.RuntimeException> | ['ComponentCodecsTest.java:116', 'ComponentCodecsTest.java:117'] | ['Caused by: java.lang.RuntimeException: Failed to unwrap BinaryTagHolder']
+   customClickEventPayloadCanBeAnyTag() | java.lang.RuntimeException: Failed to unwrap BinaryTagHolder | ['ComponentCodecsTest.java:110'] | ["Caused by: java.io.IOException: net.kyori.adventure.nbt.StringTagParseException: Expected character '{' but got '5'(at position 0)"]
+   customClickEventWithoutPayloadRoundTrips() | java.lang.NullPointerException: value | ['ComponentCodecsTest.java:93'] | []
+DataComponentMapTest tests= 14 failures= 1 errors= 0
+   networkPatchRejectsDeeplyNestedComponents() | org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalStateException> but was: <java.lang.IllegalArgumentException> | ['DataComponentMapTest.java:73', 'DataComponentMapTest.java:74'] | ['Caused by: java.lang.IllegalArgumentException: Binary tag is not a compound: 75']
+ItemStackTemplateRegistriesTest tests= 6 failures= 3 errors= 0
+   containerCodecStillReadsAPlainItemList(Registries) | java.lang.AssertionError: Expected Ok but got Error: slot: No such key: slot | ['ItemStackTemplateRegistriesTest.java:122'] | []
+   containerWritesEachSlotAsAnOptionalTemplate(Registries) | org.opentest4j.AssertionFailedError: array lengths differ, expected: <12> but was: <13> | ['ItemStackTemplateRegistriesTest.java:91'] | []
+   templateComponentsRejectAir() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | ['ItemStackTemplateRegistriesTest.java:132'] | []
+ComponentHoverItemRegistriesTest tests= 8 failures= 3 errors= 0
+   aComponentRemovedFromTheItemIsHandedOverAsARemoval(Registries) | org.opentest4j.AssertionFailedError: Unexpected type, expected: <net.kyori.adventure.text.event.DataComponentValue.Removed> but was: <io.github.bearisbug.synaxis.adventure.EngineDataComponentValueImpl> | ['ComponentHoverItemRegistriesTest.java:117'] | []
+   aComponentWithoutCodecIsLeftOut(Registries) | org.opentest4j.AssertionFailedError: expected: <false> but was: <true> | ['ComponentHoverItemRegistriesTest.java:133'] | []
+   anEngineValueOfNullIsWrittenAsARemoval(Registries) | java.lang.IllegalArgumentException: failed to encode minecraft:damage_type: null | ['ComponentHoverItemRegistriesTest.java:57', 'ComponentHoverItemRegistriesTest.java:139'] | []
+ComponentNetworkBufferTypeTest tests= 15 failures= 2 errors= 0
+   customClickEventWithoutPayload() | java.lang.NullPointerException: Cannot invoke "net.kyori.adventure.nbt.BinaryTag.type()" because "value" is null | ['ComponentNetworkBufferTypeTest.java:143', 'ComponentNetworkBufferTypeTest.java:143', 'ComponentNetworkBufferTypeTest.java:124'] | []
+   customClickEventWithATagThatIsNotACompound() | java.lang.RuntimeException: Failed to unwrap BinaryTagHolder | ['ComponentNetworkBufferTypeTest.java:143', 'ComponentNetworkBufferTypeTest.java:143', 'ComponentNetworkBufferTypeTest.java:133'] | ["Caused by: java.io.IOException: net.kyori.adventure.nbt.StringTagParseException: Expected character '{' but got '5'(at position 0)"]
+ParticleDataTest tests= 7 failures= 2 errors= 0
+   itemParticleDefaultIsNotAir() | org.opentest4j.AssertionFailedError: array contents differ at index [1], expected: <1> but was: <0> | ['ParticleDataTest.java:63'] | []
+   itemParticleRejectsAir() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | ['ParticleDataTest.java:68'] | []
+
+=== Batch B: the changes
+== src/main/java/io/github/bearisbug/synaxis/adventure/ComponentCodecs.java
+--- src/main/java/io/github/bearisbug/synaxis/adventure/ComponentCodecs.java
++++ src/main/java/io/github/bearisbug/synaxis/adventure/ComponentCodecs.java
+@@ -2,6 +2,7 @@
+ 
+ import net.kyori.adventure.key.Key;
+ import net.kyori.adventure.nbt.BinaryTag;
++import net.kyori.adventure.nbt.CompoundBinaryTag;
+ import net.kyori.adventure.text.Component;
+ import net.kyori.adventure.text.KeybindComponent;
+ import net.kyori.adventure.text.NBTComponent;
+@@ -116,7 +117,7 @@
+                         yield idResult.cast();
+ 
+                     if (!map.hasValue("payload"))
+-                        yield new Result.Ok<>(ClickEvent.custom(id));
++                        yield new Result.Ok<>(ClickEvent.custom(id, EngineAdventure.wrapNbt(CompoundBinaryTag.empty())));
+                     final Result<BinaryTag> payloadResult = map.getValue("payload")
+                             .map(value -> Codec.RAW_VALUE.decode(coder, value))
+                             .map(value -> value.convertTo(Transcoder.NBT));
+== src/main/java/io/github/bearisbug/synaxis/component/DataComponents.java
+--- src/main/java/io/github/bearisbug/synaxis/component/DataComponents.java
++++ src/main/java/io/github/bearisbug/synaxis/component/DataComponents.java
+@@ -247,9 +247,9 @@
+      * stored before that were a plain list of items, which still decodes.
+      */
+     private static Codec<List<ItemStack>> containerCodec() {
+-        return ContainerSlot.CODEC.list(CONTAINER_SIZE)
+-                .transform(DataComponents::containerFromSlots, DataComponents::containerToSlots)
+-                .orElse(ItemStackTemplate.CODEC.list(CONTAINER_SIZE));
++        return ItemStackTemplate.CODEC.list(CONTAINER_SIZE)
++                .orElse(ContainerSlot.CODEC.list(CONTAINER_SIZE)
++                        .transform(DataComponents::containerFromSlots, DataComponents::containerToSlots));
+     }
+ 
+     private static List<ItemStack> containerFromSlots(List<ContainerSlot> slots) {
+
+=== Batch B: result
+63 tests completed, 3 failed
+BUILD FAILED in 15s
+ComponentCodecsTest tests= 13 failures= 1 errors= 0
+   customClickEventWithoutPayloadRoundTrips() | org.opentest4j.AssertionFailedError: expected: <TextComponentImpl{content='Click me!', children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set,  | ['ComponentCodecsTest.java:95'] | []
+DataComponentMapTest tests= 14 failures= 0 errors= 0
+ItemStackTemplateRegistriesTest tests= 6 failures= 1 errors= 0
+   containerCodecWritesTheFilledSlots(Registries) | org.opentest4j.AssertionFailedError: expected: <ListBinaryTagImpl[elementType=BinaryTagType[CompoundBinaryTag 10], permitsHeterogeneity=true, tags=[CompoundBinaryTagImpl[tags={item=CompoundBinaryTagImpl[tags={count=IntBinaryTagImpl[value=1], id=StringBinaryTag | ['ItemStackTemplateRegistriesTest.java:107'] | []
+ComponentHoverItemRegistriesTest tests= 8 failures= 0 errors= 0
+ComponentNetworkBufferTypeTest tests= 15 failures= 1 errors= 0
+   customClickEventWithoutPayload() | org.opentest4j.AssertionFailedError: expected: <TextComponentImpl{content='hello', children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, underlined=not_set, ital | ['ComponentNetworkBufferTypeTest.java:139', 'ComponentNetworkBufferTypeTest.java:125'] | []
+ParticleDataTest tests= 7 failures= 0 errors= 0

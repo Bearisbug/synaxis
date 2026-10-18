@@ -365,6 +365,7 @@ class EvacuationIntegrationTest {
         final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
         final ManagedInstance arena = instances.create(new InstanceSpec("arena", PluginApi.MATCH_DIMENSION_TYPE, 1, FLAT,
                 SPAWN, Duration.ofSeconds(15), _ -> new Exit.ToInstance(lobby, SPAWN)));
+        assertEquals(Duration.ofSeconds(15), arena.settleTimeout(), "the instance reports another settle timeout than its spec");
         final Player player = joinInto(env, arena, env.createConnection());
         arena.start();
         arena.end(EndCause.OBJECTIVE);

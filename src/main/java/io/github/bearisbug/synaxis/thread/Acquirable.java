@@ -47,6 +47,10 @@ public sealed interface Acquirable<T> permits AcquirableImpl {
      * <p>
      * Useful when your code cannot be done inside a callback and need to be sync.
      * Do not forget to call {@link Acquired#unlock()} once you are done with it.
+     * <p>
+     * While the element is held, the dispatcher does not hand it to another tick thread. Held from a
+     * thread that is not a tick thread past the end of a tick, it holds up the start of the next tick
+     * for every tick thread.
      *
      * @return an acquired object
      * @throws IllegalStateException if the acquirable element is not initialized
@@ -104,6 +108,10 @@ public sealed interface Acquirable<T> permits AcquirableImpl {
      * Locks the acquirable element, execute {@code consumer} synchronously and unlock the thread.
      * <p>
      * Free if the element is already present in the current thread, blocking otherwise.
+     * <p>
+     * While the element is held, the dispatcher does not hand it to another tick thread. Held from a
+     * thread that is not a tick thread past the end of a tick, it holds up the start of the next tick
+     * for every tick thread.
      *
      * @param consumer the callback to execute once the element has been safely acquired
      */

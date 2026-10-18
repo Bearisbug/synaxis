@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" tests="16" skipped="0" failures="0" errors="0" timestamp="2026-10-18T03:04:51.562Z" hostname="Mac.local" time="1.014">
+  <properties/>
+  <testcase name="singleCommandUnconditionalArgGroup2()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.0"/>
+  <testcase name="singleCommandFilteredTrueWithFilteredSubcommandTrueWithFilteredSyntaxFalse()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.0"/>
+  <testcase name="singleCommandConditionalArgLoopTrue()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.002"/>
+  <testcase name="singleCommandFilteredTrueWithFilteredSubcommandFalse()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.0"/>
+  <testcase name="singleCommandConditionalArgGroupFalse()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.0"/>
+  <testcase name="singleCommandConditionalArgGroupTrue2()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.001"/>
+  <testcase name="singleCommandUnconditionalArgGroup()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.0"/>
+  <testcase name="singleCommandFilteredTrue()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.0"/>
+  <testcase name="singleCommandConditionalArgGroupFalse2()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.001"/>
+  <testcase name="singleCommandConditionalArgLoopFalse()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.0"/>
+  <testcase name="singleCommandUnconditionalArgLoop()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.001"/>
+  <testcase name="singleCommandFilteredFalse()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.0"/>
+  <testcase name="singleCommandUnfiltered()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.001"/>
+  <testcase name="singleCommandFilteredTrueWithFilteredSubcommandTrueWithFilteredSyntaxBoth()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.001"/>
+  <testcase name="singleCommandFilteredTrueWithFilteredSubcommandTrue()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.001"/>
+  <testcase name="singleCommandConditionalArgGroupTrue()" classname="io.github.bearisbug.synaxis.command.CommandPacketFilteringTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

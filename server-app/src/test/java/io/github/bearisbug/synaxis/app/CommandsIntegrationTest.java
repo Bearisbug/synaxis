@@ -10,6 +10,8 @@ import io.github.bearisbug.synaxis.app.store.RedisLink;
 import io.github.bearisbug.synaxis.command.ConsoleSender;
 import io.github.bearisbug.synaxis.command.builder.Command;
 import io.github.bearisbug.synaxis.command.builder.CommandResult;
+import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
+import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.instance.Instance;
@@ -327,17 +329,17 @@ class CommandsIntegrationTest {
 
     @Test
     void aConsoleLineThatThrowsIsOneLogLineAndTheNextLineRuns(Env env) {
-        final Instance match = env.createFlatInstance();
         final Command party = new Command("party");
-        // A condition written for players only, which the console trips over
+        // A condition written for players only, which the console trips over; the command is the engine's,
+        // as the host catches what the condition of a plugin's command throws
         party.setCondition((sender, _) -> ((Player) sender).isOnline());
         party.setDefaultExecutor((_, _) -> { });
         final PluginHost host = host(env);
-        host.enable(List.of(new Probe("mmo", match, ctx -> ctx.commands().register(party))), Set.of());
+        env.process().command().register(party);
 
         try (LogCapture main = LogCapture.of(Main.class)) {
-            Main.readConsole(env.process(), new BufferedReader(new StringReader("mmo:party\n\nlist\n")));
-            assertEquals(List.of("Console command failed: mmo:party"), main.messagesAt(Level.ERROR));
+            Main.readConsole(env.process(), new BufferedReader(new StringReader("party\n\nlist\n")));
+            assertEquals(List.of("Console command failed: party"), main.messagesAt(Level.ERROR));
             assertEquals(ClassCastException.class.getName(),
                     main.eventsAt(Level.ERROR).getFirst().getThrowableProxy().getClassName());
         }
@@ -517,6 +519,105 @@ class CommandsIntegrationTest {
             assertEquals(List.of("Unknown command: synaxisnosuchcommand"), main.messagesAt(Level.INFO));
             assertEquals(List.of(), console.messagesAt(Level.INFO), "the console gets no answer on top of that line");
         }
+        host.disableAll();
+    }
+
+    /**
+     * A plugin condition that throws, here {@code Permissions#has} on a node that is no permission node, counts as
+     * refused: the command is out of every tree the players get, at spawn and when the plugin registers it while they
+     * are online, and running it is refused. One line per command within 10 s, in the plugin's budget.
+     */
+    @Test
+    void aPluginConditionThatThrowsHidesItsCommandAndEveryoneStillSpawns(Env env) throws ClassNotFoundException {
+        final Instance match = env.createFlatInstance();
+        final List<String> ran = new CopyOnWriteArrayList<>();
+        final Command boss = new Command("boss");
+        boss.setDefaultExecutor((_, _) -> ran.add("boss"));
+        final Command raid = new Command("raid");
+        raid.setDefaultExecutor((_, _) -> ran.add("raid"));
+        final Command start = new Command("start");
+        start.setCondition((_, _) -> {
+            throw new IllegalStateException("no raid today");
+        });
+        start.setDefaultExecutor((_, _) -> ran.add("raid start"));
+        raid.addSubcommand(start);
+        final Command loot = new Command("loot");
+        loot.setDefaultExecutor((_, _) -> ran.add("loot"));
+        loot.addConditionalSyntax((_, _) -> {
+            throw new IllegalStateException("no loot table");
+        }, (_, _) -> ran.add("loot all"), ArgumentType.Literal("all"));
+        final Probe mmo = new Probe("mmo", match, ctx -> {
+            boss.setCondition((sender, _) -> !(sender instanceof Player player) || ctx.permissions().has(player, "mmo:Admin"));
+            ctx.commands().register(raid);
+            ctx.commands().register(loot);
+        });
+        final PluginHost host = host(env);
+        try (LogCapture plugins = LogCapture.of(PluginCommandsImpl.class);
+             LogCapture engine = LogCapture.of(Class.forName("io.github.bearisbug.synaxis.command.GraphConverter"))) {
+            host.enable(List.of(mmo), Set.of());
+            final TestConnection firstConnection = env.createConnection(new GameProfile(UUID.randomUUID(), "First"));
+            Collector<DeclareCommandsPacket> firstTrees = firstConnection.trackIncoming(DeclareCommandsPacket.class);
+            final Player first = firstConnection.connect(match, new Pos(0, 41, 0));
+            assertEquals(match, first.getInstance(), "the player did not spawn");
+            final Set<String> atSpawn = lastTree(firstTrees);
+            assertTrue(atSpawn.containsAll(Set.of("mmo:raid", "raid", "mmo:loot", "loot")), atSpawn.toString());
+            assertFalse(atSpawn.contains("start") || atSpawn.contains("all"), atSpawn.toString());
+            final TestConnection secondConnection = env.createConnection(new GameProfile(UUID.randomUUID(), "Second"));
+            final Player second = secondConnection.connect(match, new Pos(0, 41, 0));
+            assertEquals(match, second.getInstance(), "the second player did not spawn");
+
+            firstTrees = firstConnection.trackIncoming(DeclareCommandsPacket.class);
+            final Collector<DeclareCommandsPacket> secondTrees = secondConnection.trackIncoming(DeclareCommandsPacket.class);
+            mmo.context().commands().register(boss);
+            for (Collector<DeclareCommandsPacket> trees : List.of(firstTrees, secondTrees)) {
+                final Set<String> after = lastTree(trees);
+                assertTrue(after.contains("mmo:raid") && !after.contains("mmo:boss") && !after.contains("boss"),
+                        after.toString());
+            }
+            for (String input : List.of("mmo:boss", "raid start", "loot all"))
+                assertEquals(CommandResult.Type.CANCELLED, env.process().command().execute(first, input).getType(), input);
+            assertEquals(List.of(), ran, "a refused command ran");
+
+            final String line = "Plugin command condition failed: plugin_id=mmo command=";
+            final List<String> lines = plugins.messagesAt(Level.ERROR);
+            assertTrue(lines.stream().allMatch(message -> message.startsWith(line)), lines.toString());
+            assertEquals(Set.of("mmo:boss", "mmo:raid", "mmo:loot"),
+                    lines.stream().map(message -> message.substring(line.length(), message.indexOf(" (", line.length())))
+                            .collect(Collectors.toSet()),
+                    lines.toString());
+            assertEquals(3, lines.size(), "one line per command within 10 s: " + lines);
+            assertEquals(List.of(), engine.messagesAt(Level.WARN), "the engine's line stays silent");
+        }
+        host.disableAll();
+    }
+
+    @Test
+    void aPluginArgumentCallbackThatThrowsIsInThePluginsBudget(Env env) throws ClassNotFoundException {
+        final Instance match = env.createFlatInstance();
+        final Command roll = new Command("roll");
+        final Argument<Integer> sides = ArgumentType.Integer("sides").between(1, 100);
+        sides.setCallback((_, _) -> {
+            throw new IllegalStateException("no dice");
+        });
+        roll.addSyntax((_, _) -> { }, sides);
+        final Probe mmo = new Probe("mmo", match, ctx -> ctx.commands().register(roll));
+        final PluginHost host = host(env);
+        host.enable(List.of(mmo), Set.of());
+        final TestConnection connection = env.createConnection(new GameProfile(UUID.randomUUID(), "Roller"));
+        final Collector<SystemChatPacket> chat = connection.trackIncoming(SystemChatPacket.class);
+        final Player player = connection.connect(match, new Pos(0, 41, 0));
+
+        try (LogCapture plugins = LogCapture.of(PluginCommandsImpl.class);
+             LogCapture engine = LogCapture.of(Class.forName("io.github.bearisbug.synaxis.command.CommandParserImpl"))) {
+            for (int i = 0; i < 10; i++)
+                assertEquals(CommandResult.Type.INVALID_SYNTAX,
+                        env.process().command().execute(player, "mmo:roll 1000").getType());
+            assertEquals(1, plugins.eventsAt(Level.ERROR).size(), "one line for 10 failures within 10 s");
+            assertTrue(plugins.messagesAt(Level.ERROR).getFirst().startsWith(
+                    "Plugin command failed: plugin_id=mmo command=mmo:roll"), plugins.messagesAt(Level.ERROR).getFirst());
+            assertEquals(List.of(), engine.messagesAt(Level.ERROR), "the engine's line per run stays silent");
+        }
+        chat.assertCount(10, packet -> text(packet.message()).equals("command.failed"));
         host.disableAll();
     }
 }

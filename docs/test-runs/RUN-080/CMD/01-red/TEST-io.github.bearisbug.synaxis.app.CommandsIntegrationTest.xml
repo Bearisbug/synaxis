@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" tests="14" skipped="0" failures="2" errors="0" timestamp="2026-10-18T03:03:18.767Z" hostname="Mac.local" time="5.166">
+  <properties/>
+  <testcase name="aPluginCommandLivesUnderItsNamespaceAndABareNameGoesToTheFirst(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="0.948"/>
+  <testcase name="aPluginArgumentCallbackThatThrowsIsInThePluginsBudget(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="0.288">
+    <failure message="org.opentest4j.AssertionFailedError: one line for 10 failures within 10 s ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: one line for 10 failures within 10 s ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.app.CommandsIntegrationTest.aPluginArgumentCallbackThatThrowsIsInThePluginsBudget(CommandsIntegrationTest.java:615)
+</failure>
+  </testcase>
+  <testcase name="aThrowingPluginCommandIsOneLinePerTenSecondsAndGoneOnceDisabled(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="0.126"/>
+  <testcase name="aCommandRegisteredAfterThePluginIsTakenBackIsDropped(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="0.069"/>
+  <testcase name="aPlayersUnknownCommandIsAnsweredWithItsFirstWordAndTheConsoleOnlyLogsIt(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="0.071"/>
+  <testcase name="aPlayerWithoutNodesSeesAndRunsListAndOnlyTheConsoleWritesAGmCommand(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="0.067"/>
+  <testcase name="theNodeDecidesWhetherAPlayerRunsAndSeesACommandOfTheHost(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="0.102"/>
+  <testcase name="theConsoleRunsListTpsAndSaveAndAnUnknownLineIsOneLine(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="0.112"/>
+  <testcase name="broadcastReachesEveryPlayerAndKickWithoutAReasonIsTheVanillaOne(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="0.107"/>
+  <testcase name="aCommandRegisteredOrTakenBackWhilePlayersAreOnlineReachesTheirCompletions(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="0.067"/>
+  <testcase name="stopWhileTheEngineIsAlreadyStoppingAnswersSoAndChangesNothing(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="2.014"/>
+  <testcase name="aPluginConditionThatThrowsHidesItsCommandAndEveryoneStillSpawns(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="0.065">
+    <failure message="java.lang.IllegalStateException: no loot table" type="java.lang.IllegalStateException">java.lang.IllegalStateException: no loot table
+	at io.github.bearisbug.synaxis.app.CommandsIntegrationTest.lambda$aPluginConditionThatThrowsHidesItsCommandAndEveryoneStillSpawns$5(CommandsIntegrationTest.java:547)
+	at io.github.bearisbug.synaxis.command.GraphImpl$ExecutionImpl.lambda$fromSyntax$0(GraphImpl.java:149)
+	at io.github.bearisbug.synaxis.command.GraphImpl$ExecutionImpl.test(GraphImpl.java:116)
+	at io.github.bearisbug.synaxis.command.GraphImpl$ExecutionImpl.lambda$merge$0(GraphImpl.java:170)
+	at io.github.bearisbug.synaxis.command.GraphImpl$ExecutionImpl.test(GraphImpl.java:116)
+	at io.github.bearisbug.synaxis.command.GraphImpl$ExecutionImpl.test(GraphImpl.java:107)
+	at io.github.bearisbug.synaxis.command.GraphConverter.append(GraphConverter.java:46)
+	at io.github.bearisbug.synaxis.command.GraphConverter.append(GraphConverter.java:55)
+	at io.github.bearisbug.synaxis.command.GraphConverter.append(GraphConverter.java:55)
+	at io.github.bearisbug.synaxis.command.GraphConverter.createPacket(GraphConverter.java:34)
+	at io.github.bearisbug.synaxis.command.CommandManager.createDeclareCommandsPacket(CommandManager.java:197)
+	at io.github.bearisbug.synaxis.entity.Player.refreshCommands(Player.java:661)
+	at io.github.bearisbug.synaxis.entity.Player.UNSAFE_init(Player.java:440)
+	at io.github.bearisbug.synaxis.network.ConnectionManager.lambda$updateWaitingPlayers$2(ConnectionManager.java:744)
+	at org.jctools.queues.MessagePassingQueueUtil.drain(MessagePassingQueueUtil.java:39)
+	at org.jctools.queues.varhandle.BaseMpscLinkedVarHandleArrayQueue.drain(BaseMpscLinkedVarHandleArrayQueue.java:576)
+	at org.jctools.queues.varhandle.MpscUnboundedVarHandleArrayQueue.drain(MpscUnboundedVarHandleArrayQueue.java:27)
+	at org.jctools.queues.varhandle.MpscUnboundedVarHandleArrayQueue.drain(MpscUnboundedVarHandleArrayQueue.java:61)
+	at io.github.bearisbug.synaxis.network.ConnectionManager.updateWaitingPlayers(ConnectionManager.java:770)
+	at io.github.bearisbug.synaxis.testing.TestConnectionImpl.connect(TestConnectionImpl.java:76)
+	at io.github.bearisbug.synaxis.app.CommandsIntegrationTest.aPluginConditionThatThrowsHidesItsCommandAndEveryoneStillSpawns(CommandsIntegrationTest.java:560)
+</failure>
+  </testcase>
+  <testcase name="stopWithSecondsClosesTheGateAndStopsAfterTheCountdown(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="1.059"/>
+  <testcase name="aConsoleLineThatThrowsIsOneLogLineAndTheNextLineRuns(Env)" classname="io.github.bearisbug.synaxis.app.CommandsIntegrationTest" time="0.058"/>
+  <system-out><![CDATA[11:03:19.610 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:19.619 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:19.626 [Test worker] INFO  i.g.b.synaxis.app.PluginCommandsImpl - Registered command: plugin_id=mmo command=mmo:party bare_names=[p, party]
+11:03:19.626 [Test worker] INFO  i.g.b.synaxis.app.PluginCommandsImpl - Registered command: plugin_id=mmo command=mmo:list bare_names=[] left_to_first_registrant=[list]
+11:03:19.626 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=mmo version=1.0.0 enable_ms=4
+11:03:19.627 [Test worker] INFO  i.g.b.synaxis.app.PluginCommandsImpl - Registered command: plugin_id=other command=other:party bare_names=[] left_to_first_registrant=[party]
+11:03:19.627 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=other version=1.0.0 enable_ms=0
+11:03:19.637 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=other
+11:03:19.639 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=other: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+11:03:19.639 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=mmo
+11:03:19.639 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=mmo: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+11:03:19.714 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:19.716 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:19.716 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+11:03:19.738 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:19.738 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:19.738 [Test worker] INFO  i.g.b.synaxis.app.PluginCommandsImpl - Registered command: plugin_id=mmo command=mmo:roll bare_names=[roll]
+11:03:19.739 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=mmo version=1.0.0 enable_ms=0
+11:03:19.998 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:19.998 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=021be87c-080c-4d90-b03f-7b34363cad0c identifier=Roller reason=synaxis:server-stopping
+11:03:19.998 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=021be87c-080c-4d90-b03f-7b34363cad0c identifier=Roller reason=synaxis:server-stopping
+11:03:20.003 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:20.003 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+11:03:20.026 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:20.026 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:20.026 [Test worker] INFO  i.g.b.synaxis.app.PluginCommandsImpl - Registered command: plugin_id=mmo command=mmo:party bare_names=[party]
+11:03:20.026 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=mmo version=1.0.0 enable_ms=0
+11:03:20.072 [Test worker] ERROR i.g.b.synaxis.app.PluginCommandsImpl - Plugin command failed: plugin_id=mmo command=mmo:party (1 failures since the last report)
+java.lang.IllegalStateException: the party is over
+	at io.github.bearisbug.synaxis.app.CommandsIntegrationTest.lambda$aThrowingPluginCommandIsOneLinePerTenSecondsAndGoneOnceDisabled$0(CommandsIntegrationTest.java:392)
+	at io.github.bearisbug.synaxis.app.PluginCommandsImpl$Guarded.lambda$apply$0(PluginCommandsImpl.java:136)
+	at io.github.bearisbug.synaxis.app.PluginCommandsImpl.run(PluginCommandsImpl.java:142)
+	at io.github.bearisbug.synaxis.app.PluginCommandsImpl$Guarded.apply(PluginCommandsImpl.java:136)
+	at io.github.bearisbug.synaxis.command.CommandParserImpl$ValidExecutableCmd.execute(CommandParserImpl.java:432)
+	at io.github.bearisbug.synaxis.command.CommandManager.execute(CommandManager.java:136)
+	at io.github.bearisbug.synaxis.app.CommandsIntegrationTest.aThrowingPluginCommandIsOneLinePerTenSecondsAndGoneOnceDisabled(CommandsIntegrationTest.java:406)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:700)
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:528)
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:53)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:124)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:256)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:228)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:189)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:109)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:168)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:137)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:126)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:100)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$0(InterceptingLauncher.java:46)
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:45)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.processAllTestDefinitions(JUnitPlatformTestDefinitionProcessor.java:206)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.access$000(JUnitPlatformTestDefinitionProcessor.java:123)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor.stop(JUnitPlatformTestDefinitionProcessor.java:117)
+	at org.gradle.api.internal.tasks.testing.SuiteTestDefinitionProcessor.stop(SuiteTestDefinitionProcessor.java:63)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.gradle.internal.dispatch.MethodInvocation.invokeOn(MethodInvocation.java:77)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:28)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:19)
+	at org.gradle.internal.dispatch.ContextClassLoaderDispatch.dispatch(ContextClassLoaderDispatch.java:33)
+	at org.gradle.internal.dispatch.ProxyDispatchAdapter$DispatchingInvocationHandler.invoke(ProxyDispatchAdapter.java:88)
+	at jdk.proxy2/jdk.proxy2.$Proxy6.stop(Unknown Source)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker$3.run(TestWorker.java:195)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.executeAndMaintainThreadName(TestWorker.java:126)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:103)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:63)
+	at org.gradle.process.internal.worker.child.ActionExecutionWorker.execute(ActionExecutionWorker.java:56)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:122)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:72)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.run(GradleWorkerMain.java:69)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.main(GradleWorkerMain.java:74)
+11:03:20.083 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=mmo
+11:03:20.084 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=mmo: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+11:03:20.134 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:20.135 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=fbd27230-3b2e-4cb5-88f6-0b6bdf070a42 identifier=Partier reason=synaxis:server-stopping
+11:03:20.135 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=fbd27230-3b2e-4cb5-88f6-0b6bdf070a42 identifier=Partier reason=synaxis:server-stopping
+11:03:20.136 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:20.136 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+11:03:20.151 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:20.151 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:20.152 [Test worker] ERROR i.g.bearisbug.synaxis.app.PluginHost - Plugin failed to enable: plugin_id=mmo
+java.lang.IllegalStateException: enable failed
+	at io.github.bearisbug.synaxis.app.CommandsIntegrationTest.lambda$aCommandRegisteredAfterThePluginIsTakenBackIsDropped$1(CommandsIntegrationTest.java:455)
+	at io.github.bearisbug.synaxis.app.CommandsIntegrationTest$Probe.onEnable(CommandsIntegrationTest.java:144)
+	at io.github.bearisbug.synaxis.app.PluginHost.enableOne(PluginHost.java:189)
+	at io.github.bearisbug.synaxis.app.PluginHost.enable(PluginHost.java:175)
+	at io.github.bearisbug.synaxis.app.CommandsIntegrationTest.aCommandRegisteredAfterThePluginIsTakenBackIsDropped(CommandsIntegrationTest.java:458)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:700)
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:528)
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:53)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:124)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:256)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:228)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:189)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:109)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:168)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:137)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:126)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:100)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$0(InterceptingLauncher.java:46)
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:45)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.processAllTestDefinitions(JUnitPlatformTestDefinitionProcessor.java:206)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.access$000(JUnitPlatformTestDefinitionProcessor.java:123)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor.stop(JUnitPlatformTestDefinitionProcessor.java:117)
+	at org.gradle.api.internal.tasks.testing.SuiteTestDefinitionProcessor.stop(SuiteTestDefinitionProcessor.java:63)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.gradle.internal.dispatch.MethodInvocation.invokeOn(MethodInvocation.java:77)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:28)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:19)
+	at org.gradle.internal.dispatch.ContextClassLoaderDispatch.dispatch(ContextClassLoaderDispatch.java:33)
+	at org.gradle.internal.dispatch.ProxyDispatchAdapter$DispatchingInvocationHandler.invoke(ProxyDispatchAdapter.java:88)
+	at jdk.proxy2/jdk.proxy2.$Proxy6.stop(Unknown Source)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker$3.run(TestWorker.java:195)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.executeAndMaintainThreadName(TestWorker.java:126)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:103)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:63)
+	at org.gradle.process.internal.worker.child.ActionExecutionWorker.execute(ActionExecutionWorker.java:56)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:122)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:72)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.run(GradleWorkerMain.java:69)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.main(GradleWorkerMain.java:74)
+11:03:20.153 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=mmo: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+11:03:20.206 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:20.207 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:20.207 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+11:03:20.217 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:20.217 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:20.217 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=mmo version=1.0.0 enable_ms=0
+11:03:20.268 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Unknown command: synaxisnosuchcommand
+11:03:20.268 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=mmo
+11:03:20.269 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=mmo: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+11:03:20.276 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:20.277 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=a6e476b6-86d8-4407-a8a2-edd3c6d11389 identifier=Newcomer reason=synaxis:server-stopping
+11:03:20.277 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=a6e476b6-86d8-4407-a8a2-edd3c6d11389 identifier=Newcomer reason=synaxis:server-stopping
+11:03:20.278 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:20.278 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+11:03:20.287 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:20.287 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:20.288 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=mmo version=1.0.0 enable_ms=0
+11:03:20.334 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=mmo
+11:03:20.335 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=mmo: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+11:03:20.344 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:20.344 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=5de465f4-1346-499c-a6e3-ce4691716141 identifier=Newcomer reason=synaxis:server-stopping
+11:03:20.344 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=5de465f4-1346-499c-a6e3-ce4691716141 identifier=Newcomer reason=synaxis:server-stopping
+11:03:20.344 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:20.344 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+11:03:20.353 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:20.353 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:20.353 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=mmo version=1.0.0 enable_ms=0
+11:03:20.401 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=mmo
+11:03:20.401 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=mmo: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+11:03:20.446 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:20.447 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=08d3d43d-2a92-43f8-83c2-470e85030f52 identifier=Keeper reason=synaxis:server-stopping
+11:03:20.447 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=9a6a8d3f-9f6a-4682-bfed-6c8dafc9fc5e identifier=Ruffian reason=synaxis:server-stopping
+11:03:20.447 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=08d3d43d-2a92-43f8-83c2-470e85030f52 identifier=Keeper reason=synaxis:server-stopping
+11:03:20.447 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=9a6a8d3f-9f6a-4682-bfed-6c8dafc9fc5e identifier=Ruffian reason=synaxis:server-stopping
+11:03:20.447 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:20.448 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+11:03:20.456 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:20.456 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:20.456 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=mmo version=1.0.0 enable_ms=0
+11:03:20.507 [Test worker] INFO  i.g.b.synaxis.command.ConsoleSender - 2 players online: Alpha, Bravo
+11:03:20.509 [Test worker] INFO  i.g.b.synaxis.command.ConsoleSender - TPS 3804.7, MSPT p50 0.3 ms, p95 0.8 ms, p99 0.8 ms over the last 5 ticks
+11:03:20.510 [Syn-Store-Write] INFO  i.g.b.synaxis.command.ConsoleSender - Saved 2 of 2 players
+11:03:20.521 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Unknown command: frobnicate now
+11:03:20.521 [Test worker] INFO  i.github.bearisbug.synaxis.app.Main - Incomplete or invalid command: kick
+11:03:20.521 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=mmo
+11:03:20.521 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=mmo: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+11:03:20.559 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:20.559 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=ddd76779-6544-4b32-a0c3-3397cfaa27aa identifier=Bravo reason=synaxis:server-stopping
+11:03:20.559 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=2adaf9e7-a7b2-4012-ac36-1a6fad440e13 identifier=Alpha reason=synaxis:server-stopping
+11:03:20.559 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=ddd76779-6544-4b32-a0c3-3397cfaa27aa identifier=Bravo reason=synaxis:server-stopping
+11:03:20.559 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=2adaf9e7-a7b2-4012-ac36-1a6fad440e13 identifier=Alpha reason=synaxis:server-stopping
+11:03:20.560 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:20.560 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+11:03:20.568 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:20.568 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:20.569 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=mmo version=1.0.0 enable_ms=0
+11:03:20.616 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=aa1f525a-c97d-4a35-919d-6c7885b70116 identifier=Second reason=multiplayer.disconnect.kicked
+11:03:20.616 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=mmo
+11:03:20.616 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=mmo: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+11:03:20.666 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:20.666 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=aa1f525a-c97d-4a35-919d-6c7885b70116 identifier=Second reason=synaxis:server-stopping
+11:03:20.666 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=6395ccd8-c670-4eee-8f2a-79e028253379 identifier=First reason=synaxis:server-stopping
+11:03:20.666 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=6395ccd8-c670-4eee-8f2a-79e028253379 identifier=First reason=synaxis:server-stopping
+11:03:20.666 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=aa1f525a-c97d-4a35-919d-6c7885b70116 identifier=Second reason=synaxis:server-stopping
+11:03:20.667 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:20.667 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+11:03:20.676 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:20.676 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:20.676 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=mmo version=1.0.0 enable_ms=0
+11:03:20.717 [Test worker] INFO  i.g.b.synaxis.app.PluginCommandsImpl - Registered command: plugin_id=mmo command=mmo:party bare_names=[party]
+11:03:20.719 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=mmo
+11:03:20.719 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=mmo: event node, tasks, channels, admission provider, commands, tab list visibility, actions, managed instances
+11:03:20.734 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:20.734 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=c6e40c58-6462-4fc8-94e4-d1e568d9e12f identifier=Watcher reason=synaxis:server-stopping
+11:03:20.734 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=c6e40c58-6462-4fc8-94e4-d1e568d9e12f identifier=Watcher reason=synaxis:server-stopping
+11:03:20.734 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:20.734 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+11:03:20.743 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:20.743 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:20.744 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:22.745 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:22.745 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+11:03:22.758 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:22.758 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:22.758 [Test worker] INFO  i.g.b.synaxis.app.PluginCommandsImpl - Registered command: plugin_id=mmo command=mmo:raid bare_names=[raid]
+11:03:22.758 [Test worker] INFO  i.g.b.synaxis.app.PluginCommandsImpl - Registered command: plugin_id=mmo command=mmo:loot bare_names=[loot]
+11:03:22.758 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=mmo version=1.0.0 enable_ms=0
+11:03:22.814 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:22.815 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=431e17b1-f23b-4b94-b416-556b3a729f6c identifier=First reason=synaxis:server-stopping
+11:03:22.815 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=431e17b1-f23b-4b94-b416-556b3a729f6c identifier=First reason=synaxis:server-stopping
+11:03:22.815 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:22.815 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+11:03:22.822 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:22.822 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:22.823 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:23.825 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:23.825 [Syn-Shutdown] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+11:03:23.881 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+11:03:23.881 [Test worker] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:play
+11:03:23.882 [Test worker] ERROR i.github.bearisbug.synaxis.app.Main - Console command failed: party
+java.lang.ClassCastException: class io.github.bearisbug.synaxis.command.ConsoleSender cannot be cast to class io.github.bearisbug.synaxis.entity.Player (io.github.bearisbug.synaxis.command.ConsoleSender and io.github.bearisbug.synaxis.entity.Player are in unnamed module of loader 'app')
+	at io.github.bearisbug.synaxis.app.CommandsIntegrationTest.lambda$aConsoleLineThatThrowsIsOneLogLineAndTheNextLineRuns$0(CommandsIntegrationTest.java:335)
+	at io.github.bearisbug.synaxis.command.CommandParserImpl$Chain.lambda$mergedConditions$0(CommandParserImpl.java:59)
+	at io.github.bearisbug.synaxis.command.CommandParserImpl$ValidExecutableCmd.execute(CommandParserImpl.java:428)
+	at io.github.bearisbug.synaxis.command.CommandManager.execute(CommandManager.java:136)
+	at io.github.bearisbug.synaxis.app.Main.runConsoleCommand(Main.java:1084)
+	at io.github.bearisbug.synaxis.app.Main.readConsole(Main.java:1060)
+	at io.github.bearisbug.synaxis.app.CommandsIntegrationTest.aConsoleLineThatThrowsIsOneLogLineAndTheNextLineRuns(CommandsIntegrationTest.java:341)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:700)
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:528)
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:53)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:124)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:256)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:228)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:189)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:109)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:168)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:137)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:126)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:100)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$0(InterceptingLauncher.java:46)
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:45)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.processAllTestDefinitions(JUnitPlatformTestDefinitionProcessor.java:206)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.access$000(JUnitPlatformTestDefinitionProcessor.java:123)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor.stop(JUnitPlatformTestDefinitionProcessor.java:117)
+	at org.gradle.api.internal.tasks.testing.SuiteTestDefinitionProcessor.stop(SuiteTestDefinitionProcessor.java:63)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.gradle.internal.dispatch.MethodInvocation.invokeOn(MethodInvocation.java:77)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:28)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:19)
+	at org.gradle.internal.dispatch.ContextClassLoaderDispatch.dispatch(ContextClassLoaderDispatch.java:33)
+	at org.gradle.internal.dispatch.ProxyDispatchAdapter$DispatchingInvocationHandler.invoke(ProxyDispatchAdapter.java:88)
+	at jdk.proxy2/jdk.proxy2.$Proxy6.stop(Unknown Source)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker$3.run(TestWorker.java:195)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.executeAndMaintainThreadName(TestWorker.java:126)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:103)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:63)
+	at org.gradle.process.internal.worker.child.ActionExecutionWorker.execute(ActionExecutionWorker.java:56)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:122)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:72)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.run(GradleWorkerMain.java:69)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.main(GradleWorkerMain.java:74)
+11:03:23.883 [Test worker] INFO  i.g.b.synaxis.command.ConsoleSender - 0 players online: 
+11:03:23.933 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:03:23.933 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+11:03:23.934 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

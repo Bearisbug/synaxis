@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.CommandTreeAtSpawnIntegrationTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-18T03:04:51.562Z" hostname="Mac.local" time="1.559">
+  <properties/>
+  <testcase name="anArgumentWithoutAParserIsLeftOutAndThePlayerSpawns(Env)" classname="io.github.bearisbug.synaxis.command.CommandTreeAtSpawnIntegrationTest" time="1.321"/>
+  <testcase name="aConditionThatThrowsAtSpawnHidesItsNodeAndThePlayerSpawns(Env)" classname="io.github.bearisbug.synaxis.command.CommandTreeAtSpawnIntegrationTest" time="0.228"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

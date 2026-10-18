@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.CommandParseTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-18T03:07:07.363Z" hostname="Mac.local" time="0.937">
+  <properties/>
+  <testcase name="theDefaultExecutorRunsWhenNoSingleArgumentOwnsTheError()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.023"/>
+  <testcase name="singleCommandOptionalArgs()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.001"/>
+  <testcase name="aliasWithArgs()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.001"/>
+  <testcase name="singleParameterlessCommand()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.001"/>
+  <testcase name="aliasWithoutArgs()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.0"/>
+  <testcase name="theCallbackOfAnArgumentReadAcrossSpacesGetsTheErrorOfTheLongestInput()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.001"/>
+  <testcase name="aCallbackThatThrowsCancelsTheCommand()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.0"/>
+  <testcase name="anArgumentThatFailsCallsItsErrorCallbackInPlaceOfTheDefaultExecutor()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.0"/>
+  <testcase name="singleCommandWithMultipleSyntax()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.001"/>
+  <testcase name="emptyCommand()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.001"/>
+  <testcase name="aSenderTheSyntaxRefusesDoesNotGetTheCallback()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.0"/>
+  <testcase name="singleCommandSingleEnumArg()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.002"/>
+  <testcase name="twoParameterlessCommand()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

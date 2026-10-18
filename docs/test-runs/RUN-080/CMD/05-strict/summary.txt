@@ -1,0 +1,6 @@
+ArgumentTypeTest: tests=33 failures=0 errors=0 skipped=0 time=1.004
+CommandPacketTest: tests=15 failures=0 errors=0 skipped=0 time=0.949
+CommandParseTest: tests=13 failures=0 errors=0 skipped=0 time=0.937
+CommandTreeAtSpawnIntegrationTest: tests=2 failures=0 errors=0 skipped=0 time=1.348
+CommandsIntegrationTest: tests=14 failures=0 errors=0 skipped=0 time=5.394
+BUILD SUCCESSFUL in 12s

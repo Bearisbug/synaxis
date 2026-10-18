@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.CommandPacketTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-10-18T03:07:26.888Z" hostname="Mac.local" time="0.942">
+  <properties/>
+  <testcase name="singleCommandTwoGroupOfIntInt()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.024"/>
+  <testcase name="aMappedOrFilteredArgumentWritesTheNodesOfTheArgumentItWraps()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.003"/>
+  <testcase name="cmdArgShortcutWithPartialArg()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.003"/>
+  <testcase name="aMappedOrFilteredArgumentKeepsTheSuggestionTypeOfTheArgumentItWraps()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.001"/>
+  <testcase name="singleCommandWithOneSyntax()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.0"/>
+  <testcase name="commandAliasWithoutArg()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.001"/>
+  <testcase name="executeLike()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.002"/>
+  <testcase name="commandAliasWithArg()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.0"/>
+  <testcase name="singleCommandWord()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.001"/>
+  <testcase name="cmdArgShortcut()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.0"/>
+  <testcase name="singleCommandTwoEnum()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.001"/>
+  <testcase name="singleCommandCommandAfterEnum()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.001"/>
+  <testcase name="twoCommandIntEnumInt()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.001"/>
+  <testcase name="twoEnumAndOneLiteralChild()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.001"/>
+  <testcase name="singleCommandRestrictedWord()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

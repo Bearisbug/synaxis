@@ -16,7 +16,10 @@ import org.jetbrains.annotations.ApiStatus;
  * there, never {@code Player#getPermissionLevel()}. An executor runs on the tick thread of the
  * player that sent the command, and on the console reader thread for the console. What an executor
  * throws is logged by the host at most once every 10 s per command, and the sender is told the
- * command failed.
+ * command failed. The same goes for the error callback of an argument. A condition is also asked
+ * while a player spawns, before it has an instance; what a condition throws shares that budget and
+ * counts as refused: the command or syntax is left out of the player's completions, and running it
+ * is refused.
  * <p>
  * Only the host implements this interface: a plugin is handed one and calls it.
  */

@@ -1,0 +1,55 @@
+RUN-080 group CMD: command conditions that throw while the commands packet is built, map/filter arguments and
+arguments without a parser in the commands packet, the target selector arguments, argument error callbacks (branch
+prod/r080-CMD, base origin/main cb969826b7). Cases: docs/TEST.md TC-PROD-820 to TC-PROD-826; runs 7 and 8 re-run
+step 2 of TC-PROD-246 and TC-PROD-247.
+
+Commits:
+  782f48149d  code and tests
+  the next commit on the branch: docs/DESIGN-PROD.md v0.9.90, docs/TEST.md, this directory
+Line numbers below and in the cases are those of 782f48149d.
+
+Local Gradle (JDK 25, --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, one build
+at a time under the machine's lock for heavy work). Eight runs, none with a database or Redis. Each directory holds the
+JUnit XML reports of that run and summary.txt: one line per class, one per red test with the first frame in the test
+class and the frame in the test method, then the Gradle summary lines.
+
+"The four" = io.github.bearisbug.synaxis.command.CommandPacketTest, ArgumentTypeTest, CommandParseTest and
+CommandTreeAtSpawnIntegrationTest; "the host class" = io.github.bearisbug.synaxis.app.CommandsIntegrationTest.
+
+Run 1 -> 01-red/      (default mode)
+  :test --rerun --tests <the four> :server-app:test --rerun --tests <the host class> --continue
+  Code: the main sources of cb969826b7 (src/main, server-app/src/main, plugin-api/src/main) with the tests of
+  782f48149d. Root: 63 tests completed, 8 failed; host: 14 tests completed, 2 failed. The two new root tests that pass
+  here (CommandParseTest theDefaultExecutorRunsWhenNoSingleArgumentOwnsTheError and
+  aSenderTheSyntaxRefusesDoesNotGetTheCallback) pin what an argument callback must not change; before the fix no
+  callback was ever called. Run 3 shows their teeth (CommandParseTest :202 and :239).
+Run 2 -> 02-green/    (default mode)
+  :test --rerun --tests 'io.github.bearisbug.synaxis.command.*' --tests io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest
+  :testNamingCheck :server-app:test --rerun --tests <the host class> --tests io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest
+  :server-app:testNamingCheck --continue
+  Code: 782f48149d. BUILD SUCCESSFUL: root 25 classes 182 tests, host 2 classes 16 tests, 0 failed; both
+  testNamingCheck tasks pass.
+Run 3 -> 03-cp1/      (default mode)
+  Tasks of run 1. Code: 782f48149d with cp1.diff: PluginCommandsImpl.java:129, :134 (conditions) and :137 (argument
+  callbacks) not wrapped; GraphConverter.java:58 takes the shape from the wrapper; GraphConverter.java:187 writes a
+  null parser again; Argument.java:399 ArgumentFilter keeps only its own suggestion type; ArgumentEntity.java:172 and
+  :285 ignore the 15 vanilla arguments again (and any other name); CommandParserImpl.java:186 calls the callback
+  whatever the syntax condition says, :292 a sibling failing as deep leaves the failure in place, :600/:607 the
+  brute-force path keeps its first error. Root 63 tests completed, 7 failed; host 14 tests completed, 2 failed;
+  exactly the targeted tests.
+Run 4 -> 04-cp2/      (default mode)
+  Tasks of run 1. Code: 782f48149d with cp2.diff: GraphConverter.java:219 and CommandParserImpl.java:482 catch
+  IllegalCallerException instead; Argument.java:354 ArgumentMap keeps only its own suggestion type. Root 63 tests
+  completed, 3 failed; the host class passes: the host's own wrapping is enough for TC-PROD-820 and 825.
+Run 5 -> 05-strict/   tasks of run 1 with -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+  Code: 782f48149d. BUILD SUCCESSFUL: root 4 classes 63 tests, host 14 tests, 0 failed.
+Run 6 -> 06-grid/     as run 5 plus -Dsynaxis.thread-provider=grid
+  Code: 782f48149d. BUILD SUCCESSFUL: root 4 classes 63 tests, host 14 tests, 0 failed.
+Run 7 -> 07-cp246/    (default mode) :server-app:test --rerun --tests <the host class>
+  Code: 782f48149d with cp-246.diff (TC-PROD-246 step 2: PluginCommandsImpl.java:81 guard not called). 14 tests
+  completed, 3 failed: :406, :578, :613.
+Run 8 -> 08-cp247/    (default mode) :server-app:test --rerun --tests <the host class>
+  Code: 782f48149d with cp-247.diff (TC-PROD-247 step 2: PluginCommandsImpl.java:121 the completions are not sent
+  again). 14 tests completed, 3 failed, all in lastTree (:183): :420, :440, :573.
+
+After runs 1, 3, 4, 7 and 8: git checkout HEAD -- src server-app plugin-api; git status listed no source file.

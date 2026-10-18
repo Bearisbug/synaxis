@@ -1,0 +1,10 @@
+ArgumentTypeTest: tests=33 failures=0 errors=0 skipped=0 time=1.126
+CommandPacketTest: tests=15 failures=1 errors=0 skipped=0 time=1.073
+  RED aMappedOrFilteredArgumentKeepsTheSuggestionTypeOfTheArgumentItWraps() [org.opentest4j.AssertionFailedError] first frame in the class CommandPacketTest.java:254, in the test method CommandPacketTest.java:254: org.opentest4j.AssertionFailedError: map dropped the suggestion type ==> expected: <minecraft:summonable_entities> but was: <>
+CommandParseTest: tests=13 failures=1 errors=0 skipped=0 time=1.065
+  RED aCallbackThatThrowsCancelsTheCommand() [java.lang.IllegalStateException] first frame in the class CommandParseTest.java:212, in the test method CommandParseTest.java:218: java.lang.IllegalStateException: the callback failed
+CommandTreeAtSpawnIntegrationTest: tests=2 failures=1 errors=0 skipped=0 time=1.325
+  RED aConditionThatThrowsAtSpawnHidesItsNodeAndThePlayerSpawns(Env) [java.lang.IllegalStateException] first frame in the class CommandTreeAtSpawnIntegrationTest.java:42, in the test method CommandTreeAtSpawnIntegrationTest.java:50: java.lang.IllegalStateException: the condition of broken now
+CommandsIntegrationTest: tests=14 failures=0 errors=0 skipped=0 time=5.421
+63 tests completed, 3 failed
+BUILD FAILED in 20s

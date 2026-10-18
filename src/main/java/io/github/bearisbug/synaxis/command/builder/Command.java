@@ -41,7 +41,8 @@ import java.util.stream.Stream;
  * and the syntax be created/registered using {@link #addSyntax(CommandExecutor, Argument[])}.
  * <p>
  * If the command is executed with an incorrect syntax or without any argument, the default {@link CommandExecutor} will be called,
- * you can set it using {@link #setDefaultExecutor(CommandExecutor)}.
+ * you can set it using {@link #setDefaultExecutor(CommandExecutor)}. When an argument with an error callback fails, the callback is
+ * called in its place, as {@link Argument#setCallback(ArgumentCallback)} tells.
  * <p>
  * Before any syntax to be successfully executed the {@link CommandSender} needs to validated
  * the {@link CommandCondition} sets with {@link #setCondition(CommandCondition)} (ignored if null).
@@ -118,7 +119,8 @@ public class Command {
     /**
      * Sets an {@link ArgumentCallback}.
      * <p>
-     * The argument callback is called when there's an error in the argument.
+     * The argument callback is called when there's an error in the argument, instead of an executor;
+     * {@link Argument#setCallback(ArgumentCallback)} tells when exactly.
      *
      * @param callback the callback for the argument
      * @param argument the argument which get the callback

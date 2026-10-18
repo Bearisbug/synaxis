@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.CommandManagerTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-18T03:04:51.562Z" hostname="Mac.local" time="0.925">
+  <properties/>
+  <testcase name="testSharedArgumentSyntaxABFirst()" classname="io.github.bearisbug.synaxis.command.CommandManagerTest" time="0.018"/>
+  <testcase name="testCommandRegistration()" classname="io.github.bearisbug.synaxis.command.CommandManagerTest" time="0.001"/>
+  <testcase name="testSharedArgumentSyntaxAFirst()" classname="io.github.bearisbug.synaxis.command.CommandManagerTest" time="0.001"/>
+  <testcase name="testMixedCaseCommandRegistration()" classname="io.github.bearisbug.synaxis.command.CommandManagerTest" time="0.0"/>
+  <testcase name="testUnknownCommandCallback()" classname="io.github.bearisbug.synaxis.command.CommandManagerTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

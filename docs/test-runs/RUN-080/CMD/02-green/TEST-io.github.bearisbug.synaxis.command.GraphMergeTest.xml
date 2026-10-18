@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.GraphMergeTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-18T03:04:52.519Z" hostname="Mac.local" time="0.006">
+  <properties/>
+  <testcase name="commands()" classname="io.github.bearisbug.synaxis.command.GraphMergeTest" time="0.0"/>
+  <testcase name="empty()" classname="io.github.bearisbug.synaxis.command.GraphMergeTest" time="0.0"/>
+  <testcase name="literals()" classname="io.github.bearisbug.synaxis.command.GraphMergeTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

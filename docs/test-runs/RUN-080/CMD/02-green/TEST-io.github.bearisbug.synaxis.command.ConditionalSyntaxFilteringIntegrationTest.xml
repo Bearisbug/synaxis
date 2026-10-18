@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.ConditionalSyntaxFilteringIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-18T03:04:52.487Z" hostname="Mac.local" time="0.906">
+  <properties/>
+  <testcase name="conditionalSyntaxFalseFiltersEveryArgument(Env)" classname="io.github.bearisbug.synaxis.command.ConditionalSyntaxFilteringIntegrationTest" time="0.406"/>
+  <testcase name="sharedPrefixKeepsTheAllowedSyntax(Env)" classname="io.github.bearisbug.synaxis.command.ConditionalSyntaxFilteringIntegrationTest" time="0.224"/>
+  <testcase name="conditionalSyntaxTrueKeepsEveryArgument(Env)" classname="io.github.bearisbug.synaxis.command.ConditionalSyntaxFilteringIntegrationTest" time="0.155"/>
+  <testcase name="sharedPrefixKeepsTheShorterSyntaxExecutable(Env)" classname="io.github.bearisbug.synaxis.command.ConditionalSyntaxFilteringIntegrationTest" time="0.121"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

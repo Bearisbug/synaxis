@@ -1,0 +1,12 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginCommandsImpl.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginCommandsImpl.java
+index 2ce95f889d..a27a5d5b1c 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginCommandsImpl.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginCommandsImpl.java
+@@ -118,6 +118,7 @@ final class PluginCommandsImpl implements PluginCommands {
+ 
+     /** A player only learns which commands exist from the packet sent when it spawned. */
+     private void refreshCompletions() {
++        if (Boolean.getBoolean("proof.never"))
+         for (Player player : process.connection().getOnlinePlayers()) player.refreshCommands();
+     }
+ 

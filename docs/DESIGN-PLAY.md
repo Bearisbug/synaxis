@@ -806,15 +806,15 @@ erDiagram
 
     @ApiStatus.NonExtendable
     public interface PluginPlay {
-        /** 玩家所属 tick 线程或 tick 调度线程的串行段；调用方须是本进程的场景所有者、在线的玩家须已进入 PLAY，否则抛 IllegalStateException；
+        /** 玩家所属 tick 线程或 tick 调度线程的串行段，宿主校验调用线程；调用线程不对、调用方不是本进程的场景所有者、或在线的玩家还没进 PLAY，抛 IllegalStateException；
          *  连接已断开（含 PlayerDisconnectEvent 派发之前的那一段）时什么都不做（v0.19）；
-         *  编码后的 S2C_SCENE 超过 8 KiB 抛 IllegalArgumentException。都不抛时立即换掉服务端的场景（scene_seq 加 1），
+         *  编码后的 S2C_SCENE 超过 8 KiB、或某个动作 id 没有用 onAction 注册过，抛 IllegalArgumentException。都不抛时立即换掉服务端的场景（scene_seq 加 1），
          *  丢掉本插件排在前面还没发出的 HUD 改动并排一个 CLEAR_OWNER，S2C_SCENE 在本 tick 末发出（玩家有未完成的 move 时留到它完成之后）。 */
         void enter(Player player, SceneSpec scene);
         void leave(Player player);
         Optional<String> currentScene(Player player);
         /** 本插件命名空间下的 HUD；场景所有者设的随场景清除，叠加者设的跨场景保留。
-         *  set 时编码校验：单个 component 超过 2,048 B 或整个小部件超过 4,096 B 抛 IllegalArgumentException，什么都不改 */
+         *  set 时编码校验：单个 component 超过 2,048 B、整个小部件超过 4,096 B、或 PANEL 按钮的动作 id 没有注册过，抛 IllegalArgumentException，什么都不改 */
         Hud hud(Player player);
         /** 动作 id 自动加 <plugin_id>: 前缀；只能在 onEnable 里注册；重复注册抛 IllegalStateException；插件被拆掉时宿主收回 */
         void onAction(String actionId, ActionHandler handler);
@@ -858,11 +858,12 @@ erDiagram
 
   - 记录类的校验：上面注释里的上限在紧凑构造器里查，违反抛 `IllegalArgumentException`；`ttl`、`remaining` 不得为负，也不得超过 `Integer.MAX_VALUE` 毫秒（线上是 varint）；列表在构造时拷贝成不可变列表。要看宿主状态的校验留在宿主：编码后的大小（§6.4.3）、调用方是不是场景所有者、id 的命名空间。
   - id 的命名空间：场景 id、动作 id、`PANEL` 按钮的动作 id 都是 `<plugin_id>:<name>`，写法同 `PluginChannels`：可以带也可以不带本插件的前缀，宿主补上；带别的插件的命名空间抛 `IllegalArgumentException`。
+  - 动作 id 要先注册：`enter` 的每个动作键、`hud().set` 的每个 `PANEL` 按钮，补上前缀之后在动作注册表里查不到就抛 `IllegalArgumentException`，消息写出完整 id 与「在 `onEnable` 里用 `onAction` 注册」，玩家的场景与 HUD 不变；不另比插件 id，命名空间已经保证是本插件的。动作只能在 `onEnable` 里注册，`enter` 与 `set` 只对已进 PLAY 的玩家生效，那时注册表已经定型，提前校验没有时序问题。分派时仍查一次注册表：插件被收回之后旧场景可能还在，查不到照旧回 `UNKNOWN_ACTION`。
   - 之后各波加的部分，都是只由宿主实现的接口加方法或新类型（兼容性见本节末「演进与弃用」）：
     - W1：`PluginPlay#caps(UUID connectionId)`，任意线程可调，准入回调里也能用（按 `connectionId` 查，`AdmissionRequest` 不用改）；记录 `ClientCaps(String modBuild, Map<String, Integer> granted)`，`has(channel, minVersion)` 判 `granted.getOrDefault(channel, 0) >= minVersion`。
     - W2：`PluginPlay#notice(Player, Notice)` 与 `Notice(Style style, Component text, Duration duration)`（`Style` 是 `INFO`、`SUCCESS`、`WARNING`、`ALERT`）；`Widget` 加 `Bar(id, slot, order, label, float value, float ratePerSecond, int argb)`、`Counter(id, slot, order, Key icon, long value, label)`、`Marker(id, slot, order, label, Vec target)`、`Prompt(id, slot, order, label, String actionId)`；`enter` 加相机降级：相机或光标超出该连接被授予的 `synaxis:play` 版本时降为 `Vanilla` / `LOCKED`，`play_scene_entered` 记 `downgraded=true`。
     - 6b（`synaxis:play` v3）：`CameraSpec.RtsPerspective(float minX, float minZ, float maxX, float maxZ, float minZoom, float maxZoom, float pitchDegrees)` 与 `CursorMode.FREE`。
-  - 线程：`enter`、`leave`、`currentScene`、`hud()` 的写方法与 W2 的 `notice` 在两处调用：玩家所属 tick 线程，或 tick 调度线程的串行段（`scheduleTask` 的任务，`docs/PLUGINS.md` §10）。串行段与各 tick 线程不同时跑，宿主在玩家的 `PlayerTickEvent` 里读同一份状态，所以两处都不用加锁；这条与 tick 线程数无关。这里说的是宿主持有的场景层状态，不含实体：串行段改已分到 tick 线程的实体照样要经 `runOn` 或 `Acquirable#sync`（`docs/PLUGINS.md` §10 `scheduleTask` 一行）。其余线程（虚拟线程、别的玩家的 tick 线程）用 `scheduler().runOn(对方, …)` 投递。
+  - 线程：`enter`、`leave`、`currentScene`、`hud()` 的写方法与 W2 的 `notice` 在两处调用：玩家所属 tick 线程，或 tick 调度线程的串行段（`scheduleTask` 的任务，`docs/PLUGINS.md` §10）。串行段与各 tick 线程不同时跑，宿主在玩家的 `PlayerTickEvent` 里读同一份状态，所以两处都不用加锁；这条与 tick 线程数无关。这里说的是宿主持有的场景层状态，不含实体：串行段改已分到 tick 线程的实体照样要经 `runOn` 或 `Acquirable#sync`（`docs/PLUGINS.md` §10 `scheduleTask` 一行）。其余线程（虚拟线程、别的玩家的 tick 线程）用 `scheduler().runOn(对方, …)` 投递。宿主校验这一条：`enter`、`leave` 与 `hud()` 的 `set`、`remove`、`clear` 在入口判调用线程是否持有这名玩家（`acquirable().isOwned()`）或是 `TickSchedulerThread`，都不是时抛 `IllegalStateException`，消息写出 `connection_id`、当前线程与「用 `runOn` 投递」，什么都不改；只读的 `currentScene` 与任意线程可调的 `SceneService#holdUntil` 不判。场景层每个连接的状态不加锁、在玩家的 `PlayerTickEvent` 里读，别的线程写进去会与出口并发，丢掉已经推进了序号的场景头。
   - 收回：插件被拆掉时宿主注销它的动作与 `ChannelSpec`。今天插件只在两个时点被拆掉：`onEnable` 抛异常（bind 之前，还没有玩家）与停机（玩家已保存并踢出之后），所以不会遇到「玩家身上还挂着被拆插件的场景与小部件」。运行期禁用插件不存在（`Main.java:341-344`）；补回 `docs/DESIGN-M2.md` §28.3 ① 的熔断时，要同时补上「场景所有者被禁用时各玩家转为无场景、清掉它的小部件」（§11.2）。
 
 - **`API-PLAY-006` 托管玩法实例（`:plugin-api` 新包 `plugin.instance`，`PluginContext#instances()`，S1）** — 实现 `REQ-PLAY-006`、`REQ-PLAY-017`
@@ -896,7 +897,9 @@ erDiagram
     public interface ManagedInstance {
         String id(); UUID instanceId(); InstanceContainer instance();
         State state(); @Nullable EndCause endCause(); Set<Player> players();
-        /** 任意线程可调。在玩家所属线程上执行 setInstance；实例不在 OPEN / RUNNING 时以 false 完成；future 在哪条线程上完成见下面「实现」一条 */
+        Duration settleTimeout();                       // spec 的 settleTimeout；Round 构造时据此校验结算时长
+        /** 任意线程可调。在玩家所属线程上执行 setInstance；只以 true / false 完成，不会异常完成：实例不在 OPEN / RUNNING、玩家已走、
+         *  被事件监听器拒之门外、换实例被后一次取代或引擎报错时得 false；future 在哪条线程上完成见下面「实现」一条 */
         CompletableFuture<Boolean> move(Player player, Pos at);
         void start();                                   // OPEN → RUNNING
         void cancel(Function<Player, Exit> exit);       // OPEN → CLOSED，cause=CANCELLED
@@ -928,12 +931,12 @@ erDiagram
   - 实现（S1，组 I，`server-app` 包 `app.instance`）：`InstanceRegistry` 按插件 id 分出 `PluginInstancesImpl`（同一个 id 两次 `forPlugin` 拿到同一个视图），实例是 `ManagedInstanceImpl`，撤离是 `Evacuation`，六种台账行由 `InstanceLedger` 写。转移的时点见 §11.1 迁移表下的「转移的时点」。
     - `create` 的调用线程等于构造时传入的启动线程、且进程还没开始跑（`ServerProcess#isAlive` 为 false，即 bind 之前；进程停了之后它同样是 false，停机序列在置停之前先跑插件收回（`ServerProcessImpl` 的 `runShutdownTasks`，其中有宿主的 `disableAll`），所以那时 `create` 先被下面「收回之后」那条拒掉）时就地准备，是 `TickSchedulerThread` 走 tick 之外的路径，其余线程抛 `IllegalStateException`，bind 之后的启动线程也算其余线程；插件被收回之后再 `create` 同样抛 `IllegalStateException`（§11.1 的 `plugin.tornDown`：这时建的实例没有谁会再强制关闭）；维度类型字符串不是合法的 key 或没注册抛 `IllegalArgumentException`，两种拒绝都在建任何东西之前。维度名的序号按 `<plugin_id>:<name>` 分别从 1 数起（`rush:arena_1`、`rush:arena_2`、`rush:lobby_1`）。
     - 宿主给插件的生成器包一层：`PREPARING` 期间生成器抛的异常记下来，不交给进程的异常处理器。引擎在 `InstanceContainer#generateChunk` 里把生成器的异常交给异常处理器、区块照常算载入完成（`instance/InstanceContainer.java:544`），不包这一层的话宿主看不到失败。区块到齐时看到有记下的异常就转 `CLOSED`（`prepare_failed`），写一行 ERROR，带 `plugin_id` 与实例 id。实例离开 `PREPARING` 之后（插件开了自动载入，或显式 `loadChunk` 地图外的区块），这一层把异常原样抛回引擎，照引擎原来的做法交给异常处理器。
-    - 日志：准备失败的 ERROR、结算超时的 WARN、出口给不出的 ERROR 各走一个 `LogBudget`，按插件分：每 10 s 至多写一行，行尾带这段时间的次数，第一次总是写出；每次失败照样各有一行 `play_instance_closed`。宿主的日志规则（`ClientDrivenLogArchitectureTest`）不许 `app` 包下名单之外的类直接写 WARN、ERROR；按插件分预算，一个插件的实例反复失败也盖不住别的插件的失败。
+    - 日志：准备失败的 ERROR、结算超时的 WARN、出口给不出的 ERROR、`move` 失败的 ERROR（带 `plugin_id`、实例 id 与 `connection_id`）各走一个 `LogBudget`，按插件分：每 10 s 至多写一行，行尾带这段时间的次数，第一次总是写出；每次失败照样各有一行 `play_instance_closed`。宿主的日志规则（`ClientDrivenLogArchitectureTest`）不许 `app` 包下名单之外的类直接写 WARN、ERROR；按插件分预算，一个插件的实例反复失败也盖不住别的插件的失败。
     - 就地路径对区块到齐做至多 30 s 的有界等待（真实时间，同 `Match.java:40`），然后在调用线程上 `relight`、关自动载入、注册、转 `OPEN`。tick 之外的路径把 `relight` 接在区块到齐之后、跑在一条新的虚拟线程上；宿主在 tick 调度线程上每 tick 的串行段看一次：做完了就注册并转 `OPEN`，失败了、或按构造时注入的单调时钟已过 30 s 就转 `CLOSED`（`prepare_failed`），已经不是 `PREPARING`（被停机丢弃）就不再看、不注册。注册先于交换：交换失败（注册途中被别的线程强制关闭）时当场注销，所以不论先后，都不会留下一个注册着的 `CLOSED` 实例。
-    - 撤离：取实例里在线玩家的快照，对每人调 `exit`，`ToInstance` 走目标的 `move`，`Kick` 以给定键断线，连接当场下线；`exit` 抛异常（`Error` 与受检异常也算，v0.12）、返回 null、或目标的 `move` 抛异常时按 `synaxis:match-unavailable` 踢出并记 ERROR，请求本身照常成功。每名玩家至多拿一次出口。调用线程是启动线程或 tick 调度线程、实例里已没有在线玩家、也没有在途的 `move` 时当场注销；否则每 tick 在串行段看一次，条件满足就注销。到撤离时限（`InstanceRegistry.Durations`，默认 5 s，按注入的单调时钟）不再等：实例里剩下的人与 `move` 还在途的人都以 `synaxis:match-unavailable` 踢出，再注销。
-    - 在途的 `move`：`move` 在玩家线程上判状态时把这名玩家记为在途，落地（`setInstance` 完成）时销掉；这一判一记与关闭时的交换、强制关闭取同一把锁（实例对象的监视器）。引擎先把玩家放进实例的玩家集合，`setInstance` 才完成，所以关闭时的快照可能已收进一名 `move` 还没落地的玩家，他落地时再报到一次，撤离按玩家去重。撤离等在途的 `move` 落地，至多等到撤离时限。收尾（到点、或强制关闭）先在锁里取在途玩家的快照，再取实例里在线玩家的快照，两份一并踢出后注销：落地早于第一份快照的玩家已在实例里、进了第二份，晚于的进了第一份，所以注销时实例里没有在线玩家，引擎不会拒绝注销（`instance/InstanceManager.java:79-80`）。落地时实例已经关闭的，这名玩家同样拿到 `exit`、计入 `players`，`move` 以 false 完成、不写 `moved`；撤离已经收尾的，落地的玩家以 `synaxis:match-unavailable` 踢出；落地晚于注销的，`setInstance` 因实例未注册而失败（`entity/Entity.java:1210`），玩家留在原处（到点时已被踢下线），`move` 同样以 false 完成。插件在实例所属的 tick 线程上关闭、同时别的玩家正被移进来，靠这一条不会留下一个在线玩家在已注销的实例里。S1 的实例关着自动载入，地图区块在注册前已全部载入，`setInstance` 走同步路径、在调用里就落地；区块要现载的异步路径只在插件打开自动载入时出现。
+    - 撤离：取实例里在线玩家的快照，对每人调 `exit`，`ToInstance` 走目标的 `move`，`Kick` 以给定键断线，连接当场下线；`exit` 抛异常（`Error` 与受检异常也算，v0.12）、返回 null、或目标的 `move` 以 false 完成时按 `synaxis:match-unavailable` 踢出并记 ERROR，请求本身照常成功。`move` 以 false 完成的（目标不在 `OPEN` / `RUNNING`、被监听器拒之门外、引擎报错）在它完成的那条线程上当场踢出，不等撤离时限，ERROR 与给不出出口共用一个预算、带目标的 id 与状态；这时玩家已拿到出口，计入 `evacuated`。玩家已下线、或已落进另一个正在关闭的实例（那边会再给他一个出口）的不踢。每名玩家至多拿一次出口。调用线程是启动线程或 tick 调度线程、实例里已没有在线玩家、也没有在途的 `move` 时当场注销；否则每 tick 在串行段看一次，条件满足就注销。到撤离时限（`InstanceRegistry.Durations`，默认 5 s，按注入的单调时钟）不再等：实例里剩下的人与 `move` 还在途的人都以 `synaxis:match-unavailable` 踢出，再注销。
+    - 在途的 `move`：`move` 在玩家线程上判状态时把这名玩家记为在途，落地（`setInstance` 完成）时销掉；这一判一记与关闭时的交换、强制关闭取同一把锁（实例对象的监视器）。引擎先把玩家放进实例的玩家集合，`setInstance` 才完成，所以关闭时的快照可能已收进一名 `move` 还没落地的玩家，他落地时再报到一次，撤离按玩家去重。撤离等在途的 `move` 落地，至多等到撤离时限。收尾（到点、或强制关闭）先在锁里取在途玩家的快照，再取实例里在线玩家的快照，两份一并踢出后注销：落地早于第一份快照的玩家已在实例里、进了第二份，晚于的进了第一份，所以注销时实例里没有在线玩家，引擎不会拒绝注销（`instance/InstanceManager.java:79-80`）。落地（`setInstance` 完成且玩家确在本实例里）时实例已经关闭的，这名玩家同样拿到 `exit`、计入 `players`，`move` 以 false 完成、不写 `moved`；撤离已经收尾的，落地的玩家以 `synaxis:match-unavailable` 踢出；落地晚于注销的，`setInstance` 因实例未注册而失败（`entity/Entity.java:1210`），玩家留在原处（到点时已被踢下线），`move` 同样以 false 完成。插件在实例所属的 tick 线程上关闭、同时别的玩家正被移进来，靠这一条不会留下一个在线玩家在已注销的实例里。S1 的实例关着自动载入，地图区块在注册前已全部载入，`setInstance` 走同步路径、在调用里就落地；区块要现载的异步路径只在插件打开自动载入时出现。
     - 台账属性：`instance_id` 是引擎实例的 UUID，`kind_id` 是 `<plugin_id>:<name>`；`players` 是转移那一刻实例里在线的玩家数；`duration_ms` 从 `create` 起算，用注入的单调时钟；`opened` 的 `prepare_ms` 也按这个时钟算；tick 之外的路径要等串行段看到准备做完才转 `OPEN`，所以这条路径的读数按 tick 量化：等于 `create` 到准备做完之后第一个串行段的间隔，tick 50 ms 时是 50·k ms 减去 `create` 晚于它那个 tick 起点的零头，只说明准备用了不到 k 个 tick，不是生成加光照本身的耗时；`closed` 的 `players` 是拿到出口的人数（关闭那一刻在线的，加上之后落地的在途 `move`）加上到点时 `move` 还在途、被踢出的人数，`evacuated` 是其中在撤离时限内离开的人数，`kicked` 是到点被踢出的人数（实例里剩下的与 `move` 还在途的），两者之和等于 `players`；`moved` 的 `from_instance_id` 是玩家原先所在实例的 UUID，`connection_id` 照 §14。
-    - `move` 先调 `SceneService#holdUntil(player, future)`，再排进玩家的调度器、在玩家所属 tick 线程的下一 tick 执行 `setInstance`；玩家在那之前下线时这个任务不会再跑，由 tick 调度线程每 tick 查一次、以 false 完成。玩家已经在这个实例里时以实例此刻是否收人完成（`OPEN`、`RUNNING` 为 true），不写 `moved`。future 完成的线程：实例此刻不收人时在调用 `move` 的线程上当场以 false 完成；玩家下线的在 tick 调度线程上；其余在 `setInstance` 完成的线程上，同步路径是玩家所属 tick 线程，异步路径是 tick 调度线程（引擎经玩家的 acquirable 执行，`entity/Player.java:772-775`），`:plugin-api` 的 `ManagedInstance#move` Javadoc 写的是同样三种。`instance()` 与 `State.CLOSED` 的 Javadoc 写明：转 `CLOSED` 之后实例仍注册着，撤离完才注销，至多撤离时限。
+    - `move` 先调 `SceneService#holdUntil(player, future)`，再排进玩家的调度器、在玩家所属 tick 线程的下一 tick 执行 `setInstance`；玩家在那之前下线时这个任务不会再跑，由 tick 调度线程每 tick 查一次、以 false 完成。玩家已经在这个实例里时以实例此刻是否收人完成（`OPEN`、`RUNNING` 为 true），不写 `moved`。future 完成的线程：实例此刻不收人时在调用 `move` 的线程上当场以 false 完成；玩家下线的在 tick 调度线程上；其余在 `setInstance` 完成的线程上，同步路径是玩家所属 tick 线程，异步路径是 tick 调度线程（引擎经玩家的 acquirable 执行，`entity/Player.java:772-775`），`:plugin-api` 的 `ManagedInstance#move` Javadoc 写的是同样三种。`setInstance` 完成之后玩家要确在本实例里才算移入：监听器取消了 `AddEntityToInstanceEvent` 时引擎把玩家留在原处，future 照样正常完成，宿主按这一判以 false 完成、不写 `moved`；`setInstance` 失败同样以 false 完成，失败是 `CancellationException`（换实例被后一次调用取代、玩家途中被移除）的不记日志，其余记一行 ERROR（上面「日志」一条的预算）。所以 `move` 只以 true / false 完成，不会异常完成。`instance()` 与 `State.CLOSED` 的 Javadoc 写明：转 `CLOSED` 之后实例仍注册着，撤离完才注销，至多撤离时限。
     - 判状态在 `end` 之前、落地在 `end` 之后的 `move` 照常落进 `ENDING` 的实例、以 true 完成，这名玩家随后由 `settled` 或结算超时的出口带走；§16「`move` 进一个刚转 `ENDING` 的实例」以 false 完成的，是判状态时已经 `ENDING` 的那种。
     - 插件的四个请求不校验调用线程：交换是原子的，而注销一律留给启动线程或 tick 调度线程做。
     - 测试用的暂停点（v0.12）：`InstanceRegistry` 有一个包内可见的 `pauseWith(Consumer<Window>)`，五个 `Window` 各在一处两步之间调 `reached`：`move` 判完状态、记为在途之前（`ADMIT`，锁内）；落地从在途里销掉之后、交给撤离之前（`LANDED`）；关闭的交换建好撤离之后、发布之前（`CLOSE`，锁内）；收尾取完在途快照之后、取实例快照之前（`FINISH`）；注册之后、转 `OPEN` 之前（`OPEN`）。不设暂停时什么都不做。测试用它让一条线程停在两步之间、再把另一条线程的动作送进来，给上面「在途的 `move`」「注册先于交换」与 §16 强制关闭那几条的互斥与先后做确定性反证（`docs/TEST.md` `TC-PLAY-130`～`TC-PLAY-132`）。
@@ -949,11 +952,16 @@ erDiagram
 
     ```java
     public abstract class Round {
-        /** countdown、result 不得为负，length 大于 0，否则抛 IllegalArgumentException；logger 记回调兜底的那一行 ERROR，插件传 context.logger() */
+        /** countdown、result 不得为负，length 大于 0，result 加 1 s 须小于 arena.settleTimeout()，否则抛 IllegalArgumentException（最后一条的消息写出两个值，
+         *  并提示用 InstanceSpec 的规范构造器给更长的 settleTimeout：结算超时先到时宿主按 fallbackExit 关闭，四参数 spec 的 fallbackExit 是一律踢人）；
+         *  logger 记回调兜底的那一行 ERROR，插件传 context.logger() */
         protected Round(ManagedInstance arena, Duration countdown, Duration length, Duration result, LongSupplier nanoClock, Logger logger);
+        /** 只读。实例的转移都由 Round 请求：一局靠 decided() 返回原因结束，没开局就放弃调 cancel()；子类自己调 arena() 的 start、end、cancel、settled
+         *  会让本局与实例脱节（不调 onResult，或 start 处抛异常） */
         public final ManagedInstance arena();
         /** 插件在 scheduleTask(…, tick(1)) 里驱动：PREPARING 时不做事；OPEN 时倒数 countdown（可以是 0），倒数完且 readyToStart() 为真才 start()；
-         *  RUNNING 时 onTick 与 decided()，到时限 end(TIME_LIMIT)；ENDING 展示 result 时长后、或实例里已经没人时 settled(exitOf) */
+         *  RUNNING 时 onTick 与 decided()，到时限 end(TIME_LIMIT)；ENDING 展示 result 时长后、或实例里已经没人时 settled(exitOf)；
+         *  实例 CLOSED 之后本局结束，调用方丢掉它 */
         public final void tick();
         /** 默认 true。玩家由插件在 OPEN 期间移入时覆盖它，在全部 move 完成之后才返回 true，免得第一个 RUNNING tick 读到 0 人就以 EMPTY 结束 */
         protected boolean readyToStart() { return true; }
@@ -963,6 +971,9 @@ erDiagram
         protected abstract @Nullable EndCause decided();     // 非空即提前结束（OBJECTIVE / EMPTY）
         protected abstract void onResult(EndCause cause);    // 结算、开面板；ERROR 时不调用
         protected abstract Exit exitOf(Player player);
+        /** 放弃一局：cancel(exitOf)（带兜底），只在实例 OPEN 时调，即 onCountdown 或 readyToStart 里；返回时实例已是 CLOSED，tick 不再动它；
+         *  调过之后回调再抛异常，按回调失败记一行 ERROR，不再请求宿主；RUNNING 时调由宿主抛 IllegalStateException，在回调里抛出按回调失败收局 */
+        protected final void cancel();
     }
     public final class LocalQueue<P> {               // 内部加锁，任意线程可调；同一个对象至多在队里一次，按入队顺序排
         public boolean join(P player);               // 已在队里时返回 false
@@ -986,8 +997,8 @@ erDiagram
     }
     ```
 
-  - 回调兜底：`Round` 对每个抽象方法与 `readyToStart` 的调用自己 try/catch（`RuntimeException`），抛异常时 `OPEN` 中 `cancel(exitOf)`、`RUNNING` 中 `end(ERROR)` 后立即 `settled(exitOf)`、`ENDING` 中（`onResult` 抛）立即 `settled(exitOf)`，不结算、玩家照 `exitOf` 送回，在构造给的日志器上记一行 ERROR（带实例 id 与回调名）；避免事件包装层只记日志、本局卡在当前阶段。交给宿主的 `exit` 也包了一层：`exitOf` 抛异常时这名玩家按 `Kick(synaxis:match-unavailable)` 撤离，同样记一行。`decided()` 返回 `OBJECTIVE`、`TIME_LIMIT`、`EMPTY`、`ERROR` 以外的原因按回调失败处理；返回 `ERROR` 时 `end(ERROR)` 后立即 `settled`，不调 `onResult`。
-  - 只请求一次：`Round` 请求过 `cancel` 或 `settled` 之后，`tick` 不再动这个实例。宿主撤离期间实例可能还没转 `CLOSED`，再请求一次会抛 `IllegalStateException`。
+  - 回调兜底：`Round` 对每个抽象方法与 `readyToStart` 的调用自己 try/catch（`Throwable`，`Error` 与受检异常也算），抛异常时 `OPEN` 中 `cancel(exitOf)`（回调自己已经 `cancel()`、实例已是 `CLOSED` 时不再请求）、`RUNNING` 中 `end(ERROR)` 后立即 `settled(exitOf)`、`ENDING` 中（`onResult` 抛）立即 `settled(exitOf)`，不结算、玩家照 `exitOf` 送回，在构造给的日志器上记一行 ERROR（带实例 id 与回调名）；避免事件包装层只记日志、本局卡在当前阶段。交给宿主的 `exit` 也包了一层：`exitOf` 抛异常时这名玩家按 `Kick(synaxis:match-unavailable)` 撤离，同样记一行。`decided()` 返回 `OBJECTIVE`、`TIME_LIMIT`、`EMPTY`、`ERROR` 以外的原因按回调失败处理；返回 `ERROR` 时 `end(ERROR)` 后立即 `settled`，不调 `onResult`。
+  - 只请求一次：宿主在 `cancel`、`settled` 交换成功的那一刻就把实例转成 `CLOSED`，撤离与注销随后做完（§11.1「转移的时点」），请求返回时状态已是 `CLOSED`；`Round` 下一次 `tick` 落进 `CLOSED` 分支什么都不做，所以不另设标志也只请求一次。
   - `LocalQueue` 是泛型：样板里是 `LocalQueue<Player>`，单元测试不必起服务端造玩家。
   - 活动快照：`EventCalendar#active` 在 `onStart` 里读一次存进局状态，到结束不变；要实时生效的玩法自己每 tick 读。
   - `EventCalendar` 在 `onEnable` 里读文件（启动线程，允许阻塞）；局中不读文件。
@@ -1595,6 +1606,18 @@ flowchart LR
   When x 调 play().enter(player, scene)
   Then 抛 IllegalStateException，玩家场景不变
 
+场景: 别的线程调场景层 (REQ-PLAY-003)
+  Given 玩家已分配给一条 tick 线程，场景是 rush:round
+  When 插件在虚拟线程（比如 runAsync 的回调）里调 enter、leave 或 hud() 的 set、remove、clear
+  Then 每次都抛 IllegalStateException，消息写出 connection_id 并提示用 runOn，场景与 HUD 不变，客户端什么都没收到
+  And 经 runOn 投到玩家所属 tick 线程的同一个 set 照常在 tick 末发出
+
+场景: 场景与面板引用没注册的动作 (REQ-PLAY-005)
+  Given rush 在 onEnable 里只注册了 queue 与 back
+  When 场景所有者 enter 一个动作键是 queu 的场景，再 set 一个按钮是 bakc 的 PANEL
+  Then 两次都抛 IllegalArgumentException，消息分别点名 rush:queu、rush:bakc
+  And 玩家的场景与 HUD 不变，客户端什么都没收到，台账不记 play_scene_entered
+
 场景: 刚断线的连接 enter 什么都不做 (REQ-PLAY-003)
   Given 玩家在 rush:lobby，连接刚断开，PlayerDisconnectEvent 还没派发
   When 场景所有者调 play().enter(player, round)
@@ -1675,6 +1698,22 @@ flowchart LR
   Then 宿主按 fallbackExit 撤离并注销，记一行 WARN
   And 台账 play_instance_closed 带 settle_timeout=true，这一局不进局正常结束率的分子
 
+场景: 被监听器拒之门外的 move (REQ-PLAY-006)
+  Given 托管实例上有一个监听器对玩家取消 AddEntityToInstanceEvent
+  When 插件把一名大厅里的玩家 move 进去
+  Then future 以 false 完成，玩家仍在大厅，台账没有 play_instance_moved
+
+场景: 引擎报错的 move (REQ-PLAY-006)
+  Given 托管实例开了自动载入，落点所在的区块载入失败
+  When 插件把玩家 move 到那里
+  Then future 以 false 完成而不是异常完成，玩家留在原处，记一行带 plugin_id、实例 id 与 connection_id 的 ERROR
+
+场景: 出口指向不收人的实例 (REQ-PLAY-006)
+  Given 实例 arena 里有一名玩家，实例 gone 已经 cancel
+  When 插件 cancel arena，出口是 ToInstance(gone)
+  Then 玩家当场以 synaxis:match-unavailable 断开，不等撤离时限，记一行点名 gone 与其状态的 ERROR
+  And arena 当场注销，台账 play_instance_closed 的 players=1、evacuated=1、kicked=0
+
 场景: 非法转移 (REQ-PLAY-006)
   Given 实例 state=OPEN
   When 插件调 end(OBJECTIVE)
@@ -1700,6 +1739,19 @@ flowchart LR
   Given RUNNING 的局，onTick 抛异常
   When Round.tick 运行
   Then 局以 cause=error 结束并立即关闭，玩家回大厅，不写统计
+
+场景: 结算时长不短于结算超时 (REQ-PLAY-007)
+  Given 实例用四参数 InstanceSpec 建，settleTimeout=30 s
+  When 插件以 result=29 s 或 60 s 构造 Round
+  Then 抛 IllegalArgumentException，消息写出两个值并提示用规范构造器给更长的 settleTimeout
+  And result=10 s 照常构造；settleTimeout=75 s 时 result=60 s 也照常构造
+
+场景: 没开局就放弃 (REQ-PLAY-007)
+  Given OPEN 的局，readyToStart 里调 cancel() 后返回 false
+  When Round.tick 连跑三次
+  Then 宿主只收到一次 cancel，出口是 Round 的，readyToStart 只问了一次
+  And onCountdown 里调 cancel() 之后又抛异常时，宿主同样只收到一次 cancel，记一行回调失败的 ERROR，tick 不抛异常
+  And 在 onTick 里调 cancel() 时宿主拒绝，本局按回调失败以 cause=error 收局
 
 场景: 活动开局快照 (REQ-PLAY-007)
   Given 活动 rush:surge 的窗口在局开始后 10 s 结束

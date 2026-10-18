@@ -1,9 +1,15 @@
 package io.github.bearisbug.synaxis.app.instance;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.PlayerSpawnEvent;
 import io.github.bearisbug.synaxis.event.instance.AddEntityToInstanceEvent;
+import io.github.bearisbug.synaxis.instance.Chunk;
+import io.github.bearisbug.synaxis.instance.ChunkLoader;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.packet.server.common.DisconnectPacket;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
@@ -23,6 +29,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.management.LockInfo;
@@ -69,6 +76,8 @@ class EvacuationIntegrationTest {
 
     private static final Duration EVACUATION = Duration.ofSeconds(5);
     private static final Duration TEN_SECONDS = Duration.ofSeconds(10);
+    /** Far off a map of radius 1: landing there loads chunks the map does not have. */
+    private static final Pos OFF_THE_MAP = new Pos(1000.5, InstanceFixture.FLOOR, 1000.5);
 
     private final InstanceFixture.Ledger ledger = new InstanceFixture.Ledger();
     private final AtomicLong clock = new AtomicLong();
@@ -138,34 +147,178 @@ class EvacuationIntegrationTest {
     void whoeverIsStillInsideWhenTheEvacuationRunsOutIsKicked(Env env) {
         final PluginInstances instances = instances(env);
         final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final CountDownLatch release = new CountDownLatch(1);
+        try {
+            final ManagedInstance far = instances.create(new InstanceSpec("far", 1,
+                    InstanceFixture.stuckBeyond(1, release), SPAWN));
+            far.instance().enableAutoChunkLoad(true);
+            final TestConnection connection = env.createConnection();
+            final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
+            final Player player = joinInto(env, arena, connection);
+            arena.start();
+            arena.end(EndCause.TIME_LIMIT);
+
+            // The move of the exit waits for the chunks off the map, so the player stays where they are
+            arena.settled(_ -> new Exit.ToInstance(far, SPAWN));
+            for (int tick = 0; tick < 5; tick++) env.tick();
+            clock.addAndGet(EVACUATION.toNanos() - 1);
+            env.tick();
+            assertTrue(((ManagedInstanceImpl) far).movesPending(), "the move of the exit did not wait for the chunks");
+            assertTrue(arena.instance().isRegistered(), "unregistered before the evacuation time was up");
+            assertTrue(player.isOnline(), "kicked before the evacuation time was up");
+
+            clock.addAndGet(1);
+            env.tick();
+
+            assertFalse(player.isOnline());
+            assertFalse(arena.instance().isRegistered());
+            assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(disconnects));
+            final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
+            assertEquals("time_limit", closed.get("cause"));
+            assertEquals(1, closed.get("players"));
+            assertEquals(0, closed.get("evacuated"));
+            assertEquals(1, closed.get("kicked"));
+            assertEquals(false, closed.get("settle_timeout"));
+
+            // The move of the exit, of a player gone, then lands in an instance no longer registered and fails
+            far.cancel(_ -> new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE));
+            clock.addAndGet(EVACUATION.toNanos());
+            env.tick();
+            assertFalse(far.instance().isRegistered());
+            release.countDown();
+            assertTrue(env.tickWhile(() -> ((ManagedInstanceImpl) far).movesPending(), TEN_SECONDS),
+                    "the move of the exit never completed");
+        } finally {
+            release.countDown();
+        }
+    }
+
+    /**
+     * {@code API-PLAY-006} 撤离: an exit into an instance that takes nobody, here one cancelled before, kicks
+     * the player with match-unavailable as soon as its move completes with false, with one ERROR line naming
+     * the exit, instead of leaving them inside until the evacuation time runs out. The player got their exit,
+     * so they count as evacuated.
+     */
+    @Test
+    void anExitIntoAnInstanceThatTakesNobodyKicksThePlayerAtOnce(Env env) {
+        final PluginInstances instances = instances(env);
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
         final ManagedInstance gone = instances.create(new InstanceSpec("gone", 0, FLAT, SPAWN));
         gone.cancel(_ -> new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE));
         final TestConnection connection = env.createConnection();
         final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
         final Player player = joinInto(env, arena, connection);
-        arena.start();
-        arena.end(EndCause.TIME_LIMIT);
+        final ListAppender<ILoggingEvent> lines = listen(Evacuation.class);
+        try {
+            arena.cancel(_ -> new Exit.ToInstance(gone, SPAWN));
 
-        // The exit is an instance that refuses the move, so the player stays where they are
-        arena.settled(_ -> new Exit.ToInstance(gone, SPAWN));
-        for (int tick = 0; tick < 5; tick++) env.tick();
-        clock.addAndGet(EVACUATION.toNanos() - 1);
-        env.tick();
-        assertTrue(arena.instance().isRegistered(), "unregistered before the evacuation time was up");
-        assertTrue(player.isOnline(), "kicked before the evacuation time was up");
+            assertFalse(player.isOnline(), "the player was left inside until the evacuation time ran out");
+            assertFalse(arena.instance().isRegistered(), "nobody was left, the startup thread unregisters at once");
+            assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(disconnects));
+            final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
+            assertEquals(1, closed.get("players"));
+            assertEquals(1, closed.get("evacuated"));
+            assertEquals(0, closed.get("kicked"));
+            final List<ILoggingEvent> errors = lines.list.stream().filter(line -> line.getLevel() == Level.ERROR).toList();
+            assertEquals(1, errors.size(), errors.toString());
+            assertTrue(errors.getFirst().getFormattedMessage().contains("instance=" + arena.id()),
+                    errors.getFirst().getFormattedMessage());
+            assertEquals("the exit " + gone.id() + " took nobody, it is CLOSED", errors.getFirst().getThrowableProxy().getMessage());
+        } finally {
+            stopListening(Evacuation.class, lines);
+        }
+    }
 
-        clock.addAndGet(1);
-        env.tick();
+    /**
+     * {@code API-PLAY-006} 实现: a listener of {@code AddEntityToInstanceEvent} that keeps the player out. The
+     * move completes with false, the player stays where they were, and no move is recorded.
+     */
+    @Test
+    void aMoveAListenerKeepsThePlayerOutOfCompletesWithFalse(Env env) {
+        final PluginInstances instances = instances(env);
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        arena.instance().eventNode().addListener(AddEntityToInstanceEvent.class, event -> {
+            if (event.getEntity() instanceof Player) event.setCancelled(true);
+        });
+        final Instance world = env.createFlatInstance();
+        final Player player = env.createPlayer(world, new Pos(0, 41, 0));
 
-        assertFalse(player.isOnline());
-        assertFalse(arena.instance().isRegistered());
-        assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(disconnects));
-        final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
-        assertEquals("time_limit", closed.get("cause"));
-        assertEquals(1, closed.get("players"));
-        assertEquals(0, closed.get("evacuated"));
-        assertEquals(1, closed.get("kicked"));
-        assertEquals(false, closed.get("settle_timeout"));
+        final CompletableFuture<Boolean> moved = arena.move(player, SPAWN);
+        assertTrue(env.tickWhile(() -> !moved.isDone(), TEN_SECONDS), "the move never completed");
+
+        assertFalse(moved.join(), "a player kept out of the instance counted as moved");
+        assertSame(world, player.getInstance());
+        assertEquals(List.of(), List.copyOf(arena.players()));
+        assertEquals(List.of(), movedLines(arena));
+        assertFalse(((ManagedInstanceImpl) arena).movesPending());
+    }
+
+    /**
+     * {@code API-PLAY-006} 实现: a move the engine fails, here because the chunks it lands in cannot be
+     * loaded. The move completes with false rather than exceptionally, the player stays where they were, and
+     * one ERROR line names the plugin, the instance and the connection.
+     */
+    @Test
+    void aMoveTheEngineFailsCompletesWithFalseAndIsWrittenOnce(Env env) {
+        final List<Throwable> reported = new CopyOnWriteArrayList<>();
+        env.process().exception().setExceptionHandler(reported::add);
+        final PluginInstances instances = instances(env);
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        arena.instance().setChunkLoader(new FailingLoader());
+        arena.instance().enableAutoChunkLoad(true);
+        final Instance world = env.createFlatInstance();
+        final Player player = env.createPlayer(world, new Pos(0, 41, 0));
+        final ListAppender<ILoggingEvent> lines = listen(ManagedInstanceImpl.class);
+        try {
+            final CompletableFuture<Boolean> moved = arena.move(player, OFF_THE_MAP);
+            assertTrue(env.tickWhile(() -> !moved.isDone(), TEN_SECONDS), "the move never completed");
+
+            assertFalse(moved.isCompletedExceptionally(), "the move completed exceptionally");
+            assertFalse(moved.join());
+            assertSame(world, player.getInstance());
+            assertEquals(List.of(), movedLines(arena));
+            final List<ILoggingEvent> errors = lines.list.stream().filter(line -> line.getLevel() == Level.ERROR).toList();
+            assertEquals(1, errors.size(), errors.toString());
+            assertTrue(errors.getFirst().getFormattedMessage().startsWith("Move into a managed instance failed: "
+                    + "plugin_id=evacuation instance=" + arena.id() + " connection_id="
+                    + player.getPlayerConnection().connectionId()), errors.getFirst().getFormattedMessage());
+            assertFalse(reported.isEmpty(), "the chunk loader never failed");
+        } finally {
+            stopListening(ManagedInstanceImpl.class, lines);
+        }
+    }
+
+    /** A chunk loader that fails every load, on a virtual thread of its own as a parallel loader does. */
+    private static final class FailingLoader implements ChunkLoader {
+
+        @Override
+        public @Nullable Chunk loadChunk(Instance instance, int chunkX, int chunkZ) {
+            throw new IllegalStateException("probe load failure");
+        }
+
+        @Override
+        public void saveChunk(Chunk chunk) {
+        }
+
+        @Override
+        public boolean supportsParallelLoading() {
+            return true;
+        }
+    }
+
+    private List<InstanceFixture.Line> movedLines(ManagedInstance managed) {
+        return ledger.of(managed).stream().filter(line -> line.event().equals("play_instance_moved")).toList();
+    }
+
+    private static ListAppender<ILoggingEvent> listen(Class<?> type) {
+        final ListAppender<ILoggingEvent> lines = new ListAppender<>();
+        lines.start();
+        ((Logger) LoggerFactory.getLogger(type)).addAppender(lines);
+        return lines;
+    }
+
+    private static void stopListening(Class<?> type, ListAppender<ILoggingEvent> lines) {
+        ((Logger) LoggerFactory.getLogger(type)).detachAppender(lines);
     }
 
     /** {@code Exit.Kick}: the player is disconnected with the plugin's key and nobody is left to wait for. */
@@ -212,6 +365,7 @@ class EvacuationIntegrationTest {
         final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
         final ManagedInstance arena = instances.create(new InstanceSpec("arena", PluginApi.MATCH_DIMENSION_TYPE, 1, FLAT,
                 SPAWN, Duration.ofSeconds(15), _ -> new Exit.ToInstance(lobby, SPAWN)));
+        assertEquals(Duration.ofSeconds(15), arena.settleTimeout(), "the instance reports another settle timeout than its spec");
         final Player player = joinInto(env, arena, env.createConnection());
         arena.start();
         arena.end(EndCause.OBJECTIVE);
@@ -378,6 +532,41 @@ class EvacuationIntegrationTest {
         final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
         assertEquals(1, closed.get("players"));
         assertEquals(1, closed.get("evacuated"));
+        assertEquals(0, closed.get("kicked"));
+    }
+
+    /**
+     * A move on its way when the instance closes, whose player a listener keeps out: the move lands without
+     * the player getting in, so they are handed no exit and are not one of the players of the closing line.
+     */
+    @Test
+    void aPlayerKeptOutWhileTheInstanceClosesIsHandedNoExit(Env env) {
+        final PluginInstances instances = instances(env);
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final List<Player> handed = new CopyOnWriteArrayList<>();
+        arena.instance().eventNode().addListener(AddEntityToInstanceEvent.class, event -> {
+            if (!(event.getEntity() instanceof Player)) return;
+            if (arena.state() == State.OPEN) arena.cancel(leaving -> {
+                handed.add(leaving);
+                return new Exit.ToInstance(lobby, SPAWN);
+            });
+            event.setCancelled(true);
+        });
+        final Instance world = env.createFlatInstance();
+        final Player player = env.createPlayer(world, new Pos(0, 41, 0));
+
+        final CompletableFuture<Boolean> moved = arena.move(player, SPAWN);
+        assertTrue(env.tickWhile(() -> !moved.isDone() || arena.instance().isRegistered(), TEN_SECONDS),
+                "the instance was never unregistered");
+
+        assertFalse(moved.join());
+        assertEquals(List.of(), handed, "a player who never got in was handed the exit");
+        assertSame(world, player.getInstance());
+        assertTrue(player.isOnline());
+        final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
+        assertEquals(0, closed.get("players"));
+        assertEquals(0, closed.get("evacuated"));
         assertEquals(0, closed.get("kicked"));
     }
 

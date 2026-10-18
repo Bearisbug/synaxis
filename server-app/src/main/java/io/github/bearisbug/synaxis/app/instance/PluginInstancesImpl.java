@@ -48,6 +48,8 @@ final class PluginInstancesImpl implements PluginInstances {
             new LogBudget(LoggerFactory.getLogger(ManagedInstanceImpl.class), "managed instances closed at their settle timeout");
     final LogBudget missingExits =
             new LogBudget(LoggerFactory.getLogger(Evacuation.class), "players kicked for want of an exit");
+    final LogBudget failedMoves =
+            new LogBudget(LoggerFactory.getLogger(ManagedInstanceImpl.class), "moves the engine failed");
 
     PluginInstancesImpl(String pluginId, InstanceRegistry registry) {
         this.pluginId = pluginId;

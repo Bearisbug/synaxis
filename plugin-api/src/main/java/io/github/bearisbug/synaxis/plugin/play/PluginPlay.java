@@ -23,7 +23,9 @@ import java.util.Optional;
  * {@link #hud} are called either on the tick thread that owns the player or in the serial part of
  * the tick (a task of {@code scheduleTask}). Neither runs at the same time as the other, and the
  * host reads the same state at the end of the player's tick, so neither needs a lock. Any other
- * thread hands the call to the player with {@code runOn}.
+ * thread hands the call to the player with {@code runOn}: the host checks the calling thread of
+ * {@link #enter}, {@link #leave} and the writing methods of {@link #hud}, and throws an
+ * {@link IllegalStateException} on any other.
  * <p>
  * Nothing is sent right away: scene changes and widget changes are queued per connection and sent
  * at the end of the player's tick, the scene first.
@@ -46,10 +48,13 @@ public interface PluginPlay {
      *
      * @param player the player
      * @param scene  the scene
-     * @throws IllegalStateException    if this plugin is not the scene owner of the process, or the
-     *                                  player is online but not in the play state
-     * @throws IllegalArgumentException if the encoded scene is over 8 KiB or an id carries another
-     *                                  plugin's namespace; the player's scene is left as it was
+     * @throws IllegalStateException    if called on a thread that neither owns the player nor runs
+     *                                  the serial part of the tick, this plugin is not the scene owner
+     *                                  of the process, or the player is online but not in the play state
+     * @throws IllegalArgumentException if the encoded scene is over 8 KiB, a component of it cannot
+     *                                  be encoded, an id carries another plugin's namespace, or an
+     *                                  action id was not registered with {@link #onAction}; the
+     *                                  player's scene is left as it was
      */
     void enter(Player player, SceneSpec scene);
 
@@ -57,7 +62,9 @@ public interface PluginPlay {
      * Takes a player out of its scene and queues a clear of this plugin's widgets.
      *
      * @param player the player
-     * @throws IllegalStateException if this plugin is not the scene owner of the process
+     * @throws IllegalStateException if called on a thread that neither owns the player nor runs the
+     *                               serial part of the tick, or this plugin is not the scene owner of
+     *                               the process
      */
     void leave(Player player);
 

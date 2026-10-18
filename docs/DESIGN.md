@@ -229,7 +229,7 @@ erDiagram
   - 缓存与超时：`RegistryDataPacket` 在进程内缓存一份，注册表冻结后不再变化；登录阶段总超时 30 秒（§15）
 - **`API-002` 自定义负载通道** — 实现 `REQ-011`
   - 方法/路径：`CustomPayload` 包，通道标识 `synaxis:main`，负载为我们的二进制消息；M1 只定义一个 `echo` 消息：客户端发任意 ≤ 1,024 字节，服务端原样回发
-  - 鉴权/权限：`play` 与 `configuration` 两个状态都可用——`ClientPluginMessagePacket` 同时实现 `ClientPacket.Configuration` 与 `ClientPacket.Play`，两个状态都注册了监听器，两边都派发 `PlayerPluginMessageEvent`；`handshake` / `status` / `login` 状态没有这个包，收到即按帧解码失败断线 `synaxis:protocol-error`。（原文写作「仅 `play` 状态可用」，与实现不符；`docs/DESIGN-M2.md` 的 `ADR-M2-010` 正是建立在 configuration 阶段也派发这个事件上，该文档 §28 把这句登记为阶段 4 要更正的技术债。）
+  - 鉴权/权限：`play` 与 `configuration` 两个状态都可用——`ClientPluginMessagePacket` 同时实现 `ClientPacket.Configuration` 与 `ClientPacket.Play`，两个状态都注册了监听器，两边都派发 `PlayerPluginMessageEvent`；`handshake` / `status` / `login` 状态没有这个包，收到即按帧解码失败断线 `synaxis:protocol-error`。包里的通道名只限长度（≤ 256 字符），不是合法 identifier（`Key.parseable` 判）时监听器不派发事件、以 `synaxis:protocol-error` 断线，与 cookie 应答的键同一判法；原版与 Fabric 客户端只发合法 identifier。（原文写作「仅 `play` 状态可用」，与实现不符；`docs/DESIGN-M2.md` 的 `ADR-M2-010` 正是建立在 configuration 阶段也派发这个事件上，该文档 §28 把这句登记为阶段 4 要更正的技术债。）
   - 请求/响应：见 §12 时序；消息编解码用引擎 `codec` 包，往返测试向量放 `src/test/resources/protocol/`
   - 幂等：`echo` 天然幂等；后续消息由 M2 的 `protocol` 模块定义
   - 缓存与超时：不缓存；单条负载超过 1,024 字节断线

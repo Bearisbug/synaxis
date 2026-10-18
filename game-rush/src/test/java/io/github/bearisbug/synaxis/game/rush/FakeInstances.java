@@ -40,7 +40,8 @@ final class FakeInstances implements PluginInstances {
             for (int z = -radius; z <= radius; z++) chunks.add(instance.loadChunk(x, z));
         }
         chunks.forEach(CompletableFuture::join);
-        final FakeManaged managed = new FakeManaged("rush:" + spec.name() + "_" + (created.size() + 1), instance, handBack);
+        final FakeManaged managed = new FakeManaged("rush:" + spec.name() + "_" + (created.size() + 1), instance,
+                spec.settleTimeout(), handBack);
         created.add(managed);
         return managed;
     }

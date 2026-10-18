@@ -86,20 +86,33 @@ final class Evacuation {
         if (inside.add(player)) send(player);
     }
 
-    /** The exit of one player; one the plugin's function cannot give, by throwing or by giving null, is a kick. */
+    /**
+     * The exit of one player; one the plugin's function cannot give, by throwing or by giving null, is a kick,
+     * and so is a move into the exit that does not take the player in.
+     */
     private void send(Player player) {
         try {
             switch (exit.apply(player)) {
                 case Exit.ToInstance(ManagedInstance to, Pos at) -> {
-                    var _ = to.move(player, at);
+                    var _ = to.move(player, at).whenComplete((moved, failure) -> {
+                        // Gone, or landed in another instance closing in turn, which hands out its own exit
+                        if (Boolean.TRUE.equals(moved) || !player.isOnline() || player.getInstance() != managed.instance())
+                            return;
+                        kickForWantOfAnExit(player, failure != null ? failure
+                                : new IllegalStateException("the exit " + to.id() + " took nobody, it is " + to.state()));
+                    });
                 }
                 case Exit.Kick(String reasonKey) -> player.kick(Component.translatable(reasonKey));
             }
         } catch (Throwable e) {
-            managed.missingExits().error(e, "No exit for a player of a closing managed instance, kicking them: plugin_id={} "
-                    + "instance={} connection_id={}", managed.pluginId(), managed.id(), player.getPlayerConnection().connectionId());
-            player.kick(MATCH_UNAVAILABLE);
+            kickForWantOfAnExit(player, e);
         }
+    }
+
+    private void kickForWantOfAnExit(Player player, Throwable cause) {
+        managed.missingExits().error(cause, "No exit for a player of a closing managed instance, kicking them: plugin_id={} "
+                + "instance={} connection_id={}", managed.pluginId(), managed.id(), player.getPlayerConnection().connectionId());
+        player.kick(MATCH_UNAVAILABLE);
     }
 
     private boolean nobodyLeft() {

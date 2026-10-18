@@ -2,6 +2,8 @@ package io.github.bearisbug.synaxis.plugin;
 
 import io.github.bearisbug.synaxis.instance.Instance;
 
+import java.util.Objects;
+
 /**
  * The decision of an {@link AdmissionProvider} (API-M2-011).
  */
@@ -14,6 +16,15 @@ public sealed interface Admission {
      * @param team     the team they play for, {@code 0} being neutral
      */
     record Accept(Instance instance, int team) implements Admission {
+
+        /**
+         * Checks that there is an instance to spawn into.
+         *
+         * @throws NullPointerException if the instance is null
+         */
+        public Accept {
+            Objects.requireNonNull(instance, "instance");
+        }
     }
 
     /**
@@ -23,5 +34,14 @@ public sealed interface Admission {
      *                  {@code docs/DESIGN-M2.md} §14
      */
     record Reject(String reasonKey) implements Admission {
+
+        /**
+         * Checks that there is a reason key to disconnect with.
+         *
+         * @throws NullPointerException if the reason key is null
+         */
+        public Reject {
+            Objects.requireNonNull(reasonKey, "reasonKey");
+        }
     }
 }

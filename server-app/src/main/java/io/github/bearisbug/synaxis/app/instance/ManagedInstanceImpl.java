@@ -20,12 +20,14 @@ import io.github.bearisbug.synaxis.world.DimensionType;
 import net.kyori.adventure.key.Key;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
@@ -246,6 +248,11 @@ final class ManagedInstanceImpl implements ManagedInstance {
     }
 
     @Override
+    public Duration settleTimeout() {
+        return spec.settleTimeout();
+    }
+
+    @Override
     public CompletableFuture<Boolean> move(Player player, Pos at) {
         if (!takesPlayers()) return CompletableFuture.completedFuture(false);
         final CompletableFuture<Boolean> moved = new CompletableFuture<>();
@@ -265,7 +272,12 @@ final class ManagedInstanceImpl implements ManagedInstance {
         return moved;
     }
 
-    /** The move itself, on the tick thread that owns the player. */
+    /**
+     * The move itself, on the tick thread that owns the player. It is a move only if the player is in
+     * this instance once the engine is done: a listener of {@code AddEntityToInstanceEvent} can keep the
+     * player out without failing the future, and a failure is a false too, so that the future of
+     * {@link #move} never completes exceptionally.
+     */
     private void moveNow(Player player, Pos at, CompletableFuture<Boolean> moved) {
         final Instance from = player.getInstance();
         if (from == instance) {
@@ -277,18 +289,24 @@ final class ManagedInstanceImpl implements ManagedInstance {
             return;
         }
         var _ = player.setInstance(instance, at).whenComplete((_, failure) -> {
+            final boolean in = failure == null && player.getInstance() == instance;
             final Evacuation closing = landed(player);
             registry.reached(Window.LANDED);
             if (closing != null) {
                 // Closed while the move was on its way: a player who got in gets the exit like those who were
                 // inside, one the unregistration beat stays where they were
-                if (failure == null) closing.arrived(player);
+                if (in) closing.arrived(player);
                 moved.complete(false);
-            } else if (failure != null) {
-                moved.completeExceptionally(failure);
-            } else {
+            } else if (in) {
                 registry.ledger().moved(this, player, from);
                 moved.complete(true);
+            } else {
+                // Kept out by a listener, or failed; a cancelled change of instance is one a later change took
+                // the place of, or whose player was removed on the way, which is no failure to report
+                if (failure != null && !(failure instanceof CancellationException))
+                    owner.failedMoves.error(failure, "Move into a managed instance failed: plugin_id={} instance={} "
+                            + "connection_id={}", owner.pluginId(), id, player.getPlayerConnection().connectionId());
+                moved.complete(false);
             }
         });
     }

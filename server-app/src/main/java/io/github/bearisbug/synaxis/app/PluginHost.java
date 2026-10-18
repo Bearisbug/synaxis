@@ -118,13 +118,14 @@ final class PluginHost {
         handshake.attach(hostNode);
         // The handshake speaks over a channel of the reserved namespace, so it is registered the
         // same way the core mode's diagnostic channel is: through the one payload listener of the
-        // router, which is what keeps "an unknown channel is dropped" true for it as well.
-        registerHostChannel(HandshakeGate.CHANNEL, handshake::receive);
+        // router, which is what keeps "an unknown channel is dropped" true for it as well. It is the
+        // one channel a client speaks on before the play state in a gameplay process.
+        registerHostChannel(HandshakeGate.CHANNEL, handshake::receive, true);
         new AdmissionGate(admission, handshake, ledger, store, tickets, permissions).attach(hostNode);
         store.attach(hostNode);
         permissions.attach(hostNode);
         // The scene layer's channel goes through the router the same way the handshake's does
-        registerHostChannel(SceneService.CHANNEL, scenes::receive);
+        registerHostChannel(SceneService.CHANNEL, scenes::receive, false);
         scenes.attach(hostNode);
     }
 
@@ -151,13 +152,15 @@ final class PluginHost {
      * Enables the selected plugins, in the given order.
      * <p>
      * Every selected descriptor is validated before any plugin is enabled, so a refused descriptor
-     * leaves the process with nothing to undo. A plugin whose {@code onEnable} throws is torn down
-     * and the remaining ones are enabled anyway; whether the process can still serve is then
-     * decided by {@link #hasAdmissionProvider()}.
+     * leaves the process with nothing to undo. Two of them with the same id are refused the same way:
+     * the channels, the admission slot, the actions and the managed instances are all kept by plugin
+     * id, and the teardown of one would take back the other's. A plugin whose {@code onEnable} throws
+     * is torn down and the remaining ones are enabled anyway; whether the process can still serve is
+     * then decided by {@link #hasAdmissionProvider()}.
      *
      * @param plugins     the discovered plugins
      * @param selectedIds the ids to enable, empty for all of them
-     * @throws IllegalArgumentException if a selected descriptor is refused
+     * @throws IllegalArgumentException if a selected descriptor is refused, or two of them have the same id
      */
     void enable(List<SynaxisPlugin> plugins, Set<String> selectedIds) {
         final List<String> discoveredIds = plugins.stream().map(plugin -> plugin.descriptor().id()).toList();
@@ -171,6 +174,14 @@ final class PluginHost {
                 .filter(plugin -> selectedIds.isEmpty() || selectedIds.contains(plugin.descriptor().id()))
                 .toList();
         for (SynaxisPlugin plugin : selected) PluginDescriptors.validate(plugin.descriptor());
+        final Map<String, List<String>> classesById = new LinkedHashMap<>();
+        for (SynaxisPlugin plugin : selected)
+            classesById.computeIfAbsent(plugin.descriptor().id(), _ -> new ArrayList<>()).add(plugin.getClass().getName());
+        for (Map.Entry<String, List<String>> declared : classesById.entrySet()) {
+            if (declared.getValue().size() > 1)
+                throw new IllegalArgumentException("Refused plugin id \"" + declared.getKey() + "\": declared by "
+                        + declared.getValue() + ", and a plugin id is unique in the process");
+        }
         this.attemptedPlugins += selected.size();
         for (SynaxisPlugin plugin : selected) enableOne(plugin);
     }
@@ -226,14 +237,21 @@ final class PluginHost {
      * it the ones after it are waited on no longer — with a second plugin that turns into "one
      * plugin hangs, the rest are dropped silently", and the budget then has to get a floor per
      * plugin.
+     * <p>
+     * A teardown that throws, such as the forced close of a managed instance whose chunk loader fails,
+     * is written as one ERROR line, and the plugins after it are disabled and taken back all the same.
      */
     void disableAll() {
         final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(DISABLE_BUDGET_SECONDS);
         for (int i = enabled.size() - 1; i >= 0; i--) {
             final LoadedPlugin loaded = enabled.get(i);
             LOGGER.info("Disabling plugin: plugin_id={}", loaded.id());
-            disableWithin(loaded, deadline);
-            tearDown(loaded, EndCause.SHUTDOWN);
+            try {
+                disableWithin(loaded, deadline);
+                tearDown(loaded, EndCause.SHUTDOWN);
+            } catch (Throwable throwable) {
+                LOGGER.error("Plugin teardown failed: plugin_id={}", loaded.id(), throwable);
+            }
         }
         enabled.clear();
     }
@@ -277,11 +295,13 @@ final class PluginHost {
     /**
      * Registers a channel of the host's reserved namespace: handshake and scene layer always, the echo in core mode.
      *
-     * @param name    the channel id, inside the reserved namespace
-     * @param handler the inbound handler
+     * @param name                 the channel id, inside the reserved namespace
+     * @param handler              the inbound handler
+     * @param configurationAllowed whether the handler also gets the payloads of a connection that is not
+     *                             in the play state, as the handshake does (API-M2-001)
      */
-    void registerHostChannel(String name, PayloadHandler handler) {
-        final String channelId = router.register(PluginDescriptors.RESERVED_ID, name, handler);
+    void registerHostChannel(String name, PayloadHandler handler, boolean configurationAllowed) {
+        final String channelId = router.register(PluginDescriptors.RESERVED_ID, name, handler, configurationAllowed);
         LOGGER.info("Registered channel: plugin_id={} channel={}", PluginDescriptors.RESERVED_ID, channelId);
     }
 

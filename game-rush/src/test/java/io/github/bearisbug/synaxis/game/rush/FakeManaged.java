@@ -9,6 +9,7 @@ import io.github.bearisbug.synaxis.plugin.instance.ManagedInstance;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -32,14 +33,16 @@ final class FakeManaged implements ManagedInstance {
     final Map<Player, CompletableFuture<Boolean>> held = new ConcurrentHashMap<>();
     private final String id;
     private final InstanceContainer instance;
+    private final Duration settleTimeout;
     volatile State state;
     volatile @Nullable EndCause cause;
     /** Moves into this instance wait for {@link #finish}. */
     volatile boolean holdMoves;
 
-    FakeManaged(String id, InstanceContainer instance, State state) {
+    FakeManaged(String id, InstanceContainer instance, Duration settleTimeout, State state) {
         this.id = id;
         this.instance = instance;
+        this.settleTimeout = settleTimeout;
         this.state = state;
     }
 
@@ -71,6 +74,11 @@ final class FakeManaged implements ManagedInstance {
     @Override
     public Set<Player> players() {
         return Set.copyOf(instance.getPlayers());
+    }
+
+    @Override
+    public Duration settleTimeout() {
+        return settleTimeout;
     }
 
     @Override

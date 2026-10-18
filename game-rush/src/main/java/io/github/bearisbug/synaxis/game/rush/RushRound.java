@@ -61,7 +61,6 @@ final class RushRound extends Round {
 
     private Duration last = Duration.ZERO;
     private long scoredSeconds;
-    private boolean cancelled;
 
     /**
      * Creates the round of an arena the lobby moves players into.
@@ -130,10 +129,9 @@ final class RushRound extends Round {
      */
     @Override
     protected boolean readyToStart() {
-        if (cancelled || !moves.stream().allMatch(CompletableFuture::isDone)) return false;
+        if (!moves.stream().allMatch(CompletableFuture::isDone)) return false;
         if (moves.stream().noneMatch(RushRound::moved)) {
-            cancelled = true;
-            arena().cancel(this::exitOf);
+            cancel();
             return false;
         }
         return true;

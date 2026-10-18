@@ -33,11 +33,14 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -225,6 +228,38 @@ class PluginHostIntegrationTest {
 
         assertEquals(List.of(), legal.calls);
         assertEquals(List.of(), host.enabledPluginIds());
+    }
+
+    /**
+     * The channels, the admission slot, the actions and the managed instances are kept by plugin id: of two
+     * plugins with one id, the teardown of one would take the other's back too.
+     */
+    @Test
+    void twoPluginsWithTheSameIdRefuseTheStartupBeforeEitherIsEnabled(Env env) {
+        final ProbePlugin probe = new ProbePlugin("dup");
+        final List<String> calls = new ArrayList<>();
+        final SynaxisPlugin other = new SynaxisPlugin() {
+            @Override
+            public PluginDescriptor descriptor() {
+                return new PluginDescriptor("dup", "2.0.0", PluginApi.API_VERSION);
+            }
+
+            @Override
+            public void onEnable(PluginContext ctx) {
+                calls.add("enable:other");
+            }
+        };
+        final PluginHost host = host(env);
+
+        final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> host.enable(List.of(probe, other), Set.of()));
+
+        assertTrue(refused.getMessage().contains("\"dup\"") && refused.getMessage().contains(ProbePlugin.class.getName())
+                && refused.getMessage().contains(other.getClass().getName()), refused.getMessage());
+        assertEquals(List.of(), probe.calls);
+        assertEquals(List.of(), calls);
+        assertEquals(List.of(), host.enabledPluginIds());
+        assertFalse(host.hasAdmissionProvider());
     }
 
     @Test
@@ -444,6 +479,78 @@ class PluginHostIntegrationTest {
             assertFalse(player.getPlayerConnection().isOnline());
         }
         host.disableAll();
+    }
+
+    /**
+     * {@code API-M2-011}: an answer of null, and an answer whose constructor refuses what the provider gave it,
+     * are failures to decide like an exception: the connection is turned away with match-unavailable,
+     * {@code client_rejected} is written, and the ERROR line names the plugin.
+     */
+    @Test
+    void anAdmissionProviderThatAnswersNothingOrABrokenAnswerTurnsTheConnectionAwayAgainstItsPlugin(Env env) {
+        final ProbePlugin probe = new ProbePlugin("probe");
+        final Queue<Supplier<Admission>> answers = new ConcurrentLinkedQueue<>(List.of(
+                PluginHostIntegrationTest::nothing,
+                () -> new Admission.Accept(noInstance(), 1),
+                () -> new Admission.Reject(noKey())));
+        probe.admission = _ -> answers.remove().get();
+        final PluginHost host = host(env);
+        host.enable(List.of(probe), Set.of());
+        final Instance match = env.createFlatInstance();
+
+        try (LogCapture logs = LogCapture.of(AdmissionGate.class)) {
+            for (int i = 0; i < 3; i++) {
+                final Player player = env.createPlayer(match, new Pos(0, 41, 0));
+                assertFalse(player.getPlayerConnection().isOnline(), "answer " + i + " let the connection in");
+            }
+            final List<String> errors = logs.messagesAt(Level.ERROR);
+            assertEquals(3, errors.size(), errors.toString());
+            for (String error : errors) assertTrue(error.contains("plugin_id=probe"), error);
+            final List<String> refusals = logs.messagesAt(Level.INFO);
+            assertEquals(3, refusals.size(), refusals.toString());
+            for (String refusal : refusals)
+                assertTrue(refusal.contains("reason=" + DisconnectKeys.MATCH_UNAVAILABLE + " cause=the admission provider threw"),
+                        refusal);
+        }
+        host.disableAll();
+        final List<String> rejected = readLedger().stream().filter(line -> line.contains("\"client_rejected\"")).toList();
+        assertEquals(3, rejected.size(), rejected.toString());
+        for (String line : rejected) assertTrue(line.contains("\"reason\":\"match-unavailable\""), line);
+    }
+
+    /** What a provider returns when it breaks the not-null contract of {@code admit}. */
+    private static @Nullable Admission nothing() {
+        return null;
+    }
+
+    private static @Nullable Instance noInstance() {
+        return null;
+    }
+
+    private static @Nullable String noKey() {
+        return null;
+    }
+
+    /** A provider of null would hold the slot and turn every connection away: the plugin fails to enable instead. */
+    @Test
+    void registeringNoAdmissionProviderFailsTheEnableOfThePlugin(Env env) {
+        final ProbePlugin probe = new ProbePlugin("probe");
+        probe.admission = noProvider();
+        final PluginHost host = host(env);
+
+        try (LogCapture logs = LogCapture.of(PluginHost.class)) {
+            host.enable(List.of(probe), Set.of());
+
+            final List<String> errors = logs.messagesAt(Level.ERROR);
+            assertEquals(1, errors.size(), errors.toString());
+            assertTrue(errors.getFirst().contains("Plugin failed to enable: plugin_id=probe"), errors.getFirst());
+        }
+        assertFalse(host.hasAdmissionProvider(), "the slot was taken by nothing");
+        assertEquals(List.of(), host.enabledPluginIds());
+    }
+
+    private static @Nullable AdmissionProvider noProvider() {
+        return null;
     }
 
     @Test

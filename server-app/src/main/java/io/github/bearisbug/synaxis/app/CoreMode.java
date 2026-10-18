@@ -161,7 +161,8 @@ final class CoreMode {
         process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
                 event -> event.getPlayer().setRespawnPoint(SPAWN));
         host.registerHostAdmission(_ -> new Admission.Accept(world, TEAM));
-        host.registerHostChannel(ECHO_CHANNEL, (player, payload) -> player.sendPluginMessage(ECHO_CHANNEL, payload));
+        // The core mode asks for no handshake, and the echo answers in both states (docs/DESIGN.md API-002)
+        host.registerHostChannel(ECHO_CHANNEL, (player, payload) -> player.sendPluginMessage(ECHO_CHANNEL, payload), true);
         LOGGER.info("Core mode ({}={}): no plugin is serving gameplay, so the host serves its own flat world. "
                 + "spawn={} channel={} (echoes every payload back)",
                 PROPERTY, setting.name().toLowerCase(Locale.ROOT), SPAWN, ECHO_CHANNEL);

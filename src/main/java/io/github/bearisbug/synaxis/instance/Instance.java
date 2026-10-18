@@ -97,7 +97,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     // per player, docs/DESIGN-M3.md API-M3-006
     private static final int MAX_SIMULATION_DISTANCE = 32;
 
-    private boolean registered;
+    private volatile boolean registered;
 
     private final RegistryKey<DimensionType> dimensionType;
     private final DimensionType cachedDimensionType; // Cached to prevent self-destruction if the registry is changed, and to avoid the lookups.

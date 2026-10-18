@@ -569,13 +569,20 @@ public class InstanceContainer extends Instance {
     /**
      * Applies the forks kept for a chunk the instance holds now: kept between its own processFork and
      * its caching, or for a chunk the loader read, which has no processFork. Every fork kept later sees
-     * the chunk cached ({@link #keepFork}).
+     * the chunk cached ({@link #keepFork}). Like a generation, a fork that throws goes to the exception
+     * handler and the chunk loads anyway.
      */
     private void applyPendingForks(Chunk chunk) {
         final List<GeneratorImpl.SectionModifierImpl> pending =
                 this.generationForks.remove(CoordConversion.chunkIndex(chunk.getChunkX(), chunk.getChunkZ()));
         if (pending == null) return;
-        for (var sectionModifier : pending) applyLoadedFork(chunk, sectionModifier);
+        for (var sectionModifier : pending) {
+            try {
+                applyLoadedFork(chunk, sectionModifier);
+            } catch (Throwable e) {
+                process().exception().handleException(e);
+            }
+        }
     }
 
     private static void applyLoadedFork(Chunk forkChunk, GeneratorImpl.SectionModifierImpl sectionModifier) {
@@ -902,8 +909,8 @@ public class InstanceContainer extends Instance {
         beforeCaching(chunk);
         this.chunks.put(index, chunk);
         tickets.loaded(index, chunk);
-        // Registered meanwhile: registerInstance may have scanned the chunks before this one was in them.
-        // The dispatcher ignores a partition it already has, if that scan saw it too.
+        // Registered meanwhile: registerInstance may have scanned the chunks before this one was in them; the
+        // registered flag is volatile, so that scan or this read sees the other. Duplicate partitions are ignored.
         if (!registered && isRegistered()) dispatcher.createPartition(chunk);
     }
 

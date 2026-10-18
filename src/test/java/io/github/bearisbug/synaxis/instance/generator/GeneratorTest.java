@@ -428,6 +428,33 @@ public class GeneratorTest {
         assertEquals(2, chunkUnit.forks().size(), "forks of the chunk unit");
     }
 
+    @Test
+    public void aForkOfASectionOfAnAreaForkIsAForkOfTheChunk() {
+        GenSection[] sections = new GenSection[8];
+        Arrays.setAll(sections, _ -> new GenSection());
+        var chunkUnit = GeneratorImpl.chunk(null, sections, 0, -4, 0);
+        Generator generator = unit -> unit.fork(unit.absoluteStart(), unit.absoluteStart().add(16, 16, 16))
+                .subdivide().getFirst()
+                .fork(setter -> setter.setBlock(unit.absoluteStart().add(20, 1, 0), Block.STONE));
+        generator.generate(chunkUnit);
+        assertEquals(2, chunkUnit.forks().size(), "forks of the chunk unit");
+    }
+
+    // The unit of a dynamic fork is only reachable from the forks of the chunk unit, its sections share them too
+    @Test
+    public void aForkOfASectionOfADynamicForkIsAForkOfTheChunk() {
+        GenSection[] sections = new GenSection[8];
+        Arrays.setAll(sections, _ -> new GenSection());
+        var chunkUnit = GeneratorImpl.chunk(null, sections, 0, -4, 0);
+        Generator generator = unit -> unit.fork(setter -> setter.setBlock(unit.absoluteStart().add(20, 1, 0), Block.STONE));
+        generator.generate(chunkUnit);
+        assertEquals(1, chunkUnit.forks().size(), "forks of the chunk unit");
+
+        chunkUnit.forks().getFirst().subdivide().getFirst()
+                .fork(setter -> setter.setBlock(40, 1, 0, Block.STONE));
+        assertEquals(2, chunkUnit.forks().size(), "forks of the chunk unit after a section of the dynamic fork forked");
+    }
+
     // A section unit keeps the low 4 bits of a coordinate: it fills only the part of an area inside it,
     // the rest would wrap around into it
     @Test

@@ -43,10 +43,25 @@ public sealed interface Acquirable<T> permits AcquirableImpl {
     }
 
     /**
+     * Whether the calling thread holds the global lock that every acquisition of an element of another
+     * tick thread takes. Only an {@link Acquired} that was never unlocked keeps it past the call that
+     * took it, so the tick scheduler thread checks this after each tick and reports a leak; the tick
+     * threads check the same after each element they tick.
+     *
+     * @return true if the calling thread holds the global lock
+     */
+    @ApiStatus.Internal
+    static boolean holdsGlobalLock() {
+        return AcquirableImpl.GLOBAL_LOCK.isHeldByCurrentThread();
+    }
+
+    /**
      * Returns a new {@link Acquired} object which will be locked to the current thread.
      * <p>
      * Useful when your code cannot be done inside a callback and need to be sync.
-     * Do not forget to call {@link Acquired#unlock()} once you are done with it.
+     * Unlock it once you are done with it, best with try-with-resources ({@link Acquired}). An
+     * {@link Acquired} left locked by a tick thread or the tick scheduler thread is reported to the
+     * exception handler; nothing unlocks it, and the next tick waits on it.
      * <p>
      * While the element is held, the dispatcher does not hand it to another tick thread. Held from a
      * thread that is not a tick thread past the end of a tick, it holds up the start of the next tick

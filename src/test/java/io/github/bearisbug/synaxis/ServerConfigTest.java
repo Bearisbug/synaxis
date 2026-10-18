@@ -111,4 +111,55 @@ public class ServerConfigTest {
         assertEquals(2, a.config().chunkViewDistance());
         assertEquals(16, b.config().chunkViewDistance());
     }
+
+    /**
+     * The values a process starts with but then cannot serve: the start is refused, the message
+     * naming the key, instead of every player being disconnected or every login failing later.
+     */
+    @Test
+    public void valuesThatBreakAStartedProcessAreRefusedByKey() {
+        refused("synaxis.keep-alive-kick (10000 ms) must be greater than synaxis.keep-alive-delay (10000 ms)",
+                ServerConfig.builder().keepAliveDelay(10_000).keepAliveKick(10_000));
+        refused("synaxis.keep-alive-kick (15000 ms) must be greater than synaxis.keep-alive-delay (20000 ms)",
+                ServerConfig.builder().keepAliveDelay(20_000));
+        refused("synaxis.keep-alive-delay must be at least 1 ms but was 0", ServerConfig.builder().keepAliveDelay(0));
+        refused("synaxis.login-timeout must be at least 1 ms but was 0", ServerConfig.builder().loginTimeout(0));
+        refused("synaxis.packet-per-tick must be at least 1 but was 0", ServerConfig.builder().playerPacketPerTick(0));
+        refused("synaxis.packet-queue-size must be at least 2", ServerConfig.builder().playerPacketQueueSize(1));
+        refused("synaxis.packet-queue-size must be at least 2 and at least synaxis.packet-per-tick (50) but was 40",
+                ServerConfig.builder().playerPacketQueueSize(40));
+        refused("synaxis.send-buffer-size", ServerConfig.builder().socketSendBufferSize(0));
+        refused("synaxis.receive-buffer-size", ServerConfig.builder().socketReceiveBufferSize(0));
+        refused("synaxis.pooled-buffer-size", ServerConfig.builder().pooledBufferSize(0));
+        refused("synaxis.watchdog.timeout-ms must be 0 (off) or at least 1000 ms",
+                ServerConfig.builder().watchdogTimeout(60));
+        refused("synaxis.chunk-queue.min-per-tick (8.0) must not be above synaxis.chunk-queue.max-per-tick (4.0)",
+                ServerConfig.builder().minChunksPerTick(8f).maxChunksPerTick(4f));
+        refused("synaxis.chunk-queue.min-per-tick (NaN)", ServerConfig.builder().minChunksPerTick(Float.NaN));
+        refused("synaxis.entity-synchronization-ticks must be at least 1 but was 0",
+                ServerConfig.builder().entitySynchronizationTicks(0));
+        refused("synaxis.entity-view-distance and synaxis.max-tick-catch-up must not be negative",
+                ServerConfig.builder().entityViewDistance(-1));
+        refused("synaxis.entity-view-distance and synaxis.max-tick-catch-up must not be negative",
+                ServerConfig.builder().maxTickCatchUp(-1));
+        refused("chunkViewDistance must not be negative but was -1", ServerConfig.builder().chunkViewDistance(-1));
+        assertEquals("connectionGateTrustedNetworks", assertThrows(NullPointerException.class,
+                () -> ServerConfig.builder().connectionGateTrustedNetworks(null).build()).getMessage());
+        assertEquals("packetLimitOverrides", assertThrows(NullPointerException.class,
+                () -> ServerConfig.builder().packetLimitOverrides(null).build()).getMessage());
+        assertEquals("proxyProtocolTrustedNetworks", assertThrows(NullPointerException.class,
+                () -> ServerConfig.builder().proxyProtocolTrustedNetworks(null).build()).getMessage());
+
+        // The edges that still start
+        ServerConfig.builder().keepAliveDelay(1).keepAliveKick(2).loginTimeout(1).playerPacketPerTick(1)
+                .playerPacketQueueSize(2).socketSendBufferSize(1).socketReceiveBufferSize(1).pooledBufferSize(1)
+                .watchdogTimeout(1_000).minChunksPerTick(4f).maxChunksPerTick(4f).entitySynchronizationTicks(1)
+                .entityViewDistance(0).maxTickCatchUp(0).chunkViewDistance(0).build();
+        ServerConfig.builder().watchdogTimeout(0).build();
+    }
+
+    private static void refused(String message, ServerConfig.Builder builder) {
+        final IllegalArgumentException e = assertThrows(IllegalArgumentException.class, builder::build, message);
+        assertTrue(e.getMessage().contains(message), e.getMessage());
+    }
 }

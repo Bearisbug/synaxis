@@ -11,6 +11,9 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PacketWriteQueueTest {
@@ -77,5 +80,26 @@ public class PacketWriteQueueTest {
 
         assertEquals(2, attempts.get(), "A refused packet is handed to the writer again");
         assertTrue(queue.isEmpty());
+    }
+
+    @Test
+    public void aPacketTheWriterFailsOnLeavesTheQueueWithTheFailure() {
+        final var queue = queueOf(3, 8);
+        final ClientPacket failing = queue.peek();
+        final NetworkBuffer buffer = NetworkBuffer.staticBuffer(1024);
+        final IllegalStateException failure = new IllegalStateException("the writer failed");
+        final AtomicInteger attempts = new AtomicInteger();
+
+        final IllegalStateException thrown = assertThrows(IllegalStateException.class,
+                () -> PacketWriting.writeQueue(buffer, queue, 1, (_, packet) -> {
+                    attempts.incrementAndGet();
+                    if (packet == failing) throw failure;
+                    return true;
+                }));
+
+        assertSame(failure, thrown);
+        assertEquals(1, attempts.get(), "the writer is not handed the failed packet again");
+        assertEquals(2, queue.size(), "only the failed packet left the queue");
+        assertNotSame(failing, queue.peek());
     }
 }

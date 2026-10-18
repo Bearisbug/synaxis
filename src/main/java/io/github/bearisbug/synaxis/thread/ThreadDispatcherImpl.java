@@ -76,11 +76,18 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
         // Tick all partitions
         CountDownLatch latch = new CountDownLatch(threads.size());
         for (TickThread thread : threads) thread.startTick(latch, time);
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        // Not given up on an interrupt: the next update would change the partitions of tick threads
+        // still ticking them
+        boolean interrupted = false;
+        while (true) {
+            try {
+                latch.await();
+                break;
+            } catch (InterruptedException _) {
+                interrupted = true;
+            }
         }
+        if (interrupted) Thread.currentThread().interrupt();
     }
 
     @Override

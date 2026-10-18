@@ -32,15 +32,20 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -62,6 +67,7 @@ public class ShutdownSequenceTest {
         volatile ServerProcess process;
         volatile boolean aliveWhileSaving;
         volatile Duration firstBudget;
+        volatile long saveEndedAt;
 
         @Override
         public void onGateClosed(Duration countdown) {
@@ -78,6 +84,7 @@ public class ShutdownSequenceTest {
 
         @Override
         public void onSaveEnded(boolean timedOut) {
+            saveEndedAt = System.nanoTime();
             calls.add("save_ended:" + timedOut);
         }
     }
@@ -166,7 +173,7 @@ public class ShutdownSequenceTest {
         // Within 20 s: the 120 s countdown was cut short
         awaitQuietly(() -> process.shutdownPhase() == ServerProcess.ShutdownPhase.STOPPED);
 
-        assertEquals(List.of("gate_closed:120:true", "save:15:false:SAVING", "save_ended:false"), recorder.calls);
+        assertEquals(List.of("gate_closed:120:true", "save:14:false:SAVING", "save_ended:false"), recorder.calls);
     }
 
     @Test
@@ -177,14 +184,14 @@ public class ShutdownSequenceTest {
 
         assertTrue(process.shutdownAfterWatchdogDeath());
 
-        assertEquals(List.of("save:15:false:SAVING", "save_ended:false"), recorder.calls,
+        assertEquals(List.of("save:14:false:SAVING", "save_ended:false"), recorder.calls,
                 "no countdown and no tick thread snapshot");
         assertEquals(ServerProcess.ShutdownPhase.STOPPED, process.shutdownPhase());
     }
 
     @Test
     @Timeout(90)
-    public void aDeathDuringTheSaveCutsItTo15SecondsAndReadsTheRestOnTheShutdownThread() throws Exception {
+    public void aDeathDuringTheSaveCutsItToTheDeathBudgetAndReadsTheRestOnTheShutdownThread() throws Exception {
         final Recorder recorder = new Recorder();
         final ServerProcess process = started(recorder);
         recorder.nextSave.set(new CompletableFuture<>());
@@ -199,10 +206,11 @@ public class ShutdownSequenceTest {
         assertEquals(4, recorder.calls.size(), recorder.calls.toString());
         assertEquals("gate_closed:0:true", recorder.calls.get(0));
         assertEquals("save:30:true:SAVING", recorder.calls.get(1));
-        assertTrue(recorder.calls.get(2).matches("save:1[45]:false:SAVING"), recorder.calls.get(2));
+        assertTrue(recorder.calls.get(2).matches("save:1[34]:false:SAVING"), recorder.calls.get(2));
         assertEquals("save_ended:true", recorder.calls.get(3));
-        assertTrue(savedForMillis >= 14_000 && savedForMillis < 30_000,
-                "the save ends 15 s after the death, not 30 s after it started: " + savedForMillis + " ms");
+        assertTrue(savedForMillis >= 13_000 && savedForMillis < 30_000,
+                "the save ends 14 s (halt-after less 1 s) after the death, not 30 s after it started: "
+                        + savedForMillis + " ms");
     }
 
     @Test
@@ -221,18 +229,145 @@ public class ShutdownSequenceTest {
         }
     }
 
+    /**
+     * A dead process saves for {@code synaxis.watchdog.halt-after-ms} less 1 s, so that the save ends,
+     * and says what it did not save, before the watchdog halts the JVM.
+     */
+    @Test
+    @Timeout(60)
+    public void aDeathSaveEndsASecondBeforeTheWatchdogHalts() {
+        final Recorder recorder = new Recorder();
+        final ServerProcess process = started(recorder, ServerConfig.builder().watchdogHaltAfter(5_000));
+        recorder.nextSave.set(new CompletableFuture<>());
+
+        final long died = System.nanoTime();
+        assertTrue(process.shutdownAfterWatchdogDeath());
+        final long savedForMillis = TimeUnit.NANOSECONDS.toMillis(recorder.saveEndedAt - died);
+
+        assertEquals(Duration.ofSeconds(4), recorder.firstBudget, "halt-after less 1 s");
+        assertEquals(List.of("save:4:false:SAVING", "save_ended:true"), recorder.calls);
+        assertTrue(savedForMillis >= 4_000 && savedForMillis < 5_000,
+                "the save ended before the halt would come: " + savedForMillis + " ms");
+    }
+
+    /**
+     * The players in play leave the world on their next tick, which a dead tick never runs: kicking
+     * does not wait for it, the shutdown tasks follow at once.
+     */
+    @Test
+    @Timeout(60)
+    public void kickingDoesNotWaitForADeadTick() throws Exception {
+        final Recorder recorder = new Recorder();
+        final ServerProcess process = started(recorder);
+        spawn(process);
+        final CountDownLatch inTheTick = new CountDownLatch(1);
+        final CountDownLatch stuck = new CountDownLatch(1);
+        final AtomicLong tasksAt = new AtomicLong();
+        process.scheduler().buildShutdownTask(() -> {
+            tasksAt.set(System.nanoTime());
+            stuck.countDown();
+        });
+        process.scheduler().scheduleNextTick(() -> {
+            inTheTick.countDown();
+            try {
+                stuck.await(30, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                throw new AssertionError(e);
+            }
+        });
+        try {
+            assertTrue(inTheTick.await(10, TimeUnit.SECONDS), "the tick never got stuck");
+
+            assertTrue(process.shutdownAfterWatchdogDeath());
+
+            final long kickingMillis = TimeUnit.NANOSECONDS.toMillis(tasksAt.get() - recorder.saveEndedAt);
+            assertTrue(kickingMillis < 1_000, "from the end of the save to the shutdown tasks: " + kickingMillis + " ms");
+            assertEquals(ServerProcess.ShutdownPhase.STOPPED, process.shutdownPhase());
+        } finally {
+            stuck.countDown();
+        }
+    }
+
+    /** A shutdown task that throws on the shutdown thread: the others run and the process still stops. */
+    @Test
+    @Timeout(60)
+    public void aShutdownTaskThatThrowsOnTheShutdownThreadStopsNeitherTheOthersNorTheProcess() throws Exception {
+        final ServerProcess process = ServerProcess.of(config());
+        final List<Throwable> reported = new CopyOnWriteArrayList<>();
+        process.exception().setExceptionHandler(reported::add);
+        // Bound, with its tick threads, but no tick scheduler: the tasks run on the thread of stop()
+        process.start(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
+        process.dispatcher().start();
+        final IllegalStateException failure = new IllegalStateException("the first task failed");
+        final AtomicBoolean ran = new AtomicBoolean();
+        process.scheduler().buildShutdownTask(() -> {
+            throw failure;
+        });
+        process.scheduler().buildShutdownTask(() -> ran.set(true));
+
+        try {
+            assertDoesNotThrow(process::stop);
+
+            assertTrue(ran.get(), "the task after the one that failed ran");
+            assertTrue(reported.contains(failure), reported.toString());
+            assertEquals(ServerProcess.ShutdownPhase.STOPPED, process.shutdownPhase());
+            for (TickThread thread : process.dispatcher().threads()) {
+                thread.join(5_000);
+                assertFalse(thread.isAlive(), thread.getName() + " was stopped");
+            }
+        } finally {
+            process.dispatcher().shutdown();
+        }
+    }
+
+    /** The same task between two ticks, on the tick scheduler thread. */
+    @Test
+    @Timeout(60)
+    public void aShutdownTaskThatThrowsBetweenTwoTicksDoesNotStopTheOthers() {
+        final Recorder recorder = new Recorder();
+        final ServerProcess process = started(recorder);
+        final List<Throwable> reported = new CopyOnWriteArrayList<>();
+        process.exception().setExceptionHandler(reported::add);
+        final IllegalStateException failure = new IllegalStateException("the first task failed");
+        final AtomicReference<Thread> ranOn = new AtomicReference<>();
+        process.scheduler().buildShutdownTask(() -> {
+            throw failure;
+        });
+        process.scheduler().buildShutdownTask(() -> ranOn.set(Thread.currentThread()));
+
+        process.stop();
+
+        assertInstanceOf(TickSchedulerThread.class, ranOn.get(), "the task after the one that failed ran");
+        assertTrue(reported.contains(failure), reported.toString());
+    }
+
+    /** A countdown no wait can take is refused up front instead of breaking the sequence midway. */
+    @Test
+    public void aCountdownLongerThanAWaitCanTakeIsRefused() {
+        final ServerProcess process = ServerProcess.of(config());
+        assertThrows(IllegalArgumentException.class, () -> process.beginShutdown(ChronoUnit.FOREVER.getDuration()));
+        assertEquals(ServerProcess.ShutdownPhase.RUNNING, process.shutdownPhase(), "nothing started");
+    }
+
     private static ServerConfig config() {
-        return ServerConfig.builder().insideTest(true).shutdownOnSignal(false).build();
+        return config(ServerConfig.builder());
+    }
+
+    private static ServerConfig config(ServerConfig.Builder builder) {
+        return builder.insideTest(true).shutdownOnSignal(false).build();
     }
 
     private static ServerProcess started(Recorder recorder) {
-        final ServerProcess process = ServerProcess.of(config());
+        return started(recorder, ServerConfig.builder());
+    }
+
+    private static ServerProcess started(Recorder recorder, ServerConfig.Builder builder) {
+        final ServerProcess process = ServerProcess.of(config(builder));
         recorder.process = process;
         process.setShutdownParticipant(recorder);
-        // What MinecraftServer#start does: bind, then the tick threads and the ticker
+        // What MinecraftServer#start does: bind, then tick
         process.start(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
-        process.dispatcher().start();
-        new TickSchedulerThread(process, TimeUnit.MILLISECONDS.toNanos(50), process.config().maxTickCatchUp()).start();
+        process.startTicking();
         return process;
     }
 

@@ -4,7 +4,6 @@ import ch.qos.logback.classic.Level;
 import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.ShutdownParticipant;
-import io.github.bearisbug.synaxis.TickSchedulerThread;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -79,11 +78,10 @@ class ShutdownSequenceTest {
         return ServerProcess.of(ServerConfig.builder().insideTest(true).shutdownOnSignal(false).build());
     }
 
-    /** What {@code MinecraftServer#start} does: bind, then the tick threads and the ticker. */
+    /** What {@code MinecraftServer#start} does: bind, then tick. */
     private static void start(ServerProcess process) {
         process.start(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
-        process.dispatcher().start();
-        new TickSchedulerThread(process, TimeUnit.MILLISECONDS.toNanos(50), process.config().maxTickCatchUp()).start();
+        process.startTicking();
     }
 
     @Test
@@ -200,8 +198,8 @@ class ShutdownSequenceTest {
 
         assertEquals(List.of("players:false:SAVING", "stuck:false:true", "save_ended:false", "plugins_disabled"), log,
                 "the step runs on the shutdown thread for a dead tick, the one after it never");
-        assertTrue(given.get() > 14_000 && given.get() <= 15_000, "the 15 s of a dead process: " + given.get() + " ms");
-        assertTrue(tookMillis >= 14_000 && tookMillis < 30_000, "kicking once the 15 s are over: " + tookMillis + " ms");
+        assertTrue(given.get() > 13_000 && given.get() <= 14_000, "the 14 s of a dead process: " + given.get() + " ms");
+        assertTrue(tookMillis >= 13_000 && tookMillis < 30_000, "kicking once the 14 s are over: " + tookMillis + " ms");
         assertEquals(ServerProcess.ShutdownPhase.STOPPED, process.shutdownPhase());
     }
 

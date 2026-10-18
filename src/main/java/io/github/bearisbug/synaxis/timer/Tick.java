@@ -12,7 +12,8 @@ import java.time.temporal.TemporalUnit;
 public final class Tick implements TemporalUnit {
     /**
      * A TemporalUnit representing the server tick, derived from
-     * {@link JvmFlags#SERVER_TICKS_PER_SECOND}.
+     * {@link JvmFlags#SERVER_TICKS_PER_SECOND}: 1 to 1000 ticks a second that divide 1000, so that a
+     * tick lasts a whole number of milliseconds.
      */
     public static final Tick SERVER_TICKS = new Tick(1000 / JvmFlags.SERVER_TICKS_PER_SECOND);
 
@@ -31,7 +32,7 @@ public final class Tick implements TemporalUnit {
      */
     private Tick(long length) {
         if (length <= 0) {
-            throw new IllegalArgumentException("length cannot be negative");
+            throw new IllegalArgumentException("tick length must be positive but was " + length);
         }
 
         this.milliseconds = length;

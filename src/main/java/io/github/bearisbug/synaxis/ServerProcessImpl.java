@@ -53,7 +53,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private static final long SHUTDOWN_JOIN_TIMEOUT_MS = 5_000;
     /** The save phase budget of {@code docs/DESIGN-PROD.md} §11.4 while the tick runs. */
     private static final long SAVE_BUDGET_SECONDS = 30;
-    /** The save phase budget once the watchdog judged the process dead: its halt comes 15 s later. */
+    /** The save phase budget once the watchdog judged the process dead and does not halt it. */
     private static final long DEATH_SAVE_BUDGET_SECONDS = 15;
     private static final long SAVE_POLL_NANOS = TimeUnit.MILLISECONDS.toNanos(50);
     /** How long the kicked players in play get to leave the world, §11.4 {@code kicking}. */
@@ -61,6 +61,8 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private static final long KICK_POLL_MILLIS = 20;
     private static final long SHUTDOWN_TASKS_PICKUP_MILLIS = 1_000;
     private static final long SHUTDOWN_TASKS_BUDGET_SECONDS = 15;
+    /** The longest countdown a wait can take, {@link Long#MAX_VALUE} nanoseconds. */
+    private static final Duration MAX_COUNTDOWN = Duration.ofNanos(Long.MAX_VALUE);
 
     private final Auth auth;
     private final ServerConfig config;
@@ -89,6 +91,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private final Watchdog watchdog;
 
     private final AtomicBoolean started = new AtomicBoolean();
+    private final AtomicBoolean ticking = new AtomicBoolean();
     private final AtomicBoolean stopped = new AtomicBoolean();
     // Set by the first beginShutdown; `stopped` only follows at the end of the sequence (§11.4)
     private final AtomicBoolean stopping = new AtomicBoolean();
@@ -103,7 +106,10 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private volatile String brandName = "synaxis";
     private volatile Difficulty difficulty = Difficulty.NORMAL;
     private volatile int compressionThreshold;
-    // Set by the ticker itself, so that stop() can wait for the in-flight tick to complete.
+    // The save phase budget once the watchdog judged the process dead, see save()
+    private final long deathSaveBudgetNanos;
+    // Set by startTicking, or by a ticker started by hand on its first tick, so that stop() can wait
+    // for the in-flight tick to complete.
     private volatile @Nullable TickSchedulerThread tickSchedulerThread;
     // Kept so that stop() can unregister it, the JVM strongly references every registered hook.
     volatile @Nullable Thread shutdownHook;
@@ -112,6 +118,11 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         this.auth = auth;
         this.config = config;
         this.compressionThreshold = config.compressionThreshold();
+        // The watchdog halts the process halt-after after its verdict: the save ends 1 s earlier, so
+        // that what did not get saved is still logged
+        this.deathSaveBudgetNanos = config.watchdogHaltAfter() > 0
+                ? Math.max(0, TimeUnit.MILLISECONDS.toNanos(config.watchdogHaltAfter()) - TimeUnit.SECONDS.toNanos(1))
+                : TimeUnit.SECONDS.toNanos(DEATH_SAVE_BUDGET_SECONDS);
         this.exception = new ExceptionManager();
         this.registries = Registries.vanilla();
 
@@ -321,6 +332,17 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     }
 
     @Override
+    public void startTicking() {
+        Check.stateCondition(!started.get(), "The process is started before it ticks, call start(SocketAddress) first.");
+        if (!ticking.compareAndSet(false, true)) throw new IllegalStateException("The process already ticks.");
+        dispatcher.start();
+        final TickSchedulerThread ticker = new TickSchedulerThread(this,
+                1_000_000_000L / JvmFlags.SERVER_TICKS_PER_SECOND, config.maxTickCatchUp());
+        this.tickSchedulerThread = ticker;
+        ticker.start();
+    }
+
+    @Override
     public boolean stop() {
         // The shutdown sequence waits for every tick thread to exit, which can never happen while the
         // caller is one of them (e.g. a /stop command running on a TickThread, upstream issue #2907).
@@ -344,6 +366,8 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     @Override
     public boolean beginShutdown(Duration countdown) {
         if (countdown.isNegative()) throw new IllegalArgumentException("countdown " + countdown + " is negative");
+        if (countdown.compareTo(MAX_COUNTDOWN) > 0)
+            throw new IllegalArgumentException("countdown " + countdown + " is longer than " + MAX_COUNTDOWN);
         return shutdown(countdown, false);
     }
 
@@ -414,7 +438,8 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             kickEveryone();
             // plugins_disabled: the shutdown tasks, the host's plugin onDisable among them
             this.shutdownPhase = ShutdownPhase.PLUGINS_DISABLED;
-            runShutdownTasks();
+            // Whatever escapes them, the tick threads are still stopped and the port released below
+            callParticipant(this::runShutdownTasks);
             // stopped: the ticker loop exits once the tick in flight is over
             stopped.set(true);
             joinThread(tickSchedulerThread);
@@ -450,13 +475,14 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     }
 
     /**
-     * The save phase: {@value #SAVE_BUDGET_SECONDS} s while the tick runs, {@value #DEATH_SAVE_BUDGET_SECONDS} s
-     * once the watchdog judged the process dead, which can also happen while this runs.
+     * The save phase: {@value #SAVE_BUDGET_SECONDS} s while the tick runs; once the watchdog judged the
+     * process dead, which can also happen while this runs, {@code synaxis.watchdog.halt-after-ms} less
+     * 1 s, or {@value #DEATH_SAVE_BUDGET_SECONDS} s when the watchdog does not halt.
      */
     private void save(@Nullable ShutdownParticipant participant, boolean dying) {
         if (participant == null) return;
         boolean dead = dying;
-        final long budget = TimeUnit.SECONDS.toNanos(dead ? DEATH_SAVE_BUDGET_SECONDS : SAVE_BUDGET_SECONDS);
+        final long budget = dead ? deathSaveBudgetNanos : TimeUnit.SECONDS.toNanos(SAVE_BUDGET_SECONDS);
         long deadline = System.nanoTime() + budget;
         CompletableFuture<?> saved = startSave(participant, Duration.ofNanos(budget), !dead);
         while (!saved.isDone()) {
@@ -465,7 +491,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             if (!dead && watchdogDeath.isDone()) {
                 // saving → saving: the tick will not come back, so the rest is read on this thread
                 dead = true;
-                deadline = Math.min(deadline, now + TimeUnit.SECONDS.toNanos(DEATH_SAVE_BUDGET_SECONDS));
+                deadline = Math.min(deadline, now + deathSaveBudgetNanos);
                 saved = startSave(participant, Duration.ofNanos(deadline - now), false);
                 continue;
             }
@@ -503,7 +529,8 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     /**
      * Kicks every connection and waits, at most {@value #KICK_BUDGET_SECONDS} s, for the players in
      * play to leave the world: a kick only schedules {@code Entity#remove} for their next tick, and
-     * that removal is what fires {@code PlayerDisconnectEvent}.
+     * that removal is what fires {@code PlayerDisconnectEvent}. Once the watchdog judged the tick dead
+     * that tick never comes, and nothing is waited for.
      */
     private void kickEveryone() {
         final List<Player> inPlay = List.copyOf(connection.getOnlinePlayers());
@@ -522,7 +549,8 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             return;
         }
         final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(KICK_BUDGET_SECONDS);
-        while (inPlay.stream().anyMatch(player -> !player.isRemoved()) && System.nanoTime() - deadline < 0) {
+        while (!watchdogDeath.isDone() && inPlay.stream().anyMatch(player -> !player.isRemoved())
+                && System.nanoTime() - deadline < 0) {
             try {
                 Thread.sleep(KICK_POLL_MILLIS);
             } catch (InterruptedException _) {

@@ -51,8 +51,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * a later serial part.
  * <p>
  * No {@code Env}: {@code Env#tick} runs the ticker on the test thread, which is not the tick scheduler
- * thread, so this class starts a real {@link TickSchedulerThread} and its tick threads the way
- * ShardWorldAssemblyTest#startTicking does, and stops the process when it is done. Every wait is
+ * thread, so this class starts the process ticking, a real {@link TickSchedulerThread} and its tick
+ * threads ({@link ServerProcess#startTicking()}), and stops the process when it is done. Every wait is
  * bounded at 10 s; a preparing instance is held there by a generator waiting on a latch, not by timing.
  * The clock of the registry is the system's plus an offset the budget test moves. The test of the §15
  * figures runs first, so that its first {@code create} is the first of the class.
@@ -88,8 +88,8 @@ class ManagedInstanceTickThreadTest {
         registry = new InstanceRegistry(process, ledger, InstanceFixture.scenes(process), Thread.ofPlatform().unstarted(() -> {
         }), InstanceRegistry.Durations.DEFAULT, () -> System.nanoTime() + clockOffset.get());
         process.start(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
-        process.dispatcher().start();
-        new TickSchedulerThread(process, TimeUnit.MILLISECONDS.toNanos(50), process.config().maxTickCatchUp()).start();
+        // The tick threads and the tick scheduler thread, where the serial parts of this class run
+        process.startTicking();
     }
 
     @AfterAll

@@ -53,7 +53,7 @@ public record PlayerChatMessagePacket(int globalIndex, UUID sender, int index, @
     @Override
     public ServerPacket copyWithOperator(UnaryOperator<Component> operator) {
         return new PlayerChatMessagePacket(globalIndex, sender, index, signature,
-                messageBody, operator.apply(unsignedContent), filterMask,
-                msgTypeId, operator.apply(msgTypeName), operator.apply(msgTypeTarget));
+                messageBody, unsignedContent == null ? null : operator.apply(unsignedContent), filterMask,
+                msgTypeId, operator.apply(msgTypeName), msgTypeTarget == null ? null : operator.apply(msgTypeTarget));
     }
 }

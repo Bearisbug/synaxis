@@ -10,7 +10,8 @@ import java.util.Collection;
 import java.util.Objects;
 
 /**
- * Utility class to handle client chat settings.
+ * Utility class to handle client chat settings. A {@link ChatPosition#GAME_INFO} message is shown
+ * above the hot bar (an overlay), the other positions go to the chat.
  */
 public final class Messenger {
     /**
@@ -29,7 +30,7 @@ public final class Messenger {
      */
     public static boolean sendMessage(Player player, Component message, ChatPosition position) {
         if (getChatMessageType(player).accepts(position)) {
-            player.sendPacket(new SystemChatPacket(message, false));
+            player.sendPacket(new SystemChatPacket(message, position == ChatPosition.GAME_INFO));
             return true;
         }
         return false;
@@ -43,7 +44,7 @@ public final class Messenger {
      * @param position the position
      */
     public static void sendMessage(Collection<? extends Player> players, Component message, ChatPosition position) {
-        PacketSendingUtils.sendGroupedPacket(players, new SystemChatPacket(message, false),
+        PacketSendingUtils.sendGroupedPacket(players, new SystemChatPacket(message, position == ChatPosition.GAME_INFO),
                 player -> getChatMessageType(player).accepts(position));
     }
 

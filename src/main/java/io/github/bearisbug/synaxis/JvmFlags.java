@@ -16,10 +16,11 @@ package io.github.bearisbug.synaxis;
 public final class JvmFlags {
 
     /**
-     * The server tick rate. JVM-wide because {@code timer.Tick#SERVER_TICKS} is a
+     * The server tick rate, 1 to 1000 ticks a second that divide 1000: {@code timer.Tick#SERVER_TICKS}
+     * counts a tick in whole milliseconds. JVM-wide because that is a
      * {@link java.time.temporal.TemporalUnit} constant derived from it.
      */
-    public static final int SERVER_TICKS_PER_SECOND = intProperty("synaxis.tps", 20);
+    public static final int SERVER_TICKS_PER_SECOND = tickRate("synaxis.tps", 20);
 
     /**
      * Translates components server-side. JVM-wide because the Adventure {@code ComponentFlattener}
@@ -37,11 +38,20 @@ public final class JvmFlags {
      */
     public static final boolean CACHED_PACKET = booleanProperty("synaxis.cached-packet", true);
 
-    /** Largest packet the engine writes or reads, three bytes of var-int. */
-    public static final int MAX_PACKET_SIZE = intProperty("synaxis.max-packet-size", 2_097_151);
+    /**
+     * Largest packet the engine writes or reads. At most 2,097,151, what the three bytes of var-int
+     * the length of a frame is written in hold; at least the initial size of a pooled buffer, which
+     * the write path doubles up to this.
+     */
+    public static final int MAX_PACKET_SIZE = intProperty("synaxis.max-packet-size", 2_097_151,
+            ServerConfig.DEFAULT_POOLED_BUFFER_SIZE, 2_097_151);
 
-    /** Largest packet accepted before the connection reaches the configuration state. */
-    public static final int MAX_PACKET_SIZE_PRE_AUTH = intProperty("synaxis.max-packet-size-pre-auth", 8_192);
+    /**
+     * Largest packet accepted before the connection reaches the configuration state, 1,024 (room for
+     * the handshake and the encryption response) to {@link #MAX_PACKET_SIZE}.
+     */
+    public static final int MAX_PACKET_SIZE_PRE_AUTH = intProperty("synaxis.max-packet-size-pre-auth", 8_192,
+            1_024, MAX_PACKET_SIZE);
 
     /**
      * Warns when a packet was not fully read, from the static reading path. A client decides how
@@ -50,10 +60,11 @@ public final class JvmFlags {
     public static final boolean WARN_UNREAD_BYTES_PACKET = booleanProperty("synaxis.warn-unread-bytes-packet", true);
 
     /**
-     * Allows an event node to have several parents. JVM-wide because event nodes are built by static
-     * factories with no process in sight.
+     * Event nodes always have at most one parent; this constant is no longer read and will be removed.
+     * Setting {@code synaxis.event.multiple-parents} only logs a warning at the start
+     * ({@link ServerConfig#fromSystemProperties()}).
      */
-    public static final boolean EVENT_NODE_ALLOW_MULTIPLE_PARENTS = booleanProperty("synaxis.event.multiple-parents", false);
+    public static final boolean EVENT_NODE_ALLOW_MULTIPLE_PARENTS = false;
 
     /**
      * Compiles buffer templates instead of interpreting them. JVM-wide because every packet builds
@@ -93,7 +104,6 @@ public final class JvmFlags {
                 + ", maxPacketSize=" + MAX_PACKET_SIZE
                 + ", maxPacketSizePreAuth=" + MAX_PACKET_SIZE_PRE_AUTH
                 + ", warnUnreadBytesPacket=" + WARN_UNREAD_BYTES_PACKET
-                + ", eventNodeAllowMultipleParents=" + EVENT_NODE_ALLOW_MULTIPLE_PARENTS
                 + ", templateCompiler=" + TEMPLATE_COMPILER
                 + ", nbtMaxDepth=" + NBT_MAX_DEPTH
                 + ", nbtMaxBytes=" + NBT_MAX_BYTES
@@ -107,10 +117,6 @@ public final class JvmFlags {
     private static boolean booleanProperty(String name, boolean defaultValue) {
         final String value = System.getProperty(name);
         return value != null ? Boolean.parseBoolean(value) : defaultValue;
-    }
-
-    private static int intProperty(String name, int defaultValue) {
-        return intProperty(name, defaultValue, Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
 
     private static int intProperty(String name, int defaultValue, int minValue, int maxValue) {
@@ -130,5 +136,15 @@ public final class JvmFlags {
                     "Property '%s' value must be in range [%d..%d] but was %d", name, minValue, maxValue, value));
         }
         return value;
+    }
+
+    private static int tickRate(String name, int defaultValue) {
+        final int tps = intProperty(name, defaultValue, 1, 1000);
+        if (1000 % tps != 0) {
+            throw new IllegalArgumentException(String.format(
+                    "Property '%s' value must divide 1000, a tick lasts a whole number of milliseconds, but was %d",
+                    name, tps));
+        }
+        return tps;
     }
 }

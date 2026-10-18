@@ -139,6 +139,14 @@ public final class Server {
                         process.exception().handleException(e);
                     ticket.release();
                     closeQuietly(client);
+                } catch (RuntimeException e) {
+                    // Not the peer's doing but a configuration or engine error, always reported: the
+                    // accept loop goes on with the next connection instead of ending with this one
+                    process.exception().handleException(e);
+                    final PlayerSocketConnection connection = reference.get();
+                    if (connection != null) connection.disconnect();
+                    ticket.release();
+                    closeQuietly(client);
                 }
             }
         });
@@ -260,8 +268,10 @@ public final class Server {
                         process.exception().handleException(e);
                     connection.disconnect();
                 } catch (Throwable e) {
+                    // A packet that failed to be written is off the queue already (PacketWriting#writeQueue):
+                    // the kick gives the peer a reason, written behind what is still queued
                     process.exception().handleException(e);
-                    connection.disconnect();
+                    connection.kick(DisconnectReasons.INTERNAL_ERROR);
                 }
                 if (!connection.isOnline()) {
                     try {

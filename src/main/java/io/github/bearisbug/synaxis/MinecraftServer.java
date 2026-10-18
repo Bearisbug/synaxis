@@ -9,7 +9,9 @@ import java.net.SocketAddress;
  * Thin launcher around a {@link ServerProcess}: it creates one, holds it, and starts its threads.
  * <p>
  * Everything the server owns is reached through the process, which can also be created directly with
- * {@link ServerProcess#of()} when the caller wants to hold several of them in the same JVM.
+ * {@link ServerProcess#of()} when the caller wants to hold several of them in the same JVM: such a
+ * process then needs {@link ServerProcess#start(SocketAddress)} and {@link ServerProcess#startTicking()},
+ * which is what {@link #start(SocketAddress)} calls.
  */
 public final class MinecraftServer implements MinecraftConstants {
 
@@ -57,9 +59,7 @@ public final class MinecraftServer implements MinecraftConstants {
      */
     public void start(SocketAddress address) {
         process.start(address);
-        process.dispatcher().start();
-        new TickSchedulerThread(process, 1_000_000_000L / TICK_PER_SECOND,
-                process.config().maxTickCatchUp()).start();
+        process.startTicking();
     }
 
     public void start(String address, int port) {

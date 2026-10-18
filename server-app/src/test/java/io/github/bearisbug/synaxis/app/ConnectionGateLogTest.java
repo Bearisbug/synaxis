@@ -214,4 +214,19 @@ public class ConnectionGateLogTest {
                     warnings.getFirst());
         }
     }
+
+    /** Event nodes have one parent at most: the key is still taken, whoever sets it is told it does nothing. */
+    @Test
+    public void settingTheEventNodeParentsKeyWarnsThatItIsDeprecated() {
+        try (LogCapture log = LogCapture.of(ServerConfig.class)) {
+            System.setProperty("synaxis.event.multiple-parents", "true");
+            try {
+                var _ = ServerConfig.fromSystemProperties();
+            } finally {
+                System.clearProperty("synaxis.event.multiple-parents");
+            }
+            assertEquals(List.of("synaxis.event.multiple-parents is deprecated and has no effect, "
+                    + "an event node has at most one parent"), log.messagesAt(Level.WARN));
+        }
+    }
 }

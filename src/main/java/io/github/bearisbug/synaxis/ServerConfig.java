@@ -161,14 +161,49 @@ public record ServerConfig(
         if (playerChunkUpdateLimiterHistorySize < 0)
             throw new IllegalArgumentException(
                     "playerChunkUpdateLimiterHistorySize must not be negative but was " + playerChunkUpdateLimiterHistorySize);
+        if (chunkViewDistance < 0)
+            throw new IllegalArgumentException("chunkViewDistance must not be negative but was " + chunkViewDistance);
+        if (entityViewDistance < 0 || maxTickCatchUp < 0)
+            throw new IllegalArgumentException("synaxis.entity-view-distance and synaxis.max-tick-catch-up must not be "
+                    + "negative but were " + entityViewDistance + " and " + maxTickCatchUp);
+        if (entitySynchronizationTicks < 1)
+            throw new IllegalArgumentException("synaxis.entity-synchronization-ticks must be at least 1 but was "
+                    + entitySynchronizationTicks);
+        if (loginTimeout < 1)
+            throw new IllegalArgumentException("synaxis.login-timeout must be at least 1 ms but was " + loginTimeout);
+        if (keepAliveDelay < 1)
+            throw new IllegalArgumentException("synaxis.keep-alive-delay must be at least 1 ms but was " + keepAliveDelay);
+        if (keepAliveKick <= keepAliveDelay)
+            throw new IllegalArgumentException("synaxis.keep-alive-kick (" + keepAliveKick + " ms) must be greater than "
+                    + "synaxis.keep-alive-delay (" + keepAliveDelay + " ms): it counts from the last keep-alive sent, "
+                    + "a smaller value disconnects every player");
+        if (playerPacketPerTick < 1)
+            throw new IllegalArgumentException("synaxis.packet-per-tick must be at least 1 but was " + playerPacketPerTick);
+        if (playerPacketQueueSize < Math.max(2, playerPacketPerTick))
+            throw new IllegalArgumentException("synaxis.packet-queue-size must be at least 2 and at least "
+                    + "synaxis.packet-per-tick (" + playerPacketPerTick + ") but was " + playerPacketQueueSize);
+        if (socketSendBufferSize < 1 || socketReceiveBufferSize < 1 || pooledBufferSize < 1)
+            throw new IllegalArgumentException("synaxis.send-buffer-size, synaxis.receive-buffer-size and "
+                    + "synaxis.pooled-buffer-size must be at least 1 byte but were " + socketSendBufferSize + ", "
+                    + socketReceiveBufferSize + " and " + pooledBufferSize);
+        if (!(minChunksPerTick <= maxChunksPerTick))
+            throw new IllegalArgumentException("synaxis.chunk-queue.min-per-tick (" + minChunksPerTick
+                    + ") must not be above synaxis.chunk-queue.max-per-tick (" + maxChunksPerTick + ")");
         Objects.requireNonNull(motd, "motd");
         Objects.requireNonNull(serverIcon, "serverIcon");
+        Objects.requireNonNull(connectionGateTrustedNetworks, "connectionGateTrustedNetworks");
+        Objects.requireNonNull(packetLimitOverrides, "packetLimitOverrides");
+        Objects.requireNonNull(proxyProtocolTrustedNetworks, "proxyProtocolTrustedNetworks");
         if (chatRatePerSecond < 1 || chatBurst < 1)
             throw new IllegalArgumentException("the chat rate and burst must be at least 1 but were "
                     + chatRatePerSecond + " and " + chatBurst);
         if (watchdogEarlyWarning < 0 || watchdogEarlyWarningEvery < 0 || watchdogTimeout < 0 || watchdogHaltAfter < 0)
             throw new IllegalArgumentException("the watchdog durations must not be negative but were " + watchdogEarlyWarning
                     + ", " + watchdogEarlyWarningEvery + ", " + watchdogTimeout + " and " + watchdogHaltAfter);
+        // The watchdog looks once a second: a shorter timeout judges every tick that takes it dead
+        if (watchdogTimeout != 0 && watchdogTimeout < 1_000)
+            throw new IllegalArgumentException("synaxis.watchdog.timeout-ms must be 0 (off) or at least 1000 ms, the "
+                    + "interval the watchdog looks at the tick, but was " + watchdogTimeout);
         if (maxConnections < 1 || maxConnectionsPerIp < 1 || handshakeTimeout < 1)
             throw new IllegalArgumentException("maxConnections, maxConnectionsPerIp and handshakeTimeout must be at least 1 "
                     + "but were " + maxConnections + ", " + maxConnectionsPerIp + " and " + handshakeTimeout);
@@ -223,6 +258,8 @@ public record ServerConfig(
             LOGGER.warn("synaxis.socket-timeout is deprecated and has no effect, the channel reads never honour it; "
                     + "idle connections are bounded by synaxis.login-timeout and synaxis.keep-alive-kick. "
                     + "It is removed in the next release");
+        if (System.getProperty("synaxis.event.multiple-parents") != null)
+            LOGGER.warn("synaxis.event.multiple-parents is deprecated and has no effect, an event node has at most one parent");
         return builder()
                 .shutdownOnSignal(booleanProperty("synaxis.shutdown-on-signal", DEFAULTS.shutdownOnSignal))
                 .maxTickCatchUp(intProperty("synaxis.max-tick-catch-up", DEFAULTS.maxTickCatchUp))

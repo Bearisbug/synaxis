@@ -29,6 +29,12 @@ final class AcquiredImpl<T> implements Acquired<T> {
         AcquirableImpl.leave(lock);
     }
 
+    @Override
+    public void close() {
+        if (Thread.currentThread() == owner && unlocked) return;
+        unlock();
+    }
+
     private void safeCheck() {
         if (Thread.currentThread() != owner)
             throw new IllegalStateException("Acquired object is owned by the thread " + owner);

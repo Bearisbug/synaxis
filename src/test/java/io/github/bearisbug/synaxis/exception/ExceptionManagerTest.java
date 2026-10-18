@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -110,5 +112,27 @@ public class ExceptionManagerTest {
         }
         assertFalse(captured.toString(StandardCharsets.UTF_8).contains(marker),
                 "the default sink is SLF4J, a bare stack trace bypasses the log configuration");
+    }
+
+    /**
+     * The engine reports from catch blocks that never expect to throw, a tick thread or the tick
+     * scheduler would die of a handler that does: what it throws is logged and dropped.
+     */
+    @Test
+    public void aHandlerThatThrowsIsLoggedAndTheCallerGoesOn() {
+        final ExceptionManager manager = new ExceptionManager();
+        final IllegalStateException original = new IllegalStateException("original");
+        final IllegalStateException thrown = new IllegalStateException("the handler failed");
+        manager.setExceptionHandler(_ -> {
+            throw thrown;
+        });
+
+        assertDoesNotThrow(() -> manager.handleException(original, UUID.randomUUID()));
+        assertArrayEquals(new Throwable[]{original}, thrown.getSuppressed(), "the original goes with it");
+
+        manager.setExceptionHandler(e -> {
+            throw new IllegalStateException("rethrown", e);
+        });
+        assertDoesNotThrow(() -> manager.handleException(original));
     }
 }

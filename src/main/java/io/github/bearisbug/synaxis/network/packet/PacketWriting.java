@@ -200,6 +200,11 @@ public final class PacketWriting {
                 success = writer.test(buffer, packet);
             } catch (IndexOutOfBoundsException _) {
                 success = false;
+            } catch (RuntimeException e) {
+                // A packet that fails to be written fails again: taken off the queue before the
+                // failure goes up, so that nothing runs it again
+                queue.poll();
+                throw e;
             }
             // A writer may take a packet off the queue without writing it: cancelled by a listener, or
             // movement shed from an outbound backlog

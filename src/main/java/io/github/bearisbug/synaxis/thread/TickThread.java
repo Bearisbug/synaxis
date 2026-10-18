@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
@@ -26,13 +25,17 @@ public class TickThread extends EngineThread {
     private final ReentrantLock lock = new ReentrantLock();
     private volatile boolean stop;
 
-    private final AtomicReference<CountDownLatch> latchRef = new AtomicReference<>();
+    // The latch of the tick this thread has to run, null once it ran it: written before the unpark
+    // that wakes this thread, which orders the writes before it ahead of this thread's reads
+    private volatile @Nullable CountDownLatch latch;
     private volatile long tickTimeNanos;
     private volatile @Nullable TickObserver tickObserver;
 
     private long tickNum = 0;
     // In the order they were handed over, which is the tick order; a hash set so that unloading a chunk
-    // drops its partition without a scan (docs/DESIGN-M3.md API-M3-006)
+    // drops its partition without a scan (docs/DESIGN-M3.md API-M3-006). Only the dispatcher changes
+    // it, in ThreadDispatcherImpl#updateAndAwait and #refreshThreads, while this thread is between two
+    // ticks: the latch of the tick before is counted down, the next one not yet published.
     final Set<ThreadDispatcherImpl.Partition> entries = new LinkedHashSet<>();
 
     public TickThread(int number, Consumer<Throwable> exceptionHandler) {
@@ -48,9 +51,10 @@ public class TickThread extends EngineThread {
     public void run() {
         LockSupport.park(this); // Wait for first tick
         while (!stop) {
-            final CountDownLatch latch = this.latchRef.get();
+            final CountDownLatch latch = this.latch;
             if (latch == null) {
-                // Should not happen, but just in case
+                // park() returned spuriously or on a permit left over, or this thread was handed no
+                // partition: only a published latch means a tick to run
                 LockSupport.park(this);
                 continue;
             }
@@ -69,8 +73,9 @@ public class TickThread extends EngineThread {
                 lock.unlock();
                 // #acquire() callbacks
                 // The latch is counted down whatever happened: a tick thread dying here would leave
-                // every ThreadDispatcher#updateAndAwait blocked on it forever.
-                this.latchRef.set(null);
+                // every ThreadDispatcher#updateAndAwait blocked on it forever. Cleared first, so that
+                // the latch of the next tick is never overwritten.
+                this.latch = null;
                 latch.countDown();
             }
             if (observer != null) observe(observer, System.nanoTime() - start, acquireWaitNanos() - waitedBefore);
@@ -81,6 +86,8 @@ public class TickThread extends EngineThread {
     protected void tick() {
         final ReentrantLock lock = this.lock;
         final long tickTime = TimeUnit.NANOSECONDS.toMillis(this.tickTimeNanos);
+        // The holds of the global lock the elements ticked so far left behind
+        int globalHolds = 0;
         for (ThreadDispatcherImpl.Partition entry : entries) {
             assert entry.thread() == this;
             final List<Tickable> elements = entry.elements();
@@ -97,6 +104,11 @@ public class TickThread extends EngineThread {
                 } catch (Throwable e) {
                     handleException(e);
                 }
+                // An element that did not unlock what it acquired keeps the global lock, and the lock
+                // of the thread that owns what it acquired: the next tick waits on them forever
+                final int holds = AcquirableImpl.GLOBAL_LOCK.getHoldCount();
+                if (holds > globalHolds) handleException(new IllegalStateException(element + " left an Acquired locked"));
+                globalHolds = holds;
             }
         }
     }
@@ -155,19 +167,13 @@ public class TickThread extends EngineThread {
                 source.acquirable().assignedThread().lock().isHeldByCurrentThread());
     }
 
+    /**
+     * Hands this thread a tick, or counts {@code latch} down at once when it has nothing to tick. Only
+     * called by {@link ThreadDispatcherImpl#updateAndAwait(long)}, which waits for every latch of a tick
+     * before it starts the next one.
+     */
     void startTick(CountDownLatch latch, long tickTimeNanos) {
-        CountDownLatch update = latchRef
-                .updateAndGet(prevLatch -> prevLatch == null || prevLatch.getCount() == 0 ? latch : prevLatch);
-        if (update != latch) {
-            // Tick already in progress, wait for it to complete then start our own tick
-            try {
-                update.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-            startTick(latch, tickTimeNanos);
-            return;
-        }
+        assert this.latch == null : "the previous tick is still running";
         if (stop || entries.isEmpty()) {
             // Nothing to tick
             latch.countDown();
@@ -175,6 +181,7 @@ public class TickThread extends EngineThread {
         }
         this.tickTimeNanos = tickTimeNanos;
         this.tickNum++;
+        this.latch = latch;
         LockSupport.unpark(this);
     }
 

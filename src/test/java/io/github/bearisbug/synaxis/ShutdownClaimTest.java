@@ -90,10 +90,9 @@ public class ShutdownClaimTest {
     static ServerProcess started(Recorder recorder) {
         final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true).shutdownOnSignal(false).build());
         process.setShutdownParticipant(recorder);
-        // What MinecraftServer#start does: bind, then the tick threads and the ticker
+        // What MinecraftServer#start does: bind, then tick
         process.start(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
-        process.dispatcher().start();
-        new TickSchedulerThread(process, TimeUnit.MILLISECONDS.toNanos(50), process.config().maxTickCatchUp()).start();
+        process.startTicking();
         return process;
     }
 }

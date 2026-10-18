@@ -8,6 +8,10 @@ import java.util.UUID;
  * Used when you want to implement your own exception handling, instead of the default log line.
  * <p>
  * Sets with {@link ExceptionManager#setExceptionHandler(ExceptionHandler)}.
+ * <p>
+ * It is called on any thread, from several at once: the tick threads, the tick scheduler thread,
+ * the socket threads of every connection. It should not throw: what it throws is logged as one
+ * ERROR line by {@link ExceptionManager} and dropped.
  */
 @FunctionalInterface
 public interface ExceptionHandler {

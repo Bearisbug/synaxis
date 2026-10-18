@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-18 | 分支 `prod/r081-BOOT`（基于 `main` `965c3bddae`），跟进 `docs/DESIGN-PROD.md` v0.9.93（RUN-081 组 BOOT），不登执行轮次（集成后登记 RUN-081），本组证据 `docs/test-runs/RUN-081/BOOT/`（5 次 Gradle 运行）。**新增 §4「生产就绪 · RUN-081：BOOT」十条 `TC-PROD-850`～`TC-PROD-859`**：`TC-PROD-850`（停机任务逐个隔离，一个抛异常后面的照跑、序列照常停）、`TC-PROD-851`（判死保存预算 = `halt-after-ms` − 1 s）、`TC-PROD-852`（判死后踢人不等；超长倒计时被拒）、`TC-PROD-853`（`ServerProcess#startTicking` 与改用它的四份测试）、`TC-PROD-854`（`ServerConfig` 与 `JvmFlags` 的取值拒启，`synaxis.event.multiple-parents` 的弃用 WARN）、`TC-PROD-855`（写线程丢掉写不出的包并以 `synaxis:internal-error` 踢人、accept 循环接住建连接时的运行时异常、聊天包翻译不碰空组件）、`TC-PROD-856`（空闲 tick 线程的虚假唤醒、分发被中断、漏放的 `Acquired`）、`TC-PROD-857`（异常落点自己抛异常）、`TC-PROD-858`（`GAME_INFO` 进动作栏）、`TC-PROD-859`（4 线程严格与严格 grid 各一遍）；改动前的红都实跑过，修好之后又改过的测试由第 5 次运行反证。**改的旧用例**：`TC-PROD-154` 前置改为经 `startTicking` 起 tick，第 1 步本类 6 → 11 条、判死预算 15 s → 14 s，第 2 步注明是 6 条时的读数；`TC-PROD-372` 第 1 步阈值 14～15 s → 13～14 s；「第 6 波 U」一节的前置改为经 `startTicking` 起 tick，`TC-PROD-370`～`TC-PROD-375` 各步的红行按序列类的新行号改写（上移 1～2 行，没有重跑）；`TC-PROD-497` 前置；`TC-PROD-661` 第 1、2、4 步注明本类 3 条与新行号；`TC-PROD-120` 第 2 步、`TC-PROD-001` 与 `TC-PROD-003` 引 `ExceptionManagerTest` 的三处注明新行号，`TC-PLAY-056` 前置引的 `ServerProcessImpl.java:540` 改为 `:568`；RUN-071 ops 一节 `CLOSE_OUT` 的 `ServerConfig.java` 四行与 `Messenger.java` 一行改成新行号与新文本（`docs/DESIGN-M2.md` 聊天一行同步）。**§5** 局部轮加本组一行 | Bearisbug |
 | 2026-10-18 | 按 `docs/DESIGN-PROD.md` §28.3 交给光照会话的行同步 RUN-080（`main` `965c3bddae`），跟进 `docs/DESIGN-M3.md` v0.52 与 `docs/DESIGN.md` v0.48，不登执行轮次：`TC-GAME-070` 第 2 步的原始红 `PreAuthConnectionIntegrationTest.java:186` 改为 `:187`（RUN-080 组 NET 给该类加了 1 行 import，内容在 `965c3bddae` 上核过）。M3 的 `TC-WORLD-*` 用例引的行号逐个扫过，没有落在 RUN-080 改过的文件里会移动的行上 | Bearisbug |
 | 2026-10-18 | 集成分支 `prod/integrate-080` 的全量门禁、Concurrency、Client mod 与 Client gametest（job `gametest`、`rush`、`p11-smoke`）在 GitHub Actions 上对 `8000c5b332` 跑完（草稿 PR #33，四个工作流都是第 1 次尝试；`c42208b6b2` 上的 CI 三个测试 job 红在 `BotSocketTest` 一条，由 `8000c5b332` 修，见 `TC-PROD-797`），§6 登记 RUN-080（通过 49/49，证据 `docs/test-runs/RUN-080/integrate/00-index.txt`）。写死条数的旧用例按 artifact 的实数改：`TC-PROD-486`、`505`、`510`、`529`、`549`、`585`、`596`、`607`、`618`、`636` 的 `server-app` 814 → 849（RUN-079 加 1 个类 19 个，RUN-080 加 1 个类 16 个），`TC-PROD-505`、`585`、`618`、`636`、`654` 的根项目 3,217 → 3,283（RUN-079 加 1 个，RUN-080 加 4 个类 65 个），`TC-PROD-636` 第 1 步的全部模块 682 个类 4,702 → 688 个类 4,850（`synx`、`baker`、`game-rush`、`play-kit` 一并改成实数），`TC-PROD-430` 第 5 步的模组测试 288 → 297（RUN-079 加 9 个，RUN-080 不变）；`TC-GAME-070` 第 2 步归光照会话，经 `docs/DESIGN-PROD.md` §28.3 交接。`TC-PROD-783` 的生成器等到三次等待都试过才生成目标区块，加第 5 步记下 4 线程严格下的偶发红 | Bearisbug |
 | 2026-10-18 | 集成分支 `prod/integrate-080`（基于 `main` `a211a45ca1`）依次 `--no-ff` 合入 `prod/r080-NET`、`prod/r080-THREAD`、`prod/r080-WORLD`、`prod/r080-CODEC`、`prod/r080-ITEMNET`、`prod/r080-CMD`、`prod/r080-STORE`、`prod/r080-HOST`，跟进 `docs/DESIGN-PROD.md` v0.9.92 与 `docs/DESIGN-PLAY.md` v0.20，不登执行轮次（草稿 PR 的 CI 跑完后登记 RUN-080）。**冲突**：每次合并本文档的变更记录都冲突，按合并的倒序排在顶部（NET 在下、HOST 在上）；§4 各组的新节、§5 各组加的一行、§7 THREAD 加的一条（紧挨着 WORLD 改了行号的 `PlayerRespawnChunkIntegrationTest` 一条）与「玩法架构 · RUN-077：H」节的前置一行（NET、WORLD 各改一处行号，按词合并）两边都留。**§4 的次序**：NET、ITEMNET、CMD 三组把新节放在 §4 末尾，另几组放在「生产就绪 · RUN-076：W」之后；合并后「生产就绪 · RUN-080」八节按合并顺序（NET、THREAD、WORLD、CODEC、ITEMNET、CMD、STORE、HOST）接在 RUN-076 W 之后，「玩法架构 · RUN-080：HOST」留在 §4 末尾，各节内容取自各组分支。**`TC-PROD-793`**：组 CMD 合入后命令 condition 的异常只隐藏节点、不再让出生失败，本条原来的触发在三种线程模式下都红在 `PlayerSpawnFailureIntegrationTest.java:70`；前置改用 Tab 列表的可见性抛异常，第 2～4 步写明是 WORLD 分支上 condition 触发时的读数，加第 5 步：集成分支上默认与严格 grid 都绿、反证红在 `:67`（证据 `docs/test-runs/RUN-080/integrate/`）。各组节写明行号按各组提交，别组移动的行不改。草稿 PR #33 的 CI 在 `c42208b6b2` 上三个测试 job 都红在 `loadtest` 的 `BotSocketTest`（`TC-WORLD-074`）：重新配置之后的再出生在等候队列的线程上写血量，玩家仍指派给第一次出生的 tick 线程，所有权断言抛出，组 WORLD 的出生失败处理随即踢人；`Player#UNSAFE_init` 对已有指派的玩家改为在那条线程的持有下出生，加 `TC-PROD-797`；`TC-PROD-793` 两个第 5 步的后一个改为第 6 步 | Bearisbug |
@@ -4411,9 +4412,9 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :test --tests '*ExceptionManagerTest*' --tests '*EventNodeExceptionTest*' --tests '*GlobalEventHandlerTest*' --tests '*PlayerPacketQueueIntegrationTest*' :server-app:test --tests '*HostExceptionIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`ExceptionManagerTest` 五条（`OutOfMemoryError` 交给 handler 而不是停机、`connection_id` 送到 handler、只实现单参方法的 handler 照样收到、没设 handler 时默认落点 10 s 内的异常只计数不写行、没设 handler 时默认落点不写 stderr）；`HostExceptionIntegrationTest#aListenerThatThrowsOnEveryPacketIsOneLineWithTheTickAndTheConnection`：监听器对 9 个包各抛一次，只有 1 行 ERROR，行内 `tick=1`、`connection_id=<该玩家的连接 id>`，且带栈；`#aThreadThatDiesOfAThrowableIsLoggedOnThatThread`：未捕获异常那一行的线程名是死掉的那条线程 `dying-thread`，`connection_id=-` |
-| 2 | 反证有齿（两处一起改、一起还原）：`src/main/java/io/github/bearisbug/synaxis/entity/Player.java` 的 `interpretPacketQueue` 里 `handleException(e, playerConnection.connectionId())` 改回 `handleException(e)`；`src/main/java/io/github/bearisbug/synaxis/exception/ExceptionManager.java` 默认 handler 的 `LOGGER.error(…)` 上一行插 `e.printStackTrace();`（**不要删掉 `LOGGER.error` 那行**：`LOGGER` 变成无用字段，Error Prone 的 `UnusedVariable` 会让 `:compileJava` 先红）。重跑第 1 步，再 `git checkout --` 这两个文件 | 红 2 条：`ExceptionManagerTest.theDefaultHandlerDoesNotPrintToStandardError` 断在「the default sink is SLF4J, a bare stack trace bypasses the log configuration ==> expected: <false> but was: <true>」（`ExceptionManagerTest.java:111`）；`HostExceptionIntegrationTest.aListenerThatThrowsOnEveryPacket…` 断在 connection_id 那条断言（`HostExceptionIntegrationTest.java:86`），消息就是那一行 `Unhandled exception: tick=1 connection_id=- (1 IllegalStateException since the last report)`；还原后复绿 |
+| 2 | 反证有齿（两处一起改、一起还原）：`src/main/java/io/github/bearisbug/synaxis/entity/Player.java` 的 `interpretPacketQueue` 里 `handleException(e, playerConnection.connectionId())` 改回 `handleException(e)`；`src/main/java/io/github/bearisbug/synaxis/exception/ExceptionManager.java` 默认 handler 的 `LOGGER.error(…)` 上一行插 `e.printStackTrace();`（**不要删掉 `LOGGER.error` 那行**：`LOGGER` 变成无用字段，Error Prone 的 `UnusedVariable` 会让 `:compileJava` 先红）。重跑第 1 步，再 `git checkout --` 这两个文件 | 红 2 条：`ExceptionManagerTest.theDefaultHandlerDoesNotPrintToStandardError` 断在「the default sink is SLF4J, a bare stack trace bypasses the log configuration ==> expected: <false> but was: <true>」（`ExceptionManagerTest.java:111`；RUN-081 起本类多了 2 个导入，在 `:113`）；`HostExceptionIntegrationTest.aListenerThatThrowsOnEveryPacket…` 断在 connection_id 那条断言（`HostExceptionIntegrationTest.java:86`），消息就是那一行 `Unhandled exception: tick=1 connection_id=- (1 IllegalStateException since the last report)`；还原后复绿 |
 | 3 | 反证限流有齿：`server-app/src/main/java/io/github/bearisbug/synaxis/app/HostExceptionHandler.java` 的 `budgets.computeIfAbsent(…)` 上一行插 `budgets.remove(e.getClass());`（每次都拿一份新预算），只重跑第 1 步的 `:server-app:test` 那半，再 `git checkout --` 该文件 | 红 1 条：`aListenerThatThrowsOnEveryPacket…` 断在「nine failures of one kind inside 10 s are one line ==> expected: <1> but was: <9>」（`HostExceptionIntegrationTest.java:83`）；还原后复绿 |
-| 4 | 反证引擎默认落点的限流有齿：`src/main/java/io/github/bearisbug/synaxis/exception/ExceptionManager.java` 默认 handler 的 `if (now - last < DEFAULT_REPORT_INTERVAL) return;` 改成 `if (now - last < 0) return;`（每次都写一行），只跑 `:test --tests '*ExceptionManagerTest*'`，再 `git checkout --` 该文件 | 红 1 条：`theDefaultHandlerWritesAtMostOneLinePerIntervalAndCountsTheRest` 断在「inside one interval the exceptions are counted for the next line, not written」（`ExceptionManagerTest.java:93`，每次写行都把计数清零）；还原后复绿 |
+| 4 | 反证引擎默认落点的限流有齿：`src/main/java/io/github/bearisbug/synaxis/exception/ExceptionManager.java` 默认 handler 的 `if (now - last < DEFAULT_REPORT_INTERVAL) return;` 改成 `if (now - last < 0) return;`（每次都写一行），只跑 `:test --tests '*ExceptionManagerTest*'`，再 `git checkout --` 该文件 | 红 1 条：`theDefaultHandlerWritesAtMostOneLinePerIntervalAndCountsTheRest` 断在「inside one interval the exceptions are counted for the next line, not written」（`ExceptionManagerTest.java:93`，RUN-081 起在 `:95`；每次写行都把计数清零）；还原后复绿 |
 
 后置：`git status` 干净。
 
@@ -4438,7 +4439,7 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 | 1 | `./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `grep '^DEFAULT_JVM_OPTS' server-app/build/install/server-app/bin/server-app` | `DEFAULT_JVM_OPTS='"-XX:+HeapDumpOnOutOfMemoryError" "-XX:+ExitOnOutOfMemoryError"'` |
 | 2 | `cd $W && JAVA_OPTS="-Xms16m -Xmx24m -Dsynaxis.app.port=25601" $REPO/server-app/build/install/server-app/bin/server-app < /dev/null > stdout.log 2>&1; echo exit=$?`，再 `ls $W`、`tail -2 stdout.log`、`grep -c 'Stopping\|Disabling plugin' stdout.log` | `exit=3`；`$W` 下多一个 `java_pid<pid>.hprof`（本轮实测 35,888,644 字节）；末两行 `Heap dump file created [… bytes in … secs]` 与 `Terminating due to java.lang.OutOfMemoryError: Java heap space`；计数 `0`（24 MB 的堆在建对局时就耗尽，停机序列一行都没跑） |
 | 3 | `./gradlew :test --tests '*ExceptionManagerTest*' :server-app:test --tests '*HostExceptionIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`anOutOfMemoryErrorGoesToTheHandlerInsteadOfAStopSequence` 与 `aFatalErrorWritesOneCrashReportAndDoesNotStopTheProcess` 绿：没带这两个参数的进程（开发时直接跑）撞上 OOM 也只进宿主 handler，不跑停机序列 |
-| 4 | 反证有齿（两处一起改、一起还原）：`server-app/build.gradle.kts` 注释掉 `applicationDefaultJvmArgs = …` 那一行；`ExceptionManager#handleException(Throwable, UUID)` 首部插回旧的 OOM 分支 `if (e instanceof OutOfMemoryError) { e.printStackTrace(); return; }`。重做第 1～3 步（`rm -rf $W/*` 后再起），再 `git checkout --` 这两个文件并重新 `installDist` | 第 1 步 `DEFAULT_JVM_OPTS=""`；第 2 步 `exit=1`、没有 `.hprof`，stdout 只有 `Exception in thread "main" java.lang.OutOfMemoryError: Java heap space` 与栈；第 3 步红 2 条：`anOutOfMemoryError…` 断在「the host decides what an exhausted heap costs, not a stop sequence ==> expected: <1> but was: <0>」（`ExceptionManagerTest.java:53`），`aFatalError…` 断在 `expected: <1> but was: <0>`（`HostExceptionIntegrationTest.java:105`，一行 ERROR 都没有）；还原后复绿 |
+| 4 | 反证有齿（两处一起改、一起还原）：`server-app/build.gradle.kts` 注释掉 `applicationDefaultJvmArgs = …` 那一行；`ExceptionManager#handleException(Throwable, UUID)` 首部插回旧的 OOM 分支 `if (e instanceof OutOfMemoryError) { e.printStackTrace(); return; }`。重做第 1～3 步（`rm -rf $W/*` 后再起），再 `git checkout --` 这两个文件并重新 `installDist` | 第 1 步 `DEFAULT_JVM_OPTS=""`；第 2 步 `exit=1`、没有 `.hprof`，stdout 只有 `Exception in thread "main" java.lang.OutOfMemoryError: Java heap space` 与栈；第 3 步红 2 条：`anOutOfMemoryError…` 断在「the host decides what an exhausted heap costs, not a stop sequence ==> expected: <1> but was: <0>」（`ExceptionManagerTest.java:53`；RUN-081 起在 `:55`），`aFatalError…` 断在 `expected: <1> but was: <0>`（`HostExceptionIntegrationTest.java:105`，一行 ERROR 都没有）；还原后复绿 |
 
 后置：`rm -rf $W`（堆转储 30 MB 以上）；`git status` 干净。
 
@@ -5083,7 +5084,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `io.github.bearisbug.synaxis.AuthModesTest`；再在仓库根执行 `grep -rn -e 'Auth\.Velocity' -e 'Auth\.Bungee' -e 'BungeeGuard' -e 'velocity:player_info' src server-app` | 1 个 0 失败：`Auth.class.getPermittedSubclasses()` 恰好是 `{Auth.Online, Auth.Offline}`。`grep` 无输出 |
-| 2 | 反证有齿（只加 record）：在 `Auth.java` 末尾加回 `record Bungee() implements Auth {}`，跑 `./gradlew :compileJava --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 编译失败 2 处，`ConnectionManager.java:98` 与 `ServerProcessImpl.java:291` 都是「并非所有可能的输入值都包含在 switch 语句中」（行号按 `sec/login-path` 的 `1f33976097` 实跑；写这条时是 `:80` 与 `:254`）：按 `Auth` 分派的两个 `switch` 没有 `default`，新加一种模式不补分支就编不过 |
+| 2 | 反证有齿（只加 record）：在 `Auth.java` 末尾加回 `record Bungee() implements Auth {}`，跑 `./gradlew :compileJava --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 编译失败 2 处，`ConnectionManager.java:98` 与 `ServerProcessImpl.java:291` 都是「并非所有可能的输入值都包含在 switch 语句中」（行号按 `sec/login-path` 的 `1f33976097` 实跑；写这条时是 `:80` 与 `:254`；RUN-081 组 BOOT 起 `ServerProcessImpl.java` 的这一处在 `:302`，没有重跑）：按 `Auth` 分派的两个 `switch` 没有 `default`，新加一种模式不补分支就编不过 |
 | 3 | 反证有齿（连分支一起加回）：保留第 2 步的 record，再给 `ConnectionManager` 构造器的 `switch` 加 `case Auth.Bungee _ -> { this.loginKeyPair = null; this.sessionClient = null; }`、给 `ServerProcessImpl#start` 的 `switch` 加 `case Auth.Bungee _ -> LOGGER.info("Bungee");`，重跑第 1 步的测试，再 `git checkout -- src/main` | `1 tests completed, 1 failed`，红在 `theOnlyModesAreOnlineAndOffline`：`expected: <[class …Auth$Offline, class …Auth$Online]> but was: <[class …Auth$Bungee, class …Auth$Offline, class …Auth$Online]>`（`AuthModesTest.java:21`）。还原后复绿 |
 
 后置：确认 `Auth.java`、`ConnectionManager.java`、`ServerProcessImpl.java` 没有残留改动。
@@ -5331,12 +5332,12 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 #### `TC-PROD-154` 引擎停机序列：关登录门 → 倒计时 → 保存（tick 仍在跑）→ 踢人 → tick 之间禁用插件 → 停 tick；看门狗判死的三条转移 — 对应 `REQ-PROD-008`、`REQ-PROD-014` · 级别: 回归 · 执行者: AI
 
-前置：工作副本干净（本条不需要数据库）。进程在回环地址上起真 `Server`，并像 `MinecraftServer#start` 一样起 dispatcher 与 `TickSchedulerThread`。
+前置：工作副本干净（本条不需要数据库）。进程在回环地址上起真 `Server`，再像 `MinecraftServer#start` 一样调 `ServerProcess#startTicking` 起 dispatcher 与 `TickSchedulerThread`（`docs/DESIGN-PROD.md` v0.9.93 起；之前是手工起这两样）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.ShutdownSequenceTest`（`:test`） | 6 个 0 失败，其中约 15 s 花在判死截断那条：一名 play 态玩家在线时 `stop()` 的调用序列恰为 `gate_closed:0:true`、`save:30:true:SAVING`、（保存期间 tick 计数又涨了 3）、`save_ended:false`、`disconnect`、`plugins_disabled:true`；保存期间 `isAlive()` 为 true，`PlayerDisconnectEvent` 在 `TickThread` 上派发，关停任务在 `TickSchedulerThread` 上执行，结束后 `shutdownPhase()` 为 `STOPPED`、`isAlive()` 为 false，再调 `stop()` 立即返回；`beginShutdown(3 s)` 的倒计时里新连接的 `LoginStart` 收到 `LoginDisconnect synaxis:server-stopping`；`beginShutdown(2 min)` 的倒计时里调 `shutdownAfterWatchdogDeath()` 返回 false，倒计时立即结束，保存以 `save:15:false` 进行；没有停机在跑时判死返回 true，整个序列在报告线程上跑完，只有 `save:15:false`；保存中判死时追加一次 `save:14`～`15:false`，保存在判死后 14～30 s 之间以 `save_ended:true` 截断；参与者只能在 `start` 之前设一次 |
-| 2 | 反证有齿（`stopped` 提前、门不关）：`ServerProcessImpl#shutdownProcess` 在 `this.shutdownPhase = ShutdownPhase.GATE_CLOSED;` 之后加一行 `stopped.set(true);`，并删掉 `connection.gate().close();`，重跑，再还原 | `6 tests completed, 4 failed`：第一条红 `expected: <[gate_closed:0:true, save:30:true:SAVING, ticked_while_saving, save_ended:false, disconnect, plugins_disabled:true]> but was: <[gate_closed:0:false, save:30:true:SAVING, save_ended:true, plugins_disabled:false]>`（tick 停了，保存等满 30 s，玩家没有断线事件）；倒计时那条红 `expected: <…LoginDisconnectPacket> but was: <…SetCompressionPacket>`（登录被放行）；两条判死用例的 `gate_closed:…:false` 不符 |
+| 1 | 跑 `io.github.bearisbug.synaxis.ShutdownSequenceTest`（`:test`） | 11 个 0 失败（RUN-081 起；新加的 5 个见 `TC-PROD-850`、`TC-PROD-851`、`TC-PROD-852`），其中约 14 s 花在判死截断那条：一名 play 态玩家在线时 `stop()` 的调用序列恰为 `gate_closed:0:true`、`save:30:true:SAVING`、（保存期间 tick 计数又涨了 3）、`save_ended:false`、`disconnect`、`plugins_disabled:true`；保存期间 `isAlive()` 为 true，`PlayerDisconnectEvent` 在 `TickThread` 上派发，关停任务在 `TickSchedulerThread` 上执行，结束后 `shutdownPhase()` 为 `STOPPED`、`isAlive()` 为 false，再调 `stop()` 立即返回；`beginShutdown(3 s)` 的倒计时里新连接的 `LoginStart` 收到 `LoginDisconnect synaxis:server-stopping`；`beginShutdown(2 min)` 的倒计时里调 `shutdownAfterWatchdogDeath()` 返回 false，倒计时立即结束，保存以 `save:14:false` 进行（判死预算 = `halt-after-ms` 15 s − 1 s，v0.9.93 之前是写死的 15 s）；没有停机在跑时判死返回 true，整个序列在报告线程上跑完，只有 `save:14:false`；保存中判死时追加一次 `save:13`～`14:false`，保存在判死后 13～30 s 之间以 `save_ended:true` 截断；参与者只能在 `start` 之前设一次 |
+| 2 | 反证有齿（`stopped` 提前、门不关）：`ServerProcessImpl#shutdownProcess` 在 `this.shutdownPhase = ShutdownPhase.GATE_CLOSED;` 之后加一行 `stopped.set(true);`，并删掉 `connection.gate().close();`，重跑，再还原 | 本类 6 个时（RUN-081 之前）的读数，RUN-081 加了 5 个之后没有重跑这一步：`6 tests completed, 4 failed`：第一条红 `expected: <[gate_closed:0:true, save:30:true:SAVING, ticked_while_saving, save_ended:false, disconnect, plugins_disabled:true]> but was: <[gate_closed:0:false, save:30:true:SAVING, save_ended:true, plugins_disabled:false]>`（tick 停了，保存等满 30 s，玩家没有断线事件）；倒计时那条红 `expected: <…LoginDisconnectPacket> but was: <…SetCompressionPacket>`（登录被放行）；两条判死用例的 `gate_closed:…:false` 不符 |
 | 3 | 反证有齿（保存中判死不截断）：`ServerProcessImpl#save` 的 `if (!dead && watchdogDeath.isDone())` 换成 `if (!dead && Boolean.getBoolean("proof.never"))`，只跑保存中判死那条，再还原 | 红：`[gate_closed:0:true, save:30:true:SAVING, save_ended:true] ==> expected: <4> but was: <3>`（没有第二次 `saveAll`，保存跑满 30 s）。还原后复绿 |
 
 后置：确认 `ServerProcessImpl.java` 没有残留改动。
@@ -7061,7 +7062,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 对应 `REQ-PROD-008`（`API-PROD-007` 宿主停机序列一段，§11.4 `saving → saving` 宿主步骤）、`REQ-PROD-045`（`API-PROD-028` 验票段，§11.3 末段）与 `REQ-PROD-004` 跨分片部分（§12.4 末段），`docs/DESIGN-PROD.md` v0.9.1（U）。十条都是 JUnit：`TC-PROD-370`～`TC-PROD-375` 与 `TC-PROD-379` 不连数据库（`TC-PROD-375` 第 2 步除外），`TC-PROD-376`～`TC-PROD-378` 要 3A 一节的数据库前置（`TC-PROD-378` 另要 Valkey）。数据库前置、「跑 `<类>`」的写法与反证规矩同 3A 一节；本节的类是 `io.github.bearisbug.synaxis.app.ShutdownSequenceTest`（下称「序列类」，8 条，约 20 s，其中 15 s 花在判死那条）、`io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest`（下称「票据类」，6 条）、`io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest`（下称「顶号类」，6 条）与 `io.github.bearisbug.synaxis.app.TransferAdmissionIntegrationTest`（1 条）。
 
-序列类用一个假的玩家存储，把收到的调用与各步骤的动作记进同一张表：`players:<tickAlive>[:<停机阶段>]`、`players_saved`（它的 future 完成前一刻）、`<步骤名>:<tickAlive>:<停机阶段或是否在调 saveAll 的线程上>`、`<步骤名>_done:<停机阶段>`、`save_ended:<timedOut>`、`plugins_disabled`（关停任务）。起真进程的三条（顺序、判死、注册）在回环地址上起 `Server`，并像 `MinecraftServer#start` 一样起 dispatcher 与 `TickSchedulerThread`。
+序列类用一个假的玩家存储，把收到的调用与各步骤的动作记进同一张表：`players:<tickAlive>[:<停机阶段>]`、`players_saved`（它的 future 完成前一刻）、`<步骤名>:<tickAlive>:<停机阶段或是否在调 saveAll 的线程上>`、`<步骤名>_done:<停机阶段>`、`save_ended:<timedOut>`、`plugins_disabled`（关停任务）。起真进程的三条（顺序、判死、注册）在回环地址上起 `Server`，再像 `MinecraftServer#start` 一样调 `ServerProcess#startTicking` 起 dispatcher 与 `TickSchedulerThread`（`docs/DESIGN-PROD.md` v0.9.93 起；之前是手工起这两样）。RUN-081 组 BOOT 起序列类删了一个导入、`start` 少一行，第 8～85 行的内容上移 1 行、第 87 行起上移 2 行，下面各步的红行已按新行号改写，这些反证没有在新行号上重跑。
 
 #### `TC-PROD-370` 玩家存完后停机步骤按注册顺序跑，最后一步完成才踢人 — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
 
@@ -7070,7 +7071,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑序列类，看 `theStepsRunAfterThePlayersInTheirOrderAndKickingWaitsForThem` | 全类 `tests="8"` 0 失败 0 跳过。进程注册 `ShutdownSequence`，装配时注册 `first`、`second` 两步（各 300 ms 后完成），玩家的 future 200 ms 后完成，`stop()` 返回后表恰为 `gate_closed:0`、`players:true:SAVING`、`players_saved`、`first:true:SAVING`、`first_done:SAVING`、`second:true:SAVING`、`second_done:SAVING`、`save_ended:false`、`plugins_disabled`；`shutdownPhase()` 为 `STOPPED`。两步完成时阶段仍是 `SAVING`：踢人等到最后一步完成 |
-| 2 | 反证有齿（不等步骤）：`ShutdownSequence#saveAll` 末行 `return done;` 改成 `return saved;`（返回玩家存储的 future），跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 4 failed`。本条红在 `ShutdownSequenceTest.java:110`：`a step still saving holds kicking back ==> expected: <[…九项…]> but was: <[gate_closed:0, players:true:SAVING, players_saved, first:true:SAVING, save_ended:false, plugins_disabled]>`（玩家存完引擎就去踢人，`first` 还没完成进程就停了，`second` 没被调用）。另三条随之红：`:167`、`:225`（返回的 future 已完成），以及 `aStepGetsWhatIsLeftOfTheBudget` 红在 `:135` 或 `:137`，两行都算本步的红。落在哪一行由线程调度定：`get` 在玩家的 future 完成那一刻返回，完成它的那条线程紧接着调用第一步、给 `first` 赋值，测试线程醒来读 `first` 与这次赋值谁先不固定。测试线程先读到时红在 `:135`：`2 s less the 400 ms the players took: 0 ms ==> expected: <true> but was: <false>`；晚一步时 `first` 已约 1,590 ms、`:135` 通过，红在 `:137`：`less the 300 ms of the first step: 0 ms after 1591 ms ==> expected: <true> but was: <false>`（第二步还没被调用）。实测 16 次：整类跑 6 次里 5 次 `:135`、1 次 `:137`，只跑这一条 10 次里 8 次 `:135`、2 次 `:137`。测试没改成只红一行：得调换这两条断言或在前面加一条，前者让 `TC-PROD-371` 的反证改红在第二步的判据上，后者让本类其后各条的红行下移 |
+| 2 | 反证有齿（不等步骤）：`ShutdownSequence#saveAll` 末行 `return done;` 改成 `return saved;`（返回玩家存储的 future），跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 4 failed`。本条红在 `ShutdownSequenceTest.java:108`：`a step still saving holds kicking back ==> expected: <[…九项…]> but was: <[gate_closed:0, players:true:SAVING, players_saved, first:true:SAVING, save_ended:false, plugins_disabled]>`（玩家存完引擎就去踢人，`first` 还没完成进程就停了，`second` 没被调用）。另三条随之红：`:165`、`:223`（返回的 future 已完成），以及 `aStepGetsWhatIsLeftOfTheBudget` 红在 `:133` 或 `:135`，两行都算本步的红。落在哪一行由线程调度定：`get` 在玩家的 future 完成那一刻返回，完成它的那条线程紧接着调用第一步、给 `first` 赋值，测试线程醒来读 `first` 与这次赋值谁先不固定。测试线程先读到时红在 `:133`：`2 s less the 400 ms the players took: 0 ms ==> expected: <true> but was: <false>`；晚一步时 `first` 已约 1,590 ms、`:133` 通过，红在 `:135`：`less the 300 ms of the first step: 0 ms after 1591 ms ==> expected: <true> but was: <false>`（第二步还没被调用）。实测 16 次：整类跑 6 次里 5 次 `:133`、1 次 `:135`，只跑这一条 10 次里 8 次 `:133`、2 次 `:135`。测试没改成只红一行：得调换这两条断言或在前面加一条，前者让 `TC-PROD-371` 的反证改红在第二步的判据上，后者让本类其后各条的红行下移 |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -7082,7 +7083,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑序列类，看 `aStepGetsWhatIsLeftOfTheBudget` | 0 失败：`saveAll(2 s, true)`，玩家 400 ms 后存完；第一步拿到的剩余预算在 1,000～1,600 ms，它用 300 ms；第二步拿到的 ≤ 第一步 − 300 ms 且 ≥ 400 ms |
-| 2 | 反证有齿（每步都拿整份预算）：`ShutdownSequence` 加字段 `private long budgetNanos;`，`saveAll` 在 `deadline = until;` 之后加 `budgetNanos = budget.toNanos();`，`advance` 里 `call(steps.get(index), remaining, true)` 改成 `call(steps.get(index), budgetNanos, true)`，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:135`：`2 s less the 400 ms the players took: 2000 ms ==> expected: <true> but was: <false>` |
+| 2 | 反证有齿（每步都拿整份预算）：`ShutdownSequence` 加字段 `private long budgetNanos;`，`saveAll` 在 `deadline = until;` 之后加 `budgetNanos = budget.toNanos();`，`advance` 里 `call(steps.get(index), remaining, true)` 改成 `call(steps.get(index), budgetNanos, true)`，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:133`：`2 s less the 400 ms the players took: 2000 ms ==> expected: <true> but was: <false>` |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -7093,9 +7094,9 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑序列类，看 `aStepThatDoesNotCompleteIsLeftBehindAndTheStepsAfterItDoNotRun` 与 `aDeadTickHandsTheStepsToTheShutdownThreadAndKickingFollowsTheDeadline` | 都 0 失败。前者：`saveAll(500 ms, true)`，`stuck` 步骤永不完成，800 ms 后按引擎的做法调 `onSaveEnded(true)`：表为 `players:true`、`stuck`、`save_ended:false`（玩家自己的保存按时完成，不按超时收尾），`ShutdownSequence` 的 ERROR 恰一条 `The shutdown step after did not run, the save budget was used up`；之后 `stuck` 完成也不再调 `after`，返回给引擎的 future 未完成。后者（约 15 s）：真进程上调 `shutdownAfterWatchdogDeath()`，返回 true，表为 `players:false:SAVING`、`stuck:false:true`、`save_ended:false`、`plugins_disabled`；`stuck` 拿到的剩余预算在 14,000～15,000 ms；调用在判死后 14～30 s 之间返回，阶段 `STOPPED`：步骤卡满 15 s 后引擎照常踢人、禁用插件、停服 |
-| 2 | 反证有齿（停机线程不设截止地等步骤）：`ShutdownSequence#await` 的 `future.get(Math.max(0, until - System.nanoTime()), TimeUnit.NANOSECONDS);` 改成 `future.get(Math.max(until, Long.MAX_VALUE), TimeUnit.NANOSECONDS);`，跑序列类，再 `git checkout --` 该文件 | 构建 1 min 9 s，`8 tests completed, 1 failed`：判死那条红：`java.util.concurrent.TimeoutException: aDeadTickHandsTheStepsToTheShutdownThreadAndKickingFollowsTheDeadline() timed out after 60 seconds`，栈落在 `:204` 的用时断言（停机线程卡在永不完成的步骤上，60 s 时被 JUnit 打断才放手） |
-| 3 | 反证有齿（没轮到的步骤不记）：`ShutdownSequence#onSaveEnded` 的 `for (int i = current + 1; …` 改成 `current + 2`，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:170`：`expected: <[The shutdown step after did not run, the save budget was used up]> but was: <[]>` |
+| 1 | 跑序列类，看 `aStepThatDoesNotCompleteIsLeftBehindAndTheStepsAfterItDoNotRun` 与 `aDeadTickHandsTheStepsToTheShutdownThreadAndKickingFollowsTheDeadline` | 都 0 失败。前者：`saveAll(500 ms, true)`，`stuck` 步骤永不完成，800 ms 后按引擎的做法调 `onSaveEnded(true)`：表为 `players:true`、`stuck`、`save_ended:false`（玩家自己的保存按时完成，不按超时收尾），`ShutdownSequence` 的 ERROR 恰一条 `The shutdown step after did not run, the save budget was used up`；之后 `stuck` 完成也不再调 `after`，返回给引擎的 future 未完成。后者（约 14 s）：真进程上调 `shutdownAfterWatchdogDeath()`，返回 true，表为 `players:false:SAVING`、`stuck:false:true`、`save_ended:false`、`plugins_disabled`；`stuck` 拿到的剩余预算在 13,000～14,000 ms（判死预算 = `halt-after-ms` 15 s − 1 s，`docs/DESIGN-PROD.md` v0.9.93；之前是 14,000～15,000 ms）；调用在判死后 13～30 s 之间返回，阶段 `STOPPED`：步骤卡满 14 s 后引擎照常踢人、禁用插件、停服 |
+| 2 | 反证有齿（停机线程不设截止地等步骤）：`ShutdownSequence#await` 的 `future.get(Math.max(0, until - System.nanoTime()), TimeUnit.NANOSECONDS);` 改成 `future.get(Math.max(until, Long.MAX_VALUE), TimeUnit.NANOSECONDS);`，跑序列类，再 `git checkout --` 该文件 | 构建 1 min 9 s，`8 tests completed, 1 failed`：判死那条红：`java.util.concurrent.TimeoutException: aDeadTickHandsTheStepsToTheShutdownThreadAndKickingFollowsTheDeadline() timed out after 60 seconds`，栈落在 `:202` 的用时断言（停机线程卡在永不完成的步骤上，60 s 时被 JUnit 打断才放手） |
+| 3 | 反证有齿（没轮到的步骤不记）：`ShutdownSequence#onSaveEnded` 的 `for (int i = current + 1; …` 改成 `current + 2`，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:168`：`expected: <[The shutdown step after did not run, the save budget was used up]> but was: <[]>` |
 | 4 | 跑 `io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest` | 2 个 0 失败：这些 ERROR 行由 `ShutdownSequence` 自己写，它在宿主日志豁免名单 `boundedReporters()` 里，上界是每个停机步骤每次停机至多一行（步骤只在装配时注册，客户端碰不到） |
 | 5 | 反证有齿：删掉 `ClientDrivenLogArchitectureTest#boundedReporters` 里的 `.or(name(ShutdownSequence.class.getName()))`，跑第 4 步，再还原 | `2 tests completed, 1 failed`：`hostPathsDoNotWriteALinePerPacket` 红 `Architecture Violation … was violated (2 times)`，点名 `ShutdownSequence.call(…)` 与 `ShutdownSequence.onSaveEnded(boolean)` 两处 `Logger.error` |
 | 6 | 还原后重跑第 1、4 步 | 与第 1、4 步相同 |
@@ -7109,8 +7110,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑序列类，看 `aDeathWhileAStepRunsForTheTickCallsItAgainOnTheShutdownThread`、`aDeathWhileThePlayersSaveRunsEveryStepOnTheShutdownThreadAfterThem`，并对照 `TC-PROD-370`、`TC-PROD-372` 两条的表 | 都 0 失败。步骤 `one` 以 true 被调时交给 tick、永不完成；接着按引擎的做法 `saveAll(15 s, false)`：该调用返回时 future 已完成，表为 `players:true`、`one:true:true`、`players:false`、`one:false:true`、`two:false:true`，之后那个交给 tick 的 future 才完成也不再调任何步骤。玩家第一次保存停在 tick 上时判死：表为 `players:true`、`players:false`、`players_saved`、`one:false:true`（等玩家第二次保存完成才跑，只跑一次）。tick 活着时步骤拿到 true（`TC-PROD-370` 的 `first:true`），停机前判死时拿到 false 且在报告线程上（`TC-PROD-372` 的 `stuck:false:true`） |
-| 2 | 反证有齿（判死后仍传 true）：`ShutdownSequence#runDead` 的 `call(step, remaining, false)` 改成 `call(step, remaining, true)`，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 3 failed`：`:201` `…but was: <[players:false:SAVING, stuck:true:true, save_ended:false, plugins_disabled]>`；`:229` `the shutdown thread ran what was left ==> expected: <true> but was: <false>`（`one` 又把活交给已死的 tick，等满 15 s）；`:255` `…but was: <[players:true, players:false, players_saved, one:true:true]>` |
-| 3 | 反证有齿（在跑的那一步不再调一次）：`runDead` 的 `final boolean rerun = liveCall != null && !liveCall.isDone();` 改成 `… && liveCall.isDone() && !liveCall.isDone();`（恒假），跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:231`：`…expected: <[players:true, one:true:true, players:false, one:false:true, two:false:true]> but was: <[players:true, one:true:true, players:false, two:false:true]>`（交给已死 tick 的那份活没人做，序列直接跳到下一步） |
+| 2 | 反证有齿（判死后仍传 true）：`ShutdownSequence#runDead` 的 `call(step, remaining, false)` 改成 `call(step, remaining, true)`，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 3 failed`：`:199` `…but was: <[players:false:SAVING, stuck:true:true, save_ended:false, plugins_disabled]>`；`:227` `the shutdown thread ran what was left ==> expected: <true> but was: <false>`（`one` 又把活交给已死的 tick，等满 15 s）；`:253` `…but was: <[players:true, players:false, players_saved, one:true:true]>` |
+| 3 | 反证有齿（在跑的那一步不再调一次）：`runDead` 的 `final boolean rerun = liveCall != null && !liveCall.isDone();` 改成 `… && liveCall.isDone() && !liveCall.isDone();`（恒假），跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:229`：`…expected: <[players:true, one:true:true, players:false, one:false:true, two:false:true]> but was: <[players:true, one:true:true, players:false, two:false:true]>`（交给已死 tick 的那份活没人做，序列直接跳到下一步） |
 | 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -7122,7 +7123,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑序列类，看 `aStepIsRegisteredBeforeTheStartOnly` | 0 失败：`start` 之前注册 `early` 不抛；`start` 之后注册 `late` 抛 `IllegalStateException`，信息恰为 `The shutdown step late is registered after the process started`；`stop()` 之后注册同样抛 |
-| 2 | 反证有齿：`ShutdownSequence#addAfterPlayers` 的条件去掉 `process.isAlive() \|\|`（只看停机阶段），跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:268`：`Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.`（运行中注册被放行；停机之后那次仍被拒，所以两个条件都要） |
+| 2 | 反证有齿：`ShutdownSequence#addAfterPlayers` 的条件去掉 `process.isAlive() \|\|`（只看停机阶段），跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:266`：`Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.`（运行中注册被放行；停机之后那次仍被拒，所以两个条件都要） |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -7135,8 +7136,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | --- | --- | --- |
 | 1 | 跑序列类，看 `withoutStepsTheSavePhaseIsThePlayerStoresOwn` | 0 失败：两次 `saveAll`（30 s true、15 s false）返回的都是玩家存储那次调用返回的同一个 future 对象；表为 `gate_closed:60`、`players:true`、`players:false`、`save_ended:true`（玩家的 future 已完成时 `onSaveEnded(true)` 也原样传 true） |
 | 2 | 跑 `io.github.bearisbug.synaxis.ShutdownSequenceTest`（`:test`）与 `io.github.bearisbug.synaxis.app.store.ShutdownSaveIntegrationTest`；再 `grep -rnE "setShutdownParticipant\|addAfterPlayers\(" server-app/src/main/java` | 引擎 6 个、宿主 4 个，都 0 失败（`TC-PROD-154`、`TC-PROD-155` 第 1 步，两个类都没改）。`grep` 只有两行：`Main.java` 的 `process.setShutdownParticipant(shutdown);` 与 `ShutdownSequence.java` 里 `addAfterPlayers` 的定义：RTS 的 `Main` 路径注册 `new ShutdownSequence(process, store.store())`，不注册步骤 |
-| 3 | 反证有齿（没有步骤也走步骤链）：删掉 `ShutdownSequence#saveAll` 里的 `if (steps.isEmpty()) return saved;`，`onSaveEnded` 的 `playersTimedOut = steps.isEmpty() ? timedOut : …` 只留 `:` 之后的部分，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:287`：`the engine waits on the store's own future ==> expected: <java.util.concurrent.CompletableFuture@…[Not completed, 1 dependents]> but was: <java.util.concurrent.CompletableFuture@…[Not completed]>` |
-| 4 | 反证有齿（只改 `onSaveEnded`）：只做第 3 步的第二处改动，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:292`：`every call passed on as it came ==> expected: <[gate_closed:60, players:true, players:false, save_ended:true]> but was: <[…, save_ended:false]>` |
+| 3 | 反证有齿（没有步骤也走步骤链）：删掉 `ShutdownSequence#saveAll` 里的 `if (steps.isEmpty()) return saved;`，`onSaveEnded` 的 `playersTimedOut = steps.isEmpty() ? timedOut : …` 只留 `:` 之后的部分，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:285`：`the engine waits on the store's own future ==> expected: <java.util.concurrent.CompletableFuture@…[Not completed, 1 dependents]> but was: <java.util.concurrent.CompletableFuture@…[Not completed]>` |
+| 4 | 反证有齿（只改 `onSaveEnded`）：只做第 3 步的第二处改动，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:290`：`every call passed on as it came ==> expected: <[gate_closed:60, players:true, players:false, save_ended:true]> but was: <[…, save_ended:false]>` |
 | 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -8136,7 +8137,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 #### `TC-PROD-497` 引擎只给占下停机的那次调用 true：之后的 `beginShutdown` 与 `stop()` 立即得 false、不改倒计时；`beginShutdown` 不等序列，序列在非 daemon 的 `Syn-Shutdown` 上跑；非 tick 线程上的 `stop()` 跑完才返回 — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
 
-前置：工作副本干净。进程在回环地址上起真 `Server`，并像 `MinecraftServer#start` 一样起 dispatcher 与 `TickSchedulerThread`（同 `TC-PROD-154`）。
+前置：工作副本干净。进程在回环地址上起真 `Server`，再调 `ServerProcess#startTicking` 起 dispatcher 与 `TickSchedulerThread`（同 `TC-PROD-154`）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -9941,14 +9942,14 @@ J=src/main/java/io/github/bearisbug/synaxis; A=server-app/src/main/java/io/githu
 chk $J/listener/ChatMessageListener.java 40 'chatRateLimiter().tryAcquire'
 chk $J/listener/ChatMessageListener.java 50 'new PlayerChatEvent(player, List.of(), message)'
 chk $J/listener/ChatMessageListener.java 56 'if (!recipients.isEmpty())'
-chk $J/ServerConfig.java 262 '"synaxis.chat-rate-per-second"'
-chk $J/ServerConfig.java 263 '"synaxis.chat-burst"'
-chk $J/ServerConfig.java 433 'chatRatePerSecond = 1;'
-chk $J/ServerConfig.java 434 'chatBurst = 3;'
+chk $J/ServerConfig.java 299 '"synaxis.chat-rate-per-second"'
+chk $J/ServerConfig.java 300 '"synaxis.chat-burst"'
+chk $J/ServerConfig.java 470 'chatRatePerSecond = 1;'
+chk $J/ServerConfig.java 471 'chatBurst = 3;'
 chk $A/ConfigFile.java 83 '"synaxis.chat-rate-per-second"'
 chk $A/ConfigFile.java 84 '"synaxis.chat-burst"'
 chk $J/entity/Player.java 439 'true, false);'
-chk $J/message/Messenger.java 46 'new SystemChatPacket(message, false)'
+chk $J/message/Messenger.java 47 'new SystemChatPacket(message, position == ChatPosition.GAME_INFO)'
 chk client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/mixin/ClientPacketListenerMixin.java 22 'skipUnsecureServerToast'
 chk $A/transfer/TicketIssuer.java 38 'public static final String TRANSFER_FAILED'
 chk $A/shard/ShardGates.java 119 'TicketIssuer.TRANSFER_FAILED'
@@ -9982,10 +9983,10 @@ grep -c '| R2 封闭内测 |.*M3-S 已合入 `main`.*①②③⑥ 已在引擎�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 严格 grid 跑 `DisconnectFlushSocketTest` | `tests="2"` 0 失败，用时约 2～4 s。`theDisconnectPacketIsWrittenBehindMoreThanOneFlushOfQueuedPackets`：进程的压缩阈值是 0；对端握手、发 `LoginStart`，登录停在 `AsyncPlayerPreLoginEvent` 里；测试先排一个 `CachedPacket`，它的 supplier 在写线程上等测试放行，写线程就停在一次冲刷当中；再排 1,573 个各带 4,000 B 的 `LoginPluginRequestPacket`（合计超过 3 × `synaxis.max-packet-size`，所以与池里的缓冲被别的测试扩到多大无关），以 `bye` 踢人，放行。对端一直读到连接关闭，收到 1,574 个登录插件请求，最后一个包是 `LoginDisconnect`，文字 `bye`。`aKickOnTheWriteThreadClosesAPeerThatStoppedReadingWithinTheBudget`：对端连接前把接收缓冲设成 4 KB，之后一个字节都不读；同样停住写线程、排同样 1,573 个包，放行后由 supplier 在写线程上以 `bye` 踢人（与写线程上的 `PlayerPacketOutEvent` 监听器踢人、写循环捕到非 IO 异常是同一种断开）；写线程 5 s 内退出、channel 已关（关闭线程在 1 s 后关） |
-| 2 | 反证有齿（下线后只再冲刷一次，即 `766f09a0bf` 之前）：`<SV>` 第 268 行 `connection.flushRemaining();` 改为 `connection.flushSync();`，严格 grid 重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `DisconnectFlushSocketTest.java:98`，`the peer read 9 of the 1574 packets queued before the kick, then the end of the stream ==> Unexpected type, expected: <…LoginDisconnectPacket> but was: <…LoginPluginRequestPacket>`。9 个是停住的那一个，加上两个写缓冲各 4 个（16,383 B 的缓冲装得下 4 个约 4,020 B 的帧）；池里的缓冲被同一 JVM 里别的测试扩过时这个数会变大，但到不了 1,574。第二条照绿：只再写一个缓冲，写得进内核的发送缓冲，写线程随即关 channel。首轮在 `8b18922130` 的代码上默认模式跑过，同一句（那时测试类只有第一条，红行是 `:95`） |
+| 1 | 严格 grid 跑 `DisconnectFlushSocketTest` | `tests="2"` 0 失败（RUN-081 起本类 3 条，加的那条见 `TC-PROD-855`），用时约 2～4 s。`theDisconnectPacketIsWrittenBehindMoreThanOneFlushOfQueuedPackets`：进程的压缩阈值是 0；对端握手、发 `LoginStart`，登录停在 `AsyncPlayerPreLoginEvent` 里；测试先排一个 `CachedPacket`，它的 supplier 在写线程上等测试放行，写线程就停在一次冲刷当中；再排 1,573 个各带 4,000 B 的 `LoginPluginRequestPacket`（合计超过 3 × `synaxis.max-packet-size`，所以与池里的缓冲被别的测试扩到多大无关），以 `bye` 踢人，放行。对端一直读到连接关闭，收到 1,574 个登录插件请求，最后一个包是 `LoginDisconnect`，文字 `bye`。`aKickOnTheWriteThreadClosesAPeerThatStoppedReadingWithinTheBudget`：对端连接前把接收缓冲设成 4 KB，之后一个字节都不读；同样停住写线程、排同样 1,573 个包，放行后由 supplier 在写线程上以 `bye` 踢人（与写线程上的 `PlayerPacketOutEvent` 监听器踢人、写循环捕到非 IO 异常是同一种断开）；写线程 5 s 内退出、channel 已关（关闭线程在 1 s 后关） |
+| 2 | 反证有齿（下线后只再冲刷一次，即 `766f09a0bf` 之前）：`<SV>` 第 278 行（RUN-081 之前是第 268 行）`connection.flushRemaining();` 改为 `connection.flushSync();`，严格 grid 重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `DisconnectFlushSocketTest.java:98`（RUN-081 起本类多了 4 个导入与 1 条用例，这一行在 `:102`，重跑时是 `3 tests completed, 1 failed`），`the peer read 9 of the 1574 packets queued before the kick, then the end of the stream ==> Unexpected type, expected: <…LoginDisconnectPacket> but was: <…LoginPluginRequestPacket>`。9 个是停住的那一个，加上两个写缓冲各 4 个（16,383 B 的缓冲装得下 4 个约 4,020 B 的帧）；池里的缓冲被同一 JVM 里别的测试扩过时这个数会变大，但到不了 1,574。第二条照绿：只再写一个缓冲，写得进内核的发送缓冲，写线程随即关 channel。首轮在 `8b18922130` 的代码上默认模式跑过，同一句（那时测试类只有第一条，红行是 `:95`） |
 | 3 | 还原后严格 grid 重跑第 1 步，再默认模式跑一次 | 两次都与第 1 步相同 |
-| 4 | 反证有齿（写线程自己断开时不起关闭线程，即 `c0c75ecc59` 的写法）：删掉 `<PSC>` 里 `flushRemaining` 的第一行 `startCloser();`，严格 grid 重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `DisconnectFlushSocketTest.java:148`，`the write thread was still writing to a peer that reads nothing 5 s after it kicked ==> expected: <true> but was: <false>`：写线程要把约 6.3 MB 写给一个不读的对端，卡在 socket 写里，没有别的线程来关 channel。`c0c75ecc59` 的代码上默认模式跑，同一行同一句 |
+| 4 | 反证有齿（写线程自己断开时不起关闭线程，即 `c0c75ecc59` 的写法）：删掉 `<PSC>` 里 `flushRemaining` 的第一行 `startCloser();`，严格 grid 重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `DisconnectFlushSocketTest.java:148`（RUN-081 起在 `:152`），`the write thread was still writing to a peer that reads nothing 5 s after it kicked ==> expected: <true> but was: <false>`：写线程要把约 6.3 MB 写给一个不读的对端，卡在 socket 写里，没有别的线程来关 channel。`c0c75ecc59` 的代码上默认模式跑，同一行同一句 |
 | 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几处代码没动时，看 `the peer read N`。N 是个位数，是下线后的冲刷又回到了一次一个缓冲；N 上百，是 runner 卡顿超过了关闭线程的 1 s 预算（对端要在踢人后 1 s 内经回环读完约 6.3 MB），先按卡顿排查。
@@ -12025,6 +12026,137 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：`grep -rn proof.never server-app/src/main` 无输出；`git status --short` 无输出。
 
+### 生产就绪 · RUN-081：BOOT（停机序列、起 tick、配置取值、写线程与 accept 循环、tick 线程）
+
+对应 `REQ-PROD-008`、`REQ-PROD-014`、`REQ-PROD-015`、`REQ-PROD-019`、`REQ-PROD-001`、`REQ-PROD-009`、`REQ-PROD-025`、`REQ-PROD-033`、`REQ-PROD-043` 与引擎的 `REQ-013`、`REQ-014`（`docs/DESIGN-PROD.md` v0.9.93：§11.4 迁移表六行与状态图一条守卫、§11.5 跨机一致性段、`API-PROD-007` 预算段、`API-PROD-013` 看门狗键与落点两条、`API-PROD-016` 漏放的 `Acquired`、`API-PROD-023` 键表、§16「断开与出站队列」、§17 `process.shutdown`、§19 两个场景、§28.3 一行；`docs/DESIGN.md` `API-003` 与 §16「对端停止读取」一行）。分支 `prod/r081-BOOT`，基于 `main` `965c3bddae`。
+
+测试（下文「跑 `<类>`」即 `./gradlew :test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，`server-app` 的类换成 `:server-app:test`，`testing` 的换成 `:testing:test`；本组本机都带 `--max-workers=2`）：引擎新类 `io.github.bearisbug.synaxis.timer.SchedulerManagerTest`（1 条）、`io.github.bearisbug.synaxis.TickSchedulerThreadTest`（2 条）、`io.github.bearisbug.synaxis.ServerProcessStartTickingTest`（2 条）、`io.github.bearisbug.synaxis.JvmFlagsRangeTest`（2 条，其中 1 条每个取值起一个子 JVM）、`io.github.bearisbug.synaxis.network.socket.AcceptLoopSocketTest`（1 条，真 `Server` 与回环 socket）、`io.github.bearisbug.synaxis.network.packet.PlayerChatMessagePacketTest`（1 条）、`io.github.bearisbug.synaxis.message.MessengerIntegrationTest`（2 条，`@EnvTest`）；既有类加的用例：`ShutdownSequenceTest` 5 条（6 → 11）、`ThreadDispatcherTest` 4 条（17 → 21）、`ServerConfigTest` 1 条（7 → 8）、`ExceptionManagerTest` 1 条（5 → 6）、`DisconnectFlushSocketTest` 1 条（2 → 3）、`PacketWriteQueueTest` 1 条（4 → 5）、`CooldownTest` 1 条（3 → 4，钉住 `Cooldown` 文档写的默认单位毫秒，改动前后都绿），`server-app` 的 `ConnectionGateLogTest` 1 条（5 → 6）。改了的旧测试：引擎 `ShutdownSequenceTest` 三条判死用例的预算 15 s → 14 s，最后一条改名为 `aDeathDuringTheSaveCutsItToTheDeathBudgetAndReadsTheRestOnTheShutdownThread`；`server-app` 的 `ShutdownSequenceTest` 判死那条的阈值 14～15 s → 13～14 s（`TC-PROD-372`）；`ShutdownSequenceTest` 两份、`ShutdownClaimTest`、`ManagedInstanceTickThreadTest` 改用 `ServerProcess#startTicking`（`TC-PROD-853`）；`testing` 的 `LoginFailureIntegrationTest` 换了触发方式（`TC-PROD-857`）。读数在 `docs/test-runs/RUN-081/BOOT/`：`01-red-baseline.txt`（主代码取 `965c3bddae` 的、测试是本组的，第 1 次运行）、`02-green-default.txt`（第 2 次）、`03-green-strict.txt`（第 3 次）、`04-green-grid.txt`（第 4 次）、`05-proofs.txt`（第 5 次，修好之后又改过的测试的反证）。改动前的红只跑一次：第 1 次运行时 `ServerProcessStartTickingTest` 与 `ThreadDispatcherTest#closingAnAcquiredThatWasUnlockedDoesNothing` 还没加（它们用到本组新加的方法，编不过），四份改用 `startTicking` 的测试仍是手工起 ticker，它们的齿由第 5 次运行的反证给出。
+
+#### `TC-PROD-850` 停机任务逐个隔离：一个抛异常，后面的照跑，停机序列照常走到 `stopped` — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.timer.SchedulerManagerTest`（第 2 次运行） | 1 条绿：登记三个停机任务，第二个抛 `IllegalStateException`；`shutdown()` 正常返回，三个按登记顺序都执行了，异常处理器恰收到那一个异常（原样，不包装）；再调一次 `shutdown()`，谁都不再执行 |
+| 2 | 跑 `ShutdownSequenceTest`，看 `aShutdownTaskThatThrowsOnTheShutdownThreadStopsNeitherTheOthersNorTheProcess` 与 `aShutdownTaskThatThrowsBetweenTwoTicksDoesNotStopTheOthers`（第 2 次运行） | 都绿。前者：进程 `start` 过、起了 tick 线程、没有 tick 调度线程，停机任务在 `stop()` 的线程上执行；第一个任务抛异常，`stop()` 不抛，第二个任务执行了，异常处理器收到那个异常，阶段 `STOPPED`，5 s 内 dispatcher 的 tick 线程都已结束。后者：进程在 tick，同样两个任务，第二个在 `TickSchedulerThread` 上执行了 |
+| 3 | 改动前的红（第 1 次运行，主代码取 `965c3bddae` 的） | `SchedulerManagerTest` 红在 `:25`：`java.lang.IllegalStateException: the second task failed` 从 `shutdown()` 穿出，第三个任务没执行；前者红在 `ShutdownSequenceTest.java:309`，`Unexpected exception thrown: java.lang.IllegalStateException: the first task failed`（异常穿出 `stop()`）；后者红在 `:340`，`the task after the one that failed ran ==> Unexpected null value`（JCTools 的 `drain` 在抛出处停下，排在后面的任务留在队列里） |
+| 4 | 反证有齿（第 5 次运行，`ShutdownSequenceTest` 已改用 `startTicking`）：`SchedulerManager#shutdown` 的 catch 里交给异常处理器之后加一行 `if (!Boolean.getBoolean("proof.never")) throw throwable;`（遇到第一个抛异常的任务就停，同改动前的 `drain`），与 `TC-PROD-851`～`TC-PROD-853`、`TC-PROD-856` 的反证同批（七处改动列在 `05-proofs.txt` 开头），再还原 | 两条都红：前者在 `ShutdownSequenceTest.java:311`，`the task after the one that failed ran ==> expected: <true> but was: <false>`（`stop()` 这回不抛：停机序列把这一步包在兜底里，异常交给处理器，tick 线程照常停）；后者在 `:340`，消息同第 3 步 |
+
+后置：`grep -rn proof.never src/main` 无输出；`git status --short` 无输出。
+
+#### `TC-PROD-851` 判死路径的保存预算是 `halt-after-ms` − 1 s：保存先于 halt 结束 — 对应 `REQ-PROD-008`、`REQ-PROD-014` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ShutdownSequenceTest`，看 `aDeathSaveEndsASecondBeforeTheWatchdogHalts`（第 2 次运行） | 绿：`synaxis.watchdog.halt-after-ms` 5,000 的进程，参与者的 `saveAll` 永不完成；调 `shutdownAfterWatchdogDeath()` 得 true，参与者收到的预算恰为 4 s，调用序列为 `save:4:false:SAVING`、`save_ended:true`，从判死到 `onSaveEnded` 在 4,000～5,000 ms 之间。默认配置的三条判死用例（`TC-PROD-154` 第 1 步）收到 14 s |
+| 2 | 跑 `:server-app:test --tests io.github.bearisbug.synaxis.app.ShutdownSequenceTest`，看 `aDeadTickHandsTheStepsToTheShutdownThreadAndKickingFollowsTheDeadline`（第 2 次运行） | 绿：卡住的步骤拿到的剩余预算在 13,000～14,000 ms，调用在判死后 13～30 s 之间返回（`TC-PROD-372` 第 1 步） |
+| 3 | 改动前的红（第 1 次运行） | 第 1 步那条红在 `ShutdownSequenceTest.java:247`，`halt-after less 1 s ==> expected: <PT4S> but was: <PT15S>`（halt 计时 5 s，保存却按写死的 15 s 排）；三条默认配置的判死用例各红在 `:176`、`:187`、`:209`（`save:15:false:SAVING`）；第 2 步那条红在 `server-app` 的 `ShutdownSequenceTest.java:203`（红轮时的行号，改用 `startTicking` 之后是 `:201`），`the 14 s of a dead process: 14999 ms` |
+| 4 | 反证有齿（第 5 次运行）：`ServerProcessImpl` 构造器里 `deathSaveBudgetNanos` 的赋值改成 `!Boolean.getBoolean("proof.never") ? TimeUnit.SECONDS.toNanos(DEATH_SAVE_BUDGET_SECONDS) : <原式>`（写死 15 s），与 `TC-PROD-850` 第 4 步同批，再还原 | 第 1 步那条红在 `ShutdownSequenceTest.java:247`、三条默认配置的判死用例红在 `:176`、`:187`、`:209`，消息同第 3 步；第 2 步那条红在 `server-app` 的 `ShutdownSequenceTest.java:201`，`the 14 s of a dead process: 14999 ms` |
+
+后置：同 `TC-PROD-850`。
+
+#### `TC-PROD-852` 判死之后踢人阶段不等玩家离开；倒计时长于一次等待能等的就拒绝 — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ShutdownSequenceTest`，看 `kickingDoesNotWaitForADeadTick` 与 `aCountdownLongerThanAWaitCanTakeIsRefused`（第 2 次运行） | 都绿。前者：一名 play 态玩家在线，调度一个任务把 tick 卡在门闩上，再调 `shutdownAfterWatchdogDeath()`；从 `onSaveEnded` 到停机任务开始执行不到 1,000 ms，停机任务放开门闩后序列走到 `STOPPED`。后者：`beginShutdown(ChronoUnit.FOREVER.getDuration())` 抛 `IllegalArgumentException`，阶段仍是 `RUNNING` |
+| 2 | 改动前的红（第 1 次运行） | 前者红在 `ShutdownSequenceTest.java:284`，`from the end of the save to the shutdown tasks: 5015 ms`（判死的 tick 不会再移除玩家，踢人阶段空等满 5 s）；后者红在 `:348`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（`beginShutdown` 得 true，停机线程在等倒计时时抛 `ArithmeticException`） |
+| 3 | 反证有齿（第 5 次运行）：`ServerProcessImpl#kickEveryone` 循环条件里的 `!watchdogDeath.isDone() && ` 删掉，与 `TC-PROD-850` 第 4 步同批，再还原 | 前者红在 `ShutdownSequenceTest.java:284`，`from the end of the save to the shutdown tasks: 5017 ms` |
+
+后置：同 `TC-PROD-850`。
+
+#### `TC-PROD-853` `ServerProcess#startTicking`：`start` 之后起 tick，`MinecraftServer#start` 两者都调；改用它的四份测试 — 对应 `REQ-013`、`REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.ServerProcessStartTickingTest`（第 2 次运行） | 2 条绿。`aStartedProcessTicksOnceItStartsTickingAndStopsTickingWhenItStops`：`start` 之前调 `startTicking()` 抛 `IllegalStateException`；`start` 之后不 tick，调了才 tick，每 tick 的任务跑在 `TickSchedulerThread` 上；第二次调抛 `IllegalStateException`；`stop()` 返回时 tick 调度线程与 dispatcher 的 tick 线程都已结束。`theLauncherStartsTheProcessAndItsTicking`：`MinecraftServer.init()` 后 `start(回环地址, 0)`，进程 tick，再调 `process().startTicking()` 抛 `IllegalStateException` |
+| 2 | 跑 `ShutdownSequenceTest`、`ShutdownClaimTest`，`:server-app:test` 跑 `io.github.bearisbug.synaxis.app.ShutdownSequenceTest`、`io.github.bearisbug.synaxis.app.instance.ManagedInstanceTickThreadTest`（第 2 次运行） | 11、2、8、5 条，0 失败：这四份测试的进程改为 `start` 之后调 `startTicking()`，不再自己起 dispatcher 与 `new TickSchedulerThread(…)` |
+| 3 | 跑 `:server-app:test` 的 `io.github.bearisbug.synaxis.app.shard.ShardWorldRelightTest` 与 `ShardWorldAssemblyTest`（第 2 次运行） | 3、10 条，0 失败：这两份仍手工起 ticker，靠 `ServerProcessImpl.java:646` 的认领给进程记下 ticker（`docs/DESIGN-PROD.md` §28.3 交光照会话改） |
+| 4 | 反证有齿（第 5 次运行）：① `MinecraftServer#start` 里删掉 `process.startTicking();`；② `ServerProcessImpl#startTicking` 第一行的 `Check.stateCondition(!started.get(), …)` 删掉；与 `TC-PROD-850` 第 4 步同批，再还原 | 两条都红：① `theLauncherStartsTheProcessAndItsTicking` 红在 `ServerProcessStartTickingTest.java:72`，`condition not met in 10 s`（进程不 tick）；② 第一条红在 `:30`，`not started yet ==> Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.` |
+
+后置：同 `TC-PROD-850`。
+
+#### `TC-PROD-854` 配置取值：起服后才坏的取值在建进程时就拒启，报错带键名与实际值 — 对应 `REQ-014`、`REQ-PROD-033`、`REQ-PROD-043` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.ServerConfigTest`，看 `valuesThatBreakAStartedProcessAreRefusedByKey`（第 2 次运行） | 绿：`build()` 对下列取值抛 `IllegalArgumentException`，消息含所写的片段：`keep-alive-kick` 等于或小于 `keep-alive-delay`（`synaxis.keep-alive-kick (10000 ms) must be greater than synaxis.keep-alive-delay (10000 ms)`，只把 delay 调到 20,000 时同样）、`keep-alive-delay` 0、`login-timeout` 0、`packet-per-tick` 0、`packet-queue-size` 1 与 40（小于 `packet-per-tick` 50）、三个缓冲键各取 0、`watchdog.timeout-ms` 60、`chunk-queue.min-per-tick` 8 配 `max-per-tick` 4 与 min 为 NaN、`entity-synchronization-ticks` 0、`entity-view-distance` 与 `max-tick-catch-up` 各取 −1、`chunk-view-distance` −1（`chunkViewDistance must not be negative but was -1`）；三个网段与覆盖串给 null 抛 `NullPointerException`，消息是字段名。各键的边界值（kick 2 配 delay 1、队列 2、缓冲 1、`timeout-ms` 1,000 与 0、min 等于 max、视距 0）照常建出 |
+| 2 | 跑 `io.github.bearisbug.synaxis.JvmFlagsRangeTest`（第 2 次运行） | 2 条绿：测试 JVM 里 `synaxis.tps` 20、`Tick.SERVER_TICKS.getTicksPerSecond()` 等于它，`max-packet-size` 2,097,151、`-pre-auth` 8,192；分别带 `-Dsynaxis.max-packet-size=4194304`、`=8192`、`-Dsynaxis.max-packet-size-pre-auth=4194304`、`-Dsynaxis.tps=0`、`=30` 起子 JVM 初始化 `JvmFlags`，都以 `ExceptionInInitializerError` 失败，原因依次是 `Property 'synaxis.max-packet-size' value must be in range [16383..2097151] but was 4194304`、同一句 `but was 8192`、`Property 'synaxis.max-packet-size-pre-auth' value must be in range [1024..2097151] but was 4194304`、`Property 'synaxis.tps' value must be in range [1..1000] but was 0`、`Property 'synaxis.tps' value must divide 1000, …` |
+| 3 | 跑 `:server-app:test --tests io.github.bearisbug.synaxis.app.ConnectionGateLogTest`，看 `settingTheEventNodeParentsKeyWarnsThatItIsDeprecated`；`:architecture-tests:test --tests '*ConfigKeyGateTest'`（第 2 次运行） | 都绿：设了 `synaxis.event.multiple-parents` 时 `ServerConfig.fromSystemProperties()` 恰记一行 WARN `synaxis.event.multiple-parents is deprecated and has no effect, an event node has at most one parent`；配置键门禁照常 122 个键（这个键改由 `ServerConfig` 读、仍在 `ConfigFile.KEYS`） |
+| 4 | 改动前的红（第 1 次运行） | 第 1 步那条红在 `ServerConfigTest.java:162`（`refused` 里的 `assertThrows`），第一个断言 `synaxis.keep-alive-kick (10000 ms) must be greater than synaxis.keep-alive-delay (10000 ms) ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；第 2 步那条红在 `JvmFlagsRangeTest.java:59`，子 JVM 输出 `initialized JvmFlags[…, maxPacketSize=4194304, …]`（越界值照常生效）；第 3 步 WARN 那条红在 `ConnectionGateLogTest.java:228`，`but was: <[]>` |
+
+后置：同 `TC-PROD-850`。
+
+#### `TC-PROD-855` 写线程与 accept 循环：写不出的包丢掉、对端知道原因；建连接失败的那一条不拖垮 accept 循环；聊天包的翻译不碰空组件 — 对应 `REQ-PROD-001`、`REQ-PROD-009`、`REQ-PROD-025` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest`，看 `aPacketThatFailsToBeWrittenIsDroppedAndThePeerToldOfTheInternalError`；跑 `io.github.bearisbug.synaxis.network.packet.PacketWriteQueueTest`，看 `aPacketTheWriterFailsOnLeavesTheQueueWithTheFailure`（第 2 次运行） | 都绿。前者：登录停在 `AsyncPlayerPreLoginEvent` 里，给连接排一个 supplier 抛 `IllegalStateException` 的 `CachedPacket`；对端读到的最后一个包是 `LoginDisconnect`，原因的翻译键 `synaxis:internal-error`，之后连接关闭；supplier 只跑了 1 次，写线程 5 s 内结束，异常处理器恰收到那一个异常。后者：三个包的队列，写入器在第一个上抛异常，`writeQueue` 原样抛出，写入器只被调 1 次，队列里剩另外两个 |
+| 2 | 跑 `io.github.bearisbug.synaxis.network.socket.AcceptLoopSocketTest`（第 2 次运行） | 1 条绿：交给 `Server` 的进程在 accept 线程上第一次取事件处理器时抛 `IllegalStateException`（建 `PlayerSocketConnection` 的途中）；第一个客户端读到连接关闭，连接闸门的连接数回到 0，异常处理器恰收到那一个异常；第二个客户端照常拿到 status 应答 |
+| 3 | 跑 `io.github.bearisbug.synaxis.network.packet.PlayerChatMessagePacketTest`（第 2 次运行） | 1 条绿：`unsignedContent` 与 `msgTypeTarget` 都是 null 的 `PlayerChatMessagePacket` 经一个碰到 null 就抛的 operator `copyWithOperator`，不抛，两项仍是 null，`msgTypeName` 被换掉 |
+| 4 | 改动前的红（第 1 次运行） | 第 1 步前者红在 `DisconnectFlushSocketTest.java:231`（`readUntilClosed`），`no complete packet in 0 bytes: Empty[]`：连接没带断线包就关了；后者红在 `PacketWriteQueueTest.java:102`，`only the failed packet left the queue ==> expected: <2> but was: <3>`；第 2 步红在 `AcceptLoopSocketTest.java:69`，`java.net.SocketTimeoutException: Read timed out`（accept 线程已随异常结束，第一个客户端的 socket 没人关）；第 3 步红在 `PlayerChatMessagePacketTest.java:33`，`NullPointerException`（operator 收到 null） |
+
+后置：同 `TC-PROD-850`。
+
+#### `TC-PROD-856` tick 线程：空闲线程的虚假唤醒不提前结束 tick，分发被中断时等这个 tick 跑完，漏放的 `Acquired` 被点名 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.thread.ThreadDispatcherTest`（第 2 次运行） | 21 条 0 失败，本组加的四条：`aSpuriousWakeupOfAnIdleThreadDoesNotEndTheTickEarly`（2 条线程、1 个分区在线程 0，元素卡在门闩上；200 ms 里反复 `LockSupport.unpark` 没有分区的线程 1，`updateAndAwait` 不返回，放开门闩后返回，之后 10 个 tick 都在 5 s 内返回）；`anInterruptedUpdateWaitsForTheTickAndKeepsTheInterrupt`（tick 卡住时中断调 `updateAndAwait` 的线程，200 ms 后它仍在等，放开后正常返回、中断标志在）；`anElementThatLeavesAnAcquiredLockedIsReportedByName`（线程 0 上的元素 `lock()` 线程 1 上的元素后抛异常，异常处理器依次收到那个异常与 `the leaking element left an Acquired locked`，处理器在线程 0 上放锁，下一个 tick 照常）；`closingAnAcquiredThatWasUnlockedDoesNothing`（try-with-resources 里先 `unlock()`，`close()` 不抛；只靠 `close()` 也放掉全局锁） |
+| 2 | 跑 `io.github.bearisbug.synaxis.TickSchedulerThreadTest`，看 `aTickThatLeavesAnAcquiredLockedIsReported`（第 2 次运行） | 绿：tick 末尾的任务 `lock()` 一个在 tick 线程上的实体后不放，这个 tick 结束时异常处理器收到 `A tick left an Acquired locked`，处理器在 tick 调度线程上放锁 |
+| 3 | 改动前的红（第 1 次运行） | 虚假唤醒那条红在 `ThreadDispatcherTest.java:624`（红轮时的行号，之后加了一个 import，现在是 `:625`），`updateAndAwait returned while the element was still ticking`：空闲线程醒来跑一次空 tick，又倒数一次本轮的门闩；中断那条红在 `:676`（现在 `:677`），`updateAndAwait gave up on the tick: java.lang.RuntimeException: java.lang.InterruptedException`；第 2 步那条红在 `TickSchedulerThreadTest.java:106`，`not within 10 s: the leak was reported: []`。漏放那条当时红在测试自己的错上（两个 `record World()` 分区相等，被当成同一个分区），改成两个 `Object` 分区之后由第 4 步给出它的红 |
+| 4 | 反证有齿（第 5 次运行）：① `TickThread#tick` 里 `if (holds > globalHolds)` 改为 `if (holds > globalHolds && Boolean.getBoolean("proof.never"))`；② `AcquiredImpl#close` 删掉第一行 `if (Thread.currentThread() == owner && unlocked) return;`（`unlock()` 之后再关就抛）；与 `TC-PROD-850` 第 4 步同批，再还原 | `21 tests completed, 2 failed`：① 漏放那条红在 `ThreadDispatcherTest.java:750`，`expected: <[used what it acquired and failed, the leaking element left an Acquired locked]> but was: <[used what it acquired and failed]>`；② 关闭那条红在 `:779`（第一个 try-with-resources 结束时），`IllegalStateException: The acquired element has already been unlocked!` |
+
+后置：同 `TC-PROD-850`。
+
+#### `TC-PROD-857` 异常落点自己抛异常：记一行 ERROR 后丢弃，tick 调度线程照常 tick — 对应 `REQ-PROD-015` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.exception.ExceptionManagerTest`，看 `aHandlerThatThrowsIsLoggedAndTheCallerGoesOn`（第 2 次运行） | 绿：落点抛一个新异常时 `handleException` 不抛，原异常挂在它的 suppressed 上；落点以原异常为 cause 重抛时同样不抛 |
+| 2 | 跑 `io.github.bearisbug.synaxis.TickSchedulerThreadTest`，看 `anExceptionHandlerThatThrowsDoesNotEndTheTickScheduler`（第 2 次运行） | 绿：落点每次都抛，一个调度任务抛异常之后，每 tick 计数的任务又跑到 10 次，tick 调度线程仍活着 |
+| 3 | 跑 `:testing:test --tests io.github.bearisbug.synaxis.testing.test.LoginFailureIntegrationTest`（第 2 次运行） | 1 条绿：在全局节点下挂一个子节点，在 `AsyncPlayerConfigurationEvent` 里把出生实例设回 null（子节点排在玩家节点之后），`connect()` 10 s 内以 `CompletionException` 返回，原因是 `NullPointerException`。原先靠落点抛异常让登录失败，落点的异常现在不传回调用方，换了这个触发方式；改动前后都绿 |
+| 4 | 改动前的红（第 1 次运行） | 第 1 步红在 `ExceptionManagerTest.java:130`，`Unexpected exception thrown: java.lang.IllegalStateException: the handler failed`；第 2 步红在 `TickSchedulerThreadTest.java:106`，`not within 10 s: the ticks went on after the task and the handler failed`（落点第二次抛出时异常穿出 `run()`，tick 调度线程结束） |
+
+后置：同 `TC-PROD-850`。
+
+#### `TC-PROD-858` `Messenger` 的 `GAME_INFO` 发到动作栏，关了聊天的玩家照样看得见，其余位置进聊天栏 — 对应 `REQ-PROD-009` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.message.MessengerIntegrationTest`（第 2 次运行） | 2 条绿。聊天设为 `NONE` 的玩家：`GAME_INFO` 单发得 true，`SYSTEM_MESSAGE` 得 false 且不发包，`GAME_INFO` 群发也收到；收到的恰是两个 `overlay` 为 true 的 `SystemChatPacket`。聊天全开的玩家：`SYSTEM_MESSAGE` 单发与 `CHAT` 群发收到两个 `overlay` 为 false 的包 |
+| 2 | 改动前的红（第 1 次运行） | 第一条红在 `MessengerIntegrationTest.java:39`：两个包的 `overlay` 都是 false（`GAME_INFO` 进了聊天栏） |
+
+后置：同 `TC-PROD-850`。
+
+#### `TC-PROD-859` 本组碰到 tick 线程与停机的类在 4 线程严格模式与严格 grid 下各跑一次 — 对应 `REQ-PROD-019`、`REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 跑引擎 `io.github.bearisbug.synaxis.thread.*`、`TickSchedulerThreadTest`、`ShutdownSequenceTest`、`ShutdownClaimTest`、`ServerProcessStartTickingTest`、`ServerProcessDispatcherTest`、`ServerProcessShutdownIntegrationTest`、`io.github.bearisbug.synaxis.network.socket.*`、`io.github.bearisbug.synaxis.timer.*`，与 `server-app` 的 `app.ShutdownSequenceTest`、`app.instance.ManagedInstanceTickThreadTest`、`app.shard.ShardWorldRelightTest`、`app.shard.ShardWorldAssemblyTest`（第 3 次运行） | 引擎 21 个类 95 条、`server-app` 4 个类 26 条，0 失败 |
+| 2 | 第 1 步再加 `-Dsynaxis.thread-provider=grid`，另带 `io.github.bearisbug.synaxis.message.*`（第 4 次运行） | 引擎 23 个类 101 条、`server-app` 4 个类 26 条，0 失败 |
+
+后置：同 `TC-PROD-850`。
+
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
 对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的线上部分：`synaxis:play` v1 的五条消息、小部件属性的 TLV 编码与冻结向量（`docs/DESIGN-PLAY.md` `API-PLAY-002`、`API-PLAY-003`；本组跟进该分册 v0.2 与 `docs/DESIGN-M2.md` v0.66 的 `API-M2-001`）。用例号段 001～009，由组 P 在分支 `prod/r077-P` 写入。测试类：`:protocol` 包 `io.github.bearisbug.synaxis.game.protocol.play` 的 `PlayMessagesTest`、`PlayVectorTest`；`client-fabric` 的 `PlayFrozenVectorTest`。
@@ -12794,7 +12926,7 @@ RUN-078 组 N（分支 `prod/r078-N`，基于 `main` `62ae65f89c`）补 `docs/DE
 
 #### `TC-PLAY-056` 准备中停机：实例被丢弃，`closed` 的 `cause=shutdown`，放开门闩之后也不注册 — 对应 `REQ-PLAY-006` · 级别: 回归 · 执行者: AI
 
-前置：本节开头。§19「准备中停机」。生成器卡在门闩上，`PREPARING` 是确定的；停机的停机任务在 tick 调度线程上、两个 tick 之间跑（`ServerProcessImpl.java:540`），本条在 `scheduleNextTick` 的任务里调 `reclaim("stuck", SHUTDOWN)`，与 `PluginHost#disableAll` 的线程相同。放开门闩后先等准备做完（`ManagedInstanceImpl#preparation`），再等两个串行段，注册的检查每个串行段跑一次。
+前置：本节开头。§19「准备中停机」。生成器卡在门闩上，`PREPARING` 是确定的；停机的停机任务在 tick 调度线程上、两个 tick 之间跑（`ServerProcessImpl.java:568`），本条在 `scheduleNextTick` 的任务里调 `reclaim("stuck", SHUTDOWN)`，与 `PluginHost#disableAll` 的线程相同。放开门闩后先等准备做完（`ManagedInstanceImpl#preparation`），再等两个串行段，注册的检查每个串行段跑一次。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -13881,6 +14013,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 ITEMNET，物品与聊天组件写给 26.2 客户端的四处断线（`REQ-001`、`REQ-PROD-047`，v0.9.89）→ TC-PROD-810～TC-PROD-814；动了 `ItemStack#asHoverEvent` 或 `ComponentNetworkBufferTypeImpl` 写悬停事件的部分就跑 TC-PROD-810 与 TC-PROD-685；动了 `Particle.Item`、`ParticleImpl` 的默认值或 `DataComponents` 里 `use_remainder`、`sulfur_cube_content`、`bundle_contents`、`charged_projectiles` 的注册就跑 TC-PROD-811；动了 `container` 的注册、`ItemStackTemplate` 或组件补丁的读写就跑 TC-PROD-812；动了 custom 点击事件的写法（`ComponentNetworkBufferTypeImpl`、`ComponentCodecs#CLICK_EVENT`）或 `EngineAdventure#unwrapNbt` 就跑 TC-PROD-813；以上任一处都加跑 TC-PROD-814
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 CMD 组，命令的 condition、参数的包装、目标选择器与参数的错误回调（`REQ-PROD-012`、`REQ-PROD-011`，v0.9.90）→ TC-PROD-820～TC-PROD-826；动了引擎 `GraphConverter`（建命令包时接住 condition 的异常、按 `Argument#unwrap` 取节点形状、没有 parser 的节点不写进包）、`CommandParserImpl`（解析失败的归属、错误回调与调它之前看的语法 condition）、`Argument` 的 `unwrap`、`suggestionType`、`hasSuggestion` 或 `map`、`filter` 的包装类、`ArgumentEntity` 的参数名单，或宿主 `PluginCommandsImpl#guard`，就跑 TC-PROD-820～TC-PROD-825 第 1 步（五个类一次 Gradle），再按上面「控制台与插件命令」一行跑 TC-PROD-240～TC-PROD-247；动了 `Player#UNSAFE_init` 里 `refreshCommands` 与 `setInstance` 的先后，或 `ConnectionManager#updateWaitingPlayers` 对出生时同步异常的处理，再加 TC-PROD-826 的两遍。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 STORE，Redis 往返离开登录路径、载入名额只包语句、`commitTogether` 的 `apply` 与插件段回调抛 `Error`（`REQ-PROD-004`、`REQ-PROD-006`、`REQ-PROD-007`、`REQ-PROD-008`，v0.9.91）→ TC-PROD-830～TC-PROD-839；动了 `RedisLink` 的 `presence`、`clearPresence`、`dropOldest`、`close` 或连接池配置，就跑 TC-PROD-830～TC-PROD-832 与 TC-PROD-839（`RedisLinkTest` 不要数据库，另两个类要数据库前置与 Valkey）；动了 `PlayerStore` 的 `loadOrRefuse`、`takeLoadSlot` 或 `loadWithin` 里取还名额的几处，就跑 TC-PROD-833、TC-PROD-834、TC-PROD-171 与 TC-PROD-157 的 `TransferTicketsIntegrationTest`；动了 `commitTogether` 排 `apply` 的那一行，跑 TC-PROD-835、TC-PROD-836 与 TC-PROD-148，三种线程模式各一次；动了 `snapshot`、`decode` 的捕获或调 `createDefault()` 的那一处，跑 TC-PROD-837、TC-PROD-838 与 RUN-073 组 D 一行的 TC-PROD-728 第 4 步。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 BOOT，停机序列、起 tick、配置取值、写线程与 accept 循环、tick 线程（`REQ-PROD-008`、`REQ-PROD-014`、`REQ-PROD-015`、`REQ-PROD-019`、`REQ-PROD-001`、`REQ-PROD-009`、`REQ-PROD-025`、`REQ-PROD-033`、`REQ-PROD-043`，v0.9.93）→ TC-PROD-850～TC-PROD-859；动了 `SchedulerManager#shutdown`、`ServerProcessImpl` 的 `save`、`kickEveryone`、`runShutdownTasks`、`beginShutdown` 或 `startTicking`，或 `MinecraftServer#start`，就跑 TC-PROD-850～TC-PROD-853 与 TC-PROD-154、TC-PROD-372、TC-PROD-497；动了 `ServerConfig` 的紧凑构造器、`fromSystemProperties` 开头的弃用告警或 `JvmFlags` 的取值，就跑 TC-PROD-854；动了 `PacketWriting#writeQueue`、`Server` 的 accept 循环或写循环、`CachedPacket`，就跑 TC-PROD-855 与 TC-PROD-661；动了 `TickThread`、`ThreadDispatcherImpl#updateAndAwait`、`Acquired`、`AcquiredImpl` 或 `TickSchedulerThread`，就跑 TC-PROD-856 与 TC-PROD-859；动了 `ExceptionManager#handleException` 就跑 TC-PROD-857；动了 `Messenger` 就跑 TC-PROD-858 与 TC-PROD-080～TC-PROD-082
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

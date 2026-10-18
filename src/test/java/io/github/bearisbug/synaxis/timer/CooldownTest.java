@@ -40,4 +40,13 @@ public class CooldownTest {
 
         assertFalse(Cooldown.hasCooldown(nanoTime - TimeUnit.HOURS.toNanos(1), ChronoUnit.HOURS, 1));
     }
+
+    /** Without a unit, the times are milliseconds, what the engine passes from its tick. */
+    @Test
+    void theDefaultUnitIsTheMillisecond() {
+        var cooldown = new Cooldown(Duration.ofSeconds(1));
+        cooldown.refreshLastUpdate(0);
+        assertFalse(cooldown.isReady(999));
+        assertTrue(cooldown.isReady(1000));
+    }
 }

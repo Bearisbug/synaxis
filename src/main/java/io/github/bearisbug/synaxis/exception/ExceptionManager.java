@@ -67,11 +67,21 @@ public final class ExceptionManager {
      * @param connectionId the connection it was thrown for, {@code null} when there is none
      */
     public void handleException(Throwable e, @Nullable UUID connectionId) {
-        this.getExceptionHandler().handleException(e, connectionId);
+        try {
+            this.getExceptionHandler().handleException(e, connectionId);
+        } catch (Throwable failure) {
+            // Called from catch blocks that never expect to throw: a tick thread or the tick scheduler
+            // would die of it. Handlers usually rethrow the original as the cause, suppressing it too
+            // would print it twice.
+            if (failure != e && failure.getCause() != e) failure.addSuppressed(e);
+            LOGGER.error("The exception handler failed: connection_id={}", connectionId == null ? "-" : connectionId, failure);
+        }
     }
 
     /**
-     * Changes the exception handler, to allow custom exception handling.
+     * Changes the exception handler, to allow custom exception handling. There is one handler for the
+     * whole process, this replaces it; the host installs its own when it starts
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-013}).
      *
      * @param exceptionHandler the new {@link ExceptionHandler}, can be set to null to apply the default provider
      */

@@ -1,0 +1,27 @@
+Run 3 (green, 2026-10-18): -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true.
+
+ServerProcessDispatcherTest: tests=2 failures=0 errors=0 skipped=0 time=3.244
+ServerProcessShutdownIntegrationTest: tests=2 failures=0 errors=0 skipped=0 time=13.313
+ServerProcessStartTickingTest: tests=2 failures=0 errors=0 skipped=0 time=3.339
+ShutdownClaimTest: tests=2 failures=0 errors=0 skipped=0 time=5.133
+ShutdownSequenceTest: tests=11 failures=0 errors=0 skipped=0 time=25.07
+TickSchedulerThreadTest: tests=2 failures=0 errors=0 skipped=0 time=3.703
+AcceptLoopSocketTest: tests=1 failures=0 errors=0 skipped=0 time=3.025
+DisconnectFlushSocketTest: tests=3 failures=0 errors=0 skipped=0 time=4.231
+ServerAddressTest: tests=4 failures=0 errors=0 skipped=0 time=3.118
+AcquirableBasicIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=3.244
+AcquirableCollectionTest: tests=2 failures=0 errors=0 skipped=0 time=0.077
+AcquirableEntityIntegrationTest: tests=1 failures=0 errors=0 skipped=0 time=2.967
+AcquirableHandoverTest: tests=4 failures=0 errors=0 skipped=0 time=0.061
+AcquirableLocalsIntegrationTest: tests=2 failures=0 errors=0 skipped=0 time=0.194
+AcquirableTest: tests=3 failures=0 errors=0 skipped=0 time=0.018
+AcquireWaitTest: tests=4 failures=0 errors=0 skipped=0 time=0.586
+ThreadDispatcherTest: tests=21 failures=0 errors=0 skipped=0 time=0.761
+ThreadProviderGridTest: tests=5 failures=0 errors=0 skipped=0 time=0.086
+CooldownTest: tests=4 failures=0 errors=0 skipped=0 time=0.006
+SchedulerManagerTest: tests=1 failures=0 errors=0 skipped=0 time=0.003
+TestScheduler: tests=15 failures=0 errors=0 skipped=0 time=2.844
+ShutdownSequenceTest: tests=8 failures=0 errors=0 skipped=0 time=20.462
+ManagedInstanceTickThreadTest: tests=5 failures=0 errors=0 skipped=0 time=1.579
+ShardWorldAssemblyTest: tests=10 failures=0 errors=0 skipped=0 time=16.083
+ShardWorldRelightTest: tests=3 failures=0 errors=0 skipped=0 time=5.769

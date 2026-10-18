@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis;
 
+import io.github.bearisbug.synaxis.thread.Acquirable;
 import io.github.bearisbug.synaxis.thread.EngineThread;
 import org.jetbrains.annotations.ApiStatus;
 
@@ -39,6 +40,10 @@ public final class TickSchedulerThread extends EngineThread {
             } catch (Throwable e) {
                 serverProcess.exception().handleException(e);
             }
+            // A task or a listener of the tick did not unlock what it acquired: the next tick waits on
+            // it forever, this names the culprit while it still can
+            if (Acquirable.holdsGlobalLock())
+                serverProcess.exception().handleException(new IllegalStateException("A tick left an Acquired locked"));
 
             ticks++;
             long nextTickTime = baseTime + ticks * tickTimeNanos;

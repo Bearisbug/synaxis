@@ -13,8 +13,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -26,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -579,5 +583,208 @@ public class ThreadDispatcherTest {
         assertInstanceOf(LinkedHashSet.class, dispatcher.threads().getFirst().entries,
                 "a tick thread removes a partition by hash, not by a scan of the list");
         dispatcher.shutdown();
+    }
+
+    /**
+     * A tick thread with nothing to tick that wakes up anyway (a spurious return of {@code park}, a
+     * permit left over) runs no tick and counts no latch down: the tick ends when the thread that has
+     * the partition is done with it, not before.
+     */
+    @Test
+    @Timeout(30)
+    public void aSpuriousWakeupOfAnIdleThreadDoesNotEndTheTickEarly() throws InterruptedException {
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), 2,
+                ThreadDispatcherTest::rethrow);
+        World world = new World();
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicBoolean hold = new AtomicBoolean(true);
+        dispatcher.createPartition(world);
+        dispatcher.updateElement(_ -> {
+            if (!hold.get()) return;
+            entered.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException e) {
+                throw new AssertionError(e);
+            }
+        }, world);
+        dispatcher.start();
+        try {
+            Thread ticker = new Thread(() -> dispatcher.updateAndAwait(0), "test-ticker");
+            ticker.setDaemon(true);
+            ticker.start();
+            assertTrue(entered.await(5, TimeUnit.SECONDS), "the element never ticked");
+            final TickThread idle = dispatcher.threads().get(1);
+            assertTrue(idle.entries.isEmpty(), "the second thread has no partition");
+            final long until = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(200);
+            while (System.nanoTime() - until < 0) {
+                LockSupport.unpark(idle);
+                Thread.sleep(1);
+            }
+            assertTrue(ticker.isAlive(), "updateAndAwait returned while the element was still ticking");
+
+            hold.set(false);
+            release.countDown();
+            ticker.join(5_000);
+            assertFalse(ticker.isAlive(), "updateAndAwait never returned");
+            for (int i = 0; i < 10; i++) awaitTick(dispatcher, "a later tick hung");
+        } finally {
+            release.countDown();
+            dispatcher.shutdown();
+        }
+    }
+
+    /**
+     * An interrupt does not end the wait for the tick threads: the next update would otherwise change
+     * the partitions of a thread still ticking them. The wait ends with the tick and the interrupt
+     * stays set.
+     */
+    @Test
+    @Timeout(30)
+    public void anInterruptedUpdateWaitsForTheTickAndKeepsTheInterrupt() throws InterruptedException {
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread(ThreadDispatcherTest::rethrow);
+        World world = new World();
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        dispatcher.createPartition(world);
+        dispatcher.updateElement(_ -> {
+            entered.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException e) {
+                throw new AssertionError(e);
+            }
+        }, world);
+        dispatcher.start();
+        try {
+            AtomicBoolean interruptedAfter = new AtomicBoolean();
+            AtomicReference<Throwable> failure = new AtomicReference<>();
+            Thread ticker = new Thread(() -> {
+                try {
+                    dispatcher.updateAndAwait(0);
+                    interruptedAfter.set(Thread.currentThread().isInterrupted());
+                } catch (Throwable t) {
+                    failure.set(t);
+                }
+            }, "test-ticker");
+            ticker.setDaemon(true);
+            ticker.start();
+            assertTrue(entered.await(5, TimeUnit.SECONDS), "the element never ticked");
+
+            ticker.interrupt();
+            ticker.join(200);
+            assertTrue(ticker.isAlive(), "updateAndAwait gave up on the tick: " + failure.get());
+
+            release.countDown();
+            ticker.join(5_000);
+            assertFalse(ticker.isAlive(), "updateAndAwait never returned");
+            assertNull(failure.get());
+            assertTrue(interruptedAfter.get(), "the interrupt is kept for the caller");
+        } finally {
+            release.countDown();
+            dispatcher.shutdown();
+        }
+    }
+
+    /**
+     * An element that leaves an {@link Acquired} of an element of another thread locked keeps the
+     * global lock and the lock of that thread: the tick thread reports it by name. Here the handler
+     * unlocks it, on the tick thread that holds it, so that the next tick can run.
+     */
+    @Test
+    @Timeout(30)
+    public void anElementThatLeavesAnAcquiredLockedIsReportedByName() throws InterruptedException {
+        final List<Throwable> reported = new CopyOnWriteArrayList<>();
+        final AtomicReference<Acquired<? extends Element>> leaked = new AtomicReference<>();
+        final AtomicBoolean released = new AtomicBoolean();
+        ThreadDispatcher<Object, Element> dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), 2, throwable -> {
+            reported.add(throwable);
+            if (String.valueOf(throwable.getMessage()).endsWith("left an Acquired locked")
+                    && released.compareAndSet(false, true)) leaked.get().unlock();
+        });
+        final class Target extends Element {
+            @Override
+            public void tick(long time) {
+            }
+        }
+        final Target target = new Target();
+        final AtomicBoolean armed = new AtomicBoolean();
+        final Element leaker = new Element() {
+            @Override
+            public void tick(long time) {
+                if (!armed.getAndSet(false)) return;
+                leaked.set(target.acquirable().lock());
+                throw new IllegalStateException("used what it acquired and failed");
+            }
+
+            @Override
+            public String toString() {
+                return "the leaking element";
+            }
+        };
+        // Ticked after the leaker on its thread: gives the lock back if the tick thread did not report
+        final Element cleaner = new Element() {
+            @Override
+            public void tick(long time) {
+                if (leaked.get() != null && released.compareAndSet(false, true)) leaked.get().unlock();
+            }
+        };
+        // Two partitions that are not equal, so that each gets a thread of its own
+        Object first = new Object();
+        Object second = new Object();
+        dispatcher.createPartition(first);
+        dispatcher.createPartition(second);
+        dispatcher.updateElement(leaker, first);
+        dispatcher.updateElement(cleaner, first);
+        dispatcher.updateElement(target, second);
+        dispatcher.start();
+        try {
+            awaitTick(dispatcher, "the first tick hung");
+            assertNotSame(leaker.acquirable().assignedThread(), target.acquirable().assignedThread());
+
+            armed.set(true);
+            awaitTick(dispatcher, "the tick of the leak hung");
+            awaitTick(dispatcher, "the tick after the leak hung");
+
+            assertEquals(List.of("used what it acquired and failed", "the leaking element left an Acquired locked"),
+                    reported.stream().map(Throwable::getMessage).toList());
+            assertInstanceOf(IllegalStateException.class, reported.get(1));
+        } finally {
+            dispatcher.shutdown();
+        }
+    }
+
+    /** Closing what was unlocked already does nothing, so that try-with-resources can follow an unlock. */
+    @Test
+    @Timeout(30)
+    public void closingAnAcquiredThatWasUnlockedDoesNothing() throws InterruptedException {
+        ThreadDispatcher<Object, Element> dispatcher = ThreadDispatcher.singleThread(ThreadDispatcherTest::rethrow);
+        final class Idle extends Element {
+            @Override
+            public void tick(long time) {
+            }
+        }
+        final Idle idle = new Idle();
+        Object partition = new Object();
+        dispatcher.createPartition(partition);
+        dispatcher.updateElement(idle, partition);
+        dispatcher.start();
+        try {
+            awaitTick(dispatcher, "the first tick hung");
+            assertNotNull(idle.acquirable().assignedThread());
+            try (Acquired<? extends Element> acquired = idle.acquirable().lock()) {
+                assertTrue(Acquirable.holdsGlobalLock(), "held from another thread than the element's");
+                acquired.unlock();
+            }
+            assertFalse(Acquirable.holdsGlobalLock(), "unlocked once, by unlock()");
+            try (Acquired<? extends Element> acquired = idle.acquirable().lock()) {
+                assertSame(idle, acquired.get());
+            }
+            assertFalse(Acquirable.holdsGlobalLock(), "unlocked by close()");
+            awaitTick(dispatcher, "a tick after the acquisitions hung");
+        } finally {
+            dispatcher.shutdown();
+        }
     }
 }

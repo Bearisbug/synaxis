@@ -39,6 +39,11 @@ import java.util.function.Supplier;
  * for the {@link ConnectionState} used to populate the cache. A
  * {@code CachedPacket} should not be shared across connection states when the
  * resulting framed representation differs between those states.
+ *
+ * <p>Sent to a connection, the supplier runs on the write thread of that
+ * connection. When it throws, that connection drops the packet and is kicked
+ * with {@code synaxis:internal-error}; nothing is cached, so the next
+ * connection the packet is sent to runs the supplier again.
  */
 @ApiStatus.Internal
 public final class CachedPacket implements SendablePacket {

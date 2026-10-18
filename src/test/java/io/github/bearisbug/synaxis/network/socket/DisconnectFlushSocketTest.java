@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerPreLoginEvent;
 import io.github.bearisbug.synaxis.network.ConnectionState;
+import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.PacketReading;
 import io.github.bearisbug.synaxis.network.packet.PacketWriting;
@@ -18,6 +19,7 @@ import io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPa
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginPluginRequestPacket;
 import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TranslatableComponent;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -33,7 +35,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -149,6 +153,53 @@ public class DisconnectFlushSocketTest {
                     "the write thread was still writing to a peer that reads nothing 5 s after it kicked");
             assertFalse(connection.getChannel().isOpen(), "the write thread left the channel open");
         } finally {
+            process.stop();
+        }
+    }
+
+    /**
+     * A packet that fails on the write thread, here the supplier of a cached packet, is dropped: it
+     * is reported once, never built again, and the peer reads why it is disconnected.
+     */
+    @Test
+    public void aPacketThatFailsToBeWrittenIsDroppedAndThePeerToldOfTheInternalError() throws Exception {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().compressionThreshold(0).build());
+        final List<Throwable> reported = new CopyOnWriteArrayList<>();
+        process.exception().setExceptionHandler(reported::add);
+        final CompletableFuture<PlayerSocketConnection> accepted = new CompletableFuture<>();
+        final CountDownLatch done = new CountDownLatch(1);
+        process.eventHandler().addListener(AsyncPlayerPreLoginEvent.class, event -> {
+            accepted.complete((PlayerSocketConnection) event.getConnection());
+            await(done);
+        });
+        process.server().init(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
+        process.server().start();
+        try (SocketChannel peer = SocketChannel.open(
+                new InetSocketAddress(InetAddress.getLoopbackAddress(), process.server().getPort()))) {
+            peer.socket().setSoTimeout(10_000);
+            send(peer, ConnectionState.HANDSHAKE, new ClientHandshakePacket(MinecraftServer.PROTOCOL_VERSION,
+                    "localhost", process.server().getPort(), ClientHandshakePacket.Intent.LOGIN));
+            send(peer, ConnectionState.LOGIN, new ClientLoginStartPacket("Failing", UUID.randomUUID()));
+            final PlayerSocketConnection connection = accepted.get(10, TimeUnit.SECONDS);
+
+            final AtomicInteger built = new AtomicInteger();
+            final IllegalStateException failure = new IllegalStateException("the packet could not be built");
+            connection.sendPacket(new CachedPacket(() -> {
+                built.incrementAndGet();
+                throw failure;
+            }));
+
+            final List<ServerPacket> packets = readUntilClosed(peer, process);
+            assertFalse(packets.isEmpty(), "the peer read nothing before the end of the stream");
+            final LoginDisconnectPacket disconnect = assertInstanceOf(LoginDisconnectPacket.class, packets.getLast(),
+                    "the peer read " + packets);
+            assertEquals(DisconnectReasons.INTERNAL_ERROR.key(),
+                    assertInstanceOf(TranslatableComponent.class, disconnect.kickMessage()).key());
+            assertEquals(1, built.get(), "the failed packet is not built again");
+            assertTrue(connection.writeThread().join(Duration.ofSeconds(5)), "the write thread ended");
+            assertEquals(List.of(failure), reported);
+        } finally {
+            done.countDown();
             process.stop();
         }
     }

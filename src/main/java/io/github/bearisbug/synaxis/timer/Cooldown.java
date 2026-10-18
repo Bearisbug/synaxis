@@ -7,7 +7,7 @@ import java.time.temporal.TemporalUnit;
 public final class Cooldown {
     private final Duration duration;
     private final TemporalUnit temporalUnit;
-    // if this cooldown object as a lastUpdate set
+    // if this cooldown object has a lastUpdate set
     private boolean hasLastUpdate;
     private long lastUpdate;
 
@@ -46,7 +46,8 @@ public final class Cooldown {
     /**
      * Refreshes the time of the last update.
      *
-     * @param lastUpdate the time of the last update, in nanos
+     * @param lastUpdate the time of the last update, in this cooldown's temporal unit (MILLIS unless
+     *                   another unit was given to the constructor)
      */
     public void refreshLastUpdate(long lastUpdate) {
         this.hasLastUpdate = true;
@@ -56,7 +57,8 @@ public final class Cooldown {
     /**
      * Checks if the cooldown is ready again
      *
-     * @param time the time, in nanos
+     * @param time the time, in this cooldown's temporal unit (MILLIS unless another unit was given to
+     *             the constructor)
      */
     public boolean isReady(long time) {
         if (!hasLastUpdate) return true;
@@ -92,8 +94,8 @@ public final class Cooldown {
      * Gets if something is in cooldown based on a {@code currentTime}.
      *
      * @param temporalUnit the {@link TemporalUnit} of {@code currentTime} and {@code lastUpdate}
-     * @param currentTime  the current time in milliseconds
-     * @param lastUpdate   the last update in milliseconds
+     * @param currentTime  the current time in {@code temporalUnit}
+     * @param lastUpdate   the last update in {@code temporalUnit}
      * @param cooldownUnit the time unit of the cooldown
      * @param cooldown     the value of the cooldown
      * @return true if the cooldown is in progress, false otherwise
@@ -116,14 +118,15 @@ public final class Cooldown {
     }
 
     /**
-     * Gets if something is in cooldown based on the current time ({@link System#nanoTime()}).
+     * Gets if something is in cooldown based on the current time, which is {@link System#nanoTime()}:
+     * {@code lastUpdateNanos} must come from {@link System#nanoTime()} too.
      *
-     * @param lastUpdate   the last update in {@link System#nanoTime()}
-     * @param temporalUnit the time unit of the cooldown
-     * @param cooldown     the value of the cooldown
+     * @param lastUpdateNanos the last update, a {@link System#nanoTime()}
+     * @param temporalUnit    the time unit of the cooldown
+     * @param cooldown        the value of the cooldown
      * @return true if the cooldown is in progress, false otherwise
      */
-    public static boolean hasCooldown(long lastUpdate, TemporalUnit temporalUnit, int cooldown) {
-        return hasCooldown(ChronoUnit.NANOS, System.nanoTime(), lastUpdate, temporalUnit, cooldown);
+    public static boolean hasCooldown(long lastUpdateNanos, TemporalUnit temporalUnit, int cooldown) {
+        return hasCooldown(ChronoUnit.NANOS, System.nanoTime(), lastUpdateNanos, temporalUnit, cooldown);
     }
 }

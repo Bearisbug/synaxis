@@ -202,7 +202,24 @@ public interface ServerProcess extends Registries {
      */
     void setCompressionThreshold(int compressionThreshold);
 
+    /**
+     * Binds the address and starts taking connections. It does not tick: {@link #startTicking()}
+     * starts the tick threads and the tick scheduler thread, or a test ticks the process by hand
+     * through {@link #ticker()}.
+     *
+     * @param socketAddress the address to bind
+     * @throws IllegalStateException if the process has already been started
+     */
     void start(SocketAddress socketAddress);
+
+    /**
+     * Starts the tick threads of the {@link #dispatcher()} and the tick scheduler thread, which ticks
+     * the process at {@link JvmFlags#SERVER_TICKS_PER_SECOND} until it stops. Called once, after
+     * {@link #start(SocketAddress)}.
+     *
+     * @throws IllegalStateException if the process has not been started yet, or already ticks
+     */
+    void startTicking();
 
     /**
      * Shuts down without a countdown, as {@link #beginShutdown} with {@link Duration#ZERO} does,
@@ -226,7 +243,8 @@ public interface ServerProcess extends Registries {
      *
      * @param countdown how long to wait between closing the gate and saving
      * @return true if this call started the shutdown, false if one had already started
-     * @throws IllegalArgumentException if the countdown is negative
+     * @throws IllegalArgumentException if the countdown is negative or longer than
+     *                                  {@link Long#MAX_VALUE} nanoseconds
      */
     boolean beginShutdown(Duration countdown);
 
@@ -242,8 +260,10 @@ public interface ServerProcess extends Registries {
     /**
      * Drives the shutdown sequence after the tick watchdog judged the process dead
      * ({@code docs/DESIGN-PROD.md} §11.4 and §11.5): before the save phase it skips the rest of
-     * the countdown and saves with {@code tickAlive=false} and a 15 s budget; during it, it cuts the
-     * budget to 15 s from now; after it, it does nothing. Called on the watchdog report thread.
+     * the countdown and saves with {@code tickAlive=false} and the budget of a dead process,
+     * {@code synaxis.watchdog.halt-after-ms} less 1 s (15 s when the watchdog does not halt); during
+     * it, it cuts the budget to that much from now; after it, it does nothing. Called on the watchdog
+     * report thread.
      *
      * @return true if the sequence ran to {@link ShutdownPhase#STOPPED} on this thread
      */

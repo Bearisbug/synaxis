@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:11:46.112Z" hostname="Mac.local" time="7.571">
+  <properties/>
+  <testcase name="sectionsStartAsTheDefaultAndSavesAndCommitsSucceed(Env)" classname="io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest" time="6.866"/>
+  <testcase name="aFrozenPlayerCommitsNothingAndRegistrationIsOnce(Env)" classname="io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest" time="0.326"/>
+  <testcase name="aCommitOfAValueTheHostCouldNotWriteIsRefusedAsTheHostRefusesIt(Env)" classname="io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest" time="0.211"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

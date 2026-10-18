@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" tests="18" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:12:02.781Z" hostname="Mac.local" time="6.519">
+  <properties/>
+  <testcase name="aPluginFailingToEnableIsTornDownWhileTheProcessGoesOn(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.093"/>
+  <testcase name="aPayloadOnAnUnregisteredChannelIsDroppedWithOneWarning(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.078"/>
+  <testcase name="discoveryFindsTheCompileTimePlugin()" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.005"/>
+  <testcase name="anAcceptedConnectionIsLetThrough(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.129"/>
+  <testcase name="theSelectionPropertyPicksWhichPluginsAreEnabled(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.017"/>
+  <testcase name="aSelectedIdNoPluginAnswersToIsNamedInAWarning(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.068"/>
+  <testcase name="theProcessAcceptsOnlyOneAdmissionProvider(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.076"/>
+  <testcase name="eachWrapperLogsTheExceptionOnceAgainstThePlugin(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.084"/>
+  <testcase name="anAdmissionProviderThatThrowsTurnsTheConnectionAwayAgainstItsPlugin(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.071"/>
+  <testcase name="enablesInOrderAndDisablesInReverse(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.073"/>
+  <testcase name="aPluginThrowingFromOnDisableIsTornDownLikeTheOthers(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.072"/>
+  <testcase name="disablingTakesBackEventsTasksChannelsAndAdmission(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.072"/>
+  <testcase name="anIllegalDescriptorStopsTheStartupBeforeAnyPluginIsEnabled(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.082"/>
+  <testcase name="anAdmissionProviderSlowerThanItsBudgetStillDecidesAndIsWarnedAbout(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.369"/>
+  <testcase name="aPluginSetsTheTrackingRangeOfAnEntityType(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.065"/>
+  <testcase name="enablingRecordsOneLedgerLine(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.064"/>
+  <testcase name="aPluginHangingInOnDisableDoesNotHoldTheShutdown(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="5.025"/>
+  <testcase name="aConnectionIsTurnedAwayWhileNoPluginHoldsTheAdmissionSlot(Env)" classname="io.github.bearisbug.synaxis.app.PluginHostIntegrationTest" time="0.068"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

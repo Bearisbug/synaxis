@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-19 | 分支 `prod/r081-STORE`（设计提交 `4889a4bf26`、代码与测试提交 `ecb8495d6c`，基于 `main` `965c3bddae`），跟进 `docs/DESIGN-PROD.md` v0.9.106（RUN-081 组 STORE），不登执行轮次（集成后登记），本组证据 `docs/test-runs/RUN-081/STORE/`。**新增 §4「生产就绪 · RUN-081：STORE」十条 `TC-PROD-980`～`TC-PROD-989`**：`TC-PROD-980`（写入得 `FENCED` 时写库期间排进来的保存同样答复，修前永不完成；会话已隔离时的 fence 记 `session_isolated`，修前记 `zero_rows`）、`TC-PROD-981`（获取语句在旧纪元下执行、会话随后隔离或重建的登录被拒、按旧纪元还回写权，修前载入与准入都放行）、`TC-PROD-982`（登出叫醒退避中的写线程，修前 5,918 ms；登出保存从自己的首次失败起算放弃时限，修前第一次失败就放弃）、`TC-PROD-983`（登出快照排在插件断线监听器之后，修前那一段没写进库；停机保存之后断线监听器里的改动不写，钉住现有行为；`onShutdownSave` 只能在 `onEnable` 里登记）、`TC-PROD-984`（`commitTogether` 空表不写库、null 与编码不了的暂存值抛 `IllegalArgumentException`、后端抛别的运行时异常得 `UNAVAILABLE`，内存版同样拒）、`TC-PROD-985`（提交写库期间冻结参与者，future 在释放写锁之后完成）、`TC-PROD-986`（别的线程调 `saveNow` 时快照在玩家的 tick 线程上取）、`TC-PROD-987`（插件任务失败与段编码失败经 `LogBudget` 限量，宿主日志门禁去掉 `PluginSchedulerImpl`）、`TC-PROD-988`（`SYNAXIS_REDIS_URL` 的 scheme 不是 `redis` 时拒启）、`TC-PROD-989`（写了一半抛任何异常都整体回滚，回滚失败挂在原异常上）。每条都有改动前的红；`TC-PROD-980` 第 2 步在红之后改过测试，另做了反证；`TC-PROD-980`～`TC-PROD-987` 三种线程模式各跑一次。**旧用例**：`TC-PROD-838` 第 1 步的 ERROR 改为经 `section encodes` 预算 10 s 至多一行；`TC-PROD-161` 第 1 步 2 个 → 3 个。`TC-GAME-054` 第 3 步「每次任务执行各多一行带 `plugin_id=a` 的 ERROR」随 v0.9.106 改为每个重复任务 10 s 至多一行，`TC-GAME-*` 不在本组的改动范围里，本组没改，留给集成轮转交。**§5** 局部轮加本组一行。 | Bearisbug |
 | 2026-10-18 | 集成分支 `prod/integrate-080` 的全量门禁、Concurrency、Client mod 与 Client gametest（job `gametest`、`rush`、`p11-smoke`）在 GitHub Actions 上对 `8000c5b332` 跑完（草稿 PR #33，四个工作流都是第 1 次尝试；`c42208b6b2` 上的 CI 三个测试 job 红在 `BotSocketTest` 一条，由 `8000c5b332` 修，见 `TC-PROD-797`），§6 登记 RUN-080（通过 49/49，证据 `docs/test-runs/RUN-080/integrate/00-index.txt`）。写死条数的旧用例按 artifact 的实数改：`TC-PROD-486`、`505`、`510`、`529`、`549`、`585`、`596`、`607`、`618`、`636` 的 `server-app` 814 → 849（RUN-079 加 1 个类 19 个，RUN-080 加 1 个类 16 个），`TC-PROD-505`、`585`、`618`、`636`、`654` 的根项目 3,217 → 3,283（RUN-079 加 1 个，RUN-080 加 4 个类 65 个），`TC-PROD-636` 第 1 步的全部模块 682 个类 4,702 → 688 个类 4,850（`synx`、`baker`、`game-rush`、`play-kit` 一并改成实数），`TC-PROD-430` 第 5 步的模组测试 288 → 297（RUN-079 加 9 个，RUN-080 不变）；`TC-GAME-070` 第 2 步归光照会话，经 `docs/DESIGN-PROD.md` §28.3 交接。`TC-PROD-783` 的生成器等到三次等待都试过才生成目标区块，加第 5 步记下 4 线程严格下的偶发红 | Bearisbug |
 | 2026-10-18 | 集成分支 `prod/integrate-080`（基于 `main` `a211a45ca1`）依次 `--no-ff` 合入 `prod/r080-NET`、`prod/r080-THREAD`、`prod/r080-WORLD`、`prod/r080-CODEC`、`prod/r080-ITEMNET`、`prod/r080-CMD`、`prod/r080-STORE`、`prod/r080-HOST`，跟进 `docs/DESIGN-PROD.md` v0.9.92 与 `docs/DESIGN-PLAY.md` v0.20，不登执行轮次（草稿 PR 的 CI 跑完后登记 RUN-080）。**冲突**：每次合并本文档的变更记录都冲突，按合并的倒序排在顶部（NET 在下、HOST 在上）；§4 各组的新节、§5 各组加的一行、§7 THREAD 加的一条（紧挨着 WORLD 改了行号的 `PlayerRespawnChunkIntegrationTest` 一条）与「玩法架构 · RUN-077：H」节的前置一行（NET、WORLD 各改一处行号，按词合并）两边都留。**§4 的次序**：NET、ITEMNET、CMD 三组把新节放在 §4 末尾，另几组放在「生产就绪 · RUN-076：W」之后；合并后「生产就绪 · RUN-080」八节按合并顺序（NET、THREAD、WORLD、CODEC、ITEMNET、CMD、STORE、HOST）接在 RUN-076 W 之后，「玩法架构 · RUN-080：HOST」留在 §4 末尾，各节内容取自各组分支。**`TC-PROD-793`**：组 CMD 合入后命令 condition 的异常只隐藏节点、不再让出生失败，本条原来的触发在三种线程模式下都红在 `PlayerSpawnFailureIntegrationTest.java:70`；前置改用 Tab 列表的可见性抛异常，第 2～4 步写明是 WORLD 分支上 condition 触发时的读数，加第 5 步：集成分支上默认与严格 grid 都绿、反证红在 `:67`（证据 `docs/test-runs/RUN-080/integrate/`）。各组节写明行号按各组提交，别组移动的行不改。草稿 PR #33 的 CI 在 `c42208b6b2` 上三个测试 job 都红在 `loadtest` 的 `BotSocketTest`（`TC-WORLD-074`）：重新配置之后的再出生在等候队列的线程上写血量，玩家仍指派给第一次出生的 tick 线程，所有权断言抛出，组 WORLD 的出生失败处理随即踢人；`Player#UNSAFE_init` 对已有指派的玩家改为在那条线程的持有下出生，加 `TC-PROD-797`；`TC-PROD-793` 两个第 5 步的后一个改为第 6 步 | Bearisbug |
 | 2026-10-18 | 分支 `prod/r080-HOST`（基于 `main` `cb969826b7`），跟进 `docs/DESIGN-PLAY.md` v0.19，不登执行轮次（本组 8 次 Gradle 运行的读数写在两节各步里）。**新增 `TC-PROD-840`**（§4「生产就绪 · RUN-080：HOST」）：`runOn` 投给到期前就被移除的实体、被注销的实例的任务，以及被插件取消的任务，不再留在插件的任务表里，目标随之可回收（`REQ-PROD-021`）。**新增 `TC-PLAY-170`**（§4「玩法架构 · RUN-080：HOST」）：刚断线的连接 `enter` 什么都不做，在线却不在 PLAY 的被拒并写出阶段，开局那一刻断线的排队玩家不让竞技场停在 `OPEN`（`REQ-PLAY-003`、`REQ-PLAY-008`）。**随改**：`TC-PLAY-049` 第 1 步断线之后那一句改为不抛、台账不变；第 3 步 ② 的改动行 `:296` → `:300`，红点改为 `:335` 的台账断言，① 的红行 `:335` → `:339`；「玩法架构 · RUN-077：H」节头注明 `SceneService.java` 从组 HOST 起第 216 行之后的行号加 4；§2 对照表 `REQ-PLAY-003`、`REQ-PLAY-008` 两行加 `TC-PLAY-170`；§5 局部轮 `PluginSchedulerImpl` 一句加 `TC-PROD-840`，玩法架构域三处加 `TC-PLAY-170` | Bearisbug |
@@ -5415,7 +5416,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest`（`:testing:test`） | 2 个 0 失败：注册后读到默认值，改值并 `markDirty` 后 `dirty` 含该段，`saveNow` 得 `SAVED` 并清空；`commitTogether` 得 `SAVED`、值变为提交值、`apply` 执行 1 次；重复注册被拒；`freeze(player, true)` 后 `commitTogether` 与 `saveNow` 都得 `UNAVAILABLE`、`apply` 未执行、值不变 |
+| 1 | 跑 `io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest`（`:testing:test`） | 3 个 0 失败（第 3 个是 `TC-PROD-984` 第 4 步，v0.9.106）：注册后读到默认值，改值并 `markDirty` 后 `dirty` 含该段，`saveNow` 得 `SAVED` 并清空；`commitTogether` 得 `SAVED`、值变为提交值、`apply` 执行 1 次；重复注册被拒；`freeze(player, true)` 后 `commitTogether` 与 `saveNow` 都得 `UNAVAILABLE`、`apply` 未执行、值不变 |
 | 2 | 反证有齿：`InMemoryPlayerDataStore#commitTogether` 的 `if (isFrozen(player))` 加 `&& Boolean.getBoolean("proof.never")`，重跑，再还原 | 红在 `aFrozenPlayerCommitsNothingAndRegistrationIsOnce`：`expected: <UNAVAILABLE> but was: <SAVED>`。还原后复绿 |
 
 后置：确认 `InMemoryPlayerDataStore.java` 没有残留改动。
@@ -11986,7 +11987,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aSectionWhoseEncodeThrowsAnErrorLeavesTheRestOfTheLogoutSaveGoing` | 绿：断开后 10 s 内记录离开、写权为 NULL，库里 `probe:purse` 是 `{"note": "", "coins": 4}`；同账号再 `load` 成功、`coins = 4`（`probe:cyclic` 没写过，取默认值）；每次快照记一行 ERROR `Encoding a section failed, it stays dirty: … section_id=probe:cyclic` |
+| 1 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aSectionWhoseEncodeThrowsAnErrorLeavesTheRestOfTheLogoutSaveGoing` | 绿：断开后 10 s 内记录离开、写权为 NULL，库里 `probe:purse` 是 `{"note": "", "coins": 4}`；同账号再 `load` 成功、`coins = 4`（`probe:cyclic` 没写过，取默认值）；快照记 ERROR `Encoding a section failed, it stays dirty: … section_id=probe:cyclic`，v0.9.106 起经 `section encodes` 预算 10 s 至多一行（`TC-PROD-987` 第 3 步） |
 | 2 | 同类，看 `aTransferWhoseSectionEncodeThrowsAnErrorStillHandsTheRestOver` | 绿：`transferOut` 的 future 完成且非 null，库里 `coins = 5`、写权为 NULL |
 | 3 | 改动前的红（`<E>` 第 2 次） | 两条都红在 `EnvImpl.tick` 报的 `Server threw exception`（`PlayerStoreIntegrationTest.java:397` 经 `assertLetGo` 的 `:851`，与 `:413`），cause 是 `StackOverflowError: the test's value that refers to itself`，从 `PlayerStore.snapshot`（`origin/main` 的 `:870`）分别经 `loggedOut`（`:1130`）与 `transferOut` 排的任务（`:851`）穿出：登出与转服的写回都没提交 |
 | 4 | 反证有齿（快照只接 `RuntimeException`）：`PlayerStore.java:904` 的 `catch (Throwable e)` 改为 `catch (RuntimeException e)`，同 `TC-PROD-830` 第 3 步那一批，再还原 | 两条红，同第 3 步 |
@@ -12023,6 +12024,154 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | 5 | 还原后跑第 1 步，同批带 `PluginSchedulerAsyncIntegrationTest`（第 8 次运行） | 与第 1 步相同；`PluginSchedulerAsyncIntegrationTest` 6 条 0 失败 |
 
 后置：`grep -rn proof.never server-app/src/main` 无输出；`git status --short` 无输出。
+
+### 生产就绪 · RUN-081：STORE（写权状态机的锁与纪元、退避的叫醒、登出快照的时机、`commitTogether` 的参数结果与提交冻结、`saveNow` 的快照线程、插件任务的日志预算、Redis URL 的 scheme 与事务的回滚）
+
+对应 `REQ-PROD-005`、`REQ-PROD-006`、`REQ-PROD-007`、`REQ-PROD-008`、`REQ-PROD-021`（`docs/DESIGN-PROD.md` v0.9.106：`API-PROD-005` 语义、参数与结果、线程、登出快照、冻结与插件测试六条，`API-PROD-006` 连接一条，`API-PROD-007` 插件一条，`API-PROD-017` 任务失败一条，`API-PROD-032` 捕获一句，§11.3 `loading → offline`、`online → fenced`、`online → saving`、`saving → orphaned` 四行，§16 三行，§24）。缺陷与修法：
+
+1. 写权状态机：fence 与 `finished` 在记录锁外先判后写，与准入、登出交错时状态会被改回、台账与踢人各做两次；写入得 `FENCED` 时 `drain` 清掉写槽就返回，写库期间排进来的保存永不答复；会话已隔离、写入不发语句就判的 fence 也记 `cause=zero_rows`。改为在记录锁里判定并置位，`FENCED` 之后交给下一轮统一答复，按会话状态选 `session_isolated` 或 `zero_rows`。
+2. 会话隔离与在途的登录：隔离只在载入开头判一次，获取语句在旧纪元下执行、返回时会话已隔离并重建的登录照常被准入，第一次写库才被 fence。记录记下获取时的 `session_id`，获取语句返回之后与准入时比对，按旧纪元还回写权。
+3. 退避：重试中的写线程用不可打断的 `Thread.sleep`，登出、转服、停机与带回调的 `saveNow` 合并进来也要等完这一档（至多 30 s）；合并进来的登出保存继承之前定时保存的首次失败时刻，第一次失败就被放弃。改为在记录锁上限时等待，`submit` 叫醒；登出保存从自己的首次失败起算。
+4. 登出快照挂在宿主节点自身，排在所有插件的 `PlayerDisconnectEvent` 监听器之前，插件在那里标脏的段不写、不报错。挪到宿主节点下优先级 5 的子节点 `synaxis-store-logout`。
+5. `commitTogether`：提交线程只接 `FencedException` 与 `SQLException`，后端抛别的运行时异常时 future 永不完成；参与者为空时开一个空事务；暂存值为 null 时库已提交之后才抛 NPE；提交写库期间参与者不算冻结，对同一段的原地修改被暂存值覆盖，同一参与者的第二笔提交覆盖第一笔；future 在持有各参与者写锁时完成。
+6. `saveNow` 在调用线程上快照，插件从 `runAsync` 调用时读到改了一半的背包。不拥有玩家的线程上调用时快照排到玩家下一个 tick。
+7. 日志：插件任务每失败一次写一行带栈 ERROR（`PluginSchedulerImpl` 在宿主日志门禁的豁免名单里），段编码失败每次快照写一行。都改经 `LogBudget`，门禁去掉豁免。
+8. `onShutdownSave` 在 `onEnable` 之外也能登记；`SYNAXIS_REDIS_URL` 不看 scheme，`rediss://` 被当成明文连接；三处手写事务只在 `SQLException` 时回滚，`finally` 里的 `setAutoCommit(true)` 会提交写了一半的事务，回滚失败时顶掉原异常。
+
+测试：`server-app` 包 `io.github.bearisbug.synaxis.app.store`（下文 `<S>`）的 `PlayerStoreIntegrationTest` 加 15 条（28 → 43），`saveNow` 的三处旧调用改为在玩家的所属线程上调（`StoreFixture#saveNowOwned`，经 `Acquirable#sync`；从测试线程调用的快照改排到玩家下一个 tick，旧写法会等满 10 s）；新类 `PostgresBackendDbTest` 2 条；`RedisLinkTest` 加 1 条（3 → 4）；`StoreMetricsIntegrationTest` 的一处 `saveNow` 同样改到所属线程。包 `io.github.bearisbug.synaxis.app`（下文 `<A>`）：新类 `PluginSchedulerLogBudgetIntegrationTest` 2 条；`PlayerDataIntegrationTest` 加 1 条、一处 `saveNow` 改到所属线程；`ClientDrivenLogArchitectureTest` 的名单去掉 `PluginSchedulerImpl`。`:testing` 的 `InMemoryPlayerDataStoreIntegrationTest` 加 1 条（2 → 3）。`*IntegrationTest` 与 `*DbTest` 要数据库前置（同 3A 一节的 `SYNAXIS_TEST_*` 变量）。行号按本组代码提交 `ecb8495d6c`。本组 6 次 Gradle，读数见 `docs/test-runs/RUN-081/STORE/00-index.txt`（下文 `<E>`）：第 1 次只编译，新测试里 `CompletableFuture.supplyAsync(…).join()` 拿到的是嵌套的 future，Error Prone `FutureReturnValueIgnored` 拒收，改成在虚拟线程里取值；第 2 次改动前的红（`server-app/src/main` 与 `testing/src/main` 取 `main` `965c3bddae` 的，测试是本组的）：65 个跑完 22 个红，全是本组新加的，改到所属线程调 `saveNow` 的旧测试都绿；第 3～5 次修后同一组 37 个类 229 个，默认、4 线程严格、严格 grid 各一次，全绿，第 3 次带 `jacocoTestReport`，主代码新增的可执行行 160 行覆盖 150 行（94%）；第 6 次是 `TC-PROD-980` 第 2 步在第 2 次之后改过测试，补做的反证。
+
+#### `TC-PROD-980` 写入得 `FENCED` 时，写库期间排进来的保存同样以 `FENCED` 答复；会话已隔离时不发语句就判的 fence 记 `cause=session_isolated` — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。第 1 步的后端把下一次写入停在后端里、放行后抛 `FencedException`；第 2 步的分片，会话的监听器什么都不做（隔离不 fence 任何记录），写入时读到的会话是 `isolated`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aSaveThatWaitedBehindAFencedWriteIsAnsweredToo` | 绿：第一次 `saveNow` 停在后端时第二次 `saveNow` 排进写槽；放行后两次都在 5 s 内得 `FENCED`，`EVT:save_fenced` 恰 1 条 |
+| 2 | 同类，看 `aWriteThatFindsTheSessionIsolatedIsFencedForTheIsolation` | 绿：会话进 `isolated` 后 `saveNow` 得 `FENCED`，`EVT:save_fenced` 恰 1 条，带 `cause=session_isolated` |
+| 3 | 改动前的红（`<E>` 第 2 次） | 两条都红：`aSaveThatWaitedBehindAFencedWriteIsAnsweredToo` 红在 `PlayerStoreIntegrationTest.java:1177`，`java.util.concurrent.TimeoutException`：第二次的 future 挂在写槽里，没人答复；`aWriteThatFindsTheSessionIsolatedIsFencedForTheIsolation` 红在当时的 `:1194`，`expected: <1> but was: <0>`，消息里随后出现的台账行是 `save_fenced {character_id=1, session_id=1, cause=zero_rows}`。这一条的答复先于 fence 写台账，原写法读得早，修后同样可能读早：之后加了等台账那一行（`:1194`），断言下移到 `:1196`、`:1197`，反证见第 5 步 |
+| 4 | 第 1、2 步加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 跑一次，再加 `-Dsynaxis.thread-provider=grid` 跑一次（`<E>` 第 4、5 次） | 同第 1、2 步 |
+| 5 | 反证有齿（第 2 步的测试在第 3 步那次红之后改过）：`PlayerStore.java:1106` 的 `current.state() == ShardSession.State.ISOLATED` 改为 `Boolean.getBoolean("proof.never")`，只跑第 1、2 步（`<E>` 第 6 次），再还原 | `2 tests completed, 1 failed`：第 2 步红在 `:1197`，`expected: <true> but was: <false>`，台账是 `save_fenced {character_id=1, session_id=1, cause=zero_rows}`；第 1 步绿 |
+
+后置：`grep -rn proof.never server-app/src/main` 无输出；`git status --short` 无输出。
+
+#### `TC-PROD-981` 获取语句在旧纪元下执行、返回时会话已隔离或已重建的登录被拒，写权按旧纪元还回；准入时再判一次（§16「会话隔离与在途的登录」） — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。第 1 步的后端在获取语句提交之后停住，测试在这期间把会话在库里置过期、`renewOrReopen()` 两次（`isolated`，再重建回 `active`、换新 `session_id`），再放行。第 2 步的分片，会话的监听器什么都不做，模拟隔离那一刻这条记录还不在册。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aLoginWhoseSessionIsIsolatedWhileItAcquiresGivesTheLeaseBack` | 绿：`load` 返回 false，断线 `synaxis:state-unavailable`，库里这个角色的 `lease_session_id` 为 NULL，`loadedCount() = 0` |
+| 2 | 同类，看 `anAdmissionAfterTheSessionWasIsolatedIsRefused` | 绿：载入之后会话进 `isolated`，`admitted` 返回 false，断线 `synaxis:state-unavailable`，写权为 NULL，`loadedCount() = 0` |
+| 3 | 改动前的红（`<E>` 第 2 次） | 两条都红：`load` 返回 true，红在 `:1247`，`a login acquired under the old epoch is refused ==> expected: <false> but was: <true>`；`admitted` 返回 true，红在 `:1263`，`not let in under an isolated session ==> expected: <false> but was: <true>` |
+| 4 | 第 1、2 步三种模式各一次，同 `TC-PROD-980` 第 4 步 | 同第 1、2 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-982` 退避中的写线程被登出叫醒、立即写回；合并进来的登出保存从自己的首次失败起算放弃时限（§11.3 `saving → orphaned`） — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。两条都把定时保存的周期设为 1,000,000 tick（不插进来），后端在写入前计数并按条件抛 `SQLException`。第 1 步：退避 50 ms、3 s（最后一档重复），前 3 次写入失败；第 2 步：退避 50 ms，放弃时限 500 ms，写入恒失败。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aLogoutWakesASaveBackingOffAndIsWrittenAtOnce` | 绿：`saveNow` 第一次失败后第二次也失败、进入 3 s 退避，100 ms 后断开玩家；登出保存在 1,500 ms 内写进库（`coins = 6`）、写权为 NULL |
+| 2 | 同类，看 `aLogoutSaveJoiningARetryingSaveCountsItsOwnFailures` | 绿：`saveNow` 失败后重试满 12 次（约 600 ms，超过放弃时限）再断开玩家；登出保存重试至少 400 ms 才放弃、还回写权 |
+| 3 | 改动前的红（`<E>` 第 2 次） | 两条都红：第 1 条红在 `:1293`，`written without waiting out the 3 s backoff: took 5918 ms`：3 s 退避睡满，第 3 次失败之后又睡一档 3 s；第 2 条红在 `:1321`，`… not given up at its first failure: took 123 ms`：登出保存第一次失败就按定时保存的首次失败时刻放弃 |
+| 4 | 第 1、2 步三种模式各一次，同 `TC-PROD-980` 第 4 步 | 同第 1、2 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-983` 插件的保存时机：登出快照排在插件的断线监听器之后；停机保存之后断线监听器里的改动不写；`onShutdownSave` 只能在 `onEnable` 里登记 — 对应 `REQ-PROD-006`、`REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。第 1、2 步在分片的宿主节点下挂一个优先级 0 的子节点（插件全局 `NORMAL` 档的位置），它的 `PlayerDisconnectEvent` 监听器改 `probe:purse` 并 `markDirty`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aSectionAPluginChangesInItsDisconnectListenerIsInTheLogoutSave` | 绿：监听器读得到数据、没有异常；断开后库里 `probe:purse` 是 `{"note": "", "coins": 7}`，写权为 NULL |
+| 2 | 同类，看 `aSectionAPluginChangesInItsDisconnectListenerAfterTheShutdownSaveIsNotWritten` | 绿：`saveAll(5 s, true)` 写完、`onSaveEnded(false)` 之后踢人，监听器把 `coins` 改成 99；库里仍是停机保存写的 `coins = 3`。钉住 `API-PROD-007`「不得依赖 `PlayerDisconnectEvent` 做停机保存」：改了停机快照的时机，这条会变红，要同步文档 |
+| 3 | 跑 `<A>.PlayerDataIntegrationTest`，看 `aShutdownSaveHookIsOnlyRegisteredInOnEnable` | 绿：`onEnable` 返回之后再调 `lifecycle().onShutdownSave` 抛 `IllegalStateException`，消息含 `outside onEnable` |
+| 4 | 改动前的红（`<E>` 第 2 次） | 第 1 步红在 `:1348`，`the logout snapshot is taken after the plugin's listener ==> expected: <{"note": "", "coins": 7}> but was: <null>`：快照先于监听器，这一段一次也没写进库；第 3 步红在 `PlayerDataIntegrationTest.java:163`，`after onEnable returned ==> Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.`；第 2 步改动前就绿，它钉住的是现有行为 |
+| 5 | 第 1、2 步三种模式各一次，同 `TC-PROD-980` 第 4 步 | 同第 1、2 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-984` `commitTogether` 的参数与结果：空表得 `SAVED`、不写库、`apply` 照跑；null 或编码不了的暂存值在调用线程上抛 `IllegalArgumentException`；后端抛别的运行时异常时得 `UNAVAILABLE`；内存版同样拒 — 对应 `REQ-PROD-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。第 1 步的后端数写入次数；第 3 步的后端在打开开关后抛 `IllegalStateException`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aCommitWithoutParticipantsWritesNothingAndStillApplies` | 绿：`commitTogether(Map.of(), …)` 得 `SAVED`，两个 tick 后 `apply` 执行 1 次，后端写入 0 次 |
+| 2 | 同类，看 `aCommitOfANullOrUnencodableValueIsRefusedOnTheCallersThread` | 绿：暂存值为 null 时抛 `IllegalArgumentException`，消息含 `probe:purse` 与玩家名；暂存值是字符串时抛 `IllegalArgumentException`，消息含 `probe:purse`，cause 是 `ClassCastException`；玩家没有被冻结，库里 `version = 0` |
+| 3 | 同类，看 `aCommitWhoseBackendThrowsSomethingElseIsAnsweredUnavailable` | 绿：两人交易在 5 s 内得 `UNAVAILABLE`，`apply` 0 次，最后一条 `EVT:critical_commit` 带 `cause=db_error`，提交之后卖方不再冻结 |
+| 4 | 跑 `io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest`（`:testing:test`），看 `aCommitOfAValueTheHostCouldNotWriteIsRefusedAsTheHostRefusesIt` | 绿：null 与字符串两种暂存值都抛 `IllegalArgumentException`，后者消息含 `probe:coins`；`apply` 0 次，值仍是 0 |
+| 5 | 改动前的红（`<E>` 第 2 次） | 四步都红：第 1 步红在 `:1396`，`no transaction for nobody ==> expected: <0> but was: <1>`：空表照样开了一个事务；第 2 步红在 `:1434`，`expected: <java.lang.IllegalArgumentException> but was: <java.lang.NullPointerException>`：`probe:purse` 的 `encode` 在调用线程上碰到 null；第 3 步红在 `:1417`，`java.util.concurrent.TimeoutException`：提交线程不接 `IllegalStateException`，future 永不完成；第 4 步红在 `InMemoryPlayerDataStoreIntegrationTest.java:101`，同样是 `NullPointerException`：内存版把 null 放进 `ConcurrentHashMap` |
+| 6 | 第 1～3 步三种模式各一次，同 `TC-PROD-980` 第 4 步 | 同第 1～3 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-985` 提交写库期间参与者冻结，第二笔提交当场得 `UNAVAILABLE`；future 在释放写锁之后完成（§16「提交写库期间改同一段」） — 对应 `REQ-PROD-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。两条的后端都把下一次写入停在后端里，直到测试放行（`PlayerStoreIntegrationTest#holding`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aCommitUnderWayFreezesItsParticipantsUntilItIsAnswered` | 绿：提交停在后端时 `isFrozen(卖方)` 为 true，派发给卖方的 `PickupItemEvent` 已取消，卖方的第二笔提交当场完成、得 `UNAVAILABLE`；放行后第一笔得 `SAVED`、卖方解冻，库里与内存里卖方都是 `coins = 10` |
+| 2 | 同类，看 `aCommitIsAnsweredOutsideTheLocksOfItsParticipants` | 绿：放行之前挂上的回调在答复处再给卖方提交一笔并等它（5 s 超时）；第一笔 `SAVED`，回调的那一笔 `SAVED`，库里卖方 `coins = 11` |
+| 3 | 改动前的红（`<E>` 第 2 次） | 两条都红：第 1 步红在 `:1470`，`a participant of a commit under way is frozen ==> expected: <true> but was: <false>`；第 2 步红在 `:1513`，`java.util.concurrent.ExecutionException: java.util.concurrent.TimeoutException`：回调在持着卖方写锁时执行，它的那一笔等不到锁，5 s 后超时 |
+| 4 | 第 1、2 步三种模式各一次，同 `TC-PROD-980` 第 4 步 | 同第 1、2 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-986` 从不拥有玩家的线程调 `saveNow`，快照在玩家所属的 tick 线程上取（§16「快照捕获与玩家改背包、移动」） — 对应 `REQ-PROD-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。测试注册一个宿主段 `synaxis:probe-threads`，它的捕获只记下执行捕获的线程、返回 null。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aSaveNowFromAnotherThreadTakesItsSnapshotOnThePlayersTickThread` | 绿：从一条虚拟线程调 `saveNow`，tick 之后得 `SAVED`；记下的线程不为空，且全都是 `player.acquirable().assignedThread()`；库里 `coins = 4` |
+| 2 | 改动前的红（`<E>` 第 2 次） | 红在 `:1540`，`every capture on Thread[#6182,Syn-Tick-0,5,main] ==> expected: <[]> but was: <[VirtualThread[#6548]/terminated]>`：捕获在调 `saveNow` 的虚拟线程上执行 |
+| 3 | 第 1 步三种模式各一次，同 `TC-PROD-980` 第 4 步 | 同第 1 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-987` 插件任务失败与段编码失败经 `LogBudget` 限量：每个重复任务一份预算，其余任务共用一份；宿主日志门禁不再豁免 `PluginSchedulerImpl` — 对应 `REQ-PROD-021`、`REQ-PROD-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`LogCapture` 挂在 `PluginSchedulerImpl` 的 logger 上；第 3 步在分片上多注册 `probe:cyclic`（`encode` 恒抛 `StackOverflowError`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<A>.PluginSchedulerLogBudgetIntegrationTest`，看 `aRepeatingTaskThatFailsEveryTickWritesOneLinePerBudget` | 绿：两个每 tick 都抛异常的重复任务跑 100 tick，第一个跑了 ≥ 99 次、仍 `isAlive()`；ERROR 恰 2 行（每个任务一行），都以 `Plugin task failed: plugin_id=probe` 开头、带栈 |
+| 2 | 同类，看 `theOneShotTasksShareOneBudgetWhateverTheirNumber` | 绿：1,000 个必抛的 `runOn` 与 1 个必抛的一次性 `scheduleTask` 都执行了（1,001 次），ERROR 恰 1 行 |
+| 3 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aSectionThatNeverEncodesReportsOncePerBudget` | 绿：连续 10 次 `saveNow` 都得 `SAVED`，以 `Encoding a section failed` 开头的行恰 1 行 |
+| 4 | 跑 `<A>.ClientDrivenLogArchitectureTest` | 绿：2 条；名单里没有 `PluginSchedulerImpl`，它不直接写 WARN 或 ERROR |
+| 5 | 改动前的红（`<E>` 第 2 次） | 四步都红：第 1 步红在 `PluginSchedulerLogBudgetIntegrationTest.java:47`，每次失败一行（`one line for each repeating task: [Plugin task failed: plugin_id=probe, …]`）；第 2 步红在 `:81`，`one line for all of them: 1001 ==> expected: <1> but was: <1001>`；第 3 步红在 `PlayerStoreIntegrationTest.java:1561`，`ten snapshots, one line within the budget's 10 s ==> expected: <1> but was: <10>`；第 4 步红在 `ClientDrivenLogArchitectureTest.java:133`，`Method <io.github.bearisbug.synaxis.app.PluginSchedulerImpl.guarded(java.lang.Runnable)> calls method <org.slf4j.Logger.error(java.lang.String, java.lang.Object, java.lang.Object)> in (PluginSchedulerImpl.java:136)`：测试已去掉豁免，主代码还是直写 |
+| 6 | 第 1～3 步三种模式各一次，同 `TC-PROD-980` 第 4 步 | 同第 1～3 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-988` `SYNAXIS_REDIS_URL` 的 scheme 不是 `redis` 时拒启，信息不带原串 — 对应 `REQ-PROD-007` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头，不要数据库。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.RedisLinkTest`，看 `aUrlOfAnotherSchemeIsRefusedWithoutThePassword` | 绿：`rediss://:Ab3x9cd@valkey:6380`、`valkey://valkey:6379`、`http://valkey:6379`、`//valkey:6379` 都抛 `IllegalArgumentException`，消息就是现有那句 `SYNAXIS_REDIS_URL is not redis://…`，没有 cause；`REDIS://127.0.0.1:1` 不抛（scheme 不分大小写） |
+| 2 | 改动前的红（`<E>` 第 2 次） | 红在 `RedisLinkTest.java:59`，`rediss://:Ab3x9cd@valkey:6380 ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-989` 写库的事务：写了一半抛任何异常都整体回滚，回滚失败挂在原异常上 — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。测试用 `java.lang.reflect.Proxy` 包住连接池发出的连接与语句：第 1 步让写段语句的 `addBatch` 抛 `IllegalStateException`；第 2 步让写段语句的 `executeBatch` 抛 `SQLException("the test's read timed out")`、连接的 `rollback` 抛 `SQLException("This connection has been closed.")`（连接被驱动关掉时 pgjdbc 的说法）。写入之前先以本会话载入一个新角色。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.PostgresBackendDbTest`，看 `aWriteThatFailsWithAnythingHalfWayIsRolledBack` | 绿：`write` 抛出那个 `IllegalStateException`；库里这个角色的 `version` 仍是 0（之前的 fence 语句一并回滚），`character_section` 没有它的行 |
+| 2 | 同类，看 `aRollbackThatFailsDoesNotHideWhyTheWriteFailed` | 绿：`write` 抛出的是 `the test's read timed out`，`getSuppressed()` 恰 1 个、是回滚的那个异常；`version` 仍是 0（连接归还时连接池回滚了没回滚掉的事务） |
+| 3 | 改动前的红（`<E>` 第 2 次） | 两条都红：第 1 步红在 `PostgresBackendDbTest.java:77`，`the version bump before it is rolled back with the rest ==> expected: <0> but was: <1>`：运行时异常不进 `catch (SQLException)`，`finally` 的 `setAutoCommit(true)` 把写了一半的事务提交了；第 2 步红在 `:94`，`expected: <the test's read timed out> but was: <This connection has been closed.>`：回滚的异常顶掉了原异常 |
+| 4 | 回归：跑 `<S>.StoreHousekeepingDbTest`（清理任务改用同一个事务工具，`<E>` 第 3～5 次） | 3 个 0 失败：两个清理任务删掉该删的行，另一分片持着咨询锁时返回 -1、不删 |
+
+后置：`git status --short` 无输出。
 
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
@@ -13880,6 +14029,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 ITEMNET，物品与聊天组件写给 26.2 客户端的四处断线（`REQ-001`、`REQ-PROD-047`，v0.9.89）→ TC-PROD-810～TC-PROD-814；动了 `ItemStack#asHoverEvent` 或 `ComponentNetworkBufferTypeImpl` 写悬停事件的部分就跑 TC-PROD-810 与 TC-PROD-685；动了 `Particle.Item`、`ParticleImpl` 的默认值或 `DataComponents` 里 `use_remainder`、`sulfur_cube_content`、`bundle_contents`、`charged_projectiles` 的注册就跑 TC-PROD-811；动了 `container` 的注册、`ItemStackTemplate` 或组件补丁的读写就跑 TC-PROD-812；动了 custom 点击事件的写法（`ComponentNetworkBufferTypeImpl`、`ComponentCodecs#CLICK_EVENT`）或 `EngineAdventure#unwrapNbt` 就跑 TC-PROD-813；以上任一处都加跑 TC-PROD-814
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 CMD 组，命令的 condition、参数的包装、目标选择器与参数的错误回调（`REQ-PROD-012`、`REQ-PROD-011`，v0.9.90）→ TC-PROD-820～TC-PROD-826；动了引擎 `GraphConverter`（建命令包时接住 condition 的异常、按 `Argument#unwrap` 取节点形状、没有 parser 的节点不写进包）、`CommandParserImpl`（解析失败的归属、错误回调与调它之前看的语法 condition）、`Argument` 的 `unwrap`、`suggestionType`、`hasSuggestion` 或 `map`、`filter` 的包装类、`ArgumentEntity` 的参数名单，或宿主 `PluginCommandsImpl#guard`，就跑 TC-PROD-820～TC-PROD-825 第 1 步（五个类一次 Gradle），再按上面「控制台与插件命令」一行跑 TC-PROD-240～TC-PROD-247；动了 `Player#UNSAFE_init` 里 `refreshCommands` 与 `setInstance` 的先后，或 `ConnectionManager#updateWaitingPlayers` 对出生时同步异常的处理，再加 TC-PROD-826 的两遍。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 STORE，Redis 往返离开登录路径、载入名额只包语句、`commitTogether` 的 `apply` 与插件段回调抛 `Error`（`REQ-PROD-004`、`REQ-PROD-006`、`REQ-PROD-007`、`REQ-PROD-008`，v0.9.91）→ TC-PROD-830～TC-PROD-839；动了 `RedisLink` 的 `presence`、`clearPresence`、`dropOldest`、`close` 或连接池配置，就跑 TC-PROD-830～TC-PROD-832 与 TC-PROD-839（`RedisLinkTest` 不要数据库，另两个类要数据库前置与 Valkey）；动了 `PlayerStore` 的 `loadOrRefuse`、`takeLoadSlot` 或 `loadWithin` 里取还名额的几处，就跑 TC-PROD-833、TC-PROD-834、TC-PROD-171 与 TC-PROD-157 的 `TransferTicketsIntegrationTest`；动了 `commitTogether` 排 `apply` 的那一行，跑 TC-PROD-835、TC-PROD-836 与 TC-PROD-148，三种线程模式各一次；动了 `snapshot`、`decode` 的捕获或调 `createDefault()` 的那一处，跑 TC-PROD-837、TC-PROD-838 与 RUN-073 组 D 一行的 TC-PROD-728 第 4 步。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 STORE，写权状态机的锁与纪元、退避的叫醒、登出快照的时机、`commitTogether` 的参数结果与提交冻结、`saveNow` 的快照线程、插件任务的日志预算、Redis URL 的 scheme 与事务的回滚（`REQ-PROD-005`～`REQ-PROD-008`、`REQ-PROD-021`，v0.9.106）→ TC-PROD-980～TC-PROD-989；动了 `PlayerStore` 的 `fence`、`finished`、`drain`、`backOff`、`submit` 或 `loadWithin`、`admitted` 里比对纪元的两处，跑 TC-PROD-980～TC-PROD-982 与 TC-PROD-149，三种线程模式各一次；动了 `attach` 挂登出监听器的那一处，跑 TC-PROD-983 与 `ShutdownSave*IntegrationTest`；动了 `commitTogether` 或 `isFrozen`，跑 TC-PROD-984、TC-PROD-985、TC-PROD-148、TC-PROD-835、TC-PROD-836 与 TC-PROD-161；动了 `saveNow`，跑 TC-PROD-986 与改到所属线程调用的 TC-PROD-145 一类旧用例（`PlayerStoreIntegrationTest`、`StoreMetricsIntegrationTest`、`PlayerDataIntegrationTest` 整类）；动了 `PluginSchedulerImpl#guarded` 或预算的分配，跑 TC-PROD-987 与 TC-PROD-140、TC-PROD-840；动了 `RedisLink#connect` 的校验，跑 TC-PROD-988；动了 `Sql`、`PostgresBackend` 的 `load` / `write` 或 `StoreHousekeeping#run`，跑 TC-PROD-989 与 TC-PROD-144。
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

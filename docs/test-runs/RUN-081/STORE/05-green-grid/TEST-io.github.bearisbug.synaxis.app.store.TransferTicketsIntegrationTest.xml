@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:14:50.451Z" hostname="Mac.local" time="8.964">
+  <properties/>
+  <testcase name="aTicketWhoseVersionTheCharacterIsNotAtIsRefusedAndTheLeaseGivenBack(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest" time="0.58"/>
+  <testcase name="aTicketWaitsForAnotherLoginOfItsAccountLoadingOnTheShard(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest" time="0.909"/>
+  <testcase name="badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest" time="0.596"/>
+  <testcase name="theCooldownOfATransferInCarriesToTheTargetShard(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest" time="0.674"/>
+  <testcase name="aTransferThatCannotWriteLeavesThePlayerWhereItIs(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest" time="2.563"/>
+  <testcase name="aTicketArrivingWhileAnAbandonedLoginGivesItsLeaseBackKeepsTheLeaseItClaims(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest" time="0.979"/>
+  <testcase name="aStaleTicketDoesNotGiveBackTheLeaseOfALoginOfItsAccountOnTheShard(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest" time="2.659"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

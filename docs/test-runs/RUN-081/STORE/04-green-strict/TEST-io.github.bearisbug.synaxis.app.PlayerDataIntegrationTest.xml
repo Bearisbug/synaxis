@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:03:54.557Z" hostname="Mac.local" time="0.783">
+  <properties/>
+  <testcase name="aLoadThatFailsTurnsTheConnectionAwayBeforeTheAdmission(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.082"/>
+  <testcase name="aPluginOnlyRegistersInItsNamespaceAndOnlyInOnEnable(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.074"/>
+  <testcase name="anAdmissionAnsweredAfterTheShutdownSaveStartedIsRefused(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.071"/>
+  <testcase name="aShutdownSaveHookIsOnlyRegisteredInOnEnable(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.079"/>
+  <testcase name="aPluginThatFailsToEnableLeavesNoSectionAndNoShutdownHookBehind(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.134"/>
+  <testcase name="aRefusedAdmissionGivesTheLeaseBack(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.074"/>
+  <testcase name="aPluginCannotReadASectionItDidNotRegister(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.132"/>
+  <testcase name="aSectionIsTheLoadedValueInTheWorldAndSavesThroughTheStore(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.135"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

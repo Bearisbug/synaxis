@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:04:48.296Z" hostname="Mac.local" time="0.093">
+  <properties/>
+  <testcase name="aStoredSectionOutsideTheLayoutIsRefused(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.018"/>
+  <testcase name="itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.026"/>
+  <testcase name="theCoreAndTheRtsWorldsCarryNoMap(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.011"/>
+  <testcase name="theLayoutIsTheOneOfTheDesign(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.015"/>
+  <testcase name="theTagsOfAnItemKeepTheirTypes(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.021"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:14:27.848Z" hostname="Mac.local" time="22.602">
+  <properties/>
+  <testcase name="aTransferWhoseEventAPluginCancelledLetsThePlayerGoAllTheSame(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" time="10.791"/>
+  <testcase name="aClientThatIgnoresItsTransferIsDisconnected(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" time="10.67"/>
+  <testcase name="onlyAPlayerATransferWouldTakeIsOnlineToTheStore(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" time="0.566"/>
+  <testcase name="thePresenceRefreshReportsAPlayerInTransitAsInTransit(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" time="0.569"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

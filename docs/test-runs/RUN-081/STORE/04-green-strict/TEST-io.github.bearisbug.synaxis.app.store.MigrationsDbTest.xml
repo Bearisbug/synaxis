@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.MigrationsDbTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:04:45.061Z" hostname="Mac.local" time="3.235">
+  <properties/>
+  <testcase name="theAuthModeIsWrittenOnceByTheMigrationAndNeverChanged()" classname="io.github.bearisbug.synaxis.app.store.MigrationsDbTest" time="0.482"/>
+  <testcase name="anEmptyDatabaseMigratesAndThenValidates()" classname="io.github.bearisbug.synaxis.app.store.MigrationsDbTest" time="0.548"/>
+  <testcase name="theDatabaseOfThePreviousVersionMigratesForward()" classname="io.github.bearisbug.synaxis.app.store.MigrationsDbTest" time="0.734"/>
+  <testcase name="everyVersionRollsBackAndMigratesAgain()" classname="io.github.bearisbug.synaxis.app.store.MigrationsDbTest" time="1.053"/>
+  <testcase name="aDatabaseAheadOfThisBuildIsRefused()" classname="io.github.bearisbug.synaxis.app.store.MigrationsDbTest" time="0.415"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

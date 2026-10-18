@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" tests="43" skipped="0" failures="14" errors="0" timestamp="2026-10-18T15:45:22.584Z" hostname="Mac.local" time="47.878">
+  <properties/>
+  <testcase name="aLoginAbandonedTwiceGivesItsLeaseBackOnce(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="1.244"/>
+  <testcase name="aLoginAbandonedWhileAnotherLoginOfItsAccountLoadsLeavesTheLeaseToTheOther(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.752"/>
+  <testcase name="theAutosaveComesRoundOncePerPeriodWhateverTheNumberOnline(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.625"/>
+  <testcase name="aWriteThatFindsTheSessionIsolatedIsFencedForTheIsolation(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.474">
+    <failure message="org.opentest4j.AssertionFailedError: [critical_commit {shard_id=r1-c1, kind=save_now, result=fenced, cause=version_mismatch, elapsed_ms=0, participants=1}, save_fenced {character_id=1, session_id=1, cause=zero_rows}] ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: [critical_commit {shard_id=r1-c1, kind=save_now, result=fenced, cause=version_mismatch, elapsed_ms=0, participants=1}, save_fenced {character_id=1, session_id=1, cause=zero_rows}] ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aWriteThatFindsTheSessionIsolatedIsFencedForTheIsolation(PlayerStoreIntegrationTest.java:1194)
+</failure>
+  </testcase>
+  <testcase name="aLoginComingWhileAnAbandonedLoginGivesItsLeaseBackKeepsTheLeaseItTakes(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.712"/>
+  <testcase name="aSaveThatWaitedBehindAFencedWriteIsAnsweredToo(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="5.51">
+    <failure message="java.util.concurrent.TimeoutException" type="java.util.concurrent.TimeoutException">java.util.concurrent.TimeoutException
+	at java.base/java.util.concurrent.CompletableFuture.timedGet(CompletableFuture.java:1981)
+	at java.base/java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2116)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aSaveThatWaitedBehindAFencedWriteIsAnsweredToo(PlayerStoreIntegrationTest.java:1177)
+</failure>
+  </testcase>
+  <testcase name="theLogoutSaveWritesTheDirtySectionAndGivesTheLeaseBack(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.631"/>
+  <testcase name="aSectionWhoseEncodeThrowsAnErrorLeavesTheRestOfTheLogoutSaveGoing(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.613"/>
+  <testcase name="aNewAccountGetsOneCharacterHeldByThisSession(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.82"/>
+  <testcase name="aLogoutSaveTheDatabaseRejectsIsDroppedAndTheLeaseStillGoesBack(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="1.835"/>
+  <testcase name="aSectionNewerThanThisBuildOrUndecodableRefusesTheLoginAndIsLeftAlone(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.522"/>
+  <testcase name="aWriteAfterAnotherShardTookTheCharacterOverIsFenced(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.527"/>
+  <testcase name="aSectionAPluginChangesInItsDisconnectListenerAfterTheShutdownSaveIsNotWritten(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.485"/>
+  <testcase name="aSectionAPluginChangesInItsDisconnectListenerIsInTheLogoutSave(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.544">
+    <failure message="org.opentest4j.AssertionFailedError: the logout snapshot is taken after the plugin's listener ==&gt; expected: &lt;{&quot;note&quot;: &quot;&quot;, &quot;coins&quot;: 7}&gt; but was: &lt;null&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the logout snapshot is taken after the plugin's listener ==&gt; expected: &lt;{&quot;note&quot;: &quot;&quot;, &quot;coins&quot;: 7}&gt; but was: &lt;null&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aSectionAPluginChangesInItsDisconnectListenerIsInTheLogoutSave(PlayerStoreIntegrationTest.java:1346)
+</failure>
+  </testcase>
+  <testcase name="aCommitWhoseFirstParticipantLeavesBeforeItsApplyStillAppliesOnce(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.48"/>
+  <testcase name="aLoginWhoseSessionIsIsolatedWhileItAcquiresGivesTheLeaseBack(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.499">
+    <failure message="org.opentest4j.AssertionFailedError: a login acquired under the old epoch is refused ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: a login acquired under the old epoch is refused ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:266)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aLoginWhoseSessionIsIsolatedWhileItAcquiresGivesTheLeaseBack(PlayerStoreIntegrationTest.java:1245)
+</failure>
+  </testcase>
+  <testcase name="aLogoutBeforeTheTransferSnapshotsSavesAsTheLogout(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.571"/>
+  <testcase name="aLoginRefusedForTheLoadQueueGivesBackTheLeaseItWasHolding(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.593"/>
+  <testcase name="aLogoutSaveJoiningARetryingSaveCountsItsOwnFailures(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="1.22">
+    <failure message="org.opentest4j.AssertionFailedError: the logout save retried for its own 500 ms, not given up at its first failure: took 123 ms ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the logout save retried for its own 500 ms, not given up at its first failure: took 123 ms ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aLogoutSaveJoiningARetryingSaveCountsItsOwnFailures(PlayerStoreIntegrationTest.java:1319)
+</failure>
+  </testcase>
+  <testcase name="anOlderSectionVersionIsUpgradedOnLoad(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.558"/>
+  <testcase name="aLogoutWakesASaveBackingOffAndIsWrittenAtOnce(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="6.826">
+    <failure message="org.opentest4j.AssertionFailedError: written without waiting out the 3 s backoff: took 5918 ms ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: written without waiting out the 3 s backoff: took 5918 ms ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aLogoutWakesASaveBackingOffAndIsWrittenAtOnce(PlayerStoreIntegrationTest.java:1291)
+</failure>
+  </testcase>
+  <testcase name="aSaveNowFromAnotherThreadTakesItsSnapshotOnThePlayersTickThread(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.61">
+    <failure message="org.opentest4j.AssertionFailedError: every capture on Thread[#6182,Syn-Tick-0,5,main] ==&gt; expected: &lt;[]&gt; but was: &lt;[VirtualThread[#6548]/terminated]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: every capture on Thread[#6182,Syn-Tick-0,5,main] ==&gt; expected: &lt;[]&gt; but was: &lt;[VirtualThread[#6548]/terminated]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aSaveNowFromAnotherThreadTakesItsSnapshotOnThePlayersTickThread(PlayerStoreIntegrationTest.java:1538)
+</failure>
+  </testcase>
+  <testcase name="aCommitIsAnsweredOutsideTheLocksOfItsParticipants(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="5.72">
+    <failure message="java.util.concurrent.ExecutionException: java.util.concurrent.TimeoutException" type="java.util.concurrent.ExecutionException">java.util.concurrent.ExecutionException: java.util.concurrent.TimeoutException
+	at java.base/java.util.concurrent.CompletableFuture.wrapInExecutionException(CompletableFuture.java:345)
+	at java.base/java.util.concurrent.CompletableFuture.reportGet(CompletableFuture.java:440)
+	at java.base/java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2117)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aCommitIsAnsweredOutsideTheLocksOfItsParticipants(PlayerStoreIntegrationTest.java:1511)
+Caused by: java.util.concurrent.TimeoutException
+	at java.base/java.util.concurrent.CompletableFuture$Timeout.run(CompletableFuture.java:2828)
+	at java.base/java.util.concurrent.DelayScheduler$ScheduledForkJoinTask.compute(DelayScheduler.java:543)
+	at java.base/java.util.concurrent.ForkJoinTask$InterruptibleTask.exec(ForkJoinTask.java:1662)
+	at java.base/java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:511)
+	at java.base/java.util.concurrent.DelayScheduler.loop(DelayScheduler.java:325)
+	at java.base/java.util.concurrent.DelayScheduler.run(DelayScheduler.java:221)
+</failure>
+  </testcase>
+  <testcase name="aCommitAppliesOnTheThreadThatRunsTheTickNotOnATickThread(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.42"/>
+  <testcase name="aSaveRetryingFromBeforeACommitDoesNotWriteOverTheCommit(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="2.046"/>
+  <testcase name="aTransferWhoseWriteFailsKeepsItsTurnInTheAutosave(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.414"/>
+  <testcase name="anAdmissionAfterTheSessionWasIsolatedIsRefused(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.3">
+    <failure message="org.opentest4j.AssertionFailedError: not let in under an isolated session ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: not let in under an isolated session ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:266)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.anAdmissionAfterTheSessionWasIsolatedIsRefused(PlayerStoreIntegrationTest.java:1261)
+</failure>
+  </testcase>
+  <testcase name="aTransferWhoseWriteSucceedsAfterTheLogoutEndsOffline(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.367"/>
+  <testcase name="aPlayerThatLeavesBeforeItSpawnsIsSavedAndLetGo(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.281"/>
+  <testcase name="aDegradedShardFreezesTradesPickupsAndDrops(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.366"/>
+  <testcase name="aSectionThatNeverEncodesReportsOncePerBudget(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.329">
+    <failure message="org.opentest4j.AssertionFailedError: ten snapshots, one line within the budget's 10 s ==&gt; expected: &lt;1&gt; but was: &lt;10&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: ten snapshots, one line within the budget's 10 s ==&gt; expected: &lt;1&gt; but was: &lt;10&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:705)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aSectionThatNeverEncodesReportsOncePerBudget(PlayerStoreIntegrationTest.java:1559)
+</failure>
+  </testcase>
+  <testcase name="aCommitOfTwoPlayersWritesBothOrNeither(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.441"/>
+  <testcase name="anIsolatedShardKicksEveryoneWritesNothingAndTakesLoginsAgainOnceReopened(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.429"/>
+  <testcase name="aTransferWhoseWriteFailsAfterTheLogoutIsRetriedAsTheLogoutSave(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.424"/>
+  <testcase name="aHundredShardsRacingForANewAccountLeaveOneCharacterAndOneHolder()" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="1.677"/>
+  <testcase name="aSectionWithoutADefaultRefusesTheLoginAndGivesTheLeaseBack(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.274"/>
+  <testcase name="aCommitWithoutParticipantsWritesNothingAndStillApplies(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.255">
+    <failure message="org.opentest4j.AssertionFailedError: no transaction for nobody ==&gt; expected: &lt;0&gt; but was: &lt;1&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: no transaction for nobody ==&gt; expected: &lt;0&gt; but was: &lt;1&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aCommitWithoutParticipantsWritesNothingAndStillApplies(PlayerStoreIntegrationTest.java:1394)
+</failure>
+  </testcase>
+  <testcase name="theAutosaveWritesDirtyPlayersSpreadOverTheTicksAndSkipsCleanOnes(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.379"/>
+  <testcase name="aCommitUnderWayFreezesItsParticipantsUntilItIsAnswered(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.359">
+    <failure message="org.opentest4j.AssertionFailedError: a participant of a commit under way is frozen ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: a participant of a commit under way is frozen ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aCommitUnderWayFreezesItsParticipantsUntilItIsAnswered(PlayerStoreIntegrationTest.java:1468)
+</failure>
+  </testcase>
+  <testcase name="aCommitWhoseBackendThrowsSomethingElseIsAnsweredUnavailable(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="5.357">
+    <failure message="java.util.concurrent.TimeoutException" type="java.util.concurrent.TimeoutException">java.util.concurrent.TimeoutException
+	at java.base/java.util.concurrent.CompletableFuture.timedGet(CompletableFuture.java:1981)
+	at java.base/java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2116)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aCommitWhoseBackendThrowsSomethingElseIsAnsweredUnavailable(PlayerStoreIntegrationTest.java:1415)
+</failure>
+  </testcase>
+  <testcase name="aCommitOfANullOrUnencodableValueIsRefusedOnTheCallersThread(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.396">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalArgumentException&gt; but was: &lt;java.lang.NullPointerException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalArgumentException&gt; but was: &lt;java.lang.NullPointerException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aCommitOfANullOrUnencodableValueIsRefusedOnTheCallersThread(PlayerStoreIntegrationTest.java:1432)
+Caused by: java.lang.NullPointerException: Cannot read field &quot;coins&quot; because &quot;value&quot; is null
+	at io.github.bearisbug.synaxis.app.store.StoreFixture$1.encode(StoreFixture.java:93)
+	at io.github.bearisbug.synaxis.app.store.StoreFixture$1.encode(StoreFixture.java:65)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.encode(PlayerStore.java:938)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.commitTogether(PlayerStore.java:774)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.lambda$aCommitOfANullOrUnencodableValueIsRefusedOnTheCallersThread$0(PlayerStoreIntegrationTest.java:1433)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="aLoadThatFailsAfterItsAcquireHoldsNoLease(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.442"/>
+  <testcase name="aTransferWhoseSectionEncodeThrowsAnErrorStillHandsTheRestOver(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.53"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

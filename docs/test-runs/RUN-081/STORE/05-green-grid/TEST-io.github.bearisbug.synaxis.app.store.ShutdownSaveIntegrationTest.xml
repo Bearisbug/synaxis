@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.ShutdownSaveIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:14:07.180Z" hostname="Mac.local" time="6.566">
+  <properties/>
+  <testcase name="aCountdownIsAnnouncedToEveryoneOnlineAndNoCountdownIsNot(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownSaveIntegrationTest" time="0.208"/>
+  <testcase name="aDeadTickIsReadOnTheShutdownThreadWithoutTheHooks(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownSaveIntegrationTest" time="0.202"/>
+  <testcase name="theHooksRunOnTheTickThreadsAndEveryPlayerIsWrittenAndReleased(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownSaveIntegrationTest" time="0.229"/>
+  <testcase name="aSaveThatMissesItsBudgetIsLeftToTheExpiryOfTheSession(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownSaveIntegrationTest" time="5.924"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

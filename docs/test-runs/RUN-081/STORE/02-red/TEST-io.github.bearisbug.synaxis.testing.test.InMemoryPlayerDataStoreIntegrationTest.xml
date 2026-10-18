@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest" tests="3" skipped="0" failures="1" errors="0" timestamp="2026-10-18T15:45:00.169Z" hostname="Mac.local" time="2.583">
+  <properties/>
+  <testcase name="sectionsStartAsTheDefaultAndSavesAndCommitsSucceed(Env)" classname="io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest" time="2.228"/>
+  <testcase name="aFrozenPlayerCommitsNothingAndRegistrationIsOnce(Env)" classname="io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest" time="0.155"/>
+  <testcase name="aCommitOfAValueTheHostCouldNotWriteIsRefusedAsTheHostRefusesIt(Env)" classname="io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest" time="0.185">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalArgumentException&gt; but was: &lt;java.lang.NullPointerException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalArgumentException&gt; but was: &lt;java.lang.NullPointerException&gt;
+	at org.junit.jupiter.api@6.1.3/org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.testing.test/io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest.aCommitOfAValueTheHostCouldNotWriteIsRefusedAsTheHostRefusesIt(InMemoryPlayerDataStoreIntegrationTest.java:101)
+Caused by: java.lang.NullPointerException
+	at java.base/java.util.concurrent.ConcurrentHashMap.putVal(ConcurrentHashMap.java:1023)
+	at java.base/java.util.concurrent.ConcurrentHashMap.put(ConcurrentHashMap.java:1018)
+	at io.github.bearisbug.synaxis.testing/io.github.bearisbug.synaxis.testing.InMemoryPlayerDataStore.commitTogether(InMemoryPlayerDataStore.java:74)
+	at io.github.bearisbug.synaxis.testing.test/io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest.lambda$aCommitOfAValueTheHostCouldNotWriteIsRefusedAsTheHostRefusesIt$0(InMemoryPlayerDataStoreIntegrationTest.java:101)
+	at org.junit.jupiter.api@6.1.3/org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api@6.1.3/org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 2 more
+</failure>
+  </testcase>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

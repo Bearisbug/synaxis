@@ -51,7 +51,7 @@
 
 1. 挂地图的分片不加载任何插件：2026-09-28 拍板（`docs/DESIGN-M3.md` §28.1 L3770），代码在 `server-app/.../Main.java:430-433` 与 `ShardMain.java:141`。MMO 规则今天写不成插件。
 2. 插件只能发不带票据的原版转服，分片只收带宿主票据的转入（`plugin-api/.../Transfers.java:10-15`）；跨分片转服 `ShardService` 是宿主内部接口，只在目录模式存在，只认同一张地图（`app/shard/ShardService.java:7-11`；`docs/DESIGN-M3.md` §28.1 L3771）。
-3. 宿主只在起服时判一次：有准入回调且已注册实例恰好 1 个才进玩法模式（`CoreMode.java:132-138`，`Main.java:985`）；运行期建实例、回收实例只能经不作兼容承诺的 `process()` 直接调引擎，插件被拆掉时宿主不收回实例（`PluginHost.java:301-310`）。运行期也没有禁用插件的路径：插件只在 `onEnable` 抛异常时（bind 之前，`PluginHost.java:183-188`）与停机时（玩家已保存并踢出之后，`Main.java:341-344`）被拆掉。
+3. 宿主只在起服时判一次：有准入回调且已注册实例恰好 1 个才进玩法模式（`CoreMode.java:132-138`，`Main.java:985`）；运行期建实例、回收实例只能经不作兼容承诺的 `process()` 直接调引擎，插件被拆掉时宿主不收回实例（`PluginHost.java:301-310`）。运行期也没有禁用插件的路径：插件只在 `onEnable` 抛异常时（bind 之前，`PluginHost.java:183-188`）与停机时（玩家已保存并踢出之后，`Main.java:348-351`）被拆掉。
 4. 整个进程只有一个准入槽（`AdmissionRegistry.java:20-26`），插件之间没有 `depends`，也没有服务互调（`PluginDescriptor.java:14`；`docs/DESIGN-M2.md` L96）。
 5. 宿主段 `synaxis:player` 在所有模式下应用并捕获同一个角色的背包与生命值，玩法插件模式从不恢复位置（`app/store/PlayerStateSection.java:143-158`、`:175-216`），插件不能按模式隔离。
 6. `:protocol` 的 `Message`、`GameMessage` 是 sealed，全进程只有一个 `SCHEMA_VERSION = 1`，握手严格相等（`protocol/.../Message.java:12`、`ProtocolSchema.java:16`）；客户端只静态注册三条通道，`rts:game` 写死（`client-fabric/.../SynaxisClientMod.java:37-44`、`GamePayload.java:31`）。客户端主源码里唯一的 HUD 元素是远景下载进度（`FarViewClient.java:103`），RTS 客户端只有逻辑层，相机、输入、HUD 属于还没开工的阶段 6b（`SynaxisClientMod.java:21`；`docs/DESIGN-M2.md` L1437）。
@@ -1409,7 +1409,7 @@ flowchart LR
 - 场景与小部件：同一连接内按发送顺序生效（TCP 加单通道）；切场景后客户端只认新 `scene_seq` 的动作结果。
 - 读写一致：插件在同一 tick 内 `hud().set` 两次同一小部件，客户端只看到后一次。
 - 结算：每局至多一次 `commitTogether`；写失败不补写（局内状态不持久化）。
-- 台账：会丢行（`EventLedger.java:41-87`），不作发奖依据，发奖只以数据段为准。
+- 台账：会丢行（`EventLedger.java:43-89`），不作发奖依据，发奖只以数据段为准。
 
 ## 17. 依赖与外部系统 / SLA
 

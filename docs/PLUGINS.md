@@ -197,7 +197,7 @@ Cookie 键必须是 `<plugin_id>:<路径>`，如 `Key.key("hello", "lobby-token"
 
 ## 13. 给插件写测试
 
-`:testing` 给测试一个进程内的服务端：不开端口、不起 tick 线程，测试自己推进 tick，用假连接造玩家。它还没发布到 Maven，先从本仓库装进本机的 Maven 仓库；它依赖引擎本体与 `:plugin-api`，三个一起装：
+`:testing` 给测试一个进程内的服务端：不开端口，tick 线程照常起，但不起按 20 TPS 推进 tick 的调度线程，由测试自己推进 tick，用假连接造玩家。它还没发布到 Maven，先从本仓库装进本机的 Maven 仓库；它依赖引擎本体与 `:plugin-api`，三个一起装：
 
 ```bash
 ./gradlew :publishToMavenLocal :plugin-api:publishToMavenLocal :testing:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
@@ -229,4 +229,4 @@ tasks.test {
 - `env.trackEvent(事件类, 过滤器, 对象)` 收集派发给这个对象（实体、实例）的事件，`assertSingle()`、`assertCount(n)` 这类断言读出收集到的事件，读过之后不再收集；它只摘自己的监听器，不影响这个对象上的其他监听器。
 - 要的配置与 `@EnvTest` 不同时用 `Env.create(设置)` 建一个独立进程的环境。它用完要 `close()`：用 try-with-resources，或放在 `@AfterEach` 里。`close()` 先报服务端在最后一次检查之后抛的异常（第一个为 cause，其余挂在它的 suppressed 里），再停进程，检查失败也停；只调 `process().stop()` 会跳过这项检查，测试照样绿。
 
-跑插件自己的 `onEnable` 要一个 `PluginContext`，测试里自己实现：八个抽象方法 `process()`、`events()`、`scheduler()`、`channels()`、`admission()`、`dataDirectory()`、`analytics()`、`logger()` 必须写，其余十个是默认方法，调用即抛 `UnsupportedOperationException`，用到哪个就覆盖哪个。`playerData()` 返回 `:testing` 的 `InMemoryPlayerDataStore`：不连库，每次保存都成功，`commitTogether` 在调用线程上当场执行 `apply`，宿主则排到下一个 tick 的串行段；`freeze(玩家)` 把玩家冻住，走冻结时插件该走的那条路。
+跑插件自己的 `onEnable` 要一个 `PluginContext`，测试里自己实现：八个抽象方法 `process()`、`events()`、`scheduler()`、`channels()`、`admission()`、`dataDirectory()`、`analytics()`、`logger()` 必须写，其余十个是默认方法，调用即抛 `UnsupportedOperationException`，用到哪个就覆盖哪个。`playerData()` 返回 `:testing` 的 `InMemoryPlayerDataStore`：不连库，没冻住的玩家每次保存都成功，`commitTogether` 在调用线程上当场执行 `apply`，宿主则排到下一个 tick 的串行段；`freeze(玩家, true)` 把玩家冻住、`freeze(玩家, false)` 解冻，冻住期间 `isFrozen` 为 true，`saveNow` 与 `commitTogether` 回 `UNAVAILABLE`，走冻结时插件该走的那条路。

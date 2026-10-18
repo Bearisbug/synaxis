@@ -8,7 +8,9 @@ import io.github.bearisbug.synaxis.entity.Entity;
  * Represents the result of a collision with an entity
  * @param collisionPoint the position at which the collision happened
  * @param entity the entity that was collided with
- * @param direction the direction of the collision. ex. Vec(-1, 0, 0) means the entity collided with the west face of the entity
+ * @param direction the direction of the collision. ex. Vec(-1, 0, 0) means the entity collided with the west face of the entity.
+ *                  {@link Vec#ZERO} when the boxes already overlap at the start of the movement
+ * @param percentage the part of the movement done before the collision, in [0, 1): 0 when the boxes already overlap
  */
 public record EntityCollisionResult(
         Point collisionPoint,

@@ -706,11 +706,11 @@ public sealed interface Point permits Vec, Pos, BlockVec {
     Point max(double value);
 
     /**
-     * Converts this point to a unit point (a point with length of 1).
+     * Converts this point to a unit point (a point with length of 1) in the same direction.
      *
-     * @return the same point
+     * @return the unit point, or a zero point if this point has a length of 0
      */
-    @Contract(pure = true, value = "-> new")
+    @Contract(pure = true)
     Point normalize();
 
     /**

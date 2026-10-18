@@ -817,6 +817,32 @@ public class AreaTest {
     }
 
     @Test
+    public void cubeOddSizeIsCenteredOnTheCenterBlock() {
+        Area.Cuboid cube = Area.cube(BlockVec.ZERO, 3);
+        assertEquals(new BlockVec(-1, -1, -1), cube.min());
+        assertEquals(new BlockVec(1, 1, 1), cube.max());
+        assertEquals(27, cube.blockCount());
+
+        assertEquals(1, Area.cube(BlockVec.ZERO, 1).blockCount());
+        // The center is floored to its block first
+        Area.Cuboid fractional = Area.cube(new Vec(0.7, 0.7, 0.7), 3);
+        assertEquals(cube.min(), fractional.min());
+        assertEquals(cube.max(), fractional.max());
+        assertEquals(27, Area.cube(new Vec(0.7, 0.7, 0.7), 2).blockCount());
+    }
+
+    @Test
+    public void boxRadiusIsHalfTheSizeFloored() {
+        Area.Cuboid box = Area.box(BlockVec.ZERO, new Vec(3, 2, 2));
+        assertEquals(new BlockVec(-1, -1, -1), box.min());
+        assertEquals(new BlockVec(1, 1, 1), box.max());
+
+        Area.Cuboid fractional = Area.box(new Vec(0.9, 0.9, 0.9), new Vec(2.5, 2.5, 2.5));
+        assertEquals(new BlockVec(-1, -1, -1), fractional.min());
+        assertEquals(new BlockVec(1, 1, 1), fractional.max());
+    }
+
+    @Test
     public void boxZeroSize() {
         Area.Cuboid box = Area.box(new BlockVec(3, 3, 3), Vec.ZERO);
         assertEquals(new BlockVec(3, 3, 3), box.min());

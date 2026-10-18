@@ -358,6 +358,7 @@ public class BlockVecTest {
         // Test normalize returns Vec
         result = base.normalize();
         assertInstanceOf(Vec.class, result);
+        assertEquals(Vec.ZERO, BlockVec.ZERO.normalize());
     }
 
     @Test

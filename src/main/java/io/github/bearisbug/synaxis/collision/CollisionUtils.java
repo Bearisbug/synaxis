@@ -43,6 +43,9 @@ public final class CollisionUtils {
 
     /**
      * Checks for entity collisions
+     * <p>
+     * The results are sorted by {@link EntityCollisionResult#percentage()}, the entities the box already
+     * overlaps at {@code pos} first (a percentage of 0).
      *
      * @param velocity     the velocity of the entity
      * @param extendRadius the largest entity bounding box we can collide with
@@ -56,16 +59,23 @@ public final class CollisionUtils {
 
     /**
      * Checks for entity collisions
+     * <p>
+     * The results never include {@code entity} itself. They are sorted by {@link EntityCollisionResult#percentage()},
+     * the entities its box already overlaps first (a percentage of 0).
      *
      * @param entity        the entity to check collisions for
      * @param velocity      the velocity of the entity
      * @param extendRadius  the largest entity bounding box we can collide with
+     *                      Measured from bottom center to top corner
+     *                      This is used to extend the search radius for entities we collide with
+     *                      For players this is sqrt(0.3^2 + 0.3^2 + 1.8^2) ~= 1.85
      * @param entityFilter  the entity filter
      * @param physicsResult optional physics result
      * @return the entity collision results
      */
     public static List<EntityCollisionResult> checkEntityCollisions(Entity entity, Vec velocity, double extendRadius, Function<Entity, Boolean> entityFilter, @Nullable PhysicsResult physicsResult) {
-        return EntityCollision.checkCollision(entity.getInstance().getEntityTracker(), entity.getBoundingBox(), entity.getPosition(), velocity, extendRadius, entityFilter, physicsResult);
+        return EntityCollision.checkCollision(entity.getInstance().getEntityTracker(), entity.getBoundingBox(), entity.getPosition(), velocity, extendRadius,
+                e -> e != entity && entityFilter.apply(e), physicsResult);
     }
 
     /**
@@ -148,7 +158,7 @@ public final class CollisionUtils {
 
     /**
      * Checks whether shape is reachable by the given line of sight
-     * (ie there are no blocks colliding with it).
+     * (ie there are no blocks colliding with it). The line stops at the first block it hits.
      *
      * @param instance the instance.
      * @param chunk    optional chunk reference for speedup purposes.
@@ -163,7 +173,7 @@ public final class CollisionUtils {
                                                      Shape shape, Point shapePos) {
         final PhysicsResult result = handlePhysics(instance, chunk,
                 BoundingBox.ZERO, start.asPos(), end.sub(start).asVec(),
-                null, false);
+                null, true);
 
         return shape.intersectBox(shapePos.sub(result.newPosition()).sub(Vec.EPSILON), BoundingBox.ZERO);
     }
@@ -172,6 +182,18 @@ public final class CollisionUtils {
         return handlePhysics(entity, entityVelocity, null);
     }
 
+    /**
+     * Gets an entity a block placed at a position would intersect, if any.
+     * <p>
+     * Only entities that prevent block placement ({@link Entity#preventBlockPlacement()}) are considered, and only
+     * those whose bounding box reaches at most 16 blocks from their feet: a box set with
+     * {@link Entity#setBoundingBox(BoundingBox)} that reaches farther is not checked.
+     *
+     * @param instance the instance
+     * @param blockPos the position of the block
+     * @param b        the block to place
+     * @return an entity the block would intersect, null if none
+     */
     public static @Nullable Entity canPlaceBlockAt(Instance instance, Point blockPos, Block b) {
         return BlockCollision.canPlaceBlockAt(instance, blockPos, b);
     }

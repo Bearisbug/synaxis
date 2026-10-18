@@ -35,16 +35,22 @@ final class EntityCollision {
             }
 
             // Check collisions with entity
+            final SweepResult sweep = new SweepResult(minimumRes, 0, 0, 0, null, 0, 0, 0, 0, 0, 0);
             final double percentage = RayUtils.boundingBoxIntersectionPercentage(
-                    boundingBox, point, entityVelocity, e.getBoundingBox(), e.getPosition(), minimumRes);
+                    boundingBox, point, entityVelocity, e.getBoundingBox(), e.getPosition(), minimumRes, sweep);
 
             if (percentage < 1) {
                 var p = point.asPos().add(entityVelocity.mul(percentage));
-                Vec direction = new Vec(p.x(), p.y(), p.z());
+                // The normal of the hit face, against the movement on the axis it was hit on
+                final Vec direction;
+                if (sweep.normalX != 0) direction = new Vec(-Math.signum(entityVelocity.x()), 0, 0);
+                else if (sweep.normalY != 0) direction = new Vec(0, -Math.signum(entityVelocity.y()), 0);
+                else direction = new Vec(0, 0, -Math.signum(entityVelocity.z()));
                 result.add(new EntityCollisionResult(p, e, direction, percentage));
             }
         });
 
+        result.sort(null);
         return result;
     }
 }

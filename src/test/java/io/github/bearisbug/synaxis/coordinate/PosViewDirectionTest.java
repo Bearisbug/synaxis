@@ -27,12 +27,11 @@ public class PosViewDirectionTest {
 
         position = initialPosition.withLookAt(new Pos(48, 36, 48));
         assertEquals(-45f, position.yaw(), EPSILON);
-        assertEquals(4.76f, position.pitch(), EPSILON);
+        assertEquals(3.37f, position.pitch(), EPSILON);
 
         position = initialPosition.withLookAt(new Pos(48, 36, -17));
         assertEquals(-109.50f, position.yaw(), EPSILON);
-        // should have the same pitch as the previous position
-        assertEquals(4.76f, position.pitch(), EPSILON);
+        assertEquals(4.49f, position.pitch(), EPSILON);
 
         position = initialPosition.withLookAt(new Pos(0, 87, 0));
         // looking from below, not checking the yaw
@@ -40,7 +39,22 @@ public class PosViewDirectionTest {
 
         position = initialPosition.withLookAt(new Pos(-25, 42, 4));
         assertEquals(80.90f, position.yaw(), EPSILON);
-        assertEquals(-4.57f, position.pitch(), EPSILON);
+        assertEquals(-4.52f, position.pitch(), EPSILON);
+
+        // the pitch uses the euclidean horizontal distance
+        position = initialPosition.withLookAt(new Pos(1, 39, 1));
+        assertEquals(35.26f, position.pitch(), EPSILON);
+    }
+
+    @Test
+    public void withLookAtLooksAlongTheDirectionToThePoint() {
+        Pos origin = new Pos(0, 40, 0);
+        for (Pos target : new Pos[]{new Pos(48, 36, 48), new Pos(-25, 42, 4)}) {
+            Pos lookAt = origin.withLookAt(target);
+            Pos direction = origin.withDirection(target.sub(origin));
+            assertEquals(direction.yaw(), lookAt.yaw(), 1e-4);
+            assertEquals(direction.pitch(), lookAt.pitch(), 1e-4);
+        }
     }
 
     /**

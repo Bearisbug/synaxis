@@ -182,6 +182,64 @@ public class EntityTrackerTest {
     }
 
     @Test
+    public void nearbyWithARangeBeyondTheChunkRangeFindsEveryEntity() {
+        var near = new Entity(EntityType.ZOMBIE);
+        var far = new Entity(EntityType.ZOMBIE);
+        var updater = new EntityTracker.Update<>() {
+            @Override
+            public void add(Entity entity) {
+                // Empty
+            }
+
+            @Override
+            public void remove(Entity entity) {
+                // Empty
+            }
+        };
+        EntityTracker tracker = EntityTracker.newTracker(ServerConfig.defaults().entityViewDistance());
+        tracker.register(near, Vec.ZERO, EntityTracker.Target.ENTITIES, updater);
+        tracker.register(far, new Vec(1600, 0, 1600), EntityTracker.Target.ENTITIES, updater);
+
+        for (double range : new double[]{Double.MAX_VALUE, Double.POSITIVE_INFINITY, 1e6, 1e5}) {
+            Set<Entity> found = new HashSet<>();
+            tracker.nearbyEntities(Vec.ZERO, range, EntityTracker.Target.ENTITIES, found::add);
+            assertEquals(Set.of(near, far), found, () -> "range " + range);
+        }
+        Set<Entity> found = new HashSet<>();
+        tracker.nearbyEntities(Vec.ZERO, 2000, EntityTracker.Target.ENTITIES, found::add);
+        assertEquals(Set.of(near), found);
+    }
+
+    @Test
+    public void nearbyWithMoreEntitiesThanChunksInRange() {
+        var updater = new EntityTracker.Update<>() {
+            @Override
+            public void add(Entity entity) {
+                // Empty
+            }
+
+            @Override
+            public void remove(Entity entity) {
+                // Empty
+            }
+        };
+        EntityTracker tracker = EntityTracker.newTracker(ServerConfig.defaults().entityViewDistance());
+        Set<Entity> expected = new HashSet<>();
+        for (int i = 0; i < 30; i++) {
+            var entity = new Entity(EntityType.ZOMBIE);
+            tracker.register(entity, new Vec(i % 2 == 0 ? 1 : 20, 0, 0), EntityTracker.Target.ENTITIES, updater);
+            expected.add(entity);
+        }
+        var outside = new Entity(EntityType.ZOMBIE);
+        tracker.register(outside, new Vec(0, 0, 40), EntityTracker.Target.ENTITIES, updater);
+
+        // Range 20 spans 5 x 5 chunks, fewer than the 31 entities
+        Set<Entity> found = new HashSet<>();
+        tracker.nearbyEntities(Vec.ZERO, 20, EntityTracker.Target.ENTITIES, found::add);
+        assertEquals(expected, found);
+    }
+
+    @Test
     public void nearbySingleChunk() {
         var ent1 = new Entity(EntityType.ZOMBIE);
         var ent2 = new Entity(EntityType.ZOMBIE);

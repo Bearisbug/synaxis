@@ -35,8 +35,12 @@ final class RayUtils {
                 collidableStatic, staticCollidableOffset, maxPercentage, null);
     }
 
+    /**
+     * Returns the accepted movement percentage, or {@link Double#NaN} if the boxes do not intersect,
+     * and writes the hit into {@code finalResult} if given: its percentage and a normal of 1 on the hit axis.
+     */
     @SuppressWarnings("DuplicatedCode")
-    private static double boundingBoxIntersectionPercentage(BoundingBox moving, Point rayStart, Point rayDirection,
+    static double boundingBoxIntersectionPercentage(BoundingBox moving, Point rayStart, Point rayDirection,
                                                             BoundingBox collidableStatic, Point staticCollidableOffset,
                                                             double maxPercentage, @Nullable SweepResult finalResult) {
         final double halfWidth = moving.width() / 2;

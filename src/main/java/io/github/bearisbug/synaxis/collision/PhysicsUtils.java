@@ -8,11 +8,19 @@ import org.jetbrains.annotations.Nullable;
 
 public final class PhysicsUtils {
     /**
+     * The vertical drag of a flying entity, in place of the vertical air resistance.
+     */
+    private static final double FLYING_VERTICAL_DRAG = 0.6;
+
+    /**
      * Simulate the entity's movement physics
      * <p>
      * This is done by first attempting to move the entity forward with the
      * current velocity passed in. Then adjusting the velocity by applying
      * air resistance and friction.
+     * <p>
+     * The boolean parameters come in another order than those of
+     * {@link #updateVelocity(Pos, Vec, Block.Getter, Aerodynamics, boolean, boolean, boolean, boolean)}.
      *
      * @param entityPosition the current entity position
      * @param entityVelocityPerTick the current entity velocity in blocks/tick
@@ -20,7 +28,7 @@ public final class PhysicsUtils {
      * @param worldBorder the world border colliding with the entity, applied only when {@code entityHasPhysics} is true
      * @param blockGetter the block getter to test block collisions against
      * @param aerodynamics the current entity aerodynamics
-     * @param entityNoGravity whether the entity has gravity
+     * @param entityNoGravity true to apply no gravity, as {@link io.github.bearisbug.synaxis.entity.Entity#hasNoGravity()}
      * @param entityHasPhysics whether the entity has physics
      * @param entityOnGround whether the entity is on the ground
      * @param entityFlying whether the entity is flying
@@ -50,8 +58,15 @@ public final class PhysicsUtils {
     /**
      * Calculates an updated velocity for an entity
      * <p>
-     * If the position has not changed then the x and z values will not be touched, and only gravity will be accounted for if the entity is not flying.
-     * Otherwise, the velocity will be adjusted by applying air resistance, gravity, and friction (only if the entity is on the ground).
+     * If the position has not changed, x and z are set to 0: a flying entity gets {@link Vec#ZERO}, any other
+     * gets a y of 0 without gravity, else of {@code -gravity * verticalAirResistance}.
+     * <p>
+     * Otherwise, x and z are multiplied by the horizontal air resistance, and also by the friction of the block
+     * below if the entity is on the ground. Without gravity y is kept as it is, else it becomes
+     * {@code (y - gravity) * verticalAirResistance}; a flying entity uses a gravity of 0 and a vertical drag of 0.6.
+     * <p>
+     * The boolean parameters come in another order than those of
+     * {@link #simulateMovement(Pos, Vec, BoundingBox, WorldBorder, Block.Getter, Aerodynamics, boolean, boolean, boolean, boolean, PhysicsResult)}.
      *
      * @param entityPosition the current entity position
      * @param currentVelocity the current entity velocity in blocks/tick
@@ -60,8 +75,8 @@ public final class PhysicsUtils {
      * @param positionChanged whether the position changed for the entity
      * @param entityFlying whether the entity is flying
      * @param entityOnGround whether the entity is on the ground
-     * @param entityNoGravity whether the entity has gravity
-     * @return the updated velocity or {@link Vec#ZERO} if the entity is flying
+     * @param entityNoGravity true to apply no gravity, as {@link io.github.bearisbug.synaxis.entity.Entity#hasNoGravity()}
+     * @return the updated velocity, {@link Vec#ZERO} only if the position has not changed and the entity is flying
      */
     public static Vec updateVelocity(Pos entityPosition, Vec currentVelocity, Block.Getter blockGetter, Aerodynamics aerodynamics,
                                                boolean positionChanged, boolean entityFlying, boolean entityOnGround, boolean entityNoGravity) {
@@ -73,7 +88,7 @@ public final class PhysicsUtils {
         double drag = entityOnGround ? blockGetter.getBlock(entityPosition.sub(0, 0.5000001, 0)).friction() * aerodynamics.horizontalAirResistance()
                 : aerodynamics.horizontalAirResistance();
         double gravity = entityFlying ? 0 : aerodynamics.gravity();
-        double gravityDrag = entityFlying ? 0.6 : aerodynamics.verticalAirResistance();
+        double gravityDrag = entityFlying ? FLYING_VERTICAL_DRAG : aerodynamics.verticalAirResistance();
 
         double x = currentVelocity.x() * drag;
         double y = entityNoGravity ? currentVelocity.y() : (currentVelocity.y() - gravity) * gravityDrag;

@@ -144,13 +144,13 @@ public sealed interface Area extends Iterable<BlockVec> {
     }
 
     /**
-     * Creates a cuboid centered around {@code center} with the same size on each axis.
+     * Creates a cuboid centered on the block of {@code center} with the same size on each axis.
      * <p>
-     * Since the bounds are inclusive block coordinates, even sizes include the center block and
-     * extend {@code size / 2} blocks in each direction. The size is a coordinate span, not the
-     * final number of blocks.
+     * The center is first floored to its block, the cuboid then extends {@code size / 2} blocks
+     * (rounded down) from it in each direction: each axis covers {@code 2 * (size / 2) + 1} blocks,
+     * exactly {@code size} for an odd size and {@code size + 1} for an even one.
      *
-     * @param center the center point to convert to a block coordinate
+     * @param center the point whose block is the center
      * @param size   the size used for each axis
      * @return a cuboid area
      * @throws IllegalArgumentException if {@code size} is negative
@@ -160,14 +160,14 @@ public sealed interface Area extends Iterable<BlockVec> {
     }
 
     /**
-     * Creates a cuboid centered around {@code center} with the given size on each axis.
+     * Creates a cuboid centered on the block of {@code center} with the given size on each axis.
      * <p>
-     * Since the bounds are inclusive block coordinates, even sizes include the center block and
-     * extend half of the size in each direction. The size is a coordinate span, not the final
-     * number of blocks.
+     * The center is first floored to its block, the cuboid then extends {@code floor(size / 2)}
+     * blocks from it in each direction of an axis: an axis covers {@code 2 * floor(size / 2) + 1}
+     * blocks, exactly the size for an odd integer size and one more for an even one.
      *
-     * @param center the center point to convert to a block coordinate
-     * @param size   the size point, converted through its coordinates
+     * @param center the point whose block is the center
+     * @param size   the size of each axis
      * @return a cuboid area
      * @throws IllegalArgumentException if any size component is negative
      */

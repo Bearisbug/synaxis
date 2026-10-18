@@ -151,14 +151,17 @@ public record Pos(double x, double y, double z, float yaw, float pitch) implemen
     }
 
     /**
-     * Sets the yaw and pitch to point
-     * in the direction of the point.
+     * Sets the yaw and pitch to look along a direction.
+     * <p>
+     * The direction is a vector, not a point to look at: it does not need to be normalized and does
+     * not depend on this position. Use {@link #withLookAt(Point)} to look at a point.
+     * A vertical direction only changes the pitch, a zero direction keeps the view.
      *
-     * @param point the point to look at
-     * @return a new position
+     * @param direction the direction to look along
+     * @return a position with the new view
      */
-    @Contract(pure = true, value = "_ -> new")
-    public Pos withDirection(Point point) {
+    @Contract(pure = true)
+    public Pos withDirection(Point direction) {
         /*
          * Sin = Opp / Hyp
          * Cos = Adj / Hyp
@@ -167,16 +170,15 @@ public record Pos(double x, double y, double z, float yaw, float pitch) implemen
          * x = -Opp
          * z = Adj
          */
-        final double x = point.x();
-        final double z = point.z();
+        final double x = direction.x();
+        final double y = direction.y();
+        final double z = direction.z();
         if (x == 0 && z == 0) {
-            return withPitch(point.y() > 0 ? -90f : 90f);
+            if (y == 0) return this;
+            return withPitch(y > 0 ? -90f : 90f);
         }
-        final double theta = Math.atan2(-x, z);
-        final double xz = Math.sqrt((x * x) + (z * z));
-        final double _2PI = 2 * Math.PI;
-        return withView((float) Math.toDegrees((theta + _2PI) % _2PI),
-                (float) Math.toDegrees(Math.atan(-point.y() / xz)));
+        return withView((float) Math.toDegrees(Math.atan2(-x, z)),
+                (float) Math.toDegrees(Math.atan2(-y, Math.sqrt((x * x) + (z * z)))));
     }
 
     /**
@@ -221,9 +223,7 @@ public record Pos(double x, double y, double z, float yaw, float pitch) implemen
     @Contract(pure = true)
     public Pos withLookAt(Point point) {
         if (samePoint(point)) return this;
-        final Vec delta = point.sub(this).asVec().normalize();
-        return withView(PositionUtils.getLookYaw(delta.x(), delta.z()),
-                PositionUtils.getLookPitch(delta.x(), delta.y(), delta.z()));
+        return withDirection(point.sub(this));
     }
 
     /**
@@ -496,6 +496,7 @@ public record Pos(double x, double y, double z, float yaw, float pitch) implemen
     @Override
     @Contract(pure = true, value = "-> new")
     public Pos normalize() {
+        if (lengthSquared() == 0) return withCoord(0, 0, 0);
         final double length = length();
         return new Pos(x / length, y / length, z / length, yaw, pitch);
     }

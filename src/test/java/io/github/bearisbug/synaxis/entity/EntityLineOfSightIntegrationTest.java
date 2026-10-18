@@ -205,4 +205,37 @@ public class EntityLineOfSightIntegrationTest {
         assertThrows(IllegalArgumentException.class, () -> entity.getLineOfSight(0));
         assertThrows(IllegalArgumentException.class, () -> entity.getLineOfSight(-1));
     }
+
+    @Test
+    public void entityPhysicsCheckLineOfSightGrazingAPillar(Env env) {
+        var instance = env.createFlatInstance();
+
+        var viewer = new Entity(EntityTypes.ZOMBIE);
+        viewer.setInstance(instance, new Pos(3.0, 42, 0.5)).join();
+        var target = new Entity(EntityTypes.ZOMBIE);
+        target.setInstance(instance, new Pos(5.29, 42, 7.37)).join();
+
+        assertTrue(viewer.hasLineOfSight(target));
+
+        // The ray enters the pillar through its west face at z = 6.5, it must stop there instead of sliding along it
+        for (int y = 40; y <= 45; ++y) {
+            instance.setBlock(5, y, 5, Block.STONE);
+            instance.setBlock(5, y, 6, Block.STONE);
+        }
+
+        assertFalse(viewer.hasLineOfSight(target));
+    }
+
+    @Test
+    public void entityPhysicsCheckLineOfSightSameEyes(Env env) {
+        var instance = env.createFlatInstance();
+
+        var entity = new Entity(EntityTypes.ZOMBIE);
+        entity.setInstance(instance, new Pos(0, 42, 0)).join();
+        var entity2 = new Entity(EntityTypes.ZOMBIE);
+        entity2.setInstance(instance, new Pos(0, 42, 0)).join();
+
+        // No direction from one pair of eyes to the other
+        assertFalse(entity.hasLineOfSight(entity2, false));
+    }
 }

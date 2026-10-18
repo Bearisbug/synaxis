@@ -110,6 +110,30 @@ public class EntityVelocityIntegrationTest {
     }
 
     @Test
+    public void knockbackWithoutADirectionOnlyLifts(Env env) {
+        var instance = env.createFlatInstance();
+        loadChunks(instance);
+
+        var entity = new Entity(EntityTypes.ZOMBIE);
+        entity.setInstance(instance, new Pos(5, 40, 5)).join();
+        env.tick();
+        env.tick(); // Ensures the entity is onGround
+        // The attacker stands where the entity is: no horizontal direction to push towards
+        entity.acquirable().sync(_ -> entity.takeKnockback(0.4f, 0, 0));
+        final Vec velocity = entity.getVelocity();
+        assertTrue(Double.isFinite(velocity.x()) && Double.isFinite(velocity.y()) && Double.isFinite(velocity.z()),
+                () -> "velocity " + velocity);
+        assertEquals(0, velocity.x());
+        assertEquals(0, velocity.z());
+
+        env.tick();
+        final Pos position = entity.getPosition();
+        assertEquals(5, position.x());
+        assertEquals(5, position.z());
+        assertTrue(position.y() > 40, () -> "position " + position);
+    }
+
+    @Test
     public void flyingVelocity(Env env) {
         var instance = env.createFlatInstance();
         loadChunks(instance);

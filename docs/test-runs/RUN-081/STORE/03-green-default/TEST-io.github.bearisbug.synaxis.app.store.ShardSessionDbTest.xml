@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.ShardSessionDbTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-18T15:58:20.884Z" hostname="Mac.local" time="2.195">
+  <properties/>
+  <testcase name="aRenewalFailingForTenSecondsDegradesAndForThirtyIsolates()" classname="io.github.bearisbug.synaxis.app.store.ShardSessionDbTest" time="0.521"/>
+  <testcase name="startingExpiresThePreviousRunOfTheSameShardOnly()" classname="io.github.bearisbug.synaxis.app.store.ShardSessionDbTest" time="0.526"/>
+  <testcase name="renewalPushesTheExpiryAndAnExpiredSessionIsolatesThenReopens()" classname="io.github.bearisbug.synaxis.app.store.ShardSessionDbTest" time="0.529"/>
+  <testcase name="closingKeepsRenewingAndTheReleaseExpiresTheSession()" classname="io.github.bearisbug.synaxis.app.store.ShardSessionDbTest" time="0.611"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

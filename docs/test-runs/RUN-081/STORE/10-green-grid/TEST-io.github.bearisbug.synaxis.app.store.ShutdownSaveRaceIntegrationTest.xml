@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.ShutdownSaveRaceIntegrationTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-18T17:16:30.445Z" hostname="Mac.local" time="0.86">
+  <properties/>
+  <testcase name="aDisconnectThatDecidesAfterTheFreezeTakesTheShutdownSnapshot(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownSaveRaceIntegrationTest" time="0.22"/>
+  <testcase name="disconnectsAtTheSameTimeAsTheFreezeEndEveryRoundSaved(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownSaveRaceIntegrationTest" time="0.64"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

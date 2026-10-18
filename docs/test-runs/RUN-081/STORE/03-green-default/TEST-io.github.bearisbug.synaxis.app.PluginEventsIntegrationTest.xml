@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-18T15:56:46.834Z" hostname="Mac.local" time="0.812">
+  <properties/>
+  <testcase name="theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.123"/>
+  <testcase name="aCancelledEventSkipsTheListenersThatIgnoreCancelled(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.114"/>
+  <testcase name="anInstanceScopedListenerOnlyHearsItsInstanceOnItsTickThread(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.071"/>
+  <testcase name="disablingTakesBackEveryPriorityAndEveryInstanceScope(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.065"/>
+  <testcase name="aListenerThatIgnoresCancelledStillRunsBeforeALaterCancel(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.068"/>
+  <testcase name="theInstanceScopeRefusesWhatItCannotScope(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.063"/>
+  <testcase name="thePrioritiesOfEveryPluginRunInOneOrder(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.07"/>
+  <testcase name="callingForInstanceAgainSharesTheInstanceNodes(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.123"/>
+  <testcase name="theInstanceScopeRunsBeforeEveryGlobalPluginListener(Env)" classname="io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest" time="0.113"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

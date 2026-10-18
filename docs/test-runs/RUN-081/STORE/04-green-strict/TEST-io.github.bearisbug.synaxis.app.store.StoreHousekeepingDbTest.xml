@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.StoreHousekeepingDbTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:06:19.204Z" hostname="Mac.local" time="1.414">
+  <properties/>
+  <testcase name="onlyExpiredNoncesAreCollected()" classname="io.github.bearisbug.synaxis.app.store.StoreHousekeepingDbTest" time="0.329"/>
+  <testcase name="onlySessionsExpiredForADayThatNoLeasePointsAtAreDeleted()" classname="io.github.bearisbug.synaxis.app.store.StoreHousekeepingDbTest" time="0.72"/>
+  <testcase name="aJobAnotherShardIsRunningIsSkipped()" classname="io.github.bearisbug.synaxis.app.store.StoreHousekeepingDbTest" time="0.363"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

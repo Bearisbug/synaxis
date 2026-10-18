@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.PluginSchedulerAsyncIntegrationTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:04:02.840Z" hostname="Mac.local" time="0.072">
+  <properties/>
+  <testcase name="runAsyncIsInterruptedWhenThePluginIsDisabled(Env)" classname="io.github.bearisbug.synaxis.app.PluginSchedulerAsyncIntegrationTest" time="0.01"/>
+  <testcase name="aThrowingBodyIsLoggedAndStillEnds(Env)" classname="io.github.bearisbug.synaxis.app.PluginSchedulerAsyncIntegrationTest" time="0.01"/>
+  <testcase name="cancellingTheHandleInterruptsTheBody(Env)" classname="io.github.bearisbug.synaxis.app.PluginSchedulerAsyncIntegrationTest" time="0.012"/>
+  <testcase name="theHandleEndsOnTheTickAfterTheBodyFinishes(Env)" classname="io.github.bearisbug.synaxis.app.PluginSchedulerAsyncIntegrationTest" time="0.008"/>
+  <testcase name="runOnIsCancelledWithThePlugin(Env)" classname="io.github.bearisbug.synaxis.app.PluginSchedulerAsyncIntegrationTest" time="0.011"/>
+  <testcase name="runOnRunsOnTheTickThreadOfTheEntity(Env)" classname="io.github.bearisbug.synaxis.app.PluginSchedulerAsyncIntegrationTest" time="0.016"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

@@ -76,7 +76,10 @@ public final class PluginPlayerData implements PlayerDataStore, PluginLifecycle 
 
     @Override
     public CompletableFuture<SaveResult> commitTogether(Map<Player, Map<DataSection<?>, Object>> staged, Runnable apply) {
-        for (Map<DataSection<?>, Object> sections : staged.values()) sections.keySet().forEach(this::owned);
+        // A participant staged without sections is the store's to refuse, by name
+        for (Map<DataSection<?>, Object> sections : staged.values()) {
+            if (sections != null) sections.keySet().forEach(this::owned);
+        }
         return store.commitTogether(staged, apply);
     }
 
@@ -87,6 +90,8 @@ public final class PluginPlayerData implements PlayerDataStore, PluginLifecycle 
 
     @Override
     public void onShutdownSave(Consumer<ShutdownNotice> hook) {
+        if (!enabling)
+            throw new IllegalStateException("plugin " + pluginId + " registers its shutdown save hook outside onEnable");
         store.addShutdownHook(pluginId, hook);
     }
 

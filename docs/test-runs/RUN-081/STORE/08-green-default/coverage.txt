@@ -1,0 +1,12 @@
+== 主代码（server-app/src/main）相对 965c3bddae 新增的可执行行
+RedisLink.java                 exec=  1 covered=  1 missed=[]
+StoreHousekeeping.java         exec=  3 covered=  3 missed=[]
+Sql.java                       exec= 11 covered= 11 missed=[]
+PostgresBackend.java           exec= 19 covered= 19 missed=[]
+PlayerStore.java               exec=107 covered=102 missed=[809, 1169, 1170, 1171, 1222]
+PluginPlayerData.java          exec=  5 covered=  2 missed=[80, 81, 82]
+PluginSchedulerImpl.java       exec=  6 covered=  1 missed=[62, 63, 75, 95, 143]
+total 139 covered of 152 91%
+== 其中本轮（相对 f079f9d3c1）新增的
+PlayerStore.java               exec= 16 covered= 16 missed=[]
+total 16 covered of 16 100%

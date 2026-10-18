@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.DatabaseHangIntegrationTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:12:41.670Z" hostname="Mac.local" time="8.021">
+  <properties/>
+  <testcase name="aDatabaseThatStopsAnsweringFreezesThenKicksAndTheShardComesBack(Env)" classname="io.github.bearisbug.synaxis.app.store.DatabaseHangIntegrationTest" time="3.639"/>
+  <testcase name="aStatementTheDatabaseStopsAnsweringFailsInsteadOfWaitingForever()" classname="io.github.bearisbug.synaxis.app.store.DatabaseHangIntegrationTest" time="4.381"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

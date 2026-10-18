@@ -1,0 +1,79 @@
+RUN-081 组 STORE（写权状态机的锁与纪元、退避的叫醒、登出快照的时机、commitTogether 的参数结果与提交冻结、
+saveNow 的快照线程、插件任务的日志预算、Redis URL 的 scheme 与事务的回滚）证据
+分支 prod/r081-STORE，基于 main 965c3bddae；docs/DESIGN-PROD.md v0.9.106，docs/TEST.md TC-PROD-980～TC-PROD-989。
+提交：4889a4bf26（设计文档）、ecb8495d6c（代码与测试）；以下行号都按 ecb8495d6c。
+本机，2026-10-18 22:37 至 2026-10-19 00:18（UTC+8）。每次 Gradle 都经本会话的包装脚本跑
+（--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts，组内两路槽位之一）。
+数据库：SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres，口令只经环境变量 SYNAXIS_TEST_PG_PASSWORD 给
+（docker inspect synaxis-pg 的 POSTGRES_PASSWORD），不在命令行、日志与这些文件里；Valkey 用默认的 redis://127.0.0.1:6440。
+类全名前缀：app. = io.github.bearisbug.synaxis.app.，app.store. = io.github.bearisbug.synaxis.app.store.。
+XML 是 Gradle 的测试报告，去掉了 <system-out> 与 <system-err> 的内容（多是引擎日志），其余不动。
+gradle.txt 是那次运行的完整输出，只删了包装脚本等槽位时每 5 分钟一行的 waiting for a slot。
+
+01-compile/  第 1 次：只编译（:server-app:compileTestJava、:testing:compileTestJava、两个 testNamingCheck）
+  gradle.txt：:server-app:compileTestJava FAILED，Error Prone FutureReturnValueIgnored 拒收新测试里
+  CompletableFuture.supplyAsync(() -> shard.store().saveNow(player), …).join()（拿到的是嵌套的 future）。
+  改为在一条虚拟线程里把 future 放进 AtomicReference 再取。主代码同次编译通过。
+
+02-red/  第 2 次：改动前的红（server-app/src/main 与 testing/src/main 取 main 965c3bddae 的，测试是本组的）
+  跑 app.store.PlayerStoreIntegrationTest、app.store.PostgresBackendDbTest、app.store.RedisLinkTest、
+  app.store.StoreMetricsIntegrationTest、app.PluginSchedulerLogBudgetIntegrationTest、app.ClientDrivenLogArchitectureTest、
+  app.PlayerDataIntegrationTest 与 :testing 的 InMemoryPlayerDataStoreIntegrationTest。
+  gradle.txt：server-app 62 tests completed, 21 failed；testing 3 tests completed, 1 failed。22 条红都是本组新加的；
+  改到所属线程调 saveNow 的旧测试（PlayerStoreIntegrationTest 三处、StoreMetricsIntegrationTest、
+  PlayerDataIntegrationTest 各一处）都绿；aSectionAPluginChangesInItsDisconnectListenerAfterTheShutdownSaveIsNotWritten
+  钉住现有行为，修前就绿。逐条的红行与消息见 docs/TEST.md TC-PROD-980～TC-PROD-989 的「改动前的红」一步。
+  这次的 PlayerStoreIntegrationTest 里 aWriteThatFindsTheSessionIsolatedIsFencedForTheIsolation 断言时还没写台账
+  （答复先于 fence 写台账），红在当时的 :1194，消息里随后出现的台账行是 cause=zero_rows；之后这条加了等台账的一行，
+  这次之后的行号比这份 XML 里的大 2（:1194 之后的各条）。
+
+03-green-default/  第 3 次：修后，默认模式，带 :server-app:jacocoTestReport 与 :testing:jacocoTestReport
+  跑 app.store.*（24 个类）、app.PlayerDataIntegrationTest、app.PluginScheduler*（3 个类）、
+  app.ClientDrivenLogArchitectureTest、app.FreezeBeforePluginListenersIntegrationTest、app.PluginHostIntegrationTest、
+  app.PluginEventsIntegrationTest、app.DefaultPlayHostIntegrationTest、app.TransferAdmissionIntegrationTest、
+  app.ShutdownSequenceTest、app.management.ManagementTransferIntegrationTest 与 :testing 的 InMemoryPlayerDataStoreIntegrationTest，
+  加两个 testNamingCheck。37 个类 229 个，0 失败 0 跳过，BUILD SUCCESSFUL in 3m 19s。
+  coverage.txt：主代码相对 965c3bddae 新增的可执行行 160 行，覆盖 150 行（94%）；没覆盖的是 saveNow 排到下一个
+  tick 时玩家已不在线的分支、段表为 null 的两处拒绝、退避被中断的分支、fence 见到已离开的记录直接返回，
+  与 PluginPlayerData#commitTogether 的转发（测试直接调 PlayerStore）。
+
+04-green-strict/  第 4 次：同第 3 次的类（不带 jacoco），加 -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+  37 个类 229 个，0 失败 0 跳过，BUILD SUCCESSFUL in 3m 29s；报告里出现 Syn-Tick-1、Syn-Tick-2。
+
+05-green-grid/  第 5 次：同第 4 次，再加 -Dsynaxis.thread-provider=grid
+  37 个类 229 个，0 失败 0 跳过，BUILD SUCCESSFUL in 3m 40s。
+
+06-proof/  第 6 次：TC-PROD-980 第 2 步的反证（这一条在第 2 次之后改过测试）
+  PlayerStore.java:1106 的 current.state() == ShardSession.State.ISOLATED 临时改为 Boolean.getBoolean("proof.never")，
+  只跑 aWriteThatFindsTheSessionIsolatedIsFencedForTheIsolation 与 aSaveThatWaitedBehindAFencedWriteIsAnsweredToo：
+  2 tests completed, 1 failed，前者红在 PlayerStoreIntegrationTest.java:1197，expected: <true> but was: <false>，
+  台账 save_fenced {character_id=1, session_id=1, cause=zero_rows}；后者绿。之后 git checkout 还原，
+  grep -rn proof.never server-app/src/main 无输出。
+
+后补一轮（2026-10-19 01:03 至 01:17，UTC+8）：提交 d0227b8f78（设计文档）、bac61c14eb（代码与测试），
+以下 07～10 的测试行号按 bac61c14eb。补的是 saveNow 排到下一个 tick 之后没有访问数据库的两种结局的台账 cause、
+commitTogether 提交线程只读校验时拷贝的段表、转服写回失败回到 online 之后的退避可被登出叫醒，
+以及 saveNow 叫醒退避中的普通保存那一处的测试（叫醒本身 ecb8495d6c 已有）。
+
+07-red/  第 7 次：改动前的红（server-app/src/main 取 f079f9d3c1 的，测试是 bac61c14eb 的）
+  另把 PlayerStore.java:1017 的 if (release || done != null) record.notifyAll(); 临时改为 if (release) record.notifyAll();，
+  作 aSaveNowWakesASaveBackingOffAndIsAnsweredAtOnce 的反证（那处叫醒修前就有，修前跑它是绿的）；跑完 git checkout 还原，
+  grep 'if (release || done != null) record.notifyAll();' 恰 1 行。只跑本轮新加的 5 条（app.store.PlayerStoreIntegrationTest）：
+  5 tests completed, 5 failed。aSaveNowWakesASaveBackingOffAndIsAnsweredAtOnce 红在 :1349（took 2913 ms）；
+  aLogoutAfterATransferWhoseWriteFailedWakesTheRetryOfItsSnapshot 红在 :1381（took 2993 ms）；
+  aCommitIsNotChangedByWhatItsCallerDoesToTheMapsAfterwards 红在 :1603（expected SAVED, was UNAVAILABLE）；
+  aSaveNowWhosePlayerIsFrozenByItsTickNeverReachedTheDatabase 红在 :1663、
+  aSaveNowWhosePlayerLeavesBeforeItsTickNeverReachedTheDatabase 红在 :1681，台账都是 cause=db_error。
+
+08-green-default/  第 8 次：修后（bac61c14eb），默认模式，带 :server-app:jacocoTestReport
+  跑 app.store.*（24 个类）、app.PlayerDataIntegrationTest、app.management.ManagementTransferIntegrationTest、
+  app.TransferAdmissionIntegrationTest，加 :server-app:testNamingCheck 与 :plugin-api:compileJava（Javadoc 改动随 Error Prone 编译）。
+  27 个类 174 个，0 失败 0 跳过，BUILD SUCCESSFUL in 2m 35s；PlayerStoreIntegrationTest 48 个。
+  coverage.txt：server-app 主代码本轮（相对 f079f9d3c1）新增的可执行行 16 行全部覆盖；相对 965c3bddae 的累计数里
+  PluginSchedulerImpl 的几行没覆盖，是这次没跑 app.PluginScheduler* 三个类（本轮没改它，第 3 次覆盖 6/6）。
+
+09-green-strict/  第 9 次：同第 8 次的类（不带 jacoco），加 -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+  27 个类 174 个，0 失败 0 跳过，BUILD SUCCESSFUL in 2m 57s；报告里出现 Syn-Tick-2。
+
+10-green-grid/  第 10 次：同第 9 次，再加 -Dsynaxis.thread-provider=grid
+  27 个类 174 个，0 失败 0 跳过，BUILD SUCCESSFUL in 2m 43s。

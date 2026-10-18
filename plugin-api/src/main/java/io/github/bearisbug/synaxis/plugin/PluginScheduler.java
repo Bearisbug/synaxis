@@ -22,7 +22,11 @@ public interface PluginScheduler {
     /**
      * Schedules a task owned by this plugin.
      *
-     * @param task   the body; an exception it throws is caught and logged against this plugin
+     * @param task   the body; an exception it throws is caught and logged against this plugin, and a
+     *               repeating task goes on repeating. The log has at most one line every 10 seconds
+     *               for each repeating task, and one for all the other tasks of this plugin
+     *               ({@link #runOn} and {@link #runAsync} included), each line counting the failures
+     *               since the last one and only the first of them with its stack
      * @param delay  when to run it the first time
      * @param repeat how to repeat it, {@link TaskSchedule#stop()} for a one shot task
      * @return the created task, also cancelled by the host when the plugin is disabled
@@ -46,11 +50,12 @@ public interface PluginScheduler {
     }
 
     /**
-     * Runs a task on the thread that owns the target: an entity's task runs on the tick thread of
-     * that entity, an instance's on the tick thread of that instance. This is how an effect on
-     * another entity is delivered across tick threads (the thread contract of {@code API-PROD-016}).
+     * Runs a task where the target is ticked: an entity's task runs on the tick thread that owns
+     * that entity; an instance's task runs on the tick scheduler thread, in the serial part of the
+     * tick, the same place as the instance's own scheduler. This is how an effect on another entity
+     * is delivered across tick threads (the thread contract of {@code API-PROD-016}).
      *
-     * @param target the entity or instance whose thread runs the task
+     * @param target the entity or instance the task is for, which decides where it runs
      * @param task   the body; an exception it throws is caught and logged against this plugin
      * @param delay  when to run it, {@link TaskSchedule#immediate()} for the next time the target ticks
      * @return the created task, also cancelled by the host when the plugin is disabled

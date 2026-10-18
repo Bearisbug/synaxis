@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.ShutdownSaveBeforeSpawnIntegrationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-18T15:58:26.962Z" hostname="Mac.local" time="1.08">
+  <properties/>
+  <testcase name="aPlayerThatLeavesInConfigurationAfterTheSaveFrozeItIsSavedByItsDisconnect(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownSaveBeforeSpawnIntegrationTest" time="0.336"/>
+  <testcase name="aPlayerThatLeftInPlayBeforeItSpawnedIsSavedWhenTheTickReportsIt(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownSaveBeforeSpawnIntegrationTest" time="0.385"/>
+  <testcase name="aDisconnectReportedAfterTheSavePhaseWritesNothing(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownSaveBeforeSpawnIntegrationTest" time="0.357"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

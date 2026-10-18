@@ -1,0 +1,9 @@
+PluginSchedulerImpl.java       exec=  6 covered=  6 missed=[]
+PlayerStore.java               exec= 96 covered= 90 missed=[752, 802, 1155, 1156, 1157, 1208]
+PluginPlayerData.java          exec=  5 covered=  2 missed=[80, 81, 82]
+PostgresBackend.java           exec= 19 covered= 19 missed=[]
+RedisLink.java                 exec=  1 covered=  1 missed=[]
+Sql.java                       exec= 11 covered= 11 missed=[]
+StoreHousekeeping.java         exec=  3 covered=  3 missed=[]
+InMemoryPlayerDataStore.java   exec= 19 covered= 18 missed=[79]
+total 150 covered of 160 94%

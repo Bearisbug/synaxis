@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-18T17:16:20.430Z" hostname="Mac.local" time="1.995">
+  <properties/>
+  <testcase name="aLoginPollingForAnotherShardToLetGoTakesNoLeaseOnceTheSavePhaseStarted(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest" time="0.323"/>
+  <testcase name="aLoginWaitingForTheSameAccountToLeaveIsRefusedOnceTheSavePhaseStarted(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest" time="0.151"/>
+  <testcase name="admissionsAtTheSameTimeAsTheFreezeAreEitherSavedWithItOrRefused(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest" time="0.962"/>
+  <testcase name="aLoginWaitingForALoadSlotTakesNoLeaseAndOneWhoseAcquireWasUnderWayGivesItBack(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest" time="0.294"/>
+  <testcase name="anAdmissionAfterTheFreezeIsRefusedAndGivesTheLeaseBack(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest" time="0.263"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

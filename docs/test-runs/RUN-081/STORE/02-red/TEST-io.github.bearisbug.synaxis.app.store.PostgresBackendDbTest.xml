@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PostgresBackendDbTest" tests="2" skipped="0" failures="2" errors="0" timestamp="2026-10-18T15:46:10.462Z" hostname="Mac.local" time="0.691">
+  <properties/>
+  <testcase name="aRollbackThatFailsDoesNotHideWhyTheWriteFailed()" classname="io.github.bearisbug.synaxis.app.store.PostgresBackendDbTest" time="0.362">
+    <failure message="org.opentest4j.AssertionFailedError: the failure of the write, not of its rollback ==&gt; expected: &lt;the test's read timed out&gt; but was: &lt;This connection has been closed.&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the failure of the write, not of its rollback ==&gt; expected: &lt;the test's read timed out&gt; but was: &lt;This connection has been closed.&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PostgresBackendDbTest.aRollbackThatFailsDoesNotHideWhyTheWriteFailed(PostgresBackendDbTest.java:94)
+</failure>
+  </testcase>
+  <testcase name="aWriteThatFailsWithAnythingHalfWayIsRolledBack()" classname="io.github.bearisbug.synaxis.app.store.PostgresBackendDbTest" time="0.328">
+    <failure message="org.opentest4j.AssertionFailedError: the version bump before it is rolled back with the rest ==&gt; expected: &lt;0&gt; but was: &lt;1&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the version bump before it is rolled back with the rest ==&gt; expected: &lt;0&gt; but was: &lt;1&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.app.store.PostgresBackendDbTest.aWriteThatFailsWithAnythingHalfWayIsRolledBack(PostgresBackendDbTest.java:77)
+</failure>
+  </testcase>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

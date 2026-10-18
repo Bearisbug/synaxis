@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.StoreMetricsIntegrationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-18T17:13:17.830Z" hostname="Mac.local" time="0.45">
+  <properties/>
+  <testcase name="theStatementsAndTheSavesOfTheStoreAreCountedByOutcome(Env)" classname="io.github.bearisbug.synaxis.app.store.StoreMetricsIntegrationTest" time="0.45"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

@@ -70,9 +70,6 @@ public class ClientDrivenLogArchitectureTest {
      * client cannot add to.</li>
      * <li>{@link AdmissionGate}: one line per connection, on the configuration phase event that
      * happens once per login; the failure branch kicks on the same branch.</li>
-     * <li>{@link PluginSchedulerImpl}: one line per failing task run. A plugin picks both the
-     * period and the number of tasks; nothing a client sends adds a task on its own, and a plugin
-     * that schedules one per inbound packet would be writing the unbounded line itself.</li>
      * <li>{@link CrashReports}: it prints stack traces into a crash report file, not into the log,
      * and one report per fatal event — the exception handler writes one per process, the tick
      * watchdog one per stall. Its own failure goes through a budget.</li>
@@ -94,16 +91,17 @@ public class ClientDrivenLogArchitectureTest {
      * which the write every 5 s bounds to one per 15 s, and one if the stop outwaits a write; the
      * database drives both, never a client.</li>
      * </ul>
-     * {@link PluginChannelRouter}, {@link PluginEventsImpl} and {@link EventLedger} are
-     * deliberately absent: all three sit on a path whose rate a client picks — the first two on an
-     * inbound payload, the ledger because {@code PluginAnalytics} hands {@code record} to every
-     * plugin and {@code docs/DESIGN-M2.md} §20 asks for one event per inbound order packet — so all
-     * three report through a {@link io.github.bearisbug.synaxis.plugin.LogBudget} instead. An
-     * exemption per class would have let a second unbounded line in next to the budgeted one —
-     * blind spot ① of the engine rule ({@code docs/ENGINE.md} §8), which those three therefore
-     * escape.
+     * {@link PluginChannelRouter}, {@link PluginEventsImpl}, {@link PluginSchedulerImpl} and
+     * {@link EventLedger} are deliberately absent: all four sit on a path whose rate a client picks —
+     * the first two on an inbound payload, the scheduler because {@code docs/PLUGINS.md} §10 has a
+     * plugin deliver every cross-entity effect of a packet with {@code runOn}, the ledger because
+     * {@code PluginAnalytics} hands {@code record} to every plugin and {@code docs/DESIGN-M2.md} §20
+     * asks for one event per inbound order packet — so all four report through a
+     * {@link io.github.bearisbug.synaxis.plugin.LogBudget} instead. An exemption per class would have
+     * let a second unbounded line in next to the budgeted one — blind spot ① of the engine rule
+     * ({@code docs/ENGINE.md} §8), which those four therefore escape.
      * <p>
-     * The eleven above do not: this list is by class, exactly like the engine's, so a second line
+     * The ten above do not: this list is by class, exactly like the engine's, so a second line
      * whose rate a client picks, added inside one of them, stays green. Measured, not assumed — a
      * listener on a PLAY phase event writing a plain {@code LOGGER.warn}, put inside
      * {@link AdmissionGate}, does not turn this rule red. Registered as a remaining blind spot in
@@ -113,7 +111,6 @@ public class ClientDrivenLogArchitectureTest {
         return name(Main.class.getName())
                 .or(name(PluginHost.class.getName()))
                 .or(name(AdmissionGate.class.getName()))
-                .or(name(PluginSchedulerImpl.class.getName()))
                 .or(name(CrashReports.class.getName()))
                 .or(name(PlayerStore.class.getName()))
                 .or(name(ShardSession.class.getName()))

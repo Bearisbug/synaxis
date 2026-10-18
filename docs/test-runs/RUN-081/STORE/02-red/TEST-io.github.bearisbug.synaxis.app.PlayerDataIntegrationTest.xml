@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" tests="8" skipped="0" failures="1" errors="0" timestamp="2026-10-18T15:45:19.733Z" hostname="Mac.local" time="2.631">
+  <properties/>
+  <testcase name="aLoadThatFailsTurnsTheConnectionAwayBeforeTheAdmission(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="1.704"/>
+  <testcase name="aPluginOnlyRegistersInItsNamespaceAndOnlyInOnEnable(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.086"/>
+  <testcase name="anAdmissionAnsweredAfterTheShutdownSaveStartedIsRefused(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.101"/>
+  <testcase name="aShutdownSaveHookIsOnlyRegisteredInOnEnable(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.092">
+    <failure message="org.opentest4j.AssertionFailedError: after onEnable returned ==&gt; Expected java.lang.IllegalStateException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: after onEnable returned ==&gt; Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest.aShutdownSaveHookIsOnlyRegisteredInOnEnable(PlayerDataIntegrationTest.java:163)
+</failure>
+  </testcase>
+  <testcase name="aPluginThatFailsToEnableLeavesNoSectionAndNoShutdownHookBehind(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.292"/>
+  <testcase name="aRefusedAdmissionGivesTheLeaseBack(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.077"/>
+  <testcase name="aPluginCannotReadASectionItDidNotRegister(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.135"/>
+  <testcase name="aSectionIsTheLoadedValueInTheWorldAndSavesThroughTheStore(Env)" classname="io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest" time="0.141"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

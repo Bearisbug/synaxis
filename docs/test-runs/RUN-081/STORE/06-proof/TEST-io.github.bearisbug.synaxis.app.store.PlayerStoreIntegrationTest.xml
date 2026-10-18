@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-18T16:18:05.040Z" hostname="Mac.local" time="3.224">
+  <properties/>
+  <testcase name="aWriteThatFindsTheSessionIsolatedIsFencedForTheIsolation(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="2.733">
+    <failure message="org.opentest4j.AssertionFailedError: [critical_commit {shard_id=r1-c1, kind=save_now, result=fenced, cause=version_mismatch, elapsed_ms=1, participants=1}, save_fenced {character_id=1, session_id=1, cause=zero_rows}] ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: [critical_commit {shard_id=r1-c1, kind=save_now, result=fenced, cause=version_mismatch, elapsed_ms=1, participants=1}, save_fenced {character_id=1, session_id=1, cause=zero_rows}] ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aWriteThatFindsTheSessionIsolatedIsFencedForTheIsolation(PlayerStoreIntegrationTest.java:1197)
+</failure>
+  </testcase>
+  <testcase name="aSaveThatWaitedBehindAFencedWriteIsAnsweredToo(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.477"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

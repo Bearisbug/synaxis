@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.app;
 
+import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.PluginScheduler;
 import io.github.bearisbug.synaxis.timer.Schedulable;
 import io.github.bearisbug.synaxis.timer.Scheduler;
@@ -21,6 +22,10 @@ import java.util.concurrent.atomic.AtomicReference;
  * Scheduler capability of one plugin (REQ-M2-004, REQ-M2-005, {@code docs/DESIGN-PROD.md}
  * REQ-PROD-021): every task is remembered so that disabling the plugin cancels all of them, and
  * wrapped so that an exception it throws is logged against this plugin.
+ * <p>
+ * The failures go through a {@link LogBudget}: one per repeating task, whose number the plugin's
+ * registrations decide, and one shared by every one shot task, {@link #runOn} and {@link #runAsync},
+ * whose number a plugin that delivers an effect per inbound packet leaves to the client.
  * <p>
  * A {@link #runAsync} body runs on a virtual thread; its handle is an engine task parked on the
  * body's completion, so it reads alive exactly while the body runs. The engine task cannot tell
@@ -44,6 +49,7 @@ final class PluginSchedulerImpl implements PluginScheduler {
     /** The running {@link #runAsync} bodies, by their handle. */
     private final Map<Task, Thread> asyncBodies = new ConcurrentHashMap<>();
     private final AtomicReference<Task> sweeper = new AtomicReference<>();
+    private final LogBudget failures = new LogBudget(LOGGER, "task failures");
     private volatile boolean closed;
 
     PluginSchedulerImpl(String pluginId, Scheduler scheduler) {
@@ -53,7 +59,8 @@ final class PluginSchedulerImpl implements PluginScheduler {
 
     @Override
     public Task scheduleTask(Runnable task, TaskSchedule delay, TaskSchedule repeat) {
-        final Task submitted = scheduler.buildTask(guarded(task)).delay(delay).repeat(repeat).schedule();
+        final LogBudget budget = repeat.equals(TaskSchedule.stop()) ? failures : new LogBudget(LOGGER, "task failures");
+        final Task submitted = scheduler.buildTask(guarded(task, budget)).delay(delay).repeat(repeat).schedule();
         tasks.add(submitted);
         return submitted;
     }
@@ -65,7 +72,7 @@ final class PluginSchedulerImpl implements PluginScheduler {
         }).delay(TaskSchedule.future(done)).schedule();
         final Thread body = Thread.ofVirtual().name("plugin-async-" + pluginId).unstarted(() -> {
             try {
-                guarded(task).run();
+                guarded(task, failures).run();
             } finally {
                 asyncBodies.remove(handle);
                 transientTasks.remove(handle);
@@ -85,7 +92,7 @@ final class PluginSchedulerImpl implements PluginScheduler {
     @Override
     public Task runOn(Schedulable target, Runnable task, TaskSchedule delay) {
         final AtomicReference<Task> self = new AtomicReference<>();
-        final Runnable body = guarded(task);
+        final Runnable body = guarded(task, failures);
         final Task submitted = target.scheduler().buildTask(() -> {
             try {
                 body.run();
@@ -128,12 +135,12 @@ final class PluginSchedulerImpl implements PluginScheduler {
         }
     }
 
-    private Runnable guarded(Runnable task) {
+    private Runnable guarded(Runnable task, LogBudget budget) {
         return () -> {
             try {
                 task.run();
             } catch (Throwable throwable) {
-                LOGGER.error("Plugin task failed: plugin_id={}", pluginId, throwable);
+                budget.error(throwable, "Plugin task failed: plugin_id={}", pluginId);
             }
         };
     }

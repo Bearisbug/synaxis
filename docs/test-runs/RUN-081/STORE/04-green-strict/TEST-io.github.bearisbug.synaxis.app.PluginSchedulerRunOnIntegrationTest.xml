@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.PluginSchedulerRunOnIntegrationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:04:02.953Z" hostname="Mac.local" time="0.214">
+  <properties/>
+  <testcase name="aTaskForAnEntityRemovedBeforeItIsDueLetsTheEntityGo(Env)" classname="io.github.bearisbug.synaxis.app.PluginSchedulerRunOnIntegrationTest" time="0.082"/>
+  <testcase name="aTaskForAnInstanceUnregisteredBeforeItIsDueLetsTheInstanceGo(Env)" classname="io.github.bearisbug.synaxis.app.PluginSchedulerRunOnIntegrationTest" time="0.063"/>
+  <testcase name="aTaskThePluginCancelledIsNotKept(Env)" classname="io.github.bearisbug.synaxis.app.PluginSchedulerRunOnIntegrationTest" time="0.067"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

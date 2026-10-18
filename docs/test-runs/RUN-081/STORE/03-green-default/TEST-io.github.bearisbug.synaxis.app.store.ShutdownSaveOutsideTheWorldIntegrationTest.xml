@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.ShutdownSaveOutsideTheWorldIntegrationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-18T15:58:35.261Z" hostname="Mac.local" time="1.14">
+  <properties/>
+  <testcase name="aSnapshotWhoseTickComesAfterTheSavePhaseTakesNothing(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownSaveOutsideTheWorldIntegrationTest" time="0.378"/>
+  <testcase name="aPlayerStillConfiguringIsDisconnectedOnTheNextTickAndItsDisconnectSavesIt(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownSaveOutsideTheWorldIntegrationTest" time="0.442"/>
+  <testcase name="aPlayerThatNeverAcknowledgesTheEndOfItsConfigurationIsDisconnectedAndSaved(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownSaveOutsideTheWorldIntegrationTest" time="0.319"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

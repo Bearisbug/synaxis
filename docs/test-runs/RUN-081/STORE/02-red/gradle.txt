@@ -1,0 +1,232 @@
+[fix-STORE-red] /tmp/r081-slot-1 free=56% load=22 start 23:44:50
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as no cached configuration is available for tasks: :server-app:test --tests io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest --tests io.github.bearisbug.synaxis.app.store.PostgresBackendDbTest --tests io.github.bearisbug.synaxis.app.store.RedisLinkTest --tests io.github.bearisbug.synaxis.app.store.StoreMetricsIntegrationTest --tests io.github.bearisbug.synaxis.app.PluginSchedulerLogBudgetIntegrationTest --tests io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest --tests io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest :testing:test --tests io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions UP-TO-DATE
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateEntrypointForLibs UP-TO-DATE
+> Task :build-src:generateEntrypointForLibsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-src:generateLibrariesForConventions UP-TO-DATE
+> Task :build-src:generateLibrariesForLibs UP-TO-DATE
+> Task :build-src:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-src:compilePluginsBlocks UP-TO-DATE
+> Task :build-src:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-src:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-src:verifyEarlyEvaluatedBuild UP-TO-DATE
+> Task :build-src:verifyTopLevelBuild UP-TO-DATE
+> Task :build-src:compileKotlin UP-TO-DATE
+> Task :build-src:compileJava UP-TO-DATE
+> Task :build-src:pluginDescriptors UP-TO-DATE
+> Task :build-src:processResources UP-TO-DATE
+> Task :build-src:classes UP-TO-DATE
+> Task :build-src:jar UP-TO-DATE
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :baker
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rush
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :loadtest
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :play-kit
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :synx
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :baker:processResources
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :game-rts:processResources
+> Task :plugin-api:processResources NO-SOURCE
+> Task :server-app:buildInfo UP-TO-DATE
+> Task :server-app:processResources UP-TO-DATE
+> Task :server-app:processTestResources
+> Task :synx:processResources NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :testing:processTestResources NO-SOURCE
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :baker:compileJava UP-TO-DATE
+> Task :baker:classes
+> Task :testing:compileJava FROM-CACHE
+> Task :baker:jar
+> Task :game-rts:compileJava FROM-CACHE
+> Task :game-rts:classes
+> Task :game-rts:jar
+> Task :synx:classes UP-TO-DATE
+> Task :synx:jar
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar
+> Task :testing:compileTestJava UP-TO-DATE
+> Task :testing:testClasses UP-TO-DATE
+
+> Task :testing:test
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+
+InMemoryPlayerDataStoreIntegrationTest > aCommitOfAValueTheHostCouldNotWriteIsRefusedAsTheHostRefusesIt(Env) FAILED
+    org.opentest4j.AssertionFailedError at InMemoryPlayerDataStoreIntegrationTest.java:101
+        Caused by: java.lang.NullPointerException at InMemoryPlayerDataStoreIntegrationTest.java:101
+
+3 tests completed, 1 failed
+
+> Task :testing:test FAILED
+> Task :server-app:compileJava
+> Task :server-app:classes
+> Task :server-app:compileTestJava
+> Task :server-app:testClasses
+
+> Task :server-app:test
+
+ClientDrivenLogArchitectureTest > hostPathsDoNotWriteALinePerPacket() FAILED
+    java.lang.AssertionError at ClientDrivenLogArchitectureTest.java:133
+
+PlayerDataIntegrationTest > aShutdownSaveHookIsOnlyRegisteredInOnEnable(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerDataIntegrationTest.java:163
+
+PluginSchedulerLogBudgetIntegrationTest > theOneShotTasksShareOneBudgetWhateverTheirNumber(Env) FAILED
+    org.opentest4j.AssertionFailedError at PluginSchedulerLogBudgetIntegrationTest.java:81
+
+PluginSchedulerLogBudgetIntegrationTest > aRepeatingTaskThatFailsEveryTickWritesOneLinePerBudget(Env) FAILED
+    org.opentest4j.AssertionFailedError at PluginSchedulerLogBudgetIntegrationTest.java:47
+
+PlayerStoreIntegrationTest > aWriteThatFindsTheSessionIsolatedIsFencedForTheIsolation(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:1194
+
+PlayerStoreIntegrationTest > aSaveThatWaitedBehindAFencedWriteIsAnsweredToo(Env) FAILED
+    java.util.concurrent.TimeoutException at PlayerStoreIntegrationTest.java:1177
+
+PlayerStoreIntegrationTest > aSectionAPluginChangesInItsDisconnectListenerIsInTheLogoutSave(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:1346
+
+PlayerStoreIntegrationTest > aLoginWhoseSessionIsIsolatedWhileItAcquiresGivesTheLeaseBack(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:1245
+
+PlayerStoreIntegrationTest > aLogoutSaveJoiningARetryingSaveCountsItsOwnFailures(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:1319
+
+PlayerStoreIntegrationTest > aLogoutWakesASaveBackingOffAndIsWrittenAtOnce(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:1291
+
+PlayerStoreIntegrationTest > aSaveNowFromAnotherThreadTakesItsSnapshotOnThePlayersTickThread(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:1538
+
+PlayerStoreIntegrationTest > aCommitIsAnsweredOutsideTheLocksOfItsParticipants(Env) FAILED
+    java.util.concurrent.ExecutionException at PlayerStoreIntegrationTest.java:1511
+        Caused by: java.util.concurrent.TimeoutException at CompletableFuture.java:2828
+
+PlayerStoreIntegrationTest > anAdmissionAfterTheSessionWasIsolatedIsRefused(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:1261
+
+PlayerStoreIntegrationTest > aSectionThatNeverEncodesReportsOncePerBudget(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:1559
+
+PlayerStoreIntegrationTest > aCommitWithoutParticipantsWritesNothingAndStillApplies(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:1394
+
+PlayerStoreIntegrationTest > aCommitUnderWayFreezesItsParticipantsUntilItIsAnswered(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:1468
+
+PlayerStoreIntegrationTest > aCommitWhoseBackendThrowsSomethingElseIsAnsweredUnavailable(Env) FAILED
+    java.util.concurrent.TimeoutException at PlayerStoreIntegrationTest.java:1415
+
+PlayerStoreIntegrationTest > aCommitOfANullOrUnencodableValueIsRefusedOnTheCallersThread(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:1432
+        Caused by: java.lang.NullPointerException at PlayerStoreIntegrationTest.java:1433
+
+PostgresBackendDbTest > aRollbackThatFailsDoesNotHideWhyTheWriteFailed() FAILED
+    org.opentest4j.AssertionFailedError at PostgresBackendDbTest.java:94
+
+PostgresBackendDbTest > aWriteThatFailsWithAnythingHalfWayIsRolledBack() FAILED
+    org.opentest4j.AssertionFailedError at PostgresBackendDbTest.java:77
+
+RedisLinkTest > aUrlOfAnotherSchemeIsRefusedWithoutThePassword() FAILED
+    org.opentest4j.AssertionFailedError at RedisLinkTest.java:59
+
+62 tests completed, 21 failed
+
+> Task :server-app:test FAILED
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r081-STORE/build/reports/problems/problems-report.html
+
+FAILURE: Build completed with 2 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':testing:test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r081-STORE/testing/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':server-app:test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r081-STORE/server-app/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 1m 28s
+44 actionable tasks: 11 executed, 2 from cache, 31 up-to-date
+Configuration cache entry stored.
+[fix-STORE-red] gradle exit=1 end 23:46:19
+exit=1

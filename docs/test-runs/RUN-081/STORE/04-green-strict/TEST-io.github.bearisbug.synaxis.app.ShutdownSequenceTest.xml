@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.ShutdownSequenceTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:04:03.167Z" hostname="Mac.local" time="17.863">
+  <properties/>
+  <testcase name="withoutStepsTheSavePhaseIsThePlayerStoresOwn()" classname="io.github.bearisbug.synaxis.app.ShutdownSequenceTest" time="0.011"/>
+  <testcase name="aStepThatDoesNotCompleteIsLeftBehindAndTheStepsAfterItDoNotRun()" classname="io.github.bearisbug.synaxis.app.ShutdownSequenceTest" time="0.917"/>
+  <testcase name="aStepIsRegisteredBeforeTheStartOnly()" classname="io.github.bearisbug.synaxis.app.ShutdownSequenceTest" time="0.015"/>
+  <testcase name="aStepGetsWhatIsLeftOfTheBudget()" classname="io.github.bearisbug.synaxis.app.ShutdownSequenceTest" time="0.725"/>
+  <testcase name="aDeadTickHandsTheStepsToTheShutdownThreadAndKickingFollowsTheDeadline()" classname="io.github.bearisbug.synaxis.app.ShutdownSequenceTest" time="15.063"/>
+  <testcase name="aDeathWhileAStepRunsForTheTickCallsItAgainOnTheShutdownThread()" classname="io.github.bearisbug.synaxis.app.ShutdownSequenceTest" time="0.006"/>
+  <testcase name="aDeathWhileThePlayersSaveRunsEveryStepOnTheShutdownThreadAfterThem()" classname="io.github.bearisbug.synaxis.app.ShutdownSequenceTest" time="0.215"/>
+  <testcase name="theStepsRunAfterThePlayersInTheirOrderAndKickingWaitsForThem()" classname="io.github.bearisbug.synaxis.app.ShutdownSequenceTest" time="0.906"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

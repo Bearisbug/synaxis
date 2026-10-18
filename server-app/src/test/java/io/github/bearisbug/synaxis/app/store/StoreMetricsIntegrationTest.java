@@ -58,7 +58,7 @@ class StoreMetricsIntegrationTest {
 
             shard.store().get(seller, PURSE).coins = 3;
             shard.store().markDirty(seller, PURSE);
-            assertEquals(SaveResult.SAVED, shard.store().saveNow(seller).join());
+            assertEquals(SaveResult.SAVED, StoreFixture.saveNowOwned(shard.store(), seller).join());
             shard.session().renewOrReopen();
             assertEquals(SaveResult.SAVED, trade(seller, buyer, 10));
             database.execute("UPDATE character SET version = version + 1 WHERE account_uuid = '" + buyer.getUuid() + "'");

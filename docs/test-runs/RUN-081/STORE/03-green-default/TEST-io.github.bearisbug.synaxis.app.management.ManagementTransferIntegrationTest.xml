@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.management.ManagementTransferIntegrationTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-18T15:57:12.025Z" hostname="Mac.local" time="0.86">
+  <properties/>
+  <testcase name="aTransferThatThrewIsAnInternalErrorLoggedWithItsOwnException(Env)" classname="io.github.bearisbug.synaxis.app.management.ManagementTransferIntegrationTest" time="0.073"/>
+  <testcase name="aProcessWithoutAShardServiceAnswersUnavailable(Env)" classname="io.github.bearisbug.synaxis.app.management.ManagementTransferIntegrationTest" time="0.069"/>
+  <testcase name="aPlayerNamedByNameOrIdIsSentByRegionOrByShardWithParamsByNameOrPosition(Env)" classname="io.github.bearisbug.synaxis.app.management.ManagementTransferIntegrationTest" time="0.079"/>
+  <testcase name="everyResultIsAnsweredAndRecordedByItsLowerCaseName(Env)" classname="io.github.bearisbug.synaxis.app.management.ManagementTransferIntegrationTest" time="0.089"/>
+  <testcase name="notExactlyOneTargetOrNobodyOnlineHereIsInvalidParams(Env)" classname="io.github.bearisbug.synaxis.app.management.ManagementTransferIntegrationTest" time="0.247"/>
+  <testcase name="theAnswerWaitsForTheTransferToBeKnown(Env)" classname="io.github.bearisbug.synaxis.app.management.ManagementTransferIntegrationTest" time="0.299"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -70,31 +69,20 @@ public final class StoreHousekeeping implements AutoCloseable {
     }
 
     private int run(long lock, String sql, int timeoutSeconds) {
-        try (Connection connection = dataSource.getConnection()) {
-            connection.setAutoCommit(false);
-            try {
+        try {
+            return Sql.inTransaction(dataSource, connection -> {
                 try (PreparedStatement take = connection.prepareStatement("SELECT pg_try_advisory_xact_lock(?)")) {
                     take.setLong(1, lock);
                     try (ResultSet row = take.executeQuery()) {
-                        if (!row.next() || !row.getBoolean(1)) {
-                            connection.rollback();
-                            return -1;
-                        }
+                        // Another shard is running the job; nothing was written, so the commit changes nothing
+                        if (!row.next() || !row.getBoolean(1)) return -1;
                     }
                 }
-                final int deleted;
                 try (Statement statement = connection.createStatement()) {
                     statement.execute("SET LOCAL statement_timeout = '" + timeoutSeconds + "s'");
-                    deleted = statement.executeUpdate(sql);
+                    return statement.executeUpdate(sql);
                 }
-                connection.commit();
-                return deleted;
-            } catch (SQLException e) {
-                connection.rollback();
-                throw e;
-            } finally {
-                connection.setAutoCommit(true);
-            }
+            });
         } catch (SQLException e) {
             failures.warn(e, "A store cleanup job failed, the next run makes up for it");
             return -1;

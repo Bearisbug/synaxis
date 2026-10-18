@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.TransferAdmissionIntegrationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-18T15:57:11.924Z" hostname="Mac.local" time="0.101">
+  <properties/>
+  <testcase name="aTicketRefusedBeforeOrInTheLoadIsARefusedTransferAndNotAFailedLoad(Env)" classname="io.github.bearisbug.synaxis.app.TransferAdmissionIntegrationTest" time="0.099"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

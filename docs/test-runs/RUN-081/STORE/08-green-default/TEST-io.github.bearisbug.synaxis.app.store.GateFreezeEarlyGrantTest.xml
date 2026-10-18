@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-18T17:08:13.341Z" hostname="Mac.local" time="1.304">
+  <properties/>
+  <testcase name="anInstanceScopedMonitorGrantOfAGateWalkInCopiesNothing()" classname="io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest" time="0.398"/>
+  <testcase name="aGlobalNormalGrantOfAGateWalkInCopiesNothing()" classname="io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest" time="0.383"/>
+  <testcase name="aGateFreezeLandingInTheDropCopiesNothing()" classname="io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest" time="0.076"/>
+  <testcase name="aGateFreezeLandingInThePickupCopiesNothing()" classname="io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest" time="0.373"/>
+  <testcase name="aDropInTheBatchOfAGateWalkInReachesTheFirstListenerCancelled()" classname="io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest" time="0.07"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

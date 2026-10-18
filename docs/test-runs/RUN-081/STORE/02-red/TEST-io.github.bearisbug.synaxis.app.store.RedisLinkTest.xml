@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.RedisLinkTest" tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-18T15:46:11.153Z" hostname="Mac.local" time="6.07">
+  <properties/>
+  <testcase name="aFullPresenceQueueDropsItsOldestWriteWithOneWarning()" classname="io.github.bearisbug.synaxis.app.store.RedisLinkTest" time="2.205"/>
+  <testcase name="aUrlOfAnotherSchemeIsRefusedWithoutThePassword()" classname="io.github.bearisbug.synaxis.app.store.RedisLinkTest" time="1.352">
+    <failure message="org.opentest4j.AssertionFailedError: rediss://:Ab3x9cd@valkey:6380 ==&gt; Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: rediss://:Ab3x9cd@valkey:6380 ==&gt; Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.bearisbug.synaxis.app.store.RedisLinkTest.aUrlOfAnotherSchemeIsRefusedWithoutThePassword(RedisLinkTest.java:59)
+</failure>
+  </testcase>
+  <testcase name="aUrlThatIsNotOneIsRefusedWithoutThePassword()" classname="io.github.bearisbug.synaxis.app.store.RedisLinkTest" time="0.002"/>
+  <testcase name="aPercentEncodedPasswordIsTaken()" classname="io.github.bearisbug.synaxis.app.store.RedisLinkTest" time="2.51"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

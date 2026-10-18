@@ -66,19 +66,7 @@ public final class PostgresBackend implements StoreBackend {
     @Override
     public LoadOutcome load(UUID account, String name, long sessionId) throws SQLException {
         // One transaction: a load that fails after its acquire, reading the sections, holds no lease
-        try (Connection connection = dataSource.getConnection()) {
-            connection.setAutoCommit(false);
-            try {
-                final LoadOutcome outcome = load(connection, account, name, sessionId);
-                connection.commit();
-                return outcome;
-            } catch (SQLException e) {
-                connection.rollback();
-                throw e;
-            } finally {
-                connection.setAutoCommit(true);
-            }
-        }
+        return Sql.inTransaction(dataSource, connection -> load(connection, account, name, sessionId));
     }
 
     private static LoadOutcome load(Connection connection, UUID account, String name, long sessionId) throws SQLException {
@@ -133,42 +121,31 @@ public final class PostgresBackend implements StoreBackend {
 
     @Override
     public void write(long sessionId, List<Write> writes) throws FencedException, SQLException {
-        try (Connection connection = dataSource.getConnection()) {
-            connection.setAutoCommit(false);
-            try {
-                // One order for every transaction, so two commits over the same characters cannot deadlock
-                for (Write write : writes.stream().sorted(Comparator.comparingLong(Write::characterId)).toList()) {
-                    try (PreparedStatement fence = connection.prepareStatement(FENCE)) {
-                        fence.setLong(1, write.characterId());
-                        fence.setLong(2, sessionId);
-                        fence.setLong(3, write.expectedVersion());
-                        if (fence.executeUpdate() != 1) {
-                            connection.rollback();
-                            throw new FencedException(write.characterId());
-                        }
-                    }
-                    if (!write.sections().isEmpty()) {
-                        try (PreparedStatement upsert = connection.prepareStatement(UPSERT_SECTION)) {
-                            for (Map.Entry<String, StoredSection> section : write.sections().entrySet()) {
-                                upsert.setLong(1, write.characterId());
-                                upsert.setString(2, section.getKey());
-                                upsert.setInt(3, section.getValue().schemaVersion());
-                                upsert.setString(4, section.getValue().json());
-                                upsert.addBatch();
-                            }
-                            upsert.executeBatch();
-                        }
-                    }
-                    if (write.release()) release(connection, write.characterId(), sessionId);
+        Sql.inTransaction(dataSource, connection -> {
+            // One order for every transaction, so two commits over the same characters cannot deadlock
+            for (Write write : writes.stream().sorted(Comparator.comparingLong(Write::characterId)).toList()) {
+                try (PreparedStatement fence = connection.prepareStatement(FENCE)) {
+                    fence.setLong(1, write.characterId());
+                    fence.setLong(2, sessionId);
+                    fence.setLong(3, write.expectedVersion());
+                    if (fence.executeUpdate() != 1) throw new FencedException(write.characterId());
                 }
-                connection.commit();
-            } catch (SQLException e) {
-                connection.rollback();
-                throw e;
-            } finally {
-                connection.setAutoCommit(true);
+                if (!write.sections().isEmpty()) {
+                    try (PreparedStatement upsert = connection.prepareStatement(UPSERT_SECTION)) {
+                        for (Map.Entry<String, StoredSection> section : write.sections().entrySet()) {
+                            upsert.setLong(1, write.characterId());
+                            upsert.setString(2, section.getKey());
+                            upsert.setInt(3, section.getValue().schemaVersion());
+                            upsert.setString(4, section.getValue().json());
+                            upsert.addBatch();
+                        }
+                        upsert.executeBatch();
+                    }
+                }
+                if (write.release()) release(connection, write.characterId(), sessionId);
             }
-        }
+            return null;
+        });
     }
 
     @Override

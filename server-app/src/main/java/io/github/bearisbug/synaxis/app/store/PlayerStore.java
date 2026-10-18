@@ -53,6 +53,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
@@ -79,6 +80,7 @@ public final class PlayerStore implements ShutdownParticipant {
     private static final int DEFAULT_AUTOSAVE_SECONDS = 60;
     private static final long SAVE_ONLINE_BUDGET_SECONDS = 10;
     private static final String STOPPING = "the shard is stopping";
+    private static final String SESSION_LOST = "the shard session was isolated during the load";
     /** The namespace of the host's own sections; {@code synaxis} is the plugin id the host reserves. */
     private static final String HOST_SECTION_PREFIX = "synaxis:";
 
@@ -119,6 +121,9 @@ public final class PlayerStore implements ShutdownParticipant {
         final Player player;
         final UUID account;
         final long characterId;
+        // The session the lease was acquired under: a load or an admission after it was isolated or
+        // replaced holds a lease no write of this session can use
+        final long epoch;
         final Map<String, Object> values = new ConcurrentHashMap<>();
         final Set<String> dirty = ConcurrentHashMap.newKeySet();
         final ReentrantLock writeLock = new ReentrantLock();
@@ -129,6 +134,9 @@ public final class PlayerStore implements ShutdownParticipant {
         // are written under writeLock
         final AtomicLong commits = new AtomicLong();
         final Map<String, Long> committedAt = new ConcurrentHashMap<>();
+        // The commits under way this character takes part in: frozen until each of them is over
+        final AtomicInteger committing = new AtomicInteger();
+        // Volatile for the readers that take no lock; every write is under this record's lock
         volatile LeaseState state = LeaseState.LOADING;
         // Guarded by this record: the single slot write queue
         private @Nullable Map<String, Encoded> pending;
@@ -141,11 +149,12 @@ public final class PlayerStore implements ShutdownParticipant {
         private boolean writing;
         private final List<CompletableFuture<SaveResult>> waiting = new ArrayList<>();
 
-        Record(Player player, UUID account, long characterId, long version) {
+        Record(Player player, UUID account, long characterId, long version, long epoch) {
             this.player = player;
             this.account = account;
             this.characterId = characterId;
             this.version = new AtomicLong(version);
+            this.epoch = epoch;
         }
     }
 
@@ -159,6 +168,7 @@ public final class PlayerStore implements ShutdownParticipant {
     private final Semaphore loads;
     private final LogBudget failures = new LogBudget(LOGGER, "store failures");
     private final LogBudget captureFailures = new LogBudget(LOGGER, "section captures");
+    private final LogBudget encodeFailures = new LogBudget(LOGGER, "section encodes");
     private final Map<String, DataSection<?>> sections = new ConcurrentHashMap<>();
     // The host's own sections and what takes their value off a player at every snapshot
     private final Map<String, Function<Player, ?>> hostCaptures = new ConcurrentHashMap<>();
@@ -262,7 +272,11 @@ public final class PlayerStore implements ShutdownParticipant {
      * @param hostNode the host's event node
      */
     public void attach(EventNode<Event> hostNode) {
-        hostNode.addListener(PlayerDisconnectEvent.class, event -> loggedOut(event.getPlayer()));
+        // At 5, after every plugin priority (-2..4, see PluginEventsImpl#tier): a section a plugin
+        // changes and marks dirty in its own disconnect listener is in the logout snapshot (API-PROD-005)
+        final EventNode<Event> logout = EventNode.all("synaxis-store-logout").setPriority(5);
+        logout.addListener(PlayerDisconnectEvent.class, event -> loggedOut(event.getPlayer()));
+        hostNode.addChild(logout);
         // A frozen player's pickup or drop is cancelled twice, on one reading of the freeze (API-PROD-005)
         final Consumer<PickupItemEvent> pickups = event -> {
             if (event.getLivingEntity() instanceof Player player && isFrozen(player)) cancelAtRoot(event);
@@ -524,13 +538,15 @@ public final class PlayerStore implements ShutdownParticipant {
         }
         boolean kickRequested = false;
         StoreBackend.LoadOutcome.Acquired acquired;
+        long epoch;
         while (true) {
             final String busy = takeLoadSlot(deadline);
             if (busy != null) return refuse(player, busy);
             final long loadStart = System.nanoTime();
             final StoreBackend.LoadOutcome outcome;
+            epoch = sessionId();
             try {
-                outcome = backend.load(account, player.getUsername(), sessionId());
+                outcome = backend.load(account, player.getUsername(), epoch);
             } finally {
                 loads.release();
                 metrics.statement(StoreMetrics.Statement.LOAD, System.nanoTime() - loadStart);
@@ -561,16 +577,22 @@ public final class PlayerStore implements ShutdownParticipant {
             // Nor between two polls: the holder may let go after the shutdown save started
             if (closing) return refuse(player, STOPPING);
         }
-        final Record record = new Record(player, account, acquired.characterId(), acquired.version());
+        final Record record = new Record(player, account, acquired.characterId(), acquired.version(), epoch);
         final String undecodable = decode(record, acquired.sections());
         if (undecodable != null || remaining(deadline) <= 0) {
-            releaseQuietly(record.characterId);
+            releaseQuietly(record);
             return refuse(player, undecodable != null ? undecodable : "the load took longer than its budget");
         }
         // The shutdown save started while the acquire was under way: the lease goes back
         if (closing) {
-            releaseQuietly(record.characterId);
+            releaseQuietly(record);
             return refuse(player, STOPPING);
+        }
+        // The session was isolated meanwhile, reopened or not: the isolation fenced the characters
+        // listed then, and this one would only be fenced at its first write
+        if (sessionLost(epoch)) {
+            releaseQuietly(record);
+            return refuse(player, SESSION_LOST);
         }
         if (acquired.previousSession() != null) takeover(record, acquired.previousSession(), acquired.lastSavedAt());
         records.put(player, record);
@@ -621,7 +643,9 @@ public final class PlayerStore implements ShutdownParticipant {
     /**
      * {@code loading → online}: the admission provider let the player in. Once the shutdown save
      * has started the player is refused instead ({@code loading → offline}): the save froze
-     * everybody online without it, so it would play and be written outside of that save.
+     * everybody online without it, so it would play and be written outside of that save. So is a
+     * player whose lease was acquired under a session that has been isolated since: the isolation
+     * fenced the characters listed before this one was.
      *
      * @param player the player
      * @return false if the player was refused, which kicked it; true otherwise, also when there
@@ -630,10 +654,10 @@ public final class PlayerStore implements ShutdownParticipant {
     public boolean admitted(Player player) {
         final Record record = records.get(player);
         if (record == null) return true;
-        final boolean stopping;
+        final @Nullable String refused;
         synchronized (admissions) {
-            stopping = closing;
-            if (!stopping) {
+            refused = closing ? STOPPING : sessionLost(record.epoch) ? SESSION_LOST : null;
+            if (refused == null) {
                 synchronized (record) {
                     // Abandoned meanwhile by its logout
                     if (record.state != LeaseState.LOADING) return true;
@@ -641,9 +665,9 @@ public final class PlayerStore implements ShutdownParticipant {
                 }
             }
         }
-        if (stopping) {
+        if (refused != null) {
             if (!abandon(record)) return true;
-            refuse(player, STOPPING);
+            refuse(player, refused);
             return false;
         }
         autosaveOrder.add(record);
@@ -671,7 +695,7 @@ public final class PlayerStore implements ShutdownParticipant {
         // Released while still listed: a login of the same account that comes meanwhile waits for
         // this one to be gone before it takes the lease under this session, so this release cannot
         // give back the lease that login takes (§11.3 end)
-        releaseQuietly(record.characterId);
+        releaseQuietly(record);
         finished(record, LeaseState.OFFLINE);
         return true;
     }
@@ -705,7 +729,8 @@ public final class PlayerStore implements ShutdownParticipant {
         if (current != null && (current.state() == ShardSession.State.DEGRADED || current.state() == ShardSession.State.CLOSING))
             return true;
         final Record record = records.get(player);
-        return record != null && (record.state == LeaseState.SAVING || record.state == LeaseState.IN_TRANSIT);
+        return record != null && (record.state == LeaseState.SAVING || record.state == LeaseState.IN_TRANSIT
+                || record.committing.get() > 0);
     }
 
     CompletableFuture<SaveResult> saveNow(Player player) {
@@ -717,9 +742,25 @@ public final class PlayerStore implements ShutdownParticipant {
             return frozen;
         }
         final CompletableFuture<SaveResult> done = new CompletableFuture<>();
-        submit(record, snapshot(record), false, done);
+        // Set once the snapshot is on the write slot: an answer before that never reached the database
+        final AtomicBoolean queued = new AtomicBoolean();
+        if (player.acquirable().isOwned()) {
+            queued.set(true);
+            submit(record, snapshot(record), false, done);
+        } else {
+            // The snapshot reads the player's inventory: on the tick thread that owns it, like saveOnline
+            var _ = done.completeOnTimeout(SaveResult.UNAVAILABLE, SAVE_ONLINE_BUDGET_SECONDS, TimeUnit.SECONDS);
+            player.scheduler().scheduleNextTick(() -> {
+                if (record.state == LeaseState.ONLINE && !isFrozen(player)) {
+                    queued.set(true);
+                    submit(record, snapshot(record), false, done);
+                } else {
+                    done.complete(SaveResult.UNAVAILABLE);
+                }
+            });
+        }
         return done.whenComplete((result, _) -> critical("save_now", result, result == SaveResult.SAVED ? null
-                : result == SaveResult.FENCED ? "version_mismatch" : "db_error", start, 1));
+                : result == SaveResult.FENCED ? "version_mismatch" : queued.get() ? "db_error" : "frozen", start, 1));
     }
 
     /**
@@ -757,6 +798,21 @@ public final class PlayerStore implements ShutdownParticipant {
 
     CompletableFuture<SaveResult> commitTogether(Map<Player, Map<DataSection<?>, Object>> staged, Runnable apply) {
         final long start = System.nanoTime();
+        // Nobody to write for, as when everyone a round would settle left before it ended: nothing
+        // touches the database, and apply runs where it runs after a commit (API-PROD-005)
+        if (staged.isEmpty()) {
+            process.scheduler().scheduleNextTick(apply);
+            return CompletableFuture.completedFuture(SaveResult.SAVED);
+        }
+        for (Map.Entry<Player, Map<DataSection<?>, Object>> entry : staged.entrySet()) {
+            if (entry.getValue() == null)
+                throw new IllegalArgumentException("commitTogether stages no sections for " + entry.getKey().getUsername());
+            for (Map.Entry<DataSection<?>, Object> section : entry.getValue().entrySet()) {
+                if (section.getValue() == null)
+                    throw new IllegalArgumentException("section " + section.getKey().id() + " of "
+                            + entry.getKey().getUsername() + " is staged as null");
+            }
+        }
         final List<Record> participants = new ArrayList<>();
         for (Player player : staged.keySet()) {
             final Record record = records.get(player);
@@ -766,17 +822,30 @@ public final class PlayerStore implements ShutdownParticipant {
             }
             participants.add(record);
         }
-        // Encoded on the caller's thread, which is the tick thread of the operation
+        // Copied and encoded on the caller's thread, which is the tick thread of the operation: the
+        // commit thread reads only the copies, whatever the caller does with its maps afterwards
+        final Map<Record, Map<DataSection<?>, Object>> values = new HashMap<>();
         final Map<Record, Map<String, StoreBackend.StoredSection>> encoded = new HashMap<>();
         for (Record record : participants) {
+            final Map<DataSection<?>, Object> copy = Map.copyOf(staged.get(record.player));
             final Map<String, StoreBackend.StoredSection> out = new HashMap<>();
-            for (Map.Entry<DataSection<?>, Object> entry : staged.get(record.player).entrySet())
-                out.put(entry.getKey().id(), encode(entry.getKey(), entry.getValue()));
+            for (Map.Entry<DataSection<?>, Object> entry : copy.entrySet()) {
+                try {
+                    out.put(entry.getKey().id(), encode(entry.getKey(), entry.getValue()));
+                } catch (RuntimeException e) {
+                    throw new IllegalArgumentException("section " + entry.getKey().id() + " of "
+                            + record.player.getUsername() + " cannot be encoded", e);
+                }
+            }
+            values.put(record, copy);
             encoded.put(record, out);
         }
+        // Frozen until the commit is over: the staged values replace whatever a section turned into meanwhile
+        for (Record record : participants) record.committing.incrementAndGet();
         final CompletableFuture<SaveResult> done = new CompletableFuture<>();
         Thread.ofVirtual().name("Syn-Store-Commit").start(() -> {
             final List<Record> ordered = participants.stream().sorted(Comparator.comparingLong(r -> r.characterId)).toList();
+            SaveResult result = SaveResult.UNAVAILABLE;
             for (Record record : ordered) record.writeLock.lock();
             try {
                 final List<StoreBackend.Write> writes = ordered.stream()
@@ -791,30 +860,34 @@ public final class PlayerStore implements ShutdownParticipant {
                     record.version.incrementAndGet();
                     // Values first, then the count: a snapshot that read the count before it
                     // read one of these values is dropped at its write, never kept with old ones
-                    for (Map.Entry<DataSection<?>, Object> entry : staged.get(record.player).entrySet())
+                    for (Map.Entry<DataSection<?>, Object> entry : values.get(record).entrySet())
                         record.values.put(entry.getKey().id(), entry.getValue());
                     final long commit = record.commits.incrementAndGet();
-                    for (DataSection<?> section : staged.get(record.player).keySet())
+                    for (DataSection<?> section : values.get(record).keySet())
                         record.committedAt.put(section.id(), commit);
                 }
                 // On the serial part of the next tick, which may touch every participant whichever tick
                 // thread it is on, and runs whoever of them left meanwhile (API-PROD-005)
                 process.scheduler().scheduleNextTick(apply);
                 critical("commit", SaveResult.SAVED, null, start, ordered.size());
-                metrics.saved(SaveResult.SAVED);
-                done.complete(SaveResult.SAVED);
+                result = SaveResult.SAVED;
             } catch (StoreBackend.FencedException e) {
                 failures.warn("A commit was fenced: character_id={}", e.characterId());
                 critical("commit", SaveResult.FENCED, "version_mismatch", start, ordered.size());
-                metrics.saved(SaveResult.FENCED);
-                done.complete(SaveResult.FENCED);
+                result = SaveResult.FENCED;
             } catch (SQLException e) {
                 failures.warn(e, "A commit failed: participants={}", ordered.size());
                 critical("commit", SaveResult.UNAVAILABLE, "db_error", start, ordered.size());
-                metrics.saved(SaveResult.UNAVAILABLE);
-                done.complete(SaveResult.UNAVAILABLE);
+            } catch (RuntimeException e) {
+                // Answered all the same: a caller waiting on the future would otherwise wait forever
+                failures.error(e, "A commit failed, it may be written already: participants={}", ordered.size());
+                critical("commit", SaveResult.UNAVAILABLE, "db_error", start, ordered.size());
             } finally {
                 for (Record record : ordered) record.writeLock.unlock();
+                for (Record record : ordered) record.committing.decrementAndGet();
+                // Once the locks are free and the freeze is over: a callback may save or commit again
+                metrics.saved(result);
+                done.complete(result);
             }
         });
         return done;
@@ -903,9 +976,10 @@ public final class PlayerStore implements ShutdownParticipant {
                 out.put(id, new Encoded(encode(section, value), takenAt));
             } catch (Throwable e) {
                 // A plugin's code: an Error too (a value that refers to itself overflows the stack),
-                // which would otherwise leave a logout or a transfer that never writes nor lets go
-                LOGGER.error("Encoding a section failed, it stays dirty: character_id={} section_id={}",
-                        record.characterId, id, e);
+                // which would otherwise leave a logout or a transfer that never writes nor lets go. The
+                // section stays dirty, so every save fails it again: one line per budget
+                encodeFailures.error(e, "Encoding a section failed, it stays dirty: character_id={} section_id={}",
+                        record.characterId, id);
                 record.dirty.add(id);
             }
         }
@@ -940,7 +1014,8 @@ public final class PlayerStore implements ShutdownParticipant {
 
     /**
      * Queues a snapshot on the character's single write slot; a snapshot already waiting there is
-     * merged under it, the newer value of a section winning.
+     * merged under it, the newer value of a section winning. One that gives the lease back or that
+     * a caller waits on wakes a write backing off ({@link #backOff}).
      */
     private void submit(Record record, Map<String, Encoded> snapshot, boolean release,
                         @Nullable CompletableFuture<SaveResult> done) {
@@ -949,7 +1024,10 @@ public final class PlayerStore implements ShutdownParticipant {
             else record.pending.putAll(snapshot);
             if (release) record.release = true;
             if (done != null) record.waiting.add(done);
-            if (record.writing) return;
+            if (record.writing) {
+                if (release || done != null) record.notifyAll();
+                return;
+            }
             record.writing = true;
         }
         Thread.ofVirtual().name("Syn-Store-Write").start(() -> drain(record));
@@ -958,6 +1036,7 @@ public final class PlayerStore implements ShutdownParticipant {
     private void drain(Record record) {
         int failed = 0;
         long firstFailure = 0;
+        boolean wasReleasing = false;
         while (true) {
             final Map<String, Encoded> snapshot;
             final boolean release;
@@ -979,6 +1058,12 @@ public final class PlayerStore implements ShutdownParticipant {
                 record.pending = null;
                 record.waiting.clear();
             }
+            // A logout save that joined a retrying save counts its own failures (§11.3 saving → orphaned)
+            if (release && !wasReleasing) {
+                failed = 0;
+                firstFailure = 0;
+            }
+            wasReleasing = release;
             final SaveResult result = write(record, snapshot, release);
             metrics.saved(result);
             if (transfer && result == SaveResult.UNAVAILABLE) {
@@ -991,6 +1076,9 @@ public final class PlayerStore implements ShutdownParticipant {
                         record.release = false;
                         record.state = LeaseState.ONLINE;
                     }
+                    // Retried as what it is now: a logout joining an ordinary retry wakes its backoff
+                    // and counts its own failures
+                    wasReleasing = record.release;
                 }
                 for (CompletableFuture<SaveResult> future : waiting) future.complete(result);
             } else if (result != SaveResult.UNAVAILABLE || !release) {
@@ -1027,12 +1115,12 @@ public final class PlayerStore implements ShutdownParticipant {
                     }
                 }
                 case FENCED -> {
-                    fence(record, "zero_rows");
-                    synchronized (record) {
-                        record.writing = false;
-                        record.pending = null;
-                    }
-                    return;
+                    // write() fences without a statement once the session is isolated
+                    final ShardSession current = this.session;
+                    fence(record, current != null && current.state() == ShardSession.State.ISOLATED
+                            ? "session_isolated" : "zero_rows");
+                    // The record is fenced now: the next round completes every caller that came in
+                    // during the write, and ends the drain
                 }
                 case UNAVAILABLE -> {
                     final long now = System.nanoTime();
@@ -1058,7 +1146,29 @@ public final class PlayerStore implements ShutdownParticipant {
                         }
                     }
                     final List<Duration> delays = options.retryDelays();
-                    sleep(delays.get(Math.min(failed - 1, delays.size() - 1)));
+                    backOff(record, wasReleasing, delays.get(Math.min(failed - 1, delays.size() - 1)));
+                }
+            }
+        }
+    }
+
+    /**
+     * Waits out the backoff of a failed save, on the record's monitor so that {@link #submit} cuts it
+     * short: a save that gives the lease back (a logout, a transfer, the shutdown) joining a save that
+     * did not, or a caller waiting on a save that does not give it back, is retried now. Merging
+     * another autosave waits on.
+     */
+    private static void backOff(Record record, boolean release, Duration delay) {
+        final long deadline = System.nanoTime() + delay.toNanos();
+        synchronized (record) {
+            while (!(record.release && !release) && (release || record.waiting.isEmpty())) {
+                final long left = deadline - System.nanoTime();
+                if (left <= 0) return;
+                try {
+                    TimeUnit.NANOSECONDS.timedWait(record, left);
+                } catch (InterruptedException _) {
+                    Thread.currentThread().interrupt();
+                    return;
                 }
             }
         }
@@ -1100,11 +1210,18 @@ public final class PlayerStore implements ShutdownParticipant {
         }
     }
 
-    /** {@code online → fenced}: this shard no longer holds the character; the player goes. */
+    /**
+     * {@code online → fenced}: this shard no longer holds the character; the player goes. Decided
+     * under the record's lock, like every other change of its state: of an isolation and a write
+     * that both find the character lost, one fences it, and an admission either comes first and is
+     * fenced or finds it fenced.
+     */
     private void fence(Record record, String cause) {
-        if (record.state == LeaseState.FENCED || record.state == LeaseState.OFFLINE || record.state == LeaseState.ORPHANED)
-            return;
-        record.state = LeaseState.FENCED;
+        synchronized (record) {
+            if (record.state == LeaseState.FENCED || record.state == LeaseState.OFFLINE || record.state == LeaseState.ORPHANED)
+                return;
+            record.state = LeaseState.FENCED;
+        }
         final Map<String, Object> attributes = new LinkedHashMap<>();
         attributes.put("character_id", record.characterId);
         attributes.put("session_id", sessionId());
@@ -1120,25 +1237,35 @@ public final class PlayerStore implements ShutdownParticipant {
     private void orphan(Record record) {
         LOGGER.error("Dropping the logout save of character_id={}: it could not be written within {} s. The last "
                 + "saved version stands.", record.characterId, options.giveUpAfter().toSeconds());
-        releaseQuietly(record.characterId);
+        releaseQuietly(record);
         finished(record, LeaseState.ORPHANED);
     }
 
     private void finished(Record record, LeaseState state) {
-        record.state = state;
+        synchronized (record) {
+            record.state = state;
+        }
         records.remove(record.player, record);
         redis.clearPresence(record.account);
         record.gone.complete(null);
     }
 
-    private void releaseQuietly(long characterId) {
+    /** Gives back the lease as the session that acquired it holds it, a reopened session holding none of it. */
+    private void releaseQuietly(Record record) {
         // Past the shutdown save the session is released: its expiry gives the lease back
         if (saveEnded) return;
         try {
-            backend.release(characterId, sessionId());
+            backend.release(record.characterId, record.epoch);
         } catch (SQLException e) {
-            failures.warn(e, "Giving a lease back failed, it runs out with the session: character_id={}", characterId);
+            failures.warn(e, "Giving a lease back failed, it runs out with the session: character_id={}",
+                    record.characterId);
         }
+    }
+
+    /** Whether the session a lease was acquired under is no longer this shard's: isolated, or reopened as a new one. */
+    private boolean sessionLost(long epoch) {
+        final ShardSession current = this.session;
+        return current != null && (current.state() == ShardSession.State.ISOLATED || current.sessionId() != epoch);
     }
 
     /**
@@ -1360,14 +1487,6 @@ public final class PlayerStore implements ShutdownParticipant {
 
     private static long remaining(long deadline) {
         return Math.max(0, deadline - System.nanoTime());
-    }
-
-    private static void sleep(Duration duration) {
-        try {
-            Thread.sleep(duration);
-        } catch (InterruptedException _) {
-            Thread.currentThread().interrupt();
-        }
     }
 
     /**

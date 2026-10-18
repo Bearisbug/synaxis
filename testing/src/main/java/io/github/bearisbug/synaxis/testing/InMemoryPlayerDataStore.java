@@ -18,6 +18,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * participant leaving in between is a case only a test against the host covers. A test freezes a
  * player with {@link #freeze} to take the path a plugin must take while the real store refuses
  * changes of ownership.
+ * <p>
+ * It refuses what the host refuses on the caller's thread: a participant staged without sections,
+ * a value staged as null, one its section cannot encode. What a test against it does not see:
+ * every future it returns is complete already, its callbacks run on the calling thread, where the
+ * host completes a save or a commit it does not turn away at once on a virtual thread; and nothing
+ * here is frozen while a commit is written, where the host freezes the participants until the
+ * future completes.
  */
 public final class InMemoryPlayerDataStore implements PlayerDataStore {
 
@@ -66,8 +73,29 @@ public final class InMemoryPlayerDataStore implements PlayerDataStore {
 
     @Override
     public CompletableFuture<SaveResult> commitTogether(Map<Player, Map<DataSection<?>, Object>> staged, Runnable apply) {
+        // The host's checks, in its order: a staged value it could not write is refused here too
+        for (Map.Entry<Player, Map<DataSection<?>, Object>> entry : staged.entrySet()) {
+            if (entry.getValue() == null)
+                throw new IllegalArgumentException("commitTogether stages no sections for " + entry.getKey().getUsername());
+            for (Map.Entry<DataSection<?>, Object> section : entry.getValue().entrySet()) {
+                if (section.getValue() == null)
+                    throw new IllegalArgumentException("section " + section.getKey().id() + " of "
+                            + entry.getKey().getUsername() + " is staged as null");
+            }
+        }
         for (Player player : staged.keySet())
             if (isFrozen(player)) return CompletableFuture.completedFuture(SaveResult.UNAVAILABLE);
+        for (Map.Entry<Player, Map<DataSection<?>, Object>> entry : staged.entrySet()) {
+            for (Map.Entry<DataSection<?>, Object> section : entry.getValue().entrySet()) {
+                try {
+                    @SuppressWarnings("unchecked") final DataSection<Object> typed = (DataSection<Object>) section.getKey();
+                    var _ = typed.encode(section.getValue());
+                } catch (RuntimeException e) {
+                    throw new IllegalArgumentException("section " + section.getKey().id() + " of "
+                            + entry.getKey().getUsername() + " cannot be encoded", e);
+                }
+            }
+        }
         for (Map.Entry<Player, Map<DataSection<?>, Object>> entry : staged.entrySet()) {
             final Map<String, Object> playerValues = values.computeIfAbsent(entry.getKey().getUuid(), _ -> new ConcurrentHashMap<>());
             for (Map.Entry<DataSection<?>, Object> section : entry.getValue().entrySet())

@@ -16,6 +16,7 @@ import io.github.bearisbug.synaxis.network.packet.server.play.SystemChatPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.plugin.DataSection;
+import io.github.bearisbug.synaxis.plugin.SaveResult;
 import io.github.bearisbug.synaxis.testing.Env;
 import net.kyori.adventure.text.TranslatableComponent;
 import org.jetbrains.annotations.Nullable;
@@ -34,6 +35,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -194,6 +196,16 @@ final class StoreFixture {
         final RecordingConnection connection = (RecordingConnection) player.getPlayerConnection();
         connection.setClientState(ConnectionState.PLAY);
         connection.setServerState(ConnectionState.PLAY);
+    }
+
+    /**
+     * {@code saveNow} on the thread that owns the player, as a plugin's listener calls it: the
+     * snapshot is taken there and then, not on the player's next tick.
+     */
+    static CompletableFuture<SaveResult> saveNowOwned(PlayerStore store, Player player) {
+        final AtomicReference<CompletableFuture<SaveResult>> save = new AtomicReference<>();
+        player.acquirable().sync(_ -> save.set(store.saveNow(player)));
+        return save.get();
     }
 
     static List<String> messages(Player player) {

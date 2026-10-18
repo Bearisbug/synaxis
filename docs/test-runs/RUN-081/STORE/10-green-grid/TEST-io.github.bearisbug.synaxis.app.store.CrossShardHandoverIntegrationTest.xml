@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-18T17:14:42.118Z" hostname="Mac.local" time="14.971">
+  <properties/>
+  <testcase name="anOfflineShardNeverDisplacesAndSendsNoKickRequest(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="1.866"/>
+  <testcase name="withoutRedisTheSecondLoginIsRefusedAndTheFirstStays(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="0.699"/>
+  <testcase name="aLoginWhoseConnectionClosedWhileTheHolderHeldOnGivesWayToTheReconnect(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="1.252"/>
+  <testcase name="aLoginOnAnotherShardKicksTheOldSessionAndTakesTheCharacterOverWithinFiveSeconds(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="0.514"/>
+  <testcase name="anUnreachableRedisIsOneWarningPerTenSecondsAndNeverAnError()" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="0.36"/>
+  <testcase name="aRedisThatTakesConnectionsButNeverAnswersHoldsUpNoLogin(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="2.458"/>
+  <testcase name="presenceFollowsTheLoginAndAFirstLoginPublishesNothing(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="0.362"/>
+  <testcase name="loginsWaitingForAnotherShardToLetGoLeaveTheLoadSlotsToOtherLogins(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="5.276"/>
+  <testcase name="aRequestFindingEveryConnectionTakenGivesUpWithinTheTimeout()" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="2.179"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

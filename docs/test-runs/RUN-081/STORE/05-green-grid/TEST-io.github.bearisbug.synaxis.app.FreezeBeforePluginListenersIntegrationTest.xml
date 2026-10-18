@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-18T16:12:00.412Z" hostname="Mac.local" time="0.642">
+  <properties/>
+  <testcase name="everyPluginListenerSeesAFrozenPickupAndDropCancelled(Env)" classname="io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest" time="0.199"/>
+  <testcase name="aDropDispatchedInsideAFrozenPickupLeavesBothCancelled(Env)" classname="io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest" time="0.159"/>
+  <testcase name="aPickupAndDropCancelledBeforeTheRootAreCancelledAgainAfterAnUndo(Env)" classname="io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest" time="0.143"/>
+  <testcase name="aPickupCutShortBeforeTheFreezeNodeIsNotKeptAlive(Env)" classname="io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest" time="0.138"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

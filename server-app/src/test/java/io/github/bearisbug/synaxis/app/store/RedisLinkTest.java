@@ -51,6 +51,19 @@ class RedisLinkTest {
         }
     }
 
+    /** Another scheme would be spoken to as plain Redis, the password sent in the clear to a TLS port. */
+    @Test
+    void aUrlOfAnotherSchemeIsRefusedWithoutThePassword() {
+        for (String url : List.of("rediss://:Ab3x9cd@valkey:6380", "valkey://valkey:6379", "http://valkey:6379",
+                "//valkey:6379")) {
+            final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                    () -> RedisLink.connect(url, "r01-c1").close(), url);
+            assertEquals(REFUSAL, refused.getMessage(), url);
+            assertNull(refused.getCause(), url);
+        }
+        assertDoesNotThrow(() -> RedisLink.connect("REDIS://127.0.0.1:1", "r01-c1").close(), "the scheme has no case");
+    }
+
     /** The password goes to Redis decoded: {@code Ab3+x9cd=}, as the client's first command spells it. */
     @Test
     void aPercentEncodedPasswordIsTaken() throws Exception {

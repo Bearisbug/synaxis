@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.app.scene;
 
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.TickSchedulerThread;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventNode;
@@ -207,6 +208,7 @@ public final class SceneService {
     }
 
     void enter(String pluginId, Player player, SceneSpec spec) {
+        checkThread(player, "enter");
         final String owner = owner();
         if (!pluginId.equals(owner))
             throw new IllegalStateException("plugin_id=" + pluginId + " is not the scene owner of this process"
@@ -224,6 +226,7 @@ public final class SceneService {
         final List<PlayerScene.Slot> slots = new ArrayList<>(spec.actions().size());
         for (final ActionSlot action : spec.actions()) {
             final String actionId = PlayIds.qualify(pluginId, action.actionId());
+            checkRegistered(actionId);
             final int cooldownMs = (int) action.cooldown().toMillis();
             table.add(new S2CScene.Action(action.slot(), actionId, WidgetEncoder.component(action.label()), cooldownMs));
             slots.add(new PlayerScene.Slot(action.slot(), actionId, cooldownMs));
@@ -251,6 +254,7 @@ public final class SceneService {
     }
 
     void leave(String pluginId, Player player) {
+        checkThread(player, "leave");
         final String owner = owner();
         if (!pluginId.equals(owner))
             throw new IllegalStateException("plugin_id=" + pluginId + " is not the scene owner of this process"
@@ -265,23 +269,53 @@ public final class SceneService {
     }
 
     void set(String pluginId, Player player, Widget widget) {
+        checkThread(player, "set");
         final WidgetEncoder.Encoded encoded = WidgetEncoder.encode(pluginId, widget);
+        for (final String actionId : encoded.buttonActions()) checkRegistered(actionId);
         final PlayerScene scene = sceneOf(player);
         if (scene != null) scene.set(pluginId, widget.id(), encoded);
     }
 
     void remove(String pluginId, Player player, String widgetId) {
+        checkThread(player, "remove");
         final PlayerScene scene = scenes.get(player.getPlayerConnection().connectionId());
         if (scene != null) scene.remove(pluginId, widgetId);
     }
 
     void clear(String pluginId, Player player) {
+        checkThread(player, "clear");
         final PlayerScene scene = scenes.get(player.getPlayerConnection().connectionId());
         if (scene != null) scene.clear(pluginId);
     }
 
     void onAction(String pluginId, String actionId, ActionHandler handler) {
         actions.register(pluginId, actionId, handler);
+    }
+
+    /**
+     * Refuses a write from a thread that may run at the same time as the player's tick: the scene layer of
+     * a connection takes no lock, and the end of the player's tick reads it (API-PLAY-005).
+     *
+     * @throws IllegalStateException unless the calling thread owns the player or runs the serial part of
+     *                               the tick
+     */
+    private static void checkThread(Player player, String call) {
+        if (player.acquirable().isOwned() || Thread.currentThread() instanceof TickSchedulerThread) return;
+        throw new IllegalStateException(call + " runs on the tick thread that owns connection_id="
+                + player.getPlayerConnection().connectionId() + " or in the serial part of the tick, not on "
+                + Thread.currentThread().getName() + ": hand it over with scheduler().runOn(player, ...)");
+    }
+
+    /**
+     * Refuses an action key or a panel button whose action no plugin registered, which the client would
+     * show and only ever get {@code UNKNOWN_ACTION} back for: the actions are registered in
+     * {@code onEnable}, so the registry is complete by the time a scene is entered.
+     *
+     * @throws IllegalArgumentException if no plugin registered the action
+     */
+    private void checkRegistered(String actionId) {
+        if (actions.find(actionId) == null)
+            throw new IllegalArgumentException("action " + actionId + " is not registered; register it with onAction in onEnable");
     }
 
     /**

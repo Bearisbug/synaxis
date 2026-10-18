@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -70,6 +71,14 @@ public interface ManagedInstance {
     Set<Player> players();
 
     /**
+     * How long the instance may stay {@link State#ENDING} before the host closes it with the fallback
+     * exit of its spec, {@link InstanceSpec#settleTimeout()}.
+     *
+     * @return the settle timeout
+     */
+    Duration settleTimeout();
+
+    /**
      * Moves a player into this instance. May be called from any thread; the move itself runs on the
      * tick thread that owns the player, and the scene layer holds back what it sends that player
      * until the move is done.
@@ -77,7 +86,9 @@ public interface ManagedInstance {
      * @param player the player
      * @param at     where the player lands
      * @return completes with true once the player is in, with false if the instance is not
-     *         {@link State#OPEN} or {@link State#RUNNING} or the player left. It completes on the
+     *         {@link State#OPEN} or {@link State#RUNNING}, the player left, a listener kept the
+     *         player out, a later change of instance took the place of this one, or the engine
+     *         failed to set the instance; it never completes exceptionally. It completes on the
      *         calling thread when the instance takes nobody at the call, on the tick scheduler thread
      *         when the player left before the move ran, and otherwise where the engine finishes
      *         setting the instance: the player's tick thread when the landing chunks are loaded,
@@ -94,9 +105,12 @@ public interface ManagedInstance {
 
     /**
      * Closes an instance that never started: {@link State#OPEN} to {@link State#CLOSED}, cause
-     * {@link EndCause#CANCELLED}, after the players are sent away.
+     * {@link EndCause#CANCELLED}. The instance is {@code CLOSED} as soon as this returns; the players
+     * are then sent away and the instance unregistered.
      *
-     * @param exit where each player goes
+     * @param exit where each player goes; an exit into another managed instance names one that is
+     *             {@link State#OPEN} or {@link State#RUNNING}, and a player whose move there
+     *             completes with false is kicked with {@code synaxis:match-unavailable}
      * @throws IllegalStateException if the instance is not {@code OPEN}
      */
     void cancel(Function<Player, Exit> exit);
@@ -114,9 +128,10 @@ public interface ManagedInstance {
 
     /**
      * Closes an ended instance: {@link State#ENDING} to {@link State#CLOSED}, keeping the cause of
-     * {@link #end}, after the players are sent away.
+     * {@link #end}. The instance is {@code CLOSED} as soon as this returns; the players are then sent
+     * away and the instance unregistered.
      *
-     * @param exit where each player goes
+     * @param exit where each player goes, as for {@link #cancel}
      * @throws IllegalStateException if the instance is not {@code ENDING}
      */
     void settled(Function<Player, Exit> exit);

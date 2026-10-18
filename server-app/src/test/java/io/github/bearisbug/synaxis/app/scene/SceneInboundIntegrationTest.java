@@ -133,6 +133,11 @@ class SceneInboundIntegrationTest {
         return new Client(connection, connection.connect(env.createFlatInstance(), SPAWN));
     }
 
+    /** Enters a scene on the tick thread that owns the player, which the test thread no longer is once a tick ran. */
+    private void enterOwned(Client client, SceneSpec scene) {
+        client.player().acquirable().sync(player -> rush.enter(player, scene));
+    }
+
     private static byte[] action(int sceneSeq, int actionSeq, String actionId) {
         final MsgBuf buf = MsgBuf.writing();
         new C2SAction(sceneSeq, actionSeq, actionId, new C2SAction.None()).write(buf);
@@ -175,7 +180,7 @@ class SceneInboundIntegrationTest {
     void anActionOfAnEarlierSceneIsAnsweredStaleAndNeverReachesTheHandler(Env env) {
         start(env, "rush");
         final Client client = inTheLobby(env);
-        rush.enter(client.player(), LOBBY);
+        enterOwned(client, LOBBY);
         env.tick();
         final Collector<PluginMessagePacket> packets = client.track();
 
@@ -216,7 +221,7 @@ class SceneInboundIntegrationTest {
     void aStaleActionIsJudgedBeforeTheRateLimit(Env env) {
         start(env, "rush");
         final Client client = inTheLobby(env);
-        rush.enter(client.player(), LOBBY);
+        enterOwned(client, LOBBY);
         env.tick();
         final Collector<PluginMessagePacket> packets = client.track();
         // Eleven of the scene before, then eleven of the current one, all in the window [100 s, 101 s)
@@ -320,7 +325,7 @@ class SceneInboundIntegrationTest {
     void onlyTheFirstReadyOfTheCurrentSceneReachesTheLedger(Env env) {
         start(env, "rush");
         final Client client = inTheLobby(env);
-        rush.enter(client.player(), LOBBY);
+        enterOwned(client, LOBBY);
         env.tick();
 
         send(env, client, ready(1), ready(2), ready(2), ready(3));

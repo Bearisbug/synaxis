@@ -143,16 +143,64 @@ class RoundTest {
         assertEquals(List.of("start", "end EMPTY", "settled"), arena.requests);
     }
 
+    /** The host turns the instance {@code CLOSED} as the settle is requested, so later ticks find nothing to do. */
     @Test
-    void aSettleIsNotRequestedTwiceWhileTheHostEvacuates() {
+    void aSettledRoundAsksForNothingMore() {
         final Probe round = started();
-        arena.evacuating = true;
         round.decision = EndCause.EMPTY;
+        round.tick();
         round.tick();
         round.tick();
         round.tick();
 
         assertEquals(List.of("start", "end EMPTY", "settled"), arena.requests);
+        assertEquals(ManagedInstance.State.CLOSED, arena.state);
+    }
+
+    /** {@code cancel()} from {@code readyToStart}: the instance is cancelled once, with the round's exits. */
+    @Test
+    void aRoundGivenUpBeforeItStartsIsCancelledOnce() {
+        final Probe round = new Probe(Duration.ZERO);
+        arena.state = ManagedInstance.State.OPEN;
+        round.giveUp = true;
+
+        round.tick();
+        round.tick();
+        round.tick();
+
+        assertEquals(List.of("cancel"), arena.requests);
+        assertEquals(List.of("readyToStart"), round.calls);
+        assertSame(round.exit, exitOf(null), "the instance was cancelled with exits that are not the round's");
+        assertTrue(logged.isEmpty(), "nothing failed, yet a line was written");
+    }
+
+    /** {@code cancel()} once the round runs: the instance refuses it, which closes the round as a failed callback. */
+    @Test
+    void aCancelWhileTheRoundRunsClosesItAsAFailedCallback() {
+        final Probe round = started();
+        round.cancelOnTick = true;
+
+        round.tick();
+
+        assertEquals(List.of("start", "end ERROR", "settled"), arena.requests);
+        assertOneFailure("onTick");
+    }
+
+    /** A callback that throws what is no {@code RuntimeException} closes the round the same way. */
+    @Test
+    void aTickThatThrowsAnErrorEndsTheRoundWithErrorAndSettlesIt() {
+        final Probe round = started();
+        round.failing = "onTick";
+        round.error = true;
+
+        round.tick();
+
+        assertEquals(List.of("start", "end ERROR", "settled"), arena.requests);
+        assertEquals(ManagedInstance.State.CLOSED, arena.state);
+        assertEquals(1, logged.size(), "one failed callback writes one line");
+        final SubstituteLoggingEvent line = logged.element();
+        assertEquals("onTick", line.getArgumentArray()[1]);
+        assertInstanceOf(StackOverflowError.class, line.getThrowable());
     }
 
     @Test
@@ -282,6 +330,23 @@ class RoundTest {
                 () -> new Probe(Duration.ZERO, LENGTH, Duration.ofMillis(-1)));
     }
 
+    /**
+     * The host closes an instance still {@code ENDING} at its settle timeout with the fallback exit of its
+     * spec, a kick by default: a result shown for as long would close every round that way.
+     */
+    @Test
+    void theResultIsShorterThanTheSettleTimeoutOfTheInstance() {
+        final IllegalArgumentException tooLong = assertThrows(IllegalArgumentException.class,
+                () -> new Probe(Duration.ZERO, LENGTH, Duration.ofSeconds(60)));
+        assertTrue(tooLong.getMessage().contains("PT30S") && tooLong.getMessage().contains("PT1M"), tooLong.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> new Probe(Duration.ZERO, LENGTH, Duration.ofSeconds(29)),
+                "a result that leaves less than a second before the settle timeout");
+
+        new Probe(Duration.ZERO, LENGTH, Duration.ofSeconds(10));
+        arena.settleTimeout = Duration.ofSeconds(75);
+        new Probe(Duration.ZERO, LENGTH, Duration.ofSeconds(60));
+    }
+
     private Probe started() {
         final Probe round = new Probe(Duration.ZERO);
         arena.state = ManagedInstance.State.OPEN;
@@ -319,6 +384,12 @@ class RoundTest {
         @Nullable Boolean ready;
         @Nullable EndCause decision;
         @Nullable String failing;
+        /** The failing callback throws an {@code Error} rather than an {@code IllegalStateException}. */
+        boolean error;
+        /** {@code readyToStart} gives the round up and answers false. */
+        boolean giveUp;
+        /** {@code onTick} asks for a cancel. */
+        boolean cancelOnTick;
 
         Probe(Duration countdown) {
             this(countdown, LENGTH, RESULT);
@@ -331,6 +402,10 @@ class RoundTest {
         @Override
         protected boolean readyToStart() {
             call("readyToStart");
+            if (giveUp) {
+                cancel();
+                return false;
+            }
             final Boolean answer = ready;
             return answer == null ? super.readyToStart() : answer;
         }
@@ -348,6 +423,7 @@ class RoundTest {
         @Override
         protected void onTick(Duration elapsed) {
             call("onTick " + elapsed);
+            if (cancelOnTick) cancel();
         }
 
         @Override
@@ -370,13 +446,16 @@ class RoundTest {
         private void call(String name) {
             calls.add(name);
             final String thrower = failing;
-            if (thrower != null && name.startsWith(thrower)) throw new IllegalStateException("probe: " + name);
+            if (thrower == null || !name.startsWith(thrower)) return;
+            if (error) throw new StackOverflowError("probe: " + name);
+            throw new IllegalStateException("probe: " + name);
         }
     }
 
     /**
      * The host's managed instance as far as a round sees it: the states of §11.1 and the requests that
-     * move them, refused from a state they do not leave.
+     * move them, refused from a state they do not leave; a cancel or a settle turns it {@code CLOSED} at
+     * once, as the host's swap does.
      */
     private static final class FakeArena implements ManagedInstance {
 
@@ -385,8 +464,8 @@ class RoundTest {
         @Nullable EndCause cause;
         @Nullable Function<Player, Exit> exit;
         Set<Player> players = Set.of();
-        /** The state stays put after a cancel or a settle, as while the host evacuates. */
-        boolean evacuating;
+        /** The 30 s of the spec of four arguments. */
+        Duration settleTimeout = Duration.ofSeconds(30);
 
         @Override
         public String id() {
@@ -419,6 +498,11 @@ class RoundTest {
         }
 
         @Override
+        public Duration settleTimeout() {
+            return settleTimeout;
+        }
+
+        @Override
         public CompletableFuture<Boolean> move(Player player, Pos at) {
             throw new UnsupportedOperationException("a round moves nobody");
         }
@@ -436,7 +520,7 @@ class RoundTest {
             requests.add("cancel");
             this.exit = exit;
             cause = EndCause.CANCELLED;
-            if (!evacuating) state = State.CLOSED;
+            state = State.CLOSED;
         }
 
         @Override
@@ -452,7 +536,7 @@ class RoundTest {
             require(State.ENDING);
             requests.add("settled");
             this.exit = exit;
-            if (!evacuating) state = State.CLOSED;
+            state = State.CLOSED;
         }
 
         private void require(State expected) {

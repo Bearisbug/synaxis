@@ -57,7 +57,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * keeping the overlays', a scene left keeping its number, the sizes refused before anything changes, the
  * actions of a plugin taken back when it is torn down, the scene layer of a connection dropped when it goes
  * and an enter in the meantime doing nothing, and an enter refused for a connection outside the play state.
- * It also times the exit (§15), printed only.
+ * The calls of a plugin come from a thread that owns the player or from the serial part of the tick, and an
+ * action of a scene or a panel is one the plugin registered; once a tick ran, the test thread no longer owns
+ * the player and hands its calls over with {@link #owned}. It also times the exit (§15), printed only.
  */
 @EnvTest
 class SceneServiceIntegrationTest {
@@ -104,10 +106,21 @@ class SceneServiceIntegrationTest {
         return new S2CHud.SetWidget(owner, widget.id(), WidgetEncoder.encode(owner, widget).widget());
     }
 
+    /** Runs a call of the plugin on the tick thread that owns the player, the way {@code runOn} hands one over. */
+    private static void owned(Player player, Runnable call) {
+        player.acquirable().sync(_ -> call.run());
+    }
+
+    /** The action of {@link #LOBBY}'s key, which a plugin registers in its {@code onEnable}. */
+    private static void registerQueue(PluginPlay rush) {
+        rush.onAction("queue", (_, _) -> new ActionResult.Ok());
+    }
+
     @Test
     void everyChangeOfATickLeavesAtItsEndAndTheSceneGoesFirst(Env env) {
         final SceneService scenes = SceneTestKit.service(env, "rush", ledger, System::nanoTime);
         final PluginPlay rush = scenes.forPlugin("rush");
+        registerQueue(rush);
         final Client client = join(env, env.createFlatInstance());
         final Collector<PluginMessagePacket> beforeTheTick = client.track();
 
@@ -164,6 +177,7 @@ class SceneServiceIntegrationTest {
         final SceneService scenes = SceneTestKit.service(env, "rush", ledger, System::nanoTime);
         final PluginPlay rush = scenes.forPlugin("rush");
         final PluginPlay overlay = scenes.forPlugin("x");
+        registerQueue(rush);
         final Client client = join(env, env.createFlatInstance());
         final Collector<PluginMessagePacket> packets = client.track();
 
@@ -171,7 +185,7 @@ class SceneServiceIntegrationTest {
         rush.hud(client.player()).set(TIMER);
         overlay.hud(client.player()).set(BANNER);
         env.tick();
-        rush.enter(client.player(), ROUND);
+        owned(client.player(), () -> rush.enter(client.player(), ROUND));
         env.tick();
 
         final Map<String, Map<String, io.github.bearisbug.synaxis.game.protocol.play.Widget>> shown =
@@ -180,7 +194,7 @@ class SceneServiceIntegrationTest {
         assertEquals(Set.of("banner"), shown.get("x").keySet());
 
         final Collector<PluginMessagePacket> removed = client.track();
-        overlay.hud(client.player()).remove("banner");
+        owned(client.player(), () -> overlay.hud(client.player()).remove("banner"));
         env.tick();
         assertEquals(List.of(new S2CHud(List.of(new S2CHud.RemoveWidget("x", "banner")))), SceneTestKit.messages(removed));
     }
@@ -214,7 +228,7 @@ class SceneServiceIntegrationTest {
         assertThrows(IllegalArgumentException.class, () -> rush.hud(client.player()).set(panel));
         env.tick();
         // Removing it would send a REMOVE had the table taken it
-        rush.hud(client.player()).remove("result");
+        owned(client.player(), () -> rush.hud(client.player()).remove("result"));
         env.tick();
 
         assertEquals(List.of(), SceneTestKit.messages(packets));
@@ -227,7 +241,10 @@ class SceneServiceIntegrationTest {
         final Client client = join(env, env.createFlatInstance());
         final Component long2000 = Component.text("l".repeat(2_000));
         final List<ActionSlot> slots = new ArrayList<>();
-        for (int slot = 0; slot < 4; slot++) slots.add(new ActionSlot(slot, "a" + slot, long2000, Duration.ZERO));
+        for (int slot = 0; slot < 4; slot++) {
+            rush.onAction("a" + slot, (_, _) -> new ActionResult.Ok());
+            slots.add(new ActionSlot(slot, "a" + slot, long2000, Duration.ZERO));
+        }
         final SceneSpec tooBig = new SceneSpec("big", long2000, new CameraSpec.Vanilla(), CursorMode.LOCKED, slots);
         final Collector<PluginMessagePacket> packets = client.track();
 
@@ -301,15 +318,17 @@ class SceneServiceIntegrationTest {
         env.tick();
         final Collector<PluginMessagePacket> packets = client.track();
 
-        rush.leave(client.player());
+        owned(client.player(), () -> rush.leave(client.player()));
         env.tick();
         // The number stays: an action of the scene left is unknown now, not stale
         scenes.receive(client.player(), action(1, 2, "rush:queue"));
         scenes.receive(client.player(), ready(1));
-        rush.leave(client.player());
-        overlay.hud(client.player()).clear();
+        owned(client.player(), () -> {
+            rush.leave(client.player());
+            overlay.hud(client.player()).clear();
+        });
         env.tick();
-        overlay.hud(client.player()).clear();
+        owned(client.player(), () -> overlay.hud(client.player()).clear());
         env.tick();
 
         assertEquals(Optional.empty(), rush.currentScene(client.player()));
@@ -323,6 +342,7 @@ class SceneServiceIntegrationTest {
     void aConnectionThatGoesTakesItsSceneLayerAlongAndCannotEnterAnother(Env env) {
         final SceneService scenes = SceneTestKit.service(env, "rush", ledger, System::nanoTime);
         final PluginPlay rush = scenes.forPlugin("rush");
+        registerQueue(rush);
         final Player player = join(env, env.createFlatInstance()).player();
         rush.enter(player, LOBBY);
         env.tick();
@@ -331,7 +351,7 @@ class SceneServiceIntegrationTest {
         // A test connection only goes offline; the removal on the player's next tick, which fires
         // PlayerDisconnectEvent, is what a real connection's disconnect adds in the play state
         player.getPlayerConnection().disconnect();
-        rush.enter(player, ROUND);
+        owned(player, () -> rush.enter(player, ROUND));
         assertEquals(1, ledger.of("play_scene_entered").size(), "a scene was entered for a connection offline");
         player.scheduleNextTick(Entity::remove);
         env.tick();
@@ -353,6 +373,85 @@ class SceneServiceIntegrationTest {
         assertEquals(Optional.empty(), rush.currentScene(player));
         assertEquals(List.of(), ledger.of("play_scene_entered"));
         connection.setServerState(ConnectionState.PLAY);
+    }
+
+    /**
+     * {@code API-PLAY-005} 线程: the scene layer of a connection takes no lock, so a call from a thread that
+     * may run at the same time as the player's tick, such as the asynchronous callback of a plugin, is refused
+     * and changes nothing; the same call handed over to the player's thread goes through.
+     */
+    @Test
+    void aCallFromAThreadThatDoesNotOwnThePlayerIsRefusedAndChangesNothing(Env env) throws InterruptedException {
+        final SceneService scenes = SceneTestKit.service(env, "rush", ledger, System::nanoTime);
+        final PluginPlay rush = scenes.forPlugin("rush");
+        final Client client = join(env, env.createFlatInstance());
+        final Player player = client.player();
+        rush.enter(player, ROUND);
+        rush.hud(player).set(HINT);
+        env.tick();
+        final Collector<PluginMessagePacket> packets = client.track();
+        final List<Runnable> calls = List.of(() -> rush.enter(player, ROUND), () -> rush.leave(player),
+                () -> rush.hud(player).set(TIMER), () -> rush.hud(player).remove("hint"), () -> rush.hud(player).clear());
+        final List<String> refused = new CopyOnWriteArrayList<>();
+
+        Thread.ofVirtual().start(() -> {
+            for (Runnable call : calls) {
+                try {
+                    call.run();
+                } catch (IllegalStateException e) {
+                    refused.add(e.getMessage());
+                }
+            }
+        }).join();
+        env.tick();
+
+        assertEquals(5, refused.size(), refused.toString());
+        for (String message : refused)
+            assertTrue(message.contains("runs on the tick thread that owns connection_id="
+                    + player.getPlayerConnection().connectionId()) && message.contains("runOn"), message);
+        assertEquals(List.of(), SceneTestKit.messages(packets), "a refused call changed what the client is sent");
+        assertEquals(Optional.of("rush:round"), rush.currentScene(player));
+        assertEquals(1, ledger.of("play_scene_entered").size());
+
+        final Collector<PluginMessagePacket> handedOver = client.track();
+        owned(player, () -> rush.hud(player).set(TIMER));
+        env.tick();
+        assertEquals(List.of(new S2CHud(List.of(set("rush", TIMER)))), SceneTestKit.messages(handedOver));
+    }
+
+    /**
+     * {@code API-PLAY-005}: an action key or a panel button whose action nobody registered is refused when the
+     * scene is entered or the widget set, before anything changes, rather than shown and only ever answered
+     * {@code UNKNOWN_ACTION}.
+     */
+    @Test
+    void anActionNobodyRegisteredIsRefusedAndChangesNothing(Env env) {
+        final SceneService scenes = SceneTestKit.service(env, "rush", ledger, System::nanoTime);
+        final PluginPlay rush = scenes.forPlugin("rush");
+        registerQueue(rush);
+        rush.onAction("back", (_, _) -> new ActionResult.Ok());
+        scenes.sealActions("rush");
+        final Client client = join(env, env.createFlatInstance());
+        final SceneSpec misspelt = new SceneSpec("lobby", Component.text("Lobby"), new CameraSpec.Vanilla(),
+                CursorMode.LOCKED, List.of(new ActionSlot(0, "queu", Component.text("Queue"), Duration.ZERO)));
+        final Widget.Panel panel = new Widget.Panel("result", Component.text("Result"), List.of(),
+                List.of(new Widget.Button("back", Component.text("Back")), new Widget.Button("bakc", Component.text("Back"))));
+        final Collector<PluginMessagePacket> packets = client.track();
+
+        final IllegalArgumentException scene = assertThrows(IllegalArgumentException.class,
+                () -> rush.enter(client.player(), misspelt));
+        final IllegalArgumentException widget = assertThrows(IllegalArgumentException.class,
+                () -> rush.hud(client.player()).set(panel));
+        env.tick();
+        // Removing it would send a REMOVE had the table taken it
+        owned(client.player(), () -> rush.hud(client.player()).remove("result"));
+        env.tick();
+
+        assertEquals("action rush:queu is not registered; register it with onAction in onEnable", scene.getMessage());
+        assertEquals("action rush:bakc is not registered; register it with onAction in onEnable", widget.getMessage());
+        assertEquals(Optional.empty(), rush.currentScene(client.player()));
+        assertEquals(List.of(), SceneTestKit.messages(packets));
+        assertEquals(List.of(), ledger.lines);
     }
 
     @Test

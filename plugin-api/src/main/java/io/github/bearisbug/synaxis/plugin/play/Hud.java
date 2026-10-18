@@ -9,6 +9,9 @@ import org.jetbrains.annotations.ApiStatus;
  * overwrite each other. Every change sends the whole widget at the end of the player's tick; two
  * changes of the same widget in one tick reach the client as the later one.
  * <p>
+ * The three methods are called on the tick thread that owns the player or in the serial part of the
+ * tick, as {@link PluginPlay} says; on any other thread they throw an {@link IllegalStateException}.
+ * <p>
  * Only the host implements this interface: a plugin is handed one and calls it.
  */
 @ApiStatus.NonExtendable
@@ -20,7 +23,10 @@ public interface Hud {
      * @param widget the widget
      * @throws IllegalArgumentException if a component of it encodes to more than 2,048 bytes, the
      *                                  whole widget to more than 4,096, or the action id of a panel
-     *                                  button carries another plugin's namespace; nothing changes
+     *                                  button carries another plugin's namespace or was not
+     *                                  registered with {@link PluginPlay#onAction}; nothing changes
+     * @throws IllegalStateException    if called on a thread that neither owns the player nor runs
+     *                                  the serial part of the tick
      */
     void set(Widget widget);
 

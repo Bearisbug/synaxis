@@ -569,6 +569,7 @@ class CommandsIntegrationTest {
             firstTrees = firstConnection.trackIncoming(DeclareCommandsPacket.class);
             final Collector<DeclareCommandsPacket> secondTrees = secondConnection.trackIncoming(DeclareCommandsPacket.class);
             mmo.context().commands().register(boss);
+            env.tick();
             for (Collector<DeclareCommandsPacket> trees : List.of(firstTrees, secondTrees)) {
                 final Set<String> after = lastTree(trees);
                 assertTrue(after.contains("mmo:raid") && !after.contains("mmo:boss") && !after.contains("boss"),

@@ -7,6 +7,7 @@ import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.utils.StringUtils;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 /**
@@ -93,6 +94,11 @@ public class ArgumentWord extends Argument<String> {
     @Nullable
     public String[] getRestrictions() {
         return restrictions;
+    }
+
+    @Override
+    public boolean sameConfiguration(Argument<?> other) {
+        return other instanceof ArgumentWord word && Arrays.equals(restrictions, word.restrictions);
     }
 
     @Override

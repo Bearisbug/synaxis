@@ -176,10 +176,13 @@ public class ArgumentType {
     /**
      * Creates a new {@link ArgumentResource}.
      *
+     * @param id          the id of the argument
+     * @param registryKey the key of a registry the client knows, such as {@code minecraft:enchantment}
+     * @throws IllegalArgumentException if {@code registryKey} is not a key
      * @see ArgumentResource
      */
-    public static ArgumentResource Resource(String id, String identifier) {
-        return new ArgumentResource(id, identifier);
+    public static ArgumentResource Resource(String id, String registryKey) {
+        return new ArgumentResource(id, registryKey);
     }
 
     /**
@@ -194,10 +197,13 @@ public class ArgumentType {
     /**
      * Creates a new {@link ArgumentResourceOrTag}.
      *
+     * @param id          the id of the argument
+     * @param registryKey the key of a registry the client knows, such as {@code minecraft:enchantment}
+     * @throws IllegalArgumentException if {@code registryKey} is not a key
      * @see ArgumentResourceOrTag
      */
-    public static ArgumentResourceOrTag ResourceOrTag(String id, String identifier) {
-        return new ArgumentResourceOrTag(id, identifier);
+    public static ArgumentResourceOrTag ResourceOrTag(String id, String registryKey) {
+        return new ArgumentResourceOrTag(id, registryKey);
     }
 
     /**

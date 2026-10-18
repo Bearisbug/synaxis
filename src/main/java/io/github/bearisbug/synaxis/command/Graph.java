@@ -61,10 +61,16 @@ sealed interface Graph permits GraphImpl {
         @Nullable CommandExecutor executor();
 
         /**
-         * Non-null if the command or syntax has a condition, must be present
-         * only on nodes that specify it
+         * Non-null on the node of a command or subcommand that has a condition, which every command run through the
+         * node has to pass
          */
         @Nullable CommandCondition condition();
+
+        /**
+         * Non-null on the node a syntax with a condition ends at, which only a run of {@link #executor()} has to
+         * pass
+         */
+        @Nullable CommandCondition executorCondition();
     }
 
     sealed interface Builder permits GraphImpl.BuilderImpl {

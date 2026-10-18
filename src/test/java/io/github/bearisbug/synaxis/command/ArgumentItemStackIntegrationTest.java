@@ -53,4 +53,19 @@ public class ArgumentItemStackIntegrationTest {
         assertThrows(ArgumentSyntaxException.class, () -> argument.parse(new ServerSender(env.process()), "Diamond_Sword"));
         assertThrows(ArgumentSyntaxException.class, () -> argument.parse(new ServerSender(env.process()), "stone[not a component]"));
     }
+
+    /**
+     * A component that has no codec cannot be set from a command, and a value the codec reads but the component's
+     * constructor refuses is invalid, instead of the exception escaping the parser.
+     */
+    @Test
+    public void aComponentWithoutACodecOrAValueItsConstructorRefusesIsInvalid(Env env) {
+        var argument = ArgumentType.ItemStack("item");
+        var sender = new ServerSender(env.process());
+        assertThrows(ArgumentSyntaxException.class, () -> argument.parse(sender, "stone[creative_slot_lock={}]"));
+        assertThrows(ArgumentSyntaxException.class, () -> argument.parse(sender,
+                "apple[consumable={on_consume_effects:[{type:\"apply_effects\",effects:[],probability:2f}]}]"));
+        assertDoesNotThrow(() -> argument.parse(sender,
+                "apple[consumable={on_consume_effects:[{type:\"apply_effects\",effects:[],probability:0.5f}]}]"));
+    }
 }

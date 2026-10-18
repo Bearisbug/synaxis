@@ -7,6 +7,7 @@ import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
 import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentCommand;
 import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentLiteral;
 import io.github.bearisbug.synaxis.command.builder.condition.CommandCondition;
+import io.github.bearisbug.synaxis.command.builder.exception.IllegalCommandStructureException;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
 
@@ -15,6 +16,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -24,6 +26,21 @@ import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType
 record GraphImpl(NodeImpl root) implements Graph {
     static GraphImpl fromCommand(Command command) {
         return new GraphImpl(NodeImpl.command(command));
+    }
+
+    /**
+     * Checks what the parser cannot follow, which would otherwise fail every run of the command or leave a syntax
+     * that never runs: an argument id appearing twice on one path, two syntaxes ending at one node, or two arguments
+     * of one class and id at one place configured differently.
+     *
+     * @param command the command to register
+     * @throws IllegalCommandStructureException if an argument id appears twice on one path, or two syntaxes end at
+     *                                          one node with a different executor or condition
+     * @throws IllegalArgumentException         if two arguments of one class and id at one place are configured
+     *                                          differently
+     */
+    static void checkStructure(Command command) {
+        ConversionNode.fromCommand(command, List.of(command.getName()));
     }
 
     static Graph merge(Collection<Command> commands) {
@@ -109,7 +126,8 @@ record GraphImpl(NodeImpl root) implements Graph {
             @Nullable CommandExecutor defaultExecutor,
             @Nullable CommandExecutor globalListener,
             @Nullable CommandExecutor executor,
-            @Nullable CommandCondition condition
+            @Nullable CommandCondition condition,
+            @Nullable CommandCondition executorCondition
     ) implements Execution {
         @Override
         public boolean test(CommandSender commandSender) {
@@ -121,17 +139,12 @@ record GraphImpl(NodeImpl root) implements Graph {
             final CommandCondition defaultCondition = command.getCondition();
 
             CommandExecutor executor = defaultExecutor;
-            CommandCondition condition = defaultCondition;
+            CommandCondition executorCondition = null;
             for (var syntax : command.getSyntaxes()) {
                 if (syntax.getArguments().length == 0) {
+                    // Its condition guards its executor only, not the syntaxes with arguments nor the default executor
                     executor = syntax.getExecutor();
-                    CommandCondition syntaxCondition = syntax.getCommandCondition();
-                    if (syntaxCondition != null && defaultCondition != null) {
-                        condition = (sender, commandString) ->
-                            defaultCondition.canUse(sender, commandString) && syntaxCondition.canUse(sender, commandString);
-                    } else if (syntaxCondition != null) {
-                        condition = syntaxCondition;
-                    }
+                    executorCondition = syntax.getCommandCondition();
                     break;
                 }
             }
@@ -140,14 +153,14 @@ record GraphImpl(NodeImpl root) implements Graph {
 
             return new ExecutionImpl(
                     commandSender -> defaultCondition == null || defaultCondition.canUse(commandSender, null),
-                    defaultExecutor, globalListener, executor, condition);
+                    defaultExecutor, globalListener, executor, defaultCondition, executorCondition);
         }
 
         static ExecutionImpl fromSyntax(CommandSyntax syntax) {
             final CommandExecutor executor = syntax.getExecutor();
             final CommandCondition condition = syntax.getCommandCondition();
             return new ExecutionImpl(commandSender -> condition == null || condition.canUse(commandSender, null),
-                                     null, null, executor, condition);
+                                     null, null, executor, null, condition);
         }
 
         /**
@@ -157,21 +170,33 @@ record GraphImpl(NodeImpl root) implements Graph {
         static ExecutionImpl fromSyntaxPath(CommandSyntax syntax) {
             final CommandCondition condition = syntax.getCommandCondition();
             return new ExecutionImpl(commandSender -> condition == null || condition.canUse(commandSender, null),
-                                     null, null, null, null);
+                                     null, null, null, null, null);
         }
 
         /**
          * A node can be shared by several syntaxes. It stays visible as long as one of them accepts the sender, and
-         * it keeps the first executor installed on it.
+         * it keeps the first executor installed on it, with the condition of the syntax that executor belongs to.
          */
         static ExecutionImpl merge(@Nullable ExecutionImpl current, ExecutionImpl added) {
             if (current == null) return added;
+            final ExecutionImpl ending = current.executor() != null ? current : added;
             return new ExecutionImpl(
                     commandSender -> current.test(commandSender) || added.test(commandSender),
                     current.defaultExecutor() != null ? current.defaultExecutor() : added.defaultExecutor(),
                     current.globalListener() != null ? current.globalListener() : added.globalListener(),
-                    current.executor() != null ? current.executor() : added.executor(),
-                    current.condition() != null ? current.condition() : added.condition());
+                    ending.executor(),
+                    current.condition() != null ? current.condition() : added.condition(),
+                    ending.executorCondition());
+        }
+
+        /**
+         * Whether two executions both end a syntax at one node, with a different executor or condition: only the
+         * first one would ever run.
+         */
+        static boolean conflict(ExecutionImpl current, ExecutionImpl added) {
+            return current.executor() != null && added.executor() != null
+                    && !(Objects.equals(current.executor(), added.executor())
+                    && Objects.equals(current.executorCondition(), added.executorCondition()));
         }
     }
 
@@ -198,22 +223,46 @@ record GraphImpl(NodeImpl root) implements Graph {
         }
 
         static ConversionNode fromCommand(Command command) {
+            return fromCommand(command, null);
+        }
+
+        /**
+         * @param path the ids from the command being registered down to this one, the first being the name of the
+         *             registered command; null to build the graph as it is, without checking its structure
+         * @throws IllegalCommandStructureException if {@code path} is given and an argument id appears twice on one
+         *                                          path, or two syntaxes end at the same node
+         * @throws IllegalArgumentException         if {@code path} is given and two arguments of one class and id
+         *                                          at the same place are configured differently
+         */
+        static ConversionNode fromCommand(Command command, @Nullable List<String> path) {
             ConversionNode root = new ConversionNode(commandToArgument(command), ExecutionImpl.fromCommand(command));
+            if (path != null) checkZeroArgumentSyntaxes(command, path);
             // Subcommands
             for (Command subcommand : command.getSubcommands()) {
-                root.nextMap.put(commandToArgument(subcommand), fromCommand(subcommand));
+                root.nextMap.put(commandToArgument(subcommand),
+                        fromCommand(subcommand, path == null ? null : appended(path, subcommand.getName())));
             }
             // Syntaxes
             for (CommandSyntax syntax : command.getSyntaxes()) {
                 ConversionNode syntaxNode = root;
+                List<String> syntaxPath = path;
                 final Argument<?>[] arguments = syntax.getArguments();
                 for (int i = 0; i < arguments.length; i++) {
                     final Argument<?> arg = arguments[i];
-                    // Compare by index: the same Argument instance may legitimately appear twice in one syntax
+                    // Compare by index, not by instance: the arguments of a parsed command are keyed by id, so an
+                    // instance appearing twice in one syntax is refused when the command is registered
                     final boolean last = i == arguments.length - 1;
                     final ExecutionImpl ex = last ? ExecutionImpl.fromSyntax(syntax) : ExecutionImpl.fromSyntaxPath(syntax);
-                    syntaxNode = syntaxNode.nextMap.computeIfAbsent(arg, argument -> new ConversionNode(argument, ex));
-                    syntaxNode.execution = ExecutionImpl.merge(syntaxNode.execution, ex);
+                    if (syntaxPath != null) syntaxPath = appended(syntaxPath, arg.getId());
+                    ConversionNode next = syntaxNode.nextMap.get(arg);
+                    if (next == null) {
+                        next = new ConversionNode(arg, ex);
+                        syntaxNode.nextMap.put(arg, next);
+                    } else {
+                        if (syntaxPath != null) checkMerge(next, arg, ex, syntaxPath);
+                        next.execution = ExecutionImpl.merge(next.execution, ex);
+                    }
+                    syntaxNode = next;
                 }
             }
             return root;
@@ -228,6 +277,40 @@ record GraphImpl(NodeImpl root) implements Graph {
             return new ConversionNode(Literal(""), null, next);
         }
 
+        /** The arguments of a parsed command are keyed by id, from below the registered command down. */
+        private static List<String> appended(List<String> path, String id) {
+            if (path.subList(1, path.size()).contains(id)) {
+                throw new IllegalCommandStructureException("command '" + path.getFirst() + "': the argument id '" + id
+                        + "' appears twice on the path " + String.join(" ", path) + " " + id);
+            }
+            final List<String> appended = new ArrayList<>(path);
+            appended.add(id);
+            return appended;
+        }
+
+        private static void checkZeroArgumentSyntaxes(Command command, List<String> path) {
+            ExecutionImpl first = null;
+            for (CommandSyntax syntax : command.getSyntaxes()) {
+                if (syntax.getArguments().length != 0) continue;
+                final ExecutionImpl ex = ExecutionImpl.fromSyntax(syntax);
+                if (first == null) first = ex;
+                else if (ExecutionImpl.conflict(first, ex)) throw twoSyntaxesEnd(path);
+            }
+        }
+
+        private static void checkMerge(ConversionNode node, Argument<?> arg, ExecutionImpl ex, List<String> path) {
+            if (node.argument != arg && !node.argument.sameConfiguration(arg)) {
+                throw new IllegalArgumentException("command '" + path.getFirst() + "': two arguments with the id '"
+                        + arg.getId() + "' at " + String.join(" ", path)
+                        + " are configured differently; give one of them another id");
+            }
+            if (ExecutionImpl.conflict(node.execution, ex)) throw twoSyntaxesEnd(path);
+        }
+
+        private static IllegalCommandStructureException twoSyntaxesEnd(List<String> path) {
+            return new IllegalCommandStructureException("command '" + path.getFirst() + "': two syntaxes end at "
+                    + String.join(" ", path) + ", only the first registered would run");
+        }
     }
 
     static Argument<String> commandToArgument(Command command) {
@@ -255,10 +338,13 @@ record GraphImpl(NodeImpl root) implements Graph {
     private static boolean compareExecution(Node firstNode, Node secondNode) {
         Execution first = firstNode.execution(), second = secondNode.execution();
         boolean firstExecutor = first != null && first.executor() != null,
-                firstCondition = first != null && first.condition() != null;
+                firstCondition = first != null && first.condition() != null,
+                firstExecutorCondition = first != null && first.executorCondition() != null;
         boolean secondExecutor = second != null && second.executor() != null,
-                secondCondition = second != null && second.condition() != null;
+                secondCondition = second != null && second.condition() != null,
+                secondExecutorCondition = second != null && second.executorCondition() != null;
         return firstExecutor == secondExecutor &&
-                firstCondition == secondCondition;
+                firstCondition == secondCondition &&
+                firstExecutorCondition == secondExecutorCondition;
     }
 }

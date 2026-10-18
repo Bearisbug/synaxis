@@ -17,9 +17,12 @@ import org.jetbrains.annotations.ApiStatus;
  * player that sent the command, and on the console reader thread for the console. What an executor
  * throws is logged by the host at most once every 10 s per command, and the sender is told the
  * command failed. The same goes for the error callback of an argument. A condition is also asked
- * while a player spawns, before it has an instance; what a condition throws shares that budget and
- * counts as refused: the command or syntax is left out of the player's completions, and running it
- * is refused.
+ * with no command string to build a player's completions: while the player spawns, before it has an
+ * instance, and on the player's tick thread when the host sends it a new command tree, after a
+ * command is registered or unregistered and after the player's permissions change; conditions of
+ * different players can be asked at once, so a condition reads only what is safe to read from any
+ * tick thread. What a condition throws shares that budget and counts as refused: the command or
+ * syntax is left out of the player's completions, and running it is refused.
  * <p>
  * Only the host implements this interface: a plugin is handed one and calls it.
  */
@@ -28,10 +31,19 @@ public interface PluginCommands {
 
     /**
      * Registers a command under this plugin's namespace.
+     * <p>
+     * Do not change the command once it is registered, a change takes effect at no set time:
+     * unregister it and register it again instead. A name the engine refuses (upper case,
+     * whitespace, a leading {@code /}) has already failed in the {@link Command} constructor.
      *
      * @param command a command whose name and aliases hold no {@code :}
-     * @throws IllegalArgumentException if a name or an alias holds {@code :}
+     * @throws IllegalArgumentException if a name or an alias holds {@code :}, or two arguments of one
+     *                                  class and id at the same place of the command are configured
+     *                                  differently
      * @throws IllegalStateException    if this plugin already registered a command under one of its names
+     * @throws io.github.bearisbug.synaxis.command.builder.exception.IllegalCommandStructureException
+     *                                  if an argument id appears twice on one path through the command,
+     *                                  or two syntaxes end at the same place
      */
     void register(Command command);
 

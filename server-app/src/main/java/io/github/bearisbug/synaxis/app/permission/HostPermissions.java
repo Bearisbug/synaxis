@@ -136,10 +136,11 @@ public final class HostPermissions implements Permissions {
             final Entry before = loaded.get(player);
             final Entry after = loaded.computeIfPresent(player, (_, previous) -> later(previous, next));
             // The commands a player may run are also its completions (API-PROD-011), sent once at
-            // spawn; a player still logging in gets them at spawn, with what was just read
+            // spawn; a player still logging in gets them at spawn, with what was just read. They are
+            // built on the player's tick thread, where the conditions of the plugins' commands are asked
             if (before != null && after != null && !before.grants().nodes().equals(after.grants().nodes())
                     && player.getPlayerConnection().getServerState() == ConnectionState.PLAY)
-                player.refreshCommands();
+                player.scheduler().scheduleNextTick(player::refreshCommands);
         }
     }
 

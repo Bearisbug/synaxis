@@ -10,6 +10,7 @@ import io.github.bearisbug.synaxis.app.store.Migrations;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.app.store.RedisLink;
 import io.github.bearisbug.synaxis.app.store.TestDatabase;
+import io.github.bearisbug.synaxis.command.builder.Command;
 import io.github.bearisbug.synaxis.command.builder.CommandResult;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
@@ -21,6 +22,7 @@ import io.github.bearisbug.synaxis.testing.Collector;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import io.github.bearisbug.synaxis.testing.TestConnection;
+import io.github.bearisbug.synaxis.thread.TickThread;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,10 +34,12 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The commands of the host behind the roles of PostgreSQL ({@code docs/DESIGN-PROD.md}
@@ -116,5 +120,36 @@ class CommandRolesIntegrationTest {
         final Set<String> revoked = nextTree(env, connection, () -> database.execute(
                 "DELETE FROM account_role WHERE account_uuid = '" + account + "'"));
         assertFalse(revoked.contains("kick"), revoked.toString());
+    }
+
+    /**
+     * The command tree a read of the roles sends is built on the player's tick thread, not on the thread that read
+     * the roles: the conditions of the commands, a plugin's among them, are asked there.
+     */
+    @Test
+    void theTreeARoleChangeSendsIsBuiltOnThePlayersTickThread(Env env) {
+        final HostPermissions permissions = new HostPermissions(env.process(), new RoleStore(pool.pool()),
+                RedisLink.disabled("roles"), Duration.ofSeconds(1));
+        final EventNode<Event> node = EventNode.all("command-roles");
+        env.process().eventHandler().addChild(node);
+        permissions.attach(node);
+        final List<Thread> asked = new CopyOnWriteArrayList<>();
+        final Command probe = new Command("probe");
+        probe.setCondition((_, commandString) -> {
+            if (commandString == null) asked.add(Thread.currentThread());
+            return true;
+        });
+        env.process().command().register(probe);
+        final UUID account = UUID.randomUUID();
+        final TestConnection connection = env.createConnection(new GameProfile(account, "Warden"));
+        final Player player = connection.connect(env.createFlatInstance(), new Pos(0, 41, 0));
+        permissions.load(player);
+        asked.clear();
+
+        final Set<String> granted = nextTree(env, connection, () -> database.execute(
+                "INSERT INTO account_role (account_uuid, role_id) VALUES ('" + account + "', 'warden')"));
+        assertTrue(granted.contains("probe"), granted.toString());
+        assertFalse(asked.isEmpty(), "the condition was not asked");
+        assertTrue(asked.stream().allMatch(TickThread.class::isInstance), asked.toString());
     }
 }

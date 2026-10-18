@@ -15,6 +15,9 @@ import static io.github.bearisbug.synaxis.command.RelativeVec.CoordinateType.REL
 
 /**
  * Common interface for all the relative location arguments.
+ * <p>
+ * Every coordinate, absolute or relative, has to be a finite number: NaN and the infinities fail with
+ * {@link #INVALID_NUMBER_ERROR}.
  */
 abstract class ArgumentRelativeVec extends Argument<RelativeVec> {
 
@@ -79,6 +82,8 @@ abstract class ArgumentRelativeVec extends Argument<RelativeVec> {
                         break;
                     }
                 }
+                if (!Double.isFinite(coordinates[i]))
+                    throw new ArgumentSyntaxException("Invalid number", input, INVALID_NUMBER_ERROR);
             } catch (NumberFormatException _) {
                 throw new ArgumentSyntaxException("Invalid number", input, INVALID_NUMBER_ERROR);
             }

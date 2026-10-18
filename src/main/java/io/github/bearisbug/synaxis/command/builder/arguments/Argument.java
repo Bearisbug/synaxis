@@ -22,6 +22,10 @@ import java.util.function.Supplier;
  * You can create your own with your own special conditions.
  * <p>
  * Arguments are parsed using {@link #parse(CommandSender, String)}.
+ * <p>
+ * Arguments of the same class and id at the same place of several syntaxes are one node of the command, the first
+ * registered instance being the one parsed; they have to be configured the same, which
+ * {@link #sameConfiguration(Argument)} tells.
  *
  * @param <T> the type of this parsed argument
  */
@@ -270,6 +274,11 @@ public abstract class Argument<T> {
      * <p>
      * The default value and the suggestion callback of this argument are copied when this is called, so set them
      * first; the error callback is not, set it on the returned argument.
+     * <p>
+     * An input the mapper returns null for, or throws on, is invalid: the parse fails with error code 555 and what the
+     * mapper threw as the cause, so a fault of the mapper reads as an invalid input and is not logged. Two mapped
+     * arguments at the same place of a command count as configured the same when the arguments they map are, whatever
+     * their mappers: the first registered mapper is the one used.
      *
      * @param mapper The mapper to use (this argument's input = desired output)
      * @param <O>    The type of output expected.
@@ -287,6 +296,8 @@ public abstract class Argument<T> {
      * Maps this argument's output to another result.
      * <p>
      * As with {@link #map(Function)}, the default value and the suggestion callback are copied when this is called.
+     * An input the predicate refuses, or throws on, is invalid, with error code 556; predicates count for no
+     * configuration as mappers do.
      *
      * @param predicate the argument predicate
      * @return A new ArgumentMap that filters using this filterer.
@@ -296,8 +307,20 @@ public abstract class Argument<T> {
         return new ArgumentFilter<>(this, predicate);
     }
 
-    // getClass is required: arguments of different types sharing an id must stay distinct,
-    // the command graph merges nodes keyed by this equality
+    /**
+     * Whether this argument parses as {@code other} does, which is asked of an argument this one {@link #equals}: two
+     * syntaxes holding them at the same place share one node, so a command whose arguments differ there is refused
+     * when it is registered. An argument with a setting of its own overrides this.
+     *
+     * @param other an argument of the same class and id
+     * @return true if the two are configured the same, true by default
+     */
+    public boolean sameConfiguration(Argument<?> other) {
+        return true;
+    }
+
+    // getClass is required: arguments of different types sharing an id must stay distinct. The command graph merges
+    // nodes keyed by this equality, class and id only: what else configures an argument is sameConfiguration's
     @SuppressWarnings("EqualsGetClass")
     @Override
     public boolean equals(Object o) {
@@ -312,6 +335,12 @@ public abstract class Argument<T> {
     @Override
     public int hashCode() {
         return id.hashCode();
+    }
+
+    private static ArgumentSyntaxException invalid(String message, String input, int errorCode, RuntimeException cause) {
+        final ArgumentSyntaxException invalid = new ArgumentSyntaxException(message, input, errorCode);
+        invalid.initCause(cause);
+        return invalid;
     }
 
     private static final class ArgumentMap<I, O> extends Argument<O> {
@@ -332,7 +361,14 @@ public abstract class Argument<T> {
         @Override
         public O parse(CommandSender sender, String input) throws ArgumentSyntaxException {
             final I value = argument.parse(sender, input);
-            final O mappedValue = mapper.apply(sender, value);
+            final O mappedValue;
+            try {
+                mappedValue = mapper.apply(sender, value);
+            } catch (ArgumentSyntaxException e) {
+                throw e;
+            } catch (RuntimeException e) {
+                throw invalid("Couldn't be converted to map type", input, INVALID_MAP, e);
+            }
             if (mappedValue == null)
                 throw new ArgumentSyntaxException("Couldn't be converted to map type", input, INVALID_MAP);
             return mappedValue;
@@ -358,6 +394,12 @@ public abstract class Argument<T> {
         public Argument<?> unwrap() {
             return argument.unwrap();
         }
+
+        @Override
+        public boolean sameConfiguration(Argument<?> other) {
+            return other instanceof ArgumentMap<?, ?> map && argument.equals(map.argument)
+                    && argument.sameConfiguration(map.argument);
+        }
     }
 
     private static final class ArgumentFilter<T> extends Argument<T> {
@@ -378,7 +420,15 @@ public abstract class Argument<T> {
         @Override
         public T parse(CommandSender sender, String input) throws ArgumentSyntaxException {
             final T result = argument.parse(sender, input);
-            if (!predicate.test(result))
+            final boolean accepted;
+            try {
+                accepted = predicate.test(result);
+            } catch (ArgumentSyntaxException e) {
+                throw e;
+            } catch (RuntimeException e) {
+                throw invalid("Predicate failed", input, INVALID_FILTER, e);
+            }
+            if (!accepted)
                 throw new ArgumentSyntaxException("Predicate failed", input, INVALID_FILTER);
             return result;
         }
@@ -402,6 +452,12 @@ public abstract class Argument<T> {
         @Override
         public Argument<?> unwrap() {
             return argument.unwrap();
+        }
+
+        @Override
+        public boolean sameConfiguration(Argument<?> other) {
+            return other instanceof ArgumentFilter<?> filter && argument.equals(filter.argument)
+                    && argument.sameConfiguration(filter.argument);
         }
     }
 }

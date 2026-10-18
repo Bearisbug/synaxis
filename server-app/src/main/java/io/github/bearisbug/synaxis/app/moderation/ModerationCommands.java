@@ -11,6 +11,7 @@ import io.github.bearisbug.synaxis.plugin.Ban;
 import io.github.bearisbug.synaxis.plugin.BanTarget;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.Permissions;
+import io.github.bearisbug.synaxis.utils.StringUtils;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -123,7 +124,7 @@ public final class ModerationCommands {
             try {
                 outcome = action.run();
             } catch (CompletionException e) {
-                failures.warn(e.getCause(), "A moderation command failed: command={}", input);
+                failures.warn(e.getCause(), "A moderation command failed: command={}", StringUtils.escapeForLog(input));
                 reply(sender, "synaxis:moderation-unavailable", "Bans cannot be reached right now");
                 outcome = new Outcome("unavailable", null);
             }

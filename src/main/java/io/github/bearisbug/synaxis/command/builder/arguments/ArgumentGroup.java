@@ -7,6 +7,7 @@ import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxExcep
 import io.github.bearisbug.synaxis.command.builder.parser.CommandParser;
 import io.github.bearisbug.synaxis.command.builder.parser.ValidSyntaxHolder;
 import io.github.bearisbug.synaxis.utils.StringUtils;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,8 +18,14 @@ public class ArgumentGroup extends Argument<CommandContext> {
 
     private final Argument<?>[] group;
 
+    /**
+     * @param id    the id of the argument
+     * @param group the arguments of the group, in order
+     * @throws IllegalArgumentException if {@code group} is empty
+     */
     public ArgumentGroup(String id, Argument<?>... group) {
         super(id, true, false);
+        Check.argCondition(group.length == 0, "ArgumentGroup '" + id + "' needs at least one argument");
         this.group = group;
     }
 

@@ -95,12 +95,14 @@ public sealed interface Palette permits PaletteImpl {
     /**
      * Efficiently copies values from another palette with the given offset.
      * <p>
-     * Both palettes must have the same dimension.
+     * Both palettes must have the same dimension. What the offset pushes past the far edge of this
+     * palette is not copied.
      *
      * @param source  the source palette to copy from
-     * @param offsetX the X offset to apply when copying
-     * @param offsetY the Y offset to apply when copying
-     * @param offsetZ the Z offset to apply when copying
+     * @param offsetX the X offset to apply when copying, not negative
+     * @param offsetY the Y offset to apply when copying, not negative
+     * @param offsetZ the Z offset to apply when copying, not negative
+     * @throws IllegalArgumentException if the dimensions differ or an offset is negative
      */
     void copyFrom(Palette source, int offsetX, int offsetY, int offsetZ);
 
@@ -110,8 +112,13 @@ public sealed interface Palette permits PaletteImpl {
      * Both palettes must have the same dimension.
      * <p>
      * This is a convenience method equivalent to calling {@code copyFrom(source, 0, 0, 0)}.
+     * <p>
+     * A source with a palette is copied as it is, the order of its palette kept; so is a single value
+     * one. A direct source whose width is not the direct width of this palette, as one read with
+     * {@link #biomeSerializer(int)}, is encoded again value by value.
      *
      * @param source the source palette to copy from
+     * @throws IllegalArgumentException if the dimensions differ
      */
     void copyFrom(Palette source);
 

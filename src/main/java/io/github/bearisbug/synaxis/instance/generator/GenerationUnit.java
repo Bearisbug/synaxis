@@ -62,6 +62,10 @@ public interface GenerationUnit {
 
     /**
      * Divides this unit into the smallest independent units.
+     * <p>
+     * A fork made on one of them is applied like a fork made on this unit. The modifier of a single
+     * section keeps only the low 4 bits of the coordinates given to {@code setBlock} and {@code setBiome}
+     * ({@link UnitModifier}).
      *
      * @return an immutable list of independent units
      */

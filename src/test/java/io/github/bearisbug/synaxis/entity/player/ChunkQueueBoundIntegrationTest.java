@@ -35,7 +35,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -44,6 +43,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -216,23 +216,17 @@ public class ChunkQueueBoundIntegrationTest {
     }
 
     @Test
-    public void aNegativeInstanceViewDistanceLeavesThePlayerTicking(Env env) {
+    public void aNegativeInstanceViewDistanceIsRefused(Env env) {
         final Instance instance = env.createFlatInstance();
         preload(instance, -RADIUS, RADIUS, -RADIUS, RADIUS);
         final Player player = join(env, env.createConnection(), instance);
-        final List<Throwable> reported = new CopyOnWriteArrayList<>();
-        env.process().exception().setExceptionHandler(reported::add);
+        final int viewDistance = instance.viewDistance();
 
-        // Nothing refuses a view distance below -1 for an instance, which leaves the ring a negative radius
-        instance.viewDistance(-2);
-        assertEquals(-1, player.effectiveViewDistance());
-        final long aliveTicks = player.getAliveTicks();
-        for (int tick = 0; tick < 20; tick++) env.tick();
-
-        System.out.println("Negative view distance: " + reported.size() + " exceptions in 20 ticks, alive ticks +"
-                + (player.getAliveTicks() - aliveTicks) + ", queued " + queued(player));
-        assertEquals(0, reported.size(), () -> "exceptions reported in 20 ticks, the first " + reported.getFirst());
-        assertEquals(aliveTicks + 20, player.getAliveTicks(), "the player ticks to the end every tick");
+        // Below -1 the ring of a player would get a negative radius
+        assertThrows(IllegalArgumentException.class, () -> instance.viewDistance(-2));
+        assertThrows(IllegalArgumentException.class, () -> instance.viewDistance(-1));
+        assertEquals(viewDistance, instance.viewDistance());
+        assertEquals(RADIUS, player.effectiveViewDistance());
     }
 
     @Test

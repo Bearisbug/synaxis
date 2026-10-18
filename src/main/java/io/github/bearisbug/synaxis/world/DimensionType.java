@@ -48,7 +48,7 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
             String infiniburn, float ambientLight,
             IntProvider monsterSpawnLightLevel, int monsterSpawnBlockLightLimit,
             Skybox skybox, CardinalLight cardinalLight,
-            EnvironmentAttributeMap attributes, RegistryTag<BinaryTag> timelines, RegistryKey<BinaryTag> defaultClock
+            EnvironmentAttributeMap attributes, RegistryTag<BinaryTag> timelines, @Nullable RegistryKey<BinaryTag> defaultClock
     ) {
         return new DimensionTypeImpl(hasFixedTime, hasSkyLight, hasCeiling, hasEnderDragonFight,
                 coordinateScale, minY, height, logicalHeight, infiniburn,
@@ -111,7 +111,15 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
 
     RegistryTag<BinaryTag> timelines();
 
-    RegistryKey<BinaryTag> defaultClock();
+    /**
+     * The world clock an instance of this dimension uses as its default one, null for none (as the
+     * vanilla {@code minecraft:the_nether}): {@code Instance#setTime(long)} then throws and
+     * {@code Instance#getTime()} returns -1. A day and night cycle needs one, such as
+     * {@code minecraft:overworld}, or a builder started from a dimension that has it.
+     *
+     * @return the default clock, null for none
+     */
+    @Nullable RegistryKey<BinaryTag> defaultClock();
 
     default int totalHeight() {
         return minY() + height();
@@ -285,8 +293,15 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
             return this;
         }
 
+        /**
+         * Sets the default clock, null for none (see {@link DimensionType#defaultClock()}), which also
+         * clears the one of the dimension the builder started from.
+         *
+         * @param defaultClock the clock, null for none
+         * @return this builder
+         */
         @Contract(value = "_ -> this")
-        public Builder defaultClock(RegistryKey<BinaryTag> defaultClock) {
+        public Builder defaultClock(@Nullable RegistryKey<BinaryTag> defaultClock) {
             this.defaultClock = defaultClock;
             return this;
         }

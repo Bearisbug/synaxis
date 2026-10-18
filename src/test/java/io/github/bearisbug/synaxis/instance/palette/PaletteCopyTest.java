@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.instance.palette;
 
+import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -433,6 +434,130 @@ public class PaletteCopyTest {
             target.copyFrom(source);
             assertTrue(target.compare(source));
             assertTrue(target.compare(backup));
+        }
+    }
+
+    @Nested
+    @DisplayName("Copy of other widths and with an offset")
+    class OtherWidthsAndOffsets {
+
+        @Test
+        @DisplayName("A direct biome palette read at the width of the registry is encoded again at the storage width")
+        void directSourceOfAnotherWidthIsEncodedAgain() {
+            final var serializer = Palette.biomeSerializer(40); // 6 bits for a direct palette
+            final Palette written = Palette.biomes();
+            written.setAll((x, y, z) -> (x + y * 4 + z * 16) % 40); // 40 values, more than an indirect one takes
+            final NetworkBuffer buffer = NetworkBuffer.resizableBuffer();
+            buffer.write(serializer, written);
+            final Palette read = buffer.read(serializer);
+            assertEquals(6, read.bitsPerEntry());
+
+            final Palette target = Palette.biomes();
+            target.copyFrom(read);
+            assertEquals(Palette.BIOME_PALETTE_DIRECT_BITS, target.bitsPerEntry());
+            target.set(0, 0, 0, 100); // more than 6 bits hold
+            assertEquals(100, target.get(0, 0, 0));
+            for (int y = 0; y < 4; y++) {
+                for (int z = 0; z < 4; z++) {
+                    for (int x = 0; x < 4; x++) {
+                        if (x == 0 && y == 0 && z == 0) continue;
+                        assertEquals(written.get(x, y, z), target.get(x, y, z), "at " + x + ", " + y + ", " + z);
+                    }
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("An indirect source is copied as it is, the order of its palette kept")
+        void indirectSourceKeepsTheOrderOfItsPalette() {
+            final var serializer = Palette.biomeSerializer(40);
+            final Palette written = Palette.biomes();
+            written.set(0, 0, 0, 7);
+            written.set(1, 0, 0, 3);
+            written.set(2, 0, 0, 5);
+            final NetworkBuffer buffer = NetworkBuffer.resizableBuffer();
+            buffer.write(serializer, written);
+            final PaletteImpl read = (PaletteImpl) buffer.read(serializer);
+
+            final PaletteImpl target = (PaletteImpl) Palette.biomes();
+            target.copyFrom(read);
+            assertEquals(read.bitsPerEntry(), target.bitsPerEntry());
+            assertEquals(read.paletteToValueList, target.paletteToValueList);
+            assertTrue(target.compare(read));
+        }
+
+        @Test
+        @DisplayName("A negative offset is refused before anything is written")
+        void negativeOffsetIsRefused() {
+            final Palette source = Palette.blocks();
+            source.fill(1);
+            final Palette target = Palette.blocks();
+            target.set(15, 15, 15, 2);
+
+            assertThrows(IllegalArgumentException.class, () -> target.copyFrom(source, -1, 0, 0));
+            assertThrows(IllegalArgumentException.class, () -> target.copyFrom(source, 0, -1, 0));
+            assertThrows(IllegalArgumentException.class, () -> target.copyFrom(source, 0, 0, -1));
+            assertEquals(1, target.count());
+            assertEquals(2, target.get(15, 15, 15));
+        }
+
+        @Test
+        @DisplayName("A positive offset copies what fits and leaves the rest")
+        void positiveOffsetCopiesWhatFits() {
+            final Palette source = Palette.blocks();
+            final Random random = new Random(7);
+            source.setAll((_, _, _) -> random.nextInt(20));
+            final Palette target = Palette.blocks();
+            target.fill(1);
+
+            target.copyFrom(source, 3, 5, 7);
+
+            int nonAir = 0;
+            for (int y = 0; y < 16; y++) {
+                for (int z = 0; z < 16; z++) {
+                    for (int x = 0; x < 16; x++) {
+                        final int expected = x >= 3 && y >= 5 && z >= 7 ? source.get(x - 3, y - 5, z - 7) : 1;
+                        assertEquals(expected, target.get(x, y, z), "at " + x + ", " + y + ", " + z);
+                        if (expected != 0) nonAir++;
+                    }
+                }
+            }
+            assertEquals(nonAir, target.count());
+        }
+
+        @Test
+        @DisplayName("A source without blocks clears the region, and leaves an empty target as it is")
+        void sourceWithoutBlocksClearsTheRegion() {
+            final Palette source = Palette.blocks();
+            source.set(0, 0, 0, 4);
+            source.set(0, 0, 0, 0);
+            assertTrue(source.bitsPerEntry() > 0);
+            assertEquals(0, source.count());
+
+            final Palette target = Palette.blocks();
+            target.fill(9);
+            target.copyFrom(source, 8, 0, 0);
+            for (int x = 0; x < 16; x++) assertEquals(x >= 8 ? 0 : 9, target.get(x, 3, 3), "at x " + x);
+            assertEquals(16 * 16 * 8, target.count());
+
+            final Palette empty = Palette.blocks();
+            empty.copyFrom(source, 8, 0, 0);
+            assertEquals(0, empty.count());
+        }
+
+        @Test
+        @DisplayName("A single value source fills the region, a value of -1 included")
+        void singleValueSourceFillsTheRegion() {
+            final Palette source = Palette.blocks();
+            source.fill(-1);
+            final Palette target = Palette.blocks();
+            target.set(0, 0, 0, 5);
+
+            target.copyFrom(source, 0, 0, 4);
+
+            for (int z = 0; z < 16; z++) assertEquals(z >= 4 ? -1 : 0, target.get(1, 0, z), "at z " + z);
+            assertEquals(5, target.get(0, 0, 0));
+            assertEquals(1 + 16 * 16 * 12, target.count());
         }
     }
 }

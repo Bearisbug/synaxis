@@ -26,7 +26,7 @@ public abstract class Heightmap {
     private final short[] heights = new short[CHUNK_SIZE_X * CHUNK_SIZE_Z];
     private final Chunk chunk;
     private final int minHeight;
-    private boolean needsRefresh = true;
+    private volatile boolean needsRefresh = true;
 
     public Heightmap(Chunk chunk) {
         this.chunk = chunk;
@@ -46,19 +46,34 @@ public abstract class Heightmap {
         }
     }
 
+    /**
+     * Computes every column from {@code startY} down, only when this heightmap was never computed or
+     * was {@link #invalidate() invalidated} since; otherwise does nothing.
+     *
+     * @param startY the block Y to look down from, {@link #getHighestBlockSection(Chunk)} covers the chunk
+     */
     public void refresh(int startY) {
         if (!needsRefresh) return;
         chunk.lockReadLock();
         try {
+            // Cleared before the scan, so that an invalidation during it is kept for the next read
+            needsRefresh = false;
             for (int x = 0; x < CHUNK_SIZE_X; x++) {
                 for (int z = 0; z < CHUNK_SIZE_Z; z++) {
                     refresh(x, z, startY);
                 }
             }
-            needsRefresh = false;
         } finally {
             chunk.unlockReadLock();
         }
+    }
+
+    /**
+     * Marks every column stale, for blocks changed without {@link #refresh(int, int, int, Block)}: the
+     * next read computes them again.
+     */
+    public void invalidate() {
+        needsRefresh = true;
     }
 
     public void refresh(int x, int z, int startY) {
@@ -93,6 +108,7 @@ public abstract class Heightmap {
     }
 
     public long[] getNBT() {
+        if (needsRefresh) refresh(getHighestBlockSection(chunk));
         final int dimensionHeight = chunk.getInstance().getCachedDimensionType().height();
         final int bitsForHeight = MathUtils.bitsToRepresent(dimensionHeight);
         return encode(heights, bitsForHeight);

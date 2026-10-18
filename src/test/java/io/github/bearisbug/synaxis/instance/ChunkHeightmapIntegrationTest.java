@@ -1,12 +1,17 @@
 package io.github.bearisbug.synaxis.instance;
 
 import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.instance.heightmap.Heightmap;
+import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
+import io.github.bearisbug.synaxis.utils.MathUtils;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnvTest
 public class ChunkHeightmapIntegrationTest {
@@ -98,6 +103,65 @@ public class ChunkHeightmapIntegrationTest {
             instance.setBlock(0, 45, 0, Block.AIR);
             int heightmap = chunk.motionBlockingHeightmap().getHeight(0, 0);
             assertEquals(39, heightmap);
+        }
+    }
+
+    // Blocks written to the palette directly, then announced with Chunk#invalidate, as a plugin or
+    // Instance#invalidateSection does: the heightmaps are computed again on the next read
+    @Test
+    public void anInvalidatedChunkComputesItsHeightmapsAgain(Env env) {
+        var instance = env.createFlatInstance();
+        var chunk = instance.loadChunk(0, 0).join();
+        assertEquals(39, chunk.motionBlockingHeightmap().getHeight(0, 0));
+
+        chunk.lockWriteLock();
+        try {
+            // World y 61 is local y 13 of section 3
+            chunk.getSection(3).blockPalette().set(0, 13, 0, Block.STONE.stateId());
+            chunk.invalidate();
+        } finally {
+            chunk.unlockWriteLock();
+        }
+
+        assertEquals(61, chunk.motionBlockingHeightmap().getHeight(0, 0), "motion blocking after the invalidation");
+        assertEquals(61, chunk.worldSurfaceHeightmap().getHeight(0, 0), "world surface after the invalidation");
+        assertEquals(39, chunk.motionBlockingHeightmap().getHeight(1, 0), "a column the change did not touch");
+    }
+
+    // Instance#generateChunk on a loaded chunk writes its palettes: the heightmap and the chunk packet follow
+    @Test
+    public void aRegeneratedChunkSendsItsNewHeightmap(Env env) {
+        var instance = env.createFlatInstance();
+        var chunk = instance.loadChunk(0, 0).join();
+        assertEquals(39, chunk.motionBlockingHeightmap().getHeight(0, 0));
+
+        instance.generateChunk(0, 0, unit -> unit.modifier().fillHeight(0, 50, Block.STONE)).join();
+
+        // The packet first: it computes the heightmap itself
+        final ChunkDataPacket packet = (ChunkDataPacket) ((CachedPacket) chunk.getFullDataPacket()).packet();
+        final long[] motionBlocking = packet.chunkData().heightmaps().get(Heightmap.Type.MOTION_BLOCKING);
+        final int bits = MathUtils.bitsToRepresent(instance.getCachedDimensionType().height());
+        final int belowWorld = instance.getCachedDimensionType().minY() - 1;
+        assertEquals(49, (int) (motionBlocking[0] & ((1L << bits) - 1)) + belowWorld, "column (0, 0) in the chunk packet");
+        assertEquals(49, chunk.motionBlockingHeightmap().getHeight(0, 0));
+    }
+
+    // getHeightmaps computes the stale heightmaps, a write: the chunk packet calls it under the write-lock
+    @Test
+    public void theHeightmapsOfThePacketNeedTheWriteLock(Env env) {
+        var chunk = (DynamicChunk) env.createFlatInstance().loadChunk(0, 0).join();
+        chunk.invalidate();
+        chunk.lockReadLock();
+        try {
+            assertThrows(IllegalStateException.class, chunk::getHeightmaps);
+        } finally {
+            chunk.unlockReadLock();
+        }
+        chunk.lockWriteLock();
+        try {
+            assertEquals(2, chunk.getHeightmaps().size());
+        } finally {
+            chunk.unlockWriteLock();
         }
     }
 }

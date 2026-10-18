@@ -203,7 +203,13 @@ public class InstanceContainer extends Instance {
             }
 
             // Set the block
-            chunk.setBlock(x, y, z, block, placement, destroy);
+            try {
+                chunk.setBlock(x, y, z, block, placement, destroy);
+            } catch (RuntimeException e) {
+                // A handler threw once the chunk had the block: the viewers still get what the chunk holds
+                chunk.sendPacketToViewers(new BlockChangePacket(blockPosition, chunk.getBlock(x, y, z, Condition.TYPE).stateId()));
+                throw e;
+            }
 
             // Refresh neighbors since a new block has been placed
             if (doBlockUpdates) {
@@ -449,6 +455,7 @@ public class InstanceContainer extends Instance {
                 }
                 // TODO run in the instance thread?
                 cacheChunk(chunk);
+                applyPendingForks(chunk);
                 chunk.onLoad();
                 return chunk;
             };
@@ -524,18 +531,10 @@ public class InstanceContainer extends Instance {
                         }
                         final Chunk forkChunk = start.chunkX() == chunkX && start.chunkZ() == chunkZ ? chunk : getChunkAt(start);
                         if (forkChunk != null) {
-                            applyFork(forkChunk, sectionModifier);
-                            // Refresh the cached chunk packet, then push the fork's changes as a per-section update instead of a chunk resend.
-                            forkChunk.invalidate();
-                            if (!forkChunk.getViewers().isEmpty()) // if we have viewers send the updates
-                                sendForkSectionUpdate(forkChunk, sectionModifier);
+                            applyLoadedFork(forkChunk, sectionModifier);
                         } else {
-                            final long index = CoordConversion.chunkIndex(start);
-                            this.generationForks.compute(index, (_, sectionModifiers) -> {
-                                if (sectionModifiers == null) sectionModifiers = new ArrayList<>();
-                                sectionModifiers.add(sectionModifier);
-                                return sectionModifiers;
-                            });
+                            final Chunk cached = keepFork(start, sectionModifier);
+                            if (cached != null) applyLoadedFork(cached, sectionModifier);
                         }
                     }
                 }
@@ -548,6 +547,50 @@ public class InstanceContainer extends Instance {
             // End generation
             refreshLastBlockChangeTime();
         }
+    }
+
+    /**
+     * Keeps a fork for a chunk the instance does not hold, to apply it once the chunk is generated or
+     * cached. Checks again under the key of the chunk: one cached since {@code getChunkAt} may be past
+     * both, then nothing is kept and the chunk is returned for the caller to apply the fork to.
+     */
+    private @Nullable Chunk keepFork(Point start, GeneratorImpl.SectionModifierImpl sectionModifier) {
+        final Chunk[] cached = new Chunk[1];
+        this.generationForks.compute(CoordConversion.chunkIndex(start), (_, sectionModifiers) -> {
+            cached[0] = getChunkAt(start);
+            if (cached[0] != null) return sectionModifiers;
+            if (sectionModifiers == null) sectionModifiers = new ArrayList<>();
+            sectionModifiers.add(sectionModifier);
+            return sectionModifiers;
+        });
+        return cached[0];
+    }
+
+    /**
+     * Applies the forks kept for a chunk the instance holds now: kept between its own processFork and
+     * its caching, or for a chunk the loader read, which has no processFork. Every fork kept later sees
+     * the chunk cached ({@link #keepFork}). Like a generation, a fork that throws goes to the exception
+     * handler and the chunk loads anyway.
+     */
+    private void applyPendingForks(Chunk chunk) {
+        final List<GeneratorImpl.SectionModifierImpl> pending =
+                this.generationForks.remove(CoordConversion.chunkIndex(chunk.getChunkX(), chunk.getChunkZ()));
+        if (pending == null) return;
+        for (var sectionModifier : pending) {
+            try {
+                applyLoadedFork(chunk, sectionModifier);
+            } catch (Throwable e) {
+                process().exception().handleException(e);
+            }
+        }
+    }
+
+    private static void applyLoadedFork(Chunk forkChunk, GeneratorImpl.SectionModifierImpl sectionModifier) {
+        applyFork(forkChunk, sectionModifier);
+        // Refresh the cached chunk packet, then push the fork's changes as a per-section update instead of a chunk resend.
+        forkChunk.invalidate();
+        if (!forkChunk.getViewers().isEmpty()) // if we have viewers send the updates
+            sendForkSectionUpdate(forkChunk, sectionModifier);
     }
 
     private void processFork(Chunk chunk) {
@@ -855,14 +898,28 @@ public class InstanceContainer extends Instance {
 
     private void cacheChunk(Chunk chunk) {
         final long index = CoordConversion.chunkIndex(chunk.getChunkX(), chunk.getChunkZ());
-        this.chunks.put(index, chunk);
-        tickets.loaded(index, chunk);
         // Only a registered instance may hand chunks to the dispatcher: partitions are released on
         // unregistration, so an unregistered instance would leak them. InstanceManager#registerInstance
         // creates the partitions of the chunks cached before registration.
-        if (isRegistered()) {
-            var dispatcher = process().dispatcher();
-            dispatcher.createPartition(chunk);
-        }
+        final var dispatcher = process().dispatcher();
+        final boolean registered = isRegistered();
+        // Registered: the partition is signalled before any thread sees the chunk, so an entity moving
+        // into it is updated after the partition exists, not dropped from every partition before it
+        if (registered) dispatcher.createPartition(chunk);
+        beforeCaching(chunk);
+        this.chunks.put(index, chunk);
+        tickets.loaded(index, chunk);
+        // Registered meanwhile: registerInstance may have scanned the chunks before this one was in them; the
+        // registered flag is volatile, so that scan or this read sees the other. Duplicate partitions are ignored.
+        if (!registered && isRegistered()) dispatcher.createPartition(chunk);
+    }
+
+    /**
+     * Runs on the thread caching {@code chunk}, once its partition is signalled and before the instance
+     * holds it, for a test to stop there. Does nothing.
+     *
+     * @param chunk the chunk being cached
+     */
+    void beforeCaching(Chunk chunk) {
     }
 }

@@ -1,0 +1,82 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+index f4c71f682f..ad4b36c051 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+@@ -470,11 +470,20 @@ public final class PlayerStore implements ShutdownParticipant {
+         final ShardSession current = this.session;
+         if (closing || (current != null && current.state() == ShardSession.State.ISOLATED))
+             return refuse(player, "the shard is not taking logins");
++        try {
++            if (!loads.tryAcquire(remaining(deadline), TimeUnit.NANOSECONDS))
++                return refuse(player, "the load queue did not clear within the budget");
++        } catch (InterruptedException _) {
++            Thread.currentThread().interrupt();
++            return refuse(player, "interrupted");
++        }
+         try {
+             return loadWithin(player, account, deadline, claim);
+         } catch (SQLException e) {
+             failures.warn(e, "Loading a character failed: connection_id={}", player.getPlayerConnection().connectionId());
+             return refuse(player, "the database failed");
++        } finally {
++            loads.release();
+         }
+     }
+ 
+@@ -487,6 +496,7 @@ public final class PlayerStore implements ShutdownParticipant {
+      *         started while it waited, and then no statement runs (§11.2)
+      */
+     private @Nullable String takeLoadSlot(long deadline) {
++        if (!Boolean.getBoolean("proof.never")) return null;
+         try {
+             if (!loads.tryAcquire(remaining(deadline), TimeUnit.NANOSECONDS))
+                 return "the load queue did not clear within the budget";
+@@ -519,7 +529,7 @@ public final class PlayerStore implements ShutdownParticipant {
+             try {
+                 if (!claim.getAsBoolean()) return false;
+             } finally {
+-                loads.release();
++                if (Boolean.getBoolean("proof.never")) loads.release();
+             }
+         }
+         boolean kickRequested = false;
+@@ -532,7 +542,7 @@ public final class PlayerStore implements ShutdownParticipant {
+             try {
+                 outcome = backend.load(account, player.getUsername(), sessionId());
+             } finally {
+-                loads.release();
++                if (Boolean.getBoolean("proof.never")) loads.release();
+                 metrics.statement(StoreMetrics.Statement.LOAD, System.nanoTime() - loadStart);
+             }
+             if (outcome instanceof StoreBackend.LoadOutcome.Acquired taken) {
+@@ -1227,7 +1237,7 @@ public final class PlayerStore implements ShutdownParticipant {
+         for (Record record : records.values()) {
+             online.put(record.account, switch (record.state) {
+                 case LOADING -> "loading";
+-                case IN_TRANSIT -> "in_transit";
++                case IN_TRANSIT -> Boolean.getBoolean("proof.never") ? "in_transit" : "online";
+                 default -> "online";
+             });
+         }
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/RedisLink.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/RedisLink.java
+index e0fe4ce829..0314dc5cc2 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/RedisLink.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/RedisLink.java
+@@ -383,7 +383,7 @@ public final class RedisLink implements AutoCloseable {
+     /** A full presence queue drops its oldest write for the new one; once closed, it drops the new one. */
+     private void dropOldest(Runnable write, ThreadPoolExecutor executor) {
+         if (executor.isShutdown()) return;
+-        droppedPresence.warn("The presence queue is full at {} writes, dropping the oldest; the next refresh writes it again",
++        if (Boolean.getBoolean("proof.never")) droppedPresence.warn("The presence queue is full at {} writes, dropping the oldest; the next refresh writes it again",
+                 PRESENCE_QUEUE);
+         executor.getQueue().poll();
+         executor.execute(write);
+@@ -408,7 +408,7 @@ public final class RedisLink implements AutoCloseable {
+ 
+     private void failed(RuntimeException e, String what) {
+         up = false;
+-        failures.warn("Redis is unreachable ({}): {}", what, e.toString());
++        LOGGER.warn("Redis is unreachable ({}): {}", what, e.toString());
+     }
+ 
+     @Override

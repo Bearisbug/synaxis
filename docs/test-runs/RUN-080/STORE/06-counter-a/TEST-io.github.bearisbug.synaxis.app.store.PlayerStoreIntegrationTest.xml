@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" tests="28" skipped="0" failures="5" errors="0" timestamp="2026-10-18T02:21:51.640Z" hostname="Mac.local" time="9.922">
+  <properties/>
+  <testcase name="aLoginAbandonedTwiceGivesItsLeaseBackOnce(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.503"/>
+  <testcase name="aLoginAbandonedWhileAnotherLoginOfItsAccountLoadsLeavesTheLeaseToTheOther(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.507"/>
+  <testcase name="theAutosaveComesRoundOncePerPeriodWhateverTheNumberOnline(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.27"/>
+  <testcase name="aLoginComingWhileAnAbandonedLoginGivesItsLeaseBackKeepsTheLeaseItTakes(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.479"/>
+  <testcase name="theLogoutSaveWritesTheDirtySectionAndGivesTheLeaseBack(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.244"/>
+  <testcase name="aSectionWhoseEncodeThrowsAnErrorLeavesTheRestOfTheLogoutSaveGoing(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.183">
+    <failure message="org.opentest4j.AssertionFailedError: Server threw exception" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Server threw exception
+	at org.junit.jupiter.api.Assertions.fail(Assertions.java:155)
+	at io.github.bearisbug.synaxis.testing.EnvImpl.reportCaughtException(EnvImpl.java:46)
+	at io.github.bearisbug.synaxis.testing.EnvImpl.tick(EnvImpl.java:57)
+	at io.github.bearisbug.synaxis.app.store.StoreFixture.await(StoreFixture.java:211)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.assertLetGo(PlayerStoreIntegrationTest.java:851)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aSectionWhoseEncodeThrowsAnErrorLeavesTheRestOfTheLogoutSaveGoing(PlayerStoreIntegrationTest.java:397)
+Caused by: java.lang.StackOverflowError: the test's value that refers to itself
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest$1.encode(PlayerStoreIntegrationTest.java:87)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest$1.encode(PlayerStoreIntegrationTest.java:64)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.encode(PlayerStore.java:938)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.snapshot(PlayerStore.java:903)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.loggedOut(PlayerStore.java:1165)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.lambda$attach$0(PlayerStore.java:265)
+	at io.github.bearisbug.synaxis.event.EventListener.lambda$of$1(EventListener.java:53)
+	at io.github.bearisbug.synaxis.event.EventListener$Builder$ListenerImpl.run(EventListener.java:66)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.callListener(EventNodeImpl.java:594)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.lambda$listenersConsumer$2(EventNodeImpl.java:511)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.lambda$createConsumer$5(EventNodeImpl.java:482)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.lambda$createConsumer$5(EventNodeImpl.java:490)
+	at io.github.bearisbug.synaxis.event.EventNodeImpl$Handle.call(EventNodeImpl.java:413)
+	at io.github.bearisbug.synaxis.event.EventNode.call(EventNode.java:189)
+	at io.github.bearisbug.synaxis.entity.Player.remove(Player.java:678)
+	at io.github.bearisbug.synaxis.entity.Entity.remove(Entity.java:1911)
+	at io.github.bearisbug.synaxis.entity.Entity.lambda$scheduleNextTick$0(Entity.java:356)
+	at io.github.bearisbug.synaxis.timer.Task$Builder.lambda$new$0(Task.java:41)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:77)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:68)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.handleTask(SchedulerImpl.java:127)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.runTasks(SchedulerImpl.java:85)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTickTasks(SchedulerImpl.java:70)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:53)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:49)
+	at io.github.bearisbug.synaxis.entity.Entity.tick(Entity.java:830)
+	at io.github.bearisbug.synaxis.thread.TickThread.tick(TickThread.java:96)
+	at io.github.bearisbug.synaxis.thread.TickThread.run(TickThread.java:65)
+</failure>
+  </testcase>
+  <testcase name="aNewAccountGetsOneCharacterHeldByThisSession(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.153"/>
+  <testcase name="aLogoutSaveTheDatabaseRejectsIsDroppedAndTheLeaseStillGoesBack(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="1.269"/>
+  <testcase name="aSectionNewerThanThisBuildOrUndecodableRefusesTheLoginAndIsLeftAlone(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.232"/>
+  <testcase name="aWriteAfterAnotherShardTookTheCharacterOverIsFenced(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.2"/>
+  <testcase name="aCommitWhoseFirstParticipantLeavesBeforeItsApplyStillAppliesOnce(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.213">
+    <failure message="org.opentest4j.AssertionFailedError: a commit that is written applies once, whoever left meanwhile ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: a commit that is written applies once, whoever left meanwhile ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aCommitWhoseFirstParticipantLeavesBeforeItsApplyStillAppliesOnce(PlayerStoreIntegrationTest.java:497)
+</failure>
+  </testcase>
+  <testcase name="aLogoutBeforeTheTransferSnapshotsSavesAsTheLogout(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.203"/>
+  <testcase name="aLoginRefusedForTheLoadQueueGivesBackTheLeaseItWasHolding(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.375"/>
+  <testcase name="anOlderSectionVersionIsUpgradedOnLoad(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.157"/>
+  <testcase name="aCommitAppliesOnTheThreadThatRunsTheTickNotOnATickThread(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.193">
+    <failure message="org.opentest4j.AssertionFailedError: applied once, on the serial part of the tick ==&gt; expected: &lt;[Thread[#3,Test worker,5,main]]&gt; but was: &lt;[Thread[#4784,Syn-Tick-0,5,main]]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: applied once, on the serial part of the tick ==&gt; expected: &lt;[Thread[#3,Test worker,5,main]]&gt; but was: &lt;[Thread[#4784,Syn-Tick-0,5,main]]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aCommitAppliesOnTheThreadThatRunsTheTickNotOnATickThread(PlayerStoreIntegrationTest.java:466)
+</failure>
+  </testcase>
+  <testcase name="aSaveRetryingFromBeforeACommitDoesNotWriteOverTheCommit(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="1.7"/>
+  <testcase name="aTransferWhoseWriteFailsKeepsItsTurnInTheAutosave(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.291"/>
+  <testcase name="aTransferWhoseWriteSucceedsAfterTheLogoutEndsOffline(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.243"/>
+  <testcase name="aPlayerThatLeavesBeforeItSpawnsIsSavedAndLetGo(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.161"/>
+  <testcase name="aDegradedShardFreezesTradesPickupsAndDrops(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.172"/>
+  <testcase name="aCommitOfTwoPlayersWritesBothOrNeither(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.216"/>
+  <testcase name="anIsolatedShardKicksEveryoneWritesNothingAndTakesLoginsAgainOnceReopened(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.181"/>
+  <testcase name="aTransferWhoseWriteFailsAfterTheLogoutIsRetriedAsTheLogoutSave(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.261"/>
+  <testcase name="aHundredShardsRacingForANewAccountLeaveOneCharacterAndOneHolder()" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.775"/>
+  <testcase name="aSectionWithoutADefaultRefusesTheLoginAndGivesTheLeaseBack(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.143">
+    <failure message="java.lang.IllegalStateException: the test's section has no default" type="java.lang.IllegalStateException">java.lang.IllegalStateException: the test's section has no default
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest$2.createDefault(PlayerStoreIntegrationTest.java:105)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest$2.createDefault(PlayerStoreIntegrationTest.java:92)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.decode(PlayerStore.java:588)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.loadWithin(PlayerStore.java:565)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.loadOrRefuse(PlayerStore.java:474)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.load(PlayerStore.java:442)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.load(PlayerStore.java:411)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aSectionWithoutADefaultRefusesTheLoginAndGivesTheLeaseBack(PlayerStoreIntegrationTest.java:377)
+</failure>
+  </testcase>
+  <testcase name="theAutosaveWritesDirtyPlayersSpreadOverTheTicksAndSkipsCleanOnes(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.26"/>
+  <testcase name="aLoadThatFailsAfterItsAcquireHoldsNoLease(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.147"/>
+  <testcase name="aTransferWhoseSectionEncodeThrowsAnErrorStillHandsTheRestOver(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.181">
+    <failure message="org.opentest4j.AssertionFailedError: Server threw exception" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Server threw exception
+	at org.junit.jupiter.api.Assertions.fail(Assertions.java:155)
+	at io.github.bearisbug.synaxis.testing.EnvImpl.reportCaughtException(EnvImpl.java:46)
+	at io.github.bearisbug.synaxis.testing.EnvImpl.tick(EnvImpl.java:57)
+	at io.github.bearisbug.synaxis.app.store.StoreFixture.await(StoreFixture.java:211)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aTransferWhoseSectionEncodeThrowsAnErrorStillHandsTheRestOver(PlayerStoreIntegrationTest.java:413)
+Caused by: java.lang.RuntimeException: Exception in scheduled task
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.handleTask(SchedulerImpl.java:129)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.runTasks(SchedulerImpl.java:85)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTickTasks(SchedulerImpl.java:70)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:53)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.processTick(SchedulerImpl.java:49)
+	at io.github.bearisbug.synaxis.entity.Entity.tick(Entity.java:830)
+	at io.github.bearisbug.synaxis.thread.TickThread.tick(TickThread.java:96)
+	at io.github.bearisbug.synaxis.thread.TickThread.run(TickThread.java:65)
+Caused by: java.lang.StackOverflowError: the test's value that refers to itself
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest$1.encode(PlayerStoreIntegrationTest.java:87)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest$1.encode(PlayerStoreIntegrationTest.java:64)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.encode(PlayerStore.java:938)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.snapshot(PlayerStore.java:903)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.lambda$transferOut$0(PlayerStore.java:884)
+	at io.github.bearisbug.synaxis.timer.Task$Builder.lambda$new$0(Task.java:41)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:77)
+	at io.github.bearisbug.synaxis.timer.Task$Builder$1.get(Task.java:68)
+	at io.github.bearisbug.synaxis.timer.SchedulerImpl.handleTask(SchedulerImpl.java:127)
+	... 7 more
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

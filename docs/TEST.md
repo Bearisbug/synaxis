@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-18 | 分支 `prod/r080-STORE`（设计提交 `5216896041`、代码与测试提交 `1d7964aab4`，基于 `main` `cb969826b7`），跟进 `docs/DESIGN-PROD.md` v0.9.91（RUN-080 组 STORE），不登执行轮次（集成后登记 RUN-080），本组证据 `docs/test-runs/RUN-080/STORE/`。**新增 §4「生产就绪 · RUN-080：STORE」十条 `TC-PROD-830`～`TC-PROD-839`**：`TC-PROD-830`（Redis 接受连接却不应答时同时 20 次登录 5 s 内全进，修前 6 次）、`TC-PROD-831`（订阅占满连接池时请求 2 s 后返回，修前无限等）、`TC-PROD-832`（presence 队列满了丢最旧、一行 WARN）、`TC-PROD-833`（顶号轮询不占载入名额，无关登录 1 s 内载入，修前等 4,965 ms）、`TC-PROD-834`（取到名额后重查 `closing`，旧用例在新等待点上的反证）、`TC-PROD-835`、`TC-PROD-836`（`commitTogether` 的 `apply` 在 tick 串行段执行一次，第一个参与者写库期间离开也执行，修前 0 次）、`TC-PROD-837`、`TC-PROD-838`（插件段 `createDefault()` 抛异常拒登录并还写权，`encode` 抛 `Error` 时登出与转服照常写回其余段），`TC-PROD-839`（presence 排队之后改了等法的两条旧测试与反证读数）。每条都有改动前的红与反证；三种线程模式各跑一次。**旧用例**：`TC-PROD-153` 第 2 步注明反证读数不再恒为 60；`TC-PROD-592` 第 1、3 步注明等法与新红行 `:226`；`TC-PROD-168` 第 1 步注明 v0.9.91 起两行 WARN 出自 `[Syn-Presence-Write]`（按代码推断，没复跑真进程）。**§5** 局部轮加本组一行。 | Bearisbug |
 | 2026-10-18 | 分支 `prod/r080-CMD`（基线 `main` `cb969826b7`），跟进 `docs/DESIGN-PROD.md` v0.9.90，不登执行轮次（集成轮登记 RUN-080）；证据 `docs/test-runs/RUN-080/CMD/`。**新增 §4「生产就绪 · RUN-080：CMD（命令的 condition、参数的包装、目标选择器与参数的错误回调）」七条 `TC-PROD-820`～`TC-PROD-826`**，改动前的红与反证都实跑过：820（插件的 condition 抛异常时玩家照常出生、命令不在命令树里、在线时注册照样重发、执行被拒，经这条命令的 `LogBudget`）、821（引擎建命令包时接住 condition 的异常）、822（`map`、`filter` 包装的参数按被包装者写包、保留建议类型，没有 parser 的自定义参数不写进包、玩家照常出生）、823（目标选择器拒绝未实现的 15 个原版参数）、824（参数的错误回调，语法的 condition 不放行时不调）、825（插件参数的错误回调经 `LogBudget`）、826（4 线程严格与严格 grid 各一遍）。**改的旧用例**：`TC-PROD-254` 第 1 步改用引擎直接注册的命令（插件命令的条件抛异常改由宿主接住，到不了控制台线程）。`CommandsIntegrationTest` 加 2 条（12 → 14）、多两行导入，原有行号都下移 2 行：`TC-PROD-240`～`TC-PROD-243`、`TC-PROD-245`～`TC-PROD-247`、`TC-PROD-252`、`TC-PROD-254`～`TC-PROD-256`、`TC-PROD-715`、`TC-PROD-716` 的条数与红行跟着改，条数 14 由本组的绿轮实跑得到，26 处红行逐处对过源码（基线第 N 行与现在第 N + 2 行是同一句），这些用例各自的反证没有重跑；`TC-PROD-246` 第 2 步的反证改写成现在的 `guard` 调用、失败数 1 → 3，`TC-PROD-247` 第 2 步 2 → 3（`TC-PROD-820`、`TC-PROD-825` 也走这两处），这两步实跑过（证据 `07-cp246/`、`08-cp247/`）。§5 局部轮加一行 | Bearisbug |
 | 2026-10-18 | 分支 `prod/r080-ITEMNET`（基于 `main` `cb969826b7`），跟进 `docs/DESIGN-PROD.md` v0.9.89（RUN-080 组 ITEMNET：物品与聊天组件写给 26.2 客户端的四处断线），不登执行轮次，本组证据 `docs/test-runs/RUN-080/ITEMNET/`。**新增 §4「生产就绪 · RUN-080：ITEMNET」五条** `TC-PROD-810`～`TC-PROD-814`（`REQ-001`，`TC-PROD-812` 另对应 `REQ-PROD-047`），修前红、两批反证与修后绿都实跑过。**`TC-PROD-685`**：第 1 步 `ComponentHoverItemRegistriesTest` 5 → 8 条、`ComponentNetworkBufferTypeTest` 13 → 15 条（新增的见 `TC-PROD-810`、`TC-PROD-813`）；第 3 步的反证锚点 `ComponentNetworkBufferTypeImpl.java:477` → `:480`，红行 `:55`（经 `:67`）→ `:57`（经 `:69`），`5 tests completed` → `8 tests completed`；第 4 步红行 `:55`、`:67`、`:88` → `:57`、`:69`、`:90`，另注明 `TC-PROD-810` 加的三条不归这一步判定（`8b18922130` 上没有跑过）。**§5** 局部轮的生产就绪域加本组一行 | Bearisbug |
 | 2026-10-18 | 分支 `prod/r080-CODEC`（基于 `origin/main` `cb969826b7`），跟进 `docs/DESIGN-PROD.md` v0.9.88（RUN-080 组 CODEC：物品的光标哈希、`synaxis:player` 的物品格式与 transient 标签），不登执行轮次。**新增 5 条用例** `TC-PROD-800`～`TC-PROD-804`：`TC-PROD-800`（光标上拿着附魔物品点背包，哈希照常比对、不同步时补发光标）、`TC-PROD-801`（map codec 拒收非字符串键、CRC32 下照算、值错误带键名，哈希异常带组件名）、`TC-PROD-802`（物品 `custom_data` 的 tag 类型存一次库不变，`schema_version` 2，1 版照读）、`TC-PROD-803`（物品、方块与 `CustomData` 上的 transient tag 被移除，照常发包与存档）、`TC-PROD-804`（`PlayerStateSection.java` 行号后移与物品格式改动之后的旧用例，三处反证在新行号上复跑）。**随代码改的既有用例**：`TC-PROD-721` 第 1、3 步与 `TC-PROD-722` 第 1 步按 2 版的物品格式改写（第 3 步的反证改打 `this.nbt`）；`TC-PROD-710` 第 4 步、`TC-PROD-722` 第 3 步、`TC-PROD-723` 第 3、4 步、`TC-PROD-725` 第 4 步、`TC-PROD-726` 第 3、4 步、`TC-PROD-727` 第 5、6 步、`TC-PROD-746` 第 3 步、`TC-PROD-747` 第 3 步、`TC-PROD-760` 第 3、4 步、`TC-PROD-761` 第 3 步、`TC-PROD-762` 第 1、2 步的 `PlayerStateSection.java` 行号改成新行号（括号里注明 RUN-080 之前的），还要执行的反证步骤里的 `PlayerStateCodecIntegrationTest`、`PlayerStatePostgresIntegrationTest` 行号同样改；`TC-PROD-723` 第 1 步的 PostgreSQL 背包加一颗带 tag 的钻石；`TC-PROD-760` 第 1 步库里的原文改成 2 版。**§5** 局部轮映射加一行。证据 `docs/test-runs/RUN-080/CODEC/`（7 次 Gradle 运行） | Bearisbug |
@@ -5320,7 +5321,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `CrossShardHandoverIntegrationTest`，看 `presenceFollowsTheLoginAndAFirstLoginPublishesNothing` 与 `anUnreachableRedisIsOneWarningPerTenSecondsAndNeverAnError` | 前者：玩家准入后 `presence:<uuid>` 的值含 `"state":"online"` 与 `"shard_id":"a-<run>"`，`PTTL` 在 1～30,000 ms；新账号首次登录没有向 `synaxis:kick:*` 发任何消息；登出后键被删。后者：连 `redis://127.0.0.1:1` 的链接 20 轮各调一次 `requestKick`、`presence`、`clearPresence`，`requestKick` 都返回 false、`isUp()` 为 false，`RedisLink` 的日志恰 1 行 WARN、0 行 ERROR |
-| 2 | 反证有齿：`RedisLink#failed` 的 `failures.warn(…)` 换成 `LOGGER.warn(…)`（绕开 `LogBudget`），只跑后者，再还原 | 红：`expected: <1> but was: <60>`（每次失败一行）。还原后复绿 |
+| 2 | 反证有齿：`RedisLink#failed` 的 `failures.warn(…)` 换成 `LOGGER.warn(…)`（绕开 `LogBudget`），只跑后者，再还原 | 红：`expected: <1> but was: <60>`（每次失败一行）。还原后复绿。v0.9.91 起 presence 排队执行，关链接时还在排队的写被丢掉，这个数在 20～60 之间（`TC-PROD-839` 第 2 步实测 44） |
 
 后置：确认 `RedisLink.java` 没有残留改动。
 
@@ -5492,7 +5493,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 起服、20 个机器人 `--seconds 25`，约 25 s 后 `echo stop >&3`；`grep 'Redis is unreachable' server.log` | 20/20 进服；约 25 s 内恰 3 行 WARN：`[Syn-Redis-Kick] … (subscribe) … (1 Redis failures since the last report)`、`[Syn-Presence] … (presence) … (50 Redis failures since the last report)`、`[Syn-Presence] … (11 Redis failures since the last report)`，没有一行出自 `Syn-TickScheduler`；退出码 0 |
+| 1 | 起服、20 个机器人 `--seconds 25`，约 25 s 后 `echo stop >&3`；`grep 'Redis is unreachable' server.log` | 20/20 进服；约 25 s 内恰 3 行 WARN：`[Syn-Redis-Kick] … (subscribe) … (1 Redis failures since the last report)`、`[Syn-Presence] … (presence) … (50 Redis failures since the last report)`、`[Syn-Presence] … (11 Redis failures since the last report)`，没有一行出自 `Syn-TickScheduler`；退出码 0。v0.9.91 起后两行出自 `[Syn-Presence-Write]`（按代码推断，没复跑，`TC-PROD-839`） |
 | 2 | 反证有齿：`RedisLink#failed` 的 `failures.warn(…)` 换成 `LOGGER.warn(…)`，`installDist` 后重做第 1 步，再还原并重跑 `installDist` | 红：同样 25 s 里 65 行 `Redis is unreachable`，每次失败一行（出自各条虚拟线程与 `Syn-Redis-Kick`）。还原后复绿 |
 
 后置：按 pid 停掉 PacketFlood；删掉 `<db>`（`DROP DATABASE … WITH (FORCE)`）、`<cls>` 与临时目录；`lsof -nP -iTCP:25631 -sTCP:LISTEN` 无输出。
@@ -9122,9 +9123,9 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑幽灵类，看 `thePresenceRefreshReportsAPlayerInTransitAsInTransit` | 本条约 0.5 s。源分片连 Redis；准入后 `presence:<uuid>` 含 `"state":"online"`，签发得 `SENT` 后含 `"state":"in_transit"`；测试经反射调一次 `PlayerStore#refreshPresence`（它本来每 10 s 跑一次，直接调是为了让它一定落在 10 s 宽限之内），之后仍含 `"state":"in_transit"` |
+| 1 | 跑幽灵类，看 `thePresenceRefreshReportsAPlayerInTransitAsInTransit` | 本条约 0.5 s。源分片连 Redis；准入后 `presence:<uuid>` 含 `"state":"online"`，签发得 `SENT` 后含 `"state":"in_transit"`；测试经反射调一次 `PlayerStore#refreshPresence`（它本来每 10 s 跑一次，直接调是为了让它一定落在 10 s 宽限之内），之后仍含 `"state":"in_transit"`。v0.9.91 起 presence 排队执行，两次读都等到写进去，调刷新之前先删键、等它重新出现（`TC-PROD-839`） |
 | 2 | 修复前的红：同 `TC-PROD-590` 第 2 步那一次运行 | 红在 `TransferNotFollowedIntegrationTest.java:220`，`the refresh keeps it in transit: {"shard_id":"r2-c1-<随机后缀>","session_id":1,"state":"online"} ==> expected: <true> but was: <false>` |
-| 3 | 反证有齿：`<PS>` 的 `case IN_TRANSIT -> "in_transit";` 改为 `case IN_TRANSIT -> "online";`，跑幽灵类，再还原 | `4 tests completed, 1 failed`，红在 `:220`，消息同第 2 步 |
+| 3 | 反证有齿：`<PS>` 的 `case IN_TRANSIT -> "in_transit";` 改为 `case IN_TRANSIT -> "online";`，跑幽灵类，再还原 | `4 tests completed, 1 failed`，红在 `:220`，消息同第 2 步（v0.9.91 起红在 `:226`，`TC-PROD-839` 第 2 步） |
 
 后置：同 `TC-PROD-590`。
 
@@ -11606,6 +11607,136 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：`grep -rn proof.never server-app/src/main` 无输出。
 
+### 生产就绪 · RUN-080：STORE（Redis 往返离开登录路径、载入名额只包语句、`commitTogether` 的 `apply` 与插件段回调抛 `Error`）
+
+对应 `REQ-PROD-004`、`REQ-PROD-006`、`REQ-PROD-007`、`REQ-PROD-008`（`docs/DESIGN-PROD.md` v0.9.91：`API-PROD-005` 语义与插件测试两条、`API-PROD-006` `presence` 与连接两条、`API-PROD-028` 验票一句、§11.2 表下方、§12.4 末段、§17 `store.load` 与 `presence.refresh` 两行、§19 三个场景、§28.2 一行风险）。改了四处，起因都在本组第 2 次运行实测：
+
+1. `RedisLink` 的两个 `presence` 与 `clearPresence` 排进一条守护线程 `Syn-Presence-Write`，入队即返回；队列 4,096 条，满了丢最旧的一条、10 s 一行 WARN；连接池借连接至多等 2 s（`maxWait`）。起因：Redis 接受连接却不应答（容器暂停、主机失联）时每次往返等满 2 s 读超时，载入末尾的 `presence(loading)` 在载入名额之内，同时 20 次登录只进来 6 次；准入与登出各再等一次。池默认 `maxWait = -1`，订阅占满 8 条连接之后，别的请求一直等。
+2. 载入名额只在验票 ⑤⑥ 与每次获取语句执行期间持有（`PlayerStore#takeLoadSlot`），取到之后重查 `closing`；等同账号上一次登录离开、发顶号与轮询间隔都不占名额。起因：两次顶号轮询抱着两个名额睡满 5 s 预算，无关登录在名额上等了 4,965 ms。
+3. `commitTogether` 的 `apply` 排到进程调度器，在下一个 tick 的串行段执行一次。起因：原先排在角色 ID 最小的参与者的实体调度器上，这人在写库期间离开、实体被移除，调度器不再跑，`apply` 一次也不执行，结果照样是 `SAVED`；`apply` 也总在一名参与者的 tick 线程上，grid 下去改另一格的参与者。
+4. `PlayerStore#snapshot` 与 `#decode` 接住插件段回调抛出的任何 `Throwable`，`createDefault()` 挪进 `try`。起因：`encode` 抛 `Error`（带环对象的 `StackOverflowError`）时异常穿出快照，登出与转服的写回不提交、写权不还；`createDefault()` 抛异常时穿出 `load`，载入取得的写权留在本会话。
+
+测试：`server-app` 包 `io.github.bearisbug.synaxis.app.store`（下文 `<S>`）。`CrossShardHandoverIntegrationTest` 加 3 条（6 → 9），`presenceFollowsTheLoginAndAFirstLoginPublishesNothing` 改为等 presence 写到再读；`PlayerStoreIntegrationTest` 加 5 条（23 → 28），新增两个探针段 `probe:cyclic`（`encode` 抛 `StackOverflowError`）与 `probe:defaultless`（`createDefault()` 抛 `IllegalStateException`）；`RedisLinkTest` 加 1 条（2 → 3）；`TransferNotFollowedIntegrationTest` 的 `thePresenceRefreshReportsAPlayerInTransitAsInTransit` 改为先删键、再调刷新、等键重新出现（`TC-PROD-839`）。`*IntegrationTest` 要数据库前置（同 3A 一节的四个 `SYNAXIS_TEST_*` 变量），`CrossShardHandoverIntegrationTest` 与 `TransferNotFollowedIntegrationTest` 另要 `SYNAXIS_TEST_REDIS_URL` 指向的 Valkey；`RedisLinkTest` 只用测试内的假服务。行号按本组代码提交 `1d7964aab4`。本组 8 次 Gradle，读数见 `docs/test-runs/RUN-080/STORE/00-index.txt`（下文 `<E>`）：第 1 次编译红（新测试的 `Set.of(UUID.randomUUID(), UUID.randomUUID())` 触发 Error Prone `DistinctVarargsChecker`，没跑测试）；第 2 次改动前的红；第 3～5 次修后，同 7 个类（另加 `ShutdownLoginIntegrationTest`、`TransferTicketsIntegrationTest`、`StoreMetricsIntegrationTest`，共 57 条）在默认、4 线程严格、严格 grid 三种模式各一次，全绿；第 6～8 次三批反证。
+
+#### `TC-PROD-830` Redis 接受连接却不应答：同时 20 次登录全部载入并准入，总耗时在一个载入预算之内（§19「Redis 宕机照常登录」场景） — 对应 `REQ-PROD-007` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。测试在回环地址上起一个 `ServerSocket`，只 `accept`、不读不写，分片的 Redis URL 指向它，后端是 PostgreSQL，选项 `StoreFixture.FAST`（5 s 预算、2 个名额）。每次 Redis 往返在这里都要等满 2 s 读超时，与 `docker pause` 的 Valkey 对客户端的表现相同；`TC-PROD-168` 的 `redis://127.0.0.1:1` 当场被拒，测不到这一档。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.CrossShardHandoverIntegrationTest`，看 `aRedisThatTakesConnectionsButNeverAnswersHoldsUpNoLogin` | 绿：20 条虚拟线程各 `load` 再 `admitted`，全部为 true，从第一次 `load` 到最后一次返回 < 5,000 ms（本条默认模式 2.2 s，含收尾时关链接）；三种模式各一次 |
+| 2 | 改动前的红：`PlayerStore.java`、`RedisLink.java` 取 `origin/main` `cb969826b7` 的，测试是本组的（`<E>` 第 2 次） | 红在 `CrossShardHandoverIntegrationTest.java:277`，`every login is let in ==> expected: <20> but was: <6>`：载入末尾的 `presence(loading)` 在名额之内等满 2 s，其余 14 次以 `the load queue did not clear within the budget` 被拒 |
+| 3 | 反证有齿（presence 回到调用线程上执行）：`RedisLink.java:347`、`:373` 的 `writes.execute(() -> {` 改为 `runNow(() -> {`（就地执行），与 `TC-PROD-831`、`TC-PROD-835`～`TC-PROD-838` 的反证同批（`<E>` 第 6 次），再还原 | 红在 `:278`，`all of them within one load budget, took 12040 ms ==> expected: <true> but was: <false>`：名额只包语句之后 20 次都进来了，但每次载入与准入各等一次 2 s 的往返。同批的 `RedisLinkTest` 在这处反证下要等 4,098 × 2 s，第 6 次在 9 分钟时手动停掉测试 JVM，`RedisLinkTest` 与 `ShutdownLoginIntegrationTest` 没出结果，挪到第 7、8 次 |
+
+后置：`git diff HEAD -- server-app/src/main` 无输出。
+
+#### `TC-PROD-831` 订阅占满连接池时，请求至多等 2 s 就按 Redis 不可达返回 — 对应 `REQ-PROD-007` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头，要 Valkey。测试对一个随机频道 `listenWorldFlags` 8 次，每个订阅订阅期间占一条池连接；用一条单独的 `Jedis` 看 `PUBSUB NUMSUB` 等到 8。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.CrossShardHandoverIntegrationTest`，看 `aRequestFindingEveryConnectionTakenGivesUpWithinTheTimeout` | 绿：订阅数到 8，Jedis 默认的 8 条连接全被占；`publishWorldFlag` 在 5 s 内返回 false（本条 2.2 s） |
+| 2 | 改动前的红（`<E>` 第 2 次） | 红在 `:302`，`java.util.concurrent.TimeoutException`：借连接无限等，5 s 内没有返回 |
+| 3 | 反证有齿（借连接改回无限等）：`RedisLink.java:128` 的 `pool.setMaxWait(Duration.ofMillis(TIMEOUT_MS));` 改为 `Duration.ofMillis(Boolean.getBoolean("proof.never") ? TIMEOUT_MS : -1)`，同 `TC-PROD-830` 第 3 步那一批，再还原 | 红在 `:302`，同第 2 步 |
+
+后置：`git diff HEAD -- server-app/src/main` 无输出。
+
+#### `TC-PROD-832` presence 队列满了丢最旧的一条、只记一行 WARN，写 presence 不等 Redis — 对应 `REQ-PROD-007` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头，不要数据库。`RedisLinkTest` 在回环地址上起一个只监听、不 `accept` 的 `ServerSocket`：第一次写被 `Syn-Presence-Write` 取走、在连接握手里等满 2 s，后面的写排队。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.RedisLinkTest`，看 `aFullPresenceQueueDropsItsOldestWriteWithOneWarning` | 绿：连续 4,098 次 `presence`（1 次被线程取走、4,096 次排队、多出 1 次）在 2,000 ms 内全部返回；`RedisLink` 的日志里以 `The presence queue is full` 开头的行恰 1 行、级别 WARN |
+| 2 | 改动前：没有队列，`presence` 在调用线程上执行，本条引的 `RedisLink.PRESENCE_QUEUE` 在 `origin/main` 上不存在，没有修前的红；就地执行时本条要等 4,098 × 2 s（`TC-PROD-830` 第 3 步） | — |
+| 3 | 反证有齿（满了不记 WARN）：`RedisLink.java:386` 的 `droppedPresence.warn(…` 前加 `if (Boolean.getBoolean("proof.never"))`，与 `TC-PROD-833` 第 3 步、`TC-PROD-839` 第 2 步同批（`<E>` 第 7 次），再还原 | 红在 `RedisLinkTest.java:92`，`[] ==> expected: <1> but was: <0>` |
+
+后置：`git diff HEAD -- server-app/src/main` 无输出。
+
+#### `TC-PROD-833` 顶号轮询中的登录不占载入名额，无关登录 1 s 内载入（§19 场景） — 对应 `REQ-PROD-004` · 级别: 回归 · 执行者: AI
+
+前置：本节开头，要 Valkey。测试的后端包住 `PostgresBackend`，两个账号的获取语句恒得 `Held("c-<run>", 1)`（另一分片的活会话持有），其余照常；分片在线模式（`displaceHolders = true`）、连 Valkey，选项 `StoreFixture.FAST`（5 s 预算、2 个名额、轮询 50 ms）。测试订阅 `synaxis:kick:*` 数顶号消息。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.CrossShardHandoverIntegrationTest`，看 `loginsWaitingForAnotherShardToLetGoLeaveTheLoadSlotsToOtherLogins` | 绿：两次登录各向 `synaxis:kick:c-<run>` 发一次顶号、进入轮询；之后一个新账号的 `load` 返回 true，耗时 < 1,000 ms；两次轮询的登录在预算用完后返回 false（`past the handover budget`）。本条约 5.2 s，花在等两次轮询跑满预算；三种模式各一次 |
+| 2 | 改动前的红（`<E>` 第 2 次） | 红在 `:357`，`without waiting for the polls, took 4965 ms ==> expected: <true> but was: <false>`：两次轮询抱着两个名额睡满预算，无关登录在名额上等到它们被拒 |
+| 3 | 反证有齿（名额回到整段载入）：`PlayerStore#loadOrRefuse` 在 `loadWithin` 外恢复 `loads.tryAcquire` 与 `finally { loads.release(); }`，`#takeLoadSlot` 开头加 `if (!Boolean.getBoolean("proof.never")) return null;`，`loadWithin` 里 `PlayerStore.java:522`、`:535` 两处 `loads.release();` 前加 `if (Boolean.getBoolean("proof.never"))`，与 `TC-PROD-832` 第 3 步同批，再还原 | 红在 `:357`，`took 4993 ms`，消息同第 2 步；同批 `ShutdownLoginIntegrationTest` 5 条绿 |
+
+后置：`git diff HEAD -- server-app/src/main` 无输出。
+
+#### `TC-PROD-834` 取到载入名额之后重查 `closing`：停机保存开始后，等名额的登录不执行获取语句 — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：同「RUN-038 后 G1 组」一节的 `ShutdownLoginIntegrationTest`，本组没改这个类。名额改成只包语句之后，第二次登录唯一一处等名额就在获取语句之前，这条用例守的就是那一处重查。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.ShutdownLoginIntegrationTest`，看 `aLoginWaitingForALoadSlotTakesNoLeaseAndOneWhoseAcquireWasUnderWayGivesItBack` | 绿（5 条，三种模式各一次，`<E>` 第 3～5 次）：只有 1 个名额，第一次登录的获取语句被拖住时占着它，第二次在获取语句之前等名额；保存阶段开始后放开第一次，第二次取到名额、重查 `closing` 后被拒，`backend.loads(queued) = 0`，没建角色 |
+| 2 | 反证有齿（取到名额后不查 `closing`）：`PlayerStore.java:497` 的 `if (!closing) return null;` 改为 `if (!closing \|\| !Boolean.getBoolean("proof.never")) return null;`，只跑本类（`<E>` 第 8 次），再还原 | `5 tests completed, 1 failed`：红在 `ShutdownLoginIntegrationTest.java:166`，`the queued login never reached the database ==> expected: <0> but was: <1>` |
+
+后置：`grep -rn proof.never server-app/src/main` 无输出；`git status --short` 无输出。
+
+#### `TC-PROD-835` `commitTogether` 的 `apply` 在 tick 的串行段执行一次，不在任何 tick 线程上 — 对应 `REQ-PROD-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。测试里由测试线程调 `env.tick()`，串行段就跑在测试线程上；生产上是 `TickSchedulerThread`。两名参与者都在出生点 (0, 42, 0)，同一格：断言看的是执行 `apply` 的线程是不是 tick 线程，与格子无关：旧代码在默认模式下实测在 `Syn-Tick-0` 上执行，另两种模式按代码推断同样落在某条 `Syn-Tick-*` 上。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aCommitAppliesOnTheThreadThatRunsTheTickNotOnATickThread` | 绿：两人提交得 `SAVED`；`apply` 恰执行 1 次，所在线程是跑 tick 的测试线程；三种模式各一次 |
+| 2 | 改动前的红（`<E>` 第 2 次） | 红在 `PlayerStoreIntegrationTest.java:466`，`applied once, on the serial part of the tick ==> expected: <[Thread[#3,Test worker,5,main]]> but was: <[Thread[#4780,Syn-Tick-0,5,main]]>` |
+| 3 | 反证有齿（`apply` 回到第一个参与者的实体调度器）：`PlayerStore.java:802` 的 `process.scheduler().scheduleNextTick(apply);` 改为 `ordered.getFirst().player.scheduler().scheduleNextTick(apply);`，同 `TC-PROD-830` 第 3 步那一批，再还原 | 红在 `:466`，同第 2 步（线程号 `#4784`） |
+
+后置：`git diff HEAD -- server-app/src/main` 无输出。
+
+#### `TC-PROD-836` 写库期间角色 ID 最小的参与者离开，`apply` 仍执行一次（§19 场景） — 对应 `REQ-PROD-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。测试的后端包住 `PostgresBackend`，提交那次写入停在后端里，直到测试放行（`PlayerStoreIntegrationTest#holding`）；角色 ID 从库里读，取较小的一方。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aCommitWhoseFirstParticipantLeavesBeforeItsApplyStillAppliesOnce` | 绿：提交的写入停在后端时，角色 ID 较小的一方断开，下一个 tick 被移除；放行后提交得 `SAVED`，再跑 5 个 tick，`apply` 恰执行 1 次 |
+| 2 | 改动前的红（`<E>` 第 2 次） | 红在 `:497`，`a commit that is written applies once, whoever left meanwhile ==> expected: <1> but was: <0>`：`apply` 排在已移除实体的调度器上，再也不跑 |
+| 3 | 反证有齿：同 `TC-PROD-835` 第 3 步那一处 | 红在 `:497`，同第 2 步 |
+
+后置：`git diff HEAD -- server-app/src/main` 无输出。
+
+#### `TC-PROD-837` 插件段的 `createDefault()` 抛异常：登录被拒，载入取得的写权还回（§19 场景） — 对应 `REQ-PROD-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。测试在分片上多注册一个 `probe:defaultless` 段。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aSectionWithoutADefaultRefusesTheLoginAndGivesTheLeaseBack` | 绿：新账号 `load` 返回 false，断线 `synaxis:state-unavailable`；库里这个角色的 `lease_session_id` 为 NULL，`loadedCount() = 0`；`PlayerStore` 记一行 ERROR `Refusing a login: … section_id=probe:defaultless has no default` |
+| 2 | 改动前的红（`<E>` 第 2 次） | 红：`java.lang.IllegalStateException: the test's section has no default` 经 `PlayerStore.decode`（`origin/main` 的 `PlayerStore.java:562`）从 `load` 穿出（`PlayerStoreIntegrationTest.java:377`），写权留在本会话 |
+| 3 | 反证有齿（`createDefault()` 的异常又穿出）：`PlayerStore.java:589` 的 `catch (Throwable e)` 改为 `catch (StackOverflowError e)`，同 `TC-PROD-830` 第 3 步那一批，再还原 | 红，同第 2 步，异常经 `PlayerStore.decode` 穿出 `load` |
+
+后置：`git diff HEAD -- server-app/src/main` 无输出。
+
+#### `TC-PROD-838` 插件段的 `encode` 抛 `Error`：登出照常写回其余段并还回写权、同账号随即能再登录，转服照常交出（§19 场景） — 对应 `REQ-PROD-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。测试在分片上多注册一个 `probe:cyclic` 段，它的 `encode` 恒抛 `StackOverflowError`；玩家的 `probe:purse` 与 `probe:cyclic` 都标脏。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.PlayerStoreIntegrationTest`，看 `aSectionWhoseEncodeThrowsAnErrorLeavesTheRestOfTheLogoutSaveGoing` | 绿：断开后 10 s 内记录离开、写权为 NULL，库里 `probe:purse` 是 `{"note": "", "coins": 4}`；同账号再 `load` 成功、`coins = 4`（`probe:cyclic` 没写过，取默认值）；每次快照记一行 ERROR `Encoding a section failed, it stays dirty: … section_id=probe:cyclic` |
+| 2 | 同类，看 `aTransferWhoseSectionEncodeThrowsAnErrorStillHandsTheRestOver` | 绿：`transferOut` 的 future 完成且非 null，库里 `coins = 5`、写权为 NULL |
+| 3 | 改动前的红（`<E>` 第 2 次） | 两条都红在 `EnvImpl.tick` 报的 `Server threw exception`（`PlayerStoreIntegrationTest.java:397` 经 `assertLetGo` 的 `:851`，与 `:413`），cause 是 `StackOverflowError: the test's value that refers to itself`，从 `PlayerStore.snapshot`（`origin/main` 的 `:870`）分别经 `loggedOut`（`:1130`）与 `transferOut` 排的任务（`:851`）穿出：登出与转服的写回都没提交 |
+| 4 | 反证有齿（快照只接 `RuntimeException`）：`PlayerStore.java:904` 的 `catch (Throwable e)` 改为 `catch (RuntimeException e)`，同 `TC-PROD-830` 第 3 步那一批，再还原 | 两条红，同第 3 步 |
+
+后置：`git diff HEAD -- server-app/src/main` 无输出。
+
+#### `TC-PROD-839` presence 改成排队之后的旧用例：等到写进去再读，反证读数随之变 — 对应 `REQ-PROD-007`、`REQ-PROD-045` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。presence 的写与删排进 `Syn-Presence-Write` 之后，调用返回时 Redis 里不一定已经有那个值：`TC-PROD-153` 第 1 步的 `presenceFollowsTheLoginAndAFirstLoginPublishesNothing` 改为等到值含 `"state":"online"` 再读；`TC-PROD-592` 第 1 步的 `thePresenceRefreshReportsAPlayerInTransitAsInTransit` 改为等两次写，刷新之前先删键、等它重新出现，读到的一定是刷新写的（原写法紧接着读，刷新写错了也可能读到签发那次写的 `in_transit`）。`TC-PROD-153` 第 2 步的反证读数不再恒为 60：关链接时还在排队的写被丢掉，行数每次不同。`TC-PROD-592` 的红行从 `:220` 移到 `:226`。`TC-PROD-168`（真进程）第 1 步预期里两行出自 `[Syn-Presence]` 的 WARN，v0.9.91 起出自 `[Syn-Presence-Write]`，行数与条数按代码推断不变，没复跑真进程。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<S>.CrossShardHandoverIntegrationTest` 与 `<S>.TransferNotFollowedIntegrationTest`，看上面两条 | 绿，预期同 `TC-PROD-153` 第 1 步与 `TC-PROD-592` 第 1 步（三种模式各一次） |
+| 2 | 反证有齿：`TC-PROD-153` 第 2 步那一处（`RedisLink.java:411` 的 `failures.warn(…` 换成 `LOGGER.warn(…`）与 `TC-PROD-592` 第 3 步那一处（`PlayerStore.java:1230` 的 `case IN_TRANSIT -> "in_transit";` 改为 `Boolean.getBoolean("proof.never") ? "in_transit" : "online"`），与 `TC-PROD-833` 第 3 步同批（`<E>` 第 7 次），再还原 | `anUnreachableRedisIsOneWarningPerTenSecondsAndNeverAnError` 红在 `CrossShardHandoverIntegrationTest.java:244`，`expected: <1> but was: <44>`（20 行 `(publish)` 出自调用线程，24 行 `(presence)` 出自 `Syn-Presence-Write`，排队的 40 次写里其余的在关链接时被丢掉，这个数在 20～60 之间）；`thePresenceRefresh…` 红在 `TransferNotFollowedIntegrationTest.java:226`，`the refresh keeps it in transit: {"shard_id":"r2-c1-<随机后缀>","session_id":1,"state":"online"} ==> expected: <true> but was: <false>` |
+
+后置：`grep -rn proof.never server-app/src/main` 无输出；`git status --short` 只有本组的文档改动。
+
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
 对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的线上部分：`synaxis:play` v1 的五条消息、小部件属性的 TLV 编码与冻结向量（`docs/DESIGN-PLAY.md` `API-PLAY-002`、`API-PLAY-003`；本组跟进该分册 v0.2 与 `docs/DESIGN-M2.md` v0.66 的 `API-M2-001`）。用例号段 001～009，由组 P 在分支 `prod/r077-P` 写入。测试类：`:protocol` 包 `io.github.bearisbug.synaxis.game.protocol.play` 的 `PlayMessagesTest`、`PlayVectorTest`；`client-fabric` 的 `PlayFrozenVectorTest`。
@@ -13688,6 +13819,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 CODEC，物品的光标哈希、`synaxis:player` 的物品格式与 transient 标签（`REQ-PROD-046`、`REQ-PROD-047`，v0.9.88）→ TC-PROD-800～TC-PROD-804；动了引擎 `codec` 包的 `CodecImpl.MapImpl` 或任一 transcoder 的 `MapBuilder#put(D, D)`，就跑 TC-PROD-801 第 1 步（`CodecTest`）与 TC-PROD-800 第 1 步；动了 `ItemStackHashImpl` 或 `WindowListener` 里比对光标哈希的那几行，跑 TC-PROD-800、TC-PROD-801 第 1 步的 `ItemStackHashRegistriesTest`；动了 `PlayerStateSection#encode`、`#decode` 或 `schemaVersion()`，跑 TC-PROD-802 与上面 RUN-073 组 D 一行的 TC-PROD-721、TC-PROD-722；动了 `TagImpl#write`、`TagNbtAccess`、`BlockImpl#withTag` 或 `Serializers` 里返回 null 的 writer，跑 TC-PROD-803。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 ITEMNET，物品与聊天组件写给 26.2 客户端的四处断线（`REQ-001`、`REQ-PROD-047`，v0.9.89）→ TC-PROD-810～TC-PROD-814；动了 `ItemStack#asHoverEvent` 或 `ComponentNetworkBufferTypeImpl` 写悬停事件的部分就跑 TC-PROD-810 与 TC-PROD-685；动了 `Particle.Item`、`ParticleImpl` 的默认值或 `DataComponents` 里 `use_remainder`、`sulfur_cube_content`、`bundle_contents`、`charged_projectiles` 的注册就跑 TC-PROD-811；动了 `container` 的注册、`ItemStackTemplate` 或组件补丁的读写就跑 TC-PROD-812；动了 custom 点击事件的写法（`ComponentNetworkBufferTypeImpl`、`ComponentCodecs#CLICK_EVENT`）或 `EngineAdventure#unwrapNbt` 就跑 TC-PROD-813；以上任一处都加跑 TC-PROD-814
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 CMD 组，命令的 condition、参数的包装、目标选择器与参数的错误回调（`REQ-PROD-012`、`REQ-PROD-011`，v0.9.90）→ TC-PROD-820～TC-PROD-826；动了引擎 `GraphConverter`（建命令包时接住 condition 的异常、按 `Argument#unwrap` 取节点形状、没有 parser 的节点不写进包）、`CommandParserImpl`（解析失败的归属、错误回调与调它之前看的语法 condition）、`Argument` 的 `unwrap`、`suggestionType`、`hasSuggestion` 或 `map`、`filter` 的包装类、`ArgumentEntity` 的参数名单，或宿主 `PluginCommandsImpl#guard`，就跑 TC-PROD-820～TC-PROD-825 第 1 步（五个类一次 Gradle），再按上面「控制台与插件命令」一行跑 TC-PROD-240～TC-PROD-247；动了 `Player#UNSAFE_init` 里 `refreshCommands` 与 `setInstance` 的先后，或 `ConnectionManager#updateWaitingPlayers` 对出生时同步异常的处理，再加 TC-PROD-826 的两遍。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 STORE，Redis 往返离开登录路径、载入名额只包语句、`commitTogether` 的 `apply` 与插件段回调抛 `Error`（`REQ-PROD-004`、`REQ-PROD-006`、`REQ-PROD-007`、`REQ-PROD-008`，v0.9.91）→ TC-PROD-830～TC-PROD-839；动了 `RedisLink` 的 `presence`、`clearPresence`、`dropOldest`、`close` 或连接池配置，就跑 TC-PROD-830～TC-PROD-832 与 TC-PROD-839（`RedisLinkTest` 不要数据库，另两个类要数据库前置与 Valkey）；动了 `PlayerStore` 的 `loadOrRefuse`、`takeLoadSlot` 或 `loadWithin` 里取还名额的几处，就跑 TC-PROD-833、TC-PROD-834、TC-PROD-171 与 TC-PROD-157 的 `TransferTicketsIntegrationTest`；动了 `commitTogether` 排 `apply` 的那一行，跑 TC-PROD-835、TC-PROD-836 与 TC-PROD-148，三种线程模式各一次；动了 `snapshot`、`decode` 的捕获或调 `createDefault()` 的那一处，跑 TC-PROD-837、TC-PROD-838 与 RUN-073 组 D 一行的 TC-PROD-728 第 4 步。
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

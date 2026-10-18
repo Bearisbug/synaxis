@@ -21,6 +21,9 @@
  *     <li>{@link io.github.bearisbug.synaxis.plugin.PluginScheduler#scheduleTask} runs on the tick
  *     scheduler thread, one task after another: logic a plugin runs there every tick is the serial
  *     part of the tick, and a plugin that has to scale splits it by cell or by entity;</li>
+ *     <li>the {@code apply} of {@link io.github.bearisbug.synaxis.plugin.PlayerDataStore#commitTogether}
+ *     runs there too, once, in the serial part of the tick after the commit was written: it may
+ *     touch every participant, and checks first that each of them is still there;</li>
  *     <li>{@link io.github.bearisbug.synaxis.plugin.PluginScheduler#runAsync} runs on a virtual
  *     thread of its own and touches no entity and no instance;</li>
  *     <li>the server list event {@code ServerListPingEvent} runs on the read thread of the

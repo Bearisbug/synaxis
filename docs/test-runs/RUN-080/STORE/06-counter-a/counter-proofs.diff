@@ -1,0 +1,82 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+index f4c71f682f..4e9f60b0ef 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+@@ -494,7 +494,7 @@ public final class PlayerStore implements ShutdownParticipant {
+             Thread.currentThread().interrupt();
+             return "interrupted";
+         }
+-        if (!closing) return null;
++        if (!closing || !Boolean.getBoolean("proof.never")) return null;
+         loads.release();
+         return STOPPING;
+     }
+@@ -586,7 +586,7 @@ public final class PlayerStore implements ShutdownParticipant {
+                 // A plugin's code: anything it throws, an Error too, refuses the login
+                 try {
+                     record.values.put(section.id(), section.createDefault());
+-                } catch (Throwable e) {
++                } catch (StackOverflowError e) {
+                     LOGGER.error("Refusing a login: character_id={} section_id={} has no default", record.characterId,
+                             section.id(), e);
+                     return "section " + section.id() + " has no default";
+@@ -799,7 +799,7 @@ public final class PlayerStore implements ShutdownParticipant {
+                 }
+                 // On the serial part of the next tick, which may touch every participant whichever tick
+                 // thread it is on, and runs whoever of them left meanwhile (API-PROD-005)
+-                process.scheduler().scheduleNextTick(apply);
++                ordered.getFirst().player.scheduler().scheduleNextTick(apply);
+                 critical("commit", SaveResult.SAVED, null, start, ordered.size());
+                 metrics.saved(SaveResult.SAVED);
+                 done.complete(SaveResult.SAVED);
+@@ -901,7 +901,7 @@ public final class PlayerStore implements ShutdownParticipant {
+             if (section == null || value == null) continue;
+             try {
+                 out.put(id, new Encoded(encode(section, value), takenAt));
+-            } catch (Throwable e) {
++            } catch (RuntimeException e) {
+                 // A plugin's code: an Error too (a value that refers to itself overflows the stack),
+                 // which would otherwise leave a logout or a transfer that never writes nor lets go
+                 LOGGER.error("Encoding a section failed, it stays dirty: character_id={} section_id={}",
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/RedisLink.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/RedisLink.java
+index e0fe4ce829..e92458d0e5 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/RedisLink.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/RedisLink.java
+@@ -125,7 +125,7 @@ public final class RedisLink implements AutoCloseable {
+         // Every subscription keeps a pooled connection while it listens: a request finding all of
+         // them taken fails after the timeout instead of waiting for one forever
+         final ConnectionPoolConfig pool = new ConnectionPoolConfig();
+-        pool.setMaxWait(Duration.ofMillis(TIMEOUT_MS));
++        pool.setMaxWait(Duration.ofMillis(Boolean.getBoolean("proof.never") ? TIMEOUT_MS : -1));
+         final RedisClient client = RedisClient.builder()
+                 .hostAndPort(new HostAndPort(uri.getHost(), uri.getPort() < 0 ? 6379 : uri.getPort()))
+                 .clientConfig(config.build())
+@@ -344,7 +344,7 @@ public final class RedisLink implements AutoCloseable {
+         final ExecutorService writes = this.presenceWrites;
+         if (redis == null || writes == null || states.isEmpty()) return;
+         final Map<UUID, String> written = Map.copyOf(states);
+-        writes.execute(() -> {
++        runNow(() -> {
+             try (var pipeline = redis.pipelined()) {
+                 for (Map.Entry<UUID, String> entry : written.entrySet()) {
+                     final JsonObject value = new JsonObject();
+@@ -370,7 +370,7 @@ public final class RedisLink implements AutoCloseable {
+         final RedisClient redis = this.client;
+         final ExecutorService writes = this.presenceWrites;
+         if (redis == null || writes == null) return;
+-        writes.execute(() -> {
++        runNow(() -> {
+             try {
+                 redis.del(presenceKey(account));
+                 up = true;
+@@ -380,6 +380,10 @@ public final class RedisLink implements AutoCloseable {
+         });
+     }
+ 
++    private static void runNow(Runnable write) {
++        write.run();
++    }
++
+     /** A full presence queue drops its oldest write for the new one; once closed, it drops the new one. */
+     private void dropOldest(Runnable write, ThreadPoolExecutor executor) {
+         if (executor.isShutdown()) return;

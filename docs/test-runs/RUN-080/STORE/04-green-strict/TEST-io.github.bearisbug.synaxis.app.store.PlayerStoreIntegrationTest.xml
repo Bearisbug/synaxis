@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" tests="28" skipped="0" failures="0" errors="0" timestamp="2026-10-18T02:13:40.384Z" hostname="Mac.local" time="10.154">
+  <properties/>
+  <testcase name="aLoginAbandonedTwiceGivesItsLeaseBackOnce(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.526"/>
+  <testcase name="aLoginAbandonedWhileAnotherLoginOfItsAccountLoadsLeavesTheLeaseToTheOther(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.536"/>
+  <testcase name="theAutosaveComesRoundOncePerPeriodWhateverTheNumberOnline(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.316"/>
+  <testcase name="aLoginComingWhileAnAbandonedLoginGivesItsLeaseBackKeepsTheLeaseItTakes(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.5"/>
+  <testcase name="theLogoutSaveWritesTheDirtySectionAndGivesTheLeaseBack(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.252"/>
+  <testcase name="aSectionWhoseEncodeThrowsAnErrorLeavesTheRestOfTheLogoutSaveGoing(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.243"/>
+  <testcase name="aNewAccountGetsOneCharacterHeldByThisSession(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.186"/>
+  <testcase name="aLogoutSaveTheDatabaseRejectsIsDroppedAndTheLeaseStillGoesBack(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="1.317"/>
+  <testcase name="aSectionNewerThanThisBuildOrUndecodableRefusesTheLoginAndIsLeftAlone(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.218"/>
+  <testcase name="aWriteAfterAnotherShardTookTheCharacterOverIsFenced(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.212"/>
+  <testcase name="aCommitWhoseFirstParticipantLeavesBeforeItsApplyStillAppliesOnce(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.205"/>
+  <testcase name="aLogoutBeforeTheTransferSnapshotsSavesAsTheLogout(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.185"/>
+  <testcase name="aLoginRefusedForTheLoadQueueGivesBackTheLeaseItWasHolding(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.362"/>
+  <testcase name="anOlderSectionVersionIsUpgradedOnLoad(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.142"/>
+  <testcase name="aCommitAppliesOnTheThreadThatRunsTheTickNotOnATickThread(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.194"/>
+  <testcase name="aSaveRetryingFromBeforeACommitDoesNotWriteOverTheCommit(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="1.732"/>
+  <testcase name="aTransferWhoseWriteFailsKeepsItsTurnInTheAutosave(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.284"/>
+  <testcase name="aTransferWhoseWriteSucceedsAfterTheLogoutEndsOffline(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.219"/>
+  <testcase name="aPlayerThatLeavesBeforeItSpawnsIsSavedAndLetGo(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.16"/>
+  <testcase name="aDegradedShardFreezesTradesPickupsAndDrops(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.179"/>
+  <testcase name="aCommitOfTwoPlayersWritesBothOrNeither(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.231"/>
+  <testcase name="anIsolatedShardKicksEveryoneWritesNothingAndTakesLoginsAgainOnceReopened(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.193"/>
+  <testcase name="aTransferWhoseWriteFailsAfterTheLogoutIsRetriedAsTheLogoutSave(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.264"/>
+  <testcase name="aHundredShardsRacingForANewAccountLeaveOneCharacterAndOneHolder()" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.781"/>
+  <testcase name="aSectionWithoutADefaultRefusesTheLoginAndGivesTheLeaseBack(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.144"/>
+  <testcase name="theAutosaveWritesDirtyPlayersSpreadOverTheTicksAndSkipsCleanOnes(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.225"/>
+  <testcase name="aLoadThatFailsAfterItsAcquireHoldsNoLease(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.148"/>
+  <testcase name="aTransferWhoseSectionEncodeThrowsAnErrorStillHandsTheRestOver(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.189"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

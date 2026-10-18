@@ -4,6 +4,8 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.entity.ItemEntity;
 import io.github.bearisbug.synaxis.event.item.PickupItemEvent;
@@ -28,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -56,6 +59,62 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @EnvTest
 class PlayerStoreIntegrationTest {
+
+    /** A section whose encode throws what a JSON encoder throws on a value that refers to itself. */
+    private static final DataSection<String> UNENCODABLE = new DataSection<>() {
+        @Override
+        public String id() {
+            return "probe:cyclic";
+        }
+
+        @Override
+        public int schemaVersion() {
+            return 1;
+        }
+
+        @Override
+        public String createDefault() {
+            return "";
+        }
+
+        @Override
+        public String decode(JsonElement json, int storedVersion) {
+            return json.getAsString();
+        }
+
+        @Override
+        public JsonElement encode(String value) {
+            throw new StackOverflowError("the test's value that refers to itself");
+        }
+    };
+
+    /** A section whose default cannot be made. */
+    private static final DataSection<String> NO_DEFAULT = new DataSection<>() {
+        @Override
+        public String id() {
+            return "probe:defaultless";
+        }
+
+        @Override
+        public int schemaVersion() {
+            return 1;
+        }
+
+        @Override
+        public String createDefault() {
+            throw new IllegalStateException("the test's section has no default");
+        }
+
+        @Override
+        public String decode(JsonElement json, int storedVersion) {
+            return json.getAsString();
+        }
+
+        @Override
+        public JsonElement encode(String value) {
+            return new JsonPrimitive(value);
+        }
+    };
 
     private TestDatabase database;
     private Database pool;
@@ -309,6 +368,56 @@ class PlayerStoreIntegrationTest {
     }
 
     @Test
+    void aSectionWithoutADefaultRefusesTheLoginAndGivesTheLeaseBack(Env env) throws SQLException {
+        final StoreFixture.Shard shard = shard(env, "r1-c1");
+        shard.store().register(NO_DEFAULT);
+        final UUID account = UUID.randomUUID();
+        final Player player = connect(env.process(), account, "Defaultless");
+
+        assertFalse(shard.store().load(player), "refused");
+
+        assertEquals(List.of("synaxis:state-unavailable"), kicks(player));
+        assertNull(row(database, account).lease(), "the lease taken for the load is given back");
+        assertEquals(0, shard.store().loadedCount());
+    }
+
+    @Test
+    void aSectionWhoseEncodeThrowsAnErrorLeavesTheRestOfTheLogoutSaveGoing(Env env) throws SQLException {
+        final StoreFixture.Shard shard = shard(env, "r1-c1");
+        shard.store().register(UNENCODABLE);
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player player = online(env, shard, instance, account, "Cyclic");
+        shard.store().get(player, PURSE).coins = 4;
+        shard.store().markDirty(player, PURSE);
+        shard.store().markDirty(player, UNENCODABLE);
+
+        player.getPlayerConnection().disconnect();
+
+        assertLetGo(env, shard, account, "Cyclic", 4);
+    }
+
+    @Test
+    void aTransferWhoseSectionEncodeThrowsAnErrorStillHandsTheRestOver(Env env) throws SQLException {
+        final StoreFixture.Shard shard = shard(env, "r1-c1");
+        shard.store().register(UNENCODABLE);
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player mover = online(env, shard, instance, account, "Mover");
+        shard.store().get(mover, PURSE).coins = 5;
+        shard.store().markDirty(mover, PURSE);
+        shard.store().markDirty(mover, UNENCODABLE);
+
+        final CompletableFuture<PlayerStore.Handoff> handoff = shard.store().transferOut(mover);
+        assertNotNull(handoff);
+        await(env, handoff::isDone, "the transfer's write ends");
+
+        assertNotNull(handoff.join(), "the sections that encode are written and the lease handed over");
+        assertEquals("{\"note\": \"\", \"coins\": 5}", row(database, account).purse());
+        assertNull(row(database, account).lease());
+    }
+
+    @Test
     void aCommitOfTwoPlayersWritesBothOrNeither(Env env) throws SQLException {
         final StoreFixture.Shard shard = shard(env, "r1-c1");
         final Instance instance = env.createFlatInstance();
@@ -337,6 +446,55 @@ class PlayerStoreIntegrationTest {
         assertEquals("{\"note\": \"\", \"coins\": 10}", row(database, a).purse(), "the seller is untouched");
         assertEquals(1, row(database, a).version());
         assertEquals("{\"note\": \"\", \"coins\": 20}", row(database, b).purse());
+    }
+
+    @Test
+    void aCommitAppliesOnTheThreadThatRunsTheTickNotOnATickThread(Env env) throws SQLException {
+        final StoreFixture.Shard shard = shard(env, "r1-c1");
+        final Instance instance = env.createFlatInstance();
+        final Player seller = online(env, shard, instance, UUID.randomUUID(), "Seller");
+        final Player buyer = online(env, shard, instance, UUID.randomUUID(), "Buyer");
+        final List<Thread> appliedOn = new CopyOnWriteArrayList<>();
+
+        assertEquals(SaveResult.SAVED, shard.store().commitTogether(Map.of(
+                seller, Map.<DataSection<?>, Object>of(PURSE, purse(10)),
+                buyer, Map.<DataSection<?>, Object>of(PURSE, purse(20))),
+                () -> appliedOn.add(Thread.currentThread())).join());
+        await(env, () -> !appliedOn.isEmpty(), "apply runs on the tick after the commit");
+
+        // The test thread runs the tick here: the serial part of it, where every participant may be touched
+        assertEquals(List.of(Thread.currentThread()), appliedOn, "applied once, on the serial part of the tick");
+    }
+
+    @Test
+    void aCommitWhoseFirstParticipantLeavesBeforeItsApplyStillAppliesOnce(Env env) throws Exception {
+        final AtomicBoolean holdNext = new AtomicBoolean();
+        final CountDownLatch writeInside = new CountDownLatch(1);
+        final CountDownLatch letGo = new CountDownLatch(1);
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, holding(holdNext, writeInside, letGo, new AtomicBoolean()));
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final UUID a = UUID.randomUUID();
+        final UUID b = UUID.randomUUID();
+        final Player seller = online(env, shard, instance, a, "Seller");
+        final Player buyer = online(env, shard, instance, b, "Buyer");
+        // The participant whose character id is the lowest, the first one the commit locks
+        final Player first = row(database, a).characterId() < row(database, b).characterId() ? seller : buyer;
+        final AtomicInteger applied = new AtomicInteger();
+
+        holdNext.set(true);
+        final CompletableFuture<SaveResult> trade = shard.store().commitTogether(Map.of(
+                seller, Map.<DataSection<?>, Object>of(PURSE, purse(10)),
+                buyer, Map.<DataSection<?>, Object>of(PURSE, purse(20))), applied::incrementAndGet);
+        assertTrue(writeInside.await(10, TimeUnit.SECONDS), "the commit is on its way to the database");
+        first.getPlayerConnection().disconnect();
+        await(env, first::isRemoved, "the first participant leaves while the commit is written");
+        letGo.countDown();
+        assertEquals(SaveResult.SAVED, trade.get(10, TimeUnit.SECONDS));
+        for (int i = 0; i < 5; i++) env.tick();
+
+        assertEquals(1, applied.get(), "a commit that is written applies once, whoever left meanwhile");
     }
 
     @Test

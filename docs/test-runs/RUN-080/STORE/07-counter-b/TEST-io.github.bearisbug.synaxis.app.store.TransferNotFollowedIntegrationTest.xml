@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-18T02:43:32.606Z" hostname="Mac.local" time="20.94">
+  <properties/>
+  <testcase name="aTransferWhoseEventAPluginCancelledLetsThePlayerGoAllTheSame(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" time="10.232"/>
+  <testcase name="aClientThatIgnoresItsTransferIsDisconnected(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" time="10.275"/>
+  <testcase name="onlyAPlayerATransferWouldTakeIsOnlineToTheStore(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" time="0.213"/>
+  <testcase name="thePresenceRefreshReportsAPlayerInTransitAsInTransit(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" time="0.218">
+    <failure message="org.opentest4j.AssertionFailedError: the refresh keeps it in transit: {&quot;shard_id&quot;:&quot;r2-c1-485a389f&quot;,&quot;session_id&quot;:1,&quot;state&quot;:&quot;online&quot;} ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the refresh keeps it in transit: {&quot;shard_id&quot;:&quot;r2-c1-485a389f&quot;,&quot;session_id&quot;:1,&quot;state&quot;:&quot;online&quot;} ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest.thePresenceRefreshReportsAPlayerInTransitAsInTransit(TransferNotFollowedIntegrationTest.java:226)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

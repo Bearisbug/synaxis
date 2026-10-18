@@ -86,7 +86,8 @@ public final class PlayerStore implements ShutdownParticipant {
      * The budgets of §17 {@code store.load} and {@code store.autosave}.
      *
      * @param loadBudget          how long a login may take to load, handover included
-     * @param loadPermits         loads in flight at once, the rest wait inside the budget
+     * @param loadPermits         load statements in flight at once (the acquire, the claim of a ticket),
+     *                            the rest wait inside the budget
      * @param autosavePeriodTicks every online player is saved once per this many ticks
      * @param retryDelays         the backoff of a failed save, the last one repeating
      * @param giveUpAfter         how long a logout save is retried before the character is orphaned
@@ -470,20 +471,32 @@ public final class PlayerStore implements ShutdownParticipant {
         if (closing || (current != null && current.state() == ShardSession.State.ISOLATED))
             return refuse(player, "the shard is not taking logins");
         try {
-            if (!loads.tryAcquire(remaining(deadline), TimeUnit.NANOSECONDS))
-                return refuse(player, "the load queue did not clear within the budget");
-        } catch (InterruptedException _) {
-            Thread.currentThread().interrupt();
-            return refuse(player, "interrupted");
-        }
-        try {
             return loadWithin(player, account, deadline, claim);
         } catch (SQLException e) {
             failures.warn(e, "Loading a character failed: connection_id={}", player.getPlayerConnection().connectionId());
             return refuse(player, "the database failed");
-        } finally {
-            loads.release();
         }
+    }
+
+    /**
+     * Takes a load slot for one statement (§17 {@code store.load}), waiting inside the budget; the
+     * caller releases it once the statement is over. Nothing that waits for something else holds
+     * one: a poll for another shard to let go would keep unrelated logins out.
+     *
+     * @return null once taken; otherwise why the login is refused. The shutdown save may have
+     *         started while it waited, and then no statement runs (§11.2)
+     */
+    private @Nullable String takeLoadSlot(long deadline) {
+        try {
+            if (!loads.tryAcquire(remaining(deadline), TimeUnit.NANOSECONDS))
+                return "the load queue did not clear within the budget";
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+            return "interrupted";
+        }
+        if (!closing) return null;
+        loads.release();
+        return STOPPING;
     }
 
     private boolean loadWithin(Player player, UUID account, long deadline, @Nullable BooleanSupplier claim)
@@ -497,18 +510,29 @@ public final class PlayerStore implements ShutdownParticipant {
                 return refuse(player, "the previous session of this account did not let go in time");
             }
         }
-        // The shutdown save may have started while this login waited for its load slot or for the
-        // previous login of its account: from then on no ticket is claimed, no lease taken (§11.2)
+        // The shutdown save may have started while this login waited for the previous login of its
+        // account: from then on no ticket is claimed, no lease taken (§11.2)
         if (closing) return refuse(player, STOPPING);
-        if (claim != null && !claim.getAsBoolean()) return false;
+        if (claim != null) {
+            final String busy = takeLoadSlot(deadline);
+            if (busy != null) return refuse(player, busy);
+            try {
+                if (!claim.getAsBoolean()) return false;
+            } finally {
+                loads.release();
+            }
+        }
         boolean kickRequested = false;
         StoreBackend.LoadOutcome.Acquired acquired;
         while (true) {
+            final String busy = takeLoadSlot(deadline);
+            if (busy != null) return refuse(player, busy);
             final long loadStart = System.nanoTime();
             final StoreBackend.LoadOutcome outcome;
             try {
                 outcome = backend.load(account, player.getUsername(), sessionId());
             } finally {
+                loads.release();
                 metrics.statement(StoreMetrics.Statement.LOAD, System.nanoTime() - loadStart);
             }
             if (outcome instanceof StoreBackend.LoadOutcome.Acquired taken) {
@@ -559,7 +583,14 @@ public final class PlayerStore implements ShutdownParticipant {
         for (DataSection<?> section : sections.values()) {
             final StoreBackend.StoredSection found = stored.get(section.id());
             if (found == null) {
-                record.values.put(section.id(), section.createDefault());
+                // A plugin's code: anything it throws, an Error too, refuses the login
+                try {
+                    record.values.put(section.id(), section.createDefault());
+                } catch (Throwable e) {
+                    LOGGER.error("Refusing a login: character_id={} section_id={} has no default", record.characterId,
+                            section.id(), e);
+                    return "section " + section.id() + " has no default";
+                }
                 continue;
             }
             if (found.schemaVersion() > section.schemaVersion()) {
@@ -570,7 +601,7 @@ public final class PlayerStore implements ShutdownParticipant {
             try {
                 final JsonElement json = JsonParser.parseString(found.json());
                 record.values.put(section.id(), section.decode(json, found.schemaVersion()));
-            } catch (RuntimeException e) {
+            } catch (Throwable e) {
                 LOGGER.error("Refusing a login: character_id={} section_id={} cannot be decoded", record.characterId,
                         section.id(), e);
                 return "section " + section.id() + " cannot be decoded";
@@ -766,7 +797,9 @@ public final class PlayerStore implements ShutdownParticipant {
                     for (DataSection<?> section : staged.get(record.player).keySet())
                         record.committedAt.put(section.id(), commit);
                 }
-                ordered.getFirst().player.scheduler().scheduleNextTick(apply);
+                // On the serial part of the next tick, which may touch every participant whichever tick
+                // thread it is on, and runs whoever of them left meanwhile (API-PROD-005)
+                process.scheduler().scheduleNextTick(apply);
                 critical("commit", SaveResult.SAVED, null, start, ordered.size());
                 metrics.saved(SaveResult.SAVED);
                 done.complete(SaveResult.SAVED);
@@ -868,7 +901,9 @@ public final class PlayerStore implements ShutdownParticipant {
             if (section == null || value == null) continue;
             try {
                 out.put(id, new Encoded(encode(section, value), takenAt));
-            } catch (RuntimeException e) {
+            } catch (Throwable e) {
+                // A plugin's code: an Error too (a value that refers to itself overflows the stack),
+                // which would otherwise leave a logout or a transfer that never writes nor lets go
                 LOGGER.error("Encoding a section failed, it stays dirty: character_id={} section_id={}",
                         record.characterId, id, e);
                 record.dirty.add(id);

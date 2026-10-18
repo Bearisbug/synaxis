@@ -1,0 +1,104 @@
+RUN-080 组 STORE（Redis 往返离开登录路径、载入名额只包语句、commitTogether 的 apply、插件段回调抛 Error）证据
+分支 prod/r080-STORE，基于 origin/main cb969826b7；docs/DESIGN-PROD.md v0.9.91，docs/TEST.md TC-PROD-830～TC-PROD-839。
+提交：5216896041（设计文档）、1d7964aab4（代码与测试）；以下行号都按 1d7964aab4。
+本机，2026-10-18。每次 Gradle 都经 zsh ~/.claude/r077/gradle.zsh <worktree> fix-STORE :server-app:test --tests …
+（--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts，跑前拿 /tmp/synaxis-heavy.lock）。
+数据库：SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres，口令只经环境变量 SYNAXIS_TEST_PG_PASSWORD 给
+（docker inspect synaxis-pg 的 POSTGRES_PASSWORD），不在命令行、日志与这些文件里；Valkey 用默认的 redis://127.0.0.1:6440。
+类全名前缀：app.store. = io.github.bearisbug.synaxis.app.store.。
+<PSt> = server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java，
+<RL> = server-app/src/main/java/io/github/bearisbug/synaxis/app/store/RedisLink.java。
+XML 是 Gradle 的测试报告，去掉了 <system-out> 与 <system-err> 的内容（原文 4.9 MB，多是引擎日志），其余不动。
+gradle.txt 是那次运行的完整输出，只删了包装脚本等锁时每 5 分钟一行的 heavy lock taken by（写的是别的会话的标签）。
+
+01-compile/  第 1 次：编译红，没跑测试
+  gradle.txt：:server-app:compileTestJava FAILED，Error Prone DistinctVarargsChecker 拒收新测试里的
+  Set.of(UUID.randomUUID(), UUID.randomUUID())（-Werror）。改成两个局部变量后重跑。
+
+02-red/  第 2 次：改动前的红（<PSt>、<RL> 是 origin/main 的，测试是本组的）
+  跑 CrossShardHandoverIntegrationTest、PlayerStoreIntegrationTest、TransferNotFollowedIntegrationTest。
+  gradle.txt：41 tests completed, 8 failed，8 条都是本组新加的；改了等法的两条旧测试
+  （presenceFollowsTheLoginAndAFirstLoginPublishesNothing、thePresenceRefreshReportsAPlayerInTransitAsInTransit）绿。
+  - aRedisThatTakesConnectionsButNeverAnswersHoldsUpNoLogin 红在 CrossShardHandoverIntegrationTest.java:277，
+    every login is let in ==> expected: <20> but was: <6>（本条 10.3 s）。
+  - aRequestFindingEveryConnectionTakenGivesUpWithinTheTimeout 红在 :302，java.util.concurrent.TimeoutException。
+  - loginsWaitingForAnotherShardToLetGoLeaveTheLoadSlotsToOtherLogins 红在 :357，
+    without waiting for the polls, took 4965 ms ==> expected: <true> but was: <false>。
+  - aCommitAppliesOnTheThreadThatRunsTheTickNotOnATickThread 红在 PlayerStoreIntegrationTest.java:466，
+    applied once, on the serial part of the tick ==> expected: <[Thread[#3,Test worker,5,main]]>
+    but was: <[Thread[#4780,Syn-Tick-0,5,main]]>。
+  - aCommitWhoseFirstParticipantLeavesBeforeItsApplyStillAppliesOnce 红在 :497，
+    a commit that is written applies once, whoever left meanwhile ==> expected: <1> but was: <0>。
+  - aSectionWithoutADefaultRefusesTheLoginAndGivesTheLeaseBack 红：java.lang.IllegalStateException:
+    the test's section has no default，经 PlayerStore.decode（origin/main 的 PlayerStore.java:562）穿出 load
+    （PlayerStoreIntegrationTest.java:377）。
+  - aSectionWhoseEncodeThrowsAnErrorLeavesTheRestOfTheLogoutSaveGoing 红：Server threw exception（EnvImpl.tick，
+    PlayerStoreIntegrationTest.java:397 经 assertLetGo :851），cause java.lang.StackOverflowError:
+    the test's value that refers to itself，从 PlayerStore.snapshot（:870）经 loggedOut（:1130）穿出。
+  - aTransferWhoseSectionEncodeThrowsAnErrorStillHandsTheRestOver 红：Server threw exception（:413），
+    cause RuntimeException: Exception in scheduled task ← StackOverflowError，从 snapshot（:870）经
+    transferOut 排的任务（:851）穿出。
+  RedisLinkTest 没跑：新测试引的 RedisLink.PRESENCE_QUEUE 在 origin/main 上不存在。
+
+03-green-default/  第 3 次：修后，默认模式
+  跑 CrossShardHandoverIntegrationTest 9、PlayerStoreIntegrationTest 28、TransferNotFollowedIntegrationTest 4、
+  RedisLinkTest 3、ShutdownLoginIntegrationTest 5、TransferTicketsIntegrationTest 7、StoreMetricsIntegrationTest 1，
+  共 57 条，0 失败 0 跳过；同一次 :server-app:testNamingCheck、:plugin-api:javadoc、:testing:javadoc 通过
+  （javadoc 的警告都是改动前就有的，不涉及本组改的文件）。BUILD SUCCESSFUL。
+  本组新测试的耗时（s）：aRedisThatTakes… 2.226、aRequestFinding… 2.194、loginsWaiting… 5.154、
+  aFullPresenceQueue… 2.008、aCommitApplies… 0.205、aCommitWhoseFirst… 0.216、aSectionWithoutADefault… 0.143、
+  aSectionWhoseEncode… 0.217、aTransferWhoseSectionEncode… 0.200。
+
+04-green-strict/  第 4 次：同 7 个类，-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+  57 条，0 失败 0 跳过（:server-app:test 真跑，报告时间戳新于第 3 次，日志里有 Syn-Tick-1）。
+
+05-green-grid/  第 5 次：同 7 个类，再加 -Dsynaxis.thread-provider=grid
+  57 条，0 失败 0 跳过。
+
+06-counter-a/  第 6 次：六处反证一次打上（counter-proofs.diff，相对 1d7964aab4），跑 CrossShardHandover、PlayerStore、
+  RedisLinkTest、ShutdownLogin 四个类。
+  - <RL>:347、:373 presence 与 clearPresence 的 writes.execute(() -> { 改为 runNow(() -> {（就地执行）；
+  - <RL>:128 maxWait 改为 Duration.ofMillis(Boolean.getBoolean("proof.never") ? TIMEOUT_MS : -1)（-1 即无限等）；
+  - <PSt>:802 apply 改回 ordered.getFirst().player.scheduler().scheduleNextTick(apply)；
+  - <PSt>:904 snapshot 的 catch (Throwable e) 改为 catch (RuntimeException e)；
+  - <PSt>:589 createDefault 的 catch (Throwable e) 改为 catch (StackOverflowError e)；
+  - <PSt>:497 if (!closing) return null; 改为 if (!closing || !Boolean.getBoolean("proof.never")) return null;。
+  CrossShardHandover 9 条红 2、PlayerStore 28 条红 5：
+  - aRedisThatTakes… 红在 CrossShardHandoverIntegrationTest.java:278，all of them within one load budget,
+    took 12040 ms ==> expected: <true> but was: <false>（名额只包语句之后 20 次都进来了，载入与准入各等一次往返）。
+  - aRequestFinding… 红在 :302，TimeoutException。
+  - aCommitApplies… 红在 PlayerStoreIntegrationTest.java:466，but was: <[Thread[#4784,Syn-Tick-0,5,main]]>。
+  - aCommitWhoseFirst… 红在 :497，expected: <1> but was: <0>。
+  - aSectionWithoutADefault… 红，IllegalStateException 从 load 穿出（:377）。
+  - aSectionWhoseEncode… 红在 :397（assertLetGo :851）、aTransferWhoseSectionEncode… 红在 :413，
+    都是 Server threw exception ← StackOverflowError。
+  之后 RedisLinkTest 的 aFullPresenceQueue… 在就地执行的 presence 下要等 4,098 × 2 s：jcmd 看到 Test worker 停在
+  NioSocketImpl.timedFinishConnect，9 分钟时手动 kill 测试 JVM（Gradle Test Executor 2 exit 143），
+  RedisLinkTest.xml 只剩一条 skipped，ShutdownLoginIntegrationTest 没跑；这两处挪到第 7、8 次。
+  之后 git checkout HEAD -- server-app/src/main。
+
+07-counter-b/  第 7 次：四处反证（counter-proofs.diff），跑 CrossShardHandover、TransferNotFollowed、RedisLinkTest、ShutdownLogin。
+  - 载入名额回到整段载入：<PSt>#loadOrRefuse 恢复 loadWithin 外面的 tryAcquire 与 finally release，
+    #takeLoadSlot 开头加 if (!Boolean.getBoolean("proof.never")) return null;，loadWithin 两处 loads.release()
+    （:522、:535）前加 if (Boolean.getBoolean("proof.never"))；
+  - <RL>:411 failed() 的 failures.warn(… 换成 LOGGER.warn(…（TC-PROD-153 第 2 步那一处）；
+  - <PSt>:1230 refreshPresence 的 case IN_TRANSIT -> "in_transit"; 改为
+    Boolean.getBoolean("proof.never") ? "in_transit" : "online"（TC-PROD-592 第 3 步那一处）；
+  - <RL>:386 droppedPresence.warn(… 前加 if (Boolean.getBoolean("proof.never"))。
+  gradle.txt：21 tests completed, 4 failed：
+  - loginsWaiting… 红在 CrossShardHandoverIntegrationTest.java:357，took 4993 ms ==> expected: <true> but was: <false>。
+  - anUnreachableRedisIsOneWarningPerTenSecondsAndNeverAnError 红在 :244，expected: <1> but was: <44>：
+    20 行 (publish) 出自调用线程，24 行 (presence) 出自 Syn-Presence-Write；排队的 40 次写里 16 次在关链接时还没执行、
+    被 shutdownNow 丢掉，这个数每次不同（20～60）。
+  - aFullPresenceQueue… 红在 RedisLinkTest.java:92，[] ==> expected: <1> but was: <0>。
+  - thePresenceRefreshReportsAPlayerInTransitAsInTransit 红在 TransferNotFollowedIntegrationTest.java:226，
+    the refresh keeps it in transit: {"shard_id":"r2-c1-485a389f","session_id":1,"state":"online"} ==>
+    expected: <true> but was: <false>。
+  - ShutdownLoginIntegrationTest 5 条绿：整段占名额的旧写法同样通过它。
+  之后 git checkout HEAD -- server-app/src/main。
+
+08-counter-c/  第 8 次：一处反证（counter-proofs.diff）：<PSt>:497 取到名额后不查 closing，只跑 ShutdownLoginIntegrationTest。
+  gradle.txt：5 tests completed, 1 failed：aLoginWaitingForALoadSlotTakesNoLeaseAndOneWhoseAcquireWasUnderWayGivesItBack
+  红在 ShutdownLoginIntegrationTest.java:166，the queued login never reached the database ==> expected: <0> but was: <1>。
+  之后 git checkout HEAD -- server-app/src/main；grep -rn proof.never server-app/src/main 无输出，git status --short 无输出。
+  第 3～5 次跑的就是 1d7964aab4 的代码，还原之后没有再跑终跑。

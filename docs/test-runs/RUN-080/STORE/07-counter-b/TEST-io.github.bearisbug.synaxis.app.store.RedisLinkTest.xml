@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.RedisLinkTest" tests="3" skipped="0" failures="1" errors="0" timestamp="2026-10-18T02:43:26.357Z" hostname="Mac.local" time="4.513">
+  <properties/>
+  <testcase name="aFullPresenceQueueDropsItsOldestWriteWithOneWarning()" classname="io.github.bearisbug.synaxis.app.store.RedisLinkTest" time="2.006">
+    <failure message="org.opentest4j.AssertionFailedError: [] ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: [] ==&gt; expected: &lt;1&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.app.store.RedisLinkTest.aFullPresenceQueueDropsItsOldestWriteWithOneWarning(RedisLinkTest.java:92)
+</failure>
+  </testcase>
+  <testcase name="aUrlThatIsNotOneIsRefusedWithoutThePassword()" classname="io.github.bearisbug.synaxis.app.store.RedisLinkTest" time="0.001"/>
+  <testcase name="aPercentEncodedPasswordIsTaken()" classname="io.github.bearisbug.synaxis.app.store.RedisLinkTest" time="2.506"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

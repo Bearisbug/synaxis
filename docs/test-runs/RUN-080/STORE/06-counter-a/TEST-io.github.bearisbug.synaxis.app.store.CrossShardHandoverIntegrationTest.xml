@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" tests="9" skipped="0" failures="2" errors="0" timestamp="2026-10-18T02:21:23.286Z" hostname="Mac.local" time="28.352">
+  <properties/>
+  <testcase name="anOfflineShardNeverDisplacesAndSendsNoKickRequest(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="1.83"/>
+  <testcase name="withoutRedisTheSecondLoginIsRefusedAndTheFirstStays(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="0.244"/>
+  <testcase name="aLoginWhoseConnectionClosedWhileTheHolderHeldOnGivesWayToTheReconnect(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="0.903"/>
+  <testcase name="aLoginOnAnotherShardKicksTheOldSessionAndTakesTheCharacterOverWithinFiveSeconds(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="0.308"/>
+  <testcase name="anUnreachableRedisIsOneWarningPerTenSecondsAndNeverAnError()" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="0.149"/>
+  <testcase name="aRedisThatTakesConnectionsButNeverAnswersHoldsUpNoLogin(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="14.27">
+    <failure message="org.opentest4j.AssertionFailedError: all of them within one load budget, took 12040 ms ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: all of them within one load budget, took 12040 ms ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest.aRedisThatTakesConnectionsButNeverAnswersHoldsUpNoLogin(CrossShardHandoverIntegrationTest.java:278)
+</failure>
+  </testcase>
+  <testcase name="presenceFollowsTheLoginAndAFirstLoginPublishesNothing(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="0.248"/>
+  <testcase name="loginsWaitingForAnotherShardToLetGoLeaveTheLoadSlotsToOtherLogins(Env)" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="5.188"/>
+  <testcase name="aRequestFindingEveryConnectionTakenGivesUpWithinTheTimeout()" classname="io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest" time="5.202">
+    <failure message="java.util.concurrent.TimeoutException" type="java.util.concurrent.TimeoutException">java.util.concurrent.TimeoutException
+	at java.base/java.util.concurrent.CompletableFuture.timedGet(CompletableFuture.java:1981)
+	at java.base/java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2116)
+	at io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest.aRequestFindingEveryConnectionTakenGivesUpWithinTheTimeout(CrossShardHandoverIntegrationTest.java:302)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

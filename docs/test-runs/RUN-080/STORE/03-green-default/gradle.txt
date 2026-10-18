@@ -1,0 +1,314 @@
+[fix-STORE] free=43% load=14 start 10:11:26
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as no cached configuration is available for tasks: :server-app:test --tests io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest --tests io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest --tests io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest --tests io.github.bearisbug.synaxis.app.store.RedisLinkTest --tests io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest --tests io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest --tests io.github.bearisbug.synaxis.app.store.StoreMetricsIntegrationTest :server-app:testNamingCheck :plugin-api:javadoc :testing:javadoc
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions UP-TO-DATE
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateEntrypointForLibs UP-TO-DATE
+> Task :build-src:generateEntrypointForLibsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-src:generateLibrariesForConventions UP-TO-DATE
+> Task :build-src:generateLibrariesForLibs UP-TO-DATE
+> Task :build-src:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-src:compilePluginsBlocks UP-TO-DATE
+> Task :build-src:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-src:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-src:verifyEarlyEvaluatedBuild UP-TO-DATE
+> Task :build-src:verifyTopLevelBuild UP-TO-DATE
+> Task :build-src:compileKotlin UP-TO-DATE
+> Task :build-src:compileJava UP-TO-DATE
+> Task :build-src:pluginDescriptors UP-TO-DATE
+> Task :build-src:processResources UP-TO-DATE
+> Task :build-src:classes UP-TO-DATE
+> Task :build-src:jar UP-TO-DATE
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :baker
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rush
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :loadtest
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :play-kit
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :synx
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :baker:processResources UP-TO-DATE
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :game-rts:processResources UP-TO-DATE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :server-app:buildInfo UP-TO-DATE
+> Task :server-app:processResources UP-TO-DATE
+> Task :server-app:processTestResources UP-TO-DATE
+> Task :synx:processResources NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :server-app:testNamingCheck
+> Task :baker:compileJava UP-TO-DATE
+> Task :baker:classes UP-TO-DATE
+> Task :baker:jar UP-TO-DATE
+> Task :synx:classes UP-TO-DATE
+> Task :synx:jar UP-TO-DATE
+> Task :plugin-api:compileJava
+> Task :plugin-api:classes
+> Task :plugin-api:jar UP-TO-DATE
+> Task :game-rts:compileJava UP-TO-DATE
+> Task :game-rts:classes UP-TO-DATE
+> Task :game-rts:jar UP-TO-DATE
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :server-app:compileJava
+> Task :server-app:classes
+
+> Task :plugin-api:javadoc
+warning: The code being documented uses modules but the packages defined in https://javadoc.io/doc/org.jetbrains/annotations/26.1.0/ are in the unnamed module.
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/BanTarget.java:56: warning: no main description
+         * @param cidr a literal address with an optional prefix length ({@code /32} or {@code /128}
+           ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/BanTarget.java:34: warning: no main description
+         * @param uuid the account
+           ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/LogBudget.java:52: warning: no main description
+     * @param logger the logger of the class that reports, so the line keeps its own logger name
+       ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginEvents.java:55: warning: no comment
+        HIGH,
+        ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginEvents.java:56: warning: no comment
+        HIGHEST,
+        ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginEvents.java:53: warning: no comment
+        LOW,
+        ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginEvents.java:52: warning: no comment
+        LOWEST,
+        ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginEvents.java:54: warning: no comment
+        NORMAL,
+        ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/plugin-api/src/main/java/module-info.java:1: warning: no comment
+module io.github.bearisbug.synaxis.plugin {
+^
+10 warnings
+
+> Task :server-app:compileTestJava
+> Task :server-app:testClasses
+
+> Task :testing:javadoc
+warning: The code being documented uses modules but the packages defined in https://javadoc.io/doc/org.jetbrains/annotations/26.1.0/ are in the unnamed module.
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/package-info.java:2: warning: no comment
+package io.github.bearisbug.synaxis.testing;
+^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/util/package-info.java:2: warning: no comment
+package io.github.bearisbug.synaxis.testing.util;
+^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Collector.java:58: warning: no @param for predicate
+    default void assertAnyMatch(Predicate<T> predicate) {
+                 ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Collector.java:67: warning: no @param for predicate
+    default void assertNoneMatch(Predicate<T> predicate) {
+                 ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Collector.java:76: warning: no @param for predicate
+    default void assertAllMatch(Predicate<T> predicate) {
+                 ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Collector.java:13: warning: no comment
+public interface Collector<T> {
+       ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Collector.java:50: warning: no comment
+    default void assertAny() {
+                 ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Collector.java:31: warning: no comment
+    default void assertCount(int count) {
+                 ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Collector.java:36: warning: no comment
+    default void assertCount(int count, Predicate<? super T> predicate) {
+                 ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Collector.java:46: warning: no comment
+    default void assertEmpty() {
+                 ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Collector.java:42: warning: no comment
+    default void assertSingle() {
+                 ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Collector.java:17: warning: no comment
+    default <P extends T> void assertSingle(Class<P> type, Consumer<P> consumer) {
+                               ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Collector.java:25: warning: no comment
+    default void assertSingle(Consumer<T> consumer) {
+                 ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Collector.java:14: warning: no comment
+    List<T> collect();
+            ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:20: warning: no comment
+public interface Env {
+       ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:37: warning: no comment
+    default TestConnection createConnection() {
+                           ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:35: warning: no comment
+    TestConnection createConnection(GameProfile gameProfile);
+                   ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:76: warning: no comment
+    default Instance createEmptyInstance() {
+                     ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:80: warning: no comment
+    default Instance createEmptyInstance(ChunkLoader chunkLoader) {
+                     ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:66: warning: no comment
+    default Instance createFlatInstance() {
+                     ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:70: warning: no comment
+    default Instance createFlatInstance(@Nullable ChunkLoader chunkLoader) {
+                     ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:62: warning: no comment
+    default Player createPlayer(Instance instance, Pos pos) {
+                   ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:84: warning: no comment
+    default void destroyInstance(Instance instance) {
+                 ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:43: warning: no comment
+    <E extends Event> FlexibleListener<E> listen(Class<E> eventType);
+                                          ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:33: warning: no comment
+    ServerProcess process();
+                  ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:45: warning: no comment
+    default void tick() {
+                 ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:49: warning: no comment
+    default boolean tickWhile(BooleanSupplier condition, @Nullable Duration timeout) {
+                    ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/Env.java:41: warning: no comment
+    <E extends Event, H> Collector<E> trackEvent(Class<E> eventType, EventFilter<? super E, H> filter, H actor);
+                                      ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/EnvTest.java:13: warning: no comment
+public @interface EnvTest {
+        ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/FlexibleListener.java:11: warning: no @param for handler
+    void followup(Consumer<E> handler);
+         ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/FlexibleListener.java:7: warning: no comment
+public interface FlexibleListener<E extends Event> {
+       ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/FlexibleListener.java:13: warning: no comment
+    default void followup() {
+                 ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/InMemoryPlayerDataStore.java:22: warning: use of default constructor, which does not provide a comment
+public final class InMemoryPlayerDataStore implements PlayerDataStore {
+             ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/util/MockBlockGetter.java:10: warning: no comment
+public final class MockBlockGetter implements Block.Getter, Block.Setter {
+             ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/util/MockBlockGetter.java:19: warning: no comment
+    public static MockBlockGetter all(Block block) {
+                                  ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/util/MockBlockGetter.java:11: warning: no comment
+    public static MockBlockGetter empty() {
+                                  ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/util/MockBlockGetter.java:15: warning: no comment
+    public static MockBlockGetter single(Block block) {
+                                  ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnection.java:8: warning: no comment
+public interface TestConnection {
+       ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnection.java:9: warning: no comment
+    Player connect(Instance instance, Pos pos);
+           ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnection.java:13: warning: no comment
+    default Collector<ServerPacket> trackIncoming() {
+                                    ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnection.java:11: warning: no comment
+    <T extends ServerPacket> Collector<T> trackIncoming(Class<T> type);
+                                          ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestUtils.java:18: warning: no comment
+public final class TestUtils {
+             ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestUtils.java:18: warning: use of default constructor, which does not provide a comment
+public final class TestUtils {
+             ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestUtils.java:44: warning: no comment
+    public static <T> void assertEqualsIgnoreOrder(Collection<T> expected, Collection<? extends T> actual) {
+                           ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestUtils.java:67: warning: no comment
+    public static void assertEqualsIgnoreSpace(String s1, String s2) {
+                       ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestUtils.java:57: warning: no comment
+    public static void assertEqualsIgnoreSpace(String s1, String s2, boolean matchCase) {
+                       ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestUtils.java:48: warning: no comment
+    public static void assertEqualsSNBT(String snbt, BinaryTag compound) {
+                       ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestUtils.java:71: warning: no comment
+    public static void assertPoint(Point p1, Point p2) {
+                       ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestUtils.java:19: warning: no comment
+    public static int findFreePort() {
+                      ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestUtils.java:27: warning: no comment
+    public static void waitUntilCleared(WeakReference<?> ref) {
+                       ^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/testing/src/main/java/module-info.java:1: warning: no comment
+module io.github.bearisbug.synaxis.testing {
+^
+52 warnings
+
+> Task :server-app:test
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 1m 13s
+45 actionable tasks: 9 executed, 36 up-to-date
+Configuration cache entry stored.
+[fix-STORE] gradle exit=0 end 10:12:39

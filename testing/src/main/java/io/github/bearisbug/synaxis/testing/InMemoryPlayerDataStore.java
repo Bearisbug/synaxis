@@ -14,8 +14,10 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * A {@link PlayerDataStore} for a plugin's own tests ({@code docs/DESIGN-PROD.md}
  * {@code API-PROD-005}): no database, every save succeeds, and a commit applies at once on the
- * calling thread. A test freezes a player with {@link #freeze} to take the path a plugin must take
- * while the real store refuses changes of ownership.
+ * calling thread. The host's store applies on the serial part of the next tick instead, so a
+ * participant leaving in between is a case only a test against the host covers. A test freezes a
+ * player with {@link #freeze} to take the path a plugin must take while the real store refuses
+ * changes of ownership.
  */
 public final class InMemoryPlayerDataStore implements PlayerDataStore {
 

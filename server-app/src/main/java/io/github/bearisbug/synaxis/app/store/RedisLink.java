@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.plugin.LogBudget;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.ConnectionPoolConfig;
 import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.JedisPubSub;
@@ -13,10 +14,15 @@ import redis.clients.jedis.RedisClient;
 import redis.clients.jedis.params.SetParams;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -28,6 +34,8 @@ import java.util.function.Consumer;
  * <p>
  * Nothing here decides who holds a character, PostgreSQL does; Redis being down only turns a
  * cross-shard duplicate login into a refusal. Its failures are counted into one warning per 10 s.
+ * The presence writes are queued for a thread of their own, so a Redis that does not answer holds
+ * up no login, admission or logout.
  */
 public final class RedisLink implements AutoCloseable {
 
@@ -36,6 +44,8 @@ public final class RedisLink implements AutoCloseable {
     /** How long a presence key lives without being refreshed. */
     static final long PRESENCE_TTL_MS = 30_000;
     static final int TIMEOUT_MS = 2_000;
+    /** How many presence writes wait for their thread at most; past it the oldest one is dropped. */
+    static final int PRESENCE_QUEUE = 4_096;
     /** Where a role change is announced, with the account it changed. */
     static final String PERMISSION_CHANNEL = "synaxis:permission";
     /** Where a change of the bans or the whitelist is announced. */
@@ -51,13 +61,19 @@ public final class RedisLink implements AutoCloseable {
     private final @Nullable RedisClient client;
     private final String shardId;
     private final LogBudget failures = new LogBudget(LOGGER, "Redis failures");
+    private final LogBudget droppedPresence = new LogBudget(LOGGER, "presence writes dropped");
     private final AtomicBoolean closed = new AtomicBoolean();
     private final List<JedisPubSub> subscriptions = new CopyOnWriteArrayList<>();
+    // One thread: the writes of an account run in the order they came, loading, online, cleared
+    private final @Nullable ExecutorService presenceWrites;
     private volatile boolean up;
 
     private RedisLink(@Nullable RedisClient client, String shardId) {
         this.client = client;
         this.shardId = shardId;
+        this.presenceWrites = client == null ? null : new ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<>(PRESENCE_QUEUE), Thread.ofPlatform().name("Syn-Presence-Write").daemon().factory(),
+                this::dropOldest);
     }
 
     /**
@@ -106,9 +122,14 @@ public final class RedisLink implements AutoCloseable {
             }
         }
         if (database != null) config.database(database);
+        // Every subscription keeps a pooled connection while it listens: a request finding all of
+        // them taken fails after the timeout instead of waiting for one forever
+        final ConnectionPoolConfig pool = new ConnectionPoolConfig();
+        pool.setMaxWait(Duration.ofMillis(TIMEOUT_MS));
         final RedisClient client = RedisClient.builder()
                 .hostAndPort(new HostAndPort(uri.getHost(), uri.getPort() < 0 ? 6379 : uri.getPort()))
                 .clientConfig(config.build())
+                .poolConfig(pool)
                 .build();
         return new RedisLink(client, shardId);
     }
@@ -300,7 +321,7 @@ public final class RedisLink implements AutoCloseable {
     }
 
     /**
-     * Sets where a player is, for {@value #PRESENCE_TTL_MS} ms.
+     * Sets where a player is, for {@value #PRESENCE_TTL_MS} ms. Queued, see {@link #presence(Map, long)}.
      *
      * @param account   the account
      * @param sessionId the session of this shard
@@ -311,43 +332,61 @@ public final class RedisLink implements AutoCloseable {
     }
 
     /**
-     * Sets or refreshes where several players are, in one round trip.
+     * Sets or refreshes where several players are, in one round trip. The write is queued for the
+     * presence thread and this returns at once; past {@value #PRESENCE_QUEUE} waiting writes the
+     * oldest is dropped, and the refresh every 10 s writes it again.
      *
      * @param states    the state of each account
      * @param sessionId the session of this shard
      */
     public void presence(Map<UUID, String> states, long sessionId) {
         final RedisClient redis = this.client;
-        if (redis == null || states.isEmpty()) return;
-        try (var pipeline = redis.pipelined()) {
-            for (Map.Entry<UUID, String> entry : states.entrySet()) {
-                final JsonObject value = new JsonObject();
-                value.addProperty("shard_id", shardId);
-                value.addProperty("session_id", sessionId);
-                value.addProperty("state", entry.getValue());
-                pipeline.set(presenceKey(entry.getKey()), value.toString(), SetParams.setParams().px(PRESENCE_TTL_MS));
+        final ExecutorService writes = this.presenceWrites;
+        if (redis == null || writes == null || states.isEmpty()) return;
+        final Map<UUID, String> written = Map.copyOf(states);
+        writes.execute(() -> {
+            try (var pipeline = redis.pipelined()) {
+                for (Map.Entry<UUID, String> entry : written.entrySet()) {
+                    final JsonObject value = new JsonObject();
+                    value.addProperty("shard_id", shardId);
+                    value.addProperty("session_id", sessionId);
+                    value.addProperty("state", entry.getValue());
+                    pipeline.set(presenceKey(entry.getKey()), value.toString(), SetParams.setParams().px(PRESENCE_TTL_MS));
+                }
+                pipeline.sync();
+                up = true;
+            } catch (RuntimeException e) {
+                failed(e, "presence");
             }
-            pipeline.sync();
-            up = true;
-        } catch (RuntimeException e) {
-            failed(e, "presence");
-        }
+        });
     }
 
     /**
-     * Forgets where a player is.
+     * Forgets where a player is, queued behind the presence writes before it.
      *
      * @param account the account
      */
     public void clearPresence(UUID account) {
         final RedisClient redis = this.client;
-        if (redis == null) return;
-        try {
-            redis.del(presenceKey(account));
-            up = true;
-        } catch (RuntimeException e) {
-            failed(e, "presence");
-        }
+        final ExecutorService writes = this.presenceWrites;
+        if (redis == null || writes == null) return;
+        writes.execute(() -> {
+            try {
+                redis.del(presenceKey(account));
+                up = true;
+            } catch (RuntimeException e) {
+                failed(e, "presence");
+            }
+        });
+    }
+
+    /** A full presence queue drops its oldest write for the new one; once closed, it drops the new one. */
+    private void dropOldest(Runnable write, ThreadPoolExecutor executor) {
+        if (executor.isShutdown()) return;
+        droppedPresence.warn("The presence queue is full at {} writes, dropping the oldest; the next refresh writes it again",
+                PRESENCE_QUEUE);
+        executor.getQueue().poll();
+        executor.execute(write);
     }
 
     /**
@@ -382,6 +421,8 @@ public final class RedisLink implements AutoCloseable {
                 // Not subscribed, or the connection is already gone
             }
         }
+        final ExecutorService writes = this.presenceWrites;
+        if (writes != null) writes.shutdownNow();
         final RedisClient redis = this.client;
         if (redis != null) redis.close();
     }

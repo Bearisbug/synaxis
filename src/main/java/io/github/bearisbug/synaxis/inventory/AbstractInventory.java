@@ -3,10 +3,13 @@ package io.github.bearisbug.synaxis.inventory;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.Viewable;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.EventHandler;
 import io.github.bearisbug.synaxis.event.EventNode;
+import io.github.bearisbug.synaxis.event.inventory.InventoryClickEvent;
 import io.github.bearisbug.synaxis.event.inventory.InventoryItemChangeEvent;
+import io.github.bearisbug.synaxis.event.item.EntityEquipEvent;
 import io.github.bearisbug.synaxis.event.trait.InventoryEvent;
 import io.github.bearisbug.synaxis.inventory.click.Click;
 import io.github.bearisbug.synaxis.inventory.click.InventoryClickProcessor;
@@ -35,11 +38,24 @@ import java.util.function.UnaryOperator;
 
 /**
  * Represents an inventory where items can be modified/retrieved.
+ * <p>
+ * Slots are written inside this inventory's monitor. A click ({@link #handleClick(Player, Click)}) holds the clicked
+ * inventory's monitor and then the clicking player's one; the {@link InventoryClickEvent}s and
+ * {@link InventoryItemChangeEvent}s it raises are dispatched after the whole click, cursor included, has been committed
+ * and both monitors are released. Two kinds of events are still dispatched inside a monitor: {@link EntityEquipEvent}
+ * (inside the player inventory's one, before the click is committed) and the {@link InventoryItemChangeEvent}s of
+ * {@link #processItemStack(ItemStack, TransactionType, TransactionOption)}, {@link #replaceItemStack(int, UnaryOperator)}
+ * and {@link #clear()}. Their listeners must not synchronously write another inventory or another player's inventory:
+ * two tick threads doing that crosswise wait for each other's monitor forever. Defer such a write to a later tick, for
+ * example with {@link Player#scheduleNextTick(java.util.function.Consumer)}.
  */
 public sealed abstract class AbstractInventory implements InventoryClickHandler, Taggable, Viewable, EventHandler<InventoryEvent>
         permits Inventory, PlayerInventory {
 
     private static final VarHandle ITEM_UPDATER = MethodHandles.arrayElementVarHandle(ItemStack[].class);
+
+    // Events raised by the click this thread is handling, dispatched once the click has been committed
+    private static final ThreadLocal<@Nullable List<Runnable>> PENDING_CLICK_EVENTS = new ThreadLocal<>();
 
     private final int size;
     protected final ItemStack[] itemStacks;
@@ -79,11 +95,15 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
      * to the process of the first player it is shown to.
      */
     @ApiStatus.Internal
-    protected synchronized void bindProcess(ServerProcess process) {
+    protected void bindProcess(ServerProcess process) {
+        // Opening an inventory that is already bound must not wait for its monitor, which a click on it may hold
         if (this.process == process) return;
-        Check.stateCondition(this.process != null, "Inventory is already bound to another server process");
-        this.process = process;
-        this.eventNode = process.eventHandler().map(this, EventFilter.INVENTORY);
+        synchronized (this) {
+            if (this.process == process) return;
+            Check.stateCondition(this.process != null, "Inventory is already bound to another server process");
+            this.eventNode = process.eventHandler().map(this, EventFilter.INVENTORY);
+            this.process = process;
+        }
     }
 
     /**
@@ -99,6 +119,11 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
      * Gets this window id.
      * <p>
      * This is the id that the client will send to identify the affected inventory, mostly used by packets.
+     * {@link PlayerInventory} is always 0. An {@link Inventory} takes its id from one counter shared by the whole
+     * process that cycles through 1..127 as inventories are created, so two inventories a player opens one after the
+     * other can have the same id, and a click or close the client sent for the first one then applies to the second.
+     * Do not let an inventory created for each opening carry an action of value (a purchase, a reward) on the id
+     * alone; check the state in {@link io.github.bearisbug.synaxis.event.inventory.InventoryPreClickEvent} as well.
      *
      * @return the window id
      */
@@ -139,14 +164,43 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
      * A click on a container reads and writes the clicking player's inventory as well (cursor, shift-click
      * target), so that monitor is held for the whole cycle too: a container is always locked before a player
      * inventory, never the other way around.
+     * <p>
+     * The slots are written before the cursor. The events the click raises are therefore held back and dispatched,
+     * in the order they were raised, once the click has been committed and both monitors are released: a listener
+     * that closes or opens an inventory then drops the committed cursor, not the one the click is about to replace.
      */
     @Override
     public boolean handleClick(Player player, Click click) {
-        synchronized (this) {
-            synchronized (player.getInventory()) {
-                return InventoryClickHandler.super.handleClick(player, click);
+        final boolean outermost = PENDING_CLICK_EVENTS.get() == null;
+        if (outermost) PENDING_CLICK_EVENTS.set(new ArrayList<>());
+        try {
+            synchronized (this) {
+                synchronized (player.getInventory()) {
+                    return InventoryClickHandler.super.handleClick(player, click);
+                }
+            }
+        } finally {
+            if (outermost) {
+                // Taken off the thread first: what the listeners write is dispatched straight away
+                final List<Runnable> pending = Objects.requireNonNull(PENDING_CLICK_EVENTS.get());
+                PENDING_CLICK_EVENTS.remove();
+                pending.forEach(Runnable::run);
             }
         }
+    }
+
+    /**
+     * Dispatches an event raised by an inventory operation. While this thread is handling a click the event is held
+     * back until the click has been committed, see {@link #handleClick(Player, Click)}; otherwise it is dispatched now.
+     *
+     * @param process the process whose event handler receives the event
+     * @param event   the event to dispatch
+     */
+    @ApiStatus.Internal
+    public static void dispatch(ServerProcess process, Event event) {
+        final List<Runnable> pending = PENDING_CLICK_EVENTS.get();
+        if (pending != null) pending.add(() -> process.eventHandler().call(event));
+        else process.eventHandler().call(event);
     }
 
     /**
@@ -171,16 +225,19 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
                 "Inventory does not have the slot " + slot);
 
         ItemStack previous;
+        ItemStack inserted;
         synchronized (this) {
             previous = itemStacks[slot];
             if (itemStack.equals(previous)) return; // Avoid sending updates if the item has not changed
             UNSAFE_itemInsert(slot, itemStack, previous, sendPacket);
+            // The insertion may store something else than requested (EntityEquipEvent on a player inventory)
+            inserted = itemStacks[slot];
         }
         // An inventory that has never been shown to a player belongs to no process, so there is
         // nowhere to dispatch the event to.
         final ServerProcess process = this.process;
         if (process != null)
-            process.eventHandler().call(new InventoryItemChangeEvent(this, slot, previous, itemStack));
+            dispatch(process, new InventoryItemChangeEvent(this, slot, previous, inserted));
     }
 
     protected void UNSAFE_itemInsert(int slot, ItemStack item, ItemStack previous, boolean sendPacket) {
@@ -198,6 +255,22 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
         return option.fill(type, this, itemStack);
     }
 
+    /**
+     * Processes each item of {@code itemStacks} in order, as {@link #processItemStack(ItemStack, TransactionType,
+     * TransactionOption)} would, inside this inventory's monitor.
+     * <p>
+     * Each item is decided on its own: the list is not one transaction. {@link TransactionOption#ALL_OR_NOTHING} keeps
+     * a single item from being partly moved, but the items before a refused one stay moved, and
+     * {@link TransactionOption#DRY_RUN} checks every item against the unchanged inventory, without counting the items
+     * before it. To move a whole list or nothing, hold this inventory's monitor ({@code synchronized (inventory)}) and
+     * check the free room yourself before writing.
+     *
+     * @param itemStacks the items to process
+     * @param type       the transaction type
+     * @param option     the transaction option
+     * @param <T>        the result type of {@code option}
+     * @return one result per item, in the order of {@code itemStacks}
+     */
     public synchronized <T> List<T> processItemStacks(List<ItemStack> itemStacks,
                                                       TransactionType type,
                                                       TransactionOption<T> option) {
@@ -214,7 +287,8 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
      *
      * @param itemStack the item to add
      * @param option    the transaction option
-     * @return true if the item has been successfully added, false otherwise
+     * @param <T>       the result type of {@code option}
+     * @return the result of {@code option}, see {@link TransactionOption}
      */
     public <T> T addItemStack(ItemStack itemStack, TransactionOption<T> option) {
         return processItemStack(itemStack, TransactionType.ADD, option);
@@ -226,10 +300,14 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
 
     /**
      * Adds {@link ItemStack}s to the inventory and sends relevant updates to the viewer(s).
+     * <p>
+     * Each item is added on its own, the list is not one transaction: see
+     * {@link #processItemStacks(List, TransactionType, TransactionOption)}.
      *
      * @param itemStacks items to add
      * @param option     the transaction option
-     * @return the operation results
+     * @param <T>        the result type of {@code option}
+     * @return one result of {@code option} per item, in the order of {@code itemStacks}
      */
     public <T> List<T> addItemStacks(List<ItemStack> itemStacks,
                                      TransactionOption<T> option) {
@@ -240,7 +318,9 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
      * Takes an {@link ItemStack} from the inventory and sends relevant update to the viewer(s).
      *
      * @param itemStack the item to take
-     * @return true if the item has been successfully fully taken, false otherwise
+     * @param option    the transaction option
+     * @param <T>       the result type of {@code option}
+     * @return the result of {@code option}, see {@link TransactionOption}
      */
     public <T> T takeItemStack(ItemStack itemStack, TransactionOption<T> option) {
         return processItemStack(itemStack, TransactionType.TAKE, option);
@@ -248,9 +328,14 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
 
     /**
      * Takes {@link ItemStack}s from the inventory and sends relevant updates to the viewer(s).
+     * <p>
+     * Each item is taken on its own, the list is not one transaction: see
+     * {@link #processItemStacks(List, TransactionType, TransactionOption)}.
      *
      * @param itemStacks items to take
-     * @return the operation results
+     * @param option     the transaction option
+     * @param <T>        the result type of {@code option}
+     * @return one result of {@code option} per item, in the order of {@code itemStacks}
      */
     public <T> List<T> takeItemStacks(List<ItemStack> itemStacks,
                                       TransactionOption<T> option) {
@@ -302,11 +387,8 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
 
     /**
      * Gets all the {@link ItemStack} in the inventory.
-     * <p>
-     * Be aware that the returned array does not need to be the original one,
-     * meaning that modifying it directly may not work.
      *
-     * @return an array containing all the inventory's items
+     * @return a copy of the inventory's items; writing to it does not change the inventory
      */
     public ItemStack[] getItemStacks() {
         return itemStacks.clone();

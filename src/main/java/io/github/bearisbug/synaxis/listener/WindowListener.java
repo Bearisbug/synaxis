@@ -117,7 +117,7 @@ public class WindowListener {
 
         if (openInventory == null) {
             translatedSlot = PlayerInventoryUtils.convertWindow0SlotToEngineSlot(rawSlot);
-            if (translatedSlot > player.getInventory().getSize() || translatedSlot < 0) return;
+            if (translatedSlot >= player.getInventory().getSize() || translatedSlot < 0) return;
             targetInventory = player.getInventory();
         } else {
             final int containerSize = openInventory.getSize();
@@ -126,7 +126,7 @@ public class WindowListener {
                 translatedSlot = rawSlot;
             } else {
                 translatedSlot = PlayerInventoryUtils.convertWindowSlotToEngineSlot(rawSlot, containerSize);
-                if (translatedSlot > player.getInventory().getSize() || translatedSlot < 0) return;
+                if (translatedSlot >= player.getInventory().getSize() || translatedSlot < 0) return;
                 targetInventory = player.getInventory();
             }
         }

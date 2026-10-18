@@ -13,8 +13,11 @@ import io.github.bearisbug.synaxis.network.packet.server.play.SetSlotPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.WindowItemsPacket;
 import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.github.bearisbug.synaxis.inventory.PlayerInventoryUtils.BOOTS_SLOT;
 import static io.github.bearisbug.synaxis.inventory.PlayerInventoryUtils.CHESTPLATE_SLOT;
@@ -29,6 +32,10 @@ import static io.github.bearisbug.synaxis.inventory.PlayerInventoryUtils.isPlaye
  * Represents the inventory of a {@link Player}, retrieved with {@link Player#getInventory()}.
  */
 public non-sealed class PlayerInventory extends AbstractInventory {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PlayerInventory.class);
+    // A listener that swaps the item would warn on every click, so only the first refusal is logged
+    private static final AtomicBoolean REFUSED_EQUIP_LOGGED = new AtomicBoolean();
+
     public static final int INVENTORY_SIZE = 46;
     public static final int INNER_INVENTORY_SIZE = 36;
 
@@ -129,13 +136,30 @@ public non-sealed class PlayerInventory extends AbstractInventory {
 
             EntityEquipEvent entityEquipEvent = new EntityEquipEvent(player, item, equipmentSlot);
             player.process().eventHandler().call(entityEquipEvent);
-            item = entityEquipEvent.getEquippedItem();
+            item = acceptedEquipment(slot, item, entityEquipEvent.getEquippedItem());
 
             player.updateEquipmentAttributes(previous, item, equipmentSlot);
             player.syncEquipment(equipmentSlot, item);
         }
 
         super.UNSAFE_itemInsert(slot, item, previous, sendPacket);
+    }
+
+    /**
+     * Keeps the item an {@link EntityEquipEvent} listener set when it differs from the requested one in its components
+     * only. A click writes the cursor after the slot from what it computed beforehand, so another material or amount in
+     * the slot would duplicate or destroy items.
+     */
+    private static ItemStack acceptedEquipment(int slot, ItemStack requested, ItemStack replacement) {
+        if (replacement.material() == requested.material() && replacement.amount() == requested.amount())
+            return replacement;
+        if (REFUSED_EQUIP_LOGGED.compareAndSet(false, true)) {
+            LOGGER.warn("EntityEquipEvent on a player inventory may only change item components: slot {} keeps {} x{}"
+                            + " instead of {} x{}; cancel InventoryPreClickEvent or PlayerSwapItemEvent to block equipping"
+                            + " (logged once)", slot, requested.material().name(), requested.amount(),
+                    replacement.material().name(), replacement.amount());
+        }
+        return requested;
     }
 
     @Override

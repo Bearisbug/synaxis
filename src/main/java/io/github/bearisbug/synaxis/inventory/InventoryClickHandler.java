@@ -53,7 +53,7 @@ public sealed interface InventoryClickHandler permits AbstractInventory {
     }
 
     /**
-     * Called when a {@link Player} left click in the inventory. Can also be to drop the cursor item
+     * Called when a {@link Player} left click in the inventory.
      *
      * @param player the player who clicked
      * @param slot   the slot number
@@ -62,7 +62,7 @@ public sealed interface InventoryClickHandler permits AbstractInventory {
     boolean leftClick(Player player, int slot);
 
     /**
-     * Called when a {@link Player} right click in the inventory. Can also be to drop the cursor item
+     * Called when a {@link Player} right click in the inventory.
      *
      * @param player the player who clicked
      * @param slot   the slot number
@@ -115,6 +115,6 @@ public sealed interface InventoryClickHandler permits AbstractInventory {
 
     default void callClickEvent(Player player, AbstractInventory inventory, int slot,
                                 ClickType clickType, ItemStack clicked, ItemStack cursor) {
-        player.process().eventHandler().call(new InventoryClickEvent(inventory, player, slot, clickType, clicked, cursor));
+        AbstractInventory.dispatch(player.process(), new InventoryClickEvent(inventory, player, slot, clickType, clicked, cursor));
     }
 }

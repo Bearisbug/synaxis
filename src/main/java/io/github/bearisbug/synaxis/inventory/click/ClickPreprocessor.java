@@ -26,8 +26,11 @@ public final class ClickPreprocessor {
     /**
      * Determines whether a click is creative only. This should match client behavior, including edge cases like
      * middle clicks (item clones) being sent in survival when there is an item in the cursor (which would make it a
-     * no-op), hence the parameter. This function can be overridden if modifying the creative check logic is desired,
-     * since {@link io.github.bearisbug.synaxis.listener.WindowListener} directly depends on this.
+     * no-op), hence the parameter. For a player not in creative mode
+     * {@link io.github.bearisbug.synaxis.listener.WindowListener} refuses these clicks before it dispatches
+     * {@link io.github.bearisbug.synaxis.event.inventory.InventoryPreClickEvent}, so listeners never see them and a
+     * plugin cannot let them through. The engine does not implement middle clicks yet either
+     * ({@code middleClick} always returns false).
      *
      * @param click         the click to check
      * @param hasCursorItem if the client has an item in the cursor (for checking {@code Click.Middle})

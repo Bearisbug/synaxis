@@ -229,8 +229,8 @@ public final class InventoryClickProcessor {
         final int amount = cursor.amount();
         final int maxSize = cursor.maxStackSize();
         final int remainingAmount = maxSize - amount;
-        if (remainingAmount == 0) {
-            // Item is already full
+        if (remainingAmount <= 0) {
+            // Item is already full, or holds more than a stack: there is nothing to collect
             return clickResult;
         }
         final BiFunction<AbstractInventory, ItemStack, ItemStack> func = (inv, rest) -> {
@@ -344,6 +344,6 @@ public final class InventoryClickProcessor {
 
     private static void callClickEvent(Player player, AbstractInventory inventory, int slot,
                                 ClickType clickType, ItemStack clicked, ItemStack cursor) {
-        player.process().eventHandler().call(new InventoryClickEvent(inventory, player, slot, clickType, clicked, cursor));
+        AbstractInventory.dispatch(player.process(), new InventoryClickEvent(inventory, player, slot, clickType, clicked, cursor));
     }
 }

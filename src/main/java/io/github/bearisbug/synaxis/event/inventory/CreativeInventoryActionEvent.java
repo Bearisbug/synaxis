@@ -35,8 +35,13 @@ public class CreativeInventoryActionEvent implements PlayerInstanceEvent, Cancel
 
     /**
      * Gets the clicked slot number.
+     * <p>
+     * -1 means the player drops the item out of the creative menu into the world: {@link #getClickedItem()} is the item
+     * to drop, and cancelling the event drops nothing. Any other value is an engine slot, numbered like
+     * {@link io.github.bearisbug.synaxis.inventory.PlayerInventory#getItemStack(int)}
+     * (see {@link io.github.bearisbug.synaxis.inventory.PlayerInventoryUtils}).
      *
-     * @return the clicked slot number
+     * @return -1 for a drop, otherwise the engine slot of the player inventory
      */
     public int getSlot() {
         return slot;

@@ -111,9 +111,15 @@ public sealed interface Material extends StaticProtocolObject<Material>, Materia
         return registry().translationKey();
     }
 
+    /**
+     * Gets the maximum stack size of this material.
+     *
+     * @return the {@link DataComponents#MAX_STACK_SIZE} of the prototype, 1 without it as for a 26.2 client; every
+     * vanilla item prototype has the component
+     */
     @Contract(pure = true)
     default int maxStackSize() {
-        return prototype().get(DataComponents.MAX_STACK_SIZE, 64);
+        return prototype().get(DataComponents.MAX_STACK_SIZE, 1);
     }
 
     static Collection<Material> values() {

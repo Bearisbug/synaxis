@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.item.component;
 
+import net.kyori.adventure.key.Key;
 import io.github.bearisbug.synaxis.codec.Codec;
 import io.github.bearisbug.synaxis.codec.StructCodec;
 import io.github.bearisbug.synaxis.entity.EntityType;
@@ -9,6 +10,7 @@ import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryTag;
 import io.github.bearisbug.synaxis.sound.SoundEvent;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
 
 public record Equippable(
@@ -53,6 +55,14 @@ public record Equippable(
             "can_be_sheared", Codec.BOOLEAN.optional(false), Equippable::canBeSheared,
             "shearing_sound", SoundEvent.CODEC.optional(DEFAULT_SHEARING_SOUND), Equippable::shearingSound,
             Equippable::new);
+
+    // Both are identifiers in 26.2, which a client that cannot parse them drops the connection over
+    public Equippable {
+        Check.argCondition(assetId != null && !Key.parseable(assetId),
+                "assetId must be a namespaced id such as synaxis:knight (a-z 0-9 . _ - /), got: {0}", assetId);
+        Check.argCondition(cameraOverlay != null && !Key.parseable(cameraOverlay),
+                "cameraOverlay must be a namespaced id such as synaxis:misc/pumpkin_blur (a-z 0-9 . _ - /), got: {0}", cameraOverlay);
+    }
 
     public Equippable withSlot(EquipmentSlot slot) {
         return new Equippable(slot, equipSound, assetId, cameraOverlay, allowedEntities, dispensable, swappable, damageOnHurt, equipOnInteract, canBeSheared, shearingSound);

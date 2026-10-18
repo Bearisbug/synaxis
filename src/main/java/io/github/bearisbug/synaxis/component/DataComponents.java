@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.component;
 
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.util.RGBLike;
@@ -71,7 +72,6 @@ import io.github.bearisbug.synaxis.registry.Registry;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.registry.RegistryTag;
 import io.github.bearisbug.synaxis.sound.SoundEvent;
-import io.github.bearisbug.synaxis.utils.Either;
 import io.github.bearisbug.synaxis.utils.Unit;
 import io.github.bearisbug.synaxis.utils.validate.Check;
 
@@ -95,8 +95,11 @@ public class DataComponents {
     public static final DataComponent<Float> MINIMUM_ATTACK_CHARGE = register("minimum_attack_charge", NetworkBuffer.FLOAT, Codec.FLOAT);
     public static final DataComponent<RegistryKey<DamageType>> DAMAGE_TYPE = register("damage_type", DamageType.NETWORK_TYPE, DamageType.CODEC);
     public static final DataComponent<Component> ITEM_NAME = register("item_name", NetworkBuffer.COMPONENT, ComponentCodecs.COMPONENT);
-    public static final DataComponent<String> ITEM_MODEL = register("item_model", NetworkBuffer.STRING, Codec.STRING);
-    public static final DataComponent<List<Component>> LORE = register("lore", NetworkBuffer.COMPONENT.list(256), ComponentCodecs.COMPONENT.list(256), List::copyOf);
+    public static final DataComponent<String> ITEM_MODEL = register("item_model", NetworkBuffer.STRING, Codec.STRING, identifier("item_model"));
+    public static final DataComponent<List<Component>> LORE = register("lore", NetworkBuffer.COMPONENT.list(256), ComponentCodecs.COMPONENT.list(256), lore -> {
+        Check.argCondition(lore.size() > 256, "minecraft:lore holds at most 256 lines, got {0}", lore.size());
+        return List.copyOf(lore);
+    });
     public static final DataComponent<ItemRarity> RARITY = register("rarity", ItemRarity.NETWORK_TYPE, ItemRarity.CODEC);
     public static final DataComponent<EnchantmentList> ENCHANTMENTS = register("enchantments", EnchantmentList.NETWORK_TYPE, EnchantmentList.CODEC);
     public static final DataComponent<BlockPredicates> CAN_PLACE_ON = register("can_place_on", BlockPredicates.NETWORK_TYPE, BlockPredicates.CODEC);
@@ -120,7 +123,7 @@ public class DataComponents {
     public static final DataComponent<Equippable> EQUIPPABLE = register("equippable", Equippable.NETWORK_TYPE, Equippable.CODEC);
     public static final DataComponent<RegistryTag<Material>> REPAIRABLE = register("repairable", RegistryTag.networkType(Registries::material), wrapObject("items", RegistryTag.codec(Registries::material)));
     public static final DataComponent<Unit> GLIDER = register("glider", NetworkBuffer.UNIT, Codec.UNIT);
-    public static final DataComponent<String> TOOLTIP_STYLE = register("tooltip_style", NetworkBuffer.STRING, Codec.STRING);
+    public static final DataComponent<String> TOOLTIP_STYLE = register("tooltip_style", NetworkBuffer.STRING, Codec.STRING, identifier("tooltip_style"));
     public static final DataComponent<DeathProtection> DEATH_PROTECTION = register("death_protection", DeathProtection.NETWORK_TYPE, DeathProtection.CODEC);
     public static final DataComponent<BlocksAttacks> BLOCKS_ATTACKS = register("blocks_attacks", BlocksAttacks.NETWORK_TYPE, BlocksAttacks.NBT_TYPE);
     public static final DataComponent<PiercingWeapon> PIERCING_WEAPON = register("piercing_weapon", PiercingWeapon.NETWORK_TYPE, PiercingWeapon.CODEC);
@@ -149,19 +152,14 @@ public class DataComponents {
     public static final DataComponent<RegistryKey<BinaryTag>> INSTRUMENT = register("instrument", RegistryKey.holderNetworkType(opaque(BuiltinRegistries.INSTRUMENT)), RegistryKey.codec(opaque(BuiltinRegistries.INSTRUMENT)));
     public static final DataComponent<RegistryKey<BinaryTag>> PROVIDES_TRIM_MATERIAL = register("provides_trim_material", RegistryKey.holderNetworkType(opaque(BuiltinRegistries.TRIM_MATERIAL)), RegistryKey.codec(opaque(BuiltinRegistries.TRIM_MATERIAL)));
     public static final DataComponent<Integer> OMINOUS_BOTTLE_AMPLIFIER = register("ominous_bottle_amplifier", NetworkBuffer.VAR_INT, Codec.INT);
-    // The wire type of jukebox_playable is an either-holder, but both branches are the same registry reference here.
-    @SuppressWarnings("unchecked")
-    public static final DataComponent<RegistryKey<BinaryTag>> JUKEBOX_PLAYABLE = register("jukebox_playable",
-            NetworkBuffer.Either(RegistryKey.holderNetworkType(opaque(BuiltinRegistries.JUKEBOX_SONG)), RegistryKey.<BinaryTag>holderNetworkType(opaque(BuiltinRegistries.JUKEBOX_SONG)))
-                    .transform(e -> ((Either.Left<RegistryKey<BinaryTag>, RegistryKey<BinaryTag>>) e).value(), Either::left),
-            RegistryKey.codec(opaque(BuiltinRegistries.JUKEBOX_SONG)));
+    public static final DataComponent<RegistryKey<BinaryTag>> JUKEBOX_PLAYABLE = register("jukebox_playable", RegistryKey.holderNetworkType(opaque(BuiltinRegistries.JUKEBOX_SONG)), RegistryKey.codec(opaque(BuiltinRegistries.JUKEBOX_SONG)));
     public static final DataComponent<RegistryTag<BinaryTag>> PROVIDES_BANNER_PATTERNS = register("provides_banner_patterns", RegistryTag.networkType(opaque(BuiltinRegistries.BANNER_PATTERN)), RegistryTag.codec(opaque(BuiltinRegistries.BANNER_PATTERN)));
     public static final DataComponent<List<String>> RECIPES = register("recipes", NetworkBuffer.STRING.list(Short.MAX_VALUE), Codec.STRING.list(Short.MAX_VALUE), List::copyOf);
     public static final DataComponent<LodestoneTracker> LODESTONE_TRACKER = register("lodestone_tracker", LodestoneTracker.NETWORK_TYPE, LodestoneTracker.CODEC);
     public static final DataComponent<FireworkExplosion> FIREWORK_EXPLOSION = register("firework_explosion", FireworkExplosion.NETWORK_TYPE, FireworkExplosion.CODEC);
     public static final DataComponent<FireworkList> FIREWORKS = register("fireworks", FireworkList.NETWORK_TYPE, FireworkList.NBT_TYPE);
     public static final DataComponent<ResolvableProfile> PROFILE = register("profile", ResolvableProfile.NETWORK_TYPE, ResolvableProfile.CODEC);
-    public static final DataComponent<String> NOTE_BLOCK_SOUND = register("note_block_sound", NetworkBuffer.STRING, Codec.STRING);
+    public static final DataComponent<String> NOTE_BLOCK_SOUND = register("note_block_sound", NetworkBuffer.STRING, Codec.STRING, identifier("note_block_sound"));
     public static final DataComponent<BannerPatterns> BANNER_PATTERNS = register("banner_patterns", BannerPatterns.NETWORK_TYPE, BannerPatterns.CODEC);
     public static final DataComponent<DyeColor> BASE_COLOR = register("base_color", DyeColor.NETWORK_TYPE, DyeColor.CODEC);
     public static final DataComponent<PotDecorations> POT_DECORATIONS = register("pot_decorations", PotDecorations.NETWORK_TYPE, PotDecorations.NBT_TYPE);
@@ -209,6 +207,16 @@ public class DataComponents {
 
     private static Registries.Selector<BinaryTag> opaque(RegistryKey<Registry<BinaryTag>> key) {
         return registries -> registries.opaque(key);
+    }
+
+    // These components are identifiers in 26.2: a client that cannot parse one drops the connection while decoding
+    // the item, so they are checked when they are set rather than when the item reaches a client.
+    private static UnaryOperator<String> identifier(String name) {
+        return value -> {
+            Check.argCondition(!Key.parseable(value),
+                    "minecraft:{0} must be a namespaced id such as synaxis:unit/archer (a-z 0-9 . _ - /), got: {1}", name, value);
+            return value;
+        };
     }
 
     // A 26.2 client cannot build an item stack template from air and drops the connection while decoding one, so the

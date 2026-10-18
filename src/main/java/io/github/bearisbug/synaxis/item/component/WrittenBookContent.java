@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.codec.Codec;
 import io.github.bearisbug.synaxis.codec.StructCodec;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 
 import java.util.List;
 
@@ -31,7 +32,11 @@ public record WrittenBookContent(FilteredText<String> title, String author, int 
             "resolved", Codec.BOOLEAN.optional(false), WrittenBookContent::resolved,
             WrittenBookContent::new);
 
+    // The 26.2 client decodes a title of at most 32 characters and drops the connection over a longer one
     public WrittenBookContent {
+        final String filteredTitle = title.filtered();
+        Check.argCondition(title.text().length() > 32 || (filteredTitle != null && filteredTitle.length() > 32),
+                "A written book title holds at most 32 characters, got: {0}", title.text());
         pages = List.copyOf(pages);
     }
 

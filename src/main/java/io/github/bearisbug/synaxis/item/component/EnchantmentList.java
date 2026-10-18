@@ -7,6 +7,7 @@ import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import io.github.bearisbug.synaxis.registry.BuiltinRegistries;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,8 +23,14 @@ public record EnchantmentList(Map<RegistryKey<BinaryTag>, Integer> enchantments)
     public static final Codec<EnchantmentList> CODEC = RegistryKey.<BinaryTag>codec(REGISTRY).mapValue(Codec.INT, Short.MAX_VALUE)
             .transform(EnchantmentList::new, EnchantmentList::enchantments);
 
+    // 26.2 refuses a level outside 1..255 while it decodes the component, and drops the connection
     public EnchantmentList {
         enchantments = Map.copyOf(enchantments);
+        for (Map.Entry<RegistryKey<BinaryTag>, Integer> entry : enchantments.entrySet()) {
+            final int level = entry.getValue();
+            Check.argCondition(level < 1 || level > 255, "Enchantment {0} level {1} is outside 1..255",
+                    entry.getKey().key().asString(), String.valueOf(level));
+        }
     }
 
     public EnchantmentList(RegistryKey<BinaryTag> enchantment, int level) {

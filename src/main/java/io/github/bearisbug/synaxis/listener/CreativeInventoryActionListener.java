@@ -11,13 +11,15 @@ import io.github.bearisbug.synaxis.inventory.PlayerInventoryUtils;
 import java.util.Objects;
 
 public final class CreativeInventoryActionListener {
+    private static final int WINDOW_0_LAST_SLOT = 45; // window 0 slot 45 is the offhand
+
     public static void listener(ClientCreativeInventoryActionPacket packet, Player player) {
         if (player.getGameMode() != GameMode.CREATIVE) return;
-        short slot = packet.slot();
+        final short windowSlot = packet.slot();
         final ItemStack sentItem = packet.item();
-        if (slot == -1) {
+        if (windowSlot == -1) {
             // Drop item
-            CreativeInventoryActionEvent event = new CreativeInventoryActionEvent(player, slot, sentItem);
+            CreativeInventoryActionEvent event = new CreativeInventoryActionEvent(player, windowSlot, sentItem);
             player.process().eventHandler().call(event);
             if (event.isCancelled()) return;
             player.dropItem(event.getClickedItem());
@@ -25,21 +27,21 @@ public final class CreativeInventoryActionListener {
         }
         // Bounds check
         // 0 is crafting result inventory slot, ignore attempts to place into it
-        if (slot < 1 || slot > PlayerInventoryUtils.OFFHAND_SLOT) {
+        if (windowSlot < 1 || windowSlot > WINDOW_0_LAST_SLOT) {
             return;
         }
         // Set item
-        slot = (short) PlayerInventoryUtils.convertWindow0SlotToEngineSlot(slot);
+        final int engineSlot = PlayerInventoryUtils.convertWindow0SlotToEngineSlot(windowSlot);
         PlayerInventory inventory = player.getInventory();
 
-        CreativeInventoryActionEvent event = new CreativeInventoryActionEvent(player, slot, sentItem);
+        CreativeInventoryActionEvent event = new CreativeInventoryActionEvent(player, engineSlot, sentItem);
         player.process().eventHandler().call(event);
         final ItemStack setItem = event.getClickedItem();
-        final ItemStack previousItem = inventory.getItemStack(slot);
+        final ItemStack previousItem = inventory.getItemStack(engineSlot);
 
         if (event.isCancelled()) {
             // Event is cancelled, keep the old item
-            player.getInventory().sendSlotRefresh(slot, previousItem);
+            player.getInventory().sendSlotRefresh(engineSlot, previousItem);
             return;
         }
 
@@ -50,10 +52,10 @@ public final class CreativeInventoryActionListener {
             return;
         }
 
-        inventory.setItemStack(slot, setItem);
+        inventory.setItemStack(engineSlot, setItem);
 
         if (!isEqualToSentItem) {
-            player.getInventory().sendSlotRefresh(slot, setItem);
+            player.getInventory().sendSlotRefresh(engineSlot, setItem);
         }
     }
 }

@@ -6,8 +6,11 @@ import io.github.bearisbug.synaxis.inventory.AbstractInventory;
 import io.github.bearisbug.synaxis.item.ItemStack;
 
 /**
- * Called when {@link AbstractInventory#setItemStack(int, ItemStack)} is being invoked.
- * This event cannot be cancelled and items related to the change are already moved.
+ * Called when {@link AbstractInventory#setItemStack(int, ItemStack)} has changed a slot.
+ * This event cannot be cancelled and the slot already holds {@link #getNewItem()}.
+ * <p>
+ * A change made by a click is dispatched once the whole click, cursor included, has been committed and no inventory
+ * monitor is held; any other change is dispatched right after the slot is written (see {@link AbstractInventory}).
  */
 public class InventoryItemChangeEvent implements InventoryEvent, RecursiveEvent {
 
@@ -43,9 +46,9 @@ public class InventoryItemChangeEvent implements InventoryEvent, RecursiveEvent 
     }
 
     /**
-     * Gets a new item on a changed slot.
+     * Gets the item now in the changed slot, the one the inventory stored.
      *
-     * @return a new item on a changed slot.
+     * @return the item now in the changed slot
      */
     public ItemStack getNewItem() {
         return newItem;

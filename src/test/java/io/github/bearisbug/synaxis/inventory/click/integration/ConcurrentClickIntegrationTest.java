@@ -3,7 +3,7 @@ package io.github.bearisbug.synaxis.inventory.click.integration;
 import net.kyori.adventure.text.Component;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
-import io.github.bearisbug.synaxis.event.inventory.InventoryItemChangeEvent;
+import io.github.bearisbug.synaxis.event.item.ItemDropEvent;
 import io.github.bearisbug.synaxis.inventory.AbstractInventory;
 import io.github.bearisbug.synaxis.inventory.Inventory;
 import io.github.bearisbug.synaxis.inventory.InventoryType;
@@ -74,20 +74,18 @@ public class ConcurrentClickIntegrationTest {
         var player = env.createPlayer(instance, new Pos(0, 42, 0));
         player.openInventory(inventory);
 
-        // The shift click fills both half stacks of the hotbar to 64, the stone leaves it no free slot
+        // The click drops one diamond of the half stack in slot 9 and writes back what it read minus one, the
+        // concurrent insertion tops up that same stack
         var playerInventory = player.getInventory();
-        for (int slot = 0; slot < 7; slot++) playerInventory.setItemStack(slot, ItemStack.of(Material.STONE));
-        playerInventory.setItemStack(7, ItemStack.of(Material.DIAMOND, 32));
-        playerInventory.setItemStack(8, ItemStack.of(Material.DIAMOND, 32));
-        inventory.setItemStack(0, ItemStack.of(Material.DIAMOND, 64));
+        playerInventory.setItemStack(9, ItemStack.of(Material.DIAMOND, 32));
 
         var added = new AtomicBoolean();
         var insertion = new Thread(() -> added.set(playerInventory.addItemStack(ItemStack.of(Material.DIAMOND, 1))));
 
-        // Run the concurrent insertion once the click committed its first slot, while the second one still
-        // holds the value the click has already read
+        // Run the concurrent insertion between the read and the write of the click. The drop event is dispatched
+        // while the click runs, since its result decides the click; the click events wait until it is committed
         var released = new AtomicBoolean();
-        playerInventory.eventNode().addListener(InventoryItemChangeEvent.class, _ -> {
+        env.process().eventHandler().addListener(ItemDropEvent.class, _ -> {
             if (!released.compareAndSet(false, true)) return;
             insertion.start();
             try {
@@ -97,13 +95,15 @@ public class ConcurrentClickIntegrationTest {
             }
         });
 
-        inventory.handleClick(player, new Click.LeftShift(0));
+        // Slot 9 of the player inventory comes after the slots of the container
+        inventory.handleClick(player, new Click.DropSlot(inventory.getSize() + 9, false));
         insertion.join();
 
-        assertTrue(released.get(), "the click never wrote to the player inventory");
+        assertTrue(released.get(), "the click never dropped an item");
         assertTrue(added.get(), "the concurrent insertion did not fit");
-        final int total = diamonds(inventory) + diamonds(playerInventory) + diamonds(playerInventory.getCursorItem());
-        assertEquals(129, total, "the concurrent insertion was overwritten by the click");
+        final int dropped = 1;
+        final int total = diamonds(inventory) + diamonds(playerInventory) + diamonds(playerInventory.getCursorItem()) + dropped;
+        assertEquals(33, total, "the concurrent insertion was overwritten by the click");
     }
 
     private static int diamonds(AbstractInventory inventory) {

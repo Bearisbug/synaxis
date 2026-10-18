@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-18 | 分支 `prod/r081-INV`（设计提交 `421f2e6918`、代码与测试提交 `c0aca390ff`，基于 `main` `965c3bddae`），跟进 `docs/DESIGN-PROD.md` v0.9.97（RUN-081 组 INV），不登执行轮次（集成后登记 RUN-081）。**新增 §4「生产就绪 · RUN-081：INV」十条 `TC-PROD-890`～`TC-PROD-899`**：点击事件的监听器里关界面不多出物品、派发时不持背包监视器（890），玩家背包上的装备事件只能改组件（891），打开已绑定的界面不等它的监视器（892），不经 `openInventory` 的 `addViewer` 被拒、`InventoryOpenEvent#setInventory` 拒收 null 与玩家背包（893），光标超量时双击不收（894），信标药水属性按注册表 id + 1 发（895），收纳袋选择换算成槽号 46 时不派发（896），`block_state` 里属性不接受的值被跳过（897），创造模式丢弃报槽号 −1 与批量事务的返回值（898），波及的旧类在三种线程模式下照绿、容器点击的并发用例换停顿点后的反证与新增行覆盖（899）。除 898 里两处行为不变的钉住用例，每条都有改动前的红；本组的读数要带上组 PLAYER 的 `Player#openInventory` 改动（见该节开头）。**旧用例**：`TC-PROD-683`、`TC-PROD-684` 引的 `InventoryIntegrationTest` 条数（16）与行号不变。§5 局部轮加本组一行 | Bearisbug |
 | 2026-10-18 | 分支 `prod/r081-PHYS`（基于 `main` `965c3bddae`），跟进 `docs/DESIGN-PROD.md` v0.9.102（RUN-081 组 PHYS），不登执行轮次（集成轮登记）。**新增 §4「生产就绪 · RUN-081：PHYS」十条 `TC-PROD-940`～`TC-PROD-949`**：视角与 `withDirection`（940）、零向量的 `normalize()`（941）、`Area.cube`、`Area.box` 的对称展开（942）、大范围的实体查找与 `ChunkRange`（943）、非有限速度与倒置包围盒（944）、放置判定覆盖大体型实体（945）、视线与实体碰撞结果（946）、投射物（947）、经验球与 `EntityFinder`（948）、三种线程模式回归与新增行覆盖率（949），改动前的红都实跑过。新类 `collision.BlockCollisionTest`、`collision.PhysicsUtilsTest`、`entity.ExperienceOrbIntegrationTest`；`coordinate.PositionUtilsTest` 随 `PositionUtils` 的三个方法删除，两条用例并入 `PosTest`；`PosViewDirectionTest`、`EntityViewDirectionIntegrationTest` 斜向目标的 pitch 期望按欧氏水平距离改，`EntityEntityCollisionIntegrationTest#entityCollisionDetailsTest` 的 `direction` 期望改为面法线。§5 局部轮加一行 | Bearisbug |
 | 2026-10-18 | 分支 `prod/r081-BLOCK`（基于 `main` `965c3bddae`，代码提交 `88f5068ec6`、`2212bad882`、`ca4781a5d5`、`554f8e2b3e`、`51eea9c5d9`），跟进 `docs/DESIGN-PROD.md` v0.9.100（RUN-081 组 BLOCK），不登执行轮次，本组证据 `docs/test-runs/RUN-081/BLOCK/`。**新增 §4「生产就绪 · RUN-081：BLOCK」八条 `TC-PROD-920`～`TC-PROD-927`**：`TC-PROD-920`（方块回调与实例事件写明持锁与禁止项、注销实例不持实例监视器，三种线程模式）、`TC-PROD-921`（方块标签按 path，`Tag.View` 整份覆盖）、`TC-PROD-922`（只有 `Tag.View` 是 view）、`TC-PROD-923`（静态注册表的解码、`fromKey(String)` 与网络类型遇未知 id）、`TC-PROD-924`（粒子的 null、alpha 与编解码器）、`TC-PROD-925`（药水 amplifier 按无符号字节，含 `synaxis:player` 的往返）、`TC-PROD-926`（物品组件的上限、命名空间 id、解码遇到违反的值得 `Result.Error` 与 `jukebox_playable`）、`TC-PROD-927`（`withoutExtraTooltip`、`damage`、最大堆叠、`ItemStack#update` 与 `TooltipDisplay#withHidden`），修前红、反证与修后绿都实跑过。**`TC-PROD-801`**：`ItemStackHashRegistriesTest#aComponentThatDoesNotEncodeIsNamed` 改用 257 格的 `container`（257 行的 lore 现在设置时就被拒），前置、第 1 步与第 3 步的消息和行号随之改。**§5** 局部轮的生产就绪域加本组一行 | Bearisbug |
 | 2026-10-18 | RUN-081 组 WORLD（分支 `prod/r081-WORLD`，基于 `main` `965c3bddae`），跟进 `docs/DESIGN-PROD.md` v0.9.99，不登执行轮次（集成轮登记 RUN-081）。**新增 §4「生产就绪 · RUN-081：WORLD（区块、生成器、分区信号、调色板与世界状态）」十条 `TC-PROD-910`～`TC-PROD-919`**：高度图失效后重算与 `getHeightmaps` 要写锁（910），放置回调带被替换的方块、回调抛异常时观察者照收方块更新（911），区块 tick 的 `reset`、抛异常的 handler 与这一轮已被摧毁的方块（912），不持写锁写区块抛异常（913），生成器的 fork、section 求交与应用 fork 时抛的异常（914），走进正在缓存的区块的实体与分区先建好的区块（915），调色板按值重新编码与负偏移（916），世界边界（917），时钟、天气与维度（918），三种线程模式、M3 回归与新增行覆盖率（919）。根项目新类 `ChunkWriteLockIntegrationTest`（3 条）、`ChunkPartitionIntegrationTest`（2 条），十一个旧类加 28 条（逐类见该节开头），`ChunkQueueBoundIntegrationTest` 改写一条；改动前 24 条红，评审后加的 3 条在只退回对应三行的代码上红。**随代码改的旧用例**：`TC-PROD-658` 改写为钉住实例视距拒负数（测试改名 `aNegativeInstanceViewDistanceIsRefused`），`TC-PROD-650` 第 3 步跟着改名；`TC-PROD-680` 第 1、3～5 步（条数 6 → 7，`Instance.java:645`、`:638` → `:654`、`:646`，测试行号 +1）；`TC-PROD-796` 第 1～3 步的条数（52 → 53）；`TC-PLAY-054` 前置的 `InstanceContainer.java:545` → `:544`；§7 一条引的 `InstanceContainer.java:457` → `:464`。**条数**：根项目全量 +33 条、+2 个类，写死全量条数的旧用例由集成轮按 CI 改。§5 加一行 | Bearisbug |
@@ -13051,6 +13052,136 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：无。
 
+### 生产就绪 · RUN-081：INV（点击事件在点击提交之后派发、装备事件只改组件、打开界面的约束与五处单点修复）
+
+对应 `REQ-PROD-046`、`REQ-PROD-022`、`REQ-PROD-013`、`REQ-001`（`docs/DESIGN-PROD.md` v0.9.97；引擎侧的契约在 `docs/DESIGN.md` `API-005`，窗口 id 在该文档 §28 登成技术债，不写用例）。缺陷与改法见该分册 v0.9.97 一行，本节只写怎么测。
+
+合入前置：本组在 `Inventory#addViewer` 开头加了检查，玩家打开的界面不是它就抛 `IllegalStateException`，这要求 `Player#openInventory` 的成功回调先取出 `InventoryOpenEvent#getInventory()`，再摘掉旧界面的 viewer，再把 `openInventory` 字段赋成新界面，最后才调 `addViewer`。这处改动在 `Player.java`，由组 PLAYER 做，本组分支不带它，单独跑时凡打开界面的用例都会红在这个检查上（按代码推断，没有实跑）。本节第 2～4 次与第 6 次 Gradle 跑的树是本组代码提交 `c0aca390ff` 加上按这个顺序临时改的 `Player#openInventory`（只调了这几行的先后，跑完 `git checkout -- src/main/java/io/github/bearisbug/synaxis/entity/Player.java` 还原）；集成分支上组 PLAYER 先合入，照常跑即可。
+
+测试：根项目，「跑 `<类>`」= `./gradlew :test --tests 'io.github.bearisbug.synaxis.<类>' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`。新类 6 个：`inventory.click.integration.ClickEventReentrancyIntegrationTest` 3 条、`inventory.EntityEquipEventIntegrationTest` 3 条、`inventory.InventoryOpenIntegrationTest` 4 条、`inventory.type.BeaconInventoryIntegrationTest` 1 条（这四个带 `@EnvTest`），`inventory.InventoryTransactionRegistriesTest` 2 条（带 `@RegistriesTest`，要读物品的堆叠上限），`item.component.ItemBlockStateTest` 2 条（纯单测）。改的旧类 4 个：`inventory.InventoryIntegrationTest` 改 2 条的断言（仍是 16 条，改动在第 311 行之后，`TC-PROD-683`、`TC-PROD-684` 引的行号不动），`inventory.PlayerCreativeSlotIntegrationTest` 加 1 条（2 → 3），`inventory.click.integration.DoubleClickIntegrationTest` 加 1 条（2 → 3），`inventory.click.integration.ConcurrentClickIntegrationTest` 换 1 条的停顿点（仍是 2 条）。源文件代号：`<AI>` 是 `src/main/java/io/github/bearisbug/synaxis/inventory/AbstractInventory.java`，`<CIAL>` 是 `src/main/java/io/github/bearisbug/synaxis/listener/CreativeInventoryActionListener.java`，行号按 `c0aca390ff`。本组 6 次 Gradle：第 1 次改动前的红（主代码取 `main` `965c3bddae` 的，测试是本组的；之后只改了 `PlayerCreativeSlotIntegrationTest` 新加那条收集事件的写法，并把批量事务两条挪进带 `@RegistriesTest` 的新类，其余测试与第 1 次逐字相同），第 2 次修后默认模式（同次带 `:testNamingCheck`、`:forbiddenImportsCheck` 与 `ArchitectureTest`），第 3、4 次 4 线程严格（`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`）与严格 grid（再加 `-Dsynaxis.thread-provider=grid`），第 5 次两处反证（跑完用第 5 次之前存下的两个文件还原），第 6 次默认模式再跑一遍，用它的 JaCoCo 执行数据核新增行覆盖。原始输出没有入库。
+
+#### `TC-PROD-890` 点击事件的监听器里关界面：拖拽、左键放入容器、双击都不多出物品，点击事件派发时不持背包监视器 — 对应 `REQ-PROD-046`、`REQ-PROD-022` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。三条都在点击产生的事件里调 `player.closeInventory()`（只在第一次时调），按「格子 + 光标 + 丢出」数物品总量；没被取消的 `ItemDropEvent` 记作丢出（引擎测试里没有生成物品实体的玩法层）。点击经 `handleClick` 直接交给背包，与 `WindowListener` 收到点击包之后走的是同一个入口。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `inventory.click.integration.ClickEventReentrancyIntegrationTest`（第 2 次） | `tests="3"` 0 失败。`closingTheInventoryFromAClickEventOfADragDuplicatesNothing`：窗口 0，光标 32 个石头左键拖过 0、1 两格，`InventoryClickEvent` 的监听器关界面；之后两格各 16 个、光标空、丢出 0 个，总量 32；监听器里 `Thread.holdsLock(玩家背包)` 为 false。`closingTheContainerFromAnItemChangeEventStoresNothingTwice`：开着 `CHEST_1_ROW`，光标 64 颗钻石左键放进 0 格，容器节点上的 `InventoryItemChangeEvent` 监听器关界面，`ItemDropEvent` 全部取消；之后容器 0 格 64 颗，玩家背包与光标 0 颗，总量 64。`closingTheInventoryFromAClickEventOfADoubleClickDuplicatesNothing`：9、10 两格各 10 个石头，光标 1 个，双击空的 0 格；总量 21 |
+| 2 | 改动前的红（第 1 次） | 3 条全红：拖拽红在 `ClickEventReentrancyIntegrationTest.java:52`，`slots + cursor + dropped after the drag ==> expected: <32> but was: <64>`（光标上还没扣的 32 个被丢出，两格照写）；容器红在 `:75`，`container + player inventory + cursor after the click ==> expected: <64> but was: <128>`（光标上的 64 颗丢弃被取消、塞回玩家背包，容器照收）；双击红在 `:97`，`expected: <21> but was: <22>` |
+| 3 | 第 3、4 次跑第 1 步 | 两次都同第 1 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-891` 玩家背包上的 `EntityEquipEvent` 只能改组件：改回原头盔不复制、改成空气不吞物品，`InventoryItemChangeEvent` 报实际存下的物品 — 对应 `REQ-PROD-022`、`REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。监听器挂在进程的事件节点上；物品是一个钻石头盔，头盔格是引擎槽 41（`PlayerInventoryUtils.HELMET_SLOT`）。被拒的替换每进程记一行 WARN，本条不断言它：根项目测试的类路径上没有 SLF4J 实现，日志不落地。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `inventory.EntityEquipEventIntegrationTest`（第 2 次） | `tests="3"` 0 失败。`puttingTheHelmetBackWhenItIsTakenOffDoesNotDuplicateIt`：头盔格戴着头盔，监听器收到头盔格的空气就 `setEquippedItem(头盔)`，空光标左键点头盔格；之后头盔格是空气，光标是这个头盔，`getEquipment(HELMET)` 是空气，头盔一共 1 个。`refusingTheHelmetWhenItIsPutOnDoesNotDestroyIt`：光标拿着头盔，监听器把头盔换成空气，左键点空的头盔格；之后头盔格是头盔、光标空，一共 1 个。`aListenerMayChangeTheComponentsAndTheChangeEventReportsWhatWasStored`：监听器给头盔加一行 lore，`setItemStack(41, 头盔)` 之后格子与装备都是带 lore 的头盔，玩家背包节点上收到的 `InventoryItemChangeEvent#getNewItem` 也是 |
+| 2 | 改动前的红（第 1 次） | 3 条全红：第一条红在 `EntityEquipEventIntegrationTest.java:47`，`helmets in the slots and on the cursor ==> expected: <1> but was: <2>`；第二条红在 `:67`，同一句 `expected: <1> but was: <0>`；第三条红在 `:90`，`the new item of the change event`，期望带 lore 的头盔，实际是请求写入的、不带 lore 的那个 |
+| 3 | 第 3、4 次跑第 1 步 | 两次都同第 1 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-892` 打开已绑定进程的界面不等它的监视器 — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。界面用 `new Inventory(process, CHEST_1_ROW, …)` 建，建好就绑定了进程。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `inventory.InventoryOpenIntegrationTest`，看 `openingABoundInventoryDoesNotWaitForItsMonitor`（第 2 次） | `tests="4"` 0 失败。本条：另一条平台线程进 `synchronized (这个界面)` 之后一直等；公共线程池里 `player.openInventory(这个界面)` 在 1 s 内返回，玩家打开的就是它 |
+| 2 | 改动前的红（第 1 次） | 红在 `InventoryOpenIntegrationTest.java:125`，`java.util.concurrent.TimeoutException`：`bindProcess` 是 `synchronized` 方法，先进监视器再判断是否已绑定，打开这一步等着持锁的线程 |
+| 3 | 第 3、4 次跑第 1 步 | 两次都同第 1 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-893` 不经 `openInventory` 的 `addViewer` 被拒，`InventoryOpenEvent#setInventory` 拒收 null 与玩家背包，子类覆写的 `addViewer` 照常被调 — 对应 `REQ-PROD-022`、`REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头（这三条都要组 PLAYER 的 `Player#openInventory` 改动）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `inventory.InventoryOpenIntegrationTest`（第 2 次） | 4 条 0 失败。`addingAViewerWithoutOpeningTheInventoryIsRefused`：不先 `openInventory`，直接 `inventory.addViewer(player)` 抛 `IllegalStateException`；界面的 viewers 为空，玩家没收到 `OpenWindowPacket`，`getOpenInventory()` 仍是 null；随后 `openInventory` 照常打开，viewers 恰是这名玩家。`anOverriddenAddViewerRunsWhenTheInventoryIsOpened`：打开 `VillagerInventory`，玩家恰好收到 1 个窗口 id 相同的 `TradeListPacket`（它在覆写的 `addViewer` 里发）。`anOpenEventCannotBeGivenNullOrAPlayerInventory`：开着界面 A 打开 B，监听器先 `setInventory(null)`、再 `setInventory(玩家背包)`：前者抛 `NullPointerException`，后者抛 `IllegalArgumentException`、消息里有 `PlayerInventory`，事件里的界面仍是 B；`openInventory(B)` 返回 true，玩家打开的是 B，A 的 viewers 为空，B 的 viewers 恰是这名玩家 |
+| 2 | 改动前的红（第 1 次） | 两条红：`addingAViewer…` 红在 `InventoryOpenIntegrationTest.java:41`，`Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.`；`anOpenEvent…` 红在 `:90`，`Unexpected type, expected: <java.lang.NullPointerException> but was: <java.lang.AssertionError>`（两个 setter 都没拒，事件里的界面最后是玩家背包）。`anOverriddenAddViewer…` 改动前也是绿的，它守的是这次加的检查不挡子类的覆写 |
+| 3 | 第 3、4 次跑第 1 步 | 两次都同第 1 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-894` 光标超过堆叠上限时双击什么都不收，光标不被截到上限 — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `inventory.click.integration.DoubleClickIntegrationTest`（第 2 次） | `tests="3"` 0 失败。`anOverfullCursorCollectsNothing`：主背包 9 格 10 个石头，光标 70 个（上限 64），窗口 0 对空的快捷栏 0 格（窗口槽 36）发 `PICKUP_ALL`；之后光标仍是 70 个，9 格仍是 10 个 |
+| 2 | 改动前的红（第 1 次） | 红在 `DoubleClickIntegrationTest.java:80`，`expected: <ItemStackImpl[material=minecraft:stone, amount=70, …]> but was: <ItemStackImpl[material=minecraft:stone, amount=64, …]>`：多出上限的 6 个消失 |
+| 3 | 第 3、4 次跑第 1 步 | 两次都同第 1 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-895` 信标的两个药水属性按 26.2 客户端的读法发：0 为无，其余为注册表 id + 1 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。26.2 客户端的读法（`javap -c` 反汇编本机 Loom 缓存里的 `minecraft-merged.jar`，类 `net.minecraft.world.inventory.BeaconMenu`）：`encodeEffect` 为 null 时返回 0，否则 `asHolderIdMap().getId(效果) + 1`；`decodeEffect` 为 0 时返回 null，否则 `byId(值 - 1)`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `inventory.type.BeaconInventoryIntegrationTest`（第 2 次） | `tests="1"` 0 失败：打开信标后 `setFirstPotionEffect(SPEED)` 发 1 个属性 1（`BEACON_FIRST_POTION`）、值 `SPEED.id() + 1` 的 `WindowPropertyPacket`；`setSecondPotionEffect(REGENERATION)` 发 1 个属性 2、值 `REGENERATION.id() + 1` 的；两个都设回 null 发 2 个值为 0 的 |
+| 2 | 改动前的红（第 1 次） | 红在 `BeaconInventoryIntegrationTest.java:31`，`expected: <1> but was: <0>`：速度的注册表 id 是 0，原先照发 0，客户端读成「无」 |
+| 3 | 第 3、4 次跑第 1 步 | 两次都同第 1 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-896` 选择收纳袋物品的包换算成引擎槽 46 时不派发事件 — 对应 `REQ-PROD-022` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。玩家背包有 46 格，引擎槽号 0～45。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `inventory.InventoryIntegrationTest`（第 2 次） | `tests="16"` 0 失败。`bundleActivateTestInventorySizeSlot`：不开容器发 `ClientSelectBundleItemPacket(46, 42)`，没有 `InventoryBundleItemSelectEvent`；`bundleActivateTestInventorySizeSlotContainer`：开着 `CHEST_3_ROW` 发窗口槽 64（换算成引擎槽 46），同样没有；其余 bundle 用例照旧派发（窗口槽 36、27、`容器大小 + 2` 分别得引擎槽 0、9、11，越界的包照旧丢弃） |
+| 2 | 改动前的红（第 1 次） | 两条红在 `InventoryIntegrationTest.java:321`、`:337`，`Expected 0 element(s), got 1`：上界原先用 `>`，槽号 46 照样派发，照事件文档读 `getInventory().getItemStack(getSlot())` 会越界。这两条原是从上游带来、断言派发且 `getSlot() == getSize()` 的用例，本组改成断言不派发 |
+| 3 | 第 3、4 次跑第 1 步 | 两次都同第 1 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-897` 物品 `block_state` 里有属性不接受的值时跳过这一项，照常得到方块 — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。放置监听器经 `ItemBlockState#apply` 得到要放的方块，原先的异常就出自这里，所以只测 `apply`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `item.component.ItemBlockStateTest`（第 2 次） | `tests="2"` 0 失败。`aValueThePropertyDoesNotTakeIsSkipped`：`new ItemBlockState("axis", "diagonal").apply(OAK_LOG)` 等于默认的 `OAK_LOG`（`axis=y`）；`theValidPropertiesAreAppliedNextToSkippedOnes`：`{axis=x, facing=east, lit=maybe}` 用在原木上只改 `axis`，用在熔炉上只改 `facing` |
+| 2 | 改动前的红（第 1 次） | 两条都抛 `IllegalArgumentException`：`ItemBlockStateTest.java:18` `Property axis value diagonal is not valid for block minecraft:oak_log{…}`，`:25` `Property lit value maybe is not valid for block minecraft:furnace{…}` |
+| 3 | 第 2～4 次同批跑 `instance.BlockPlaceIntegrationTest` | `tests="5"` 0 失败（带 `block_state` 的放置照旧不做方块更新） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-898` 创造模式丢弃报槽号 −1、取消即不丢；批量事务与 `ALL` 取物的返回值照 Javadoc — 对应 `REQ-PROD-022` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。这两处只改了局部变量、常量与 Javadoc，行为不变，没有改动前的红可看。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `inventory.PlayerCreativeSlotIntegrationTest`（第 2 次） | `tests="3"` 0 失败。`aDropOutOfTheCreativeMenuReportsSlotMinusOne`：创造模式的玩家发槽号 −1 的 `ClientCreativeInventoryActionPacket`（物品是木棍），`CreativeInventoryActionEvent` 恰好 1 个，`getSlot()` 为 −1、物品是木棍；监听器取消之后没有 `ItemDropEvent`。另两条照旧（窗口槽 45 写进副手；窗口槽 76 不抛） |
+| 2 | 反证有齿（取消不拦丢弃）：`<CIAL>:24` 的 `if (event.isCancelled()) return;` 改为 `if (event.isCancelled() && Boolean.getBoolean("proof.never")) return;`，与 `TC-PROD-899` 第 3 步同批，只跑这两个类（第 5 次） | `5 tests completed, 2 failed`：本条红在 `PlayerCreativeSlotIntegrationTest.java:70`，`Expected 0 element(s), got 1: [io.github.bearisbug.synaxis.event.item.ItemDropEvent@…]`；另一条见 `TC-PROD-899` 第 3 步 |
+| 3 | 跑 `inventory.InventoryTransactionRegistriesTest`（第 2 次） | `tests="2"` 0 失败。`takeAllReturnsWhatWasNotFound`：0 格 40 颗钻石，`takeItemStack(64 颗钻石, ALL)` 返回 24 颗钻石，0 格变空。`aListOfItemsIsNotOneTransaction`：漏斗 5 格、前 4 格是满的石头；`addItemStacks([64 金锭, 64 金锭], DRY_RUN)` 返回 `[true, true]`，第 5 格仍空；`addItemStacks([1 颗钻石, 64 金锭], ALL_OR_NOTHING)` 返回 `[true, false]`，钻石已在第 5 格。两条钉的是 `TransactionOption` 与批量方法的 Javadoc 写下的现有语义，代码没改，不做反证 |
+| 4 | 第 3、4 次跑第 1、3 步 | 两次都同第 1、3 步 |
+
+后置：`grep -rn proof.never src/main` 无输出；`git status --short` 无输出。
+
+#### `TC-PROD-899` 波及的旧类在三种线程模式下照绿，容器点击的并发用例换了停顿点仍有齿，新增行覆盖率达标 — 对应 `REQ-PROD-046`、`REQ-PROD-022` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 2 次同批跑 `inventory.click.integration` 的 `DragClickIntegrationTest`、`ShiftClickIntegrationTest`、`LeftClickIntegrationTest`、`RightClickIntegrationTest`、`HeldClickIntegrationTest`、`ClickWindowValidationIntegrationTest`、`ConcurrentClickIntegrationTest`，`inventory` 的 `CursorItemOnCloseIntegrationTest`、`InventoryCloseStateIntegrationTest`、`PlayerInventoryIntegrationTest`、`PlayerSlotConversionTest`、`SwapItemHandIntegrationTest`、`click.ClickPreprocessorTest`，`network.player.CreativePacketDecodingIntegrationTest` 与 `ArchitectureTest`，同次带 `:testNamingCheck`、`:forbiddenImportsCheck` | 依次 5、5、5、2、2、2、2、4、2、9、4、1、7、1、8 条，0 失败；两项检查过；主代码与测试代码在 Error Prone `-Werror` 下编过 |
+| 2 | 第 3、4 次跑第 1 步的类（不带 `ArchitectureTest`）与 `TC-PROD-890`～`TC-PROD-898` 的类 | 两次都 0 失败，条数同第 1 步与各条 |
+| 3 | `ConcurrentClickIntegrationTest#concurrentInventoryWriteDuringContainerClickMustNotBeLost` 换了停顿点：原先在玩家背包的 `InventoryItemChangeEvent` 里起另一条线程往玩家背包加 1 颗钻石，这个事件现在在点击提交之后才派发，落不到点击中间；改在点击里同步派发的 `ItemDropEvent` 里起。开着 `CHEST_1_ROW`，玩家背包 9 格 32 颗钻石，对它按 Q（`Click.DropSlot(容器大小 + 9, false)`），监听器起线程加 1 颗，等它至多 500 ms；之后背包 + 光标 + 丢出的 1 颗共 33 颗。反证有齿（点击不锁玩家背包）：`<AI>:178` 的 `synchronized (player.getInventory()) {` 这一层去掉（连同对应的右括号），与 `TC-PROD-898` 第 2 步同批（第 5 次） | 本条红在 `ConcurrentClickIntegrationTest.java:106`，`the concurrent insertion was overwritten by the click ==> expected: <33> but was: <32>`：加进来的 1 颗被点击按读到的 32 − 1 写回盖掉 |
+| 4 | 第 6 次：默认模式跑第 1 步与 `TC-PROD-890`～`TC-PROD-898` 的类，用这次的 `build/jacoco/test.exec` 经 JaCoCo 0.8.15 的报告 API（`:jacocoTestReport` 用的同一个库）出 XML，再按 CI 的写法跑 `diff-cover <报告> --compare-branch=965c3bddae --src-roots src/main/java --ignore-staged --ignore-unstaged`（临时的 `Player.java` 改动不计入） | 测试同第 1 步；`Diff: 965c3bddae...HEAD`，`Total: 59 lines`，`Missing: 2 lines`，`Coverage: 96%`（门槛 80%）。没覆盖的 2 行在 `CreativeInventoryActionListener.java:44`、`:58`：事件被取消时与监听器换了物品时的 `sendSlotRefresh`，本组只改了变量名 |
+
+后置：`grep -rn proof.never src/main` 无输出；`git status --short` 无输出。
+
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
 对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的线上部分：`synaxis:play` v1 的五条消息、小部件属性的 TLV 编码与冻结向量（`docs/DESIGN-PLAY.md` `API-PLAY-002`、`API-PLAY-003`；本组跟进该分册 v0.2 与 `docs/DESIGN-M2.md` v0.66 的 `API-M2-001`）。用例号段 001～009，由组 P 在分支 `prod/r077-P` 写入。测试类：`:protocol` 包 `io.github.bearisbug.synaxis.game.protocol.play` 的 `PlayMessagesTest`、`PlayVectorTest`；`client-fabric` 的 `PlayFrozenVectorTest`。
@@ -14915,6 +15046,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 WORLD，区块、生成器、分区信号、调色板与世界状态（`REQ-PROD-019`、`REQ-PROD-020`、`REQ-PROD-026`、`REQ-PROD-013`、`REQ-PROD-039`、`REQ-M2-010`、`REQ-M3-011`、`REQ-M3-034`、`REQ-001`，v0.9.99）→ TC-PROD-910～TC-PROD-919 与 TC-PROD-658；动了 `Heightmap` 或 `DynamicChunk` 的 `setBlock`、`invalidate`、`reset`、`getHeightmaps` 就跑 TC-PROD-910～TC-PROD-912；动了 `DynamicChunk#tick` 跑 TC-PROD-912 与 TC-PROD-915；动了 `Chunk#assertWriteLock` 跑 TC-PROD-913 与 TC-PROD-785；动了 `GeneratorImpl`、`UnitModifier` 或 `InstanceContainer` 的 `generateChunk`、`processChunk` 的 fork 部分跑 TC-PROD-914；动了 `InstanceContainer#cacheChunk`、`InstanceManager#registerInstance` 或 `ThreadDispatcherImpl` 处理 `PartitionLoad`、`ElementUpdate` 的部分跑 TC-PROD-915 与 TC-PROD-919 第 1～3 步（三种线程模式各一次）；动了 `PaletteImpl#copyFrom` 跑 TC-PROD-916 与 `synx` 的 `SynxChunkOverlayIntegrationTest`；动了 `WorldBorder` 或 `Instance#setWorldBorder` 跑 TC-PROD-917 与 TC-PROD-680；动了 `Instance` 的时钟、`Weather` 或 `DimensionType#defaultClock` 跑 TC-PROD-918；动了 `Instance#viewDistance(int)` 跑 TC-PROD-658；`Instance.java`、`InstanceContainer.java`、`Chunk.java`、`DynamicChunk.java` 的行号变了，按本组一节与 `docs/DESIGN-PROD.md` §28.3 列的引用改。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 BLOCK，方块回调的线程契约、方块标签的 path、静态注册表的解码、粒子、药水与物品组件（`REQ-PROD-019`、`REQ-001`、`REQ-PROD-047`、`REQ-M2-015`，v0.9.100）→ TC-PROD-920～TC-PROD-927；动了 `InstanceManager#unregisterInstance`、`BlockHandler` 的回调时机或实例事件的派发处，跑 TC-PROD-920，三种线程模式各一次；动了 `BlockImpl` 的 `withTag`、`getTag`、`BlockUtils#extractClientNbt` 或 `TagNbtAccess`，跑 TC-PROD-921；动了 `TagImpl`、`Tag.View` 或 `TagNbtSeparator`，跑 TC-PROD-922；动了静态注册表类型的 `CODEC`、`NETWORK_TYPE`、`fromKey(String)`，或 `EquipmentSlot`、`EquipmentSlotGroup` 的编解码，跑 TC-PROD-923；动了 `Particle` 或 `Block.STATE_STRUCT_CODEC`，跑 TC-PROD-924；动了 `CustomPotionEffect` 或 `Potion`，跑 TC-PROD-925；动了 `DataComponents` 里带校验的注册、`UseCooldown`、`Equippable`、`EnchantmentList`、两种书或 `ArgumentItemStack`，跑 TC-PROD-926 与 TC-PROD-801；动了 `ItemStack`、`ItemStackImpl`、`Material#maxStackSize` 或 `TooltipDisplay`，跑 TC-PROD-927
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 PHYS，坐标、碰撞与物理、投射物、经验球与实体查找（`REQ-003`、`REQ-PROD-013`、`REQ-PROD-019`、`REQ-PROD-039`、`REQ-PROD-046`，v0.9.102）→ TC-PROD-940～TC-PROD-949；动了 `coordinate` 包的 `Pos`、`Vec`、`BlockVec`、`Point#normalize`、`Area`、`AreaImpl` 或 `ChunkRange`，跑 TC-PROD-940～TC-PROD-943；动了 `collision` 包的 `BlockCollision`、`BoundingBox`、`CollisionUtils`、`EntityCollision`、`RayUtils` 或 `PhysicsUtils`，跑 TC-PROD-944～TC-PROD-946，放置判定改了再加 TC-PROD-945 第 3 步（带数据库）；动了 `EntityProjectile`、`ExperienceOrb` 或 `EntityFinder`，跑 TC-PROD-947、TC-PROD-948；动了 `EntityTrackerImpl#nearbyEntities`，跑 TC-PROD-943 与 TC-PROD-949 第 1 步的三种线程模式；`Pos#withDirection` 的语义变了，加跑 TC-PROD-940 第 3 步（`:game-rts:test`）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 INV，点击事件在点击提交之后派发、装备事件只改组件、打开界面的约束与五处单点修复（`REQ-PROD-046`、`REQ-PROD-022`、`REQ-PROD-013`、`REQ-001`，v0.9.97）→ TC-PROD-890～TC-PROD-899；动了 `AbstractInventory` 的 `handleClick`、`dispatch`、`setItemStack` 或 `bindProcess`，`InventoryClickProcessor` 与 `InventoryClickHandler` 派发点击事件的地方，或 `PlayerInventory#UNSAFE_itemInsert`，就跑 TC-PROD-890～TC-PROD-892 与 TC-PROD-899 第 1～3 步（三种线程模式各一次）；动了 `Inventory#addViewer`、`InventoryOpenEvent#setInventory` 或 `Player#openInventory` 的回调，就跑 TC-PROD-893；动了 `InventoryClickProcessor#doubleClick`、`BeaconInventory`、`WindowListener#selectBundleItemListener`、`ItemBlockState#apply` 或 `CreativeInventoryActionListener`，分别跑 TC-PROD-894、TC-PROD-895、TC-PROD-896、TC-PROD-897、TC-PROD-898 第 1 步；改了 `TransactionOption` 或批量方法的语义，跑 TC-PROD-898 第 3 步并改它们的 Javadoc。
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

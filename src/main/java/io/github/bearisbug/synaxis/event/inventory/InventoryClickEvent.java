@@ -8,8 +8,11 @@ import io.github.bearisbug.synaxis.inventory.click.ClickType;
 import io.github.bearisbug.synaxis.item.ItemStack;
 
 /**
- * Called after {@link InventoryPreClickEvent}, this event cannot be cancelled and items related to the click
- * are already moved.
+ * Called after {@link InventoryPreClickEvent}, once per slot the click acted on; this event cannot be cancelled.
+ * <p>
+ * It is dispatched on the thread that handled the click (the player's tick thread for a click sent by the client) once
+ * the whole click, cursor included, has been committed and no inventory monitor is held, so the inventories and the
+ * cursor already show the result of the click.
  */
 public class InventoryClickEvent implements InventoryEvent, PlayerInstanceEvent {
 

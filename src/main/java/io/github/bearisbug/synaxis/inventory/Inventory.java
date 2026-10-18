@@ -8,6 +8,7 @@ import io.github.bearisbug.synaxis.inventory.click.InventoryClickResult;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.network.packet.server.play.OpenWindowPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.WindowPropertyPacket;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -17,6 +18,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>
  * You can create one with {@link Inventory#Inventory(InventoryType, String)} or by making your own subclass.
  * It can then be opened using {@link Player#openInventory(Inventory)}.
+ * <p>
+ * Window ids are not unique per player: see {@link #getWindowId()} before letting a click on an inventory created for
+ * each opening carry an action of value.
  */
 public non-sealed class Inventory extends AbstractInventory {
     private static final AtomicInteger ID_COUNTER = new AtomicInteger();
@@ -100,13 +104,19 @@ public non-sealed class Inventory extends AbstractInventory {
     }
 
     /**
-     * This will not open the inventory for {@code player}, use {@link Player#openInventory(Inventory)}.
+     * Shows this inventory to {@code player}: sends the window and its items. {@link Player#openInventory(Inventory)}
+     * calls it once the player's open inventory is this one, and a subclass may override it to send more packets.
+     * Do not call it directly, call {@link Player#openInventory(Inventory)}: the client would show a window the server
+     * does not consider open, whose clicks are dropped and whose viewer is never removed.
      *
      * @param player the viewer to add
      * @return true if the player has successfully been added
+     * @throws IllegalStateException if the open inventory of {@code player} is not this one
      */
     @Override
     public boolean addViewer(Player player) {
+        Check.stateCondition(player.getOpenInventory() != this,
+                "Inventory#addViewer does not register the inventory as open; use Player#openInventory(Inventory)");
         bindProcess(player.process());
         if (!this.viewers.add(player)) return false;
 
@@ -117,7 +127,9 @@ public non-sealed class Inventory extends AbstractInventory {
     }
 
     /**
-     * This will not close the inventory for {@code player}, use {@link Player#closeInventory()}.
+     * Removes {@code player} from the viewers and drops its cursor item. This does not close the inventory:
+     * {@link Player#getOpenInventory()} still returns it and the client keeps the window open. Call
+     * {@link Player#closeInventory()} instead, which calls this method.
      *
      * @param player the viewer to remove
      * @return true if the player has successfully been removed

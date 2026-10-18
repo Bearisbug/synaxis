@@ -29,12 +29,28 @@ public record ItemBlockState(Map<String, String> properties) {
         return new ItemBlockState(newProperties);
     }
 
+    /**
+     * Applies these properties to {@code block}, the way the client predicts a placement: a property the block does
+     * not have, or a value the property does not take, is skipped.
+     *
+     * @param block the block to apply the properties to
+     * @return {@code block} with the applicable properties set
+     */
     public Block apply(Block block) {
         for (Map.Entry<String, String> entry : properties.entrySet()) {
             if (block.getProperty(entry.getKey()) == null)
                 continue; // Ignore properties not present on this block
+            if (!takesValue(block, entry.getKey(), entry.getValue()))
+                continue; // Ignore values the property does not take
             block = block.withProperty(entry.getKey(), entry.getValue());
         }
         return block;
+    }
+
+    private static boolean takesValue(Block block, String property, String value) {
+        for (Block state : block.possibleStates()) {
+            if (value.equals(state.getProperty(property))) return true;
+        }
+        return false;
     }
 }

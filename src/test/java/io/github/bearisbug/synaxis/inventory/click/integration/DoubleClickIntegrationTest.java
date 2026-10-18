@@ -60,4 +60,24 @@ public class DoubleClickIntegrationTest {
         assertEquals(ItemStack.AIR, inventory.getItemStack(1));
         assertEquals(ItemStack.AIR, inventory.getItemStack(2));
     }
+
+    /**
+     * A cursor holding more than a stack (a plugin item, a stored one, a creative client) has no room left: the double
+     * click collects nothing and must not cut the cursor down to a stack.
+     */
+    @Test
+    public void anOverfullCursorCollectsNothing(Env env) {
+        var instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, 42, 0));
+        var inventory = player.getInventory();
+        inventory.setItemStack(9, ItemStack.of(Material.STONE, 10));
+        inventory.setCursorItem(ItemStack.of(Material.STONE, 70));
+
+        // Window slot 36 is hotbar slot 0, which is empty
+        player.addPacketToQueue(clickPacket(PICKUP_ALL, 0, 0, 36));
+        player.interpretPacketQueue();
+
+        assertEquals(ItemStack.of(Material.STONE, 70), inventory.getCursorItem());
+        assertEquals(ItemStack.of(Material.STONE, 10), inventory.getItemStack(9));
+    }
 }

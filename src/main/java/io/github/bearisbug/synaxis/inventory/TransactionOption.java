@@ -8,9 +8,11 @@ import java.util.Map;
 public interface TransactionOption<T> {
 
     /**
-     * Place as much as the item as possible.
+     * Moves as much of the item as possible.
      * <p>
-     * The remaining, can be air.
+     * Returns what could not be moved, air when all of it was: with {@link TransactionType#ADD} the part that did not
+     * fit, with {@link TransactionType#TAKE} the part that was not found (taking 64 diamonds out of 40 returns 24
+     * diamonds and empties the inventory).
      */
     TransactionOption<ItemStack> ALL = (inventory, result, itemChangesMap) -> {
         itemChangesMap.forEach(inventory::setItemStack);
@@ -18,9 +20,11 @@ public interface TransactionOption<T> {
     };
 
     /**
-     * Only place the item if can be fully added.
+     * Moves the item only if all of it can be moved: added with {@link TransactionType#ADD}, found and taken with
+     * {@link TransactionType#TAKE}.
      * <p>
-     * Returns true if the item has been added, false if nothing changed.
+     * Returns true if the item has been moved, false if nothing changed. This holds for a single item; a list is not
+     * one transaction, see {@link AbstractInventory#processItemStacks(java.util.List, TransactionType, TransactionOption)}.
      */
     TransactionOption<Boolean> ALL_OR_NOTHING = (inventory, result, itemChangesMap) -> {
         if (result.isAir()) {
@@ -36,7 +40,9 @@ public interface TransactionOption<T> {
     /**
      * Loop through the inventory items without changing anything.
      * <p>
-     * Returns true if the item can be fully added, false otherwise.
+     * Returns true if all of the item could be moved (added with {@link TransactionType#ADD}, taken with
+     * {@link TransactionType#TAKE}), false otherwise. Each item of a list is checked against the unchanged inventory,
+     * see {@link AbstractInventory#processItemStacks(java.util.List, TransactionType, TransactionOption)}.
      */
     TransactionOption<Boolean> DRY_RUN = (_, result, _) -> result.isAir();
 

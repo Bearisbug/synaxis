@@ -24,7 +24,15 @@ public enum InventoryProperty {
     ENCHANTMENT_TABLE_ENCH_LEVEL_BOTTOM((short) 9),
 
     BEACON_POWER_LEVEL((short) 0),
+    /**
+     * The primary effect of a beacon: 0 for none, otherwise the {@link io.github.bearisbug.synaxis.potion.PotionEffect}
+     * registry id + 1.
+     */
     BEACON_FIRST_POTION((short) 1),
+    /**
+     * The secondary effect of a beacon: 0 for none, otherwise the {@link io.github.bearisbug.synaxis.potion.PotionEffect}
+     * registry id + 1.
+     */
     BEACON_SECOND_POTION((short) 2),
 
     ANVIL_REPAIR_COST((short) 0),

@@ -2,7 +2,6 @@ package io.github.bearisbug.synaxis.event;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import io.github.bearisbug.synaxis.JvmFlags;
 import io.github.bearisbug.synaxis.event.trait.AsyncEvent;
 import io.github.bearisbug.synaxis.event.trait.RecursiveEvent;
 import io.github.bearisbug.synaxis.utils.validate.Check;
@@ -10,6 +9,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -40,9 +40,9 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
     // Always accessed through the global lock.
     final Map<Object, WeakReference<EventNodeLazyImpl<T>>> mappedNodeCache = new WeakHashMap<>();
     // Store mapped nodes with at least one listener
-    // Map is copied and mutated for each new active mapped node
-    // Can be considered immutable.
-    volatile Map<Object, WeakReference<EventNodeLazyImpl<T>>> registeredMappedNode = new WeakHashMap<>();
+    // Guarded by GLOBAL_CHILD_LOCK. WeakHashMap reads expunge stale entries, so it must never be read
+    // without the lock; dispatch reads the frozen lookup built by mappedConsumer instead.
+    final Map<Object, WeakReference<EventNodeLazyImpl<T>>> registeredMappedNode = new WeakHashMap<>();
 
     final String name;
     final EventFilter<T, ?> filter;
@@ -136,11 +136,10 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
     public EventNode<T> addChild(EventNode<? extends T> child) {
         synchronized (GLOBAL_CHILD_LOCK) {
             final var childImpl = (EventNodeImpl<? extends T>) child;
-            Check.stateCondition(!JvmFlags.EVENT_NODE_ALLOW_MULTIPLE_PARENTS && childImpl.parent != null, "Node already has a parent");
+            Check.stateCondition(childImpl.parent != null, "Node already has a parent");
             // A node that is already an ancestor closes a cycle, and a cycle makes both the
             // invalidation walk and the dispatch compilation recurse forever, which surfaces as a
             // StackOverflowError on an already corrupted tree instead of on the call that built it.
-            // With multiple parents allowed the walk only follows the last parent of each node.
             for (EventNodeImpl<?> ancestor = this; ancestor != null; ancestor = ancestor.parent) {
                 Check.stateCondition(ancestor == childImpl, "Cannot have an ancestor as a child");
             }
@@ -166,6 +165,7 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
     @Override
     @SuppressWarnings("unchecked")
     public EventNode<T> addListener(EventListener<? extends T> listener) {
+        checkListenable(listener.eventType());
         synchronized (GLOBAL_CHILD_LOCK) {
             final var eventType = listener.eventType();
             ListenerEntry<T> entry = getEntry(eventType);
@@ -207,9 +207,7 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
     @Override
     public void unmap(Object value) {
         synchronized (GLOBAL_CHILD_LOCK) {
-            Map<Object, WeakReference<EventNodeLazyImpl<T>>> registered = new WeakHashMap<>(registeredMappedNode);
-            final WeakReference<EventNodeLazyImpl<T>> mappedNodeRef = registered.remove(value);
-            this.registeredMappedNode = registered;
+            final WeakReference<EventNodeLazyImpl<T>> mappedNodeRef = registeredMappedNode.remove(value);
             EventNodeLazyImpl<T> mappedNode;
             if (mappedNodeRef != null && (mappedNode = mappedNodeRef.get()) != null) {
                 mappedNode.invalidateEventsFor(this);
@@ -222,6 +220,7 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
     @Override
     @SuppressWarnings("unchecked")
     public void register(EventBinding<? extends T> binding) {
+        for (var eventType : binding.eventTypes()) checkListenable(eventType);
         synchronized (GLOBAL_CHILD_LOCK) {
             for (var eventType : binding.eventTypes()) {
                 @SuppressWarnings("unchecked")
@@ -274,7 +273,6 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
 
     @Override
     public @Nullable EventNode<? super T> getParent() {
-        Check.stateCondition(JvmFlags.EVENT_NODE_ALLOW_MULTIPLE_PARENTS, "Cannot use getParent when multiple parents are allowed");
         return parent;
     }
 
@@ -353,6 +351,20 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
                     this.handleMap.get(cls).invalidate();
                 }
             }
+        }
+    }
+
+    /**
+     * Refuses a listener type no event can be dispatched as: the dispatch looks listeners up by the
+     * exact runtime class of the event, walking up the superclasses of a {@link RecursiveEvent} only,
+     * so a listener of an interface or of an abstract class that is not recursive would never run.
+     */
+    static void checkListenable(Class<?> eventType) {
+        if (eventType.isInterface()
+                || (Modifier.isAbstract(eventType.getModifiers()) && !RecursiveEvent.class.isAssignableFrom(eventType))) {
+            throw new IllegalArgumentException("Listeners are keyed on the exact event class: " + eventType.getName()
+                    + " is an interface or abstract class and no event is dispatched with it as its runtime class;"
+                    + " listen to a concrete event class");
         }
     }
 
@@ -531,17 +543,17 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
          */
         private @Nullable Consumer<E> mappedConsumer() {
             var node = (EventNodeImpl<E>) EventNodeImpl.this;
-            final var mappedNodeCache = node.registeredMappedNode;
-            if (mappedNodeCache.isEmpty()) return null;
-            Set<EventFilter<E, ?>> filters = new HashSet<>(mappedNodeCache.size());
+            final var registered = node.registeredMappedNode;
+            if (registered.isEmpty()) return null;
+            Set<EventFilter<E, ?>> filters = new HashSet<>(registered.size());
             // Bucketed by owner hash code instead of being a Map keyed by the owner itself: the lookup
             // below runs on every dispatch without any lock, which rules out WeakHashMap (its get()
             // structurally modifies the map through expungeStaleEntries) while owners must still be
             // referenced weakly so that a mapped node never keeps its owner alive.
-            Int2ObjectMap<List<MappedHandler<E>>> handlers = new Int2ObjectOpenHashMap<>(mappedNodeCache.size());
+            Int2ObjectMap<List<MappedHandler<E>>> handlers = new Int2ObjectOpenHashMap<>(registered.size());
 
             // Retrieve all filters used to retrieve potential handlers
-            for (var mappedEntry : mappedNodeCache.entrySet()) {
+            for (var mappedEntry : registered.entrySet()) {
                 final WeakReference<EventNodeLazyImpl<E>> mappedNodeRef = mappedEntry.getValue();
                 final EventNodeLazyImpl<E> mappedNode = mappedNodeRef.get();
                 if (mappedNode == null) continue; // Weak reference collected

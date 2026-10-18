@@ -63,8 +63,8 @@ public final class RushPlugin implements SynaxisPlugin {
         play.onAction(RushHud.BACK, (player, _) -> rules.backToLobby(player));
         context.events().addListener(AsyncPlayerConfigurationEvent.class,
                 event -> event.getPlayer().setRespawnPoint(Arena.SPAWN));
-        // Global scope, filtered by instance: instance scoped listeners run before the host's node,
-        // and the scene layer is to see the spawn first
+        // Global scope, filtered by instance: on a first spawn the host applies the stored state in
+        // its own node, after the instance scoped listeners
         context.events().addListener(PlayerSpawnEvent.class, event -> {
             if (event.getInstance() == lobby.instance()) rules.arrived(event.getPlayer());
         });

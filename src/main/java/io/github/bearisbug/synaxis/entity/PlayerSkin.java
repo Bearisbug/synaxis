@@ -16,12 +16,17 @@ import org.jetbrains.annotations.Nullable;
  * Contains all the data required to store a skin.
  * <p>
  * Can be applied to a player with {@link Player#setSkin(PlayerSkin)}
- * or in the linked event {@link io.github.bearisbug.synaxis.event.player.PlayerSkinInitEvent}.
+ * or in the linked event {@link io.github.bearisbug.synaxis.event.player.PlayerSkinInitEvent}. That
+ * event runs on the tick scheduler thread: fetch the skin with {@link #fromUuid} or
+ * {@link #fromUsername} beforehand, off the tick threads, and only set it there.
  */
 public record PlayerSkin(String textures, String signature) {
 
     /**
      * Gets a skin from a Mojang UUID.
+     * <p>
+     * Blocks on a request to Mojang: never call it on a tick thread or in a
+     * {@code PlayerSkinInitEvent} listener.
      *
      * @param uuid Mojang UUID
      * @return a player skin based on the UUID, null if not found
@@ -48,6 +53,9 @@ public record PlayerSkin(String textures, String signature) {
 
     /**
      * Gets a skin from a Minecraft username.
+     * <p>
+     * Blocks on two requests to Mojang: never call it on a tick thread or in a
+     * {@code PlayerSkinInitEvent} listener.
      *
      * @param username the Minecraft username
      * @return a skin based on a Minecraft username, null if not found

@@ -1,27 +1,17 @@
 package io.github.bearisbug.synaxis.event;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
-import java.util.Map;
-import java.util.WeakHashMap;
-import java.util.function.Consumer;
 
+/**
+ * The node {@link EventNode#map} hands out. It joins the holder's dispatch once it gets a listener,
+ * a child or a binding, and registers itself in the holder under the same hold of the global lock
+ * as that addition: an addition made before the registration is visible would miss the events
+ * dispatched on the holder right after it returns.
+ */
 final class EventNodeLazyImpl<E extends Event> extends EventNodeImpl<E> {
-    private static final VarHandle MAPPED;
-
-    static {
-        try {
-            MAPPED = MethodHandles.lookup().findVarHandle(EventNodeLazyImpl.class, "mapped", boolean.class);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
     private final EventNodeImpl<? super E> holder;
     private final WeakReference<Object> owner;
-    @SuppressWarnings("unused")
-    private boolean mapped;
+    private boolean mapped; // guarded by GLOBAL_CHILD_LOCK
 
     EventNodeLazyImpl(EventNodeImpl<? super E> holder,
                       Object owner, EventFilter<E, ?> filter) {
@@ -32,20 +22,20 @@ final class EventNodeLazyImpl<E extends Event> extends EventNodeImpl<E> {
 
     @Override
     public EventNode<E> addChild(EventNode<? extends E> child) {
-        ensureMap();
-        return super.addChild(child);
+        synchronized (GLOBAL_CHILD_LOCK) {
+            ensureMap();
+            return super.addChild(child);
+        }
     }
 
     @Override
     public EventNode<E> addListener(EventListener<? extends E> listener) {
-        ensureMap();
-        return super.addListener(listener);
-    }
-
-    @Override
-    public <E1 extends E> EventNode<E> addListener(Class<E1> eventType, Consumer<E1> listener) {
-        ensureMap();
-        return super.addListener(eventType, listener);
+        // Refused before the node registers itself in the holder
+        checkListenable(listener.eventType());
+        synchronized (GLOBAL_CHILD_LOCK) {
+            ensureMap();
+            return super.addListener(listener);
+        }
     }
 
     @Override
@@ -60,24 +50,22 @@ final class EventNodeLazyImpl<E extends Event> extends EventNodeImpl<E> {
 
     @Override
     public void register(EventBinding<? extends E> binding) {
-        ensureMap();
-        super.register(binding);
+        for (var eventType : binding.eventTypes()) checkListenable(eventType);
+        synchronized (GLOBAL_CHILD_LOCK) {
+            ensureMap();
+            super.register(binding);
+        }
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"}) // owner map mixes capture types by design
+    @SuppressWarnings("unchecked") // the holder's map is typed by the holder's event type
     private void ensureMap() {
-        if (MAPPED.compareAndSet(this, false, true)) {
-            synchronized (GLOBAL_CHILD_LOCK) {
-                Map registered = new WeakHashMap<>(this.holder.registeredMappedNode);
-                final Object owner = retrieveOwner();
-                final var previousRef = (WeakReference<?>) registered.get(owner);
-                // Either no entry at all, or one whose node has been collected and must be replaced
-                final boolean register = previousRef == null || previousRef.get() == null;
-                if (register) registered.put(owner, new WeakReference<>(EventNodeLazyImpl.class.cast(this)));
-                this.holder.registeredMappedNode = registered;
-                if (register) invalidateEventsFor(holder);
-            }
-        }
+        assert Thread.holdsLock(GLOBAL_CHILD_LOCK);
+        if (mapped) return;
+        // While unmapped the holder has no live entry for this owner: map() hands out one node per
+        // owner, and unmap() removes the entry along with resetting the flag
+        ((EventNodeImpl<E>) holder).registeredMappedNode.put(retrieveOwner(), new WeakReference<>(this));
+        invalidateEventsFor(holder);
+        mapped = true;
     }
 
     /**
@@ -85,7 +73,7 @@ final class EventNodeLazyImpl<E extends Event> extends EventNodeImpl<E> {
      */
     void resetMapped() {
         assert Thread.holdsLock(GLOBAL_CHILD_LOCK);
-        MAPPED.setVolatile(this, false);
+        mapped = false;
     }
 
     private Object retrieveOwner() {

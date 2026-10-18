@@ -7,9 +7,14 @@ import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import org.jetbrains.annotations.ApiStatus;
 
 /**
- * Listen to outgoing packets asynchronously.
+ * Called for every packet written to a player; cancelling it keeps the packet from being written.
  * <p>
- * Currently, do not support viewable packets.
+ * Dispatched on the write thread of the connection, not on a tick thread: a listener must not read
+ * or change an entity or an instance (hand that over with the player's scheduler or
+ * {@code Acquirable#sync}), and must not block, which would hold up every packet of that player
+ * until the backlog limit drops the connection. A {@code BufferedPacket} (chunks sent by handle,
+ * batched broadcasts) is written without this event; a {@code CachedPacket} or a
+ * {@code FramedPacket} gets it with the packet it holds.
  */
 @ApiStatus.Experimental
 public class PlayerPacketOutEvent implements PlayerEvent, CancellableEvent {

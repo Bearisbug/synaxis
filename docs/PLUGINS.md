@@ -131,11 +131,25 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 
 | 回调 | 线程 | 在这里可以做什么 |
 | --- | --- | --- |
-| 实体与玩家的事件（含 `transfers().transfer(…)` 让宿主派发的 `OutgoingTransferEvent`，不论从哪条线程调用）、实体的休眠策略（`Entity#setDormancyPolicy`）、玩家发来的通道负载、`scheduler().runOn(实体, …)` | 该实体所属的 tick 线程 | 读写这个实体 |
-| `scheduler().scheduleTask(…)` | tick 调度线程，所有插件的任务一个接一个跑 | 每 tick 的全局逻辑；它是整个 tick 的串行段，要扩到几百人就按格或按实体拆开 |
+| 实体与玩家的事件（含 `transfers().transfer(…)` 让宿主派发的 `OutgoingTransferEvent`，不论从哪条线程调用；例外见下一张表）、实体的休眠策略（`Entity#setDormancyPolicy`）、玩家发来的通道负载（handler 只在玩家处于 PLAY 态时收到，§8）、`scheduler().runOn(实体, …)` | 该实体所属的 tick 线程 | 读写这个实体 |
+| `events().forInstance(实例)` 的监听器 | 派发这个事件的线程：实体与玩家的事件在该实体所属的 tick 线程上（`grid` 下同一个实例同时有几条），`InstanceTickEvent` 在 tick 调度线程上，`InstanceChunkLoadEvent` 在载入区块的虚拟线程上，宿主派发的 `PlayInstanceStateEvent` 在执行这次转移的线程上 | 读写派发它的那个实体；同一个实例的几个监听器共用的每局状态用并发容器或锁。这些监听器排在全局作用域的插件监听器之前，也排在宿主节点的监听器之前：首次出生时宿主在自己的节点里用存档覆盖背包、手持格与生命值，要在那之后改出生结果，用全局作用域、按实例过滤（§7） |
+| `scheduler().scheduleTask(…)` | tick 调度线程，所有插件的任务一个接一个跑 | 每 tick 的全局逻辑；它是整个 tick 的串行段，要扩到几百人就按格或按实体拆开。可以读任何实体，可以调写明能在串行段调用的宿主接口（场景层的写方法，`docs/DESIGN-PLAY.md` `API-PLAY-005`）；已分到 tick 线程的实体不在这里直接改，用 `runOn(实体, …)`（下一 tick 生效）或 `实体.acquirable().sync(…)`（当场生效）：严格模式下直接改抛 `AcquirableOwnershipException`，不开严格模式也会与别的线程的 `sync` 同时写 |
+| `scheduler().runOn(实例, …)` | tick 调度线程的串行段，与实例自己的调度器在同一处 | 同上一行 |
 | `playerData().commitTogether(…, apply)` 的 `apply` | tick 调度线程，提交写进库之后下一个 tick 的串行段，只跑一次 | 改每个参与者，不论他们分在哪条 tick 线程；参与者这时可能已经离开，先查 `isRemoved()`（`docs/DESIGN-PROD.md` `API-PROD-005`） |
 | `scheduler().runAsync(…)` | 自己的虚拟线程 | 阻塞的活（读写库、HTTP）；不碰实体与实例，结果用 `runOn` 送回去 |
 | 服务器列表事件 `ServerListPingEvent` | 发请求那条连接的读线程（虚拟线程） | 只改事件本身（MOTD、人数、样本、图标，`docs/DESIGN-PROD.md` `API-PROD-024`）；不碰实体与实例 |
+| 插件的 `onDisable()` | 宿主为每个插件新起的平台线程 `plugin-disable-<id>`，不属于任何 tick 线程；全部插件共用 5 s，超时之后宿主照样收回能力，`onDisable` 留在自己的线程上继续跑 | 收尾插件自己持有的东西（线程池、连接）；已分到 tick 线程的实体经 `实体.acquirable().sync(…)` 改，还没分到的直接改（`docs/DESIGN-PROD.md` `API-PROD-007`） |
+| 可见规则的谓词（`Entity#updateViewableRule`、`Entity#updateViewerRule`） | 改变可见性的那条线程（跨区块、玩家每 5 tick 的可见性重算、改规则），持着两边实体的视图锁 | 只读谓词自己持有的线程安全状态；不阻塞，不调任何实体的 `isViewer`、`getViewers`、`addViewer`、`removeViewer` 与规则方法，否则与另一条 tick 线程互锁；状态变了调无参重载重新应用（见这几个方法的 Javadoc） |
+
+例外：下面这些玩家事件不在该玩家所属的 tick 线程上派发，或只为一部分包派发。它们的监听器与 tick 线程上的代码共用状态时，用并发容器或锁。
+
+| 事件 | 线程 | 在这里可以做什么 |
+| --- | --- | --- |
+| `PlayerPacketOutEvent`（每个出站包一次） | 该连接的写线程（虚拟线程） | 只看或取消这个包（取消就不写出）；不读写实体与实例，要碰玩家用 `runOn`；不阻塞，阻塞卡住这名玩家的全部出站包。句柄区块、批量广播这类 `BufferedPacket` 不派发，`CachedPacket`、`FramedPacket` 派发其中的包 |
+| `PlayerPacketEvent` | 只为排进玩家队列的 PLAY 包派发，在玩家所属的 tick 线程上；玩家不在实例里时（configuration 结束后等待加入，或被送回 configuration、客户端还没确认）在 tick 调度线程的串行段上；keep-alive、ping 与 Cookie 的应答在读线程上处理，不派发；会切换解码状态的包（回到 configuration 的确认）也不派发，插件取消不了它 | 读写这名玩家；取消就不处理这个包 |
+| `AsyncPlayerPreLoginEvent`、`AsyncPlayerConfigurationEvent` | 连接的虚拟线程（在线模式下 `AsyncPlayerPreLoginEvent` 在验证线程上，离线模式下在登录线程上） | 可以阻塞（读库、HTTP；远程取皮肤在这里取，存下来到 `PlayerSkinInitEvent` 再设）；只碰事件、连接与这名还没进世界的玩家 |
+| `PlayerSkinInitEvent`、首次出生的 `PlayerSpawnEvent` | tick 调度线程的串行段，玩家这时还没分到 tick 线程（从 configuration 回来的玩家由这条线程持着） | 改这名玩家；不阻塞，整个进程的 tick 在等它；碰别的实体用 `runOn` |
+| `PlayerDisconnectEvent` | 已出生的玩家在他所属的 tick 线程上；进了 PLAY 还没出生的在 tick 调度线程上；PLAY 之前断开的在断开连接的那条线程上（读线程、configuration 线程或 tick 调度线程） | 清理按玩家记的状态；后两种与 tick 线程上的代码同时跑 |
 
 对另一个实体的影响（攻击、交易）不要在自己的线程上直接改对方：对方可能在另一条线程上，用 `scheduler().runOn(对方, 任务, TaskSchedule.immediate())` 投递，任务在对方下一次 tick 时在对方的线程上执行。只有必须在同一 tick 读到对方状态时才用 `对方.acquirable().sync(…)`，所有跨线程的 `sync` 都排同一把进程级的锁，用多了就退化成单线程。`sync` 持有对方期间，引擎不会把对方交给别的 tick 线程；从 `runAsync` 这类非 tick 线程持有时，持着它跨过 tick 边界会推迟下一个 tick 的开始，所有 tick 线程一起等，所以回调里不要阻塞（`docs/DESIGN-PROD.md` `API-PROD-016` 元素换线程一条）。
 
@@ -143,7 +157,9 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 
 实体的属性（`LivingEntity#getAttribute` 取到的 `AttributeInstance`）任意线程可读，只在实体所属的线程上改：每次修改当场回调实体，发属性包，降最大生命值时还压低当前生命值。不拥有实体的线程降最大生命值，压生命值排到实体下一个 tick、在它的线程上做，在那之前读到的生命值还是旧的；实体还没分到 tick 线程时（例如首次出生的 `PlayerSpawnEvent`），tick 线程以外的线程降最大生命值照常当场压。
 
-区块的观察者（`Chunk#getViewers()`，即 `sendPacketToViewers` 发给谁）是区块环里有这个区块的玩家（引擎给他发区块的那一圈），不是位置在一定半径内的玩家：区块更新限流器留住区块环中心时两者不同。直接改区块内容（`Chunk#setBlock` 这类）要在这个区块的写锁里改，改完再发更新包。读锁不能升级为写锁：只持读锁时调 `lockWriteLock()`，或调会取写锁的 `Instance#setBlock`、`Instance#setBiome`，抛 `IllegalStateException`（`tryLockWriteLock` 等满时限后返回 false），先查后改要从一开始就拿写锁（`docs/DESIGN-PROD.md` `API-PROD-020` 区块读锁一条）；引擎发区块时在同一把写锁里取包并交给连接，所以一次改动要么在区块包里，要么排在区块包后面（`docs/DESIGN-PROD.md` `API-PROD-020` 区块包与方块更新的先后一条）。持着区块的锁给玩家排区块（`Chunk#sendChunk`）不会卡住发送：发送一批最多等区块锁 1 ms，等不到的区块在锁空出来的那个 tick 发，可能不止晚一个 tick，同一批的其他区块照发。例外是 `PlayerChunkLoadEvent`：它在这名玩家的发送队列锁里派发，监听器里改方块（`Instance#setBlock`）会一直等那个区块的写锁；这时另一条线程若正持着那个区块的锁、又给这名玩家排区块，两边互等。监听器里要改方块，用 `scheduler().runOn(玩家, 任务, TaskSchedule.immediate())` 投递到这名玩家的下一次 tick 再改。
+区块的观察者（`Chunk#getViewers()`，即 `sendPacketToViewers` 发给谁）是区块环里有这个区块的玩家（引擎给他发区块的那一圈），不是位置在一定半径内的玩家：区块更新限流器留住区块环中心时两者不同。直接改区块内容（`Chunk#setBlock` 这类）要在这个区块的写锁里改，改完再发更新包；不持写锁调 `Chunk#setBlock`、`Chunk#setBiome` 抛 `IllegalStateException`。读锁不能升级为写锁：只持读锁时调 `lockWriteLock()`，或调会取写锁的 `Instance#setBlock`、`Instance#setBiome`，抛 `IllegalStateException`（`tryLockWriteLock` 等满时限后返回 false），先查后改要从一开始就拿写锁（`docs/DESIGN-PROD.md` `API-PROD-020` 区块读锁一条）；引擎发区块时在同一把写锁里取包并交给连接，所以一次改动要么在区块包里，要么排在区块包后面（`docs/DESIGN-PROD.md` `API-PROD-020` 区块包与方块更新的先后一条）。持着区块的锁给玩家排区块（`Chunk#sendChunk`）不会卡住发送：发送一批最多等区块锁 1 ms，等不到的区块在锁空出来的那个 tick 发，可能不止晚一个 tick，同一批的其他区块照发。例外是 `PlayerChunkLoadEvent`：它在这名玩家的发送队列锁里派发，监听器里改方块（`Instance#setBlock`）会一直等那个区块的写锁；这时另一条线程若正持着那个区块的锁、又给这名玩家排区块，两边互等。监听器里要改方块，用 `scheduler().runOn(玩家, 任务, TaskSchedule.immediate())` 投递到这名玩家的下一次 tick 再改。
+
+方块回调与实例事件在实例监视器里执行：`BlockHandler#onPlace`、`BlockHandler#onDestroy`、`BlockPlacementRule#blockPlace`、`BlockPlacementRule#blockUpdate` 在 `Instance#setBlock` 里同步调用，持着实例监视器与这个区块的写锁；`InstanceBlockUpdateEvent` 与 `InstanceChunkUnloadEvent` 也在实例监视器里派发。另一条 tick 线程这时可能持着它自己的锁、等着这个实例的监视器（它也在改这个实例的方块），回调里对别的 tick 线程上的实体调 `acquirable().sync` 或 `lock`，两边就互等。回调里可以在同一条线程上再调 `Instance#setBlock`；不阻塞，不 `join()` 还没完成的 future（含 `loadChunk(…).join()`）；要影响别的实体，用 `scheduler().runOn(目标, 任务, TaskSchedule.immediate())` 投递。
 
 消费掉落物（吸取、自动拾取这类插件自己交出 `ItemEntity` 的物品再移除它）的约定还没定。引擎的拾取与合并都先经 `ItemEntity#claim` 的 CAS 才消费，同一个掉落物至多被消费一次；`claim()` 与 `releaseClaim()` 标着 `@ApiStatus.Internal`，不在插件的稳定面里。插件只按上表用 `runOn` 在掉落物自己的线程上处理、不经 claim 时，邻格线程上的合并或拾取照样能占到它，同一个掉落物会被消费两次，物品复制。这一条登记在 `docs/DESIGN-PROD.md` §28.2 待办「插件消费掉落物没有 claim 约定」，属于插件 API 的决定，第一个生成或消费掉落物的插件接入之前定下：默认做法是去掉这两个方法的 Internal 标注，约定先 `claim()`，拿不到就不消费，在掉落物自己的线程上消费完再 `remove()`。
 

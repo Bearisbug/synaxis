@@ -142,7 +142,9 @@ public sealed interface EventNode<T extends Event> permits EventNodeImpl {
      *
      * @param name   The name of the event node
      * @param filter The event type filter to apply
-     * @param tag    The tag which must be contained on the event handler
+     * @param tag    The tag the event handler must have, by {@link TagReadable#hasTag}: a tag built
+     *               with a default value is present on every handler, so the node then lets every
+     *               event through
      * @param <E>    The resulting event type of the node
      * @return A node with an event type filter as well as a handler with the provided tag
      */
@@ -181,6 +183,12 @@ public sealed interface EventNode<T extends Event> permits EventNodeImpl {
 
     /**
      * Calls an event starting from this node.
+     * <p>
+     * An exception thrown by a listener goes to the {@code ExceptionManager} of the process owning
+     * the root of the tree, and the rest of this dispatch is abandoned: the remaining listeners and
+     * child nodes do not run. A node attached through {@link #map} catches what is thrown inside
+     * it, so only its own subtree is abandoned and the nodes after it still run. The next call is
+     * not affected.
      *
      * @param event the event to call
      */
@@ -206,6 +214,11 @@ public sealed interface EventNode<T extends Event> permits EventNodeImpl {
     /**
      * Execute a cancellable event with a callback to execute if the event is successful.
      * Event conditions and propagation is the same as {@link #call(Event)}.
+     * <p>
+     * Only the cancel state at the end of the dispatch counts. When a listener throws, the dispatch
+     * is abandoned as {@link #call(Event)} describes and the callback still runs unless the event
+     * was already cancelled: a listener that guards an action must cancel before anything that can
+     * throw, and run before the listeners that can.
      *
      * @param event           The event to execute
      * @param successCallback A callback if the event is not cancelled
@@ -320,9 +333,32 @@ public sealed interface EventNode<T extends Event> permits EventNodeImpl {
     @Contract(value = "_ -> this")
     EventNode<T> removeChild(EventNode<? extends T> child);
 
+    /**
+     * Adds a listener to this node.
+     * <p>
+     * Listeners are keyed on the exact runtime class of the event: a listener of a class does not
+     * hear its subclasses, except along a chain of {@link io.github.bearisbug.synaxis.event.trait.RecursiveEvent}
+     * classes. The event type of the listener must therefore be a class an event can be dispatched
+     * as.
+     *
+     * @param listener the listener
+     * @return this, can be used for chaining
+     * @throws IllegalArgumentException if the event type of {@code listener} is an interface, or an
+     *                                  abstract class that is not a {@code RecursiveEvent}
+     */
     @Contract(value = "_ -> this")
     EventNode<T> addListener(EventListener<? extends T> listener);
 
+    /**
+     * Adds a listener of one event type that skips cancelled events ({@link EventListener#of}).
+     *
+     * @param eventType the exact event class to listen to
+     * @param listener  the listener
+     * @param <E>       the event type
+     * @return this, can be used for chaining
+     * @throws IllegalArgumentException if {@code eventType} is an interface, or an abstract class
+     *                                  that is not a {@code RecursiveEvent}
+     */
     @Contract(value = "_, _ -> this")
     default <E extends T> EventNode<T> addListener(Class<E> eventType, Consumer<E> listener) {
         return addListener(EventListener.of(eventType, listener));

@@ -39,10 +39,10 @@ public class EventNodeMapTest {
         var item = ItemStack.of(Material.DIAMOND);
         var node = (EventNodeImpl<Event>) EventNode.all("main");
         var itemNode = node.map(item, EventFilter.ITEM);
-        assertFalse(node.registeredMappedNode.containsKey(item));
+        assertFalse(registered(node, item));
         itemNode.addListener(EventNodeTest.ItemTestEvent.class, _ -> {
         });
-        assertTrue(node.registeredMappedNode.containsKey(item));
+        assertTrue(registered(node, item));
     }
 
     @Test
@@ -214,5 +214,12 @@ public class EventNodeMapTest {
         parent.removeChild(child);
         parent.call(new EventNodeTest.ItemTestEvent(item));
         assertFalse(result.get(), "A removed child whose only listeners are mapped must not receive events anymore");
+    }
+
+    // The registered nodes are guarded by the global lock, and a read of a WeakHashMap mutates it
+    private static boolean registered(EventNodeImpl<?> holder, Object owner) {
+        synchronized (EventNodeImpl.GLOBAL_CHILD_LOCK) {
+            return holder.registeredMappedNode.containsKey(owner);
+        }
     }
 }

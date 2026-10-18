@@ -14,6 +14,9 @@ public sealed interface ListenerHandle<E extends Event> permits EventNodeImpl.Ha
      * Will try to fast exit the execution when possible if {@link #hasListener()} return {@code false}.
      * <p>
      * Anonymous and subclasses are not supported, events must have the exact type {@code E}.
+     * <p>
+     * An exception thrown by a listener is handled as {@link EventNode#call(Event)} describes: it
+     * goes to the process owning the root, and the rest of this dispatch is abandoned.
      *
      * @param event the event to call
      */

@@ -21,21 +21,30 @@ import java.util.function.Consumer;
  * <p>
  * A plugin must not attach nodes to the global handler itself. In particular nothing may build an
  * instance scoped mapped node for {@code PlayerPluginMessageEvent}: that event is also dispatched
- * during the configuration phase, where the player has no instance and the mapped branch asserts.
- * {@link #forInstance} refuses it for that reason.
+ * during the configuration phase, where the player has no instance and the instance scoped node
+ * never sees it. {@link #forInstance} refuses it for that reason.
  * <p>
- * The pickups and drops of a player frozen when they are dispatched
- * ({@link PlayerDataStore#isFrozen}) reach every listener already cancelled, in every scope: the
- * host cancels them before any plugin listener runs, and again between
- * {@link EventPriority#HIGHEST} and {@link EventPriority#MONITOR} of the global scope. The host
- * reads the freeze once per event, before any plugin listener: when a player is frozen from another
- * thread in the middle of a dispatch (a transfer, a degraded session), that pickup or drop goes
- * through as allowed and the next ones are cancelled. A listener that hands items over must skip
- * cancelled events ({@code ignoreCancelled} true, or a check of {@code isCancelled()}) and go by
- * that alone, not by {@code isFrozen}: a pickup or drop the freeze landed in the middle of goes
- * through while {@code isFrozen} is already true, and a listener that refuses it loses the stack.
- * Undoing that cancel is not supported: the listeners that run after the undo and before the second
- * cancel, the instance scoped ones included, see the pickup or drop as allowed.
+ * Five events of a player frozen when they are dispatched ({@link PlayerDataStore#isFrozen})
+ * reach every listener already cancelled, in every scope: {@code PickupItemEvent},
+ * {@code ItemDropEvent}, {@code PlayerBlockPlaceEvent}, {@code PlayerBlockInteractEvent} and
+ * {@code PlayerUseItemEvent}. The host cancels them before any plugin listener runs, and again
+ * between {@link EventPriority#HIGHEST} and {@link EventPriority#MONITOR} of the global scope. The
+ * host reads the freeze once per event, before any plugin listener: when a player is frozen from
+ * another thread in the middle of a dispatch (a transfer, a degraded session), that event goes
+ * through as allowed and the next ones are cancelled. The two argument
+ * {@link #addListener(Class, Consumer)} receives cancelled events, so a listener that hands
+ * something over on one of these events (an item picked up or dropped, a block placed, a block
+ * used, an item used) must skip cancelled events ({@code ignoreCancelled} true, or a check of
+ * {@code isCancelled()}) and go by that alone, not by {@code isFrozen}: an event the freeze landed
+ * in the middle of goes through while {@code isFrozen} is already true, and a listener that refuses
+ * a pickup or drop then loses the stack. Undoing that cancel is not supported: the listeners that
+ * run after the undo and before the second cancel, the instance scoped ones included, see the
+ * event as allowed.
+ * <p>
+ * The freeze does not reach three paths ({@code docs/DESIGN-PROD.md} §28.2): a click in a container
+ * opened before the freeze ({@code InventoryPreClickEvent}), {@code PlayerUseItemOnBlockEvent} and
+ * {@code PlayerFinishItemUseEvent} for an item whose use began before it. A listener of these that
+ * changes who owns an item checks {@code isFrozen} itself.
  * <p>
  * Only the host implements this interface: a plugin is handed one and calls it.
  */
@@ -68,7 +77,9 @@ public interface PluginEvents {
      * Adds a listener for one event type at {@link EventPriority#NORMAL} that also sees cancelled
      * events.
      *
-     * @param eventType the event class to listen for
+     * @param eventType the exact class of the events to listen for: listeners are keyed on the
+     *                  runtime class of the event, so an interface, or an abstract class that is not
+     *                  a {@code RecursiveEvent}, throws {@link IllegalArgumentException}
      * @param listener  the listener; an exception it throws is caught and logged against this plugin
      * @param <E>       the event type
      */
@@ -79,7 +90,9 @@ public interface PluginEvents {
     /**
      * Adds a listener for one event type.
      *
-     * @param eventType       the event class to listen for
+     * @param eventType       the exact class of the events to listen for: listeners are keyed on the
+     *                        runtime class of the event, so an interface, or an abstract class that
+     *                        is not a {@code RecursiveEvent}, throws {@link IllegalArgumentException}
      * @param priority        when the listener runs relative to the others
      * @param ignoreCancelled true to skip the listener when an earlier one has cancelled the event;
      *                        no effect on events that cannot be cancelled
@@ -92,12 +105,23 @@ public interface PluginEvents {
 
     /**
      * Returns the event capability scoped to one instance: its listeners are only called for events
-     * of that instance, on the thread that ticks the instance.
+     * of that instance.
+     * <p>
+     * A listener runs on the thread that dispatches its event: an entity or player event on the
+     * tick thread owning that entity, so one instance has several of them at once under the
+     * {@code grid} thread provider; {@code InstanceTickEvent} on the tick scheduler thread;
+     * {@code InstanceChunkLoadEvent} on the virtual thread that loaded the chunk; a
+     * {@code PlayInstanceStateEvent} on the thread that carried the transition out. State the
+     * listeners of one instance share needs a concurrent structure or a lock.
      * <p>
      * The listeners hang below the instance's own event node. That node is dispatched before the
-     * global scope listeners of every plugin, so priorities order the instance scoped listeners
-     * among themselves, and all of them run before the global scope plugin listeners of the same
-     * event. They are taken back when the plugin is disabled and go away with the instance. Every
+     * global scope listeners of every plugin, and before the host's own listeners too: on a first
+     * spawn the host applies the stored state of the player (inventory, held slot, health) after
+     * the instance scoped listeners of {@code PlayerSpawnEvent}, so a listener that changes the
+     * outcome of a spawn after the host listens in the global scope and filters by instance.
+     * Priorities order the instance scoped listeners among themselves, and all of them run before
+     * the global scope plugin listeners of the same event. They are taken back when the plugin is
+     * disabled and go away with the instance. Every
      * call for the same instance shares that instance's priority nodes, so calling this once per
      * listener keeps the order within a priority.
      * <p>

@@ -1,6 +1,8 @@
 package io.github.bearisbug.synaxis.event;
 
 import io.github.bearisbug.synaxis.exception.ExceptionManager;
+import io.github.bearisbug.synaxis.item.ItemStack;
+import io.github.bearisbug.synaxis.item.Material;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -62,6 +64,27 @@ public class EventNodeExceptionTest {
 
         root.call(new EventNodeTest.EventTest());
         assertEquals(2, caught.size(), "Every call must report its own failure");
+    }
+
+    @Test
+    public void aThrowingMappedNodeOnlyAbandonsItsOwnSubtree() {
+        List<Throwable> caught = new ArrayList<>();
+        var root = handlerCollecting(caught);
+        var item = ItemStack.of(Material.DIAMOND);
+        // Dispatched before the children, through a handle of its own that catches for it
+        var mapped = root.map(item, EventFilter.ITEM);
+        mapped.addListener(EventNodeTest.ItemTestEvent.class, _ -> {
+            throw new IllegalStateException("mapped");
+        });
+        AtomicInteger after = new AtomicInteger();
+        var child = EventNode.all("after");
+        child.addListener(EventNodeTest.ItemTestEvent.class, _ -> after.incrementAndGet());
+        root.addChild(child);
+
+        root.call(new EventNodeTest.ItemTestEvent(item));
+        assertEquals(1, after.get(), "The child after the mapped node still runs");
+        assertEquals(1, caught.size());
+        assertEquals("mapped", caught.getFirst().getMessage());
     }
 
     @Test

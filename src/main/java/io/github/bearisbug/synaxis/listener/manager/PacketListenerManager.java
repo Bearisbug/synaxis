@@ -110,6 +110,16 @@ public final class PacketListenerManager {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(PacketListenerManager.class);
 
+    /**
+     * The play state packets of {@code PlayerSocketConnection}'s immediate set that keep the decoding
+     * state: they skip the player's queue and are handled on the read thread of the connection, where
+     * no {@link PlayerPacketEvent} is dispatched since its listeners rely on the player's tick thread.
+     * The configuration acknowledgement switches the decoding state, and that rule leaves it out
+     * wherever it is handled.
+     */
+    private static final Set<Class<? extends ClientPacket>> READ_THREAD_PLAY_PACKETS = Set.of(
+            ClientKeepAlivePacket.class, ClientPingRequestPacket.class, ClientCookieResponsePacket.class);
+
     private final ServerProcess process;
 
     @SuppressWarnings({"unchecked", "rawtypes"}) // generic array creation
@@ -197,6 +207,14 @@ public final class PacketListenerManager {
     /**
      * Processes a packet by getting its {@link PacketPlayListenerConsumer} and calling all the packet listeners.
      * <p>
+     * Runs on the read thread of the connection for the handshake, status and login packets and for
+     * the immediate ones of {@code PlayerSocketConnection}, on the tick scheduler thread for the other
+     * configuration packets and for the other play packets of a player in no instance (waiting to
+     * join, or sent back to the configuration and not acknowledged yet), and on the player's tick
+     * thread for the rest. A {@link PlayerPacketEvent} is dispatched for the queued play packets only,
+     * on either of the last two threads: a play packet that switches the decoding state is never
+     * offered to a listener that could cancel it, since the client has switched already.
+     * <p>
      * Callers are responsible for handling any errors.
      *
      * @param packet     the received packet
@@ -224,7 +242,7 @@ public final class PacketListenerManager {
         }
 
         // Event
-        if (currState == ConnectionState.PLAY) {
+        if (currState == ConnectionState.PLAY && nextState == currState && !READ_THREAD_PLAY_PACKETS.contains(clazz)) {
             PlayerPacketEvent playerPacketEvent = new PlayerPacketEvent(connection.getPlayer(), packet);
             process.eventHandler().call(playerPacketEvent);
             if (playerPacketEvent.isCancelled()) {
@@ -240,6 +258,11 @@ public final class PacketListenerManager {
      * Sets the listener of a packet.
      * <p>
      * WARNING: this will overwrite the default engine listener, this is not reversible.
+     * <p>
+     * The listener runs where {@link #processClientPacket} does: on the read thread for the
+     * handshake, status and login states and for the immediate packets, on the tick scheduler thread
+     * for the other configuration packets and for the other play packets of a player in no instance,
+     * on the player's tick thread for the rest.
      *
      * @param state       the state of the packet
      * @param packetClass the class of the packet
@@ -254,6 +277,11 @@ public final class PacketListenerManager {
      * Sets the listener of a packet.
      * <p>
      * WARNING: this will overwrite the default engine listener, this is not reversible.
+     * <p>
+     * The listener runs on the player's tick thread, on the tick scheduler thread while the player is
+     * in no instance (waiting to join, or sent back to the configuration and not acknowledged yet),
+     * or on the read thread for the immediate packets of {@code PlayerSocketConnection} (the keep
+     * alive, ping and cookie answers among them), which skip the player's queue.
      *
      * @param packetClass the class of the packet
      * @param consumer    the new packet's listener
@@ -263,6 +291,19 @@ public final class PacketListenerManager {
         setListener(ConnectionState.PLAY, packetClass, (packet, playerConnection) -> consumer.accept(packet, playerConnection.getPlayer()));
     }
 
+    /**
+     * Sets the listener of a configuration packet.
+     * <p>
+     * WARNING: this will overwrite the default engine listener, this is not reversible.
+     * <p>
+     * The listener runs on the tick scheduler thread, or on the read thread for the immediate packets
+     * of {@code PlayerSocketConnection} (the keep alive and cookie answers, the known packs, the end
+     * of the configuration), which skip the player's queue.
+     *
+     * @param packetClass the class of the packet
+     * @param consumer    the new packet's listener
+     * @param <T>         the type of the packet
+     */
     public <T extends ClientPacket> void setConfigurationListener(Class<T> packetClass, PacketPlayListenerConsumer<T> consumer) {
         setListener(ConnectionState.CONFIGURATION, packetClass, (packet, playerConnection) -> consumer.accept(packet, playerConnection.getPlayer()));
     }

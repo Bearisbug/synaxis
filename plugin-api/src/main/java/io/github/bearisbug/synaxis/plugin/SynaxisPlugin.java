@@ -13,7 +13,9 @@ import java.util.Set;
 public interface SynaxisPlugin {
 
     /**
-     * Identity of this plugin. Called once, right after construction, before any capability exists.
+     * Identity of this plugin. The host and the translation key gate call it any number of times,
+     * the first ones before any capability exists: it must return an equal value every time and
+     * have no side effect.
      *
      * @return the descriptor of this plugin
      */
@@ -37,6 +39,11 @@ public interface SynaxisPlugin {
      * Called once when the host enables this plugin, on the starting thread and before the server
      * binds its port. Everything registered through {@code context} is taken back by the host when
      * the plugin is disabled.
+     * <p>
+     * When this method throws, the host logs it, takes back everything registered so far (its
+     * managed instances end with {@code EndCause.PLUGIN_DISABLED}) and goes on with the other
+     * plugins. {@link #onDisable()} is not called: whatever the plugin opened itself before the throw
+     * (a thread pool, a connection) has to be closed in a catch of this method.
      *
      * @param context the capabilities granted to this plugin
      */
@@ -44,8 +51,17 @@ public interface SynaxisPlugin {
 
     /**
      * Called once when the host disables this plugin, in reverse enable order and before the engine
-     * shuts its scheduler down. The host removes the event node, the tasks, the channels and the
-     * admission provider on its own; this method is only for whatever the plugin owns itself.
+     * shuts its scheduler down; never for a plugin whose {@link #onEnable} threw.
+     * <p>
+     * It runs on a platform thread of its own, {@code plugin-disable-<id>}, that owns no tick thread:
+     * an entity already assigned to a tick thread is changed through {@code acquirable().sync(...)},
+     * one that is not yet assigned directly. The plugins share a budget of 5 s; a plugin still in
+     * here when it runs out is left behind on its thread and its capabilities are taken back anyway.
+     * <p>
+     * The host takes back on its own the event nodes, the tasks, the channels, the admission
+     * provider, the commands, the tab list visibility, the actions and the managed instances
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-007}); this method is only for whatever the plugin
+     * owns itself.
      */
     default void onDisable() {
     }

@@ -103,6 +103,11 @@ public interface EventListener<T extends Event> {
 
         /**
          * Removes this listener after it has been executed the given number of times.
+         * <p>
+         * The handler runs at most that many times, concurrent dispatches included: a run takes its
+         * slot before the handler is called, so a handler that throws has used it up too. Events
+         * skipped as cancelled (see {@link #ignoreCancelled(boolean)}) or refused by a filter take no
+         * slot.
          *
          * @param expireCount The number of times to execute
          */
@@ -163,13 +168,17 @@ public interface EventListener<T extends Event> {
                         }
                     }
                 }
+                // Expiration count, a slot is taken before the handler so that concurrent
+                // dispatches never run it more often than the count
+                if (hasExpirationCount) {
+                    final int left = expirationCount.decrementAndGet();
+                    if (left < 0) return Result.EXPIRED;
+                    if (handler != null) handler.accept(event);
+                    return left == 0 ? Result.EXPIRED : Result.SUCCESS;
+                }
                 // Handler
                 if (handler != null) {
                     handler.accept(event);
-                }
-                // Expiration count
-                if (hasExpirationCount && expirationCount.decrementAndGet() == 0) {
-                    return Result.EXPIRED;
                 }
                 return Result.SUCCESS;
             });

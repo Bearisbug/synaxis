@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.gameevent;
 
 
+import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
@@ -38,7 +39,11 @@ public sealed interface GameEvent extends StaticProtocolObject<GameEvent>, GameE
     }
 
     static @Nullable GameEvent fromKey(@KeyPattern String key) {
-        return fromKey(Key.key(key));
+        try {
+            return fromKey(Key.key(key));
+        } catch (InvalidKeyException _) {
+            return null;
+        }
     }
 
     static @Nullable GameEvent fromKey(Key key) {

@@ -19,11 +19,13 @@ import org.jetbrains.annotations.Unmodifiable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public sealed interface EntityType extends StaticProtocolObject<EntityType>, EntityTypes, Translatable
         permits EntityTypeImpl {
     NetworkBuffer.Type<EntityType> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(EntityType::fromId, EntityType::id);
-    Codec<EntityType> CODEC = Codec.KEY.transform(EntityType::fromKey, EntityType::key);
+    Codec<EntityType> CODEC = Codec.KEY.transform(
+            key -> Objects.requireNonNull(fromKey(key), () -> "unknown entity type: " + key.asString()), EntityType::key);
 
     /**
      * Returns the entity registry.

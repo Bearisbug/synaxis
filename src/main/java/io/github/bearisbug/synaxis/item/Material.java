@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.item;
 
+import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import net.kyori.adventure.translation.Translatable;
@@ -16,11 +17,13 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
+import java.util.Objects;
 
 public sealed interface Material extends StaticProtocolObject<Material>, Materials, Translatable permits MaterialImpl {
 
     NetworkBuffer.Type<Material> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(Material::fromId, Material::id);
-    Codec<Material> CODEC = Codec.KEY.transform(Material::fromKey, Material::key);
+    Codec<Material> CODEC = Codec.KEY.transform(
+            key -> Objects.requireNonNull(fromKey(key), () -> "unknown material: " + key.asString()), Material::key);
 
     /**
      * Returns the raw registry data for the material.
@@ -118,7 +121,11 @@ public sealed interface Material extends StaticProtocolObject<Material>, Materia
     }
 
     static @Nullable Material fromKey(@KeyPattern String key) {
-        return fromKey(Key.key(key));
+        try {
+            return fromKey(Key.key(key));
+        } catch (InvalidKeyException _) {
+            return null;
+        }
     }
 
     static @Nullable Material fromKey(Key key) {

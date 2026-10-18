@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.entity.attribute;
 
+import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import net.kyori.adventure.translation.Translatable;
@@ -11,11 +12,13 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
+import java.util.Objects;
 
 public sealed interface Attribute extends StaticProtocolObject<Attribute>, Attributes,
         Translatable permits AttributeImpl {
     NetworkBuffer.Type<Attribute> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(Attribute::fromId, Attribute::id);
-    Codec<Attribute> CODEC = Codec.KEY.transform(Attribute::fromKey, Attribute::key);
+    Codec<Attribute> CODEC = Codec.KEY.transform(
+            key -> Objects.requireNonNull(fromKey(key), () -> "unknown attribute: " + key.asString()), Attribute::key);
 
     /**
      * Returns the legacy registry data backing this attribute.
@@ -98,7 +101,11 @@ public sealed interface Attribute extends StaticProtocolObject<Attribute>, Attri
     }
 
     static @Nullable Attribute fromKey(@KeyPattern String key) {
-        return fromKey(Key.key(key));
+        try {
+            return fromKey(Key.key(key));
+        } catch (InvalidKeyException _) {
+            return null;
+        }
     }
 
     static @Nullable Attribute fromKey(Key key) {

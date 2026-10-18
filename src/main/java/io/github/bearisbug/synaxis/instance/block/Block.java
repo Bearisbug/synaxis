@@ -57,9 +57,11 @@ public sealed interface Block extends StaticProtocolObject<Block>, TagReadable, 
     Codec<Block> STATE_STRUCT_CODEC = new StructCodec<>() {
         @Override
         public <D> Result<Block> decodeFromMap(Transcoder<D> coder, Transcoder.MapLike<D> map) {
-            Result<Block> blockResult = map.getValue("Name").map(coder::getString).mapResult(Block::fromKey);
-            if (!(blockResult instanceof Result.Ok(Block block)))
-                return blockResult.cast();
+            Result<String> nameResult = map.getValue("Name").map(coder::getString);
+            if (!(nameResult instanceof Result.Ok(String name)))
+                return nameResult.cast();
+            Block block = Block.fromKey(name);
+            if (block == null) return new Result.Error<>("unknown block: " + name);
             Result<Transcoder.MapLike<D>> propertiesResult = map.getValue("Properties").map(coder::getMap);
             if (!(propertiesResult instanceof Result.Ok(Transcoder.MapLike<D> properties)))
                 // properties are optional

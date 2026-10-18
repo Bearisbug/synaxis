@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.sound;
 
+import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import net.kyori.adventure.key.Keyed;
@@ -80,7 +81,11 @@ public sealed interface SoundEvent extends Keyed, Sound.Type, SoundEvents permit
      * @return the sound event, or null if not found
      */
     static @Nullable SoundEvent fromKey(@KeyPattern String key) {
-        return fromKey(Key.key(key));
+        try {
+            return fromKey(Key.key(key));
+        } catch (InvalidKeyException _) {
+            return null;
+        }
     }
 
     /**

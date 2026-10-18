@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.entity;
 
+import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import io.github.bearisbug.synaxis.codec.Codec;
@@ -11,11 +12,13 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
+import java.util.Objects;
 
 public sealed interface VillagerProfession extends StaticProtocolObject<VillagerProfession>, VillagerProfessions permits VillagerProfessionImpl {
 
     NetworkBuffer.Type<VillagerProfession> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(VillagerProfession::fromId, VillagerProfession::id);
-    Codec<VillagerProfession> NBT_TYPE = Codec.KEY.transform(VillagerProfession::fromKey, VillagerProfession::key);
+    Codec<VillagerProfession> NBT_TYPE = Codec.KEY.transform(
+            key -> Objects.requireNonNull(fromKey(key), () -> "unknown villager profession: " + key.asString()), VillagerProfession::key);
 
     @Override
     default Key key() {
@@ -54,7 +57,11 @@ public sealed interface VillagerProfession extends StaticProtocolObject<Villager
     }
 
     static @Nullable VillagerProfession fromKey(@KeyPattern String key) {
-        return fromKey(Key.key(key));
+        try {
+            return fromKey(Key.key(key));
+        } catch (InvalidKeyException _) {
+            return null;
+        }
     }
 
     static @Nullable VillagerProfession fromKey(Key key) {

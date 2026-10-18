@@ -1,0 +1,164 @@
+[fix-STORE] free=50% load=10 start 09:56:40
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as configuration cache cannot be reused because an input to plugin class 'dev.panuszewski.gradle.versioncatalogs.VersionCatalogAccessorsPlugin' has changed.
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions UP-TO-DATE
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateEntrypointForLibs UP-TO-DATE
+> Task :build-src:generateEntrypointForLibsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-src:generateLibrariesForConventions UP-TO-DATE
+> Task :build-src:generateLibrariesForLibs UP-TO-DATE
+> Task :build-src:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-src:compilePluginsBlocks UP-TO-DATE
+> Task :build-src:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-src:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-src:verifyEarlyEvaluatedBuild UP-TO-DATE
+> Task :build-src:verifyTopLevelBuild UP-TO-DATE
+> Task :build-src:compileKotlin UP-TO-DATE
+> Task :build-src:compileJava UP-TO-DATE
+> Task :build-src:pluginDescriptors UP-TO-DATE
+> Task :build-src:processResources UP-TO-DATE
+> Task :build-src:classes UP-TO-DATE
+> Task :build-src:jar UP-TO-DATE
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :baker
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rush
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :loadtest
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :play-kit
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :synx
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :baker:processResources UP-TO-DATE
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :game-rts:processResources UP-TO-DATE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :server-app:buildInfo UP-TO-DATE
+> Task :server-app:processResources UP-TO-DATE
+> Task :server-app:processTestResources UP-TO-DATE
+> Task :synx:processResources NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :testing:compileJava UP-TO-DATE
+> Task :baker:compileJava UP-TO-DATE
+> Task :baker:classes UP-TO-DATE
+> Task :baker:jar UP-TO-DATE
+> Task :game-rts:compileJava UP-TO-DATE
+> Task :game-rts:classes UP-TO-DATE
+> Task :game-rts:jar UP-TO-DATE
+> Task :synx:classes UP-TO-DATE
+> Task :synx:jar UP-TO-DATE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar UP-TO-DATE
+> Task :server-app:compileJava UP-TO-DATE
+> Task :server-app:classes UP-TO-DATE
+> Task :server-app:compileTestJava
+> Task :server-app:testClasses
+
+> Task :server-app:test
+
+CrossShardHandoverIntegrationTest > aRedisThatTakesConnectionsButNeverAnswersHoldsUpNoLogin(Env) FAILED
+    org.opentest4j.AssertionFailedError at CrossShardHandoverIntegrationTest.java:277
+
+CrossShardHandoverIntegrationTest > loginsWaitingForAnotherShardToLetGoLeaveTheLoadSlotsToOtherLogins(Env) FAILED
+    org.opentest4j.AssertionFailedError at CrossShardHandoverIntegrationTest.java:357
+
+CrossShardHandoverIntegrationTest > aRequestFindingEveryConnectionTakenGivesUpWithinTheTimeout() FAILED
+    java.util.concurrent.TimeoutException at CrossShardHandoverIntegrationTest.java:302
+
+PlayerStoreIntegrationTest > aSectionWhoseEncodeThrowsAnErrorLeavesTheRestOfTheLogoutSaveGoing(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:851
+        Caused by: java.lang.StackOverflowError at PlayerStoreIntegrationTest.java:87
+
+PlayerStoreIntegrationTest > aCommitWhoseFirstParticipantLeavesBeforeItsApplyStillAppliesOnce(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:497
+
+PlayerStoreIntegrationTest > aCommitAppliesOnTheThreadThatRunsTheTickNotOnATickThread(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:466
+
+PlayerStoreIntegrationTest > aSectionWithoutADefaultRefusesTheLoginAndGivesTheLeaseBack(Env) FAILED
+    java.lang.IllegalStateException at PlayerStoreIntegrationTest.java:105
+
+PlayerStoreIntegrationTest > aTransferWhoseSectionEncodeThrowsAnErrorStillHandsTheRestOver(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStoreIntegrationTest.java:413
+        Caused by: java.lang.RuntimeException at SchedulerImpl.java:129
+            Caused by: java.lang.StackOverflowError at PlayerStoreIntegrationTest.java:87
+
+41 tests completed, 8 failed
+
+> Task :server-app:test FAILED
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':server-app:test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-STORE/server-app/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 1m 10s
+42 actionable tasks: 2 executed, 40 up-to-date
+Configuration cache entry stored.
+[fix-STORE] gradle exit=1 end 09:57:51

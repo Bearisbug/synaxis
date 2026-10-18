@@ -1,0 +1,13 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+index f4c71f682f..99df5269e0 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+@@ -494,7 +494,7 @@ public final class PlayerStore implements ShutdownParticipant {
+             Thread.currentThread().interrupt();
+             return "interrupted";
+         }
+-        if (!closing) return null;
++        if (!closing || !Boolean.getBoolean("proof.never")) return null;
+         loads.release();
+         return STOPPING;
+     }

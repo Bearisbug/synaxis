@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest" tests="5" skipped="0" failures="1" errors="0" timestamp="2026-10-18T02:45:44.259Z" hostname="Mac.local" time="3.127">
+  <properties/>
+  <testcase name="aLoginPollingForAnotherShardToLetGoTakesNoLeaseOnceTheSavePhaseStarted(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest" time="1.585"/>
+  <testcase name="aLoginWaitingForTheSameAccountToLeaveIsRefusedOnceTheSavePhaseStarted(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest" time="0.195"/>
+  <testcase name="admissionsAtTheSameTimeAsTheFreezeAreEitherSavedWithItOrRefused(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest" time="0.965"/>
+  <testcase name="aLoginWaitingForALoadSlotTakesNoLeaseAndOneWhoseAcquireWasUnderWayGivesItBack(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest" time="0.199">
+    <failure message="org.opentest4j.AssertionFailedError: the queued login never reached the database ==&gt; expected: &lt;0&gt; but was: &lt;1&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the queued login never reached the database ==&gt; expected: &lt;0&gt; but was: &lt;1&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest.aLoginWaitingForALoadSlotTakesNoLeaseAndOneWhoseAcquireWasUnderWayGivesItBack(ShutdownLoginIntegrationTest.java:166)
+</failure>
+  </testcase>
+  <testcase name="anAdmissionAfterTheFreezeIsRefusedAndGivesTheLeaseBack(Env)" classname="io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest" time="0.175"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

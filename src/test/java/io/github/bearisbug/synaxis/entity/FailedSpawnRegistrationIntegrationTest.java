@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
@@ -19,6 +20,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -67,6 +69,11 @@ public class FailedSpawnRegistrationIntegrationTest {
         final ServerProcess process = env.process();
         final Player player = process.connection().createPlayer(connection, new GameProfile(uuid, "soak0003"));
         assertNotNull(player);
+        // What the plugins and the shard host clean up on: the player is reported gone once removed
+        final AtomicInteger disconnects = new AtomicInteger();
+        process.eventHandler().addListener(PlayerDisconnectEvent.class, event -> {
+            if (event.getPlayer() == player) disconnects.incrementAndGet();
+        });
         player.setRespawnPoint(new Pos(0, 42, 0));
         player.setPendingOptions(instance, false);
         process.connection().transitionConfigToPlay(player);
@@ -87,6 +94,7 @@ public class FailedSpawnRegistrationIntegrationTest {
         env.tick();
         assertTrue(player.isRemoved(), "the player whose registration failed stayed in the world");
         assertNull(player.getInstance());
+        assertEquals(1, disconnects.get(), "the player whose registration failed was not reported gone once");
     }
 
     private static final class KickCapturingConnection extends PlayerConnection {

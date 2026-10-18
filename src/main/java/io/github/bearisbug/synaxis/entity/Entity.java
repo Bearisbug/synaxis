@@ -472,10 +472,10 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      *                      use {@link RelativeFlags} to see available flags
      * @param shouldConfirm if false, the teleportation will be done without confirmation
      * @return a future completed once the entity has been teleported. While chunks still have to load
-     * it must not be joined on the thread owning the entity (its tick thread, or a thread holding it
-     * through {@link Acquirable#sync(Consumer)}): the teleport waits for that thread. Joining this
-     * future there throws {@link IllegalStateException} instead, a future chained on it would wait
-     * forever; chain the next step with {@link CompletableFuture#thenRun(Runnable)}
+     * it must not be joined on the thread owning the entity, nor while holding any element through
+     * {@link Acquirable#sync(Consumer)} or {@link Acquirable#lock()}: the teleport waits for that thread
+     * and for the global lock. Joining this future on the owning thread throws {@link IllegalStateException};
+     * other waits never end. Chain the next step with {@link CompletableFuture#thenRun(Runnable)}
      * @throws IllegalStateException if you try to teleport an entity before settings its instance
      */
     public CompletableFuture<Void> teleport(Pos position, Vec velocity, long @Nullable [] chunks,
@@ -1201,8 +1201,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * this is due to chunks needing to load. It completes exceptionally when the spawn fails, for
      * instance when the tracker refuses the entity, and the caller must observe it: a discarded
      * future turns such a failure into an entity that is in the world but untracked, without a
-     * single line of log. While the chunk still has to load it must not be joined on the thread
-     * owning the entity, see {@link #teleport(Pos, Vec, long[], int, boolean)}
+     * single line of log. While the chunk still has to load it must not be joined on the thread owning
+     * the entity nor while holding an element, see {@link #teleport(Pos, Vec, long[], int, boolean)}
      * @throws IllegalStateException if {@code instance} has not been registered in {@link InstanceManager}
      */
     public CompletableFuture<Void> setInstance(Instance instance, Pos spawnPosition) {
@@ -1252,13 +1252,16 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
                 instance.getEntityTracker().register(this, position, trackingTarget, trackingUpdate);
                 spawn();
                 callEvent(new EntitySpawnEvent(this, instance));
-                // In the chunk it is in now: a listener may have moved it, or removed it, or sent it elsewhere
-                if (!isRemoved() && this.instance == instance) refreshCurrentChunk(this.currentChunk);
             } catch (Exception e) {
                 // Reported through the future, which the caller uses to undo the spawn. Swallowing
                 // it left the entity in the instance while the tracker had never heard of it:
                 // nothing could move or remove it again, yet it kept taking packets.
                 throw new CompletionException(e);
+            } finally {
+                // Once the spawn is over, also a failed one: undoing it takes ticks of the entity (a kicked player
+                // is removed by its own scheduler). In the chunk it is in now: a listener may have moved it, or
+                // removed it, or sent it elsewhere; without a chunk, currentChunk was never written
+                if (chunk != null && !isRemoved() && this.instance == instance) refreshCurrentChunk(this.currentChunk);
             }
         })));
     }

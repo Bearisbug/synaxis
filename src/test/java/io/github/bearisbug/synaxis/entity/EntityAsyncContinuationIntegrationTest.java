@@ -230,7 +230,8 @@ public class EntityAsyncContinuationIntegrationTest {
         assertEquals(3, entity.outcomes.size(), entity.outcomes.toString());
         for (String outcome : entity.outcomes)
             assertTrue(outcome.contains(" refused: Joining the teleport or instance change of entity "), outcome);
-        assertTrue(env.tickWhile(() -> !entity.getPosition().samePoint(target), Duration.ofSeconds(10)),
+        // In the chunk of the target, not on its point: a tick after the landing lets it fall
+        assertTrue(env.tickWhile(() -> !entity.getPosition().sameChunk(target), Duration.ofSeconds(10)),
                 "the teleport landed once the tick was over: " + entity.getPosition());
     }
 }

@@ -9,6 +9,8 @@ import io.github.bearisbug.synaxis.thread.TickThread;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.CompletableFuture;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -41,6 +43,19 @@ public class LivingEntityHealthIntegrationTest {
         assertEquals(20f, zombie.getHealth());
 
         zombie.getAttribute(Attribute.MAX_HEALTH).setBaseValue(5);
+        assertEquals(5f, zombie.getHealth(), "current health was left above the new maximum");
+    }
+
+    /**
+     * Before a tick thread owns the entity, a thread that is not a tick thread may write its health
+     * (a first {@code PlayerSpawnEvent} runs on the tick scheduler thread), and lowers it at once.
+     */
+    @Test
+    public void loweringMaxHealthBeforeATickThreadOwnsTheEntityClampsAtOnce() {
+        var zombie = new LivingEntity(EntityType.ZOMBIE);
+        // On a thread of its own: neither the creating thread nor a tick thread
+        CompletableFuture.runAsync(() -> zombie.getAttribute(Attribute.MAX_HEALTH).setBaseValue(5),
+                Thread.ofVirtual()::start).join();
         assertEquals(5f, zombie.getHealth(), "current health was left above the new maximum");
     }
 

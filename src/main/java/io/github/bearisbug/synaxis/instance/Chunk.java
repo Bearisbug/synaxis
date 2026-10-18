@@ -382,8 +382,8 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
 
     /**
      * Takes the read-lock of this chunk, shared with other readers. It cannot be upgraded: while the
-     * calling thread holds it and not the write-lock, {@link #lockWriteLock()}, and every instance
-     * method changing this chunk, throws.
+     * calling thread holds it and not the write-lock, {@link #lockWriteLock()} throws, and so do the
+     * instance methods taking it ({@link Instance#setBlock}, {@link Instance#setBiome}).
      */
     @ApiStatus.Experimental
     public final void lockReadLock() {

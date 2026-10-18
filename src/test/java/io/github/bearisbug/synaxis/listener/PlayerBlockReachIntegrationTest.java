@@ -10,6 +10,8 @@ import io.github.bearisbug.synaxis.entity.attribute.Attribute;
 import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.player.PlayerBlockBreakEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerBlockInteractEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerEditSignEvent;
+import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.item.ItemStack;
@@ -17,6 +19,7 @@ import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerActionPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerBlockPlacementPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientUpdateSignPacket;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.AcknowledgeBlockChangePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.BlockChangePacket;
@@ -26,6 +29,9 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import io.github.bearisbug.synaxis.testing.TestConnection;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -79,8 +85,8 @@ public class PlayerBlockReachIntegrationTest {
      * A dig out of reach is answered with the acknowledgement alone, as the vanilla server answers it:
      * the data of a block entity is not sent again, to the player or to its viewers, so that a modified
      * client cannot have a chest anywhere in a loaded chunk sent to everyone around it, packet after
-     * packet. A dig refused for another reason, adventure mode with nothing in hand here, still has it
-     * sent to the viewers.
+     * packet. A dig refused for another reason, adventure mode with nothing in hand here, has it sent
+     * again to the digger alone, whose client predicted the break; the viewers predicted nothing.
      */
     @Test
     public void aDigOutOfReachSendsNoBlockEntityData(Env env) {
@@ -105,8 +111,63 @@ public class PlayerBlockReachIntegrationTest {
 
         player.setGameMode(GameMode.ADVENTURE);
         final Collector<BlockEntityDataPacket> refused = neighborConnection.trackIncoming(BlockEntityDataPacket.class);
+        final Collector<BlockEntityDataPacket> refreshed = connection.trackIncoming(BlockEntityDataPacket.class);
         dig(player, ClientPlayerActionPacket.Status.FINISHED_DIGGING, 10, 41, 8, 6);
-        refused.assertSingle(packet -> assertEquals(new Vec(10, 41, 8), packet.blockPosition().asVec()));
+        refused.assertEmpty();
+        refreshed.assertSingle(packet -> assertEquals(new Vec(10, 41, 8), packet.blockPosition().asVec()));
+    }
+
+    /**
+     * A dig the world refuses, a read-only chunk as on a map shard, has the data of the block entity
+     * sent again to the digger alone, behind the acknowledgement: repeating the dig costs one packet
+     * in and two out, however many players watch the digger.
+     */
+    @Test
+    public void aDigTheWorldRefusesRefreshesTheDiggerAlone(Env env) {
+        final Instance instance = env.createFlatInstance();
+        instance.setBlock(10, 41, 8, Block.CHEST);
+        final Chunk chunk = Objects.requireNonNull(instance.getChunkAt(10, 8));
+        chunk.lockWriteLock();
+        try {
+            chunk.setReadOnly(true);
+        } finally {
+            chunk.unlockWriteLock();
+        }
+        final TestConnection connection = env.createConnection();
+        final Player player = connection.connect(instance, SPAWN);
+        final TestConnection neighborConnection = env.createConnection();
+        final Player neighbor = neighborConnection.connect(instance, new Pos(10.5, 40, 10.5));
+        assertTrue(player.isViewer(neighbor), "the second player sees the digger");
+        final Collector<BlockEntityDataPacket> toTheNeighbor = neighborConnection.trackIncoming(BlockEntityDataPacket.class);
+        final Collector<ServerPacket> toTheDigger = connection.trackIncoming();
+
+        dig(player, ClientPlayerActionPacket.Status.FINISHED_DIGGING, 10, 41, 8, 9);
+
+        assertTrue(instance.getBlock(10, 41, 8).compare(Block.CHEST), "the read-only chunk lost its chest");
+        toTheNeighbor.assertEmpty();
+        assertEquals(List.of(AcknowledgeBlockChangePacket.class, BlockEntityDataPacket.class),
+                toTheDigger.collect().stream().map(Object::getClass).toList());
+    }
+
+    /**
+     * Editing a sign is a block use like the others: out of reach the edit is dropped before any
+     * listener sees it.
+     */
+    @Test
+    public void aSignEditOutOfReachIsDropped(Env env) {
+        final Instance instance = env.createFlatInstance();
+        instance.loadChunk(2, 0).join();
+        // At eye height: 30.5 blocks east of the eyes, and 1.5
+        instance.setBlock(39, 41, 8, Block.OAK_SIGN);
+        instance.setBlock(10, 41, 8, Block.OAK_SIGN);
+        final Player player = env.createConnection().connect(instance, SPAWN);
+        final Collector<PlayerEditSignEvent> farEdits = env.trackEvent(PlayerEditSignEvent.class, EventFilter.PLAYER, player);
+        send(player, new ClientUpdateSignPacket(new Vec(39, 41, 8), true, List.of("a", "b", "c", "d")));
+        farEdits.assertEmpty();
+
+        final Collector<PlayerEditSignEvent> nearEdits = env.trackEvent(PlayerEditSignEvent.class, EventFilter.PLAYER, player);
+        send(player, new ClientUpdateSignPacket(new Vec(10, 41, 8), true, List.of("a", "b", "c", "d")));
+        nearEdits.assertSingle(event -> assertEquals(new Vec(10, 41, 8), event.getBlockPosition().asVec()));
     }
 
     /** The limit is the block interaction range plus one block, exclusive, the range read from the attribute. */

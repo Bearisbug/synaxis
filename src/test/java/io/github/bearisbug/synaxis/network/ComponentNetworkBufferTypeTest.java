@@ -19,6 +19,8 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.NBT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ComponentNetworkBufferTypeTest {
     @Test
@@ -131,6 +133,22 @@ public class ComponentNetworkBufferTypeTest {
                 Key.key("hello:world"), BinaryTagHolder.binaryTagHolder("5")));
 
         assertEquals(IntBinaryTag.intBinaryTag(5), write(comp).getCompound("click_event").get("payload"));
+    }
+
+    /** A component the writer cannot encode is refused as an argument, the exception a caller of COMPONENT expects. */
+    @Test
+    void anNbtComponentIsRefusedAsAnArgument() {
+        final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> write(Component.storageNBT("path", Key.key("synaxis:storage"))));
+        assertTrue(refused.getMessage().contains("NBTComponent"), refused.getMessage());
+    }
+
+    /** A binary tag string takes at most 65,535 bytes of modified UTF-8, a longer text is refused as an argument. */
+    @Test
+    void aTextOverTheBinaryTagStringLimitIsRefusedAsAnArgument() {
+        final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> write(Component.text("a".repeat(70_000))));
+        assertTrue(refused.getMessage().contains("70000"), refused.getMessage());
     }
 
     private static void assertWriteReadEquality(Component comp) {

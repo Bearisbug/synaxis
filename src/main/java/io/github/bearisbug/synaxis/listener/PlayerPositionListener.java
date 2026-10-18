@@ -19,6 +19,8 @@ import org.jetbrains.annotations.ApiStatus;
 
 public class PlayerPositionListener {
     static final Component KICK_MESSAGE = Component.text("You moved too far away!");
+    /** The farthest one movement packet may go: 4 chunks, past it the client teleported itself. */
+    private static final int MAX_MOVE_PER_PACKET = 64;
 
     public static void playerPacketListener(ClientPlayerPositionStatusPacket packet, Player player) {
         // TODO: Should we expose horizontal collision here and the methods below?
@@ -50,14 +52,7 @@ public class PlayerPositionListener {
     }
 
     private static void processMovement(Player player, Pos packetPosition, boolean onGround) {
-        // Prevent the player from moving too far
-        // Doubles close to max size can cause overflow, or simply have precision issues
-        // Yaw and pitch are raw floats on the wire and would poison every later angle computation
-        if (!Double.isFinite(packetPosition.x()) || !Double.isFinite(packetPosition.y()) || !Double.isFinite(packetPosition.z()) ||
-                !Float.isFinite(packetPosition.yaw()) || !Float.isFinite(packetPosition.pitch()) ||
-                Math.abs(packetPosition.x()) > Entity.MAX_COORDINATE ||
-                Math.abs(packetPosition.y()) > Entity.MAX_COORDINATE ||
-                Math.abs(packetPosition.z()) > Entity.MAX_COORDINATE) {
+        if (malformed(packetPosition)) {
             player.kick(KICK_MESSAGE);
             return;
         }
@@ -76,12 +71,7 @@ public class PlayerPositionListener {
         if (player.getLastSentTeleportId() != player.getLastReceivedTeleportId()) {
             return;
         }
-        // Turned back where the player is, loading no chunk: a move into a chunk that is not loaded, a
-        // move of more than 64 blocks in one packet (4 chunks: the client teleporting itself) and a move
-        // out across the world border, or farther out for a player the server put outside it
-        if ((!currentPosition.sameChunk(packetPosition) && !ChunkUtils.isLoaded(instance, packetPosition))
-                || currentPosition.distanceSquared(packetPosition) > 64 * 64
-                || outwards(instance, currentPosition, packetPosition)) {
+        if (turnedBack(instance, currentPosition, packetPosition)) {
             var _ = player.teleport(currentPosition);
             return;
         }
@@ -116,6 +106,33 @@ public class PlayerPositionListener {
     }
 
     /**
+     * Whether the position a client sent, for its player or for its vehicle, is not one at all: a
+     * coordinate or an angle that is not finite, or a coordinate past {@link Entity#MAX_COORDINATE}.
+     * Doubles that large overflow or lose their precision; yaw and pitch are raw floats on the wire
+     * and would poison every later angle computation, the rotation of the passengers around a
+     * vehicle included.
+     */
+    static boolean malformed(Pos position) {
+        return !Double.isFinite(position.x()) || !Double.isFinite(position.y()) || !Double.isFinite(position.z()) ||
+                !Float.isFinite(position.yaw()) || !Float.isFinite(position.pitch()) ||
+                Math.abs(position.x()) > Entity.MAX_COORDINATE ||
+                Math.abs(position.y()) > Entity.MAX_COORDINATE ||
+                Math.abs(position.z()) > Entity.MAX_COORDINATE;
+    }
+
+    /**
+     * Whether a move, of a player or of the vehicle it rides, is turned back where it starts, loading
+     * no chunk ({@code docs/DESIGN-PROD.md} {@code API-PROD-030}): a move into a chunk that is not
+     * loaded, a move of more than {@value #MAX_MOVE_PER_PACKET} blocks in one packet, and a move out
+     * across the world border, or farther out for one the server put outside it.
+     */
+    static boolean turnedBack(Instance instance, Pos from, Pos to) {
+        return (!from.sameChunk(to) && !ChunkUtils.isLoaded(instance, to))
+                || from.distanceSquared(to) > MAX_MOVE_PER_PACKET * MAX_MOVE_PER_PACKET
+                || outwards(instance, from, to);
+    }
+
+    /**
      * Whether a move leaves the world border of the instance or, for a player the server put outside
      * it, gets farther out on the x or the z axis; turning, walking along the border and walking back
      * in do not. The border ends at the wall the vanilla client collides with, its minimum rounded
@@ -128,7 +145,7 @@ public class PlayerPositionListener {
      * the round trip time, and a player walking against the wall is turned back now and then (worked
      * out from the code, not run; no deployment shrinks its border over time).
      */
-    static boolean outwards(Instance instance, Pos from, Pos to) {
+    private static boolean outwards(Instance instance, Pos from, Pos to) {
         final var border = instance.getWorldBorder();
         final double radius = border.diameter() / 2;
         final double minX = Math.floor(border.centerX() - radius), maxX = Math.ceil(border.centerX() + radius);

@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import static io.github.bearisbug.synaxis.network.NetworkBuffer.BYTE;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.FixedBitSet;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.FixedRawBytes;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
@@ -118,7 +117,7 @@ final class NetworkBufferCollectionTypes {
         @Override
         public void write(NetworkBuffer buffer, List<T> values) {
             if (values == null) {
-                buffer.write(BYTE, (byte) 0);
+                buffer.write(VAR_INT, 0);
                 return;
             }
             buffer.write(VAR_INT, values.size());
@@ -145,7 +144,7 @@ final class NetworkBufferCollectionTypes {
         @Override
         public void write(NetworkBuffer buffer, Set<T> values) {
             if (values == null) {
-                buffer.write(BYTE, (byte) 0);
+                buffer.write(VAR_INT, 0);
                 return;
             }
             buffer.write(VAR_INT, values.size());

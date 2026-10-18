@@ -30,6 +30,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.LongConsumer;
 
@@ -79,6 +80,9 @@ public final class SessionClient {
     private final AtomicLong quietUntil = new AtomicLong(System.nanoTime());
 
     private final AtomicLong verified = new AtomicLong(), unverified = new AtomicLong(), unavailable = new AtomicLong();
+    // The cause of the last unavailable answer, set before the answer is counted: a report that counted
+    // one has a cause, whichever thread wins the race between counting and reporting
+    private final AtomicReference<@Nullable String> lastUnavailableCause = new AtomicReference<>();
     // Since the process started, for the metrics endpoint (API-PROD-015); the three above are per report
     private final AtomicLong verifiedTotal = new AtomicLong(), unverifiedTotal = new AtomicLong(),
             unavailableTotal = new AtomicLong(), retries = new AtomicLong();
@@ -118,6 +122,7 @@ public final class SessionClient {
             }
         }
         if (!online.getAsBoolean()) return result;
+        if (result instanceof Result.Unavailable(String cause)) lastUnavailableCause.set(cause);
         (switch (result) {
             case Result.Verified _ -> verified;
             case Result.Unverified _ -> unverified;
@@ -151,7 +156,7 @@ public final class SessionClient {
             try {
                 response = http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             } catch (IOException e) {
-                return new Result.Unavailable(e.getClass().getSimpleName());
+                return new Result.Unavailable(describe(e));
             } finally {
                 queryObserver.accept(System.nanoTime() - sent);
             }
@@ -256,8 +261,23 @@ public final class SessionClient {
             return new Result.Verified(new GameProfile(uuid, name, properties));
         } catch (RuntimeException e) {
             // Gson, a missing member, a malformed uuid or a name GameProfile refuses
-            return new Result.Unavailable("malformed profile: " + e.getClass().getSimpleName());
+            return new Result.Unavailable("malformed profile: " + describe(e));
         }
+    }
+
+    /**
+     * {@code Type: detail}, the detail being the first message along the cause chain or, when no
+     * exception of the chain has one, the type of the innermost cause: a refused connection is a
+     * {@code ConnectException} over a {@code ClosedChannelException}, none of them with a message.
+     */
+    private static String describe(Exception e) {
+        Throwable innermost = e;
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause.getMessage() != null) return e.getClass().getSimpleName() + ": " + cause.getMessage();
+            innermost = cause;
+        }
+        return innermost == e ? e.getClass().getSimpleName()
+                : e.getClass().getSimpleName() + ": " + innermost.getClass().getSimpleName();
     }
 
     private static UUID undashedUuid(String id) {
@@ -267,7 +287,8 @@ public final class SessionClient {
 
     /**
      * Writes the outcomes counted over the last 10 seconds as one line, if a login failed
-     * verification in that time. Called once per tick.
+     * verification in that time, ending with the cause of the last unavailable answer ({@code -} if
+     * the line counts none). Called once per tick.
      *
      * @param nanoTime the time of the tick, {@link System#nanoTime()}
      */
@@ -283,8 +304,9 @@ public final class SessionClient {
         final long unverifiedCount = unverified.getAndSet(0);
         final long unavailableCount = unavailable.getAndSet(0);
         if (unverifiedCount == 0 && unavailableCount == 0) return;
-        LOGGER.warn("Session verification in the last 10 s: verified={} unverified={} unavailable={} session_server={}",
-                verifiedCount, unverifiedCount, unavailableCount, server.hasJoinedUrl());
+        LOGGER.warn("Session verification in the last 10 s: verified={} unverified={} unavailable={} session_server={} "
+                        + "last_unavailable_cause={}", verifiedCount, unverifiedCount, unavailableCount, server.hasJoinedUrl(),
+                unavailableCount == 0 ? "-" : lastUnavailableCause.get());
     }
 
     /**

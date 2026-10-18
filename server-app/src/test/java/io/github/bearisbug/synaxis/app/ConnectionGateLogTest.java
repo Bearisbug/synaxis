@@ -61,13 +61,15 @@ public class ConnectionGateLogTest {
             assertTrue(gate.takeSeat(ticket));
             for (int i = 0; i < 4; i++) gate.takeSeat(gate.untracked()); // L3
             gate.handshakeTimedOut();
+            for (int i = 0; i < 2; i++) gate.proxyHeaderRejected();
 
             gate.tick(start + 10 * SECOND - 1);
             assertEquals(List.of(), log.messagesAt(Level.WARN), "nothing before the 10 s are over");
 
             gate.tick(start + 10 * SECOND);
-            assertEquals(List.of("Connection gate rejected 112 connections in the last 10 s: too_many=0 "
-                    + "throttled=7 full=4 closed_at_accept=100 handshake_timeout=1"), log.messagesAt(Level.WARN));
+            assertEquals(List.of("Connection gate rejected 114 connections in the last 10 s: too_many=0 "
+                    + "throttled=7 full=4 closed_at_accept=100 handshake_timeout=1 proxy_header=2"),
+                    log.messagesAt(Level.WARN));
 
             gate.tick(start + 20 * SECOND);
             assertEquals(1, log.messagesAt(Level.WARN).size(), "a window without rejections writes nothing");

@@ -191,8 +191,8 @@ public class BlockPlacementListener {
             return;
         }
         player.sendPacket(new AcknowledgeBlockChangePacket(packet.sequence()));
-        // Block consuming
-        if (playerBlockPlaceEvent.doesConsumeBlock()) {
+        // Block consuming, unless a listener changed what the hand holds (an equal copy is the same item)
+        if (playerBlockPlaceEvent.doesConsumeBlock() && player.getItemInHand(hand).equals(usedItem)) {
             // Consume the block in the player's hand
             final ItemStack newUsedItem = usedItem.consume(1);
             player.setItemInHand(hand, newUsedItem);

@@ -37,7 +37,7 @@ public class ViewableStorageRollbackIntegrationTest {
                 Component.storageNBT("path", Key.key("synaxis:storage")), false);
         final CountingViewable viewable = new CountingViewable();
 
-        assertThrows(UnsupportedOperationException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> viewablePackets.prepareViewablePacket(viewable, unwritable));
         viewablePackets.flush();
 

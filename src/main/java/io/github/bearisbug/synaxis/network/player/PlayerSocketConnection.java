@@ -29,6 +29,7 @@ import io.github.bearisbug.synaxis.network.packet.client.login.ClientEncryptionR
 import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginAcknowledgedPacket;
 import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginPluginResponsePacket;
 import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginStartPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientConfigurationAckPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientCreativeInventoryActionPacket;
 import io.github.bearisbug.synaxis.network.packet.client.status.StatusRequestPacket;
 import io.github.bearisbug.synaxis.network.packet.server.BufferedPacket;
@@ -77,7 +78,13 @@ public class PlayerSocketConnection extends PlayerConnection {
             ClientLoginPluginResponsePacket.class,
             ClientSelectKnownPacksPacket.class, // Immediate answer to server request on config
             ClientLoginAcknowledgedPacket.class, // Handle config state
-            ClientFinishConfigurationPacket.class // Enter play state
+            ClientFinishConfigurationPacket.class, // Enter play state
+            // Back to the configuration state. A packet that switches the decoding state is handled as it
+            // arrives, the next read decodes in the state it leaves: queued until the next tick, it left
+            // the configuration packets right behind it to decode as play ones. Those queued before it are
+            // then handled in the configuration state, a common one by its configuration listener and with no
+            // PlayerPacketEvent; a play only one finds no listener (warned once per class) and is dropped.
+            ClientConfigurationAckPacket.class
     );
 
     /**
@@ -179,13 +186,18 @@ public class PlayerSocketConnection extends PlayerConnection {
         if (encryption != null && length > 0) decrypt(readBuffer, encryption.decrypt(), writeIndex, length);
 
         if (process().config().proxyProtocol() && !attemptedProxyProtocolDetection) {
-            final ProxyProtocolDecoder.Result result = ProxyProtocolDecoder.parse(remoteAddress, readBuffer);
+            final ProxyProtocolDecoder.Result result;
+            try {
+                result = ProxyProtocolDecoder.parse(remoteAddress, readBuffer);
+            } catch (IOException e) {
+                throw refuseProxyHeader(e.getMessage());
+            }
             if (result.status() == ProxyProtocolDecoder.Status.NEED_MORE) return;
             attemptedProxyProtocolDetection = true;
             if (result.status() == ProxyProtocolDecoder.Status.PRESENT) {
                 // The header names whatever address its sender likes, only a load balancer may send one
                 if (!process().connection().gate().isTrustedProxy(remoteAddress))
-                    throw new IOException("PROXY protocol header from " + remoteAddress
+                    throw refuseProxyHeader("PROXY protocol header from " + remoteAddress
                             + ", outside synaxis.proxy-protocol.trusted-networks");
                 this.remoteAddress = result.clientAddress();
                 // Every read starts at index zero, the packet reader compacts what it leaves behind.
@@ -193,12 +205,25 @@ public class PlayerSocketConnection extends PlayerConnection {
                 // that much room to write, down to none at all for a header that nearly fills it.
                 readBuffer.compact();
             } else if (process().config().proxyProtocolRequired()) {
-                throw new IOException("Missing required PROXY protocol header");
+                throw refuseProxyHeader("Missing required PROXY protocol header");
             }
         }
 
         // Process packets
         processPackets(readBuffer, packetParser);
+    }
+
+    /**
+     * Turns away a connection over its PROXY protocol header, counted by the connection gate like its
+     * other refusals and closed without a line of its own ({@code docs/DESIGN-PROD.md}
+     * {@code API-PROD-003}).
+     *
+     * @return the exception that ends the read loop of the connection
+     */
+    private IOException refuseProxyHeader(@Nullable String message) {
+        process().connection().gate().proxyHeaderRejected();
+        disconnectTurnedAway();
+        return new IOException(message);
     }
 
     /** The size of the read buffer, which the peer can make grow by sending large packets. */
@@ -446,13 +471,22 @@ public class PlayerSocketConnection extends PlayerConnection {
         LOGGER.debug("Protocol error stack trace: connection_id={}", connectionId(), error);
     }
 
-    /** Renders the innermost cause of {@code error} as a single {@code Type: message} line. */
-    private static String describeCause(Throwable error) {
+    /** The longest reason a protocol error line carries, a decoding failure may quote the peer's input. */
+    static final int MAX_CAUSE_LENGTH = 1_024;
+
+    /**
+     * Renders the innermost cause of {@code error} as a single {@code Type: message} line, cut after
+     * {@value #MAX_CAUSE_LENGTH} characters with the full length appended.
+     */
+    static String describeCause(Throwable error) {
         Throwable cause = error;
         while (cause.getCause() != null) cause = cause.getCause();
         final String message = cause.getMessage();
-        return message != null ? cause.getClass().getSimpleName() + ": " + message
+        final String described = message != null ? cause.getClass().getSimpleName() + ": " + message
                 : cause.getClass().getSimpleName();
+        return described.length() > MAX_CAUSE_LENGTH
+                ? described.substring(0, MAX_CAUSE_LENGTH) + "...(" + described.length() + " chars)"
+                : described;
     }
 
     /**

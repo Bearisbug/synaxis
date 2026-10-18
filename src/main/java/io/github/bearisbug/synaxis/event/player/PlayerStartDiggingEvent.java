@@ -15,7 +15,8 @@ import io.github.bearisbug.synaxis.coordinate.BlockFace;
  * <p>
  * Be aware that cancelling this event does not necessary prevent the player from breaking the block
  * (could be because of high latency or a modified client) so cancelling {@link PlayerBlockBreakEvent} is also necessary.
- * Could be fixed in a future engine version.
+ * The engine does not check how long the player dug, an item still pending in {@code docs/DESIGN-PROD.md} §28.2.
+ * A block broken instantly does not call this event.
  */
 public class PlayerStartDiggingEvent implements PlayerInstanceEvent, BlockEvent, CancellableEvent {
 

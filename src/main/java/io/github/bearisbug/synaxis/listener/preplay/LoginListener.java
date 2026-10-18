@@ -188,7 +188,12 @@ public final class LoginListener {
         if (!(connection instanceof PlayerSocketConnection socketConnection))
             throw new UnsupportedOperationException("Only socket");
         final GameProfile gameProfile = socketConnection.gameProfile();
-        assert gameProfile != null;
+        if (gameProfile == null || connection.getServerState() != ConnectionState.CONFIGURATION) {
+            // The peer acknowledged a login success the server has not written: that is the peer
+            // breaking the protocol, not a failure of the server (docs/DESIGN.md §11.1)
+            connection.kick(DisconnectReasons.PROTOCOL_ERROR);
+            return;
+        }
         try {
             if (connection.process().auth() instanceof Auth.Online) {
                 // The uuid is Mojang's: a live session holding it is the same account logging in

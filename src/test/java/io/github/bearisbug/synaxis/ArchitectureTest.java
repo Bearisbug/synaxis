@@ -164,7 +164,7 @@ public class ArchitectureTest {
      * how {@code SOAK-3} turned one WARN into 84 MiB of log in 15 minutes ({@code docs/DESIGN.md}
      * §15 and §28, {@code docs/ENGINE.md} §8).
      * <p>
-     * This is a list of packages, not of client reachable paths, and the two differ: only the 11
+     * This is a list of packages, not of client reachable paths, and the two differ: only the 12
      * packets of {@code PlayerSocketConnection.IMMEDIATE_PROCESS_PACKETS} are dispatched in here,
      * every other one is queued and handed to its listener by
      * {@code Player#interpretPacketQueue}, which sits in {@code entity} and is not watched. A line

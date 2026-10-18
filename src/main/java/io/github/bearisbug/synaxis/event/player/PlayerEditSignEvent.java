@@ -9,6 +9,12 @@ import io.github.bearisbug.synaxis.instance.block.Block;
 
 import java.util.List;
 
+/**
+ * Called when a player sends the text of a sign, for a block within its reach in a loaded chunk
+ * ({@code docs/DESIGN-PROD.md} {@code API-PROD-030}). The lines are what the client sent: the engine
+ * does not check that the block is a sign, nor that the sign editor was opened for this player, and
+ * it writes nothing into the block. A listener that writes the text checks both first.
+ */
 public class PlayerEditSignEvent implements PlayerInstanceEvent, BlockEvent {
     private final Player player;
     private final Instance instance;
@@ -48,7 +54,7 @@ public class PlayerEditSignEvent implements PlayerInstanceEvent, BlockEvent {
 
     /**
      * Returns a list of strings representing the lines typed by the player onto the sign.
-     * The length is always exactly 4.
+     * The length is always exactly 4, each line at most 384 characters, and the list is unmodifiable.
      */
     public List<String> getLines() {
         return lines;

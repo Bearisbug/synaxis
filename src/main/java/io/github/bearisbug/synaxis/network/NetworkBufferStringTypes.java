@@ -10,7 +10,6 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.BYTE;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.BYTE_ARRAY;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.FixedRawBytes;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.RAW_BYTES;
-import static io.github.bearisbug.synaxis.network.NetworkBuffer.SHORT;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.UNSIGNED_SHORT;
 
 final class NetworkBufferStringTypes {
@@ -51,14 +50,15 @@ final class NetworkBufferStringTypes {
     }
 
     /**
-     * This is a very gross version of {@link java.io.DataOutputStream#writeUTF(String)} & ${@link DataInputStream#readUTF()}. We need the data in the java
-     * modified utf-8 format for Component, and I couldnt find a method without creating a new buffer for it.
+     * The Java modified UTF-8 of {@link java.io.DataOutputStream#writeUTF(String)} and
+     * {@link DataInputStream#readUTF()}, written into the buffer in place: the encoding of a binary tag
+     * string, behind a 2 byte unsigned length, so at most 65,535 bytes.
      */
     record IOUTF8StringType() implements NetworkBufferTypeImpl<String> {
         @Override
         public void write(NetworkBuffer buffer, String value) {
             final int strlen = value.length();
-            int utflen = strlen; // optimized for ASCII
+            long utflen = strlen; // optimized for ASCII
 
             for (int i = 0; i < strlen; i++) {
                 int c = value.charAt(i);
@@ -66,10 +66,11 @@ final class NetworkBufferStringTypes {
                     utflen += (c >= 0x800) ? 2 : 1;
             }
 
-            if (utflen > 65535 || /* overflow */ utflen < strlen)
-                throw new RuntimeException("UTF-8 string too long");
+            if (utflen > 65535)
+                throw new IllegalArgumentException("A string of " + strlen + " chars takes " + utflen
+                        + " bytes of modified UTF-8, over the 65535 a binary tag string can hold");
 
-            buffer.write(SHORT, (short) utflen);
+            buffer.write(UNSIGNED_SHORT, (int) utflen);
             buffer.ensureWritable(utflen);
             var impl = (NetworkBufferImpl) buffer;
             int i;

@@ -79,6 +79,15 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
      */
     Type<BinaryTag> SORTED_NBT = BinaryTagTypeImpl.SORTED_INSTANCE;
     Type<Point> BLOCK_POSITION = new NetworkBufferSpatialTypes.BlockPositionType();
+    /**
+     * A text component in the vanilla network format, a binary tag. Writing one throws
+     * {@link IllegalArgumentException} for a component it cannot encode, such as an
+     * {@link net.kyori.adventure.text.NBTComponent} or a string over the 65,535 bytes of modified
+     * UTF-8 a binary tag string holds, and {@link IllegalStateException} for the data components of a
+     * {@code show_item} hover event that are not binary tags already, which need the registries of the
+     * buffer: write those to {@link #resizableBuffer(Registries)} or
+     * {@link #makeArray(Type, Object, Registries)}.
+     */
     Type<Component> COMPONENT = new ComponentNetworkBufferTypeImpl();
     Type<Component> JSON_COMPONENT = new NetworkBufferCodecTypes.JsonComponentType();
     Type<java.util.UUID> UUID = new NetworkBufferPrimitiveTypes.UUIDType();

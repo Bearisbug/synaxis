@@ -144,10 +144,8 @@ record ComponentNetworkBufferTypeImpl() implements NetworkBufferTypeImpl<Compone
                 buffer.write(STRING_IO_UTF8, "keybind");
                 buffer.write(STRING_IO_UTF8, keybind.keybind());
             }
-            case NBTComponent<?> _ -> {
-                //todo
-                throw new UnsupportedOperationException("NBTComponent is not implemented yet");
-            }
+            case NBTComponent<?> _ -> throw new IllegalArgumentException(
+                    "NBTComponent cannot be encoded by NetworkBuffer.COMPONENT; resolve it to text before sending");
             case ObjectComponent object -> {
                 buffer.write(STRING_IO_UTF8, "object");
 
@@ -230,7 +228,7 @@ record ComponentNetworkBufferTypeImpl() implements NetworkBufferTypeImpl<Compone
                             buffer.write(BYTE, (byte) 0);
                         }
                     }
-                    default -> throw new UnsupportedOperationException("Unknown object contents: " + object.contents());
+                    default -> throw new IllegalArgumentException("Unknown object contents: " + object.contents());
                 }
                 var fallback = object.fallback();
                 if (fallback != null) {
@@ -239,7 +237,7 @@ record ComponentNetworkBufferTypeImpl() implements NetworkBufferTypeImpl<Compone
                     writeInnerComponent(buffer, fallback);
                 }
             }
-            default -> throw new UnsupportedOperationException("Unsupported component type: " + component.getClass());
+            default -> throw new IllegalArgumentException("Unsupported component type: " + component.getClass());
         }
 
         // Children
@@ -381,7 +379,7 @@ record ComponentNetworkBufferTypeImpl() implements NetworkBufferTypeImpl<Compone
                 final BinaryTag nbt = EngineAdventure.unwrapNbt(payload.nbt());
                 if (nbt != null) BinaryTagTypeImpl.writeNamed(buffer, "payload", nbt);
             }
-            default -> throw new UnsupportedOperationException("Unknown click event action: " + clickEvent.action());
+            default -> throw new IllegalArgumentException("Unknown click event action: " + clickEvent.action());
         }
 
         buffer.write(BYTE, TAG_END);
@@ -451,7 +449,7 @@ record ComponentNetworkBufferTypeImpl() implements NetworkBufferTypeImpl<Compone
             buffer.write(STRING_IO_UTF8, "uuid");
             buffer.write(STRING_IO_UTF8, value.id().toString());
         } else {
-            throw new UnsupportedOperationException("Unknown hover event action: " + hoverEvent.action());
+            throw new IllegalArgumentException("Unknown hover event action: " + hoverEvent.action());
         }
 
         buffer.write(BYTE, TAG_END);
@@ -470,8 +468,10 @@ record ComponentNetworkBufferTypeImpl() implements NetworkBufferTypeImpl<Compone
         if (value instanceof DataComponentValue.Removed) return null;
         if (value instanceof EngineDataComponentValue engineValue && engineValue.value() == null) return null;
         if (value instanceof NbtDataComponentValue nbtValue) return nbtValue.value();
-        final Registries registries = Objects.requireNonNull(buffer.registries(),
-                "Registries required to convert hover item data components");
+        final Registries registries = buffer.registries();
+        if (registries == null)
+            throw new IllegalStateException("A show_item hover event with typed data components needs registries: write it to "
+                    + "NetworkBuffer.resizableBuffer(registries) or NetworkBuffer.makeArray(type, value, registries)");
         final DataComponent<Object> component = (DataComponent<Object>) DataComponent.fromKey(key);
         if (component == null) throw new IllegalArgumentException("Unknown data component: " + key);
         final Object decoded = switch (value) {

@@ -233,4 +233,11 @@ public class CoordinateTest {
     public void blockIndexZero() {
         assertEquals(0, CoordConversion.chunkBlockIndex(0, 0, 0), "Bad default index for zero case! Bad sign bit?");
     }
+
+    @Test
+    public void aRelativeMoveJustUnderEightBlocksKeepsItsSign() {
+        assertEquals(32767, CoordConversion.deltaShort4096(7.9999, 0));
+        assertEquals(-32767, CoordConversion.deltaShort4096(0, 7.9999));
+        assertEquals(4096, CoordConversion.deltaShort4096(10.5, 9.5));
+    }
 }

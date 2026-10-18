@@ -7,13 +7,18 @@ import io.github.bearisbug.synaxis.entity.EntityType;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.entity.PlayerHand;
 import io.github.bearisbug.synaxis.entity.attribute.Attribute;
+import io.github.bearisbug.synaxis.entity.metadata.other.InteractionMeta;
+import io.github.bearisbug.synaxis.event.entity.EntityAttackEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerEntityInteractEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientAttackPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientInteractEntityPacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -108,5 +113,29 @@ public class UseEntityListenerIntegrationTest {
         eventWasCalled = false;
         UseEntityListener.useEntityListener(packet, player);
         assertTrue(eventWasCalled, "Expected PlayerEntityInteractEvent to be called considering eye height");
+    }
+
+    @Test
+    public void anInteractionEntityIsReachedAsFarAsItsWidthSays() {
+        player.getAttribute(Attribute.ENTITY_INTERACTION_RANGE).setBaseValue(3.0);
+        assertTrue(attackReaches(new Pos(-5, 0, 0)),
+                "6 blocks wide, its edge is 2 blocks from the player, well within reach");
+        assertFalse(attackReaches(new Pos(-9.5, 0, 0)), "its edge is 6.5 blocks away, out of reach");
+    }
+
+    /** Whether an attack on a 6 blocks wide interaction entity at {@code at} reaches it. */
+    private boolean attackReaches(Pos at) {
+        final Entity zone = new Entity(EntityType.INTERACTION);
+        ((InteractionMeta) zone.getEntityMeta()).setWidth(6);
+        zone.setInstance(player.getInstance(), at).join();
+        assertTrue(zone.isViewer(player));
+        final AtomicBoolean attacked = new AtomicBoolean();
+        player.eventNode().addListener(EntityAttackEvent.class, event -> {
+            if (event.getTarget() == zone) attacked.set(true);
+        });
+
+        UseEntityListener.attackEntityListener(new ClientAttackPacket(zone.getEntityId()), player);
+        zone.remove();
+        return attacked.get();
     }
 }

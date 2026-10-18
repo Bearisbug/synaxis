@@ -1,5 +1,7 @@
 package io.github.bearisbug.synaxis.entity;
 
+import net.kyori.adventure.text.Component;
+import io.github.bearisbug.synaxis.particle.Particle;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -7,8 +9,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -115,5 +119,68 @@ public class MetadataHolderTest {
         holder.setNotifyAboutChanges(true);
         assertEquals(1, received.size());
         assertEquals(3, received.getFirst().size());
+    }
+
+    @Test
+    public void aNullForATypeWithoutOptIsRefusedBeforeAnythingChanges() {
+        List<Map<Integer, Metadata.Entry<?>>> received = new ArrayList<>();
+        MetadataHolder holder = new MetadataHolder(received::add);
+
+        // Stored, the null would only fail on the writer thread of every viewer, disconnecting them
+        assertThrows(NullPointerException.class, () -> holder.set(MetadataDef.BlockDisplay.DISPLAYED_BLOCK_STATE, null));
+        assertThrows(NullPointerException.class, () -> holder.set(MetadataDef.TextDisplay.TEXT, null));
+        assertTrue(holder.getEntries().isEmpty());
+        assertTrue(received.isEmpty());
+
+        holder.set(MetadataDef.CUSTOM_NAME, Component.text("name"));
+        holder.set(MetadataDef.CUSTOM_NAME, null);
+        assertNull(holder.get(MetadataDef.CUSTOM_NAME), "an Opt type still takes null");
+        assertEquals(2, received.size());
+    }
+
+    @Test
+    public void aQuaternionHasFourComponents() {
+        MetadataHolder holder = new MetadataHolder(_ -> {
+        });
+
+        assertThrows(IllegalArgumentException.class, () -> holder.set(MetadataDef.Display.ROTATION_LEFT, new float[3]));
+        assertTrue(holder.getEntries().isEmpty());
+    }
+
+    @Test
+    public void aRotationIsCopiedOnTheWayInAndOut() {
+        List<Map<Integer, Metadata.Entry<?>>> received = new ArrayList<>();
+        MetadataHolder holder = new MetadataHolder(received::add);
+        try {
+            final float[] rotation = holder.get(MetadataDef.Display.ROTATION_LEFT);
+            rotation[3] = 0.5f;
+            assertArrayEquals(new float[]{0, 0, 0, 1}, MetadataDef.Display.ROTATION_LEFT.defaultValue(),
+                    "the default shared by every display entity changed");
+
+            holder.set(MetadataDef.Display.ROTATION_LEFT, rotation);
+            assertEquals(1, received.size(), "the rotation changed, its viewers have to be told");
+            rotation[3] = 0.25f;
+            assertEquals(0.5f, holder.get(MetadataDef.Display.ROTATION_LEFT)[3], "the array set is the holder's own");
+
+            holder.set(MetadataDef.Display.ROTATION_LEFT, rotation);
+            assertEquals(2, received.size(), "an array changed in place and set again is a change");
+            holder.set(MetadataDef.Display.ROTATION_LEFT, new float[]{0, 0, 0, 0.25f});
+            assertEquals(2, received.size(), "an equal array is no change");
+        } finally {
+            // A failing run must not leave the default shared by every display entity changed
+            MetadataDef.Display.ROTATION_LEFT.defaultValue()[3] = 1;
+        }
+    }
+
+    @Test
+    public void aParticleListIsCopiedOnTheWayIn() {
+        MetadataHolder holder = new MetadataHolder(_ -> {
+        });
+        final List<Particle> particles = new ArrayList<>(List.of(Particle.FLAME));
+
+        holder.set(MetadataDef.LivingEntity.POTION_EFFECT_PARTICLES, particles);
+        particles.add(Particle.HEART);
+
+        assertEquals(List.of(Particle.FLAME), holder.get(MetadataDef.LivingEntity.POTION_EFFECT_PARTICLES));
     }
 }

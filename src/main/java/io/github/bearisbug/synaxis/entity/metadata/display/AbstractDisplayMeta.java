@@ -53,20 +53,44 @@ public class AbstractDisplayMeta extends EntityMeta {
         metadata.set(MetadataDef.Display.SCALE, value);
     }
 
+    /**
+     * Gets the left rotation, a quaternion {x, y, z, w}.
+     *
+     * @return a copy of the rotation, changing it changes nothing until it is set again
+     */
     public float [] getLeftRotation() {
         //todo replace with actual quaternion type
         return metadata.get(MetadataDef.Display.ROTATION_LEFT);
     }
 
+    /**
+     * Sets the left rotation, a quaternion {x, y, z, w}. The array is copied: changing it afterwards changes
+     * nothing until it is set again.
+     *
+     * @param value the rotation, 4 components
+     * @throws IllegalArgumentException if {@code value} does not have 4 components
+     */
     public void setLeftRotation(float [] value) {
         metadata.set(MetadataDef.Display.ROTATION_LEFT, value);
     }
 
+    /**
+     * Gets the right rotation, a quaternion {x, y, z, w}.
+     *
+     * @return a copy of the rotation, changing it changes nothing until it is set again
+     */
     public float [] getRightRotation() {
         //todo replace with actual quaternion type
         return metadata.get(MetadataDef.Display.ROTATION_RIGHT);
     }
 
+    /**
+     * Sets the right rotation, a quaternion {x, y, z, w}. The array is copied: changing it afterwards changes
+     * nothing until it is set again.
+     *
+     * @param value the rotation, 4 components
+     * @throws IllegalArgumentException if {@code value} does not have 4 components
+     */
     public void setRightRotation(float [] value) {
         metadata.set(MetadataDef.Display.ROTATION_RIGHT, value);
     }

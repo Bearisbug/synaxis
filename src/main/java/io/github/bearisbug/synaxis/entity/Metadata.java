@@ -16,6 +16,7 @@ import io.github.bearisbug.synaxis.registry.Registry;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.coordinate.Direction;
 import io.github.bearisbug.synaxis.utils.collection.ObjectArray;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
 
@@ -93,7 +94,8 @@ public final class Metadata {
     }
 
     public static Entry<List<Particle>> ParticleList(List<Particle> particles) {
-        return PARTICLE_LIST.entry(particles);
+        // Encoded later on the writer threads of the viewers, while the caller may still change its list
+        return PARTICLE_LIST.entry(List.copyOf(particles));
     }
 
     public static Entry<VillagerData> VillagerData(VillagerData data) {
@@ -185,7 +187,9 @@ public final class Metadata {
     }
 
     public static Entry<float[]> Quaternion(float[] value) {
-        return QUATERNION.entry(value);
+        Check.argCondition(value.length != 4, "A quaternion has 4 components, got {0}", value.length);
+        // Encoded later on the writer threads of the viewers, while the caller may still change its array
+        return QUATERNION.entry(value.clone());
     }
 
     public static Entry<ResolvableProfile> ResolvableProfile(ResolvableProfile value) {
@@ -203,6 +207,8 @@ public final class Metadata {
     private static final AtomicInteger NEXT_ID = new AtomicInteger(0);
     private static final ObjectArray<Type<?>> TYPES = ObjectArray.singleThread(64);
 
+    // A type that takes no null, every one without Opt in its name, has a default value that is not null:
+    // Type#entry tells the two kinds apart by it
     private static final Type<Byte> BYTE = type(NetworkBuffer.BYTE, (byte) 0);
     private static final Type<Integer> VAR_INT = type(NetworkBuffer.VAR_INT, 0);
     private static final Type<Long> LONG = type(NetworkBuffer.VAR_LONG, 0L);
@@ -218,18 +224,9 @@ public final class Metadata {
     private static final Type<Direction> DIRECTION = type(NetworkBuffer.DIRECTION, Direction.DOWN);
     private static final Type<@Nullable UUID> OPT_UUID = type(NetworkBuffer.UUID.optional(), null);
     private static final Type<Block> BLOCK_STATE = type(Block.STATE_NETWORK_TYPE, Block.AIR);
-    private static final Type<@Nullable Block> OPT_BLOCK_STATE = type(new NetworkBuffer.Type<>() { // OPT_VAR_INT
-        @Override
-        public void write(NetworkBuffer buffer, @Nullable Block value) {
-            buffer.write(NetworkBuffer.VAR_INT, value == null ? 0 : value.id());
-        }
-
-        @Override
-        public @Nullable Block read(NetworkBuffer buffer) {
-            int value = buffer.read(NetworkBuffer.VAR_INT);
-            return value == 0 ? null : Block.fromStateId(value);
-        }
-    }, null);
+    private static final Type<@Nullable Block> OPT_BLOCK_STATE = type(NetworkBuffer.VAR_INT.transform(
+            stateId -> stateId == 0 ? null : Block.fromStateId(stateId),
+            block -> block == null ? 0 : block.stateId()), null);
     private static final Type<Particle> PARTICLE = type(Particle.NETWORK_TYPE, Particle.DUST);
     private static final Type<List<Particle>> PARTICLE_LIST = type(Particle.NETWORK_TYPE.list(Short.MAX_VALUE), List.of());
     private static final Type<VillagerData> VILLAGER_DATA = type(VillagerData.NETWORK_TYPE, VillagerData.DEFAULT);
@@ -331,6 +328,9 @@ public final class Metadata {
             T defaultValue
     ) {
         Entry<T> entry(T value) {
+            // Stored, a null would only fail once encoded, on the writer thread of every viewer
+            if (value == null && defaultValue != null)
+                throw new NullPointerException("metadata type " + id + " does not accept null, use its Opt variant");
             return new MetadataImpl.EntryImpl<>(this, value);
         }
     }

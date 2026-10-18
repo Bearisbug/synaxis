@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.LivingEntity;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.entity.attribute.Attribute;
+import io.github.bearisbug.synaxis.entity.metadata.other.InteractionMeta;
 import io.github.bearisbug.synaxis.event.entity.EntityAttackEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerEntityInteractEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
@@ -55,7 +56,11 @@ public class UseEntityListener {
         final double py = playerPos.y() + eyeHeight;
         final double pz = playerPos.z();
 
-        final BoundingBox box = entity.getBoundingBox();
+        // The client hits an interaction entity as wide and high as its metadata says, its bounding box is
+        // the 0 by 0 of its type
+        final BoundingBox box = entity.getEntityMeta() instanceof InteractionMeta interaction
+                ? new BoundingBox(interaction.getWidth(), interaction.getHeight(), interaction.getWidth())
+                : entity.getBoundingBox();
         final double halfWidth = box.width() / 2;
         final double height = box.height();
         final Pos entityPos = entity.getPosition();

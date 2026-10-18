@@ -53,31 +53,16 @@ public final class EntityUtils {
             Vec vehicleOffset = firstAttachmentOrDefault(passenger.getEntityType(), "VEHICLE", Vec.ZERO);
             return passengerOffset.sub(vehicleOffset).rotateAroundY(Math.toRadians(-vehicle.getPosition().yaw()));
         } else if (vehicleType.key().value().contains("boat")) {
-            double animalOffset = ANIMALS.contains(passenger.getEntityType()) ? 0.2 : 0;
-            if (CHEST_BOATS.contains(passenger.getEntityType())) {
-                // Special case: Single passenger
-                if (vehicle.getPassengers().size() == 1) {
-                    return new Vec(0, vehicleType.height() / 3f, 0.15).rotateAroundY(Math.toRadians(vehicle.getPosition().yaw() * -1));
-                } else {
-                    if (passengerIndex == 0) {
-                        return new Vec(0, vehicleType.height() / 3f, 0.15 + animalOffset).rotateAroundY(Math.toRadians(vehicle.getPosition().yaw() * -1));
-                    } else {
-                        return new Vec(0, vehicleType.height() / 3f, -0.6 + animalOffset).rotateAroundY(Math.toRadians(vehicle.getPosition().yaw() * -1));
-                    }
-                }
+            // As AbstractBoat: a single passenger sits in the middle, or forward of the chest of a chest boat;
+            // two sit front and back whatever the boat
+            final double z;
+            if (vehicle.getPassengers().size() == 1) {
+                z = CHEST_BOATS.contains(vehicleType) ? 0.15 : 0;
             } else {
-                // Special case: Single passenger
-                if (vehicle.getPassengers().size() == 1) {
-                    return new Vec(0, vehicleType.height() / 3f, 0).rotateAroundY(Math.toRadians(vehicle.getPosition().yaw() * -1));
-                } else {
-                    if (passengerIndex == 0) {
-                        return new Vec(0, vehicleType.height() / 3f, 0.2 + animalOffset).rotateAroundY(Math.toRadians(vehicle.getPosition().yaw() * -1));
-                    } else {
-                        return new Vec(0, vehicleType.height() / 3f, -0.6 + animalOffset).rotateAroundY(Math.toRadians(vehicle.getPosition().yaw() * -1));
-                    }
-                }
+                final double animalOffset = ANIMALS.contains(passenger.getEntityType()) ? 0.2 : 0;
+                z = (passengerIndex == 0 ? 0.2 : -0.6) + animalOffset;
             }
-
+            return new Vec(0, vehicleType.height() / 3f, z).rotateAroundY(Math.toRadians(vehicle.getPosition().yaw() * -1));
         } else if (vehicleType.key().value().contains("raft")) {
             if (passengerIndex == 0) {
                 return new Vec(0, vehicleType.height() / 0.8888f, 0.2).rotateAroundY(Math.toRadians(vehicle.getPosition().yaw() * -1));

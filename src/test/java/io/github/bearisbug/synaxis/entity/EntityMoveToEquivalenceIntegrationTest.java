@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.entity;
 
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.instance.EntityTracker;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.testing.Env;
@@ -12,6 +13,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -78,6 +81,32 @@ public class EntityMoveToEquivalenceIntegrationTest {
 
         var packets = assertSamePacketSequence(connection, entity, new Pos(16.5, 40, 0.5).withYaw(90));
         assertTrue(packets.isEmpty(), "a move nobody watches sends nothing");
+    }
+
+    @Test
+    public void moveToAnUnloadedChunkThrowsAndLeavesTheEntityUnchanged(Env env) {
+        var instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+        var connection = env.createConnection();
+        connection.connect(instance, SPAWN);
+        var entity = spawn(instance, SPAWN);
+        // Beyond the chunks the player keeps loaded around it
+        assertNull(instance.getChunk(40, 0), "the target chunk has to be unloaded");
+
+        var packets = connection.trackIncoming(ServerPacket.class);
+        assertThrows(NullPointerException.class, () -> entity.moveTo(new Pos(640.5, 40, 0.5)));
+
+        assertEquals(SPAWN, entity.getPosition());
+        assertTrue(instance.getEntityTracker().chunkEntities(0, 0, EntityTracker.Target.ENTITIES).contains(entity));
+        assertTrue(instance.getEntityTracker().chunkEntities(40, 0, EntityTracker.Target.ENTITIES).isEmpty());
+        assertTrue(packets.collect().isEmpty(), "a move that failed is sent to nobody");
+    }
+
+    @Test
+    public void moveToNeedsAnInstance() {
+        var entity = new Entity(EntityTypes.ZOMBIE);
+        assertThrows(IllegalStateException.class, () -> entity.moveTo(SPAWN));
+        assertEquals(Pos.ZERO, entity.getPosition());
     }
 
     /**

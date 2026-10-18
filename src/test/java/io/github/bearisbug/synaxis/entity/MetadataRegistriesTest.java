@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.entity;
 
+import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.testing.RegistriesTest;
@@ -30,6 +31,18 @@ public class MetadataRegistriesTest {
                 assertEquals(entry.value(), result.value(), "Wrong metadata value after round-trip for id " + id);
             }
         }
+    }
+
+    @Test
+    public void anOptionalBlockStateIsWrittenAsItsStateId(Registries registries) {
+        final Block log = Block.OAK_LOG.withProperty("axis", "x");
+        final byte[] bytes = NetworkBuffer.makeArray(Metadata.Entry.SERIALIZER, Metadata.OptBlockState(log), registries);
+        final NetworkBuffer buffer = NetworkBuffer.wrap(bytes, 0, bytes.length, registries);
+
+        assertEquals((int) Metadata.TYPE_OPT_BLOCKSTATE, (int) buffer.read(NetworkBuffer.VAR_INT));
+        assertEquals(log.stateId(), (int) buffer.read(NetworkBuffer.VAR_INT), "the registry id of the block is not its state id");
+        buffer.readIndex(0);
+        assertEquals(log, Metadata.Entry.SERIALIZER.read(buffer).value());
     }
 
     private static <T> Metadata.Entry<T> defaultEntry(Metadata.Type<T> type) {

@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.entity.Entity;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
@@ -49,17 +50,36 @@ public class BlockIterator implements Iterator<Point> {
      * @param smooth      A boolean indicating whether the cast should be smooth.
      *                    Smooth casts will only include one block when intersecting multiple axis lines.
      * @param maxDistance This is the maximum distance in blocks for the
-     *                    trace. Setting this value above 140 may lead to problems with
-     *                    unloaded chunks. A value of 0 indicates no limit
+     *                    trace, finite and not negative. A value of 0 indicates no limit:
+     *                    the iterator never ends, the caller has to stop it
+     * @throws IllegalArgumentException if {@code maxDistance} is negative or not finite
      */
     @SuppressWarnings("this-escape") // deliberate self registration during construction
     public BlockIterator(Vec start, Vec direction, double yOffset, double maxDistance, boolean smooth) {
         reset(start, direction, yOffset, maxDistance, smooth);
     }
 
+    /**
+     * Constructs a BlockIterator without a trace: call
+     * {@link #reset(Vec, Vec, double, double, boolean)} before {@link #next()}.
+     */
     public BlockIterator() {}
 
+    /**
+     * Starts a new trace, see {@link #BlockIterator(Vec, Vec, double, double, boolean)}.
+     *
+     * @param start       A Vector giving the initial position for the trace
+     * @param direction   A Vector pointing in the direction for the trace
+     * @param yOffset     The trace begins vertically offset from the start vector by this value
+     * @param maxDistance This is the maximum distance in blocks for the trace, finite and not negative.
+     *                    A value of 0 indicates no limit: the iterator never ends, the caller has to stop it
+     * @param smooth      A boolean indicating whether the cast should be smooth
+     * @throws IllegalArgumentException if {@code maxDistance} is negative or not finite
+     */
     public void reset(Vec start, Vec direction, double yOffset, double maxDistance, boolean smooth) {
+        // Negative, the end lies behind the ray and is never reached; not finite, there is none
+        Check.argCondition(!Double.isFinite(maxDistance) || maxDistance < 0,
+                "maxDistance must be finite and >= 0 (0 = unbounded), got: {0}", maxDistance);
         extraPoints.clear();
         foundEnd = false;
 
@@ -111,8 +131,9 @@ public class BlockIterator implements Iterator<Point> {
      * @param yOffset     The trace begins vertically offset from the start vector
      *                    by this value
      * @param maxDistance This is the maximum distance in blocks for the
-     *                    trace. Setting this value above 140 may lead to problems with
-     *                    unloaded chunks. A value of 0 indicates no limit
+     *                    trace, finite and not negative. A value of 0 indicates no limit:
+     *                    the iterator never ends, the caller has to stop it
+     * @throws IllegalArgumentException if {@code maxDistance} is negative or not finite
      */
     public BlockIterator(Vec start, Vec direction, double yOffset, double maxDistance) {
         this(start, direction, yOffset, maxDistance, false);
@@ -127,8 +148,9 @@ public class BlockIterator implements Iterator<Point> {
      * @param yOffset     The trace begins vertically offset from the start vector
      *                    by this value
      * @param maxDistance This is the maximum distance in blocks for the
-     *                    trace. Setting this value above 140 may lead to problems with
-     *                    unloaded chunks. A value of 0 indicates no limit
+     *                    trace, finite and not negative. A value of 0 indicates no limit:
+     *                    the iterator never ends, the caller has to stop it
+     * @throws IllegalArgumentException if {@code maxDistance} is negative or not finite
      */
 
     public BlockIterator(Pos pos, double yOffset, int maxDistance) {
@@ -136,7 +158,7 @@ public class BlockIterator implements Iterator<Point> {
     }
 
     /**
-     * Constructs the BlockIterator.
+     * Constructs the BlockIterator, without a limit: the iterator never ends, the caller has to stop it.
      * <p>
      * This considers all blocks as 1x1x1 in size.
      *
@@ -150,7 +172,7 @@ public class BlockIterator implements Iterator<Point> {
     }
 
     /**
-     * Constructs the BlockIterator.
+     * Constructs the BlockIterator, without a limit: the iterator never ends, the caller has to stop it.
      * <p>
      * This considers all blocks as 1x1x1 in size.
      *
@@ -168,8 +190,9 @@ public class BlockIterator implements Iterator<Point> {
      *
      * @param entity      Information from the entity is used to set up the trace
      * @param maxDistance This is the maximum distance in blocks for the
-     *                    trace. Setting this value above 140 may lead to problems with
-     *                    unloaded chunks. A value of 0 indicates no limit
+     *                    trace, finite and not negative. A value of 0 indicates no limit:
+     *                    the iterator never ends, the caller has to stop it
+     * @throws IllegalArgumentException if {@code maxDistance} is negative or not finite
      */
 
     public BlockIterator(Entity entity, int maxDistance) {
@@ -177,7 +200,7 @@ public class BlockIterator implements Iterator<Point> {
     }
 
     /**
-     * Constructs the BlockIterator.
+     * Constructs the BlockIterator, without a limit: the iterator never ends, the caller has to stop it.
      * <p>
      * This considers all blocks as 1x1x1 in size.
      *

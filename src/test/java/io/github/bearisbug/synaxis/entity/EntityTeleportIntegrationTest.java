@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.entity;
 
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.coordinate.RelativeFlags;
+import io.github.bearisbug.synaxis.instance.EntityTracker;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.EntityHeadLookPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.EntityPositionSyncPacket;
@@ -11,11 +12,16 @@ import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 public class EntityTeleportIntegrationTest {
@@ -153,5 +159,23 @@ public class EntityTeleportIntegrationTest {
 
         // The position should have been capped at 2 billion.
         assertEquals(new Pos(Entity.MAX_COORDINATE, 42, 52), entity.getPosition());
+    }
+
+    @Test
+    public void aTeleportIntoAChunkThatDoesNotLoadLeavesTheEntityWhereItWas(Env env) {
+        var instance = env.createFlatInstance();
+        instance.enableAutoChunkLoad(false);
+        instance.loadChunk(0, 0).join();
+        var entity = new Entity(EntityTypes.ZOMBIE);
+        entity.setInstance(instance, new Pos(0.5, 42, 0.5)).join();
+        var chunk = entity.getChunk();
+
+        var thrown = assertThrows(CompletionException.class, () -> entity.teleport(new Pos(4000, 42, 4000)).join());
+
+        assertInstanceOf(IllegalStateException.class, thrown.getCause());
+        assertEquals(new Pos(0.5, 42, 0.5), entity.getPosition());
+        assertSame(chunk, entity.getChunk());
+        assertTrue(instance.getEntityTracker().chunkEntities(0, 0, EntityTracker.Target.ENTITIES).contains(entity),
+                "the tracker moved the entity to the chunk it never got into");
     }
 }

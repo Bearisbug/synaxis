@@ -26,6 +26,18 @@ public record EntityPositionAndRotationPacket(int entityId, short deltaX, short 
                     yaw * 360f / 256f, pitch * 360f / 256f, onGround)
     );
 
+    /**
+     * Builds the packet moving an entity from {@code oldPosition} to {@code newPosition}.
+     * <p>
+     * The caller makes sure the move is shorter than 8 blocks on every axis, see
+     * {@link CoordConversion#deltaShort4096(double, double)}; a longer one is sent as an {@link EntityTeleportPacket}.
+     *
+     * @param entityId    the id of the entity moving
+     * @param newPosition the position moved to
+     * @param oldPosition the position the viewers last saw the entity at
+     * @param onGround    whether the entity is on the ground
+     * @return the packet
+     */
     public static EntityPositionAndRotationPacket getPacket(int entityId,
                                                             Pos newPosition, Pos oldPosition,
                                                             boolean onGround) {

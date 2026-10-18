@@ -12,6 +12,8 @@ import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
 import java.lang.ref.WeakReference;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 import java.util.List;
 
@@ -19,6 +21,8 @@ import static io.github.bearisbug.synaxis.testing.TestUtils.waitUntilCleared;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
@@ -112,6 +116,35 @@ public class EntityRemovalIntegrationTest {
         entity = null;
         env.tick();
         waitUntilCleared(ref);
+    }
+
+    @Test
+    public void aRemovedEntityIsNotPlacedInAnInstanceAgain(Env env) {
+        var instance = env.createFlatInstance();
+        var entity = new Entity(EntityType.ZOMBIE);
+        entity.setInstance(instance, new Pos(0, 40, 0)).join();
+        entity.remove();
+
+        // Placed again it would be active and in the instance, yet in neither the tracker nor a tick thread
+        assertThrows(IllegalStateException.class, () -> entity.setInstance(instance, new Pos(0, 40, 0)));
+        assertNull(entity.getInstance());
+        assertFalse(entity.isActive());
+    }
+
+    @Test
+    public void aRemovalDelayThatIsNotPositiveIsRefused(Env env) {
+        var instance = env.createFlatInstance();
+        var entity = new Entity(EntityType.ZOMBIE);
+        entity.setInstance(instance, new Pos(0, 40, 0)).join();
+
+        var tick = assertThrows(IllegalArgumentException.class, () -> entity.scheduleRemove(0, TimeUnit.SERVER_TICK));
+        assertTrue(tick.getMessage().contains("scheduleRemove"), tick.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> entity.scheduleRemove(0, ChronoUnit.MILLIS));
+        assertThrows(IllegalArgumentException.class, () -> entity.scheduleRemove(Duration.ZERO));
+        assertThrows(IllegalArgumentException.class, () -> entity.scheduleRemove(Integer.MAX_VALUE + 1L, TimeUnit.SERVER_TICK));
+        for (int i = 0; i < 3; i++) env.tick();
+
+        assertFalse(entity.isRemoved(), "a delay of 0 removed the entity instead of cancelling anything");
     }
 
     static final class TestEntity extends Entity {

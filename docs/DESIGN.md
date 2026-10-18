@@ -265,7 +265,7 @@ erDiagram
 | 区块坐标 | `chunk_x` / `chunk_z` | — | int | 是 | 区块坐标，非方块坐标 | 区块 | 否 |
 | tick 线程 | `tick_thread` / `assigned_thread` | — | string | 否 | `Ms-Tick-N`，未分配为 null | — | 否 |
 | 实体 ID | `entity_id` | — | int | 是 | 进程内自增，协议要求 int | — | 否 |
-| 实体类型 | `entity_type` | — | string | 是 | 引用 `entity_type` 注册表；M1 删除波次 2 后服务端只保留 display / avatar / projectile / item 四组元数据类型，其余类型仍可生成但无类型化元数据 | — | 否 |
+| 实体类型 | `entity_type` | — | string | 是 | 引用 `entity_type` 注册表；M1 删除波次 2 后服务端只保留 display / avatar / projectile / item 四组元数据类型，其余类型仍可生成但无类型化元数据。运行中换类型（`Entity#switchEntityType`）只保留各类型共有的元数据，之前取到的 `EntityMeta` 随之失效，再写入抛 `IllegalStateException`（`docs/DESIGN-PROD.md` v0.9.96） | — | 否 |
 | 断线原因码 | `disconnect_reason` | — | enum | 是 | 见 §14 错误码表 | — | 否 |
 
 ## 10. 权限与角色
@@ -442,6 +442,7 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 | 区块加载 future 异常完成时玩家 `setInstance().join()` | 加载线程 × 调用线程 | `join` 在 5 秒内抛出，不永久阻塞 | `whenComplete` 两条路径都 countDown |
 | 同一客户端连续两次 StatusRequest | 客户端 × 网络线程 | 第二次直接关闭 | §11.1 守卫「已应答一次」 |
 | 实体被移除的同时其 `setInstance` 续体到达 | tick 线程 × 加载线程 | 续体检查 `isRemoved()` 后放弃注册，无幽灵实体 | 审计实体层 P0-3 修复 |
+| 同一对（实体，玩家）的显示与隐藏在两条 tick 线程上交错 | 显示方 × 隐藏方（追踪器回调、玩家每 5 tick 的重算、实体移除） | 客户端最后收到的生成或销毁与登记一致：登记已撤的不留幽灵，登记还在的不隐身 | 登记在两把视图锁里，包在放锁之后发；`EntityView` 的显示与隐藏发完包各自不持锁复核一次 `isViewer`，与登记不符就补发销毁或生成包，隐藏方补发生成时连同乘客包、乘客留在登记里，不加锁、不改锁序（`docs/DESIGN-PROD.md` v0.9.96） |
 | 对端停止读取，服务端断开该连接 | 写线程（阻塞在 socket 写）× 断开方（tick / 读 / configuration 线程，或写线程自己：写循环捕到非 IO 异常时丢掉出错的包、以 `synaxis:internal-error` 踢掉连接，写线程上的 `PlayerPacketOutEvent` 监听器踢人） | 断开后 ≤ 1 s channel 关闭，读写两条线程退出，出站队列与读缓冲随之释放；对端读不读都一样 | `PlayerSocketConnection#closeOnceFlushed`：断开方起一条 `Syn-Socket-Closer` 虚拟线程，`join` 写线程 `CLOSE_AFTER_DISCONNECT_MILLIS`（1 s，与 `ConnectionManager#shutdown` 的冲刷预算相同）后 `channel.close()`——关闭是唯一能中止阻塞写的操作；写线程看到连接下线后经 `PlayerSocketConnection#flushRemaining` 写空出站队列（断开包与它之前排队的包）再关 channel，写之前起同一条线程（`startCloser`，一个连接只起一次），所以关闭线程有两个起点：断开方的 `closeOnceFlushed` 与写线程的 `flushRemaining`；写线程自己调 `disconnect` 时不在那里起这条线程，由它退出前的 `flushRemaining` 起，同样 1 s 后关（`docs/DESIGN-PROD.md` v0.9.52 §16「断开与出站队列」） |
 
 一致性承诺：

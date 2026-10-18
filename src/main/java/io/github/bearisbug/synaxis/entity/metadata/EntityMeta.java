@@ -217,6 +217,10 @@ public class EntityMeta {
 
     /**
      * Sets the value of the specified metadata entry.
+     * <p>
+     * The entry has to belong to the layout of the type of this entity, see {@link MetadataDef}: nothing checks
+     * it, and an entry of another layout, such as {@link MetadataDef.Display#WIDTH} on an {@code interaction}
+     * entity, disconnects every viewer of the entity.
      *
      * @param entry The metadata entry to be updated.
      * @param value The value to assign to the specified metadata entry.

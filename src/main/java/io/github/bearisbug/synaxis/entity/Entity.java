@@ -102,7 +102,7 @@ import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -137,6 +137,10 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     // How often a dormancy policy is asked again, see #sitsOutTick(): a player coming near wakes the entity
     // within this many ticks
     private static final int DORMANCY_EVALUATION_TICKS = 5;
+
+    // A relative move packet carries a short in 1/4096 of a block, at most 32767 or 7.99976 blocks:
+    // from 8 blocks on, the move is sent as a teleport
+    private static final double MAX_RELATIVE_MOVE = 8;
 
     // Protected due to PointersSupplier.Builder#parent
     protected static final PointersSupplier<Entity> ENTITY_POINTERS_SUPPLIER = PointersSupplier.<Entity>builder()
@@ -303,13 +307,14 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.eventNode = process.eventHandler().map(this, EventFilter.ENTITY);
         this.process = process;
         if (trackingRange != null) process.trackingRanges().markInUse();
-        this.synchronizationTicks = process.config().entitySynchronizationTicks();
+        // 0 is never set explicitly, see #setSynchronizationTicks: a period set before binding is kept
+        if (this.synchronizationTicks == 0) this.synchronizationTicks = process.config().entitySynchronizationTicks();
         this.nextSynchronizationTick = this.synchronizationTicks;
     }
 
     /**
-     * Gets the server process this entity belongs to, {@code null} until the entity is placed in an
-     * instance for the first time.
+     * Gets the server process this entity belongs to: bound at construction when created with a
+     * {@link ServerProcess}, otherwise when first placed in an instance, {@code null} until then.
      *
      * @return the server process
      */
@@ -399,6 +404,9 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     /**
      * Gets metadata of this entity.
      * You may want to cast it to specific implementation.
+     * <p>
+     * {@link #switchEntityType(EntityType)} replaces it: a meta obtained before then refuses writes with
+     * {@link IllegalStateException}, get it again.
      *
      * @return metadata of this entity.
      */
@@ -435,24 +443,64 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         }
     }
 
+    /**
+     * Teleports the entity keeping its current velocity, see {@link #teleport(Pos, Vec, long[], int, boolean)}.
+     *
+     * @param position the teleport position
+     * @return a future completed once the entity has been teleported
+     */
     public CompletableFuture<Void> teleport(Pos position) {
         return teleport(position, null, RelativeFlags.NONE);
     }
 
+    /**
+     * Teleports the entity and sets its velocity, see {@link #teleport(Pos, Vec, long[], int, boolean)}.
+     *
+     * @param position the teleport position
+     * @param velocity the velocity after the teleport
+     * @return a future completed once the entity has been teleported
+     */
     public CompletableFuture<Void> teleport(Pos position, Vec velocity) {
         return teleport(position, velocity, null, RelativeFlags.NONE);
     }
 
+    /**
+     * Teleports the entity keeping its current velocity, see {@link #teleport(Pos, Vec, long[], int, boolean)}.
+     *
+     * @param position the teleport position
+     * @param chunks   the chunk indexes to load before teleporting the entity
+     * @param flags    flags used to teleport the entity relatively rather than absolutely
+     * @return a future completed once the entity has been teleported
+     */
     public CompletableFuture<Void> teleport(Pos position, long @Nullable [] chunks,
                                             @MagicConstant(flagsFromClass = RelativeFlags.class) int flags) {
         return teleport(position, chunks, flags, true);
     }
 
+    /**
+     * Teleports the entity and sets its velocity, see {@link #teleport(Pos, Vec, long[], int, boolean)}.
+     *
+     * @param position the teleport position
+     * @param velocity the velocity after the teleport
+     * @param chunks   the chunk indexes to load before teleporting the entity
+     * @param flags    flags used to teleport the entity relatively rather than absolutely
+     * @return a future completed once the entity has been teleported
+     */
     public CompletableFuture<Void> teleport(Pos position, Vec velocity, long @Nullable [] chunks,
                                             @MagicConstant(flagsFromClass = RelativeFlags.class) int flags) {
         return teleport(position, velocity, chunks, flags, true);
     }
 
+    /**
+     * Teleports the entity keeping its current velocity ({@link RelativeFlags#DELTA_COORD}), see
+     * {@link #teleport(Pos, Vec, long[], int, boolean)}.
+     *
+     * @param position      the teleport position
+     * @param chunks        the chunk indexes to load before teleporting the entity
+     * @param flags         flags used to teleport the entity relatively rather than absolutely
+     * @param shouldConfirm if false, the teleportation will be done without confirmation
+     * @return a future completed once the entity has been teleported
+     */
     public CompletableFuture<Void> teleport(Pos position, long @Nullable [] chunks,
                                             @MagicConstant(flagsFromClass = RelativeFlags.class) int flags,
                                             boolean shouldConfirm) {
@@ -461,10 +509,15 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Teleports the entity only if the chunk at {@code position} is loaded or if
-     * {@link Instance#hasEnabledAutoChunkLoad()} returns true.
+     * Teleports the entity once the chunks are loaded: those in {@code chunks}, or, when it is null or empty,
+     * the chunk at {@code position}. A chunk that is not loaded yet only loads when
+     * {@link Instance#hasEnabledAutoChunkLoad()} returns true. When the chunk at {@code position} is still not
+     * loaded then, the future completes exceptionally with {@link IllegalStateException} and the entity is left
+     * unchanged: load it first, or, with auto chunk load on, include it in {@code chunks}.
      *
      * @param position      the teleport position
+     * @param velocity      the velocity after the teleport, relative to the current one when {@code flags}
+     *                      carry {@link RelativeFlags#DELTA_COORD}
      * @param chunks        the chunk indexes to load before teleporting the entity,
      *                      indexes are from {@link CoordConversion#chunkIndex(int, int)},
      *                      can be null or empty to only load the chunk at {@code position}
@@ -491,6 +544,14 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         final Vec globalVelocity = PositionUtils.getVelocityWithRelativeFlags(this.velocity, velocity, flags);
 
         final Runnable endCallback = () -> {
+            // Before any state changes: moving into a chunk that is not there fails halfway, the position and
+            // the tracker at the new point while the chunk and the tick thread stay with the old one. The test
+            // of refreshCoordinate, not ChunkUtils.isLoaded: a LightingChunk already in the instance is not
+            // isLoaded() until its initialisation is done, and a teleport into it succeeds
+            if (instance.getChunk(globalPosition.chunkX(), globalPosition.chunkZ()) == null) {
+                throw new IllegalStateException("cannot teleport entity " + getEntityId() + " to " + globalPosition
+                        + ": its chunk is not loaded; load it first, or, with auto chunk load on, include it in chunks");
+            }
             final float previousHeadRotation = this.headRotation;
             this.previousPosition = this.position;
             setPositionInternal(globalPosition, globalPosition.yaw());
@@ -591,10 +652,30 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.viewEngine.viewableOption.updateAuto(autoViewable);
     }
 
+    /**
+     * Sets the rule deciding which of the players around automatically see this entity, and applies it to them
+     * at once.
+     * <p>
+     * The rule is asked on whichever thread changes what a player sees: the tick thread of the entity or of
+     * the player crossing a chunk border, the one of a player recomputing what it sees every 5 ticks, the one
+     * changing a rule. It is asked holding the view locks of this entity and of the player: it must be quick,
+     * free of side effects and must not block, nor call {@link #isViewer(Player)}, {@link #getViewers()},
+     * {@link #addViewer(Player)}, {@link #removeViewer(Player)} or a rule method of any entity, which takes
+     * the view lock of another entity out of order and can deadlock with another tick thread. A rule
+     * depending on other entities, such as teammates seeing each other, reads a thread safe state of its own
+     * that the caller keeps up to date, and the caller applies it again with {@link #updateViewableRule()}
+     * once that state changed: the engine does not ask it again on its own.
+     *
+     * @param predicate the rule, true for the players to see this entity; null to drop the rule
+     */
     public void updateViewableRule(@Nullable Predicate<? super Player> predicate) {
         this.viewEngine.viewableOption.updateRule(predicate);
     }
 
+    /**
+     * Applies the rule of {@link #updateViewableRule(Predicate)} again to the players around, after the state
+     * it depends on changed.
+     */
     public void updateViewableRule() {
         this.viewEngine.viewableOption.updateRule();
     }
@@ -610,7 +691,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Decides if surrounding entities must be visible.
+     * Decides if surrounding entities must be visible. Only a player sees entities: on any other entity this
+     * does nothing.
      *
      * @param autoViewer true to add view surrounding entities, false to remove
      */
@@ -618,10 +700,24 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.viewEngine.viewerOption.updateAuto(autoViewer);
     }
 
+    /**
+     * Sets the rule deciding which of the entities around this player automatically sees, and applies it at
+     * once. Only a player sees entities: on any other entity this does nothing.
+     * <p>
+     * The rule is asked on the same threads and holding the same locks as the one of
+     * {@link #updateViewableRule(Predicate)}, under the same constraints; apply it again with
+     * {@link #updateViewerRule()} once the state it depends on changed.
+     *
+     * @param predicate the rule, true for the entities this player sees; null to drop the rule
+     */
     public void updateViewerRule(@Nullable Predicate<? super Entity> predicate) {
         this.viewEngine.viewerOption.updateRule(predicate);
     }
 
+    /**
+     * Applies the rule of {@link #updateViewerRule(Predicate)} again to the entities around, after the state
+     * it depends on changed. Does nothing on an entity that is not a player.
+     */
     public void updateViewerRule() {
         this.viewEngine.viewerOption.updateRule();
     }
@@ -699,9 +795,24 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.dormancyPolicy = policy;
     }
 
+    /**
+     * Shows this entity to {@code player}, whatever the automatic viewing rules say, until
+     * {@link #removeViewer(Player)}.
+     * <p>
+     * The player has to be in the instance of this entity. Leaving it, for another instance or removed, it
+     * is dropped from the manual viewers of every entity there and sent their destruction.
+     *
+     * @param player the player to show this entity to
+     * @return true if the player was added, false if it already was a manual viewer or is this entity
+     * @throws IllegalStateException    if this entity is not in an instance
+     * @throws IllegalArgumentException if the player is not in the instance of this entity
+     */
     @Override
     public final boolean addViewer(Player player) {
         Check.stateCondition(!isActive(), "Entities must be in an instance before adding viewers");
+        Check.argCondition(player.getInstance() != instance,
+                "Player {0} is not in the instance of entity {1}; a manual viewer must share its instance",
+                player.getUsername(), getEntityId());
         if (!viewEngine.manualAdd(player)) return false;
         updateNewViewer(player);
         // The automatic path sends this from EntityView, without it the passengers show up dismounted
@@ -794,16 +905,22 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     /**
      * Changes the entity type of this entity.
      * <p>
-     * Works by changing the internal entity type field and by calling {@link #removeViewer(Player)}
-     * followed by {@link #addViewer(Player)} to all current viewers.
+     * Every current viewer is sent the destruction of the entity, then its spawn as the new type
+     * ({@link #updateOldViewer(Player)}, {@link #updateNewViewer(Player)}), then the passengers of this entity
+     * and, when it rides a vehicle, the passengers of that vehicle: the destruction dismounts them on the
+     * client. The client of a player switched this way still sees itself as a player.
      * <p>
-     * Be aware that this only change the visual of the entity, the {@link BoundingBox}
-     * will not be modified.
+     * The metadata shared by every type (glowing, invisible, custom name, gravity, ...) is kept, the type
+     * specific metadata is reset. An {@link EntityMeta} obtained from {@link #getEntityMeta()} before the
+     * switch no longer belongs to this entity: writing to it throws {@link IllegalStateException}, get the
+     * meta again. The air resistance and the collision flags follow the new type, the {@link BoundingBox}
+     * is not modified.
      *
      * @param entityType the new entity type
      */
     public synchronized void switchEntityType(EntityType entityType) {
         final MetadataHolder previousMetadata = this.metadata;
+        previousMetadata.detach();
         this.entityType = entityType;
         this.metadata = new MetadataHolder(this::notifyMetadataChanges);
         // The type specific indices cannot be carried over, but the shared entity ones (glowing,
@@ -816,9 +933,23 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
                 entityType.verticalAirResistance());
 
         updateCollisions();
-        Set<Player> viewers = new HashSet<>(getViewers());
-        getViewers().forEach(this::updateOldViewer);
+        // One snapshot for both: a player shown in between already got the new type, and destroying it
+        // without spawning it again would leave its client without the entity
+        final Set<Player> viewers = Set.copyOf(getViewers());
+        viewers.forEach(this::updateOldViewer);
         viewers.forEach(this::updateNewViewer);
+        // updateNewViewer leaves the passengers to EntityView, which this does not go through
+        if (hasPassenger()) {
+            final SetPassengersPacket passengersPacket = getPassengersPacket();
+            viewers.forEach(viewer -> viewer.sendPacket(passengersPacket));
+        }
+        final Entity vehicle = this.vehicle;
+        if (vehicle != null) {
+            final SetPassengersPacket vehiclePacket = vehicle.getPassengersPacket();
+            for (Player viewer : viewers) {
+                if (vehicle.isViewer(viewer)) viewer.sendPacket(vehiclePacket);
+            }
+        }
     }
 
     /**
@@ -991,18 +1122,19 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     private void effectTick() {
         final List<TimedPotion> effects = this.effects;
         if (effects.isEmpty()) return;
-        effects.removeIf(timedPotion -> {
+        // Over a snapshot, the iterator of the copy-on-write list, each one taken out before its event: a
+        // listener may change the effects, which a removeIf running the event would fail on
+        for (Iterator<TimedPotion> iterator = effects.iterator(); iterator.hasNext(); ) {
+            final TimedPotion timedPotion = iterator.next();
             long duration = timedPotion.potion().duration();
-            if (duration == Potion.INFINITE_DURATION) return false;
+            if (duration == Potion.INFINITE_DURATION) continue;
             // Remove if the potion should be expired
-            if (getAliveTicks() >= timedPotion.startingTicks() + duration) {
+            if (getAliveTicks() >= timedPotion.startingTicks() + duration && effects.remove(timedPotion)) {
                 // Send the packet that the potion should no longer be applied
                 timedPotion.potion().sendRemovePacket(this);
                 callEvent(new EntityPotionRemoveEvent(this, timedPotion.potion()));
-                return true;
             }
-            return false;
-        });
+        }
     }
 
     /**
@@ -1061,7 +1193,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Returns false just after instantiation, set to true after calling {@link #setInstance(Instance)}.
+     * Returns false just after instantiation, set to true after calling {@link #setInstance(Instance)}, false
+     * again after {@link #remove()}.
      *
      * @return true if the entity has been linked to an instance, false otherwise
      */
@@ -1203,25 +1336,52 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * future turns such a failure into an entity that is in the world but untracked, without a
      * single line of log. While the chunk still has to load it must not be joined on the thread owning
      * the entity nor while holding an element, see {@link #teleport(Pos, Vec, long[], int, boolean)}
-     * @throws IllegalStateException if {@code instance} has not been registered in {@link InstanceManager}
+     * @throws IllegalStateException if {@code instance} has not been registered in {@link InstanceManager},
+     *                               or if this entity has been removed
      */
     public CompletableFuture<Void> setInstance(Instance instance, Pos spawnPosition) {
         this.acquirable.assertOwnership();
         Check.stateCondition(!instance.isRegistered(),
                 "Instances need to be registered, please use InstanceManager#registerInstance");
-        final Instance previousInstance = this.instance;
-        if (Objects.equals(previousInstance, instance)) {
+        if (Objects.equals(this.instance, instance)) {
             return teleport(spawnPosition); // Already in the instance, teleport to spawn point
         }
-        bindProcess(instance.process());
-        AddEntityToInstanceEvent event = new AddEntityToInstanceEvent(instance, this);
-        callEvent(event);
-        if (event.isCancelled()) {
+        if (!admitTo(instance)) {
             // The instance has not been set, callers chaining on the future must not proceed as if it had
             return CompletableFuture.failedFuture(
                     new IllegalStateException("AddEntityToInstanceEvent has been cancelled"));
         }
+        return setInstanceAdmitted(instance, spawnPosition);
+    }
 
+    /**
+     * The first step of {@link #setInstance(Instance, Pos)}: binds this entity to the process of
+     * {@code instance} and asks {@link AddEntityToInstanceEvent} whether it may enter, changing nothing else.
+     * A spawning player takes it before telling its client about the new instance.
+     *
+     * @param instance the instance to enter
+     * @return false if the event was cancelled
+     * @throws IllegalStateException if this entity has been removed: placed again, it would be active and in
+     *                               the instance, yet neither tracked nor ticked
+     */
+    @ApiStatus.Internal
+    protected final boolean admitTo(Instance instance) {
+        Check.stateCondition(isRemoved(),
+                "Entity {0} ({1}) has been removed and cannot be placed in an instance again, create a new entity",
+                getEntityId(), entityType.name());
+        bindProcess(instance.process());
+        final AddEntityToInstanceEvent event = new AddEntityToInstanceEvent(instance, this);
+        callEvent(event);
+        return !event.isCancelled();
+    }
+
+    /**
+     * The rest of {@link #setInstance(Instance, Pos)}, once {@link #admitTo(Instance)} let this entity in:
+     * leaves the previous instance and spawns in {@code instance} as soon as the chunk at
+     * {@code spawnPosition} is loaded.
+     */
+    CompletableFuture<Void> setInstanceAdmitted(Instance instance, Pos spawnPosition) {
+        final Instance previousInstance = this.instance;
         if (previousInstance != null) removeFromInstance(previousInstance);
         if (this instanceof Player player) instance.bossBars().forEach(player::showBossBar);
         EventsJFR.newInstanceJoin(getUuid(), instance.getUuid()).commit();
@@ -1285,9 +1445,17 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
     private void removeFromInstance(Instance instance) {
         callEvent(new RemoveEntityFromInstanceEvent(instance, this));
-        if (this instanceof Player player) instance.bossBars().forEach(player::hideBossBar);
+        if (this instanceof Player player) {
+            instance.bossBars().forEach(player::hideBossBar);
+            // Manual viewing is only recorded on the viewed entity, nothing else drops a player leaving the
+            // instance (to another one, or removed) from the entities it was added to. Before the tracker
+            // lets go of it, while it still takes their destruction
+            instance.getEntities().forEach(entity -> entity.removeViewer(player));
+        }
         instance.getEntityTracker().unregister(this, trackingTarget, trackingUpdate);
         this.viewEngine.forManuals(this::removeViewer);
+        // What the tracker could not reach: registrations outside the square it reports
+        this.viewEngine.dropStaleRegistrations(instance);
         EventsJFR.newInstanceLeave(getUuid(), instance.getUuid()).commit();
     }
 
@@ -1719,16 +1887,18 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * as opposed to {@link #teleport(Pos)}, which dispatches an {@code EntityTeleportEvent} and loads
      * chunks asynchronously. The caller must own the tick thread of this entity and the chunk covering
      * {@code position} must already be loaded; moving outside of the loaded area throws a
-     * {@link NullPointerException} rather than failing silently.
+     * {@link NullPointerException} rather than failing silently, and throwing leaves the entity unchanged.
      * <p>
      * It belongs to the stable surface even though it lives in the engine, which no binary
      * compatibility gate covers: changing its signature or its semantics is a breaking change
      * of {@code plugin-api} (see {@code docs/DESIGN-M2.md} §24).
      *
      * @param position the position to move to, whose view is applied to the entity
-     * @throws NullPointerException if the chunk covering {@code position} is not loaded
+     * @throws IllegalStateException if this entity is not in an instance
+     * @throws NullPointerException  if the chunk covering {@code position} is not loaded
      */
     public void moveTo(final Pos position) {
+        Check.stateCondition(instance == null, "moveTo needs the entity to be in an instance");
         refreshPosition(position, false, true);
     }
 
@@ -1736,6 +1906,13 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * Updates internal fields and sends updates.
      *
      * @param newPosition the new position
+     * @param ignoreView  true to only take the coordinates of {@code newPosition}, keeping the current view
+     *                    and head rotation
+     * @param sendPackets false to send no relative move, leaving the position to the scheduled
+     *                    synchronization; what {@link #movementTick()} passes for the types only synchronized
+     *                    that way
+     * @throws NullPointerException if the chunk covering {@code newPosition} is not loaded, the entity is
+     *                              then left unchanged
      */
     @ApiStatus.Internal
     public void refreshPosition(final Pos newPosition, boolean ignoreView, boolean sendPackets) {
@@ -1745,15 +1922,20 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         // The synced position lags behind the real one whenever packets are skipped, so it alone
         // cannot tell whether the entity actually has to move
         if (position.equals(lastSyncedPosition) && position.equals(previousPosition)) return;
+        // Before any state changes: refreshCoordinate throws the same once the passengers and the tracker moved
+        if (!position.sameChunk(previousPosition))
+            Check.notNull(instance.getChunk(position.chunkX(), position.chunkZ()),
+                    "The entity {0} tried to move in an unloaded chunk at {1}", getEntityId(), position);
         setPositionInternal(position, ignoreView ? headRotation : position.yaw());
         this.previousPosition = previousPosition;
         if (!position.samePoint(previousPosition)) refreshCoordinate(position);
-        // A dormant entity sends no scheduled synchronization, its moves go out below
-        if ((dormancyInterval == 1 && nextSynchronizationTick <= ticks + 1) || !sendPackets) {
-            // The entity will be synchronized at the end of its tick
-            // not returning here will duplicate position packets
-            return;
-        }
+        // Only synchronized on schedule, see SYNCHRONIZE_ONLY_ENTITIES
+        if (!sendPackets) return;
+        // The scheduled synchronization due by the next tick sends this position, sending it here too would
+        // duplicate it: called from #tick before ticks++, the one at the end of this tick
+        // (ticks >= nextSynchronizationTick), called after it, the one of the next tick. A dormant entity
+        // has no scheduled synchronization, its moves go out below
+        if (dormancyInterval == 1 && nextSynchronizationTick <= ticks + 1) return;
         // Update viewers
         final boolean viewChange = !position.sameView(lastSyncedPosition);
         final double distanceX = Math.abs(position.x() - lastSyncedPosition.x());
@@ -1763,7 +1945,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
         final Chunk chunk = getChunk();
         assert chunk != null;
-        if (distanceX > 8 || distanceY > 8 || distanceZ > 8) {
+        if (distanceX >= MAX_RELATIVE_MOVE || distanceY >= MAX_RELATIVE_MOVE || distanceZ >= MAX_RELATIVE_MOVE) {
             // Send relative 0 velocity to avoid affecting it in this case
             process().viewablePackets().prepareViewablePacket(chunk, new EntityTeleportPacket(getEntityId(), position,
                     Vec.ZERO, RelativeFlags.DELTA_COORD, isOnGround()), this);
@@ -1909,19 +2091,20 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Removes effect from entity, if it has it.
+     * Removes effect from entity, if it has it. The {@link EntityPotionRemoveEvent} is dispatched once the
+     * effect is gone: its listeners see the entity without it, and may add effects.
      *
      * @param effect The effect to remove
      */
     public void removeEffect(PotionEffect effect) {
-        this.effects.removeIf(timedPotion -> {
-            if (timedPotion.potion().effect() == effect) {
+        // As in #effectTick, over a snapshot and taken out before its event
+        for (Iterator<TimedPotion> iterator = this.effects.iterator(); iterator.hasNext(); ) {
+            final TimedPotion timedPotion = iterator.next();
+            if (timedPotion.potion().effect() == effect && this.effects.remove(timedPotion)) {
                 timedPotion.potion().sendRemovePacket(this);
                 callEvent(new EntityPotionRemoveEvent(this, timedPotion.potion()));
-                return true;
             }
-            return false;
-        });
+        }
     }
 
     /**
@@ -1955,18 +2138,22 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Removes all the effects currently applied to the entity.
+     * Removes all the effects currently applied to the entity, each gone before its
+     * {@link EntityPotionRemoveEvent}. An effect a listener adds meanwhile is kept.
      */
     public void clearEffects() {
-        for (TimedPotion timedPotion : effects) {
+        // As in #effectTick, over a snapshot and taken out before its event
+        for (Iterator<TimedPotion> iterator = effects.iterator(); iterator.hasNext(); ) {
+            final TimedPotion timedPotion = iterator.next();
+            if (!effects.remove(timedPotion)) continue;
             timedPotion.potion().sendRemovePacket(this);
             callEvent(new EntityPotionRemoveEvent(this, timedPotion.potion()));
         }
-        this.effects.clear();
     }
 
     /**
-     * Removes the entity from the server immediately.
+     * Removes the entity from the server immediately. The removal is permanent: the entity cannot be placed in
+     * an instance again, create a new one.
      * <p>
      * WARNING: this does not trigger {@link EntityDeathEvent}.
      */
@@ -1974,6 +2161,15 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         remove(true);
     }
 
+    /**
+     * Removes the entity from the server immediately, see {@link #remove()}.
+     * <p>
+     * {@code permanent} false is for a player sent back to the configuration phase alone: its position is
+     * reset, yet {@link #isRemoved()} turns true all the same, and the caller resets it before placing the
+     * player in an instance again, see {@code Player#UNSAFE_init}.
+     *
+     * @param permanent false to reset the position, for a player that joins again
+     */
     protected synchronized void remove(boolean permanent) {
         this.acquirable.assertOwnership();
         if (isRemoved()) return;
@@ -2022,14 +2218,18 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Triggers {@link #remove()} after the specified time.
+     * Triggers {@link #remove()} after the specified time. A removal scheduled this way cannot be cancelled; to
+     * be able to, keep the task of {@code scheduler().buildTask(this::remove).delay(...).schedule()} instead.
      *
-     * @param delay        the time before removing the entity,
-     *                     0 to cancel the removing
+     * @param delay        the time before removing the entity, positive
      * @param temporalUnit the unit of the delay
+     * @throws IllegalArgumentException if {@code delay} is not positive, or more than {@link Integer#MAX_VALUE}
+     *                                  server ticks
      */
     public void scheduleRemove(long delay, TemporalUnit temporalUnit) {
+        Check.argCondition(delay <= 0, "scheduleRemove delay must be positive but was {0} {1}", delay, temporalUnit);
         if (temporalUnit == TimeUnit.SERVER_TICK) {
+            Check.argCondition(delay > Integer.MAX_VALUE, "scheduleRemove delay {0} ticks exceeds Integer.MAX_VALUE", delay);
             scheduleRemove(TaskSchedule.tick((int) delay));
         } else {
             scheduleRemove(Duration.of(delay, temporalUnit));
@@ -2037,11 +2237,13 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Triggers {@link #remove()} after the specified time.
+     * Triggers {@link #remove()} after the specified time, see {@link #scheduleRemove(long, TemporalUnit)}.
      *
-     * @param delay the time before removing the entity
+     * @param delay the time before removing the entity, positive
+     * @throws IllegalArgumentException if {@code delay} is not positive
      */
     public void scheduleRemove(Duration delay) {
+        Check.argCondition(delay.isZero() || delay.isNegative(), "scheduleRemove delay must be positive but was {0}", delay);
         scheduleRemove(TaskSchedule.duration(delay));
     }
 
@@ -2127,6 +2329,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     /**
      * Returns the current synchronization interval. The default value is {@link ServerConfig#entitySynchronizationTicks()}
      * but can be overridden per entity with {@link #setSynchronizationTicks(long)}.
+     * <p>
+     * 0 until the entity is bound to a process, see {@link #process()}, unless set explicitly.
      *
      * @return The current synchronization ticks
      */
@@ -2136,10 +2340,15 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
     /**
      * Set the tick period until this entity's position is synchronized.
+     * <p>
+     * Called on the tick thread of this entity, or before placing it in an instance: a period set before the
+     * entity is bound to a process is kept. The new period applies from the next synchronization on.
      *
-     * @param ticks the new synchronization tick period
+     * @param ticks the new synchronization tick period, at least 1
+     * @throws IllegalArgumentException if {@code ticks} is less than 1
      */
     public void setSynchronizationTicks(long ticks) {
+        Check.argCondition(ticks < 1, "synchronization ticks must be at least 1 but was {0}", ticks);
         this.synchronizationTicks = ticks;
     }
 
@@ -2207,10 +2416,12 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     /**
      * Gets the line of sight of the entity.
      *
-     * @param maxDistance The max distance to scan
+     * @param maxDistance The max distance to scan, positive
      * @return A list of {@link Point points} in this entities line of sight
+     * @throws IllegalArgumentException if {@code maxDistance} is not positive: the scan would not end
      */
     public List<Point> getLineOfSight(int maxDistance) {
+        Check.argCondition(maxDistance <= 0, "maxDistance must be > 0, got: {0}", maxDistance);
         Instance instance = getInstance();
         if (instance == null) {
             return List.of();

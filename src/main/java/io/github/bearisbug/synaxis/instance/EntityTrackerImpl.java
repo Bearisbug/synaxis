@@ -225,6 +225,22 @@ final class EntityTrackerImpl implements EntityTracker {
             });
         } else {
             // Multiple chunks
+            final double chunkSide = 2 * (Math.floor(range / Chunk.CHUNK_SECTION_SIZE) + 1) + 1;
+            if (chunkSide * chunkSide > entities(target).size()) {
+                // More chunks in range than entities of the target, hence than chunks holding one: going through
+                // those is cheaper. It also takes the ranges ChunkRange refuses, such as Double.MAX_VALUE. As in
+                // the chunk loop, an entity changing chunks meanwhile may be missed or seen twice.
+                for (List<Entity> bucket : entities.values()) {
+                    @SuppressWarnings("unchecked") final var chunkEntities = (List<T>) bucket;
+                    for (T entity : chunkEntities) {
+                        EntityTrackerEntry trackerEntry = entriesByEntityId.get(entity.getEntityId());
+                        if (trackerEntry == null) continue;
+                        final Point position = trackerEntry.getLastPosition();
+                        if (position != null && point.distanceSquared(position) <= squaredRange) query.accept(entity);
+                    }
+                }
+                return;
+            }
             final int chunkRange = (int) (range / Chunk.CHUNK_SECTION_SIZE) + 1;
             ChunkRange.chunksInRange(point, chunkRange, (chunkX, chunkZ) -> {
                 @SuppressWarnings("unchecked") final var chunkEntities = (List<T>) entities.get(CoordConversion.chunkIndex(chunkX, chunkZ));

@@ -17,6 +17,16 @@ final class BlockCollision {
     static final @Nullable BlockVec[] NO_COLLISION_SHAPE_POSITIONS = new BlockVec[3];
 
     /**
+     * Just over the distance from the center of a block to its corners, sqrt(3) / 2.
+     */
+    private static final double BLOCK_HALF_DIAGONAL = 0.87;
+    /**
+     * How far from its feet a box reaches for the placement check to consider its entity: sqrt(2 (w/2)² + h²) for a
+     * box of width w and height h centered on the feet. The largest vanilla box, the giant's, reaches 12.3.
+     */
+    private static final double PLACEMENT_ENTITY_REACH = 16;
+
+    /**
      * Moves an entity with physics applied (ie checking against blocks)
      * <p>
      * Works by getting all the full blocks that an entity could interact with.
@@ -40,6 +50,11 @@ final class BlockCollision {
             return new PhysicsResult(entityPosition, Vec.ZERO, false, false, false, false,
                     velocity, NO_COLLISION_POINTS, NO_COLLISION_SHAPES, NO_COLLISION_SHAPE_POSITIONS, false, Double.MAX_VALUE);
         }
+        if (!Double.isFinite(velocity.x()) || !Double.isFinite(velocity.y()) || !Double.isFinite(velocity.z())) {
+            // No sweep ends on such a velocity: stay in place and stop, the next tick starts from a finite one
+            return new PhysicsResult(entityPosition, Vec.ZERO, false, false, false, false,
+                    Vec.ZERO, NO_COLLISION_POINTS, NO_COLLISION_SHAPES, NO_COLLISION_SHAPE_POSITIONS, false, Double.MAX_VALUE);
+        }
         // Fast-exit using cache
         final PhysicsResult cachedResult = cachedPhysics(velocity, entityPosition, getter, lastPhysicsResult);
         if (cachedResult != null) {
@@ -51,7 +66,7 @@ final class BlockCollision {
 
     @Nullable
     static Entity canPlaceBlockAt(Instance instance, Point blockPos, Block b) {
-        for (Entity entity : instance.getNearbyEntities(blockPos, 3)) {
+        for (Entity entity : instance.getNearbyEntities(blockPos.add(0.5, 0.5, 0.5), BLOCK_HALF_DIAGONAL + PLACEMENT_ENTITY_REACH)) {
             if (!entity.preventBlockPlacement())
                 continue;
 

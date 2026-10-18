@@ -7,6 +7,8 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -76,8 +78,53 @@ public class EntityEntityCollisionIntegrationTest {
         final var expectedPoint = new Vec(0, 42, 4 * expectedPercentage);
         assertEquals(expectedPercentage, result.percentage());
         assertTrue(expectedPoint.samePoint(result.collisionPoint()));
-        assertEquals(expectedPoint, result.direction());
+        // Moving along +Z it hits the north face of the other box
+        assertEquals(new Vec(0, 0, -1), result.direction());
         assertEquals(stillEntity, result.entity());
+    }
+
+    @Test
+    public void entityCollisionDirectionIsTheHitFace(Env env) {
+        var instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+        instance.loadChunk(-1, 0).join();
+
+        var movingEntity = new Entity(EntityType.ZOMBIE);
+        var westEntity = new Entity(EntityType.ZOMBIE);
+        var belowEntity = new Entity(EntityType.ZOMBIE);
+        movingEntity.setInstance(instance, new Vec(0, 45, 0)).join();
+        westEntity.setInstance(instance, new Vec(-2, 45, 0)).join();
+        belowEntity.setInstance(instance, new Vec(0, 42, 0)).join();
+
+        var west = CollisionUtils.checkEntityCollisions(movingEntity, new Vec(-4, 0, 0), 1.51, entity -> entity == westEntity, null);
+        assertEquals(1, west.size());
+        assertEquals(new Vec(1, 0, 0), west.getFirst().direction());
+
+        var down = CollisionUtils.checkEntityCollisions(movingEntity, new Vec(0, -4, 0), 1.51, entity -> entity == belowEntity, null);
+        assertEquals(1, down.size());
+        assertEquals(new Vec(0, 1, 0), down.getFirst().direction());
+    }
+
+    @Test
+    public void entityCollisionsLeaveOutTheMovingEntityAndAreSorted(Env env) {
+        var instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+
+        var movingEntity = new Entity(EntityType.ZOMBIE);
+        movingEntity.setInstance(instance, new Vec(0, 42, 0.5)).join();
+        // Registered farthest first
+        var far = new Entity(EntityType.ZOMBIE);
+        far.setInstance(instance, new Vec(0, 42, 2.5)).join();
+        var near = new Entity(EntityType.ZOMBIE);
+        near.setInstance(instance, new Vec(0, 42, 1.5)).join();
+        var overlapping = new Entity(EntityType.ZOMBIE);
+        overlapping.setInstance(instance, new Vec(0.2, 42, 0.5)).join();
+
+        var results = CollisionUtils.checkEntityCollisions(movingEntity, new Vec(0, 0, 2.5), 1.51, _ -> true, null);
+
+        assertEquals(List.of(overlapping, near, far), results.stream().map(EntityCollisionResult::entity).toList());
+        assertEquals(0, results.getFirst().percentage());
+        assertEquals(Vec.ZERO, results.getFirst().direction());
     }
 
     @Test

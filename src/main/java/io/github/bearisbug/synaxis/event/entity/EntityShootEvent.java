@@ -8,6 +8,8 @@ import io.github.bearisbug.synaxis.event.trait.EntityInstanceEvent;
 
 /**
  * Called with {@link EntityProjectile#shoot(Point, double, double)}
+ * <p>
+ * The entity is the shooter, or the projectile itself when it has none.
  */
 public class EntityShootEvent implements EntityInstanceEvent, CancellableEvent {
 

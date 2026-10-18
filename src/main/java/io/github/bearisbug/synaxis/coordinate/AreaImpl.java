@@ -21,16 +21,19 @@ final class AreaImpl {
 
     static Area.Cuboid cube(Point center, int size) {
         Check.argCondition(size < 0, "Cube size must be non-negative: {0}", size);
-        return new Cuboid(
-                center.sub((double) size / 2).asBlockVec(),
-                center.add((double) size / 2).asBlockVec());
+        final BlockVec block = center.asBlockVec();
+        final int radius = size / 2;
+        return new Cuboid(block.sub(radius, radius, radius), block.add(radius, radius, radius));
     }
 
     static Area.Cuboid box(Point center, Point size) {
         Check.argCondition(size.x() < 0 || size.y() < 0 || size.z() < 0,
                 "Box size must be non-negative on each axis: ({0}, {1}, {2})", size.x(), size.y(), size.z());
-        final Point half = size.div(2);
-        return new Cuboid(center.sub(half).asBlockVec(), center.add(half).asBlockVec());
+        final BlockVec block = center.asBlockVec();
+        final int radiusX = (int) Math.floor(size.x() / 2);
+        final int radiusY = (int) Math.floor(size.y() / 2);
+        final int radiusZ = (int) Math.floor(size.z() / 2);
+        return new Cuboid(block.sub(radiusX, radiusY, radiusZ), block.add(radiusX, radiusY, radiusZ));
     }
 
     record Single(BlockVec point) implements Area.Single {

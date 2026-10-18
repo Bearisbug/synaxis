@@ -112,6 +112,16 @@ public class EntityFinder {
         return this;
     }
 
+    /**
+     * Keeps only the entities in the volume from the start position to the start position plus the offsets,
+     * like the {@code dx}, {@code dy} and {@code dz} arguments of a target selector. A negative offset extends
+     * the volume towards the negative side.
+     *
+     * @param dx the offset on the X axis
+     * @param dy the offset on the Y axis
+     * @param dz the offset on the Z axis
+     * @return this finder
+     */
     public EntityFinder setDifference(float dx, float dy, float dz) {
         this.dx = dx;
         this.dy = dy;
@@ -162,17 +172,17 @@ public class EntityFinder {
                 final var entityPosition = entity.getPosition();
                 if (dx != null && !MathUtils.isBetweenUnordered(
                         entityPosition.x(),
-                        pos.x(), dx))
+                        pos.x(), pos.x() + dx))
                     return false;
 
                 if (dy != null && !MathUtils.isBetweenUnordered(
                         entityPosition.y(),
-                        pos.y(), dy))
+                        pos.y(), pos.y() + dy))
                     return false;
 
                 if (dz != null && !MathUtils.isBetweenUnordered(
                         entityPosition.z(),
-                        pos.z(), dz))
+                        pos.z(), pos.z() + dz))
                     return false;
 
                 return true;
@@ -257,7 +267,15 @@ public class EntityFinder {
             if (effectiveSort == EntitySort.RANDOM) {
                 Collections.shuffle(sorted);
             } else {
-                sorted.sort(effectiveSort == EntitySort.NEAREST ? nearestFirst : nearestFirst.reversed());
+                // Each distance read once: entities move on their own threads, a comparator reading their position
+                // again could see it change mid sort and break the sort contract
+                record Ranked(Entity entity, double distanceSquared) {}
+                final List<Ranked> ranked = new ArrayList<>(sorted.size());
+                for (Entity entity : sorted) ranked.add(new Ranked(entity, entity.getDistanceSquared(pos)));
+                final Comparator<Ranked> byDistance = Comparator.comparingDouble(Ranked::distanceSquared);
+                ranked.sort(effectiveSort == EntitySort.NEAREST ? byDistance : byDistance.reversed());
+                sorted.clear();
+                for (Ranked entry : ranked) sorted.add(entry.entity());
             }
 
             result = effectiveLimit != null && sorted.size() > effectiveLimit

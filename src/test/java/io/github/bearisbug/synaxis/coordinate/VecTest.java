@@ -223,6 +223,15 @@ public class VecTest {
         Vec unit = new Vec(1, 0, 0);
         Vec normalizedUnit = unit.normalize();
         assertEquals(1.0, normalizedUnit.length(), EPSILON);
+
+        // A zero vector has no direction, it normalizes to itself
+        assertEquals(Vec.ZERO, Vec.ZERO.normalize());
+    }
+
+    @Test
+    public void testRotateAroundZeroAxis() {
+        Vec vec = new Vec(1, 2, 3);
+        assertEquals(vec, vec.rotateAroundAxis(Vec.ZERO, Math.PI / 3));
     }
 
     @Test

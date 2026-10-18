@@ -9,24 +9,29 @@ import io.github.bearisbug.synaxis.event.entity.EntityShootEvent;
 import io.github.bearisbug.synaxis.event.entity.projectile.ProjectileCollideWithBlockEvent;
 import io.github.bearisbug.synaxis.event.entity.projectile.ProjectileCollideWithEntityEvent;
 import io.github.bearisbug.synaxis.event.entity.projectile.ProjectileUncollideEvent;
-import io.github.bearisbug.synaxis.instance.Chunk;
+import io.github.bearisbug.synaxis.instance.EntityTracker;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.thread.Acquirable;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Optional;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Class that allows to instantiate entities with projectile-like physics handling.
  */
 public class EntityProjectile extends Entity {
+    /**
+     * The shortest step between the points where a moving projectile is checked for hits, half the width of
+     * its box otherwise: a box without width would never move from its first point.
+     */
+    private static final double MIN_STEP = 0.125;
 
     private final Entity shooter;
     private boolean wasStuck;
@@ -35,15 +40,8 @@ public class EntityProjectile extends Entity {
     public EntityProjectile(@Nullable Entity shooter, EntityType entityType) {
         super(entityType);
         this.shooter = shooter;
-        setup();
-    }
-
-    @SuppressWarnings("this-escape") // deliberate self registration during construction
-    private void setup() {
-        super.hasPhysics = false;
-        if (getEntityMeta() instanceof ProjectileMeta) {
-            ((ProjectileMeta) getEntityMeta()).setShooter(this.shooter);
-        }
+        this.hasPhysics = false;
+        if (getEntityMeta() instanceof ProjectileMeta meta) meta.setShooter(shooter);
     }
 
     @Nullable
@@ -51,18 +49,36 @@ public class EntityProjectile extends Entity {
         return this.shooter;
     }
 
+    /**
+     * Shoots the projectile at a point, from the eyes of its shooter or, without one, from its own position.
+     * <p>
+     * Calls {@link EntityShootEvent} first: the projectile is removed if it is cancelled, and is shot with the
+     * power and spread the listeners left.
+     *
+     * @param to     the point to shoot at
+     * @param power  the speed in blocks per tick, times the ticks per second for the velocity in blocks per second
+     * @param spread the inaccuracy: times 0.0075, the standard deviation of the gaussian noise added to each axis
+     *               of the unit direction
+     * @throws IllegalArgumentException if the power or spread is not finite, or the projectile has no direction to
+     *                                  go, such as a point at its starting position
+     */
     public void shoot(Point to, double power, double spread) {
-        final EntityShootEvent shootEvent = new EntityShootEvent(this.shooter, this, to, power, spread);
+        final Entity source = this.shooter != null ? this.shooter : this;
+        final EntityShootEvent shootEvent = new EntityShootEvent(source, this, to, power, spread);
         callEvent(shootEvent);
         if (shootEvent.isCancelled()) {
             remove();
             return;
         }
-        final Pos from = this.shooter.getPosition().add(0D, this.shooter.getEyeHeight(), 0D);
+        final Pos from = this.shooter != null
+                ? this.shooter.getPosition().add(0D, this.shooter.getEyeHeight(), 0D)
+                : getPosition();
         shoot(from, to, shootEvent.getPower(), shootEvent.getSpread());
     }
 
     private void shoot(Point from, Point to, double power, double spread) {
+        Check.argCondition(!Double.isFinite(power) || !Double.isFinite(spread),
+                "Power and spread must be finite: {0}, {1}", power, spread);
         double dx = to.x() - from.x();
         double dy = to.y() - from.y();
         double dz = to.z() - from.z();
@@ -72,6 +88,7 @@ public class EntityProjectile extends Entity {
         }
 
         final double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        Check.argCondition(length == 0, "No direction to shoot from {0} to {1}", from, to);
         dx /= length;
         dy /= length;
         dz /= length;
@@ -93,7 +110,7 @@ public class EntityProjectile extends Entity {
     public void tick(long time) {
         final Pos posBefore = getPosition();
         super.tick(time);
-        if (super.isRemoved()) return;
+        if (isRemoved()) return;
         // Outside the simulation distance only the scheduler runs (docs/DESIGN-M3.md ADR-M3-017)
         if (outsideSimulation()) return;
 
@@ -101,29 +118,33 @@ public class EntityProjectile extends Entity {
         boolean isStuck = isStuck(posBefore, posNow);
         if (isRemoved()) return;
         if (isStuck) {
-            if (super.onGround) {
-                return;
-            }
-            super.onGround = true;
+            // The movement clears it every tick: set it again, between ticks isOnGround() tells the projectile
+            // is stuck (docs/DESIGN-M3.md ADR-M3-017)
+            onGround = true;
+            if (wasStuck) return;
+            wasStuck = true;
             this.velocity = Vec.ZERO;
             sendPacketToViewersAndSelf(getVelocityPacket());
             setNoGravity(true);
-            wasStuck = true;
         } else {
             if (!wasStuck) return;
             wasStuck = false;
-            setNoGravity(super.onGround);
-            super.onGround = false;
+            onGround = false;
+            setNoGravity(false);
             callEvent(new ProjectileUncollideEvent(this));
         }
     }
 
     /**
-     * Checks whether an arrow is stuck in block / hit an entity.
+     * Moves through the points between the two positions, checking each for a block to get stuck in and for
+     * an entity to hit, and calls the collision events.
+     * <p>
+     * Hitting an entity only calls {@link ProjectileCollideWithEntityEvent}: the projectile neither stops nor is
+     * removed, it keeps flying. A target whose hit was cancelled is skipped at the next points of this tick.
      *
      * @param pos    position right before current tick.
      * @param posNow position after current tick.
-     * @return if an arrow is stuck in block / hit an entity.
+     * @return if the projectile is stuck in a block
      */
     @SuppressWarnings("ConstantConditions")
     private boolean isStuck(Pos pos, Pos posNow) {
@@ -132,21 +153,23 @@ public class EntityProjectile extends Entity {
             return instance.getBlock(pos).solid();
         }
 
-        Chunk chunk = null;
-        Set<LivingEntity> entities = null;
         final BoundingBox bb = getBoundingBox();
 
         /*
           What we're about to do is to discretely jump from a previous position to the new one.
           For each point we will be checking blocks and entities we're in.
          */
-        final double part = bb.width() / 2;
+        final double part = Math.max(bb.width() / 2, MIN_STEP);
         final Vec dir = posNow.sub(pos).asVec();
         final int parts = (int) Math.ceil(dir.length() / part);
         final Pos direction = dir.normalize().mul(part).asPos();
         final long aliveTicks = getAliveTicks();
         Block block = null;
         Point blockPos = null;
+        // The entities of the chunk of the point, an entity whose box reaches into it from another chunk is not hit
+        Collection<Entity> candidates = null;
+        Point candidatesAt = null;
+        List<Entity> ignored = null;
         for (int i = 0; i < parts; ++i) {
             // If we're at last part, we can't just add another direction-vector, because we can exceed the end point.
             pos = (i == parts - 1) ? posNow : pos.add(direction);
@@ -163,32 +186,28 @@ public class EntityProjectile extends Entity {
                     return true;
                 }
             }
-            if (currentChunk != chunk) {
-                chunk = currentChunk;
-                entities = instance.getChunkEntities(chunk)
-                        .stream()
-                        .filter(entity -> entity instanceof LivingEntity)
-                        .map(entity -> (LivingEntity) entity)
-                        .collect(Collectors.toSet());
+            if (candidates == null || !pos.sameChunk(candidatesAt)) {
+                candidates = instance.getEntityTracker().chunkEntities(pos, EntityTracker.Target.ENTITIES);
+                candidatesAt = pos;
             }
-            final Point currentPos = pos;
-            Stream<LivingEntity> victimsStream = entities.stream()
-                    .filter(entity -> bb.intersectEntity(currentPos, entity));
-            /*
-              We won't check collisions with a shooter for first ticks of arrow's life, because it spawns in him
-              and will immediately deal damage.
-             */
-            if (aliveTicks < 3 && shooter != null) {
-                victimsStream = victimsStream.filter(entity -> entity != shooter);
+            LivingEntity target = null;
+            for (Entity entity : candidates) {
+                /*
+                  We won't check collisions with a shooter for first ticks of arrow's life, because it spawns in him
+                  and will immediately deal damage.
+                 */
+                if (entity instanceof LivingEntity living && !(aliveTicks < 3 && entity == shooter)
+                        && (ignored == null || !ignored.contains(entity)) && bb.intersectEntity(pos, entity)) {
+                    target = living;
+                    break;
+                }
             }
-            final Optional<LivingEntity> victimOptional = victimsStream.findAny();
-            if (victimOptional.isPresent()) {
-                final LivingEntity target = victimOptional.get();
+            if (target != null) {
                 final ProjectileCollideWithEntityEvent event = new ProjectileCollideWithEntityEvent(this, pos, target);
                 callEvent(event);
-                if (!event.isCancelled()) {
-                    return super.onGround;
-                }
+                if (!event.isCancelled()) return false;
+                if (ignored == null) ignored = new ArrayList<>();
+                ignored.add(target);
             }
         }
         return false;

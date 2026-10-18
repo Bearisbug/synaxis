@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.entity;
 
 import io.github.bearisbug.synaxis.command.ServerSender;
 import io.github.bearisbug.synaxis.command.builder.arguments.minecraft.ArgumentEntity;
+import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.utils.Range;
@@ -10,6 +11,7 @@ import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -221,5 +223,52 @@ public class EntityFinderIntegrationTest {
                 .setLimit(2);
 
         assertEquals(List.of(fourth, third), finder.find(env.process(), instance, null));
+    }
+
+    @Test
+    public void differenceIsAnOffsetFromTheStart(Env env) {
+        var instance = env.createFlatInstance();
+        instance.loadChunk(new Pos(50, 40, 50)).join();
+        instance.loadChunk(new Pos(102, 40, 102)).join();
+        var inside = new Entity(EntityType.ZOMBIE);
+        inside.setInstance(instance, new Pos(102, 42, 102)).join();
+        var between = new Entity(EntityType.ZOMBIE);
+        between.setInstance(instance, new Pos(50, 40, 50)).join();
+
+        var finder = new EntityFinder()
+                .setTargetSelector(EntityFinder.TargetSelector.ALL_ENTITIES)
+                .setStartPosition(new Pos(100, 40, 100))
+                .setDifference(5, 5, 5);
+
+        assertEquals(List.of(inside), finder.find(env.process(), instance, null));
+    }
+
+    @Test
+    public void sortReadsEachDistanceOnce(Env env) {
+        var instance = env.createFlatInstance();
+        var reads = new AtomicInteger();
+        for (int i = 0; i < 64; i++) {
+            var entity = new Entity(EntityType.ZOMBIE) {
+                @Override
+                public double getDistanceSquared(Point point) {
+                    reads.incrementAndGet();
+                    return super.getDistanceSquared(point);
+                }
+            };
+            final int row = i / 8;
+            entity.setInstance(instance, ORIGIN.add(i % 8, 0, row)).join();
+        }
+
+        var finder = createFinder(EntityFinder.TargetSelector.ALL_ENTITIES)
+                .setEntitySort(EntityFinder.EntitySort.NEAREST)
+                .setLimit(10);
+        reads.set(0);
+        var found = finder.find(env.process(), instance, null);
+
+        assertEquals(10, found.size());
+        assertEquals(64, reads.get());
+        for (int i = 1; i < found.size(); i++) {
+            assertTrue(found.get(i - 1).getPosition().distanceSquared(ORIGIN) <= found.get(i).getPosition().distanceSquared(ORIGIN));
+        }
     }
 }

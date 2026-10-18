@@ -5,7 +5,10 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 import io.github.bearisbug.synaxis.instance.Chunk;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -51,7 +54,53 @@ public class CoordinateTest {
         assertEquals(121, ChunkRange.chunksCount(5));
         assertEquals(9, ChunkRange.chunksCount(1));
         assertEquals(1, ChunkRange.chunksCount(0));
-        assertThrows(IllegalArgumentException.class, () -> ChunkRange.chunksCount(-1));
+        var negative = assertThrows(IllegalArgumentException.class, () -> ChunkRange.chunksCount(-1));
+        assertTrue(negative.getMessage().contains("-1"), negative.getMessage());
+    }
+
+    @Test
+    public void chunksInRangeVisitsTheSquareOnce() {
+        for (int range = 0; range <= 5; range++) {
+            final int r = range;
+            LongSet visited = new LongOpenHashSet();
+            ChunkRange.chunksInRange(3, -2, r, (x, z) -> {
+                assertTrue(Math.abs(x - 3) <= r && Math.abs(z + 2) <= r, () -> x + ", " + z + " outside range " + r);
+                assertTrue(visited.add(CoordConversion.chunkIndex(x, z)), () -> x + ", " + z + " visited twice");
+            });
+            assertEquals(ChunkRange.chunksCount(r), visited.size());
+        }
+    }
+
+    @Test
+    public void chunksInRangeWithANegativeRangeVisitsNothing() {
+        List<Long> visited = new ArrayList<>();
+        ChunkRange.chunksInRange(0, 0, -1, (x, z) -> visited.add(CoordConversion.chunkIndex(x, z)));
+        ChunkRange.chunksInRange(0, 0, -2, (x, z) -> visited.add(CoordConversion.chunkIndex(x, z)));
+        ChunkRange.chunksInRangeDiffering(1, 0, 0, 0, -1,
+                (x, z) -> visited.add(CoordConversion.chunkIndex(x, z)),
+                (x, z) -> visited.add(CoordConversion.chunkIndex(x, z)));
+        assertEquals(List.of(), visited);
+    }
+
+    @Test
+    public void chunksInRangeRefusesARangeItsCountOverflows() {
+        var tooLarge = assertThrows(IllegalArgumentException.class,
+                () -> ChunkRange.chunksInRange(0, 0, 23170, (_, _) -> {}));
+        assertTrue(tooLarge.getMessage().contains("23170"), tooLarge.getMessage());
+        var differing = assertThrows(IllegalArgumentException.class,
+                () -> ChunkRange.chunksInRangeDiffering(0, 0, 0, 0, 23170, (_, _) -> {}, (_, _) -> {}));
+        assertTrue(differing.getMessage().contains("23170"), differing.getMessage());
+    }
+
+    @Test
+    public void chunksInRangeDifferingSplitsEnteringAndLeaving() {
+        Set<Long> entering = new HashSet<>();
+        Set<Long> leaving = new HashSet<>();
+        ChunkRange.chunksInRangeDiffering(1, 0, 0, 0, 1,
+                (x, z) -> entering.add(CoordConversion.chunkIndex(x, z)),
+                (x, z) -> leaving.add(CoordConversion.chunkIndex(x, z)));
+        assertEquals(Set.of(CoordConversion.chunkIndex(2, -1), CoordConversion.chunkIndex(2, 0), CoordConversion.chunkIndex(2, 1)), entering);
+        assertEquals(Set.of(CoordConversion.chunkIndex(-1, -1), CoordConversion.chunkIndex(-1, 0), CoordConversion.chunkIndex(-1, 1)), leaving);
     }
 
     @Test

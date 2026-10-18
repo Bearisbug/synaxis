@@ -237,8 +237,9 @@ public record Vec(double x, double y, double z) implements Point {
     }
 
     @Override
-    @Contract(pure = true, value = "-> new")
+    @Contract(pure = true)
     public Vec normalize() {
+        if (lengthSquared() == 0) return ZERO;
         final double length = length();
         return new Vec(x / length, y / length, z / length);
     }
@@ -387,16 +388,18 @@ public record Vec(double x, double y, double z) implements Point {
      * not modify the length of the vector when rotating. If you are experienced
      * with the scaling of a non-unit axis vector, you can use
      * {@link Vec#rotateAroundNonUnitAxis(Vec, double)}.
+     * <p>
+     * A zero axis has no direction to rotate around: this vector is returned unchanged.
      *
      * @param axis  the axis to rotate the vector around. If the passed vector is
      *              not of length 1, it gets copied and normalized before using it for the
-     *              rotation. Please use {@link Vec#normalize()} on the instance before
-     *              passing it to this method
+     *              rotation
      * @param angle the angle to rotate the vector around the axis
-     * @return a new vector
+     * @return the rotated vector
      */
-    @Contract(pure = true, value = "_, _ -> new")
-    public Vec rotateAroundAxis(Vec axis, double angle) throws IllegalArgumentException {
+    @Contract(pure = true)
+    public Vec rotateAroundAxis(Vec axis, double angle) {
+        if (axis.isZero()) return this;
         return rotateAroundNonUnitAxis(axis.isNormalized() ? axis : axis.normalize(), angle);
     }
 

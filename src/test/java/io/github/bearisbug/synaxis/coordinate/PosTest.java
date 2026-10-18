@@ -150,10 +150,45 @@ public class PosTest {
         pos = base.withDirection(new Vec(0, -10, 0));
         assertEquals(90f, pos.pitch(), 0.001f);
 
-        // Look at itself (edge case - x=0, z=0)
-        pos = base.withDirection(Vec.ZERO);
-        // Should default to looking down
-        assertEquals(90f, pos.pitch(), 0.001f);
+        // A zero direction keeps the view
+        Pos viewed = new Pos(0, 0, 0, 37f, 12f);
+        assertEquals(viewed, viewed.withDirection(Vec.ZERO));
+
+        // The direction is not a target point: the position does not change the view
+        pos = new Pos(100, 0, 100).withDirection(new Vec(1, 0, 0));
+        assertEquals(-90f, pos.yaw(), 0.001f);
+        assertEquals(0f, pos.pitch(), 0.001f);
+    }
+
+    @Test
+    public void testWithDirectionYaw() {
+        Pos base = new Pos(0, 0, 0);
+        assertAngle(-90, base.withDirection(new Vec(10, 0, 0)).yaw());
+        assertAngle(0, base.withDirection(new Vec(0, 0, 10)).yaw());
+        assertAngle(90, base.withDirection(new Vec(-10, 0, 0)).yaw());
+        assertAngle(-180, base.withDirection(new Vec(1E-5, 0, -10)).yaw());
+        assertAngle(180, base.withDirection(new Vec(-1E-5, 0, -10)).yaw());
+        assertAngle(135, base.withDirection(new Vec(-5, 0, -5)).yaw());
+        assertAngle(-45, base.withDirection(new Vec(5, 0, 5)).yaw());
+    }
+
+    @Test
+    public void testWithDirectionPitch() {
+        Pos base = new Pos(0, 0, 0);
+        assertEquals(-90, base.withDirection(new Vec(0, 999999, 0)).pitch(), 1E-5);
+        assertEquals(90, base.withDirection(new Vec(0, -999999, 0)).pitch(), 1E-5);
+        assertEquals(0, base.withDirection(new Vec(-5, 0, 5)).pitch(), 1E-5);
+        assertEquals(-45, base.withDirection(new Vec(5, 5, 0)).pitch(), 1E-5);
+        // The horizontal distance is euclidean: 35.26° rather than 45° along a diagonal
+        assertEquals(35.264, base.withDirection(new Vec(1, -1, 1)).pitch(), 0.001);
+    }
+
+    /**
+     * Compares two yaws as angles, -180 and 180 being the same direction.
+     */
+    private static void assertAngle(double expected, float actual) {
+        final double difference = Math.abs(((actual - expected) % 360 + 540) % 360 - 180);
+        assertTrue(difference < 1E-4, () -> "expected the angle " + expected + " but was " + actual);
     }
 
     @Test
@@ -399,6 +434,8 @@ public class PosTest {
         assertTrue(normalized.isNormalized());
         assertEquals(45f, normalized.yaw());
         assertEquals(30f, normalized.pitch());
+        // A zero vector normalizes to itself and keeps the view
+        assertEquals(new Pos(0, 0, 0, 45f, 30f), new Pos(0, 0, 0, 45f, 30f).normalize());
 
         // Test cross
         Pos other = new Pos(1, 0, 0);

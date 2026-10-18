@@ -59,6 +59,35 @@ public class EntityBlockTouchTickIntegrationTest {
     }
 
     @Test
+    public void entityOnTheCornerOfABlockTouchesIt(Env env) {
+        var instance = env.createFlatInstance();
+
+        Set<Point> positions = new HashSet<>();
+        var handler = new BlockHandler() {
+            @Override
+            public void onTouch(Touch touch) {
+                assertTrue(positions.add(touch.getBlockPosition()));
+            }
+
+            @Override
+            public Key getKey() {
+                return Key.key("synaxis:test");
+            }
+        };
+
+        instance.setBlock(0, 42, 0, Block.STONE.withHandler(handler));
+        instance.setBlock(0, 42, 10, Block.STONE.withHandler(handler));
+
+        // The entity position is the block position: the offset towards the block has no direction
+        var entity = new Entity(EntityType.ZOMBIE);
+        entity.setInstance(instance, new Pos(0, 42, 0)).join();
+
+        entity.tick(0);
+
+        assertEquals(Set.of(new Vec(0, 42, 0)), positions);
+    }
+
+    @Test
     public void entityPhysicsCheckTouchTickFarZ(Env env) {
         var instance = env.createFlatInstance();
         instance.loadChunk(new Pos(1000, 1000, 1000)).join();

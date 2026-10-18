@@ -20,6 +20,18 @@ public record BoundingBox(Vec relativeStart, Vec relativeEnd) implements Shape {
 
     final static BoundingBox ZERO = new BoundingBox(Vec.ZERO, Vec.ZERO);
 
+    /**
+     * Creates a bounding box from its minimum and maximum corners.
+     *
+     * @throws IllegalArgumentException if the start exceeds the end on an axis, or a coordinate is NaN
+     */
+    public BoundingBox {
+        if (!(relativeStart.x() <= relativeEnd.x()) || !(relativeStart.y() <= relativeEnd.y())
+                || !(relativeStart.z() <= relativeEnd.z())) {
+            throw new IllegalArgumentException("Bounding box start " + relativeStart + " exceeds its end " + relativeEnd);
+        }
+    }
+
     public BoundingBox(double width, double height, double depth, Point offset) {
         this(offset.asVec(), new Vec(width, height, depth).add(offset));
     }

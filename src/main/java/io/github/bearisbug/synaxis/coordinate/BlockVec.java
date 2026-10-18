@@ -520,8 +520,9 @@ public record BlockVec(int blockX, int blockY, int blockZ) implements Point {
     }
 
     @Override
-    @Contract(pure = true, value = "-> new")
+    @Contract(pure = true)
     public Vec normalize() {
+        if (lengthSquared() == 0) return Vec.ZERO;
         final double length = length();
         return new Vec(blockX / length, blockY / length, blockZ / length);
     }

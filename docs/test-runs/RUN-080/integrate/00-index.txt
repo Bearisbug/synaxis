@@ -6,10 +6,10 @@ groups in this order, then one commit with the documents and the test change bel
   31a18bae14  prod/r080-THREAD   6d54c41bce   v0.9.86   (../THREAD/)
   10cd0679b2  prod/r080-WORLD    52d65ce221   v0.9.87
   d2fd64afc3  prod/r080-CODEC    5050891717   v0.9.88   (../CODEC/)
-  c14785796e  prod/r080-ITEMNET  c1874f533e   v0.9.89   (../ITEMNET/)
-  4a720b584b  prod/r080-CMD      ea88f12a54   v0.9.90   (../CMD/)
-  c19e0ae447  prod/r080-STORE    0f65cc45f0   v0.9.91   (../STORE/)
-  ac615c4616  prod/r080-HOST     603db50dd0   docs/DESIGN-PLAY.md v0.19
+  5923dbba79  prod/r080-ITEMNET  795004a1d7   v0.9.89   (../ITEMNET/)
+  1257651dfe  prod/r080-CMD      ea88f12a54   v0.9.90   (../CMD/)
+  695e53ab64  prod/r080-STORE    0f65cc45f0   v0.9.91   (../STORE/)
+  03cff66a05  prod/r080-HOST     603db50dd0   docs/DESIGN-PLAY.md v0.19
 The documents of the integration are docs/DESIGN-PROD.md v0.9.92 and docs/DESIGN-PLAY.md v0.20.
 
 Code and test files after the merges: equal to the group's branch for every file only one group changed. Two code
@@ -60,7 +60,7 @@ draft PR; RUN-080 is registered in docs/TEST.md section 6 after them.
 
 On the draft PR #33 (GitHub Actions; times local, UTC+8, 2026-10-18).
 
-First round, head 103580c554:
+First round, head c42208b6b2:
   CI run 39098644263, attempt 1, 12:53-13:05: Check, Test with 4 tick threads (strict) and Test with 4 tick threads
   (strict, grid) all failure, one failed test each, the same one in all three: loadtest BotSocketTest
   aGateBotInConfigurationAtTheFrameTimesItsTryFromTheFirstPositionItSends (TC-WORLD-074) at BotSocketTest.java:303,
@@ -72,12 +72,12 @@ First round, head 103580c554:
 Cause and fix: after a reconfiguration the second spawn ran on the thread draining the waiting players and wrote the
   player's health while the player was still assigned to the tick thread of its first spawn; with assertions or the
   strict acquirable mode the ownership assertion threw, the spawn failed and the bot was kicked with
-  synaxis:internal-error. 6a6775d59b: Player#UNSAFE_init spawns a player that already has a tick thread on the hold of
+  synaxis:internal-error. 8000c5b332: Player#UNSAFE_init spawns a player that already has a tick thread on the hold of
   that thread; PlayerReconfigurationIntegrationTest 1 -> 2 tests, docs/TEST.md TC-PROD-797 (its steps 2 to 4 hold the
-  red before the change and the local runs). b98ccffdaf moves the Player.java line numbers in the documents,
-  b587b2c9d7 rewrites ../ITEMNET/01-javap-26.2.txt; neither changes code.
+  red before the change and the local runs). cc435b7b36 moves the Player.java line numbers in the documents and
+  does not change code.
 
-Judged on 6a6775d59b, attempt 1 of every workflow, 13:26-13:44:
+Judged on 8000c5b332, attempt 1 of every workflow, 13:26-13:44:
   CI 39100543872: Check (./gradlew check jacocoTestReport with the database variables, BUILD SUCCESSFUL in 14m 50s;
     ABI gate success; diff coverage 399 lines, 18 missing, 95%, gate 80%), Test with 4 tick threads (strict)
     (BUILD SUCCESSFUL in 17m 5s), Test with 4 tick threads (strict, grid) (BUILD SUCCESSFUL in 17m 30s): success
@@ -114,6 +114,12 @@ Rush job (5 min 50 s): judge unit tests Ran 36 tests, OK; Q0a to Q9 PASS in both
 Client gametests: client regression: all checks passed; report 8 PASS; playable.txt core 10 PASS, rts 5 PASS.
 P11 smoke (TC-PROD-742): p10.py unit tests Ran 48 tests; 11 checks ok; P10: all checks passed.
 Later heads change documents and evidence only; all four workflows success on attempt 1:
-  b98ccffdaf: CI 39100776850, Client mod 39100776859, Concurrency 39100776841, Client gametest 39100776833
-  b587b2c9d7: CI 39100886382, Client mod 39100886348, Concurrency 39100886472, Client gametest 39100886324
+  cc435b7b36: CI 39100776850, Client mod 39100776859, Concurrency 39100776841, Client gametest 39100776833
 RUN-080 is registered in docs/TEST.md section 6: passed 49/49.
+
+Commit ids in the GitHub Actions runs: the runs above record the head as pushed at the time. The branch was
+pushed again afterwards with ../ITEMNET/01-javap-26.2.txt holding only the conclusions and how to reproduce them,
+from the commit that added it on; code is identical. Run head -> commit on this branch:
+  103580c554 -> c42208b6b2   (CI 39098644263, Concurrency 39098644256, Client gametest 39098644336, Client mod 39098644356)
+  6a6775d59b -> 8000c5b332   (CI 39100543872, Concurrency 39100543884, Client gametest 39100543809, Client mod 39100543821)
+  b98ccffdaf -> cc435b7b36   (CI 39100776850, Client mod 39100776859, Concurrency 39100776841, Client gametest 39100776833)

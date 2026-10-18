@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
@@ -192,5 +193,16 @@ public class EntityLineOfSightIntegrationTest {
         assertNull(entity2.getLineOfSightEntity(20, (_) -> true));
         assertFalse(entity2.hasLineOfSight(entity, true));
         assertTrue(entity2.hasLineOfSight(entity, false));
+    }
+
+    @Test
+    public void aLineOfSightNeedsAPositiveDistance(Env env) {
+        var instance = env.createFlatInstance();
+        var entity = new Entity(EntityTypes.ZOMBIE);
+        entity.setInstance(instance, new Pos(0, 42, 0)).join();
+
+        // Unbounded, the scan runs until it leaves the loaded chunks, or forever looking straight up
+        assertThrows(IllegalArgumentException.class, () -> entity.getLineOfSight(0));
+        assertThrows(IllegalArgumentException.class, () -> entity.getLineOfSight(-1));
     }
 }

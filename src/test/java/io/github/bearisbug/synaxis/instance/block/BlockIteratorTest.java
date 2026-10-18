@@ -9,6 +9,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BlockIteratorTest {
@@ -381,5 +382,16 @@ public class BlockIteratorTest {
 
         for (int y = 42; y >= 27; --y) assertEquals(new Vec(0, y, 0), iterator.next());
         assertFalse(iterator.hasNext());
+    }
+
+    @Test
+    public void aMaxDistanceThatIsNegativeOrNotFiniteIsRefused() {
+        final Vec start = new Vec(0.5, 0.5, 0.5);
+        final Vec direction = new Vec(1, 0, 0);
+        // Either would never reach its end: behind the ray, or nowhere
+        assertThrows(IllegalArgumentException.class, () -> new BlockIterator(start, direction, 0, -1));
+        assertThrows(IllegalArgumentException.class, () -> new BlockIterator(start, direction, 0, Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> new BlockIterator(start, direction, 0, Double.POSITIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class, () -> new BlockIterator().reset(start, direction, 0, -1, false));
     }
 }

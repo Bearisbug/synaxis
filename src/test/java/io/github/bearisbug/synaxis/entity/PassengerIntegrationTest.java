@@ -128,4 +128,40 @@ public class PassengerIntegrationTest {
         Pos assumedPosition = vehicle.getPosition().add(passengerAttachment).sub(vehicleAttachment);
         assertEquals(passenger.getPosition(), assumedPosition);
     }
+
+    @Test
+    public void aChestBoatSeatsItsSinglePassengerOffCentre(Env env) {
+        var instance = env.createFlatInstance();
+        var boat = new Entity(EntityType.OAK_CHEST_BOAT);
+        boat.setInstance(instance, new Pos(0.5, 40, 0.5)).join();
+        var passenger = new Entity(EntityType.ZOMBIE);
+        passenger.setInstance(instance, new Pos(0.5, 40, 0.5)).join();
+
+        boat.addPassenger(passenger);
+
+        // As AbstractChestBoat: the chest takes the back of the boat, the passenger sits 0.15 forward
+        assertEquals(0.15, passenger.getPosition().z() - boat.getPosition().z(), 1e-9);
+    }
+
+    @Test
+    public void aBoatSeatsTwoPassengersFrontAndBack(Env env) {
+        var instance = env.createFlatInstance();
+        for (EntityType type : List.of(EntityType.OAK_BOAT, EntityType.OAK_CHEST_BOAT)) {
+            // Mid chunk: the back seat is behind the boat
+            var boat = new Entity(type);
+            boat.setInstance(instance, new Pos(8.5, 40, 8.5)).join();
+            var front = new Entity(EntityType.ZOMBIE);
+            front.setInstance(instance, new Pos(8.5, 40, 8.5)).join();
+            var back = new Entity(EntityType.ZOMBIE);
+            back.setInstance(instance, new Pos(8.5, 40, 8.5)).join();
+            boat.addPassenger(front);
+            boat.addPassenger(back);
+
+            // Moving the boat seats both again, now that it carries two
+            boat.moveTo(new Pos(8.75, 40, 8.5));
+
+            assertEquals(0.2, front.getPosition().z() - boat.getPosition().z(), 1e-9, type.name());
+            assertEquals(-0.6, back.getPosition().z() - boat.getPosition().z(), 1e-9, type.name());
+        }
+    }
 }

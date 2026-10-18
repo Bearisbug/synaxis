@@ -102,6 +102,7 @@ import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -306,13 +307,14 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.eventNode = process.eventHandler().map(this, EventFilter.ENTITY);
         this.process = process;
         if (trackingRange != null) process.trackingRanges().markInUse();
-        this.synchronizationTicks = process.config().entitySynchronizationTicks();
+        // 0 is never set explicitly, see #setSynchronizationTicks: a period set before binding is kept
+        if (this.synchronizationTicks == 0) this.synchronizationTicks = process.config().entitySynchronizationTicks();
         this.nextSynchronizationTick = this.synchronizationTicks;
     }
 
     /**
-     * Gets the server process this entity belongs to, {@code null} until the entity is placed in an
-     * instance for the first time.
+     * Gets the server process this entity belongs to: bound at construction when created with a
+     * {@link ServerProcess}, otherwise when first placed in an instance, {@code null} until then.
      *
      * @return the server process
      */
@@ -1117,18 +1119,19 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     private void effectTick() {
         final List<TimedPotion> effects = this.effects;
         if (effects.isEmpty()) return;
-        effects.removeIf(timedPotion -> {
+        // Over a snapshot, the iterator of the copy-on-write list, each one taken out before its event: a
+        // listener may change the effects, which a removeIf running the event would fail on
+        for (Iterator<TimedPotion> iterator = effects.iterator(); iterator.hasNext(); ) {
+            final TimedPotion timedPotion = iterator.next();
             long duration = timedPotion.potion().duration();
-            if (duration == Potion.INFINITE_DURATION) return false;
+            if (duration == Potion.INFINITE_DURATION) continue;
             // Remove if the potion should be expired
-            if (getAliveTicks() >= timedPotion.startingTicks() + duration) {
+            if (getAliveTicks() >= timedPotion.startingTicks() + duration && effects.remove(timedPotion)) {
                 // Send the packet that the potion should no longer be applied
                 timedPotion.potion().sendRemovePacket(this);
                 callEvent(new EntityPotionRemoveEvent(this, timedPotion.potion()));
-                return true;
             }
-            return false;
-        });
+        }
     }
 
     /**
@@ -1187,7 +1190,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Returns false just after instantiation, set to true after calling {@link #setInstance(Instance)}.
+     * Returns false just after instantiation, set to true after calling {@link #setInstance(Instance)}, false
+     * again after {@link #remove()}.
      *
      * @return true if the entity has been linked to an instance, false otherwise
      */
@@ -1329,25 +1333,52 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * future turns such a failure into an entity that is in the world but untracked, without a
      * single line of log. While the chunk still has to load it must not be joined on the thread owning
      * the entity nor while holding an element, see {@link #teleport(Pos, Vec, long[], int, boolean)}
-     * @throws IllegalStateException if {@code instance} has not been registered in {@link InstanceManager}
+     * @throws IllegalStateException if {@code instance} has not been registered in {@link InstanceManager},
+     *                               or if this entity has been removed
      */
     public CompletableFuture<Void> setInstance(Instance instance, Pos spawnPosition) {
         this.acquirable.assertOwnership();
         Check.stateCondition(!instance.isRegistered(),
                 "Instances need to be registered, please use InstanceManager#registerInstance");
-        final Instance previousInstance = this.instance;
-        if (Objects.equals(previousInstance, instance)) {
+        if (Objects.equals(this.instance, instance)) {
             return teleport(spawnPosition); // Already in the instance, teleport to spawn point
         }
-        bindProcess(instance.process());
-        AddEntityToInstanceEvent event = new AddEntityToInstanceEvent(instance, this);
-        callEvent(event);
-        if (event.isCancelled()) {
+        if (!admitTo(instance)) {
             // The instance has not been set, callers chaining on the future must not proceed as if it had
             return CompletableFuture.failedFuture(
                     new IllegalStateException("AddEntityToInstanceEvent has been cancelled"));
         }
+        return setInstanceAdmitted(instance, spawnPosition);
+    }
 
+    /**
+     * The first step of {@link #setInstance(Instance, Pos)}: binds this entity to the process of
+     * {@code instance} and asks {@link AddEntityToInstanceEvent} whether it may enter, changing nothing else.
+     * A spawning player takes it before telling its client about the new instance.
+     *
+     * @param instance the instance to enter
+     * @return false if the event was cancelled
+     * @throws IllegalStateException if this entity has been removed: placed again, it would be active and in
+     *                               the instance, yet neither tracked nor ticked
+     */
+    @ApiStatus.Internal
+    protected final boolean admitTo(Instance instance) {
+        Check.stateCondition(isRemoved(),
+                "Entity {0} ({1}) has been removed and cannot be placed in an instance again, create a new entity",
+                getEntityId(), entityType.name());
+        bindProcess(instance.process());
+        final AddEntityToInstanceEvent event = new AddEntityToInstanceEvent(instance, this);
+        callEvent(event);
+        return !event.isCancelled();
+    }
+
+    /**
+     * The rest of {@link #setInstance(Instance, Pos)}, once {@link #admitTo(Instance)} let this entity in:
+     * leaves the previous instance and spawns in {@code instance} as soon as the chunk at
+     * {@code spawnPosition} is loaded.
+     */
+    CompletableFuture<Void> setInstanceAdmitted(Instance instance, Pos spawnPosition) {
+        final Instance previousInstance = this.instance;
         if (previousInstance != null) removeFromInstance(previousInstance);
         if (this instanceof Player player) instance.bossBars().forEach(player::showBossBar);
         EventsJFR.newInstanceJoin(getUuid(), instance.getUuid()).commit();
@@ -2057,19 +2088,20 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Removes effect from entity, if it has it.
+     * Removes effect from entity, if it has it. The {@link EntityPotionRemoveEvent} is dispatched once the
+     * effect is gone: its listeners see the entity without it, and may add effects.
      *
      * @param effect The effect to remove
      */
     public void removeEffect(PotionEffect effect) {
-        this.effects.removeIf(timedPotion -> {
-            if (timedPotion.potion().effect() == effect) {
+        // As in #effectTick, over a snapshot and taken out before its event
+        for (Iterator<TimedPotion> iterator = this.effects.iterator(); iterator.hasNext(); ) {
+            final TimedPotion timedPotion = iterator.next();
+            if (timedPotion.potion().effect() == effect && this.effects.remove(timedPotion)) {
                 timedPotion.potion().sendRemovePacket(this);
                 callEvent(new EntityPotionRemoveEvent(this, timedPotion.potion()));
-                return true;
             }
-            return false;
-        });
+        }
     }
 
     /**
@@ -2103,18 +2135,22 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Removes all the effects currently applied to the entity.
+     * Removes all the effects currently applied to the entity, each gone before its
+     * {@link EntityPotionRemoveEvent}. An effect a listener adds meanwhile is kept.
      */
     public void clearEffects() {
-        for (TimedPotion timedPotion : effects) {
+        // As in #effectTick, over a snapshot and taken out before its event
+        for (Iterator<TimedPotion> iterator = effects.iterator(); iterator.hasNext(); ) {
+            final TimedPotion timedPotion = iterator.next();
+            if (!effects.remove(timedPotion)) continue;
             timedPotion.potion().sendRemovePacket(this);
             callEvent(new EntityPotionRemoveEvent(this, timedPotion.potion()));
         }
-        this.effects.clear();
     }
 
     /**
-     * Removes the entity from the server immediately.
+     * Removes the entity from the server immediately. The removal is permanent: the entity cannot be placed in
+     * an instance again, create a new one.
      * <p>
      * WARNING: this does not trigger {@link EntityDeathEvent}.
      */
@@ -2122,6 +2158,15 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         remove(true);
     }
 
+    /**
+     * Removes the entity from the server immediately, see {@link #remove()}.
+     * <p>
+     * {@code permanent} false is for a player sent back to the configuration phase alone: its position is
+     * reset, yet {@link #isRemoved()} turns true all the same, and the caller resets it before placing the
+     * player in an instance again, see {@code Player#UNSAFE_init}.
+     *
+     * @param permanent false to reset the position, for a player that joins again
+     */
     protected synchronized void remove(boolean permanent) {
         this.acquirable.assertOwnership();
         if (isRemoved()) return;
@@ -2170,14 +2215,18 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Triggers {@link #remove()} after the specified time.
+     * Triggers {@link #remove()} after the specified time. A removal scheduled this way cannot be cancelled; to
+     * be able to, keep the task of {@code scheduler().buildTask(this::remove).delay(...).schedule()} instead.
      *
-     * @param delay        the time before removing the entity,
-     *                     0 to cancel the removing
+     * @param delay        the time before removing the entity, positive
      * @param temporalUnit the unit of the delay
+     * @throws IllegalArgumentException if {@code delay} is not positive, or more than {@link Integer#MAX_VALUE}
+     *                                  server ticks
      */
     public void scheduleRemove(long delay, TemporalUnit temporalUnit) {
+        Check.argCondition(delay <= 0, "scheduleRemove delay must be positive but was {0} {1}", delay, temporalUnit);
         if (temporalUnit == TimeUnit.SERVER_TICK) {
+            Check.argCondition(delay > Integer.MAX_VALUE, "scheduleRemove delay {0} ticks exceeds Integer.MAX_VALUE", delay);
             scheduleRemove(TaskSchedule.tick((int) delay));
         } else {
             scheduleRemove(Duration.of(delay, temporalUnit));
@@ -2185,11 +2234,13 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Triggers {@link #remove()} after the specified time.
+     * Triggers {@link #remove()} after the specified time, see {@link #scheduleRemove(long, TemporalUnit)}.
      *
-     * @param delay the time before removing the entity
+     * @param delay the time before removing the entity, positive
+     * @throws IllegalArgumentException if {@code delay} is not positive
      */
     public void scheduleRemove(Duration delay) {
+        Check.argCondition(delay.isZero() || delay.isNegative(), "scheduleRemove delay must be positive but was {0}", delay);
         scheduleRemove(TaskSchedule.duration(delay));
     }
 
@@ -2275,6 +2326,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     /**
      * Returns the current synchronization interval. The default value is {@link ServerConfig#entitySynchronizationTicks()}
      * but can be overridden per entity with {@link #setSynchronizationTicks(long)}.
+     * <p>
+     * 0 until the entity is bound to a process, see {@link #process()}, unless set explicitly.
      *
      * @return The current synchronization ticks
      */
@@ -2284,10 +2337,15 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
     /**
      * Set the tick period until this entity's position is synchronized.
+     * <p>
+     * Called on the tick thread of this entity, or before placing it in an instance: a period set before the
+     * entity is bound to a process is kept. The new period applies from the next synchronization on.
      *
-     * @param ticks the new synchronization tick period
+     * @param ticks the new synchronization tick period, at least 1
+     * @throws IllegalArgumentException if {@code ticks} is less than 1
      */
     public void setSynchronizationTicks(long ticks) {
+        Check.argCondition(ticks < 1, "synchronization ticks must be at least 1 but was {0}", ticks);
         this.synchronizationTicks = ticks;
     }
 
@@ -2355,10 +2413,12 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     /**
      * Gets the line of sight of the entity.
      *
-     * @param maxDistance The max distance to scan
+     * @param maxDistance The max distance to scan, positive
      * @return A list of {@link Point points} in this entities line of sight
+     * @throws IllegalArgumentException if {@code maxDistance} is not positive: the scan would not end
      */
     public List<Point> getLineOfSight(int maxDistance) {
+        Check.argCondition(maxDistance <= 0, "maxDistance must be > 0, got: {0}", maxDistance);
         Instance instance = getInstance();
         if (instance == null) {
             return List.of();

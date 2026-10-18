@@ -6,6 +6,13 @@ import io.github.bearisbug.synaxis.entity.MetadataHolder;
 import io.github.bearisbug.synaxis.entity.metadata.EntityMeta;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * The metadata of an {@code interaction} entity.
+ * <p>
+ * Its width and height make the area a client hits it in, and the one the server measures the
+ * interaction range to ({@code synaxis.enforce-entity-interaction-range}). They do not change
+ * {@link Entity#getBoundingBox()}, which collisions and block placement use.
+ */
 public class InteractionMeta extends EntityMeta {
     public InteractionMeta(@Nullable Entity entity, MetadataHolder metadata) {
         super(entity, metadata);

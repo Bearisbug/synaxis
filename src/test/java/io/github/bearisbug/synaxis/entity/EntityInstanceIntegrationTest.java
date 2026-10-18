@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.entity;
 
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.network.packet.server.play.EntityPositionSyncPacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Assertions;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnvTest
 public class EntityInstanceIntegrationTest {
@@ -40,5 +42,29 @@ public class EntityInstanceIntegrationTest {
         // #join may cause the thread to hang as scheduled for the next tick when initially in a pool
         Assertions.assertTimeout(Duration.ofSeconds(15), () -> player.setInstance(instance2).join());
         assertEquals(instance2, player.getInstance());
+    }
+
+    @Test
+    public void aSynchronizationPeriodSetBeforeTheFirstSpawnIsKept(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        connection.connect(instance, new Pos(0, 42, 0));
+        var entity = new Entity(EntityTypes.ZOMBIE);
+        entity.setNoGravity(true);
+        entity.setSynchronizationTicks(100);
+
+        entity.setInstance(instance, new Pos(2, 42, 0)).join();
+        assertEquals(100, entity.getSynchronizationTicks(), "binding the process put the configured period back");
+
+        var synchronizations = connection.trackIncoming(EntityPositionSyncPacket.class);
+        for (int i = 0; i < 60; i++) env.tick();
+        synchronizations.assertNoneMatch(packet -> packet.entityId() == entity.getEntityId());
+    }
+
+    @Test
+    public void aSynchronizationPeriodIsAtLeastOneTick() {
+        var entity = new Entity(EntityTypes.ZOMBIE);
+        assertThrows(IllegalArgumentException.class, () -> entity.setSynchronizationTicks(0));
+        assertThrows(IllegalArgumentException.class, () -> entity.setSynchronizationTicks(-20));
     }
 }

@@ -1,0 +1,29 @@
+Run 4 (green, 2026-10-18/19): -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid.
+
+ServerProcessDispatcherTest: tests=2 failures=0 errors=0 skipped=0 time=2.366
+ServerProcessShutdownIntegrationTest: tests=2 failures=0 errors=0 skipped=0 time=12.224
+ServerProcessStartTickingTest: tests=2 failures=0 errors=0 skipped=0 time=2.539
+ShutdownClaimTest: tests=2 failures=0 errors=0 skipped=0 time=4.277
+ShutdownSequenceTest: tests=11 failures=0 errors=0 skipped=0 time=24.106
+TickSchedulerThreadTest: tests=2 failures=0 errors=0 skipped=0 time=2.722
+ChatRateLimiterTest: tests=4 failures=0 errors=0 skipped=0 time=0.069
+MessengerIntegrationTest: tests=2 failures=0 errors=0 skipped=0 time=2.525
+AcceptLoopSocketTest: tests=1 failures=0 errors=0 skipped=0 time=2.131
+DisconnectFlushSocketTest: tests=3 failures=0 errors=0 skipped=0 time=3.215
+ServerAddressTest: tests=4 failures=0 errors=0 skipped=0 time=2.092
+AcquirableBasicIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=2.267
+AcquirableCollectionTest: tests=2 failures=0 errors=0 skipped=0 time=0.012
+AcquirableEntityIntegrationTest: tests=1 failures=0 errors=0 skipped=0 time=0.046
+AcquirableHandoverTest: tests=4 failures=0 errors=0 skipped=0 time=0.039
+AcquirableLocalsIntegrationTest: tests=2 failures=0 errors=0 skipped=0 time=0.133
+AcquirableTest: tests=3 failures=0 errors=0 skipped=0 time=0.023
+AcquireWaitTest: tests=4 failures=0 errors=0 skipped=0 time=0.529
+ThreadDispatcherTest: tests=21 failures=0 errors=0 skipped=0 time=0.667
+ThreadProviderGridTest: tests=5 failures=0 errors=0 skipped=0 time=0.009
+CooldownTest: tests=4 failures=0 errors=0 skipped=0 time=0.005
+SchedulerManagerTest: tests=1 failures=0 errors=0 skipped=0 time=0.002
+TestScheduler: tests=15 failures=0 errors=0 skipped=0 time=2.809
+ShutdownSequenceTest: tests=8 failures=0 errors=0 skipped=0 time=18.915
+ManagedInstanceTickThreadTest: tests=5 failures=0 errors=0 skipped=0 time=1.573
+ShardWorldAssemblyTest: tests=10 failures=0 errors=0 skipped=0 time=15.596
+ShardWorldRelightTest: tests=3 failures=0 errors=0 skipped=0 time=2.784

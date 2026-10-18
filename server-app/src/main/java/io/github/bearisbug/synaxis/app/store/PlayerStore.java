@@ -1377,9 +1377,9 @@ public final class PlayerStore implements ShutdownParticipant {
         if (countdown.isZero()) return;
         final Component notice = Component.translatable("synaxis:server-stopping-in", Component.text(countdown.toSeconds()));
         // A play packet cannot go to a connection still configuring: its write thread throws and
-        // drops the connection without a reason, and the player out of the shutdown save. That
-        // thread turns the state to play once it wrote FinishConfiguration, so what is queued
-        // after it is written as play
+        // drops the connection without a reason, and the player out of the shutdown save. A player
+        // whose connection is in the play state but who has not joined the game yet is skipped by
+        // Player#sendMessage itself: no play packet goes before the join
         for (Record record : records.values()) {
             if (record.player.getPlayerConnection().getServerState() == ConnectionState.PLAY)
                 record.player.sendMessage(notice);

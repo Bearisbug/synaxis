@@ -13,7 +13,8 @@ import java.util.Collection;
 import java.util.Objects;
 
 public sealed interface BlockEntityType extends StaticProtocolObject<BlockEntityType>, BlockEntityTypes permits BlockEntityTypeImpl {
-    NetworkBuffer.Type<BlockEntityType> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(BlockEntityType::fromId, BlockEntityType::id);
+    NetworkBuffer.Type<BlockEntityType> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(
+            id -> Objects.requireNonNull(BlockEntityType.fromId(id), () -> "unknown block entity type id: " + id), BlockEntityType::id);
     Codec<BlockEntityType> CODEC = Codec.KEY.transform(
             key -> Objects.requireNonNull(fromKey(key), () -> "unknown block entity type: " + key.asString()), BlockEntityType::key);
 

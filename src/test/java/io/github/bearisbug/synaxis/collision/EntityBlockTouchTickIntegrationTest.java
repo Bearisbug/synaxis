@@ -12,11 +12,11 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 public class EntityBlockTouchTickIntegrationTest {
@@ -24,11 +24,11 @@ public class EntityBlockTouchTickIntegrationTest {
     public void entityPhysicsCheckTouchTick(Env env) {
         var instance = env.createFlatInstance();
 
-        Set<Point> positions = new HashSet<>();
+        List<Point> touches = new CopyOnWriteArrayList<>();
         var handler = new BlockHandler() {
             @Override
             public void onTouch(Touch touch) {
-                assertTrue(positions.add(touch.getBlockPosition()));
+                touches.add(touch.getBlockPosition());
             }
 
             @Override
@@ -49,6 +49,10 @@ public class EntityBlockTouchTickIntegrationTest {
         entity.setInstance(instance, new Pos(0, 42, 0.7)).join();
 
         entity.tick(0);
+        // Only the touches of this tick: stopping the process may tick the entity again
+        final List<Point> touched = List.copyOf(touches);
+        final Set<Point> positions = Set.copyOf(touched);
+        assertEquals(positions.size(), touched.size(), "each block is touched once in a tick: " + touched);
 
         assertEquals(Set.of(new Vec(0, 42, 0),
                 new Vec(0, 42, 1),
@@ -62,11 +66,11 @@ public class EntityBlockTouchTickIntegrationTest {
     public void entityOnTheCornerOfABlockTouchesIt(Env env) {
         var instance = env.createFlatInstance();
 
-        Set<Point> positions = new HashSet<>();
+        List<Point> touches = new CopyOnWriteArrayList<>();
         var handler = new BlockHandler() {
             @Override
             public void onTouch(Touch touch) {
-                assertTrue(positions.add(touch.getBlockPosition()));
+                touches.add(touch.getBlockPosition());
             }
 
             @Override
@@ -83,6 +87,10 @@ public class EntityBlockTouchTickIntegrationTest {
         entity.setInstance(instance, new Pos(0, 42, 0)).join();
 
         entity.tick(0);
+        // Only the touches of this tick: stopping the process may tick the entity again
+        final List<Point> touched = List.copyOf(touches);
+        final Set<Point> positions = Set.copyOf(touched);
+        assertEquals(positions.size(), touched.size(), "each block is touched once in a tick: " + touched);
 
         assertEquals(Set.of(new Vec(0, 42, 0)), positions);
     }
@@ -92,11 +100,11 @@ public class EntityBlockTouchTickIntegrationTest {
         var instance = env.createFlatInstance();
         instance.loadChunk(new Pos(1000, 1000, 1000)).join();
 
-        Set<Point> positions = new HashSet<>();
+        List<Point> touches = new CopyOnWriteArrayList<>();
         var handler = new BlockHandler() {
             @Override
             public void onTouch(Touch touch) {
-                assertTrue(positions.add(touch.getBlockPosition()));
+                touches.add(touch.getBlockPosition());
             }
 
             @Override
@@ -117,6 +125,10 @@ public class EntityBlockTouchTickIntegrationTest {
         entity.setInstance(instance, new Pos(1000, 42, 1000.7)).join();
 
         entity.tick(0);
+        // Only the touches of this tick: stopping the process may tick the entity again
+        final List<Point> touched = List.copyOf(touches);
+        final Set<Point> positions = Set.copyOf(touched);
+        assertEquals(positions.size(), touched.size(), "each block is touched once in a tick: " + touched);
 
         assertEquals(Set.of(
                 new Vec(1000, 42, 1000),
@@ -132,11 +144,11 @@ public class EntityBlockTouchTickIntegrationTest {
         var instance = env.createFlatInstance();
         instance.loadChunk(new Pos(1000, 1000, 1000)).join();
 
-        Set<Point> positions = new HashSet<>();
+        List<Point> touches = new CopyOnWriteArrayList<>();
         var handler = new BlockHandler() {
             @Override
             public void onTouch(Touch touch) {
-                assertTrue(positions.add(touch.getBlockPosition()));
+                touches.add(touch.getBlockPosition());
             }
 
             @Override
@@ -162,6 +174,10 @@ public class EntityBlockTouchTickIntegrationTest {
         entity.setInstance(instance, new Pos(1000.699, 42, 1000)).join();
 
         entity.tick(0);
+        // Only the touches of this tick: stopping the process may tick the entity again
+        final List<Point> touched = List.copyOf(touches);
+        final Set<Point> positions = Set.copyOf(touched);
+        assertEquals(positions.size(), touched.size(), "each block is touched once in a tick: " + touched);
 
         assertEquals(Set.of(
                 new Vec(1000, 43, 999),
@@ -180,11 +196,11 @@ public class EntityBlockTouchTickIntegrationTest {
         var instance = env.createFlatInstance();
         instance.loadChunk(new Pos(-1000, 44, -1000)).join();
 
-        Set<Point> positions = new HashSet<>();
+        List<Point> touches = new CopyOnWriteArrayList<>();
         var handler = new BlockHandler() {
             @Override
             public void onTouch(Touch touch) {
-                assertTrue(positions.add(touch.getBlockPosition()));
+                touches.add(touch.getBlockPosition());
             }
 
             @Override
@@ -210,6 +226,10 @@ public class EntityBlockTouchTickIntegrationTest {
         entity.setInstance(instance, new Pos(-1000.301, 42, -1000)).join();
 
         entity.tick(0);
+        // Only the touches of this tick: stopping the process may tick the entity again
+        final List<Point> touched = List.copyOf(touches);
+        final Set<Point> positions = Set.copyOf(touched);
+        assertEquals(positions.size(), touched.size(), "each block is touched once in a tick: " + touched);
 
         assertEquals(Set.of(
                 new Vec(-1001, 43, -1000),

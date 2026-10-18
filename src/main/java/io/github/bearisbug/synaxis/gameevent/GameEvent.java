@@ -12,6 +12,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
+import java.util.Objects;
 
 /**
  * Represents a game event.
@@ -19,7 +20,8 @@ import java.util.Collection;
  */
 public sealed interface GameEvent extends StaticProtocolObject<GameEvent>, GameEvents permits GameEventImpl {
 
-    NetworkBuffer.Type<GameEvent> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(GameEvent::fromId, GameEvent::id);
+    NetworkBuffer.Type<GameEvent> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(
+            id -> Objects.requireNonNull(GameEvent.fromId(id), () -> "unknown game event id: " + id), GameEvent::id);
 
     /**
      * Returns the game event registry.

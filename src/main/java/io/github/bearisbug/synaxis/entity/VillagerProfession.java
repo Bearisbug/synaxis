@@ -16,7 +16,8 @@ import java.util.Objects;
 
 public sealed interface VillagerProfession extends StaticProtocolObject<VillagerProfession>, VillagerProfessions permits VillagerProfessionImpl {
 
-    NetworkBuffer.Type<VillagerProfession> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(VillagerProfession::fromId, VillagerProfession::id);
+    NetworkBuffer.Type<VillagerProfession> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(
+            id -> Objects.requireNonNull(VillagerProfession.fromId(id), () -> "unknown villager profession id: " + id), VillagerProfession::id);
     Codec<VillagerProfession> NBT_TYPE = Codec.KEY.transform(
             key -> Objects.requireNonNull(fromKey(key), () -> "unknown villager profession: " + key.asString()), VillagerProfession::key);
 

@@ -16,7 +16,8 @@ import java.util.Objects;
 
 public sealed interface Attribute extends StaticProtocolObject<Attribute>, Attributes,
         Translatable permits AttributeImpl {
-    NetworkBuffer.Type<Attribute> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(Attribute::fromId, Attribute::id);
+    NetworkBuffer.Type<Attribute> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(
+            id -> Objects.requireNonNull(Attribute.fromId(id), () -> "unknown attribute id: " + id), Attribute::id);
     Codec<Attribute> CODEC = Codec.KEY.transform(
             key -> Objects.requireNonNull(fromKey(key), () -> "unknown attribute: " + key.asString()), Attribute::key);
 

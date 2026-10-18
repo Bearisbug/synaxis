@@ -14,7 +14,8 @@ import java.util.Objects;
 
 public sealed interface PotionType extends StaticProtocolObject<PotionType>, PotionTypes permits PotionTypeImpl {
 
-    NetworkBuffer.Type<PotionType> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(PotionType::fromId, PotionType::id);
+    NetworkBuffer.Type<PotionType> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(
+            id -> Objects.requireNonNull(PotionType.fromId(id), () -> "unknown potion type id: " + id), PotionType::id);
     Codec<PotionType> CODEC = Codec.KEY.transform(
             key -> Objects.requireNonNull(fromKey(key), () -> "unknown potion type: " + key.asString()), PotionType::key);
 

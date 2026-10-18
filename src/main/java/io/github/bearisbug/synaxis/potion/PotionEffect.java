@@ -17,7 +17,8 @@ import java.util.Objects;
 
 public sealed interface PotionEffect extends StaticProtocolObject<PotionEffect>, PotionEffects,
         Translatable permits PotionEffectImpl {
-    NetworkBuffer.Type<PotionEffect> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(PotionEffect::fromId, PotionEffect::id);
+    NetworkBuffer.Type<PotionEffect> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(
+            id -> Objects.requireNonNull(PotionEffect.fromId(id), () -> "unknown potion effect id: " + id), PotionEffect::id);
     Codec<PotionEffect> CODEC = Codec.KEY.transform(
             key -> Objects.requireNonNull(fromKey(key), () -> "unknown potion effect: " + key.asString()), PotionEffect::key);
 

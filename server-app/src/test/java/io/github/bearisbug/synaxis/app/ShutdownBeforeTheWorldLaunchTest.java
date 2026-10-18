@@ -80,12 +80,17 @@ public class ShutdownBeforeTheWorldLaunchTest {
         stopWhileAClientIsStuck(directory, false, 2);
     }
 
-    /** {@code stop 2} once the connection is in the play state: that client is told the countdown. */
+    /**
+     * {@code stop 2} once the server wrote {@code FinishConfiguration} but the client never acknowledged it: the
+     * connection is in the play state, the player has not joined the game, and a player is sent no play packet
+     * before its join, so that client is left out of the countdown too and still saved.
+     */
     @Test
-    public void aCountdownIsAnnouncedToAClientInThePlayState(@TempDir Path directory) throws Exception {
+    public void aCountdownLeavesOutAClientThatNeverAcknowledgedTheEndOfItsConfiguration(@TempDir Path directory)
+            throws Exception {
         final List<Integer> received = stopWhileAClientIsStuck(directory, true, 2);
-        assertTrue(received.contains(id(ConnectionState.PLAY, SystemChatPacket.class)),
-                "the countdown notice reached the client in the play state: " + received);
+        assertFalse(received.contains(id(ConnectionState.PLAY, SystemChatPacket.class)),
+                "no countdown notice before the join: " + received);
     }
 
     /**

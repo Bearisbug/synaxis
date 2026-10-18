@@ -23,7 +23,8 @@ import java.util.Objects;
 
 public sealed interface EntityType extends StaticProtocolObject<EntityType>, EntityTypes, Translatable
         permits EntityTypeImpl {
-    NetworkBuffer.Type<EntityType> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(EntityType::fromId, EntityType::id);
+    NetworkBuffer.Type<EntityType> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(
+            id -> Objects.requireNonNull(EntityType.fromId(id), () -> "unknown entity type id: " + id), EntityType::id);
     Codec<EntityType> CODEC = Codec.KEY.transform(
             key -> Objects.requireNonNull(fromKey(key), () -> "unknown entity type: " + key.asString()), EntityType::key);
 

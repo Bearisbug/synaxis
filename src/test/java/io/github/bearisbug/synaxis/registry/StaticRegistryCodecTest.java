@@ -81,20 +81,27 @@ public class StaticRegistryCodecTest {
         assertEquals("unknown " + registry + " id: 99999", error.getMessage());
     }
 
-    private static Stream<NetworkBuffer.Type<?>> staticRegistryIdTypes() {
-        return Stream.of(PotionEffect.NETWORK_TYPE, PotionType.NETWORK_TYPE, GameEvent.NETWORK_TYPE,
-                Material.NETWORK_TYPE, EntityType.NETWORK_TYPE, Attribute.NETWORK_TYPE, BlockEntityType.NETWORK_TYPE,
-                VillagerProfession.NETWORK_TYPE);
+    private static Stream<Arguments> staticRegistryIdTypes() {
+        return Stream.of(
+                Arguments.of("potion effect", PotionEffect.NETWORK_TYPE),
+                Arguments.of("potion type", PotionType.NETWORK_TYPE),
+                Arguments.of("game event", GameEvent.NETWORK_TYPE),
+                Arguments.of("material", Material.NETWORK_TYPE),
+                Arguments.of("entity type", EntityType.NETWORK_TYPE),
+                Arguments.of("attribute", Attribute.NETWORK_TYPE),
+                Arguments.of("block entity type", BlockEntityType.NETWORK_TYPE),
+                Arguments.of("villager profession", VillagerProfession.NETWORK_TYPE));
     }
 
-    // Their static registry throws for an id it does not hold, so these reads fail without a lookup check
+    // Their static registry answers null for an id it does not hold, so the read checks the lookup
     @ParameterizedTest
     @MethodSource("staticRegistryIdTypes")
-    void anUnknownIdOfAStaticRegistryFailsTheRead(NetworkBuffer.Type<?> type) {
+    void anUnknownIdOfAStaticRegistryFailsTheRead(String registry, NetworkBuffer.Type<?> type) {
         final NetworkBuffer buffer = NetworkBuffer.resizableBuffer();
         buffer.write(NetworkBuffer.VAR_INT, 99_999);
 
-        assertThrows(IndexOutOfBoundsException.class, () -> buffer.read(type));
+        final NullPointerException error = assertThrows(NullPointerException.class, () -> buffer.read(type));
+        assertEquals("unknown " + registry + " id: 99999", error.getMessage());
     }
 
     private static Stream<Arguments> stringLookups() {

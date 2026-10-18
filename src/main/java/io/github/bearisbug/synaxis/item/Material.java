@@ -21,7 +21,8 @@ import java.util.Objects;
 
 public sealed interface Material extends StaticProtocolObject<Material>, Materials, Translatable permits MaterialImpl {
 
-    NetworkBuffer.Type<Material> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(Material::fromId, Material::id);
+    NetworkBuffer.Type<Material> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(
+            id -> Objects.requireNonNull(Material.fromId(id), () -> "unknown material id: " + id), Material::id);
     Codec<Material> CODEC = Codec.KEY.transform(
             key -> Objects.requireNonNull(fromKey(key), () -> "unknown material: " + key.asString()), Material::key);
 

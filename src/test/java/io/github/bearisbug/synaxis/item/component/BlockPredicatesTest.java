@@ -12,6 +12,7 @@ import io.github.bearisbug.synaxis.instance.block.BlockKeys;
 import io.github.bearisbug.synaxis.instance.block.predicate.BlockPredicate;
 import io.github.bearisbug.synaxis.instance.block.predicate.ComponentPredicateSet;
 import io.github.bearisbug.synaxis.instance.block.predicate.DataComponentPredicate;
+import io.github.bearisbug.synaxis.instance.block.predicate.NbtPredicate;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.registry.RegistryTag;
@@ -44,7 +45,11 @@ public class BlockPredicatesTest extends AbstractItemComponentRegistriesTest<Blo
                 entry("data component", new BlockPredicates(new BlockPredicate(DataComponentMap.builder().set(DataComponents.CUSTOM_DATA, new CustomData(testCompound)).build()))),
                 entry("component predicate", new BlockPredicates(new BlockPredicate(ComponentPredicateSet.EMPTY
                         .add(new DataComponentPredicate.CustomData(testCompound))
-                        .add(new DataComponentPredicate.Exists(DataComponents.CUSTOM_NAME)))))
+                        .add(new DataComponentPredicate.Exists(DataComponents.CUSTOM_NAME))))),
+                // A null standard is the empty one, so both are sent and stored like any other
+                entry("custom data predicate without a standard", new BlockPredicates(new BlockPredicate(
+                        ComponentPredicateSet.EMPTY.add(new DataComponentPredicate.CustomData((CompoundBinaryTag) null))))),
+                entry("nbt predicate without a standard", new BlockPredicates(new BlockPredicate(null, null, new NbtPredicate(null))))
         );
     }
 

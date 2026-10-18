@@ -99,9 +99,16 @@ public record ComponentPredicateSet(List<DataComponentPredicate> predicates) imp
                         final Codec<? extends DataComponentPredicate> codec = registry.get(key);
                         if (codec == null) return new Result.Error<>("Unknown component predicate type: " + name);
                         final Result<? extends DataComponentPredicate> predicateResult = codec.decode(coder, encodedPredicate);
-                        if (!(predicateResult instanceof Result.Ok<? extends DataComponentPredicate>(var predicate)))
-                            return predicateResult.mapError(error -> name + ": " + error).cast();
-                        predicates.add(predicate);
+                        if (predicateResult instanceof Result.Ok<? extends DataComponentPredicate>(var predicate)) {
+                            predicates.add(predicate);
+                        } else {
+                            // Exists writes the component by name with an empty map, which the predicate type of the
+                            // same name is tried with first and may not read
+                            final DataComponent<?> component = DataComponent.fromKey(key.key());
+                            if (component == null || !isEmptyMap(coder, encodedPredicate))
+                                return predicateResult.mapError(error -> name + ": " + error).cast();
+                            predicates.add(new DataComponentPredicate.Exists(component));
+                        }
                     }
                     case Either.Right(var component) -> {
                         final Result<Unit> unitResult = Codec.UNIT.decode(coder, encodedPredicate);
@@ -204,6 +211,10 @@ public record ComponentPredicateSet(List<DataComponentPredicate> predicates) imp
                     second instanceof DataComponentPredicate.Registered secondRegistered &&
                             firstRegistered.codec() == secondRegistered.codec();
         };
+    }
+
+    private static <D> boolean isEmptyMap(Transcoder<D> coder, D value) {
+        return coder.getMap(value) instanceof Result.Ok(Transcoder.MapLike<D> map) && map.isEmpty();
     }
 
     private static List<DataComponentPredicate> networkPredicates(ComponentPredicateSet value) {

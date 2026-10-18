@@ -65,6 +65,9 @@ public interface StructCodec<R> extends Codec<R> {
     /**
      * A special key used to instruct the codec to inline the value instead of wrapping it in a map.
      * The inlined codec must also be a StructCodec.
+     * <br>
+     * An optional inlined codec only lets a null value write no keys. Decoding always goes through the inlined
+     * struct, which handles its own absent fields, and an error of it fails the whole value.
      */
     String INLINE = "$$inline$$";
 
@@ -3413,24 +3416,15 @@ public interface StructCodec<R> extends Codec<R> {
             ) ? inner : codec;
             if (!(decodeCodec instanceof StructCodec<T> s)) return new Result.Error<>(key + ": not a struct");
 
-            final Result<T> decodeResult = s.decodeFromMap(coder, map);
-            if (decodeResult instanceof Result.Error<T> && codec instanceof CodecImpl.OptionalImpl<T>(
-                    _, T defaultValue
-            )) return new Result.Ok<>(defaultValue);
-
-            return decodeResult.mapError(e -> key + ": " + e);
+            return s.decodeFromMap(coder, map).mapError(e -> key + ": " + e);
         }
-        if (codec instanceof CodecImpl.OptionalImpl<T>(Codec<T> inner, T defaultValue)) {
-            return switch (map.getValue(key)) {
-                case Result.Ok(D innerValue) -> Objects.equals(innerValue, coder.createNull())
-                        ? new Result.Ok<>(defaultValue)
-                        : inner.decode(coder, innerValue).mapError(e -> key + ": " + e);
-                case Result.Error(String _) -> new Result.Ok<>(defaultValue);
-            };
-        }
-        return map.getValue(key)
-                .map(innerValue -> codec.decode(coder, innerValue))
-                .mapError(e -> key + ": " + e);
+        return switch (map.getValue(key)) {
+            // An optional codec decodes the null of the coder to its default itself
+            case Result.Ok(D innerValue) -> codec.decode(coder, innerValue).mapError(e -> key + ": " + e);
+            case Result.Error(String error) -> codec instanceof CodecImpl.OptionalImpl<T>(_, T defaultValue)
+                    ? new Result.Ok<>(defaultValue)
+                    : new Result.Error<>(key + ": " + error);
+        };
     }
 
     private static <D, T> @Nullable Result<D> put(Transcoder<D> coder, Codec<T> codec, MapBuilder<D> map, String key, @Nullable T value) {

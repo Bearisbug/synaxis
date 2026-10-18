@@ -1,6 +1,9 @@
 package io.github.bearisbug.synaxis.codec;
 
 import net.kyori.adventure.nbt.ListBinaryTag;
+import io.github.bearisbug.synaxis.coordinate.Point;
+import io.github.bearisbug.synaxis.coordinate.Vec;
+import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -16,6 +19,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import static net.kyori.adventure.nbt.IntBinaryTag.intBinaryTag;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -124,6 +128,49 @@ public final class CodecTest {
         final Codec<Integer> codec = Codec.INT.optional(7);
         Assertions.assertInstanceOf(Result.Error.class, codec.decode(Transcoder.NBT, Transcoder.NBT.createString("nope")));
         assertEquals(7, CodecAssertions.assertOk(codec.decode(Transcoder.NBT, Transcoder.NBT.createNull())));
+    }
+
+    /**
+     * An element equal to the default of an optional codec is still an element: encoded as the absent value, it was
+     * dropped from the list, the set or the map, so [0, 1, 0] came back as [1].
+     */
+    @ParameterizedTest
+    @MethodSource("nonDestructiveTranscoders")
+    public <D> void optionalWithDefaultInsideCollectionsKeepsDefaultElements(Transcoder<D> transcoder) {
+        final Codec<List<Integer>> list = Codec.INT.optional(0).list();
+        assertEquals(List.of(0, 1, 0), CodecAssertions.assertOk(
+                list.decode(transcoder, CodecAssertions.assertOk(list.encode(transcoder, List.of(0, 1, 0))))));
+
+        final Codec<Set<Integer>> set = Codec.INT.optional(0).set();
+        assertEquals(Set.of(0, 1), CodecAssertions.assertOk(
+                set.decode(transcoder, CodecAssertions.assertOk(set.encode(transcoder, Set.of(0, 1))))));
+
+        final Map<String, Integer> map = Map.of("a", 0, "b", 1);
+        final Codec<Map<String, Integer>> mapValue = Codec.STRING.mapValue(Codec.INT.optional(0));
+        assertEquals(map, CodecAssertions.assertOk(
+                mapValue.decode(transcoder, CodecAssertions.assertOk(mapValue.encode(transcoder, map)))));
+        final Codec<Map<String, Integer>> mapValueTyped = Codec.STRING.<Integer>mapValueTyped(_ -> Codec.INT.optional(0));
+        assertEquals(map, CodecAssertions.assertOk(
+                mapValueTyped.decode(transcoder, CodecAssertions.assertOk(mapValueTyped.encode(transcoder, map)))));
+    }
+
+    /**
+     * The network type floors a fractional coordinate. Truncating it towards zero put a negative one a block off in
+     * every format of the codec, the item hash and the stored item among them.
+     */
+    @ParameterizedTest
+    @MethodSource("nonDestructiveTranscoders")
+    public <D> void blockPositionFloorsLikeTheNetworkType(Transcoder<D> transcoder) {
+        final Point position = new Vec(-0.5, 64.2, -10.7);
+        final Point decoded = CodecAssertions.assertOk(Codec.BLOCK_POSITION.decode(transcoder,
+                CodecAssertions.assertOk(Codec.BLOCK_POSITION.encode(transcoder, position))));
+        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer();
+        buffer.write(NetworkBuffer.BLOCK_POSITION, position);
+        final Point network = buffer.read(NetworkBuffer.BLOCK_POSITION);
+
+        assertArrayEquals(new int[]{-1, 64, -11}, new int[]{decoded.blockX(), decoded.blockY(), decoded.blockZ()});
+        assertArrayEquals(new int[]{network.blockX(), network.blockY(), network.blockZ()},
+                new int[]{decoded.blockX(), decoded.blockY(), decoded.blockZ()});
     }
 
     @Test

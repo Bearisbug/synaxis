@@ -37,10 +37,13 @@ final class Serializers {
     static final Entry<String, StringBinaryTag> STRING = new Entry<>(BinaryTagTypes.STRING, StringBinaryTag::value, StringBinaryTag::stringBinaryTag);
     static final Entry<BinaryTag, BinaryTag> NBT_ENTRY = new Entry<>(null, Function.identity(), Function.identity());
 
-    static final Entry<java.util.UUID, IntArrayBinaryTag> UUID = new Entry<>(BinaryTagTypes.INT_ARRAY, UUIDUtils::fromNbt, UUIDUtils::toNbt);
+    // An int array of another length is no UUID, custom data from a client can hold one
+    static final Entry<java.util.UUID, IntArrayBinaryTag> UUID = new Entry<>(BinaryTagTypes.INT_ARRAY,
+            nbt -> nbt.size() == 4 ? UUIDUtils.fromNbt(nbt) : null, UUIDUtils::toNbt);
     static Entry<ItemStack, CompoundBinaryTag> item(Registries registries) {
         return new Entry<>(BinaryTagTypes.COMPOUND,
-                input -> ItemStack.fromItemNBT(input, registries),
+                input -> ItemStack.CODEC.decode(new RegistryTranscoder<>(Transcoder.NBT, registries), input)
+                        .orElse(null),
                 itemStack -> itemStack.toItemNBT(registries));
     }
 

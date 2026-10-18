@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.tag;
 
+import net.kyori.adventure.nbt.CompoundBinaryTag;
 import io.github.bearisbug.synaxis.codec.Transcoder;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
@@ -130,5 +131,16 @@ public class TagItemIntegrationTest {
 
         assertDoesNotThrow(() -> NetworkBuffer.makeArray(buffer -> buffer.write(ItemStack.NETWORK_TYPE, item), env.process()));
         assertOk(ItemStack.CODEC.encode(new RegistryTranscoder<>(Transcoder.JSON, env.process()), item));
+    }
+
+    /** A nested item can come from a client like the rest of the custom data, so one that does not decode is absent. */
+    @Test
+    public void anItemThatDoesNotDecodeReadsAsAbsent(Env env) {
+        var tag = Tag.ItemStack("item", env.process());
+        var handler = TagHandler.newHandler();
+        handler.setTag(Tag.NBT("item"), CompoundBinaryTag.builder()
+                .putString("id", "minecraft:stone").putString("count", "many").build());
+
+        assertNull(assertDoesNotThrow(() -> handler.getTag(tag)));
     }
 }

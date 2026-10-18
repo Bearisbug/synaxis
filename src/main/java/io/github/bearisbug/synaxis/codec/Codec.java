@@ -122,6 +122,10 @@ public interface Codec<T extends @UnknownNullability Object> extends Encoder<T>,
 
     Codec<UUID> UUID_COERCED = UUID.orElse(UUID_STRING);
 
+    /**
+     * A block position as an array of three ints. A point with fractional coordinates is floored to the block it is
+     * in ({@link Point#blockX()}), the way {@code NetworkBuffer.BLOCK_POSITION} writes it.
+     */
     Codec<Point> BLOCK_POSITION = new CodecImpl.BlockPositionImpl();
 
     Codec<Point> VECTOR3D = new CodecImpl.Vector3DImpl();
@@ -209,6 +213,9 @@ public interface Codec<T extends @UnknownNullability Object> extends Encoder<T>,
 
     /**
      * Creates an optional codec, where null is encodable into {@link Transcoder#createNull()}.
+     * <br>
+     * An absent value (a struct without the key) or one equal to {@link Transcoder#createNull()} decodes to null; a
+     * value that is present but fails to decode returns the error of this codec.
      *
      * @return the optional codec of type {@link T}
      */
@@ -219,9 +226,11 @@ public interface Codec<T extends @UnknownNullability Object> extends Encoder<T>,
 
     /**
      * Creates an optional codec, where null is encodable
-     * and is encoded when value equals {@code defaultValue} or null through {@link Transcoder#createNull()}.
+     * and is encoded when value equals {@code defaultValue} or null through {@link Transcoder#createNull()}, which a
+     * struct writes as no key at all.
      * <br>
-     * The default value will be used if the decoding is null or fails to decode.
+     * An absent value (a struct without the key) or one equal to {@link Transcoder#createNull()} decodes to
+     * {@code defaultValue}; a value that is present but fails to decode returns the error of this codec.
      *
      * @param defaultValue the default value
      * @return the optional codec of type {@link T}

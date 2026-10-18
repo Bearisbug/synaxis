@@ -1,9 +1,11 @@
 package io.github.bearisbug.synaxis.tag;
 
+import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.junit.jupiter.api.Test;
 
 import static io.github.bearisbug.synaxis.testing.TestUtils.assertEqualsSNBT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 public class TagHandlerReadableCopyTest {
@@ -59,5 +61,19 @@ public class TagHandlerReadableCopyTest {
         handler.setTag(tag, "test2");
         assertEquals("test2", handler.getTag(tag));
         assertEquals("test", copy.getTag(tag));
+    }
+
+    /** Replacing the content changes every tag, so the copy taken before is stale like after any setTag. */
+    @Test
+    public void updateContentInvalidatesTheCopy() {
+        var tag = Tag.Integer("a");
+        var handler = TagHandler.newHandler();
+        handler.setTag(tag, 1);
+        assertEquals(1, handler.readableCopy().getTag(tag));
+
+        handler.updateContent(CompoundBinaryTag.empty());
+        assertNull(handler.readableCopy().getTag(tag));
+        handler.updateContent(CompoundBinaryTag.builder().putInt("a", 2).build());
+        assertEquals(2, handler.readableCopy().getTag(tag));
     }
 }

@@ -7,6 +7,7 @@ import io.github.bearisbug.synaxis.world.attribute.EnvironmentAttribute.Modifier
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public record EnvironmentAttributeMap(Map<EnvironmentAttribute<?>, Entry<?, ?>> entries) {
     public static final EnvironmentAttributeMap EMPTY = new EnvironmentAttributeMap(Map.of());
@@ -23,8 +24,26 @@ public record EnvironmentAttributeMap(Map<EnvironmentAttribute<?>, Entry<?, ?>> 
         return new Builder(existing.entries);
     }
 
+    /**
+     * Creates a map of attribute entries. The map is encoded into the registry data of every configuration phase, so
+     * an entry it could not encode is refused here instead.
+     *
+     * @param entries the entries by attribute
+     * @throws NullPointerException     if an entry has a null argument
+     * @throws IllegalArgumentException if an entry carries a modifier the type of its attribute does not take
+     */
     public EnvironmentAttributeMap {
         entries = Map.copyOf(entries);
+        entries.forEach(EnvironmentAttributeMap::check);
+    }
+
+    private static void check(EnvironmentAttribute<?> attribute, Entry<?, ?> entry) {
+        Objects.requireNonNull(entry.argument(), () -> "Attribute " + attribute.key().asString() + " has a null argument");
+        final EnvironmentAttributeTypeImpl<?> type = (EnvironmentAttributeTypeImpl<?>) attribute.type();
+        if (!type.supports(entry.modifier()))
+            throw new IllegalArgumentException("Attribute " + attribute.key().asString()
+                    + " does not take this modifier; its type takes OVERRIDE and "
+                    + type.operators().values().stream().sorted().toList());
     }
 
     public record Entry<T, Arg>(Arg argument, Modifier<T, Arg> modifier) {

@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The registry data packet is built outside the registry lock, so it has to be built entirely from
@@ -62,5 +64,27 @@ public class RegistryDataPacketSnapshotRegistriesTest {
         for (RegistryDataPacket.Entry entry : packet.entries()) {
             assertEquals(value(entry.id().substring("synaxis:".length())), entry.data());
         }
+    }
+
+    /** Every configuration phase fails on an entry that does not encode, so the failure has to say why. */
+    @Test
+    public void anEntryThatDoesNotEncodeNamesTheCause(Registries registries) {
+        final Codec<BinaryTag> codec = new Codec<>() {
+            @Override
+            public <D> Result<D> encode(Transcoder<D> coder, @Nullable BinaryTag value) {
+                return new Result.Error<>("argument: no such modifier");
+            }
+
+            @Override
+            public <D> Result<BinaryTag> decode(Transcoder<D> coder, D value) {
+                return Codec.NBT.decode(coder, value);
+            }
+        };
+        final DynamicRegistry<BinaryTag> registry = DynamicRegistry.create(Key.key("synaxis:test"), codec);
+        registry.register("synaxis:a", value("a"));
+
+        final String message = assertThrows(IllegalStateException.class,
+                () -> registry.registryDataPacket(registries, false)).getMessage();
+        assertTrue(message.contains("synaxis:a") && message.endsWith(": argument: no such modifier"), message);
     }
 }

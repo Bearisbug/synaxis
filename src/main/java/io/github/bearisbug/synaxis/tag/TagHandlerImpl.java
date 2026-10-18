@@ -9,7 +9,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
 
 import java.lang.invoke.VarHandle;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.UnaryOperator;
 
@@ -133,19 +132,7 @@ final class TagHandlerImpl implements TagHandler {
         final int tagIndex = tagImpl.index();
         StaticIntMap<Entry<?>> entries = node.entries;
 
-        final Entry<?> previousEntry = entries.get(tagIndex);
-        final T previousValue;
-        if (previousEntry != null) {
-            final Object previousTmp = previousEntry.value;
-            if (previousTmp instanceof Node n) {
-                final CompoundBinaryTag compound = CompoundBinaryTag.from(Map.of(tag.key(), n.compound()));
-                previousValue = tag.read(compound);
-            } else {
-                previousValue = (T) previousTmp;
-            }
-        } else {
-            previousValue = tag.createDefault();
-        }
+        final T previousValue = readEntry(entries.get(tagIndex), tagImpl);
         final T newValue = value.apply(previousValue);
         if (newValue != null) entries.put(tagIndex, valueToEntry(node, tag, newValue));
         else entries.remove(tagIndex);
@@ -178,6 +165,38 @@ final class TagHandlerImpl implements TagHandler {
     @Override
     public synchronized void updateContent(CompoundBinaryTag compound) {
         this.root.updateContent(compound);
+        invalidateCopy();
+    }
+
+    /** Drops the cached readable copy. Every change of a value or of the structure has to end here. */
+    private void invalidateCopy() {
+        invalidations.incrementAndGet();
+        copy = null;
+    }
+
+    /**
+     * Reads the value of an entry with {@code tag}: the value itself when the tag that wrote it shares its value with
+     * {@code tag}, otherwise the NBT of the entry read with {@code tag}. A missing entry, NBT of another type and NBT
+     * that {@code tag} cannot read are all the default of {@code tag}, as for {@link TagImpl#read}.
+     */
+    @SuppressWarnings("unchecked")
+    private static <T> @UnknownNullability T readEntry(@Nullable Entry<?> entry, TagImpl<T> tag) {
+        if (entry == null) return tag.createDefault(); // Not present
+        // The tag used to write the entry is compatible with the one used to get, return the value directly
+        if (entry.tag.shareValue(tag)) return (T) entry.value;
+        // Value must be parsed from nbt if the tag is different
+        final BinaryTag nbt = entry.updatedNbt();
+        if (nbt == null) return tag.createDefault(); // Transient values have no nbt representation
+        final Serializers.Entry<T, BinaryTag> serializerEntry = tag.entry();
+        final BinaryTagType<BinaryTag> type = serializerEntry.nbtType();
+        if (type != null && !type.equals(nbt.type())) return tag.createDefault();
+        try {
+            final T value = serializerEntry.read(nbt);
+            return value != null ? value : tag.createDefault();
+        } catch (ClassCastException _) {
+            // A list read with another element type
+            return tag.createDefault();
+        }
     }
 
     @Override
@@ -279,21 +298,7 @@ final class TagHandlerImpl implements TagHandler {
             if (tag.isView()) return tag.read(node.compound());
 
             final TagImpl<T> tagImpl = (TagImpl<T>) tag;
-            final StaticIntMap<Entry<?>> entries = node.entries;
-            final Entry<?> entry = entries.get(tagImpl.index());
-            if (entry == null)
-                return tag.createDefault(); // Not present
-            if (entry.tag.shareValue(tag)) {
-                // The tag used to write the entry is compatible with the one used to get
-                // return the value directly
-                return (T) entry.value;
-            }
-            // Value must be parsed from nbt if the tag is different
-            final BinaryTag nbt = entry.updatedNbt();
-            if (nbt == null) return tag.createDefault(); // Transient values have no nbt representation
-            final Serializers.Entry<T, BinaryTag> serializerEntry = tagImpl.entry();
-            final BinaryTagType<BinaryTag> type = serializerEntry.nbtType();
-            return type == null || type.equals(nbt.type()) ? serializerEntry.read(nbt) : tag.createDefault();
+            return readEntry(node.entries.get(tagImpl.index()), tagImpl);
         }
 
         void updateContent(CompoundBinaryTag compound) {
@@ -368,8 +373,7 @@ final class TagHandlerImpl implements TagHandler {
             Node tmp = this;
             do tmp.compound = null;
             while ((tmp = tmp.parent) != null);
-            TagHandlerImpl.this.invalidations.incrementAndGet();
-            TagHandlerImpl.this.copy = null;
+            invalidateCopy();
         }
 
         @Override

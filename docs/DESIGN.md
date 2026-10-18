@@ -239,7 +239,7 @@ erDiagram
   - 错误：绑定失败抛 `IOException`，进程进入 `stopped`（§11）
 - **`API-004` 注册表访问 Java API** — 实现 `REQ-007`
   - 方法：`Registries.dimensionType()` 等 4 个语义注册表返回类型化对象；`Registries.opaque(key)` 返回 `RegistryKey → BinaryTag`
-  - 约束：注册表在 `start()` 后冻结，写入抛 `IllegalStateException`
+  - 约束：注册表在 `start()` 后冻结，写入抛 `IllegalStateException`，含 tag 集合（`getOrCreateTag` 新建、`removeTag`）；已有的 tag 照常查到
 - **`API-005` 背包界面与点击 Java API** — 实现 `REQ-003`
   - 方法：`Player#openInventory(Inventory)` 打开界面，`Player#closeInventory()` 关闭；`Inventory#addViewer`、`Inventory#removeViewer` 是这两个方法调用的钩子，子类可以覆写来补发包（`VillagerInventory` 在 `addViewer` 里补发交易列表）。
   - 打开：`Player#openInventory` 先取出 `InventoryOpenEvent` 定下的界面，再摘掉旧界面的 viewer，把玩家打开的界面记成新界面，最后调新界面的 `addViewer`。不经 `openInventory` 直接调 `Inventory#addViewer`（玩家打开的界面不是它）抛 `IllegalStateException`，什么都不发；原先照发 `OpenWindowPacket`，客户端弹出一个服务端不认的窗口，窗口里的点击全被丢弃，断线时这名 viewer 也不移除。直接调 `removeViewer` 只摘 viewer、丢出光标，玩家打开的界面仍指向它、客户端窗口不关，要关界面用 `closeInventory`。`InventoryOpenEvent#setInventory` 只收 `Inventory`：传 null 抛 `NullPointerException`，传玩家背包抛 `IllegalArgumentException`，事件里的界面不变；不想打开就取消事件。

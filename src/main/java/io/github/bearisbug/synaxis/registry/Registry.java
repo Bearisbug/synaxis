@@ -72,23 +72,26 @@ public sealed interface Registry<T> extends Keyed permits StaticRegistry, Dynami
     /**
      * Get a tag by its key, or create it if it does not exist.
      *
-     * <p><b>Note that if a tag is created by this operation, it will not be added to clients who previously received tags.
-     * You must resend updated registry tags manually for this to take effect. Referencing a tag for which the client
-     * is not aware will result in an immediate clientside disconnect.</b></p>
+     * <p>Creating a tag is a write to the registry: once the owning process has started it throws (API-004), and the
+     * tags of a static registry are fixed by the bundled data, so there only an existing tag is returned. A tag
+     * created through this method has no entries.</p>
      *
      * @param key The key of the tag
      * @return The tag, never null
+     * @throws IllegalStateException if the tag does not exist and the registry is frozen or static
      */
     RegistryTag<T> getOrCreateTag(TagKey<T> key);
 
     /**
      * Removes the given tag from this registry if it exists.
      *
-     * <p>Note that this does _not_ remove the tag from clients who have previously received tags.
-     * You must resend updated registry tags manually for this to take effect.</p>
+     * <p>Removing a tag is a write to the registry: once the owning process has started it throws (API-004), and the
+     * tags of a static registry are fixed by the bundled data.</p>
      *
      * @param key The registry tag to remove.
      * @return True if the tag was removed, false if it did not exist in this registry.
+     * @throws IllegalStateException if the registry is frozen
+     * @throws UnsupportedOperationException if the registry is static
      */
     boolean removeTag(TagKey<T> key);
 

@@ -4,18 +4,24 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.bearisbug.synaxis.component.DataComponentMap;
 import io.github.bearisbug.synaxis.component.DataComponents;
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.instance.block.predicate.ComponentPredicateSet;
+import io.github.bearisbug.synaxis.instance.block.predicate.DataComponentPredicate;
+import io.github.bearisbug.synaxis.instance.block.predicate.DataComponentPredicates;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.item.component.EnchantmentList;
 import io.github.bearisbug.synaxis.item.component.PotionContents;
+import io.github.bearisbug.synaxis.item.predicate.ItemPredicate;
 import io.github.bearisbug.synaxis.potion.CustomPotionEffect;
 import io.github.bearisbug.synaxis.potion.PotionEffect;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.tag.Tag;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
+import io.github.bearisbug.synaxis.utils.Range;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -148,6 +154,36 @@ class PlayerStateCodecIntegrationTest {
                         back.getTag(Tag.Short("charges")), back.getTag(Tag.Float("bonus")),
                         back.getTag(Tag.Long("serial")), back.getTag(Tag.UUID("owner"))), stored);
         assertEquals(sword, back, "the item stacks with one that never left the server");
+    }
+
+    /**
+     * The lock of a container is an item predicate with its component predicates inlined into it. A lock stored the
+     * way schema version 2 writes it comes back equal; one whose predicate does not decode refuses the login, naming
+     * the component, as any item that does not decode does, where it used to come back as a lock any item opens.
+     */
+    @Test
+    void aContainerLockComesBackAndOneThatDoesNotDecodeIsRefused(Env env) {
+        final PlayerStateSection section = new PlayerStateSection(env.process().registries());
+        final ItemPredicate key = new ItemPredicate(new DataComponentPredicates(DataComponentMap.EMPTY,
+                ComponentPredicateSet.EMPTY.add(new DataComponentPredicate.Damage(new Range.Int(0, 5), null))));
+        final PlayerState state = new PlayerState(new PlayerState.Core(), new Pos(8.5, 40, -3.5),
+                Map.of(0, ItemStack.builder(Material.CHEST).set(DataComponents.LOCK, key).build()), 0, 20f);
+        final String stored = """
+                {"world": {"kind": "core"},
+                 "pos": {"x": 8.5, "y": 40.0, "z": -3.5, "yaw": 0.0, "pitch": 0.0},
+                 "inventory": [{"slot": 0, "item": "%s"}],
+                 "held_slot": 0,
+                 "health": 20.0}""";
+        final String lock = "{count:1,components:{\\\"minecraft:lock\\\":{predicates:{\\\"minecraft:damage\\\":"
+                + "{durability:{min:0,max:5}}}}},id:\\\"minecraft:chest\\\"}";
+        final String invalid = lock.replace("{min:0,max:5}", "\\\"x\\\"");
+
+        assertEquals(state, section.decode(section.encode(state), section.schemaVersion()));
+        assertEquals(state, section.decode(JsonParser.parseString(stored.formatted(lock)), 2));
+        final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> section.decode(JsonParser.parseString(stored.formatted(invalid)), 2));
+        assertTrue(refused.getMessage().contains("minecraft:lock") && refused.getMessage().contains("minecraft:damage"),
+                refused.getMessage());
     }
 
     @Test

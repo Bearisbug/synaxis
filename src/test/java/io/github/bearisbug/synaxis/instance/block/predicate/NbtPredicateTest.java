@@ -7,6 +7,7 @@ import net.kyori.adventure.nbt.ListBinaryTag;
 import net.kyori.adventure.nbt.StringBinaryTag;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -24,11 +25,12 @@ public class NbtPredicateTest {
         assertTrue(new NbtPredicate(standard).test(tag2));
         assertTrue(new NbtPredicate(standard).test(tag3));
 
-        // If the standard is null, always return true.
-        assertTrue(new NbtPredicate(null).test(null));
+        // A null standard is the empty one, which can be sent and stored: it matches any compound, but needs a subject
+        assertEquals(CompoundBinaryTag.empty(), new NbtPredicate(null).nbt());
         assertTrue(new NbtPredicate(null).test(tag2));
+        assertFalse(new NbtPredicate(null).test(null));
 
-        // If the subject is null, always return false (unless the standard is also null).
+        // If the subject is null, always return false.
         assertFalse(new NbtPredicate(standard).test(null));
         assertFalse(new NbtPredicate(tag3).test(null));
     }

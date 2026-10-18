@@ -11,7 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.util.function.Predicate;
 
-public record NbtPredicate(@Nullable CompoundBinaryTag nbt) implements Predicate<@Nullable BinaryTag> {
+public record NbtPredicate(CompoundBinaryTag nbt) implements Predicate<@Nullable BinaryTag> {
     public static final Codec<NbtPredicate> CODEC = Codec.NBT_COMPOUND.orElse(Codec.STRING.transform(
             string -> {
                 try {
@@ -23,6 +23,15 @@ public record NbtPredicate(@Nullable CompoundBinaryTag nbt) implements Predicate
             EngineAdventure.tagStringIO()::asString
     )).transform(NbtPredicate::new, NbtPredicate::nbt);
     public static final NetworkBuffer.Type<NbtPredicate> NETWORK_TYPE = NetworkBuffer.UNTRUSTED_NBT_COMPOUND.transform(NbtPredicate::new, NbtPredicate::nbt);
+
+    /**
+     * Creates a predicate matching every compound that contains {@code nbt}.
+     *
+     * @param nbt the standard to compare against; null is the empty standard, which any compound matches
+     */
+    public NbtPredicate(@Nullable CompoundBinaryTag nbt) {
+        this.nbt = nbt != null ? nbt : CompoundBinaryTag.empty();
+    }
 
     /**
      * Checks to see if everything in {@code standard} is contained in {@code comparison}. The comparison is allowed to

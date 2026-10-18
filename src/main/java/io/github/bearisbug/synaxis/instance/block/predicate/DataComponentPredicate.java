@@ -82,6 +82,11 @@ public sealed interface DataComponentPredicate extends Predicate<DataComponent.H
     /**
      * Tests whether a data component is present, without inspecting its value.
      *
+     * <p>It is stored by the name of its component with an empty map, like a registered predicate of the same name
+     * with no field set. For a component that shares its name with a predicate type, such as {@code damage}, the set
+     * may therefore read back the registered predicate ({@code Damage(null, null)}) instead, which holds for the same
+     * items: the ones that have the component.</p>
+     *
      * @param component the component which must be present
      */
     record Exists(DataComponent<?> component) implements DataComponentPredicate {

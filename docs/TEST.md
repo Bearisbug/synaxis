@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-18 | 分支 `prod/r081-CODEC`（基于 `main` `965c3bddae`），跟进 `docs/DESIGN-PROD.md` v0.9.104（RUN-081 组 CODEC），不登执行轮次。**新增 §4「生产就绪 · RUN-081：CODEC」十条 `TC-PROD-960`～`TC-PROD-969`**：可选值只在缺失时回落（960），`synaxis:player` 的物品锁（961），集合里等于默认值的元素与方块坐标的取整（962），组件谓词（963），注册表冻结覆盖 tag 集合（964），静态注册表、单元素 direct tag 与注册表数据包的报错（965），环境属性 map 的构造校验（966），tag 的读与更新（967），Boss 血条的包序与生命周期（968，三种线程模式），旧类回归与 `StructCodecTest` 取 transcoder 的写法（969）；修前的红都实跑过。§5 局部轮加一行。既有用例里写死的条数是当时那次运行的读数，不改：`TC-PROD-801` 第 1 步的 `CodecTest` 77 条在本组之后是 83 条，`TC-PROD-804` 第 3 步的 `PlayerStateCodecIntegrationTest` 5 条在本组之后是 6 条 | Bearisbug |
 | 2026-10-19 | 分支 `prod/r081-CMD`（基线 `main` `965c3bddae`），跟进 `docs/DESIGN-PROD.md` v0.9.103，不登执行轮次（集成轮登记 RUN-081）；本组 8 次 Gradle 运行的读数写在各步里，不另存证据目录。**新增 §4「生产就绪 · RUN-081：CMD」九条 `TC-PROD-950`～`TC-PROD-958`**，改动前的红都在基线主源码加本组测试上实跑过：950（注册时拒绝一条路径上参数 id 重复、两条语法止于同一节点、同一位置同名参数配置不同）、951（命令名规则）、952（语法的 condition 只管自己的执行器）、953（快捷方式重定向到根、空参数组、循环回跳）、954（解析到输入末尾、映射函数抛异常）、955（时间、注册表键、有限数、物品组件，带一处反证）、956（命令树在玩家所属 tick 线程上重建，带一处反证与 4 线程严格、严格 `grid` 两遍）、957（插件命令抛 `Error` 时控制台接着读，日志里的命令串转义）、958（扁平化器不开服务端翻译时的写法）。**新增 `TC-PROD-959`**（放在「第 4 波 4C」一节 `TC-PROD-240` 之后）：控制台执行 condition 不放行或执行失败的命令只写一行 INFO。**改的旧用例**：4C 一节开头的实现说明（控制台一行抛出的异常含 `Error`、重发命令树排到玩家的调度器上、控制台经引擎的扁平化器写回执）；`TC-PROD-240` 第 2 步的反证换成 `EngineFlattenerProvider#flattenTranslatable` 不写（`ConsoleSender` 不再自建扁平化器，原来的改法不再变红），按新改法重跑；`TC-PROD-247` 第 2 步按改后的 `refreshCompletions` 重跑；`TC-PROD-248` 标题、第 1 步的条数（1 → 2）与第 2 步的改法按 `HostPermissions#read` 的新写法改并重跑，红行 `:87`、`:110` → `:91`、`:114`；`TC-PROD-257` 改测 `EngineFlattenerProvider#translation`（原 `ConsoleSenderTranslationTest` 的 4 条并进 `EngineFlattenerProviderTest`），两处反证按新位置重跑。`CommandsIntegrationTest` 在第 571 行注册 `boss` 之后加一行 `env.tick()`，之后的行号加 1：`TC-PROD-246` 第 2 步的 `:578`、`:613`，`TC-PROD-247` 第 2 步的 `:573`，`TC-PROD-820` 第 3 步的 `<CI>:578`，`TC-PROD-825` 第 2、3 步的 `<CI>:615`、`<CI>:613` 各加 1，每处都对过源码；`TC-PROD-820` 第 1 步注明新命令树在下一个 tick 到。**条数**：根项目 +22 条、+4 个类（`ConsoleSenderTranslationTest` 删掉），`server-app` +5 条、+2 个类；写死全量条数的旧用例不改，由集成轮统一改。**§5** 局部轮加 RUN-081 CMD 组一行 | Bearisbug |
 | 2026-10-18 | 分支 `prod/r081-INV`（设计提交 `421f2e6918`、代码与测试提交 `c0aca390ff`，基于 `main` `965c3bddae`），跟进 `docs/DESIGN-PROD.md` v0.9.97（RUN-081 组 INV），不登执行轮次（集成后登记 RUN-081）。**新增 §4「生产就绪 · RUN-081：INV」十条 `TC-PROD-890`～`TC-PROD-899`**：点击事件的监听器里关界面不多出物品、派发时不持背包监视器（890），玩家背包上的装备事件只能改组件（891），打开已绑定的界面不等它的监视器（892），不经 `openInventory` 的 `addViewer` 被拒、`InventoryOpenEvent#setInventory` 拒收 null 与玩家背包（893），光标超量时双击不收（894），信标药水属性按注册表 id + 1 发（895），收纳袋选择换算成槽号 46 时不派发（896），`block_state` 里属性不接受的值被跳过（897），创造模式丢弃报槽号 −1 与批量事务的返回值（898），波及的旧类在三种线程模式下照绿、容器点击的并发用例换停顿点后的反证与新增行覆盖（899）。除 898 里两处行为不变的钉住用例，每条都有改动前的红；本组的读数要带上组 PLAYER 的 `Player#openInventory` 改动（见该节开头）。**旧用例**：`TC-PROD-683`、`TC-PROD-684` 引的 `InventoryIntegrationTest` 条数（16）与行号不变。§5 局部轮加本组一行 | Bearisbug |
 | 2026-10-18 | 分支 `prod/r081-PHYS`（基于 `main` `965c3bddae`），跟进 `docs/DESIGN-PROD.md` v0.9.102（RUN-081 组 PHYS），不登执行轮次（集成轮登记）。**新增 §4「生产就绪 · RUN-081：PHYS」十条 `TC-PROD-940`～`TC-PROD-949`**：视角与 `withDirection`（940）、零向量的 `normalize()`（941）、`Area.cube`、`Area.box` 的对称展开（942）、大范围的实体查找与 `ChunkRange`（943）、非有限速度与倒置包围盒（944）、放置判定覆盖大体型实体（945）、视线与实体碰撞结果（946）、投射物（947）、经验球与 `EntityFinder`（948）、三种线程模式回归与新增行覆盖率（949），改动前的红都实跑过。新类 `collision.BlockCollisionTest`、`collision.PhysicsUtilsTest`、`entity.ExperienceOrbIntegrationTest`；`coordinate.PositionUtilsTest` 随 `PositionUtils` 的三个方法删除，两条用例并入 `PosTest`；`PosViewDirectionTest`、`EntityViewDirectionIntegrationTest` 斜向目标的 pitch 期望按欧氏水平距离改，`EntityEntityCollisionIntegrationTest#entityCollisionDetailsTest` 的 `direction` 期望改为面法线。§5 局部轮加一行 | Bearisbug |
@@ -13316,6 +13317,132 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：同 `TC-PROD-950`。
 
+### 生产就绪 · RUN-081：CODEC（编解码器的可选值、组件谓词、注册表冻结、环境属性、tag 读写与 Boss 血条）
+
+对应 `REQ-017`（不可信 NBT 与组件的读取，`docs/DESIGN.md`）、`REQ-007` 与 `API-004`（注册表与冻结）、`REQ-PROD-019`（tick 多线程的引擎侧正确性）、`REQ-PROD-047`（`synaxis:player` 的物品）；`docs/DESIGN-PROD.md` v0.9.104，`docs/DESIGN.md` `API-004` 的约束一行。用例号段 960～969，由组 CODEC 在分支 `prod/r081-CODEC`（基于 `main` `965c3bddae`）写入。改动按引擎的包分：
+
+- `codec`：`Codec#optional()` 与 `optional(T)` 只在值缺失或等于 `createNull()` 时回落默认值，`StructCodec#get` 的非 `INLINE` 字段把 `createNull()` 的判等交给 `OptionalImpl`，`INLINE` 字段与 `unionType` 的可选判别键不再在解不出时回落；集合与 map 编码元素时，非 null 的元素绕过外层 optional 直接用内层 codec（`CodecImpl#encodeElement`）；`BlockPositionImpl` 按 `blockX/Y/Z` 取整。
+- `instance.block.predicate`：`ComponentPredicateSet.CODEC` 解码时，谓词类型解不出、名字是组件且负载是空 map 就还原成 `Exists`；`PropertiesPredicate.Range#test` 两端含端点、两端都缺时只要属性存在、整数属性的界不是整数时为 false；`NbtPredicate` 的规范构造器把 null 换成空复合标签，`Exact` 的紧凑构造器拒收 null。
+- `registry`：`DynamicRegistryImpl` 冻结后拒收新建与删除 tag、`remove` 抛 `IllegalStateException`，报错由 `frozen(op)` 统一生成；未冻结时增删 tag 调 `tagChangeListener`；注册表数据包编码失败带上 `Result.Error` 的消息。`StaticRegistry` 的 tag 表改为 `Map.copyOf`、越界 id 返回 null。`RegistryCodecs.RegistryTagImpl` 的单字符串分支有注册表时按注册表查键。
+- `world.attribute`：`EnvironmentAttributeTypeImpl` 记下各运算对应的修饰器，`EnvironmentAttributeMap` 的紧凑构造器逐条校验参数非 null、修饰器为该类型所支持。
+- `tag`：`TagHandlerImpl#readEntry` 给 `getTag` 与 `updateTag0` 共用；`updateContent` 之后 `invalidateCopy()`；`Serializers.UUID` 只解 4 个 int 的数组，`Serializers.item` 解不开时为 null。
+- `adventure.bossbar`：`BossBarManager` 在 holder 的监视器里改观众并发包，加入前复查 holder 仍是登记着的那个，`dropIfUnused` 在同一把锁里判空并摘除；`BossBarListener` 在这把锁里发更新；`playerBars` 按玩家对象做键；`destroyBossBar` 在锁里清空观众再发移除。
+
+测试：根项目新类 `io.github.bearisbug.synaxis.item.predicate.ItemPredicateRegistriesTest`（2 条）、`io.github.bearisbug.synaxis.instance.block.predicate.ComponentPredicateSetRegistriesTest`（3 条）、`io.github.bearisbug.synaxis.registry.StaticRegistryRegistriesTest`（3 条）、`io.github.bearisbug.synaxis.world.attribute.EnvironmentAttributeMapTest`（3 条）、`io.github.bearisbug.synaxis.adventure.bossbar.BossBarPacketOrderIntegrationTest`（2 条，`@EnvTest`），与测试辅助类 `RecordingPlayer`（同包，不是测试类）；既有类加的用例逐条写在各用例里。`RecordingPlayer` 是经 `ConnectionManager#setPlayerProvider` 换上的 `Player` 子类：记下排给它的 Boss 血条动作，在排某个动作之前、或观众集合拿它与已有观众比较（`CopyOnWriteArraySet#add` 调 `equals`）时执行钩子；钩子用 `RecordingPlayer.aside` 在另一条平台线程上发起竞争的调用，等到那条线程跑完、或者停在进入某个监视器上（`Thread.State.BLOCKED`）再继续。修前竞争的调用一口气跑完，修后它停在 holder 的监视器上，两种结果都是确定的，不靠时序碰运气。
+
+「跑 `<类>`」：根项目的类是 `./gradlew :test --rerun --tests '<类全名>' :testNamingCheck :forbiddenImportsCheck --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `build/test-results/test/TEST-<类全名>.xml`；`server-app` 的类把 `:test`、`:testNamingCheck`、`:forbiddenImportsCheck` 换成 `:server-app:` 开头的同名任务。没有一条连库。「改动前」指主代码取 `main` `965c3bddae` 的、测试是本组的。本组 7 次 Gradle 运行：第 1 次改动前的红只跑完了 `server-app` 一类（根项目的测试编译被 Error Prone 拦下，`RecordingPlayer#equals` 写成 `super.equals`，报 `SuperCallToObjectMethod`，之后改为 `this == other`）；第 2 次改动前的红，根项目 21 个类，`CodecTest` 与 `StructCodecTest` 在类初始化上互等（见 `TC-PROD-969` 第 2 步），9 个类跑完后结束了测试进程；第 3 次改动前的红，补跑其余 13 个类（144 个用例 26 个红，全是本组新加的）；第 4 次修后的编译被 Error Prone 拦下（`DynamicRegistryImpl` 里给 `data` 赋值的 switch 语句报 `RefactorSwitch`，改为 switch 表达式）；第 5 次修后转绿（默认模式）；第 6、7 次是 Boss 血条一组在 4 线程严格与严格 grid 下各一次。
+
+#### `TC-PROD-960` 可选值只在缺失时回落：可选判别键、内联的可选结构与 `ItemPredicate` 的组件谓词 — 对应 `REQ-017` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`unionTypeOptionalKeyDefaultsOnlyWhenAbsent` 的判别键是 `Codec.STRING.optional("leaf")`；`inlineOptionalReportsAFieldThatDoesNotDecode` 的外层把 `struct("value", STRING).optional()` 以 `StructCodec.INLINE` 内联。`ItemPredicateRegistriesTest` 用带注册表的 NBT transcoder 解 SNBT。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.codec.StructCodecTest`、`io.github.bearisbug.synaxis.codec.CodecTest` 与 `io.github.bearisbug.synaxis.item.predicate.ItemPredicateRegistriesTest`（第 5 次运行） | `StructCodecTest` 14 条、`CodecTest` 83 条、`ItemPredicateRegistriesTest` 2 条，都 0 失败。判别键：`{name: "test"}`（没有键）解出 `Leaf("test")`，`{type: 5, name: "test"}` 返回 `Error`，消息正好是 `Expected string NBT, found int 5`。内联：`{name: "test", value: "innerValue"}` 解出内层对象，`{name: "test", value: 5}` 返回 `Error`，消息是 `$$inline$$: value: Expected string NBT, found int 5`，内层为 null 时只写出 `{name: "test"}`。`ItemPredicate`：`{components: {"minecraft:damage": "x"}}` 返回 `Error` 且消息含 `minecraft:damage`，`{}` 解出 `new ItemPredicate(null, null, DataComponentPredicates.EMPTY)`。原有的 `singleFieldMissing`（`name: No such key: name`）、`singleFieldOptional*` 五条与 `CodecTest` 的 `optionalDoesNotSwallowInnerDecodeErrors` 照旧绿 |
+| 2 | 改动前的红（第 3 次运行） | `unionTypeOptionalKeyDefaultsOnlyWhenAbsent` 与 `inlineOptionalReportsAFieldThatDoesNotDecode` 都红在 `CodecAssertions.java:17`：`Unexpected type, expected: <…Result.Error> but was: <…Result.Ok>`（判别键解不出时按默认类型解成了 `Leaf`，内联结构解不出时成了 null）；`aComponentThatDoesNotDecodeIsAnError` 红在 `ItemPredicateRegistriesTest.java:32`，同样是 `but was: <…Result.Ok>`，即组件谓词变成「不限制组件」；`anEmptyPredicateConstrainsNoComponent` 绿 |
+
+后置：`git status --short` 只有本次运行的产物。
+
+#### `TC-PROD-961` `synaxis:player` 的物品锁：2 版样本照常读回，锁谓词解不开的物品拒绝载入 — 对应 `REQ-PROD-047` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`aContainerLockComesBackAndOneThatDoesNotDecodeIsRefused` 的状态是核心世界、0 号格一个箱子，箱子的 `LOCK` 是 `ItemPredicate`，组件谓词为 `Damage(durability 0～5)`；手写的 2 版样本把这件物品写成 SNBT `{count:1,components:{"minecraft:lock":{predicates:{"minecraft:damage":{durability:{min:0,max:5}}}}},id:"minecraft:chest"}`，坏样本把 `{min:0,max:5}` 换成字符串 `"x"`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `server-app` 的 `io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest`（第 5 次运行） | 6 条 0 失败；同批 `PlayerStateSectionIntegrationTest` 18 条 0 失败，`PlayerStatePostgresIntegrationTest` 4 条没有数据库变量、跳过。新用例：编码再解码得回同一个状态；手写的 2 版样本按 `schema_version` 2 解出同一个状态（物品逐项相等）；坏样本解码抛 `IllegalArgumentException`，消息含 `minecraft:lock` 与 `minecraft:damage`（`inventory slot 0: components: minecraft:lock: $$inline$$: predicates: minecraft:damage: durability: …`）。原有的 `theLayoutIsTheOneOfTheDesign`（`docs/DESIGN-PROD.md` `API-PROD-032` 的 2 版样例与 1 版样例）与 `aStoredSectionOutsideTheLayoutIsRefused` 绿 |
+| 2 | 改动前（第 1 次运行） | 6 条红 1 条：新用例的前两句（往返、2 版样本）都过了，红在 `PlayerStateCodecIntegrationTest.java:162`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`：坏的锁谓词原先解成一把任何物品都开得了的锁，登录照常放行。其余 5 条绿，即修前修后合法存档的读法一样 |
+
+后置：同 `TC-PROD-960`。
+
+#### `TC-PROD-962` 带默认值的可选元素照写，方块坐标向下取整 — 对应 `REQ-017` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。两条都是参数化用例，NBT、JSON、Java 三种 transcoder 各一例。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.codec.CodecTest`，看 `optionalWithDefaultInsideCollectionsKeepsDefaultElements` 与 `blockPositionFloorsLikeTheNetworkType`（第 5 次运行） | 6 例都绿。`Codec.INT.optional(0).list()` 把 `[0, 1, 0]` 往返成 `[0, 1, 0]`，`set()` 把 `{0, 1}` 往返不变，`mapValue` 与 `mapValueTyped` 把 `{a: 0, b: 1}` 往返不丢键；`Codec.BLOCK_POSITION` 编 `Vec(-0.5, 64.2, -10.7)` 得 `[-1, 64, -11]`，与 `NetworkBuffer.BLOCK_POSITION` 写读一次得到的方块坐标相同。原有的 `optionalInsideListRoundTrips`、`optionalInsideSetRoundTrips`（null 元素照旧丢掉）绿 |
+| 2 | 改动前的红（第 3 次运行） | 6 例全红：前者红在 `CodecTest.java:141`，`expected: <[0, 1, 0]> but was: <[1]>`；后者红在 `:171`，`array contents differ at index [0], expected: <-1> but was: <0>` |
+
+后置：同 `TC-PROD-960`。
+
+#### `TC-PROD-963` 组件谓词：与谓词类型同名的 `Exists` 读得回，`Range` 两端含端点，没有标准的 NBT 谓词编得出 — 对应 `REQ-017`、`REQ-PROD-047` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`anExistsPredicateNamedLikeAPredicateTypeLoadsBack` 遍历谓词类型注册表的全部 15 个键，对同名组件构造 `Exists`，经带注册表的 JSON transcoder 编码再解码。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.instance.block.predicate.ComponentPredicateSetRegistriesTest`、`…instance.block.predicate.PropertiesPredicateTest`、`…instance.block.predicate.NbtPredicateTest`、`io.github.bearisbug.synaxis.item.component.BlockPredicatesTest`（第 5 次运行） | `ComponentPredicateSetRegistriesTest` 3 条、`PropertiesPredicateTest` 24 条（嵌套类 `ValuePredicate` 23 条）、`NbtPredicateTest` 7 条、`BlockPredicatesTest` 9 例，都 0 失败。15 个键都解码成功；`Exists(ENCHANTMENTS)` 读回等于它自己，对带锋利 V 的附魔表为真、对空组件表为假；`Exists(DAMAGE)` 读回（同名的 `Damage(null, null)`）对 `DAMAGE = 3` 为真、对空表为假；`{"minecraft:enchantments": {"levels": 1}}` 仍是 `Error`。`Range`：`max` 等于值时为真，`2` 不在 `≤ 1` 里，两端都缺时有值即真、没有值为假，整数属性的界写成 `x` 时为假，字符串 `b` 在 `≤ b` 里；`Range("0", "7")` 匹配 `age=7` 与 `age=0` 的小麦，不匹配石头；`new Exact(null)` 抛 `NullPointerException`，消息含 `omit the property`。`new NbtPredicate(null).nbt()` 等于空复合标签，对任何复合标签为真、对 null 为假。`BlockPredicatesTest` 的两例（`CustomData((CompoundBinaryTag) null)`、`BlockPredicate(null, null, new NbtPredicate(null))`）NBT 往返与网络往返都相等 |
+| 2 | 改动前的红（第 2、3 次运行） | `anExistsPredicate…` 红在 `ComponentPredicateSetRegistriesTest.java:51`，`expected: <[]> but was: <[minecraft:enchantments, minecraft:stored_enchantments, minecraft:potion_contents, minecraft:villager/variant]>`；`theLoadedPredicate…` 红在 `CodecAssertions.java:12`，`Expected Ok but got Error: minecraft:enchantments: Not a list: {}`；`aSameNamed…` 绿。`PropertiesPredicateTest` 红 6 条：`matchRange` 的 `int / max inclusive`、`int / no bounds`、`string / max inclusive` 三例 `expected: <true> but was: <false>`，`int / bound not an int` 一例 `expected: <false> but was: <true>`（都在 `:79`），`rangeIncludesTheMaximumOfABlockProperty` 在 `:95`，`exactRejectsNoValue` 在 `:86`（`Expected java.lang.NullPointerException to be thrown, but nothing was thrown.`）。`NbtPredicateTest.testEmptyStandard` 红在 `:29`，`expected: <CompoundBinaryTagImpl[tags={}]> but was: <null>`。`BlockPredicatesTest` 两例红在 `CodecAssertions.java:12`：`Expected Ok but got Error: $$inline$$: Error[message=predicates: CustomData[nbt=NbtPredicate[nbt=null]]: null]` 与 `Expected Ok but got Error: nbt: null` |
+
+后置：同 `TC-PROD-960`。
+
+#### `TC-PROD-964` 注册表冻结覆盖 tag 集合，冻结后的写入都抛 `IllegalStateException` 且点名注册表 — 对应 `REQ-007` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`DynamicRegistryMutationTest` 直接调包内的 `freeze()` 与 `tagChangeListener(…)`；`OpaqueRegistryFrozenTest` 的新用例照它原有的用例，用生产配置 `ServerConfig.defaults()` 起一个真进程（绑回环地址的 0 号端口），拿 `minecraft:enchantment` 不透明注册表。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.registry.DynamicRegistryMutationTest` 与 `io.github.bearisbug.synaxis.registry.OpaqueRegistryFrozenTest`（第 5 次运行） | `DynamicRegistryMutationTest` 4 条、`OpaqueRegistryFrozenTest` 2 条，0 失败。未冻结：新建 tag 让失效计数加 1，再取同一个 tag 返回同一实例、计数不变，删掉它加 1，删一个不存在的 tag 返回 false、计数不变。冻结后：已有的 tag 照常返回同一实例；`register`、`remove`、新建 tag、`removeTag` 四种写入都抛 `IllegalStateException`，消息含注册表名 `synaxis:test` 与 `before start()`。真进程 `start` 之后：`remove(minecraft:sharpness)` 抛 `IllegalStateException`，消息含 `minecraft:enchantment` 与 `before start()`；新建 `game:arena`、删除已有的 tag 都抛 `IllegalStateException`；对已有的 tag `getOrCreateTag` 返回 `getTag` 的同一实例。原有的 `writeAfterStartIsRejected`（`TC-008` 用到的那条）与两条变更用例绿 |
+| 2 | 改动前的红（第 2、3 次运行） | `aFrozenRegistryRejectsEveryWrite` 红在 `DynamicRegistryMutationTest.java:101`，消息是原先不带注册表名的 `The registry is frozen once the server has started. Enable writes by starting the process with registryUnsafeOps set on its ServerConfig`；`creatingAndRemovingATagInvalidatesTheTagsPacket` 红在 `:71`，`a new tag ==> expected: <1> but was: <0>`；`removeAndTagWritesAfterStartAreRejected` 红在 `OpaqueRegistryFrozenTest.java:45`，`expected: <java.lang.IllegalStateException> but was: <java.lang.UnsupportedOperationException>` |
+
+后置：同 `TC-PROD-960`。
+
+#### `TC-PROD-965` 静态注册表的越界 id 与固定的 tag，单元素 direct tag 按注册表校验，注册表数据包的编码失败带原因 — 对应 `REQ-007` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。`staticTagsCannotBeCreatedOrRemoved` 只对不存在的 `synaxis:absent` 试新建与删除（静态注册表全 JVM 共享，删真实的 tag 会影响同一 JVM 里别的类）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.registry.StaticRegistryRegistriesTest`、`…registry.RegistryTagCodecRegistriesTest`、`…registry.RegistryDataPacketSnapshotRegistriesTest`（第 5 次运行） | `StaticRegistryRegistriesTest` 3 条、`RegistryTagCodecRegistriesTest` 3 条、`RegistryDataPacketSnapshotRegistriesTest` 2 条，0 失败。`Material.fromId` 对 -1、注册表大小与 `Integer.MAX_VALUE` 返回 null，方块注册表 `getKey(-1)`、`getPack(Integer.MAX_VALUE)` 返回 null，石头的 id 照常解出石头，未注册的键 `getId` 为 -1；网络上读到越界的物品 id 抛 `IllegalStateException`，消息含 `Unknown id` 与 `minecraft:item`；`#minecraft:swords` 的 `getOrCreateTag` 就是 `getTag` 的那个，新建 `synaxis:absent` 抛 `IllegalStateException`，删除抛 `UnsupportedOperationException`。单字符串 `minecraft:not_a_block` 解码返回 `Error` 且消息含这个键，`minecraft:stone` 编码就是这个字符串、解回相等；原有的 `directTagCodecPreservesEntryOrder` 绿。编码总返回 `Error("argument: no such modifier")` 的条目让 `registryDataPacket` 抛 `IllegalStateException`，消息含 `synaxis:a`、以 `: argument: no such modifier` 结尾 |
+| 2 | 改动前的红（第 3 次运行） | `StaticRegistryRegistriesTest` 3 条全红：`anIdOutsideTheRegistryIsNoEntry` 在 `:25` 抛 `java.lang.ArrayIndexOutOfBoundsException: Index -1 out of bounds for length 1537`；`anUnknownIdRead…` 在 `:40`，`expected: <java.lang.IllegalStateException> but was: <java.lang.ArrayIndexOutOfBoundsException>`；`staticTags…` 在 `:53`，新建 tag 没有抛出。`singleUnknownEntryIsAnError` 红在 `RegistryTagCodecRegistriesTest.java:54`，`but was: <…Result.Ok>`。`anEntryThatDoesNotEncode…` 红在 `RegistryDataPacketSnapshotRegistriesTest.java:88`，消息只有 `Failed to encode registry entry 0 (RegistryKeyImpl[key=synaxis:a]) for registry synaxis:test` |
+
+后置：同 `TC-PROD-960`。
+
+#### `TC-PROD-966` 环境属性 map 在构造时拒收该类型不支持的修饰器与 null 参数 — 对应 `REQ-007` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。`Modifier.Color.MULTIPLY_ARGB` 的类型是 `Modifier<RGBLike, ARGBLike>`，能对 RGB 属性 `visual/sky_color` 编译通过，但 RGB 类型的乘法只有 `MULTIPLY_RGB`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.world.attribute.EnvironmentAttributeMapTest` 与 `io.github.bearisbug.synaxis.world.BuilderRegistriesTest`（第 5 次运行） | `EnvironmentAttributeMapTest` 3 条、`BuilderRegistriesTest` 3 条，0 失败。`modify(SKY_COLOR, MULTIPLY_ARGB, …).build()` 抛 `IllegalArgumentException`，消息含 `minecraft:visual/sky_color` 与支持的运算（`MULTIPLY` 在内）；`set(FOG_COLOR, null).build()` 抛 `NullPointerException`，消息含 `minecraft:visual/fog_color`；覆盖值、`MULTIPLY_RGB`、`ADD` 照常构造。`BuilderRegistriesTest` 三条（原版群系、维度类型与主世界的属性表经 builder 重建相等）绿，即原版数据里的属性表都过这道校验 |
+| 2 | 改动前的红（第 2 次运行） | 前两条红在 `EnvironmentAttributeMapTest.java:26`、`:36`，`Expected java.lang.IllegalArgumentException`（`NullPointerException`）`to be thrown, but nothing was thrown.`：原先构造照常成功，失败推迟到配置阶段编码注册表数据包时 |
+
+后置：同 `TC-PROD-960`。
+
+#### `TC-PROD-967` tag 的读与更新：类型不符或读不出时都是默认值，`updateContent` 让只读副本失效 — 对应 `REQ-017` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。「NBT 往返」用 `TagHandler.fromCompound(另一个句柄.asCompound())`，载入后的条目按 NBT 类型存（布尔是 byte，UUID 是 int 数组）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.tag.TagUpdateTest`、`…tag.TagStructureTest`、`…tag.TagHandlerReadableCopyTest`、`…tag.TagUuidTest`、`…tag.TagListTest`、`…tag.TagItemIntegrationTest`（第 5 次运行） | `TagUpdateTest` 16 条、`TagStructureTest` 6 条、`TagHandlerReadableCopyTest` 5 条、`TagUuidTest` 6 条、`TagListTest` 18 条、`TagItemIntegrationTest` 9 条，都 0 失败。`updateIncompatible`：int 存的 `coin` 用 double tag 更新时 operator 收到 null，之后读出 5.0；NBT 往返之后 `updateTag(Tag.Boolean, b -> !b)` 得 false，`getAndSetTag(Tag.UUID, …)` 返回原 UUID；`map` 过的 tag 恒等更新之后原始值仍是 0.5、映射值仍是 10.0；路径清空之后带默认值的结构 tag 读出与更新拿到的都是默认值；`updateContent(空)` 之后只读副本里没有 `a`，`updateContent({a:2})` 之后是 2；长度 1 的 int 数组在句柄里、长度 2 的在 `CustomData` 里都读不出 UUID（null）；字符串 list 按 int list 读是 null、按字符串 list 读是 `["a"]`；`count` 写成字符串的嵌套物品读出 null、不抛 |
+| 2 | 改动前的红（第 2、3 次运行） | `TagUpdateTest` 红 4 条：`updateIncompatible` 在 `:207` 抛 `ClassCastException: class java.lang.Integer cannot be cast to class java.lang.Double`，`updateAfterNbtRoundTrip` 在 `:225` 抛 `ClassCastException: class java.lang.Byte cannot be cast to class java.lang.Boolean`，`getAndSetAfterNbtRoundTrip` 在 `:238`，`but was: <IntArrayBinaryTagImpl{value=[1563127582, 1011502971, -1641969044, 223051539]}>`，`identityUpdateOfAMappedTagKeepsTheValue` 在 `:252`，`expected: <0.5> but was: <0.025>`。`anEmptiedPathReadsAsTheDefault` 在 `TagStructureTest.java:186`，`expected: <Entry[value=default]> but was: <null>`。`updateContentInvalidatesTheCopy` 在 `TagHandlerReadableCopyTest.java:75`，`expected: <null> but was: <1>`。`anArrayOfAnotherLengthIsNoUuid` 在 `TagUuidTest.java:67` 抛 `ArrayIndexOutOfBoundsException: Index 1 out of bounds for length 1`。`aListOfAnotherElementTypeReadsAsTheDefault` 在 `TagListTest.java:271` 抛 `ClassCastException`（`StringBinaryTagImpl` 转不成 `IntBinaryTag`）。`anItemThatDoesNotDecodeReadsAsAbsent` 在 `TagItemIntegrationTest.java:144`，`Unexpected exception thrown: java.lang.IllegalArgumentException: Invalid NBT for ItemStack: count: Expected int NBT, found …"many"` |
+
+后置：同 `TC-PROD-960`。
+
+#### `TC-PROD-968` Boss 血条：同一玩家的添加先于更新、移除之后没有更新，已移除与重连的玩家，最后一名观众离开时的新观众 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头（`RecordingPlayer` 与 `aside` 的用法）。三种线程模式：默认；4 线程严格（`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`）；严格 grid（再加 `-Dsynaxis.thread-provider=grid`）。测试线程与 `aside` 起的线程都不是 tick 线程，玩家还没被分派，所有权断言放行。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.adventure.bossbar.BossBarPacketOrderIntegrationTest`、`…adventure.bossbar.BossBarManagerLifecycleIntegrationTest` 与 `io.github.bearisbug.synaxis.instance.InstanceBossBarAttachIntegrationTest`（第 5 次运行，默认模式） | `BossBarPacketOrderIntegrationTest` 2 条、`BossBarManagerLifecycleIntegrationTest` 7 条、`InstanceBossBarAttachIntegrationTest` 6 条，0 失败。添加：在排 Add 之前另一条线程改进度，玩家收到的是 `[AddAction, UpdateHealthAction]`；移除：在排 Update 之前另一条线程隐藏血条，收到 `[AddAction, UpdateHealthAction, RemoveAction]`。已移除的玩家：单个与成组的 `addBossBar` 都不加它（血条表为空、观众只有在线的那个、它名下没有血条），成组隐藏后血条表为空。同 UUID 重连：旧会话的玩家被移除后插件再给它显示血条，新会话只看到自己的血条，对旧玩家调 `removeAllBossBars` 不动新玩家的。最后一名观众：新观众加入时与旧观众比较的那一刻，另一条线程对旧观众调 `removeAllBossBars`，之后血条的观众是新观众、新观众名下有这个血条。销毁：两名观众都收到 `[AddAction, RemoveAction]`，之后改进度不再发包 |
+| 2 | 改动前的红（第 3 次运行，默认模式） | `anUpdateRacingTheAddIsQueuedAfterIt` 红在 `BossBarPacketOrderIntegrationTest.java:41`，收到的是 Update 在前、Add 在后；`aRemovalRacingAnUpdateIsQueuedAfterIt` 红在 `:58`，Remove 在 Update 之前；`aShowRacingTheDropOfTheLastViewerKeepsTheBar` 红在 `BossBarManagerLifecycleIntegrationTest.java:134`，`expected: <[…RecordingPlayer@…]> but was: <[]>`（新观众落在已摘掉的 holder 上）；`aRemovedPlayerIsNotShownABar` 红在 `:81`，`expected: <true> but was: <false>`；`aReconnected…` 红在 `:107`，新玩家名下多出旧会话的血条。`destroyRemovesTheBarFromEveryViewer` 是覆盖用例，修前修后都绿 |
+| 3 | 第 1 步在 4 线程严格模式下跑一次（第 6 次运行），再在严格 grid 下跑一次（第 7 次运行） | 两次都是 `BossBarPacketOrderIntegrationTest` 2 条、`BossBarManagerLifecycleIntegrationTest` 7 条、`InstanceBossBarAttachIntegrationTest` 6 条，0 失败；测试线程与 `aside` 的线程都不是 tick 线程，所有权断言不报 |
+
+后置：同 `TC-PROD-960`。
+
+#### `TC-PROD-969` 受这些改动影响的旧用例与类 — 对应 `REQ-007`、`REQ-017` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 5 次运行同批跑根项目 `codec`、`tag`、`registry`、`instance.block`、`item`、`world`、`adventure`、`component` 各包，`network.packet` 包与 `NetworkBuffer*` 各类，`InstanceBossBarAttachIntegrationTest`、`PlayerBlockPlacementIntegrationTest`、`inventory.click` 包、`ArchitectureTest`、`ModuleExportsTest`，`server-app` 的 `PlayerState*` 各类（`PlayerStatePostgresIntegrationTest` 没有数据库变量时跳过），同批 `:testNamingCheck`、`:forbiddenImportsCheck` 与 `server-app` 的同名任务、`:jacocoTestReport` | `BUILD SUCCESSFUL`：根项目 121 个类 836 个用例、`server-app` 3 个类 28 个，0 失败，5 个跳过（`PlayerStatePostgresIntegrationTest` 4 个没有数据库变量；`TagNbtTest` 1 个由 `@DisabledIf("isSerializeEmptyCompoundEnabled")` 跳过，与本组无关）。其中 `VanillaRegistriesTest`、`RegistryDataByteParityIntegrationTest`（注册表数据包逐字节对照原版）、`BlockPredicateIntegrationTest`、`DataComponentPredicateTest`、`PlayerBlockPlacementIntegrationTest`、`LeftClickIntegrationTest` 所在的 `inventory.click` 包与 `ArchitectureTest`（分层规则）都绿，四个命名与 import 检查通过。按这次的 `build/reports/jacoco/test/jacocoTestReport.xml`，本组主代码新增的可执行行 158 行都被执行到 |
+| 2 | `StructCodecTest` 取 NBT transcoder 的写法（第 2 次运行的发现） | 本组把 `StructCodecTest` 里 18 处 `TranscoderNbtImpl.INSTANCE` 改成 `Transcoder.NBT`。`Transcoder` 的静态字段在接口初始化时构造各实现（`Transcoder.java:24`），实现类初始化时又要先初始化 `Transcoder`；那里的 `@SuppressWarnings("ClassInitializationDeadlock")` 以「实现类只经接口取到」为前提。`StructCodecTest` 直接取实现类：第 2 次运行一个新 JVM 里 `CodecTest`（经 `Transcoder.NBT`）与 `StructCodecTest`（经 `TranscoderNbtImpl.INSTANCE`）同时首次触发，`jstack` 见 `ForkJoinPool-1-worker-4` 停在 `Transcoder.<clinit>`、等 `TranscoderNbtImpl` 的类初始化，`worker-5` 停在 `StructCodecTest.singleField`、等 `Transcoder` 的类初始化，同一 JVM 里其余要用 `Transcoder` 的类全部等着，7 分钟后结束测试进程。改写之后第 3、5、6、7 次运行没有再停 |
+
+后置：`git status --short` 只有本次运行的产物。
+
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
 对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的线上部分：`synaxis:play` v1 的五条消息、小部件属性的 TLV 编码与冻结向量（`docs/DESIGN-PLAY.md` `API-PLAY-002`、`API-PLAY-003`；本组跟进该分册 v0.2 与 `docs/DESIGN-M2.md` v0.66 的 `API-M2-001`）。用例号段 001～009，由组 P 在分支 `prod/r077-P` 写入。测试类：`:protocol` 包 `io.github.bearisbug.synaxis.game.protocol.play` 的 `PlayMessagesTest`、`PlayVectorTest`；`client-fabric` 的 `PlayFrozenVectorTest`。
@@ -15182,6 +15309,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 PHYS，坐标、碰撞与物理、投射物、经验球与实体查找（`REQ-003`、`REQ-PROD-013`、`REQ-PROD-019`、`REQ-PROD-039`、`REQ-PROD-046`，v0.9.102）→ TC-PROD-940～TC-PROD-949；动了 `coordinate` 包的 `Pos`、`Vec`、`BlockVec`、`Point#normalize`、`Area`、`AreaImpl` 或 `ChunkRange`，跑 TC-PROD-940～TC-PROD-943；动了 `collision` 包的 `BlockCollision`、`BoundingBox`、`CollisionUtils`、`EntityCollision`、`RayUtils` 或 `PhysicsUtils`，跑 TC-PROD-944～TC-PROD-946，放置判定改了再加 TC-PROD-945 第 3 步（带数据库）；动了 `EntityProjectile`、`ExperienceOrb` 或 `EntityFinder`，跑 TC-PROD-947、TC-PROD-948；动了 `EntityTrackerImpl#nearbyEntities`，跑 TC-PROD-943 与 TC-PROD-949 第 1 步的三种线程模式；`Pos#withDirection` 的语义变了，加跑 TC-PROD-940 第 3 步（`:game-rts:test`）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 INV，点击事件在点击提交之后派发、装备事件只改组件、打开界面的约束与五处单点修复（`REQ-PROD-046`、`REQ-PROD-022`、`REQ-PROD-013`、`REQ-001`，v0.9.97）→ TC-PROD-890～TC-PROD-899；动了 `AbstractInventory` 的 `handleClick`、`dispatch`、`setItemStack` 或 `bindProcess`，`InventoryClickProcessor` 与 `InventoryClickHandler` 派发点击事件的地方，或 `PlayerInventory#UNSAFE_itemInsert`，就跑 TC-PROD-890～TC-PROD-892 与 TC-PROD-899 第 1～3 步（三种线程模式各一次）；动了 `Inventory#addViewer`、`InventoryOpenEvent#setInventory` 或 `Player#openInventory` 的回调，就跑 TC-PROD-893；动了 `InventoryClickProcessor#doubleClick`、`BeaconInventory`、`WindowListener#selectBundleItemListener`、`ItemBlockState#apply` 或 `CreativeInventoryActionListener`，分别跑 TC-PROD-894、TC-PROD-895、TC-PROD-896、TC-PROD-897、TC-PROD-898 第 1 步；改了 `TransactionOption` 或批量方法的语义，跑 TC-PROD-898 第 3 步并改它们的 Javadoc。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 CMD 组，命令的结构校验、语法的 condition、命令名、补全的线程、命令包的重定向、解析游标、参数的取值、扁平化器与日志转义（`REQ-PROD-012`、`REQ-PROD-011`，v0.9.103）→ TC-PROD-950～TC-PROD-959；动了引擎 `GraphImpl`（`checkStructure`、`ExecutionImpl` 的两种条件与 `merge`）、`CommandManager#register`、`Command` 的构造器或 `Argument#sameConfiguration` 的任一覆写，就跑 TC-PROD-950～TC-PROD-952 与 `<T>.*`（`io.github.bearisbug.synaxis.command` 包全部，`GraphConversionTest`、`ConditionalSyntaxFilteringIntegrationTest` 在内）；动了 `GraphConverter#append` 或 `ArgumentCommand`、`ArgumentGroup`、`ArgumentLoop` 就跑 TC-PROD-953 与 TC-PROD-822；动了 `CommandParserImpl` 的 `CommandStringReader` 或 `parseNode` 就跑 TC-PROD-954 与 TC-PROD-824；动了任一参数类的 `parse` 跑 TC-PROD-955 与 `ArgumentTypeTest`、`ArgumentRobustnessTest`；动了 `PluginCommandsImpl` 或 `HostPermissions#read` 重发命令树的那几行跑 TC-PROD-956、TC-PROD-957 与 TC-PROD-246～TC-PROD-248（要数据库前置），TC-PROD-956 第 4 步的两种多线程模式由 CI 的两个多线程 job 跑；动了 `EngineFlattenerProvider`、`ConsoleSender` 或 `StringUtils#escapeForLog` 跑 TC-PROD-957、TC-PROD-958、TC-PROD-240 与 TC-PROD-257；动了 `Main#runConsoleCommand` 跑 TC-PROD-959 与 TC-PROD-240
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 CODEC，编解码器的可选值、组件谓词、注册表冻结、环境属性、tag 读写与 Boss 血条（`REQ-017`、`REQ-007`、`REQ-PROD-019`、`REQ-PROD-047`，v0.9.104）→ TC-PROD-960～TC-PROD-969；动了引擎 `codec` 包的 `OptionalImpl`、`StructCodec#get`、`UnionImpl` 或集合与 map 的编码，就跑 TC-PROD-960～TC-PROD-962；动了 `instance.block.predicate` 或 `item.predicate`，跑 TC-PROD-960、TC-PROD-961、TC-PROD-963；动了 `registry` 包的冻结、tag 增删、`StaticRegistry` 或 `RegistryCodecs` 的 tag codec，跑 TC-PROD-964、TC-PROD-965 与 TC-008；动了 `world.attribute`，跑 TC-PROD-966；动了 `TagHandlerImpl` 或 `Serializers`，跑 TC-PROD-967；动了 `adventure.bossbar`，TC-PROD-968 三种线程模式各跑一遍
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

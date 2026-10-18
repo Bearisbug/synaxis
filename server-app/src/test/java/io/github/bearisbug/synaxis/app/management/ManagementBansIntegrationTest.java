@@ -176,6 +176,34 @@ class ManagementBansIntegrationTest {
     }
 
     /**
+     * {@code API-PROD-022} {@code bans/add}: a ban entry with a name it does not know is refused like a
+     * malformed one, before anything is written. A misspelt {@code expires} used to ban for ever.
+     * {@code source}, a field of the vanilla User Ban, is taken and not used.
+     */
+    @Test
+    void aBanWithANameItDoesNotKnowIsRefusedAndSourceIsTaken(Env env) throws Exception {
+        final ManagementClient client = serve(env);
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        int id = 1;
+        for (String misspelt : List.of("expiry", "expires_at", "mesage")) {
+            final JsonObject refused = client.call(id++, "minecraft:bans/add", "{\"add\":[{\"player\":{\"id\":\"" + first
+                    + "\"}},{\"player\":{\"id\":\"" + second + "\"},\"" + misspelt + "\":\"2031-01-01T00:00:00Z\"}]}");
+            assertEquals(-32602, refused.getAsJsonObject("error").get("code").getAsInt(), misspelt + " -> " + refused);
+            assertEquals("unknown field '" + misspelt + "' in a ban; the fields are player, reason, expires, source",
+                    refused.getAsJsonObject("error").get("message").getAsString());
+        }
+        assertEquals(List.of(), moderation.activeBans(), "the valid entry before it is not banned either");
+
+        final JsonArray added = client.call(id, "minecraft:bans/add", "{\"add\":[{\"player\":{\"id\":\"" + second
+                + "\"},\"reason\":\"griefing\",\"expires\":\"2031-01-01T00:00:00Z\",\"source\":\"Server\"}]}")
+                .getAsJsonArray("result");
+        final JsonObject ban = entry(added, second);
+        assertEquals("2031-01-01T00:00:00Z", ban == null ? null : ban.get("expires").getAsString(), added.toString());
+        assertEquals("griefing", ban.get("reason").getAsString());
+    }
+
+    /**
      * An expiry the ban table cannot hold is a bad parameter like a past one: {@code bans/add} checks
      * it with the rest of the batch and answers −32602 before the first ban is written, the plugin
      * API throws before the database ({@code docs/DESIGN-PROD.md} {@code API-PROD-022},

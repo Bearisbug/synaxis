@@ -348,6 +348,48 @@ class CommandsIntegrationTest {
         host.disableAll();
     }
 
+    /** An {@link Error} out of a console line is one line with its stack as well, and the console goes on reading. */
+    @Test
+    void aConsoleLineThatThrowsAnErrorIsOneLogLineAndTheNextLineRuns(Env env) {
+        final Command party = new Command("party");
+        party.setCondition((_, _) -> {
+            throw new AssertionError("a condition that fails hard");
+        });
+        party.setDefaultExecutor((_, _) -> { });
+        final PluginHost host = host(env);
+        env.process().command().register(party);
+
+        try (LogCapture main = LogCapture.of(Main.class)) {
+            Main.readConsole(env.process(), new BufferedReader(new StringReader("party\nlist\n")));
+            assertEquals(List.of("Console command failed: party"), main.messagesAt(Level.ERROR));
+            assertEquals(AssertionError.class.getName(),
+                    main.eventsAt(Level.ERROR).getFirst().getThrowableProxy().getClassName());
+        }
+        assertEquals(List.of("console list"),
+                events.stream().map(e -> e.get("actor") + " " + e.get("command")).toList(), "the line after it ran");
+        host.disableAll();
+    }
+
+    /**
+     * {@code API-PROD-011} 控制台: a command its condition refuses answers nothing to the console, so the
+     * host writes one INFO line for it, without a stack, as for an unknown or incomplete one.
+     */
+    @Test
+    void aConsoleCommandItsConditionRefusesIsOneInfoLine(Env env) {
+        final Command players = new Command("playersonly");
+        players.setCondition((sender, _) -> sender instanceof Player);
+        players.setDefaultExecutor((_, _) -> { });
+        env.process().command().register(players);
+
+        try (LogCapture main = LogCapture.of(Main.class)) {
+            assertEquals(CommandResult.Type.CANCELLED, Main.runConsoleCommand(env.process(), "playersonly").getType());
+            assertEquals(List.of("Command refused by its condition or failed: playersonly"),
+                    main.messagesAt(Level.INFO));
+            assertTrue(main.eventsAt(Level.INFO).stream().allMatch(event -> event.getThrowableProxy() == null),
+                    "no stack");
+        }
+    }
+
     @Test
     void aPluginCommandLivesUnderItsNamespaceAndABareNameGoesToTheFirst(Env env) {
         final Instance match = env.createFlatInstance();

@@ -24,8 +24,10 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -68,7 +70,7 @@ class MainStoreIntegrationTest {
 
     private Main.StoreRuntime open(Env env, Auth auth) {
         ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
-        return Main.openStore(Main.STORE_POSTGRES, env.process(), auth, "r1-c1", ledger, environment());
+        return Main.openStore(Main.STORE_POSTGRES, env.process(), auth, "r1-c1", false, ledger, environment());
     }
 
     private static Auth.Online mojang() {
@@ -120,6 +122,36 @@ class MainStoreIntegrationTest {
         open(env, new Auth.Offline(true)).close();
     }
 
+    /**
+     * {@code API-PROD-004} 起服前提, §11.2 {@code [*] → active}: the store opens in step (4), the shard
+     * session only right before the game port is bound, so a second process of a running shard id that
+     * refuses to start in between leaves the running shard's session in force.
+     */
+    @Test
+    void openingTheStoreLeavesTheSessionOfTheRunningShardAlone(Env env) throws SQLException {
+        assertEquals(0, Main.migrateOnly(new String[]{"--migrate-only", "--auth-mode=offline"}, environment()));
+        database.execute("INSERT INTO shard_session (shard_id, started_at, expires_at) "
+                + "VALUES ('r1-c1', now(), now() + interval '1 hour')");
+
+        try (Main.StoreRuntime runtime = open(env, new Auth.Offline())) {
+            assertEquals(List.of(true), sessions(), "the store is open and shard_session is untouched");
+
+            Main.openSession(env.process(), runtime);
+            assertEquals(List.of(false, true), sessions(), "this run's session took over the running one");
+        }
+    }
+
+    /** Whether each session of {@code r1-c1} is in force, in the order they were opened. */
+    private List<Boolean> sessions() throws SQLException {
+        try (Connection connection = database.connect(); Statement statement = connection.createStatement();
+             ResultSet rows = statement.executeQuery(
+                     "SELECT expires_at > now() FROM shard_session WHERE shard_id = 'r1-c1' ORDER BY session_id")) {
+            final List<Boolean> inForce = new ArrayList<>();
+            while (rows.next()) inForce.add(rows.getBoolean(1));
+            return inForce;
+        }
+    }
+
     @Test
     void theMigrationNeedsAModeAndTheShardNeedsItsVariables(Env env) {
         assertEquals(1, Main.migrateOnly(new String[]{"--migrate-only"}, environment()));
@@ -127,7 +159,7 @@ class MainStoreIntegrationTest {
 
         ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
         final IllegalArgumentException missing = assertThrows(IllegalArgumentException.class,
-                () -> Main.openStore(Main.STORE_POSTGRES, env.process(), new Auth.Offline(), "r1-c1", ledger, Map.of()));
+                () -> Main.openStore(Main.STORE_POSTGRES, env.process(), new Auth.Offline(), "r1-c1", false, ledger, Map.of()));
         assertTrue(missing.getMessage().contains("SYNAXIS_STATE_DB_URL is not set"), missing.getMessage());
     }
 
@@ -138,21 +170,21 @@ class MainStoreIntegrationTest {
         final ServerProcess accepting = ServerProcess.of(ServerConfig.builder().insideTest(true).acceptTransfers(true).build());
 
         final IllegalArgumentException memory = assertThrows(IllegalArgumentException.class,
-                () -> Main.openStore(Main.STORE_MEMORY, accepting, new Auth.Offline(), "r1-c1", ledger, environment()));
+                () -> Main.openStore(Main.STORE_MEMORY, accepting, new Auth.Offline(), "r1-c1", false, ledger, environment()));
         assertTrue(memory.getMessage().contains("needs the postgres store"), memory.getMessage());
         final IllegalArgumentException keyless = assertThrows(IllegalArgumentException.class,
-                () -> Main.openStore(Main.STORE_POSTGRES, accepting, new Auth.Offline(), "r1-c1", ledger, environment()));
+                () -> Main.openStore(Main.STORE_POSTGRES, accepting, new Auth.Offline(), "r1-c1", false, ledger, environment()));
         assertTrue(keyless.getMessage().contains("SYNAXIS_TRANSFER_HMAC_KEYS"), keyless.getMessage());
 
         final Map<String, String> withKeys = new HashMap<>(environment());
         withKeys.put("SYNAXIS_TRANSFER_HMAC_KEYS", "1:" + Base64.getEncoder().encodeToString(new byte[32]));
         try (Main.StoreRuntime runtime = Main.openStore(Main.STORE_POSTGRES, accepting, new Auth.Offline(), "r1-c1",
-                ledger, withKeys)) {
+                false, ledger, withKeys)) {
             assertTrue(runtime.issuer() != null && runtime.verifier() != null, "both sides of a transfer");
         }
         withKeys.put("SYNAXIS_TRANSFER_HMAC_KEYS", "1:short");
         assertThrows(IllegalArgumentException.class,
-                () -> Main.openStore(Main.STORE_POSTGRES, accepting, new Auth.Offline(), "r1-c1", ledger, withKeys));
+                () -> Main.openStore(Main.STORE_POSTGRES, accepting, new Auth.Offline(), "r1-c1", false, ledger, withKeys));
     }
 
     @Test

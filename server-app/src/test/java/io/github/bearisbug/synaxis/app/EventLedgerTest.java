@@ -289,6 +289,39 @@ class EventLedgerTest {
         }
     }
 
+    /**
+     * A file the housekeeping cannot compress (a full disk, a file another user owns; here a
+     * directory under a ledger file's name) costs that file alone: every expired file is deleted all
+     * the same, and the half written {@code .gz.partial} of the failed compression is not left behind.
+     * The round used to stop at the first failure, at the same file every round.
+     */
+    @Test
+    void housekeepingDeletesTheExpiredFilesWhenACompressionFails(@TempDir Path directory) throws IOException {
+        final LocalDate today = LocalDate.of(2026, 9, 23);
+        final EventLedger ledger = ledger(directory, EventLedger.DEFAULT_MAX_BYTES_PER_DAY, new MovableClock(NOON));
+        final Path stuck = Files.createDirectories(dayFile(directory, "20260922"));
+        Files.writeString(stuck.resolve("inside"), "{}\n");
+        // Many, so that whatever order the directory lists them in, some come after the stuck one
+        final List<String> expired = new ArrayList<>();
+        for (int day = 1; day <= 20; day++) {
+            final String name = "events-" + SHARD + "-202607%02d.jsonl".formatted(day) + (day % 2 == 0 ? ".gz" : "");
+            Files.writeString(directory.resolve(name), "{}\n");
+            expired.add(name);
+        }
+        Files.writeString(dayFile(directory, "20260921"), "{}\n");
+
+        try (LogCapture log = LogCapture.of(EventLedger.class)) {
+            ledger.housekeep(today);
+            assertEquals(1, log.messagesAt(Level.WARN).size(), log.messagesAt(Level.WARN).toString());
+        }
+
+        try (Stream<Path> files = Files.list(directory)) {
+            final List<String> left = files.map(path -> path.getFileName().toString()).sorted().toList();
+            assertEquals(List.of("events-" + SHARD + "-20260921.jsonl.gz", "events-" + SHARD + "-20260922.jsonl"), left,
+                    "expired " + expired);
+        }
+    }
+
     private static long written(List<String> lines) {
         return lines.stream().filter(line -> line.contains("\"event\":\"filler\"")).count();
     }

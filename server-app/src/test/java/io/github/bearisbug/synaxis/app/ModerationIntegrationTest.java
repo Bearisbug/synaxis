@@ -46,11 +46,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import javax.sql.DataSource;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.file.Path;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
@@ -61,10 +66,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
@@ -72,6 +81,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -427,6 +437,91 @@ class ModerationIntegrationTest {
         await(env, () -> second.activeBan(account, null).isEmpty(), Duration.ofSeconds(5), "the other shard drops it");
         tookMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
         assertTrue(tookMillis < 5_000, "within 5 s, took " + tookMillis + " ms");
+    }
+
+    /**
+     * The pool of the store, one connection at a time: the next one passes, is refused, or holds its
+     * {@code close()} (the statements have run, the rows are read) until released.
+     */
+    private static final class ScriptedPool implements InvocationHandler {
+        enum Step { PASS, REFUSE, HOLD }
+
+        private final DataSource pool;
+        private final Queue<Step> steps = new ConcurrentLinkedQueue<>();
+        private final CountDownLatch held = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        ScriptedPool(DataSource pool) {
+            this.pool = pool;
+        }
+
+        DataSource dataSource() {
+            return (DataSource) Proxy.newProxyInstance(DataSource.class.getClassLoader(), new Class<?>[]{DataSource.class}, this);
+        }
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
+            if (!method.getName().equals("getConnection") || arguments != null) return forward(pool, method, arguments);
+            final Step step = Objects.requireNonNullElse(steps.poll(), Step.PASS);
+            if (step == Step.REFUSE) throw new SQLException("refused by the test");
+            final Connection connection = pool.getConnection();
+            if (step == Step.PASS) return connection;
+            return Proxy.newProxyInstance(Connection.class.getClassLoader(), new Class<?>[]{Connection.class},
+                    (_, called, passed) -> {
+                        if (called.getName().equals("close")) {
+                            held.countDown();
+                            assertTrue(release.await(10, TimeUnit.SECONDS), "never released");
+                        }
+                        return forward(connection, called, passed);
+                    });
+        }
+
+        private static Object forward(Object target, Method method, Object[] arguments) throws Throwable {
+            try {
+                return method.invoke(target, arguments);
+            } catch (InvocationTargetException e) {
+                throw e.getCause();
+            }
+        }
+    }
+
+    /**
+     * {@code API-PROD-009}: a change made on this shard whose read afterwards fails is put in by hand,
+     * and a read that started before the change and returns after it does not take it back. Once with a
+     * ban and once with an unban; the read that started first is {@link HostModeration#start()} on a
+     * thread of its own, held after its statements ran.
+     */
+    @Test
+    void aChangePutInByHandOutlivesAReadThatStartedBeforeIt(Env env) throws Exception {
+        final ScriptedPool scripted = new ScriptedPool(pool.pool());
+        final HostModeration moderation = new HostModeration(env.process(), new ModerationStore(scripted.dataSource()),
+                RedisLink.disabled("by-hand"), HostModeration.REFRESH, false, (_, _) -> { });
+        final UUID account = UUID.randomUUID();
+
+        scripted.steps.addAll(List.of(ScriptedPool.Step.HOLD, ScriptedPool.Step.PASS, ScriptedPool.Step.REFUSE));
+        final Thread earlier = Thread.ofVirtual().start(() -> assertDoesNotThrow(moderation::start));
+        assertTrue(scripted.held.await(10, TimeUnit.SECONDS), "the earlier read ran its statements");
+        final Ban ban = moderation.ban(new BanTarget.ByUuid(account), "griefing", null, HostModeration.CONSOLE).join();
+        assertTrue(moderation.activeBan(account, null).isPresent(), "put in by hand");
+        scripted.release.countDown();
+        assertTrue(earlier.join(Duration.ofSeconds(10)), "the earlier read returned");
+        assertTrue(moderation.activeBan(account, null).isPresent(),
+                "the earlier read, which saw no ban, did not take the one put in by hand back");
+
+        final ScriptedPool lifting = new ScriptedPool(pool.pool());
+        final HostModeration second = new HostModeration(env.process(), new ModerationStore(lifting.dataSource()),
+                RedisLink.disabled("by-hand-lift"), HostModeration.REFRESH, false, (_, _) -> { });
+        second.start();
+        assertTrue(second.activeBan(account, null).isPresent());
+        lifting.steps.addAll(List.of(ScriptedPool.Step.HOLD, ScriptedPool.Step.PASS, ScriptedPool.Step.REFUSE));
+        final Thread before = Thread.ofVirtual().start(() -> assertDoesNotThrow(second::start));
+        assertTrue(lifting.held.await(10, TimeUnit.SECONDS), "the earlier read ran its statements");
+        assertTrue(second.unban(ban.banId(), HostModeration.CONSOLE).join());
+        assertTrue(second.activeBan(account, null).isEmpty(), "lifted by hand");
+        lifting.release.countDown();
+        assertTrue(before.join(Duration.ofSeconds(10)), "the earlier read returned");
+        assertTrue(second.activeBan(account, null).isEmpty(),
+                "the earlier read, which saw the ban, did not bring it back");
     }
 
     @Test

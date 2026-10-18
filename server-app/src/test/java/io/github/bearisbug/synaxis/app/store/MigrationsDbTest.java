@@ -56,6 +56,24 @@ class MigrationsDbTest {
                 "store_meta", "transfer_nonce", "whitelist", "world_flag"), tables());
     }
 
+    /**
+     * §25: a migration statement on a database with data in it (an index, a backfill) runs as long
+     * as it takes. The pool of a shard bounds every statement to 2 s on the server and every read to
+     * 4 s on the client; the pool of {@code --migrate-only} bounds neither.
+     */
+    @Test
+    void theMigrationPoolBoundsNoStatementWhereTheShardPoolDoes() throws SQLException {
+        final String fiveSeconds = "SELECT pg_sleep(5)";
+        try (Database migration = Database.forMigration(database.settings());
+             Connection connection = migration.pool().getConnection(); Statement statement = connection.createStatement()) {
+            statement.execute(fiveSeconds);
+        }
+        try (Connection connection = pool.pool().getConnection(); Statement statement = connection.createStatement()) {
+            final SQLException cut = assertThrows(SQLException.class, () -> statement.execute(fiveSeconds));
+            assertTrue(cut.getMessage().contains("statement timeout"), cut.getMessage());
+        }
+    }
+
     @Test
     void theDatabaseOfThePreviousVersionMigratesForward() throws SQLException {
         Flyway.configure().dataSource(pool.pool()).locations("classpath:db/migration").target("1").load().migrate();

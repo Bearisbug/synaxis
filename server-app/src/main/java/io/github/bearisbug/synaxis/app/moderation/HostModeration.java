@@ -103,6 +103,10 @@ public final class HostModeration implements Moderation {
             else changed.remove(account);
             return new Snapshot(read, bans, Set.copyOf(changed));
         }
+
+        Snapshot withRead(long read) {
+            return new Snapshot(read, bans, whitelist);
+        }
     }
 
     private final ServerProcess process;
@@ -282,14 +286,19 @@ public final class HostModeration implements Moderation {
 
     /**
      * Reads everything again after a change made here. Should that read fail, the change is put
-     * into what this shard holds by hand, so that it applies here at once all the same.
+     * into what this shard holds by hand, so that it applies here at once all the same. What is put
+     * in by hand carries the number of the read that failed: a read that started before the change
+     * does not see it and must not take it back, one that started after it does see it, and when
+     * such a read is already in, nothing is put in by hand.
      */
     private void reread(ModerationStore database, UnaryOperator<Snapshot> byHand) {
+        final long read = reads.incrementAndGet();
         try {
-            apply(read(database));
+            final ModerationStore.Contents contents = database.load();
+            apply(new Snapshot(read, contents.bans(), contents.whitelist()));
         } catch (SQLException e) {
             failures.warn(e, "Reading the bans again after a change failed, the change is applied here by hand");
-            snapshot.updateAndGet(byHand);
+            snapshot.updateAndGet(previous -> previous.read() > read ? previous : byHand.apply(previous).withRead(read));
         }
     }
 

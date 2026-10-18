@@ -24,7 +24,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -111,6 +113,8 @@ final class EventLedger {
     /** The failures of the file itself, one budget for the whole ledger: it is one fact, whoever writes. */
     private final LogBudget failures = new LogBudget(LOGGER, "ledger write failures");
     private final LogBudget dropReports = new LogBudget(LOGGER, "ledger drop reports");
+    /** Held by a housekeeping round: the one of the start and the one of a new day must not share a file. */
+    private final Object housekeeping = new Object();
 
     private volatile boolean closing;
     /** Set by the writer once it stops taking lines, before its last drain. */
@@ -336,27 +340,62 @@ final class EventLedger {
     }
 
     /**
-     * Compresses every file of this shard from before {@code today} and deletes every file older than
-     * the retention. A compressed file is written next to the original and moved into place before
-     * the original is deleted, so a process killed halfway leaves the plain file to be compressed on
-     * the next start.
+     * Deletes every file of this shard older than the retention, then compresses every one from before
+     * {@code today}; one round at a time. A compressed file is written next to the original and moved
+     * into place before the original is deleted, so a process killed halfway leaves the plain file to
+     * be compressed on the next start. A file that cannot be deleted or compressed (a full disk, a file
+     * another user owns) costs that file alone, and the round reports how many failed in one line.
      *
      * @param today the day being written, the one file left alone
      */
     void housekeep(LocalDate today) {
-        if (!Files.isDirectory(directory)) return;
-        final LocalDate oldestKept = today.minusDays(RETENTION_DAYS);
-        try (DirectoryStream<Path> files = Files.newDirectoryStream(directory)) {
-            for (Path path : files) {
-                final Matcher match = fileName.matcher(path.getFileName().toString());
-                if (!match.matches()) continue;
-                final LocalDate day = LocalDate.parse(match.group(1), FILE_DATE);
-                final boolean compressed = match.group(2) != null;
-                if (day.isBefore(oldestKept)) Files.deleteIfExists(path);
-                else if (!compressed && day.isBefore(today)) compress(path);
+        synchronized (housekeeping) {
+            if (!Files.isDirectory(directory)) return;
+            final LocalDate oldestKept = today.minusDays(RETENTION_DAYS);
+            final List<Path> expired = new ArrayList<>();
+            final List<Path> toCompress = new ArrayList<>();
+            try (DirectoryStream<Path> files = Files.newDirectoryStream(directory)) {
+                for (Path path : files) {
+                    final Matcher match = fileName.matcher(path.getFileName().toString());
+                    if (!match.matches()) continue;
+                    final LocalDate day = LocalDate.parse(match.group(1), FILE_DATE);
+                    if (day.isBefore(oldestKept)) expired.add(path);
+                    else if (match.group(2) == null && day.isBefore(today)) toCompress.add(path);
+                }
+            } catch (IOException | RuntimeException e) {
+                failures.warn(e, "Could not list the event ledger: directory={}", directory);
+                return;
             }
-        } catch (IOException | RuntimeException e) {
-            failures.warn(e, "Could not compress or prune the event ledger: directory={}", directory);
+            // Deleted first: they are what frees the space a compression may lack
+            final Failed failed = new Failed();
+            for (Path path : expired) {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException | RuntimeException e) {
+                    failed.add(e);
+                }
+            }
+            for (Path path : toCompress) {
+                try {
+                    compress(path);
+                } catch (IOException | RuntimeException e) {
+                    failed.add(e);
+                }
+            }
+            if (failed.first != null)
+                failures.warn(failed.first, "Could not compress or prune {} event ledger files: directory={}",
+                        failed.count, directory);
+        }
+    }
+
+    /** The failures of one housekeeping round: how many, and the first, whose stack is reported. */
+    private static final class Failed {
+        private int count;
+        private @Nullable Exception first;
+
+        void add(Exception e) {
+            count++;
+            if (first == null) first = e;
         }
     }
 
@@ -365,11 +404,16 @@ final class EventLedger {
         final Path partial = plain.resolveSibling(plain.getFileName() + ".gz.partial");
         // One a killed process left behind would keep the mode it was created with
         Files.deleteIfExists(partial);
-        try (OutputStream out = new GZIPOutputStream(Files.newOutputStream(Files.createFile(partial, OWNER_ONLY)))) {
-            Files.copy(plain, out);
+        try {
+            try (OutputStream out = new GZIPOutputStream(Files.newOutputStream(Files.createFile(partial, OWNER_ONLY)))) {
+                Files.copy(plain, out);
+            }
+            Files.move(partial, gzip, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            Files.delete(plain);
+        } finally {
+            // What a failed compression wrote so far, on a disk that may be full
+            Files.deleteIfExists(partial);
         }
-        Files.move(partial, gzip, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-        Files.delete(plain);
     }
 
     private static void appendValue(StringBuilder line, @Nullable Object value) {

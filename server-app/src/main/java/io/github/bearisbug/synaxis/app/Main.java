@@ -84,6 +84,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
@@ -134,6 +135,8 @@ public final class Main {
     /** The exit code of a process the tick watchdog judged dead (§11.5). */
     private static final int DEATH_EXIT_CODE = 70;
     private static final long DEATH_POLL_MILLIS = 100;
+    /** Set first thing when the tick watchdog judges the process dead, which then exits with 70, not 0. */
+    private static final AtomicBoolean JUDGED_DEAD = new AtomicBoolean();
 
     /**
      * The world height of §9, and the only one M2 has: the single shallow dimension type is built
@@ -213,6 +216,10 @@ public final class Main {
         final Set<String> selectedPlugins = selectedPlugins();
         final Auth auth = auth();
         final String storeMode = storeMode();
+        final boolean whitelist = whitelist();
+        // The plugin host reads it again when it is built; checked here, a misspelt phase refuses the start
+        // before the database is touched
+        HandshakeGate.phase();
         final CoreMode.Setting coreMode = CoreMode.setting();
         final InetSocketAddress metricsBind = HostMetrics.bindAddress();
         final ManagementSettings managementSettings = ManagementSettings.fromSystemProperties(System.getenv());
@@ -260,7 +267,7 @@ public final class Main {
         final PlayerStateSection playerState = new PlayerStateSection(process.registries());
         // The player store before the plugins, which register their sections in onEnable; a shard
         // whose database is not the one it expects refuses here, before anything is bound.
-        final StoreRuntime store = openStore(storeMode, process, auth, shardId, ledger,
+        final StoreRuntime store = openStore(storeMode, process, auth, shardId, whitelist, ledger,
                 claimedBy(arrivals, playerState), System.getenv());
         // On the pool and the Redis link of the store; built only, nothing is read or started yet
         final @Nullable DirectoryMode directoryMode = directory == null || arrivals == null || map == null ? null
@@ -358,7 +365,10 @@ public final class Main {
         // Last: a tick still in flight keeps being watched after this, see Watchdog#stop
         process.scheduler().buildShutdownTask(watchdog::stop);
 
-        // (6) bind, freeze the registries, accept, start the dispatcher and the tick thread.
+        // (6) The shard session, then bind, freeze the registries, accept, start the dispatcher and the tick
+        // thread. The session opens last before the bind: a launch refused anywhere above takes nothing over
+        // from a running process of this shard id (docs/DESIGN-PROD.md API-PROD-004)
+        openSession(process, store);
         try {
             server.start(BIND_ADDRESS, port);
         } catch (RuntimeException e) {
@@ -384,6 +394,8 @@ public final class Main {
         // keep the JVM alive once that thread and the tick threads are gone.
         Thread.ofPlatform().name("server-app-console").daemon().start(() -> readConsole(process,
                 new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))));
+        // A daemon too: it only waits for the sequence a stop runs to end, then ends the JVM
+        Thread.ofPlatform().name("server-app-exit").daemon().start(() -> exitOnceStopped(process));
     }
 
     /**
@@ -601,6 +613,8 @@ public final class Main {
     static Watchdog startWatchdog(ServerProcess process, CrashReports crashReports) {
         final Watchdog watchdog = process.watchdog();
         watchdog.start(stuckMillis -> {
+            // First, so that the exit of a stopped process leaves this one to stopAfterDeath and its 70
+            JUDGED_DEAD.set(true);
             crashReports.write("tick watchdog: the tick has been stuck for " + stuckMillis
                     + " ms, the process is judged dead", null);
             stopAfterDeath(process);
@@ -648,18 +662,37 @@ public final class Main {
      * does not finish within {@code synaxis.watchdog.halt-after-ms} is cut short by the halt.
      */
     private static void stopAfterDeath(ServerProcess process) {
-        if (!process.shutdownAfterWatchdogDeath()) {
-            // A shutdown was already running; it picks the death up on its own thread
-            while (process.shutdownPhase() != ServerProcess.ShutdownPhase.STOPPED) {
-                try {
-                    Thread.sleep(DEATH_POLL_MILLIS);
-                } catch (InterruptedException _) {
-                    return;
-                }
-            }
-        }
+        // A shutdown that was already running picks the death up on its own thread
+        if (!process.shutdownAfterWatchdogDeath() && !awaitStopped(process)) return;
         LOGGER.error("The process was judged dead and has stopped, exiting with code {}", DEATH_EXIT_CODE);
         System.exit(DEATH_EXIT_CODE);
+    }
+
+    /**
+     * Ends the JVM with 0 once the shutdown sequence has stopped ({@code docs/DESIGN-PROD.md} §11.4
+     * {@code plugins_disabled → stopped}): a non daemon thread a plugin left behind would otherwise keep a stopped
+     * process alive, and its unit is only restarted once the process exits. A process judged dead is left to
+     * {@link #stopAfterDeath}. On SIGTERM the exit waits for the shutdown hooks, and the code stays 143.
+     */
+    private static void exitOnceStopped(ServerProcess process) {
+        if (awaitStopped(process) && !JUDGED_DEAD.get()) System.exit(0);
+    }
+
+    /**
+     * Waits for the shutdown sequence of the process to reach {@code stopped}.
+     *
+     * @param process the engine process
+     * @return false if the waiting thread was interrupted first
+     */
+    static boolean awaitStopped(ServerProcess process) {
+        while (process.shutdownPhase() != ServerProcess.ShutdownPhase.STOPPED) {
+            try {
+                Thread.sleep(DEATH_POLL_MILLIS);
+            } catch (InterruptedException _) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -691,24 +724,47 @@ public final class Main {
     }
 
     /**
-     * {@link #openStore(String, ServerProcess, Auth, String, EventLedger, BiConsumer, Map)} outside the
+     * {@link #openStore(String, ServerProcess, Auth, String, boolean, EventLedger, BiConsumer, Map)} outside the
      * directory mode, where nothing else hears about a claimed transfer ticket.
      */
-    static StoreRuntime openStore(String mode, ServerProcess process, Auth auth, String shardId, EventLedger ledger,
-                                  Map<String, String> environment) {
-        return openStore(mode, process, auth, shardId, ledger, (_, _) -> {}, environment);
+    static StoreRuntime openStore(String mode, ServerProcess process, Auth auth, String shardId, boolean whitelist,
+                                  EventLedger ledger, Map<String, String> environment) {
+        return openStore(mode, process, auth, shardId, whitelist, ledger, (_, _) -> {}, environment);
+    }
+
+    /**
+     * Opens the shard session ({@code docs/DESIGN-PROD.md} §11.2 {@code [*] → active}), which makes every other
+     * session of this shard id expire. {@link #start} calls it right before the game port is bound, once every
+     * shutdown task is registered, so that a launch refused at an operations port, by a plugin or by the mode
+     * takes nothing over from a running process of the same shard id.
+     *
+     * @param process the engine process, whose shutdown tasks close what the start opened when this fails
+     * @param store   the player store, which has no session in memory
+     * @throws IllegalArgumentException if the database failed, which refuses the start
+     */
+    static void openSession(ServerProcess process, StoreRuntime store) {
+        final ShardSession session = store.session();
+        if (session == null) return;
+        try {
+            session.open();
+        } catch (SQLException e) {
+            process.scheduler().shutdown();
+            throw new IllegalArgumentException("the player store database failed: " + e.getMessage(), e);
+        }
     }
 
     /**
      * Opens the player store ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-005}): memory for a
      * process without a database, PostgreSQL for a shard. A shard checks its database before
      * anything else and refuses to start on a schema that is not this build's, or on a store that
-     * holds other identities than this process lets in ({@code REQ-PROD-036}).
+     * holds other identities than this process lets in ({@code REQ-PROD-036}). The shard session is built but
+     * not opened: {@link #openSession} opens it right before the port is bound.
      *
      * @param mode        {@code memory} or {@code postgres}
      * @param process     the engine process
      * @param auth        the auth of the process
      * @param shardId     the shard id
+     * @param whitelist   whether {@code synaxis.app.whitelist} turns the whitelist on, read in step (1)
      * @param ledger      the event ledger
      * @param onClaimed   told about every transfer ticket the target side accepts
      *                    ({@code docs/DESIGN-M3.md} {@code API-M3-010}, the arrivals of a shard in the
@@ -717,8 +773,9 @@ public final class Main {
      * @return the store
      * @throws IllegalArgumentException if the shard must not start
      */
-    static StoreRuntime openStore(String mode, ServerProcess process, Auth auth, String shardId, EventLedger ledger,
-                                  BiConsumer<Player, TransferTicket> onClaimed, Map<String, String> environment) {
+    static StoreRuntime openStore(String mode, ServerProcess process, Auth auth, String shardId, boolean whitelist,
+                                  EventLedger ledger, BiConsumer<Player, TransferTicket> onClaimed,
+                                  Map<String, String> environment) {
         if (STORE_MEMORY.equals(mode)) {
             // A ticket's nonce and lease live in the database, a process without one takes no transfer
             if (process.config().acceptTransfers())
@@ -727,7 +784,7 @@ public final class Main {
             LOGGER.info("Effective store: mode=memory, player data lives as long as the process");
             final RedisLink noRedis = RedisLink.disabled(shardId);
             final HostModeration moderation = new HostModeration(process, null, noRedis,
-                    HostModeration.REFRESH, whitelist(), ledger::record);
+                    HostModeration.REFRESH, whitelist, ledger::record);
             return new StoreRuntime(PlayerStore.inMemory(process, ledger::record), null, null, null, null,
                     HostPermissions.withoutDatabase(process), moderation, null, noRedis,
                     TransferCooldowns.fromSystemProperties());
@@ -757,12 +814,10 @@ public final class Main {
             final ShardSession session = new ShardSession(database::dedicated, shardId, ShardSession.Timing.DEFAULT,
                     System::nanoTime, store::sessionChanged);
             store.useSession(session);
-            session.open();
             final StoreHousekeeping housekeeping = new StoreHousekeeping(database.pool());
             housekeeping.start();
             final HostPermissions permissions = new HostPermissions(process, new RoleStore(database.pool()), redis,
                     HostPermissions.REFRESH);
-            final boolean whitelist = whitelist();
             final HostModeration moderation = new HostModeration(process, new ModerationStore(database.pool()), redis,
                     HostModeration.REFRESH, whitelist, ledger::record);
             moderation.start();
@@ -802,7 +857,7 @@ public final class Main {
             if (mode == null)
                 throw new IllegalArgumentException(MIGRATE_ONLY + " needs " + AUTH_MODE_ARGUMENT + "online|offline");
             final AuthMode authMode = AuthMode.parse(mode);
-            try (Database database = new Database(StoreSettings.fromEnvironment(environment))) {
+            try (Database database = Database.forMigration(StoreSettings.fromEnvironment(environment))) {
                 Migrations.migrate(database.pool(), authMode);
             }
             LOGGER.info("Migrated the player store: auth_mode={}", authMode.value());
@@ -939,18 +994,23 @@ public final class Main {
 
     /**
      * @return the port to bind, {@value #DEFAULT_PORT} when the property is not set
-     * @throws IllegalArgumentException if the property is set to something that is not a number
+     * @throws IllegalArgumentException if the property is set to something that is not a number from 0 to 65535
      */
     static int port() {
         final String property = System.getProperty(PORT_PROPERTY);
         if (property == null) return DEFAULT_PORT;
+        final int port;
         try {
-            return Integer.parseInt(property.strip());
+            port = Integer.parseInt(property.strip());
         } catch (NumberFormatException _) {
             // Integer.getInteger would fall back to the default here, and the process would come up
             // on a port nobody asked for (docs/TEST.md §3 reads this one back as a precondition).
             throw new IllegalArgumentException(PORT_PROPERTY + "=" + property + " is not a port number");
         }
+        // In step (1), naming the key: the bind would refuse it too, without the key and after the plugins
+        if (port < 0 || port > 65535)
+            throw new IllegalArgumentException(PORT_PROPERTY + "=" + property + " is not a port number: 0 to 65535");
+        return port;
     }
 
     /**
@@ -1044,7 +1104,7 @@ public final class Main {
     }
 
     /**
-     * Runs every line of the console until it ends. A line whose command throws, from its
+     * Runs every line of the console until it ends. A line whose command throws anything, from its
      * condition, an argument callback or a listener the engine does not guard, is one line in the
      * log with its stack, and the next line runs.
      *
@@ -1058,7 +1118,7 @@ public final class Main {
                 if (line.isBlank()) continue;
                 try {
                     runConsoleCommand(process, line);
-                } catch (RuntimeException e) {
+                } catch (Throwable e) {
                     LOGGER.error("Console command failed: {}", line.strip(), e);
                 }
             }
@@ -1070,7 +1130,8 @@ public final class Main {
     /**
      * Runs one console line as a command ({@code docs/DESIGN-PROD.md} {@code API-PROD-011}), on
      * the calling thread and with the console sender, which may run every command. A leading
-     * {@code /} is accepted. A line that is no command gets one line in the log, never a stack.
+     * {@code /} is accepted. A line that is no command gets one line in the log, never a stack, and so
+     * does a command its condition refuses or whose executor failed.
      *
      * @param process the engine process
      * @param line    what the operator typed
@@ -1085,6 +1146,9 @@ public final class Main {
         switch (result.getType()) {
             case UNKNOWN -> LOGGER.info("Unknown command: {}", input);
             case INVALID_SYNTAX -> LOGGER.info("Incomplete or invalid command: {}", input);
+            // The console fires no PlayerCommandEvent: a cancelled command was refused by its condition, or
+            // its executor threw and the engine logged that
+            case CANCELLED -> LOGGER.info("Command refused by its condition or failed: {}", input);
             default -> {
                 // the command answered for itself
             }

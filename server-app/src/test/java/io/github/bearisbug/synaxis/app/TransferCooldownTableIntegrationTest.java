@@ -81,7 +81,9 @@ class TransferCooldownTableIntegrationTest {
         final Map<String, String> environment = migratedWithKeys();
 
         try (Main.StoreRuntime runtime = Main.openStore(Main.STORE_POSTGRES, env.process(), new Auth.Offline(),
-                "r1-c1", ledger(), environment)) {
+                "r1-c1", false, ledger(), environment)) {
+            // Main opens the session right before the port; a login and a claimed ticket hold it
+            Main.openSession(env.process(), runtime);
             final TestConnection connection = env.createConnection();
             final Player player = spawn(env, connection);
             final Transfers transfers = transfersOf(host(env, runtime));
@@ -99,7 +101,9 @@ class TransferCooldownTableIntegrationTest {
         final Map<String, String> environment = migratedWithKeys();
 
         try (Main.StoreRuntime runtime = Main.openStore(Main.STORE_POSTGRES, env.process(), new Auth.Offline(),
-                "r1-c1", ledger(), environment)) {
+                "r1-c1", false, ledger(), environment)) {
+            // Main opens the session right before the port; a login and a claimed ticket hold it
+            Main.openSession(env.process(), runtime);
             final TestConnection connection = env.createConnection();
             final Player player = spawn(env, connection);
             final Transfers transfers = transfersOf(host(env, runtime));
@@ -121,7 +125,7 @@ class TransferCooldownTableIntegrationTest {
     @Test
     void aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env env) {
         try (Main.StoreRuntime runtime = Main.openStore(Main.STORE_MEMORY, env.process(), new Auth.Offline(),
-                "r1-c1", ledger(), Map.of())) {
+                "r1-c1", false, ledger(), Map.of())) {
             assertNull(runtime.issuer());
             assertNotNull(runtime.cooldowns());
         }
@@ -130,7 +134,7 @@ class TransferCooldownTableIntegrationTest {
         try {
             System.setProperty(COOLDOWN_PROPERTY, "soon");
             final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
-                    () -> Main.openStore(Main.STORE_MEMORY, env.process(), new Auth.Offline(), "r1-c1", ledger,
+                    () -> Main.openStore(Main.STORE_MEMORY, env.process(), new Auth.Offline(), "r1-c1", false, ledger,
                             Map.of()));
             assertTrue(refused.getMessage().contains(COOLDOWN_PROPERTY + "=soon"), refused.getMessage());
         } finally {

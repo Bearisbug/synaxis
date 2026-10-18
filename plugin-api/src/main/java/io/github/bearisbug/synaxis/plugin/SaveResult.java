@@ -13,8 +13,9 @@ public enum SaveResult {
     FENCED,
     /**
      * The database could not be reached, or the player is frozen (see
-     * {@link PlayerDataStore#isFrozen}). Nothing was written; an autosave of the same data is
-     * retried later.
+     * {@link PlayerDataStore#isFrozen}). Nothing was written. The data of a
+     * {@link PlayerDataStore#saveNow} or an autosave is retried later; the staged values of a
+     * {@link PlayerDataStore#commitTogether} are dropped.
      */
     UNAVAILABLE
 }

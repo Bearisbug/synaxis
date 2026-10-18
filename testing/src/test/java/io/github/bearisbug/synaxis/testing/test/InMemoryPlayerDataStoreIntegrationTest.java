@@ -11,12 +11,14 @@ import io.github.bearisbug.synaxis.testing.EnvTest;
 import io.github.bearisbug.synaxis.testing.InMemoryPlayerDataStore;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The stand-in store a plugin tests against ({@code docs/DESIGN-PROD.md} {@code API-PROD-005}).
@@ -83,6 +85,23 @@ public class InMemoryPlayerDataStoreIntegrationTest {
         assertEquals(SaveResult.UNAVAILABLE, store.commitTogether(
                 Map.of(player, Map.<DataSection<?>, Object>of(COINS, new AtomicInteger(1))), applied::incrementAndGet).join());
         assertEquals(SaveResult.UNAVAILABLE, store.saveNow(player).join());
+        assertEquals(0, applied.get());
+        assertEquals(0, store.get(player, COINS).get());
+    }
+
+    @Test
+    public void aCommitOfAValueTheHostCouldNotWriteIsRefusedAsTheHostRefusesIt(Env env) {
+        final InMemoryPlayerDataStore store = new InMemoryPlayerDataStore();
+        store.register(COINS);
+        final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 42, 0));
+        final AtomicInteger applied = new AtomicInteger();
+        final Map<DataSection<?>, Object> nothing = new HashMap<>();
+        nothing.put(COINS, null);
+
+        assertThrows(IllegalArgumentException.class, () -> store.commitTogether(Map.of(player, nothing), applied::incrementAndGet));
+        final IllegalArgumentException typed = assertThrows(IllegalArgumentException.class, () -> store.commitTogether(
+                Map.of(player, Map.<DataSection<?>, Object>of(COINS, "nine")), applied::incrementAndGet));
+        assertTrue(typed.getMessage().contains("probe:coins"), typed.getMessage());
         assertEquals(0, applied.get());
         assertEquals(0, store.get(player, COINS).get());
     }

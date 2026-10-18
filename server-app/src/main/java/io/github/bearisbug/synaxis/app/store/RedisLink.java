@@ -93,7 +93,9 @@ public final class RedisLink implements AutoCloseable {
      *                password but letters, digits and {@code -._~} percent-encoded
      * @param shardId the id of this shard, the name of its kick channel
      * @return the link
-     * @throws IllegalArgumentException if the URL is not one, naming the variable but not the URL
+     * @throws IllegalArgumentException if the URL is not one, of another scheme ({@code rediss://}
+     *                                  included: there is no TLS) among them, naming the variable but
+     *                                  not the URL
      */
     public static RedisLink connect(String url, String shardId) {
         final URI uri;
@@ -105,6 +107,9 @@ public final class RedisLink implements AutoCloseable {
         } catch (IllegalArgumentException _) {
             throw notARedisUrl();
         }
+        // Any other scheme would be spoken to as plain Redis: rediss:// sends its password in the clear
+        // to a TLS port, which then never answers
+        if (!"redis".equalsIgnoreCase(uri.getScheme())) throw notARedisUrl();
         // A '/' or '#' in the password leaves an authority without a host, the rest of the password
         // in the path or the fragment
         if (uri.getHost() == null) throw notARedisUrl();

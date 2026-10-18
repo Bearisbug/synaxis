@@ -8,7 +8,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.entity.ItemEntity;
+import io.github.bearisbug.synaxis.event.Event;
+import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.event.item.PickupItemEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
@@ -26,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -35,6 +39,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.PURSE;
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.await;
@@ -43,12 +48,14 @@ import static io.github.bearisbug.synaxis.app.store.StoreFixture.count;
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.enterPlay;
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.kicks;
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.row;
+import static io.github.bearisbug.synaxis.app.store.StoreFixture.saveNowOwned;
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.spawn;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -288,7 +295,7 @@ class PlayerStoreIntegrationTest {
 
         first.store().get(stale, PURSE).coins = 1;
         first.store().markDirty(stale, PURSE);
-        assertEquals(SaveResult.FENCED, first.store().saveNow(stale).join());
+        assertEquals(SaveResult.FENCED, saveNowOwned(first.store(), stale).join());
 
         final StoreFixture.Row row = row(database, account);
         assertEquals("{\"note\": \"\", \"coins\": 9}", row.purse(), "the database holds the new holder's write");
@@ -320,7 +327,7 @@ class PlayerStoreIntegrationTest {
         final Player player = online(env, shard, instance, account, "Hoarder");
         shard.store().get(player, PURSE).coins = 3;
         shard.store().markDirty(player, PURSE);
-        assertEquals(SaveResult.SAVED, shard.store().saveNow(player).join());
+        assertEquals(SaveResult.SAVED, saveNowOwned(shard.store(), player).join());
 
         final ListAppender<ILoggingEvent> errors = capture();
         shard.store().get(player, PURSE).note = "x".repeat(70 * 1024);
@@ -608,7 +615,7 @@ class PlayerStoreIntegrationTest {
         shard.store().get(trader, PURSE).coins = 100;
         shard.store().markDirty(trader, PURSE);
         failNext.set(true);
-        assertEquals(SaveResult.UNAVAILABLE, shard.store().saveNow(trader).join(), "the first attempt fails and backs off");
+        assertEquals(SaveResult.UNAVAILABLE, saveNowOwned(shard.store(), trader).join(), "the first attempt fails and backs off");
 
         assertEquals(SaveResult.SAVED, shard.store().commitTogether(
                 Map.of(trader, Map.<DataSection<?>, Object>of(PURSE, purse(50))), () -> {
@@ -1032,5 +1039,527 @@ class PlayerStoreIntegrationTest {
         shard.store().admitted(second);
 
         assertEquals(shard.sessionId(), row(database, account).lease(), "the second login holds the lease it took");
+    }
+
+    /** A host section whose capture only records the thread each snapshot takes it on. */
+    private static final DataSection<String> THREADS = new DataSection<>() {
+        @Override
+        public String id() {
+            return "synaxis:probe-threads";
+        }
+
+        @Override
+        public int schemaVersion() {
+            return 1;
+        }
+
+        @Override
+        public String createDefault() {
+            return "";
+        }
+
+        @Override
+        public String decode(JsonElement json, int storedVersion) {
+            return json.getAsString();
+        }
+
+        @Override
+        public JsonElement encode(String value) {
+            return new JsonPrimitive(value);
+        }
+    };
+
+    /**
+     * A shard whose session tells the store nothing: its isolation fences no character, as for a
+     * login whose record is not listed yet when the isolation comes.
+     */
+    private StoreFixture.Shard unlistenedShard(Env env, String shardId) throws SQLException {
+        final List<String> ledger = new CopyOnWriteArrayList<>();
+        final PlayerStore store = new PlayerStore(env.process(), new PostgresBackend(pool.pool()),
+                RedisLink.disabled(shardId), shardId, false, StoreFixture.FAST,
+                (event, attributes) -> ledger.add(event + " " + attributes));
+        final ShardSession session = new ShardSession(pool::dedicated, shardId, StoreFixture.MANUAL, System::nanoTime,
+                (_, _) -> {
+                });
+        store.useSession(session);
+        store.register(PURSE);
+        final EventNode<Event> node = EventNode.all("store-" + shardId);
+        env.process().eventHandler().addChild(node);
+        store.attach(node);
+        session.open();
+        final StoreFixture.Shard shard = new StoreFixture.Shard(store, session, ledger, node);
+        shards.add(shard);
+        return shard;
+    }
+
+    private void expire(StoreFixture.Shard shard) {
+        database.execute("UPDATE shard_session SET expires_at = now() - interval '1 second' WHERE session_id = "
+                + shard.sessionId());
+    }
+
+    /** The database with every write going through the test first, which may throw instead. */
+    private StoreBackend writingThrough(WriteStep step) {
+        final PostgresBackend postgres = new PostgresBackend(pool.pool());
+        return new StoreBackend() {
+            @Override
+            public LoadOutcome load(UUID account, String name, long sessionId) throws SQLException {
+                return postgres.load(account, name, sessionId);
+            }
+
+            @Override
+            public void write(long sessionId, List<Write> writes) throws FencedException, SQLException {
+                step.before(writes);
+                postgres.write(sessionId, writes);
+            }
+
+            @Override
+            public void release(long characterId, long sessionId) throws SQLException {
+                postgres.release(characterId, sessionId);
+            }
+
+            @Override
+            public void releaseAccount(UUID account, long sessionId) throws SQLException {
+                postgres.releaseAccount(account, sessionId);
+            }
+        };
+    }
+
+    /** What a write goes through before it reaches the database. */
+    @FunctionalInterface
+    private interface WriteStep {
+        void before(List<StoreBackend.Write> writes) throws StoreBackend.FencedException, SQLException;
+    }
+
+    private static void awaitLatch(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private void awaitLeaseBack(Env env, UUID account, String what) {
+        await(env, () -> {
+            try {
+                final StoreFixture.Row row = row(database, account);
+                return row != null && row.lease() == null;
+            } catch (SQLException e) {
+                throw new AssertionError(e);
+            }
+        }, what);
+    }
+
+    @Test
+    void aSaveThatWaitedBehindAFencedWriteIsAnsweredToo(Env env) throws Exception {
+        final AtomicBoolean holdNext = new AtomicBoolean();
+        final CountDownLatch writeInside = new CountDownLatch(1);
+        final CountDownLatch letGo = new CountDownLatch(1);
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, writingThrough(writes -> {
+                    if (!holdNext.getAndSet(false)) return;
+                    writeInside.countDown();
+                    awaitLatch(letGo);
+                    throw new StoreBackend.FencedException(writes.getFirst().characterId());
+                }));
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final Player player = online(env, shard, instance, UUID.randomUUID(), "Waiter");
+        shard.store().get(player, PURSE).coins = 1;
+        shard.store().markDirty(player, PURSE);
+
+        holdNext.set(true);
+        final CompletableFuture<SaveResult> first = saveNowOwned(shard.store(), player);
+        assertTrue(writeInside.await(10, TimeUnit.SECONDS), "the first save is being written");
+        final CompletableFuture<SaveResult> second = saveNowOwned(shard.store(), player);
+        letGo.countDown();
+
+        assertEquals(SaveResult.FENCED, first.get(5, TimeUnit.SECONDS));
+        assertEquals(SaveResult.FENCED, second.get(5, TimeUnit.SECONDS), "the save that came in during the write is answered");
+        assertEquals(1, shard.events("save_fenced").size(), shard.ledger().toString());
+    }
+
+    @Test
+    void aWriteThatFindsTheSessionIsolatedIsFencedForTheIsolation(Env env) throws SQLException {
+        final StoreFixture.Shard shard = unlistenedShard(env, "r1-c1");
+        final Instance instance = env.createFlatInstance();
+        final Player player = online(env, shard, instance, UUID.randomUUID(), "Isolated");
+        shard.store().get(player, PURSE).coins = 2;
+        shard.store().markDirty(player, PURSE);
+        expire(shard);
+        shard.session().renewOrReopen();
+        assertEquals(ShardSession.State.ISOLATED, shard.session().state());
+
+        assertEquals(SaveResult.FENCED, saveNowOwned(shard.store(), player).join());
+        // The save is answered before the fence writes its ledger line
+        await(env, () -> !shard.events("save_fenced").isEmpty(), "the character is fenced");
+
+        assertEquals(1, shard.events("save_fenced").size(), shard.ledger().toString());
+        assertTrue(shard.events("save_fenced").getFirst().contains("cause=session_isolated"), shard.ledger().toString());
+    }
+
+    @Test
+    void aLoginWhoseSessionIsIsolatedWhileItAcquiresGivesTheLeaseBack(Env env) throws Exception {
+        final CountDownLatch acquired = new CountDownLatch(1);
+        final CountDownLatch letGo = new CountDownLatch(1);
+        final PostgresBackend postgres = new PostgresBackend(pool.pool());
+        final StoreBackend slowAcquire = new StoreBackend() {
+            @Override
+            public LoadOutcome load(UUID account, String name, long sessionId) throws SQLException {
+                final LoadOutcome outcome = postgres.load(account, name, sessionId);
+                acquired.countDown();
+                awaitLatch(letGo);
+                return outcome;
+            }
+
+            @Override
+            public void write(long sessionId, List<Write> writes) throws FencedException, SQLException {
+                postgres.write(sessionId, writes);
+            }
+
+            @Override
+            public void release(long characterId, long sessionId) throws SQLException {
+                postgres.release(characterId, sessionId);
+            }
+
+            @Override
+            public void releaseAccount(UUID account, long sessionId) throws SQLException {
+                postgres.releaseAccount(account, sessionId);
+            }
+        };
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, slowAcquire);
+        shards.add(shard);
+        final UUID account = UUID.randomUUID();
+        final Player player = connect(env.process(), account, "Late");
+        final long epoch = shard.sessionId();
+
+        final CompletableFuture<Boolean> loaded = CompletableFuture.supplyAsync(() -> shard.store().load(player),
+                Thread.ofVirtual()::start);
+        assertTrue(acquired.await(5, TimeUnit.SECONDS), "the acquire went through");
+        expire(shard);
+        shard.session().renewOrReopen();
+        assertEquals(ShardSession.State.ISOLATED, shard.session().state());
+        shard.session().renewOrReopen();
+        assertEquals(ShardSession.State.ACTIVE, shard.session().state());
+        assertTrue(shard.sessionId() != epoch, "a new epoch");
+        letGo.countDown();
+
+        assertFalse(loaded.get(5, TimeUnit.SECONDS), "a login acquired under the old epoch is refused");
+        assertEquals(List.of("synaxis:state-unavailable"), kicks(player));
+        assertNull(row(database, account).lease(), "the lease the old epoch took is given back");
+        assertEquals(0, shard.store().loadedCount());
+    }
+
+    @Test
+    void anAdmissionAfterTheSessionWasIsolatedIsRefused(Env env) throws SQLException {
+        final StoreFixture.Shard shard = unlistenedShard(env, "r1-c1");
+        final UUID account = UUID.randomUUID();
+        final Player player = connect(env.process(), account, "Unlisted");
+        assertTrue(shard.store().load(player));
+        expire(shard);
+        shard.session().renewOrReopen();
+        assertEquals(ShardSession.State.ISOLATED, shard.session().state());
+
+        assertFalse(shard.store().admitted(player), "not let in under an isolated session");
+        assertEquals(List.of("synaxis:state-unavailable"), kicks(player));
+        assertNull(row(database, account).lease(), "the lease goes back");
+        assertEquals(0, shard.store().loadedCount());
+    }
+
+    @Test
+    void aLogoutWakesASaveBackingOffAndIsWrittenAtOnce(Env env) throws SQLException {
+        final AtomicInteger failures = new AtomicInteger();
+        final PlayerStore.Options backingOff = new PlayerStore.Options(Duration.ofSeconds(5), 2, 1_000_000,
+                List.of(Duration.ofMillis(50), Duration.ofSeconds(3)), Duration.ofSeconds(10), Duration.ofMillis(50));
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                backingOff, StoreFixture.MANUAL, writingThrough(_ -> {
+                    if (failures.getAndIncrement() < 3) throw new SQLException("the test's database hiccup");
+                }));
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player player = online(env, shard, instance, account, "Patient");
+        shard.store().get(player, PURSE).coins = 6;
+        shard.store().markDirty(player, PURSE);
+        assertEquals(SaveResult.UNAVAILABLE, saveNowOwned(shard.store(), player).join(), "the first attempt fails");
+        await(env, () -> failures.get() == 2, "the second attempt fails, and the save backs off for 3 s");
+        sleep(100);
+
+        final long loggedOut = System.nanoTime();
+        player.kick(Component.text("bye"));
+        awaitLeaseBack(env, account, "the logout save is written");
+
+        final long took = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - loggedOut);
+        assertTrue(took < 1_500, "written without waiting out the 3 s backoff: took " + took + " ms");
+        assertEquals("{\"note\": \"\", \"coins\": 6}", row(database, account).purse());
+    }
+
+    @Test
+    void aLogoutSaveJoiningARetryingSaveCountsItsOwnFailures(Env env) throws SQLException {
+        final AtomicInteger failures = new AtomicInteger();
+        final PlayerStore.Options giveUpSoon = new PlayerStore.Options(Duration.ofSeconds(5), 2, 1_000_000,
+                List.of(Duration.ofMillis(50)), Duration.ofMillis(500), Duration.ofMillis(50));
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                giveUpSoon, StoreFixture.MANUAL, writingThrough(_ -> {
+                    failures.incrementAndGet();
+                    throw new SQLException("the test's database is down");
+                }));
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player player = online(env, shard, instance, account, "Unlucky");
+        shard.store().get(player, PURSE).coins = 6;
+        shard.store().markDirty(player, PURSE);
+        assertEquals(SaveResult.UNAVAILABLE, saveNowOwned(shard.store(), player).join(), "the first attempt fails");
+        await(env, () -> failures.get() >= 12, "the save has been retrying longer than a logout save may");
+
+        final long loggedOut = System.nanoTime();
+        player.kick(Component.text("bye"));
+        awaitLeaseBack(env, account, "the logout save is given up and the lease goes back");
+
+        final long took = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - loggedOut);
+        assertTrue(took >= 400, "the logout save retried for its own 500 ms, not given up at its first failure: took "
+                + took + " ms");
+    }
+
+    @Test
+    void aSectionAPluginChangesInItsDisconnectListenerIsInTheLogoutSave(Env env) throws SQLException {
+        final StoreFixture.Shard shard = shard(env, "r1-c1");
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player player = online(env, shard, instance, account, "Quitter");
+        final List<Throwable> failed = new CopyOnWriteArrayList<>();
+        // Where a plugin's global NORMAL listener sits: a child of the host node at priority 0
+        final EventNode<Event> plugin = EventNode.all("probe-normal").setPriority(0);
+        plugin.addListener(PlayerDisconnectEvent.class, event -> {
+            try {
+                shard.store().get(event.getPlayer(), PURSE).coins = 7;
+                shard.store().markDirty(event.getPlayer(), PURSE);
+            } catch (RuntimeException e) {
+                failed.add(e);
+            }
+        });
+        shard.node().addChild(plugin);
+
+        player.kick(Component.text("bye"));
+        awaitLeaseBack(env, account, "the logout save gives the lease back");
+
+        assertEquals(List.of(), failed, "the listener finds the player's data");
+        assertEquals("{\"note\": \"\", \"coins\": 7}", row(database, account).purse(),
+                "the logout snapshot is taken after the plugin's listener");
+    }
+
+    @Test
+    void aSectionAPluginChangesInItsDisconnectListenerAfterTheShutdownSaveIsNotWritten(Env env) throws SQLException {
+        final StoreFixture.Shard shard = shard(env, "r1-c1");
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player player = online(env, shard, instance, account, "Stopped");
+        shard.store().get(player, PURSE).coins = 3;
+        shard.store().markDirty(player, PURSE);
+        final CompletableFuture<?> saved = shard.store().saveAll(Duration.ofSeconds(5), true);
+        await(env, saved::isDone, "the shutdown save is written");
+        shard.store().onSaveEnded(false);
+        final EventNode<Event> plugin = EventNode.all("probe-normal").setPriority(0);
+        plugin.addListener(PlayerDisconnectEvent.class, event -> {
+            try {
+                shard.store().get(event.getPlayer(), PURSE).coins = 99;
+                shard.store().markDirty(event.getPlayer(), PURSE);
+            } catch (IllegalStateException _) {
+                // The shutdown save let the player's data go already
+            }
+        });
+        shard.node().addChild(plugin);
+
+        player.kick(Component.text("stopping"));
+        await(env, player::isRemoved, "the kicked player is gone");
+        for (int i = 0; i < 5; i++) env.tick();
+
+        assertEquals("{\"note\": \"\", \"coins\": 3}", row(database, account).purse(),
+                "what the shutdown save wrote stands: the kick comes after it");
+    }
+
+    @Test
+    void aCommitWithoutParticipantsWritesNothingAndStillApplies(Env env) throws Exception {
+        final AtomicInteger writes = new AtomicInteger();
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, writingThrough(_ -> writes.incrementAndGet()));
+        shards.add(shard);
+        final AtomicInteger applied = new AtomicInteger();
+
+        assertEquals(SaveResult.SAVED, shard.store().commitTogether(Map.of(), applied::incrementAndGet)
+                .get(5, TimeUnit.SECONDS));
+        env.tick();
+        env.tick();
+
+        assertEquals(1, applied.get(), "apply runs as after a commit");
+        assertEquals(0, writes.get(), "no transaction for nobody");
+    }
+
+    @Test
+    void aCommitWhoseBackendThrowsSomethingElseIsAnsweredUnavailable(Env env) throws Exception {
+        final AtomicBoolean broken = new AtomicBoolean();
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, writingThrough(_ -> {
+                    if (broken.get()) throw new IllegalStateException("the test's backend bug");
+                }));
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final Player seller = online(env, shard, instance, UUID.randomUUID(), "Seller");
+        final Player buyer = online(env, shard, instance, UUID.randomUUID(), "Buyer");
+        final AtomicInteger applied = new AtomicInteger();
+
+        broken.set(true);
+        final CompletableFuture<SaveResult> trade = shard.store().commitTogether(Map.of(
+                seller, Map.<DataSection<?>, Object>of(PURSE, purse(10)),
+                buyer, Map.<DataSection<?>, Object>of(PURSE, purse(20))), applied::incrementAndGet);
+
+        assertEquals(SaveResult.UNAVAILABLE, trade.get(5, TimeUnit.SECONDS), "answered, not left waiting");
+        for (int i = 0; i < 3; i++) env.tick();
+        assertEquals(0, applied.get());
+        assertTrue(shard.events("critical_commit").getLast().contains("cause=db_error"),
+                shard.events("critical_commit").toString());
+        assertFalse(shard.store().isFrozen(seller), "the commit no longer freezes its participants");
+    }
+
+    @Test
+    void aCommitOfANullOrUnencodableValueIsRefusedOnTheCallersThread(Env env) throws SQLException {
+        final StoreFixture.Shard shard = shard(env, "r1-c1");
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player seller = online(env, shard, instance, account, "Careless");
+        final Map<DataSection<?>, Object> nothing = new HashMap<>();
+        nothing.put(PURSE, null);
+
+        final IllegalArgumentException staged = assertThrows(IllegalArgumentException.class,
+                () -> shard.store().commitTogether(Map.of(seller, nothing), () -> {
+                }));
+        assertTrue(staged.getMessage().contains("probe:purse") && staged.getMessage().contains("Careless"),
+                staged.getMessage());
+        final IllegalArgumentException typed = assertThrows(IllegalArgumentException.class,
+                () -> shard.store().commitTogether(Map.of(seller, Map.<DataSection<?>, Object>of(PURSE, "a purse")), () -> {
+                }));
+        assertTrue(typed.getMessage().contains("probe:purse"), typed.getMessage());
+        assertInstanceOf(ClassCastException.class, typed.getCause());
+
+        assertFalse(shard.store().isFrozen(seller), "a refused commit freezes nobody");
+        for (int i = 0; i < 3; i++) env.tick();
+        assertEquals(0, row(database, account).version(), "nothing is written");
+    }
+
+    @Test
+    void aCommitUnderWayFreezesItsParticipantsUntilItIsAnswered(Env env) throws Exception {
+        final AtomicBoolean holdNext = new AtomicBoolean();
+        final CountDownLatch writeInside = new CountDownLatch(1);
+        final CountDownLatch letGo = new CountDownLatch(1);
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, holding(holdNext, writeInside, letGo, new AtomicBoolean()));
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final UUID a = UUID.randomUUID();
+        final Player seller = online(env, shard, instance, a, "Seller");
+        final Player buyer = online(env, shard, instance, UUID.randomUUID(), "Buyer");
+
+        holdNext.set(true);
+        final CompletableFuture<SaveResult> trade = shard.store().commitTogether(Map.of(
+                seller, Map.<DataSection<?>, Object>of(PURSE, purse(10)),
+                buyer, Map.<DataSection<?>, Object>of(PURSE, purse(20))), () -> {
+                });
+        assertTrue(writeInside.await(10, TimeUnit.SECONDS), "the commit is on its way to the database");
+
+        assertTrue(shard.store().isFrozen(seller), "a participant of a commit under way is frozen");
+        final PickupItemEvent pickup = new PickupItemEvent(seller, new ItemEntity(ItemStack.of(Material.DIAMOND)));
+        env.process().eventHandler().call(pickup);
+        assertTrue(pickup.isCancelled(), "it picks nothing up");
+        final CompletableFuture<SaveResult> second = shard.store().commitTogether(
+                Map.of(seller, Map.<DataSection<?>, Object>of(PURSE, purse(30))), () -> {
+                });
+        assertTrue(second.isDone(), "a second commit of the participant is answered at once");
+        assertEquals(SaveResult.UNAVAILABLE, second.join());
+        letGo.countDown();
+
+        assertEquals(SaveResult.SAVED, trade.get(5, TimeUnit.SECONDS));
+        assertFalse(shard.store().isFrozen(seller), "thawed once the commit is answered");
+        assertEquals("{\"note\": \"\", \"coins\": 10}", row(database, a).purse(), "the first commit stands");
+        assertEquals(10, shard.store().get(seller, PURSE).coins);
+    }
+
+    @Test
+    void aCommitIsAnsweredOutsideTheLocksOfItsParticipants(Env env) throws Exception {
+        final AtomicBoolean holdNext = new AtomicBoolean();
+        final CountDownLatch writeInside = new CountDownLatch(1);
+        final CountDownLatch letGo = new CountDownLatch(1);
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, holding(holdNext, writeInside, letGo, new AtomicBoolean()));
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final UUID a = UUID.randomUUID();
+        final Player seller = online(env, shard, instance, a, "Seller");
+        final Player buyer = online(env, shard, instance, UUID.randomUUID(), "Buyer");
+
+        holdNext.set(true);
+        final CompletableFuture<SaveResult> trade = shard.store().commitTogether(Map.of(
+                seller, Map.<DataSection<?>, Object>of(PURSE, purse(10)),
+                buyer, Map.<DataSection<?>, Object>of(PURSE, purse(20))), () -> {
+                });
+        assertTrue(writeInside.await(10, TimeUnit.SECONDS), "the commit is on its way to the database");
+        // Attached before the answer, so it runs where the answer is given: it commits the seller again and waits
+        final CompletableFuture<SaveResult> again = trade.thenApply(_ -> shard.store().commitTogether(
+                Map.of(seller, Map.<DataSection<?>, Object>of(PURSE, purse(11))), () -> {
+                }).orTimeout(5, TimeUnit.SECONDS).join());
+        letGo.countDown();
+
+        assertEquals(SaveResult.SAVED, trade.get(5, TimeUnit.SECONDS));
+        assertEquals(SaveResult.SAVED, again.get(10, TimeUnit.SECONDS), "the callback's commit takes the locks the first let go");
+        assertEquals("{\"note\": \"\", \"coins\": 11}", row(database, a).purse());
+    }
+
+    @Test
+    void aSaveNowFromAnotherThreadTakesItsSnapshotOnThePlayersTickThread(Env env) throws Exception {
+        final StoreFixture.Shard shard = shard(env, "r1-c1");
+        final List<Thread> capturedOn = new CopyOnWriteArrayList<>();
+        shard.store().registerHostSection(THREADS, _ -> {
+            capturedOn.add(Thread.currentThread());
+            return null;
+        });
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player player = online(env, shard, instance, account, "Async");
+        shard.store().get(player, PURSE).coins = 4;
+        shard.store().markDirty(player, PURSE);
+        capturedOn.clear();
+
+        final AtomicReference<CompletableFuture<SaveResult>> asked = new AtomicReference<>();
+        Thread.ofVirtual().start(() -> asked.set(shard.store().saveNow(player))).join();
+        final CompletableFuture<SaveResult> save = asked.get();
+        await(env, save::isDone, "the save ends");
+
+        assertEquals(SaveResult.SAVED, save.join());
+        assertFalse(capturedOn.isEmpty(), "the snapshot captured the host section");
+        final Thread owner = player.acquirable().assignedThread();
+        assertEquals(List.of(), capturedOn.stream().filter(thread -> thread != owner).toList(),
+                "every capture on " + owner);
+        assertEquals("{\"note\": \"\", \"coins\": 4}", row(database, account).purse());
+    }
+
+    @Test
+    void aSectionThatNeverEncodesReportsOncePerBudget(Env env) throws SQLException {
+        final StoreFixture.Shard shard = shard(env, "r1-c1");
+        shard.store().register(UNENCODABLE);
+        final Instance instance = env.createFlatInstance();
+        final Player player = online(env, shard, instance, UUID.randomUUID(), "Cyclic");
+        final ListAppender<ILoggingEvent> lines = capture();
+        try {
+            for (int i = 0; i < 10; i++) {
+                shard.store().markDirty(player, UNENCODABLE);
+                assertEquals(SaveResult.SAVED, saveNowOwned(shard.store(), player).join());
+            }
+        } finally {
+            detach(lines);
+        }
+
+        assertEquals(1, lines.list.stream()
+                .filter(line -> line.getFormattedMessage().startsWith("Encoding a section failed")).count(),
+                "ten snapshots, one line within the budget's 10 s");
     }
 }

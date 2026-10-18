@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -143,8 +144,26 @@ class PlayerDataIntegrationTest {
         final PluginContext ctx = Objects.requireNonNull(probe.context);
         ctx.playerData().get(player, coins).set(3);
         ctx.playerData().markDirty(player, coins);
-        assertEquals(SaveResult.SAVED, ctx.playerData().saveNow(player).join());
+        // On the thread that owns the player, as a listener of the plugin calls it
+        final AtomicReference<CompletableFuture<SaveResult>> save = new AtomicReference<>();
+        player.acquirable().sync(_ -> save.set(ctx.playerData().saveNow(player)));
+        assertEquals(SaveResult.SAVED, save.get().join());
         assertFalse(ctx.playerData().isFrozen(player));
+        host.disableAll();
+    }
+
+    @Test
+    void aShutdownSaveHookIsOnlyRegisteredInOnEnable(Env env) {
+        final AtomicInteger hooks = new AtomicInteger();
+        final Probe probe = new Probe("probe", ctx -> ctx.lifecycle().onShutdownSave(_ -> hooks.incrementAndGet()));
+        final PluginHost host = host(env, new MemoryBackend());
+        host.enable(List.of(probe), Set.of());
+
+        final PluginContext ctx = Objects.requireNonNull(probe.context);
+        final IllegalStateException refused = assertThrows(IllegalStateException.class,
+                () -> ctx.lifecycle().onShutdownSave(_ -> hooks.incrementAndGet()), "after onEnable returned");
+        assertTrue(refused.getMessage().contains("outside onEnable"), refused.getMessage());
+        assertEquals(0, hooks.get());
         host.disableAll();
     }
 

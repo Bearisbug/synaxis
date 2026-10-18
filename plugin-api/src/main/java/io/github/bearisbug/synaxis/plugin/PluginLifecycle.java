@@ -14,16 +14,24 @@ import java.util.function.Consumer;
 public interface PluginLifecycle {
 
     /**
-     * Registers the shutdown save hook. When the server shuts down, the host calls it once per
-     * online player, on the tick thread that owns that player, before it saves everybody: this is
-     * where the plugin writes what it keeps in memory into its sections and marks them dirty. A
-     * player that was let in but has not entered the world yet has no such thread: when it leaves
-     * during the save, the hook runs on the thread that reports its {@code PlayerDisconnectEvent}.
+     * Registers a shutdown save hook; only allowed inside {@link SynaxisPlugin#onEnable}, and every
+     * call adds one more. When the server shuts down, the host calls each of them once per online
+     * player, on the tick thread that owns that player, before it saves everybody: this is where the
+     * plugin writes what it keeps in memory into its sections and marks them dirty. A player that
+     * was let in but has not entered the world yet has no such thread: when it leaves during the
+     * save, the hook runs on the thread that reports its {@code PlayerDisconnectEvent}.
+     * <p>
+     * Two shutdowns call no hook, the host reading the sections as they are: one whose tick the
+     * watchdog judged stuck ({@code docs/DESIGN-PROD.md} §11.4), and, for one player, a shutdown
+     * whose save phase is over before that player's tick comes. What lives only in the plugin's
+     * memory is lost then; to keep it, write it into a section and mark it dirty as it changes.
      * <p>
      * A plugin must not save from {@code PlayerDisconnectEvent} on shutdown: by the time players
-     * are kicked their data has already been written.
+     * are kicked their data has already been written. A logout is the one disconnect whose save
+     * comes after the plugins' listeners ({@link PlayerDataStore}).
      *
      * @param hook the hook; an exception it throws is logged against this plugin
+     * @throws IllegalStateException if called outside {@code onEnable}
      */
     void onShutdownSave(Consumer<ShutdownNotice> hook);
 }

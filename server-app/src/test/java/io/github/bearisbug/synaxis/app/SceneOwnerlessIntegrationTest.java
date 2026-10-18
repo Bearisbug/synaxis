@@ -12,6 +12,7 @@ import io.github.bearisbug.synaxis.game.protocol.play.C2SSceneReady;
 import io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent;
 import io.github.bearisbug.synaxis.game.protocol.play.S2CActionResult;
 import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.packet.client.common.ClientPluginMessagePacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.DisconnectPacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
@@ -37,7 +38,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * second request of the lighting session of 2026-10-12): the core mode, and a shard serving a map. Both
  * build a plugin host and so register {@code synaxis:play}, and in both the host holds the admission slot
  * itself, under its reserved id. Whatever a client sends on the channel there is dropped without a line, a
- * kick or an answer — and still counts against the inbound packet limit of the engine.
+ * kick or an answer, in the play state and before it — and still counts against the inbound packet limit of
+ * the engine.
  */
 @EnvTest
 class SceneOwnerlessIntegrationTest {
@@ -77,16 +79,17 @@ class SceneOwnerlessIntegrationTest {
     }
 
     /**
-     * Floods the channel the way the router hands a payload over, on this thread, and checks that nothing
-     * came of it.
+     * Floods the channel the way the router hands a payload over, on this thread, from a connection in
+     * {@code state}, and checks that nothing came of it.
      */
-    private static void floodAndExpectNothing(Env env, Instance world) {
+    private static void floodAndExpectNothing(Env env, Instance world, ConnectionState state) {
         final TestConnection connection = env.createConnection();
         final Player player = connection.connect(world, new Pos(0, 41, 0));
         final Collector<PluginMessagePacket> sent = connection.trackIncoming(PluginMessagePacket.class);
         final Collector<DisconnectPacket> kicks = connection.trackIncoming(DisconnectPacket.class);
         final List<byte[]> probes = probes();
 
+        player.getPlayerConnection().setServerState(state);
         try (LogCapture logs = LogCapture.rootOfThisThread()) {
             for (int i = 0; i < FLOOD; i++)
                 env.process().eventHandler().call(new PlayerPluginMessageEvent(player, SceneService.CHANNEL,
@@ -95,6 +98,8 @@ class SceneOwnerlessIntegrationTest {
             assertEquals(List.of(), logs.messagesAt(Level.INFO), "a line per payload");
             assertEquals(List.of(), logs.messagesAt(Level.WARN));
             assertEquals(List.of(), logs.messagesAt(Level.ERROR));
+        } finally {
+            player.getPlayerConnection().setServerState(ConnectionState.PLAY);
         }
         // A tick for the end of the player's tick, where anything queued would go out
         env.tick();
@@ -109,7 +114,17 @@ class SceneOwnerlessIntegrationTest {
         final Instance world = CoreMode.start(env.process(), host, Main.registerMatchDimensionType(env.process()),
                 CoreMode.Setting.AUTO);
 
-        floodAndExpectNothing(env, world);
+        floodAndExpectNothing(env, world, ConnectionState.PLAY);
+    }
+
+    /** A client speaking on the channel before the play state is dropped as silently, by the router. */
+    @Test
+    void theCoreModeDropsThePlayPayloadsOfTheConfigurationSilently(Env env) {
+        final PluginHost host = host(env);
+        final Instance world = CoreMode.start(env.process(), host, Main.registerMatchDimensionType(env.process()),
+                CoreMode.Setting.AUTO);
+
+        floodAndExpectNothing(env, world, ConnectionState.CONFIGURATION);
     }
 
     @Test
@@ -119,7 +134,7 @@ class SceneOwnerlessIntegrationTest {
         // What Main#serveMap does with the admission slot; a map shard loads no plugin
         host.registerHostAdmission(_ -> new Admission.Accept(map, 0));
 
-        floodAndExpectNothing(env, map);
+        floodAndExpectNothing(env, map, ConnectionState.PLAY);
     }
 
     @Test

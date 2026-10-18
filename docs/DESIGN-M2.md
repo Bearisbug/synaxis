@@ -307,7 +307,7 @@ M2 的对外契约有两类，都不是 HTTP：① 两端共享的**自定义负
 - **`API-M2-001` 自定义负载通道与消息信封** — 实现 `REQ-M2-006`、`REQ-M2-007`、`REQ-M2-020`
   - 方法/路径：`CustomPayload` 包。通道 id 为 `<plugin_id>:<name>`；宿主保留 `synaxis` 命名空间。M2 存在两个通道：`synaxis:handshake`（宿主级握手）与 `rts:game`（RTS 插件的全部游戏消息）；核心模式下另有宿主自注册的 `synaxis:main` 诊断通道（见 `API-M2-010` 第 ⑤ 步）；挂地图的分片另有宿主下行的 `synaxis:farview`；玩法架构 S1 起三种进程模式下宿主都注册 play 阶段双向的 `synaxis:play`（两者见本条末两项）。
   - 信封：`msg_id`（VarInt，见 §9）+ 消息体；`msg_id` 的作用域**只在该通道内**，因此不需要全局消息号注册表——通道命名空间归插件，插件自己分配自己的号段。
-  - 鉴权/权限：见 §10；宿主路由器只把已进 PLAY 的连接的入站负载交给插件通道，PLAY 之前（configuration 阶段）到的插件通道负载丢弃，经 `LogBudget` 计数（每 10 s 至多一行 WARN，带 `connection_id`、连接状态与通道）。configuration 阶段收负载的只有宿主登记为可在 configuration 收的保留通道：`synaxis:handshake`，与核心模式的 `synaxis:main`（`docs/DESIGN.md` `API-002` 规定它两个状态都可用）；`synaxis:play` 与插件通道一样只收 PLAY 的。玩法模式下握手阻塞在 configuration 虚拟线程上，连接进 PLAY 必先 `session_state=verified` 并过准入，所以「进了 PLAY」就是「verified 之后」；核心模式不要求握手（`API-M2-010` 第 ⑤ 步）。通道名不是合法 identifier 的入站负载由引擎在派发之前以 `synaxis:protocol-error` 断开（`docs/DESIGN.md` `API-002`）。
+  - 鉴权/权限：见 §10；宿主路由器只把已进 PLAY 的连接的入站负载交给插件通道，PLAY 之前（configuration 阶段）到的插件通道负载丢弃，经 `LogBudget` 计数（每 10 s 至多一行 WARN，带 `connection_id`、连接状态与通道）。configuration 阶段收负载的只有宿主登记为可在 configuration 收的保留通道：`synaxis:handshake`，与核心模式的 `synaxis:main`（`docs/DESIGN.md` `API-002` 规定它两个状态都可用）；`synaxis:play` 也只收 PLAY 的，PLAY 之前到的只丢不记、不进上面那行 WARN：没有场景所有者的进程（平坦核心、挂地图的分片）在这个通道上一律不写日志（`docs/DESIGN-PLAY.md` `API-PLAY-002`「没有场景所有者时」）。玩法模式下握手阻塞在 configuration 虚拟线程上，连接进 PLAY 必先 `session_state=verified` 并过准入，所以「进了 PLAY」就是「verified 之后」；核心模式不要求握手（`API-M2-010` 第 ⑤ 步）。通道名不是合法 identifier 的入站负载由引擎在派发之前以 `synaxis:protocol-error` 断开（`docs/DESIGN.md` `API-002`）。
   - 请求/响应：见 `API-M2-002`～`API-M2-006`；编解码由 `:protocol` 的 `MsgBuf`（VarInt / VarLong / f32 / UTF-8 / 定长数组 / 列表）与每条消息 record 的 `read`（静态，读消息体）/ `write`（写 `msg_id` 与消息体）完成。**解码器对入站字节有三条硬性行为**：① 未知 `msg_id` 与畸形输入是两类结果——前者丢弃并 WARN（§9）、后者 `synaxis:protocol-error`（§14），因此编解码层用两个不同的异常表达，宿主不必靠解析消息文本区分；② 任何 `count` 先按自身上限与**剩余字节数**双重校验再分配，发送方不能让解码器替它分配内存；③ 非有限的 f32（NaN / ±Inf）按畸形处理——线上没有任何字段承认这三个值，放过去就会变成一个 NaN 坐标。字段取值越界（`hp < 0`、`team` 不是 u8、`unit_id < 1` 等）在 record 的紧凑构造器里判，因此收发两侧同一套判据。
   - 幂等：除 `API-M2-005` 外全部消息幂等（状态上报与快照天然幂等）。
   - 缓存与超时：不缓存（每条消息都是当帧事实）；未注册通道的入站包直接丢弃，不回错，并记 WARN（全进程一个预算）；`minecraft:` 命名空间的只丢弃、不记，原版与 Fabric 客户端每次进 configuration 都发 `minecraft:brand`。这一判放在查表之后：插件 id 可以叫 `minecraft`，它注册的通道照常收到负载。
@@ -1055,10 +1055,11 @@ flowchart LR
   Then handler 不被调用，记一行带 connection_id 与连接状态的 WARN（预算内）
   And 同一条连接进 PLAY 之后的负载照常交给 handler
   And synaxis:handshake 在 configuration 阶段照常收到负载
+  And 平坦核心里一条 configuration 阶段的连接往 synaxis:play 发的负载同样丢弃，不写日志
 
 场景: 通道名不是 identifier 的入站负载断线 (REQ-M2-006)
   When 客户端发一条通道名带换行的负载
-  Then 引擎以 synaxis:protocol-error 断开这条连接，不派发 PlayerPluginMessageEvent，日志里没有这个通道名
+  Then 引擎以 synaxis:protocol-error 断开这条连接，不派发 PlayerPluginMessageEvent
 
 场景: 示例插件能被社区照着跑起来 (REQ-M2-023)
   Given 按插件开发说明创建一个只实现 SynaxisPlugin 的模块

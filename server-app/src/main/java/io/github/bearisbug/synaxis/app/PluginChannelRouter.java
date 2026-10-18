@@ -30,7 +30,8 @@ import java.util.regex.Pattern;
  * sender ({@code docs/DESIGN-M2.md} {@code API-M2-001}): in a gameplay process a connection reaches the
  * play state only once its handshake and its admission are through. The
  * channels of the host that speak during the configuration, the handshake and the diagnostic echo of
- * the core mode, are registered as such and get those payloads too.
+ * the core mode, are registered as such and get those payloads too. A payload dropped for coming before
+ * the play state gets a warning on a plugin's channel, and none on the host's {@code synaxis:play}.
  * <p>
  * Which is also why every line of this class is written through a {@link LogBudget}: a client
  * picks the channel of every payload it sends and how many it sends, so neither a drop nor a
@@ -55,7 +56,7 @@ final class PluginChannelRouter {
      */
     private final LogBudget drops = new LogBudget(LOGGER, "payloads");
 
-    /** The budget of the line of a payload dropped before the play state, shared by every channel. */
+    /** The budget of the line of a payload dropped before the play state, shared by every plugin channel. */
     private final LogBudget early = new LogBudget(LOGGER, "payloads outside the play state");
 
     /**
@@ -164,8 +165,11 @@ final class PluginChannelRouter {
             return;
         }
         if (!registration.configurationAllowed() && connection.getServerState() != ConnectionState.PLAY) {
-            early.warn("Dropped a payload outside the play state: connection_id={} state={} channel={}",
-                    connection.connectionId(), connection.getServerState(), channel);
+            // The host's own synaxis:play is dropped without a line: a process with no scene owner writes none
+            // about that channel (docs/DESIGN-PLAY.md API-PLAY-002)
+            if (!registration.pluginId().equals(PluginDescriptors.RESERVED_ID))
+                early.warn("Dropped a payload outside the play state: connection_id={} state={} channel={}",
+                        connection.connectionId(), connection.getServerState(), channel);
             return;
         }
         try {

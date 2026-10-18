@@ -153,6 +153,19 @@ public class EntityAsyncContinuationIntegrationTest {
     @Timeout(30)
     public void noTickThreadTicksAnEntityWhileItSpawns(Env env) throws InterruptedException {
         var instance = env.createFlatInstance();
+        // The spawn chunk generates only once setInstance returned: a load finished before the spawn is
+        // chained on would run the spawn, and the listener waiting for the test, on the test thread
+        var spawnGenerates = new CountDownLatch(1);
+        instance.setGenerator(unit -> {
+            if (unit.absoluteStart().chunkX() == 250) {
+                try {
+                    if (!spawnGenerates.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("never released");
+                } catch (InterruptedException _) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            unit.modifier().fillHeight(0, 40, Block.STONE);
+        });
         var entity = new SpawnProbe();
         var spawning = new CountDownLatch(1);
         var ticked = new CountDownLatch(1);
@@ -170,6 +183,7 @@ public class EntityAsyncContinuationIntegrationTest {
             }
         });
         var spawned = entity.setInstance(instance, new Pos(4000, 42, 4000));
+        spawnGenerates.countDown();
         assertTrue(spawning.await(10, TimeUnit.SECONDS), "the spawn chunk loaded");
         env.tick();
         ticked.countDown();

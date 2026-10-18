@@ -1,0 +1,42 @@
+EntityAsyncContinuationIntegrationTest#noTickThreadTicksAnEntityWhileItSpawns (docs/TEST.md TC-PROD-782 step 8).
+Times are local (UTC+8), 2026-10-19. Gradle one build at a time, --max-workers=2 --no-daemon, test task with --rerun-tasks.
+
+The red on main f6b40afd94: CI run 39135577343 (push), job Test with 4 tick threads (strict), attempt 1;
+Check and the strict grid job green on the same commit. Root project 3283 tests completed, 1 failed, 21 skipped:
+  noTickThreadTicksAnEntityWhileItSpawns(Env), 10.119 s
+  org.opentest4j.AssertionFailedError: Server threw exception
+    at io.github.bearisbug.synaxis.testing.EnvImpl.tick(EnvImpl.java:57)
+    at ...EntityAsyncContinuationIntegrationTest.noTickThreadTicksAnEntityWhileItSpawns(EntityAsyncContinuationIntegrationTest.java:174)
+  Caused by: org.opentest4j.AssertionFailedError: the test did not tick within 10 s
+    at ...EntityAsyncContinuationIntegrationTest.lambda$noTickThreadTicksAnEntityWhileItSpawns$0(EntityAsyncContinuationIntegrationTest.java:164)
+    at io.github.bearisbug.synaxis.entity.Entity.lambda$setInstance$1(Entity.java:1254)
+    at io.github.bearisbug.synaxis.entity.Entity.runOwned(Entity.java:1128)
+    at java.base/java.util.concurrent.CompletableFuture.uniAcceptNow(CompletableFuture.java:778)
+    at java.base/java.util.concurrent.CompletableFuture.thenAccept(CompletableFuture.java:2241)
+    at io.github.bearisbug.synaxis.entity.Entity.setInstance(Entity.java:1237)
+    at ...EntityAsyncContinuationIntegrationTest.noTickThreadTicksAnEntityWhileItSpawns(EntityAsyncContinuationIntegrationTest.java:172)
+The load of chunk (250, 250) had completed before setInstance chained the spawn on it (uniAcceptNow): the spawn and
+its EntitySpawnEvent listener ran on the test thread, the listener waited 10 s for a tick only the test thread
+could run, and failed.
+
+The test now holds the generation of chunk (250, 250) until setInstance returned. Line numbers below are of the
+changed test.
+
+1  06:55:34-06:56:24  counter-proof, default mode: the chunk is released and loaded before the spawn is chained on
+   (EntityAsyncContinuationIntegrationTest.java:185-186 replaced by)
+     spawnGenerates.countDown(); instance.loadChunk(250, 250).join();
+     var spawned = entity.setInstance(instance, new Pos(4000, 42, 4000));
+   BUILD FAILED in 49s; tests="5" failures="1" errors="0"
+   noTickThreadTicksAnEntityWhileItSpawns(Env), 10.023 s
+     org.opentest4j.AssertionFailedError: Server threw exception
+     at ...EntityAsyncContinuationIntegrationTest.noTickThreadTicksAnEntityWhileItSpawns(EntityAsyncContinuationIntegrationTest.java:188)
+     Caused by: org.opentest4j.AssertionFailedError: the test did not tick within 10 s
+     at ...EntityAsyncContinuationIntegrationTest.lambda$noTickThreadTicksAnEntityWhileItSpawns$1(EntityAsyncContinuationIntegrationTest.java:177)
+     at ...EntityAsyncContinuationIntegrationTest.noTickThreadTicksAnEntityWhileItSpawns(EntityAsyncContinuationIntegrationTest.java:186)
+   the same failure as on main; restored afterwards
+2  06:56:24-06:56:52  the class, default mode
+   BUILD SUCCESSFUL in 27s; tests="5" failures="0" errors="0" skipped="0"; noTick... 0.009 s
+3  06:56:52-06:57:33  the class, -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+   BUILD SUCCESSFUL in 40s; tests="5" failures="0" errors="0" skipped="0"; noTick... 0.011 s
+4  06:57:33-06:58:17  the class, -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+   BUILD SUCCESSFUL in 43s; tests="5" failures="0" errors="0" skipped="0"; noTick... 0.014 s

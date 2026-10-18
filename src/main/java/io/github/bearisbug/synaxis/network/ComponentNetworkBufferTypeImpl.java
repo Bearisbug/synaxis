@@ -378,7 +378,8 @@ record ComponentNetworkBufferTypeImpl() implements NetworkBufferTypeImpl<Compone
                 buffer.write(STRING_IO_UTF8, "id");
                 buffer.write(STRING_IO_UTF8, payload.key().asString());
 
-                BinaryTagTypeImpl.writeNamed(buffer, "payload", EngineAdventure.unwrapNbt(payload.nbt()));
+                final BinaryTag nbt = EngineAdventure.unwrapNbt(payload.nbt());
+                if (nbt != null) BinaryTagTypeImpl.writeNamed(buffer, "payload", nbt);
             }
             default -> throw new UnsupportedOperationException("Unknown click event action: " + clickEvent.action());
         }
@@ -461,11 +462,13 @@ record ComponentNetworkBufferTypeImpl() implements NetworkBufferTypeImpl<Compone
      * conversion SPI cannot be handed them and only knows the vanilla snapshot of {@code AdventureRegistries}, which
      * lacks every entry the process registered itself.
      *
-     * @return the encoded value, or {@code null} for a removed component
+     * @return the encoded value, or {@code null} for a removed component (a removal marker or an engine value of
+     * {@code null})
      */
     @SuppressWarnings("unchecked")
     private static @Nullable BinaryTag hoverDataComponentValue(NetworkBuffer buffer, Key key, DataComponentValue value) {
         if (value instanceof DataComponentValue.Removed) return null;
+        if (value instanceof EngineDataComponentValue engineValue && engineValue.value() == null) return null;
         if (value instanceof NbtDataComponentValue nbtValue) return nbtValue.value();
         final Registries registries = Objects.requireNonNull(buffer.registries(),
                 "Registries required to convert hover item data components");

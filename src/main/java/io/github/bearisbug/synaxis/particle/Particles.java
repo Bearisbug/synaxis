@@ -114,6 +114,9 @@ sealed interface Particles permits Particle {
 
     Particle.InstantEffect INSTANT_EFFECT = ParticleImpl.get(ParticleKeys.INSTANT_EFFECT);
 
+    /**
+     * Shows stone until another item is set with {@link Particle.Item#withItem}, which refuses air.
+     */
     Particle.Item ITEM = ParticleImpl.get(ParticleKeys.ITEM);
 
     Particle.Vibration VIBRATION = ParticleImpl.get(ParticleKeys.VIBRATION);

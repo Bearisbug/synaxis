@@ -2,7 +2,6 @@ package io.github.bearisbug.synaxis.adventure;
 
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.BinaryTag;
-import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.KeybindComponent;
 import net.kyori.adventure.text.NBTComponent;
@@ -116,15 +115,13 @@ public final class ComponentCodecs {
                     if (!(idResult instanceof Result.Ok(Key id)))
                         yield idResult.cast();
 
-                    BinaryTag payload = CompoundBinaryTag.empty(); // Default to empty. It is optional technically, but adventure does not support that.
-                    if (map.hasValue("payload")) {
-                        final Result<BinaryTag> payloadResult = map.getValue("payload")
-                                .map(value -> Codec.RAW_VALUE.decode(coder, value))
-                                .map(value -> value.convertTo(Transcoder.NBT));
-                        if (!(payloadResult instanceof Result.Ok(BinaryTag rawValue)))
-                            yield payloadResult.cast();
-                        payload = rawValue;
-                    }
+                    if (!map.hasValue("payload"))
+                        yield new Result.Ok<>(ClickEvent.custom(id));
+                    final Result<BinaryTag> payloadResult = map.getValue("payload")
+                            .map(value -> Codec.RAW_VALUE.decode(coder, value))
+                            .map(value -> value.convertTo(Transcoder.NBT));
+                    if (!(payloadResult instanceof Result.Ok(BinaryTag payload)))
+                        yield payloadResult.cast();
 
                     yield new Result.Ok<>(ClickEvent.custom(id, EngineAdventure.wrapNbt(payload)));
                 }
@@ -163,7 +160,9 @@ public final class ComponentCodecs {
                         new Result.Error<>("show_dialog: the dialog registry has no server-side type");
                 case ClickEvent.Payload.Custom custom -> {
                     map.put("id", coder.createString(custom.key().asString()));
-                    final RawValue payloadRawValue = RawValue.of(Transcoder.NBT, EngineAdventure.unwrapNbt(custom.nbt()));
+                    final BinaryTag nbt = EngineAdventure.unwrapNbt(custom.nbt());
+                    if (nbt == null) yield new Result.Ok<>(map.build());
+                    final RawValue payloadRawValue = RawValue.of(Transcoder.NBT, nbt);
                     final Result<D> payloadResult = Codec.RAW_VALUE.encode(coder, payloadRawValue);
                     if (!(payloadResult instanceof Result.Ok(D customPayload)))
                         yield payloadResult.cast();

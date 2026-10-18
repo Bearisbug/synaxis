@@ -73,12 +73,17 @@ import io.github.bearisbug.synaxis.registry.RegistryTag;
 import io.github.bearisbug.synaxis.sound.SoundEvent;
 import io.github.bearisbug.synaxis.utils.Either;
 import io.github.bearisbug.synaxis.utils.Unit;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 import static io.github.bearisbug.synaxis.component.DataComponentImpl.register;
 
 public class DataComponents {
+    private static final int CONTAINER_SIZE = 256;
 
     public static final DataComponent<CustomData> CUSTOM_DATA = register("custom_data", CustomData.NETWORK_TYPE, CustomData.CODEC);
     public static final DataComponent<Integer> MAX_STACK_SIZE = register("max_stack_size", NetworkBuffer.VAR_INT, Codec.INT);
@@ -105,7 +110,7 @@ public class DataComponents {
     public static final DataComponent<Unit> INTANGIBLE_PROJECTILE = register("intangible_projectile", null, Codec.UNIT);
     public static final DataComponent<Food> FOOD = register("food", Food.NETWORK_TYPE, Food.CODEC);
     public static final DataComponent<Consumable> CONSUMABLE = register("consumable", Consumable.NETWORK_TYPE, Consumable.CODEC);
-    public static final DataComponent<ItemStack> USE_REMAINDER = register("use_remainder", ItemStackTemplate.NETWORK_TYPE, ItemStackTemplate.CODEC);
+    public static final DataComponent<ItemStack> USE_REMAINDER = register("use_remainder", ItemStackTemplate.NETWORK_TYPE, ItemStackTemplate.CODEC, notAir("use_remainder"));
     public static final DataComponent<UseCooldown> USE_COOLDOWN = register("use_cooldown", UseCooldown.NETWORK_TYPE, UseCooldown.CODEC);
     public static final DataComponent<DamageResistant> DAMAGE_RESISTANT = register("damage_resistant", DamageResistant.NETWORK_TYPE, DamageResistant.CODEC);
     public static final DataComponent<Tool> TOOL = register("tool", Tool.NETWORK_TYPE, Tool.CODEC);
@@ -129,8 +134,8 @@ public class DataComponents {
     public static final DataComponent<Integer> MAP_ID = register("map_id", NetworkBuffer.VAR_INT, Codec.INT);
     public static final DataComponent<MapDecorations> MAP_DECORATIONS = register("map_decorations", null, MapDecorations.CODEC);
     public static final DataComponent<MapPostProcessing> MAP_POST_PROCESSING = register("map_post_processing", MapPostProcessing.NETWORK_TYPE, null);
-    public static final DataComponent<List<ItemStack>> CHARGED_PROJECTILES = register("charged_projectiles", ItemStackTemplate.NETWORK_TYPE.list(Short.MAX_VALUE), ItemStackTemplate.CODEC.list(Short.MAX_VALUE), List::copyOf);
-    public static final DataComponent<List<ItemStack>> BUNDLE_CONTENTS = register("bundle_contents", ItemStackTemplate.NETWORK_TYPE.list(Short.MAX_VALUE), ItemStackTemplate.CODEC.list(Short.MAX_VALUE), List::copyOf);
+    public static final DataComponent<List<ItemStack>> CHARGED_PROJECTILES = register("charged_projectiles", ItemStackTemplate.NETWORK_TYPE.list(Short.MAX_VALUE), ItemStackTemplate.CODEC.list(Short.MAX_VALUE), noAir("charged_projectiles"));
+    public static final DataComponent<List<ItemStack>> BUNDLE_CONTENTS = register("bundle_contents", ItemStackTemplate.NETWORK_TYPE.list(Short.MAX_VALUE), ItemStackTemplate.CODEC.list(Short.MAX_VALUE), noAir("bundle_contents"));
     public static final DataComponent<PotionContents> POTION_CONTENTS = register("potion_contents", PotionContents.NETWORK_TYPE, PotionContents.CODEC);
     public static final DataComponent<Float> POTION_DURATION_SCALE = register("potion_duration_scale", NetworkBuffer.FLOAT, Codec.FLOAT);
     public static final DataComponent<SuspiciousStewEffects> SUSPICIOUS_STEW_EFFECTS = register("suspicious_stew_effects", SuspiciousStewEffects.NETWORK_TYPE, SuspiciousStewEffects.CODEC);
@@ -160,10 +165,10 @@ public class DataComponents {
     public static final DataComponent<BannerPatterns> BANNER_PATTERNS = register("banner_patterns", BannerPatterns.NETWORK_TYPE, BannerPatterns.CODEC);
     public static final DataComponent<DyeColor> BASE_COLOR = register("base_color", DyeColor.NETWORK_TYPE, DyeColor.CODEC);
     public static final DataComponent<PotDecorations> POT_DECORATIONS = register("pot_decorations", PotDecorations.NETWORK_TYPE, PotDecorations.NBT_TYPE);
-    public static final DataComponent<List<ItemStack>> CONTAINER = register("container", ItemStackTemplate.NETWORK_TYPE.list(256), ItemStackTemplate.CODEC.list(256), List::copyOf);
+    public static final DataComponent<List<ItemStack>> CONTAINER = register("container", containerNetworkType(), containerCodec(), List::copyOf);
     public static final DataComponent<ItemBlockState> BLOCK_STATE = register("block_state", ItemBlockState.NETWORK_TYPE, ItemBlockState.CODEC);
     public static final DataComponent<List<Bee>> BEES = register("bees", Bee.NETWORK_TYPE.list(Short.MAX_VALUE), Bee.CODEC.list(), List::copyOf);
-    public static final DataComponent<ItemStack> SULFUR_CUBE_CONTENT = register("sulfur_cube_content", ItemStackTemplate.NETWORK_TYPE, ItemStackTemplate.CODEC);
+    public static final DataComponent<ItemStack> SULFUR_CUBE_CONTENT = register("sulfur_cube_content", ItemStackTemplate.NETWORK_TYPE, ItemStackTemplate.CODEC, notAir("sulfur_cube_content"));
     public static final DataComponent<ItemPredicate> LOCK = register("lock", null, ItemPredicate.CODEC);
     public static final DataComponent<SeededContainerLoot> CONTAINER_LOOT = register("container_loot", null, SeededContainerLoot.CODEC);
     public static final DataComponent<SoundEvent> BREAK_SOUND = register("break_sound", SoundEvent.NETWORK_TYPE, SoundEvent.CODEC);
@@ -204,5 +209,75 @@ public class DataComponents {
 
     private static Registries.Selector<BinaryTag> opaque(RegistryKey<Registry<BinaryTag>> key) {
         return registries -> registries.opaque(key);
+    }
+
+    // A 26.2 client cannot build an item stack template from air and drops the connection while decoding one, so the
+    // components holding templates refuse air when they are set rather than when the item reaches a client.
+    private static UnaryOperator<ItemStack> notAir(String name) {
+        return item -> {
+            if (item.isAir())
+                throw new IllegalArgumentException("minecraft:" + name + " cannot hold air; remove the component with without() instead");
+            return item;
+        };
+    }
+
+    private static UnaryOperator<List<ItemStack>> noAir(String name) {
+        return items -> {
+            final List<ItemStack> copy = List.copyOf(items);
+            for (int i = 0; i < copy.size(); i++) {
+                if (copy.get(i).isAir())
+                    throw new IllegalArgumentException("minecraft:" + name + " cannot hold air (index " + i + "); leave the empty slots out instead");
+            }
+            return copy;
+        };
+    }
+
+    /**
+     * 26.2 sends a container as up to 256 optional item stack templates, where an empty slot is absent. Here an empty
+     * slot is air.
+     */
+    private static NetworkBuffer.Type<List<ItemStack>> containerNetworkType() {
+        return ItemStackTemplate.NETWORK_TYPE.optional()
+                .transform(item -> item == null ? ItemStack.AIR : item, item -> item.isAir() ? null : item)
+                .list(CONTAINER_SIZE);
+    }
+
+    /**
+     * 26.2 stores a container as its filled slots, each with its index, and an empty slot is left out. Containers
+     * stored before that were a plain list of items, which still decodes.
+     */
+    private static Codec<List<ItemStack>> containerCodec() {
+        return ContainerSlot.CODEC.list(CONTAINER_SIZE)
+                .transform(DataComponents::containerFromSlots, DataComponents::containerToSlots)
+                .orElse(ItemStackTemplate.CODEC.list(CONTAINER_SIZE));
+    }
+
+    private static List<ItemStack> containerFromSlots(List<ContainerSlot> slots) {
+        int size = 0;
+        for (ContainerSlot slot : slots) {
+            Check.argCondition(slot.slot() < 0 || slot.slot() >= CONTAINER_SIZE,
+                    "container slot {0} is outside 0..255", slot.slot());
+            size = Math.max(size, slot.slot() + 1);
+        }
+        final ItemStack[] items = new ItemStack[size];
+        Arrays.fill(items, ItemStack.AIR);
+        for (ContainerSlot slot : slots) items[slot.slot()] = slot.item();
+        return List.of(items);
+    }
+
+    private static List<ContainerSlot> containerToSlots(List<ItemStack> items) {
+        Check.argCondition(items.size() > CONTAINER_SIZE, "a container holds at most 256 slots, got {0}", items.size());
+        final List<ContainerSlot> slots = new ArrayList<>();
+        for (int i = 0; i < items.size(); i++) {
+            if (!items.get(i).isAir()) slots.add(new ContainerSlot(i, items.get(i)));
+        }
+        return slots;
+    }
+
+    private record ContainerSlot(int slot, ItemStack item) {
+        static final StructCodec<ContainerSlot> CODEC = StructCodec.struct(
+                "slot", Codec.INT, ContainerSlot::slot,
+                "item", ItemStackTemplate.CODEC, ContainerSlot::item,
+                ContainerSlot::new);
     }
 }

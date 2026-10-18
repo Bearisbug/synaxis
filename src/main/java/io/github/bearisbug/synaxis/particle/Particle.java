@@ -326,11 +326,19 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
         }
     }
 
+    /**
+     * A particle showing an item. The item is an item stack template on the wire, which a 26.2 client cannot build
+     * from air: it fails to decode the packet and drops the connection, so air is refused here.
+     */
     record Item(Key key, int id, ItemStack item) implements Particle {
         public static final StructCodec<Item> CODEC = StructCodec.struct(
                 "type", Codec.KEY, Item::key,
                 "item", ItemStackTemplate.CODEC, Item::item,
                 (type, item) -> ParticleImpl.<Item>get(type).withItem(item));
+
+        public Item {
+            Check.argCondition(item.isAir(), "Particle.Item cannot show air, 26.2 clients fail to decode it");
+        }
 
         @Contract(pure = true)
         public Item withItem(ItemStack item) {

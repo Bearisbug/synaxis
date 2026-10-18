@@ -38,6 +38,7 @@ public class DataComponentMapTest {
             buffer.write(NetworkBuffer.VAR_INT, 0); // removed
             buffer.write(NetworkBuffer.VAR_INT, DataComponents.CONTAINER.id());
             buffer.write(NetworkBuffer.VAR_INT, 1); // container size
+            buffer.write(NetworkBuffer.BOOLEAN, true); // the slot holds an item
             buffer.write(NetworkBuffer.VAR_INT, Material.STONE.id());
             buffer.write(NetworkBuffer.VAR_INT, 1); // item amount
         }

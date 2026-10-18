@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.color.Color;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.item.ItemStack;
+import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.registry.BuiltinRegistries;
 import io.github.bearisbug.synaxis.registry.Registry;
 import io.github.bearisbug.synaxis.registry.RegistryData;
@@ -37,7 +38,7 @@ final class ParticleImpl {
             case "dust_color_transition" ->
                     new Particle.DustColorTransition(key, id, Color.WHITE, Color.WHITE, 1);
             case "sculk_charge" -> new Particle.SculkCharge(key, id, 0);
-            case "item" -> new Particle.Item(key, id, ItemStack.AIR);
+            case "item" -> new Particle.Item(key, id, ItemStack.of(Material.STONE));
             case "vibration" ->
                     new Particle.Vibration(key, id, Particle.Vibration.SourceType.BLOCK, Vec.ZERO, 0, 0, 0);
             case "shriek" -> new Particle.Shriek(key, id, 0);

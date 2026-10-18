@@ -123,3 +123,10 @@ from the commit that added it on; code is identical. Run head -> commit on this 
   103580c554 -> c42208b6b2   (CI 39098644263, Concurrency 39098644256, Client gametest 39098644336, Client mod 39098644356)
   6a6775d59b -> 8000c5b332   (CI 39100543872, Concurrency 39100543884, Client gametest 39100543809, Client mod 39100543821)
   b98ccffdaf -> cc435b7b36   (CI 39100776850, Client mod 39100776859, Concurrency 39100776841, Client gametest 39100776833)
+
+After the push of ab8b44413c: CI 39103832380, Test with 4 tick threads (strict) failed 1 test,
+  EntityAsyncContinuationIntegrationTest.waitingForATeleportOnTheOwningThreadIsRefused: join returned after 0 ms.
+  The target chunk had loaded within the tick, so the teleport future was already complete when the entity joined
+  it. Check and the strict grid job were green on the same commit. The test now holds the generation of the target
+  chunk until the waits have been tried (docs/TEST.md TC-PROD-783); local default, 4-thread strict and strict grid
+  runs of the class are green. Main code is unchanged.

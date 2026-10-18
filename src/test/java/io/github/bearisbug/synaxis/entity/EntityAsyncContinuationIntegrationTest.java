@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.entity;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.event.entity.EntitySpawnEvent;
 import io.github.bearisbug.synaxis.instance.Chunk;
+import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.jetbrains.annotations.Nullable;
@@ -217,6 +218,19 @@ public class EntityAsyncContinuationIntegrationTest {
     @Timeout(30)
     public void waitingForATeleportOnTheOwningThreadIsRefused(Env env) {
         var instance = env.createFlatInstance();
+        // The target chunk generates only after the waits are tried: a load quicker than the tick would
+        // complete the teleport before the join, and a finished future has nothing to refuse
+        var targetGenerates = new CountDownLatch(1);
+        instance.setGenerator(unit -> {
+            if (unit.absoluteStart().chunkX() == 100) {
+                try {
+                    if (!targetGenerates.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("never released");
+                } catch (InterruptedException _) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            unit.modifier().fillHeight(0, 40, Block.STONE);
+        });
         var entity = new JoinProbe();
         entity.setInstance(instance, new Pos(8, 42, 8)).join();
         env.tick(); // Let the dispatcher assign a tick thread
@@ -227,6 +241,7 @@ public class EntityAsyncContinuationIntegrationTest {
         entity.target = target;
         env.tick();
 
+        targetGenerates.countDown();
         assertEquals(3, entity.outcomes.size(), entity.outcomes.toString());
         for (String outcome : entity.outcomes)
             assertTrue(outcome.contains(" refused: Joining the teleport or instance change of entity "), outcome);

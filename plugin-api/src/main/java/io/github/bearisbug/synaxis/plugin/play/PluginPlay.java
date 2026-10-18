@@ -39,11 +39,15 @@ public interface PluginPlay {
      * clear of this plugin's widgets is queued in their place, so a widget set before this call in
      * the same tick never reaches the new scene. The scene is sent at the end of the player's tick,
      * or after a move of the player into another managed instance completes if one is under way.
+     * <p>
+     * Nothing happens for a player whose connection has dropped. A connection is offline from the
+     * moment it drops, while {@code PlayerDisconnectEvent} waits for the player's next tick, so
+     * checking {@code isOnline()} first does not rule this out.
      *
-     * @param player the player, in the play state
+     * @param player the player
      * @param scene  the scene
-     * @throws IllegalStateException    if this plugin is not the scene owner of the process or the
-     *                                  player is not in the play state
+     * @throws IllegalStateException    if this plugin is not the scene owner of the process, or the
+     *                                  player is online but not in the play state
      * @throws IllegalArgumentException if the encoded scene is over 8 KiB or an id carries another
      *                                  plugin's namespace; the player's scene is left as it was
      */

@@ -14,7 +14,9 @@ import io.github.bearisbug.synaxis.game.protocol.play.S2CActionResult;
 import io.github.bearisbug.synaxis.game.protocol.play.S2CHud;
 import io.github.bearisbug.synaxis.game.protocol.play.S2CScene;
 import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
+import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.plugin.play.ActionRequest;
 import io.github.bearisbug.synaxis.plugin.play.ActionResult;
 import io.github.bearisbug.synaxis.plugin.play.ActionSlot;
@@ -53,8 +55,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * §6.4.3, the host integration row of §19): one exit at the end of each player's tick, the scene before the
  * HUD, the whole queue held while a move is under way, a scene change clearing the scene owner's widgets and
  * keeping the overlays', a scene left keeping its number, the sizes refused before anything changes, the
- * actions of a plugin taken back when it is torn down, and the scene layer of a connection dropped when it
- * goes. It also times the exit (§15), printed only.
+ * actions of a plugin taken back when it is torn down, the scene layer of a connection dropped when it goes
+ * and an enter in the meantime doing nothing, and an enter refused for a connection outside the play state.
+ * It also times the exit (§15), printed only.
  */
 @EnvTest
 class SceneServiceIntegrationTest {
@@ -328,11 +331,28 @@ class SceneServiceIntegrationTest {
         // A test connection only goes offline; the removal on the player's next tick, which fires
         // PlayerDisconnectEvent, is what a real connection's disconnect adds in the play state
         player.getPlayerConnection().disconnect();
-        assertThrows(IllegalStateException.class, () -> rush.enter(player, ROUND), "a scene layer made for a connection offline");
+        rush.enter(player, ROUND);
+        assertEquals(1, ledger.of("play_scene_entered").size(), "a scene was entered for a connection offline");
         player.scheduleNextTick(Entity::remove);
         env.tick();
 
         assertEquals(Optional.empty(), rush.currentScene(player), "the scene layer of a connection gone was kept");
+    }
+
+    @Test
+    void aConnectionOnlineButOutsideThePlayStateCannotEnterAScene(Env env) {
+        final SceneService scenes = SceneTestKit.service(env, "rush", ledger, System::nanoTime);
+        final PluginPlay rush = scenes.forPlugin("rush");
+        final Player player = join(env, env.createFlatInstance()).player();
+        final PlayerConnection connection = player.getPlayerConnection();
+        connection.setServerState(ConnectionState.CONFIGURATION);
+
+        final IllegalStateException refused = assertThrows(IllegalStateException.class, () -> rush.enter(player, LOBBY));
+
+        assertEquals("connection_id=" + connection.connectionId() + " is in CONFIGURATION, not play", refused.getMessage());
+        assertEquals(Optional.empty(), rush.currentScene(player));
+        assertEquals(List.of(), ledger.of("play_scene_entered"));
+        connection.setServerState(ConnectionState.PLAY);
     }
 
     @Test

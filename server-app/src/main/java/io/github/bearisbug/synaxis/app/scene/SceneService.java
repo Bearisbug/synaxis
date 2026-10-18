@@ -212,8 +212,12 @@ public final class SceneService {
                     + (owner == null ? ", which has none" : ", plugin_id=" + owner + " is"));
         final PlayerConnection connection = player.getPlayerConnection();
         final PlayerScene scene = connection.getServerState() == ConnectionState.PLAY ? sceneOf(player) : null;
-        if (scene == null)
-            throw new IllegalStateException("connection_id=" + connection.connectionId() + " is not in the play state");
+        if (scene == null) {
+            // Offline since it dropped, before PlayerDisconnectEvent: nothing to enter, as for a widget set
+            if (!connection.isOnline()) return;
+            throw new IllegalStateException("connection_id=" + connection.connectionId() + " is in "
+                    + connection.getServerState() + ", not play");
+        }
         final String sceneId = PlayIds.qualify(pluginId, spec.id());
         final List<S2CScene.Action> table = new ArrayList<>(spec.actions().size());
         final List<PlayerScene.Slot> slots = new ArrayList<>(spec.actions().size());

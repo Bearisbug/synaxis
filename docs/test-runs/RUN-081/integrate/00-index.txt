@@ -1,0 +1,131 @@
+RUN-081 integration: prod/integrate-081, before and on the draft PR #35. Times are local (UTC+8).
+
+The branch: origin/main f6b40afd94 (the lighting session's PR #34, documents only, on top of 965c3bddae), then
+git merge --no-ff of the fourteen groups in this order (merge commit, merged group head, the group's version):
+  35d60fa27d  BOOT      8dd4e5e38b   docs/DESIGN-PROD.md v0.9.93   (../BOOT/)
+  fcefc2a41e  NET       3931a40ac1   v0.9.94
+  ca254a26b5  EVENT     ee32bd3ab5   v0.9.98
+  2516019d66  ENTITY    d5a11cd619   v0.9.96
+  aed064b0aa  PLAYER    5539a39b04   v0.9.95
+  e8f538af67  WORLD     be8b6be10b   v0.9.99
+  51525597c7  BLOCK     b4abb3a92f   v0.9.100  (../BLOCK/)
+  2794a21525  PHYS      d842d32197   v0.9.101
+  1b8daedc79  INV       0c4395525d   v0.9.97
+  92f73ea108  CMD       0e07f81d37   v0.9.102
+  af95255438  CODEC     2b2c808e4d   v0.9.103
+  b69eeb6bbd  STORE     98e2027001   v0.9.105  (../STORE/)
+  3075a41d52  PLAYHOST  f01d8e65ab   docs/DESIGN-PLAY.md v0.21
+  7c18392c49  APPHOST   d14f7358e3   v0.9.104
+then the integration commits:
+  81c4768b65  docs: the integration of the fourteen groups (docs/DESIGN-PROD.md v0.9.106)
+  426653518f  docs: the cross-group follow-ups
+  4b291f6eae  the changes that waited on other groups
+  09e29522ab  docs: TEST.md steps for the cross-group follow-ups
+  fb62c676bf  admission refusals fail with AddEntityToInstanceEvent.CancelledException
+  56a5e22df3  docs: the admission refusal type and the rest of the follow-ups
+  ee2be71e3f  docs: the moveNow note names the admission refusal type
+  183c55b70e  fix after the first CI run (below)
+  0af847ecf0  docs: the corrections after the first CI run
+  925d5387a4  test: the spawn-tick check holds its spawn chunk (01-spawn-race.txt)
+The readings of the groups are in their own TEST.md sections (and in ../BOOT/, ../BLOCK/, ../STORE/). The merges, the
+conflicts and the cross-group follow-ups with their 11 local Gradle builds are in the docs/TEST.md change log row of
+the integration and in docs/DESIGN-PROD.md v0.9.106.
+
+Gradle on this machine after the follow-ups, one build at a time (--max-workers=2 --no-daemon, test tasks with
+--rerun), 5 builds, 2026-10-19:
+  1  04:41:43-04:41:55  compileJava, compileTestJava, testNamingCheck, forbiddenImportsCheck of all modules;
+                        :architecture-tests:test 7 classes, 20 tests, 0 failures;
+                        :plugin-api:checkBinaryCompatibility and :protocol:checkBinaryCompatibility against the
+                        plugin-api.jar and protocol.jar of release v0.3.0 (gradle/abi-baseline.tag): both ran and passed;
+                        :protocol:publishToMavenLocal into a temporary maven directory
+  2  04:42:27-04:42:37  client-fabric: compileJava compileTestJava compileGametestJava against that :protocol,
+                        BUILD SUCCESSFUL
+  3  -04:46:30          the M3 regression, default mode: :synx:test 22 classes, 182 tests, 1 skipped
+  4  -04:52:44          (SynxRelightBacklogTest, measure only); :baker:test 8 classes, 93 tests; server-app app.shard.*
+  5  -04:57:04          24 classes, 167 tests, with MapShardPlayerAuthorityTest; root PlayerMovementAuthorityIntegrationTest
+                        7 tests; testing EnvDispatcherThreadsIntegrationTest 2 tests. Build 4 adds
+                        -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true, build 5 also
+                        -Dsynaxis.thread-provider=grid. All three: the same counts, 0 failures, 0 errors; the env
+                        dispatcher threads output is 1 counter, 4 counter and 4 grid. The database classes ran against
+                        the local PostgreSQL and Valkey, 0 skipped in server-app.
+The full suites, Concurrency, Client mod, Client gametest and the far-view gametest run on the draft PR.
+
+On the draft PR #35 (label farview-gametest), GitHub Actions.
+
+First round, head ee2be71e3f, 2026-10-19 05:01-05:12:
+  CI run 39165983520, attempt 1: Check, Test with 4 tick threads (strict) and Test with 4 tick threads (strict,
+  grid) all failure, the same 13 failed tests in all three: root project 3649 tests completed, 13 failed, 21 skipped
+  (BUILD FAILED in 10m 1s, 10m 15s, 7m 8s). Gradle stopped after :test failed: the artifacts hold no results for
+  server-app, synx or testing; the other modules that ran have no failure (557 classes, 4,181 tests in all).
+    StaticRegistryCodecTest anUnknownIdOfAStaticRegistryFailsTheRead [1] to [8]: the eight static registry network
+    types (PotionEffect, PotionType, GameEvent, Material, EntityType, Attribute, BlockEntityType,
+    VillagerProfession) handed the null of StaticRegistry#get for an unknown id to the reader
+    EntityBlockTouchTickIntegrationTest, all 5: an exception thrown while the test's process stopped (the entity
+    ticked again) was reported to the test since the change of the testing Env
+  Concurrency 39165983704, Client gametest 39165983528 and Client mod 39165983553 on the same head: success.
+  Far view gametest 39165984999 on the same head (label trigger), 05:01-06:47: Far view cases (light) 8 min,
+  (hidden) 49 min, (synthetic) 63 min, (baked) 105 min, all success. The far-view cases belong to the lighting
+  session (docs/DESIGN-M3.md); it read this run and confirmed RUN-081 on 2026-10-19.
+  Client gametest 39166415955 (workflow_dispatch, p10=true) on the same head, 05:07-05:30: Two shards, 100 round
+  trips (P10) success; 11 checks ok, 200 of 200 transfers answered and arrived, the client joined 201 worlds
+  alternating between two shards, P10: all checks passed.
+Local run after the first round: :server-app:test in full with the database variables, default mode,
+  919 tests completed, 1 failed (0 skipped): ShutdownBeforeTheWorldLaunchTest (TC-PROD-499): the shutdown countdown is no longer sent to a client that never
+  acknowledged the end of its configuration (no play packet before the join).
+Fix, 183c55b70e: the eight network types look the id up and fail with "unknown <registry> id: <id>"; the touch
+  test asserts the touches of its own tick only; the countdown test asserts no countdown message for that client.
+  0af847ecf0 changes documents only.
+
+Head 0af847ecf0, 2026-10-19 05:53-06:12, all four workflows attempt 1 success:
+  CI 39169819402 (Check, both strict jobs), Concurrency 39169819395, Client mod 39169819360,
+  Client gametest 39169819303. Its JUnit counts are those below, class by class.
+
+On main f6b40afd94 itself, the push CI run 39135577343 (2026-10-18 22:20-22:36): the 4-thread strict job failed one
+  test, EntityAsyncContinuationIntegrationTest noTickThreadTicksAnEntityWhileItSpawns; Check and strict grid green.
+  The spawn chunk had loaded before setInstance chained the spawn on it, so the listener ran on the test thread.
+  925d5387a4 holds that chunk's generation until setInstance returned; 01-spawn-race.txt.
+
+Judged on 925d5387a4, attempt 1 of every workflow, 2026-10-19 07:00-07:19:
+  CI 39174623919: Check (./gradlew check jacocoTestReport with the database variables, BUILD SUCCESSFUL in 17m 45s;
+    ABI gate success; diff coverage 1792 lines, 107 missing, 94%, gate 80%), Test with 4 tick threads (strict)
+    (BUILD SUCCESSFUL in 17m 19s), Test with 4 tick threads (strict, grid) (BUILD SUCCESSFUL in 17m 28s): success
+  Concurrency 39174623981: jcstress success
+  Client mod 39174623968: Build the Fabric mod success;
+    mod jar: minecraft=26.2, 108 entries, ships META-INF/jars/protocol-dev.jar
+  Client gametest 39174623923: Run the client gametests, Run the rush script, Two shards, 2 round trips (P11 smoke):
+    success; Two shards, 100 round trips (P10): skipped, it runs on a manual trigger only (run 39166415955 above)
+Counts from the JUnit XML in the artifacts (gh api .../actions/artifacts/<id>/zip, read with Python zipfile without
+unpacking: the archives hold file names that differ only in case):
+  test-reports, test-reports-multithreaded, test-reports-multithreaded-grid of 39174623919: equal class by class,
+  751 classes, 5,298 tests, 0 failures, 0 errors, 22 skipped (root 21, synx 1; the same 7 classes as on main); class by class equal to 0af847ecf0 (CI 39169819402)
+    module               classes   tests
+    root                     495   3,649
+    server-app               163     919
+    synx                      22     182
+    protocol                  10     174
+    baker                      8      93
+    game-rts                  14      93
+    plugin-api                 8      47
+    game-rush                  6      44
+    play-kit                   3      35
+    loadtest                   6      26
+    architecture-tests         7      20
+    testing                    9      16
+  Against main f6b40afd94 (CI run 39135577343, job Check, 688 classes, 4,850 tests): 63 classes and 448 tests more,
+  root 52 classes and 366 tests (54 new classes, ConsoleSenderTranslationTest and PositionUtilsTest removed),
+  server-app 9 and 70, testing 1 and 5, plugin-api 1 and 2, play-kit RoundTest 17 -> 22; synx, protocol, baker,
+  game-rts, game-rush, loadtest and architecture-tests unchanged. Class by class: 02-class-counts.txt.
+  client-test-reports of 39174623968: 25 classes, 297 tests, 0 failures, as in RUN-080 (RUN-081 does not change the
+  mod or :protocol).
+  In all three modes: translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out;
+  config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out; env dispatcher threads 1, 4, 4.
+Rush job (7 min 2 s): judge unit tests Ran 36 tests, OK; waited 0.4 s for the ledger; Q0a to Q9 PASS in both launches;
+  rush judge: PASS (2 reports, 0 problems); prepare_ms 49 and 148; Q5 391 ms and 207 ms after the countdown ran out;
+  Q7 off by 4 ms and -10 ms; Q9 195 ms and 200 ms after the button; the ledger has the lobby at prepare_ms 208 and
+  two rush_round_ended with players=1, cause=time_limit; the four checks of the forward and rollback rehearsal ok.
+Client gametests: client regression: all checks passed; report 8 PASS; playable.txt core 10 PASS, rts 5 PASS.
+P11 smoke (TC-PROD-742): p10.py unit tests Ran 48 tests; 11 checks ok; P10: all checks passed.
+RUN-081 is registered in docs/TEST.md section 6: passed 137/137 (TC-PROD-959 is superseded by TC-PROD-977).
+
+Commit ids: the branch was pushed for the first time at ee2be71e3f, after the commit messages of the group
+branches were reworded locally; every run above records the commit of this branch as it is.

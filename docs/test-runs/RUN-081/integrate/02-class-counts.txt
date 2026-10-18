@@ -1,0 +1,193 @@
+RUN-081: test classes whose count differs between main and the integration branch, from the JUnit XML in the
+test-reports artifacts (read with Python zipfile, not unpacked). main f6b40afd94: CI run 39135577343, job Check,
+688 classes, 4,850 tests. prod/integrate-081 0af847ecf0: CI run 39169819402, job Check, 751 classes, 5,298 tests;
+the strict and strict grid artifacts of that run are equal to it class by class, and so is every module that ran
+in the first round on ee2be71e3f (CI run 39165983520). "-" is a class that does not exist on that side. The
+reports name the @Nested class PaletteCopyTest$OtherWidthsAndOffsets by its @DisplayName,
+"Copy of other widths and with an offset".
+The last column is where the change comes from: the group whose merge brought it in, or "integ" for the
+cross-group follow-ups on the integration branch (4b291f6eae, fb62c676bf); a class changed in two places has
+its delta split by the test methods each side added.
+
+root
+  io.github.bearisbug.synaxis.instance.palette.PaletteCopyTest$OtherWidthsAndOffsets           - -> 6    WORLD +6
+  io.github.bearisbug.synaxis.JvmFlagsRangeTest                                                  - -> 2    BOOT +2
+  io.github.bearisbug.synaxis.ServerConfigTest                                                   7 -> 8    BOOT +1
+  io.github.bearisbug.synaxis.ServerProcessStartTickingTest                                      - -> 2    BOOT +2
+  io.github.bearisbug.synaxis.ShutdownSequenceTest                                               6 -> 11   BOOT +5
+  io.github.bearisbug.synaxis.TickSchedulerThreadTest                                            - -> 2    BOOT +2
+  io.github.bearisbug.synaxis.adventure.bossbar.BossBarManagerLifecycleIntegrationTest           3 -> 7    CODEC +4
+  io.github.bearisbug.synaxis.adventure.bossbar.BossBarPacketOrderIntegrationTest                - -> 2    CODEC +2
+  io.github.bearisbug.synaxis.adventure.provider.EngineFlattenerProviderTest                     - -> 7    CMD +7
+  io.github.bearisbug.synaxis.codec.CodecTest                                                   77 -> 83   CODEC +6
+  io.github.bearisbug.synaxis.codec.StructCodecTest                                             12 -> 14   CODEC +2
+  io.github.bearisbug.synaxis.codec.TranscoderTest                                              37 -> 38   NET +1
+  io.github.bearisbug.synaxis.collision.BlockCollisionTest                                       - -> 3    PHYS +3
+  io.github.bearisbug.synaxis.collision.EntityBlockTouchTickIntegrationTest                      4 -> 5    PHYS +1
+  io.github.bearisbug.synaxis.collision.EntityEntityCollisionIntegrationTest                     4 -> 6    PHYS +2
+  io.github.bearisbug.synaxis.collision.EntityProjectileCollisionIntegrationTest                 3 -> 6    PHYS +3
+  io.github.bearisbug.synaxis.collision.PhysicsUtilsTest                                         - -> 2    PHYS +2
+  io.github.bearisbug.synaxis.collision.PlacementCollisionIntegrationTest                        4 -> 6    PHYS +2
+  io.github.bearisbug.synaxis.command.ArgumentItemStackIntegrationTest                           4 -> 5    CMD +1
+  io.github.bearisbug.synaxis.command.ArgumentValueTest                                          - -> 5    CMD +5
+  io.github.bearisbug.synaxis.command.CommandConditionTest                                      15 -> 18   CMD +3
+  io.github.bearisbug.synaxis.command.CommandManagerTest                                         5 -> 8    CMD +3
+  io.github.bearisbug.synaxis.command.CommandPacketLoopTest                                      - -> 2    CMD +2
+  io.github.bearisbug.synaxis.command.CommandParseInputEndTest                                   - -> 4    CMD +4
+  io.github.bearisbug.synaxis.command.CommandShortcutIntegrationTest                             - -> 1    CMD +1
+  io.github.bearisbug.synaxis.command.ConsoleSenderTranslationTest                               4 -> -    CMD -4
+  io.github.bearisbug.synaxis.coordinate.AreaTest                                               78 -> 80   PHYS +2
+  io.github.bearisbug.synaxis.coordinate.CoordinateTest                                         12 -> 17   ENTITY +1, PHYS +4
+  io.github.bearisbug.synaxis.coordinate.PosTest                                                23 -> 25   PHYS +2
+  io.github.bearisbug.synaxis.coordinate.PosViewDirectionTest                                    2 -> 3    PHYS +1
+  io.github.bearisbug.synaxis.coordinate.PositionUtilsTest                                       2 -> -    PHYS -2
+  io.github.bearisbug.synaxis.coordinate.VecTest                                                25 -> 26   PHYS +1
+  io.github.bearisbug.synaxis.entity.CancelledInstanceChangeIntegrationTest                      2 -> 4    integ +2
+  io.github.bearisbug.synaxis.entity.EntityEffectRemovalIntegrationTest                          - -> 2    ENTITY +2
+  io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest                                14 -> 16   PHYS +2
+  io.github.bearisbug.synaxis.entity.EntityFireIntegrationTest                                   4 -> 6    PLAYER +2
+  io.github.bearisbug.synaxis.entity.EntityInstanceIntegrationTest                               3 -> 5    ENTITY +2
+  io.github.bearisbug.synaxis.entity.EntityLineOfSightIntegrationTest                            8 -> 11   ENTITY +1, PHYS +2
+  io.github.bearisbug.synaxis.entity.EntityMoveToEquivalenceIntegrationTest                      4 -> 6    ENTITY +2
+  io.github.bearisbug.synaxis.entity.EntityProjectileIntegrationTest                             2 -> 5    PHYS +3
+  io.github.bearisbug.synaxis.entity.EntityRefreshPositionIntegrationTest                        1 -> 2    ENTITY +1
+  io.github.bearisbug.synaxis.entity.EntityRemovalIntegrationTest                                6 -> 8    ENTITY +2
+  io.github.bearisbug.synaxis.entity.EntityTeleportIntegrationTest                               7 -> 8    ENTITY +1
+  io.github.bearisbug.synaxis.entity.EntityVelocityIntegrationTest                               8 -> 9    PHYS +1
+  io.github.bearisbug.synaxis.entity.EntityViewPacketOrderIntegrationTest                        - -> 3    ENTITY +3
+  io.github.bearisbug.synaxis.entity.EntityViewStaleRegistrationTest                             - -> 3    ENTITY +3
+  io.github.bearisbug.synaxis.entity.ExperienceOrbIntegrationTest                                - -> 3    PHYS +3
+  io.github.bearisbug.synaxis.entity.LivingEntityDeathIntegrationTest                            3 -> 9    PLAYER +6
+  io.github.bearisbug.synaxis.entity.LivingEntityHealthIntegrationTest                           5 -> 7    PLAYER +2
+  io.github.bearisbug.synaxis.entity.LivingEntityTargetBlockTest                                 - -> 1    PLAYER +1
+  io.github.bearisbug.synaxis.entity.ManualViewerInstanceChangeIntegrationTest                   - -> 2    ENTITY +2
+  io.github.bearisbug.synaxis.entity.MetadataHolderTest                                          7 -> 11   ENTITY +4
+  io.github.bearisbug.synaxis.entity.MetadataRegistriesTest                                      1 -> 2    ENTITY +1
+  io.github.bearisbug.synaxis.entity.PassengerIntegrationTest                                    5 -> 7    ENTITY +2
+  io.github.bearisbug.synaxis.entity.SwitchEntityTypeIntegrationTest                             5 -> 10   ENTITY +5
+  io.github.bearisbug.synaxis.entity.attribute.AttributeInstanceTest                             2 -> 3    PLAYER +1
+  io.github.bearisbug.synaxis.entity.damage.DamageIntegrationTest                                - -> 3    PLAYER +3
+  io.github.bearisbug.synaxis.entity.player.PlayerChunkRingEventIntegrationTest                  - -> 4    PLAYER +4
+  io.github.bearisbug.synaxis.entity.player.PlayerInstanceChangeIntegrationTest                  - -> 8    PLAYER +7, integ +1
+  io.github.bearisbug.synaxis.entity.player.PlayerOpenBookIntegrationTest                        - -> 1    integ +1
+  io.github.bearisbug.synaxis.entity.player.PlayerReconfigurationIntegrationTest                 2 -> 6    PLAYER +4
+  io.github.bearisbug.synaxis.entity.player.PlayerSpawnFailureIntegrationTest                    3 -> 4    integ +1
+  io.github.bearisbug.synaxis.event.EventFilterInstanceIntegrationTest                           - -> 2    EVENT +2
+  io.github.bearisbug.synaxis.event.EventListenerExpirationTest                                  4 -> 6    EVENT +2
+  io.github.bearisbug.synaxis.event.EventNodeCallCancellableTest                                 4 -> 5    EVENT +1
+  io.github.bearisbug.synaxis.event.EventNodeExceptionTest                                       4 -> 5    EVENT +1
+  io.github.bearisbug.synaxis.event.EventNodeListenerTypeTest                                    - -> 3    EVENT +3
+  io.github.bearisbug.synaxis.exception.ExceptionManagerTest                                     5 -> 6    BOOT +1
+  io.github.bearisbug.synaxis.instance.BlockPlaceIntegrationTest                                 5 -> 6    WORLD +1
+  io.github.bearisbug.synaxis.instance.BlockTagPathTest                                          - -> 5    BLOCK +5
+  io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest                             5 -> 8    WORLD +3
+  io.github.bearisbug.synaxis.instance.ChunkPartitionIntegrationTest                             - -> 2    WORLD +2
+  io.github.bearisbug.synaxis.instance.ChunkWriteLockIntegrationTest                             - -> 3    WORLD +3
+  io.github.bearisbug.synaxis.instance.EntityTrackerTest                                         6 -> 8    PHYS +2
+  io.github.bearisbug.synaxis.instance.GeneratorForkIntegrationTest                              7 -> 10   WORLD +3
+  io.github.bearisbug.synaxis.instance.InstanceBlockPacketIntegrationTest                        2 -> 3    WORLD +1
+  io.github.bearisbug.synaxis.instance.InstanceTimeIntegrationTest                               4 -> 6    WORLD +2
+  io.github.bearisbug.synaxis.instance.InstanceUnregisterIntegrationTest                         4 -> 5    BLOCK +1
+  io.github.bearisbug.synaxis.instance.TickableBlockIntegrationTest                              1 -> 4    WORLD +3
+  io.github.bearisbug.synaxis.instance.WeatherIntegrationTest                                    1 -> 2    WORLD +1
+  io.github.bearisbug.synaxis.instance.WorldBorderIntegrationTest                                6 -> 7    WORLD +1
+  io.github.bearisbug.synaxis.instance.block.BlockIteratorTest                                  14 -> 15   ENTITY +1
+  io.github.bearisbug.synaxis.instance.block.handler.BlockHandlerIntegrationTest                 5 -> 6    BLOCK +1
+  io.github.bearisbug.synaxis.instance.block.predicate.ComponentPredicateSetRegistriesTest       - -> 4    CODEC +3, integ +1
+  io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest$ValuePredicate   17 -> 23   CODEC +6
+  io.github.bearisbug.synaxis.instance.generator.GeneratorTest                                  45 -> 51   WORLD +6
+  io.github.bearisbug.synaxis.inventory.EntityEquipEventIntegrationTest                          - -> 3    INV +3
+  io.github.bearisbug.synaxis.inventory.InventoryOpenIntegrationTest                             - -> 4    INV +4
+  io.github.bearisbug.synaxis.inventory.InventoryTransactionRegistriesTest                       - -> 2    INV +2
+  io.github.bearisbug.synaxis.inventory.PlayerCreativeSlotIntegrationTest                        2 -> 3    INV +1
+  io.github.bearisbug.synaxis.inventory.click.integration.ClickEventReentrancyIntegrationTest    - -> 4    INV +3, integ +1
+  io.github.bearisbug.synaxis.inventory.click.integration.DoubleClickIntegrationTest             2 -> 3    INV +1
+  io.github.bearisbug.synaxis.inventory.type.BeaconInventoryIntegrationTest                      - -> 1    INV +1
+  io.github.bearisbug.synaxis.item.ItemStackRegistriesTest                                       2 -> 7    BLOCK +5
+  io.github.bearisbug.synaxis.item.component.BlockPredicatesTest                                 7 -> 9    CODEC +2
+  io.github.bearisbug.synaxis.item.component.EnchantmentListTest                                 4 -> 6    BLOCK +2
+  io.github.bearisbug.synaxis.item.component.ItemBlockStateTest                                  - -> 2    INV +2
+  io.github.bearisbug.synaxis.item.component.ItemComponentDecodingRegistriesTest                 - -> 1    BLOCK +1
+  io.github.bearisbug.synaxis.item.component.ItemComponentLimitsRegistriesTest                   - -> 4    BLOCK +4
+  io.github.bearisbug.synaxis.item.component.TooltipDisplayTest                                  - -> 3    BLOCK +3
+  io.github.bearisbug.synaxis.item.predicate.ItemPredicateRegistriesTest                         - -> 2    CODEC +2
+  io.github.bearisbug.synaxis.listener.ChatMessageListenerIntegrationTest                        4 -> 5    NET +1
+  io.github.bearisbug.synaxis.listener.HandChangedDuringEventIntegrationTest                     - -> 4    NET +4
+  io.github.bearisbug.synaxis.listener.PlayerBlockReachIntegrationTest                           5 -> 7    NET +2
+  io.github.bearisbug.synaxis.listener.PlayerPacketEventIntegrationTest                          - -> 2    EVENT +2
+  io.github.bearisbug.synaxis.listener.PluginMessageListenerIntegrationTest                      - -> 2    PLAYHOST +2
+  io.github.bearisbug.synaxis.listener.StatusRequestGuardIntegrationTest                         1 -> 2    PLAYER +1
+  io.github.bearisbug.synaxis.listener.UseEntityListenerIntegrationTest                          4 -> 5    ENTITY +1
+  io.github.bearisbug.synaxis.message.MessengerIntegrationTest                                   - -> 2    BOOT +2
+  io.github.bearisbug.synaxis.network.ComponentNetworkBufferTypeTest                            15 -> 17   NET +2
+  io.github.bearisbug.synaxis.network.EarlyLoginAcknowledgedIntegrationTest                      - -> 3    NET +3
+  io.github.bearisbug.synaxis.network.NetworkBufferCollectionTypesTest                           9 -> 10   NET +1
+  io.github.bearisbug.synaxis.network.ProxyProtocolTrustTest                                     6 -> 7    NET +1
+  io.github.bearisbug.synaxis.network.packet.PacketWriteQueueTest                                4 -> 6    BOOT +1, integ +1
+  io.github.bearisbug.synaxis.network.packet.PlayerChatMessagePacketTest                         - -> 1    BOOT +1
+  io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacketTest               - -> 2    PLAYER +2
+  io.github.bearisbug.synaxis.network.player.ConfigurationAckReadIntegrationTest                 - -> 1    NET +1
+  io.github.bearisbug.synaxis.network.player.PlayerConnectionGuardIntegrationTest                - -> 2    PLAYER +2
+  io.github.bearisbug.synaxis.network.player.ProtocolErrorCauseTest                              - -> 2    NET +2
+  io.github.bearisbug.synaxis.network.player.SessionClientTest                                   3 -> 4    NET +1
+  io.github.bearisbug.synaxis.network.socket.AcceptLoopSocketTest                                - -> 1    BOOT +1
+  io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest                           2 -> 4    BOOT +1, integ +1
+  io.github.bearisbug.synaxis.particle.ParticleDataTest                                          7 -> 13   BLOCK +6
+  io.github.bearisbug.synaxis.potion.CustomPotionEffectTest                                      - -> 4    BLOCK +4
+  io.github.bearisbug.synaxis.registry.DynamicRegistryMutationTest                               2 -> 4    CODEC +2
+  io.github.bearisbug.synaxis.registry.OpaqueRegistryFrozenTest                                  1 -> 2    CODEC +1
+  io.github.bearisbug.synaxis.registry.RegistryDataPacketSnapshotRegistriesTest                  1 -> 2    CODEC +1
+  io.github.bearisbug.synaxis.registry.RegistryTagCodecRegistriesTest                            1 -> 3    CODEC +2
+  io.github.bearisbug.synaxis.registry.StaticRegistryCodecTest                                   - -> 37   BLOCK +37
+  io.github.bearisbug.synaxis.registry.StaticRegistryRegistriesTest                              - -> 3    CODEC +3
+  io.github.bearisbug.synaxis.tag.TagHandlerReadableCopyTest                                     4 -> 5    CODEC +1
+  io.github.bearisbug.synaxis.tag.TagItemIntegrationTest                                         8 -> 9    CODEC +1
+  io.github.bearisbug.synaxis.tag.TagListTest                                                   17 -> 18   CODEC +1
+  io.github.bearisbug.synaxis.tag.TagNbtSeparatorTest                                            4 -> 7    BLOCK +3
+  io.github.bearisbug.synaxis.tag.TagStructureTest                                               5 -> 6    CODEC +1
+  io.github.bearisbug.synaxis.tag.TagUpdateTest                                                 13 -> 16   CODEC +3
+  io.github.bearisbug.synaxis.tag.TagUuidTest                                                    5 -> 6    CODEC +1
+  io.github.bearisbug.synaxis.thread.ThreadDispatcherTest                                       17 -> 21   BOOT +4
+  io.github.bearisbug.synaxis.timer.CooldownTest                                                 3 -> 4    BOOT +1
+  io.github.bearisbug.synaxis.timer.SchedulerManagerTest                                         - -> 1    BOOT +1
+  io.github.bearisbug.synaxis.timer.TestScheduler                                               15 -> 21   PLAYER +6
+  io.github.bearisbug.synaxis.world.BuilderRegistriesTest                                        3 -> 4    WORLD +1
+  io.github.bearisbug.synaxis.world.attribute.EnvironmentAttributeMapTest                        - -> 3    CODEC +3
+server-app
+  io.github.bearisbug.synaxis.app.CommandRolesIntegrationTest                                    1 -> 2    CMD +1
+  io.github.bearisbug.synaxis.app.CommandsIntegrationTest                                       14 -> 16   APPHOST +2
+  io.github.bearisbug.synaxis.app.ConnectionGateLogTest                                          5 -> 6    BOOT +1
+  io.github.bearisbug.synaxis.app.EventLedgerTest                                                7 -> 8    APPHOST +1
+  io.github.bearisbug.synaxis.app.HostExceptionIntegrationTest                                   3 -> 5    PLAYER +2
+  io.github.bearisbug.synaxis.app.MainStoreIntegrationTest                                       6 -> 7    APPHOST +1
+  io.github.bearisbug.synaxis.app.MainTest                                                      15 -> 17   APPHOST +2
+  io.github.bearisbug.synaxis.app.ModerationIntegrationTest                                     12 -> 13   APPHOST +1
+  io.github.bearisbug.synaxis.app.ModerationLogIntegrationTest                                   - -> 1    CMD +1
+  io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest                                      7 -> 8    STORE +1
+  io.github.bearisbug.synaxis.app.PluginChannelRouterIntegrationTest                             - -> 4    PLAYHOST +4
+  io.github.bearisbug.synaxis.app.PluginChannelsSendIntegrationTest                              - -> 1    PLAYER +1
+  io.github.bearisbug.synaxis.app.PluginCommandsIntegrationTest                                  - -> 3    CMD +3
+  io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest                                    9 -> 10   EVENT +1
+  io.github.bearisbug.synaxis.app.PluginHostInstancesIntegrationTest                             3 -> 4    PLAYHOST +1
+  io.github.bearisbug.synaxis.app.PluginHostIntegrationTest                                     18 -> 21   PLAYHOST +3
+  io.github.bearisbug.synaxis.app.PluginSchedulerLogBudgetIntegrationTest                        - -> 2    STORE +2
+  io.github.bearisbug.synaxis.app.RefusedStartLaunchTest                                         - -> 2    APPHOST +2
+  io.github.bearisbug.synaxis.app.SceneOwnerlessIntegrationTest                                  3 -> 4    PLAYHOST +1
+  io.github.bearisbug.synaxis.app.SessionClientLogTest                                           - -> 1    NET +1
+  io.github.bearisbug.synaxis.app.ShutdownExitLaunchTest                                         - -> 1    APPHOST +1
+  io.github.bearisbug.synaxis.app.instance.EvacuationIntegrationTest                            19 -> 26   PLAYHOST +4, integ +3
+  io.github.bearisbug.synaxis.app.management.ManagementBansIntegrationTest                       2 -> 3    APPHOST +1
+  io.github.bearisbug.synaxis.app.scene.SceneServiceIntegrationTest                             13 -> 15   PLAYHOST +2
+  io.github.bearisbug.synaxis.app.store.MigrationsDbTest                                         5 -> 6    APPHOST +1
+  io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest                          5 -> 7    BLOCK +1, CODEC +1
+  io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest                              28 -> 49   STORE +20, integ +1
+  io.github.bearisbug.synaxis.app.store.PostgresBackendDbTest                                    - -> 2    STORE +2
+  io.github.bearisbug.synaxis.app.store.RedisLinkTest                                            3 -> 4    STORE +1
+testing
+  io.github.bearisbug.synaxis.testing.test.EnvExceptionHandlerIntegrationTest                    1 -> 3    APPHOST +2
+  io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest                2 -> 3    STORE +1
+  io.github.bearisbug.synaxis.testing.test.TrackEventIntegrationTest                             - -> 2    APPHOST +2
+plugin-api
+  io.github.bearisbug.synaxis.plugin.AdmissionTest                                               - -> 2    PLAYHOST +2
+play-kit
+  io.github.bearisbug.synaxis.game.playkit.RoundTest                                            17 -> 22   PLAYHOST +5

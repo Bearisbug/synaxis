@@ -16,10 +16,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -119,6 +121,56 @@ class HostExceptionIntegrationTest {
         assertTrue(HostExceptionHandler.isFatal(new InternalError()));
         assertFalse(HostExceptionHandler.isFatal(new StackOverflowError()), "a stack overflow is survivable");
         assertFalse(stopSequenceRan.get(), "the stop sequence is not the answer to an exhausted heap");
+    }
+
+    // A scheduled task hands over its own throwable: what it throws decides whether the error is fatal
+    @Test
+    void aFatalErrorThrownByAScheduledTaskWritesACrashReport(Env env) throws IOException {
+        install(env);
+        env.process().scheduler().scheduleNextTick(() -> {
+            throw new InternalError("task failure");
+        });
+
+        try (LogCapture logs = LogCapture.of(HostExceptionHandler.class)) {
+            for (int tick = 0; tick < 3; tick++) env.tick();
+
+            assertEquals(1, logs.eventsAt(Level.ERROR).size());
+            assertTrue(logs.messagesAt(Level.ERROR).getFirst().startsWith("Fatal error"),
+                    logs.messagesAt(Level.ERROR).getFirst());
+        }
+        final Path reports = workingDirectory.resolve("crash-reports");
+        assertTrue(Files.isDirectory(reports), "a fatal error thrown by a task writes a crash report");
+        final List<Path> files;
+        try (Stream<Path> listing = Files.list(reports)) {
+            files = listing.toList();
+        }
+        assertEquals(1, files.size());
+        final String report = Files.readString(files.getFirst());
+        assertTrue(report.contains("java.lang.InternalError: task failure"), report);
+    }
+
+    // ... and what it throws decides the budget: one kind of failing task does not hide another
+    @Test
+    void twoKindsOfFailingTasksAreTwoLinesWithTheirStacks(Env env) {
+        install(env);
+        env.process().scheduler().scheduleNextTick(() -> {
+            throw new IllegalStateException("first task failure");
+        });
+        env.process().scheduler().scheduleNextTick(() -> {
+            throw new NullPointerException("second task failure");
+        });
+
+        try (LogCapture logs = LogCapture.of(HostExceptionHandler.class)) {
+            for (int tick = 0; tick < 3; tick++) env.tick();
+
+            final List<ILoggingEvent> errors = logs.eventsAt(Level.ERROR);
+            final Set<String> thrown = errors.stream()
+                    .map(line -> line.getThrowableProxy() == null ? "-" : line.getThrowableProxy().getClassName())
+                    .collect(Collectors.toSet());
+            assertEquals(Set.of(IllegalStateException.class.getName(), NullPointerException.class.getName()), thrown,
+                    "each kind of failure gets its own first line with its stack");
+            assertEquals(2, errors.size());
+        }
     }
 
     @Test

@@ -40,6 +40,7 @@ import io.github.bearisbug.synaxis.sound.SoundEvent;
 import io.github.bearisbug.synaxis.thread.Acquirable;
 import io.github.bearisbug.synaxis.thread.TickThread;
 import io.github.bearisbug.synaxis.utils.MathUtils;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 import io.github.bearisbug.synaxis.instance.block.BlockIterator;
 import io.github.bearisbug.synaxis.timer.Cooldown;
 import io.github.bearisbug.synaxis.timer.TimeUnit;
@@ -222,7 +223,10 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     public void update(long time) {
         // Fire
         if (remainingFireTicks > 0 && --remainingFireTicks == 0) {
-            callCancellableEvent(new EntityFireExtinguishEvent(this, true), () -> entityMeta.setOnFire(false));
+            final EntityFireExtinguishEvent extinguishEvent = new EntityFireExtinguishEvent(this, true);
+            callCancellableEvent(extinguishEvent, () -> entityMeta.setOnFire(false));
+            // Cancelled, the entity keeps burning and the next tick asks again
+            if (extinguishEvent.isCancelled()) remainingFireTicks = 1;
         }
 
         // Items picking
@@ -289,6 +293,10 @@ public class LivingEntity extends Entity implements EquipmentHandler {
 
     /**
      * Kills the entity, trigger the {@link EntityDeathEvent} event.
+     * <p>
+     * A listener of the event healing the entity back above 0 cancels the death: the entity is alive
+     * again and takes damage. What the death already did stays done: the death animation status was
+     * sent and the passengers were dismounted.
      */
     public void kill() {
         if (isDead()) return;
@@ -341,9 +349,20 @@ public class LivingEntity extends Entity implements EquipmentHandler {
         if (remainingFireTicks != 0) {
             EntityFireExtinguishEvent entityFireExtinguishEvent = new EntityFireExtinguishEvent(this, false);
             callCancellableEvent(entityFireExtinguishEvent, () -> entityMeta.setOnFire(false));
+            // Cancelled, the entity keeps burning as it was
+            if (entityFireExtinguishEvent.isCancelled()) return;
         }
 
         remainingFireTicks = fireTicks;
+    }
+
+    /**
+     * Puts the fire out without {@link EntityFireExtinguishEvent}, which a listener could cancel: for a
+     * reset, like a respawn.
+     */
+    void resetFire() {
+        remainingFireTicks = 0;
+        entityMeta.setOnFire(false);
     }
 
     public boolean damage(RegistryKey<DamageType> type, float amount) {
@@ -352,6 +371,8 @@ public class LivingEntity extends Entity implements EquipmentHandler {
 
     /**
      * Damages the entity by a value, the type of the damage also has to be specified.
+     * <p>
+     * A negative amount heals without any healing event, or adds to the additional hearts of a player who has some.
      *
      * @param damage the damage to be applied
      * @return true if damage has been applied, false if it didn't
@@ -440,10 +461,15 @@ public class LivingEntity extends Entity implements EquipmentHandler {
 
     /**
      * Changes the entity health, kill it if {@code health} is &lt;= 0 and is not dead yet.
+     * <p>
+     * The health is clamped between 0 and the maximum health, an infinite value included. A dead
+     * entity given a health above 0 is alive again, see {@link #kill()}.
      *
      * @param health the new entity health
+     * @throws IllegalArgumentException if {@code health} is NaN
      */
     public void setHealth(float health) {
+        Check.argCondition(Float.isNaN(health), "Health cannot be NaN");
         acquirable().assertOwnership();
         this.health = MathUtils.clamp(health, 0, (float) getAttributeValue(Attribute.MAX_HEALTH));
         if (this.health <= 0) {
@@ -452,6 +478,8 @@ public class LivingEntity extends Entity implements EquipmentHandler {
             // Healing back above zero revives the entity. Without this, cancelling a death by healing
             // in EntityDeathEvent leaves isDead latched and damage() rejects everything afterwards.
             refreshIsDead(false);
+            // Out of DYING, into the pose its state gives
+            updatePose();
         }
         LivingEntityMeta meta = getLivingEntityMeta();
         if (meta != null) {
@@ -472,6 +500,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
      * Sets the heal of the entity as its max health.
      * <p>
      * Retrieved from {@link #getAttributeValue(Attribute)} with the attribute {@link Attribute#MAX_HEALTH}.
+     * A dead entity is alive again, see {@link #kill()}.
      */
     public void heal() {
         setHealth((float) getAttributeValue(Attribute.MAX_HEALTH));
@@ -733,10 +762,12 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     /**
      * Gets the target (not-air) block position of the entity.
      *
-     * @param maxDistance The max distance to scan before returning null
+     * @param maxDistance The max distance to scan before returning null, in blocks
      * @return The block position targeted by this entity, null if non are found
+     * @throws IllegalArgumentException if {@code maxDistance} is not positive
      */
     public @Nullable Point getTargetBlockPosition(int maxDistance) {
+        Check.argCondition(maxDistance <= 0, "maxDistance must be positive but was {0}", maxDistance);
         Iterator<Point> it = new BlockIterator(this, maxDistance);
         while (it.hasNext()) {
             final Point position = it.next();

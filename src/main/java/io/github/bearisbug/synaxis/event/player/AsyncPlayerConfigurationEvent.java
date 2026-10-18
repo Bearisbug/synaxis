@@ -23,6 +23,11 @@ import java.util.Set;
  * <p>The event is called off the tick threads, so it is safe to block here</p>
  *
  * <p>It is valid to kick a player using {@link Player#kick(net.kyori.adventure.text.Component)} during this event.</p>
+ *
+ * <p>No play packet reaches the client in this state. The setters of the player that only send one
+ * (health, food, experience, held slot, abilities) record the value, the client is told it when the
+ * player joins the game; joining heals the player and fills its food bar. {@link Player#sendMessage(net.kyori.adventure.text.Component)}
+ * drops the message.</p>
  */
 public class AsyncPlayerConfigurationEvent implements PlayerEvent, AsyncEvent {
     private final Player player;

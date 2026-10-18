@@ -31,9 +31,10 @@ public interface PluginChannels {
      *
      * @param player  the receiver
      * @param name    the channel name, with or without the {@code <plugin_id>:} prefix
-     * @param payload the payload bytes
+     * @param payload the payload bytes, which SHOULD stay within 8 KiB
      * @throws IllegalArgumentException if the name carries another plugin's namespace or is not a
-     *                                  usable channel name
+     *                                  usable channel name, or if the payload is over 1,048,576 bytes
+     *                                  (what a client accepts), on the calling thread
      */
     void send(Player player, String name, byte[] payload);
 }

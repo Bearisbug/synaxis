@@ -100,7 +100,7 @@ jar 名里的 `dev` 是版本号，设了环境变量 `GAME_ENGINE_VERSION` 时�
 | `process()` | 引擎进程本体。**唯一不作兼容承诺的一项**，用它自担风险 | 不收回（不是宿主发的） |
 | `events()` | `addListener(事件类, 监听器)`（`NORMAL`，已取消的事件照样收到）；`addListener(事件类, 优先级, ignoreCancelled, 监听器)`，六档 `LOWEST` → `MONITOR` 依次执行，所有插件同档的排在一起，`MONITOR` 只读不改（约定，不拦截）；`forInstance(实例)` 只收该实例的事件，在实例所属 tick 线程上执行，且先于全局作用域的全部插件监听器；`PlayerPluginMessageEvent`、`PlayerCustomClickEvent`、`PlayerDisconnectEvent`、`PlayerPacketEvent` 及其超类型在玩家没有实例时也可能派发，不能按实例监听，注册即抛 `IllegalArgumentException`。冻结的玩家（`PlayerDataStore#isFrozen`）的 `PickupItemEvent` 与 `ItemDropEvent`：宿主每个事件只判定一次冻结，读到冻结就取消两次：一次在根节点上、先于任何插件监听器，一次在宿主节点下的优先级 3、全局 `HIGHEST` 之后与 `MONITOR` 之前；冻结在一次派发中途落地时，这一次照判定放行到底。发放物品的监听器跳过已取消的事件，以是否已取消为准，不另查 `isFrozen`；撤销这次取消（`setCancelled(false)`）不受支持，撤销之后、第二次取消之前执行的监听器看到的是放行。监听器挂在宿主按插件、按档建的子节点上 | 该插件的全部子节点（含实例下的）`removeChild` |
 | `scheduler()` | `scheduleTask(任务, 延迟, 重复)` | 逐个 `cancel()` |
-| `channels()` | `register(名字, handler)` / `send(玩家, 名字, 字节)` | 注销该插件的全部通道 |
+| `channels()` | `register(名字, handler)` / `send(玩家, 名字, 字节)`；负载宜在 8 KiB 以内，超过 1,048,576 字节（客户端收的上限）`send` 在调用线程抛 `IllegalArgumentException`、什么都不发 | 注销该插件的全部通道 |
 | `admission()` | `register(准入回调)`，决定连接进哪个对局实例、属哪个队伍 | 注销该回调 |
 | `dataDirectory()` | `plugins/<plugin_id>/`，宿主保证存在 | 不删（是你的数据） |
 | `analytics()` | `record(事件名, 属性)`，写进宿主的 `logs/events-YYYYMMDD.jsonl` | 无状态，不需要收回 |
@@ -153,7 +153,7 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 
 对另一个实体的影响（攻击、交易）不要在自己的线程上直接改对方：对方可能在另一条线程上，用 `scheduler().runOn(对方, 任务, TaskSchedule.immediate())` 投递，任务在对方下一次 tick 时在对方的线程上执行。只有必须在同一 tick 读到对方状态时才用 `对方.acquirable().sync(…)`，所有跨线程的 `sync` 都排同一把进程级的锁，用多了就退化成单线程。`sync` 持有对方期间，引擎不会把对方交给别的 tick 线程；从 `runAsync` 这类非 tick 线程持有时，持着它跨过 tick 边界会推迟下一个 tick 的开始，所有 tick 线程一起等，所以回调里不要阻塞（`docs/DESIGN-PROD.md` `API-PROD-016` 元素换线程一条）。
 
-`teleport` 与 `setInstance` 要先载入区块时，返回的 future 在区块载入、实体所属线程放开它之后才完成。在这个实体所属的 tick 线程上（它的事件监听器、`runOn` 给它的任务），以及任何 `sync` 或 `lock` 回调里，都不要 `join()` 或 `get()` 这个 future。在所属线程上（`sync` 持有的就是这个实体时也算）等的正是当前线程，引擎对方法直接返回的 future 当场抛 `IllegalStateException`；`sync` 或 `lock` 从别的线程取到元素时，当前线程持着所有跨线程 `sync` 共用的那把锁，续延要先拿它，引擎拦不住，等下去整个进程停止 tick；在它上面 `thenRun` 得到的 future 引擎同样拦不住。要接后续，用 `thenRun`。
+`teleport` 与 `setInstance` 要先载入区块时，返回的 future 在区块载入、实体所属线程放开它之后才完成。在这个实体所属的 tick 线程上（它的事件监听器、`runOn` 给它的任务），以及任何 `sync` 或 `lock` 回调里，都不要 `join()` 或 `get()` 这个 future。在所属线程上（`sync` 持有的就是这个实体时也算）等的正是当前线程，引擎对方法直接返回的 future 当场抛 `IllegalStateException`；`sync` 或 `lock` 从别的线程取到元素时，当前线程持着所有跨线程 `sync` 共用的那把锁，续延要先拿它，引擎拦不住，等下去整个进程停止 tick；在它上面 `thenRun` 得到的 future 引擎同样拦不住。要接后续，用 `thenRun`。玩家的 `setInstance` 是例外：在调用它的线程上 `join` 不抛，等区块载完、只跑这次换实例的续延，这段时间这条 tick 线程停着，所以同样用 `thenRun`；等区块期间再调一次 `setInstance` 或玩家被移除，前一次的 future 以 `CancellationException` 失败。
 
 实体的属性（`LivingEntity#getAttribute` 取到的 `AttributeInstance`）任意线程可读，只在实体所属的线程上改：每次修改当场回调实体，发属性包，降最大生命值时还压低当前生命值。不拥有实体的线程降最大生命值，压生命值排到实体下一个 tick、在它的线程上做，在那之前读到的生命值还是旧的；实体还没分到 tick 线程时（例如首次出生的 `PlayerSpawnEvent`），tick 线程以外的线程降最大生命值照常当场压。
 

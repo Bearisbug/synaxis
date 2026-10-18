@@ -299,7 +299,7 @@ M2 的对外契约有两类，都不是 HTTP：① 两端共享的**自定义负
 三条**载体层硬约束**（对全部通道生效，违者在编解码层直接抛）：
 
 - 上行单包 ≤ 32,767 字节——引擎 `ClientPluginMessagePacket` 构造器自己就抛，与原版一致；
-- 下行单包 SHOULD ≤ 8 KiB、MUST ≤ 1 MiB——引擎允许到 2 MiB，但原版 / Fabric 客户端只收 1 MiB，引擎不会替我们拦；
+- 下行单包 SHOULD ≤ 8 KiB、MUST ≤ 1 MiB——原版 / Fabric 客户端只收 1 MiB（引擎的包长上限是 2 MiB），引擎构造 `PluginMessagePacket` 时就拒绝超过 1,048,576 字节的负载（`PluginMessagePacket.MAX_PAYLOAD_BYTES`），在调用线程抛 `IllegalArgumentException`，插件经 `PluginChannels#send` 发时同样如此；宿主不另查；
 - 通道名 ≤ 256 字符；**禁止依赖 Fabric 的 `PayloadTypeRegistry.registerLarge` 分片**（那是走 `fabric:split` 的私有协议，服务端不实现就用不了）。需要发大块数据一律改走模组 jar 内的资源，不发大包。
 
 ---

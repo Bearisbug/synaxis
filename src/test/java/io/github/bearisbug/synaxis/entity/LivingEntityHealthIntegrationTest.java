@@ -11,9 +11,11 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnvTest
 public class LivingEntityHealthIntegrationTest {
@@ -35,6 +37,23 @@ public class LivingEntityHealthIntegrationTest {
         player.setHealth(1000f);
         tracker.assertAllMatch(packet -> packet.health() == 20f);
         assertEquals(20f, player.getHealth());
+    }
+
+    @Test
+    public void aNaNHealthIsRefused() {
+        var zombie = new LivingEntity(EntityType.ZOMBIE);
+        assertThrows(IllegalArgumentException.class, () -> zombie.setHealth(Float.NaN));
+        assertEquals(20f, zombie.getHealth());
+    }
+
+    /** A NaN maximum used to make every later setHealth throw, healing and respawning included. */
+    @Test
+    public void aNaNMaximumHealthIsItsMinimum() {
+        var zombie = new LivingEntity(EntityType.ZOMBIE);
+        assertDoesNotThrow(() -> zombie.getAttribute(Attribute.MAX_HEALTH).setBaseValue(Double.NaN));
+        assertEquals(Attribute.MAX_HEALTH.minValue(), zombie.getAttributeValue(Attribute.MAX_HEALTH));
+        assertDoesNotThrow(zombie::heal);
+        assertEquals((float) Attribute.MAX_HEALTH.minValue(), zombie.getHealth());
     }
 
     @Test

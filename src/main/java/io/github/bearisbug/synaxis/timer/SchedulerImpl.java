@@ -4,9 +4,9 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectAVLTreeMap;
 import io.github.bearisbug.synaxis.utils.collection.ConcurrentMessageQueues;
 import org.jctools.queues.MessagePassingQueue;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -72,7 +72,6 @@ final class SchedulerImpl implements Scheduler {
 
     private void runTasks(MessagePassingQueue<TaskImpl> targetQueue) {
         // The queues are single consumer, yet process() is reachable from any thread
-        // (Player#setInstance(...).join() drives the global scheduler from the calling thread).
         consumerLock.lock();
         try {
             // Only consume what was already queued when entering: a task repeating on
@@ -122,38 +121,41 @@ final class SchedulerImpl implements Scheduler {
     }
 
     private void handleTask(TaskImpl task) {
-        TaskSchedule schedule;
+        // Whatever the task or its schedule throws stays here: out of process(), it would drop the
+        // tasks still queued behind this one and skip the rest of the tick
         try {
-            schedule = task.task().get();
-        } catch (Throwable t) {
-            exceptionHandler.accept(new RuntimeException("Exception in scheduled task", t));
-            schedule = TaskSchedule.stop();
-        }
-
-        switch (schedule) {
-            case TaskScheduleImpl.DurationSchedule durationSchedule -> {
-                final Duration duration = durationSchedule.duration();
-                var _ = SCHEDULER.schedule(() -> safeExecute(task), duration.toMillis(), TimeUnit.MILLISECONDS);
-            }
-            case TaskScheduleImpl.TickSchedule tickSchedule -> {
-                synchronized (this) {
-                    final int target = tickState + tickSchedule.tick();
-                    var targetTaskQueue = switch (task.executionType()) {
-                        case TICK_START -> tickStartTaskQueue;
-                        case TICK_END -> tickEndTaskQueue;
-                    };
-                    targetTaskQueue.computeIfAbsent(target, _ -> new ArrayList<>()).add(task);
+            final TaskSchedule schedule = Objects.requireNonNull(task.task().get(), "The task returned no schedule");
+            switch (schedule) {
+                case TaskScheduleImpl.DurationSchedule durationSchedule -> {
+                    // Saturated, a duration too long for a long of milliseconds never runs instead of throwing
+                    final long delay = TimeUnit.MILLISECONDS.convert(durationSchedule.duration());
+                    var _ = SCHEDULER.schedule(() -> safeExecute(task), delay, TimeUnit.MILLISECONDS);
                 }
+                case TaskScheduleImpl.TickSchedule tickSchedule -> {
+                    synchronized (this) {
+                        // Saturated, the sum would otherwise wrap to a tick already passed
+                        final int target = (int) Math.min((long) tickState + tickSchedule.tick(), Integer.MAX_VALUE);
+                        var targetTaskQueue = switch (task.executionType()) {
+                            case TICK_START -> tickStartTaskQueue;
+                            case TICK_END -> tickEndTaskQueue;
+                        };
+                        targetTaskQueue.computeIfAbsent(target, _ -> new ArrayList<>()).add(task);
+                    }
+                }
+                // Completed either way, the task reads the outcome of the future itself
+                case TaskScheduleImpl.FutureSchedule futureSchedule -> {
+                    var _ = futureSchedule.future().whenComplete((_, _) -> safeExecute(task));
+                }
+                // An unpark received while the task was still running must not be lost
+                case TaskScheduleImpl.Park _ -> {
+                    if (!task.tryPark()) queueTask(task);
+                }
+                case TaskScheduleImpl.Stop _ -> task.cancel();
+                case TaskScheduleImpl.Immediate _ -> queueTask(task);
             }
-            case TaskScheduleImpl.FutureSchedule futureSchedule -> {
-                var _ = futureSchedule.future().thenRun(() -> safeExecute(task));
-            }
-            // An unpark received while the task was still running must not be lost
-            case TaskScheduleImpl.Park _ -> {
-                if (!task.tryPark()) queueTask(task);
-            }
-            case TaskScheduleImpl.Stop _ -> task.cancel();
-            case TaskScheduleImpl.Immediate _ -> queueTask(task);
+        } catch (Throwable t) {
+            exceptionHandler.accept(t);
+            task.cancel();
         }
     }
 

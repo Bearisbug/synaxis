@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.timer;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 final class TaskScheduleImpl {
@@ -10,6 +11,9 @@ final class TaskScheduleImpl {
     static final TaskSchedule IMMEDIATE = new Immediate();
 
     record DurationSchedule(Duration duration) implements TaskSchedule {
+        DurationSchedule {
+            Objects.requireNonNull(duration, "duration");
+        }
     }
 
     record TickSchedule(int tick) implements TaskSchedule {
@@ -20,6 +24,9 @@ final class TaskScheduleImpl {
     }
 
     record FutureSchedule(CompletableFuture<?> future) implements TaskSchedule {
+        FutureSchedule {
+            Objects.requireNonNull(future, "future");
+        }
     }
 
     record Park() implements TaskSchedule {

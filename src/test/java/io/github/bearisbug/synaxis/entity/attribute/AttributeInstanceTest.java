@@ -19,6 +19,17 @@ public class AttributeInstanceTest {
     }
 
     @Test
+    void aNaNValueIsTheMinimum() {
+        var attribute = new AttributeInstance(Attribute.SAFE_FALL_DISTANCE, null);
+        attribute.setBaseValue(Double.NaN);
+        assertEquals(Attribute.SAFE_FALL_DISTANCE.minValue(), attribute.getValue());
+
+        attribute.setBaseValue(3);
+        attribute.addModifier(new AttributeModifier("test", Double.NaN, AttributeOperation.ADD_MULTIPLIED_TOTAL));
+        assertEquals(Attribute.SAFE_FALL_DISTANCE.minValue(), attribute.getValue());
+    }
+
+    @Test
     void testReplaceAttributeNewValue() {
         var attribute = new AttributeInstance(Attribute.SAFE_FALL_DISTANCE, null);
 

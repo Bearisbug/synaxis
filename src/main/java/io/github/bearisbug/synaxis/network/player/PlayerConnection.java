@@ -60,6 +60,7 @@ public abstract class PlayerConnection {
     private @Nullable PlayerPublicKey playerPublicKey;
     private final AtomicBoolean loginStarted = new AtomicBoolean();
     private boolean statusRequested;
+    private boolean statusPinged;
     volatile boolean online;
     private volatile boolean wasTransferred;
     private volatile boolean turnedAway;
@@ -236,6 +237,18 @@ public abstract class PlayerConnection {
     }
 
     /**
+     * Claims the single status ping a connection is allowed to make.
+     *
+     * @return false if a ping was already handled on this connection
+     */
+    @ApiStatus.Internal
+    public boolean acquireStatusPing() {
+        if (statusPinged) return false;
+        this.statusPinged = true;
+        return true;
+    }
+
+    /**
      * Kicks the player with a reason. Does nothing once {@link #disconnect()} has run: a kick that
      * arrives after it neither sends a disconnect packet nor writes a line.
      *
@@ -269,9 +282,9 @@ public abstract class PlayerConnection {
         this.online = false;
         if (wasOnline && !turnedAway)
             LOGGER.info("Connection closed: connection_id={} identifier={}", connectionId, getIdentifier());
-        final Player player = process.connection().getPlayer(this);
+        // Only the call that removes the player reports it: two threads may drop the connection at once
+        final Player player = process.connection().dropPlayer(this);
         if (player != null) {
-            process.connection().removePlayer(this);
             if (serverState == ConnectionState.PLAY && !player.isRemoved()) {
                 player.scheduleNextTick(Entity::remove);
                 // Nothing ticks a player that has not spawned yet: the tick decides who reports it
@@ -360,7 +373,16 @@ public abstract class PlayerConnection {
         this.playerPublicKey = playerPublicKey;
     }
 
+    /**
+     * Stores a cookie on the client, in the configuration or the play state.
+     *
+     * @param key  the cookie key
+     * @param data the cookie data
+     * @throws IllegalStateException if the connection is in another state, the login one for instance
+     */
     public void storeCookie(String key, byte[] data) {
+        Check.stateCondition(serverState != ConnectionState.CONFIGURATION && serverState != ConnectionState.PLAY,
+                "storeCookie needs the configuration or play state, the connection is in {0}", serverState);
         sendPacket(new CookieStorePacket(key, data));
     }
 
@@ -429,12 +451,17 @@ public abstract class PlayerConnection {
     }
 
     /**
-     * Attempts to transfer the player to another server, using the {@link TransferPacket}.
+     * Attempts to transfer the player to another server, using the {@link TransferPacket}, in the
+     * configuration or the play state. A plugin transfers with {@code Transfers#transfer} instead, which
+     * applies the cooldown and reports the outcome ({@code docs/PLUGINS.md}).
      *
      * @param host the host, usually an IP or domain name.
      * @param port the port, usually 25565.
+     * @throws IllegalStateException if the connection is in another state, the login one for instance
      */
     public void transfer(String host, int port) {
+        Check.stateCondition(serverState != ConnectionState.CONFIGURATION && serverState != ConnectionState.PLAY,
+                "transfer needs the configuration or play state, the connection is in {0}", serverState);
         OutgoingTransferEvent event = new OutgoingTransferEvent(this.player, host, port);
         process.eventHandler().callCancellable(event, () -> this.sendPacket(new TransferPacket(event.getHost(), event.getPort())));
     }

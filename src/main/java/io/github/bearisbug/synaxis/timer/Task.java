@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.timer;
 
 import java.time.Duration;
 import java.time.temporal.TemporalUnit;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 public sealed interface Task permits TaskImpl {
@@ -49,12 +50,12 @@ public sealed interface Task permits TaskImpl {
         }
 
         public Builder delay(TaskSchedule schedule) {
-            this.delay = schedule;
+            this.delay = Objects.requireNonNull(schedule, "schedule");
             return this;
         }
 
         public Builder repeat(TaskSchedule schedule) {
-            this.repeat = schedule;
+            this.repeat = Objects.requireNonNull(schedule, "schedule");
             this.repeatOverride = true;
             return this;
         }

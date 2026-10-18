@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -542,8 +543,20 @@ public final class ConnectionManager {
      */
     @ApiStatus.Internal
     public synchronized void removePlayer(PlayerConnection connection) {
+        dropPlayer(connection);
+    }
+
+    /**
+     * {@link #removePlayer(PlayerConnection)}, telling whether this call removed the player: of two
+     * threads dropping the same connection at once, only the one that gets the player reports it.
+     *
+     * @param connection the player connection
+     * @return the player this call removed, null if the connection had none or another call removed it
+     */
+    @ApiStatus.Internal
+    public synchronized @Nullable Player dropPlayer(PlayerConnection connection) {
         final Player player = this.connectionPlayerMap.remove(connection);
-        if (player == null) return;
+        if (player == null) return null;
         // Only drop the uuid when it is still this player's, a reconnection may already own it
         this.uuidPlayerMap.remove(player.getUuid(), player);
         this.configurationPlayers.remove(player);
@@ -553,6 +566,7 @@ public final class ConnectionManager {
         // The client is gone and will never answer what #doConfiguration waits for
         player.releaseResourcePackWait();
         connection.releaseKnownPacksWait();
+        return player;
     }
 
     /**
@@ -760,6 +774,12 @@ public final class ConnectionManager {
             // refused the player) would otherwise leave the client waiting on the join screen
             // forever, in a world its entity is not tracked in.
             var _ = spawnFuture.exceptionally(throwable -> {
+                if (throwable instanceof CancellationException) {
+                    // Given up, not failed: the player was sent back to configuration or removed before
+                    // its spawn chunks were loaded, or another instance change superseded the spawn
+                    LOGGER.debug("Spawn of player {} given up", player.getUsername());
+                    return null;
+                }
                 LOGGER.error("Failed to spawn player {}", player.getUsername(), throwable);
                 player.kick(DisconnectReasons.INTERNAL_ERROR);
                 // A client that left before the spawn failed was looked at by an earlier tick
@@ -772,8 +792,8 @@ public final class ConnectionManager {
             if (process.config().insideTest()) {
                 try {
                     spawnFuture.join();
-                } catch (CompletionException _) {
-                    // Already reported and disconnected above, the remaining players still join
+                } catch (CompletionException | CancellationException _) {
+                    // Already reported and disconnected above, or given up; the remaining players still join
                 }
             }
         };

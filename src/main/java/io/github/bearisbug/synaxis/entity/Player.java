@@ -117,6 +117,7 @@ import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.registry.DynamicRegistry;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.thread.Acquirable;
+import io.github.bearisbug.synaxis.thread.Acquired;
 import io.github.bearisbug.synaxis.timer.Scheduler;
 import io.github.bearisbug.synaxis.utils.MathUtils;
 import io.github.bearisbug.synaxis.network.PacketSendingUtils;
@@ -395,7 +396,18 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         final CompletableFuture<Void> spawn;
         try {
-            spawn = joinGame(spawnInstance);
+            if (acquirable().assignedThread() == null) {
+                spawn = joinGame(spawnInstance);
+            } else {
+                // Back from a reconfiguration, still assigned to the tick thread of its first spawn:
+                // the spawn writes the player's state on that thread's hold
+                final Acquired<? extends Player> held = acquirable().lock();
+                try {
+                    spawn = joinGame(spawnInstance);
+                } finally {
+                    held.unlock();
+                }
+            }
         } catch (RuntimeException e) {
             this.spawnFailed = true;
             return CompletableFuture.failedFuture(e);

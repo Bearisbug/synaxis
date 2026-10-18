@@ -3,7 +3,6 @@ package io.github.bearisbug.synaxis.command.builder;
 import io.github.bearisbug.synaxis.command.CommandSender;
 import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
 import io.github.bearisbug.synaxis.command.builder.condition.CommandCondition;
-import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.utils.StringUtils;
 import org.jetbrains.annotations.Nullable;
 
@@ -57,9 +56,9 @@ public class CommandSyntax {
     /**
      * Changes the command condition of this syntax.
      * <p>
-     * Be aware that changing the command condition will not automatically update players auto-completion.
-     * You can create a new packet containing the changes with
-     * {@link io.github.bearisbug.synaxis.command.CommandManager#createDeclareCommandsPacket(Player)}.
+     * Once the command is registered this takes effect at no set time, for running the syntax as for the
+     * completions: unregister the command and register it again to change it, and do not change it from another
+     * thread. A permission that changes at runtime is checked inside the condition instead.
      *
      * @param commandCondition the new command condition, null to remove it
      */
@@ -78,6 +77,9 @@ public class CommandSyntax {
 
     /**
      * Changes the {@link CommandExecutor} of this syntax.
+     * <p>
+     * Once the command is registered this takes effect at no set time: unregister the command and register it again
+     * to change it, and do not change it from another thread.
      *
      * @param executor the new executor
      */

@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.command.builder.Command;
 import io.github.bearisbug.synaxis.command.builder.CommandDispatcher;
 import io.github.bearisbug.synaxis.command.builder.CommandResult;
 import io.github.bearisbug.synaxis.command.builder.ParsedCommand;
+import io.github.bearisbug.synaxis.command.builder.exception.IllegalCommandStructureException;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.PlayerCommandEvent;
 import io.github.bearisbug.synaxis.network.packet.server.play.DeclareCommandsPacket;
@@ -45,9 +46,17 @@ public final class CommandManager {
 
     /**
      * Registers a {@link Command}.
+     * <p>
+     * Its structure is checked as it is now, its subcommands included: a structure the parser cannot follow would
+     * otherwise fail every run of the command, or leave a syntax that never runs.
      *
      * @param command the command to register
-     * @throws IllegalStateException if a command with the same name already exists
+     * @throws IllegalStateException            if a command with the same name already exists
+     * @throws IllegalCommandStructureException if an argument id appears twice on one path through the command (the
+     *                                          name of a subcommand counts), or two syntaxes end at the same place
+     *                                          with a different executor or condition
+     * @throws IllegalArgumentException         if two arguments of one class and id at the same place of several
+     *                                          syntaxes are configured differently
      */
     public synchronized void register(Command command) {
         Check.stateCondition(commandExists(command.getName()),
@@ -58,6 +67,8 @@ public final class CommandManager {
                         "A command with the name " + alias + " is already registered!");
             }
         }
+        // Not where the graph is built for a parse: a command changed once registered would fail the parse of all
+        GraphImpl.checkStructure(command);
         commands.add(command);
         for (String name : command.getNames()) {
             commandMap.put(name.toLowerCase(Locale.ROOT), command);
@@ -235,6 +246,8 @@ public final class CommandManager {
                                                  String input) {
         return CommandResult.of(switch (newResult.type()) {
             case SUCCESS -> CommandResult.Type.SUCCESS;
+            // One type on purpose: an event listener, a condition and a failed executor all leave the command not run
+            // (CommandResult.Type#CANCELLED), and the engine has already logged the failure
             case CANCELLED, PRECONDITION_FAILED, EXECUTOR_EXCEPTION -> CommandResult.Type.CANCELLED;
             case INVALID_SYNTAX -> CommandResult.Type.INVALID_SYNTAX;
             case UNKNOWN -> CommandResult.Type.UNKNOWN;

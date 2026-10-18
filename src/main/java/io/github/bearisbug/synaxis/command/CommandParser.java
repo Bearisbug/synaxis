@@ -3,7 +3,6 @@ package io.github.bearisbug.synaxis.command;
 import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
 import io.github.bearisbug.synaxis.command.builder.suggestion.Suggestion;
 import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -21,7 +20,6 @@ public interface CommandParser {
      * @param input command string without prefix
      * @return the parsed command which can be executed and cached
      */
-    @Contract("_, _ -> new")
     Result parse(CommandSender sender, Graph graph, String input);
 
     sealed interface Result {

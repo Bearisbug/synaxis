@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.utils;
 
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 public class StringUtils {
@@ -27,6 +28,32 @@ public class StringUtils {
         }
 
         return true;
+    }
+
+    /**
+     * Writes a string a client chose so that it stays on its log line and cannot move the cursor of the terminal
+     * showing the log: C0 and C1 control characters (line feed, carriage return, tab and escape among them), the line
+     * and paragraph separators and the bidirectional embeddings, overrides and isolates (U+202A to U+202E, U+2066 to
+     * U+2069) become <code>&#92;uXXXX</code>, and a backslash becomes two.
+     * <p>
+     * A client's string goes into a log line through this, and only as a {@code {}} argument: never in the format
+     * string, nor in the message of an exception.
+     *
+     * @param text the string the client chose
+     * @return the string to log
+     */
+    @ApiStatus.Internal
+    public static String escapeForLog(String text) {
+        final StringBuilder escaped = new StringBuilder(text.length());
+        for (int i = 0; i < text.length(); i++) {
+            final char character = text.charAt(i);
+            if (character == '\\') escaped.append("\\\\");
+            else if (Character.isISOControl(character) || character == 0x2028 || character == 0x2029
+                    || (character >= 0x202A && character <= 0x202E) || (character >= 0x2066 && character <= 0x2069))
+                escaped.append("\\u%04x".formatted((int) character));
+            else escaped.append(character);
+        }
+        return escaped.toString();
     }
 
     public static int countMatches(final CharSequence str, final char ch) {

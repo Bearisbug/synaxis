@@ -254,7 +254,7 @@ public class ArgumentTypeTest {
 
     @Test
     public void testArgumentResourceOrTag() {
-        var arg = ArgumentType.ResourceOrTag("resource_or_tag", "data/minecraft/tags/blocks");
+        var arg = ArgumentType.ResourceOrTag("resource_or_tag", "minecraft:block");
         assertArg(arg, "minecraft:resource_or_tag_example", "minecraft:resource_or_tag_example");
         assertInvalidArg(arg, "minecraft:invalid resource or tag");
     }

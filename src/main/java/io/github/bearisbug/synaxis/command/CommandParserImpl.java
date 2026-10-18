@@ -10,6 +10,7 @@ import io.github.bearisbug.synaxis.command.builder.condition.CommandCondition;
 import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException;
 import io.github.bearisbug.synaxis.command.builder.suggestion.Suggestion;
 import io.github.bearisbug.synaxis.command.builder.suggestion.SuggestionCallback;
+import io.github.bearisbug.synaxis.utils.StringUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -188,8 +189,9 @@ final class CommandParserImpl implements CommandParser {
         }
 
         if (result.argumentResult instanceof ArgumentResult.Success<?>) {
-            CommandExecutor executor = nullSafeGetter(lastNode.execution(), Graph.Execution::executor);
-            if (executor != null) return ValidCommand.executor(input, chain, executor);
+            final Graph.Execution execution = lastNode.execution();
+            CommandExecutor executor = nullSafeGetter(execution, Graph.Execution::executor);
+            if (executor != null) return ValidCommand.executor(input, chain, executor, execution.executorCondition());
         }
 
         // If here, then the command failed or didn't have an executor, then this isn't a known command
@@ -251,7 +253,6 @@ final class CommandParserImpl implements CommandParser {
         }
         // Successfully matched this node's argument
         start = reader.cursor();
-        if (!reader.hasRemaining()) start--; // This is needed otherwise the reader throws an AssertionError
 
         NodeResult error = null;
         for (Node child : node.next()) {
@@ -352,7 +353,7 @@ final class CommandParserImpl implements CommandParser {
 
         @Override
         public List<Argument<?>> args() {
-            return null;
+            return List.of();
         }
     }
 
@@ -424,8 +425,16 @@ final class CommandParserImpl implements CommandParser {
                     chain.mergedGlobalExecutors(), chain.suggestionCallback, chain.getArgs());
         }
 
-        static ValidCommand executor(String input, Chain chain, CommandExecutor executor) {
-            return new ValidCommand(input, chain.mergedConditions(), executor, chain.collectArguments(), chain.mergedGlobalExecutors(),
+        /**
+         * @param executorCondition the condition of the syntax the executor belongs to, checked after those of the
+         *                          commands on the chain
+         */
+        static ValidCommand executor(String input, Chain chain, CommandExecutor executor,
+                                     @Nullable CommandCondition executorCondition) {
+            final CommandCondition commands = chain.mergedConditions();
+            final CommandCondition condition = executorCondition == null ? commands : (sender, commandString) ->
+                    commands.canUse(sender, commandString) && executorCondition.canUse(sender, commandString);
+            return new ValidCommand(input, condition, executor, chain.collectArguments(), chain.mergedGlobalExecutors(),
                     chain.suggestionCallback, chain.getArgs());
         }
 
@@ -460,7 +469,8 @@ final class CommandParserImpl implements CommandParser {
                 executor().apply(sender, context);
                 return new ExecutionResultImpl(ExecutableCommand.Result.Type.SUCCESS, context.getReturnData());
             } catch (Exception e) {
-                LOGGER.error("An exception was encountered while executing command: {}", input(), e);
+                LOGGER.error("An exception was encountered while executing command: {}",
+                        StringUtils.escapeForLog(input()), e);
                 return ExecutionResultImpl.EXECUTOR_EXCEPTION;
             }
         }
@@ -480,7 +490,8 @@ final class CommandParserImpl implements CommandParser {
                 try {
                     callback.apply(sender, new ArgumentSyntaxException(error.message(), error.input(), error.code()));
                 } catch (Exception e) {
-                    LOGGER.error("An exception was encountered while executing command: {}", input(), e);
+                    LOGGER.error("An exception was encountered while executing command: {}",
+                            StringUtils.escapeForLog(input()), e);
                     return ExecutionResultImpl.EXECUTOR_EXCEPTION;
                 }
             }
@@ -533,6 +544,10 @@ final class CommandParserImpl implements CommandParser {
     private record Failure(Node node, ArgumentSyntaxException exception) {
     }
 
+    /**
+     * Reads the input word by word. The cursor stays within {@code [0, input.length()]}: after the last word it is the
+     * length of the input.
+     */
     static final class CommandStringReader {
         private final String input;
         private int cursor = 0;
@@ -551,7 +566,7 @@ final class CommandParserImpl implements CommandParser {
 
             final int i = input.indexOf(' ', cursor);
             if (i == -1) {
-                this.cursor = input.length() + 1;
+                this.cursor = input.length();
                 return input.substring(cursor);
             }
             final String read = input.substring(cursor, i);

@@ -51,6 +51,13 @@ public class ArgumentCommand extends Argument<CommandResult> {
         return shortcut;
     }
 
+    /**
+     * Sets the command the client completes this argument as, by redirecting its node there.
+     *
+     * @param shortcut the start of a registered command, such as {@code tp}; when it parses to no command, or to one
+     *                 hidden from a player, that player's client is redirected to the root instead
+     * @return 'this' for chaining
+     */
     @ApiStatus.Experimental
     public ArgumentCommand setShortcut(String shortcut) {
         this.shortcut = shortcut;

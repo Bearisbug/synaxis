@@ -28,16 +28,20 @@ public class CommandResult {
 
     public enum Type {
         /**
-         * Command and syntax successfully found.
+         * An executor ran: that of a syntax, or the {@link Command#getDefaultExecutor() default executor} of the
+         * command, also when the input is incomplete or matches no syntax.
          */
         SUCCESS,
         /**
-         * Command found, but the syntax is invalid.
-         * Executor sets to {@link Command#getDefaultExecutor()}.
+         * The command exists, but no syntax matches the input and the command has no default executor; or an
+         * argument with an {@link io.github.bearisbug.synaxis.command.builder.arguments.Argument#setCallback error
+         * callback} failed, and that callback ran in place of any executor.
          */
         INVALID_SYNTAX,
         /**
-         * Command cancelled by an event listener.
+         * The command did not run: a {@code PlayerCommandEvent} listener cancelled it, the condition of the command or
+         * of the syntax refused the sender, or the executor or error callback threw, which the engine logs as an
+         * ERROR.
          */
         CANCELLED,
         /**

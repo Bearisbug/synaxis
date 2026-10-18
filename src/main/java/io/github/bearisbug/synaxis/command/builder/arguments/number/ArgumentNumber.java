@@ -8,6 +8,7 @@ import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.function.Function;
 
 public class ArgumentNumber<T extends Number> extends Argument<T> {
@@ -37,6 +38,9 @@ public class ArgumentNumber<T extends Number> extends Argument<T> {
     public T parse(CommandSender sender, String input) throws ArgumentSyntaxException {
         try {
             final T value = parser.apply(input);
+            // Double.compare ranks NaN above every number, so a range lets it and the infinities through
+            if (!Double.isFinite(value.doubleValue()))
+                throw new ArgumentSyntaxException("Input is not a finite number", input, NOT_NUMBER_ERROR);
 
             // Check range
             if (hasMin && comparator.compare(value, min) < 0) {
@@ -137,5 +141,11 @@ public class ArgumentNumber<T extends Number> extends Argument<T> {
      */
     public T getMax() {
         return max;
+    }
+
+    @Override
+    public boolean sameConfiguration(Argument<?> other) {
+        return other instanceof ArgumentNumber<?> number && hasMin == number.hasMin && hasMax == number.hasMax
+                && Objects.equals(min, number.min) && Objects.equals(max, number.max);
     }
 }

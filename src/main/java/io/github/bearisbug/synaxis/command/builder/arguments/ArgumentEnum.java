@@ -48,6 +48,11 @@ public class ArgumentEnum<E extends Enum> extends Argument<E> {
         return Arrays.stream(values).map(x -> format.formatter.apply(x.name())).toList();
     }
 
+    @Override
+    public boolean sameConfiguration(Argument<?> other) {
+        return other instanceof ArgumentEnum<?> that && enumClass == that.enumClass && format == that.format;
+    }
+
     public enum Format {
         DEFAULT(name -> name),
         LOWER_CASED(name -> name.toLowerCase(Locale.ROOT)),

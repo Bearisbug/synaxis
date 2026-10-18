@@ -9,6 +9,7 @@ import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType;
 import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentWord;
 import io.github.bearisbug.synaxis.command.builder.condition.CommandCondition;
 import io.github.bearisbug.synaxis.utils.StringUtils;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
@@ -22,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -50,6 +52,11 @@ import java.util.stream.Stream;
  * Some {@link Argument} could also require additional condition (eg: a number which need to be between 2 values),
  * in this case, if the whole syntax is correct but not the argument condition,
  * you can listen to its error code using {@link #setArgumentCallback(ArgumentCallback, Argument)} or {@link Argument#setCallback(ArgumentCallback)}.
+ * <p>
+ * Set a command up before it is registered. Once it is, a change to its structure (condition, executors, syntaxes,
+ * subcommands) takes effect at no set time, when any command is next registered or unregistered: to change it,
+ * unregister it and register it again. A permission that changes at runtime belongs inside the condition, which is
+ * asked every time. A command is not thread-safe: do not change it from another thread once it is registered.
  */
 public class Command {
 
@@ -67,12 +74,19 @@ public class Command {
 
     /**
      * Creates a {@link Command} with a name and one or multiple aliases.
+     * <p>
+     * The name and every alias is non-empty lower-case text without whitespace, not starting with {@code /}; the
+     * same goes for a subcommand. A command is looked up by its lower-cased name but parsed by its name as given, so
+     * an upper-case letter would leave it found yet never run.
      *
      * @param name    the name of the command
      * @param aliases the command aliases
+     * @throws IllegalArgumentException if the name or an alias breaks that rule
      * @see #Command(String)
      */
     public Command(String name, String... aliases) {
+        checkName(name);
+        for (String alias : aliases) checkName(alias);
         this.name = name;
         this.aliases = aliases;
         this.names = Stream.concat(Arrays.stream(aliases), Stream.of(name)).toArray(String[]::new);
@@ -85,10 +99,18 @@ public class Command {
      * Creates a {@link Command} with a name and no alias.
      *
      * @param name the name of the command
+     * @throws IllegalArgumentException if the name breaks the rule of {@link #Command(String, String...)}
      * @see #Command(String, String...)
      */
     public Command(String name) {
         this(name, new String[0]);
+    }
+
+    private static void checkName(String name) {
+        final boolean valid = !name.isEmpty() && !name.startsWith("/") && name.equals(name.toLowerCase(Locale.ROOT))
+                && name.chars().noneMatch(Character::isWhitespace);
+        Check.argCondition(!valid, "a command name is non-empty lower-case text without whitespace or a leading '/': '"
+                + name + "'");
     }
 
     /**
@@ -108,6 +130,10 @@ public class Command {
 
     /**
      * Sets the {@link CommandCondition}.
+     * <p>
+     * Once the command is registered this takes effect at no set time: unregister the command and register it again
+     * to change it, and do not change it from another thread. A permission that changes at runtime is checked inside
+     * the condition instead.
      *
      * @param commandCondition the new command condition, null to do not call anything
      * @see #getCondition()
@@ -129,6 +155,14 @@ public class Command {
         argument.setCallback(callback);
     }
 
+    /**
+     * Adds a subcommand.
+     * <p>
+     * Once this command is registered this takes effect at no set time: unregister it and register it again to change
+     * it, and do not change it from another thread.
+     *
+     * @param command the subcommand
+     */
     public void addSubcommand(Command command) {
         this.subcommands.add(command);
     }
@@ -147,6 +181,19 @@ public class Command {
      * Adds a new syntax in the command.
      * <p>
      * A syntax is simply a list of arguments and an executor called when successfully parsed.
+     * <p>
+     * Syntaxes share their leading arguments: arguments of the same class and id at the same place are one node, the
+     * first registered instance being the one parsed, so they have to be configured the same
+     * ({@link Argument#sameConfiguration}). The arguments of a parsed command are keyed by id, so an id appears once
+     * on a syntax, the names of the subcommands above it included. Two syntaxes ending at the same place with a
+     * different executor or condition would leave one of them never run, the shorter syntaxes that optional arguments
+     * add included. {@link io.github.bearisbug.synaxis.command.CommandManager#register(Command)} refuses a command
+     * breaking any of this.
+     * <p>
+     * The condition decides whether a sender sees the syntax among its completions and may run its executor; it does
+     * not guard another syntax sharing the arguments. Once the command is registered, adding a syntax takes effect at
+     * no set time: unregister the command and register it again to change it, and do not change it from another
+     * thread.
      *
      * @param commandCondition the condition to use the syntax
      * @param executor         the executor to call when the syntax is successfully received
@@ -284,6 +331,9 @@ public class Command {
 
     /**
      * Sets the default {@link CommandExecutor}.
+     * <p>
+     * Once the command is registered this takes effect at no set time: unregister the command and register it again
+     * to change it, and do not change it from another thread.
      *
      * @param executor the new default executor, null to remove it
      * @see #getDefaultExecutor()

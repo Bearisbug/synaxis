@@ -134,5 +134,5 @@ public class GraphConversionTest {
     private static void dummyExecutor(CommandSender sender, CommandContext context) {
     }
 
-    private static final Graph.Execution dummyExecution = new GraphImpl.ExecutionImpl(null, null, null, GraphConversionTest::dummyExecutor, null);
+    private static final Graph.Execution dummyExecution = new GraphImpl.ExecutionImpl(null, null, null, GraphConversionTest::dummyExecutor, null, null);
 }

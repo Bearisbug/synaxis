@@ -73,6 +73,12 @@ public class ArgumentEntity extends Argument<EntityFinder> {
     }
 
     @Override
+    public boolean sameConfiguration(Argument<?> other) {
+        return other instanceof ArgumentEntity entity && onlySingleEntity == entity.onlySingleEntity
+                && onlyPlayers == entity.onlyPlayers;
+    }
+
+    @Override
     public byte @Nullable [] nodeProperties() {
         return NetworkBuffer.makeArray(buffer -> {
             byte mask = 0;

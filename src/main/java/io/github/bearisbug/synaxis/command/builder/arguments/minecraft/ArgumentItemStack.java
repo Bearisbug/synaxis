@@ -83,9 +83,23 @@ public class ArgumentItemStack extends Argument<ItemStack> {
                 if (remove) {
                     components.remove(component);
                 } else {
+                    if (!component.isSerialized())
+                        throw new ArgumentSyntaxException("Item component cannot be set from a command", input,
+                                INVALID_COMPONENT);
                     reader.consume('=');
 
-                    final Result<Object> componentValueResult = (Result<Object>) component.decode(coder, reader.readTag());
+                    final Result<Object> componentValueResult;
+                    try {
+                        componentValueResult = (Result<Object>) component.decode(coder, reader.readTag());
+                    } catch (ArgumentSyntaxException e) {
+                        throw e;
+                    } catch (RuntimeException e) {
+                        // A value the codec reads but the component's constructor refuses throws from the decode
+                        final ArgumentSyntaxException invalid =
+                                new ArgumentSyntaxException("Invalid item component value", input, INVALID_COMPONENT);
+                        invalid.initCause(e);
+                        throw invalid;
+                    }
                     if (!(componentValueResult instanceof Result.Ok(Object componentValue)))
                         throw new ArgumentSyntaxException("Invalid item component value", input, INVALID_COMPONENT);
                     components.set((DataComponent<Object>) component, componentValue);

@@ -14,6 +14,7 @@ import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxExcep
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.PluginCommands;
+import io.github.bearisbug.synaxis.utils.StringUtils;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
@@ -116,9 +117,13 @@ final class PluginCommandsImpl implements PluginCommands {
         refreshCompletions();
     }
 
-    /** A player only learns which commands exist from the packet sent when it spawned. */
+    /**
+     * A player only learns which commands exist from the packet sent when it spawned. The new one is
+     * built on the player's tick thread, where the conditions of the plugins' commands are asked.
+     */
     private void refreshCompletions() {
-        for (Player player : process.connection().getOnlinePlayers()) player.refreshCommands();
+        for (Player player : process.connection().getOnlinePlayers())
+            player.scheduler().scheduleNextTick(player::refreshCommands);
     }
 
     /**
@@ -171,7 +176,7 @@ final class PluginCommandsImpl implements PluginCommands {
         public boolean canUse(CommandSender sender, @Nullable String commandString) {
             try {
                 return condition.canUse(sender, commandString);
-            } catch (RuntimeException e) {
+            } catch (Throwable e) {
                 failures.error(e, "Plugin command condition failed: plugin_id={} command={}", pluginId, name);
                 return false;
             }
@@ -192,8 +197,9 @@ final class PluginCommandsImpl implements PluginCommands {
     private static void run(Runnable call, CommandSender sender, String input, String pluginId, LogBudget failures) {
         try {
             call.run();
-        } catch (RuntimeException e) {
-            failures.error(e, "Plugin command failed: plugin_id={} command={}", pluginId, input);
+        } catch (Throwable e) {
+            failures.error(e, "Plugin command failed: plugin_id={} command={}", pluginId,
+                    StringUtils.escapeForLog(input));
             sender.sendMessage(Component.translatable("command.failed",
                     "An unexpected error occurred trying to execute that command"));
         }

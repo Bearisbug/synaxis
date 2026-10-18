@@ -4,6 +4,7 @@ import net.kyori.adventure.identity.Identity;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.command.builder.Command;
 import io.github.bearisbug.synaxis.command.builder.CommandDispatcher;
+import io.github.bearisbug.synaxis.command.builder.CommandResult;
 import io.github.bearisbug.synaxis.tag.TagHandler;
 import org.junit.jupiter.api.Test;
 
@@ -470,6 +471,71 @@ public class CommandConditionTest {
 
         assertFalse(graph1.compare(graph2, Graph.Comparator.TREE),
                 "Graphs with different conditions should not be equal");
+    }
+
+    /**
+     * A node can end one syntax and lie on the way of another: the condition of the first guards its own executor,
+     * not the second syntax going through the node.
+     */
+    @Test
+    public void aSyntaxConditionGuardsItsOwnExecutorOnlyAtASharedNode() {
+        var dispatcher = new CommandDispatcher(PROCESS);
+        var admin = new Sender();
+        var player = new Sender();
+        AtomicInteger which = new AtomicInteger();
+
+        var command = new Command("foo");
+        command.addConditionalSyntax((sender, _) -> sender == admin, (_, _) -> which.set(1), Literal("reload"));
+        command.addSyntax((_, _) -> which.set(2), Literal("reload"), Literal("soft"));
+        dispatcher.register(command);
+
+        assertEquals(CommandResult.Type.SUCCESS, dispatcher.execute(player, "foo reload soft").getType());
+        assertEquals(2, which.getAndSet(0), "the condition of foo reload stopped foo reload soft");
+        assertEquals(CommandResult.Type.CANCELLED, dispatcher.execute(player, "foo reload").getType());
+        assertEquals(0, which.get());
+        dispatcher.execute(admin, "foo reload");
+        assertEquals(1, which.get());
+    }
+
+    /**
+     * The condition of a syntax without arguments guards that syntax, not the command's other syntaxes.
+     */
+    @Test
+    public void aZeroArgumentSyntaxConditionGuardsThatSyntaxOnly() {
+        var dispatcher = new CommandDispatcher(PROCESS);
+        var admin = new Sender();
+        var player = new Sender();
+        AtomicInteger which = new AtomicInteger();
+
+        var command = new Command("foo");
+        command.addConditionalSyntax((sender, _) -> sender == admin, (_, _) -> which.set(1));
+        command.addSyntax((_, _) -> which.set(2), Integer("n"));
+        dispatcher.register(command);
+
+        assertEquals(CommandResult.Type.SUCCESS, dispatcher.execute(player, "foo 5").getType());
+        assertEquals(2, which.getAndSet(0), "the condition of the bare foo stopped foo 5");
+        assertEquals(CommandResult.Type.CANCELLED, dispatcher.execute(player, "foo").getType());
+        dispatcher.execute(admin, "foo");
+        assertEquals(1, which.get());
+    }
+
+    /**
+     * When two syntaxes end at one node anyway (the structure is only checked at register), the node runs the
+     * executor of one of them with the condition of that same one, never the executor of one with the condition of
+     * the other.
+     */
+    @Test
+    public void aNodeTwoSyntaxesEndAtRunsOneExecutorWithItsOwnCondition() {
+        var sender = new Sender();
+        AtomicInteger which = new AtomicInteger();
+        var command = new Command("foo");
+        command.addSyntax((_, _) -> which.set(1), Literal("x"));
+        command.addConditionalSyntax((_, _) -> false, (_, _) -> which.set(2), Literal("x"));
+
+        final CommandParser.Result result = CommandParser.parser().parse(sender, Graph.merge(Graph.fromCommand(command)),
+                "foo x");
+        assertEquals(ExecutableCommand.Result.Type.SUCCESS, result.executable().execute(sender).type());
+        assertEquals(1, which.get());
     }
 
     private static final class Sender implements CommandSender {

@@ -11,18 +11,23 @@ import io.github.bearisbug.synaxis.inventory.InventoryType;
 import io.github.bearisbug.synaxis.inventory.click.Click;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
+import io.github.bearisbug.synaxis.item.component.EnchantmentList;
 import io.github.bearisbug.synaxis.item.component.Equippable;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientClickWindowPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.SetCursorItemPacket;
+import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.inventory.PlayerInventoryUtils;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 @EnvTest
 public class LeftClickIntegrationTest {
@@ -321,6 +326,46 @@ public class LeftClickIntegrationTest {
         // Assert that the item successfully lands in slot 0
         assertEquals(ItemStack.of(Material.IRON_HELMET), inventory.getItemStack(0));
         assertEquals(ItemStack.AIR, inventory.getItemStack(36));
+    }
+
+    /**
+     * A click carries the client's hash of its cursor item, which the server compares with its own to resend a cursor
+     * that went out of step. An enchantment is a map component, whose hash used to fail: with an enchanted item on the
+     * cursor every click threw out of the listener, and a cursor out of step was never resent.
+     */
+    @Test
+    public void theCursorHashOfAnEnchantedItem(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 40, 0));
+        var inventory = player.getInventory();
+        var reported = new AtomicReference<Throwable>();
+        env.process().exception().setExceptionHandler(reported::set);
+        var sword = ItemStack.builder(Material.DIAMOND_SWORD)
+                .set(DataComponents.ENCHANTMENTS, new EnchantmentList(RegistryKey.unsafeOf("minecraft:sharpness"), 5)).build();
+        inventory.setItemStack(1, sword);
+        inventory.setCursorItem(sword);
+
+        // A click on the same sword leaves the cursor as it was, so the click itself sends no cursor. The client thinks
+        // its cursor is empty: the server resends the sword
+        var resent = connection.trackIncoming(SetCursorItemPacket.class);
+        leftClick(player, 1, ItemStack.Hash.AIR);
+        assertNull(reported.get());
+        assertEquals(sword, inventory.getCursorItem());
+        resent.assertSingle(packet -> assertEquals(sword, packet.itemStack()));
+
+        // The same click with the client in step: nothing to resend
+        var inStep = connection.trackIncoming(SetCursorItemPacket.class);
+        leftClick(player, 1, ItemStack.Hash.of(sword, player.process()));
+        assertNull(reported.get());
+        assertEquals(sword, inventory.getCursorItem());
+        inStep.assertEmpty();
+    }
+
+    private static void leftClick(Player player, int slot, ItemStack.Hash cursor) {
+        player.addPacketToQueue(new ClientClickWindowPacket(0, 0, (short) PlayerInventoryUtils.convertEngineSlotToWindowSlot(slot),
+                (byte) 0, ClientClickWindowPacket.ClickType.PICKUP, Map.of(), cursor));
+        player.interpretPacketQueue();
     }
 
     private static void shiftClickOpenInventory(Player player, int slot) {

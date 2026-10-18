@@ -506,7 +506,7 @@ class PlayerStateSectionIntegrationTest {
 
         assertEquals("{\"world\":{\"kind\":\"core\"},"
                         + "\"pos\":{\"x\":1000.5,\"y\":40.0,\"z\":1000.5,\"yaw\":30.0,\"pitch\":0.0},"
-                        + "\"inventory\":[{\"slot\":0,\"item\":{\"id\":\"minecraft:stone\",\"count\":63}}],"
+                        + "\"inventory\":[{\"slot\":0,\"item\":\"{count:63,id:\\\"minecraft:stone\\\"}\"}],"
                         + "\"held_slot\":2,\"health\":5.0}",
                 stored(memory.backend(), account),
                 "what it did meanwhile, at the saved position, not the respawn point it stood at");

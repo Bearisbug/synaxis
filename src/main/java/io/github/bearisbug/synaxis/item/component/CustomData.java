@@ -23,6 +23,10 @@ public record CustomData(CompoundBinaryTag nbt) implements TagReadable {
         return TagNbtAccess.read(nbt, tag);
     }
 
+    /**
+     * Sets a tag in this NBT. A value that writes no NBT, which is every value of a {@link Tag#Transient(String)}
+     * tag, removes the key as a null value does.
+     */
     public <T> CustomData withTag(Tag<T> tag, @Nullable T value) {
         return new CustomData(TagNbtAccess.write(nbt, tag, value));
     }

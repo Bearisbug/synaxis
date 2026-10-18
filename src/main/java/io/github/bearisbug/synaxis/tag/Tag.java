@@ -121,6 +121,9 @@ public sealed interface Tag<T extends @UnknownNullability Object> permits TagImp
      * to NBT (Named Binary Tag) format and is not sent to the client. Unlike other tags,
      * which are serialized, transient tags are used for temporary data
      * that only needs to exist on the server side.
+     * <p>
+     * Only a {@link TagHandler} holds a transient value. Whatever is NBT underneath (an item stack, a block,
+     * {@code CustomData}) has nowhere to keep it: writing one there removes the key.
      *
      * @param <T> The type of the tag's value.
      * @param key The key.

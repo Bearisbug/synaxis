@@ -1,15 +1,20 @@
 package io.github.bearisbug.synaxis.tag;
 
+import io.github.bearisbug.synaxis.codec.Transcoder;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
+import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import io.github.bearisbug.synaxis.registry.RegistryTranscoder;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
 import java.lang.ref.WeakReference;
 
+import static io.github.bearisbug.synaxis.codec.CodecAssertions.assertOk;
 import static io.github.bearisbug.synaxis.testing.TestUtils.assertEqualsSNBT;
 import static io.github.bearisbug.synaxis.testing.TestUtils.waitUntilCleared;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -113,5 +118,17 @@ public class TagItemIntegrationTest {
                 """, handler.asCompound());
         handler.removeTag(tag);
         assertEqualsSNBT("{}", handler.asCompound());
+    }
+
+    /**
+     * A transient value on an item left a null entry in its custom data, which threw a NullPointerException out of the
+     * packet that sends the item and out of the codec that saves it.
+     */
+    @Test
+    public void anItemWithATransientValueIsSentAndSaved(Env env) {
+        var item = ItemStack.of(Material.STONE).withTag(Tag.Transient("kit"), true);
+
+        assertDoesNotThrow(() -> NetworkBuffer.makeArray(buffer -> buffer.write(ItemStack.NETWORK_TYPE, item), env.process()));
+        assertOk(ItemStack.CODEC.encode(new RegistryTranscoder<>(Transcoder.JSON, env.process()), item));
     }
 }

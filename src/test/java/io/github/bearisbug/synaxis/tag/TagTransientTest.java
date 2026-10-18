@@ -1,5 +1,8 @@
 package io.github.bearisbug.synaxis.tag;
 
+import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.item.component.CustomData;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -61,6 +64,19 @@ public class TagTransientTest {
 
         var compound = tagHandler.asCompound();
         assertNull(compound.get("a"));
+    }
+
+    /**
+     * Custom data and blocks are NBT, which has nowhere to keep a transient value: writing one removes the key, as the
+     * compound of a tag handler leaves it out. Kept as a null entry, it threw out of whatever wrote the NBT.
+     */
+    @Test
+    public void aTransientValueIsNotKeptInNbt() {
+        Tag<Boolean> tag = Tag.Transient("kit");
+        var data = new CustomData(CompoundBinaryTag.builder().putBoolean("kit", true).putInt("level", 3).build());
+
+        assertEquals(CompoundBinaryTag.builder().putInt("level", 3).build(), data.withTag(tag, true).nbt());
+        assertNull(Block.STONE.withTag(tag, true).nbt());
     }
 
 }

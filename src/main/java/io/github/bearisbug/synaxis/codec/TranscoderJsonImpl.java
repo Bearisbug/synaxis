@@ -210,7 +210,9 @@ final class TranscoderJsonImpl implements Transcoder<JsonElement> {
         return new MapBuilder<>() {
             @Override
             public MapBuilder<JsonElement> put(JsonElement key, JsonElement value) {
-                return put(key.getAsString(), value);
+                if (!(key instanceof JsonPrimitive primitive) || !primitive.isString())
+                    throw new IllegalArgumentException("Map key must encode to a string");
+                return put(primitive.getAsString(), value);
             }
 
             @Override

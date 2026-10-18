@@ -245,72 +245,12 @@ final class CodecImpl {
     }
 
     record MapImpl<K, V>(
-            Codec<K> keyCodec, Codec<V> valueCodec,
-            int maxSize
-    ) implements Codec<@Unmodifiable Map<K, V>> {
-        MapImpl {
-            Objects.requireNonNull(keyCodec, "keyCodec");
-            Objects.requireNonNull(valueCodec, "valueCodec");
-        }
-
-        @Override
-        public <D> Result<@Unmodifiable Map<K, V>> decode(Transcoder<D> coder, D value) {
-            final Result<MapLike<D>> mapResult = coder.getMap(value);
-            if (!(mapResult instanceof Result.Ok(MapLike<D> map)))
-                return mapResult.cast();
-
-            if (map.size() > maxSize)
-                return new Result.Error<>("Map size exceeds maximum allowed size: " + maxSize);
-            if (map.isEmpty()) return new Result.Ok<>(Map.of());
-
-            final Map<K, V> decodedMap = new HashMap<>(map.size());
-            for (final String key : map.keys()) {
-                final Result<K> keyResult = keyCodec.decode(coder, coder.createString(key));
-                if (!(keyResult instanceof Result.Ok(K decodedKey)))
-                    return keyResult.cast();
-                // The throwing decode here is fine since we are already iterating over known keys.
-                final Result<V> valueResult = valueCodec.decode(coder, map.getValue(key).orElseThrow());
-                if (!(valueResult instanceof Result.Ok(V decodedValue)))
-                    return valueResult.cast();
-                decodedMap.put(decodedKey, decodedValue);
-            }
-            return new Result.Ok<>(Map.copyOf(decodedMap));
-        }
-
-        @Override
-        public <D> Result<D> encode(Transcoder<D> coder, @Nullable Map<K, V> value) {
-            if (value == null) return new Result.Error<>("null");
-            if (value.size() > maxSize)
-                return new Result.Error<>("Map size exceeds maximum allowed size: " + maxSize);
-            if (value.isEmpty()) return new Result.Ok<>(coder.createMap().build());
-
-            final MapBuilder<D> map = coder.createMap();
-            for (final Map.Entry<K, V> entry : value.entrySet()) {
-                final Result<D> keyResult = keyCodec.encode(coder, entry.getKey());
-                if (!(keyResult instanceof Result.Ok(D encodedKey)))
-                    return keyResult.cast();
-                final Result<D> valueResult = valueCodec.encode(coder, entry.getValue());
-                if (!(valueResult instanceof Result.Ok(D encodedValue)))
-                    return valueResult.cast();
-                // A transcoder map can only be keyed by strings, and the NBT and Java builders drop anything else
-                // without a word, which turns the whole map into an empty one
-                final Result<String> keyStringResult = coder.getString(encodedKey);
-                if (!(keyStringResult instanceof Result.Ok(String keyString)))
-                    return new Result.Error<>("Map key must encode to a string: " + encodedKey);
-                map.put(keyString, encodedValue);
-            }
-
-            return new Result.Ok<>(map.build());
-        }
-    }
-
-    record TypedMapImpl<K, V>(
             Codec<K> keyCodec,
             Function<K, Codec<V>> valueMapper,
             int maxSize,
             @Nullable Map<K, Codec<V>> mutableResolvedValueCache
     ) implements Codec<@Unmodifiable Map<K, V>> {
-        TypedMapImpl {
+        MapImpl {
             Objects.requireNonNull(keyCodec, "keyCodec");
             Objects.requireNonNull(valueMapper, "valueMapper");
         }
@@ -330,13 +270,8 @@ final class CodecImpl {
                 final Result<K> keyResult = keyCodec.decode(coder, coder.createString(key));
                 if (!(keyResult instanceof Result.Ok(K decodedKey)))
                     return keyResult.cast();
-
-                final Codec<V> valueCodec = mutableResolvedValueCache != null
-                        ? mutableResolvedValueCache.computeIfAbsent(decodedKey, valueMapper)
-                        : valueMapper.apply(decodedKey);
-
                 // The throwing decode here is fine since we are already iterating over known keys.
-                final Result<V> valueResult = valueCodec.decode(coder, map.getValue(key).orElseThrow());
+                final Result<V> valueResult = valueCodec(decodedKey).decode(coder, map.getValue(key).orElseThrow());
                 if (!(valueResult instanceof Result.Ok(V decodedValue)))
                     return valueResult.mapError(e -> key + ": " + e).cast();
                 decodedMap.put(decodedKey, decodedValue);
@@ -356,18 +291,25 @@ final class CodecImpl {
                 final Result<D> keyResult = keyCodec.encode(coder, entry.getKey());
                 if (!(keyResult instanceof Result.Ok(D encodedKey)))
                     return keyResult.cast();
-
-                final Codec<V> valueCodec = mutableResolvedValueCache != null
-                        ? mutableResolvedValueCache.computeIfAbsent(entry.getKey(), valueMapper)
-                        : valueMapper.apply(entry.getKey());
-
-                final Result<D> valueResult = valueCodec.encode(coder, entry.getValue());
+                final Result<D> valueResult = valueCodec(entry.getKey()).encode(coder, entry.getValue());
                 if (!(valueResult instanceof Result.Ok(D encodedValue)))
                     return valueResult.cast();
-                map.put(encodedKey, encodedValue);
+                // The builder refuses a key its format cannot key a map by. Checking the key with getString here
+                // instead fails every map under the CRC32 hash transcoder, which reads nothing and takes any key
+                try {
+                    map.put(encodedKey, encodedValue);
+                } catch (IllegalArgumentException _) {
+                    return new Result.Error<>("Map key must encode to a string");
+                }
             }
 
             return new Result.Ok<>(map.build());
+        }
+
+        private Codec<V> valueCodec(K key) {
+            return mutableResolvedValueCache != null
+                    ? mutableResolvedValueCache.computeIfAbsent(key, valueMapper)
+                    : valueMapper.apply(key);
         }
     }
 

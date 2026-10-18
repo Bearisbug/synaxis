@@ -323,7 +323,8 @@ public interface Codec<T extends @UnknownNullability Object> extends Encoder<T>,
      */
     @Contract(pure = true, value = "_, _ -> new")
     default <V> Codec<@Unmodifiable Map<T, V>> mapValue(Codec<V> valueCodec, int maxSize) {
-        return new CodecImpl.MapImpl<>(Codec.this, valueCodec, maxSize);
+        Objects.requireNonNull(valueCodec, "valueCodec");
+        return new CodecImpl.MapImpl<>(Codec.this, _ -> valueCodec, maxSize, null);
     }
 
     /**
@@ -350,7 +351,7 @@ public interface Codec<T extends @UnknownNullability Object> extends Encoder<T>,
      */
     @Contract(pure = true, value = "_, _, _ -> new")
     default <V> Codec<@Unmodifiable Map<T, V>> mapValueTyped(Function<T, Codec<V>> mapper, int maxSize, boolean cached) {
-        return new CodecImpl.TypedMapImpl<>(Codec.this, mapper,
+        return new CodecImpl.MapImpl<>(Codec.this, mapper,
                 maxSize, cached ? new ConcurrentHashMap<>() : null);
     }
 

@@ -23,7 +23,8 @@ final class ItemStackHashImpl {
             // The hash is computed with the codec, so components without one have to be left out
             if (!entry.component().isSerialized()) continue;
             if (entry.value() != null) {
-                addedComponents.put(entry.component(), ((DataComponent<Object>) entry.component()).encode(hashCoder, entry.value()).orElseThrow());
+                addedComponents.put(entry.component(), ((DataComponent<Object>) entry.component()).encode(hashCoder, entry.value())
+                        .orElseThrow("hash of component " + entry.component().name()));
             } else {
                 removedComponents.add(entry.component());
             }

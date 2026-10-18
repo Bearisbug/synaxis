@@ -10,6 +10,7 @@ import io.github.bearisbug.synaxis.item.component.EnchantmentList;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
+import io.github.bearisbug.synaxis.tag.Tag;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.jetbrains.annotations.Nullable;
@@ -100,7 +101,8 @@ class PlayerStatePostgresIntegrationTest {
                 3, ItemStack.builder(Material.IRON_SWORD)
                         .set(DataComponents.ENCHANTMENTS, new EnchantmentList(RegistryKey.unsafeOf("minecraft:sharpness"), 5))
                         .build(),
-                9, ItemStack.of(Material.DIRT, 9));
+                9, ItemStack.of(Material.DIRT, 9),
+                10, ItemStack.of(Material.DIAMOND).withTag(Tag.Boolean("soulbound"), true).withTag(Tag.Float("bonus"), 0.5f));
         final Shard before = shard(env, "r1-c1", new PositionRule.Core());
         final Player first = online(env, before.store().store(), instance, account, "Restarter");
         play(first, leftAt, 2, 13, inventory);
@@ -115,7 +117,7 @@ class PlayerStatePostgresIntegrationTest {
         assertEquals(leftAt, again.getPosition());
         assertEquals(2, again.getHeldSlot());
         assertEquals(13f, again.getHealth());
-        assertEquals(slots(inventory), slots(again), "the 46 slots, the enchanted sword included");
+        assertEquals(slots(inventory), slots(again), "the 46 slots, the enchanted sword and the tagged diamond included");
         assertEquals(1, after.store().store().versionOf(again), "written once, by the logout");
     }
 
@@ -138,7 +140,7 @@ class PlayerStatePostgresIntegrationTest {
         assertNotNull(written, "the transfer was written");
         final String stored = section(account);
         assertNotNull(stored, "synaxis:player in the transfer's write");
-        assertTrue(stored.contains("\"minecraft:dirt\"") && stored.contains("\"health\": 15"), stored);
+        assertTrue(stored.contains("minecraft:dirt") && stored.contains("\"health\": 15"), stored);
         leaving.getPlayerConnection().disconnect();
         await(env, () -> source.store().store().versionOf(leaving) == -1, "the source lets the player go");
         stop(env, source);

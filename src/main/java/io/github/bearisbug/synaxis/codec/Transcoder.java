@@ -391,6 +391,7 @@ public interface Transcoder<D> {
          * @param key the key
          * @param value the value
          * @return this
+         * @throws IllegalArgumentException if this format keys a map by strings only and the key is not a string
          */
         MapBuilder<D> put(D key, D value);
 

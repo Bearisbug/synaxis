@@ -17,6 +17,7 @@ import java.util.stream.Stream;
 
 import static net.kyori.adventure.nbt.IntBinaryTag.intBinaryTag;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public final class CodecTest {
 
@@ -50,6 +51,46 @@ public final class CodecTest {
     public void mapWithNonStringKeysIsAnError() {
         Assertions.assertInstanceOf(Result.Error.class,
                 Codec.INT.mapValue(Codec.STRING).encode(Transcoder.NBT, Map.of(1, "a")));
+    }
+
+    private static List<Arguments> mapsWithNonStringKeys() {
+        return nonDestructiveTranscoders().stream().flatMap(transcoder -> Stream.of(
+                Arguments.of(transcoder, Codec.INT.mapValue(Codec.STRING)),
+                Arguments.of(transcoder, Codec.INT.<String>mapValueTyped(_ -> Codec.STRING)),
+                Arguments.of(transcoder, Codec.INT.<String>mapValueTyped(_ -> Codec.STRING, true))
+        )).toList();
+    }
+
+    /**
+     * Both kinds of map codec refuse a key that is not a string in every format. The typed one used to end up with an
+     * empty map in NBT and Java, which drop such a key, and with the number written as a string in JSON.
+     */
+    @ParameterizedTest
+    @MethodSource("mapsWithNonStringKeys")
+    public <D> void mapWithNonStringKeysIsAnErrorInEveryFormat(Transcoder<D> transcoder, Codec<Map<Integer, String>> codec) {
+        Assertions.assertInstanceOf(Result.Error.class,
+                Assertions.assertDoesNotThrow(() -> codec.encode(transcoder, Map.of(1, "a"))));
+    }
+
+    /**
+     * The item hash encodes map components with the CRC32 transcoder, which reads nothing back. A map codec that read
+     * each encoded key back with getString failed there for every map, the enchantments of an item among them.
+     */
+    @Test
+    public void mapEncodesWithTheHashTranscoder() {
+        final Transcoder<Integer> hash = Transcoder.CRC32_HASH;
+        final Integer expected = hash.createMap().put("a", hash.createInt(1)).build();
+
+        assertEquals(expected, CodecAssertions.assertOk(Codec.STRING.mapValue(Codec.INT).encode(hash, Map.of("a", 1))));
+        assertEquals(expected, CodecAssertions.assertOk(
+                Codec.STRING.<Integer>mapValueTyped(_ -> Codec.INT).encode(hash, Map.of("a", 1))));
+    }
+
+    @Test
+    public void mapValueDecodeErrorNamesTheKey() {
+        final String message = Assertions.assertInstanceOf(Result.Error.class,
+                Codec.STRING.mapValue(Codec.INT).decode(Transcoder.JAVA, Map.of("a", "x"))).message();
+        assertTrue(message.startsWith("a: "), message);
     }
 
     /**

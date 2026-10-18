@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-18 | RUN-081 组 WORLD（分支 `prod/r081-WORLD`，基于 `main` `965c3bddae`），跟进 `docs/DESIGN-PROD.md` v0.9.99，不登执行轮次（集成轮登记 RUN-081）。**新增 §4「生产就绪 · RUN-081：WORLD（区块、生成器、分区信号、调色板与世界状态）」十条 `TC-PROD-910`～`TC-PROD-919`**：高度图失效后重算与 `getHeightmaps` 要写锁（910），放置回调带被替换的方块、回调抛异常时观察者照收方块更新（911），区块 tick 的 `reset`、抛异常的 handler 与这一轮已被摧毁的方块（912），不持写锁写区块抛异常（913），生成器的 fork 与 section 求交（914），走进正在缓存的区块的实体与分区先建好的区块（915），调色板按值重新编码与负偏移（916），世界边界（917），时钟、天气与维度（918），三种线程模式、M3 回归与新增行覆盖率（919）。根项目新类 `ChunkWriteLockIntegrationTest`（3 条）、`ChunkPartitionIntegrationTest`（2 条），十一个旧类加 25 条（逐类见该节开头），`ChunkQueueBoundIntegrationTest` 改写一条；改动前 24 条红。**随代码改的旧用例**：`TC-PROD-658` 改写为钉住实例视距拒负数（测试改名 `aNegativeInstanceViewDistanceIsRefused`），`TC-PROD-650` 第 3 步跟着改名；`TC-PROD-680` 第 1、3～5 步（条数 6 → 7，`Instance.java:645`、`:638` → `:654`、`:646`，测试行号 +1）；`TC-PROD-796` 第 1～3 步的条数（52 → 53）；`TC-PLAY-054` 前置的 `InstanceContainer.java:545` → `:544`；§7 一条引的 `InstanceContainer.java:457` → `:464`。**条数**：根项目全量 +30 条、+2 个类，写死全量条数的旧用例由集成轮按 CI 改。§5 加一行 | Bearisbug |
 | 2026-10-18 | 集成分支 `prod/integrate-080` 的全量门禁、Concurrency、Client mod 与 Client gametest（job `gametest`、`rush`、`p11-smoke`）在 GitHub Actions 上对 `8000c5b332` 跑完（草稿 PR #33，四个工作流都是第 1 次尝试；`c42208b6b2` 上的 CI 三个测试 job 红在 `BotSocketTest` 一条，由 `8000c5b332` 修，见 `TC-PROD-797`），§6 登记 RUN-080（通过 49/49，证据 `docs/test-runs/RUN-080/integrate/00-index.txt`）。写死条数的旧用例按 artifact 的实数改：`TC-PROD-486`、`505`、`510`、`529`、`549`、`585`、`596`、`607`、`618`、`636` 的 `server-app` 814 → 849（RUN-079 加 1 个类 19 个，RUN-080 加 1 个类 16 个），`TC-PROD-505`、`585`、`618`、`636`、`654` 的根项目 3,217 → 3,283（RUN-079 加 1 个，RUN-080 加 4 个类 65 个），`TC-PROD-636` 第 1 步的全部模块 682 个类 4,702 → 688 个类 4,850（`synx`、`baker`、`game-rush`、`play-kit` 一并改成实数），`TC-PROD-430` 第 5 步的模组测试 288 → 297（RUN-079 加 9 个，RUN-080 不变）；`TC-GAME-070` 第 2 步归光照会话，经 `docs/DESIGN-PROD.md` §28.3 交接。`TC-PROD-783` 的生成器等到三次等待都试过才生成目标区块，加第 5 步记下 4 线程严格下的偶发红 | Bearisbug |
 | 2026-10-18 | 集成分支 `prod/integrate-080`（基于 `main` `a211a45ca1`）依次 `--no-ff` 合入 `prod/r080-NET`、`prod/r080-THREAD`、`prod/r080-WORLD`、`prod/r080-CODEC`、`prod/r080-ITEMNET`、`prod/r080-CMD`、`prod/r080-STORE`、`prod/r080-HOST`，跟进 `docs/DESIGN-PROD.md` v0.9.92 与 `docs/DESIGN-PLAY.md` v0.20，不登执行轮次（草稿 PR 的 CI 跑完后登记 RUN-080）。**冲突**：每次合并本文档的变更记录都冲突，按合并的倒序排在顶部（NET 在下、HOST 在上）；§4 各组的新节、§5 各组加的一行、§7 THREAD 加的一条（紧挨着 WORLD 改了行号的 `PlayerRespawnChunkIntegrationTest` 一条）与「玩法架构 · RUN-077：H」节的前置一行（NET、WORLD 各改一处行号，按词合并）两边都留。**§4 的次序**：NET、ITEMNET、CMD 三组把新节放在 §4 末尾，另几组放在「生产就绪 · RUN-076：W」之后；合并后「生产就绪 · RUN-080」八节按合并顺序（NET、THREAD、WORLD、CODEC、ITEMNET、CMD、STORE、HOST）接在 RUN-076 W 之后，「玩法架构 · RUN-080：HOST」留在 §4 末尾，各节内容取自各组分支。**`TC-PROD-793`**：组 CMD 合入后命令 condition 的异常只隐藏节点、不再让出生失败，本条原来的触发在三种线程模式下都红在 `PlayerSpawnFailureIntegrationTest.java:70`；前置改用 Tab 列表的可见性抛异常，第 2～4 步写明是 WORLD 分支上 condition 触发时的读数，加第 5 步：集成分支上默认与严格 grid 都绿、反证红在 `:67`（证据 `docs/test-runs/RUN-080/integrate/`）。各组节写明行号按各组提交，别组移动的行不改。草稿 PR #33 的 CI 在 `c42208b6b2` 上三个测试 job 都红在 `loadtest` 的 `BotSocketTest`（`TC-WORLD-074`）：重新配置之后的再出生在等候队列的线程上写血量，玩家仍指派给第一次出生的 tick 线程，所有权断言抛出，组 WORLD 的出生失败处理随即踢人；`Player#UNSAFE_init` 对已有指派的玩家改为在那条线程的持有下出生，加 `TC-PROD-797`；`TC-PROD-793` 两个第 5 步的后一个改为第 6 步 | Bearisbug |
 | 2026-10-18 | 分支 `prod/r080-HOST`（基于 `main` `cb969826b7`），跟进 `docs/DESIGN-PLAY.md` v0.19，不登执行轮次（本组 8 次 Gradle 运行的读数写在两节各步里）。**新增 `TC-PROD-840`**（§4「生产就绪 · RUN-080：HOST」）：`runOn` 投给到期前就被移除的实体、被注销的实例的任务，以及被插件取消的任务，不再留在插件的任务表里，目标随之可回收（`REQ-PROD-021`）。**新增 `TC-PLAY-170`**（§4「玩法架构 · RUN-080：HOST」）：刚断线的连接 `enter` 什么都不做，在线却不在 PLAY 的被拒并写出阶段，开局那一刻断线的排队玩家不让竞技场停在 `OPEN`（`REQ-PLAY-003`、`REQ-PLAY-008`）。**随改**：`TC-PLAY-049` 第 1 步断线之后那一句改为不抛、台账不变；第 3 步 ② 的改动行 `:296` → `:300`，红点改为 `:335` 的台账断言，① 的红行 `:335` → `:339`；「玩法架构 · RUN-077：H」节头注明 `SceneService.java` 从组 HOST 起第 216 行之后的行号加 4；§2 对照表 `REQ-PLAY-003`、`REQ-PLAY-008` 两行加 `TC-PLAY-170`；§5 局部轮 `PluginSchedulerImpl` 一句加 `TC-PROD-840`，玩法架构域三处加 `TC-PLAY-170` | Bearisbug |
@@ -9776,7 +9777,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 跑 `ChunkQueueBoundIntegrationTest`，看 `aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing` | `tests="6"` 0 失败。30 个包、每 tick 一个、从不回执：玩家最后停在区块 90（断言 `every move is taken`）；客户端一共收到 9 个区块包（首批）；每个 tick 之后的待发队列是 `[112, 119, 121, 121, …, 121]`，最大 121。标准输出一行 `Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [...]` |
 | 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
-| 3 | 反证有齿（不修剪）：`<PL>:927` 的 `trimChunkQueue();` 改为 `if (Boolean.getBoolean("proof.never")) trimChunkQueue();`（直接删掉这一行，Error Prone 报 `UnusedMethod`，编译不过），跑第 1 步的类，严格 grid 再跑一次，再还原 | 两次都是 `6 tests completed, 4 failed`：本条红在 `<CQ>:95`，`chunks queued after each tick, for a ring of 121: [145, 178, 211, …, 1069, 1102] ==> expected: <true> but was: <false>`，每包多 33 条，即 3 个区块 × 11；`TC-PROD-651`、`TC-PROD-652` 同时红（见各条第 2 步），`TC-PROD-659` 红在 `<CQ>:270`，`the trim walks the queued chunks`（不修剪就没有修剪可按住）；`aClientThatAcknowledgesStillGetsEveryChunkOfItsRing` 与 `aNegativeInstanceViewDistanceLeavesThePlayerTicking` 绿。改动前的代码上默认与严格 grid 各跑一次，结果与此相同 |
+| 3 | 反证有齿（不修剪）：`<PL>:927` 的 `trimChunkQueue();` 改为 `if (Boolean.getBoolean("proof.never")) trimChunkQueue();`（直接删掉这一行，Error Prone 报 `UnusedMethod`，编译不过），跑第 1 步的类，严格 grid 再跑一次，再还原 | 两次都是 `6 tests completed, 4 failed`：本条红在 `<CQ>:95`，`chunks queued after each tick, for a ring of 121: [145, 178, 211, …, 1069, 1102] ==> expected: <true> but was: <false>`，每包多 33 条，即 3 个区块 × 11；`TC-PROD-651`、`TC-PROD-652` 同时红（见各条第 2 步），`TC-PROD-659` 红在 `<CQ>:270`，`the trim walks the queued chunks`（不修剪就没有修剪可按住）；`aClientThatAcknowledgesStillGetsEveryChunkOfItsRing` 与 `aNegativeInstanceViewDistanceIsRefused`（RUN-081 起的名字，原 `aNegativeInstanceViewDistanceLeavesThePlayerTicking`）绿。改动前的代码上默认与严格 grid 各跑一次，结果与此相同；RUN-081 之后 `aNegativeInstanceViewDistanceIsRefused` 在那份代码上也红（实例视距不拒负数，`TC-PROD-658` 第 2 步），只看另四条 |
 | 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -9832,14 +9833,14 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：`git status --short` 无输出。
 
-#### `TC-PROD-658` 实例视距配成 −2：有效视距为负时不修剪，20 个 tick 0 次异常、玩家每个 tick 都跑完 — 对应 `REQ-PROD-026` · 级别: 边缘 · 执行者: AI
+#### `TC-PROD-658` 实例视距不接受负数：`viewDistance(-2)`、`viewDistance(-1)` 抛 `IllegalArgumentException`，实例视距与玩家的区块环不变 — 对应 `REQ-PROD-026`、`REQ-PROD-039` · 级别: 边缘 · 执行者: AI
 
-前置：本节开头。
+前置：本节开头。`docs/DESIGN-PROD.md` v0.9.99 起 `Instance#viewDistance(int)` 拒负数（`API-PROD-020` 区块待发队列一条）；这条原先钉的是「实例视距配成 −2 时有效视距为负、不修剪、玩家照常 tick」，RUN-081 改写为钉住拒绝。`Player#trimChunkQueue` 对负半径的判断还在，子类直接写 protected 字段 `chunkViewDistance` 时兜底。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `TC-PROD-650` 第 1、2 步的两次运行，看 `aNegativeInstanceViewDistanceLeavesThePlayerTicking` | 两次都通过。玩家出生之后，测试接管异常处理器，把实例视距改为 −2（引擎不拒）：有效视距 = min(4, −2, 32) + 1 = −1。再跑 20 个 tick：处理器收到 0 个异常，`getAliveTicks()` 加 20，即 `Entity#tick` 在 `Player#update` 之后的部分每次都跑完；队列留着 112 条，没有修剪。标准输出一行 `Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112` |
-| 2 | 反证有齿（不判负数）：删掉 `<PL>:989` 的 `if (radius < 0) return;`，跑第 1 步的类，严格 grid 再跑一次，再还原 | 两次都是 `6 tests completed, 1 failed`：只有本条红在 `<CQ>:234`，`exceptions reported in 20 ticks, the first java.lang.IllegalArgumentException: Range cannot be negative ==> expected: <0> but was: <20>`，标准输出 `Negative view distance: 20 exceptions in 20 ticks, alive ticks +0, queued 112`：`ChunkRange.chunksCount(-1)` 每个 tick 都从 `Player#update` 抛出，`Entity#tick` 在 `update` 之后的部分（存活 tick 计数、`EntityTickEvent`、效果、调度器的 tick 末任务）全被跳过；另五条绿。提交 `5a084b973e` 的 `<PL>`（`git show 5a084b973e:<PL> > <PL>`）上默认与严格 grid 结果相同 |
+| 1 | `TC-PROD-650` 第 1、2 步的两次运行，看 `aNegativeInstanceViewDistanceIsRefused` | 两次都通过。玩家出生之后，`instance.viewDistance(-2)` 与 `instance.viewDistance(-1)` 都抛 `IllegalArgumentException`；`instance.viewDistance()` 仍是出生时的值，玩家的 `effectiveViewDistance()` 仍是 5（区块环半径 r = 5） |
+| 2 | 改动前的红：`main` `965c3bddae` 的引擎代码加 RUN-081 的测试（`docs/TEST.md`「生产就绪 · RUN-081：WORLD」一节的第 2 次 Gradle） | 本条红在 `<CQ>:226`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`：负的实例视距原样收下；另五条绿 |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -10240,11 +10241,11 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `<P>.instance.WorldBorderIntegrationTest` | `tests="6"` 0 失败。`transitionTimeIsSentInTicks`：直径 30 → 10、过渡 1 s，玩家收到一个 `WorldBorderLerpSizePacket`，`speed` 为 20（`1000 / MinecraftServer.TICK_MS`）；再过 5 个 tick，`Instance#createInitializeWorldBorderPacket().speed()` 为 15。`resizeWorldBorder`（服务端每 tick 的插值）照旧通过 |
+| 1 | 跑 `<P>.instance.WorldBorderIntegrationTest` | `tests="7"` 0 失败（RUN-081 加了 1 条，6 → 7）。`transitionTimeIsSentInTicks`：直径 30 → 10、过渡 1 s，玩家收到一个 `WorldBorderLerpSizePacket`，`speed` 为 20（`1000 / MinecraftServer.TICK_MS`）；再过 5 个 tick，`Instance#createInitializeWorldBorderPacket().speed()` 为 15。`resizeWorldBorder`（服务端每 tick 的插值）照旧通过 |
 | 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
-| 3 | 反证有齿（插值包发毫秒）：`Instance.java:645` 的 `createLerpSizePacket(newBorder.diameter(), transitionTicks)` 改为 `createLerpSizePacket(newBorder.diameter(), transitionTicks * MinecraftServer.TICK_MS)`，跑第 1 步的类，再还原 | `6 tests completed, 1 failed`：红在 `WorldBorderIntegrationTest.java:75`，`lerp time of a 1 s transition ==> expected: <20> but was: <1000>` |
-| 4 | 反证有齿（初始化包发毫秒）：`Instance.java:638` 的 `createInitializePacket(targetBorderDiameter, remainingWorldBorderTransitionTicks)` 改为 `createInitializePacket(targetBorderDiameter, remainingWorldBorderTransitionTicks * MinecraftServer.TICK_MS)`，跑第 1 步的类，再还原 | `6 tests completed, 1 failed`：红在 `:78`，`lerp time left for a player joining 5 ticks in ==> expected: <15> but was: <750>` |
-| 5 | 改动前的代码上默认与严格 grid 各跑一次第 1 步的类 | 两次都只有这一条红，在 `:75`，消息同第 3 步 |
+| 3 | 反证有齿（插值包发毫秒）：`Instance.java:654` 的 `createLerpSizePacket(newBorder.diameter(), transitionTicks)` 改为 `createLerpSizePacket(newBorder.diameter(), transitionTicks * MinecraftServer.TICK_MS)`，跑第 1 步的类，再还原 | `7 tests completed, 1 failed`：红在 `WorldBorderIntegrationTest.java:76`，`lerp time of a 1 s transition ==> expected: <20> but was: <1000>` |
+| 4 | 反证有齿（初始化包发毫秒）：`Instance.java:646` 的 `createInitializePacket(targetBorderDiameter, remainingWorldBorderTransitionTicks)` 改为 `createInitializePacket(targetBorderDiameter, remainingWorldBorderTransitionTicks * MinecraftServer.TICK_MS)`，跑第 1 步的类，再还原 | `7 tests completed, 1 failed`：红在 `:79`，`lerp time left for a player joining 5 ticks in ==> expected: <15> but was: <750>` |
+| 5 | 改动前的代码上默认与严格 grid 各跑一次第 1 步的类 | 两次都只有这一条红，在 `:76`，消息同第 3 步；RUN-081 之后这个类的 `stoppingATransitionTellsTheClientTheSize` 与 `invalidArguments` 在那份代码上也红（`TC-PROD-917` 第 2 步），只看本条 |
 | 6 | 还原后重跑第 1、2 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -11597,9 +11598,9 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 一条命令跑这 11 个类，再加 `:testNamingCheck :forbiddenImportsCheck :jacocoTestReport` | `BUILD SUCCESSFUL`，52 条 0 失败 0 跳过（第 2 次 Gradle） |
-| 2 | 第 1 步的 11 个类加 `--rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | 52 条 0 失败 0 跳过（第 5 次 Gradle） |
-| 3 | 第 2 步再加 `-Dsynaxis.thread-provider=grid` | 52 条 0 失败 0 跳过（第 6 次 Gradle） |
+| 1 | 一条命令跑这 11 个类，再加 `:testNamingCheck :forbiddenImportsCheck :jacocoTestReport` | `BUILD SUCCESSFUL`，52 条 0 失败 0 跳过（第 2 次 Gradle）；RUN-081 给 `instance.BlockPlaceIntegrationTest` 加了 1 条，之后是 53 条 |
+| 2 | 第 1 步的 11 个类加 `--rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | 52 条 0 失败 0 跳过（第 5 次 Gradle），RUN-081 之后 53 条 |
+| 3 | 第 2 步再加 `-Dsynaxis.thread-provider=grid` | 52 条 0 失败 0 跳过（第 6 次 Gradle），RUN-081 之后 53 条 |
 | 4 | 带数据库变量 `./gradlew :server-app:test --tests` 六个类 `io.github.bearisbug.synaxis.app.shard.WorldFlagsReplayTest`、`…shard.WorldFlagsSyncTest`、`…shard.WorldFlagsWriteTest`、`…shard.WorldFlagStoreDbTest`、`…shard.ShardArrivalsTest`、`io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest`，加 `--rerun` | `BUILD SUCCESSFUL`，57 条 0 失败 0 跳过：21、3、1、4、5、23 条（`TC-WORLD-066`、`TC-WORLD-068`、`TC-WORLD-159`、`TC-WORLD-160` 的保护管辖格与只读世界，`TC-WORLD-065` 的到达记录，`TC-PROD-214` 第 2 步的没进世界就断开）（第 7 次 Gradle） |
 | 5 | 第 1 步之后，`.venv` 的 `diff-cover build/reports/jacoco/test/jacocoTestReport.xml --compare-branch=origin/main --src-roots src/main/java` | 新增 33 行，缺 1 行（`<IC>:170`，本 tick 已改成同一方块时的 `return false;`），覆盖率 96%，不低于 CI 门槛 80% |
 
@@ -12023,6 +12024,134 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | 5 | 还原后跑第 1 步，同批带 `PluginSchedulerAsyncIntegrationTest`（第 8 次运行） | 与第 1 步相同；`PluginSchedulerAsyncIntegrationTest` 6 条 0 失败 |
 
 后置：`grep -rn proof.never server-app/src/main` 无输出；`git status --short` 无输出。
+
+### 生产就绪 · RUN-081：WORLD（区块、生成器、分区信号、调色板与世界状态）
+
+对应 `REQ-PROD-019`、`REQ-PROD-020`、`REQ-PROD-026`、`REQ-PROD-013`、`REQ-PROD-039`、`REQ-001`（`docs/DESIGN-PROD.md` v0.9.99；`docs/DESIGN.md` §28 加一行已决；光照会话代码里的后续与 `docs/DESIGN-M3.md` 引的行号在该分册 §28.3，交光照会话）。修十八处引擎缺陷，按用例分：高度图（`TC-PROD-910`）、放置回调（911）、区块 tick（912）、写锁（913）、生成器（914）、分区信号（915）、调色板（916）、世界边界（917）、时钟、天气与维度（918），三种线程模式与 M3 回归（919）；实例视距拒负数改写了 `TC-PROD-658`。
+
+测试：根项目十四个类。新类 `instance.ChunkWriteLockIntegrationTest`（3 条）、`instance.ChunkPartitionIntegrationTest`（2 条）；旧类加条：`instance.ChunkHeightmapIntegrationTest` 5 → 8，`instance.TickableBlockIntegrationTest` 1 → 4，`instance.BlockPlaceIntegrationTest` 5 → 6，`instance.InstanceBlockPacketIntegrationTest` 2 → 3，`instance.GeneratorForkIntegrationTest` 7 → 9，`instance.WorldBorderIntegrationTest` 6 → 7（`invalidArguments` 改了断言），`instance.InstanceTimeIntegrationTest` 4 → 6，`instance.WeatherIntegrationTest` 1 → 2，`instance.generator.GeneratorTest` 45 → 49，`instance.palette.PaletteCopyTest` 17 → 23，`world.BuilderRegistriesTest` 3 → 4；`entity.player.ChunkQueueBoundIntegrationTest` 仍 6 条，改写一条。「跑 `<类>`」= `./gradlew :test --tests 'io.github.bearisbug.synaxis.<类>' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `build/test-results/test/TEST-io.github.bearisbug.synaxis.<类>.xml`；「4 线程严格」加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`，「严格 grid」再加 `-Dsynaxis.thread-provider=grid`。`<DC>` 是 `src/main/java/io/github/bearisbug/synaxis/instance/DynamicChunk.java`，`<IC>` 与 `<IN>` 是同目录的 `InstanceContainer.java` 与 `Instance.java`；行号按本组提交的代码。本组 6 次 Gradle：第 1 次测试代码两处 Error Prone 报错（`VarWithPrimitive`、`UnnamedVariable`）没编过；第 2 次是改动前的红（`main` `965c3bddae` 的引擎代码加本组的测试，14 个类 131 条，24 条红，就是本节各条写的那些）；第 3 次修后默认模式，连同 `:testNamingCheck`、`:jacocoTestReport`、`:synx:test`、`:baker:test` 与 `server-app` 的 `app.shard.*`；第 4、5 次 4 线程严格与严格 grid；第 6 次 `TC-PROD-915` 的反证。改动前的红之后加的只有 `TC-PROD-915` 第 2 步那一条（它覆写本组加的测试缝隙，改动前的代码上编不过，靠第 4 步的反证证明有齿）与 `TC-PROD-918` 第 1 步里主世界的三行（覆盖有默认时钟的那一支）。反证按那一步写的那一行改，跑完 `git checkout -- src/main` 还原。本节不需要数据库前置。
+
+#### `TC-PROD-910` 直接改调色板再 `invalidate`、或重新生成之后，高度图与区块包按新方块重算；`getHeightmaps` 要写锁 — 对应 `REQ-PROD-026` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。平坦实例（石头到 y = 39），区块 (0, 0)。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `instance.ChunkHeightmapIntegrationTest` | `tests="8"` 0 失败。`anInvalidatedChunkComputesItsHeightmapsAgain`：持写锁把 section 3 的局部 (0, 13, 0) 写成石头（世界 y = 61）再 `invalidate()`，两张高度图的 (0, 0) 列都读到 61，(1, 0) 列仍是 39。`aRegeneratedChunkSendsItsNewHeightmap`：`instance.generateChunk(0, 0, 填到 y = 50 的生成器)` 之后先取区块包，`MOTION_BLOCKING` 解出第 0 列是 49，再读 `getHeight(0, 0)` 也是 49。`theHeightmapsOfThePacketNeedTheWriteLock`：`invalidate()` 之后只持读锁调 `getHeightmaps()` 抛 `IllegalStateException`，持写锁时返回两张高度图。原有 5 条照旧通过（含 `tooShortHeightmapDataIsRecomputed`、`heightMapPlaceTest`、`heightMapRemoveTest`） |
+| 2 | 改动前的红（第 2 次 Gradle） | 新加的三条都红：`:126` `motion blocking after the invalidation ==> expected: <61> but was: <39>`；`:145` `column (0, 0) in the chunk packet ==> expected: <49> but was: <39>`；`:156` `Unexpected exception type thrown, expected: <java.lang.IllegalStateException> but was: <java.lang.AssertionError>`（只持读锁时进了全量重算，里面的写锁断言先失败） |
+| 3 | `synx` 的 `SynxChunkOverlayIntegrationTest`，看 `aThousandMaterializedChunksEncodeBackToTheirSegmentOne`（第 3 次 Gradle 的 `:synx:test`） | 通过：1,000 个物化的区块重建区块包时按需重算高度图，与段① 逐字节相同；反证那一半（去掉光照数组）1,000 个都不同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-911` 放置回调：引擎自建的 `Placement` 带被替换的方块；`onPlace` 抛异常时观察者照收 `BlockChange`，高度图已有新方块 — 对应 `REQ-PROD-026` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `instance.BlockPlaceIntegrationTest`，看 `theHandlerOfAPlacedBlockGetsTheBlockItReplaced` | `tests="6"` 0 失败。(0, 41, 0) 先放石头，再放带记录型 handler 的熔炉：handler 收到的 `getPreviousBlock()` 是石头；再在同一格放带同一 handler 的箱子：收到的是带 handler 的熔炉（原先就对的那一支） |
+| 2 | 跑 `instance.InstanceBlockPacketIntegrationTest`，看 `aThrowingPlacementStillTellsTheViewers` | `tests="3"` 0 失败。玩家在 (0, 40, 0)；`instance.setBlock((5, 45, 0), 带 handler 的石头)`，handler 的 `onPlace` 抛 `IllegalStateException`：调用方收到这个异常；玩家恰收到一个该坐标的 `BlockChangePacket`，状态是石头；世界里是石头，该列高度图是 45 |
+| 3 | 改动前的红（第 2 次 Gradle） | 第 1 步红在 `BlockPlaceIntegrationTest.java:131`，`the block a handler block replaced ==> expected: <minecraft:stone{…}> but was: <minecraft:furnace{properties={facing=>north, lit=>false}, …}>`：先写调色板、再从调色板读「上一个方块」；第 2 步红在 `InstanceBlockPacketIntegrationTest.java:116`，`Expected 1 element, got [] ==> expected: <1> but was: <0>`：异常直接穿出 `InstanceContainer#setBlock`，方块更新没发 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-912` 区块 tick：`reset` 之后不再 tick；抛异常的 handler 不挡同区块别的 handler；这一轮已被摧毁的方块不 tick — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。测试直接调 `Chunk#tick(0)`，不经 dispatcher。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `instance.TickableBlockIntegrationTest` | `tests="4"` 0 失败。`resetStopsTheBlockTicksAndDropsTheCachedPacket`：(0, 41, 0) 放可 tick 的方块，先让区块包缓存生成（`CachedPacket#isValid()` 为真），持写锁 `reset()`，tick 两次：handler 0 次 tick，缓存已失效，(0, 41, 0) 与原先的石头 (0, 39, 0) 都是空气，(0, 0) 列高度图回到 minY − 1。`aThrowingHandlerDoesNotStopTheOthersOfItsChunk`：同区块 16 个每次 tick 都抛异常的方块与 16 个计数方块，tick 3 次：计数 48，异常处理器收到 48 个异常。`aBlockDestroyedEarlierInTheTickDoesNotTick`：两个可 tick 的方块，各自的 tick 把对方设为空气、再把自己设一次：这一次 tick 只 tick 了先轮到的那个，它还在，被它摧毁的那个仍是空气。原有的 `handlerRemovingItselfDoesNotSkipOtherBlocks` 照旧通过 |
+| 2 | 改动前的红（第 2 次 Gradle） | 新加的三条都红：`:80` `block ticks after the reset ==> expected: <0> but was: <2>`；`aThrowingHandlerDoesNotStopTheOthersOfItsChunk` 在 `:106` 的 `chunk.tick(0)` 抛出 `java.lang.IllegalStateException: a failing tick`（第一个抛异常的 handler 结束了这次区块 tick）；`:132` `ticked: [Vec[x=0.0, y=41.0, z=0.0], Vec[x=1.0, y=41.0, z=0.0]] ==> expected: <1> but was: <2>`（被摧毁的方块按快照里的旧方块 tick，把自己写回世界、又摧毁了对方） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-913` 不持写锁写区块抛 `IllegalStateException`，不论开不开断言 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。测试 JVM 开着断言：改动前这里抛的是 `AssertionError`；生产 JVM 不开 `-ea`，同样的写入静默成功（按代码读，没有在 `-da` 下复现）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `instance.ChunkWriteLockIntegrationTest` | `tests="3"` 0 失败。不持锁调 `chunk.setBlock(0, 41, 0, STONE)` 抛 `IllegalStateException`，消息含 `write-lock`；只持读锁时同样抛；之后那一格仍是空气。不持锁调 `chunk.setBiome(0, 41, 0, DESERT)` 抛同样的异常，群系不变。持写锁时两者都成功，`instance.getBlock`、`getBiome` 读回石头与沙漠 |
+| 2 | 改动前的红（第 2 次 Gradle） | 两条红：`:26` 与 `:43`，`Unexpected exception type thrown, expected: <java.lang.IllegalStateException> but was: <java.lang.AssertionError>` |
+| 3 | 只读核对 M3 的写路径：`grep -n 'super.setBlock\|super.setBiome\|holdsWriteLock()' synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java`，再读 `<IC>` 里调 `chunk.setBlock` 的两处 | `SynxChunk#setBlock`、`setBiome` 经 `super` 进 `DynamicChunk`；`<IC>` 的两处调用方都已持写锁（`UNSAFE_setBlock` 在 `lockWriteLock()` 之后，`applyGenerationData` 同样）；`materialize` 开头断言持写锁。第 3 次 Gradle 的 `:synx:test` 0 失败 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-914` 生成器：`subdivide()` 出的 section 上的 fork 落地；section 单元只填与自己相交的部分；fork 的目标区块在生成与缓存之间时照样落地 — 对应 `REQ-PROD-026`、`REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `instance.generator.GeneratorTest` | `tests="49"` 0 失败。`aForkOfASubdividedSectionIsAForkOfTheChunk`：在区块单元 `subdivide()` 的第一个 section 上 `fork(setter -> …)`，区块单元的 `forks()` 有 1 个；`aForkOfAForkIsAForkOfTheChunk`：fork 上再 fork，有 2 个（原先就对）。`aSectionFillsOnlyThePartOfTheAreaInsideIt`：section (0, 0, 0) 填 y 20～24 一个方块都不写，填 y 10～20 只写 y ≥ 10，填 x −4～4 只写 x < 4。`aSectionRefusesARelativeBlockOutsideItBeforeCachingIt`：`setRelative(16, 0, 0, 带 NBT 的箱子)` 与 `(0, −1, 0)` 抛 `IllegalArgumentException`，方块实体缓存为空 |
+| 2 | 跑 `instance.GeneratorForkIntegrationTest` | `tests="9"` 0 失败。`aForkOfASubdividedSectionLands`：区块 (0, 0) 的生成器在第一个 section 上向 (16, −64, 0) fork 一块石头，载入 (1, 0) 后那一格是石头。`aForkIntoAChunkBetweenItsGenerationAndItsCachingLands`：区块 (1, 0) 停在 `onGenerate`（已过自己的 `processFork`、还没进缓存），这时载入区块 (0, 0)，它的生成器向 (16, −64, 0) fork；放行 (1, 0) 之后那一格是石头 |
+| 3 | 改动前的红（第 2 次 Gradle） | 第 1 步三条红：`GeneratorTest.java:415` `forks of the chunk unit ==> expected: <1> but was: <0>`；`:437` `blocks of an area above the section ==> expected: <0> but was: <1024>`（越出的 y 20～24 回绕成 y 4～7）；`:458` `specials {0=>minecraft:chest{…}, …}`（坐标先进了缓存，调色板才拒绝）。第 2 步两条红：`GeneratorForkIntegrationTest.java:142` 与 `:175`，`expected: <minecraft:stone{…}> but was: <minecraft:air{…}>` |
+| 4 | `baker` 全量（第 3 次 Gradle 的 `:baker:test`）与根项目的 `instance.light.WorldRelightIntegrationTest`（第 3 次 Gradle） | `baker` 93 条 0 失败：section 上 fork 的生成器照旧整区失败（`GeneratorBakeTest#aGeneratorThatForksOnASectionFailsItsRegion`）；`WorldRelightIntegrationTest` 5 条 0 失败（它对每个 section 单元写局部 y = 10，依赖 section 单元的 `setBlock` 只取坐标低 4 位，这一点不变） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-915` 分区信号：走进正在缓存的区块的实体照常 tick；分区先于区块进实例建好时，区块等实例持有它才 tick — 对应 `REQ-PROD-019`、`REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `instance.ChunkPartitionIntegrationTest`，看 `anEntityMovingIntoAChunkBeingCachedKeepsTicking` | `tests="2"` 0 失败。僵尸（无重力）在 (15.5, 40, 0.5)、区块 (0, 0)，tick 一次让它有 tick 线程。测试线程按住实例的区块票据锁（`ChunkTickets` 的 `lock`，反射取）后载入区块 (1, 0)：载入线程把区块放进实例之后停在票据锁上；测试看到 `getChunk(1, 0)` 已返回这个区块而载入还没完成，就在实体的 `sync` 里把它传送到 (16.5, 40, 0.5)，实体所在区块变为 (1, 0)。放锁、等载入完成，再 tick 两次：存活 tick 数加 2 |
+| 2 | 同一类，看 `aChunkDoesNotTickBeforeTheInstanceHoldsIt` | 实例是覆写了 `<IC>` 包内方法 `beforeCaching` 的匿名子类：载入线程发出分区信号之后、把区块放进实例之前停在那里（至多 10 s）。区块 (0, 0) 生成时在 y = 0 放一个可 tick 的方块，handler 每次 tick 记下「`getChunkAt(自己的位置)` 不为 null」。停住期间 tick 两次：handler 一次也没 tick（这两个 tick 已建好分区）；放行、载入完成后 tick 一次：恰记下一次「是」 |
+| 3 | 改动前的红（第 2 次 Gradle，那时类里只有第 1 步那一条） | 红在 `ChunkPartitionIntegrationTest.java:55`（加了第二条之后这一句在 `:64`），`ticks of the entity after it moved into the chunk ==> expected: <3> but was: <1>`：传送发出的 `ElementUpdate` 先于区块的 `PartitionLoad` 处理，实体被摘出所有分区，之后一次都不 tick |
+| 4 | 反证有齿（区块 tick 不判实例是否持有它，第 6 次 Gradle）：删掉 `<DC>:189` 的 `if (instance.getChunk(chunkX, chunkZ) != this) return;`，跑本类，再还原 | `2 tests completed, 1 failed`：第 2 步那一条红在 `:109`，`ticks of the handler before the instance held its chunk ==> expected: <[]> but was: <[false, false]>`：停住期间的两个 tick 都 tick 了这个区块，handler 两次都在实例里找不到自己的区块；第 1 步那一条照样绿 |
+| 5 | 还原后重跑第 1、2 步 | 与第 1、2 步相同（第 3～5 次 Gradle 三种模式各一次，都 2 条 0 失败） |
+
+后置：`grep -rn 'getChunk(chunkX, chunkZ) != this' src/main` 恰有 `<DC>:189` 一处；`git status --short` 无输出。
+
+#### `TC-PROD-916` 调色板：位宽不同的 direct 来源按值重新编码，间接来源保序；带偏移的拷贝拒绝负偏移 — 对应 `REQ-PROD-026` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `instance.palette.PaletteCopyTest` | 7 个嵌套类合计 23 条 0 失败。新的「Copy of other widths and with an offset」6 条：`biomeSerializer(40)` 写读一个 40 种值的群系调色板（读出是 6 位的 direct），`copyFrom` 到 `Palette.biomes()` 后位宽 15，(0, 0, 0) 写 100 读回 100，其余 63 格与原值相同；3 种值的间接来源拷过去，位宽与 `paletteToValueList` 都不变；负偏移（三个轴各一次）抛 `IllegalArgumentException`，目标不变；偏移 (3, 5, 7) 只覆盖放得下的那一块、其余仍是 1，计数对；没有方块的间接来源把 x ≥ 8 清成空气，对空的目标什么都不做；`fill(-1)` 的单值来源把 z ≥ 4 写成 −1 |
+| 2 | 改动前的红（第 2 次 Gradle） | 两条红：`PaletteCopyTest.java:457` `expected: <15> but was: <6>`；`:497` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`。另四条改动前就通过，钉住保序与合并后的常量拷贝 |
+| 3 | `TC-PROD-910` 第 3 步的 `synx` 用例 | 通过：物化时 `SynxChunk` 用 `copyFrom` 拷段① 的调色板，编回的字节不变 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-917` 世界边界：过渡途中再设边界发尺寸包；直径、中心与过渡时间拒绝非有限值 — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `instance.WorldBorderIntegrationTest` | `tests="7"` 0 失败。`stoppingATransitionTellsTheClientTheSize`：玩家在场，边界 100 → 50、过渡 1 s，5 个 tick 后 `setWorldBorder(getWorldBorder())`：玩家恰收到一个 `WorldBorderSize`，直径等于冻结时的值，没有插值包，之后 5 个 tick 服务端直径不动；再起一次过渡，5 个 tick 后只改中心：同样恰收到一个尺寸包。`invalidArguments`：过渡时间 −1、NaN、正无穷，直径 −1、NaN、正无穷，中心 NaN 与正负无穷（两个坐标各一次）都抛 `IllegalArgumentException`。`transitionTimeIsSentInTicks`（`TC-PROD-680`）照旧通过 |
+| 2 | 改动前的红（第 2 次 Gradle） | 两条红：`:120` `Expected 1 element, got [] ==> expected: <1> but was: <0>`（直径没变就不发尺寸包）；`:88` `Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.IllegalStateException>`（过渡时间为负原先抛 `IllegalStateException`） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-918` 时钟、天气与维度：没有默认时钟时 `setTime(long)` 抛异常，时钟速率拒绝非有限值，天气的两个算子各改各的量 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `instance.InstanceTimeIntegrationTest` | `tests="6"` 0 失败。`setTimeWithoutADefaultClockThrows`：`the_nether` 实例的 `defaultClock()` 为 null、`getTime()` 为 −1，`setTime(6000)` 抛 `IllegalStateException`，消息含 `minecraft:the_nether`；主世界实例 `setTime(6000)` 之后 `getTime()` 为 6000。`aRateThatIsNotAFiniteNumberIsRefused`：`rate(NaN)`、`rate(+∞)`、`rate(−1)` 都抛 `IllegalArgumentException`，速率仍是 1，tick 一次时间走 1 |
+| 2 | 跑 `instance.WeatherIntegrationTest` 与 `world.BuilderRegistriesTest` | 前者 `tests="2"`、后者 `tests="4"`，0 失败。`eachOperatorChangesItsOwnLevel`：`CLEAR.withThunderLevel(_ -> 0.5f)` 是 (0, 0.5)，`THUNDER.withThunderLevel(t -> t / 2)` 是 (1, 0.5)，`THUNDER.withRainLevel(r -> r / 2)` 是 (0.5, 1)。`aDimensionWithoutAClockHasNoDefaultClock`：`DimensionType.builder().build()` 没有默认时钟，主世界有，`builder(主世界).defaultClock(null)` 清掉它 |
+| 3 | 改动前的红（第 2 次 Gradle） | 三条红：`InstanceTimeIntegrationTest.java:87` `Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.`；速率那条红在 `rate(Float.NaN)` 一行（第 2 次 Gradle 时在 `:95`，之后第一条加了主世界三行，现在是 `:99`），`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；`WeatherIntegrationTest.java:57` `expected: <Weather[rainLevel=0.0, thunderLevel=0.5]> but was: <Weather[rainLevel=0.5, thunderLevel=0.0]>`。`aDimensionWithoutAClockHasNoDefaultClock` 改动前就通过：`@Nullable` 只是源码注解 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-919` 改到的类与相关类三种线程模式回归，含 `synx`、`baker` 与 `server-app` 的分片测试，新增行覆盖率 — 对应 `REQ-PROD-019`、`REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。根项目一批：`:test --rerun --continue`，`--tests` 给 `io.github.bearisbug.synaxis.instance.*`、`….thread.*`、`….world.*`、`….entity.player.Chunk*`、`….entity.EntityAsyncContinuationIntegrationTest`、`….entity.GridItemRaceTest`、`….entity.AcquirableStrictIntegrationTest`、`….ServerProcessDispatcherTest`；另两批是 `:synx:test` 全量与 `:server-app:test --tests 'io.github.bearisbug.synaxis.app.shard.*'`。分片测试里要数据库的类（`ShardHeartbeatDbTest`、`ShardServiceHeartbeatDbTest`、`WorldFlagStoreDbTest`、`WorldFlagsReplayTest`、`WorldFlagsSyncTest`）没给数据库变量时按假设跳过，本组不起数据库。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 三批连同 `:testNamingCheck`、`:jacocoTestReport`、`:baker:test`，默认模式（第 3 次 Gradle） | `BUILD SUCCESSFUL`。根项目 94 个类 605 条 0 失败 0 跳过；`synx` 22 个类 182 条 0 失败，1 条跳过（`SynxRelightBacklogTest` 要 `-Dsynaxis.relight.measure=true`）；`baker` 93 条 0 失败；`server-app` 分片 24 个类 167 条 0 失败、33 条跳过（全是上面要数据库的类）。光照会话的 `MapShardPlayerAuthorityTest`（4 条）、`ShardWorldTest`、`ShardWorldRelightTest`、`ShardWorldAssemblyTest`、`ShardWorldFarViewTest` 都在其中 |
+| 2 | 根项目一批、`:synx:test` 与分片一批，4 线程严格（第 4 次 Gradle） | `BUILD SUCCESSFUL`，各批的类数、条数与第 1 步相同，0 失败（根项目 605 条、`synx` 182 条跳过 1 条、分片 167 条跳过 33 条） |
+| 3 | 同上，严格 grid，另加 `:jacocoTestReport`（第 5 次 Gradle） | 同第 2 步：`BUILD SUCCESSFUL`，根项目 605 条、`synx` 182 条、分片 167 条，0 失败，跳过的同第 1 步 |
+| 4 | 新增行覆盖率：第 5 次 Gradle 之后跑 `.venv` 的 `diff-cover build/reports/jacoco/test/jacocoTestReport.xml --compare-branch=965c3bddae --src-roots src/main/java` | 新增 108 行，缺 0 行，覆盖率 100%，不低于 CI 门槛 80%（第 3 次 Gradle 的报告缺 `<IN>` 里有默认时钟时 `setTime(long)` 的那一行，`TC-PROD-918` 第 1 步补了主世界三行之后不缺） |
+
+后置：`git status --short` 无输出。
 
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
@@ -12759,7 +12888,7 @@ RUN-078 组 N（分支 `prod/r078-N`，基于 `main` `62ae65f89c`）补 `docs/DE
 
 #### `TC-PLAY-054` 就地准备失败：生成器抛异常、区块超出预算都转 `CLOSED`（`prepare_failed`），不注册 — 对应 `REQ-PLAY-006` · 级别: 边缘 · 执行者: AI
 
-前置：本节开头。引擎把生成器的异常交给进程的异常处理器、区块照常算载入完成（`instance/InstanceContainer.java:545`）；`Env` 的异常处理器收到异常会让测试失败，宿主包的那一层在 `PREPARING` 期间把异常记下、不交出去，所以这两条也守着「没交给异常处理器」。实例 `OPEN` 之后那一层把异常原样抛回引擎（第二轮评审返工，第 3～5 步）。准备失败的 ERROR 走按插件分的 `LogBudget`，每个测试新建注册表，第一行总是写出。
+前置：本节开头。引擎把生成器的异常交给进程的异常处理器、区块照常算载入完成（`instance/InstanceContainer.java:544`）；`Env` 的异常处理器收到异常会让测试失败，宿主包的那一层在 `PREPARING` 期间把异常记下、不交出去，所以这两条也守着「没交给异常处理器」。实例 `OPEN` 之后那一层把异常原样抛回引擎（第二轮评审返工，第 3～5 步）。准备失败的 ERROR 走按插件分的 `LogBudget`，每个测试新建注册表，第一行总是写出。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -13880,6 +14009,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 ITEMNET，物品与聊天组件写给 26.2 客户端的四处断线（`REQ-001`、`REQ-PROD-047`，v0.9.89）→ TC-PROD-810～TC-PROD-814；动了 `ItemStack#asHoverEvent` 或 `ComponentNetworkBufferTypeImpl` 写悬停事件的部分就跑 TC-PROD-810 与 TC-PROD-685；动了 `Particle.Item`、`ParticleImpl` 的默认值或 `DataComponents` 里 `use_remainder`、`sulfur_cube_content`、`bundle_contents`、`charged_projectiles` 的注册就跑 TC-PROD-811；动了 `container` 的注册、`ItemStackTemplate` 或组件补丁的读写就跑 TC-PROD-812；动了 custom 点击事件的写法（`ComponentNetworkBufferTypeImpl`、`ComponentCodecs#CLICK_EVENT`）或 `EngineAdventure#unwrapNbt` 就跑 TC-PROD-813；以上任一处都加跑 TC-PROD-814
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 CMD 组，命令的 condition、参数的包装、目标选择器与参数的错误回调（`REQ-PROD-012`、`REQ-PROD-011`，v0.9.90）→ TC-PROD-820～TC-PROD-826；动了引擎 `GraphConverter`（建命令包时接住 condition 的异常、按 `Argument#unwrap` 取节点形状、没有 parser 的节点不写进包）、`CommandParserImpl`（解析失败的归属、错误回调与调它之前看的语法 condition）、`Argument` 的 `unwrap`、`suggestionType`、`hasSuggestion` 或 `map`、`filter` 的包装类、`ArgumentEntity` 的参数名单，或宿主 `PluginCommandsImpl#guard`，就跑 TC-PROD-820～TC-PROD-825 第 1 步（五个类一次 Gradle），再按上面「控制台与插件命令」一行跑 TC-PROD-240～TC-PROD-247；动了 `Player#UNSAFE_init` 里 `refreshCommands` 与 `setInstance` 的先后，或 `ConnectionManager#updateWaitingPlayers` 对出生时同步异常的处理，再加 TC-PROD-826 的两遍。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 STORE，Redis 往返离开登录路径、载入名额只包语句、`commitTogether` 的 `apply` 与插件段回调抛 `Error`（`REQ-PROD-004`、`REQ-PROD-006`、`REQ-PROD-007`、`REQ-PROD-008`，v0.9.91）→ TC-PROD-830～TC-PROD-839；动了 `RedisLink` 的 `presence`、`clearPresence`、`dropOldest`、`close` 或连接池配置，就跑 TC-PROD-830～TC-PROD-832 与 TC-PROD-839（`RedisLinkTest` 不要数据库，另两个类要数据库前置与 Valkey）；动了 `PlayerStore` 的 `loadOrRefuse`、`takeLoadSlot` 或 `loadWithin` 里取还名额的几处，就跑 TC-PROD-833、TC-PROD-834、TC-PROD-171 与 TC-PROD-157 的 `TransferTicketsIntegrationTest`；动了 `commitTogether` 排 `apply` 的那一行，跑 TC-PROD-835、TC-PROD-836 与 TC-PROD-148，三种线程模式各一次；动了 `snapshot`、`decode` 的捕获或调 `createDefault()` 的那一处，跑 TC-PROD-837、TC-PROD-838 与 RUN-073 组 D 一行的 TC-PROD-728 第 4 步。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 WORLD，区块、生成器、分区信号、调色板与世界状态（`REQ-PROD-019`、`REQ-PROD-020`、`REQ-PROD-026`、`REQ-PROD-013`、`REQ-PROD-039`、`REQ-001`，v0.9.99）→ TC-PROD-910～TC-PROD-919 与 TC-PROD-658；动了 `Heightmap` 或 `DynamicChunk` 的 `setBlock`、`invalidate`、`reset`、`getHeightmaps` 就跑 TC-PROD-910～TC-PROD-912；动了 `DynamicChunk#tick` 跑 TC-PROD-912 与 TC-PROD-915；动了 `Chunk#assertWriteLock` 跑 TC-PROD-913 与 TC-PROD-785；动了 `GeneratorImpl`、`UnitModifier` 或 `InstanceContainer` 的 `generateChunk`、`processChunk` 的 fork 部分跑 TC-PROD-914；动了 `InstanceContainer#cacheChunk`、`InstanceManager#registerInstance` 或 `ThreadDispatcherImpl` 处理 `PartitionLoad`、`ElementUpdate` 的部分跑 TC-PROD-915 与 TC-PROD-919 第 1～3 步（三种线程模式各一次）；动了 `PaletteImpl#copyFrom` 跑 TC-PROD-916 与 `synx` 的 `SynxChunkOverlayIntegrationTest`；动了 `WorldBorder` 或 `Instance#setWorldBorder` 跑 TC-PROD-917 与 TC-PROD-680；动了 `Instance` 的时钟、`Weather` 或 `DimensionType#defaultClock` 跑 TC-PROD-918；动了 `Instance#viewDistance(int)` 跑 TC-PROD-658；`Instance.java`、`InstanceContainer.java`、`Chunk.java`、`DynamicChunk.java` 的行号变了，按本组一节与 `docs/DESIGN-PROD.md` §28.3 列的引用改。
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。
@@ -14399,7 +14529,7 @@ RUN-003 证据：`docs/test-runs/RUN-003/tc-001.txt`、`docs/test-runs/RUN-003/t
 
 - **`trySync` 在全局锁里读线程、`refreshThreads` 改派时持全局锁，这两处没有定死交错的用例（未结案，2026-10-18 RUN-080 组 THREAD 登记）**：`TC-PROD-780`、`TC-PROD-781` 靠「排在全局锁上」与「dispatcher 停在分区的 `hashCode` 里」把窗口拉开；`trySync` 只 `tryLock`、不排队，读线程与拿锁之间没有能停住的点，把读挪回拿锁之前的反证打不出红；`refreshThreads` 只有 `RefreshType.ALWAYS` 的提供者才改派，引擎的 `counter` 与 `grid` 都是 `NEVER`，`ThreadDispatcherTest` 的 `threadUpdate`、`refreshThreadsReassignsAcquirableOwner` 跑到这几行，但没有持有方与它交错。要补的话，`trySync` 需要在读线程之后加一个测试用的停顿点，`refreshThreads` 照 `TC-PROD-780` 的写法换成 `ALWAYS` 的提供者。
 
-- ~~`PlayerRespawnChunkIntegrationTest > respawnDoesNotWaitForTheRespawnChunk` 在 CI 4 线程严格模式下偶发红~~ **已结案（2026-10-12，RUN-077，测试写法缺陷）**：草稿 PR #26 的 run `38238937144`（`prod/integrate-077` `75fdfcf06b`，`src/main` 与 `src/test` 跟 `origin/main` 没有差异）第 1 次尝试，「Test with 4 tick threads (strict)」根模块 3,217 条红 1 条，同一 run 的「Check」与严格 grid 都绿，第 2 次尝试（只重跑这个 job）全绿。签名：红在 `PlayerRespawnChunkIntegrationTest.java:108`，`respawn() waited for the respawn chunk, on a tick thread that blocks the whole server ==> expected: <true> but was: <false>`，用例 3.934 s；同一 run 另外三份报告里这条用 0.409～0.801 s，另一台 runner 上「Check」的同一个类在同一分钟里 `testChunkUnloadsOnRespawn` 也用了 3.701 s。RUN-039 记过同一签名一次（`docs/test-runs/RUN-039/acceptance.txt` 第 468 行，3.645 s，load1 约 22），当时没查。**根因在测试**：看门狗线程在 `:87` 起跑，睡满 3 s 就放开挡住重生区块的加载器；它起跑在 `createFlatInstance` 与 `connect` 之前，3 s 里含建实例与连玩家。`respawn()` 本身不等区块：`Player.java:666` 只把刷新挂到传送的续体上，这个测试的加载器支持并行加载，区块在 `InstanceContainer.java:457` 起的虚拟线程上加载。所以 `:103` 读到 `release` 已是 0，只能是看门狗先到点。CI 那次根模块 `:test` 与 `game-rts`、`game-rush` 的测试编译、`game-rts:test` 同时在跑，根模块又按类并行；准备阶段被挤到 3 s 以上时，`respawn()` 还没调用，加载器就已放行，测试判成「等了区块」。报告没有分段计时，3.934 s 里准备阶段占多少读不出，根因由上面的代码路径和下面的注入确认。**修法（只改测试）**：看门狗挪到 `setHealth(0)` 之后、紧挨着 `respawn()` 起跑（`:95`），3 s 只覆盖 `respawn()`；两条断言与判据不变，第一条断言 `:108` → `:109`。**复现与反证**（本机，临时改动不提交，跑完还原）：在连上玩家之后、`respawn()` 之前停 3.5 s（写在 `setRespawnPoint` 那一行，行号不动），4 线程严格模式下原写法红在 `:108`、消息与 CI 相同（3.591 s），新写法 4 条全绿（这条 3.567 s，其中 3.5 s 是注入的停顿）；在新写法上把 `Player.java:666` 改成 `join()` 传送（F23 修之前的同步等待），默认模式红在 `:109`（3.083 s，看门狗放行之后才返回）；不注入、不改引擎，默认模式 4 条全绿（这条 0.074 s）。证据 `docs/test-runs/RUN-077/respawn-flake/`。
+- ~~`PlayerRespawnChunkIntegrationTest > respawnDoesNotWaitForTheRespawnChunk` 在 CI 4 线程严格模式下偶发红~~ **已结案（2026-10-12，RUN-077，测试写法缺陷）**：草稿 PR #26 的 run `38238937144`（`prod/integrate-077` `75fdfcf06b`，`src/main` 与 `src/test` 跟 `origin/main` 没有差异）第 1 次尝试，「Test with 4 tick threads (strict)」根模块 3,217 条红 1 条，同一 run 的「Check」与严格 grid 都绿，第 2 次尝试（只重跑这个 job）全绿。签名：红在 `PlayerRespawnChunkIntegrationTest.java:108`，`respawn() waited for the respawn chunk, on a tick thread that blocks the whole server ==> expected: <true> but was: <false>`，用例 3.934 s；同一 run 另外三份报告里这条用 0.409～0.801 s，另一台 runner 上「Check」的同一个类在同一分钟里 `testChunkUnloadsOnRespawn` 也用了 3.701 s。RUN-039 记过同一签名一次（`docs/test-runs/RUN-039/acceptance.txt` 第 468 行，3.645 s，load1 约 22），当时没查。**根因在测试**：看门狗线程在 `:87` 起跑，睡满 3 s 就放开挡住重生区块的加载器；它起跑在 `createFlatInstance` 与 `connect` 之前，3 s 里含建实例与连玩家。`respawn()` 本身不等区块：`Player.java:666` 只把刷新挂到传送的续体上，这个测试的加载器支持并行加载，区块在 `InstanceContainer.java:464` 起的虚拟线程上加载。所以 `:103` 读到 `release` 已是 0，只能是看门狗先到点。CI 那次根模块 `:test` 与 `game-rts`、`game-rush` 的测试编译、`game-rts:test` 同时在跑，根模块又按类并行；准备阶段被挤到 3 s 以上时，`respawn()` 还没调用，加载器就已放行，测试判成「等了区块」。报告没有分段计时，3.934 s 里准备阶段占多少读不出，根因由上面的代码路径和下面的注入确认。**修法（只改测试）**：看门狗挪到 `setHealth(0)` 之后、紧挨着 `respawn()` 起跑（`:95`），3 s 只覆盖 `respawn()`；两条断言与判据不变，第一条断言 `:108` → `:109`。**复现与反证**（本机，临时改动不提交，跑完还原）：在连上玩家之后、`respawn()` 之前停 3.5 s（写在 `setRespawnPoint` 那一行，行号不动），4 线程严格模式下原写法红在 `:108`、消息与 CI 相同（3.591 s），新写法 4 条全绿（这条 3.567 s，其中 3.5 s 是注入的停顿）；在新写法上把 `Player.java:666` 改成 `join()` 传送（F23 修之前的同步等待），默认模式红在 `:109`（3.083 s，看门狗放行之后才返回）；不注入、不改引擎，默认模式 4 条全绿（这条 0.074 s）。证据 `docs/test-runs/RUN-077/respawn-flake/`。
 - ~~可玩项 P11 的背包摘要断言在挂地图的分片上没有判别力~~ **已结案（2026-10-11，RUN-075）**：组 M（挂地图的分片注册 `synaxis:player`、`Main` 接上 `MapShard` 规则）与组 P（客户端首次进服之前往库里写好非空存档，判定改为每个世界的背包都等于它、第 1 个世界在存档位置）合入集成分支之后，草稿 PR #18 上的 job `p11-smoke`（Client gametest run `38126114632`，提交 `8e6abbd618`，`TC-PROD-742`）绿，判定 `the inventory is the seeded one in all 5 worlds: held=1 inventory=9:minecraft:oak_log*16,36:minecraft:stone*32,37:minecraft:iron_pickaxe*1`，第 1 个世界离存档位置 0.00 格；同一分支上手动触发的 P10 job（run `38120210047`，提交 `ef6a1f15a8`，`TC-PROD-756`）绿，201 个世界都是这份背包，第 1 个世界离存档位置 0.00 格。比较的是非空存档：写入的是 0 号 32 个石头、1 号 1 把铁镐、9 号 16 个橡木原木，选中格 1，`p11-smoke` 与 P10 的 `p10.txt` 里每行 `state` 都是这份背包，判定另有一项拒收空存档（`TC-PROD-753` 第 1、4 步）。证据 `docs/test-runs/RUN-075/integrate/00-index.txt`。原条目（2026-10-11 RUN-073 G 组登记）：job `p10` 与 `p11-smoke` 判「每次到达后的背包与离开上一个分片时相同」（`TC-PROD-740`、`TC-PROD-742`），而挂地图的分片不挂默认玩法层（`ADR-PROD-017`），客户端在分片上的背包一直为空，比较的是空背包，转服丢了背包它也照绿。结案条件三条：`REQ-PROD-047` 的持久化段合入（随 `docs/DESIGN-PROD.md` v0.9.72 组 D 合入集成分支已满足）；挂地图的分片那一支接上（`docs/DESIGN-PROD.md` v0.9.73，RUN-075 组 M 实现，`TC-PROD-745`～`TC-PROD-748`，待集成后的 CI）；分片上有物品来源（默认玩法层挂上分片，或管理接口加一个给物品的方法，由光照会话与后续玩法分册定）。三条齐了之后在 job `p11-smoke` 里转服之前先给客户端放物品，CI 上的 `state` 行出现非 `empty` 的 `inventory` 即可结案。在那之前转服带走背包由服务端测试验（`docs/DESIGN-PROD.md` §19 可玩项矩阵 P11 一行的「服务端测试补的部分」）。RUN-075 组 P（`docs/DESIGN-PROD.md` v0.9.74）把第三条的物品来源换成存档：客户端首次进服之前，`p10.py seed` 往库里给客户端的账号写好非空背包与存档位置，判定改为每个世界的背包都等于这份存档、第 1 个世界在存档位置（`TC-PROD-753`～`TC-PROD-755`），不用默认玩法层或管理接口给物品。RUN-075 之后的结案条件：组 M（挂地图的分片注册 `synaxis:player`、接上 `MapShard` 规则）与组 P 都合入之后，集成轮草稿 PR 上 job `p11-smoke` 绿（`TC-PROD-742`），且同一分支上手动触发的 P10 job 绿（`TC-PROD-756`）；两条都绿再结案，组 P 本身不结案。
 - ~~`client-gametest.yml` 的假 sessionserver 一步偶发红 `sed: can't read sessionserver.log: No such file or directory`~~ **已结案（2026-10-07，RUN-072 ci 组）**：GitHub Actions「Client gametest」run `37495680948`（`main` `f7a9756f7b`，push）第 2 次尝试，job「Run the client gametests」的「Start the fake sessionserver in record mode」开跑约 19 ms 就打出这句，随后 `##[error]Process completed with exit code 2.`；假服务与服务端都没起来，判定步骤随之红。第 3 次尝试与同一提交的 run `37495681592` 都绿（证据 `docs/test-runs/RUN-072/ci/01-ci-attempts.txt`）。**根因在工作流**：`(java … > sessionserver.log 2>&1 &)` 的重定向由后台 fork 出的子进程自己执行，紧接着的 `port=$(sed -n … sessionserver.log)` 先跑时文件还不存在，GNU `sed` 退出 2，GitHub 默认的 `bash -e` 在这条赋值上结束整步，轮询循环一次 `sleep` 都没走到；job `p10` 的同名一步写法相同。**修法**：两处都在后台启动之前先 `: > sessionserver.log`，带一行注释写原因。**复现与反证**：`docs/test-runs/RUN-072/ci/repro-sessionserver-log.sh` 照原写法、在重定向前 `sleep 1` 拉宽窗口，`bash -e` 跑：原写法 6/6 次在第一次 `sed` 上退出（本机 BSD `sed` 退出码 1，措辞 `sed: sessionserver.log: No such file or directory`），改后 6/6 次读到端口行（`TC-PROD-688`，`02-repro-red-green.txt`）。
 - **runner 解析依赖失败 `Could not find ch.qos.logback:logback-core:1.6.5`（外部偶发，不修代码；2026-10-07 RUN-072 ci 组登记）**：同一 run `37495680948` 第 1 次尝试，job「Run the client gametests」的「Start server-app in game mode」里 `./gradlew :server-app:run` 3 s 就 `BUILD FAILED`：`Could not determine the dependencies of task ':server-app:run'.`、`> Could not resolve all dependencies for configuration ':server-app:runtimeClasspath'.`、`> Could not find ch.qos.logback:logback-core:1.6.5.` 与 `> Could not find ch.qos.logback:logback-classic:1.6.5.`，`Searched in the following locations` 只有 `https://repo.maven.apache.org/maven2/ch/qos/logback/logback-core/1.6.5/logback-core-1.6.5.pom`（classic 同理）。这一步等满 300 s 才 `cat server.log`、`exit 1`，判定步骤随之 8 项 `FAIL`（没有客户端连上，`client regression: 8 check(s) failed`）。`Could not find` 是仓库对这个 POM 答了「没有」，不是连接失败（连接失败报 `Could not GET`、`Read timed out` 一类）。同一提交的第 3 次尝试、run `37495681592` 与之后的运行都解析成功；`gradle/libs.versions.toml` 的 `logback = "1.6.5"` 自 `29df11e74f` 起没变；2026-10-07 本机 `curl -I` 这个 POM 回 200。判为 Maven Central 或 runner 网络的一次性偶发，重跑通过（证据 `docs/test-runs/RUN-072/ci/01-ci-attempts.txt`）。**再出现时怎么判**：签名同为 `Could not find <坐标>`、`Searched in` 只列 Maven Central 的 URL，`curl -sI <那个 URL>` 回 200，且重跑一次通过，就照偶发处理，在本条补次数与 run 号；同一坐标连续两次尝试都失败或 `curl` 回 404，是真缺依赖（版本号写错或被撤回），查 `gradle/libs.versions.toml` 与该库的发布记录；报的是连接失败，按网络抖动处理，同样先重跑。

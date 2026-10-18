@@ -184,8 +184,12 @@ public class BlockPlacementListener {
 
         // Place the block
         Block resultBlock = playerBlockPlaceEvent.getBlock();
-        instance.placeBlock(new BlockHandler.PlayerPlacement(resultBlock, instance.getBlock(placementPosition), instance, placementPosition, player, hand, blockFace,
-                packet.cursorPositionX(), packet.cursorPositionY(), packet.cursorPositionZ()), playerBlockPlaceEvent.shouldDoBlockUpdates());
+        if (!instance.placeBlock(new BlockHandler.PlayerPlacement(resultBlock, instance.getBlock(placementPosition), instance, placementPosition, player, hand, blockFace,
+                packet.cursorPositionX(), packet.cursorPositionY(), packet.cursorPositionZ()), playerBlockPlaceEvent.shouldDoBlockUpdates())) {
+            // Nothing was placed, e.g. the placement rule cancelled it: nothing is used up
+            rollback(player, hand, placementPosition, instance.getBlock(placementPosition), packet.sequence());
+            return;
+        }
         player.sendPacket(new AcknowledgeBlockChangePacket(packet.sequence()));
         // Block consuming
         if (playerBlockPlaceEvent.doesConsumeBlock()) {

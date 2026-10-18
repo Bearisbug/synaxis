@@ -1,8 +1,11 @@
 package io.github.bearisbug.synaxis.instance;
 
+import net.kyori.adventure.key.Key;
 import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.coordinate.Vec;
+import io.github.bearisbug.synaxis.event.instance.InstanceBlockUpdateEvent;
 import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.instance.block.SuspiciousGravelBlockHandler;
 import io.github.bearisbug.synaxis.instance.block.rule.BlockPlacementRule;
 import io.github.bearisbug.synaxis.tag.Tag;
@@ -13,11 +16,14 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 public class InstanceBlockIntegrationTest {
@@ -166,5 +172,86 @@ public class InstanceBlockIntegrationTest {
         instance.setBlock(1, 50, 0, theBlock);
 
         assertEquals(theBlock, currentBlock.get());
+    }
+
+    // A rule returning null cancels the placement before the chunk is asked to change anything
+    @Test
+    public void aPlacementRuleReturningNullCancelsThePlacement(Env env) {
+        env.process().block().registerBlockPlacementRule(new BlockPlacementRule(Block.STONE) {
+            @Override
+            public @Nullable Block blockPlace(PlacementState placementState) {
+                return null;
+            }
+        });
+        final AtomicInteger chunkWrites = new AtomicInteger();
+        final InstanceContainer instance = env.process().instance().createInstanceContainer();
+        instance.setGenerator(unit -> unit.modifier().fillHeight(0, 40, Block.STONE));
+        instance.setChunkSupplier((owner, chunkX, chunkZ) -> new DynamicChunk(owner, chunkX, chunkZ) {
+            @Override
+            public void setBlock(int x, int y, int z, Block block, @Nullable BlockHandler.Placement placement,
+                                 @Nullable BlockHandler.Destroy destroy) {
+                chunkWrites.incrementAndGet();
+                super.setBlock(x, y, z, block, placement, destroy);
+            }
+        });
+        instance.loadChunk(0, 0).join();
+        final AtomicInteger destroyed = new AtomicInteger();
+        final Block grass = Block.SHORT_GRASS.withHandler(new BlockHandler() {
+            @Override
+            public void onDestroy(Destroy destroy) {
+                destroyed.incrementAndGet();
+            }
+
+            @Override
+            public Key getKey() {
+                return Key.key("synaxis:test");
+            }
+        });
+        final Vec position = new Vec(0, 40, 0);
+        instance.setBlock(position, grass);
+        chunkWrites.set(0);
+        final List<InstanceBlockUpdateEvent> updates = new ArrayList<>();
+        instance.eventNode().addListener(InstanceBlockUpdateEvent.class, updates::add);
+
+        assertFalse(instance.placeBlock(new BlockHandler.Placement(Block.STONE, grass, instance, position)),
+                "the rule cancelled the placement");
+        assertEquals(grass, instance.getBlock(position), "the world is left as it is");
+        assertEquals(0, chunkWrites.get(), "the chunk is never asked to change");
+        assertEquals(0, destroyed.get(), "the block that is there is not destroyed");
+        assertEquals(List.of(), updates);
+
+        // The cancelled placement is no change of this tick, the same block can still be set
+        instance.setBlock(position, Block.STONE);
+        assertEquals(Block.STONE, instance.getBlock(position));
+    }
+
+    // The handler of the placed block is told about the block the rule chose, not the one asked for
+    @Test
+    public void theHandlerGetsTheBlockThePlacementRuleChose(Env env) {
+        env.process().block().registerBlockPlacementRule(new BlockPlacementRule(Block.FURNACE) {
+            @Override
+            public @Nullable Block blockPlace(PlacementState placementState) {
+                return placementState.block().withProperty("facing", "east");
+            }
+        });
+        final AtomicReference<Block> placed = new AtomicReference<>();
+        final Block furnace = Block.FURNACE.withHandler(new BlockHandler() {
+            @Override
+            public void onPlace(Placement placement) {
+                placed.set(placement.getBlock());
+            }
+
+            @Override
+            public Key getKey() {
+                return Key.key("synaxis:test");
+            }
+        });
+        var instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+        final Vec position = new Vec(0, 40, 0);
+
+        assertTrue(instance.placeBlock(new BlockHandler.Placement(furnace, Block.AIR, instance, position)));
+        assertEquals("east", instance.getBlock(position).getProperty("facing"));
+        assertEquals(instance.getBlock(position), placed.get(), "the block the handler is placed with");
     }
 }

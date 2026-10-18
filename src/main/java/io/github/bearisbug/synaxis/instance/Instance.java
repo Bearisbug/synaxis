@@ -252,6 +252,13 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         return placeBlock(placement, true);
     }
 
+    /**
+     * Places the block of a placement; with block updates, the placement rule of the block decides
+     * the block or cancels the placement.
+     *
+     * @return false if nothing was placed: the chunk is not loaded or is read-only, the position is outside the
+     * world height or already got this block in this tick, or the rule cancelled it
+     */
     @ApiStatus.Internal
     public abstract boolean placeBlock(BlockHandler.Placement placement, boolean doBlockUpdates);
 

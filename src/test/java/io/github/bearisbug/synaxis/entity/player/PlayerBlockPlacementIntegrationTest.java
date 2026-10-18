@@ -1,6 +1,8 @@
 package io.github.bearisbug.synaxis.entity.player;
 
+import net.kyori.adventure.key.Key;
 import io.github.bearisbug.synaxis.component.DataComponents;
+import io.github.bearisbug.synaxis.coordinate.BlockVec;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.GameMode;
 import io.github.bearisbug.synaxis.entity.Player;
@@ -10,9 +12,11 @@ import io.github.bearisbug.synaxis.event.player.PlayerBlockInteractEvent;
 import io.github.bearisbug.synaxis.instance.WorldBorder;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.coordinate.BlockFace;
+import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.instance.block.BlockKeys;
 import io.github.bearisbug.synaxis.instance.block.predicate.BlockPredicate;
 import io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicate;
+import io.github.bearisbug.synaxis.instance.block.rule.BlockPlacementRule;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.item.component.BlockPredicates;
@@ -22,14 +26,18 @@ import io.github.bearisbug.synaxis.network.packet.server.play.BlockChangePacket;
 import io.github.bearisbug.synaxis.registry.RegistryTag;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
@@ -157,6 +165,70 @@ public class PlayerBlockPlacementIntegrationTest {
         player.interpretPacketQueue();
 
         assertEquals("minecraft:white_wool", instance.getBlock(2, 41, 0).name());
+    }
+
+    @Test
+    public void aPlacementThePlacementRuleCancelsKeepsTheBlockAndTheItem(Env env) {
+        env.process().block().registerBlockPlacementRule(new BlockPlacementRule(Block.STONE) {
+            @Override
+            public @Nullable Block blockPlace(PlacementState placementState) {
+                return null;
+            }
+        });
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 42, 0));
+        instance.setBlock(2, 41, 0, Block.SHORT_GRASS);
+        player.setItemInMainHand(ItemStack.of(Material.STONE));
+        var blockChanges = connection.trackIncoming(BlockChangePacket.class);
+        var acks = connection.trackIncoming(AcknowledgeBlockChangePacket.class);
+
+        // A survival player replaces the grass in place, and the rule cancels it
+        placeAgainst(player, new Pos(2, 41, 0), BlockFace.WEST);
+
+        assertEquals(Block.SHORT_GRASS, instance.getBlock(2, 41, 0), "the grass is left as it is");
+        assertEquals(ItemStack.of(Material.STONE), player.getItemInMainHand(), "the stone is not used up");
+        // The client predicted the stone, the rollback writes the grass back
+        blockChanges.assertSingle(change -> {
+            assertEquals(new BlockVec(2, 41, 0), change.blockPosition().asBlockVec());
+            assertEquals(Block.SHORT_GRASS.stateId(), change.blockStateId());
+        });
+        acks.assertCount(1);
+    }
+
+    @Test
+    public void thePlayerPlacementHandedToTheHandlerHasTheBlockThePlacementRuleChose(Env env) {
+        final AtomicReference<BlockHandler.Placement> placements = new AtomicReference<>();
+        final BlockHandler handler = new BlockHandler() {
+            @Override
+            public void onPlace(Placement placement) {
+                placements.set(placement);
+            }
+
+            @Override
+            public Key getKey() {
+                return Key.key("synaxis:test");
+            }
+        };
+        env.process().block().registerBlockPlacementRule(new BlockPlacementRule(Block.FURNACE) {
+            @Override
+            public @Nullable Block blockPlace(PlacementState placementState) {
+                return placementState.block().withProperty("facing", "east").withHandler(handler);
+            }
+        });
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 42, 0));
+        instance.setBlock(2, 41, 0, Block.STONE);
+        player.setItemInMainHand(ItemStack.of(Material.FURNACE));
+
+        placeAgainst(player, new Pos(2, 41, 0), BlockFace.WEST);
+
+        final Block placed = instance.getBlock(1, 41, 0);
+        assertEquals("east", placed.getProperty("facing"));
+        final var placement = assertInstanceOf(BlockHandler.PlayerPlacement.class, placements.get());
+        assertEquals(placed, placement.getBlock(), "the block the handler is placed with");
+        assertSame(player, placement.getPlayer());
     }
 
     private static Stream<Arguments> placeBlockFromAdventureModeParams() {

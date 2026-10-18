@@ -17,6 +17,7 @@ import static io.github.bearisbug.synaxis.codec.CodecAssertions.assertOk;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TranscoderTest {
 
@@ -190,5 +191,24 @@ public class TranscoderTest {
                 .add(LongBinaryTag.longBinaryTag(2L))
                 .build();
         assertArrayEquals(new long[]{1L, 2L}, assertOk(Transcoder.NBT.getLongArray(list)));
+    }
+
+    /**
+     * A list read as an array reports the first element that is not a number and its index, never
+     * the whole list: the error of a client's component ends up in a protocol error line, and one int
+     * array inside such a list is as long as the peer likes.
+     */
+    @Test
+    void aListReadAsAnArrayReportsTheFailingElementOnly() {
+        final ListBinaryTag list = ListBinaryTag.builder()
+                .add(IntArrayBinaryTag.intArrayBinaryTag(new int[100_000]))
+                .build();
+        final List<Result<?>> results = List.of(Codec.INT_ARRAY.decode(Transcoder.NBT, list),
+                Transcoder.NBT.getByteArray(list), Transcoder.NBT.getLongArray(list));
+        for (Result<?> result : results) {
+            final String message = assertInstanceOf(Result.Error.class, result).message();
+            assertTrue(message.length() < 256, "a message of " + message.length() + " chars");
+            assertTrue(message.startsWith("[0]: "), message);
+        }
     }
 }

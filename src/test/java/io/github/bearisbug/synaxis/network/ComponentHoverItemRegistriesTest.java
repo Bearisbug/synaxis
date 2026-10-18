@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The data components of a {@code show_item} hover event are encoded with the registries of the buffer they are
@@ -87,7 +88,9 @@ class ComponentHoverItemRegistriesTest {
     void aTypedValueNeedsTheRegistriesOfTheBuffer() {
         final ItemStack item = ItemStack.of(Material.STONE).with(DataComponents.DAMAGE_TYPE, DamageType.GENERIC);
 
-        assertThrows(NullPointerException.class, () -> writtenComponent(null, item.asHoverEvent(), DAMAGE_TYPE));
+        final IllegalStateException refused = assertThrows(IllegalStateException.class,
+                () -> writtenComponent(null, item.asHoverEvent(), DAMAGE_TYPE));
+        assertTrue(refused.getMessage().contains("needs registries"), refused.getMessage());
     }
 
     @Test

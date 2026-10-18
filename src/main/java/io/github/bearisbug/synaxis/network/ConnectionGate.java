@@ -53,7 +53,8 @@ public final class ConnectionGate {
         TOO_MANY,
         THROTTLED,
         FULL,
-        HANDSHAKE_TIMEOUT
+        HANDSHAKE_TIMEOUT,
+        PROXY_HEADER
     }
 
     /** What the gate makes of a handshake. */
@@ -228,6 +229,15 @@ public final class ConnectionGate {
     }
 
     /**
+     * Counts a connection closed over its PROXY protocol header: one from outside
+     * {@code synaxis.proxy-protocol.trusted-networks}, a missing one while it is required, or one
+     * that does not parse.
+     */
+    public void proxyHeaderRejected() {
+        reject(Reason.PROXY_HEADER);
+    }
+
+    /**
      * Writes the rejections counted over the last 10 seconds as one line, if there were any, and
      * drops the buckets that are back to full every 60 seconds. Called once per tick.
      *
@@ -259,9 +269,9 @@ public final class ConnectionGate {
         }
         if (total == 0) return;
         LOGGER.warn("Connection gate rejected {} connections in the last 10 s: too_many={} throttled={} full={} "
-                        + "closed_at_accept={} handshake_timeout={}", total, counts.get(Reason.TOO_MANY),
+                        + "closed_at_accept={} handshake_timeout={} proxy_header={}", total, counts.get(Reason.TOO_MANY),
                 counts.get(Reason.THROTTLED), counts.get(Reason.FULL), counts.get(Reason.CLOSED_AT_ACCEPT),
-                counts.get(Reason.HANDSHAKE_TIMEOUT));
+                counts.get(Reason.HANDSHAKE_TIMEOUT), counts.get(Reason.PROXY_HEADER));
     }
 
     private void reject(Reason reason) {

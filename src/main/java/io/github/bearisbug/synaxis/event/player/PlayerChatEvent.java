@@ -11,7 +11,11 @@ import java.util.List;
 
 /**
  * Called every time a {@link Player} writes and sends something in the chat.
- * The event can be cancelled to not send anything, and the final message can be changed.
+ * <p>
+ * The engine calls it with no recipients: unless a listener adds players to {@link #getRecipients()},
+ * the message goes to nobody. A host may fill them in with a listener of its own before the plugins
+ * see the event ({@code docs/DESIGN-PROD.md} {@code API-PROD-008}). Cancelling it sends the message to
+ * nobody, whoever the recipients are, and the final message can be changed.
  */
 public class PlayerChatEvent implements PlayerInstanceEvent, CancellableEvent {
     private final Player player;
@@ -31,7 +35,7 @@ public class PlayerChatEvent implements PlayerInstanceEvent, CancellableEvent {
     /**
      * Returns the players who will receive the message.
      * <p>
-     * It can be modified to add and remove recipients.
+     * The engine starts the event with none; it can be modified to add and remove recipients.
      *
      * @return a modifiable list of the message's targets
      */

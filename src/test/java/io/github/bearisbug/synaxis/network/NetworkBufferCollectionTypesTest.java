@@ -5,10 +5,12 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.INT;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.RAW_BYTES;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -103,5 +105,18 @@ class NetworkBufferCollectionTypesTest {
         buffer.write(VAR_INT, 3);
         final List<Unit> values = buffer.read(NetworkBuffer.UNIT.list());
         assertEquals(3, values.size());
+    }
+
+    /** A null list or set is written as an empty one, a var-int length of zero, and reads back empty. */
+    @Test
+    void aNullListOrSetIsWrittenAsAnEmptyOne() {
+        final byte[] emptyLength = NetworkBuffer.makeArray(VAR_INT, 0);
+        final byte[] list = NetworkBuffer.makeArray(buffer -> buffer.write(INT.list(), null));
+        final byte[] set = NetworkBuffer.makeArray(buffer -> buffer.write(INT.set(), null));
+
+        assertArrayEquals(emptyLength, list);
+        assertArrayEquals(emptyLength, set);
+        assertEquals(List.of(), NetworkBuffer.wrap(list, 0, list.length).read(INT.list()));
+        assertEquals(Set.of(), NetworkBuffer.wrap(set, 0, set.length).read(INT.set()));
     }
 }

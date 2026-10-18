@@ -95,9 +95,10 @@ public class PlayerBlockPlaceEvent implements PlayerInstanceEvent, BlockEvent, C
     }
 
     /**
-     * Should the block be consumed if not cancelled.
+     * Should the block be consumed if not cancelled. If a listener changes what the used hand holds
+     * during the event, nothing is consumed: the change stays.
      *
-     * @param consumeBlock true if the block should be consumer (-1 amount), false otherwise
+     * @param consumeBlock true if the block should be consumed (-1 amount), false otherwise
      */
     public void consumeBlock(boolean consumeBlock) {
         this.consumeBlock = consumeBlock;

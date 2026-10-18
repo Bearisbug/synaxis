@@ -68,11 +68,12 @@ public final class PlayerActionListener {
         if (diggingResult != null) {
             player.sendPacket(new AcknowledgeBlockChangePacket(packet.sequence()));
             if (!diggingResult.success()) {
-                // Refresh block on player screen in case it had special data (like a sign)
+                // Refresh block on player screen in case it had special data (like a sign). Only the
+                // digger's client predicted the break, its viewers have nothing to refresh
                 var blockEntityType = diggingResult.block().blockEntityType();
                 if (blockEntityType != null) {
                     final CompoundBinaryTag data = BlockUtils.extractClientNbt(diggingResult.block());
-                    player.sendPacketToViewersAndSelf(new BlockEntityDataPacket(blockPosition, blockEntityType, data));
+                    player.sendPacket(new BlockEntityDataPacket(blockPosition, blockEntityType, data));
                 }
             }
         }
@@ -167,7 +168,7 @@ public final class PlayerActionListener {
 
     private static void dropStack(Player player) {
         final ItemStack droppedItemStack = player.getItemInMainHand();
-        dropItem(player, droppedItemStack, ItemStack.AIR);
+        dropItem(player, droppedItemStack, droppedItemStack, ItemStack.AIR);
     }
 
     private static void dropSingle(Player player) {
@@ -175,10 +176,10 @@ public final class PlayerActionListener {
         final int handAmount = handItem.amount();
         if (handAmount <= 1) {
             // Drop the whole item without copy
-            dropItem(player, handItem, ItemStack.AIR);
+            dropItem(player, handItem, handItem, ItemStack.AIR);
         } else {
             // Drop a single item
-            dropItem(player,
+            dropItem(player, handItem,
                     handItem.withAmount(1), // Single dropped item
                     handItem.withAmount(handAmount - 1)); // Updated hand
         }
@@ -228,9 +229,13 @@ public final class PlayerActionListener {
         return new DiggingResult(updatedBlock, success);
     }
 
-    private static void dropItem(Player player,
+    /**
+     * Drops {@code droppedItem} and leaves {@code handItem} in the main hand, unless a listener of the
+     * drop changed the hand: {@code before} is what it held when the drop was asked for.
+     */
+    private static void dropItem(Player player, ItemStack before,
                                  ItemStack droppedItem, ItemStack handItem) {
-        if (player.dropItem(droppedItem)) {
+        if (player.dropItem(droppedItem) && player.getItemInMainHand().equals(before)) {
             player.setItemInMainHand(handItem);
         } else {
             player.getInventory().update();

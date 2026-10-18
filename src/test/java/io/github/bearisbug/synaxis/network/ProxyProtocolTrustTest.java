@@ -19,6 +19,7 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,7 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * The PROXY protocol behind a load balancer ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-036}): a
  * header names any address its sender likes, so a process only switches it on together with the
- * networks allowed to send one, and a header from anywhere else ends the connection.
+ * networks allowed to send one, and a header from anywhere else ends the connection. Every
+ * connection ended over its header is counted by the connection gate as {@code proxy_header}.
  */
 class ProxyProtocolTrustTest {
 
@@ -63,6 +65,7 @@ class ProxyProtocolTrustTest {
             peer.write(ByteBuffer.wrap(proxyHeader("203.0.113.7")));
             statusRequest(process, peer);
             assertFalse(answered(peer), "127.0.0.1 is not a load balancer of 10.0.0.0/8");
+            assertEquals(1, process.connection().gate().rejected(ConnectionGate.Reason.PROXY_HEADER));
         } finally {
             process.stop();
         }
@@ -75,6 +78,7 @@ class ProxyProtocolTrustTest {
             peer.write(ByteBuffer.wrap(proxyHeader("203.0.113.7")));
             statusRequest(process, peer);
             assertTrue(answered(peer), "a load balancer in the trusted networks gets the status response");
+            assertEquals(0, process.connection().gate().rejected(ConnectionGate.Reason.PROXY_HEADER));
         } finally {
             process.stop();
         }
@@ -86,6 +90,22 @@ class ProxyProtocolTrustTest {
         try (SocketChannel peer = connect(process)) {
             statusRequest(process, peer);
             assertFalse(answered(peer), "the header is required, a direct connection is not served");
+            assertEquals(1, process.connection().gate().rejected(ConnectionGate.Reason.PROXY_HEADER));
+        } finally {
+            process.stop();
+        }
+    }
+
+    @Test
+    void aMalformedHeaderFromATrustedNetworkIsDisconnected() throws IOException {
+        final ServerProcess process = start("127.0.0.0/8");
+        try (SocketChannel peer = connect(process)) {
+            // The v2 signature, then version 3: no such version
+            peer.write(ByteBuffer.wrap(new byte[]{0x0D, 0x0A, 0x0D, 0x0A, 0x00, 0x0D, 0x0A, 0x51, 0x55, 0x49, 0x54, 0x0A,
+                    0x31, 0x11, 0x00, 0x00}));
+            statusRequest(process, peer);
+            assertFalse(answered(peer), "a header that does not parse is not served");
+            assertEquals(1, process.connection().gate().rejected(ConnectionGate.Reason.PROXY_HEADER));
         } finally {
             process.stop();
         }

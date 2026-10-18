@@ -12,8 +12,12 @@ import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.coordinate.BlockFace;
 
 /**
- * Called when a player interacts with a block (right-click).
- * This is also called when a block is placed.
+ * Called when a player interacts with a block (right-click), before anything else the click does,
+ * a block placement included.
+ * <p>
+ * Cancelling it only skips {@link io.github.bearisbug.synaxis.instance.block.BlockHandler#onInteract}
+ * of the clicked block: the item use or the placement behind it still happens. To stop those, set
+ * {@link #setBlockingItemUse(boolean)} to true, or cancel {@link PlayerBlockPlaceEvent}.
  */
 public class PlayerBlockInteractEvent implements PlayerInstanceEvent, BlockEvent, CancellableEvent {
 

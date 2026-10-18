@@ -24,7 +24,10 @@ public final class ComponentBytes {
      *
      * @param component the component
      * @return its bytes, without a length prefix
-     * @throws IllegalArgumentException if they are more than {@value #MAX_BYTES}
+     * @throws IllegalArgumentException if they are more than {@value #MAX_BYTES}, or if
+     *                                  {@link NetworkBuffer#COMPONENT} cannot encode the component
+     * @throws IllegalStateException    if the component holds a {@code show_item} hover event whose data
+     *                                  components need registries to be encoded
      */
     public static byte[] encode(Component component) {
         final byte[] bytes = NetworkBuffer.makeArray(NetworkBuffer.COMPONENT, component);

@@ -1,12 +1,20 @@
 package io.github.bearisbug.synaxis.network.player;
 
+import com.sun.net.httpserver.HttpServer;
+import io.github.bearisbug.synaxis.SessionServer;
 import org.junit.jupiter.api.Test;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** How a 200 of {@code hasJoined} is read ({@code docs/DESIGN-PROD.md} {@code API-PROD-002}). */
 public class SessionClientTest {
@@ -46,5 +54,39 @@ public class SessionClientTest {
         assertEquals(3, SessionClient.retryAfterSeconds(" 3 "));
         assertEquals(60, SessionClient.retryAfterSeconds("60"));
         assertEquals(60, SessionClient.retryAfterSeconds("3600"));
+    }
+
+    /**
+     * An unavailable answer says why: the status the session server answered, or the exception the
+     * query failed with and its message, which a refused connection only carries on its cause.
+     */
+    @Test
+    public void anUnavailableAnswerCarriesItsCause() throws Exception {
+        final HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        server.createContext("/hasJoined", exchange -> {
+            exchange.sendResponseHeaders(503, -1);
+            exchange.close();
+        });
+        server.start();
+        try {
+            final SessionClient.Result answer = verify(server.getAddress().getPort());
+            assertEquals("status 503", assertInstanceOf(SessionClient.Result.Unavailable.class, answer).cause());
+        } finally {
+            server.stop(0);
+        }
+
+        final int closed;
+        try (ServerSocket socket = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+            closed = socket.getLocalPort();
+        }
+        final String cause = assertInstanceOf(SessionClient.Result.Unavailable.class, verify(closed)).cause();
+        assertTrue(cause.startsWith("ConnectException: "), cause);
+        assertFalse(cause.substring("ConnectException: ".length()).isBlank(), cause);
+    }
+
+    private static SessionClient.Result verify(int port) throws InterruptedException {
+        final SessionClient client = new SessionClient(SessionServer.at(
+                URI.create("http://127.0.0.1:" + port + "/hasJoined")));
+        return client.verify("Notch", "hash", null, System.currentTimeMillis() + 10_000, () -> true);
     }
 }

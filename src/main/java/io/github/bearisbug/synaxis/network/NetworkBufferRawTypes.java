@@ -10,11 +10,11 @@ final class NetworkBufferRawTypes {
             if (length != -1 && value.length != length) {
                 throw new IllegalArgumentException("Invalid length: " + value.length + " != " + length);
             }
-            final int length = value.length;
-            if (length == 0) return;
-            buffer.ensureWritable(length);
+            final int count = value.length;
+            if (count == 0) return;
+            buffer.ensureWritable(count);
             impl(buffer)._putBytes(buffer.writeIndex(), value);
-            buffer.advanceWrite(length);
+            buffer.advanceWrite(count);
         }
 
         @Override

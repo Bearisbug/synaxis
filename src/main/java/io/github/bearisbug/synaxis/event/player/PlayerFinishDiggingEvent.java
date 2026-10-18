@@ -8,7 +8,11 @@ import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.block.Block;
 
 /**
- * Called when a {@link Player} successfully finishes digging a block
+ * Called when the client of a {@link Player} reports it finished digging a block that takes time to
+ * break. The engine does not check how long the player dug, a client can report the end without
+ * having reported a start ({@code docs/DESIGN-PROD.md} §28.2, digging time not checked); a block
+ * broken instantly does not call this event. The engine then calls {@code Instance#breakBlock},
+ * whose {@link PlayerBlockBreakEvent} can still be cancelled.
  */
 public class PlayerFinishDiggingEvent implements PlayerInstanceEvent, BlockEvent {
     private final Player player;
@@ -29,15 +33,11 @@ public class PlayerFinishDiggingEvent implements PlayerInstanceEvent, BlockEvent
     }
 
     /**
-     * Changes which block was dug
-     * <p>
-     * This has somewhat odd behavior;
-     * If you set it from a previously solid block to a non-solid block
-     * then cancel the respective {@link PlayerBlockBreakEvent}
-     * it will allow the player to phase through the block and into the floor
-     * (only if the player is standing on top of the block)
+     * Changes the block a cancelled break is judged by: when the break is cancelled, a player standing
+     * right on top of the position is teleported back where it stands if this block is solid. It
+     * changes neither the block that is broken nor the block {@link PlayerBlockBreakEvent} sees.
      *
-     * @param block the block to set the result to
+     * @param block the block to judge a cancelled break by
      */
     public void setBlock(Block block) {
         this.block = block;

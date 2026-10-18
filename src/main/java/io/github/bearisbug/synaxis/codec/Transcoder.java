@@ -14,6 +14,10 @@ import java.util.List;
  * They are also responsible for unwrapping these objects back to their primitives.
  * <br>
  * Commonly used transcoders are accessible through static fields like {@link Transcoder#JSON}
+ * <p>
+ * The message of a {@link Result.Error} may end up in a log line or a disconnect reason, and the value
+ * being read may come from a client: a message never holds an unbounded part of that value, at most
+ * a short preview of it.
  * @param <D> the intermediary type used by the transcoder
  */
 // Static fields intentionally construct the implementation subclass; the cycle cannot
@@ -233,7 +237,7 @@ public interface Transcoder<D> {
         for (int i = 0; i < list.size(); i++) {
             final Result<Number> numberResult = getNumber(list.get(i));
             if (!(numberResult instanceof Result.Ok(Number number)))
-                return new Result.Error<>("Not a byte: " + value);
+                return new Result.Error<>("[" + i + "]: " + ((Result.Error<Number>) numberResult).message());
             byteArray[i] = number.byteValue();
         }
         return new Result.Ok<>(byteArray);
@@ -263,7 +267,7 @@ public interface Transcoder<D> {
         for (int i = 0; i < list.size(); i++) {
             final Result<Number> numberResult = getNumber(list.get(i));
             if (!(numberResult instanceof Result.Ok(Number number)))
-                return new Result.Error<>("Not an int: " + value);
+                return new Result.Error<>("[" + i + "]: " + ((Result.Error<Number>) numberResult).message());
             intArray[i] = number.intValue();
         }
         return new Result.Ok<>(intArray);
@@ -293,7 +297,7 @@ public interface Transcoder<D> {
         for (int i = 0; i < list.size(); i++) {
             final Result<Number> numberResult = getNumber(list.get(i));
             if (!(numberResult instanceof Result.Ok(Number number)))
-                return new Result.Error<>("Not a long: " + value);
+                return new Result.Error<>("[" + i + "]: " + ((Result.Error<Number>) numberResult).message());
             longArray[i] = number.longValue();
         }
         return new Result.Ok<>(longArray);

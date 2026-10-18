@@ -13,6 +13,8 @@ public class EditSignListener {
         if (instance == null) return;
         BlockVec position = packet.blockPosition().asBlockVec();
         if (!instance.isChunkLoaded(position)) return;
+        // A sign edit is a block use like the others (docs/DESIGN-PROD.md API-PROD-030)
+        if (PlayerActionListener.outOfReach(player, position)) return;
         Block block = instance.getBlock(position);
         player.process().eventHandler().call(new PlayerEditSignEvent(
                 player,

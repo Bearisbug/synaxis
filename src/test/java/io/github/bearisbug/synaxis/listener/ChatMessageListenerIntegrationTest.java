@@ -1,10 +1,16 @@
 package io.github.bearisbug.synaxis.listener;
 
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.crypto.ArgumentSignatures;
+import io.github.bearisbug.synaxis.crypto.LastSeenMessages;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.player.PlayerChatEvent;
+import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientChatMessagePacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientCommandChatPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientSignedCommandChatPacket;
+import io.github.bearisbug.synaxis.network.packet.server.common.DisconnectPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.JoinGamePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.SystemChatPacket;
 import io.github.bearisbug.synaxis.testing.Collector;
@@ -12,6 +18,7 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import io.github.bearisbug.synaxis.testing.TestConnection;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TranslatableComponent;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -21,6 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -96,6 +104,45 @@ public class ChatMessageListenerIntegrationTest {
         events.assertCount(3);
         assertEquals(7, sender.chatRateLimiter().dropped());
         assertTrue(sender.isOnline(), "a chat flood is dropped, not kicked");
+    }
+
+    /**
+     * Chat and commands take the characters the vanilla server takes: a section sign, a control
+     * character or DEL ends the connection with {@code multiplayer.disconnect.illegal_characters}
+     * before the message reaches a listener, so the recipients a listener names get nothing. Any
+     * other character, outside ASCII included, goes through.
+     */
+    @Test
+    public void illegalCharactersEndTheConnection(Env env) {
+        var instance = env.createEmptyInstance();
+        var recipientConnection = env.createConnection();
+        var recipient = recipientConnection.connect(instance, Pos.ZERO);
+        var toRecipient = recipientConnection.trackIncoming(SystemChatPacket.class);
+        env.process().eventHandler().addListener(PlayerChatEvent.class, event -> event.getRecipients().add(recipient));
+        final List<ClientPacket> illegal = List.of(chat("hi\n[Server] restarting in 5 minutes"), chat("\u00a7cred"),
+                chat("del\u007f"), new ClientCommandChatPacket("list\n"),
+                new ClientSignedCommandChatPacket("list\u00a7", 0L, 0L, new ArgumentSignatures(List.of()),
+                        new LastSeenMessages.Update(0, new BitSet()), (byte) 0));
+        for (ClientPacket packet : illegal) {
+            var senderConnection = env.createConnection();
+            var sender = senderConnection.connect(instance, Pos.ZERO);
+            var disconnects = senderConnection.trackIncoming(DisconnectPacket.class);
+
+            sender.addPacketToQueue(packet);
+            sender.interpretPacketQueue();
+
+            assertFalse(sender.isOnline(), packet + " left the connection open");
+            disconnects.assertSingle(disconnect -> assertEquals("multiplayer.disconnect.illegal_characters",
+                    assertInstanceOf(TranslatableComponent.class, disconnect.message()).key()));
+        }
+        toRecipient.assertEmpty();
+
+        var legal = recipientConnection.trackIncoming(SystemChatPacket.class);
+        var sender = env.createPlayer(instance, Pos.ZERO);
+        sender.addPacketToQueue(chat("na\u00efve \u4f60\u597d \u2713"));
+        sender.interpretPacketQueue();
+        assertTrue(sender.isOnline());
+        legal.assertSingle();
     }
 
     @Test

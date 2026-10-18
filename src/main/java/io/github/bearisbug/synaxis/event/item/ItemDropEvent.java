@@ -6,6 +6,11 @@ import io.github.bearisbug.synaxis.event.trait.ItemEvent;
 import io.github.bearisbug.synaxis.event.trait.PlayerInstanceEvent;
 import io.github.bearisbug.synaxis.item.ItemStack;
 
+/**
+ * Called when a player drops an item ({@link Player#dropItem(ItemStack)}). For a drop with the drop
+ * key, a listener that changes the main hand during the event keeps its change: the hand is left as
+ * the listener set it rather than having the dropped item taken out of it.
+ */
 public class ItemDropEvent implements PlayerInstanceEvent, ItemEvent, CancellableEvent {
 
     private final Player player;

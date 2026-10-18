@@ -149,9 +149,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -182,8 +185,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     // How long a chunk batch waits for the write-locks of its chunks, all of them together, see #sendPendingChunks()
     private static final Duration CHUNK_LOCK_WAIT = Duration.ofMillis(1);
 
-    private long lastKeepAlive;
-    private boolean answerKeepAlive;
+    private volatile long lastKeepAlive;
+    private volatile boolean answerKeepAlive;
 
     private final GameProfile gameProfile;
     private String username;
@@ -199,6 +202,14 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     private @Nullable Instance pendingInstance = null;
     // The first spawn failed before the player was in any instance; tick thread only, like pendingInstance
     private boolean spawnFailed;
+    // Set before JoinGame is queued and cleared before StartConfiguration is (#remove), so a play packet a
+    // setter queues behind it is never written to a client without a player or in the configuration state
+    private volatile boolean joinedGame;
+    // Counts the instance changes, the continuation of one that a later one superseded gives up. Read and
+    // written by whoever owns the player
+    private int instanceSwitch;
+    // The death screen of the last death was sent: #respawn answers it even if the player was healed since
+    private boolean deathScreenShown;
     private int dimensionTypeId;
     private volatile GameMode gameMode; // Read from the read thread to decide whether to decode a creative packet
     private WorldPos deathLocation;
@@ -414,7 +425,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         }
         // Completes on the tick thread, before ConnectionManager#updateWaitingPlayers looks at who left
         var _ = spawn.whenComplete((_, throwable) -> {
-            if (throwable != null && this.instance == null) this.spawnFailed = true;
+            // A spawn given up (the player left the play state, or another instance change superseded it)
+            // did not fail: nothing has to report the player for it
+            if (throwable != null && !(throwable instanceof CancellationException) && this.instance == null)
+                this.spawnFailed = true;
         });
         // Not the future of whenComplete: a join on this thread only runs the chunk work for this one (see setInstance)
         return spawn;
@@ -437,10 +451,17 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 // Online mode stays on so the client shows tablist heads. Secure chat is off: chat is
                 // relayed as system messages, never as signed player chat (docs/DESIGN-PROD.md ADR-PROD-009).
                 true, false);
+        this.joinedGame = true;
         sendPacket(joinGamePacket);
 
-        // Start sending inventory updates
-        inventory.addViewer(this);
+        // Start sending inventory updates. The equipment put in before only counts from now on, once:
+        // back from a reconfiguration the player is still a viewer and its modifiers are still there
+        if (inventory.addViewer(this)) {
+            for (EquipmentSlot slot : EquipmentSlot.values()) {
+                if (slot == EquipmentSlot.BODY || slot == EquipmentSlot.SADDLE) continue;
+                updateEquipmentAttributes(ItemStack.AIR, inventory.getEquipment(slot, heldSlot), slot);
+            }
+        }
 
         // Difficulty
         sendPacket(new ServerDifficultyPacket(process().difficulty(), true));
@@ -485,6 +506,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         triggerStatus((byte) (EntityStatuses.Player.PERMISSION_LEVEL_0 + permissionLevel)); // Set permission level
         refreshHealth(); // Heal and send health packet
         refreshAbilities(); // Send abilities packet
+        sendPacket(new SetExperiencePacket(exp, level, 0));
 
         return setInstance(spawnInstance);
     }
@@ -584,12 +606,18 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         process().eventHandler().call(new PlayerTickEvent(this));
     }
 
+    /**
+     * Kills the player. The death screen and the death message are sent once the death stands: a
+     * listener of {@link io.github.bearisbug.synaxis.event.entity.EntityDeathEvent} healing the player
+     * back cancels the death, and then none of them is sent. See {@link LivingEntity#kill()} for what
+     * such a cancelled death does not undo.
+     */
     @Override
     public void kill() {
-        if (!isDead()) {
-
-            Component deathText;
-            Component chatMessage;
+        final boolean wasAlive = !isDead();
+        Component deathText = null;
+        Component chatMessage = null;
+        if (wasAlive) {
 
             // get death screen text to the killed player
             {
@@ -615,36 +643,40 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
             deathText = playerDeathEvent.getDeathText();
             chatMessage = playerDeathEvent.getChatMessage();
-
-            // #buildDeathScreenText can return null, check here
-            if (deathText != null) {
-                sendPacket(new DeathCombatEventPacket(getEntityId(), deathText));
-            }
-
-            // #buildDeathMessage can return null, check here
-            if (chatMessage != null) {
-                process().audiences().players().sendMessage(chatMessage);
-            }
-
-            // Set death location
-            if (getInstance() != null)
-                setDeathLocation(getInstance().getDimensionName(), getPosition());
         }
         super.kill();
+        if (!wasAlive || !isDead()) return;
+
+        // #buildDeathScreenText can return null, check here
+        if (deathText != null) {
+            sendPacket(new DeathCombatEventPacket(getEntityId(), deathText));
+            this.deathScreenShown = true;
+        }
+
+        // #buildDeathMessage can return null, check here
+        if (chatMessage != null) {
+            process().audiences().players().sendMessage(chatMessage);
+        }
+
+        // Set death location
+        if (getInstance() != null)
+            setDeathLocation(getInstance().getDimensionName(), getPosition());
     }
 
     /**
      * Respawns the player by sending a {@link RespawnPacket} to the player and teleporting him
      * to {@link #getRespawnPoint()}. It also resets fire and health.
      * <p>
-     * The teleport to the respawn point finishes asynchronously when its chunk still has to be loaded.
+     * Only a dead player respawns, or one healed back after its death screen was sent, which the
+     * client still shows. The teleport to the respawn point finishes asynchronously when its chunk
+     * still has to be loaded.
      */
     public void respawn() {
-        if (!isDead())
+        if (!isDead() && !deathScreenShown)
             return;
 
-        setFireTicks(0);
-        entityMeta.setOnFire(false);
+        // A reset, not an extinguishing a listener could cancel
+        resetFire();
         refreshHealth();
 
         sendPacket(new RespawnPacket(new PlayerSpawnInfo(dimensionTypeId, instance.getDimensionName(),
@@ -655,11 +687,13 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         PlayerRespawnEvent respawnEvent = new PlayerRespawnEvent(this);
         process().eventHandler().call(respawnEvent);
         refreshIsDead(false);
+        this.deathScreenShown = false;
         updatePose();
 
         Pos respawnPosition = respawnEvent.getRespawnPosition();
 
         // The client unloads chunks when respawning, so resend all chunks next to spawn
+        reportRingDropped();
         final int ringRadius = this.effectiveViewDistance();
         moveTicketRing(instance, respawnPosition.chunkX(), respawnPosition.chunkZ(), ringRadius,
                 () -> ChunkRange.chunksInRange(respawnPosition, ringRadius, chunkAdder));
@@ -694,9 +728,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
-     * Refreshes the command list for this player. This checks the
-     * {@link io.github.bearisbug.synaxis.command.builder.condition.CommandCondition}s
-     * again, and any changes will be visible to the player.
+     * Refreshes the command list for this player: the
+     * {@link io.github.bearisbug.synaxis.command.builder.condition.CommandCondition}s of the registered
+     * commands are checked again against the current state. A change made to a {@code Command} or a
+     * {@code CommandSyntax} object itself after its registration is not picked up by this.
      */
     public void refreshCommands() {
         sendPacket(process().command().createDeclareCommandsPacket(this));
@@ -710,6 +745,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     @Override
     public synchronized void remove(boolean permanent) {
         if (isRemoved()) return;
+        // A play packet queued from here on would follow StartConfiguration, or the disconnection
+        this.joinedGame = false;
 
         if (permanent) {
             this.packets.clear();
@@ -724,12 +761,12 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         if (currentInventory != null) currentInventory.removeViewer(this);
 
         process().bossBar().removeAllBossBars(this);
-        final Pos position = this.position;
-        final int chunkX = position.chunkX();
-        final int chunkZ = position.chunkZ();
-        // Clear all viewable chunks
-        final int ringRadius = this.effectiveViewDistance();
-        moveTicketRing(null, 0, 0, 0, () -> ChunkRange.chunksInRange(chunkX, chunkZ, ringRadius, chunkRemover));
+        // Clear all viewable chunks: the ring the tickets hold, whose center can lag behind the position
+        final Instance ringInstance = this.ticketInstance;
+        final int ringX = ticketCenterX, ringZ = ticketCenterZ, ringRadius = ticketRadius;
+        moveTicketRing(null, 0, 0, 0, () -> {
+            if (ringInstance != null) ChunkRange.chunksInRange(ringX, ringZ, ringRadius, chunkRemover);
+        });
         resetChunkQueue();
 
         // Remove from the tab-list
@@ -757,22 +794,46 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      * <p>
      * Be aware that because chunk operations are expensive,
      * it is possible for this method to be non-blocking when retrieving chunks is required.
+     * <p>
+     * Called on the thread owning the player ({@link io.github.bearisbug.synaxis.thread.Acquirable#assertOwnership()}).
+     * Unlike {@link Entity#setInstance(Instance, Pos)}, the instance the player is in is refused rather
+     * than turned into a teleport. A later call supersedes one still waiting for its chunks, and the
+     * removal of the player gives it up: the future of the change given up fails with a
+     * {@link CancellationException}, the player gets no view ticket in that instance and no
+     * {@link PlayerSpawnEvent}.
+     * <p>
+     * Joined on the thread that called this method, the future runs the continuation of this change
+     * there once the chunks are loaded, and only it; that thread waits for the chunks meanwhile, a
+     * listener on a tick thread should chain on the future instead.
      *
      * @param instance      the new player instance
      * @param spawnPosition the new position of the player
      * @return a future called once the player instance changed
+     * @throws IllegalArgumentException if the player is already in {@code instance}, use {@link #teleport(Pos)}
+     * @throws IllegalStateException    if {@code instance} is not registered
      */
     @Override
     public CompletableFuture<Void> setInstance(Instance instance, Pos spawnPosition) {
         acquirable().assertOwnership();
+        Check.stateCondition(!instance.isRegistered(),
+                "Instances need to be registered, please use InstanceManager#registerInstance");
         final Instance currentInstance = this.instance;
-        Check.argCondition(currentInstance == instance, "Instance should be different than the current one");
+        Check.argCondition(currentInstance == instance,
+                "{0} is already in this instance, use teleport(Pos) to move within it", getUsername());
+        final int switchId = ++instanceSwitch;
         chunkUpdateLimitChecker.clearHistory();
         final boolean dimensionChange = currentInstance != null && !Objects.equals(currentInstance.getDimensionName(), instance.getDimensionName());
         // Once chunks had to load this runs on the tick scheduler thread, which does not own a player
-        // that is already ticking, so it goes through the acquirable like the Entity continuations
-        final Consumer<Instance> runnable = (i) -> runOwned(() -> spawnPlayer(i, spawnPosition,
-                currentInstance == null, dimensionChange));
+        // that is already ticking, so it goes through the acquirable like the Entity continuations.
+        // Meanwhile a later change may have superseded this one, or the player may have been removed:
+        // the change is then given up. Read in the lock of #remove, which writes the removal
+        final Consumer<Instance> runnable = (i) -> runOwned(() -> {
+            synchronized (this) {
+                if (isRemoved() || switchId != instanceSwitch)
+                    throw new CancellationException("Instance change superseded or player removed");
+            }
+            spawnPlayer(i, spawnPosition, currentInstance == null, dimensionChange);
+        });
 
         resetChunkQueue();
 
@@ -798,17 +859,20 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         final Thread runThread = Thread.currentThread();
         CountDownLatch latch = new CountDownLatch(1);
         Scheduler scheduler = process().scheduler();
+        // Set before the latch opens: the continuation, run once by whoever gets to it first
+        final AtomicReference<Runnable> continuation = new AtomicReference<>();
         CompletableFuture<Void> future = new CompletableFuture<>() {
             @Override
             public Void join() {
-                // Prevent deadlock
+                // Prevent deadlock: the continuation runs here, and nothing else of the scheduler, whose
+                // other tasks belong to the tick scheduler thread
                 if (runThread == Thread.currentThread()) {
                     try {
                         latch.await();
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
-                    scheduler.process();
+                    continuation.get().run();
                     assert isDone();
                 }
                 return super.join();
@@ -817,9 +881,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         var _ = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
                 .whenComplete((_, throwable) -> {
-                    // A failing chunk must still release the latch, otherwise a caller joining from
-                    // the calling thread would wait on it forever.
-                    scheduler.scheduleNextProcess(() -> {
+                    final AtomicBoolean claimed = new AtomicBoolean();
+                    final Runnable land = () -> {
+                        if (!claimed.compareAndSet(false, true)) return;
                         if (throwable != null) {
                             future.completeExceptionally(throwable);
                             return;
@@ -833,7 +897,11 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                             return;
                         }
                         future.complete(null);
-                    });
+                    };
+                    continuation.set(land);
+                    // A failing chunk must still release the latch, otherwise a caller joining from
+                    // the calling thread would wait on it forever.
+                    scheduler.scheduleNextProcess(land);
                     latch.countDown();
                 });
         return future;
@@ -868,14 +936,17 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         // JoinGame told the client the view distance of the instance it spawned in, the new one may differ.
         // Before the ring changes, as in #updateViewDistance(int, int, int)
         if (!firstSpawn) tellViewDistance(Math.min(instance.viewDistance(), maxViewDistance));
-        if (!firstSpawn && !dimensionChange) {
+        // The chunks of the ring are reported while the player is still in the old instance, so the
+        // event reaches the node of that instance
+        if (dimensionChange) {
+            // The client drops the chunks of the old dimension by itself with the respawn packet
+            reportRingDropped();
+        } else if (!firstSpawn && ticketInstance != null) {
             // Player instance changed, clear current viewable collections
-            final int oldViewDistance = effectiveViewDistance();
             final int newViewDistance = effectiveViewDistance(instance);
             final int newChunkX = spawnPosition.chunkX();
             final int newChunkZ = spawnPosition.chunkZ();
-            ChunkRange.chunksInRange(
-                    (int) this.chunksLoadedByClient.x(), (int) this.chunksLoadedByClient.z(), oldViewDistance,
+            ChunkRange.chunksInRange(ticketCenterX, ticketCenterZ, ticketRadius,
                     (x, z) -> {
                         boolean inNewView = Math.abs(x - newChunkX) <= newViewDistance
                                 && Math.abs(z - newChunkZ) <= newViewDistance;
@@ -1090,6 +1161,17 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
+     * Calls {@link PlayerChunkUnloadEvent} for every chunk of the ring, without sending anything: the
+     * client drops all its chunks by itself on a respawn or a change of dimension. Before the ring
+     * moves, while the player is in the instance of the ring.
+     */
+    private void reportRingDropped() {
+        if (ticketInstance == null) return;
+        ChunkRange.chunksInRange(ticketCenterX, ticketCenterZ, ticketRadius,
+                (x, z) -> process().eventHandler().call(new PlayerChunkUnloadEvent(this, x, z)));
+    }
+
+    /**
      * Moves the view tickets to the chunk ring of {@code radius} around the chunk (x, z) of
      * {@code instance}, around {@code change}, which sends and unloads the chunks: the chunks entering
      * the ring get their ticket before it asks for them to load, the chunks leaving it lose theirs after
@@ -1273,8 +1355,15 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         return true;
     }
 
+    /**
+     * Sends a system message to the player. Dropped while the player is not in the game (before it
+     * joined, or once it left for the configuration state): the client only takes it in play.
+     *
+     * @param message the message
+     */
     @Override
     public void sendMessage(Component message) {
+        if (!joinedGame) return;
         Messenger.sendMessage(this, message, ChatPosition.SYSTEM_MESSAGE);
     }
 
@@ -1283,6 +1372,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      *
      * @param channel the message channel
      * @param data    the message data
+     * @throws IllegalArgumentException if {@code data} is over
+     *                                  {@link PluginMessagePacket#MAX_PAYLOAD_BYTES}, what a client accepts
      */
     public void sendPluginMessage(String channel, byte[] data) {
         sendPacket(new PluginMessagePacket(channel, data));
@@ -1295,6 +1386,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      *
      * @param channel the message channel
      * @param message the message
+     * @throws IllegalArgumentException if the encoded message is over
+     *                                  {@link PluginMessagePacket#MAX_PAYLOAD_BYTES}, what a client accepts
      */
     public void sendPluginMessage(String channel, String message) {
         sendPluginMessage(channel, message.getBytes(StandardCharsets.UTF_8));
@@ -1406,11 +1499,20 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         sendPacket(new ClearDialogPacket());
     }
 
+    /**
+     * Changes the health and tells the client, see {@link LivingEntity#setHealth(float)}.
+     * <p>
+     * May be called before the player joined the game, the client is told the health when it joins;
+     * joining the game heals the player.
+     *
+     * @param health the new health
+     * @throws IllegalArgumentException if {@code health} is NaN
+     */
     @Override
     public void setHealth(float health) {
         // Clamp first, otherwise the client keeps showing the raw value with nothing to correct it
         super.setHealth(health);
-        sendPacket(new UpdateHealthPacket(getHealth(), food, foodSaturation));
+        if (joinedGame) sendPacket(new UpdateHealthPacket(getHealth(), food, foodSaturation));
     }
 
     /**
@@ -1457,6 +1559,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     /**
      * Sets and refresh client food bar.
+     * <p>
+     * May be called before the player joined the game; joining the game fills the food bar.
      *
      * @param food the new food value
      * @throws IllegalArgumentException if {@code food} is not between 0 and 20
@@ -1465,7 +1569,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         Check.argCondition(!MathUtils.isBetween(food, 0, 20),
                 "Food has to be between 0 and 20");
         this.food = food;
-        sendPacket(new UpdateHealthPacket(getHealth(), food, foodSaturation));
+        if (joinedGame) sendPacket(new UpdateHealthPacket(getHealth(), food, foodSaturation));
     }
 
     public float getFoodSaturation() {
@@ -1474,6 +1578,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     /**
      * Sets and refresh client food saturation.
+     * <p>
+     * May be called before the player joined the game; joining the game resets the saturation to 5.
      *
      * @param foodSaturation the food saturation
      * @throws IllegalArgumentException if {@code foodSaturation} is not between 0 and 20
@@ -1482,7 +1588,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         Check.argCondition(!MathUtils.isBetween(foodSaturation, 0, 20),
                 "Food saturation has to be between 0 and 20");
         this.foodSaturation = foodSaturation;
-        sendPacket(new UpdateHealthPacket(getHealth(), food, foodSaturation));
+        if (joinedGame) sendPacket(new UpdateHealthPacket(getHealth(), food, foodSaturation));
     }
 
     /**
@@ -1681,12 +1787,15 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     /**
      * Enables or disable the respawn screen.
+     * <p>
+     * Before the player joined the game this only records the value, the client is not told it.
      *
      * @param enableRespawnScreen true to enable the respawn screen, false to disable it
      */
     public void setEnableRespawnScreen(boolean enableRespawnScreen) {
         this.enableRespawnScreen = enableRespawnScreen;
-        sendPacket(new ChangeGameStatePacket(ChangeGameStatePacket.Reason.ENABLE_RESPAWN_SCREEN, enableRespawnScreen ? 0 : 1));
+        if (joinedGame)
+            sendPacket(new ChangeGameStatePacket(ChangeGameStatePacket.Reason.ENABLE_RESPAWN_SCREEN, enableRespawnScreen ? 0 : 1));
     }
 
     /**
@@ -1914,6 +2023,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     /**
      * Used to change the percentage experience bar.
      * This cannot change the displayed level, see {@link #setLevel(int)}.
+     * <p>
+     * May be called before the player joined the game, the client is told the value when it joins.
      *
      * @param exp a percentage between 0 and 1
      * @throws IllegalArgumentException if {@code exp} is not between 0 and 1
@@ -1921,7 +2032,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     public void setExp(float exp) {
         Check.argCondition(!MathUtils.isBetween(exp, 0, 1), "Exp should be between 0 and 1");
         this.exp = exp;
-        sendPacket(new SetExperiencePacket(exp, level, 0));
+        if (joinedGame) sendPacket(new SetExperiencePacket(exp, level, 0));
     }
 
     /**
@@ -1936,12 +2047,14 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     /**
      * Used to change the level of the player
      * This cannot change the displayed percentage bar see {@link #setExp(float)}
+     * <p>
+     * May be called before the player joined the game, the client is told the value when it joins.
      *
      * @param level the new level of the player
      */
     public void setLevel(int level) {
         this.level = level;
-        sendPacket(new SetExperiencePacket(exp, level, 0));
+        if (joinedGame) sendPacket(new SetExperiencePacket(exp, level, 0));
     }
 
     public int getPortalCooldown() {
@@ -2231,6 +2344,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     /**
      * Changes the current held slot for the player.
+     * <p>
+     * May be called before the player joined the game, the client is told the slot when it spawns.
      *
      * @param slot the slot that the player has to held
      * @throws IllegalArgumentException if {@code slot} is not between 0 and 8
@@ -2238,7 +2353,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     public void setHeldItemSlot(byte slot) {
         Check.argCondition(!MathUtils.isBetween(slot, 0, 8), "Slot has to be between 0 and 8");
         refreshHeldSlot(slot);
-        sendPacket(new HeldItemChangePacket(slot));
+        if (joinedGame) sendPacket(new HeldItemChangePacket(slot));
     }
 
     /**
@@ -2273,15 +2388,16 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         InventoryOpenEvent inventoryOpenEvent = new InventoryOpenEvent(inventory, this);
 
         process().eventHandler().callCancellable(inventoryOpenEvent, () -> {
+            AbstractInventory newInventory = inventoryOpenEvent.getInventory();
+
             AbstractInventory openInventory = getOpenInventory();
             if (openInventory != null) {
                 openInventory.removeViewer(this);
             }
 
-            AbstractInventory newInventory = inventoryOpenEvent.getInventory();
-
-            newInventory.addViewer(this);
+            // Before the viewer is added: the inventory checks it is the open one
             this.openInventory = newInventory;
+            newInventory.addViewer(this);
         });
         return !inventoryOpenEvent.isCancelled();
     }
@@ -2472,6 +2588,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     /**
      * Sets or remove the reduced debug screen.
+     * <p>
+     * Before the player joined the game this only records the value, the client is not told it.
      *
      * @param reduced should the player has the reduced debug screen
      */
@@ -2479,7 +2597,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         this.reducedDebugScreenInformation = reduced;
 
         final byte debugScreenStatus = (byte) (reduced ? EntityStatuses.Player.ENABLE_DEBUG_SCREEN : EntityStatuses.Player.DISABLE_DEBUG_SCREEN);
-        triggerStatus(debugScreenStatus);
+        if (joinedGame) triggerStatus(debugScreenStatus);
     }
 
     /**
@@ -2494,6 +2612,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     /**
      * This do update the {@code invulnerable} field in the packet {@link PlayerAbilitiesPacket}
      * and prevent the player from receiving damage.
+     * <p>
+     * May be called before the player joined the game, the client is told the value when it joins.
      *
      * @param invulnerable should the player be invulnerable
      */
@@ -2523,6 +2643,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     /**
      * Sets the player flying.
+     * <p>
+     * May be called before the player joined the game, the client is told the value when it joins.
      *
      * @param flying should the player fly
      */
@@ -2565,6 +2687,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     /**
      * Allows or forbid the player to fly.
+     * <p>
+     * May be called before the player joined the game, the client is told the value when it joins.
      *
      * @param allowFlying should the player be allowed to fly
      */
@@ -2579,6 +2703,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     /**
      * Changes the player ability "Creative Mode".
+     * <p>
+     * May be called before the player joined the game, the client is told the value when it joins.
      *
      * @param instantBreak true to allow instant break
      * @see <a href="https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol#Player_Abilities_(clientbound)">player abilities</a>
@@ -2599,6 +2725,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     /**
      * Updates the internal field and send a {@link PlayerAbilitiesPacket} with the new flying speed.
+     * <p>
+     * May be called before the player joined the game, the client is told the value when it joins.
      *
      * @param flyingSpeed the new flying speed of the player
      */
@@ -2611,6 +2739,13 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         return fieldViewModifier;
     }
 
+    /**
+     * Changes the field of view modifier of the abilities.
+     * <p>
+     * May be called before the player joined the game, the client is told the value when it joins.
+     *
+     * @param fieldViewModifier the new field of view modifier
+     */
     public void setFieldViewModifier(float fieldViewModifier) {
         this.fieldViewModifier = fieldViewModifier;
         refreshAbilities();
@@ -2626,7 +2761,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
-     * Sends to the player a {@link PlayerAbilitiesPacket} with all the updated fields.
+     * Sends to the player a {@link PlayerAbilitiesPacket} with all the updated fields, once the player
+     * joined the game: the abilities set before are sent when it joins.
      */
     protected void refreshAbilities() {
         byte flags = 0;
@@ -2638,7 +2774,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             flags |= PlayerAbilitiesPacket.FLAG_ALLOW_FLYING;
         if (instantBreak)
             flags |= PlayerAbilitiesPacket.FLAG_INSTANT_BREAK;
-        sendPacket(new PlayerAbilitiesPacket(flags, flyingSpeed, fieldViewModifier));
+        if (joinedGame) sendPacket(new PlayerAbilitiesPacket(flags, flyingSpeed, fieldViewModifier));
     }
 
     /**

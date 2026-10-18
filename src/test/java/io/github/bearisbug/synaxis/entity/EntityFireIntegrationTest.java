@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.entity;
 
+import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.event.entity.EntityFireExtinguishEvent;
 import io.github.bearisbug.synaxis.event.entity.EntitySetFireEvent;
@@ -82,6 +83,40 @@ public class EntityFireIntegrationTest
         entity.setFireTicks(1);
         entity.tick(0);
         assertFalse(entity.isOnFire());
+    }
+
+    @Test
+    public void aCancelledExtinguishingKeepsTheEntityBurning(Env env) {
+        var instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+
+        LivingEntity entity = new LivingEntity(EntityType.ZOMBIE);
+        entity.setInstance(instance, new Vec(0, 0, 0)).join();
+        env.process().eventHandler().addListener(EntityFireExtinguishEvent.class, e -> e.setCancelled(true));
+
+        entity.setFireTicks(2);
+        for (int i = 0; i < 3; i++) entity.tick(0);
+        assertTrue(entity.isOnFire());
+        assertTrue(entity.getFireTicks() > 0, "a burning entity must not count 0 fire ticks");
+
+        final int fireTicks = entity.getFireTicks();
+        entity.setFireTicks(0);
+        assertTrue(entity.isOnFire());
+        assertEquals(fireTicks, entity.getFireTicks(), "a cancelled setFireTicks(0) must leave the fire as it was");
+    }
+
+    @Test
+    public void aRespawningPlayerIsPutOutWhateverTheListeners(Env env) {
+        var instance = env.createFlatInstance();
+        Player player = env.createPlayer(instance, new Pos(0, 40, 0));
+        env.process().eventHandler().addListener(EntityFireExtinguishEvent.class, e -> e.setCancelled(true));
+
+        player.setFireTicks(100);
+        player.kill();
+        player.respawn();
+
+        assertFalse(player.isOnFire());
+        assertEquals(0, player.getFireTicks());
     }
 
     @Test

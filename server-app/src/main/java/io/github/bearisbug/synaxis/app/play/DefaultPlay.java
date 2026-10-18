@@ -196,8 +196,8 @@ public final class DefaultPlay {
      * The attack damage and the yaw are read on the attacker's tick thread; the cooldown, the damage and the knockback
      * are decided on the target's ({@code API-PROD-016}). That is the exception {@code API-PROD-016} makes for a state
      * that has to be read in the same tick: the cooldown and whether the damage landed decide the knockback. The damage
-     * type is {@code minecraft:player_attack}, which {@code Damage#fromPlayer} does not give; a plugin replaces the
-     * melee by cancelling that damage event, which skips the knockback too.
+     * type is {@code minecraft:player_attack}; a plugin replaces the melee by cancelling that damage event, which skips
+     * the knockback too.
      */
     private static void melee(EntityAttackEvent event) {
         if (!(event.getEntity() instanceof Player attacker)) return;

@@ -28,9 +28,16 @@ public class EntityCreature extends LivingEntity {
         this(entityType, UUID.randomUUID());
     }
 
+    /**
+     * Kills the creature and removes it after {@link #getRemovalAnimationDelay()}. Healing it back in
+     * {@link io.github.bearisbug.synaxis.event.entity.EntityDeathEvent} keeps it; healing it later does
+     * not cancel the removal already scheduled.
+     */
     @Override
     public void kill() {
         super.kill();
+        // A listener of the death event healed it back
+        if (!isDead()) return;
 
         if (removalAnimationDelay > 0) {
             // Needed for proper death animation (wait for it to finish before destroying the entity)

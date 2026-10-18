@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.entity.damage;
 
 import net.kyori.adventure.text.Component;
+import io.github.bearisbug.synaxis.component.DataComponents;
 import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.LivingEntity;
@@ -34,10 +35,12 @@ public class Damage implements Taggable {
      * @param attacker       The attacker that initiated this damage
      * @param source         The source of the damage. For direct hits (melee), this will be the same as the attacker. For indirect hits (projectiles), this will be the projectile
      * @param type           the type of this damage
-     * @param amount         amount of damage
+     * @param amount         amount of damage, negative heals
      * @param sourcePosition The position of the source of damage
+     * @throws IllegalArgumentException if {@code amount} is NaN
      */
     public Damage(RegistryKey<DamageType> type, @Nullable Entity source, @Nullable Entity attacker, @Nullable Point sourcePosition, float amount) {
+        Check.argCondition(Float.isNaN(amount), "Damage amount cannot be NaN");
         this.typeKey = type;
         this.source = source;
         this.attacker = attacker;
@@ -107,14 +110,26 @@ public class Damage implements Taggable {
     /**
      * Builds the death message linked to this damage type.
      * <p>
-     * Used in {@link Player#kill()} to broadcast the proper message.
+     * Used in {@link Player#kill()} to broadcast the proper message. The arguments are the ones of
+     * the vanilla messages: the name of the killed player, then the name of the attacker, or of the
+     * source when there is no attacker, if there is one. The death message type of the damage type
+     * (such as {@code fall_variants}) is not taken into account.
      *
      * @param killed the player who has been killed
      * @return the death message, null to do not send anything
      */
     public @Nullable Component buildDeathMessage(Player killed) {
-        return Component.translatable("death.attack." + type(killed.process()).messageId(),
-                Component.text(killed.getUsername()));
+        final String key = "death.attack." + type(killed.process()).messageId();
+        final Component killedName = Component.text(killed.getUsername());
+        final Entity killer = getAttacker() != null ? getAttacker() : getSource();
+        if (killer == null) return Component.translatable(key, killedName);
+        return Component.translatable(key, killedName, nameOf(killer));
+    }
+
+    private static Component nameOf(Entity entity) {
+        if (entity instanceof Player player) return player.getName();
+        final Component customName = entity.get(DataComponents.CUSTOM_NAME);
+        return customName != null ? customName : Component.translatable(entity.getEntityType().translationKey());
     }
 
     /**
@@ -130,18 +145,18 @@ public class Damage implements Taggable {
     }
 
     /**
-     * Convenient method to create an {@link EntityDamage}.
+     * Convenient method to create an {@link EntityDamage} of type {@link DamageType#PLAYER_ATTACK}.
      *
      * @param player the player damager
      * @param amount amount of damage
      * @return a new {@link EntityDamage}
      */
     public static EntityDamage fromPlayer(Player player, float amount) {
-        return new EntityDamage(player, amount);
+        return new EntityDamage(DamageType.PLAYER_ATTACK, player, amount);
     }
 
     /**
-     * Convenient method to create an {@link EntityDamage}.
+     * Convenient method to create an {@link EntityDamage} of type {@link DamageType#MOB_ATTACK}.
      *
      * @param entity the entity damager
      * @param amount amount of damage
@@ -156,13 +171,14 @@ public class Damage implements Taggable {
     }
 
     /**
-     * Builds the text sent to a player in his death screen.
+     * Builds the text sent to a player in his death screen: the death message, as in vanilla.
      *
      * @param killed the player who has been killed
      * @return the death screen text, null to do not send anything
+     * @see #buildDeathMessage(Player)
      */
     public @Nullable Component buildDeathScreenText(Player killed) {
-        return Component.translatable("death.attack." + type(killed.process()).messageId());
+        return buildDeathMessage(killed);
     }
 
     /**
@@ -196,7 +212,14 @@ public class Damage implements Taggable {
         return amount;
     }
 
+    /**
+     * Changes the amount of damage.
+     *
+     * @param amount the new amount, negative heals
+     * @throws IllegalArgumentException if {@code amount} is NaN
+     */
     public void setAmount(float amount) {
+        Check.argCondition(Float.isNaN(amount), "Damage amount cannot be NaN");
         this.amount = amount;
     }
 }

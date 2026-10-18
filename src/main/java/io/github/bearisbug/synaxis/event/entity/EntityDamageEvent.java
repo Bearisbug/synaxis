@@ -9,7 +9,10 @@ import io.github.bearisbug.synaxis.sound.SoundEvent;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Called with {@link LivingEntity#damage(io.github.bearisbug.synaxis.registry.RegistryKey, float)}.
+ * Called with {@link LivingEntity#damage(Damage)}.
+ * <p>
+ * The amount is changed with {@code getDamage().setAmount(float)}, which refuses NaN; a negative
+ * amount heals. Cancelling it applies no damage and plays neither the animation nor the sound.
  */
 public class EntityDamageEvent implements EntityInstanceEvent, CancellableEvent {
 

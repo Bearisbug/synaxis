@@ -180,6 +180,8 @@ public final class AttributeInstance {
             result *= (1.0f + modifier.amount());
         }
 
+        // NaN (from a NaN base value or modifier) becomes the minimum as in vanilla, Math.clamp would return it as is
+        if (Double.isNaN(result)) return getAttribute().minValue();
         return Math.clamp(result, getAttribute().minValue(), getAttribute().maxValue());
     }
 

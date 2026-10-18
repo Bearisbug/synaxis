@@ -46,19 +46,25 @@ public class PlayerUseItemEvent implements PlayerInstanceEvent, ItemEvent, Cance
     }
 
     /**
-     * Gets the item usage duration. After this amount of milliseconds,
-     * the animation will stop automatically and {@link io.github.bearisbug.synaxis.event.item.PlayerFinishItemUseEvent} is called.
+     * Gets the item usage duration, in ticks: the same amount as
+     * {@link io.github.bearisbug.synaxis.event.item.PlayerBeginItemUseEvent#getItemUseDuration()}.
+     * <p>
+     * At 0 the item is not used: no {@code PlayerBeginItemUseEvent} is called and the engine tries to
+     * move a wearable item to its equipment slot instead; to forbid the use, cancel this event. Above
+     * 0 {@code PlayerBeginItemUseEvent} follows and has the final say on the duration and on whether
+     * the use starts; when it is cancelled or its duration is not positive, the use does not start
+     * and no {@link io.github.bearisbug.synaxis.event.item.PlayerFinishItemUseEvent} is called.
      *
-     * @return the item use time
+     * @return the item use time in ticks
      */
     public long getItemUseTime() {
         return itemUseTime;
     }
 
     /**
-     * Changes the item usage duration.
+     * Changes the item usage duration, in ticks; see {@link #getItemUseTime()} for what 0 does.
      *
-     * @param itemUseTime the new item use time
+     * @param itemUseTime the new item use time in ticks
      */
     public void setItemUseTime(long itemUseTime) {
         this.itemUseTime = itemUseTime;

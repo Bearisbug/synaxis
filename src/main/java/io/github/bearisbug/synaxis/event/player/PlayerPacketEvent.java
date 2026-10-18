@@ -5,6 +5,15 @@ import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
 import io.github.bearisbug.synaxis.event.trait.PlayerInstanceEvent;
 import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
 
+/**
+ * Called for a play packet of a player before the engine handles it; cancelling it drops the packet.
+ * <p>
+ * Dispatched on the player's tick thread, for the play packets queued for the player only. The keep
+ * alive, ping and cookie answers skip the queue and are handled on the read thread of the
+ * connection without this event. A packet that switches the decoding state, the acknowledgement of
+ * a return to the configuration, is never offered either: the client has switched already, and
+ * cancelling it would leave the two sides decoding different states.
+ */
 public class PlayerPacketEvent implements PlayerInstanceEvent, CancellableEvent {
 
     private final Player player;

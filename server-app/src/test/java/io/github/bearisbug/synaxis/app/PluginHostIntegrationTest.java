@@ -245,6 +245,7 @@ class PluginHostIntegrationTest {
         // Both took part, which is what keeps a plugin that came up wrong out of the core mode
         assertEquals(2, host.attemptedPluginCount());
         host.disableAll();
+        assertEquals(List.of("enable:failing"), failing.calls, "a plugin that failed to enable is not disabled");
     }
 
     @Test

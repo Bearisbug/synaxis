@@ -1,6 +1,6 @@
 RUN-081 组 STORE（写权状态机的锁与纪元、退避的叫醒、登出快照的时机、commitTogether 的参数结果与提交冻结、
 saveNow 的快照线程、插件任务的日志预算、Redis URL 的 scheme 与事务的回滚）证据
-分支 prod/r081-STORE，基于 main 965c3bddae；docs/DESIGN-PROD.md v0.9.106，docs/TEST.md TC-PROD-980～TC-PROD-989。
+分支 prod/r081-STORE，基于 main 965c3bddae；docs/DESIGN-PROD.md v0.9.105，docs/TEST.md TC-PROD-980～TC-PROD-989。
 提交：4889a4bf26（设计文档）、ecb8495d6c（代码与测试）；以下行号都按 ecb8495d6c。
 本机，2026-10-18 22:37 至 2026-10-19 00:18（UTC+8）。每次 Gradle 都经本会话的包装脚本跑
 （--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts，组内两路槽位之一）。

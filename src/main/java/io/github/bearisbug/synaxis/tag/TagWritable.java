@@ -29,16 +29,39 @@ public interface TagWritable extends TagReadable {
      * @param tag   the tag to write
      * @param value the tag value, null to remove
      * @param <T>   the tag type
-     * @return the previous tag value, null if not present
+     * @return the previous tag value; when nothing was written, {@code tag.createDefault()}
      */
     <T> @Nullable T getAndSetTag(Tag<T> tag, @Nullable T value);
 
+    /**
+     * Replaces the value with what {@code value} returns for the current one, null removing the tag.
+     *
+     * @param tag   the tag to update
+     * @param value the operator; when nothing was written it gets {@code tag.createDefault()}
+     * @param <T>   the tag type
+     */
     <T> void updateTag(Tag<T> tag,
                        UnaryOperator<@UnknownNullability T> value);
 
+    /**
+     * Same as {@link #updateTag(Tag, UnaryOperator)}, returning the new value.
+     *
+     * @param tag   the tag to update
+     * @param value the operator; when nothing was written it gets {@code tag.createDefault()}
+     * @param <T>   the tag type
+     * @return the value the operator returned
+     */
     <T> @UnknownNullability T updateAndGetTag(Tag<T> tag,
                                               UnaryOperator<@UnknownNullability T> value);
 
+    /**
+     * Same as {@link #updateTag(Tag, UnaryOperator)}, returning the previous value.
+     *
+     * @param tag   the tag to update
+     * @param value the operator; when nothing was written it gets {@code tag.createDefault()}
+     * @param <T>   the tag type
+     * @return the previous value; when nothing was written, {@code tag.createDefault()}
+     */
     <T> @UnknownNullability T getAndUpdateTag(Tag<T> tag,
                                               UnaryOperator<@UnknownNullability T> value);
 }

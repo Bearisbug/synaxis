@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class EventNodeCallCancellableTest {
@@ -31,6 +32,21 @@ public class EventNodeCallCancellableTest {
         node.callCancellable(event, callback::incrementAndGet);
         assertTrue(event.isCancelled());
         assertEquals(0, callback.get());
+    }
+
+    @Test
+    public void aListenerThrowingBeforeTheCancelLetsTheCallbackRun() {
+        var node = EventNode.all("main");
+        AtomicInteger callback = new AtomicInteger();
+        node.addListener(EventNodeTest.CancellableTest.class, _ -> {
+            throw new IllegalStateException("boom");
+        });
+        node.addListener(EventNodeTest.CancellableTest.class, event -> event.setCancelled(true));
+
+        var event = new EventNodeTest.CancellableTest();
+        node.callCancellable(event, callback::incrementAndGet);
+        assertFalse(event.isCancelled(), "The dispatch was abandoned before the cancelling listener");
+        assertEquals(1, callback.get(), "Only the cancel state at the end of the dispatch counts");
     }
 
     @Test

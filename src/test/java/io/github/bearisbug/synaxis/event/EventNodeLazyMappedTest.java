@@ -19,14 +19,14 @@ public class EventNodeLazyMappedTest {
         var item = ItemStack.of(Material.DIAMOND);
         var root = (EventNodeImpl<Event>) EventNode.all("root");
         var mapped = root.map(item, EventFilter.ITEM);
-        assertFalse(root.registeredMappedNode.containsKey(item));
+        assertFalse(registered(root, item));
 
         AtomicInteger calls = new AtomicInteger();
         var child = EventNode.type("child", EventFilter.ITEM);
         child.addListener(EventNodeTest.ItemTestEvent.class, _ -> calls.incrementAndGet());
         mapped.addChild(child);
 
-        assertTrue(root.registeredMappedNode.containsKey(item));
+        assertTrue(registered(root, item));
         root.call(new EventNodeTest.ItemTestEvent(item));
         assertEquals(1, calls.get());
     }
@@ -42,7 +42,7 @@ public class EventNodeLazyMappedTest {
                 .map(EventNodeTest.ItemTestEvent.class, (_, _) -> calls.incrementAndGet())
                 .build());
 
-        assertTrue(root.registeredMappedNode.containsKey(item));
+        assertTrue(registered(root, item));
         root.call(new EventNodeTest.ItemTestEvent(item));
         assertEquals(1, calls.get());
     }
@@ -85,5 +85,12 @@ public class EventNodeLazyMappedTest {
         root.unmap(ItemStack.of(Material.STONE));
         root.call(new EventNodeTest.ItemTestEvent(item));
         assertEquals(1, calls.get(), "Unmapping a stranger must not detach the real mapping");
+    }
+
+    // The registered nodes are guarded by the global lock, and a read of a WeakHashMap mutates it
+    private static boolean registered(EventNodeImpl<?> holder, Object owner) {
+        synchronized (EventNodeImpl.GLOBAL_CHILD_LOCK) {
+            return holder.registeredMappedNode.containsKey(owner);
+        }
     }
 }

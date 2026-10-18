@@ -10,6 +10,7 @@ import io.github.bearisbug.synaxis.event.player.PlayerPacketEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
 import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
 import io.github.bearisbug.synaxis.event.trait.InstanceEvent;
+import io.github.bearisbug.synaxis.event.trait.RecursiveEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.PluginEvents;
@@ -17,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Modifier;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
@@ -68,6 +70,7 @@ final class PluginEventsImpl implements PluginEvents {
     public <E extends Event> void addListener(Class<E> eventType, EventPriority priority, boolean ignoreCancelled,
                                               Consumer<E> listener) {
         scope.check(eventType);
+        checkListenable(eventType);
         // One budget per listener: a plugin decides how many it registers, a client decides how
         // often each of them runs.
         final LogBudget failures = new LogBudget(LOGGER, "failures");
@@ -85,6 +88,19 @@ final class PluginEventsImpl implements PluginEvents {
             if (registrations.detached) return;
             add(tier(priority), eventType, wrapped);
         }
+    }
+
+    /**
+     * The engine's own check of {@code EventNode#addListener}, made here before {@link #tier} builds
+     * a priority node: the engine dispatches on the exact runtime class of the event, so an interface
+     * or an abstract class that is not a {@link RecursiveEvent} would never be heard.
+     */
+    private static void checkListenable(Class<? extends Event> eventType) {
+        if (eventType.isInterface()
+                || (Modifier.isAbstract(eventType.getModifiers()) && !RecursiveEvent.class.isAssignableFrom(eventType)))
+            throw new IllegalArgumentException("Listeners are keyed on the exact event class: " + eventType.getName()
+                    + " is an interface or abstract class and no event is dispatched with it as its runtime class;"
+                    + " listen to a concrete event class");
     }
 
     @SuppressWarnings("unchecked")
@@ -204,7 +220,9 @@ final class PluginEventsImpl implements PluginEvents {
         }
 
         private static boolean dispatchedWithoutInstance(Class<? extends Event> eventType) {
-            // A supertype of these would route them into the mapped branch just the same
+            // A subtype is dispatched without an instance just the same. A supertype is an
+            // interface, which the engine refuses as a listener type anyway; refused here first, with
+            // the reason that matters to an instance scope.
             for (Class<? extends Event> type : DISPATCHED_WITHOUT_INSTANCE) {
                 if (eventType.isAssignableFrom(type) || type.isAssignableFrom(eventType)) return true;
             }

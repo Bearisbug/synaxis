@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.trait.BlockEvent;
 import io.github.bearisbug.synaxis.event.trait.EntityEvent;
+import io.github.bearisbug.synaxis.event.trait.EntityInstanceEvent;
 import io.github.bearisbug.synaxis.event.trait.InstanceEvent;
 import io.github.bearisbug.synaxis.event.trait.InventoryEvent;
 import io.github.bearisbug.synaxis.event.trait.ItemEvent;
@@ -37,7 +38,15 @@ public interface EventFilter<E extends Event, H> {
     EventFilter<EntityEvent, Entity> ENTITY = from(EntityEvent.class, Entity.class, EntityEvent::getEntity);
     EventFilter<PlayerEvent, Player> PLAYER = from(PlayerEvent.class, Player.class, PlayerEvent::getPlayer);
     EventFilter<ItemEvent, ItemStack> ITEM = from(ItemEvent.class, ItemStack.class, ItemEvent::getItemStack);
-    EventFilter<InstanceEvent, Instance> INSTANCE = from(InstanceEvent.class, Instance.class, InstanceEvent::getInstance);
+    /**
+     * The instance of an {@link InstanceEvent}. For an {@link EntityInstanceEvent} whose entity is in
+     * no instance (a player still in the configuration phase, or disconnecting before it spawned) the
+     * handler is null, so no instance mapped node sees that event; a predicate node built on this
+     * filter gets null for it.
+     */
+    EventFilter<InstanceEvent, Instance> INSTANCE = from(InstanceEvent.class, Instance.class,
+            e -> e instanceof EntityInstanceEvent entityEvent && entityEvent.getEntity().getInstance() == null
+                    ? null : e.getInstance());
     EventFilter<InventoryEvent, AbstractInventory> INVENTORY = from(InventoryEvent.class, AbstractInventory.class, InventoryEvent::getInventory);
     EventFilter<BlockEvent, Block> BLOCK = from(BlockEvent.class, Block.class, BlockEvent::getBlock);
 

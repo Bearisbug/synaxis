@@ -18,6 +18,7 @@ import io.github.bearisbug.synaxis.event.player.PlayerPacketEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
 import io.github.bearisbug.synaxis.event.server.ServerTickMonitorEvent;
 import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
+import io.github.bearisbug.synaxis.event.trait.PlayerEvent;
 import io.github.bearisbug.synaxis.event.trait.PlayerInstanceEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.item.ItemStack;
@@ -226,6 +227,22 @@ class PluginEventsIntegrationTest {
         scope.addListener(PlayerChatEvent.class, _ -> {
         });
         assertEquals(1, instance.eventNode().getChildren().size());
+        host.disableAll();
+    }
+
+    @Test
+    void theGlobalScopeRefusesATypeNoEventIsDispatchedAs(Env env) {
+        final PluginEvents[] kept = new PluginEvents[1];
+        final PluginHost host = host(env, new Plugin("global", events -> kept[0] = events));
+        final EventNode<?> hostNode = env.process().eventHandler().getChildren().stream()
+                .filter(node -> node.getName().equals("synaxis-host")).findFirst().orElseThrow();
+
+        // The engine dispatches on the exact runtime class: these would never be heard
+        for (Class<? extends Event> type : List.of(PlayerEvent.class, PlayerInstanceEvent.class, CancellableEvent.class)) {
+            assertThrows(IllegalArgumentException.class, () -> kept[0].addListener(type, EventPriority.HIGH, false, _ -> {
+            }), type.getName());
+        }
+        assertEquals(0, pluginNodes(hostNode), "refused before a priority node is built");
         host.disableAll();
     }
 

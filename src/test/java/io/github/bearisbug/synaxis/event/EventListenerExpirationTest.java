@@ -2,9 +2,14 @@ package io.github.bearisbug.synaxis.event;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class EventListenerExpirationTest {
 
@@ -22,6 +27,55 @@ public class EventListenerExpirationTest {
         assertEquals(EventListener.Result.SUCCESS, listener.run(new Valued(0)));
         assertEquals(EventListener.Result.EXPIRED, listener.run(new Valued(0)));
         assertEquals(2, calls.get(), "The handler runs on the expiring call too");
+    }
+
+    @Test
+    public void expireCountHoldsAgainstAConcurrentRun() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        var listener = EventListener.builder(Valued.class)
+                .expireCount(1)
+                .handler(event -> {
+                    calls.incrementAndGet();
+                    if (event.value() != 1) return;
+                    entered.countDown();
+                    try {
+                        assertTrue(release.await(5, TimeUnit.SECONDS));
+                    } catch (InterruptedException e) {
+                        throw new IllegalStateException(e);
+                    }
+                })
+                .build();
+
+        // The first run is inside its handler while the second one comes in
+        var first = new FutureTask<>(() -> listener.run(new Valued(1)));
+        Thread.ofPlatform().start(first);
+        try {
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+            assertEquals(EventListener.Result.EXPIRED, listener.run(new Valued(2)));
+            assertEquals(1, calls.get(), "The second run found no slot left");
+        } finally {
+            release.countDown();
+        }
+        assertEquals(EventListener.Result.EXPIRED, first.get(5, TimeUnit.SECONDS));
+        assertEquals(1, calls.get());
+    }
+
+    @Test
+    public void aThrowingHandlerUsesUpItsRun() {
+        AtomicInteger calls = new AtomicInteger();
+        var listener = EventListener.builder(Valued.class)
+                .expireCount(1)
+                .handler(_ -> {
+                    calls.incrementAndGet();
+                    throw new IllegalStateException("boom");
+                })
+                .build();
+
+        assertThrows(IllegalStateException.class, () -> listener.run(new Valued(0)));
+        assertEquals(EventListener.Result.EXPIRED, listener.run(new Valued(0)));
+        assertEquals(1, calls.get(), "The handler runs at most expireCount times");
     }
 
     @Test

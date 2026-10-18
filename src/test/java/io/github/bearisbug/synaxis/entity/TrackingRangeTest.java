@@ -33,7 +33,7 @@ public class TrackingRangeTest {
 
     @AfterEach
     void tearDown() {
-        env.process().stop();
+        env.close();
     }
 
     private Entity spawn(EntityType type, Pos at) {

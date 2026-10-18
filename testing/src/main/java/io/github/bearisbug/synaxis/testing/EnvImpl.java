@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.EventListener;
+import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
 
 import java.util.List;
@@ -35,10 +36,15 @@ final class EnvImpl implements Env {
     /**
      * The engine calls its exception handler from catch blocks it never expects to throw: a tick
      * thread that gets a throwable back dies before counting its tick latch down, and every later
-     * tick blocks forever. So the failure is only recorded here, and reported on the test thread.
+     * tick blocks forever. So the failure is only recorded here, and reported on the test thread:
+     * the first one, with every later one suppressed by it.
      */
     void handleException(Throwable exception) {
-        this.caught.compareAndSet(null, exception);
+        this.caught.updateAndGet(first -> {
+            if (first == null) return exception;
+            if (first != exception) first.addSuppressed(exception);
+            return first;
+        });
     }
 
     private void reportCaughtException() {
@@ -64,9 +70,13 @@ final class EnvImpl implements Env {
 
     @Override
     public <E extends Event, H> Collector<E> trackEvent(Class<E> eventType, EventFilter<? super E, H> filter, H actor) {
-        var tracker = new EventCollector<E>(actor);
-        this.process.eventHandler().map(actor, filter).addListener(eventType, tracker.events::add);
-        return tracker;
+        // The node of an entity or an instance is the one it listens on itself: only the tracker's listener
+        // comes off it again
+        final EventNode<? super E> node = this.process.eventHandler().map(actor, filter);
+        final List<E> events = new CopyOnWriteArrayList<>();
+        final EventListener<E> listener = EventListener.of(eventType, events::add);
+        node.addListener(listener);
+        return new EventCollector<>(node, listener, events);
     }
 
     @Override
@@ -79,26 +89,23 @@ final class EnvImpl implements Env {
         return flexible;
     }
 
-    void cleanup() {
+    @Override
+    public void close() {
         try {
             reportCaughtException();
             this.listeners.forEach(FlexibleListenerImpl::check);
         } finally {
             this.process.stop();
         }
+        // What the stop itself threw; outside the finally, so that it never hides a failure of the try
+        reportCaughtException();
     }
 
-    final class EventCollector<E extends Event> implements Collector<E> {
-        private final Object handler;
-        private final List<E> events = new CopyOnWriteArrayList<>();
-
-        public EventCollector(Object handler) {
-            this.handler = handler;
-        }
-
+    private record EventCollector<E extends Event>(EventNode<? super E> node, EventListener<E> listener,
+                                                   List<E> events) implements Collector<E> {
         @Override
         public List<E> collect() {
-            process.eventHandler().unmap(handler);
+            node.removeListener(listener);
             return List.copyOf(events);
         }
     }

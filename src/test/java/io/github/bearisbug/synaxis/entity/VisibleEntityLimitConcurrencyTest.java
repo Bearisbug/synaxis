@@ -25,7 +25,7 @@ public class VisibleEntityLimitConcurrencyTest {
 
     @AfterEach
     void tearDown() {
-        env.process().stop();
+        env.close();
     }
 
     /** Steps back and forth over a border of the player's entity view square, on its own tick thread. */

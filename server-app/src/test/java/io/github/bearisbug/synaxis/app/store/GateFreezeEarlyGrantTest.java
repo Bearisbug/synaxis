@@ -139,7 +139,7 @@ class GateFreezeEarlyGrantTest {
 
     @AfterEach
     void stop() {
-        env.process().stop();
+        env.close();
     }
 
     /** {@code forInstance(instance)} at {@code MONITOR}: a node of priority 4 below the instance's event node. */

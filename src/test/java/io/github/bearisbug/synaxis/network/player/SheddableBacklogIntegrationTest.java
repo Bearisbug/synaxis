@@ -60,7 +60,7 @@ public class SheddableBacklogIntegrationTest {
             assertEquals(0, harness.connection.backlogBytes());
             assertTrue(harness.connection.isOnline());
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -77,7 +77,7 @@ public class SheddableBacklogIntegrationTest {
             harness.flushUntil(() -> harness.flushes() >= 3);
             assertEquals(0, harness.received.get(), "the chunk packets were shed with the movement");
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 

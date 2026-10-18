@@ -33,7 +33,7 @@ public class VisibleEntityLimitTest {
 
     @AfterEach
     void tearDown() {
-        env.process().stop();
+        env.close();
     }
 
     private Instance start(int limit) {

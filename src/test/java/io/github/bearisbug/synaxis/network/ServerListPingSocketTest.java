@@ -82,7 +82,7 @@ public class ServerListPingSocketTest {
             assertEquals("data:image/png;base64," + Base64.getEncoder().encodeToString(png),
                     status.get("favicon").getAsString());
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -97,7 +97,7 @@ public class ServerListPingSocketTest {
             assertEquals(Component.text("synaxis"), description(status));
             assertFalse(status.has("favicon"), status.toString());
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -140,7 +140,7 @@ public class ServerListPingSocketTest {
             assertFalse(status.has("favicon"), "the listener took the configured icon away");
             assertTrue(asker.get().contains("127.0.0.1"), "the connection that asked: " + asker.get());
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -168,7 +168,7 @@ public class ServerListPingSocketTest {
             }
             assertEquals(expected, sample, "the first 12 players in the order they entered play");
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -182,7 +182,7 @@ public class ServerListPingSocketTest {
             assertEquals(2, players.get("online").getAsInt());
             assertFalse(players.has("sample"), players.toString());
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 

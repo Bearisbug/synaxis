@@ -98,7 +98,7 @@ public class InboundPacketLimitIntegrationTest {
             assertTrue(harness.connection.isOnline(), "a dropped ping does not kick");
             assertEquals(750, harness.sent(PingResponsePacket.class), "pongs");
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 

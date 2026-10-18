@@ -17,11 +17,12 @@ import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.function.UnaryOperator;
 
-public interface Env {
+public interface Env extends AutoCloseable {
     /**
      * An environment on a process of its own, configured as the {@link EnvTest} one plus
-     * {@code settings}, for a test that needs a setting that one does not have. The caller stops
-     * the process.
+     * {@code settings}, for a test that needs a setting that one does not have. The caller closes
+     * it when done, with try-with-resources or {@link #close()} in an {@code @AfterEach};
+     * {@code process().stop()} alone skips the failure checks of {@link #close()}.
      *
      * @param settings the changes to the {@link EnvTest} configuration
      * @return the environment
@@ -31,6 +32,16 @@ public interface Env {
     }
 
     ServerProcess process();
+
+    /**
+     * Stops the process. The environments this module hands out ({@link EnvTest}, {@link #create})
+     * first fail the test with what the server threw since the last check and with every listener of
+     * {@link #listen} whose last follow-up never ran, and stop the process even when that fails.
+     */
+    @Override
+    default void close() {
+        process().stop();
+    }
 
     TestConnection createConnection(GameProfile gameProfile);
 
@@ -46,12 +57,18 @@ public interface Env {
         process().ticker().tick(System.nanoTime());
     }
 
+    /**
+     * Ticks through {@link #tick()} for as long as the condition holds, so what the server throws
+     * meanwhile fails the test at the tick it happened.
+     *
+     * @param condition checked before every tick
+     * @param timeout   how long to tick at most, null for no limit
+     * @return true once the condition is false, false if the timeout ran out first
+     */
     default boolean tickWhile(BooleanSupplier condition, @Nullable Duration timeout) {
-        var ticker = process().ticker();
         final long start = System.nanoTime();
         while (condition.getAsBoolean()) {
-            final long tick = System.nanoTime();
-            ticker.tick(tick);
+            tick();
             if (timeout != null && System.nanoTime() - start > timeout.toNanos()) {
                 return false;
             }

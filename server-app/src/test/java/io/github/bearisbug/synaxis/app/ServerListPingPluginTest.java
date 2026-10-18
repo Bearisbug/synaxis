@@ -100,7 +100,7 @@ class ServerListPingPluginTest {
                     + " (1 failures since the last report)"), log.messagesAt(Level.ERROR));
         } finally {
             ledger.close();
-            env.process().stop();
+            env.close();
         }
     }
 }

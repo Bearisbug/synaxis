@@ -170,7 +170,7 @@ class ShardGatesRaceTest {
 
     @AfterEach
     void stop() {
-        env.process().stop();
+        env.close();
     }
 
     /** A gate walk in and a GM's {@code transferTo} of one player reach the ticket issuer at once: one ticket. */

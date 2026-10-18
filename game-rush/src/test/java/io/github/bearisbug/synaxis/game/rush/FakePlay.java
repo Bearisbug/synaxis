@@ -37,6 +37,8 @@ final class FakePlay implements PluginPlay {
 
     @Override
     public void enter(Player player, SceneSpec scene) {
+        // The host does nothing for a connection that dropped, also before PlayerDisconnectEvent
+        if (!player.isOnline()) return;
         calls.add(new Call("enter", player, scene));
     }
 

@@ -8,7 +8,7 @@
 | 项目画像 | 生产产品（对外真实玩家，与 `docs/DESIGN-PROD.md` §1 同档；全部 `[核心]` 节生效） |
 | Owner | Bearisbug（生产就绪会话维护本分册） |
 | 评审人 | Bearisbug |
-| 最后更新 | 2026-10-14 |
+| 最后更新 | 2026-10-18 |
 | 关联 | 引擎单一事实源 `docs/DESIGN.md` · M2 分册 `docs/DESIGN-M2.md`（插件模型、线协议、RTS 垂直切片） · M3 分册 `docs/DESIGN-M3.md`（大世界、分片、转服门） · 生产就绪分册 `docs/DESIGN-PROD.md`（插件面、持久化、默认玩法层 `REQ-PROD-046`、持久化段 `REQ-PROD-047`） · 插件作者指南 `docs/PLUGINS.md` · 测试文档 `docs/TEST.md` · 仓库 `https://github.com/Bearisbug/synaxis`（基线 `main` `0a73f035a0`，RUN-076 已合入） |
 
 本文档是 `docs/DESIGN.md` 的「玩法架构」分册，与 `docs/DESIGN-M2.md`、`docs/DESIGN-M3.md`、`docs/DESIGN-PROD.md` 同为分册形态，写法沿用 `docs/DESIGN-M2.md` §24 最后一条：只管玩法架构新增的东西，引擎、M2、M3、生产就绪的事实一律写「见 `docs/X` §N」。ID 用纯字母域段：需求 `REQ-PLAY-*`、接口 `API-PLAY-*`、决策 `ADR-PLAY-*`、Runbook `RB-PLAY-*`、用例前缀 `TC-PLAY-*`；全仓 grep 这几个前缀零命中。实体 `ENT-Play*`、`ENT-HudWidget` 等，页面 `PAGE-PLAY-*`，事件 `EVT:play_*`、`EVT:rush_*`，已核对不与其余四份文档重名。
@@ -23,6 +23,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-10-18 | v0.19 | RUN-080 组 HOST（分支 `prod/r080-HOST`，基于 `main` `cb969826b7`），修两处缺陷，需求不改。**`API-PLAY-005` `enter`**：连接已断开时什么都不做（不建场景层、不迁移、不记 `EVT:play_scene_entered`），原先抛 `IllegalStateException`。网络线程断开连接时当场把它标成离线（`network/player/PlayerConnection.java:267`），移除玩家与 `PlayerDisconnectEvent` 要等玩家下一个 tick（`:274`），插件在串行段里先查 `isOnline()` 再 `enter` 照样撞得上，调用方关不掉这个窗口。在线却不在 PLAY 的连接仍抛，消息由 `is not in the play state` 改为写出所处阶段（`connection_id=… is in CONFIGURATION, not play`）。`PluginPlay#enter` 的 Javadoc 随改（只改文档，ABI 不变）；§11.2 `NONE → ACTIVE`、`ACTIVE → ACTIVE` 的守卫加「连接在线」，表后一段写明这个窗口。**样板**：原先竞技场转 `OPEN` 前一刻断线的排队玩家让 `Lobby#open` 在 `enter` 处抛出，`RushRound` 没建，竞技场停在 `OPEN` 到停机，排在他前面的玩家困在竞技场里，排在后面的已出队却没移动；宿主改了之后 `Lobby` 不用改，§16 加一行、§19 加一个场景。**§28.2** `scheduleTask` 不出列一行补一句：`runOn` 投给执行前就被移除的实体或被注销的实例的任务，以及被插件取消的任务，原先同样留在宿主的任务表里，经任务所在的调度器强引用整个目标，已修，宿主只弱引用 `runOn` 的任务（`docs/DESIGN-PROD.md` `REQ-PROD-021`，外部行为不变）；这一行与 `REQ-PLAY-010` 引的 `PluginSchedulerImpl.java` 行号随之后移（`:48-52` → `:55-59`，`:99-102` → `:106-109`）。用例 `docs/TEST.md` `TC-PLAY-170`、`TC-PROD-840`，`TC-PLAY-049` 随改 | Bearisbug |
 | 2026-10-14 | v0.18 | RUN-078 登记，本版接口与需求不改。**CI**（草稿 PR #29，head `9d73d8d9e8`，基于 `main` `630abbc142`，四个工作流都是第 1 次尝试）：CI run 38386484038 的 Check、4 线程严格、严格 grid 三个 job 各 682 个类 4,716 个，0 失败 0 错误 22 个跳过；Concurrency run 38386483897 与 Client mod run 38386483895 通过；Client gametest run 38386483950 的 job `gametest`、`p11-smoke`、`rush` 通过（P10 只在手动触发时跑），job `rush` 两次启动 Q0a～Q9 全部 PASS，judge `rush judge: PASS (2 reports, 0 problems)`，两局 `prepare_ms` 98 与 49（`docs/TEST.md` §6 RUN-078，证据 `docs/test-runs/RUN-078/integrate/00-index.txt`）。**用户 2026-10-14 的决定**：批准 RUN-078 合入 `main`；§15「建实例占用的 tick 调度线程」的门槛改为 tick 调度线程上的 `create` 本 JVM 内第一次 ≤ 5 ms、之后每次 ≤ 1 ms，串行段里的注册仍 ≤ 1 ms，判定环境是 CI 的三种模式，本机读数照记、不作判定。**§15** 那一行的门槛一栏按此改；说明栏加 CI 的 15 个读数（三个 job 各连建 5 个：第一次 1,076、3,261、761 µs，之后 249～340 µs，注册 69～142 µs，全部满足）与这条决定；RUN-078 组 N 的本机读数按 RUN-077 的口径重写，反证轮（组 N 第 2、3 次）的读数单列、不计入：不含反证的 7 次运行里第一次 `create` 353～898 µs，本机第一次超过 1 ms 的两个（3,086、1,286 µs）都出自反证轮；RUN-077 那段末尾「`create` 这一半的目标现在不满足，门槛不改」随新门槛删去，读数都留着。**§23 检查单**容量一行的建实例一项改为过；**§28.2 S1 测试缺口一行**的开头与 ⑫、**§26 S1 行**的退出条件一栏同步 | Bearisbug |
 | 2026-10-13 | v0.17 | RUN-078 集成（分支 `prod/integrate-078`，基于 `main` `630abbc142`，依次 `--no-ff` 合入组 N、S、K、U、J，合并提交 `d396b649a9`、`783e1c60b9`、`e04491acfb`、`6129ab3b29`、`cb5e6ed578`），本版只写集成结果，接口与需求不改。**冲突**：五次合并只在文档上冲突；代码没有冲突，组 N、K 都改了 `EvacuationIntegrationTest`，自动合并后 19 条（RUN-077 的 13 条，组 N 加 5 条，组 K 加 1 条）。本分册的变更记录按版本排，§28.2 S1 测试缺口一行按条目取各组的改动，§19 宿主集成一行两组加的覆盖都留；`docs/TEST.md` 的变更记录按组排，§5 局部轮玩法架构一段冲突的三处两边都留。合并后逐组核对：各组分支新增的行都在，没进来的只有上面手工合的几行。**版本号**：五组的 v0.12～v0.16 连续、都用上了，不用前移。**状态行**改为 RUN-078 已集成、等 CI，写明 S1 已合入 `main` `62ae65f89c`；**§26 S1 行**的状态一栏同改。**§28.2 S1 测试缺口一行**的开头写上终态：①～⑤、⑦～⑪ 已修，⑥ 已核实不重叠、主代码不改，⑫ 测试已补、超过 1 ms 的原因没核实，§15 的门槛与 §23 那一项待用户定。**行号**：组 N 在 `ManagedInstanceImpl.java` 加的行让组 K 写的 §16「结算中按『返回大厅』与结算到点同时到」一行引的 `:198`、`:269` 下移，改为 `:199`、`:271`；组 K 在 `EvacuationIntegrationTest.java` 组 N 那几条之前加了 41 行，§28.2 ② 的红行改为 `:413`（组 N 分支上是 `:372`）。变更记录各行记的是当版的事实，`docs/TEST.md` 各组节的行号写明按各组提交，都不改。**本机门禁**（`--max-workers=2`）：全部模块的 `compileJava`、`compileTestJava`、`testNamingCheck`、`forbiddenImportsCheck` 与 `:architecture-tests:test` 过；`client-fabric` 用本分支发布到临时目录的 `:protocol` 跑 `compileJava`、`compileTestJava`、`compileGametestJava` 过。全量测试、Concurrency、Client mod 与 Client gametest 交给集成分支草稿 PR 的 CI，跑完再登记 RUN-078 | Bearisbug |
 | 2026-10-13 | v0.16 | RUN-078 组 J（剧本、judge 与 job `rush`，分支 `prod/r078-J`，基于 `main` `62ae65f89c`），只改剧本、judge 与 CI，需求、接口与主代码都不改。**§28.2 S1 测试缺口一行的 ⑧～⑪** 标已修：⑧ judge 单测补三条（同一竞技场两条 `ended`、`closed` 的 `cause=error`、多一次非 200 的 `hasJoined`），各在改坏 judge 的副本上只红对应的那一条；⑨ Q3 挪到 Q4 第二次按键之前判；⑩ judge 加 `--wait-s`，轮询台账到最后一个连接回大厅之后的 `play_scene_ready` 出现，至多 10 s，job `rush` 去掉 `sleep 3`；⑪ Q5 就绪那一刻要求没有打开的 Screen、采样的第一个 tick 在大厅，Q9 也判就绪那一刻的 Screen 与脚下区块。**§6.7.6** 的 Q3、Q5、Q9 三行、judge 一段与 CI 第 ⑨ 步按此改，加一段本组的读数与两条端到端反证：草稿 PR #28 的 run 38355508678 两次启动 Q0a～Q9 全部 PASS；宿主反证下 Q3 不再红、只红 Q4 及其后，客户端反证下 Q5 与 Q9 一起红（`docs/TEST.md` `TC-PLAY-112`、`TC-PLAY-113`、`TC-PLAY-117`～`TC-PLAY-119` 加步骤，新增 `TC-PLAY-155`；证据 `docs/test-runs/RUN-078/J/00-index.txt`） | Bearisbug |
@@ -133,7 +134,7 @@
 | REQ-PLAY-007 | `:play-kit`：`Round`（按托管实例的状态推进，每个回调自带兜底）、`LocalQueue`、`Countdown`、`EventCalendar`（开局时快照活动状态）（`API-PLAY-008`、`API-PLAY-009`） | 新玩法的写法 | P1 |
 | REQ-PLAY-008 | 样板玩法「信标速攻」最小档 S1 端到端：大厅、按键排队（带冷却）、按需建局（同时 1 局）、占领计分、结算面板、只把按钮的人送回大厅、局空或到点后回收；`synaxis:play` v1 的四种小部件与一个动作键；专属客户端代码 0 行；CI job `rush`（`API-PLAY-010`） | 端到端验证 | P0 |
 | REQ-PLAY-009 | 进程内准入冲突拒启：第二个插件注册准入时照旧抛 `IllegalStateException`，宿主记下冲突，步骤 (5) 判 `REFUSED` 并点名两个插件（`API-PLAY-007`） | 不打断现有 | P0 |
-| REQ-PLAY-010 | 调度器一次性任务出列：`scheduleTask` 提交的一次性任务跑完、已取消的任务从任务表移除（无新接口，改 `API-M2-008` 的 `scheduleTask` 实现，现状见 `PluginSchedulerImpl.java:48-52`） | 统一生命周期 | P0 |
+| REQ-PLAY-010 | 调度器一次性任务出列：`scheduleTask` 提交的一次性任务跑完、已取消的任务从任务表移除（无新接口，改 `API-M2-008` 的 `scheduleTask` 实现，现状见 `PluginSchedulerImpl.java:55-59`） | 统一生命周期 | P0 |
 | REQ-PLAY-011 | 插件作者指南：`docs/PLUGINS.md` §7 补齐 `playerData`、`lifecycle`、`permissions`、`moderation`、`commands`、`tabList`、`entities` 七项（现只列 9 项，`docs/PLUGINS.md` §7），新增「写一个新玩法」与「场景与 HUD」两节。无对外 API，见 §6.8 的作者流程 | 新玩法的写法 | P1 |
 | REQ-PLAY-012 | `game-rts` 接入：W1 把 `rts:game` 注册为必需通道 `[1, 1]`，玩法代码不动；W4a 玩家出生时进入场景 `rts:match`，加计时、单位数、当前选中三个小部件（`API-PLAY-004`、`API-PLAY-005`） | 不打断现有 | P1 |
 | REQ-PLAY-013 | MMO 规则上分片（W5，需签字改判 `docs/DESIGN-M3.md` §28.1 L3770）：地图分片按白名单加载玩法插件、指定场景所有者、强制模组握手；默认规则分阶段挂（先挂聊天），按区域定规则（`API-PLAY-011`） | 四种形态的落点 | P2 |
@@ -804,7 +805,8 @@ erDiagram
 
     @ApiStatus.NonExtendable
     public interface PluginPlay {
-        /** 玩家所属 tick 线程或 tick 调度线程的串行段；玩家须已进入 PLAY，调用方须是本进程的场景所有者，否则抛 IllegalStateException；
+        /** 玩家所属 tick 线程或 tick 调度线程的串行段；调用方须是本进程的场景所有者、在线的玩家须已进入 PLAY，否则抛 IllegalStateException；
+         *  连接已断开（含 PlayerDisconnectEvent 派发之前的那一段）时什么都不做（v0.19）；
          *  编码后的 S2C_SCENE 超过 8 KiB 抛 IllegalArgumentException。都不抛时立即换掉服务端的场景（scene_seq 加 1），
          *  丢掉本插件排在前面还没发出的 HUD 改动并排一个 CLEAR_OWNER，S2C_SCENE 在本 tick 末发出（玩家有未完成的 move 时留到它完成之后）。 */
         void enter(Player player, SceneSpec scene);
@@ -1169,11 +1171,11 @@ stateDiagram-v2
 | 源 → 目标 | 事件 | 守卫（纯布尔） | 动作（副作用） | 谁触发 | 接口/事件 |
 | --- | --- | --- | --- | --- | --- |
 | [*] → NONE | 进入 PLAY | 首次出生 | 记下首次出生；W1 起握手已判定时发 `S2C_GRANTS`，握手晚到时由握手判定那一侧发（`API-PLAY-002`） | 宿主 | `API-PLAY-002`（`S2C_GRANTS`） |
-| NONE → ACTIVE | enter | 调用方 = 场景所有者 ∧ 玩家在 PLAY | `scene_seq` 加 1；按授予降级相机与光标；丢掉本插件排在前面还没发出的 HUD 改动、排一个 `CLEAR_OWNER`；`S2C_SCENE` 在本 tick 末发（玩家有未完成的 `move` 时留到它完成之后，§6.4.3）；记 `EVT:play_scene_entered` | `ROLE-SceneOwner` | `API-PLAY-005` `enter`、`API-PLAY-002`（`S2C_SCENE`） |
-| ACTIVE → ACTIVE | enter 切换场景 | 调用方 = 场景所有者 | `scene_seq` 加 1；清掉场景所有者的小部件（排 `CLEAR_OWNER`）与动作冷却，保留叠加者的；`S2C_SCENE` 同上在本 tick 末发；记 `EVT:play_scene_entered` | `ROLE-SceneOwner` | `API-PLAY-005` `enter` |
+| NONE → ACTIVE | enter | 调用方 = 场景所有者 ∧ 连接在线 ∧ 玩家在 PLAY | `scene_seq` 加 1；按授予降级相机与光标；丢掉本插件排在前面还没发出的 HUD 改动、排一个 `CLEAR_OWNER`；`S2C_SCENE` 在本 tick 末发（玩家有未完成的 `move` 时留到它完成之后，§6.4.3）；记 `EVT:play_scene_entered` | `ROLE-SceneOwner` | `API-PLAY-005` `enter`、`API-PLAY-002`（`S2C_SCENE`） |
+| ACTIVE → ACTIVE | enter 切换场景 | 调用方 = 场景所有者 ∧ 连接在线 | `scene_seq` 加 1；清掉场景所有者的小部件（排 `CLEAR_OWNER`）与动作冷却，保留叠加者的；`S2C_SCENE` 同上在本 tick 末发；记 `EVT:play_scene_entered` | `ROLE-SceneOwner` | `API-PLAY-005` `enter` |
 | ACTIVE → NONE | leave | 调用方 = 场景所有者 | 清掉场景所有者的小部件（排 `CLEAR_OWNER`）；动作表与动作冷却清空，`scene_seq` 不变；W2 起在本 tick 末发 `S2C_SCENE_LEAVE`（v1 客户端靠下一条 `S2C_SCENE` 覆盖） | `ROLE-SceneOwner` | `API-PLAY-005` `leave`、`API-PLAY-002`（`S2C_SCENE_LEAVE`） |
 
-连接断开时场景随连接丢弃（纯终态，不列）。没有「场景所有者被禁用」这条转移：运行期禁用插件不存在（`Main.java:341-344`），插件被拆掉时进程里没有玩家（`API-PLAY-005` 收回一条）；补回 `docs/DESIGN-M2.md` §28.3 ① 的熔断时，在这里加 `ACTIVE → NONE`（事件「场景所有者被禁用」，动作同 leave）。也没有「回到 configuration 阶段」这条转移：主代码不触发重新配置，场景层不支持它，见 §28.2「场景层不支持重新配置」一行。客户端 `C2S_SCENE_READY` 不改状态，状态为 `ACTIVE` 且 `scene_seq` 等于当前场景时才记 `EVT:play_scene_ready`，同一 `scene_seq` 至多记一行，旧的与重发的丢弃；带旧 `scene_seq` 的 `C2S_ACTION` 回 `stale-scene`（`API-PLAY-002`）。
+连接断开时场景随连接丢弃（纯终态，不列）。离线在网络线程上当场生效，丢弃要等玩家下一个 tick 移除、派发 `PlayerDisconnectEvent`（`network/player/PlayerConnection.java:267`、`:274`）；这段时间里 `enter` 不迁移、不抛异常、不记台账，与 `hud().set` 对离线连接的处理相同，调用方先查 `isOnline()` 也关不掉这个窗口（v0.19）。连接在线、守卫里「玩家在 PLAY」不成立时 `enter` 抛 `IllegalStateException`，消息写出连接所处的阶段。没有「场景所有者被禁用」这条转移：运行期禁用插件不存在（`Main.java:341-344`），插件被拆掉时进程里没有玩家（`API-PLAY-005` 收回一条）；补回 `docs/DESIGN-M2.md` §28.3 ① 的熔断时，在这里加 `ACTIVE → NONE`（事件「场景所有者被禁用」，动作同 leave）。也没有「回到 configuration 阶段」这条转移：主代码不触发重新配置，场景层不支持它，见 §28.2「场景层不支持重新配置」一行。客户端 `C2S_SCENE_READY` 不改状态，状态为 `ACTIVE` 且 `scene_seq` 等于当前场景时才记 `EVT:play_scene_ready`，同一 `scene_seq` 至多记一行，旧的与重发的丢弃；带旧 `scene_seq` 的 `C2S_ACTION` 回 `stale-scene`（`API-PLAY-002`）。
 
 ### 11.3 样板参与者 `ENT-RushParticipant`
 
@@ -1399,6 +1401,7 @@ flowchart LR
 | 结算时有人已离开 | `API-PROD-005` `commitTogether` | 参与者 = `ENDING` 时仍在实例里的玩家；离开的不计 | `commitTogether` 要求参与者在本分片 |
 | `commitTogether` 返回 FENCED 或 UNAVAILABLE | `rush` | 不重试，台账 `stats_played=0`，玩家照常回大厅 | `SaveResult`（`plugin-api/.../SaveResult.java`） |
 | 玩家在 `move` 途中断线 | `API-PLAY-006` | future 以 false 完成，参与者丢弃，局照常 | 引擎 `setInstance` 的 future |
+| 排队玩家在竞技场转 `OPEN` 之前断线，`PlayerDisconnectEvent` 还没派发 | `rush`、`API-PLAY-005`、`API-PLAY-006` | 该玩家仍在队列里、照样被取出：`move` 以 false 完成，`enter` 什么都不做，`Lobby` 不调 `arrived`；排在他后面的照常移入，`RushRound` 照常建，全部 move 完成后的下一 tick 开局 | 离线当场生效、移除等玩家下一个 tick（`PlayerConnection.java:267`、`:274`），`LocalQueue#take` 不看在线；`SceneService#enter` 对离线连接直接返回；`ManagedInstanceImpl#move` 的离线检查（`ManagedInstanceImpl.java:261`、`:275`）；`TC-PLAY-170` 钉住 |
 
 一致性承诺：
 
@@ -1591,6 +1594,12 @@ flowchart LR
   When x 调 play().enter(player, scene)
   Then 抛 IllegalStateException，玩家场景不变
 
+场景: 刚断线的连接 enter 什么都不做 (REQ-PLAY-003)
+  Given 玩家在 rush:lobby，连接刚断开，PlayerDisconnectEvent 还没派发
+  When 场景所有者调 play().enter(player, round)
+  Then 不抛异常，场景仍是 rush:lobby，台账不记 play_scene_entered
+  And 玩家下一个 tick 移除之后该连接的场景层丢掉
+
 场景: 超出授予的相机被降级 (REQ-PLAY-003)
   Given 连接被授予 synaxis:play=2
   When 场景所有者 enter 一个 RtsPerspective 相机的场景
@@ -1713,6 +1722,11 @@ flowchart LR
   Given S1，一局在 ENDING，另有 2 人排队且 min-players=2
   When 倒计时到点
   Then 不调 create，两人留在 QUEUED，倒计时等上一局 CLOSED 后重新开始
+
+场景: 开局那一刻有排队玩家刚断线 (REQ-PLAY-008)
+  Given 3 人排队、min-players=2，竞技场转 OPEN 之前 b 的连接已断开，PlayerDisconnectEvent 还没派发
+  When Lobby 取出 a、b、c，逐个 move 并 enter 局内场景
+  Then b 的 enter 什么都不做，c 照常 move，Round 照常建，竞技场下一 tick 转 RUNNING
 
 场景: 全部移入之后才开局 (REQ-PLAY-008)
   Given 竞技场转 OPEN，Lobby take 了 2 人并逐个 move
@@ -1941,7 +1955,7 @@ N/A — 本分册是草稿，没有任何部分上线。W3 合入且 R2 运行�
 | 风险 | 玩法进程默认 1 条 tick 线程（`synaxis.dispatcher-threads` 默认 1，`ServerConfig.java:404`）：多局共用，tick P99 会上升，达到 `docs/DESIGN-PROD.md` §28.1 Q8 门槛（25 ms 持续 5 分钟）时调大线程数；样板的逐 tick 逻辑在串行段里，调大后照样正确（§6.7.3） | Bearisbug | 样板超过 4 局或 32 人时 |
 | 风险 | 样板与 `docs/DESIGN-PROD.md` §28.2 三条待办的关系。S1 不注册数据段、不发物品，三条都不触发。S2 的 `rush:stats`：L3518（`item_ledger` 没有写入）按原文触发，处置见 §28.1 D10；L3516（数据段写不进库时整名角色存不进、且不冻结）的触发条件是「把玩家给的字符串、或由玩家行为算出的浮点数存进数据段」，`rush:stats` 只有四个非负整数，不触发，第一个存玩家给的字符串（如公会名）的插件才触发；L3512（插件消费掉落物的 claim 约定）只在生成或消费掉落物时触发，样板两档都不碰掉落物 | Bearisbug | W3 开工前（D10） |
 | 技术债 | S1 的测试缺口与小缺陷（RUN-077 各组评审与集成轮的端到端反证查出，要改测试或主代码，S1 没做；RUN-078 五组处理后的终态：①～⑤、⑦～⑪ 已修，⑥ 已核实不重叠、主代码不改，⑫ 测试已补、超过 1 ms 的原因没核实，§15 的门槛按用户 2026-10-14 的决定分首次与非首次（v0.18），§23 那一项过）：① `OutboxTest` 只测了两次 `move` 留发时先完成第一个的顺序，把 `Outbox.java:90` 的合并换成只等后一个照样绿，`docs/TEST.md` `TC-PLAY-031` 第 3 步缺这处反证（组 H；v0.13 已修：RUN-078 组 S 给 `OutboxTest` 补了后一个先完成、前一个以异常结束、后一个以异常结束三种顺序的用例，`Outbox.java:90` 配三处反证，`TC-PLAY-031` 第 5～9 步，证据 `docs/test-runs/RUN-078/S/00-index.txt`）；② `Evacuation.java:67` 的 `if (finished.get()) return;` 删掉后 `aForcedCloseFromTheClosingEventFinishesTheEvacuation` 照样绿，测试没数插件 `exit` 的调用次数（组 I；v0.12 已修：RUN-078 组 N 让这条记下 `exit` 被调时给的玩家并断言为空，删掉守卫后红在 `EvacuationIntegrationTest.java:413`（组 N 分支上是 `:372`），`docs/TEST.md` `TC-PLAY-066` 第 11、12 步）；③ `admit`、`landed` 与 `beginClose` 共用的监视器，`finish` 里先取在途快照再取实例快照的顺序，`open()` 的先注册后交换，三处只靠并发成立，测试都在单线程上驱动交错，没有确定性反证；要么在 `beginClose` 的交换与赋值之间加一个包内可见的钩子补反证，要么由用户认可按顺序论证（组 I；v0.12 已修，补的是确定性反证：`InstanceRegistry` 加包内可见的暂停点，五个窗口让一条线程停在两步之间、另一条线程的动作送进来，持锁一方按锁对象与持有者查到对方在等锁才放行，不靠碰时序；`admit`、`landed`、`reclaim` 的锁各去掉一处只红对应的一条，`beginClose` 的锁去掉红落地与强制关闭两条，收尾的两份快照对调红在引擎拒绝注销，先交换后注册红在留下注册着的 `CLOSED` 实例；`TC-PLAY-130`～`TC-PLAY-132`，证据 `docs/test-runs/RUN-078/N/00-index.txt`）；④ `Evacuation.java:97` 只接 `RuntimeException`，插件的 `exit` 抛 `Error` 时状态已是 `CLOSED`、撤离还没排上，实例带着玩家注册到停机（组 I；v0.12 已修：`Evacuation.java:98` 改接 `Throwable`，同宿主别处调插件代码的写法，`exit` 抛 `StackOverflowError` 与受检异常的两名玩家都以 `synaxis:match-unavailable` 踢出、实例当场注销；修前红是 `Error` 从 `cancel` 抛回，只接 `RuntimeException \| Error` 的半修红在受检异常，`TC-PLAY-064` 第 4～6 步）；⑤ `LocalQueue` 只有 8 线程压力测试，没有确定性用例（组 R；v0.14 已修：RUN-078 组 K 给 `LocalQueueTest` 补入队中取一局、同一人重复入队、退队中取一局三条，先到的调用停在队列的锁里、后到的被这把锁挡住才放行，去掉三处 `synchronized` 后三条都红，`docs/TEST.md` `TC-PLAY-092` 第 5～7 步，证据 `docs/test-runs/RUN-078/K/00-index.txt`）；⑥ `RushRound.back`（`RushRound.java:94-98`）不知道 `Round` 已请求 `settled`，宿主撤离期间按「返回大厅」会再发一次 `lobby.move`，与撤离的 `move` 重叠（组 R；v0.14 已核，不重叠，主代码的行为不改：撤离期间 `back` 见 `CLOSED` 不发 move（`RushRound.java:100`）；按钮在前、它的 move 还没跑时结算到点，撤离确会再发一次 move，两次在玩家所属 tick 线程上依次跑，后一次见玩家已在大厅、以 true 完成，依据见 §16 该行；RUN-078 组 K 各用一条用例钉住，`TC-PLAY-145`）；⑦ `PlayClient.java:533` 的 `panel.set() == reasonSet` 没有用例，恒为真时客户端测试全绿（组 C；v0.15 已修：RUN-078 组 U 给 `PlayClientTest` 补了 `aRefusalShowsOnlyOnTheContentWhoseButtonWasClicked`，该处恒为真时只红这一条，`TC-PLAY-078` 第 6、7 步，证据 `docs/test-runs/RUN-078/U/00-index.txt`；顺带给 `PlayClient` 另外十二处没有用例的分支补上用例或断言）；⑧ judge 三处没钉住：同一竞技场两条 `ended`（`rush_judge.py:173`）、`closed` 的 `cause=error`（`:51`）、多一次非 200 的 `hasJoined`（`:249`）（组 G；v0.16 已修：RUN-078 组 J 在 `test_rush_judge.py` 各补一条，三处（现 `rush_judge.py:181`、`:59`、`:282`）各改坏一处，只红对应的那一条，`docs/TEST.md` `TC-PLAY-119` 第 4 步，证据 `docs/test-runs/RUN-078/J/01-judge-unit.txt`）；⑨ Q3 对 hint 与倒计时的检查在 Q4 第三次按键之后才读（`RushClientGameTest.java:557-560`），宿主反证下 Q3 跟 Q4 一起红，挪到第二次按键之前才只红 Q4（组 G 评审，集成轮的反证证实；v0.16 已修：Q3 的三项在第二次按键之前判（`RushClientGameTest.java:547-559`），同一处宿主反证（run 38356197267）下两份都是 Q3 PASS、Q4～Q9 FAIL，`TC-PLAY-112` 第 4、5 步）；⑩ job `rush` 在 judge 之前固定 `sleep 3`（`client-gametest.yml:358`），依赖台账每秒最多落一次盘，改为轮询台账或先停样板服务端（组 G；v0.16 已修：judge 带 `--wait-s 10`，每 0.2 s 读一次台账，等最后一个连接回大厅之后的 `play_scene_ready` 落盘再判（`rush_judge.py:230-252`），草稿 PR #28 的 run 38355508678 读到 `waited 0.2 s`，第一次读时那条还没落盘，`TC-PLAY-155`）；⑪ Q5 的就绪那一刻只排除 `LevelLoadingScreen`、没断言采样开始时还在大厅（组 G），Q9 不判就绪那一刻的 Screen（客户端反证下 Q9 是绿的，§6.7.6；v0.16 已修：Q5 就绪那一刻要求没有打开的 Screen、采样的第一个 tick 在大厅（`RushClientGameTest.java:607`、`:615`），Q9 判就绪那一刻的 Screen 与脚下区块（`:711`），同一处客户端反证（run 38356192395）下两份都只红 Q5 与 Q9，`TC-PLAY-113` 第 5、6 步、`TC-PLAY-117` 第 4、5 步，证据 `docs/test-runs/RUN-078/J/00-index.txt`）；⑫ `ManagedInstanceTickThreadTest` 只量 JVM 里第一次 `create`，§15 的两次超过 1 ms 分不清是不是冷启动，要在同一个类里再建一次、把第二次的读数一并打印（组 I；v0.12 测试已补：§15 用例在类里先跑、连建 5 个实例逐个打印，本机不含反证轮的 35 个读数里非首次有 2 个超过 1 ms（都是 4 线程严格，1,694、1,538 µs，没加载类、没有 GC），超标不只出在本类第一次 `create`；v0.18 按用户 2026-10-14 的决定，§15 的门槛改为首次 ≤ 5 ms、之后每次 ≤ 1 ms，在 CI 的三种模式上判，RUN-078 的 CI 15 个读数全部满足，§23 那一项过，`TC-PLAY-055` 第 8～11 步） | Bearisbug | W0 开工前 |
-| 技术债 | `PluginSchedulerImpl#scheduleTask` 的一次性任务跑完不出列（`PluginSchedulerImpl.java:48-52`、`:99-102`），每局倒计时与活动计时都会让任务表只增不减 | Bearisbug | W0（`REQ-PLAY-010`） |
+| 技术债 | `PluginSchedulerImpl#scheduleTask` 的一次性任务跑完不出列（`PluginSchedulerImpl.java:55-59`、`:106-109`），每局倒计时与活动计时都会让任务表只增不减。`runOn` 的同类问题（投给执行前就被移除的实体或被注销的实例的任务、被插件取消的任务不出列，经任务所在的调度器强引用整个目标）已修：宿主只弱引用 `runOn` 的任务，目标不可达时条目随之回收（`docs/TEST.md` `TC-PROD-840`） | Bearisbug | W0（`REQ-PLAY-010`） |
 | 技术债 | RTS 镜头锚点服务端只存不用（`GameSession.java:82-91` 没有读取方），与 `docs/DESIGN-M2.md` `API-M2-003` 的「传送到锚点」不一致；客户端也不发 `C2S_CAMERA` | Bearisbug | 6b |
 | Open Question | 原版 Dialog 作文本输入入口：引擎保留了 `ShowDialogPacket` 与 `PlayerCustomClickEvent`，没有真客户端验证。切换条件：真 26.2 客户端的 gametest 能弹出 Dialog、点击回到 `PlayerCustomClickEvent`，并且有玩法需要文本输入 | Bearisbug | 第一个要文本输入的玩法出现时 |
 | Open Question（已决） | `docs/DESIGN-M2.md` 里插件宿主相关的行（`API-M2-007`、`API-M2-011`、§8「演进与弃用」、§28.2 L1491、§28.3 ①）由谁改：光照会话 2026-10-12 确认，该分册里插件宿主与线协议的行归本会话 | Bearisbug | 已决（2026-10-12） |

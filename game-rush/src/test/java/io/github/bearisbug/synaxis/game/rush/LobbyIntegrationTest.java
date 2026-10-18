@@ -217,6 +217,30 @@ class LobbyIntegrationTest {
         assertEquals(List.of("move alice", "move bob", "start"), arena.requests);
     }
 
+    /** §16 "排队玩家在竞技场转 OPEN 之前断线". */
+    @Test
+    void aQueuedPlayerWhoseConnectionDroppedDoesNotStrandTheArena(Env env) {
+        final Setup setup = setup(env, config(2, 0, 240));
+        final Player alice = setup.join("alice");
+        final Player bob = setup.join("bob");
+        final Player carol = setup.join("carol");
+        for (final Player player : List.of(alice, bob, carol)) setup.rules().toggleQueue(player);
+        tick(setup);
+        final FakeManaged arena = setup.arenas().last();
+        // Offline at once, as a real connection goes; its removal and PlayerDisconnectEvent wait for bob's next
+        // tick, so bob is still queued when the arena opens
+        bob.getPlayerConnection().disconnect();
+        arena.state = ManagedInstance.State.OPEN;
+
+        tick(setup);
+        tick(setup);
+
+        assertEquals(List.of("move alice", "move bob", "move carol", "start"), arena.requests);
+        assertEquals(RushHud.ROUND, play.scene(alice));
+        assertEquals(RushHud.ROUND, play.scene(carol));
+        assertEquals(ManagedInstance.State.RUNNING, arena.state);
+    }
+
     @Test
     void aMoveThatFailsPutsThePlayerBackIntoTheLobbyScene(Env env) {
         final Setup setup = setup(env, config(2, 0, 240));

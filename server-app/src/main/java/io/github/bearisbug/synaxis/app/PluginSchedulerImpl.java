@@ -8,8 +8,10 @@ import io.github.bearisbug.synaxis.timer.TaskSchedule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -32,8 +34,13 @@ final class PluginSchedulerImpl implements PluginScheduler {
     private final String pluginId;
     private final Scheduler scheduler;
     private final List<Task> tasks = new CopyOnWriteArrayList<>();
-    /** One shot tasks of {@link #runOn} and {@link #runAsync}, dropped once they are over. */
-    private final Map<Task, Boolean> transientTasks = new ConcurrentHashMap<>();
+    /**
+     * One shot tasks of {@link #runOn} and {@link #runAsync}, dropped once they are over. Held weakly: a
+     * {@link #runOn} task whose target is removed or unregistered before it is due, or that the plugin
+     * cancels, is never over, and through the target's scheduler it holds the target. As long as such a
+     * task can still run, that scheduler holds it, so {@link #cancelAll} still finds it.
+     */
+    private final Map<Task, Boolean> transientTasks = Collections.synchronizedMap(new WeakHashMap<>());
     /** The running {@link #runAsync} bodies, by their handle. */
     private final Map<Task, Thread> asyncBodies = new ConcurrentHashMap<>();
     private final AtomicReference<Task> sweeper = new AtomicReference<>();
@@ -100,7 +107,8 @@ final class PluginSchedulerImpl implements PluginScheduler {
         closed = true;
         for (Task task : tasks) task.cancel();
         tasks.clear();
-        for (Task task : transientTasks.keySet()) task.cancel();
+        // A copy taken under the map's lock: tick threads drop the tasks that ran meanwhile
+        for (Task task : List.copyOf(transientTasks.keySet())) task.cancel();
         transientTasks.clear();
         for (Thread body : asyncBodies.values()) body.interrupt();
         asyncBodies.clear();

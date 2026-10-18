@@ -20,6 +20,10 @@ public abstract class BlockPlacementRule {
     /**
      * Called when the block state id can be updated (for instance if a neighbour block changed).
      * This is first called on a newly placed block, and then this is called for all neighbors of the block
+     * <p>
+     * Runs inside the call that set the changed block, holding the monitor of the instance and the write lock of
+     * the chunk of that block: do not take an entity another tick thread owns nor wait for a future here, see
+     * {@link io.github.bearisbug.synaxis.instance.block.BlockHandler}.
      *
      * @param updateState The current parameters to the block update
      * @return the updated block
@@ -31,6 +35,9 @@ public abstract class BlockPlacementRule {
     /**
      * Called when the block is placed.
      * It is recommended that you only set up basic properties on the block for this placement, such as determining facing, etc
+     * <p>
+     * Runs holding the monitor of the instance and the write lock of the chunk, with the same restrictions as
+     * {@link #blockUpdate(UpdateState)}.
      *
      * @param placementState The current parameters to the block placement
      * @return the block to place, which its handler gets in

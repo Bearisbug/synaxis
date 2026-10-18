@@ -647,10 +647,30 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.viewEngine.viewableOption.updateAuto(autoViewable);
     }
 
+    /**
+     * Sets the rule deciding which of the players around automatically see this entity, and applies it to them
+     * at once.
+     * <p>
+     * The rule is asked on whichever thread changes what a player sees: the tick thread of the entity or of
+     * the player crossing a chunk border, the one of a player recomputing what it sees every 5 ticks, the one
+     * changing a rule. It is asked holding the view locks of this entity and of the player: it must be quick,
+     * free of side effects and must not block, nor call {@link #isViewer(Player)}, {@link #getViewers()},
+     * {@link #addViewer(Player)}, {@link #removeViewer(Player)} or a rule method of any entity, which takes
+     * the view lock of another entity out of order and can deadlock with another tick thread. A rule
+     * depending on other entities, such as teammates seeing each other, reads a thread safe state of its own
+     * that the caller keeps up to date, and the caller applies it again with {@link #updateViewableRule()}
+     * once that state changed: the engine does not ask it again on its own.
+     *
+     * @param predicate the rule, true for the players to see this entity; null to drop the rule
+     */
     public void updateViewableRule(@Nullable Predicate<? super Player> predicate) {
         this.viewEngine.viewableOption.updateRule(predicate);
     }
 
+    /**
+     * Applies the rule of {@link #updateViewableRule(Predicate)} again to the players around, after the state
+     * it depends on changed.
+     */
     public void updateViewableRule() {
         this.viewEngine.viewableOption.updateRule();
     }
@@ -666,7 +686,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Decides if surrounding entities must be visible.
+     * Decides if surrounding entities must be visible. Only a player sees entities: on any other entity this
+     * does nothing.
      *
      * @param autoViewer true to add view surrounding entities, false to remove
      */
@@ -674,10 +695,24 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.viewEngine.viewerOption.updateAuto(autoViewer);
     }
 
+    /**
+     * Sets the rule deciding which of the entities around this player automatically sees, and applies it at
+     * once. Only a player sees entities: on any other entity this does nothing.
+     * <p>
+     * The rule is asked on the same threads and holding the same locks as the one of
+     * {@link #updateViewableRule(Predicate)}, under the same constraints; apply it again with
+     * {@link #updateViewerRule()} once the state it depends on changed.
+     *
+     * @param predicate the rule, true for the entities this player sees; null to drop the rule
+     */
     public void updateViewerRule(@Nullable Predicate<? super Entity> predicate) {
         this.viewEngine.viewerOption.updateRule(predicate);
     }
 
+    /**
+     * Applies the rule of {@link #updateViewerRule(Predicate)} again to the entities around, after the state
+     * it depends on changed. Does nothing on an entity that is not a player.
+     */
     public void updateViewerRule() {
         this.viewEngine.viewerOption.updateRule();
     }
@@ -755,9 +790,24 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.dormancyPolicy = policy;
     }
 
+    /**
+     * Shows this entity to {@code player}, whatever the automatic viewing rules say, until
+     * {@link #removeViewer(Player)}.
+     * <p>
+     * The player has to be in the instance of this entity. Leaving it, for another instance or removed, it
+     * is dropped from the manual viewers of every entity there and sent their destruction.
+     *
+     * @param player the player to show this entity to
+     * @return true if the player was added, false if it already was a manual viewer or is this entity
+     * @throws IllegalStateException    if this entity is not in an instance
+     * @throws IllegalArgumentException if the player is not in the instance of this entity
+     */
     @Override
     public final boolean addViewer(Player player) {
         Check.stateCondition(!isActive(), "Entities must be in an instance before adding viewers");
+        Check.argCondition(player.getInstance() != instance,
+                "Player {0} is not in the instance of entity {1}; a manual viewer must share its instance",
+                player.getUsername(), getEntityId());
         if (!viewEngine.manualAdd(player)) return false;
         updateNewViewer(player);
         // The automatic path sends this from EntityView, without it the passengers show up dismounted
@@ -1361,9 +1411,17 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
     private void removeFromInstance(Instance instance) {
         callEvent(new RemoveEntityFromInstanceEvent(instance, this));
-        if (this instanceof Player player) instance.bossBars().forEach(player::hideBossBar);
+        if (this instanceof Player player) {
+            instance.bossBars().forEach(player::hideBossBar);
+            // Manual viewing is only recorded on the viewed entity, nothing else drops a player leaving the
+            // instance (to another one, or removed) from the entities it was added to. Before the tracker
+            // lets go of it, while it still takes their destruction
+            instance.getEntities().forEach(entity -> entity.removeViewer(player));
+        }
         instance.getEntityTracker().unregister(this, trackingTarget, trackingUpdate);
         this.viewEngine.forManuals(this::removeViewer);
+        // What the tracker could not reach: registrations outside the square it reports
+        this.viewEngine.dropStaleRegistrations(instance);
         EventsJFR.newInstanceLeave(getUuid(), instance.getUuid()).commit();
     }
 

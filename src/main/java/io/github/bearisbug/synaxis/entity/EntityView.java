@@ -1,7 +1,9 @@
 package io.github.bearisbug.synaxis.entity;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntIterator;
+import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import io.github.bearisbug.synaxis.ServerProcess;
@@ -9,6 +11,7 @@ import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.instance.EntityTracker;
 import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.network.packet.server.play.DestroyEntitiesPacket;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.AbstractSet;
@@ -74,6 +77,12 @@ final class EntityView {
                 player.sendPacket(e.getPassengersPacket());
             }
         }
+        // The packets go out after the mutexes are released: a hide on another thread may have come in
+        // between and sent its destruction before this spawn. Checked after sending, so that the last
+        // packet the client gets for the entity agrees with the registration
+        for (Entity e : visibleChain) {
+            if (!e.isViewer(player)) e.updateOldViewer(player);
+        }
     }
 
     private static void collectEntityChain(Entity entity, Player player, List<Entity> chain) {
@@ -114,6 +123,9 @@ final class EntityView {
             }
         }
         entity.updateOldViewer(player);
+        // As in showEntityToPlayer: a show on another thread may have registered the pair again and sent
+        // its spawn before this destruction
+        if (entity.isViewer(player)) entity.updateNewViewer(player);
         final List<Entity> passengers = entity.getPassengers();
         if (!passengers.isEmpty()) {
             for (Entity passenger : passengers) {
@@ -208,12 +220,24 @@ final class EntityView {
             if (registered.contains(id) && !wanted.contains(id)) hideEntityFromPlayer(candidate, player);
         }
         // A passenger taken in on its own before it mounted is not a candidate, it leaves with a
-        // vehicle the player does not see
+        // vehicle the player does not see. Nor is what the player sees outside its square, taken in late by
+        // another tick thread or left by crossing tracker updates: the tracker no longer reports it
         final List<Entity> stranded = new ArrayList<>();
+        final List<Entity> outside = new ArrayList<>();
+        final IntList gone = new IntArrayList();
+        final int viewDistance = process.config().entityViewDistance();
+        final Point center = trackedLocation.point();
         synchronized (mutex) {
             for (IntIterator it = viewerOption.bitSet.intIterator(); it.hasNext(); ) {
-                final Entity seen = trackedLocation.instance().getEntityById(it.nextInt());
-                if (seen == null) continue;
+                final int id = it.nextInt();
+                final Entity seen = trackedLocation.instance().getEntityById(id);
+                if (seen == null) {
+                    // Removed, or in another instance, without its removal reaching this player
+                    it.remove();
+                    counted.remove(id);
+                    gone.add(id);
+                    continue;
+                }
                 // Counted from what the player sees, not from the candidates: another tick thread
                 // may have taken one in since they were picked, and it holds a place until hidden.
                 // What changes here is only an entity that mounted, dismounted or changed its
@@ -223,15 +247,25 @@ final class EntityView {
                 final Entity vehicle = seen.getVehicle();
                 if (vehicle != null && vehicle != player && vehicle != player.getVehicle()
                         && !viewerOption.isRegistered(vehicle)) stranded.add(seen);
+                else if (vehicle == null && seen != player.getVehicle()
+                        && outsideSquare(seen.getPosition(), center, viewDistance)) outside.add(seen);
             }
         }
+        if (!gone.isEmpty()) player.sendPacket(new DestroyEntitiesPacket(gone));
         for (Entity passenger : stranded) hideEntityFromPlayer(passenger, player);
+        for (Entity far : outside) hideEntityFromPlayer(far, player);
         for (Entity visible : always) {
             if (!registered.contains(visible.getEntityId())) showEntityToPlayer(visible, player);
         }
         for (Nearby visible : nearby) {
             if (!registered.contains(visible.entity().getEntityId())) showEntityToPlayer(visible.entity(), player);
         }
+    }
+
+    /** Whether {@code at} is outside the square of chunks the tracker reports around {@code center}. */
+    private static boolean outsideSquare(Point at, Point center, int viewDistance) {
+        return Math.abs(at.chunkX() - center.chunkX()) > viewDistance
+                || Math.abs(at.chunkZ() - center.chunkZ()) > viewDistance;
     }
 
     private record Nearby(Entity entity, double distanceSquared) {
@@ -263,6 +297,45 @@ final class EntityView {
                 return true;
             }
             return false;
+        }
+    }
+
+    /**
+     * Drops what is still registered once the entity left {@code instance}, after the tracker and the manual
+     * viewers were done with it: the registrations outside the square of chunks the tracker reports, which it
+     * could not reach. Their clients are sent the destruction, and the places they held under the visible
+     * entity limit are freed. Both sides for a player: the players seeing it and the entities it sees.
+     *
+     * @param instance the instance the entity left
+     */
+    void dropStaleRegistrations(Instance instance) {
+        final int[] viewers;
+        final int[] seen;
+        synchronized (mutex) {
+            viewers = viewableOption.bitSet.toIntArray();
+            seen = entity instanceof Player ? viewerOption.bitSet.toIntArray() : new int[0];
+        }
+        // Hidden with no mutex held, as the consumers of select
+        for (int id : viewers) {
+            if (instance.getEntityById(id) instanceof Player player) {
+                hideEntityFromPlayer(entity, player);
+            } else {
+                synchronized (mutex) {
+                    viewableOption.bitSet.remove(id);
+                }
+            }
+        }
+        if (!(entity instanceof Player player)) return;
+        for (int id : seen) {
+            final Entity other = instance.getEntityById(id);
+            if (other != null) {
+                hideEntityFromPlayer(other, player);
+            } else {
+                synchronized (mutex) {
+                    viewerOption.bitSet.remove(id);
+                    counted.remove(id);
+                }
+            }
         }
     }
 

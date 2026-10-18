@@ -1,0 +1,30 @@
+--- a/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
++++ b/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
+@@ -1252,6 +1252,7 @@
+                 instance.getEntityTracker().register(this, position, trackingTarget, trackingUpdate);
+                 spawn();
+                 callEvent(new EntitySpawnEvent(this, instance));
++                if (!Boolean.getBoolean("proof.never") && !isRemoved() && this.instance == instance) refreshCurrentChunk(this.currentChunk);
+             } catch (Exception e) {
+                 // Reported through the future, which the caller uses to undo the spawn. Swallowing
+                 // it left the entity in the instance while the tracker had never heard of it:
+@@ -1261,7 +1262,7 @@
+                 // Once the spawn is over, also a failed one: undoing it takes ticks of the entity (a kicked player
+                 // is removed by its own scheduler). In the chunk it is in now: a listener may have moved it, or
+                 // removed it, or sent it elsewhere; without a chunk, currentChunk was never written
+-                if (chunk != null && !isRemoved() && this.instance == instance) refreshCurrentChunk(this.currentChunk);
++                if (Boolean.getBoolean("proof.never") && chunk != null && !isRemoved() && this.instance == instance) refreshCurrentChunk(this.currentChunk);
+             }
+         })));
+     }
+--- a/src/main/java/io/github/bearisbug/synaxis/entity/LivingEntity.java
++++ b/src/main/java/io/github/bearisbug/synaxis/entity/LivingEntity.java
+@@ -518,7 +518,7 @@
+             final Acquirable<? extends Entity> acquirable = acquirable();
+             // The threads the ownership assertion of setHealth lets through
+             if (acquirable.isOwned()
+-                    || (acquirable.assignedThread() == null && !(Thread.currentThread() instanceof TickThread))) {
++                    || (Boolean.getBoolean("proof.never") && acquirable.assignedThread() == null && !(Thread.currentThread() instanceof TickThread))) {
+                 setHealth((float) attributeInstance.getValue());
+             } else {
+                 // The health belongs to the owning thread, which lowers it at the next tick to the maximum then

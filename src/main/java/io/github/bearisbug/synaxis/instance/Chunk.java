@@ -86,6 +86,7 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
      * @param y     the block Y
      * @param z     the block Z
      * @param block the block to place
+     * @throws IllegalStateException if the calling thread does not hold the write-lock of this chunk
      */
     @Override
     public void setBlock(int x, int y, int z, Block block) {
@@ -152,7 +153,11 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
     public abstract Chunk copy(Instance instance, int chunkX, int chunkZ);
 
     /**
-     * Resets the chunk, this means clearing all the data making it empty.
+     * Resets the chunk, this means clearing all the data making it empty: blocks, biomes and block
+     * entities, and with them the block ticks.
+     * <p>
+     * Calls no {@link BlockHandler#onDestroy}, keeps the light and tells no viewer: online players see
+     * the result once {@link #sendChunk()} sends it. The caller holds the {@link #lockWriteLock() write-lock}.
      */
     public abstract void reset();
 
@@ -327,9 +332,17 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
      */
     public abstract void invalidate();
 
+    /**
+     * Checks that the calling thread holds the write-lock, with or without assertions enabled: a change
+     * without it races the serialization of the chunk packet under the read-lock.
+     *
+     * @throws IllegalStateException if the calling thread does not hold the write-lock
+     */
     @ApiStatus.Internal
     protected final void assertWriteLock() {
-        assert holdsWriteLock() : "Not holding write-lock for chunk " + chunkX + "," + chunkZ;
+        if (!holdsWriteLock())
+            throw new IllegalStateException("Chunk " + chunkX + "," + chunkZ + " changed without its write-lock: "
+                    + "use Instance#setBlock or Instance#setBiome, or hold lockWriteLock() around the change");
     }
 
     @ApiStatus.Internal

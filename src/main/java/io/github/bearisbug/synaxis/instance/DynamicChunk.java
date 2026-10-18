@@ -1,6 +1,5 @@
 package io.github.bearisbug.synaxis.instance;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.nbt.LongArrayBinaryTag;
@@ -45,8 +44,6 @@ public class DynamicChunk extends Chunk {
     private static final Logger LOGGER = LoggerFactory.getLogger(DynamicChunk.class);
 
     protected final List<Section> sections;
-
-    private volatile boolean needsCompleteHeightmapRefresh = true;
 
     @SuppressWarnings("this-escape") // deliberate self registration during construction
     protected Heightmap motionBlocking = new MotionBlockingHeightmap(this);
@@ -93,6 +90,9 @@ public class DynamicChunk extends Chunk {
         int sectionRelativeX = globalToSectionRelative(x);
         int sectionRelativeZ = globalToSectionRelative(z);
 
+        final BlockHandler handler = block.handler();
+        // The block replaced, for the placement of the handler when it had no entry
+        final int previousStateId = handler != null ? section.blockPalette().get(sectionRelativeX, globalToSectionRelative(y), sectionRelativeZ) : 0;
         section.blockPalette().set(
                 sectionRelativeX,
                 globalToSectionRelative(y),
@@ -102,7 +102,6 @@ public class DynamicChunk extends Chunk {
 
         final int index = CoordConversion.chunkBlockIndex(x, y, z);
         // Handler
-        final BlockHandler handler = block.handler();
         final Block lastCachedBlock;
         if (handler != null || block.hasNbt() || block.blockEntityType() != null) {
             lastCachedBlock = this.entries.put(index, block);
@@ -116,6 +115,10 @@ public class DynamicChunk extends Chunk {
             this.tickableMap.remove(index);
         }
 
+        // UpdateHeightMaps, before the handlers: one that throws leaves them matching the palette
+        motionBlocking.refresh(sectionRelativeX, y, sectionRelativeZ, block);
+        worldSurface.refresh(sectionRelativeX, y, sectionRelativeZ, block);
+
         // Update block handlers
         if (lastCachedBlock != null && lastCachedBlock.handler() != null) {
             // Previous destroy
@@ -124,16 +127,11 @@ public class DynamicChunk extends Chunk {
         }
         if (handler != null) {
             // New placement
-            final Block finalBlock = block;
             final Point placePoint = CoordConversion.chunkBlockRelativeGetGlobal(sectionRelativeX, y, sectionRelativeZ, chunkX, chunkZ);
             handler.onPlace(Objects.requireNonNullElseGet(placement,
-                    () -> new BlockHandler.Placement(finalBlock, Objects.requireNonNullElseGet(lastCachedBlock, () -> this.getBlock(placePoint, Condition.TYPE)), instance, placePoint)));
+                    () -> new BlockHandler.Placement(block, Objects.requireNonNullElseGet(lastCachedBlock,
+                            () -> Objects.requireNonNullElse(Block.fromStateId(previousStateId), Block.AIR)), instance, placePoint)));
         }
-
-        // UpdateHeightMaps
-        if (needsCompleteHeightmapRefresh) calculateFullHeightmap();
-        motionBlocking.refresh(sectionRelativeX, y, sectionRelativeZ, block);
-        worldSurface.refresh(sectionRelativeX, y, sectionRelativeZ, block);
     }
 
     @Override
@@ -185,33 +183,42 @@ public class DynamicChunk extends Chunk {
 
     @Override
     public void tick(long time) {
+        // Only while the instance holds this chunk: InstanceContainer signals the partition of a chunk
+        // before caching it and drops a chunk before deleting its partition, and a handler looks its
+        // own position up in the instance
+        if (instance.getChunk(chunkX, chunkZ) != this) return;
         // Outside the simulation distance of the instance no block handler ticks (docs/DESIGN-M3.md API-M3-006)
         if (!instance.isChunkSimulated(chunkX, chunkZ)) return;
         // Snapshot under the read-lock: setBlock writes tickableMap from any thread, and a handler
         // making its own block non-tickable removes an entry, which makes an open hash map shift the
         // following entries down and an in-flight iteration skip them
         final int[] indexes;
-        final Block[] blocks;
         lockReadLock();
         try {
             if (tickableMap.isEmpty()) return;
-            indexes = new int[tickableMap.size()];
-            blocks = new Block[indexes.length];
-            int i = 0;
-            for (var entry : Int2ObjectMaps.fastIterable(tickableMap)) {
-                indexes[i] = entry.getIntKey();
-                blocks[i] = entry.getValue();
-                i++;
-            }
+            indexes = tickableMap.keySet().toIntArray();
         } finally {
             unlockReadLock();
         }
-        for (int i = 0; i < indexes.length; i++) {
-            final Block block = blocks[i];
+        for (final int index : indexes) {
+            // Read again: a handler ticked before may have replaced this block
+            final Block block;
+            lockReadLock();
+            try {
+                block = tickableMap.get(index);
+            } finally {
+                unlockReadLock();
+            }
+            if (block == null) continue;
             final BlockHandler handler = block.handler();
             if (handler == null) continue;
-            final Point blockPosition = CoordConversion.chunkBlockIndexGetGlobal(indexes[i], chunkX, chunkZ);
-            handler.tick(new BlockHandler.Tick(block, instance, blockPosition));
+            final Point blockPosition = CoordConversion.chunkBlockIndexGetGlobal(index, chunkX, chunkZ);
+            try {
+                handler.tick(new BlockHandler.Tick(block, instance, blockPosition));
+            } catch (RuntimeException e) {
+                // One failing handler does not stop the others of the chunk
+                instance.process().exception().handleException(e);
+            }
         }
     }
 
@@ -268,11 +275,14 @@ public class DynamicChunk extends Chunk {
         assertWriteLock();
         for (Section section : sections) section.clear();
         this.entries.clear();
+        this.tickableMap.clear();
+        invalidate();
     }
 
     @Override
     public void invalidate() {
-        this.needsCompleteHeightmapRefresh = true;
+        this.motionBlocking.invalidate();
+        this.worldSurface.invalidate();
         this.chunkCache.invalidate();
     }
 
@@ -284,7 +294,9 @@ public class DynamicChunk extends Chunk {
         } finally {
             unlockWriteLock();
         }
-        // Compute light data outside any locks. This *should* prevent deadlocks
+        // Light outside the chunk locks: LightingChunk reads its 3x3 neighbours under their read-locks and
+        // relights under the instance monitor, where InstanceContainer#setBlock waits for chunk write-locks.
+        // A change between these three steps invalidates chunkCache, which then does not keep this packet.
         var lightData = createLightData(true);
 
         lockReadLock();
@@ -361,20 +373,17 @@ public class DynamicChunk extends Chunk {
         );
     }
 
+    /**
+     * The heightmaps of the chunk packet, computing the stale ones first, which writes them: the caller
+     * holds the write-lock.
+     *
+     * @return the encoded heightmaps by type
+     */
     protected Map<Heightmap.Type, long[]> getHeightmaps() {
-        assertReadLock();
-        if (needsCompleteHeightmapRefresh) calculateFullHeightmap();
+        assertWriteLock();
         return Map.of(
                 motionBlocking.type(), motionBlocking.getNBT(),
                 worldSurface.type(), worldSurface.getNBT()
         );
-    }
-
-    private void calculateFullHeightmap() {
-        assertWriteLock();
-        final int startY = Heightmap.getHighestBlockSection(this);
-        this.motionBlocking.refresh(startY);
-        this.worldSurface.refresh(startY);
-        this.needsCompleteHeightmapRefresh = false;
     }
 }

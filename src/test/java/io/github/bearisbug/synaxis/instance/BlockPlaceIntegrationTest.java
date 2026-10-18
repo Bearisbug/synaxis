@@ -1,11 +1,13 @@
 package io.github.bearisbug.synaxis.instance;
 
+import net.kyori.adventure.key.Key;
 import io.github.bearisbug.synaxis.component.DataComponents;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.PlayerHand;
 import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.player.PlayerBlockPlaceEvent;
 import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.coordinate.BlockFace;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
@@ -15,6 +17,9 @@ import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerBlockP
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -99,4 +104,32 @@ public class BlockPlaceIntegrationTest {
         placeCollector.assertSingle(event -> assertTrue(event.shouldDoBlockUpdates()));
     }
 
+    // A placement the engine builds (Instance#setBlock) hands the handler the block it replaced, not the
+    // block placed; one with a handler of its own was handed over already
+    @Test
+    void theHandlerOfAPlacedBlockGetsTheBlockItReplaced(Env env) {
+        Instance instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+        final List<BlockHandler.Placement> placements = new CopyOnWriteArrayList<>();
+        final BlockHandler handler = new BlockHandler() {
+            @Override
+            public void onPlace(Placement placement) {
+                placements.add(placement);
+            }
+
+            @Override
+            public Key getKey() {
+                return Key.key("test:recording");
+            }
+        };
+
+        instance.setBlock(0, 41, 0, Block.STONE);
+        instance.setBlock(0, 41, 0, Block.FURNACE.withHandler(handler));
+        instance.setBlock(0, 41, 0, Block.CHEST.withHandler(handler));
+
+        assertEquals(2, placements.size());
+        assertEquals(Block.STONE, placements.get(0).getPreviousBlock(), "the block a handler block replaced");
+        assertEquals(Block.FURNACE.withHandler(handler), placements.get(1).getPreviousBlock(),
+                "the handler block a handler block replaced");
+    }
 }

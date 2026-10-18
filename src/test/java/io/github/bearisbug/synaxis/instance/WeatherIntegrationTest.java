@@ -51,4 +51,11 @@ public class WeatherIntegrationTest {
         assertEquals(ChangeGameStatePacket.Reason.RAIN_LEVEL_CHANGE, state.reason());
         assertEquals(0.5f, state.value());
     }
+
+    @Test
+    public void eachOperatorChangesItsOwnLevel() {
+        assertEquals(new Weather(0, 0.5f), Weather.CLEAR.withThunderLevel(_ -> 0.5f));
+        assertEquals(new Weather(1, 0.5f), Weather.THUNDER.withThunderLevel(thunder -> thunder / 2));
+        assertEquals(new Weather(0.5f, 1), Weather.THUNDER.withRainLevel(rain -> rain / 2));
+    }
 }

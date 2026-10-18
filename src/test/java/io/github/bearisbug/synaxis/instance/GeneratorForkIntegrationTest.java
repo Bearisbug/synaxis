@@ -8,9 +8,14 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 public class GeneratorForkIntegrationTest {
@@ -122,5 +127,51 @@ public class GeneratorForkIntegrationTest {
             assertThrows(IllegalStateException.class, () -> u.modifier().fillBiome(Biome.PLAINS));
         });
         instance.loadChunk(0, 0).join();
+    }
+
+    // A fork made on a section of subdivide() lands in the neighbour like a fork made on the chunk unit
+    @Test
+    public void aForkOfASubdividedSectionLands(Env env) {
+        var instance = env.process().instance().createInstanceContainer();
+        instance.setGenerator(unit -> {
+            if (unit.absoluteStart().chunkX() != 0 || unit.absoluteStart().chunkZ() != 0) return;
+            unit.subdivide().getFirst().fork(setter -> setter.setBlock(16, -64, 0, Block.STONE));
+        });
+        instance.loadChunk(0, 0).join();
+        instance.loadChunk(1, 0).join();
+        assertEquals(Block.STONE, instance.getBlock(16, -64, 0));
+    }
+
+    // Chunk 1 is past its own processFork, in onGenerate, and not cached yet when chunk 0 forks into it:
+    // the fork is kept for it and lands once it is cached
+    @Test
+    public void aForkIntoAChunkBetweenItsGenerationAndItsCachingLands(Env env) throws InterruptedException {
+        var instance = env.process().instance().createInstanceContainer();
+        final CountDownLatch generating = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        instance.setChunkSupplier((owner, x, z) -> new DynamicChunk(owner, x, z) {
+            @Override
+            public void onGenerate() {
+                if (getChunkX() != 1 || getChunkZ() != 0) return;
+                generating.countDown();
+                try {
+                    boolean _ = release.await(10, TimeUnit.SECONDS);
+                } catch (InterruptedException _) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+        instance.setGenerator(unit -> {
+            if (unit.absoluteStart().chunkX() != 0 || unit.absoluteStart().chunkZ() != 0) return;
+            unit.fork(setter -> setter.setBlock(16, -64, 0, Block.STONE));
+        });
+
+        final CompletableFuture<Chunk> neighbour = instance.loadChunk(1, 0);
+        assertTrue(generating.await(10, TimeUnit.SECONDS), "chunk 1 reached onGenerate");
+        instance.loadChunk(0, 0).join();
+        release.countDown();
+        neighbour.join();
+
+        assertEquals(Block.STONE, instance.getBlock(16, -64, 0));
     }
 }

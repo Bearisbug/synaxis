@@ -5,12 +5,15 @@ import net.kyori.adventure.nbt.CompoundBinaryTag;
 import io.github.bearisbug.synaxis.registry.BuiltinRegistries;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
+import io.github.bearisbug.synaxis.world.DimensionType;
 import org.junit.jupiter.api.Test;
 
 import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
@@ -72,5 +75,32 @@ public class InstanceTimeIntegrationTest {
 
         assertEquals(5, defaultClock.time());
         assertEquals(10, otherClock.time());
+    }
+
+    // The vanilla nether has no default clock: setTime(long) has no time to set
+    @Test
+    void setTimeWithoutADefaultClockThrows(Env env) {
+        var instance = env.process().instance().createInstanceContainer(DimensionType.THE_NETHER);
+        assertNull(instance.defaultClock());
+        assertEquals(-1, instance.getTime());
+
+        var thrown = assertThrows(IllegalStateException.class, () -> instance.setTime(6000));
+        assertTrue(thrown.getMessage().contains("minecraft:the_nether"), thrown.getMessage());
+
+        var overworld = env.createEmptyInstance();
+        overworld.setTime(6000);
+        assertEquals(6000, overworld.getTime(), "the overworld has its default clock");
+    }
+
+    // NaN or infinity would stay in the partial tick for good, a rate set again would not bring the clock back
+    @Test
+    void aRateThatIsNotAFiniteNumberIsRefused(Env env) {
+        var clock = Objects.requireNonNull(env.createEmptyInstance().defaultClock());
+        assertThrows(IllegalArgumentException.class, () -> clock.rate(Float.NaN));
+        assertThrows(IllegalArgumentException.class, () -> clock.rate(Float.POSITIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class, () -> clock.rate(-1));
+        assertEquals(1f, clock.rate());
+        env.tick();
+        assertEquals(1, clock.time());
     }
 }

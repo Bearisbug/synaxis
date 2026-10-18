@@ -15,6 +15,8 @@ public sealed interface Clock permits Instance.ClockInstance {
     /// Sets the rate at which the clock advances per tick, in partial ticks.
     ///
     /// The default is 1 (advance one tick per tick).
+    ///
+    /// @throws IllegalArgumentException if `rate` is negative or not finite
     void rate(float rate);
 
     /// Returns the current time (in ticks).

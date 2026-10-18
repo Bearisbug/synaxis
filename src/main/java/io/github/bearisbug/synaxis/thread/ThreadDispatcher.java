@@ -118,14 +118,40 @@ public sealed interface ThreadDispatcher<P, E extends Tickable> permits ThreadDi
      */
     void signalUpdate(ThreadDispatcher.Update<P, E> update);
 
+    /**
+     * Signals a new partition, which the dispatcher has from the next processing of the updates on. A
+     * partition that is a {@link Tickable} ticks as an element of itself; signalling a partition the
+     * dispatcher already has does nothing.
+     * <p>
+     * This signal has to be queued before any {@link #updateElement} pointing at the partition: an
+     * update processed while the partition does not exist takes the element out of every partition,
+     * and the element stops ticking.
+     *
+     * @param partition the partition
+     */
     default void createPartition(P partition) {
         signalUpdate(new Update.PartitionLoad<>(partition));
     }
 
+    /**
+     * Signals that a partition is gone. The elements in it stop ticking with it, until an
+     * {@link #updateElement} puts them in another partition.
+     *
+     * @param partition the partition
+     */
     default void deletePartition(P partition) {
         signalUpdate(new Update.PartitionUnload<>(partition));
     }
 
+    /**
+     * Signals that {@code element} belongs to {@code partition}, which it moves to at the next processing
+     * of the updates. The {@link #createPartition} of that partition has to be queued before this
+     * update: processed while the partition does not exist, the update takes the element out of every
+     * partition, and the element stops ticking.
+     *
+     * @param element   the element
+     * @param partition the partition it belongs to now
+     */
     default void updateElement(E element, P partition) {
         signalUpdate(new Update.ElementUpdate<>(element, partition));
     }

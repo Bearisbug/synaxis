@@ -18,6 +18,7 @@ import java.util.List;
 
 import static io.github.bearisbug.synaxis.testing.TestUtils.assertPoint;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnvTest
 public class InstanceBlockPacketIntegrationTest {
@@ -87,5 +88,37 @@ public class InstanceBlockPacketIntegrationTest {
         });
 
         assertEquals(block, instance.getBlock(blockPoint));
+    }
+
+    // A handler throwing in onPlace once the chunk has the block: the viewers are told the block the
+    // chunk holds, and its heightmap has it, before the exception goes on to the caller
+    @Test
+    public void aThrowingPlacementStillTellsTheViewers(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        connection.connect(instance, new Pos(0, 40, 0));
+        var blockPoint = new Vec(5, 45, 0);
+        final BlockHandler throwing = new BlockHandler() {
+            @Override
+            public void onPlace(Placement placement) {
+                throw new IllegalStateException("a failing placement");
+            }
+
+            @Override
+            public Key getKey() {
+                return Key.key("test:throwing");
+            }
+        };
+
+        var tracker = connection.trackIncoming(BlockChangePacket.class);
+        assertThrows(IllegalStateException.class, () -> instance.setBlock(blockPoint, Block.STONE.withHandler(throwing)));
+
+        tracker.assertSingle(packet -> {
+            assertPoint(blockPoint, packet.blockPosition());
+            assertEquals(Block.STONE.stateId(), packet.blockStateId());
+        });
+        assertEquals(Block.STONE.stateId(), instance.getBlock(blockPoint).stateId());
+        assertEquals(45, instance.getChunkAt(blockPoint).motionBlockingHeightmap().getHeight(5, 0),
+                "the heightmap of the column");
     }
 }

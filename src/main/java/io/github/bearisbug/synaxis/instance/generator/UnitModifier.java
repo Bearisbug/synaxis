@@ -5,6 +5,12 @@ import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.world.biome.Biome;
 
+/**
+ * Writes the blocks and biomes of a {@link GenerationUnit}. {@code setBlock} and {@code setBiome} take
+ * absolute coordinates: a chunk or area unit, and a fork, throws {@link IllegalArgumentException} for a
+ * point outside it, while the unit of a single section ({@link GenerationUnit#subdivide()}) keeps only the
+ * low 4 bits of each coordinate.
+ */
 public interface UnitModifier extends Block.Setter, Biome.Setter {
     /**
      * Sets the block relative to the absolute position of the unit.
@@ -13,6 +19,7 @@ public interface UnitModifier extends Block.Setter, Biome.Setter {
      * @param y     the y coordinate
      * @param z     the z coordinate
      * @param block the block to set
+     * @throws IllegalArgumentException if the coordinates are outside the unit
      */
     void setRelative(int x, int y, int z, Block block);
 
@@ -39,9 +46,13 @@ public interface UnitModifier extends Block.Setter, Biome.Setter {
 
     /**
      * Fills the 3d rectangular area with the given block.
+     * <p>
+     * A chunk or area unit, and a fork, throws {@link IllegalArgumentException} once it reaches a point
+     * of the area outside the unit; the unit of a single section fills the part of the area inside it
+     * and ignores the rest.
      *
      * @param start the start (min) point of the area
-     * @param end   the end (max) point of the area
+     * @param end   the end (max, exclusive) point of the area
      * @param block the block to fill
      */
     void fill(Point start, Point end, Block block);

@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.EntityType;
 import io.github.bearisbug.synaxis.network.packet.server.play.WorldBorderLerpSizePacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.WorldBorderSizePacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
@@ -84,11 +85,49 @@ public class WorldBorderIntegrationTest {
         Instance instance = env.createFlatInstance();
 
         WorldBorder border = instance.getWorldBorder();
-        assertThrows(IllegalStateException.class, () -> instance.setWorldBorder(border, -1));
+        assertThrows(IllegalArgumentException.class, () -> instance.setWorldBorder(border, -1));
+        assertThrows(IllegalArgumentException.class, () -> instance.setWorldBorder(border, Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> instance.setWorldBorder(border, Double.POSITIVE_INFINITY));
         assertThrows(IllegalArgumentException.class, () -> border.withDiameter(-1));
         assertThrows(IllegalArgumentException.class, () -> border.withDiameter(Double.NaN));
+        // Shrinking from an infinite diameter computes NaN on every tick of the transition
+        assertThrows(IllegalArgumentException.class, () -> border.withDiameter(Double.POSITIVE_INFINITY));
         assertThrows(IllegalArgumentException.class, () -> border.withCenter(Double.NaN, 0));
         assertThrows(IllegalArgumentException.class, () -> border.withCenter(0, Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> border.withCenter(Double.NEGATIVE_INFINITY, 0));
+        assertThrows(IllegalArgumentException.class, () -> border.withCenter(0, Double.POSITIVE_INFINITY));
+    }
+
+    /**
+     * Setting the border of the same diameter in the middle of a transition stops the server's: the
+     * client lerping to the old target is told the size where the server stopped, whether the border is
+     * set again as it is or with another center.
+     */
+    @Test
+    public void stoppingATransitionTellsTheClientTheSize(Env env) {
+        Instance instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        connection.connect(instance, new Pos(0, 42, 0));
+        WorldBorder border = instance.getWorldBorder();
+        instance.setWorldBorder(border.withDiameter(100));
+
+        instance.setWorldBorder(border.withDiameter(50), 1);
+        for (int i = 0; i < 5; i++) instance.tick(0);
+        var size = connection.trackIncoming(WorldBorderSizePacket.class);
+        var lerp = connection.trackIncoming(WorldBorderLerpSizePacket.class);
+        final WorldBorder frozen = instance.getWorldBorder();
+        instance.setWorldBorder(frozen);
+        size.assertSingle(packet -> assertEquals(frozen.diameter(), packet.diameter(), "size sent when frozen as it is"));
+        lerp.assertEmpty();
+        for (int i = 0; i < 5; i++) instance.tick(0);
+        assertEquals(frozen.diameter(), instance.getWorldBorder().diameter(), "the server stopped there");
+
+        instance.setWorldBorder(border.withDiameter(50), 1);
+        for (int i = 0; i < 5; i++) instance.tick(0);
+        var movedSize = connection.trackIncoming(WorldBorderSizePacket.class);
+        final WorldBorder moving = instance.getWorldBorder();
+        instance.setWorldBorder(moving.withCenter(10, 10));
+        movedSize.assertSingle(packet -> assertEquals(moving.diameter(), packet.diameter(), "size sent when the center moves"));
     }
 
     @Test

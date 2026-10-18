@@ -40,15 +40,15 @@ public final class GeneratorImpl {
 
     static GenerationUnit section(DynamicRegistry<Biome> biomeRegistry, GenSection section,
                                   int sectionX, int sectionY, int sectionZ,
-                                  boolean fork) {
+                                  boolean fork, List<UnitImpl> forks) {
         final BlockVec start = BlockVec.SECTION.mul(sectionX, sectionY, sectionZ);
         final BlockVec end = start.add(BlockVec.SECTION);
         final UnitModifier modifier = new SectionModifierImpl(biomeRegistry, start, end, section, fork);
-        return unit(biomeRegistry, modifier, start, end, null);
+        return unit(biomeRegistry, modifier, start, end, null, forks);
     }
 
     public static GenerationUnit section(DynamicRegistry<Biome> biomeRegistry, GenSection section, int sectionX, int sectionY, int sectionZ) {
-        return section(biomeRegistry, section, sectionX, sectionY, sectionZ, false);
+        return section(biomeRegistry, section, sectionX, sectionY, sectionZ, false, new CopyOnWriteArrayList<>());
     }
 
     public static UnitImpl chunk(DynamicRegistry<Biome> biomeRegistry, GenSection[] chunkSections, int chunkX, int minSection, int chunkZ) {
@@ -61,40 +61,49 @@ public final class GeneratorImpl {
         final int sectionCount = width * height * depth;
         Check.argCondition(sectionCount != areaSections.length, "Invalid section count, expected {0} but got {1}", sectionCount, areaSections.length);
         GenerationUnit[] sectionsArray = new GenerationUnit[sectionCount];
+        // One table for the area and its sections: a fork made on a section of subdivide() is the area's
+        final List<UnitImpl> forks = new CopyOnWriteArrayList<>();
         final int startSectionX = start.sectionX(), startSectionY = start.sectionY(), startSectionZ = start.sectionZ();
         for (int i = 0; i < sectionCount; i++) {
             GenSection section = areaSections[i];
             final int sectionX = indexToX(i, width) + startSectionX;
             final int sectionY = indexToY(i, width, height) + startSectionY;
             final int sectionZ = indexToZ(i, width, height) + startSectionZ;
-            final GenerationUnit sectionUnit = section(biomeRegistry, section, sectionX, sectionY, sectionZ);
+            final GenerationUnit sectionUnit = section(biomeRegistry, section, sectionX, sectionY, sectionZ, false, forks);
             sectionsArray[i] = sectionUnit;
         }
         final List<GenerationUnit> sections = List.of(sectionsArray);
         final BlockVec size = BlockVec.SECTION.mul(width, height, depth);
         final BlockVec end = start.add(size);
         final UnitModifier modifier = new AreaModifierImpl(size, start, end, width, height, depth, sections);
-        return unit(biomeRegistry, modifier, start, end, sections);
+        return unit(biomeRegistry, modifier, start, end, sections, forks);
     }
 
     public static UnitImpl unit(DynamicRegistry<Biome> biomeRegistry, UnitModifier modifier, BlockVec start, BlockVec end,
                                 @Nullable List<GenerationUnit> divided) {
+        return unit(biomeRegistry, modifier, start, end, divided, new CopyOnWriteArrayList<>());
+    }
+
+    static UnitImpl unit(DynamicRegistry<Biome> biomeRegistry, UnitModifier modifier, BlockVec start, BlockVec end,
+                         @Nullable List<GenerationUnit> divided, List<UnitImpl> forks) {
         Check.argCondition(start.blockX() > end.blockX() || start.blockY() > end.blockY() || start.blockZ() > end.blockZ(), "absoluteStart must be before absoluteEnd, got {0} and {1}", start, end);
         Check.argCondition(start.blockX() % SECTION_SIZE != 0 || start.blockY() % SECTION_SIZE != 0 || start.blockZ() % SECTION_SIZE != 0, "absoluteStart must be a multiple of 16");
         Check.argCondition(end.blockX() % SECTION_SIZE != 0 || end.blockY() % SECTION_SIZE != 0 || end.blockZ() % SECTION_SIZE != 0, "absoluteEnd must be a multiple of 16");
         final BlockVec size = end.sub(start);
-        return new UnitImpl(biomeRegistry, modifier, size, start, end, divided, new CopyOnWriteArrayList<>());
+        return new UnitImpl(biomeRegistry, modifier, size, start, end, divided, forks);
     }
 
     static final class DynamicFork implements Block.Setter {
         final DynamicRegistry<Biome> biomeRegistry;
+        final List<UnitImpl> forks;
         @Nullable Fork fork;
 
         record Fork(BlockVec minSection, int width, int height, int depth, List<GenerationUnit> sections) {
         }
 
-        DynamicFork(DynamicRegistry<Biome> biomeRegistry) {
+        DynamicFork(DynamicRegistry<Biome> biomeRegistry, List<UnitImpl> forks) {
             this.biomeRegistry = biomeRegistry;
+            this.forks = forks;
         }
 
         @Override
@@ -116,7 +125,7 @@ public final class GeneratorImpl {
             final Fork fork = this.fork;
             if (fork == null) {
                 var minSection = BlockVec.SECTION.mul(sectionX, sectionY, sectionZ);
-                var sections = List.of(section(biomeRegistry, new GenSection(), sectionX, sectionY, sectionZ, true));
+                var sections = List.of(section(biomeRegistry, new GenSection(), sectionX, sectionY, sectionZ, true, forks));
                 this.fork = new Fork(minSection, 1, 1, 1, sections);
                 return;
             }
@@ -158,7 +167,7 @@ public final class GeneratorImpl {
                     final int newX = indexToX(i, newWidth) + startX;
                     final int newY = indexToY(i, newWidth, newHeight) + startY;
                     final int newZ = indexToZ(i, newWidth, newHeight) + startZ;
-                    final GenerationUnit unit = section(biomeRegistry, new GenSection(), newX, newY, newZ, true);
+                    final GenerationUnit unit = section(biomeRegistry, new GenSection(), newX, newY, newZ, true, forks);
                     newSections[i] = unit;
                 }
             }
@@ -169,6 +178,11 @@ public final class GeneratorImpl {
     public record UnitImpl(DynamicRegistry<Biome> biomeRegistry, UnitModifier modifier,
                            BlockVec size, BlockVec absoluteStart, BlockVec absoluteEnd,
                            @Nullable List<GenerationUnit> divided,
+                           // The forks of the whole unit tree: created with its root (chunk, area, or a
+                           // standalone section or unit), shared by the sections of subdivide() and by every
+                           // fork and its sections, nested ones included. Appended from whichever threads the
+                           // generator writes on, hence copy-on-write; the instance reads the root's once
+                           // Generator#generate returned
                            List<UnitImpl> forks) implements GenerationUnit {
         @Override
         public GenerationUnit fork(Point start, Point end) {
@@ -188,7 +202,7 @@ public final class GeneratorImpl {
             for (int sectionZ = minSectionZ; sectionZ < maxSectionZ; sectionZ++) {
                 for (int sectionY = minSectionY; sectionY < maxSectionY; sectionY++) {
                     for (int sectionX = minSectionX; sectionX < maxSectionX; sectionX++) {
-                        final GenerationUnit unit = section(biomeRegistry, new GenSection(), sectionX, sectionY, sectionZ, true);
+                        final GenerationUnit unit = section(biomeRegistry, new GenSection(), sectionX, sectionY, sectionZ, true, forks);
                         units[index++] = unit;
                     }
                 }
@@ -200,7 +214,7 @@ public final class GeneratorImpl {
 
         @Override
         public void fork(Consumer<Block.Setter> consumer) {
-            DynamicFork dynamicFork = new DynamicFork(biomeRegistry);
+            DynamicFork dynamicFork = new DynamicFork(biomeRegistry, forks);
             consumer.accept(dynamicFork);
             final DynamicFork.Fork dynamicForkData = dynamicFork.fork;
             if (dynamicForkData == null)
@@ -249,6 +263,9 @@ public final class GeneratorImpl {
 
         @Override
         public void setRelative(int x, int y, int z, Block block) {
+            // Before the special cache takes an index for the coordinates
+            Check.argCondition(x < 0 || x >= SECTION_SIZE || y < 0 || y >= SECTION_SIZE || z < 0 || z >= SECTION_SIZE,
+                    "x, y and z must be in the section: {0}, {1}, {2}", x, y, z);
             handleCache(x, y, z, block);
             this.genSection.blocks.set(x, y, z, retrieveBlockId(block));
         }
@@ -279,23 +296,17 @@ public final class GeneratorImpl {
 
         @Override
         public void fill(Point start, Point end, Block block) {
-            final int startX = start.blockX(), startY = start.blockY(), startZ = start.blockZ();
-            final int endX = end.blockX(), endY = end.blockY(), endZ = end.blockZ();
+            // Only the part inside the section: setBlock keeps the low 4 bits of a coordinate, the rest
+            // of the area would wrap around into the section
             final int sectionStartX = this.start.blockX(), sectionStartY = this.start.blockY(), sectionStartZ = this.start.blockZ();
-            final int sectionEndX = this.end.blockX(), sectionEndY = this.end.blockY(), sectionEndZ = this.end.blockZ();
-            if (startX >= sectionStartX && startY >= sectionStartY && startZ >= sectionStartZ &&
-                    endX <= sectionEndX && endY <= sectionEndY && endZ <= sectionEndZ) {
-                fillRelative(startX - sectionStartX, startY - sectionStartY, startZ - sectionStartZ,
-                        endX - sectionStartX, endY - sectionStartY, endZ - sectionStartZ, block);
-            } else {
-                for (int x = startX; x < endX; x++) {
-                    for (int y = startY; y < endY; y++) {
-                        for (int z = startZ; z < endZ; z++) {
-                            setBlock(x, y, z, block);
-                        }
-                    }
-                }
-            }
+            final int minX = Math.max(start.blockX(), sectionStartX) - sectionStartX;
+            final int minY = Math.max(start.blockY(), sectionStartY) - sectionStartY;
+            final int minZ = Math.max(start.blockZ(), sectionStartZ) - sectionStartZ;
+            final int maxX = Math.min(end.blockX(), this.end.blockX()) - sectionStartX;
+            final int maxY = Math.min(end.blockY(), this.end.blockY()) - sectionStartY;
+            final int maxZ = Math.min(end.blockZ(), this.end.blockZ()) - sectionStartZ;
+            if (minX >= maxX || minY >= maxY || minZ >= maxZ) return;
+            fillRelative(minX, minY, minZ, maxX, maxY, maxZ, block);
         }
 
         @Override

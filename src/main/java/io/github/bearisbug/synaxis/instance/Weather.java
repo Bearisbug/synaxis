@@ -58,7 +58,7 @@ public record Weather(float rainLevel, float thunderLevel) {
 
     @Contract(pure = true)
     public Weather withThunderLevel(FloatUnaryOperator operator) {
-        return withRainLevel(operator.apply(thunderLevel));
+        return withThunderLevel(operator.apply(thunderLevel));
     }
 
     public ChangeGameStatePacket createIsRainingPacket() {

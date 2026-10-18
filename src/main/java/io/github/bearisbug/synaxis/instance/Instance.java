@@ -538,7 +538,8 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         refreshTime();
     }
 
-    /// Returns the current time (in ticks) of the default clock, or -1 if there is no default clock
+    /// Returns the current time (in ticks) of the default clock, or -1 if the dimension has no default clock
+    /// ([DimensionType#defaultClock()]).
     public long getTime() {
         var clock = defaultClock();
         return clock != null ? clock.time() : -1;
@@ -551,10 +552,15 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         return clock(clock).time();
     }
 
-    /// Sets the current time (in ticks) of the default clock, or -1 if there is no default clock
+    /// Sets the current time (in ticks) of the default clock.
+    ///
+    /// @throws IllegalStateException if the dimension has no default clock ([DimensionType#defaultClock()]):
+    ///         [#setTime(RegistryKey, long)] sets the time of one of its clocks
     public void setTime(long time) {
         var clock = defaultClock();
-        if (clock != null) clock.time(time);
+        if (clock == null) throw new IllegalStateException("The dimension " + dimensionType.key().asString()
+                + " has no default clock: set the time of one of its clocks with setTime(clock, time)");
+        clock.time(time);
     }
 
     /// Sets the current time (in ticks) of the given clock.
@@ -610,9 +616,11 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * @param worldBorder    the desired final state of the world border
      * @param transitionTime the time in seconds this world border's diameter
      *                       will transition for (0 makes this instant)
+     * @throws IllegalArgumentException if {@code transitionTime} is negative or not finite
      */
     public void setWorldBorder(WorldBorder worldBorder, double transitionTime) {
-        Check.stateCondition(transitionTime < 0, "Transition time cannot be lower than 0");
+        if (!Double.isFinite(transitionTime) || transitionTime < 0)
+            throw new IllegalArgumentException("Transition time must be a finite number of seconds >= 0 but was " + transitionTime);
         long transitionMilliseconds = (long) (transitionTime * 1000);
         long transitionTicks = transitionMilliseconds / MinecraftServer.TICK_MS;
         sendNewWorldBorderPackets(worldBorder, transitionTicks);
@@ -639,8 +647,9 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     }
 
     private void sendNewWorldBorderPackets(WorldBorder newBorder, long transitionTicks) {
-        // Only send the relevant border packets
-        if (this.worldBorder.diameter() != newBorder.diameter()) {
+        // Only send the relevant border packets; the size during a transition too, the client keeps
+        // lerping to the old target otherwise
+        if (remainingWorldBorderTransitionTicks > 0 || this.worldBorder.diameter() != newBorder.diameter()) {
             if (transitionTicks == 0) sendGroupedPacket(newBorder.createSizePacket());
             else sendGroupedPacket(this.worldBorder.createLerpSizePacket(newBorder.diameter(), transitionTicks));
         }
@@ -951,11 +960,14 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     }
 
     /**
-     * Sets the chunk view distance of this instance
+     * Sets the chunk view distance of this instance, 0 or more. A subclass writing the field
+     * {@code chunkViewDistance} directly bypasses this check.
      *
      * @param newViewDistance the new view distance
+     * @throws IllegalArgumentException if {@code newViewDistance} is negative
      */
     public void viewDistance(int newViewDistance) {
+        Check.argCondition(newViewDistance < 0, "view distance must be >= 0 but was {0}", newViewDistance);
         final int oldViewDistance = this.chunkViewDistance;
         if (oldViewDistance == newViewDistance) return;
         this.chunkViewDistance = newViewDistance;
@@ -1363,7 +1375,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
 
         @Override
         public void rate(float rate) {
-            Check.argCondition(rate < 0, "rate cannot be negative");
+            Check.argCondition(!Float.isFinite(rate) || rate < 0, "rate must be finite and >= 0 but was " + rate);
             this.rate = rate;
             refreshTime();
         }

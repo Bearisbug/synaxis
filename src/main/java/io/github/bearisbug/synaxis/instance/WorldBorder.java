@@ -9,20 +9,19 @@ import io.github.bearisbug.synaxis.network.packet.server.play.WorldBorderLerpSiz
 import io.github.bearisbug.synaxis.network.packet.server.play.WorldBorderSizePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.WorldBorderWarningDelayPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.WorldBorderWarningReachPacket;
-import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Contract;
 
 /**
  * Represents the world border state of an {@link Instance},
  * can be retrieved with {@link Instance#getWorldBorder()}.
  *
- * @param diameter                  the diameter of this world border
- * @param centerX                   the center x coordinate of this world border
- * @param centerZ                   the center z coordinate of this world border
+ * @param diameter                  the diameter of this world border, in blocks
+ * @param centerX                   the center x coordinate of this world border, in blocks
+ * @param centerZ                   the center z coordinate of this world border, in blocks
  * @param warningDistance           the distance from this world border before
- *                                  the warning indicator is displayed
+ *                                  the warning indicator is displayed, in blocks
  * @param warningTime               the length of time the warning indicator
- *                                  is displayed
+ *                                  is displayed, in seconds
  * @param dimensionTeleportBoundary restricts the distance travelled when entering
  *                                  this world from another dimension (should be at
  *                                  least the diameter of the world border)
@@ -43,11 +42,14 @@ public record WorldBorder(double diameter, double centerX, double centerZ, int w
     }
 
     /**
-     * @throws IllegalArgumentException if {@code diameter} is less than 0 or NaN, or if a center coordinate is NaN
+     * @throws IllegalArgumentException if {@code diameter} is negative or not finite, or if a center coordinate is not finite
      */
     public WorldBorder {
-        Check.argCondition(!(diameter >= 0), "Diameter should be >= 0");
-        Check.argCondition(Double.isNaN(centerX) || Double.isNaN(centerZ), "Center cannot be NaN");
+        // Not finite, the transition of Instance#setWorldBorder computes NaN on every tick
+        if (!Double.isFinite(diameter) || diameter < 0)
+            throw new IllegalArgumentException("Diameter must be finite and >= 0 but was " + diameter);
+        if (!Double.isFinite(centerX) || !Double.isFinite(centerZ))
+            throw new IllegalArgumentException("Center must be finite but was " + centerX + ", " + centerZ);
     }
 
     public WorldBorder(double diameter, double centerX, double centerZ, int warningDistance, int warningTime) {

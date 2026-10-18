@@ -292,6 +292,10 @@ final class PaletteImpl implements Palette {
 
     @Override
     public void copyFrom(Palette source, int offsetX, int offsetY, int offsetZ) {
+        // A negative coordinate would write into the bits of another entry
+        if (offsetX < 0 || offsetY < 0 || offsetZ < 0) {
+            throw new IllegalArgumentException("Offsets cannot be negative: " + offsetX + ", " + offsetY + ", " + offsetZ);
+        }
         if (offsetX == 0 && offsetY == 0 && offsetZ == 0) {
             copyFrom(source);
             return;
@@ -315,10 +319,11 @@ final class PaletteImpl implements Palette {
             return;
         }
 
-        // Fast path: if source is single-value palette
-        if (sourcePalette.bitsPerEntry == 0) {
+        // Fast path: the source is one value, its single value or air when it holds no block
+        if (sourcePalette.bitsPerEntry == 0 || sourcePalette.count == 0) {
             // Fill the region with the single value - optimized loop order
-            final int value = sourcePalette.count;
+            final int value = sourcePalette.bitsPerEntry == 0 ? sourcePalette.count : 0;
+            if (value == 0 && this.count == 0) return;
             final int paletteValue = valueToPaletteIndex(value);
 
             // Direct write to avoid repeated palette lookups
@@ -338,26 +343,6 @@ final class PaletteImpl implements Palette {
                     }
                 }
             }
-            return;
-        }
-
-        // Source is empty, fill target region with air
-        if (sourcePalette.count == 0) {
-            if (this.count == 0) return;
-            final int airPaletteIndex = valueToPaletteIndex(0);
-            int removedBlocks = 0;
-            for (int y = 0; y < maxY; y++) {
-                final int targetY = offsetY + y;
-                for (int z = 0; z < maxZ; z++) {
-                    final int targetZ = offsetZ + z;
-                    for (int x = 0; x < maxX; x++) {
-                        final int targetX = offsetX + x;
-                        final int oldValue = Palettes.write(targetDimension, bitsPerEntry, values, targetX, targetY, targetZ, airPaletteIndex);
-                        if (paletteIndexToValue(oldValue) != 0) removedBlocks++;
-                    }
-                }
-            }
-            this.count -= removedBlocks;
             return;
         }
 
@@ -419,6 +404,12 @@ final class PaletteImpl implements Palette {
         }
         if (sourcePalette.count == 0) {
             fill(0);
+            return;
+        }
+        // A direct source holds the values themselves at its own width, one of another width than the
+        // direct width of this palette is encoded again; any other source is copied as it is
+        if (!sourcePalette.hasPalette() && sourcePalette.bitsPerEntry != directBits) {
+            setAll(sourcePalette::get);
             return;
         }
 

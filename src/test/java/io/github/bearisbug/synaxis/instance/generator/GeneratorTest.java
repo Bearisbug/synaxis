@@ -403,6 +403,61 @@ public class GeneratorTest {
         assertEquals(expectedStones, stones);
     }
 
+    // A fork made on a section of subdivide() is in the forks of the chunk unit, the ones the instance applies
+    @Test
+    public void aForkOfASubdividedSectionIsAForkOfTheChunk() {
+        GenSection[] sections = new GenSection[8];
+        Arrays.setAll(sections, _ -> new GenSection());
+        var chunkUnit = GeneratorImpl.chunk(null, sections, 0, -4, 0);
+        Generator generator = unit -> unit.subdivide().getFirst()
+                .fork(setter -> setter.setBlock(unit.absoluteStart().add(20, 1, 0), Block.STONE));
+        generator.generate(chunkUnit);
+        assertEquals(1, chunkUnit.forks().size(), "forks of the chunk unit");
+    }
+
+    @Test
+    public void aForkOfAForkIsAForkOfTheChunk() {
+        GenSection[] sections = new GenSection[8];
+        Arrays.setAll(sections, _ -> new GenSection());
+        var chunkUnit = GeneratorImpl.chunk(null, sections, 0, -4, 0);
+        Generator generator = unit -> {
+            final GenerationUnit fork = unit.fork(unit.absoluteStart(), unit.absoluteStart().add(16, 16, 16));
+            fork.fork(setter -> setter.setBlock(unit.absoluteStart().add(20, 1, 0), Block.STONE));
+        };
+        generator.generate(chunkUnit);
+        assertEquals(2, chunkUnit.forks().size(), "forks of the chunk unit");
+    }
+
+    // A section unit keeps the low 4 bits of a coordinate: it fills only the part of an area inside it,
+    // the rest would wrap around into it
+    @Test
+    public void aSectionFillsOnlyThePartOfTheAreaInsideIt() {
+        GenSection above = new GenSection();
+        GeneratorImpl.section(null, above, 0, 0, 0).modifier().fill(new BlockVec(0, 20, 0), new BlockVec(16, 24, 16), Block.STONE);
+        assertEquals(0, above.blocks().count(), "blocks of an area above the section");
+
+        GenSection acrossTheTop = new GenSection();
+        GeneratorImpl.section(null, acrossTheTop, 0, 0, 0).modifier().fill(new BlockVec(0, 10, 0), new BlockVec(16, 20, 16), Block.STONE);
+        acrossTheTop.blocks().getAll((x, y, z, value) ->
+                assertEquals(y >= 10 ? Block.STONE.stateId() : 0, value, "at " + x + ", " + y + ", " + z));
+
+        GenSection acrossTheWest = new GenSection();
+        GeneratorImpl.section(null, acrossTheWest, 0, 0, 0).modifier().fill(new BlockVec(-4, 0, 0), new BlockVec(4, 16, 16), Block.STONE);
+        acrossTheWest.blocks().getAll((x, y, z, value) ->
+                assertEquals(x < 4 ? Block.STONE.stateId() : 0, value, "at " + x + ", " + y + ", " + z));
+    }
+
+    @Test
+    public void aSectionRefusesARelativeBlockOutsideItBeforeCachingIt() {
+        GenSection section = new GenSection();
+        var sectionUnit = GeneratorImpl.section(null, section, 0, 0, 0);
+        var special = Block.CHEST.withNbt(CompoundBinaryTag.builder().putString("key", "value").build());
+
+        assertThrows(IllegalArgumentException.class, () -> sectionUnit.modifier().setRelative(16, 0, 0, special));
+        assertThrows(IllegalArgumentException.class, () -> sectionUnit.modifier().setRelative(0, -1, 0, special));
+        assertTrue(section.specials().isEmpty(), "specials " + section.specials());
+    }
+
     @Test
     public void sectionsSingleSection() {
         // Test a unit that covers exactly one section

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 @RegistriesTest
 public class BuilderRegistriesTest {
@@ -33,5 +34,15 @@ public class BuilderRegistriesTest {
         assertNotNull(existing);
         EnvironmentAttributeMap.Builder builder = EnvironmentAttributeMap.builder(existing.attributes());
         assertEquals(existing.attributes(), builder.build());
+    }
+
+    // No default clock unless given one; the one a builder starts from can be cleared
+    @Test
+    public void aDimensionWithoutAClockHasNoDefaultClock(Registries registries) {
+        assertNull(DimensionType.builder().build().defaultClock());
+        DimensionType overworld = registries.dimensionType().get(DimensionType.OVERWORLD);
+        assertNotNull(overworld);
+        assertNotNull(overworld.defaultClock());
+        assertNull(DimensionType.builder(overworld).defaultClock(null).build().defaultClock());
     }
 }

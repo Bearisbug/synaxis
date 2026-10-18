@@ -1,0 +1,5 @@
+# EntityAsyncContinuationIntegrationTest tests=5 failures=1 errors=0 skipped=0
+  FAIL anEntityMovedDuringItsSpawnTicksInTheChunkItWasMovedTo(Env) | EntityAsyncContinuationIntegrationTest.java:202 | org.opentest4j.AssertionFailedError: expected: <DynamicChunk[5:0]> but was: <DynamicChunk[250:250]>
+# AcquirableHandoverTest tests=3 failures=2 errors=0 skipped=1
+  FAIL [1] SYNC | AcquirableHandoverTest.java:220 | org.opentest4j.AssertionFailedError: SYNC held the lock of the thread the element left ==> expected: <true> but was: <false>
+  FAIL [2] LOCK | AcquirableHandoverTest.java:220 | org.opentest4j.AssertionFailedError: LOCK held the lock of the thread the element left ==> expected: <true> but was: <false>

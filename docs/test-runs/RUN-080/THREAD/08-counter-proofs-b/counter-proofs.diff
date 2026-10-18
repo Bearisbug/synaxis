@@ -1,0 +1,70 @@
+diff --git a/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java b/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
+index 0b1447162d..abb726ac16 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
++++ b/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
+@@ -1253,7 +1253,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
+                 spawn();
+                 callEvent(new EntitySpawnEvent(this, instance));
+                 // In the chunk it is in now: a listener may have moved it, or removed it, or sent it elsewhere
+-                if (!isRemoved() && this.instance == instance) refreshCurrentChunk(this.currentChunk);
++                if (!isRemoved() && this.instance == instance) refreshCurrentChunk(Boolean.getBoolean("proof.never") ? this.currentChunk : chunk);
+             } catch (Exception e) {
+                 // Reported through the future, which the caller uses to undo the spawn. Swallowing
+                 // it left the entity in the instance while the tracker had never heard of it:
+diff --git a/src/main/java/io/github/bearisbug/synaxis/thread/AcquirableCollection.java b/src/main/java/io/github/bearisbug/synaxis/thread/AcquirableCollection.java
+index 6efb1421fd..d79ef1eea1 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/thread/AcquirableCollection.java
++++ b/src/main/java/io/github/bearisbug/synaxis/thread/AcquirableCollection.java
+@@ -41,7 +41,7 @@ public class AcquirableCollection<E> implements Collection<Acquirable<E>> {
+                 for (Acquirable<E> element : entry.getValue()) {
+                     // Handed to another thread since it was read: the dispatcher no longer moves it now
+                     // that the global lock is held, it is acquired on its own thread below
+-                    if (element.assignedThread() == tickThread) consumer.accept(element.unwrap());
++                    if (element.assignedThread() == tickThread || !Boolean.getBoolean("proof.never")) consumer.accept(element.unwrap());
+                     else moved.add(element);
+                 }
+             } finally {
+diff --git a/src/main/java/io/github/bearisbug/synaxis/thread/AcquirableImpl.java b/src/main/java/io/github/bearisbug/synaxis/thread/AcquirableImpl.java
+index f5e389ecf1..e9fc0043f8 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/thread/AcquirableImpl.java
++++ b/src/main/java/io/github/bearisbug/synaxis/thread/AcquirableImpl.java
+@@ -36,7 +36,7 @@ final class AcquirableImpl<T> implements Acquirable<T> {
+             return new AcquiredImpl<>(unwrap(), null);
+         }
+         ReentrantLock lock = enterAssigned(assignedThread);
+-        assert isOwned();
++        assert isOwned() || !Boolean.getBoolean("proof.never");
+         return new AcquiredImpl<>(unwrap(), lock);
+     }
+ 
+@@ -63,7 +63,7 @@ final class AcquirableImpl<T> implements Acquirable<T> {
+         }
+         ReentrantLock lock = enterAssigned(assignedThread);
+         try {
+-            assert isOwned();
++            assert isOwned() || !Boolean.getBoolean("proof.never");
+             consumer.accept(unwrap());
+         } finally {
+             leave(lock);
+@@ -154,7 +154,7 @@ final class AcquirableImpl<T> implements Acquirable<T> {
+         while (true) {
+             final ReentrantLock lock = enter(thread);
+             final TickThread assigned = Objects.requireNonNull(this.assignedThread);
+-            if (lock == null || assigned == thread) return lock;
++            if (lock == null || assigned == thread || !Boolean.getBoolean("proof.never")) return lock;
+             leave(lock);
+             thread = assigned;
+         }
+diff --git a/src/main/java/io/github/bearisbug/synaxis/thread/TickThread.java b/src/main/java/io/github/bearisbug/synaxis/thread/TickThread.java
+index 0601d21f68..ca02d7b0f8 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/thread/TickThread.java
++++ b/src/main/java/io/github/bearisbug/synaxis/thread/TickThread.java
+@@ -60,7 +60,7 @@ public class TickThread extends EngineThread {
+             final long waitedBefore = acquireWaitNanos();
+             // An acquirer may hold it from before the tick, blocking on it is a wait of this tick
+             // (docs/DESIGN-PROD.md API-PROD-016)
+-            if (!lock.tryLock()) waited(AcquirableImpl.lockTimed(lock));
++            lock.lock();
+             try {
+                 tick();
+             } catch (Throwable e) {

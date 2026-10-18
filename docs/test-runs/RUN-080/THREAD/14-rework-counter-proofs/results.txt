@@ -1,0 +1,6 @@
+# FailedSpawnRegistrationIntegrationTest tests=2 failures=1 errors=0 skipped=0
+  aPlayerWhoseRegistrationFailsIsDisconnected(Env): org.opentest4j.AssertionFailedError: the player whose registration failed stayed in the world ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.FailedSpawnRegistrationIntegrationTest.aPlayerWhoseRegistrationFailsIsDisconnected(FailedSpawnRegistrationIntegrationTest.java:95)
+# LivingEntityHealthIntegrationTest tests=5 failures=1 errors=0 skipped=0
+  loweringMaxHealthBeforeATickThreadOwnsTheEntityClampsAtOnce(): org.opentest4j.AssertionFailedError: current health was left above the new maximum ==> expected: <5.0> but was: <20.0>
+    at io.github.bearisbug.synaxis.entity.LivingEntityHealthIntegrationTest.loweringMaxHealthBeforeATickThreadOwnsTheEntityClampsAtOnce(LivingEntityHealthIntegrationTest.java:59)

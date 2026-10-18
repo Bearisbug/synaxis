@@ -1,0 +1,14 @@
+# EntityAsyncContinuationIntegrationTest tests=5 failures=2 errors=0 skipped=0
+  FAIL waitingForATeleportOnTheOwningThreadIsRefused(Env) | EntityAsyncContinuationIntegrationTest.java:232 | org.opentest4j.AssertionFailedError: join returned after 3004 ms ==> expected: <true> but was: <false>
+  FAIL noTickThreadTicksAnEntityWhileItSpawns(Env) | EntityAsyncContinuationIntegrationTest.java:177 | org.opentest4j.AssertionFailedError: ticked by Thread[#923,Syn-Tick-0,5,main] in the middle of its spawn ==> expected: <0> but was: <1>
+# LivingEntityHealthIntegrationTest tests=4 failures=1 errors=0 skipped=0
+  FAIL loweringMaxHealthFromAnotherThreadClampsOnTheOwningThread(Env) | LivingEntityHealthIntegrationTest.java:60 | io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for io.github.bearisbug.synaxis.entity.LivingEntityHealthIntegrationTest$1@15c76e03:
+# GeneratorIntegrationTest tests=16 failures=2 errors=0 skipped=0
+  FAIL chunkReadLockCannotUpgradeToWriteLock(Env) | GeneratorIntegrationTest.java:152 | org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalStateException> but was: <java.lang.AssertionError>
+  FAIL aBlockSetUnderTheReadLockOfItsChunkThrows(Env) | GeneratorIntegrationTest.java:170 | org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalStateException> but was: <java.lang.AssertionError>
+# AcquirableHandoverTest tests=4 failures=4 errors=0 skipped=0
+  FAIL [1] SYNC | AcquirableHandoverTest.java:220 | org.opentest4j.AssertionFailedError: SYNC held the lock of the thread the element left ==> expected: <true> but was: <false>
+  FAIL [2] LOCK | AcquirableHandoverTest.java:220 | org.opentest4j.AssertionFailedError: LOCK held the lock of the thread the element left ==> expected: <true> but was: <false>
+  FAIL [3] COLLECTION | AcquirableHandoverTest.java:220 | org.opentest4j.AssertionFailedError: COLLECTION held the lock of the thread the element left ==> expected: <true> but was: <false>
+  FAIL anElementHeldFromAnotherThreadStaysOnItsThreadUntilReleased() | AcquirableHandoverTest.java:135 | org.opentest4j.AssertionFailedError: ticked on Thread[#940,Syn-Tick-1,5,main] while held on Syn-Tick-0 ==> expected: <0> but was: <1>
+# AcquireWaitTest tests=4 failures=0 errors=0 skipped=0

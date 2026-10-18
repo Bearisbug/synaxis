@@ -1,0 +1,27 @@
+# AcquirableStrictIntegrationTest tests=6 failures=0 errors=0 skipped=0
+# EntityAsyncContinuationIntegrationTest tests=5 failures=1 errors=0 skipped=0
+  waitingForATeleportOnTheOwningThreadIsRefused(Env): org.opentest4j.AssertionFailedError: the teleport landed once the tick was over: Pos[x=1600.5, y=40.00000000004858, z=8.5, yaw=0.0, pitch=0.0] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.EntityAsyncContinuationIntegrationTest.waitingForATeleportOnTheOwningThreadIsRefused(EntityAsyncContinuationIntegrationTest.java:233)
+# EntityRemoveDuringSpawnIntegrationTest tests=1 failures=0 errors=0 skipped=0
+# EntityTeleportIntegrationTest tests=7 failures=0 errors=0 skipped=0
+# FailedSpawnRegistrationIntegrationTest tests=2 failures=0 errors=0 skipped=0
+# LivingEntityHealthIntegrationTest tests=5 failures=0 errors=0 skipped=0
+# VisibleEntityLimitTest tests=6 failures=0 errors=0 skipped=0
+# AttributeInstanceConcurrencyTest tests=2 failures=0 errors=0 skipped=0
+# AttributeInstanceTest tests=2 failures=0 errors=0 skipped=0
+# ChunkQueueBoundIntegrationTest tests=6 failures=0 errors=0 skipped=0
+# ChunkTryLockWriteLockIntegrationTest tests=5 failures=0 errors=0 skipped=0
+# ChunkUnloadIntegrationTest tests=16 failures=0 errors=0 skipped=0
+# GeneratorIntegrationTest tests=16 failures=0 errors=0 skipped=0
+# SimulationDistanceTest tests=9 failures=0 errors=0 skipped=0
+# UnloadChunkIntegrationTest tests=6 failures=0 errors=0 skipped=0
+# PlayerMovementAuthorityIntegrationTest tests=7 failures=0 errors=0 skipped=0
+# DuplicateUuidLoginIntegrationTest tests=3 failures=0 errors=0 skipped=0
+# AcquirableBasicIntegrationTest tests=4 failures=0 errors=0 skipped=0
+# AcquirableCollectionTest tests=2 failures=0 errors=0 skipped=0
+# AcquirableEntityIntegrationTest tests=1 failures=0 errors=0 skipped=0
+# AcquirableHandoverTest tests=4 failures=0 errors=0 skipped=0
+# AcquirableLocalsIntegrationTest tests=2 failures=0 errors=0 skipped=0
+# AcquirableTest tests=3 failures=0 errors=0 skipped=0
+# AcquireWaitTest tests=4 failures=0 errors=0 skipped=0
+# ThreadDispatcherTest tests=17 failures=0 errors=0 skipped=0

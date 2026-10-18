@@ -35,8 +35,8 @@ final class AcquirableImpl<T> implements Acquirable<T> {
             assertInitThread();
             return new AcquiredImpl<>(unwrap(), null);
         }
-        ReentrantLock lock = enter(assignedThread);
-        assert assignedThread.lock().isHeldByCurrentThread();
+        ReentrantLock lock = enterAssigned(assignedThread);
+        assert isOwned();
         return new AcquiredImpl<>(unwrap(), lock);
     }
 
@@ -61,9 +61,9 @@ final class AcquirableImpl<T> implements Acquirable<T> {
             consumer.accept(unwrap());
             return;
         }
-        ReentrantLock lock = enter(assignedThread);
+        ReentrantLock lock = enterAssigned(assignedThread);
         try {
-            assert assignedThread.lock().isHeldByCurrentThread();
+            assert isOwned();
             consumer.accept(unwrap());
         } finally {
             leave(lock);
@@ -76,13 +76,15 @@ final class AcquirableImpl<T> implements Acquirable<T> {
             consumer.accept(unwrap());
             return true;
         }
-        TickThread assignedThread = this.assignedThread;
-        if (assignedThread != null) {
-            // Taking a foreign tick thread lock is ordered by the global lock, see enter(). Grabbing
-            // it directly would invert the order against sync() and deadlock, both locks are given up
-            // instead: losing either of them is the contention this method reports.
-            if (GLOBAL_LOCK.tryLock()) {
-                try {
+        // Taking a foreign tick thread lock is ordered by the global lock, see enter(). Grabbing
+        // it directly would invert the order against sync() and deadlock, both locks are given up
+        // instead: losing either of them is the contention this method reports.
+        if (GLOBAL_LOCK.tryLock()) {
+            try {
+                // Read under the global lock, which the dispatcher holds to hand an element to another
+                // thread: read before it, the thread may no longer be the element's
+                final TickThread assignedThread = this.assignedThread;
+                if (assignedThread != null) {
                     ReentrantLock lock = assignedThread.lock();
                     if (lock.tryLock()) {
                         try {
@@ -92,9 +94,9 @@ final class AcquirableImpl<T> implements Acquirable<T> {
                             lock.unlock();
                         }
                     }
-                } finally {
-                    GLOBAL_LOCK.unlock();
                 }
+            } finally {
+                GLOBAL_LOCK.unlock();
             }
         }
         return false;
@@ -139,6 +141,34 @@ final class AcquirableImpl<T> implements Acquirable<T> {
     static boolean isOwnedImpl(TickThread elementThread) {
         if (Thread.currentThread() == elementThread) return true;
         return elementThread.lock().isHeldByCurrentThread();
+    }
+
+    /**
+     * {@link #enter(TickThread)} for this element, starting from {@code thread}, the thread it was
+     * assigned to when last read. The dispatcher hands an element to another thread only while it
+     * holds the global lock ({@code ThreadDispatcherImpl#updateAndAwait}), so once both locks are
+     * held the assignment no longer changes; read before, it may have changed since. The thread
+     * entered is then not the element's, and the element's own is entered instead.
+     */
+    private @Nullable ReentrantLock enterAssigned(TickThread thread) {
+        while (true) {
+            final ReentrantLock lock = enter(thread);
+            final TickThread assigned = Objects.requireNonNull(this.assignedThread);
+            if (lock == null || assigned == thread) return lock;
+            leave(lock);
+            thread = assigned;
+        }
+    }
+
+    /**
+     * Takes the global lock for the dispatcher handing elements to other threads, blocking until it
+     * is free. The time blocked is added to the calling thread's own total when it is an
+     * {@link EngineThread} ({@code docs/DESIGN-PROD.md} {@code API-PROD-016}).
+     */
+    static void lockGlobal() {
+        if (GLOBAL_LOCK.tryLock()) return;
+        final long waited = lockTimed(GLOBAL_LOCK);
+        if (Thread.currentThread() instanceof EngineThread engineThread) engineThread.waited(waited);
     }
 
     /**

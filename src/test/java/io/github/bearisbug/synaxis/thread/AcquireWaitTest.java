@@ -215,6 +215,10 @@ public class AcquireWaitTest {
     /**
      * An entity is held from another thread when its tick thread starts the tick: the tick thread
      * blocks on its own lock, and that is its wait. The tick's JFR event carries it too.
+     * <p>
+     * A holder from before the tick holds up the dispatcher instead, which hands out no tick before it
+     * let go ({@code AcquirableHandoverTest}): the holder takes the entity once the tick has been
+     * handed out, while the tick thread is still in its observer of the tick before, which waits for it.
      */
     @Test
     @Timeout(60)
@@ -222,9 +226,29 @@ public class AcquireWaitTest {
         final Hooked held = place(flatInstance(), 0, 0);
         tick();
         final TickThread heldThread = threads.get(0);
+        final BlockingQueue<long[]> heldReports = reports.get(heldThread);
         final CountDownLatch holding = new CountDownLatch(1);
+        heldThread.observeTicks((tickNanos, acquireNanos) -> {
+            heldReports.add(new long[]{tickNanos, acquireNanos});
+            heldThread.observeTicks((nanos, acquired) -> heldReports.add(new long[]{nanos, acquired}));
+            // Sleeps rather than parks: a park would use up the unpark that hands this thread its next tick
+            final long deadline = System.nanoTime() + PATIENCE_NANOS;
+            try {
+                while (holding.getCount() > 0 && System.nanoTime() - deadline < 0) Thread.sleep(1);
+            } catch (InterruptedException _) {
+                failures.add("interrupted while waiting for the holder");
+            }
+            if (holding.getCount() > 0) failures.add("no holder within 10 s");
+        });
+        tick();
+        final Thread ticker = Thread.currentThread();
         final AtomicLong slept = new AtomicLong();
         final Thread holder = Thread.ofPlatform().name("holder").start(() -> {
+            // The tick is handed out once the ticker waits for the tick threads
+            if (!await(() -> {
+                final Object blocker = LockSupport.getBlocker(ticker);
+                return blocker != null && blocker.getClass().getEnclosingClass() == CountDownLatch.class;
+            }, "the ticker waiting for the tick threads")) return;
             final Acquired<? extends Entity> acquired = held.acquirable().lock();
             try {
                 holding.countDown();
@@ -234,7 +258,6 @@ public class AcquireWaitTest {
                 acquired.unlock();
             }
         });
-        holding.await();
         final Path file = directory.resolve("tick.jfr");
         final Map<TickThread, long[]> ticks;
         try (Recording recording = new Recording()) {

@@ -38,6 +38,7 @@ import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.sound.SoundEvent;
 import io.github.bearisbug.synaxis.thread.Acquirable;
+import io.github.bearisbug.synaxis.thread.TickThread;
 import io.github.bearisbug.synaxis.utils.MathUtils;
 import io.github.bearisbug.synaxis.instance.block.BlockIterator;
 import io.github.bearisbug.synaxis.timer.Cooldown;
@@ -478,6 +479,12 @@ public class LivingEntity extends Entity implements EquipmentHandler {
 
     /**
      * Retrieves the attribute instance and its modifiers.
+     * <p>
+     * Its value and modifiers can be read from any thread; it is changed on the thread owning this
+     * entity ({@link Acquirable#sync} or the entity scheduler): every change calls this entity back on
+     * the changing thread, which sends the attribute packet. When the maximum health drops below the
+     * health, the changing thread lowers the health if it may write it ({@link Acquirable#assertOwnership()}),
+     * the next tick of this entity does otherwise.
      *
      * @param attribute the attribute instance to get
      * @return the attribute instance
@@ -508,7 +515,18 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     protected void onAttributeChanged(AttributeInstance attributeInstance) {
         // Lowering the maximum leaves the current health above it until the next setHealth otherwise
         if (attributeInstance.attribute() == Attribute.MAX_HEALTH && getHealth() > attributeInstance.getValue()) {
-            setHealth((float) attributeInstance.getValue());
+            final Acquirable<? extends Entity> acquirable = acquirable();
+            // The threads the ownership assertion of setHealth lets through
+            if (acquirable.isOwned()
+                    || (acquirable.assignedThread() == null && !(Thread.currentThread() instanceof TickThread))) {
+                setHealth((float) attributeInstance.getValue());
+            } else {
+                // The health belongs to the owning thread, which lowers it at the next tick to the maximum then
+                scheduleNextTick(_ -> {
+                    final float max = (float) getAttributeValue(Attribute.MAX_HEALTH);
+                    if (getHealth() > max) setHealth(max);
+                });
+            }
         }
         if (!shouldSendAttributes()) return;
 

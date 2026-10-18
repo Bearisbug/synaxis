@@ -1,0 +1,49 @@
+[rework-THREAD-6proof] free=44% load=13 start 11:41:52
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :processTestResources UP-TO-DATE
+> Task :testing:processResources NO-SOURCE
+> Task :compileJava
+> Task :classes
+> Task :jar
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :testing:compileJava UP-TO-DATE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar UP-TO-DATE
+> Task :compileTestJava UP-TO-DATE
+> Task :testClasses UP-TO-DATE
+
+> Task :test FAILED
+
+FailedSpawnRegistrationIntegrationTest > aPlayerWhoseRegistrationFailsIsDisconnected(Env) FAILED
+    org.opentest4j.AssertionFailedError at FailedSpawnRegistrationIntegrationTest.java:95
+
+LivingEntityHealthIntegrationTest > loweringMaxHealthBeforeATickThreadOwnsTheEntityClampsAtOnce() FAILED
+    org.opentest4j.AssertionFailedError at LivingEntityHealthIntegrationTest.java:59
+
+7 tests completed, 2 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-THREAD/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 17s
+13 actionable tasks: 3 executed, 10 up-to-date
+Configuration cache entry reused.
+[rework-THREAD-6proof] gradle exit=1 end 11:42:10

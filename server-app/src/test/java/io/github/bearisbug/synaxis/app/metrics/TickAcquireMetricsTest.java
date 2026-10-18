@@ -9,7 +9,6 @@ import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.EntityType;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.Block;
-import io.github.bearisbug.synaxis.thread.Acquired;
 import io.github.bearisbug.synaxis.thread.TickThread;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -22,6 +21,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,8 +40,11 @@ public class TickAcquireMetricsTest {
 
     /**
      * On the grid with four tick threads, two entities in cells (0, 0) and (1, 0), thread ids 0 and
-     * 3. After one tick, a thread that is not a tick thread holds the first entity when its tick thread
-     * starts the next tick, until that thread is queued on its own lock and a measured sleep more.
+     * 3. After one tick, a thread that is not a tick thread holds the lock of the first entity's tick
+     * thread when that thread starts the next tick, until it is queued on its own lock and a measured
+     * sleep more. The lock itself, not the entity through its acquirable: an acquirer holding the
+     * entity from before the tick holds up the dispatcher instead, which hands out no tick before it
+     * let go.
      */
     @Test
     @Timeout(60)
@@ -65,18 +68,19 @@ public class TickAcquireMetricsTest {
 
             final CountDownLatch holding = new CountDownLatch(1);
             final AtomicLong slept = new AtomicLong();
+            final ReentrantLock tickLock = heldThread.lock();
             final Thread holder = Thread.ofPlatform().name("holder").start(() -> {
-                final Acquired<? extends Entity> acquired = held.acquirable().lock();
+                tickLock.lock();
                 try {
                     holding.countDown();
-                    while (!heldThread.lock().hasQueuedThread(heldThread)) Thread.onSpinWait();
+                    while (!tickLock.hasQueuedThread(heldThread)) Thread.onSpinWait();
                     final long since = System.nanoTime();
                     Thread.sleep(HOLD_MILLIS);
                     slept.set(System.nanoTime() - since);
                 } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 } finally {
-                    acquired.unlock();
+                    tickLock.unlock();
                 }
             });
             holding.await();

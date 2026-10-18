@@ -124,8 +124,13 @@ final class EntityView {
         }
         entity.updateOldViewer(player);
         // As in showEntityToPlayer: a show on another thread may have registered the pair again and sent
-        // its spawn before this destruction
-        if (entity.isViewer(player)) entity.updateNewViewer(player);
+        // its spawn before this destruction. The passengers stay with it, registered by that show or not yet
+        // unregistered here: the destruction only dismounted them on the client
+        if (entity.isViewer(player)) {
+            entity.updateNewViewer(player);
+            if (entity.hasPassenger()) player.sendPacket(entity.getPassengersPacket());
+            return;
+        }
         final List<Entity> passengers = entity.getPassengers();
         if (!passengers.isEmpty()) {
             for (Entity passenger : passengers) {

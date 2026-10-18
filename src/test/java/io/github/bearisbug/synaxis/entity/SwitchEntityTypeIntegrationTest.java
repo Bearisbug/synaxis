@@ -156,4 +156,23 @@ public class SwitchEntityTypeIntegrationTest {
                 && packet.entries().containsKey(23)
                 && packet.entries().get(23).type() == Metadata.TYPE_CHAT);
     }
+
+    @Test
+    public void aBatchOfTheOldMetaClosedAfterTheSwitchSendsNothing(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        connection.connect(instance, new Pos(0, 42, 0));
+        var entity = new Entity(EntityType.TEXT_DISPLAY);
+        entity.setInstance(instance, new Pos(2, 42, 0)).join();
+        var label = (TextDisplayMeta) entity.getEntityMeta();
+
+        label.setNotifyAboutChanges(false);
+        label.setText(Component.text("batched"));
+        entity.switchEntityType(EntityType.ITEM_DISPLAY);
+        var metadata = connection.trackIncoming(EntityMetaDataPacket.class);
+        label.setNotifyAboutChanges(true);
+
+        // Written with the text display layout: index 23 would reach the client as the item
+        metadata.assertNoneMatch(packet -> packet.entityId() == entity.getEntityId());
+    }
 }

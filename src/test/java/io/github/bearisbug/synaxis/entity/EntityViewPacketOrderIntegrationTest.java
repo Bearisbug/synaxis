@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.entity;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.DestroyEntitiesPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.SetPassengersPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.SpawnEntityPacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
@@ -107,6 +108,45 @@ public class EntityViewPacketOrderIntegrationTest {
         assertTrue(probe.isViewer(player));
         assertInstanceOf(SpawnEntityPacket.class, lastSpawnOrDestroy(packets.collect(), probe),
                 "the player is registered as seeing an entity its client destroyed");
+    }
+
+    @Test
+    public void aVehicleShownWhileItsDestructionIsOnItsWayKeepsItsPassenger(Env env) throws InterruptedException {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 42, 0));
+        var probe = new ProbeEntity();
+        probe.setInstance(instance, new Pos(2, 42, 0)).join();
+        var passenger = new Entity(EntityType.ZOMBIE);
+        passenger.setInstance(instance, new Pos(2, 42, 0)).join();
+        probe.addPassenger(passenger);
+        assertTrue(passenger.isViewer(player));
+
+        var packets = connection.trackIncoming();
+        probe.stopInHide = true;
+        var hide = Thread.ofPlatform().start(() -> probe.viewEngine.viewableOption.removal.accept(player));
+        assertTrue(probe.entered.await(10, TimeUnit.SECONDS));
+        // The vehicle is unregistered, its passenger not yet: the show registers the vehicle again and
+        // finds the passenger still registered
+        probe.viewEngine.viewableOption.addition.accept(player);
+        probe.release.countDown();
+        hide.join(10_000);
+
+        assertTrue(probe.isViewer(player));
+        assertTrue(passenger.isViewer(player), "the passenger of a vehicle the player sees was taken away");
+        var received = packets.collect();
+        assertTrue(received.stream().noneMatch(packet -> packet instanceof DestroyEntitiesPacket destroy
+                && destroy.entityIds().contains(passenger.getEntityId())), "the client destroyed the passenger");
+        // The destruction of the vehicle dismounted the passenger on the client
+        int lastSpawn = -1;
+        for (int i = 0; i < received.size(); i++) {
+            if (received.get(i) instanceof SpawnEntityPacket spawn && spawn.entityId() == probe.getEntityId()) lastSpawn = i;
+        }
+        assertTrue(lastSpawn >= 0);
+        assertTrue(received.subList(lastSpawn, received.size()).stream().anyMatch(packet -> packet instanceof SetPassengersPacket passengers
+                        && passengers.vehicleEntityId() == probe.getEntityId()
+                        && passengers.passengersId().contains(passenger.getEntityId())),
+                "the vehicle was spawned again without its passenger");
     }
 
     private static ServerPacket lastSpawnOrDestroy(List<ServerPacket> packets, Entity entity) {

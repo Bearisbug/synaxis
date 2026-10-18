@@ -61,8 +61,9 @@ public class EntityViewStaleRegistrationTest {
         assertTrue(far.isViewer(player));
 
         final var destroys = connection.trackIncoming(DestroyEntitiesPacket.class);
+        // No tick: the next pass of the player would drop the registration as well, a process with neither a
+        // limit nor a range has no pass and only the removal drops it
         far.remove();
-        for (int i = 0; i < EntityView.REFRESH_INTERVAL_TICKS + 1; i++) env.tick();
 
         destroys.assertAnyMatch(packet -> packet.entityIds().contains(far.getEntityId()));
         assertFalse(registered(player, far), "the player still counts an entity that is gone");

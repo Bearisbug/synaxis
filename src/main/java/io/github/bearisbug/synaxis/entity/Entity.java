@@ -509,10 +509,11 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Teleports the entity once the chunk at {@code position} is loaded, loading it when
-     * {@link Instance#hasEnabledAutoChunkLoad()} returns true. When it is not loaded and does not load, the
-     * future completes exceptionally with {@link IllegalStateException} and the entity is left unchanged:
-     * load it first, or pass it in {@code chunks}.
+     * Teleports the entity once the chunks are loaded: those in {@code chunks}, or, when it is null or empty,
+     * the chunk at {@code position}. A chunk that is not loaded yet only loads when
+     * {@link Instance#hasEnabledAutoChunkLoad()} returns true. When the chunk at {@code position} is still not
+     * loaded then, the future completes exceptionally with {@link IllegalStateException} and the entity is left
+     * unchanged: load it first, or, with auto chunk load on, include it in {@code chunks}.
      *
      * @param position      the teleport position
      * @param velocity      the velocity after the teleport, relative to the current one when {@code flags}
@@ -544,10 +545,12 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
         final Runnable endCallback = () -> {
             // Before any state changes: moving into a chunk that is not there fails halfway, the position and
-            // the tracker at the new point while the chunk and the tick thread stay with the old one
-            if (!ChunkUtils.isLoaded(instance, globalPosition)) {
+            // the tracker at the new point while the chunk and the tick thread stay with the old one. The test
+            // of refreshCoordinate, not ChunkUtils.isLoaded: a LightingChunk already in the instance is not
+            // isLoaded() until its initialisation is done, and a teleport into it succeeds
+            if (instance.getChunk(globalPosition.chunkX(), globalPosition.chunkZ()) == null) {
                 throw new IllegalStateException("cannot teleport entity " + getEntityId() + " to " + globalPosition
-                        + ": its chunk is not loaded and auto chunk load is off; load it first or pass it in chunks");
+                        + ": its chunk is not loaded; load it first, or, with auto chunk load on, include it in chunks");
             }
             final float previousHeadRotation = this.headRotation;
             this.previousPosition = this.position;

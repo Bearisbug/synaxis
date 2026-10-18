@@ -10,7 +10,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -22,13 +21,19 @@ import java.util.concurrent.ConcurrentHashMap;
  * <a href="https://github.com/VelocityPowered/Velocity">Velocity</a>'s boss bar
  * management system.</p>
  *
+ * <p>A boss bar is changed on the thread of its owner while its viewers come and go on theirs. The holder of each
+ * bar is a monitor: viewers are added and removed and their packets queued while holding it, so each player gets the
+ * add of a bar before any update and no update after the removal. Lock order: holder, then the send queue of a
+ * player or a bin of the bar map.</p>
+ *
  * @see Audience#showBossBar(BossBar)
  * @see Audience#hideBossBar(BossBar)
  */
 public class BossBarManager {
     @SuppressWarnings("this-escape") // deliberate self registration during construction
     private final BossBarListener listener = new BossBarListener(this);
-    private final Map<UUID, Set<BossBarHolder>> playerBars = new ConcurrentHashMap<>();
+    // By player object: a player that reconnects is a new object with the same UUID
+    private final Map<Player, Set<BossBarHolder>> playerBars = new ConcurrentHashMap<>();
     final Map<BossBar, BossBarHolder> bars = new ConcurrentHashMap<>();
 
     /**
@@ -39,10 +44,18 @@ public class BossBarManager {
      * @param bar    the boss bar to show
      */
     public void addBossBar(Player player, BossBar bar) {
-        BossBarHolder holder = this.getOrCreateHandler(bar);
-        if (holder.addViewer(player)) {
-            player.sendPacket(holder.createAddPacket());
+        // A removed player has had its boss bars cleared, it would be kept reachable forever
+        if (player.isRemoved()) return;
+        while (true) {
+            final BossBarHolder holder = this.holderFor(bar);
+            synchronized (holder) {
+                // Dropped by its last viewer since the lookup, the bar has a new holder
+                if (this.bars.get(bar) != holder) continue;
+                if (!holder.addViewer(player)) return;
+                player.sendPacket(holder.createAddPacket());
+            }
             this.addPlayer(player, holder);
+            return;
         }
     }
 
@@ -53,11 +66,13 @@ public class BossBarManager {
      * @param bar    the boss bar to hide
      */
     public void removeBossBar(Player player, BossBar bar) {
-        BossBarHolder holder = this.bars.get(bar);
-        if (holder != null && holder.removeViewer(player)) {
+        final BossBarHolder holder = this.bars.get(bar);
+        if (holder == null) return;
+        synchronized (holder) {
+            if (!holder.removeViewer(player)) return;
             player.sendPacket(holder.createRemovePacket());
-            this.removePlayer(player, holder);
         }
+        this.removePlayer(player, holder);
     }
 
     /**
@@ -68,14 +83,21 @@ public class BossBarManager {
      * @param bar     the boss bar
      */
     public void addBossBar(Collection<? extends Player> players, BossBar bar) {
-        BossBarHolder holder = this.getOrCreateHandler(bar);
-        List<? extends Player> addedPlayers = players.stream().filter(holder::addViewer).toList();
-        if (!addedPlayers.isEmpty()) {
+        while (true) {
+            final BossBarHolder holder = this.holderFor(bar);
+            final List<? extends Player> addedPlayers;
+            synchronized (holder) {
+                if (this.bars.get(bar) != holder) continue;
+                addedPlayers = players.stream()
+                        .filter(player -> !player.isRemoved() && holder.addViewer(player))
+                        .toList();
+                if (addedPlayers.isEmpty()) return;
+                PacketSendingUtils.sendGroupedPacket(addedPlayers, holder.createAddPacket());
+            }
             for (Player player : addedPlayers) {
                 this.addPlayer(player, holder);
             }
-
-            PacketSendingUtils.sendGroupedPacket(addedPlayers, holder.createAddPacket());
+            return;
         }
     }
 
@@ -86,16 +108,16 @@ public class BossBarManager {
      * @param bar     the boss bar to hide
      */
     public void removeBossBar(Collection<? extends Player> players, BossBar bar) {
-        BossBarHolder holder = this.bars.get(bar);
-        if (holder != null) {
-            List<? extends Player> removedPlayers = players.stream().filter(holder::removeViewer).toList();
-            if (!removedPlayers.isEmpty()) {
-                for (Player player : removedPlayers) {
-                    this.removePlayer(player, holder);
-                }
-
-                PacketSendingUtils.sendGroupedPacket(removedPlayers, holder.createRemovePacket());
-            }
+        final BossBarHolder holder = this.bars.get(bar);
+        if (holder == null) return;
+        final List<? extends Player> removedPlayers;
+        synchronized (holder) {
+            removedPlayers = players.stream().filter(holder::removeViewer).toList();
+            if (removedPlayers.isEmpty()) return;
+            PacketSendingUtils.sendGroupedPacket(removedPlayers, holder.createRemovePacket());
+        }
+        for (Player player : removedPlayers) {
+            this.removePlayer(player, holder);
         }
     }
 
@@ -108,8 +130,14 @@ public class BossBarManager {
         BossBarHolder holder = this.bars.remove(bossBar);
         if (holder != null) {
             bossBar.removeListener(this.listener);
-            PacketSendingUtils.sendGroupedPacket(holder.players, holder.createRemovePacket());
-            for (Player player : holder.players) {
+            final List<Player> viewers;
+            synchronized (holder) {
+                // An update that looked the holder up before it was removed then finds no viewer
+                viewers = List.copyOf(holder.players);
+                holder.players.clear();
+                PacketSendingUtils.sendGroupedPacket(viewers, holder.createRemovePacket());
+            }
+            for (Player player : viewers) {
                 this.removePlayer(player, holder);
             }
         }
@@ -123,7 +151,7 @@ public class BossBarManager {
      * @param player the player
      */
     public void removeAllBossBars(Player player) {
-        Set<BossBarHolder> holders = this.playerBars.remove(player.getUuid());
+        Set<BossBarHolder> holders = this.playerBars.remove(player);
         if (holders != null) {
             for (BossBarHolder holder : holders) {
                 holder.removeViewer(player);
@@ -139,7 +167,7 @@ public class BossBarManager {
      * @return the boss bars
      */
     public Collection<BossBar> getPlayerBossBars(Player player) {
-        Set<BossBarHolder> holders = this.playerBars.get(player.getUuid());
+        Set<BossBarHolder> holders = this.playerBars.get(player);
         return holders != null ?
                 holders.stream().map(holder -> holder.bar).toList() : List.of();
     }
@@ -157,12 +185,13 @@ public class BossBarManager {
     }
 
     /**
-     * Gets or creates a handler for this bar.
+     * Gets or creates the holder of this bar. It may be dropped right after, which a caller checks for under the
+     * monitor of the holder.
      *
      * @param bar the bar
-     * @return the handler
+     * @return the holder
      */
-    private BossBarHolder getOrCreateHandler(BossBar bar) {
+    private BossBarHolder holderFor(BossBar bar) {
         return this.bars.computeIfAbsent(bar, bossBar -> {
             BossBarHolder holder = new BossBarHolder(bossBar);
             bossBar.addListener(this.listener);
@@ -171,7 +200,7 @@ public class BossBarManager {
     }
 
     private void addPlayer(Player player, BossBarHolder holder) {
-        this.playerBars.compute(player.getUuid(), (_, holders) -> {
+        this.playerBars.compute(player, (_, holders) -> {
             if (holders == null) {
                 holders = ConcurrentHashMap.newKeySet();
             }
@@ -182,7 +211,7 @@ public class BossBarManager {
     }
 
     private void removePlayer(Player player, BossBarHolder holder) {
-        this.playerBars.computeIfPresent(player.getUuid(), (_, holders) -> {
+        this.playerBars.computeIfPresent(player, (_, holders) -> {
             holders.remove(holder);
             return holders.isEmpty() ? null : holders;
         });
@@ -196,13 +225,15 @@ public class BossBarManager {
      * @param holder the holder to drop
      */
     private void dropIfUnused(BossBarHolder holder) {
-        if (!holder.players.isEmpty()) return;
-        this.bars.computeIfPresent(holder.bar, (bar, current) -> {
-            // Re-checked under the map lock: a viewer may have been added since the check above,
-            // and that viewer's holder must stay reachable for updates and removal packets.
-            if (current != holder || !current.players.isEmpty()) return current;
-            bar.removeListener(this.listener);
-            return null;
-        });
+        // A viewer is only added under this monitor and after checking that the holder is still the registered one,
+        // so an empty holder dropped here never gains one
+        synchronized (holder) {
+            if (!holder.players.isEmpty()) return;
+            this.bars.computeIfPresent(holder.bar, (bar, current) -> {
+                if (current != holder) return current;
+                bar.removeListener(this.listener);
+                return null;
+            });
+        }
     }
 }

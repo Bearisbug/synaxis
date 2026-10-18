@@ -170,4 +170,24 @@ public class TagStructureTest {
                 }
                 """, handler.asCompound());
     }
+
+    /**
+     * A structure that reads nothing from the compound under its key is absent, so both a read and an update see the
+     * default of the tag, as {@link Tag#read} does. A path emptied by removing its last tag read as null.
+     */
+    @Test
+    public void anEmptiedPathReadsAsTheDefault() {
+        var handler = TagHandler.newHandler();
+        var value = Tag.String("value").path("entry");
+        handler.setTag(value, "hello");
+        handler.setTag(value, null);
+        var withDefault = STRUCTURE_TAG.defaultValue(new Entry("default"));
+
+        assertEquals(new Entry("default"), handler.getTag(withDefault));
+        handler.updateTag(withDefault, entry -> {
+            assertEquals(new Entry("default"), entry);
+            return new Entry("next");
+        });
+        assertEquals(new Entry("next"), handler.getTag(STRUCTURE_TAG));
+    }
 }

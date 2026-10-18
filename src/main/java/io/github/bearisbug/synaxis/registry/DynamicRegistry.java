@@ -108,15 +108,19 @@ public sealed interface DynamicRegistry<T> extends Registry<T> permits DynamicRe
     /**
      * <p>Register an object to this registry, overwriting the previous entry if any is present.</p>
      *
+     * <p>Before the owning process starts, entries can be added, overwritten and removed freely. Once it has started
+     * the registry is frozen and every write throws {@link IllegalStateException} (API-004), unless the process runs
+     * with {@code ServerConfig#registryUnsafeOps}.</p>
+     *
      * <p>Note: the new registry will not be sent to existing players. They must be returned to
      * the configuration phase to receive new registry data. See {@link Player#startConfigurationPhase()}.</p>
      *
      * <p><b>WARNING:</b> Updating an existing entry is an inherently unsafe operation as it may cause desync with
-     * existing structures. <b>This behavior is disabled by default, and must be enabled by setting the system
-     * property <code>synaxis.registry.unsafe-ops</code> to <code>true</code>.</b></p>
+     * existing structures.</p>
      *
      * @param object The entry to register
-     * @return The new ID of the registered object
+     * @return the key of the registered entry
+     * @throws IllegalStateException if the registry is frozen
      */
     default RegistryKey<T> register(String id, T object) {
         return register(Key.key(id), object, DataPack.ENGINE_UNNAMED);
@@ -140,17 +144,19 @@ public sealed interface DynamicRegistry<T> extends Registry<T> permits DynamicRe
      * <p><b>WARNING:</b> This operation will cause all subsequent IDs to be remapped, meaning that any loaded entry
      * with existing IDs may be incorrect. For example, loading a world with 0=plains, 1=desert, 2=badlands would store
      * those IDs in the palette. If you then deleted entry 1 (desert), any desert biomes in the loaded world would
-     * become badlands, and any badlands would become invalid. <b>This behavior is disabled by default, and must be
-     * enabled by setting the system property <code>synaxis.registry.unsafe-ops</code> to <code>true</code>.</b></p>
+     * become badlands, and any badlands would become invalid.</p>
+     *
+     * <p>Like any write, removing throws {@link IllegalStateException} once the owning process has started, unless it
+     * runs with {@code ServerConfig#registryUnsafeOps} (see {@link #register(String, T)}).</p>
      *
      * <p>Note: the new registry will not be sent to existing players. They must be returned to
      * the configuration phase to receive new registry data. See {@link Player#startConfigurationPhase()}.</p>
      *
      * @param key The id of the entry to remove
      * @return True if the object was removed, false if it was not present
-     * @throws UnsupportedOperationException If the system property <code>synaxis.registry.unsafe-ops</code> is not set to <code>true</code>
+     * @throws IllegalStateException if the registry is frozen
      */
-    boolean remove(Key key) throws UnsupportedOperationException;
+    boolean remove(Key key);
 
     /**
      * <p>Returns a {@link SendablePacket} potentially excluding vanilla entries if possible. It is never possible to

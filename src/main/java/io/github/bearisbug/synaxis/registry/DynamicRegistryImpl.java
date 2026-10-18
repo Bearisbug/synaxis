@@ -44,8 +44,6 @@ import java.util.concurrent.ConcurrentHashMap;
 final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
     private static final Logger LOGGER = LoggerFactory.getLogger(DynamicRegistryImpl.class);
 
-    private static final String FROZEN_MESSAGE = "The registry is frozen once the server has started. Enable writes by starting the process with registryUnsafeOps set on its ServerConfig";
-    private static final String UNSAFE_REMOVE_MESSAGE = "Unsafe remove is disabled. Enable it by starting the process with registryUnsafeOps set on its ServerConfig";
     // Could also just use `this`, but this is a good candidate for identityless classes.
     // Also, what use case requires you to mutate registries faster than one monitor?
     private static final Object REGISTRY_LOCK = new Object();
@@ -146,7 +144,7 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
 
     @Override
     public RegistryKey<T> register(Key key, T object, DataPack pack) {
-        if (isFrozen()) throw new IllegalStateException(FROZEN_MESSAGE);
+        if (isFrozen()) throw new IllegalStateException(frozen("register"));
         Objects.requireNonNull(key, "Key cannot be null");
         Objects.requireNonNull(object, "Object cannot be null");
         Objects.requireNonNull(pack, "Pack cannot be null");
@@ -177,8 +175,8 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
     }
 
     @Override
-    public boolean remove(Key key) throws UnsupportedOperationException {
-        if (isFrozen()) throw new UnsupportedOperationException(UNSAFE_REMOVE_MESSAGE);
+    public boolean remove(Key key) {
+        if (isFrozen()) throw new IllegalStateException(frozen("remove"));
         Objects.requireNonNull(key, "Key cannot be null");
 
         final RegistryKey<T> registryKey = new RegistryKeyImpl<>(key);
@@ -244,12 +242,20 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
 
     @Override
     public RegistryTag<T> getOrCreateTag(TagKey<T> key) {
-        return this.tags.computeIfAbsent(key, RegistryTagImpl.Backed::new);
+        final RegistryTag<T> existing = this.tags.get(key);
+        if (existing != null) return existing;
+        if (isFrozen()) throw new IllegalStateException(frozen("creating tag " + key.key().asString()));
+        final RegistryTag<T> created = this.tags.computeIfAbsent(key, RegistryTagImpl.Backed::new);
+        tagChangeListener.run();
+        return created;
     }
 
     @Override
     public boolean removeTag(TagKey<T> key) {
-        return this.tags.remove(key) != null;
+        if (isFrozen()) throw new IllegalStateException(frozen("removing tag " + key.key().asString()));
+        if (this.tags.remove(key) == null) return false;
+        tagChangeListener.run();
+        return true;
     }
 
     @Override
@@ -333,12 +339,11 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
             T entry = idToValue.get(i);
             DataPack pack = packById.get(i);
             if (!excludeVanilla || pack != DataPack.MINECRAFT_CORE) {
-                final Result<BinaryTag> entryResult = codec.encode(transcoder, entry);
-                if (entryResult instanceof Result.Ok(BinaryTag tag)) {
-                    data = (CompoundBinaryTag) tag;
-                } else {
-                    throw new IllegalStateException("Failed to encode registry entry " + i + " (" + idToKey.get(i) + ") for registry " + key);
-                }
+                data = switch (codec.encode(transcoder, entry)) {
+                    case Result.Ok(BinaryTag tag) -> (CompoundBinaryTag) tag;
+                    case Result.Error(String message) -> throw new IllegalStateException(
+                            "Failed to encode registry entry " + i + " (" + idToKey.get(i) + ") for registry " + key + ": " + message);
+                };
             }
             entries.add(new RegistryDataPacket.Entry(idToKey.get(i).key().asString(), data));
         }
@@ -374,6 +379,12 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
 
     private boolean isFrozen() {
         return frozen;
+    }
+
+    private String frozen(String operation) {
+        return "Registry " + key.asString() + " is frozen: " + operation + " after ServerProcess#start is rejected. "
+                + "Register entries before start(); ServerConfig#registryUnsafeOps lifts this, but connected clients "
+                + "never receive runtime changes";
     }
 
     /**

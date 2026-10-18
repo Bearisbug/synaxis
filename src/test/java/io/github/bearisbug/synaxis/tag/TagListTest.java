@@ -1,5 +1,8 @@
 package io.github.bearisbug.synaxis.tag;
 
+import net.kyori.adventure.nbt.CompoundBinaryTag;
+import net.kyori.adventure.nbt.ListBinaryTag;
+import net.kyori.adventure.nbt.StringBinaryTag;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -256,5 +259,16 @@ public class TagListTest {
                   ]
                 }
                 """, handler.asCompound());
+    }
+
+    /** A list of strings and a list of ints are both list tags: the element type only shows when one is read. */
+    @Test
+    public void aListOfAnotherElementTypeReadsAsTheDefault() {
+        var handler = TagHandler.fromCompound(CompoundBinaryTag.builder()
+                .put("tags", ListBinaryTag.builder().add(StringBinaryTag.stringBinaryTag("a")).build())
+                .build());
+
+        assertNull(handler.getTag(Tag.Integer("tags").list()));
+        assertEquals(List.of("a"), handler.getTag(Tag.String("tags").list()));
     }
 }

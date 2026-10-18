@@ -30,6 +30,17 @@ public sealed interface EnvironmentAttribute<T> extends EnvironmentAttributes pe
 
     }
 
+    /**
+     * A modifier applied to the value of an attribute. It is only sent to the client, which evaluates it.
+     *
+     * <p>The modifiers an attribute takes are an override and the operators of its type, listed in the
+     * {@code *_OPERATORS} tables: {@link Modifier.Color#MULTIPLY_RGB} for an RGB attribute and
+     * {@link Modifier.Color#MULTIPLY_ARGB} for an ARGB one, for instance. An {@link EnvironmentAttributeMap} with any
+     * other modifier cannot be built.</p>
+     *
+     * @param <Sub> the type of the attribute value
+     * @param <Arg> the type of the argument
+     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     sealed interface Modifier<Sub, Arg> permits BooleanModifier, FloatModifier, ColorModifier, Modifier.Override {
 

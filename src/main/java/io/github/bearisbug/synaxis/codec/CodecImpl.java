@@ -126,6 +126,15 @@ final class CodecImpl {
         }
     }
 
+    /**
+     * Encodes an element of a collection or a value of a map. A value equal to the default of an optional codec is
+     * still an element, so only null goes through the optional and comes out as the absent value.
+     */
+    static <D, T> Result<D> encodeElement(Codec<T> codec, Transcoder<D> coder, @Nullable T value) {
+        if (value != null && codec instanceof OptionalImpl<T>(Codec<T> inner, var _)) return inner.encode(coder, value);
+        return codec.encode(coder, value);
+    }
+
     record TransformImpl<T, S>(
             Codec<T> inner, ThrowingFunction<T, S> to,
             ThrowingFunction<@Nullable S, T> from
@@ -191,7 +200,7 @@ final class CodecImpl {
                 return new Result.Error<>("List size exceeds maximum allowed size: " + maxSize);
             final ListBuilder<D> encodedList = coder.createList(value.size());
             for (T item : value) {
-                final Result<D> itemResult = inner.encode(coder, item);
+                final Result<D> itemResult = encodeElement(inner, coder, item);
                 if (!(itemResult instanceof Result.Ok(D encodedItem)))
                     return itemResult.cast();
                 // The coder's null is not always Java null (NBT uses EndBinaryTag), and no list can hold it
@@ -233,7 +242,7 @@ final class CodecImpl {
                 return new Result.Error<>("Set size exceeds maximum allowed size: " + maxSize);
             ListBuilder<D> encodedList = coder.createList(value.size());
             for (T item : value) {
-                final Result<D> itemResult = inner.encode(coder, item);
+                final Result<D> itemResult = encodeElement(inner, coder, item);
                 if (!(itemResult instanceof Result.Ok(D encodedItem)))
                     return itemResult.cast();
                 // The coder's null is not always Java null (NBT uses EndBinaryTag), and no list can hold it
@@ -291,7 +300,7 @@ final class CodecImpl {
                 final Result<D> keyResult = keyCodec.encode(coder, entry.getKey());
                 if (!(keyResult instanceof Result.Ok(D encodedKey)))
                     return keyResult.cast();
-                final Result<D> valueResult = valueCodec(entry.getKey()).encode(coder, entry.getValue());
+                final Result<D> valueResult = encodeElement(valueCodec(entry.getKey()), coder, entry.getValue());
                 if (!(valueResult instanceof Result.Ok(D encodedValue)))
                     return valueResult.cast();
                 // The builder refuses a key its format cannot key a map by. Checking the key with getString here
@@ -327,9 +336,12 @@ final class CodecImpl {
         @SuppressWarnings("unchecked")
         @Override
         public <D> Result<R> decodeFromMap(Transcoder<D> coder, MapLike<D> map) {
-            Result<T> keyResult = map.getValue(keyField).map(key -> keyCodec.decode(coder, key));
-            if (keyResult instanceof Result.Error<T> && keyCodec instanceof OptionalImpl(var _, var defaultValue))
+            // An optional key falls back to its default only when it is absent, like a struct field
+            final Result<T> keyResult;
+            if (keyCodec instanceof OptionalImpl<T>(var _, var defaultValue) && !map.hasValue(keyField))
                 keyResult = new Result.Ok<>(defaultValue);
+            else
+                keyResult = map.getValue(keyField).map(key -> keyCodec.decode(coder, key));
             if (!(keyResult instanceof Result.Ok(T key)))
                 return keyResult.cast();
             // A key codec may decode an unregistered value to null, which is an unknown type rather than
@@ -454,9 +466,9 @@ final class CodecImpl {
         public <D> Result<D> encode(Transcoder<D> coder, @Nullable Point value) {
             if (value == null) return new Result.Error<>("null");
             return new Result.Ok<>(coder.createIntArray(new int[]{
-                    (int) value.x(),
-                    (int) value.y(),
-                    (int) value.z()
+                    value.blockX(),
+                    value.blockY(),
+                    value.blockZ()
             }));
         }
     }

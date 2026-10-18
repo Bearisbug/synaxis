@@ -206,6 +206,7 @@ public final class RegistryCodecs {
 
     record RegistryTagImpl<T>(Registries.Selector<T> selector) implements Codec<RegistryTag<T>> {
         // Per vanilla, this codec supports registryless context, in which case it can only decode direct tags.
+        // That is the only case in which the entries of a direct tag are not checked against the registry.
         RegistryTagImpl {
             Objects.requireNonNull(selector, "selector");
         }
@@ -222,7 +223,11 @@ public final class RegistryCodecs {
                     return tag != null ? new Result.Ok<>(tag)
                             : new Result.Error<>("Unknown tag " + tagKey + " for registry " + registry.key());
                 }
-                return new Result.Ok<>(RegistryTag.direct(RegistryKey.unsafeOf(tagKeyStr)));
+                if (registry == null) return new Result.Ok<>(RegistryTag.direct(RegistryKey.unsafeOf(tagKeyStr)));
+                // A tag of one entry is written as that entry alone, which has to be registered like any list entry
+                final RegistryKey<T> single = registry.getKey(Key.key(tagKeyStr));
+                if (single == null) return new Result.Error<>("Unknown key " + tagKeyStr + " for registry " + registry.key());
+                return new Result.Ok<>(RegistryTag.direct(single));
             }
             final Result<List<D>> entriesResult = coder.getList(value);
             if (entriesResult instanceof Result.Ok(List<D> entries)) {

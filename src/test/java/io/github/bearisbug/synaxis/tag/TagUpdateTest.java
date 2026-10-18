@@ -3,11 +3,12 @@ package io.github.bearisbug.synaxis.tag;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import org.junit.jupiter.api.Test;
 
+import java.util.UUID;
+
 import static io.github.bearisbug.synaxis.testing.TestUtils.assertEqualsSNBT;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class TagUpdateTest {
 
@@ -196,13 +197,60 @@ public class TagUpdateTest {
         assertNull(handler.getTag(tag2));
     }
 
+    /** An update reads the current value the way getTag does: a value of another type is no value, as for getTag. */
     @Test
     public void updateIncompatible() {
         var tagI = Tag.Integer("coin");
         var tagD = Tag.Double("coin");
         var handler = TagHandler.newHandler();
         handler.setTag(tagI, 5);
-        assertThrows(ClassCastException.class, () -> handler.updateTag(tagD, _ -> 5d));
+        handler.updateTag(tagD, value -> {
+            assertNull(value);
+            return 5d;
+        });
+        assertEquals(5d, handler.getTag(tagD));
+    }
+
+    /**
+     * Loaded from NBT, an entry is kept under the tag of its NBT type (a byte, an int array), which shares no value
+     * with a boolean or a UUID tag. The update used the stored value as if it did.
+     */
+    @Test
+    public void updateAfterNbtRoundTrip() {
+        var flag = Tag.Boolean("flag");
+        var source = TagHandler.newHandler();
+        source.setTag(flag, true);
+        var handler = TagHandler.fromCompound(source.asCompound());
+
+        handler.updateTag(flag, value -> !value);
+        assertEquals(false, handler.getTag(flag));
+    }
+
+    @Test
+    public void getAndSetAfterNbtRoundTrip() {
+        var owner = Tag.UUID("owner");
+        var first = UUID.fromString("5d2b6f1e-3c4a-4f7b-9e21-8a6c0d4b7f13");
+        var second = UUID.fromString("9ab8ca63-3d7b-43ba-b805-a20a352dae9c");
+        var source = TagHandler.newHandler();
+        source.setTag(owner, first);
+        var handler = TagHandler.fromCompound(source.asCompound());
+
+        assertEquals(first, handler.getAndSetTag(owner, second));
+        assertEquals(second, handler.getTag(owner));
+    }
+
+    /** A mapped tag shares no value with the tag it maps: the update has to hand over the mapped value. */
+    @Test
+    public void identityUpdateOfAMappedTagKeepsTheValue() {
+        var raw = Tag.Double("speed");
+        var perSecond = raw.map(perTick -> perTick * 20, value -> value / 20);
+        var handler = TagHandler.newHandler();
+        handler.setTag(raw, 0.5);
+        assertEquals(10.0, handler.getTag(perSecond));
+
+        handler.updateTag(perSecond, value -> value);
+        assertEquals(0.5, handler.getTag(raw));
+        assertEquals(10.0, handler.getTag(perSecond));
     }
 
     @Test

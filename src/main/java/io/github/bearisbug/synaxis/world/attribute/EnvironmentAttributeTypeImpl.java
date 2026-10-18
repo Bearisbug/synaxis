@@ -12,7 +12,8 @@ import java.util.Objects;
 record EnvironmentAttributeTypeImpl<T>(
         Key key,
         Codec<T> codec,
-        Codec<Modifier<T, ?>> modifierCodec
+        Codec<Modifier<T, ?>> modifierCodec,
+        Map<Modifier<T, ?>, Modifier.Operator> operators
 ) implements EnvironmentAttribute.Type<T> {
 
     static <T> EnvironmentAttribute.Type<T> register(
@@ -28,6 +29,11 @@ record EnvironmentAttributeTypeImpl<T>(
 
         final Codec<Modifier<T, ?>> modifierCodec = Modifier.Operator.CODEC.transform(op ->
                 Objects.requireNonNull(withOverride.get(op), () -> "unsupported operator: " + op), inverse::get);
-        return new EnvironmentAttributeTypeImpl<>(Key.key(key), codec, modifierCodec);
+        return new EnvironmentAttributeTypeImpl<>(Key.key(key), codec, modifierCodec, Map.copyOf(inverse));
+    }
+
+    /** Whether an attribute of this type takes {@code modifier}: an override, or one of the operators of the type. */
+    boolean supports(Modifier<?, ?> modifier) {
+        return modifier instanceof Modifier.Override || operators.containsKey(modifier);
     }
 }

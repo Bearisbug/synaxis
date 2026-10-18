@@ -11,6 +11,7 @@ import io.github.bearisbug.synaxis.utils.Either;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.STRING;
@@ -70,10 +71,14 @@ public record PropertiesPredicate(Map<String, ValuePredicate> properties) implem
             }
         };
 
-        record Exact(@Nullable String value) implements ValuePredicate {
+        record Exact(String value) implements ValuePredicate {
 
             public static final NetworkBuffer.Type<Exact> NETWORK_TYPE = NetworkBuffer.STRING.transform(Exact::new, Exact::value);
             public static final Codec<Exact> CODEC = Codec.STRING.transform(Exact::new, Exact::value);
+
+            public Exact {
+                Objects.requireNonNull(value, "Exact value; omit the property from PropertiesPredicate to not constrain it");
+            }
 
             @Override
             public boolean test(@Nullable String prop) {
@@ -82,14 +87,14 @@ public record PropertiesPredicate(Map<String, ValuePredicate> properties) implem
         }
 
         /**
-         * <p>Vanilla has some fancy behavior to get integer properties as ints, but seems to just compare the value
-         * anyway if its a string. Our behavior here is to attempt to parse the values as an integer and default
-         * to a string.compareTo otherwise.</p>
+         * <p>Matches a property whose value lies between {@code min} and {@code max}, both inclusive. A value that
+         * parses as an integer is compared as one, and then a bound that does not parse matches nothing; any other
+         * value, such as a boolean or an enum constant, is compared as a string.</p>
          *
-         * <p>Providing no min or max or a property which does exist results in a constant false.</p>
+         * <p>Without either bound, the property only has to exist.</p>
          *
          * @param min The min value to match, inclusive
-         * @param max The max value to match, exclusive
+         * @param max The max value to match, inclusive
          */
         record Range(@Nullable String min, @Nullable String max) implements ValuePredicate {
             public static final NetworkBuffer.Type<Range> NETWORK_TYPE = NetworkBufferTemplate.template(
@@ -103,16 +108,22 @@ public record PropertiesPredicate(Map<String, ValuePredicate> properties) implem
 
             @Override
             public boolean test(@Nullable String prop) {
-                if (prop == null || (min == null && max == null)) return false;
+                if (prop == null) return false;
+                if (min == null && max == null) return true;
+                final int value;
                 try {
-                    // Try to match as integers
-                    int value = Integer.parseInt(prop);
-                    return (min == null || value >= Integer.parseInt(min))
-                            && (max == null || value < Integer.parseInt(max));
+                    value = Integer.parseInt(prop);
                 } catch (NumberFormatException _) {
                     // Not an integer, just compare the strings
                     return (min == null || prop.compareTo(min) >= 0)
-                            && (max == null || prop.compareTo(max) < 0);
+                            && (max == null || prop.compareTo(max) <= 0);
+                }
+                try {
+                    return (min == null || value >= Integer.parseInt(min))
+                            && (max == null || value <= Integer.parseInt(max));
+                } catch (NumberFormatException _) {
+                    // A bound that is no value of an integer property
+                    return false;
                 }
             }
         }

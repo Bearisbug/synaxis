@@ -17,10 +17,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * A registry for holding static vanilla registry data. Not generally user modifiable, always immutable.
+ * A registry for holding static vanilla registry data. Not generally user modifiable, always immutable: its entries
+ * and its tags come with the bundled data and are shared by the whole JVM.
  */
 @ApiStatus.Internal
 final class StaticRegistry<T extends StaticProtocolObject<T>> implements Registry<T> {
@@ -46,7 +46,7 @@ final class StaticRegistry<T extends StaticProtocolObject<T>> implements Registr
             valueToKey.put(entry.getValue(), new RegistryKeyImpl<>(entry.getKey()));
         this.valueToKey = Map.copyOf(valueToKey);
         this.idToValue = ids.toList();
-        this.tags = new ConcurrentHashMap<>(tags);
+        this.tags = Map.copyOf(tags);
     }
 
     @Override
@@ -56,7 +56,7 @@ final class StaticRegistry<T extends StaticProtocolObject<T>> implements Registr
 
     @Override
     public @Nullable T get(int id) {
-        return this.idToValue.get(id);
+        return byId(id);
     }
 
     @Override
@@ -66,7 +66,7 @@ final class StaticRegistry<T extends StaticProtocolObject<T>> implements Registr
 
     @Override
     public @Nullable RegistryKey<T> getKey(int id) {
-        final T value = this.idToValue.get(id);
+        final T value = byId(id);
         return value == null ? null : new RegistryKeyImpl<>(value.key());
     }
 
@@ -83,14 +83,18 @@ final class StaticRegistry<T extends StaticProtocolObject<T>> implements Registr
     @Override
     public int getId(RegistryKey<T> key) {
         final T value = this.keyToValue.get(key.key());
-        if (value == null) return -1; // Not found
-        return this.valueToKey.get(value) != null ? value.id() : -1;
+        return value == null ? -1 : value.id();
     }
 
     @Override
     public @Nullable DataPack getPack(int id) {
         // Static registries are always in the core data pack
-        return this.idToValue.get(id) != null ? DataPack.MINECRAFT_CORE : null;
+        return byId(id) != null ? DataPack.MINECRAFT_CORE : null;
+    }
+
+    private @Nullable T byId(int id) {
+        if (id < 0 || id >= this.idToValue.size()) return null;
+        return this.idToValue.get(id);
     }
 
     @Override
@@ -115,12 +119,16 @@ final class StaticRegistry<T extends StaticProtocolObject<T>> implements Registr
 
     @Override
     public RegistryTag<T> getOrCreateTag(TagKey<T> key) {
-        return this.tags.computeIfAbsent(key, RegistryTagImpl.Backed::new);
+        final RegistryTag<T> tag = this.tags.get(key);
+        if (tag == null) throw new IllegalStateException("Static registry " + this.key.asString() + " has no tag "
+                + key.key().asString() + "; static registry tags are fixed by the bundled data");
+        return tag;
     }
 
     @Override
     public boolean removeTag(TagKey<T> key) {
-        return this.tags.remove(key) != null;
+        throw new UnsupportedOperationException("Static registry " + this.key.asString()
+                + " cannot remove tag " + key.key().asString() + "; static registry tags are fixed by the bundled data");
     }
 
     @Override

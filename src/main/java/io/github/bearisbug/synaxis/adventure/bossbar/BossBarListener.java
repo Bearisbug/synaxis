@@ -55,7 +55,10 @@ class BossBarListener implements BossBar.Listener {
     private void doIfRegistered(BossBar bar, Consumer<BossBarHolder> consumer) {
         BossBarHolder holder = this.manager.bars.get(bar);
         if (holder != null) {
-            consumer.accept(holder);
+            // The viewers of the holder only change under its monitor, see BossBarManager
+            synchronized (holder) {
+                consumer.accept(holder);
+            }
         }
     }
 }

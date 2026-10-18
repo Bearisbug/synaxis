@@ -58,6 +58,13 @@
 `buffer.slice(offset, packetLength, ...)` 保护（切片容量恰好等于包长），越界会由 segment 边界兜住，
 没有可被客户端触发的缺口。
 
+**P2-7 更正（RUN-080）**：上面这句不含包长本身。包长在连接的读缓冲上直接读，不在切片里：`VarIntType#read`
+只受段的容量约束、不看写下标，写下标之后是先前的帧留下的字节。一次读只收到 ≥ 128 B 帧的包长前 1～2 个字节、
+其后的旧字节高位又都是 1 时，凑满 5 个续位字节，`PacketReading#readPacket` 判成畸形帧，按默认
+`synaxis.reject-malformed-packet=true` 以 `synaxis:protocol-error` 踢掉正常客户端。RUN-080 已修：写下标之前已有
+5 个字节、全带续位才是畸形，不足 5 个时容量放得下就等下一次读（`docs/DESIGN-PROD.md` v0.9.85，
+`docs/TEST.md` `TC-PROD-770`）。
+
 **P2-13（跳过）**：两半都不适合本轮改。① 池化缓冲不缩容是刻意的性能取舍，靠 `SoftReference` 兜底，
 改成缩容需要分配率/GC 基准；② `VarInt3 out of bounds` 逃逸在 P1-4 修好后不再导致写线程空转——
 超规格包现在要么被 `writeQueue` 丢弃并报 `IllegalStateException`，要么以 `IllegalArgumentException`

@@ -87,7 +87,7 @@ P2-1~P2-4 四条都是「触发需要外部数据」的健壮性修复，没有�
 | P3-6d `AdvancementTab.PLAYER_TAB_MAP` 并发 | **已修** | `7e322981c7` | 无独立用例 |
 | P3-7 `TransformImpl.encode` catch 内再抛 NPE | **已修** | `f92b6a8e88` | `CodecTest.transformEncodeFailureWithoutMessageIsAnError` |
 | P3-8 集合 encode 超限 throw 而非 `Result.Error` | **已修** | `06ffebce0d` | `CodecTest.collectionEncodeOverMaxSizeIsAnError` |
-| P3-9 `MapImpl.encode` 非字符串 key 静默丢弃 | **已修** | `687220e7a9` | `CodecTest.mapWithNonStringKeysIsAnError` |
+| P3-9 `MapImpl.encode` 非字符串 key 静默丢弃 | **已修**。回归与修正（RUN-080）：这次修复在 `MapImpl` 编码时用 `getString` 回读每个键，而 CRC32 transcoder 的 `getString` 恒返回错误，经 `mapValue` 编码的组件（附魔、存储附魔、方块状态、调试棒状态、地图装饰）一律哈希失败，光标上拿着附魔物品时每次窗口点击都从 `WindowListener` 抛出；`mapValueTyped` 没有这层回读，NBT 与 Java 下仍静默丢掉非字符串键，JSON 下把数字键写成字符串。RUN-080 已修：两种 map codec 合成一个 `MapImpl`，改由三种 transcoder 的 `MapBuilder#put(D, D)` 拒收非字符串键，CRC32 照算（`docs/DESIGN-PROD.md` v0.9.88，`docs/TEST.md` `TC-PROD-800`、`TC-PROD-801`） | `687220e7a9` | `CodecTest.mapWithNonStringKeysIsAnError` |
 | 尾部：`ArgumentTime` 空串、`ArgumentRelativeVec` 空 token、`StringUtils` `\uZZZZ` | **已修** | `655a476453` | `ArgumentRobustnessTest`（3 个用例） |
 
 `StringUtils` 里「`Character.toChars` 允许产生孤立代理项」一条**跳过**：孤立代理项在 Java `String` 里是可表示的，且没有可观测的故障路径，改它属于收紧语义而非修 bug。
@@ -114,7 +114,7 @@ P2-1~P2-4 四条都是「触发需要外部数据」的健壮性修复，没有�
 | #3027 Pickup all improperly implemented | 已修（P1-4） |
 | #2847 Shift click into crafting slot | 已修（P1-5） |
 | #3118 ArgumentItemStack components | 已修（P1-8） |
-| #2682 / #1617 / #1520 建议回调 | 已修（P1-9） |
+| #2682 / #1617 / #1520 建议回调 | #2682 已修（P1-9）。#1617、#1520 是参数的错误回调从不被调用，P1-9 只修了建议回调，没有修到这两条；RUN-080 已修：`Argument#setCallback` 与 `Command#setArgumentCallback` 注册的错误回调在最深的失败只落在一个设了回调的参数上、且持有它的语法的 condition 放行发送者时调用，结果 `INVALID_SYNTAX`，不执行任何执行器（`docs/DESIGN-PROD.md` v0.9.90，`docs/TEST.md` `TC-PROD-824`） |
 | #1326 ConditionalSyntax only last argument | 已修（P1-10） |
 | #2639 feature-flag datapack tags | 已修后果面（P2-1 / P2-2 / P2-3）；「加载 feature-flag datapack」本身是缺失特性，不在本次范围 |
 | #2514 SHIFT_CLICK 事件追踪 | 延后（P3-1，API 决策） |

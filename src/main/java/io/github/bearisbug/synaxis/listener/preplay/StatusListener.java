@@ -25,6 +25,12 @@ public final class StatusListener {
     }
 
     public static void pingRequestListener(ClientPingRequestPacket packet, PlayerConnection connection) {
+        if (!connection.acquireStatusPing()) {
+            // Like vanilla, a connection only gets one pong: with a delay, each further ping would
+            // queue one more task
+            connection.disconnect();
+            return;
+        }
         final ClientPingServerEvent clientPingEvent = new ClientPingServerEvent(connection, packet.number());
         connection.process().eventHandler().call(clientPingEvent);
 

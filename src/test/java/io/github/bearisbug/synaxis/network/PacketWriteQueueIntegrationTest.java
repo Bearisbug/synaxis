@@ -3,7 +3,7 @@ package io.github.bearisbug.synaxis.network;
 import io.github.bearisbug.synaxis.JvmFlags;
 import io.github.bearisbug.synaxis.network.packet.PacketWriting;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
-import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
+import io.github.bearisbug.synaxis.network.packet.server.login.LoginPluginRequestPacket;
 import io.github.bearisbug.synaxis.utils.collection.ConcurrentMessageQueues;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
@@ -25,12 +25,13 @@ public class PacketWriteQueueIntegrationTest {
     @Test
     public void aPacketTooLargeToEverFitIsDroppedNotRetried(Env env) {
         final var queue = ConcurrentMessageQueues.<ServerPacket>mpscUnboundedArrayQueue(16);
-        queue.relaxedOffer(new PluginMessagePacket("t", new byte[JvmFlags.MAX_PACKET_SIZE + 1]));
+        // No cap on the payload of a login plugin request, unlike the client-bound plugin message (1 MiB)
+        queue.relaxedOffer(new LoginPluginRequestPacket(1, "t", new byte[JvmFlags.MAX_PACKET_SIZE + 1]));
 
         final NetworkBuffer buffer = NetworkBuffer.staticBuffer(
                 env.process().config().pooledBufferSize(), env.process().registries());
         assertThrows(IllegalStateException.class, () -> PacketWriting.writeQueue(buffer, queue, 1, (b, packet) -> {
-            PacketWriting.writeFramedPacket(b, ConnectionState.PLAY, packet, 0);
+            PacketWriting.writeFramedPacket(b, ConnectionState.LOGIN, packet, 0);
             return true;
         }));
         assertTrue(queue.isEmpty(), "a packet that cannot be written must leave the queue");

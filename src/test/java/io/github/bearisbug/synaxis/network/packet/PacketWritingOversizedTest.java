@@ -5,7 +5,7 @@ import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
 import io.github.bearisbug.synaxis.network.packet.client.common.ClientPluginMessagePacket;
-import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
+import io.github.bearisbug.synaxis.network.packet.server.login.LoginPluginRequestPacket;
 import org.junit.jupiter.api.Test;
 
 import java.util.zip.DataFormatException;
@@ -36,12 +36,12 @@ public class PacketWritingOversizedTest {
         // The scratch buffer must be the fixed-size kind the packet pool hands out: the oversize
         // guard is what runs once the first framing attempt overflows it
         final NetworkBuffer scratch = NetworkBuffer.staticBuffer(16);
-        // The client-bound plugin message is the one without a Short.MAX_VALUE payload cap
-        final var oversized = new PluginMessagePacket("synaxis:test", new byte[JvmFlags.MAX_PACKET_SIZE + 1]);
+        // The login plugin request has no cap on its payload, unlike the client-bound plugin message (1 MiB)
+        final var oversized = new LoginPluginRequestPacket(1, "synaxis:test", new byte[JvmFlags.MAX_PACKET_SIZE + 1]);
 
         final var error = assertThrows(IllegalStateException.class,
                 () -> PacketWriting.allocateTrimmedPacket(scratch,
-                        PacketVanilla.SERVER_PACKET_PARSER, ConnectionState.PLAY, oversized, 0));
+                        PacketVanilla.SERVER_PACKET_PARSER, ConnectionState.LOGIN, oversized, 0));
         assertTrue(error.getMessage().startsWith("Packet too large: "), error.getMessage());
     }
 

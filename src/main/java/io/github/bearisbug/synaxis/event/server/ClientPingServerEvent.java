@@ -88,6 +88,8 @@ public class ClientPingServerEvent implements CancellableEvent, AsyncEvent {
 
     /**
      * Adds to the delay until the engine will send the ping response packet.
+     * <p>
+     * A connection is answered once: a second ping on it closes it without any event.
      *
      * @param delay the delay
      */

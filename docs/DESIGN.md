@@ -445,6 +445,7 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 
 - read-after-write：注册表在 `start()` 后冻结，任何线程读到同一份；实体状态只在其所属 tick 线程或持有 `Acquirable` 所有权时可写，其他线程读到的是上一个 tick 的快照。
 - 异步投递：事件树同步分发；`AsyncEvent` 在虚拟线程上 at-most-once，监听器自行幂等。
+- 事件分发：监听器按事件的确切运行时类查找，只有 `RecursiveEvent` 沿父类往上传（只走父类，不走接口）；按接口或不是 `RecursiveEvent` 的抽象类注册监听器，`EventNode#addListener` 与 `register` 抛 `IllegalArgumentException`，因为没有事件以它为运行时类派发。监听器抛的异常交给根节点所属进程的 `ExceptionManager`，同一次派发的其余监听器与子节点放弃；经 `map()` 挂上的映射节点各自接住自己子树里的异常，父节点后面的子节点照常执行（`docs/DESIGN-PROD.md` v0.9.98）。
 
 ## 17. 依赖与外部系统 / SLA
 

@@ -10,6 +10,7 @@ import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryTag;
 import io.github.bearisbug.synaxis.sound.SoundEvent;
+import io.github.bearisbug.synaxis.utils.ThrowingFunction;
 import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,6 +43,7 @@ public record Equippable(
             NetworkBuffer.BOOLEAN, Equippable::canBeSheared,
             SoundEvent.NETWORK_TYPE, Equippable::shearingSound,
             Equippable::new);
+    // The transform reports a value the constructor refuses as a decode error rather than throwing it out of decode
     public static final Codec<Equippable> CODEC = StructCodec.struct(
             "slot", EquipmentSlot.CODEC, Equippable::slot,
             "equip_sound", SoundEvent.CODEC.optional(DEFAULT_EQUIP_SOUND), Equippable::equipSound,
@@ -54,7 +56,7 @@ public record Equippable(
             "equip_on_interact", Codec.BOOLEAN.optional(false), Equippable::equipOnInteract,
             "can_be_sheared", Codec.BOOLEAN.optional(false), Equippable::canBeSheared,
             "shearing_sound", SoundEvent.CODEC.optional(DEFAULT_SHEARING_SOUND), Equippable::shearingSound,
-            Equippable::new);
+            Equippable::new).transform(ThrowingFunction.identity(), ThrowingFunction.identity());
 
     // Both are identifiers in 26.2, which a client that cannot parse them drops the connection over
     public Equippable {

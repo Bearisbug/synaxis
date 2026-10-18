@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.codec.Codec;
 import io.github.bearisbug.synaxis.codec.StructCodec;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
+import io.github.bearisbug.synaxis.utils.ThrowingFunction;
 import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,10 +14,11 @@ public record UseCooldown(float seconds, @Nullable String cooldownGroup) {
             NetworkBuffer.FLOAT, UseCooldown::seconds,
             NetworkBuffer.STRING.optional(), UseCooldown::cooldownGroup,
             UseCooldown::new);
+    // The transform reports a value the constructor refuses as a decode error rather than throwing it out of decode
     public static final Codec<UseCooldown> CODEC = StructCodec.struct(
             "seconds", Codec.FLOAT, UseCooldown::seconds,
             "cooldown_group", Codec.STRING.optional(), UseCooldown::cooldownGroup,
-            UseCooldown::new);
+            UseCooldown::new).transform(ThrowingFunction.identity(), ThrowingFunction.identity());
 
     // An identifier in 26.2, which a client that cannot parse it drops the connection over
     public UseCooldown {

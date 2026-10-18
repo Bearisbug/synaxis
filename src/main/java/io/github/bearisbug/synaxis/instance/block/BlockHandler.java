@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *     its own, and the two threads deadlock. Hand an effect on another entity to the thread of that entity with
  *     {@code entity.scheduler().scheduleNextTick(task)}, from a plugin with
  *     {@code PluginScheduler#runOn(entity, task, TaskSchedule.immediate())}.</li>
- *     <li>{@link #isTickable()} is read once, when the block is set.</li>
+ *     <li>{@link #isTickable()} is read when the block is set or its chunk is loaded, not on every tick.</li>
  * </ul>
  */
 public interface BlockHandler {
@@ -99,8 +99,8 @@ public interface BlockHandler {
     /**
      * Gets if blocks with this handler are ticked, see {@link #tick(Tick)}.
      * <p>
-     * Read once, when a block with this handler is set: a block already in the world keeps the answer it got
-     * until it is set again.
+     * Read when a block with this handler is set or its chunk is loaded, not on every tick: a block keeps the answer
+     * it got then.
      *
      * @return true to tick the blocks with this handler
      */

@@ -9,6 +9,9 @@ import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.item.component.EnchantmentList;
+import io.github.bearisbug.synaxis.item.component.PotionContents;
+import io.github.bearisbug.synaxis.potion.CustomPotionEffect;
+import io.github.bearisbug.synaxis.potion.PotionEffect;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.tag.Tag;
 import io.github.bearisbug.synaxis.testing.Env;
@@ -99,6 +102,24 @@ class PlayerStateCodecIntegrationTest {
         final String stored = section.encode(state).toString();
 
         assertEquals(state, section.decode(JsonParser.parseString(stored), section.schemaVersion()), stored);
+    }
+
+    /** The amplifier of an effect is an unsigned byte, as in 26.2: read back as a signed one, 200 came back as -56. */
+    @Test
+    void aPotionEffectAboveAmplifier127SurvivesTheRoundTrip(Env env) {
+        final PlayerStateSection section = new PlayerStateSection(env.process().registries());
+        final ItemStack potion = ItemStack.builder(Material.POTION)
+                .set(DataComponents.POTION_CONTENTS,
+                        new PotionContents(new CustomPotionEffect(PotionEffect.SPEED, 200, 600, false, true, true)))
+                .build();
+        final PlayerState state = new PlayerState(new PlayerState.Core(), new Pos(8.5, 40, -3.5), Map.of(0, potion), 0, 20f);
+
+        final String stored = section.encode(state).toString();
+        final PlayerState back = section.decode(JsonParser.parseString(stored), section.schemaVersion());
+
+        assertEquals(200, back.inventory().get(0).get(DataComponents.POTION_CONTENTS).customEffects().getFirst().amplifier(),
+                stored);
+        assertEquals(state, back, stored);
     }
 
     /**

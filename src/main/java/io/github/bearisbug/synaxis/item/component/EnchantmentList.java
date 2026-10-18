@@ -7,7 +7,6 @@ import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import io.github.bearisbug.synaxis.registry.BuiltinRegistries;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
-import io.github.bearisbug.synaxis.utils.validate.Check;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,8 +27,9 @@ public record EnchantmentList(Map<RegistryKey<BinaryTag>, Integer> enchantments)
         enchantments = Map.copyOf(enchantments);
         for (Map.Entry<RegistryKey<BinaryTag>, Integer> entry : enchantments.entrySet()) {
             final int level = entry.getValue();
-            Check.argCondition(level < 1 || level > 255, "Enchantment {0} level {1} is outside 1..255",
-                    entry.getKey().key().asString(), String.valueOf(level));
+            if (level < 1 || level > 255)
+                throw new IllegalArgumentException(
+                        "Enchantment " + entry.getKey().key().asString() + " level " + level + " is outside 1..255");
         }
     }
 

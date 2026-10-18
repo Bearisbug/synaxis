@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.codec.Codec;
 import io.github.bearisbug.synaxis.codec.StructCodec;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
+import io.github.bearisbug.synaxis.utils.ThrowingFunction;
 import io.github.bearisbug.synaxis.utils.validate.Check;
 
 import java.util.List;
@@ -14,9 +15,10 @@ public record WritableBookContent(List<FilteredText<String>> pages) {
     public static final NetworkBuffer.Type<WritableBookContent> NETWORK_TYPE = NetworkBufferTemplate.template(
             FilteredText.STRING_NETWORK_TYPE.list(100), WritableBookContent::pages,
             WritableBookContent::new);
+    // The transform reports a value the constructor refuses as a decode error rather than throwing it out of decode
     public static final Codec<WritableBookContent> CODEC = StructCodec.struct(
             "pages", FilteredText.STRING_CODEC.list().optional(List.of()), WritableBookContent::pages,
-            WritableBookContent::new);
+            WritableBookContent::new).transform(ThrowingFunction.identity(), ThrowingFunction.identity());
 
     // The 26.2 client decodes at most 100 pages of at most 1024 characters and drops the connection over more
     public WritableBookContent {

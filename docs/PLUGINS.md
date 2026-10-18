@@ -133,6 +133,7 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 | --- | --- | --- |
 | 实体与玩家的事件（含 `transfers().transfer(…)` 让宿主派发的 `OutgoingTransferEvent`，不论从哪条线程调用）、实体的休眠策略（`Entity#setDormancyPolicy`）、玩家发来的通道负载、`scheduler().runOn(实体, …)` | 该实体所属的 tick 线程 | 读写这个实体 |
 | `scheduler().scheduleTask(…)` | tick 调度线程，所有插件的任务一个接一个跑 | 每 tick 的全局逻辑；它是整个 tick 的串行段，要扩到几百人就按格或按实体拆开 |
+| `playerData().commitTogether(…, apply)` 的 `apply` | tick 调度线程，提交写进库之后下一个 tick 的串行段，只跑一次 | 改每个参与者，不论他们分在哪条 tick 线程；参与者这时可能已经离开，先查 `isRemoved()`（`docs/DESIGN-PROD.md` `API-PROD-005`） |
 | `scheduler().runAsync(…)` | 自己的虚拟线程 | 阻塞的活（读写库、HTTP）；不碰实体与实例，结果用 `runOn` 送回去 |
 | 服务器列表事件 `ServerListPingEvent` | 发请求那条连接的读线程（虚拟线程） | 只改事件本身（MOTD、人数、样本、图标，`docs/DESIGN-PROD.md` `API-PROD-024`）；不碰实体与实例 |
 

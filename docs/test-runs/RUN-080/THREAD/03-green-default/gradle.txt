@@ -1,0 +1,53 @@
+heavy lock taken by: owner=生产就绪会话/RUN-077/fix-CMD pid=3886 since=2026-10-18 10:08:12 task=RUN-077 单个测试类的 Gradle（跑完即放） (10:08:23)
+[fix-THREAD-3green] free=41% load=12 start 10:08:53
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :testNamingCheck UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :processTestResources UP-TO-DATE
+> Task :testing:processResources NO-SOURCE
+> Task :baker:processResources UP-TO-DATE
+> Task :game-rts:processResources UP-TO-DATE
+> Task :server-app:buildInfo UP-TO-DATE
+> Task :server-app:processResources UP-TO-DATE
+> Task :server-app:processTestResources UP-TO-DATE
+> Task :synx:processResources NO-SOURCE
+> Task :compileJava
+> Task :classes
+> Task :jar
+> Task :synx:compileJava
+> Task :plugin-api:compileJava
+> Task :plugin-api:classes
+> Task :plugin-api:jar UP-TO-DATE
+> Task :testing:compileJava
+> Task :baker:compileJava
+> Task :testing:classes
+> Task :testing:jar UP-TO-DATE
+> Task :baker:classes
+> Task :baker:jar
+> Task :game-rts:compileJava
+> Task :game-rts:classes
+> Task :game-rts:jar
+> Task :server-app:compileJava
+> Task :server-app:classes
+> Task :compileTestJava
+> Task :testClasses
+> Task :server-app:compileTestJava
+> Task :server-app:testClasses
+> Task :synx:classes
+> Task :synx:jar
+> Task :test
+> Task :server-app:test
+
+BUILD SUCCESSFUL in 33s
+28 actionable tasks: 15 executed, 13 up-to-date
+Configuration cache entry reused.
+[fix-THREAD-3green] gradle exit=0 end 10:09:26

@@ -1,0 +1,132 @@
+[fix-THREAD-2green] free=43% load=14 start 10:07:02
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as no cached configuration is available for tasks: :testNamingCheck :test --tests io.github.bearisbug.synaxis.thread.AcquirableHandoverTest --tests io.github.bearisbug.synaxis.thread.AcquireWaitTest --tests io.github.bearisbug.synaxis.thread.AcquirableTest --tests io.github.bearisbug.synaxis.thread.AcquirableCollectionTest --tests io.github.bearisbug.synaxis.thread.ThreadDispatcherTest --tests io.github.bearisbug.synaxis.thread.AcquirableBasicIntegrationTest --tests io.github.bearisbug.synaxis.thread.AcquirableEntityIntegrationTest --tests io.github.bearisbug.synaxis.thread.AcquirableLocalsIntegrationTest --tests io.github.bearisbug.synaxis.entity.EntityAsyncContinuationIntegrationTest --tests io.github.bearisbug.synaxis.entity.LivingEntityHealthIntegrationTest --tests io.github.bearisbug.synaxis.entity.AcquirableStrictIntegrationTest --tests io.github.bearisbug.synaxis.entity.EntityTeleportIntegrationTest --tests io.github.bearisbug.synaxis.entity.attribute.AttributeInstanceConcurrencyTest --tests io.github.bearisbug.synaxis.entity.attribute.AttributeInstanceTest --tests io.github.bearisbug.synaxis.instance.GeneratorIntegrationTest --tests io.github.bearisbug.synaxis.instance.ChunkTryLockWriteLockIntegrationTest --tests io.github.bearisbug.synaxis.instance.ChunkUnloadIntegrationTest --tests io.github.bearisbug.synaxis.instance.UnloadChunkIntegrationTest --tests io.github.bearisbug.synaxis.instance.SimulationDistanceTest --tests io.github.bearisbug.synaxis.entity.VisibleEntityLimitTest --tests io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest --tests io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest :server-app:test --tests io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions UP-TO-DATE
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateEntrypointForLibs UP-TO-DATE
+> Task :build-src:generateEntrypointForLibsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-src:generateLibrariesForConventions UP-TO-DATE
+> Task :build-src:generateLibrariesForLibs UP-TO-DATE
+> Task :build-src:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-src:compilePluginsBlocks UP-TO-DATE
+> Task :build-src:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-src:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-src:verifyEarlyEvaluatedBuild UP-TO-DATE
+> Task :build-src:verifyTopLevelBuild UP-TO-DATE
+> Task :build-src:compileKotlin UP-TO-DATE
+> Task :build-src:compileJava UP-TO-DATE
+> Task :build-src:pluginDescriptors UP-TO-DATE
+> Task :build-src:processResources UP-TO-DATE
+> Task :build-src:classes UP-TO-DATE
+> Task :build-src:jar UP-TO-DATE
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :baker
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rush
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :loadtest
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :play-kit
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :synx
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :testNamingCheck
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :processTestResources UP-TO-DATE
+> Task :testing:processResources NO-SOURCE
+> Task :baker:processResources
+> Task :game-rts:processResources
+> Task :server-app:buildInfo
+> Task :server-app:processResources
+> Task :server-app:processTestResources
+> Task :synx:processResources NO-SOURCE
+
+> Task :compileJava
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-THREAD/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java:117: error: a type with the same simple name is already defined by the single-type-import of TimeUnit
+import java.util.concurrent.TimeUnit;
+^
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-THREAD/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java:1166: error: reference to TimeUnit is ambiguous
+        public Void get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+                                      ^
+  both class io.github.bearisbug.synaxis.timer.TimeUnit in io.github.bearisbug.synaxis.timer and enum java.util.concurrent.TimeUnit in java.util.concurrent match
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-THREAD/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java:2028: error: reference to TimeUnit is ambiguous
+        if (temporalUnit == TimeUnit.SERVER_TICK) {
+                            ^
+  both class io.github.bearisbug.synaxis.timer.TimeUnit in io.github.bearisbug.synaxis.timer and enum java.util.concurrent.TimeUnit in java.util.concurrent match
+3 errors
+
+> Task :compileJava FAILED
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-THREAD/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  /Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-THREAD/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java:117: error: a type with the same simple name is already defined by the single-type-import of TimeUnit
+  import java.util.concurrent.TimeUnit;
+  ^
+  3 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 8s
+30 actionable tasks: 7 executed, 23 up-to-date
+Configuration cache entry stored.
+[fix-THREAD-2green] gradle exit=1 end 10:07:10

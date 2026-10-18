@@ -1,0 +1,151 @@
+heavy lock taken by: owner=生产就绪会话/RUN-077/fix-ITEMNET pid=3886 since=2026-10-18 10:04:34 task=RUN-077 单个测试类的 Gradle（跑完即放） (10:04:43)
+[fix-THREAD-1red] free=43% load=17 start 10:05:43
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as no cached configuration is available for tasks: :test --tests io.github.bearisbug.synaxis.thread.AcquirableHandoverTest --tests io.github.bearisbug.synaxis.thread.AcquireWaitTest --tests io.github.bearisbug.synaxis.entity.EntityAsyncContinuationIntegrationTest --tests io.github.bearisbug.synaxis.entity.LivingEntityHealthIntegrationTest --tests io.github.bearisbug.synaxis.instance.GeneratorIntegrationTest
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions FROM-CACHE
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock FROM-CACHE
+> Task :build-src:generateEntrypointForLibs FROM-CACHE
+> Task :build-src:generateEntrypointForLibsInPluginsBlock FROM-CACHE
+> Task :build-src:generateExternalPluginSpecBuilders FROM-CACHE
+> Task :build-src:generateLibrariesForConventions FROM-CACHE
+> Task :build-src:generateLibrariesForLibs FROM-CACHE
+> Task :build-src:extractPrecompiledScriptPluginPlugins FROM-CACHE
+> Task :build-src:compilePluginsBlocks FROM-CACHE
+> Task :build-src:generatePrecompiledScriptPluginAccessors FROM-CACHE
+> Task :build-src:generateScriptPluginAdapters FROM-CACHE
+> Task :build-src:verifyEarlyEvaluatedBuild FROM-CACHE
+> Task :build-src:verifyTopLevelBuild FROM-CACHE
+> Task :build-src:compileKotlin FROM-CACHE
+> Task :build-src:compileJava FROM-CACHE
+> Task :build-src:pluginDescriptors
+> Task :build-src:processResources
+> Task :build-src:classes
+> Task :build-src:jar
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :baker
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rush
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :loadtest
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :play-kit
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :synx
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :generateJavaTemplates
+> Task :processResources
+> Task :protocol:compileJava FROM-CACHE
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar
+> Task :plugin-api:processResources NO-SOURCE
+> Task :processTestResources
+> Task :testing:processResources NO-SOURCE
+> Task :compileJava FROM-CACHE
+> Task :classes
+> Task :jar
+> Task :plugin-api:compileJava FROM-CACHE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar
+> Task :testing:compileJava FROM-CACHE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar
+> Task :compileTestJava
+> Task :testClasses
+
+> Task :test
+
+LivingEntityHealthIntegrationTest > loweringMaxHealthFromAnotherThreadClampsOnTheOwningThread(Env) FAILED
+    io.github.bearisbug.synaxis.thread.AcquirableOwnershipException at LivingEntityHealthIntegrationTest.java:60
+
+GeneratorIntegrationTest > chunkReadLockCannotUpgradeToWriteLock(Env) FAILED
+    org.opentest4j.AssertionFailedError at GeneratorIntegrationTest.java:152
+        Caused by: java.lang.AssertionError at GeneratorIntegrationTest.java:152
+
+GeneratorIntegrationTest > aBlockSetUnderTheReadLockOfItsChunkThrows(Env) FAILED
+    org.opentest4j.AssertionFailedError at GeneratorIntegrationTest.java:170
+        Caused by: java.lang.AssertionError at GeneratorIntegrationTest.java:170
+
+EntityAsyncContinuationIntegrationTest > waitingForATeleportOnTheOwningThreadIsRefused(Env) FAILED
+    org.opentest4j.AssertionFailedError at EntityAsyncContinuationIntegrationTest.java:232
+
+EntityAsyncContinuationIntegrationTest > noTickThreadTicksAnEntityWhileItSpawns(Env) FAILED
+    org.opentest4j.AssertionFailedError at EntityAsyncContinuationIntegrationTest.java:177
+
+AcquirableHandoverTest > anAcquisitionThatReadTheOldThreadOwnsTheElement(Acquisition) > [1] SYNC FAILED
+    org.opentest4j.AssertionFailedError at AcquirableHandoverTest.java:220
+
+AcquirableHandoverTest > anAcquisitionThatReadTheOldThreadOwnsTheElement(Acquisition) > [2] LOCK FAILED
+    org.opentest4j.AssertionFailedError at AcquirableHandoverTest.java:220
+
+AcquirableHandoverTest > anAcquisitionThatReadTheOldThreadOwnsTheElement(Acquisition) > [3] COLLECTION FAILED
+    org.opentest4j.AssertionFailedError at AcquirableHandoverTest.java:220
+
+AcquirableHandoverTest > anElementHeldFromAnotherThreadStaysOnItsThreadUntilReleased() FAILED
+    org.opentest4j.AssertionFailedError at AcquirableHandoverTest.java:135
+
+33 tests completed, 9 failed
+
+> Task :test FAILED
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-THREAD/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-THREAD/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 21s
+31 actionable tasks: 12 executed, 19 from cache
+Configuration cache entry stored.
+[fix-THREAD-1red] gradle exit=1 end 10:06:06

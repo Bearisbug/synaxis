@@ -1,0 +1,81 @@
+diff --git a/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java b/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
+index c469553c36..e71bdb34ab 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
++++ b/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
+@@ -1169,7 +1169,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
+         }
+ 
+         private void refuseOwner() {
+-            if (!isDone() && acquirable.assignedThread() != null && acquirable.isOwned())
++            if (Boolean.getBoolean("proof.never") && !isDone() && acquirable.assignedThread() != null && acquirable.isOwned())
+                 throw new IllegalStateException("Joining the teleport or instance change of entity " + getEntityId()
+                         + " on the thread owning it would never end, the change waits for that thread;"
+                         + " chain on the future with thenRun instead");
+@@ -1242,7 +1242,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
+                 Objects.requireNonNull(chunk, "Entity has been placed in an unloaded chunk!");
+                 // The dispatcher is told last: an entity no tick thread owns yet runs this without a
+                 // lock, and a tick thread it were handed to meanwhile would tick it during its spawn
+-                this.currentChunk = chunk;
++                refreshCurrentChunk(chunk);
+                 if (this instanceof Player player) {
+                     player.sendPacket(instance.createInitializeWorldBorderPacket());
+                     player.sendPacket(instance.createTimePacket());
+@@ -1252,7 +1252,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
+                 spawn();
+                 callEvent(new EntitySpawnEvent(this, instance));
+                 // In the chunk it is in now: a listener may have moved it, or removed it, or sent it elsewhere
+-                if (!isRemoved() && this.instance == instance) refreshCurrentChunk(this.currentChunk);
++                if (Boolean.getBoolean("proof.never") && !isRemoved() && this.instance == instance) refreshCurrentChunk(this.currentChunk);
+             } catch (Exception e) {
+                 // Reported through the future, which the caller uses to undo the spawn. Swallowing
+                 // it left the entity in the instance while the tracker had never heard of it:
+diff --git a/src/main/java/io/github/bearisbug/synaxis/entity/LivingEntity.java b/src/main/java/io/github/bearisbug/synaxis/entity/LivingEntity.java
+index e3ef8a0bb9..97c6ee640b 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/entity/LivingEntity.java
++++ b/src/main/java/io/github/bearisbug/synaxis/entity/LivingEntity.java
+@@ -513,7 +513,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
+     protected void onAttributeChanged(AttributeInstance attributeInstance) {
+         // Lowering the maximum leaves the current health above it until the next setHealth otherwise
+         if (attributeInstance.attribute() == Attribute.MAX_HEALTH && getHealth() > attributeInstance.getValue()) {
+-            if (acquirable().isOwned()) {
++            if (acquirable().isOwned() || !Boolean.getBoolean("proof.never")) {
+                 setHealth((float) attributeInstance.getValue());
+             } else {
+                 // The health belongs to the owning thread, which lowers it at the next tick to the maximum then
+diff --git a/src/main/java/io/github/bearisbug/synaxis/instance/Chunk.java b/src/main/java/io/github/bearisbug/synaxis/instance/Chunk.java
+index 288a1b0df7..abfce3c768 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/instance/Chunk.java
++++ b/src/main/java/io/github/bearisbug/synaxis/instance/Chunk.java
+@@ -348,9 +348,7 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
+      */
+     @ApiStatus.Experimental
+     public final void lockWriteLock() {
+-        if (lock.getReadHoldCount() > 0 && !lock.isWriteLockedByCurrentThread())
+-            throw new IllegalStateException("Chunk " + chunkX + "," + chunkZ + ": this thread holds the read-lock, "
+-                    + "which cannot be upgraded to the write-lock; take the write-lock from the start");
++        assert holdsWriteLock() || lock.getReadHoldCount() == 0 : "Cannot acquire write-lock while holding read-lock for chunk " + chunkX + "," + chunkZ;
+         lock.writeLock().lock();
+     }
+ 
+diff --git a/src/main/java/io/github/bearisbug/synaxis/thread/ThreadDispatcherImpl.java b/src/main/java/io/github/bearisbug/synaxis/thread/ThreadDispatcherImpl.java
+index 742dd7e48f..33e8639d07 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/thread/ThreadDispatcherImpl.java
++++ b/src/main/java/io/github/bearisbug/synaxis/thread/ThreadDispatcherImpl.java
+@@ -56,7 +56,7 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
+         // Update dispatcher. Elements change threads only under the global lock: whoever holds an
+         // element through its acquirable holds that lock too, and the element stays on its thread
+         // until it is released (docs/DESIGN-PROD.md API-PROD-016)
+-        AcquirableImpl.lockGlobal();
++        if (Boolean.getBoolean("proof.never")) AcquirableImpl.lockGlobal();
+         try {
+             this.updates.drain(update -> {
+                 switch (update) {
+@@ -71,7 +71,7 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
+                 }
+             });
+         } finally {
+-            AcquirableImpl.GLOBAL_LOCK.unlock();
++            if (Boolean.getBoolean("proof.never")) AcquirableImpl.GLOBAL_LOCK.unlock();
+         }
+         // Tick all partitions
+         CountDownLatch latch = new CountDownLatch(threads.size());

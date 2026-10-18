@@ -1,0 +1,73 @@
+RUN-080 组 THREAD（元素换线程与非 tick 线程的获取、在所属线程上等传送、属性的线程、区块读锁升写锁）证据
+分支 prod/r080-THREAD，基于 origin/main a211a45ca1；代码提交 da453473d3；docs/DESIGN-PROD.md v0.9.86，
+docs/TEST.md TC-PROD-780～TC-PROD-786（另改 TC-PROD-566、TC-PROD-567）。
+本机，2026-10-18。每次 Gradle 都经 zsh ~/.claude/r077/gradle.zsh <worktree> <标签> <任务…>
+（--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts，跑前拿 /tmp/synaxis-heavy.lock）。
+不连数据库。类全名前缀 <E> = io.github.bearisbug.synaxis。每个目录里：gradle.txt 是那次 Gradle 的控制台输出，
+results.txt 是按 build/test-results 的 XML 抽出的每个类的条数与每条失败的红行、消息。
+源文件代号同 TEST.md 本节：<AI> AcquirableImpl.java，<TD> ThreadDispatcherImpl.java，<AC> AcquirableCollection.java，
+<TT> TickThread.java，<EN> Entity.java，<LE> LivingEntity.java，<CH> Chunk.java；行号按 da453473d3。
+
+01-red/  第 1 次：改动前的红。src/main 取 a211a45ca1 之前的 cb969826b7（两者 src/main 相同），测试是本组的。
+  跑 thread.AcquirableHandoverTest、thread.AcquireWaitTest、entity.EntityAsyncContinuationIntegrationTest、
+  entity.LivingEntityHealthIntegrationTest、instance.GeneratorIntegrationTest。33 tests completed, 9 failed：
+  - AcquirableHandoverTest 4 条全红：anElementHeldFromAnotherThreadStaysOnItsThreadUntilReleased 红在 :135
+    （ticked on Syn-Tick-1 while held on Syn-Tick-0 ==> expected: <0> but was: <1>）；
+    anAcquisitionThatReadTheOldThreadOwnsTheElement 的 SYNC、LOCK、COLLECTION 都红在 :220（… held the lock of the
+    thread the element left ==> expected: <true> but was: <false>）。TC-PROD-780、781 第 2 步。
+  - EntityAsyncContinuationIntegrationTest：noTickThreadTicksAnEntityWhileItSpawns 红在 :177（ticked by Syn-Tick-0 in
+    the middle of its spawn ==> expected: <0> but was: <1>），TC-PROD-782；waitingForATeleportOnTheOwningThreadIsRefused
+    红在 :232（join returned after 3004 ms），TC-PROD-783。anEntityMovedDuringItsSpawnTicksInTheChunkItWasMovedTo 绿。
+  - LivingEntityHealthIntegrationTest：loweringMaxHealthFromAnotherThreadClampsOnTheOwningThread 抛
+    AcquirableOwnershipException，红在 :60（Current thread: ForkJoinPool-1-worker-3，Assigned thread: Syn-Tick-0），TC-PROD-784。
+  - GeneratorIntegrationTest：chunkReadLockCannotUpgradeToWriteLock 红在 :152，aBlockSetUnderTheReadLockOfItsChunkThrows
+    红在 :170，都是 expected: <java.lang.IllegalStateException> but was: <java.lang.AssertionError>，TC-PROD-785。
+  - AcquireWaitTest 4 条绿：改了占锁写法的 aTickThreadBlockedAtTheStartOfItsTickCountsTheWait 在旧代码上也成立。
+
+02-compile-error/  第 2 次：编译失败，作废。Entity.java 已经导入 io.github.bearisbug.synaxis.timer.TimeUnit，新加的
+  java.util.concurrent.TimeUnit 同名（a type with the same simple name is already defined）。改为在 get(long, TimeUnit)
+  的签名里写全名，删去那一行导入。
+
+03-green-default/  第 3 次：修后，默认模式。:testNamingCheck 加根模块 22 个类与 server-app 的
+  app.shard.MapShardPlayerAuthorityTest（类名单见 TEST.md TC-PROD-786 前置）。BUILD SUCCESSFUL，23 个类 138 条
+  0 失败 0 跳过。TC-PROD-786 第 1 步与各条第 1 步。
+
+04-green-strict/  第 4 次：同第 3 次的 23 个类，-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true。
+  138 条 0 失败 0 跳过。TC-PROD-786 第 2 步。
+
+05-green-strict-grid/  第 5 次：同上再加 -Dsynaxis.thread-provider=grid。138 条 0 失败 0 跳过。TC-PROD-786 第 3 步。
+
+06-counter-proofs-a/  第 6 次：反证 A（counter-proofs.diff，相对修后的代码；补丁之后 Entity 里 ContinuationFuture 的
+  注释多了 1 行，补丁里 Entity 的行号比 da453473d3 少 1）：
+  - <TD>:59、:74 分发不取全局锁（TC-PROD-780、781 第 3 步）；
+  - <EN>:1246 续延开头就告诉 dispatcher、<EN>:1256 末尾不告诉（TC-PROD-782 第 3 步）；
+  - <EN>:1173 不拦等待（TC-PROD-783 第 3 步）；
+  - <LE>:516 在修改线程上直接压生命值（TC-PROD-784 第 3 步）；
+  - <CH>:351～353 检查换回原先的 assert（TC-PROD-785 第 3 步）。
+  跑 AcquirableHandoverTest、EntityAsyncContinuationIntegrationTest、LivingEntityHealthIntegrationTest、
+  GeneratorIntegrationTest。29 tests completed, 9 failed，红行与消息都与第 1 次相同（join returned after 3000 ms）。
+  之后 git checkout -- src/main 换回修后的代码。
+
+07-counter-proofs-b-hung/  第 7 次：反证 B 的第一版（counter-proofs.diff，比第 8 次少 <AI>:39、:66 两处 assert）：
+  <AI>:157 拿到锁后不复读、<AC>:44 不核对（TC-PROD-781 第 4 步），<EN>:1256 末尾按出生时的区块报（TC-PROD-782
+  第 4 步），<TT>:63 tick 开始时拿自己的锁不计时（TC-PROD-566 第 3 步）。跑 AcquirableHandoverTest、
+  EntityAsyncContinuationIntegrationTest、AcquireWaitTest。SYNC、LOCK 红在 :220，anEntityMoved… 红在 :202；
+  随后挂住：LOCK 那条里 lock() 拿到全局锁与 Syn-Tick-0 的锁之后、try 之前 assert isOwned() 失败（system-err：
+  Exception in thread "test-acquirer" java.lang.AssertionError），test-acquirer 带着两把锁死掉，COLLECTION 开头的
+  updateAndAwait 永远等全局锁（jcmd Thread.print：ForkJoinPool-1-worker-1 在 AcquirableImpl.lockGlobal 里等
+  ReentrantLock$NonfairSync，上一条的 Syn-Tick-0 在 TickThread.run:63 等自己的锁）。11 分钟后按 pid 停掉测试 JVM，
+  Gradle 记 8 tests completed, 3 failed, 1 skipped；AcquireWaitTest 没跑到。
+
+08-counter-proofs-b/  第 8 次：反证 B（counter-proofs.diff）= 第 7 次的补丁再把 <AI>:39、:66 的 assert isOwned() 改为
+  assert isOwned() || !Boolean.getBoolean("proof.never")。跑同样三个类。13 tests completed, 5 failed：
+  - AcquirableHandoverTest 的 SYNC、LOCK、COLLECTION 红在 :220（同第 1 次的消息）；
+    anElementHeldFromAnotherThreadStaysOnItsThreadUntilReleased 绿（分发仍取全局锁）。TC-PROD-781 第 4 步。
+  - anEntityMovedDuringItsSpawnTicksInTheChunkItWasMovedTo 红在 :202：expected: <DynamicChunk[5:0]> but was:
+    <DynamicChunk[250:250]>。TC-PROD-782 第 4 步。
+  - AcquireWaitTest.aTickThreadBlockedAtTheStartOfItsTickCountsTheWait 红在 :274：the tick thread waited out the
+    holder's sleep of 50037875 ns: 0 ==> expected: <true> but was: <false>。TC-PROD-566 第 3 步。
+  之后 git checkout -- src/main 换回修后的代码，grep -rn proof.never src/main 无输出。
+
+没有跑的：server-app 的 app.metrics.TickAcquireMetricsTest（本组改了它的占锁写法，TC-PROD-567 第 1 步、TC-PROD-786
+第 4 步），8 次 Gradle 用完，交 GitHub Actions 的全量门禁；jcstress（AcquirableSyncTest、ThreadDispatcherSyncTest）
+交 Concurrency 工作流。

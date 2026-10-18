@@ -323,7 +323,9 @@ stateDiagram-v2
 
 `login` 态内部的闸门、加密握手与会话验证展开在 `docs/DESIGN-PROD.md` §11.1（`ENT-LoginAttempt`）；本机只画 `login` 的进出边。
 
-断线口径：每个被创建的 `ENT-Player` 离开时，引擎恰好派发一次 `PlayerDisconnectEvent`。服务端写出 `FinishConfigurationPacket` 时连接已是 PLAY 状态，玩家要到之后某个 tick 才由 `ConnectionManager#updateWaitingPlayers` 放进世界；这段时间里断开，`PlayerConnection#disconnect` 把实体移除排到下一 tick 的同时，把玩家交给 `ConnectionManager#leftBeforeSpawn`（`PlayerConnection.java:273-276`）。下一 tick 的 `updateWaitingPlayers` 先处理等待进世界的玩家，再在同一 tick 线程上逐个检查这批断开的玩家：还没开始进世界的（`Player#dropPendingSpawn` 为真，同时作废待进的世界），由这里派发事件；已开始进世界的跳过，由实体移除派发（`ConnectionManager.java:606-612`）。没有这一步时，不在任何实例里的实体不会 tick，事件永不派发，宿主存储的记录停在 `online`、租约不释放（`docs/DESIGN-PROD.md` §11.3 `online → saving`）。回归用例 `PlayerRemoveIntegrationTest`（commit `b2b7af2a3c`）。
+断线口径：每个被创建的 `ENT-Player` 离开时，引擎恰好派发一次 `PlayerDisconnectEvent`。服务端写出 `FinishConfigurationPacket` 时连接已是 PLAY 状态，玩家要到之后某个 tick 才由 `ConnectionManager#updateWaitingPlayers` 放进世界；这段时间里断开，`PlayerConnection#disconnect` 把实体移除排到下一 tick 的同时，把玩家交给 `ConnectionManager#leftBeforeSpawn`（`PlayerConnection.java:289-291`）。下一 tick 的 `updateWaitingPlayers` 先处理等待进世界的玩家，再在同一 tick 线程上逐个检查这批断开的玩家：还没开始进世界的（`Player#dropPendingSpawn` 为真，同时作废待进的世界），由这里派发事件；已开始进世界的跳过，由实体移除派发（`ConnectionManager.java:806-810`）。没有这一步时，不在任何实例里的实体不会 tick，事件永不派发，宿主存储的记录停在 `online`、租约不释放（`docs/DESIGN-PROD.md` §11.3 `online → saving`）。回归用例 `PlayerRemoveIntegrationTest`（commit `b2b7af2a3c`）。读线程、写线程与 tick 可能同时断开同一条连接，派发与否看的是谁把玩家从 `ConnectionManager` 摘掉：`ConnectionManager#dropPlayer` 在它的监视器里摘人并返回摘到的玩家，只有拿到玩家的那一次调用派发或排移除。
+
+configuration 态的玩家收不到 play 包：从 `Player#UNSAFE_init` 把 JoinGame 排进发送队列起，到 `Player#remove` 为止（切回 configuration 时 `remove(false)` 先于 StartConfiguration 入队），`Player` 只发 play 包的 setter（生命值、饱食度、经验与等级、手持格、飞行等能力、调试信息、重生界面）才发包，此外只记值；进世界时 JoinGame 之后补发能力与经验，手持格随出生发，生命值与饱食度照旧回满；`Player#sendMessage` 在这段时间之外丢弃消息。原先这些 setter 无条件发包，play 包排到 configuration 态的连接上，写线程抛异常断开玩家。
 
 ### 11.2 服务进程 `ENT-ServerProcess`
 
@@ -422,6 +424,7 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 | 限流 | 单连接 | 7 s 窗口 > 750 包断线 `synaxis:protocol-error`，另有解压后负载 > 4 MiB/s 断线、补全 > 20 次/秒丢弃，见 `docs/DESIGN-PROD.md` `API-PROD-012`；单包 > 2 MB 断线 `synaxis:protocol-error`；不做 429 类退避 |
 | 输入分配上限 | 单个客户端包 | 客户端提供的 NBT 解码后估算堆占用 ≤ 2 MiB（`JvmFlags.NBT_MAX_BYTES`），集合与映射的预分配按可读字节数而非声明长度，注册表标签条目数 ≤ 注册表大小，创造模式背包包对非创造玩家不解码；超限断线 `synaxis:protocol-error`（学习上游 PR #3361/#3362/#3364） |
 | 客户端位置与方块操作 | 单个客户端包 | 越过世界边界（由内向外，或在边界外离边界更远）、单包位移超过 64 格的位置包拉回原位、不载入区块；挖掘与使用方块离眼睛不小于方块交互距离 + 1 格的拒绝；载具移动包同样判单包 64 格与世界边界，拉回时给骑手发载具移动包（`docs/DESIGN-PROD.md` v0.9.53）；不做速度、碰撞与挖掘时长校验，见 `docs/DESIGN-PROD.md` `API-PROD-030`、`ADR-PROD-016`。核心模式平坦世界的边界不在这一行，见 `docs/DESIGN-M2.md` §28.2 G3 |
+| 实体数值 | 插件与监听器给出的属性、伤害量、生命值 | 属性的计算结果为 NaN（基础值或修饰符为 NaN）时取该属性的下限，与原版一致；`Damage` 的构造与 `setAmount`、`LivingEntity#setHealth` 收到 NaN 抛 `IllegalArgumentException`；正负无穷照常钳位（+∞ 伤害致死，−∞ 伤害回满）；负伤害等于回血，不派发回血事件。否则一个 NaN 让上限为 NaN 的实体每次 `setHealth` 都抛异常，或让生命值成 NaN、实体再也死不了（`docs/DESIGN-PROD.md` §9 存档的生命值要求有限值） |
 | 日志量 | 单个客户端持续发包 | 日志行数不由客户端决定：凡是频率由对端决定的 WARN / ERROR，必须按时间限流（行内带区间累计次数）、按类型去重，或紧跟一次**真的把这一批包停下来**的断开；网络栈 `network` 与客户端包监听器 `listener` 两个包树由 `ArchitectureTest#clientDrivenPathsDoNotWriteALinePerPacket` 守门（交给宿主的 `ExceptionManager#handleException` 同等对待——宿主决定落点，调用点决定频率），宿主的 `io.github.bearisbug.synaxis.app..` 由 `:server-app` 自己测试源集里的 `ClientDrivenLogArchitectureTest#hostPathsDoNotWriteALinePerPacket` 守同一条规则（一条规则守不了两个模块：ArchUnit 扫的是自己模块 classpath 上的类，引擎的测试源集里没有宿主的类），两边的豁免名单都逐条写明其上界。**这条约束的上界是「日志量正比于连接数，不正比于包数」**：每连接常数行是达标的，所以不断重连仍能把总量做上去（`PacketReading` 的限流计数器做成进程级而非每连接，就是因为每连接的额度照样随连接数放大），要挡的是连接数本身，不归这一行管 |
 | 数据增长 | 12 个月 | M1 不落盘任何持久数据，无需清理；世界持久化由 M2 设计 |
 | 构建 | 全量测试 | 本机 < 3 分钟，CI < 10 分钟 |
@@ -437,6 +440,10 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 | 非 tick 线程卸载区块，区块内有实体 | 调用线程 × 实体所属 tick 线程 | 区块内有在线玩家时整个卸载被拒绝（`IllegalStateException`，状态零变更）；否则在实例监视器内清缓存、监视器外逐个实体通过 `Acquirable.sync` 获取所有权后移除 | `InstanceContainer.unloadChunk`（审计 F27、F29）；`assertOwnership` 在测试 JVM 强制开启 |
 | 两个线程同时首次触发同一事件类型的监听器重建 | tick 线程 × 虚拟线程 | 只重建一次，之后不丢事件 | `EventNodeImpl.Handle` 缓存合并为一个 volatile 不可变记录 |
 | 区块加载 future 异常完成时玩家 `setInstance().join()` | 加载线程 × 调用线程 | `join` 在 5 秒内抛出，不永久阻塞 | `whenComplete` 两条路径都 countDown |
+| 在 tick 线程上 `join` 玩家 `setInstance` 返回的 future | 玩家所属 tick 线程 × 载入线程 × tick 调度线程 | 只跑这次换实例自己的续延，续延只跑一次（`join` 与调度器谁先认领谁跑）；进程调度器的其余任务仍由 tick 调度线程在串行段处理。这条 tick 线程等到区块载完，监听器应挂续延而不是 `join` | `Player#setInstance` 的续延经 `AtomicBoolean` 认领；`Scheduler#process` 的 Javadoc 写明进程调度器只由 tick 调度线程处理 |
+| 换实例等区块期间又调一次 `setInstance`，或玩家被移除 | 玩家所属线程 × 载入线程 × tick 调度线程 | 前一次的 future 以 `CancellationException` 失败，不加视距票、不发包、不派发 `PlayerSpawnEvent`；后一次照常。被这样作废的首次出生（如出生区块还没载完就切回 configuration）只记一行 debug，不踢人 | `Player#setInstance` 的换实例计数与 `isRemoved()`，续延在玩家的监视器里判（与 `Player#remove` 同一把） |
+| 读线程与写线程同时断开同一条 configuration 期连接 | 读线程 × 写线程（或 tick） | `PlayerDisconnectEvent` 恰派发一次 | `ConnectionManager#dropPlayer` 在监视器里摘人并返回摘到的玩家，只有摘到的那一方派发 |
+| 同一状态连接上的第二个 ping（`ClientPingServerEvent` 设了延迟，连接还开着） | 客户端 × 网络线程 | 第二个 ping 直接关闭连接，不派发事件、不排任务 | `PlayerConnection#acquireStatusPing`，与 StatusRequest 的一次性闸同形 |
 | 同一客户端连续两次 StatusRequest | 客户端 × 网络线程 | 第二次直接关闭 | §11.1 守卫「已应答一次」 |
 | 实体被移除的同时其 `setInstance` 续体到达 | tick 线程 × 加载线程 | 续体检查 `isRemoved()` 后放弃注册，无幽灵实体 | 审计实体层 P0-3 修复 |
 | 对端停止读取，服务端断开该连接 | 写线程（阻塞在 socket 写）× 断开方（tick / 读 / configuration 线程，或写线程自己：写循环捕到非 IO 异常、写线程上的 `PlayerPacketOutEvent` 监听器踢人） | 断开后 ≤ 1 s channel 关闭，读写两条线程退出，出站队列与读缓冲随之释放；对端读不读都一样 | `PlayerSocketConnection#closeOnceFlushed`：断开方起一条 `Syn-Socket-Closer` 虚拟线程，`join` 写线程 `CLOSE_AFTER_DISCONNECT_MILLIS`（1 s，与 `ConnectionManager#shutdown` 的冲刷预算相同）后 `channel.close()`——关闭是唯一能中止阻塞写的操作；写线程看到连接下线后经 `PlayerSocketConnection#flushRemaining` 写空出站队列（断开包与它之前排队的包）再关 channel，写之前起同一条线程（`startCloser`，一个连接只起一次），所以关闭线程有两个起点：断开方的 `closeOnceFlushed` 与写线程的 `flushRemaining`；写线程自己调 `disconnect` 时不在那里起这条线程，由它退出前的 `flushRemaining` 起，同样 1 s 后关（`docs/DESIGN-PROD.md` v0.9.52 §16「断开与出站队列」） |

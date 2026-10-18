@@ -536,6 +536,41 @@ class EvacuationIntegrationTest {
     }
 
     /**
+     * A move on its way when the instance closes, whose player a listener keeps out: the move lands without
+     * the player getting in, so they are handed no exit and are not one of the players of the closing line.
+     */
+    @Test
+    void aPlayerKeptOutWhileTheInstanceClosesIsHandedNoExit(Env env) {
+        final PluginInstances instances = instances(env);
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final List<Player> handed = new CopyOnWriteArrayList<>();
+        arena.instance().eventNode().addListener(AddEntityToInstanceEvent.class, event -> {
+            if (!(event.getEntity() instanceof Player)) return;
+            if (arena.state() == State.OPEN) arena.cancel(leaving -> {
+                handed.add(leaving);
+                return new Exit.ToInstance(lobby, SPAWN);
+            });
+            event.setCancelled(true);
+        });
+        final Instance world = env.createFlatInstance();
+        final Player player = env.createPlayer(world, new Pos(0, 41, 0));
+
+        final CompletableFuture<Boolean> moved = arena.move(player, SPAWN);
+        assertTrue(env.tickWhile(() -> !moved.isDone() || arena.instance().isRegistered(), TEN_SECONDS),
+                "the instance was never unregistered");
+
+        assertFalse(moved.join());
+        assertEquals(List.of(), handed, "a player who never got in was handed the exit");
+        assertSame(world, player.getInstance());
+        assertTrue(player.isOnline());
+        final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
+        assertEquals(0, closed.get("players"));
+        assertEquals(0, closed.get("evacuated"));
+        assertEquals(0, closed.get("kicked"));
+    }
+
+    /**
      * The closing event comes while the players are still inside and the instance registered, and a
      * forced close called from it finds the evacuation already known: it is finished at once, and the
      * plugin's exit is not asked for once the event returns.

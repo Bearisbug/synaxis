@@ -43,11 +43,12 @@ dependencies {
 
 ## 3. 写插件类
 
-`hello-plugin/src/main/java/com/example/helloplugin/HelloPlugin.java`：实现 `SynaxisPlugin` 的三个方法即可，完整代码见仓内 `example-plugin/src/main/java/com/example/helloplugin/HelloPlugin.java`。三条硬规则：
+`hello-plugin/src/main/java/com/example/helloplugin/HelloPlugin.java`：实现 `SynaxisPlugin` 的三个方法即可，完整代码见仓内 `example-plugin/src/main/java/com/example/helloplugin/HelloPlugin.java`。四条硬规则：
 
 - **无参构造器里禁止注册任何东西**。宿主先 new 出实例只为读 `descriptor()`，一切注册都在 `onEnable`。
-- `descriptor()` 的 `id` 必须匹配 `[a-z0-9][a-z0-9_-]{0,63}` 且不得是 `synaxis`；`api_version` 必须等于 `PluginApi.API_VERSION`（当前 `2`）。三者任何一条不满足，宿主拒绝加载并以非零码退出，端口不会 bind。
-- `onDisable()` 里只管自己持有的东西。事件节点、调度任务、通道、准入回调由宿主统一摘掉。
+- `descriptor()` 的 `id` 必须匹配 `[a-z0-9][a-z0-9_-]{0,63}`、不得是 `synaxis`，且全进程唯一：两个插件声明同一个 id 时宿主拒启；`api_version` 必须等于 `PluginApi.API_VERSION`（当前 `2`）。任何一条不满足，宿主拒绝加载并以非零码退出，端口不会 bind。
+- `onDisable()` 里只关自己开的东西（线程池、连接、文件）；宿主收回的那些（清单见第 7 节末列）不用管。`onDisable` 跑在宿主新起的 daemon 平台线程 `plugin-disable-<id>` 上，这条线程不拥有任何 tick 线程，改已分给 tick 线程的实体要经 `acquirable().sync(…)`。全部插件共用 5 s：用完时还在 `onDisable` 里的插件被留在它的线程上，宿主照样收回它的能力、接着停机。`onEnable` 抛异常时宿主直接收回能力、不调 `onDisable`，抛出之前自己开的线程池与连接要在 `onEnable` 的 catch 里关（`docs/DESIGN-PROD.md` `API-PROD-007`）。
+- 自己起的线程设成 daemon，或在 `onDisable` 里关掉：停机序列走完，宿主就以退出码 0 结束进程（`docs/DESIGN-PROD.md` §11.4），不等插件留下的线程，上面做到一半的活就此中断。
 
 ## 4. 让 ServiceLoader 找得到它
 
@@ -98,12 +99,19 @@ jar 名里的 `dev` 是版本号，设了环境变量 `GAME_ENGINE_VERSION` 时�
 | 能力 | 用途 | 禁用时宿主怎么收回 |
 | --- | --- | --- |
 | `process()` | 引擎进程本体。**唯一不作兼容承诺的一项**，用它自担风险 | 不收回（不是宿主发的） |
-| `events()` | `addListener(事件类, 监听器)`（`NORMAL`，已取消的事件照样收到）；`addListener(事件类, 优先级, ignoreCancelled, 监听器)`，六档 `LOWEST` → `MONITOR` 依次执行，所有插件同档的排在一起，`MONITOR` 只读不改（约定，不拦截）；`forInstance(实例)` 只收该实例的事件，在实例所属 tick 线程上执行，且先于全局作用域的全部插件监听器；`PlayerPluginMessageEvent`、`PlayerCustomClickEvent`、`PlayerDisconnectEvent`、`PlayerPacketEvent` 及其超类型在玩家没有实例时也可能派发，不能按实例监听，注册即抛 `IllegalArgumentException`。冻结的玩家（`PlayerDataStore#isFrozen`）的 `PickupItemEvent` 与 `ItemDropEvent`：宿主每个事件只判定一次冻结，读到冻结就取消两次：一次在根节点上、先于任何插件监听器，一次在宿主节点下的优先级 3、全局 `HIGHEST` 之后与 `MONITOR` 之前；冻结在一次派发中途落地时，这一次照判定放行到底。发放物品的监听器跳过已取消的事件，以是否已取消为准，不另查 `isFrozen`；撤销这次取消（`setCancelled(false)`）不受支持，撤销之后、第二次取消之前执行的监听器看到的是放行。监听器挂在宿主按插件、按档建的子节点上 | 该插件的全部子节点（含实例下的）`removeChild` |
-| `scheduler()` | `scheduleTask(任务, 延迟, 重复)` | 逐个 `cancel()` |
+| `events()` | `addListener(事件类, 监听器)`（`NORMAL`，已取消的事件照样收到）；`addListener(事件类, 优先级, ignoreCancelled, 监听器)`，六档 `LOWEST` → `MONITOR` 依次执行，所有插件同档的排在一起，`MONITOR` 只读不改（约定，不拦截）。监听器按事件的确切类派发，只有 `RecursiveEvent` 沿父类传：按接口或抽象类注册抛 `IllegalArgumentException`，要收一类事件就逐个注册具体类。`forInstance(实例)` 只收该实例的事件，监听器在派发事件的线程上执行：实体与玩家的事件在该实体所属 tick 线程上（grid 下同一个实例有多条），`InstanceTickEvent` 在 tick 调度线程，`InstanceChunkLoadEvent` 在虚拟线程，宿主派发的 `PlayInstanceStateEvent` 在执行转移的线程，监听器之间共享的状态要用并发结构；实例作用域的监听器先于全局作用域的全部插件监听器，也先于宿主节点自己的监听器（首次出生时应用存档、默认玩法层），要在宿主之后改出生结果就用全局作用域、按实例过滤。`PlayerPluginMessageEvent`、`PlayerCustomClickEvent`、`PlayerDisconnectEvent`、`PlayerPacketEvent` 及其超类型在玩家没有实例时也可能派发，不能按实例监听，注册即抛 `IllegalArgumentException`。冻结的玩家（`PlayerDataStore#isFrozen`）的 `PickupItemEvent`、`ItemDropEvent`、`PlayerBlockPlaceEvent`、`PlayerBlockInteractEvent` 与 `PlayerUseItemEvent`：宿主每个事件只判定一次冻结，读到冻结就取消两次：一次在根节点上、先于任何插件监听器，一次在宿主节点下的优先级 3、全局 `HIGHEST` 之后与 `MONITOR` 之前；冻结在一次派发中途落地时，这一次照判定放行到底。两参 `addListener` 收得到已取消的事件，凭这五类事件发放东西的监听器用 `ignoreCancelled=true` 或先查 `isCancelled()`，以是否已取消为准，不另查 `isFrozen`；撤销这次取消（`setCancelled(false)`）不受支持，撤销之后、第二次取消之前执行的监听器看到的是放行。冻结拦不住三条路径：冻结前已打开的容器里点格子、`PlayerUseItemOnBlockEvent`、冻结前开始而冻结中用完的物品（`docs/DESIGN-PROD.md` §28.2）。监听器挂在宿主按插件、按档建的子节点上 | 该插件的全部子节点（含实例下的）`removeChild` |
+| `scheduler()` | `scheduleTask(任务, 延迟, 重复)` 在 tick 调度线程上跑，重复任务抛异常之后照原周期继续；`runOn(实体或实例, 任务, 延迟)` 投给目标：实体的任务在该实体所属 tick 线程上跑，实例的任务在 tick 调度线程的串行段跑，与实例自己的调度器同一处；`runAsync(任务)` 在自己的虚拟线程上跑阻塞的活。能在这些线程上做什么见第 10 节 | 取消它排的全部任务（含 `runOn` 还没跑的），`runAsync` 还在跑的任务体收到中断 |
 | `channels()` | `register(名字, handler)` / `send(玩家, 名字, 字节)`；负载宜在 8 KiB 以内，超过 1,048,576 字节（客户端收的上限）`send` 在调用线程抛 `IllegalArgumentException`、什么都不发 | 注销该插件的全部通道 |
-| `admission()` | `register(准入回调)`，决定连接进哪个对局实例、属哪个队伍 | 注销该回调 |
+| `admission()` | `register(准入回调)`，决定连接进哪个对局实例、属哪个队伍；一个进程只有一个准入槽。回调不阻塞、不碰实体；抛异常、返回 null 或构造出不合法的答案，都按 `synaxis:match-unavailable` 拒绝这条连接；`admit` 超过 200 ms 记一行 WARN，答案照常生效。按 `connectionId` 建表时，用同一把锁先查 `process().connection().isConnected(connectionId)` 再建表，`PlayerDisconnectEvent` 里的回收也进这把锁，否则判活之后、建表之前断开的连接留下的表项没人回收（`docs/DESIGN-M2.md` `API-M2-011`）；返回 `Accept` 之后宿主仍可能断开这条连接（例如停机保存已经开始时以 `synaxis:state-unavailable` 拒绝），断开时照常派发 `PlayerDisconnectEvent` | 注销该回调 |
 | `dataDirectory()` | `plugins/<plugin_id>/`，宿主保证存在 | 不删（是你的数据） |
 | `analytics()` | `record(事件名, 属性)`，写进宿主的 `logs/events-YYYYMMDD.jsonl` | 无状态，不需要收回 |
+| `playerData()` | 玩家数据段（`docs/DESIGN-PROD.md` `API-PROD-005`）。`register` 只能在 `onEnable` 里调，id 为 `<plugin_id>:<名字>`，越界或在 `onEnable` 之外调用抛 `IllegalStateException`；`get` 在玩家所属 tick 线程上调；改完调 `markDirty`，宿主每 60 s、登出、转服与停机时写脏段；单段编码后 ≤ 65,536 B。交易、邮件、商店用 `commitTogether`，先查 `isFrozen`；暂存的值必须是新对象，不能是 `get` 返回之后原地改过的那个（可变模型先深拷贝再改拷贝），`apply` 执行之前 `get` 仍返回旧值，结果为 `FENCED` 或 `UNAVAILABLE` 时内存里的值不变、宿主也不重试；冻结期间 `saveNow` 与 `commitTogether` 直接得 `UNAVAILABLE` | `onEnable` 失败时收回它注册的段与停机保存钩子；正常启用之后不收回（数据是玩家的） |
+| `lifecycle()` | `onShutdownSave(钩子)`，只能在 `onEnable` 里登记：停机保存之前，宿主在每名在线玩家所属 tick 线程上各调一次，在这里把内存里的状态写进段并标脏；已准入、还没进世界的玩家在保存期间离开时，由派发它的 `PlayerDisconnectEvent` 的线程调用。tick 被看门狗判死、或某名玩家所属的 tick 在保存阶段结束之后才轮到时，宿主不调钩子、直接读各段的当前值：只放在插件内存里的状态在这两种情况下会丢，要可靠就随变化写进段并 `markDirty`（`docs/DESIGN-PROD.md` `API-PROD-007`）。停机时不要在 `PlayerDisconnectEvent` 里保存：踢人之前数据已经写完 | 同 `playerData()` |
+| `permissions()` | `has(玩家, 节点)` 与 `roles(玩家)`（`docs/DESIGN-PROD.md` `API-PROD-010`）：节点小写、点分，授予的节点可以 `*` 结尾；宿主在玩家登录时读角色、角色变化时重载；任意线程可调。命令的 condition 里查它，不要用 `Player#getPermissionLevel()`；condition 在每名玩家出生、每次重发补全时都会被问到，节点写成常量 | 无状态，不需要收回 |
+| `moderation()` | 封禁与白名单（`docs/DESIGN-PROD.md` `API-PROD-009`）：`ban`、`unban`、`activeBan`、`whitelist`，任意线程可调，写库在虚拟线程上做，失败的 future 带 `IllegalStateException`；理由为空或超过 256 字符、到期时间不在将来或不早于 `+10000-01-01T00:00:00Z` 时当场抛 `IllegalArgumentException`；没有数据库的进程（`synaxis.app.store=memory`）谁都不封、什么也改不了 | 无状态，不需要收回；封禁与白名单在库里 |
+| `commands()` | `register(命令)`（`docs/DESIGN-PROD.md` `API-PROD-011`）：注册成 `<plugin_id>:<名字>`，另以裸名注册，除非裸名已被别人占了（谁先注册归谁，别名同样）；名字与别名不能含 `:`。谁能跑由命令自己的 condition 决定，在里面查 `permissions()`。执行器在发命令的玩家所属 tick 线程上跑，控制台的在控制台读线程上；执行器、参数的错误回调与 condition 抛的异常怎么记见第 9 节，condition 抛异常按不放行 | 注销它注册的全部命令 |
+| `tabList()` | `setVisibility((观看者, 被看者) -> 是否列出)`（`docs/DESIGN-PROD.md` `API-PROD-020`）：全进程只有一个可见性，另一个插件已经设过时抛 `IllegalStateException`；宿主每发一条列表条目就问一次，在发条目的那条线程上（玩家进服时是 tick 调度线程，`Player#setListed` 时是调用方）；不列出的玩家照样发给观看者、只是不显示，客户端要靠这条条目渲染皮肤 | 收回它设的可见性 |
+| `entities()` | `setDefaultTrackingRange(实体类型, 水平, 垂直)`（`docs/DESIGN-PROD.md` `API-PROD-019`）：玩家在多远之内看得见这类实体，只收窄 `synaxis.entity-view-distance` 那一圈、不放宽；单个实体用 `Entity#setTrackingRange` 覆盖，`Entity#setAlwaysVisible` 让它不计入每名玩家的可见上限 | 不收回：设置是全进程的，插件禁用之后仍然生效 |
 | `transfers()` | 把玩家原版转服到外部服务器、读写本插件命名空间的 Cookie，见第 12 节 | 不收回：已排上的转服在玩家下一个 tick 照常做完（还在载入出生区块的玩家至多 5 s） |
 | `play()` | 场景、HUD 与动作（`docs/DESIGN-PLAY.md` `API-PLAY-005`）：`enter` / `leave` / `currentScene` 让玩家进出场景，只有本进程的场景所有者（占着准入槽的插件）能调；`hud(玩家)` 设本插件命名空间下的小部件；`onAction(动作 id, handler)` 只能在 `onEnable` 里注册 | 收回它注册的动作 |
 | `instances()` | 宿主托管的玩法实例（`docs/DESIGN-PLAY.md` `API-PLAY-006`）：`create(InstanceSpec)` 建大厅或一局，`owned()` 列出本插件建的、还没关闭的实例；实例的 `move`、`start`、`end`、`settled` 推进五态生命周期，宿主每次转移写一行台账 | 强制关闭它全部没关闭的实例（`onEnable` 失败时原因是 `plugin_disabled`，停机时是 `shutdown`），不调插件回调 |
@@ -123,7 +131,20 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 
 ## 9. 异常会算在谁头上
 
-事件监听器、调度任务、通道 handler 三处各有一层包装：抛出来的异常各被 catch 一次、各打一行带 `plugin_id=<你的 id>` 的 ERROR，然后就地终止那一次回调。异常不会外溢到引擎，进程继续跑，插件状态也不变——M2 没有熔断器（见 `docs/DESIGN-M2.md` §28.3）。
+宿主在插件的每个回调外面包了一层：回调抛出的任何 `Throwable` 都被接住，记一行带 `plugin_id=<你的 id>` 的日志，就地终止那一次回调。异常不会外溢到引擎，进程继续跑，插件状态也不变——M2 没有熔断器（见 `docs/DESIGN-M2.md` §28.3）。
+
+调用次数由客户端或时钟决定的回调按回调限流：一份预算每 10 s 至多写一行，这一行带当次的栈，行尾括号里是上一行以来的次数，形如 `(12 failures since the last report)`。一个回调次次都抛，日志也只随注册的回调数增长，不随收到的包数增长：
+
+| 回调 | 预算 | 另外 |
+| --- | --- | --- |
+| 事件监听器 | 每个监听器一份 | 行首 `Plugin event listener failed: plugin_id=… event=…` |
+| 调度任务 | `scheduleTask` 的周期任务每个一份；一次性任务、`runOn` 与 `runAsync` 共用一份 | 行首 `Plugin task failed: plugin_id=…`；周期任务抛异常之后照原周期继续 |
+| 通道 handler | 每个通道一份 | — |
+| 命令的执行器、参数的错误回调与 condition | 每个命令一份 | 发命令的人收到命令执行失败；condition 抛异常按不放行，命令不进这名玩家的补全 |
+| 动作 handler（`play().onAction`） | 每个动作一份 | — |
+| TabList 可见性 | 一份 | 记 WARN，抛异常按列出 |
+
+次数有限的回调每次都记一行带栈的 ERROR：`onEnable`（宿主随后收回它的能力，见第 3 节）、`onDisable`、准入回调（每条连接至多一次，按 `synaxis:match-unavailable` 拒绝这条连接）、停机保存钩子（每次停机每名玩家至多一次）。
 
 ## 10. 回调跑在哪条线程上
 
@@ -190,3 +211,39 @@ Cookie 键必须是 `<plugin_id>:<路径>`，如 `Key.key("hello", "lobby-token"
 `transfer` 的 future 在玩家所属的 tick 线程上完成；调用时玩家就不在 PLAY 的，拿到手时已经完成，5 s 没等到 tick 的在 JDK 的计时线程上完成。`fetchCookie` 的 future 在读到回答的连接线程上完成，超时则在 JDK 的计时线程上完成。拿到值之后要改实体，用 `scheduler().runOn(玩家, …)` 送回玩家所属的线程（第 10 节）。
 
 **不要在 tick 线程上 `join()` 或 `get()` 这个 future**（例如在玩家事件监听器里写 `transfer(p, h, port).join()`）：转服要等玩家的下一个 tick 才做，下一个 tick 要等当前 tick 结束，阻塞会让这条 tick 线程上所有实体停 5 s，最后以 `false` 完成、转服不发出。用 `thenAccept` 接结果。
+
+## 13. 给插件写测试
+
+`:testing` 给测试一个进程内的服务端：不开端口，tick 线程照常起，但不起按 20 TPS 推进 tick 的调度线程，由测试自己推进 tick，用假连接造玩家。它还没发布到 Maven，先从本仓库装进本机的 Maven 仓库；它依赖引擎本体与 `:plugin-api`，三个一起装：
+
+```bash
+./gradlew :publishToMavenLocal :plugin-api:publishToMavenLocal :testing:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+```
+
+坐标是 `io.github.bearisbug.synaxis:testing:dev`（设了环境变量 `GAME_ENGINE_VERSION` 时版本号换成它的值），引擎与 `:plugin-api` 随它传递进来。插件工程的 `build.gradle.kts` 在第 2 节之外再加：
+
+```kotlin
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation("io.github.bearisbug.synaxis:testing:dev")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+```
+
+测试类标 `@EnvTest`，测试方法声明一个 `Env` 参数就拿到一个环境，方法结束时自动收尾：
+
+- `env.createFlatInstance()` 建一个平坦实例，`env.createPlayer(实例, 位置)` 让一条假连接以玩家身份进去；`env.tick()` 推进一个 tick。服务端在这个 tick 里抛的异常让测试当场失败，不抛回引擎。
+- `env.tickWhile(条件, 超时)` 一直 tick 到条件变为 false 时返回 true，超时返回 false，超时给 `null` 表示不设上限；每一轮都经 `tick()`，服务端抛的异常同样当场失败，不会空转到超时。
+- `env.trackEvent(事件类, 过滤器, 对象)` 收集派发给这个对象（实体、实例）的事件，`assertSingle()`、`assertCount(n)` 这类断言读出收集到的事件，读过之后不再收集；它只摘自己的监听器，不影响这个对象上的其他监听器。
+- 要的配置与 `@EnvTest` 不同时用 `Env.create(设置)` 建一个独立进程的环境。它用完要 `close()`：用 try-with-resources，或放在 `@AfterEach` 里。`close()` 先报服务端在最后一次检查之后抛的异常（第一个为 cause，其余挂在它的 suppressed 里），再停进程，检查失败也停；只调 `process().stop()` 会跳过这项检查，测试照样绿。
+
+跑插件自己的 `onEnable` 要一个 `PluginContext`，测试里自己实现：八个抽象方法 `process()`、`events()`、`scheduler()`、`channels()`、`admission()`、`dataDirectory()`、`analytics()`、`logger()` 必须写，其余十个是默认方法，调用即抛 `UnsupportedOperationException`，用到哪个就覆盖哪个。`playerData()` 返回 `:testing` 的 `InMemoryPlayerDataStore`：不连库，没冻住的玩家每次保存都成功，`commitTogether` 在调用线程上当场执行 `apply`，宿主则排到下一个 tick 的串行段；`freeze(玩家, true)` 把玩家冻住、`freeze(玩家, false)` 解冻，冻住期间 `isFrozen` 为 true，`saveNow` 与 `commitTogether` 回 `UNAVAILABLE`，走冻结时插件该走的那条路。

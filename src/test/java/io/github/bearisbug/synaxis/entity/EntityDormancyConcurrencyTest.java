@@ -29,7 +29,7 @@ public class EntityDormancyConcurrencyTest {
 
     @AfterEach
     void tearDown() {
-        env.process().stop();
+        env.close();
     }
 
     /**

@@ -34,7 +34,7 @@ public class ItemEntityCrossCellConcurrencyTest {
 
     @AfterEach
     void tearDown() {
-        env.process().stop();
+        env.close();
     }
 
     @Test

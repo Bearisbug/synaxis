@@ -1,11 +1,14 @@
 package io.github.bearisbug.synaxis.app;
 
 import io.github.bearisbug.synaxis.Auth;
+import io.github.bearisbug.synaxis.ServerConfig;
+import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.SessionServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -83,6 +86,33 @@ class MainTest {
         System.setProperty("synaxis.app.port", "abc");
         final IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class, Main::port);
         assertTrue(refusal.getMessage().contains("synaxis.app.port=abc"), refusal.getMessage());
+    }
+
+    /** API-M2-010 step (1): refused naming the key, before the bind would say "port out of range". */
+    @Test
+    void aPortOutsideZeroTo65535IsRefusedNamingTheKey() {
+        for (String port : List.of("70000", "-1", "65536")) {
+            System.setProperty("synaxis.app.port", port);
+            final IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class, Main::port, port);
+            assertEquals("synaxis.app.port=" + port + " is not a port number: 0 to 65535", refusal.getMessage());
+        }
+        System.setProperty("synaxis.app.port", "65535");
+        assertEquals(65535, Main.port());
+        System.setProperty("synaxis.app.port", "0");
+        assertEquals(0, Main.port());
+    }
+
+    /**
+     * §11.4: the exit of a stopped process, and the path of a process judged dead, wait for the
+     * sequence to reach stopped; an interrupted wait gives up.
+     */
+    @Test
+    void awaitingTheStopReturnsOnceTheSequenceHasStopped() {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true).build());
+        Thread.currentThread().interrupt();
+        assertFalse(Main.awaitStopped(process), "interrupted while the process runs");
+        process.stop();
+        assertTrue(Main.awaitStopped(process));
     }
 
     // §15: the RTS camera sees far more of the world than the engine defaults send, and two of

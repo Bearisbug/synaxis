@@ -86,7 +86,7 @@ public class SimulationDistanceTest {
 
     @AfterEach
     void tearDown() {
-        env.process().stop();
+        env.close();
     }
 
     private static Counting spawn(Instance instance, Pos at) {

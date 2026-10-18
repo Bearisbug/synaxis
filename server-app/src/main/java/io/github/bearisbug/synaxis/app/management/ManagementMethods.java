@@ -72,6 +72,8 @@ public final class ManagementMethods {
     /** The reason of a ban added without one, the vanilla default. */
     static final String DEFAULT_BAN_REASON = "Banned by an operator.";
     private static final int MAX_REASON = 256;
+    /** The names of a ban entry: the vanilla User Ban's, whose {@code source} is taken and not used. */
+    private static final Set<String> BAN_FIELDS = Set.of("player", "reason", "expires", "source");
 
     private static final TypeAdapter<JsonElement> JSON = new Gson().getAdapter(JsonElement.class);
 
@@ -428,6 +430,11 @@ public final class ManagementMethods {
         // Every entry is checked before the first ban is written: one bad entry bans nobody
         for (JsonElement element : array(call.param(0, "add"), "add")) {
             final JsonObject entry = object(element, "a ban");
+            // A misspelt expires would otherwise ban for ever
+            for (String name : entry.keySet()) {
+                if (!BAN_FIELDS.contains(name))
+                    throw invalid("unknown field '" + name + "' in a ban; the fields are player, reason, expires, source");
+            }
             final UUID uuid = account(object(entry.get("player"), "player"));
             final String reason = optionalString(entry.get("reason"), "reason", DEFAULT_BAN_REASON);
             final int length = reason.codePointCount(0, reason.length());

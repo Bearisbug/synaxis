@@ -44,7 +44,7 @@ public class GridItemRaceTest {
 
     @AfterEach
     void tearDown() {
-        if (env != null) env.process().stop();
+        if (env != null) env.close();
     }
 
     /** The neighbour: holds the merger's first read of its stack until it absorbed the third item and let go of its claim. */

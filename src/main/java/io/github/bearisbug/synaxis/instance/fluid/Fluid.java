@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.instance.fluid;
 
+import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import io.github.bearisbug.synaxis.registry.Registry;
@@ -29,7 +30,11 @@ public sealed interface Fluid extends StaticProtocolObject<Fluid>, Fluids permit
     }
 
     static @Nullable Fluid fromKey(@KeyPattern String key) {
-        return fromKey(Key.key(key));
+        try {
+            return fromKey(Key.key(key));
+        } catch (InvalidKeyException _) {
+            return null;
+        }
     }
 
     static @Nullable Fluid fromKey(Key key) {

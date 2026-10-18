@@ -103,7 +103,7 @@ public sealed interface Tag<T extends @UnknownNullability Object> permits TagImp
      * <b>must not be used with untrusted data</b>.
      */
     static <T> Tag<T> View(TagSerializer<T> serializer) {
-        return Structure("", serializer);
+        return TagImpl.view(serializer);
     }
 
     @ApiStatus.Experimental
@@ -166,8 +166,26 @@ public sealed interface Tag<T extends @UnknownNullability Object> permits TagImp
     @Contract(value = "_ -> new", pure = true)
     Tag<T> path(String @Nullable ... path);
 
+    /**
+     * Reads this tag from its own key of the given compound, or the whole compound for a view tag.
+     * <p>
+     * The {@link #path(String...) path} is not applied: a caller holding the root compound descends the path first,
+     * the way blocks and the custom data of items do.
+     *
+     * @param nbt the compound holding the key of this tag
+     * @return the value, or the default value when the key is absent or holds another type
+     */
     T read(CompoundBinaryTag nbt);
 
+    /**
+     * Writes this tag to its own key of the given compound builder, or over the whole compound for a view tag.
+     * <p>
+     * The {@link #path(String...) path} is not applied: a caller building the root compound descends the path first,
+     * the way blocks and the custom data of items do.
+     *
+     * @param nbtCompound the builder of the compound holding the key of this tag
+     * @param value       the value, null to remove the key
+     */
     void write(CompoundBinaryTag.Builder nbtCompound, T value);
 
     void writeUnsafe(CompoundBinaryTag.Builder nbtCompound, @Nullable Object value);

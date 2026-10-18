@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.instance.block;
 
+import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import io.github.bearisbug.synaxis.registry.RegistryData;
@@ -81,7 +82,11 @@ public sealed interface BlockSoundType extends StaticProtocolObject<BlockSoundTy
     }
 
     static @Nullable BlockSoundType fromKey(@KeyPattern String key) {
-        return fromKey(Key.key(key));
+        try {
+            return fromKey(Key.key(key));
+        } catch (InvalidKeyException _) {
+            return null;
+        }
     }
 
     static @Nullable BlockSoundType fromKey(Key key) {

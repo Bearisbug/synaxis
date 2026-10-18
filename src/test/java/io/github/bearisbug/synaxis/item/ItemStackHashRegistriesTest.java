@@ -7,7 +7,6 @@ import io.github.bearisbug.synaxis.item.component.ItemBlockState;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.testing.RegistriesTest;
-import net.kyori.adventure.text.Component;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -57,13 +56,13 @@ public class ItemStackHashRegistriesTest {
      */
     @Test
     public void aComponentThatDoesNotEncodeIsNamed(Registries registries) {
-        final ItemStack book = ItemStack.builder(Material.BOOK)
-                .set(DataComponents.LORE, Collections.nCopies(257, Component.text("line")))
+        final ItemStack box = ItemStack.builder(Material.SHULKER_BOX)
+                .set(DataComponents.CONTAINER, Collections.nCopies(257, ItemStack.of(Material.STONE)))
                 .build();
 
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
-                () -> ItemStack.Hash.of(book, registries));
+                () -> ItemStack.Hash.of(box, registries));
 
-        assertTrue(thrown.getMessage().startsWith("hash of component minecraft:lore: "), thrown.getMessage());
+        assertTrue(thrown.getMessage().startsWith("hash of component minecraft:container: "), thrown.getMessage());
     }
 }

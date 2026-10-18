@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.item.component;
 
 import io.github.bearisbug.synaxis.adventure.EngineAdventure;
+import io.github.bearisbug.synaxis.codec.Result;
 import io.github.bearisbug.synaxis.codec.Transcoder;
 import io.github.bearisbug.synaxis.component.DataComponent;
 import io.github.bearisbug.synaxis.component.DataComponents;
@@ -15,6 +16,9 @@ import java.util.Map;
 
 import static io.github.bearisbug.synaxis.codec.CodecAssertions.assertOk;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class EnchantmentListTest extends AbstractItemComponentRegistriesTest<EnchantmentList> {
     private static final RegistryKey<BinaryTag> SHARPNESS = RegistryKey.unsafeOf("minecraft:sharpness");
@@ -52,5 +56,22 @@ public class EnchantmentListTest extends AbstractItemComponentRegistriesTest<Enc
         var coder = new RegistryTranscoder<>(Transcoder.NBT, registries);
         var value = assertOk(component().decode(coder, tag));
         assertEquals(new EnchantmentList(Map.of(SHARPNESS, 1, PUNCH, 2)), value);
+    }
+
+    // 26.2 refuses a level outside 1..255 when it decodes the component and drops the connection
+    @Test
+    void aLevelOutsideOneTo255IsRefused() {
+        final IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> new EnchantmentList(SHARPNESS, 256));
+        assertTrue(error.getMessage().contains("minecraft:sharpness"), error.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> EnchantmentList.EMPTY.with(SHARPNESS, 0));
+        assertEquals(255, new EnchantmentList(SHARPNESS, 255).level(SHARPNESS));
+    }
+
+    @Test
+    void aStoredLevelOutsideOneTo255IsAnError(Registries registries) throws Exception {
+        var tag = EngineAdventure.tagStringIO().asTag("{sharpness: 300}");
+        var coder = new RegistryTranscoder<>(Transcoder.NBT, registries);
+        assertInstanceOf(Result.Error.class, component().decode(coder, tag));
     }
 }

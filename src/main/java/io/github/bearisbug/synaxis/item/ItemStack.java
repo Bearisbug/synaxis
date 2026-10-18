@@ -186,6 +186,26 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
 
     /**
      * Applies a transformation to the value of a component, only if present.
+     * <p>
+     * Without the component the operator is not called and this item is returned: unlike the vanilla
+     * {@code ItemStack#update}, there is no default value to start from.
+     *
+     * @param component The component type to modify
+     * @param operator  The transformation function
+     * @param <T>       The component type
+     * @return A new ItemStack if the component was transformed, otherwise this.
+     */
+    default <T> ItemStack update(DataComponent<T> component, UnaryOperator<T> operator) {
+        T value = get(component);
+        if (value == null) return this;
+        return with(component, operator.apply(value));
+    }
+
+    /**
+     * Applies a transformation to the value of a component, only if present.
+     * <p>
+     * A call passing an implicitly typed lambda is ambiguous with {@link #with(DataComponent, Object)} and does not
+     * compile: use {@link #update(DataComponent, UnaryOperator)}, which this delegates to.
      *
      * @param component The component type to modify
      * @param operator  The transformation function
@@ -193,9 +213,7 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
      * @return A new ItemStack if the component was transformed, otherwise this.
      */
     default <T> ItemStack with(DataComponent<T> component, UnaryOperator<T> operator) {
-        T value = get(component);
-        if (value == null) return this;
-        return with(component, operator.apply(value));
+        return update(component, operator);
     }
 
     /**
@@ -236,6 +254,13 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
         return with(DataComponents.LORE, lore);
     }
 
+    /**
+     * Sets the item model, see {@link Builder#itemModel(String)}.
+     *
+     * @param model the namespaced id of the model, such as {@code synaxis:unit/archer}
+     * @return the item with that model
+     * @throws IllegalArgumentException if the model is not a namespaced id, which a 26.2 client cannot parse
+     */
     @Contract(value = "_, -> new", pure = true)
     default ItemStack withItemModel(String model) {
         return with(DataComponents.ITEM_MODEL, model);
@@ -251,14 +276,25 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
         return with(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, glowing);
     }
 
+    /**
+     * Hides the tooltip lines of every component that adds some, see {@link Builder#hideExtraTooltip()}.
+     *
+     * @return the item showing only its name and lore
+     */
     @Contract(value = "-> new", pure = true)
     default ItemStack withoutExtraTooltip() {
         return builder().hideExtraTooltip().build();
     }
 
+    /**
+     * Gets the maximum stack size of this item.
+     *
+     * @return the {@link DataComponents#MAX_STACK_SIZE} of this item, 1 without it as for a 26.2 client; every
+     * vanilla item prototype has the component
+     */
     @Contract(pure = true)
     default int maxStackSize() {
-        return get(DataComponents.MAX_STACK_SIZE, 64);
+        return get(DataComponents.MAX_STACK_SIZE, 1);
     }
 
     @Contract(value = "_ -> new", pure = true)
@@ -280,9 +316,24 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
         return get(DataComponents.CUSTOM_DATA, CustomData.EMPTY).getTag(tag);
     }
 
+    /**
+     * Removes some of the stack.
+     *
+     * @param amount the amount to remove
+     * @return the item with the remaining amount, {@link #AIR} when nothing remains
+     */
     @Contract(value = "_, -> new", pure = true)
     ItemStack consume(int amount);
 
+    /**
+     * Wears this item down, as a vanilla damageable item.
+     * <p>
+     * An item with {@link DataComponents#UNBREAKABLE}, or without {@link DataComponents#MAX_DAMAGE} or
+     * {@link DataComponents#DAMAGE}, is returned as it is.
+     *
+     * @param amount the damage to add, negative to repair; the damage does not go below 0
+     * @return the item with its new damage, {@link #AIR} (the whole stack) once the damage reaches the max damage
+     */
     @Contract(value = "_, -> new", pure = true)
     ItemStack damage(int amount);
 
@@ -341,9 +392,9 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
 
     static ItemStack copyWithOperator(ItemStack itemStack, UnaryOperator<Component> operator) {
         return itemStack
-                .with(DataComponents.CUSTOM_NAME, operator)
-                .with(DataComponents.ITEM_NAME, operator)
-                .with(DataComponents.LORE, (UnaryOperator<List<Component>>) lines -> {
+                .update(DataComponents.CUSTOM_NAME, operator)
+                .update(DataComponents.ITEM_NAME, operator)
+                .update(DataComponents.LORE, lines -> {
                     final var translatedComponents = new ArrayList<Component>();
                     lines.forEach(component -> translatedComponents.add(operator.apply(component)));
                     return translatedComponents;
@@ -398,6 +449,13 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
             return set(DataComponents.LORE, lore);
         }
 
+        /**
+         * Sets the item model, the model a client renders this item with.
+         *
+         * @param model the namespaced id of the model, such as {@code synaxis:unit/archer} (a-z 0-9 . _ - /)
+         * @return this builder
+         * @throws IllegalArgumentException if the model is not a namespaced id, which a 26.2 client cannot parse
+         */
         default Builder itemModel(String model) {
             return set(DataComponents.ITEM_MODEL, model);
         }
@@ -421,6 +479,10 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
         /**
          * <p>Hides all components which append tooltip lines using {@link DataComponents#TOOLTIP_DISPLAY}.
          * The result should be an item with only name and lore.</p>
+         * <p>The components it hides are added to those the display already hides, and a hidden tooltip stays
+         * hidden.</p>
+         *
+         * @return this builder
          */
         Builder hideExtraTooltip();
 

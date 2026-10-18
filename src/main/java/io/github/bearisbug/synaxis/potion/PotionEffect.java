@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.potion;
 
+import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import net.kyori.adventure.translation.Translatable;
@@ -12,11 +13,13 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
+import java.util.Objects;
 
 public sealed interface PotionEffect extends StaticProtocolObject<PotionEffect>, PotionEffects,
         Translatable permits PotionEffectImpl {
     NetworkBuffer.Type<PotionEffect> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(PotionEffect::fromId, PotionEffect::id);
-    Codec<PotionEffect> CODEC = Codec.KEY.transform(PotionEffect::fromKey, PotionEffect::key);
+    Codec<PotionEffect> CODEC = Codec.KEY.transform(
+            key -> Objects.requireNonNull(fromKey(key), () -> "unknown potion effect: " + key.asString()), PotionEffect::key);
 
     /**
      * Returns the legacy registry data backing this potion effect.
@@ -70,7 +73,11 @@ public sealed interface PotionEffect extends StaticProtocolObject<PotionEffect>,
     }
 
     static @Nullable PotionEffect fromKey(@KeyPattern String key) {
-        return fromKey(Key.key(key));
+        try {
+            return fromKey(Key.key(key));
+        } catch (InvalidKeyException _) {
+            return null;
+        }
     }
 
     static @Nullable PotionEffect fromKey(Key key) {

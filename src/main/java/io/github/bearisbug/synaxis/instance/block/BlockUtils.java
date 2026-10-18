@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.tag.Tag;
+import io.github.bearisbug.synaxis.tag.TagNbtAccess;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
@@ -97,18 +98,20 @@ public class BlockUtils {
         final CompoundBinaryTag blockNbt = Objects.requireNonNullElseGet(block.nbt(), CompoundBinaryTag::empty);
         if (handler != null) {
             // Extract explicitly defined tags and keep the rest server-side
-            var builder = CompoundBinaryTag.builder();
+            CompoundBinaryTag clientNbt = CompoundBinaryTag.empty();
             for (Tag<?> tag : handler.getBlockEntityTags()) {
-                final var value = tag.read(blockNbt);
-                if (value != null) {
-                    // Tag is present and valid
-                    tag.writeUnsafe(builder, value);
-                }
+                clientNbt = copyTag(blockNbt, clientNbt, tag);
             }
-            return builder.build();
+            return clientNbt;
         }
         // Complete nbt shall be sent if the block has no handler
         // Necessary to support all vanilla blocks
         return blockNbt;
+    }
+
+    // An absent value is skipped rather than written: writing null for a view tag would empty the compound
+    private static <T> CompoundBinaryTag copyTag(CompoundBinaryTag from, CompoundBinaryTag to, Tag<T> tag) {
+        final T value = TagNbtAccess.read(from, tag);
+        return value == null ? to : TagNbtAccess.write(to, tag, value);
     }
 }

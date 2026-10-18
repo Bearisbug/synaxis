@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -28,7 +29,9 @@ public enum EquipmentSlotGroup implements Predicate<EquipmentSlot> {
 
     public static final NetworkBuffer.Type<EquipmentSlotGroup> NETWORK_TYPE = NetworkBuffer.Enum(EquipmentSlotGroup.class);
     public static final Codec<EquipmentSlotGroup> CODEC = Codec.STRING
-            .transform(BY_NBT_NAME::get, EquipmentSlotGroup::nbtName);
+            .transform(name -> Objects.requireNonNull(BY_NBT_NAME.get(name),
+                    () -> "unknown equipment slot group: " + name + ", expected one of " + BY_NBT_NAME.keySet()),
+                    EquipmentSlotGroup::nbtName);
 
     private final String nbtName;
     private final List<EquipmentSlot> equipmentSlots;

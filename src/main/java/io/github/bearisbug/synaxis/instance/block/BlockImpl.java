@@ -10,6 +10,7 @@ import io.github.bearisbug.synaxis.registry.Registry;
 import io.github.bearisbug.synaxis.registry.RegistryData;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.tag.Tag;
+import io.github.bearisbug.synaxis.tag.TagNbtAccess;
 import io.github.bearisbug.synaxis.utils.collection.ObjectArray;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
@@ -193,12 +194,8 @@ record BlockImpl(RegistryData.BlockEntry registry,
 
     @Override
     public <T> Block withTag(Tag<T> tag, @Nullable T value) {
-        var builder = CompoundBinaryTag.builder();
-        if (nbt != null) builder.put(nbt);
-        tag.write(builder, value);
-        final CompoundBinaryTag temporaryNbt = builder.build();
-        final CompoundBinaryTag finalNbt = !temporaryNbt.isEmpty() ? temporaryNbt : null;
-        return withNbt(finalNbt);
+        final CompoundBinaryTag updated = TagNbtAccess.write(Objects.requireNonNullElse(nbt, CompoundBinaryTag.empty()), tag, value);
+        return withNbt(updated.isEmpty() ? null : updated);
     }
 
     @Override
@@ -258,7 +255,7 @@ record BlockImpl(RegistryData.BlockEntry registry,
 
     @Override
     public <T> @UnknownNullability T getTag(Tag<T> tag) {
-        return tag.read(Objects.requireNonNullElse(nbt, CompoundBinaryTag.empty()));
+        return TagNbtAccess.read(Objects.requireNonNullElse(nbt, CompoundBinaryTag.empty()), tag);
     }
 
     private BlockSchema schema() {

@@ -8,13 +8,10 @@ import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.player.PlayerUseItemEvent;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
-import io.github.bearisbug.synaxis.item.component.Equippable;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientUseItemPacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
-
-import java.util.function.UnaryOperator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -90,8 +87,7 @@ public class UseItemListenerIntegrationTest {
         var oldBoots = ItemStack.of(Material.GOLDEN_BOOTS);
         player.setEquipment(EquipmentSlot.BOOTS, oldBoots);
 
-        var boots = ItemStack.of(Material.DIAMOND_BOOTS).with(DataComponents.EQUIPPABLE,
-                (UnaryOperator<Equippable>) (eq) -> eq.withSwappable(false));
+        var boots = ItemStack.of(Material.DIAMOND_BOOTS).update(DataComponents.EQUIPPABLE, eq -> eq.withSwappable(false));
         player.setItemInMainHand(boots);
         UseItemListener.useItemListener(new ClientUseItemPacket(PlayerHand.MAIN, 42, 0f, 0f), player);
 

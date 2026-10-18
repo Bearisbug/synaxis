@@ -1,0 +1,18 @@
+RUN-081 group BLOCK, branch prod/r081-BLOCK, based on main 965c3bddae (docs/DESIGN-PROD.md v0.9.100, docs/TEST.md
+TC-PROD-920 to TC-PROD-927). Code commits 88f5068ec6, 2212bad882, ca4781a5d5, 554f8e2b3e, and 51eea9c5d9 from the
+review rework.
+Every Gradle run held one of the two Gradle slots of this round and used --max-workers=2 --no-daemon with the mirror
+init script. Ten Gradle runs in all; two of them stopped at compilation and are not listed below: the first red run
+(Error Prone in the new tests: BooleanLiteral, PreferredInterfaceType) and the first green run (-Werror on a removal
+warning: WindowItemsPacket calls ItemStack#with(DataComponent, UnaryOperator), so that overload is not deprecated).
+The review rework ran four more, all in 08-review-rework.txt.
+
+01-javap-26.2.txt        how the 26.2 client reads the item components, particle options and potion settings changed here
+02-red-before-fix.txt    the tests on the main code before the fix: two runs (102 tests, 68 failed; 54 tests, 45 failed)
+03-green-after-fix.txt   the whole root test task, the naming check, all classes, the unregisterInstance callers in
+                         server-app and game-rts, then the three tests corrected after it
+04-strict.txt            the thread-sensitive classes with 4 tick threads and strict ownership (91 tests, 0 failed)
+05-grid.txt              the same with the grid thread provider (91 tests, 0 failed)
+06-counterproofs.txt     one batch of three reverted parts of the fix, with the diff and the red lines
+07-final.txt             the whole root test task and :synx:test on the restored tree of 554f8e2b3e
+08-review-rework.txt     51eea9c5d9: red, the first green run, the counterproof of the decode checks, the final run

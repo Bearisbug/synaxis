@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.component;
 
+import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import io.github.bearisbug.synaxis.codec.Codec;
@@ -11,6 +12,7 @@ import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
+import java.util.Objects;
 import java.util.function.UnaryOperator;
 
 /**
@@ -22,8 +24,10 @@ import java.util.function.UnaryOperator;
  */
 public sealed interface DataComponent<T> extends StaticProtocolObject<DataComponent<T>>, Encoder<T>, Decoder<T> permits DataComponentImpl {
 
-    NetworkBuffer.Type<DataComponent<?>> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(DataComponent::fromId, DataComponent::id);
-    Codec<DataComponent<?>> CODEC = Codec.KEY.transform(DataComponent::fromKey, DataComponent::key);
+    NetworkBuffer.Type<DataComponent<?>> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(
+            id -> Objects.requireNonNull(fromId(id), () -> "unknown data component id: " + id), DataComponent::id);
+    Codec<DataComponent<?>> CODEC = Codec.KEY.transform(
+            key -> Objects.requireNonNull(fromKey(key), () -> "unknown data component: " + key.asString()), DataComponent::key);
 
     NetworkBuffer.Type<DataComponentMap> MAP_NETWORK_TYPE = DataComponentMap.networkType(DataComponent::fromId);
     Codec<DataComponentMap> MAP_NBT_TYPE = DataComponentMap.codec(DataComponent::fromId, DataComponent::fromKey);
@@ -72,7 +76,11 @@ public sealed interface DataComponent<T> extends StaticProtocolObject<DataCompon
     T freeze(T value);
 
     static @Nullable DataComponent<?> fromKey(@KeyPattern String key) {
-        return fromKey(Key.key(key));
+        try {
+            return fromKey(Key.key(key));
+        } catch (InvalidKeyException _) {
+            return null;
+        }
     }
 
     static @Nullable DataComponent<?> fromKey(Key key) {

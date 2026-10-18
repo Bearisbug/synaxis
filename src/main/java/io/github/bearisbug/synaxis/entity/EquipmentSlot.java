@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static io.github.bearisbug.synaxis.inventory.PlayerInventoryUtils.BOOTS_SLOT;
@@ -32,9 +33,11 @@ public enum EquipmentSlot {
             .collect(Collectors.toMap(EquipmentSlot::legacyProtocolId, slot -> slot));
 
     public static final NetworkBuffer.Type<EquipmentSlot> NETWORK_TYPE = NetworkBuffer.VAR_INT
-            .transform(BY_PROTOCOL_ID::get, EquipmentSlot::protocolId);
+            .transform(id -> Objects.requireNonNull(BY_PROTOCOL_ID.get(id), () -> "unknown equipment slot id: " + id),
+                    EquipmentSlot::protocolId);
     public static final Codec<EquipmentSlot> CODEC = Codec.STRING
-            .transform(BY_NBT_NAME::get, EquipmentSlot::nbtName);
+            .transform(name -> Objects.requireNonNull(BY_NBT_NAME.get(name),
+                    () -> "unknown equipment slot: " + name + ", expected one of " + BY_NBT_NAME.keySet()), EquipmentSlot::nbtName);
 
     public static List<EquipmentSlot> armors() {
         return ARMORS;

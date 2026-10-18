@@ -23,7 +23,7 @@ public class StringTest extends AbstractItemComponentRegistriesTest<String> {
     @Override
     protected List<Map.Entry<String, String>> directReadWriteEntries() {
         return List.of(
-                entry("instance", "hello, world")
+                entry("instance", "minecraft:block.note_block.bell")
         );
     }
 }

@@ -22,8 +22,15 @@ public record EnchantmentList(Map<RegistryKey<BinaryTag>, Integer> enchantments)
     public static final Codec<EnchantmentList> CODEC = RegistryKey.<BinaryTag>codec(REGISTRY).mapValue(Codec.INT, Short.MAX_VALUE)
             .transform(EnchantmentList::new, EnchantmentList::enchantments);
 
+    // 26.2 refuses a level outside 1..255 while it decodes the component, and drops the connection
     public EnchantmentList {
         enchantments = Map.copyOf(enchantments);
+        for (Map.Entry<RegistryKey<BinaryTag>, Integer> entry : enchantments.entrySet()) {
+            final int level = entry.getValue();
+            if (level < 1 || level > 255)
+                throw new IllegalArgumentException(
+                        "Enchantment " + entry.getKey().key().asString() + " level " + level + " is outside 1..255");
+        }
     }
 
     public EnchantmentList(RegistryKey<BinaryTag> enchantment, int level) {

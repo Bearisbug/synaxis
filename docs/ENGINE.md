@@ -283,8 +283,9 @@ python3 tools/pkgdeps.py game-rush/src/main/java  --root-package io.github.beari
 4. **改包定义**：按 diff 改 `network/packet/**`；每个改动过的包都必须有往返测试。
 5. **改常量表**：从 git 历史复活 `code-generators`（REQ-008 删除前的最后版本在 commit `b162f394e8`），用新数据跑一次（入参 `<注册表数据目录> <输出目录>`），把输出与我们手工裁剪过的 `src/main/java`（原生成物已并入，REQ-008） 做三方合并——生成器会覆盖裁剪，必须人工合。
 6. **注册表**：新增 / 删除的注册表在 `Registries.java` 与 `OpaqueRegistry` 里加减，并跑 `RegistryDataPacket` 字节对比那道门（`docs/TEST.md` TC-007）。
-7. **客户端**：Fabric 模组同步升 Loader / Yarn / API——改的是 `client-fabric/build.gradle.kts` 的 `minecraftVersion` / `loaderVersion` / `fabricApiVersion` 三个常量（版本目录管不到它），自定义 payload 的编解码用共享测试向量在两端各跑一遍。
-8. **验收**：原版客户端加我们的 Fabric 模组走完整「登录 → 进世界 → 自定义协议往返」；`./gradlew check` 全绿；ArchUnit 绿。同时更新 §5 里的版本钉死口径、`gradle/libs.versions.toml` 的 `minecraft` 与 `client-fabric/build.gradle.kts` 的三个版本常量（漏掉最后一处，服务端升了而客户端会静默停在旧版本）。
+7. **物品提示行**：`ItemStackImpl.Builder` 的 `EXTRA_TOOLTIP_HIDE`（`ItemStack#withoutExtraTooltip` 隐藏的组件）按新版客户端重核：`javap -c` 新版客户端 jar 的 `ItemStack#addDetailsToTooltip` 与属性提示行，它读到的组件除 `minecraft:lore` 外都要在这张表里，新版删掉的组件从表里删掉。
+8. **客户端**：Fabric 模组同步升 Loader / Yarn / API——改的是 `client-fabric/build.gradle.kts` 的 `minecraftVersion` / `loaderVersion` / `fabricApiVersion` 三个常量（版本目录管不到它），自定义 payload 的编解码用共享测试向量在两端各跑一遍。
+9. **验收**：原版客户端加我们的 Fabric 模组走完整「登录 → 进世界 → 自定义协议往返」；`./gradlew check` 全绿；ArchUnit 绿。同时更新 §5 里的版本钉死口径、`gradle/libs.versions.toml` 的 `minecraft` 与 `client-fabric/build.gradle.kts` 的三个版本常量（漏掉最后一处，服务端升了而客户端会静默停在旧版本）。
 
 ---
 

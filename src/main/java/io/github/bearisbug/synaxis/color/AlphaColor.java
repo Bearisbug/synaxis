@@ -79,7 +79,8 @@ public final class AlphaColor extends Color implements ARGBLike {
     /**
      * Creates a color from an RGB-like color.
      *
-     * @param rgbLike the color
+     * @param alpha   the alpha, from 0 (transparent) to 255 (opaque)
+     * @param rgbLike the color, whose own alpha, if any, is not used
      */
     public AlphaColor(int alpha, RGBLike rgbLike) {
         this(alpha, rgbLike.red(), rgbLike.green(), rgbLike.blue());

@@ -79,16 +79,16 @@ public final class InstanceManager {
     public void unregisterInstance(Instance instance) {
         long onlinePlayers = instance.getPlayers().stream().filter(Player::isOnline).count();
         Check.stateCondition(onlinePlayers > 0, "You cannot unregister an instance with players inside.");
-        synchronized (instance) {
-            InstanceUnregisterEvent event = new InstanceUnregisterEvent(instance);
-            process.eventHandler().call(event);
+        // Nothing here holds the instance monitor: a tick thread takes it of its own accord to set a
+        // block, so the unregister listeners and the unloading below, which takes the tick thread of
+        // every entity it removes, would deadlock with it
+        InstanceUnregisterEvent event = new InstanceUnregisterEvent(instance);
+        process.eventHandler().call(event);
 
-            // Unregister
-            instance.setRegistered(false);
-            this.instances.remove(instance);
-        }
-        // Unload all chunks, outside the instance monitor: unloading takes the tick thread of every
-        // entity it removes, and a tick thread takes the instance monitor of its own accord
+        // Unregister
+        instance.setRegistered(false);
+        this.instances.remove(instance);
+        // Unload all chunks
         if (instance instanceof InstanceContainer) {
             instance.getChunks().forEach(instance::unloadChunk);
             var dispatcher = process.dispatcher();

@@ -15,6 +15,7 @@ import io.github.bearisbug.synaxis.tag.Tag;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -139,14 +140,14 @@ record ItemStackImpl(Material material, int amount, DataComponentMap componentPa
 
     @Override
     public ItemStack damage(int amount) {
+        // A vanilla damageable item has a max damage and a damage, and is not unbreakable
+        if (amount == 0 || has(DataComponents.UNBREAKABLE)) return this;
         final Integer damage = get(DataComponents.DAMAGE);
-        if (damage == null) return this;
         final Integer maxDamage = get(DataComponents.MAX_DAMAGE);
-        if (maxDamage != null && damage + amount >= maxDamage) {
-            return ItemStack.AIR;
-        } else {
-            return with(DataComponents.DAMAGE, damage + amount);
-        }
+        if (damage == null || maxDamage == null) return this;
+        final long next = Math.max(0L, (long) damage + amount);
+        if (next >= maxDamage) return ItemStack.AIR;
+        return with(DataComponents.DAMAGE, (int) next);
     }
 
     @Override
@@ -167,6 +168,8 @@ record ItemStackImpl(Material material, int amount, DataComponentMap componentPa
     }
 
     static final class Builder implements ItemStack.Builder {
+        // Every component but the lore that adds lines to the tooltip of a 26.2 client: those read by
+        // ItemStack#addDetailsToTooltip and the attribute lines. Check them again when the Minecraft version changes.
         private static final TooltipDisplay EXTRA_TOOLTIP_HIDE = new TooltipDisplay(false, Set.of(
                 DataComponents.BANNER_PATTERNS, DataComponents.BEES, DataComponents.BLOCK_ENTITY_DATA,
                 DataComponents.BLOCK_STATE, DataComponents.BUNDLE_CONTENTS, DataComponents.CHARGED_PROJECTILES,
@@ -174,7 +177,12 @@ record ItemStackImpl(Material material, int amount, DataComponentMap componentPa
                 DataComponents.FIREWORKS, DataComponents.INSTRUMENT, DataComponents.MAP_ID,
                 DataComponents.PAINTING_VARIANT, DataComponents.POT_DECORATIONS, DataComponents.POTION_CONTENTS,
                 DataComponents.TROPICAL_FISH_PATTERN, DataComponents.WRITTEN_BOOK_CONTENT,
-                DataComponents.UNBREAKABLE, DataComponents.ATTRIBUTE_MODIFIERS
+                DataComponents.UNBREAKABLE, DataComponents.ATTRIBUTE_MODIFIERS,
+                DataComponents.CAN_BREAK, DataComponents.CAN_PLACE_ON, DataComponents.DAMAGE,
+                DataComponents.DYED_COLOR, DataComponents.ENCHANTMENTS, DataComponents.ENTITY_DATA,
+                DataComponents.INTANGIBLE_PROJECTILE, DataComponents.JUKEBOX_PLAYABLE,
+                DataComponents.OMINOUS_BOTTLE_AMPLIFIER, DataComponents.PROFILE, DataComponents.STORED_ENCHANTMENTS,
+                DataComponents.SULFUR_CUBE_CONTENT, DataComponents.SUSPICIOUS_STEW_EFFECTS, DataComponents.TRIM
         ));
 
         private Material material;
@@ -225,7 +233,11 @@ record ItemStackImpl(Material material, int amount, DataComponentMap componentPa
 
         @Override
         public ItemStack.Builder hideExtraTooltip() {
-            return set(DataComponents.TOOLTIP_DISPLAY, EXTRA_TOOLTIP_HIDE);
+            // Every vanilla prototype has an empty display, so an item without one in its patch shows everything
+            final TooltipDisplay current = components.get(DataComponents.TOOLTIP_DISPLAY, TooltipDisplay.EMPTY);
+            final Set<DataComponent<?>> hidden = new HashSet<>(current.hiddenComponents());
+            hidden.addAll(EXTRA_TOOLTIP_HIDE.hiddenComponents());
+            return set(DataComponents.TOOLTIP_DISPLAY, new TooltipDisplay(current.hideTooltip(), hidden));
         }
 
         @Override

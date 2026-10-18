@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis;
 
+import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import io.github.bearisbug.synaxis.registry.StaticProtocolObject;
@@ -14,7 +15,11 @@ public sealed interface FeatureFlag extends StaticProtocolObject<FeatureFlag>, F
     }
 
     static @Nullable FeatureFlag fromKey(@KeyPattern String key) {
-        return fromKey(Key.key(key));
+        try {
+            return fromKey(Key.key(key));
+        } catch (InvalidKeyException _) {
+            return null;
+        }
     }
 
     static @Nullable FeatureFlag fromKey(Key key) {

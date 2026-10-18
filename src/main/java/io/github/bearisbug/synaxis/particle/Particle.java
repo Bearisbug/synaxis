@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.particle;
 import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
+import net.kyori.adventure.util.ARGBLike;
 import net.kyori.adventure.util.RGBLike;
 import io.github.bearisbug.synaxis.codec.Codec;
 import io.github.bearisbug.synaxis.codec.Result;
@@ -51,10 +52,12 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
             if (!(mapResult instanceof Result.Ok(Transcoder.MapLike<D> map)))
                 return mapResult.cast();
 
-            Result<Particle> particleResult = map.getValue("type")
-                    .map(coder::getString).mapResult(Key::key).mapResult(ParticleImpl::get);
-            if (!(particleResult instanceof Result.Ok(Particle particle)))
-                return particleResult.cast();
+            Result<String> typeResult = map.getValue("type").map(coder::getString);
+            if (!(typeResult instanceof Result.Ok(String type)))
+                return typeResult.cast();
+            final Particle particle = fromKey(type);
+            if (particle == null) return new Result.Error<>("unknown particle: " + type);
+            if (particle instanceof Vibration) return new Result.Error<>("the vibration particle has no codec");
 
             return (Result<Particle>) particle.codec().decodeFromMap(coder, map);
         }
@@ -63,6 +66,7 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
         @SuppressWarnings("unchecked")
         public <D> Result<D> encode(Transcoder<D> coder, @Nullable Particle value) {
             if (value == null) return new Result.Error<>("null");
+            if (value instanceof Vibration) return new Result.Error<>("the vibration particle has no codec");
             return ((StructCodec<@NotNull Particle>) value.codec()).encode(coder, value);
         }
     };
@@ -119,6 +123,10 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
                 "block_state", STATE_STRUCT_CODEC, Block::block,
                 (key, block) -> ParticleImpl.<Block>get(key).withBlock(block));
 
+        public Block {
+            Objects.requireNonNull(block, "block");
+        }
+
         @Contract(pure = true)
         public Block withBlock(io.github.bearisbug.synaxis.instance.block.Block block) {
             return new Block(key(), id(), block);
@@ -148,6 +156,10 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
                 "type", Codec.KEY, BlockMarker::key,
                 "block_state", STATE_STRUCT_CODEC, BlockMarker::block,
                 (key, block) -> ParticleImpl.<BlockMarker>get(key).withBlock(block));
+
+        public BlockMarker {
+            Objects.requireNonNull(block, "block");
+        }
 
         @Contract(pure = true)
         public BlockMarker withBlock(io.github.bearisbug.synaxis.instance.block.Block block) {
@@ -179,6 +191,10 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
                 "color", Color.CODEC, Dust::color,
                 "scale", Codec.FLOAT, Dust::scale,
                 (type, color, scale) -> ParticleImpl.<Dust>get(type).withProperties(color, scale));
+
+        public Dust {
+            Objects.requireNonNull(color, "color");
+        }
 
         @Contract(pure = true)
         public Dust withProperties(RGBLike color, float scale) {
@@ -226,6 +242,11 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
                 (type, from, to, scale) ->
                         ParticleImpl.<DustColorTransition>get(type).withProperties(from, to, scale));
 
+        public DustColorTransition {
+            Objects.requireNonNull(color, "color");
+            Objects.requireNonNull(transitionColor, "transitionColor");
+        }
+
         @Contract(pure = true)
         public DustColorTransition withProperties(RGBLike color, RGBLike transitionColor, float scale) {
             return new DustColorTransition(key, id, color, transitionColor, scale);
@@ -272,6 +293,10 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
                 "block_state", STATE_STRUCT_CODEC, DustPillar::block,
                 (key, block) -> ParticleImpl.<DustPillar>get(key).withBlock(block));
 
+        public DustPillar {
+            Objects.requireNonNull(block, "block");
+        }
+
         @Contract(pure = true)
         public DustPillar withBlock(io.github.bearisbug.synaxis.instance.block.Block block) {
             return new DustPillar(key(), id(), block);
@@ -301,6 +326,10 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
                 "type", Codec.KEY, FallingDust::key,
                 "block_state", STATE_STRUCT_CODEC, FallingDust::block,
                 (key, block) -> ParticleImpl.<FallingDust>get(key).withBlock(block));
+
+        public FallingDust {
+            Objects.requireNonNull(block, "block");
+        }
 
         @Contract(pure = true)
         public FallingDust withBlock(io.github.bearisbug.synaxis.instance.block.Block block) {
@@ -337,6 +366,7 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
                 (type, item) -> ParticleImpl.<Item>get(type).withItem(item));
 
         public Item {
+            Objects.requireNonNull(item, "item");
             Check.argCondition(item.isAir(), "Particle.Item cannot show air, 26.2 clients fail to decode it");
         }
 
@@ -367,16 +397,40 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
                 "color", AlphaColor.CODEC, EntityEffect::color,
                 (type, color) -> ParticleImpl.<EntityEffect>get(type).withColor(color));
 
+        public EntityEffect {
+            Objects.requireNonNull(color, "color");
+        }
+
+        /**
+         * Creates this particle with another color.
+         *
+         * @param color the color, its alpha from 0 (transparent) to 255 (opaque)
+         * @return the particle with that color
+         */
         @Contract(pure = true)
         public EntityEffect withColor(AlphaColor color) {
             return new EntityEffect(key(), id(), color);
         }
 
+        /**
+         * Creates this particle with another color, which keeps the alpha of an {@link ARGBLike} color and is opaque
+         * otherwise.
+         *
+         * @param color the color
+         * @return the particle with that color
+         */
         @Contract(pure = true)
         public EntityEffect withColor(RGBLike color) {
-            return new EntityEffect(key(), id(), new AlphaColor(1, color));
+            return new EntityEffect(key(), id(), color instanceof ARGBLike argb ? AlphaColor.fromARGBLike(argb) : new AlphaColor(255, color));
         }
 
+        /**
+         * Creates this particle with another color and alpha.
+         *
+         * @param alpha the alpha, from 0 (transparent) to 255 (opaque)
+         * @param color the color, whose own alpha is not used
+         * @return the particle with that color
+         */
         @Contract(pure = true)
         public EntityEffect withColor(int alpha, RGBLike color) {
             return new EntityEffect(key(), id(), new AlphaColor(alpha, color));
@@ -455,20 +509,25 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
     record Vibration(
             Key key, int id,
             SourceType sourceType,
-            @Nullable Point sourceBlockPosition,
+            Point sourceBlockPosition,
             int sourceEntityId,
             float sourceEntityEyeHeight,
             int travelTicks
     ) implements Particle {
 
+        public Vibration {
+            if (sourceType == SourceType.BLOCK)
+                Objects.requireNonNull(sourceBlockPosition, "sourceBlockPosition is required for SourceType.BLOCK");
+        }
+
         @Contract(pure = true)
-        public Vibration withProperties(SourceType sourceType, @Nullable Point sourceBlockPosition,
+        public Vibration withProperties(SourceType sourceType, Point sourceBlockPosition,
                                         int sourceEntityId, float sourceEntityEyeHeight, int travelTicks) {
             return new Vibration(key(), id(), sourceType, sourceBlockPosition, sourceEntityId, sourceEntityEyeHeight, travelTicks);
         }
 
         @Contract(pure = true)
-        public Vibration withSourceBlockPosition(@Nullable Point sourceBlockPosition, int travelTicks) {
+        public Vibration withSourceBlockPosition(Point sourceBlockPosition, int travelTicks) {
             return new Vibration(key(), id(), SourceType.BLOCK, sourceBlockPosition, sourceEntityId, sourceEntityEyeHeight, travelTicks);
         }
 
@@ -491,7 +550,6 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
         public void writeData(NetworkBuffer writer) {
             writer.write(NetworkBuffer.Enum(SourceType.class), sourceType);
             if (sourceType == SourceType.BLOCK) {
-                Objects.requireNonNull(sourceBlockPosition);
                 writer.write(NetworkBuffer.BLOCK_POSITION, sourceBlockPosition);
                 writer.write(NetworkBuffer.VAR_INT, travelTicks);
             } else {
@@ -524,6 +582,11 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
                 "duration", Codec.INT, Trail::duration,
                 (type, target, color, duration) ->
                         ParticleImpl.<Trail>get(type).withProperties(target, color, duration));
+
+        public Trail {
+            Objects.requireNonNull(target, "target");
+            Objects.requireNonNull(color, "color");
+        }
 
         public Trail withProperties(Point target, RGBLike color, int duration) {
             return new Trail(key(), id(), target, color, duration);
@@ -565,6 +628,10 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
                 "block_state", STATE_STRUCT_CODEC, BlockCrumble::block,
                 (key, block) -> ParticleImpl.<BlockCrumble>get(key).withBlock(block));
 
+        public BlockCrumble {
+            Objects.requireNonNull(block, "block");
+        }
+
         @Contract(pure = true)
         public BlockCrumble withBlock(io.github.bearisbug.synaxis.instance.block.Block block) {
             return new BlockCrumble(key(), id(), block);
@@ -595,16 +662,40 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
                 "color", AlphaColor.CODEC, TintedLeaves::color,
                 (type, color) -> ParticleImpl.<TintedLeaves>get(type).withColor(color));
 
+        public TintedLeaves {
+            Objects.requireNonNull(color, "color");
+        }
+
+        /**
+         * Creates this particle with another color.
+         *
+         * @param color the color, its alpha from 0 (transparent) to 255 (opaque)
+         * @return the particle with that color
+         */
         @Contract(pure = true)
         public TintedLeaves withColor(AlphaColor color) {
             return new TintedLeaves(key(), id(), color);
         }
 
+        /**
+         * Creates this particle with another color, which keeps the alpha of an {@link ARGBLike} color and is opaque
+         * otherwise.
+         *
+         * @param color the color
+         * @return the particle with that color
+         */
         @Contract(pure = true)
         public TintedLeaves withColor(RGBLike color) {
-            return new TintedLeaves(key(), id(), new AlphaColor(1, color));
+            return new TintedLeaves(key(), id(), color instanceof ARGBLike argb ? AlphaColor.fromARGBLike(argb) : new AlphaColor(255, color));
         }
 
+        /**
+         * Creates this particle with another color and alpha.
+         *
+         * @param alpha the alpha, from 0 (transparent) to 255 (opaque)
+         * @param color the color, whose own alpha is not used
+         * @return the particle with that color
+         */
         @Contract(pure = true)
         public TintedLeaves withColor(int alpha, RGBLike color) {
             return new TintedLeaves(key(), id(), new AlphaColor(alpha, color));
@@ -656,9 +747,13 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
     record Effect(Key key, int id, RGBLike color, float power) implements Particle {
         public static final StructCodec<Effect> CODEC = StructCodec.struct(
                 "type", Codec.KEY, Effect::key,
-                "color", Color.CODEC, Effect::color,
-                "power", Codec.FLOAT, Effect::power,
+                "color", Color.CODEC.optional(Color.WHITE), Effect::color,
+                "power", Codec.FLOAT.optional(1f), Effect::power,
                 (type, color, power) -> ParticleImpl.<Effect>get(type).withProperties(color, power));
+
+        public Effect {
+            Objects.requireNonNull(color, "color");
+        }
 
         @Contract(pure = true)
         public Effect withColor(RGBLike color) {
@@ -695,19 +790,43 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
     record Flash(Key key, int id, AlphaColor color) implements Particle {
         public static final StructCodec<Flash> CODEC = StructCodec.struct(
                 "type", Codec.KEY, Flash::key,
-                "color", Color.CODEC, Flash::color,
+                "color", AlphaColor.CODEC, Flash::color,
                 (type, color) -> ParticleImpl.<Flash>get(type).withColor(color));
 
+        public Flash {
+            Objects.requireNonNull(color, "color");
+        }
+
+        /**
+         * Creates this particle with another color.
+         *
+         * @param color the color, its alpha from 0 (transparent) to 255 (opaque)
+         * @return the particle with that color
+         */
         @Contract(pure = true)
         public Flash withColor(AlphaColor color) {
             return new Flash(key(), id(), color);
         }
 
+        /**
+         * Creates this particle with another color, which keeps the alpha of an {@link ARGBLike} color and is opaque
+         * otherwise.
+         *
+         * @param color the color
+         * @return the particle with that color
+         */
         @Contract(pure = true)
         public Flash withColor(RGBLike color) {
-            return new Flash(key(), id(), new AlphaColor(1, color));
+            return new Flash(key(), id(), color instanceof ARGBLike argb ? AlphaColor.fromARGBLike(argb) : new AlphaColor(255, color));
         }
 
+        /**
+         * Creates this particle with another color and alpha.
+         *
+         * @param alpha the alpha, from 0 (transparent) to 255 (opaque)
+         * @param color the color, whose own alpha is not used
+         * @return the particle with that color
+         */
         @Contract(pure = true)
         public Flash withColor(int alpha, RGBLike color) {
             return new Flash(key(), id(), new AlphaColor(alpha, color));
@@ -732,9 +851,13 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
     record InstantEffect(Key key, int id, RGBLike color, float power) implements Particle {
         public static final StructCodec<InstantEffect> CODEC = StructCodec.struct(
                 "type", Codec.KEY, InstantEffect::key,
-                "color", Color.CODEC, InstantEffect::color,
-                "power", Codec.FLOAT, InstantEffect::power,
+                "color", Color.CODEC.optional(Color.WHITE), InstantEffect::color,
+                "power", Codec.FLOAT.optional(1f), InstantEffect::power,
                 (key, color, power) -> ParticleImpl.<InstantEffect>get(key).withProperties(color, power));
+
+        public InstantEffect {
+            Objects.requireNonNull(color, "color");
+        }
 
         @Contract(pure = true)
         public InstantEffect withColor(RGBLike color) {

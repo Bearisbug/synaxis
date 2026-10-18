@@ -1,0 +1,10 @@
+The restored tree of 554f8e2b3e after the counterproofs (git status clean in src), default mode.
+Command: ./gradlew --continue :test --rerun :synx:test --rerun --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+root :test   448 classes, 3354 tests, 0 failed, 15 skipped (the database tests without the database variables)
+:synx:test    22 classes,  182 tests, 0 failed, 1 skipped
+BUILD SUCCESSFUL
+
+This covers the step "rerun after restoring" of TC-PROD-920 to TC-PROD-927 in the default mode. The synx tests belong
+to the lighting session and were only run: unregisterInstance, block tags and the tag view change reach the code
+they exercise.

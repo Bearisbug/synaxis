@@ -19,11 +19,32 @@ import java.util.concurrent.ConcurrentHashMap;
  * Interface used to provide block behavior. Set with {@link Block#withHandler(BlockHandler)}.
  * <p>
  * Implementations are expected to be thread safe.
+ * <p>
+ * When and where the callbacks run:
+ * <ul>
+ *     <li>{@link #onPlace(Placement)} and {@link #onDestroy(Destroy)} run synchronously inside the call setting the
+ *     block, on the thread setting it, which holds the write lock of the chunk of the block. Set through the
+ *     instance ({@link Instance#setBlock(Point, Block, boolean)}, placing and breaking blocks), that thread holds
+ *     the monitor of the instance as well.</li>
+ *     <li>Setting a position whose current block has a handler calls that handler's {@code onDestroy}, then the
+ *     {@code onPlace} of the handler of the new block, even when only the NBT or the properties of the block
+ *     change; {@link Destroy#getNewBlock()} tells the cases apart.</li>
+ *     <li>A callback may set blocks of its instance again, the monitor is reentrant. It must not take an entity
+ *     another tick thread owns ({@code acquirable().sync(...)} or {@code lock()}) nor wait for a future that is not
+ *     done (as {@code loadChunk(...).join()} does): that thread may be waiting for this monitor to set a block of
+ *     its own, and the two threads deadlock. Hand an effect on another entity to the thread of that entity with
+ *     {@code entity.scheduler().scheduleNextTick(task)}, from a plugin with
+ *     {@code PluginScheduler#runOn(entity, task, TaskSchedule.immediate())}.</li>
+ *     <li>{@link #isTickable()} is read when the block is set or its chunk is loaded, not on every tick.</li>
+ * </ul>
  */
 public interface BlockHandler {
 
     /**
      * Called when a block has been placed.
+     * <p>
+     * Runs holding the chunk write lock and, set through the instance, the instance monitor: see the class
+     * documentation.
      *
      * @param placement the placement details
      */
@@ -32,6 +53,10 @@ public interface BlockHandler {
 
     /**
      * Called when a block has been destroyed or replaced.
+     * <p>
+     * A block is replaced as well when the position is set to the same block with other NBT or properties, the
+     * handler of the new block then gets {@link #onPlace(Placement)}. Runs holding the chunk write lock and, set
+     * through the instance, the instance monitor: see the class documentation.
      *
      * @param destroy the destroy details
      */
@@ -41,9 +66,12 @@ public interface BlockHandler {
     /**
      * Handles interactions with this block. Can also block normal item use (containers should block when opening the
      * menu, this prevents the player from placing a block when opening it for instance).
+     * <p>
+     * Called after the {@code PlayerBlockInteractEvent} of the click, and not at all when that event is cancelled.
      *
      * @param interaction the interaction details
-     * @return true to let the block interaction happens, false to cancel
+     * @return true to let the click go on to use the held item and place a block, false when this block consumed the
+     * click: the held item is not used and no block is placed. Either way, what this method did is kept
      */
     default boolean onInteract(Interaction interaction) {
         return true;
@@ -57,15 +85,35 @@ public interface BlockHandler {
     default void onTouch(Touch touch) {
     }
 
+    /**
+     * Called once a tick for a block whose handler {@link #isTickable() is tickable}, only while its chunk is within
+     * the simulation distance of the instance ({@link Instance#setSimulationDistance(int)}).
+     * <p>
+     * Runs on the tick thread owning the chunk, without holding the chunk lock.
+     *
+     * @param tick the tick details
+     */
     default void tick(Tick tick) {
     }
 
+    /**
+     * Gets if blocks with this handler are ticked, see {@link #tick(Tick)}.
+     * <p>
+     * Read when a block with this handler is set or its chunk is loaded, not on every tick: a block keeps the answer
+     * it got then.
+     *
+     * @return true to tick the blocks with this handler
+     */
     default boolean isTickable() {
         return false;
     }
 
     /**
      * Specifies which block entity tags should be sent to the player.
+     * <p>
+     * A block with a handler sends only the tags listed here, each under its path. The default empty list sends
+     * nothing, so the tags a vanilla block entity shows (the text of a sign for instance) have to be listed. A block
+     * entity without a handler sends its whole NBT, see {@link Block#withTag(Tag, Object)}.
      *
      * @return The list of tags from this block's block entity that should be sent to the player
      * @see <a href="https://minecraft.wiki/w/Block_entity">Block entity on the Minecraft wiki</a>
@@ -81,7 +129,8 @@ public interface BlockHandler {
     /**
      * Gets the id of this handler.
      * <p>
-     * Used to write the block entity in the anvil world format.
+     * It must be the key the handler is registered under with {@link BlockManager#registerHandler}: chunk loaders
+     * store it with a block entity and look the handler up by it when the chunk is loaded again.
      *
      * @return the key of this handler
      */

@@ -3,6 +3,8 @@ package io.github.bearisbug.synaxis.worldevent;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
+
 /**
  * 原为生成物，自 REQ-008 起作为普通源码维护；重新生成的方法见 `docs/ENGINE.md` 升版本 checklist。
  */
@@ -173,7 +175,8 @@ public enum WorldEvent {
 
     PARTICLES_TRIAL_SPAWNER_SPAWN_ITEM(3021);
 
-    public static final NetworkBuffer.Type<WorldEvent> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(WorldEvent::fromId, WorldEvent::id);
+    public static final NetworkBuffer.Type<WorldEvent> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(
+            id -> Objects.requireNonNull(fromId(id), () -> "unknown world event id: " + id), WorldEvent::id);
 
     private static final WorldEvent[] VALUES = values();
 

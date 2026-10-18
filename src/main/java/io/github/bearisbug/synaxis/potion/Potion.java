@@ -6,6 +6,8 @@ import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import io.github.bearisbug.synaxis.network.packet.server.play.EntityEffectPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.RemoveEntityEffectPacket;
 
+import java.util.Objects;
+
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.BYTE;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
 
@@ -54,6 +56,10 @@ public record Potion(PotionEffect effect, int amplifier, int duration, byte flag
      * A duration constant which sets a Potion duration to infinite.
      */
     public static final int INFINITE_DURATION = -1;
+
+    public Potion {
+        Objects.requireNonNull(effect, "effect");
+    }
 
     /**
      * @see #Potion(PotionEffect, int, int, byte)

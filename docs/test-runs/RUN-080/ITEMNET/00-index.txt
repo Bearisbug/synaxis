@@ -1,0 +1,8 @@
+RUN-080 group ITEMNET, branch prod/r080-ITEMNET, based on main cb969826b7 (docs/DESIGN-PROD.md v0.9.89, docs/TEST.md TC-PROD-810 to TC-PROD-814).
+Every Gradle run took /tmp/synaxis-heavy.lock for that run only and used --max-workers=2 --no-daemon with the mirror init script.
+The changed classes do not touch tick threads, so only the default mode was run.
+
+01-javap-26.2.txt        how the 26.2 client reads containers, item stack templates, item particles and custom click events
+02-red-before-fix.txt    the final tests on the main code before the fix: 63 tests, 14 failed
+03-green-after-fix.txt   the tests after the fix (592 tests, 0 failed), the gates and diff-cover (98%)
+04-counterproofs.txt     two batches of reverting parts of the fix, with the diffs and the red lines

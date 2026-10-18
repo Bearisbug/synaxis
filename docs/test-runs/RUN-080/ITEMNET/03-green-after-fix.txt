@@ -1,0 +1,45 @@
+Green after the fix (the code of this branch). Same command, the six classes of 02 plus the neighbouring classes of TC-PROD-814,
+together with :jacocoTestReport :testNamingCheck :forbiddenImportsCheck (default mode).
+
+> Task :testNamingCheck
+> Task :forbiddenImportsCheck
+> Task :test
+> Task :jacocoTestReport
+BUILD SUCCESSFUL in 10s
+
+io.github.bearisbug.synaxis.adventure.ClickCallbackIntegrationTest: tests=2 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.adventure.ComponentCodecsTest: tests=13 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.adventure.nbt.TestNbtComponentSerializer: tests=3 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.command.ArgumentTypeTest: tests=32 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.component.DataComponentMapTest: tests=14 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.instance.block.predicate.DataComponentPredicateTest: tests=13 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.item.ItemAirTest: tests=2 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.item.ItemStackRegistriesTest: tests=2 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.item.ItemStackTemplateRegistriesTest: tests=6 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.item.UnsyncedComponentRegistriesTest: tests=3 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.item.component.ItemComponentReadWriteRegistriesTest: tests=1 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.network.ComponentHoverItemRegistriesTest: tests=8 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.network.ComponentNetworkBufferTypeReadTest: tests=1 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.network.ComponentNetworkBufferTypeTest: tests=15 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.network.PacketWriteReadRegistriesTest: tests=470 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.particle.ParticleDataTest: tests=7 failures=0 errors=0 skipped=0
+total 592
+
+Compile with Error Prone and :javadoc on the same main code (the run before the tests needing registries moved): both passed.
+> Task :compileJava
+> Task :javadoc
+
+diff-cover build/reports/jacoco/test/jacocoTestReport.xml --compare-branch=origin/main --src-roots src/main/java
+src/main/java/io/github/bearisbug/synaxis/adventure/ComponentCodecs.java (90.0%): Missing lines 124
+src/main/java/io/github/bearisbug/synaxis/adventure/EngineAdventure.java (100%)
+src/main/java/io/github/bearisbug/synaxis/component/DataComponents.java (100%)
+src/main/java/io/github/bearisbug/synaxis/item/ItemStack.java (100%)
+src/main/java/io/github/bearisbug/synaxis/network/ComponentNetworkBufferTypeImpl.java (100%)
+src/main/java/io/github/bearisbug/synaxis/particle/Particle.java (100%)
+src/main/java/io/github/bearisbug/synaxis/particle/ParticleImpl.java (100%)
+-------------
+Total:   64 lines
+Missing: 1 line
+Coverage: 98%
+-------------
+

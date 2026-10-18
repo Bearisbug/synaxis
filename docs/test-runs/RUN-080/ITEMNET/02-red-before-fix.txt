@@ -1,0 +1,26 @@
+Red before the fix: the main code of main cb969826b7 (git checkout cb969826b7 -- src/main) with the final tests of this branch.
+Command: ./gradlew :test --rerun --tests <the six classes below> --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts (default mode)
+
+63 tests completed, 14 failed
+BUILD FAILED in 13s
+
+ComponentCodecsTest tests= 13 failures= 3 errors= 0
+   unwrapNbtNamesTheStringItCannotRead() | org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.RuntimeException> | ['ComponentCodecsTest.java:116', 'ComponentCodecsTest.java:117'] | ['Caused by: java.lang.RuntimeException: Failed to unwrap BinaryTagHolder']
+   customClickEventPayloadCanBeAnyTag() | java.lang.RuntimeException: Failed to unwrap BinaryTagHolder | ['ComponentCodecsTest.java:110'] | ["Caused by: java.io.IOException: net.kyori.adventure.nbt.StringTagParseException: Expected character '{' but got '5'(at position 0)"]
+   customClickEventWithoutPayloadRoundTrips() | java.lang.NullPointerException: Cannot invoke "net.kyori.adventure.nbt.api.BinaryTagHolder.get(net.kyori.adventure.util.Codec)" because "holder" is null | ['ComponentCodecsTest.java:93'] | []
+DataComponentMapTest tests= 14 failures= 1 errors= 0
+   networkPatchRejectsDeeplyNestedComponents() | org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalStateException> but was: <java.lang.IllegalArgumentException> | ['DataComponentMapTest.java:73', 'DataComponentMapTest.java:74'] | ['Caused by: java.lang.IllegalArgumentException: Binary tag is not a compound: 75']
+ItemStackTemplateRegistriesTest tests= 6 failures= 3 errors= 0
+   containerCodecWritesTheFilledSlots(Registries) | org.opentest4j.AssertionFailedError: expected: <ListBinaryTagImpl[elementType=BinaryTagType[CompoundBinaryTag 10], permitsHeterogeneity=true, tags=[CompoundBinaryTagImpl[tags={item=CompoundBinaryTagImpl[tags={count=IntBinaryTagImpl[value=1], id=StringBinaryTag | ['ItemStackTemplateRegistriesTest.java:107'] | []
+   containerWritesEachSlotAsAnOptionalTemplate(Registries) | org.opentest4j.AssertionFailedError: array lengths differ, expected: <12> but was: <13> | ['ItemStackTemplateRegistriesTest.java:91'] | []
+   templateComponentsRejectAir() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | ['ItemStackTemplateRegistriesTest.java:132'] | []
+ComponentHoverItemRegistriesTest tests= 8 failures= 3 errors= 0
+   aComponentRemovedFromTheItemIsHandedOverAsARemoval(Registries) | org.opentest4j.AssertionFailedError: Unexpected type, expected: <net.kyori.adventure.text.event.DataComponentValue.Removed> but was: <io.github.bearisbug.synaxis.adventure.EngineDataComponentValueImpl> | ['ComponentHoverItemRegistriesTest.java:117'] | []
+   aComponentWithoutCodecIsLeftOut(Registries) | org.opentest4j.AssertionFailedError: expected: <false> but was: <true> | ['ComponentHoverItemRegistriesTest.java:133'] | []
+   anEngineValueOfNullIsWrittenAsARemoval(Registries) | java.lang.IllegalArgumentException: failed to encode minecraft:damage_type: null | ['ComponentHoverItemRegistriesTest.java:57', 'ComponentHoverItemRegistriesTest.java:139'] | []
+ComponentNetworkBufferTypeTest tests= 15 failures= 2 errors= 0
+   customClickEventWithoutPayload() | java.lang.NullPointerException: Cannot invoke "net.kyori.adventure.nbt.api.BinaryTagHolder.get(net.kyori.adventure.util.Codec)" because "holder" is null | ['ComponentNetworkBufferTypeTest.java:143', 'ComponentNetworkBufferTypeTest.java:143', 'ComponentNetworkBufferTypeTest.java:124'] | []
+   customClickEventWithATagThatIsNotACompound() | java.lang.RuntimeException: Failed to unwrap BinaryTagHolder | ['ComponentNetworkBufferTypeTest.java:143', 'ComponentNetworkBufferTypeTest.java:143', 'ComponentNetworkBufferTypeTest.java:133'] | ["Caused by: java.io.IOException: net.kyori.adventure.nbt.StringTagParseException: Expected character '{' but got '5'(at position 0)"]
+ParticleDataTest tests= 7 failures= 2 errors= 0
+   itemParticleDefaultIsNotAir() | org.opentest4j.AssertionFailedError: array contents differ at index [1], expected: <1> but was: <0> | ['ParticleDataTest.java:63'] | []
+   itemParticleRejectsAir() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | ['ParticleDataTest.java:68'] | []

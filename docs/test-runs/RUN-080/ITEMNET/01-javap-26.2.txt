@@ -1,0 +1,49 @@
+How the Minecraft 26.2 client reads containers, item stack templates, item particles and custom click
+events. This file records the conclusions and how to reproduce them; it does not reproduce Mojang's code.
+
+Source: the 26.2 client jar
+  https://piston-data.mojang.com/v1/objects/2dc72797acbc1b63fc16a11c4ac393605f453754/client.jar
+  sha1 2dc72797acbc1b63fc16a11c4ac393605f453754 (the object name in the 26.2 version manifest)
+Reproduce: javap of JDK 25 against that jar, for example
+  javap -c -p -constants -cp client.jar net.minecraft.world.item.component.ItemContainerContents
+  javap -v -cp client.jar net.minecraft.world.item.component.ItemContainerContents   (bootstrap methods)
+Each section names the class and members read and states what they show.
+
+== 1. net.minecraft.world.item.component.ItemContainerContents, static initializer
+CODEC is Slot.CODEC.sizeLimitedListOf(256) mapped with fromSlots / asSlots: the NBT and JSON form is a list
+of at most 256 {slot, item} records.
+STREAM_CODEC is ItemStackTemplate.STREAM_CODEC wrapped in ByteBufCodecs.optional, then in
+ByteBufCodecs.list(256), mapped to and from the contents: the network form is a VarInt count of at most 256,
+then one optional template per slot (bootstrap methods 6 to 8 resolve to fromSlots, asSlots and
+ByteBufCodecs.optional).
+
+== 2. ItemContainerContents.fromSlots and asSlots
+fromSlots sizes the contents to the highest slot index plus one, fills it with empty slots and places each
+record's template at its index; an empty list gives EMPTY.
+asSlots walks the slots and emits a Slot(index, template) for each present one only: empty slots are left out
+of the NBT and JSON form.
+
+== 3. ItemContainerContents$Slot.CODEC
+RecordCodecBuilder of two fields: "slot" as Codec.intRange(0, 255) and "item" as ItemStackTemplate.CODEC.
+
+== 4. ByteBufCodecs.optional
+Returns an anonymous StreamCodec (ByteBufCodecs$23). decode reads a boolean, then the wrapped value when it is
+true, otherwise yields Optional.empty(). encode writes true and the value when present, false otherwise.
+
+== 5. ItemStackTemplate(Holder, int, DataComponentPatch) and STREAM_CODEC
+The canonical constructor throws IllegalStateException("Item must be non-empty") when the count is 0 or the
+item holder is Items.AIR: an empty template cannot be built, so a client decoding one fails.
+STREAM_CODEC is StreamCodec.composite(Item.STREAM_CODEC, VAR_INT, DataComponentPatch.STREAM_CODEC).
+
+== 6. ItemParticleOption
+Holds an ItemStackTemplate (field itemStack) and encodes it with ItemStackTemplate.STREAM_CODEC, not an
+optional one: an item particle always carries a non-empty template.
+
+== 7. BundleContents, ChargedProjectiles, UseRemainder, SulfurCubeContent
+All four read and write ItemStackTemplate.CODEC and ItemStackTemplate.STREAM_CODEC (the first two as lists,
+ChargedProjectiles with a size limit); none of the four references ByteBufCodecs.optional in its constant
+pool, so none of them can carry an empty entry.
+
+== 8. ClickEvent$Custom
+A record of Identifier id and Optional<Tag> payload; CODEC reads the payload with
+ExtraCodecs.NBT.optionalFieldOf("payload"): the payload is any NBT tag and may be absent.

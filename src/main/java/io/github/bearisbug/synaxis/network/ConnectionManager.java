@@ -514,9 +514,9 @@ public final class ConnectionManager {
 
     /**
      * Reports a player that disconnected in the play state on the next tick, unless it has started
-     * to spawn: the state is play once the server wrote {@code FinishConfigurationPacket}, but the
-     * player only spawns on a later tick, and the removal its disconnect scheduled on the entity
-     * never runs for an entity that is in no instance.
+     * to spawn and its spawn did not fail before it got into an instance: the state is play once the
+     * server wrote {@code FinishConfigurationPacket}, but the player only spawns on a later tick, and
+     * the removal its disconnect scheduled on the entity never runs for an entity that is in no instance.
      *
      * @param player the player whose connection was dropped
      */
@@ -753,6 +753,8 @@ public final class ConnectionManager {
             var _ = spawnFuture.exceptionally(throwable -> {
                 LOGGER.error("Failed to spawn player {}", player.getUsername(), throwable);
                 player.kick(DisconnectReasons.INTERNAL_ERROR);
+                // A client that left before the spawn failed was looked at by an earlier tick
+                leftBeforeSpawn(player);
                 return null;
             });
 
@@ -770,7 +772,8 @@ public final class ConnectionManager {
         if (maxJoins == 0) this.playWaitingPlayers.drain(join);
         else this.playWaitingPlayers.drain(join, maxJoins);
         // After the joins, on the same thread: a player that got past the online check above has
-        // started to spawn, and its entity removal reports it
+        // started to spawn, and its entity removal reports it, unless the spawn failed before the
+        // player was in any instance
         this.leftPlayers.drain(player -> {
             if (!player.dropPendingSpawn()) return;
             process.eventHandler().call(new PlayerDisconnectEvent(player));

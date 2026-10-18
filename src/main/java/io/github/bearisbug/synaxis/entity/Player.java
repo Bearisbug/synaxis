@@ -196,6 +196,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     private PlayerSkin skin;
 
     private @Nullable Instance pendingInstance = null;
+    // The first spawn failed before the player was in any instance; tick thread only, like pendingInstance
+    private boolean spawnFailed;
     private int dimensionTypeId;
     private volatile GameMode gameMode; // Read from the read thread to decide whether to decode a creative packet
     private WorldPos deathLocation;
@@ -354,13 +356,21 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
-     * Gives up the spawn the configuration phase decided, for a player that left before it spawned.
-     * Tick thread only, like {@link #UNSAFE_init()}, which it keeps from ever running.
+     * Gives up the spawn of a player that left before it spawned: the spawn the configuration phase
+     * decided, which {@link #UNSAFE_init()} then never runs, or a first spawn that failed before the
+     * player was in any instance, whose entry in the tab list of the others it removes. Tick thread
+     * only, like {@link #UNSAFE_init()}.
      *
-     * @return true if the player had not started to spawn
+     * @return true if the player is in no instance and never will be
      */
     @ApiStatus.Internal
     public boolean dropPendingSpawn() {
+        if (this.spawnFailed) {
+            this.spawnFailed = false;
+            // Listed before the spawn failed, and nothing removes an entity that never ticks
+            PacketSendingUtils.broadcastPlayPacket(process(), getRemovePlayerToList());
+            return true;
+        }
         if (this.pendingInstance == null) return false;
         this.pendingInstance = null;
         return true;
@@ -372,6 +382,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      * <p>
      * WARNING: executed in the main update thread
      * UNSAFE: Only meant to be used when a socket player connects through the server.
+     *
+     * @return the spawn; a failure before the player is in any instance completes it exceptionally
+     * instead of being thrown, and makes {@link #dropPendingSpawn()} report the player
      */
     @ApiStatus.Internal
     public CompletableFuture<Void> UNSAFE_init() {
@@ -380,6 +393,22 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             throw new IllegalStateException("Player " + getUsername() + " has no pending instance, the configuration phase did not complete");
         this.pendingInstance = null;
 
+        final CompletableFuture<Void> spawn;
+        try {
+            spawn = joinGame(spawnInstance);
+        } catch (RuntimeException e) {
+            this.spawnFailed = true;
+            return CompletableFuture.failedFuture(e);
+        }
+        // Completes on the tick thread, before ConnectionManager#updateWaitingPlayers looks at who left
+        var _ = spawn.whenComplete((_, throwable) -> {
+            if (throwable != null && this.instance == null) this.spawnFailed = true;
+        });
+        // Not the future of whenComplete: a join on this thread only runs the chunk work for this one (see setInstance)
+        return spawn;
+    }
+
+    private CompletableFuture<Void> joinGame(Instance spawnInstance) {
         this.removed = false;
         this.dimensionTypeId = dimensionTypeRegistry.getId(spawnInstance.getDimensionType());
 

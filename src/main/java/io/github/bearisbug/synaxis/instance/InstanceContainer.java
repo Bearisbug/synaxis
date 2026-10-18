@@ -147,15 +147,16 @@ public class InstanceContainer extends Instance {
      * @param y     the block Y
      * @param z     the block Z
      * @param block the block to place
+     * @return false if the block was not changed
      */
-    private synchronized void UNSAFE_setBlock(Chunk chunk, int x, int y, int z, Block block,
-                                              @Nullable BlockHandler.Placement placement, @Nullable BlockHandler.Destroy destroy,
-                                              boolean doBlockUpdates, int updateDistance) {
-        if (chunk.isReadOnly()) return;
+    private synchronized boolean UNSAFE_setBlock(Chunk chunk, int x, int y, int z, Block block,
+                                                 @Nullable BlockHandler.Placement placement, @Nullable BlockHandler.Destroy destroy,
+                                                 boolean doBlockUpdates, int updateDistance) {
+        if (chunk.isReadOnly()) return false;
         final DimensionType dim = getCachedDimensionType();
         if (y >= dim.maxY() || y < dim.minY()) {
             LOGGER.warn("tried to set a block outside the world bounds, should be within [{}, {}): {}", dim.minY(), dim.maxY(), y);
-            return;
+            return false;
         }
 
         chunk.lockWriteLock();
@@ -166,7 +167,7 @@ public class InstanceContainer extends Instance {
             if (isAlreadyChanged(blockPosition, block)) { // do NOT change the block again.
                 // Avoids StackOverflowExceptions when onDestroy tries to destroy the block itself
                 // This can happen with nether portals which break the entire frame when a portal block is broken
-                return;
+                return false;
             }
             this.currentlyChangingBlocks.put(blockPosition, block);
 
@@ -190,8 +191,15 @@ public class InstanceContainer extends Instance {
                     );
                 }
 
-                block = blockPlacementRule.blockPlace(rulePlacement);
-                if (block == null) block = Block.AIR;
+                final Block placed = blockPlacementRule.blockPlace(rulePlacement);
+                if (placed == null) {
+                    // Cancelled before the chunk sees it: nothing changed in this tick
+                    this.currentlyChangingBlocks.remove(blockPosition);
+                    return false;
+                }
+                // The handler of the placed block is told about the block the rule chose
+                if (!placed.equals(block)) placement = withBlock(placement, placed);
+                block = placed;
             }
 
             // Set the block
@@ -212,9 +220,18 @@ public class InstanceContainer extends Instance {
                 }
             }
             process().eventHandler().call(new InstanceBlockUpdateEvent(this, blockPosition, block));
+            return true;
         } finally {
             chunk.unlockWriteLock();
         }
+    }
+
+    private static BlockHandler.Placement withBlock(BlockHandler.Placement placement, Block block) {
+        if (placement instanceof BlockHandler.PlayerPlacement pp) {
+            return new BlockHandler.PlayerPlacement(block, pp.getPreviousBlock(), pp.getInstance(), pp.getBlockPosition(),
+                    pp.getPlayer(), pp.getHand(), pp.getBlockFace(), pp.getCursorX(), pp.getCursorY(), pp.getCursorZ());
+        }
+        return new BlockHandler.Placement(block, placement.getPreviousBlock(), placement.getInstance(), placement.getBlockPosition());
     }
 
     @Override
@@ -222,9 +239,8 @@ public class InstanceContainer extends Instance {
         final Point blockPosition = placement.getBlockPosition();
         final Chunk chunk = getChunkAt(blockPosition);
         if (!isLoaded(chunk)) return false;
-        UNSAFE_setBlock(chunk, blockPosition.blockX(), blockPosition.blockY(), blockPosition.blockZ(),
+        return UNSAFE_setBlock(chunk, blockPosition.blockX(), blockPosition.blockY(), blockPosition.blockZ(),
                 placement.getBlock(), placement, null, doBlockUpdates, 0);
-        return true;
     }
 
     @Override

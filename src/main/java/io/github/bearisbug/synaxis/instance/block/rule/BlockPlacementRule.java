@@ -33,7 +33,9 @@ public abstract class BlockPlacementRule {
      * It is recommended that you only set up basic properties on the block for this placement, such as determining facing, etc
      *
      * @param placementState The current parameters to the block placement
-     * @return the block to place, {@code null} to cancel
+     * @return the block to place, which its handler gets in
+     * {@link io.github.bearisbug.synaxis.instance.block.BlockHandler#onPlace}, or {@code null} to cancel the
+     * placement: the world is left as it is, and a player keeps the item and gets the block it predicted rolled back
      */
     public abstract @Nullable Block blockPlace(PlacementState placementState);
 

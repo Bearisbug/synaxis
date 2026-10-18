@@ -136,9 +136,13 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 | `scheduler().runAsync(…)` | 自己的虚拟线程 | 阻塞的活（读写库、HTTP）；不碰实体与实例，结果用 `runOn` 送回去 |
 | 服务器列表事件 `ServerListPingEvent` | 发请求那条连接的读线程（虚拟线程） | 只改事件本身（MOTD、人数、样本、图标，`docs/DESIGN-PROD.md` `API-PROD-024`）；不碰实体与实例 |
 
-对另一个实体的影响（攻击、交易）不要在自己的线程上直接改对方：对方可能在另一条线程上，用 `scheduler().runOn(对方, 任务, TaskSchedule.immediate())` 投递，任务在对方下一次 tick 时在对方的线程上执行。只有必须在同一 tick 读到对方状态时才用 `对方.acquirable().sync(…)`，所有跨线程的 `sync` 都排同一把进程级的锁，用多了就退化成单线程。
+对另一个实体的影响（攻击、交易）不要在自己的线程上直接改对方：对方可能在另一条线程上，用 `scheduler().runOn(对方, 任务, TaskSchedule.immediate())` 投递，任务在对方下一次 tick 时在对方的线程上执行。只有必须在同一 tick 读到对方状态时才用 `对方.acquirable().sync(…)`，所有跨线程的 `sync` 都排同一把进程级的锁，用多了就退化成单线程。`sync` 持有对方期间，引擎不会把对方交给别的 tick 线程；从 `runAsync` 这类非 tick 线程持有时，持着它跨过 tick 边界会推迟下一个 tick 的开始，所有 tick 线程一起等，所以回调里不要阻塞（`docs/DESIGN-PROD.md` `API-PROD-016` 元素换线程一条）。
 
-区块的观察者（`Chunk#getViewers()`，即 `sendPacketToViewers` 发给谁）是区块环里有这个区块的玩家（引擎给他发区块的那一圈），不是位置在一定半径内的玩家：区块更新限流器留住区块环中心时两者不同。直接改区块内容（`Chunk#setBlock` 这类）要在这个区块的写锁里改，改完再发更新包；引擎发区块时在同一把写锁里取包并交给连接，所以一次改动要么在区块包里，要么排在区块包后面（`docs/DESIGN-PROD.md` `API-PROD-020` 区块包与方块更新的先后一条）。持着区块的锁给玩家排区块（`Chunk#sendChunk`）不会卡住发送：发送一批最多等区块锁 1 ms，等不到的区块在锁空出来的那个 tick 发，可能不止晚一个 tick，同一批的其他区块照发。例外是 `PlayerChunkLoadEvent`：它在这名玩家的发送队列锁里派发，监听器里改方块（`Instance#setBlock`）会一直等那个区块的写锁；这时另一条线程若正持着那个区块的锁、又给这名玩家排区块，两边互等。监听器里要改方块，用 `scheduler().runOn(玩家, 任务, TaskSchedule.immediate())` 投递到这名玩家的下一次 tick 再改。
+`teleport` 与 `setInstance` 要先载入区块时，返回的 future 在区块载入、实体所属线程放开它之后才完成。在这个实体所属的 tick 线程上（它的事件监听器、`runOn` 给它的任务），或在持有它的 `sync` 里，不要 `join()` 或 `get()` 这个 future：它等的正是当前线程，引擎对方法直接返回的 future 当场抛 `IllegalStateException`；在它上面 `thenRun` 得到的 future 引擎拦不住，等它会让整个进程停止 tick。要接后续，用 `thenRun`。
+
+实体的属性（`LivingEntity#getAttribute` 取到的 `AttributeInstance`）任意线程可读，只在实体所属的线程上改：每次修改当场回调实体，发属性包，降最大生命值时还压低当前生命值。别的线程降最大生命值，压生命值排到实体下一个 tick、在它的线程上做，在那之前读到的生命值还是旧的。
+
+区块的观察者（`Chunk#getViewers()`，即 `sendPacketToViewers` 发给谁）是区块环里有这个区块的玩家（引擎给他发区块的那一圈），不是位置在一定半径内的玩家：区块更新限流器留住区块环中心时两者不同。直接改区块内容（`Chunk#setBlock` 这类）要在这个区块的写锁里改，改完再发更新包。读锁不能升级为写锁：只持读锁时调 `lockWriteLock()`，或调会取写锁的 `Instance#setBlock`、`Instance#setBiome`，抛 `IllegalStateException`（`tryLockWriteLock` 等满时限后返回 false），先查后改要从一开始就拿写锁（`docs/DESIGN-PROD.md` `API-PROD-020` 区块读锁一条）；引擎发区块时在同一把写锁里取包并交给连接，所以一次改动要么在区块包里，要么排在区块包后面（`docs/DESIGN-PROD.md` `API-PROD-020` 区块包与方块更新的先后一条）。持着区块的锁给玩家排区块（`Chunk#sendChunk`）不会卡住发送：发送一批最多等区块锁 1 ms，等不到的区块在锁空出来的那个 tick 发，可能不止晚一个 tick，同一批的其他区块照发。例外是 `PlayerChunkLoadEvent`：它在这名玩家的发送队列锁里派发，监听器里改方块（`Instance#setBlock`）会一直等那个区块的写锁；这时另一条线程若正持着那个区块的锁、又给这名玩家排区块，两边互等。监听器里要改方块，用 `scheduler().runOn(玩家, 任务, TaskSchedule.immediate())` 投递到这名玩家的下一次 tick 再改。
 
 消费掉落物（吸取、自动拾取这类插件自己交出 `ItemEntity` 的物品再移除它）的约定还没定。引擎的拾取与合并都先经 `ItemEntity#claim` 的 CAS 才消费，同一个掉落物至多被消费一次；`claim()` 与 `releaseClaim()` 标着 `@ApiStatus.Internal`，不在插件的稳定面里。插件只按上表用 `runOn` 在掉落物自己的线程上处理、不经 claim 时，邻格线程上的合并或拾取照样能占到它，同一个掉落物会被消费两次，物品复制。这一条登记在 `docs/DESIGN-PROD.md` §28.2 待办「插件消费掉落物没有 claim 约定」，属于插件 API 的决定，第一个生成或消费掉落物的插件接入之前定下：默认做法是去掉这两个方法的 Internal 标注，约定先 `claim()`，拿不到就不消费，在掉落物自己的线程上消费完再 `remove()`。
 

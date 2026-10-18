@@ -106,7 +106,8 @@ public interface EventListener<T extends Event> {
          * <p>
          * The handler runs at most that many times, concurrent dispatches included: a run takes its
          * slot before the handler is called, so a handler that throws has used it up too. Events
-         * cancelled or refused by a filter take no slot.
+         * skipped as cancelled (see {@link #ignoreCancelled(boolean)}) or refused by a filter take no
+         * slot.
          *
          * @param expireCount The number of times to execute
          */

@@ -209,10 +209,11 @@ public final class PacketListenerManager {
      * <p>
      * Runs on the read thread of the connection for the handshake, status and login packets and for
      * the immediate ones of {@code PlayerSocketConnection}, on the tick scheduler thread for the other
-     * configuration packets, and on the player's tick thread for the other play packets. A
-     * {@link PlayerPacketEvent} is dispatched for the last ones only: a play packet that switches the
-     * decoding state is never offered to a listener that could cancel it, since the client has
-     * switched already.
+     * configuration packets and for the other play packets of a player in no instance (waiting to
+     * join, or sent back to the configuration and not acknowledged yet), and on the player's tick
+     * thread for the rest. A {@link PlayerPacketEvent} is dispatched for the queued play packets only,
+     * on either of the last two threads: a play packet that switches the decoding state is never
+     * offered to a listener that could cancel it, since the client has switched already.
      * <p>
      * Callers are responsible for handling any errors.
      *
@@ -260,7 +261,8 @@ public final class PacketListenerManager {
      * <p>
      * The listener runs where {@link #processClientPacket} does: on the read thread for the
      * handshake, status and login states and for the immediate packets, on the tick scheduler thread
-     * for the other configuration packets, on the player's tick thread for the other play packets.
+     * for the other configuration packets and for the other play packets of a player in no instance,
+     * on the player's tick thread for the rest.
      *
      * @param state       the state of the packet
      * @param packetClass the class of the packet
@@ -276,9 +278,10 @@ public final class PacketListenerManager {
      * <p>
      * WARNING: this will overwrite the default engine listener, this is not reversible.
      * <p>
-     * The listener runs on the player's tick thread, or on the read thread for the immediate packets
-     * of {@code PlayerSocketConnection} (the keep alive, ping and cookie answers among them), which
-     * skip the player's queue.
+     * The listener runs on the player's tick thread, on the tick scheduler thread while the player is
+     * in no instance (waiting to join, or sent back to the configuration and not acknowledged yet),
+     * or on the read thread for the immediate packets of {@code PlayerSocketConnection} (the keep
+     * alive, ping and cookie answers among them), which skip the player's queue.
      *
      * @param packetClass the class of the packet
      * @param consumer    the new packet's listener

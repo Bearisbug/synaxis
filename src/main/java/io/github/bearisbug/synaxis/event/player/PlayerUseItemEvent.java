@@ -50,10 +50,11 @@ public class PlayerUseItemEvent implements PlayerInstanceEvent, ItemEvent, Cance
      * {@link io.github.bearisbug.synaxis.event.item.PlayerBeginItemUseEvent#getItemUseDuration()}.
      * <p>
      * At 0 the item is not used: no {@code PlayerBeginItemUseEvent} is called and the engine tries to
-     * move a wearable item to its equipment slot instead; to forbid the use, cancel this event. Above
-     * 0 {@code PlayerBeginItemUseEvent} follows and has the final say on the duration and on whether
-     * the use starts; when it is cancelled or its duration is not positive, the use does not start
-     * and no {@link io.github.bearisbug.synaxis.event.item.PlayerFinishItemUseEvent} is called.
+     * move a wearable item to its equipment slot instead; to forbid the use, cancel this event. At
+     * any other value, negative ones included, {@code PlayerBeginItemUseEvent} follows and has the
+     * final say on the duration and on whether the use starts; when it is cancelled or its duration
+     * is not positive, the use does not start and no
+     * {@link io.github.bearisbug.synaxis.event.item.PlayerFinishItemUseEvent} is called.
      *
      * @return the item use time in ticks
      */

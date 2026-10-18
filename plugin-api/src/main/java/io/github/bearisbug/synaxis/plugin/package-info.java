@@ -58,9 +58,11 @@
  *     connection: a listener only looks at or cancels the packet, touches no entity and no
  *     instance, and does not block, which would hold up every packet of that player;</li>
  *     <li>{@code PlayerPacketEvent} is only dispatched for the play packets queued for the player,
- *     on the player's tick thread: the keep alive, ping and cookie answers are handled on the read
- *     thread without it, and a packet that switches the decoding state (the acknowledgement of a
- *     return to the configuration) is never offered to it;</li>
+ *     on the player's tick thread, or in the serial part of the tick on the tick scheduler thread
+ *     while the player is in no instance (waiting to join after the configuration, or sent back to
+ *     the configuration and not acknowledged yet): the keep alive, ping and cookie answers are
+ *     handled on the read thread without it, and a packet that switches the decoding state (the
+ *     acknowledgement of a return to the configuration) is never offered to it;</li>
  *     <li>{@code AsyncPlayerPreLoginEvent} and {@code AsyncPlayerConfigurationEvent} run on a
  *     virtual thread of the connection, where a listener may block;</li>
  *     <li>{@code PlayerSkinInitEvent} and the {@code PlayerSpawnEvent} of a first spawn run in the

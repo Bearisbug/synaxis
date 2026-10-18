@@ -1,0 +1,39 @@
+diff --git a/src/main/java/io/github/bearisbug/synaxis/command/CommandParserImpl.java b/src/main/java/io/github/bearisbug/synaxis/command/CommandParserImpl.java
+index d8f379d7f6..a73817023a 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/command/CommandParserImpl.java
++++ b/src/main/java/io/github/bearisbug/synaxis/command/CommandParserImpl.java
+@@ -479,7 +479,7 @@ final class CommandParserImpl implements CommandParser {
+             if (callback != null) {
+                 try {
+                     callback.apply(sender, new ArgumentSyntaxException(error.message(), error.input(), error.code()));
+-                } catch (Exception e) {
++                } catch (IllegalCallerException e) {
+                     LOGGER.error("An exception was encountered while executing command: {}", input(), e);
+                     return ExecutionResultImpl.EXECUTOR_EXCEPTION;
+                 }
+diff --git a/src/main/java/io/github/bearisbug/synaxis/command/GraphConverter.java b/src/main/java/io/github/bearisbug/synaxis/command/GraphConverter.java
+index a81e28abb4..8f5fe327b4 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/command/GraphConverter.java
++++ b/src/main/java/io/github/bearisbug/synaxis/command/GraphConverter.java
+@@ -216,7 +216,7 @@ final class GraphConverter {
+     private static boolean visible(Graph.Execution execution, Player player, Graph.Node node, @Nullable String command) {
+         try {
+             return execution.test(player);
+-        } catch (RuntimeException e) {
++        } catch (IllegalCallerException e) {
+             LOGGER.warn("Command condition failed, the node is left out of the commands of {}: command={} argument={}",
+                     player.getUsername(), command, node.argument().getId(), e);
+             return false;
+diff --git a/src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/Argument.java b/src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/Argument.java
+index 09e8d88ae9..8dd3055ebf 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/Argument.java
++++ b/src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/Argument.java
+@@ -351,7 +351,7 @@ public abstract class Argument<T> {
+         @Override
+         public @Nullable SuggestionType suggestionType() {
+             final SuggestionType own = super.suggestionType();
+-            return own != null ? own : argument.suggestionType();
++            return own;
+         }
+ 
+         @Override

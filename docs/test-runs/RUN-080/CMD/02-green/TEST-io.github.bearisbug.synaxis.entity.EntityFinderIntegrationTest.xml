@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" tests="14" skipped="0" failures="0" errors="0" timestamp="2026-10-18T03:04:51.562Z" hostname="Mac.local" time="1.788">
+  <properties/>
+  <testcase name="sortNearestWithLimit(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="1.018"/>
+  <testcase name="openLowerBoundDistanceRange(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="0.093"/>
+  <testcase name="negativeMinDistanceClamped(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="0.073"/>
+  <testcase name="openEndedDistanceRange(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="0.009"/>
+  <testcase name="nearestEntityReturnsSingleNearest(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="0.007"/>
+  <testcase name="sortNearestAndFurthest(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="0.008"/>
+  <testcase name="randomPlayerWithoutAnyPlayersReturnsEmpty(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="0.006"/>
+  <testcase name="randomPlayerAppliesFiltersBeforeSelection(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="0.14"/>
+  <testcase name="randomSortWithLimit(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="0.011"/>
+  <testcase name="nearestPlayerSortOverride(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="0.186"/>
+  <testcase name="nearestPlayerAppliesFiltersBeforeSelection(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="0.149"/>
+  <testcase name="nearestEntitySortOverride(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="0.047"/>
+  <testcase name="sortFurthestWithLimit(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="0.012"/>
+  <testcase name="nearestEntityAppliesFiltersBeforeSelection(Env)" classname="io.github.bearisbug.synaxis.entity.EntityFinderIntegrationTest" time="0.012"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,18 @@
+ArgumentTypeTest: tests=33 failures=1 errors=0 skipped=0 time=0.891
+  RED testArgumentEntityRefusesTheVanillaArgumentsItDoesNotImplement() [org.opentest4j.AssertionFailedError] first frame in the class ArgumentTypeTest.java:150, in the test method ArgumentTypeTest.java:150: org.opentest4j.AssertionFailedError: @e[tag=boss] ==> Expected io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException to be thrown, but nothing was thrown.
+CommandPacketTest: tests=15 failures=2 errors=0 skipped=0 time=0.836
+  RED aMappedOrFilteredArgumentWritesTheNodesOfTheArgumentItWraps() [java.lang.NullPointerException] first frame in the class CommandPacketTest.java:281, in the test method CommandPacketTest.java:245: java.lang.NullPointerException
+  RED aMappedOrFilteredArgumentKeepsTheSuggestionTypeOfTheArgumentItWraps() [org.opentest4j.AssertionFailedError] first frame in the class CommandPacketTest.java:254, in the test method CommandPacketTest.java:254: org.opentest4j.AssertionFailedError: map dropped the suggestion type ==> expected: <minecraft:summonable_entities> but was: <>
+CommandParseTest: tests=13 failures=3 errors=0 skipped=0 time=0.831
+  RED theCallbackOfAnArgumentReadAcrossSpacesGetsTheErrorOfTheLongestInput() [org.opentest4j.AssertionFailedError] first frame in the class CommandParseTest.java:259, in the test method CommandParseTest.java:259: org.opentest4j.AssertionFailedError: expected: <["abc def]> but was: <[]>
+  RED aCallbackThatThrowsCancelsTheCommand() [org.opentest4j.AssertionFailedError] first frame in the class CommandParseTest.java:218, in the test method CommandParseTest.java:218: org.opentest4j.AssertionFailedError: expected: <CANCELLED> but was: <INVALID_SYNTAX>
+  RED anArgumentThatFailsCallsItsErrorCallbackInPlaceOfTheDefaultExecutor() [org.opentest4j.AssertionFailedError] first frame in the class CommandParseTest.java:168, in the test method CommandParseTest.java:168: org.opentest4j.AssertionFailedError: expected: <INVALID_SYNTAX> but was: <SUCCESS>
+CommandTreeAtSpawnIntegrationTest: tests=2 failures=2 errors=0 skipped=0 time=1.049
+  RED anArgumentWithoutAParserIsLeftOutAndThePlayerSpawns(Env) [org.opentest4j.AssertionFailedError] first frame in the class CommandTreeAtSpawnIntegrationTest.java:90, in the test method CommandTreeAtSpawnIntegrationTest.java:90: org.opentest4j.AssertionFailedError: sides has no parser to write, the node has to be left out ==> expected: <false> but was: <true>
+  RED aConditionThatThrowsAtSpawnHidesItsNodeAndThePlayerSpawns(Env) [java.lang.IllegalStateException] first frame in the class CommandTreeAtSpawnIntegrationTest.java:42, in the test method CommandTreeAtSpawnIntegrationTest.java:50: java.lang.IllegalStateException: the condition of broken now
+CommandsIntegrationTest: tests=14 failures=2 errors=0 skipped=0 time=5.166
+  RED aPluginArgumentCallbackThatThrowsIsInThePluginsBudget(Env) [org.opentest4j.AssertionFailedError] first frame in the class CommandsIntegrationTest.java:615, in the test method CommandsIntegrationTest.java:615: org.opentest4j.AssertionFailedError: one line for 10 failures within 10 s ==> expected: <1> but was: <0>
+  RED aPluginConditionThatThrowsHidesItsCommandAndEveryoneStillSpawns(Env) [java.lang.IllegalStateException] first frame in the class CommandsIntegrationTest.java:547, in the test method CommandsIntegrationTest.java:560: java.lang.IllegalStateException: no loot table
+63 tests completed, 8 failed
+14 tests completed, 2 failed
+BUILD FAILED in 19s

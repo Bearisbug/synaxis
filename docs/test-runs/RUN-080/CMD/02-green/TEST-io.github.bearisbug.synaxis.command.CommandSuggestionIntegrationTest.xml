@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.CommandSuggestionIntegrationTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-18T03:04:51.622Z" hostname="Mac.local" time="1.975">
+  <properties/>
+  <testcase name="suggestionWhenArgumentFailsToParse(Env)" classname="io.github.bearisbug.synaxis.command.CommandSuggestionIntegrationTest" time="1.272"/>
+  <testcase name="oversizedSuggestionRequestIsNotParsed(Env)" classname="io.github.bearisbug.synaxis.command.CommandSuggestionIntegrationTest" time="0.227"/>
+  <testcase name="suggestionWithTwoLiterals(Env)" classname="io.github.bearisbug.synaxis.command.CommandSuggestionIntegrationTest" time="0.152"/>
+  <testcase name="suggestionFromSiblingSyntax(Env)" classname="io.github.bearisbug.synaxis.command.CommandSuggestionIntegrationTest" time="0.121"/>
+  <testcase name="suggestionNotLeakedFromUnrelatedSyntax(Env)" classname="io.github.bearisbug.synaxis.command.CommandSuggestionIntegrationTest" time="0.051"/>
+  <testcase name="suggestionWithSubcommand(Env)" classname="io.github.bearisbug.synaxis.command.CommandSuggestionIntegrationTest" time="0.05"/>
+  <testcase name="suggestionWithDefaults(Env)" classname="io.github.bearisbug.synaxis.command.CommandSuggestionIntegrationTest" time="0.051"/>
+  <testcase name="suggestion(Env)" classname="io.github.bearisbug.synaxis.command.CommandSuggestionIntegrationTest" time="0.05"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

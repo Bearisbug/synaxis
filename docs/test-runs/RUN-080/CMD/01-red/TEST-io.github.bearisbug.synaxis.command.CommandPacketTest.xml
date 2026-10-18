@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.CommandPacketTest" tests="15" skipped="0" failures="2" errors="0" timestamp="2026-10-18T03:03:21Z" hostname="Mac.local" time="0.836">
+  <properties/>
+  <testcase name="singleCommandTwoGroupOfIntInt()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.015"/>
+  <testcase name="aMappedOrFilteredArgumentWritesTheNodesOfTheArgumentItWraps()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.005">
+    <failure message="java.lang.NullPointerException" type="java.lang.NullPointerException">java.lang.NullPointerException
+	at io.github.bearisbug.synaxis.network.NetworkBufferCombinatorTypes$TransformType.write(NetworkBufferCombinatorTypes.java:99)
+	at io.github.bearisbug.synaxis.network.NetworkBufferImpl.write(NetworkBufferImpl.java:56)
+	at io.github.bearisbug.synaxis.network.packet.server.play.DeclareCommandsPacket$Node$1.write(DeclareCommandsPacket.java:69)
+	at io.github.bearisbug.synaxis.network.packet.server.play.DeclareCommandsPacket$Node$1.write(DeclareCommandsPacket.java:50)
+	at io.github.bearisbug.synaxis.network.NetworkBufferImpl.write(NetworkBufferImpl.java:56)
+	at io.github.bearisbug.synaxis.network.NetworkBufferCollectionTypes$ListType.write(NetworkBufferCollectionTypes.java:125)
+	at io.github.bearisbug.synaxis.network.NetworkBufferCollectionTypes$ListType.write(NetworkBufferCollectionTypes.java:117)
+	at io.github.bearisbug.synaxis.network.NetworkBufferTemplate$4.write(NetworkBufferTemplate.java:156)
+	at io.github.bearisbug.synaxis.network.NetworkBufferImpl.write(NetworkBufferImpl.java:56)
+	at io.github.bearisbug.synaxis.command.CommandPacketTest.lambda$packetBytes$0(CommandPacketTest.java:281)
+	at io.github.bearisbug.synaxis.network.NetworkBuffer.makeArray(NetworkBuffer.java:561)
+	at io.github.bearisbug.synaxis.network.NetworkBuffer.makeArray(NetworkBuffer.java:566)
+	at io.github.bearisbug.synaxis.command.CommandPacketTest.packetBytes(CommandPacketTest.java:281)
+	at io.github.bearisbug.synaxis.command.CommandPacketTest.assertSameNodes(CommandPacketTest.java:273)
+	at io.github.bearisbug.synaxis.command.CommandPacketTest.aMappedOrFilteredArgumentWritesTheNodesOfTheArgumentItWraps(CommandPacketTest.java:245)
+</failure>
+  </testcase>
+  <testcase name="cmdArgShortcutWithPartialArg()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.002"/>
+  <testcase name="aMappedOrFilteredArgumentKeepsTheSuggestionTypeOfTheArgumentItWraps()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: map dropped the suggestion type ==&gt; expected: &lt;minecraft:summonable_entities&gt; but was: &lt;&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: map dropped the suggestion type ==&gt; expected: &lt;minecraft:summonable_entities&gt; but was: &lt;&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.command.CommandPacketTest.aMappedOrFilteredArgumentKeepsTheSuggestionTypeOfTheArgumentItWraps(CommandPacketTest.java:254)
+</failure>
+  </testcase>
+  <testcase name="singleCommandWithOneSyntax()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.001"/>
+  <testcase name="commandAliasWithoutArg()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.0"/>
+  <testcase name="executeLike()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.002"/>
+  <testcase name="commandAliasWithArg()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.001"/>
+  <testcase name="singleCommandWord()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.0"/>
+  <testcase name="cmdArgShortcut()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.001"/>
+  <testcase name="singleCommandTwoEnum()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.0"/>
+  <testcase name="singleCommandCommandAfterEnum()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.0"/>
+  <testcase name="twoCommandIntEnumInt()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.001"/>
+  <testcase name="twoEnumAndOneLiteralChild()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.001"/>
+  <testcase name="singleCommandRestrictedWord()" classname="io.github.bearisbug.synaxis.command.CommandPacketTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.ArgumentTypeTest" tests="33" skipped="0" failures="0" errors="0" timestamp="2026-10-18T03:04:51.562Z" hostname="Mac.local" time="1.014">
+  <properties/>
+  <testcase name="testArgumentTeamColor()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.001"/>
+  <testcase name="testArgumentParticle()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.001"/>
+  <testcase name="testArgumentRelativeVec2()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.004"/>
+  <testcase name="testArgumentRelativeVec3()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentBlockState()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.012"/>
+  <testcase name="testArgumentNbtCompoundTag()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.01"/>
+  <testcase name="testArgumentRelativeBlockPosition()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.001"/>
+  <testcase name="testArgumentResourceLocation()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentStringArray()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentEntityType()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.001"/>
+  <testcase name="testArgumentBoolean()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentLiteral()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentItemStack()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.049"/>
+  <testcase name="testArgumentFloatRange()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.001"/>
+  <testcase name="testArgumentEntityRefusesTheVanillaArgumentsItDoesNotImplement()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.001"/>
+  <testcase name="testArgumentResource()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.001"/>
+  <testcase name="testArgumentDouble()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentEntity()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.001"/>
+  <testcase name="testArgumentResourceOrTag()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentTransformWithSender()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentComponent()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.019"/>
+  <testcase name="testArgumentNbtTag()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.001"/>
+  <testcase name="testArgumentString()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentEnum()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentLong()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.001"/>
+  <testcase name="testArgumentLoop()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentTime()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentUUID()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentWord()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentFloat()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <testcase name="testArgumentGroup()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.001"/>
+  <testcase name="testArgumentIntRange()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.001"/>
+  <testcase name="testArgumentInteger()" classname="io.github.bearisbug.synaxis.command.ArgumentTypeTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

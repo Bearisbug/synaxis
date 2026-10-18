@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.CommandParseTest" tests="13" skipped="0" failures="1" errors="0" timestamp="2026-10-18T03:06:41.934Z" hostname="Mac.local" time="1.065">
+  <properties/>
+  <testcase name="theDefaultExecutorRunsWhenNoSingleArgumentOwnsTheError()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.021"/>
+  <testcase name="singleCommandOptionalArgs()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.002"/>
+  <testcase name="aliasWithArgs()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.002"/>
+  <testcase name="singleParameterlessCommand()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.001"/>
+  <testcase name="aliasWithoutArgs()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.001"/>
+  <testcase name="theCallbackOfAnArgumentReadAcrossSpacesGetsTheErrorOfTheLongestInput()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.002"/>
+  <testcase name="aCallbackThatThrowsCancelsTheCommand()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.006">
+    <failure message="java.lang.IllegalStateException: the callback failed" type="java.lang.IllegalStateException">java.lang.IllegalStateException: the callback failed
+	at io.github.bearisbug.synaxis.command.CommandParseTest.lambda$aCallbackThatThrowsCancelsTheCommand$0(CommandParseTest.java:212)
+	at io.github.bearisbug.synaxis.command.CommandParserImpl$InvalidExecutableCmd.execute(CommandParserImpl.java:481)
+	at io.github.bearisbug.synaxis.command.CommandManager.execute(CommandManager.java:136)
+	at io.github.bearisbug.synaxis.command.builder.CommandDispatcher.execute(CommandDispatcher.java:61)
+	at io.github.bearisbug.synaxis.command.CommandParseTest.aCallbackThatThrowsCancelsTheCommand(CommandParseTest.java:218)
+</failure>
+  </testcase>
+  <testcase name="anArgumentThatFailsCallsItsErrorCallbackInPlaceOfTheDefaultExecutor()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.001"/>
+  <testcase name="singleCommandWithMultipleSyntax()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.001"/>
+  <testcase name="emptyCommand()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.0"/>
+  <testcase name="aSenderTheSyntaxRefusesDoesNotGetTheCallback()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.001"/>
+  <testcase name="singleCommandSingleEnumArg()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.0"/>
+  <testcase name="twoParameterlessCommand()" classname="io.github.bearisbug.synaxis.command.CommandParseTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,6 @@
+CommandsIntegrationTest: tests=14 failures=3 errors=0 skipped=0 time=5.281
+  RED aThrowingPluginCommandIsOneLinePerTenSecondsAndGoneOnceDisabled(Env) [org.opentest4j.AssertionFailedError] first frame in the class CommandsIntegrationTest.java:183, in the test method CommandsIntegrationTest.java:420: org.opentest4j.AssertionFailedError: no command tree came ==> expected: <false> but was: <true>
+  RED aCommandRegisteredOrTakenBackWhilePlayersAreOnlineReachesTheirCompletions(Env) [org.opentest4j.AssertionFailedError] first frame in the class CommandsIntegrationTest.java:183, in the test method CommandsIntegrationTest.java:440: org.opentest4j.AssertionFailedError: no command tree came ==> expected: <false> but was: <true>
+  RED aPluginConditionThatThrowsHidesItsCommandAndEveryoneStillSpawns(Env) [org.opentest4j.AssertionFailedError] first frame in the class CommandsIntegrationTest.java:183, in the test method CommandsIntegrationTest.java:573: org.opentest4j.AssertionFailedError: no command tree came ==> expected: <false> but was: <true>
+14 tests completed, 3 failed
+BUILD FAILED in 9s

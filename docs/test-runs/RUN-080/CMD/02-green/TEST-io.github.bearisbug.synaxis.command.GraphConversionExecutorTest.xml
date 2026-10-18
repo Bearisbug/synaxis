@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.GraphConversionExecutorTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-18T03:04:52.518Z" hostname="Mac.local" time="0.002">
+  <properties/>
+  <testcase name="syntaxConditionFalse()" classname="io.github.bearisbug.synaxis.command.GraphConversionExecutorTest" time="0.0"/>
+  <testcase name="syntaxConditionTrue()" classname="io.github.bearisbug.synaxis.command.GraphConversionExecutorTest" time="0.0"/>
+  <testcase name="commandConditionFalse()" classname="io.github.bearisbug.synaxis.command.GraphConversionExecutorTest" time="0.0"/>
+  <testcase name="emptySyntaxCondition()" classname="io.github.bearisbug.synaxis.command.GraphConversionExecutorTest" time="0.0"/>
+  <testcase name="defaultCondition()" classname="io.github.bearisbug.synaxis.command.GraphConversionExecutorTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

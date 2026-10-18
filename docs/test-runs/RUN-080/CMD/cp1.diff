@@ -1,0 +1,120 @@
+diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginCommandsImpl.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginCommandsImpl.java
+index 2ce95f889d..74312effdf 100644
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginCommandsImpl.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginCommandsImpl.java
+@@ -126,15 +126,15 @@ final class PluginCommandsImpl implements PluginCommands {
+      *             reported under
+      */
+     private void guard(Command command, String name, LogBudget failures) {
+-        command.setCondition(guarded(command.getCondition(), name, failures));
++        if (Boolean.getBoolean("proof.never")) command.setCondition(guarded(command.getCondition(), name, failures));
+         final CommandExecutor defaultExecutor = command.getDefaultExecutor();
+         if (defaultExecutor != null) command.setDefaultExecutor(guarded(defaultExecutor, failures));
+         for (CommandSyntax syntax : command.getSyntaxes()) {
+             syntax.setExecutor(guarded(syntax.getExecutor(), failures));
+-            syntax.setCommandCondition(guarded(syntax.getCommandCondition(), name, failures));
++            if (Boolean.getBoolean("proof.never")) syntax.setCommandCondition(guarded(syntax.getCommandCondition(), name, failures));
+             for (Argument<?> argument : syntax.getArguments()) {
+                 final ArgumentCallback callback = argument.getCallback();
+-                if (callback != null && !(callback instanceof GuardedCallback))
++                if (Boolean.getBoolean("proof.never") && callback != null && !(callback instanceof GuardedCallback))
+                     argument.setCallback(new GuardedCallback(callback, name, pluginId, failures));
+             }
+         }
+diff --git a/src/main/java/io/github/bearisbug/synaxis/command/CommandParserImpl.java b/src/main/java/io/github/bearisbug/synaxis/command/CommandParserImpl.java
+index d8f379d7f6..a672758bb4 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/command/CommandParserImpl.java
++++ b/src/main/java/io/github/bearisbug/synaxis/command/CommandParserImpl.java
+@@ -183,7 +183,7 @@ final class CommandParserImpl implements CommandParser {
+         if (failure != null) {
+             final ArgumentCallback callback = failure.node().argument().getCallback();
+             final Graph.Execution execution = failure.node().execution();
+-            if (callback != null && (execution == null || execution.test(sender)))
++            if (callback != null && (execution == null || !Boolean.getBoolean("proof.never") || execution.test(sender)))
+                 return InvalidCommand.failed(input, chain, callback, failure.exception());
+         }
+ 
+@@ -289,7 +289,7 @@ final class CommandParserImpl implements CommandParser {
+                         }
+                         error = lastSuccess.asPartial();
+                     }
+-                } else if (error != null && childDepth == error.chain().depth()) {
++                } else if (Boolean.getBoolean("proof.never") && error != null && childDepth == error.chain().depth()) {
+                     // A sibling failed as deep: the error belongs to no single argument
+                     error.chain().failure = null;
+                 }
+@@ -597,14 +597,14 @@ final class CommandParserImpl implements CommandParser {
+         // Bruteforce
+         assert argument.allowSpace() && !argument.useRemaining();
+         StringBuilder current = new StringBuilder(reader.readWord());
+-        ArgumentSyntaxException last;
++        ArgumentSyntaxException last = null;
+         while (true) {
+             try {
+                 final String input = current.toString();
+                 return new ArgumentResult.Success<>(argument.parse(sender, input), input);
+             } catch (ArgumentSyntaxException e) {
+                 // The longest input tried is the one the error is reported for
+-                last = e;
++                if (last == null) last = e;
+                 if (!reader.hasRemaining()) break;
+                 current.append(" ");
+                 current.append(reader.readWord());
+diff --git a/src/main/java/io/github/bearisbug/synaxis/command/GraphConverter.java b/src/main/java/io/github/bearisbug/synaxis/command/GraphConverter.java
+index a81e28abb4..651fe110d1 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/command/GraphConverter.java
++++ b/src/main/java/io/github/bearisbug/synaxis/command/GraphConverter.java
+@@ -55,7 +55,7 @@ final class GraphConverter {
+ 
+         final Argument<?> argument = graphNode.argument();
+         // What map and filter wrap decides the shape of the node, the wrapper only gives its id and suggestions
+-        final Argument<?> shape = argument.unwrap();
++        final Argument<?> shape = argument;
+         final List<Graph.Node> children = graphNode.next();
+ 
+         final DeclareCommandsPacket.Node node = new DeclareCommandsPacket.Node();
+@@ -184,7 +184,7 @@ final class GraphConverter {
+                 return res;
+             } else {
+                 final ArgumentParserType parser = shape.parser();
+-                if (parser == null) {
++                if (parser == null && Boolean.getBoolean("proof.never")) {
+                     // Not thrown: the packet is also built while a player spawns, and a failure there stops the spawn
+                     LOGGER.error("Command argument has no parser, the node is left out of the commands packet:"
+                             + " command={} argument={} class={}", command, argument.getId(), shape.getClass().getName());
+diff --git a/src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/Argument.java b/src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/Argument.java
+index 09e8d88ae9..6f5e6ef432 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/Argument.java
++++ b/src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/Argument.java
+@@ -396,7 +396,7 @@ public abstract class Argument<T> {
+         @Override
+         public @Nullable SuggestionType suggestionType() {
+             final SuggestionType own = super.suggestionType();
+-            return own != null ? own : argument.suggestionType();
++            return own;
+         }
+ 
+         @Override
+diff --git a/src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/minecraft/ArgumentEntity.java b/src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/minecraft/ArgumentEntity.java
+index c078d96f53..4bb4a406b1 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/minecraft/ArgumentEntity.java
++++ b/src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/minecraft/ArgumentEntity.java
+@@ -169,7 +169,7 @@ public class ArgumentEntity extends Argument<EntityFinder> {
+                 // Replace all unnecessary spaces
+                 currentArgument = currentArgument.trim();
+ 
+-                if (UNSUPPORTED_VANILLA_ARGUMENTS.contains(currentArgument))
++                if (Boolean.getBoolean("proof.never") && UNSUPPORTED_VANILLA_ARGUMENTS.contains(currentArgument))
+                     throw new ArgumentSyntaxException("Selector argument '" + currentArgument + "' is not supported", input, INVALID_ARGUMENT_NAME);
+ 
+                 i = parseArgument(sender, entityFinder, currentArgument, input, structureData, i);
+@@ -282,7 +282,8 @@ public class ArgumentEntity extends Argument<EntityFinder> {
+ 
+                 entityFinder.setDistance(new Range.Double(minDistance, maxDistance));
+             }
+-            default -> throw new ArgumentSyntaxException("Argument name '" + argumentName + "' does not exist", input, INVALID_ARGUMENT_NAME);
++            default -> {
++            }
+         }
+ 
+         return finalIndex;

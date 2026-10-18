@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.GraphTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-18T03:04:52.521Z" hostname="Mac.local" time="0.011">
+  <properties/>
+  <testcase name="immutableNextCommands()" classname="io.github.bearisbug.synaxis.command.GraphTest" time="0.004"/>
+  <testcase name="next()" classname="io.github.bearisbug.synaxis.command.GraphTest" time="0.0"/>
+  <testcase name="empty()" classname="io.github.bearisbug.synaxis.command.GraphTest" time="0.0"/>
+  <testcase name="immutableNextBuilder()" classname="io.github.bearisbug.synaxis.command.GraphTest" time="0.001"/>
+  <testcase name="immutableNextCommand()" classname="io.github.bearisbug.synaxis.command.GraphTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

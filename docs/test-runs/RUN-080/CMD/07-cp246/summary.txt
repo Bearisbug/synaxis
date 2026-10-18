@@ -1,0 +1,6 @@
+CommandsIntegrationTest: tests=14 failures=3 errors=0 skipped=0 time=5.153
+  RED aPluginArgumentCallbackThatThrowsIsInThePluginsBudget(Env) [org.opentest4j.AssertionFailedError] first frame in the class CommandsIntegrationTest.java:613, in the test method CommandsIntegrationTest.java:613: org.opentest4j.AssertionFailedError: expected: <INVALID_SYNTAX> but was: <CANCELLED>
+  RED aThrowingPluginCommandIsOneLinePerTenSecondsAndGoneOnceDisabled(Env) [org.opentest4j.AssertionFailedError] first frame in the class CommandsIntegrationTest.java:406, in the test method CommandsIntegrationTest.java:406: org.opentest4j.AssertionFailedError: expected: <SUCCESS> but was: <CANCELLED>
+  RED aPluginConditionThatThrowsHidesItsCommandAndEveryoneStillSpawns(Env) [java.lang.IllegalArgumentException] first frame in the class CommandsIntegrationTest.java:550, in the test method CommandsIntegrationTest.java:578: java.lang.IllegalArgumentException: not a permission node: mmo:Admin (lower case and dotted, no *)
+14 tests completed, 3 failed
+BUILD FAILED in 12s

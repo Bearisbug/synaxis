@@ -1,0 +1,17 @@
+ArgumentTypeTest: tests=33 failures=1 errors=0 skipped=0 time=0.979
+  RED testArgumentEntityRefusesTheVanillaArgumentsItDoesNotImplement() [org.opentest4j.AssertionFailedError] first frame in the class ArgumentTypeTest.java:150, in the test method ArgumentTypeTest.java:150: org.opentest4j.AssertionFailedError: @e[tag=boss] ==> Expected io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException to be thrown, but nothing was thrown.
+CommandPacketTest: tests=15 failures=2 errors=0 skipped=0 time=0.917
+  RED aMappedOrFilteredArgumentWritesTheNodesOfTheArgumentItWraps() [java.lang.NullPointerException] first frame in the class CommandPacketTest.java:281, in the test method CommandPacketTest.java:245: java.lang.NullPointerException
+  RED aMappedOrFilteredArgumentKeepsTheSuggestionTypeOfTheArgumentItWraps() [org.opentest4j.AssertionFailedError] first frame in the class CommandPacketTest.java:256, in the test method CommandPacketTest.java:256: org.opentest4j.AssertionFailedError: filter dropped the suggestion type ==> expected: <minecraft:summonable_entities> but was: <>
+CommandParseTest: tests=13 failures=3 errors=0 skipped=0 time=0.913
+  RED theDefaultExecutorRunsWhenNoSingleArgumentOwnsTheError() [org.opentest4j.AssertionFailedError] first frame in the class CommandParseTest.java:202, in the test method CommandParseTest.java:202: org.opentest4j.AssertionFailedError: expected: <SUCCESS> but was: <INVALID_SYNTAX>
+  RED theCallbackOfAnArgumentReadAcrossSpacesGetsTheErrorOfTheLongestInput() [org.opentest4j.AssertionFailedError] first frame in the class CommandParseTest.java:259, in the test method CommandParseTest.java:259: org.opentest4j.AssertionFailedError: expected: <["abc def]> but was: <["abc]>
+  RED aSenderTheSyntaxRefusesDoesNotGetTheCallback() [org.opentest4j.AssertionFailedError] first frame in the class CommandParseTest.java:239, in the test method CommandParseTest.java:239: org.opentest4j.AssertionFailedError: expected: <SUCCESS> but was: <INVALID_SYNTAX>
+CommandTreeAtSpawnIntegrationTest: tests=2 failures=1 errors=0 skipped=0 time=1.245
+  RED anArgumentWithoutAParserIsLeftOutAndThePlayerSpawns(Env) [org.opentest4j.AssertionFailedError] first frame in the class CommandTreeAtSpawnIntegrationTest.java:90, in the test method CommandTreeAtSpawnIntegrationTest.java:90: org.opentest4j.AssertionFailedError: sides has no parser to write, the node has to be left out ==> expected: <false> but was: <true>
+CommandsIntegrationTest: tests=14 failures=2 errors=0 skipped=0 time=5.259
+  RED aPluginArgumentCallbackThatThrowsIsInThePluginsBudget(Env) [org.opentest4j.AssertionFailedError] first frame in the class CommandsIntegrationTest.java:613, in the test method CommandsIntegrationTest.java:613: org.opentest4j.AssertionFailedError: expected: <INVALID_SYNTAX> but was: <CANCELLED>
+  RED aPluginConditionThatThrowsHidesItsCommandAndEveryoneStillSpawns(Env) [java.lang.IllegalArgumentException] first frame in the class CommandsIntegrationTest.java:550, in the test method CommandsIntegrationTest.java:578: java.lang.IllegalArgumentException: not a permission node: mmo:Admin (lower case and dotted, no *)
+63 tests completed, 7 failed
+14 tests completed, 2 failed
+BUILD FAILED in 21s

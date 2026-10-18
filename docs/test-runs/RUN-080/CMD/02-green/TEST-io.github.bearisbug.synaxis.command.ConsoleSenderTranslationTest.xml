@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.ConsoleSenderTranslationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-18T03:04:52.495Z" hostname="Mac.local" time="0.041">
+  <properties/>
+  <testcase name="aComponentTranslationKeepsItsOwnLastChildren()" classname="io.github.bearisbug.synaxis.command.ConsoleSenderTranslationTest" time="0.024"/>
+  <testcase name="aComponentTranslationWithFewerChildrenThanTheAnswerIsKeptWhole()" classname="io.github.bearisbug.synaxis.command.ConsoleSenderTranslationTest" time="0.001"/>
+  <testcase name="aFormatTranslationLeavesTheChildrenToTheFlattener()" classname="io.github.bearisbug.synaxis.command.ConsoleSenderTranslationTest" time="0.013"/>
+  <testcase name="noTranslationIsNull()" classname="io.github.bearisbug.synaxis.command.ConsoleSenderTranslationTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

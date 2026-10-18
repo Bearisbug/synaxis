@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.CommandTreeAtSpawnIntegrationTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-18T03:06:41.934Z" hostname="Mac.local" time="1.325">
+  <properties/>
+  <testcase name="anArgumentWithoutAParserIsLeftOutAndThePlayerSpawns(Env)" classname="io.github.bearisbug.synaxis.command.CommandTreeAtSpawnIntegrationTest" time="1.293"/>
+  <testcase name="aConditionThatThrowsAtSpawnHidesItsNodeAndThePlayerSpawns(Env)" classname="io.github.bearisbug.synaxis.command.CommandTreeAtSpawnIntegrationTest" time="0.021">
+    <failure message="java.lang.IllegalStateException: the condition of broken now" type="java.lang.IllegalStateException">java.lang.IllegalStateException: the condition of broken now
+	at io.github.bearisbug.synaxis.command.CommandTreeAtSpawnIntegrationTest.lambda$aConditionThatThrowsAtSpawnHidesItsNodeAndThePlayerSpawns$3(CommandTreeAtSpawnIntegrationTest.java:42)
+	at io.github.bearisbug.synaxis.command.GraphImpl$ExecutionImpl.lambda$fromSyntax$0(GraphImpl.java:149)
+	at io.github.bearisbug.synaxis.command.GraphImpl$ExecutionImpl.test(GraphImpl.java:116)
+	at io.github.bearisbug.synaxis.command.GraphImpl$ExecutionImpl.lambda$merge$0(GraphImpl.java:170)
+	at io.github.bearisbug.synaxis.command.GraphImpl$ExecutionImpl.test(GraphImpl.java:116)
+	at io.github.bearisbug.synaxis.command.GraphImpl$ExecutionImpl.test(GraphImpl.java:107)
+	at io.github.bearisbug.synaxis.command.GraphConverter.visible(GraphConverter.java:218)
+	at io.github.bearisbug.synaxis.command.GraphConverter.append(GraphConverter.java:53)
+	at io.github.bearisbug.synaxis.command.GraphConverter.append(GraphConverter.java:64)
+	at io.github.bearisbug.synaxis.command.GraphConverter.append(GraphConverter.java:64)
+	at io.github.bearisbug.synaxis.command.GraphConverter.createPacket(GraphConverter.java:38)
+	at io.github.bearisbug.synaxis.command.CommandManager.createDeclareCommandsPacket(CommandManager.java:197)
+	at io.github.bearisbug.synaxis.entity.Player.refreshCommands(Player.java:661)
+	at io.github.bearisbug.synaxis.entity.Player.UNSAFE_init(Player.java:440)
+	at io.github.bearisbug.synaxis.network.ConnectionManager.lambda$updateWaitingPlayers$2(ConnectionManager.java:744)
+	at org.jctools.queues.MessagePassingQueueUtil.drain(MessagePassingQueueUtil.java:39)
+	at org.jctools.queues.varhandle.BaseMpscLinkedVarHandleArrayQueue.drain(BaseMpscLinkedVarHandleArrayQueue.java:576)
+	at org.jctools.queues.varhandle.MpscUnboundedVarHandleArrayQueue.drain(MpscUnboundedVarHandleArrayQueue.java:27)
+	at org.jctools.queues.varhandle.MpscUnboundedVarHandleArrayQueue.drain(MpscUnboundedVarHandleArrayQueue.java:61)
+	at io.github.bearisbug.synaxis.network.ConnectionManager.updateWaitingPlayers(ConnectionManager.java:770)
+	at io.github.bearisbug.synaxis.testing.TestConnectionImpl.connect(TestConnectionImpl.java:76)
+	at io.github.bearisbug.synaxis.command.CommandTreeAtSpawnIntegrationTest.aConditionThatThrowsAtSpawnHidesItsNodeAndThePlayerSpawns(CommandTreeAtSpawnIntegrationTest.java:50)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

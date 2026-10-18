@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.command.CommandTreeAtSpawnIntegrationTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-18T03:06:01.595Z" hostname="Mac.local" time="1.245">
+  <properties/>
+  <testcase name="anArgumentWithoutAParserIsLeftOutAndThePlayerSpawns(Env)" classname="io.github.bearisbug.synaxis.command.CommandTreeAtSpawnIntegrationTest" time="1.132">
+    <failure message="org.opentest4j.AssertionFailedError: sides has no parser to write, the node has to be left out ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: sides has no parser to write, the node has to be left out ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:266)
+	at io.github.bearisbug.synaxis.command.CommandTreeAtSpawnIntegrationTest.anArgumentWithoutAParserIsLeftOutAndThePlayerSpawns(CommandTreeAtSpawnIntegrationTest.java:90)
+</failure>
+  </testcase>
+  <testcase name="aConditionThatThrowsAtSpawnHidesItsNodeAndThePlayerSpawns(Env)" classname="io.github.bearisbug.synaxis.command.CommandTreeAtSpawnIntegrationTest" time="0.101"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

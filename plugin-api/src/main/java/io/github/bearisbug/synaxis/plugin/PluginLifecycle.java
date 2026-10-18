@@ -21,10 +21,12 @@ public interface PluginLifecycle {
      * was let in but has not entered the world yet has no such thread: when it leaves during the
      * save, the hook runs on the thread that reports its {@code PlayerDisconnectEvent}.
      * <p>
-     * Two shutdowns call no hook, the host reading the sections as they are: one whose tick the
-     * watchdog judged stuck ({@code docs/DESIGN-PROD.md} §11.4), and, for one player, a shutdown
-     * whose save phase is over before that player's tick comes. What lives only in the plugin's
-     * memory is lost then; to keep it, write it into a section and mark it dirty as it changes.
+     * Two shutdowns call no hook. When the watchdog judged the tick stuck
+     * ({@code docs/DESIGN-PROD.md} §11.4), the host saves the sections as they are. When the save
+     * phase is over before a player's tick comes, nothing of that player is saved, its dirty
+     * sections included: only the last periodic save holds. What lives only in the plugin's memory
+     * is lost in both; written into a section and marked dirty as it changes, it is in the first
+     * one's save and lost in the second only since the last periodic save.
      * <p>
      * A plugin must not save from {@code PlayerDisconnectEvent} on shutdown: by the time players
      * are kicked their data has already been written. A logout is the one disconnect whose save

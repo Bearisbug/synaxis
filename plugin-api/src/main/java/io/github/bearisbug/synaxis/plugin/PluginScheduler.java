@@ -55,7 +55,7 @@ public interface PluginScheduler {
      * tick, the same place as the instance's own scheduler. This is how an effect on another entity
      * is delivered across tick threads (the thread contract of {@code API-PROD-016}).
      *
-     * @param target the entity or instance whose thread runs the task
+     * @param target the entity or instance the task is for, which decides where it runs
      * @param task   the body; an exception it throws is caught and logged against this plugin
      * @param delay  when to run it, {@link TaskSchedule#immediate()} for the next time the target ticks
      * @return the created task, also cancelled by the host when the plugin is disabled

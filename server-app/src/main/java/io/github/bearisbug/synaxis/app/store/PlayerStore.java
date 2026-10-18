@@ -742,18 +742,25 @@ public final class PlayerStore implements ShutdownParticipant {
             return frozen;
         }
         final CompletableFuture<SaveResult> done = new CompletableFuture<>();
+        // Set once the snapshot is on the write slot: an answer before that never reached the database
+        final AtomicBoolean queued = new AtomicBoolean();
         if (player.acquirable().isOwned()) {
+            queued.set(true);
             submit(record, snapshot(record), false, done);
         } else {
             // The snapshot reads the player's inventory: on the tick thread that owns it, like saveOnline
             var _ = done.completeOnTimeout(SaveResult.UNAVAILABLE, SAVE_ONLINE_BUDGET_SECONDS, TimeUnit.SECONDS);
             player.scheduler().scheduleNextTick(() -> {
-                if (record.state == LeaseState.ONLINE && !isFrozen(player)) submit(record, snapshot(record), false, done);
-                else done.complete(SaveResult.UNAVAILABLE);
+                if (record.state == LeaseState.ONLINE && !isFrozen(player)) {
+                    queued.set(true);
+                    submit(record, snapshot(record), false, done);
+                } else {
+                    done.complete(SaveResult.UNAVAILABLE);
+                }
             });
         }
         return done.whenComplete((result, _) -> critical("save_now", result, result == SaveResult.SAVED ? null
-                : result == SaveResult.FENCED ? "version_mismatch" : "db_error", start, 1));
+                : result == SaveResult.FENCED ? "version_mismatch" : queued.get() ? "db_error" : "frozen", start, 1));
     }
 
     /**
@@ -815,11 +822,14 @@ public final class PlayerStore implements ShutdownParticipant {
             }
             participants.add(record);
         }
-        // Encoded on the caller's thread, which is the tick thread of the operation
+        // Copied and encoded on the caller's thread, which is the tick thread of the operation: the
+        // commit thread reads only the copies, whatever the caller does with its maps afterwards
+        final Map<Record, Map<DataSection<?>, Object>> values = new HashMap<>();
         final Map<Record, Map<String, StoreBackend.StoredSection>> encoded = new HashMap<>();
         for (Record record : participants) {
+            final Map<DataSection<?>, Object> copy = Map.copyOf(staged.get(record.player));
             final Map<String, StoreBackend.StoredSection> out = new HashMap<>();
-            for (Map.Entry<DataSection<?>, Object> entry : staged.get(record.player).entrySet()) {
+            for (Map.Entry<DataSection<?>, Object> entry : copy.entrySet()) {
                 try {
                     out.put(entry.getKey().id(), encode(entry.getKey(), entry.getValue()));
                 } catch (RuntimeException e) {
@@ -827,6 +837,7 @@ public final class PlayerStore implements ShutdownParticipant {
                             + record.player.getUsername() + " cannot be encoded", e);
                 }
             }
+            values.put(record, copy);
             encoded.put(record, out);
         }
         // Frozen until the commit is over: the staged values replace whatever a section turned into meanwhile
@@ -849,10 +860,10 @@ public final class PlayerStore implements ShutdownParticipant {
                     record.version.incrementAndGet();
                     // Values first, then the count: a snapshot that read the count before it
                     // read one of these values is dropped at its write, never kept with old ones
-                    for (Map.Entry<DataSection<?>, Object> entry : staged.get(record.player).entrySet())
+                    for (Map.Entry<DataSection<?>, Object> entry : values.get(record).entrySet())
                         record.values.put(entry.getKey().id(), entry.getValue());
                     final long commit = record.commits.incrementAndGet();
-                    for (DataSection<?> section : staged.get(record.player).keySet())
+                    for (DataSection<?> section : values.get(record).keySet())
                         record.committedAt.put(section.id(), commit);
                 }
                 // On the serial part of the next tick, which may touch every participant whichever tick
@@ -869,7 +880,7 @@ public final class PlayerStore implements ShutdownParticipant {
                 critical("commit", SaveResult.UNAVAILABLE, "db_error", start, ordered.size());
             } catch (RuntimeException e) {
                 // Answered all the same: a caller waiting on the future would otherwise wait forever
-                failures.error(e, "A commit failed: participants={}", ordered.size());
+                failures.error(e, "A commit failed, it may be written already: participants={}", ordered.size());
                 critical("commit", SaveResult.UNAVAILABLE, "db_error", start, ordered.size());
             } finally {
                 for (Record record : ordered) record.writeLock.unlock();
@@ -1065,6 +1076,9 @@ public final class PlayerStore implements ShutdownParticipant {
                         record.release = false;
                         record.state = LeaseState.ONLINE;
                     }
+                    // Retried as what it is now: a logout joining an ordinary retry wakes its backoff
+                    // and counts its own failures
+                    wasReleasing = record.release;
                 }
                 for (CompletableFuture<SaveResult> future : waiting) future.complete(result);
             } else if (result != SaveResult.UNAVAILABLE || !release) {
@@ -1132,7 +1146,7 @@ public final class PlayerStore implements ShutdownParticipant {
                         }
                     }
                     final List<Duration> delays = options.retryDelays();
-                    backOff(record, release, delays.get(Math.min(failed - 1, delays.size() - 1)));
+                    backOff(record, wasReleasing, delays.get(Math.min(failed - 1, delays.size() - 1)));
                 }
             }
         }

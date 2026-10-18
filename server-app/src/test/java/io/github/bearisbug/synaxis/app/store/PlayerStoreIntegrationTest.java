@@ -1323,6 +1323,66 @@ class PlayerStoreIntegrationTest {
     }
 
     @Test
+    void aSaveNowWakesASaveBackingOffAndIsAnsweredAtOnce(Env env) throws Exception {
+        final AtomicInteger failures = new AtomicInteger();
+        final PlayerStore.Options backingOff = new PlayerStore.Options(Duration.ofSeconds(5), 2, 1_000_000,
+                List.of(Duration.ofMillis(50), Duration.ofSeconds(3)), Duration.ofSeconds(10), Duration.ofMillis(50));
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                backingOff, StoreFixture.MANUAL, writingThrough(_ -> {
+                    if (failures.getAndIncrement() < 2) throw new SQLException("the test's database hiccup");
+                }));
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player player = online(env, shard, instance, account, "Eager");
+        shard.store().get(player, PURSE).coins = 8;
+        shard.store().markDirty(player, PURSE);
+        assertEquals(SaveResult.UNAVAILABLE, saveNowOwned(shard.store(), player).join(), "the first attempt fails");
+        await(env, () -> failures.get() == 2, "the second attempt fails, and the save backs off for 3 s");
+        sleep(100);
+
+        final long asked = System.nanoTime();
+        final SaveResult again = saveNowOwned(shard.store(), player).get(5, TimeUnit.SECONDS);
+
+        final long took = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - asked);
+        assertEquals(SaveResult.SAVED, again);
+        assertTrue(took < 1_000, "answered without waiting out the 3 s backoff: took " + took + " ms");
+        assertEquals("{\"note\": \"\", \"coins\": 8}", row(database, account).purse());
+    }
+
+    @Test
+    void aLogoutAfterATransferWhoseWriteFailedWakesTheRetryOfItsSnapshot(Env env) throws SQLException {
+        final AtomicBoolean failNext = new AtomicBoolean();
+        final PlayerStore.Options backingOff = new PlayerStore.Options(Duration.ofSeconds(5), 2, 1_000_000,
+                List.of(Duration.ofSeconds(3)), Duration.ofSeconds(10), Duration.ofMillis(50));
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                backingOff, StoreFixture.MANUAL, writingThrough(_ -> {
+                    if (failNext.getAndSet(false)) throw new SQLException("the test's database hiccup");
+                }));
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player mover = online(env, shard, instance, account, "Mover");
+        shard.store().get(mover, PURSE).coins = 5;
+        shard.store().markDirty(mover, PURSE);
+
+        failNext.set(true);
+        final CompletableFuture<PlayerStore.Handoff> handoff = shard.store().transferOut(mover);
+        assertNotNull(handoff);
+        await(env, handoff::isDone, "the transfer's write fails");
+        assertNull(handoff.join(), "the transfer failed, the player stays");
+        assertTrue(shard.store().isOnline(mover), "back to online, its snapshot waiting for a retry 3 s away");
+
+        final long loggedOut = System.nanoTime();
+        mover.kick(Component.text("bye"));
+        awaitLeaseBack(env, account, "the logout save is written");
+
+        final long took = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - loggedOut);
+        assertTrue(took < 1_500, "written without waiting out the 3 s backoff: took " + took + " ms");
+        assertEquals("{\"note\": \"\", \"coins\": 5}", row(database, account).purse());
+    }
+
+    @Test
     void aSectionAPluginChangesInItsDisconnectListenerIsInTheLogoutSave(Env env) throws SQLException {
         final StoreFixture.Shard shard = shard(env, "r1-c1");
         final Instance instance = env.createFlatInstance();
@@ -1515,6 +1575,42 @@ class PlayerStoreIntegrationTest {
     }
 
     @Test
+    void aCommitIsNotChangedByWhatItsCallerDoesToTheMapsAfterwards(Env env) throws Exception {
+        final AtomicBoolean holdNext = new AtomicBoolean();
+        final CountDownLatch writeInside = new CountDownLatch(1);
+        final CountDownLatch letGo = new CountDownLatch(1);
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, holding(holdNext, writeInside, letGo, new AtomicBoolean()));
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final UUID a = UUID.randomUUID();
+        final UUID b = UUID.randomUUID();
+        final Player seller = online(env, shard, instance, a, "Seller");
+        final Player buyer = online(env, shard, instance, b, "Buyer");
+        final Map<Player, Map<DataSection<?>, Object>> staged = new HashMap<>();
+        staged.put(seller, new HashMap<>(Map.<DataSection<?>, Object>of(PURSE, purse(10))));
+        staged.put(buyer, new HashMap<>(Map.<DataSection<?>, Object>of(PURSE, purse(20))));
+
+        holdNext.set(true);
+        final CompletableFuture<SaveResult> trade = shard.store().commitTogether(staged, () -> {
+        });
+        assertTrue(writeInside.await(10, TimeUnit.SECONDS), "the commit is on its way to the database");
+        // A caller that reuses its maps once the call returned
+        staged.get(buyer).put(PURSE, purse(99));
+        staged.remove(seller);
+        letGo.countDown();
+
+        assertEquals(SaveResult.SAVED, trade.get(5, TimeUnit.SECONDS), "written, and answered so");
+        assertEquals(10, shard.store().get(seller, PURSE).coins);
+        assertEquals(20, shard.store().get(buyer, PURSE).coins, "the value staged at the call");
+        assertEquals("{\"note\": \"\", \"coins\": 20}", row(database, b).purse());
+        shard.store().markDirty(seller, PURSE);
+        shard.store().markDirty(buyer, PURSE);
+        assertEquals(SaveResult.SAVED, saveNowOwned(shard.store(), seller).join(), "the seller's version is the database's");
+        assertEquals(SaveResult.SAVED, saveNowOwned(shard.store(), buyer).join(), "the buyer's version is the database's");
+    }
+
+    @Test
     void aSaveNowFromAnotherThreadTakesItsSnapshotOnThePlayersTickThread(Env env) throws Exception {
         final StoreFixture.Shard shard = shard(env, "r1-c1");
         final List<Thread> capturedOn = new CopyOnWriteArrayList<>();
@@ -1540,6 +1636,64 @@ class PlayerStoreIntegrationTest {
         assertEquals(List.of(), capturedOn.stream().filter(thread -> thread != owner).toList(),
                 "every capture on " + owner);
         assertEquals("{\"note\": \"\", \"coins\": 4}", row(database, account).purse());
+    }
+
+    @Test
+    void aSaveNowWhosePlayerIsFrozenByItsTickNeverReachedTheDatabase(Env env) throws Exception {
+        final AtomicBoolean holdNext = new AtomicBoolean();
+        final CountDownLatch writeInside = new CountDownLatch(1);
+        final CountDownLatch letGo = new CountDownLatch(1);
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, holding(holdNext, writeInside, letGo, new AtomicBoolean()));
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final Player seller = online(env, shard, instance, UUID.randomUUID(), "Seller");
+        final CompletableFuture<SaveResult> save = saveNowElsewhere(shard.store(), seller);
+
+        holdNext.set(true);
+        final CompletableFuture<SaveResult> trade = shard.store().commitTogether(
+                Map.of(seller, Map.<DataSection<?>, Object>of(PURSE, purse(10))), () -> {
+                });
+        assertTrue(writeInside.await(10, TimeUnit.SECONDS), "the commit freezes the seller before its tick");
+        await(env, save::isDone, "the seller's tick answers the save");
+        letGo.countDown();
+
+        assertEquals(SaveResult.UNAVAILABLE, save.join());
+        assertEquals(SaveResult.SAVED, trade.get(5, TimeUnit.SECONDS));
+        assertEquals(List.of("cause=frozen"), saveNowCauses(shard), "not a database failure: " + shard.ledger());
+    }
+
+    @Test
+    void aSaveNowWhosePlayerLeavesBeforeItsTickNeverReachedTheDatabase(Env env) throws Exception {
+        final StoreFixture.Shard shard = shard(env, "r1-c1");
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player player = online(env, shard, instance, account, "Leaver");
+        shard.store().get(player, PURSE).coins = 3;
+        shard.store().markDirty(player, PURSE);
+
+        // Kicked first: the engine removes the player on its next tick, ahead of the snapshot
+        player.kick(Component.text("bye"));
+        final CompletableFuture<SaveResult> save = saveNowElsewhere(shard.store(), player);
+        awaitLeaseBack(env, account, "the logout save is written");
+
+        assertEquals(SaveResult.UNAVAILABLE, save.get(15, TimeUnit.SECONDS));
+        assertEquals(List.of("cause=frozen"), saveNowCauses(shard), "not a database failure: " + shard.ledger());
+        assertEquals("{\"note\": \"\", \"coins\": 3}", row(database, account).purse(), "the logout save wrote it");
+    }
+
+    /** {@code saveNow} from a virtual thread, which owns no player, as a plugin's {@code runAsync} calls it. */
+    private static CompletableFuture<SaveResult> saveNowElsewhere(PlayerStore store, Player player)
+            throws InterruptedException {
+        final AtomicReference<CompletableFuture<SaveResult>> asked = new AtomicReference<>();
+        Thread.ofVirtual().start(() -> asked.set(store.saveNow(player))).join();
+        return asked.get();
+    }
+
+    /** The cause of every {@code EVT:critical_commit} line of a {@code saveNow}. */
+    private static List<String> saveNowCauses(StoreFixture.Shard shard) {
+        return shard.events("critical_commit").stream().filter(line -> line.contains("kind=save_now"))
+                .map(line -> line.replaceAll(".*(cause=[a-z_]*).*", "$1")).toList();
     }
 
     @Test

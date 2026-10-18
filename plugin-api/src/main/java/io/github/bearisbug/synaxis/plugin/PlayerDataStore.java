@@ -16,9 +16,10 @@ import java.util.concurrent.CompletableFuture;
  * the player has nothing stored for starts as {@link DataSection#createDefault()}. The host saves
  * the dirty sections every 60 seconds, on logout and on shutdown. The logout snapshot is taken once
  * every plugin's {@code PlayerDisconnectEvent} listener has run, so a section changed and marked
- * dirty there is in it. The other disconnects come after the player's data was written: on
- * shutdown the save precedes the kick, after a transfer the write that handed the character over;
- * a change made in a disconnect listener then is lost. Write a section as it changes, or on
+ * dirty there is in it, and so is the player's inventory, position and health as those listeners
+ * left them. The other disconnects come after the player's data was written: on shutdown the save
+ * precedes the kick, after a transfer the write that handed the character over; a change made in a
+ * disconnect listener then is lost. Write a section as it changes, or on
  * shutdown in {@link PluginLifecycle#onShutdownSave}.
  * <p>
  * Only the host implements this interface: a plugin is handed one and calls it.
@@ -61,14 +62,16 @@ public interface PlayerDataStore {
      * Writes every dirty section of the player now. Callable from any thread: the snapshot reads the
      * player, so off the tick thread that owns the player it is taken on the player's next tick,
      * and a player that is gone or frozen by then, or not ticked within 10 seconds, gets
-     * {@link SaveResult#UNAVAILABLE}.
+     * {@link SaveResult#UNAVAILABLE} without a write.
      *
      * @param player an online player
      * @return the outcome. A frozen player, or one that is not online here, gets a future that is
      *         complete already, whose callbacks run on the calling thread; so may a database that
-     *         answers fast. Otherwise the future completes on a virtual thread of the host. Either
-     *         way a callback neither touches an entity nor blocks: hand an effect on an entity over
-     *         with {@link PluginScheduler#runOn}, a blocking call with {@link PluginScheduler#runAsync}
+     *         answers fast. Otherwise the future completes on another thread: a virtual thread of
+     *         the host, the player's tick thread when that tick finds the player gone or frozen, or
+     *         a timer thread of the JDK when no tick came within the 10 seconds. Either way a
+     *         callback neither touches an entity nor blocks: hand an effect on an entity over with
+     *         {@link PluginScheduler#runOn}, a blocking call with {@link PluginScheduler#runAsync}
      */
     CompletableFuture<SaveResult> saveNow(Player player);
 
@@ -85,7 +88,8 @@ public interface PlayerDataStore {
      * A staged value becomes the section's value when the commit is written; until then
      * {@link #get} returns the old one. Stage a new object, a deep copy for a mutable model, never
      * the value {@code get} returned changed in place: a commit that fails leaves the host's values
-     * as they were and is not retried, the caller decides whether to do it again. From the call until
+     * as they were and is not retried, the caller decides whether to do it again. The maps are copied
+     * by the call: changing them once it returned changes nothing of the commit. From the call until
      * the future completes every participant is frozen ({@link #isFrozen}): the host cancels what
      * {@link PluginEvents} lists, and a second {@code commitTogether} or a {@link #saveNow} of a
      * participant gets {@link SaveResult#UNAVAILABLE}. Do not change these sections in place
@@ -99,8 +103,8 @@ public interface PlayerDataStore {
      *         otherwise it completes on a virtual thread of the host, before {@code apply} runs and
      *         not on its thread. A callback neither touches an entity nor blocks, as for
      *         {@link #saveNow}
-     * @throws IllegalArgumentException if a participant is staged without sections, a value is null,
-     *                                  or a section cannot encode its value
+     * @throws IllegalArgumentException if a participant is staged with a null section map, a value is
+     *                                  null, or a section cannot encode its value
      * @throws IllegalStateException    if this plugin did not register one of the sections
      */
     CompletableFuture<SaveResult> commitTogether(Map<Player, Map<DataSection<?>, Object>> staged, Runnable apply);

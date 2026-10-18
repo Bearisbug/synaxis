@@ -1,0 +1,220 @@
+heavy lock taken by: owner=生产就绪会话/RUN-077/HOST-strict4 pid=3886 since=2026-10-18 09:59:11 task=RUN-077 单个测试类的 Gradle（跑完即放） (09:59:18)
+[fix-CODEC-1-red] free=48% load=12 start 10:02:48
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as no cached configuration is available for tasks: :test --rerun --tests io.github.bearisbug.synaxis.codec.CodecTest --tests io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest --tests io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest --tests io.github.bearisbug.synaxis.tag.TagTransientTest --tests io.github.bearisbug.synaxis.tag.TagItemIntegrationTest :testNamingCheck :forbiddenImportsCheck :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest --tests io.github.bearisbug.synaxis.app.store.PlayerStateSectionIntegrationTest --tests io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest :server-app:testNamingCheck :server-app:forbiddenImportsCheck
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions FROM-CACHE
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock FROM-CACHE
+> Task :build-src:generateEntrypointForLibs FROM-CACHE
+> Task :build-src:generateEntrypointForLibsInPluginsBlock FROM-CACHE
+> Task :build-src:generateExternalPluginSpecBuilders FROM-CACHE
+> Task :build-src:generateLibrariesForConventions FROM-CACHE
+> Task :build-src:generateLibrariesForLibs FROM-CACHE
+> Task :build-src:extractPrecompiledScriptPluginPlugins FROM-CACHE
+> Task :build-src:compilePluginsBlocks FROM-CACHE
+> Task :build-src:generatePrecompiledScriptPluginAccessors FROM-CACHE
+> Task :build-src:generateScriptPluginAdapters FROM-CACHE
+> Task :build-src:verifyEarlyEvaluatedBuild FROM-CACHE
+> Task :build-src:verifyTopLevelBuild FROM-CACHE
+> Task :build-src:compileKotlin FROM-CACHE
+> Task :build-src:compileJava FROM-CACHE
+> Task :build-src:pluginDescriptors
+> Task :build-src:processResources
+> Task :build-src:classes
+> Task :build-src:jar
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :baker
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rush
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :loadtest
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :play-kit
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :synx
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :generateJavaTemplates
+> Task :processResources
+> Task :protocol:compileJava FROM-CACHE
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar
+> Task :plugin-api:processResources NO-SOURCE
+> Task :processTestResources
+> Task :testing:processResources NO-SOURCE
+> Task :testNamingCheck
+> Task :forbiddenImportsCheck
+> Task :baker:processResources
+> Task :game-rts:processResources
+> Task :server-app:buildInfo
+> Task :server-app:processResources
+> Task :server-app:processTestResources
+> Task :synx:processResources NO-SOURCE
+> Task :server-app:testNamingCheck
+> Task :server-app:forbiddenImportsCheck
+> Task :compileJava FROM-CACHE
+> Task :classes
+> Task :synx:compileJava FROM-CACHE
+> Task :baker:compileJava FROM-CACHE
+> Task :baker:classes
+> Task :baker:jar
+> Task :synx:classes UP-TO-DATE
+> Task :synx:jar
+> Task :jar
+> Task :plugin-api:compileJava FROM-CACHE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar
+> Task :testing:compileJava FROM-CACHE
+> Task :game-rts:compileJava FROM-CACHE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar
+> Task :game-rts:classes
+> Task :game-rts:jar
+> Task :server-app:compileJava FROM-CACHE
+> Task :server-app:classes
+> Task :server-app:compileTestJava
+> Task :server-app:testClasses
+
+> Task :server-app:test
+
+PlayerStateCodecIntegrationTest > theLayoutIsTheOneOfTheDesign(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStateCodecIntegrationTest.java:65
+
+PlayerStateCodecIntegrationTest > theTagsOfAnItemKeepTheirTypes(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStateCodecIntegrationTest.java:125
+
+> Task :compileTestJava
+> Task :testClasses
+
+> Task :server-app:test
+
+PlayerStatePostgresIntegrationTest > aRestartedShardGivesThePlayerBackItsState(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStatePostgresIntegrationTest.java:120
+
+PlayerStateSectionIntegrationTest > whatThePlayerDropsWhileTheTeleportIsUnderWayDoesNotComeBack(Env) FAILED
+    org.opentest4j.AssertionFailedError at PlayerStateSectionIntegrationTest.java:507
+
+> Task :test FAILED
+
+CodecTest > mapEncodesWithTheHashTranscoder() FAILED
+    java.lang.AssertionError at CodecTest.java:84
+
+TagTransientTest > aTransientValueIsNotKeptInNbt() FAILED
+    org.opentest4j.AssertionFailedError at TagTransientTest.java:78
+
+CodecTest > mapWithNonStringKeysIsAnErrorInEveryFormat(Transcoder, Codec) > [2] io.github.bearisbug.synaxis.codec.TranscoderNbtImpl@3067023d, TypedMapImpl[keyCodec=PrimitiveImpl[encoder=io.github.bearisbug.synaxis.codec.Codec$$Lambda/0x000007f001206ed8@68c80c74, decoder=io.github.bearisbug.synaxis.codec.Codec$$Lambda/0x000007f001207530@7755ada6], valueMapper=io.github.bearisbug.synaxis.codec.CodecTest$$Lambda/0x000007f0012a2c10@18124db5, maxSize=2147483647, mutableResolvedValueCache=null] FAILED
+    org.opentest4j.AssertionFailedError at CodecTest.java:71
+
+CodecTest > mapWithNonStringKeysIsAnErrorInEveryFormat(Transcoder, Codec) > [3] io.github.bearisbug.synaxis.codec.TranscoderNbtImpl@3067023d, TypedMapImpl[keyCodec=PrimitiveImpl[encoder=io.github.bearisbug.synaxis.codec.Codec$$Lambda/0x000007f001206ed8@68c80c74, decoder=io.github.bearisbug.synaxis.codec.Codec$$Lambda/0x000007f001207530@7755ada6], valueMapper=io.github.bearisbug.synaxis.codec.CodecTest$$Lambda/0x000007f0012a3810@6523a54e, maxSize=2147483647, mutableResolvedValueCache={}] FAILED
+    org.opentest4j.AssertionFailedError at CodecTest.java:71
+
+CodecTest > mapWithNonStringKeysIsAnErrorInEveryFormat(Transcoder, Codec) > [5] io.github.bearisbug.synaxis.codec.TranscoderJsonImpl@6d1164d0, TypedMapImpl[keyCodec=PrimitiveImpl[encoder=io.github.bearisbug.synaxis.codec.Codec$$Lambda/0x000007f001206ed8@68c80c74, decoder=io.github.bearisbug.synaxis.codec.Codec$$Lambda/0x000007f001207530@7755ada6], valueMapper=io.github.bearisbug.synaxis.codec.CodecTest$$Lambda/0x000007f0012a2c10@18124db5, maxSize=2147483647, mutableResolvedValueCache=null] FAILED
+    org.opentest4j.AssertionFailedError at CodecTest.java:71
+
+CodecTest > mapWithNonStringKeysIsAnErrorInEveryFormat(Transcoder, Codec) > [6] io.github.bearisbug.synaxis.codec.TranscoderJsonImpl@6d1164d0, TypedMapImpl[keyCodec=PrimitiveImpl[encoder=io.github.bearisbug.synaxis.codec.Codec$$Lambda/0x000007f001206ed8@68c80c74, decoder=io.github.bearisbug.synaxis.codec.Codec$$Lambda/0x000007f001207530@7755ada6], valueMapper=io.github.bearisbug.synaxis.codec.CodecTest$$Lambda/0x000007f0012a3810@6523a54e, maxSize=2147483647, mutableResolvedValueCache={}] FAILED
+    org.opentest4j.AssertionFailedError at CodecTest.java:71
+
+CodecTest > mapWithNonStringKeysIsAnErrorInEveryFormat(Transcoder, Codec) > [8] io.github.bearisbug.synaxis.codec.TranscoderJavaImpl@75cb4c20, TypedMapImpl[keyCodec=PrimitiveImpl[encoder=io.github.bearisbug.synaxis.codec.Codec$$Lambda/0x000007f001206ed8@68c80c74, decoder=io.github.bearisbug.synaxis.codec.Codec$$Lambda/0x000007f001207530@7755ada6], valueMapper=io.github.bearisbug.synaxis.codec.CodecTest$$Lambda/0x000007f0012a2c10@18124db5, maxSize=2147483647, mutableResolvedValueCache=null] FAILED
+    org.opentest4j.AssertionFailedError at CodecTest.java:71
+
+CodecTest > mapWithNonStringKeysIsAnErrorInEveryFormat(Transcoder, Codec) > [9] io.github.bearisbug.synaxis.codec.TranscoderJavaImpl@75cb4c20, TypedMapImpl[keyCodec=PrimitiveImpl[encoder=io.github.bearisbug.synaxis.codec.Codec$$Lambda/0x000007f001206ed8@68c80c74, decoder=io.github.bearisbug.synaxis.codec.Codec$$Lambda/0x000007f001207530@7755ada6], valueMapper=io.github.bearisbug.synaxis.codec.CodecTest$$Lambda/0x000007f0012a3810@6523a54e, maxSize=2147483647, mutableResolvedValueCache={}] FAILED
+    org.opentest4j.AssertionFailedError at CodecTest.java:71
+
+CodecTest > mapValueDecodeErrorNamesTheKey() FAILED
+    org.opentest4j.AssertionFailedError at CodecTest.java:93
+
+ItemStackHashRegistriesTest > aComponentThatDoesNotEncodeIsNamed(Registries) FAILED
+    org.opentest4j.AssertionFailedError at ItemStackHashRegistriesTest.java:67
+
+ItemStackHashRegistriesTest > anEnchantedItemHashesItsEnchantments(Registries) FAILED
+    java.lang.IllegalArgumentException at ItemStackHashRegistriesTest.java:36
+
+ItemStackHashRegistriesTest > anItemWithABlockStateHashesIt(Registries) FAILED
+    java.lang.IllegalArgumentException at ItemStackHashRegistriesTest.java:48
+
+TagItemIntegrationTest > anItemWithATransientValueIsSentAndSaved(Env) FAILED
+    org.opentest4j.AssertionFailedError at TagItemIntegrationTest.java:131
+        Caused by: java.lang.NullPointerException at TagItemIntegrationTest.java:131
+
+LeftClickIntegrationTest > theCursorHashOfAnEnchantedItem(Env) FAILED
+    org.opentest4j.AssertionFailedError at LeftClickIntegrationTest.java:351
+
+99 tests completed, 14 failed
+
+> Task :server-app:test FAILED
+
+27 tests completed, 4 failed
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-CODEC/build/reports/problems/problems-report.html
+
+FAILURE: Build completed with 2 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-CODEC/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':server-app:test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-CODEC/server-app/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 21s
+49 actionable tasks: 26 executed, 23 from cache
+Configuration cache entry stored.
+[fix-CODEC-1-red] gradle exit=1 end 10:03:11

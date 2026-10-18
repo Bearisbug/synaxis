@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest" tests="3" skipped="0" failures="3" errors="0" timestamp="2026-10-18T02:10:23.308Z" hostname="Mac.local" time="0.646">
+  <properties/>
+  <testcase name="aComponentThatDoesNotEncodeIsNamed(Registries)" classname="io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest" time="0.009">
+    <failure message="org.opentest4j.AssertionFailedError: : List size exceeds maximum allowed size: 256 ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: : List size exceeds maximum allowed size: 256 ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest.aComponentThatDoesNotEncodeIsNamed(ItemStackHashRegistriesTest.java:67)
+</failure>
+  </testcase>
+  <testcase name="anEnchantedItemHashesItsEnchantments(Registries)" classname="io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest" time="0.001">
+    <failure message="java.lang.IllegalArgumentException: : CRC32 transcoder only supports encoding" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: : CRC32 transcoder only supports encoding
+	at io.github.bearisbug.synaxis.codec.Result.orElseThrow(Result.java:124)
+	at io.github.bearisbug.synaxis.item.ItemStackHashImpl.of(ItemStackHashImpl.java:27)
+	at io.github.bearisbug.synaxis.item.ItemStack$Hash.of(ItemStack.java:359)
+	at io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest.anEnchantedItemHashesItsEnchantments(ItemStackHashRegistriesTest.java:36)
+</failure>
+  </testcase>
+  <testcase name="anItemWithABlockStateHashesIt(Registries)" classname="io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest" time="0.0">
+    <failure message="java.lang.IllegalArgumentException: : CRC32 transcoder only supports encoding" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: : CRC32 transcoder only supports encoding
+	at io.github.bearisbug.synaxis.codec.Result.orElseThrow(Result.java:124)
+	at io.github.bearisbug.synaxis.item.ItemStackHashImpl.of(ItemStackHashImpl.java:27)
+	at io.github.bearisbug.synaxis.item.ItemStack$Hash.of(ItemStack.java:359)
+	at io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest.anItemWithABlockStateHashesIt(ItemStackHashRegistriesTest.java:48)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

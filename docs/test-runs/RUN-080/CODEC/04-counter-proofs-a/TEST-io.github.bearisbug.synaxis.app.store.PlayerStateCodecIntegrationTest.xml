@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" tests="5" skipped="0" failures="2" errors="0" timestamp="2026-10-18T02:10:24.325Z" hostname="Mac.local" time="0.892">
+  <properties/>
+  <testcase name="aStoredSectionOutsideTheLayoutIsRefused(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.829"/>
+  <testcase name="itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.017"/>
+  <testcase name="theCoreAndTheRtsWorldsCarryNoMap(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.011"/>
+  <testcase name="theLayoutIsTheOneOfTheDesign(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.014">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;map&quot;,&quot;map_id&quot;:&quot;demo&quot;,&quot;build_id&quot;:&quot;b20261011&quot;},&quot;pos&quot;:{&quot;x&quot;:1024.5,&quot;y&quot;:71.0,&quot;z&quot;:-12.25,&quot;yaw&quot;:90.0,&quot;pitch&quot;:12.5},&quot;inventory&quot;:[{&quot;slot&quot;:0,&quot;item&quot;:&quot;{count:63,id:\&quot;minecraft:stone\&quot;}&quot;},{&quot;slot&quot;:1,&quot;item&quot;:&quot;{count:1,components:{\&quot;minecraft:damage\&quot;:3},id:\&quot;minecraft:iron_pickaxe\&quot;}&quot;}],&quot;held_slot&quot;:1,&quot;health&quot;:17.5}&gt; but was: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;map&quot;,&quot;map_id&quot;:&quot;demo&quot;,&quot;build_id&quot;:&quot;b20261011&quot;},&quot;pos&quot;:{&quot;x&quot;:1024.5,&quot;y&quot;:71.0,&quot;z&quot;:-12.25,&quot;yaw&quot;:90.0,&quot;pitch&quot;:12.5},&quot;inventory&quot;:[{&quot;slot&quot;:0,&quot;item&quot;:{&quot;id&quot;:&quot;minecraft:stone&quot;,&quot;count&quot;:63}},{&quot;slot&quot;:1,&quot;item&quot;:{&quot;id&quot;:&quot;minecraft:iron_pickaxe&quot;,&quot;count&quot;:1,&quot;components&quot;:{&quot;minecraft:damage&quot;:3}}}],&quot;held_slot&quot;:1,&quot;health&quot;:17.5}&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;map&quot;,&quot;map_id&quot;:&quot;demo&quot;,&quot;build_id&quot;:&quot;b20261011&quot;},&quot;pos&quot;:{&quot;x&quot;:1024.5,&quot;y&quot;:71.0,&quot;z&quot;:-12.25,&quot;yaw&quot;:90.0,&quot;pitch&quot;:12.5},&quot;inventory&quot;:[{&quot;slot&quot;:0,&quot;item&quot;:&quot;{count:63,id:\&quot;minecraft:stone\&quot;}&quot;},{&quot;slot&quot;:1,&quot;item&quot;:&quot;{count:1,components:{\&quot;minecraft:damage\&quot;:3},id:\&quot;minecraft:iron_pickaxe\&quot;}&quot;}],&quot;held_slot&quot;:1,&quot;health&quot;:17.5}&gt; but was: &lt;{&quot;world&quot;:{&quot;kind&quot;:&quot;map&quot;,&quot;map_id&quot;:&quot;demo&quot;,&quot;build_id&quot;:&quot;b20261011&quot;},&quot;pos&quot;:{&quot;x&quot;:1024.5,&quot;y&quot;:71.0,&quot;z&quot;:-12.25,&quot;yaw&quot;:90.0,&quot;pitch&quot;:12.5},&quot;inventory&quot;:[{&quot;slot&quot;:0,&quot;item&quot;:{&quot;id&quot;:&quot;minecraft:stone&quot;,&quot;count&quot;:63}},{&quot;slot&quot;:1,&quot;item&quot;:{&quot;id&quot;:&quot;minecraft:iron_pickaxe&quot;,&quot;count&quot;:1,&quot;components&quot;:{&quot;minecraft:damage&quot;:3}}}],&quot;held_slot&quot;:1,&quot;health&quot;:17.5}&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.theLayoutIsTheOneOfTheDesign(PlayerStateCodecIntegrationTest.java:65)
+</failure>
+  </testcase>
+  <testcase name="theTagsOfAnItemKeepTheirTypes(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.013">
+    <failure message="org.opentest4j.AssertionFailedError: {&quot;world&quot;:{&quot;kind&quot;:&quot;core&quot;},&quot;pos&quot;:{&quot;x&quot;:8.5,&quot;y&quot;:40.0,&quot;z&quot;:-3.5,&quot;yaw&quot;:0.0,&quot;pitch&quot;:0.0},&quot;inventory&quot;:[{&quot;slot&quot;:0,&quot;item&quot;:{&quot;id&quot;:&quot;minecraft:iron_sword&quot;,&quot;count&quot;:1,&quot;components&quot;:{&quot;minecraft:custom_data&quot;:{&quot;owner&quot;:[1563127582,1011502971,-1641969044,223051539],&quot;charges&quot;:12,&quot;tier&quot;:3,&quot;soulbound&quot;:1,&quot;serial&quot;:5,&quot;bonus&quot;:0.5}}}}],&quot;held_slot&quot;:0,&quot;health&quot;:20.0} ==&gt; expected: &lt;[true, 3, 12, 0.5, 5, 5d2b6f1e-3c4a-4f7b-9e21-8a6c0d4b7f13]&gt; but was: &lt;[null, null, null, null, null, null]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: {&quot;world&quot;:{&quot;kind&quot;:&quot;core&quot;},&quot;pos&quot;:{&quot;x&quot;:8.5,&quot;y&quot;:40.0,&quot;z&quot;:-3.5,&quot;yaw&quot;:0.0,&quot;pitch&quot;:0.0},&quot;inventory&quot;:[{&quot;slot&quot;:0,&quot;item&quot;:{&quot;id&quot;:&quot;minecraft:iron_sword&quot;,&quot;count&quot;:1,&quot;components&quot;:{&quot;minecraft:custom_data&quot;:{&quot;owner&quot;:[1563127582,1011502971,-1641969044,223051539],&quot;charges&quot;:12,&quot;tier&quot;:3,&quot;soulbound&quot;:1,&quot;serial&quot;:5,&quot;bonus&quot;:0.5}}}}],&quot;held_slot&quot;:0,&quot;health&quot;:20.0} ==&gt; expected: &lt;[true, 3, 12, 0.5, 5, 5d2b6f1e-3c4a-4f7b-9e21-8a6c0d4b7f13]&gt; but was: &lt;[null, null, null, null, null, null]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.theTagsOfAnItemKeepTheirTypes(PlayerStateCodecIntegrationTest.java:125)
+</failure>
+  </testcase>
+  <system-out><![CDATA[10:10:25.153 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:10:25.158 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:10:25.158 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:10:25.177 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:10:25.177 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:10:25.177 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:10:25.188 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:10:25.189 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:10:25.189 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:10:25.201 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:10:25.201 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:10:25.201 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:10:25.216 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:10:25.216 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:10:25.216 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

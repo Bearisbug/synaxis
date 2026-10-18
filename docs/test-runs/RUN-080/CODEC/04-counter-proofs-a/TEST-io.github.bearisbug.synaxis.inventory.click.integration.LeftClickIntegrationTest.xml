@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" tests="5" skipped="0" failures="1" errors="0" timestamp="2026-10-18T02:10:23.308Z" hostname="Mac.local" time="1.344">
+  <properties/>
+  <testcase name="shiftClickHotbarToSlotNine(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="1.092"/>
+  <testcase name="leftExternal(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="0.064"/>
+  <testcase name="theCursorHashOfAnEnchantedItem(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="0.065">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;null&gt; but was: &lt;java.lang.IllegalArgumentException: : CRC32 transcoder only supports encoding&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;null&gt; but was: &lt;java.lang.IllegalArgumentException: : CRC32 transcoder only supports encoding&gt;
+	at org.junit.jupiter.api.Assertions.assertNull(Assertions.java:308)
+	at io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest.theCursorHashOfAnEnchantedItem(LeftClickIntegrationTest.java:353)
+</failure>
+  </testcase>
+  <testcase name="shiftClickCraftingResultToSlotZero(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="0.052"/>
+  <testcase name="leftSelf(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="0.058"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

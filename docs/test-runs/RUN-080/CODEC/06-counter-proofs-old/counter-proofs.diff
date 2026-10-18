@@ -1,0 +1,31 @@
+--- server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java	2026-10-18 10:19:27
++++ server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java	2026-10-18 10:19:27
+@@ -71,7 +71,7 @@
+      * @param registries the process registries, which an item component that names a registry entry is encoded with
+      */
+     public PlayerStateSection(Registries registries) {
+-        this.nbt = new RegistryTranscoder<>(Transcoder.NBT, registries);
++        this.nbt = Boolean.getBoolean("proof.never") ? new RegistryTranscoder<>(Transcoder.NBT, registries) : Transcoder.NBT;
+         this.json = new RegistryTranscoder<>(Transcoder.JSON, registries);
+     }
+ 
+@@ -155,7 +155,9 @@
+         // it spawns at its respawn point on its way back
+         final Pos position = !applied ? store().hostValue(player, this).position()
+                 : player.getInstance() != null ? player.getPosition() : player.getRespawnPoint();
+-        return new PlayerState(world(current), position, slots, player.getHeldSlot(), player.getHealth());
++        return new PlayerState(world(current), position, slots,
++                (!applied && !Boolean.getBoolean("proof.never")) ? store().hostValue(player, this).heldSlot() : player.getHeldSlot(),
++                (!applied && !Boolean.getBoolean("proof.never")) ? store().hostValue(player, this).health() : player.getHealth());
+     }
+ 
+     private static PlayerState.World world(PositionRule rule) {
+@@ -293,7 +295,7 @@
+                 throw new IllegalArgumentException("inventory slot " + slot + " is there twice");
+         }
+         final int heldSlot = field(object, "held_slot").getAsInt();
+-        if (heldSlot < 0 || heldSlot >= HOTBAR_SIZE)
++        if (heldSlot < 0 || heldSlot >= HOTBAR_SIZE + 1)
+             throw new IllegalArgumentException("held_slot " + heldSlot + " is not 0.." + (HOTBAR_SIZE - 1));
+         final double health = finite(object, "health");
+         if (health < 0) throw new IllegalArgumentException("health " + health + " is negative");

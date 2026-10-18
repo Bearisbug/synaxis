@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" tests="8" skipped="0" failures="1" errors="0" timestamp="2026-10-18T02:03:08.084Z" hostname="Mac.local" time="1.105">
+  <properties/>
+  <testcase name="anItemWithATransientValueIsSentAndSaved(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.948">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception thrown: java.lang.NullPointerException: Cannot invoke &quot;net.kyori.adventure.nbt.BinaryTag.type()&quot; because &quot;value&quot; is null" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception thrown: java.lang.NullPointerException: Cannot invoke &quot;net.kyori.adventure.nbt.BinaryTag.type()&quot; because &quot;value&quot; is null
+	at org.junit.jupiter.api.Assertions.assertDoesNotThrow(Assertions.java:3366)
+	at io.github.bearisbug.synaxis.tag.TagItemIntegrationTest.anItemWithATransientValueIsSentAndSaved(TagItemIntegrationTest.java:131)
+Caused by: java.lang.NullPointerException: Cannot invoke &quot;net.kyori.adventure.nbt.BinaryTag.type()&quot; because &quot;value&quot; is null
+	at io.github.bearisbug.synaxis.network.BinaryTagTypeImpl.writeEntry(BinaryTagTypeImpl.java:132)
+	at io.github.bearisbug.synaxis.network.BinaryTagTypeImpl.writePayload(BinaryTagTypeImpl.java:98)
+	at io.github.bearisbug.synaxis.network.BinaryTagTypeImpl$CompoundType.write(BinaryTagTypeImpl.java:277)
+	at io.github.bearisbug.synaxis.network.BinaryTagTypeImpl$CompoundType.write(BinaryTagTypeImpl.java:273)
+	at io.github.bearisbug.synaxis.network.NetworkBufferCombinatorTypes$TransformType.write(NetworkBufferCombinatorTypes.java:99)
+	at io.github.bearisbug.synaxis.component.DataComponentImpl.write(DataComponentImpl.java:70)
+	at io.github.bearisbug.synaxis.component.DataComponentMapImpl$NetworkTypeImpl.write(DataComponentMapImpl.java:208)
+	at io.github.bearisbug.synaxis.component.DataComponentMapImpl$NetworkTypeImpl.write(DataComponentMapImpl.java:172)
+	at io.github.bearisbug.synaxis.network.NetworkBufferImpl.write(NetworkBufferImpl.java:56)
+	at io.github.bearisbug.synaxis.item.ItemStackImpl$1.write(ItemStackImpl.java:39)
+	at io.github.bearisbug.synaxis.item.ItemStackImpl$1.write(ItemStackImpl.java:25)
+	at io.github.bearisbug.synaxis.network.NetworkBufferImpl.write(NetworkBufferImpl.java:56)
+	at io.github.bearisbug.synaxis.tag.TagItemIntegrationTest.lambda$anItemWithATransientValueIsSentAndSaved$1(TagItemIntegrationTest.java:131)
+	at io.github.bearisbug.synaxis.network.NetworkBuffer.makeArray(NetworkBuffer.java:561)
+	at io.github.bearisbug.synaxis.tag.TagItemIntegrationTest.lambda$anItemWithATransientValueIsSentAndSaved$0(TagItemIntegrationTest.java:131)
+	at org.junit.jupiter.api.AssertDoesNotThrow.assertDoesNotThrow(AssertDoesNotThrow.java:76)
+	at org.junit.jupiter.api.AssertDoesNotThrow.assertDoesNotThrow(AssertDoesNotThrow.java:61)
+	... 2 more
+</failure>
+  </testcase>
+  <testcase name="remove(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.012"/>
+  <testcase name="getDifferentObject(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.017"/>
+  <testcase name="gc(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.047"/>
+  <testcase name="get(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.011"/>
+  <testcase name="snbt(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.04"/>
+  <testcase name="differentTagInvalidation(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.008"/>
+  <testcase name="invalidation(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

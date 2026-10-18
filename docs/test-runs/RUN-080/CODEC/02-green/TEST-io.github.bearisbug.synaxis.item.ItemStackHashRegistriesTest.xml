@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-18T02:05:34.437Z" hostname="Mac.local" time="0.596">
+  <properties/>
+  <testcase name="aComponentThatDoesNotEncodeIsNamed(Registries)" classname="io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest" time="0.009"/>
+  <testcase name="anEnchantedItemHashesItsEnchantments(Registries)" classname="io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest" time="0.002"/>
+  <testcase name="anItemWithABlockStateHashesIt(Registries)" classname="io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

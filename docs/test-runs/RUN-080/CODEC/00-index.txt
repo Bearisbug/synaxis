@@ -1,0 +1,69 @@
+RUN-080 组 CODEC（物品的光标哈希、synaxis:player 的物品格式与 transient 标签）证据
+分支 prod/r080-CODEC，基于 origin/main cb969826b7；docs/DESIGN-PROD.md v0.9.88，docs/TEST.md TC-PROD-800～TC-PROD-804。
+本机，2026-10-18。每次 Gradle 都经 zsh ~/.claude/r077/gradle.zsh <worktree> fix-CODEC-<n>-<标签> …
+（--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts，跑前拿 /tmp/synaxis-heavy.lock）。
+数据库（第 1、2、4、6、7 次）：SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres，口令只经环境变量
+SYNAXIS_TEST_PG_PASSWORD 给（docker inspect synaxis-pg 的 POSTGRES_PASSWORD），不在命令行、日志与这些文件里。
+类全名前缀：codec. item. inventory.click.integration. tag. = io.github.bearisbug.synaxis.<…>；app.store. = io.github.bearisbug.synaxis.app.store.。
+源文件代号同 docs/TEST.md 本组一节：<CI> CodecImpl.java，<TN>/<TJ>/<TV> TranscoderNbtImpl/JsonImpl/JavaImpl.java，
+<IH> ItemStackHashImpl.java，<TI> TagImpl.java，<PS> server-app/…/app/store/PlayerStateSection.java。
+「八个类」= codec.CodecTest、item.ItemStackHashRegistriesTest、inventory.click.integration.LeftClickIntegrationTest、
+tag.TagTransientTest、tag.TagItemIntegrationTest（根项目，另跑 :testNamingCheck :forbiddenImportsCheck），
+app.store.PlayerStateCodecIntegrationTest、PlayerStateSectionIntegrationTest、PlayerStatePostgresIntegrationTest
+（server-app，另跑 :server-app:testNamingCheck :server-app:forbiddenImportsCheck），都加 --rerun 与 --continue。
+
+01-red/  第 1 次：改动前的红（src/main 与 server-app/src/main 取 origin/main，测试是本组的），跑八个类
+  gradle.txt：根项目 99 tests completed, 14 failed；server-app 27 tests completed, 4 failed。
+  - CodecTest 77 条 8 红：mapWithNonStringKeysIsAnErrorInEveryFormat 的 6 例（mapValueTyped 与带缓存的，三种格式）
+    红在 CodecTest.java:71，but was: <…Result.Ok>；mapEncodesWithTheHashTranscoder 红在 :84，Map key must encode to a
+    string: 754812039；mapValueDecodeErrorNamesTheKey 红在 :93，Not an int: x。
+  - ItemStackHashRegistriesTest 3 条全红：:36、:48 是 Hash.of 抛 IllegalArgumentException: Map key must encode to a
+    string: <整数>；:67 是 List size exceeds maximum allowed size: 256（消息没有组件名）。
+  - LeftClickIntegrationTest.theCursorHashOfAnEnchantedItem（改写前的测试体）红在 :351，expected: <null> but was:
+    <java.lang.IllegalArgumentException: Map key must encode to a string: -1560913390>。
+  - TagTransientTest.aTransientValueIsNotKeptInNbt 红在 :78，but was 里有 kit=null；
+    TagItemIntegrationTest.anItemWithATransientValueIsSentAndSaved 红在 :131，NullPointerException …"value" is null。
+  - PlayerStateCodecIntegrationTest：theLayout… 红在 :65（but was 是 1 版的物品对象），theTagsOf… 红在 :125
+    （读回 [null, null, null, null, null, null]）；PlayerStatePostgresIntegrationTest.aRestartedShard… 红在 :120
+    （钻石的 soulbound、bonus 读回 IntBinaryTag、DoubleBinaryTag）；PlayerStateSectionIntegrationTest.whatThePlayerDrops…
+    红在 :507（库里是 1 版的物品对象）。
+
+02-green/  第 2 次：修后，八个类。LeftClickIntegrationTest 5 条 1 红：theCursorHashOfAnEnchantedItem 红在 :353，
+  Expected 1 element, got [SetCursorItemPacket…, SetCursorItemPacket…]：从格子里拿起剑，点击本身就发一个光标包，
+  哈希比对补发第二个，测试分不出两者。改写测试体（光标上先放一把同样的剑，点完光标不变）后见第 3 次。
+  其余七个类全绿（77、3、6、8、5、18、4 条）。
+
+03-green-click/  第 3 次：只跑改写后的 LeftClickIntegrationTest，5 条 0 失败。
+
+04-counter-proofs-a/  第 4 次：四处反证一次打上（counter-proofs.diff，相对修后的文件），跑八个类
+  - <CI>:300 之前插 getString 回读（TC-PROD-800 第 3 步）；<IH>:27 去掉组件名（TC-PROD-801 第 3 步）；
+    <PS>:250 物品又存 JSON（TC-PROD-802 第 3 步）；<TI>:165 改回按 value != null 判断（TC-PROD-803 第 3 步）。
+  gradle.txt：根项目 99 tests completed, 7 failed；server-app 27 tests completed, 4 failed，每条红在不同的断言上：
+  - CodecTest.mapEncodesWithTheHashTranscoder 红在 :84，CRC32 transcoder only supports encoding；
+    ItemStackHashRegistriesTest :36、:48 红（: CRC32 transcoder only supports encoding），:67 红（: List size …）；
+    LeftClickIntegrationTest 红在 :353，expected: <null> but was: <…IllegalArgumentException: : CRC32 transcoder …>。
+  - TagTransientTest :78、TagItemIntegrationTest :131，与第 1 次同消息。
+  - PlayerStateCodecIntegrationTest :65、:125，PlayerStatePostgresIntegrationTest :120，PlayerStateSectionIntegrationTest
+    :507，与第 1 次同消息。
+  之后把四个文件换回修后的副本，cmp 逐字节相同。
+
+05-counter-proofs-b/  第 5 次：第二批（counter-proofs.diff）：<TN>、<TV> 改回丢掉非字符串键，<TJ> 改回 getAsString，
+  <CI>:276 值错误不带键名（TC-PROD-801 第 4 步）；<PS>:288 SNBT 字符串也走 JSON 路径（TC-PROD-802 第 4 步）。
+  只跑 CodecTest 与 PlayerStateCodecIntegrationTest。gradle.txt：77 tests completed, 11 failed；5 tests completed, 3 failed。
+  - CodecTest：mapWithNonStringKeysIsAnErrorInEveryFormat 9 例全红在 :71；mapWithNonStringKeysIsAnError 红在 :52；
+    mapValueDecodeErrorNamesTheKey 红在 :93。
+  - PlayerStateCodecIntegrationTest：theLayout… :66、itemsWhose… :101、theTagsOf… :123，都是 Not an object: "<SNBT>"；
+    theTagsOf… 的 SNBT 带类型后缀：soulbound:1b、tier:3b、charges:12s、bonus:0.5f、serial:5L、owner:[I;…]。
+  之后换回修后的副本，cmp 逐字节相同。
+
+06-counter-proofs-old/  第 6 次：行号后移的旧用例，三处一次打上（counter-proofs.diff，TC-PROD-804 第 2 步）：
+  <PS>:74 this.nbt 不带注册表（TC-PROD-721 第 3 步改写），<PS>:296 选中格上限放宽一格（TC-PROD-722 第 3 步），
+  <PS>:158 窗口里选中格与生命值取存档值（TC-PROD-760 第 4 步）。跑 server-app 的三个类。
+  gradle.txt：27 tests completed, 5 failed：PlayerStateCodecIntegrationTest itemsWhose… :99（slot 3: components:
+  minecraft:enchantments: Missing registries in transcoder）、aStoredSection… :152（held_slot 9）；
+  PlayerStatePostgresIntegrationTest aRestartedShard… :110（the logout wrote synaxis:player，日志 Encoding a section
+  failed, it stays dirty）、anUndecodable… :181（held_slot 9）；PlayerStateSectionIntegrationTest whatThePlayerDrops… :507
+  （"held_slot":4,"health":9.0）。之后换回修后的副本，cmp 逐字节相同。
+
+07-final/  第 7 次：文档改完之后终跑八个类，BUILD SUCCESSFUL，:test 与 :server-app:test 真跑（不是缓存）。
+  77、3、5、6、8、5、18、4 条，都 0 失败 0 跳过；两个模块的 testNamingCheck、forbiddenImportsCheck 通过。

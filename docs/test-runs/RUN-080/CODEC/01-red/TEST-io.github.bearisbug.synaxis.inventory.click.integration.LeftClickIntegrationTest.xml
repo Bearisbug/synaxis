@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" tests="5" skipped="0" failures="1" errors="0" timestamp="2026-10-18T02:03:08.084Z" hostname="Mac.local" time="1.643">
+  <properties/>
+  <testcase name="shiftClickHotbarToSlotNine(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="1.309"/>
+  <testcase name="leftExternal(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="0.094"/>
+  <testcase name="theCursorHashOfAnEnchantedItem(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="0.094">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;null&gt; but was: &lt;java.lang.IllegalArgumentException: Map key must encode to a string: -1560913390&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;null&gt; but was: &lt;java.lang.IllegalArgumentException: Map key must encode to a string: -1560913390&gt;
+	at org.junit.jupiter.api.Assertions.assertNull(Assertions.java:308)
+	at io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest.theCursorHashOfAnEnchantedItem(LeftClickIntegrationTest.java:351)
+</failure>
+  </testcase>
+  <testcase name="shiftClickCraftingResultToSlotZero(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="0.068"/>
+  <testcase name="leftSelf(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="0.066"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

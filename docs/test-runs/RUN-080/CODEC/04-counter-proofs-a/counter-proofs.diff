@@ -1,0 +1,46 @@
+--- src/main/java/io/github/bearisbug/synaxis/codec/CodecImpl.java	2026-10-18 10:08:01
++++ src/main/java/io/github/bearisbug/synaxis/codec/CodecImpl.java	2026-10-18 10:08:02
+@@ -296,6 +296,8 @@
+                     return valueResult.cast();
+                 // The builder refuses a key its format cannot key a map by. Checking the key with getString here
+                 // instead fails every map under the CRC32 hash transcoder, which reads nothing and takes any key
++                if (!Boolean.getBoolean("proof.never") && coder.getString(encodedKey) instanceof Result.Error<String> proof)
++                    return proof.cast();
+                 try {
+                     map.put(encodedKey, encodedValue);
+                 } catch (IllegalArgumentException _) {
+--- src/main/java/io/github/bearisbug/synaxis/tag/TagImpl.java	2026-10-18 10:08:01
++++ src/main/java/io/github/bearisbug/synaxis/tag/TagImpl.java	2026-10-18 10:08:02
+@@ -162,7 +162,7 @@
+         // A value that writes no NBT (a transient tag, a text component that does not encode) is written as removed,
+         // as the compound of a tag handler leaves it out: the builder would keep a null entry, which no NBT can carry
+         final BinaryTag nbt = value != null ? entry.write(value) : null;
+-        if (nbt != null) {
++        if (Boolean.getBoolean("proof.never") ? nbt != null : value != null) {
+             if (isView()) nbtCompound.put((CompoundBinaryTag) nbt);
+             else nbtCompound.put(key, nbt);
+         } else {
+--- server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java	2026-10-18 10:08:02
++++ server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java	2026-10-18 10:08:02
+@@ -247,7 +247,9 @@
+         for (Map.Entry<Integer, ItemStack> slot : new TreeMap<>(value.inventory()).entrySet()) {
+             final JsonObject entry = new JsonObject();
+             entry.addProperty("slot", slot.getKey());
+-            entry.addProperty("item", snbt(ItemStack.CODEC.encode(nbt, slot.getValue()).orElseThrow("slot " + slot.getKey())));
++            if (Boolean.getBoolean("proof.never"))
++                entry.addProperty("item", snbt(ItemStack.CODEC.encode(nbt, slot.getValue()).orElseThrow("slot " + slot.getKey())));
++            else entry.add("item", ItemStack.CODEC.encode(json, slot.getValue()).orElseThrow("slot " + slot.getKey()));
+             inventory.add(entry);
+         }
+         object.add("inventory", inventory);
+--- src/main/java/io/github/bearisbug/synaxis/item/ItemStackHashImpl.java	2026-10-18 10:08:02
++++ src/main/java/io/github/bearisbug/synaxis/item/ItemStackHashImpl.java	2026-10-18 10:08:02
+@@ -24,7 +24,7 @@
+             if (!entry.component().isSerialized()) continue;
+             if (entry.value() != null) {
+                 addedComponents.put(entry.component(), ((DataComponent<Object>) entry.component()).encode(hashCoder, entry.value())
+-                        .orElseThrow("hash of component " + entry.component().name()));
++                        .orElseThrow(Boolean.getBoolean("proof.never") ? "hash of component " + entry.component().name() : ""));
+             } else {
+                 removedComponents.add(entry.component());
+             }

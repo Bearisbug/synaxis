@@ -1,0 +1,62 @@
+--- src/main/java/io/github/bearisbug/synaxis/codec/TranscoderNbtImpl.java	2026-10-18 10:08:02
++++ src/main/java/io/github/bearisbug/synaxis/codec/TranscoderNbtImpl.java	2026-10-18 10:11:03
+@@ -217,8 +217,10 @@
+         return new MapBuilder<>() {
+             @Override
+             public MapBuilder<BinaryTag> put(BinaryTag key, BinaryTag value) {
+-                if (!(key instanceof StringBinaryTag string))
+-                    throw new IllegalArgumentException("Map key must encode to a string");
++                if (!(key instanceof StringBinaryTag string)) {
++                    if (Boolean.getBoolean("proof.never")) throw new IllegalArgumentException("Map key must encode to a string");
++                    return this;
++                }
+                 return put(string.value(), value);
+             }
+ 
+--- src/main/java/io/github/bearisbug/synaxis/codec/TranscoderJavaImpl.java	2026-10-18 10:08:02
++++ src/main/java/io/github/bearisbug/synaxis/codec/TranscoderJavaImpl.java	2026-10-18 10:11:03
+@@ -189,8 +189,10 @@
+         return new MapBuilder<>() {
+             @Override
+             public MapBuilder<Object> put(Object key, Object value) {
+-                if (!(key instanceof String s))
+-                    throw new IllegalArgumentException("Map key must encode to a string");
++                if (!(key instanceof String s)) {
++                    if (Boolean.getBoolean("proof.never")) throw new IllegalArgumentException("Map key must encode to a string");
++                    return this;
++                }
+                 map.put(s, value);
+                 return this;
+             }
+--- src/main/java/io/github/bearisbug/synaxis/codec/TranscoderJsonImpl.java	2026-10-18 10:08:02
++++ src/main/java/io/github/bearisbug/synaxis/codec/TranscoderJsonImpl.java	2026-10-18 10:11:03
+@@ -210,6 +210,7 @@
+         return new MapBuilder<>() {
+             @Override
+             public MapBuilder<JsonElement> put(JsonElement key, JsonElement value) {
++                if (!Boolean.getBoolean("proof.never")) return put(key.getAsString(), value);
+                 if (!(key instanceof JsonPrimitive primitive) || !primitive.isString())
+                     throw new IllegalArgumentException("Map key must encode to a string");
+                 return put(primitive.getAsString(), value);
+--- src/main/java/io/github/bearisbug/synaxis/codec/CodecImpl.java	2026-10-18 10:08:01
++++ src/main/java/io/github/bearisbug/synaxis/codec/CodecImpl.java	2026-10-18 10:11:03
+@@ -273,7 +273,7 @@
+                 // The throwing decode here is fine since we are already iterating over known keys.
+                 final Result<V> valueResult = valueCodec(decodedKey).decode(coder, map.getValue(key).orElseThrow());
+                 if (!(valueResult instanceof Result.Ok(V decodedValue)))
+-                    return valueResult.mapError(e -> key + ": " + e).cast();
++                    return Boolean.getBoolean("proof.never") ? valueResult.mapError(e -> key + ": " + e).cast() : valueResult.cast();
+                 decodedMap.put(decodedKey, decodedValue);
+             }
+             return new Result.Ok<>(Map.copyOf(decodedMap));
+--- server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java	2026-10-18 10:08:02
++++ server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStateSection.java	2026-10-18 10:11:03
+@@ -285,7 +285,7 @@
+                 throw new IllegalArgumentException("inventory slot " + slot + " is not 0.." + (PlayerInventory.INVENTORY_SIZE - 1));
+             // SNBT keeps the NBT types of the custom data, which the JSON of schema version 1 turned into bare numbers
+             final JsonElement item = field(entry, "item");
+-            final ItemStack stack = (item.isJsonPrimitive()
++            final ItemStack stack = (item.isJsonPrimitive() && Boolean.getBoolean("proof.never")
+                     ? ItemStack.CODEC.decode(nbt, compound(item.getAsString(), slot))
+                     : ItemStack.CODEC.decode(json, item)).orElseThrow("inventory slot " + slot);
+             if (stack.isAir()) throw new IllegalArgumentException("inventory slot " + slot + " holds air");

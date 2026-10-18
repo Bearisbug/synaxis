@@ -19,6 +19,13 @@ public sealed interface TaskSchedule permits
         return new TaskScheduleImpl.TickSchedule(tick);
     }
 
+    /**
+     * Runs the task again once {@code future} completes, normally or exceptionally: the task reads
+     * the outcome of the future itself.
+     *
+     * @param future the future to wait for
+     * @return the schedule
+     */
     static TaskSchedule future(CompletableFuture<?> future) {
         return new TaskScheduleImpl.FutureSchedule(future);
     }

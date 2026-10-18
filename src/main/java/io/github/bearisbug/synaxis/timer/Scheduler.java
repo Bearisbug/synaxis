@@ -18,7 +18,9 @@ public sealed interface Scheduler extends Executor permits SchedulerImpl, Schedu
     /**
      * Process scheduled tasks based on time to increase scheduling precision.
      * <p>
-     * Tasks are consumed by a single caller at a time, so concurrent calls are safe.
+     * The due tasks run on the calling thread. Tasks are consumed by a single caller at a time, so
+     * concurrent calls are safe, but the scheduler of a process is only meant to be processed by the
+     * tick scheduler thread: its tasks rely on running in the serial part of the tick.
      */
     void process();
 

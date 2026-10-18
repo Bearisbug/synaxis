@@ -1,9 +1,11 @@
 package io.github.bearisbug.synaxis.timer;
 
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -16,6 +18,9 @@ import java.util.function.Supplier;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -269,6 +274,92 @@ public class TestScheduler {
         scheduler.process();
         assertEquals(2, counter.get());
         task.cancel();
+    }
+
+    @Test
+    public void aFutureScheduleRunsTheTaskAgainWhenTheFutureFails() {
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        AtomicInteger runs = new AtomicInteger();
+        Task task = scheduler.submitTask(new Supplier<>() {
+            boolean first = true;
+
+            @Override
+            public TaskSchedule get() {
+                if (first) {
+                    first = false;
+                    return TaskSchedule.future(future);
+                }
+                runs.incrementAndGet();
+                return TaskSchedule.stop();
+            }
+        });
+        future.completeExceptionally(new IllegalStateException("load failed"));
+        scheduler.process();
+        assertEquals(1, runs.get(), "the task must run again to read the failure of the future");
+        assertFalse(task.isAlive());
+    }
+
+    @Test
+    public void aTaskReturningNoScheduleIsReportedAndCancelled() {
+        List<Throwable> reported = new ArrayList<>();
+        Scheduler scheduler = Scheduler.newScheduler(reported::add);
+        AtomicInteger runs = new AtomicInteger();
+        Task task = scheduler.submitTask(() -> runs.getAndIncrement() == 0 ? TaskSchedule.immediate() : null);
+        AtomicBoolean queuedBehind = new AtomicBoolean();
+        scheduler.scheduleNextProcess(() -> queuedBehind.set(true));
+
+        assertDoesNotThrow(scheduler::process);
+        assertEquals(1, reported.size(), "the null schedule must be reported once: " + reported);
+        assertInstanceOf(NullPointerException.class, reported.getFirst());
+        assertFalse(task.isAlive());
+        assertTrue(queuedBehind.get(), "the task queued behind it must still run");
+    }
+
+    @Test
+    public void aNullScheduleIsRefusedWhereTheTaskIsBuilt() {
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
+        final @Nullable TaskSchedule noSchedule = null;
+        final @Nullable CompletableFuture<?> noFuture = null;
+        assertThrows(NullPointerException.class, () -> scheduler.buildTask(() -> {
+        }).repeat(noSchedule));
+        assertThrows(NullPointerException.class, () -> scheduler.buildTask(() -> {
+        }).delay(noSchedule));
+        assertThrows(NullPointerException.class, () -> TaskSchedule.future(noFuture));
+    }
+
+    @Test
+    public void aTickScheduleBeyondTheLastTickNeverRuns() {
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
+        scheduler.processTick(); // The target tick is the current one plus the delay
+        AtomicBoolean result = new AtomicBoolean();
+        scheduler.scheduleTask(() -> result.set(true), TaskSchedule.tick(Integer.MAX_VALUE), TaskSchedule.stop());
+        for (int i = 0; i < 3; i++) scheduler.processTick();
+        assertFalse(result.get(), "the target tick wrapped to one already passed");
+    }
+
+    @Test
+    public void aDurationBeyondALongOfMillisecondsNeverRuns() {
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
+        AtomicBoolean result = new AtomicBoolean();
+        assertDoesNotThrow(() -> scheduler.scheduleTask(() -> result.set(true),
+                TaskSchedule.duration(Duration.ofSeconds(Long.MAX_VALUE)), TaskSchedule.stop()));
+        scheduler.process();
+        assertFalse(result.get());
+    }
+
+    @Test
+    public void theExceptionOfATaskIsReportedAsItIs() {
+        List<Throwable> reported = new ArrayList<>();
+        Scheduler scheduler = Scheduler.newScheduler(reported::add);
+        IllegalStateException failure = new IllegalStateException("task failed");
+        Task task = scheduler.scheduleNextTick(() -> {
+            throw failure;
+        });
+        scheduler.processTick();
+        assertEquals(1, reported.size());
+        assertSame(failure, reported.getFirst(), "the handler must get the exception of the task, not a wrapper");
+        assertFalse(task.isAlive());
     }
 
     @Test

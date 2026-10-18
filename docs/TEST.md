@@ -8,12 +8,13 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）、`docs/DESIGN-PROD.md`（生产就绪分册）与 `docs/DESIGN-PLAY.md`（玩法架构分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*`，玩法架构侧写作 `REQ-PLAY-*`，对应用例写作 `TC-PLAY-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-10-14 |
+| 最后更新 | 2026-10-18 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-18 | 分支 `prod/r080-NET`（基于 `main` `cb969826b7`），跟进 `docs/DESIGN-PROD.md` v0.9.85（RUN-080 组 NET），不登执行轮次。**新增 5 条用例** `TC-PROD-770`～`TC-PROD-774`：包长被截断时等下一次读、断开之后读线程只把 socket 读空、已下线的连接再被踢不排第二个断线包、`FinishConfiguration` 发出后满 `keepAliveKick` 不确认即断开、四个类在两种多线程模式下的回归与行号核对；§4 新增一节「生产就绪 · RUN-080：NET」，§5 局部轮加一行。**随代码改的既有用例**：`TC-PROD-067` 第 2 步红行 `ConnectionManagerIntegrationTest.java:85` → `:92`（本组给该类加了 7 行 import）；`TC-PROD-578` 第 1 步与 `TC-PROD-662` 第 1 步注明本组之后的条数；`TC-PLAY-049` 前置的 `PlayerConnection.java:274` → `:276`。`TC-GAME-070` 第 2 步的 `PreAuthConnectionIntegrationTest.java:186` 后移为 `:187`，交 `docs/DESIGN-PROD.md` §28.3 | Bearisbug |
 | 2026-10-14 | M3 审查优化（集成分支 `m3o/integrate`，基于 `main` `630abbc142`，16 个改动集），跟进 `docs/DESIGN-M3.md` v0.50，不登执行轮次：本机只跑了各集点名的测试类，全量回归、带数据库的用例与 `client-fabric` 在 GitHub Actions 上跑，跑完再登记。**新增 15 条用例** `TC-WORLD-152`～`TC-WORLD-166`：`TC-WORLD-152`（懒算块光隔两个区块的改动）、`TC-WORLD-153`（读取器拒收解不开的条目、超限 NBT 与缺位置的静态实体）、`TC-WORLD-154`（生成器源拒高于 256 格的预设、`fork` 与未登记的 handler，生成器异常点名区块）、`TC-WORLD-155`（命令行写错退出码 1、`source_spec`）、`TC-WORLD-156`（静态实体缺 `Pos` 或 `Rotation`、`Pos` 不在本区块、乘客与同步间隔）、`TC-WORLD-157`（一串失败只记第一次与恢复、最终落盘失败、起服 unlink 空段、换段封口、淘汰时复查重算）、`TC-WORLD-158`（分片目录的 host）、`TC-WORLD-159`、`TC-WORLD-160`（标志的五个测试缺口与起服、读写的新行为）、`TC-WORLD-161`（贴着地图边的隐藏区域）、`TC-WORLD-162`（摘要相符后的不符、不结束的 3xx、文件错误算一次失败）、`TC-WORLD-163`（档位文件按字节读）、`TC-WORLD-164`（空气区块满天光、第一条空区块请求的栈行）、`TC-WORLD-165`（生效设置与整列空气的出生列）、`TC-WORLD-166`（段③ 先核结构，畸形内容与放不下的记录进 failed、ERROR 写明来源文件）；用例里只平移的代码行号已按 `630abbc142` 上的原文逐处对到新行号。**各集随代码改的既有用例**（锚点、红行、读数与条数）：`TC-WORLD-015`～`017`、`019`～`022`、`027`～`029`、`031`、`035`、`041`、`042`、`049`、`052`、`057`、`061`、`063`、`065`～`070`、`075`、`076`、`078`、`080`、`092`、`094`、`103`、`105`～`108`、`112`、`115`、`127`、`129`～`131`、`133`、`134`、`137`、`138`。**本轮文档同步另改**：`TC-WORLD-047` 第 3 步与 `TC-WORLD-058` 前置、第 2、3 步按 `ShardWorldTest` 20 条改条数与红行（RUN-074 的访问器用例在前，三条红行各下移 25 行，按推算）；`TC-WORLD-132` 第 2 步 `ShardWorldTest` 红 6 → 7（推算）；`TC-WORLD-150` 第 2 步补齐「只补」清单（`LongSupplier` 重载、空方法体的 `alignClock`、三个访问器，推算）、第 4 步 `ShardWorld.java:686` → `:736`、照绿的 `:246` → `:245`；`TC-WORLD-090` 第 3 步换回旧签发端之后把 `TRANSFER_FAILED` 改成 public，否则先编译失败；`TC-GAME-066` 第 3 步模组测试 25 个类 276 → 297（M3 审查优化加 9 条，`main` 上 RUN-078 给 `PlayClientTest` 加 12 条，RUN-079 的 CI 读数），`farview` 两个包 10 个类 88 → 97。**§2**：Gherkin 覆盖口径里 `REQ-M3-003` 改为另十二条，M3-S 一块改为 54 条场景、53 条入册，补 M3 审查优化在 M3-S 一块之外加的三条场景；REQ ↔ TC 对照表各行加新用例。**§4 M3-S 一节**：开头的条数改为 54、53、47，场景表加四行（段① 解压超限写不进、段③ 声明多于实有、段③ 畸形内容、缺 `Pos` 或 `Rotation` 的静态实体）。**§5** 回归策略的局部轮映射加新用例。只平移的行号已按 `630abbc142` 上的原文对到新行号，占位 ID 已换成 `TC-WORLD-152`～`TC-WORLD-166`；`TC-PROD-*` 的条数与行号归生产就绪会话，列在 `docs/DESIGN-M3.md` §28.2 交接行 M3 v0.50。终审补的行为：`TC-WORLD-160` 加第 8～10 步（新类 `WorldFlagsWriteTest`，嵌套超过 255 层的值不连库即 `Failed`）。`TC-WORLD-158` 加 `]` 之后带端口的 IPv6 `host` 被拒与它的反证（第 4 步）。§6 登记 RUN-079（通过 69/69，13 条含未实跑的反证步骤，证据 `docs/test-runs/RUN-079/`）；`TC-WORLD-024` 第 1 步按 CI 读数改条数（`AnvilBakeTest` 14、`BakerMainTest` 7，2026-09-25 以来就没跟上）；`TC-WORLD-134` 第 3 步改为在集成分支上实跑的读数 | Bearisbug |
 | 2026-10-14 | 集成分支 `prod/integrate-078` 的全量门禁、Concurrency、Client mod 与 Client gametest（job `gametest`、`rush`、`p11-smoke`）在 GitHub Actions 上对 `9d73d8d9e8` 跑完（草稿 PR #29，四个工作流都是第 1 次尝试），跟进 `docs/DESIGN-PLAY.md` v0.18，登记 RUN-078（证据 `docs/test-runs/RUN-078/integrate/00-index.txt`）。**`TC-PLAY-055`**：加第 11 步，CI 三种模式的 15 个 §15 读数，按用户 2026-10-14 定的门槛（本 JVM 内第一次 `create` ≤ 5 ms、之后每次 ≤ 1 ms，注册 ≤ 1 ms，在 CI 的三种模式上判）全部满足；第 6、7 步的「超过 §15 的 1 ms」改为「超过 1 ms」，第 7 步末句改为指向第 11 步；第 9 步的计数口径改为与 RUN-077 一致，第 2、3 次反证轮的读数单列、不计入，第 10 步末句随之改为不含反证的 35 个读数，并写明本机读数照记、不作判定。§6 登记 RUN-078（通过 21/21）。写死条数的旧用例按 artifact 的实数改：`TC-PROD-486`、`505`、`510`、`529`、`549`、`585`、`596`、`607`、`618`、`636` 的 `server-app` 804 → 814（RUN-078 加 10 个、类数不变），`TC-PROD-430` 第 5 步的模组测试 276 → 288（组 U 加 12 个）；`TC-GAME-066` 第 3 步归光照会话，经 `docs/DESIGN-PROD.md` §28.3 交接 | Bearisbug |
 | 2026-10-13 | 集成分支 `prod/integrate-078`（基于 `main` `630abbc142`）依次 `--no-ff` 合入 `prod/r078-N`、`prod/r078-S`、`prod/r078-K`、`prod/r078-U`、`prod/r078-J`，跟进 `docs/DESIGN-PLAY.md` v0.17，不登执行轮次（草稿 PR 的 CI 跑完后登记 RUN-078）。**冲突**：每次合并本文档的变更记录都冲突，按组排（N 在下、J 在上）；§5 局部轮玩法架构一段三处冲突两边都留：`app.instance` 一行同时带组 N 的 `TC-PLAY-130`～`TC-PLAY-132` 与组 K 的 `TC-PLAY-145` 第 2 步，`:play-kit` 一行取组 K 的（加 `TC-PLAY-145`），job `rush` 一行取组 J 的（加 `TC-PLAY-155`），段首的范围同时带 `TC-PLAY-145` 与 `TC-PLAY-155`。**组 N、K 没补的两处**：§5 段首的范围加 `TC-PLAY-130`～`TC-PLAY-132`；§2 REQ-PLAY ↔ TC 对照表 `REQ-PLAY-006` 加 `TC-PLAY-130`～`TC-PLAY-132`、`TC-PLAY-145`，`REQ-PLAY-008` 加 `TC-PLAY-145`（按这几条用例标题里的「对应」）。**条数**：组 N、K 都给 `EvacuationIntegrationTest` 加了用例，集成分支上是 19 条（RUN-077 的 13 条，组 N 5 条，组 K 1 条）；`TC-PLAY-145` 第 2、4 步的预期在组 K 的 14 条后面括注集成分支的 19 条，组 N 节记的 18 条是该组提交上的运行记录，不改。各组节的行号写明按各组提交，集成后不改 | Bearisbug |
@@ -4765,7 +4766,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :test --tests '*ConnectionManagerIntegrationTest*' :server-app:test --tests '*ConnectionGateLogTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`。`ConnectionManagerIntegrationTest#aPlayerThatStopsAnsweringKeepAlivesIsKicked`：到 `keepAliveKick` 恰好一个 Disconnect 包，原因是 `translate` 键 `synaxis:keep-alive-timeout`，不再是纯文本 `Timeout`。`ConnectionGateLogTest#settingTheSocketTimeoutWarnsThatItIsDeprecated`：没设这个属性时 `ServerConfig.fromSystemProperties()` 不写 WARN；`-Dsynaxis.socket-timeout=30000` 时恰好一行，以 `synaxis.socket-timeout is deprecated and has no effect` 开头。`Server#configureSocket` 不再调 `setSoTimeout`（它对 `SocketChannel#read` 本来就无效） |
-| 2 | 反证有齿（两处一起改、一起还原）：`src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java` 的 `player.kick(DisconnectReasons.KEEP_ALIVE_TIMEOUT);` 改成 `player.kick(DisconnectReasons.LOGIN_TIMEOUT);`；`src/main/java/io/github/bearisbug/synaxis/ServerConfig.java` 的 `System.getProperty("synaxis.socket-timeout") != null` 改成 `System.getProperty("synaxis.socket-timeout-ms") != null`。加 `--continue` 重跑第 1 步，再 `git checkout --` 这两个文件 | 红 2 条：`aPlayerThatStopsAnsweringKeepAlivesIsKicked`「expected: <synaxis:keep-alive-timeout> but was: <synaxis:login-timeout>」（`ConnectionManagerIntegrationTest.java:85`）；`settingTheSocketTimeout…`「[] ==> expected: <1> but was: <0>」（`ConnectionGateLogTest.java:212`；v0.9.39 在它前面加了两条，此前是 `:122`，v0.9.43 改写前一条之前是 `:206`）；还原后复绿 |
+| 2 | 反证有齿（两处一起改、一起还原）：`src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java` 的 `player.kick(DisconnectReasons.KEEP_ALIVE_TIMEOUT);` 改成 `player.kick(DisconnectReasons.LOGIN_TIMEOUT);`；`src/main/java/io/github/bearisbug/synaxis/ServerConfig.java` 的 `System.getProperty("synaxis.socket-timeout") != null` 改成 `System.getProperty("synaxis.socket-timeout-ms") != null`。加 `--continue` 重跑第 1 步，再 `git checkout --` 这两个文件 | 红 2 条：`aPlayerThatStopsAnsweringKeepAlivesIsKicked`「expected: <synaxis:keep-alive-timeout> but was: <synaxis:login-timeout>」（`ConnectionManagerIntegrationTest.java:92`；RUN-080 组 NET 加了 7 行 import，此前是 `:85`）；`settingTheSocketTimeout…`「[] ==> expected: <1> but was: <0>」（`ConnectionGateLogTest.java:212`；v0.9.39 在它前面加了两条，此前是 `:122`，v0.9.43 改写前一条之前是 `:206`）；还原后复绿 |
 
 后置：`git status` 干净。
 
@@ -8979,7 +8980,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `PreAuthConnectionIntegrationTest`，看 `aListenerThatThrowsBeforeTheConfigurationStateDropsTheConnection` | `tests="9"` 0 失败。测试把 handshake 状态的 `ClientHandshakePacket` 监听器换成抛 `IllegalStateException` 的，对端一次写入 login 握手与 `LoginStart{Notch}`，测试线程调一次 `read`：连接离线，`getLoginUsername()` 为 null（`LoginStart` 没被处理）；进程配置是 `rejectMisusedPacket=false`（默认） |
+| 1 | 跑 `PreAuthConnectionIntegrationTest`，看 `aListenerThatThrowsBeforeTheConfigurationStateDropsTheConnection` | `tests="9"` 0 失败（RUN-080 组 NET 加了 1 条，之后是 `tests="10"`）。测试把 handshake 状态的 `ClientHandshakePacket` 监听器换成抛 `IllegalStateException` 的，对端一次写入 login 握手与 `LoginStart{Notch}`，测试线程调一次 `read`：连接离线，`getLoginUsername()` 为 null（`LoginStart` 没被处理）；进程配置是 `rejectMisusedPacket=false`（默认） |
 | 2 | 反证（整组改前） | 红在 `PreAuthConnectionIntegrationTest.java:261`：`a listener that threw before the configuration state left the connection open ==> expected: <false> but was: <true>` |
 | 3 | 反证（只改 `<PSC>` 的一处）：`processBatch` 的 catch 里 `if (startingState.ordinal() < ConnectionState.CONFIGURATION.ordinal()` 与下一行 `\|\| process().config().rejectMisusedPacket()) disconnect();` 两行改成一行 `if (process().config().rejectMisusedPacket()) disconnect();`，跑第 1 步的类 | `9 tests completed, 1 failed`，红在 `:261`，消息同第 2 步 |
 | 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
@@ -9987,7 +9988,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 一条命令跑五个类：`DisconnectFlushSocketTest`、`io.github.bearisbug.synaxis.network.player.SlowReaderIntegrationTest`、`io.github.bearisbug.synaxis.network.player.PlayerConnectionKickIntegrationTest`、`io.github.bearisbug.synaxis.network.player.OutboundBacklogIntegrationTest`、`io.github.bearisbug.synaxis.network.DisconnectReasonsIntegrationTest`（五个 `--tests`） | 5 个类 13 个 0 失败：依次 2、1、1、2、7。`SlowReaderIntegrationTest` 那条（对端不读、写线程停在写里，断开后由关闭线程在 1 s 后关 channel）照绿：`flushRemaining` 在 channel 被关时抛出 IO 异常，写线程照旧关 channel 退出 |
+| 1 | 一条命令跑五个类：`DisconnectFlushSocketTest`、`io.github.bearisbug.synaxis.network.player.SlowReaderIntegrationTest`、`io.github.bearisbug.synaxis.network.player.PlayerConnectionKickIntegrationTest`、`io.github.bearisbug.synaxis.network.player.OutboundBacklogIntegrationTest`、`io.github.bearisbug.synaxis.network.DisconnectReasonsIntegrationTest`（五个 `--tests`） | 5 个类 13 个 0 失败：依次 2、1、1、2、7（RUN-080 组 NET 给 `PlayerConnectionKickIntegrationTest` 加了 1 条，之后是 14 个、依次 2、1、2、2、7）。`SlowReaderIntegrationTest` 那条（对端不读、写线程停在写里，断开后由关闭线程在 1 s 后关 channel）照绿：`flushRemaining` 在 channel 被关时抛出 IO 异常，写线程照旧关 channel 退出 |
 | 2 | 严格 grid 再跑第 1 步 | 同上 |
 
 后置：`git status --short` 无输出。
@@ -11966,7 +11967,7 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 
 #### `TC-PLAY-049` 断线时丢掉该连接的场景层，离线的连接不能再进场景 — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
 
-前置：本节开头。`docs/DESIGN-PLAY.md` `API-PLAY-002`「实现（S1，RUN-077 组 H）」一条的「连接断开（`PlayerDisconnectEvent`）时丢掉」，§19 宿主集成一行。`:testing` 的测试连接调 `disconnect()` 只把连接标成离线（`testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnectionImpl.java:131-133`），不移除玩家、不派发 `PlayerDisconnectEvent`，被踢的测试连接同样走不到 `SceneService` 的断线监听；要测断线清理，得照真连接在 PLAY 阶段的做法（`network/player/PlayerConnection.java:274`）再让玩家在下一个 tick 移除自己，移除时派发该事件（`entity/Player.java:678`）。
+前置：本节开头。`docs/DESIGN-PLAY.md` `API-PLAY-002`「实现（S1，RUN-077 组 H）」一条的「连接断开（`PlayerDisconnectEvent`）时丢掉」，§19 宿主集成一行。`:testing` 的测试连接调 `disconnect()` 只把连接标成离线（`testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnectionImpl.java:131-133`），不移除玩家、不派发 `PlayerDisconnectEvent`，被踢的测试连接同样走不到 `SceneService` 的断线监听；要测断线清理，得照真连接在 PLAY 阶段的做法（`network/player/PlayerConnection.java:276`；RUN-080 组 NET 在它前面加了 2 行，此前是 `:274`）再让玩家在下一个 tick 移除自己，移除时派发该事件（`entity/Player.java:678`）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -13046,6 +13047,79 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
 
 后置：`git status --short` 无输出；临时目录与 `__pycache__/` 已删。
 
+### 生产就绪 · RUN-080：NET（包长被截断、断开之后的读线程与 `FinishConfiguration` 的确认超时）
+
+对应 `REQ-PROD-013`、`REQ-PROD-001`、`REQ-PROD-043`（`docs/DESIGN-PROD.md` v0.9.85：§14 `synaxis:keep-alive-timeout` 一行，§16「断开之后的读线程与迟到的踢人」「`FinishConfiguration` 的确认与超时」两行，§19「收到 FinishConfiguration 后一直不确认的客户端在 keepAliveKick 之后断开」场景，§28.2 已决行的补注）。三处改动：① `PacketReading#readPacket` 读包长失败时按写下标判，写下标之前已有 5 个字节、全带续位才是畸形；不足 5 个时容量放得下返回 `Empty` 等下一次读，放不下返回 `Failure`。② `PlayerSocketConnection#read` 读完 socket 后连接已下线就清空读缓冲返回，`PlayerConnection#kick` 对已下线的连接直接返回。③ `ConnectionManager#doConfiguration` 发 `FinishConfigurationPacket` 之前记下时刻，确认（`transitionConfigToPlay`）与断开（`removePlayer`）时摘除，tick 把满 `synaxis.keep-alive-kick` 还没确认的玩家以 `synaxis:keep-alive-timeout` 断开。①② 是实现追上已有设计：`docs/DESIGN.md` §11.1 的协议错误守卫不含被截断的包长，§28 `SOAK-3` 清点 ② 档的前提就是断开把活停下来。
+
+测试：根模块四个类加 5 条，下文用简名：`io.github.bearisbug.synaxis.network.PacketReadingMalformedTest` 加 1 条参数化用例（两组，`tests` 由 6 变 8）、`io.github.bearisbug.synaxis.network.player.PreAuthConnectionIntegrationTest` 加 1 条（9 → 10）、`io.github.bearisbug.synaxis.network.player.PlayerConnectionKickIntegrationTest` 加 1 条（1 → 2）、`io.github.bearisbug.synaxis.network.ConnectionManagerIntegrationTest` 加 2 条（4 → 6）。「跑 `<类>`」同「聊天」一节：`./gradlew :test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `build/test-results/test/TEST-<类>.xml` 的 `tests`、`failures` 与 `<failure message>`；四个类一起跑就写四个 `--tests`。引擎根模块的测试类路径上没有 SLF4J 实现，日志行看不到；`Kicking` 一行与断线包同在 `PlayerConnection#kick` 里，每次踢人各一份，所以按断线包数判踢了几次。反证一律是临时改、跑、看红、还原，还原后 `git diff` 只剩本组的改动、`grep -rn proof.never src/main` 无输出。源文件代号：`<PR>` = `src/main/java/io/github/bearisbug/synaxis/network/packet/PacketReading.java`，`<PS>` = `src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java`，`<PC>` = `src/main/java/io/github/bearisbug/synaxis/network/player/PlayerConnection.java`，`<CM>` = `src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java`，行号按本组提交。本组 8 次 Gradle：第 1 次改动前的红（③ 的新用例那时在平台线程上调 `doConfiguration`，断在异步事件的线程断言上，不算数；改在虚拟线程上调之后，它的改动前红取第 2 次）；第 2 次 ①② 已改、③ 未改；第 3 次全部改完，连同 `testNamingCheck` 与 `forbiddenImportsCheck`；第 4、5 次两批反证；第 6、7 次是 4 线程严格与严格 grid；第 8 次只改了 `<PC>` 与 `PlayerConnectionKickIntegrationTest` 的 Javadoc，重编译（Error Prone 照开）并再跑两项检查，`:test` 取了构建缓存（字节码与第 3 次相同），读数同第 3 次。
+
+#### `TC-PROD-770` 一次读只收到包长的前 1～2 个字节、写下标之后的旧字节都带续位：等下一次读，不判畸形帧 — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。用例在 `NetworkBuffer.staticBuffer(64)` 里先写 `received` 个 0xAB（长度 ≥ 128 的包长的头几个字节，高位为 1），再写 5 − `received` 个 0xFF 充当先前帧留下的字节，然后把写下标拨回 `received`，以 PLAY 态调 `PacketReading.readClients`；`received` 取 1、2。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PacketReadingMalformedTest`，看 `aLengthCutShortByTheReadWaitsForTheRest` 的 `[1]`、`[2]` | `tests="8"` 0 失败：两组都返回 `PacketReading.Result.Empty`，读下标仍是 0。同类的 `overlongVarIntLengthIsAProtocolError`（写下标之前 5 个真 0xFF）仍抛 `DataFormatException`，`truncatedVarIntLengthAtBufferEndRequiresABiggerBuffer`（容量 8、读下标 4、4 个 0xFF）仍返回 `Failure(9)`（第 3 次） |
+| 2 | 改动前的红：`<PR>` 取 `origin/main` `cb969826b7` 的，测试是本组的 | 两组都红在 `PacketReadingMalformedTest.java:65`（调 `readClients` 那一句）：`java.util.zip.DataFormatException: Packet length is not a valid var-int`，抛自 `PacketReading.java:215`（第 1 次） |
+| 3 | 反证有齿（判据退回只看容量）：`<PR>:215` 的 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE)` 改为 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE \|\| beginMark + MAX_VAR_INT_SIZE <= buffer.capacity())`，与 `TC-PROD-771`～`TC-PROD-773` 第 3 步同批跑四个类，再还原 | 两组都红在 `:65`，同一条消息，抛自 `PacketReading.java:216`；本类其余 6 个照绿（第 4 次） |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 3 次） |
+
+后置：`grep -rn proof.never src/main` 无输出。
+
+#### `TC-PROD-771` 断开之后读线程只把 socket 读空：读缓冲写满长度为 0 的帧、对端关掉写端，读线程读到流尾，只排一个断线包（§16「断开之后的读线程与迟到的踢人」） — 对应 `REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。回环 socket 对，服务端一侧包成 `PlayerSocketConnection`，测试线程同时充当读线程与写线程（断开时不起关闭线程，channel 一直开着）；客户端与服务端状态都设 LOGIN，踢人时排 `LoginDisconnect`，按 64 B 计入出站积压。对端写入读缓冲容量那么多个 0x00（每个字节是一个长度为 0 的帧），再 `shutdownOutput()`；测试循环调 `read`，遇 `EOFException` 即停，至多 50 次。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PreAuthConnectionIntegrationTest`，看 `aDisconnectedConnectionOnlyDrainsTheSocket` | `tests="10"` 0 失败：第一次读的第一帧以 `synaxis:protocol-error` 断开连接，之后的读把剩下的字节读完，50 次以内读到流尾；连接离线，出站积压 64 B，即只有一个断线包（第 3 次） |
+| 2 | 改动前的红：`<PS>`、`<PC>` 取 `origin/main` `cb969826b7` 的 | 红在 `PreAuthConnectionIntegrationTest.java:266`：`the reads after the kick must get to the end of the stream, 50 did not ==> expected: <true> but was: <false>`。每次读都从上次失败处的下一个字节接着解、再踢一次，读缓冲写满之后读不再碰 socket，50 次都读不到流尾（第 1 次）。断言停在这一句，没读到出站积压；按代码读是 50 × 64 B |
+| 3 | 反证有齿（读线程不看连接在不在线）：`<PS>:172` 的 `if (!isOnline()) {` 改为 `if (!isOnline() && Boolean.getBoolean("proof.never")) {`，与 `TC-PROD-770` 第 3 步同批，再还原 | 红在 `:266`，与第 2 步同一条消息（第 4 次）。同批 `<PC>:245` 的守卫也退回了；读不读得到流尾只取决于这一处，踢人不碰 socket |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 3 次） |
+
+后置：`grep -rn proof.never src/main` 无输出。
+
+#### `TC-PROD-772` 已下线的连接再被踢：不再排第二个断线包（§16「断开之后的读线程与迟到的踢人」） — 对应 `REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。回环 socket 对，服务端一侧包成 `PlayerSocketConnection`（测试线程同时充当读写线程），服务端状态设 LOGIN；连续调两次 `kick`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerConnectionKickIntegrationTest`，看 `aConnectionAlreadyGoneIsNotKickedAgain` | `tests="2"` 0 失败：连接离线，出站积压 64 B，只有第一次踢排的 `LoginDisconnect`（第 3 次） |
+| 2 | 改动前的红：`<PC>` 取 `origin/main` `cb969826b7` 的 | 红在 `PlayerConnectionKickIntegrationTest.java:64`：`the second kick queued another disconnect packet ==> expected: <64> but was: <128>`（第 1 次） |
+| 3 | 反证有齿：`<PC>:245` 的 `if (!online) return;` 改为 `if (!online && Boolean.getBoolean("proof.never")) return;`，与 `TC-PROD-770` 第 3 步同批，再还原 | 红在 `:64`，与第 2 步同一条消息（第 4 次） |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 3 次） |
+
+后置：`grep -rn proof.never src/main` 无输出。
+
+#### `TC-PROD-773` 收到 `FinishConfiguration` 后一直不确认：满 `keepAliveKick` 之后的第一个 tick 以 `synaxis:keep-alive-timeout` 断开，差 1 ns 不断；确认过的不因此断开（§19 场景，§16「`FinishConfiguration` 的确认与超时」） — 对应 `REQ-PROD-043`、`REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`aClientThatNeverAcknowledgesFinishConfigurationIsKicked` 用一个只记下断线包原因的 `PlayerConnection`（不是 socket 连接，不占席位），两端状态设 CONFIGURATION，`createPlayer` 之后在玩家的事件节点上设出生实例、不发注册表数据，在虚拟线程上跑一次 `doConfiguration(player, true)`，前后各取一次 `System.nanoTime()`（下称 before、after），不调 `transitionConfigToPlay`；之后以合成的时刻调 `ConnectionManager#tick`。`anAcknowledgedFinishConfigurationIsNotTimedOut` 用 `:testing` 的测试连接 `connect`（走完 configuration 并确认），再以此刻 + `keepAliveKick` 调一次 tick。`keepAliveKick` 取默认 15,000 ms。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ConnectionManagerIntegrationTest`，看上面两条 | `tests="6"` 0 失败。第一条：tick(before + `keepAliveKick` − 1 ns) 之后仍在线；tick(after + `keepAliveKick`) 之后离线，恰好一个 Disconnect 包，原因是 `translate` 键 `synaxis:keep-alive-timeout`，玩家不在 `getConfigPlayers()` 里。第二条：tick 之后仍在线。同类的 `aPlayerThatStopsAnsweringKeepAlivesIsKicked` 照绿（第 3 次） |
+| 2 | 改动前的红：`<CM>` 取 `origin/main` `cb969826b7` 的（`<PR>`、`<PS>`、`<PC>` 已是本组的） | `tests="6"` 1 失败：第一条红在 `ConnectionManagerIntegrationTest.java:126`，`a client that never acknowledged FinishConfiguration must be kicked ==> expected: <false> but was: <true>`；第二条绿（改动前没有这道截止，自然不会误踢），齿在第 4 步（第 2 次） |
+| 3 | 反证有齿（tick 不判截止）：`<CM>:654` 的 `handleFinishConfigurationTimeout(tickStart);` 改为 `if (Boolean.getBoolean("proof.never")) handleFinishConfigurationTimeout(tickStart);`，与 `TC-PROD-770` 第 3 步同批，再还原 | 第一条红在 `:126`，与第 2 步同一条消息（第 4 次） |
+| 4 | 反证有齿（确认时不摘记录）：`<CM>:518` 的 `this.finishingSince.remove(player);` 改为 `if (Boolean.getBoolean("proof.never")) this.finishingSince.remove(player);`，只跑本类，再还原 | `tests="6"` 2 失败：第二条红在 `:141`，`a client that acknowledged FinishConfiguration must not be timed out for it ==> expected: <true> but was: <false>`；`aPlayerThatStopsAnsweringKeepAlivesIsKicked` 红在 `:88`，`a player still inside the kick delay must not be kicked ==> expected: <true> but was: <false>`：它也经 `connect` 确认过，记录没摘，就在 keep-alive 的踢人时刻之前先被这道截止踢掉（第 5 次） |
+| 5 | 还原后跑第 1 步 | 与第 1 步相同（第 3 次） |
+
+断开时在 `removePlayer` 里摘记录（`<CM>:552`）只防这张表留住已断开的玩家：之后踢一个已下线的连接本来什么都不做，没有可观察的后果。第一条用例的踢人走过这一行，没有单独的反证。席位与 L1 计数随断开归还是 `PlayerSocketConnection#disconnect` 原有的行为，本条用的不是 socket 连接，不判它。
+
+后置：`grep -rn proof.never src/main` 无输出。
+
+#### `TC-PROD-774` 回归：四个类在 4 线程严格与严格 grid 下照绿；行号后移的旧用例 — 对应 `REQ-PROD-001`、`REQ-PROD-013`、`REQ-PROD-043` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。本组在 `<CM>` 第 194 行之后加 4 行（字段与注释）、`doConfiguration` 里加 2 行、`transitionConfigToPlay` 与 `removePlayer` 里各加 1 行、`tick` 里加 1 行，类末加一个方法；`<PS>` 的 `read` 里加 7 行；`<PC>` 的 `kick` 的 Javadoc 一行换成两行、方法开头加 1 行；`<PR>` 读包长的 catch 由 6 行换成 8 行；四个测试类各加了 import。随之改的既有用例：`TC-PROD-067` 第 2 步红行 `ConnectionManagerIntegrationTest.java:85` → `:92`，`TC-PROD-578` 第 1 步与 `TC-PROD-662` 第 1 步的条数，`TC-PLAY-049` 前置的 `PlayerConnection.java:274` → `:276`；`TC-GAME-070` 第 2 步的 `PreAuthConnectionIntegrationTest.java:186` 后移为 `:187`，交给 `docs/DESIGN-PROD.md` §28.3；`docs/DESIGN-PROD.md` 正文里引的 `ConnectionManager.java:213-215`、`:415`、`:722` 与 `PlayerSocketConnection.java:174-183` 已在 v0.9.85 改成新行号。各处只按 `git diff` 前后对照改行号，内容不变，没复跑。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 四个类一条命令跑，加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | 4 个类 26 个 0 失败 0 跳过：`ConnectionManagerIntegrationTest` 6、`PacketReadingMalformedTest` 8、`PlayerConnectionKickIntegrationTest` 2、`PreAuthConnectionIntegrationTest` 10（第 6 次） |
+| 2 | 同第 1 步，再加 `-Dsynaxis.thread-provider=grid` | 与第 1 步相同（第 7 次） |
+| 3 | 只读核对行号：`grep -nF` 依次查 `<PR>` 的 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE)`，`<PS>` 的 `if (!isOnline()) {`，`<PC>` 的 `if (!online) return;` 与 `player.scheduleNextTick(Entity::remove);`，`<CM>` 的 `handleFinishConfigurationTimeout(tickStart);`、`this.finishingSince.remove(player);`、`public int getOnlinePlayerCount()`、`if (threshold > 0) socketConnection.startCompression();`、`player.remove(false);`、`player.kick(DisconnectReasons.KEEP_ALIVE_TIMEOUT);`；再查 `ConnectionManagerIntegrationTest.java` 的 `disconnects.assertSingle(disconnect -> assertEquals("synaxis:keep-alive-timeout",` 与 `PreAuthConnectionIntegrationTest.java` 的 `assertEquals(GameProfile.offlineUuid("Notch"), decided.uuid(),` | 依次是 215；172；245、276；654；518、552；217；419；731；803、817；92；187 |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G 与 M3-S；玩法架构域 `docs/DESIGN-PLAY.md` §26 的 S1 与各 W 波）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -13130,6 +13204,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-075 组 P，P11 冒烟与 P10 验背包随转服携带（`REQ-PROD-031`、`REQ-PROD-047`，v0.9.74）→ TC-PROD-753～TC-PROD-756；改了 `p10.py` 的 `seed`、`judge` 或 `test_p10.py` 跑 TC-PROD-753、TC-PROD-754 第 1、4 步与 TC-PROD-660、TC-PROD-744 第 2 步（同一组单测，不起进程，1 s 内跑完）；改了 `seed` 写的语句再跑 TC-PROD-754 第 3 步（要 `synaxis-pg`）；改了 `client-gametest.yml` 的 job `p10` 或 `p11-smoke` 跑 TC-PROD-755 第 1～4 步与 TC-PROD-741；改了 `client-fabric/build.gradle.kts` 的 `runProductionClientGameTest` 或升 Loom、Minecraft 版本跑 TC-PROD-755 第 5、6 步；换了 P10 的烘焙参数（种子、范围或生成器）按 TC-PROD-754 第 5 步重选存档位置；CI 上 TC-PROD-742 每个 PR 跑，TC-PROD-756 在合入转服链路的改动之前手动触发。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-075 组 R，R1～R8 只写报告、不挡可玩项剧本（`REQ-PROD-030`、`REQ-PROD-046`，v0.9.77）→ TC-PROD-757～TC-PROD-759；改了 `RegressionClientGameTest#runTest` 或它的 `Report` 就跑 TC-PROD-757（一次 Gradle 编译与只读核对），再在 GitHub Actions 上跑 TC-PROD-759；改了 `judge.sh` 判 R 行的那几行跑 TC-PROD-758（手写的报告，不起进程，几秒跑完），连同上面 RUN-073 组 F 一行列的旧用例。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-076 组 W，等传送到存档位置的窗口里照常捕获（`REQ-PROD-047`，v0.9.79）→ TC-PROD-760～TC-PROD-762；动了 `PlayerStateSection#capture`，或 `#apply` 里打 false、在传送完成时改 true 的那几行，就跑 TC-PROD-760、TC-PROD-761 第 1 步（同一个类，连同上面 RUN-073 组 D 一行列的 TC-PROD-725、TC-PROD-727 第 1 步）；`PlayerStateSection.java` 的行号变了，按 TC-PROD-762 第 1 步核对并改各旧用例引的 `<PS>` 行号。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 NET，包长被截断、断开之后的读线程与 `FinishConfiguration` 的确认超时（`REQ-PROD-013`、`REQ-PROD-001`、`REQ-PROD-043`，v0.9.85）→ TC-PROD-770～TC-PROD-774；动了 `PacketReading#readPacket` 读包长的那段、`PlayerSocketConnection#read`、`PlayerConnection#kick`，或 `ConnectionManager` 的 `doConfiguration`、`transitionConfigToPlay`、`removePlayer`、`tick` 就跑这五条，`TC-PROD-774` 的两种多线程模式由 CI 的两个多线程 job 跑。
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

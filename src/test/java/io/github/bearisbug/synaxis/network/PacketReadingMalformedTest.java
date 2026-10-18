@@ -3,6 +3,8 @@ package io.github.bearisbug.synaxis.network;
 import io.github.bearisbug.synaxis.JvmFlags;
 import io.github.bearisbug.synaxis.network.packet.PacketReading;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.Arrays;
 import java.util.zip.DataFormatException;
@@ -44,6 +46,25 @@ class PacketReadingMalformedTest {
         for (int i = 0; i < 5; i++) buffer.write(NetworkBuffer.BYTE, (byte) 0xFF);
         assertThrows(DataFormatException.class,
                 () -> PacketReading.readClients(buffer, ConnectionState.HANDSHAKE, false));
+    }
+
+    /**
+     * A var-int read stops at the end of the segment, not at the bytes received: what lies past the
+     * write index is left over from frames read earlier. A read that ends one or two bytes into the
+     * length of a large frame has to wait for the rest, whatever those leftovers hold.
+     */
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2})
+    void aLengthCutShortByTheReadWaitsForTheRest(int received) throws DataFormatException {
+        final NetworkBuffer buffer = NetworkBuffer.staticBuffer(64);
+        // The first bytes of a length over 127, then leftovers that all carry the continuation bit
+        for (int i = 0; i < received; i++) buffer.write(NetworkBuffer.BYTE, (byte) 0xAB);
+        for (int i = received; i < 5; i++) buffer.write(NetworkBuffer.BYTE, (byte) 0xFF);
+        buffer.writeIndex(received);
+
+        final var result = PacketReading.readClients(buffer, ConnectionState.PLAY, false);
+        assertInstanceOf(PacketReading.Result.Empty.class, result, "a length cut short is incomplete, not malformed");
+        assertEquals(0, buffer.readIndex(), "nothing is taken off the buffer before the rest arrives");
     }
 
     /**

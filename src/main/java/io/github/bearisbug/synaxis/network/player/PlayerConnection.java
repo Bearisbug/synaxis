@@ -236,11 +236,13 @@ public abstract class PlayerConnection {
     }
 
     /**
-     * Kicks the player with a reason.
+     * Kicks the player with a reason. Does nothing once {@link #disconnect()} has run: a kick that
+     * arrives after it neither sends a disconnect packet nor writes a line.
      *
      * @param component the reason
      */
     public void kick(Component component) {
+        if (!online) return;
         // A translatable reason is an error code of the engine, log it against the connection id
         if (component instanceof TranslatableComponent translatable)
             LOGGER.info("Kicking connection_id={} identifier={} reason={}",

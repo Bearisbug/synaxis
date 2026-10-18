@@ -1,15 +1,18 @@
 package io.github.bearisbug.synaxis.network;
 
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.DisconnectPacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.KeepAlivePacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
+import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
@@ -18,9 +21,13 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
+import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -87,6 +94,53 @@ public class ConnectionManagerIntegrationTest {
                         "the reason is a translate key, not plain text").key()));
     }
 
+    /**
+     * Between FinishConfiguration and its acknowledgement the server sends no keep alive, so the
+     * keep alive cannot notice a client that never acknowledges, nor a peer that went away after
+     * the packet without a reset. The kick delay bounds that wait too, counted from the packet.
+     */
+    @Test
+    public void aClientThatNeverAcknowledgesFinishConfigurationIsKicked(Env env) throws InterruptedException {
+        final Instance instance = env.createEmptyInstance();
+        final RecordingConnection connection = new RecordingConnection(env.process());
+        connection.setClientState(ConnectionState.CONFIGURATION);
+        connection.setServerState(ConnectionState.CONFIGURATION);
+        final ConnectionManager connectionManager = env.process().connection();
+        final Player player = connectionManager.createPlayer(connection, profiles[0]);
+        player.eventNode().addListener(AsyncPlayerConfigurationEvent.class, event -> {
+            event.setSpawningInstance(instance);
+            event.setSendRegistryData(false);
+        });
+        final long kickAfter = TimeUnit.MILLISECONDS.toNanos(env.process().config().keepAliveKick());
+
+        final long before = System.nanoTime();
+        // The configuration event is asynchronous, it is only called on a virtual thread
+        assertTrue(Thread.startVirtualThread(() -> connectionManager.doConfiguration(player, true))
+                .join(Duration.ofSeconds(5)), "the configuration did not finish");
+        final long after = System.nanoTime();
+
+        connectionManager.tick(before + kickAfter - 1);
+        assertTrue(connection.isOnline(), "a client still inside the kick delay must not be kicked");
+
+        connectionManager.tick(after + kickAfter);
+        assertFalse(connection.isOnline(), "a client that never acknowledged FinishConfiguration must be kicked");
+        assertEquals(1, connection.disconnects.size(), "one disconnect packet");
+        assertEquals("synaxis:keep-alive-timeout",
+                assertInstanceOf(TranslatableComponent.class, connection.disconnects.getFirst()).key());
+        assertFalse(connectionManager.getConfigPlayers().contains(player), "the player is still in configuration");
+    }
+
+    /** A client that acknowledged FinishConfiguration is back under the keep alive alone. */
+    @Test
+    public void anAcknowledgedFinishConfigurationIsNotTimedOut(Env env) {
+        final Player player = env.createConnection(profiles[0]).connect(env.createEmptyInstance(), Pos.ZERO);
+        final long kickAfter = TimeUnit.MILLISECONDS.toNanos(env.process().config().keepAliveKick());
+
+        env.process().connection().tick(System.nanoTime() + kickAfter);
+
+        assertTrue(player.isOnline(), "a client that acknowledged FinishConfiguration must not be timed out for it");
+    }
+
     @Test
     public void aDroppedConnectionIsNoLongerConnected(Env env) {
         final Instance instance = env.createEmptyInstance();
@@ -124,6 +178,25 @@ public class ConnectionManagerIntegrationTest {
             assertSame(profile, result);
             assertSame(profile, connection.profileWhenLoginSuccessSent.join());
             assertSame(profile, connection.gameProfile());
+        }
+    }
+
+    /** Keeps the reasons of the disconnect packets it is sent, and nothing else. */
+    private static final class RecordingConnection extends PlayerConnection {
+        private final List<Component> disconnects = new CopyOnWriteArrayList<>();
+
+        private RecordingConnection(ServerProcess process) {
+            super(process);
+        }
+
+        @Override
+        public void sendPacket(SendablePacket packet) {
+            if (packet instanceof DisconnectPacket disconnect) disconnects.add(disconnect.message());
+        }
+
+        @Override
+        public SocketAddress getRemoteAddress() {
+            return new InetSocketAddress("localhost", 25565);
         }
     }
 

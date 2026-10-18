@@ -166,6 +166,13 @@ public class PlayerSocketConnection extends PlayerConnection {
         final long writeIndex = readBuffer.writeIndex();
         final int length = readBuffer.readChannel(channel);
         if (length > 0) traffic.received(length);
+        // The read thread runs until the channel is closed, which comes after the disconnect. What
+        // arrives meanwhile is read and dropped: decoding it would kick the connection again, and
+        // log it again, for every read; not reading it would end the connection with a reset.
+        if (!isOnline()) {
+            readBuffer.clear();
+            return;
+        }
         // Decrypt what just arrived; what was already in the buffer when the cipher came on was
         // decrypted by #enableEncryption
         final EncryptionContext encryption = this.encryption;

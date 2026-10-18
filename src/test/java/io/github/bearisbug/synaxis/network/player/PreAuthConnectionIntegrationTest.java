@@ -13,6 +13,7 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -232,6 +233,40 @@ public class PreAuthConnectionIntegrationTest {
             assertEquals(1, reported.get(), "the packets behind a kick must not be handled");
         } finally {
             env.process().exception().setExceptionHandler(null);
+        }
+    }
+
+    /**
+     * A kick ends the batch it happened in, not the read thread: that one goes on reading until the
+     * channel is closed under it. Decoding what it reads after the kick would hit the frame that
+     * failed again, as it is still in the buffer, and kick once more, one line and one disconnect
+     * packet per read; once the buffer is full, a read no longer even waits for the socket.
+     */
+    @Test
+    public void aDisconnectedConnectionOnlyDrainsTheSocket(Env env) throws IOException {
+        try (SocketPair pair = SocketPair.open(env)) {
+            final PlayerSocketConnection connection = pair.connection();
+            connection.setClientState(ConnectionState.LOGIN);
+            connection.setServerState(ConnectionState.LOGIN); // a kick queues a login disconnect
+            // Zero length frames, as many as the read buffer holds, then the peer closes its side
+            pair.peer().write(ByteBuffer.allocate((int) connection.readBufferCapacity()));
+            pair.peer().shutdownOutput();
+
+            int reads = 0;
+            boolean drained = false;
+            while (!drained && reads < 50) {
+                reads++;
+                try {
+                    connection.read(PacketVanilla.CLIENT_PACKET_PARSER);
+                } catch (EOFException _) {
+                    drained = true;
+                }
+            }
+
+            assertTrue(drained, "the reads after the kick must get to the end of the stream, " + reads + " did not");
+            assertFalse(connection.isOnline(), "a zero length frame must drop the connection");
+            assertEquals(PlayerSocketConnection.UNFRAMED_PACKET_BYTES, connection.backlogBytes(),
+                    "a single kick, a single login disconnect queued");
         }
     }
 

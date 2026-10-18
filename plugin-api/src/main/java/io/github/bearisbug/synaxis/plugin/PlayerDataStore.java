@@ -63,8 +63,11 @@ public interface PlayerDataStore {
     /**
      * Writes first, applies after: the staged values of every participant are written in one
      * transaction that checks every participant's right to write, and only when it commits does
-     * {@code apply} run, on the tick thread. If any check fails nothing is written and
-     * {@code apply} never runs. Every participant must be on this shard.
+     * {@code apply} run, once, on the tick scheduler thread in the serial part of the next tick.
+     * There it may touch every participant, whichever tick thread each of them is ticked on; a
+     * participant may have left by then, so {@code apply} checks {@link Player#isRemoved()} first.
+     * If any check fails nothing is written and {@code apply} never runs. Every participant must be
+     * on this shard.
      *
      * @param staged the value each section of each participant has after the operation
      * @param apply  what makes the operation visible in game

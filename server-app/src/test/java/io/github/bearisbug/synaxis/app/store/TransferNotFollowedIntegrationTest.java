@@ -207,15 +207,21 @@ class TransferNotFollowedIntegrationTest {
         final UUID account = UUID.randomUUID();
         final Player player = online(env, source, account, "Wayfarer");
         try (RedisClient redis = RedisClient.create(URI.create(TestDatabase.redisUrl()))) {
-            assertTrue(redis.get("presence:" + account).contains("\"state\":\"online\""), "online once admitted");
+            // Every presence write is queued off the caller's thread, in the order they came
+            await(env, () -> String.valueOf(redis.get("presence:" + account)).contains("\"state\":\"online\""),
+                    "online once admitted");
 
             assertEquals(TransferOutcome.SENT, transferOut(env, issuer(source), player));
-            assertTrue(redis.get("presence:" + account).contains("\"state\":\"in_transit\""), "in transit once released");
+            await(env, () -> String.valueOf(redis.get("presence:" + account)).contains("\"state\":\"in_transit\""),
+                    "in transit once released");
 
-            // The refresh runs every 10 s on its own; called here so that it surely runs before the grace is over
+            // The refresh runs every 10 s on its own; called here so that it surely runs before the grace is over.
+            // The key goes first, so what is read is what the refresh wrote
+            redis.del("presence:" + account);
             final Method refresh = PlayerStore.class.getDeclaredMethod("refreshPresence");
             refresh.setAccessible(true);
             refresh.invoke(source.store());
+            await(env, () -> redis.get("presence:" + account) != null, "the refresh writes the presence again");
             final String presence = redis.get("presence:" + account);
             assertTrue(presence.contains("\"state\":\"in_transit\""), "the refresh keeps it in transit: " + presence);
             redis.del("presence:" + account);

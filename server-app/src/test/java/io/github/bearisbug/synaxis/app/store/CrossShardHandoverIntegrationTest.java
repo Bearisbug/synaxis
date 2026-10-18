@@ -21,11 +21,16 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPubSub;
 import redis.clients.jedis.RedisClient;
 
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -207,6 +212,9 @@ class CrossShardHandoverIntegrationTest {
 
         final Player player = online(env, shard, instance, account, "Present");
 
+        // Written off the login path, after the loading one
+        await(env, () -> String.valueOf(redis.get("presence:" + account)).contains("\"state\":\"online\""),
+                "the admission sets the presence");
         final String presence = redis.get("presence:" + account);
         assertTrue(presence.contains("\"state\":\"online\"") && presence.contains("\"shard_id\":\"a-" + run + "\""),
                 presence);
@@ -235,6 +243,120 @@ class CrossShardHandoverIntegrationTest {
         }
         assertEquals(1, log.list.stream().filter(event -> event.getLevel() == Level.WARN).count(), log.list.toString());
         assertEquals(0, log.list.stream().filter(event -> event.getLevel() == Level.ERROR).count());
+    }
+
+    /**
+     * A Redis that takes connections and never answers, as a paused container or a lost host does:
+     * every round trip waits for the whole timeout. None of them is on the way of a login.
+     */
+    @Test
+    void aRedisThatTakesConnectionsButNeverAnswersHoldsUpNoLogin(Env env) throws Exception {
+        try (ServerSocket silent = new ServerSocket(0, 50, InetAddress.getLoopbackAddress())) {
+            final List<Socket> taken = new CopyOnWriteArrayList<>();
+            Thread.ofVirtual().start(() -> {
+                try {
+                    while (true) taken.add(silent.accept());
+                } catch (IOException _) {
+                    // Closed by the test
+                }
+            });
+            final String shardId = "silent-" + run;
+            final StoreFixture.Shard shard = StoreFixture.shard(env, pool, shardId, true,
+                    RedisLink.connect("redis://127.0.0.1:" + silent.getLocalPort(), shardId), StoreFixture.FAST);
+            shards.add(shard);
+            final List<CompletableFuture<Boolean>> logins = new ArrayList<>();
+            final long start = System.nanoTime();
+            for (int i = 0; i < 20; i++) {
+                final Player player = connect(env.process(), UUID.randomUUID(), "Silent" + i);
+                logins.add(CompletableFuture.supplyAsync(
+                        () -> shard.store().load(player) && shard.store().admitted(player), Thread.ofVirtual()::start));
+            }
+            CompletableFuture.allOf(logins.toArray(CompletableFuture[]::new)).get(30, TimeUnit.SECONDS);
+            final long tookMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+
+            assertEquals(20, logins.stream().filter(CompletableFuture::join).count(), "every login is let in");
+            assertTrue(tookMillis < 5_000, "all of them within one load budget, took " + tookMillis + " ms");
+            for (Socket socket : taken) socket.close();
+        }
+    }
+
+    /**
+     * Every pooled connection taken by a subscription, which keeps its connection for as long as it
+     * listens: a request waits for one at most the timeout, then fails like an unreachable Redis.
+     */
+    @Test
+    void aRequestFindingEveryConnectionTakenGivesUpWithinTheTimeout() throws Exception {
+        final String channel = "synaxis:test:pool-" + run;
+        try (RedisLink link = RedisLink.connect(TestDatabase.redisUrl(), "pool-" + run)) {
+            for (int i = 0; i < 8; i++) link.listenWorldFlags(channel, _ -> {
+            });
+            final URI uri = URI.create(TestDatabase.redisUrl());
+            try (Jedis single = new Jedis(uri.getHost(), uri.getPort())) {
+                for (int i = 0; i < 500 && single.pubsubNumSub(channel).getOrDefault(channel, 0L) < 8; i++)
+                    Thread.sleep(10);
+                assertEquals(8L, single.pubsubNumSub(channel).getOrDefault(channel, 0L), "the pool of 8 is taken");
+            }
+            final CompletableFuture<Boolean> sent = CompletableFuture.supplyAsync(
+                    () -> link.publishWorldFlag(channel, "flag"), Thread.ofVirtual()::start);
+
+            assertFalse(sent.get(RedisLink.TIMEOUT_MS + 3_000, TimeUnit.MILLISECONDS), "no connection, not sent");
+        }
+    }
+
+    /**
+     * Logins of characters another shard holds wait for it to let go without a load slot: the slots
+     * only cover the statements (§17 {@code store.load}), so an unrelated login does not queue
+     * behind their polls.
+     */
+    @Test
+    void loginsWaitingForAnotherShardToLetGoLeaveTheLoadSlotsToOtherLogins(Env env) throws Exception {
+        final UUID one = UUID.randomUUID();
+        final UUID two = UUID.randomUUID();
+        final Set<UUID> heldElsewhere = Set.of(one, two);
+        final PostgresBackend postgres = new PostgresBackend(pool.pool());
+        final StoreBackend backend = new StoreBackend() {
+            @Override
+            public LoadOutcome load(UUID account, String name, long sessionId) throws SQLException {
+                if (heldElsewhere.contains(account)) return new LoadOutcome.Held("c-" + run, 1);
+                return postgres.load(account, name, sessionId);
+            }
+
+            @Override
+            public void write(long sessionId, List<Write> writes) throws FencedException, SQLException {
+                postgres.write(sessionId, writes);
+            }
+
+            @Override
+            public void release(long characterId, long sessionId) throws SQLException {
+                postgres.release(characterId, sessionId);
+            }
+
+            @Override
+            public void releaseAccount(UUID account, long sessionId) throws SQLException {
+                postgres.releaseAccount(account, sessionId);
+            }
+        };
+        final String shardId = "b-" + run;
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, shardId, true,
+                RedisLink.connect(TestDatabase.redisUrl(), shardId), StoreFixture.FAST, StoreFixture.MANUAL, backend);
+        shards.add(shard);
+        final List<String> published = listenToKickChannels();
+        final List<CompletableFuture<Boolean>> polling = new ArrayList<>();
+        int polled = 0;
+        for (UUID account : heldElsewhere) {
+            final Player player = elsewhere(env, account, "Polling" + polled++);
+            polling.add(CompletableFuture.supplyAsync(() -> shard.store().load(player), Thread.ofVirtual()::start));
+        }
+        await(env, () -> published.size() == 2, "both logins asked the holder to let go and poll");
+
+        final long start = System.nanoTime();
+        final boolean loaded = shard.store().load(connect(env.process(), UUID.randomUUID(), "Unrelated"));
+        final long tookMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+
+        assertTrue(loaded, "an unrelated login loads");
+        assertTrue(tookMillis < 1_000, "without waiting for the polls, took " + tookMillis + " ms");
+        for (CompletableFuture<Boolean> login : polling)
+            assertFalse(login.get(10, TimeUnit.SECONDS), "a character nobody let go of is refused past the budget");
     }
 
     private static void awaitSubscribed(StoreFixture.Shard shard) throws InterruptedException {

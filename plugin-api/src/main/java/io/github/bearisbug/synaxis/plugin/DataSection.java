@@ -28,7 +28,8 @@ public interface DataSection<T> {
     int schemaVersion();
 
     /**
-     * The value of a player who has nothing stored for this section yet.
+     * The value of a player who has nothing stored for this section yet. Whatever it throws, an
+     * {@link Error} too, refuses the login.
      *
      * @return a fresh default value
      */
@@ -41,13 +42,17 @@ public interface DataSection<T> {
      * @param storedVersion the version it was written with, never above {@link #schemaVersion()}
      * @return the decoded value
      * @throws RuntimeException if the JSON cannot be decoded; the host then refuses the login and
-     *                          leaves the stored bytes as they are
+     *                          leaves the stored bytes as they are, and does the same for an
+     *                          {@link Error}
      */
     T decode(JsonElement json, int storedVersion);
 
     /**
      * Encodes a value. Called on the tick thread that owns the player; the returned tree must not
-     * share mutable state with the value, the host writes it later on another thread.
+     * share mutable state with the value, the host writes it later on another thread. Whatever it
+     * throws, an {@link Error} too, leaves the section dirty and unwritten this time, with one ERROR
+     * line; the other sections of the same save are written, and a logout or a transfer still
+     * gives the character back.
      *
      * @param value the value
      * @return its JSON form, at most 65,536 bytes once written out

@@ -1,6 +1,11 @@
 package io.github.bearisbug.synaxis.app.store;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -11,6 +16,7 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -25,7 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * A {@code SYNAXIS_REDIS_URL} that is not one ({@code docs/DESIGN-PROD.md} {@code API-PROD-006}):
  * the shard refuses to start with the variable's name, never with the URL, which carries the
  * password. What {@link java.net.URI} and {@link Integer#parseInt} would say quotes the URL, and the
- * refusal line is logged with the whole cause chain, so the refusal has no cause.
+ * refusal line is logged with the whole cause chain, so the refusal has no cause. Also the queue of
+ * the presence writes, which a Redis that does not answer fills.
  */
 class RedisLinkTest {
 
@@ -56,6 +63,34 @@ class RedisLinkTest {
             final String command = received.get(10, TimeUnit.SECONDS);
             assertTrue(command.contains("\r\nAb3+x9cd=\r\n"), "what the client sent first: " + command);
         }
+    }
+
+    /**
+     * A Redis that takes the connection and never answers holds the presence thread for the whole
+     * timeout: the writes after it are queued without waiting, and past the queue the oldest one
+     * goes, with one warning.
+     */
+    @Test
+    void aFullPresenceQueueDropsItsOldestWriteWithOneWarning() throws Exception {
+        final ListAppender<ILoggingEvent> log = new ListAppender<>();
+        log.start();
+        ((Logger) LoggerFactory.getLogger(RedisLink.class)).addAppender(log);
+        final long tookMillis;
+        try (ServerSocket silent = new ServerSocket(0, 50, InetAddress.getLoopbackAddress());
+             RedisLink link = RedisLink.connect("redis://127.0.0.1:" + silent.getLocalPort(), "r01-c1")) {
+            final long start = System.nanoTime();
+            // One taken by the thread, a full queue behind it, one more
+            for (int i = 0; i < RedisLink.PRESENCE_QUEUE + 2; i++) link.presence(UUID.randomUUID(), 1, "online");
+            tookMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+        } finally {
+            ((Logger) LoggerFactory.getLogger(RedisLink.class)).detachAppender(log);
+        }
+
+        assertTrue(tookMillis < RedisLink.TIMEOUT_MS, "queued, not waited for: " + tookMillis + " ms");
+        final List<ILoggingEvent> dropped = log.list.stream()
+                .filter(event -> event.getFormattedMessage().startsWith("The presence queue is full")).toList();
+        assertEquals(1, dropped.size(), log.list.toString());
+        assertEquals(Level.WARN, dropped.getFirst().getLevel());
     }
 
     /** What the first connection sends until it has been quiet for half a second; then it is closed. */

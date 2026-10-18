@@ -229,7 +229,9 @@ public abstract class Round {
      * Gives up a round that never started: the instance is cancelled and its players go where
      * {@link #exitOf} sends them. Called while the instance is {@code OPEN}, from {@link #onCountdown}
      * or {@link #readyToStart()}; the instance is {@code CLOSED} once this returns, so {@link #tick()}
-     * does nothing more with it. Called while it runs, the instance refuses with an
+     * does nothing more with it. A {@link #readyToStart()} that cancels then answers false: true would
+     * start an instance that is no longer {@code OPEN}, and {@link #tick()} throws the instance's
+     * {@link IllegalStateException}. Called while it runs, the instance refuses with an
      * {@link IllegalStateException}, which from a callback closes the round as a failed callback.
      */
     protected final void cancel() {

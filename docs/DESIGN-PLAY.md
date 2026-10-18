@@ -49,9 +49,9 @@
 
 背景：服务端核心能完全正常游玩（`docs/DESIGN-PROD.md` §19 可玩项 P1～P11，RUN-073、RUN-075），现在只有一个玩法插件 `game-rts`，它一个进程一局、只在停服时结束，没有胜负与结算（`game-rts/.../RtsPlugin.java:47-61` 在 `onEnable` 里建并载入唯一一局，`:101-107` 的 `onDisable` 才结束它）。用户要的四种形态今天都缺宿主或引擎能力，卡得最紧的六条：
 
-1. 挂地图的分片不加载任何插件：2026-09-28 拍板（`docs/DESIGN-M3.md` §28.1 L3770），代码在 `server-app/.../Main.java:418-421` 与 `ShardMain.java:141`。MMO 规则今天写不成插件。
+1. 挂地图的分片不加载任何插件：2026-09-28 拍板（`docs/DESIGN-M3.md` §28.1 L3770），代码在 `server-app/.../Main.java:430-433` 与 `ShardMain.java:141`。MMO 规则今天写不成插件。
 2. 插件只能发不带票据的原版转服，分片只收带宿主票据的转入（`plugin-api/.../Transfers.java:10-15`）；跨分片转服 `ShardService` 是宿主内部接口，只在目录模式存在，只认同一张地图（`app/shard/ShardService.java:7-11`；`docs/DESIGN-M3.md` §28.1 L3771）。
-3. 宿主只在起服时判一次：有准入回调且已注册实例恰好 1 个才进玩法模式（`CoreMode.java:132-138`，`Main.java:930`）；运行期建实例、回收实例只能经不作兼容承诺的 `process()` 直接调引擎，插件被拆掉时宿主不收回实例（`PluginHost.java:301-310`）。运行期也没有禁用插件的路径：插件只在 `onEnable` 抛异常时（bind 之前，`PluginHost.java:183-188`）与停机时（玩家已保存并踢出之后，`Main.java:341-344`）被拆掉。
+3. 宿主只在起服时判一次：有准入回调且已注册实例恰好 1 个才进玩法模式（`CoreMode.java:132-138`，`Main.java:985`）；运行期建实例、回收实例只能经不作兼容承诺的 `process()` 直接调引擎，插件被拆掉时宿主不收回实例（`PluginHost.java:301-310`）。运行期也没有禁用插件的路径：插件只在 `onEnable` 抛异常时（bind 之前，`PluginHost.java:183-188`）与停机时（玩家已保存并踢出之后，`Main.java:341-344`）被拆掉。
 4. 整个进程只有一个准入槽（`AdmissionRegistry.java:20-26`），插件之间没有 `depends`，也没有服务互调（`PluginDescriptor.java:14`；`docs/DESIGN-M2.md` L96）。
 5. 宿主段 `synaxis:player` 在所有模式下应用并捕获同一个角色的背包与生命值，玩法插件模式从不恢复位置（`app/store/PlayerStateSection.java:143-158`、`:175-216`），插件不能按模式隔离。
 6. `:protocol` 的 `Message`、`GameMessage` 是 sealed，全进程只有一个 `SCHEMA_VERSION = 1`，握手严格相等（`protocol/.../Message.java:12`、`ProtocolSchema.java:16`）；客户端只静态注册三条通道，`rts:game` 写死（`client-fabric/.../SynaxisClientMod.java:37-44`、`GamePayload.java:31`）。客户端主源码里唯一的 HUD 元素是远景下载进度（`FarViewClient.java:103`），RTS 客户端只有逻辑层，相机、输入、HUD 属于还没开工的阶段 6b（`SynaxisClientMod.java:21`；`docs/DESIGN-M2.md` L1437）。
@@ -233,12 +233,12 @@ flowchart TB
 | 进程 | 怎么起 | 场景所有者 | 准入归谁 | 托管实例 |
 | --- | --- | --- | --- | --- |
 | 平坦核心 | `bin/server-app` 且 `core-mode=on`，或 `auto` 下没有插件参与（`CoreMode.java:132-138`） | 无；宿主自己可作叠加者 | 宿主（`CoreMode#start`，`CoreMode.java:152-169`） | 无 |
-| 玩法进程 | `bin/server-app`，插件注册准入且起服时恰好一个已注册实例 | 占准入槽的插件 | 该插件 | 起服时一个（大厅或唯一一局），bind 之后按需再建（起服判定只做一次，`Main.java:313`） |
-| 地图分片 | `bin/server-shard` 挂地图，模式恒为核心（`ShardMain.java:138-144`） | W5 之前无；W5 起由 `synaxis.app.scene-owner` 指定（`API-PLAY-011`） | 宿主 `serveMap`（`Main.java:545`） | 无，地图实例由宿主建 |
+| 玩法进程 | `bin/server-app`，插件注册准入且起服时恰好一个已注册实例 | 占准入槽的插件 | 该插件 | 起服时一个（大厅或唯一一局），bind 之后按需再建（起服判定只做一次，`Main.java:320`） |
+| 地图分片 | `bin/server-shard` 挂地图，模式恒为核心（`ShardMain.java:138-144`） | W5 之前无；W5 起由 `synaxis.app.scene-owner` 指定（`API-PLAY-011`） | 宿主 `serveMap`（`Main.java:557`） | 无，地图实例由宿主建 |
 
 每个进程至多一个场景所有者，其余插件都是叠加者（`ADR-PLAY-006`）。这条按进程回答了 `docs/DESIGN-M2.md` §28.2 L1491「多插件时谁提供对局」：选路在部署层（哪个进程装哪个插件），`API-M2-011` 的签名不改。第二个插件注册准入仍按现状抛 `IllegalStateException`（`AdmissionRegistry.java:20-26`）；宿主另外记下这次冲突，步骤 (5) 判 `REFUSED` 并在日志里点名两个插件（`API-PLAY-007`）。今天冲突时谁占到准入槽由 ServiceLoader 给的启用顺序决定（`PluginHost.java:144-176`），后注册的插件在 `onEnable` 里抛异常被拆掉：它经 `instances()` 建的托管实例由宿主收回（`API-PLAY-006`），经 `process()` 直接建的实例不收回。
 
-没有场景所有者的两种进程（平坦核心、W5 之前的地图分片）照样注册 `synaxis:play`：每个进程都构造 `PluginHost`（`Main.java:274`）。场景层对它们收到的上行一律静默丢弃，在这个通道上一个字节都不发，见 `API-PLAY-002`「没有场景所有者时」一条。
+没有场景所有者的两种进程（平坦核心、W5 之前的地图分片）照样注册 `synaxis:play`：每个进程都构造 `PluginHost`（`Main.java:281`）。场景层对它们收到的上行一律静默丢弃，在这个通道上一个字节都不发，见 `API-PLAY-002`「没有场景所有者时」一条。
 
 同进程两个插件今天已有一种用法：`docs/PLUGINS.md` §6 与 `docs/TEST.md` `TC-GAME-016` 让示例插件 `hello`（独立构建 `example-plugin/`，不在 `settings.gradle.kts` 里）与 `rts` 同进程启用，`hello` 不注册准入，按本节的说法它是叠加者。这是开发用法，生产部署里同一进程启用第二个插件会触发 `docs/DESIGN-M2.md` §28.3 ① 的补回（§28.1 D2）。
 
@@ -387,7 +387,7 @@ interface ClientModule {
 | timing | 无限时 | 现在无限时，停服才结束；W4b 建议倒计时 10 s、限时 30 min、结算 10 s | 样板：倒计时 10 s、限时 240 s、结算 15 s | 窗口由日历定 |
 | inventory | `CHARACTER` | W6 起 `SANDBOX` | 小游戏 `SANDBOX`；副本掉落归角色时 `CHARACTER`（W6 前只用内存存储，或不与地图分片共库，§6.6） | 跟随目标实例 |
 | exit | 无（常驻） | 现在踢出（`Match.java:263-276`）；W4b 起回大厅 | 进程内来的回大厅；W6 起跨进程来的回源分片 | 不撤离，只摘监听器与小部件 |
-| rules | 分阶段挂：聊天先挂，掉落与近战按区域（见下） | 只开聊天（`Main.java:886`） | 插件自己写；第一个要 PvE 近战的副本出现时改为按实例的规则集（`API-PLAY-014`） | 不另加，活动插件自己挂监听器 |
+| rules | 分阶段挂：聊天先挂，掉落与近战按区域（见下） | 只开聊天（`Main.java:941`） | 插件自己写；第一个要 PvE 近战的副本出现时改为按实例的规则集（`API-PLAY-014`） | 不另加，活动插件自己挂监听器 |
 | clientMode（场景与相机） | 场景 `<mmo>:world`，`Vanilla` 相机，L1 HUD | 场景 `rts:match`，6b 前 `Vanilla`，6b 后透视加 `FREE` 光标；L1 加 L2 | 只用 L1，不改模组 | 叠加小部件加通知 |
 
 #### MMO 开放世界
@@ -417,7 +417,7 @@ interface ClientModule {
 - 宿主提供：托管实例（建、移入、状态机、撤离、收回）、场景层、插件数据段与 `commitTogether`；W6 起跨进程进出与背包策略。
 - 玩法写：大厅与排队、局的规则、局内状态（只在内存）、结算写 `<id>:stats` 段。辅助类用 `:play-kit`。
 - 样板「信标速攻」就是这一形态（§6.7）。
-- 规则：玩法进程的默认玩法层只开聊天（`Main.java:883-889`），近战、拾取由插件自己写；第一个需要 PvE 近战的副本出现时按 `API-PLAY-014` 改为按实例的规则集。
+- 规则：玩法进程的默认玩法层只开聊天（`Main.java:938-944`），近战、拾取由插件自己写；第一个需要 PvE 近战的副本出现时按 `API-PLAY-014` 改为按实例的规则集。
 - 肉鸽（`docs/DESIGN.md` §2）默认归入本形态：一局一个实例、局内生成；要不要单列见 §28.1 D6。
 
 #### 限时活动
@@ -751,7 +751,7 @@ erDiagram
 
   - `component` 的编码：varint 长度加字节，内容是引擎 `NetworkBuffer.COMPONENT`（`network/NetworkBuffer.java:82`）写出的原版网络格式，单个 ≤ 2,048 B。`:protocol` 零依赖，只把它当不透明字节；客户端 `PlayComponents` 用原版的 `ComponentSerialization.STREAM_CODEC`（原版读不可信 component 用的那一个，NBT 读取上限 2 MiB）在连接的注册表上读；长度 0 不交给它。S1 的第一步核实了这条路（RUN-077 组 V）：服务端 `PlayComponentVectorTest` 判 `ComponentBytes` 写出的字节等于 `play-vectors/component/` 的三个冻结文件，客户端 `PlayComponentDecodeTest` 用这个编解码器把它们解回原样的键、参数、颜色与 fallback，job `rush` 的 Q0a 在真客户端上画出并截图（§6.7.6），所以不改用引擎的 JSON 编码 `NetworkBuffer.JSON_COMPONENT`。这个编解码器读不出 JSON 编码写的字节（`docs/TEST.md` `TC-PLAY-021` 的反证），服务端换编码时 `ComponentBytes` 与 `PlayComponents` 要同一个提交改。
   - 动作分发顺序（宿主）：`scene_seq` 不等于该连接当前的 `scene_seq` → `stale-scene`；这一条是本整秒窗口里的第 11 条或更多 → `rate-limited`；动作 id 不在当前场景动作表里、也不是该连接某个 `PANEL` 小部件的按钮，或者没有插件注册这个动作 → `unknown-action`；它来自动作表的某个槽位且该槽还在冷却 → `cooldown`（`cooldown_ms` 是剩余毫秒，reason 是 `synaxis:action-cooldown`，参数是向上取整的剩余秒数）；否则在发送者所属的 tick 线程上调插件的 handler（`API-PLAY-005`）：返回 `Ok` 回 `ok`，`cooldown_ms` 是该槽的冷却，同时开始计冷却（`PANEL` 按钮没有槽位，不计冷却，回 0）；返回 `Rejected` 回 `rejected`，reason 是插件给的翻译键；抛异常或返回 null 也回 `rejected`、reason 为空，异常记一行受 `LogBudget` 限制的 ERROR。每道判定拒掉的动作不进后面的判定：过期的动作不占限速额度，被限速的动作不查动作表，所以一个窗口里 11 条过期动作都回 `stale-scene`，11 个未知动作前 10 条回 `unknown-action`、第 11 条回 `rate-limited`。handler 里切了场景（返回时 `scene_seq` 已变）照回结果，但不开冷却、`cooldown_ms` 回 0，新场景的冷却从空开始（§11.2）。`leave` 之后 `scene_seq` 保持原值、动作表为空，带这个 `scene_seq` 的动作只剩 `PANEL` 按钮可用。
-  - 没有场景所有者时（光照会话 2026-10-12 的要求 2）：场景所有者取准入槽的持有者（§6.2）。平坦核心与挂地图的分片里宿主以保留 id `synaxis` 自己占准入槽（`CoreMode.java:163`、`Main.java:545`），它不是插件，场景层把它与空的准入槽一样看作没有场景所有者。这两种进程不启用任何插件（`CoreMode.decide` 只在没有插件参与时判 `CORE`，`CoreMode.java:132-138`；挂地图的分片不加载插件），没人调 `PluginPlay`，宿主自己也不主动在 `synaxis:play` 上发包。通道照常注册（每个进程都构造 `PluginHost`，`Main.java:274`），收到的上行一律静默丢弃：不读负载的任何一个字节，解码的上界因此是 0（负载本身受原版插件消息 32,767 B 的上限）；不写日志、不写台账、不断线，也不回任何下行，`C2S_ACTION` 因此没有 `S2C_ACTION_RESULT`（「每条恰好一条」只在有场景所有者时成立）。这些包照常计入引擎的入站包速率闸（`docs/DESIGN-PROD.md` `API-PROD-012`：读线程在交给 `Player` 入站队列之前按包计数，不看通道），场景层不另设阈值，洪水照旧以 `synaxis:protocol-error` 断线。结果是这两种进程在 `synaxis:play` 上一个字节都不发，光照与远景的截图读数不受场景层影响。
+  - 没有场景所有者时（光照会话 2026-10-12 的要求 2）：场景所有者取准入槽的持有者（§6.2）。平坦核心与挂地图的分片里宿主以保留 id `synaxis` 自己占准入槽（`CoreMode.java:163`、`Main.java:557`），它不是插件，场景层把它与空的准入槽一样看作没有场景所有者。这两种进程不启用任何插件（`CoreMode.decide` 只在没有插件参与时判 `CORE`，`CoreMode.java:132-138`；挂地图的分片不加载插件），没人调 `PluginPlay`，宿主自己也不主动在 `synaxis:play` 上发包。通道照常注册（每个进程都构造 `PluginHost`，`Main.java:281`），收到的上行一律静默丢弃：不读负载的任何一个字节，解码的上界因此是 0（负载本身受原版插件消息 32,767 B 的上限）；不写日志、不写台账、不断线，也不回任何下行，`C2S_ACTION` 因此没有 `S2C_ACTION_RESULT`（「每条恰好一条」只在有场景所有者时成立）。这些包照常计入引擎的入站包速率闸（`docs/DESIGN-PROD.md` `API-PROD-012`：读线程在交给 `Player` 入站队列之前按包计数，不看通道），场景层不另设阈值，洪水照旧以 `synaxis:protocol-error` 断线。结果是这两种进程在 `synaxis:play` 上一个字节都不发，光照与远景的截图读数不受场景层影响。
   - 下行：`S2C_SCENE` 与小部件改动在玩家的 `PlayerTickEvent` 里从同一个待发队列按序发出（`entity/Player.java:584`，§6.4.3）。这里不能用 `PlayerTickEndEvent`：它由客户端每发一个 `ClientTickEndPacket` 触发一次（`listener/PlayerTickListener.java:10`），出口的频率就落到了客户端手里。`S2C_GRANTS` 由两件事里后发生的那一件发：首次出生时握手已判定就发；握手判定时玩家已首次出生就发。首次出生在 tick 调度线程的串行段里，玩家这时还没有 tick 线程（`PlayerStateSection.java:169-174` 的注释；`ConnectionManager#tick` 先 `updateWaitingPlayers`，`ConnectionManager.java:650`）；握手判定在解释 configuration 包队列时，通常在同一个方法的末尾（`:670`），玩家已离开 configuration 时留在队列里的包由哪条线程解释未核实。按连接一个状态字，两侧各自比较并交换，不依赖是哪条线程，保证恰好发一次；没发 hello 的连接（核心模式下的工具）不发。
   - 实现（S1，RUN-077 组 P）：`:protocol` 包 `io.github.bearisbug.synaxis.game.protocol.play`，`module-info` 导出它。`PlayProtocol.CHANNEL` 是整串 `synaxis:play`，版本是静态方法 `PlayProtocol.version()`（§6.4.7，当前 1）；`PlayProtocol` 另给两个写入侧上限 `MAX_MESSAGE_BYTES`（8,192）与 `MAX_WIDGET_BYTES`（4,096），由宿主编码时校验，解码器不判。五条消息是 record `S2CScene`、`S2CHud`、`S2CActionResult`、`C2SSceneReady`、`C2SAction`，同属 sealed 接口 `PlayMessage`，它扩展 `Message`，`Message` 的 permits 随之加一项。`PlayMessages.read` 读 `msg_id` 分发；`0x80`、`0x83`、`0x85` 在 v1 里抛 `UnknownMessageException`（丢弃加 WARN，不断线），W1、W2 的新消息到了 v1 的客户端因此不会断线。component 是 `EncodedComponent`：varint 长度加至多 2,048 B 的不透明字节；长度 0 在任何位置都合法，表示没有文本：`reason` 用它表示没有原因，其余位置（标题、动作标签、component 类型的属性值）客户端按空文本显示，不交给原版解码器，也不断线。解码口径：`S2C_SCENE` 与 `C2S_SCENE_READY` 的 `scene_seq` ≥ 1，`C2S_ACTION` 的 `scene_seq` ≥ 0（还没进过场景的连接点 `PANEL` 按钮时带 0）；`action_seq` ≥ 0；`scene_id`、`action_id`、`owner` 1～64 B；SET 与 REMOVE 的 `widget_id` 1～32 B，`CLEAR_OWNER` 的 `widget_id` 写空串，读到非空按畸形；动作表的 `slot` 在 0～5 且不重复；`cooldown_ms` 在 0～600,000；`op` 不是 1～3、`target` 不是 0～2 都按畸形。`camera`、`cursor` 与结果码 `code` 按收到的 u8 原样保留：v1 只认 `camera=0`、`cursor=0` 与结果码 0～5，其余值由客户端按 §9 退回（相机与光标退回 0，结果码经 `ActionResultCode.fromWireId` 按 `rejected` 显示），不按畸形。违反上述口径一律抛 `MalformedMessageException`，宿主映射为 `synaxis:protocol-error`（`docs/DESIGN-M2.md` `API-M2-001`）。manifest 的格式见 §24。
 
@@ -863,7 +863,7 @@ erDiagram
     - W2：`PluginPlay#notice(Player, Notice)` 与 `Notice(Style style, Component text, Duration duration)`（`Style` 是 `INFO`、`SUCCESS`、`WARNING`、`ALERT`）；`Widget` 加 `Bar(id, slot, order, label, float value, float ratePerSecond, int argb)`、`Counter(id, slot, order, Key icon, long value, label)`、`Marker(id, slot, order, label, Vec target)`、`Prompt(id, slot, order, label, String actionId)`；`enter` 加相机降级：相机或光标超出该连接被授予的 `synaxis:play` 版本时降为 `Vanilla` / `LOCKED`，`play_scene_entered` 记 `downgraded=true`。
     - 6b（`synaxis:play` v3）：`CameraSpec.RtsPerspective(float minX, float minZ, float maxX, float maxZ, float minZoom, float maxZoom, float pitchDegrees)` 与 `CursorMode.FREE`。
   - 线程：`enter`、`leave`、`currentScene`、`hud()` 的写方法与 W2 的 `notice` 在两处调用：玩家所属 tick 线程，或 tick 调度线程的串行段（`scheduleTask` 的任务，`docs/PLUGINS.md` §10）。串行段与各 tick 线程不同时跑，宿主在玩家的 `PlayerTickEvent` 里读同一份状态，所以两处都不用加锁；这条与 tick 线程数无关。其余线程（虚拟线程、别的玩家的 tick 线程）用 `scheduler().runOn(对方, …)` 投递。
-  - 收回：插件被拆掉时宿主注销它的动作与 `ChannelSpec`。今天插件只在两个时点被拆掉：`onEnable` 抛异常（bind 之前，还没有玩家）与停机（玩家已保存并踢出之后），所以不会遇到「玩家身上还挂着被拆插件的场景与小部件」。运行期禁用插件不存在（`Main.java:341-344`）；补回 `docs/DESIGN-M2.md` §28.3 ① 的熔断时，要同时补上「场景所有者被禁用时各玩家转为无场景、清掉它的小部件」（§11.2）。
+  - 收回：插件被拆掉时宿主注销它的动作与 `ChannelSpec`。今天插件只在两个时点被拆掉：`onEnable` 抛异常（bind 之前，还没有玩家）与停机（玩家已保存并踢出之后），所以不会遇到「玩家身上还挂着被拆插件的场景与小部件」。运行期禁用插件不存在（`Main.java:348-351`）；补回 `docs/DESIGN-M2.md` §28.3 ① 的熔断时，要同时补上「场景所有者被禁用时各玩家转为无场景、清掉它的小部件」（§11.2）。
 
 - **`API-PLAY-006` 托管玩法实例（`:plugin-api` 新包 `plugin.instance`，`PluginContext#instances()`，S1）** — 实现 `REQ-PLAY-006`、`REQ-PLAY-017`
 
@@ -922,7 +922,7 @@ erDiagram
   - 撤离：关闭前对每名玩家调 `exit`：`ToInstance` 走 `move`，`Kick` 以给定键断线；5 s 内没撤完的玩家以 `synaxis:match-unavailable` 踢出；全部离开后在 tick 调度线程上 `unregisterInstance`（引擎在实例里还有玩家时拒绝注销，`instance/InstanceManager.java:79-97`）。
   - 收回：插件被拆掉时宿主对它每个未关闭的实例强制关闭：`OPEN`、`RUNNING`、`ENDING` 都直接转 `CLOSED`（cause=`PLUGIN_DISABLED`），不调插件回调、不结算。今天插件只在 `onEnable` 抛异常时被拆掉（`PluginHost.java:196-201`），那时还没 bind、实例里没有玩家，强制关闭只剩注销；它在 `onEnable` 里已建、甚至已 `start()` 的实例都在这一步收回。停机时玩家已在保存阶段之后被踢（`docs/DESIGN-PROD.md` `API-PROD-007`），强制关闭同样只剩注销，cause=`SHUTDOWN`；还在 `PREPARING` 的实例没注册过，停机时直接丢弃，cause 同样是 `SHUTDOWN`，准备完成也不再注册。宿主在 `PluginHost#tearDown`（`PluginHost.java:320-331`）里调 `InstanceRegistry#reclaim`：`onEnable` 失败时（`:199`）cause 是 `PLUGIN_DISABLED`，停机的 `disableAll`（`:236`）是 `SHUTDOWN`。运行期禁用插件要等 `docs/DESIGN-M2.md` §28.3 ① 补回熔断才会有，那时这里加上「把仍在实例里的玩家按 `fallbackExit` 撤离」。
   - 台账：每次转移写一行（§20），带 `kind_id`（`<plugin_id>:<name>`）、`instance_id`、`cause`、`players`、`duration_ms`；`move` 完成写 `EVT:play_instance_moved`。
-  - 起服判定：`onEnable` 里 `create` 的实例在启动线程上就地准备完、在 bind 之前注册，计入 `CoreMode.decide` 的「恰好一个实例」（`Main.java:313`、`:930`）；bind 之后再建的实例不受这条限制。
+  - 起服判定：`onEnable` 里 `create` 的实例在启动线程上就地准备完、在 bind 之前注册，计入 `CoreMode.decide` 的「恰好一个实例」（`Main.java:320`、`:985`）；bind 之后再建的实例不受这条限制。
   - tick 之外准备的前提：实例在注册之前没有 tick 碰它，也没有玩家，生成本来就在虚拟线程上（`Match.java:310-313` 的注释）；`LightingChunk.relight` 不持实例锁，前提是调用期间不改方块（`docs/DESIGN-M3.md` §28.2「`LightingChunk` 的 `flushQueue` 竞争」一行），未注册的实例满足。注册（`InstanceManager` 给每个区块建分区并派发 `InstanceRegisterEvent`，`instance/InstanceManager.java:127-134`）放在串行段里，与今天在启动线程上注册同样不和 tick 线程并发。
   - 上限 16 的依据：33 × 33 = 1,089 个区块，与 RTS 整图的 1,024 个区块同一量级；按 `docs/DESIGN-M2.md` §15「地图生成」行的约 8.8 KiB/区块，一个实例约 9.4 MiB。
   - 实现（S1，组 I，`server-app` 包 `app.instance`）：`InstanceRegistry` 按插件 id 分出 `PluginInstancesImpl`（同一个 id 两次 `forPlugin` 拿到同一个视图），实例是 `ManagedInstanceImpl`，撤离是 `Evacuation`，六种台账行由 `InstanceLedger` 写。转移的时点见 §11.1 迁移表下的「转移的时点」。
@@ -1013,7 +1013,7 @@ erDiagram
   - 准入：大厅 `RUNNING` 时一律 `Accept(大厅, 0)`，否则 `Reject(synaxis:match-unavailable)`；同一连接回到配置阶段重走准入时得到同一个大厅（`AdmissionGate` 不看 `isFirstConfig`，`AdmissionGate.java:66`）。
 
 - **`API-PLAY-011` 地图分片加载玩法插件（W5，规划；需签字）** — 实现 `REQ-PLAY-013`
-  - 改判 `docs/DESIGN-M3.md` §28.1 L3770：挂地图时按 `synaxis.app.plugins` 白名单发现插件（白名单为空时一个都不发现，与今天相同）；白名单里的插件注册准入即拒启（准入仍归 `serveMap`，`Main.java:545`）；场景所有者由新键 `synaxis.app.scene-owner` 指定，其余插件是叠加者。M3 自估：发现插件约 1～2 天，世界状态标志进 `:plugin-api` 约半天（`docs/DESIGN-M3.md` §28.1 L3770）。
+  - 改判 `docs/DESIGN-M3.md` §28.1 L3770：挂地图时按 `synaxis.app.plugins` 白名单发现插件（白名单为空时一个都不发现，与今天相同）；白名单里的插件注册准入即拒启（准入仍归 `serveMap`，`Main.java:557`）；场景所有者由新键 `synaxis.app.scene-owner` 指定，其余插件是叠加者。M3 自估：发现插件约 1～2 天，世界状态标志进 `:plugin-api` 约半天（`docs/DESIGN-M3.md` §28.1 L3770）。
   - `Transfers` 加 `toRegion(player, regionId)` / `toShard(player, shardId)`，包住 `ShardService`（M3 自估约 1 天，同节 L3769）。
   - 地图分片强制模组握手（`ADR-PLAY-009`）、挂默认玩法层的聊天（§6.5 MMO）。
   - 同一个提交里守住 `docs/DESIGN-M3.md` §28.2 L3796 的前提：光照待补带投递序号，或要求插件改方块经 `scheduleNextTick`。
@@ -1033,7 +1033,7 @@ erDiagram
   - 按实例生效，同一进程里大厅与局可以用不同策略。
 
 - **`API-PLAY-014` 按实例的默认规则（触发型，规划）** — 实现 `REQ-PLAY-016`
-  - `PlayRule { CHAT, DROP, PICKUP, MELEE, VOID_DAMAGE, STARTER_KIT }` 进 `:plugin-api`；`InstanceSpec` 加 `Set<PlayRule> rules`；`DefaultPlay` 的每个监听器先查事件所在实例的规则集，查不到时用今天按模式的特性集（`Main.java:883-889`）。
+  - `PlayRule { CHAT, DROP, PICKUP, MELEE, VOID_DAMAGE, STARTER_KIT }` 进 `:plugin-api`；`InstanceSpec` 加 `Set<PlayRule> rules`；`DefaultPlay` 的每个监听器先查事件所在实例的规则集，查不到时用今天按模式的特性集（`Main.java:938-944`）。
   - `TRAINING_DUMMY` 只留给平坦核心。触发：第一个需要 PvE 近战的副本出现时。
 
 演进与弃用：
@@ -1151,7 +1151,7 @@ stateDiagram-v2
 | ENDING → CLOSED | 结算超时 | now − ending_at ≥ `settleTimeout` | 按 `fallbackExit` 撤离 → 注销；记一行 WARN；记 `EVT:play_instance_closed`（cause 沿用 `end` 的，`settle_timeout=true`，不进局正常结束率的分子，§3） | 宿主定时器 | 内部任务 `play.instance.settle-timeout` |
 | ENDING → CLOSED | 强制关闭 | `plugin.tornDown = true` ∨ `shutdown.started = true` | 同 OPEN → CLOSED 的强制关闭 | 宿主 | 内部任务 `play.instance.reclaim` |
 
-转移的时点（S1 实现）：状态与结束原因放在一个不可变对象里一起比较并交换，交换成功就算转移完成。`cancel`、`settled`、结算超时与强制关闭在交换成功的那一刻就是 `CLOSED`，撤离与注销随后做完：从这一刻起 `owned()` 不再列出它，`move` 以 false 完成，同时到的另一个关闭请求看到 `CLOSED`（插件的请求抛 `IllegalStateException`，宿主的结算计时什么都不做，§16）。撤离期间 `instance()` 仍注册着，至多持续撤离时限（5 s），`EVT:play_instance_closed` 在注销之后才写，所以它的 `evacuated`、`kicked` 是最终读数。`PlayInstanceStateEvent` 在交换之后、在交换的线程上派发，早于撤离：监听器看到 `→ CLOSED` 时玩家还在实例里、实例还注册着。关闭时的交换与这次撤离的登记在同一把锁里一步做完，强制关闭也取这把锁，所以强制关闭不会看到一个已经 `CLOSED`、却还没有撤离的实例；监听器在事件里调强制关闭，撤离当场收尾，之后发出口那一步什么都不做。插件被拆掉或停机时已经 `CLOSED`、撤离还没做完的实例当场收尾：剩下的人与 `move` 还在途的人以 `synaxis:match-unavailable` 踢出、注销、写 `closed`，停机时这一行赶在台账关闭之前写出（`Main.java:344`、`:348` 两个停机任务的先后）。类名与线程见 `API-PLAY-006` 的「实现」一条。
+转移的时点（S1 实现）：状态与结束原因放在一个不可变对象里一起比较并交换，交换成功就算转移完成。`cancel`、`settled`、结算超时与强制关闭在交换成功的那一刻就是 `CLOSED`，撤离与注销随后做完：从这一刻起 `owned()` 不再列出它，`move` 以 false 完成，同时到的另一个关闭请求看到 `CLOSED`（插件的请求抛 `IllegalStateException`，宿主的结算计时什么都不做，§16）。撤离期间 `instance()` 仍注册着，至多持续撤离时限（5 s），`EVT:play_instance_closed` 在注销之后才写，所以它的 `evacuated`、`kicked` 是最终读数。`PlayInstanceStateEvent` 在交换之后、在交换的线程上派发，早于撤离：监听器看到 `→ CLOSED` 时玩家还在实例里、实例还注册着。关闭时的交换与这次撤离的登记在同一把锁里一步做完，强制关闭也取这把锁，所以强制关闭不会看到一个已经 `CLOSED`、却还没有撤离的实例；监听器在事件里调强制关闭，撤离当场收尾，之后发出口那一步什么都不做。插件被拆掉或停机时已经 `CLOSED`、撤离还没做完的实例当场收尾：剩下的人与 `move` 还在途的人以 `synaxis:match-unavailable` 踢出、注销、写 `closed`，停机时这一行赶在台账关闭之前写出（`Main.java:351`、`:355` 两个停机任务的先后）。类名与线程见 `API-PLAY-006` 的「实现」一条。
 
 跨机一致性：`ENT-RushParticipant` 的 `QUEUED → PLAYING` 要求竞技场 state=`OPEN`。竞技场在 tick 调度线程上 `create`，先是 `PREPARING`，下一个或之后的串行段才转 `OPEN`；`Lobby` 每 tick 在串行段里读 `state()`，与转移同在 tick 调度线程上，守卫在动作发生时可判；转 `CLOSED`（`prepare_failed`）时走 `QUEUED → LOBBY`。`PLAYING → RESULT` 由 `Round` 驱动：它请求 `end` 之后在同一次 `Round#tick` 里调 `onResult`，`RushRound` 在那里设结算面板，不监听状态事件；结束原因是 `error` 时 `Round` 不调 `onResult`、紧接着 `settled`，参与者走 `PLAYING → LOBBY`（§11.3）。
 
@@ -1176,7 +1176,7 @@ stateDiagram-v2
 | ACTIVE → ACTIVE | enter 切换场景 | 调用方 = 场景所有者 ∧ 连接在线 | `scene_seq` 加 1；清掉场景所有者的小部件（排 `CLEAR_OWNER`）与动作冷却，保留叠加者的；`S2C_SCENE` 同上在本 tick 末发；记 `EVT:play_scene_entered` | `ROLE-SceneOwner` | `API-PLAY-005` `enter` |
 | ACTIVE → NONE | leave | 调用方 = 场景所有者 | 清掉场景所有者的小部件（排 `CLEAR_OWNER`）；动作表与动作冷却清空，`scene_seq` 不变；W2 起在本 tick 末发 `S2C_SCENE_LEAVE`（v1 客户端靠下一条 `S2C_SCENE` 覆盖） | `ROLE-SceneOwner` | `API-PLAY-005` `leave`、`API-PLAY-002`（`S2C_SCENE_LEAVE`） |
 
-连接断开时场景随连接丢弃（纯终态，不列）。离线在网络线程上当场生效，丢弃要等玩家下一个 tick 移除、派发 `PlayerDisconnectEvent`（`network/player/PlayerConnection.java:269`、`:276`）；这段时间里 `enter` 不迁移、不抛异常、不记台账，与 `hud().set` 对离线连接的处理相同，调用方先查 `isOnline()` 也关不掉这个窗口（v0.19）。连接在线、守卫里「玩家在 PLAY」不成立时 `enter` 抛 `IllegalStateException`，消息写出连接所处的阶段。没有「场景所有者被禁用」这条转移：运行期禁用插件不存在（`Main.java:341-344`），插件被拆掉时进程里没有玩家（`API-PLAY-005` 收回一条）；补回 `docs/DESIGN-M2.md` §28.3 ① 的熔断时，在这里加 `ACTIVE → NONE`（事件「场景所有者被禁用」，动作同 leave）。也没有「回到 configuration 阶段」这条转移：主代码不触发重新配置，场景层不支持它，见 §28.2「场景层不支持重新配置」一行。客户端 `C2S_SCENE_READY` 不改状态，状态为 `ACTIVE` 且 `scene_seq` 等于当前场景时才记 `EVT:play_scene_ready`，同一 `scene_seq` 至多记一行，旧的与重发的丢弃；带旧 `scene_seq` 的 `C2S_ACTION` 回 `stale-scene`（`API-PLAY-002`）。
+连接断开时场景随连接丢弃（纯终态，不列）。离线在网络线程上当场生效，丢弃要等玩家下一个 tick 移除、派发 `PlayerDisconnectEvent`（`network/player/PlayerConnection.java:269`、`:276`）；这段时间里 `enter` 不迁移、不抛异常、不记台账，与 `hud().set` 对离线连接的处理相同，调用方先查 `isOnline()` 也关不掉这个窗口（v0.19）。连接在线、守卫里「玩家在 PLAY」不成立时 `enter` 抛 `IllegalStateException`，消息写出连接所处的阶段。没有「场景所有者被禁用」这条转移：运行期禁用插件不存在（`Main.java:348-351`），插件被拆掉时进程里没有玩家（`API-PLAY-005` 收回一条）；补回 `docs/DESIGN-M2.md` §28.3 ① 的熔断时，在这里加 `ACTIVE → NONE`（事件「场景所有者被禁用」，动作同 leave）。也没有「回到 configuration 阶段」这条转移：主代码不触发重新配置，场景层不支持它，见 §28.2「场景层不支持重新配置」一行。客户端 `C2S_SCENE_READY` 不改状态，状态为 `ACTIVE` 且 `scene_seq` 等于当前场景时才记 `EVT:play_scene_ready`，同一 `scene_seq` 至多记一行，旧的与重发的丢弃；带旧 `scene_seq` 的 `C2S_ACTION` 回 `stale-scene`（`API-PLAY-002`）。
 
 ### 11.3 样板参与者 `ENT-RushParticipant`
 
@@ -1440,7 +1440,7 @@ flowchart LR
   - Context：用户 2026-10-11 要一套完整的玩法架构。三份方案并行写出：运行时优先（宿主 `GameRuntime` 托管一切，四种形态是同一台状态机的四组 `GameSpec`）、内容数据驱动（玩法定义 JSON 加唯一的运行时插件 `play`，HUD 文本由服务端下发）、协议优先（三层线路、按通道协商版本、服务端驱动的场景与有限小部件）。三名评委按贴合现状、简单、覆盖、客户端、风险五项打分，两票选协议优先，一票选运行时优先。协议优先三次的客户端分都是 9；运行时优先三次的覆盖分都是 9；内容方案贴合现状与风险分最低。
   - Decision：协议优先作主干（`ADR-PLAY-002`～`ADR-PLAY-007`、`ADR-PLAY-011`）。嫁接运行时方案的四处：托管实例的五态状态机加两条短路与每次转移的台账（`ADR-PLAY-008`）、形态取值表（§6.5，只作文档词汇）、背包策略 `SANDBOX`（`ADR-PLAY-010`）、票据第 2 版的意图字段（`API-PLAY-012`）。嫁接内容方案的五处：客户端遇未知相机或小部件时回退、小部件属性 TLV、`MARKER` 与 `PROMPT` 两种小部件、开局快照活动、`Round` 的回调兜底，以及「开局慢就改预建实例池」的判据（本稿把它落在开局准备时长上，§3）。
   - Alternatives：
-    - 运行时优先：覆盖面最全，样板走过的环节最多。不选的理由：宿主改动面大（改 `CoreMode.decide` 的玩法分支、准入整体交给运行时并弃用 `AdmissionProvider`、改 `synaxis:player`、票据升版，样板之前要 8～10 天）；在地图分片上让运行时占准入，要与 `serveMap` 的关卡门、到达处理、世界状态标志合并（`Main.java:533-553`），方案没交代；客户端没有能力协商，6b 要与它抢 `schema_version` 的号。
+    - 运行时优先：覆盖面最全，样板走过的环节最多。不选的理由：宿主改动面大（改 `CoreMode.decide` 的玩法分支、准入整体交给运行时并弃用 `AdmissionProvider`、改 `synaxis:player`、票据升版，样板之前要 8～10 天）；在地图分片上让运行时占准入，要与 `serveMap` 的关卡门、到达处理、世界状态标志合并（`Main.java:545-565`），方案没交代；客户端没有能力协商，6b 要与它抢 `schema_version` 的号。
     - 内容数据驱动：简单玩法零 Java，作者反馈最快。不选的理由：`API_VERSION` 2 → 3 没有必要（给只由宿主实现的接口加默认方法是兼容变更，`docs/DESIGN-PROD.md` §8），严格相等又会拒掉现有插件；R1 要把 `rts:game` 改名为 `play:rts/game` 并删掉 `RtsPlugin`，对 `game-rts` 冲击最大；服务端下发文本表等于第二个文本来源，绕开 `API-PROD-029` 与翻译键门禁；样板跑通之前要先写 6～8 天的 JSON 格式、条件词表、阶段图校验与组件 SPI，词表不够用时每个新玩法照样写组件。
   - Consequences：+ `game-rts` 冲击最小：W1 只把通道注册改成 `ChannelSpec`，玩法代码一行不动；+ 6b 改 zoom 只升 `rts:game`，不再全局升版；+ 整合包先发、分片后滚；− W1 范围大（握手、向量分目录、删 login 形态、改 `:loadtest` 的 Bot 与 `probe.py`、换 ABI baseline），且要签字改写 `docs/DESIGN-M2.md` §8；− 作者要自己注册准入、驱动 `Round`，比运行时方案多写几十行；− `:play-kit` 不作兼容承诺，仓外插件依赖它可能在升级时被打断。
 
@@ -1841,7 +1841,7 @@ flowchart LR
 ## 22. 运维 Runbook
 
 - **`RB-PLAY-001` 局异常结束率过高**：owner Bearisbug · 影响：玩家打到一半被送回大厅、不计统计 · 诊断：按 `kind_id` 聚合 `EVT:play_instance_closed` 的 `cause`，`error` 看同时段 `plugin_id=<id>` 的 ERROR 栈，`prepare_failed` 看 `prepare_ms` 与 generator 异常 · 处置：玩法缺陷用 `synaxis.app.plugins` 去掉该玩法重启该进程，宿主缺陷回滚宿主版本 · 回滚：上一版发行包（W1 之后要整合包与服务端成对回滚，§23） · 升级：1 h 内 error budget（5%）消耗速率 > 2 倍时升级给 owner 并暂停放量 · 恢复验证：下一个 1 h 窗口局正常结束率 ≥ 95%（§21）
-- **`RB-PLAY-002` 托管实例滞留**：owner Bearisbug · 影响：内存与 tick 预算被不再使用的实例占着 · 诊断：`synaxis_play_instances{state}` 看滞留在哪个状态，`ENDING` 滞留查结算超时任务是否在跑，`OPEN` 或 `RUNNING` 滞留查该局是否已无玩家而插件没 `end` · 处置：运行期不能单独禁用插件（`Main.java:341-344`），用 `synaxis.app.plugins` 去掉该玩法后重启该进程，停机时宿主强制关闭它的全部实例 · 回滚：上一版发行包 · 升级：滞留实例数 30 min 内翻倍时升级 · 恢复验证：`synaxis_play_instances` 总数回落到不超过在线人数，`ENDING` 读数 90 s 内归零
+- **`RB-PLAY-002` 托管实例滞留**：owner Bearisbug · 影响：内存与 tick 预算被不再使用的实例占着 · 诊断：`synaxis_play_instances{state}` 看滞留在哪个状态，`ENDING` 滞留查结算超时任务是否在跑，`OPEN` 或 `RUNNING` 滞留查该局是否已无玩家而插件没 `end` · 处置：运行期不能单独禁用插件（`Main.java:348-351`），用 `synaxis.app.plugins` 去掉该玩法后重启该进程，停机时宿主强制关闭它的全部实例 · 回滚：上一版发行包 · 升级：滞留实例数 30 min 内翻倍时升级 · 恢复验证：`synaxis_play_instances` 总数回落到不超过在线人数，`ENDING` 读数 90 s 内归零
 - **`RB-PLAY-003` 场景层故障**：owner Bearisbug · 影响：HUD 不刷新或延迟，动作无响应 · 诊断：`play.hud.flush` 的 ERROR 栈、`EVT:play_traffic` 的 `hud_bytes` 是否异常放大、场景就绪时延 P95 · 处置：确认是某个插件的小部件过大或过频时，用 `synaxis.app.plugins` 去掉该插件后重启该进程；宿主缺陷回滚 · 回滚：上一版发行包 · 升级：P95 > 2 s 持续 30 min，或 error budget 消耗速率 > 2 倍 · 恢复验证：15 min 窗口场景就绪时延 P95 ≤ 2 s 且 ERROR 归零
 - **`RB-PLAY-004` 模组版本断档**：owner Bearisbug · 影响：旧整合包的玩家进不来 · 诊断：台账 `client_rejected` 里 `reason ∈ {mod-outdated, version-mismatch}` 的行，按 `mod_version`（第 2 版 hello 再看 `mod_build`）聚合，确认新整合包是否已发布到下载渠道 · 处置：发布顺序错了（服务端先于整合包）就把服务端回滚到上一版，等整合包发布后再滚动 · 回滚：服务端回到上一版（它的必需通道区间旧整合包能说） · 升级：占比 > 20% 持续 30 min · 恢复验证：`synaxis:client-mod-outdated` 占登录 < 5%
 

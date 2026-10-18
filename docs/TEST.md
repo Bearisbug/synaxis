@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-18 | 分支 `prod/r081-PLAYER`（基于 `main` `965c3bddae`），跟进 `docs/DESIGN-PROD.md` v0.9.95（RUN-081 组 PLAYER），不登执行轮次（集成轮登记 RUN-081）。**新增 §4「生产就绪 · RUN-081：PLAYER」十条 `TC-PROD-870`～`TC-PROD-879`**：870（在 tick 线程上 `join` 换实例的 future 只跑这次的续延）、871（玩家被移除、被后一次调用取代、首次出生途中离开 play 时换实例作废，作废的首次出生不踢人）、872（未注册的实例同步拒绝、所在实例的报错带用户名）、873（移除、重生、换实例时旧实例收到视距票整环的卸载事件）、874（configuration 态的 setter 不排 play 包，出生前放进背包的装备进世界后生效）、875（死亡被回血取消的三处后果与熄火取消）、876（`fromPlayer` 的类型、死亡消息的参数、NaN、瞄准距离）、877（断线事件只派发一次、login 态的 Cookie 与转服、第二个 ping、1 MiB 插件消息）、878（调度器的原异常、null 调度值、溢出与 future 失败）、879（三种模式回归，含光照会话的 `:synx:test` 与 `app.shard`）。除 `TC-PROD-871` 的 ④ 与 879 外每条都有改动前的红（第 1 次运行），870、871 各一处反证。**随改的旧用例**：`TC-PROD-401` 第 1 步 `StatusRequestGuardIntegrationTest` 1 → 2 条；`TC-PROD-784` 第 1 步 `LivingEntityHealthIntegrationTest` 5 → 7 条；`TC-PROD-797` 第 1 步 `PlayerReconfigurationIntegrationTest` 2 → 5 条、红行 `:75` 现为 `:186`（加的条目见 870～877，旧条目的读数与红点不变，没有重跑）。**§5** 局部轮加本组一行 | Bearisbug |
 | 2026-10-18 | 集成分支 `prod/integrate-080` 的全量门禁、Concurrency、Client mod 与 Client gametest（job `gametest`、`rush`、`p11-smoke`）在 GitHub Actions 上对 `8000c5b332` 跑完（草稿 PR #33，四个工作流都是第 1 次尝试；`c42208b6b2` 上的 CI 三个测试 job 红在 `BotSocketTest` 一条，由 `8000c5b332` 修，见 `TC-PROD-797`），§6 登记 RUN-080（通过 49/49，证据 `docs/test-runs/RUN-080/integrate/00-index.txt`）。写死条数的旧用例按 artifact 的实数改：`TC-PROD-486`、`505`、`510`、`529`、`549`、`585`、`596`、`607`、`618`、`636` 的 `server-app` 814 → 849（RUN-079 加 1 个类 19 个，RUN-080 加 1 个类 16 个），`TC-PROD-505`、`585`、`618`、`636`、`654` 的根项目 3,217 → 3,283（RUN-079 加 1 个，RUN-080 加 4 个类 65 个），`TC-PROD-636` 第 1 步的全部模块 682 个类 4,702 → 688 个类 4,850（`synx`、`baker`、`game-rush`、`play-kit` 一并改成实数），`TC-PROD-430` 第 5 步的模组测试 288 → 297（RUN-079 加 9 个，RUN-080 不变）；`TC-GAME-070` 第 2 步归光照会话，经 `docs/DESIGN-PROD.md` §28.3 交接。`TC-PROD-783` 的生成器等到三次等待都试过才生成目标区块，加第 5 步记下 4 线程严格下的偶发红 | Bearisbug |
 | 2026-10-18 | 集成分支 `prod/integrate-080`（基于 `main` `a211a45ca1`）依次 `--no-ff` 合入 `prod/r080-NET`、`prod/r080-THREAD`、`prod/r080-WORLD`、`prod/r080-CODEC`、`prod/r080-ITEMNET`、`prod/r080-CMD`、`prod/r080-STORE`、`prod/r080-HOST`，跟进 `docs/DESIGN-PROD.md` v0.9.92 与 `docs/DESIGN-PLAY.md` v0.20，不登执行轮次（草稿 PR 的 CI 跑完后登记 RUN-080）。**冲突**：每次合并本文档的变更记录都冲突，按合并的倒序排在顶部（NET 在下、HOST 在上）；§4 各组的新节、§5 各组加的一行、§7 THREAD 加的一条（紧挨着 WORLD 改了行号的 `PlayerRespawnChunkIntegrationTest` 一条）与「玩法架构 · RUN-077：H」节的前置一行（NET、WORLD 各改一处行号，按词合并）两边都留。**§4 的次序**：NET、ITEMNET、CMD 三组把新节放在 §4 末尾，另几组放在「生产就绪 · RUN-076：W」之后；合并后「生产就绪 · RUN-080」八节按合并顺序（NET、THREAD、WORLD、CODEC、ITEMNET、CMD、STORE、HOST）接在 RUN-076 W 之后，「玩法架构 · RUN-080：HOST」留在 §4 末尾，各节内容取自各组分支。**`TC-PROD-793`**：组 CMD 合入后命令 condition 的异常只隐藏节点、不再让出生失败，本条原来的触发在三种线程模式下都红在 `PlayerSpawnFailureIntegrationTest.java:70`；前置改用 Tab 列表的可见性抛异常，第 2～4 步写明是 WORLD 分支上 condition 触发时的读数，加第 5 步：集成分支上默认与严格 grid 都绿、反证红在 `:67`（证据 `docs/test-runs/RUN-080/integrate/`）。各组节写明行号按各组提交，别组移动的行不改。草稿 PR #33 的 CI 在 `c42208b6b2` 上三个测试 job 都红在 `loadtest` 的 `BotSocketTest`（`TC-WORLD-074`）：重新配置之后的再出生在等候队列的线程上写血量，玩家仍指派给第一次出生的 tick 线程，所有权断言抛出，组 WORLD 的出生失败处理随即踢人；`Player#UNSAFE_init` 对已有指派的玩家改为在那条线程的持有下出生，加 `TC-PROD-797`；`TC-PROD-793` 两个第 5 步的后一个改为第 6 步 | Bearisbug |
 | 2026-10-18 | 分支 `prod/r080-HOST`（基于 `main` `cb969826b7`），跟进 `docs/DESIGN-PLAY.md` v0.19，不登执行轮次（本组 8 次 Gradle 运行的读数写在两节各步里）。**新增 `TC-PROD-840`**（§4「生产就绪 · RUN-080：HOST」）：`runOn` 投给到期前就被移除的实体、被注销的实例的任务，以及被插件取消的任务，不再留在插件的任务表里，目标随之可回收（`REQ-PROD-021`）。**新增 `TC-PLAY-170`**（§4「玩法架构 · RUN-080：HOST」）：刚断线的连接 `enter` 什么都不做，在线却不在 PLAY 的被拒并写出阶段，开局那一刻断线的排队玩家不让竞技场停在 `OPEN`（`REQ-PLAY-003`、`REQ-PLAY-008`）。**随改**：`TC-PLAY-049` 第 1 步断线之后那一句改为不抛、台账不变；第 3 步 ② 的改动行 `:296` → `:300`，红点改为 `:335` 的台账断言，① 的红行 `:335` → `:339`；「玩法架构 · RUN-077：H」节头注明 `SceneService.java` 从组 HOST 起第 216 行之后的行号加 4；§2 对照表 `REQ-PLAY-003`、`REQ-PLAY-008` 两行加 `TC-PLAY-170`；§5 局部轮 `PluginSchedulerImpl` 一句加 `TC-PROD-840`，玩法架构域三处加 `TC-PLAY-170` | Bearisbug |
@@ -7221,7 +7222,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.network.ServerListPingSocketTest' --tests 'io.github.bearisbug.synaxis.listener.StatusRequestGuardIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，两类 `tests="5"`、`tests="1"` 全绿。`aListenerChangesTheAnswerButCannotShowALowerLimit`（`max-players=300`，配了图标）：监听器拿到的 `getConnection().getRemoteAddress()` 含 `127.0.0.1`；它设描述为翻译组件 `synaxis:server-list.motd`、在线 42、样本一条 `GM on duty`、图标 null，然后 `setMaxPlayers(100)` 抛 `IllegalArgumentException`，信息 `the server list must not show a player limit below the real one, 300, but was given 100`，此后 `getMaxPlayers()` 仍是 300，再 `setMaxPlayers(450)`。读回的响应：max 450、online 42、`sample` 恰一条（名字 `GM on duty`、UUID 为测试给的那个）、`description` 是那个翻译组件、没有 `favicon` 字段。`StatusRequestGuardIntegrationTest`：同一连接的第二个 `StatusRequest` 不答、连接断开（两次调用都在虚拟线程上） |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.network.ServerListPingSocketTest' --tests 'io.github.bearisbug.synaxis.listener.StatusRequestGuardIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，两类 `tests="5"`、`tests="1"` 全绿（RUN-081 起后者 2 条，加的一条见 `TC-PROD-877`）。`aListenerChangesTheAnswerButCannotShowALowerLimit`（`max-players=300`，配了图标）：监听器拿到的 `getConnection().getRemoteAddress()` 含 `127.0.0.1`；它设描述为翻译组件 `synaxis:server-list.motd`、在线 42、样本一条 `GM on duty`、图标 null，然后 `setMaxPlayers(100)` 抛 `IllegalArgumentException`，信息 `the server list must not show a player limit below the real one, 300, but was given 100`，此后 `getMaxPlayers()` 仍是 300，再 `setMaxPlayers(450)`。读回的响应：max 450、online 42、`sample` 恰一条（名字 `GM on duty`、UUID 为测试给的那个）、`description` 是那个翻译组件、没有 `favicon` 字段。`StatusRequestGuardIntegrationTest`：同一连接的第二个 `StatusRequest` 不答、连接断开（两次调用都在虚拟线程上） |
 | 2 | 反证（不设下限）：`src/main/java/io/github/bearisbug/synaxis/event/server/ServerListPingEvent.java` 的 `if (maxPlayers < playerLimit)` 改成 `if (maxPlayers < 0)`，只跑 `ServerListPingSocketTest`，再 `git checkout --` 该文件 | `5 tests completed, 1 failed`：`aListenerChangesTheAnswerButCannotShowALowerLimit` 红在 `:132`，`expected: <the server list must not show a player limit below the real one, 300, but was given 100> but was: <null>` |
 | 3 | 反证（响应不按事件写）：`src/main/java/io/github/bearisbug/synaxis/listener/preplay/StatusListener.java` 的 `StatusResponse.json(event)` 改成 `StatusResponse.json(connection.process())`，只跑 `ServerListPingSocketTest`，再 `git checkout --` 该文件 | `5 tests completed, 1 failed`：同一条红在 `:136`，`a higher limit is allowed ==> expected: <450> but was: <300>`（事件照常派发、拒绝照常发生，但监听器改的值没进响应） |
 | 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
@@ -11459,7 +11460,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `<E>.entity.LivingEntityHealthIntegrationTest` | 5 条 0 失败（第 4 步那条是返工加的）。`loweringMaxHealthFromAnotherThreadClampsOnTheOwningThread`：改完时生命值仍是 20；走一个 tick 后是 5，调低它的线程是僵尸所属的 tick 线程。`loweringMaxHealthClampsCurrentHealth`（没分到 tick 线程的僵尸，在创建它的测试线程上改）照绿：当场压到 5 |
+| 1 | 跑 `<E>.entity.LivingEntityHealthIntegrationTest` | 5 条 0 失败（第 4 步那条是返工加的；RUN-081 起 7 条，加的两条见 `TC-PROD-876`）。`loweringMaxHealthFromAnotherThreadClampsOnTheOwningThread`：改完时生命值仍是 20；走一个 tick 后是 5，调低它的线程是僵尸所属的 tick 线程。`loweringMaxHealthClampsCurrentHealth`（没分到 tick 线程的僵尸，在创建它的测试线程上改）照绿：当场压到 5 |
 | 2 | 改动前的红：同 `TC-PROD-780` 第 2 步那一次 | 红在 `LivingEntityHealthIntegrationTest.java:60`（匿名子类的 `super.setHealth`）：`AcquirableOwnershipException: Thread ownership assertion failed for …LivingEntityHealthIntegrationTest$1@…: Current thread: ForkJoinPool-1-worker-3 Assigned thread: Syn-Tick-0 Problem: The element is assigned to a different thread and is not currently owned.`（`<T>` 第 1 次） |
 | 3 | 反证有齿（在修改线程上直接压）：`<LE>:516` 的 `if (acquirable().isOwned()) {` 改为 `if (acquirable().isOwned() \|\| !Boolean.getBoolean("proof.never")) {`；`TC-PROD-780` 第 3 步那份补丁 | 红在 `:60`，同一个异常（`<T>` 第 6 次） |
 | 4 | 跑同一个类，看 `loweringMaxHealthBeforeATickThreadOwnsTheEntityClampsAtOnce` | 绿：没分到 tick 线程的僵尸，在一条虚拟线程上（既不是创建它的测试线程，也不是 tick 线程）把 `MAX_HEALTH` 的基础值改为 5，改完时生命值已是 5（`<T>` 第 10、15 次） |
@@ -11611,8 +11612,8 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `entity.player.PlayerReconfigurationIntegrationTest`，看 `aPlayerBackFromConfigurationSpawnsAgainOnItsFormerTickThread` | `tests="2"` 0 失败。本条：再出生之后玩家在线，`getInstance()` 是配置时给的实例 |
-| 2 | 改动前的红：`<PL>` 的 `UNSAFE_init` 不取持有、直接 `joinGame` | 本条红在 `PlayerReconfigurationIntegrationTest.java:75`，`the second spawn kept the player ==> expected: <true> but was: <false>`：`joinGame` 里的 `refreshHealth` 经 `LivingEntity#setHealth` 的所有权断言抛 `AcquirableOwnershipException`（当前线程是处理等候队列的线程，指派线程是第一次出生的 tick 线程），出生的 future 异常完成，玩家以 `synaxis:internal-error` 断开。开着断言或严格模式时，`main` 上同一处的再出生也会失败，只是异常交给 tick 的异常处理器、玩家留在没有实例的 PLAY 态 |
+| 1 | 跑 `entity.player.PlayerReconfigurationIntegrationTest`，看 `aPlayerBackFromConfigurationSpawnsAgainOnItsFormerTickThread` | `tests="2"` 0 失败（RUN-081 起 5 条，加的三条见 `TC-PROD-874`）。本条：再出生之后玩家在线，`getInstance()` 是配置时给的实例 |
+| 2 | 改动前的红：`<PL>` 的 `UNSAFE_init` 不取持有、直接 `joinGame` | 本条红在 `PlayerReconfigurationIntegrationTest.java:75`（RUN-081 起这一句在 `:186`），`the second spawn kept the player ==> expected: <true> but was: <false>`：`joinGame` 里的 `refreshHealth` 经 `LivingEntity#setHealth` 的所有权断言抛 `AcquirableOwnershipException`（当前线程是处理等候队列的线程，指派线程是第一次出生的 tick 线程），出生的 future 异常完成，玩家以 `synaxis:internal-error` 断开。开着断言或严格模式时，`main` 上同一处的再出生也会失败，只是异常交给 tick 的异常处理器、玩家留在没有实例的 PLAY 态 |
 | 3 | 同一处缺陷的端到端表现：改动前的集成分支 `c42208b6b2` 上，`loadtest` 的 `BotSocketTest#aGateBotInConfigurationAtTheFrameTimesItsTryFromTheFirstPositionItSends`（`TC-WORLD-074`）在 CI 的默认、4 线程严格、严格 grid 三个 job 都红在 `BotSocketTest.java:303`，`failed_by_reason {"internal-error":…}`；改动后在本机默认模式跑 `loadtest` 本类 | `tests="8"` 0 失败 |
 | 4 | 本类与 `entity.player.PlayerSpawnFailureIntegrationTest`、`network.ConnectionManagerIntegrationTest` 在 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 与再加 `-Dsynaxis.thread-provider=grid` 下各跑一次 | 两种模式下三类 11 条 0 失败 |
 
@@ -12023,6 +12024,133 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | 5 | 还原后跑第 1 步，同批带 `PluginSchedulerAsyncIntegrationTest`（第 8 次运行） | 与第 1 步相同；`PluginSchedulerAsyncIntegrationTest` 6 条 0 失败 |
 
 后置：`grep -rn proof.never server-app/src/main` 无输出；`git status --short` 无输出。
+
+### 生产就绪 · RUN-081：PLAYER（换实例的续延、区块环的卸载事件、configuration 态的 setter、死亡与回血、NaN、连接状态与调度器）
+
+对应 `REQ-PROD-019`、`REQ-PROD-026`、`REQ-PROD-046`、`REQ-PROD-047`、`REQ-PROD-005`、`REQ-PROD-037`、`REQ-PROD-045`、`REQ-PROD-021`、`REQ-M2-006`（`docs/DESIGN-PROD.md` v0.9.95：`API-PROD-016`「在实体所属线程上等传送与换实例」一条末句，`API-PROD-031` `MELEE` 一行；`docs/DESIGN.md` §11.1 断线口径之后两段、§15「实体数值」一行、§16 四行；`docs/DESIGN-M2.md` §8 载体层第二条）。用例号段 870～879，由组 PLAYER 在分支 `prod/r081-PLAYER`（基于 `main` `965c3bddae`）写入。改动（根模块与 `server-app`，接口签名不变，只新增成员）：
+- `Player#setInstance`：入口查目标实例已注册（未注册同步抛 `IllegalStateException`，一个包都不发），同一实例的报错带用户名并提示 `teleport(Pos)`；每次调用把换实例计数加一，续延在玩家的监视器里判「玩家已移除或计数已变」，是就抛 `CancellationException` 作废这次换实例；等区块的续延由 `AtomicBoolean` 认领，调用线程上的 `join` 只内联跑这一份，不再 `scheduler.process()`。
+- `Player` 的区块环：`remove`、`respawn`、`spawnPlayer` 一律按视距票的环（`ticketInstance`、`ticketCenterX/Z`、`ticketRadius`）报 `PlayerChunkUnloadEvent`；重生与换维度只报事件、不发包（客户端自己丢区块），都在玩家还在旧实例、环还没挪时报。
+- `Player` 的 configuration 态：`joinedGame` 在 JoinGame 入队之前置位、`remove` 时清掉；生命值、饱食度、经验与等级、手持格、能力、调试信息、重生界面的 setter 只在置位时发包，`sendMessage` 不置位时丢弃；JoinGame 之后补发 `SetExperiencePacket`；首次成为自己背包的 viewer 时，对 BODY、SADDLE 以外的六个装备位补一次属性修饰。
+- 死亡：`Player#kill` 把死亡界面与死亡消息挪到 `super.kill()` 之后、死亡还成立时才发；`respawn` 对「已死」或「死亡界面已发」都放行；`LivingEntity#setHealth` 的复活分支调 `updatePose()`；`EntityCreature#kill` 在死亡事件里被回血时不排移除。熄火：`EntityFireExtinguishEvent` 被取消即继续燃烧，`Player#respawn` 改调包级 `resetFire()`。
+- 伤害与数值：`Damage.fromPlayer` 的类型改为 `PLAYER_ATTACK`；死亡消息带第二个参数（攻击者，没有时取来源），死亡界面文本等于死亡消息；`Damage` 构造与 `setAmount`、`LivingEntity#setHealth` 拒 NaN；属性计算结果为 NaN 时取下限；`LivingEntity#getTargetBlockPosition` 拒非正的距离。
+- 连接：`PlayerConnection#disconnect` 改用 `ConnectionManager#dropPlayer` 的返回值决定派发；`storeCookie`、`transfer` 只放行 configuration 与 play；`StatusListener` 的 ping 加一次性闸 `acquireStatusPing`；`ConnectionManager` 遇到作废的出生只记 debug、不踢人，测试模式的 `join` 也接住 `CancellationException`；`PluginMessagePacket` 构造时拒绝超过 `MAX_PAYLOAD_BYTES`（1,048,576）字节的负载。
+- 调度器：`SchedulerImpl#handleTask` 把取调度值与整个 `switch` 包进 `try`，失败（含返回 null）时把原异常交给异常处理器并取消任务；目标 tick 与时长饱和处理；`FutureSchedule` 在 future 正常或异常完成后都重跑任务；`Task.Builder#delay`、`#repeat` 与两个带参调度值拒 null。
+
+测试：根模块新类 `entity.player.PlayerInstanceChangeIntegrationTest`（7 条）、`entity.player.PlayerChunkRingEventIntegrationTest`（3 条）、`entity.damage.DamageIntegrationTest`（3 条）、`network.player.PlayerConnectionGuardIntegrationTest`（2 条）、`network.packet.server.common.PluginMessagePacketTest`（2 条）、`entity.LivingEntityTargetBlockTest`（1 条）；旧类加条：`entity.player.PlayerReconfigurationIntegrationTest` 2 → 5、`entity.LivingEntityDeathIntegrationTest` 3 → 7、`entity.LivingEntityHealthIntegrationTest` 5 → 7、`entity.EntityFireIntegrationTest` 4 → 6、`entity.attribute.AttributeInstanceTest` 2 → 3、`listener.StatusRequestGuardIntegrationTest` 1 → 2、`timer.TestScheduler` 15 → 21；`network.packet.PacketWritingOversizedTest`、`network.PacketWriteQueueIntegrationTest` 的超大包由 `PluginMessagePacket` 换成负载不设上限的 `LoginPluginRequestPacket`（按 LOGIN 状态写，走同一段超限保护），条数不变；`server-app` 新类 `app.PluginChannelsSendIntegrationTest`（1 条）。都不连数据库。「跑 `<类>`」即 `./gradlew :test --tests io.github.bearisbug.synaxis.<类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`app.` 开头的类换成 `:server-app:test`），本机每次运行单次借重活锁。源文件代号：`<P>` 是 `src/main/java/io/github/bearisbug/synaxis/entity/Player.java`，`<CM>` 是 `src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java`，行号按本组提交。本组 Gradle 运行编号：第 1 次是改动前的红（`src/main`、`server-app/src/main`、`plugin-api/src/main` 取 `965c3bddae`，测试是本组的，不含 `aFirstSpawnGivenUpIsNotAFailure`）；第 2～4 次是默认、4 线程严格、严格 grid 三种模式的绿；第 5 次是改过两处测试之后那两个类的默认模式复跑；第 6 次是反证。
+
+#### `TC-PROD-870` 在玩家所属 tick 线程上 `join` 换实例的 future：只跑这次换实例的续延，排给 tick 调度线程的任务仍在 tick 调度线程上跑（`docs/DESIGN.md` §16） — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。玩家在 `origin` 里 tick 过一次（分到 tick 线程）；目标实例的区块加载器在闩上等，闩由一条平台线程在 `setInstance` 返回之后打开。玩家调度器的下一 tick 任务里先 `process().scheduler().scheduleNextProcess(记下执行线程)`，再 `setInstance(target).join()`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.player.PlayerInstanceChangeIntegrationTest`，看 `aJoinOnTheTickThreadRunsOnlyItsOwnContinuation`（第 2 次） | 绿：`setInstance` 返回时 future 未完成；`join` 在 `Syn-Tick-*` 上返回；下一个 tick 里记下的执行线程不是 `TickThread`（是走 tick 的测试线程）；玩家在 `target`，`PlayerSpawnEvent` 恰 1 次 |
+| 2 | 改动前的红（第 1 次） | 红在 `PlayerInstanceChangeIntegrationTest.java:105`：`the join ran a task of the scheduler of the process on Syn-Tick-0 ==> expected: <false> but was: <true>`（`join` 在 tick 线程上处理了整个进程调度器） |
+| 3 | 反证有齿（续延认领两次）：`<P>` 里 `land` 开头的 `if (!claimed.compareAndSet(false, true)) return;` 改为 `if (Boolean.getBoolean("proof.never") && !claimed.compareAndSet(false, true)) return;`，跑本类（第 6 次），再还原 | `7 tests completed, 2 failed`：本条红在 `PlayerInstanceChangeIntegrationTest.java:108`，`Expected 1 element(s), got 2: [PlayerSpawnEvent@…, PlayerSpawnEvent@…]`（`join` 内联跑过的续延又由调度器在下一个 tick 跑了一次）；另一条红的是 `TC-PROD-871` 第 3 步那一处。还原后本类 7 条在第 2～4 次都绿 |
+
+后置：`grep -rn proof.never src/main` 无输出。
+
+#### `TC-PROD-871` 换实例等区块期间玩家被移除、被后一次调用取代，或首次出生途中离开 play：前一次的 future 以 `CancellationException` 失败，不留视距票、不派发出生事件、不发换维度包，作废的首次出生不踢人（`docs/DESIGN.md` §16） — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。目标实例的区块加载器在闩上等（`supportsParallelLoading` 为 true，`setInstance` 返回时 future 未完成）；玩家没有 tick 过，测试线程可以直接调它的方法。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.player.PlayerInstanceChangeIntegrationTest`，看 `aRemovedPlayerGivesUpItsInstanceChange`、`aLaterInstanceChangeSupersedesAPendingOne`、`aSupersededChangeOfDimensionSendsNoRespawn`、`aFirstSpawnGivenUpIsNotAFailure`（第 2 次） | 都绿。① `setInstance(target)` 挂起后 `remove()`、开闸：`join` 抛 `CancellationException`，`isCancelled()` 为 true，`PlayerSpawnEvent` 0 次，`target.chunkTicketCount(0, 0)` 为 0，目标实例的玩家集合里没有他。② 挂起 `setInstance(abandoned)` 后 `setInstance(target).join()`：玩家在 `target`；开闸后前一次 `join` 抛 `CancellationException`，玩家仍在 `target`，`PlayerSpawnEvent` 1 次，`abandoned` 的票为 0。③ 先挂起去下界（维度名 `minecraft:the_nether`）的，再挂起去同维度 `target` 的，先开下界的闸：前一次 `join` 抛 `CancellationException`；再开 `target` 的闸：玩家在 `target`，客户端收到的 `RespawnPacket` 为 0 个。④ 出生实例的加载器进了 `loadChunk` 之后，在另一条线程上 `remove(false)`（切回 configuration 时 `ConnectionManager` 在发 StartConfiguration 之前做的那一步），再开闸：`connect` 照常返回，玩家不在任何实例里、仍在线，没收到 `DisconnectPacket` |
+| 2 | 改动前的红（第 1 次；④ 不在其中，见第 3 步） | ① 红在 `:124`：`Expected java.util.concurrent.CancellationException to be thrown, but nothing was thrown.`（续延照跑，已移除的玩家落进目标实例、加上视距票）；② 红在 `:145`，同一条消息（玩家最后落在后载完的 `abandoned`）；③ 红在 `:171`，同一条消息（下界那次照样落地并发了 Respawn） |
+| 3 | 反证有齿（作废的出生当失败处理）：`<CM>` 里 `if (throwable instanceof CancellationException) {` 改为 `if (Boolean.getBoolean("proof.never") && throwable instanceof CancellationException) {`，跑本类（第 6 次，与 `TC-PROD-870` 第 3 步同批），再还原 | ④ 红在 `PlayerInstanceChangeIntegrationTest.java:226`，`a spawn given up must not get the player kicked ==> expected: <true> but was: <false>`（作废的出生被当成失败，写一行 ERROR、以 `synaxis:internal-error` 踢人）；同批另一条红见 `TC-PROD-870` 第 3 步，其余 5 条绿。改动前的 `main` 上 ④ 不会作废出生，玩家会落进出生实例，这一条的改动前读数没有单独跑 |
+
+后置：`grep -rn proof.never src/main` 无输出。
+
+#### `TC-PROD-872` 玩家换去未注册的实例同步抛出、一个包都不发；换去所在的实例时报错带用户名并提示 `teleport` — 对应 `REQ-PROD-019` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.player.PlayerInstanceChangeIntegrationTest`，看 `anUnregisteredInstanceIsRefusedBeforeAnyPacket`、`theInstanceThePlayerIsInIsRefusedWithATeleportHint`（第 2 次） | 都绿。注销之后的实例：`setInstance` 当场抛 `IllegalStateException`，之后客户端一个包都没收到，玩家仍在 `origin`。所在的实例：抛 `IllegalArgumentException`，消息含用户名与 `teleport` |
+| 2 | 改动前的红（第 1 次） | 前者红在 `:239`：`Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.`（原先先发视距与卸载包、在续延里才失败）；后者红在 `:250`：`Instance should be different than the current one ==> expected: <true> but was: <false>` |
+
+后置：无（实例、连接与玩家由 `Env` 清理）。
+
+#### `TC-PROD-873` 玩家被移除、重生、换实例（同维度与跨维度）：旧实例的节点对视距票的环里每个区块恰收到一次 `PlayerChunkUnloadEvent`，限流器留住的环心也一样 — 对应 `REQ-PROD-026` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。监听器挂在实例的事件节点上（与挂地图分片上的 `SynxRelight` 同一处），只记这名玩家的卸载事件。区块更新限流器的历史是引擎默认的 5 格。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.player.PlayerChunkRingEventIntegrationTest`（第 2 次） | 3 条 0 失败。`aRemovedPlayerReportsTheRingItsTicketsHold`：客户端视距 2（环半径 r = 3），用位置包从区块 0 走到 1、2、1、0，玩家回到区块 0 而环心仍在区块 2（`isChunkInRing(2 + r, 0)` 为真）；`remove()` 之后收到的卸载事件正好是以 (2, 0) 为心、半径 r 的 49 个区块，每个一次。`aRespawnReportsTheRingTheClientDrops`：死后 `respawn()`，收到以 (0, 0) 为心的整环，每个一次，没有 `UnloadChunkPacket`。`aChangeOfInstanceReportsTheRingInTheOldInstance`：换到同维度的实例，旧实例收到整环；再换到下界实例，前一个实例收到整环、每个一次，没有 `UnloadChunkPacket` |
+| 2 | 改动前的红（第 1 次） | 三条都红：`aRemoved…` 在 `:58`，`the unloaded chunks must be the ring of the tickets`（按位置取环，环心是 (0, 0)，东侧两列没报）；`aRespawn…` 在 `:74`（重生一个卸载事件都没有）；`aChangeOfInstance…` 在 `:98`，`a change of dimension must report the ring too`（同维度那一半照绿，跨维度一个事件都没有） |
+
+后置：无（实例、连接与玩家由 `Env` 清理）。
+
+#### `TC-PROD-874` configuration 态调 setter 与 `sendMessage`：一个 play 包都不排，进世界后客户端拿到设好的经验、等级、手持格与能力；出生前放进背包的装备进世界后生效（`docs/DESIGN.md` §11.1） — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。跟踪的 play 包：`UpdateHealthPacket`、`SetExperiencePacket`、`HeldItemChangePacket`、`PlayerAbilitiesPacket`、`EntityStatusPacket`、`ChangeGameStatePacket`、`SystemChatPacket`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.player.PlayerReconfigurationIntegrationTest`（第 2 次） | 5 条 0 失败。`settersCalledInTheConfigurationQueueNoPlayPacket`：`AsyncPlayerConfigurationEvent` 里调 `setHealth(10)`、`setFood(10)`、`setFoodSaturation(2)`、`setExp(0.5f)`、`setLevel(7)`、`setHeldItemSlot(3)`、`setAllowFlying(true)`、`setReducedDebugScreenInformation(true)`、`setEnableRespawnScreen(false)`、`sendMessage(…)`，监听器返回时这 7 类包一个都没有；进世界后有 `SetExperiencePacket(0.5, 7)`、`HeldItemChangePacket(3)` 与带 `FLAG_ALLOW_FLYING` 的 `PlayerAbilitiesPacket`。`settersCalledAfterLeavingPlayQueueNoPlayPacket`：`startConfigurationPhase` 加 `updateWaitingPlayers` 之后调生命值、饱食度、经验、等级、手持格、飞行、调试信息与 `sendMessage`，7 类包都是 0。`equipmentGivenInTheConfigurationAppliesItsModifiers`：配置阶段往 0 号格放一根带 `ATTACK_DAMAGE` +5（`ADD_VALUE`，主手）的木棍，进世界后 `getAttributeValue(ATTACK_DAMAGE)` 为基础值 + 5 |
+| 2 | 改动前的红（第 1 次） | 三条新用例都红：`settersCalledInThe…` 在 `PlayerReconfigurationIntegrationTest.java:97`，`play packets were queued in the configuration state ==> expected: <[]> but was: <[UpdateHealthPacket, UpdateHealthPacket, UpdateHealthPacket, SetExperiencePacket, SetExperiencePacket, HeldItemC…`（真连接上每个都是一次写线程异常断线）；`settersCalledAfter…` 在 `:121`，`Expected 0 element(s), got 2: [UpdateHealthPacket[health=4.0, food=20, …], UpdateHealthPacket[health=4.0, food=4, …]]`；`equipment…` 在 `:150`，`the sword held from the start must count ==> expected: <6.0> but was: <1.0>` |
+
+后置：无（实例、连接与玩家由 `Env` 清理）。
+
+#### `TC-PROD-875` 死亡被监听器回血取消：生物不被移除、姿态回到站立，玩家不收死亡界面与死亡消息；死亡界面发出后被回血的玩家照样能重生；熄火被取消即继续燃烧，重生的玩家不经可取消的熄火 — 对应 `REQ-PROD-046` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。回血都在 `EntityDeathEvent` 监听器里 `heal()`，或死后直接 `heal()`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.LivingEntityDeathIntegrationTest` 与 `entity.EntityFireIntegrationTest`（第 2 次；`aPlayerHealedOnItsDeathScreenStillRespawns` 的第二次 `respawn` 在第 2 次运行之后改用新收集器，本类在第 5 次复跑） | 7 + 6 条 0 失败。`healingInDeathEventLeavesTheDyingPose`：`kill()` 之后姿态 `STANDING`。`aCreatureHealedInItsDeathEventIsNotRemoved`：移除动画延迟 0 的 `EntityCreature` 被 100 伤害打死又回血，没死、没被移除。`aPlayerHealedInItsDeathEventGetsNoDeathScreenNorDeathMessage`：没有 `DeathCombatEventPacket`、没有 `SystemChatPacket`。`aPlayerHealedOnItsDeathScreenStillRespawns`：`kill()` 收到一个 `DeathCombatEventPacket`，`heal()` 后 `respawn()` 收到一个 `RespawnPacket`，再 `respawn()` 不再收到（已不在死亡界面）。`aCancelledExtinguishingKeepsTheEntityBurning`：熄火事件一律取消，`setFireTicks(2)` 后 tick 3 次仍着火、计数大于 0；再 `setFireTicks(0)`，着火与计数都不变。`aRespawningPlayerIsPutOutWhateverTheListeners`：同样取消熄火，玩家着火 100 tick 后死亡、重生，不着火、计数 0 |
+| 2 | 改动前的红（第 1 次） | `LivingEntityDeathIntegrationTest` 四条红：`:45` `expected: <STANDING> but was: <DYING>`；`:59` `the creature was removed although its death was cancelled`；`:74` `Expected 0 element(s), got 1: [DeathCombatEventPacket[…]]`；`:92` `Expected 1 element(s), got 0`（`respawn` 只看 `isDead()`，客户端卡在死亡界面）。`EntityFireIntegrationTest` 的 `aCancelledExtinguishing…` 红在 `:100`，`a burning entity must not count 0 fire ticks`；`aRespawningPlayer…` 修前也绿（原先重生强制改元数据），它钉住的是重生不走可取消的熄火 |
+
+后置：无（实例、连接与玩家由 `Env` 清理）。
+
+#### `TC-PROD-876` 伤害的类型、死亡消息的参数与 NaN：`fromPlayer` 是 `PLAYER_ATTACK`，死亡消息带凶手名，死亡界面等于死亡消息；NaN 伤害与生命值被拒、NaN 属性取下限，无穷伤害照常致死；非正的瞄准距离被拒（`docs/DESIGN.md` §15） — 对应 `REQ-PROD-046`、`REQ-PROD-047` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.damage.DamageIntegrationTest`、`entity.LivingEntityHealthIntegrationTest`、`entity.attribute.AttributeInstanceTest`、`entity.LivingEntityTargetBlockTest`（第 2 次） | 3 + 7 + 3 + 1 条 0 失败。`Damage.fromPlayer` 的类型 `minecraft:player_attack`、`fromEntity` 的 `minecraft:mob_attack`；`GENERIC` 的死亡消息参数只有受害者名，玩家近战的参数是受害者名与凶手的 `getName()`，僵尸造成的是受害者名与 `entity.minecraft.zombie` 翻译键，死亡界面文本与死亡消息相等；`new Damage(…, NaN)` 与 `setAmount(NaN)` 抛 `IllegalArgumentException`、伤害量不变，`+∞` 伤害把僵尸打死、生命值 0；`setHealth(NaN)` 抛异常、生命值仍 20；`MAX_HEALTH` 基础值设成 NaN 不抛，属性值是它的下限 1，`heal()` 不抛、生命值 1；`SAFE_FALL_DISTANCE` 的基础值或修饰符为 NaN 时值是下限 −1024；`getTargetBlockPosition(0)`、`(-1)` 抛 `IllegalArgumentException` |
+| 2 | 改动前的红（第 1 次） | `DamageIntegrationTest` 三条全红：`:33` `expected: <…player_attack> but was: <…mob_attack>`，`:49` 参数只有受害者名，`:65` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；`LivingEntityHealthIntegrationTest` 两条红：`:45`（NaN 生命值照收）、`:54` `expected: <1.0> but was: <NaN>`；`AttributeInstanceTest` 红在 `:25`，`expected: <-1024.0> but was: <NaN>`；`LivingEntityTargetBlockTest` 红在 `:13`，`expected: <java.lang.IllegalArgumentException> but was: <java.lang.NullPointerException>` |
+
+后置：无（实例、连接与玩家由 `Env` 清理）。
+
+#### `TC-PROD-877` 连接：两条线程同时断开同一条 configuration 期连接只派发一次断线事件；login 态的 `storeCookie`、`transfer` 在调用处被拒；第二个 ping 关闭状态连接；超过 1 MiB 的插件消息在调用线程被拒（`docs/DESIGN.md` §16，`docs/DESIGN-M2.md` §8） — 对应 `REQ-PROD-005`、`REQ-PROD-045`、`REQ-PROD-037`、`REQ-M2-006` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。断开的两条线程是平台线程，测试线程先占住 `ConnectionManager` 的监视器，等两条线程都阻塞在它上面（`ThreadInfo#getLockOwnerId` 是测试线程）才放开。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `network.player.PlayerConnectionGuardIntegrationTest`、`listener.StatusRequestGuardIntegrationTest`、`network.packet.server.common.PluginMessagePacketTest`、`network.packet.PacketWritingOversizedTest`、`network.PacketWriteQueueIntegrationTest`、`app.PluginChannelsSendIntegrationTest`（第 2 次；最后一个类在第 5 次，见 `TC-PROD-879` 第 1、4 步） | 2 + 2 + 2 + 4 + 1 + 1 条 0 失败。两条线程同时 `disconnect()`：这名玩家的 `PlayerDisconnectEvent` 恰 1 次。LOGIN 态：`storeCookie` 与 `transfer` 抛 `IllegalStateException`、消息含 `LOGIN`，一个包都没排；CONFIGURATION 态 `storeCookie` 排一个 `CookieStorePacket`。监听器给 ping 加 1 s 延迟、一批写 1,000 个 ping：事件只派发 1 次，第二个 ping 断开连接，第一个的应答还在等延迟。`new PluginMessagePacket("probe:big", 1,048,576 B)` 能构造，1,048,577 B 抛 `IllegalArgumentException`，消息含 `probe:big` 与 `1048577`。插件 `probe` 经 `PluginChannels#send` 发 1,048,577 B：调用线程抛 `IllegalArgumentException`、消息含 `probe:big`，客户端没收到包、玩家仍在线；发 1,048,576 B 收到一个。超大包的两条旧用例改用 LOGIN 状态的 `LoginPluginRequestPacket`，照旧红在「Packet too large」 |
+| 2 | 改动前的红（第 1 次） | `twoThreads…` 红在 `PlayerConnectionGuardIntegrationTest.java:84`，`the player must be reported once ==> expected: <1> but was: <2>`；`storeCookie…` 红在 `:101`，`Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.`；`onlyTheFirstPingIsAnswered` 红在 `StatusRequestGuardIntegrationTest.java:88`，`expected: <1> but was: <1000>`；`PluginMessagePacketTest` 红在 `:22`、`PluginChannelsSendIntegrationTest` 红在 `:29`，都是 `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；两条超大包旧用例修前修后都绿（它们测写侧超限，换的是载体） |
+
+后置：无（实例、连接与玩家由 `Env` 清理）。
+
+#### `TC-PROD-878` 调度器：任务的原异常交给异常处理器；返回 null 的任务被报告并取消、后面排队的任务照跑；future 异常完成后任务照样重跑；溢出的 tick 与时长不再提前执行或抛出；null 调度值在构建处被拒 — 对应 `REQ-PROD-021` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。异常处理器把收到的异常记进列表。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `timer.TestScheduler`（第 2 次） | 21 条 0 失败。`theExceptionOfATaskIsReportedAsItIs`：任务抛的 `IllegalStateException` 原样到异常处理器（同一个对象），任务不再存活。`aTaskReturningNoScheduleIsReportedAndCancelled`：第二次取调度值返回 null，`process()` 不抛，异常处理器收到 1 个 `NullPointerException`，任务不再存活，排在后面的任务照跑。`aFutureScheduleRunsTheTaskAgainWhenTheFutureFails`：future 异常完成后 `process()`，任务跑了 1 次。`aTickScheduleBeyondTheLastTickNeverRuns`：先走 1 tick，再排 `tick(Integer.MAX_VALUE)`，之后 3 次 `processTick()` 都没跑。`aDurationBeyondALongOfMillisecondsNeverRuns`：`duration(Duration.ofSeconds(Long.MAX_VALUE))` 排进去不抛、没跑。`aNullScheduleIsRefusedWhereTheTaskIsBuilt`：`repeat(null)`、`delay(null)`、`TaskSchedule.future(null)` 都抛 `NullPointerException` |
+| 2 | 改动前的红（第 1 次） | 6 条红：`TestScheduler.java:361` `expected: <java.lang.IllegalStateException: task failed> but was: <java.lang.RuntimeException: Exception in scheduled task>`；`:312` `Unexpected exception thrown: java.lang.NullPointerException`（null 从 `process()` 抛出，排在后面的任务没跑）；`:299` `expected: <1> but was: <0>`；`:338` `the target tick wrapped to one already passed`；`:345` `Unexpected exception thrown: java.lang.ArithmeticException: long overflow`；`:324` `Expected java.lang.NullPointerException to be thrown, but nothing was thrown.` |
+
+后置：无（实例、连接与玩家由 `Env` 清理）。
+
+#### `TC-PROD-879` 回归：改到的类与直接受影响的旧类在默认、4 线程严格、严格 grid 三种模式下照绿，含光照会话的 `:synx:test` 与 `server-app` 的 `app.shard` — 对应 `REQ-PROD-019`、`REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。根模块跑 `entity`、`timer`、`network`、`listener`、`instance`、`inventory`、`event`、`thread` 八个包，`:synx:test` 全部，`server-app` 跑 `app.shard.*`、`app.instance.*`、`app.Plugin*`、`app.play.*`、`app.CoreMode*`、`app.HostException*`，外加 `:architecture-tests:test` 与两个模块的 `testNamingCheck`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 默认模式（第 2 次） | 根模块 309 个类 2,113 条 0 失败（跳过 2 条，`PlayerSkinTest` 要外网）；`:synx:test` 22 个类 182 条 0 失败（跳过 1 条）；`server-app` 48 个类 328 条，跳过 33 条（`app.shard` 下 5 个类要 PostgreSQL，本轮不起数据库），失败 1 条：`PluginChannelsSendIntegrationTest` 在 `:36` `Expected 1 element, got []`，测试自己的错（`:testing` 的收集器读过一次就停止收集，第二次发送前要另建一个），改测试后见第 4 步；`:architecture-tests:test` 7 个类 20 条 0 失败；`:testNamingCheck`、`:server-app:testNamingCheck` 通过。本步里的光照会话类：`:synx:test` 全部（含 `RecordingConnection`、`RelightWorld` 夹具）、`app.shard` 的 `ShardWorld*`、`MapShardPlayerAuthorityTest` |
+| 2 | 加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`（第 3 次） | 同一组类：根模块 309 个类 2,113 条、`:synx:test` 22 个类 182 条、`server-app` 48 个类 328 条，都是 0 失败（跳过数同第 1 步，`server-app` 这次包括改过测试的 `PluginChannelsSendIntegrationTest`） |
+| 3 | 再加 `-Dsynaxis.thread-provider=grid`（第 4 次） | 同第 2 步，三个模块都是 0 失败（309 个类 2,113 条、22 个类 182 条、48 个类 328 条） |
+| 4 | 改过两处测试之后，默认模式复跑 `app.PluginChannelsSendIntegrationTest` 与 `entity.LivingEntityDeathIntegrationTest`（第 5 次）：前者第二次发送之前另建收集器，后者第二次 `respawn` 之前另建收集器、断言为空 | `LivingEntityDeathIntegrationTest` 7 条、`PluginChannelsSendIntegrationTest` 1 条，0 失败 |
+
+后置：无（实例、连接与玩家由 `Env` 清理）。
 
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
@@ -13880,6 +14008,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 ITEMNET，物品与聊天组件写给 26.2 客户端的四处断线（`REQ-001`、`REQ-PROD-047`，v0.9.89）→ TC-PROD-810～TC-PROD-814；动了 `ItemStack#asHoverEvent` 或 `ComponentNetworkBufferTypeImpl` 写悬停事件的部分就跑 TC-PROD-810 与 TC-PROD-685；动了 `Particle.Item`、`ParticleImpl` 的默认值或 `DataComponents` 里 `use_remainder`、`sulfur_cube_content`、`bundle_contents`、`charged_projectiles` 的注册就跑 TC-PROD-811；动了 `container` 的注册、`ItemStackTemplate` 或组件补丁的读写就跑 TC-PROD-812；动了 custom 点击事件的写法（`ComponentNetworkBufferTypeImpl`、`ComponentCodecs#CLICK_EVENT`）或 `EngineAdventure#unwrapNbt` 就跑 TC-PROD-813；以上任一处都加跑 TC-PROD-814
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 CMD 组，命令的 condition、参数的包装、目标选择器与参数的错误回调（`REQ-PROD-012`、`REQ-PROD-011`，v0.9.90）→ TC-PROD-820～TC-PROD-826；动了引擎 `GraphConverter`（建命令包时接住 condition 的异常、按 `Argument#unwrap` 取节点形状、没有 parser 的节点不写进包）、`CommandParserImpl`（解析失败的归属、错误回调与调它之前看的语法 condition）、`Argument` 的 `unwrap`、`suggestionType`、`hasSuggestion` 或 `map`、`filter` 的包装类、`ArgumentEntity` 的参数名单，或宿主 `PluginCommandsImpl#guard`，就跑 TC-PROD-820～TC-PROD-825 第 1 步（五个类一次 Gradle），再按上面「控制台与插件命令」一行跑 TC-PROD-240～TC-PROD-247；动了 `Player#UNSAFE_init` 里 `refreshCommands` 与 `setInstance` 的先后，或 `ConnectionManager#updateWaitingPlayers` 对出生时同步异常的处理，再加 TC-PROD-826 的两遍。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-080 组 STORE，Redis 往返离开登录路径、载入名额只包语句、`commitTogether` 的 `apply` 与插件段回调抛 `Error`（`REQ-PROD-004`、`REQ-PROD-006`、`REQ-PROD-007`、`REQ-PROD-008`，v0.9.91）→ TC-PROD-830～TC-PROD-839；动了 `RedisLink` 的 `presence`、`clearPresence`、`dropOldest`、`close` 或连接池配置，就跑 TC-PROD-830～TC-PROD-832 与 TC-PROD-839（`RedisLinkTest` 不要数据库，另两个类要数据库前置与 Valkey）；动了 `PlayerStore` 的 `loadOrRefuse`、`takeLoadSlot` 或 `loadWithin` 里取还名额的几处，就跑 TC-PROD-833、TC-PROD-834、TC-PROD-171 与 TC-PROD-157 的 `TransferTicketsIntegrationTest`；动了 `commitTogether` 排 `apply` 的那一行，跑 TC-PROD-835、TC-PROD-836 与 TC-PROD-148，三种线程模式各一次；动了 `snapshot`、`decode` 的捕获或调 `createDefault()` 的那一处，跑 TC-PROD-837、TC-PROD-838 与 RUN-073 组 D 一行的 TC-PROD-728 第 4 步。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 PLAYER，换实例的续延、区块环的卸载事件、configuration 态的 setter、死亡与回血、NaN、连接状态与调度器（`REQ-PROD-019`、`REQ-PROD-026`、`REQ-PROD-046`、`REQ-PROD-047`、`REQ-PROD-005`、`REQ-PROD-021`，v0.9.95）→ TC-PROD-870～TC-PROD-879；动了 `Player#setInstance`、`#spawnPlayer`、`#remove`、`#respawn`、`#moveTicketRing` 或 `#reportRingDropped` 就跑 TC-PROD-870～TC-PROD-873，并在三种模式下跑 TC-PROD-879（含光照会话的 `:synx:test` 与 `app.shard`）；动了 `Player#joinGame`、只发 play 包的 setter 或 `Player#sendMessage` 跑 TC-PROD-874；动了 `Player#kill`、`LivingEntity#kill`、`#setHealth`、`#setFireTicks` 或 `EntityCreature#kill` 跑 TC-PROD-875；动了 `Damage`、`EntityDamage`、`AttributeInstance#computeValue` 或 `LivingEntity#getTargetBlockPosition` 跑 TC-PROD-876；动了 `PlayerConnection` 的 `disconnect`、`storeCookie`、`transfer`，`StatusListener#pingRequestListener`，`ConnectionManager` 的 `dropPlayer` 与出生失败的处理，或 `PluginMessagePacket` 跑 TC-PROD-877 与 TC-PROD-871 第 1 步的 ④；动了 `SchedulerImpl#handleTask`、`Task.Builder` 或 `TaskScheduleImpl` 跑 TC-PROD-878。
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

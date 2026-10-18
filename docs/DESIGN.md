@@ -238,7 +238,7 @@ erDiagram
   - 错误：绑定失败抛 `IOException`，进程进入 `stopped`（§11）
 - **`API-004` 注册表访问 Java API** — 实现 `REQ-007`
   - 方法：`Registries.dimensionType()` 等 4 个语义注册表返回类型化对象；`Registries.opaque(key)` 返回 `RegistryKey → BinaryTag`
-  - 约束：注册表在 `start()` 后冻结，写入抛 `IllegalStateException`
+  - 约束：注册表在 `start()` 后冻结，写入抛 `IllegalStateException`，含 tag 集合（`getOrCreateTag` 新建、`removeTag`）；已有的 tag 照常查到
 
 演进与弃用：
 

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.RedisLinkTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-18T17:12:18.343Z" hostname="Mac.local" time="4.522">
+  <properties/>
+  <testcase name="aFullPresenceQueueDropsItsOldestWriteWithOneWarning()" classname="io.github.bearisbug.synaxis.app.store.RedisLinkTest" time="2.01"/>
+  <testcase name="aUrlOfAnotherSchemeIsRefusedWithoutThePassword()" classname="io.github.bearisbug.synaxis.app.store.RedisLinkTest" time="0.003"/>
+  <testcase name="aUrlThatIsNotOneIsRefusedWithoutThePassword()" classname="io.github.bearisbug.synaxis.app.store.RedisLinkTest" time="0.0"/>
+  <testcase name="aPercentEncodedPasswordIsTaken()" classname="io.github.bearisbug.synaxis.app.store.RedisLinkTest" time="2.506"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

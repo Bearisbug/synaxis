@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.FrozenBlockUseIntegrationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-18T17:11:54.465Z" hostname="Mac.local" time="0.066">
+  <properties/>
+  <testcase name="aPlayerFrozenByItsTransferPlacesNoBlockInteractsWithNoneAndUsesNoItem(Env)" classname="io.github.bearisbug.synaxis.app.store.FrozenBlockUseIntegrationTest" time="0.066"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

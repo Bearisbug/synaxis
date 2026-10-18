@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-10-18T17:08:41.975Z" hostname="Mac.local" time="41.583">
+  <properties/>
+  <testcase name="repetition 1 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="0.067"/>
+  <testcase name="repetition 2 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="0.071"/>
+  <testcase name="repetition 3 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="0.068"/>
+  <testcase name="repetition 4 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="0.062"/>
+  <testcase name="repetition 5 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="0.064"/>
+  <testcase name="repetition 1 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="3.168"/>
+  <testcase name="repetition 2 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="3.172"/>
+  <testcase name="repetition 3 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="3.154"/>
+  <testcase name="repetition 4 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="3.164"/>
+  <testcase name="repetition 5 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="3.155"/>
+  <testcase name="repetition 1 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="5.089"/>
+  <testcase name="repetition 2 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="5.093"/>
+  <testcase name="repetition 3 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="5.078"/>
+  <testcase name="repetition 4 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="5.073"/>
+  <testcase name="repetition 5 of 5" classname="io.github.bearisbug.synaxis.app.store.ShardGatesRaceTest" time="5.094"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-18T17:13:18.281Z" hostname="Mac.local" time="11.244">
+  <properties/>
+  <testcase name="theTransferEventIsCalledOnThePlayersTickThreadBetweenTheCookieAndTheTransfer(Env)" classname="io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest" time="0.078"/>
+  <testcase name="aPlayerWhoLeavesBeforeItsTickIsSentNoTicketAndTheFutureStillCompletes(Env)" classname="io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest" time="5.103"/>
+  <testcase name="aPlayerStillConnectedGetsItsTicketHoweverLateItsTick(Env)" classname="io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest" time="6.062"/>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

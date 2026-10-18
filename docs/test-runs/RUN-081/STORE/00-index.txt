@@ -49,3 +49,31 @@ gradle.txt 是那次运行的完整输出，只删了包装脚本等槽位时每
   2 tests completed, 1 failed，前者红在 PlayerStoreIntegrationTest.java:1197，expected: <true> but was: <false>，
   台账 save_fenced {character_id=1, session_id=1, cause=zero_rows}；后者绿。之后 git checkout 还原，
   grep -rn proof.never server-app/src/main 无输出。
+
+后补一轮（2026-10-19 01:03 至 01:17，UTC+8）：提交 d0227b8f78（设计文档）、bac61c14eb（代码与测试），
+以下 07～10 的测试行号按 bac61c14eb。补的是 saveNow 排到下一个 tick 之后没有访问数据库的两种结局的台账 cause、
+commitTogether 提交线程只读校验时拷贝的段表、转服写回失败回到 online 之后的退避可被登出叫醒，
+以及 saveNow 叫醒退避中的普通保存那一处的测试（叫醒本身 ecb8495d6c 已有）。
+
+07-red/  第 7 次：改动前的红（server-app/src/main 取 f079f9d3c1 的，测试是 bac61c14eb 的）
+  另把 PlayerStore.java:1017 的 if (release || done != null) record.notifyAll(); 临时改为 if (release) record.notifyAll();，
+  作 aSaveNowWakesASaveBackingOffAndIsAnsweredAtOnce 的反证（那处叫醒修前就有，修前跑它是绿的）；跑完 git checkout 还原，
+  grep 'if (release || done != null) record.notifyAll();' 恰 1 行。只跑本轮新加的 5 条（app.store.PlayerStoreIntegrationTest）：
+  5 tests completed, 5 failed。aSaveNowWakesASaveBackingOffAndIsAnsweredAtOnce 红在 :1349（took 2913 ms）；
+  aLogoutAfterATransferWhoseWriteFailedWakesTheRetryOfItsSnapshot 红在 :1381（took 2993 ms）；
+  aCommitIsNotChangedByWhatItsCallerDoesToTheMapsAfterwards 红在 :1603（expected SAVED, was UNAVAILABLE）；
+  aSaveNowWhosePlayerIsFrozenByItsTickNeverReachedTheDatabase 红在 :1663、
+  aSaveNowWhosePlayerLeavesBeforeItsTickNeverReachedTheDatabase 红在 :1681，台账都是 cause=db_error。
+
+08-green-default/  第 8 次：修后（bac61c14eb），默认模式，带 :server-app:jacocoTestReport
+  跑 app.store.*（24 个类）、app.PlayerDataIntegrationTest、app.management.ManagementTransferIntegrationTest、
+  app.TransferAdmissionIntegrationTest，加 :server-app:testNamingCheck 与 :plugin-api:compileJava（Javadoc 改动随 Error Prone 编译）。
+  27 个类 174 个，0 失败 0 跳过，BUILD SUCCESSFUL in 2m 35s；PlayerStoreIntegrationTest 48 个。
+  coverage.txt：server-app 主代码本轮（相对 f079f9d3c1）新增的可执行行 16 行全部覆盖；相对 965c3bddae 的累计数里
+  PluginSchedulerImpl 的几行没覆盖，是这次没跑 app.PluginScheduler* 三个类（本轮没改它，第 3 次覆盖 6/6）。
+
+09-green-strict/  第 9 次：同第 8 次的类（不带 jacoco），加 -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+  27 个类 174 个，0 失败 0 跳过，BUILD SUCCESSFUL in 2m 57s；报告里出现 Syn-Tick-2。
+
+10-green-grid/  第 10 次：同第 9 次，再加 -Dsynaxis.thread-provider=grid
+  27 个类 174 个，0 失败 0 跳过，BUILD SUCCESSFUL in 2m 43s。

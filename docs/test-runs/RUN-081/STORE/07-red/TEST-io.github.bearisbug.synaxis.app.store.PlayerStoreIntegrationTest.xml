@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" tests="5" skipped="0" failures="5" errors="0" timestamp="2026-10-18T17:03:54.489Z" hostname="Mac.local" time="11.067">
+  <properties/>
+  <testcase name="aSaveNowWhosePlayerLeavesBeforeItsTickNeverReachedTheDatabase(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="3.096">
+    <failure message="org.opentest4j.AssertionFailedError: not a database failure: [critical_commit {shard_id=r1-c1, kind=save_now, result=unavailable, cause=db_error, elapsed_ms=34, participants=1}] ==&gt; expected: &lt;[cause=frozen]&gt; but was: &lt;[cause=db_error]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: not a database failure: [critical_commit {shard_id=r1-c1, kind=save_now, result=unavailable, cause=db_error, elapsed_ms=34, participants=1}] ==&gt; expected: &lt;[cause=frozen]&gt; but was: &lt;[cause=db_error]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aSaveNowWhosePlayerLeavesBeforeItsTickNeverReachedTheDatabase(PlayerStoreIntegrationTest.java:1681)
+</failure>
+  </testcase>
+  <testcase name="aCommitIsNotChangedByWhatItsCallerDoesToTheMapsAfterwards(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.48">
+    <failure message="org.opentest4j.AssertionFailedError: written, and answered so ==&gt; expected: &lt;SAVED&gt; but was: &lt;UNAVAILABLE&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: written, and answered so ==&gt; expected: &lt;SAVED&gt; but was: &lt;UNAVAILABLE&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aCommitIsNotChangedByWhatItsCallerDoesToTheMapsAfterwards(PlayerStoreIntegrationTest.java:1603)
+</failure>
+  </testcase>
+  <testcase name="aLogoutAfterATransferWhoseWriteFailedWakesTheRetryOfItsSnapshot(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="3.416">
+    <failure message="org.opentest4j.AssertionFailedError: written without waiting out the 3 s backoff: took 2993 ms ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: written without waiting out the 3 s backoff: took 2993 ms ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aLogoutAfterATransferWhoseWriteFailedWakesTheRetryOfItsSnapshot(PlayerStoreIntegrationTest.java:1381)
+</failure>
+  </testcase>
+  <testcase name="aSaveNowWhosePlayerIsFrozenByItsTickNeverReachedTheDatabase(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="0.462">
+    <failure message="org.opentest4j.AssertionFailedError: not a database failure: [critical_commit {shard_id=r1-c1, kind=save_now, result=unavailable, cause=db_error, elapsed_ms=1, participants=1}, critical_commit {shard_id=r1-c1, kind=commit, result=saved, cause=null, elapsed_ms=20, participants=1}] ==&gt; expected: &lt;[cause=frozen]&gt; but was: &lt;[cause=db_error]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: not a database failure: [critical_commit {shard_id=r1-c1, kind=save_now, result=unavailable, cause=db_error, elapsed_ms=1, participants=1}, critical_commit {shard_id=r1-c1, kind=commit, result=saved, cause=null, elapsed_ms=20, participants=1}] ==&gt; expected: &lt;[cause=frozen]&gt; but was: &lt;[cause=db_error]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aSaveNowWhosePlayerIsFrozenByItsTickNeverReachedTheDatabase(PlayerStoreIntegrationTest.java:1663)
+</failure>
+  </testcase>
+  <testcase name="aSaveNowWakesASaveBackingOffAndIsAnsweredAtOnce(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest" time="3.596">
+    <failure message="org.opentest4j.AssertionFailedError: answered without waiting out the 3 s backoff: took 2913 ms ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: answered without waiting out the 3 s backoff: took 2913 ms ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest.aSaveNowWakesASaveBackingOffAndIsAnsweredAtOnce(PlayerStoreIntegrationTest.java:1349)
+</failure>
+  </testcase>
+  <system-out></system-out>
+  <system-err></system-err>
+</testsuite>

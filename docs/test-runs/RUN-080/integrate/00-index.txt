@@ -1,0 +1,59 @@
+RUN-080 integration: prod/integrate-080 on this machine, before the draft PR. Times are local (UTC+8), 2026-10-18.
+
+The branch: origin/main a211a45ca1 (docs/DESIGN-M3.md v0.51 on top of cb969826b7), then git merge --no-ff of the eight
+groups in this order, then one commit with the documents and the test change below:
+  ea32298307  prod/r080-NET      cd53ba0ff5   docs/DESIGN-PROD.md v0.9.85
+  31a18bae14  prod/r080-THREAD   6d54c41bce   v0.9.86   (../THREAD/)
+  10cd0679b2  prod/r080-WORLD    52d65ce221   v0.9.87
+  d2fd64afc3  prod/r080-CODEC    5050891717   v0.9.88   (../CODEC/)
+  c14785796e  prod/r080-ITEMNET  c1874f533e   v0.9.89   (../ITEMNET/)
+  4a720b584b  prod/r080-CMD      ea88f12a54   v0.9.90   (../CMD/)
+  c19e0ae447  prod/r080-STORE    0f65cc45f0   v0.9.91   (../STORE/)
+  ac615c4616  prod/r080-HOST     603db50dd0   docs/DESIGN-PLAY.md v0.19
+The documents of the integration are docs/DESIGN-PROD.md v0.9.92 and docs/DESIGN-PLAY.md v0.20.
+
+Code and test files after the merges: equal to the group's branch for every file only one group changed. Two code
+files were changed by two groups and merged by git without a conflict, in disjoint hunks:
+  src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java   NET and WORLD
+  src/main/java/io/github/bearisbug/synaxis/item/ItemStack.java              CODEC and ITEMNET
+docs/PLUGINS.md (THREAD and STORE) merged without a conflict as well. The conflicts were all in docs/DESIGN-PROD.md
+and docs/TEST.md.
+
+Gradle, one build at a time through ~/.claude/r077/gradle.zsh (--max-workers=2 --no-daemon), 8 builds:
+  1  12:31:34-12:32:18  compileJava compileTestJava testNamingCheck forbiddenImportsCheck (all modules)
+                        :architecture-tests:test :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility
+                        -PbaselineJarDir=<plugin-api.jar and protocol.jar of release v0.3.0, gradle/abi-baseline.tag>
+                        :protocol:publishToMavenLocal into a temporary maven directory
+                        BUILD SUCCESSFUL. architecture-tests 7 classes, 20 tests, 0 failures; their output:
+                          translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out
+                          config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out
+                        both ABI gates ran against the v0.3.0 jars and passed
+  2  12:33:14-12:36:22  client-fabric: compileJava compileTestJava compileGametestJava against that :protocol
+                        BUILD SUCCESSFUL
+  3  12:36:52-12:37:06  the classes where two groups meet, default mode: root FailedSpawnRegistrationIntegrationTest,
+  4  12:37:06-12:37:20  PlayerSpawnFailureIntegrationTest, EntityAsyncContinuationIntegrationTest,
+  5  12:37:20-12:37:34  LivingEntityHealthIntegrationTest, ConnectionManagerIntegrationTest, CommandTreeAtSpawnIntegrationTest,
+                        PlayerBlockPlacementIntegrationTest, ComponentHoverItemRegistriesTest, TagItemIntegrationTest,
+                        ItemStackHashRegistriesTest; server-app CommandsIntegrationTest, PlayerStateSectionIntegrationTest,
+                        SceneServiceIntegrationTest, PluginSchedulerRunOnIntegrationTest.
+                        Build 4 adds -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true, build 5 also
+                        -Dsynaxis.thread-provider=grid. Each: 14 classes, 99 tests, 1 failure, the same one in all three
+                        (04-three-modes-before/): PlayerSpawnFailureIntegrationTest
+                        aSpawnThatThrowsKicksThePlayerAndReportsItsLeaveOnce at PlayerSpawnFailureIntegrationTest.java:70,
+                        expected: <[synaxis:internal-error]> but was: <[]>. The test made the first spawn throw with a
+                        command condition; since CMD the commands packet hides the node of a condition that throws, the
+                        spawn goes on and nobody is kicked. The test now throws from the tab list visibility
+                        (ConnectionManager#setTabListVisibility), which the spawn asks for every online player before
+                        the instance; main code unchanged.
+  6  12:40:29-12:40:40  default mode, PlayerSpawnFailureIntegrationTest, CommandTreeAtSpawnIntegrationTest,
+                        FailedSpawnRegistrationIntegrationTest, TabListIntegrationTest, EntityAsyncContinuationIntegrationTest:
+                        3 + 2 + 2 + 3 + 5 tests, 0 failures (06-default/)
+  7  12:40:58-12:41:17  counter-proof, default mode, PlayerSpawnFailureIntegrationTest only: in Player#UNSAFE_init the line
+                        if (!Boolean.getBoolean("proof.never")) throw e; after } catch (RuntimeException e) { (Player.java:399),
+                        so the synchronous failure passes out as before the fix. 3 tests, 1 failure: the same test at
+                        PlayerSpawnFailureIntegrationTest.java:67, expected: <[synaxis:internal-error]> but was: <[]>;
+                        restored with git checkout afterwards (07-counter-proof/)
+  8  12:41:24-12:41:34  build 6 with -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+                        -Dsynaxis.thread-provider=grid: the same 15 tests, 0 failures (08-grid/)
+The adapted class in 4-thread strict mode, the full suites, Concurrency, Client mod and Client gametest run on the
+draft PR; RUN-080 is registered in docs/TEST.md section 6 after them.

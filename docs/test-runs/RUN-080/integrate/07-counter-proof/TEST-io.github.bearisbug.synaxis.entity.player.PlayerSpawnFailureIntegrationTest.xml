@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.entity.player.PlayerSpawnFailureIntegrationTest" tests="3" skipped="0" failures="1" errors="0" timestamp="2026-10-18T04:41:16.686Z" hostname="Mac.local" time="0.9">
+  <properties/>
+  <testcase name="aSpawnThatFailsAfterTheClientLeftReportsTheLeaveOnce(Env)" classname="io.github.bearisbug.synaxis.entity.player.PlayerSpawnFailureIntegrationTest" time="0.706"/>
+  <testcase name="aSpawnThatThrowsKicksThePlayerAndReportsItsLeaveOnce(Env)" classname="io.github.bearisbug.synaxis.entity.player.PlayerSpawnFailureIntegrationTest" time="0.167">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[synaxis:internal-error]&gt; but was: &lt;[]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[synaxis:internal-error]&gt; but was: &lt;[]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.bearisbug.synaxis.entity.player.PlayerSpawnFailureIntegrationTest.aSpawnThatThrowsKicksThePlayerAndReportsItsLeaveOnce(PlayerSpawnFailureIntegrationTest.java:67)
+</failure>
+  </testcase>
+  <testcase name="aSpawnWhoseChunksFailToLoadReportsTheLeaveOnce(Env)" classname="io.github.bearisbug.synaxis.entity.player.PlayerSpawnFailureIntegrationTest" time="0.018"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

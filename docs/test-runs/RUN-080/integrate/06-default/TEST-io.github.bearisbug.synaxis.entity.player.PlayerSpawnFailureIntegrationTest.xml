@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.entity.player.PlayerSpawnFailureIntegrationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-18T04:40:38.957Z" hostname="Mac.local" time="1.168">
+  <properties/>
+  <testcase name="aSpawnThatFailsAfterTheClientLeftReportsTheLeaveOnce(Env)" classname="io.github.bearisbug.synaxis.entity.player.PlayerSpawnFailureIntegrationTest" time="0.954"/>
+  <testcase name="aSpawnThatThrowsKicksThePlayerAndReportsItsLeaveOnce(Env)" classname="io.github.bearisbug.synaxis.entity.player.PlayerSpawnFailureIntegrationTest" time="0.158"/>
+  <testcase name="aSpawnWhoseChunksFailToLoadReportsTheLeaveOnce(Env)" classname="io.github.bearisbug.synaxis.entity.player.PlayerSpawnFailureIntegrationTest" time="0.046"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

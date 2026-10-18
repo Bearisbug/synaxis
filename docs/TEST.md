@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-18 | 集成分支 `prod/integrate-080`（基于 `main` `a211a45ca1`）依次 `--no-ff` 合入 `prod/r080-NET`、`prod/r080-THREAD`、`prod/r080-WORLD`、`prod/r080-CODEC`、`prod/r080-ITEMNET`、`prod/r080-CMD`、`prod/r080-STORE`、`prod/r080-HOST`，跟进 `docs/DESIGN-PROD.md` v0.9.92 与 `docs/DESIGN-PLAY.md` v0.20，不登执行轮次（草稿 PR 的 CI 跑完后登记 RUN-080）。**冲突**：每次合并本文档的变更记录都冲突，按合并的倒序排在顶部（NET 在下、HOST 在上）；§4 各组的新节、§5 各组加的一行、§7 THREAD 加的一条（紧挨着 WORLD 改了行号的 `PlayerRespawnChunkIntegrationTest` 一条）与「玩法架构 · RUN-077：H」节的前置一行（NET、WORLD 各改一处行号，按词合并）两边都留。**§4 的次序**：NET、ITEMNET、CMD 三组把新节放在 §4 末尾，另几组放在「生产就绪 · RUN-076：W」之后；合并后「生产就绪 · RUN-080」八节按合并顺序（NET、THREAD、WORLD、CODEC、ITEMNET、CMD、STORE、HOST）接在 RUN-076 W 之后，「玩法架构 · RUN-080：HOST」留在 §4 末尾，各节内容取自各组分支。**`TC-PROD-793`**：组 CMD 合入后命令 condition 的异常只隐藏节点、不再让出生失败，本条原来的触发在三种线程模式下都红在 `PlayerSpawnFailureIntegrationTest.java:70`；前置改用 Tab 列表的可见性抛异常，第 2～4 步写明是 WORLD 分支上 condition 触发时的读数，加第 5 步：集成分支上默认与严格 grid 都绿、反证红在 `:67`（证据 `docs/test-runs/RUN-080/integrate/`）。各组节写明行号按各组提交，别组移动的行不改 | Bearisbug |
 | 2026-10-18 | 分支 `prod/r080-HOST`（基于 `main` `cb969826b7`），跟进 `docs/DESIGN-PLAY.md` v0.19，不登执行轮次（本组 8 次 Gradle 运行的读数写在两节各步里）。**新增 `TC-PROD-840`**（§4「生产就绪 · RUN-080：HOST」）：`runOn` 投给到期前就被移除的实体、被注销的实例的任务，以及被插件取消的任务，不再留在插件的任务表里，目标随之可回收（`REQ-PROD-021`）。**新增 `TC-PLAY-170`**（§4「玩法架构 · RUN-080：HOST」）：刚断线的连接 `enter` 什么都不做，在线却不在 PLAY 的被拒并写出阶段，开局那一刻断线的排队玩家不让竞技场停在 `OPEN`（`REQ-PLAY-003`、`REQ-PLAY-008`）。**随改**：`TC-PLAY-049` 第 1 步断线之后那一句改为不抛、台账不变；第 3 步 ② 的改动行 `:296` → `:300`，红点改为 `:335` 的台账断言，① 的红行 `:335` → `:339`；「玩法架构 · RUN-077：H」节头注明 `SceneService.java` 从组 HOST 起第 216 行之后的行号加 4；§2 对照表 `REQ-PLAY-003`、`REQ-PLAY-008` 两行加 `TC-PLAY-170`；§5 局部轮 `PluginSchedulerImpl` 一句加 `TC-PROD-840`，玩法架构域三处加 `TC-PLAY-170` | Bearisbug |
 | 2026-10-18 | 分支 `prod/r080-STORE`（设计提交 `5216896041`、代码与测试提交 `1d7964aab4`，基于 `main` `cb969826b7`），跟进 `docs/DESIGN-PROD.md` v0.9.91（RUN-080 组 STORE），不登执行轮次（集成后登记 RUN-080），本组证据 `docs/test-runs/RUN-080/STORE/`。**新增 §4「生产就绪 · RUN-080：STORE」十条 `TC-PROD-830`～`TC-PROD-839`**：`TC-PROD-830`（Redis 接受连接却不应答时同时 20 次登录 5 s 内全进，修前 6 次）、`TC-PROD-831`（订阅占满连接池时请求 2 s 后返回，修前无限等）、`TC-PROD-832`（presence 队列满了丢最旧、一行 WARN）、`TC-PROD-833`（顶号轮询不占载入名额，无关登录 1 s 内载入，修前等 4,965 ms）、`TC-PROD-834`（取到名额后重查 `closing`，旧用例在新等待点上的反证）、`TC-PROD-835`、`TC-PROD-836`（`commitTogether` 的 `apply` 在 tick 串行段执行一次，第一个参与者写库期间离开也执行，修前 0 次）、`TC-PROD-837`、`TC-PROD-838`（插件段 `createDefault()` 抛异常拒登录并还写权，`encode` 抛 `Error` 时登出与转服照常写回其余段），`TC-PROD-839`（presence 排队之后改了等法的两条旧测试与反证读数）。每条都有改动前的红与反证；三种线程模式各跑一次。**旧用例**：`TC-PROD-153` 第 2 步注明反证读数不再恒为 60；`TC-PROD-592` 第 1、3 步注明等法与新红行 `:226`；`TC-PROD-168` 第 1 步注明 v0.9.91 起两行 WARN 出自 `[Syn-Presence-Write]`（按代码推断，没复跑真进程）。**§5** 局部轮加本组一行。 | Bearisbug |
 | 2026-10-18 | 分支 `prod/r080-CMD`（基线 `main` `cb969826b7`），跟进 `docs/DESIGN-PROD.md` v0.9.90，不登执行轮次（集成轮登记 RUN-080）；证据 `docs/test-runs/RUN-080/CMD/`。**新增 §4「生产就绪 · RUN-080：CMD（命令的 condition、参数的包装、目标选择器与参数的错误回调）」七条 `TC-PROD-820`～`TC-PROD-826`**，改动前的红与反证都实跑过：820（插件的 condition 抛异常时玩家照常出生、命令不在命令树里、在线时注册照样重发、执行被拒，经这条命令的 `LogBudget`）、821（引擎建命令包时接住 condition 的异常）、822（`map`、`filter` 包装的参数按被包装者写包、保留建议类型，没有 parser 的自定义参数不写进包、玩家照常出生）、823（目标选择器拒绝未实现的 15 个原版参数）、824（参数的错误回调，语法的 condition 不放行时不调）、825（插件参数的错误回调经 `LogBudget`）、826（4 线程严格与严格 grid 各一遍）。**改的旧用例**：`TC-PROD-254` 第 1 步改用引擎直接注册的命令（插件命令的条件抛异常改由宿主接住，到不了控制台线程）。`CommandsIntegrationTest` 加 2 条（12 → 14）、多两行导入，原有行号都下移 2 行：`TC-PROD-240`～`TC-PROD-243`、`TC-PROD-245`～`TC-PROD-247`、`TC-PROD-252`、`TC-PROD-254`～`TC-PROD-256`、`TC-PROD-715`、`TC-PROD-716` 的条数与红行跟着改，条数 14 由本组的绿轮实跑得到，26 处红行逐处对过源码（基线第 N 行与现在第 N + 2 行是同一句），这些用例各自的反证没有重跑；`TC-PROD-246` 第 2 步的反证改写成现在的 `guard` 调用、失败数 1 → 3，`TC-PROD-247` 第 2 步 2 → 3（`TC-PROD-820`、`TC-PROD-825` 也走这两处），这两步实跑过（证据 `07-cp246/`、`08-cp247/`）。§5 局部轮加一行 | Bearisbug |
@@ -11311,6 +11312,79 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · RUN-080：NET（包长被截断、断开之后的读线程与 `FinishConfiguration` 的确认超时）
+
+对应 `REQ-PROD-013`、`REQ-PROD-001`、`REQ-PROD-043`（`docs/DESIGN-PROD.md` v0.9.85：§14 `synaxis:keep-alive-timeout` 一行，§16「断开之后的读线程与迟到的踢人」「`FinishConfiguration` 的确认与超时」两行，§19「收到 FinishConfiguration 后一直不确认的客户端在 keepAliveKick 之后断开」场景，§28.2 已决行的补注）。三处改动：① `PacketReading#readPacket` 读包长失败时按写下标判，写下标之前已有 5 个字节、全带续位才是畸形；不足 5 个时容量放得下返回 `Empty` 等下一次读，放不下返回 `Failure`。② `PlayerSocketConnection#read` 读完 socket 后连接已下线就清空读缓冲返回，`PlayerConnection#kick` 对已下线的连接直接返回。③ `ConnectionManager#doConfiguration` 发 `FinishConfigurationPacket` 之前记下时刻，确认（`transitionConfigToPlay`）与断开（`removePlayer`）时摘除，tick 把满 `synaxis.keep-alive-kick` 还没确认的玩家以 `synaxis:keep-alive-timeout` 断开。①② 是实现追上已有设计：`docs/DESIGN.md` §11.1 的协议错误守卫不含被截断的包长，§28 `SOAK-3` 清点 ② 档的前提就是断开把活停下来。
+
+测试：根模块四个类加 5 条，下文用简名：`io.github.bearisbug.synaxis.network.PacketReadingMalformedTest` 加 1 条参数化用例（两组，`tests` 由 6 变 8）、`io.github.bearisbug.synaxis.network.player.PreAuthConnectionIntegrationTest` 加 1 条（9 → 10）、`io.github.bearisbug.synaxis.network.player.PlayerConnectionKickIntegrationTest` 加 1 条（1 → 2）、`io.github.bearisbug.synaxis.network.ConnectionManagerIntegrationTest` 加 2 条（4 → 6）。「跑 `<类>`」同「聊天」一节：`./gradlew :test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `build/test-results/test/TEST-<类>.xml` 的 `tests`、`failures` 与 `<failure message>`；四个类一起跑就写四个 `--tests`。引擎根模块的测试类路径上没有 SLF4J 实现，日志行看不到；`Kicking` 一行与断线包同在 `PlayerConnection#kick` 里，每次踢人各一份，所以按断线包数判踢了几次。反证一律是临时改、跑、看红、还原，还原后 `git diff` 只剩本组的改动、`grep -rn proof.never src/main` 无输出。源文件代号：`<PR>` = `src/main/java/io/github/bearisbug/synaxis/network/packet/PacketReading.java`，`<PS>` = `src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java`，`<PC>` = `src/main/java/io/github/bearisbug/synaxis/network/player/PlayerConnection.java`，`<CM>` = `src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java`，行号按本组提交。本组 8 次 Gradle：第 1 次改动前的红（③ 的新用例那时在平台线程上调 `doConfiguration`，断在异步事件的线程断言上，不算数；改在虚拟线程上调之后，它的改动前红取第 2 次）；第 2 次 ①② 已改、③ 未改；第 3 次全部改完，连同 `testNamingCheck` 与 `forbiddenImportsCheck`；第 4、5 次两批反证；第 6、7 次是 4 线程严格与严格 grid；第 8 次只改了 `<PC>` 与 `PlayerConnectionKickIntegrationTest` 的 Javadoc，重编译（Error Prone 照开）并再跑两项检查，`:test` 取了构建缓存（字节码与第 3 次相同），读数同第 3 次。
+
+#### `TC-PROD-770` 一次读只收到包长的前 1～2 个字节、写下标之后的旧字节都带续位：等下一次读，不判畸形帧 — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。用例在 `NetworkBuffer.staticBuffer(64)` 里先写 `received` 个 0xAB（长度 ≥ 128 的包长的头几个字节，高位为 1），再写 5 − `received` 个 0xFF 充当先前帧留下的字节，然后把写下标拨回 `received`，以 PLAY 态调 `PacketReading.readClients`；`received` 取 1、2。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PacketReadingMalformedTest`，看 `aLengthCutShortByTheReadWaitsForTheRest` 的 `[1]`、`[2]` | `tests="8"` 0 失败：两组都返回 `PacketReading.Result.Empty`，读下标仍是 0。同类的 `overlongVarIntLengthIsAProtocolError`（写下标之前 5 个真 0xFF）仍抛 `DataFormatException`，`truncatedVarIntLengthAtBufferEndRequiresABiggerBuffer`（容量 8、读下标 4、4 个 0xFF）仍返回 `Failure(9)`（第 3 次） |
+| 2 | 改动前的红：`<PR>` 取 `origin/main` `cb969826b7` 的，测试是本组的 | 两组都红在 `PacketReadingMalformedTest.java:65`（调 `readClients` 那一句）：`java.util.zip.DataFormatException: Packet length is not a valid var-int`，抛自 `PacketReading.java:215`（第 1 次） |
+| 3 | 反证有齿（判据退回只看容量）：`<PR>:215` 的 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE)` 改为 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE \|\| beginMark + MAX_VAR_INT_SIZE <= buffer.capacity())`，与 `TC-PROD-771`～`TC-PROD-773` 第 3 步同批跑四个类，再还原 | 两组都红在 `:65`，同一条消息，抛自 `PacketReading.java:216`；本类其余 6 个照绿（第 4 次） |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 3 次） |
+
+后置：`grep -rn proof.never src/main` 无输出。
+
+#### `TC-PROD-771` 断开之后读线程只把 socket 读空：读缓冲写满长度为 0 的帧、对端关掉写端，读线程读到流尾，只排一个断线包（§16「断开之后的读线程与迟到的踢人」） — 对应 `REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。回环 socket 对，服务端一侧包成 `PlayerSocketConnection`，测试线程同时充当读线程与写线程（断开时不起关闭线程，channel 一直开着）；客户端与服务端状态都设 LOGIN，踢人时排 `LoginDisconnect`，按 64 B 计入出站积压。对端写入读缓冲容量那么多个 0x00（每个字节是一个长度为 0 的帧），再 `shutdownOutput()`；测试循环调 `read`，遇 `EOFException` 即停，至多 50 次。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PreAuthConnectionIntegrationTest`，看 `aDisconnectedConnectionOnlyDrainsTheSocket` | `tests="10"` 0 失败：第一次读的第一帧以 `synaxis:protocol-error` 断开连接，之后的读把剩下的字节读完，50 次以内读到流尾；连接离线，出站积压 64 B，即只有一个断线包（第 3 次） |
+| 2 | 改动前的红：`<PS>`、`<PC>` 取 `origin/main` `cb969826b7` 的 | 红在 `PreAuthConnectionIntegrationTest.java:266`：`the reads after the kick must get to the end of the stream, 50 did not ==> expected: <true> but was: <false>`。每次读都从上次失败处的下一个字节接着解、再踢一次，读缓冲写满之后读不再碰 socket，50 次都读不到流尾（第 1 次）。断言停在这一句，没读到出站积压；按代码读是 50 × 64 B |
+| 3 | 反证有齿（读线程不看连接在不在线）：`<PS>:172` 的 `if (!isOnline()) {` 改为 `if (!isOnline() && Boolean.getBoolean("proof.never")) {`，与 `TC-PROD-770` 第 3 步同批，再还原 | 红在 `:266`，与第 2 步同一条消息（第 4 次）。同批 `<PC>:245` 的守卫也退回了；读不读得到流尾只取决于这一处，踢人不碰 socket |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 3 次） |
+
+后置：`grep -rn proof.never src/main` 无输出。
+
+#### `TC-PROD-772` 已下线的连接再被踢：不再排第二个断线包（§16「断开之后的读线程与迟到的踢人」） — 对应 `REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。回环 socket 对，服务端一侧包成 `PlayerSocketConnection`（测试线程同时充当读写线程），服务端状态设 LOGIN；连续调两次 `kick`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerConnectionKickIntegrationTest`，看 `aConnectionAlreadyGoneIsNotKickedAgain` | `tests="2"` 0 失败：连接离线，出站积压 64 B，只有第一次踢排的 `LoginDisconnect`（第 3 次） |
+| 2 | 改动前的红：`<PC>` 取 `origin/main` `cb969826b7` 的 | 红在 `PlayerConnectionKickIntegrationTest.java:64`：`the second kick queued another disconnect packet ==> expected: <64> but was: <128>`（第 1 次） |
+| 3 | 反证有齿：`<PC>:245` 的 `if (!online) return;` 改为 `if (!online && Boolean.getBoolean("proof.never")) return;`，与 `TC-PROD-770` 第 3 步同批，再还原 | 红在 `:64`，与第 2 步同一条消息（第 4 次） |
+| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 3 次） |
+
+后置：`grep -rn proof.never src/main` 无输出。
+
+#### `TC-PROD-773` 收到 `FinishConfiguration` 后一直不确认：满 `keepAliveKick` 之后的第一个 tick 以 `synaxis:keep-alive-timeout` 断开，差 1 ns 不断；确认过的不因此断开（§19 场景，§16「`FinishConfiguration` 的确认与超时」） — 对应 `REQ-PROD-043`、`REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`aClientThatNeverAcknowledgesFinishConfigurationIsKicked` 用一个只记下断线包原因的 `PlayerConnection`（不是 socket 连接，不占席位），两端状态设 CONFIGURATION，`createPlayer` 之后在玩家的事件节点上设出生实例、不发注册表数据，在虚拟线程上跑一次 `doConfiguration(player, true)`，前后各取一次 `System.nanoTime()`（下称 before、after），不调 `transitionConfigToPlay`；之后以合成的时刻调 `ConnectionManager#tick`。`anAcknowledgedFinishConfigurationIsNotTimedOut` 用 `:testing` 的测试连接 `connect`（走完 configuration 并确认），再以此刻 + `keepAliveKick` 调一次 tick。`keepAliveKick` 取默认 15,000 ms。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ConnectionManagerIntegrationTest`，看上面两条 | `tests="6"` 0 失败。第一条：tick(before + `keepAliveKick` − 1 ns) 之后仍在线；tick(after + `keepAliveKick`) 之后离线，恰好一个 Disconnect 包，原因是 `translate` 键 `synaxis:keep-alive-timeout`，玩家不在 `getConfigPlayers()` 里。第二条：tick 之后仍在线。同类的 `aPlayerThatStopsAnsweringKeepAlivesIsKicked` 照绿（第 3 次） |
+| 2 | 改动前的红：`<CM>` 取 `origin/main` `cb969826b7` 的（`<PR>`、`<PS>`、`<PC>` 已是本组的） | `tests="6"` 1 失败：第一条红在 `ConnectionManagerIntegrationTest.java:126`，`a client that never acknowledged FinishConfiguration must be kicked ==> expected: <false> but was: <true>`；第二条绿（改动前没有这道截止，自然不会误踢），齿在第 4 步（第 2 次） |
+| 3 | 反证有齿（tick 不判截止）：`<CM>:654` 的 `handleFinishConfigurationTimeout(tickStart);` 改为 `if (Boolean.getBoolean("proof.never")) handleFinishConfigurationTimeout(tickStart);`，与 `TC-PROD-770` 第 3 步同批，再还原 | 第一条红在 `:126`，与第 2 步同一条消息（第 4 次） |
+| 4 | 反证有齿（确认时不摘记录）：`<CM>:518` 的 `this.finishingSince.remove(player);` 改为 `if (Boolean.getBoolean("proof.never")) this.finishingSince.remove(player);`，只跑本类，再还原 | `tests="6"` 2 失败：第二条红在 `:141`，`a client that acknowledged FinishConfiguration must not be timed out for it ==> expected: <true> but was: <false>`；`aPlayerThatStopsAnsweringKeepAlivesIsKicked` 红在 `:88`，`a player still inside the kick delay must not be kicked ==> expected: <true> but was: <false>`：它也经 `connect` 确认过，记录没摘，就在 keep-alive 的踢人时刻之前先被这道截止踢掉（第 5 次） |
+| 5 | 还原后跑第 1 步 | 与第 1 步相同（第 3 次） |
+
+断开时在 `removePlayer` 里摘记录（`<CM>:552`）只防这张表留住已断开的玩家：之后踢一个已下线的连接本来什么都不做，没有可观察的后果。第一条用例的踢人走过这一行，没有单独的反证。席位与 L1 计数随断开归还是 `PlayerSocketConnection#disconnect` 原有的行为，本条用的不是 socket 连接，不判它。
+
+后置：`grep -rn proof.never src/main` 无输出。
+
+#### `TC-PROD-774` 回归：四个类在 4 线程严格与严格 grid 下照绿；行号后移的旧用例 — 对应 `REQ-PROD-001`、`REQ-PROD-013`、`REQ-PROD-043` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。本组在 `<CM>` 第 194 行之后加 4 行（字段与注释）、`doConfiguration` 里加 2 行、`transitionConfigToPlay` 与 `removePlayer` 里各加 1 行、`tick` 里加 1 行，类末加一个方法；`<PS>` 的 `read` 里加 7 行；`<PC>` 的 `kick` 的 Javadoc 一行换成两行、方法开头加 1 行；`<PR>` 读包长的 catch 由 6 行换成 8 行；四个测试类各加了 import。随之改的既有用例：`TC-PROD-067` 第 2 步红行 `ConnectionManagerIntegrationTest.java:85` → `:92`，`TC-PROD-578` 第 1 步与 `TC-PROD-662` 第 1 步的条数，`TC-PLAY-049` 前置的 `PlayerConnection.java:274` → `:276`；`TC-GAME-070` 第 2 步的 `PreAuthConnectionIntegrationTest.java:186` 后移为 `:187`，交给 `docs/DESIGN-PROD.md` §28.3；`docs/DESIGN-PROD.md` 正文里引的 `ConnectionManager.java:213-215`、`:415`、`:722` 与 `PlayerSocketConnection.java:174-183` 已在 v0.9.85 改成新行号。各处只按 `git diff` 前后对照改行号，内容不变，没复跑。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 四个类一条命令跑，加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | 4 个类 26 个 0 失败 0 跳过：`ConnectionManagerIntegrationTest` 6、`PacketReadingMalformedTest` 8、`PlayerConnectionKickIntegrationTest` 2、`PreAuthConnectionIntegrationTest` 10（第 6 次） |
+| 2 | 同第 1 步，再加 `-Dsynaxis.thread-provider=grid` | 与第 1 步相同（第 7 次） |
+| 3 | 只读核对行号：`grep -nF` 依次查 `<PR>` 的 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE)`，`<PS>` 的 `if (!isOnline()) {`，`<PC>` 的 `if (!online) return;` 与 `player.scheduleNextTick(Entity::remove);`，`<CM>` 的 `handleFinishConfigurationTimeout(tickStart);`、`this.finishingSince.remove(player);`、`public int getOnlinePlayerCount()`、`if (threshold > 0) socketConnection.startCompression();`、`player.remove(false);`、`player.kick(DisconnectReasons.KEEP_ALIVE_TIMEOUT);`；再查 `ConnectionManagerIntegrationTest.java` 的 `disconnects.assertSingle(disconnect -> assertEquals("synaxis:keep-alive-timeout",` 与 `PreAuthConnectionIntegrationTest.java` 的 `assertEquals(GameProfile.offlineUuid("Notch"), decided.uuid(),` | 依次是 215；172；245、276；654；518、552；217；419；731；803、817；92；187 |
+
+后置：`git status --short` 无输出。
+
 ### 生产就绪 · RUN-080：THREAD（元素换线程与非 tick 线程的获取、在所属线程上等传送、属性的线程、区块读锁升写锁）
 
 对应 `REQ-PROD-019`（`docs/DESIGN-PROD.md` v0.9.86：`API-PROD-016` 新增「元素换线程与外来获取」「在实体所属线程上等传送与换实例」「实体属性的线程」三条，「获取等待」加 ④；`API-PROD-020` 新增「区块读锁不能升级为写锁」；§16 五行；§19 八个场景）。改动（根模块，接口签名不变）：
@@ -11475,7 +11549,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 #### `TC-PROD-793` 首次出生在进实例之前同步抛出：以 `synaxis:internal-error` 断开，`PlayerDisconnectEvent` 恰好 1 次，别的在线玩家收到移出 Tab 列表 — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
 
-前置：本节开头。另一名玩家先正常进 (0, 42, 0)，记它收到的 `PlayerInfoRemovePacket`；之后注册命令 `broken`，它的 condition 对名叫 `Thrower` 的玩家抛 `IllegalStateException`，对别人返回 true；异常处理器换成记录器。`Thrower` 走完 configuration 排进进世界队列。
+前置：本节开头。另一名玩家先正常进 (0, 42, 0)，记它收到的 `PlayerInfoRemovePacket`；之后设 Tab 列表的可见性（`ConnectionManager#setTabListVisibility`），看列表的是名叫 `Thrower` 的玩家时抛 `IllegalStateException`，否则返回 true；异常处理器换成记录器。`Thrower` 走完 configuration 排进进世界队列。出生在进实例之前把在线的人逐个列进它的 Tab 列表，逐个问这个可见性，抛出就是同步抛出。本组分支上用的是命令 `broken` 的 condition 对 `Thrower` 抛出（`refreshCommands` 经命令树问它）；组 CMD（`docs/DESIGN-PROD.md` v0.9.90）合入后 condition 抛异常只隐藏节点、出生照常，集成分支 `prod/integrate-080` 起本条改用可见性。第 2～4 步是本组分支上 condition 触发时的读数（行号按 `5040ac1952`），第 5 步是集成分支上的。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -11483,6 +11557,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | 2 | 改动前的红：同 `TC-PROD-790` 第 2 步 | 本类 3 条全红；本条红在 `PlayerSpawnFailureIntegrationTest.java:70`，`expected: <[synaxis:internal-error]> but was: <[]>`：异常交给了 tick 的异常处理器，玩家没被踢（第 1 次 Gradle） |
 | 3 | 反证有齿（离开队列只看 `pendingInstance`，反证 A）：`<PL>:368` 的 `if (this.spawnFailed) {` 改为 `if (this.spawnFailed && Boolean.getBoolean("proof.never")) {`，与 `TC-PROD-790` 第 3 步同批 | 本条红在 `:71`，`Expected 1 element(s), got 0: [] ==> expected: <1> but was: <0>`：踢了，事件没有；`TC-PROD-794`、`TC-PROD-795` 同批红（第 3 次 Gradle） |
 | 4 | 反证有齿（同步抛出照旧穿出，反证 B）：`<PL>:399` 的 `} catch (RuntimeException e) {` 之后加一行 `if (!Boolean.getBoolean("proof.never")) throw e;`，与 `TC-PROD-792` 第 4 步同批 | 本条红在 `:70`，消息同第 2 步（第 4 次 Gradle） |
+| 5 | 集成分支上（可见性触发）跑本类：默认模式一次，`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid` 一次；再照第 4 步在 `<PL>:399` 之后加那一行，默认模式下只跑本类，跑完 `git checkout -- src/main` | 两种模式本类 `tests="3"` 0 失败；反证那次本条红在 `PlayerSpawnFailureIntegrationTest.java:67`，`expected: <[synaxis:internal-error]> but was: <[]>`，另两条绿。4 线程严格模式下本类由草稿 PR 的 CI 跑。证据 `docs/test-runs/RUN-080/integrate/` |
 | 5 | 还原后跑第 1 步 | 同 `TC-PROD-790` 第 5 步 |
 
 后置：同 `TC-PROD-790`。
@@ -11607,6 +11682,182 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | 3 | 还原后跑 `<S>` 的这三个类（`<C>` 第 7 次） | 5 条、18 条、4 条，都 0 失败 0 跳过 |
 
 后置：`grep -rn proof.never server-app/src/main` 无输出。
+
+### 生产就绪 · RUN-080：ITEMNET（物品与聊天组件写给 26.2 客户端的四处断线）
+
+对应 `REQ-001`（Minecraft 26.2、协议 776）与 `REQ-PROD-047`（`synaxis:player` 里存过的物品）；`docs/DESIGN-PROD.md` v0.9.89。四处缺陷都让收件人断线：悬停物品的移除项与没有编解码器的组件在写线程上抛异常（`TC-PROD-810`）；物品模板与物品粒子写出空气，26.2 客户端构造 `ItemStackTemplate` 时抛 `Item must be non-empty`（`TC-PROD-811`）；`container` 的网络格式与 NBT 形状和 26.2 不同（`TC-PROD-812`）；custom 点击事件不带负载或负载不是 compound 时在写线程上抛异常（`TC-PROD-813`）。26.2 的读法取自 Mojang 发布的 26.2 客户端 jar（`javap -c`），摘录在 `docs/test-runs/RUN-080/ITEMNET/01-javap-26.2.txt`。
+
+测试都在根项目，`<P>` 是 `io.github.bearisbug.synaxis`。改动的测试类：`<P>.network.ComponentHoverItemRegistriesTest`（5 → 8 条）、`<P>.particle.ParticleDataTest`（5 → 7）、`<P>.item.ItemStackTemplateRegistriesTest`（2 → 6）、`<P>.component.DataComponentMapTest`（14 条，只改嵌套容器的手写字节）、`<P>.adventure.ComponentCodecsTest`（10 → 13）、`<P>.network.ComponentNetworkBufferTypeTest`（13 → 15）。「跑 `<类>`」即 `./gradlew :test --rerun --tests '<类全名>' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `build/test-results/test/TEST-<类全名>.xml`。这些类不涉及 tick 线程，只跑默认模式。反证是临时改一处、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿；本轮把各反证分成两批跑（每批改动落在不同的测试上，批内互不影响），改动与红行见 `04-counterproofs.txt`。「改动前的代码」指主代码取 `cb969826b7` 的（`git checkout cb969826b7 -- src/main`），测试类用本分支的，跑完 `git checkout HEAD -- src`。行号按代码提交 `9ee4cc16c9`。本节不需要数据库前置。证据 `docs/test-runs/RUN-080/ITEMNET/`。
+
+#### `TC-PROD-810` 悬停物品的移除项写成移除，没有编解码器的组件不进悬停事件 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.network.ComponentHoverItemRegistriesTest` | `tests="8"` 0 失败。`aComponentRemovedFromTheItemIsHandedOverAsARemoval`：苹果去掉 `minecraft:food` 后 `asHoverEvent()`，该组件的值是 `DataComponentValue.Removed`；写进带原版注册表的缓冲区，读回的 NBT 里 `components` 下有名为 `!minecraft:food` 的空复合标签。`aComponentWithoutCodecIsLeftOut`：带 `minecraft:additional_trade_cost` 3 的石头，悬停事件里没有这个键，写出的 `components` 里也没有，写包不抛。`anEngineValueOfNullIsWrittenAsARemoval`：值为 `EngineDataComponentValue.dataComponentValue(null)` 的 `minecraft:damage_type` 写成名为 `!minecraft:damage_type` 的空复合标签。原有五条照旧通过（`TC-PROD-685`） |
+| 2 | 反证有齿（悬停事件照包补丁的每一项）：`ItemStack.java:314-320` 的循环换回 `for (final DataComponent.Value entry : componentPatch().entrySet()) dataComponents.put(entry.component().key(), EngineDataComponentValue.dataComponentValue(entry.value()));`，跑第 1 步的类，再还原 | 红两条：`aComponentRemovedFromTheItemIsHandedOverAsARemoval` 在 `ComponentHoverItemRegistriesTest.java:117`，`Unexpected type, expected: <net.kyori.adventure.text.event.DataComponentValue.Removed> but was: <io.github.bearisbug.synaxis.adventure.EngineDataComponentValueImpl>`；`aComponentWithoutCodecIsLeftOut` 在 `:133`，`expected: <false> but was: <true>` |
+| 3 | 反证有齿（值为 null 的引擎值）：删去 `ComponentNetworkBufferTypeImpl.java:471` 的 `if (value instanceof EngineDataComponentValue engineValue && engineValue.value() == null) return null;`，跑第 1 步的类，再还原 | 红一条：`anEngineValueOfNullIsWrittenAsARemoval` 在 `:57`（经 `:139`），`IllegalArgumentException: failed to encode minecraft:damage_type: null` |
+| 4 | 改动前的代码上跑第 1 步的类 | `8 tests`、3 条红，红行与消息同第 2、3 步 |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-811` 物品粒子默认石头、拒收空气，持有物品模板的四个组件设置时拒收空气 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。26.2 的 `ItemStackTemplate(Holder, int, DataComponentPatch)` 在数量为 0 或物品为空气时抛 `IllegalStateException("Item must be non-empty")`；`ItemParticleOption` 与 `use_remainder`、`sulfur_cube_content`、`bundle_contents`、`charged_projectiles` 都按模板读（`01-javap-26.2.txt` 第 5～7 节）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.particle.ParticleDataTest` 与 `<P>.item.ItemStackTemplateRegistriesTest` | 7 + 6 条 0 失败。`itemParticleDefaultIsNotAir`：`Particle.NETWORK_TYPE` 写出的 `Particle.ITEM` 逐字节等于「粒子 id、石头的物品 id、数量 1、增删组件数 0 与 0」；`itemParticleRejectsAir`：`Particle.ITEM.withItem(ItemStack.AIR)` 抛 `IllegalArgumentException`。`templateComponentsRejectAir`：蘑菇煲 `with(USE_REMAINDER, AIR)` 抛 `IllegalArgumentException`，消息 `minecraft:use_remainder cannot hold air; remove the component with without() instead`；石头 `with(SULFUR_CUBE_CONTENT, AIR)` 抛；收纳袋 `with(BUNDLE_CONTENTS, [石头, 空气])` 抛，消息 `minecraft:bundle_contents cannot hold air (index 1); leave the empty slots out instead`；弩 `with(CHARGED_PROJECTILES, [空气])` 抛 |
+| 2 | 反证有齿（物品粒子）：删去 `Particle.java:339-341` 的紧凑构造器，`ParticleImpl.java:41` 的默认物品改为 `ItemStack.of(Material.AIR, 0)`，跑 `ParticleDataTest`，再还原 | 红两条：`itemParticleDefaultIsNotAir` 在 `ParticleDataTest.java:63`，`array contents differ at index [1], expected: <1> but was: <0>`；`itemParticleRejectsAir` 在 `:68`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 3 | 反证有齿（设置时的判定）：`DataComponents.java:218` 的 `item.isAir()` 与 `:228` 的 `copy.get(i).isAir()` 各加 `&& name.isEmpty()`（判定永不成立；直接删掉判定会让 Error Prone 报参数未用），跑 `ItemStackTemplateRegistriesTest`，再还原 | 红一条：`templateComponentsRejectAir` 在 `ItemStackTemplateRegistriesTest.java:132`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 4 | 改动前的代码上跑第 1 步的两个类 | 第 2、3 步的三条红，红行与消息相同；`ItemStackTemplateRegistriesTest` 另有 `TC-PROD-812` 第 5 步的两条 |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-812` `container` 按 26.2 写成可选模板与 slot 列表，旧的物品列表仍读得回 — 对应 `REQ-001`、`REQ-PROD-047` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。26.2 的 `ItemContainerContents.STREAM_CODEC` 是 `ItemStackTemplate.STREAM_CODEC` 套 `ByteBufCodecs.optional` 再套 `list(256)`（每格先写一个布尔），`CODEC` 是 `Slot{slot: intRange(0, 255), item: 模板}` 的 `sizeLimitedListOf(256)`，只列有物品的格（`01-javap-26.2.txt` 第 1～4 节）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.item.ItemStackTemplateRegistriesTest` 与 `<P>.component.DataComponentMapTest` | 6 + 14 条 0 失败。`containerWritesEachSlotAsAnOptionalTemplate`：`[石头 ×1, 空气, 泥土 ×2]` 写出 12 字节，等于手写的「3 格；true、石头 id、1、0、0；false；true、泥土 id、2、0、0」，读回相等。`containerCodecWritesTheFilledSlots`：NBT 编码为 `[{slot:0,item:{id:"minecraft:stone",count:1}},{slot:2,item:{id:"minecraft:dirt",count:2}}]`，解码回原列表；`slot:256` 解码为 `Result.Error`。`containerCodecStillReadsAPlainItemList`：JSON `[{"id":"minecraft:stone","count":1},{"id":"minecraft:air","count":0},{"id":"minecraft:dirt","count":2}]`（v0.9.89 之前 `synaxis:player` 存下的形状）解码为同一列表。`networkPatchRejectsDeeplyNestedComponents` 手写的嵌套容器每格先写一个 true，照旧在第 64 层报 `Components nested deeper than 64 levels` |
+| 2 | 反证有齿（网络格式）：`DataComponents.java:240-242` 换回 `return ItemStackTemplate.NETWORK_TYPE.list(CONTAINER_SIZE);`，跑第 1 步的两个类，再还原 | 红两条：`containerWritesEachSlotAsAnOptionalTemplate` 在 `ItemStackTemplateRegistriesTest.java:91`，`array lengths differ, expected: <12> but was: <13>`；`networkPatchRejectsDeeplyNestedComponents` 在 `DataComponentMapTest.java:73`（经 `:74`），`Unexpected exception type thrown, expected: <java.lang.IllegalStateException> but was: <java.lang.IllegalArgumentException>`，起因 `Binary tag is not a compound: 75` |
+| 3 | 反证有齿（旧的物品列表）：删去 `DataComponents.java:252` 的 `.orElse(ItemStackTemplate.CODEC.list(CONTAINER_SIZE))`，跑 `ItemStackTemplateRegistriesTest`，再还原 | 红一条：`containerCodecStillReadsAPlainItemList` 在 `:122`，`Expected Ok but got Error: slot: No such key: slot`；`containerCodecWritesTheFilledSlots` 仍绿 |
+| 4 | 反证有齿（NBT 形状）：`DataComponents.java:250-252` 改为先物品列表、后 slot 列表（`ItemStackTemplate.CODEC.list(CONTAINER_SIZE).orElse(ContainerSlot.CODEC.list(CONTAINER_SIZE).transform(DataComponents::containerFromSlots, DataComponents::containerToSlots))`），跑 `ItemStackTemplateRegistriesTest`，再还原 | 红一条：`containerCodecWritesTheFilledSlots` 在 `:107`，期望 slot 列表，实际是三个只有 `count`、`id` 的复合标签（第二个是 `minecraft:air`、`count` 0） |
+| 5 | 改动前的代码上跑第 1 步的两个类 | 红三条：`containerWritesEachSlotAsAnOptionalTemplate`（`:91`）与 `networkPatchRejectsDeeplyNestedComponents`（`:73`）同第 2 步，`containerCodecWritesTheFilledSlots`（`:107`）同第 4 步；`containerCodecStillReadsAPlainItemList` 绿（旧代码本来就读物品列表）；`ItemStackTemplateRegistriesTest` 另有 `TC-PROD-811` 的 `templateComponentsRejectAir` |
+| 6 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-813` custom 点击事件不带负载时不写 `payload`，负载可以是任意标签 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。26.2 的 `ClickEvent$Custom` 的负载是 `Optional<Tag>`，按 `ExtraCodecs.NBT.optionalFieldOf("payload")` 读（`01-javap-26.2.txt` 第 8 节）；Adventure 5.2 的 `ClickEvent.custom(Key)` 负载为 null。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.adventure.ComponentCodecsTest`、`<P>.network.ComponentNetworkBufferTypeTest` 与 `<P>.adventure.ClickCallbackIntegrationTest` | 13 + 15 + 2 条 0 失败。`customClickEventWithoutPayloadRoundTrips`：`ClickEvent.custom(key("hello:world"))` 经 NBT 与 JSON 两种 transcoder 编码，`click_event` 里都没有 `payload`，解码回原组件；`customClickEventPayloadCanBeAnyTag`：负载 `BinaryTagHolder.binaryTagHolder("5")` 编码出的 `payload` 是 `IntBinaryTag` 5；`unwrapNbtNamesTheStringItCannotRead`：`EngineAdventure.unwrapNbt(binaryTagHolder("{"))` 抛 `IllegalArgumentException`，消息 `BinaryTagHolder does not hold valid SNBT: {`。网络路径（`NetworkBuffer.COMPONENT`，`SystemChatPacket` 等在玩家写线程上编码的就是它）：`customClickEventWithoutPayload` 不写 `payload`、读回相等；`customClickEventWithATagThatIsNotACompound` 写出的 `payload` 是 `IntBinaryTag` 5。`ClickCallbackIntegrationTest`（`unwrapNbt` 的另一调用方）照旧 |
+| 2 | 反证有齿（网络路径照写负载）：去掉 `ComponentNetworkBufferTypeImpl.java:382` 的 `if (nbt != null) `，跑 `ComponentNetworkBufferTypeTest`，再还原 | 红一条：`customClickEventWithoutPayload` 在 `ComponentNetworkBufferTypeTest.java:143`（经 `:124`），`NullPointerException: Cannot invoke "net.kyori.adventure.nbt.BinaryTag.type()" because "value" is null` |
+| 3 | 反证有齿（编解码器照写负载）：删去 `ComponentCodecs.java:164` 的 `if (nbt == null) yield new Result.Ok<>(map.build());`，跑 `ComponentCodecsTest`，再还原 | 红一条：`customClickEventWithoutPayloadRoundTrips` 在 `ComponentCodecsTest.java:93`，`NullPointerException: value` |
+| 4 | 反证有齿（只认 compound）：`EngineAdventure.java:90` 换回 `return holder.get(EngineAdventure.NBT_CODEC);`、`:92` 换回 `throw new RuntimeException("Failed to unwrap BinaryTagHolder", e);`（`:86` 的 null 判断留着），跑 `ComponentCodecsTest` 与 `ComponentNetworkBufferTypeTest`，再还原 | 红三条：`customClickEventPayloadCanBeAnyTag` 在 `ComponentCodecsTest.java:110`，`RuntimeException: Failed to unwrap BinaryTagHolder`，起因 `Expected character '{' but got '5'(at position 0)`；`unwrapNbtNamesTheStringItCannotRead` 在 `:116`（经 `:117`），`Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.RuntimeException>`；`customClickEventWithATagThatIsNotACompound` 在 `ComponentNetworkBufferTypeTest.java:143`（经 `:133`），同一个 `RuntimeException` |
+| 5 | 反证有齿（缺负载时补空 compound）：`ComponentCodecs.java:119` 的 `ClickEvent.custom(id)` 改为 `ClickEvent.custom(id, EngineAdventure.wrapNbt(CompoundBinaryTag.empty()))`（另加 `CompoundBinaryTag` 的 import），跑 `ComponentCodecsTest` 与 `ComponentNetworkBufferTypeTest`，再还原 | 红两条：`customClickEventWithoutPayloadRoundTrips` 在 `ComponentCodecsTest.java:95`，`customClickEventWithoutPayload` 在 `ComponentNetworkBufferTypeTest.java:139`（经 `:125`），都是 `expected: <…payload=CustomImpl[key=hello:world, nbt=null]…> but was: <…nbt=BinaryTagHolderImpl[nbt=CompoundBinaryTagImpl[tags={}]]…>` |
+| 6 | 改动前的代码上跑第 1 步的前两个类 | 红五条：`customClickEventWithoutPayloadRoundTrips` 在 `ComponentCodecsTest.java:93`，`customClickEventWithoutPayload` 在 `ComponentNetworkBufferTypeTest.java:143`（经 `:124`），都是 `NullPointerException: Cannot invoke "net.kyori.adventure.nbt.api.BinaryTagHolder.get(net.kyori.adventure.util.Codec)" because "holder" is null`；另三条同第 4 步 |
+| 7 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-814` 改动所在类的邻近回归与门禁 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.adventure.nbt.TestNbtComponentSerializer`、`<P>.network.ComponentNetworkBufferTypeReadTest`、`<P>.instance.block.predicate.DataComponentPredicateTest`、`<P>.item.component.ItemComponentReadWriteRegistriesTest`、`<P>.item.ItemStackRegistriesTest`、`<P>.item.UnsyncedComponentRegistriesTest`、`<P>.command.ArgumentTypeTest`、`<P>.network.PacketWriteReadRegistriesTest`、`<P>.item.ItemAirTest` | 3 + 1 + 13 + 1 + 2 + 3 + 32 + 470 + 2 条 0 失败：容器谓词照旧按 `List<ItemStack>` 判，粒子参数在 `Particle` 类初始化（`Particle.ITEM` 默认石头）之后照旧解析，470 个包照旧写读 |
+| 2 | 第 1 步与 `TC-PROD-810`～`TC-PROD-813` 第 1 步的类同一次跑，同时跑 `:jacocoTestReport :testNamingCheck :forbiddenImportsCheck`；再跑 `diff-cover build/reports/jacoco/test/jacocoTestReport.xml --compare-branch=origin/main --src-roots src/main/java` | 16 个类 592 条 0 失败，三个任务通过；新增行覆盖 98%（64 行缺 1 行，是 `ComponentCodecs.java:124` 负载解码失败的分支，修前就有） |
+| 3 | `./gradlew :compileJava :javadoc --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两个任务通过（Error Prone `-Werror`），`:javadoc` 没有改动文件的警告 |
+
+后置：`git status --short` 无输出。
+
+### 生产就绪 · RUN-080：CMD（命令的 condition、参数的包装、目标选择器与参数的错误回调）
+
+对应 `REQ-PROD-012`、`REQ-PROD-011`（`docs/DESIGN-PROD.md` v0.9.90：`API-PROD-010` 查询节点一句、`API-PROD-011` 第一条末尾 condition 与错误回调一段、§28.3 交给 `docs/DESIGN.md` §28 的一行）。插件经 `PluginContext#commands()` 注册的是引擎的 `Command`，本节修的四处都在插件命令可达的路径上：
+
+- **condition 抛异常让玩家进不了世界**：`Player#UNSAFE_init` 在 `setInstance` 之前调 `refreshCommands`（`Player.java:440`），建命令包时 `GraphConverter#append` 对每个节点调 condition，不接异常；异常经 `ConnectionManager.java:744` 重抛出 `updateWaitingPlayers`，玩家已进 PLAY 态却没有实例，客户端停在载入画面，同一 tick 余下的 keep-alive 与闸门维护也被跳过。宿主只包了插件的执行器，condition 原样交给引擎；`Permissions#has` 收到不是小写点分的节点（`mmo:Admin`）每次都抛 `IllegalArgumentException`，出生那一次读 `getInstance()` 的 condition 抛 `NullPointerException`。修法：引擎建包时 condition 抛的 `RuntimeException` 按不可见处理、写一行 WARN；宿主 `PluginCommandsImpl#guard` 给命令、各级子命令与每个语法的 condition 原地包一层，与执行器共用这条命令的 `LogBudget`，抛异常按不放行处理。
+- **`map()`、`filter()` 包装后的参数写包时 NPE**：`GraphConverter` 按参数的具体类决定节点形状，包装类全部落进兜底分支，把被包装的枚举、字面量、命令参数的 `parser()`（null）写进包，写线程上 NPE、断开玩家；包装类还丢掉了被包装者的建议类型。修法：`Argument#unwrap()`（`@ApiStatus.Internal`）给出被包装的参数，形状、`parser()`、`nodeProperties()` 按它取，节点名与建议仍按包装者；包装类的 `suggestionType()` 自身没有时取被包装者的，`hasSuggestion()` 改为看 `suggestionType()`。`parser()` 返回 null 又不是这几种形状的自定义参数，节点不写进包，每次建包一行 ERROR；不抛异常，因为出生时也建包，抛出去就是上一条的症状。
+- **目标选择器静默丢掉 15 个原版参数**：只实现了 `type`、`gamemode`、`limit`、`sort`、`level`、`distance`，`tag`、`name`、坐标等解析成功后被忽略，`@e[tag=boss]` 选中全部实体；`name`、`nbt` 的值一直读到右括号，吞掉后面的参数。修法：其余 15 个原版参数报 `INVALID_ARGUMENT_NAME`（`Selector argument '<名>' is not supported`），六个已实现的都读到逗号为止，不在原版里的名字由 `switch` 的兜底照旧报 `does not exist`；不接通 `EntityFinder` 的 `setName` 与坐标（交接见 `docs/DESIGN-PROD.md` §28.3）。
+- **参数的错误回调从不被调用**：`CommandParserImpl#parseArgument` 丢掉 `ArgumentSyntaxException`，唯一构造 `InvalidCommand` 的地方传 null 回调。修法：解析失败时带出异常（暴力拼接的取最后一次，即最长的输入），最深的失败只落在一个参数上、它设了回调、持有它的语法的 condition 又放行发送者（按建命令包时的方式问，命令串为 null）时，返回 `INVALID_SYNTAX` 并调回调，不执行任何执行器；同一深度有兄弟节点也失败、没设回调或语法的 condition 不放行时照旧。回调抛的异常与执行器同样处理（引擎每次一行 ERROR、结果 `CANCELLED`）；插件参数的回调由宿主包一层，进这条命令的 `LogBudget`。
+
+测试：根模块包 `io.github.bearisbug.synaxis.command`（下文 `<T>`）新类 `CommandTreeAtSpawnIntegrationTest`（2 条），`CommandPacketTest` 加 2 条（13 → 15），`ArgumentTypeTest` 加 1 条（32 → 33），`CommandParseTest` 加 5 条（8 → 13）；`server-app` 的 `CommandsIntegrationTest`（下文 `<CI>`）加 2 条（12 → 14），都加在类末尾。`<CI>` 多两行导入，类里原有的行号都下移 2 行（`TC-PROD-240`～`TC-PROD-257`、`TC-PROD-715`、`TC-PROD-716` 引的行号随之改，每处都对过源码：基线第 N 行与现在第 N + 2 行是同一句）；`aConsoleLineThatThrowsIsOneLogLineAndTheNextLineRuns` 改用引擎直接注册的命令（`TC-PROD-254`），方法的行数不变。主源码代号：`<GC>` = `src/main/java/io/github/bearisbug/synaxis/command/GraphConverter.java`，`<PI>` = 同包 `CommandParserImpl.java`，`<AR>` = `src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/Argument.java`，`<AE>` = 同目录 `minecraft/ArgumentEntity.java`，`<HI>` = `server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginCommandsImpl.java`；行号按分支 `prod/r080-CMD` 的代码提交。「跑本节的类」即 `./gradlew :test --rerun --tests '<T>.CommandPacketTest' --tests '<T>.ArgumentTypeTest' --tests '<T>.CommandParseTest' --tests '<T>.CommandTreeAtSpawnIntegrationTest' :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CommandsIntegrationTest' --continue --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`<T>` 展开写全），结果看两个模块的 `build/test-results/test/`。「改动前」是基线 `cb969826b7` 的主源码（`src/main`、`server-app/src/main`、`plugin-api/src/main`）加本组的测试。反证是临时改几处、跑一次、看红、`git checkout HEAD -- src server-app`，两组反证各一次 Gradle，改法见证据里的 `cp1.diff`、`cp2.diff`：第 1 组（下文「反证 1」）关掉宿主的两层包装（`<HI>:129`、`:134`、`:137`）、`unwrap`（`<GC>:58`）、没有 parser 时不写节点（`<GC>:187`）、`ArgumentFilter` 建议类型的回落（`<AR>:399`）、选择器的拒绝（`<AE>:172`、`:285`）、调回调前看语法的 condition（`<PI>:186`）、「兄弟同深度失败不归属」（`<PI>:292`）与暴力拼接取最后一次的错误（`<PI>:600`、`:607`），引擎建包时的接住与回调的接住留着；第 2 组（下文「反证 2」）关掉引擎建包时的接住（`<GC>:219` 改为 `catch (IllegalCallerException e)`）、回调的接住（`<PI>:482` 同样改）与 `ArgumentMap` 建议类型的回落（`<AR>:354`）。不需要数据库前置。证据 `docs/test-runs/RUN-080/CMD/`（`00-index.txt` 列出八次 Gradle，第 7、8 次是 `TC-PROD-246`、`TC-PROD-247` 第 2 步的反证）。
+
+#### `TC-PROD-820` 插件命令的 condition 抛异常（非法节点的 `Permissions#has`、子命令与语法的 condition）：玩家照常出生，命令不在命令树里，在线时注册照样重发给每名玩家，执行按前置条件不满足取消，每条命令 10 s 至多一行 — 对应 `REQ-PROD-012`、`REQ-PROD-011` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。插件 mmo 在 `onEnable` 里给 `boss` 设 condition：控制台放行，玩家调 `ctx.permissions().has(player, "mmo:Admin")`（`HostPermissions` 对它每次都抛）；注册 `raid`（子命令 `start` 的 condition 抛 `IllegalStateException`）与 `loot`（语法 `loot all` 的 condition 抛 `IllegalStateException`），`boss` 留到两名玩家都在线之后再注册。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类，看 `<CI>` 的 `aPluginConditionThatThrowsHidesItsCommandAndEveryoneStillSpawns` | `<CI>` `tests="14"` 0 失败。First 进服，实例是插件的那个，出生时的命令树含 `mmo:raid`、`raid`、`mmo:loot`、`loot`，没有 `start`、`all`；Second 同样进服。两人都在线时 mmo 注册 `boss`，`register` 正常返回，两人各收到一棵新命令树，含 `mmo:raid`，没有 `mmo:boss`、`boss`。First 执行 `mmo:boss`、`raid start`、`loot all` 都得 `CANCELLED`，三个执行器都没跑。`PluginCommandsImpl` 恰好三行 ERROR，都以 `Plugin command condition failed: plugin_id=mmo command=` 开头，命令名是 `mmo:raid`、`mmo:loot`、`mmo:boss` 各一，不判先后（每条命令一份预算，10 s 内后续的计入下一行）；引擎 `GraphConverter` 没有 WARN。证据 `02-green/` |
+| 2 | 改动前的红 | `14 tests completed, 2 failed`：本条红在 `<CI>:560`（First 的 `connect`），`java.lang.IllegalStateException: no loot table`（抛在 `:547`），栈经 `Player.UNSAFE_init`（`Player.java:440`）、`ConnectionManager.java:744` 抛出 `updateWaitingPlayers`；另一条是 `TC-PROD-825` 第 2 步。证据 `01-red/` |
+| 3 | 反证 1：`<HI>:129` 与 `:134` 两处包 condition 的语句前加 `if (Boolean.getBoolean("proof.never"))` | `<CI>` `14 tests completed, 2 failed`（同一次根模块 `63 tests completed, 7 failed`，即 `TC-PROD-822` 三条、`TC-PROD-823`、`TC-PROD-824` 三条）：本条红在 `<CI>:578`（执行 `mmo:boss`），`java.lang.IllegalArgumentException: not a permission node: mmo:Admin (lower case and dotted, no *)`（抛在 `:550`），栈经 `CommandParserImpl$Chain` 合并的前置条件（`<PI>:64`）抛出 `CommandManager#execute`：建包时引擎接住了，出生与重发都过了，执行时没人接；另一条是 `TC-PROD-825` 第 3 步。证据 `03-cp1/` |
+| 4 | 反证 2 | 本条通过：宿主这一层单独就让玩家进服、命令不可见、执行被拒；`<CI>` 0 失败。证据 `04-cp2/` |
+
+后置：`git status --short` 不列 `src`、`server-app` 下的文件。
+
+#### `TC-PROD-821` 引擎建命令包时 condition 抛异常（出生时读 `getInstance()` 的 NPE、语法的 condition 抛异常）按不可见处理，玩家照常出生，出生后同一个 condition 放行 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。根命令管理器直接注册三条：`home` 的 condition 是 `((Player) sender).getInstance().getUuid() != null`，`broken` 有一个 condition 抛 `IllegalStateException` 的语法 `broken now`，`fine` 没有 condition。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 1 步那次运行，看 `<T>.CommandTreeAtSpawnIntegrationTest` 的 `aConditionThatThrowsAtSpawnHidesItsNodeAndThePlayerSpawns` | 通过。玩家进服，实例就是测试建的那个；出生时的命令树含 `fine`、`broken`，没有 `home`、`now`；走一个 tick 不抛异常；之后 `refreshCommands` 发的命令树含 `home`（玩家有了实例，同一个 condition 放行），仍没有 `now`。每个抛异常的节点写一行 WARN `Command condition failed, the node is left out of the commands of <玩家名>: command=<命令名> argument=<节点参数 id>`，带栈（根模块测试不挂日志断言）。证据 `02-green/` |
+| 2 | 改动前的红 | 根模块 `63 tests completed, 8 failed`（本节根模块的 10 条新测试里 8 条红，各条见 `TC-PROD-822`～`TC-PROD-824` 第 2 步），本条红在 `connect`（`:50`），`java.lang.IllegalStateException: the condition of broken now`（`:42`），栈经基线的 `GraphConverter.append`（`GraphConverter.java:46`）、`Player.refreshCommands`（`Player.java:661`）、`Player.UNSAFE_init`（`:440`）、`ConnectionManager.java:744`。先撞上哪个节点的 condition 随命令树的节点顺序而定，撞上 `home` 时是读 `getInstance()` 的 `NullPointerException`（`:37`），同样红在 `:50`。证据 `01-red/` |
+| 3 | 反证 2 | 根模块 `63 tests completed, 3 failed`，本条红在 `:50`，异常同第 2 步（`:42`），栈经 `GraphConverter.visible`（`<GC>:218`）、`append`（`<GC>:53`）；另两条是 `TC-PROD-822` 第 4 步与 `TC-PROD-824` 第 4 步。证据 `04-cp2/` |
+| 4 | 反证 1 | 本条通过（引擎建包时的接住留着）。证据 `03-cp1/` |
+
+后置：同 `TC-PROD-820`。
+
+#### `TC-PROD-822` `map()`、`filter()` 包装的参数按被包装者的形状写进命令包：枚举、字面量、命令参数与带候选词的单词逐字节相同，建议类型保留；`parser()` 返回 null 又不是这几种形状的参数不写进命令包，玩家照常出生 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 1 步那次运行，看 `<T>.CommandPacketTest` 的两条与 `<T>.CommandTreeAtSpawnIntegrationTest` 的 `anArgumentWithoutAParserIsLeftOutAndThePlayerSpawns` | `CommandPacketTest` `tests="15"` 0 失败。`aMappedOrFilteredArgumentWritesTheNodesOfTheArgumentItWraps`：命令 `foo` 只有一个语法，参数分别是 `Enum("bar", Letter.class)` 与它的 `map(x -> x)`、`filter(_ -> true)`，`Literal("bar")` 与 `map`，`Command("bar")` 与 `map`，`Word("bar").from("a", "b")` 与 `filter`，每对经 `DeclareCommandsPacket.SERIALIZER` 写出的字节相同。`aMappedOrFilteredArgumentKeepsTheSuggestionTypeOfTheArgumentItWraps`：`EntityType("bar").map(x -> x)` 与 `EntityType("bar").filter(_ -> true)` 的节点 `suggestionsType` 都是 `minecraft:summonable_entities`，`HAS_SUGGESTION_TYPE` 与它一致。`anArgumentWithoutAParserIsLeftOutAndThePlayerSpawns`：命令 `roll` 有默认执行器与一个语法，参数 `sides` 是 `parser()` 返回 null 的自定义参数；玩家进服，出生时的命令树含 `roll`，没有 `sides`。每次建包写一行 ERROR `Command argument has no parser, the node is left out of the commands packet: command=roll argument=sides class=<参数的类名>`（不挂日志断言）。证据 `02-green/` |
+| 2 | 改动前的红（`TC-PROD-821` 第 2 步那次运行） | 三条红：第一条红在 `:245`（第一对，枚举的 `map`），`java.lang.NullPointerException`，栈经 `DeclareCommandsPacket.java:69` 写 parser 一行、测试的 `packetBytes`（`:281`）；第二条红在 `:254`，`map dropped the suggestion type ==> expected: <minecraft:summonable_entities> but was: <>`；第三条红在 `:90`，`sides has no parser to write, the node has to be left out ==> expected: <false> but was: <true>`：基线把 null 的 parser 写进节点，测试连接不序列化包，所以这里没有 NPE，真连接上 NPE 出在写线程、断开玩家。证据 `01-red/` |
+| 3 | 反证 1（`<GC>:58` 的 `argument.unwrap();` 改为 `argument;`，`<GC>:187` 的 `if (parser == null) {` 加 `&& Boolean.getBoolean("proof.never")`，`<AR>:399` `ArgumentFilter#suggestionType` 的 `return own != null ? own : argument.suggestionType();` 改为 `return own;`） | 三条各自红：第一条在 `:245`（NPE，栈同第 2 步）；第二条在 `:256`，`filter dropped the suggestion type ==> expected: <minecraft:summonable_entities> but was: <>`；第三条在 `:90`，消息同第 2 步。证据 `03-cp1/` |
+| 4 | 反证 2（`<AR>:354` `ArgumentMap#suggestionType` 同样改为 `return own;`） | 第二条红在 `:254`，消息同第 2 步；另两条通过。证据 `04-cp2/` |
+
+后置：同 `TC-PROD-820`。
+
+#### `TC-PROD-823` 目标选择器拒绝未实现的 15 个原版参数（`INVALID_ARGUMENT_NAME`，`Selector argument '<名>' is not supported`），不在原版里的名字仍报 `does not exist` — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 1 步那次运行，看 `<T>.ArgumentTypeTest` 的 `testArgumentEntityRefusesTheVanillaArgumentsItDoesNotImplement` | `tests="33"` 0 失败。`@e[tag=boss]`、`@a[name=Notch,limit=1]`、`@e[x=0,y=64,z=0,distance=..5]`、`@e[scores={a=1}]`、`@e[type=pig,nbt={NoAI:1b}]`、`@e[limit=1,team=red]` 都抛 `ArgumentSyntaxException`，错误码 `INVALID_ARGUMENT_NAME`（-5），消息以 `' is not supported` 结尾；`@e[colour=red]` 的消息是 `Argument name 'colour' does not exist`。同类的 `testArgumentEntity`（六个已实现参数的合法与非法写法）照旧通过；`02-green/` 那次运行跑的是整个 `command` 包加 `EntityFinderIntegrationTest`，`ArgumentRobustnessTest` 的 `@e[type=Pig]` 与 `EntityFinderIntegrationTest` 的 `@e[distance=..1.5]` 也通过。证据 `02-green/` |
+| 2 | 改动前的红（`TC-PROD-821` 第 2 步那次运行） | `tests="33"` 中 1 条红，在 `:150`（循环里第一个输入），`@e[tag=boss] ==> Expected …ArgumentSyntaxException to be thrown, but nothing was thrown.`。证据 `01-red/` |
+| 3 | 反证 1（`<AE>:172` 的拒绝加 `Boolean.getBoolean("proof.never") &&`，`:285` 的兜底改回 `default -> { }`，即改动前的静默忽略） | 本条红在 `:150`，消息同第 2 步。证据 `03-cp1/` |
+
+后置：同 `TC-PROD-820`。
+
+#### `TC-PROD-824` 参数的错误回调：只有一个参数在最深处失败、它设了回调、持有它的语法的 condition 放行发送者时，回调拿到它的错误码（逐词加长去试的参数拿最长那次输入的错误），命令得 `INVALID_SYNTAX`，不执行任何执行器；兄弟同深度失败、没设回调或语法的 condition 不放行时照旧走默认执行器；回调抛异常时命令得 `CANCELLED` — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 1 步那次运行，看 `<T>.CommandParseTest` 的五条 | `tests="13"` 0 失败。`anArgumentThatFailsCallsItsErrorCallbackInPlaceOfTheDefaultExecutor`：`foo` 有默认执行器与语法 `Integer("n").between(1, 10)`，回调经 `Command#setArgumentCallback` 设在 `n` 上；`foo 11`、`foo abc` 都得 `INVALID_SYNTAX`，回调依次拿到 `TOO_HIGH_ERROR`（3）、`NOT_NUMBER_ERROR`（1），默认执行器没跑；`foo` 得 `SUCCESS`，默认执行器跑一次，回调仍是两次。`theDefaultExecutorRunsWhenNoSingleArgumentOwnsTheError`：`plain 11`（`n` 没设回调）与 `shared 11`（`n` 设了回调，同一深度还有 `Word("mode").from("on", "off")` 也失败）都得 `SUCCESS`，默认执行器共跑两次，回调一次也没被调。`aCallbackThatThrowsCancelsTheCommand`：回调抛 `IllegalStateException`，`foo 11` 得 `CANCELLED`，异常不逃出 `CommandDispatcher#execute`。`aSenderTheSyntaxRefusesDoesNotGetTheCallback`：`foo` 有默认执行器，语法 `n`（设了回调）经 `addConditionalSyntax` 加入，condition 恒为 false；`foo 5` 得 `CANCELLED`，`foo 11` 得 `SUCCESS`，默认执行器跑一次，回调没被调。`theCallbackOfAnArgumentReadAcrossSpacesGetsTheErrorOfTheLongestInput`：唯一的语法是 `String("text")`（引号字符串，带空格时逐词加长去试），回调记下异常的输入；`foo "abc def` 得 `INVALID_SYNTAX`，回调恰调一次，输入是 `"abc def`。证据 `02-green/` |
+| 2 | 改动前的红（`TC-PROD-821` 第 2 步那次运行） | `tests="13"` 中 3 条红：`anArgumentThatFails…` 红在 `:168`，`expected: <INVALID_SYNTAX> but was: <SUCCESS>`（默认执行器代替了回调）；`aCallbackThatThrows…` 红在 `:218`，`expected: <CANCELLED> but was: <INVALID_SYNTAX>`（回调没被调）；`theCallbackOfAnArgumentReadAcrossSpaces…` 红在 `:259`，`expected: <["abc def]> but was: <[]>`。`theDefaultExecutorRuns…` 与 `aSenderTheSyntaxRefuses…` 通过：改动前回调从不被调用，这两条钉住的是改动不能改掉的语义，第 3 步证明它们有齿。证据 `01-red/` |
+| 3 | 反证 1（`<PI>:292` 的 `} else if (error != null && childDepth == error.chain().depth()) {` 加 `Boolean.getBoolean("proof.never") &&`，即兄弟同深度失败时不清掉归属；`<PI>:186` 的条件改为不看语法的 condition；`<PI>:600`、`:607` 暴力拼接只留第一次的错误） | 三条各自红：`theDefaultExecutorRuns…` 红在 `:202`，`expected: <SUCCESS> but was: <INVALID_SYNTAX>`（`shared 11` 的错误记在先解析的 `n` 上，调了它的回调）；`aSenderTheSyntaxRefuses…` 红在 `:239`，`expected: <SUCCESS> but was: <INVALID_SYNTAX>`（被语法拒绝的发送者拿到了回调）；`theCallbackOfAnArgumentReadAcrossSpaces…` 红在 `:259`，`expected: <["abc def]> but was: <["abc]>`；另两条通过。证据 `03-cp1/` |
+| 4 | 反证 2（`<PI>:482`） | `aCallbackThatThrows…` 红在 `:218`，`java.lang.IllegalStateException: the callback failed`（`:212`）逃出 `execute`；另四条通过。证据 `04-cp2/` |
+
+后置：同 `TC-PROD-820`。
+
+#### `TC-PROD-825` 插件参数的错误回调抛异常：经这条命令的 `LogBudget`（10 s 一行），发送者收到 `command.failed`，引擎不写行 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。插件 mmo 注册 `roll`，唯一的语法是 `Integer("sides").between(1, 100)`，回调抛 `IllegalStateException`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 1 步那次运行，看 `<CI>` 的 `aPluginArgumentCallbackThatThrowsIsInThePluginsBudget` | 通过。玩家执行 `mmo:roll 1000` 十次都得 `INVALID_SYNTAX`；`PluginCommandsImpl` 恰好一行 ERROR，以 `Plugin command failed: plugin_id=mmo command=mmo:roll` 开头；引擎 `CommandParserImpl` 没有 ERROR；玩家收到十条翻译键 `command.failed` 的系统消息。证据 `02-green/` |
+| 2 | 改动前的红（`TC-PROD-820` 第 2 步那次运行） | 本条红在 `<CI>:615`，`one line for 10 failures within 10 s ==> expected: <1> but was: <0>`：回调从没被调用。证据 `01-red/` |
+| 3 | 反证 1（`<HI>:137` 包回调的判定加 `Boolean.getBoolean("proof.never") &&`） | 本条红在 `<CI>:613`，`expected: <INVALID_SYNTAX> but was: <CANCELLED>`：回调的异常落回引擎，按执行器异常结束，每次一行带栈的 ERROR。证据 `03-cp1/` |
+| 4 | 反证 2 | 本条通过：宿主这一层先接住，引擎回调的接住关掉也不影响。证据 `04-cp2/` |
+
+后置：同 `TC-PROD-820`。
+
+#### `TC-PROD-826` 本节五个类在 4 线程严格与严格 `grid` 两种模式下各跑一次 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。玩家出生与命令树都在 tick 调度上跑；这两种模式由 `synaxis.java-library` 约定插件把命令行的 `-Dsynaxis.*` 转给测试 JVM。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类，加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | `BUILD SUCCESSFUL`：根模块 4 个类 63 条、`<CI>` 14 条，0 失败。证据 `05-strict/` |
+| 2 | 再加 `-Dsynaxis.thread-provider=grid` | 同第 1 步。证据 `06-grid/` |
+
+后置：同 `TC-PROD-820`。
 
 ### 生产就绪 · RUN-080：STORE（Redis 往返离开登录路径、载入名额只包语句、`commitTogether` 的 `apply` 与插件段回调抛 `Error`）
 
@@ -13500,255 +13751,6 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
 | 5 | 等不到时照判：`TC-PLAY-112` 第 5 步那一次（宿主反证，没人回大厅）；对照 `TC-PLAY-113` 第 6 步那一次 | 宿主反证：`waited 10.0 s for the ledger: … is not in`，judge 一步 10 s，之后照常判出 16 个问题；客户端反证：`waited 0.0 s … is in` |
 
 后置：`git status --short` 无输出；临时目录与 `__pycache__/` 已删。
-
-### 生产就绪 · RUN-080：NET（包长被截断、断开之后的读线程与 `FinishConfiguration` 的确认超时）
-
-对应 `REQ-PROD-013`、`REQ-PROD-001`、`REQ-PROD-043`（`docs/DESIGN-PROD.md` v0.9.85：§14 `synaxis:keep-alive-timeout` 一行，§16「断开之后的读线程与迟到的踢人」「`FinishConfiguration` 的确认与超时」两行，§19「收到 FinishConfiguration 后一直不确认的客户端在 keepAliveKick 之后断开」场景，§28.2 已决行的补注）。三处改动：① `PacketReading#readPacket` 读包长失败时按写下标判，写下标之前已有 5 个字节、全带续位才是畸形；不足 5 个时容量放得下返回 `Empty` 等下一次读，放不下返回 `Failure`。② `PlayerSocketConnection#read` 读完 socket 后连接已下线就清空读缓冲返回，`PlayerConnection#kick` 对已下线的连接直接返回。③ `ConnectionManager#doConfiguration` 发 `FinishConfigurationPacket` 之前记下时刻，确认（`transitionConfigToPlay`）与断开（`removePlayer`）时摘除，tick 把满 `synaxis.keep-alive-kick` 还没确认的玩家以 `synaxis:keep-alive-timeout` 断开。①② 是实现追上已有设计：`docs/DESIGN.md` §11.1 的协议错误守卫不含被截断的包长，§28 `SOAK-3` 清点 ② 档的前提就是断开把活停下来。
-
-测试：根模块四个类加 5 条，下文用简名：`io.github.bearisbug.synaxis.network.PacketReadingMalformedTest` 加 1 条参数化用例（两组，`tests` 由 6 变 8）、`io.github.bearisbug.synaxis.network.player.PreAuthConnectionIntegrationTest` 加 1 条（9 → 10）、`io.github.bearisbug.synaxis.network.player.PlayerConnectionKickIntegrationTest` 加 1 条（1 → 2）、`io.github.bearisbug.synaxis.network.ConnectionManagerIntegrationTest` 加 2 条（4 → 6）。「跑 `<类>`」同「聊天」一节：`./gradlew :test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `build/test-results/test/TEST-<类>.xml` 的 `tests`、`failures` 与 `<failure message>`；四个类一起跑就写四个 `--tests`。引擎根模块的测试类路径上没有 SLF4J 实现，日志行看不到；`Kicking` 一行与断线包同在 `PlayerConnection#kick` 里，每次踢人各一份，所以按断线包数判踢了几次。反证一律是临时改、跑、看红、还原，还原后 `git diff` 只剩本组的改动、`grep -rn proof.never src/main` 无输出。源文件代号：`<PR>` = `src/main/java/io/github/bearisbug/synaxis/network/packet/PacketReading.java`，`<PS>` = `src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java`，`<PC>` = `src/main/java/io/github/bearisbug/synaxis/network/player/PlayerConnection.java`，`<CM>` = `src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java`，行号按本组提交。本组 8 次 Gradle：第 1 次改动前的红（③ 的新用例那时在平台线程上调 `doConfiguration`，断在异步事件的线程断言上，不算数；改在虚拟线程上调之后，它的改动前红取第 2 次）；第 2 次 ①② 已改、③ 未改；第 3 次全部改完，连同 `testNamingCheck` 与 `forbiddenImportsCheck`；第 4、5 次两批反证；第 6、7 次是 4 线程严格与严格 grid；第 8 次只改了 `<PC>` 与 `PlayerConnectionKickIntegrationTest` 的 Javadoc，重编译（Error Prone 照开）并再跑两项检查，`:test` 取了构建缓存（字节码与第 3 次相同），读数同第 3 次。
-
-#### `TC-PROD-770` 一次读只收到包长的前 1～2 个字节、写下标之后的旧字节都带续位：等下一次读，不判畸形帧 — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。用例在 `NetworkBuffer.staticBuffer(64)` 里先写 `received` 个 0xAB（长度 ≥ 128 的包长的头几个字节，高位为 1），再写 5 − `received` 个 0xFF 充当先前帧留下的字节，然后把写下标拨回 `received`，以 PLAY 态调 `PacketReading.readClients`；`received` 取 1、2。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 跑 `PacketReadingMalformedTest`，看 `aLengthCutShortByTheReadWaitsForTheRest` 的 `[1]`、`[2]` | `tests="8"` 0 失败：两组都返回 `PacketReading.Result.Empty`，读下标仍是 0。同类的 `overlongVarIntLengthIsAProtocolError`（写下标之前 5 个真 0xFF）仍抛 `DataFormatException`，`truncatedVarIntLengthAtBufferEndRequiresABiggerBuffer`（容量 8、读下标 4、4 个 0xFF）仍返回 `Failure(9)`（第 3 次） |
-| 2 | 改动前的红：`<PR>` 取 `origin/main` `cb969826b7` 的，测试是本组的 | 两组都红在 `PacketReadingMalformedTest.java:65`（调 `readClients` 那一句）：`java.util.zip.DataFormatException: Packet length is not a valid var-int`，抛自 `PacketReading.java:215`（第 1 次） |
-| 3 | 反证有齿（判据退回只看容量）：`<PR>:215` 的 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE)` 改为 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE \|\| beginMark + MAX_VAR_INT_SIZE <= buffer.capacity())`，与 `TC-PROD-771`～`TC-PROD-773` 第 3 步同批跑四个类，再还原 | 两组都红在 `:65`，同一条消息，抛自 `PacketReading.java:216`；本类其余 6 个照绿（第 4 次） |
-| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 3 次） |
-
-后置：`grep -rn proof.never src/main` 无输出。
-
-#### `TC-PROD-771` 断开之后读线程只把 socket 读空：读缓冲写满长度为 0 的帧、对端关掉写端，读线程读到流尾，只排一个断线包（§16「断开之后的读线程与迟到的踢人」） — 对应 `REQ-PROD-001` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。回环 socket 对，服务端一侧包成 `PlayerSocketConnection`，测试线程同时充当读线程与写线程（断开时不起关闭线程，channel 一直开着）；客户端与服务端状态都设 LOGIN，踢人时排 `LoginDisconnect`，按 64 B 计入出站积压。对端写入读缓冲容量那么多个 0x00（每个字节是一个长度为 0 的帧），再 `shutdownOutput()`；测试循环调 `read`，遇 `EOFException` 即停，至多 50 次。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 跑 `PreAuthConnectionIntegrationTest`，看 `aDisconnectedConnectionOnlyDrainsTheSocket` | `tests="10"` 0 失败：第一次读的第一帧以 `synaxis:protocol-error` 断开连接，之后的读把剩下的字节读完，50 次以内读到流尾；连接离线，出站积压 64 B，即只有一个断线包（第 3 次） |
-| 2 | 改动前的红：`<PS>`、`<PC>` 取 `origin/main` `cb969826b7` 的 | 红在 `PreAuthConnectionIntegrationTest.java:266`：`the reads after the kick must get to the end of the stream, 50 did not ==> expected: <true> but was: <false>`。每次读都从上次失败处的下一个字节接着解、再踢一次，读缓冲写满之后读不再碰 socket，50 次都读不到流尾（第 1 次）。断言停在这一句，没读到出站积压；按代码读是 50 × 64 B |
-| 3 | 反证有齿（读线程不看连接在不在线）：`<PS>:172` 的 `if (!isOnline()) {` 改为 `if (!isOnline() && Boolean.getBoolean("proof.never")) {`，与 `TC-PROD-770` 第 3 步同批，再还原 | 红在 `:266`，与第 2 步同一条消息（第 4 次）。同批 `<PC>:245` 的守卫也退回了；读不读得到流尾只取决于这一处，踢人不碰 socket |
-| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 3 次） |
-
-后置：`grep -rn proof.never src/main` 无输出。
-
-#### `TC-PROD-772` 已下线的连接再被踢：不再排第二个断线包（§16「断开之后的读线程与迟到的踢人」） — 对应 `REQ-PROD-001` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。回环 socket 对，服务端一侧包成 `PlayerSocketConnection`（测试线程同时充当读写线程），服务端状态设 LOGIN；连续调两次 `kick`。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 跑 `PlayerConnectionKickIntegrationTest`，看 `aConnectionAlreadyGoneIsNotKickedAgain` | `tests="2"` 0 失败：连接离线，出站积压 64 B，只有第一次踢排的 `LoginDisconnect`（第 3 次） |
-| 2 | 改动前的红：`<PC>` 取 `origin/main` `cb969826b7` 的 | 红在 `PlayerConnectionKickIntegrationTest.java:64`：`the second kick queued another disconnect packet ==> expected: <64> but was: <128>`（第 1 次） |
-| 3 | 反证有齿：`<PC>:245` 的 `if (!online) return;` 改为 `if (!online && Boolean.getBoolean("proof.never")) return;`，与 `TC-PROD-770` 第 3 步同批，再还原 | 红在 `:64`，与第 2 步同一条消息（第 4 次） |
-| 4 | 还原后跑第 1 步 | 与第 1 步相同（第 3 次） |
-
-后置：`grep -rn proof.never src/main` 无输出。
-
-#### `TC-PROD-773` 收到 `FinishConfiguration` 后一直不确认：满 `keepAliveKick` 之后的第一个 tick 以 `synaxis:keep-alive-timeout` 断开，差 1 ns 不断；确认过的不因此断开（§19 场景，§16「`FinishConfiguration` 的确认与超时」） — 对应 `REQ-PROD-043`、`REQ-PROD-001` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。`aClientThatNeverAcknowledgesFinishConfigurationIsKicked` 用一个只记下断线包原因的 `PlayerConnection`（不是 socket 连接，不占席位），两端状态设 CONFIGURATION，`createPlayer` 之后在玩家的事件节点上设出生实例、不发注册表数据，在虚拟线程上跑一次 `doConfiguration(player, true)`，前后各取一次 `System.nanoTime()`（下称 before、after），不调 `transitionConfigToPlay`；之后以合成的时刻调 `ConnectionManager#tick`。`anAcknowledgedFinishConfigurationIsNotTimedOut` 用 `:testing` 的测试连接 `connect`（走完 configuration 并确认），再以此刻 + `keepAliveKick` 调一次 tick。`keepAliveKick` 取默认 15,000 ms。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 跑 `ConnectionManagerIntegrationTest`，看上面两条 | `tests="6"` 0 失败。第一条：tick(before + `keepAliveKick` − 1 ns) 之后仍在线；tick(after + `keepAliveKick`) 之后离线，恰好一个 Disconnect 包，原因是 `translate` 键 `synaxis:keep-alive-timeout`，玩家不在 `getConfigPlayers()` 里。第二条：tick 之后仍在线。同类的 `aPlayerThatStopsAnsweringKeepAlivesIsKicked` 照绿（第 3 次） |
-| 2 | 改动前的红：`<CM>` 取 `origin/main` `cb969826b7` 的（`<PR>`、`<PS>`、`<PC>` 已是本组的） | `tests="6"` 1 失败：第一条红在 `ConnectionManagerIntegrationTest.java:126`，`a client that never acknowledged FinishConfiguration must be kicked ==> expected: <false> but was: <true>`；第二条绿（改动前没有这道截止，自然不会误踢），齿在第 4 步（第 2 次） |
-| 3 | 反证有齿（tick 不判截止）：`<CM>:654` 的 `handleFinishConfigurationTimeout(tickStart);` 改为 `if (Boolean.getBoolean("proof.never")) handleFinishConfigurationTimeout(tickStart);`，与 `TC-PROD-770` 第 3 步同批，再还原 | 第一条红在 `:126`，与第 2 步同一条消息（第 4 次） |
-| 4 | 反证有齿（确认时不摘记录）：`<CM>:518` 的 `this.finishingSince.remove(player);` 改为 `if (Boolean.getBoolean("proof.never")) this.finishingSince.remove(player);`，只跑本类，再还原 | `tests="6"` 2 失败：第二条红在 `:141`，`a client that acknowledged FinishConfiguration must not be timed out for it ==> expected: <true> but was: <false>`；`aPlayerThatStopsAnsweringKeepAlivesIsKicked` 红在 `:88`，`a player still inside the kick delay must not be kicked ==> expected: <true> but was: <false>`：它也经 `connect` 确认过，记录没摘，就在 keep-alive 的踢人时刻之前先被这道截止踢掉（第 5 次） |
-| 5 | 还原后跑第 1 步 | 与第 1 步相同（第 3 次） |
-
-断开时在 `removePlayer` 里摘记录（`<CM>:552`）只防这张表留住已断开的玩家：之后踢一个已下线的连接本来什么都不做，没有可观察的后果。第一条用例的踢人走过这一行，没有单独的反证。席位与 L1 计数随断开归还是 `PlayerSocketConnection#disconnect` 原有的行为，本条用的不是 socket 连接，不判它。
-
-后置：`grep -rn proof.never src/main` 无输出。
-
-#### `TC-PROD-774` 回归：四个类在 4 线程严格与严格 grid 下照绿；行号后移的旧用例 — 对应 `REQ-PROD-001`、`REQ-PROD-013`、`REQ-PROD-043` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。本组在 `<CM>` 第 194 行之后加 4 行（字段与注释）、`doConfiguration` 里加 2 行、`transitionConfigToPlay` 与 `removePlayer` 里各加 1 行、`tick` 里加 1 行，类末加一个方法；`<PS>` 的 `read` 里加 7 行；`<PC>` 的 `kick` 的 Javadoc 一行换成两行、方法开头加 1 行；`<PR>` 读包长的 catch 由 6 行换成 8 行；四个测试类各加了 import。随之改的既有用例：`TC-PROD-067` 第 2 步红行 `ConnectionManagerIntegrationTest.java:85` → `:92`，`TC-PROD-578` 第 1 步与 `TC-PROD-662` 第 1 步的条数，`TC-PLAY-049` 前置的 `PlayerConnection.java:274` → `:276`；`TC-GAME-070` 第 2 步的 `PreAuthConnectionIntegrationTest.java:186` 后移为 `:187`，交给 `docs/DESIGN-PROD.md` §28.3；`docs/DESIGN-PROD.md` 正文里引的 `ConnectionManager.java:213-215`、`:415`、`:722` 与 `PlayerSocketConnection.java:174-183` 已在 v0.9.85 改成新行号。各处只按 `git diff` 前后对照改行号，内容不变，没复跑。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 四个类一条命令跑，加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | 4 个类 26 个 0 失败 0 跳过：`ConnectionManagerIntegrationTest` 6、`PacketReadingMalformedTest` 8、`PlayerConnectionKickIntegrationTest` 2、`PreAuthConnectionIntegrationTest` 10（第 6 次） |
-| 2 | 同第 1 步，再加 `-Dsynaxis.thread-provider=grid` | 与第 1 步相同（第 7 次） |
-| 3 | 只读核对行号：`grep -nF` 依次查 `<PR>` 的 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE)`，`<PS>` 的 `if (!isOnline()) {`，`<PC>` 的 `if (!online) return;` 与 `player.scheduleNextTick(Entity::remove);`，`<CM>` 的 `handleFinishConfigurationTimeout(tickStart);`、`this.finishingSince.remove(player);`、`public int getOnlinePlayerCount()`、`if (threshold > 0) socketConnection.startCompression();`、`player.remove(false);`、`player.kick(DisconnectReasons.KEEP_ALIVE_TIMEOUT);`；再查 `ConnectionManagerIntegrationTest.java` 的 `disconnects.assertSingle(disconnect -> assertEquals("synaxis:keep-alive-timeout",` 与 `PreAuthConnectionIntegrationTest.java` 的 `assertEquals(GameProfile.offlineUuid("Notch"), decided.uuid(),` | 依次是 215；172；245、276；654；518、552；217；419；731；803、817；92；187 |
-
-后置：`git status --short` 无输出。
-
-### 生产就绪 · RUN-080：ITEMNET（物品与聊天组件写给 26.2 客户端的四处断线）
-
-对应 `REQ-001`（Minecraft 26.2、协议 776）与 `REQ-PROD-047`（`synaxis:player` 里存过的物品）；`docs/DESIGN-PROD.md` v0.9.89。四处缺陷都让收件人断线：悬停物品的移除项与没有编解码器的组件在写线程上抛异常（`TC-PROD-810`）；物品模板与物品粒子写出空气，26.2 客户端构造 `ItemStackTemplate` 时抛 `Item must be non-empty`（`TC-PROD-811`）；`container` 的网络格式与 NBT 形状和 26.2 不同（`TC-PROD-812`）；custom 点击事件不带负载或负载不是 compound 时在写线程上抛异常（`TC-PROD-813`）。26.2 的读法取自 Mojang 发布的 26.2 客户端 jar（`javap -c`），摘录在 `docs/test-runs/RUN-080/ITEMNET/01-javap-26.2.txt`。
-
-测试都在根项目，`<P>` 是 `io.github.bearisbug.synaxis`。改动的测试类：`<P>.network.ComponentHoverItemRegistriesTest`（5 → 8 条）、`<P>.particle.ParticleDataTest`（5 → 7）、`<P>.item.ItemStackTemplateRegistriesTest`（2 → 6）、`<P>.component.DataComponentMapTest`（14 条，只改嵌套容器的手写字节）、`<P>.adventure.ComponentCodecsTest`（10 → 13）、`<P>.network.ComponentNetworkBufferTypeTest`（13 → 15）。「跑 `<类>`」即 `./gradlew :test --rerun --tests '<类全名>' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `build/test-results/test/TEST-<类全名>.xml`。这些类不涉及 tick 线程，只跑默认模式。反证是临时改一处、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿；本轮把各反证分成两批跑（每批改动落在不同的测试上，批内互不影响），改动与红行见 `04-counterproofs.txt`。「改动前的代码」指主代码取 `cb969826b7` 的（`git checkout cb969826b7 -- src/main`），测试类用本分支的，跑完 `git checkout HEAD -- src`。行号按代码提交 `9ee4cc16c9`。本节不需要数据库前置。证据 `docs/test-runs/RUN-080/ITEMNET/`。
-
-#### `TC-PROD-810` 悬停物品的移除项写成移除，没有编解码器的组件不进悬停事件 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 跑 `<P>.network.ComponentHoverItemRegistriesTest` | `tests="8"` 0 失败。`aComponentRemovedFromTheItemIsHandedOverAsARemoval`：苹果去掉 `minecraft:food` 后 `asHoverEvent()`，该组件的值是 `DataComponentValue.Removed`；写进带原版注册表的缓冲区，读回的 NBT 里 `components` 下有名为 `!minecraft:food` 的空复合标签。`aComponentWithoutCodecIsLeftOut`：带 `minecraft:additional_trade_cost` 3 的石头，悬停事件里没有这个键，写出的 `components` 里也没有，写包不抛。`anEngineValueOfNullIsWrittenAsARemoval`：值为 `EngineDataComponentValue.dataComponentValue(null)` 的 `minecraft:damage_type` 写成名为 `!minecraft:damage_type` 的空复合标签。原有五条照旧通过（`TC-PROD-685`） |
-| 2 | 反证有齿（悬停事件照包补丁的每一项）：`ItemStack.java:314-320` 的循环换回 `for (final DataComponent.Value entry : componentPatch().entrySet()) dataComponents.put(entry.component().key(), EngineDataComponentValue.dataComponentValue(entry.value()));`，跑第 1 步的类，再还原 | 红两条：`aComponentRemovedFromTheItemIsHandedOverAsARemoval` 在 `ComponentHoverItemRegistriesTest.java:117`，`Unexpected type, expected: <net.kyori.adventure.text.event.DataComponentValue.Removed> but was: <io.github.bearisbug.synaxis.adventure.EngineDataComponentValueImpl>`；`aComponentWithoutCodecIsLeftOut` 在 `:133`，`expected: <false> but was: <true>` |
-| 3 | 反证有齿（值为 null 的引擎值）：删去 `ComponentNetworkBufferTypeImpl.java:471` 的 `if (value instanceof EngineDataComponentValue engineValue && engineValue.value() == null) return null;`，跑第 1 步的类，再还原 | 红一条：`anEngineValueOfNullIsWrittenAsARemoval` 在 `:57`（经 `:139`），`IllegalArgumentException: failed to encode minecraft:damage_type: null` |
-| 4 | 改动前的代码上跑第 1 步的类 | `8 tests`、3 条红，红行与消息同第 2、3 步 |
-| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
-
-后置：`git status --short` 无输出。
-
-#### `TC-PROD-811` 物品粒子默认石头、拒收空气，持有物品模板的四个组件设置时拒收空气 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。26.2 的 `ItemStackTemplate(Holder, int, DataComponentPatch)` 在数量为 0 或物品为空气时抛 `IllegalStateException("Item must be non-empty")`；`ItemParticleOption` 与 `use_remainder`、`sulfur_cube_content`、`bundle_contents`、`charged_projectiles` 都按模板读（`01-javap-26.2.txt` 第 5～7 节）。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 跑 `<P>.particle.ParticleDataTest` 与 `<P>.item.ItemStackTemplateRegistriesTest` | 7 + 6 条 0 失败。`itemParticleDefaultIsNotAir`：`Particle.NETWORK_TYPE` 写出的 `Particle.ITEM` 逐字节等于「粒子 id、石头的物品 id、数量 1、增删组件数 0 与 0」；`itemParticleRejectsAir`：`Particle.ITEM.withItem(ItemStack.AIR)` 抛 `IllegalArgumentException`。`templateComponentsRejectAir`：蘑菇煲 `with(USE_REMAINDER, AIR)` 抛 `IllegalArgumentException`，消息 `minecraft:use_remainder cannot hold air; remove the component with without() instead`；石头 `with(SULFUR_CUBE_CONTENT, AIR)` 抛；收纳袋 `with(BUNDLE_CONTENTS, [石头, 空气])` 抛，消息 `minecraft:bundle_contents cannot hold air (index 1); leave the empty slots out instead`；弩 `with(CHARGED_PROJECTILES, [空气])` 抛 |
-| 2 | 反证有齿（物品粒子）：删去 `Particle.java:339-341` 的紧凑构造器，`ParticleImpl.java:41` 的默认物品改为 `ItemStack.of(Material.AIR, 0)`，跑 `ParticleDataTest`，再还原 | 红两条：`itemParticleDefaultIsNotAir` 在 `ParticleDataTest.java:63`，`array contents differ at index [1], expected: <1> but was: <0>`；`itemParticleRejectsAir` 在 `:68`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
-| 3 | 反证有齿（设置时的判定）：`DataComponents.java:218` 的 `item.isAir()` 与 `:228` 的 `copy.get(i).isAir()` 各加 `&& name.isEmpty()`（判定永不成立；直接删掉判定会让 Error Prone 报参数未用），跑 `ItemStackTemplateRegistriesTest`，再还原 | 红一条：`templateComponentsRejectAir` 在 `ItemStackTemplateRegistriesTest.java:132`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
-| 4 | 改动前的代码上跑第 1 步的两个类 | 第 2、3 步的三条红，红行与消息相同；`ItemStackTemplateRegistriesTest` 另有 `TC-PROD-812` 第 5 步的两条 |
-| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
-
-后置：`git status --short` 无输出。
-
-#### `TC-PROD-812` `container` 按 26.2 写成可选模板与 slot 列表，旧的物品列表仍读得回 — 对应 `REQ-001`、`REQ-PROD-047` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。26.2 的 `ItemContainerContents.STREAM_CODEC` 是 `ItemStackTemplate.STREAM_CODEC` 套 `ByteBufCodecs.optional` 再套 `list(256)`（每格先写一个布尔），`CODEC` 是 `Slot{slot: intRange(0, 255), item: 模板}` 的 `sizeLimitedListOf(256)`，只列有物品的格（`01-javap-26.2.txt` 第 1～4 节）。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 跑 `<P>.item.ItemStackTemplateRegistriesTest` 与 `<P>.component.DataComponentMapTest` | 6 + 14 条 0 失败。`containerWritesEachSlotAsAnOptionalTemplate`：`[石头 ×1, 空气, 泥土 ×2]` 写出 12 字节，等于手写的「3 格；true、石头 id、1、0、0；false；true、泥土 id、2、0、0」，读回相等。`containerCodecWritesTheFilledSlots`：NBT 编码为 `[{slot:0,item:{id:"minecraft:stone",count:1}},{slot:2,item:{id:"minecraft:dirt",count:2}}]`，解码回原列表；`slot:256` 解码为 `Result.Error`。`containerCodecStillReadsAPlainItemList`：JSON `[{"id":"minecraft:stone","count":1},{"id":"minecraft:air","count":0},{"id":"minecraft:dirt","count":2}]`（v0.9.89 之前 `synaxis:player` 存下的形状）解码为同一列表。`networkPatchRejectsDeeplyNestedComponents` 手写的嵌套容器每格先写一个 true，照旧在第 64 层报 `Components nested deeper than 64 levels` |
-| 2 | 反证有齿（网络格式）：`DataComponents.java:240-242` 换回 `return ItemStackTemplate.NETWORK_TYPE.list(CONTAINER_SIZE);`，跑第 1 步的两个类，再还原 | 红两条：`containerWritesEachSlotAsAnOptionalTemplate` 在 `ItemStackTemplateRegistriesTest.java:91`，`array lengths differ, expected: <12> but was: <13>`；`networkPatchRejectsDeeplyNestedComponents` 在 `DataComponentMapTest.java:73`（经 `:74`），`Unexpected exception type thrown, expected: <java.lang.IllegalStateException> but was: <java.lang.IllegalArgumentException>`，起因 `Binary tag is not a compound: 75` |
-| 3 | 反证有齿（旧的物品列表）：删去 `DataComponents.java:252` 的 `.orElse(ItemStackTemplate.CODEC.list(CONTAINER_SIZE))`，跑 `ItemStackTemplateRegistriesTest`，再还原 | 红一条：`containerCodecStillReadsAPlainItemList` 在 `:122`，`Expected Ok but got Error: slot: No such key: slot`；`containerCodecWritesTheFilledSlots` 仍绿 |
-| 4 | 反证有齿（NBT 形状）：`DataComponents.java:250-252` 改为先物品列表、后 slot 列表（`ItemStackTemplate.CODEC.list(CONTAINER_SIZE).orElse(ContainerSlot.CODEC.list(CONTAINER_SIZE).transform(DataComponents::containerFromSlots, DataComponents::containerToSlots))`），跑 `ItemStackTemplateRegistriesTest`，再还原 | 红一条：`containerCodecWritesTheFilledSlots` 在 `:107`，期望 slot 列表，实际是三个只有 `count`、`id` 的复合标签（第二个是 `minecraft:air`、`count` 0） |
-| 5 | 改动前的代码上跑第 1 步的两个类 | 红三条：`containerWritesEachSlotAsAnOptionalTemplate`（`:91`）与 `networkPatchRejectsDeeplyNestedComponents`（`:73`）同第 2 步，`containerCodecWritesTheFilledSlots`（`:107`）同第 4 步；`containerCodecStillReadsAPlainItemList` 绿（旧代码本来就读物品列表）；`ItemStackTemplateRegistriesTest` 另有 `TC-PROD-811` 的 `templateComponentsRejectAir` |
-| 6 | 还原后重跑第 1 步 | 与第 1 步相同 |
-
-后置：`git status --short` 无输出。
-
-#### `TC-PROD-813` custom 点击事件不带负载时不写 `payload`，负载可以是任意标签 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。26.2 的 `ClickEvent$Custom` 的负载是 `Optional<Tag>`，按 `ExtraCodecs.NBT.optionalFieldOf("payload")` 读（`01-javap-26.2.txt` 第 8 节）；Adventure 5.2 的 `ClickEvent.custom(Key)` 负载为 null。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 跑 `<P>.adventure.ComponentCodecsTest`、`<P>.network.ComponentNetworkBufferTypeTest` 与 `<P>.adventure.ClickCallbackIntegrationTest` | 13 + 15 + 2 条 0 失败。`customClickEventWithoutPayloadRoundTrips`：`ClickEvent.custom(key("hello:world"))` 经 NBT 与 JSON 两种 transcoder 编码，`click_event` 里都没有 `payload`，解码回原组件；`customClickEventPayloadCanBeAnyTag`：负载 `BinaryTagHolder.binaryTagHolder("5")` 编码出的 `payload` 是 `IntBinaryTag` 5；`unwrapNbtNamesTheStringItCannotRead`：`EngineAdventure.unwrapNbt(binaryTagHolder("{"))` 抛 `IllegalArgumentException`，消息 `BinaryTagHolder does not hold valid SNBT: {`。网络路径（`NetworkBuffer.COMPONENT`，`SystemChatPacket` 等在玩家写线程上编码的就是它）：`customClickEventWithoutPayload` 不写 `payload`、读回相等；`customClickEventWithATagThatIsNotACompound` 写出的 `payload` 是 `IntBinaryTag` 5。`ClickCallbackIntegrationTest`（`unwrapNbt` 的另一调用方）照旧 |
-| 2 | 反证有齿（网络路径照写负载）：去掉 `ComponentNetworkBufferTypeImpl.java:382` 的 `if (nbt != null) `，跑 `ComponentNetworkBufferTypeTest`，再还原 | 红一条：`customClickEventWithoutPayload` 在 `ComponentNetworkBufferTypeTest.java:143`（经 `:124`），`NullPointerException: Cannot invoke "net.kyori.adventure.nbt.BinaryTag.type()" because "value" is null` |
-| 3 | 反证有齿（编解码器照写负载）：删去 `ComponentCodecs.java:164` 的 `if (nbt == null) yield new Result.Ok<>(map.build());`，跑 `ComponentCodecsTest`，再还原 | 红一条：`customClickEventWithoutPayloadRoundTrips` 在 `ComponentCodecsTest.java:93`，`NullPointerException: value` |
-| 4 | 反证有齿（只认 compound）：`EngineAdventure.java:90` 换回 `return holder.get(EngineAdventure.NBT_CODEC);`、`:92` 换回 `throw new RuntimeException("Failed to unwrap BinaryTagHolder", e);`（`:86` 的 null 判断留着），跑 `ComponentCodecsTest` 与 `ComponentNetworkBufferTypeTest`，再还原 | 红三条：`customClickEventPayloadCanBeAnyTag` 在 `ComponentCodecsTest.java:110`，`RuntimeException: Failed to unwrap BinaryTagHolder`，起因 `Expected character '{' but got '5'(at position 0)`；`unwrapNbtNamesTheStringItCannotRead` 在 `:116`（经 `:117`），`Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.RuntimeException>`；`customClickEventWithATagThatIsNotACompound` 在 `ComponentNetworkBufferTypeTest.java:143`（经 `:133`），同一个 `RuntimeException` |
-| 5 | 反证有齿（缺负载时补空 compound）：`ComponentCodecs.java:119` 的 `ClickEvent.custom(id)` 改为 `ClickEvent.custom(id, EngineAdventure.wrapNbt(CompoundBinaryTag.empty()))`（另加 `CompoundBinaryTag` 的 import），跑 `ComponentCodecsTest` 与 `ComponentNetworkBufferTypeTest`，再还原 | 红两条：`customClickEventWithoutPayloadRoundTrips` 在 `ComponentCodecsTest.java:95`，`customClickEventWithoutPayload` 在 `ComponentNetworkBufferTypeTest.java:139`（经 `:125`），都是 `expected: <…payload=CustomImpl[key=hello:world, nbt=null]…> but was: <…nbt=BinaryTagHolderImpl[nbt=CompoundBinaryTagImpl[tags={}]]…>` |
-| 6 | 改动前的代码上跑第 1 步的前两个类 | 红五条：`customClickEventWithoutPayloadRoundTrips` 在 `ComponentCodecsTest.java:93`，`customClickEventWithoutPayload` 在 `ComponentNetworkBufferTypeTest.java:143`（经 `:124`），都是 `NullPointerException: Cannot invoke "net.kyori.adventure.nbt.api.BinaryTagHolder.get(net.kyori.adventure.util.Codec)" because "holder" is null`；另三条同第 4 步 |
-| 7 | 还原后重跑第 1 步 | 与第 1 步相同 |
-
-后置：`git status --short` 无输出。
-
-#### `TC-PROD-814` 改动所在类的邻近回归与门禁 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 跑 `<P>.adventure.nbt.TestNbtComponentSerializer`、`<P>.network.ComponentNetworkBufferTypeReadTest`、`<P>.instance.block.predicate.DataComponentPredicateTest`、`<P>.item.component.ItemComponentReadWriteRegistriesTest`、`<P>.item.ItemStackRegistriesTest`、`<P>.item.UnsyncedComponentRegistriesTest`、`<P>.command.ArgumentTypeTest`、`<P>.network.PacketWriteReadRegistriesTest`、`<P>.item.ItemAirTest` | 3 + 1 + 13 + 1 + 2 + 3 + 32 + 470 + 2 条 0 失败：容器谓词照旧按 `List<ItemStack>` 判，粒子参数在 `Particle` 类初始化（`Particle.ITEM` 默认石头）之后照旧解析，470 个包照旧写读 |
-| 2 | 第 1 步与 `TC-PROD-810`～`TC-PROD-813` 第 1 步的类同一次跑，同时跑 `:jacocoTestReport :testNamingCheck :forbiddenImportsCheck`；再跑 `diff-cover build/reports/jacoco/test/jacocoTestReport.xml --compare-branch=origin/main --src-roots src/main/java` | 16 个类 592 条 0 失败，三个任务通过；新增行覆盖 98%（64 行缺 1 行，是 `ComponentCodecs.java:124` 负载解码失败的分支，修前就有） |
-| 3 | `./gradlew :compileJava :javadoc --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两个任务通过（Error Prone `-Werror`），`:javadoc` 没有改动文件的警告 |
-
-后置：`git status --short` 无输出。
-
-### 生产就绪 · RUN-080：CMD（命令的 condition、参数的包装、目标选择器与参数的错误回调）
-
-对应 `REQ-PROD-012`、`REQ-PROD-011`（`docs/DESIGN-PROD.md` v0.9.90：`API-PROD-010` 查询节点一句、`API-PROD-011` 第一条末尾 condition 与错误回调一段、§28.3 交给 `docs/DESIGN.md` §28 的一行）。插件经 `PluginContext#commands()` 注册的是引擎的 `Command`，本节修的四处都在插件命令可达的路径上：
-
-- **condition 抛异常让玩家进不了世界**：`Player#UNSAFE_init` 在 `setInstance` 之前调 `refreshCommands`（`Player.java:440`），建命令包时 `GraphConverter#append` 对每个节点调 condition，不接异常；异常经 `ConnectionManager.java:744` 重抛出 `updateWaitingPlayers`，玩家已进 PLAY 态却没有实例，客户端停在载入画面，同一 tick 余下的 keep-alive 与闸门维护也被跳过。宿主只包了插件的执行器，condition 原样交给引擎；`Permissions#has` 收到不是小写点分的节点（`mmo:Admin`）每次都抛 `IllegalArgumentException`，出生那一次读 `getInstance()` 的 condition 抛 `NullPointerException`。修法：引擎建包时 condition 抛的 `RuntimeException` 按不可见处理、写一行 WARN；宿主 `PluginCommandsImpl#guard` 给命令、各级子命令与每个语法的 condition 原地包一层，与执行器共用这条命令的 `LogBudget`，抛异常按不放行处理。
-- **`map()`、`filter()` 包装后的参数写包时 NPE**：`GraphConverter` 按参数的具体类决定节点形状，包装类全部落进兜底分支，把被包装的枚举、字面量、命令参数的 `parser()`（null）写进包，写线程上 NPE、断开玩家；包装类还丢掉了被包装者的建议类型。修法：`Argument#unwrap()`（`@ApiStatus.Internal`）给出被包装的参数，形状、`parser()`、`nodeProperties()` 按它取，节点名与建议仍按包装者；包装类的 `suggestionType()` 自身没有时取被包装者的，`hasSuggestion()` 改为看 `suggestionType()`。`parser()` 返回 null 又不是这几种形状的自定义参数，节点不写进包，每次建包一行 ERROR；不抛异常，因为出生时也建包，抛出去就是上一条的症状。
-- **目标选择器静默丢掉 15 个原版参数**：只实现了 `type`、`gamemode`、`limit`、`sort`、`level`、`distance`，`tag`、`name`、坐标等解析成功后被忽略，`@e[tag=boss]` 选中全部实体；`name`、`nbt` 的值一直读到右括号，吞掉后面的参数。修法：其余 15 个原版参数报 `INVALID_ARGUMENT_NAME`（`Selector argument '<名>' is not supported`），六个已实现的都读到逗号为止，不在原版里的名字由 `switch` 的兜底照旧报 `does not exist`；不接通 `EntityFinder` 的 `setName` 与坐标（交接见 `docs/DESIGN-PROD.md` §28.3）。
-- **参数的错误回调从不被调用**：`CommandParserImpl#parseArgument` 丢掉 `ArgumentSyntaxException`，唯一构造 `InvalidCommand` 的地方传 null 回调。修法：解析失败时带出异常（暴力拼接的取最后一次，即最长的输入），最深的失败只落在一个参数上、它设了回调、持有它的语法的 condition 又放行发送者（按建命令包时的方式问，命令串为 null）时，返回 `INVALID_SYNTAX` 并调回调，不执行任何执行器；同一深度有兄弟节点也失败、没设回调或语法的 condition 不放行时照旧。回调抛的异常与执行器同样处理（引擎每次一行 ERROR、结果 `CANCELLED`）；插件参数的回调由宿主包一层，进这条命令的 `LogBudget`。
-
-测试：根模块包 `io.github.bearisbug.synaxis.command`（下文 `<T>`）新类 `CommandTreeAtSpawnIntegrationTest`（2 条），`CommandPacketTest` 加 2 条（13 → 15），`ArgumentTypeTest` 加 1 条（32 → 33），`CommandParseTest` 加 5 条（8 → 13）；`server-app` 的 `CommandsIntegrationTest`（下文 `<CI>`）加 2 条（12 → 14），都加在类末尾。`<CI>` 多两行导入，类里原有的行号都下移 2 行（`TC-PROD-240`～`TC-PROD-257`、`TC-PROD-715`、`TC-PROD-716` 引的行号随之改，每处都对过源码：基线第 N 行与现在第 N + 2 行是同一句）；`aConsoleLineThatThrowsIsOneLogLineAndTheNextLineRuns` 改用引擎直接注册的命令（`TC-PROD-254`），方法的行数不变。主源码代号：`<GC>` = `src/main/java/io/github/bearisbug/synaxis/command/GraphConverter.java`，`<PI>` = 同包 `CommandParserImpl.java`，`<AR>` = `src/main/java/io/github/bearisbug/synaxis/command/builder/arguments/Argument.java`，`<AE>` = 同目录 `minecraft/ArgumentEntity.java`，`<HI>` = `server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginCommandsImpl.java`；行号按分支 `prod/r080-CMD` 的代码提交。「跑本节的类」即 `./gradlew :test --rerun --tests '<T>.CommandPacketTest' --tests '<T>.ArgumentTypeTest' --tests '<T>.CommandParseTest' --tests '<T>.CommandTreeAtSpawnIntegrationTest' :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CommandsIntegrationTest' --continue --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`<T>` 展开写全），结果看两个模块的 `build/test-results/test/`。「改动前」是基线 `cb969826b7` 的主源码（`src/main`、`server-app/src/main`、`plugin-api/src/main`）加本组的测试。反证是临时改几处、跑一次、看红、`git checkout HEAD -- src server-app`，两组反证各一次 Gradle，改法见证据里的 `cp1.diff`、`cp2.diff`：第 1 组（下文「反证 1」）关掉宿主的两层包装（`<HI>:129`、`:134`、`:137`）、`unwrap`（`<GC>:58`）、没有 parser 时不写节点（`<GC>:187`）、`ArgumentFilter` 建议类型的回落（`<AR>:399`）、选择器的拒绝（`<AE>:172`、`:285`）、调回调前看语法的 condition（`<PI>:186`）、「兄弟同深度失败不归属」（`<PI>:292`）与暴力拼接取最后一次的错误（`<PI>:600`、`:607`），引擎建包时的接住与回调的接住留着；第 2 组（下文「反证 2」）关掉引擎建包时的接住（`<GC>:219` 改为 `catch (IllegalCallerException e)`）、回调的接住（`<PI>:482` 同样改）与 `ArgumentMap` 建议类型的回落（`<AR>:354`）。不需要数据库前置。证据 `docs/test-runs/RUN-080/CMD/`（`00-index.txt` 列出八次 Gradle，第 7、8 次是 `TC-PROD-246`、`TC-PROD-247` 第 2 步的反证）。
-
-#### `TC-PROD-820` 插件命令的 condition 抛异常（非法节点的 `Permissions#has`、子命令与语法的 condition）：玩家照常出生，命令不在命令树里，在线时注册照样重发给每名玩家，执行按前置条件不满足取消，每条命令 10 s 至多一行 — 对应 `REQ-PROD-012`、`REQ-PROD-011` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。插件 mmo 在 `onEnable` 里给 `boss` 设 condition：控制台放行，玩家调 `ctx.permissions().has(player, "mmo:Admin")`（`HostPermissions` 对它每次都抛）；注册 `raid`（子命令 `start` 的 condition 抛 `IllegalStateException`）与 `loot`（语法 `loot all` 的 condition 抛 `IllegalStateException`），`boss` 留到两名玩家都在线之后再注册。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 跑本节的类，看 `<CI>` 的 `aPluginConditionThatThrowsHidesItsCommandAndEveryoneStillSpawns` | `<CI>` `tests="14"` 0 失败。First 进服，实例是插件的那个，出生时的命令树含 `mmo:raid`、`raid`、`mmo:loot`、`loot`，没有 `start`、`all`；Second 同样进服。两人都在线时 mmo 注册 `boss`，`register` 正常返回，两人各收到一棵新命令树，含 `mmo:raid`，没有 `mmo:boss`、`boss`。First 执行 `mmo:boss`、`raid start`、`loot all` 都得 `CANCELLED`，三个执行器都没跑。`PluginCommandsImpl` 恰好三行 ERROR，都以 `Plugin command condition failed: plugin_id=mmo command=` 开头，命令名是 `mmo:raid`、`mmo:loot`、`mmo:boss` 各一，不判先后（每条命令一份预算，10 s 内后续的计入下一行）；引擎 `GraphConverter` 没有 WARN。证据 `02-green/` |
-| 2 | 改动前的红 | `14 tests completed, 2 failed`：本条红在 `<CI>:560`（First 的 `connect`），`java.lang.IllegalStateException: no loot table`（抛在 `:547`），栈经 `Player.UNSAFE_init`（`Player.java:440`）、`ConnectionManager.java:744` 抛出 `updateWaitingPlayers`；另一条是 `TC-PROD-825` 第 2 步。证据 `01-red/` |
-| 3 | 反证 1：`<HI>:129` 与 `:134` 两处包 condition 的语句前加 `if (Boolean.getBoolean("proof.never"))` | `<CI>` `14 tests completed, 2 failed`（同一次根模块 `63 tests completed, 7 failed`，即 `TC-PROD-822` 三条、`TC-PROD-823`、`TC-PROD-824` 三条）：本条红在 `<CI>:578`（执行 `mmo:boss`），`java.lang.IllegalArgumentException: not a permission node: mmo:Admin (lower case and dotted, no *)`（抛在 `:550`），栈经 `CommandParserImpl$Chain` 合并的前置条件（`<PI>:64`）抛出 `CommandManager#execute`：建包时引擎接住了，出生与重发都过了，执行时没人接；另一条是 `TC-PROD-825` 第 3 步。证据 `03-cp1/` |
-| 4 | 反证 2 | 本条通过：宿主这一层单独就让玩家进服、命令不可见、执行被拒；`<CI>` 0 失败。证据 `04-cp2/` |
-
-后置：`git status --short` 不列 `src`、`server-app` 下的文件。
-
-#### `TC-PROD-821` 引擎建命令包时 condition 抛异常（出生时读 `getInstance()` 的 NPE、语法的 condition 抛异常）按不可见处理，玩家照常出生，出生后同一个 condition 放行 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。根命令管理器直接注册三条：`home` 的 condition 是 `((Player) sender).getInstance().getUuid() != null`，`broken` 有一个 condition 抛 `IllegalStateException` 的语法 `broken now`，`fine` 没有 condition。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 第 1 步那次运行，看 `<T>.CommandTreeAtSpawnIntegrationTest` 的 `aConditionThatThrowsAtSpawnHidesItsNodeAndThePlayerSpawns` | 通过。玩家进服，实例就是测试建的那个；出生时的命令树含 `fine`、`broken`，没有 `home`、`now`；走一个 tick 不抛异常；之后 `refreshCommands` 发的命令树含 `home`（玩家有了实例，同一个 condition 放行），仍没有 `now`。每个抛异常的节点写一行 WARN `Command condition failed, the node is left out of the commands of <玩家名>: command=<命令名> argument=<节点参数 id>`，带栈（根模块测试不挂日志断言）。证据 `02-green/` |
-| 2 | 改动前的红 | 根模块 `63 tests completed, 8 failed`（本节根模块的 10 条新测试里 8 条红，各条见 `TC-PROD-822`～`TC-PROD-824` 第 2 步），本条红在 `connect`（`:50`），`java.lang.IllegalStateException: the condition of broken now`（`:42`），栈经基线的 `GraphConverter.append`（`GraphConverter.java:46`）、`Player.refreshCommands`（`Player.java:661`）、`Player.UNSAFE_init`（`:440`）、`ConnectionManager.java:744`。先撞上哪个节点的 condition 随命令树的节点顺序而定，撞上 `home` 时是读 `getInstance()` 的 `NullPointerException`（`:37`），同样红在 `:50`。证据 `01-red/` |
-| 3 | 反证 2 | 根模块 `63 tests completed, 3 failed`，本条红在 `:50`，异常同第 2 步（`:42`），栈经 `GraphConverter.visible`（`<GC>:218`）、`append`（`<GC>:53`）；另两条是 `TC-PROD-822` 第 4 步与 `TC-PROD-824` 第 4 步。证据 `04-cp2/` |
-| 4 | 反证 1 | 本条通过（引擎建包时的接住留着）。证据 `03-cp1/` |
-
-后置：同 `TC-PROD-820`。
-
-#### `TC-PROD-822` `map()`、`filter()` 包装的参数按被包装者的形状写进命令包：枚举、字面量、命令参数与带候选词的单词逐字节相同，建议类型保留；`parser()` 返回 null 又不是这几种形状的参数不写进命令包，玩家照常出生 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 第 1 步那次运行，看 `<T>.CommandPacketTest` 的两条与 `<T>.CommandTreeAtSpawnIntegrationTest` 的 `anArgumentWithoutAParserIsLeftOutAndThePlayerSpawns` | `CommandPacketTest` `tests="15"` 0 失败。`aMappedOrFilteredArgumentWritesTheNodesOfTheArgumentItWraps`：命令 `foo` 只有一个语法，参数分别是 `Enum("bar", Letter.class)` 与它的 `map(x -> x)`、`filter(_ -> true)`，`Literal("bar")` 与 `map`，`Command("bar")` 与 `map`，`Word("bar").from("a", "b")` 与 `filter`，每对经 `DeclareCommandsPacket.SERIALIZER` 写出的字节相同。`aMappedOrFilteredArgumentKeepsTheSuggestionTypeOfTheArgumentItWraps`：`EntityType("bar").map(x -> x)` 与 `EntityType("bar").filter(_ -> true)` 的节点 `suggestionsType` 都是 `minecraft:summonable_entities`，`HAS_SUGGESTION_TYPE` 与它一致。`anArgumentWithoutAParserIsLeftOutAndThePlayerSpawns`：命令 `roll` 有默认执行器与一个语法，参数 `sides` 是 `parser()` 返回 null 的自定义参数；玩家进服，出生时的命令树含 `roll`，没有 `sides`。每次建包写一行 ERROR `Command argument has no parser, the node is left out of the commands packet: command=roll argument=sides class=<参数的类名>`（不挂日志断言）。证据 `02-green/` |
-| 2 | 改动前的红（`TC-PROD-821` 第 2 步那次运行） | 三条红：第一条红在 `:245`（第一对，枚举的 `map`），`java.lang.NullPointerException`，栈经 `DeclareCommandsPacket.java:69` 写 parser 一行、测试的 `packetBytes`（`:281`）；第二条红在 `:254`，`map dropped the suggestion type ==> expected: <minecraft:summonable_entities> but was: <>`；第三条红在 `:90`，`sides has no parser to write, the node has to be left out ==> expected: <false> but was: <true>`：基线把 null 的 parser 写进节点，测试连接不序列化包，所以这里没有 NPE，真连接上 NPE 出在写线程、断开玩家。证据 `01-red/` |
-| 3 | 反证 1（`<GC>:58` 的 `argument.unwrap();` 改为 `argument;`，`<GC>:187` 的 `if (parser == null) {` 加 `&& Boolean.getBoolean("proof.never")`，`<AR>:399` `ArgumentFilter#suggestionType` 的 `return own != null ? own : argument.suggestionType();` 改为 `return own;`） | 三条各自红：第一条在 `:245`（NPE，栈同第 2 步）；第二条在 `:256`，`filter dropped the suggestion type ==> expected: <minecraft:summonable_entities> but was: <>`；第三条在 `:90`，消息同第 2 步。证据 `03-cp1/` |
-| 4 | 反证 2（`<AR>:354` `ArgumentMap#suggestionType` 同样改为 `return own;`） | 第二条红在 `:254`，消息同第 2 步；另两条通过。证据 `04-cp2/` |
-
-后置：同 `TC-PROD-820`。
-
-#### `TC-PROD-823` 目标选择器拒绝未实现的 15 个原版参数（`INVALID_ARGUMENT_NAME`，`Selector argument '<名>' is not supported`），不在原版里的名字仍报 `does not exist` — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 第 1 步那次运行，看 `<T>.ArgumentTypeTest` 的 `testArgumentEntityRefusesTheVanillaArgumentsItDoesNotImplement` | `tests="33"` 0 失败。`@e[tag=boss]`、`@a[name=Notch,limit=1]`、`@e[x=0,y=64,z=0,distance=..5]`、`@e[scores={a=1}]`、`@e[type=pig,nbt={NoAI:1b}]`、`@e[limit=1,team=red]` 都抛 `ArgumentSyntaxException`，错误码 `INVALID_ARGUMENT_NAME`（-5），消息以 `' is not supported` 结尾；`@e[colour=red]` 的消息是 `Argument name 'colour' does not exist`。同类的 `testArgumentEntity`（六个已实现参数的合法与非法写法）照旧通过；`02-green/` 那次运行跑的是整个 `command` 包加 `EntityFinderIntegrationTest`，`ArgumentRobustnessTest` 的 `@e[type=Pig]` 与 `EntityFinderIntegrationTest` 的 `@e[distance=..1.5]` 也通过。证据 `02-green/` |
-| 2 | 改动前的红（`TC-PROD-821` 第 2 步那次运行） | `tests="33"` 中 1 条红，在 `:150`（循环里第一个输入），`@e[tag=boss] ==> Expected …ArgumentSyntaxException to be thrown, but nothing was thrown.`。证据 `01-red/` |
-| 3 | 反证 1（`<AE>:172` 的拒绝加 `Boolean.getBoolean("proof.never") &&`，`:285` 的兜底改回 `default -> { }`，即改动前的静默忽略） | 本条红在 `:150`，消息同第 2 步。证据 `03-cp1/` |
-
-后置：同 `TC-PROD-820`。
-
-#### `TC-PROD-824` 参数的错误回调：只有一个参数在最深处失败、它设了回调、持有它的语法的 condition 放行发送者时，回调拿到它的错误码（逐词加长去试的参数拿最长那次输入的错误），命令得 `INVALID_SYNTAX`，不执行任何执行器；兄弟同深度失败、没设回调或语法的 condition 不放行时照旧走默认执行器；回调抛异常时命令得 `CANCELLED` — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 第 1 步那次运行，看 `<T>.CommandParseTest` 的五条 | `tests="13"` 0 失败。`anArgumentThatFailsCallsItsErrorCallbackInPlaceOfTheDefaultExecutor`：`foo` 有默认执行器与语法 `Integer("n").between(1, 10)`，回调经 `Command#setArgumentCallback` 设在 `n` 上；`foo 11`、`foo abc` 都得 `INVALID_SYNTAX`，回调依次拿到 `TOO_HIGH_ERROR`（3）、`NOT_NUMBER_ERROR`（1），默认执行器没跑；`foo` 得 `SUCCESS`，默认执行器跑一次，回调仍是两次。`theDefaultExecutorRunsWhenNoSingleArgumentOwnsTheError`：`plain 11`（`n` 没设回调）与 `shared 11`（`n` 设了回调，同一深度还有 `Word("mode").from("on", "off")` 也失败）都得 `SUCCESS`，默认执行器共跑两次，回调一次也没被调。`aCallbackThatThrowsCancelsTheCommand`：回调抛 `IllegalStateException`，`foo 11` 得 `CANCELLED`，异常不逃出 `CommandDispatcher#execute`。`aSenderTheSyntaxRefusesDoesNotGetTheCallback`：`foo` 有默认执行器，语法 `n`（设了回调）经 `addConditionalSyntax` 加入，condition 恒为 false；`foo 5` 得 `CANCELLED`，`foo 11` 得 `SUCCESS`，默认执行器跑一次，回调没被调。`theCallbackOfAnArgumentReadAcrossSpacesGetsTheErrorOfTheLongestInput`：唯一的语法是 `String("text")`（引号字符串，带空格时逐词加长去试），回调记下异常的输入；`foo "abc def` 得 `INVALID_SYNTAX`，回调恰调一次，输入是 `"abc def`。证据 `02-green/` |
-| 2 | 改动前的红（`TC-PROD-821` 第 2 步那次运行） | `tests="13"` 中 3 条红：`anArgumentThatFails…` 红在 `:168`，`expected: <INVALID_SYNTAX> but was: <SUCCESS>`（默认执行器代替了回调）；`aCallbackThatThrows…` 红在 `:218`，`expected: <CANCELLED> but was: <INVALID_SYNTAX>`（回调没被调）；`theCallbackOfAnArgumentReadAcrossSpaces…` 红在 `:259`，`expected: <["abc def]> but was: <[]>`。`theDefaultExecutorRuns…` 与 `aSenderTheSyntaxRefuses…` 通过：改动前回调从不被调用，这两条钉住的是改动不能改掉的语义，第 3 步证明它们有齿。证据 `01-red/` |
-| 3 | 反证 1（`<PI>:292` 的 `} else if (error != null && childDepth == error.chain().depth()) {` 加 `Boolean.getBoolean("proof.never") &&`，即兄弟同深度失败时不清掉归属；`<PI>:186` 的条件改为不看语法的 condition；`<PI>:600`、`:607` 暴力拼接只留第一次的错误） | 三条各自红：`theDefaultExecutorRuns…` 红在 `:202`，`expected: <SUCCESS> but was: <INVALID_SYNTAX>`（`shared 11` 的错误记在先解析的 `n` 上，调了它的回调）；`aSenderTheSyntaxRefuses…` 红在 `:239`，`expected: <SUCCESS> but was: <INVALID_SYNTAX>`（被语法拒绝的发送者拿到了回调）；`theCallbackOfAnArgumentReadAcrossSpaces…` 红在 `:259`，`expected: <["abc def]> but was: <["abc]>`；另两条通过。证据 `03-cp1/` |
-| 4 | 反证 2（`<PI>:482`） | `aCallbackThatThrows…` 红在 `:218`，`java.lang.IllegalStateException: the callback failed`（`:212`）逃出 `execute`；另四条通过。证据 `04-cp2/` |
-
-后置：同 `TC-PROD-820`。
-
-#### `TC-PROD-825` 插件参数的错误回调抛异常：经这条命令的 `LogBudget`（10 s 一行），发送者收到 `command.failed`，引擎不写行 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。插件 mmo 注册 `roll`，唯一的语法是 `Integer("sides").between(1, 100)`，回调抛 `IllegalStateException`。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 第 1 步那次运行，看 `<CI>` 的 `aPluginArgumentCallbackThatThrowsIsInThePluginsBudget` | 通过。玩家执行 `mmo:roll 1000` 十次都得 `INVALID_SYNTAX`；`PluginCommandsImpl` 恰好一行 ERROR，以 `Plugin command failed: plugin_id=mmo command=mmo:roll` 开头；引擎 `CommandParserImpl` 没有 ERROR；玩家收到十条翻译键 `command.failed` 的系统消息。证据 `02-green/` |
-| 2 | 改动前的红（`TC-PROD-820` 第 2 步那次运行） | 本条红在 `<CI>:615`，`one line for 10 failures within 10 s ==> expected: <1> but was: <0>`：回调从没被调用。证据 `01-red/` |
-| 3 | 反证 1（`<HI>:137` 包回调的判定加 `Boolean.getBoolean("proof.never") &&`） | 本条红在 `<CI>:613`，`expected: <INVALID_SYNTAX> but was: <CANCELLED>`：回调的异常落回引擎，按执行器异常结束，每次一行带栈的 ERROR。证据 `03-cp1/` |
-| 4 | 反证 2 | 本条通过：宿主这一层先接住，引擎回调的接住关掉也不影响。证据 `04-cp2/` |
-
-后置：同 `TC-PROD-820`。
-
-#### `TC-PROD-826` 本节五个类在 4 线程严格与严格 `grid` 两种模式下各跑一次 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
-
-前置：本节开头。玩家出生与命令树都在 tick 调度上跑；这两种模式由 `synaxis.java-library` 约定插件把命令行的 `-Dsynaxis.*` 转给测试 JVM。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 跑本节的类，加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | `BUILD SUCCESSFUL`：根模块 4 个类 63 条、`<CI>` 14 条，0 失败。证据 `05-strict/` |
-| 2 | 再加 `-Dsynaxis.thread-provider=grid` | 同第 1 步。证据 `06-grid/` |
-
-后置：同 `TC-PROD-820`。
 
 ### 玩法架构 · RUN-080：HOST（刚断线的连接 `enter`、开局那一刻断线的排队玩家）
 

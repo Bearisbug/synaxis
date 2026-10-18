@@ -2,7 +2,6 @@ package io.github.bearisbug.synaxis.entity.player;
 
 import net.kyori.adventure.text.TranslatableComponent;
 import io.github.bearisbug.synaxis.ServerProcess;
-import io.github.bearisbug.synaxis.command.builder.Command;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.EventFilter;
@@ -50,14 +49,12 @@ public class PlayerSpawnFailureIntegrationTest {
         final var watcher = env.createConnection();
         watcher.connect(instance, new Pos(0, 42, 0));
         final var removals = watcher.trackIncoming(PlayerInfoRemovePacket.class);
-        // Sending the command tree is the last thing the spawn does before the instance, and it asks the conditions
-        final Command command = new Command("broken");
-        command.setCondition((sender, _) -> {
-            if (sender instanceof Player player && player.getUsername().equals("Thrower"))
-                throw new IllegalStateException("a broken condition");
+        // Before the instance, the spawn lists everyone online in the tab list of the player and asks the
+        // visibility about each of them; a command condition that throws only hides its node
+        env.process().connection().setTabListVisibility((viewer, _) -> {
+            if (viewer.getUsername().equals("Thrower")) throw new IllegalStateException("a broken visibility");
             return true;
         });
-        env.process().command().register(command);
         final List<Throwable> reported = new CopyOnWriteArrayList<>();
         env.process().exception().setExceptionHandler(reported::add);
         final RecordingConnection connection = new RecordingConnection(env.process());

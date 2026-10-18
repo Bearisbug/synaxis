@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.app.store;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.github.bearisbug.synaxis.adventure.EngineAdventure;
 import io.github.bearisbug.synaxis.codec.Transcoder;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
@@ -18,8 +19,12 @@ import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryTranscoder;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import io.github.bearisbug.synaxis.tag.Tag;
+import net.kyori.adventure.nbt.BinaryTag;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -49,9 +54,11 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
      */
     static final Tag<Boolean> APPLIED = Tag.Boolean("player-state.applied");
 
-    private static final int SCHEMA_VERSION = 1;
+    private static final int SCHEMA_VERSION = 2;
     private static final int HOTBAR_SIZE = 9;
 
+    private final Transcoder<BinaryTag> nbt;
+    // Only for the items of schema version 1, stored as the JSON of the codec
     private final Transcoder<JsonElement> json;
     // The players that arrived with a transfer ticket, until their first spawn or their disconnect
     private final Set<Player> claimed = ConcurrentHashMap.newKeySet();
@@ -64,6 +71,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
      * @param registries the process registries, which an item component that names a registry entry is encoded with
      */
     public PlayerStateSection(Registries registries) {
+        this.nbt = new RegistryTranscoder<>(Transcoder.NBT, registries);
         this.json = new RegistryTranscoder<>(Transcoder.JSON, registries);
     }
 
@@ -239,7 +247,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
         for (Map.Entry<Integer, ItemStack> slot : new TreeMap<>(value.inventory()).entrySet()) {
             final JsonObject entry = new JsonObject();
             entry.addProperty("slot", slot.getKey());
-            entry.add("item", ItemStack.CODEC.encode(json, slot.getValue()).orElseThrow("slot " + slot.getKey()));
+            entry.addProperty("item", snbt(ItemStack.CODEC.encode(nbt, slot.getValue()).orElseThrow("slot " + slot.getKey())));
             inventory.add(entry);
         }
         object.add("inventory", inventory);
@@ -275,7 +283,11 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
             final int slot = field(entry, "slot").getAsInt();
             if (slot < 0 || slot >= PlayerInventory.INVENTORY_SIZE)
                 throw new IllegalArgumentException("inventory slot " + slot + " is not 0.." + (PlayerInventory.INVENTORY_SIZE - 1));
-            final ItemStack stack = ItemStack.CODEC.decode(json, field(entry, "item")).orElseThrow("inventory slot " + slot);
+            // SNBT keeps the NBT types of the custom data, which the JSON of schema version 1 turned into bare numbers
+            final JsonElement item = field(entry, "item");
+            final ItemStack stack = (item.isJsonPrimitive()
+                    ? ItemStack.CODEC.decode(nbt, compound(item.getAsString(), slot))
+                    : ItemStack.CODEC.decode(json, item)).orElseThrow("inventory slot " + slot);
             if (stack.isAir()) throw new IllegalArgumentException("inventory slot " + slot + " holds air");
             if (inventory.put(slot, stack) != null)
                 throw new IllegalArgumentException("inventory slot " + slot + " is there twice");
@@ -286,6 +298,22 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
         final double health = finite(object, "health");
         if (health < 0) throw new IllegalArgumentException("health " + health + " is negative");
         return new PlayerState(decodedWorld, position, inventory, heldSlot, (float) health);
+    }
+
+    private static String snbt(BinaryTag item) {
+        try {
+            return EngineAdventure.tagStringIO().asString(item);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private static CompoundBinaryTag compound(String item, int slot) {
+        try {
+            return EngineAdventure.tagStringIO().asCompound(item);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("inventory slot " + slot + " is not SNBT", e);
+        }
     }
 
     private static JsonElement field(JsonObject object, String name) {

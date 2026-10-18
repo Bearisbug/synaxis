@@ -266,6 +266,9 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
         return with(DataComponents.MAX_STACK_SIZE, maxStackSize);
     }
 
+    /**
+     * Sets a tag in the custom data of this item, see {@link CustomData#withTag(Tag, Object)}.
+     */
     @Contract(value = "_, _ -> new", pure = true)
     default <T> ItemStack withTag(Tag<T> tag, @Nullable T value) {
         return with(DataComponents.CUSTOM_DATA, get(DataComponents.CUSTOM_DATA, CustomData.EMPTY).withTag(tag, value));

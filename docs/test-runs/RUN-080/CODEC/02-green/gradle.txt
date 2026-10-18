@@ -1,0 +1,149 @@
+heavy lock taken by: owner=生产就绪会话/RUN-077/fix-ITEMNET pid=3886 since=2026-10-18 10:04:34 task=RUN-077 单个测试类的 Gradle（跑完即放） (10:04:34)
+[fix-CODEC-2-green] free=41% load=18 start 10:05:04
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as configuration cache cannot be reused because an input to plugin class 'dev.panuszewski.gradle.versioncatalogs.VersionCatalogAccessorsPlugin' has changed.
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions UP-TO-DATE
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateEntrypointForLibs UP-TO-DATE
+> Task :build-src:generateEntrypointForLibsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-src:generateLibrariesForConventions UP-TO-DATE
+> Task :build-src:generateLibrariesForLibs UP-TO-DATE
+> Task :build-src:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-src:compilePluginsBlocks UP-TO-DATE
+> Task :build-src:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-src:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-src:verifyEarlyEvaluatedBuild UP-TO-DATE
+> Task :build-src:verifyTopLevelBuild UP-TO-DATE
+> Task :build-src:compileKotlin UP-TO-DATE
+> Task :build-src:compileJava UP-TO-DATE
+> Task :build-src:pluginDescriptors UP-TO-DATE
+> Task :build-src:processResources UP-TO-DATE
+> Task :build-src:classes UP-TO-DATE
+> Task :build-src:jar UP-TO-DATE
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :baker
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rush
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :loadtest
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :play-kit
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :synx
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :processTestResources UP-TO-DATE
+> Task :testing:processResources NO-SOURCE
+> Task :testNamingCheck UP-TO-DATE
+> Task :forbiddenImportsCheck
+> Task :baker:processResources UP-TO-DATE
+> Task :game-rts:processResources UP-TO-DATE
+> Task :server-app:buildInfo UP-TO-DATE
+> Task :server-app:processResources UP-TO-DATE
+> Task :server-app:processTestResources UP-TO-DATE
+> Task :synx:processResources NO-SOURCE
+> Task :server-app:testNamingCheck UP-TO-DATE
+> Task :server-app:forbiddenImportsCheck
+> Task :compileJava
+> Task :classes
+> Task :jar
+> Task :synx:compileJava
+> Task :plugin-api:compileJava
+> Task :plugin-api:classes
+> Task :plugin-api:jar UP-TO-DATE
+> Task :baker:compileJava
+> Task :baker:classes
+> Task :baker:jar UP-TO-DATE
+> Task :testing:compileJava
+> Task :game-rts:compileJava
+> Task :testing:classes
+> Task :testing:jar UP-TO-DATE
+> Task :game-rts:classes
+> Task :game-rts:jar UP-TO-DATE
+> Task :server-app:compileJava
+> Task :server-app:classes
+> Task :server-app:compileTestJava
+> Task :server-app:testClasses
+> Task :synx:classes
+> Task :synx:jar UP-TO-DATE
+> Task :compileTestJava
+> Task :testClasses
+
+> Task :test
+
+LeftClickIntegrationTest > theCursorHashOfAnEnchantedItem(Env) FAILED
+    org.opentest4j.AssertionFailedError at LeftClickIntegrationTest.java:353
+
+99 tests completed, 1 failed
+
+> Task :test FAILED
+> Task :server-app:test
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-CODEC/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/r080-CODEC/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 33s
+49 actionable tasks: 14 executed, 35 up-to-date
+Configuration cache entry stored.
+[fix-CODEC-2-green] gradle exit=1 end 10:05:38

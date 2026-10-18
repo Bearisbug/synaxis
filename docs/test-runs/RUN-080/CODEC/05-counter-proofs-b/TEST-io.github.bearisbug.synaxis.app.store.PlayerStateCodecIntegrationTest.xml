@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" tests="5" skipped="0" failures="3" errors="0" timestamp="2026-10-18T02:11:22.442Z" hostname="Mac.local" time="0.81">
+  <properties/>
+  <testcase name="aStoredSectionOutsideTheLayoutIsRefused(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.749"/>
+  <testcase name="itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.019">
+    <failure message="java.lang.IllegalArgumentException: inventory slot 3: Not an object: &quot;{count:1,components:{\&quot;minecraft:enchantments\&quot;:{\&quot;minecraft:sharpness\&quot;:5}},id:\&quot;minecraft:iron_sword\&quot;}&quot;" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: inventory slot 3: Not an object: &quot;{count:1,components:{\&quot;minecraft:enchantments\&quot;:{\&quot;minecraft:sharpness\&quot;:5}},id:\&quot;minecraft:iron_sword\&quot;}&quot;
+	at io.github.bearisbug.synaxis.codec.Result.orElseThrow(Result.java:124)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSection.decode(PlayerStateSection.java:290)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.itemsWhoseComponentsNameRegistryEntriesSurviveTheRoundTrip(PlayerStateCodecIntegrationTest.java:101)
+</failure>
+  </testcase>
+  <testcase name="theCoreAndTheRtsWorldsCarryNoMap(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.012"/>
+  <testcase name="theLayoutIsTheOneOfTheDesign(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.011">
+    <failure message="java.lang.IllegalArgumentException: inventory slot 0: Not an object: &quot;{count:63,id:\&quot;minecraft:stone\&quot;}&quot;" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: inventory slot 0: Not an object: &quot;{count:63,id:\&quot;minecraft:stone\&quot;}&quot;
+	at io.github.bearisbug.synaxis.codec.Result.orElseThrow(Result.java:124)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSection.decode(PlayerStateSection.java:290)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.theLayoutIsTheOneOfTheDesign(PlayerStateCodecIntegrationTest.java:66)
+</failure>
+  </testcase>
+  <testcase name="theTagsOfAnItemKeepTheirTypes(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest" time="0.012">
+    <failure message="java.lang.IllegalArgumentException: inventory slot 0: Not an object: &quot;{count:1,components:{\&quot;minecraft:custom_data\&quot;:{owner:[I;1563127582,1011502971,-1641969044,223051539],charges:12s,tier:3b,soulbound:1b,serial:5L,bonus:0.5f}},id:\&quot;minecraft:iron_sword\&quot;}&quot;" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: inventory slot 0: Not an object: &quot;{count:1,components:{\&quot;minecraft:custom_data\&quot;:{owner:[I;1563127582,1011502971,-1641969044,223051539],charges:12s,tier:3b,soulbound:1b,serial:5L,bonus:0.5f}},id:\&quot;minecraft:iron_sword\&quot;}&quot;
+	at io.github.bearisbug.synaxis.codec.Result.orElseThrow(Result.java:124)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSection.decode(PlayerStateSection.java:290)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateCodecIntegrationTest.theTagsOfAnItemKeepTheirTypes(PlayerStateCodecIntegrationTest.java:123)
+</failure>
+  </testcase>
+  <system-out><![CDATA[10:11:23.191 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:11:23.195 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:11:23.195 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:11:23.214 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:11:23.215 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:11:23.215 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:11:23.228 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:11:23.229 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:11:23.229 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:11:23.239 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:11:23.239 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:11:23.239 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:11:23.251 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:11:23.251 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:11:23.251 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

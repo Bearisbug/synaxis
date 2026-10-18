@@ -159,8 +159,10 @@ record TagImpl<T>(int index, String key,
 
     @Override
     public void write(CompoundBinaryTag.Builder nbtCompound, @Nullable T value) {
-        if (value != null) {
-            final BinaryTag nbt = entry.write(value);
+        // A value that writes no NBT (a transient tag, a text component that does not encode) is written as removed,
+        // as the compound of a tag handler leaves it out: the builder would keep a null entry, which no NBT can carry
+        final BinaryTag nbt = value != null ? entry.write(value) : null;
+        if (nbt != null) {
             if (isView()) nbtCompound.put((CompoundBinaryTag) nbt);
             else nbtCompound.put(key, nbt);
         } else {

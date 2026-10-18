@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest" tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-18T02:10:25.218Z" hostname="Mac.local" time="1.427">
+  <properties/>
+  <testcase name="aLogoutBeforeTheFirstSpawnWritesNoSection(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest" time="0.666"/>
+  <testcase name="aRestartedShardGivesThePlayerBackItsState(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest" time="0.237">
+    <failure message="org.opentest4j.AssertionFailedError: the 46 slots, the enchanted sword and the tagged diamond included ==&gt; expected: &lt;[ItemStackImpl[material=minecraft:stone, amount=63, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_pickaxe, amount=1, componentPatch=DataComponentMapImpl[components={3=&gt;3}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_sword, amount=1, componentPatch=DataComponentMapImpl[components={13=&gt;EnchantmentList[enchantments={RegistryKeyImpl[key=minecraft:sharpness]=5}]}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:dirt, amount=9, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:diamond, amount=1, componentPatch=DataComponentMapImpl[components={0=&gt;CustomData[nbt=CompoundBinaryTagImpl[tags={soulbound=ByteBinaryTagImpl[value=1], bonus=FloatBinaryTagImpl[value=0.5]}]]}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]]]&gt; but was: &lt;[ItemStackImpl[material=minecraft:stone, amount=63, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_pickaxe, amount=1, componentPatch=DataComponentMapImpl[components={3=&gt;3}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_sword, amount=1, componentPatch=DataComponentMapImpl[components={13=&gt;EnchantmentList[enchantments={RegistryKeyImpl[key=minecraft:sharpness]=5}]}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:dirt, amount=9, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:diamond, amount=1, componentPatch=DataComponentMapImpl[components={0=&gt;CustomData[nbt=CompoundBinaryTagImpl[tags={soulbound=IntBinaryTagImpl[value=1], bonus=DoubleBinaryTagImpl[value=0.5]}]]}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]]]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the 46 slots, the enchanted sword and the tagged diamond included ==&gt; expected: &lt;[ItemStackImpl[material=minecraft:stone, amount=63, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_pickaxe, amount=1, componentPatch=DataComponentMapImpl[components={3=&gt;3}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_sword, amount=1, componentPatch=DataComponentMapImpl[components={13=&gt;EnchantmentList[enchantments={RegistryKeyImpl[key=minecraft:sharpness]=5}]}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:dirt, amount=9, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:diamond, amount=1, componentPatch=DataComponentMapImpl[components={0=&gt;CustomData[nbt=CompoundBinaryTagImpl[tags={soulbound=ByteBinaryTagImpl[value=1], bonus=FloatBinaryTagImpl[value=0.5]}]]}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]]]&gt; but was: &lt;[ItemStackImpl[material=minecraft:stone, amount=63, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_pickaxe, amount=1, componentPatch=DataComponentMapImpl[components={3=&gt;3}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:iron_sword, amount=1, componentPatch=DataComponentMapImpl[components={13=&gt;EnchantmentList[enchantments={RegistryKeyImpl[key=minecraft:sharpness]=5}]}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:dirt, amount=9, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:diamond, amount=1, componentPatch=DataComponentMapImpl[components={0=&gt;CustomData[nbt=CompoundBinaryTagImpl[tags={soulbound=IntBinaryTagImpl[value=1], bonus=DoubleBinaryTagImpl[value=0.5]}]]}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]], ItemStackImpl[material=minecraft:air, amount=0, componentPatch=DataComponentMapImpl[components={}]]]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1210)
+	at io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest.aRestartedShardGivesThePlayerBackItsState(PlayerStatePostgresIntegrationTest.java:120)
+</failure>
+  </testcase>
+  <testcase name="anUndecodableSectionRefusesTheLoginAndStaysAsItIs(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest" time="0.279"/>
+  <testcase name="aTransferCarriesTheSectionToTheTargetShard(Env)" classname="io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest" time="0.243"/>
+  <system-out><![CDATA[10:10:25.343 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+10:10:25.363 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@6773c073
+10:10:25.364 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+10:10:25.417 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+10:10:25.450 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+10:10:25.452 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.012s)
+10:10:25.461 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+10:10:25.484 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+10:10:25.493 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+10:10:25.525 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+10:10:25.536 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+10:10:25.551 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+10:10:25.563 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+10:10:25.574 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+10:10:25.583 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.050s)
+10:10:25.616 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r1-c1 session_id=1 released -> active
+10:10:25.616 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r1-c1 session_id=1
+10:10:25.795 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=f622ab79-5167-4983-bdc2-36e7f6f31e25 identifier=Hasty
+10:10:25.830 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=5ad55838-e8d4-473e-aa22-9fb4ad55d4e4 identifier=Hasty
+10:10:25.844 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=c5e3f4b3-300b-4513-a19c-89be9d14c2c7 identifier=Hasty
+10:10:25.871 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+10:10:25.872 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+10:10:25.884 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:10:25.885 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:10:25.885 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:10:25.903 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+10:10:25.909 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@79a68d19
+10:10:25.910 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+10:10:25.912 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+10:10:25.920 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+10:10:25.921 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.002s)
+10:10:25.925 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+10:10:25.941 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+10:10:25.944 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+10:10:25.969 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+10:10:25.979 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+10:10:25.992 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+10:10:26.002 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+10:10:26.012 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+10:10:26.019 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.044s)
+10:10:26.037 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r1-c1 session_id=1 released -> active
+10:10:26.037 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r1-c1 session_id=1
+10:10:26.072 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=618fd0c3-dc78-49d7-bf6f-dbebd3ffc95f identifier=Restarter
+10:10:26.100 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r1-c1 session_id=2 released -> active
+10:10:26.100 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r1-c1 session_id=2
+10:10:26.109 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+10:10:26.110 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+10:10:26.120 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:10:26.121 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=e26f55a4-6346-419f-893d-da4072377e2e identifier=Restarter reason=synaxis:server-stopping
+10:10:26.121 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=e26f55a4-6346-419f-893d-da4072377e2e identifier=Restarter
+10:10:26.121 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:10:26.122 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:10:26.121 [Syn-Store-Write] WARN  i.g.b.synaxis.app.store.PlayerStore - Saving a character failed: character_id=1 release=true (1 store failures since the last report)
+java.sql.SQLException: HikariDataSource HikariDataSource (synaxis-store) has been closed.
+	at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:95)
+	at io.github.bearisbug.synaxis.app.store.PostgresBackend.write(PostgresBackend.java:136)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.write(PlayerStore.java:1052)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.drain(PlayerStore.java:947)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.lambda$submit$0(PlayerStore.java:920)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:460)
+10:10:26.140 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+10:10:26.148 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@3d49b00e
+10:10:26.148 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+10:10:26.150 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+10:10:26.158 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+10:10:26.158 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.002s)
+10:10:26.163 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+10:10:26.177 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+10:10:26.180 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+10:10:26.204 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+10:10:26.214 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+10:10:26.226 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+10:10:26.236 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+10:10:26.244 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+10:10:26.251 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.041s)
+10:10:26.268 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r1-c1 session_id=1 released -> active
+10:10:26.268 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r1-c1 session_id=1
+10:10:26.302 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=bbb955d4-e979-41da-9b17-4580a7c4561e identifier=Broken
+10:10:26.342 [Test worker] ERROR i.g.b.synaxis.app.store.PlayerStore - Refusing a login: character_id=1 section_id=synaxis:player cannot be decoded
+java.lang.NullPointerException: Material cannot be null
+	at java.base/java.util.Objects.requireNonNull(Objects.java:246)
+	at io.github.bearisbug.synaxis.item.ItemStackImpl.<init>(ItemStackImpl.java:63)
+	at io.github.bearisbug.synaxis.item.ItemStackImpl.create(ItemStackImpl.java:55)
+	at io.github.bearisbug.synaxis.item.ItemStack.of(ItemStack.java:115)
+	at io.github.bearisbug.synaxis.codec.StructCodec$6.decodeFromMap(StructCodec.java:331)
+	at io.github.bearisbug.synaxis.item.ItemStack$1.decodeFromMap(ItemStack.java:79)
+	at io.github.bearisbug.synaxis.codec.StructCodec.lambda$decode$0(StructCodec.java:103)
+	at io.github.bearisbug.synaxis.codec.Result.map(Result.java:54)
+	at io.github.bearisbug.synaxis.codec.StructCodec.decode(StructCodec.java:103)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSection.decode(PlayerStateSection.java:292)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSection.decode(PlayerStateSection.java:45)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.decode(PlayerStore.java:572)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.loadWithin(PlayerStore.java:541)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.loadOrRefuse(PlayerStore.java:480)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.load(PlayerStore.java:441)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.load(PlayerStore.java:410)
+	at io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest.anUndecodableSectionRefusesTheLoginAndStaysAsItIs(PlayerStatePostgresIntegrationTest.java:181)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:700)
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:528)
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:53)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:124)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:256)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:228)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:189)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:109)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:168)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:137)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:126)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:100)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$0(InterceptingLauncher.java:46)
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:45)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.processAllTestDefinitions(JUnitPlatformTestDefinitionProcessor.java:206)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.access$000(JUnitPlatformTestDefinitionProcessor.java:123)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor.stop(JUnitPlatformTestDefinitionProcessor.java:117)
+	at org.gradle.api.internal.tasks.testing.SuiteTestDefinitionProcessor.stop(SuiteTestDefinitionProcessor.java:63)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.gradle.internal.dispatch.MethodInvocation.invokeOn(MethodInvocation.java:77)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:28)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:19)
+	at org.gradle.internal.dispatch.ContextClassLoaderDispatch.dispatch(ContextClassLoaderDispatch.java:33)
+	at org.gradle.internal.dispatch.ProxyDispatchAdapter$DispatchingInvocationHandler.invoke(ProxyDispatchAdapter.java:88)
+	at jdk.proxy2/jdk.proxy2.$Proxy6.stop(Unknown Source)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker$3.run(TestWorker.java:195)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.executeAndMaintainThreadName(TestWorker.java:126)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:103)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:63)
+	at org.gradle.process.internal.worker.child.ActionExecutionWorker.execute(ActionExecutionWorker.java:56)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:122)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:72)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.run(GradleWorkerMain.java:69)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.main(GradleWorkerMain.java:74)
+10:10:26.344 [Test worker] INFO  i.g.b.synaxis.app.store.PlayerStore - Refusing a login: connection_id=cbe19f46-895e-4431-8499-6d79158aceb3 reason=synaxis:state-unavailable cause=section synaxis:player cannot be decoded
+10:10:26.344 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=cbe19f46-895e-4431-8499-6d79158aceb3 identifier=Broken reason=synaxis:state-unavailable
+10:10:26.344 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=cbe19f46-895e-4431-8499-6d79158aceb3 identifier=Broken
+10:10:26.374 [Test worker] ERROR i.g.b.synaxis.app.store.PlayerStore - Refusing a login: character_id=1 section_id=synaxis:player cannot be decoded
+java.lang.IllegalArgumentException: held_slot 9 is not 0..8
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSection.decode(PlayerStateSection.java:299)
+	at io.github.bearisbug.synaxis.app.store.PlayerStateSection.decode(PlayerStateSection.java:45)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.decode(PlayerStore.java:572)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.loadWithin(PlayerStore.java:541)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.loadOrRefuse(PlayerStore.java:480)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.load(PlayerStore.java:441)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.load(PlayerStore.java:410)
+	at io.github.bearisbug.synaxis.app.store.PlayerStatePostgresIntegrationTest.anUndecodableSectionRefusesTheLoginAndStaysAsItIs(PlayerStatePostgresIntegrationTest.java:181)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:700)
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:528)
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:53)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:124)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:139)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:256)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:228)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:189)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:109)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:168)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:137)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:126)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:100)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$0(InterceptingLauncher.java:46)
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:45)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:57)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.processAllTestDefinitions(JUnitPlatformTestDefinitionProcessor.java:206)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.access$000(JUnitPlatformTestDefinitionProcessor.java:123)
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor.stop(JUnitPlatformTestDefinitionProcessor.java:117)
+	at org.gradle.api.internal.tasks.testing.SuiteTestDefinitionProcessor.stop(SuiteTestDefinitionProcessor.java:63)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.gradle.internal.dispatch.MethodInvocation.invokeOn(MethodInvocation.java:77)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:28)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:19)
+	at org.gradle.internal.dispatch.ContextClassLoaderDispatch.dispatch(ContextClassLoaderDispatch.java:33)
+	at org.gradle.internal.dispatch.ProxyDispatchAdapter$DispatchingInvocationHandler.invoke(ProxyDispatchAdapter.java:88)
+	at jdk.proxy2/jdk.proxy2.$Proxy6.stop(Unknown Source)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker$3.run(TestWorker.java:195)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.executeAndMaintainThreadName(TestWorker.java:126)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:103)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:63)
+	at org.gradle.process.internal.worker.child.ActionExecutionWorker.execute(ActionExecutionWorker.java:56)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:122)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:72)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.run(GradleWorkerMain.java:69)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.main(GradleWorkerMain.java:74)
+10:10:26.376 [Test worker] INFO  i.g.b.synaxis.app.store.PlayerStore - Refusing a login: connection_id=e21b9e7c-f48d-4bc4-99ec-d37211f67d73 reason=synaxis:state-unavailable cause=section synaxis:player cannot be decoded
+10:10:26.376 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=e21b9e7c-f48d-4bc4-99ec-d37211f67d73 identifier=Broken reason=synaxis:state-unavailable
+10:10:26.376 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=e21b9e7c-f48d-4bc4-99ec-d37211f67d73 identifier=Broken
+10:10:26.390 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+10:10:26.390 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+10:10:26.401 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:10:26.402 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:10:26.402 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+10:10:26.420 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+10:10:26.427 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@71bebbff
+10:10:26.427 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+10:10:26.429 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+10:10:26.436 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+10:10:26.437 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.002s)
+10:10:26.442 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+10:10:26.457 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+10:10:26.459 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+10:10:26.484 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+10:10:26.495 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+10:10:26.508 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+10:10:26.518 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+10:10:26.526 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+10:10:26.533 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.044s)
+10:10:26.550 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r0-c1 session_id=1 released -> active
+10:10:26.550 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r0-c1 session_id=1
+10:10:26.609 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=20de5f1a-0551-4a9d-96ed-04b24eff6334 identifier=Traveller
+10:10:26.628 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r1-c1 session_id=2 released -> active
+10:10:26.628 [Test worker] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r1-c1 session_id=2
+10:10:26.634 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+10:10:26.634 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+10:10:26.644 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+10:10:26.644 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=1fbc0070-33c5-40e4-855c-1acc2b74a487 identifier=Traveller reason=synaxis:server-stopping
+10:10:26.644 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=1fbc0070-33c5-40e4-855c-1acc2b74a487 identifier=Traveller
+10:10:26.645 [Syn-Store-Write] WARN  i.g.b.synaxis.app.store.PlayerStore - Saving a character failed: character_id=1 release=true (1 store failures since the last report)
+java.sql.SQLException: HikariDataSource HikariDataSource (synaxis-store) has been closed.
+	at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:95)
+	at io.github.bearisbug.synaxis.app.store.PostgresBackend.write(PostgresBackend.java:136)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.write(PlayerStore.java:1052)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.drain(PlayerStore.java:947)
+	at io.github.bearisbug.synaxis.app.store.PlayerStore.lambda$submit$0(PlayerStore.java:920)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:460)
+10:10:26.645 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+10:10:26.645 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-18T02:05:34.437Z" hostname="Mac.local" time="0.977">
+  <properties/>
+  <testcase name="anItemWithATransientValueIsSentAndSaved(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.845"/>
+  <testcase name="remove(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.015"/>
+  <testcase name="getDifferentObject(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.013"/>
+  <testcase name="gc(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.032"/>
+  <testcase name="get(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.011"/>
+  <testcase name="snbt(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.01"/>
+  <testcase name="differentTagInvalidation(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.018"/>
+  <testcase name="invalidation(Env)" classname="io.github.bearisbug.synaxis.tag.TagItemIntegrationTest" time="0.018"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

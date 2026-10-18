@@ -217,9 +217,9 @@ final class TranscoderNbtImpl implements Transcoder<BinaryTag> {
         return new MapBuilder<>() {
             @Override
             public MapBuilder<BinaryTag> put(BinaryTag key, BinaryTag value) {
-                if (!(value instanceof EndBinaryTag) && key instanceof StringBinaryTag string)
-                    builder.put(string.value(), value);
-                return this;
+                if (!(key instanceof StringBinaryTag string))
+                    throw new IllegalArgumentException("Map key must encode to a string");
+                return put(string.value(), value);
             }
 
             @Override

@@ -137,6 +137,7 @@
 | 2026-10-18 | v0.9.85 | RUN-080 组 NET（分支 `prod/r080-NET`，基于 `main` `cb969826b7`）修连接读路径与 configuration 收尾的三处缺陷，`:plugin-api` 与 `:protocol` 不动。**包长被 TCP 截断**（实现追上设计，设计不改）：`PacketReading#readPacket` 在连接的读缓冲上直接读包长，`VarIntType#read` 只受段的容量约束、不看写下标，写下标之后是先前的帧留下的字节（`compact()` 只搬可读部分，在线模式下是就地解密后的明文）。一次读只收到 ≥ 128 B 帧的包长前 1～2 个字节、其后 3～4 个旧字节的高位又都是 1 时，凑满 5 个续位字节抛「VarInt too long」，原判据只看 `beginMark + 5 ≤ capacity` 就判畸形，按默认 `synaxis.reject-malformed-packet=true` 以 `synaxis:protocol-error` 踢掉正常客户端。改为按收到的字节判：写下标之前已有 5 个字节、全带续位才是畸形，不足 5 个是不完整，容量放得下就等下一次读，放不下照旧要求扩容。**断开之后的读线程**（§16 新增一行）：读循环只看 `stop`，`PlayerSocketConnection#read` 不看连接在不在线，解码出错的一批不 compact，下一次读从同一处接着解，每读一次就再踢一次、再写一行 `Kicking`（login 态起另有一行 `Protocol error` 与一个断线包）；读缓冲写满之后读不再等 socket，空转到写线程关 channel（login 态队列一直有包，要等 `Syn-Socket-Closer` 的 1 s）。改为 `read` 读完 socket 先查连接，已下线就清空读缓冲返回，照样把内核接收缓冲读空、不解码不派发；`PlayerConnection#kick` 对已下线的连接什么都不做（Javadoc 写明），迟到的踢人（解码器、出站积压检查、顶号）不再写行、不再排断线包。**`FinishConfiguration` 的确认**（§14 `synaxis:keep-alive-timeout` 一行、§16 新增一行、§19 新增一个场景、§28.2 已决行补注）：`ConnectionManager#doConfiguration` 发它之前把玩家移出 keep-alive 集合，确认之后进世界时才加回，这段时间引擎没有任何超时；客户端收到并在 TCP 层确认之后断网、不发 RST 时，服务端此后不写包、socket 没开 `SO_KEEPALIVE`，读线程一直阻塞，席位、L1 计数与宿主存储的在线记录占到重启。改为发包之前（与 `removePlayer` 同锁）记下时刻，确认（`transitionConfigToPlay`）与断开（`removePlayer`）时摘除，tick 在 keep-alive 之后把记下已满 `synaxis.keep-alive-kick`（默认 15 s）还没确认的玩家以 `synaxis:keep-alive-timeout` 断开；这段时间仍不发 keep-alive。**§28.3** 加三行交给主会话：`docs/DESIGN.md` §11.1 状态图与迁移表加 `configuration → disconnected`（确认超时）、§28「读超时」技术债一行补这段截止与后移的行号，§28 `SOAK-3` 清点行的 ② 档前提补上批与批之间，`docs/TEST.md` `TC-GAME-070` 第 2 步后移的红行。**代码行号**：正文引的 `ConnectionManager.java:213-215`、`:415`、`:722` 与 `PlayerSocketConnection.java:174-183` 随本组的改动后移，改为 `:217-219`、`:419`、`:731` 与 `:181-190`。用例 `docs/TEST.md` `TC-PROD-770`～`TC-PROD-774` | Bearisbug |
 | 2026-10-18 | v0.9.86 | RUN-080 组 THREAD（分支 `prod/r080-THREAD`，基于 `main` `a211a45ca1`），修 tick 多线程的四处缺陷，接口签名不变，状态行留给集成轮。**元素换线程与非 tick 线程的获取**：dispatcher 改派元素原先不拿任何锁，非 tick 线程持着旧线程的锁跨过 tick 边界时，新线程在持有期间照常 tick 这个元素；在全局锁上排队的获取方拿到锁时元素可能已换线程，锁的是旧线程；首次出生的续延开头就告诉 dispatcher，实体在出生途中被 tick。现在分发处理更新与 `refreshThreads` 改派时持全局锁，`sync`、`lock` 拿到锁后复读线程，`trySync` 在全局锁里读，`acquireSync` 逐个核对，首次出生的续延（玩家经 `Player#spawnPlayer` 也走这里）出生结束时才告诉 dispatcher，出生失败时也告诉（`API-PROD-016` 新增「元素换线程与外来获取」，「获取等待」加 ④；§16 加两行，§19 加四个场景，§28.2 `runOwned` 风险行写明持锁跨 tick 推迟下一个 tick 的分发）。**在实体所属线程上等跨区块传送**：原先整个进程停止 tick，现在 `Entity#teleport` 的两条异步分支与非玩家 `setInstance` 返回的 future 在拥有实体的线程上、未完成时 `join`、`get` 抛 `IllegalStateException`；持着别的线程的元素时等另一个实体的这两个 future 同样锁死，引擎拦不住，契约写成任何 `sync` 或 `lock` 回调里都不等（`API-PROD-016` 新增一条，§16、§19 各一；为什么不在等待线程上驱动续延写在那一条）。**实体属性的线程**：`AttributeInstance` 的类注释原写不必占有实体就能改，降最大生命值却在修改线程上 `setHealth`；注释改为在所属线程上改，按所有权断言不能写生命值的线程降上限时，压生命值排到实体下一个 tick，其余线程当场压（`API-PROD-016` 新增一条，§16 一行，§19 两个场景）。**区块读锁升写锁**：原先只有 `assert`，生产 JVM 卡死；`Chunk#lockWriteLock` 改为常开检查、抛 `IllegalStateException`，`tryLockWriteLock` 不变（`API-PROD-020` 新增一条，§16、§19 各一）。`docs/PLUGINS.md` §10 加三段。**代码行号**：`API-PROD-016` `ThreadDispatcherImpl.java:145` → `:158`；`API-PROD-031` `AcquirableImpl.java:122-125` → `:124-127`、`Entity.java:1915` → `:1978`；`API-PROD-032` `Entity.java:1941` → `:2004`、`:1945-1948` → `:2008-2011`、`:505-507` → `:512-514`；§28.2 `runOwned` 一行 `:1119-1123` → `:1126-1130`，跨格拾取已决行与经验球待办行 `:1915` → `:1978`，乘客偏移待办行 `:1744`、`:1761-1768`、`:1765-1767`、`:1772-1782`、`:1780` → `:1807`、`:1824-1831`、`:1828-1830`、`:1835-1845`、`:1843`；`LivingEntity.java` 加了一行导入，其后的行号加 1：`API-PROD-031` 的 `:244`、`:195-217`、`:292-309` → `:245`、`:196-218`、`:293-310`，`API-PROD-032` 的 `:447` → `:448`，§28.2 跨格拾取已决行与插件消费掉落物待办行的 `:237`、`:242` → `:238`、`:243`；变更记录不改。**§28.3** 加两行：`docs/DESIGN-M3.md` 的 `Chunk#lockWriteLock` 与 `Entity.java` 行号交光照会话，`docs/DESIGN-PLAY.md` 的两处 `Entity.java` 行号待改。用例 `docs/TEST.md` `TC-PROD-780`～`TC-PROD-786`，证据 `docs/test-runs/RUN-080/THREAD/` | Bearisbug |
 | 2026-10-18 | v0.9.87 | RUN-080 组 WORLD（分支 `prod/r080-WORLD`，基于 `main` `cb969826b7`）修两处引擎缺陷，需求、接口签名与插件面不改。① `BlockPlacementRule#blockPlace` 返回 null 照它的 Javadoc 取消放置：在区块收到 `setBlock` 之前返回，世界、邻居与观察者都不变，`Instance#placeBlock` 返回 false，`BlockPlacementListener` 按拒绝放置回滚该格与手里那一格、不扣物品；原先换成空气照常放下并扣物品。规则改了方块时，新方块 handler 的 `onPlace` 收到改后的方块。② 首次出生在进实例之前失败（`Player#UNSAFE_init` 同步抛出，或出生区块载入失败）的玩家以 `synaxis:internal-error` 断开，离开时由 `ConnectionManager#updateWaitingPlayers` 恰好派发一次 `PlayerDisconnectEvent`，并从在线玩家的 Tab 列表撤掉；原先同步抛出时不踢人，两种失败都永不派发。§28.3 加一行交 `docs/DESIGN.md` §11.1 断线口径。**代码行号**：`Player.java`、`InstanceContainer.java`、`Instance.java` 多了行，本分册正文引这三个文件的 15 处改为新行号，变更记录、§26 开工前的表与 §28.3 已完成的行记的是当时的，不改；`docs/DESIGN.md`、`docs/DESIGN-M3.md`、`docs/DESIGN-PLAY.md`、`docs/DESIGN-M2.md` 引的交 §28.3。用例在 `docs/TEST.md`「生产就绪 · RUN-080：WORLD」一节 | Bearisbug |
+| 2026-10-18 | v0.9.88 | RUN-080 组 CODEC（分支 `prod/r080-CODEC`，基于 `origin/main` `cb969826b7`）修三处物品数据的缺陷，需求与插件面不变，线格式不变，状态行留给集成轮。**`API-PROD-032`「JSON 编码」（库里的格式变了）**：`synaxis:player` 的 `schema_version` 由 1 升到 2，`inventory[].item` 由物品 JSON 改为物品 NBT 的 SNBT 字符串（`ItemStack.CODEC` 经 `RegistryTranscoder` 包装的 NBT transcoder 编出，再由 `EngineAdventure.tagStringIO()` 写成文本），1 版的对象照读。起因：JSON 只有一种数字，`custom_data` 这类原样 NBT 经 JSON 往返后 byte、short、float 变成 int 或 double，int 范围内的 long 变成 int，int 数组变成列表，插件用 `withTag` 存进物品的 `Tag.Boolean`、`Tag.Byte`、`Tag.Short`、`Tag.Float`、`Tag.Long`、`Tag.UUID` 存一次库就读回 null（`TagImpl#read` 吞掉类型不符），物品与新造的同款不再相等、不能堆叠，全程没有日志。回退到只认 1 的构建时，写过 2 的角色登录被拒（§9「数据段格式版本」只增），§23 回滚一段补这一句。§9「玩家持久化段」「背包格」两行改，§19 加一个场景。**引擎（`docs/DESIGN.md` 的范围）**：① 窗口点击带的光标物品哈希（`ItemStack.Hash`）遇到经 map codec 编码的组件（附魔、存储附魔、方块状态、调试棒状态、地图装饰）必抛：`mapValue` 的实现编码时用 `getString` 回读每个键，CRC32 transcoder 什么都读不回，于是光标上拿着附魔物品时每次点击都抛出监听器、交一次 `handleException`，客户端光标不同步时也不补发 `SetCursorItemPacket`（开 `synaxis.reject-misused-packet` 时被踢）。改为由各格式的 `Transcoder.MapBuilder#put(D, D)` 拒收非字符串键：NBT、Java、JSON 三种抛 `IllegalArgumentException`，map codec 转成 `Result.Error`，CRC32 照收（原版的哈希也接受任意键）。`mapValue` 与 `mapValueTyped` 原是两份几乎逐行相同、已经分叉的实现，后者在 NBT 与 Java 下静默丢掉非字符串键、在 JSON 下把数字键写成字符串，现在合成一个，值解不出时错误都带键名；哈希失败时异常带组件名。`MapBuilder#put(D, D)` 的 Javadoc 写明抛异常的条件，签名不变。② 给物品、方块或 `CustomData` 写 `Tag.Transient`（或编码失败的文本组件 tag）时 compound 里留下键 → null，发这件物品的包与存档的编码各抛 `NullPointerException`（发包断线；`synaxis:player` 的捕获失败，这一段停在上次保存）；改为与 `TagHandler` 一样移除这个键，`Tag.Transient` 与两个 `withTag` 的 Javadoc 写明。§19 加两个场景、P5 一行补服务端测试，§28.3 加一行交 `docs/DESIGN.md` §28 的 F49 已决行。用例 `docs/TEST.md` `TC-PROD-800`～`TC-PROD-804` | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -1099,7 +1100,7 @@ erDiagram
         public boolean isDefault() { return world == null; }   // 从没被捕获过
     }
     public final class PlayerStateSection implements DataSection<PlayerState> {
-        public static final String ID = "synaxis:player";      // schemaVersion() = 1，createDefault() = PlayerState.DEFAULT
+        public static final String ID = "synaxis:player";      // schemaVersion() = 2（v0.9.88），createDefault() = PlayerState.DEFAULT
         public PlayerStateSection(Registries registries);     // 进程的注册表，物品编解码用（见「JSON 编码」）
         public void install(PlayerStore store, EventNode<Event> hostNode); // 启动线程，Main 步骤 (4)
         public void useRule(PositionRule rule);                 // 启动线程，Main 步骤 (5)，绑定端口之前，恰一次
@@ -1139,18 +1140,18 @@ erDiagram
   - 为什么不在 configuration 阶段应用：`CoreMode` 设重生点的监听器挂在根节点上（`CoreMode#start`），先于宿主节点上 `AdmissionGate` 的载入执行，那时段还没读出来；`RtsPlugin` 设出生点的监听器（`RtsPlugin.java:69-70`）在插件子节点里、晚于宿主执行，宿主在那里设的位置会被它盖掉；再者引擎拿重生点当首次出生的位置，在那里设存档位置等于把死后的重生点也改成存档位置。所以在首次出生之后传送。
   - 凭票据到达：`Main` 交给 `openStore` 的到达回调（`API-PROD-028` 到达回调一条）改为先照旧调 `ShardArrivals#claimed`（目录模式），再调 `PlayerStateSection#claimed`；后者按 `Player` 对象把这名玩家记进一个集合，首次出生应用时或 `PlayerDisconnectEvent` 时移出。只有 `MapShard` 规则看这个集合。目录模式的挂地图分片上两者都在（v0.9.73 起 `Main#claimedBy` 的 `playerState` 参数不再可空，`arrivals` 只在目录模式非空），平坦核心与 RTS 只有后者。两者都在验票通过时的 configuration 线程上、只改内存，互不读对方，先后不影响结果：前者把重生点改成门框落点（没有通回来源大区的门时不改，留在大区出生点），重生点就是首次出生的位置；后者让首次出生时的应用不传送，背包、选中格与生命值照段里的写进玩家。
   - 转服：源分片签发 ③ 的写回（`PlayerStore#transferOut` 排在玩家下一个 tick 的快照）同样先捕获，`synaxis:player` 随这次写入进库；票据只带 `state_version`、不带段内容（`API-PROD-028`），目标分片凭票据取得写权后照普通载入读出这一段，`state_version` 保证读到的就是这次写回。目标分片应用背包、选中格与生命值，位置按上表取门框落点。拍板原话是「转服时随票据带到目标分片」，这里按效果实现：段内容不放进 Cookie，因为票据作为 Cookie 受 5,120 B 上限（`API-PROD-021` 的 `storeCookie`，引擎 `CookieStorePacket` 检查），而这一段按 §9 可以到 64 KiB（46 格带组件的物品）；票据带的 `state_version` 把目标读到的段钉在这次写回上，玩家到达时手里的东西与离开时相同。
-  - JSON 编码（`schema_version` 1，`encode` 在快照的线程上调用）：
+  - JSON 编码（`schema_version` 2，v0.9.88；`encode` 在快照的线程上调用）：
 
     ```json
     {"world": {"kind": "map", "map_id": "demo", "build_id": "b20261011"},
      "pos": {"x": 1024.5, "y": 71.0, "z": -12.25, "yaw": 90.0, "pitch": 12.5},
-     "inventory": [{"slot": 0, "item": {"id": "minecraft:stone", "count": 63}},
-                   {"slot": 1, "item": {"id": "minecraft:iron_pickaxe", "count": 1, "components": {"minecraft:damage": 3}}}],
+     "inventory": [{"slot": 0, "item": "{count:63,id:\"minecraft:stone\"}"},
+                   {"slot": 1, "item": "{count:1,components:{\"minecraft:damage\":3},id:\"minecraft:iron_pickaxe\"}"}],
      "held_slot": 1,
      "health": 17.5}
     ```
 
-    `kind` 取 `core`、`rts`、`map`，只有 `map` 带 `map_id` 与 `build_id`；物品经 `ItemStack.CODEC` 与 `new RegistryTranscoder<>(Transcoder.JSON, registries)` 编解码（原版物品 JSON：`id`、`count`、`components`；`registries` 是构造时传入的进程注册表）。这里不能用裸 `Transcoder.JSON`：引用注册表的组件（例如附魔走 `EnchantmentList.CODEC` 的 `RegistryKey.codec`）在没有注册表的 transcoder 上直接返回「Missing registries in transcoder」（`RegistryCodecs.java:154-155`、`:168-169`），背包里有一件附魔物品，这名玩家的整段就每次快照都编码失败、再也写不进库（`PlayerStore.java:871-874`）；`inventory` 按格号升序。解码拒收（按 `API-PROD-005` 拒绝登录、不改库）：缺字段、`kind` 不是这三个值、数值不是有限值、格号不在 0～45 或重复、物品解不出（含未知物品 id）、`held_slot` 不在 0～8、`health` < 0。默认值不会写库：只有捕获过的值才标脏。编码后受 `character_section` 的 64 KiB 约束（§9）：46 格都是带大量组件的物品时可能超出，超出时整名角色写不进，与 §28.2 数据段写不进库一行同一风险。
+    `kind` 取 `core`、`rts`、`map`，只有 `map` 带 `map_id` 与 `build_id`；物品先经 `ItemStack.CODEC` 与 `new RegistryTranscoder<>(Transcoder.NBT, registries)` 编成原版物品 NBT（`id`、`count`、`components`；`registries` 是构造时传入的进程注册表），再由 `EngineAdventure.tagStringIO()` 写成 SNBT 字符串（键序是 adventure-nbt 复合标签的迭代顺序），解码反过来。不存成物品 JSON（1 版的写法）：JSON 只有一种数字，`custom_data`、`bucket_entity_data` 与 `entity_data` / `block_entity_data` 里的原样 NBT 经 JSON 往返后 byte、short、float 变成 int 或 double，int 范围内的 long 变成 int，`[B;…]`、`[I;…]`、`[L;…]` 变成列表，`Tag.Boolean`、`Tag.Byte`、`Tag.Short`、`Tag.Float`、`Tag.Long`、`Tag.UUID` 这类按标签类型读的 tag 读回默认值（`TagImpl#read` 吞掉类型不符），物品与新造的同款不再相等、不能堆叠，全程没有日志；SNBT 带着类型后缀（`1b`、`12s`、`0.5f`、`5L`、`[I;…]`）。`schema_version` 1 的行（v0.9.63～v0.9.87 写的，以及 `p10.py seed` 写的种子）物品是 JSON 对象，照读：解码按元素类型分，字符串按 SNBT 读，对象按 1 版的 JSON 读；1 版行里已经丢掉的类型读不回来，这一段下次标脏时按 2 版重写。回退到只认 1 的构建时，写过 2 的角色登录被拒（§9「数据段格式版本」只增、库里高于代码时拒绝登录），没有降级路径。这里不能用不带注册表的 transcoder：引用注册表的组件（例如附魔走 `EnchantmentList.CODEC` 的 `RegistryKey.codec`）在没有注册表的 transcoder 上直接返回「Missing registries in transcoder」（`RegistryCodecs.java:154-155`、`:168-169`），背包里有一件附魔物品，这名玩家的整段就每次快照都编码失败、再也写不进库（`PlayerStore.java:871-874`）；`inventory` 按格号升序。解码拒收（按 `API-PROD-005` 拒绝登录、不改库）：缺字段、`kind` 不是这三个值、数值不是有限值、格号不在 0～45 或重复、物品解不出（含未知物品 id、不是 SNBT 的字符串）、`held_slot` 不在 0～8、`health` < 0。默认值不会写库：只有捕获过的值才标脏。编码后受 `character_section` 的 64 KiB 约束（§9）：46 格都是带大量组件的物品时可能超出，超出时整名角色写不进，与 §28.2 数据段写不进库一行同一风险。改存 SNBT 不吃掉余量：按 `jsonb` 的文本（`octet_length(data::text)`，冒号与逗号后带空格）计，上面的样例 1 版 357 B、2 版 348 B，63 个石头、耗损 3 的铁镐、锋利 V 铁剑三件的 `item` 分别是 38、83、112 B 与 35、77、107 B（v0.9.88 用 Python `json.dumps` 的默认分隔符算）：SNBT 内部不带空格，简单键名不加引号，抵掉了字符串引号转义多出的 2 B。
   - 不写 `character.current_region`，不读写 `character_location`（§7）；跨大区送回待做（§28.2）。没有配置键。
 
 演进与弃用：
@@ -1177,10 +1178,10 @@ erDiagram
 | 数据段格式版本 | `schema_version` | `character_section.schema_version` | int | 是 | 只增；库里高于代码时拒绝登录 | — | 否 |
 | 数据段内容 | `data` | `character_section.data` | jsonb | 是 | 编码后 ≤ 65,536 B | 字节 | 视插件内容 |
 | 按大区位置 | `x` / `y` / `z` / `yaw` / `pitch` | `character_location.*` | double / real | 是 | 有限值；表在，宿主不读写（§7） | 格 / 度 | 否 |
-| 玩家持久化段 | `synaxis:player` | `character_section`（`section_id = 'synaxis:player'`） | jsonb | 否（新角色没有这一行） | 布局见 `API-PROD-032`，`schema_version` 1；默认值不写库 | 字节 | 否 |
+| 玩家持久化段 | `synaxis:player` | `character_section`（`section_id = 'synaxis:player'`） | jsonb | 否（新角色没有这一行） | 布局见 `API-PROD-032`，`schema_version` 2（v0.9.88，1 版的行照读）；默认值不写库 | 字节 | 否 |
 | 存档世界 | `world.kind` / `world.map_id` / `world.build_id` | `character_section.data` 内 | text | 是（`map_id`、`build_id` 只在 `map` 时有） | `kind` ∈ `core / rts / map`；`map_id`、`build_id` 是地图版本清单的值 | — | 否 |
 | 存档位置与朝向 | `pos.x` / `pos.y` / `pos.z` / `pos.yaw` / `pos.pitch` | `character_section.data` 内 | double / float | 是 | 有限值；用不用按 `API-PROD-032` 的位置规则 | 格 / 度 | 否 |
-| 背包格 | `inventory[].slot` / `inventory[].item` | `character_section.data` 内 | int / 物品 JSON | 否（空背包为空数组） | 格号 0～45、不重复、升序；物品按 `ItemStack.CODEC` 经 `RegistryTranscoder` 包装的 JSON，只存非空气的格 | 个 | 否 |
+| 背包格 | `inventory[].slot` / `inventory[].item` | `character_section.data` 内 | int / SNBT 字符串（1 版是物品 JSON） | 否（空背包为空数组） | 格号 0～45、不重复、升序；物品是 `ItemStack.CODEC` 经 `RegistryTranscoder` 包装的 NBT transcoder 编出的 SNBT（v0.9.88；1 版是同一 codec 编出的 JSON，照读），只存非空气的格 | 个 | 否 |
 | 选中格 | `held_slot` | `character_section.data` 内 | int | 是 | 0～8 | — | 否 |
 | 生命值 | `health` | `character_section.data` 内 | float | 是 | 有限值且 ≥ 0；应用时大于 `MAX_HEALTH` 取上限，0 按重生处理 | 点（原版单位，1 点 = 半颗心） | 否 |
 | 分片会话 ID | `session_id` | `shard_session.session_id` | bigint | 是 | identity，即纪元号 | — | 否 |
@@ -3097,6 +3098,16 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
   When 背包有空位的玩家走上去；另一次背包 36 格全满（都不是石头）的玩家走上去
   Then 前者背包多 1 个石头、物品实体移除；后者 PickupItemEvent 被取消、物品实体留在原处、claim 已释放，换一名有空位的玩家能捡起
 
+场景: 光标上拿着附魔物品点背包，光标哈希照常比对 (REQ-PROD-046)
+  Given 玩家光标上与背包 1 格各是一把带「锋利 V」的钻石剑
+  When 玩家点 1 格，客户端带的光标哈希是空的；再点一次，带的是这把剑的哈希
+  Then 两次点击都不抛异常；第一次服务端补发一次 SetCursorItemPacket（光标是这把剑），第二次不发；带方块状态的物品同样算得出哈希，摘要与按原版规则逐项算的相同（v0.9.88；修前每次点击都抛 IllegalArgumentException、不补发）
+
+场景: 物品与方块上写 transient 标签 (REQ-PROD-046、REQ-PROD-047)
+  Given 插件给一件物品写 Tag.Transient("kit") = true，给一个石头方块写同一个 tag
+  When 把这件物品发给玩家、存进 synaxis:player
+  Then 物品的 custom_data 里没有 kit 这个键，发包与编码都不抛异常；方块的 NBT 是 null；同一个键原有的值被移除（v0.9.88；修前 compound 里留下键 → null，发包与存档各抛 NullPointerException）
+
 场景: 近战按攻击力扣血与击退，每个目标 10 tick 冷却 (REQ-PROD-046)
   Given 平坦核心进程的训练假人生命值 20，玩家手持铁镐（攻击力 4）
   When 玩家在第 0 tick、第 5 tick、第 12 tick 各打它一下
@@ -3141,6 +3152,11 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
   Given 平坦核心进程（PostgreSQL 存储），玩家背包 3 格是一把带「锋利 V」附魔的铁剑，4 格是一本存储了「效率 III」的附魔书
   When 定时保存写一次，玩家断开再进服
   Then 编码不报错、日志里没有「Encoding a section failed」；进服后两格的物品与附魔逐项相同
+
+场景: 物品 custom_data 里带类型的标签往返 (REQ-PROD-047)
+  Given 平坦核心进程（内存存储，或 PostgreSQL 存储），玩家背包 10 格是一颗钻石，插件用 withTag 给它写了 Tag.Boolean("soulbound") = true 与 Tag.Float("bonus") = 0.5
+  When 玩家断开再进服
+  Then 两个 tag 读回 true 与 0.5，物品与断开前的相等、能与新造的同款堆叠；库里这一格的 item 是 SNBT 字符串，custom_data 里写作 soulbound:1b、bonus:0.5f；存在 schema_version 1 的行照读（v0.9.88；1 版存成物品 JSON 时两个 tag 读回 null）
 
 场景: 准入之后、首次出生之前断开不改库 (REQ-PROD-047)
   Given PostgreSQL 存储的平坦核心进程；账号 A 的角色存过 synaxis:player（背包里 63 个石头、位置 (8.5, 40, -3.5)），账号 B 从没进过服
@@ -3206,7 +3222,7 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 | P2 移动与区块加载 | `core G2` | `rts G2` | — | 平坦核心出生点一圈有光照 |
 | P3 挖 | `core G3` | 不验 | — | — |
 | P4 放 | `core G4` | 不验 | — | — |
-| P5 背包与物品 | `core G5`（快捷栏、背包内移动、Q 键丢弃、背包外点击丢弃、关背包时丢出光标物品、拾取） | 不验 | — | 三条丢弃路径的出生位置与速度、关背包后服务端光标为空、背包满时不拾取、插件取消丢弃时不生成实体、冻结 |
+| P5 背包与物品 | `core G5`（快捷栏、背包内移动、Q 键丢弃、背包外点击丢弃、关背包时丢出光标物品、拾取） | 不验 | — | 三条丢弃路径的出生位置与速度、关背包后服务端光标为空、背包满时不拾取、插件取消丢弃时不生成实体、冻结、光标上是附魔物品时的光标哈希与物品上的 transient 标签（v0.9.88） |
 | P6 聊天 | `core G6` | `rts G6` | — | 收件人只到同一实例、插件可改 |
 | P7 命令 | `core G7` | `rts G7` | — | 无节点玩家的 `list`、未知命令回执、控制台不回执 |
 | P8 打实体与受伤 | `core G8` | 不验 | — | 攻击力、伤害类型 `player_attack`、10 tick 冷却、击退、插件取消、假人死后 20 tick 移除与 5 s 重生、假人掉出世界按死亡处理 |
@@ -3283,7 +3299,7 @@ L0、L0′、accept 时的 L1 超限、握手前超时与过闸之后才判出�
 | R3 公开内测 | 单分片 ≤ 200 人 | §26 第 5 波 200 人档达标；R2 运行 7 天关键操作落库成功率 ≥ 99.9%、封禁即时生效率 ≥ 99% | 频道 `capacity` 降回 50；回退 tag |
 | R4 正式 | 每分片 200～500 人 | 500 人两档记录在案并据此定 `capacity`；第 6 波全部完成（G28～G38） | `capacity` 降一档；回退 tag |
 
-回滚分两层：应用层是配置键回原值或回退上一个 tag（滚动重启 + 转服）；数据层靠 Flyway「先扩后缩」——同一次发布只加列加表，删列放到下一次发布，所以回退一个版本的分片仍能连同一个库（§25），真要回到过去的数据走 `RB-PROD-008` 时间点恢复。
+回滚分两层：应用层是配置键回原值或回退上一个 tag（滚动重启 + 转服）；数据层靠 Flyway「先扩后缩」——同一次发布只加列加表，删列放到下一次发布，所以回退一个版本的分片仍能连同一个库（§25），真要回到过去的数据走 `RB-PROD-008` 时间点恢复。数据段的内容不在「先扩后缩」之内：某段的 `schema_version` 高于回退到的构建时，那名角色登录被拒（§9）。`synaxis:player` 在 v0.9.88 由 1 升到 2，回退到 v0.9.88 之前的构建，之后存过这一段的角色都进不来，直到再升回来。
 
 上线前检查单（R2 放量前逐项填写；本分册为草稿，全部待填）：
 
@@ -3702,3 +3718,4 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | `docs/DESIGN.md` | §11.1 表后「断线口径」段 | 「已开始进世界的跳过，由实体移除派发」之后补一句：首次出生在进实例之前失败的玩家（`Player#UNSAFE_init` 同步抛出，或它返回的 future 异常完成时玩家不在任何实例里，如出生区块载入失败）同样由这里派发：`ConnectionManager` 以 `synaxis:internal-error` 踢掉它，再把它交给一次 `leftBeforeSpawn`，这样客户端在失败之前断开时也有一次；`Player#dropPendingSpawn` 对它返回真，同时向在线玩家广播 `PlayerInfoRemovePacket`。该段引的 `ConnectionManager.java:606-612` 改为 `:777-781`。§28 两处引的 `ConnectionManager.java:794`（keep-alive 超时踢人）改为 `:797`（本分册 v0.9.87，`docs/TEST.md` `TC-PROD-793`、`TC-PROD-794`、`TC-PROD-795`） | 待光照会话改 |
 | `docs/DESIGN-M3.md` | §5 问题表 ② 行（`Instance.java:1302-1334`、`InstanceContainer.java:783-785`）与 ⑥ 行（`Instance.java:1315`、`:1332`）；`API-M3-005` 只读一条（`InstanceContainer.java:234`、`BlockPlacementListener.java:203-207`）；`API-M3-006` 里 `view_bounds` 外的区块请求一条（`InstanceContainer.java:264-281`、`:441`）；`API-M3-010`「首批区块」（`Player.java:985`、`:990`）；§11.1「显式卸载」一段（`InstanceContainer.java:294`）；§28.2 交接行「交给生产就绪会话的改动（M3 v0.38）」（`Player.java:926-945`） | 本分册 v0.9.87 在这四个文件里加了行，引的代码不变，行号依次改为 `Instance.java:1309-1341`、`InstanceContainer.java:799-801`，`Instance.java:1322`、`:1339`；`InstanceContainer.java:250`、`BlockPlacementListener.java:207-211`；`InstanceContainer.java:280-297`、`:457`；`Player.java:1014`、`:1019`；`InstanceContainer.java:310`；`Player.java:955-974`。按 `prod/r080-WORLD` 的代码算，RUN-080 各组合入后以集成分支为准 | 待光照会话改 |
 | `docs/DESIGN-PLAY.md`、`docs/DESIGN-M2.md` | `docs/DESIGN-PLAY.md` §6.1 引擎一行、§6.4.3、§6.6 进程内换实例一行、§28.2 真客户端切实例一行的 `Player.java:730`；§6.3 L0 一行的 `Player.java:1307-1342`；`API-PLAY-002` 下行一条的 `Player.java:543`；`API-PLAY-006` 生成器一条的 `InstanceContainer.java:529`、`move` 一条的 `Player.java:731-734`；§16 结算一行的 `Player.java:477`、`InstanceContainer.java:280`、`Player.java:744`；`docs/DESIGN-M2.md` §28.2「原版聊天是一进 N 出的放大面」一行的 `Player.java:398` | 本分册 v0.9.87 在 `Player.java`、`InstanceContainer.java` 里加了行，引的代码不变，行号依次改为 `:759`；`:1336-1371`；`:572`；`InstanceContainer.java:545`、`Player.java:760-763`；`Player.java:506`、`InstanceContainer.java:296`、`Player.java:773`；`Player.java:427`（`docs/TEST.md` `TC-PROD-664` 的 `CLOSE_OUT` 已随本版改为 `427`）。按 `prod/r080-WORLD` 的代码算，RUN-080 各组合入后以集成分支为准 | 待生产就绪会话集成轮改 |
+| `docs/DESIGN.md` | §28 已决行「审计 F49：客户端 NBT 不进 tag 系统」 | 句末补一句：写入的值编不出 NBT（`Tag.Transient` 的值、编码失败的文本组件）时，`TagImpl#write` 按值为 null 处理、移除这个键，与 `TagHandler` 的 compound 跳过这类条目一致；物品、方块与 `CustomData` 因此留不住 transient 值（本分册 v0.9.88，RUN-080 组 CODEC：修前 compound 里留下键 → null，发包与存档各抛 `NullPointerException`） | 主会话 |

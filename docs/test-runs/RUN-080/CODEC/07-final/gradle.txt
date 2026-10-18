@@ -1,0 +1,56 @@
+heavy lock taken by: owner=生产就绪会话/RUN-077/fix-STORE pid=3886 since=2026-10-18 10:21:14 task=RUN-077 单个测试类的 Gradle（跑完即放） (10:30:06)
+[fix-CODEC-7-final] free=48% load=8 start 10:31:06
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :processResources UP-TO-DATE
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:processResources NO-SOURCE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :processTestResources UP-TO-DATE
+> Task :testing:processResources NO-SOURCE
+> Task :testNamingCheck UP-TO-DATE
+> Task :forbiddenImportsCheck
+> Task :baker:processResources UP-TO-DATE
+> Task :game-rts:processResources UP-TO-DATE
+> Task :server-app:buildInfo UP-TO-DATE
+> Task :server-app:processResources UP-TO-DATE
+> Task :server-app:processTestResources UP-TO-DATE
+> Task :synx:processResources NO-SOURCE
+> Task :server-app:testNamingCheck UP-TO-DATE
+> Task :server-app:forbiddenImportsCheck UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :baker:compileJava UP-TO-DATE
+> Task :baker:classes UP-TO-DATE
+> Task :baker:jar UP-TO-DATE
+> Task :testing:compileJava UP-TO-DATE
+> Task :game-rts:compileJava UP-TO-DATE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar UP-TO-DATE
+> Task :game-rts:classes UP-TO-DATE
+> Task :game-rts:jar UP-TO-DATE
+> Task :compileTestJava UP-TO-DATE
+> Task :testClasses UP-TO-DATE
+> Task :server-app:compileJava FROM-CACHE
+> Task :server-app:classes UP-TO-DATE
+> Task :server-app:compileTestJava UP-TO-DATE
+> Task :server-app:testClasses UP-TO-DATE
+> Task :synx:classes UP-TO-DATE
+> Task :synx:jar UP-TO-DATE
+> Task :test
+> Task :server-app:test
+
+BUILD SUCCESSFUL in 9s
+31 actionable tasks: 3 executed, 1 from cache, 27 up-to-date
+Configuration cache entry reused.
+[fix-CODEC-7-final] gradle exit=0 end 10:31:15

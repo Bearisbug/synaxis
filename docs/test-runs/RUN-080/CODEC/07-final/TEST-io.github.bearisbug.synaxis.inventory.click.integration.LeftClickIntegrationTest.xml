@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-18T02:31:10.321Z" hostname="Mac.local" time="1.69">
+  <properties/>
+  <testcase name="shiftClickHotbarToSlotNine(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="1.4"/>
+  <testcase name="leftExternal(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="0.09"/>
+  <testcase name="theCursorHashOfAnEnchantedItem(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="0.065"/>
+  <testcase name="shiftClickCraftingResultToSlotZero(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="0.063"/>
+  <testcase name="leftSelf(Env)" classname="io.github.bearisbug.synaxis.inventory.click.integration.LeftClickIntegrationTest" time="0.059"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

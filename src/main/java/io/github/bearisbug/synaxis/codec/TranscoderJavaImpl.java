@@ -189,7 +189,8 @@ final class TranscoderJavaImpl implements Transcoder<Object> {
         return new MapBuilder<>() {
             @Override
             public MapBuilder<Object> put(Object key, Object value) {
-                if (!(key instanceof String s)) return this;
+                if (!(key instanceof String s))
+                    throw new IllegalArgumentException("Map key must encode to a string");
                 map.put(s, value);
                 return this;
             }

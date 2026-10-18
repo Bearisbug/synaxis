@@ -102,7 +102,6 @@ import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -403,6 +402,9 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     /**
      * Gets metadata of this entity.
      * You may want to cast it to specific implementation.
+     * <p>
+     * {@link #switchEntityType(EntityType)} replaces it: a meta obtained before then refuses writes with
+     * {@link IllegalStateException}, get it again.
      *
      * @return metadata of this entity.
      */
@@ -848,16 +850,22 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     /**
      * Changes the entity type of this entity.
      * <p>
-     * Works by changing the internal entity type field and by calling {@link #removeViewer(Player)}
-     * followed by {@link #addViewer(Player)} to all current viewers.
+     * Every current viewer is sent the destruction of the entity, then its spawn as the new type
+     * ({@link #updateOldViewer(Player)}, {@link #updateNewViewer(Player)}), then the passengers of this entity
+     * and, when it rides a vehicle, the passengers of that vehicle: the destruction dismounts them on the
+     * client. The client of a player switched this way still sees itself as a player.
      * <p>
-     * Be aware that this only change the visual of the entity, the {@link BoundingBox}
-     * will not be modified.
+     * The metadata shared by every type (glowing, invisible, custom name, gravity, ...) is kept, the type
+     * specific metadata is reset. An {@link EntityMeta} obtained from {@link #getEntityMeta()} before the
+     * switch no longer belongs to this entity: writing to it throws {@link IllegalStateException}, get the
+     * meta again. The air resistance and the collision flags follow the new type, the {@link BoundingBox}
+     * is not modified.
      *
      * @param entityType the new entity type
      */
     public synchronized void switchEntityType(EntityType entityType) {
         final MetadataHolder previousMetadata = this.metadata;
+        previousMetadata.detach();
         this.entityType = entityType;
         this.metadata = new MetadataHolder(this::notifyMetadataChanges);
         // The type specific indices cannot be carried over, but the shared entity ones (glowing,
@@ -870,9 +878,23 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
                 entityType.verticalAirResistance());
 
         updateCollisions();
-        Set<Player> viewers = new HashSet<>(getViewers());
-        getViewers().forEach(this::updateOldViewer);
+        // One snapshot for both: a player shown in between already got the new type, and destroying it
+        // without spawning it again would leave its client without the entity
+        final Set<Player> viewers = Set.copyOf(getViewers());
+        viewers.forEach(this::updateOldViewer);
         viewers.forEach(this::updateNewViewer);
+        // updateNewViewer leaves the passengers to EntityView, which this does not go through
+        if (hasPassenger()) {
+            final SetPassengersPacket passengersPacket = getPassengersPacket();
+            viewers.forEach(viewer -> viewer.sendPacket(passengersPacket));
+        }
+        final Entity vehicle = this.vehicle;
+        if (vehicle != null) {
+            final SetPassengersPacket vehiclePacket = vehicle.getPassengersPacket();
+            for (Player viewer : viewers) {
+                if (vehicle.isViewer(viewer)) viewer.sendPacket(vehiclePacket);
+            }
+        }
     }
 
     /**

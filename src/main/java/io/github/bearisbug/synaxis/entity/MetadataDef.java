@@ -27,6 +27,12 @@ import static io.github.bearisbug.synaxis.entity.MetadataDefImpl.index;
  * When using this class directly, ensure that you are using fields on the most inner class,
  * for example {@link Player#ENTITY_FLAGS} and not {@link MetadataDef#ENTITY_FLAGS}.
  * You need do this as some classes have different default values.
+ * <p>
+ * The index of an entry is absolute: it only means that entry on the entity types whose vanilla layout has
+ * the nested class it is declared in. Written to another type, nothing checks it: the client reads it with
+ * the type its own layout gives that index and disconnects every viewer ("Invalid entity data item type"),
+ * and the value stays in the metadata of the entity, disconnecting every new viewer as well. For example
+ * {@link Display#WIDTH} is index 20, past the last index of an {@code interaction} entity.
  */
 @SuppressWarnings({"unused", "SpellCheckingInspection"})
 public sealed class MetadataDef {

@@ -52,6 +52,8 @@ public final class MetadataHolder {
     // Number of open batches, a plain flag makes nested try/finally blocks flush the outer batch early
     private final AtomicInteger openBatches = new AtomicInteger();
     private final Int2ObjectArrayMap<Metadata.Entry<?>> notNotifiedChanges = new Int2ObjectArrayMap<>();
+    // Set once the entity switched to another type, whose layout a write here no longer matches
+    private volatile boolean detached;
 
     /**
      * @deprecated Use {@link #MetadataHolder(Consumer)} instead.
@@ -72,9 +74,9 @@ public final class MetadataHolder {
         final int id = entry.index();
 
         final Metadata.Entry<?> value = entryAt(id);
-        if (value == null) return entry.defaultValue();
+        if (value == null) return copyOf(entry.defaultValue());
         return switch (entry) {
-            case MetadataDef.Entry.Index<T> _ -> (T) value.value();
+            case MetadataDef.Entry.Index<T> _ -> copyOf((T) value.value());
             case MetadataDef.Entry.BitMask bitMask -> {
                 final byte maskValue = (byte) value.value();
                 yield (T) ((Boolean) getMaskBit(maskValue, bitMask.bitMask()));
@@ -87,6 +89,8 @@ public final class MetadataHolder {
     }
 
     public <T extends @UnknownNullability Object> void set(MetadataDef.Entry<T> entry, T value) {
+        if (detached) throw new IllegalStateException(
+                "this EntityMeta belongs to a previous entity type, call Entity#getEntityMeta() again after switchEntityType");
         final int id = entry.index();
 
         final Metadata.Entry<?> result;
@@ -98,7 +102,7 @@ public final class MetadataHolder {
             //  sending bitmasks which will overwrite client-predicted values. See PR 3089 for more info.
             // However, interpolation delay is expected to be sent regularly with the same value to begin
             //  interpolation so we always send it for now.
-            if (Objects.equals(current, value) && entry != MetadataDef.Display.INTERPOLATION_DELAY) {
+            if (Objects.deepEquals(current, value) && entry != MetadataDef.Display.INTERPOLATION_DELAY) {
                 return;
             }
 
@@ -133,6 +137,15 @@ public final class MetadataHolder {
         if (!batched) this.changesListener.accept(Map.of(id, result));
     }
 
+    /**
+     * A copy of {@code value} when it is an array, the quaternions: the caller may change what it reads, and
+     * the array stored, or the default shared by every entity, would change with it.
+     */
+    @SuppressWarnings("unchecked")
+    private static <T extends @UnknownNullability Object> T copyOf(T value) {
+        return value instanceof float[] array ? (T) array.clone() : value;
+    }
+
     private static boolean getMaskBit(byte maskValue, byte bit) {
         return (maskValue & bit) == bit;
     }
@@ -158,11 +171,22 @@ public final class MetadataHolder {
         Int2ObjectArrayMap<Metadata.Entry<?>> entries;
         synchronized (this.notNotifiedChanges) {
             if (openBatches.updateAndGet(open -> Math.max(0, open - 1)) > 0) return; // Still nested
+            // Batched before the entity switched type, these follow the previous layout
+            if (detached) this.notNotifiedChanges.clear();
             if (this.notNotifiedChanges.isEmpty()) return;
             entries = new Int2ObjectArrayMap<>(this.notNotifiedChanges);
             this.notNotifiedChanges.clear();
         }
         this.changesListener.accept(entries);
+    }
+
+    /**
+     * Detaches this holder from its entity, which switched to another type
+     * ({@link Entity#switchEntityType(EntityType)}): from now on a write throws, and what an open batch holds
+     * is dropped when it closes.
+     */
+    void detach() {
+        this.detached = true;
     }
 
     /**

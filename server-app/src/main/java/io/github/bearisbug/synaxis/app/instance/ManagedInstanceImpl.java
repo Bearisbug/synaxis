@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.app.instance;
 import io.github.bearisbug.synaxis.app.instance.InstanceRegistry.Window;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.event.instance.AddEntityToInstanceEvent;
 import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
@@ -275,8 +276,9 @@ final class ManagedInstanceImpl implements ManagedInstance {
     /**
      * The move itself, on the tick thread that owns the player. It is a move only if the player is in
      * this instance once the engine is done, and anything else is a false, so that the future of
-     * {@link #move} never completes exceptionally: a listener of {@code AddEntityToInstanceEvent} keeping
-     * the player out fails the engine's future like any other failure.
+     * {@link #move} never completes exceptionally. A listener of {@code AddEntityToInstanceEvent} keeping
+     * the player out fails the engine's future with {@link AddEntityToInstanceEvent.CancelledException}:
+     * a false too, but the plugin's own refusal and no failure of the engine to report.
      */
     private void moveNow(Player player, Pos at, CompletableFuture<Boolean> moved) {
         final Instance from = player.getInstance();
@@ -308,9 +310,10 @@ final class ManagedInstanceImpl implements ManagedInstance {
                 registry.ledger().moved(this, player, from);
                 moved.complete(true);
             } else {
-                // Failed, a listener keeping the player out included; a cancelled change of instance is one a
-                // later change took the place of, or whose player was removed on the way, which is no failure to report
-                if (failure != null && !(failure instanceof CancellationException))
+                // Failed. Neither a listener keeping the player out nor a cancelled change of instance, one a later
+                // change took the place of or whose player was removed on the way, is a failure to report
+                if (failure != null && !(failure instanceof CancellationException)
+                        && !(failure instanceof AddEntityToInstanceEvent.CancelledException))
                     owner.failedMoves.error(failure, "Move into a managed instance failed: plugin_id={} instance={} "
                             + "connection_id={}", owner.pluginId(), id, player.getPlayerConnection().connectionId());
                 moved.complete(false);

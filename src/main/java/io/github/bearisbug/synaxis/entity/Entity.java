@@ -1349,7 +1349,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         if (!admitTo(instance)) {
             // The instance has not been set, callers chaining on the future must not proceed as if it had
             return CompletableFuture.failedFuture(
-                    new IllegalStateException("AddEntityToInstanceEvent has been cancelled"));
+                    new AddEntityToInstanceEvent.CancelledException());
         }
         return setInstanceAdmitted(instance, spawnPosition);
     }

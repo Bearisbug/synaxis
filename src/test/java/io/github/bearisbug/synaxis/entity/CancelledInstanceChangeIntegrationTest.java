@@ -54,7 +54,7 @@ public class CancelledInstanceChangeIntegrationTest {
         final CompletableFuture<Void> change = player.setInstance(target, new Pos(0, 42, 0));
 
         final CompletionException failure = assertThrows(CompletionException.class, change::join);
-        assertInstanceOf(IllegalStateException.class, failure.getCause());
+        assertInstanceOf(AddEntityToInstanceEvent.CancelledException.class, failure.getCause());
         assertSame(origin, player.getInstance(), "a cancelled spawn must not half-move the player");
         spawns.assertEmpty();
     }

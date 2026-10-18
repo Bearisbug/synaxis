@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.entity.player;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.EventFilter;
+import io.github.bearisbug.synaxis.event.player.PlayerChunkUnloadEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerSpawnEvent;
 import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.ChunkLoader;
@@ -23,6 +24,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -123,6 +125,30 @@ public class PlayerInstanceChangeIntegrationTest {
 
         assertThrows(CancellationException.class, change::join);
         assertTrue(change.isCancelled());
+        spawns.assertEmpty();
+        assertEquals(0, target.chunkTicketCount(0, 0), "the removed player left view tickets behind");
+        assertFalse(target.getPlayers().contains(player));
+    }
+
+    /**
+     * A listener of a chunk the change unloads from the old ring removes the player, once the change is admitted:
+     * the change is given up before the player is placed in the new instance.
+     */
+    @Test
+    public void aPlayerRemovedByAnUnloadOfItsChangeGivesItUp(Env env) {
+        var origin = env.createFlatInstance();
+        var target = env.createFlatInstance();
+        Player player = env.createPlayer(origin, new Pos(0, 40, 0));
+        var spawns = env.trackEvent(PlayerSpawnEvent.class, EventFilter.PLAYER, player);
+        final AtomicBoolean removed = new AtomicBoolean();
+        env.process().eventHandler().addListener(PlayerChunkUnloadEvent.class, event -> {
+            if (event.getPlayer() == player && removed.compareAndSet(false, true)) player.remove();
+        });
+
+        final CompletableFuture<Void> change = player.setInstance(target, new Pos(0, 40, 0));
+
+        assertThrows(CancellationException.class, change::join);
+        assertTrue(removed.get(), "the change unloaded no chunk of the old ring");
         spawns.assertEmpty();
         assertEquals(0, target.chunkTicketCount(0, 0), "the removed player left view tickets behind");
         assertFalse(target.getPlayers().contains(player));

@@ -119,11 +119,6 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
      * Gets this window id.
      * <p>
      * This is the id that the client will send to identify the affected inventory, mostly used by packets.
-     * {@link PlayerInventory} is always 0. An {@link Inventory} takes its id from one counter shared by the whole
-     * process that cycles through 1..127 as inventories are created, so two inventories a player opens one after the
-     * other can have the same id, and a click or close the client sent for the first one then applies to the second.
-     * Do not let an inventory created for each opening carry an action of value (a purchase, a reward) on the id
-     * alone; check the state in {@link io.github.bearisbug.synaxis.event.inventory.InventoryPreClickEvent} as well.
      *
      * @return the window id
      */

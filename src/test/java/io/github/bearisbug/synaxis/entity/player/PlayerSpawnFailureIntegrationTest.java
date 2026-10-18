@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.EventFilter;
+import io.github.bearisbug.synaxis.event.instance.AddEntityToInstanceEvent;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
 import io.github.bearisbug.synaxis.instance.Chunk;
@@ -70,6 +71,23 @@ public class PlayerSpawnFailureIntegrationTest {
         // The spawn listed it in the tab list of the others before it failed
         removals.assertSingle(packet -> assertEquals(List.of(player.getUuid()), packet.uuids()));
         assertEquals(List.of(), reported, "the failure stays with the spawn of that player");
+    }
+
+    /** A listener keeping the player out of its first spawn, whose client was already sent its world. */
+    @Test
+    public void aFirstSpawnAListenerCancelsKicksThePlayerAndReportsItsLeaveOnce(Env env) {
+        final Instance instance = env.createFlatInstance();
+        instance.eventNode().addListener(AddEntityToInstanceEvent.class, event -> event.setCancelled(true));
+        final RecordingConnection connection = new RecordingConnection(env.process());
+        final Player player = configure(env, instance, connection, "KeptOut");
+        final var disconnects = env.trackEvent(PlayerDisconnectEvent.class, EventFilter.PLAYER, player);
+
+        env.tick();
+        env.tick();
+
+        assertEquals(List.of("synaxis:internal-error"), connection.disconnectKeys());
+        disconnects.assertCount(1);
+        assertNull(player.getInstance());
     }
 
     @Test

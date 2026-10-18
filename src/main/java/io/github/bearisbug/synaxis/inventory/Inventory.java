@@ -18,9 +18,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>
  * You can create one with {@link Inventory#Inventory(InventoryType, String)} or by making your own subclass.
  * It can then be opened using {@link Player#openInventory(Inventory)}.
- * <p>
- * Window ids are not unique per player: see {@link #getWindowId()} before letting a click on an inventory created for
- * each opening carry an action of value.
  */
 public non-sealed class Inventory extends AbstractInventory {
     private static final AtomicInteger ID_COUNTER = new AtomicInteger();

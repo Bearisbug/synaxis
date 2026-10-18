@@ -36,6 +36,7 @@ import io.github.bearisbug.synaxis.coordinate.RelativeFlags;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.entity.metadata.LivingEntityMeta;
 import io.github.bearisbug.synaxis.entity.metadata.avatar.PlayerMeta;
+import io.github.bearisbug.synaxis.event.instance.AddEntityToInstanceEvent;
 import io.github.bearisbug.synaxis.event.inventory.InventoryCloseEvent;
 import io.github.bearisbug.synaxis.event.inventory.InventoryOpenEvent;
 import io.github.bearisbug.synaxis.event.item.ItemDropEvent;
@@ -519,6 +520,11 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      * used to move them back to configuration after entering the play state.</p>
      *
      * <p>This will result in them being removed from the current instance, player list, etc.</p>
+     *
+     * <p>Play packets the client sent before it acknowledged the configuration and still queued when the
+     * acknowledgement arrives are handled in the configuration state: one the configuration state also has goes to its
+     * configuration listener, without a {@code PlayerPacketEvent}, and one only the play state has is dropped. Those an
+     * earlier tick took off the queue were handled as play packets.</p>
      */
     public void startConfigurationPhase() {
         Check.stateCondition(playerConnection.getServerState() != ConnectionState.PLAY,
@@ -796,9 +802,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      * than turned into a teleport. A later call supersedes one still waiting for its chunks, and the
      * removal of the player gives it up: the future of the change given up fails with a
      * {@link CancellationException}, the player gets no view ticket in that instance and no
-     * {@link PlayerSpawnEvent}. A listener cancelling
-     * {@link io.github.bearisbug.synaxis.event.instance.AddEntityToInstanceEvent} fails it with an
-     * {@link IllegalStateException}: the player stays where it was and its client is sent nothing.
+     * {@link PlayerSpawnEvent}. A listener cancelling {@link AddEntityToInstanceEvent} fails it with an
+     * {@link AddEntityToInstanceEvent.CancelledException}: changing instance, the player stays where it was and its
+     * client is sent nothing; on the first spawn the client was already sent its world, see the event.
      * <p>
      * Joined on the thread that called this method, the future runs the continuation of this change
      * there once the chunks are loaded, and only it; that thread waits for the chunks meanwhile, a
@@ -935,7 +941,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         Check.stateCondition(!instance.isRegistered(),
                 "Instances need to be registered, please use InstanceManager#registerInstance");
         // Asked before the client hears of the new instance: a cancelled change leaves it where it was
-        if (!admitTo(instance)) throw new IllegalStateException("AddEntityToInstanceEvent has been cancelled");
+        if (!admitTo(instance)) throw new AddEntityToInstanceEvent.CancelledException();
         // JoinGame told the client the view distance of the instance it spawned in, the new one may differ.
         // Before the ring changes, as in #updateViewDistance(int, int, int)
         if (!firstSpawn) tellViewDistance(Math.min(instance.viewDistance(), maxViewDistance));
@@ -965,6 +971,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                     }
             );
         }
+        // A listener of those unloads may have removed the player: placed now, it would be put in the instance and
+        // hold view tickets there that nothing ever releases
+        if (isRemoved()) throw new CancellationException("Player removed during its change of instance");
 
         if (dimensionChange) sendDimension(instance.getDimensionType(), instance.getDimensionName());
 

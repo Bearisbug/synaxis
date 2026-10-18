@@ -61,6 +61,7 @@ import static io.github.bearisbug.synaxis.app.instance.InstanceFixture.SPAWN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -231,7 +232,8 @@ class EvacuationIntegrationTest {
 
     /**
      * {@code API-PLAY-006} 实现: a listener of {@code AddEntityToInstanceEvent} that keeps the player out. The
-     * move completes with false, the player stays where they were, and no move is recorded.
+     * move completes with false, the player stays where they were, no move is recorded, and the plugin's own
+     * refusal is no error of the engine to write.
      */
     @Test
     void aMoveAListenerKeepsThePlayerOutOfCompletesWithFalse(Env env) {
@@ -242,15 +244,21 @@ class EvacuationIntegrationTest {
         });
         final Instance world = env.createFlatInstance();
         final Player player = env.createPlayer(world, new Pos(0, 41, 0));
+        final ListAppender<ILoggingEvent> lines = listen(ManagedInstanceImpl.class);
+        try {
+            final CompletableFuture<Boolean> moved = arena.move(player, SPAWN);
+            assertTrue(env.tickWhile(() -> !moved.isDone(), TEN_SECONDS), "the move never completed");
 
-        final CompletableFuture<Boolean> moved = arena.move(player, SPAWN);
-        assertTrue(env.tickWhile(() -> !moved.isDone(), TEN_SECONDS), "the move never completed");
-
-        assertFalse(moved.join(), "a player kept out of the instance counted as moved");
-        assertSame(world, player.getInstance());
-        assertEquals(List.of(), List.copyOf(arena.players()));
-        assertEquals(List.of(), movedLines(arena));
-        assertFalse(((ManagedInstanceImpl) arena).movesPending());
+            assertFalse(moved.join(), "a player kept out of the instance counted as moved");
+            assertSame(world, player.getInstance());
+            assertEquals(List.of(), List.copyOf(arena.players()));
+            assertEquals(List.of(), movedLines(arena));
+            assertFalse(((ManagedInstanceImpl) arena).movesPending());
+            assertEquals(List.of(), lines.list.stream().filter(line -> line.getLevel() == Level.ERROR).toList(),
+                    "the refusal of a listener was written as a failed move");
+        } finally {
+            stopListening(ManagedInstanceImpl.class, lines);
+        }
     }
 
     /**
@@ -306,6 +314,34 @@ class EvacuationIntegrationTest {
 
         assertFalse(moved.join());
         assertFalse(((ManagedInstanceImpl) arena).movesPending(), "the move is still on its way");
+    }
+
+    /**
+     * {@code API-PLAY-006} 实现: a listener of {@code PlayerSpawnEvent} sends the player back to where they came from
+     * as they land. The change of instance of the engine completes, but the player is not in the instance: the move
+     * completes with false and no move is recorded.
+     */
+    @Test
+    void aMoveWhosePlayerASpawnListenerSendsBackCompletesWithFalse(Env env) {
+        final PluginInstances instances = instances(env);
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final Instance world = env.createFlatInstance();
+        final Player player = env.createPlayer(world, new Pos(0, 41, 0));
+        final AtomicReference<CompletableFuture<Void>> back = new AtomicReference<>();
+        env.process().eventHandler().addListener(PlayerSpawnEvent.class, event -> {
+            if (event.getInstance() == arena.instance()) back.set(player.setInstance(world, new Pos(0, 41, 0)));
+        });
+
+        final CompletableFuture<Boolean> moved = arena.move(player, SPAWN);
+        assertTrue(env.tickWhile(() -> !moved.isDone(), TEN_SECONDS), "the move never completed");
+
+        assertNotNull(back.get(), "the player never landed in the arena");
+        assertTrue(back.get().isDone() && !back.get().isCompletedExceptionally(), "the player was not sent back at once");
+        assertFalse(moved.join(), "a player sent back as they landed counted as moved");
+        assertSame(world, player.getInstance());
+        assertEquals(List.of(), List.copyOf(arena.players()));
+        assertEquals(List.of(), movedLines(arena));
+        assertFalse(((ManagedInstanceImpl) arena).movesPending());
     }
 
     /** A chunk loader that fails every load, on a virtual thread of its own as a parallel loader does. */
@@ -582,6 +618,46 @@ class EvacuationIntegrationTest {
 
         assertFalse(moved.join());
         assertEquals(List.of(), handed, "a player who never got in was handed the exit");
+        assertSame(world, player.getInstance());
+        assertTrue(player.isOnline());
+        final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
+        assertEquals(0, closed.get("players"));
+        assertEquals(0, closed.get("evacuated"));
+        assertEquals(0, closed.get("kicked"));
+    }
+
+    /**
+     * A move on its way when the instance closes, whose player a listener of {@code PlayerSpawnEvent} sends back to
+     * where they came from as they land: the change of instance of the engine completes without the player being in
+     * the instance, so they are handed no exit and are not one of the players of the closing line.
+     */
+    @Test
+    void aPlayerSentBackAsTheyLandWhileTheInstanceClosesIsHandedNoExit(Env env) {
+        final PluginInstances instances = instances(env);
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final List<Player> handed = new CopyOnWriteArrayList<>();
+        arena.instance().eventNode().addListener(AddEntityToInstanceEvent.class, event -> {
+            if (event.getEntity() instanceof Player && arena.state() == State.OPEN) arena.cancel(leaving -> {
+                handed.add(leaving);
+                return new Exit.ToInstance(lobby, SPAWN);
+            });
+        });
+        final Instance world = env.createFlatInstance();
+        final Player player = env.createPlayer(world, new Pos(0, 41, 0));
+        final AtomicReference<CompletableFuture<Void>> back = new AtomicReference<>();
+        env.process().eventHandler().addListener(PlayerSpawnEvent.class, event -> {
+            if (event.getInstance() == arena.instance()) back.set(player.setInstance(world, new Pos(0, 41, 0)));
+        });
+
+        final CompletableFuture<Boolean> moved = arena.move(player, SPAWN);
+        assertTrue(env.tickWhile(() -> !moved.isDone() || arena.instance().isRegistered(), TEN_SECONDS),
+                "the instance was never unregistered");
+
+        assertNotNull(back.get(), "the player never landed in the arena");
+        assertTrue(back.get().isDone() && !back.get().isCompletedExceptionally(), "the player was not sent back at once");
+        assertFalse(moved.join());
+        assertEquals(List.of(), handed, "a player sent back from the instance was handed the exit");
         assertSame(world, player.getInstance());
         assertTrue(player.isOnline());
         final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.instance.LightingChunkHeightmapIntegrationTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-19T04:33:40.994Z" hostname="Mac.local" time="1.759">
+  <properties/>
+  <testcase name="anInvalidatedLightingChunkComputesItsHeightmapsAgain(Env)" classname="io.github.bearisbug.synaxis.instance.LightingChunkHeightmapIntegrationTest" time="1.742">
+    <failure message="org.opentest4j.AssertionFailedError: the stone written into the section ==&gt; expected: &lt;45&gt; but was: &lt;39&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the stone written into the section ==&gt; expected: &lt;45&gt; but was: &lt;39&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+	at io.github.bearisbug.synaxis.instance.LightingChunkHeightmapIntegrationTest.anInvalidatedLightingChunkComputesItsHeightmapsAgain(LightingChunkHeightmapIntegrationTest.java:36)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

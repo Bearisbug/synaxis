@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 import static io.github.bearisbug.synaxis.game.rts.SliceFixture.MINE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -183,6 +184,25 @@ class UnitMovementIntegrationTest {
         assertFalse(snapshot.entries().stream()
                         .anyMatch(entry -> entry.unitId() != MINE && entry.unitState() != UnitState.IDLE),
                 "a unit nobody ordered anywhere is moving");
+    }
+
+    /**
+     * Ordered onto the very point it stands on, a unit has no direction to go: it keeps the one it faces
+     * rather than taking the view of the waypoint, yaw 0 and pitch 0 as the pathfinder writes it.
+     */
+    @Test
+    void aUnitOrderedOntoThePointItStandsOnKeepsItsFacing(Env env) {
+        final SliceFixture fixture = SliceFixture.start(env);
+        final Unit unit = Objects.requireNonNull(fixture.units.byId(MINE));
+        final Pos cell = unit.entity().getPosition();
+        unit.entity().moveTo(cell.withView(37, 0));
+
+        unit.follow(List.of(cell.withView(0, 0)), new Unit.Order(UUID.randomUUID(), 1, 0));
+        unit.advance(2);
+
+        final Pos position = unit.entity().getPosition();
+        assertEquals(37f, position.yaw(), "the unit turned south on the spot");
+        assertEquals(0f, position.pitch(), "the unit tipped over on the spot");
     }
 
     private static C2SMoveOrder order(int seq, int unitId, Pos target) {

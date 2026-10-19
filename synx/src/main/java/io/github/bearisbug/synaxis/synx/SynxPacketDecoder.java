@@ -55,12 +55,13 @@ final class SynxPacketDecoder {
     /**
      * The section palettes and the light of a framed segment ①.
      *
-     * @throws IllegalArgumentException  if the bytes are not a chunk packet of {@code sectionCount} sections
+     * @throws IllegalArgumentException  if the bytes are not a chunk packet of {@code sectionCount} sections,
+     *                                   or its block entity table names a type the engine does not know
      * @throws IndexOutOfBoundsException if the body ends before a field it states
      */
     static Full full(MemorySegment framed, Registries registries, int sectionCount) {
         final NetworkBuffer buffer = body(framed, registries);
-        final ChunkData chunkData = buffer.read(ChunkData.NETWORK_TYPE);
+        final ChunkData chunkData = chunkData(buffer);
         final LightData light = buffer.read(LightData.NETWORK_TYPE);
         if (buffer.readableBytes() != 0) throw new IllegalArgumentException(buffer.readableBytes() + " bytes after the packet");
         return new Full(sections(chunkData.data(), registries, sectionCount),
@@ -71,13 +72,27 @@ final class SynxPacketDecoder {
      * The light of a framed segment ①, as the packet carries it: the chunk data is read past without
      * decoding the palettes.
      *
-     * @throws IllegalArgumentException  if the bytes are not a chunk packet
+     * @throws IllegalArgumentException  if the bytes are not a chunk packet, or its block entity table
+     *                                   names a type the engine does not know
      * @throws IndexOutOfBoundsException if the body ends before a field it states
      */
     static LightData light(MemorySegment framed, Registries registries) {
         final NetworkBuffer buffer = body(framed, registries);
-        buffer.read(ChunkData.NETWORK_TYPE);
+        chunkData(buffer);
         return buffer.read(LightData.NETWORK_TYPE);
+    }
+
+    /**
+     * The chunk data of a body, its block entity table included. That table is read no sooner: a chunk
+     * loads without inflating segment ① ({@code docs/DESIGN-M3.md} API-M3-001 长度上限).
+     */
+    private static ChunkData chunkData(NetworkBuffer buffer) {
+        try {
+            return buffer.read(ChunkData.NETWORK_TYPE);
+        } catch (NullPointerException e) {
+            // How BlockEntityType#NETWORK_TYPE refuses an id it does not know
+            throw new IllegalArgumentException(e.getMessage(), e);
+        }
     }
 
     /** The sky arrays of a light payload by section, bottom up; null for a section the payload marks empty or leaves out. */

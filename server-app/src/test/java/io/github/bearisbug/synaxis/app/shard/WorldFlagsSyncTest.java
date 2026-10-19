@@ -280,13 +280,20 @@ public class WorldFlagsSyncTest {
         for (int i = 0; i < 500 && malformed().isEmpty(); i++) TimeUnit.MILLISECONDS.sleep(10);
 
         final List<ILoggingEvent> warnings = malformed();
-        assertEquals(1, warnings.size(), log.list.toString());
+        assertEquals(1, warnings.size(), logged().toString());
         assertEquals("com.google.gson.JsonSyntaxException", warnings.getFirst().getThrowableProxy().getClassName());
         assertEquals(1, subscribers(), "still subscribed");
     }
 
+    /** What the appender holds now: it appends under its own lock, from the thread that logs. */
+    private List<ILoggingEvent> logged() {
+        synchronized (log) {
+            return List.copyOf(log.list);
+        }
+    }
+
     private List<ILoggingEvent> malformed() {
-        return log.list.stream().filter(event -> event.getLevel() == Level.WARN && event.getFormattedMessage()
+        return logged().stream().filter(event -> event.getLevel() == Level.WARN && event.getFormattedMessage()
                 .startsWith("Ignoring a malformed world flag message on " + redisChannel())).toList();
     }
 }

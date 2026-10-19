@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-19T05:15:05.093Z" hostname="Mac.local" time="6.491">
+  <properties/>
+  <testcase name="anUnknownBlockEntityTypeInSegmentOneRefusesTheChangeNamingTheChunk()" classname="io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest" time="6.483"/>
+  <system-out><![CDATA[13:15:11.570 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:15:11.582 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:15:11.582 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

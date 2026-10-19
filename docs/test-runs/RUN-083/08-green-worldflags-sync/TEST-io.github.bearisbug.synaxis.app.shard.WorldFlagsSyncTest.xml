@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.shard.WorldFlagsSyncTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-19T05:36:53.872Z" hostname="Mac.local" time="5.605">
+  <properties/>
+  <testcase name="aWriteReachesTheOtherChannelThroughRedisAndTheReadEvery60sCatchesUpWithoutIt()" classname="io.github.bearisbug.synaxis.app.shard.WorldFlagsSyncTest" time="2.038"/>
+  <testcase name="aClosedChannelDropsTheMessagesAndTheReads()" classname="io.github.bearisbug.synaxis.app.shard.WorldFlagsSyncTest" time="2.284"/>
+  <testcase name="aMalformedMessageIsAWarningAndTheChannelStaysSubscribed()" classname="io.github.bearisbug.synaxis.app.shard.WorldFlagsSyncTest" time="0.28"/>
+  <system-out><![CDATA[13:36:55.123 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+13:36:55.151 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@4619854a
+13:36:55.152 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+13:36:55.215 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+13:36:55.256 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+13:36:55.259 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.014s)
+13:36:55.267 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+13:36:55.301 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+13:36:55.316 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+13:36:55.361 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+13:36:55.374 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+13:36:55.390 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+13:36:55.403 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+13:36:55.415 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+13:36:55.423 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.069s)
+13:36:55.724 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release fixture-53b7eb295525-p776 verified in 2 ms: bounds=Bounds[minX=0, minZ=0, maxX=15, maxZ=15] world=World[minY=0, height=64]
+13:36:55.734 [Test worker] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay store /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-15421112697541008337/fixture-53b7eb295525-p776: records of 0 chunks in 0 segments
+13:36:55.789 [Test worker] WARN  i.g.b.synaxis.app.shard.ShardWorld - Map fixture-53b7eb295525-p776 is writable (synaxis.world-writable=true): players' digging and placing go into the overlay
+13:36:55.790 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=fixture-53b7eb295525-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=120.5, y=40.0, z=120.5, yaw=0.0, pitch=0.0] overlay=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-15421112697541008337/fixture-53b7eb295525-p776 overlay_cap=16384 flush_interval_s=10 overlay_max_bytes=4294967296 relight_threads=1 resend_light=false section_cache_bytes=16777216
+13:36:55.792 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Far view off: synaxis.farview.url-root is empty
+13:36:55.809 [Test worker] WARN  i.g.b.s.app.shard.WorldFlagsImpl - World flag quest:gate: the cell 10 41 10 held minecraft:stone, changed another way, set to minecraft:iron_bars[waterlogged=false,west=false,south=false,north=false,east=false] (1 world flag conflicts since the last report)
+13:36:56.873 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:36:56.874 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:36:56.874 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:36:56.874 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+13:36:56.874 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+13:36:56.944 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+13:36:56.955 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@2cb962ed
+13:36:56.955 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+13:36:56.961 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+13:36:56.971 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+13:36:56.972 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.003s)
+13:36:56.978 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+13:36:57.001 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+13:36:57.009 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+13:36:57.054 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+13:36:57.072 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+13:36:57.087 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+13:36:57.107 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+13:36:57.118 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+13:36:57.126 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.073s)
+13:36:57.148 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release fixture-53b7eb295525-p776 verified in 1 ms: bounds=Bounds[minX=0, minZ=0, maxX=15, maxZ=15] world=World[minY=0, height=64]
+13:36:57.150 [Test worker] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay store /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-5989956187127893346/fixture-53b7eb295525-p776: records of 0 chunks in 0 segments
+13:36:57.152 [Test worker] WARN  i.g.b.synaxis.app.shard.ShardWorld - Map fixture-53b7eb295525-p776 is writable (synaxis.world-writable=true): players' digging and placing go into the overlay
+13:36:57.152 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=fixture-53b7eb295525-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=120.5, y=40.0, z=120.5, yaw=0.0, pitch=0.0] overlay=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-5989956187127893346/fixture-53b7eb295525-p776 overlay_cap=16384 flush_interval_s=10 overlay_max_bytes=4294967296 relight_threads=1 resend_light=false section_cache_bytes=16777216
+13:36:57.152 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Far view off: synaxis.farview.url-root is empty
+13:36:59.169 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:36:59.171 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:36:59.171 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:36:59.171 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+13:36:59.177 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+13:36:59.232 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+13:36:59.246 [Test worker] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@2ef1b7f4
+13:36:59.246 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+13:36:59.251 [Test worker] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:postgresql:******** (PostgreSQL 16.13)
+13:36:59.267 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table "public"."flyway_schema_history" does not exist yet
+13:36:59.269 [Test worker] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.006s)
+13:36:59.276 [Test worker] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table "public"."flyway_schema_history" ...
+13:36:59.303 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": << Empty Schema >>
+13:36:59.306 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "1 - player store"
+13:36:59.348 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "2 - item ledger"
+13:36:59.364 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "3 - roles"
+13:36:59.384 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "4 - moderation"
+13:36:59.405 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "5 - shard heartbeat"
+13:36:59.418 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Migrating schema "public" to version "6 - world flag"
+13:36:59.428 [Test worker] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 6 migrations to schema "public", now at version v6 (execution time 00:00.069s)
+13:36:59.444 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release fixture-53b7eb295525-p776 verified in 1 ms: bounds=Bounds[minX=0, minZ=0, maxX=15, maxZ=15] world=World[minY=0, height=64]
+13:36:59.446 [Test worker] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay store /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-11182506082133177968/fixture-53b7eb295525-p776: records of 0 chunks in 0 segments
+13:36:59.446 [Test worker] WARN  i.g.b.synaxis.app.shard.ShardWorld - Map fixture-53b7eb295525-p776 is writable (synaxis.world-writable=true): players' digging and placing go into the overlay
+13:36:59.446 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=fixture-53b7eb295525-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=120.5, y=40.0, z=120.5, yaw=0.0, pitch=0.0] overlay=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-11182506082133177968/fixture-53b7eb295525-p776 overlay_cap=16384 flush_interval_s=10 overlay_max_bytes=4294967296 relight_threads=1 resend_light=false section_cache_bytes=16777216
+13:36:59.446 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Far view off: synaxis.farview.url-root is empty
+13:36:59.448 [Syn-Redis-WorldFlag] WARN  i.g.b.s.app.shard.WorldFlagsImpl - Ignoring a malformed world flag message on synaxis:worldflag:fixture:rf28feb58b213 (1 world flag sync failures since the last report)
+com.google.gson.JsonSyntaxException: com.google.gson.stream.MalformedJsonException: Use JsonReader.setStrictness(Strictness.LENIENT) to accept malformed JSON at line 1 column 6 path $
+See https://github.com/google/gson/blob/main/Troubleshooting.md#malformed-json
+	at com.google.gson.JsonParser.parseReader(JsonParser.java:116)
+	at com.google.gson.JsonParser.parseString(JsonParser.java:92)
+	at io.github.bearisbug.synaxis.app.shard.WorldFlagsImpl.received(WorldFlagsImpl.java:351)
+	at io.github.bearisbug.synaxis.app.store.RedisLink$1.onMessage(RedisLink.java:227)
+	at io.github.bearisbug.synaxis.app.store.RedisLink$1.onMessage(RedisLink.java:224)
+	at redis.clients.jedis.JedisPubSubBase.process(JedisPubSubBase.java:160)
+	at redis.clients.jedis.JedisPubSubBase.proceed(JedisPubSubBase.java:111)
+	at redis.clients.jedis.UnifiedJedis.subscribe(UnifiedJedis.java:4774)
+	at io.github.bearisbug.synaxis.app.store.RedisLink.lambda$subscribe$0(RedisLink.java:232)
+	at java.base/java.lang.Thread.run(Thread.java:1474)
+Caused by: com.google.gson.stream.MalformedJsonException: Use JsonReader.setStrictness(Strictness.LENIENT) to accept malformed JSON at line 1 column 6 path $
+See https://github.com/google/gson/blob/main/Troubleshooting.md#malformed-json
+	at com.google.gson.stream.JsonReader.syntaxError(JsonReader.java:1817)
+	at com.google.gson.stream.JsonReader.checkLenient(JsonReader.java:1613)
+	at com.google.gson.stream.JsonReader.doPeek(JsonReader.java:670)
+	at com.google.gson.stream.JsonReader.peek(JsonReader.java:545)
+	at com.google.gson.JsonParser.parseReader(JsonParser.java:111)
+	... 9 common frames omitted
+13:36:59.462 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:36:59.462 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:36:59.463 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:36:59.463 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+13:36:59.463 [Test worker] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

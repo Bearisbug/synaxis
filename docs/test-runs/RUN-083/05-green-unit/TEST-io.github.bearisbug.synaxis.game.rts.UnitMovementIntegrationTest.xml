@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-19T04:37:56.959Z" hostname="Mac.local" time="1.887">
+  <properties/>
+  <testcase name="aUnitOrderedOntoThePointItStandsOnKeepsItsFacing(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="1.284"/>
+  <testcase name="theQueueRunsFourSearchesATickAndAnswersBusyOnceItIsFull(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.112"/>
+  <testcase name="theWalkIsMadeOfAdvancesRatherThanJumpsAndTeleportsNothing(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.097"/>
+  <testcase name="aNewOrderReplacesThePathTheUnitWasOnAndSaysSoInTheLedger(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.082"/>
+  <testcase name="aMovingUnitIsReportedAsMovingInTheSnapshot(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.075"/>
+  <testcase name="aUnitWalksToWhereItWasOrderedAndGoesIdleThere(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.076"/>
+  <testcase name="anOrderIntoTheWalledOffPocketComesBackNoPath(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.075"/>
+  <testcase name="aConnectionThatWentAwayLeavesNoOrderRunning(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.077"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightDeliveredIntegrationTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-19T04:37:37.498Z" hostname="Mac.local" time="1.479">
+  <properties/>
+  <testcase name="aPlayerWhoWalkedBackAndForthAndLeftIsInNoTable(Env, Path)" classname="io.github.bearisbug.synaxis.synx.SynxRelightDeliveredIntegrationTest" time="1.47">
+    <failure message="org.opentest4j.AssertionFailedError: 7,0 still has the player as delivered ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: 7,0 still has the player as delivered ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:266)
+	at io.github.bearisbug.synaxis.synx.SynxRelightDeliveredIntegrationTest.aPlayerWhoWalkedBackAndForthAndLeftIsInNoTable(SynxRelightDeliveredIntegrationTest.java:65)
+</failure>
+  </testcase>
+  <system-out><![CDATA[12:37:38.785 [Test worker] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay store /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-13758211734168064836/relight-test-cc93e15a8083-p776: records of 0 chunks in 0 segments
+12:37:38.957 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=4ec09405-b40e-402d-a2c2-c610e72083d8 identifier=Viewer
+12:37:38.968 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:37:38.969 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:37:38.970 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

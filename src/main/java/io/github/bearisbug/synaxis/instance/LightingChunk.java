@@ -73,8 +73,18 @@ public class LightingChunk extends DynamicChunk {
         EXTERNAL
     }
 
+    /** The heightmaps and the packet caches, the light ones included. */
     @Override
     public void invalidate() {
+        super.invalidate();
+        invalidateLight();
+    }
+
+    /**
+     * The packet caches, for a change of light alone: the blocks of this chunk are what they were, so
+     * the heightmaps are not computed again for the next packet.
+     */
+    private void invalidateLight() {
         this.partialLightCache.invalidate();
         this.chunkCache.invalidate();
         this.partialLightData = null;
@@ -96,7 +106,7 @@ public class LightingChunk extends DynamicChunk {
                 if (neighborChunk == null) continue;
 
                 if (neighborChunk instanceof LightingChunk light) {
-                    light.invalidate();
+                    light.invalidateLight();
                 }
 
                 for (int k = -1; k <= 1; k++) {
@@ -163,7 +173,7 @@ public class LightingChunk extends DynamicChunk {
                 if (neighborChunk instanceof LightingChunk light) {
                     if (light.doneInit) {
                         light.resendTimer.set(20);
-                        light.invalidate();
+                        light.invalidateLight();
 
                         for (int section = minSection; section < maxSection; section++) {
                             light.getSection(section).invalidate();
@@ -465,7 +475,7 @@ public class LightingChunk extends DynamicChunk {
                 section.skyLight().set(result.sky(chunk.chunkX, sectionY, chunk.chunkZ));
                 section.blockLight().set(result.block(chunk.chunkX, sectionY, chunk.chunkZ));
             }
-            chunk.invalidate();
+            chunk.invalidateLight();
         }
     }
 

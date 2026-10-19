@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" tests="8" skipped="0" failures="1" errors="0" timestamp="2026-10-19T04:38:13.220Z" hostname="Mac.local" time="1.968">
+  <properties/>
+  <testcase name="aUnitOrderedOntoThePointItStandsOnKeepsItsFacing(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="1.29">
+    <failure message="org.opentest4j.AssertionFailedError: the unit turned south on the spot ==&gt; expected: &lt;37.0&gt; but was: &lt;0.0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the unit turned south on the spot ==&gt; expected: &lt;37.0&gt; but was: &lt;0.0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:817)
+	at io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest.aUnitOrderedOntoThePointItStandsOnKeepsItsFacing(UnitMovementIntegrationTest.java:204)
+</failure>
+  </testcase>
+  <testcase name="theQueueRunsFourSearchesATickAndAnswersBusyOnceItIsFull(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.117"/>
+  <testcase name="theWalkIsMadeOfAdvancesRatherThanJumpsAndTeleportsNothing(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.106"/>
+  <testcase name="aNewOrderReplacesThePathTheUnitWasOnAndSaysSoInTheLedger(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.096"/>
+  <testcase name="aMovingUnitIsReportedAsMovingInTheSnapshot(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.088"/>
+  <testcase name="aUnitWalksToWhereItWasOrderedAndGoesIdleThere(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.09"/>
+  <testcase name="anOrderIntoTheWalledOffPocketComesBackNoPath(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.088"/>
+  <testcase name="aConnectionThatWentAwayLeavesNoOrderRunning(Env)" classname="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" time="0.083"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

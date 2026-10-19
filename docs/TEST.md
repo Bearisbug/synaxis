@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-19 | 跟进 `docs/DESIGN-M3.md` v0.54 与 `docs/DESIGN-M2.md` v0.68（分支 `m3/light-fixups`，生产就绪会话 RUN-081 引擎改动之后的 M3 侧跟进）。**新增 §4「M3 · 高度图、段① 方块实体表与已交付表」一节三条**：`TC-WORLD-167`（`LightingChunk` 绕过 `setBlock` 改了 section 之后 `invalidate()` 让两张高度图重算，算光照只让光照缓存失效）、`TC-WORLD-168`（段① 方块实体表里的未知类型在第一次读到时被拒，信息写明来源文件与区块，载入照常）、`TC-WORLD-169`（来回走过区块边界后断线，已交付表与光照待补表里不留这名玩家），三条都带反证。**新增 `TC-GAME-076`**（单位被命令到脚下那一点时保持原来的朝向）。§2 的 REQ ↔ TC 表（`REQ-M2-016`、`REQ-M3-004`、`REQ-M3-008`、`REQ-M3-012`、`REQ-M3-031`）与两条 Gherkin 覆盖口径随之补上。同批改 `WorldFlagsSyncTest#aMalformedMessageIsAWarningAndTheChannelStaysSubscribed`（`TC-WORLD-160`）：读 `ListAppender` 的列表改在 appender 自己的锁里拷一份，日志线程同时追加时测试线程遍历它会抛 `ConcurrentModificationException`（本分支 CI 的 Check job 遇到过一次） | Bearisbug |
 | 2026-10-19 | 分支 `prod/r082-ticking` 的全量门禁、Concurrency 与 Client mod 在 GitHub Actions 上对 `6c8a9be5e1` 跑完，Client gametest 手动触发（草稿 PR #37），§6 登记 RUN-082（通过 1/1，证据 `docs/test-runs/RUN-082/00-index.txt`）。写死条数的旧用例按 artifact 的实数改：`TC-PROD-505`、`585`、`618`、`636`、`654` 的根项目 3,649 → 3,650，`TC-PROD-636` 第 1 步的全部模块 5,298 → 5,299 | Bearisbug |
 | 2026-10-19 | 分支 `prod/r082-ticking`（基于 `main` `06ce46f16a`），跟进 `docs/DESIGN-PROD.md` v0.9.107 与 `docs/DESIGN.md` v0.51（RUN-082），不登执行轮次（草稿 PR 的 CI 跑完后登记 RUN-082）。**新增 §4「生产就绪 · RUN-082：`startTicking` 遇到已经起了的 tick 线程」一条 `TC-PROD-990`**：先由 `dispatcher().start()` 起了 tick 线程的进程，`startTicking()` 只起 tick 调度线程；有改动前的红，三种线程模式各跑一次。§5 局部轮加本轮一行 | Bearisbug |
 | 2026-10-19 | 按 `docs/DESIGN-PROD.md` §28.3 交给光照会话的行同步 RUN-081（`main` `9c4ad17a64`），跟进 `docs/DESIGN-M3.md` v0.53 与 `docs/DESIGN.md` v0.50，不登执行轮次。`TC-WORLD-088` 第 1、2 步按 `MigrationsDbTest` 6 条改条数（第 6 条是迁移连接池不设语句超时的用例），红行 `:90` → `:108`；`TC-WORLD-089` 第 2 步 `new ShardGates(` 的行号改为 `Main.java:559`（原写的 `:501` 早已不是这一行），`TC-WORLD-100`、`TC-WORLD-101` 第 2 步 `:547` → `:559`、`:320` → `:327`；`TC-WORLD-046` 第 2 步 `ThreadDispatcherTest.java:546` → `:550`；`TC-GAME-055` 引的 `AdmissionRegistry.java:20-24` → `:26-31`；`TC-GAME-056` 第 6 步 `EventLedger.java:85` → `:87`；`TC-GAME-054` 第 3 步改为插件任务的失败按任务限流（该分册 v0.9.105 `API-PROD-017`）。M3 的测试代码同批改：`server-app` 的 `ShardWorldRelightTest`、`ShardWorldAssemblyTest` 两处改用 `ServerProcess#startTicking`，`synx` 7 个类、`app/shard` 10 个类的收尾改为 `Env#close`（先报服务端在最后一次检查之后抛的异常，再停进程）；`TC-WORLD-166` 第 1 步的 `anInstanceOfAnotherWorldThrowsWithoutAFailedChunk` 本来就让服务端抛异常，改为等进程的异常处理器收到同一个异常（换成 `Env#close` 之后，这个异常让它在 CI 三种模式下都红） | Bearisbug |
@@ -310,8 +311,8 @@
 - 覆盖（引擎域 · M1 / M1.5）：里程碑 M1 的 12 条需求的黑盒与半黑盒验收——构建产物与仓库元数据（命令、退出码、文件）、Minecraft 协议行为（裸 socket 与原版客户端可观察的包与断线原因）、文档与合规文件。
 - 覆盖（游戏域 · M2）：`docs/DESIGN-M2.md` 的 `REQ-M2-001`～`REQ-M2-025` 的黑盒与半黑盒验收——工程门禁的可观察结论（模块树、构建红绿、CI 结论）、插件宿主的生命周期与隔离行为（启停日志、退出码、回调有无、事件 JSONL）、自定义负载协议行为（探针可见的消息、结果码与断线原因键）、程序化地图生成与对局生命周期、单位 / 寻路 / 镜头的服务端权威行为，以及客户端模组的安装与 RTS 切片的端到端人工验收。
 - 覆盖（大世界域 · M3）：`docs/DESIGN-M3.md` 里**已落地**的两块——光照（`REQ-M3-005`、`REQ-M3-006`、`REQ-M3-007`、`REQ-M3-027`、`REQ-M3-028`：原版 26.2 对拍、`lightBlock` 衰减、面遮挡与 `ShapeImpl` 满面判定、`fullyLit` 重算，以及真值由 `tools/light-oracle/gen.sh` 逐字节再生）与基准程序（`REQ-M3-013`：`LargeWorldBench` 能跑、两次运行区块包字节摘要相同、空闲机器复跑），另加 `REQ-M3-003` 名下的区块包跨 JVM 逐字节确定（引擎 `ChunkData` 编码）。M3-A 剩余项与 M3-B 落地后再加三块：光照引擎抽取（`REQ-M3-004`：`LightEngine` 不依赖实例、不加锁，对拍两条路径，版本与已过对拍版本文件绑定）；`.synx` 格式（`REQ-M3-001`、`REQ-M3-002`：测试向量与 zlib 指纹门、损坏与不兼容、规范化、清单与起服校验函数、内部面名单）；烘焙器与 Anvil 读取器（`REQ-M3-003`、`REQ-M3-020`～`REQ-M3-022`：读取器门禁与夹具再生、生成器源与 Anvil 源的烘焙、Anvil 源的 256 格高度窗口、各退出码、并行等于串行、4k×4k 合成图命令行烘焙、源光照对拍、交付规范的自检命令）。M3-C 落地后再加一块：区块流送与覆盖层（`REQ-M3-008`～`REQ-M3-011`：句柄区块零编码发送、物化与重新编码、只读情形、方块实体与静态实体、出站积压、模拟距离、按票据自动卸载、分区删除、覆盖存储的写入阶段、待写表与最终落盘；`REQ-M3-014` 的 20 机器人补充读数；`REQ-M3-002` 的分片起服接线；`REQ-M3-022` 的处理器登记与门禁名单），观察面另加分片进程的日志与事件台账、JFR 方法计数与压测 `summary.json`。M3-E 落地后再加一块：分片（`REQ-M3-015`～`REQ-M3-017`、`REQ-M3-023`：分片目录的格式、校验与拒启，目录模式的判定与大区装配，心跳的写读与过期，选频道与 `ShardService` 的九种结果，关卡门、到达点与两个转服事件，满员频道在读 Cookie 之前拒绝转入，世界状态标志的重放、应用、保护、同步与停机次序，压测 harness 的 `gate` 画像、转服往返与判定，迁移 V5、V6 的往返），观察面另加 PostgreSQL 的 `shard_heartbeat`、`world_flag` 两张表、Redis 的订阅数与两个分片进程之间的台账配对；四档压测阻塞在压测机上。M3-D 的代码写完后（分支 `m3d/runtime-light`，未合入 `main`）再加一块：运行时光照（`REQ-M3-012`：重算的投递、合并、跳过与装回，装回每 tick 的上限、与区块手里光照的比较，重算中的区块不被淘汰卸载，空气区块按缺失，停机先排空，能自算的判定、光照待补与光照包刷新交付时刻，退路，两个配置键与 `:synx` 内部面；另收 `REQ-M3-011` 名下「A、C 合并后」六条的真组合），观察面另加光照夹具的测试通道、无头容器里真客户端写的 `light-report.txt` 与夹具进程的 JFR；容器与真进程三条至今阻塞在本机的起跑门槛上。观察面是 JUnit 结果 XML、`gen.sh` 的退出码与 `git status`、`worldBench` 产出的 JSON、烘焙器的退出码、stdout、清单与事件 JSONL。M3-S 安全修复（`REQ-M3-029`～`REQ-M3-034`，2026-10-07 派生，RUN-069）再加一块：地图分片上的位置、改地形与 `view_bounds` 外的区块，覆盖层的磁盘上限，地图文件的属主与权限、解析器的长度上限，客户端远景下载的限制，关卡门读心跳的复用，地图分片的日夜；观察面另加 GitHub Actions 上远景容器的 `farview-report.txt` 与工作流日志，真机六项交给用户。其余 `REQ-M3-*` 尚未实现，用例随各阶段实现派生，见下方 REQ-M3 对照表。
-- Gherkin 覆盖口径（M3）：`docs/DESIGN-M3.md` §19 里光照与基准六条 REQ 的 13 个场景由 TC-WORLD-001～TC-WORLD-004、TC-WORLD-006～TC-WORLD-008 与 TC-WORLD-026 可操作化（`REQ-M3-028` 那条自设计文档 v0.10 改走懒读路径，由 TC-WORLD-026 取代 TC-WORLD-005），`REQ-M3-003` 名下「区块包跨 JVM 逐字节确定」由 TC-WORLD-009 可操作化，`REQ-M3-004` 名下「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 1、2、10、11 步承担。M3-B 的场景：`REQ-M3-001` 三条 → TC-WORLD-014～TC-WORLD-016；`REQ-M3-002` 两条 → TC-WORLD-017（校验函数）与 TC-WORLD-048（M3-C 的进程一半：退出码 1、端口不 bind）；`REQ-M3-003` 另十二条 → TC-WORLD-021～TC-WORLD-023，其中 M3 审查优化加的三条生成器场景与改名的「生成器调用 fork 即让区域失败」另由 TC-WORLD-154、「命令行写错即退出码 1，什么都不写」由 TC-WORLD-155 可操作化；`REQ-M3-004` 另三条 → TC-WORLD-012、TC-WORLD-013、TC-WORLD-028；`REQ-M3-020` 五条 → TC-WORLD-019、TC-WORLD-029（实体一条只到段③，分片载入生成实体随 M3-C）与 TC-WORLD-027（v0.10 新增的高度窗口两条）；`REQ-M3-021` 两条 → TC-WORLD-029；`REQ-M3-022` 两条 → TC-WORLD-029、TC-WORLD-030（TC-WORLD-025 已废弃）。M3-C（设计文档 v0.12）的场景：`REQ-M3-008` → TC-WORLD-034～TC-WORLD-040、TC-WORLD-047、TC-WORLD-048、TC-WORLD-052、TC-WORLD-053（「压测中没有区块编码」的 200 机器人判据在 TC-WORLD-099，TC-WORLD-054 已废弃）；`REQ-M3-009` → TC-WORLD-044、TC-WORLD-047、TC-WORLD-048、TC-WORLD-050；`REQ-M3-010` → TC-WORLD-045、TC-WORLD-046、TC-WORLD-049、TC-WORLD-050；`REQ-M3-011` → TC-WORLD-039、TC-WORLD-042、TC-WORLD-043、TC-WORLD-049、TC-WORLD-051；`REQ-M3-014` → TC-WORLD-053（20 机器人补充读数）与 TC-WORLD-099（判据，tick 两项只在分机档判定）；`REQ-M3-022` 新增的四条 → TC-WORLD-030～TC-WORLD-032、TC-WORLD-055；`REQ-M3-003`「同一输入重烘」的 Anvil 那一句 → TC-WORLD-033。设计文档 §19 标「A、C 合并后」的六条（覆盖层达到上限时淘汰、从覆盖记录重载的区块再改后重启、显式卸载的脏区块不丢、判死时一个区块的锁被卡住、排队中的句柄包在覆盖段整理后仍可发出、覆盖存储写失败时不丢改动）除两侧的替身测试（区块一侧在 TC-WORLD-039，存储一侧在 TC-WORLD-042、TC-WORLD-043）外，真组合由 TC-WORLD-091 判（M3-D 第 1 步）。M3-D（设计文档 v0.24）的场景：`REQ-M3-012` 的十条 `:synx` 集成（改方块后 3×3 等于重算结果、装回后落盘与重启、重算期间又改、合并、只改方块实体或生物群系、重算中不淘汰不卸载、大区外的只读邻居、空气区块按缺失、装回每 tick 上限、排空预算为 0）→ TC-WORLD-092，六条多观察者（能自算的不收包、重算排队时才收到、目标的 3×3 缺区块、光照包刷新交付时刻、退路、同一 tick 相邻两处改动）→ TC-WORLD-093，「停机时先排空重算再最终落盘」、「停机排空不受装回上限约束」（v0.26）与「只读世界里标志改方块后光照照样装回」→ TC-WORLD-094，六条容器场景（未改区块逐 nibble、能自算 1 tick 内变亮且 10 s 不闪、视野边缘、目标的 3×3 缺区块、刚进场、改方块后逐 nibble）与 JFR 一条 → TC-WORLD-095，退路模式的容器场景 → TC-WORLD-096，真进程停机落盘 → TC-WORLD-097；两个配置键与 `SynxRelight` 不读引擎内部面（§24 门禁）→ TC-WORLD-098。M3-E（设计文档 v0.18）的场景：`REQ-M3-015` 的三档压测 → TC-WORLD-081～TC-WORLD-083（「同一分格的区块归同一线程」「分片宿主的线程数」两条由生产就绪 5D 的 TC-PROD-330～TC-PROD-333 判）；`REQ-M3-016` 的「分片目录决定容量」→ TC-WORLD-059、TC-WORLD-077，「分片目录写错时拒启」→ TC-WORLD-057、TC-WORLD-058、TC-WORLD-078，「内存存储的挂地图分片不进目录模式」→ TC-WORLD-059、TC-WORLD-060、TC-WORLD-080，「心跳按时写入，过期或关门的频道不被选中」→ TC-WORLD-061、TC-WORLD-075，目录模式 30 min 档 → TC-WORLD-081；`REQ-M3-017` 的「选频道取负载最低」→ TC-WORLD-062，「ShardService 的九种结果」→ TC-WORLD-063，「关卡门只在走进门框时触发一次」→ TC-WORLD-064、TC-WORLD-076（其中六种拒绝结果写 `EVT:transfer_refused` 的一句 → TC-WORLD-100，TC-WORLD-089 已废弃），「正常转服的世界侧」→ TC-WORLD-076（小图夹具）与 TC-WORLD-087，「转服到达点缺省时用大区出生点」→ TC-WORLD-065，「满员频道在读 Cookie 之前拒绝转入」→ TC-WORLD-085，「转服 P95 < 5 s」→ TC-WORLD-084，测量口径 → TC-WORLD-071～TC-WORLD-074、TC-WORLD-086；`REQ-M3-023` 的十三条 → TC-WORLD-066～TC-WORLD-070，真进程的装配 → TC-WORLD-079；迁移往返 → TC-WORLD-088。 §19 末尾 M3-S 一块的 54 条场景（`REQ-M3-029`～`REQ-M3-034` 与 `REQ-M3-008`、`REQ-M3-009`、`REQ-M3-012`、`REQ-M3-019`、`REQ-M3-025` 名下新增的，其中 8 条是 M3 审查优化加的）里 53 条由 TC-WORLD-125～TC-WORLD-150 与 M3 审查优化的新用例可操作化，逐条对照与反证的有无在 §4「M3 · 安全修复（M3-S）」一节开头的表；「发区块时持区块写锁取包并入队」由生产就绪会话派生为 TC-PROD-675～TC-PROD-679。M3-G 的「只读挡住近圈区块」按 v0.38 改后的写法改了 TC-WORLD-117 第 3 步（F5、F9 判走到 x + 200）与 TC-WORLD-119 第 2 步（F16 同），它的反证（`walk` 第一步改回一包升 116 格）随 RUN-069 合并验收跑。M3 审查优化在 M3-S 一块之外加的场景：`REQ-M3-003` 见上；`REQ-M3-024`「贴着地图边的隐藏区域只取 bounds 以内的外沿」→ TC-WORLD-161；`REQ-M3-025`「摘要相符而内容不对时当场失败，一次尝试里的文件错误算一次失败」→ TC-WORLD-162，「档位文件里不是 UTF-8 的注释不让档位作废」→ TC-WORLD-163。
-- Gherkin 覆盖口径：`docs/DESIGN-M2.md` §19 的 48 个 Gherkin 场景**全部**由本文档的 TC 可操作化，没有转交自动化测试的场景；逐条对照见下方 REQ ↔ TC 表与各用例标题行。
+- Gherkin 覆盖口径（M3）：`docs/DESIGN-M3.md` §19 里光照与基准六条 REQ 的 13 个场景由 TC-WORLD-001～TC-WORLD-004、TC-WORLD-006～TC-WORLD-008 与 TC-WORLD-026 可操作化（`REQ-M3-028` 那条自设计文档 v0.10 改走懒读路径，由 TC-WORLD-026 取代 TC-WORLD-005），`REQ-M3-003` 名下「区块包跨 JVM 逐字节确定」由 TC-WORLD-009 可操作化，`REQ-M3-004` 名下「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 1、2、10、11 步承担。M3-B 的场景：`REQ-M3-001` 三条 → TC-WORLD-014～TC-WORLD-016；`REQ-M3-002` 两条 → TC-WORLD-017（校验函数）与 TC-WORLD-048（M3-C 的进程一半：退出码 1、端口不 bind）；`REQ-M3-003` 另十二条 → TC-WORLD-021～TC-WORLD-023，其中 M3 审查优化加的三条生成器场景与改名的「生成器调用 fork 即让区域失败」另由 TC-WORLD-154、「命令行写错即退出码 1，什么都不写」由 TC-WORLD-155 可操作化；`REQ-M3-004` 另三条 → TC-WORLD-012、TC-WORLD-013、TC-WORLD-028；`REQ-M3-020` 五条 → TC-WORLD-019、TC-WORLD-029（实体一条只到段③，分片载入生成实体随 M3-C）与 TC-WORLD-027（v0.10 新增的高度窗口两条）；`REQ-M3-021` 两条 → TC-WORLD-029；`REQ-M3-022` 两条 → TC-WORLD-029、TC-WORLD-030（TC-WORLD-025 已废弃）。M3-C（设计文档 v0.12）的场景：`REQ-M3-008` → TC-WORLD-034～TC-WORLD-040、TC-WORLD-047、TC-WORLD-048、TC-WORLD-052、TC-WORLD-053（「压测中没有区块编码」的 200 机器人判据在 TC-WORLD-099，TC-WORLD-054 已废弃）；`REQ-M3-009` → TC-WORLD-044、TC-WORLD-047、TC-WORLD-048、TC-WORLD-050；`REQ-M3-010` → TC-WORLD-045、TC-WORLD-046、TC-WORLD-049、TC-WORLD-050；`REQ-M3-011` → TC-WORLD-039、TC-WORLD-042、TC-WORLD-043、TC-WORLD-049、TC-WORLD-051；`REQ-M3-014` → TC-WORLD-053（20 机器人补充读数）与 TC-WORLD-099（判据，tick 两项只在分机档判定）；`REQ-M3-022` 新增的四条 → TC-WORLD-030～TC-WORLD-032、TC-WORLD-055；`REQ-M3-003`「同一输入重烘」的 Anvil 那一句 → TC-WORLD-033。设计文档 §19 标「A、C 合并后」的六条（覆盖层达到上限时淘汰、从覆盖记录重载的区块再改后重启、显式卸载的脏区块不丢、判死时一个区块的锁被卡住、排队中的句柄包在覆盖段整理后仍可发出、覆盖存储写失败时不丢改动）除两侧的替身测试（区块一侧在 TC-WORLD-039，存储一侧在 TC-WORLD-042、TC-WORLD-043）外，真组合由 TC-WORLD-091 判（M3-D 第 1 步）。M3-D（设计文档 v0.24）的场景：`REQ-M3-012` 的十条 `:synx` 集成（改方块后 3×3 等于重算结果、装回后落盘与重启、重算期间又改、合并、只改方块实体或生物群系、重算中不淘汰不卸载、大区外的只读邻居、空气区块按缺失、装回每 tick 上限、排空预算为 0）→ TC-WORLD-092，六条多观察者（能自算的不收包、重算排队时才收到、目标的 3×3 缺区块、光照包刷新交付时刻、退路、同一 tick 相邻两处改动）→ TC-WORLD-093，「停机时先排空重算再最终落盘」、「停机排空不受装回上限约束」（v0.26）与「只读世界里标志改方块后光照照样装回」→ TC-WORLD-094，六条容器场景（未改区块逐 nibble、能自算 1 tick 内变亮且 10 s 不闪、视野边缘、目标的 3×3 缺区块、刚进场、改方块后逐 nibble）与 JFR 一条 → TC-WORLD-095，退路模式的容器场景 → TC-WORLD-096，真进程停机落盘 → TC-WORLD-097；两个配置键与 `SynxRelight` 不读引擎内部面（§24 门禁）→ TC-WORLD-098。M3-E（设计文档 v0.18）的场景：`REQ-M3-015` 的三档压测 → TC-WORLD-081～TC-WORLD-083（「同一分格的区块归同一线程」「分片宿主的线程数」两条由生产就绪 5D 的 TC-PROD-330～TC-PROD-333 判）；`REQ-M3-016` 的「分片目录决定容量」→ TC-WORLD-059、TC-WORLD-077，「分片目录写错时拒启」→ TC-WORLD-057、TC-WORLD-058、TC-WORLD-078，「内存存储的挂地图分片不进目录模式」→ TC-WORLD-059、TC-WORLD-060、TC-WORLD-080，「心跳按时写入，过期或关门的频道不被选中」→ TC-WORLD-061、TC-WORLD-075，目录模式 30 min 档 → TC-WORLD-081；`REQ-M3-017` 的「选频道取负载最低」→ TC-WORLD-062，「ShardService 的九种结果」→ TC-WORLD-063，「关卡门只在走进门框时触发一次」→ TC-WORLD-064、TC-WORLD-076（其中六种拒绝结果写 `EVT:transfer_refused` 的一句 → TC-WORLD-100，TC-WORLD-089 已废弃），「正常转服的世界侧」→ TC-WORLD-076（小图夹具）与 TC-WORLD-087，「转服到达点缺省时用大区出生点」→ TC-WORLD-065，「满员频道在读 Cookie 之前拒绝转入」→ TC-WORLD-085，「转服 P95 < 5 s」→ TC-WORLD-084，测量口径 → TC-WORLD-071～TC-WORLD-074、TC-WORLD-086；`REQ-M3-023` 的十三条 → TC-WORLD-066～TC-WORLD-070，真进程的装配 → TC-WORLD-079；迁移往返 → TC-WORLD-088。 §19 末尾 M3-S 一块的 54 条场景（`REQ-M3-029`～`REQ-M3-034` 与 `REQ-M3-008`、`REQ-M3-009`、`REQ-M3-012`、`REQ-M3-019`、`REQ-M3-025` 名下新增的，其中 8 条是 M3 审查优化加的）里 53 条由 TC-WORLD-125～TC-WORLD-150 与 M3 审查优化的新用例可操作化，逐条对照与反证的有无在 §4「M3 · 安全修复（M3-S）」一节开头的表；「发区块时持区块写锁取包并入队」由生产就绪会话派生为 TC-PROD-675～TC-PROD-679。M3-G 的「只读挡住近圈区块」按 v0.38 改后的写法改了 TC-WORLD-117 第 3 步（F5、F9 判走到 x + 200）与 TC-WORLD-119 第 2 步（F16 同），它的反证（`walk` 第一步改回一包升 116 格）随 RUN-069 合并验收跑。M3 审查优化在 M3-S 一块之外加的场景：`REQ-M3-003` 见上；`REQ-M3-024`「贴着地图边的隐藏区域只取 bounds 以内的外沿」→ TC-WORLD-161；`REQ-M3-025`「摘要相符而内容不对时当场失败，一次尝试里的文件错误算一次失败」→ TC-WORLD-162，「档位文件里不是 UTF-8 的注释不让档位作废」→ TC-WORLD-163。§19 末尾跟进 RUN-081 引擎改动的三条：`REQ-M3-004`「LightingChunk 的 section 绕过 setBlock 改过之后，下一次读高度图重算」→ TC-WORLD-167；`REQ-M3-031`「段① 方块实体表里的未知类型在第一次读到时被拒」→ TC-WORLD-168；`REQ-M3-012`「来回走过区块边界后断线，已交付表里不留这名玩家」→ TC-WORLD-169，三条都带反证。
+- Gherkin 覆盖口径：`docs/DESIGN-M2.md` §19 的 48 个 Gherkin 场景**全部**由本文档的 TC 可操作化，没有转交自动化测试的场景；逐条对照见下方 REQ ↔ TC 表与各用例标题行。v0.68 加的「单位推进时面朝前进方向，原地不动时保持朝向」→ TC-GAME-076。
 - 包 ID 口径：协议探针 `tools/protocol-probe/probe.py` 与压测 harness `tools/loadtest/PacketFlood.java` 的包 ID 都是解析本仓库 `PacketVanilla.java` 得到的，编码端与解码端用同一张表，表错了也照样自洽地通过，所以**以探针或压测为判据的用例不能证明包 ID 与原版一致**。与 26.2 原版一致由 TC-036 的整表测试判（REQ-005 删包打乱 ID 的那次缺陷就是这样漏过去的，见 `docs/DESIGN.md` §28）。
 - 机械校验口径：`bash ~/.claude/skills/test-doc/check.sh docs/TEST.md` 做 REQ 双向联检——本文档引用的每条 REQ 必须在某一份设计文档里存在，每份设计文档的每条 REQ 必须被至少一条 TC 引用。**三份设计文档一起联检**：`check.sh` 把上方元信息「关联设计文档」行里的**每一个** `*.md` 都解析出来，`REQ-001`～`REQ-017`、`REQ-M2-001`～`REQ-M2-025` 与 `REQ-M3-001`～`REQ-M3-034` 都在范围内。两处不能动，动了绿灯就不再代表已核：① ID 正则的域段是 `[A-Z][A-Z0-9]*`，收窄成纯字母会让带数字的 `M2`、`M3` 域段整块静默退出联检；② 元信息那一行必须保留三份文档的路径，少一份则那一份的 REQ 无人认领。M3 侧的反向联检是被下方对照表里的「未实现」行满足的，绿灯只说明每条 REQ 都登记了去向，不说明它有用例。下表因此不是唯一判据，留作可读索引——查一条 REQ 由哪些 TC 覆盖、哪些 TC 已废弃及原因。
 
@@ -349,7 +350,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | REQ-M2-013 断线幽灵修复 | TC-GAME-034 |
 | REQ-M2-014 视距收缩修复 | TC-GAME-035 |
 | REQ-M2-015 F49 处置 | TC-GAME-036 |
-| REQ-M2-016 单位模型与表现 | TC-GAME-052、TC-GAME-038、TC-GAME-068（TC-GAME-037 已废弃） |
+| REQ-M2-016 单位模型与表现 | TC-GAME-052、TC-GAME-038、TC-GAME-068、TC-GAME-076（被命令到脚下那一点时保持朝向）（TC-GAME-037 已废弃） |
 | REQ-M2-017 服务端寻路 | TC-GAME-028、TC-GAME-040、TC-GAME-041、TC-GAME-042、TC-GAME-047、TC-GAME-065、TC-GAME-068 |
 | REQ-M2-018 RTS 镜头 | TC-GAME-043、TC-GAME-044、TC-GAME-047 |
 | REQ-M2-019 客户端选中与下令 | TC-GAME-038、TC-GAME-039、TC-GAME-047、TC-GAME-066 |
@@ -367,15 +368,15 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | REQ-M3-001 `.synx` 区域文件格式 | TC-WORLD-014、TC-WORLD-015、TC-WORLD-016、TC-WORLD-018 |
 | REQ-M3-002 地图发布目录与清单 | TC-WORLD-017、TC-WORLD-023、TC-WORLD-047、TC-WORLD-048、TC-WORLD-052、TC-WORLD-103、TC-WORLD-106（清单 `farview[]`；`baker_version` < 2 的版本照常过 `verify`）（`rebake` 未实现） |
 | REQ-M3-003 离线烘焙器 | TC-WORLD-009、TC-WORLD-013、TC-WORLD-016、TC-WORLD-018、TC-WORLD-021、TC-WORLD-022、TC-WORLD-023、TC-WORLD-033（多键方块实体的 Anvil 源重烘）、TC-WORLD-103、TC-WORLD-106、TC-WORLD-109（高度场包随 M3-G 落地，`baker_version` 2）、TC-WORLD-154（生成器源拒收高于 256 格的预设、section 上的 fork 与普通方块上未登记的 handler，生成器异常点名区块）、TC-WORLD-155（命令行写错退出码 1、`source_spec`） |
-| REQ-M3-004 光照引擎抽取 | TC-WORLD-012、TC-WORLD-013、TC-WORLD-028、TC-WORLD-152（§5 末表 ⑩：`relightSection` 懒算路径的块光不丢外圈 section 的外来光）；「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 1、2、10、11 步判 |
+| REQ-M3-004 光照引擎抽取 | TC-WORLD-012、TC-WORLD-013、TC-WORLD-028、TC-WORLD-152（§5 末表 ⑩：`relightSection` 懒算路径的块光不丢外圈 section 的外来光）、TC-WORLD-167（`LightingChunk#invalidate` 让高度图重算，重算光照不让它失效）；「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 1、2、10、11 步判 |
 | REQ-M3-005 天光整列按 `lightBlock` 与面遮挡停止 | TC-WORLD-003 |
 | REQ-M3-006 BFS 按 `lightBlock` 衰减 | TC-WORLD-003 |
 | REQ-M3-007 与原版 26.2 逐值对拍 | TC-WORLD-001、TC-WORLD-002 |
-| REQ-M3-008 `SynxChunkLoader` 与 `SynxChunk` | TC-WORLD-032、TC-WORLD-034～TC-WORLD-041、TC-WORLD-047、TC-WORLD-048、TC-WORLD-052、TC-WORLD-053、TC-WORLD-056（测试连接追踪句柄区块的 `BufferedPacket`）、TC-WORLD-099（TC-WORLD-054 已废弃）、TC-WORLD-156（缺 Pos 或 Rotation 的静态实体与乘客）、TC-WORLD-164（地图外缘与 `view_bounds` 外的空气区块满天光）、TC-WORLD-165（起服写出的生效设置、出生列整列空气的 WARN）、TC-WORLD-166（载入失败的 ERROR 写明来源文件或缺的区域文件，实例世界不符时抛出而不计 failed） |
+| REQ-M3-008 `SynxChunkLoader` 与 `SynxChunk` | TC-WORLD-032、TC-WORLD-034～TC-WORLD-041、TC-WORLD-047、TC-WORLD-048、TC-WORLD-052、TC-WORLD-053、TC-WORLD-056（测试连接追踪句柄区块的 `BufferedPacket`）、TC-WORLD-099（TC-WORLD-054 已废弃）、TC-WORLD-156（缺 Pos 或 Rotation 的静态实体与乘客）、TC-WORLD-164（地图外缘与 `view_bounds` 外的空气区块满天光）、TC-WORLD-165（起服写出的生效设置、出生列整列空气的 WARN）、TC-WORLD-166（载入失败的 ERROR 写明来源文件或缺的区域文件，实例世界不符时抛出而不计 failed）、TC-WORLD-168（段① 方块实体表读不出时物化与取光抛出、载入不受影响） |
 | REQ-M3-009 视距与模拟距离分离 | TC-WORLD-010、TC-WORLD-011（分片宿主视距 12）、TC-WORLD-041、TC-WORLD-044、TC-WORLD-047、TC-WORLD-048、TC-WORLD-050、TC-WORLD-052、TC-WORLD-145（真机 P1③ 的填满耗时，只登记，执行者人工） |
 | REQ-M3-010 按观察者引用计数自动卸载 | TC-WORLD-045、TC-WORLD-046、TC-WORLD-049、TC-WORLD-050 |
 | REQ-M3-011 覆盖层 | TC-WORLD-039、TC-WORLD-041、TC-WORLD-042、TC-WORLD-043、TC-WORLD-049、TC-WORLD-051、TC-WORLD-091（§19 标「A、C 合并后」的六条的真组合）、TC-WORLD-097（真进程最终落盘）、TC-WORLD-157（失败日志、起服 unlink 空段、换段封口、淘汰复查重算） |
-| REQ-M3-012 运行时光照 | TC-WORLD-092～TC-WORLD-094、TC-WORLD-098（JUnit 与门禁）；TC-WORLD-095～TC-WORLD-097（无头容器与真进程，RUN-054 首次跑通）。代码在分支 `m3d/runtime-light`，待合入 `main`；TC-WORLD-139（M3-S：重算池在满速改方块下的积压，测量模式）、TC-WORLD-144（真机 P1① 帧时间，执行者人工）、TC-WORLD-133（映射被截断之后重算与装回各按一次失败处理） |
+| REQ-M3-012 运行时光照 | TC-WORLD-092～TC-WORLD-094、TC-WORLD-098（JUnit 与门禁）；TC-WORLD-095～TC-WORLD-097（无头容器与真进程，RUN-054 首次跑通）。代码在分支 `m3d/runtime-light`，待合入 `main`；TC-WORLD-139（M3-S：重算池在满速改方块下的积压，测量模式）、TC-WORLD-144（真机 P1① 帧时间，执行者人工）、TC-WORLD-133（映射被截断之后重算与装回各按一次失败处理）、TC-WORLD-169（来回走过区块边界后断线，已交付表不留这名玩家） |
 | REQ-M3-013 可提交的基准程序 | TC-WORLD-006、TC-WORLD-007、TC-WORLD-008 |
 | REQ-M3-014 压测量出真实区块下行 | TC-WORLD-053（20 机器人补充读数）、TC-WORLD-099（200 机器人判据，tick 两项待分机档；TC-WORLD-054 已废弃） |
 | REQ-M3-015 空间分格 `ThreadProvider` | TC-WORLD-081～TC-WORLD-083（压测三档，RUN-057 在同机档跑过，tick 与 RSS 待分机档）；分格与线程数由 TC-PROD-330～TC-PROD-333 判 |
@@ -393,7 +394,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | REQ-M3-028 `fullyLit` 重算 | TC-WORLD-026（TC-WORLD-005 已废弃） |
 | REQ-M3-029 地图分片上玩家位置、改地形与 `view_bounds` 外的区块 | TC-WORLD-125～TC-WORLD-127、TC-WORLD-164（第一行带栈的 WARN 不被同时到来的请求吞掉）；TC-WORLD-128（扫图测量） |
 | REQ-M3-030 覆盖层的磁盘上限 | TC-WORLD-129、TC-WORLD-130、TC-WORLD-157（起服 unlink 没有存活记录的段） |
-| REQ-M3-031 地图文件的信任与解析上限 | TC-WORLD-131～TC-WORLD-135、TC-WORLD-166（段③ 声明多于实有的内容、畸形内容与载入时放不下的记录） |
+| REQ-M3-031 地图文件的信任与解析上限 | TC-WORLD-131～TC-WORLD-135、TC-WORLD-166（段③ 声明多于实有的内容、畸形内容与载入时放不下的记录）、TC-WORLD-168（段① 方块实体表里的未知类型在第一次读到时被拒） |
 | REQ-M3-032 远景下载的限制 | TC-WORLD-135（url-root 的 WARN）、TC-WORLD-136、TC-WORLD-137、TC-WORLD-143、TC-WORLD-162（响应体不结束的 3xx） |
 | REQ-M3-033 关卡门读心跳的复用 | TC-WORLD-138 |
 | REQ-M3-034 地图分片的日夜 | TC-WORLD-150 |
@@ -1964,6 +1965,16 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | 5 | 上报 `camera_yaw=720` 与 `camera_yaw=-1` | 连接不断线；服务端 stdout 无异常堆栈 |
 
 后置：无。
+
+#### `TC-GAME-076` 单位被命令到脚下那一点时保持原来的朝向 — 对应 `REQ-M2-016` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :game-rts:test --tests 'io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 0 失败，`tests="8"`；`aUnitOrderedOntoThePointItStandsOnKeepsItsFacing`：单位朝 yaw 37、pitch 0 站着，被命令到它脚下的那一点（航点的视角是寻路写的 yaw 0、pitch 0），推进 2 tick 之后 yaw 仍为 37、pitch 为 0 |
+| 2 | 反证：`game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Unit.java` 的 `position = distance == 0 ? target.withView(position) : target.withDirection(direction);` 改回 `position = target.withDirection(direction);`，重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`the unit turned south on the spot ==> expected: <37.0> but was: <0.0>`（`docs/DESIGN-PROD.md` v0.9.101 起 `Pos#withDirection` 对零向量保持原视角，拿到的是航点的视角）；还原后复绿 |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
 
 ### M2 · 客户端模组与切片验收
 
@@ -4419,6 +4430,41 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 | 3 | 重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --porcelain` 无输出。
+
+### M3 · 高度图、段① 方块实体表与已交付表
+
+对应 `docs/DESIGN-M3.md` v0.54 的 `API-M3-004`「`LightingChunk.relight` 委托」条、`API-M3-001` 长度上限条（段① 的方块实体表）与 `API-M3-005`「已交付表与光照待补」条，跟进生产就绪会话 RUN-081 引擎改动之后的 M3 侧（`docs/DESIGN-PROD.md` §28.3 交给光照会话的行）。`<G>` 同「M3 · 光照」；`<S>` 代表测试包名 `io.github.bearisbug.synaxis.synx`；`<SD>` 代表 `synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxPacketDecoder.java`。用例都是 JUnit 加反证，反证一律「临时改一处实现、重跑、看红、`git checkout --` 还原」。
+
+#### `TC-WORLD-167` `LightingChunk` 绕过 `setBlock` 改了 section 之后，`invalidate()` 让两张高度图重算；重算光照不让高度图失效 — 对应 `REQ-M3-004` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :test --tests 'io.github.bearisbug.synaxis.instance.LightingChunkHeightmapIntegrationTest'` | 0 失败，`tests="1"`：平地实例换成 `LightingChunk`，(0, 0) 两张高度图先是 39；持写锁直接往 y 45 的 section 调色板写一块石头（不经 `setBlock`），再 `Instance#invalidateSection(0, 2, 0)`，两张高度图都变为 45 |
+| 2 | 反证（`LightingChunk#invalidate` 不接父类）：删掉 `src/main/java/io/github/bearisbug/synaxis/instance/LightingChunk.java` 里 `invalidate()` 的 `super.invalidate();` 一行，只跑第 1 步，再 `git checkout --` 该文件 | 红 1 条，断在 `LightingChunkHeightmapIntegrationTest.java:36`「the stone written into the section」：`expected: <45> but was: <39>`；还原后复绿 |
+| 3 | `grep -n 'invalidateLight()' src/main/java/io/github/bearisbug/synaxis/instance/LightingChunk.java` | 5 行：方法定义一行，`invalidate()` 里一行，`invalidateNeighborsSection` 与 `onGenerate` 让邻居光照失效各一行，`relight` 写回之后一行；这三处都不调 `invalidate()` |
+| 4 | 重跑第 1 步 | 与第 1 步相同 |
+
+#### `TC-WORLD-168` 段① 方块实体表里的未知类型在第一次读到时被拒，信息写明来源文件与区块；载入照常 — 对应 `REQ-M3-031`、`REQ-M3-008` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :synx:test --tests '<S>.SynxSegmentOneBlockEntityTest'` | 0 失败，`tests="1"`：区块 10,5 的覆盖记录段① 里有一条类型 id 9999 的方块实体，区块以 handle 模式载入（加载不读这张表）；在它上面改方块抛 `IllegalArgumentException`，信息是 `chunk 10,5: the overlay segment seg.3.synx, segment ①: unknown block entity type id: 9999`，区块仍是 handle、那一格的方块不变；`SynxChunk#currentLight` 抛同一条信息；`failed` 为 0 |
+| 2 | 反证（解码不转换未知类型）：`<SD>` 的 `chunkData` 里删掉 `catch (NullPointerException e)` 那一段（直接 `buffer.read(ChunkData.NETWORK_TYPE)`），只跑第 1 步，再 `git checkout -- <SD>` | 红 1 条，断在 `SynxSegmentOneBlockEntityTest.java:47`：`expected: <java.lang.IllegalArgumentException> but was: <java.lang.NullPointerException>`；还原后复绿 |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+#### `TC-WORLD-169` 来回走过区块边界后断线，已交付表与光照待补表里不留这名玩家 — 对应 `REQ-M3-012` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :synx:test --tests '<S>.SynxRelightDeliveredIntegrationTest'` | 0 失败，`tests="1"`：观察者（视距 2，区块环半径 3）经位置包从区块 3,3 走进 4,3 再走回 3,3；区块更新限流器的历史里有 3,3，环心留在 4,3，7,3 已交付给他。断线、5 tick 之后，`bounds` 0～7 里每个 `SynxChunk` 的 `delivered` 与 `light_stale` 都没有这名玩家 |
+| 2 | 反证（移除玩家时按位置取环，RUN-081 之前的引擎）：`src/main/java/io/github/bearisbug/synaxis/entity/Player.java` 的 `remove` 里 `final int ringX = ticketCenterX, ringZ = ticketCenterZ, ringRadius = ticketRadius;` 改成 `final int ringX = position.chunkX(), ringZ = position.chunkZ(), ringRadius = ticketRadius;`，只跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`7,0 still has the player as delivered`（环按位置 3,3 取，东边第 7 列收不到卸载事件）；还原后复绿 |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
 
 ### 生产就绪 · 第 0 波 0A：宿主日志线
 

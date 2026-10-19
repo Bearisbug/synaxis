@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="0" errors="0" timestamp="2026-10-19T04:38:36.800Z" hostname="Mac.local" time="10.145">
+  <properties/>
+  <testcase name="theSectionCacheStaysWithinItsBudget(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="7.643"/>
+  <testcase name="aBlockEntityReadBackFromItsRecordIsTheSameBlock(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="0.033"/>
+  <testcase name="writtenDemotesOnlyWhatDidNotChangeSince(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="0.022"/>
+  <testcase name="aThousandMaterializedChunksEncodeBackToTheirSegmentOne(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="2.179"/>
+  <testcase name="unregisteredHandlerNamespacesSurviveTheOverlay(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="0.012"/>
+  <testcase name="aDirtyChunkAsksForAFlushBeforeItUnloads(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="0.009"/>
+  <testcase name="aPacketHandedOutBeforeADemotionKeepsItsContent(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="0.01"/>
+  <testcase name="newViewersOfAMaterializedChunkKeepItsSkyLight(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="0.052"/>
+  <testcase name="biomeChangesMaterializeToo(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="0.009"/>
+  <testcase name="signTextSurvivesMaterialization(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="0.008"/>
+  <testcase name="writtenGivesUpAfter50msWhenTheLockIsHeld(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="0.06"/>
+  <testcase name="encodeOverlayGivesUpAfter50msWhenTheLockIsHeld(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="0.075"/>
+  <testcase name="anExplicitlyUnloadedDirtyChunkCanBeEncodedOnTheSpot(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="0.012"/>
+  <testcase name="aChangeThatThrowsCountsAllTheSame(Env)" classname="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" time="0.008"/>
+  <system-out><![CDATA[12:38:44.435 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:44.449 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:44.449 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:38:44.485 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:44.485 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:44.485 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:38:44.507 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:44.507 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:44.507 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:38:45.208 [virtual-348] WARN  i.g.b.s.synx.SynxStaticEntities - Static entity type minecraft:minecart at Pos[x=134.5, y=200.0, z=86.5, yaw=0.0, pitch=0.0] is not one the shard spawns: skipped, and so is every other one of the type without a line (docs/DESIGN-M3.md §28.1)
+12:38:45.565 [virtual-508] WARN  i.g.b.s.instance.block.BlockManager - Block synaxis:ticker does not have any corresponding handler, default to dummy.
+You may want to register a handler for this namespace to prevent any data loss.
+12:38:45.997 [virtual-723] WARN  i.g.b.s.instance.block.BlockManager - Block synaxis:unknown does not have any corresponding handler, default to dummy.
+You may want to register a handler for this namespace to prevent any data loss.
+12:38:46.684 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:46.686 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:46.686 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:38:46.695 [virtual-1068] WARN  i.g.b.s.instance.block.BlockManager - Block synaxis:unknown does not have any corresponding handler, default to dummy.
+You may want to register a handler for this namespace to prevent any data loss.
+12:38:46.698 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:46.698 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:46.698 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:38:46.707 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:46.708 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:46.708 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:38:46.718 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:46.719 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:46.719 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:38:46.766 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:46.767 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=8233f150-b6a9-4094-94b2-047489c80703 identifier=Recorder reason=synaxis:server-stopping
+12:38:46.767 [Test worker] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=8233f150-b6a9-4094-94b2-047489c80703 identifier=Recorder
+12:38:46.771 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:46.771 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:38:46.780 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:46.780 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:46.780 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:38:46.788 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:46.789 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:46.789 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:38:46.848 [ForkJoinPool.commonPool-worker-1] WARN  i.g.bearisbug.synaxis.synx.SynxChunk - Chunk 13,13 stays as it was after its overlay record was written: its write-lock was held for 50 ms
+12:38:46.849 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:46.849 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:46.850 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:38:46.924 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:46.924 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:46.924 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:38:46.937 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:46.937 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:46.937 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+12:38:46.945 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:38:46.945 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:38:46.946 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

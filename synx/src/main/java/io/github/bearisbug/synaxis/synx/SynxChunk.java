@@ -8,8 +8,6 @@ import io.github.bearisbug.synaxis.instance.Section;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.instance.block.BlockManager;
-import io.github.bearisbug.synaxis.instance.heightmap.MotionBlockingHeightmap;
-import io.github.bearisbug.synaxis.instance.heightmap.WorldSurfaceHeightmap;
 import io.github.bearisbug.synaxis.instance.palette.Palette;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.server.BufferedPacket;
@@ -497,10 +495,8 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
         for (int i = 0; i < sections.size(); i++) {
             final Section section = sections.get(i);
             section.blockPalette().copyFrom(full.sections().blocks()[i]);
-            final Palette biomes = full.sections().biomes()[i];
-            // A direct biome palette of the packet is as wide as the biome registry needs, not the storage width
-            if (biomes.bitsPerEntry() <= Palette.BIOME_PALETTE_MAX_BITS) section.biomePalette().copyFrom(biomes);
-            else section.biomePalette().setAll(biomes::get);
+            // A direct biome palette of the packet, as wide as the biome registry needs, is encoded again
+            section.biomePalette().copyFrom(full.sections().biomes()[i]);
             section.setSkyLight(Objects.requireNonNullElse(full.sky()[i], NO_LIGHT));
             section.setBlockLight(Objects.requireNonNullElse(full.block()[i], NO_LIGHT));
         }
@@ -515,9 +511,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
             entries.put(index, block);
             if (block.handler() != null && block.handler().isTickable()) tickableMap.put(index, block);
         }
-        // New heightmaps: a heightmap computed once, even on the empty sections of handle mode, never recomputes
-        this.motionBlocking = new MotionBlockingHeightmap(this);
-        this.worldSurface = new WorldSurfaceHeightmap(this);
+        // The heightmaps too: the next packet computes them from the sections filled here
         invalidate();
         this.mode = Mode.OVERLAY;
         loader.tracker().materialized(this);
@@ -720,14 +714,21 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     }
 
     /**
-     * Reads the mapping of {@code source}: a fault there ({@code API-M3-005} 映射读取出错) throws as
-     * {@link SectionCache#get} throws it, an {@link IllegalStateException} the callers handle.
+     * Reads segment ① from the mapping of {@code source}: a fault there ({@code API-M3-005} 映射读取出错)
+     * throws as {@link SectionCache#get} throws it, an {@link IllegalStateException} the callers handle;
+     * bytes that do not read as segment ①, a block entity table naming a type the engine does not know
+     * among them, throw an {@link IllegalArgumentException} naming the file and the chunk.
      */
-    private static <T> T mapped(Source source, Supplier<T> read) {
+    private <T> T mapped(Source source, Supplier<T> read) {
         try {
             return read.get();
         } catch (InternalError e) {
             throw new IllegalStateException(source.key().file() + " faulted on read", e);
+        } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
+            // The name of a region file record carries the chunk, that of an overlay record does not
+            final String where = source.key().segment() == SectionCache.Key.REGION_FILE ? source.key().file()
+                    : "chunk " + chunkX + "," + chunkZ + ": " + source.key().file();
+            throw new IllegalArgumentException(where + ", segment ①: " + e.getMessage(), e);
         }
     }
 

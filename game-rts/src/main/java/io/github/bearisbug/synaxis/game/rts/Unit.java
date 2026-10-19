@@ -148,7 +148,8 @@ final class Unit {
             final Vec direction = target.sub(position).asVec();
             final double distance = direction.length();
             if (distance <= budget) {
-                position = target.withDirection(direction);
+                // Already on the waypoint: no direction to face, the unit keeps the one it has
+                position = distance == 0 ? target.withView(position) : target.withDirection(direction);
                 budget -= distance;
                 nextWaypoint++;
             } else {

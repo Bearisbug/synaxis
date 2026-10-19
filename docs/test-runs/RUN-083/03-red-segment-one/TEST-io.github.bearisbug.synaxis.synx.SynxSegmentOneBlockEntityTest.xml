@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-19T04:35:25.941Z" hostname="Mac.local" time="6.662">
+  <properties/>
+  <testcase name="anUnknownBlockEntityTypeInSegmentOneRefusesTheChangeNamingTheChunk()" classname="io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest" time="6.653">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalArgumentException&gt; but was: &lt;java.lang.NullPointerException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalArgumentException&gt; but was: &lt;java.lang.NullPointerException&gt;
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest.anUnknownBlockEntityTypeInSegmentOneRefusesTheChangeNamingTheChunk(SynxSegmentOneBlockEntityTest.java:47)
+Caused by: java.lang.NullPointerException: unknown block entity type id: 9999
+	at java.base/java.util.Objects.requireNonNull(Objects.java:340)
+	at io.github.bearisbug.synaxis.instance.block.BlockEntityType.lambda$static$0(BlockEntityType.java:17)
+	at io.github.bearisbug.synaxis.network.NetworkBufferCombinatorTypes$TransformType.read(NetworkBufferCombinatorTypes.java:104)
+	at io.github.bearisbug.synaxis.network.NetworkBufferImpl.read(NetworkBufferImpl.java:62)
+	at io.github.bearisbug.synaxis.network.packet.server.play.data.ChunkData.readBlockEntities(ChunkData.java:90)
+	at io.github.bearisbug.synaxis.network.packet.server.play.data.ChunkData$1.read(ChunkData.java:80)
+	at io.github.bearisbug.synaxis.network.packet.server.play.data.ChunkData$1.read(ChunkData.java:51)
+	at io.github.bearisbug.synaxis.network.NetworkBufferImpl.read(NetworkBufferImpl.java:62)
+	at io.github.bearisbug.synaxis.synx.SynxPacketDecoder.chunkData(SynxPacketDecoder.java:91)
+	at io.github.bearisbug.synaxis.synx.SynxPacketDecoder.full(SynxPacketDecoder.java:64)
+	at io.github.bearisbug.synaxis.synx.SynxChunk.lambda$materialize$0(SynxChunk.java:493)
+	at io.github.bearisbug.synaxis.synx.SynxChunk.mapped(SynxChunk.java:724)
+	at io.github.bearisbug.synaxis.synx.SynxChunk.materialize(SynxChunk.java:493)
+	at io.github.bearisbug.synaxis.synx.SynxChunk.setBlock(SynxChunk.java:253)
+	at io.github.bearisbug.synaxis.instance.InstanceContainer.UNSAFE_setBlock(InstanceContainer.java:207)
+	at io.github.bearisbug.synaxis.instance.InstanceContainer.setBlock(InstanceContainer.java:137)
+	at io.github.bearisbug.synaxis.instance.Instance.setBlock(Instance.java:229)
+	at io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest.lambda$anUnknownBlockEntityTypeInSegmentOneRefusesTheChangeNamingTheChunk$0(SynxSegmentOneBlockEntityTest.java:48)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	... 2 more
+</failure>
+  </testcase>
+  <system-out><![CDATA[12:35:32.586 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:35:32.596 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+12:35:32.597 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

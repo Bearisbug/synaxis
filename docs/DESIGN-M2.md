@@ -18,6 +18,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-16 | v0.1 | 初稿：M2 范围、模块拆分、插件宿主、自定义协议、单位模型、寻路、世界管理与四条审计残留处置、垂直切片验收、阶段计划 | Bearisbug |
+| 2026-10-19 | v0.68 | §19 加场景「单位推进时面朝前进方向，原地不动时保持朝向」（`REQ-M2-016`）：`docs/DESIGN-PROD.md` v0.9.101 起 `Pos#withDirection` 收到零向量时视角不变，单位被命令到脚下那一点时 `Unit#advance` 原先拿到航点自带的视角（yaw 0、pitch 0），现在保留单位原来的朝向（`docs/TEST.md` `TC-GAME-076`） | Bearisbug |
 | 2026-10-19 | v0.67 | 跟进 `docs/DESIGN-PROD.md` 的 RUN-081（集成分支 `prod/integrate-081`，基于 `main` `f6b40afd94`，该分册 v0.9.93～v0.9.106），各组只改了内容、没升本分册的版本，本版汇总，**消息布局与 `schema_version` 未改**。**组 PLAYHOST**：`REQ-M2-006` 与 `API-M2-001` 写明插件通道只收已进 PLAY 的负载，PLAY 之前到的丢弃并经 `LogBudget` 记 WARN，`synaxis:play` 在 PLAY 之前只丢不记，`minecraft:` 命名空间的只丢不记；`API-M2-007` 插件 id 全进程唯一，两个插件同 id 时宿主拒启；`API-M2-011` 准入回调抛异常、返回 null 或构造出不合法的答案都按拒绝处理；§19 加对应场景（两个插件同 id、PLAY 之前的插件通道负载、通道名不是 identifier 的入站负载）。**组 EVENT**：`API-M2-008` 的事件与错误归因两条、`ADR-M2-010` 的后果一条写明没有实例的玩家的事件，实例作用域节点收不到。**组 ENTITY**：`ADR-M2-005` 选项 ① 补 `refreshPosition` 的区块检查提前到改任何状态之前，不在实例里调 `moveTo` 抛 `IllegalStateException`。**组 PLAYER**：下行单包上限一条补构造 `PluginMessagePacket` 时就拒收超过 1,048,576 字节的负载。**组 STORE**：§17 `unit.snapshot` 一行与 `RB-M2-003` 写明插件任务的失败日志经该任务的 `LogBudget` 限量。**组 APPHOST**：`API-M2-010` 第 ①、②、⑥ 步写明三个宿主键在第 ① 步读、取值不对就拒启，`MinecraftServer#start` 依次调 `ServerProcess#start` 与 `ServerProcess#startTicking`。**组 BOOT**：§28.2「原版聊天是一进 N 出的放大面」已决行的 `ServerConfig.java`、`Messenger.java` 行号。**集成时补的**：§28.2「原版聊天是一进 N 出的放大面」已决行的 `ChatMessageListener.java` 三处行号随组 NET 的改动改为 `:65`、`:71`、`:56`，`JoinGame` 的 `enforcesSecureChat` 一处改指 `Player.java:454`（原写的 `:398` 早已过期）；组 ENTITY 让 `Entity#moveTo` 不在实例里时抛 `IllegalStateException`，定为不算 §24 稳定面的语义变更（误用路径上原先是 `AssertionError` 或 `NullPointerException`，正常调用不变），`REQ-M2-025` 不改 | Bearisbug |
 | 2026-10-12 | v0.66 | 跟进 `docs/DESIGN-PLAY.md` v0.2（RUN-077 组 P，玩法架构最小样板 S1 的 `:protocol` 部分），**M2 的消息布局、`schema_version`（仍是 1）与 `vectors/` 的向量和 digest 都没改**。本版两处按 RUN-077 的文档归属由生产就绪会话改（本分册里插件宿主与线协议的行）：**`API-M2-001`** 的通道清单加 `synaxis:play`，宿主在三种进程模式下都注册的 play 阶段双向通道，编解码是 `:protocol` 包 `game.protocol.play` 的 `PlayMessages`，走本条的 `msg_id` 信封与三条硬性解码行为，但不计入 `schema_version`，有自己的版本 `PlayProtocol.version()`（当前 1），布局与小部件目录引用该分册 `API-PLAY-002`、`API-PLAY-003`；`:protocol` 的 `Message` 因此多一个封闭子集 `PlayMessage`。**§24 线协议**加 `play-vectors/` 目录，自带 `manifest.txt`（`play_version` 与 `digest`），不进 `vectors/` 的 digest，客户端构建经系统属性 `synaxis.play-vectors.dir` 读同一目录；同一条里远景向量的出处原写「`API-M2-001` 末项」，`synaxis:play` 排到它后面之后改为点名 `synaxis:farview` 一项 | Bearisbug |
 | 2026-10-11 | v0.65 | 跟进 `docs/DESIGN-PROD.md` v0.9.63（用户 2026-10-11 拍板的验收标准「服务端核心完全正常游玩」），**接口契约、消息布局与 `schema_version` 未改**，`game-rts` 一行不改。`API-M2-010` 第 ⑤ 步两处：核心模式一条写明平坦世界改用 `LightingChunk`、绑定端口之前预载并照亮出生点一圈区块，宿主在这条分支里另挂默认玩法层的全部七项（该分册 `REQ-PROD-046`）与玩家持久化段 `synaxis:player`（`REQ-PROD-047`），核心世界从「只供压测与冒烟」变为可完整游玩（可玩项 P1～P10）；玩法模式一条的「什么都不做」改为宿主只挂默认玩法层的聊天一项与持久化段（位置由 `RtsPlugin` 的出生点决定），`ADR-M2-013` 的旁观指挥官设计不变。§28.2 G3「核心模式下区块加载由对端驱动」已决行末尾加一句，指向 `docs/DESIGN-PROD.md` §28.2 v0.9.65 风险行：核心世界换成 `LightingChunk` 之后，本行的每块字节与占堆比例按有光照的世界重量。同版跟进该分册 v0.9.69（RUN-073 组 A 的设计复审）：§28.2「原版聊天是一进 N 出的放大面」已决行加注，挂了默认玩法层的平坦核心与 RTS 由宿主把收件人填成发送者所在实例的玩家，一条消息的出站包数等于该实例的人数，放大倍数受每连接聊天令牌桶约束 | Bearisbug |
@@ -1340,6 +1341,12 @@ flowchart LR
   And 推进一次不派发 EntityTeleportEvent（可观察判据：全程 EntityTeleportEvent 计数为 0）
   And 推进在调用线程上同步完成，不产生跨 tick 的异步回调
   And 三个 refreshPosition 重载仍然标着 @ApiStatus.Internal（新入口是提升原语，不是放宽既有 API）
+
+场景: 单位推进时面朝前进方向，原地不动时保持朝向 (REQ-M2-016)
+  Given 单位朝 yaw 37、pitch 0 站着
+  When 它被命令到脚下那一点，:game-rts 推进一次
+  Then 它仍朝 yaw 37、pitch 0，不拿航点自带的视角（寻路写的 yaw 0、pitch 0）
+  And 有位移的推进让它面朝这一步的前进方向
 
 场景: 强制握手上线后协议探针仍能跑通全部回归 (REQ-M2-008, REQ-M2-021)
   Given 服务端已启用 configuration 阶段的强制模组握手

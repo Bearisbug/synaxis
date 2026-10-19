@@ -125,6 +125,8 @@ Rush job (7 min 2 s): judge unit tests Ran 36 tests, OK; waited 0.4 s for the le
   two rush_round_ended with players=1, cause=time_limit; the four checks of the forward and rollback rehearsal ok.
 Client gametests: client regression: all checks passed; report 8 PASS; playable.txt core 10 PASS, rts 5 PASS.
 P11 smoke (TC-PROD-742): p10.py unit tests Ran 48 tests; 11 checks ok; P10: all checks passed.
+Later heads change documents only; all four workflows success on attempt 1:
+  5230a83d49: CI 39176387843, Concurrency 39176387995, Client mod 39176387939, Client gametest 39176388015
 RUN-081 is registered in docs/TEST.md section 6: passed 137/137 (TC-PROD-959 is superseded by TC-PROD-977).
 
 Commit ids: the branch was pushed for the first time at ee2be71e3f, after the commit messages of the group

@@ -1,0 +1,21 @@
+RUN-082: ServerProcess#startTicking keeps tick threads that already run (docs/TEST.md TC-PROD-990).
+Branch prod/r082-ticking on main 9c4ad17a64. Times are local (UTC+8), 2026-10-19. Gradle one build at a time behind
+the machine's Gradle lock, --max-workers=2 --no-daemon, test tasks with --rerun; builds 2 to 4 with the database variables.
+
+1  11:55:47-11:56:16  before the change (src/main as on 9c4ad17a64, the test of this round), default mode,
+                      :test --tests io.github.bearisbug.synaxis.ServerProcessStartTickingTest
+                      3 tests completed, 1 failed, BUILD FAILED in 26s:
+                        tickThreadsStartedBeforehandAreKeptAndOnlyTheTickerStarts() FAILED
+                          java.lang.IllegalThreadStateException
+                            at java.base/java.lang.Thread.start(Thread.java:1416)
+                            at io.github.bearisbug.synaxis.thread.ThreadDispatcherImpl.start(ThreadDispatcherImpl.java:144)
+                            at io.github.bearisbug.synaxis.ServerProcessImpl.startTicking(ServerProcessImpl.java:338)
+                            at ...ServerProcessStartTickingTest.tickThreadsStartedBeforehandAreKeptAndOnlyTheTickerStarts(ServerProcessStartTickingTest.java:68)
+After the change (ServerProcessImpl.java:338 if (!dispatcher.isAlive()) dispatcher.start();), the same classes in
+each build: root ServerProcessStartTickingTest, ShutdownSequenceTest, TickSchedulerThreadTest; server-app
+app.ShutdownSequenceTest, app.shard.ShardWorldRelightTest, app.shard.ShardWorldAssemblyTest.
+2  12:11:29-12:12:40  default mode                                                    BUILD SUCCESSFUL in 1m 10s
+3  12:12:40-12:13:24  -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true BUILD SUCCESSFUL in 43s
+4  12:13:24-12:14:09  build 3 plus -Dsynaxis.thread-provider=grid                     BUILD SUCCESSFUL in 45s
+   all three: tests="3", "11", "2", "8", "3", "10", 0 failures, 0 errors, 0 skipped
+The full suites, Concurrency, Client mod and Client gametest run on the draft PR.

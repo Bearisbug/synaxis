@@ -335,7 +335,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     public void startTicking() {
         Check.stateCondition(!started.get(), "The process is started before it ticks, call start(SocketAddress) first.");
         if (!ticking.compareAndSet(false, true)) throw new IllegalStateException("The process already ticks.");
-        dispatcher.start();
+        if (!dispatcher.isAlive()) dispatcher.start();
         final TickSchedulerThread ticker = new TickSchedulerThread(this,
                 1_000_000_000L / JvmFlags.SERVER_TICKS_PER_SECOND, config.maxTickCatchUp());
         this.tickSchedulerThread = ticker;

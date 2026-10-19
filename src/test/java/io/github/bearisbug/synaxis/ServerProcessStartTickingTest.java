@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Timeout;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -16,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link ServerProcess#startTicking()}: what a process created with {@link ServerProcess#of()} calls
@@ -46,6 +48,32 @@ public class ServerProcessStartTickingTest {
         process.stop();
         assertFalse(ticker.isAlive(), "stop() waited for the tick scheduler thread");
         for (TickThread thread : process.dispatcher().threads()) assertFalse(thread.isAlive(), thread.getName());
+    }
+
+    @Test
+    @Timeout(60)
+    public void tickThreadsStartedBeforehandAreKeptAndOnlyTheTickerStarts() {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true).shutdownOnSignal(false).build());
+        process.start(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
+        process.dispatcher().start();
+        final List<TickThread> threads = process.dispatcher().threads();
+        final AtomicInteger ticks = new AtomicInteger();
+        final AtomicReference<Thread> tickedOn = new AtomicReference<>();
+        process.scheduler().scheduleTask(() -> {
+            tickedOn.set(Thread.currentThread());
+            ticks.incrementAndGet();
+            return TaskSchedule.nextTick();
+        }, TaskSchedule.nextTick());
+
+        process.startTicking();
+        await(() -> ticks.get() >= 3);
+        assertInstanceOf(TickSchedulerThread.class, tickedOn.get());
+        for (TickThread thread : threads) assertTrue(thread.isAlive(), thread.getName() + " still runs");
+        assertThrows(IllegalStateException.class, process::startTicking, "a process starts ticking once");
+
+        process.stop();
+        assertFalse(tickedOn.get().isAlive(), "stop() waited for the tick scheduler thread");
+        for (TickThread thread : threads) assertFalse(thread.isAlive(), thread.getName());
     }
 
     @Test

@@ -215,9 +215,12 @@ public interface ServerProcess extends Registries {
     /**
      * Starts the tick threads of the {@link #dispatcher()} and the tick scheduler thread, which ticks
      * the process at {@link JvmFlags#SERVER_TICKS_PER_SECOND} until it stops. Called once, after
-     * {@link #start(SocketAddress)}.
+     * {@link #start(SocketAddress)}. Tick threads already started with {@link ThreadDispatcher#start()}
+     * are kept and only the tick scheduler thread starts, so a test can load chunks on the tick
+     * threads before the process ticks.
      *
      * @throws IllegalStateException if the process has not been started yet, or already ticks
+     * @throws IllegalThreadStateException if the tick threads were started and have stopped since
      */
     void startTicking();
 

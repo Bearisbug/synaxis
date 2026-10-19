@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.bearisbug.synaxis.app.shard.ShardWorldRelightTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-19T05:54:37.997Z" hostname="Mac.local" time="3.329">
+  <properties/>
+  <testcase name="aStopDrainsNineHundredTargetsWithinItsBudget()" classname="io.github.bearisbug.synaxis.app.shard.ShardWorldRelightTest" time="2.063"/>
+  <testcase name="theStreamStatisticsCarryTheNineLightAttributes()" classname="io.github.bearisbug.synaxis.app.shard.ShardWorldRelightTest" time="0.003"/>
+  <testcase name="theStopDrainsTheRelightBeforeTheFinalFlush()" classname="io.github.bearisbug.synaxis.app.shard.ShardWorldRelightTest" time="0.266"/>
+  <system-out><![CDATA[13:54:39.161 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release fixture-53b7eb295525-p776 verified in 2 ms: bounds=Bounds[minX=0, minZ=0, maxX=15, maxZ=15] world=World[minY=0, height=64]
+13:54:39.169 [Test worker] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay store /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-10656822984373532037/fixture-53b7eb295525-p776: records of 0 chunks in 0 segments
+13:54:39.214 [Test worker] WARN  i.g.b.synaxis.app.shard.ShardWorld - Map fixture-53b7eb295525-p776 is writable (synaxis.world-writable=true): players' digging and placing go into the overlay
+13:54:39.215 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=fixture-53b7eb295525-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=120.5, y=40.0, z=120.5, yaw=0.0, pitch=0.0] overlay=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-10656822984373532037/fixture-53b7eb295525-p776 overlay_cap=16384 flush_interval_s=60 overlay_max_bytes=4294967296 relight_threads=1 resend_light=false section_cache_bytes=16777216
+13:54:39.217 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Far view off: synaxis.farview.url-root is empty
+13:54:39.220 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Starting synaxis (dev) server.
+13:54:39.220 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Running in offline mode. Beware that this is not secure and players can impersonate each other.
+13:54:39.222 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server started successfully.
+13:54:39.495 [Thread-109] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 12,3 took 220 ms, 2 ms of it taking the blocks of the 5×5
+13:54:39.498 [Thread-158] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 2,6 took 222 ms, 55 ms of it taking the blocks of the 5×5
+13:54:39.811 [Thread-150] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 10,5 took 535 ms, 15 ms of it taking the blocks of the 5×5
+13:54:39.817 [Thread-168] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 5,0 took 542 ms, 122 ms of it taking the blocks of the 5×5
+13:54:39.826 [Thread-137] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 14,4 took 550 ms, 5 ms of it taking the blocks of the 5×5
+13:54:39.828 [Thread-107] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 11,1 took 553 ms, 2 ms of it taking the blocks of the 5×5
+13:54:39.844 [Thread-202] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 0,1 took 569 ms, 161 ms of it taking the blocks of the 5×5
+13:54:39.865 [Thread-189] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 0,0 took 591 ms, 155 ms of it taking the blocks of the 5×5
+13:54:39.886 [Thread-163] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 15,1 took 611 ms, 95 ms of it taking the blocks of the 5×5
+13:54:39.887 [Thread-145] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 5,5 took 611 ms, 8 ms of it taking the blocks of the 5×5
+13:54:39.911 [Thread-173] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 15,0 took 636 ms, 142 ms of it taking the blocks of the 5×5
+13:54:39.913 [Thread-172] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 13,0 took 639 ms, 142 ms of it taking the blocks of the 5×5
+13:54:39.937 [Thread-108] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 9,1 took 662 ms, 2 ms of it taking the blocks of the 5×5
+13:54:39.963 [Thread-117] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 1,4 took 688 ms, 2 ms of it taking the blocks of the 5×5
+13:54:39.980 [Thread-133] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 1,0 took 705 ms, 5 ms of it taking the blocks of the 5×5
+13:54:39.980 [Thread-182] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 0,3 took 705 ms, 143 ms of it taking the blocks of the 5×5
+13:54:40.006 [Thread-185] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 2,0 took 732 ms, 148 ms of it taking the blocks of the 5×5
+13:54:40.018 [Thread-144] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 15,4 took 742 ms, 8 ms of it taking the blocks of the 5×5
+13:54:40.029 [Thread-119] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 14,3 took 753 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.038 [Thread-113] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 7,0 took 763 ms, 3 ms of it taking the blocks of the 5×5
+13:54:40.064 [Thread-120] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 12,1 took 790 ms, 3 ms of it taking the blocks of the 5×5
+13:54:40.094 [Thread-180] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 6,0 took 820 ms, 143 ms of it taking the blocks of the 5×5
+13:54:40.099 [Thread-166] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 14,1 took 824 ms, 116 ms of it taking the blocks of the 5×5
+13:54:40.105 [Thread-138] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 2,5 took 829 ms, 5 ms of it taking the blocks of the 5×5
+13:54:40.108 [Thread-118] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 15,3 took 833 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.109 [Thread-157] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 15,5 took 833 ms, 51 ms of it taking the blocks of the 5×5
+13:54:40.114 [Thread-170] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 4,0 took 840 ms, 138 ms of it taking the blocks of the 5×5
+13:54:40.115 [Thread-122] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 13,1 took 841 ms, 3 ms of it taking the blocks of the 5×5
+13:54:40.123 [Thread-116] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 4,4 took 847 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.129 [Thread-139] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 0,5 took 853 ms, 5 ms of it taking the blocks of the 5×5
+13:54:40.130 [Thread-195] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 0,2 took 856 ms, 159 ms of it taking the blocks of the 5×5
+13:54:40.131 [Thread-183] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 15,2 took 856 ms, 145 ms of it taking the blocks of the 5×5
+13:54:40.133 [Thread-149] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 7,5 took 857 ms, 10 ms of it taking the blocks of the 5×5
+13:54:40.143 [Thread-192] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 12,0 took 869 ms, 159 ms of it taking the blocks of the 5×5
+13:54:40.144 [Thread-160] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 0,6 took 868 ms, 72 ms of it taking the blocks of the 5×5
+13:54:40.145 [Thread-115] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 0,4 took 869 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.145 [Thread-194] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 7,1 took 871 ms, 159 ms of it taking the blocks of the 5×5
+13:54:40.146 [Thread-159] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 3,6 took 870 ms, 72 ms of it taking the blocks of the 5×5
+13:54:40.148 [Thread-171] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 10,0 took 874 ms, 139 ms of it taking the blocks of the 5×5
+13:54:40.150 [Thread-124] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 7,4 took 874 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.150 [Thread-106] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 10,3 took 875 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.152 [Thread-151] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 9,5 took 876 ms, 18 ms of it taking the blocks of the 5×5
+13:54:40.156 [Thread-200] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 1,1 took 882 ms, 160 ms of it taking the blocks of the 5×5
+13:54:40.094 [Thread-181] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 6,1 took 820 ms, 143 ms of it taking the blocks of the 5×5
+13:54:40.129 [Thread-193] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 11,0 took 855 ms, 159 ms of it taking the blocks of the 5×5
+13:54:40.174 [Thread-130] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 11,4 took 899 ms, 3 ms of it taking the blocks of the 5×5
+13:54:40.178 [Thread-188] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 3,1 took 903 ms, 151 ms of it taking the blocks of the 5×5
+13:54:40.182 [Thread-161] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 1,6 took 906 ms, 72 ms of it taking the blocks of the 5×5
+13:54:40.186 [Thread-197] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 3,0 took 912 ms, 160 ms of it taking the blocks of the 5×5
+13:54:40.191 [Thread-127] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 2,1 took 916 ms, 4 ms of it taking the blocks of the 5×5
+13:54:40.191 [Thread-111] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 2,4 took 915 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.193 [Thread-204] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 8,1 took 918 ms, 164 ms of it taking the blocks of the 5×5
+13:54:40.194 [Thread-199] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 9,3 took 919 ms, 159 ms of it taking the blocks of the 5×5
+13:54:40.202 [Thread-156] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 4,2 took 927 ms, 45 ms of it taking the blocks of the 5×5
+13:54:40.203 [Thread-203] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 11,3 took 928 ms, 163 ms of it taking the blocks of the 5×5
+13:54:40.204 [Thread-123] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 6,4 took 928 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.206 [Thread-201] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 8,0 took 931 ms, 161 ms of it taking the blocks of the 5×5
+13:54:40.207 [Thread-140] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 1,5 took 931 ms, 5 ms of it taking the blocks of the 5×5
+13:54:40.209 [Thread-110] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 10,1 took 934 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.174 [Thread-155] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 14,5 took 898 ms, 37 ms of it taking the blocks of the 5×5
+13:54:40.206 [Thread-152] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 12,5 took 930 ms, 21 ms of it taking the blocks of the 5×5
+13:54:40.226 [Thread-178] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 4,1 took 952 ms, 143 ms of it taking the blocks of the 5×5
+13:54:40.233 [Thread-176] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 11,2 took 958 ms, 142 ms of it taking the blocks of the 5×5
+13:54:40.233 [Thread-153] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 13,5 took 957 ms, 22 ms of it taking the blocks of the 5×5
+13:54:40.235 [Thread-135] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 1,2 took 961 ms, 4 ms of it taking the blocks of the 5×5
+13:54:40.238 [Thread-154] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 11,5 took 962 ms, 29 ms of it taking the blocks of the 5×5
+13:54:40.247 [Thread-205] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 13,3 took 972 ms, 163 ms of it taking the blocks of the 5×5
+13:54:40.249 [Thread-175] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 14,2 took 973 ms, 141 ms of it taking the blocks of the 5×5
+13:54:40.255 [Thread-147] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 6,5 took 979 ms, 10 ms of it taking the blocks of the 5×5
+13:54:40.259 [Thread-114] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 1,3 took 984 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.266 [Thread-131] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 12,4 took 990 ms, 3 ms of it taking the blocks of the 5×5
+13:54:40.270 [Thread-190] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 5,3 took 995 ms, 155 ms of it taking the blocks of the 5×5
+13:54:40.272 [Thread-148] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 8,5 took 996 ms, 10 ms of it taking the blocks of the 5×5
+13:54:40.274 [Thread-143] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 3,5 took 998 ms, 8 ms of it taking the blocks of the 5×5
+13:54:40.275 [Thread-132] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 2,2 took 1000 ms, 4 ms of it taking the blocks of the 5×5
+13:54:40.275 [Thread-198] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 8,3 took 1000 ms, 159 ms of it taking the blocks of the 5×5
+13:54:40.276 [Thread-186] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 4,3 took 1001 ms, 148 ms of it taking the blocks of the 5×5
+13:54:40.277 [Thread-125] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 8,4 took 1001 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.278 [Thread-169] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 10,2 took 1003 ms, 130 ms of it taking the blocks of the 5×5
+13:54:40.278 [Thread-179] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 5,1 took 1004 ms, 143 ms of it taking the blocks of the 5×5
+13:54:40.279 [Thread-121] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 5,4 took 1003 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.280 [Thread-187] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 3,3 took 1004 ms, 149 ms of it taking the blocks of the 5×5
+13:54:40.282 [Thread-191] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 6,3 took 1007 ms, 158 ms of it taking the blocks of the 5×5
+13:54:40.285 [Thread-136] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 3,2 took 1010 ms, 5 ms of it taking the blocks of the 5×5
+13:54:40.286 [Thread-177] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 13,2 took 1011 ms, 142 ms of it taking the blocks of the 5×5
+13:54:40.287 [Thread-112] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 3,4 took 1012 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.289 [Thread-196] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 7,3 took 1013 ms, 159 ms of it taking the blocks of the 5×5
+13:54:40.289 [Thread-162] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 6,2 took 1014 ms, 82 ms of it taking the blocks of the 5×5
+13:54:40.291 [Thread-126] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 10,4 took 1015 ms, 2 ms of it taking the blocks of the 5×5
+13:54:40.292 [Thread-134] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 13,4 took 1016 ms, 3 ms of it taking the blocks of the 5×5
+13:54:40.292 [Thread-164] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 7,2 took 1017 ms, 105 ms of it taking the blocks of the 5×5
+13:54:40.293 [Thread-141] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 5,2 took 1018 ms, 7 ms of it taking the blocks of the 5×5
+13:54:40.293 [Thread-184] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 2,3 took 1018 ms, 147 ms of it taking the blocks of the 5×5
+13:54:40.293 [Thread-165] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 8,2 took 1018 ms, 108 ms of it taking the blocks of the 5×5
+13:54:40.294 [Thread-129] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 9,4 took 1018 ms, 3 ms of it taking the blocks of the 5×5
+13:54:40.294 [Thread-142] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 4,5 took 1018 ms, 6 ms of it taking the blocks of the 5×5
+13:54:40.294 [Thread-174] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 12,2 took 1019 ms, 141 ms of it taking the blocks of the 5×5
+13:54:40.294 [Thread-167] WARN  i.g.b.synaxis.synx.SynxRelight - The light recomputation of center 9,2 took 1019 ms, 117 ms of it taking the blocks of the 5×5
+13:54:40.300 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:54:40.312 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.SynxRelight - Relight drain: 11 ms, left=0
+13:54:40.383 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=100 bytes=73541 fsync_ms=5 left=0 by=tick
+13:54:40.400 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:54:40.401 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:54:40.403 [Test worker] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay store /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-10656822984373532037/fixture-53b7eb295525-p776: records of 100 chunks in 1 segments
+13:54:41.066 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release fixture-53b7eb295525-p776 verified in 1 ms: bounds=Bounds[minX=0, minZ=0, maxX=15, maxZ=15] world=World[minY=0, height=64]
+13:54:41.066 [Test worker] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay store /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-18430402594276247436/fixture-53b7eb295525-p776: records of 0 chunks in 0 segments
+13:54:41.067 [Test worker] WARN  i.g.b.synaxis.app.shard.ShardWorld - Map fixture-53b7eb295525-p776 is writable (synaxis.world-writable=true): players' digging and placing go into the overlay
+13:54:41.067 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=fixture-53b7eb295525-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=120.5, y=40.0, z=120.5, yaw=0.0, pitch=0.0] overlay=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-18430402594276247436/fixture-53b7eb295525-p776 overlay_cap=16384 flush_interval_s=60 overlay_max_bytes=4294967296 relight_threads=1 resend_light=false section_cache_bytes=16777216
+13:54:41.067 [Test worker] INFO  i.g.b.synaxis.app.shard.ShardWorld - Far view off: synaxis.farview.url-root is empty
+13:54:41.067 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Starting synaxis (dev) server.
+13:54:41.067 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Running in offline mode. Beware that this is not secure and players can impersonate each other.
+13:54:41.067 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server started successfully.
+13:54:41.069 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:54:41.218 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.SynxRelight - Relight drain: 147 ms, left=0
+13:54:41.225 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=5 bytes=3992 fsync_ms=4 left=0 by=tick
+13:54:41.317 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+13:54:41.317 [Test worker] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+13:54:41.318 [Test worker] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay store /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-18430402594276247436/fixture-53b7eb295525-p776: records of 5 chunks in 1 segments
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

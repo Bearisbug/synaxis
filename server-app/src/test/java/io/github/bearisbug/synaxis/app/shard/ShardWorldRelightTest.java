@@ -6,7 +6,6 @@ import ch.qos.logback.core.read.ListAppender;
 import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.ShutdownParticipant;
-import io.github.bearisbug.synaxis.TickSchedulerThread;
 import io.github.bearisbug.synaxis.app.ShutdownSequence;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.Block;
@@ -213,7 +212,7 @@ public class ShardWorldRelightTest {
         log.start();
         logger.addAppender(log);
         try {
-            new TickSchedulerThread(process, TimeUnit.MILLISECONDS.toNanos(50), process.config().maxTickCatchUp()).start();
+            process.startTicking();
             process.stop();
         } finally {
             logger.detachAppender(log);

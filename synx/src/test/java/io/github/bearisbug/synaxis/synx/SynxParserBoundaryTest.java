@@ -19,7 +19,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.UnaryOperator;
 import java.util.zip.CRC32C;
 
@@ -230,12 +232,16 @@ public class SynxParserBoundaryTest {
 
     /**
      * An instance of another world than the release's is a mistake of the caller, not a record that does not
-     * read: the load throws, and no chunk is logged or counted as failed.
+     * read: the load throws, the exception handler of the process gets it, and no chunk is logged or counted
+     * as failed.
      */
     @Test
-    public void anInstanceOfAnotherWorldThrowsWithoutAFailedChunk() {
+    public void anInstanceOfAnotherWorldThrowsWithoutAFailedChunk() throws Exception {
         final Env env = Env.create(UnaryOperator.identity());
         try {
+            // The handler runs on the loading thread, after the future the test joins may have completed
+            final CompletableFuture<Throwable> reported = new CompletableFuture<>();
+            env.process().exception().setExceptionHandler(reported::complete);
             final SynxChunkLoader loader = SynxWorlds.loader(SynxWorlds.WRITABLE, new MemoryOverlay());
             final Instance overworld = env.process().instance().createInstanceContainer(loader);
             try (LogCapture logs = LogCapture.of(SynxChunkLoader.class)) {
@@ -244,6 +250,8 @@ public class SynxParserBoundaryTest {
                 final IllegalStateException world = assertInstanceOf(IllegalStateException.class, thrown.getCause());
                 assertTrue(world.getMessage().startsWith("an instance of y -64 height 384, the release "),
                         world.getMessage());
+                assertEquals(world.getMessage(), reported.get(10, TimeUnit.SECONDS).getMessage(),
+                        "the same exception reached the handler");
                 assertEquals(List.of(), logs.messagesAt(Level.ERROR));
             }
             assertEquals(0, loader.stats().failed());

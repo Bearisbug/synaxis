@@ -1,5 +1,5 @@
 RUN-082: ServerProcess#startTicking keeps tick threads that already run (docs/TEST.md TC-PROD-990).
-Branch prod/r082-ticking on main 9c4ad17a64. Times are local (UTC+8), 2026-10-19. Gradle one build at a time behind
+Branch prod/r082-ticking, first on main 9c4ad17a64 (the local runs below), later rebased on 06ce46f16a. Times are local (UTC+8), 2026-10-19. Gradle one build at a time behind
 the machine's Gradle lock, --max-workers=2 --no-daemon, test tasks with --rerun; builds 2 to 4 with the database variables.
 
 1  11:55:47-11:56:16  before the change (src/main as on 9c4ad17a64, the test of this round), default mode,
@@ -18,4 +18,25 @@ app.ShutdownSequenceTest, app.shard.ShardWorldRelightTest, app.shard.ShardWorldA
 3  12:12:40-12:13:24  -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true BUILD SUCCESSFUL in 43s
 4  12:13:24-12:14:09  build 3 plus -Dsynaxis.thread-provider=grid                     BUILD SUCCESSFUL in 45s
    all three: tests="3", "11", "2", "8", "3", "10", 0 failures, 0 errors, 0 skipped
-The full suites, Concurrency, Client mod and Client gametest run on the draft PR.
+
+On the draft PR #37 (GitHub Actions; times local, UTC+8, 2026-10-19).
+First head 368f8c63c9 (on 9c4ad17a64), attempt 1: CI 39198638040, Concurrency 39198638043, Client mod 39198638039
+  success; Client gametest 39201222367 (workflow_dispatch: its pull_request paths do not include the files of this
+  round) jobs gametest and rush success.
+The lighting session's PR #36 was fast-forwarded into main first (06ce46f16a) and took docs/DESIGN.md v0.50; the
+branch was rebased on it with docs/DESIGN.md v0.51, both change log rows kept, code unchanged.
+Judged on 6c8a9be5e1, attempt 1 of every workflow, 13:14-13:31:
+  CI 39203537358: Check (BUILD SUCCESSFUL in 15m 18s; ABI gate success; diff coverage 1 line, 0 missing, 100%),
+    Test with 4 tick threads (strict) (BUILD SUCCESSFUL in 13m 38s), Test with 4 tick threads (strict, grid)
+    (BUILD SUCCESSFUL in 12m 41s): success
+  Concurrency 39203537380: jcstress success
+  Client mod 39203537395: success
+  Client gametest 39203569061 (workflow_dispatch): Run the client gametests and Run the rush script success
+Counts from the JUnit XML of test-reports, test-reports-multithreaded and test-reports-multithreaded-grid of
+  39203537358: equal class by class, 751 classes, 5,299 tests, 0 failures, 0 errors, 22 skipped; root 495 / 3,650
+  (ServerProcessStartTickingTest 2 -> 3), server-app 163 / 919, the other modules as in RUN-081.
+  Gate outputs as in RUN-081: translation key gate 75 keys, config key gate 122 keys; env dispatcher threads 1, 4, 4.
+Rush job (6 min 21 s): Ran 36 tests OK; rush judge: PASS (2 reports, 0 problems); prepare_ms 98 and 49; Q5 364 ms
+  and 293 ms; Q7 off by -41 ms and -22 ms; Q9 186 ms and 237 ms. Client gametests: client regression: all checks
+  passed; playable.txt core 10 PASS, rts 5 PASS.
+RUN-082 is registered in docs/TEST.md section 6: passed 1/1.

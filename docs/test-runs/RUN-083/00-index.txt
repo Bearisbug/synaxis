@@ -1,0 +1,32 @@
+RUN-083 · M3 侧跟进生产就绪会话 RUN-081 的引擎改动（分支 m3/light-fixups，草稿 PR #38）
+
+本机（Gradle 9.8.0、JDK 25、--max-workers=2、/tmp/synaxis-heavy.lock 下，一次一个测试类）
+
+| 目录 | 运行 | 结果 |
+| --- | --- | --- |
+| 01-red-lighting-heightmap | LightingChunkHeightmapIntegrationTest，LightingChunk#invalidate 删掉 super.invalidate() 的反证 | 红 1 条：LightingChunkHeightmapIntegrationTest.java:36 "the stone written into the section"，expected <45> but was <39>；还原后复绿（正向在改动后跑过，1 条 0 失败） |
+| 02-green-segment-one | SynxSegmentOneBlockEntityTest，--rerun | 1 条 0 失败（异常信息 chunk 10,5: the overlay segment seg.3.synx, segment ①: unknown block entity type id: 9999） |
+| 03-red-segment-one | 同上，SynxPacketDecoder#chunkData 不把 NullPointerException 转成 IllegalArgumentException 的反证 | 红 1 条：SynxSegmentOneBlockEntityTest.java:47，expected IllegalArgumentException but was NullPointerException；还原后复绿 |
+| 04-red-delivered | SynxRelightDeliveredIntegrationTest，Player#remove 按位置取环的反证 | 红 1 条：7,0 still has the player as delivered；还原后复绿（正向在改动后跑过，1 条 0 失败） |
+| 05-green-unit | UnitMovementIntegrationTest | 8 条 0 失败 |
+| 06-red-unit | 同上，Unit#advance 改回 target.withDirection(direction) 的反证 | 红 1 条：the unit turned south on the spot，expected <37.0> but was <0.0>；还原后复绿 |
+| 07-green-overlay | SynxChunkOverlayIntegrationTest（物化后编回同样字节等 14 条） | 14 条 0 失败 |
+| 08-green-worldflags-sync | WorldFlagsSyncTest，连本机 PostgreSQL 与 Valkey | 3 条 0 失败 0 跳过 |
+| 09-green-relight-ticking | ShardWorldRelightTest，--rerun，停机排空那条改用 ServerProcess#startTicking 之后 | 3 条 0 失败 |
+
+GitHub Actions（判定用的 head 3415eef1e0，都是第 1 次尝试）
+
+- CI run 39207005568：Check（BUILD SUCCESSFUL in 12m 57s，ABI 门 success，新增行覆盖 Unit.java、LightingChunk.java、SynxChunk.java、SynxPacketDecoder.java 共 17 行、100%）、Test with 4 tick threads (strict)（BUILD SUCCESSFUL in 15m 29s）、Test with 4 tick threads (strict, grid)（BUILD SUCCESSFUL in 13m 40s）都 success。
+- Concurrency run 39207005636：jcstress success。
+- Client mod run 39207005602：模组构建 success。
+- Client gametest run 39207005651：job gametest、rush、p11-smoke success（P10 只在手动触发时跑，skipped）。
+- 条数（三份 artifact test-reports、test-reports-multithreaded、test-reports-multithreaded-grid，三种模式逐类相同）：754 个类 5,303 个，0 失败 0 错误 22 个跳过；根项目 496 / 3,651，server-app 163 / 919，synx 24 / 184（1 个跳过，SynxRelightBacklogTest 只在 synaxis.relight.measure 下跑），baker 8 / 93，game-rts 14 / 94，protocol 10 / 174，plugin-api 8 / 47，game-rush 6 / 44，play-kit 3 / 35，loadtest 6 / 26，architecture-tests 7 / 20，testing 9 / 16。与 RUN-082（751 / 5,299）相比多 3 个类 4 个：根项目 LightingChunkHeightmapIntegrationTest，synx SynxSegmentOneBlockEntityTest 与 SynxRelightDeliveredIntegrationTest，game-rts UnitMovementIntegrationTest 7 → 8。
+
+远景 gametest（打标签触发，在 fd9627e0ad 上跑：它与 3415eef1e0 的差别是 SynxPacketDecoder 异常信息里一段重复前缀、WorldFlagsSyncTest 与 ShardWorldRelightTest 两个测试、变基进来的 RUN-082 startTicking 改动，都不在远景路径上）
+
+- Far view gametest run 39200949468（04:44～06:15 UTC）：light、hidden、synthetic、baked 四组都 success，约 8、43、48、91 分钟。
+
+之前的 head（不作判定）
+
+- fd9627e0ad 的 CI run 39200939368：三个测试 job 都红在 SynxSegmentOneBlockEntityTest:49（解码器给异常信息多加了一段「segment ① 」前缀，与 SynxChunk 加的重复）；strict grid job 另红一条生产就绪会话的起服测试，与本分支无关，由该会话处理。
+- 88273e231b 的 CI run 39203598384：Check job 红在 WorldFlagsSyncTest.java:290 的 ConcurrentModificationException（测试线程遍历 ListAppender 的列表时日志线程正追加），本分支改为在 appender 的锁里拷一份再读。

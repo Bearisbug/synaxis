@@ -144,7 +144,7 @@ public class SynxBlockEntityLimitsTest {
         try {
             roundTrip(env, dir);
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 

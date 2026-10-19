@@ -91,10 +91,8 @@ public final class GeneratorSource implements BakeSource {
         } catch (RuntimeException e) {
             throw new IllegalStateException("chunk " + chunkX + ", " + chunkZ + ": the generator failed: " + e, e);
         }
-        // A section of subdivide() keeps the forks made on it, the chunk unit does not see them
-        final boolean forked = !unit.forks().isEmpty() || unit.subdivide().stream()
-                .anyMatch(section -> !((GeneratorImpl.UnitImpl) section).forks().isEmpty());
-        if (forked) {
+        // The chunk unit holds the forks of its whole tree, those made on a section of subdivide() included
+        if (!unit.forks().isEmpty()) {
             throw new IllegalStateException("chunk " + chunkX + ", " + chunkZ + ": the generator forked"
                     + " (GenerationUnit#fork), which the baker does not apply even inside the chunk; write through"
                     + " unit.modifier() instead");

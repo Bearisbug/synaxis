@@ -110,7 +110,7 @@ public class SynxChunkLoaderIntegrationTest {
             assertEquals(0, stats.failed());
             assertEquals(2, stats.regionsMapped(), "view_bounds ∩ the release reaches region 0,0 and 1,0");
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -195,7 +195,7 @@ public class SynxChunkLoaderIntegrationTest {
             assertTrue(overlay.events.isEmpty());
             assertEquals(findsBefore, overlay.finds.get(), "chunks outside the region never ask the overlay");
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -234,7 +234,7 @@ public class SynxChunkLoaderIntegrationTest {
             assertEquals(0, loader.stats().failed());
             assertEquals(2, loader.stats().regionsMapped());
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 

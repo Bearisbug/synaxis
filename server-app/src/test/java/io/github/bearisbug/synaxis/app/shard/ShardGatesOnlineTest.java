@@ -72,7 +72,7 @@ class ShardGatesOnlineTest {
 
     @AfterEach
     void stop() {
-        env.process().stop();
+        env.close();
     }
 
     /** What the engine calls once it took a position packet of the player, before it moves it. */

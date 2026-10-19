@@ -203,7 +203,7 @@ public class SynxParserBoundaryTest {
             }
             assertEquals(2, loader.stats().failed());
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -224,7 +224,7 @@ public class SynxParserBoundaryTest {
             }
             assertEquals(1, loader.stats().failed());
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -248,7 +248,7 @@ public class SynxParserBoundaryTest {
             }
             assertEquals(0, loader.stats().failed());
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 

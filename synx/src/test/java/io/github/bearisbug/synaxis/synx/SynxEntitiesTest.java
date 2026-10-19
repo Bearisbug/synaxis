@@ -116,7 +116,7 @@ public class SynxEntitiesTest {
             assertTrue(warnings.get(3).startsWith("Static entity type minecraft:minecart at " + new Pos(x + 4, y, z, 0f, 0f)
                     + " is not one the shard spawns"), warnings.get(3));
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -153,7 +153,7 @@ public class SynxEntitiesTest {
                     + " lies outside chunk 10,5 that holds it, skipped"), warnings);
             assertEquals(1, instance.getEntities().size(), "nothing spawned into 11,5 either");
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 

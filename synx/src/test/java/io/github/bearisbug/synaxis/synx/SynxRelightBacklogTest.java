@@ -53,7 +53,7 @@ public class SynxRelightBacklogTest {
         try {
             measure(env, dir);
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 

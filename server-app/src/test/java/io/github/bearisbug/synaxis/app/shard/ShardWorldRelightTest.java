@@ -133,8 +133,7 @@ public class ShardWorldRelightTest {
         final InstanceContainer instance = started.instance();
         instance.setChunkUnloadGraceTicks(-1);
         process.start(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
-        process.dispatcher().start();
-        new TickSchedulerThread(process, TimeUnit.MILLISECONDS.toNanos(50), process.config().maxTickCatchUp()).start();
+        process.startTicking();
         for (int x = 1; x <= 5; x++) {
             for (int z = 1; z <= 5; z++) instance.loadChunk(x, z).join();
         }

@@ -86,8 +86,9 @@ public final class RtsPlugin implements SynaxisPlugin {
             deployed.closed(connectionId);
         });
         // One task, every tick: the searches the budget allows, and on every other tick the advance
-        // and the snapshot. It runs at the top of a tick, before any chunk is ticked, which is what
-        // lets it move entities without taking a lock (API-M2-010 step 6 starts the tick thread)
+        // and the snapshot. It runs at the top of a tick, while the tick threads wait (API-M2-010 step 6
+        // starts them), but not apart from a sync on another thread: it moves the units directly only
+        // because Entity#moveTo asserts no ownership, the serial part is no licence to change entities
         context.scheduler().scheduleTask(deployed::tick, TaskSchedule.nextTick(), TaskSchedule.tick(1));
         context.admission().register(request -> {
             if (started.state() != Match.State.RUNNING) return new Admission.Reject(DisconnectKeys.MATCH_UNAVAILABLE);

@@ -93,7 +93,7 @@ public class WorldFlagsSyncTest {
         ((Logger) LoggerFactory.getLogger(WorldFlagsImpl.class)).detachAppender(log);
         log.stop();
         for (AutoCloseable closeable : opened.reversed()) closeable.close();
-        for (Env env : envs) env.process().stop();
+        for (Env env : envs) env.close();
         if (pool != null) pool.close();
         if (database != null) database.close();
     }

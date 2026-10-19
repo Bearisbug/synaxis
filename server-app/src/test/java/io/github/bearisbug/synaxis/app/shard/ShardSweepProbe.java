@@ -81,7 +81,7 @@ public final class ShardSweepProbe {
         try {
             exit = sweep(env, settings, overlay, seconds);
         } finally {
-            env.process().stop();
+            env.close();
             try (Stream<Path> paths = Files.walk(overlay)) {
                 for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path);
             }

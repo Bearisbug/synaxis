@@ -44,7 +44,7 @@ public class OverlayCrossCellWritersTest {
 
     @AfterEach
     void tearDown() {
-        if (env != null) env.process().stop();
+        if (env != null) env.close();
     }
 
     /** An entity whose every tick changes two blocks: one in its own chunk, one across the border in the other. */

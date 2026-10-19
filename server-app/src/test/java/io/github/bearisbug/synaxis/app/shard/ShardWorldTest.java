@@ -73,7 +73,7 @@ public class ShardWorldTest {
             return assertThrows(IllegalArgumentException.class,
                     () -> ShardWorld.prepare(env.process(), settings, SYNX, OVERLAY, null));
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -88,7 +88,7 @@ public class ShardWorldTest {
             assertEquals(0, map.minY());
             assertEquals(64, map.height());
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -110,7 +110,7 @@ public class ShardWorldTest {
             assertEquals(0, map.minY());
             assertEquals(64, map.height());
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -137,7 +137,7 @@ public class ShardWorldTest {
             assertEquals("io.github.bearisbug.synaxis.game.rts.marker.LootMarker", loot.getClass().getName());
             assertEquals(List.of("table"), loot.getBlockEntityTags().stream().map(Tag::key).toList());
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -210,7 +210,7 @@ public class ShardWorldTest {
             return assertThrows(IllegalArgumentException.class,
                     () -> ShardWorld.prepare(env.process(), release, SYNX, OVERLAY, directory));
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -220,7 +220,7 @@ public class ShardWorldTest {
         try {
             assertNotNull(ShardWorld.prepare(env.process(), release, SYNX, OVERLAY, halves(MapFixture.MAP_ID, List.of())));
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -237,7 +237,7 @@ public class ShardWorldTest {
             assertEquals(release.mapBuild(), world.buildId());
             assertEquals(MapFixture.BOUNDS, world.bounds());
         } finally {
-            alone.process().stop();
+            alone.close();
         }
         final Env inDirectory = Env.create(config -> config.chunkViewDistance(12));
         try {
@@ -245,7 +245,7 @@ public class ShardWorldTest {
                     halves(MapFixture.MAP_ID, List.of()));
             assertEquals(new SynxManifest.Bounds(0, 0, 7, 15), world.bounds());
         } finally {
-            inDirectory.process().stop();
+            inDirectory.close();
         }
     }
 
@@ -275,7 +275,7 @@ public class ShardWorldTest {
         try {
             assertNotNull(ShardWorld.prepare(env.process(), release, SYNX, OVERLAY, halves(MapFixture.MAP_ID, List.of(nextToIt))));
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -404,7 +404,7 @@ public class ShardWorldTest {
             assertEquals(1, reported.size(), reported.toString());
             assertEquals("write phase", reported.getFirst().getMessage());
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 }

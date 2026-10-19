@@ -45,7 +45,7 @@ class ShardArrivalsTest {
 
     @AfterEach
     void stop() {
-        env.process().stop();
+        env.close();
     }
 
     private ShardArrivals arrivals(ShardDirectory directory) {

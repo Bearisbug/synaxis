@@ -264,7 +264,7 @@ public class GeneratorBakeTest {
         assertTrue(result.message().contains("forked"), result.message());
     }
 
-    /** A fork on a section of {@code subdivide()} is kept by the section, not the chunk; it fails all the same. */
+    /** A fork on a section of {@code subdivide()} is one of the chunk unit's forks: it fails like a fork on the chunk. */
     @Test
     public void aGeneratorThatForksOnASectionFailsItsRegion() throws Exception {
         final Generator forking = unit -> {

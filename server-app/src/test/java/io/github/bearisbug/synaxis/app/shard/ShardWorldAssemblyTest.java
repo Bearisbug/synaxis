@@ -7,7 +7,6 @@ import ch.qos.logback.core.read.ListAppender;
 import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.ShutdownParticipant;
-import io.github.bearisbug.synaxis.TickSchedulerThread;
 import io.github.bearisbug.synaxis.app.ShutdownSequence;
 import io.github.bearisbug.synaxis.baker.Baker;
 import io.github.bearisbug.synaxis.baker.GeneratorPreset;
@@ -54,7 +53,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 import java.util.stream.Stream;
@@ -115,8 +113,7 @@ public class ShardWorldAssemblyTest {
     /** What {@code MinecraftServer#start} does, on an ephemeral loopback port: the tick threads and the ticker run. */
     private static void startTicking(ServerProcess process) {
         process.start(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
-        process.dispatcher().start();
-        new TickSchedulerThread(process, TimeUnit.MILLISECONDS.toNanos(50), process.config().maxTickCatchUp()).start();
+        process.startTicking();
     }
 
     /**

@@ -92,7 +92,7 @@ class ShardGatesTest {
 
     @AfterEach
     void stop() {
-        env.process().stop();
+        env.close();
     }
 
     private ShardGates gates(ShardDirectory directory) {

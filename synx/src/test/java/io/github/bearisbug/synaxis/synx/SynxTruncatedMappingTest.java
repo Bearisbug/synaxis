@@ -41,7 +41,7 @@ public class SynxTruncatedMappingTest {
         try {
             cutShort(env, dir);
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 
@@ -98,7 +98,7 @@ public class SynxTruncatedMappingTest {
         try {
             cutShortUnderTheLight(env, dir);
         } finally {
-            env.process().stop();
+            env.close();
         }
     }
 

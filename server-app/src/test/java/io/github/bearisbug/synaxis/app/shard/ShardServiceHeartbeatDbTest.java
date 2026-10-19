@@ -60,7 +60,7 @@ class ShardServiceHeartbeatDbTest {
     @AfterEach
     void drop() {
         if (heartbeat != null) heartbeat.close();
-        if (env != null) env.process().stop();
+        if (env != null) env.close();
         if (pool != null) pool.close();
         if (database != null) database.close();
     }

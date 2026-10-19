@@ -141,7 +141,7 @@ public class WorldFlagsReplayTest {
         ((Logger) LoggerFactory.getLogger(WorldFlagsImpl.class)).detachAppender(log);
         log.stop();
         for (WorldFlagsImpl flags : opened) flags.close();
-        for (Env env : envs) env.process().stop();
+        for (Env env : envs) env.close();
         if (pool != null) pool.close();
         if (database != null) database.close();
     }
@@ -248,7 +248,7 @@ public class WorldFlagsReplayTest {
 
     private void stop(Mounted mounted) {
         envs.remove(mounted.env());
-        mounted.env().process().stop();
+        mounted.env().close();
     }
 
     private static void tickUntil(Env env, BooleanSupplier done, Duration within, String what) {

@@ -80,7 +80,7 @@ public class MapShardPlayerAuthorityTest {
 
     @AfterEach
     void stop() {
-        for (Env env : envs) env.process().stop();
+        for (Env env : envs) env.close();
     }
 
     private static final class NoPlayers implements ShutdownParticipant {
@@ -179,7 +179,7 @@ public class MapShardPlayerAuthorityTest {
         final SynxChunk unchanged = (SynxChunk) Objects.requireNonNull(first.instance().getChunk(chunk, chunk));
         assertFalse(unchanged.dirty(), "nothing for the overlay to write");
         envs.remove(first.env());
-        first.env().process().stop();
+        first.env().close();
 
         final Mounted second = mount(READ_ONLY);
         assertEquals(0L, ((Number) second.world().startedAttributes().get("overlay_records")).longValue());

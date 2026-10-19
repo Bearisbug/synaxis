@@ -106,7 +106,7 @@ class ShardServiceImplTest {
 
     @AfterEach
     void stop() {
-        env.process().stop();
+        env.close();
     }
 
     private Player player() {

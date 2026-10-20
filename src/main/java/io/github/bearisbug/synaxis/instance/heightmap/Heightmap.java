@@ -161,9 +161,11 @@ public abstract class Heightmap {
     }
 
     /**
-     * Reads the heights saved with the chunk. Called by the engine when it loads a chunk; a plugin calling
-     * it rewrites the heightmap. An array too short for the height of the dimension, saved with another
-     * one, is ignored and the heightmap computed again on the next read.
+     * Takes the heights saved with the chunk: reads return them, without computing the heightmap, until the
+     * next {@link #invalidate()}. Called only by {@link Chunk#loadHeightmapsFromNBT} of {@code DynamicChunk},
+     * under the write-lock of the chunk; no chunk loader of the engine calls that method, a loader or a plugin
+     * may. An array too short for the height of the dimension, saved with another one, is ignored: a heightmap
+     * never computed, or invalidated since, is computed on the next read, and one already computed keeps its heights.
      *
      * @param data the heights packed as {@link #getNBT()} writes them
      */
@@ -174,7 +176,7 @@ public abstract class Heightmap {
         final int entriesPerLong = 64 / bitsPerEntry;
 
         // ceil(HeightsCount / entriesPerLong), a shorter array comes from a world saved with a
-        // different dimension height: leave the heights stale and recompute rather than read past it
+        // different dimension height: keep the heights as they are rather than read past it
         if (data.length < (heights.length + entriesPerLong - 1) / entriesPerLong) return;
 
         final int maxPossibleIndexInContainer = entriesPerLong - 1;

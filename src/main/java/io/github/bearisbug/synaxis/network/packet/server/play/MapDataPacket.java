@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
@@ -48,7 +49,7 @@ public record MapDataPacket(int mapId, byte scale, boolean locked,
             List<Icon> icons = trackingPosition ? buffer.read(Icon.SERIALIZER.list(MAX_ICONS)) : List.of();
 
             var columns = buffer.read(BYTE);
-            if (columns <= 0) return new MapDataPacket(mapId, scale, locked, trackingPosition, icons, null);
+            if (columns == 0) return new MapDataPacket(mapId, scale, locked, trackingPosition, icons, null);
             byte rows = buffer.read(BYTE);
             byte x = buffer.read(BYTE);
             byte z = buffer.read(BYTE);
@@ -70,6 +71,15 @@ public record MapDataPacket(int mapId, byte scale, boolean locked,
                 Icon::new);
     }
 
+    /**
+     * A rectangle of map colors to update.
+     *
+     * @param columns the width of the rectangle, 1 to 128 read as an unsigned byte: 128 is written {@code (byte) 128}
+     * @param rows    the height of the rectangle, 1 to 128 read as an unsigned byte
+     * @param x       the column of its left edge
+     * @param z       the row of its top edge
+     * @param data    the colors, row by row
+     */
     public record ColorContent(byte columns, byte rows, byte x, byte z,
                                byte[] data) {
         public static final NetworkBuffer.Type<ColorContent> SERIALIZER = NetworkBufferTemplate.template(
@@ -81,6 +91,7 @@ public record MapDataPacket(int mapId, byte scale, boolean locked,
                 ColorContent::new);
 
         public ColorContent {
+            Check.argCondition(columns == 0, "ColorContent columns must be 1..128, pass a null colorContent for no color patch");
             data = data.clone();
         }
 

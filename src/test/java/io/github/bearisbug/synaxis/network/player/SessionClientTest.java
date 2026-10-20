@@ -4,9 +4,13 @@ import com.sun.net.httpserver.HttpServer;
 import io.github.bearisbug.synaxis.SessionServer;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.ProxySelector;
 import java.net.ServerSocket;
+import java.net.SocketAddress;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -82,6 +86,33 @@ public class SessionClientTest {
         final String cause = assertInstanceOf(SessionClient.Result.Unavailable.class, verify(closed)).cause();
         assertTrue(cause.startsWith("ConnectException: "), cause);
         assertFalse(cause.substring("ConnectException: ".length()).isBlank(), cause);
+    }
+
+    /**
+     * A session server on this host is reached without the proxy: {@code localhost} and the loopback
+     * literals; any other host, a name starting with a digit included, goes through the proxy without
+     * being resolved.
+     */
+    @Test
+    public void onlyLoopbackHostsBypassTheProxy() {
+        final List<Proxy> proxied = List.of(new Proxy(Proxy.Type.HTTP,
+                InetSocketAddress.createUnresolved("proxy.invalid", 3128)));
+        final ProxySelector selector = new SessionClient.LoopbackDirect(new ProxySelector() {
+            @Override
+            public List<Proxy> select(URI uri) {
+                return proxied;
+            }
+
+            @Override
+            public void connectFailed(URI uri, SocketAddress address, IOException failure) {
+            }
+        });
+        for (String host : List.of("127.0.0.1", "127.1.2.3", "[::1]", "localhost", "LocalHost")) {
+            assertEquals(List.of(Proxy.NO_PROXY), selector.select(URI.create("http://" + host + ":8080/hasJoined")), host);
+        }
+        for (String host : List.of("10.0.0.1", "[2001:db8::1]", "sessionserver.mojang.com", "1auth.invalid")) {
+            assertEquals(proxied, selector.select(URI.create("http://" + host + ":8080/hasJoined")), host);
+        }
     }
 
     private static SessionClient.Result verify(int port) throws InterruptedException {

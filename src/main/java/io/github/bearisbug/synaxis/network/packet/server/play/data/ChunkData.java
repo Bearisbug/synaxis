@@ -38,7 +38,7 @@ public record ChunkData(Map<Heightmap.Type, long[]> heightmaps, byte[] data,
      */
     public ChunkData {
         final Map<Heightmap.Type, long[]> sortedHeightmaps = new EnumMap<>(Heightmap.Type.class);
-        sortedHeightmaps.putAll(heightmaps); // TODO deep copy?
+        sortedHeightmaps.putAll(heightmaps); // the long[] values are kept as given, not copied
         heightmaps = Collections.unmodifiableMap(sortedHeightmaps);
         data = data.clone();
         final Map<Integer, Block> sortedBlockEntities = new TreeMap<>();

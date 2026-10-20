@@ -35,6 +35,16 @@ final class ProxyProtocolDecoder {
             0x55, 0x49, 0x54, 0x0A
     };
     private static final int V2_HEADER_LENGTH = 16;
+    // The command, address family and transport protocol values of the specification
+    private static final int V2_CMD_LOCAL = 0;
+    private static final int V2_CMD_PROXY = 1;
+    private static final int V2_AF_UNSPEC = 0;
+    private static final int V2_AF_INET = 1;
+    private static final int V2_AF_INET6 = 2;
+    private static final int V2_AF_UNIX = 3;
+    private static final int V2_PROTO_UNSPEC = 0;
+    private static final int V2_PROTO_STREAM = 1;
+    private static final int V2_PROTO_DGRAM = 2;
     private static final NetworkBuffer.Type<byte[]> V2_SIG_BYTES = NetworkBuffer.FixedRawBytes(V2_SIG.length);
     private static final NetworkBuffer.Type<V2Header> V2_HEADER_TYPE = NetworkBufferTemplate.template(
             V2_SIG_BYTES, V2Header::signature,
@@ -106,40 +116,39 @@ final class ProxyProtocolDecoder {
         final int familyAndProtocol = Byte.toUnsignedInt(fixedHeader.familyAndProtocol());
         final int payloadLength = fixedHeader.payloadLength();
         final int headerLength = V2_HEADER_LENGTH + payloadLength;
-        // The header is never fragmented past the buffer, and the read loop has no way to grow it
-        // while the detection is pending, so waiting for more would spin on an empty channel read.
+        // A header larger than the whole read buffer can never be read in full: the read loop does not grow
+        // the buffer while the detection is pending, so waiting for more would spin on an empty channel read.
         if (headerLength > buffer.capacity())
             throw new IOException("PROXY protocol v2 header of " + headerLength + " bytes exceeds the read buffer");
         if (buffer.readableBytes() < headerLength) return new Result(Status.NEED_MORE, originalAddress);
 
         if (versionAndCommand >>> 4 != 2) throw new IOException("Invalid PROXY protocol v2 version");
         final int command = versionAndCommand & 0x0F;
-        if (command == 0) {
+        if (command == V2_CMD_LOCAL) {
             buffer.advanceRead(headerLength);
             return new Result(Status.PRESENT, originalAddress);
         }
-        if (command != 1) throw new IOException("Invalid PROXY protocol v2 command");
+        if (command != V2_CMD_PROXY) throw new IOException("Invalid PROXY protocol v2 command");
 
         final int family = familyAndProtocol >>> 4;
         final int protocol = familyAndProtocol & 0x0F;
         final int addressLength = switch (family) {
-            case 0 -> 0;
-            case 1 -> 12;
-            case 2 -> 36;
-            case 3 -> 216;
+            case V2_AF_UNSPEC -> 0;
+            case V2_AF_INET -> 12; // two IPv4 addresses and two ports
+            case V2_AF_INET6 -> 36; // two IPv6 addresses and two ports
+            case V2_AF_UNIX -> 216; // two UNIX paths of 108 bytes
             default -> -1;
         };
-        if (addressLength < 0 || protocol > 2 || (family == 0) != (protocol == 0))
+        if (addressLength < 0 || protocol > V2_PROTO_DGRAM || (family == V2_AF_UNSPEC) != (protocol == V2_PROTO_UNSPEC))
             throw new IOException("Invalid PROXY protocol v2 family and protocol");
         if (payloadLength < addressLength) throw new IOException("Truncated PROXY protocol v2 address");
-        if (addressLength == 0 || protocol != 1 || family == 3) {
+        if (addressLength == 0 || protocol != V2_PROTO_STREAM || family == V2_AF_UNIX) {
             buffer.advanceRead(headerLength);
             return new Result(Status.PRESENT, originalAddress);
         }
 
-        final NetworkBuffer header = buffer.slice(buffer.readIndex(), headerLength, 0, headerLength);
-        header.read(V2_HEADER_TYPE);
-        final V2Address address = header.read(family == 1 ? IPV4_ADDRESS_TYPE : IPV6_ADDRESS_TYPE);
+        final V2Address address = buffer.readAt(buffer.readIndex() + V2_HEADER_LENGTH,
+                family == V2_AF_INET ? IPV4_ADDRESS_TYPE : IPV6_ADDRESS_TYPE);
         buffer.advanceRead(headerLength);
         return new Result(Status.PRESENT,
                 new InetSocketAddress(InetAddress.getByAddress(address.source()), address.sourcePort()));

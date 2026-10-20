@@ -67,7 +67,10 @@ public final class InboundPacketLimits {
     /**
      * Reads {@code synaxis.packet-limit.overrides}: comma separated {@code <type>=<limit>:<DROP|KICK>},
      * the type being the simple name of an engine client packet of the configuration or play state,
-     * such as {@code ClientTabCompletePacket=40:DROP}.
+     * such as {@code ClientTabCompletePacket=40:DROP}. Empty entries, such as the one a trailing comma
+     * leaves, are skipped. The packets handled right away in the configuration state and only there,
+     * {@code ClientSelectKnownPacksPacket} and {@code ClientFinishConfigurationPacket}, are accepted but
+     * never counted.
      *
      * @param text the property, empty for none
      * @return the rule of each named type
@@ -78,6 +81,7 @@ public final class InboundPacketLimits {
         final Map<Class<? extends ClientPacket>, Rule> rules = new HashMap<>();
         for (String entry : text.split(",", -1)) {
             final String trimmed = entry.trim();
+            if (trimmed.isEmpty()) continue;
             final int equals = trimmed.indexOf('=');
             final int colon = trimmed.lastIndexOf(':');
             if (equals <= 0 || colon < equals)

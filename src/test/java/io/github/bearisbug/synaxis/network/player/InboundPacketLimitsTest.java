@@ -4,11 +4,13 @@ import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.entity.PlayerHand;
 import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientAnimationPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientTabCompletePacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientTickEndPacket;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static io.github.bearisbug.synaxis.network.player.InboundPacketLimits.Verdict.ACCEPT;
@@ -82,6 +84,13 @@ public class InboundPacketLimitsTest {
         assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().packetLimitWindow(0).build());
         assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().maxInflatedBytesPerSecond(0).build());
         assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().tabCompleteRatePerSecond(0).build());
+    }
+
+    @Test
+    public void emptyOverrideEntriesAreSkipped() {
+        assertEquals(Map.of(ClientTabCompletePacket.class, new InboundPacketLimits.Rule(40, PacketLimitAction.DROP)),
+                InboundPacketLimits.parseOverrides("ClientTabCompletePacket=40:DROP,"));
+        assertEquals(Map.of(), InboundPacketLimits.parseOverrides(",,"));
     }
 
     @Test

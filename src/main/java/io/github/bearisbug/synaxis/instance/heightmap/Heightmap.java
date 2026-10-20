@@ -11,6 +11,18 @@ import static io.github.bearisbug.synaxis.coordinate.CoordConversion.globalToSec
 import static io.github.bearisbug.synaxis.instance.Chunk.CHUNK_SIZE_X;
 import static io.github.bearisbug.synaxis.instance.Chunk.CHUNK_SIZE_Z;
 
+/**
+ * The highest block of each column of a chunk that {@link #checkBlock(Block)} counts.
+ * <p>
+ * {@link #getHeight(int, int)} can be called on any thread: a heightmap that needs a refresh is computed again
+ * under the read-lock of the chunk. A caller holding the read-lock reads heights no block change alters
+ * meanwhile. The chunk implementation keeps the heightmap with
+ * {@link #refresh(int, int, int, Block)} and {@link #loadFrom(long[])} under the write-lock of the chunk.
+ * {@link #refresh(int)} takes the read-lock itself, which keeps the blocks from changing while it computes:
+ * two threads computing at once write the same heights. It can be called under the write-lock too.
+ * {@link #refresh(int, int, int)} computes one column, under either lock. {@link #invalidate()} only sets a
+ * flag, the next read computes the heightmap again.
+ */
 public abstract class Heightmap {
     public enum Type {
         WORLD_SURFACE_WG,
@@ -37,6 +49,15 @@ public abstract class Heightmap {
 
     protected abstract boolean checkBlock(Block block);
 
+    /**
+     * Updates the column of a block set at chunk-local x and z and world y. Called by the chunk on
+     * {@code setBlock}; a plugin calling it rewrites the heightmap.
+     *
+     * @param x     the x of the column in the chunk, in [0, 16)
+     * @param y     the world y of the block
+     * @param z     the z of the column in the chunk, in [0, 16)
+     * @param block the block set
+     */
     public void refresh(int x, int y, int z, Block block) {
         final int height = getHeight(x, z);
         if (checkBlock(block)) {
@@ -48,7 +69,8 @@ public abstract class Heightmap {
 
     /**
      * Computes every column from {@code startY} down, only when this heightmap was never computed or
-     * was {@link #invalidate() invalidated} since; otherwise does nothing.
+     * was {@link #invalidate() invalidated} since; otherwise does nothing. Called by the engine on a read
+     * of a heightmap that needs it; a plugin calling it rewrites the heightmap.
      *
      * @param startY the block Y to look down from, {@link #getHighestBlockSection(Chunk)} covers the chunk
      */
@@ -76,6 +98,15 @@ public abstract class Heightmap {
         needsRefresh = true;
     }
 
+    /**
+     * Computes one column from {@code startY} down. Called by the engine when it computes the heightmap
+     * again and when the top block of a column is replaced by one it does not count; a plugin calling it
+     * rewrites the heightmap.
+     *
+     * @param x      the x of the column in the chunk, in [0, 16)
+     * @param z      the z of the column in the chunk, in [0, 16)
+     * @param startY the world y to look down from
+     */
     public void refresh(int x, int z, int startY) {
         final int localX = globalToSectionRelative(x);
         final int localZ = globalToSectionRelative(z);
@@ -114,6 +145,13 @@ public abstract class Heightmap {
         return encode(heights, bitsForHeight);
     }
 
+    /**
+     * Reads the heights saved with the chunk. Called by the engine when it loads a chunk; a plugin calling
+     * it rewrites the heightmap. An array too short for the height of the dimension, saved with another
+     * one, is ignored and the heightmap computed again on the next read.
+     *
+     * @param data the heights packed as {@link #getNBT()} writes them
+     */
     public void loadFrom(long[] data) {
         final int dimensionHeight = chunk.getInstance().getCachedDimensionType().height();
         final int bitsPerEntry = MathUtils.bitsToRepresent(dimensionHeight);
@@ -136,8 +174,17 @@ public abstract class Heightmap {
         needsRefresh = false;
     }
 
-    // highest breaking block in section
+    /**
+     * The world y of the highest block of a column that this heightmap counts.
+     *
+     * @param x the x of the column in the chunk, in [0, 16)
+     * @param z the z of the column in the chunk, in [0, 16)
+     * @return the world y of the highest matching block, {@code minY - 1} of the dimension for a column without one
+     * @throws IllegalArgumentException if x or z is outside [0, 16), a world coordinate for instance
+     */
     public int getHeight(int x, int z) {
+        if (((x | z) >>> 4) != 0)
+            throw new IllegalArgumentException("heightmap column must be chunk-local [0,16): " + x + ", " + z);
         if (needsRefresh) refresh(getHighestBlockSection(chunk));
         return heights[z << 4 | x] + minHeight;
     }
@@ -146,6 +193,14 @@ public abstract class Heightmap {
         heights[z << 4 | x] = (short) (height - minHeight);
     }
 
+    /**
+     * The block y just above the highest section of the chunk with a block in its palette, the y to look
+     * down from: {@code maxY} of the dimension when the top section has one, {@code minY} when no section
+     * has. A block y, not a section index.
+     *
+     * @param chunk the chunk
+     * @return the block y above the highest non-empty section
+     */
     public static int getHighestBlockSection(Chunk chunk) {
         int y = chunk.getInstance().getCachedDimensionType().maxY();
         final int sectionsCount = chunk.getMaxSection() - chunk.getMinSection();

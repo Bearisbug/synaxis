@@ -1,0 +1,48 @@
+RUN-087 · TC-WORLD-139 重跑（main 17f2a2cfe1，本机独立工作树，检出后未改动）
+
+前置：重活锁（一次一个 Gradle，--max-workers=2，--no-daemon，阿里云镜像 init 脚本）；
+等到 1 分钟负载低于 6（12 核的一半）且没有别的会话占着重活锁才开跑。
+开跑 2026-10-21 00:50:59，load { 5.17 7.08 13.33 }；结束 00:53:23，load { 11.30 8.71 12.99 }。
+
+第 1 步
+  ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=2 \
+    :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest' --rerun
+  BUILD SUCCESSFUL in 7s
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="1" failures="0" errors="0" time="0.001">
+
+第 2 步
+  同上，加 -Dsynaxis.relight.measure=true
+  BUILD SUCCESSFUL in 2m 12s
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="0" failures="0" errors="0" time="127.751">
+  system-out 的读数行：
+  relight backlog: phase=107/s changes=6414 seconds=60.0 centers_per_s=38.4 relight_queue_p99_ms=26950.3 relight_ms_p99=103.9 relight_pending_peak=1024 install_ms_max=1.48 install_backlog_peak=27; phase=unlimited changes=8211456 seconds=60.0 centers_per_s=29.2 relight_queue_p99_ms=19308.1 relight_ms_p99=176.0 relight_pending_peak=1024 install_ms_max=3.53 install_backlog_peak=27
+  重算日志里超过 200 ms 的 WARN 行 11 条，其中 10 条「taking the blocks of the 5×5」那一段为 0 ms。
+
+读数（第 2 步）              107/s 档      不限速档
+  中心/s                        38.4          29.2
+  relight_queue_p99_ms      26,950.3      19,308.1
+  relight_ms_p99               103.9         176.0
+  relight_pending 峰值         1,024         1,024
+  每 tick 装回最长 ms           1.48          3.53
+  等装回的条目峰值                27            27     （断言 ≤ 282 成立）
+
+对照（忙机器，只登记过）：
+  M3-S 轨道 S 2026-10-06 load1 12.45：35.4、29,254.8、121.4、1,024、3.06、27 与 27.1、21,009.8、224.6、1,024、2.15、36
+  RUN-069     2026-10-07 load1 6.85～7.58：34.7、30,050.0、114.4、1,024、1.57、27 与 29.2、21,401.3、164.0、1,024、0.19、27
+
+测时负载（每 10 s 一次，vm.loadavg 的 1、5、15 分钟）：
+00:50:59 { 5.17 7.08 13.33 }
+00:51:09 { 4.85 6.94 13.21 }
+00:51:19 { 5.18 6.94 13.13 }
+00:51:29 { 5.46 6.94 13.06 }
+00:51:39 { 5.55 6.91 12.98 }
+00:51:49 { 6.52 7.08 12.97 }
+00:51:59 { 9.42 7.70 13.12 }
+00:52:10 { 8.74 7.61 13.02 }
+00:52:20 { 9.11 7.72 13.00 }
+00:52:30 { 8.88 7.71 12.93 }
+00:52:40 { 10.57 8.13 13.02 }
+00:52:50 { 12.01 8.53 13.11 }
+00:53:00 { 11.40 8.51 13.05 }
+00:53:10 { 11.52 8.63 13.04 }
+00:53:20 { 11.06 8.63 12.98 }

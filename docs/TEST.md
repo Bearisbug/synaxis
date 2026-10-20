@@ -8,12 +8,13 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）、`docs/DESIGN-PROD.md`（生产就绪分册）与 `docs/DESIGN-PLAY.md`（玩法架构分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*`，玩法架构侧写作 `REQ-PLAY-*`，对应用例写作 `TC-PLAY-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-10-19 |
+| 最后更新 | 2026-10-21 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-21 | `TC-WORLD-139` 重跑，登记 RUN-087（阻塞：开跑时 load1 5.17，测量窗口里升到 12.01，读数只登记，证据 `docs/test-runs/RUN-087/`）；用例后置的参考读数加 RUN-087 一组，并进 `docs/DESIGN-M3.md` v0.56 §15「光照重算吞吐」行 | Bearisbug |
 | 2026-10-21 | 分支 `m3/hud-top-left` 的 `086f2f9fc8` 在 GitHub Actions 上跑完全量门禁、Concurrency、Client mod、Client gametest 与远景 gametest 四组（草稿 PR #41），反证在临时分支上手动触发，登记 RUN-086（通过 1/1，证据 `docs/test-runs/RUN-086/`）。RUN-079 明细里的待人工项「远景 HUD 英文行宽」由 RUN-086 的截图量法与 `TC-WORLD-170` 接手 | Bearisbug |
 | 2026-10-20 | 跟进 `docs/DESIGN-M3.md` v0.55（分支 `m3/hud-top-left`，远景 HUD 行改画在左上角）。**新增 `TC-WORLD-170`**（「M3 · 远景（M3-G）」一节末尾）：V1 烘焙期间同机位截带 HUD 与不带 HUD 的两张图，左上角有变化、左下角原来那一行的位置没有，报告行 F31；反证是把行画回左下角，在临时分支上手动触发 synthetic 组。§2 的 REQ ↔ TC 表（`REQ-M3-025`）与 Gherkin 覆盖口径随之补上。RUN-079 的待人工项「远景 HUD 英文行宽」由本轮的截图核实与 `TC-WORLD-170` 接手 | Bearisbug |
 | 2026-10-19 | 分支 `m3/light-fixups` 的 `3415eef1e0` 在 GitHub Actions 上跑完全量门禁、Concurrency、Client mod 与 Client gametest，远景 gametest 四组在 `fd9627e0ad` 上跑完（草稿 PR #38），登记 RUN-083（通过 6/6，证据 `docs/test-runs/RUN-083/`）。`TC-WORLD-049`、`TC-WORLD-060`、`TC-WORLD-094`、`TC-WORLD-132`、`TC-WORLD-150` 的反证步骤只改了行号、没有重跑，登在 §6 明细里 | Bearisbug |
@@ -4304,7 +4305,7 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 | 1 | `<G> :synx:test --tests '<S>.SynxRelightBacklogTest'`（不给测量属性） | `tests="1" skipped="1"`：门禁不跑它（CI run `37592308915` 的 XML 同此） |
 | 2 | `<G> :synx:test --tests '<S>.SynxRelightBacklogTest' -Dsynaxis.relight.measure=true --rerun` | `tests="1"`、不是 skipped、0 失败；`<system-out>` 两档各一行读数：107 个中心/s 那一档与不限速那一档的中心/s、`relight_queue_p99_ms`、`relight_ms_p99`、`relight_pending` 峰值、每 tick 装回耗时的最大值、等装回的条目峰值；断言：等装回的条目始终 ≤ 282。读数写进 `docs/DESIGN-M3.md` §15 光照重算吞吐行；107 个中心/s 下 `relight_queue_p99_ms` ≥ 250 ms 时，打开 `synaxis.world-writable` 之前要按那一行加改方块速率上限或调 `synaxis.relight-threads` |
 
-后置：放锁。参考读数（轨道 S，2026-10-06，load1 12.45，同机另有会话，只登记）：107/s 档实际 35.4 个中心/s、29,254.8、121.4、1,024、3.06 ms、27；不限速档 27.1 个中心/s、21,009.8、224.6、1,024、2.15 ms、36。RUN-069（合并树，2026-10-07，load1 6.85～7.58，同机另有会话，只登记）：第 1 步 `tests="1" skipped="1"`；第 2 步 107/s 档 34.7 个中心/s、30,050.0、114.4、1,024、1.57 ms、27，不限速档 29.2 个中心/s、21,401.3、164.0、1,024、0.19 ms、27。
+后置：放锁。参考读数（轨道 S，2026-10-06，load1 12.45，同机另有会话，只登记）：107/s 档实际 35.4 个中心/s、29,254.8、121.4、1,024、3.06 ms、27；不限速档 27.1 个中心/s、21,009.8、224.6、1,024、2.15 ms、36。RUN-069（合并树，2026-10-07，load1 6.85～7.58，同机另有会话，只登记）：第 1 步 `tests="1" skipped="1"`；第 2 步 107/s 档 34.7 个中心/s、30,050.0、114.4、1,024、1.57 ms、27，不限速档 29.2 个中心/s、21,401.3、164.0、1,024、0.19 ms、27。RUN-087（`main` `17f2a2cfe1`，2026-10-21，开跑时 load1 5.17，107/s 档前半段 4.85～5.55、之后升到 12.01，不限速档 8.9～12.0，只登记）：第 1 步 `tests="1" skipped="1"`；第 2 步 107/s 档 38.4 个中心/s、26,950.3、103.9、1,024、1.48 ms、27，不限速档 29.2 个中心/s、19,308.1、176.0、1,024、3.53 ms、27。三次读数的中心/s 落在 34.7～38.4 与 27.1～29.2，两档的 `relight_pending` 都顶到 1,024。
 
 #### `TC-WORLD-140` 容器：夹具定住日间时间（V6b 正午与 40°） — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
 
@@ -16000,6 +16001,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
 | RUN-082 | 2026-10-19 | 分支 `prod/r082-ticking` 的 `6c8a9be5e1`（`main` `06ce46f16a` 之上的设计提交 `378066c05c` 与修复提交 `6c8a9be5e1`；原先基于 `9c4ad17a64` 的 `368f8c63c9`，光照会话的 PR #36 先合入 `main` 后变基，代码不变，`docs/DESIGN.md` 版本号由 v0.50 改为 v0.51；`git fetch` 后 `origin/main` 是 `06ce46f16a`，登记到 RUN-081；`docs/DESIGN-PROD.md` v0.9.107；本机在 `9c4ad17a64` 之上跑改动前的红与三种线程模式，全量门禁、jcstress 与模组构建在 GitHub Actions 上对 `6c8a9be5e1` 跑，Client gametest 的路径过滤不含本轮改的文件，手动触发（草稿 PR #37，2026-10-19 13:14～13:31，UTC+8）；证据 `docs/test-runs/RUN-082/`） | AI（Claude Code，Gradle / GitHub Actions） | 局部（TC-PROD-990） | 通过 1/1 |
 | RUN-083 | 2026-10-19 | 分支 `m3/light-fixups` 的 `3415eef1e0`（`main` `7a0aa03194` 之上两个提交：M3 侧跟进生产就绪会话 RUN-081 的引擎改动 `5473276d74`，`ShardWorldRelightTest` 停机排空那条改用 `ServerProcess#startTicking` 与随之平移的用例行号 `3415eef1e0`；`docs/DESIGN-M3.md` v0.54、`docs/DESIGN-M2.md` v0.68；`git fetch` 后 `origin/main` 是 `7a0aa03194`，§6 登记到 RUN-082，本轮占 RUN-083；本机一次一个测试类跑新用例、反证与改过的测试，全量门禁、jcstress、模组构建、客户端 gametest 与远景 gametest 四组在 GitHub Actions 上跑（草稿 PR #38）；证据 `docs/test-runs/RUN-083/`） | AI（Claude Code，Gradle / GitHub Actions） | 局部（TC-WORLD-167、TC-WORLD-168、TC-WORLD-169、TC-GAME-076；改过测试的 TC-WORLD-094、TC-WORLD-160） | 通过 6/6 |
 | RUN-086 | 2026-10-21 | 分支 `m3/hud-top-left` 的 `086f2f9fc8`（`main` `bffddf5322` 之上一个提交，`docs/DESIGN-M3.md` v0.55；`git fetch` 后 `origin/main` 是 `bffddf5322`，§6 登记到 RUN-083，RUN-084、RUN-085 由生产就绪会话占着（草稿 PR #39、#40），本轮占 RUN-086；本机不跑 Gradle，全量门禁、jcstress、模组构建、客户端 gametest 与远景 gametest 四组在 GitHub Actions 上跑（草稿 PR #41），反证在临时分支上手动触发；证据 `docs/test-runs/RUN-086/`） | AI（Claude Code，GitHub Actions） | 局部（TC-WORLD-170） | 通过 1/1 |
+| RUN-087 | 2026-10-21 | `main` `17f2a2cfe1`（本机独立工作树，`git fetch` 后 `origin/main` 是 `17f2a2cfe1`，§6 登记到 RUN-086，RUN-084、RUN-085 由生产就绪会话占着（草稿 PR #39、#40），本轮占 RUN-087；本机重活锁下一次一个 Gradle（`--max-workers=2`），开跑时 load1 5.17；证据 `docs/test-runs/RUN-087/`） | AI（Claude Code，Gradle 9.8.0 / JDK 25） | 局部（TC-WORLD-139） | 阻塞 1 |
 
 明细（仅登非「通过」项）：
 
@@ -16249,7 +16251,10 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-079 | TC-WORLD-131、TC-WORLD-162、TC-WORLD-163 | 跳过（反证步骤） | `TC-WORLD-131` 第 6 步的红行按同形状的运行推得；`TC-WORLD-162`、`TC-WORLD-163` 是 `client-fabric` 的反证，本机不构建，红行按推算；正向部分在 CI（Client mod run `38527079770`）全绿 | 下一轮客户端改动时在 CI 的反证分支上跑 |
 | RUN-079 | （人工）远景 HUD 英文行宽 | 待人工 | `docs/DESIGN-M3.md` §28.2「M3 审查优化留下的测试缺口」：缩短后的英文 HUD 行约 111～113 px 宽，默认 GUI 缩放下宽 426 时副手格约从 93 px 起，可能压到 | 人工截一张图 |
 | RUN-083 | TC-WORLD-049、TC-WORLD-060、TC-WORLD-094、TC-WORLD-132、TC-WORLD-150 | 跳过（反证步骤） | 本轮只按 `ShardWorldAssemblyTest`、`ShardWorldRelightTest` 变短后的文件改了反证步骤引的行号，反证没有重跑；这几条的正向部分在 CI run `39207005568` 三种模式全绿，`TC-WORLD-094` 的正向另在本机跑过（`09-green-relight-ticking`） | 下一次本机跑这两个类时按新行号重跑反证 |
+| RUN-087 | TC-WORLD-139 | 阻塞 | 前置「机器空闲」只在开跑时满足：等到 load1 < 6 才开跑，00:50:59 读到 5.17；107/s 档前半段 4.85～5.55，00:51:49 起超过 6、最高 12.01，不限速档 8.9～12.0，测量窗口约 85 s 在 6 以上。两步照跑：第 1 步 `tests="1" skipped="1"`；第 2 步 0 失败，等装回的条目两档峰值都是 27（断言 ≤ 282）；107/s 档 38.4 个中心/s、`relight_queue_p99_ms` 26,950.3，读数只登记。证据 `docs/test-runs/RUN-087/00-index.txt` | 空闲机器上重测，同时记下测试进程自己的 CPU 占用以便扣除；读数回写设计文档 §15 |
 
+
+RUN-087 证据：`docs/test-runs/RUN-087/00-index.txt`（两步的命令、JUnit 报告的计数与读数行、测时每 10 s 一次的负载）。**前置**：等到 1 分钟负载低于 6 且没有别的会话占着重活锁才开跑，00:50:59 开跑时 load1 5.17；107/s 档前半段 4.85～5.55，00:51:49 起超过 6、最高 12.01，不限速档 8.9～12.0，所以登记阻塞、读数只登记。**第 1 步**：`tests="1" skipped="1"`。**第 2 步**：`tests="1"`、0 跳过、0 失败，用时 127.8 s；107/s 档 38.4 个中心/s、`relight_queue_p99_ms` 26,950.3、`relight_ms_p99` 103.9、`relight_pending` 峰值 1,024、装回最长 1.48 ms、等装回的条目峰值 27；不限速档 29.2 个中心/s、19,308.1、176.0、1,024、3.53 ms、27，断言（≤ 282）成立。与 M3-S 轨道 S、RUN-069 的读数合看，中心/s 落在 34.7～38.4 与 27.1～29.2，两档的 `relight_pending` 都顶到 1,024，重算池一直满着；三次读数并进 `docs/DESIGN-M3.md` v0.56 §15，单个中心的重算耗时高于推算一事记在该分册 §28.2。
 
 RUN-086 证据：`docs/test-runs/RUN-086/00-index.txt` 与三张截图裁片。轮次号：`git fetch` 后 `origin/main` 是 `bffddf5322`（RUN-083），RUN-084、RUN-085 由生产就绪会话占着，本轮占 RUN-086。**门禁**（`086f2f9fc8`）：CI run `39429957861` 的 Check、Test with 4 tick threads (strict)、Test with 4 tick threads (strict, grid) 都 success；Concurrency run `39429957773`、Client mod run `39429957715` success；Client gametest run `39429958025` 的 job `gametest`、`rush`、`p11-smoke` success。**远景 gametest**：run `39429977397` 的 light、synthetic、baked 三组第 1 次尝试 success，hidden 组第 1 次尝试红在 Loom 下载游戏资源（客户端 10 s 内退出，没有报告），重跑失败的 job 后第 2 次尝试 success。V1 跑过的四个 case 报告里都是 `F31 PASS`，左上角变化 23.53%～25.71%、左下角原来那一行的位置 0.00%（逐行见 `00-index.txt`）。**反证**：临时分支 `tmp/hud-proof-bottom-left` 把行画回左下角，手动触发的 run `39429998054` 报 `F31 FAIL`：左上角 0.00%、左下角 25.87%，看完删了分支。**起因**：RUN-079 的待人工项「远景 HUD 英文行宽」改用 RUN-083 远景 gametest 的截图量出：左下角「Far view: building 2%」画到 GUI x 102，主手在右时副手格从 x 93 起，重叠约 10 GUI 像素；本轮改画在左上角，由 `TC-WORLD-170` 自动判，那一项不再要人工截图。
 

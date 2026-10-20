@@ -1,0 +1,78 @@
+Counterproofs on e2238495a2, three runs of temporary changes, each followed by git reset --hard HEAD.
+
+Run A, eight changes together
+  BlockImpl#getState:                  the range check removed, BLOCK_STATE_MAP.get(stateId) as before
+  Block.STATE_STRUCT_CODEC:            the try around withProperty removed
+  BlockUtils#parseProperties:          the branch that throws for an entry without = removed, such an entry skipped
+  BlockSchema#with:                    ", valid: " and the list left out of both messages
+  BlockBreakCalculation#isInWater:     block.id() != Block.WATER.id() replaced by !block.liquid()
+  ComponentPredicateSet:               the canonical constructor back to List.copyOf(predicates)
+  PropertiesPredicate#test(Block):     every value predicate tested with test(block.getProperty(key))
+  ValuePredicate.CODEC:                the hand-written codec that ends in "Invalid value predicate"
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.BlockTest' --tests 'io.github.bearisbug.synaxis.instance.BlockPropertiesTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.BlockStateMapCodecTest' --tests 'io.github.bearisbug.synaxis.command.ArgumentTypeTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.BlockBreakCalculationIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.predicate.ComponentPredicateSetRegistriesTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.predicate.BlockPredicateRegistriesTest' \
+    --tests 'io.github.bearisbug.synaxis.item.component.BlockPredicatesTest' --continue --max-workers=2 --no-daemon \
+    --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+:test        125 tests completed, 13 failed
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockTest" tests="17" skipped="0" failures="3" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockPropertiesTest" tests="10" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockStateMapCodecTest" tests="4" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.command.ArgumentTypeTest" tests="33" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.BlockBreakCalculationIntegrationTest" tests="8" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.ComponentPredicateSetRegistriesTest" tests="6" skipped="0" failures="2" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest$ValuePredicate" tests="28" skipped="0" failures="4" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.BlockPredicateRegistriesTest$NbtPredicate" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.BlockPredicateRegistriesTest" tests="5" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.item.component.BlockPredicatesTest" tests="9" skipped="0" failures="0" errors="0">
+   malformedPropertyListIsNoState() | org.opentest4j.AssertionFailedError: expected: <null> but was: <minecraft:oak_stairs{properties={shape=>straight, half=>bottom, facing=>north, waterlogged=>false}, nbt=null, handler=null}> | BlockTest.java:115
+   fromStateIdOutOfRangeIsNull() | java.lang.ArrayIndexOutOfBoundsException: Index -1 out of bounds for length 32366 | BlockTest.java:140
+   withPropertyKeepsNbtAndReusesCanonicalState() | org.opentest4j.AssertionFailedError: Invalid value 'up' for property facing of minecraft:chest ==> expected: <true> but was: <false> | BlockTest.java:130
+   malformedEntries() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | BlockPropertiesTest.java:42
+   invalidPropertyIsAnError() | java.lang.IllegalArgumentException: Invalid value 'maybe' for property lit of minecraft:copper_bulb | BlockStateMapCodecTest.java:59
+   testArgumentBlockState() | org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException to be thrown, but nothing was thrown. | ArgumentTypeTest.java:527 (the input at :68)
+   lavaAtEyeLevelIsNotWater() | org.opentest4j.AssertionFailedError: expected: <150> but was: <750> | BlockBreakCalculationIntegrationTest.java:104
+   aTypeGivenTwiceKeepsTheLast(Registries) | org.opentest4j.AssertionFailedError: expected: <[Damage[durability=null, damage=Int[min=2, max=9]]]> but was: <[Damage[durability=null, damage=Int[min=1, max=5]], Damage[durability=null, damage=Int[min=2, max=9]]]> | ComponentPredicateSetRegistriesTest.java:98
+   equalsIsSymmetricWithARepeatedType() | org.opentest4j.AssertionFailedError: expected: not equal but was: <ComponentPredicateSet[predicates=[Exists[component=minecraft:custom_name], Exists[component=minecraft:custom_name]]]> | ComponentPredicateSetRegistriesTest.java:110
+   ageRangeWithAnInvalidBoundMatchesNothing() | org.opentest4j.AssertionFailedError: expected: <false> but was: <true> | PropertiesPredicateTest.java:141
+   decodeFailureNamesBothForms() | org.opentest4j.AssertionFailedError: Invalid value predicate ==> expected: <true> but was: <false> | PropertiesPredicateTest.java:153
+   enumRangeFollowsDeclarationOrder() | org.opentest4j.AssertionFailedError: expected: <true> but was: <false> | PropertiesPredicateTest.java:110
+   directionRangeFollowsTheDirectionOrder() | org.opentest4j.AssertionFailedError: expected: <true> but was: <false> | PropertiesPredicateTest.java:118
+
+  Each change turns its own tests red: the lava case only under the liquid() change (750 ticks, the submerged speed
+  applied), the predicate set cases only without the dedupe, and BlockPredicatesTest stays green (9 of 9).
+  BlockPropertiesTest has 1 failure of 10: duplicateKey stays green, its check is not undone here.
+
+Run B, the order of a range is the registry list (the boolean and direction orders taken out of Range#order)
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest' --continue \
+    --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+:test        29 tests completed, 2 failed
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest$ValuePredicate" tests="28" skipped="0" failures="2" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest" tests="1" skipped="0" failures="0" errors="0">
+   booleanRangeHasFalseFirst() | org.opentest4j.AssertionFailedError: expected: <true> but was: <false> | PropertiesPredicateTest.java:132
+   directionRangeFollowsTheDirectionOrder() | org.opentest4j.AssertionFailedError: expected: <true> but was: <false> | PropertiesPredicateTest.java:118
+
+  The registry lists booleans true first, and the six way facing as north, east, south, west, up, down and
+  vertical_direction as up, down, while the client compares Direction constants in the order down, up, north, south,
+  west, east. enumRangeFollowsDeclarationOrder and ageRangeWithAnInvalidBoundMatchesNothing stay green: half and the
+  integer ages are listed in the order the client compares them.
+
+Run C, BITS_PER_INDEX 4 instead of 5 in BlockImpl (16 values per property)
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.BlockTest' --continue --max-workers=2 --no-daemon \
+    --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+:test        17 tests completed, 17 failed
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockTest" tests="17" skipped="0" failures="17" errors="0">
+   the first: java.lang.ExceptionInInitializerError, then NoClassDefFoundError: Could not initialize class
+   io.github.bearisbug.synaxis.instance.block.BlockImpl
+   Caused by: java.lang.IllegalStateException: Too many values for property age of block minecraft:kelp: 26 > 16
+   at io.github.bearisbug.synaxis.instance.block.BlockImpl.lambda$static$0(BlockImpl.java:80)
+
+  The registry loading names the property and the block, where the assert it replaces left a Duplicate properties
+  error.

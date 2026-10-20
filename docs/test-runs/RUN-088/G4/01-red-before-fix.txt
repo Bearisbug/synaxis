@@ -1,0 +1,57 @@
+Red before the fix: 70fa1ae08f, the new tests on the code before the fix commits (fromStateId reads the state list
+without a range check, the state struct codec lets IllegalArgumentException out of decode, parseProperties skips an
+entry without = and keeps a key named twice, a refused property names the block but not the valid values,
+ComponentPredicateSet keeps two predicates of a type, a Range compares a block's enum or boolean value as a string and
+an integer bound as a number whether or not the property takes it, ValuePredicate.CODEC reports "Invalid value
+predicate").
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.BlockTest' --tests 'io.github.bearisbug.synaxis.instance.BlockPropertiesTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.BlockStateMapCodecTest' --tests 'io.github.bearisbug.synaxis.command.ArgumentTypeTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.BlockBreakCalculationIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.predicate.ComponentPredicateSetRegistriesTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.predicate.BlockPredicateRegistriesTest' --continue --max-workers=2 --no-daemon \
+    --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+:test        116 tests completed, 13 failed
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockTest" tests="17" skipped="0" failures="3" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockPropertiesTest" tests="10" skipped="0" failures="2" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockStateMapCodecTest" tests="4" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.command.ArgumentTypeTest" tests="33" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.BlockBreakCalculationIntegrationTest" tests="8" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.ComponentPredicateSetRegistriesTest" tests="6" skipped="0" failures="2" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest$ValuePredicate" tests="28" skipped="0" failures="4" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.BlockPredicateRegistriesTest$NbtPredicate" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.BlockPredicateRegistriesTest" tests="5" skipped="0" failures="0" errors="0">
+   malformedPropertyListIsNoState() | org.opentest4j.AssertionFailedError: expected: <null> but was: <minecraft:oak_stairs{properties={facing=>north, half=>bottom, shape=>straight, waterlogged=>false}, nbt=null, handler=null}> | BlockTest.java:115
+   fromStateIdOutOfRangeIsNull() | java.lang.ArrayIndexOutOfBoundsException: Index -1 out of bounds for length 32366 | BlockTest.java:140
+   withPropertyKeepsNbtAndReusesCanonicalState() | org.opentest4j.AssertionFailedError: Property facing value up is not valid for block minecraft:chest{properties={type=>single, facing=>north, waterlogged=>false}, nbt=null, handler=null} ==> expected: <true> but was: <false> | BlockTest.java:130
+   malformedEntries() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | BlockPropertiesTest.java:42
+   duplicateKey() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | BlockPropertiesTest.java:50
+   invalidPropertyIsAnError() | java.lang.IllegalArgumentException: Property lit value maybe is not valid for block minecraft:copper_bulb{properties={powered=>false, lit=>false}, nbt=null, handler=null} | BlockStateMapCodecTest.java:59
+   testArgumentBlockState() | org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException to be thrown, but nothing was thrown. | ArgumentTypeTest.java:527 (the input at :68)
+   aTypeGivenTwiceKeepsTheLast(Registries) | org.opentest4j.AssertionFailedError: expected: <[Damage[durability=null, damage=Int[min=2, max=9]]]> but was: <[Damage[durability=null, damage=Int[min=1, max=5]], Damage[durability=null, damage=Int[min=2, max=9]]]> | ComponentPredicateSetRegistriesTest.java:98
+   equalsIsSymmetricWithARepeatedType() | org.opentest4j.AssertionFailedError: expected: not equal but was: <ComponentPredicateSet[predicates=[Exists[component=minecraft:custom_name], Exists[component=minecraft:custom_name]]]> | ComponentPredicateSetRegistriesTest.java:110
+   ageRangeWithAnInvalidBoundMatchesNothing() | org.opentest4j.AssertionFailedError: expected: <false> but was: <true> | PropertiesPredicateTest.java:141
+   decodeFailureNamesBothForms() | org.opentest4j.AssertionFailedError: Invalid value predicate ==> expected: <true> but was: <false> | PropertiesPredicateTest.java:153
+   enumRangeFollowsDeclarationOrder() | org.opentest4j.AssertionFailedError: expected: <true> but was: <false> | PropertiesPredicateTest.java:110
+   directionRangeFollowsTheDirectionOrder() | org.opentest4j.AssertionFailedError: expected: <true> but was: <false> | PropertiesPredicateTest.java:118
+
+Per change
+  fromStateId range (410559ae43):         BlockTest:140, fromStateId(-1) throws ArrayIndexOutOfBoundsException
+  struct codec error (410559ae43):        BlockStateMapCodecTest:59 (the decode helper, called at :52), lit=maybe throws
+                                          IllegalArgumentException out of decode
+  malformed property list (cdd0da1033):   BlockPropertiesTest:42 and :50, [a,b=c] and [a=b,a=c] parse; BlockTest:115,
+                                          fromState("minecraft:oak_stairs[facing]") is the default stairs;
+                                          ArgumentTypeTest:68, the same input parses as a block state argument
+  valid values in the error (dcad7c58c4): BlockTest:130, the message has no "valid: [north, south, west, east]"
+  one predicate per type (92ec893207):    ComponentPredicateSetRegistriesTest:98, both Damage predicates kept;
+                                          :110, [custom_name, lore] equals [custom_name, custom_name]
+  range against a block (e2238495a2):     PropertiesPredicateTest:110, half=bottom not in top..bottom; :118, facing=up
+                                          not in up..north on a dispenser; :141, age=3 in -1..7
+  Either codec error (e2238495a2):        PropertiesPredicateTest:153, the message is "Invalid value predicate"
+
+  Green before the fix as they pin what does not change: lavaAtEyeLevelIsNotWater (BlockBreakCalculationIntegrationTest),
+  compareMatchesTheBlockTypeOnly (BlockTest), booleanRangeHasFalseFirst (PropertiesPredicateTest, a string compare
+  happens to put false first), blocksMatchByTypeOnly (BlockPredicateRegistriesTest), and the unknown block lines of
+  invalidPropertyIsAnError (reached only once its first line passes).

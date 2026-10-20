@@ -35,7 +35,7 @@ record BlockImpl(RegistryData.BlockEntry registry,
      */
     private static final int BITS_PER_INDEX = 5;
 
-    private static final int MAX_STATES = Long.SIZE / BITS_PER_INDEX;
+    private static final int MAX_PROPERTIES = Long.SIZE / BITS_PER_INDEX;
     private static final int MAX_VALUES = 1 << BITS_PER_INDEX;
 
     private static final int HASH_VALUES_THRESHOLD = 8;
@@ -66,16 +66,19 @@ record BlockImpl(RegistryData.BlockEntry registry,
                     {
                         RegistryData.Properties stateProperties = properties.section("properties");
                         if (stateProperties != null) {
-                            final int stateCount = stateProperties.size();
-                            if (stateCount > MAX_STATES) {
+                            final int propertyCount = stateProperties.size();
+                            if (propertyCount > MAX_PROPERTIES) {
                                 throw new IllegalStateException("Too many properties for block " + namespace);
                             }
-                            propertyTypes = new PropertyType[stateCount];
+                            propertyTypes = new PropertyType[propertyCount];
                             int i = 0;
                             for (var entry : stateProperties) {
                                 final var k = entry.getKey();
                                 @SuppressWarnings("unchecked") final var v = (List<String>) entry.getValue();
-                                assert v.size() < MAX_VALUES;
+                                if (v.size() > MAX_VALUES) {
+                                    throw new IllegalStateException("Too many values for property " + k + " of block "
+                                            + namespace + ": " + v.size() + " > " + MAX_VALUES);
+                                }
                                 final PropertyTypeKey propertyTypeKey = new PropertyTypeKey(k, v);
                                 propertyTypes[i++] = propertyTypeCache.computeIfAbsent(propertyTypeKey,
                                         key -> new PropertyType(key.key, key.values));
@@ -92,11 +95,11 @@ record BlockImpl(RegistryData.BlockEntry registry,
 
                     // Retrieve block states
                     {
-                        final int propertiesCount = stateObject.size();
+                        final int stateCount = stateObject.size();
                         final int expectedStateCount = BlockSchema.stateCount(propertyTypes);
-                        if (expectedStateCount != propertiesCount) {
+                        if (expectedStateCount != stateCount) {
                             throw new IllegalStateException("Invalid state count for block " + namespace +
-                                    ": expected " + expectedStateCount + ", got " + propertiesCount);
+                                    ": expected " + expectedStateCount + ", got " + stateCount);
                         }
                         final BlockSchema loadingSchema = new BlockSchema(propertyTypes, 0, expectedStateCount, null);
                         // Transient mapping used to compact the retained schema after registry loading.
@@ -111,9 +114,7 @@ record BlockImpl(RegistryData.BlockEntry registry,
                             }
                             long propertiesValue = 0;
                             for (Map.Entry<String, String> entry : propertyMap.entrySet()) {
-                                final byte keyIndex = loadingSchema.findKeyIndexThrow(entry.getKey(), null);
-                                final byte valueIndex = BlockSchema.findValueIndexThrow(propertyTypes[keyIndex], entry.getValue(), null);
-                                propertiesValue = updateIndex(propertiesValue, keyIndex, valueIndex);
+                                propertiesValue = loadingSchema.with(propertiesValue, entry.getKey(), entry.getValue(), namespace);
                             }
 
                             final RegistryData.BlockEntry entryOverride = RegistryData.block(namespace, RegistryData.Properties.fromMap(stateOverride), internCache, baseBlockEntry, properties);
@@ -171,11 +172,7 @@ record BlockImpl(RegistryData.BlockEntry registry,
 
     @Override
     public Block withProperty(String property, String value) {
-        final BlockSchema schema = schema();
-        final byte keyIndex = schema.findKeyIndexThrow(property, this);
-        final byte valueIndex = BlockSchema.findValueIndexThrow(schema.properties[keyIndex], value, this);
-        final long updatedProperties = updateIndex(propertiesArray, keyIndex, valueIndex);
-        return compute(updatedProperties);
+        return compute(schema().with(propertiesArray, property, value, name()));
     }
 
     @Override
@@ -184,9 +181,7 @@ record BlockImpl(RegistryData.BlockEntry registry,
         final BlockSchema schema = schema();
         long updatedProperties = this.propertiesArray;
         for (Map.Entry<String, String> entry : properties.entrySet()) {
-            final byte keyIndex = schema.findKeyIndexThrow(entry.getKey(), this);
-            final byte valueIndex = BlockSchema.findValueIndexThrow(schema.properties[keyIndex], entry.getValue(), this);
-            updatedProperties = updateIndex(updatedProperties, keyIndex, valueIndex);
+            updatedProperties = schema.with(updatedProperties, entry.getKey(), entry.getValue(), name());
         }
         return compute(updatedProperties);
     }
@@ -227,7 +222,6 @@ record BlockImpl(RegistryData.BlockEntry registry,
     @Override
     public @Nullable String getProperty(String property) {
         final BlockSchema schema = schema();
-        if (schema.properties.length == 0) return null;
         final int key = schema.findKeyIndex(property);
         if (key == -1) return null; // Property not found
         final long index = extractIndex(propertiesArray, key);
@@ -288,12 +282,7 @@ record BlockImpl(RegistryData.BlockEntry registry,
     }
 
     private Block compute(long updatedProperties) {
-        if (updatedProperties == this.propertiesArray) return this;
-        final Block block = schema().state(updatedProperties);
-        // Reuse the same block instance if possible
-        if (nbt == null && handler == null) return block;
-        // Otherwise copy with the nbt and handler
-        return new BlockImpl(block.registry(), updatedProperties, nbt, handler);
+        return updatedProperties == propertiesArray ? this : ((BlockImpl) schema().state(updatedProperties)).copy(nbt, handler);
     }
 
     private static Map<String, String> createPropertiesMap(PropertyType[] properties, long propertiesArray) {
@@ -363,28 +352,25 @@ record BlockImpl(RegistryData.BlockEntry registry,
             return -1;
         }
 
-        private byte findKeyIndexThrow(String key, @Nullable BlockImpl block) {
-            final byte index = findKeyIndex(key);
-            if (index == -1) {
-                if (block != null) {
-                    throw new IllegalArgumentException("Property " + key + " is not valid for block " + block);
-                } else {
-                    throw new IllegalArgumentException("Unknown property key: " + key);
-                }
+        /**
+         * Sets {@code key} to {@code value} in {@code propertiesArray}.
+         *
+         * @param owner the block named in the exception
+         * @throws IllegalArgumentException if the block has no property {@code key} or it does not take {@code value}
+         */
+        private long with(long propertiesArray, String key, String value, String owner) {
+            final byte keyIndex = findKeyIndex(key);
+            if (keyIndex == -1) {
+                throw new IllegalArgumentException("Unknown property '" + key + "' for " + owner + ", valid: "
+                        + Arrays.stream(properties).map(PropertyType::key).toList());
             }
-            return index;
-        }
-
-        private static byte findValueIndexThrow(PropertyType propertyType, String value, @Nullable BlockImpl block) {
-            final byte index = propertyType.findValueIndex(value);
-            if (index == -1) {
-                if (block != null) {
-                    throw new IllegalArgumentException("Property " + propertyType.key() + " value " + value + " is not valid for block " + block);
-                } else {
-                    throw new IllegalArgumentException("Unknown property value: " + value);
-                }
+            final PropertyType propertyType = properties[keyIndex];
+            final byte valueIndex = propertyType.findValueIndex(value);
+            if (valueIndex == -1) {
+                throw new IllegalArgumentException("Invalid value '" + value + "' for property " + key + " of " + owner
+                        + ", valid: " + propertyType.values());
             }
-            return index;
+            return updateIndex(propertiesArray, keyIndex, valueIndex);
         }
 
         private Block state(long propertiesArray) {

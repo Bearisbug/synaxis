@@ -109,6 +109,46 @@ public class BlockTest {
         assertThrows(Exception.class, () -> block.withProperties(Map.of("random", "randomKey")));
     }
 
+    /** A property list with an entry that is no key=value pair, or that names a key twice, is no block state. */
+    @Test
+    public void malformedPropertyListIsNoState() {
+        assertNull(Block.fromState("minecraft:oak_stairs[facing]"));
+        assertNull(Block.fromState("minecraft:stone[garbage]"));
+        assertNull(Block.fromState("minecraft:oak_stairs[facing=north,facing=south]"));
+    }
+
+    /** The NBT stays, a plain state is the registry instance, and a refused key or value lists the valid ones. */
+    @Test
+    public void withPropertyKeepsNbtAndReusesCanonicalState() {
+        var nbt = CompoundBinaryTag.builder().putInt("key", 5).build();
+        Block east = Block.CHEST.withNbt(nbt).withProperty("facing", "east");
+        assertEquals(nbt, east.nbt());
+        assertEquals("east", east.getProperty("facing"));
+        assertSame(Block.fromState("minecraft:chest[facing=east]"), Block.CHEST.withProperty("facing", "east"));
+
+        var value = assertThrows(IllegalArgumentException.class, () -> Block.CHEST.withProperty("facing", "up"));
+        assertTrue(value.getMessage().contains("valid: [north, south, west, east]"), value.getMessage());
+        // The keys come in the order of the registry map, which differs between runs
+        var key = assertThrows(IllegalArgumentException.class, () -> Block.CHEST.withProperty("random", "x"));
+        assertTrue(key.getMessage().matches(".*valid: \\[(facing|type|waterlogged)(, (facing|type|waterlogged)){2}]"),
+                key.getMessage());
+    }
+
+    /** A state id outside [0, statesCount()) names no block, as a block id past the registry names none. */
+    @Test
+    public void fromStateIdOutOfRangeIsNull() {
+        assertNull(Block.fromStateId(-1));
+        assertNull(Block.fromStateId(Block.statesCount()));
+        assertNull(Block.fromBlockId(Integer.MAX_VALUE));
+    }
+
+    /** compare(Block) looks at the block type only. */
+    @Test
+    public void compareMatchesTheBlockTypeOnly() {
+        assertTrue(Block.CHEST.compare(Block.CHEST.withProperty("facing", "east")));
+        assertFalse(Block.STONE.compare(Block.DIRT));
+    }
+
     @Test
     public void testEquality() {
         var nbt = CompoundBinaryTag.builder().putInt("key", 5).build();

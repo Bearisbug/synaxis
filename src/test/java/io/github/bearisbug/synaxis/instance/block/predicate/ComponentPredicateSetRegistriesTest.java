@@ -13,6 +13,7 @@ import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.registry.RegistryTranscoder;
 import io.github.bearisbug.synaxis.testing.RegistriesTest;
+import io.github.bearisbug.synaxis.utils.Range;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import static io.github.bearisbug.synaxis.codec.CodecAssertions.assertOk;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -83,6 +85,29 @@ public class ComponentPredicateSetRegistriesTest {
 
         assertInstanceOf(Result.Error.class, ComponentPredicateSet.CODEC.decode(coder,
                 JsonParser.parseString("{\"synaxis:no_such_component\": {}}")));
+    }
+
+    /** The set holds one predicate per type, the last given, as add keeps it, so that it stores what it tests. */
+    @Test
+    public void aTypeGivenTwiceKeepsTheLast(Registries registries) {
+        final Transcoder<JsonElement> coder = new RegistryTranscoder<>(Transcoder.JSON, registries);
+        final var last = new DataComponentPredicate.Damage(null, new Range.Int(2, 9));
+        final ComponentPredicateSet set = new ComponentPredicateSet(List.of(
+                new DataComponentPredicate.Damage(null, new Range.Int(1, 5)), last));
+
+        assertEquals(List.of(last), set.predicates());
+        assertEquals(set, assertOk(ComponentPredicateSet.CODEC.decode(coder, assertOk(ComponentPredicateSet.CODEC.encode(coder, set)))));
+    }
+
+    /** With one type given twice on one side, equals holds in neither direction. */
+    @Test
+    public void equalsIsSymmetricWithARepeatedType() {
+        final var name = new DataComponentPredicate.Exists(DataComponents.CUSTOM_NAME);
+        final var twice = new ComponentPredicateSet(List.of(name, name));
+        final var two = new ComponentPredicateSet(List.of(name, new DataComponentPredicate.Exists(DataComponents.LORE)));
+
+        assertNotEquals(twice, two);
+        assertNotEquals(two, twice);
     }
 
     private static ComponentPredicateSet roundTrip(Transcoder<JsonElement> coder, DataComponent<?> component) {

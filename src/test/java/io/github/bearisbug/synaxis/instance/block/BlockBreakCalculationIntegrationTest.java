@@ -94,6 +94,18 @@ public class BlockBreakCalculationIntegrationTest {
         assertRatio(0.0027 / 0.00081, amplifier3, amplifier2);
     }
 
+    /** Lava at the eyes is no water: breaking takes as long as with air there. */
+    @Test
+    public void lavaAtEyeLevelIsNotWater() {
+        player.setItemInMainHand(ItemStack.AIR);
+        final int dry = breakTicks(Block.STONE, player);
+        final Pos eye = player.getPosition().add(0, player.getEyeHeight(), 0);
+        player.getInstance().setBlock(eye, Block.LAVA);
+        assertEquals(dry, breakTicks(Block.STONE, player));
+        player.getInstance().setBlock(eye, Block.WATER);
+        assertTrue(breakTicks(Block.STONE, player) > dry, "water at the eyes slows breaking");
+    }
+
     private int breakWithFatigue(int amplifier) {
         player.removeEffect(PotionEffect.MINING_FATIGUE);
         player.addEffect(new Potion(PotionEffect.MINING_FATIGUE, amplifier, 200));

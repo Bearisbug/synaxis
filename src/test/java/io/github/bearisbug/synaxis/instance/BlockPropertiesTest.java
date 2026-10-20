@@ -6,6 +6,7 @@ import java.util.Map;
 
 import static io.github.bearisbug.synaxis.instance.block.BlockUtils.parseProperties;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class BlockPropertiesTest {
 
@@ -38,9 +39,16 @@ public class BlockPropertiesTest {
 
     @Test
     public void malformedEntries() {
-        assertEquals(Map.of("b", "c"), parseProperties("[a,b=c]"));
-        assertEquals(Map.of("a", "b"), parseProperties("[a=b,c]"));
-        assertEquals(Map.of(), parseProperties("[a,b]"));
+        assertThrows(IllegalArgumentException.class, () -> parseProperties("[a,b=c]"));
+        assertThrows(IllegalArgumentException.class, () -> parseProperties("[a=b,c]"));
+        assertThrows(IllegalArgumentException.class, () -> parseProperties("[a,b]"));
+        assertThrows(IllegalArgumentException.class, () -> parseProperties("[=b]"));
+    }
+
+    @Test
+    public void duplicateKey() {
+        assertThrows(IllegalArgumentException.class, () -> parseProperties("[a=b,a=c]"));
+        assertThrows(IllegalArgumentException.class, () -> parseProperties("[a=b, a =b]"));
     }
 
     @Test

@@ -86,6 +86,13 @@ public class BlockPredicateRegistriesTest {
         assertFalse(predicate.test(registries, Block.DIRT));
     }
 
+    /** Blocks given to the constructor match by type, whatever their state; none given matches no block. */
+    @Test
+    public void blocksMatchByTypeOnly(Registries registries) {
+        assertTrue(new BlockPredicate(Block.FURNACE.withProperty("lit", "true")).test(registries, Block.FURNACE));
+        assertFalse(new BlockPredicate(new Block[0]).test(registries, Block.STONE));
+    }
+
     @Test
     public void propsAlone(Registries registries) {
         var predicate = new BlockPredicate(PropertiesPredicate.exact("facing", "east"));

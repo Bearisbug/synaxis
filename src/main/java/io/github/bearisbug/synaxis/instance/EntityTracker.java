@@ -36,8 +36,8 @@ public sealed interface EntityTracker permits EntityTrackerImpl {
      * @param point  the position of the entity
      * @param target the kind of nearby entities {@code update} is told; the entity itself is tracked
      *               under every {@link Target} its type matches
-     * @param update told {@link Update#referenceUpdate} with this tracker, then each {@code target} entity
-     *               in the {@code entityViewDistance} square of chunks around {@code point}; null for none
+     * @param update told {@link Update#referenceUpdate} with this tracker, then each other {@code target}
+     *               entity in the {@code entityViewDistance} square of chunks around {@code point}; null for none
      * @throws IllegalStateException if an entity with the same id or the same uuid is registered already
      */
     <T extends Entity> void register(Entity entity, Point point,
@@ -50,7 +50,7 @@ public sealed interface EntityTracker permits EntityTrackerImpl {
      *
      * @param entity the entity to stop tracking
      * @param target the kind of nearby entities {@code update} is told
-     * @param update told {@link Update#referenceUpdate} with a null tracker, then each {@code target}
+     * @param update told {@link Update#referenceUpdate} with a null tracker, then each other {@code target}
      *               entity in the {@code entityViewDistance} square of chunks around the last position
      *               of the entity; null for none
      */

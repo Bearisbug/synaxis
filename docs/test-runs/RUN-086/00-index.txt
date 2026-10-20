@@ -1,0 +1,30 @@
+RUN-086 · 远景 HUD 行改画在左上角（分支 m3/hud-top-left，草稿 PR #41，判定用的 head 086f2f9fc8）
+
+本机没有跑 Gradle：client-fabric 只在 GitHub Actions 上构建，本轮只改了它的主源码一行与 gametest。
+
+GitHub Actions（086f2f9fc8）
+
+- CI run 39429957861：Check（BUILD SUCCESSFUL in 14m 17s）、Test with 4 tick threads (strict)（BUILD SUCCESSFUL in 16m 4s）、Test with 4 tick threads (strict, grid)（BUILD SUCCESSFUL in 16m 16s）都 success。
+- Concurrency run 39429957773：jcstress success。
+- Client mod run 39429957715：模组构建与客户端单测 success（单测条数与 RUN-083 相同，本轮不加单测）。
+- Client gametest run 39429958025：job gametest、rush、p11-smoke success（P10 只在手动触发时跑，skipped）。
+- Far view gametest run 39429977397（打标签触发）：light（13:23～13:31 UTC）、synthetic（13:23～14:28）、baked（13:23～15:11）success；hidden 第 1 次尝试红在 Loom 下载游戏资源（客户端 10 s 内以 BUILD FAILED 退出，没有报告，与本轮改动无关），工作流跑完后重跑失败的 job，第 2 次尝试（15:12～15:56）success。
+- 各组报告里的 F31（V1 跑过的 case 都有一行）：
+  a1-synthetic: F31 PASS HUD line "Far view: building 2%": top-left 0,0..259,23 changed 24.04%, bottom-left 0,456..235,479 changed 0.00%
+  c1-baked-hidden: F31 PASS HUD line "Far view: building 1%": top-left 0,0..259,23 changed 23.53%, bottom-left 0,456..235,479 changed 0.00%
+  b4-serve-only: F31 PASS HUD line "Far view: building 10%": top-left 0,0..259,23 changed 25.71%, bottom-left 0,456..235,479 changed 0.00%
+  b6-counter-hidden: F31 PASS HUD line "Far view: building 2%": top-left 0,0..259,23 changed 24.04%, bottom-left 0,456..235,479 changed 0.00%
+
+反证（行画回左下角，临时分支 tmp/hud-proof-bottom-left 的 1ea3c9ff87，看完已删）
+
+- gh workflow run farview-gametest.yml --ref tmp/hud-proof-bottom-left -f fixture=synthetic -f modes=v1，run 39429998054：
+  F31 FAIL HUD line "Far view: building 1%": top-left 0,0..259,23 changed 0.00%, bottom-left 0,456..235,479 changed 25.87%
+  （custom 组不放行任何 FAIL 行，两核 runner 上 F3、F4、F7 照常 FAIL，判失败的依据看 F31 这一行。）
+
+截图（截自 1280×720 的 farview-v1-hud，放大 2 倍）
+
+- 01-a1-synthetic-hud-top-left.png：本轮，左上角 640×60，远景行在这里。
+- 02-a1-synthetic-hud-bottom-left.png：本轮，左下角 640×60（y 430～489），快捷栏左边没有字。
+- 03-proof-hud-bottom-left.png：反证，左下角同一块，远景行回到快捷栏左边。
+
+起因的量法（RUN-079 的待人工项）：RUN-083 的 Far view gametest run 39200949468 里 a1-synthetic 的 farview-v1-hud，左下角「Far view: building 2%」的白字横向到 x 204（截图像素），GUI 缩放 2 即 GUI x 102；主手在右时原版把副手格画在 x = 427 / 2 − 91 − 29 = 93 起、29 宽、y 217～239，字行 y 230～238，重叠约 10 GUI 像素。

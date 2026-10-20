@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-21 | 跟进 `docs/DESIGN-PROD.md` v0.9.112（RUN-089 组 PACKETS，分支 `prod/r089-PACKETS`，基于 `main` `17f2a2cfe1`）。**新增 §4「生产就绪 · RUN-089：PACKETS」一节六条**：`TC-PROD-1020`（插件构造的报告详情、朝向实体、地图色块在构造时拒绝客户端读不了的取值，链接条目的 null 类型报参数名）、`TC-PROD-1021`（128 列的整图读得回色块，实体标志为假时不再往后读，未知粒子 id 报出 id，粒子包的线上字节不变）、`TC-PROD-1022`（`synaxis.packet-limit.overrides` 的空条目忽略）、`TC-PROD-1023`（套接字读写循环交出的异常带连接号）、`TC-PROD-1024`（会话服务器的代理选择只认 `localhost` 与回环字面量）、`TC-PROD-1025`（只改 Javadoc、注释与写法的整理，三种线程模式的回归）；1020～1023 带改动前的红，1020、1024、1025 带反证。§5 局部轮加本组一行。改过的旧测试类 `InboundPacketLimitsTest`、`ProxyProtocolDecoderTest`、`SessionClientTest`、`ProxyProtocolTrustTest` 各加一条，`DisconnectFlushSocketTest` 写失败那条多记连接号；`TC-PROD-122`、`TC-PROD-123`、`TC-PROD-561`、`TC-PROD-583`、`TC-PROD-661`、`TC-PROD-855`、`TC-PROD-862` 随这几个类改条数与红行 | Bearisbug |
 | 2026-10-21 | 分支 `m3/hud-top-left` 的 `086f2f9fc8` 在 GitHub Actions 上跑完全量门禁、Concurrency、Client mod、Client gametest 与远景 gametest 四组（草稿 PR #41），反证在临时分支上手动触发，登记 RUN-086（通过 1/1，证据 `docs/test-runs/RUN-086/`）。RUN-079 明细里的待人工项「远景 HUD 英文行宽」由 RUN-086 的截图量法与 `TC-WORLD-170` 接手 | Bearisbug |
 | 2026-10-20 | 跟进 `docs/DESIGN-M3.md` v0.55（分支 `m3/hud-top-left`，远景 HUD 行改画在左上角）。**新增 `TC-WORLD-170`**（「M3 · 远景（M3-G）」一节末尾）：V1 烘焙期间同机位截带 HUD 与不带 HUD 的两张图，左上角有变化、左下角原来那一行的位置没有，报告行 F31；反证是把行画回左下角，在临时分支上手动触发 synthetic 组。§2 的 REQ ↔ TC 表（`REQ-M3-025`）与 Gherkin 覆盖口径随之补上。RUN-079 的待人工项「远景 HUD 英文行宽」由本轮的截图核实与 `TC-WORLD-170` 接手 | Bearisbug |
 | 2026-10-19 | 分支 `m3/light-fixups` 的 `3415eef1e0` 在 GitHub Actions 上跑完全量门禁、Concurrency、Client mod 与 Client gametest，远景 gametest 四组在 `fd9627e0ad` 上跑完（草稿 PR #38），登记 RUN-083（通过 6/6，证据 `docs/test-runs/RUN-083/`）。`TC-WORLD-049`、`TC-WORLD-060`、`TC-WORLD-094`、`TC-WORLD-132`、`TC-WORLD-150` 的反证步骤只改了行号、没有重跑，登在 §6 明细里 | Bearisbug |
@@ -5184,9 +5185,9 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.network.ProxyProtocolTrustTest` | 7 个 0 失败，其中配置三条：`theProxyProtocolIsRefusedWithoutTrustedNetworks`（`proxyProtocol(true).proxyProtocolRequired(true)` 不配网段、或网段写成 `" , "`，`build()` 抛 `IllegalArgumentException`，信息含 `synaxis.proxy-protocol.trusted-networks`）；`theProxyProtocolIsRefusedWhenTheHeaderIsOptional`（配了 `10.0.0.0/8` 但不开 `required`，信息含 `synaxis.proxy-protocol.required`）；`theTrustedNetworksAreCheckedLikeTheGateOnes`（`lb.example.com` 这类主机名被拒且信息点名本键，`10.0.0.0/8, fd00::/8` 通过，不开 PROXY 时什么都不用配） |
-| 2 | 反证可信网段那一项有齿：`ServerConfig` 构造器的 `if (proxyProtocol && noTrustedProxies)` 改成 `if (proxyProtocol && noTrustedProxies && !proxyProtocolRequired)`，重跑第 1 步，再 `git checkout --` 该文件 | `7 tests completed, 1 failed`，红在 `theProxyProtocolIsRefusedWithoutTrustedNetworks`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（`ProxyProtocolTrustTest.java:37`；v0.9.94 之前是 `:35`）。还原后复绿 |
-| 3 | 反证 `required` 那一项有齿：`if (proxyProtocol && !proxyProtocolRequired)` 改成 `if (proxyProtocol && !proxyProtocolRequired && noTrustedProxies)`，重跑第 1 步，再 `git checkout --` 该文件 | `7 tests completed, 1 failed`，红在 `theProxyProtocolIsRefusedWhenTheHeaderIsOptional`：同一句 `nothing was thrown`（`ProxyProtocolTrustTest.java:46`；v0.9.94 之前是 `:44`）。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.ProxyProtocolTrustTest` | 8 个 0 失败，其中配置三条：`theProxyProtocolIsRefusedWithoutTrustedNetworks`（`proxyProtocol(true).proxyProtocolRequired(true)` 不配网段、或网段写成 `" , "`，`build()` 抛 `IllegalArgumentException`，信息含 `synaxis.proxy-protocol.trusted-networks`）；`theProxyProtocolIsRefusedWhenTheHeaderIsOptional`（配了 `10.0.0.0/8` 但不开 `required`，信息含 `synaxis.proxy-protocol.required`）；`theTrustedNetworksAreCheckedLikeTheGateOnes`（`lb.example.com` 这类主机名被拒且信息点名本键，`10.0.0.0/8, fd00::/8` 通过，不开 PROXY 时什么都不用配） |
+| 2 | 反证可信网段那一项有齿：`ServerConfig` 构造器的 `if (proxyProtocol && noTrustedProxies)` 改成 `if (proxyProtocol && noTrustedProxies && !proxyProtocolRequired)`，重跑第 1 步，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `theProxyProtocolIsRefusedWithoutTrustedNetworks`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（`ProxyProtocolTrustTest.java:43`；v0.9.94 之前是 `:35`，v0.9.112 之前是 `:37`）。还原后复绿 |
+| 3 | 反证 `required` 那一项有齿：`if (proxyProtocol && !proxyProtocolRequired)` 改成 `if (proxyProtocol && !proxyProtocolRequired && noTrustedProxies)`，重跑第 1 步，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `theProxyProtocolIsRefusedWhenTheHeaderIsOptional`：同一句 `nothing was thrown`（`ProxyProtocolTrustTest.java:52`；v0.9.94 之前是 `:44`，v0.9.112 之前是 `:46`）。还原后复绿 |
 
 后置：确认 `ServerConfig.java` 没有残留改动。
 
@@ -5196,8 +5197,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.network.ProxyProtocolTrustTest`、`io.github.bearisbug.synaxis.network.player.ProxyProtocolReadTest`、`io.github.bearisbug.synaxis.network.ConnectionGateSocketTest`、`io.github.bearisbug.synaxis.network.ConnectionGateTest` | 分别 7、2、9、12 个 0 失败。`ProxyProtocolTrustTest` 的 socket 三条：可信网段 `10.0.0.0/8` 时带头部的 status 请求一个字节都收不到就被关（`aHeaderFromOutsideTheTrustedNetworksIsDisconnected`）；网段 `10.0.0.0/8, 127.0.0.0/8` 时同样的请求拿到 status 响应（`aHeaderFromATrustedNetworkIsServed`）；不带头部的请求被关（`aConnectionWithoutTheHeaderIsDisconnected`）。另外三个类里开 PROXY 的用例改成以 `127.0.0.0/8` 为可信网段并开 `required`，判据不变 |
-| 2 | 反证有齿：删掉 `PlayerSocketConnection#read` 里 `if (!process().connection().gate().isTrustedProxy(remoteAddress))` 连同其后的 `throw` 共三行，只跑 `ProxyProtocolTrustTest`、`ProxyProtocolReadTest`、`ConnectionGateSocketTest`、`ConnectionGateTest`，再 `git checkout --` 该文件 | `36 tests completed, 1 failed`，红在 `aHeaderFromOutsideTheTrustedNetworksIsDisconnected`：`127.0.0.1 is not a load balancer of 10.0.0.0/8 ==> expected: <false> but was: <true>`（`ProxyProtocolTrustTest.java:67`；v0.9.94 之前是 `:65`）。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.ProxyProtocolTrustTest`、`io.github.bearisbug.synaxis.network.player.ProxyProtocolReadTest`、`io.github.bearisbug.synaxis.network.ConnectionGateSocketTest`、`io.github.bearisbug.synaxis.network.ConnectionGateTest` | 分别 8、2、9、12 个 0 失败。`ProxyProtocolTrustTest` 的 socket 三条：可信网段 `10.0.0.0/8` 时带头部的 status 请求一个字节都收不到就被关（`aHeaderFromOutsideTheTrustedNetworksIsDisconnected`）；网段 `10.0.0.0/8, 127.0.0.0/8` 时同样的请求拿到 status 响应（`aHeaderFromATrustedNetworkIsServed`）；不带头部的请求被关（`aConnectionWithoutTheHeaderIsDisconnected`）。另外三个类里开 PROXY 的用例改成以 `127.0.0.0/8` 为可信网段并开 `required`，判据不变 |
+| 2 | 反证有齿：删掉 `PlayerSocketConnection#read` 里 `if (!process().connection().gate().isTrustedProxy(remoteAddress))` 连同其后的 `throw` 共三行，只跑 `ProxyProtocolTrustTest`、`ProxyProtocolReadTest`、`ConnectionGateSocketTest`、`ConnectionGateTest`，再 `git checkout --` 该文件 | `37 tests completed, 1 failed`，红在 `aHeaderFromOutsideTheTrustedNetworksIsDisconnected`：`127.0.0.1 is not a load balancer of 10.0.0.0/8 ==> expected: <false> but was: <true>`（`ProxyProtocolTrustTest.java:73`；v0.9.94 之前是 `:65`，v0.9.112 之前是 `:67`）。还原后复绿 |
 
 后置：确认 `PlayerSocketConnection.java` 没有残留改动。
 
@@ -6692,10 +6693,10 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest`；再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid` 跑一次 | 两次都 7 个 0 失败：引擎默认 7,000 ms / 750 / `KICK` / 4 MiB / 20；1,000 ms 窗口 10 包时第 11 个 `KICK`、1,100 ms 之后再来一个 `ACCEPT`；`action=DROP` 时超出的丢弃；`ClientAnimationPacket=2:DROP` 让第 3、4 个动画包丢弃、别的类型照收；前后带空格、动作小写的 ` ClientAnimationPacket = 2 : kick ` 第 3 个 `KICK`；`ClientAnimationPacket`、`=2`、不存在的类名、上限 0、动作 `WARN`、同一类型两次，以及四个数值键取 0，都让 `ServerConfig` 构造抛 `IllegalArgumentException`；解压字节 100 B/s 时 60 + 60 超限，1.2 s 后再 60 放行 |
-| 2 | 反证有齿（格子过期不减）：`WindowCounter#add` 里删去 `this.sum -= buckets[index];` 一行，重跑，再还原 | `7 tests completed, 1 failed`，红在 `InboundPacketLimitsTest.java:48`：`expected: <ACCEPT> but was: <KICK>`。还原后复绿 |
-| 3 | 反证有齿（覆盖不看动作）：`admit` 里 `over(verdict, override.action(),` 改为 `over(verdict, PacketLimitAction.DROP,`，重跑，再还原 | `7 tests completed, 1 failed`，红在 `:70`：`expected: <[ACCEPT, ACCEPT, KICK]> but was: <[ACCEPT, ACCEPT, DROP]>`。还原后复绿 |
-| 4 | 反证有齿（默认值）：`ServerConfig.Builder` 里的 `packetLimitMaxPackets = 750` 改回 582，重跑，再还原 | `7 tests completed, 1 failed`，红在 `:34`：`expected: <750> but was: <582>`。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest`；再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid` 跑一次 | 两次都 8 个 0 失败：引擎默认 7,000 ms / 750 / `KICK` / 4 MiB / 20；1,000 ms 窗口 10 包时第 11 个 `KICK`、1,100 ms 之后再来一个 `ACCEPT`；`action=DROP` 时超出的丢弃；`ClientAnimationPacket=2:DROP` 让第 3、4 个动画包丢弃、别的类型照收；前后带空格、动作小写的 ` ClientAnimationPacket = 2 : kick ` 第 3 个 `KICK`；`ClientAnimationPacket`、`=2`、不存在的类名、上限 0、动作 `WARN`、同一类型两次，以及四个数值键取 0，都让 `ServerConfig` 构造抛 `IllegalArgumentException`；解压字节 100 B/s 时 60 + 60 超限，1.2 s 后再 60 放行 |
+| 2 | 反证有齿（格子过期不减）：`WindowCounter#add` 里删去 `this.sum -= buckets[index];` 一行，重跑，再还原 | `8 tests completed, 1 failed`，红在 `InboundPacketLimitsTest.java:50`（v0.9.112 之前是 `:48`）：`expected: <ACCEPT> but was: <KICK>`。还原后复绿 |
+| 3 | 反证有齿（覆盖不看动作）：`admit` 里 `over(verdict, override.action(),` 改为 `over(verdict, PacketLimitAction.DROP,`，重跑，再还原 | `8 tests completed, 1 failed`，红在 `:72`（v0.9.112 之前是 `:70`）：`expected: <[ACCEPT, ACCEPT, KICK]> but was: <[ACCEPT, ACCEPT, DROP]>`。还原后复绿 |
+| 4 | 反证有齿（默认值）：`ServerConfig.Builder` 里的 `packetLimitMaxPackets = 750` 改回 582，重跑，再还原 | `8 tests completed, 1 failed`，红在 `:36`（v0.9.112 之前是 `:34`）：`expected: <750> but was: <582>`。还原后复绿 |
 
 后置：确认 `WindowCounter.java`、`InboundPacketLimits.java`、`ServerConfig.java` 没有残留改动。
 
@@ -9148,10 +9149,10 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `OnlineLoginSocketTest`，看 `aTooManyRequestsAnswerIsNotRetried` 与 `noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver`；再跑 `io.github.bearisbug.synaxis.network.player.SessionClientTest` | 前者：假服务回不带 `Retry-After` 的 429，客户端解密后读到 `synaxis:auth-unavailable`，假服务只收到 1 次查询。后者（5 s 出头，第三个客户端要等满窗口）：假服务回 `Retry-After: 5` 的 429；第一个客户端 `auth-unavailable`；紧接着第二个客户端也是 `auth-unavailable`，两次合计不到 5 s，假服务收到的查询仍只有 `First` 一次；等到 429 之后 5.1 s，第三个客户端完成登录，查询变成 2 次。窗口取 5 s 是给墙钟留余量：第二个登录要在窗口里走完，机器负载高时 2 s 不一定够（v0.9.43 由 2 s 改来）。`SessionClientTest` `tests="3"` 0 失败，`theRetryAfterOfATooManyRequestsAnswerIsSecondsUpToAMinute`：缺省、空串、`soon`、`-1`、HTTP 日期都是 10，`0` 是 0，` 3 ` 是 3，`60` 与 `3600` 都是 60 |
+| 1 | 跑 `OnlineLoginSocketTest`，看 `aTooManyRequestsAnswerIsNotRetried` 与 `noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver`；再跑 `io.github.bearisbug.synaxis.network.player.SessionClientTest` | 前者：假服务回不带 `Retry-After` 的 429，客户端解密后读到 `synaxis:auth-unavailable`，假服务只收到 1 次查询。后者（5 s 出头，第三个客户端要等满窗口）：假服务回 `Retry-After: 5` 的 429；第一个客户端 `auth-unavailable`；紧接着第二个客户端也是 `auth-unavailable`，两次合计不到 5 s，假服务收到的查询仍只有 `First` 一次；等到 429 之后 5.1 s，第三个客户端完成登录，查询变成 2 次。窗口取 5 s 是给墙钟留余量：第二个登录要在窗口里走完，机器负载高时 2 s 不一定够（v0.9.43 由 2 s 改来）。`SessionClientTest` `tests="5"` 0 失败，`theRetryAfterOfATooManyRequestsAnswerIsSecondsUpToAMinute`：缺省、空串、`soon`、`-1`、HTTP 日期都是 10，`0` 是 0，` 3 ` 是 3，`60` 与 `3600` 都是 60 |
 | 2 | 反证（整组改前） | 前者红在 `OnlineLoginSocketTest.java:136`：`a 429 was asked again ==> expected: <1> but was: <2>`；后者红在 `:159`：`a login within the Retry-After asked the session server ==> expected: <[First]> but was: <[First, First, Second]>` |
 | 3 | 反证（429 不停发）：`<SC>` 的 `quietUntil.accumulateAndGet(until, (current, next) -> next - current > 0 ? next : current);` 改成 `quietUntil.accumulateAndGet(until, (current, _) -> current);`，跑 `OnlineLoginSocketTest` | `22 tests completed, 2 failed`，两条红的行与消息同第 2 步 |
-| 4 | 反证（不设上限）：`<SC>` 的 `if (seconds >= 0) return Math.min(seconds, MAX_RETRY_AFTER_SECONDS);` 改成 `if (seconds >= 0) return seconds;`，跑 `SessionClientTest` | `4 tests completed, 1 failed`，红在 `SessionClientTest.java:56`（v0.9.94 之前是 `:48`）：`expected: <60> but was: <3600>` |
+| 4 | 反证（不设上限）：`<SC>` 的 `if (seconds >= 0) return Math.min(seconds, MAX_RETRY_AFTER_SECONDS);` 改成 `if (seconds >= 0) return seconds;`，跑 `SessionClientTest` | `5 tests completed, 1 failed`，红在 `SessionClientTest.java:60`（v0.9.94 之前是 `:48`，v0.9.112 之前是 `:56`）：`expected: <60> but was: <3600>` |
 | 5 | 还原后重跑第 1 步 | 与第 1 步相同；`OnlineLoginSocketTest` 原有的 `twoUnavailableAnswersRefuseWithAuthUnavailable`（503、429，恰好 2 次查询）照旧绿：429 落在重试那一次，后面没有再重试的 |
 
 后置：`git status --short` 无输出。
@@ -10076,9 +10077,9 @@ grep -c '| R2 封闭内测 |.*M3-S 已合入 `main`.*①②③⑥ 已在引擎�
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 严格 grid 跑 `DisconnectFlushSocketTest` | `tests="2"` 0 失败（RUN-081 起本类 3 条，加的那条见 `TC-PROD-855`），用时约 2～4 s。`theDisconnectPacketIsWrittenBehindMoreThanOneFlushOfQueuedPackets`：进程的压缩阈值是 0；对端握手、发 `LoginStart`，登录停在 `AsyncPlayerPreLoginEvent` 里；测试先排一个 `CachedPacket`，它的 supplier 在写线程上等测试放行，写线程就停在一次冲刷当中；再排 1,573 个各带 4,000 B 的 `LoginPluginRequestPacket`（合计超过 3 × `synaxis.max-packet-size`，所以与池里的缓冲被别的测试扩到多大无关），以 `bye` 踢人，放行。对端一直读到连接关闭，收到 1,574 个登录插件请求，最后一个包是 `LoginDisconnect`，文字 `bye`。`aKickOnTheWriteThreadClosesAPeerThatStoppedReadingWithinTheBudget`：对端连接前把接收缓冲设成 4 KB，之后一个字节都不读；同样停住写线程、排同样 1,573 个包，放行后由 supplier 在写线程上以 `bye` 踢人（与写线程上的 `PlayerPacketOutEvent` 监听器踢人、写循环捕到非 IO 异常是同一种断开）；写线程 5 s 内退出、channel 已关（关闭线程在 1 s 后关） |
-| 2 | 反证有齿（下线后只再冲刷一次，即 `766f09a0bf` 之前）：`<SV>` 第 278 行（RUN-081 之前是第 268 行）`connection.flushRemaining();` 改为 `connection.flushSync();`，严格 grid 重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `DisconnectFlushSocketTest.java:98`（RUN-081 起本类多了 4 个导入与 1 条用例，这一行在 `:102`，重跑时是 `3 tests completed, 1 failed`），`the peer read 9 of the 1574 packets queued before the kick, then the end of the stream ==> Unexpected type, expected: <…LoginDisconnectPacket> but was: <…LoginPluginRequestPacket>`。9 个是停住的那一个，加上两个写缓冲各 4 个（16,383 B 的缓冲装得下 4 个约 4,020 B 的帧）；池里的缓冲被同一 JVM 里别的测试扩过时这个数会变大，但到不了 1,574。第二条照绿：只再写一个缓冲，写得进内核的发送缓冲，写线程随即关 channel。首轮在 `8b18922130` 的代码上默认模式跑过，同一句（那时测试类只有第一条，红行是 `:95`） |
+| 2 | 反证有齿（下线后只再冲刷一次，即 `766f09a0bf` 之前）：`<SV>` 第 278 行（RUN-081 之前是第 268 行）`connection.flushRemaining();` 改为 `connection.flushSync();`，严格 grid 重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `DisconnectFlushSocketTest.java:98`（RUN-081 起本类多了 4 个导入与 1 条用例，这一行在 `:102`，重跑时是 `3 tests completed, 1 failed`；RUN-089 起本类又多 3 个导入，这一行在 `:105`），`the peer read 9 of the 1574 packets queued before the kick, then the end of the stream ==> Unexpected type, expected: <…LoginDisconnectPacket> but was: <…LoginPluginRequestPacket>`。9 个是停住的那一个，加上两个写缓冲各 4 个（16,383 B 的缓冲装得下 4 个约 4,020 B 的帧）；池里的缓冲被同一 JVM 里别的测试扩过时这个数会变大，但到不了 1,574。第二条照绿：只再写一个缓冲，写得进内核的发送缓冲，写线程随即关 channel。首轮在 `8b18922130` 的代码上默认模式跑过，同一句（那时测试类只有第一条，红行是 `:95`） |
 | 3 | 还原后严格 grid 重跑第 1 步，再默认模式跑一次 | 两次都与第 1 步相同 |
-| 4 | 反证有齿（写线程自己断开时不起关闭线程，即 `c0c75ecc59` 的写法）：删掉 `<PSC>` 里 `flushRemaining` 的第一行 `startCloser();`，严格 grid 重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `DisconnectFlushSocketTest.java:148`（RUN-081 起在 `:152`），`the write thread was still writing to a peer that reads nothing 5 s after it kicked ==> expected: <true> but was: <false>`：写线程要把约 6.3 MB 写给一个不读的对端，卡在 socket 写里，没有别的线程来关 channel。`c0c75ecc59` 的代码上默认模式跑，同一行同一句 |
+| 4 | 反证有齿（写线程自己断开时不起关闭线程，即 `c0c75ecc59` 的写法）：删掉 `<PSC>` 里 `flushRemaining` 的第一行 `startCloser();`，严格 grid 重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `DisconnectFlushSocketTest.java:148`（RUN-081 起在 `:152`，RUN-089 起在 `:155`），`the write thread was still writing to a peer that reads nothing 5 s after it kicked ==> expected: <true> but was: <false>`：写线程要把约 6.3 MB 写给一个不读的对端，卡在 socket 写里，没有别的线程来关 channel。`c0c75ecc59` 的代码上默认模式跑，同一行同一句 |
 | 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几处代码没动时，看 `the peer read N`。N 是个位数，是下线后的冲刷又回到了一次一个缓冲；N 上百，是 runner 卡顿超过了关闭线程的 1 s 预算（对端要在踢人后 1 s 内经回环读完约 6.3 MB），先按卡顿排查。
@@ -12201,7 +12202,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | 3 | 跑 `io.github.bearisbug.synaxis.network.packet.PlayerChatMessagePacketTest`（第 2 次运行） | 1 条绿：`unsignedContent` 与 `msgTypeTarget` 都是 null 的 `PlayerChatMessagePacket` 经一个碰到 null 就抛的 operator `copyWithOperator`，不抛，两项仍是 null，`msgTypeName` 被换掉 |
 | 4 | 改动前的红（第 1 次运行） | 第 1 步前者红在 `DisconnectFlushSocketTest.java:231`（`readUntilClosed`），`no complete packet in 0 bytes: Empty[]`：连接没带断线包就关了；后者红在 `PacketWriteQueueTest.java:102`，`only the failed packet left the queue ==> expected: <2> but was: <3>`；第 2 步红在 `AcceptLoopSocketTest.java:69`，`java.net.SocketTimeoutException: Read timed out`（accept 线程已随异常结束，第一个客户端的 socket 没人关）；第 3 步红在 `PlayerChatMessagePacketTest.java:33`，`NullPointerException`（operator 收到 null） |
 | 5 | RUN-081 集成：跑 `io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest`，看 `thePacketsWrittenBeforeOneThatFailsInTheSameFlushReachThePeer`；跑 `io.github.bearisbug.synaxis.network.packet.PacketWriteQueueTest`，看 `aPacketTheWriterFailsOnHalfWayLeavesOnlyThePacketsBeforeIt`（跨组后续第 2、4、5 次） | 三次都绿，前者的类 4 条。前者：写线程被第一个 `CachedPacket` 的 supplier 按住，测试排进 message id 2 的插件请求与一个 supplier 抛异常的 `CachedPacket`，再放行，三个包落进同一次冲刷：对端依次读到 message id 1、2 两个 `LoginPluginRequestPacket`，最后是带 `synaxis:internal-error` 的断线包，异常处理器恰收到那一个异常。加密连接上这两个包已逐包加密、密码流已前进，丢掉它们对端就解不出后面的断线包。后者：writer 写完第二个包的整帧之后才抛，缓冲区里只剩第一个包的一帧 |
-| 6 | 反证有齿（跨组后续第 3 次）：`<PSC>` 的 `flushSync` 去掉接住 `writeQueue` 异常、先写出缓冲区的那段 `catch`，`PacketWriting#writeQueue` 去掉抛出之前的 `buffer.writeIndex(index);`，跑第 5 步的两个类，再还原 | 两条都红：前者红在 `DisconnectFlushSocketTest.java:250`，对端只读到断线包（`the peer read [LoginDisconnectPacket[…]]`）；后者红在 `PacketWriteQueueTest.java:121`，`expected: <47> but was: <22>`（第二个包的帧留在了缓冲区里）；两个类的其余用例照绿 |
+| 6 | 反证有齿（跨组后续第 3 次）：`<PSC>` 的 `flushSync` 去掉接住 `writeQueue` 异常、先写出缓冲区的那段 `catch`，`PacketWriting#writeQueue` 去掉抛出之前的 `buffer.writeIndex(index);`，跑第 5 步的两个类，再还原 | 两条都红：前者红在 `DisconnectFlushSocketTest.java:267`（RUN-089 之前是 `:250`），对端只读到断线包（`the peer read [LoginDisconnectPacket[…]]`）；后者红在 `PacketWriteQueueTest.java:121`，`expected: <47> but was: <22>`（第二个包的帧留在了缓冲区里）；两个类的其余用例照绿 |
 
 后置：同 `TC-PROD-850`。
 
@@ -12290,7 +12291,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `ProxyProtocolTrustTest`、`ProxyProtocolReadTest`、`ProxyProtocolDecoderTest`、`ConnectionGateTest`、`ConnectionGateSocketTest`、`SessionClientTest`、`OnlineLoginSocketTest`；再跑 `server-app` 的 `ConnectionGateLogTest`、`SessionClientLogTest`、`MetricsEndpointTest` | 根项目 7 个类 65 条 0 失败（7 + 2 + 6 + 12 + 12 + 4 + 22），`server-app` 3 个类 10 条 0 失败（5 + 1 + 4），第 3 次。三种被拒的连接都一个字节收不到就被关，各让 `rejected(PROXY_HEADER)` 为 1，网段内带头的那条拿到 status 响应、计数为 0；汇总行恰为 `Connection gate rejected 114 connections in the last 10 s: too_many=0 throttled=7 full=4 closed_at_accept=100 handshake_timeout=1 proxy_header=2`；503 的原因是 `status 503`，连不上的原因以 `ConnectException: ` 开头、冒号后不为空；两行验证汇总依次以 `last_unavailable_cause=status 503`、`last_unavailable_cause=-` 结尾，前缀与原句式相同。`SessionClientTest`、`OnlineLoginSocketTest` 与 `SessionClientLogTest` 在 `7fbff0cac7` 之上第 9、10、11 次三种模式同绿（4 + 22 + 1 条） |
+| 1 | 跑 `ProxyProtocolTrustTest`、`ProxyProtocolReadTest`、`ProxyProtocolDecoderTest`、`ConnectionGateTest`、`ConnectionGateSocketTest`、`SessionClientTest`、`OnlineLoginSocketTest`；再跑 `server-app` 的 `ConnectionGateLogTest`、`SessionClientLogTest`、`MetricsEndpointTest` | 根项目 7 个类 65 条 0 失败（7 + 2 + 6 + 12 + 12 + 4 + 22；RUN-089 起 `ProxyProtocolTrustTest` 8 条、`ProxyProtocolDecoderTest` 7 条、`SessionClientTest` 5 条，合计 68 条），`server-app` 3 个类 10 条 0 失败（5 + 1 + 4），第 3 次。三种被拒的连接都一个字节收不到就被关，各让 `rejected(PROXY_HEADER)` 为 1，网段内带头的那条拿到 status 响应、计数为 0；汇总行恰为 `Connection gate rejected 114 connections in the last 10 s: too_many=0 throttled=7 full=4 closed_at_accept=100 handshake_timeout=1 proxy_header=2`；503 的原因是 `status 503`，连不上的原因以 `ConnectException: ` 开头、冒号后不为空；两行验证汇总依次以 `last_unavailable_cause=status 503`、`last_unavailable_cause=-` 结尾，前缀与原句式相同。`SessionClientTest`、`OnlineLoginSocketTest` 与 `SessionClientLogTest` 在 `7fbff0cac7` 之上第 9、10、11 次三种模式同绿（4 + 22 + 1 条） |
 | 2 | 改动前的红（第 1 次） | `ProxyProtocolTrustTest` 3 条红，都是 `expected: <1> but was: <0>`，在 `ProxyProtocolTrustTest.java:68`（网段外）、`:93`（不带头）、`:108`（解析不出）：连接照样被关，闸门没数到；`SessionClientTest.java:83` 红：`ConnectException ==> expected: <true> but was: <false>`（原因只有类名；第 2 次同一句仍红，见本节开头）；`ConnectionGateLogTest.java:70` 红：期望的一行多出 ` proxy_header=2`；`SessionClientLogTest.java:51` 红：两行都没有 `last_unavailable_cause=` |
 
 后置：无。
@@ -13925,6 +13926,88 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | 3 | 第 1 步与 `ShutdownSequenceTest`、`TickSchedulerThreadTest`，`:server-app:test` 的 `io.github.bearisbug.synaxis.app.ShutdownSequenceTest`、`io.github.bearisbug.synaxis.app.shard.ShardWorldRelightTest`、`ShardWorldAssemblyTest` 同批，默认模式、加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`、再加 `-Dsynaxis.thread-provider=grid` 各跑一次（第 2、3、4 次运行） | 三次都是 3、11、2、8、3、10 条，0 失败。这三次在 `9c4ad17a64` 之上跑，光照会话的两份测试那时都手工起 tick 调度线程，靠 `ServerProcessImpl.java:646` 的认领记下它；`06ce46f16a`（光照会话 PR #36）起只剩 `ShardWorldRelightTest` 第 216 行一处（`docs/DESIGN-PROD.md` §28.3），本轮变基到它之上后由 CI 跑 |
 
 后置：`git status --short` 只剩本轮的改动。
+
+### 生产就绪 · RUN-089：PACKETS（插件构造的包、读包时的宽度与标志、`overrides` 的空条目、套接字循环的连接号与会话服务器的代理选择）
+
+对应 `REQ-001`、`REQ-011`（`docs/DESIGN.md`）、`REQ-PROD-002`、`REQ-PROD-013`、`REQ-PROD-015`、`REQ-PROD-019`、`REQ-PROD-036`（`docs/DESIGN-PROD.md` v0.9.112：`API-PROD-012` 键一条，`API-PROD-013` 异常落点一条的实现；`docs/DESIGN-M2.md` `API-M2-006`「缓存与超时」一句）。改动的源文件代号：`<CP>` = `src/main/java/io/github/bearisbug/synaxis/network/packet/server/CachedPacket.java`，`<SV>` = `…/network/socket/Server.java`，`<IL>` = `…/network/player/InboundPacketLimits.java`，`<PD>` = `…/network/player/ProxyProtocolDecoder.java`，`<SC>` = `…/network/player/SessionClient.java`，服务端包在 `…/network/packet/server/common/` 与 `…/network/packet/server/play/` 下，行号按本组提交。
+
+测试：根项目新类 `io.github.bearisbug.synaxis.network.packet.server.common.CustomReportDetailsPacketTest`（2 条）、`…network.packet.server.common.ServerLinksPacketTest`（2 条）、`…network.packet.server.play.FacePlayerPacketTest`（3 条）、`…network.packet.server.play.MapDataPacketTest`（2 条）、`…network.packet.server.play.ParticlePacketTest`（2 条）、`…network.packet.server.play.WindowItemsPacketRegistriesTest`（2 条）；改过的类 `…network.player.InboundPacketLimitsTest`（7 → 8）、`…network.player.ProxyProtocolDecoderTest`（6 → 7）、`…network.player.SessionClientTest`（4 → 5，为它把 `<SC>` 的 `LoopbackDirect` 由 `private` 改为包内可见）、`…network.ProxyProtocolTrustTest`（7 → 8，`start` 多一个收 `ServerConfig.Builder` 的重载）、`…network.socket.DisconnectFlushSocketTest`（4 条，写失败那条多记连接号）。下文用简名；「跑 `<类>`」与「生产就绪 · RUN-081：NET」一节相同，几个类一起跑就写几个 `--tests`，结果看 `build/test-results/test/TEST-<类>.xml`。
+
+本组 5 次 Gradle，每次单独借本机重活锁 `/tmp/synaxis-heavy.lock`、`--max-workers=2`：第 1 次是改动前的红，`src/main` 取 `17f2a2cfe1`，只把 `LoopbackDirect` 改为包内可见好让新测试编得过（行为不变），跑上面 11 个新类与改过的类；第 2 次是改完之后默认模式跑下文 33 个类，同次带 `:compileJava :testNamingCheck :forbiddenImportsCheck`；第 3 次是一批反证（临时改、跑、还原，还原后与改完的文件逐个 `diff` 无差异）；第 4、5 次是同一批 33 个类在 4 线程严格（`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`）与严格 grid（再加 `-Dsynaxis.thread-provider=grid`）下各跑一次，测试任务带 `--rerun`。第 1 次里窗口物品那个类叫 `WindowItemsPacketTest`、没挂注册表夹具，初始化物品就抛 `IllegalStateException: Should have been bound`，没跑到断言；改名为 `WindowItemsPacketRegistriesTest`、加 `@RegistriesTest` 之后只在第 2～5 次跑，它覆盖的是纯重构，齿由第 3 次的反证给。
+
+33 个类：上面 11 个新类与改过的类，加 `PluginMessagePacketTest`、`PacketWriteReadRegistriesTest`、`PacketVanillaLayoutTest`、`PacketVanillaIdTest`、`DeclareCommandsPacketTest`、`CommandPacketTest`、`CommandPacketFilteringTest`、`SendablePacketTest`、`CachedPacketInvalidationIntegrationTest`、`PacketViewableUtilsConcurrencyIntegrationTest`、`TranslationIntegrationTest`、`InboundPacketLimitIntegrationTest`、`ProxyProtocolReadTest`、`OnlineLoginSocketTest`、`AcceptLoopSocketTest`、`SocketReadIntegrationTest`、`SocketWriteIntegrationTest`、`PlayerIntegrationTest`、`InventoryIntegrationTest`、`PlayerInventoryIntegrationTest`、`ChunkPacketDeterminismTest`、`ParticleDataTest`。
+
+#### `TC-PROD-1020` 插件构造的包在构造时拒绝客户端读不了的取值：报告详情超过 32 条、朝向实体却没有部位、0 列的地图色块；链接条目的 null 类型报参数名 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`CustomReportDetailsPacketTest` 用 32 条与 33 条 details 各构造一次；`FacePlayerPacketTest#anEntityToFaceNeedsTheSideToFace` 构造 `(EYES, (1, 2, 3), 5, null)`；`MapDataPacketTest#aPatchOfNoColumnsIsRefused` 构造 `ColorContent((byte) 0, (byte) 1, 0, 0, new byte[0])`；`ServerLinksPacketTest` 用 `KnownLinkType.WEBSITE` 与 `Component.text("x")` 各构造一个条目，再各传一次 null 类型。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `CustomReportDetailsPacketTest`、`FacePlayerPacketTest`、`MapDataPacketTest`、`ServerLinksPacketTest`、`PluginMessagePacketTest`、`PacketWriteReadRegistriesTest`（第 2 次） | 6 个类 481 条 0 失败（2 + 3 + 2 + 2 + 2 + 470）。33 条：`IllegalArgumentException`，消息 `Too many report details: 33 > 32`；32 条照常构造。实体 5 不带部位：`IllegalArgumentException`，消息 `entityFacePosition is required when entityId is 5`。0 列：`IllegalArgumentException`，消息 `ColorContent columns must be 1..128, pass a null colorContent for no color patch`。已知类型得 `Either.left(WEBSITE)`，组件得 `Either.right(text("x"))`；两种 null 类型都抛 `NullPointerException`，消息 `type`。`PacketWriteReadRegistriesTest` 里这几个包原有的往返照绿：`FacePlayerPacket` 的 `(EYES, VEC, 0, null)` 与 `(FEET, VEC, 10, EYES)`，`DestroyEntitiesPacket` 三个 id，`CustomReportDetailsPacket` 两条 details，两个 `ServerLinksPacket` 条目 |
+| 2 | 改动前的红（第 1 次） | 4 条红：`CustomReportDetailsPacketTest.java:25`、`FacePlayerPacketTest.java:22`、`MapDataPacketTest.java:19` 都是 `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；`ServerLinksPacketTest.java:23`：`expected: <type> but was: <Right value must not be null>`（推荐的两参构造器经弃用的三参构造器传进 `Either.right(null)`）。两种标签的那条改动前也绿 |
+| 3 | 反证有齿：`MapDataPacket.ColorContent` 紧凑构造器的检查条件临时改成 `columns == 1`（第 3 次），再还原 | `MapDataPacketTest.java:19` 红，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`。这条的期望消息在第 1 次之后改过，所以单独反证一次 |
+
+后置：无。
+
+#### `TC-PROD-1021` 读包：128 列的整图读得回色块，实体标志为假时不再往后读，未知粒子 id 报出 id；`ParticlePacket` 的线上字节不变 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`MapDataPacketTest#aPatchOfTheWholeMapReadsBack` 把一个 128 × 128 的色块（列与行都写 `(byte) 128`，16,384 字节，第 i 个字节为 `(byte) i`）写出再读回。`FacePlayerPacketTest#withoutTheEntityFlagNothingMoreIsRead` 手工排 `EYES`、`(1, 2, 3)`、实体标志 false，后面再跟一个字节 `0x01`（缓冲里排在包后面的数据）；`#theEntityPartIsReadBehindItsFlag` 往返 `(FEET, (1, 2, 3), 10, EYES)`。`ParticlePacketTest` 手工排十个定长字段（true、false、1.0、1.5、-2.0、0.25、0.5、0.75、0.1、7）：一份后接 `Particle.DUST` 的 id、颜色 `0xFF8000`（`INT`）与大小 2.5（`FLOAT`），另一份后接 id 100,000。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `MapDataPacketTest`、`FacePlayerPacketTest`、`ParticlePacketTest`、`ParticleDataTest`、`PacketVanillaLayoutTest`、`PacketVanillaIdTest`（第 2 次） | 6 个类 32 条 0 失败（2 + 3 + 2 + 13 + 6 + 6）。整图读回的包与写出的相等，缓冲里不剩字节。实体标志为 false：读出 `(EYES, (1, 2, 3), 0, null)`，后面那个字节留在缓冲里（`readableBytes` 为 1）；带实体的往返相等、不剩字节。带 `DUST` 的那份读完不剩字节、写回逐字节相同，读出颜色 `0xFF8000`、大小 2.5、y 1.5、数量 7；id 100,000 抛 `NullPointerException`，消息 `unknown particle id: 100000` |
+| 2 | 改动前的红（第 1 次） | 3 条红：`MapDataPacketTest.java:33` 读回的 `colorContent` 是 null（宽 `(byte) 128` 即 −128，被 `columns <= 0` 当成没有色块，其后的行数、坐标与 16,384 字节没读）；`FacePlayerPacketTest.java:38` 读出 `entityFacePosition=EYES`（读侧看缓冲里还有字节，把包后面那个字节当成了部位）；`ParticlePacketTest.java:46` `expected: <unknown particle id: 100000> but was: <null>`。带 `DUST` 的那条与带实体的往返改动前也绿：`ParticlePacket` 改用 `Particle.NETWORK_TYPE`、`FacePlayerPacket` 共用一个枚举类型，都不改字节，这两条钉住线上布局 |
+
+后置：无。
+
+#### `TC-PROD-1022` `synaxis.packet-limit.overrides` 的空条目忽略，写错的条目照旧拒启 — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`InboundPacketLimitsTest#emptyOverrideEntriesAreSkipped` 调 `InboundPacketLimits.parseOverrides("ClientTabCompletePacket=40:DROP,")` 与 `parseOverrides(",,")`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `InboundPacketLimitsTest`、`InboundPacketLimitIntegrationTest`（第 2 次） | 8 + 7 条 0 失败。前一串得一条规则：`ClientTabCompletePacket` → `Rule(40, DROP)`；`,,` 得空表。`aBadOverrideRefusesTheConfiguration` 照绿：没有 `=`、没有动作、不存在的包、上限 0、动作 `WARN`、同一类型写两次，六种照旧拒启 |
+| 2 | 改动前的红（第 1 次） | `InboundPacketLimitsTest.java:92` 红：`java.lang.IllegalArgumentException: synaxis.packet-limit.overrides entry is not <type>=<limit>:<DROP|KICK>: `，冒号后是空串 |
+
+后置：无。
+
+#### `TC-PROD-1023` 套接字读写循环交给异常落点的异常带这条连接的号 — 对应 `REQ-PROD-015` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`DisconnectFlushSocketTest#aPacketThatFailsToBeWrittenIsDroppedAndThePeerToldOfTheInternalError`：经真 socket 登录，停在 `AsyncPlayerPreLoginEvent`，给连接发一个 supplier 抛 `IllegalStateException` 的 `CachedPacket`；进程的异常处理器实现两个方法，记下每次收到的异常与连接号。`ProxyProtocolTrustTest#theErrorEndingTheReadLoopIsReportedWithItsConnection`：开 PROXY、`required`、可信网段 `127.0.0.0/8`、`suppressConnectionIoErrors(false)` 的进程，经回环发一个签名之后版本字节为 3 的 v2 头；异常处理器把第一个 `IOException` 的连接号交给一个 future，测试至多等 10 s。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `DisconnectFlushSocketTest`、`ProxyProtocolTrustTest`、`AcceptLoopSocketTest`、`SocketReadIntegrationTest`、`SocketWriteIntegrationTest`（第 2 次） | 5 个类 32 条 0 失败（4 + 8 + 1 + 13 + 6）。写循环：异常处理器恰收到一次那个异常，连接号等于这条连接的 `connectionId()`，对端照旧读到 `synaxis:internal-error` 的断线包；读循环：解析不出的头结束读循环时，收到的 `IOException` 带连接号 |
+| 2 | 改动前的红（第 1 次） | `DisconnectFlushSocketTest.java:217` 红：`expected: <[Optional[<连接号>]]> but was: <[Optional.empty]>`；`ProxyProtocolTrustTest.java:142` 红：`the report names no connection ==> expected: <true> but was: <false>`。两处都是 `<SV>` 调了不带连接的 `handleException(e)` |
+| 3 | 第 1 步的类在 4 线程严格、严格 grid 下（第 4、5 次） | 读数同第 1 步 |
+
+后置：无。
+
+#### `TC-PROD-1024` 会话服务器的代理选择只认 `localhost` 与回环地址字面量 — 对应 `REQ-PROD-002` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`SessionClientTest#onlyLoopbackHostsBypassTheProxy` 建一个 `LoopbackDirect`，后备选择器对任何 URI 都返回 HTTP 代理 `proxy.invalid:3128`，对 `http://<主机>:8080/hasJoined` 调 `select`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `SessionClientTest`、`OnlineLoginSocketTest`（第 2 次） | 5 + 22 条 0 失败。`127.0.0.1`、`127.1.2.3`、`[::1]`、`localhost`、`LocalHost` 得 `[DIRECT]`；`10.0.0.1`、`[2001:db8::1]`、`sessionserver.mojang.com`、`1auth.invalid` 得后备代理 |
+| 2 | 改动前（第 1 次） | 新条改动前也绿：新旧判定只在一种主机名上结果不同，即以数字开头、DNS 解析到回环地址的名字（如 `127.0.0.1.nip.io`），离线的测试造不出来；改动前 `1auth.invalid` 先查一次 DNS、查不到再走代理，结果相同。不查 DNS 由代码确认：`<SC>` 的 `isLoopback` 只调 `InetAddress.ofLiteral`，接 `IllegalArgumentException` 返回 false |
+| 3 | 反证有齿：`isLoopback` 的返回值临时改成 `InetAddress.ofLiteral(literal).isLoopbackAddress() && literal.isEmpty()`（第 3 次），再还原 | `SessionClientTest.java:111` 红：`127.0.0.1 ==> expected: <[DIRECT]> but was: <[HTTP @ proxy.invalid/<unresolved>:3128]>` |
+
+后置：无。
+
+#### `TC-PROD-1025` 回归：只改 Javadoc、注释与写法的整理，三种线程模式 — 对应 `REQ-001`、`REQ-011`、`REQ-PROD-019`、`REQ-PROD-036` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。本条覆盖的改动：`<CP>` 的类注释与构造器注释写明 supplier 任何时候都可能被并发调用、必须线程安全，只有 `body` 填缓存那一步串行（类声明仍在第 49 行）；`CachedPacket#grouped` 的条件加 `JvmFlags.CACHED_PACKET`，两开关默认都开，行为不变；`JvmFlags.GROUPED_PACKET` 的注释；`SendablePacket#extractServerPacket`、`PluginMessagePacket#brandPacket`、`ServerDataPacket`、`MapDataPacket.ColorContent` 的 Javadoc；`DeclareCommandsPacket` 删掉写侧从不触发的子节点数检查、`getFlag` 改用 `IS_EXECUTABLE`、`HAS_REDIRECT`、`HAS_SUGGESTION_TYPE`；`DestroyEntitiesPacket` 的序列化器改用 `MAX_ENTRIES`（值同为 `Short.MAX_VALUE`）；`WindowItemsPacket` 的 `components` 与 `copyWithOperator` 改调 `ItemStack#textComponents` 与 `ItemStack#copyWithOperator`；`<PD>` 的命令、地址族与传输协议取值改成具名常量，取地址改为在 16 字节固定头之后按偏移读，不再切片重读固定头；`LightData`、`ChunkData`、`ChunkBiomesPacket` 的注释。`WindowItemsPacketRegistriesTest` 用带 lore 与自定名的钻石、石头，光标是带物品名的木棍；`ProxyProtocolDecoderTest#readsTheV2Ipv6SourceAddress` 是一个 PROXY、INET6、STREAM 的 v2 头，源地址 `2001:db8::7`、源端口 12345，目的 `2001:db8::1`、25565。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节开头的 33 个类（第 2 次） | 674 条，0 失败，跳过 3 条（`TranslationIntegrationTest` 三条要 `synaxis.automatic-component-translation`，默认关）。`WindowItemsPacketRegistriesTest`：`components()` 等于各物品再加光标的 `ItemStack.textComponents` 依次拼接，含 `lore 1`、`lore 2`、`custom name`、`item name`；`copyWithOperator(_ -> text("X"))` 之后各物品与光标的文本分量个数不变、全是 `X`。IPv6 头读出源地址 `[2001:db8::7]:12345`，读位置停在第 52 字节。`PacketWriteReadRegistriesTest` 470 条往返、`DeclareCommandsPacketTest`、`CommandPacketTest`、`CommandPacketFilteringTest` 的命令包字节照绿，`CachedPacketInvalidationIntegrationTest`、`PacketViewableUtilsConcurrencyIntegrationTest`、`SendablePacketTest` 照绿 |
+| 2 | 同一批 33 个类在 4 线程严格、严格 grid 下（第 4、5 次） | 两次都是 674 条，0 失败，跳过 3 条 |
+| 3 | 反证有齿（第 3 次，与 `TC-PROD-1020`、`TC-PROD-1024` 第 3 步同批）：`WindowItemsPacket#components` 去掉光标那一行、`copyWithOperator` 把光标原样传入；`<PD>` 取地址的偏移去掉 `+ V2_HEADER_LENGTH`；再还原 | 4 条红：`WindowItemsPacketRegistriesTest.java:32` 期望 6 个分量（钻石的 `lore 1`、`lore 2`、`custom name` 与默认物品名 `item.minecraft.diamond`，石头的 `block.minecraft.stone`，光标的 `item name`），实际只有前 5 个；`:43` 期望 6 个 `X`，实际最后一个仍是光标的 `item name`；`ProxyProtocolDecoderTest.java:45`：`expected: </192.0.2.10:12345> but was: </13.10.13.10:21833>`（从签名读起）；`:63`：`expected: </[2001:db8:0:0:0:0:0:7]:12345> but was: </[d0a:d0a:d:a51:5549:540a:2121:24]:8193>` |
+
+随代码改的旧用例（按 `git diff` 前后对照改行号与条数，内容不变，没复跑）：`TC-PROD-122` 第 1～3 步（`ProxyProtocolTrustTest` 7 → 8 条，红行 +6），`TC-PROD-123` 第 1、2 步（`ProxyProtocolTrustTest` 7 → 8 条、四个类 36 → 37 条，红行 +6），`TC-PROD-561` 第 1～4 步（`InboundPacketLimitsTest` 7 → 8 条，红行 +2），`TC-PROD-583` 第 1、4 步（`SessionClientTest` 改为 5 条，`:56` → `:60`），`TC-PROD-661` 第 2、4 步（`:102` → `:105`、`:152` → `:155`），`TC-PROD-855` 第 6 步（`:250` → `:267`），`TC-PROD-862` 第 1 步（三个类的新条数记在第 3 次的读数旁边）。已废弃的 `TC-PROD-293` 与各节「改动前的红」的行号不改。
+
+后置：`git status --short` 只剩本组的改动；`grep -rn "literal.isEmpty()\|columns == 1" src/main` 无输出。
 
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
@@ -15897,6 +15980,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 STORE，写权状态机的锁与纪元、退避的叫醒、登出快照的时机、`commitTogether` 的参数结果与提交冻结、`saveNow` 的快照线程、插件任务的日志预算、Redis URL 的 scheme 与事务的回滚（`REQ-PROD-005`～`REQ-PROD-008`、`REQ-PROD-021`，v0.9.105）→ TC-PROD-980～TC-PROD-989；动了 `PlayerStore` 的 `fence`、`finished`、`drain`、`backOff`、`submit` 或 `loadWithin`、`admitted` 里比对纪元的两处，跑 TC-PROD-980～TC-PROD-982 与 TC-PROD-149，三种线程模式各一次；动了 `attach` 挂登出监听器的那一处，跑 TC-PROD-983 与 `ShutdownSave*IntegrationTest`；动了 `commitTogether` 或 `isFrozen`，跑 TC-PROD-984、TC-PROD-985、TC-PROD-148、TC-PROD-835、TC-PROD-836 与 TC-PROD-161；动了 `saveNow`，跑 TC-PROD-986 与改到所属线程调用的 TC-PROD-145 一类旧用例（`PlayerStoreIntegrationTest`、`StoreMetricsIntegrationTest`、`PlayerDataIntegrationTest` 整类）；动了 `PluginSchedulerImpl#guarded` 或预算的分配，跑 TC-PROD-987 与 TC-PROD-140、TC-PROD-840；动了 `RedisLink#connect` 的校验，跑 TC-PROD-988；动了 `Sql`、`PostgresBackend` 的 `load` / `write` 或 `StoreHousekeeping#run`，跑 TC-PROD-989 与 TC-PROD-144。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 PLAYHOST，插件通道只收 PLAY 的负载、`minecraft:` 命名空间与非法通道名、准入的坏答案、插件 id 唯一、停机收回逐个隔离（`REQ-M2-003`、`REQ-M2-004`、`REQ-M2-006`、`REQ-M2-024`、`REQ-011`、`REQ-PROD-008`）→ TC-PROD-930～TC-PROD-934；动了 `PluginChannelRouter` 的路由、`PluginHost#registerHostChannel` 的调用方或 `SceneService#receive` 就跑 TC-PROD-930、TC-PROD-931 第 1 步，三种线程模式各一次；动了引擎 `PluginMessageListener` 跑 TC-PROD-931 第 2、4 步；动了 `AdmissionGate` 调 `admit` 的那一段、`AdmissionRegistry#register` 或 `Admission` 的两个 record 跑 TC-PROD-932；动了 `PluginHost#enable` 的校验跑 TC-PROD-933；动了 `PluginHost#disableAll` 跑 TC-PROD-934。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-082，`startTicking` 遇到已经起了的 tick 线程（`REQ-013`、`REQ-PROD-008`，v0.9.107）→ TC-PROD-990；动了 `ServerProcessImpl#startTicking` 或 `ThreadDispatcherImpl#start`、`#isAlive` 就跑 TC-PROD-990 与 TC-PROD-853
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-089 组 PACKETS，插件构造的包、读包时的宽度与标志、`overrides` 的空条目、套接字循环的连接号与会话服务器的代理选择（`REQ-001`、`REQ-011`、`REQ-PROD-002`、`REQ-PROD-013`、`REQ-PROD-015`、`REQ-PROD-019`、`REQ-PROD-036`，v0.9.112）→ TC-PROD-1020～TC-PROD-1025；动了 `network/packet/server` 下 `CustomReportDetailsPacket`、`FacePlayerPacket`、`MapDataPacket`、`ServerLinksPacket` 或 `ParticlePacket` 的构造器与序列化器就跑 TC-PROD-1020、TC-PROD-1021；动了 `InboundPacketLimits#parseOverrides` 跑 TC-PROD-1022；动了 `Server` 的读循环或写循环跑 TC-PROD-1023，三种线程模式各一次；动了 `SessionClient.LoopbackDirect` 跑 TC-PROD-1024；动了 `CachedPacket`、`SendablePacket`、`WindowItemsPacket`、`DeclareCommandsPacket` 或 `ProxyProtocolDecoder` 跑 TC-PROD-1025，`CachedPacket` 改了代码时三种线程模式各一次
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170、TC-PLAY-180～TC-PLAY-185（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

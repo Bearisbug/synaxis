@@ -48,13 +48,14 @@ public interface GenerationUnit {
     /**
      * Creates a fork covering [start, end) rounded out to whole sections, which may reach beyond this unit.
      * <p>
-     * A fork is valid during {@link Generator#generate(GenerationUnit)} only: a fork made or written once
-     * it returned is not applied. Once it returned, the blocks a fork set overwrite those of a chunk the
-     * instance holds, and its viewers get them; for a chunk the instance does not hold they wait until it
-     * is cached, generated or read by the {@code ChunkLoader}. A block the fork did not set keeps the block
-     * of the chunk. A fork cannot set biomes, {@code setBiome} and {@code fillBiome} throw
-     * {@link IllegalStateException}, and its sections outside the height of the world are dropped with a
-     * WARN. The baker fails the region of a generator that forks (docs/DESIGN-M3.md API-M3-003).
+     * A fork is valid during {@link Generator#generate(GenerationUnit)} only: a fork made once it returned
+     * is not applied, and writing to a fork after that has no defined result. Once it returned, the blocks
+     * a fork set overwrite those of a chunk the instance holds, and its viewers get them; for a chunk the
+     * instance does not hold they wait until it is cached, generated or read by the {@code ChunkLoader}. A
+     * block the fork did not set keeps the block of the chunk. A fork cannot set biomes, {@code setBiome}
+     * and {@code fillBiome} throw {@link IllegalStateException}, and its sections outside the height of the
+     * world are dropped with a WARN. The baker fails the region of a generator that forks
+     * (docs/DESIGN-M3.md API-M3-003).
      *
      * @param start the start of the fork
      * @param end   the end of the fork, exclusive

@@ -40,45 +40,17 @@ public class UseEntityListener {
             return true;
 
         if (player.process().config().enforceInteractionLimit()) {
-            final double maxDistanceSquared = Math.pow(player.getAttributeValue(Attribute.ENTITY_INTERACTION_RANGE) + 1, 2);
-
-            final double distSquared = getDistSquared(player, entity);
-
-            return distSquared >= maxDistanceSquared;
+            // The client hits an interaction entity as wide and high as its metadata says, its bounding box is
+            // the 0 by 0 of its type
+            final BoundingBox box = entity.getEntityMeta() instanceof InteractionMeta interaction
+                    ? new BoundingBox(interaction.getWidth(), interaction.getHeight(), interaction.getWidth())
+                    : entity.getBoundingBox();
+            final double halfWidth = box.width() / 2;
+            final Pos position = entity.getPosition();
+            return PlayerActionListener.beyondReach(player, player.getAttributeValue(Attribute.ENTITY_INTERACTION_RANGE),
+                    position.x() - halfWidth, position.y(), position.z() - halfWidth,
+                    position.x() + halfWidth, position.y() + box.height(), position.z() + halfWidth);
         }
         return false;
-    }
-
-    private static double getDistSquared(Player player, Entity entity) {
-        final Pos playerPos = player.getPosition();
-        final double eyeHeight = player.getEyeHeight();
-        final double px = playerPos.x();
-        final double py = playerPos.y() + eyeHeight;
-        final double pz = playerPos.z();
-
-        // The client hits an interaction entity as wide and high as its metadata says, its bounding box is
-        // the 0 by 0 of its type
-        final BoundingBox box = entity.getEntityMeta() instanceof InteractionMeta interaction
-                ? new BoundingBox(interaction.getWidth(), interaction.getHeight(), interaction.getWidth())
-                : entity.getBoundingBox();
-        final double halfWidth = box.width() / 2;
-        final double height = box.height();
-        final Pos entityPos = entity.getPosition();
-
-        final double minX = entityPos.x() - halfWidth;
-        final double maxX = entityPos.x() + halfWidth;
-        final double minY = entityPos.y();
-        final double maxY = entityPos.y() + height;
-        final double minZ = entityPos.z() - halfWidth;
-        final double maxZ = entityPos.z() + halfWidth;
-
-        final double clampX = Math.clamp(px, minX, maxX);
-        final double clampY = Math.clamp(py, minY, maxY);
-        final double clampZ = Math.clamp(pz, minZ, maxZ);
-
-        final double dx = px - clampX;
-        final double dy = py - clampY;
-        final double dz = pz - clampZ;
-        return dx * dx + dy * dy + dz * dz;
     }
 }

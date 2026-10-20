@@ -6,7 +6,7 @@ import io.github.bearisbug.synaxis.network.packet.client.common.ClientSettingsPa
 
 public final class SettingsListener {
     public static void listener(ClientSettingsPacket packet, Player player) {
-        // Since viewDistance bounds checking is performed in the refresh function, it is not necessary to check it here
+        // The ClientSettings constructor clamps viewDistance to [2, 32]: the decoded value is already valid
         player.refreshSettings(packet.settings());
         player.process().eventHandler().call(new PlayerSettingsChangeEvent(player));
     }

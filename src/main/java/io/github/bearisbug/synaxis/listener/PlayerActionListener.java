@@ -156,14 +156,9 @@ public final class PlayerActionListener {
      * as far as the same attribute, which the engine sends it.
      */
     static boolean outOfReach(Player player, Point blockPosition) {
-        final Pos position = player.getPosition();
-        final double eyeY = position.y() + player.getEyeHeight();
         final int x = blockPosition.blockX(), y = blockPosition.blockY(), z = blockPosition.blockZ();
-        final double dx = position.x() - Math.clamp(position.x(), x, x + 1);
-        final double dy = eyeY - Math.clamp(eyeY, y, y + 1);
-        final double dz = position.z() - Math.clamp(position.z(), z, z + 1);
-        final double reach = player.getAttributeValue(Attribute.BLOCK_INTERACTION_RANGE) + 1;
-        return dx * dx + dy * dy + dz * dz >= reach * reach;
+        return beyondReach(player, player.getAttributeValue(Attribute.BLOCK_INTERACTION_RANGE),
+                x, y, z, x + 1, y + 1, z + 1);
     }
 
     private static void dropStack(Player player) {
@@ -250,5 +245,21 @@ public final class PlayerActionListener {
     }
 
     private record DiggingResult(Block block, boolean success) {
+    }
+
+    /**
+     * Whether a box is out of the player's reach: the point of the box closest to the player's eyes is at least
+     * {@code range} plus one block from them. That is the vanilla server's margin for blocks; for entities vanilla
+     * allows three blocks over the range, and the engine keeps the one block its attack check has always used.
+     */
+    static boolean beyondReach(Player player, double range, double minX, double minY, double minZ,
+                               double maxX, double maxY, double maxZ) {
+        final Pos position = player.getPosition();
+        final double eyeY = position.y() + player.getEyeHeight();
+        final double dx = position.x() - Math.clamp(position.x(), minX, maxX);
+        final double dy = eyeY - Math.clamp(eyeY, minY, maxY);
+        final double dz = position.z() - Math.clamp(position.z(), minZ, maxZ);
+        final double reach = range + 1;
+        return dx * dx + dy * dy + dz * dz >= reach * reach;
     }
 }

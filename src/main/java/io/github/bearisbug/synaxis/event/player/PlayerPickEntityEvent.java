@@ -7,6 +7,10 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Called when a player tries to pick an entity (middle-click).
+ * <p>
+ * The engine drops a pick of an entity the server does not know, the player does not see or that is out of the
+ * player's entity interaction range, by the same rule as an attack, before calling this event; whether to include
+ * the data comes from the client as it is.
  */
 public class PlayerPickEntityEvent implements PlayerInstanceEvent {
 
@@ -24,7 +28,8 @@ public class PlayerPickEntityEvent implements PlayerInstanceEvent {
     }
 
     /**
-     * Gets the entity which was picked. May be null if the entity is not known by the server (eg spawned with packets).
+     * Gets the entity which was picked. Never null when the engine calls the event: the event carries no entity id,
+     * so a pick of an entity the server does not know (eg spawned with packets) is dropped instead.
      *
      * @return the entity which was picked
      */

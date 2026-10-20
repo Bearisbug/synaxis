@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 @EnvTest
 public class ChunkLoaderSaveIntegrationTest {
 
-    // A failing saveChunk must still release its Phaser party, otherwise the saving thread never returns
+    // A failing saveChunk must not keep saveChunks from returning
     @Test
     public void parallelSaveReturnsWhenSaveChunkThrows(Env env) {
         AtomicReference<Throwable> handled = new AtomicReference<>();

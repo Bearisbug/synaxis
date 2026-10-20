@@ -464,6 +464,11 @@ public class InstanceContainer extends Instance {
                     chunk.onGenerate();
                     chunkGeneration.commit();
                 }
+                // Cached by its own coordinates, a chunk of others would replace the one there
+                if (chunk.getInstance() != this || chunk.getChunkX() != chunkX || chunk.getChunkZ() != chunkZ) {
+                    throw new IllegalStateException(chunk + " of instance " + chunk.getInstance().getUuid()
+                            + " was returned for " + chunkX + "," + chunkZ + " of instance " + getUuid());
+                }
                 // TODO run in the instance thread?
                 cacheChunk(chunk);
                 applyPendingForks(chunk);

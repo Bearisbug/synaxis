@@ -4,7 +4,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
-import java.util.concurrent.Phaser;
+import java.util.concurrent.Executors;
 
 /**
  * Interface implemented to change the way chunks are loaded/saved.
@@ -40,6 +40,10 @@ public interface ChunkLoader {
      * <p>
      * A loader must never wait for the same chunk it is currently loading. Requests for an in-progress chunk share
      * the existing future, so waiting for that future from this method would wait for the current invocation.
+     * <p>
+     * The chunk returned is a new object that belongs to {@code instance} and sits at ({@code chunkX},
+     * {@code chunkZ}). A chunk of another instance or of other coordinates fails the load with an
+     * {@link IllegalStateException}.
      *
      * @param instance the {@link Instance} where the {@link Chunk} belong
      * @param chunkX   the chunk X
@@ -52,36 +56,37 @@ public interface ChunkLoader {
     }
 
     /**
-     * Saves a {@link Chunk} with an optional callback for when it is done.
+     * Saves a {@link Chunk}.
      *
      * @param chunk the {@link Chunk} to save
      */
     void saveChunk(Chunk chunk);
 
     /**
-     * Saves multiple chunks with an optional callback for when it is done.
+     * Saves multiple chunks.
      * <p>
-     * Implementations need to check {@link #supportsParallelSaving()} to support the feature if possible.
+     * When {@link #supportsParallelSaving()} is true, the default implementation calls {@link #saveChunk(Chunk)}
+     * for all of them at once, each on a virtual thread of its own, and returns once every call returned: a save
+     * that throws goes to the exception handler, the other chunks are saved anyway. Otherwise it calls them one
+     * after the other and stops at the first exception. The engine calls this without holding any chunk lock: an
+     * implementation that needs a consistent view of a chunk takes its {@link Chunk#lockReadLock() read lock}.
      *
      * @param chunks the chunks to save
      */
     default void saveChunks(Collection<Chunk> chunks) {
         if (supportsParallelSaving()) {
-            Phaser phaser = new Phaser(1);
-            for (Chunk chunk : chunks) {
-                phaser.register();
-                Thread.startVirtualThread(() -> {
-                    try {
-                        saveChunk(chunk);
-                    } catch (Throwable e) {
-                        chunk.getInstance().process().exception().handleException(e);
-                    } finally {
-                        // The party must be released even on failure, the caller awaits the phase
-                        phaser.arriveAndDeregister();
-                    }
-                });
+            // Closing the executor waits for every save
+            try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                for (Chunk chunk : chunks) {
+                    executor.execute(() -> {
+                        try {
+                            saveChunk(chunk);
+                        } catch (Throwable e) {
+                            chunk.getInstance().process().exception().handleException(e);
+                        }
+                    });
+                }
             }
-            phaser.arriveAndAwaitAdvance();
         } else {
             for (Chunk chunk : chunks) {
                 saveChunk(chunk);
@@ -116,6 +121,17 @@ public interface ChunkLoader {
      * Called when a chunk is unloaded, so that this chunk loader can unload any resource it is holding.
      * Note: the engine currently has no way to determine whether the chunk comes from this loader, so you may get
      * unload requests for chunks not created by the loader.
+     * <p>
+     * {@link InstanceContainer#unloadChunk(Chunk)} calls it once the chunk has left the instance and is marked
+     * unloaded. The caller holds the instance monitor, which every block change through the instance
+     * ({@code setBlock}, {@code placeBlock}, {@code breakBlock}) takes too: as long as this runs, they wait
+     * on every thread. The caller holds no chunk lock.
+     * <p>
+     * It is called on one of two threads. The automatic unload calls it on the tick scheduler thread, at most
+     * 256 times per instance and tick, and the next tick waits for all of them to return; an explicit
+     * {@link Instance#unloadChunk(Chunk)} or {@link InstanceManager#unregisterInstance(Instance)} calls it on
+     * the thread of its caller. Do no blocking IO here: hand the writing to another thread, and override
+     * {@link Chunk#readyToUnload()} to hold off the automatic unload of a chunk that has to be written first.
      *
      * @param chunk the chunk to unload
      */

@@ -233,11 +233,23 @@ public sealed interface Palette permits PaletteImpl {
             @Override
             public void write(NetworkBuffer buffer, Palette palette) {
                 PaletteImpl value = (PaletteImpl) palette;
-                // Temporary fix for biome direct bits depending on the number of registered biomes
+                // The client expects a direct biome palette at ceil(log2(biomeCount)) bits (see #biomeSerializer)
+                // while storage keeps BIOME_PALETTE_DIRECT_BITS: re-encode at the wire width, and below 9 biomes as
+                // an indirect palette since the wire has no direct width that small
                 if (directBits != value.directBits && !value.hasPalette()) {
-                    PaletteImpl tmp = new PaletteImpl((byte) dimension, (byte) minIndirect, (byte) maxIndirect, (byte) directBits);
-                    tmp.setAll(value::get);
-                    value = tmp;
+                    if (directBits <= maxIndirect) {
+                        PaletteImpl tmp = (PaletteImpl) value.clone();
+                        tmp.optimize(Optimization.SIZE);
+                        if (!tmp.hasPalette()) {
+                            throw new IllegalStateException("biome palette holds ids outside a registry of "
+                                    + (1 << directBits) + " entries");
+                        }
+                        value = tmp;
+                    } else {
+                        PaletteImpl tmp = new PaletteImpl((byte) dimension, (byte) minIndirect, (byte) maxIndirect, (byte) directBits);
+                        tmp.setAll(value::get);
+                        value = tmp;
+                    }
                 }
                 final byte bitsPerEntry = value.bitsPerEntry;
                 buffer.write(BYTE, bitsPerEntry);

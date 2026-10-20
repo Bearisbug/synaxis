@@ -17,7 +17,6 @@ import static io.github.bearisbug.synaxis.instance.palette.Palettes.arrayLength;
 import static io.github.bearisbug.synaxis.instance.palette.Palettes.maxPaletteSize;
 import static io.github.bearisbug.synaxis.instance.palette.Palettes.read;
 import static io.github.bearisbug.synaxis.instance.palette.Palettes.sectionIndex;
-import static io.github.bearisbug.synaxis.instance.palette.Palettes.write;
 
 final class PaletteImpl implements Palette {
     private static final ThreadLocal<int[]> WRITE_CACHE = ThreadLocal.withInitial(() -> new int[SECTION_BLOCK_COUNT]);
@@ -95,8 +94,7 @@ final class PaletteImpl implements Palette {
             final int longIndex = index / valuesPerLong;
             final int bitIndex = (index % valuesPerLong) * bitsPerEntry;
             final int paletteIndex = (int) (values[longIndex] >> bitIndex) & mask;
-            final int value = paletteIds != null && paletteIndex < paletteIds.length ? paletteIds[paletteIndex]
-                    : paletteIndex;
+            final int value = paletteIds != null ? paletteIds[paletteIndex] : paletteIndex;
             if (predicate.get(x, y, z, value)) return y;
         }
         return -1;
@@ -122,52 +120,32 @@ final class PaletteImpl implements Palette {
     }
 
     @Override
-    public void load(int[] palette, long[] values) {
-        int bpe = palette.length <= 1 ? 0 : MathUtils.bitsToRepresent(palette.length - 1);
-        bpe = Math.max(minBitsPerEntry, bpe);
-        boolean useDirectMode = bpe > maxBitsPerEntry;
-        if (useDirectMode) bpe = directBits;
-        this.bitsPerEntry = (byte) bpe;
+    public void load(int[] palette, long[] packedIndices) {
+        if (palette.length == 0) throw new IllegalArgumentException("Empty palette");
+        final int sourceBpe = Math.max(minBitsPerEntry, palette.length <= 1 ? 0 : MathUtils.bitsToRepresent(palette.length - 1));
+        // A palette of one value may leave out its indices, which are all 0
+        if (palette.length != 1 || packedIndices.length != 0) {
+            final int expectedLength = arrayLength(dimension, sourceBpe);
+            if (packedIndices.length < expectedLength) {
+                throw new IllegalArgumentException("A palette of " + palette.length + " values packs its indices in "
+                        + expectedLength + " longs, got " + packedIndices.length);
+            }
+            Palettes.validateIndices(sourceBpe, dimension, packedIndices, palette.length);
+        }
 
-        if (useDirectMode) {
+        if (sourceBpe > maxBitsPerEntry) {
             // Direct mode: convert from palette indices to direct values
             this.paletteToValueList = null;
             this.valueToPaletteMap = null;
-            this.values = new long[arrayLength(dimension, directBits)];
-
-            final int originalBpe = palette.length <= 1 ? 0 : MathUtils.bitsToRepresent(palette.length - 1);
-            final int actualOriginalBpe = Math.max(minBitsPerEntry, originalBpe);
-            final int originalMask = (1 << actualOriginalBpe) - 1;
-            final int originalValuesPerLong = 64 / actualOriginalBpe;
-
-            int nonZeroCount = 0;
-            final int dimension = this.dimension;
-            for (int y = 0; y < dimension; y++) {
-                for (int z = 0; z < dimension; z++) {
-                    for (int x = 0; x < dimension; x++) {
-                        final int index = sectionIndex(dimension, x, y, z);
-
-                        // Read palette index from original values
-                        final int longIndex = index / originalValuesPerLong;
-                        final int bitIndex = (index % originalValuesPerLong) * actualOriginalBpe;
-                        final int paletteIndex = (int) (values[longIndex] >> bitIndex) & originalMask;
-
-                        // Convert to direct value
-                        final int directValue = paletteIndex < palette.length ? palette[paletteIndex] : 0;
-                        if (directValue != 0) nonZeroCount++;
-
-                        // Write direct value to new values array using coordinates
-                        write(dimension, directBits, this.values, x, y, z, directValue);
-                    }
-                }
-            }
-            this.count = nonZeroCount;
+            this.bitsPerEntry = directBits;
+            this.values = Palettes.remap(dimension, sourceBpe, directBits, packedIndices, i -> palette[i]);
         } else {
             // Indirect mode: use palette
+            this.bitsPerEntry = (byte) sourceBpe;
             setIndirect(new IntArrayList(palette));
-            this.values = Arrays.copyOf(values, arrayLength(dimension, bitsPerEntry));
-            recount();
+            this.values = Arrays.copyOf(packedIndices, arrayLength(dimension, sourceBpe));
         }
+        recount();
     }
 
     @Override
@@ -357,8 +335,7 @@ final class PaletteImpl implements Palette {
                     final int longIndex = sourceIndex / sourceValuesPerLong;
                     final int bitIndex = (sourceIndex - longIndex * sourceValuesPerLong) * sourceBitsPerEntry;
                     final int sourcePaletteIndex = (int) (sourceValues[longIndex] >> bitIndex) & sourceMask;
-                    final int sourceValue = sourcePaletteIds != null && sourcePaletteIndex < sourcePaletteIds.length ?
-                            sourcePaletteIds[sourcePaletteIndex] : sourcePaletteIndex;
+                    final int sourceValue = sourcePaletteIds != null ? sourcePaletteIds[sourcePaletteIndex] : sourcePaletteIndex;
 
                     // Convert to target palette index and write
                     final int targetPaletteIndex = indexOrAppend(sourceValue);
@@ -560,7 +537,7 @@ final class PaletteImpl implements Palette {
                     final int y = index >> shiftedDimensionBitCount;
                     final int z = index >> dimensionBitCount & dimensionMinus;
                     final int x = index & dimensionMinus;
-                    final int result = ids != null && paletteIndex < ids.length ? ids[paletteIndex] : paletteIndex;
+                    final int result = ids != null ? ids[paletteIndex] : paletteIndex;
                     consumer.accept(x, y, z, result);
                 }
             }

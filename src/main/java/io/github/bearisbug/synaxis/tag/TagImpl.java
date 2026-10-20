@@ -64,12 +64,6 @@ record TagImpl<T>(int index, String key,
         return tag(key, Serializers.fromTagSerializer(serializer), view);
     }
 
-    @Deprecated
-    @Override
-    public String getKey() {
-        return key;
-    }
-
     @Override
     public String key() {
         return key;
@@ -125,6 +119,8 @@ record TagImpl<T>(int index, String key,
                     if (write.isEmpty())
                         return ListBinaryTag.empty();
                     final List<BinaryTag> list = write.stream().map(writeFunction).toList();
+                    // An element that writes no NBT, such as a transient one, leaves the whole list unwritten
+                    if (list.stream().anyMatch(Objects::isNull)) return null;
                     final BinaryTagType<?> type = list.getFirst().type();
                     return ListBinaryTag.listBinaryTag(type, list);
                 });
@@ -188,12 +184,6 @@ record TagImpl<T>(int index, String key,
                 nbtCompound.build().keySet().forEach(nbtCompound::remove);
             } else nbtCompound.remove(key);
         }
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public void writeUnsafe(CompoundBinaryTag.Builder nbtCompound, @Nullable Object value) {
-        write(nbtCompound, (T) value);
     }
 
     @Override

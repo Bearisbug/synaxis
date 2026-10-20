@@ -83,6 +83,7 @@ public record Potion(PotionEffect effect, int amplifier, int duration, byte flag
      * @see #AMBIENT_FLAG
      * @see #PARTICLES_FLAG
      * @see #ICON_FLAG
+     * @see #BLEND_FLAG
      */
     @Override
     public byte flags() {
@@ -116,6 +117,12 @@ public record Potion(PotionEffect effect, int amplifier, int duration, byte flag
         return (flags & ICON_FLAG) == ICON_FLAG;
     }
 
+    /**
+     * Returns whether the client uses its builtin blending effect for this Potion, which only the darkness effect
+     * currently does.
+     *
+     * @return <code>true</code> if the Potion has the blend flag
+     */
     public boolean hasBlend() {
         return (flags & BLEND_FLAG) == BLEND_FLAG;
     }
@@ -123,7 +130,8 @@ public record Potion(PotionEffect effect, int amplifier, int duration, byte flag
     /**
      * Sends a packet that a potion effect has been applied to the entity.
      * <p>
-     * Used internally by {@link io.github.bearisbug.synaxis.entity.Player#addEffect(Potion)}
+     * Used internally by {@link Entity#addEffect(Potion)}. Called directly it only sends the packet: the effect is
+     * not in the effects of the entity, the server never removes it on expiry and never sends it to a new viewer.
      *
      * @param entity the entity to add the effect to
      */
@@ -134,7 +142,8 @@ public record Potion(PotionEffect effect, int amplifier, int duration, byte flag
     /**
      * Sends a packet that a potion effect has been removed from the entity.
      * <p>
-     * Used internally by {@link io.github.bearisbug.synaxis.entity.Player#removeEffect(PotionEffect)}
+     * Used internally by {@link Entity#removeEffect(PotionEffect)}. Called directly it only sends the packet: the
+     * effect stays in the effects of the entity.
      *
      * @param entity the entity to remove the effect from
      */

@@ -10,8 +10,9 @@ import io.github.bearisbug.synaxis.network.packet.server.play.VehicleMovePacket;
 public class PlayerVehicleListener {
 
     public static void vehicleMoveListener(ClientVehicleMovePacket packet, Player player) {
+        // Only the first passenger of a vehicle riding nothing drives it, as in vanilla
         final Entity vehicle = player.getVehicle();
-        if (vehicle == null)
+        if (vehicle == null || vehicle.getVehicle() != null || vehicle.getPassengers().indexOf(player) != 0)
             return;
 
         final var position = packet.position();
@@ -29,7 +30,7 @@ public class PlayerVehicleListener {
             return;
         }
 
-        vehicle.refreshPosition(position);
+        vehicle.moveTo(position);
     }
 
 }

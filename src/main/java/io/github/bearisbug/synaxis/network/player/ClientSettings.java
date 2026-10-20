@@ -4,7 +4,6 @@ import io.github.bearisbug.synaxis.entity.MainHand;
 import io.github.bearisbug.synaxis.message.ChatMessageType;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
-import io.github.bearisbug.synaxis.utils.MathUtils;
 
 import java.util.Locale;
 import java.util.Objects;
@@ -55,7 +54,7 @@ public record ClientSettings(Locale locale, byte viewDistance,
     public ClientSettings {
         Objects.requireNonNull(locale);
         // Clamp viewDistance to valid bounds
-        viewDistance = (byte) MathUtils.clamp(viewDistance, 2, 32);
+        viewDistance = (byte) Math.clamp(viewDistance, 2, 32);
         Objects.requireNonNull(chatMessageType);
         Objects.requireNonNull(mainHand);
     }

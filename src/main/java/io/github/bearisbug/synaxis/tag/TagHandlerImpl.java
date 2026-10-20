@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.UnaryOperator;
 
 final class TagHandlerImpl implements TagHandler {
-    static final Serializers.Entry<Node, CompoundBinaryTag> NODE_SERIALIZER = new Serializers.Entry<>(BinaryTagTypes.COMPOUND, entries -> fromCompound(entries).root, Node::compound, true);
+    static final Serializers.Entry<Node, CompoundBinaryTag> NODE_SERIALIZER = new Serializers.Entry<>(BinaryTagTypes.COMPOUND, entries -> fromCompound(entries).root, Node::compound, /* isPath= */ true);
 
     private final Node root;
     private volatile @Nullable Node copy;
@@ -273,16 +273,11 @@ final class TagHandlerImpl implements TagHandler {
 
     final class Node implements TagReadable {
         final @Nullable Node parent;
-        final StaticIntMap<Entry<?>> entries;
+        final StaticIntMap<Entry<?>> entries = new StaticIntMap<>();
         @Nullable CompoundBinaryTag compound;
 
-        public Node(@Nullable Node parent, StaticIntMap<Entry<?>> entries) {
-            this.parent = parent;
-            this.entries = entries;
-        }
-
         Node(@Nullable Node parent) {
-            this(parent, new StaticIntMap.Array<>());
+            this.parent = parent;
         }
 
         Node() {
@@ -313,7 +308,7 @@ final class TagHandlerImpl implements TagHandler {
         void updateEntries(CompoundBinaryTag compound) {
             // Written into this node directly: nodes converted elsewhere would keep pointing at the
             // tree they were built in, breaking the parent chain invalidation walks
-            this.entries.updateContent(new StaticIntMap.Array<>());
+            this.entries.clear();
             TagNbtSeparator.separate(compound, this::write);
         }
 
@@ -341,7 +336,7 @@ final class TagHandlerImpl implements TagHandler {
         @SuppressWarnings("unchecked")
         @Nullable Node copy(TagHandlerImpl owner, @Nullable Node parent) {
             CompoundBinaryTag.Builder tmp = CompoundBinaryTag.builder();
-            Node result = owner.new Node(parent, new StaticIntMap.Array<>());
+            Node result = owner.new Node(parent);
             StaticIntMap<Entry<?>> entries = result.entries;
             this.entries.forValues(entry -> {
                 TagImpl<?> tag = entry.tag;

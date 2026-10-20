@@ -5,7 +5,8 @@ import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
 import io.github.bearisbug.synaxis.event.trait.PlayerInstanceEvent;
 
 /**
- * Called every time a player send a message starting by '/'.
+ * Called when {@link io.github.bearisbug.synaxis.command.CommandManager#execute} runs a command with a player as its
+ * sender: what the player typed, and what a plugin executes as a player.
  */
 public class PlayerCommandEvent implements PlayerInstanceEvent, CancellableEvent {
 
@@ -20,7 +21,9 @@ public class PlayerCommandEvent implements PlayerInstanceEvent, CancellableEvent
     }
 
     /**
-     * Gets the command used (command name + arguments).
+     * Gets the command used (command name + arguments), without the {@code /} prefix. The value the event is called
+     * with has its leading and trailing whitespace removed; a value an earlier listener set with
+     * {@link #setCommand(String)} is not trimmed again.
      *
      * @return the command that the player wants to execute
      */
@@ -29,7 +32,7 @@ public class PlayerCommandEvent implements PlayerInstanceEvent, CancellableEvent
     }
 
     /**
-     * Changes the command to execute.
+     * Changes the command to execute, without the {@code /} prefix. The value is parsed as it is.
      *
      * @param command the new command
      */

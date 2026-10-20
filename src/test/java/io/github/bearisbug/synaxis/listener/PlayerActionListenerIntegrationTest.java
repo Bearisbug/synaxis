@@ -12,6 +12,8 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 @EnvTest
 public class PlayerActionListenerIntegrationTest {
 
@@ -42,6 +44,23 @@ public class PlayerActionListenerIntegrationTest {
         ), player);
 
         tracker.assertSingle();
+    }
+
+    @Test
+    public void testStabKeepsTheItemItWasCalledWith(Env env) {
+        var instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, 0, 0));
+        var spear = ItemStack.of(Material.NETHERITE_SPEAR);
+        player.setItemInMainHand(spear);
+
+        var tracker = env.trackEvent(PlayerStabEvent.class, EventFilter.PLAYER, player);
+        PlayerActionListener.playerActionListener(new ClientPlayerActionPacket(
+                ClientPlayerActionPacket.Status.STAB,
+                Vec.ZERO, BlockFace.NORTH, 0
+        ), player);
+        player.setItemInMainHand(ItemStack.of(Material.DIAMOND));
+
+        tracker.assertSingle(event -> assertEquals(spear, event.getItemStack()));
     }
 
 }

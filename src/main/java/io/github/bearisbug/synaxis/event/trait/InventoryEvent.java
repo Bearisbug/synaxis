@@ -9,7 +9,7 @@ import io.github.bearisbug.synaxis.inventory.AbstractInventory;
 public interface InventoryEvent extends Event {
 
     /**
-     * Gets the inventory that was clicked.
+     * Gets the inventory this event is about.
      */
     AbstractInventory getInventory();
 }

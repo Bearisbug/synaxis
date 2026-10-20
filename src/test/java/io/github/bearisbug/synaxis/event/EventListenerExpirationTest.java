@@ -110,4 +110,13 @@ public class EventListenerExpirationTest {
         assertEquals(EventListener.Result.INVALID, listener.run(event),
                 "A cancelled event must not burn the expiration");
     }
+
+    @Test
+    public void expireCountRefusesLessThanOneRun() {
+        var builder = EventListener.builder(Valued.class);
+        assertEquals("expireCount must be at least 1, was 0",
+                assertThrows(IllegalArgumentException.class, () -> builder.expireCount(0)).getMessage());
+        assertEquals("expireCount must be at least 1, was -1",
+                assertThrows(IllegalArgumentException.class, () -> builder.expireCount(-1)).getMessage());
+    }
 }

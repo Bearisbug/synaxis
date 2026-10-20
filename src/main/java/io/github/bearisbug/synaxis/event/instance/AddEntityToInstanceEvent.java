@@ -7,8 +7,8 @@ import io.github.bearisbug.synaxis.event.trait.InstanceEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 
 /**
- * Called by an Instance when an entity is added to it.
- * Can be used attach data.
+ * Called by {@link Entity#setInstance(Instance, io.github.bearisbug.synaxis.coordinate.Pos)} before the entity is
+ * added: {@code getEntity().getInstance()} is still the previous instance (null on first spawn).
  * <p>
  * Called before anything of the change is done: cancelled, the entity stays where it was and the future of
  * {@link Entity#setInstance(Instance, io.github.bearisbug.synaxis.coordinate.Pos)} fails with a

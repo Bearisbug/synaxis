@@ -103,6 +103,7 @@ final class PaletteImpl implements Palette {
     @Override
     public void set(int x, int y, int z, int value) {
         validateCoord(dimension, x, y, z);
+        validateValue(value);
         final int paletteIndex = indexOrAppend(value);
         final int oldValue = Palettes.write(dimension(), bitsPerEntry, values, x, y, z, paletteIndex);
         // Check if block count needs to be updated
@@ -112,6 +113,7 @@ final class PaletteImpl implements Palette {
 
     @Override
     public void fill(int value) {
+        validateValue(value);
         this.bitsPerEntry = 0;
         this.count = value;
         this.values = null;
@@ -160,6 +162,7 @@ final class PaletteImpl implements Palette {
 
     @Override
     public void replace(int oldValue, int newValue) {
+        validateValue(newValue);
         if (oldValue == newValue) return;
         if (bitsPerEntry == 0) {
             if (oldValue == count) fill(newValue);
@@ -670,6 +673,12 @@ final class PaletteImpl implements Palette {
     /// {@link #values} and both tables are null, callers handle {@code bitsPerEntry == 0} first
     boolean hasPalette() {
         return bitsPerEntry <= maxBitsPerEntry;
+    }
+
+    // A value written as it is must fit the direct width, or it spills into the entries next to it
+    private void validateValue(int value) {
+        if ((value >>> directBits) != 0)
+            throw new IllegalArgumentException("Palette value " + value + " out of range [0, " + (1 << directBits) + ")");
     }
 
     private static void validateCoord(int dimension, int x, int y, int z) {

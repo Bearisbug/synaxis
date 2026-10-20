@@ -9,7 +9,10 @@ final class TagSerializerImpl {
     public static final TagSerializer<CompoundBinaryTag> COMPOUND = new TagSerializer<>() {
         @Override
         public CompoundBinaryTag read(TagReadable reader) {
-            return ((TagHandler) reader).asCompound();
+            if (reader instanceof TagHandler handler) return handler.asCompound();
+            if (reader instanceof TagHandlerImpl.Node node) return node.compound();
+            throw new IllegalArgumentException("TagSerializer.COMPOUND reads a TagHandler or a readableCopy(), got "
+                    + reader.getClass().getName());
         }
 
         @Override

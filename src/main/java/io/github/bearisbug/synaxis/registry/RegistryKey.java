@@ -33,14 +33,6 @@ public non-sealed interface RegistryKey<T> extends Holder<T>, Keyed {
         return new RegistryNetworkTypes.RegistryKeyImpl<>(selector, true);
     }
 
-    static <T> NetworkBuffer.Type<RegistryKey<T>> uncheckedNetworkType() {
-        return NetworkBuffer.KEY.transform(RegistryKeyImpl::new, RegistryKey::key);
-    }
-
-    static <T> Codec<RegistryKey<T>> uncheckedCodec() {
-        return Codec.KEY.transform(RegistryKeyImpl::new, RegistryKey::key);
-    }
-
     /**
      * Creates a new {@link RegistryKey} from the given raw string. Should not be used externally.
      * Registry keys are returned from {@link DynamicRegistry#register(Key, Object)}.

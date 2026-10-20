@@ -103,7 +103,7 @@ final class TranscoderCrc32Impl implements Transcoder<Integer> {
         return new ListBuilder<>() {
             @Override
             public ListBuilder<Integer> add(Integer value) {
-                hasher.putIntBytes(value);
+                hasher.putInt(value);
                 return this;
             }
 
@@ -140,8 +140,8 @@ final class TranscoderCrc32Impl implements Transcoder<Integer> {
                 if (map.isEmpty()) return EMPTY_MAP;
                 final Hasher hasher = new Hasher().putByte(TAG_MAP_START);
                 map.entrySet().stream().sorted(MAP_COMPARATOR).forEach(entry -> {
-                    hasher.putIntBytes(entry.getKey());
-                    hasher.putIntBytes(entry.getValue());
+                    hasher.putInt(entry.getKey());
+                    hasher.putInt(entry.getValue());
                 });
                 return hasher.putByte(TAG_MAP_END).hash();
             }
@@ -278,14 +278,6 @@ final class TranscoderCrc32Impl implements Transcoder<Integer> {
             return update(Integer.BYTES);
         }
 
-        Hasher putIntBytes(int i) {
-            putByte((byte) i);
-            putByte((byte) (i >> 8));
-            putByte((byte) (i >> 16));
-            putByte((byte) (i >> 24));
-            return this;
-        }
-
         Hasher putLong(long l) {
             buffer.putLong(l);
             return update(Long.BYTES);
@@ -299,15 +291,9 @@ final class TranscoderCrc32Impl implements Transcoder<Integer> {
             return putLong(Double.doubleToRawLongBits(d));
         }
 
-        Hasher putChar(char c) {
-            this.putByte((byte) c);
-            this.putByte((byte) (c >>> 8));
-            return this;
-        }
-
         Hasher putChars(String string) {
             for (int i = 0; i < string.length(); ++i)
-                this.putChar(string.charAt(i));
+                putShort((short) string.charAt(i));
             return this;
         }
 

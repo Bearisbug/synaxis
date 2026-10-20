@@ -10,7 +10,9 @@ import java.util.List;
 final class RegistriesImpl {
     /**
      * The registries the server forwards to the client without interpreting them, see
-     * {@link Registries#opaque(RegistryKey)}.
+     * {@link Registries#opaque(RegistryKey)}. A new opaque registry goes both here and, at its place in the client's
+     * order, into {@link #configurationRegistries(Registries)}; {@code RegistryDataByteParityIntegrationTest} fails
+     * when one of the two is missed.
      */
     static final List<RegistryKey<Registry<BinaryTag>>> OPAQUE_KEYS = List.of(
             BuiltinRegistries.DIALOG,
@@ -80,7 +82,8 @@ final class RegistriesImpl {
 
     /**
      * The registries sent during the configuration phase, in the order the client receives them.
-     * The order is part of the protocol contract and must not change.
+     * The order is part of the protocol contract and must not change. Every key of {@link #OPAQUE_KEYS} has to be
+     * listed here as well.
      */
     private static List<DynamicRegistry<?>> configurationRegistries(Registries registries) {
         return List.of(

@@ -153,9 +153,12 @@ public sealed interface EntityType extends StaticProtocolObject<EntityType>, Ent
     /**
      * Returns all attachment offsets with the given name.
      *
-     * @param attachmentName the attachment name
-     * @return the immutable offsets, or {@code null} when absent
-    */
+     * @param attachmentName the attachment name, a key of {@code attachments} in {@code entity_type.json}: upper
+     *                       case and case-sensitive. The 26.2 data uses {@code PASSENGER}, {@code VEHICLE},
+     *                       {@code NAME_TAG} and {@code WARDEN_CHEST}
+     * @return the immutable offsets, or {@code null} when this type has no such attachment, which includes a name
+     * in the wrong case
+     */
     @SuppressWarnings("removal")
     @Contract(pure = true)
     default @Unmodifiable @Nullable List<Vec> entityAttachments(String attachmentName) {

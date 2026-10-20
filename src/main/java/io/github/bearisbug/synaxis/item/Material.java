@@ -71,7 +71,10 @@ public sealed interface Material extends StaticProtocolObject<Material>, Materia
      * Returns the process-global vanilla component prototype for this material.
      *
      * @return the material component prototype
-     * @throws IllegalStateException if vanilla registries have not bound material prototypes yet
+     * @throws IllegalStateException if called before the first {@code ServerProcess} is created or
+     *                               {@link io.github.bearisbug.synaxis.registry.Registries#vanilla()} is called; the
+     *                               {@code with}, {@code get} and {@code components} methods of {@link ItemStack} and
+     *                               {@link #armor()} and {@link #equipmentSlot()} read the prototype too
      */
     @Contract(pure = true)
     default DataComponentMap prototype() {

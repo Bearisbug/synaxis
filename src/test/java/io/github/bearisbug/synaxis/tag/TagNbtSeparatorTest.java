@@ -100,7 +100,7 @@ public class TagNbtSeparatorTest {
 
     Set<TagNbtSeparator.Entry<?>> retrieve(String key, BinaryTag nbt) {
         Set<TagNbtSeparator.Entry<?>> entries = new HashSet<>();
-        TagNbtSeparator.separate(key, nbt, entries::add);
+        TagNbtSeparator.separate(CompoundBinaryTag.builder().put(key, nbt).build(), entries::add);
         return Set.copyOf(entries);
     }
 }

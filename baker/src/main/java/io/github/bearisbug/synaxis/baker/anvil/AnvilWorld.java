@@ -247,9 +247,8 @@ public final class AnvilWorld implements AutoCloseable {
             palette.fill(ids[0]);
             return;
         }
-        // Palette.load does not check its input: with a palette (up to 256 block states or 8 biomes) it pads or cuts
-        // the packed array silently and an index past the palette throws on a later read; beyond that a short array
-        // throws and an index past the palette reads as 0
+        // Palette.load refuses a short packed array or an index past the palette, without naming the chunk, and cuts
+        // a long array silently: checked here first, so that the error names the section and any other length fails
         final long[] packed = container.getLongArray("data");
         final int bits = Math.max(minBits, 32 - Integer.numberOfLeadingZeros(ids.length - 1));
         final int perLong = 64 / bits, entries = palette.maxSize();

@@ -53,7 +53,8 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
 
     // Options
     private final boolean shouldGenerate;
-    private boolean readOnly;
+    // Set and read from any thread without the chunk lock
+    private volatile boolean readOnly;
 
     protected volatile boolean loaded = true;
     final Viewable viewable;
@@ -238,10 +239,13 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
     }
 
     /**
-     * Gets if this chunk is read-only.
+     * Gets if this chunk is read-only. Any thread may call it, without the chunk lock.
      * <p>
-     * Being read-only should prevent block placing/breaking and setting block from an {@link Instance}.
-     * It does not affect {@link ChunkLoader} and {@link Generator}.
+     * A read-only chunk refuses {@link Instance#setBlock}, {@link Instance#placeBlock} and
+     * {@link Instance#breakBlock}, and with them the blocks players place and break. It does not refuse
+     * {@link Instance#setBiome} or a direct {@link #setBlock}, and does not affect {@link ChunkLoader} and
+     * {@link Generator}. A subclass may add conditions of its own here, which {@link #setReadOnly(boolean)}
+     * does not lift.
      *
      * @return true if the chunk is read-only
      */
@@ -250,15 +254,12 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
     }
 
     /**
-     * Changes the read state of the chunk.
-     * <p>
-     * Being read-only should prevent block placing/breaking and setting block from an {@link Instance}.
-     * It does not affect {@link ChunkLoader} and {@link Generator}.
+     * Changes the read state of the chunk, see {@link #isReadOnly()}. Any thread may call it, without the
+     * chunk lock: the flag is no content of the chunk, and the next read on any thread sees it.
      *
      * @param readOnly true to make the chunk read-only, false otherwise
      */
     public void setReadOnly(boolean readOnly) {
-        assertWriteLock();
         this.readOnly = readOnly;
     }
 

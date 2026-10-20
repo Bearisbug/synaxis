@@ -291,6 +291,7 @@ final class NetworkBufferImpl implements NetworkBuffer {
         assertDummy(segment);
         ByteBuffer input = bufferSlice(segment, start, length);
         try {
+            // In place: only holds for a stream mode cipher, whose output is as long as its input
             cipher.update(input, input.duplicate());
         } catch (ShortBufferException e) {
             throw new RuntimeException(e);

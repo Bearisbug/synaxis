@@ -26,7 +26,8 @@ import java.io.IOException;
  * <p>
  * It is the same type as the one used in the /give command.
  * <p>
- * Example: diamond_sword{display:{Name:"{\"text\":\"Sword of Power\"}"}}
+ * Example: {@code diamond_sword[minecraft:custom_name={text:"Sword"}]{tag:1}}; the trailing {@code {…}} is merged
+ * into {@code minecraft:custom_data}.
  */
 public class ArgumentItemStack extends Argument<ItemStack> {
 
@@ -100,7 +101,8 @@ public class ArgumentItemStack extends Argument<ItemStack> {
                         invalid.initCause(e);
                         throw invalid;
                     }
-                    if (!(componentValueResult instanceof Result.Ok(Object componentValue)))
+                    // set() refuses a null value; removing a component is written !name
+                    if (!(componentValueResult instanceof Result.Ok(Object componentValue)) || componentValue == null)
                         throw new ArgumentSyntaxException("Invalid item component value", input, INVALID_COMPONENT);
                     components.set((DataComponent<Object>) component, componentValue);
                 }
@@ -136,7 +138,7 @@ public class ArgumentItemStack extends Argument<ItemStack> {
     }
 
     private static class StringReader {
-        private String input;
+        private final String input;
         private int index = 0;
 
         StringReader(String input) {
@@ -179,8 +181,8 @@ public class ArgumentItemStack extends Argument<ItemStack> {
             try {
                 StringBuilder remainder = new StringBuilder();
                 final BinaryTag result = EngineAdventure.tagStringIO().asTag(input.substring(index), remainder);
-                this.input = remainder.toString();
-                this.index = 0;
+                // The remainder is the unparsed end of the input
+                this.index = input.length() - remainder.length();
 
                 return result;
             } catch (IOException _) {

@@ -82,17 +82,18 @@ final class NetworkBufferVarNumberTypes {
 
     record VarLongType() implements NetworkBufferTypeImpl<Long> {
         @Override
-        public void write(NetworkBuffer buffer, Long value) {
+        public void write(NetworkBuffer buffer, Long boxed) {
             buffer.ensureWritable(10);
-            int size = 0;
+            long index = buffer.writeIndex();
+            long value = boxed;
+            var nio = impl(buffer);
             while (true) {
                 if ((value & ~((long) SEGMENT_BITS)) == 0) {
-                    impl(buffer)._putByte(buffer.writeIndex() + size, (byte) value.intValue());
-                    buffer.advanceWrite(size + 1);
+                    nio._putByte(index++, (byte) value);
+                    buffer.advanceWrite(index - buffer.writeIndex());
                     return;
                 }
-                impl(buffer)._putByte(buffer.writeIndex() + size, (byte) ((value & SEGMENT_BITS) | CONTINUE_BIT));
-                size++;
+                nio._putByte(index++, (byte) ((value & SEGMENT_BITS) | CONTINUE_BIT));
                 // Note: >>> means that the sign bit is shifted with the rest of the number rather than being left alone
                 value >>>= 7;
             }

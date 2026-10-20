@@ -14,8 +14,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Function;
-import java.util.function.IntFunction;
 
 /**
  * <p>A component list, always stored as a patch of added and removed components (even if none are removed).</p>
@@ -34,11 +32,6 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
     @Override
     public boolean isEmpty() {
         return components.isEmpty();
-    }
-
-    @Override
-    public boolean has(DataComponent<?> component) {
-        return components.containsKey(component.id()) && components.get(component.id()) != null;
     }
 
     @Override
@@ -68,6 +61,7 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
 
     @Override
     public <T> DataComponentMap set(DataComponent<T> component, T value) {
+        Objects.requireNonNull(value, () -> component.name() + ": value is null, use remove()");
         Int2ObjectMap<Object> newComponents = new Int2ObjectArrayMap<>(components);
         newComponents.put(component.id(), component.freeze(value));
         return new DataComponentMapImpl(newComponents);
@@ -110,11 +104,6 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
     record BuilderImpl(Int2ObjectMap<@Nullable Object> components) implements DataComponentMap.Builder {
 
         @Override
-        public boolean has(DataComponent<?> component) {
-            return components.get(component.id()) != null;
-        }
-
-        @Override
         @SuppressWarnings("unchecked")
         public <T> @Nullable T get(DataComponent<T> component) {
             return (T) components.get(component.id());
@@ -122,6 +111,7 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
 
         @Override
         public <T> Builder set(DataComponent<T> component, T value) {
+            Objects.requireNonNull(value, () -> component.name() + ": value is null, use remove()");
             components.put(component.id(), component.freeze(value));
             return this;
         }
@@ -135,11 +125,6 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
     record PatchBuilderImpl(Int2ObjectMap<@Nullable Object> components) implements DataComponentMap.PatchBuilder {
 
         @Override
-        public boolean has(DataComponent<?> component) {
-            return components.get(component.id()) != null;
-        }
-
-        @Override
         @SuppressWarnings("unchecked")
         public <T> @Nullable T get(DataComponent<T> component) {
             return (T) components.get(component.id());
@@ -147,6 +132,7 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
 
         @Override
         public <T> PatchBuilder set(DataComponent<T> component, T value) {
+            Objects.requireNonNull(value, () -> component.name() + ": value is null, use remove()");
             components.put(component.id(), component.freeze(value));
             return this;
         }
@@ -169,16 +155,13 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
         }
     }
 
-    record NetworkTypeImpl(
-            IntFunction<@Nullable DataComponent<?>> idToType,
-            boolean isPatch, boolean isTrusted
-    ) implements NetworkBuffer.Type<DataComponentMap> {
+    record NetworkTypeImpl(boolean isPatch, boolean isTrusted) implements NetworkBuffer.Type<DataComponentMap> {
         /** Vanilla never sends more than this many added or removed components in one patch. */
         private static final int MAX_COMPONENTS = 256;
         /**
          * Components nest through each other (a container holds items, which carry components again), so the
          * nesting depth is decided by whoever wrote the bytes and has to be bounded before the recursive read
-         * runs the java stack out.
+         * runs the java stack out. The same value as {@code NetworkBuffer.Recursive}.
          */
         private static final int MAX_READ_DEPTH = 64;
         private static final ThreadLocal<int[]> READ_DEPTH = ThreadLocal.withInitial(() -> new int[1]);
@@ -202,7 +185,7 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
 
                 buffer.write(NetworkBuffer.VAR_INT, entry.getIntKey());
                 @SuppressWarnings("unchecked")
-                DataComponent<Object> type = (DataComponent<@NotNull Object>) this.idToType.apply(entry.getIntKey());
+                DataComponent<Object> type = (DataComponent<@NotNull Object>) DataComponent.fromId(entry.getIntKey());
                 Check.notNull(type, "Unknown component id: {0}", entry.getIntKey());
                 if (isTrusted) {
                     type.write(buffer, entry.getValue());
@@ -225,8 +208,8 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
          * Components registered without a network type never reach the client, so they must not be counted or
          * written. Unknown ids are left in so that the write loop still reports them.
          */
-        private boolean isNotSynced(int id) {
-            final DataComponent<?> type = this.idToType.apply(id);
+        private static boolean isNotSynced(int id) {
+            final DataComponent<?> type = DataComponent.fromId(id);
             return type != null && !type.isSynced();
         }
 
@@ -251,7 +234,7 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
             for (int i = 0; i < added; i++) {
                 final int id = buffer.read(NetworkBuffer.VAR_INT);
                 @SuppressWarnings("unchecked")
-                DataComponent<Object> type = (DataComponent<@NotNull Object>) this.idToType.apply(id);
+                DataComponent<Object> type = (DataComponent<@NotNull Object>) DataComponent.fromId(id);
                 Check.notNull(type, "Unknown component: {0}", id);
                 Check.stateCondition(patch.containsKey(type.id()), "Duplicate component: {0}", id);
                 if (isTrusted) {
@@ -269,7 +252,7 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
             }
             for (int i = 0; i < removed; i++) {
                 final int id = buffer.read(NetworkBuffer.VAR_INT);
-                final DataComponent<?> type = this.idToType.apply(id);
+                final DataComponent<?> type = DataComponent.fromId(id);
                 Check.notNull(type, "Unknown component: {0}", id);
                 Check.stateCondition(patch.containsKey(type.id()), "Duplicate component: {0}", id);
                 patch.put(type.id(), null);
@@ -278,15 +261,7 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
         }
     }
 
-    record CodecImpl(
-            IntFunction<@Nullable DataComponent<?>> idToType,
-            Function<String, @Nullable DataComponent<?>> nameToType,
-            boolean isPatch
-    ) implements Codec<DataComponentMap> {
-        CodecImpl {
-            Objects.requireNonNull(idToType, "idToType");
-            Objects.requireNonNull(nameToType, "nameToType");
-        }
+    record CodecImpl(boolean isPatch) implements Codec<DataComponentMap> {
 
         @Override
         public <D> Result<DataComponentMap> decode(Transcoder<D> coder, D value) {
@@ -302,7 +277,7 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
                     key = key.substring(1);
                     remove = true;
                 }
-                final DataComponent<?> type = this.nameToType.apply(key);
+                final DataComponent<?> type = DataComponent.fromKey(key);
                 if (type == null) return new Result.Error<>("unknown data component: " + key);
 
                 if (remove) {
@@ -334,7 +309,7 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
             final Transcoder.MapBuilder<D> map = coder.createMap();
             for (var entry : patch.components.int2ObjectEntrySet()) {
                 @SuppressWarnings("unchecked")
-                DataComponent<Object> type = (DataComponent<@NotNull Object>) this.idToType.apply(entry.getIntKey());
+                DataComponent<Object> type = (DataComponent<@NotNull Object>) DataComponent.fromId(entry.getIntKey());
                 if (type == null) return new Result.Error<>("unknown data component id: " + entry.getIntKey());
                 // Components registered without a codec cannot be serialized
                 if (!type.isSerialized()) continue;

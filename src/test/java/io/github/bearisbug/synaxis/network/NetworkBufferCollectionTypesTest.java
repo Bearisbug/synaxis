@@ -13,6 +13,7 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A declared collection length is peer controlled, so it must never size an allocation on its own.
@@ -81,6 +82,12 @@ class NetworkBufferCollectionTypesTest {
         final List<Integer> values = buffer.read(INT.list());
         assertEquals(size, values.size());
         assertEquals(size - 1, values.getLast());
+
+        // A set reads its elements the same way, and every slot must be filled for Set.of
+        buffer.readIndex(0);
+        final Set<Integer> set = buffer.read(INT.set());
+        assertEquals(size, set.size());
+        assertTrue(set.contains(size - 1));
     }
 
     @Test

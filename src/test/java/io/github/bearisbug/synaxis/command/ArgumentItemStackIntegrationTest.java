@@ -1,9 +1,14 @@
 package io.github.bearisbug.synaxis.command;
 
+import net.kyori.adventure.nbt.CompoundBinaryTag;
+import net.kyori.adventure.text.Component;
 import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType;
+import io.github.bearisbug.synaxis.command.builder.arguments.minecraft.ArgumentItemStack;
 import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException;
 import io.github.bearisbug.synaxis.component.DataComponents;
+import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
+import io.github.bearisbug.synaxis.item.component.CustomData;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
@@ -54,6 +59,25 @@ public class ArgumentItemStackIntegrationTest {
         assertThrows(ArgumentSyntaxException.class, () -> argument.parse(new ServerSender(env.process()), "stone[not a component]"));
     }
 
+    /** An error after a component value or an NBT tag carries the whole input, not the part left unparsed. */
+    @Test
+    public void anErrorAfterATagCarriesTheWholeInput(Env env) {
+        var argument = ArgumentType.ItemStack("item");
+        var sender = new ServerSender(env.process());
+        final String input = "stone[custom_data={a:1}x]";
+        var error = assertThrows(ArgumentSyntaxException.class, () -> argument.parse(sender, input));
+        assertEquals(input, error.getInput());
+    }
+
+    /** A value its codec reads as null is no value, so it is invalid rather than an exception escaping the parser. */
+    @Test
+    public void aComponentValueDecodedToNullIsInvalid(Env env) {
+        var argument = ArgumentType.ItemStack("item");
+        var sender = new ServerSender(env.process());
+        var error = assertThrows(ArgumentSyntaxException.class, () -> argument.parse(sender, "stone[rarity=legendary]"));
+        assertEquals(ArgumentItemStack.INVALID_COMPONENT, error.getErrorCode());
+    }
+
     /**
      * A component that has no codec cannot be set from a command, and a value the codec reads but the component's
      * constructor refuses is invalid, instead of the exception escaping the parser.
@@ -67,5 +91,16 @@ public class ArgumentItemStackIntegrationTest {
                 "apple[consumable={on_consume_effects:[{type:\"apply_effects\",effects:[],probability:2f}]}]"));
         assertDoesNotThrow(() -> argument.parse(sender,
                 "apple[consumable={on_consume_effects:[{type:\"apply_effects\",effects:[],probability:0.5f}]}]"));
+    }
+
+    /** The example of the class Javadoc: the component sets the name, the trailing tag goes into custom_data. */
+    @Test
+    public void theExampleOfTheJavadocParses(Env env) {
+        var argument = ArgumentType.ItemStack("item");
+        var result = assertDoesNotThrow(() -> argument.parse(new ServerSender(env.process()),
+                "diamond_sword[minecraft:custom_name={text:\"Sword\"}]{tag:1}"));
+        assertEquals(ItemStack.of(Material.DIAMOND_SWORD)
+                .with(DataComponents.CUSTOM_NAME, Component.text("Sword"))
+                .with(DataComponents.CUSTOM_DATA, new CustomData(CompoundBinaryTag.builder().putInt("tag", 1).build())), result);
     }
 }

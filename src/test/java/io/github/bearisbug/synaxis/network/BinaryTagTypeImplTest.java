@@ -166,11 +166,13 @@ public class BinaryTagTypeImplTest {
         final BinaryTag deepest = nestedCompounds(NBT_MAX_DEPTH);
         assertEquals(deepest, read(bytes(deepest)));
 
+        // Both directions name the property that sets the limit
+        final String message = "NBT is nested too deeply (max: " + NBT_MAX_DEPTH + ", set by -Dsynaxis.nbt.max-depth)";
         final BinaryTag tooDeep = nestedCompounds(NBT_MAX_DEPTH + 1);
-        assertThrows(IllegalArgumentException.class, () -> bytes(tooDeep));
+        assertEquals(message, assertThrows(IllegalArgumentException.class, () -> bytes(tooDeep)).getMessage());
 
         final byte[] data = nestedCompoundBytes(NBT_MAX_DEPTH + 1);
-        assertThrows(IllegalArgumentException.class, () -> read(data));
+        assertEquals(message, assertThrows(IllegalArgumentException.class, () -> read(data)).getMessage());
     }
 
     @Test

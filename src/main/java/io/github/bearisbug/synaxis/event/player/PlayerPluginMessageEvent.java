@@ -33,7 +33,9 @@ public class PlayerPluginMessageEvent implements PlayerInstanceEvent {
     /**
      * Gets the message data as a byte array.
      *
-     * @return the message
+     * @return the message: the array of the packet itself, shared with the listeners after this one
+     * and with the channel handler the host hands it to, so read it only and copy it first to make
+     * changes
      */
     public byte[] getMessage() {
         return message;

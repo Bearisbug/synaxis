@@ -1134,8 +1134,8 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
 
     /**
      * Unloads the chunks idle for the grace period of {@link #setChunkUnloadGraceTicks(int)}. Called
-     * once a tick on the tick scheduler thread, after every tick thread is done with the tick. An
-     * instance that does not own its chunks unloads nothing.
+     * once a tick on the tick scheduler thread, after every tick thread is done with the tick. Unloads
+     * nothing by default, {@link InstanceContainer} overrides it.
      */
     @ApiStatus.Internal
     public void unloadIdleChunks() {

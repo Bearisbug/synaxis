@@ -36,7 +36,12 @@ public final class InstanceManager {
      * @param instance the {@link Instance} to register
      */
     public void registerInstance(Instance instance) {
-        UNSAFE_registerInstance(instance);
+        instance.setRegistered(true);
+        this.instances.add(instance);
+        var dispatcher = process.dispatcher();
+        instance.getChunks().forEach(dispatcher::createPartition);
+        InstanceRegisterEvent event = new InstanceRegisterEvent(instance);
+        process.eventHandler().call(event);
     }
 
     /**
@@ -72,13 +77,14 @@ public final class InstanceManager {
     /**
      * Unregisters the {@link Instance} internally.
      * <p>
-     * If {@code instance} is an {@link InstanceContainer} all chunks are unloaded.
+     * All its chunks are unloaded.
      *
      * @param instance the {@link Instance} to unregister
+     * @throws IllegalStateException if an online player is still inside {@code instance}
      */
     public void unregisterInstance(Instance instance) {
-        long onlinePlayers = instance.getPlayers().stream().filter(Player::isOnline).count();
-        Check.stateCondition(onlinePlayers > 0, "You cannot unregister an instance with players inside.");
+        Check.stateCondition(instance.getPlayers().stream().anyMatch(Player::isOnline),
+                "You cannot unregister an instance with players inside.");
         // Nothing here holds the instance monitor: a tick thread takes it of its own accord to set a
         // block, so the unregister listeners and the unloading below, which takes the tick thread of
         // every entity it removes, would deadlock with it
@@ -89,11 +95,13 @@ public final class InstanceManager {
         instance.setRegistered(false);
         this.instances.remove(instance);
         // Unload all chunks
-        if (instance instanceof InstanceContainer) {
-            instance.getChunks().forEach(instance::unloadChunk);
-            var dispatcher = process.dispatcher();
-            instance.getChunks().forEach(dispatcher::deletePartition);
-        }
+        instance.getChunks().forEach(instance::unloadChunk);
+        // unloadChunk skips the chunks whose isLoaded() is still false (cached, not yet past onLoad,
+        // such as a LightingChunk before doneInit): they are still in getChunks() and their partitions
+        // are released here. This pass also covers the chunks an asynchronous load cached after the
+        // first one.
+        var dispatcher = process.dispatcher();
+        instance.getChunks().forEach(dispatcher::deletePartition);
     }
 
     /**
@@ -117,19 +125,5 @@ public final class InstanceManager {
                 .filter(someInstance -> someInstance.getUuid().equals(uuid))
                 .findFirst();
         return instance.orElse(null);
-    }
-
-    /**
-     * Registers an {@link Instance} internally.
-     *
-     * @param instance the {@link Instance} to register
-     */
-    private void UNSAFE_registerInstance(Instance instance) {
-        instance.setRegistered(true);
-        this.instances.add(instance);
-        var dispatcher = process.dispatcher();
-        instance.getChunks().forEach(dispatcher::createPartition);
-        InstanceRegisterEvent event = new InstanceRegisterEvent(instance);
-        process.eventHandler().call(event);
     }
 }

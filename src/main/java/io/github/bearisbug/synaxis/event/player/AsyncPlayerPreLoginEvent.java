@@ -64,10 +64,19 @@ public class AsyncPlayerPreLoginEvent implements AsyncEvent {
     /**
      * Sends a login plugin message request. Can be useful to negotiate with modded clients or
      * proxies before moving on to the Configuration state.
+     * <p>
+     * The future completes with the answer of the client. If the connection disconnects or leaves
+     * the login state first, it completes exceptionally with an {@link IllegalStateException}; the
+     * engine sets no other timeout, so wait with {@code orTimeout} or a timed {@code get}. Callbacks
+     * that depend on it may run synchronously on the thread that completes it: the read thread for
+     * an answer, the disconnecting thread (read, tick or write thread), the write thread when the
+     * connection leaves the login state. Use the {@code *Async} variants for slow work.
      *
      * @param channel        the plugin message channel
      * @param requestPayload the contents of the plugin message, can be null for empty
-     * @return a CompletableFuture for the response. The thread on which it completes is asynchronous.
+     * @return a CompletableFuture for the response
+     * @throws IllegalStateException if the connection already left the login state or disconnected,
+     *                               as it has once the event returned and the login went on
      */
     public CompletableFuture<LoginPlugin.Response> sendPluginRequest(String channel, byte[] requestPayload) {
         return pluginMessageProcessor.request(channel, requestPayload);

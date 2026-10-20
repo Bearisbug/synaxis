@@ -68,23 +68,67 @@ public class ServerConfigTest {
         assertEquals(config, config.toBuilder().build());
     }
 
+    /**
+     * Every range check refuses one key per message, starting with that key (docs/DESIGN-PROD.md
+     * API-PROD-023): the host prints the message as it is after "Refusing to start: ".
+     */
     @Test
     public void invalidValuesAreRejected() {
-        assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().dispatcherThreads(0).build());
-        assertThrows(IllegalArgumentException.class,
-                () -> ServerConfig.builder().playerChunkUpdateLimiterHistorySize(-1).build());
-        assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().chatRatePerSecond(0).build());
-        assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().chatBurst(0).build());
-        assertThrows(IllegalArgumentException.class,
-                () -> ServerConfig.builder().maxVisibleEntitiesPerPlayer(-1).build());
-        assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().threadGridExponent(-1).build());
-        assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().threadGridExponent(32).build());
+        refusedWith("synaxis.dispatcher-threads must be at least 1 but was 0", ServerConfig.builder().dispatcherThreads(0));
+        refusedWith("synaxis.player.chunk-update-limiter-history-size must not be negative but was -1",
+                ServerConfig.builder().playerChunkUpdateLimiterHistorySize(-1));
+        refusedWith("synaxis.chat-rate-per-second must be at least 1 but was 0", ServerConfig.builder().chatRatePerSecond(0));
+        refusedWith("synaxis.chat-burst must be at least 1 but was 0", ServerConfig.builder().chatBurst(0));
+        refusedWith("synaxis.max-visible-entities-per-player must not be negative but was -1",
+                ServerConfig.builder().maxVisibleEntitiesPerPlayer(-1));
+        refusedWith("synaxis.thread-grid-exponent must be between 0 and 31 but was -1",
+                ServerConfig.builder().threadGridExponent(-1));
+        refusedWith("synaxis.thread-grid-exponent must be between 0 and 31 but was 32",
+                ServerConfig.builder().threadGridExponent(32));
         assertThrows(NullPointerException.class, () -> ServerConfig.builder().threadProvider(null).build());
         assertThrows(NullPointerException.class, () -> ServerConfig.builder().motd(null).build());
         assertThrows(NullPointerException.class, () -> ServerConfig.builder().serverIcon(null).build());
-        assertEquals("compressionThreshold must not be negative but was -1, 0 turns compression off",
-                assertThrows(IllegalArgumentException.class,
-                        () -> ServerConfig.builder().compressionThreshold(-1).build()).getMessage());
+        refusedWith("synaxis.compression-threshold must not be negative but was -1, 0 turns compression off",
+                ServerConfig.builder().compressionThreshold(-1));
+        refusedWith("synaxis.send-buffer-size must be at least 1 but was 0", ServerConfig.builder().socketSendBufferSize(0));
+        refusedWith("synaxis.receive-buffer-size must be at least 1 but was 0",
+                ServerConfig.builder().socketReceiveBufferSize(0));
+        refusedWith("synaxis.pooled-buffer-size must be at least 1 but was 0", ServerConfig.builder().pooledBufferSize(0));
+        refusedWith("synaxis.watchdog.early-warning-ms must not be negative but was -1",
+                ServerConfig.builder().watchdogEarlyWarning(-1));
+        refusedWith("synaxis.watchdog.early-warning-every-ms must not be negative but was -1",
+                ServerConfig.builder().watchdogEarlyWarningEvery(-1));
+        refusedWith("synaxis.watchdog.timeout-ms must not be negative but was -1", ServerConfig.builder().watchdogTimeout(-1));
+        refusedWith("synaxis.watchdog.halt-after-ms must not be negative but was -1",
+                ServerConfig.builder().watchdogHaltAfter(-1));
+        refusedWith("synaxis.max-connections must be at least 1 but was 0", ServerConfig.builder().maxConnections(0));
+        refusedWith("synaxis.max-connections-per-ip must be at least 1 but was 0",
+                ServerConfig.builder().maxConnectionsPerIp(0));
+        refusedWith("synaxis.handshake-timeout-ms must be at least 1 but was 0", ServerConfig.builder().handshakeTimeout(0));
+        refusedWith("synaxis.accept-backoff-ms must not be negative but was -1", ServerConfig.builder().acceptBackoff(-1));
+        refusedWith("synaxis.max-players must not be negative but was -1", ServerConfig.builder().maxPlayers(-1));
+        refusedWith("synaxis.max-joins-per-tick must not be negative but was -1", ServerConfig.builder().maxJoinsPerTick(-1));
+        refusedWith("synaxis.login-rate-per-ip must be positive but was 0.0", ServerConfig.builder().loginRatePerIp(0));
+        refusedWith("synaxis.login-burst-per-ip must be at least 1 but was 0", ServerConfig.builder().loginBurstPerIp(0));
+        refusedWith("synaxis.status-rate-per-ip must be positive but was NaN",
+                ServerConfig.builder().statusRatePerIp(Double.NaN));
+        refusedWith("synaxis.status-burst-per-ip must be at least 1 but was 0", ServerConfig.builder().statusBurstPerIp(0));
+        refusedWith("synaxis.transfer-rate-per-ip must be positive but was -1.0", ServerConfig.builder().transferRatePerIp(-1));
+        refusedWith("synaxis.transfer-burst-per-ip must be at least 1 but was 0", ServerConfig.builder().transferBurstPerIp(0));
+        refusedWith("synaxis.packet-limit.window-ms must be at least 1 but was 0", ServerConfig.builder().packetLimitWindow(0));
+        refusedWith("synaxis.packet-limit.max-packets must be at least 1 but was 0",
+                ServerConfig.builder().packetLimitMaxPackets(0));
+        refusedWith("synaxis.packet-limit.max-inflated-bytes-per-second must be at least 1 but was 0",
+                ServerConfig.builder().maxInflatedBytesPerSecond(0));
+        refusedWith("synaxis.tab-complete-rate-per-second must be at least 1 but was 0",
+                ServerConfig.builder().tabCompleteRatePerSecond(0));
+        refusedWith("synaxis.outbound.max-backlog-bytes must be at least 1 but was 0",
+                ServerConfig.builder().maxOutboundBacklogBytes(0));
+        refusedWith("synaxis.tab-latency-interval-ms must be at least 1 but was 0", ServerConfig.builder().tabLatencyInterval(0));
+    }
+
+    private static void refusedWith(String message, ServerConfig.Builder builder) {
+        assertEquals(message, assertThrows(IllegalArgumentException.class, builder::build).getMessage());
     }
 
     /**
@@ -138,11 +182,11 @@ public class ServerConfigTest {
         refused("synaxis.chunk-queue.min-per-tick (NaN)", ServerConfig.builder().minChunksPerTick(Float.NaN));
         refused("synaxis.entity-synchronization-ticks must be at least 1 but was 0",
                 ServerConfig.builder().entitySynchronizationTicks(0));
-        refused("synaxis.entity-view-distance and synaxis.max-tick-catch-up must not be negative",
+        refused("synaxis.entity-view-distance must not be negative but was -1",
                 ServerConfig.builder().entityViewDistance(-1));
-        refused("synaxis.entity-view-distance and synaxis.max-tick-catch-up must not be negative",
+        refused("synaxis.max-tick-catch-up must not be negative but was -1",
                 ServerConfig.builder().maxTickCatchUp(-1));
-        refused("chunkViewDistance must not be negative but was -1", ServerConfig.builder().chunkViewDistance(-1));
+        refused("synaxis.chunk-view-distance must not be negative but was -1", ServerConfig.builder().chunkViewDistance(-1));
         assertEquals("connectionGateTrustedNetworks", assertThrows(NullPointerException.class,
                 () -> ServerConfig.builder().connectionGateTrustedNetworks(null).build()).getMessage());
         assertEquals("packetLimitOverrides", assertThrows(NullPointerException.class,

@@ -24,7 +24,6 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
  * <p>
  * Fairly internal and performance sensitive.
  */
-@SuppressWarnings("ALL")
 @ApiStatus.Internal
 public final class PacketReading {
     private final static Logger LOGGER = LoggerFactory.getLogger(PacketReading.class);
@@ -34,17 +33,17 @@ public final class PacketReading {
     /** Packets decoded with trailing bytes since the last report, drained by the line that reports them. */
     static final AtomicLong unreadBytesPackets = new AtomicLong();
     static final AtomicLong lastUnreadBytesReport = new AtomicLong(System.nanoTime() - UNREAD_BYTES_REPORT_INTERVAL);
-    private static final Result.Empty<?> EMPTY_CLIENT_PACKET = new Result.Empty<>();
-    private static final Result.Skipped<?> SKIPPED_CLIENT_PACKET = new Result.Skipped<>();
+    private static final Result.Empty<?> EMPTY_RESULT = new Result.Empty<>();
+    private static final Result.Skipped<?> SKIPPED_RESULT = new Result.Skipped<>();
 
     @SuppressWarnings("unchecked")
     private static <T> Result<T> emptyResult() {
-        return (Result<T>) EMPTY_CLIENT_PACKET;
+        return (Result<T>) EMPTY_RESULT;
     }
 
     @SuppressWarnings("unchecked")
     private static <T> Result<T> skippedResult() {
-        return (Result<T>) SKIPPED_CLIENT_PACKET;
+        return (Result<T>) SKIPPED_RESULT;
     }
 
     public sealed interface Result<T> {
@@ -102,6 +101,12 @@ public final class PacketReading {
     public interface PacketReader<T> {
         /**
          * Reads a packet payload.
+         * <p>
+         * An {@link Exception} thrown here reaches the caller of {@link #readPacket} or
+         * {@link #readPackets} wrapped in a {@link RuntimeException}, with the original one as its
+         * {@link Throwable#getCause() cause}: a caller that tells reasons apart, as
+         * {@code PlayerSocketConnection#processBatch} does for the inbound limit, looks at the cause.
+         * An {@link Error} is not wrapped.
          *
          * @return the decoded packet, or {@code null} to skip the rest of the current packet
          */
@@ -113,7 +118,8 @@ public final class PacketReading {
             ConnectionState state,
             boolean compressed
     ) throws DataFormatException {
-        return readPackets(buffer, PacketVanilla.CLIENT_PACKET_PARSER, state, PacketVanilla::nextClientState, compressed);
+        return readPackets(buffer, PacketVanilla.CLIENT_PACKET_PARSER, state, PacketVanilla::nextClientState, compressed,
+                PacketReading::readPacketPayload);
     }
 
     public static Result<ServerPacket> readServers(
@@ -121,17 +127,8 @@ public final class PacketReading {
             ConnectionState state,
             boolean compressed
     ) throws DataFormatException {
-        return readPackets(buffer, PacketVanilla.SERVER_PACKET_PARSER, state, PacketVanilla::nextServerState, compressed);
-    }
-
-    public static <T> Result<T> readPackets(
-            NetworkBuffer buffer,
-            PacketParser<T> parser,
-            ConnectionState state,
-            BiFunction<T, ConnectionState, ConnectionState> stateUpdater,
-            boolean compressed
-    ) throws DataFormatException {
-        return readPackets(buffer, parser, state, stateUpdater, compressed, PacketReading::readPacketPayload);
+        return readPackets(buffer, PacketVanilla.SERVER_PACKET_PARSER, state, PacketVanilla::nextServerState, compressed,
+                PacketReading::readPacketPayload);
     }
 
     public static <T> Result<T> readPackets(
@@ -168,32 +165,6 @@ public final class PacketReading {
         return skipped ? skippedResult() : emptyResult();
     }
 
-    public static Result<ClientPacket> readClient(
-            NetworkBuffer buffer,
-            ConnectionState state,
-            boolean compressed
-    ) throws DataFormatException {
-        return readPacket(buffer, PacketVanilla.CLIENT_PACKET_PARSER, state, PacketVanilla::nextClientState, compressed);
-    }
-
-    public static Result<ServerPacket> readServer(
-            NetworkBuffer buffer,
-            ConnectionState state,
-            boolean compressed
-    ) throws DataFormatException {
-        return readPacket(buffer, PacketVanilla.SERVER_PACKET_PARSER, state, PacketVanilla::nextServerState, compressed);
-    }
-
-    public static <T> Result<T> readPacket(
-            NetworkBuffer buffer,
-            PacketParser<T> parser,
-            ConnectionState state,
-            BiFunction<T, ConnectionState, ConnectionState> stateUpdater,
-            boolean compressed
-    ) throws DataFormatException {
-        return readPacket(buffer, parser, state, stateUpdater, compressed, PacketReading::readPacketPayload);
-    }
-
     public static <T> Result<T> readPacket(
             NetworkBuffer buffer,
             PacketParser<T> parser,
@@ -227,7 +198,8 @@ public final class PacketReading {
         // A frame always contains at least the packet id var-int, a zero length would
         // produce an empty slice and make the payload read run past its own segment.
         if (packetLength <= 0) throw new DataFormatException("Packet length must be positive: " + packetLength);
-        if (packetLength > maxPacketSize) throw new DataFormatException("Packet too large: " + packetLength);
+        if (packetLength > maxPacketSize) throw new DataFormatException("Packet too large: " + packetLength + " > "
+                + maxPacketSize + " (" + maxPacketSizeProperty(state) + ")");
         // READ PAYLOAD https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol#Packet_format
         if (buffer.readableBytes() < packetLength) {
             // Can't read the full packet
@@ -264,7 +236,8 @@ public final class PacketReading {
             return readPayload(buffer, registry, packetReader);
         }
         if (dataLength < 0 || dataLength > maxPacketSize) {
-            throw new DataFormatException("Invalid decompressed length: " + dataLength);
+            throw new DataFormatException("Invalid decompressed length: " + dataLength + ", the limit is "
+                    + maxPacketSize + " (" + maxPacketSizeProperty(registry.state()) + ")");
         }
 
         // Decompress the packet into the pooled buffer and read the uncompressed packet from it
@@ -305,6 +278,7 @@ public final class PacketReading {
             }
             return packet;
         } catch (Exception e) {
+            // Wrapped to name the packet class in the message, see PacketReader#read
             throw new RuntimeException("failed to read packet " + packetInfo.packetClass(), e);
         }
     }
@@ -343,6 +317,14 @@ public final class PacketReading {
         return switch (state) {
             case HANDSHAKE, STATUS, LOGIN -> JvmFlags.MAX_PACKET_SIZE_PRE_AUTH;
             default -> JvmFlags.MAX_PACKET_SIZE;
+        };
+    }
+
+    /** The system property that sets {@link #maxPacketSize(ConnectionState)}, named in the errors it causes. */
+    private static String maxPacketSizeProperty(ConnectionState state) {
+        return switch (state) {
+            case HANDSHAKE, STATUS, LOGIN -> "synaxis.max-packet-size-pre-auth";
+            default -> "synaxis.max-packet-size";
         };
     }
 }

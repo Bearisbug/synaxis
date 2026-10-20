@@ -42,7 +42,7 @@ public class SendablePacketTest {
 
         var buffer = PacketWriting.allocateTrimmedPacket(ConnectionState.PLAY, packet, null, 0);
 
-        var result = PacketReading.readClient(buffer, ConnectionState.PLAY, false);
+        var result = PacketReading.readClients(buffer, ConnectionState.PLAY, false);
         if (!(result instanceof PacketReading.Result.Success<ClientPacket>(
                 List<PacketReading.ParsedPacket<ClientPacket>> packets
         ))) {

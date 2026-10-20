@@ -1,0 +1,15 @@
+RUN-084: the process's ticker is recorded by startTicking alone (docs/TEST.md TC-PROD-991).
+Branch prod/r084-claim on main bffddf5322. Times are local (UTC+8), 2026-10-20. Gradle one build at a time behind
+the machine's Gradle lock, --max-workers=2 --no-daemon, test tasks with --rerun, the database variables set.
+
+rg -n "new TickSchedulerThread" -g '*.java' .   ->  src/main/java/io/github/bearisbug/synaxis/ServerProcessImpl.java:338
+rg -n "instanceof TickSchedulerThread self" -g '*.java' .   ->  no output
+
+Each build: root TickSchedulerThreadTest, ServerProcessStartTickingTest, ShutdownSequenceTest, ShutdownClaimTest;
+server-app app.shard.ShardWorldRelightTest, app.shard.ShardWorldAssemblyTest, app.ShutdownSequenceTest,
+app.instance.ManagedInstanceTickThreadTest; :testNamingCheck :forbiddenImportsCheck.
+1  19:17:33-19:18:45  default mode                                                    BUILD SUCCESSFUL in 1m 12s
+2  19:18:45-19:19:29  -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true BUILD SUCCESSFUL in 43s
+3  19:19:29-19:20:17  build 2 plus -Dsynaxis.thread-provider=grid                     BUILD SUCCESSFUL in 47s
+   all three: tests="2", "3", "11", "2", "3", "10", "8", "5" in that order, 0 failures, 0 errors, 0 skipped
+The full suites, Concurrency, Client mod and Client gametest run on the draft PR.

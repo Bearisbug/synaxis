@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -32,24 +33,25 @@ public class TickSchedulerThreadTest {
     @Timeout(60)
     public void anExceptionHandlerThatThrowsDoesNotEndTheTickScheduler() {
         final ServerProcess process = started();
-        final TickSchedulerThread ticker = new TickSchedulerThread(process, TimeUnit.MILLISECONDS.toNanos(50),
-                process.config().maxTickCatchUp());
         try {
             process.exception().setExceptionHandler(e -> {
                 throw new IllegalStateException("the handler failed", e);
             });
             final AtomicInteger ticks = new AtomicInteger();
+            final AtomicReference<Thread> ticker = new AtomicReference<>();
             process.scheduler().scheduleNextTick(() -> {
                 throw new IllegalStateException("a task failed");
             });
             process.scheduler().scheduleTask(() -> {
+                ticker.set(Thread.currentThread());
                 ticks.incrementAndGet();
                 return TaskSchedule.nextTick();
             }, TaskSchedule.nextTick());
-            ticker.start();
+            process.startTicking();
 
             await(() -> ticks.get() >= 10, "the ticks went on after the task and the handler failed");
-            assertTrue(ticker.isAlive());
+            assertInstanceOf(TickSchedulerThread.class, ticker.get());
+            assertTrue(ticker.get().isAlive());
         } finally {
             process.exception().setExceptionHandler(null);
             process.stop();
@@ -74,7 +76,7 @@ public class TickSchedulerThreadTest {
             instance.setGenerator(unit -> unit.modifier().fillHeight(0, 40, Block.STONE));
             final Entity entity = new Entity(EntityType.ZOMBIE);
             entity.setInstance(instance, new Pos(8, 42, 8)).join();
-            new TickSchedulerThread(process, TimeUnit.MILLISECONDS.toNanos(50), process.config().maxTickCatchUp()).start();
+            process.startTicking();
             await(() -> entity.acquirable().assignedThread() != null, "the entity got a tick thread");
 
             process.scheduler().scheduleEndOfTick(() -> {

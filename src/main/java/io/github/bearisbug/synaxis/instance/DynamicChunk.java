@@ -38,7 +38,7 @@ import static io.github.bearisbug.synaxis.coordinate.CoordConversion.globalToSec
 /**
  * Represents a {@link Chunk} which store each individual block in memory.
  * <p>
- * WARNING: not thread-safe.
+ * Follows the lock model of {@link Chunk}: reads under the read-lock, changes under the write-lock.
  */
 public class DynamicChunk extends Chunk {
     private static final Logger LOGGER = LoggerFactory.getLogger(DynamicChunk.class);
@@ -50,9 +50,18 @@ public class DynamicChunk extends Chunk {
     @SuppressWarnings("this-escape") // deliberate self registration during construction
     protected Heightmap worldSurface = new WorldSurfaceHeightmap(this);
 
-    // Key = ChunkUtils#getBlockIndex
+    /**
+     * The blocks with a handler, NBT or a block entity type, by {@link CoordConversion#chunkBlockIndex}.
+     * Changed under the write-lock only, a chunk not published yet aside (the one {@link #copy} makes).
+     */
     protected final Int2ObjectOpenHashMap<Block> entries = new Int2ObjectOpenHashMap<>(0);
-    @SuppressWarnings("this-escape") // deliberate self registration during construction
+    /**
+     * The blocks whose handler ticks, by {@link CoordConversion#chunkBlockIndex}. This class keeps it a
+     * subset of {@link #entries}; a subclass may register tickable blocks that are not in there (the handle
+     * mode of {@code SynxChunk} does). Changed under the write-lock only, a chunk not published yet aside;
+     * {@link #tick(long)} takes the indexes under the read-lock and reads each block again under the
+     * read-lock before ticking it.
+     */
     protected final Int2ObjectOpenHashMap<Block> tickableMap = new Int2ObjectOpenHashMap<>(0);
 
     @SuppressWarnings("this-escape") // deliberate self registration during construction
@@ -346,6 +355,12 @@ public class DynamicChunk extends Chunk {
         return new UpdateLightPacket(chunkX, chunkZ, createLightData(false));
     }
 
+    /**
+     * The light of the chunk packet and of the light packet.
+     *
+     * @param requiredFullChunk ignored here; {@link LightingChunk} chooses between its full and partial light
+     *                          caches with it
+     */
     protected LightData createLightData(boolean requiredFullChunk) {
         BitSet skyMask = new BitSet();
         BitSet blockMask = new BitSet();
@@ -354,6 +369,8 @@ public class DynamicChunk extends Chunk {
         List<byte[]> skyLights = new ArrayList<>();
         List<byte[]> blockLights = new ArrayList<>();
 
+        // The light sections reach one past the block sections at each end: bit 0 of a mask is minSection - 1
+        // and bit n + 1 is maxSection, which this class does not send, so block section i goes to bit i + 1
         int index = 0;
         for (Section section : sections) {
             index++;

@@ -38,23 +38,34 @@ public interface GenerationUnit {
     BlockVec absoluteStart();
 
     /**
-     * The absolute end (max x, y, z) of this unit.
+     * The absolute end of this unit, the first x, y and z after it: the unit covers
+     * [{@link #absoluteStart()}, {@code absoluteEnd()}) on each axis.
      *
-     * @return the absolute end
+     * @return the absolute end, exclusive
      */
     BlockVec absoluteEnd();
 
     /**
-     * Creates a fork of this unit, which will be applied to the instance whenever possible.
+     * Creates a fork covering [start, end) rounded out to whole sections, which may reach beyond this unit.
+     * <p>
+     * A fork is valid during {@link Generator#generate(GenerationUnit)} only: a fork made or written once
+     * it returned is not applied. Once it returned, the blocks a fork set overwrite those of a chunk the
+     * instance holds, and its viewers get them; for a chunk the instance does not hold they wait until it
+     * is cached, generated or read by the {@code ChunkLoader}. A block the fork did not set keeps the block
+     * of the chunk. A fork cannot set biomes, {@code setBiome} and {@code fillBiome} throw
+     * {@link IllegalStateException}, and its sections outside the height of the world are dropped with a
+     * WARN. The baker fails the region of a generator that forks (docs/DESIGN-M3.md API-M3-003).
      *
      * @param start the start of the fork
-     * @param end   the end of the fork
+     * @param end   the end of the fork, exclusive
      * @return the fork
+     * @throws IllegalArgumentException if the area rounded out to whole sections is empty on an axis
      */
     GenerationUnit fork(Point start, Point end);
 
     /**
-     * Creates a fork of this unit depending on the blocks placed within the consumer.
+     * Creates a fork covering the box of sections around the blocks the consumer sets, wherever they are,
+     * applied as {@link #fork(Point, Point)} describes. Nothing is forked when the consumer sets no block.
      *
      * @param consumer the consumer
      */

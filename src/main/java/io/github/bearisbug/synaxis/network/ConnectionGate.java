@@ -243,7 +243,7 @@ public final class ConnectionGate {
      *
      * @param nanoTime the time of the tick, {@link System#nanoTime()}; it only times the 10 second
      *                 report window, the 60 second sweep of the buckets runs on the clock of the
-     *                 buckets (see {@link #clock(LongSupplier)})
+     *                 buckets (see {@code clock(LongSupplier)})
      */
     public void tick(long nanoTime) {
         if (!reportWindowStarted) {

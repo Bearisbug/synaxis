@@ -14,8 +14,10 @@ import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
  * <p>
  * On the network a template is the material, a VarInt count and the component patch, with no prefix for an empty
  * item. A 26.2 client refuses to build a template of count 0 or of air and drops the connection while decoding one,
- * so the components holding templates refuse air when they are set. {@link #CODEC} writes the count only when it is
- * not 1, as 26.2 does, and also reads an item written as its id alone.
+ * so {@code use_remainder}, {@code charged_projectiles}, {@code bundle_contents} and {@code sulfur_cube_content}
+ * refuse air when they are set; a {@code container} slot holding air is written as an empty slot instead.
+ * {@link #CODEC} writes the count only when it is not 1, as 26.2 does, and also reads an item written as its id
+ * alone.
  * <p>
  * Data that may hold an empty item, such as an inventory slot, uses {@link ItemStack#NETWORK_TYPE} and
  * {@link ItemStack#CODEC} instead.

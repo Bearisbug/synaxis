@@ -498,6 +498,8 @@ public abstract class PlayerConnection {
      * @param host the host, usually an IP or domain name.
      * @param port the port, usually 25565.
      * @throws IllegalStateException if the connection is in another state, the login one for instance
+     * @throws IllegalArgumentException if the host is blank or the port is outside 1 to 65535, as the
+     *                                  {@code OutgoingTransferEvent} it calls refuses them
      */
     public void transfer(String host, int port) {
         Check.stateCondition(serverState != ConnectionState.CONFIGURATION && serverState != ConnectionState.PLAY,

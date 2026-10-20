@@ -802,7 +802,7 @@ public class PlayerSocketConnection extends PlayerConnection {
 
     /**
      * One round of the write thread. Writes what the previous round left unwritten first, and returns
-     * if it still does not all go out. Otherwise waits while the queue is empty, half a tick by
+     * if it still does not all go out. Otherwise waits once if the queue is empty, half a tick by
      * default and parked until a packet is offered with {@code ServerConfig#fasterSocketWrites()},
      * then writes at most one pooled buffer of queued packets.
      * <p>

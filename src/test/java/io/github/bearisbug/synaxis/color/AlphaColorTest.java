@@ -53,4 +53,17 @@ public class AlphaColorTest {
         assertTrue(rgba.message().contains("invalid hex color '#12345', expected #RRGGBBAA"), rgba.message());
         assertTrue(shadow.message().contains("invalid hex color '#12345', expected #RRGGBBAA"), shadow.message());
     }
+
+    @Test
+    @SuppressWarnings("deprecation") // STRING_CODEC is checked along with its replacements
+    public void aValidHexStringDecodesInTheOrderOfItsCodec() {
+        final JsonPrimitive hex = new JsonPrimitive("#23456701");
+
+        assertEquals(0x01234567, AlphaColor.fromARGBLike(
+                AlphaColor.RGBA_STRING_CODEC.decode(Transcoder.JSON, hex).orElseThrow()).asARGB());
+        assertEquals(0x01234567, AlphaColor.fromARGBLike(
+                AlphaColor.STRING_CODEC.decode(Transcoder.JSON, hex).orElseThrow()).asARGB());
+        assertEquals(0x23456701, AlphaColor.fromARGBLike(
+                AlphaColor.ARGB_STRING_CODEC.decode(Transcoder.JSON, hex).orElseThrow()).asARGB());
+    }
 }

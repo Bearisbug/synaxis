@@ -6,8 +6,6 @@ import io.github.bearisbug.synaxis.entity.GameMode;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.entity.attribute.Attribute;
 import io.github.bearisbug.synaxis.instance.Instance;
-import io.github.bearisbug.synaxis.instance.block.Block;
-import io.github.bearisbug.synaxis.instance.fluid.Fluid;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.item.component.Tool;
@@ -19,7 +17,6 @@ import org.jetbrains.annotations.Nullable;
 public class BlockBreakCalculation {
 
     public static final int UNBREAKABLE = -1;
-    private static final RegistryTag<Fluid> WATER_TAG = Fluid.staticRegistry().getOrCreateTag(TagKey.ofHash("#minecraft:water"));
     // The vanilla client checks for bamboo breaking speed with item instanceof SwordItem.
     // We could either check all sword ID's, or the sword tag.
     // Since tags are immutable, checking the tag seems easier to understand
@@ -112,21 +109,12 @@ public class BlockBreakCalculation {
     }
 
     private static boolean isInWater(Player player) {
-        Pos pos = player.getPosition();
-        Instance instance = player.getInstance();
-        double eyeY = pos.y() + player.getEyeHeight();
-        int x = pos.blockX();
-        int y = (int) Math.floor(eyeY);
-        int z = pos.blockZ();
-        Pos eye = player.getPosition().add(0, player.getEyeHeight(), 0);
-        Block block = instance.getBlock(eye);
-
-        final Fluid fluid = Fluid.fromKey(block.key());
-        if (fluid == null || !WATER_TAG.contains(fluid.registryKey())) {
-            return false;
-        }
-        float fluidHeight = getFluidHeight(player.getInstance(), x, y, z, block);
-        return eyeY < y + fluidHeight;
+        final Instance instance = player.getInstance();
+        final Pos eye = player.getPosition().add(0, player.getEyeHeight(), 0);
+        final Block block = instance.getBlock(eye);
+        if (block.id() != Block.WATER.id()) return false;
+        final int y = eye.blockY();
+        return eye.y() < y + getFluidHeight(instance, eye.blockX(), y, eye.blockZ(), block);
     }
 
     private static float getFluidHeight(Instance instance, int x, int y, int z, Block block) {
@@ -145,7 +133,7 @@ public class BlockBreakCalculation {
         int level;
         try {
             level = Integer.parseInt(levelString);
-        } catch (Throwable _) {
+        } catch (NumberFormatException _) {
             return 1;
         }
         if (level >= 8) {

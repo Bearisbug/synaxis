@@ -54,6 +54,7 @@ import io.github.bearisbug.synaxis.instance.EntityTracker;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.InstanceManager;
 import io.github.bearisbug.synaxis.instance.PlayerPositions;
+import io.github.bearisbug.synaxis.instance.Weather;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.coordinate.BlockFace;
 import io.github.bearisbug.synaxis.instance.block.BlockHandler;
@@ -1404,12 +1405,16 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
                 // The dispatcher is told last: an entity no tick thread owns yet runs this without a
                 // lock, and a tick thread it were handed to meanwhile would tick it during its spawn
                 this.currentChunk = chunk;
+                final Weather weather = instance.getCurrentWeather();
                 if (this instanceof Player player) {
                     player.sendPacket(instance.createInitializeWorldBorderPacket());
                     player.sendPacket(instance.createTimePacket());
-                    player.sendPackets(instance.getCurrentWeather().createWeatherPackets());
+                    player.sendPackets(weather.createWeatherPackets());
                 }
                 instance.getEntityTracker().register(this, position, trackingTarget, trackingUpdate);
+                // A weather step of the instance tick between the packets above and the registration missed this player
+                if (this instanceof Player player && !instance.getCurrentWeather().equals(weather))
+                    player.sendPackets(instance.getCurrentWeather().createWeatherPackets());
                 spawn();
                 callEvent(new EntitySpawnEvent(this, instance));
             } catch (Exception e) {

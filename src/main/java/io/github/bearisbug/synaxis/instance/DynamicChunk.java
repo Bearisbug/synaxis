@@ -137,6 +137,10 @@ public class DynamicChunk extends Chunk {
     @Override
     public void setBiome(int x, int y, int z, RegistryKey<Biome> biome) {
         assertWriteLock();
+        if (y < minSection * CHUNK_SECTION_SIZE || y >= maxSection * CHUNK_SECTION_SIZE) {
+            LOGGER.warn("tried to set a biome outside the world bounds at {}, {}, {} in chunk {},{}", x, y, z, chunkX, chunkZ);
+            return;
+        }
         this.chunkCache.invalidate();
         Section section = getSectionAt(y);
 
@@ -246,9 +250,11 @@ public class DynamicChunk extends Chunk {
     @Override
     public RegistryKey<Biome> getBiome(int x, int y, int z) {
         assertReadLock();
-        final Section section = getSectionAt(y);
+        // Above or below the world, the section at that end, as vanilla getNoiseBiome clamps
+        final int clampedY = Math.clamp(y, minSection * CHUNK_SECTION_SIZE, maxSection * CHUNK_SECTION_SIZE - 1);
+        final Section section = getSectionAt(clampedY);
         final int id = section.biomePalette()
-                .get(globalToSectionRelative(x) / 4, globalToSectionRelative(y) / 4, globalToSectionRelative(z) / 4);
+                .get(globalToSectionRelative(x) / 4, globalToSectionRelative(clampedY) / 4, globalToSectionRelative(z) / 4);
 
         RegistryKey<Biome> biome = instance.registries().biome().getKey(id);
         Check.notNull(biome, "Biome with id {0} is not registered", id);

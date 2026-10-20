@@ -265,6 +265,10 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     @Override
     public void setBiome(int x, int y, int z, RegistryKey<Biome> biome) {
         if (isReadOnly()) return;
+        if (y < minSection * CHUNK_SECTION_SIZE || y >= maxSection * CHUNK_SECTION_SIZE) {
+            super.setBiome(x, y, z, biome); // warns and changes nothing
+            return;
+        }
         if (mode == Mode.HANDLE) materialize();
         try {
             super.setBiome(x, y, z, biome);
@@ -296,8 +300,10 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     public RegistryKey<Biome> getBiome(int x, int y, int z) {
         if (mode != Mode.HANDLE) return super.getBiome(x, y, z);
         final Source source = Objects.requireNonNull(this.source);
-        final Palette biomes = sections(source).biomes()[sectionIndex(y)];
-        final int id = biomes.get((x & 15) / 4, (y & 15) / 4, (z & 15) / 4);
+        // Above or below the world, the section at that end, as DynamicChunk#getBiome reads
+        final int clampedY = Math.clamp(y, minSection * CHUNK_SECTION_SIZE, maxSection * CHUNK_SECTION_SIZE - 1);
+        final Palette biomes = sections(source).biomes()[sectionIndex(clampedY)];
+        final int id = biomes.get((x & 15) / 4, (clampedY & 15) / 4, (z & 15) / 4);
         return Objects.requireNonNull(instance.registries().biome().getKey(id), () -> "biome " + id + " is not registered");
     }
 

@@ -108,8 +108,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private volatile int compressionThreshold;
     // The save phase budget once the watchdog judged the process dead, see save()
     private final long deathSaveBudgetNanos;
-    // Set by startTicking, or by a ticker started by hand on its first tick, so that stop() can wait
-    // for the in-flight tick to complete.
+    // Set by startTicking, so that stop() can wait for the in-flight tick to complete.
     private volatile @Nullable TickSchedulerThread tickSchedulerThread;
     // Kept so that stop() can unregister it, the JVM strongly references every registered hook.
     volatile @Nullable Thread shutdownHook;
@@ -643,7 +642,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         }
 
         private void tickWatched(long nanoTime) {
-            if (Thread.currentThread() instanceof TickSchedulerThread self) tickSchedulerThread = self;
             var serverTickEvent = EventsJFR.newServerTick();
             serverTickEvent.begin();
             final long serialWaitBefore = ownAcquireWait();

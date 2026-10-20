@@ -31,13 +31,9 @@ record ItemStackImpl(Material material, int amount, DataComponentMap componentPa
                     return;
                 }
 
-                if (value.amount() <= 0) {
-                    throw new IllegalArgumentException(String.format("ItemStack %s amount must be greater than 0 if not air", value));
-                }
-
                 buffer.write(NetworkBuffer.VAR_INT, value.amount());
                 buffer.write(NetworkBuffer.VAR_INT, value.material().id());
-                buffer.write(componentPatchType, ((ItemStackImpl) value).componentPatch());
+                buffer.write(componentPatchType, value.componentPatch());
             }
 
             @Override
@@ -51,13 +47,10 @@ record ItemStackImpl(Material material, int amount, DataComponentMap componentPa
         };
     }
 
+    // The one place items are normalized, see ItemStack#AIR: an item of amount 0 that is not air kicks players
     static ItemStack create(Material material, int amount, DataComponentMap components) {
         if (amount <= 0 || material == Material.AIR) return AIR;
         return new ItemStackImpl(material, amount, components);
-    }
-
-    static ItemStack create(Material material, int amount) {
-        return create(material, amount, DataComponentMap.EMPTY);
     }
 
     public ItemStackImpl {
@@ -75,9 +68,6 @@ record ItemStackImpl(Material material, int amount, DataComponentMap componentPa
         if (componentPatch != DataComponentMap.EMPTY) {
             componentPatch = DataComponentMap.diff(material.prototype(), componentPatch);
         }
-
-        // Having items with amount being 0 and material not being air kicks players
-        if (amount == 0) material = Material.AIR;
     }
 
     @Override
@@ -109,7 +99,6 @@ record ItemStackImpl(Material material, int amount, DataComponentMap componentPa
 
     @Override
     public ItemStack withAmount(int amount) {
-        if (amount <= 0) return ItemStack.AIR;
         return create(material, amount, componentPatch);
     }
 
@@ -152,7 +141,7 @@ record ItemStackImpl(Material material, int amount, DataComponentMap componentPa
 
     @Override
     public boolean isSimilar(ItemStack itemStack) {
-        return material == itemStack.material() && componentPatch.equals(((ItemStackImpl) itemStack).componentPatch);
+        return material == itemStack.material() && componentPatch.equals(itemStack.componentPatch());
     }
 
     @Override
@@ -193,12 +182,6 @@ record ItemStackImpl(Material material, int amount, DataComponentMap componentPa
             this.material = material;
             this.amount = amount;
             this.components = components;
-        }
-
-        Builder(Material material, int amount) {
-            this.material = material;
-            this.amount = amount;
-            this.components = DataComponentMap.patchBuilder();
         }
 
         @Override

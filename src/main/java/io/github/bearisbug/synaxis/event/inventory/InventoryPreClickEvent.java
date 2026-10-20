@@ -10,6 +10,8 @@ import io.github.bearisbug.synaxis.item.ItemStack;
 
 /**
  * Called before {@link InventoryClickEvent}, used to potentially cancel the click.
+ * <p>
+ * A listener that closes the open inventory, or opens another one, cancels the click as well.
  */
 public class InventoryPreClickEvent implements InventoryEvent, PlayerInstanceEvent, CancellableEvent {
 

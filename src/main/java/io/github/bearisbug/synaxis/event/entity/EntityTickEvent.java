@@ -5,7 +5,11 @@ import io.github.bearisbug.synaxis.event.trait.EntityInstanceEvent;
 
 /**
  * Called when an entity ticks itself.
- * Same event instance used for all tick events for the same entity.
+ * <p>
+ * Called once each time the entity runs the body of its tick, on the tick thread that owns the entity, after
+ * {@link Entity#update(long)} and before the expired effects are handled. A tick the entity sits out, because it is
+ * beyond the simulation distance or its {@link io.github.bearisbug.synaxis.entity.DormancyPolicy} skips it, calls
+ * none. Every call is a new event.
  */
 public class EntityTickEvent implements EntityInstanceEvent {
 

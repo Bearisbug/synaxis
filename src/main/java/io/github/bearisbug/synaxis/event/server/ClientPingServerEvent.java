@@ -3,20 +3,18 @@ package io.github.bearisbug.synaxis.event.server;
 import io.github.bearisbug.synaxis.event.trait.AsyncEvent;
 import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
-import io.github.bearisbug.synaxis.timer.TimeUnit;
 
 import java.time.Duration;
+import java.util.Objects;
 
 
 /**
  * Called when a {@link PlayerConnection} sends a ping packet,
- * usually after the status packet. Only used in versions since the netty rewrite; 1.7+
+ * usually after the status packet.
  *
  * @see ServerListPingEvent
  */
 public class ClientPingServerEvent implements CancellableEvent, AsyncEvent {
-    private static final Duration DEFAULT_DELAY = Duration.of(0, TimeUnit.MILLISECOND);
-
     private final PlayerConnection connection;
     private long payload;
 
@@ -30,21 +28,20 @@ public class ClientPingServerEvent implements CancellableEvent, AsyncEvent {
      * @param payload    the payload the client sent
      */
     public ClientPingServerEvent(PlayerConnection connection, long payload) {
-        this.connection = connection;
-        this.payload = payload;
-        this.delay = DEFAULT_DELAY;
+        this(connection, payload, Duration.ZERO);
     }
 
     /**
-     * Creates a new client ping server event with 0 delay
+     * Creates a new client ping server event with the given delay
      *
      * @param connection the player connection
      * @param payload    the payload the client sent
+     * @param delay      the delay until the engine sends the ping response packet
      */
     public ClientPingServerEvent(PlayerConnection connection, long payload, Duration delay) {
         this.connection = connection;
         this.payload = payload;
-        this.delay = delay;
+        this.delay = Objects.requireNonNull(delay, "delay");
     }
 
     /**
@@ -68,8 +65,6 @@ public class ClientPingServerEvent implements CancellableEvent, AsyncEvent {
 
     /**
      * Sets the payload to respond with.
-     * <p>
-     * Note: This should be the same as the client sent, however vanilla 1.17 seems to be OK with a different payload.
      *
      * @param payload the payload
      */
@@ -79,6 +74,10 @@ public class ClientPingServerEvent implements CancellableEvent, AsyncEvent {
 
     /**
      * Gets the delay until the engine will send the ping response packet.
+     * <p>
+     * Zero answers right away and closes the connection. Any other value keeps the connection open
+     * meanwhile; once the delay ran out, the response is sent and the connection closed on the next
+     * tick of the process.
      *
      * @return the delay
      */
@@ -94,23 +93,23 @@ public class ClientPingServerEvent implements CancellableEvent, AsyncEvent {
      * @param delay the delay
      */
     public void addDelay(Duration delay) {
-        this.delay = this.delay.plus(delay);
+        this.delay = this.delay.plus(Objects.requireNonNull(delay, "delay"));
     }
 
     /**
-     * Sets the delay until the engine will send the ping response packet.
+     * Sets the delay until the engine will send the ping response packet, see {@link #getDelay()}.
      *
      * @param delay the delay
      */
     public void setDelay(Duration delay) {
-        this.delay = delay;
+        this.delay = Objects.requireNonNull(delay, "delay");
     }
 
     /**
      * Clears the delay until the engine will send the ping response packet.
      */
     public void noDelay() {
-        this.delay = DEFAULT_DELAY;
+        this.delay = Duration.ZERO;
     }
 
     @Override

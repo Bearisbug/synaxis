@@ -5,11 +5,23 @@ public class TickMonitor {
     private final double tickTime;
     private final double acquisitionTime;
 
+    /**
+     * Creates the monitoring data of one tick.
+     *
+     * @param tickTime        the duration of the tick, in milliseconds
+     * @param acquisitionTime the acquisition wait of the tick, in milliseconds
+     */
     public TickMonitor(double tickTime, double acquisitionTime) {
         this.tickTime = tickTime;
         this.acquisitionTime = acquisitionTime;
     }
 
+    /**
+     * How long this tick took, in milliseconds: from the start of the tick to just before
+     * {@code ServerTickMonitorEvent} is called, so the listeners of that event are not counted.
+     *
+     * @return the duration of the tick, in milliseconds
+     */
     public double getTickTime() {
         return tickTime;
     }

@@ -9,6 +9,7 @@ import java.time.Duration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ClientPingServerEventTest {
@@ -61,5 +62,17 @@ public class ClientPingServerEventTest {
 
         event.setCancelled(true);
         assertTrue(event.isCancelled());
+    }
+
+    @Test
+    public void aMissingDelayIsRefusedWhenItIsSet() {
+        final @Nullable PlayerConnection connection = null;
+        final @Nullable Duration noDelay = null;
+        var event = event(1L);
+        assertEquals("delay", assertThrows(NullPointerException.class, () -> event.setDelay(noDelay)).getMessage());
+        assertEquals("delay", assertThrows(NullPointerException.class, () -> event.addDelay(noDelay)).getMessage());
+        assertEquals(Duration.ZERO, event.getDelay());
+        assertEquals("delay", assertThrows(NullPointerException.class,
+                () -> new ClientPingServerEvent(connection, 1L, noDelay)).getMessage());
     }
 }

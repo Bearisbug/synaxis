@@ -7,6 +7,14 @@ import io.github.bearisbug.synaxis.network.packet.client.play.ClientSetGameRules
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Called when a player asks to change game rules.
+ * <p>
+ * A notification: not cancellable, and the engine does nothing with the request. The request is the client's to
+ * send, a modified client sends it at any time whatever its permission level. A listener that grants it first checks
+ * a permission node ({@code docs/DESIGN-PROD.md} {@code API-PROD-010}; not {@link Player#getPermissionLevel()}, see
+ * {@code REQ-PROD-011}), then applies the rules itself.
+ */
 public class PlayerSetGameRulesEvent implements PlayerInstanceEvent {
     private final Player player;
     private final List<ClientSetGameRulesPacket.Entry> requestedRules;

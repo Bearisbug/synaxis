@@ -15,8 +15,8 @@ import java.util.Collection;
 import java.util.Objects;
 
 /**
- * Represents a game event.
- * Used for a wide variety of events, from weather to bed use to game mode to demo messages.
+ * An entry of the vanilla {@code game_event} registry, used by vibrations, sculk sensors and wardens; unrelated to
+ * {@code ChangeGameStatePacket}.
  */
 public sealed interface GameEvent extends StaticProtocolObject<GameEvent>, GameEvents permits GameEventImpl {
 
@@ -26,14 +26,14 @@ public sealed interface GameEvent extends StaticProtocolObject<GameEvent>, GameE
     /**
      * Returns the game event registry.
      *
-     * @return the game event registry or null if not found
-     * @deprecated registry data will no longer be exposed
+     * @return the game event registry
+     * @deprecated registry data will no longer be exposed. {@code notificationRadius} has no other accessor yet:
+     * an {@code int notificationRadius()} comes before this method is removed.
      */
     @Deprecated(forRemoval = true)
     @SuppressWarnings("removal")
     @Override
     @Contract(pure = true)
-    @Nullable
     RegistryData.GameEventEntry registry();
 
     static Collection<GameEvent> values() {

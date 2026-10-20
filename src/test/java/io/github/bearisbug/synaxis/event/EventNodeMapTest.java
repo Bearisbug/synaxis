@@ -11,6 +11,7 @@ import java.lang.ref.WeakReference;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.github.bearisbug.synaxis.testing.TestUtils.waitUntilCleared;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -214,6 +215,27 @@ public class EventNodeMapTest {
         parent.removeChild(child);
         parent.call(new EventNodeTest.ItemTestEvent(item));
         assertFalse(result.get(), "A removed child whose only listeners are mapped must not receive events anymore");
+    }
+
+    @Test
+    public void aMappedOwnerIsNamedOnlyWhenItsNodeIsBuilt() {
+        // A node takes the toString() of its owner as its name
+        final class Owner {
+            int names;
+
+            @Override
+            public String toString() {
+                names++;
+                return "owner";
+            }
+        }
+        var owner = new Owner();
+        var filter = EventFilter.from(EventNodeTest.EventTest.class, Owner.class, _ -> owner);
+        var node = EventNode.all("main");
+
+        var first = node.map(owner, filter);
+        assertSame(first, node.map(owner, filter));
+        assertEquals(1, owner.names, "the second map returns the cached node without building another one");
     }
 
     // The registered nodes are guarded by the global lock, and a read of a WeakHashMap mutates it

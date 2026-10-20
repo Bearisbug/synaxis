@@ -8,7 +8,7 @@
 | 项目画像 | 生产产品（引擎本体仍是内部系统，见 `docs/DESIGN.md` §1；**M2 交付的是面向真实玩家的游戏**，内测阶段单机单区 ≤ 50 人，因此本文档按生产产品填全部 `[核心]` 节。全部可观测性与埋点落在单进程本地文件，不接外部监控） |
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
-| 最后更新 | 2026-10-19 |
+| 最后更新 | 2026-10-20 |
 | 关联 | 引擎单一事实源 `docs/DESIGN.md`（M1 / M1.5） · 测试文档 `docs/TEST.md` · 运行手册 `docs/ENGINE.md` · 审计与开发计划 `docs/research/minestom-audit/00-总结与开发计划.md` · 两轮审计 `docs/research/audit-2026-09-15/` · 仓库 `https://github.com/Bearisbug/synaxis` |
 
 本文档是 `docs/DESIGN.md` 的**里程碑分册**——这是对 design-doc 模板「同一份文档滚动收纳全部功能域」的一次显式偏离，理由与防腐坏机制（三处回指、ID 带 `M2` 域段、跨文档一律引用不复制）见 §24 最后一条。本文档只管 M2 新增的东西。引擎侧的背景、实体、协议状态机、错误码体系、线程模型、构建链一律以 `docs/DESIGN.md` 为准，本文档用「见 `docs/DESIGN.md` §N」引用，不复制。ID 独立编号：需求 `REQ-M2-*`、接口 `API-M2-*`、决策 `ADR-M2-*`、Runbook `RB-M2-*`；实体 `ENT-*`、页面 `PAGE-*`、事件 `EVT:*` 用语义命名，与 M1 天然不冲突。
@@ -18,6 +18,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-16 | v0.1 | 初稿：M2 范围、模块拆分、插件宿主、自定义协议、单位模型、寻路、世界管理与四条审计残留处置、垂直切片验收、阶段计划 | Bearisbug |
+| 2026-10-20 | v0.69 | 跟进 `docs/DESIGN-PROD.md` v0.9.109（RUN-085），需求不改。`API-M2-010` 启动序列的就绪判定写明 `<port>` 是游戏端口实际绑定的端口：`synaxis.app.port=0` 时打印系统分配的端口（原先打印配置的 0），配成非零值时输出不变。起子进程的测试改用 `port=0`、从这一行读端口，不再先用一个关掉的 socket 取空闲端口：那样子进程里绑 `127.0.0.1:0` 的指标端点可能分到同一个端口，游戏端口随之绑不上 | Bearisbug |
 | 2026-10-19 | v0.68 | §19 加场景「单位推进时面朝前进方向，原地不动时保持朝向」（`REQ-M2-016`）：`docs/DESIGN-PROD.md` v0.9.101 起 `Pos#withDirection` 收到零向量时视角不变，单位被命令到脚下那一点时 `Unit#advance` 原先拿到航点自带的视角（yaw 0、pitch 0），现在保留单位原来的朝向（`docs/TEST.md` `TC-GAME-076`） | Bearisbug |
 | 2026-10-19 | v0.67 | 跟进 `docs/DESIGN-PROD.md` 的 RUN-081（集成分支 `prod/integrate-081`，基于 `main` `f6b40afd94`，该分册 v0.9.93～v0.9.106），各组只改了内容、没升本分册的版本，本版汇总，**消息布局与 `schema_version` 未改**。**组 PLAYHOST**：`REQ-M2-006` 与 `API-M2-001` 写明插件通道只收已进 PLAY 的负载，PLAY 之前到的丢弃并经 `LogBudget` 记 WARN，`synaxis:play` 在 PLAY 之前只丢不记，`minecraft:` 命名空间的只丢不记；`API-M2-007` 插件 id 全进程唯一，两个插件同 id 时宿主拒启；`API-M2-011` 准入回调抛异常、返回 null 或构造出不合法的答案都按拒绝处理；§19 加对应场景（两个插件同 id、PLAY 之前的插件通道负载、通道名不是 identifier 的入站负载）。**组 EVENT**：`API-M2-008` 的事件与错误归因两条、`ADR-M2-010` 的后果一条写明没有实例的玩家的事件，实例作用域节点收不到。**组 ENTITY**：`ADR-M2-005` 选项 ① 补 `refreshPosition` 的区块检查提前到改任何状态之前，不在实例里调 `moveTo` 抛 `IllegalStateException`。**组 PLAYER**：下行单包上限一条补构造 `PluginMessagePacket` 时就拒收超过 1,048,576 字节的负载。**组 STORE**：§17 `unit.snapshot` 一行与 `RB-M2-003` 写明插件任务的失败日志经该任务的 `LogBudget` 限量。**组 APPHOST**：`API-M2-010` 第 ①、②、⑥ 步写明三个宿主键在第 ① 步读、取值不对就拒启，`MinecraftServer#start` 依次调 `ServerProcess#start` 与 `ServerProcess#startTicking`。**组 BOOT**：§28.2「原版聊天是一进 N 出的放大面」已决行的 `ServerConfig.java`、`Messenger.java` 行号。**集成时补的**：§28.2「原版聊天是一进 N 出的放大面」已决行的 `ChatMessageListener.java` 三处行号随组 NET 的改动改为 `:65`、`:71`、`:56`，`JoinGame` 的 `enforcesSecureChat` 一处改指 `Player.java:454`（原写的 `:398` 早已过期）；组 ENTITY 让 `Entity#moveTo` 不在实例里时抛 `IllegalStateException`，定为不算 §24 稳定面的语义变更（误用路径上原先是 `AssertionError` 或 `NullPointerException`，正常调用不变），`REQ-M2-025` 不改 | Bearisbug |
 | 2026-10-12 | v0.66 | 跟进 `docs/DESIGN-PLAY.md` v0.2（RUN-077 组 P，玩法架构最小样板 S1 的 `:protocol` 部分），**M2 的消息布局、`schema_version`（仍是 1）与 `vectors/` 的向量和 digest 都没改**。本版两处按 RUN-077 的文档归属由生产就绪会话改（本分册里插件宿主与线协议的行）：**`API-M2-001`** 的通道清单加 `synaxis:play`，宿主在三种进程模式下都注册的 play 阶段双向通道，编解码是 `:protocol` 包 `game.protocol.play` 的 `PlayMessages`，走本条的 `msg_id` 信封与三条硬性解码行为，但不计入 `schema_version`，有自己的版本 `PlayProtocol.version()`（当前 1），布局与小部件目录引用该分册 `API-PLAY-002`、`API-PLAY-003`；`:protocol` 的 `Message` 因此多一个封闭子集 `PlayMessage`。**§24 线协议**加 `play-vectors/` 目录，自带 `manifest.txt`（`play_version` 与 `digest`），不进 `vectors/` 的 digest，客户端构建经系统属性 `synaxis.play-vectors.dir` 读同一目录；同一条里远景向量的出处原写「`API-M2-001` 末项」，`synaxis:play` 排到它后面之后改为点名 `synaxis:farview` 一项 | Bearisbug |
@@ -397,7 +398,7 @@ M2 的对外契约有两类，都不是 HTTP：① 两端共享的**自定义负
     - ⑦ 打印就绪日志。
     - **accept 与第一次 tick 之间有一个窗口**（引擎在同一个 `start()` 里连着做，中间只隔两条语句）：窗口内到达的连接，其 configuration 阶段入站包要等第一个 tick 才被 `interpretPacketQueue` 解释，表现为握手晚 ≤ 50 ms 完成，不会失败（`API-M2-011` 的 3 s 预算远大于它）。就绪日志排在全部三步之后，因此「打印了就绪日志」= 进程已经在 tick。
     - **必须等 tick 起来才会发生的事**（全部排在第 ⑥ 步之后，不要指望它们在启动阶段生效）：`C2S_HELLO` 的派发（configuration 阶段的入站包由 `ConnectionManager#tick` 里的 `configurationPlayers.forEach(Player::interpretPacketQueue)` 解释）、`unit.snapshot`、`pathfind.queue`（见 §17）。
-  - 就绪判定：标准输出出现 `synaxis server-app listening on <host>:<port>`（承接 smoke 的就绪日志职责，日志文本变更会让 `docs/TEST.md` 按其惯例废旧 ID 换新 ID，见 §24）。
+  - 就绪判定：标准输出出现 `synaxis server-app listening on <host>:<port>`（承接 smoke 的就绪日志职责，日志文本变更会让 `docs/TEST.md` 按其惯例废旧 ID 换新 ID，见 §24）。`<port>` 是游戏端口实际绑定的端口：`synaxis.app.port=0` 时是系统分配的那一个，测试据此连接；配成非零值时与配置相同。
   - 停机：控制台 `stop` 或 SIGINT，逆序 `onDisable` 全部插件后 `ServerProcess.stop()`。
   - 鉴权/权限：`ROLE-Operator`，见 §10。
   - 缓存与超时：停机总预算 15 s（插件 5 s + 引擎 10 s，见 §17）；超时强制退出并记日志。

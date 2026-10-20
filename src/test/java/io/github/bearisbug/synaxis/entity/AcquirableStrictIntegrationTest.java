@@ -27,7 +27,8 @@ public class AcquirableStrictIntegrationTest {
         zombie.setInstance(instance, new Pos(0, 42, 0)).join();
         env.tick(); // Let the dispatcher assign a tick thread
 
-        assertInstanceOf(AcquirableOwnershipException.class, run(() -> zombie.setVelocity(new Vec(1, 0, 0))));
+        var thrown = assertInstanceOf(AcquirableOwnershipException.class, run(() -> zombie.setVelocity(new Vec(1, 0, 0))));
+        assertSame(zombie, thrown.element());
         assertInstanceOf(AcquirableOwnershipException.class, run(() -> zombie.setHealth(5f)));
         assertInstanceOf(AcquirableOwnershipException.class, run(zombie::remove));
     }
@@ -78,7 +79,8 @@ public class AcquirableStrictIntegrationTest {
         zombie.setInstance(instance, new Pos(0, 42, 0)).join();
         assertNull(zombie.acquirable().assignedThread());
 
-        assertInstanceOf(AcquirableOwnershipException.class, runOnTickThread(() -> zombie.setVelocity(new Vec(1, 0, 0))));
+        var thrown = assertInstanceOf(AcquirableOwnershipException.class, runOnTickThread(() -> zombie.setVelocity(new Vec(1, 0, 0))));
+        assertSame(zombie, thrown.element());
         assertInstanceOf(AcquirableOwnershipException.class, runOnTickThread(() -> zombie.teleport(new Pos(1, 42, 1)).join()));
         assertDoesNotThrow(() -> zombie.setVelocity(new Vec(1, 0, 0)));
     }

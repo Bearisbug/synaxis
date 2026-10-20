@@ -31,7 +31,6 @@ public class TickThread extends EngineThread {
     private volatile long tickTimeNanos;
     private volatile @Nullable TickObserver tickObserver;
 
-    private long tickNum = 0;
     // In the order they were handed over, which is the tick order; a hash set so that unloading a chunk
     // drops its partition without a scan (docs/DESIGN-M3.md API-M3-006). Only the dispatcher changes
     // it, in ThreadDispatcherImpl#updateAndAwait and #refreshThreads, while this thread is between two
@@ -71,7 +70,6 @@ public class TickThread extends EngineThread {
                 handleException(e);
             } finally {
                 lock.unlock();
-                // #acquire() callbacks
                 // The latch is counted down whatever happened: a tick thread dying here would leave
                 // every ThreadDispatcher#updateAndAwait blocked on it forever. Cleared first, so that
                 // the latch of the next tick is never overwritten.
@@ -95,7 +93,7 @@ public class TickThread extends EngineThread {
             for (Tickable element : elements) {
                 if (lock.hasQueuedThreads()) {
                     lock.unlock();
-                    // #acquire() callbacks
+                    // Hand the lock to the queued acquirers between two elements (docs/DESIGN-PROD.md API-PROD-016 ③)
                     if (!lock.tryLock()) waited(AcquirableImpl.lockTimed(lock));
                 }
                 try {
@@ -180,7 +178,6 @@ public class TickThread extends EngineThread {
             return;
         }
         this.tickTimeNanos = tickTimeNanos;
-        this.tickNum++;
         this.latch = latch;
         LockSupport.unpark(this);
     }
@@ -192,10 +189,6 @@ public class TickThread extends EngineThread {
      */
     public ReentrantLock lock() {
         return lock;
-    }
-
-    public long getTick() {
-        return tickNum;
     }
 
     void shutdown() {

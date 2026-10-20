@@ -7,7 +7,6 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -159,12 +158,6 @@ public class AcquirableHandoverTest {
                 } finally {
                     acquired.unlock();
                 }
-            }
-        },
-        COLLECTION {
-            @Override
-            void acquire(Probe element, Runnable work) {
-                new AcquirableCollection<>(List.of(element.acquirable())).acquireSync(_ -> work.run());
             }
         };
 

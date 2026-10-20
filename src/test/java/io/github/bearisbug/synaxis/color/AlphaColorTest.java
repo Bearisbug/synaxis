@@ -1,11 +1,15 @@
 package io.github.bearisbug.synaxis.color;
 
+import com.google.gson.JsonPrimitive;
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.StringBinaryTag;
+import io.github.bearisbug.synaxis.codec.Result;
 import io.github.bearisbug.synaxis.codec.Transcoder;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AlphaColorTest {
 
@@ -33,5 +37,20 @@ public class AlphaColorTest {
         BinaryTag elementRGBA = AlphaColor.RGBA_STRING_CODEC.encode(Transcoder.NBT, testColor).orElseThrow();
         assertEquals(StringBinaryTag.stringBinaryTag("#01234567"), elementARGB);
         assertEquals(StringBinaryTag.stringBinaryTag("#23456701"), elementRGBA);
+    }
+
+    @Test
+    @SuppressWarnings("deprecation") // STRING_CODEC is checked along with its replacements
+    public void anInvalidHexStringIsAnErrorNamingIt() {
+        final var argb = assertInstanceOf(Result.Error.class,
+                AlphaColor.ARGB_STRING_CODEC.decode(Transcoder.JSON, new JsonPrimitive("#12345")));
+        final var rgba = assertInstanceOf(Result.Error.class,
+                AlphaColor.RGBA_STRING_CODEC.decode(Transcoder.JSON, new JsonPrimitive("#12345")));
+        final var shadow = assertInstanceOf(Result.Error.class,
+                AlphaColor.STRING_CODEC.decode(Transcoder.JSON, new JsonPrimitive("#12345")));
+
+        assertTrue(argb.message().contains("invalid hex color '#12345', expected #AARRGGBB"), argb.message());
+        assertTrue(rgba.message().contains("invalid hex color '#12345', expected #RRGGBBAA"), rgba.message());
+        assertTrue(shadow.message().contains("invalid hex color '#12345', expected #RRGGBBAA"), shadow.message());
     }
 }

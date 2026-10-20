@@ -10,6 +10,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextDecoration;
+import io.github.bearisbug.synaxis.color.Color;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.crypto.ArgumentSignatures;
@@ -616,7 +617,8 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new RemoveEntityEffectPacket(0, PotionEffect.BAD_OMEN));
         addServerPackets(new TestInstanceBlockStatus(Component.text("synaxis is cool"), null), new TestInstanceBlockStatus(Component.text("Where is season 5 william?"), BLOCK_VEC));
         addServerPackets(new EntityEffectPacket(0, new Potion(PotionEffect.ABSORPTION, 1, 150)));
-        addServerPackets(new TrackedWaypointPacket(TrackedWaypointPacket.Operation.UNTRACK, new TrackedWaypointPacket.Waypoint(Either.right("test"), TrackedWaypointPacket.Icon.DEFAULT, new TrackedWaypointPacket.Target.Empty())));
+        addServerPackets(new TrackedWaypointPacket(TrackedWaypointPacket.Operation.UNTRACK, new TrackedWaypointPacket.Waypoint(Either.right("test"), TrackedWaypointPacket.Icon.DEFAULT, new TrackedWaypointPacket.Target.Empty())),
+                new TrackedWaypointPacket(TrackedWaypointPacket.Operation.TRACK, new TrackedWaypointPacket.Waypoint(Either.right("colored"), new TrackedWaypointPacket.Icon(TrackedWaypointPacket.Icon.DEFAULT_STYLE, new Color(200, 100, 250)), new TrackedWaypointPacket.Target.Empty())));
         addServerPackets(new GameRuleValuesPacket(Map.of()), new GameRuleValuesPacket(Map.of(
                 Objects.requireNonNull(registries.gameRule().getKey(GameRule.ADVANCE_TIME)), "false",
                 Objects.requireNonNull(registries.gameRule().getKey(GameRule.KEEP_INVENTORY)), "false")));

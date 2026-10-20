@@ -24,7 +24,6 @@ import io.github.bearisbug.synaxis.registry.RegistryTranscoder;
 import io.github.bearisbug.synaxis.tag.Tag;
 import io.github.bearisbug.synaxis.tag.TagReadable;
 import io.github.bearisbug.synaxis.utils.Unit;
-import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
@@ -52,13 +51,6 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
 
     NetworkBuffer.Type<ItemStack> NETWORK_TYPE = ItemStackImpl.networkType(DataComponent.PATCH_NETWORK_TYPE);
     NetworkBuffer.Type<ItemStack> UNTRUSTED_NETWORK_TYPE = ItemStackImpl.networkType(DataComponent.UNTRUSTED_PATCH_NETWORK_TYPE);
-    NetworkBuffer.Type<ItemStack> STRICT_NETWORK_TYPE = NETWORK_TYPE.transform(itemStack -> {
-        Check.argCondition(itemStack.amount() == 0 || itemStack.isAir(), "ItemStack cannot be empty");
-        return itemStack;
-    }, itemStack -> {
-        Check.argCondition(itemStack.amount() == 0 || itemStack.isAir(), "ItemStack cannot be empty");
-        return itemStack;
-    });
     Codec<ItemStack> CODEC = new StructCodec<>() {
         // These exist because Mojang optionally decodes count (ie missing will default to 1),
         // but when encoding they always include the 1. We want to preserve this behavior and
@@ -87,39 +79,53 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
 
     /**
      * Constant AIR item. Should be used instead of 'null'.
+     * <p>
+     * Every empty item is this instance: the factories, the {@code with} methods and {@link Builder#build()} return
+     * it whenever the result would have an amount of 0 or less or be {@link Material#AIR}, so an item that is not air
+     * has an amount of at least 1.
      */
     ItemStack AIR = new ItemStackImpl(Material.AIR, 0, DataComponentMap.EMPTY);
 
     @Contract(value = "_ -> new", pure = true)
     static Builder builder(Material material) {
-        return new ItemStackImpl.Builder(material, 1);
+        return new ItemStackImpl.Builder(material, 1, DataComponentMap.patchBuilder());
     }
 
-    @Contract(value = "_ -> new", pure = true)
+    @Contract(pure = true)
     static ItemStack of(Material material) {
         return of(material, 1);
     }
 
-    @Contract(value = "_ ,_ -> new", pure = true)
+    /**
+     * Creates an item of the given material and amount.
+     *
+     * @param material the material
+     * @param amount   the amount
+     * @return the item, {@link #AIR} when the amount is 0 or less
+     */
+    @Contract(pure = true)
     static ItemStack of(Material material, int amount) {
-        return ItemStackImpl.create(material, amount);
+        return ItemStackImpl.create(material, amount, DataComponentMap.EMPTY);
     }
 
-    @Contract(value = "_ ,_ -> new", pure = true)
+    @Contract(pure = true)
     static ItemStack of(Material material, DataComponentMap components) {
         return ItemStackImpl.create(material, 1, components);
     }
 
-    @Contract(value = "_ ,_, _ -> new", pure = true)
+    @Contract(pure = true)
     static ItemStack of(Material material, int amount, DataComponentMap components) {
         return ItemStackImpl.create(material, amount, components);
     }
 
     /**
-     * Converts this item to an NBT tag containing the id (material), count (amount), and components.
+     * Decodes an item from an NBT compound holding an {@code id}, an optional {@code count} (1 when absent) and
+     * optional {@code components}.
      *
      * @param nbtCompound The nbt representation of the item
      * @param registries  The registries to use when decoding
+     * @return the item, {@link #AIR} when the count is 0 or less
+     * @throws IllegalArgumentException if the compound does not decode to an item
      */
     static ItemStack fromItemNBT(CompoundBinaryTag nbtCompound, Registries registries) {
         final Transcoder<BinaryTag> coder = new RegistryTranscoder<>(Transcoder.NBT, registries);
@@ -143,24 +149,30 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
     @Contract(pure = true)
     DataComponentMap components();
 
-    @Contract(value = "_, -> new", pure = true)
+    @Contract(pure = true)
     ItemStack with(Consumer<Builder> consumer);
 
     /**
      * Returns a new ItemStack with the given Material set.
      *
+     * <p>Note: When material is AIR, the resulting amount will always be 0. For others, the amount will be >0, e.g. 1 if 0 before</p>
+     *
      * @param material The material to apply
      * @return A new item stack with the new material
-     *
-     * <p>Note: When material is AIR, the resulting amount will always be 0. For others, the amount will be >0, e.g. 1 if 0 before</p>
      */
-    @Contract(value = "_, -> new", pure = true)
+    @Contract(pure = true)
     ItemStack withMaterial(Material material);
 
-    @Contract(value = "_, -> new", pure = true)
+    /**
+     * Returns this item with the given amount.
+     *
+     * @param amount the amount
+     * @return the item with that amount, {@link #AIR} when the amount is 0 or less
+     */
+    @Contract(pure = true)
     ItemStack withAmount(int amount);
 
-    @Contract(value = "_, -> new", pure = true)
+    @Contract(pure = true)
     default ItemStack withAmount(IntUnaryOperator intUnaryOperator) {
         return withAmount(intUnaryOperator.applyAsInt(amount()));
     }
@@ -170,7 +182,7 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
      *
      * <p>Note: this should not be used to remove components, see {@link #without(DataComponent)}.</p>
      */
-    @Contract(value = "_, _ -> new", pure = true)
+    @Contract(pure = true)
     <T> ItemStack with(DataComponent<T> component, T value);
 
     /**
@@ -179,7 +191,7 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
      * @param component The unit component to apply
      * @return A new ItemStack with the given component applied
      */
-    @Contract(value = "_ -> new", pure = true)
+    @Contract(pure = true)
     default ItemStack with(DataComponent<Unit> component) {
         return with(component, Unit.INSTANCE);
     }
@@ -229,7 +241,7 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
      * @param component The component to remove
      * @return A new ItemStack without the given component
      */
-    @Contract(value = "_, -> new", pure = true)
+    @Contract(pure = true)
     ItemStack without(DataComponent<?> component);
 
     /**
@@ -238,20 +250,20 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
      * @param component The component to reset
      * @return A new ItemStack without an explicit override for the given component
      */
-    @Contract(value = "_, -> new", pure = true)
+    @Contract(pure = true)
     ItemStack reset(DataComponent<?> component);
 
-    @Contract(value = "_, -> new", pure = true)
+    @Contract(pure = true)
     default ItemStack withCustomName(Component customName) {
         return with(DataComponents.CUSTOM_NAME, customName);
     }
 
-    @Contract(value = "_, -> new", pure = true)
+    @Contract(pure = true)
     default ItemStack withLore(Component... lore) {
         return with(DataComponents.LORE, List.of(lore));
     }
 
-    @Contract(value = "_, -> new", pure = true)
+    @Contract(pure = true)
     default ItemStack withLore(List<Component> lore) {
         return with(DataComponents.LORE, lore);
     }
@@ -263,17 +275,30 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
      * @return the item with that model
      * @throws IllegalArgumentException if the model is not a namespaced id, which a 26.2 client cannot parse
      */
-    @Contract(value = "_, -> new", pure = true)
+    @Contract(pure = true)
     default ItemStack withItemModel(String model) {
         return with(DataComponents.ITEM_MODEL, model);
     }
 
-    @Contract(value = "_, _, _, _ -> new", pure = true)
+    @Contract(pure = true)
     default ItemStack withCustomModelData(List<Float> floats, List<Boolean> flags, List<String> strings, List<RGBLike> colors) {
         return with(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(floats, flags, strings, colors));
     }
 
-    @Contract(value = "_ -> new", pure = true)
+    /**
+     * Sets {@link DataComponents#ENCHANTMENT_GLINT_OVERRIDE}, the enchantment glint of the item. This is not the
+     * outline of a glowing entity ({@link io.github.bearisbug.synaxis.entity.Entity#setGlowing(boolean)}).
+     * <p>
+     * {@code true} forces the glint on. {@code false} forces it off, so an enchanted item loses its glint, and the
+     * explicit {@code false} makes this item unequal to, and unable to stack with, an item of the same material
+     * without the component. To get the vanilla behavior back, use
+     * {@code reset(DataComponents.ENCHANTMENT_GLINT_OVERRIDE)}.
+     *
+     * @param glowing whether the item shows the enchantment glint
+     * @return the item with the glint override
+     * @see #reset(DataComponent)
+     */
+    @Contract(pure = true)
     default ItemStack withGlowing(boolean glowing) {
         return with(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, glowing);
     }
@@ -283,7 +308,7 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
      *
      * @return the item showing only its name and lore
      */
-    @Contract(value = "-> new", pure = true)
+    @Contract(pure = true)
     default ItemStack withoutExtraTooltip() {
         return builder().hideExtraTooltip().build();
     }
@@ -299,15 +324,17 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
         return get(DataComponents.MAX_STACK_SIZE, 1);
     }
 
-    @Contract(value = "_ -> new", pure = true)
+    @Contract(pure = true)
     default ItemStack withMaxStackSize(int maxStackSize) {
         return with(DataComponents.MAX_STACK_SIZE, maxStackSize);
     }
 
     /**
      * Sets a tag in the custom data of this item, see {@link CustomData#withTag(Tag, Object)}.
+     *
+     * @see Builder#set(Tag, Object)
      */
-    @Contract(value = "_, _ -> new", pure = true)
+    @Contract(pure = true)
     default <T> ItemStack withTag(Tag<T> tag, @Nullable T value) {
         return with(DataComponents.CUSTOM_DATA, get(DataComponents.CUSTOM_DATA, CustomData.EMPTY).withTag(tag, value));
     }
@@ -324,7 +351,7 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
      * @param amount the amount to remove
      * @return the item with the remaining amount, {@link #AIR} when nothing remains
      */
-    @Contract(value = "_, -> new", pure = true)
+    @Contract(pure = true)
     ItemStack consume(int amount);
 
     /**
@@ -336,7 +363,7 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
      * @param amount the damage to add, negative to repair; the damage does not go below 0
      * @return the item with its new damage, {@link #AIR} (the whole stack) once the damage reaches the max damage
      */
-    @Contract(value = "_, -> new", pure = true)
+    @Contract(pure = true)
     ItemStack damage(int amount);
 
     @Contract(pure = true)
@@ -344,6 +371,12 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
         return material() == Material.AIR;
     }
 
+    /**
+     * Compares this item with another one, leaving out the amount.
+     *
+     * @param itemStack the other item
+     * @return true when both items have the same material and the same component patch, whatever their amounts
+     */
     @Contract(pure = true)
     boolean isSimilar(ItemStack itemStack);
 
@@ -425,6 +458,12 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
         @Contract(value = "_ -> this")
         Builder material(Material material);
 
+        /**
+         * Sets the amount of the item to build.
+         *
+         * @param amount the amount; {@link #build()} gives {@link ItemStack#AIR} when it is 0 or less
+         * @return this builder
+         */
         @Contract(value = "_ -> this")
         Builder amount(int amount);
 
@@ -466,10 +505,29 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
             return set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(floats, flags, strings, colors));
         }
 
+        /**
+         * Forces the enchantment glint on, the same as {@code glowing(true)}.
+         *
+         * @return this builder
+         * @see #glowing(boolean)
+         */
         default Builder glowing() {
             return set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
         }
 
+        /**
+         * Sets {@link DataComponents#ENCHANTMENT_GLINT_OVERRIDE}, the enchantment glint of the item. This is not the
+         * outline of a glowing entity ({@link io.github.bearisbug.synaxis.entity.Entity#setGlowing(boolean)}).
+         * <p>
+         * {@code true} forces the glint on. {@code false} forces it off, so an enchanted item loses its glint, and
+         * the explicit {@code false} makes the item unequal to, and unable to stack with, an item of the same
+         * material without the component. To get the vanilla behavior back, build the item and use
+         * {@code reset(DataComponents.ENCHANTMENT_GLINT_OVERRIDE)}.
+         *
+         * @param glowing whether the item shows the enchantment glint
+         * @return this builder
+         * @see ItemStack#reset(DataComponent)
+         */
         default Builder glowing(boolean glowing) {
             return set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, glowing);
         }
@@ -488,14 +546,19 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
          */
         Builder hideExtraTooltip();
 
+        /**
+         * Sets a tag in the custom data ({@link DataComponents#CUSTOM_DATA}) of the item.
+         *
+         * @param tag   the tag
+         * @param value the value, null to remove the tag
+         * @param <T>   the type of the value
+         * @return this builder
+         * @see ItemStack#withTag(Tag, Object)
+         */
         @Contract(value = "_, _ -> this")
         <T> Builder set(Tag<T> tag, @Nullable T value);
 
-        default <T> void setTag(Tag<T> tag, @Nullable T value) {
-            set(tag, value);
-        }
-
-        @Contract(value = "-> new", pure = true)
+        @Contract(pure = true)
         ItemStack build();
     }
 }

@@ -24,16 +24,17 @@ public class Color implements RGBLike {
     );
 
     public static final NetworkBuffer.Type<RGBLike> RGB_BYTE_NETWORK_TYPE = NetworkBufferTemplate.template(
-            NetworkBuffer.BYTE, color -> (byte) color.red(),
-            NetworkBuffer.BYTE, color -> (byte) color.green(),
-            NetworkBuffer.BYTE, color -> (byte) color.blue(),
-            Color::new
+            NetworkBuffer.UNSIGNED_BYTE, color -> (short) color.red(),
+            NetworkBuffer.UNSIGNED_BYTE, color -> (short) color.green(),
+            NetworkBuffer.UNSIGNED_BYTE, color -> (short) color.blue(),
+            (red, green, blue) -> new Color(red, green, blue)
     );
 
     public static final Codec<RGBLike> CODEC = Codec.INT.<RGBLike>transform(Color::new, color -> Color.fromRGBLike(color).asRGB())
             .orElse(Codec.VECTOR3D, vector -> new Color((float) vector.x(), (float) vector.y(), (float) vector.z()));
     public static final Codec<RGBLike> STRING_CODEC = Codec.STRING.transform(
-            hex -> (RGBLike) Objects.requireNonNull(TextColor.fromHexString(hex)),
+            hex -> (RGBLike) Objects.requireNonNull(TextColor.fromHexString(hex),
+                    () -> "invalid hex color '" + hex + "', expected #RRGGBB"),
             color -> TextColor.color(color).asHexString()).orElse(CODEC);
 
     public static final RGBLike WHITE = new Color(255, 255, 255);

@@ -9,7 +9,7 @@ import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.testing.RegistriesTest;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
+import net.kyori.adventure.util.RGBLike;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -56,13 +56,15 @@ public class ItemStackHashRegistriesTest {
      */
     @Test
     public void aComponentThatDoesNotEncodeIsNamed(Registries registries) {
-        final ItemStack box = ItemStack.builder(Material.SHULKER_BOX)
-                .set(DataComponents.CONTAINER, Collections.nCopies(257, ItemStack.of(Material.STONE)))
+        record OutOfRange(int red, int green, int blue) implements RGBLike {
+        }
+        final ItemStack helmet = ItemStack.builder(Material.LEATHER_HELMET)
+                .set(DataComponents.DYED_COLOR, new OutOfRange(300, 0, 0))
                 .build();
 
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
-                () -> ItemStack.Hash.of(box, registries));
+                () -> ItemStack.Hash.of(helmet, registries));
 
-        assertTrue(thrown.getMessage().startsWith("hash of component minecraft:container: "), thrown.getMessage());
+        assertTrue(thrown.getMessage().startsWith("hash of component minecraft:dyed_color: "), thrown.getMessage());
     }
 }

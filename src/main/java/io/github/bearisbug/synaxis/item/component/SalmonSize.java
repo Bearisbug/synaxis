@@ -4,20 +4,10 @@ import io.github.bearisbug.synaxis.codec.Codec;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 
 public enum SalmonSize {
-    SMALL("small"),
-    MEDIUM("medium"),
-    LARGE("large");
+    SMALL,
+    MEDIUM,
+    LARGE;
 
     public static final NetworkBuffer.Type<SalmonSize> NETWORK_TYPE = NetworkBuffer.Enum(SalmonSize.class);
     public static final Codec<SalmonSize> CODEC = Codec.Enum(SalmonSize.class);
-
-    private final String id;
-
-    SalmonSize(String id) {
-        this.id = id;
-    }
-
-    public String id() {
-        return id;
-    }
 }

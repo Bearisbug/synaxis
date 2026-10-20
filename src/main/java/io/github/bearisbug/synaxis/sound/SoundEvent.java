@@ -46,7 +46,7 @@ public sealed interface SoundEvent extends Keyed, Sound.Type, SoundEvents permit
         public <D> Result<SoundEvent> decode(Transcoder<D> coder, D value) {
             final Result<String> stringResult = coder.getString(value);
             if (stringResult instanceof Result.Ok(String string)) {
-                final SoundEvent soundEvent = BuiltinSoundEvent.get(string);
+                final SoundEvent soundEvent = SoundEvent.fromKey(string);
                 if (soundEvent == null) return new Result.Error<>("Unknown sound event: " + string);
                 return new Result.Ok<>(soundEvent);
             }
@@ -109,10 +109,11 @@ public sealed interface SoundEvent extends Keyed, Sound.Type, SoundEvents permit
     }
 
     /**
-     * Create a custom sound event. The namespace should match a sound provided in the resource pack.
+     * Create a custom sound event. The key must be the id of a sound event in the sounds.json of the resource pack.
      *
      * @param key   the key of the custom sound event
-     * @param range the range of the sound event, or null for (legacy) dynamic range
+     * @param range the distance in blocks at which the sound can be heard, or null to have the client derive it from
+     *              the volume as {@code max(1, volume) * 16} blocks
      * @return the custom sound event
      */
     static SoundEvent of(String key, @Nullable Float range) {
@@ -120,10 +121,12 @@ public sealed interface SoundEvent extends Keyed, Sound.Type, SoundEvents permit
     }
 
     /**
-     * Create a custom sound event. The {@link Key} should match a sound provided in the resource pack.
+     * Create a custom sound event. The {@link Key} must be the id of a sound event in the sounds.json of the resource
+     * pack.
      *
      * @param key   the key of the custom sound event
-     * @param range the range of the sound event, or null for (legacy) dynamic range
+     * @param range the distance in blocks at which the sound can be heard, or null to have the client derive it from
+     *              the volume as {@code max(1, volume) * 16} blocks
      * @return the custom sound event
      */
     static SoundEvent of(Key key, @Nullable Float range) {

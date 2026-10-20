@@ -3,6 +3,14 @@ package io.github.bearisbug.synaxis.sound;
 import io.github.bearisbug.synaxis.codec.Codec;
 import io.github.bearisbug.synaxis.codec.StructCodec;
 
+/**
+ * The music the client plays in the background.
+ *
+ * @param sound               the music
+ * @param minDelay            the minimum delay before the next track starts, in client ticks (20 per second)
+ * @param maxDelay            the maximum delay before the next track starts, in client ticks (20 per second)
+ * @param replaceCurrentMusic whether this music interrupts the music that is playing
+ */
 public record Music(
         SoundEvent sound,
         int minDelay,

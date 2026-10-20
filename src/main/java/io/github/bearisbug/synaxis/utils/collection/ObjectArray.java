@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
 import org.jetbrains.annotations.Unmodifiable;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -14,38 +15,57 @@ import java.util.List;
  * @param <T> the type of the array
  */
 @ApiStatus.Internal
-public sealed interface ObjectArray<T>
-        permits ObjectArrayImpl.SingleThread, ObjectArrayImpl.Concurrent {
-    static <T> ObjectArray<T> singleThread(int initialSize) {
-        return new ObjectArrayImpl.SingleThread<>(initialSize);
+public final class ObjectArray<T> {
+    private T[] array;
+    private int max = -1;
+
+    public static <T> ObjectArray<T> singleThread(int initialSize) {
+        return new ObjectArray<>(initialSize);
     }
 
-    static <T> ObjectArray<T> singleThread() {
+    public static <T> ObjectArray<T> singleThread() {
         return singleThread(0);
     }
 
-    static <T> ObjectArray<T> concurrent(int initialSize) {
-        return new ObjectArrayImpl.Concurrent<>(initialSize);
+    @SuppressWarnings("unchecked")
+    private ObjectArray(int size) {
+        this.array = (T[]) new Object[size];
     }
 
-    static <T> ObjectArray<T> concurrent() {
-        return concurrent(0);
+    public @UnknownNullability T get(int index) {
+        final T[] array = this.array;
+        return index < array.length ? array[index] : null;
     }
 
-    @UnknownNullability
-    T get(int index);
-
-    void set(int index, @Nullable T object);
-
-    default void remove(int index) {
-        set(index, null);
+    public void set(int index, @Nullable T object) {
+        if (object == null) {
+            remove(index);
+            return;
+        }
+        T[] array = this.array;
+        if (index >= array.length) {
+            final int newLength = index * 2 + 1;
+            this.array = array = Arrays.copyOf(array, newLength);
+        }
+        array[index] = object;
+        this.max = Math.max(max, index);
     }
 
-    void trim();
-
-    @Contract(pure = true)
-    @UnknownNullability
-    T[] arrayCopy(Class<T> type);
+    public void remove(int index) {
+        final T[] array = this.array;
+        if (index >= array.length) return; // Will be null anyway
+        array[index] = null;
+        // Now we need to backtrack the max index,
+        // For example [0, 1, 2, null, 4] removing 4 requires us to backtrack past the null
+        final int max = this.max;
+        if (max == index) {
+            int lastNotNull = max - 1;
+            while (lastNotNull >= 0 && array[lastNotNull] == null) {
+                lastNotNull--;
+            }
+            this.max = lastNotNull;
+        }
+    }
 
     /**
      * Copies the array into a list.
@@ -54,6 +74,9 @@ public sealed interface ObjectArray<T>
      * @return List of the array elements
      */
     @Contract(pure = true)
-    @Unmodifiable
-    List<T> toList();
+    public @Unmodifiable List<T> toList() {
+        // Trim the array to the maximum size, it internally will be copied regardless.
+        final T[] array = Arrays.copyOf(this.array, max + 1);
+        return List.of(array);
+    }
 }

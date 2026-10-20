@@ -25,15 +25,9 @@ public final class ClickCallbackManager implements Tickable {
     // so changing it changes the wire bytes.
     private static final Key KEY = Key.key("minestom", "click_callback");
 
-    private final Map<UUID, ClickCallback<Audience>> permanent = new ConcurrentHashMap<>(0);
-    private final Map<UUID, CallbackData> temporary = new ConcurrentHashMap<>(0);
+    private final Map<UUID, CallbackData> callbacks = new ConcurrentHashMap<>(0);
 
     private record CallbackData(ClickCallback<Audience> callback, long expiry, AtomicInteger uses) {
-        private CallbackData {
-            Objects.requireNonNull(callback, "callback");
-            Objects.requireNonNull(uses, "uses");
-        }
-
         boolean isExpired(final long time) {
             return !hasUsesLeft(this.uses.get()) || time >= this.expiry;
         }
@@ -50,10 +44,16 @@ public final class ClickCallbackManager implements Tickable {
         }
     }
 
+    /**
+     * Drops the callbacks that expired or have no use left.
+     *
+     * @param time the {@link System#nanoTime()} of the tick, in nanoseconds, compared with the expiry of each callback.
+     *             The server process calls this once per tick, not a tick thread
+     */
     @Override
     public void tick(final long time) {
-        if (this.temporary.isEmpty()) return;
-        this.temporary.values().removeIf(data -> data.isExpired(time));
+        if (this.callbacks.isEmpty()) return;
+        this.callbacks.values().removeIf(data -> data.isExpired(time));
     }
 
     /**
@@ -75,14 +75,9 @@ public final class ClickCallbackManager implements Tickable {
                 return;
             }
 
-            final ClickCallback<Audience> data = this.permanent.get(uuid);
+            final CallbackData data = this.callbacks.get(uuid);
             if (data != null) {
-                data.accept(player);
-            } else {
-                final CallbackData temp = this.temporary.get(uuid);
-                if (temp != null) {
-                    temp.consume(player);
-                }
+                data.consume(player);
             }
         }
     }
@@ -93,26 +88,26 @@ public final class ClickCallbackManager implements Tickable {
      * @param callback the callback
      * @param options the options
      * @return the click event
+     * @throws IllegalArgumentException if the options allow no click: the uses are neither positive nor
+     *                                  {@link ClickCallback#UNLIMITED_USES}, or the lifetime is not positive
      */
     public ClickEvent<ClickEvent.Payload.Custom> createClickEvent(final ClickCallback<Audience> callback, final ClickCallback.Options options) {
         Objects.requireNonNull(callback, "callback");
         Objects.requireNonNull(options, "options");
         final UUID uuid = UUID.randomUUID();
         final int uses = options.uses();
+        if (uses != ClickCallback.UNLIMITED_USES && uses <= 0)
+            throw new IllegalArgumentException("uses must be > 0 or ClickCallback.UNLIMITED_USES (-1), got " + uses);
+        if (!options.lifetime().isPositive())
+            throw new IllegalArgumentException("lifetime must be positive, got " + options.lifetime());
 
         long expiry;
         try {
-            expiry = System.nanoTime() + options.lifetime().toNanos();
+            expiry = Math.addExact(System.nanoTime(), options.lifetime().toNanos());
         } catch (final ArithmeticException _) {
             expiry = Long.MAX_VALUE;
         }
-
-        final boolean unlimited = uses == ClickCallback.UNLIMITED_USES;
-        if (expiry == Long.MAX_VALUE && unlimited) {
-            this.permanent.put(uuid, callback);
-        } else if ((unlimited || uses > 0) && expiry > System.nanoTime()) {
-            this.temporary.put(uuid, new CallbackData(callback, expiry, new AtomicInteger(uses)));
-        }
+        this.callbacks.put(uuid, new CallbackData(callback, expiry, new AtomicInteger(uses)));
 
         return ClickEvent.custom(KEY, new BinaryTagHolderImpl(UUIDUtils.toNbt(uuid)));
     }

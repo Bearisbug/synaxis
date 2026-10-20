@@ -8,7 +8,9 @@ public interface Tickable {
     /**
      * Ticks this element.
      *
-     * @param time the time of the tick in milliseconds
+     * @param time the time the tick started at, from a monotonic clock: it only means something as a difference with
+     *             the other times passed to the same element. Elements ticked by a tick thread get
+     *             {@link System#nanoTime()} converted to milliseconds
      */
     void tick(long time);
 }

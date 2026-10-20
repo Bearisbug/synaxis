@@ -9,7 +9,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -19,7 +18,7 @@ import java.util.function.Supplier;
 public class AudienceRegistry {
 
     private final Map<Key, Collection<Audience>> registry;
-    private final Function<Key, Collection<Audience>> provider;
+    private final Supplier<Collection<Audience>> collectionFactory;
 
     /**
      * Creates a new audience registrar with a given backing map.
@@ -29,7 +28,7 @@ public class AudienceRegistry {
      */
     public AudienceRegistry(Map<Key, Collection<Audience>> backingMap, Supplier<Collection<Audience>> backingCollection) {
         this.registry = backingMap;
-        this.provider = _ -> backingCollection.get();
+        this.collectionFactory = backingCollection;
     }
 
     /**
@@ -83,7 +82,7 @@ public class AudienceRegistry {
      */
     public void register(Key key, Collection<? extends Audience> audiences) {
         if (!audiences.isEmpty()) {
-            this.registry.computeIfAbsent(key, this.provider).addAll(audiences);
+            this.registry.computeIfAbsent(key, _ -> this.collectionFactory.get()).addAll(audiences);
         }
     }
 
@@ -93,11 +92,7 @@ public class AudienceRegistry {
      * @return an iterable containing every audience member
      */
     public Iterable<? extends Audience> all() {
-        if (this.isEmpty()) {
-            return List.of();
-        } else {
-            return this.registry.values().stream().flatMap(Collection::stream).toList();
-        }
+        return this.registry.values().stream().flatMap(Collection::stream).toList();
     }
 
     /**
@@ -117,7 +112,8 @@ public class AudienceRegistry {
      * @return an iterable containing the audience members
      */
     public Iterable<? extends Audience> of(Key key) {
-        return Collections.unmodifiableCollection(this.registry.getOrDefault(key, this.provider.apply(null)));
+        final Collection<Audience> audiences = this.registry.get(key);
+        return audiences == null ? List.of() : Collections.unmodifiableCollection(audiences);
     }
 
     /**

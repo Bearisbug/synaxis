@@ -118,6 +118,25 @@ class ComponentCodecsTest {
         assertEquals("BinaryTagHolder does not hold valid SNBT: {", error.getMessage());
     }
 
+    /** Without a type the content is guessed from its fields, in a fixed order. */
+    @Test
+    void readWithoutTypeGuessesTheContent() throws Exception {
+        assertEquals(Component.translatable("a"), ComponentCodecs.COMPONENT.decode(Transcoder.NBT,
+                EngineAdventure.tagStringIO().asTag("{translate:\"a\"}")).orElseThrow());
+        assertEquals(Component.keybind("k"), ComponentCodecs.COMPONENT.decode(Transcoder.NBT,
+                EngineAdventure.tagStringIO().asTag("{keybind:\"k\"}")).orElseThrow());
+        final Result<Component> unknown = ComponentCodecs.COMPONENT.decode(Transcoder.NBT,
+                EngineAdventure.tagStringIO().asTag("{color:\"red\"}"));
+        assertEquals("Unable to determine component type", assertInstanceOf(Result.Error.class, unknown).message());
+    }
+
+    @Test
+    void translatableArgumentsRoundTrip() {
+        var component = Component.translatable("a", Component.text("b"), Component.text("c", NamedTextColor.RED));
+        var nbt = ComponentCodecs.COMPONENT.encode(Transcoder.NBT, component).orElseThrow();
+        assertEquals(component, ComponentCodecs.COMPONENT.decode(Transcoder.NBT, nbt).orElseThrow());
+    }
+
     @Test
     void readShowEntityWithoutName() {
         UUID uuid = UUID.randomUUID();

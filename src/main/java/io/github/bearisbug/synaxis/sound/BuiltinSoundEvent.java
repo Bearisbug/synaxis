@@ -17,10 +17,6 @@ public record BuiltinSoundEvent(Key key, int id) implements StaticProtocolObject
         return REGISTRY.get(key.key());
     }
 
-    static @UnknownNullability SoundEvent get(String key) {
-        return REGISTRY.get(Key.key(key));
-    }
-
     @Override
     public String toString() {
         return name();

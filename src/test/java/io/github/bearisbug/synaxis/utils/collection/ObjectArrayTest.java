@@ -1,18 +1,17 @@
 package io.github.bearisbug.synaxis.utils.collection;
 
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class ObjectArrayTest {
 
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    public void objectArray(boolean concurrent) {
-        ObjectArray<String> array = concurrent ? ObjectArray.concurrent() : ObjectArray.singleThread();
+    @Test
+    public void objectArray() {
+        ObjectArray<String> array = ObjectArray.singleThread();
 
         array.set(50, "Hey");
         assertEquals("Hey", array.get(50));
@@ -20,10 +19,6 @@ public class ObjectArrayTest {
         assertNull(array.get(51));
 
         array.set(0, "Hey2");
-        assertEquals("Hey2", array.get(0));
-        assertEquals("Hey", array.get(50));
-
-        array.trim();
         assertEquals("Hey2", array.get(0));
         assertEquals("Hey", array.get(50));
 
@@ -37,54 +32,26 @@ public class ObjectArrayTest {
         assertNull(array.get(Integer.MAX_VALUE));
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    public void arrayCopy(boolean concurrent) {
-        ObjectArray<String> array = concurrent ? ObjectArray.concurrent() : ObjectArray.singleThread();
+    @Test
+    public void toListEndsAtTheHighestElement() {
+        ObjectArray<String> array = ObjectArray.singleThread(16);
+        assertEquals(List.of(), array.toList());
 
-        array.set(1, "Hey");
-        String[] copyCache = array.arrayCopy(String.class);
-        assertArrayEquals(new String[]{null, "Hey"}, copyCache);
-
-        array.set(2, "Hey2");
-        assertArrayEquals(new String[]{null, "Hey", "Hey2"}, array.arrayCopy(String.class));
-        assertArrayEquals(new String[]{null, "Hey"}, copyCache, "The copy cache should not be modified");
-    }
-
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    public void trim(boolean concurrent) {
-        ObjectArray<String> array = concurrent ? ObjectArray.concurrent() : ObjectArray.singleThread();
-        // zero case
-        array.trim();
-        assertArrayEquals(new String[0], array.arrayCopy(String.class));
-
-        // 3 elements with a space
         array.set(0, "Hey");
         array.set(1, "Hey2");
         array.set(3, "Hey4");
-        array.trim();
-        assertArrayEquals(new String[]{"Hey", "Hey2", null, "Hey4"}, array.arrayCopy(String.class));
-
-        // 4 elements without a space
         array.set(2, "Hey3");
-        array.trim();
-        assertArrayEquals(new String[]{"Hey", "Hey2", "Hey3", "Hey4"}, array.arrayCopy(String.class));
+        assertEquals(List.of("Hey", "Hey2", "Hey3", "Hey4"), array.toList());
 
-        // set trailing 2 elements with a null
+        // Removing the last elements backtracks past the ones already null
         array.remove(2);
         array.remove(3);
-        array.trim();
-        assertArrayEquals(new String[]{"Hey", "Hey2"}, array.arrayCopy(String.class));
+        assertEquals(List.of("Hey", "Hey2"), array.toList());
 
-        // remove first element
+        array.set(1, null);
+        assertEquals(List.of("Hey"), array.toList());
+
         array.remove(0);
-        array.trim();
-        assertArrayEquals(new String[]{null, "Hey2"}, array.arrayCopy(String.class));
-
-        // remove last element, forcing the array to shrink after trim
-        array.remove(1);
-        array.trim();
-        assertArrayEquals(new String[0], array.arrayCopy(String.class));
+        assertEquals(List.of(), array.toList());
     }
 }

@@ -5,8 +5,10 @@ import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.network.packet.server.play.BossBarPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
+import io.github.bearisbug.synaxis.testing.Collector;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
+import io.github.bearisbug.synaxis.testing.TestConnection;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -133,6 +135,33 @@ public class BossBarManagerLifecycleIntegrationTest {
 
         assertEquals(List.of(next), List.copyOf(manager.getBossBarViewers(bar)));
         assertEquals(List.of(bar), List.copyOf(manager.getPlayerBossBars(next)));
+    }
+
+    /** Each change of a shown bar reaches its viewer as the action for that change, with the values of the bar. */
+    @Test
+    public void eachChangeOfABarSendsItsAction(Env env) {
+        final BossBarManager manager = env.process().bossBar();
+        final TestConnection connection = env.createConnection();
+        final Player player = connection.connect(env.createEmptyInstance(), new Pos(0, 40, 0));
+        final BossBar bar = sampleBossBar();
+        final Collector<BossBarPacket> packets = connection.trackIncoming(BossBarPacket.class);
+
+        manager.addBossBar(player, bar);
+        bar.name(text("Renamed"));
+        bar.progress(0.25f);
+        bar.color(BossBar.Color.BLUE);
+        bar.overlay(BossBar.Overlay.NOTCHED_6);
+        bar.addFlag(BossBar.Flag.DARKEN_SCREEN);
+
+        final List<BossBarPacket> sent = packets.collect();
+        assertEquals(List.of(
+                new BossBarPacket.AddAction(text("Test Boss Bar"), 1.0f, BossBar.Color.RED, BossBar.Overlay.PROGRESS, (byte) 0),
+                new BossBarPacket.UpdateTitleAction(text("Renamed")),
+                new BossBarPacket.UpdateHealthAction(0.25f),
+                new BossBarPacket.UpdateStyleAction(BossBar.Color.BLUE, BossBar.Overlay.PROGRESS),
+                new BossBarPacket.UpdateStyleAction(BossBar.Color.BLUE, BossBar.Overlay.NOTCHED_6),
+                new BossBarPacket.UpdateFlagsAction((byte) 0x1)), sent.stream().map(BossBarPacket::action).toList());
+        assertEquals(1, sent.stream().map(BossBarPacket::uuid).distinct().count());
     }
 
     /** Destroying a bar removes it from every viewer, and no later change of the bar reaches them. */

@@ -51,7 +51,7 @@ public final class MojangUtils {
      * Gets a {@link JsonObject} with the response from the mojang API
      *
      * @param uuid The UUID as a {@link UUID}
-     * @return The {@link JsonObject} or {@code null} if the mojang API is down or the UUID is invalid
+     * @return The {@link JsonObject} or {@code null} if the mojang API is down, rate limited or the UUID is invalid
      */
     @Blocking
     public static @Nullable JsonObject fromUuid(UUID uuid) {
@@ -66,7 +66,7 @@ public final class MojangUtils {
      * Gets a {@link JsonObject} with the response from the mojang API
      *
      * @param uuid The UUID as a {@link String}
-     * @return The {@link JsonObject} or {@code null} if the mojang API is down or the UUID is invalid
+     * @return The {@link JsonObject} or {@code null} if the mojang API is down, rate limited or the UUID is invalid
      */
     @Blocking
     public static @Nullable JsonObject fromUuid(String uuid) {
@@ -83,7 +83,7 @@ public final class MojangUtils {
      * Gets a {@link JsonObject} with the response from the mojang API
      *
      * @param username The username as a {@link String}
-     * @return The {@link JsonObject} or {@code null} if the mojang API is down or the username is invalid
+     * @return The {@link JsonObject} or {@code null} if the mojang API is down, rate limited or the username is invalid
      */
     @Blocking
     public static @Nullable JsonObject fromUsername(String username) {
@@ -123,9 +123,10 @@ public final class MojangUtils {
     private static JsonObject retrieve(String url) throws IOException {
         // Retrieve from the rate-limited Mojang API
         final String response = URLUtils.getText(url);
-        // If our response is "", that means the url did not get a proper object from the url
-        // So the username or UUID was invalid, and therefore we return null
-        if (response.isEmpty()) throw new IOException("The Mojang API is down");
+        // An empty body is a profile that does not exist (204), or an error response without a body such as a 429:
+        // the two cannot be told apart here
+        if (response.isEmpty())
+            throw new IOException("Empty response from the Mojang API (no such profile, or a bodyless error such as HTTP 429)");
         final JsonElement element;
         try {
             element = JsonParser.parseString(response);

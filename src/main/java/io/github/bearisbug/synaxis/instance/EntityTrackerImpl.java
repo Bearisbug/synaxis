@@ -191,69 +191,43 @@ final class EntityTrackerImpl implements EntityTracker {
     @Override
     public <T extends Entity> void nearbyEntitiesByChunkRange(Point point, int chunkRange, Target<T> target, Consumer<T> query) {
         final Long2ObjectSyncMap<List<Entity>> entities = targetEntries[target.ordinal()].chunkEntities;
-        if (chunkRange == 0) {
-            // Single chunk
-            @SuppressWarnings("unchecked") final var chunkEntities = (List<T>) entities.get(CoordConversion.chunkIndex(point));
-            if (chunkEntities != null && !chunkEntities.isEmpty()) {
-                chunkEntities.forEach(query);
-            }
-        } else {
-            // Multiple chunks
-            ChunkRange.chunksInRange(point, chunkRange, (chunkX, chunkZ) -> {
-                @SuppressWarnings("unchecked") final var chunkEntities = (List<T>) entities.get(CoordConversion.chunkIndex(chunkX, chunkZ));
-                if (chunkEntities == null || chunkEntities.isEmpty()) return;
-                chunkEntities.forEach(query);
-            });
-        }
+        ChunkRange.chunksInRange(point, chunkRange, (chunkX, chunkZ) -> {
+            @SuppressWarnings("unchecked") final var chunkEntities = (List<T>) entities.get(CoordConversion.chunkIndex(chunkX, chunkZ));
+            if (chunkEntities == null || chunkEntities.isEmpty()) return;
+            chunkEntities.forEach(query);
+        });
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T extends Entity> void nearbyEntities(Point point, double range, Target<T> target, Consumer<T> query) {
         final Long2ObjectSyncMap<List<Entity>> entities = targetEntries[target.ordinal()].chunkEntities;
         final int minChunkX = CoordConversion.globalToChunk(point.x() - range);
         final int minChunkZ = CoordConversion.globalToChunk(point.z() - range);
         final int maxChunkX = CoordConversion.globalToChunk(point.x() + range);
         final int maxChunkZ = CoordConversion.globalToChunk(point.z() + range);
+        // A negative range past a chunk edge turns the box inside out: no chunk to go through
+        if (minChunkX > maxChunkX || minChunkZ > maxChunkZ) return;
         final double squaredRange = range * range;
-        if (minChunkX == maxChunkX && minChunkZ == maxChunkZ) {
-            // Single chunk
-            @SuppressWarnings("unchecked") final var chunkEntities = (List<T>) entities.get(CoordConversion.chunkIndex(point));
-            if (chunkEntities == null || chunkEntities.isEmpty()) return;
-            chunkEntities.forEach(entity -> {
-                EntityTrackerEntry trackerEntry = entriesByEntityId.get(entity.getEntityId());
-                if (trackerEntry == null) return;
-                final Point position = trackerEntry.getLastPosition();
-                if (point.distanceSquared(position) <= squaredRange) query.accept(entity);
-            });
-        } else {
-            // Multiple chunks
-            final double chunkSide = 2 * (Math.floor(range / Chunk.CHUNK_SECTION_SIZE) + 1) + 1;
-            if (chunkSide * chunkSide > entities(target).size()) {
-                // More chunks in range than entities of the target, hence than chunks holding one: going through
-                // those is cheaper. It also takes the ranges ChunkRange refuses, such as Double.MAX_VALUE. As in
-                // the chunk loop, an entity changing chunks meanwhile may be missed or seen twice.
-                for (List<Entity> bucket : entities.values()) {
-                    @SuppressWarnings("unchecked") final var chunkEntities = (List<T>) bucket;
-                    for (T entity : chunkEntities) {
-                        EntityTrackerEntry trackerEntry = entriesByEntityId.get(entity.getEntityId());
-                        if (trackerEntry == null) continue;
-                        final Point position = trackerEntry.getLastPosition();
-                        if (point.distanceSquared(position) <= squaredRange) query.accept(entity);
-                    }
-                }
-                return;
+        final Consumer<Entity> inRange = entity -> {
+            final EntityTrackerEntry trackerEntry = entriesByEntityId.get(entity.getEntityId());
+            if (trackerEntry != null && point.distanceSquared(trackerEntry.getLastPosition()) <= squaredRange) {
+                query.accept((T) entity);
             }
-            final int chunkRange = (int) (range / Chunk.CHUNK_SECTION_SIZE) + 1;
-            ChunkRange.chunksInRange(point, chunkRange, (chunkX, chunkZ) -> {
-                @SuppressWarnings("unchecked") final var chunkEntities = (List<T>) entities.get(CoordConversion.chunkIndex(chunkX, chunkZ));
-                if (chunkEntities == null || chunkEntities.isEmpty()) return;
-                chunkEntities.forEach(entity -> {
-                    EntityTrackerEntry trackerEntry = entriesByEntityId.get(entity.getEntityId());
-                    if (trackerEntry == null) return;
-                    final Point position = trackerEntry.getLastPosition();
-                    if (point.distanceSquared(position) <= squaredRange) query.accept(entity);
-                });
-            });
+        };
+        final long boxChunks = ((long) maxChunkX - minChunkX + 1) * ((long) maxChunkZ - minChunkZ + 1);
+        if (boxChunks > entities(target).size()) {
+            // More chunks in range than entities of the target, hence than chunks holding one: going through
+            // those is cheaper. It also takes ranges such as Double.MAX_VALUE, whose box has up to 2^56 chunks.
+            // As in the chunk loop, an entity changing chunks meanwhile may be missed or seen twice.
+            for (List<Entity> bucket : entities.values()) bucket.forEach(inRange);
+            return;
+        }
+        for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+            for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+                final List<Entity> bucket = entities.get(CoordConversion.chunkIndex(chunkX, chunkZ));
+                if (bucket != null) bucket.forEach(inRange);
+            }
         }
     }
 

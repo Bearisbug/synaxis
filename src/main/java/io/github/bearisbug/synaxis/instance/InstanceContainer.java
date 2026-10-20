@@ -61,11 +61,26 @@ import static io.github.bearisbug.synaxis.instance.ChunkUtils.isLoaded;
 
 /**
  * An instance that owns its chunks.
+ * <p>
+ * Locks:
+ * <ol>
+ *     <li>The instance monitor ({@code synchronized (this)}) guards the record of the blocks changed in this
+ *     tick ({@code setBlock}, {@code placeBlock}, {@code breakBlock} and the updates of their neighbours), the
+ *     monitor part of {@link #unloadChunk(Chunk)} (taking the chunk out, its tickets off, its partition away),
+ *     the walk of {@link #copy()} and the clearing in {@link #tick(long)}; the relighting of a
+ *     {@link LightingChunk} enters it too. Caching a chunk does not hold it, the chunk map is a synchronized
+ *     map of its own.</li>
+ *     <li>The order is the lock of a tick thread, then the instance monitor, then a chunk lock. Holding the
+ *     instance monitor, do not call {@code acquirable().sync()} or {@code lock()}: {@code unloadChunk}
+ *     removes the entities outside the monitor for this reason.</li>
+ *     <li>Holding the read or write lock of a chunk, do not enter the instance monitor:
+ *     {@code DynamicChunk#createChunkPacket} computes the light outside its locks for this reason.</li>
+ *     <li>Plugins do not {@code synchronized (instance)}: every tick enters this monitor, holding it holds up
+ *     the tick of the whole server.</li>
+ * </ol>
  */
 public class InstanceContainer extends Instance {
     private static final Logger LOGGER = LoggerFactory.getLogger(InstanceContainer.class);
-
-    private static final NoopChunkLoaderImpl DEFAULT_LOADER = NoopChunkLoaderImpl.INSTANCE;
 
     // docs/DESIGN-M3.md API-M3-006
     private static final int MAX_UNLOADS_PER_TICK = 256;
@@ -78,12 +93,16 @@ public class InstanceContainer extends Instance {
     // the chunk generator used, can be null
     private volatile @Nullable Generator generator;
     // (chunk index -> chunk) map, contains all the chunks in the instance
-    // used as a monitor when access is required
     private final Long2ObjectSyncMap<Chunk> chunks = Long2ObjectSyncMap.hashmap();
     private final Map<Long, CompletableFuture<Chunk>> loadingChunks = new ConcurrentHashMap<>();
 
-    // guarded by the instance monitor, same as UNSAFE_setBlock
+    // The per-tick record of isAlreadyChanged, guarded by the instance monitor and cleared by tick
     private final Map<BlockVec, Block> currentlyChangingBlocks = new HashMap<>();
+
+    // Chunk index -> the forks the generation of other chunks put into this chunk while it was not cached:
+    // processFork applies and removes them when createChunk makes the chunk, applyPendingForks once it is
+    // cached (a chunk the loader read goes through that step too)
+    private final Map<Long, List<GeneratorImpl.SectionModifierImpl>> generationForks = new ConcurrentHashMap<>();
 
     // the chunk loader, used when trying to load/save a chunk from another source
     private volatile ChunkLoader chunkLoader;
@@ -120,7 +139,7 @@ public class InstanceContainer extends Instance {
     ) {
         super(process, uuid, dimensionType, dimensionName);
         setChunkSupplier(DynamicChunk::new);
-        setChunkLoader(Objects.requireNonNullElse(loader, DEFAULT_LOADER));
+        setChunkLoader(Objects.requireNonNullElse(loader, ChunkLoader.noop()));
         this.chunkLoader.loadInstance(this);
         // last block change starts at instance creation time
         refreshLastBlockChangeTime();
@@ -149,15 +168,20 @@ public class InstanceContainer extends Instance {
     }
 
     /**
-     * Sets a block at the specified position.
-     * <p>
-     * Unsafe because the method is not synchronized and it does not verify if the chunk is loaded or not.
+     * Sets a block at the specified position, holding the instance monitor, then the write lock of the
+     * chunk. Does not check whether the chunk is loaded. A read-only chunk returns false at once; a y
+     * outside [minY, maxY) logs a WARN and returns false.
      *
-     * @param chunk the {@link Chunk} which should be loaded
-     * @param x     the block X
-     * @param y     the block Y
-     * @param z     the block Z
-     * @param block the block to place
+     * @param chunk          the {@link Chunk} of the position
+     * @param x              the block X
+     * @param y              the block Y
+     * @param z              the block Z
+     * @param block          the block to place
+     * @param placement      the placement the placement rule and the handler of the block get, or null; at
+     *                       most one of {@code placement} and {@code destroy} is not null
+     * @param destroy        the destruction the handler of the block replaced gets, or null
+     * @param doBlockUpdates whether the placement rule runs and the neighbours are updated
+     * @param updateDistance how many neighbour updates led to this one, 0 from outside
      * @return false if the block was not changed
      */
     private synchronized boolean UNSAFE_setBlock(Chunk chunk, int x, int y, int z, Block block,
@@ -175,9 +199,7 @@ public class InstanceContainer extends Instance {
             // Refresh the last block change time
             this.lastBlockChangeTime = System.nanoTime();
             final BlockVec blockPosition = new BlockVec(x, y, z);
-            if (isAlreadyChanged(blockPosition, block)) { // do NOT change the block again.
-                // Avoids StackOverflowExceptions when onDestroy tries to destroy the block itself
-                // This can happen with nether portals which break the entire frame when a portal block is broken
+            if (isAlreadyChanged(blockPosition, block)) { // do NOT change the block again, see isAlreadyChanged
                 return false;
             }
             this.currentlyChangingBlocks.put(blockPosition, block);
@@ -322,9 +344,7 @@ public class InstanceContainer extends Instance {
             final int chunkZ = chunk.getChunkZ();
             // An unloaded chunk loses its dispatcher partition, and with it every player standing in
             // it: nothing would ever tick them again, so the chunk has to stay
-            final boolean onlinePlayer = getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.PLAYERS)
-                    .stream().anyMatch(Player::isOnline);
-            Check.stateCondition(onlinePlayer, "You cannot unload a chunk with players inside.");
+            Check.stateCondition(hasOnlinePlayer(chunkX, chunkZ), "You cannot unload a chunk with players inside.");
             chunk.sendPacketToViewers(new UnloadChunkPacket(chunkX, chunkZ));
             process().eventHandler().call(new InstanceChunkUnloadEvent(this, chunk));
             // Collect all entities in chunk, except online players: removing one disconnects it,
@@ -384,9 +404,7 @@ public class InstanceContainer extends Instance {
                 // Not passed over: unloaded by now, it has left the idle chunks, like one with a ticket since below
                 if (chunk == null) continue;
                 try {
-                    final boolean onlinePlayer = getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.PLAYERS)
-                            .stream().anyMatch(Player::isOnline);
-                    if (onlinePlayer || !chunk.readyToUnload()) {
+                    if (hasOnlinePlayer(chunkX, chunkZ) || !chunk.readyToUnload()) {
                         passedOver++;
                         continue;
                     }
@@ -400,6 +418,11 @@ public class InstanceContainer extends Instance {
             }
             if (candidates.size() < batch) return;
         }
+    }
+
+    private boolean hasOnlinePlayer(int chunkX, int chunkZ) {
+        return getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.PLAYERS)
+                .stream().anyMatch(Player::isOnline);
     }
 
     @Override
@@ -495,8 +518,6 @@ public class InstanceContainer extends Instance {
         return future.whenComplete((_, _) -> loadingChunks.remove(index, future));
     }
 
-    Map<Long, List<GeneratorImpl.SectionModifierImpl>> generationForks = new ConcurrentHashMap<>();
-
     protected Chunk createChunk(int chunkX, int chunkZ) {
         final Chunk chunk = chunkSupplier.createChunk(this, chunkX, chunkZ);
         Objects.requireNonNull(chunk, "Chunks supplied by a ChunkSupplier cannot be null.");
@@ -511,7 +532,6 @@ public class InstanceContainer extends Instance {
     }
 
     protected void generateChunk(Chunk chunk, Generator generator) {
-        final int chunkX = chunk.getChunkX(), chunkZ = chunk.getChunkZ();
         GeneratorImpl.GenSection[] genSections = new GeneratorImpl.GenSection[chunk.getSections().size()];
         Arrays.setAll(genSections, i -> {
             Section section = chunk.getSections().get(i);
@@ -535,23 +555,7 @@ public class InstanceContainer extends Instance {
                 var sections = ((GeneratorImpl.AreaModifierImpl) fork.modifier()).sections();
                 for (var section : sections) {
                     if (section.modifier() instanceof GeneratorImpl.SectionModifierImpl sectionModifier) {
-                        if (sectionModifier.genSection().blocks().count() == 0)
-                            continue;
-                        final Point start = section.absoluteStart();
-                        final DimensionType dim = getCachedDimensionType();
-                        if (start.blockY() < dim.minY() || start.blockY() >= dim.maxY()) {
-                            // No chunk has such a section, applying it would abort the whole generation
-                            LOGGER.warn("tried to fork a section outside the world bounds, should be within [{}, {}): {}",
-                                    dim.minY(), dim.maxY(), start.blockY());
-                            continue;
-                        }
-                        final Chunk forkChunk = start.chunkX() == chunkX && start.chunkZ() == chunkZ ? chunk : getChunkAt(start);
-                        if (forkChunk != null) {
-                            applyLoadedFork(forkChunk, sectionModifier);
-                        } else {
-                            final Chunk cached = keepFork(start, sectionModifier);
-                            if (cached != null) applyLoadedFork(cached, sectionModifier);
-                        }
+                        distributeFork(chunk, sectionModifier);
                     }
                 }
             }
@@ -562,6 +566,30 @@ public class InstanceContainer extends Instance {
         } finally {
             // End generation
             refreshLastBlockChangeTime();
+        }
+    }
+
+    /**
+     * Applies a section of a fork made by the generation of {@code generating} to the chunk it falls in, or
+     * keeps it for that chunk while the instance does not hold it.
+     */
+    private void distributeFork(Chunk generating, GeneratorImpl.SectionModifierImpl sectionModifier) {
+        if (sectionModifier.genSection().blocks().count() == 0) return;
+        final Point start = sectionModifier.start();
+        final DimensionType dim = getCachedDimensionType();
+        if (start.blockY() < dim.minY() || start.blockY() >= dim.maxY()) {
+            // No chunk has such a section, applying it would abort the whole generation
+            LOGGER.warn("tried to fork a section outside the world bounds, should be within [{}, {}): {}",
+                    dim.minY(), dim.maxY(), start.blockY());
+            return;
+        }
+        final Chunk forkChunk = start.chunkX() == generating.getChunkX() && start.chunkZ() == generating.getChunkZ()
+                ? generating : getChunkAt(start);
+        if (forkChunk != null) {
+            applyLoadedFork(forkChunk, sectionModifier);
+        } else {
+            final Chunk cached = keepFork(start, sectionModifier);
+            if (cached != null) applyLoadedFork(cached, sectionModifier);
         }
     }
 
@@ -730,6 +758,9 @@ public class InstanceContainer extends Instance {
      * so chunks loaded afterwards match the copied ones. Its {@link ChunkLoader} is left at the
      * default, a copy must not write into the storage of its source.
      * <p>
+     * The copy is not registered: register it with {@link InstanceManager#registerInstance(Instance)} before
+     * putting players or entities in it. The time, the weather and the world border are not copied.
+     * <p>
      * <b>A copy costs as much memory as its source.</b> Every section is cloned, palettes and light
      * data included, so copying one instance per game of a big world multiplies the resident heap
      * by the number of copies. Generating the world again from the same generator is usually
@@ -861,12 +892,14 @@ public class InstanceContainer extends Instance {
     }
 
     /**
-     * Has this block already changed since last update?
-     * Prevents StackOverflow with blocks trying to modify their position in onDestroy or onPlace.
+     * The dedupe of a tick: a position asked again for the same block within one tick (compared with the
+     * block asked for, not the one a placement rule turned it into) is dropped, with no change, no packet
+     * and no event. {@link #tick(long)} clears the record. It stops the onDestroy and onPlace callbacks of
+     * a position from recursing into it, as a nether portal breaking its whole frame would.
      *
      * @param blockPosition the block position
-     * @param block         the block
-     * @return true if the block changed since the last update
+     * @param block         the block asked for
+     * @return true if this tick already asked for {@code block} at {@code blockPosition}
      */
     private boolean isAlreadyChanged(BlockVec blockPosition, Block block) {
         final Block changedBlock = currentlyChangingBlocks.get(blockPosition);

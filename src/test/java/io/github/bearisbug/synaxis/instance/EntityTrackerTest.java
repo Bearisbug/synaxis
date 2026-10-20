@@ -219,6 +219,35 @@ public class EntityTrackerTest {
     }
 
     @Test
+    public void nearbyWithANegativeOrNaNRangeFindsNothing() {
+        var updater = new EntityTracker.Update<>() {
+            @Override
+            public void add(Entity entity) {
+                // Empty
+            }
+
+            @Override
+            public void remove(Entity entity) {
+                // Empty
+            }
+        };
+        EntityTracker tracker = EntityTracker.newTracker(ServerConfig.defaults().entityViewDistance());
+        // One query point well inside its chunk, one next to the chunk edge, each with an entity 0.1 away
+        var inside = new Entity(EntityType.ZOMBIE);
+        var atEdge = new Entity(EntityType.ZOMBIE);
+        tracker.register(inside, new Vec(8.1, 0, 8), EntityTracker.Target.ENTITIES, updater);
+        tracker.register(atEdge, new Vec(15.6, 0, 8), EntityTracker.Target.ENTITIES, updater);
+
+        for (Vec point : new Vec[]{new Vec(8, 0, 8), new Vec(15.5, 0, 8)}) {
+            for (double range : new double[]{-1, -0.5, -20, Double.NaN}) {
+                Set<Entity> found = new HashSet<>();
+                tracker.nearbyEntities(point, range, EntityTracker.Target.ENTITIES, found::add);
+                assertEquals(Set.of(), found, () -> "range " + range + " at " + point);
+            }
+        }
+    }
+
+    @Test
     public void nearbyWithMoreEntitiesThanChunksInRange() {
         var updater = new EntityTracker.Update<>() {
             @Override

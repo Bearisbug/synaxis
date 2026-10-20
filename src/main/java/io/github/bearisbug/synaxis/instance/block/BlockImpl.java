@@ -152,19 +152,18 @@ record BlockImpl(RegistryData.BlockEntry registry,
     @SuppressWarnings("PatternValidation")
     static @Nullable Block parseState(String input) {
         if (input.isEmpty()) return null;
-        final int nbtIndex = input.indexOf("[");
-        if (nbtIndex == 0) return null;
-        if (nbtIndex == -1) return Block.fromKey(input);
+        final int propertiesStart = input.indexOf("[");
+        if (propertiesStart == 0) return null;
+        if (propertiesStart == -1) return Block.fromKey(input);
         if (!input.endsWith("]")) return null;
         // Block state
-        final String blockName = input.substring(0, nbtIndex);
+        final String blockName = input.substring(0, propertiesStart);
         Block block = Block.fromKey(blockName);
         if (block == null) return null;
         // Compute properties
-        final String query = input.substring(nbtIndex);
-        final Map<String, String> propertyMap = BlockUtils.parseProperties(query);
+        final String query = input.substring(propertiesStart);
         try {
-            return block.withProperties(propertyMap);
+            return block.withProperties(BlockUtils.parseProperties(query));
         } catch (IllegalArgumentException _) {
             return null;
         }

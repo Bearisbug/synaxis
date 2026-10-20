@@ -33,11 +33,11 @@ public class ArgumentBlockState extends Argument<Block> {
      */
     @Deprecated
     public static Block staticParse(String input) throws ArgumentSyntaxException {
-        final int nbtIndex = input.indexOf("[");
-        if (nbtIndex == 0)
+        final int propertiesStart = input.indexOf("[");
+        if (propertiesStart == 0)
             throw new ArgumentSyntaxException("No block type", input, NO_BLOCK);
 
-        if (nbtIndex == -1) {
+        if (propertiesStart == -1) {
             // Only block name
             Block block = Block.fromKey(input);
             if (block == null)
@@ -47,16 +47,15 @@ public class ArgumentBlockState extends Argument<Block> {
             if (!input.endsWith("]"))
                 throw new ArgumentSyntaxException("Property list need to end with ]", input, INVALID_PROPERTY);
             // Block state
-            final String blockName = input.substring(0, nbtIndex);
+            final String blockName = input.substring(0, propertiesStart);
             Block block = Block.fromKey(blockName);
             if (block == null)
                 throw new ArgumentSyntaxException("Invalid block type", input, INVALID_BLOCK);
 
             // Compute properties
-            final String query = input.substring(nbtIndex);
-            final var propertyMap = BlockUtils.parseProperties(query);
+            final String query = input.substring(propertiesStart);
             try {
-                return block.withProperties(propertyMap);
+                return block.withProperties(BlockUtils.parseProperties(query));
             } catch (IllegalArgumentException _) {
                 throw new ArgumentSyntaxException("Invalid property values", input, INVALID_PROPERTY_VALUE);
             }

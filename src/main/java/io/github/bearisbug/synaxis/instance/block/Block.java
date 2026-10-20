@@ -612,6 +612,14 @@ public sealed interface Block extends StaticProtocolObject<Block>, TagReadable, 
         return BlockImpl.REGISTRY.get(key);
     }
 
+    /**
+     * Parses a block state in the format of {@link #state()}, {@code ns:id[k=v,...]}, the property list being
+     * optional.
+     *
+     * @param state the block state
+     * @return the block state, null when the block is unknown, the property list is malformed (see
+     * {@link BlockUtils#parseProperties(String)}) or names a property or value the block does not have
+     */
     static @Nullable Block fromState(String state) {
         return BlockImpl.parseState(state);
     }

@@ -71,6 +71,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Instances are what are called "worlds" in Minecraft, you can add an entity in it using {@link Entity#setInstance(Instance)}.
@@ -1353,28 +1354,19 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     }
 
     public int getBlockLight(int blockX, int blockY, int blockZ) {
-        var chunk = getChunkAt(blockX, blockZ);
-        if (chunk == null) return 0;
-        if (isOutsideWorld(blockY)) return 0;
-        Section section = chunk.getSectionAt(blockY);
-        Light light = section.blockLight();
-        int sectionCoordinate = CoordConversion.globalToChunk(blockY);
-
-        int coordX = CoordConversion.globalToSectionRelative(blockX);
-        int coordY = CoordConversion.globalToSectionRelative(blockY);
-        int coordZ = CoordConversion.globalToSectionRelative(blockZ);
-
-        if (light.requiresUpdate())
-            LightingChunk.relightSection(chunk.getInstance(), chunk.chunkX, sectionCoordinate, chunk.chunkZ);
-        return light.getLevel(coordX, coordY, coordZ);
+        return lightLevel(blockX, blockY, blockZ, Section::blockLight);
     }
 
     public int getSkyLight(int blockX, int blockY, int blockZ) {
+        return lightLevel(blockX, blockY, blockZ, Section::skyLight);
+    }
+
+    private int lightLevel(int blockX, int blockY, int blockZ, Function<Section, Light> kind) {
         var chunk = getChunkAt(blockX, blockZ);
         if (chunk == null) return 0;
         if (isOutsideWorld(blockY)) return 0;
         Section section = chunk.getSectionAt(blockY);
-        Light light = section.skyLight();
+        Light light = kind.apply(section);
         int sectionCoordinate = CoordConversion.globalToChunk(blockY);
 
         int coordX = CoordConversion.globalToSectionRelative(blockX);

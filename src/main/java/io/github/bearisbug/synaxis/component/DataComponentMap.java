@@ -2,15 +2,11 @@ package io.github.bearisbug.synaxis.component;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
-import io.github.bearisbug.synaxis.codec.Codec;
-import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.utils.Unit;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
-import java.util.function.Function;
-import java.util.function.IntFunction;
 
 /**
  * <p>Represents any container of {@link DataComponent}s.</p>
@@ -31,42 +27,6 @@ public sealed interface DataComponentMap extends DataComponent.Holder permits Da
 
     static DataComponentMap.PatchBuilder patchBuilder() {
         return new DataComponentMapImpl.PatchBuilderImpl(new Int2ObjectArrayMap<>());
-    }
-
-    @ApiStatus.Internal
-    static NetworkBuffer.Type<DataComponentMap> networkType(
-            IntFunction<DataComponent<?>> idToType) {
-        return new DataComponentMapImpl.NetworkTypeImpl(idToType, false, true);
-    }
-
-    /**
-     * Creates a network type for the given component type. For internal use only, get the value from the target component class.
-     */
-    @ApiStatus.Internal
-    static Codec<DataComponentMap> codec(
-            IntFunction<DataComponent<?>> idToType,
-            Function<String, DataComponent<?>> nameToType
-    ) {
-        return new DataComponentMapImpl.CodecImpl(idToType, nameToType, false);
-    }
-
-    /**
-     * Creates a network type for the given component type. For internal use only, get the value from the target component class.
-     */
-    @ApiStatus.Internal
-    static NetworkBuffer.Type<DataComponentMap> patchNetworkType(IntFunction<DataComponent<?>> idToType, boolean trusted) {
-        return new DataComponentMapImpl.NetworkTypeImpl(idToType, true, trusted);
-    }
-
-    /**
-     * Creates a network type for the given component type. For internal use only, get the value from the target component class.
-     */
-    @ApiStatus.Internal
-    static Codec<DataComponentMap> patchCodec(
-            IntFunction<DataComponent<?>> idToType,
-            Function<String, DataComponent<?>> nameToType
-    ) {
-        return new DataComponentMapImpl.CodecImpl(idToType, nameToType, true);
     }
 
     /**

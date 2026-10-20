@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.network.packet.client.play;
 
 import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
 
 import java.util.List;
@@ -27,25 +28,13 @@ public record ClientUpdateSignPacket(
         }
     }
 
-    public static final NetworkBuffer.Type<ClientUpdateSignPacket> SERIALIZER = new NetworkBuffer.Type<>() {
-        @Override
-        public void write(NetworkBuffer buffer, ClientUpdateSignPacket value) {
-            buffer.write(BLOCK_POSITION, value.blockPosition);
-            buffer.write(BOOLEAN, value.isFrontText);
-            buffer.write(STRING, value.lines.get(0));
-            buffer.write(STRING, value.lines.get(1));
-            buffer.write(STRING, value.lines.get(2));
-            buffer.write(STRING, value.lines.get(3));
-        }
-
-        @Override
-        public ClientUpdateSignPacket read(NetworkBuffer buffer) {
-            return new ClientUpdateSignPacket(buffer.read(BLOCK_POSITION), buffer.read(BOOLEAN), readLines(buffer));
-        }
-    };
-
-    private static List<String> readLines(NetworkBuffer reader) {
-        return List.of(reader.read(STRING), reader.read(STRING),
-                reader.read(STRING), reader.read(STRING));
-    }
+    public static final NetworkBuffer.Type<ClientUpdateSignPacket> SERIALIZER = NetworkBufferTemplate.template(
+            BLOCK_POSITION, ClientUpdateSignPacket::blockPosition,
+            BOOLEAN, ClientUpdateSignPacket::isFrontText,
+            STRING, p -> p.lines().get(0),
+            STRING, p -> p.lines().get(1),
+            STRING, p -> p.lines().get(2),
+            STRING, p -> p.lines().get(3),
+            (blockPosition, isFrontText, line0, line1, line2, line3) ->
+                    new ClientUpdateSignPacket(blockPosition, isFrontText, List.of(line0, line1, line2, line3)));
 }

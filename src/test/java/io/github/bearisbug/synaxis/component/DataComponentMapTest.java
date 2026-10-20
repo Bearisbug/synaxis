@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.codec.Result;
 import io.github.bearisbug.synaxis.codec.Transcoder;
 import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import io.github.bearisbug.synaxis.utils.Unit;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -84,6 +85,38 @@ public class DataComponentMapTest {
         final Result<DataComponentMap> result = DataComponent.PATCH_CODEC.decode(Transcoder.JAVA, input);
 
         assertEquals("minecraft:rarity: null", assertInstanceOf(Result.Error.class, result).message());
+    }
+
+    /** null marks a removal inside a map, so setting it is refused rather than silently removing the component. */
+    @Test
+    void settingANullValueIsRefused() {
+        final NullPointerException patch = assertThrows(NullPointerException.class,
+                () -> DataComponentMap.patchBuilder().set(DataComponents.MAX_STACK_SIZE, null));
+        assertTrue(patch.getMessage().contains(DataComponents.MAX_STACK_SIZE.name()), patch::getMessage);
+        assertThrows(NullPointerException.class, () -> DataComponentMap.builder().set(DataComponents.MAX_STACK_SIZE, null));
+        assertThrows(NullPointerException.class, () -> DataComponentMap.EMPTY.set(DataComponents.MAX_STACK_SIZE, null));
+
+        // remove() is the way, and a removed component is not present in either builder
+        final DataComponentMap.PatchBuilder builder = DataComponentMap.patchBuilder().remove(DataComponents.MAX_STACK_SIZE);
+        assertFalse(builder.has(DataComponents.MAX_STACK_SIZE));
+        assertFalse(builder.build().has(DataComponents.MAX_STACK_SIZE));
+        assertFalse(DataComponentMap.builder().has(DataComponents.MAX_STACK_SIZE));
+    }
+
+    @Test
+    void theComponentRegistryCannotBeChangedThroughValues() {
+        final int count = DataComponent.values().size();
+        // A predicate removing nothing first: on a mutable view it returns quietly and leaves the registry alone
+        assertThrows(UnsupportedOperationException.class, () -> DataComponent.values().removeIf(_ -> false));
+        assertThrows(UnsupportedOperationException.class, () -> DataComponent.values().clear());
+        assertEquals(count, DataComponent.values().size());
+    }
+
+    @Test
+    void encodingAComponentWithoutACodecSaysSerialized() {
+        final NullPointerException error = assertThrows(NullPointerException.class,
+                () -> DataComponents.CREATIVE_SLOT_LOCK.encode(Transcoder.NBT, Unit.INSTANCE));
+        assertTrue(error.getMessage().contains("cannot be serialized to Codec"), error::getMessage);
     }
 
     @Test

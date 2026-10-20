@@ -30,7 +30,7 @@ record DataComponentImpl<T>(
 
     // Used when Collections are involved, where T could still be mutable.
     static <T> DataComponent<T> register(@KeyPattern String name, @Nullable NetworkBuffer.Type<T> network, @Nullable Codec<T> nbt, @Nullable UnaryOperator<T> freeze) {
-        DataComponent<T> impl = DataComponent.createHeadless(NAMESPACES.size(), Key.key(name), network, nbt, freeze);
+        DataComponent<T> impl = new DataComponentImpl<>(NAMESPACES.size(), Key.key(name), network, nbt, freeze);
         NAMESPACES.put(impl.key(), impl);
         IDS.set(impl.id(), impl);
         return impl;
@@ -54,7 +54,7 @@ record DataComponentImpl<T>(
 
     @Override
     public <D> Result<D> encode(Transcoder<D> coder, @Nullable T value) {
-        Check.notNull(codec, "{0} cannot be deserialized from Codec", this);
+        Check.notNull(codec, "{0} cannot be serialized to Codec", this);
         return this.codec.encode(coder, value);
     }
 

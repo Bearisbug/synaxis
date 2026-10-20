@@ -16,6 +16,10 @@ interface NetworkBufferTypeImpl<T> extends NetworkBuffer.Type<T> {
      * references. Reserving no more than the remaining input can back makes that allocation
      * proportional to what was actually sent; the caller grows the array as it reads. Element types
      * that encode to zero bytes still work because the reservation is at least one.</p>
+     *
+     * <p>Never more than {@code size}: the callers rely on the array being exactly {@code size}
+     * long once every element is read ({@code List.of} and {@code Set.of} throw on a null slot, a
+     * primitive array would keep trailing zeros).</p>
      */
     static int initialCollectionSize(NetworkBuffer buffer, int size) {
         if (size == 0) return 0;
@@ -23,7 +27,10 @@ interface NetworkBufferTypeImpl<T> extends NetworkBuffer.Type<T> {
         return (int) Math.min(size, Math.min(MAX_INITIAL_COLLECTION_SIZE, inputBackedSize));
     }
 
-    /** Returns the length an array of {@code length} elements should grow to once full. */
+    /**
+     * Returns the length an array of {@code length} elements should grow to once full, never more
+     * than {@code size}, for the reason given on {@link #initialCollectionSize}.
+     */
     static int grownCollectionSize(int length, int size) {
         return (int) Math.min(size, (long) length * 2);
     }

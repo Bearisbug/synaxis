@@ -52,6 +52,11 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
     Type<Float> FLOAT = new NetworkBufferPrimitiveTypes.FloatType();
     Type<Double> DOUBLE = new NetworkBufferPrimitiveTypes.DoubleType();
     Type<Integer> VAR_INT = new NetworkBufferVarNumberTypes.VarIntType();
+    /**
+     * Vanilla OptionalVarInt: writes {@code value + 1} as a VarInt, 0 meaning absent. Unlike
+     * {@code VAR_INT.optional()} there is no boolean prefix. -1 encodes the same as null and reads
+     * back as null.
+     */
     Type<@Nullable Integer> OPTIONAL_VAR_INT = new NetworkBufferVarNumberTypes.OptionalVarIntType();
     Type<Integer> VAR_INT_3 = new NetworkBufferVarNumberTypes.VarInt3Type();
     Type<Long> VAR_LONG = new NetworkBufferVarNumberTypes.VarLongType();
@@ -220,6 +225,15 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
         return new NetworkBufferCombinatorTypes.EitherType<>(left, right);
     }
 
+    /**
+     * A type that contains itself.
+     *
+     * @param func given the self reference, returns the type that uses it; reading nests the self
+     *             reference at most 64 levels deep (the outermost value not counted) and throws
+     *             {@link IllegalStateException} past that, writing has no depth limit
+     * @param <T>  the type of the value
+     * @return the type {@code func} returned
+     */
     static <T> Type<T> Recursive(Function<Type<T>, Type<T>> func) {
         return new NetworkBufferDeferredTypes.RecursiveType<>(func).delegate;
     }
@@ -294,6 +308,14 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
 
     boolean writeChannel(WritableByteChannel channel) throws IOException;
 
+    /**
+     * Encrypts or decrypts {@code [start, start + length)} in place.
+     *
+     * @param cipher a stream mode cipher whose output is always as long as its input, such as
+     *               {@code AES/CFB8/NoPadding}
+     * @param start  the index of the first byte
+     * @param length the number of bytes
+     */
     void cipher(Cipher cipher, long start, long length);
 
     long compress(long start, long length, NetworkBuffer output);
@@ -381,10 +403,24 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
             return new NetworkBufferCombinatorTypes.UnionType<>(this, keyFunc, serializers);
         }
 
+        /**
+         * A value preceded by its encoded length in bytes, as a VarInt. Reading only reads the value
+         * within the declared length, and fails when the value does not take exactly that many bytes.
+         *
+         * @param maxLength the most encoded bytes accepted, when reading and when writing
+         * @return the length prefixed type
+         */
         default Type<T> lengthPrefixed(int maxLength) {
             return new NetworkBufferCombinatorTypes.LengthPrefixedType<>(this, maxLength);
         }
 
+        /**
+         * This type limited to {@code maxLength} encoded bytes. Reading checks the length after the
+         * value was decoded, so the limit does not bound what decoding allocates.
+         *
+         * @param maxLength the most encoded bytes accepted
+         * @return the limited type
+         */
         default Type<T> maxLength(long maxLength) {
             return new NetworkBufferCombinatorTypes.MaxLength<>(this, maxLength);
         }
@@ -588,6 +624,11 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
         NetworkBufferImpl.copy(srcBuffer, srcOffset, dstBuffer, dstOffset, length);
     }
 
+    /**
+     * Compares the entire backing memory, capacity included, byte for byte; read and write indices
+     * are ignored. To compare readable content, copy or slice both buffers to
+     * {@code [readIndex, writeIndex)} first.
+     */
     static boolean equals(NetworkBuffer buffer1, NetworkBuffer buffer2) {
         return NetworkBufferImpl.equals(buffer1, buffer2);
     }

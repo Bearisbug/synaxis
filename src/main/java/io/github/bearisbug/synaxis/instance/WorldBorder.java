@@ -126,9 +126,9 @@ public record WorldBorder(double diameter, double centerX, double centerZ, int w
     }
 
     /**
-     * Creates a {@link WorldBorderSizePacket} which dictates the origin of the world border.
+     * Creates a {@link WorldBorderCenterPacket} which dictates the origin of the world border.
      *
-     * @return the {@link WorldBorderSizePacket} with the center values of this world border
+     * @return the {@link WorldBorderCenterPacket} with the center values of this world border
      */
     public WorldBorderCenterPacket createCenterPacket() {
         return new WorldBorderCenterPacket(centerX, centerZ);

@@ -45,7 +45,6 @@ import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.tag.TagHandler;
 import io.github.bearisbug.synaxis.tag.Taggable;
-import io.github.bearisbug.synaxis.thread.ThreadDispatcher;
 import io.github.bearisbug.synaxis.timer.Schedulable;
 import io.github.bearisbug.synaxis.timer.Scheduler;
 import io.github.bearisbug.synaxis.network.PacketSendingUtils;
@@ -79,9 +78,10 @@ import java.util.function.Function;
  * An instance has entities and chunks, each instance contains its own entity list but the
  * chunk implementation has to be defined, see {@link InstanceContainer}.
  * <p>
- * WARNING: when making your own implementation registering the instance manually is required
- * with {@link InstanceManager#registerInstance(Instance)}, and
- * you need to be sure to signal the {@link ThreadDispatcher} of every partition/element changes.
+ * A custom implementation extends {@link InstanceContainer} and overrides
+ * {@link InstanceContainer#createChunk(int, int)}, or sets its own {@link ChunkSupplier} or {@link ChunkLoader}.
+ * Extending {@code Instance} directly is not supported: the chunk tickets, the automatic unload and the
+ * dispatcher partitions are only kept by {@link InstanceContainer}.
  */
 public abstract class Instance implements Block.Getter, Block.Setter, Biome.Getter, Biome.Setter,
         Tickable, Schedulable, EventHandler<InstanceEvent>, Taggable, PacketGroupingAudience, Pointered, Identified {
@@ -312,9 +312,10 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     public abstract CompletableFuture<Chunk> loadChunk(int chunkX, int chunkZ);
 
     /**
-     * Loads the chunk at the given {@link Point} with a callback.
+     * Loads the chunk at the given {@link Point}.
      *
      * @param point the chunk position
+     * @return a {@link CompletableFuture} completed once the chunk has been loaded
      */
     public CompletableFuture<Chunk> loadChunk(Point point) {
         return loadChunk(point.chunkX(), point.chunkZ());
@@ -331,8 +332,8 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     public abstract CompletableFuture<@Nullable Chunk> loadOptionalChunk(int chunkX, int chunkZ);
 
     /**
-     * Loads a {@link Chunk} (if {@link #hasEnabledAutoChunkLoad()} returns true)
-     * at the given {@link Point} with a callback.
+     * Loads the chunk at the given {@link Point} if the chunk is already loaded or if
+     * {@link #hasEnabledAutoChunkLoad()} returns true.
      *
      * @param point the chunk position
      * @return a {@link CompletableFuture} completed once the chunk has been processed, can be null if not loaded
@@ -981,6 +982,12 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     /**
      * Sets the chunk view distance of this instance, 0 or more. A subclass writing the field
      * {@code chunkViewDistance} directly bypasses this check.
+     * <p>
+     * Changes the chunk ring of every player in the instance and sends them the new view distance on the
+     * calling thread, so call it on the tick scheduler thread only (in a task of the scheduler of the
+     * instance or of the server, for example), see {@code docs/DESIGN-PROD.md} §16. Called on a tick thread
+     * or on another thread, it changes the chunk rings while the players update their own; the engine does
+     * not check.
      *
      * @param newViewDistance the new view distance
      * @throws IllegalArgumentException if {@code newViewDistance} is negative

@@ -15,13 +15,14 @@ import static io.github.bearisbug.synaxis.instance.Chunk.CHUNK_SIZE_Z;
  * The highest block of each column of a chunk that {@link #checkBlock(Block)} counts.
  * <p>
  * {@link #getHeight(int, int)} can be called on any thread: a heightmap that needs a refresh is computed again
- * under the read-lock of the chunk. A caller holding the read-lock reads heights no block change alters
- * meanwhile. The chunk implementation keeps the heightmap with
- * {@link #refresh(int, int, int, Block)} and {@link #loadFrom(long[])} under the write-lock of the chunk.
- * {@link #refresh(int)} takes the read-lock itself, which keeps the blocks from changing while it computes:
- * two threads computing at once write the same heights. It can be called under the write-lock too.
- * {@link #refresh(int, int, int)} computes one column, under either lock. {@link #invalidate()} only sets a
- * flag, the next read computes the heightmap again.
+ * under the read-lock of the chunk, and a reader arriving during that computation waits for it instead of reading
+ * the columns it has not reached yet. A caller holding the read-lock reads heights that match the blocks. The
+ * chunk implementation keeps the heightmap with {@link #refresh(int, int, int, Block)} and
+ * {@link #loadFrom(long[])} under the write-lock of the chunk. {@link #refresh(int)} takes the read-lock itself,
+ * which keeps the blocks from changing while it computes, then a lock of the heightmap, which one computation holds
+ * at a time; it can be called under the write-lock too. {@link #refresh(int, int, int)} computes one column, under
+ * either lock. {@link #invalidate()} marks the heights stale, so that the next read computes them again; called
+ * during a computation, it waits for that computation to end.
  */
 public abstract class Heightmap {
     public enum Type {
@@ -38,7 +39,11 @@ public abstract class Heightmap {
     private final short[] heights = new short[CHUNK_SIZE_X * CHUNK_SIZE_Z];
     private final Chunk chunk;
     private final int minHeight;
-    private volatile boolean needsRefresh = true;
+    // Held while the heights are computed or loaded; no lock of the chunk is taken while holding it
+    private final Object computing = new Object();
+    // invalidate() moves version on; the heights match the blocks while computedVersion equals it
+    private volatile int version;
+    private volatile int computedVersion = -1;
 
     public Heightmap(Chunk chunk) {
         this.chunk = chunk;
@@ -75,15 +80,19 @@ public abstract class Heightmap {
      * @param startY the block Y to look down from, {@link #getHighestBlockSection(Chunk)} covers the chunk
      */
     public void refresh(int startY) {
-        if (!needsRefresh) return;
+        if (!needsRefresh()) return;
         chunk.lockReadLock();
         try {
-            // Cleared before the scan, so that an invalidation during it is kept for the next read
-            needsRefresh = false;
-            for (int x = 0; x < CHUNK_SIZE_X; x++) {
-                for (int z = 0; z < CHUNK_SIZE_Z; z++) {
-                    refresh(x, z, startY);
+            synchronized (computing) {
+                // A reader that waited here finds the heights computed by the thread it waited for
+                final int started = version;
+                if (computedVersion == started) return;
+                for (int x = 0; x < CHUNK_SIZE_X; x++) {
+                    for (int z = 0; z < CHUNK_SIZE_Z; z++) {
+                        refresh(x, z, startY);
+                    }
                 }
+                computedVersion = started;
             }
         } finally {
             chunk.unlockReadLock();
@@ -95,7 +104,13 @@ public abstract class Heightmap {
      * next read computes them again.
      */
     public void invalidate() {
-        needsRefresh = true;
+        synchronized (computing) {
+            version++;
+        }
+    }
+
+    private boolean needsRefresh() {
+        return computedVersion != version;
     }
 
     /**
@@ -139,7 +154,7 @@ public abstract class Heightmap {
     }
 
     public long[] getNBT() {
-        if (needsRefresh) refresh(getHighestBlockSection(chunk));
+        if (needsRefresh()) refresh(getHighestBlockSection(chunk));
         final int dimensionHeight = chunk.getInstance().getCachedDimensionType().height();
         final int bitsForHeight = MathUtils.bitsToRepresent(dimensionHeight);
         return encode(heights, bitsForHeight);
@@ -159,19 +174,21 @@ public abstract class Heightmap {
         final int entriesPerLong = 64 / bitsPerEntry;
 
         // ceil(HeightsCount / entriesPerLong), a shorter array comes from a world saved with a
-        // different dimension height: keep needsRefresh set and recompute rather than read past it
+        // different dimension height: leave the heights stale and recompute rather than read past it
         if (data.length < (heights.length + entriesPerLong - 1) / entriesPerLong) return;
 
         final int maxPossibleIndexInContainer = entriesPerLong - 1;
         final int entryMask = (1 << bitsPerEntry) - 1;
 
-        int containerIndex = 0;
-        for (int i = 0; i < heights.length; i++) {
-            final int indexInContainer = i % entriesPerLong;
-            heights[i] = (short) ((int) (data[containerIndex] >> (indexInContainer * bitsPerEntry)) & entryMask);
-            if (indexInContainer == maxPossibleIndexInContainer) containerIndex++;
+        synchronized (computing) {
+            int containerIndex = 0;
+            for (int i = 0; i < heights.length; i++) {
+                final int indexInContainer = i % entriesPerLong;
+                heights[i] = (short) ((int) (data[containerIndex] >> (indexInContainer * bitsPerEntry)) & entryMask);
+                if (indexInContainer == maxPossibleIndexInContainer) containerIndex++;
+            }
+            computedVersion = version;
         }
-        needsRefresh = false;
     }
 
     /**
@@ -185,7 +202,7 @@ public abstract class Heightmap {
     public int getHeight(int x, int z) {
         if (((x | z) >>> 4) != 0)
             throw new IllegalArgumentException("heightmap column must be chunk-local [0,16): " + x + ", " + z);
-        if (needsRefresh) refresh(getHighestBlockSection(chunk));
+        if (needsRefresh()) refresh(getHighestBlockSection(chunk));
         return heights[z << 4 | x] + minHeight;
     }
 

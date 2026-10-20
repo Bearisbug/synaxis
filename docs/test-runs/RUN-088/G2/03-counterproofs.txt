@@ -17,5 +17,5 @@ Counterproofs: aed748a2b6 with two temporary changes, run together, then git res
   Without the walk over the buckets, Double.MAX_VALUE spans 2^28 x 2^28 chunks and the query does not end within 5 s
   (:280); nearbyQueriesMatchABruteForceScan stays green, the box loop alone finds the same entities up to range 1000.
   Without the bound check SynxChunk materializes a handle chunk for a biome it then does not set (:522); the two WARN
-  lines of DynamicChunk come all the same, the assertion on them (:519) passes.
+  lines of DynamicChunk come all the same, the assertion on them (:520) passes.
   The getBiome clamp of SynxChunk has its red in 01 (:509, handle mode, before any fix).

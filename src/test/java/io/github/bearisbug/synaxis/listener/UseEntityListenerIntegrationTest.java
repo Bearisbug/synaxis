@@ -123,6 +123,17 @@ public class UseEntityListenerIntegrationTest {
         assertFalse(attackReaches(new Pos(-9.5, 0, 0)), "its edge is 6.5 blocks away, out of reach");
     }
 
+    /**
+     * The engine's rule, stricter than vanilla's three blocks: out of reach once the box is the range plus one block
+     * from the eyes. The 1 block high box at y 1 holds the eyes' height, so the distance is the one along x.
+     */
+    @Test
+    public void anEntityTheRangePlusOneBlockAwayIsOutOfReach() {
+        player.getAttribute(Attribute.ENTITY_INTERACTION_RANGE).setBaseValue(3.0);
+        assertFalse(attackReaches(new Pos(-7, 1, 0)), "its edge is 4 blocks away");
+        assertTrue(attackReaches(new Pos(-6.99, 1, 0)), "its edge is 3.99 blocks away");
+    }
+
     /** Whether an attack on a 6 blocks wide interaction entity at {@code at} reaches it. */
     private boolean attackReaches(Pos at) {
         final Entity zone = new Entity(EntityType.INTERACTION);

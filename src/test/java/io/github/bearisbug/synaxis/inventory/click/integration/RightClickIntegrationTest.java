@@ -172,6 +172,23 @@ public class RightClickIntegrationTest {
         }
     }
 
+    @Test
+    public void aRightClickTakesTheLargerHalfOfAnyStack(Env env) {
+        var instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, 40, 0));
+        var inventory = player.getInventory();
+        inventory.setItemStack(1, ItemStack.of(Material.DIAMOND, 5));
+        rightClick(player, 1);
+        assertEquals(ItemStack.of(Material.DIAMOND, 3), inventory.getCursorItem());
+        assertEquals(ItemStack.of(Material.DIAMOND, 2), inventory.getItemStack(1));
+
+        inventory.setCursorItem(ItemStack.AIR);
+        inventory.setItemStack(1, ItemStack.of(Material.DIAMOND, Integer.MAX_VALUE));
+        rightClick(player, 1);
+        assertEquals(ItemStack.of(Material.DIAMOND, 1073741824), inventory.getCursorItem(), "no item is lost");
+        assertEquals(ItemStack.of(Material.DIAMOND, 1073741823), inventory.getItemStack(1));
+    }
+
     private static void rightClickOpenInventory(Player player, int slot) {
         _rightClick(player.getOpenInventory(), true, player, slot);
     }

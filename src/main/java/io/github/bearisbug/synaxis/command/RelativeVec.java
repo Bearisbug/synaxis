@@ -34,7 +34,23 @@ public record RelativeVec(Vec vec, CoordinateType coordinateType, boolean relati
      */
     public Vec from(@Nullable Pos origin) {
         origin = Objects.requireNonNullElse(origin, Pos.ZERO);
-        return coordinateType.convert(vec, origin, relativeX, relativeY, relativeZ);
+        return switch (coordinateType) {
+            case RELATIVE -> {
+                final double x = vec.x() + (relativeX ? origin.x() : 0);
+                final double y = vec.y() + (relativeY ? origin.y() : 0);
+                final double z = vec.z() + (relativeZ ? origin.z() : 0);
+                yield new Vec(x, y, z);
+            }
+            case LOCAL -> {
+                final Vec vec1 = new Vec(Math.cos(Math.toRadians(origin.yaw() + 90.0f)), 0, Math.sin(Math.toRadians(origin.yaw() + 90.0f)));
+                final Vec a = vec1.mul(Math.cos(Math.toRadians(-origin.pitch()))).withY(Math.sin(Math.toRadians(-origin.pitch())));
+                final Vec b = vec1.mul(Math.cos(Math.toRadians(-origin.pitch() + 90.0f))).withY(Math.sin(Math.toRadians(-origin.pitch() + 90.0f)));
+                final Vec c = a.cross(b).neg();
+                final Vec relativePos = a.mul(vec.z()).add(b.mul(vec.y())).add(c.mul(vec.x()));
+                yield origin.add(relativePos).asVec();
+            }
+            case ABSOLUTE -> vec;
+        };
     }
 
     /**
@@ -44,16 +60,12 @@ public record RelativeVec(Vec vec, CoordinateType coordinateType, boolean relati
      * @return the location
      */
     public Vec from(@Nullable Entity entity) {
-        if (entity != null) {
-            return from(entity.getPosition());
-        } else {
-            return from(Pos.ZERO);
-        }
+        return from(entity != null ? entity.getPosition() : Pos.ZERO);
     }
 
     /**
      * Shorthand for {@link #from(Pos)}
-     * If player uses their position otherwise, {@link Vec#ZERO}
+     * If player uses their position otherwise, {@link Pos#ZERO}
      *
      * @param sender entity
      * @return the position with any relativity
@@ -64,11 +76,12 @@ public record RelativeVec(Vec vec, CoordinateType coordinateType, boolean relati
     }
 
     /**
-     * Computes a view {@link Vec} based on the given point's yaw and pitch.
-     * If no point is null, a default position {@link Pos#ZERO} is used.
+     * Computes a rotation from this vector, read as (yaw, unused, pitch), relative to the yaw and the pitch of the
+     * given point.
      *
      * @param point The reference position used for computing relative coordinates. If null {@link Pos#ZERO}
-     * @return A {@link Vec} with XZ based on the provided position. Y is ignored.
+     * @return (yaw, 0, pitch): the x of this vector plus the yaw of the point if x is relative, and its z plus the
+     * pitch of the point if z is relative
      */
     public Vec fromView(@Nullable Pos point) {
         if (!relativeX && !relativeY && !relativeZ) {
@@ -121,42 +134,14 @@ public record RelativeVec(Vec vec, CoordinateType coordinateType, boolean relati
         /**
          * Relative when any XYZ have the relative flag; unless local.
          */
-        RELATIVE((relative, origin, relativeX, relativeY, relativeZ) -> {
-            final var absolute = Objects.requireNonNullElse(origin, Vec.ZERO);
-            final double x = relative.x() + (relativeX ? absolute.x() : 0);
-            final double y = relative.y() + (relativeY ? absolute.y() : 0);
-            final double z = relative.z() + (relativeZ ? absolute.z() : 0);
-            return new Vec(x, y, z);
-        }),
+        RELATIVE,
         /**
          * Local type used in direction, requires full relatively on XZ/XYZ
          */
-        LOCAL((local, origin, _, _, _) -> {
-            final Vec vec1 = new Vec(Math.cos(Math.toRadians(origin.yaw() + 90.0f)), 0, Math.sin(Math.toRadians(origin.yaw() + 90.0f)));
-            final Vec a = vec1.mul(Math.cos(Math.toRadians(-origin.pitch()))).withY(Math.sin(Math.toRadians(-origin.pitch())));
-            final Vec b = vec1.mul(Math.cos(Math.toRadians(-origin.pitch() + 90.0f))).withY(Math.sin(Math.toRadians(-origin.pitch() + 90.0f)));
-            final Vec c = a.cross(b).neg();
-            final Vec relativePos = a.mul(local.z()).add(b.mul(local.y())).add(c.mul(local.x()));
-            return origin.add(relativePos).asVec();
-        }),
+        LOCAL,
         /**
          * Absolute just returns the original vector.
          */
-        ABSOLUTE((vec, _, _, _, _) -> vec);
-
-        private final CoordinateConverter converter;
-
-        CoordinateType(CoordinateConverter converter) {
-            this.converter = converter;
-        }
-
-        private Vec convert(Vec vec, Pos origin, boolean relativeX, boolean relativeY, boolean relativeZ) {
-            return converter.convert(vec, origin, relativeX, relativeY, relativeZ);
-        }
-    }
-
-    @FunctionalInterface
-    private interface CoordinateConverter {
-        Vec convert(Vec vec, Pos origin, boolean relativeX, boolean relativeY, boolean relativeZ);
+        ABSOLUTE
     }
 }

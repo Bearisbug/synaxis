@@ -7,7 +7,11 @@ import io.github.bearisbug.synaxis.command.builder.CommandResult;
 import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException;
 import io.github.bearisbug.synaxis.utils.StringUtils;
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Nullable;
 
+/**
+ * Another command, which takes the rest of the input: it must be the last argument of a syntax.
+ */
 public class ArgumentCommand extends Argument<CommandResult> {
 
     public static final int INVALID_COMMAND_ERROR = 1;
@@ -34,7 +38,7 @@ public class ArgumentCommand extends Argument<CommandResult> {
     }
 
     @Override
-    public ArgumentParserType parser() {
+    public @Nullable ArgumentParserType parser() {
         return null;
     }
 

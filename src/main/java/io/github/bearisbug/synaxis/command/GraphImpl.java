@@ -13,6 +13,7 @@ import org.jetbrains.annotations.UnknownNullability;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,8 +55,8 @@ record GraphImpl(NodeImpl root) implements Graph {
     }
 
     @Override
-    public boolean compare(Graph graph, Comparator comparator) {
-        return compare(root, graph.root(), comparator);
+    public boolean sameTree(Graph graph) {
+        return compare(root, graph.root());
     }
 
     record BuilderImpl(Argument<?> argument, List<BuilderImpl> children, Execution execution) implements Graph.Builder {
@@ -108,7 +109,7 @@ record GraphImpl(NodeImpl root) implements Graph {
             return ConversionNode.rootConv(commands).toNode();
         }
 
-        private static final java.util.Comparator<Node> nodePriority = (node1, node2) -> {
+        private static final Comparator<Node> nodePriority = (node1, node2) -> {
             int node1Value = argumentValue(node1.argument());
             int node2Value = argumentValue(node2.argument());
             return Integer.compare(node1Value, node2Value);
@@ -319,20 +320,14 @@ record GraphImpl(NodeImpl root) implements Graph {
         return Word(command.getName()).from(command.getNames());
     }
 
-    static boolean compare(Node first, Node second, Comparator comparator) {
-        return switch (comparator) {
-            case TREE -> {
-                if (!compareExecution(first, second)) yield false;
-                if (!first.argument().equals(second.argument())) yield false;
-                if (first.next().size() != second.next().size()) yield false;
-                for (int i = 0; i < first.next().size(); i++) {
-                    if (!compare(first.next().get(i), second.next().get(i), comparator)) {
-                        yield false;
-                    }
-                }
-                yield true;
-            }
-        };
+    static boolean compare(Node first, Node second) {
+        if (!compareExecution(first, second)) return false;
+        if (!first.argument().equals(second.argument())) return false;
+        if (first.next().size() != second.next().size()) return false;
+        for (int i = 0; i < first.next().size(); i++) {
+            if (!compare(first.next().get(i), second.next().get(i))) return false;
+        }
+        return true;
     }
 
     private static boolean compareExecution(Node firstNode, Node secondNode) {

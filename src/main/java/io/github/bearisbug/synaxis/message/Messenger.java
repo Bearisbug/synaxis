@@ -7,7 +7,6 @@ import io.github.bearisbug.synaxis.network.packet.server.play.SystemChatPacket;
 import io.github.bearisbug.synaxis.network.PacketSendingUtils;
 
 import java.util.Collection;
-import java.util.Objects;
 
 /**
  * Utility class to handle client chat settings. A {@link ChatPosition#GAME_INFO} message is shown
@@ -29,7 +28,7 @@ public final class Messenger {
      * @return if the message was sent
      */
     public static boolean sendMessage(Player player, Component message, ChatPosition position) {
-        if (getChatMessageType(player).accepts(position)) {
+        if (player.getSettings().chatMessageType().accepts(position)) {
             player.sendPacket(new SystemChatPacket(message, position == ChatPosition.GAME_INFO));
             return true;
         }
@@ -45,7 +44,7 @@ public final class Messenger {
      */
     public static void sendMessage(Collection<? extends Player> players, Component message, ChatPosition position) {
         PacketSendingUtils.sendGroupedPacket(players, new SystemChatPacket(message, position == ChatPosition.GAME_INFO),
-                player -> getChatMessageType(player).accepts(position));
+                player -> player.getSettings().chatMessageType().accepts(position));
     }
 
     /**
@@ -55,7 +54,7 @@ public final class Messenger {
      * @return if the server should receive messages from them
      */
     public static boolean canReceiveMessage(Player player) {
-        return getChatMessageType(player) == ChatMessageType.FULL;
+        return player.getSettings().chatMessageType() == ChatMessageType.FULL;
     }
 
     /**
@@ -65,7 +64,7 @@ public final class Messenger {
      * @return if the server should receive commands from them
      */
     public static boolean canReceiveCommand(Player player) {
-        return getChatMessageType(player) != ChatMessageType.NONE;
+        return player.getSettings().chatMessageType() != ChatMessageType.NONE;
     }
 
     /**
@@ -75,15 +74,5 @@ public final class Messenger {
      */
     public static void sendRejectionMessage(Player player) {
         player.sendPacket(CANNOT_SEND_PACKET);
-    }
-
-    /**
-     * Gets the chat message type for a player, returning {@link ChatMessageType#FULL} if not set.
-     *
-     * @param player the player
-     * @return the chat message type
-     */
-    private static ChatMessageType getChatMessageType(Player player) {
-        return Objects.requireNonNullElse(player.getSettings().chatMessageType(), ChatMessageType.FULL);
     }
 }

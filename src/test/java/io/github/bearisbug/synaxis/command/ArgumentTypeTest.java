@@ -471,6 +471,10 @@ public class ArgumentTypeTest {
         assertArg(arg, "more text, but with \"escaped\" quotes", "\"more text, but with \\\"escaped\\\" quotes\"");
         assertInvalidArg(arg, "\"unclosed quotes");
         assertInvalidArg(arg, "\"unescaped \" quotes\"");
+        // A quote right after the opening one, a quote after an escaped backslash, an escaped closing quote
+        assertInvalidArg(arg, "\"\"a\"");
+        assertInvalidArg(arg, "\"a\\\\\"b\"");
+        assertInvalidArg(arg, "\"a\\\"");
     }
 
     @Test

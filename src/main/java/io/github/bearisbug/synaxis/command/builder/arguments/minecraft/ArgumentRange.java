@@ -21,7 +21,8 @@ public abstract class ArgumentRange<T extends Range<N>, N extends Number> extend
     private final Function<String, N> parser;
     private final BiFunction<@Nullable N, @Nullable N, T> rangeConstructor;
 
-    public ArgumentRange(String id, Function<String, N> parser, BiFunction<N, N, T> rangeConstructor) {
+    public ArgumentRange(String id, Function<String, N> parser,
+                         BiFunction<@Nullable N, @Nullable N, T> rangeConstructor) {
         super(id);
         this.parser = parser;
         this.rangeConstructor = rangeConstructor;

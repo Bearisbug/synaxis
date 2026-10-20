@@ -52,7 +52,6 @@ module io.github.bearisbug.synaxis {
     exports io.github.bearisbug.synaxis.command.builder.parser;
     exports io.github.bearisbug.synaxis.command.builder.suggestion;
     exports io.github.bearisbug.synaxis.component;
-    exports io.github.bearisbug.synaxis.condition;
     exports io.github.bearisbug.synaxis.coordinate;
     exports io.github.bearisbug.synaxis.crypto;
     exports io.github.bearisbug.synaxis.entity;

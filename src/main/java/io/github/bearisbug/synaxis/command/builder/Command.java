@@ -1,14 +1,9 @@
 package io.github.bearisbug.synaxis.command.builder;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import io.github.bearisbug.synaxis.command.CommandSender;
 import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
-import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentLiteral;
 import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType;
-import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentWord;
 import io.github.bearisbug.synaxis.command.builder.condition.CommandCondition;
-import io.github.bearisbug.synaxis.utils.StringUtils;
 import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
@@ -21,14 +16,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -190,6 +180,9 @@ public class Command {
      * add included. {@link io.github.bearisbug.synaxis.command.CommandManager#register(Command)} refuses a command
      * breaking any of this.
      * <p>
+     * An argument taking the rest of the input ({@link Argument#useRemaining()}: a string array, a loop, a command)
+     * must be the last argument of a syntax, since it leaves nothing for an argument after it.
+     * <p>
      * The condition decides whether a sender sees the syntax among its completions and may run its executor; it does
      * not guard another syntax sharing the arguments. Once the command is registered, adding a syntax takes effect at
      * no set time: unregister the command and register it again to change it, and do not change it from another
@@ -200,11 +193,16 @@ public class Command {
      * @param args             all the arguments of the syntax, the length needs to be higher than 0
      * @return the created {@link CommandSyntax syntaxes},
      * there can be multiple of them when optional arguments are used
+     * @throws IllegalArgumentException if an argument taking the rest of the input is not the last one
      */
     @SuppressWarnings("unchecked")
     public Collection<CommandSyntax> addConditionalSyntax(@Nullable CommandCondition commandCondition,
                                                           CommandExecutor executor,
                                                           Argument<?>... args) {
+        for (int i = 0; i < args.length - 1; i++) {
+            Check.argCondition(args[i].useRemaining(), "Argument '" + args[i].getId()
+                    + "' takes the rest of the input and must be the last of the syntax");
+        }
         // Check optional argument(s)
         boolean hasOptional = false;
         {
@@ -277,11 +275,17 @@ public class Command {
     /**
      * Creates a syntax from a formatted string.
      * <p>
-     * Currently in beta as the format is not final.
+     * The format is a list of words separated by spaces. A word without angle brackets is a literal; {@code Type<id>}
+     * is an argument, the type being one of the names {@link ArgumentType#generate(String)} knows, in any case
+     * ({@code integer}, {@code word}, {@code stringarray}, {@code player}, ...). For example
+     * {@code "set Integer<amount> Player<target>"} is the literal {@code set}, an integer {@code amount} and a single
+     * player {@code target}. The format is not final.
      *
      * @param executor the syntax executor
      * @param format   the syntax format
      * @return the newly created {@link CommandSyntax syntaxes}.
+     * @throws IllegalArgumentException if a type is unknown, a {@code <} is not closed, or an argument taking the rest
+     *                                  of the input is not the last one
      */
     @ApiStatus.Experimental
     public Collection<CommandSyntax> addSyntax(CommandExecutor executor, String format) {
@@ -300,7 +304,7 @@ public class Command {
     /**
      * Gets the command's aliases.
      *
-     * @return the command aliases, can be null or empty
+     * @return the command aliases, never null, empty when the command has no alias
      */
     public String[] getAliases() {
         return aliases;
@@ -367,101 +371,6 @@ public class Command {
     public void globalListener(CommandSender sender, @UnknownNullability CommandContext context, String command) {
     }
 
-    @ApiStatus.Experimental
-    public Set<String> getSyntaxesStrings() {
-        Set<String> syntaxes = new HashSet<>();
-
-        Consumer<String> syntaxConsumer = syntaxString -> {
-            for (String name : getNames()) {
-                final String syntax = name + StringUtils.SPACE + syntaxString;
-                syntaxes.add(syntax);
-            }
-        };
-
-        this.subcommands.forEach(subcommand -> subcommand.getSyntaxesStrings().forEach(syntaxConsumer));
-
-        this.syntaxes.forEach(commandSyntax -> syntaxConsumer.accept(commandSyntax.getSyntaxString()));
-
-        return syntaxes;
-    }
-
-    @ApiStatus.Experimental
-    public String getSyntaxesTree() {
-        Node commandNode = new Node();
-        commandNode.names.addAll(Arrays.asList(getNames()));
-
-        // current node, literal = returned node
-        BiFunction<Node, Set<String>, Node> findNode = (currentNode, literals) -> {
-
-            for (Node node : currentNode.nodes) {
-                final var names = node.names;
-
-                // Verify if at least one literal is shared
-                final boolean shared = names.stream().anyMatch(literals::contains);
-                if (shared) {
-                    names.addAll(literals);
-                    return node;
-                }
-            }
-
-            // Create a new node
-            Node node = new Node();
-            node.names.addAll(literals);
-            currentNode.nodes.add(node);
-            return node;
-        };
-
-        BiConsumer<CommandSyntax, Node> syntaxProcessor = (syntax, node) -> {
-            List<String> arguments = new ArrayList<>();
-            BiConsumer<Node, List<String>> addArguments = (n, args) -> {
-                if (!args.isEmpty()) {
-                    n.arguments.add(args);
-                }
-            };
-
-            // true if all following arguments are not part of
-            // the branching plant (literals)
-            boolean branched = false;
-            for (Argument<?> argument : syntax.getArguments()) {
-                if (!branched) {
-                    if (argument instanceof ArgumentLiteral) {
-                        final String literal = argument.getId();
-
-                        addArguments.accept(node, arguments);
-                        arguments = new ArrayList<>();
-
-                        node = findNode.apply(node, Set.of(literal));
-                        continue;
-                    } else if (argument instanceof ArgumentWord argumentWord) {
-                        if (argumentWord.hasRestrictions()) {
-                            addArguments.accept(node, arguments);
-                            arguments = new ArrayList<>();
-
-                            node = findNode.apply(node, Set.of(argumentWord.getRestrictions()));
-                            continue;
-                        }
-                    }
-                }
-                branched = true;
-                arguments.add(argument.toString());
-            }
-            addArguments.accept(node, arguments);
-        };
-
-        // Subcommands
-        this.subcommands.forEach(command -> {
-            final Node node = findNode.apply(commandNode, Set.of(command.getNames()));
-            command.getSyntaxes().forEach(syntax -> syntaxProcessor.accept(syntax, node));
-        });
-
-        // Syntaxes
-        this.syntaxes.forEach(syntax -> syntaxProcessor.accept(syntax, commandNode));
-
-        JsonObject jsonObject = new JsonObject();
-        processNode(commandNode, jsonObject);
-        return jsonObject.toString();
-    }
-
     public static boolean isValidName(Command command, String name) {
         for (String commandName : command.getNames()) {
             if (commandName.equals(name)) {
@@ -469,35 +378,6 @@ public class Command {
             }
         }
         return false;
-    }
-
-    private static void processNode(Node node, JsonObject jsonObject) {
-        BiConsumer<String, Consumer<JsonArray>> processor = (s, consumer) -> {
-            JsonArray array = new JsonArray();
-            consumer.accept(array);
-            if (!array.isEmpty()) {
-                jsonObject.add(s, array);
-            }
-        };
-        // Names
-        processor.accept("names", array -> node.names.forEach(array::add));
-        // Nodes
-        processor.accept("nodes", array ->
-                node.nodes.forEach(n -> {
-                    JsonObject nodeObject = new JsonObject();
-                    processNode(n, nodeObject);
-                    array.add(nodeObject);
-                }));
-        // Arguments
-        processor.accept("arguments", array ->
-                node.arguments.forEach(arguments ->
-                        array.add(String.join(StringUtils.SPACE, arguments))));
-    }
-
-    private static final class Node {
-        private final Set<String> names = new HashSet<>();
-        private final Set<Node> nodes = new HashSet<>();
-        private final List<List<String>> arguments = new ArrayList<>();
     }
 
 }

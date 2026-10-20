@@ -3,11 +3,13 @@ package io.github.bearisbug.synaxis.network;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.exception.ExceptionHandler;
 import io.github.bearisbug.synaxis.network.packet.PacketWriting;
 import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
 import io.github.bearisbug.synaxis.network.packet.client.handshake.ClientHandshakePacket;
 import io.github.bearisbug.synaxis.network.packet.client.status.StatusRequestPacket;
 import io.github.bearisbug.synaxis.network.socket.Server;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -17,6 +19,10 @@ import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -111,8 +117,40 @@ class ProxyProtocolTrustTest {
         }
     }
 
+    /**
+     * With connection IO errors reported, the one that ends the read loop of a connection, here a
+     * header that does not parse, is reported with that connection.
+     */
+    @Test
+    void theErrorEndingTheReadLoopIsReportedWithItsConnection() throws Exception {
+        final ServerProcess process = start(ServerConfig.builder().suppressConnectionIoErrors(false), "127.0.0.0/8");
+        final CompletableFuture<Optional<UUID>> reportedFor = new CompletableFuture<>();
+        process.exception().setExceptionHandler(new ExceptionHandler() {
+            @Override
+            public void handleException(Throwable e) {
+                handleException(e, null);
+            }
+
+            @Override
+            public void handleException(Throwable e, @Nullable UUID connectionId) {
+                if (e instanceof IOException) reportedFor.complete(Optional.ofNullable(connectionId));
+            }
+        });
+        try (SocketChannel peer = connect(process)) {
+            peer.write(ByteBuffer.wrap(new byte[]{0x0D, 0x0A, 0x0D, 0x0A, 0x00, 0x0D, 0x0A, 0x51, 0x55, 0x49, 0x54, 0x0A,
+                    0x31, 0x11, 0x00, 0x00}));
+            assertTrue(reportedFor.get(10, TimeUnit.SECONDS).isPresent(), "the report names no connection");
+        } finally {
+            process.stop();
+        }
+    }
+
     private static ServerProcess start(String trustedNetworks) throws IOException {
-        final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true)
+        return start(ServerConfig.builder(), trustedNetworks);
+    }
+
+    private static ServerProcess start(ServerConfig.Builder config, String trustedNetworks) throws IOException {
+        final ServerProcess process = ServerProcess.of(config.insideTest(true)
                 .proxyProtocol(true).proxyProtocolRequired(true).proxyProtocolTrustedNetworks(trustedNetworks)
                 .connectionGateTrustedNetworks("0.0.0.0/0").build());
         final Server server = process.server();

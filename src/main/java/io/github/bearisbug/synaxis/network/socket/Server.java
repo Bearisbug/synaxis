@@ -244,11 +244,11 @@ public final class Server {
                 break;
             } catch (IOException e) {
                 if (!process.config().suppressConnectionIoErrors())
-                    process.exception().handleException(e);
+                    process.exception().handleException(e, connection.connectionId());
                 connection.disconnect();
                 break;
             } catch (Throwable e) {
-                process.exception().handleException(e);
+                process.exception().handleException(e, connection.connectionId());
                 connection.disconnect();
                 break;
             }
@@ -265,12 +265,12 @@ public final class Server {
                     connection.disconnect();
                 } catch (IOException e) {
                     if (!process.config().suppressConnectionIoErrors())
-                        process.exception().handleException(e);
+                        process.exception().handleException(e, connection.connectionId());
                     connection.disconnect();
                 } catch (Throwable e) {
                     // A packet that failed to be written is off the queue already (PacketWriting#writeQueue):
                     // the kick gives the peer a reason, written behind what is still queued
-                    process.exception().handleException(e);
+                    process.exception().handleException(e, connection.connectionId());
                     connection.kick(DisconnectReasons.INTERNAL_ERROR);
                 }
                 if (!connection.isOnline()) {

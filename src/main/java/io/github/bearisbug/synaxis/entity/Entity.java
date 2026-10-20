@@ -566,7 +566,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
         if (chunks != null && chunks.length > 0) {
             // Chunks need to be loaded before the teleportation can happen
-            return continuation(ChunkUtils.optionalLoadAll(instance, chunks, null).thenRun(() -> runOwned(endCallback)));
+            return continuation(ChunkUtils.optionalLoadAll(instance, chunks).thenRun(() -> runOwned(endCallback)));
         }
         // Assumes globalPosition is already clamped
         final Pos currentPosition = this.position;
@@ -1090,7 +1090,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         // TODO do not call every tick (it is pretty expensive)
         final Pos position = this.position;
         final BoundingBox boundingBox = this.boundingBox;
-        ChunkCache cache = new ChunkCache(instance, currentChunk);
+        ChunkCache cache = new ChunkCache(instance, currentChunk, Block.AIR);
 
         final int minX = (int) Math.floor(boundingBox.minX() + position.x());
         final int maxX = (int) Math.ceil(boundingBox.maxX() + position.x());

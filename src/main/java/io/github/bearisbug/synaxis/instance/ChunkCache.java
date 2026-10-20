@@ -1,8 +1,6 @@
 package io.github.bearisbug.synaxis.instance;
 
 import io.github.bearisbug.synaxis.coordinate.CoordConversion;
-import io.github.bearisbug.synaxis.instance.Chunk;
-import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
@@ -20,10 +18,6 @@ public final class ChunkCache implements Block.Getter {
         this.instance = instance;
         this.chunk = chunk;
         this.defaultBlock = defaultBlock;
-    }
-
-    public ChunkCache(Instance instance, @Nullable Chunk chunk) {
-        this(instance, chunk, Block.AIR);
     }
 
     @Override

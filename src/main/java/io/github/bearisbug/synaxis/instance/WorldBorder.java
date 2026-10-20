@@ -2,7 +2,6 @@ package io.github.bearisbug.synaxis.instance;
 
 import io.github.bearisbug.synaxis.collision.BoundingBox;
 import io.github.bearisbug.synaxis.coordinate.Point;
-import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.network.packet.server.play.InitializeWorldBorderPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.WorldBorderCenterPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.WorldBorderLerpSizePacket;
@@ -110,19 +109,6 @@ public record WorldBorder(double diameter, double centerX, double centerZ, int w
         final double maxZ = centerZ + radius;
         return position.x() + boundingBox.minX() >= minX && position.x() + boundingBox.maxX() <= maxX &&
                 position.z() + boundingBox.minZ() >= minZ && position.z() + boundingBox.maxZ() <= maxZ;
-    }
-
-    /**
-     * Used to know if an entity is located inside the world border or not.
-     *
-     * @param entity the entity to check
-     * @return true if {@code entity} is inside the world border, false otherwise
-     * @deprecated Use {@link #inBounds(Point, BoundingBox)} instead. This method now checks
-     * the complete bounding box where it previously checked only the entity position.
-     */
-    @Deprecated(forRemoval = true)
-    public boolean inBounds(Entity entity) {
-        return inBounds(entity.getPosition(), entity.getBoundingBox());
     }
 
     /**

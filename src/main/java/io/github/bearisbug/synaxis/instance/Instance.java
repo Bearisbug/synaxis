@@ -25,8 +25,6 @@ import io.github.bearisbug.synaxis.adventure.audience.PacketGroupingAudience;
 import io.github.bearisbug.synaxis.coordinate.CoordConversion;
 import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.entity.Entity;
-import io.github.bearisbug.synaxis.entity.EntityCreature;
-import io.github.bearisbug.synaxis.entity.ExperienceOrb;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.EventHandler;
@@ -73,7 +71,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 /**
  * Instances are what are called "worlds" in Minecraft, you can add an entity in it using {@link Entity#setInstance(Instance)}.
@@ -741,32 +738,6 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     @Override
     public Set<Player> getPlayers() {
         return entityTracker.entities(EntityTracker.Target.PLAYERS);
-    }
-
-    /**
-     * Gets the creatures in the instance;
-     *
-     * @return an unmodifiable {@link Set} containing all the creatures in the instance
-     */
-    @Deprecated
-    public Set<EntityCreature> getCreatures() {
-        return entityTracker.entities().stream()
-                .filter(EntityCreature.class::isInstance)
-                .map(entity -> (EntityCreature) entity)
-                .collect(Collectors.toUnmodifiableSet());
-    }
-
-    /**
-     * Gets the experience orbs in the instance.
-     *
-     * @return an unmodifiable {@link Set} containing all the experience orbs in the instance
-     */
-    @Deprecated
-    public Set<ExperienceOrb> getExperienceOrbs() {
-        return entityTracker.entities().stream()
-                .filter(ExperienceOrb.class::isInstance)
-                .map(entity -> (ExperienceOrb) entity)
-                .collect(Collectors.toUnmodifiableSet());
     }
 
     /**

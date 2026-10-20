@@ -1,8 +1,5 @@
 package io.github.bearisbug.synaxis.instance;
 
-import io.github.bearisbug.synaxis.instance.Chunk;
-import io.github.bearisbug.synaxis.instance.Instance;
-
 /**
  * Used to customize which type of {@link Chunk} an implementation should use.
  */

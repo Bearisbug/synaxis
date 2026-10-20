@@ -682,8 +682,9 @@ public sealed interface Block extends StaticProtocolObject<Block>, TagReadable, 
          */
         enum Condition {
             /**
-             * Returns a block no matter what.
-             * {@link Block#AIR} being the default result.
+             * Asks for a block whatever the position. Where an implementation has none it may throw instead:
+             * an {@link Instance} throws {@link NullPointerException} in a chunk that is not loaded, a
+             * {@code ChunkCache} returns the default block it was made with.
              */
             NONE,
             /**

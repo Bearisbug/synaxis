@@ -1,0 +1,48 @@
+Counterproofs on 97b21b3099, two runs of temporary changes, each followed by git reset --hard HEAD.
+
+Run A, four changes together
+  GeneratorImpl.UnitImpl#fork(Point, Point):  the Check.argCondition on width, height and depth removed
+  Heightmap#getHeight:                         the check of (x | z) >>> 4 removed
+  IntProvider.Uniform:                         the compact constructor removed
+  BooleanModifier:                             NAND = AND, one instance for two operators
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.generator.GeneratorTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.world.IntProviderTest' --tests 'io.github.bearisbug.synaxis.world.BuilderRegistriesTest' \
+    --continue --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+:test        74 tests completed, 6 failed
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest" tests="10" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.generator.GeneratorTest" tests="55" skipped="0" failures="3" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.world.BuilderRegistriesTest" tests="5" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.world.IntProviderTest" tests="4" skipped="0" failures="1" errors="0">
+   getHeightRejectsWorldCoordinates(Env) | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | ChunkHeightmapIntegrationTest.java:34
+   [1] BlockVec[blockX=16, blockY=0, blockZ=0], BlockVec[blockX=0, blockY=16, blockZ=16] | org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.NegativeArraySizeException> | GeneratorTest.java:466
+   [2] BlockVec[blockX=16, blockY=16, blockZ=0], BlockVec[blockX=0, blockY=0, blockZ=16] | org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.NullPointerException> | GeneratorTest.java:466
+   [3] BlockVec[blockX=0, blockY=0, blockZ=16], BlockVec[blockX=16, blockY=16, blockZ=16] | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | GeneratorTest.java:466
+   eachOperatorModifierEncodesToItsOperatorAndBack() | org.opentest4j.AssertionFailedError: NAND ==> expected: <"nand"> but was: <"and"> | BuilderRegistriesTest.java:70
+   aMaximumBelowTheMinimumIsRefused() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | IntProviderTest.java:33
+  Each change turns its own test red and only that one: the three fork cases at GeneratorTest:466 with the same
+  exceptions as before the fix, getHeight(20, 0) at ChunkHeightmapIntegrationTest:34, new Uniform(7, 0) at
+  IntProviderTest:33, and the operator table at BuilderRegistriesTest:70 (NAND encodes as "and": the inverse table of
+  the type maps the shared instance to one operator).
+
+Run B, one change
+  GeneratorImpl.AreaModifierImpl#fillHeight:   each section given maxHeight + 1
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.GeneratorIntegrationTest' --continue --max-workers=2 \
+    --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+:test        25 tests completed, 9 failed
+<testsuite name="io.github.bearisbug.synaxis.instance.GeneratorIntegrationTest" tests="25" skipped="0" failures="9" errors="0">
+   fillHeightNegative(Env) | org.opentest4j.AssertionFailedError: y=-60 ==> expected: <minecraft:air{properties={}, nbt=null, handler=null}> but was: <minecraft:stone{properties={}, nbt=null, handler=null}> | GeneratorIntegrationTest.java:73
+   [1] "1", "2" | org.opentest4j.AssertionFailedError: at 0, 2, 0 ==> expected: <0> but was: <1> | GeneratorIntegrationTest.java:125
+   [2] "1", "16" | org.opentest4j.AssertionFailedError: at 0, 16, 0 ==> expected: <0> but was: <1> | GeneratorIntegrationTest.java:125
+   [3] "0", "16" | org.opentest4j.AssertionFailedError: at 0, 16, 0 ==> expected: <0> but was: <1> | GeneratorIntegrationTest.java:125
+   [4] "15", "17" | org.opentest4j.AssertionFailedError: at 0, 17, 0 ==> expected: <0> but was: <1> | GeneratorIntegrationTest.java:125
+   [5] "1", "47" | org.opentest4j.AssertionFailedError: at 0, 47, 0 ==> expected: <0> but was: <1> | GeneratorIntegrationTest.java:125
+   [6] "-64", "-63" | org.opentest4j.AssertionFailedError: at 0, -63, 0 ==> expected: <0> but was: <1> | GeneratorIntegrationTest.java:125
+   [8] "3", "7" | org.opentest4j.AssertionFailedError: at 0, 7, 0 ==> expected: <0> but was: <1> | GeneratorIntegrationTest.java:125
+   [9] "-20", "5" | org.opentest4j.AssertionFailedError: at 0, 5, 0 ==> expected: <0> but was: <1> | GeneratorIntegrationTest.java:125
+  Eight of the nine fillHeightSetsTheRangeOnly cases are red at GeneratorIntegrationTest:125, the first y above the
+  range is stone; the case (40, 500) stays green, its range reaching past the world either way. fillHeightNegative,
+  an older case, is red too. Run separately from run A: the flat instance of Env fills with fillHeight(0, 40), so the
+  change would turn the heightmap cases of run A red as well.

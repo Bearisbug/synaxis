@@ -1,0 +1,26 @@
+RUN-088 G5: generator, heightmap, game rule and world data. Branch m3/r088-p3, base 17f2a2cfe1 (the G1 to G4 commits
+before these touch none of the files this group changes).
+JDK 25, every Gradle run with --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts.
+
+Commits
+  ff2605126e test: generator cases for a fork empty on an axis and for fillHeight over nine ranges; heightmap cases for world coordinates and an empty column; IntProvider bounds of a weighted list and refused minimum and maximum; dimension type build errors with their values and maxY one above the highest block; each operator modifier encodes to its operator and back to the same instance
+  81d1914d90 gamerule: GameRule no longer redeclares the deprecated registry() it inherits from StaticProtocolObject
+  a2d6f974d7 generator: remove Generator#generateAll, which the engine never called; generate(GenerationUnit) is the only method of the functional interface
+  b294b40cb2 generator: fork(start, end) throws IllegalArgumentException naming both points when the area, rounded out to whole sections, is empty on an axis, where an end before the start threw NegativeArraySizeException or NullPointerException and an empty area registered a fork without sections
+  647485cc58 generator: the area modifier fills a height range by handing it to each of its sections, which cut it to themselves; the section and area modifiers implement UnitModifier directly, each keeping the setAll or fill(start, end) loop of the removed GenericModifier, whose other defaults both overrode; a comment says why a fork section stores stateId + 1
+  4cfe5ef639 generator: Javadoc for the exclusive absoluteEnd, the coordinates setAll, setAllRelative and setRelative take, the range fill(start, end) and fillHeight fill and what they do outside the unit, fillBiome throwing for a fork, and when and how the blocks of a fork are applied
+  b3f5b33a82 heightmap: getHeight throws IllegalArgumentException for a column outside [0, 16), where a world coordinate read another column or threw ArrayIndexOutOfBoundsException; Javadoc for the threads and locks of a heightmap, the chunk-local columns, the minY - 1 of an empty column, the engine callers of refresh and loadFrom, and the block y getHighestBlockSection returns
+  444398f33c world: DimensionType documents maxY as the first y above the world and the vanilla bounds as inclusive, deprecates for removal totalHeight, the same value as maxY, and says create skips the builder checks; the build errors give the logicalHeight and height or the top y they refuse, the bound 2031 the check uses and the infiniburn given; the @Contract of enderDragonFight says it returns the builder, as the other setters do
+  6d4b6b5a9f world: the bounds of an IntProvider.Weighted are the lowest minInclusive and the highest maxInclusive of its distribution, IllegalStateException for an empty one, where both were 0; Uniform, BiasedToBottom, Clamped, ClampedNormal and Trapezoid refuse a maxInclusive below the minInclusive with IllegalArgumentException naming both, and Trapezoid a plateau outside [0, max - min]
+  574438bddc world: remove EnvironmentAttribute.Modifier#modify and its implementations, which nothing called and two of which threw: the client evaluates the modifiers; the boolean and float operators become one anonymous instance each, as the codec finds an operator by its modifier instance
+  97b21b3099 biome: the default biome registry Javadoc says it loads the vanilla biomes with minecraft:plains forced to id 0, the comment repeating it goes; BiomeEffects.Builder starts from the water color of DEFAULT instead of a second copy of the value
+
+Gradle runs
+  1  red on ff2605126e, the tests committed before any fix: 01-red-before-fix.txt
+  2  green on 97b21b3099, the classes of the group, the generator, heightmap, registry and attribute classes next to
+     them, six synx classes (heightmaps in the chunk packet, materialization), four baker classes (a generator source
+     baked through GeneratorImpl, far view sampling of its biomes), and the compile of the root, synx, baker,
+     server-app, game-rts, game-rush, loadtest and jmh-benchmarks (jmh and worldbench) code: 02-green-after-fix.txt
+  3  counterproofs, two runs of temporary changes on 97b21b3099, each followed by git reset --hard HEAD:
+     03-counterproofs.txt
+  4  compile of the root main and test code at each commit on its own: 04-per-commit-compile.txt

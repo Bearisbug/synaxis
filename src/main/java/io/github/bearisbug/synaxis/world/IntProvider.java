@@ -8,6 +8,7 @@ import io.github.bearisbug.synaxis.registry.Registry;
 import io.github.bearisbug.synaxis.registry.RegistryCodecs;
 import io.github.bearisbug.synaxis.utils.Either;
 import io.github.bearisbug.synaxis.utils.WeightedList;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 
 import java.util.Map;
 import java.util.Random;
@@ -63,6 +64,10 @@ public sealed interface IntProvider {
                 "max_inclusive", Codec.INT, Uniform::maxInclusive,
                 Uniform::new);
 
+        public Uniform {
+            Check.argCondition(maxInclusive < minInclusive, "maxInclusive ({1}) must be >= minInclusive ({0})", minInclusive, maxInclusive);
+        }
+
         @Override
         public int sample(Random random) {
             return random.nextInt(minInclusive, maxInclusive + 1);
@@ -79,6 +84,10 @@ public sealed interface IntProvider {
                 "min_inclusive", Codec.INT, BiasedToBottom::minInclusive,
                 "max_inclusive", Codec.INT, BiasedToBottom::maxInclusive,
                 BiasedToBottom::new);
+
+        public BiasedToBottom {
+            Check.argCondition(maxInclusive < minInclusive, "maxInclusive ({1}) must be >= minInclusive ({0})", minInclusive, maxInclusive);
+        }
 
         @Override
         public int sample(Random random) {
@@ -98,6 +107,10 @@ public sealed interface IntProvider {
                 "max_inclusive", Codec.INT, Clamped::maxInclusive,
                 Clamped::new);
 
+        public Clamped {
+            Check.argCondition(maxInclusive < minInclusive, "maxInclusive ({1}) must be >= minInclusive ({0})", minInclusive, maxInclusive);
+        }
+
         @Override
         public int sample(Random random) {
             return Math.clamp(source.sample(random), minInclusive, maxInclusive);
@@ -116,12 +129,18 @@ public sealed interface IntProvider {
 
         @Override
         public int minInclusive() {
-            return 0;
+            Check.stateCondition(distribution.entries().isEmpty(), "the distribution is empty");
+            int min = Integer.MAX_VALUE;
+            for (IntProvider provider : distribution) min = Math.min(min, provider.minInclusive());
+            return min;
         }
 
         @Override
         public int maxInclusive() {
-            return 0;
+            Check.stateCondition(distribution.entries().isEmpty(), "the distribution is empty");
+            int max = Integer.MIN_VALUE;
+            for (IntProvider provider : distribution) max = Math.max(max, provider.maxInclusive());
+            return max;
         }
 
         @Override
@@ -143,6 +162,10 @@ public sealed interface IntProvider {
                 "max_inclusive", Codec.INT, ClampedNormal::maxInclusive,
                 ClampedNormal::new);
 
+        public ClampedNormal {
+            Check.argCondition(maxInclusive < minInclusive, "maxInclusive ({1}) must be >= minInclusive ({0})", minInclusive, maxInclusive);
+        }
+
         @Override
         public int sample(Random random) {
             return Math.clamp((int) (mean + random.nextGaussian() * deviation), minInclusive, maxInclusive);
@@ -160,6 +183,12 @@ public sealed interface IntProvider {
                 "max", Codec.INT, Trapezoid::maxInclusive,
                 "plateau", Codec.INT, Trapezoid::plateau,
                 Trapezoid::new);
+
+        public Trapezoid {
+            Check.argCondition(maxInclusive < minInclusive, "maxInclusive ({1}) must be >= minInclusive ({0})", minInclusive, maxInclusive);
+            Check.argCondition(plateau < 0 || plateau > maxInclusive - minInclusive,
+                    "plateau ({0}) must be in [0, maxInclusive - minInclusive] ({1})", plateau, maxInclusive - minInclusive);
+        }
 
         @Override
         @SuppressWarnings("IdentityBinaryExpression") // two independent random draws, not a duplicated value

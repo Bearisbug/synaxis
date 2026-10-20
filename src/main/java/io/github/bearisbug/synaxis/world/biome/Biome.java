@@ -44,7 +44,8 @@ public sealed interface Biome extends Biomes permits BiomeImpl {
     }
 
     /**
-     * <p>Creates a new registry for biomes, loading the vanilla trim biomes.</p>
+     * <p>Creates a new registry for biomes, loading the vanilla biomes. minecraft:plains is forced to id 0 so
+     * palettes can initialize with id 0.</p>
      *
      * @see io.github.bearisbug.synaxis.ServerProcess to get an existing instance of the registry
      */
@@ -52,7 +53,6 @@ public sealed interface Biome extends Biomes permits BiomeImpl {
     static DynamicRegistry<Biome> createDefaultRegistry() {
         return DynamicRegistry.create(
                 BuiltinRegistries.BIOME, NETWORK_CODEC, null,
-                // We force plains to be first because it allows convenient palette initialization.
                 // Maybe worth switching to fetching plains in the palette in the future to avoid this.
                 (a, b) -> a.equals("minecraft:plains") ? -1 : b.equals("minecraft:plains") ? 1 : 0,
                 REGISTRY_CODEC

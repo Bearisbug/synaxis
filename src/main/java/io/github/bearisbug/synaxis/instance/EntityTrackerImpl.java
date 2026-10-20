@@ -199,24 +199,25 @@ final class EntityTrackerImpl implements EntityTracker {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public <T extends Entity> void nearbyEntities(Point point, double range, Target<T> target, Consumer<T> query) {
+        if (!(range >= 0)) return; // negative or NaN
+        // Registering adds to the entity set before the chunk bucket: an empty set leaves no bucket to go through
+        final int targetEntities = entities(target).size();
+        if (targetEntities == 0) return;
         final Long2ObjectSyncMap<List<Entity>> entities = targetEntries[target.ordinal()].chunkEntities;
         final int minChunkX = CoordConversion.globalToChunk(point.x() - range);
         final int minChunkZ = CoordConversion.globalToChunk(point.z() - range);
         final int maxChunkX = CoordConversion.globalToChunk(point.x() + range);
         final int maxChunkZ = CoordConversion.globalToChunk(point.z() + range);
-        // A negative range past a chunk edge turns the box inside out: no chunk to go through
-        if (minChunkX > maxChunkX || minChunkZ > maxChunkZ) return;
         final double squaredRange = range * range;
-        final Consumer<Entity> inRange = entity -> {
+        @SuppressWarnings("unchecked") final Consumer<Entity> inRange = entity -> {
             final EntityTrackerEntry trackerEntry = entriesByEntityId.get(entity.getEntityId());
             if (trackerEntry != null && point.distanceSquared(trackerEntry.getLastPosition()) <= squaredRange) {
                 query.accept((T) entity);
             }
         };
         final long boxChunks = ((long) maxChunkX - minChunkX + 1) * ((long) maxChunkZ - minChunkZ + 1);
-        if (boxChunks > entities(target).size()) {
+        if (boxChunks > targetEntities) {
             // More chunks in range than entities of the target, hence than chunks holding one: going through
             // those is cheaper. It also takes ranges such as Double.MAX_VALUE, whose box has up to 2^56 chunks.
             // As in the chunk loop, an entity changing chunks meanwhile may be missed or seen twice.

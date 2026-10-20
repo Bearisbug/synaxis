@@ -118,7 +118,7 @@ public sealed interface EntityTracker permits EntityTrackerImpl {
     /**
      * Calls {@code query} with every entity of {@code target} whose position recorded here, the last one
      * it was registered or moved to, is within {@code range} blocks of {@code point}: the euclidean
-     * distance in three dimensions, y included. {@code range} is to be non-negative and finite;
+     * distance in three dimensions, y included. A negative or NaN {@code range} finds none;
      * {@link Double#MAX_VALUE} finds every entity.
      * <p>
      * {@code query} runs on the calling thread before this method returns, while other tick threads may

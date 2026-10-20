@@ -41,16 +41,12 @@ final class SchedulerImpl implements Scheduler {
 
     @Override
     public void process() {
-        processTick(0);
+        processTickTasks(tickStartTaskQueue, tasksToExecute, 0);
     }
 
     @Override
     public void processTick() {
-        processTick(1);
-    }
-
-    private void processTick(int tickDelta) {
-        processTickTasks(tickStartTaskQueue, tasksToExecute, tickDelta);
+        processTickTasks(tickStartTaskQueue, tasksToExecute, 1);
     }
 
     @Override
@@ -103,20 +99,14 @@ final class SchedulerImpl implements Scheduler {
 
     /**
      * Queues a task for the next processing of its own execution type.
+     * <p>
+     * Callable from any thread: the delay thread, the thread completing a future, the caller of
+     * {@link Task#unpark()}. Both queues are unbounded multi-producer single-consumer queues.
      */
     private void queueTask(TaskImpl task) {
         switch (task.executionType()) {
             case TICK_START -> tasksToExecute.relaxedOffer(task);
             case TICK_END -> tickEndTasksToExecute.relaxedOffer(task);
-        }
-    }
-
-    private void safeExecute(TaskImpl task) {
-        // Prevent the task from being executed in the current thread
-        // By either adding the task to the execution queue or submitting it to the pool
-        switch (task.executionType()) {
-            case TICK_START -> tasksToExecute.offer(task);
-            case TICK_END -> tickEndTasksToExecute.offer(task);
         }
     }
 
@@ -129,7 +119,7 @@ final class SchedulerImpl implements Scheduler {
                 case TaskScheduleImpl.DurationSchedule durationSchedule -> {
                     // Saturated, a duration too long for a long of milliseconds never runs instead of throwing
                     final long delay = TimeUnit.MILLISECONDS.convert(durationSchedule.duration());
-                    var _ = SCHEDULER.schedule(() -> safeExecute(task), delay, TimeUnit.MILLISECONDS);
+                    var _ = SCHEDULER.schedule(() -> queueTask(task), delay, TimeUnit.MILLISECONDS);
                 }
                 case TaskScheduleImpl.TickSchedule tickSchedule -> {
                     synchronized (this) {
@@ -144,7 +134,7 @@ final class SchedulerImpl implements Scheduler {
                 }
                 // Completed either way, the task reads the outcome of the future itself
                 case TaskScheduleImpl.FutureSchedule futureSchedule -> {
-                    var _ = futureSchedule.future().whenComplete((_, _) -> safeExecute(task));
+                    var _ = futureSchedule.future().whenComplete((_, _) -> queueTask(task));
                 }
                 // An unpark received while the task was still running must not be lost
                 case TaskScheduleImpl.Park _ -> {

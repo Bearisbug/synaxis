@@ -48,10 +48,6 @@ final class TagNbtSeparator {
         }
     }
 
-    static void separate(String key, BinaryTag nbt, Consumer<Entry<?>> consumer) {
-        convert(new ArrayList<>(), key, nbt, consumer);
-    }
-
     static Entry<?> separateSingle(String key, BinaryTag nbt) {
         assert !(nbt instanceof CompoundBinaryTag);
         AtomicReference<Entry<?>> entryRef = new AtomicReference<>();

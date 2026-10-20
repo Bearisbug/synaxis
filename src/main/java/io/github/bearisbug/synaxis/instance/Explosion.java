@@ -14,7 +14,11 @@ import java.util.List;
 /**
  * Abstract explosion.
  * Instance can provide a supplier through {@link Instance#setExplosionSupplier}
+ *
+ * @deprecated set the blocks with {@link Instance#setBlock(int, int, int, Block)}, then send an
+ * {@link ExplosionPacket} with {@link PacketSendingUtils}
  */
+@Deprecated(forRemoval = true)
 public abstract class Explosion {
 
     private final float centerX;
@@ -79,17 +83,14 @@ public abstract class Explosion {
      *
      * @param instance the instance in which the explosion occurs
      * @param blocks   the block positions returned by prepare
-     * @param packet   the explosion packet to sent to the client. Be careful with what you're doing.
-     *                 It is initialized with the center and radius of the explosion. The positions in 'blocks' are also
-     *                 stored in the packet before this call, but you are free to modify 'records' to modify the blocks sent to the client.
-     *                 Just be careful, you might just crash the server or the client. Or you're lucky, both at the same time.
+     * @param packet   the explosion packet sent to the clients, read-only; its radius and block count are 0
+     *                 for now. To change what the clients get, override {@link #apply(Instance)}.
      */
     protected void postExplosion(Instance instance, List<Point> blocks, ExplosionPacket packet) {
     }
 
     /**
      * Called after sending the explosion packet. Can be used to (re)set blocks that have been destroyed.
-     * This is necessary to do after the packet being sent, because the client sets the positions received to air.
      *
      * @param instance the instance in which the explosion occurs
      * @param blocks   the block positions returned by prepare

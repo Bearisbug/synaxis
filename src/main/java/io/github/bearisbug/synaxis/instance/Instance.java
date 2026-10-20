@@ -156,6 +156,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     private final ServerProcess process;
 
     // the explosion supplier
+    @SuppressWarnings("removal")
     private ExplosionSupplier explosionSupplier;
 
     /**
@@ -1305,7 +1306,11 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * @param centerZ  the center Z
      * @param strength the strength of the explosion
      * @throws IllegalStateException If no {@link ExplosionSupplier} was supplied
+     * @deprecated set the blocks with {@link #setBlock(int, int, int, Block)}, then send an
+     * {@code ExplosionPacket} with {@link PacketSendingUtils}
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public void explode(float centerX, float centerY, float centerZ, float strength) {
         explode(centerX, centerY, centerZ, strength, null);
     }
@@ -1320,7 +1325,11 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * @param strength       the strength of the explosion
      * @param additionalData data to pass to the explosion supplier
      * @throws IllegalStateException If no {@link ExplosionSupplier} was supplied
+     * @deprecated set the blocks with {@link #setBlock(int, int, int, Block)}, then send an
+     * {@code ExplosionPacket} with {@link PacketSendingUtils}
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public void explode(float centerX, float centerY, float centerZ, float strength, @Nullable CompoundBinaryTag additionalData) {
         final ExplosionSupplier explosionSupplier = getExplosionSupplier();
         Check.stateCondition(explosionSupplier == null, "Tried to create an explosion with no explosion supplier");
@@ -1332,7 +1341,11 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * Gets the registered {@link ExplosionSupplier}, or null if none was provided.
      *
      * @return the instance explosion supplier, null if none was provided
+     * @deprecated set the blocks with {@link #setBlock(int, int, int, Block)}, then send an
+     * {@code ExplosionPacket} with {@link PacketSendingUtils}
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public @Nullable ExplosionSupplier getExplosionSupplier() {
         return explosionSupplier;
     }
@@ -1341,7 +1354,11 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * Registers the {@link ExplosionSupplier} to use in this instance.
      *
      * @param supplier the explosion supplier
+     * @deprecated set the blocks with {@link #setBlock(int, int, int, Block)}, then send an
+     * {@code ExplosionPacket} with {@link PacketSendingUtils}
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public void setExplosionSupplier(@Nullable ExplosionSupplier supplier) {
         this.explosionSupplier = supplier;
     }

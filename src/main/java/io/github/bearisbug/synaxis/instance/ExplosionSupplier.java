@@ -3,6 +3,14 @@ package io.github.bearisbug.synaxis.instance;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * Creates the {@link Explosion} of {@link Instance#explode(float, float, float, float, CompoundBinaryTag)}.
+ *
+ * @deprecated set the blocks with {@code Instance#setBlock}, then send an {@code ExplosionPacket} with
+ * {@code PacketSendingUtils}
+ */
+@Deprecated(forRemoval = true)
+@SuppressWarnings("removal")
 @FunctionalInterface
 public interface ExplosionSupplier {
 
@@ -13,7 +21,7 @@ public interface ExplosionSupplier {
      * @param centerY        center Y of the explosion
      * @param centerZ        center Z of the explosion
      * @param strength       strength of the explosion
-     * @param additionalData data passed via {@link Instance#explode(float, float, float, float, CompoundBinaryTag)} )}. Can be null
+     * @param additionalData data passed via {@link Instance#explode(float, float, float, float, CompoundBinaryTag)}. Can be null
      * @return Explosion object representing the algorithm to use
      */
     Explosion createExplosion(float centerX, float centerY, float centerZ, float strength, @Nullable CompoundBinaryTag additionalData);

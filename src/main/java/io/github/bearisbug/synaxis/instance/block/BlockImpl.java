@@ -172,7 +172,7 @@ record BlockImpl(RegistryData.BlockEntry registry,
 
     @Override
     public Block withProperty(String property, String value) {
-        return compute(schema().with(propertiesArray, property, value, name()));
+        return compute(schema().with(propertiesArray, property, value, key()));
     }
 
     @Override
@@ -181,7 +181,7 @@ record BlockImpl(RegistryData.BlockEntry registry,
         final BlockSchema schema = schema();
         long updatedProperties = this.propertiesArray;
         for (Map.Entry<String, String> entry : properties.entrySet()) {
-            updatedProperties = schema.with(updatedProperties, entry.getKey(), entry.getValue(), name());
+            updatedProperties = schema.with(updatedProperties, entry.getKey(), entry.getValue(), key());
         }
         return compute(updatedProperties);
     }
@@ -362,10 +362,11 @@ record BlockImpl(RegistryData.BlockEntry registry,
         /**
          * Sets {@code key} to {@code value} in {@code propertiesArray}.
          *
-         * @param owner the block named in the exception
+         * @param owner the block named in the exception, made a string only if it throws: a block passes its
+         *              {@code Key}, where {@code name()} would build a new string on every call
          * @throws IllegalArgumentException if the block has no property {@code key} or it does not take {@code value}
          */
-        private long with(long propertiesArray, String key, String value, String owner) {
+        private long with(long propertiesArray, String key, String value, Object owner) {
             final byte keyIndex = findKeyIndex(key);
             if (keyIndex == -1) {
                 throw new IllegalArgumentException("Unknown property '" + key + "' for " + owner + ", valid: "

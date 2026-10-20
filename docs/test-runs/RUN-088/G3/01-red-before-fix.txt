@@ -1,0 +1,33 @@
+Red before the fix: 7f7ed18733, the new tests on the code before the fix commits (Entity sends getWeather() on
+entering an instance, setWeather throws IllegalStateException, setChunkSupplier takes null, getBiome throws a
+NullPointerException without a message, the auto load error of setBlock has no coordinates, saveChunks registers
+every parallel save on one Phaser, processChunk caches whatever the loader returns).
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.WeatherIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.InstanceContainerTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.InstanceBlockIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.ChunkLoaderSaveIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.ChunkLoaderContractIntegrationTest' --continue --max-workers=2 --no-daemon \
+    --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+:test        21 tests completed, 8 failed
+<testsuite name="io.github.bearisbug.synaxis.instance.WeatherIntegrationTest" tests="4" skipped="0" failures="2" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceContainerTest" tests="2" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceBlockIntegrationTest" tests="11" skipped="0" failures="2" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkLoaderSaveIntegrationTest" tests="2" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkLoaderContractIntegrationTest" tests="2" skipped="0" failures="2" errors="0">
+   aPlayerJoiningMidTransitionGetsTheCurrentWeather(Env) | org.opentest4j.AssertionFailedError: expected: <0.1> but was: <1.0> | WeatherIntegrationTest.java:71
+   zeroTransitionTicksIsAnArgumentError(Env) | org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.IllegalStateException> | WeatherIntegrationTest.java:77
+   setChunkSupplierRejectsNull() | org.opentest4j.AssertionFailedError: Expected java.lang.NullPointerException to be thrown, but nothing was thrown. | InstanceContainerTest.java:30
+   getBiomeOfAnUnloadedChunkNamesThePosition(Env) | org.opentest4j.AssertionFailedError: expected: <Unloaded chunk at 10000,0,10000> but was: <null> | InstanceBlockIntegrationTest.java:50
+   setBlockWithAutoChunkLoadOffNamesTheChunk(Env) | org.opentest4j.AssertionFailedError: Tried to set a block to an unloaded chunk with auto chunk load disabled ==> expected: <true> but was: <false> | InstanceBlockIntegrationTest.java:58
+   parallelSaveHandlesMoreThanAPhaserHolds(Env) | java.lang.IllegalStateException: Attempt to register more than 65535 parties for java.util.concurrent.Phaser@66eca334[phase = 0 parties = 65535 arrived = 0] | ChunkLoaderSaveIntegrationTest.java:85
+   aChunkOfOtherCoordinatesFailsTheLoad(boolean, Env) [1] false | org.opentest4j.AssertionFailedError: Expected java.util.concurrent.CompletionException to be thrown, but nothing was thrown. | ChunkLoaderContractIntegrationTest.java:44
+   aChunkOfOtherCoordinatesFailsTheLoad(boolean, Env) [2] true | org.opentest4j.AssertionFailedError: Expected java.util.concurrent.CompletionException to be thrown, but nothing was thrown. | ChunkLoaderContractIntegrationTest.java:44
+
+Per change
+  weather on entering (925e37ba17):      :71, the player entering 10 ticks into a 100 tick transition gets rain 1.0, the end of it
+  setWeather argument (925e37ba17):      :77, 0 transition ticks throws IllegalStateException
+  null chunk supplier (36708e3956):      :30, setChunkSupplier(null) returns
+  getBiome message (36708e3956):         :50, the NullPointerException of an unloaded chunk has no message
+  setBlock auto load error (36708e3956): :58, the IllegalStateException does not name the chunk
+  parallel save (1d4aebd2dc):            :85, 70,000 saves held in flight together, the Phaser refuses party 65,535
+  loader contract (1d4aebd2dc):          :44 in both load modes, the load of 1,2 completes normally with a chunk built at 2,1
+

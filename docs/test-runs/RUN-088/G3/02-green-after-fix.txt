@@ -1,0 +1,58 @@
+Green after the fix: 44b6855d1d.
+  ./gradlew :compileJava :compileTestJava :synx:compileTestJava :baker:compileTestJava :server-app:compileTestJava \
+      :game-rts:compileTestJava :game-rush:compileTestJava \
+    :test --tests 'io.github.bearisbug.synaxis.instance.InstanceBlockIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.WeatherIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.instance.InstanceContainerTest' --tests 'io.github.bearisbug.synaxis.instance.ChunkLoaderSaveIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.instance.ChunkLoaderContractIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.UnloadChunkIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.instance.ChunkUnloadIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.InstanceUnregisterIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.instance.InstanceEventsIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.GeneratorForkIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.instance.GeneratorIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.WorldBorderIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.instance.BlockLightMergeIntegrationTest' --tests 'io.github.bearisbug.synaxis.entity.EntityVelocityIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.entity.EntityTeleportIntegrationTest' \
+    :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxChunkLoaderIntegrationTest' --tests 'io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.synx.SynxOverlayCombinedIntegrationTest' --tests 'io.github.bearisbug.synaxis.synx.OverlayCrossCellWritersTest' \
+      --tests 'io.github.bearisbug.synaxis.synx.OverlayStoreTest' --tests 'io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest' \
+      --tests 'io.github.bearisbug.synaxis.synx.OverlayOptionsTest' --tests 'io.github.bearisbug.synaxis.synx.SynxBlockEntityLimitsTest' \
+      --tests 'io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest' --tests 'io.github.bearisbug.synaxis.synx.SynxTruncatedMappingTest' \
+      --tests 'io.github.bearisbug.synaxis.synx.SynxParserBoundaryTest' --tests 'io.github.bearisbug.synaxis.synx.SynxRelightIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest' --tests 'io.github.bearisbug.synaxis.synx.SynxRelightDeliveredIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.synx.SynxRelightViewersIntegrationTest' \
+    --continue --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+BUILD SUCCESSFUL. Compiled: root, synx, baker, server-app, game-rts and game-rush main and test code (Error Prone, -Werror),
+plugin-api, play-kit, testing.
+Root 15 classes 120 tests, synx 15 classes 129 tests (SynxRelightBacklogTest has one test, skipped without -Dsynaxis.relight.measure=true).
+<testsuite name="io.github.bearisbug.synaxis.entity.EntityTeleportIntegrationTest" tests="8" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.entity.EntityVelocityIntegrationTest" tests="9" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockLightMergeIntegrationTest" tests="21" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkLoaderContractIntegrationTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkLoaderSaveIntegrationTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkUnloadIntegrationTest" tests="16" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.GeneratorForkIntegrationTest" tests="10" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.GeneratorIntegrationTest" tests="16" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceBlockIntegrationTest" tests="11" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceContainerTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceEventsIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceUnregisterIntegrationTest" tests="5" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.UnloadChunkIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.WeatherIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.WorldBorderIntegrationTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayCrossCellWritersTest" tests="5" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest" tests="12" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayOptionsTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayStoreTest" tests="38" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxBlockEntityLimitsTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkLoaderIntegrationTest" tests="13" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" tests="15" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxOverlayCombinedIntegrationTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxParserBoundaryTest" tests="12" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="1" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightDeliveredIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightIntegrationTest" tests="10" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightViewersIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxTruncatedMappingTest" tests="2" skipped="0" failures="0" errors="0">
+
+The synx classes are the ones that load through SynxChunkLoader, go through the overlay store and the materialization of
+a chunk, or relight (git grep -l SynxChunkLoader, overlay, materializ and relight over synx/src/test). The server-app
+tests (app/shard in its three modes), the game-rts Match tests and the full root, synx and baker test tasks are left to CI.

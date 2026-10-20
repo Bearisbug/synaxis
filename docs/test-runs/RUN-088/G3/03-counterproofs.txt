@@ -1,0 +1,28 @@
+Counterproofs: 44b6855d1d with six temporary changes, run together, then git reset --hard HEAD.
+  Entity#setInstance:                      instance.getCurrentWeather() back to instance.getWeather()
+  InstanceContainer#setChunkSupplier:      Objects.requireNonNull(chunkSupplier, ...) back to the plain assignment
+  Instance#setWeather(Weather, int):       Check.argCondition back to Check.stateCondition (same message)
+  Instance#getBiome:                       the throw with the position back to Objects.requireNonNull(chunk)
+  ChunkLoader#saveChunks:                  the virtual thread executor back to one Phaser with a party per save
+  InstanceContainer#retrieveChunk:         the instance and coordinate check of processChunk deleted
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.WeatherIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.InstanceContainerTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.InstanceBlockIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.ChunkLoaderSaveIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.ChunkLoaderContractIntegrationTest' --continue --max-workers=2 --no-daemon \
+    --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+:test        21 tests completed, 7 failed
+<testsuite name="io.github.bearisbug.synaxis.instance.WeatherIntegrationTest" tests="4" skipped="0" failures="2" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceContainerTest" tests="2" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceBlockIntegrationTest" tests="11" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkLoaderSaveIntegrationTest" tests="2" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkLoaderContractIntegrationTest" tests="2" skipped="0" failures="2" errors="0">
+   aPlayerJoiningMidTransitionGetsTheCurrentWeather(Env) | org.opentest4j.AssertionFailedError: expected: <0.1> but was: <1.0> | WeatherIntegrationTest.java:71
+   zeroTransitionTicksIsAnArgumentError(Env) | org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.IllegalStateException> | WeatherIntegrationTest.java:77
+   setChunkSupplierRejectsNull() | org.opentest4j.AssertionFailedError: Expected java.lang.NullPointerException to be thrown, but nothing was thrown. | InstanceContainerTest.java:30
+   getBiomeOfAnUnloadedChunkNamesThePosition(Env) | org.opentest4j.AssertionFailedError: expected: <Unloaded chunk at 10000,0,10000> but was: <null> | InstanceBlockIntegrationTest.java:50
+   parallelSaveHandlesMoreThanAPhaserHolds(Env) | java.lang.IllegalStateException: Attempt to register more than 65535 parties for java.util.concurrent.Phaser@3d34269f[phase = 0 parties = 65535 arrived = 0] | ChunkLoaderSaveIntegrationTest.java:85
+   aChunkOfOtherCoordinatesFailsTheLoad(boolean, Env) [1] false | org.opentest4j.AssertionFailedError: Expected java.util.concurrent.CompletionException to be thrown, but nothing was thrown. | ChunkLoaderContractIntegrationTest.java:44
+   aChunkOfOtherCoordinatesFailsTheLoad(boolean, Env) [2] true | org.opentest4j.AssertionFailedError: Expected java.util.concurrent.CompletionException to be thrown, but nothing was thrown. | ChunkLoaderContractIntegrationTest.java:44
+
+  Each change turns its own test red and no other: setBlockWithAutoChunkLoadOffNamesTheChunk, whose fix is not undone
+  here, stays green (InstanceBlockIntegrationTest 1 failure of 11).

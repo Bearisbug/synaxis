@@ -97,6 +97,9 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     // per player, docs/DESIGN-M3.md API-M3-006
     private static final int MAX_SIMULATION_DISTANCE = 32;
 
+    // How much the rain and the thunder level change per tick in setWeather(Weather)
+    private static final double WEATHER_STEP_PER_TICK = 0.01;
+
     private volatile boolean registered;
 
     private final RegistryKey<DimensionType> dimensionType;
@@ -901,12 +904,23 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     }
 
     /**
-     * Gets the weather of this instance
+     * Gets the target weather of this instance, where the transition in progress ends. What the
+     * clients see now is {@link #getCurrentWeather()}.
      *
-     * @return the instance weather
+     * @return the target weather
      */
     public Weather getWeather() {
         return weather;
+    }
+
+    /**
+     * Gets the weather the clients see at this moment: during a transition, between where it started
+     * and {@link #getWeather()}.
+     *
+     * @return the current weather
+     */
+    public Weather getCurrentWeather() {
+        return transitioningWeather;
     }
 
     /**
@@ -914,23 +928,25 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      *
      * @param weather         the new weather
      * @param transitionTicks the ticks to transition to new weather
+     * @throws IllegalArgumentException if {@code transitionTicks} is below 1
      */
     public void setWeather(Weather weather, int transitionTicks) {
-        Check.stateCondition(transitionTicks < 1, "Transition ticks cannot be lower than 0");
+        Check.argCondition(transitionTicks < 1, "Transition ticks must be at least 1 but was {0}", transitionTicks);
         this.weather = weather;
         remainingRainTransitionTicks = transitionTicks;
         remainingThunderTransitionTicks = transitionTicks;
     }
 
     /**
-     * Sets the weather of this instance with a fixed transition
+     * Sets the weather of this instance: rain and thunder levels each move by 0.01 per tick, so the
+     * transition takes |difference| / 0.01 ticks (at least 1).
      *
      * @param weather the new weather
      */
     public void setWeather(Weather weather) {
         this.weather = weather;
-        remainingRainTransitionTicks = (int) Math.max(1, Math.abs((this.weather.rainLevel() - transitioningWeather.rainLevel()) / 0.01));
-        remainingThunderTransitionTicks = (int) Math.max(1, Math.abs((this.weather.thunderLevel() - transitioningWeather.thunderLevel()) / 0.01));
+        remainingRainTransitionTicks = (int) Math.max(1, Math.abs((this.weather.rainLevel() - transitioningWeather.rainLevel()) / WEATHER_STEP_PER_TICK));
+        remainingThunderTransitionTicks = (int) Math.max(1, Math.abs((this.weather.thunderLevel() - transitioningWeather.thunderLevel()) / WEATHER_STEP_PER_TICK));
     }
 
     private void sendWeatherPackets(Weather previousWeather) {

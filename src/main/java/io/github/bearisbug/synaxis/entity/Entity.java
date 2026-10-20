@@ -1407,7 +1407,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
                 if (this instanceof Player player) {
                     player.sendPacket(instance.createInitializeWorldBorderPacket());
                     player.sendPacket(instance.createTimePacket());
-                    player.sendPackets(instance.getWeather().createWeatherPackets());
+                    player.sendPackets(instance.getCurrentWeather().createWeatherPackets());
                 }
                 instance.getEntityTracker().register(this, position, trackingTarget, trackingUpdate);
                 spawn();

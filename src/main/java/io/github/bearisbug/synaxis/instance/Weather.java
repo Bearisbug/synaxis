@@ -4,7 +4,6 @@ import it.unimi.dsi.fastutil.floats.FloatUnaryOperator;
 import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.ChangeGameStatePacket;
 import io.github.bearisbug.synaxis.utils.MathUtils;
-import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Contract;
 
 import java.util.Collection;
@@ -30,8 +29,11 @@ public record Weather(float rainLevel, float thunderLevel) {
      * @throws IllegalArgumentException if {@code thunderLevel} is not between 0 and 1
      */
     public Weather {
-        Check.argCondition(!MathUtils.isBetween(rainLevel, 0, 1), "Rain level should be between 0 and 1");
-        Check.argCondition(!MathUtils.isBetween(thunderLevel, 0, 1), "Thunder level should be between 0 and 1");
+        // Built on every tick of a transition, so the message is only built when it is thrown
+        if (!MathUtils.isBetween(rainLevel, 0, 1))
+            throw new IllegalArgumentException("Rain level should be between 0 and 1 but was " + rainLevel);
+        if (!MathUtils.isBetween(thunderLevel, 0, 1))
+            throw new IllegalArgumentException("Thunder level should be between 0 and 1 but was " + thunderLevel);
     }
 
     @Contract(pure = true)

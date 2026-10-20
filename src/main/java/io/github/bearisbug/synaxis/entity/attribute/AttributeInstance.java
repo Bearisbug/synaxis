@@ -123,6 +123,9 @@ public final class AttributeInstance {
     /**
      * Clears all modifiers on this instance, excepting those whose ID is defined in
      * {@link LivingEntity#PROTECTED_MODIFIERS}.
+     * <p>
+     * The modifiers an entity's equipment brings are cleared too, and only come back when the item in that slot
+     * changes. To take off only the modifiers you added, remove them by id with {@link #removeModifier(Key)}.
      */
     public void clearModifiers() {
         this.modifiers.values().removeIf(modifier -> !LivingEntity.PROTECTED_MODIFIERS.contains(modifier.id()));
@@ -167,22 +170,22 @@ public final class AttributeInstance {
     private double computeValue(double base) {
         final Collection<AttributeModifier> modifiers = modifiers();
 
-        for (var modifier : modifiers.stream().filter(mod -> mod.operation() == AttributeOperation.ADD_VALUE).toArray(AttributeModifier[]::new)) {
-            base += modifier.amount();
+        for (var modifier : modifiers) {
+            if (modifier.operation() == AttributeOperation.ADD_VALUE) base += modifier.amount();
         }
 
         double result = base;
 
-        for (var modifier : modifiers.stream().filter(mod -> mod.operation() == AttributeOperation.ADD_MULTIPLIED_BASE).toArray(AttributeModifier[]::new)) {
-            result += (base * modifier.amount());
+        for (var modifier : modifiers) {
+            if (modifier.operation() == AttributeOperation.ADD_MULTIPLIED_BASE) result += (base * modifier.amount());
         }
-        for (var modifier : modifiers.stream().filter(mod -> mod.operation() == AttributeOperation.ADD_MULTIPLIED_TOTAL).toArray(AttributeModifier[]::new)) {
-            result *= (1.0f + modifier.amount());
+        for (var modifier : modifiers) {
+            if (modifier.operation() == AttributeOperation.ADD_MULTIPLIED_TOTAL) result *= (1.0 + modifier.amount());
         }
 
         // NaN (from a NaN base value or modifier) becomes the minimum as in vanilla, Math.clamp would return it as is
-        if (Double.isNaN(result)) return getAttribute().minValue();
-        return Math.clamp(result, getAttribute().minValue(), getAttribute().maxValue());
+        if (Double.isNaN(result)) return attribute.minValue();
+        return Math.clamp(result, attribute.minValue(), attribute.maxValue());
     }
 
     /**
@@ -201,12 +204,18 @@ public final class AttributeInstance {
         }
     }
 
-    @Deprecated
+    /**
+     * @deprecated use {@link #modifiers()}
+     */
+    @Deprecated(forRemoval = true)
     public Collection<AttributeModifier> getModifiers() {
         return modifiers();
     }
 
-    @Deprecated
+    /**
+     * @deprecated use {@link #attribute()}
+     */
+    @Deprecated(forRemoval = true)
     public Attribute getAttribute() {
         return attribute;
     }

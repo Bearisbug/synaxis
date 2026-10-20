@@ -5,6 +5,8 @@ import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import org.jetbrains.annotations.Nullable;
 
 public enum AttributeOperation {
+    // Neither the order nor the names can change: NETWORK_TYPE writes the ordinal as the protocol id, and
+    // CODEC writes the lower case name
     ADD_VALUE(0),
     ADD_MULTIPLIED_BASE(1),
     ADD_MULTIPLIED_TOTAL(2);

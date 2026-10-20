@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.MetadataDef;
 import io.github.bearisbug.synaxis.entity.MetadataHolder;
 import io.github.bearisbug.synaxis.entity.metadata.EntityMeta;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
 
 public class AbstractDisplayMeta extends EntityMeta {
@@ -17,6 +18,17 @@ public class AbstractDisplayMeta extends EntityMeta {
         return metadata.get(MetadataDef.Display.INTERPOLATION_DELAY);
     }
 
+    /**
+     * Sets the delay, in ticks, before the client starts interpolating to a new transformation (the
+     * {@code INTERPOLATION_DELAY} entry).
+     * <p>
+     * Send it again, usually as 0, in the same {@code Entity#editEntityMeta} batch as every change of the translation,
+     * the scale or a rotation: the client only restarts the interpolation from the current state when it receives this
+     * value, otherwise it keeps the start time of the previous one, and when that one is already over the new
+     * transformation shows at once. This entry is never skipped as unchanged, the same value is sent again.
+     *
+     * @param value the delay in ticks
+     */
     public void setTransformationInterpolationStartDelta(int value) {
         metadata.set(MetadataDef.Display.INTERPOLATION_DELAY, value);
     }
@@ -103,6 +115,11 @@ public class AbstractDisplayMeta extends EntityMeta {
         metadata.set(MetadataDef.Display.BILLBOARD_CONSTRAINTS, (byte) value.ordinal());
     }
 
+    /**
+     * Gets the packed brightness override.
+     *
+     * @return the block light shifted by 4 and the sky light shifted by 20, or -1 when the world light is used
+     */
     public int getBrightnessOverride() {
         return metadata.get(MetadataDef.Display.BRIGHTNESS_OVERRIDE);
     }
@@ -111,14 +128,33 @@ public class AbstractDisplayMeta extends EntityMeta {
         metadata.set(MetadataDef.Display.BRIGHTNESS_OVERRIDE, value);
     }
 
+    /**
+     * Renders the display with the given light levels instead of the world light around it.
+     *
+     * @param blockLight the block light level, 0 to 15
+     * @param skyLight   the sky light level, 0 to 15
+     * @throws IllegalArgumentException if a level is outside 0 to 15
+     */
     public void setBrightness(int blockLight, int skyLight) {
+        Check.argCondition(blockLight < 0 || blockLight > 15, "blockLight must be in [0, 15]: {0}", blockLight);
+        Check.argCondition(skyLight < 0 || skyLight > 15, "skyLight must be in [0, 15]: {0}", skyLight);
         setBrightnessOverride((blockLight & 0xF) << 4 | (skyLight & 0xF) << 20);
     }
 
+    /**
+     * Gets the block light level of the brightness override.
+     *
+     * @return the level, 0 when there is no override: check {@link #getBrightnessOverride()} for -1 to tell
+     */
     public int getBlockLight() {
         return getLight(4);
     }
 
+    /**
+     * Gets the sky light level of the brightness override.
+     *
+     * @return the level, 0 when there is no override: check {@link #getBrightnessOverride()} for -1 to tell
+     */
     public int getSkyLight() {
         return getLight(20);
     }

@@ -28,9 +28,4 @@ public class AbstractWindChargeMeta extends EntityMeta implements ObjectDataProv
         return this.shooter == null ? 0 : this.shooter.getEntityId();
     }
 
-    @Override
-    public boolean requiresVelocityPacketAtSpawn() {
-        return true;
-    }
-
 }

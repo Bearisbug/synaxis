@@ -75,8 +75,7 @@ public record CollectionPredicate<T, P extends Predicate<T>>(@Nullable Contains<
     }
 
     /**
-     * A predicate that counts the number of matching sub-predicates
-     * and tests whether it's in the <code>count</code> range.
+     * For each entry, counts the items matching its predicate and checks the count against its range.
      */
     public record Count<T, P extends Predicate<T>>(List<Entry<T, P>> entries) implements Predicate<Collection<T>> {
 

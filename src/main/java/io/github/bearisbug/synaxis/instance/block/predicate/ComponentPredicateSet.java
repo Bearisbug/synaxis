@@ -20,10 +20,12 @@ import java.util.Objects;
 import java.util.function.Predicate;
 
 /**
- * A list of {@link DataComponentPredicate}s.
+ * A list of {@link DataComponentPredicate}s, at most one of each type: the type of a
+ * {@link DataComponentPredicate.Registered} predicate is its codec, that of an {@link DataComponentPredicate.Exists}
+ * its component. Given a type more than once, the constructor keeps the last predicate of it.
  * <p>
- * Note: instances of this class are immutable. Calling {@link #add} or {@link #remove}
- * will return a new instance of this class with the element added or removed.
+ * Note: instances of this class are immutable. {@link #add} returns a new instance with the predicate in place of
+ * the one of its type, {@link #remove} a new instance without the predicate of the same type, whatever its value.
  */
 public record ComponentPredicateSet(List<DataComponentPredicate> predicates) implements Predicate<DataComponent.Holder> {
 
@@ -74,7 +76,7 @@ public record ComponentPredicateSet(List<DataComponentPredicate> predicates) imp
     };
     public static final ComponentPredicateSet EMPTY = new ComponentPredicateSet(List.of());
 
-    // Need dispatch on each key, TODO another registry will likely need this eventually.
+    // Need dispatch on each key
     public static final Codec<ComponentPredicateSet> CODEC = new Codec<>() {
         @Override
         public <D> Result<ComponentPredicateSet> decode(Transcoder<D> coder, D value) {
@@ -161,7 +163,13 @@ public record ComponentPredicateSet(List<DataComponentPredicate> predicates) imp
             .transform(ComponentPredicateSet::new, ComponentPredicateSet::networkPredicates);
 
     public ComponentPredicateSet {
-        predicates = List.copyOf(predicates);
+        // The last of a type wins, as with add
+        final List<DataComponentPredicate> unique = new ArrayList<>(predicates.size());
+        for (DataComponentPredicate predicate : predicates) {
+            unique.removeIf(existing -> sameType(existing, predicate));
+            unique.add(predicate);
+        }
+        predicates = List.copyOf(unique);
     }
 
     @Contract(pure = true)

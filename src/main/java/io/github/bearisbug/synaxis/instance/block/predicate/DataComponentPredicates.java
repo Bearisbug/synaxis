@@ -10,12 +10,20 @@ import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+/**
+ * The component part of an item or block predicate: {@code exact} needs each of its component values to be equal
+ * (the JSON {@code components}), {@code predicates} holds partial predicates by type (the JSON {@code predicates}).
+ * Both have to pass; {@link DataComponentMap#EMPTY} and {@link ComponentPredicateSet#EMPTY} constrain nothing.
+ *
+ * @see DataComponentPredicate
+ * @see ComponentPredicateSet
+ */
 public record DataComponentPredicates(DataComponentMap exact,
                                       ComponentPredicateSet predicates) implements Predicate<DataComponent.Holder> {
 
     public DataComponentPredicates {
         Objects.requireNonNull(exact, "Exact cannot be null. Use DataComponentMap.EMPTY to skip exact data component checks.");
-        Objects.requireNonNull(predicates, "Component predicates cannot be null. Use ComponentPredicateSet.EMPTY to skip exact data component checks.");
+        Objects.requireNonNull(predicates, "Component predicates cannot be null. Use ComponentPredicateSet.EMPTY to skip component predicate checks.");
     }
 
     public static final DataComponentPredicates EMPTY = new DataComponentPredicates(DataComponentMap.EMPTY, ComponentPredicateSet.EMPTY);

@@ -74,6 +74,14 @@ public record BlockPredicate(
         this(blocks, null, null, DataComponentPredicates.EMPTY);
     }
 
+    /**
+     * Matches the block types of {@code blocks} ({@link Block#registryKey()}), whatever their properties, NBT and
+     * handler: to match a state, use {@link #BlockPredicate(RegistryTag, PropertiesPredicate, NbtPredicate)} with
+     * {@link PropertiesPredicate#exact(String, String)}. No block given matches no block, as an empty block list
+     * does in vanilla; {@link #ALL} matches every block.
+     *
+     * @param blocks the blocks whose types match
+     */
     public BlockPredicate(Block... blocks) {
         this(RegistryTag.direct(Arrays.stream(blocks).map(Block::registryKey).toList()));
     }

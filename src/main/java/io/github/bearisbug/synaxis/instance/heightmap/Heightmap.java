@@ -80,6 +80,14 @@ public abstract class Heightmap {
      * @param startY the block Y to look down from, {@link #getHighestBlockSection(Chunk)} covers the chunk
      */
     public void refresh(int startY) {
+        computeIfStale(false, startY);
+    }
+
+    /**
+     * The engine's reads look down from {@link #getHighestBlockSection(Chunk)}, found under the lock: found before
+     * it, a block written meanwhile above the highest section would be missed by a computation that counts as done.
+     */
+    private void computeIfStale(boolean fromTop, int startY) {
         if (!needsRefresh()) return;
         chunk.lockReadLock();
         try {
@@ -87,9 +95,10 @@ public abstract class Heightmap {
                 // A reader that waited here finds the heights computed by the thread it waited for
                 final int started = version;
                 if (computedVersion == started) return;
+                final int from = fromTop ? getHighestBlockSection(chunk) : startY;
                 for (int x = 0; x < CHUNK_SIZE_X; x++) {
                     for (int z = 0; z < CHUNK_SIZE_Z; z++) {
-                        refresh(x, z, startY);
+                        refresh(x, z, from);
                     }
                 }
                 computedVersion = started;
@@ -154,7 +163,7 @@ public abstract class Heightmap {
     }
 
     public long[] getNBT() {
-        if (needsRefresh()) refresh(getHighestBlockSection(chunk));
+        computeIfStale(true, 0);
         final int dimensionHeight = chunk.getInstance().getCachedDimensionType().height();
         final int bitsForHeight = MathUtils.bitsToRepresent(dimensionHeight);
         return encode(heights, bitsForHeight);
@@ -204,7 +213,7 @@ public abstract class Heightmap {
     public int getHeight(int x, int z) {
         if (((x | z) >>> 4) != 0)
             throw new IllegalArgumentException("heightmap column must be chunk-local [0,16): " + x + ", " + z);
-        if (needsRefresh()) refresh(getHighestBlockSection(chunk));
+        computeIfStale(true, 0);
         return heights[z << 4 | x] + minHeight;
     }
 

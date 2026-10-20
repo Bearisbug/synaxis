@@ -1,0 +1,26 @@
+Red before the fix: d688464657, the new tests on the code before the fix commits (nearbyEntities still the spiral and
+single-chunk code, setReadOnly asserting the write-lock, getBiome and setBiome without a bound check).
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerTest' --tests 'io.github.bearisbug.synaxis.instance.ChunkWriteLockIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.generator.BiomeIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerLeakIntegrationTest' \
+    :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest' --continue --max-workers=2 --no-daemon \
+    --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+:test        23 tests completed, 3 failed
+:synx:test   15 tests completed, 1 failed
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkWriteLockIntegrationTest" tests="4" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.EntityTrackerLeakIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.EntityTrackerTest" tests="11" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.generator.BiomeIntegrationTest" tests="4" skipped="0" failures="2" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" tests="15" skipped="0" failures="1" errors="0">
+   setReadOnlyNeedsNoLock(Env) | java.lang.IllegalStateException: Chunk 0,0 changed without its write-lock: use Instance#setBlock or Instance#setBiome, or hold lockWriteLock() around the change | ChunkWriteLockIntegrationTest.java:69
+   biomeSetOutsideTheWorldChangesNothing(Env) | java.lang.ArrayIndexOutOfBoundsException: Index 25 out of bounds for length 24 | BiomeIntegrationTest.java:105
+   biomeOutsideTheWorldReadsTheNearestSection(Env) | java.lang.ArrayIndexOutOfBoundsException: Index 24 out of bounds for length 24 | BiomeIntegrationTest.java:87
+   biomesOutsideTheWorldReadAndSetAlikeInBothModes(Env) | java.lang.ArrayIndexOutOfBoundsException: Index 16 out of bounds for length 16 | SynxChunkOverlayIntegrationTest.java:509
+
+Per change
+  read-only flag (6297b202c5):  setReadOnlyNeedsNoLock :69, setReadOnly(true) without a lock throws
+  biome bounds (3e9c3fb022):    biomeOutsideTheWorldReadsTheNearestSection :87 (getBiome at maxY), biomeSetOutsideTheWorldChangesNothing
+                                :105 (setBiome at maxY + 16), biomesOutsideTheWorldReadAndSetAlikeInBothModes :509 (SynxChunk#getBiome
+                                in handle mode at y 256: its own section index, past the 16 sections)
+  nearby queries (8c32045cce):  nearbyEntitiesAcrossAChunkEdge, nearbyEntitiesWithHugeRangeFindsAll and nearbyQueriesMatchABruteForceScan
+                                green on the code before the rewrite: same results before and after (EntityTrackerTest 11 of 11)

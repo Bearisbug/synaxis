@@ -1,0 +1,25 @@
+Regression for ChunkView#references and nearbyEntities in the two thread modes: 4a33cf0296 (aed748a2b6's code, Javadoc
+only after it). The five classes of the chunk viewer regression, default mode, then strict grid with the tracker classes.
+  ./gradlew :test --rerun --tests 'io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest' --tests 'io.github.bearisbug.synaxis.entity.player.ChunkSendCapTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.ChunkViewerIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerIntegrationTest' \
+    --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  the same plus --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerTest' --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerLeakIntegrationTest'
+    -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+
+Default: BUILD SUCCESSFUL
+<testsuite name="io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.entity.player.ChunkSendCapTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkViewerIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.EntityTrackerIntegrationTest" tests="3" skipped="0" failures="0" errors="0">
+
+Strict grid: BUILD SUCCESSFUL
+<testsuite name="io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.entity.player.ChunkSendCapTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkViewerIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.EntityTrackerIntegrationTest" tests="3" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.EntityTrackerLeakIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.EntityTrackerTest" tests="11" skipped="0" failures="0" errors="0">
+

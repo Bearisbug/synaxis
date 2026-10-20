@@ -1,0 +1,20 @@
+RUN-088 G2: chunks and the entity tracker. Branch m3/r088-p3, base 17f2a2cfe1 (the G1 commits before these touch none of
+the files below). JDK 25, every Gradle run with --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts.
+
+Commits
+  6aebb4aee0 instance: EntityTracker Javadoc (no behavior change)
+  2873d3d6ee instance: EntityTrackerImpl chunk view map, viewer list, null checks, Check.stateCondition, viewer exception message (no behavior change)
+  d688464657 test: nearby queries against a scan of every entity, huge ranges, setReadOnly without a lock, biomes above and below the world
+  8c32045cce instance: nearbyEntities over the box of chunks or every bucket; nearbyEntitiesByChunkRange through ChunkRange alone (no behavior change for ranges of 0 and up)
+  6297b202c5 instance: the read-only flag is volatile and set without the chunk lock
+  3e9c3fb022 instance, synx: biomes above and below the world: read the section at that end, a set warns and changes nothing
+  e809ebc20c instance: Chunk and DynamicChunk Javadoc, one this-escape suppression less (no behavior change)
+  aed748a2b6 instance: OptionalCallback and ChunkCallback removed (no caller)
+  4a33cf0296 instance: EntityTracker Javadoc, two words after the runs (no code change, not run again)
+
+Gradle runs (5)
+  1  red on d688464657, the tests committed before any fix: 01-red-before-fix.txt
+  2  green on aed748a2b6, every class of the group and the compile of the root, synx, baker and server-app main and test code: 02-green-after-fix.txt
+  3  counterproofs, two temporary changes on aed748a2b6, then git reset --hard HEAD: 03-counterproofs.txt
+  4  chunk viewer regression, default mode, on 4a33cf0296: 04-chunk-viewer-regression.txt
+  5  the same classes and the tracker classes in strict grid, on 4a33cf0296: 04-chunk-viewer-regression.txt

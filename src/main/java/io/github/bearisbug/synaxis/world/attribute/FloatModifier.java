@@ -5,22 +5,17 @@ import io.github.bearisbug.synaxis.codec.Codec;
 non-sealed interface FloatModifier<Arg> extends EnvironmentAttribute.Modifier<Float, Arg> {
     FloatModifier<AlphaFloat> ALPHA_BLEND = new FloatModifier<>() {
         @java.lang.Override
-        public java.lang.Float modify(java.lang.Float sub, AlphaFloat arg) {
-            return sub + arg.alpha() * (arg.value() - sub);
-        }
-
-        @java.lang.Override
         public Codec<AlphaFloat> argumentCodec() {
             return AlphaFloat.CODEC;
         }
     };
-    ToFloat ADD = java.lang.Float::sum;
-    ToFloat SUBTRACT = (x, y) -> x - y;
-    ToFloat MULTIPLY = (x, y) -> x * y;
-    ToFloat MINIMUM = Math::min;
-    ToFloat MAXIMUM = Math::max;
+    // One instance per operator: the modifier codec of a type finds the operator of a modifier by its instance
+    ToFloat ADD = new ToFloat() {};
+    ToFloat SUBTRACT = new ToFloat() {};
+    ToFloat MULTIPLY = new ToFloat() {};
+    ToFloat MINIMUM = new ToFloat() {};
+    ToFloat MAXIMUM = new ToFloat() {};
 
-    @FunctionalInterface
     interface ToFloat extends FloatModifier<java.lang.Float> {
         @java.lang.Override
         default Codec<java.lang.Float> argumentCodec() {

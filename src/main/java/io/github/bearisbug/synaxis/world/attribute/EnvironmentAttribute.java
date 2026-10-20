@@ -93,10 +93,6 @@ public sealed interface EnvironmentAttribute<T> extends EnvironmentAttributes pe
         record Override<Value>(
                 Codec<Value> argumentCodec
         ) implements Modifier<Value, Value> {
-            @java.lang.Override
-            public Value modify(Value subject, Value argument) {
-                return argument;
-            }
         }
 
         final class Boolean {
@@ -125,8 +121,6 @@ public sealed interface EnvironmentAttribute<T> extends EnvironmentAttributes pe
             public static final Modifier<RGBLike, ARGBLike> MULTIPLY_ARGB = ColorModifier.MULTIPLY_ARGB;
             public static final Modifier<RGBLike, BlendToGray> BLEND_TO_GRAY = ColorModifier.BLEND_TO_GRAY;
         }
-
-        Sub modify(Sub subject, Arg argument);
 
         Codec<Arg> argumentCodec();
 

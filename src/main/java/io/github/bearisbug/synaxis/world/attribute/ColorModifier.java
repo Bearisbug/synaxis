@@ -13,26 +13,11 @@ non-sealed interface ColorModifier<Arg> extends EnvironmentAttribute.Modifier<RG
 
     ColorModifier<ARGBLike> ALPHA_BLEND = new ColorModifier<>() {
         @java.lang.Override
-        public RGBLike modify(RGBLike subject, ARGBLike argument) {
-            throw new UnsupportedOperationException("alpha blend is not implemented yet");
-        }
-
-        @java.lang.Override
         public Codec<ARGBLike> argumentCodec() {
             return AlphaColor.ARGB_STRING_CODEC;
         }
     };
     ColorModifier<RGBLike> ADD = new ColorModifier<>() {
-        @java.lang.Override
-        public RGBLike modify(RGBLike subject, RGBLike argument) {
-            return new AlphaColor(
-                    subject instanceof ARGBLike argb ? argb.alpha() : 255,
-                    Math.min(255, subject.red() + argument.red()),
-                    Math.min(255, subject.green() + argument.green()),
-                    Math.min(255, subject.blue() + argument.blue())
-            );
-        }
-
         @java.lang.Override
         public Codec<RGBLike> argumentCodec() {
             return MAYBE_ARGB_CODEC;
@@ -40,33 +25,11 @@ non-sealed interface ColorModifier<Arg> extends EnvironmentAttribute.Modifier<RG
     };
     ColorModifier<RGBLike> SUBTRACT = new ColorModifier<>() {
         @java.lang.Override
-        public RGBLike modify(RGBLike subject, RGBLike argument) {
-            return new AlphaColor(
-                    subject instanceof ARGBLike argb ? argb.alpha() : 255,
-                    Math.max(0, subject.red() - argument.red()),
-                    Math.max(0, subject.green() - argument.green()),
-                    Math.max(0, subject.blue() - argument.blue())
-            );
-        }
-
-        @java.lang.Override
         public Codec<RGBLike> argumentCodec() {
             return MAYBE_ARGB_CODEC;
         }
     };
     ColorModifier<RGBLike> MULTIPLY_RGB = new ColorModifier<>() {
-        @java.lang.Override
-        public RGBLike modify(RGBLike subject, RGBLike argument) {
-            int subAlpha = subject instanceof ARGBLike argb ? argb.alpha() : 255;
-            int argAlpha = argument instanceof ARGBLike argb ? argb.alpha() : 255;
-            return new AlphaColor(
-                    (subAlpha * argAlpha) / 255,
-                    (subject.red() * argument.red()) / 255,
-                    (subject.green() * argument.green()) / 255,
-                    (subject.blue() * argument.blue()) / 255
-            );
-        }
-
         @java.lang.Override
         public Codec<RGBLike> argumentCodec() {
             return io.github.bearisbug.synaxis.color.Color.STRING_CODEC;
@@ -74,28 +37,11 @@ non-sealed interface ColorModifier<Arg> extends EnvironmentAttribute.Modifier<RG
     };
     ColorModifier<ARGBLike> MULTIPLY_ARGB = new ColorModifier<>() {
         @java.lang.Override
-        public RGBLike modify(RGBLike subject, ARGBLike argument) {
-            int subAlpha = subject instanceof ARGBLike argb ? argb.alpha() : 255;
-            int argAlpha = argument.alpha();
-            return new AlphaColor(
-                    (subAlpha * argAlpha) / 255,
-                    (subject.red() * argument.red()) / 255,
-                    (subject.green() * argument.green()) / 255,
-                    (subject.blue() * argument.blue()) / 255
-            );
-        }
-
-        @java.lang.Override
         public Codec<ARGBLike> argumentCodec() {
             return AlphaColor.RGBA_STRING_CODEC;
         }
     };
     ColorModifier<BlendToGray> BLEND_TO_GRAY = new ColorModifier<>() {
-        @java.lang.Override
-        public RGBLike modify(RGBLike subject, BlendToGray argument) {
-            throw new UnsupportedOperationException("blend to gray is not implemented yet");
-        }
-
         @java.lang.Override
         public Codec<BlendToGray> argumentCodec() {
             return BlendToGray.CODEC;

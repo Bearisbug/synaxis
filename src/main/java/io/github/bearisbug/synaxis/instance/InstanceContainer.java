@@ -148,7 +148,7 @@ public class InstanceContainer extends Instance {
     /**
      * {@inheritDoc}
      * <p>
-     * A chunk that is not loaded is loaded on the calling thread, which waits for it: called on a tick
+     * A chunk that is not loaded is loaded while the calling thread waits for it: called on a tick
      * thread, this holds up the tick. A block in a read-only chunk is dropped without notice; one whose y
      * is outside [minY, maxY) of the dimension is dropped with a WARN.
      *
@@ -487,11 +487,7 @@ public class InstanceContainer extends Instance {
                     chunk.onGenerate();
                     chunkGeneration.commit();
                 }
-                // Cached by its own coordinates, a chunk of others would replace the one there
-                if (chunk.getInstance() != this || chunk.getChunkX() != chunkX || chunk.getChunkZ() != chunkZ) {
-                    throw new IllegalStateException(chunk + " of instance " + chunk.getInstance().getUuid()
-                            + " was returned for " + chunkX + "," + chunkZ + " of instance " + getUuid());
-                }
+                checkOwn(chunk, chunkX, chunkZ);
                 // TODO run in the instance thread?
                 cacheChunk(chunk);
                 applyPendingForks(chunk);
@@ -518,9 +514,19 @@ public class InstanceContainer extends Instance {
         return future.whenComplete((_, _) -> loadingChunks.remove(index, future));
     }
 
+    // Cached by its own coordinates, a chunk of others would replace the one there
+    private void checkOwn(Chunk chunk, int chunkX, int chunkZ) {
+        if (chunk.getInstance() != this || chunk.getChunkX() != chunkX || chunk.getChunkZ() != chunkZ) {
+            throw new IllegalStateException(chunk + " of instance " + chunk.getInstance().getUuid()
+                    + " was returned for " + chunkX + "," + chunkZ + " of instance " + getUuid());
+        }
+    }
+
     protected Chunk createChunk(int chunkX, int chunkZ) {
         final Chunk chunk = chunkSupplier.createChunk(this, chunkX, chunkZ);
         Objects.requireNonNull(chunk, "Chunks supplied by a ChunkSupplier cannot be null.");
+        // Before the generation, which hands forks to the chunk at the coordinates the chunk claims
+        checkOwn(chunk, chunkX, chunkZ);
         Generator generator = generator();
         if (generator == null || !chunk.shouldGenerate()) {
             // No chunk generator, execute the callback with the empty chunk

@@ -77,7 +77,8 @@ public record PropertiesPredicate(Map<String, ValuePredicate> properties) implem
          * <p>The property of a block, in {@link PropertiesPredicate#test(Block)} and {@link #test(Block, String)}, is
          * compared in its own order, the one the client compares it in: integers by value, booleans false before
          * true, directions as down, up, north, south, west, east, other enum constants in the order the registry
-         * lists them; a bound that is no value of the property matches nothing.</p>
+         * lists them. A bound of an integer property is read as {@link Integer#parseInt(String)} reads it, "05" and
+         * "+5" as 5; a bound that is no value of the property matches nothing.</p>
          *
          * <p>Without either bound, the property only has to exist.</p>
          *
@@ -109,8 +110,32 @@ public record PropertiesPredicate(Map<String, ValuePredicate> properties) implem
                 if (values == null) return false;
                 final List<String> order = order(values);
                 final int value = order.indexOf(block.getProperty(key));
-                return (min == null || (values.contains(min) && value >= order.indexOf(min)))
-                        && (max == null || (values.contains(max) && value <= order.indexOf(max)));
+                final String lower = bound(min, values);
+                final String upper = bound(max, values);
+                return (lower == null || (values.contains(lower) && value >= order.indexOf(lower)))
+                        && (upper == null || (values.contains(upper) && value <= order.indexOf(upper)));
+            }
+
+            // A bound of an integer property in the form the registry lists its values in; one that does not parse
+            // stays as given, which no value of the property equals
+            private static @Nullable String bound(@Nullable String bound, List<String> values) {
+                if (bound == null || !integers(values)) return bound;
+                try {
+                    return String.valueOf(Integer.parseInt(bound));
+                } catch (NumberFormatException _) {
+                    return bound;
+                }
+            }
+
+            // The registry lists the values of an integer property in decimal digits, never negative
+            private static boolean integers(List<String> values) {
+                for (String value : values) {
+                    for (int i = 0; i < value.length(); i++) {
+                        final char c = value.charAt(i);
+                        if (c < '0' || c > '9') return false;
+                    }
+                }
+                return true;
             }
 
             // The order the client compares the values of a property in: the registry lists booleans true first, and

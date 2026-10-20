@@ -248,6 +248,19 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         setBlock(blockPosition.blockX(), blockPosition.blockY(), blockPosition.blockZ(), block, doBlockUpdates);
     }
 
+    /**
+     * Sets a block; with {@code doBlockUpdates}, the placement rules of its six neighbours are asked to
+     * update them.
+     * <p>
+     * The same block set at the same position again within one tick takes effect once; changes made
+     * directly with {@link Chunk#setBlock(int, int, int, Block)} in between do not lift that.
+     *
+     * @param x              the block X
+     * @param y              the block Y
+     * @param z              the block Z
+     * @param block          the block to set
+     * @param doBlockUpdates whether the neighbours are updated
+     */
     public abstract void setBlock(int x, int y, int z, Block block, boolean doBlockUpdates);
 
     @ApiStatus.Internal
@@ -421,6 +434,12 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      */
     public abstract CompletableFuture<Void> saveChunksToStorage();
 
+    /**
+     * Changes which type of {@link Chunk} implementation to use once one needs to be loaded.
+     *
+     * @param chunkSupplier the new chunk supplier
+     * @throws NullPointerException if {@code chunkSupplier} is null
+     */
     public abstract void setChunkSupplier(ChunkSupplier chunkSupplier);
 
     /**
@@ -774,6 +793,12 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         return result;
     }
 
+    /**
+     * Gets the block at a position of this instance.
+     *
+     * @throws NullPointerException if the chunk is not loaded, except for {@link Condition#CACHED}, which
+     *                              answers null then
+     */
     @Override
     public @Nullable Block getBlock(int x, int y, int z, Condition condition) {
         final Block block = blockRetriever.getBlock(x, y, z, condition);
@@ -783,10 +808,15 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         return block;
     }
 
+    /**
+     * Gets the biome at a position of this instance.
+     *
+     * @throws NullPointerException if the chunk is not loaded
+     */
     @Override
     public RegistryKey<Biome> getBiome(int x, int y, int z) {
         Chunk chunk = getChunk(CoordConversion.globalToChunk(x), CoordConversion.globalToChunk(z));
-        Objects.requireNonNull(chunk);
+        if (chunk == null) throw new NullPointerException("Unloaded chunk at " + x + "," + y + "," + z);
         chunk.lockReadLock();
         try {
             return chunk.getBiome(x, y, z);
@@ -804,9 +834,9 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * @see <a href="https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol#Block_Action">BlockActionPacket</a> for the action id &amp; param
      */
     public void sendBlockAction(Point blockPosition, byte actionId, byte actionParam) {
-        final Block block = getBlock(blockPosition);
         final Chunk chunk = getChunkAt(blockPosition);
         Check.notNull(chunk, "The chunk at {0} is not loaded!", blockPosition);
+        final Block block = getBlock(blockPosition);
         chunk.sendPacketToViewers(new BlockActionPacket(blockPosition, actionId, actionParam, block));
     }
 

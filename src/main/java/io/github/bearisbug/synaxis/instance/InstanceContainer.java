@@ -126,13 +126,24 @@ public class InstanceContainer extends Instance {
         refreshLastBlockChangeTime();
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * A chunk that is not loaded is loaded on the calling thread, which waits for it: called on a tick
+     * thread, this holds up the tick. A block in a read-only chunk is dropped without notice; one whose y
+     * is outside [minY, maxY) of the dimension is dropped with a WARN.
+     *
+     * @throws IllegalStateException if the chunk is not loaded and the automatic chunk load is disabled
+     */
     @Override
     public void setBlock(int x, int y, int z, Block block, boolean doBlockUpdates) {
         Chunk chunk = getChunkAt(x, z);
         if (chunk == null) {
+            final int chunkX = CoordConversion.globalToChunk(x);
+            final int chunkZ = CoordConversion.globalToChunk(z);
             Check.stateCondition(!hasEnabledAutoChunkLoad(),
-                    "Tried to set a block to an unloaded chunk with auto chunk load disabled");
-            chunk = loadChunk(CoordConversion.globalToChunk(x), CoordConversion.globalToChunk(z)).join();
+                    "Tried to set a block to an unloaded chunk with auto chunk load disabled: chunk " + chunkX + "," + chunkZ);
+            chunk = loadChunk(chunkX, chunkZ).join();
         }
         if (isLoaded(chunk)) UNSAFE_setBlock(chunk, x, y, z, block, null, null, doBlockUpdates, 0);
     }
@@ -155,7 +166,7 @@ public class InstanceContainer extends Instance {
         if (chunk.isReadOnly()) return false;
         final DimensionType dim = getCachedDimensionType();
         if (y >= dim.maxY() || y < dim.minY()) {
-            LOGGER.warn("tried to set a block outside the world bounds, should be within [{}, {}): {}", dim.minY(), dim.maxY(), y);
+            LOGGER.warn("Instance {} ignored setBlock at ({}, {}, {}): y must be within [{}, {})", getUuid(), x, y, z, dim.minY(), dim.maxY());
             return false;
         }
 
@@ -690,7 +701,7 @@ public class InstanceContainer extends Instance {
      */
     @Override
     public void setChunkSupplier(ChunkSupplier chunkSupplier) {
-        this.chunkSupplier = chunkSupplier;
+        this.chunkSupplier = Objects.requireNonNull(chunkSupplier, "Chunk supplier cannot be null");
     }
 
     /**

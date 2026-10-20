@@ -84,8 +84,8 @@ public interface StructCodec<R> extends Codec<R> {
     /**
      * Encodes the fields of a value {@link R} into {@code map} and returns the result of encoding.
      * {@link #encode(Transcoder, Object)} returns that result as the encoded value; a struct inlined with
-     * {@link #INLINE} only has it checked for an {@link Result.Error}, its value is ignored. Implementations
-     * return {@code map.build()} on success.
+     * {@link #INLINE} only has it checked for an {@link Result.Error}, its value is ignored. Most implementations
+     * return {@code map.build()} on success; one that delegates to another struct returns what that one returns.
      *
      * @param coder the transcoder for {@link D}
      * @param value the value of {@link R} to encode

@@ -39,8 +39,8 @@ import java.util.function.UnaryOperator;
 /**
  * Represents an inventory where items can be modified/retrieved.
  * <p>
- * Slots are written inside this inventory's monitor. A click ({@link #handleClick(Player, Click)}) holds the clicked
- * inventory's monitor and then the clicking player's one; the {@link InventoryClickEvent}s and
+ * Slots are written inside this inventory's monitor. A click ({@link #handleClick(Player, Click)}) holds the monitor
+ * of this inventory and then the clicking player's one; the {@link InventoryClickEvent}s and
  * {@link InventoryItemChangeEvent}s it raises are dispatched after the whole click, cursor included, has been committed
  * and both monitors are released. Two kinds of events are still dispatched inside a monitor: {@link EntityEquipEvent}
  * (inside the player inventory's one, before the click is committed) and the {@link InventoryItemChangeEvent}s of

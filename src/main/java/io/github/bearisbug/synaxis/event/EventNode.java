@@ -20,10 +20,10 @@ import java.util.function.Predicate;
  * the node will filter it based on the parameters given at creation and then propagate
  * it down to child nodes and listeners if it passes.
  * <p>
- * Threading: every method may be called from any thread. {@link #call(Event)} runs the listeners
- * synchronously on the calling thread. Adding or removing a listener, a child or a binding, and
- * {@link #map}/{@link #unmap}, apply to every call that starts after they returned; a call already
- * running may still dispatch through the tree as it was before.
+ * Threading: every method may be called from any thread, except that an {@code AsyncEvent} is called on a
+ * virtual thread. {@link #call(Event)} runs the listeners synchronously on the calling thread. Adding or removing a
+ * listener, a child or a binding, and {@link #map}/{@link #unmap}, apply to every call that starts after they
+ * returned; a call already running may still dispatch through the tree as it was before.
  *
  * @param <T> The event type accepted by this node
  */

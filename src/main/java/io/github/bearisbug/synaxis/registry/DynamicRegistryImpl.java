@@ -43,11 +43,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * <ul>
  *     <li>Writes ({@code register}, {@code remove}) are serialized on {@code REGISTRY_LOCK}, one lock shared by every
  *     registry, which also guards switching {@code registries} in {@link #registryDataPacket(Registries, boolean)}.</li>
- *     <li>Reads take no lock. They are consistent once the registry is frozen, or when every write happens-before
- *     {@code ServerProcess#start}.</li>
+ *     <li>Reads take no lock, except that building the registry data packet before the freeze copies the entries
+ *     under {@code REGISTRY_LOCK}. They are consistent once the registry is frozen, or when every write
+ *     happens-before {@code ServerProcess#start}.</li>
  *     <li>With {@code ServerConfig#registryUnsafeOps} or {@code insideTest} the registry is never frozen; a read
  *     racing a write can then see an id of -1 or a null entry.</li>
- *     <li>{@link #keys()} and {@link #values()} are live views: a write while one is iterated throws
+ *     <li>{@link #keys()} and {@link #values()} are live views: a write while one is iterated can throw
  *     {@link java.util.ConcurrentModificationException}.</li>
  * </ul>
  */

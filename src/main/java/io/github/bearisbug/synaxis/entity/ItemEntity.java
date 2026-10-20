@@ -266,8 +266,9 @@ public class ItemEntity extends Entity {
     }
 
     /**
-     * Sets the pickup delay of the ItemEntity, in wall clock time: {@code TimeUnit.SERVER_TICK} counts 50 ms per
-     * tick, so the item is pickable earlier than that many ticks when the ticks run late.
+     * Sets the pickup delay of the ItemEntity, in wall clock time: {@code TimeUnit.SERVER_TICK} counts 1000 /
+     * {@code synaxis.tps} ms per tick (50 ms at the default 20), so the item is pickable earlier than that many ticks
+     * when the ticks run late.
      *
      * @param delay        the pickup delay
      * @param temporalUnit the unit of the delay

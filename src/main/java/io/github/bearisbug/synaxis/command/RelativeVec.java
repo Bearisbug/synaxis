@@ -81,7 +81,7 @@ public record RelativeVec(Vec vec, CoordinateType coordinateType, boolean relati
      *
      * @param point The reference position used for computing relative coordinates. If null {@link Pos#ZERO}
      * @return (yaw, 0, pitch): the x of this vector plus the yaw of the point if x is relative, and its z plus the
-     * pitch of the point if z is relative
+     * pitch of the point if z is relative; this vector itself, y included, when no component is relative
      */
     public Vec fromView(@Nullable Pos point) {
         if (!relativeX && !relativeY && !relativeZ) {

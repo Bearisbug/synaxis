@@ -16,8 +16,9 @@ import java.util.List;
  * See <a href="https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol#Click_Container">the Minecraft wiki</a> for more information.
  * <p>
  * The callbacks are called by {@link AbstractInventory#handleClick(Player, Click)}, which holds the monitor of the
- * clicked inventory and then the one of the clicking player's {@link PlayerInventory}, and dispatches the events the
- * click raises once it has been committed. To simulate a click, call {@link #handleClick(Player, Click)} rather than a
+ * inventory it is called on (the open container for every click in a container window, its player inventory part
+ * included) and then the one of the clicking player's {@link PlayerInventory}, and dispatches the events the click
+ * raises once it has been committed. To simulate a click, call {@link #handleClick(Player, Click)} rather than a
  * callback; an override of a callback must not lock another inventory. {@code handleClick} does not dispatch
  * {@link io.github.bearisbug.synaxis.event.inventory.InventoryPreClickEvent}: only the engine's listener of the click
  * packet does.

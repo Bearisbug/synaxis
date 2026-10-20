@@ -13,6 +13,8 @@ import java.util.List;
 /**
  * Repeats its arguments until the input runs out, so it takes the rest of the input and must be the last argument of
  * a syntax.
+ *
+ * @param <T> the type of each item of the loop
  */
 public class ArgumentLoop<T> extends Argument<List<T>> {
 

@@ -14,7 +14,7 @@ class IntProviderTest {
     void weightedBoundsSpanTheDistribution() {
         final IntProvider weighted = new IntProvider.Weighted(WeightedList.of(
                 new WeightedList.Entry<>(new IntProvider.Uniform(7, 15), 1),
-                new WeightedList.Entry<>(new IntProvider.Constant(2), 3)));
+                new WeightedList.Entry<>(new IntProvider.Uniform(2, 4), 3)));
 
         assertEquals(2, weighted.minInclusive());
         assertEquals(15, weighted.maxInclusive());

@@ -8,12 +8,13 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）、`docs/DESIGN-PROD.md`（生产就绪分册）与 `docs/DESIGN-PLAY.md`（玩法架构分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*`，玩法架构侧写作 `REQ-PLAY-*`，对应用例写作 `TC-PLAY-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-10-19 |
+| 最后更新 | 2026-10-21 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-21 | 分支 `prod/r089-EVENT`（基于 `main` `17f2a2cfe1`），跟进 `docs/DESIGN-PROD.md` v0.9.119（RUN-089 组 EVENT），不登执行轮次（集成轮登记）；本组 6 次 Gradle 运行的读数写在各步里，不另存证据目录。**新增 §4「生产就绪 · RUN-089：EVENT」六条 `TC-PROD-1090`～`TC-PROD-1095`**，放在「生产就绪 · RUN-082」一节之后、「玩法架构 · RUN-077：P」之前：1090（同一个所有者再 `map` 一次直接返回缓存的节点，`EventListener.of` 当场拒收 null，`expireCount` 拒收小于 1 的值）、1091（`OutgoingTransferEvent` 拒收空白 host 与 1～65535 之外的端口）、1092（`ClientPingServerEvent` 拒收 null 延迟）、1093（`PlayerStabEvent` 的物品是派发时主手物品的快照）、1094（`setExceptionHandler(null)` 换回默认落点，落点字段 volatile）、1095（只改文档与纯重构的条目在三种线程模式下的回归与旧说法的清点）；1090～1093 有改动前的红，线程敏感的类三种模式各跑一次。**随代码改的旧用例**（只注明条数与行号，没复跑）：`TC-PROD-001` 第 1 步注明 `ExceptionManagerTest` RUN-089 起 7 条；`TC-PROD-901` 第 3 步 `EventNodeMapTest` 12 条、`TC-PROD-902` 第 3 步 `EntityEventTraitTest` 4 条、`TC-PROD-904` 第 1 步 `EventListenerExpirationTest` 7 条；「生产就绪 · RUN-081：EVENT」一节开头改动列表里 `EventNodeImpl.java`、`EventNodeLazyImpl.java`、`EventFilter.java` 的行号注明 RUN-089 起的新行号，代码内容不变 | Bearisbug |
 | 2026-10-21 | 分支 `m3/hud-top-left` 的 `086f2f9fc8` 在 GitHub Actions 上跑完全量门禁、Concurrency、Client mod、Client gametest 与远景 gametest 四组（草稿 PR #41），反证在临时分支上手动触发，登记 RUN-086（通过 1/1，证据 `docs/test-runs/RUN-086/`）。RUN-079 明细里的待人工项「远景 HUD 英文行宽」由 RUN-086 的截图量法与 `TC-WORLD-170` 接手 | Bearisbug |
 | 2026-10-20 | 跟进 `docs/DESIGN-M3.md` v0.55（分支 `m3/hud-top-left`，远景 HUD 行改画在左上角）。**新增 `TC-WORLD-170`**（「M3 · 远景（M3-G）」一节末尾）：V1 烘焙期间同机位截带 HUD 与不带 HUD 的两张图，左上角有变化、左下角原来那一行的位置没有，报告行 F31；反证是把行画回左下角，在临时分支上手动触发 synthetic 组。§2 的 REQ ↔ TC 表（`REQ-M3-025`）与 Gherkin 覆盖口径随之补上。RUN-079 的待人工项「远景 HUD 英文行宽」由本轮的截图核实与 `TC-WORLD-170` 接手 | Bearisbug |
 | 2026-10-19 | 分支 `m3/light-fixups` 的 `3415eef1e0` 在 GitHub Actions 上跑完全量门禁、Concurrency、Client mod 与 Client gametest，远景 gametest 四组在 `fd9627e0ad` 上跑完（草稿 PR #38），登记 RUN-083（通过 6/6，证据 `docs/test-runs/RUN-083/`）。`TC-WORLD-049`、`TC-WORLD-060`、`TC-WORLD-094`、`TC-WORLD-132`、`TC-WORLD-150` 的反证步骤只改了行号、没有重跑，登在 §6 明细里 | Bearisbug |
@@ -4489,7 +4490,7 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `./gradlew :test --tests '*ExceptionManagerTest*' --tests '*EventNodeExceptionTest*' --tests '*GlobalEventHandlerTest*' --tests '*PlayerPacketQueueIntegrationTest*' :server-app:test --tests '*HostExceptionIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`ExceptionManagerTest` 五条（`OutOfMemoryError` 交给 handler 而不是停机、`connection_id` 送到 handler、只实现单参方法的 handler 照样收到、没设 handler 时默认落点 10 s 内的异常只计数不写行、没设 handler 时默认落点不写 stderr）；`HostExceptionIntegrationTest#aListenerThatThrowsOnEveryPacketIsOneLineWithTheTickAndTheConnection`：监听器对 9 个包各抛一次，只有 1 行 ERROR，行内 `tick=1`、`connection_id=<该玩家的连接 id>`，且带栈；`#aThreadThatDiesOfAThrowableIsLoggedOnThatThread`：未捕获异常那一行的线程名是死掉的那条线程 `dying-thread`，`connection_id=-` |
+| 1 | `./gradlew :test --tests '*ExceptionManagerTest*' --tests '*EventNodeExceptionTest*' --tests '*GlobalEventHandlerTest*' --tests '*PlayerPacketQueueIntegrationTest*' :server-app:test --tests '*HostExceptionIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`ExceptionManagerTest` 五条（`OutOfMemoryError` 交给 handler 而不是停机、`connection_id` 送到 handler、只实现单参方法的 handler 照样收到、没设 handler 时默认落点 10 s 内的异常只计数不写行、没设 handler 时默认落点不写 stderr；RUN-081 起本类 6 条、RUN-089 起 7 条，后加的两条见 `TC-PROD-857`、`TC-PROD-1094`）；`HostExceptionIntegrationTest#aListenerThatThrowsOnEveryPacketIsOneLineWithTheTickAndTheConnection`：监听器对 9 个包各抛一次，只有 1 行 ERROR，行内 `tick=1`、`connection_id=<该玩家的连接 id>`，且带栈；`#aThreadThatDiesOfAThrowableIsLoggedOnThatThread`：未捕获异常那一行的线程名是死掉的那条线程 `dying-thread`，`connection_id=-` |
 | 2 | 反证有齿（两处一起改、一起还原）：`src/main/java/io/github/bearisbug/synaxis/entity/Player.java` 的 `interpretPacketQueue` 里 `handleException(e, playerConnection.connectionId())` 改回 `handleException(e)`；`src/main/java/io/github/bearisbug/synaxis/exception/ExceptionManager.java` 默认 handler 的 `LOGGER.error(…)` 上一行插 `e.printStackTrace();`（**不要删掉 `LOGGER.error` 那行**：`LOGGER` 变成无用字段，Error Prone 的 `UnusedVariable` 会让 `:compileJava` 先红）。重跑第 1 步，再 `git checkout --` 这两个文件 | 红 2 条：`ExceptionManagerTest.theDefaultHandlerDoesNotPrintToStandardError` 断在「the default sink is SLF4J, a bare stack trace bypasses the log configuration ==> expected: <false> but was: <true>」（`ExceptionManagerTest.java:111`；RUN-081 起本类多了 2 个导入，在 `:113`）；`HostExceptionIntegrationTest.aListenerThatThrowsOnEveryPacket…` 断在 connection_id 那条断言（`HostExceptionIntegrationTest.java:86`，RUN-081 起为 `:88`），消息就是那一行 `Unhandled exception: tick=1 connection_id=- (1 IllegalStateException since the last report)`；还原后复绿 |
 | 3 | 反证限流有齿：`server-app/src/main/java/io/github/bearisbug/synaxis/app/HostExceptionHandler.java` 的 `budgets.computeIfAbsent(…)` 上一行插 `budgets.remove(e.getClass());`（每次都拿一份新预算），只重跑第 1 步的 `:server-app:test` 那半，再 `git checkout --` 该文件 | 红 1 条：`aListenerThatThrowsOnEveryPacket…` 断在「nine failures of one kind inside 10 s are one line ==> expected: <1> but was: <9>」（`HostExceptionIntegrationTest.java:83`，RUN-081 起为 `:85`）；还原后复绿 |
 | 4 | 反证引擎默认落点的限流有齿：`src/main/java/io/github/bearisbug/synaxis/exception/ExceptionManager.java` 默认 handler 的 `if (now - last < DEFAULT_REPORT_INTERVAL) return;` 改成 `if (now - last < 0) return;`（每次都写一行），只跑 `:test --tests '*ExceptionManagerTest*'`，再 `git checkout --` 该文件 | 红 1 条：`theDefaultHandlerWritesAtMostOneLinePerIntervalAndCountsTheRest` 断在「inside one interval the exceptions are counted for the next line, not written」（`ExceptionManagerTest.java:93`，RUN-081 起在 `:95`；每次写行都把计数清零）；还原后复绿 |
@@ -12388,11 +12389,11 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 对应 `REQ-PROD-022`、`REQ-PROD-019`、`REQ-PROD-013`、`REQ-PROD-008`（`docs/DESIGN-PROD.md` v0.9.98；`API-PROD-016` 线程契约、`API-PROD-017`、`API-PROD-018`）。分支 `prod/r081-EVENT`，基于 `main` `965c3bddae`。改动（引擎与宿主的签名不变，`:plugin-api` 只改 Javadoc）：
 
-- `EventNodeImpl#checkListenable`（`EventNodeImpl.java:362`）：接口与不是 `RecursiveEvent` 的抽象类抛 `IllegalArgumentException`；`addListener` 在进全局锁之前判（`:168`），`register` 逐个事件类型判（`:223`）；`EventNodeLazyImpl` 的 `addListener` 与 `register` 在登记进持有方之前判（`EventNodeLazyImpl.java:34`、`:53`）；宿主 `PluginEventsImpl#addListener` 在作用域检查之后、建档位节点之前判（`PluginEventsImpl.java:73`）。
-- 映射节点：`EventNodeLazyImpl` 的 `addChild`、`addListener`、`register` 把登记（`ensureMap`）与添加放进同一次 `synchronized (GLOBAL_CHILD_LOCK)`，`mapped` 改为锁守护的普通字段，删去 `VarHandle` 与两参 `addListener` 的覆写；持有方的 `registeredMappedNode` 改为只在锁内读写的 `final WeakHashMap`（`EventNodeImpl.java:45`），`unmap` 原地删除。
-- `EventFilter.INSTANCE`（`EventFilter.java:47`）：实体没有实例的 `EntityInstanceEvent` 给 null，其余照旧取事件自己的 `getInstance()`；`EntityInstanceEvent#getInstance()` 的断言保留。
+- `EventNodeImpl#checkListenable`（`EventNodeImpl.java:362`，RUN-089 起 `:358`）：接口与不是 `RecursiveEvent` 的抽象类抛 `IllegalArgumentException`；`addListener` 在进全局锁之前判（`:168`，RUN-089 起 `:170`），`register` 逐个事件类型判（`:223`，RUN-089 起 `:222`）；`EventNodeLazyImpl` 的 `addListener` 与 `register` 在登记进持有方之前判（`EventNodeLazyImpl.java:34`、`:53`，RUN-089 起 `:40`、`:59`）；宿主 `PluginEventsImpl#addListener` 在作用域检查之后、建档位节点之前判（`PluginEventsImpl.java:73`）。
+- 映射节点：`EventNodeLazyImpl` 的 `addChild`、`addListener`、`register` 把登记（`ensureMap`）与添加放进同一次 `synchronized (GLOBAL_CHILD_LOCK)`，`mapped` 改为锁守护的普通字段，删去 `VarHandle` 与两参 `addListener` 的覆写；持有方的 `registeredMappedNode` 改为只在锁内读写的 `final WeakHashMap`（`EventNodeImpl.java:45`，RUN-089 起 `:47`），`unmap` 原地删除。
+- `EventFilter.INSTANCE`（`EventFilter.java:47`，RUN-089 起 `:46`）：实体没有实例的 `EntityInstanceEvent` 给 null，其余照旧取事件自己的 `getInstance()`；`EntityInstanceEvent#getInstance()` 的断言保留。
 - `EventListener.Builder#build`：有 `expireCount` 时先减计数、再调 handler（`EventListener.java:173`～`:176`），计数已用完返回 `EXPIRED`、不调 handler。
-- `EventNodeImpl#addChild` 一律拒绝已有父节点的节点（`:139`），`getParent()` 直接返回（`:276`），不再引用 `JvmFlags`。
+- `EventNodeImpl#addChild` 一律拒绝已有父节点的节点（`:139`，RUN-089 起 `:141`），`getParent()` 直接返回（`:276`，RUN-089 起 `:275`），不再引用 `JvmFlags`。
 - `PacketListenerManager#processClientPacket`：只在 `currState == PLAY`、`nextState == currState` 且不是 keep-alive、ping、Cookie 应答时派发 `PlayerPacketEvent`（`PacketListenerManager.java:244`，集合在 `:120`）。
 - Javadoc：`EventNode#addListener` 两个重载、`#call`、`#callCancellable`、`EventNode.tag`、`ListenerHandle#call`、`RecursiveEvent`、`EntityInstanceEvent`、`EventFilter.INSTANCE`、`EventListener.Builder#expireCount`、`TagReadable`、`TagWritable`，`PacketListenerManager` 的三个 setter；`PlayerPacketEvent`、`PlayerPacketOutEvent`、`PlayerSkinInitEvent`、`PlayerSkin`、`PlayerSpawnEvent`、`PlayerDisconnectEvent`、`AsyncPlayerPreLoginEvent`、`PlayerTickEndEvent`、`PlayerUseItemEvent`；`:plugin-api` 的 `PluginEvents`、`SynaxisPlugin` 与 `package-info` 的线程契约；`game-rush` `RushPlugin` 的一句注释。
 
@@ -12419,7 +12420,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | --- | --- | --- |
 | 1 | 跑 jcstress 场景 `EventNodeLazyEnsureMapTest`（第 2 次运行，默认档：1 个普通 fork、5 个 stress fork，每 fork 5 轮、每轮 1 s） | `1 planned; 1 passed, 0 failed`：全部配置合计 `true, true` 2,592,205 次（100%），三种禁止结果都是 0 |
 | 2 | 改动前的红（第 1 次运行） | `[FAILED] io.github.bearisbug.synaxis.event.EventNodeLazyEnsureMapTest`：`false, true` 12,794 次（0.72%）、`true, false` 13,862 次（0.78%）、`false, false` 0、`true, true` 1,746,349 次（98.50%）。抢输标志的线程不等登记就加完监听器返回，紧接着的派发里没有这个映射节点 |
-| 3 | 跑 `<E>.event.EventNodeMapTest`、`<E>.event.EventNodeLazyMappedTest`、`<E>.event.EventNodeMappedConcurrencyTest`、`<E>.instance.InstanceUnregisterIntegrationTest`（第 2 次运行） | 依次 11、5、1、4 条 0 失败。前两个类原先锁外读 `registeredMappedNode.containsKey` 的 5 处（`EventNodeMapTest` 的 `lazyRegistration` 两处，`EventNodeLazyMappedTest` 的三处）改由 `synchronized (EventNodeImpl.GLOBAL_CHILD_LOCK)` 包住的辅助方法 `registered` 读：`WeakHashMap` 的读会清理过期条目、改动内部结构 |
+| 3 | 跑 `<E>.event.EventNodeMapTest`、`<E>.event.EventNodeLazyMappedTest`、`<E>.event.EventNodeMappedConcurrencyTest`、`<E>.instance.InstanceUnregisterIntegrationTest`（第 2 次运行） | 依次 11、5、1、4 条 0 失败（`EventNodeMapTest` RUN-089 起 12 条，加的那条见 `TC-PROD-1090`）。前两个类原先锁外读 `registeredMappedNode.containsKey` 的 5 处（`EventNodeMapTest` 的 `lazyRegistration` 两处，`EventNodeLazyMappedTest` 的三处）改由 `synchronized (EventNodeImpl.GLOBAL_CHILD_LOCK)` 包住的辅助方法 `registered` 读：`WeakHashMap` 的读会清理过期条目、改动内部结构 |
 
 后置：无。
 
@@ -12431,7 +12432,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | --- | --- | --- |
 | 1 | 跑 `<E>.event.EventFilterInstanceIntegrationTest`（第 2 次运行） | 2 条 0 失败。`anEntityWithoutInstance…`：`EventFilter.INSTANCE.getHandler(事件)` 为 null；在 `process.eventHandler()` 上派发后实例节点的监听器 0 次，`after` 1 次，没有记下任何异常。`anEventCarryingItsOwnInstanceIsRoutedThere`：玩家在实例 A，`PlayerBlockPlaceEvent` 带实例 B，只有 B 的节点收到（A 0 次、B 1 次） |
 | 2 | 改动前的红（第 1 次运行） | `anEntityWithoutInstance…` 红在 `EventFilterInstanceIntegrationTest.java:52`：`java.lang.AssertionError: EntityInstanceEvent is only supported on events where the entity's instance is non-null!`（同一个断言在派发里由根节点接住，交给异常处理器后放弃其余派发，`after` 收不到）；`anEventCarrying…` 绿，它钉的是事件覆写了 `getInstance()` 时路由不变 |
-| 3 | 跑 `<E>.event.trait.EntityEventTraitTest`（第 2 次运行） | 3 条 0 失败：直接调 `getInstance()` 的断言保留，`anEntityWithoutInstanceTripsTheInstanceScopedContract` 照绿 |
+| 3 | 跑 `<E>.event.trait.EntityEventTraitTest`（第 2 次运行） | 3 条 0 失败（RUN-089 起 4 条，加的那条见 `TC-PROD-1095`）：直接调 `getInstance()` 的断言保留，`anEntityWithoutInstanceTripsTheInstanceScopedContract` 照绿 |
 
 后置：无。
 
@@ -12452,7 +12453,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `<E>.event.EventListenerExpirationTest`（第 2 次运行） | 6 条 0 失败。`expireCountHolds…`：测试线程那次返回 `EXPIRED`、handler 计数 1；放开之后平台线程那次也返回 `EXPIRED`，计数仍是 1。`aThrowingHandlerUsesUpItsRun`：第一次派发抛 `IllegalStateException`，第二次返回 `EXPIRED`，handler 共调 1 次。原有的 `expireCountReportsExpiredOnItsLastRun`（`expireCount(2)`：`SUCCESS`、`EXPIRED`，handler 2 次）照绿 |
+| 1 | 跑 `<E>.event.EventListenerExpirationTest`（第 2 次运行） | 6 条 0 失败（RUN-089 起 7 条，加的那条见 `TC-PROD-1090`）。`expireCountHolds…`：测试线程那次返回 `EXPIRED`、handler 计数 1；放开之后平台线程那次也返回 `EXPIRED`，计数仍是 1。`aThrowingHandlerUsesUpItsRun`：第一次派发抛 `IllegalStateException`，第二次返回 `EXPIRED`，handler 共调 1 次。原有的 `expireCountReportsExpiredOnItsLastRun`（`expireCount(2)`：`SUCCESS`、`EXPIRED`，handler 2 次）照绿 |
 | 2 | 改动前的红（第 1 次运行） | `expireCountHolds…` 红在 `EventListenerExpirationTest.java:57`：`The second run found no slot left ==> expected: <1> but was: <2>`（先调 handler 再减计数，两次都调到 handler）；`aThrowingHandler…` 红：第二次派发又调了 handler，`java.lang.IllegalStateException: boom` 从 `:72` 经 `:77` 抛出（原先抛异常不减计数） |
 
 后置：无。
@@ -13923,6 +13924,94 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | 1 | 跑 `io.github.bearisbug.synaxis.ServerProcessStartTickingTest`（第 2 次运行） | 3 条 0 失败。`tickThreadsStartedBeforehandAreKeptAndOnlyTheTickerStarts`：`start` 之后调 `process.dispatcher().start()`，再调 `startTicking()` 不抛；每 tick 的任务跑在 `TickSchedulerThread` 上，先起的 tick 线程都还活着；第二次调 `startTicking()` 抛 `IllegalStateException`；`stop()` 返回时 tick 调度线程与 tick 线程都已结束。另两条（`TC-PROD-853` 第 1 步）照绿：没起过 tick 线程的进程由 `startTicking()` 两样都起 |
 | 2 | 改动前的红：`src/main` 取 `main` `9c4ad17a64` 的，测试是本轮的（第 1 次运行） | `3 tests completed, 1 failed`：新加的那条红在 `ServerProcessStartTickingTest.java:68` 的 `startTicking()`，`java.lang.IllegalThreadStateException`，栈经 `ServerProcessImpl.startTicking(ServerProcessImpl.java:338)` 到 `ThreadDispatcherImpl.start(ThreadDispatcherImpl.java:144)` 的 `Thread.start` |
 | 3 | 第 1 步与 `ShutdownSequenceTest`、`TickSchedulerThreadTest`，`:server-app:test` 的 `io.github.bearisbug.synaxis.app.ShutdownSequenceTest`、`io.github.bearisbug.synaxis.app.shard.ShardWorldRelightTest`、`ShardWorldAssemblyTest` 同批，默认模式、加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`、再加 `-Dsynaxis.thread-provider=grid` 各跑一次（第 2、3、4 次运行） | 三次都是 3、11、2、8、3、10 条，0 失败。这三次在 `9c4ad17a64` 之上跑，光照会话的两份测试那时都手工起 tick 调度线程，靠 `ServerProcessImpl.java:646` 的认领记下它；`06ce46f16a`（光照会话 PR #36）起只剩 `ShardWorldRelightTest` 第 216 行一处（`docs/DESIGN-PROD.md` §28.3），本轮变基到它之上后由 CI 跑 |
+
+后置：`git status --short` 只剩本轮的改动。
+
+### 生产就绪 · RUN-089：EVENT（`map` 的缓存命中、`of` 与 `expireCount` 的入参、转服与 ping 事件拒收坏值、戳刺物品的快照、异常落点的可见性与事件类的文档）
+
+对应 `REQ-PROD-022`、`REQ-PROD-031`、`REQ-PROD-037`、`REQ-PROD-015`、`REQ-PROD-019`、`REQ-001`（`docs/DESIGN-PROD.md` v0.9.119；`API-PROD-021`、`API-PROD-013`）。分支 `prod/r089-EVENT`，基于 `main` `17f2a2cfe1`。改动（引擎签名不变，`:plugin-api` 与 `:protocol` 不动）：
+
+- `EventNodeImpl#map`：在全局锁里先查 `mappedNodeCache`，命中直接返回已有节点，没命中才造 `EventNodeLazyImpl`；删掉两条只查刚造出的节点、永远不触发的检查。`invalidateEvent` 只作废已有的 handle（`handleMap.get`），不再为没人查过的事件类型 `computeIfAbsent` 出空 handle。映射分支直接调 `EventFilter#getHandler`，`@ApiStatus.Internal` 的 `EventFilter#castHandler` 删除；删掉 `invalidateEventsFor` 里过时的 `// TODO bindings?`。
+- `EventListener.of`：先 `requireNonNull(eventType, "eventType")`、`requireNonNull(listener, "listener")`，再委托 `builder(type).handler(listener).build()`；`Builder#expireCount` 对小于 1 的值抛 `IllegalArgumentException`。
+- `OutgoingTransferEvent`：构造器、`setHost`、`setPort` 拒收空白 host 与 1～65535 之外的端口。
+- `ClientPingServerEvent`：两参构造器委托三参，三参构造器、`setDelay`、`addDelay` 对 null 抛 `NullPointerException`（消息 `delay`）；删掉等于 `Duration.ZERO` 的 `DEFAULT_DELAY`。
+- `PlayerStabEvent`：构造时读一次主手物品存进字段，`getItemStack()` 返回它。
+- `ExceptionManager`：落点字段改为 `volatile`、初值 `DEFAULT_HANDLER`，`setExceptionHandler` 用 `requireNonNullElse`，`getExceptionHandler` 直接返回字段。
+- 纯整理：`EntityDamageEvent`、`EntityItemMergeEvent` 的字段改为 `LivingEntity`、`ItemEntity`，getter 不再强转；`GameEventImpl` 的注册表 loader 改为一个 lambda，删掉 `createImpl`、私有构造器与两段 Javadoc，`get` 改为包内可见（与 `PotionTypeImpl` 一致）；`GameEvent#registry()` 去掉 `@Nullable`。
+- Javadoc：`EventNode` 类注释的线程语义与三个示例（`Pos` 用 `x()`、`z()`，`value` 示例改用 `getGameMode()`），`EventNodeImpl.GLOBAL_CHILD_LOCK` 的字段注释，`EventNodeLazyImpl` 给维护者的覆写规则，`EventListener#run` 与 `Result`，`EventBinding#eventTypes`、`#consumer`，`AddEntityToInstanceEvent`、`InventoryEvent#getInventory`、`EditBookEvent`、`EntityTickEvent`、`InstanceChunkLoadEvent`、`InstanceUnregisterEvent`、`CreativeInventoryActionEvent`、`InventoryPreClickEvent`、`AsyncPlayerConfigurationEvent`、`PlayerCommandEvent`、`PlayerGameModeRequestEvent`、`PlayerGameRulesRequestEvent`、`PlayerSetGameRulesEvent`、`PlayerStabEvent`、`ClientPingServerEvent`、`ExceptionManager#setExceptionHandler`、`TickMonitor`、`GameEvent`、`GameEventImpl`。
+
+测试：根项目给已有的类加用例，不加新类：`EventNodeMapTest` 11 → 12、`EventListenerOfTest` 4 → 6、`EventListenerExpirationTest` 6 → 7、`ClientPingServerEventTest` 5 → 6、`PlayerEventTraitIntegrationTest` 3 → 4、`PlayerActionListenerIntegrationTest` 2 → 3、`ExceptionManagerTest` 6 → 7、`GameEventTest` 1 → 2、`EntityEventTraitTest` 3 → 4；`EventFilterConstantsTest` 删掉测 `castHandler` 的一条（4 → 3）。都不要数据库。`<E>` 即 `io.github.bearisbug.synaxis`；「跑 `<类>`」即 `./gradlew :test --rerun --tests '<类全名>' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`server-app` 的类用 `:server-app:test`），「4 线程严格」再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`，「严格 grid」再加 `-Dsynaxis.thread-provider=grid`。本机每次 Gradle 单次借本机重活锁，共 6 次运行：第 1 次改动前的红（`src/main` 取 `17f2a2cfe1` 的，测试是本轮的），第 2、3、4 次修后在默认、4 线程严格、严格 grid 下各跑一次；第 5 次是 `of` 补上 `eventType` 判空之前的红（只跑 `EventListenerOfTest`），第 6 次补上之后在默认模式下跑 `<E>.event.*` 与 `:compileJava`、`:testNamingCheck`、`:forbiddenImportsCheck`（`EventListenerOfTest` 不是线程敏感的类，没在另两种模式下重跑）。
+
+#### `TC-PROD-1090` 事件树：同一个所有者再 `map` 一次直接返回缓存的节点；`EventListener.of` 当场拒收 null；`expireCount` 拒收小于 1 的值 — 对应 `REQ-PROD-022` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`aMappedOwnerIsNamedOnlyWhenItsNodeIsBuilt` 的所有者是一个局部类，`toString()` 每调一次计数加 1（映射节点拿所有者的 `toString()` 当名字，只在造节点时调）；过滤器 `EventFilter.from(EventNodeTest.EventTest.class, Owner.class, _ -> owner)`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<E>.event.EventNodeMapTest`（第 2 次运行） | 12 条 0 失败。`aMappedOwnerIsNamedOnlyWhenItsNodeIsBuilt`：`EventNode.all("main")` 上对同一个所有者 `map` 两次返回同一个节点，所有者的 `toString()` 共调 1 次。原有 11 条照绿，`uniqueMapping`、`mapAfterNodeCollected`、`remapAfterUnmap` 钉住缓存的其余行为 |
+| 2 | 跑 `<E>.event.EventListenerOfTest`（第 6 次运行；第 2 次运行时本类 5 条，0 失败） | 6 条 0 失败。`aMissingHandlerIsRefusedWhenTheListenerIsMade`：`EventListener.of(EventTest.class, null)` 当场抛 `NullPointerException`，消息 `listener`。`aMissingEventTypeIsRefusedWhenTheListenerIsMade`：`EventListener.of(null, _ -> {})` 当场抛 `NullPointerException`，消息 `eventType`（`builder` 不判 null，`of` 不判就要到 `addListener` 才抛）。原有 4 条照绿：普通事件 `SUCCESS`；已取消的可取消事件 `INVALID`、不进 handler；不可取消的 `RecursiveEvent` 照常进 handler；已取消的可取消 `RecursiveEvent` 返回 `INVALID` |
+| 3 | 跑 `<E>.event.EventListenerExpirationTest`（第 2 次运行） | 7 条 0 失败。`expireCountRefusesLessThanOneRun`：`expireCount(0)`、`expireCount(-1)` 抛 `IllegalArgumentException`，消息依次 `expireCount must be at least 1, was 0`、`expireCount must be at least 1, was -1`。`expireCountZeroNeverExpires`（不调 `expireCount` 的监听器 5 次都是 `SUCCESS`）照绿 |
+| 4 | 改动前的红（第 1、5 次运行） | 第 1 次运行三条新用例红：`aMappedOwner…` 红在 `EventNodeMapTest.java:238`，`the second map returns the cached node without building another one ==> expected: <1> but was: <2>`（命中缓存前先造了一个新节点）；`aMissingHandler…` 红在 `EventListenerOfTest.java:77`，`expireCountRefuses…` 红在 `EventListenerExpirationTest.java:118`，都是 `Expected … to be thrown, but nothing was thrown.`；三个类其余用例绿。第 5 次运行（`of` 只判 `listener`）`aMissingEventType…` 红在 `EventListenerOfTest.java:85`，`Expected java.lang.NullPointerException to be thrown, but nothing was thrown.`；本类其余 5 条绿 |
+
+后置：无。
+
+#### `TC-PROD-1091` 转服事件拒收空白 host 与 1～65535 之外的端口，被拒的值不改事件；插件转服照旧 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。玩家经 `env.createPlayer` 进空实例，事件以 `example.com:25565` 构造。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<E>.event.player.PlayerEventTraitIntegrationTest`（第 2 次运行） | 4 条 0 失败。`aTransferRefusesABlankHostOrAPortOutOfRange`：`setPort` 取 0、−1、65536、70000 都抛 `IllegalArgumentException`，消息以 `got <端口>` 结尾；`setHost(" ")` 抛同一个异常；之后 host 仍是 `example.com`、port 仍是 25565；`setPort(1)`、`setPort(65535)` 照收；构造器给空串 host 或端口 0 都抛 `IllegalArgumentException`。原有的 `aTransferRefusesAMissingHostButKeepsItsPlayer`（`setHost(null)` 抛 `NullPointerException`）照绿 |
+| 2 | 跑 `<E>.entity.player.PlayerTransferOutIntegrationTest` 与 `server-app` 的 `<E>.app.transfer.PluginTransfersIntegrationTest`（第 2 次运行） | 依次 3、11 条 0 失败：合法地址的转服、被取消的转服、插件面的冷却与 5 s 超时都不受影响 |
+| 3 | 改动前的红（第 1 次运行） | `aTransferRefuses…` 红在 `PlayerEventTraitIntegrationTest.java:65`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（端口 0 照收）；本类其余 3 条绿 |
+
+后置：无。
+
+#### `TC-PROD-1092` ping 事件拒收 null 延迟：构造器与两个 setter 当场抛，延迟不变 — 对应 `REQ-PROD-037` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。事件的连接为 null（只测事件对象，不派发）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<E>.event.server.ClientPingServerEventTest`（第 2 次运行） | 6 条 0 失败。`aMissingDelayIsRefusedWhenItIsSet`：`setDelay(null)`、`addDelay(null)` 都抛 `NullPointerException`，消息 `delay`，之后延迟仍是 `Duration.ZERO`；三参构造器传 null 延迟同样抛、消息 `delay`。原有 5 条照绿（两参构造器的延迟是 `Duration.ZERO`、`noDelay()` 清回 `Duration.ZERO`） |
+| 2 | 跑 `<E>.listener.StatusRequestGuardIntegrationTest`（第 2 次运行） | 2 条 0 失败：同一连接的第二个 ping 照旧直接关闭（`docs/DESIGN.md` §16 那一行） |
+| 3 | 改动前的红（第 1 次运行） | `aMissingDelay…` 红在 `ClientPingServerEventTest.java:72`：`Expected java.lang.NullPointerException to be thrown, but nothing was thrown.`（`setDelay(null)` 照收，原先要到读线程上的 `StatusListener` 调 `getDelay().isZero()` 才抛）；本类其余 5 条绿 |
+
+后置：无。
+
+#### `TC-PROD-1093` 戳刺事件的物品是派发时主手物品的快照，监听器之后换手持不影响 — 对应 `REQ-PROD-022` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。玩家在平坦实例，主手 `NETHERITE_SPEAR`（带 `PIERCING_WEAPON` 组件）；`env.trackEvent(PlayerStabEvent.class, EventFilter.PLAYER, player)` 收集事件。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<E>.listener.PlayerActionListenerIntegrationTest`（第 2 次运行） | 3 条 0 失败。`testStabKeepsTheItemItWasCalledWith`：`PlayerActionListener.playerActionListener` 处理一个 `STAB` 动作包后把主手换成钻石，收集到恰 1 个事件，它的 `getItemStack()` 等于那把矛。原有 2 条照绿：主手不带组件不派发，带组件派发 1 次 |
+| 2 | 改动前的红（第 1 次运行） | `testStabKeeps…` 红在 `PlayerActionListenerIntegrationTest.java:63`：`expected: <ItemStackImpl[material=minecraft:netherite_spear, …]> but was: <ItemStackImpl[material=minecraft:diamond, …]>`（原先每次现读主手）；其余 2 条绿 |
+
+后置：无。
+
+#### `TC-PROD-1094` 异常落点：`setExceptionHandler(null)` 换回默认落点；落点字段 volatile、初值即默认落点 — 对应 `REQ-PROD-015` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。读路径懒写默认落点与并发 `setExceptionHandler` 的交错没有确定性的复现手段，第 1 步只钉住契约，改动前后都绿；修法由第 2 步核对。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<E>.exception.ExceptionManagerTest`、`<E>.TickSchedulerThreadTest` 与 `server-app` 的 `<E>.app.HostExceptionIntegrationTest`（第 1、2 次运行；第 1 次只跑了 `ExceptionManagerTest`） | 依次 7、2、5 条 0 失败。`settingNoHandlerRestoresTheDefaultOne`：设一个落点后再 `setExceptionHandler(null)`，`getExceptionHandler()` 与一个新建、从没设过落点的 `ExceptionManager` 返回同一个对象。`TC-PROD-857` 第 1、2 步与 `TC-PROD-001` 第 1 步的这三个类照绿 |
+| 2 | `grep -n 'exceptionHandler' src/main/java/io/github/bearisbug/synaxis/exception/ExceptionManager.java` | 字段一行是 `private volatile ExceptionHandler exceptionHandler = DEFAULT_HANDLER;`；`setExceptionHandler` 里是 `Objects.requireNonNullElse(exceptionHandler, DEFAULT_HANDLER)`；`getExceptionHandler` 只有 `return this.exceptionHandler;`，没有 `== null` 的分支 |
+
+后置：无。
+
+#### `TC-PROD-1095` 回归：只改文档与纯重构的条目，改到的类在三种线程模式下各跑一次，旧说法都已换掉 — 对应 `REQ-PROD-019`、`REQ-PROD-022`、`REQ-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。类集合：根项目 `<E>.event.*` 全包（含子包共 44 个类）、`<E>.exception.ExceptionManagerTest`、`<E>.gameevent.GameEventTest`、`<E>.listener.PlayerActionListenerIntegrationTest`、`<E>.listener.StatusRequestGuardIntegrationTest`、`<E>.entity.player.PlayerTransferOutIntegrationTest`、`<E>.entity.ItemEntityClaimIntegrationTest`（合并事件）、`<E>.entity.LivingEntityDeathIntegrationTest`（伤害事件）、`<E>.instance.InstanceUnregisterIntegrationTest`、`<E>.TickSchedulerThreadTest`；`server-app` 的 `<E>.app.transfer.PluginTransfersIntegrationTest`、`<E>.app.HostExceptionIntegrationTest`、`<E>.app.PluginEventsIntegrationTest`。`:test` 与 `:server-app:test` 在同一次 Gradle 里，带 `--continue`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 默认模式跑上面的类，同次 `:compileJava`、`:testNamingCheck`、`:forbiddenImportsCheck`（第 2 次运行） | 根项目 53 个类 229 条、`server-app` 3 个类 26 条，0 失败 0 跳过；根项目、`synx`、`baker`、`game-rts`、`server-app` 的主代码编译过（Error Prone `-Werror`，含 `InvalidLink`、`InvalidThrows`、`RemoveUnusedImports`）；两个门过。其中 `GameEventTest#theRegistryHoldsTheVanillaGameEvents`：`GameEvent.values()` 61 项、每项 `registry()` 非 null，`fromKey("block_activate")` 就是 `GameEvent.BLOCK_ACTIVATE`，id 0、键 `minecraft:block_activate`（改动前也绿，第 1 次运行）；`EntityEventTraitTest#theDamageAndMergeEventsReportTheirEntity`：两个事件的 `getEntity()` 返回构造时给的实体。第 6 次运行（`of` 补上 `eventType` 判空之后）默认模式重跑 `<E>.event.*`：44 个类 192 条 0 失败，`:compileJava` 与两个门过 |
+| 2 | 4 线程严格跑第 1 步的类（第 3 次运行） | 同第 1 步的类与条数：根项目 53 个类 229 条、`server-app` 3 个类 26 条，0 失败 0 跳过 |
+| 3 | 严格 grid 跑第 1 步的类（第 4 次运行） | 同第 1 步的类与条数：根项目 53 个类 229 条、`server-app` 3 个类 26 条，0 失败 0 跳过 |
+| 4 | `grep -rnE 'Kinda wacky\|Should this have sanity\|vanilla 1\.17\|netty rewrite\|Can be used attach data\|inventory that was clicked\|Same event instance used\|PiercingWeapon\} enchantment\|starting by\|Player::isCreative\|getX\(\) > 0\|from weather to bed use\|TODO bindings\|unmodifiable copy\|or null if not found' src/main/java/io/github/bearisbug/synaxis/event src/main/java/io/github/bearisbug/synaxis/gameevent`；`grep -rn castHandler src/main/java src/test/java` | 都无输出。在 `17f2a2cfe1` 上前一条命中 17 行（`EventNode.java` 3 行、`AsyncPlayerConfigurationEvent.java` 3 行、`ClientPingServerEvent.java` 2 行、`GameEvent.java` 2 行，`EventNodeImpl`、`EntityTickEvent`、`InventoryEvent`、`AddEntityToInstanceEvent`、`PlayerStabEvent`、`PlayerCommandEvent`、`GameEventImpl` 各 1 行），后一条命中 4 行（`EventFilter.java`、`EventNodeImpl.java` 各 1 行，`EventFilterConstantsTest.java` 2 行） |
+| 5 | `grep -c 'Threading: every method may be called from any thread' src/main/java/io/github/bearisbug/synaxis/event/EventNode.java`；`grep -n 'JVM-wide' src/main/java/io/github/bearisbug/synaxis/event/EventNodeImpl.java` | 前者 `1`；后者 1 行，在 `GLOBAL_CHILD_LOCK` 声明之上，写明同一 JVM 里所有进程的事件树共用这把锁及它守护的五样东西 |
 
 后置：`git status --short` 只剩本轮的改动。
 
@@ -15897,6 +15986,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 STORE，写权状态机的锁与纪元、退避的叫醒、登出快照的时机、`commitTogether` 的参数结果与提交冻结、`saveNow` 的快照线程、插件任务的日志预算、Redis URL 的 scheme 与事务的回滚（`REQ-PROD-005`～`REQ-PROD-008`、`REQ-PROD-021`，v0.9.105）→ TC-PROD-980～TC-PROD-989；动了 `PlayerStore` 的 `fence`、`finished`、`drain`、`backOff`、`submit` 或 `loadWithin`、`admitted` 里比对纪元的两处，跑 TC-PROD-980～TC-PROD-982 与 TC-PROD-149，三种线程模式各一次；动了 `attach` 挂登出监听器的那一处，跑 TC-PROD-983 与 `ShutdownSave*IntegrationTest`；动了 `commitTogether` 或 `isFrozen`，跑 TC-PROD-984、TC-PROD-985、TC-PROD-148、TC-PROD-835、TC-PROD-836 与 TC-PROD-161；动了 `saveNow`，跑 TC-PROD-986 与改到所属线程调用的 TC-PROD-145 一类旧用例（`PlayerStoreIntegrationTest`、`StoreMetricsIntegrationTest`、`PlayerDataIntegrationTest` 整类）；动了 `PluginSchedulerImpl#guarded` 或预算的分配，跑 TC-PROD-987 与 TC-PROD-140、TC-PROD-840；动了 `RedisLink#connect` 的校验，跑 TC-PROD-988；动了 `Sql`、`PostgresBackend` 的 `load` / `write` 或 `StoreHousekeeping#run`，跑 TC-PROD-989 与 TC-PROD-144。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 PLAYHOST，插件通道只收 PLAY 的负载、`minecraft:` 命名空间与非法通道名、准入的坏答案、插件 id 唯一、停机收回逐个隔离（`REQ-M2-003`、`REQ-M2-004`、`REQ-M2-006`、`REQ-M2-024`、`REQ-011`、`REQ-PROD-008`）→ TC-PROD-930～TC-PROD-934；动了 `PluginChannelRouter` 的路由、`PluginHost#registerHostChannel` 的调用方或 `SceneService#receive` 就跑 TC-PROD-930、TC-PROD-931 第 1 步，三种线程模式各一次；动了引擎 `PluginMessageListener` 跑 TC-PROD-931 第 2、4 步；动了 `AdmissionGate` 调 `admit` 的那一段、`AdmissionRegistry#register` 或 `Admission` 的两个 record 跑 TC-PROD-932；动了 `PluginHost#enable` 的校验跑 TC-PROD-933；动了 `PluginHost#disableAll` 跑 TC-PROD-934。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-082，`startTicking` 遇到已经起了的 tick 线程（`REQ-013`、`REQ-PROD-008`，v0.9.107）→ TC-PROD-990；动了 `ServerProcessImpl#startTicking` 或 `ThreadDispatcherImpl#start`、`#isAlive` 就跑 TC-PROD-990 与 TC-PROD-853
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-089 组 EVENT，`map` 的缓存命中、`of` 与 `expireCount` 的入参、转服与 ping 事件拒收坏值、戳刺物品的快照、异常落点的可见性与事件类的文档（`REQ-PROD-022`、`REQ-PROD-031`、`REQ-PROD-037`、`REQ-PROD-015`、`REQ-PROD-019`、`REQ-001`，v0.9.119）→ TC-PROD-1090～TC-PROD-1095；动了 `EventNodeImpl` 或 `EventListener` 就在三种模式下跑 TC-PROD-1095 第 1～3 步（含 TC-PROD-1090 的三个类）；动了 `OutgoingTransferEvent` 或宿主 `PluginTransfers#send` 跑 TC-PROD-1091；动了 `ClientPingServerEvent` 或 `StatusListener` 的 ping 分支跑 TC-PROD-1092；动了 `PlayerStabEvent` 或 `PlayerActionListener` 的 `STAB` 分支跑 TC-PROD-1093；动了 `ExceptionManager` 的落点字段或 `setExceptionHandler`、`getExceptionHandler` 跑 TC-PROD-1094 与 TC-PROD-001；只改事件类的 Javadoc 跑 TC-PROD-1095 第 4、5 步
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170、TC-PLAY-180～TC-PLAY-185（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

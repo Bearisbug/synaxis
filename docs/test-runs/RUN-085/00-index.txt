@@ -42,4 +42,29 @@ JVM's JaCoCo agent to the launched JVM's command line. From build 4 on the ready
                       read from the ready line, which is 0: ConfigFileLaunchTest.java:170, FarViewLaunchTest.java:80
                       (three cases), ShutdownBeforeTheWorldLaunchTest.java:105 (four),
                       MapShardPlayerStateLaunchTest.java:290; restored afterwards
-The three thread modes, the full suites, Concurrency, Client mod and Client gametest run on the draft PR.
+
+On the draft PR #40 (GitHub Actions; times local, UTC+8).
+e003079f34 (on bffddf5322): CI 39416792776, Check failed in the coverage gate on newly added lines (Main.java,
+  Missing lines 392, Coverage 0%); the three test jobs, Concurrency 39416792615, Client mod 39416792951 and
+  Client gametest 39416792774 green.
+789a81537a (agent pass-through added): CI 39421129674, Concurrency 39421129344, Client mod 39421129385, Client
+  gametest 39421129502 green on attempt 1; coverage gate Total 1 line, Missing 0 lines, 100%; 754 classes, 5,303
+  tests in each test job; the 13 classes all green in the three modes.
+The lighting session's RUN-086 went into main first (17f2a2cfe1); rebased. dc856808ad: CI 39460642520 green,
+  Concurrency 39460642724 failed in jcstress (ThreadDispatcherSyncTest [TIMEOUT], an engine test this round does not
+  touch), Client mod 39460642793 and Client gametest 39460642572 green. After the adversarial review the history was
+  folded into the design and the fix commit.
+Judged on 4fd534c44d, 2026-10-21 01:10-01:48:
+  CI 39463721478 attempt 1: Test with 4 tick threads (strict) (BUILD SUCCESSFUL in 16m 30s) and (strict, grid)
+    (BUILD SUCCESSFUL in 17m 13s) success; Check failed one root test, OnlineLoginSocketTest
+    aPeerThatLeavesWhileQueuedForASlotAsksNothing at OnlineLoginSocketTest.java:353, expected: <[Holder]> but was:
+    <[Holder, Queued]> (the queued peer is released 300 ms after it closes; on a slow runner the server had not seen the
+    close yet). Attempt 2 of the failed job: Check success (BUILD SUCCESSFUL in 17m 30s; coverage gate Total 1 line,
+    Missing 0 lines, 100%).
+  Concurrency 39463721538, Client mod 39463721464, Client gametest 39463722263 (gametest, rush, p11-smoke): success
+    on attempt 1.
+  Counts (test-reports of attempt 2, test-reports-multithreaded, test-reports-multithreaded-grid): equal class by
+    class, 754 classes, 5,303 tests, 0 failures, 0 errors, 22 skipped; root 496 / 3,651, server-app 163 / 919.
+Then rebased on 59d2acff68 (the lighting session's RUN-087, documents only): 01f4cd4559 -> bb953f31a2,
+4fd534c44d -> 297e0f0a80, code unchanged; the registration on top.
+RUN-085 is registered in docs/TEST.md section 6: passed 1/1.

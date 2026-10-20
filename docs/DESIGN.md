@@ -104,7 +104,7 @@ N/A — 画像:内部系统，本里程碑无产品指标与埋点事件；工�
 | 实体 | 世界中有位置的对象，含玩家 | `Entity` | `ENT-Entity` |
 | 玩家 | 绑定一个连接的实体 | `Player` | `ENT-Player` |
 | 注册表 | 配置阶段全量下发给客户端的数据表，如维度类型、生物群系 | `DynamicRegistry` | `ENT-Registry` |
-| 不透明注册表 | 服务端不解析语义、只按原样转发的注册表 | `OpaqueRegistry` | `ENT-Registry` |
+| 不透明注册表 | 服务端不解析语义、只按原样转发的注册表 | `Registries#opaque` / `RegistriesImpl.OPAQUE_KEYS` | `ENT-Registry` |
 | 自定义负载 | Minecraft 协议的 `CustomPayload` 包，我们的协议全部走它 | `PluginMessagePacket` / `ClientPluginMessagePacket` | — |
 | 线程归属 | 实体或区块被分配到哪个 tick 线程；跨线程访问必须先获取所有权 | `Acquirable` | — |
 | 删除波次 | 按依赖强度分批删除原版玩法子系统的批次 | — | — |

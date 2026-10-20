@@ -8,12 +8,13 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）、`docs/DESIGN-PROD.md`（生产就绪分册）与 `docs/DESIGN-PLAY.md`（玩法架构分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*`，玩法架构侧写作 `REQ-PLAY-*`，对应用例写作 `TC-PLAY-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-10-19 |
+| 最后更新 | 2026-10-21 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-21 | 分支 `prod/r089-CODEC`（基于 `main` `17f2a2cfe1`），跟进 `docs/DESIGN-PROD.md` v0.9.114（RUN-089 组 CODEC），不登执行轮次（集成轮登记）。**新增 §4「生产就绪 · RUN-089：CODEC」六条 `TC-PROD-1040`～`TC-PROD-1045`**：编解码器的报错带下标、键名与实际大小（1040），map 解码的 null 键与 null 值、`Codec.UUID` 的数组长度（1041），注册表加载与物品原型的报错（1042），`TagSerializer.COMPOUND` 读 `readableCopy()` 的快照（1043），物品哈希的钉值与 `Codec.UNIT` 的类初始化（1044），三种线程模式、新增行覆盖与删掉的公开签名（1045）；1040～1043 有改动前的红，1044 的钉值改动前后都绿。本组 6 次 Gradle 运行的读数写在各步里。**改的旧用例**：`TC-PROD-924` 第 1 步 `ParticleDataTest` 13 → 12 条（删去重复的 `testParticleData`）；`TC-PROD-801` 第 1 步 `CodecTest` 77 → 91 条。其余写死 `CodecTest`、`StructCodecTest`、`TranscoderTest` 条数的旧步骤（`TC-PROD-960`、`TC-PROD-962`、`TC-PROD-969`，RUN-081 组 NET 的 `ProtocolErrorCauseTest` 一步）写明了是哪一次运行的读数，不改。§5 局部轮加本组一行 | Bearisbug |
 | 2026-10-21 | 分支 `m3/hud-top-left` 的 `086f2f9fc8` 在 GitHub Actions 上跑完全量门禁、Concurrency、Client mod、Client gametest 与远景 gametest 四组（草稿 PR #41），反证在临时分支上手动触发，登记 RUN-086（通过 1/1，证据 `docs/test-runs/RUN-086/`）。RUN-079 明细里的待人工项「远景 HUD 英文行宽」由 RUN-086 的截图量法与 `TC-WORLD-170` 接手 | Bearisbug |
 | 2026-10-20 | 跟进 `docs/DESIGN-M3.md` v0.55（分支 `m3/hud-top-left`，远景 HUD 行改画在左上角）。**新增 `TC-WORLD-170`**（「M3 · 远景（M3-G）」一节末尾）：V1 烘焙期间同机位截带 HUD 与不带 HUD 的两张图，左上角有变化、左下角原来那一行的位置没有，报告行 F31；反证是把行画回左下角，在临时分支上手动触发 synthetic 组。§2 的 REQ ↔ TC 表（`REQ-M3-025`）与 Gherkin 覆盖口径随之补上。RUN-079 的待人工项「远景 HUD 英文行宽」由本轮的截图核实与 `TC-WORLD-170` 接手 | Bearisbug |
 | 2026-10-19 | 分支 `m3/light-fixups` 的 `3415eef1e0` 在 GitHub Actions 上跑完全量门禁、Concurrency、Client mod 与 Client gametest，远景 gametest 四组在 `fd9627e0ad` 上跑完（草稿 PR #38），登记 RUN-083（通过 6/6，证据 `docs/test-runs/RUN-083/`）。`TC-WORLD-049`、`TC-WORLD-060`、`TC-WORLD-094`、`TC-WORLD-132`、`TC-WORLD-150` 的反证步骤只改了行号、没有重跑，登在 §6 明细里 | Bearisbug |
@@ -11746,7 +11747,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.codec.CodecTest`，看 `mapWithNonStringKeysIsAnError`、`mapWithNonStringKeysIsAnErrorInEveryFormat` 的 9 例、`mapEncodesWithTheHashTranscoder`、`mapValueDecodeErrorNamesTheKey`；跑 `io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest`，看 `aComponentThatDoesNotEncodeIsNamed` | 都绿，`CodecTest` 77 条 0 失败。`Codec.INT` 作键、`Map.of(1, "a")`：三种 map codec 在三种格式下 `encode` 都不抛、都返回 `Result.Error`（修前 `mapValueTyped` 在 NBT、Java 下得到空 map，JSON 下得到 `{"1": "a"}`）；`Codec.STRING.mapValue(Codec.INT)` 与 `mapValueTyped(_ -> Codec.INT)` 在 `Transcoder.CRC32_HASH` 上编 `Map.of("a", 1)` 都是 `Ok`，都等于 `createMap().put("a", createInt(1)).build()`；`Transcoder.JAVA` 上解 `Map.of("a", "x")` 的错误以 `a: ` 开头；257 格的潜影盒 `Hash.of` 抛 `IllegalArgumentException`，消息以 `hash of component minecraft:container: ` 开头 |
+| 1 | 跑 `io.github.bearisbug.synaxis.codec.CodecTest`，看 `mapWithNonStringKeysIsAnError`、`mapWithNonStringKeysIsAnErrorInEveryFormat` 的 9 例、`mapEncodesWithTheHashTranscoder`、`mapValueDecodeErrorNamesTheKey`；跑 `io.github.bearisbug.synaxis.item.ItemStackHashRegistriesTest`，看 `aComponentThatDoesNotEncodeIsNamed` | 都绿，`CodecTest` 91 条 0 失败（RUN-080 时 77 条）。`Codec.INT` 作键、`Map.of(1, "a")`：三种 map codec 在三种格式下 `encode` 都不抛、都返回 `Result.Error`（修前 `mapValueTyped` 在 NBT、Java 下得到空 map，JSON 下得到 `{"1": "a"}`）；`Codec.STRING.mapValue(Codec.INT)` 与 `mapValueTyped(_ -> Codec.INT)` 在 `Transcoder.CRC32_HASH` 上编 `Map.of("a", 1)` 都是 `Ok`，都等于 `createMap().put("a", createInt(1)).build()`；`Transcoder.JAVA` 上解 `Map.of("a", "x")` 的错误以 `a: ` 开头；257 格的潜影盒 `Hash.of` 抛 `IllegalArgumentException`，消息以 `hash of component minecraft:container: ` 开头 |
 | 2 | 改动前的红（`<C>` 第 1 次） | `CodecTest` 77 条中 8 条红：`mapWithNonStringKeysIsAnErrorInEveryFormat` 的 6 例（`mapValueTyped` 与带缓存的在三种格式下）红在 `CodecTest.java:71`（RUN-081 起 `:75`，同步加的是 `:88`、`:97`），`Unexpected type, expected: <…Result.Error> but was: <…Result.Ok>`，`mapValue` 的 3 例绿（修前它靠 `getString` 回读拦下）；`mapEncodesWithTheHashTranscoder` 红在 `:84`，`Expected Ok but got Error: Map key must encode to a string: 754812039`；`mapValueDecodeErrorNamesTheKey` 红在 `:93`，`Not an int: x ==> expected: <true> but was: <false>`；`aComponentThatDoesNotEncodeIsNamed` 红在 `ItemStackHashRegistriesTest.java:67`，`List size exceeds maximum allowed size: 256 ==> expected: <true> but was: <false>`（这一条当时用的是 257 行的 lore） |
 | 3 | 反证有齿（哈希的异常不带组件名）：`<IH>:27` 的 `.orElseThrow("hash of component " + entry.component().name()));` 改为 `.orElseThrow(Boolean.getBoolean("proof.never") ? "hash of component " + entry.component().name() : ""));`，与 `TC-PROD-800` 第 3 步同批（`<C>` 第 4 次） | `aComponentThatDoesNotEncodeIsNamed` 红在 `:66`，`: IllegalArgumentException: a container holds at most 256 slots, got 257 ==> expected: <true> but was: <false>`（RUN-081 组 BLOCK 在 `554f8e2b3e` 上照这一步复跑；RUN-080 时用 257 行的 lore，红在 `:67`，`: List size exceeds maximum allowed size: 256`） |
 | 4 | 反证有齿（builder 拒收非字符串键与值错误的键名，第二批，`<C>` 第 5 次，`05-counter-proofs-b/`）：`<TN>:220`～`:222` 与 `<TV>:192`～`:194` 改回遇到非字符串键直接 `return this`（`proof.never` 为真时才抛），`<TJ>:213` 之前插入 `if (!Boolean.getBoolean("proof.never")) return put(key.getAsString(), value);`（改动前的写法）；`<CI>:276` 的 `return valueResult.mapError(e -> key + ": " + e).cast();` 改为 `proof.never` 为假时 `return valueResult.cast();`；与 `TC-PROD-802` 第 4 步同批，跑 `CodecTest` 与 `<S>.PlayerStateCodecIntegrationTest` | `CodecTest` 77 条中 11 条红：`mapWithNonStringKeysIsAnErrorInEveryFormat` 9 例全红在 `:71`，`but was: <…Result.Ok>`（`mapValue` 与 `mapValueTyped` 现在是同一个实现，靠 builder 拒收）；`mapWithNonStringKeysIsAnError` 红在 `:52`，同一条消息；`mapValueDecodeErrorNamesTheKey` 红在 `:93`，`Not an int: x ==> expected: <true> but was: <false>`；其余 66 条绿 |
@@ -12980,7 +12981,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `<P>.particle.ParticleDataTest` | 13 条 0 失败。`aNullFieldIsRejectedWhereTheParticleIsMade`：五个方块粒子的 `withBlock(null)`、各颜色粒子的 `withColor(null)`、`DUST_COLOR_TRANSITION.withTransitionColor(null)`、`TRAIL.withTarget(null)`、`ITEM.withItem(null)` 当场抛 `NullPointerException`，消息是字段名；`VIBRATION.withSourceBlockPosition(null, 1)` 的消息是 `sourceBlockPosition is required for SourceType.BLOCK`。`anOpaqueColorKeepsItsAlpha`：三个 ARGB 粒子 `withColor(new Color(255, 0, 0))` 的 alpha 是 255，静态类型为 `RGBLike` 的 `new AlphaColor(128, 1, 2, 3)` 保留 128。`theAlphaOfAColorSurvivesTheNetwork`：三者带 alpha 128 写进 `Particle.NETWORK_TYPE` 再读回，与原粒子相等。`flashIsEncodedAsAnArgbColor`：`FLASH` 带 `AlphaColor(0x80, 0x11, 0x22, 0x33)` 经 `Particle.CODEC` 编成 NBT，`color` 是 int `0x80112233`，解码回原粒子。`effectColorAndPowerAreOptional`：`{type:"minecraft:effect"}` 解码为白色、power 1.0，`instant_effect` 同样能解。`particlesTheCodecCannotHandleAreErrors`：`type` 为 `minecraft:nope`、`Bad Key`、`minecraft:vibration` 的解码与编码 `VIBRATION` 都得 `Result.Error`，`minecraft:block` 带未知方块名的解码得含 `unknown block: minecraft:nope` 的 `Result.Error`。`testDustParticleInvalid`、`invalidBlock`：`withProperties(null, 1)`、`withBlock(null)` 当场抛 `NullPointerException` |
+| 1 | 跑 `<P>.particle.ParticleDataTest` | 12 条 0 失败（RUN-089 组 CODEC 删去与 `testParticleValid` 逐字相同的 `testParticleData` 之前是 13 条）。`aNullFieldIsRejectedWhereTheParticleIsMade`：五个方块粒子的 `withBlock(null)`、各颜色粒子的 `withColor(null)`、`DUST_COLOR_TRANSITION.withTransitionColor(null)`、`TRAIL.withTarget(null)`、`ITEM.withItem(null)` 当场抛 `NullPointerException`，消息是字段名；`VIBRATION.withSourceBlockPosition(null, 1)` 的消息是 `sourceBlockPosition is required for SourceType.BLOCK`。`anOpaqueColorKeepsItsAlpha`：三个 ARGB 粒子 `withColor(new Color(255, 0, 0))` 的 alpha 是 255，静态类型为 `RGBLike` 的 `new AlphaColor(128, 1, 2, 3)` 保留 128。`theAlphaOfAColorSurvivesTheNetwork`：三者带 alpha 128 写进 `Particle.NETWORK_TYPE` 再读回，与原粒子相等。`flashIsEncodedAsAnArgbColor`：`FLASH` 带 `AlphaColor(0x80, 0x11, 0x22, 0x33)` 经 `Particle.CODEC` 编成 NBT，`color` 是 int `0x80112233`，解码回原粒子。`effectColorAndPowerAreOptional`：`{type:"minecraft:effect"}` 解码为白色、power 1.0，`instant_effect` 同样能解。`particlesTheCodecCannotHandleAreErrors`：`type` 为 `minecraft:nope`、`Bad Key`、`minecraft:vibration` 的解码与编码 `VIBRATION` 都得 `Result.Error`，`minecraft:block` 带未知方块名的解码得含 `unknown block: minecraft:nope` 的 `Result.Error`。`testDustParticleInvalid`、`invalidBlock`：`withProperties(null, 1)`、`withBlock(null)` 当场抛 `NullPointerException` |
 | 2 | 改动前的代码上跑 `<P>.particle.ParticleDataTest` | 红八条：`testDustParticleInvalid`、`invalidBlock`、`aNullFieldIsRejectedWhereTheParticleIsMade` 都是 `Expected java.lang.NullPointerException to be thrown, but nothing was thrown.`；`anOpaqueColorKeepsItsAlpha` `expected: <255> but was: <1>`；`theAlphaOfAColorSurvivesTheNetwork` 读回的颜色 `alpha=1`；`flashIsEncodedAsAnArgbColor` `expected: <-2146360781> but was: <1122867>`（`0x00112233`）；`effectColorAndPowerAreOptional` `Expected Ok but got Error: color: No such key: color`；`particlesTheCodecCannotHandleAreErrors` 抛 `NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.particle.Particle.codec()" because "particle" is null` |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
@@ -13925,6 +13926,91 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | 3 | 第 1 步与 `ShutdownSequenceTest`、`TickSchedulerThreadTest`，`:server-app:test` 的 `io.github.bearisbug.synaxis.app.ShutdownSequenceTest`、`io.github.bearisbug.synaxis.app.shard.ShardWorldRelightTest`、`ShardWorldAssemblyTest` 同批，默认模式、加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`、再加 `-Dsynaxis.thread-provider=grid` 各跑一次（第 2、3、4 次运行） | 三次都是 3、11、2、8、3、10 条，0 失败。这三次在 `9c4ad17a64` 之上跑，光照会话的两份测试那时都手工起 tick 调度线程，靠 `ServerProcessImpl.java:646` 的认领记下它；`06ce46f16a`（光照会话 PR #36）起只剩 `ShardWorldRelightTest` 第 216 行一处（`docs/DESIGN-PROD.md` §28.3），本轮变基到它之上后由 CI 跑 |
 
 后置：`git status --short` 只剩本轮的改动。
+
+### 生产就绪 · RUN-089：CODEC（编解码器的报错位置与 null 条目、UUID 的数组长度、注册表加载的报错与线程契约、tag 的 compound 读取、清掉没人调用的编解码入口）
+
+对应 `REQ-017`（不可信 NBT 与组件的读取，`docs/DESIGN.md`）、`REQ-007` 与 `API-004`（注册表）、`REQ-PROD-019`（tick 多线程的引擎侧正确性）、`REQ-PROD-046`（宿主默认玩法层；物品哈希随背包操作比对，同 `TC-PROD-801`）；`docs/DESIGN-PROD.md` v0.9.114。用例号段 1040～1049，由组 CODEC 在分支 `prod/r089-CODEC`（基于 `main` `17f2a2cfe1`）写入，本组用 1040～1045。改动逐条写在该版的变更记录里，按包分：
+
+- `codec`：集合元素解不出时前缀下标，map 的键解不出时前缀键名，超限报实际大小；编码侧不加下标，`Set` 的迭代顺序与输入无关，编码的输入也是服务端自己的值。`Either`、内联结构的编码、`TRI_STATE` 与 NBT 转换报错误消息本身。map 解码遇 null 键返回 `Result.Error`、null 值的条目跳过；`Codec.UUID` 只收 4 个 int。`Codec.UNIT` 改为 `CodecImpl.UnitImpl`。列表与集合的编码合成 `CodecImpl#encodeElements`；CRC32 哈希改用 `putInt`、`putShort` 喂字节。其余只改 Javadoc。
+- `registry`：条目解不出抛带消息的 `IllegalStateException`；未绑定的物品原型点名材质；从工作目录读注册表数据时打 INFO；`DynamicRegistryImpl` 去掉 `compact()` 与复制构造器等没有调用方的成员，类注释写线程契约；删掉的公开签名见 `TC-PROD-1045` 第 4 步。
+- `tag`：`TagSerializer.COMPOUND` 读得了 `readableCopy()` 的快照、拒收别的读取源；删掉只剩测试在调的 `TagNbtSeparator#separate(String, BinaryTag, Consumer)`。
+- `entity`、`item`：`EntityType#entityAttachments` 与 `Material#prototype` 只改 Javadoc。
+
+测试：根项目新类 `<P>.registry.RegistryDataTest`（4 条，`<P>` 是 `io.github.bearisbug.synaxis`）；`<P>.codec.CodecTest` 83 → 91 条，`<P>.codec.StructCodecTest` 14 → 16 条（`inlineFieldEmpty` 按现行的内联语义改写：原先与 `inlineField` 逐字相同），`<P>.codec.TranscoderTest` 38 → 40 条，`<P>.tag.TagSerializerTest` 1 → 3 条，`<P>.particle.ParticleDataTest` 13 → 12 条（删去与 `testParticleValid` 逐字相同的 `testParticleData`），`<P>.tag.TagNbtSeparatorTest` 7 条不变（取条目的辅助方法改调 compound 重载）。都不连数据库。
+
+「跑 `<类>`」：`./gradlew :test --rerun --tests '<类全名>' :testNamingCheck :forbiddenImportsCheck --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `build/test-results/test/TEST-<类全名>.xml`；几个类写在同一步里就在一次 Gradle 里跑。「改动前」指主代码取 `main` `17f2a2cfe1` 的、测试是本组的。本组 6 次 Gradle 运行：第 1 次停在测试自身的编译错误，没有跑到测试；第 2 次改动前的红（7 个类）；第 3 次修后转绿（默认模式）；第 4、5 次是 4 线程严格（加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`）与严格 grid（再加 `-Dsynaxis.thread-provider=grid`）；第 6 次默认模式加 `:jacocoTestReport`。测试在第 2 次之后没有再改。
+
+#### `TC-PROD-1040` 编解码器的报错带下标、键名与实际大小，不再拼结果记录的 toString — 对应 `REQ-017` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。用例里的 Java 数据走 `Transcoder.JAVA`，JSON 走 `Transcoder.JSON`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.codec.CodecTest`（第 3 次运行） | 91 条 0 失败。`collectionEncodeOverMaxSizeIsAnError`：`list(1)`、`set(1)`、`mapValue(…, 1)` 编两个元素，消息依次正好是 `List size 2 exceeds maximum allowed size 1`、`Set size 2 exceeds maximum allowed size 1`、`Map size 2 exceeds maximum allowed size 1`；`collectionDecodeOverMaxSizeNamesTheSize` 解码时三条消息相同。`elementDecodeErrorNamesItsPosition`：`Codec.STRING.list()` 与 `set()` 解 `["a", 1]` 得 `1: Not a string: 1`，`Codec.INT.mapValue(Codec.STRING)` 解 `{k: "v"}` 得 `k: Not an int: k`。`eitherReportsTheMessagesOfBothSides`：`Either(INT, BOOLEAN)` 解 `"x"` 得 `Failed to decode Either: left: Not an int: x; right: Not a boolean: x`，两个各要一个键 `a`、`b` 的 struct 拼成的 `EitherStruct` 解空 map 得 `Failed to decode Either: left: a: No such key: a; right: b: No such key: b`。原有的 `mapValueDecodeErrorNamesTheKey`（值解不出时以 `a: ` 开头）照绿 |
+| 2 | 跑 `<P>.codec.TranscoderTest`、`<P>.codec.StructCodecTest`（第 3 次运行） | 40、16 条 0 失败。`triStateNamesTheValueItCannotRead`：`TRI_STATE` 解 JSON 字符串 `maybe` 得 `expected true, false, or "default", got: "maybe"`，解 JSON 数 5 得 `expected true, false, or "default": Not a string: 5`。`inlineEncodeErrorNamesTheField`：内联的 struct 有一个非可选字段为 null，编码得 `$$inline$$: value: null` |
+| 3 | 改动前的红（第 2 次运行） | `CodecTest` 91 条红 6 条，本条的 4 条：`collectionEncodeOverMaxSizeIsAnError` 红在 `CodecTest.java:51`、`collectionDecodeOverMaxSizeNamesTheSize` 红在 `:65`，都是 `expected: <List size 2 exceeds maximum allowed size 1> but was: <List size exceeds maximum allowed size: 1>`；`elementDecodeErrorNamesItsPosition` 红在 `:79`，`but was: <Not a string: 1>`；`eitherReportsTheMessagesOfBothSides` 红在 `:125`，`but was: <Failed to decode Either: Error[message=Not an int: x], Error[message=Not a boolean: x]>`。`TranscoderTest` 40 条红 1 条：`triStateNamesTheValueItCannotRead` 在 `TranscoderTest.java:51`，`but was: <expected true, false, or "default", got: Ok[value=maybe]>`。`StructCodecTest` 16 条红 1 条：`inlineEncodeErrorNamesTheField` 在 `StructCodecTest.java:214`，`but was: <$$inline$$: Error[message=value: null]>` |
+
+后置：`git status --short` 只有本次运行的产物。
+
+#### `TC-PROD-1041` map 解码遇 null 键与 null 值返回结果不抛异常，`Codec.UUID` 只收 4 个 int — 对应 `REQ-017` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。null 键由一个对不认识的名字返回 null 的键 codec 产生（`Codec.STRING.transform(Map.of("a", "a")::get, name -> name)`），带缓存的 `mapValueTyped(…, true)` 用 `ConcurrentHashMap` 缓存值 codec。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.codec.CodecTest`，看 `mapDecodeSkipsNullValuesAndRejectsNullKeys` 与 `uuidRejectsAnIntArrayOfAnotherLength`（第 3 次运行） | 都绿。`Codec.STRING.mapValue(Codec.INT.optional())` 解 JSON `{"a": null, "b": 1}` 不抛异常，得 `{b=1}`；上面的键 codec 配 `mapValue(Codec.INT)` 与 `mapValueTyped(_ -> Codec.INT, true)` 解 `{"x": 1}` 都不抛异常，消息正好是 `x: map key decoded to null`。`Codec.UUID` 与 `Codec.UUID_COERCED` 解 2 个、5 个 int 的数组都是 `Result.Error`，消息含 `4 entries, got 2`、`4 entries, got 5`（全文 `IllegalArgumentException: UUID int array must have 4 entries, got 5`，`UUID_COERCED` 两种写法都解不出时报 int 数组那一路）；一个 UUID 经 `Codec.UUID` 编码再解码得回自己 |
+| 2 | 改动前的红（第 2 次运行） | `mapDecodeSkipsNullValuesAndRejectsNullKeys` 红在 `CodecTest.java:92`（第一句，null 值），`Unexpected exception thrown: java.lang.NullPointerException`，是 `Map.copyOf` 拒收 null 值；后面 null 键的两句没有跑到，改动前它们走到同一处 `Map.copyOf`，带缓存的那个更早在 `computeIfAbsent(null)` 抛，没有单独跑红。`uuidRejectsAnIntArrayOfAnotherLength` 红在 `:114`（2 个 int），`ArrayIndexOutOfBoundsException: Index 2 out of bounds for length 2 ==> expected: <true> but was: <false>`；5 个 int 在改动前的代码上读前 4 个、解码成功（`Codec.java:119` 直接调 `UUIDUtils::intArrayToUuid`），同一条用例在 2 个 int 处已经红，没有单独跑 |
+
+后置：同 `TC-PROD-1040`。
+
+#### `TC-PROD-1042` 注册表的加载与物品原型：条目解不出抛带消息的 `IllegalStateException`，未绑定的原型点名材质，classpath 外的文件照读 — 对应 `REQ-007` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。`anEntryThatDoesNotDecodeFailsTheLoad` 用 `DynamicRegistry.create(BuiltinRegistries.DAMAGE_TYPE, codec)` 读 vendored 的 `damage_type.json`，`codec` 是 `Codec.INT.transform(…)`，每个条目（JSON 对象）都解不出；`anUnboundPrototypeNamesTheMaterial` 用公开工厂 `RegistryData.material("test:unbound", …)` 造一个从没绑定过的条目；`aFileMissingFromTheClasspathIsReadFromTheFileSystem` 在 JUnit 的临时目录里写一个内容为 `{}` 的 `extra.json`，用它的绝对路径调 `RegistryData.loadRegistryFile`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.registry.RegistryDataTest`（第 3 次运行） | 4 条 0 失败。解不出的条目抛 `IllegalStateException`，消息以 `Failed to decode registry entry ` 开头、不含 `Error[`；未绑定的原型抛 `IllegalStateException`，消息含 `test:unbound` 与 `Registries.vanilla()`；classpath 外的文件读出 `{}`（这一路打 INFO `Registry data … loaded from working directory …`，测试的 classpath 上没有 SLF4J 实现，日志没有断言）；`Properties.fromMap({a: 1})` 打印成 `{a=1}` |
+| 2 | 跑 `<P>.registry.VanillaRegistriesTest`、`<P>.registry.RegistryDataByteParityIntegrationTest`、`<P>.item.MaterialRegistriesTest`、`<P>.item.ItemRegistriesTest`（第 3 次运行） | 1、1、1、13 条 0 失败：没有组件的物品原型仍是 `DataComponentMap.EMPTY` 那个实例（现在直接绑成 `Either.right(EMPTY)`，不再经 null 中转），注册表数据包与原版逐字节相同 |
+| 3 | 改动前的红（第 2 次运行） | `RegistryDataTest` 4 条红 3 条：`anUnboundPrototypeNamesTheMaterial` 在 `RegistryDataTest.java:30`，`Should have been bound ==> expected: <true> but was: <false>`；`propertiesPrintTheirEntries` 在 `:36`，`expected: <{a=1}> but was: <{ "a" : "1"}>`；`anEntryThatDoesNotDecodeFailsTheLoad` 在 `:56`，`Unexpected exception type thrown, expected: <java.lang.IllegalStateException> but was: <java.lang.RuntimeException>`。读 classpath 外文件那条绿，回退原来就有，本组只加了日志 |
+
+后置：同 `TC-PROD-1040`。
+
+#### `TC-PROD-1043` `TagSerializer.COMPOUND` 读 `readableCopy()` 的快照，别的读取源抛带类名的 `IllegalArgumentException` — 对应 `REQ-017` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。`compoundReadsAReadableCopy` 的 handler 有 `Tag.Integer("a")` = 1 与 path `p` 下的 `Tag.String("b")` = `x`；`compoundRefusesAnotherReader` 的读取源是测试里的匿名 `TagReadable`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.tag.TagSerializerTest`、`<P>.tag.TagNbtSeparatorTest`、`<P>.tag.TagViewTest`、`<P>.tag.TagHandlerReadableCopyTest`（第 3 次运行） | 3、7、7、5 条 0 失败。`COMPOUND.read(handler.readableCopy())` 等于 `handler.asCompound()`；匿名读取源抛 `IllegalArgumentException`，消息是 `TagSerializer.COMPOUND reads a TagHandler or a readableCopy(), got ` 加这个匿名类的类名。原有的 `fromCompound` 往返与 `TagNbtSeparatorTest` 的 7 条照绿 |
+| 2 | 改动前的红（第 2 次运行） | `TagSerializerTest` 3 条红 2 条：`compoundReadsAReadableCopy` 在 `TagSerializerTest.java:35` 抛 `ClassCastException: class io.github.bearisbug.synaxis.tag.TagHandlerImpl$Node cannot be cast to class io.github.bearisbug.synaxis.tag.TagHandler`；`compoundRefusesAnotherReader` 在 `:47`，`expected: <java.lang.IllegalArgumentException> but was: <java.lang.ClassCastException>` |
+
+后置：同 `TC-PROD-1040`。
+
+#### `TC-PROD-1044` 物品哈希的钉值、`Codec.UNIT` 不再经 `StructCodec` 的匿名类初始化、只改说明的编解码入口照常往返 — 对应 `REQ-PROD-046`、`REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。钉值是 `Transcoder.CRC32_HASH` 对 `[int 1, int 2]` 的列表、`{int 1: int 2, int 3: int 4}` 的 map 与字符串 `"a\u00e9\u2603"`（`aé☃`，后两个字符超出一个字节）取的哈希，客户端拿同样的算法比对物品哈希。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<P>.codec.TranscoderTest`，看 `hashValuesArePinned`；跑 `<P>.item.ItemStackHashRegistriesTest`（第 2 次运行在改动前的代码上，第 3 次在改动后） | 两次都绿：三个值依次是 `0xae1b0624`、`0x7218348f`、`0x5bffb711`。这三个值另按字节布局（标签字节、小端的 int 与 char）用一份独立的 CRC32C 实现算出，与改动前的代码输出相同，所以 `putIntBytes`、`putChar` 换成 `putInt`、`putShort` 之后哈希逐值不变。`ItemStackHashRegistriesTest` 3 条 0 失败 |
+| 2 | 跑 `<P>.codec.CodecTest`，看 `unitIsAnEmptyMap`、`orElseWithAMapperEncodesWithThePrimaryOnly`、`listOrSingleRoundTrips`、`listOrSingleSingleValueAsSingle`、`listOrSingleMultiValueAsList`；跑 `<P>.codec.StructCodecTest`，看 `inlineFieldEmpty`、`inlineOptionalStructWithoutItsFieldsIsAnError`（第 2、3 次运行） | 改动前后都绿，钉住只改 Javadoc 的行为：`Codec.UNIT` 编成空 compound、读回 `Unit.INSTANCE`；`Codec.INT.orElse(Codec.STRING, Integer::parseInt)` 把字符串 `"12"` 解成 12，编码 null 返回主 codec 的 `null` 错误；`Codec.STRING.listOrSingle()` 把 `[]`、`[a]`、`[a, b]` 往返不变，单值 `"a"` 解成 `[a]`；内层字段可选的内联 struct 从 `{name: "test"}` 解出默认值、编回 `{name: "test"}`，可选的内联 struct 缺字段时报 `$$inline$$: value: No such key: value`（`optional` 不让缺省的内联解成 null） |
+| 3 | 第 3 次运行编译后 `javap -c -p -cp build/classes/java/main io.github.bearisbug.synaxis.codec.Codec`，看 `static {}` 里的 `new` | 只构造 `CodecImpl` 的 `RawValueCodecImpl`、`UnitImpl`、`PrimitiveImpl`、`TriStateImpl`、`BlockPositionImpl`、`Vector3DImpl`、`CompoundBinaryTagImpl`，没有 `StructCodec$…`。改动前 `Codec.java:91` 是 `StructCodec.struct(Unit.INSTANCE)`，`ConsumeEffect`、`AttributeList` 也直接调 `StructCodec.struct(R)`、构造同一个匿名类，两个测试类在新 JVM 里并发首次初始化时会互等类初始化（同类问题见 `TC-PROD-969` 第 2 步）；这一窗口卡不住，不写复现测试 |
+
+后置：同 `TC-PROD-1040`。
+
+#### `TC-PROD-1045` 回归：三种线程模式、新增行覆盖、删掉的公开签名与只改文档的条目 — 对应 `REQ-007`、`REQ-017`、`REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同批跑根项目 `<P>.codec`、`<P>.registry`、`<P>.tag` 三个包与 `<P>.particle.ParticleDataTest`、`<P>.collision.CollisionShapeInternTest`、`<P>.item.ItemRegistriesTest`、`<P>.item.ItemStackHashRegistriesTest`、`<P>.item.MaterialRegistriesTest`、`<P>.item.component.CustomDataTest`、`<P>.instance.BlockTagPathTest`、`<P>.network.NetworkBufferTypeWrapperTest`、`<P>.component.DataComponentMapTest`、`<P>.instance.block.BlockBreakCalculationIntegrationTest`，带 `:compileJava`（第 3 次运行，默认模式） | `BUILD SUCCESSFUL`：45 个类 453 条，0 失败，1 个跳过（`TagNbtTest` 由 `@DisabledIf("isSerializeEmptyCompoundEnabled")` 跳过，与本组无关）；`:testNamingCheck`、`:forbiddenImportsCheck` 通过，Error Prone 的 `InvalidLink`、`InvalidParam`、`MissingSummary` 是 error 级，新改的 Javadoc 都过了编译。方块形状（`RegistryData` 里四个形状共用一个解析函数）由 `CollisionShapeInternTest` 与 `BlockBreakCalculationIntegrationTest` 照绿 |
+| 2 | 第 1 步的同一批类加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 跑一次，再加 `-Dsynaxis.thread-provider=grid` 跑一次（第 4、5 次运行） | 两次都是 45 个类 453 条，0 失败，1 个跳过（同上） |
+| 3 | 第 1 步的同一批类加 `:jacocoTestReport`（第 6 次运行），按 `build/reports/jacoco/test/jacocoTestReport.xml` 统计本组主代码新增的可执行行 | 87 行执行到 81 行（93.1%）。没执行到的 6 行：`TranscoderNbtImpl` 列表与 compound 转换里的错误分支 4 行（adventure-nbt 5.2.0 的 `BinaryTag` 是 sealed，六类子类型全有分支，嵌套转换不会返回 `Result.Error`，本组只把拼接改成取消息）；`CodecImpl#encodeElements` 里元素编码失败的 `return`（原样从列表、集合的编码搬来）；`DynamicRegistryImpl` 读注册表文件的 `IOException` 分支 |
+| 4 | `rg` 全仓（含各子模块与测试）查删掉的签名：`TagKey.codec`、`TagKey.hashCodec`、`TagKey.networkType`、`uncheckedCodec`、`uncheckedNetworkType`、`HolderSet.codec`、`HolderSet.Direct`、`HolderSetImpl`、`RegistryCodecs.TagKeyImpl`、三参的 `RegistryTaggedUnion(…, String)`、`DynamicRegistry.create` 的 `BiFunction` 重载、`RegistryData.block` 的两参版、`RegistryData.GSON`、`forClient`、`TagNbtSeparator.separate(String, …)` | 除定义处外零命中（改动前查的）；第 1 步的编译通过。这些删除是有意的：根模块不在 ABI 门里（CI 只对 `:plugin-api` 与 `:protocol` 跑 `checkBinaryCompatibility`），`RegistryTranscoder` 的两参构造器成为规范构造器，45 处两参调用不用改 |
+| 5 | 设计文档的 lint 跑 `docs/DESIGN-PROD.md`、`docs/DESIGN.md`、`docs/DESIGN-M2.md`，测试文档按 §2 的机械校验口径跑本文档，都与 `main` `17f2a2cfe1` 上的同一份比 | 都没有新的 ❌，警告类别不变 |
+
+后置：同 `TC-PROD-1040`。
 
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
@@ -15897,6 +15983,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 STORE，写权状态机的锁与纪元、退避的叫醒、登出快照的时机、`commitTogether` 的参数结果与提交冻结、`saveNow` 的快照线程、插件任务的日志预算、Redis URL 的 scheme 与事务的回滚（`REQ-PROD-005`～`REQ-PROD-008`、`REQ-PROD-021`，v0.9.105）→ TC-PROD-980～TC-PROD-989；动了 `PlayerStore` 的 `fence`、`finished`、`drain`、`backOff`、`submit` 或 `loadWithin`、`admitted` 里比对纪元的两处，跑 TC-PROD-980～TC-PROD-982 与 TC-PROD-149，三种线程模式各一次；动了 `attach` 挂登出监听器的那一处，跑 TC-PROD-983 与 `ShutdownSave*IntegrationTest`；动了 `commitTogether` 或 `isFrozen`，跑 TC-PROD-984、TC-PROD-985、TC-PROD-148、TC-PROD-835、TC-PROD-836 与 TC-PROD-161；动了 `saveNow`，跑 TC-PROD-986 与改到所属线程调用的 TC-PROD-145 一类旧用例（`PlayerStoreIntegrationTest`、`StoreMetricsIntegrationTest`、`PlayerDataIntegrationTest` 整类）；动了 `PluginSchedulerImpl#guarded` 或预算的分配，跑 TC-PROD-987 与 TC-PROD-140、TC-PROD-840；动了 `RedisLink#connect` 的校验，跑 TC-PROD-988；动了 `Sql`、`PostgresBackend` 的 `load` / `write` 或 `StoreHousekeeping#run`，跑 TC-PROD-989 与 TC-PROD-144。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 PLAYHOST，插件通道只收 PLAY 的负载、`minecraft:` 命名空间与非法通道名、准入的坏答案、插件 id 唯一、停机收回逐个隔离（`REQ-M2-003`、`REQ-M2-004`、`REQ-M2-006`、`REQ-M2-024`、`REQ-011`、`REQ-PROD-008`）→ TC-PROD-930～TC-PROD-934；动了 `PluginChannelRouter` 的路由、`PluginHost#registerHostChannel` 的调用方或 `SceneService#receive` 就跑 TC-PROD-930、TC-PROD-931 第 1 步，三种线程模式各一次；动了引擎 `PluginMessageListener` 跑 TC-PROD-931 第 2、4 步；动了 `AdmissionGate` 调 `admit` 的那一段、`AdmissionRegistry#register` 或 `Admission` 的两个 record 跑 TC-PROD-932；动了 `PluginHost#enable` 的校验跑 TC-PROD-933；动了 `PluginHost#disableAll` 跑 TC-PROD-934。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-082，`startTicking` 遇到已经起了的 tick 线程（`REQ-013`、`REQ-PROD-008`，v0.9.107）→ TC-PROD-990；动了 `ServerProcessImpl#startTicking` 或 `ThreadDispatcherImpl#start`、`#isAlive` 就跑 TC-PROD-990 与 TC-PROD-853
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-089 组 CODEC，编解码器的报错位置与 null 条目、UUID 的数组长度、注册表加载的报错与线程契约、tag 的 compound 读取（`REQ-017`、`REQ-007`、`REQ-PROD-019`、`REQ-PROD-046`，v0.9.114）→ TC-PROD-1040～TC-PROD-1045；动了引擎 `codec` 包的 `CodecImpl`（集合、map、`Either`、`TriStateImpl`）、`StructCodec#put` 或 `Codec.UUID`，跑 TC-PROD-1040、TC-PROD-1041；动了 `TranscoderCrc32Impl`，跑 TC-PROD-1044 第 1 步与 TC-PROD-801；动了 `RegistryData` 的 `loadRegistryFile`、`MaterialEntry` 或 `DynamicRegistryImpl#loadStaticJsonRegistry`，跑 TC-PROD-1042；动了 `TagSerializerImpl` 或 `TagNbtSeparator`，跑 TC-PROD-1043 与 TC-PROD-922；动了 `Codec` 的静态字段，跑 TC-PROD-1044 第 3 步，并按 TC-PROD-1045 第 1、2 步三种线程模式各跑一次
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170、TC-PLAY-180～TC-PLAY-185（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

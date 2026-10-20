@@ -1309,7 +1309,7 @@ public class EntityBlockPhysicsIntegrationTest {
         assertEqualsPoint(deltaPos, physicsResult.originalDelta());
 
         // Create a new instance of the physics result to simulate gravity or we will never cache because velocity would be zero.
-        var velocityFixedResult = new PhysicsResult(physicsResult.newPosition(), physicsResult.newVelocity().add(deltaPos), physicsResult.isOnGround(), physicsResult.collisionX(), physicsResult.collisionY(), physicsResult.collisionZ(), physicsResult.originalDelta(), physicsResult.collisionPoints(), physicsResult.collisionShapes(), physicsResult.collisionShapePositions(), physicsResult.hasCollision(), physicsResult.collisionFraction());
+        var velocityFixedResult = physicsResult.withNewVelocity(physicsResult.newVelocity().add(deltaPos));
 
         var physicsResult2 = CollisionUtils.handlePhysics(instance, entity.getChunk(),
                 entity.getBoundingBox(),

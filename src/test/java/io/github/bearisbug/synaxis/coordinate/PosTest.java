@@ -521,5 +521,32 @@ public class PosTest {
         assertTrue(pos4.yaw() >= -180f && pos4.yaw() <= 180f);
         assertEquals(-90f, pos4.pitch());
     }
+
+    @Test
+    public void testFixYawOfLargeValues() {
+        for (float yaw : new float[]{1e12f, -3e38f, Float.MAX_VALUE, 1.5e8f}) {
+            final float fixed = Pos.fixYaw(yaw);
+            assertTrue(fixed > -180f && fixed <= 180f, yaw + " fixed to " + fixed);
+            assertEquals(fixed, Pos.fixYaw(fixed), yaw + " fixed to " + fixed + " twice");
+        }
+        // The remainder is exact: 150,000,000 = 416,667 * 360 - 120
+        assertEquals(-120f, Pos.fixYaw(1.5e8f));
+        // Already in range, the yaw is kept as it is
+        assertEquals(Math.nextUp(-180f), Pos.fixYaw(Math.nextUp(-180f)));
+        for (float yaw : new float[]{-0f, -360f, -720f}) {
+            assertEquals(Float.floatToRawIntBits(0f), Float.floatToRawIntBits(Pos.fixYaw(yaw)), "the sign of zero from " + yaw);
+        }
+        assertEquals(new Pos(0, 0, 0), new Pos(0, 0, 0, -360f, 0));
+        assertTrue(Float.isNaN(Pos.fixYaw(Float.NaN)));
+        assertTrue(Float.isNaN(Pos.fixYaw(Float.POSITIVE_INFINITY)));
+    }
+
+    @Test
+    public void testViewAcrossTheYawSeam() {
+        // 170 and -170 are 20 degrees apart through 180, the view turns that way
+        assertEquals(180f, new Pos(0, 0, 0, 170f, 0f).lerpView(new Pos(0, 0, 0, -170f, 0f), 0.5f).yaw(), VIEW_EPSILON);
+        assertTrue(new Pos(0, 0, 0, 179.99f, 0f).similarView(-179.99f, 0f, 0.1f));
+        assertFalse(new Pos(0, 0, 0, 179.99f, 0f).similarView(-170f, 0f, 0.1f));
+    }
 }
 

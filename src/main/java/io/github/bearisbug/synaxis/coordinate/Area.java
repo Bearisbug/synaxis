@@ -63,6 +63,9 @@ public sealed interface Area extends Iterable<BlockVec> {
 
     /**
      * Checks whether this area contains the given block coordinate.
+     * <p>
+     * Constant time, except for a {@link Line}: once the coordinate is inside its bounding box, the line is walked
+     * block by block, in time proportional to its length.
      *
      * @param x the block X coordinate
      * @param y the block Y coordinate
@@ -84,7 +87,8 @@ public sealed interface Area extends Iterable<BlockVec> {
     /**
      * Returns the number of blocks contained in this area.
      * <p>
-     * Counting a sphere requires scanning its bounding box and may be expensive for large radii.
+     * Constant time, except for a {@link Sphere}: its count sums one column per (x, y) offset, in time
+     * proportional to the square of its radius.
      *
      * @return the contained block count
      */

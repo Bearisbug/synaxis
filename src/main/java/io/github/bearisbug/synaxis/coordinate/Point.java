@@ -30,7 +30,7 @@ import static io.github.bearisbug.synaxis.coordinate.CoordConversion.globalToSec
  * <b>Coordinate Conventions:</b>
  * <ul>
  *   <li>Three {@code double} values represent global coordinates</li>
- *   <li>Three {@code double} values following two {@code float} values represent global position coordinates</li>
+ *   <li>Three {@code double} values followed by two {@code float} values (yaw, pitch) represent a global position with a view</li>
  *   <li>Three {@code int} values represent global block coordinates</li>
  * </ul>
  * <p>
@@ -194,15 +194,6 @@ public sealed interface Point permits Vec, Pos, BlockVec {
     @Contract(pure = true)
     default int regionZ() {
         return globalToRegion(blockZ());
-    }
-
-    /**
-     * @deprecated use {@link #sectionY()} instead.
-     */
-    @Deprecated
-    @Contract(pure = true)
-    default int section() {
-        return sectionY();
     }
 
     /**
@@ -434,9 +425,9 @@ public sealed interface Point permits Vec, Pos, BlockVec {
     /**
      * Gets the distance between this point and another. The value of this
      * method is not cached and uses a costly square-root function, so do not
-     * repeatedly call this method to get the point's magnitude. NaN will be
-     * returned if the inner result of the sqrt() function overflows, which
-     * will be caused if the distance is too long.
+     * repeatedly call this method to get the point's magnitude. Infinity is
+     * returned if the squared distance overflows, which happens if the
+     * distance is too long.
      *
      * @param point the other point
      * @return the distance
@@ -447,12 +438,13 @@ public sealed interface Point permits Vec, Pos, BlockVec {
     }
 
     /**
-     * Checks if two points have similar (x/y/z).
+     * Checks if two points have exactly the same coordinates (x/y/z), compared with {@code ==}.
+     * Use {@link #similarPoint(double, double, double)} to allow a difference of {@link #EPSILON}.
      *
      * @param x the x coordinate
      * @param y the y coordinate
      * @param z the z coordinate
-     * @return true if the two positions are similar
+     * @return true if the two positions are the same
      */
     @Contract(pure = true)
     default boolean samePoint(double x, double y, double z) {
@@ -460,10 +452,11 @@ public sealed interface Point permits Vec, Pos, BlockVec {
     }
 
     /**
-     * Checks if two points have similar (x/y/z).
+     * Checks if two points have exactly the same coordinates (x/y/z), compared with {@code ==}.
+     * Use {@link #similarPoint(Point)} to allow a difference of {@link #EPSILON}.
      *
      * @param point the point to compare, decomposed by {@link #x()}, {@link #y()} and {@link #z()}
-     * @return true if the two positions are similar
+     * @return true if the two positions are the same
      */
     @Contract(pure = true)
     default boolean samePoint(Point point) {
@@ -471,7 +464,8 @@ public sealed interface Point permits Vec, Pos, BlockVec {
     }
 
     /**
-     * Checks it two points have similar (x/y/z) coordinates within a given epsilon.
+     * Checks if two points have similar (x/y/z) coordinates within a given epsilon,
+     * as {@link #similarPoint(double, double, double)} with an explicit epsilon.
      *
      * @param x       the x coordinate to compare
      * @param y       the y coordinate to compare
@@ -487,7 +481,8 @@ public sealed interface Point permits Vec, Pos, BlockVec {
     }
 
     /**
-     * Checks it two points have similar (x/y/z) coordinates within a given epsilon.
+     * Checks if two points have similar (x/y/z) coordinates within a given epsilon,
+     * as {@link #similarPoint(Point)} with an explicit epsilon.
      *
      * @param point   the point to compare
      * @param epsilon the maximum difference allowed between the two points (exclusive)
@@ -500,7 +495,7 @@ public sealed interface Point permits Vec, Pos, BlockVec {
     }
 
     /**
-     * Checks it two points have similar (x/y/z) coordinates within {@link #EPSILON}.
+     * Checks if two points have similar (x/y/z) coordinates within {@link #EPSILON}.
      *
      * @param x the x coordinate
      * @param y the y coordinate
@@ -513,7 +508,7 @@ public sealed interface Point permits Vec, Pos, BlockVec {
     }
 
     /**
-     * Checks it two points have similar (x/y/z) coordinates within {@link #EPSILON}.
+     * Checks if two points have similar (x/y/z) coordinates within {@link #EPSILON}.
      *
      * @param point the point to compare
      * @return true if the two positions are similar within {@link #EPSILON}
@@ -585,8 +580,8 @@ public sealed interface Point permits Vec, Pos, BlockVec {
      * Gets the magnitude of the point, defined as sqrt(x^2+y^2+z^2). The
      * value of this method is not cached and uses a costly square-root
      * function, so do not repeatedly call this method to get the point's
-     * magnitude. NaN will be returned if the inner result of the sqrt()
-     * function overflows, which will be caused if the length is too long.
+     * magnitude. Infinity is returned if the squared length overflows, which
+     * happens if the length is too long.
      *
      * @return the magnitude
      */
@@ -733,7 +728,7 @@ public sealed interface Point permits Vec, Pos, BlockVec {
      * point (x/y/z).
      *
      * @param point the other point
-     * @param alpha The alpha value, must be between 0.0 and 1.0
+     * @param alpha The alpha value, 0 gives this point and 1 gives {@code point}; outside [0, 1] it extrapolates
      * @return Linear interpolated point
      */
     @Contract(pure = true, value = "_, _ -> new")
@@ -744,7 +739,7 @@ public sealed interface Point permits Vec, Pos, BlockVec {
      *
      * @return the converted position or this if already a {@link Pos}
      */
-    @Contract(pure = true, value = "-> new")
+    @Contract(pure = true)
     default Pos asPos() {
         assert !(this instanceof Pos) : "Should be overridden";
         return new Pos(x(), y(), z());
@@ -768,7 +763,7 @@ public sealed interface Point permits Vec, Pos, BlockVec {
      *
      * @return the converted point or this if already a {@link Vec}
      */
-    @Contract(pure = true, value = "-> new")
+    @Contract(pure = true)
     default Vec asVec() {
         assert !(this instanceof Vec) : "Should be overridden";
         return new Vec(x(), y(), z());
@@ -779,7 +774,7 @@ public sealed interface Point permits Vec, Pos, BlockVec {
      *
      * @return the converted block point or this if already a {@link BlockVec}
      */
-    @Contract(pure = true, value = "-> new")
+    @Contract(pure = true)
     default BlockVec asBlockVec() {
         assert !(this instanceof BlockVec) : "Should be overridden";
         return new BlockVec(blockX(), blockY(), blockZ());

@@ -16,8 +16,7 @@ public record ShapeImpl(ShapeData shapeData, OcclusionData occlusionData) implem
     private static final Pattern PATTERN = Pattern.compile("-?\\d+\\.\\d+");
 
     record ShapeData(List<BoundingBox> boundingBoxes,
-                     Point relativeStart, Point relativeEnd,
-                     byte fullFaces) {
+                     Point relativeStart, Point relativeEnd) {
         public ShapeData {
             boundingBoxes = List.copyOf(boundingBoxes);
         }
@@ -92,7 +91,7 @@ public record ShapeImpl(ShapeData shapeData, OcclusionData occlusionData) implem
 
     @Override
     public boolean isFaceFull(BlockFace face) {
-        return (((shapeData.fullFaces >> face.ordinal()) & 1) == 1);
+        return (((occlusionData.blockOcclusion >> face.ordinal()) & 1) == 1);
     }
 
     @Override
@@ -134,20 +133,18 @@ public record ShapeImpl(ShapeData shapeData, OcclusionData occlusionData) implem
     }
 
     static ShapeImpl parseShapeFromRegistry(String shape, byte lightEmission) {
-        BoundingBox[] boundingBoxes = parseRegistryBoundingBoxString(shape);
-        final ShapeData shapeData = shapeData(List.of(boundingBoxes));
+        final ShapeData shapeData = shapeData(parseRegistryBoundingBoxString(shape));
         final OcclusionData occlusionData = occlusionData(shapeData, lightEmission);
         return new ShapeImpl(shapeData, occlusionData);
     }
 
     static ShapeImpl emptyShape(byte lightEmission) {
-        BoundingBox[] boundingBoxes = new BoundingBox[0];
-        final ShapeData shapeData = shapeData(List.of(boundingBoxes));
+        final ShapeData shapeData = shapeData(List.of());
         final OcclusionData occlusionData = occlusionData(shapeData, lightEmission);
         return new ShapeImpl(shapeData, occlusionData);
     }
 
-    private static BoundingBox[] parseRegistryBoundingBoxString(String str) {
+    private static List<BoundingBox> parseRegistryBoundingBoxString(String str) {
         final Matcher matcher = PATTERN.matcher(str);
         DoubleList vals = new DoubleArrayList();
         while (matcher.find()) {
@@ -155,23 +152,12 @@ public record ShapeImpl(ShapeData shapeData, OcclusionData occlusionData) implem
             vals.add(newVal);
         }
         final int count = vals.size() / 6;
-        BoundingBox[] boundingBoxes = new BoundingBox[count];
+        final List<BoundingBox> boundingBoxes = new ArrayList<>(count);
         for (int i = 0; i < count; ++i) {
-            final double minX = vals.getDouble(0 + 6 * i);
-            final double minY = vals.getDouble(1 + 6 * i);
-            final double minZ = vals.getDouble(2 + 6 * i);
-
-            final double boundXSize = vals.getDouble(3 + 6 * i) - minX;
-            final double boundYSize = vals.getDouble(4 + 6 * i) - minY;
-            final double boundZSize = vals.getDouble(5 + 6 * i) - minZ;
-
-            final Vec min = new Vec(minX, minY, minZ);
-            final Vec max = new Vec(minX + boundXSize, minY + boundYSize, minZ + boundZSize);
-            final BoundingBox bb = new BoundingBox(min, max);
-            assert bb.minX() == minX;
-            assert bb.minY() == minY;
-            assert bb.minZ() == minZ;
-            boundingBoxes[i] = bb;
+            final int v = 6 * i;
+            boundingBoxes.add(new BoundingBox(
+                    new Vec(vals.getDouble(v), vals.getDouble(v + 1), vals.getDouble(v + 2)),
+                    new Vec(vals.getDouble(v + 3), vals.getDouble(v + 4), vals.getDouble(v + 5))));
         }
         return boundingBoxes;
     }
@@ -200,13 +186,7 @@ public record ShapeImpl(ShapeData shapeData, OcclusionData occlusionData) implem
             relativeEnd = Vec.ZERO;
         }
 
-        byte fullCollisionFaces = 0;
-        for (BlockFace f : BlockFace.values()) {
-            final byte res = isFaceCovered(computeOcclusionSet(f, collisionBoundingBoxes));
-            fullCollisionFaces = (byte) (fullCollisionFaces | ((res == 2) ? 0b1 : 0b0) << f.ordinal());
-        }
-
-        return new ShapeData(collisionBoundingBoxes, relativeStart, relativeEnd, fullCollisionFaces);
+        return new ShapeData(collisionBoundingBoxes, relativeStart, relativeEnd);
     }
 
     private static OcclusionData occlusionData(ShapeData shapeData, byte lightEmission) {

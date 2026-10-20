@@ -51,8 +51,7 @@ public final class PhysicsUtils {
             return physicsResult;
         }
 
-        return new PhysicsResult(newPosition, newVelocity, physicsResult.isOnGround(), physicsResult.collisionX(), physicsResult.collisionY(), physicsResult.collisionZ(),
-                physicsResult.originalDelta(), physicsResult.collisionPoints(), physicsResult.collisionShapes(), physicsResult.collisionShapePositions(), physicsResult.hasCollision(), physicsResult.collisionFraction());
+        return physicsResult.withNewVelocity(newVelocity);
     }
 
     /**

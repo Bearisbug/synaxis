@@ -5,6 +5,20 @@ import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.coordinate.BlockFace;
 
 public interface Shape {
+    /**
+     * Checks whether light leaving this shape through {@code face} is stopped by the faces between this shape and
+     * {@code shape}, the shape on the other side of that face.
+     * <p>
+     * Only defined between two block shapes, as returned by
+     * {@link io.github.bearisbug.synaxis.instance.block.Block#occlusionShape()} or
+     * {@link io.github.bearisbug.synaxis.instance.block.Block#collisionShape()}. Passing a {@link BoundingBox} or
+     * an {@link Entity} to a block shape throws a {@link ClassCastException}; their own implementations always
+     * return false.
+     *
+     * @param shape the block shape on the other side of {@code face}
+     * @param face  the face of this shape the light leaves through
+     * @return true if the light is stopped
+     */
     boolean isOccluded(Shape shape, BlockFace face);
 
     /**

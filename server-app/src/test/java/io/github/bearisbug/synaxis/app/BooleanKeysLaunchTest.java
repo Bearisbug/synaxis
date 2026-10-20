@@ -6,7 +6,6 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
 
-import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.freePort;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,7 +21,7 @@ public class BooleanKeysLaunchTest {
 
     private static String[] launch(String... more) throws Exception {
         final String[] base = {"-Dsynaxis.app.log=stdout", "-Dsynaxis.app.auth=offline", "-Dsynaxis.app.core-mode=on",
-                "-Dsynaxis.app.port=" + freePort(), "-Dsynaxis.app.metrics.bind=127.0.0.1:0"};
+                "-Dsynaxis.app.port=0", "-Dsynaxis.app.metrics.bind=127.0.0.1:0"};
         final String[] all = new String[base.length + more.length];
         System.arraycopy(base, 0, all, 0, base.length);
         System.arraycopy(more, 0, all, base.length, more.length);

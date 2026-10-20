@@ -388,7 +388,7 @@ public final class Main {
         // player to a port that is not listening yet.
         if (directoryMode != null) directoryMode.heartbeat().start();
         if (shardWorld != null) ledger.record("shard_started", shardWorld.startedAttributes());
-        LOGGER.info("synaxis server-app listening on {}:{}", BIND_ADDRESS, port);
+        LOGGER.info("synaxis server-app listening on {}:{}", BIND_ADDRESS, process.server().getPort());
 
         // A daemon: a stop runs on a thread of its own, and a console nobody types into must not
         // keep the JVM alive once that thread and the tick threads are gone.

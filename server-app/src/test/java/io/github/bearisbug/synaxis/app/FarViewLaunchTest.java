@@ -39,7 +39,6 @@ import java.util.TreeMap;
 import java.util.UUID;
 
 import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.frame;
-import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.freePort;
 import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.id;
 import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.readUntil;
 import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.readVarInt;
@@ -98,9 +97,9 @@ public class FarViewLaunchTest {
         }
     }
 
-    private static String[] launch(int port, ShardSettings release, String... more) {
+    private static String[] launch(ShardSettings release, String... more) {
         final List<String> properties = new ArrayList<>(List.of("-Dsynaxis.app.log=stdout", "-Dsynaxis.app.auth=offline",
-                "-Dsynaxis.app.port=" + port, "-Dsynaxis.app.metrics.bind=127.0.0.1:0",
+                "-Dsynaxis.app.port=0", "-Dsynaxis.app.metrics.bind=127.0.0.1:0",
                 "-Dsynaxis.map.root=" + release.mapRoot(), "-Dsynaxis.map.build=" + release.mapBuild()));
         properties.addAll(List.of(more));
         return properties.toArray(String[]::new);
@@ -115,13 +114,12 @@ public class FarViewLaunchTest {
     public void aMapShardAnnouncesItsTilesBeforeFinishConfiguration(@TempDir Path directory) throws Exception {
         final ShardSettings release = ShardWorldFarViewTest.fourTileRelease(directory.resolve("maps"), URL_ROOT);
         final SynxManifest manifest = SynxManifest.fromJson(Files.readString(release.buildDir().resolve(SynxManifest.FILE_NAME)));
-        final int port = freePort();
-        try (Launched shard = Launched.start(directory, ShardMain.class, launch(port, release,
+        try (Launched shard = Launched.start(directory, ShardMain.class, launch(release,
                 "-D" + ShardSettings.FARVIEW_URL_ROOT + "=" + URL_ROOT))) {
             final String log = shard.awaitLine("synaxis server-app listening on");
             assertTrue(log.contains("Far view: 4 tile(s), 0 coarse, from " + URL_ROOT), log);
 
-            final List<Frame> frames = loginAndConfigure(port);
+            final List<Frame> frames = loginAndConfigure(shard.awaitPort());
             final List<byte[]> messages = farViewMessages(frames);
             assertEquals(1, messages.size(), "one announcement per connection");
             final int finish = id(ConnectionState.CONFIGURATION, FinishConfigurationPacket.class);
@@ -153,13 +151,12 @@ public class FarViewLaunchTest {
     public void aShardOnAMapOfOneTileSendsThatTileBeforeFinishConfiguration(@TempDir Path directory) throws Exception {
         final ShardSettings release = MapFixture.bake(directory.resolve("maps"));
         final SynxManifest manifest = SynxManifest.fromJson(Files.readString(release.buildDir().resolve(SynxManifest.FILE_NAME)));
-        final int port = freePort();
-        try (Launched shard = Launched.start(directory, ShardMain.class, launch(port, release,
+        try (Launched shard = Launched.start(directory, ShardMain.class, launch(release,
                 "-D" + ShardSettings.FARVIEW_URL_ROOT + "=" + URL_ROOT))) {
             final String log = shard.awaitLine("synaxis server-app listening on");
             assertTrue(log.contains("Far view: 1 tile(s), 0 coarse, from " + URL_ROOT), log);
 
-            final List<Frame> frames = loginAndConfigure(port);
+            final List<Frame> frames = loginAndConfigure(shard.awaitPort());
             assertEquals(id(ConnectionState.CONFIGURATION, FinishConfigurationPacket.class), frames.getLast().packetId());
             final List<byte[]> messages = farViewMessages(frames.subList(0, frames.size() - 1));
             assertEquals(1, messages.size());
@@ -175,7 +172,7 @@ public class FarViewLaunchTest {
     @Test
     public void aUrlRootThatIsNotAnHttpUrlRefusesTheStart(@TempDir Path directory) throws Exception {
         final ShardSettings release = MapFixture.bake(directory.resolve("maps"));
-        try (Launched shard = Launched.start(directory, ShardMain.class, launch(freePort(), release,
+        try (Launched shard = Launched.start(directory, ShardMain.class, launch(release,
                 "-D" + ShardSettings.FARVIEW_URL_ROOT + "=cdn.test/synaxis"))) {
             assertEquals(1, shard.awaitExit(), shard.log());
             assertTrue(shard.log().contains("Refusing to start: " + ShardSettings.FARVIEW_URL_ROOT
@@ -188,11 +185,10 @@ public class FarViewLaunchTest {
     @Test
     public void aMapShardWithoutAUrlRootAnnouncesNothing(@TempDir Path directory) throws Exception {
         final ShardSettings release = ShardWorldFarViewTest.fourTileRelease(directory.resolve("maps"), URL_ROOT);
-        final int port = freePort();
-        try (Launched shard = Launched.start(directory, ShardMain.class, launch(port, release))) {
+        try (Launched shard = Launched.start(directory, ShardMain.class, launch(release))) {
             final String log = shard.awaitLine("synaxis server-app listening on");
             assertTrue(log.contains("Far view off: " + ShardSettings.FARVIEW_URL_ROOT + " is empty"), log);
-            final List<Frame> frames = loginAndConfigure(port);
+            final List<Frame> frames = loginAndConfigure(shard.awaitPort());
             assertEquals(id(ConnectionState.CONFIGURATION, FinishConfigurationPacket.class), frames.getLast().packetId());
             assertEquals(0, farViewMessages(frames).size());
         }

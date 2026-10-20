@@ -36,7 +36,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.frame;
-import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.freePort;
 import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.id;
 import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.readUntil;
 import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.readVarInt;
@@ -98,12 +97,11 @@ public class ShutdownBeforeTheWorldLaunchTest {
      */
     private static List<Integer> stopWhileAClientIsStuck(Path directory, boolean answerKnownPacks, int countdown)
             throws Exception {
-        final int port = freePort();
         try (ConfigFileLaunchTest.Launched server = ConfigFileLaunchTest.Launched.start(directory, Main.class,
                 "-Dsynaxis.app.log=stdout", "-Dsynaxis.app.auth=offline", "-Dsynaxis.app.core-mode=on",
-                "-Dsynaxis.app.port=" + port, "-Dsynaxis.app.metrics.bind=127.0.0.1:0");
+                "-Dsynaxis.app.port=0", "-Dsynaxis.app.metrics.bind=127.0.0.1:0");
              SocketChannel client = SocketChannel.open()) {
-            server.awaitLine("synaxis server-app listening on");
+            final int port = server.awaitPort();
             client.connect(new InetSocketAddress(InetAddress.getLoopbackAddress(), port));
             client.socket().setSoTimeout(30_000);
             final InputStream in = client.socket().getInputStream();

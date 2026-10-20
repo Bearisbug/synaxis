@@ -121,12 +121,11 @@ public class MapShardPlayerStateLaunchTest {
         final Map<String, String> environment = environment(store.settings());
         assertEquals(0, Main.migrateOnly(new String[]{Main.MIGRATE_ONLY, Main.AUTH_MODE_ARGUMENT + "offline"}, environment));
 
-        final int builtPort = freePort();
         final Pos spawn;
         try (Launched shard = Launched.start(Files.createDirectories(directory.resolve("built")),
-                System.getProperty("java.class.path"), environment, ShardMain.class, launch(builtPort, built))) {
+                System.getProperty("java.class.path"), environment, ShardMain.class, launch(built))) {
             spawn = against(shard, () -> {
-                shard.awaitLine("synaxis server-app listening on");
+                final int builtPort = shard.awaitPort();
                 final Pos spawned;
                 try (Client client = new Client(builtPort)) {
                     spawned = client.nextPosition();
@@ -149,11 +148,10 @@ public class MapShardPlayerStateLaunchTest {
             });
         }
 
-        final int rebuiltPort = freePort();
         try (Launched shard = Launched.start(Files.createDirectories(directory.resolve("rebuilt")),
-                System.getProperty("java.class.path"), environment, ShardMain.class, launch(rebuiltPort, rebuilt))) {
+                System.getProperty("java.class.path"), environment, ShardMain.class, launch(rebuilt))) {
             against(shard, () -> {
-                shard.awaitLine("synaxis server-app listening on");
+                final int rebuiltPort = shard.awaitPort();
                 final Pos respawned;
                 try (Client client = new Client(rebuiltPort)) {
                     respawned = client.nextPosition();
@@ -215,8 +213,8 @@ public class MapShardPlayerStateLaunchTest {
                 "SYNAXIS_TRANSFER_HMAC_KEYS", "1:" + Base64.getEncoder().encodeToString(new byte[32]));
     }
 
-    private static String[] launch(int port, ShardSettings release) {
-        return new String[]{"-Dsynaxis.app.log=stdout", "-Dsynaxis.app.auth=offline", "-Dsynaxis.app.port=" + port,
+    private static String[] launch(ShardSettings release) {
+        return new String[]{"-Dsynaxis.app.log=stdout", "-Dsynaxis.app.auth=offline", "-Dsynaxis.app.port=0",
                 "-Dsynaxis.app.metrics.bind=127.0.0.1:0", "-Dsynaxis.app.store=postgres",
                 "-Dsynaxis.app.shard-id=" + SHARD_ID, "-Dsynaxis.map.root=" + release.mapRoot(),
                 "-Dsynaxis.map.build=" + release.mapBuild()};

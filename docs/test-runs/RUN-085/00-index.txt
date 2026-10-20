@@ -1,0 +1,45 @@
+RUN-085: launch tests take the game port the child bound instead of a port picked and freed beforehand
+(docs/TEST.md TC-PROD-992). Times are local (UTC+8), 2026-10-20. Gradle one build at a time behind the machine's
+Gradle lock, --max-workers=2 --no-daemon, test tasks with --rerun; the database variables set.
+
+The red that started it, on CI: the lighting session's PR #38, run 39200939368, job Test with 4 tick threads
+(strict, grid), attempt 1: server-app ShutdownExitLaunchTest aStopEndsTheProcessWithZeroWhileAPluginThreadLingers
+at ShutdownExitLaunchTest.java:64, no line with "synaxis server-app listening on". The child's log:
+  HostMetrics - Metrics endpoint listening on http://127.0.0.1:41619/metrics
+  HostExceptionHandler - Unhandled exception ... java.net.BindException: Address already in use
+    at io.github.bearisbug.synaxis.network.socket.Server.init(Server.java:73)
+  Main - Refusing to start: synaxis.app.port=41619 cannot be bound: Address already in use
+The test had taken 41619 from a ServerSocket(0) it closed at once; the child bound its metrics endpoint on
+127.0.0.1:0 first and was given the same port. Check and the strict job were green on the same commit.
+
+Classes in each full build: server-app ConfigFileLaunchTest, BindKeysLaunchTest, BooleanKeysLaunchTest,
+ShardGateLaunchTest, ShardLaunchTest, ShutdownExitLaunchTest, ShutdownSignalLaunchTest, RefusedStartLaunchTest,
+ShutdownBeforeTheWorldLaunchTest, MapShardPlayerStateLaunchTest, FarViewLaunchTest, OpsPortsLaunchTest, MainTest,
+with :server-app:testNamingCheck and :server-app:forbiddenImportsCheck.
+1  19:30:57-19:31:56  default mode: 52 tests completed, 3 failed: MapShardPlayerStateLaunchTest and the two of
+                      RefusedStartLaunchTest, all "SYNAXIS_TEST_PG_URL is set and cannot be reached": the local
+                      PostgreSQL container was stopped. Started again (docker start, the same containers).
+2  19:34:33-19:35:21  build 1 again: BUILD SUCCESSFUL in 47s, 52 tests, 0 failures, 0 skipped
+3  19:36:37-19:37:05  counter-proof on that code, the ready line back to the configured port: 11 tests completed,
+                      9 failed, java.net.BindException: Can't assign requested address
+The first CI run of the draft PR #40 (e003079f34, run 39416792776) failed in the Check job's coverage gate:
+  server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java (0.0%): Missing lines 392; Coverage: 0%
+  (the three test jobs, Concurrency 39416792615, Client mod 39416792951 and Client gametest 39416792774 green).
+Main#start runs only in the launched JVMs and JaCoCo recorded the test JVM alone. Launched#start now adds this
+JVM's JaCoCo agent to the launched JVM's command line. From build 4 on the ready line is Main.java:391.
+4  20:05:35-20:06:42  build 2 plus :server-app:jacocoTestReport: 52 tests, 0 failures; the agent's destfile was
+                      the relative build/jacoco/test.exec, so each launched JVM wrote into its own temporary
+                      directory: Main.java 59 of 409 lines covered, line 391 not; local diff-cover 0%
+5  20:12:25-20:13:25  build 4 with the destfile made absolute: BUILD SUCCESSFUL in 1m, 52 tests, 0 failures,
+                      0 skipped (2, 2, 2, 3, 11, 1, 1, 2, 4, 1, 4, 2, 17 in the order above); test.exec holds
+                      29 sessions; Main.java 290 of 409 lines covered, line 391 ci="8"; diff-cover of that report
+                      against origin/main with --src-roots server-app/src/main/java: Total 1 line, Missing 0
+                      lines, Coverage 100%
+6  20:13:54-20:14:19  counter-proof on the final code: Main.java:391 back to (BIND_ADDRESS, port),
+                      ConfigFileLaunchTest, FarViewLaunchTest, ShutdownBeforeTheWorldLaunchTest,
+                      MapShardPlayerStateLaunchTest: 11 tests completed, 9 failed, each with
+                      java.net.BindException: Can't assign requested address where the test connects to the port
+                      read from the ready line, which is 0: ConfigFileLaunchTest.java:170, FarViewLaunchTest.java:80
+                      (three cases), ShutdownBeforeTheWorldLaunchTest.java:105 (four),
+                      MapShardPlayerStateLaunchTest.java:290; restored afterwards
+The three thread modes, the full suites, Concurrency, Client mod and Client gametest run on the draft PR.

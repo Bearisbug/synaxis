@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.freePort;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -65,7 +64,7 @@ public class RefusedStartLaunchTest {
     private int refused(Path directory, String... properties) throws IOException, InterruptedException {
         final List<String> launch = new ArrayList<>(List.of("-Dsynaxis.app.log=stdout", "-Dsynaxis.app.auth=offline",
                 "-Dsynaxis.app.core-mode=on", "-Dsynaxis.app.store=postgres", "-Dsynaxis.app.shard-id=" + SHARD,
-                "-Dsynaxis.app.port=" + freePort()));
+                "-Dsynaxis.app.port=0"));
         launch.addAll(List.of(properties));
         Files.createDirectories(directory);
         try (Launched main = Launched.start(directory, System.getProperty("java.class.path"), environment(), Main.class,

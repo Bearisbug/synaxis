@@ -8,7 +8,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 
-import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.freePort;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -29,10 +28,9 @@ public class ShutdownSignalLaunchTest {
 
     @Test
     public void aSignalDuringAConsoleCountdownCutsItAndWaitsForTheSequence(@TempDir Path directory) throws Exception {
-        final int port = freePort();
         try (ConfigFileLaunchTest.Launched server = ConfigFileLaunchTest.Launched.start(directory, Main.class,
                 "-Dsynaxis.app.log=stdout", "-Dsynaxis.app.auth=offline", "-Dsynaxis.app.core-mode=on",
-                "-Dsynaxis.app.port=" + port, "-Dsynaxis.app.metrics.bind=127.0.0.1:0")) {
+                "-Dsynaxis.app.port=0", "-Dsynaxis.app.metrics.bind=127.0.0.1:0")) {
             server.awaitLine("synaxis server-app listening on");
             final OutputStream console = server.process().getOutputStream();
             console.write("stop 30\n".getBytes(StandardCharsets.UTF_8));

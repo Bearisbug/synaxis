@@ -18,7 +18,6 @@ import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
-import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.freePort;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -59,7 +58,7 @@ public class ShutdownExitLaunchTest {
         final String classPath = classes + File.pathSeparator + System.getProperty("java.class.path");
 
         try (Launched server = Launched.start(directory, classPath, Main.class, "-Dsynaxis.app.log=stdout",
-                "-Dsynaxis.app.auth=offline", "-Dsynaxis.app.plugins=lingering", "-Dsynaxis.app.port=" + freePort(),
+                "-Dsynaxis.app.auth=offline", "-Dsynaxis.app.plugins=lingering", "-Dsynaxis.app.port=0",
                 "-Dsynaxis.app.metrics.bind=127.0.0.1:0")) {
             assertTrue(server.awaitLine("synaxis server-app listening on").contains("Gameplay mode"), server.log());
             final OutputStream console = server.process().getOutputStream();

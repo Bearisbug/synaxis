@@ -21,7 +21,7 @@ public class BindKeysLaunchTest {
 
     private static Launched launch(Path directory, String bind) throws Exception {
         return Launched.start(directory, Main.class, "-Dsynaxis.app.log=stdout", "-Dsynaxis.app.auth=offline",
-                "-Dsynaxis.app.core-mode=on", "-Dsynaxis.app.port=" + freePort(),
+                "-Dsynaxis.app.core-mode=on", "-Dsynaxis.app.port=0",
                 "-Dsynaxis.app.metrics.bind=127.0.0.1:0", bind);
     }
 

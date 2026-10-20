@@ -24,6 +24,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -39,6 +40,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
@@ -67,13 +70,12 @@ public class ConfigFileLaunchTest {
 
     @Test
     public void aShardTakesTheFileOverItsDefaultsAndTheCommandLineOverTheFile(@TempDir Path directory) throws Exception {
-        final int port = freePort();
         ConfigFileTest.write(directory.resolve(ConfigFile.DEFAULT_FILE), String.join("\n",
                 "# docs/TEST.md TC-PROD-442",
                 "synaxis.app.log=stdout",
                 "synaxis.app.auth=offline",
                 "synaxis.app.core-mode=on",
-                "synaxis.app.port=" + port,
+                "synaxis.app.port=0",
                 "synaxis.app.metrics.bind=127.0.0.1:0",
                 "synaxis.max-players=300",
                 "synaxis.chunk-view-distance=10",
@@ -101,7 +103,7 @@ public class ConfigFileLaunchTest {
             assertFalse(Files.exists(directory.resolve("logs").resolve("latest.log")),
                     "synaxis.app.log=stdout reached the logging setup, so it built no file appender");
 
-            final List<Frame> frames = loginAndConfigure(port);
+            final List<Frame> frames = loginAndConfigure(shard.awaitPort());
             int compressed = 0;
             for (Frame frame : frames) {
                 if (frame.dataLength() == 0) {
@@ -127,7 +129,7 @@ public class ConfigFileLaunchTest {
         ConfigFileTest.write(directory.resolve(ConfigFile.DEFAULT_FILE), "synaxis.max-player=1\n");
         // On the command line, so that a launcher that let the file through would come up on a free port
         final String[] launch = {"-Dsynaxis.app.log=stdout", "-Dsynaxis.app.auth=offline", "-Dsynaxis.app.core-mode=on",
-                "-Dsynaxis.app.port=" + freePort(), "-Dsynaxis.app.metrics.bind=127.0.0.1:0"};
+                "-Dsynaxis.app.port=0", "-Dsynaxis.app.metrics.bind=127.0.0.1:0"};
 
         try (Launched main = Launched.start(directory, Main.class, concat(launch, "-D" + ConfigFile.PATH_PROPERTY + "=" + named))) {
             assertRefused(main, named + ": unknown key synaxis.max-player (nearest known key synaxis.max-players)");
@@ -273,6 +275,8 @@ public class ConfigFileLaunchTest {
     /** A server application in a JVM of its own, its output collected line by line. */
     record Launched(Process process, List<String> output, Thread reader) implements AutoCloseable {
 
+        private static final String READY = "synaxis server-app listening on";
+
         static Launched start(Path directory, Class<?> launcher, String... properties) throws IOException {
             return start(directory, System.getProperty("java.class.path"), launcher, properties);
         }
@@ -287,6 +291,13 @@ public class ConfigFileLaunchTest {
             final List<String> command = new ArrayList<>(List.of(
                     Path.of(System.getProperty("java.home"), "bin", "java").toString(), "-Xmx1g",
                     "-cp", classPath, "-Dlogback.configurationFile=logback.xml"));
+            // The JaCoCo agent of this JVM, so that what Main runs only in a launched JVM counts in the report. Its
+            // file is made absolute, the launched JVM runs in another directory; the agent writes on a JVM exit that
+            // runs the shutdown hooks, not on destroyForcibly
+            ManagementFactory.getRuntimeMXBean().getInputArguments().stream()
+                    .filter(argument -> argument.startsWith("-javaagent:") && argument.contains("jacocoagent"))
+                    .map(Launched::withAbsoluteDestfile)
+                    .forEach(command::add);
             command.addAll(List.of(properties));
             command.add(launcher.getName());
             final ProcessBuilder builder = new ProcessBuilder(command).directory(directory.toFile()).redirectErrorStream(true);
@@ -305,6 +316,13 @@ public class ConfigFileLaunchTest {
             return new Launched(process, output, reader);
         }
 
+        private static String withAbsoluteDestfile(String agent) {
+            final Matcher destfile = Pattern.compile("destfile=([^,]+)").matcher(agent);
+            if (!destfile.find()) return agent;
+            final String absolute = Path.of(destfile.group(1)).toAbsolutePath().toString();
+            return destfile.replaceFirst(Matcher.quoteReplacement("destfile=" + absolute));
+        }
+
         String log() {
             return String.join("\n", output);
         }
@@ -318,6 +336,13 @@ public class ConfigFileLaunchTest {
                 Thread.sleep(50);
             }
             return log();
+        }
+
+        /** Waits for the ready line and returns the game port it names, the one bound on {@code synaxis.app.port=0}. */
+        int awaitPort() throws InterruptedException {
+            awaitLine(READY);
+            final String line = output.stream().filter(l -> l.contains(READY)).findFirst().orElseThrow();
+            return Integer.parseInt(line.substring(line.lastIndexOf(':') + 1).trim());
         }
 
         int awaitExit() throws InterruptedException {

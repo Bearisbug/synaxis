@@ -1,4 +1,4 @@
-Counterproofs on e2238495a2, three runs of temporary changes, each followed by git reset --hard HEAD.
+Counterproofs on b53d945d21, three runs of temporary changes, each followed by git reset --hard HEAD.
 
 Run A, eight changes together
   BlockImpl#getState:                  the range check removed, BLOCK_STATE_MAP.get(stateId) as before

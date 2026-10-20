@@ -1,4 +1,4 @@
-Red before the fix: dd954396f4, the new tests on the code before the fix commits (PropertiesPredicate.Range#test(Block,
+Red before the fix: e55983ab3a, the new tests on the code before the fix commits (PropertiesPredicate.Range#test(Block,
 String) looks the bounds up in the values of the property as given, Heightmap#refresh(int) clears its flag before the
 scan, so a reader on another thread sees no refresh pending and reads the heights from before the invalidation).
   ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest' \
@@ -13,10 +13,10 @@ scan, so a reader on another thread sees no refresh pending and reads the height
    integerBoundsReadAsTheClientParsesThem() | org.opentest4j.AssertionFailedError: max 07, age 0 ==> expected: <true> but was: <false> | PropertiesPredicateTest.java:156
 
 Per change
-  integer bounds (8212be3fb2):      PropertiesPredicateTest:156, the first age, 0, already differs: ..7 matches it and
+  integer bounds (141b94961c):      PropertiesPredicateTest:156, the first age, 0, already differs: ..7 matches it and
                                     ..07 matches nothing, "07" being no value of age. The test stops there; "05" and
                                     "+5" as the minimum match nothing either, so :154 and :155 would fail on age 5
                                     (read from the code, not run on their own)
   reads during a computation        ChunkHeightmapIntegrationTest:237, the read of column (5, 5) on the second thread
-  (e388bcbb05):                     returns 39 at once while the first thread is stopped in the computation at
+  (8ffd07d629):                     returns 39 at once while the first thread is stopped in the computation at
                                     column (0, 0); the stone set at y 50 before the invalidation is not in it

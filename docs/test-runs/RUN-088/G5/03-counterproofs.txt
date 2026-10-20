@@ -1,4 +1,4 @@
-Counterproofs on 97b21b3099, two runs of temporary changes, each followed by git reset --hard HEAD.
+Counterproofs on 8a78cc0d8a, two runs of temporary changes, each followed by git reset --hard HEAD.
 
 Run A, four changes together
   GeneratorImpl.UnitImpl#fork(Point, Point):  the Check.argCondition on width, height and depth removed

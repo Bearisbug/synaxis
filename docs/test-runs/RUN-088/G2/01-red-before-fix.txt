@@ -1,4 +1,4 @@
-Red before the fix: d688464657, the new tests on the code before the fix commits (nearbyEntities still the spiral and
+Red before the fix: 6e12a33d7a, the new tests on the code before the fix commits (nearbyEntities still the spiral and
 single-chunk code, setReadOnly asserting the write-lock, getBiome and setBiome without a bound check).
   ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerTest' --tests 'io.github.bearisbug.synaxis.instance.ChunkWriteLockIntegrationTest' \
     --tests 'io.github.bearisbug.synaxis.instance.generator.BiomeIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerLeakIntegrationTest' \
@@ -18,9 +18,9 @@ single-chunk code, setReadOnly asserting the write-lock, getBiome and setBiome w
    biomesOutsideTheWorldReadAndSetAlikeInBothModes(Env) | java.lang.ArrayIndexOutOfBoundsException: Index 16 out of bounds for length 16 | SynxChunkOverlayIntegrationTest.java:509
 
 Per change
-  read-only flag (6297b202c5):  setReadOnlyNeedsNoLock :69, setReadOnly(true) without a lock throws
-  biome bounds (3e9c3fb022):    biomeOutsideTheWorldReadsTheNearestSection :87 (getBiome at maxY), biomeSetOutsideTheWorldChangesNothing
+  read-only flag (b78a2cf1da):  setReadOnlyNeedsNoLock :69, setReadOnly(true) without a lock throws
+  biome bounds (a81d29ed98):    biomeOutsideTheWorldReadsTheNearestSection :87 (getBiome at maxY), biomeSetOutsideTheWorldChangesNothing
                                 :105 (setBiome at maxY + 16), biomesOutsideTheWorldReadAndSetAlikeInBothModes :509 (SynxChunk#getBiome
                                 in handle mode at y 256: its own section index, past the 16 sections)
-  nearby queries (8c32045cce):  nearbyEntitiesAcrossAChunkEdge, nearbyEntitiesWithHugeRangeFindsAll and nearbyQueriesMatchABruteForceScan
+  nearby queries (cbd1aad037):  nearbyEntitiesAcrossAChunkEdge, nearbyEntitiesWithHugeRangeFindsAll and nearbyQueriesMatchABruteForceScan
                                 green on the code before the rewrite: same results before and after (EntityTrackerTest 11 of 11)

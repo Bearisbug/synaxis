@@ -1,4 +1,4 @@
-Counterproofs: 44b6855d1d with six temporary changes, run together, then git reset --hard HEAD.
+Counterproofs: e39db70f4b with six temporary changes, run together, then git reset --hard HEAD.
   Entity#setInstance:                      instance.getCurrentWeather() back to instance.getWeather()
   InstanceContainer#setChunkSupplier:      Objects.requireNonNull(chunkSupplier, ...) back to the plain assignment
   Instance#setWeather(Weather, int):       Check.argCondition back to Check.stateCondition (same message)

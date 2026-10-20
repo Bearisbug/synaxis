@@ -1,4 +1,4 @@
-Green after the fix: e2238495a2.
+Green after the fix: b53d945d21.
   ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.BlockTest' --tests 'io.github.bearisbug.synaxis.instance.BlockPropertiesTest' \
     --tests 'io.github.bearisbug.synaxis.instance.BlockStateMapCodecTest' --tests 'io.github.bearisbug.synaxis.command.ArgumentTypeTest' \
     --tests 'io.github.bearisbug.synaxis.instance.block.BlockBreakCalculationIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.block.BlockIteratorTest' \

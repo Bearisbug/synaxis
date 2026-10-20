@@ -1,14 +1,14 @@
 RUN-088 G2 follow-up after its review: nearbyEntities returns at once for a negative or NaN range and for a
-target without entities. Test fb9b3b2bc4, fix ce373a465b.
+target without entities. Test 44d8bc1eaf, fix 243678ead8.
 
-Red (fix reverted with git revert --no-commit ce373a465b, then git reset --hard HEAD):
+Red (fix reverted with git revert --no-commit 243678ead8, then git reset --hard HEAD):
   :test --tests io.github.bearisbug.synaxis.instance.EntityTrackerTest --rerun
   <testsuite name="io.github.bearisbug.synaxis.instance.EntityTrackerTest" tests="12" skipped="0" failures="1" errors="0">
   nearbyWithANegativeOrNaNRangeFindsNothing: range -1.0 at Vec[x=8.0, y=0.0, z=8.0] ==> expected: <[]> but was:
   <[...Entity@...]> at EntityTrackerTest.java:245 (the query inside a chunk matched by the absolute range; the one
   next to the chunk edge found nothing, so the result hung on the distance to the edge)
 
-Green (ce373a465b):
+Green (243678ead8):
   :test --tests ...collision.EntityEntityCollisionIntegrationTest --tests ...instance.EntityTrackerTest
         --tests ...instance.EntityTrackerIntegrationTest --tests ...instance.EntityTrackerLeakIntegrationTest
         --tests ...instance.EntityTrackerUuidConflictTest --tests ...instance.EntityTrackerUnregisteredMoveTest --rerun

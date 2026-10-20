@@ -1,4 +1,4 @@
-Regression for ChunkView#references and nearbyEntities in the two thread modes: 4a33cf0296 (aed748a2b6's code, Javadoc
+Regression for ChunkView#references and nearbyEntities in the two thread modes: 1f31998db8 (e8ba73b39f's code, Javadoc
 only after it). The five classes of the chunk viewer regression, default mode, then strict grid with the tracker classes.
   ./gradlew :test --rerun --tests 'io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest' \
     --tests 'io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest' --tests 'io.github.bearisbug.synaxis.entity.player.ChunkSendCapTest' \

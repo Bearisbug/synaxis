@@ -1,4 +1,4 @@
-Green after the fix: 44b6855d1d.
+Green after the fix: e39db70f4b.
   ./gradlew :compileJava :compileTestJava :synx:compileTestJava :baker:compileTestJava :server-app:compileTestJava \
       :game-rts:compileTestJava :game-rush:compileTestJava \
     :test --tests 'io.github.bearisbug.synaxis.instance.InstanceBlockIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.WeatherIntegrationTest' \

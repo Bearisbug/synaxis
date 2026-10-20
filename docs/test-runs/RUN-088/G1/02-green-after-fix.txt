@@ -1,4 +1,4 @@
-Green after the fix: the tree of 8d784527b3..d698250d49 as committed (8a04b74c48 only adds the JMH change, compiled here).
+Green after the fix: the tree of 05cf0061f9..783f8d52a8 as committed (e2b2c8c1ab only adds the JMH change, compiled here).
   ./gradlew :compileJava :compileTestJava :synx:compileTestJava :baker:compileTestJava :architecture-tests:compileTestJava \
     :jmh-benchmarks:compileJmhJava :jmh-benchmarks:compileWorldbenchJava \
     :test --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteTest' --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteSwarTest' --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteCopyTest' \

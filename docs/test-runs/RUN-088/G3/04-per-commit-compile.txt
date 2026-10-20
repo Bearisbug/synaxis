@@ -2,13 +2,13 @@ Each commit of the group compiles on its own: the root main and test code (Error
 the other with git checkout --detach, then back to m3/r088-p3.
   ./gradlew :compileJava :compileTestJava --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
 
-  7f7ed18733  compiled in the red run (01)
-  925e37ba17  BUILD SUCCESSFUL
-  36708e3956  BUILD SUCCESSFUL
-  1d4aebd2dc  BUILD SUCCESSFUL
-  db9a7914cd  BUILD SUCCESSFUL (the removal deprecation of the explosion API and its suppressions)
-  0dd6a1fb8e  BUILD SUCCESSFUL (run right after the commit)
-  8e71ad4604  BUILD SUCCESSFUL
-  0de34587fe  BUILD SUCCESSFUL
-  5c6de58519  BUILD SUCCESSFUL
-  44b6855d1d  compiled with every module in the green run (02)
+  7787d372a5  compiled in the red run (01)
+  308766c7f8  BUILD SUCCESSFUL
+  503d4da56d  BUILD SUCCESSFUL
+  ee05f2e260  BUILD SUCCESSFUL
+  e723628943  BUILD SUCCESSFUL (the removal deprecation of the explosion API and its suppressions)
+  5f1389545a  BUILD SUCCESSFUL (run right after the commit)
+  d4e7216c80  BUILD SUCCESSFUL
+  de959922f0  BUILD SUCCESSFUL
+  5f216a9060  BUILD SUCCESSFUL
+  e39db70f4b  compiled with every module in the green run (02)

@@ -1,4 +1,4 @@
-Counterproofs: aed748a2b6 with two temporary changes, run together, then git reset --hard HEAD.
+Counterproofs: e8ba73b39f with two temporary changes, run together, then git reset --hard HEAD.
   EntityTrackerImpl#nearbyEntities: the condition of the walk over every bucket, boxChunks > entities(target).size(),
     becomes boxChunks < 0 (never taken: every range goes through its box of chunks).
   SynxChunk#setBiome: the four lines sending a y outside the world to super before materializing are deleted.

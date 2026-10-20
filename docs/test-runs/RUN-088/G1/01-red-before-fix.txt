@@ -1,5 +1,5 @@
-Red before the fix: 8a04b74c48 with the three behavior commits reverted, tests as committed.
-  git revert --no-commit 08c3227b05 99edb625aa c8194e83ba
+Red before the fix: e2b2c8c1ab with the three behavior commits reverted, tests as committed.
+  git revert --no-commit fe9eaf41fa 7f80661971 aa0b6c0a44
   ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteTest' --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteCopyTest' --continue --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
   git reset --hard HEAD
 
@@ -24,11 +24,11 @@ Red before the fix: 8a04b74c48 with the three behavior commits reverted, tests a
    loadRejectsShortValues() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | PaletteTest.java:1107
 
 Per fix
-  load input (c8194e83ba):          loadRejectsEmptyPalette :1100, loadRejectsShortValues :1107, loadRejectsIndexPastPalette :1116
+  load input (aa0b6c0a44):          loadRejectsEmptyPalette :1100, loadRejectsShortValues :1107, loadRejectsIndexPastPalette :1116
                                     (loadOneValueWithoutData and loadManyIndicesBecomesDirectAndKeepsValues green before and after)
-  value range (99edb625aa):         setRejectsNegativeValue :95, setRejectsValuePastDirectBits :107, fillRejectsNegativeValue :121,
+  value range (7f80661971):         setRejectsNegativeValue :95, setRejectsValuePastDirectBits :107, fillRejectsNegativeValue :121,
                                     replaceRejectsNegativeValue :130, countValueEdgeCases :422
-  biome serializer (08c3227b05):    biomeSerializerWritesASmallRegistryAsIndirect :807 (the old code wrote bitsPerEntry 2 with an
+  biome serializer (fe9eaf41fa):    biomeSerializerWritesASmallRegistryAsIndirect :807 (the old code wrote bitsPerEntry 2 with an
                                     empty palette list, which the reader refuses with "Invalid palette length: 0"),
                                     biomeSerializerRejectsIdsPastASmallRegistry :822
                                     (biomeSerializerKeepsTheDirectWidthOfALargeRegistry green before and after: 9, 65 and 66 biomes

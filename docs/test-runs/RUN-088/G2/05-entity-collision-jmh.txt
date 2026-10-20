@@ -1,5 +1,5 @@
 EntityCollisionBenchmark (jmh-benchmarks, avgt, us/op), before and after the nearbyEntities rewrite
-A = 17f2a2cfe1 (before RUN-088), B = this branch at ce771ed494 (G1 and G2 committed).
+A = 17f2a2cfe1 (before RUN-088), B = this branch at 830cce78a1 (G1 and G2 committed).
 Both jars built with :jmh-benchmarks:jmhJar, then run alternately A B A B under the heavy lock:
   java -jar <jar> EntityCollisionBenchmark -bm avgt -f 1 -wi 4 -i 6 -w 1s -r 1s
 The machine was not idle (load1 9.2 to 12.5 from other work), so only the A/B order within a round compares.

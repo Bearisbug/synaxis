@@ -1,19 +1,19 @@
 RUN-088 G1: palettes. Branch m3/r088-p3, base 17f2a2cfe1. JDK 25, every Gradle run with --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts.
 
 Commits
-  e6c3b7f9ba palette: index lookups leave the Palette interface, one method builds the indirect tables and one copies the storage for copyFrom and clone, downsizeWithPalette fills its map in a plain loop
-  bda15e53d2 palette: Palettes is package-private without the unused count, pack and unpack move to PaletteSwarTest, remap drops its labelled block
-  8d784527b3 test: palette cases for load input, value range and the biome serializer below 9 biomes; inputs past the direct width or not packed for their palette are replaced
-  c8194e83ba palette: load refuses an empty palette, packed indices shorter than the entries need and indices past the palette, and remaps a direct load with Palettes.remap; reads of an indirect palette no longer guard their indices
-  99edb625aa palette: set, fill and replace(int, int) refuse a value that is negative or past the direct width
-  08c3227b05 palette: below 9 biomes the biome serializer writes a direct palette as an indirect one, widths of 1 to 3 bits being indirect on the wire; ids past such a registry throw IllegalStateException
-  d698250d49 palette: Javadoc for the coordinate and value ranges, count and isEmpty counting value 0 as empty, height, load, setAll, replaceAll, offset and optimize
-  8a04b74c48 jmh: PaletteReplaceBenchmark.replaceLoop wraps its values within the 15-bit direct width that set accepts
+  3d9b535584 palette: index lookups leave the Palette interface, one method builds the indirect tables and one copies the storage for copyFrom and clone, downsizeWithPalette fills its map in a plain loop
+  1cbf499fdd palette: Palettes is package-private without the unused count, pack and unpack move to PaletteSwarTest, remap drops its labelled block
+  05cf0061f9 test: palette cases for load input, value range and the biome serializer below 9 biomes; inputs past the direct width or not packed for their palette are replaced
+  aa0b6c0a44 palette: load refuses an empty palette, packed indices shorter than the entries need and indices past the palette, and remaps a direct load with Palettes.remap; reads of an indirect palette no longer guard their indices
+  7f80661971 palette: set, fill and replace(int, int) refuse a value that is negative or past the direct width
+  fe9eaf41fa palette: below 9 biomes the biome serializer writes a direct palette as an indirect one, widths of 1 to 3 bits being indirect on the wire; ids past such a registry throw IllegalStateException
+  783f8d52a8 palette: Javadoc for the coordinate and value ranges, count and isEmpty counting value 0 as empty, height, load, setAll, replaceAll, offset and optimize
+  e2b2c8c1ab jmh: PaletteReplaceBenchmark.replaceLoop wraps its values within the 15-bit direct width that set accepts
 
 Gradle runs (5)
-  1  red on 8d784527b3's tests before any fix commit existed (PaletteTest identical to the final one): same ten reds as 01
+  1  red on 05cf0061f9's tests before any fix commit existed (PaletteTest identical to the final one): same ten reds as 01
   2  green attempt: PaletteCopyTest "Copy high value entries" red, it set 1_000_000 (past the direct width); its input
-     was replaced in 8d784527b3, see 02
+     was replaced in 05cf0061f9, see 02
   3  green, every class of the group: 02-green-after-fix.txt
-  4  red with the three fix commits reverted on 8a04b74c48: 01-red-before-fix.txt
-  5  counterproofs, two temporary changes on 8a04b74c48: 03-counterproofs.txt
+  4  red with the three fix commits reverted on e2b2c8c1ab: 01-red-before-fix.txt
+  5  counterproofs, two temporary changes on e2b2c8c1ab: 03-counterproofs.txt

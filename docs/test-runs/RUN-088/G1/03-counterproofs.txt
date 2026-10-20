@@ -1,4 +1,4 @@
-Counterproofs: two temporary changes to the main code of 8a04b74c48, each caught by a different test, run together, then
+Counterproofs: two temporary changes to the main code of e2b2c8c1ab, each caught by a different test, run together, then
 dropped with git reset --hard HEAD.
   ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteTest' --continue --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
 

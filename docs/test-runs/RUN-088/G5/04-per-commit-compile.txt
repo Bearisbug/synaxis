@@ -1,18 +1,18 @@
 Compile of the root main and test code at each commit on its own, detached at the commit, then back to m3/r088-p3.
   ./gradlew :compileJava :compileTestJava --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
 
-  ff2605126e test: generator cases for a fork empty on an axis and for fillHeight over nine  -> exit 0 BUILD SUCCESSFUL in 3s
-  81d1914d90 gamerule: GameRule no longer redeclares the deprecated registry() it inherits f -> exit 0 BUILD SUCCESSFUL in 3s
-  a2d6f974d7 generator: remove Generator#generateAll, which the engine never called; generat -> exit 0 BUILD SUCCESSFUL in 3s
-  b294b40cb2 generator: fork(start, end) throws IllegalArgumentException naming both points  -> exit 0 BUILD SUCCESSFUL in 2s
-  647485cc58 generator: the area modifier fills a height range by handing it to each of its  -> exit 0 BUILD SUCCESSFUL in 3s
-  4cfe5ef639 generator: Javadoc for the exclusive absoluteEnd, the coordinates setAll, setAl -> exit 0 BUILD SUCCESSFUL in 3s
-  b3f5b33a82 heightmap: getHeight throws IllegalArgumentException for a column outside [0, 1 -> exit 0 BUILD SUCCESSFUL in 15s
-  444398f33c world: DimensionType documents maxY as the first y above the world and the vani -> exit 0 BUILD SUCCESSFUL in 14s
-  6d4b6b5a9f world: the bounds of an IntProvider.Weighted are the lowest minInclusive and th -> exit 0 BUILD SUCCESSFUL in 14s
-  574438bddc world: remove EnvironmentAttribute.Modifier#modify and its implementations, whi -> exit 0 BUILD SUCCESSFUL in 14s
-  97b21b3099 biome: the default biome registry Javadoc says it loads the vanilla biomes with -> exit 0 BUILD SUCCESSFUL in 2s
+  ac283c5ebe test: generator cases for a fork empty on an axis and for fillHeight over nine  -> exit 0 BUILD SUCCESSFUL in 3s
+  36852879d4 gamerule: GameRule no longer redeclares the deprecated registry() it inherits f -> exit 0 BUILD SUCCESSFUL in 3s
+  86beee80df generator: remove Generator#generateAll, which the engine never called; generat -> exit 0 BUILD SUCCESSFUL in 3s
+  d45154ae06 generator: fork(start, end) throws IllegalArgumentException naming both points  -> exit 0 BUILD SUCCESSFUL in 2s
+  1c53dbd920 generator: the area modifier fills a height range by handing it to each of its  -> exit 0 BUILD SUCCESSFUL in 3s
+  8af2acc4fd generator: Javadoc for the exclusive absoluteEnd, the coordinates setAll, setAl -> exit 0 BUILD SUCCESSFUL in 3s
+  142d2b900c heightmap: getHeight throws IllegalArgumentException for a column outside [0, 1 -> exit 0 BUILD SUCCESSFUL in 15s
+  7ff52380bf world: DimensionType documents maxY as the first y above the world and the vani -> exit 0 BUILD SUCCESSFUL in 14s
+  a494ba1d8a world: the bounds of an IntProvider.Weighted are the lowest minInclusive and th -> exit 0 BUILD SUCCESSFUL in 14s
+  b3c6acecbb world: remove EnvironmentAttribute.Modifier#modify and its implementations, whi -> exit 0 BUILD SUCCESSFUL in 14s
+  8a78cc0d8a biome: the default biome registry Javadoc says it loads the vanilla biomes with -> exit 0 BUILD SUCCESSFUL in 2s
 
-  b3f5b33a82 to 574438bddc compiled the root main code; the other commits, and the test code where unchanged, took
+  142d2b900c to b3c6acecbb compiled the root main code; the other commits, and the test code where unchanged, took
   their outputs from the build cache, whose entries are keyed by the sources and were filled by earlier compiles of
   the same sources in the runs of this group.

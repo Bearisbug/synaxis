@@ -1,5 +1,5 @@
 BlockStateBenchmark (jmh-benchmarks), before and after the property setter takes the key of the block
-before = dd954396f4 (main code of 080e41c651), after = 9f1c622b94. Each jar built with :jmh-benchmarks:jmhJar,
+before = e55983ab3a (main code of 22f3272ad3), after = 5d9b00dc2c. Each jar built with :jmh-benchmarks:jmhJar,
 the before one in a temporary detached worktree, removed afterwards; both run once, before then after, under the
 heavy lock, JDK 25.0.4.1, JMH 1.37:
   java -jar <jar> 'BlockStateBenchmark.(withPropertyUnchanged|withPropertyChanged|withPropertiesChanged|fromState)' \

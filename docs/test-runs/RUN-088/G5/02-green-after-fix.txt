@@ -1,4 +1,4 @@
-Green after the fix: 97b21b3099.
+Green after the fix: 8a78cc0d8a.
   ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.generator.GeneratorTest' \
     --tests 'io.github.bearisbug.synaxis.instance.GeneratorIntegrationTest' \
     --tests 'io.github.bearisbug.synaxis.instance.GeneratorForkIntegrationTest' \

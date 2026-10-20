@@ -1,24 +1,24 @@
 RUN-088 follow-up: block state setter allocation, integer bounds of a properties range, heightmap reads during a
 computation, and three smaller fixes (the loadFrom and fork Javadoc, the weighted IntProvider test).
-Branch m3/r088-p3, on top of 080e41c651, the G5 evidence commit.
+Branch m3/r088-p3, on top of 22f3272ad3, the G5 evidence commit.
 JDK 25, every Gradle run with --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts.
 
 Commits
-  dd954396f4 test: a properties range on an integer property with bounds written with a leading zero or plus sign, or not as an integer; a heightmap read on another thread while a computation has not reached the column
-  9f1c622b94 block: withProperty and withProperties hand the key of the block to the schema setter, which makes it a string only for its exception, where name() built a new string on every call
-  8212be3fb2 predicate: a properties range on an integer property reads its bounds as Integer.parseInt does, so "05" and "+5" are 5 where they matched nothing; a bound that does not parse still matches nothing
-  e388bcbb05 heightmap: a read during a computation of the heightmap on another thread waits for it, where it read the heights from before the invalidation in the columns the computation had not reached; invalidate() moves a version on, and a computation or a load records the version its heights match
-  8a01e24268 heightmap: the loadFrom Javadoc names its one caller, DynamicChunk#loadHeightmapsFromNBT under the write-lock, which no engine chunk loader calls, and says a too short array leaves a computed heightmap as it was
-  b051e42e58 generator: the fork Javadoc says writing to a fork after generate returned has no defined result, where it said such a write is not applied
-  3e6ea2a6b7 test: the weighted IntProvider bounds case has a uniform entry from 2 to 4 where it had a constant 2, so a minimum taken over the maxInclusive of the entries fails it
+  e55983ab3a test: a properties range on an integer property with bounds written with a leading zero or plus sign, or not as an integer; a heightmap read on another thread while a computation has not reached the column
+  5d9b00dc2c block: withProperty and withProperties hand the key of the block to the schema setter, which makes it a string only for its exception, where name() built a new string on every call
+  141b94961c predicate: a properties range on an integer property reads its bounds as Integer.parseInt does, so "05" and "+5" are 5 where they matched nothing; a bound that does not parse still matches nothing
+  8ffd07d629 heightmap: a read during a computation of the heightmap on another thread waits for it, where it read the heights from before the invalidation in the columns the computation had not reached; invalidate() moves a version on, and a computation or a load records the version its heights match
+  71968c024a heightmap: the loadFrom Javadoc names its one caller, DynamicChunk#loadHeightmapsFromNBT under the write-lock, which no engine chunk loader calls, and says a too short array leaves a computed heightmap as it was
+  4b997b0be4 generator: the fork Javadoc says writing to a fork after generate returned has no defined result, where it said such a write is not applied
+  cf03d3f2b9 test: the weighted IntProvider bounds case has a uniform entry from 2 to 4 where it had a constant 2, so a minimum taken over the maxInclusive of the entries fails it
 
 Gradle runs
-  1  red on dd954396f4, the tests committed before any fix: 01-red-before-fix.txt
-  2  green on each fix commit for its classes, then on 3e6ea2a6b7 for every class of this follow-up, the root classes
+  1  red on e55983ab3a, the tests committed before any fix: 01-red-before-fix.txt
+  2  green on each fix commit for its classes, then on cf03d3f2b9 for every class of this follow-up, the root classes
      that read a heightmap, four synx classes, and the compile of the synx, baker, server-app and jmh-benchmarks
      (jmh and worldbench) code: 02-green-after-fix.txt
-  3  counterproofs on e388bcbb05 and 3e6ea2a6b7, temporary changes each followed by git reset --hard HEAD:
+  3  counterproofs on 8ffd07d629 and cf03d3f2b9, temporary changes each followed by git reset --hard HEAD:
      03-counterproofs.txt
-  4  BlockStateBenchmark before and after the setter change, jmh-benchmarks jars of dd954396f4 and 9f1c622b94:
+  4  BlockStateBenchmark before and after the setter change, jmh-benchmarks jars of e55983ab3a and 5d9b00dc2c:
      04-block-state-jmh.txt
   5  compile of the root main and test code at each commit on its own: 05-per-commit-compile.txt

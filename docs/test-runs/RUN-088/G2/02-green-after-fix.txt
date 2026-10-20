@@ -1,4 +1,4 @@
-Green after the fix: aed748a2b6.
+Green after the fix: e8ba73b39f.
   ./gradlew :compileJava :compileTestJava :synx:compileTestJava :baker:compileTestJava :server-app:compileTestJava \
     :test --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerTest' --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerLeakIntegrationTest' \
       --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerUuidConflictTest' \

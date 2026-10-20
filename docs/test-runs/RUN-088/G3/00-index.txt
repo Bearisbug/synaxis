@@ -3,23 +3,23 @@ of the files below). JDK 25, every Gradle run with --max-workers=2 --no-daemon -
 gradle/init/aliyun-mirror.init.gradle.kts.
 
 Commits
-  7f7ed18733 test: weather for a player joining mid transition and zero transition ticks, a null chunk supplier, the position in the unloaded chunk errors of getBiome and setBlock, a parallel save of 70,000 chunks, a loader returning a chunk of other coordinates
-  925e37ba17 instance: a player entering an instance gets the weather its clients see now, getCurrentWeather; setWeather refuses transition ticks below 1 with IllegalArgumentException, its fixed step is a constant; the Weather levels name the value refused
-  36708e3956 instance: setChunkSupplier refuses null when called; getBiome of an unloaded chunk names the position and sendBlockAction checks the chunk first; setBlock documents the synchronous load, the read-only and out of world drops, its auto load error names the chunk and the out of world warning the instance and the position
-  1d4aebd2dc instance: a chunk the loader or the chunk supplier returns for other coordinates or another instance fails the load with IllegalStateException; a parallel saveChunks runs its saves on a virtual thread executor, without the party limit of a Phaser; ChunkLoader Javadoc for the chunk loadChunk returns, saveChunks and the monitor and threads of unloadChunk
-  db9a7914cd instance: Explosion, ExplosionSupplier and the explode and explosion supplier methods of Instance are deprecated for removal, the replacement being setBlock and an ExplosionPacket; postExplosion and postSend document the packet as it is sent
-  0dd6a1fb8e instance: remove getCreatures, getExperienceOrbs, WorldBorder#inBounds(Entity), the two-argument ChunkCache constructor, ChunkUtils#isLoaded(Instance, double, double), the double retrieve and the callback of optionalLoadAll, none of them called; retrieve is nullable, same-package imports go
-  8e71ad4604 instance: unregisterInstance unloads the chunks of any instance and says why the second pass releases partitions, documents its IllegalStateException and checks for online players with anyMatch; registerInstance takes the body of UNSAFE_registerInstance
-  0de34587fe instance: InstanceContainer Javadoc for its locks, the per-tick dedupe of setBlock, UNSAFE_setBlock and its nine parameters, and the copy being unregistered; generationForks is a private final field with its lifecycle, the default loader is ChunkLoader.noop(), one helper checks a chunk for online players, the fork distribution of a generation moves to distributeFork
-  5c6de58519 instance: getBlockLight and getSkyLight share one lookup that takes the light of the section, relightSection is called as before
-  44b6855d1d instance: Javadoc for extending InstanceContainer instead of Instance, the thread of viewDistance, loadChunk and loadOptionalChunk of a point, the packets the Clock setters send, and the packet createCenterPacket returns
+  7787d372a5 test: weather for a player joining mid transition and zero transition ticks, a null chunk supplier, the position in the unloaded chunk errors of getBiome and setBlock, a parallel save of 70,000 chunks, a loader returning a chunk of other coordinates
+  308766c7f8 instance: a player entering an instance gets the weather its clients see now, getCurrentWeather; setWeather refuses transition ticks below 1 with IllegalArgumentException, its fixed step is a constant; the Weather levels name the value refused
+  503d4da56d instance: setChunkSupplier refuses null when called; getBiome of an unloaded chunk names the position and sendBlockAction checks the chunk first; setBlock documents the synchronous load, the read-only and out of world drops, its auto load error names the chunk and the out of world warning the instance and the position
+  ee05f2e260 instance: a chunk the loader or the chunk supplier returns for other coordinates or another instance fails the load with IllegalStateException; a parallel saveChunks runs its saves on a virtual thread executor, without the party limit of a Phaser; ChunkLoader Javadoc for the chunk loadChunk returns, saveChunks and the monitor and threads of unloadChunk
+  e723628943 instance: Explosion, ExplosionSupplier and the explode and explosion supplier methods of Instance are deprecated for removal, the replacement being setBlock and an ExplosionPacket; postExplosion and postSend document the packet as it is sent
+  5f1389545a instance: remove getCreatures, getExperienceOrbs, WorldBorder#inBounds(Entity), the two-argument ChunkCache constructor, ChunkUtils#isLoaded(Instance, double, double), the double retrieve and the callback of optionalLoadAll, none of them called; retrieve is nullable, same-package imports go
+  d4e7216c80 instance: unregisterInstance unloads the chunks of any instance and says why the second pass releases partitions, documents its IllegalStateException and checks for online players with anyMatch; registerInstance takes the body of UNSAFE_registerInstance
+  de959922f0 instance: InstanceContainer Javadoc for its locks, the per-tick dedupe of setBlock, UNSAFE_setBlock and its nine parameters, and the copy being unregistered; generationForks is a private final field with its lifecycle, the default loader is ChunkLoader.noop(), one helper checks a chunk for online players, the fork distribution of a generation moves to distributeFork
+  5f216a9060 instance: getBlockLight and getSkyLight share one lookup that takes the light of the section, relightSection is called as before
+  e39db70f4b instance: Javadoc for extending InstanceContainer instead of Instance, the thread of viewDistance, loadChunk and loadOptionalChunk of a point, the packets the Clock setters send, and the packet createCenterPacket returns
 
 Gradle runs
-  1  red on 7f7ed18733, the tests committed before any fix: 01-red-before-fix.txt
-  2  compile of the root main and test code on 0dd6a1fb8e
-  3  green on 44b6855d1d, every class of the group, the synx classes and the compile of the root, synx, baker, server-app,
+  1  red on 7787d372a5, the tests committed before any fix: 01-red-before-fix.txt
+  2  compile of the root main and test code on 5f1389545a
+  3  green on e39db70f4b, every class of the group, the synx classes and the compile of the root, synx, baker, server-app,
      game-rts and game-rush main and test code: 02-green-after-fix.txt
-  4  counterproofs, six temporary changes on 44b6855d1d, then git reset --hard HEAD: 03-counterproofs.txt
+  4  counterproofs, six temporary changes on e39db70f4b, then git reset --hard HEAD: 03-counterproofs.txt
   5  compile of each commit on its own: 04-per-commit-compile.txt
   6  regression the TEST.md rules ask for, default mode, then the TC-PROD-920 classes in 4 thread strict and strict
      grid: 05-regression.txt

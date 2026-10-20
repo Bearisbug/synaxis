@@ -1,4 +1,4 @@
-Red before the fix: ff2605126e, the new tests on the code before the fix commits (fork(start, end) builds its section
+Red before the fix: ac283c5ebe, the new tests on the code before the fix commits (fork(start, end) builds its section
 array from the rounded area without a check, Heightmap#getHeight indexes z << 4 | x as given, IntProvider.Weighted
 returns 0 for both bounds and the records take any minimum and maximum, the two DimensionType.Builder#build errors
 carry no value).
@@ -27,15 +27,15 @@ carry no value).
    testBuild() | org.opentest4j.AssertionFailedError: logicalHeight must be less than or equals height ==> expected: <true> but was: <false> | DimensionTypeBuilderTest.java:64
 
 Per change
-  fork(start, end) check (b294b40cb2):     GeneratorTest:466, x reversed throws NegativeArraySizeException, x and y
+  fork(start, end) check (d45154ae06):     GeneratorTest:466, x reversed throws NegativeArraySizeException, x and y
                                            reversed NullPointerException (List.of of a null section), an area empty
                                            on z registers a fork without sections and throws nothing
-  getHeight column check (b3f5b33a82):     ChunkHeightmapIntegrationTest:34, getHeight(20, 0) returns the height of
+  getHeight column check (142d2b900c):     ChunkHeightmapIntegrationTest:34, getHeight(20, 0) returns the height of
                                            column (x 4, z 1) of the chunk
-  Weighted bounds (6d4b6b5a9f):            IntProviderTest:19, minInclusive is 0; :27, an empty list returns 0
-  min and max checks (6d4b6b5a9f):         IntProviderTest:33, new Uniform(7, 0) builds; :45, a Trapezoid plateau of 8
+  Weighted bounds (a494ba1d8a):            IntProviderTest:19, minInclusive is 0; :27, an empty list returns 0
+  min and max checks (a494ba1d8a):         IntProviderTest:33, new Uniform(7, 0) builds; :45, a Trapezoid plateau of 8
                                            over a span of 7 builds
-  build error values (444398f33c):         DimensionTypeBuilderTest:64, the message has no value; the second case,
+  build error values (7ff52380bf):         DimensionTypeBuilderTest:64, the message has no value; the second case,
                                            :71, is reached once :64 passes (its message before the fix is "the maximum
                                            building height (minY + height -1) must be less than 3032", without 2047)
 

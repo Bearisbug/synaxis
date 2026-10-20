@@ -1,6 +1,6 @@
 Green after each fix, then for the whole follow-up.
 
-9f1c622b94 (block state setter), with the benchmark jar of 04-block-state-jmh.txt
+5d9b00dc2c (block state setter), with the benchmark jar of 04-block-state-jmh.txt
   ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.BlockTest' \
     --tests 'io.github.bearisbug.synaxis.instance.BlockPropertiesTest' \
     --tests 'io.github.bearisbug.synaxis.instance.BlockStateMapCodecTest' :jmh-benchmarks:jmhJar --continue ...
@@ -10,19 +10,19 @@ Green after each fix, then for the whole follow-up.
   BlockTest#withPropertyKeepsNbtAndReusesCanonicalState checks the messages of a refused value and key: both still
   list the valid values and keys, the block named through Key#toString, which returns asString().
 
-8212be3fb2 (integer bounds)
+141b94961c (integer bounds)
   ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest' ...
 <testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest" tests="1" skipped="0" failures="0" errors="0">
 <testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest$ValuePredicate" tests="29" skipped="0" failures="0" errors="0">
 
-e388bcbb05 (reads during a computation), run on its tree just before the commit
+8ffd07d629 (reads during a computation), run on its tree just before the commit
   ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest' \
     --tests 'io.github.bearisbug.synaxis.instance.LightingChunkHeightmapIntegrationTest' ...
 <testsuite name="io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest" tests="11" skipped="0" failures="0" errors="0">
 <testsuite name="io.github.bearisbug.synaxis.instance.LightingChunkHeightmapIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
   aReaderDuringAComputationWaitsForIt took 0.88 s, the instance included.
 
-3e6ea2a6b7 (all commits)
+cf03d3f2b9 (all commits)
   ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.BlockTest' \
     --tests 'io.github.bearisbug.synaxis.instance.BlockPropertiesTest' \
     --tests 'io.github.bearisbug.synaxis.instance.BlockStateMapCodecTest' \

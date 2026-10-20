@@ -1,4 +1,4 @@
-Red before the fix: 70fa1ae08f, the new tests on the code before the fix commits (fromStateId reads the state list
+Red before the fix: 4f16182c9f, the new tests on the code before the fix commits (fromStateId reads the state list
 without a range check, the state struct codec lets IllegalArgumentException out of decode, parseProperties skips an
 entry without = and keeps a key named twice, a refused property names the block but not the valid values,
 ComponentPredicateSet keeps two predicates of a type, a Range compares a block's enum or boolean value as a string and
@@ -38,18 +38,18 @@ predicate").
    directionRangeFollowsTheDirectionOrder() | org.opentest4j.AssertionFailedError: expected: <true> but was: <false> | PropertiesPredicateTest.java:118
 
 Per change
-  fromStateId range (410559ae43):         BlockTest:140, fromStateId(-1) throws ArrayIndexOutOfBoundsException
-  struct codec error (410559ae43):        BlockStateMapCodecTest:59 (the decode helper, called at :52), lit=maybe throws
+  fromStateId range (a808f7d9b3):         BlockTest:140, fromStateId(-1) throws ArrayIndexOutOfBoundsException
+  struct codec error (a808f7d9b3):        BlockStateMapCodecTest:59 (the decode helper, called at :52), lit=maybe throws
                                           IllegalArgumentException out of decode
-  malformed property list (cdd0da1033):   BlockPropertiesTest:42 and :50, [a,b=c] and [a=b,a=c] parse; BlockTest:115,
+  malformed property list (560c221e2e):   BlockPropertiesTest:42 and :50, [a,b=c] and [a=b,a=c] parse; BlockTest:115,
                                           fromState("minecraft:oak_stairs[facing]") is the default stairs;
                                           ArgumentTypeTest:68, the same input parses as a block state argument
-  valid values in the error (dcad7c58c4): BlockTest:130, the message has no "valid: [north, south, west, east]"
-  one predicate per type (92ec893207):    ComponentPredicateSetRegistriesTest:98, both Damage predicates kept;
+  valid values in the error (bee249b26e): BlockTest:130, the message has no "valid: [north, south, west, east]"
+  one predicate per type (31fa37ba1f):    ComponentPredicateSetRegistriesTest:98, both Damage predicates kept;
                                           :110, [custom_name, lore] equals [custom_name, custom_name]
-  range against a block (e2238495a2):     PropertiesPredicateTest:110, half=bottom not in top..bottom; :118, facing=up
+  range against a block (b53d945d21):     PropertiesPredicateTest:110, half=bottom not in top..bottom; :118, facing=up
                                           not in up..north on a dispenser; :141, age=3 in -1..7
-  Either codec error (e2238495a2):        PropertiesPredicateTest:153, the message is "Invalid value predicate"
+  Either codec error (b53d945d21):        PropertiesPredicateTest:153, the message is "Invalid value predicate"
 
   Green before the fix as they pin what does not change: lavaAtEyeLevelIsNotWater (BlockBreakCalculationIntegrationTest),
   compareMatchesTheBlockTypeOnly (BlockTest), booleanRangeHasFalseFirst (PropertiesPredicateTest, a string compare

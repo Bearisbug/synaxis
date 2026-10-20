@@ -21,20 +21,20 @@ public class BlockIterator implements Iterator<Point> {
 
     private boolean foundEnd = false;
 
-    //length of ray from current position to next x or y-side
-    double sideDistX;
-    double sideDistY;
-    double sideDistZ;
+    // length of the ray from the current position to the next x, y or z grid plane
+    private double sideDistX;
+    private double sideDistY;
+    private double sideDistZ;
 
-    //length of ray from one x or y-side to next x or y-side
+    // length of the ray between two neighbouring grid planes of the same axis
     private double deltaDistX;
     private double deltaDistY;
     private double deltaDistZ;
 
-    //which box of the map we're in
-    int mapX;
-    int mapY;
-    int mapZ;
+    // coordinates of the block the ray is in
+    private int mapX;
+    private int mapY;
+    private int mapZ;
 
     private final ArrayDeque<Point> extraPoints = new ArrayDeque<>();
 
@@ -54,7 +54,7 @@ public class BlockIterator implements Iterator<Point> {
      *                    the iterator never ends, the caller has to stop it
      * @throws IllegalArgumentException if {@code maxDistance} is negative or not finite
      */
-    @SuppressWarnings("this-escape") // deliberate self registration during construction
+    @SuppressWarnings("this-escape") // constructor calls overridable reset(); subclasses must not rely on their own fields in reset()
     public BlockIterator(Vec start, Vec direction, double yOffset, double maxDistance, boolean smooth) {
         reset(start, direction, yOffset, maxDistance, smooth);
     }
@@ -103,9 +103,11 @@ public class BlockIterator implements Iterator<Point> {
         signums[1] = (short) Math.signum(direction.y());
         signums[2] = (short) Math.signum(direction.z());
 
+        // Find grid intersections for x, y, z. This works by calculating and storing the distance to the next grid
+        // intersection on the x, y and z axis
         deltaDistX = (ray.x() == 0) ? 1e30 : Math.abs(1 / ray.x());
-        deltaDistY = (ray.y() == 0) ? 1e30 : Math.abs(1 / ray.y());        // Find grid intersections for x, y, z
-        deltaDistZ = (ray.z() == 0) ? 1e30 : Math.abs(1 / ray.z());        // This works by calculating and storing the distance to the next grid intersection on the x, y and z axis
+        deltaDistY = (ray.y() == 0) ? 1e30 : Math.abs(1 / ray.y());
+        deltaDistZ = (ray.z() == 0) ? 1e30 : Math.abs(1 / ray.z());
 
         //calculate step and initial sideDist
         if (ray.x() < 0) sideDistX = (start.x() - mapX) * deltaDistX;

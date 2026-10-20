@@ -229,6 +229,13 @@ record BlockImpl(RegistryData.BlockEntry registry,
     }
 
     @Override
+    public @Nullable List<String> propertyValues(String property) {
+        final BlockSchema schema = schema();
+        final int key = schema.findKeyIndex(property);
+        return key == -1 ? null : schema.properties[key].values();
+    }
+
+    @Override
     public List<Block> possibleStates() {
         final BlockSchema schema = schema();
         if (schema.properties.length == 0) return List.of(defaultState());

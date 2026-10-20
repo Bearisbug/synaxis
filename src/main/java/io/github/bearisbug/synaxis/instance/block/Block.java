@@ -21,12 +21,14 @@ import io.github.bearisbug.synaxis.registry.RegistryData;
 import io.github.bearisbug.synaxis.registry.StaticProtocolObject;
 import io.github.bearisbug.synaxis.tag.Tag;
 import io.github.bearisbug.synaxis.tag.TagReadable;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiPredicate;
@@ -240,6 +242,16 @@ public sealed interface Block extends StaticProtocolObject<Block>, TagReadable, 
      */
     @Contract(pure = true)
     @Nullable String getProperty(String property);
+
+    /**
+     * Returns the values a property of this block type takes, in the order of the registry.
+     *
+     * @param property the property name
+     * @return the values, unmodifiable, null if the block type has no such property
+     */
+    @ApiStatus.Internal
+    @Contract(pure = true)
+    @Nullable List<String> propertyValues(String property);
 
     /**
      * Returns every state of this block type. Each is the canonical instance, without handler and NBT, as

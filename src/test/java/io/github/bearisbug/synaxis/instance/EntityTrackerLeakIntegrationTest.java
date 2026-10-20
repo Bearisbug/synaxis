@@ -39,7 +39,7 @@ public class EntityTrackerLeakIntegrationTest {
     public void reloadingChunksDoesNotGrowViewers(Env env) {
         var instance = env.createFlatInstance();
         var tracker = (EntityTrackerImpl) instance.getEntityTracker();
-        var viewers = tracker.targetEntries[EntityTracker.Target.PLAYERS.ordinal()].viewers;
+        var viewers = tracker.chunkViews;
         for (int i = 0; i < 20; i++) {
             instance.loadChunk(0, 0).join();
             instance.unloadChunk(0, 0);

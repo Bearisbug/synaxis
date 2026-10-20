@@ -902,7 +902,7 @@ public class PaletteTest {
         originalValues[1] = 0L;
 
         // Palette should still have the original values
-        long[] paletteValues = palette.indexedValues();
+        long[] paletteValues = ((PaletteImpl) palette).values;
         assertNotNull(paletteValues);
         assertEquals(0x123456789ABCDEFL, paletteValues[0]);
         assertEquals(0xFEDCBA9876543210L, paletteValues[1]);

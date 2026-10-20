@@ -1,11 +1,9 @@
 package io.github.bearisbug.synaxis.instance.palette;
 
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.utils.MathUtils;
 import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.function.IntUnaryOperator;
 
@@ -195,23 +193,11 @@ public sealed interface Palette permits PaletteImpl {
 
     Palette clone();
 
-    @ApiStatus.Internal
-    int paletteIndexToValue(int value);
-
-    @ApiStatus.Internal
-    int valueToPaletteIndex(int value);
-
     /**
      * Gets the single value of this palette if it is a single value palette, otherwise returns -1.
      */
     @ApiStatus.Internal
     int singleValue();
-
-    /**
-     * Gets the value array if it has one, otherwise returns null (i.e. single value palette).
-     */
-    @ApiStatus.Internal
-    long @Nullable [] indexedValues();
 
     @FunctionalInterface
     interface EntrySupplier {
@@ -283,12 +269,7 @@ public sealed interface Palette permits PaletteImpl {
                     palette = buffer.read(VAR_INT_ARRAY);
                     if (palette.length == 0 || palette.length > Palettes.maxPaletteSize(bitsPerEntry))
                         throw new IllegalArgumentException("Invalid palette length: " + palette.length);
-                    result.paletteToValueList = new IntArrayList(palette);
-                    result.valueToPaletteMap = new Int2IntOpenHashMap(palette.length);
-                    result.valueToPaletteMap.defaultReturnValue(-1);
-                    for (int i = 0; i < palette.length; i++) {
-                        result.valueToPaletteMap.put(palette[i], i);
-                    }
+                    result.setIndirect(new IntArrayList(palette));
                 }
                 final long[] data = buffer.read(FixedRawLongs(Palettes.arrayLength(dimension, bitsPerEntry)));
                 result.values = data;

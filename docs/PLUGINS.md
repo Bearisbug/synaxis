@@ -153,7 +153,7 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 | 回调 | 线程 | 在这里可以做什么 |
 | --- | --- | --- |
 | 实体与玩家的事件（含 `transfers().transfer(…)` 让宿主派发的 `OutgoingTransferEvent`，不论从哪条线程调用；例外见下一张表）、实体的休眠策略（`Entity#setDormancyPolicy`）、玩家发来的通道负载（handler 只在玩家处于 PLAY 态时收到，§8）、`scheduler().runOn(实体, …)` | 该实体所属的 tick 线程 | 读写这个实体 |
-| `events().forInstance(实例)` 的监听器 | 派发这个事件的线程：实体与玩家的事件在该实体所属的 tick 线程上（`grid` 下同一个实例同时有几条），`InstanceTickEvent` 在 tick 调度线程上，`InstanceChunkLoadEvent` 在载入区块的虚拟线程上，宿主派发的 `PlayInstanceStateEvent` 在执行这次转移的线程上 | 读写派发它的那个实体；同一个实例的几个监听器共用的每局状态用并发容器或锁。这些监听器排在全局作用域的插件监听器之前，也排在宿主节点的监听器之前：首次出生时宿主在自己的节点里用存档覆盖背包、手持格与生命值，要在那之后改出生结果，用全局作用域、按实例过滤（§7） |
+| `events().forInstance(实例)` 的监听器 | 派发这个事件的线程：实体与玩家的事件在该实体所属的 tick 线程上（`grid` 下同一个实例同时有几条），`InstanceTickEvent` 在 tick 调度线程上，`InstanceChunkLoadEvent` 在完成这次载入的线程上（通常是载入区块的虚拟线程，也可能是发起载入的线程，不保证是 tick 线程），宿主派发的 `PlayInstanceStateEvent` 在执行这次转移的线程上 | 读写派发它的那个实体；同一个实例的几个监听器共用的每局状态用并发容器或锁。这些监听器排在全局作用域的插件监听器之前，也排在宿主节点的监听器之前：首次出生时宿主在自己的节点里用存档覆盖背包、手持格与生命值，要在那之后改出生结果，用全局作用域、按实例过滤（§7） |
 | `scheduler().scheduleTask(…)` | tick 调度线程，所有插件的任务一个接一个跑 | 每 tick 的全局逻辑；它是整个 tick 的串行段，要扩到几百人就按格或按实体拆开。可以读任何实体，可以调写明能在串行段调用的宿主接口（场景层的写方法，`docs/DESIGN-PLAY.md` `API-PLAY-005`）；已分到 tick 线程的实体不在这里直接改，用 `runOn(实体, …)`（下一 tick 生效）或 `实体.acquirable().sync(…)`（当场生效）：严格模式下直接改抛 `AcquirableOwnershipException`，不开严格模式也会与别的线程的 `sync` 同时写 |
 | `scheduler().runOn(实例, …)` | tick 调度线程的串行段，与实例自己的调度器在同一处 | 同上一行 |
 | `playerData().commitTogether(…, apply)` 的 `apply` | tick 调度线程，提交写进库之后下一个 tick 的串行段，只跑一次 | 改每个参与者，不论他们分在哪条 tick 线程；参与者这时可能已经离开，先查 `isRemoved()`（`docs/DESIGN-PROD.md` `API-PROD-005`） |
@@ -199,7 +199,7 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 
 | 方法 | 做什么 | 什么时候不做 |
 | --- | --- | --- |
-| `transfer(玩家, host, port)` | 发原版 `Transfer` 包（host、port 按监听器改过的），把客户端送去外部服务器，不带票据；玩家断开后宿主按普通登出保存。future 以 `true` 完成 | 玩家不在 PLAY（还在 configuration 或已断开）、离上一次转服不满 `synaxis.app.transfer-cooldown-ms`（默认 5 s）、或监听器取消了 `OutgoingTransferEvent` 时以 `false` 完成，什么都不发、冷却不记；5 s 内玩家没有 tick（已离开）同样以 `false` 完成；`host` 空白或 `port` 不在 1～65535 在调用线程上抛 `IllegalArgumentException`。监听器把 host 设为空白或把 port 设到 1～65535 之外时，setter 抛 `IllegalArgumentException`，记日志后按原值发 |
+| `transfer(玩家, host, port)` | 发原版 `Transfer` 包（host、port 按监听器改过的），把客户端送去外部服务器，不带票据；玩家断开后宿主按普通登出保存。future 以 `true` 完成 | 玩家不在 PLAY（还在 configuration 或已断开）、离上一次转服不满 `synaxis.app.transfer-cooldown-ms`（默认 5 s）、或监听器取消了 `OutgoingTransferEvent` 时以 `false` 完成，什么都不发、冷却不记；5 s 内玩家没有 tick（已离开）同样以 `false` 完成；`host` 空白或 `port` 不在 1～65535 在调用线程上抛 `IllegalArgumentException`。监听器把 host 设为空白或把 port 设到 1～65535 之外时，setter 抛 `IllegalArgumentException`，记日志后按最后一次被接受的 host 与 port 发 |
 | `wasTransferred(玩家)` | 客户端握手时是否自称由别的服务器转来 | 这是客户端自报的，不能当来源证明 |
 | `storeCookie(玩家, 键, 值)` | 把至多 5,120 B 存在客户端上，客户端转服时带去下一台服务器 | 键不在本插件命名空间或值超过 5,120 B 时抛 `IllegalArgumentException`，不发包 |
 | `fetchCookie(玩家, 键)` | 向客户端要回一个 Cookie；future 以值完成，客户端没有这个 Cookie 时以 `null` 完成 | 5 s 内没回答（玩家断开，或对同一玩家同一个键在回答前又要了一次）以 `TimeoutException` 完成；键不在本插件命名空间时抛 `IllegalArgumentException` |

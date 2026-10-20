@@ -195,6 +195,8 @@ public final class GeneratorImpl {
             final int width = maxSectionX - minSectionX;
             final int height = maxSectionY - minSectionY;
             final int depth = maxSectionZ - minSectionZ;
+            Check.argCondition(width <= 0 || height <= 0 || depth <= 0,
+                    "fork end must be after start on every axis, got {0} and {1}", start, end);
 
             GenerationUnit[] units = new GenerationUnit[width * height * depth];
             int index = 0;

@@ -207,7 +207,7 @@ public class PaletteCopyTest {
             Palette source = Palette.blocks();
             Palette target = Palette.blocks();
 
-            int highValue = 1_000_000;
+            int highValue = (1 << 15) - 2; // with highValue + 1, the largest values of the direct width
             source.set(0, 0, 0, highValue);
             source.set(15, 15, 15, highValue + 1);
 
@@ -546,16 +546,16 @@ public class PaletteCopyTest {
         }
 
         @Test
-        @DisplayName("A single value source fills the region, a value of -1 included")
+        @DisplayName("A single value source fills the region, the largest value of the direct width included")
         void singleValueSourceFillsTheRegion() {
             final Palette source = Palette.blocks();
-            source.fill(-1);
+            source.fill((1 << 15) - 1);
             final Palette target = Palette.blocks();
             target.set(0, 0, 0, 5);
 
             target.copyFrom(source, 0, 0, 4);
 
-            for (int z = 0; z < 16; z++) assertEquals(z >= 4 ? -1 : 0, target.get(1, 0, z), "at z " + z);
+            for (int z = 0; z < 16; z++) assertEquals(z >= 4 ? (1 << 15) - 1 : 0, target.get(1, 0, z), "at z " + z);
             assertEquals(5, target.get(0, 0, 0));
             assertEquals(1 + 16 * 16 * 12, target.count());
         }

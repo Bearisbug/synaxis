@@ -145,8 +145,8 @@ record BlockImpl(RegistryData.BlockEntry registry,
         return BLOCK_STATE_MAP.size();
     }
 
-    static Block getState(int stateId) {
-        return BLOCK_STATE_MAP.get(stateId);
+    static @Nullable Block getState(int stateId) {
+        return stateId >= 0 && stateId < BLOCK_STATE_MAP.size() ? BLOCK_STATE_MAP.get(stateId) : null;
     }
 
     @SuppressWarnings("PatternValidation")

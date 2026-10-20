@@ -71,7 +71,12 @@ public sealed interface Block extends StaticProtocolObject<Block>, TagReadable, 
                 if (!(valueResult instanceof Result.Ok(String mapValue))) {
                     return new Result.Error<>("No string value found for property " + key + " in block state");
                 }
-                block = block.withProperty(key, mapValue);
+                try {
+                    block = block.withProperty(key, mapValue);
+                } catch (IllegalArgumentException e) {
+                    return new Result.Error<>("Invalid block state property " + key + "=" + mapValue + " for "
+                            + block.key().asString() + ": " + e.getMessage());
+                }
             }
             return new Result.Ok<>(block);
         }
@@ -615,10 +620,22 @@ public sealed interface Block extends StaticProtocolObject<Block>, TagReadable, 
         return BlockImpl.statesCount();
     }
 
+    /**
+     * Returns the block state of a state id.
+     *
+     * @param stateId the state id, valid from 0 to {@link #statesCount()} exclusive
+     * @return the block state, null when the id is out of that range
+     */
     static @Nullable Block fromStateId(int stateId) {
         return BlockImpl.getState(stateId);
     }
 
+    /**
+     * Returns the default state of the block type of a block id.
+     *
+     * @param blockId the block id, valid from 0 to the number of block types exclusive
+     * @return the default state, null when the id is out of that range
+     */
     static @Nullable Block fromBlockId(int blockId) {
         return BlockImpl.REGISTRY.get(blockId);
     }

@@ -95,7 +95,8 @@ public class PlayerSocketConnection extends PlayerConnection {
     static final long CLOSE_AFTER_DISCONNECT_MILLIS = 1_000;
 
     private final SocketChannel channel;
-    private SocketAddress remoteAddress;
+    // Rewritten once by the read thread from a PROXY protocol header; log lines and toString read it on any thread
+    private volatile SocketAddress remoteAddress;
     private boolean attemptedProxyProtocolDetection = false;
     private final AtomicBoolean closeArmed = new AtomicBoolean(false);
 
@@ -123,8 +124,9 @@ public class PlayerSocketConnection extends PlayerConnection {
     // Used instead of a simple boolean so we can get proper timing for serialization
     private volatile long compressionStart = Long.MAX_VALUE;
 
-    // Write lock as the default behavior of the writing thread is to park itself
-    // Requires ServerConfig#fasterSocketWrites() to be enabled
+    // Wake-up flag of the write thread, only used with ServerConfig#fasterSocketWrites(): the write thread parks on
+    // an empty queue, unlockWriteThread sets the flag and unparks it. Without it (the default) the write thread
+    // sleeps idleWaitMillis, half a tick, between polls and never looks at the flag
     private final AtomicBoolean writeSignaled = new AtomicBoolean(false);
 
     private final ListenerHandle<PlayerPacketOutEvent> outgoing;
@@ -205,7 +207,8 @@ public class PlayerSocketConnection extends PlayerConnection {
                 // Keeping the consumed header in front of the first packet would cost the buffer
                 // that much room to write, down to none at all for a header that nearly fills it.
                 readBuffer.compact();
-            } else if (process().config().proxyProtocolRequired()) {
+            } else {
+                // ServerConfig refuses proxyProtocol without proxyProtocolRequired
                 throw refuseProxyHeader("Missing required PROXY protocol header");
             }
         }
@@ -268,7 +271,7 @@ public class PlayerSocketConnection extends PlayerConnection {
         } catch (Throwable e) {
             rethrowFatal(e);
             // Already kicked, and logged, by #readClientPacket; the rest of the batch is not decoded.
-            // The decoder wraps what the reader throws.
+            // The decoder wraps what the reader throws, see PacketReading.PacketReader#read.
             if (e instanceof InboundLimitExceeded || e.getCause() instanceof InboundLimitExceeded) return false;
             // Errors thrown while still in the starting state are usually garbage
             // from scanners. A packet that errors after a state change within the
@@ -401,13 +404,19 @@ public class PlayerSocketConnection extends PlayerConnection {
     }
 
     /**
-     * Decides whether a framed payload is worth decoding.
+     * Decides whether a framed payload is decoded at all.
+     *
+     * <p>On a compressed connection the inflated bytes of the frame are counted first, against
+     * {@code synaxis.packet-limit.max-inflated-bytes-per-second}. Over it, the connection is kicked
+     * and {@link InboundLimitExceeded} ends the batch; {@link PacketReading} may wrap it, and
+     * {@link #processBatch} recognises both forms.</p>
      *
      * <p>A creative set slot packet carries a full item, components included, which is by far the
      * most expensive thing a client can ask the server to decode. Only a player in creative mode is
      * allowed to send one, and that check does not need the decoded packet, so it happens first.</p>
      *
      * @return the decoded packet, or {@code null} to skip the rest of the frame
+     * @throws InboundLimitExceeded if the connection went over its inflated bytes and was kicked
      */
     @Nullable ClientPacket readClientPacket(PacketRegistry.PacketInfo<? extends ClientPacket> packetInfo,
                                             NetworkBuffer buffer) {
@@ -542,6 +551,8 @@ public class PlayerSocketConnection extends PlayerConnection {
     static final long UNFRAMED_PACKET_BYTES = 64;
 
     private void offer(SendablePacket packet) {
+        // The write thread is gone or about to be, nothing would ever take the packet off the queue
+        if (!isOnline()) return;
         final long size = backlogSize(packet);
         if (packet instanceof BufferedPacket buffered && buffered.sheddable()) {
             synchronized (movementLock) {
@@ -629,7 +640,7 @@ public class PlayerSocketConnection extends PlayerConnection {
     }
 
     /**
-     * Gets the server address that the client used to connect.
+     * Gets the server address that the client used to connect, null before the handshake.
      * <p>
      * WARNING: it is given by the client, it is possible for it to be wrong.
      *
@@ -641,7 +652,7 @@ public class PlayerSocketConnection extends PlayerConnection {
     }
 
     /**
-     * Gets the server port that the client used to connect.
+     * Gets the server port that the client used to connect, 0 before the handshake.
      * <p>
      * WARNING: it is given by the client, it is possible for it to be wrong.
      *
@@ -717,8 +728,14 @@ public class PlayerSocketConnection extends PlayerConnection {
                         PlayerPacketOutEvent event = new PlayerPacketOutEvent(player, serverPacket);
                         outgoing.call(event);
                         if (event.isCancelled()) {
-                            this.pendingWrite = null;
-                            return true;
+                            if (PacketVanilla.nextServerState(serverPacket, state) == state) {
+                                this.pendingWrite = null;
+                                return true;
+                            }
+                            // Both ends switch their state at this packet, dropping it would leave them apart.
+                            // At most one line per state change, which only the server starts.
+                            LOGGER.warn("Ignored the cancel of a state-changing packet: packet={} connection_id={}",
+                                    serverPacket.getClass().getSimpleName(), connectionId());
                         }
                     }
                 }
@@ -783,6 +800,17 @@ public class PlayerSocketConnection extends PlayerConnection {
 
     private @Nullable NetworkBuffer writeLeftover = null;
 
+    /**
+     * One round of the write thread. Writes what the previous round left unwritten first, and returns
+     * if it still does not all go out. Otherwise waits while the queue is empty, half a tick by
+     * default and parked until a packet is offered with {@code ServerConfig#fasterSocketWrites()},
+     * then writes at most one pooled buffer of queued packets.
+     * <p>
+     * With {@code fasterSocketWrites} only the write thread may call it.
+     *
+     * @throws EOFException if the channel is closed
+     * @throws IOException  if writing to the channel fails
+     */
     public void flushSync() throws IOException {
         // Write leftover if any
         NetworkBuffer leftover = this.writeLeftover;
@@ -809,7 +837,7 @@ public class PlayerSocketConnection extends PlayerConnection {
                 try {
                     // Can probably be improved by waking up at the end of the tick
                     // But this work well enough and without additional state.
-                    Thread.sleep(1000 / JvmFlags.SERVER_TICKS_PER_SECOND / 2);
+                    Thread.sleep(idleWaitMillis(JvmFlags.SERVER_TICKS_PER_SECOND));
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -841,6 +869,14 @@ public class PlayerSocketConnection extends PlayerConnection {
             throw e;
         }
         writeOrKeep(buffer);
+    }
+
+    /**
+     * How long the write thread sleeps on an empty queue without {@code fasterSocketWrites}: half a
+     * tick, and at least a millisecond so that it does not spin at 1000 ticks per second.
+     */
+    static int idleWaitMillis(int ticksPerSecond) {
+        return Math.max(1, 1000 / ticksPerSecond / 2);
     }
 
     private void writeOrKeep(NetworkBuffer buffer) throws IOException {
@@ -917,7 +953,8 @@ public class PlayerSocketConnection extends PlayerConnection {
         LockSupport.unpark(writeThread);
         final Thread loginTimeoutThread = this.loginTimeoutThread;
         this.loginTimeoutThread = null;
-        // The watchdog closing the connection itself is already done, only the other one is waiting
+        // The login timeout watchdog is not interrupted when it is the thread closing the connection; only a
+        // disconnect from another thread has a sleeping watchdog to wake
         if (loginTimeoutThread != null && loginTimeoutThread != Thread.currentThread())
             loginTimeoutThread.interrupt();
         closeOnceFlushed();

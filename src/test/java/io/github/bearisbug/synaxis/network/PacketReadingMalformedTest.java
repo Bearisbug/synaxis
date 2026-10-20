@@ -36,8 +36,11 @@ class PacketReadingMalformedTest {
 
         final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(64);
         buffer.write(NetworkBuffer.VAR_INT, JvmFlags.MAX_PACKET_SIZE_PRE_AUTH + 1);
-        assertThrows(DataFormatException.class,
+        final DataFormatException refused = assertThrows(DataFormatException.class,
                 () -> PacketReading.readClients(buffer, ConnectionState.STATUS, false));
+        // The limit depends on the state, the message names the one that applied and its key
+        assertEquals("Packet too large: " + (JvmFlags.MAX_PACKET_SIZE_PRE_AUTH + 1) + " > "
+                + JvmFlags.MAX_PACKET_SIZE_PRE_AUTH + " (synaxis.max-packet-size-pre-auth)", refused.getMessage());
     }
 
     @Test
@@ -80,8 +83,9 @@ class PacketReadingMalformedTest {
 
         final DataFormatException refused = assertThrows(DataFormatException.class,
                 () -> PacketReading.readClients(framed(frame), ConnectionState.PLAY, true));
-        assertTrue(refused.getMessage().startsWith("Invalid decompressed length"),
-                "the announcement itself must be what is refused, got: " + refused.getMessage());
+        assertEquals("Invalid decompressed length: " + (JvmFlags.MAX_PACKET_SIZE + 1) + ", the limit is "
+                        + JvmFlags.MAX_PACKET_SIZE + " (synaxis.max-packet-size)", refused.getMessage(),
+                "the announcement itself must be what is refused");
     }
 
     /**

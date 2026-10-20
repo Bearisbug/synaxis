@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-21 | 分支 `prod/r089-NETCONN`（基线 `main` `17f2a2cfe1`），跟进 `docs/DESIGN-PROD.md` v0.9.111（RUN-089 组 NETCONN），不登执行轮次（集成轮登记）；本组 4 次 Gradle 运行的读数写在各步里，不另存证据目录。**新增 §4「生产就绪 · RUN-089：NETCONN」七条 `TC-PROD-1010`～`TC-PROD-1016`**，放在「生产就绪 · RUN-082」一节之后、「玩法架构 · RUN-077：P」之前，改动前的红都在基线主源码加本组测试上实跑过：1010（`PlayerPacketOutEvent` 取消 `FinishConfigurationPacket` 无效）、1011（登录插件请求随断开、离开 LOGIN 失败，没有对应请求的应答）、1012（断开之后的发包）、1013（`ServerConfig` 的报错以键名开头）、1014（读写包超长的报错）、1015（`synaxis.tps=1000` 时写线程的空闲等待）、1016（行为不变的整理与只改文档的条目，三种线程模式）。**随代码改的旧用例**（按 `git diff` 前后对照与改后的报错文案改，没复跑）：`TC-PROD-023` 第 4 步与 `TC-PROD-081` 第 4 步的拒启行；`TC-PROD-444` 第 1 步的报错、第 4 步红行 `ServerConfigTest.java:86` → `:131`；`TC-PROD-854` 第 1 步 `chunk-view-distance` 的报错；`TC-PROD-664` 的 `CLOSE_OUT` 里 `ServerConfig.java` 四行（`299`、`300` → `340`、`341`，这两行读键改用常量，核对串随之改为 `intProperty(CHAT_RATE_PER_SECOND,`、`intProperty(CHAT_BURST,`；`470`、`471` → `495`、`496`）与 `PlayerSocketConnection.java` 三行（`239`、`254`、`315` → `242`、`257`、`318`），本组在工作树上跑过，前 20 行都是 `ok`；`TC-PROD-682` 第 3 步红行 `ArchitectureTest.java:291` → `:292`；`TC-PROD-770` 第 3 步 `<PR>:215` → `:186`、红行 `:65` → `:68`、`PacketReading.java:216` → `:187`；`TC-PROD-774` 第 3 步 `<PR>` 一项 215 → 186。**条数**：根项目 +6 条、+4 个类；写死全量条数的旧用例不改，由集成轮统一改。**§5** 局部轮加本组一行 | Bearisbug |
 | 2026-10-21 | 分支 `prod/r089-NETBUF`（基于 `main` `17f2a2cfe1`），跟进 `docs/DESIGN-PROD.md` v0.9.110（RUN-089 组 NETBUF），不登执行轮次（集成后登记），本组 5 次 Gradle 的读数写在各条用例里。**新增 §4「生产就绪 · RUN-089：NETBUF」六条 `TC-PROD-1000`～`TC-PROD-1005`**：1000（`lengthPrefixed` 只在声明的长度里读、写入比上限）、1001（NBT 超深与超限的报错带属性名）、1002（组件映射拒收 null、`DataComponent.values()` 不可改、无 codec 编码的报错）、1003（物品命令参数报完整输入、null 组件值报 `INVALID_COMPONENT`）、1004（结构方块的旋转报错、告示牌布局、能力包的飞行位）、1005（只改文档与纯重构的回归、钉住线格式的四处、命名门与禁用 import 门）。新加 17 条测试、改 3 条：改动前的代码上红 12 条（新 10、改 2），都红在要钉住的断言上；新加的另 7 条修前也绿（线格式三条与告示牌布局钉住字节不变，类注释示例一条钉住文档的写法，`AbilitiesListenerIntegrationTest` 两条钉住监听器的行为），改的第 3 条（集合那一段）修前也绿。**旧用例**：本组在测试类里加了 import 与用例，按新文件改 `TC-PROD-681` 第 1 步（`PacketVanillaLayoutTest` 6 → 8 条）与第 3 步（`6 tests completed` → `8 tests completed`，`:95`（经 `:37`）→ `:101`（经 `:43`））、`TC-PROD-812` 第 1 步（`DataComponentMapTest` 14 → 17 条）与第 2 步（`:73`（经 `:74`）→ `:74`（经 `:75`））、`TC-PROD-923` 第 2 步（14 → 17）、`TC-PROD-955` 第 3 步（`ArgumentItemStackIntegrationTest.java:66` → `:90`），按增减推算，没复跑；`TC-PROD-681` 第 4 步是改动前的记录，不改。**§5** 局部轮加本组一行 | Bearisbug |
 | 2026-10-21 | 分支 `prod/r089-CORE`（基于 `main` `17f2a2cfe1`），跟进 `docs/DESIGN-PROD.md` v0.9.117（RUN-089 组 CORE），不登执行轮次。**新增 §4「生产就绪 · RUN-089：CORE」三条 `TC-PROD-1070`～`TC-PROD-1072`**：`ServerProcess` 的三个 setter 收到 null 当场抛、状态不变（1070），所有权异常的 `element()` 是元素本身（1071），删去 `AcquirableCollection`、`Acquirable#localElements()` 与 `TickThread#getTick()`、`refreshThreads` 与改派归属的整理以及只改 Javadoc 与注释的各处的回归（1072）；前两条有改动前的红，线程敏感的类三种模式各跑一次，`TC-PROD-859` 余下的类在 4 线程严格与严格 grid 下补跑。**改的旧用例**：`TC-PROD-781` 去掉 `COLLECTION` 参数与第 4 步补丁里 `AcquirableCollection` 那一处，标题、前置与第 1、3、4 步按两个参数写，RUN-080 的读数照留并注明含 `COLLECTION`；`TC-PROD-780` 第 1 步本类 4 → 3 条；「生产就绪 · RUN-080：THREAD」一节开头的改动一条注明 `AcquirableCollection` 已删，源文件代号去掉 `<AC>`，测试一段注明 `AcquirableHandoverTest.java` 的 `:135`、`:220` 变为 `:134`、`:213`；`TC-PROD-786` 的根模块类 25 → 23 个、合计 28 → 26 个，第 1 步写本组的读数、RUN-080 的读数照留；`TC-PROD-859` 两步注明 `thread.*` 少两个类；`TC-PROD-032` 第 4 步的 `AcquirableStrictIntegrationTest.java:81` 注明 RUN-089 起 `:82`；「玩法架构 · RUN-077：I」一节引的 `ServerProcessImpl.java:568` 改为 `:574`。§5 局部轮加本组一行，RUN-080 组 THREAD 那一行去掉 `AcquirableCollection#acquireSync` | Bearisbug |
 | 2026-10-21 | 分支 `prod/r085-ports` 的全量门禁、Concurrency、Client mod 与 Client gametest 在 GitHub Actions 上对 `4fd534c44d` 跑完（草稿 PR #40；Check 第 1 次尝试红在与本轮无关的 `OnlineLoginSocketTest` 一条，重跑绿），§6 登记 RUN-085（通过 1/1，证据 `docs/test-runs/RUN-085/00-index.txt`）。本轮不加不减用例，写死的全量条数不改 | Bearisbug |
@@ -4637,7 +4638,7 @@ JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git che
 | 1 | `cd $W && (JAVA_OPTS="-Dsynaxis.app.port=25602" $REPO/server-app/build/install/server-app/bin/server-app < in.fifo > stdout.log 2>&1; echo "exit=$?" > code) &`，等 20 s，`grep -c listening stdout.log`、`grep 'Tick watchdog' stdout.log`，再 `jcmd <java pid> Thread.print \| grep '"Syn-Watchdog"'` | `1`；恰 1 行 `Tick watchdog on: stacks after 10000 ms and every 5000 ms after that, judged dead after 60000 ms, halted with exit code 70 15000 ms later`（在 `listening` 之前）；线程 `"Syn-Watchdog"` 在、`daemon` |
 | 2 | `echo stop > in.fifo`，等 8 s，`cat code`、`ls $W`、`grep -c 'Tick watchdog' stdout.log` | `exit=0`；没有 `crash-reports/`；计数仍是 `1`（正常停机不触发警告，停机任务最后一个是停看门狗） |
 | 3 | `rm -rf $W/logs $W/plugins $W/stdout.log $W/code`，加 `-Dsynaxis.watchdog.timeout-ms=0` 重做第 1、2 步 | 就绪；唯一一行 `Tick watchdog off (synaxis.watchdog.timeout-ms=0)`；`exit=0` |
-| 4 | 清空日志，以 `JAVA_OPTS="-Dsynaxis.app.port=25602 -Dsynaxis.watchdog.halt-after-ms=-1"` 起服（stdin 接 `/dev/null`），`echo exit=$?` | `exit=1`；`Refusing to start: the watchdog durations must not be negative but were 10000, 5000, 60000 and -1` |
+| 4 | 清空日志，以 `JAVA_OPTS="-Dsynaxis.app.port=25602 -Dsynaxis.watchdog.halt-after-ms=-1"` 起服（stdin 接 `/dev/null`），`echo exit=$?` | `exit=1`；`Refusing to start: synaxis.watchdog.halt-after-ms must not be negative but was -1`（RUN-089 之前是 `the watchdog durations must not be negative but were 10000, 5000, 60000 and -1`） |
 | 5 | 反证宿主起看门狗有齿：`server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` 的 `final Watchdog watchdog = startWatchdog(process, crashReports);` 改成 `final Watchdog watchdog = process.watchdog();`，重新 `installDist`，清空 `$W` 后重做第 1、2 步；再 `git checkout --` 该文件并重新 `installDist`，重做第 1 步 | 改动下就绪照常，但 `grep -c 'Tick watchdog'` 为 `0`（本轮实测），`exit=0`；还原后回到第 1 步那一行 |
 
 后置：停服（按 pid），结束占着 FIFO 的 `sleep`，`rm -rf $W`；`git status` 干净。
@@ -4911,7 +4912,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | 1 | 跑 `io.github.bearisbug.synaxis.message.ChatRateLimiterTest`，再跑 `io.github.bearisbug.synaxis.ServerConfigTest` | 两次都 `BUILD SUCCESSFUL`。`ChatRateLimiterTest` 4 个 0 失败：1 s 内 10 条放行 3 条、`dropped()` 为 7；第一条之后 1.1 s 恰好回来一个令牌；每秒 1 条匀速发 60 条一条不丢；闲置一小时后也只攒 3 个令牌；`System.nanoTime()` 为负数时照常计时。`ServerConfigTest` 7 个 0 失败：默认 `chatRatePerSecond=1`、`chatBurst=3`，任一为 0 时构造抛 `IllegalArgumentException` |
 | 2 | 跑 `io.github.bearisbug.synaxis.listener.ChatMessageListenerIntegrationTest` | 5 个 0 失败，其中 `tenMessagesInOneSecondLetThreeThroughAndKeepTheConnection`：同一玩家一批入队 10 条聊天，`PlayerChatEvent` 恰好 3 次，`chatRateLimiter().dropped()` 为 7，玩家仍在线 |
 | 3 | 在临时目录里 `java -Xmx1G -Dsynaxis.app.port=25622 -Dsynaxis.chat-rate-per-second=2 -Dsynaxis.chat-burst=5 -cp "<仓库根>/server-app/build/install/server-app/lib/*" io.github.bearisbug.synaxis.app.Main < /dev/null > server.log 2>&1 &`，就绪后 `grep -o 'chatRatePerSecond=[0-9]*, chatBurst=[0-9]*' server.log`，再 `kill <pid>` | 启动自检行里是 `chatRatePerSecond=2, chatBurst=5`；不带这两个属性时是 `chatRatePerSecond=1, chatBurst=3` |
-| 4 | 第 3 步的写法，两个属性换成 `-Dsynaxis.chat-burst=0` | 进程退出，端口 25622 无监听，日志 `ERROR … Main - Refusing to start: the chat rate and burst must be at least 1 but were 1 and 0` |
+| 4 | 第 3 步的写法，两个属性换成 `-Dsynaxis.chat-burst=0` | 进程退出，端口 25622 无监听，日志 `ERROR … Main - Refusing to start: synaxis.chat-burst must be at least 1 but was 0`（RUN-089 之前是 `the chat rate and burst must be at least 1 but were 1 and 0`） |
 | 5 | 反证有齿（限频）：删掉 `ChatMessageListener#chatMessageListener` 第一行 `if (!player.chatRateLimiter().tryAcquire(System.nanoTime())) return;`，重跑第 2 步，再 `git checkout` 还原 | 红在 `tenMessagesInOneSecondLetThreeThroughAndKeepTheConnection`：`Expected 3 element(s), got 10: [io.github.bearisbug.synaxis.event.player.PlayerChatEvent@…` |
 | 6 | 反证有齿（burst 边界）：`ChatRateLimiter` 构造器里 `this.tolerance = (burst - 1) * interval;` 改成 `burst * interval`，重跑第 1 步的 `ChatRateLimiterTest` 与第 2 步，再还原 | `ChatRateLimiterTest` 4 个里 3 个红：`aBurstOfThreeThenOneASecond` 报 `10 messages within 1 s: the burst of 3 goes through, the rest is dropped ==> expected: <3> but was: <4>`，`anIdleConnectionDoesNotSaveUpMoreThanTheBurst` 报 `expected: <3> but was: <4>`，`negativeNanoTimesWork` 报 `expected: <false> but was: <true>`；集成测试红在 `Expected 3 element(s), got 4`。还原后全绿 |
 
@@ -7931,10 +7932,10 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑单测 `:test` 的 `io.github.bearisbug.synaxis.network.CompressionSocketTest` 与 `io.github.bearisbug.synaxis.ServerConfigTest` | 前者 `tests="3"`、后者 `tests="7"`，全绿。阈值 512：`SetCompression` 为 512；第一帧数据长度 0、包体 511 B；第二帧数据长度 512、包体 512 B，zlib 头 `0x78 0x9C`，以 `JvmFlags.COMPRESSION_LEVEL` 重新压缩逐字节相同；第三帧是 `LoginSuccess`。默认配置：`SetCompression` 为 256，255 B 不压缩、256 B 压缩，6 级写出的字节与 `new Deflater(Deflater.DEFAULT_COMPRESSION)` 逐字节相同。阈值 0：第一帧就是探针包（首字节是包 ID 4，没有数据长度），511 B 与 512 B 都原样发，之后是 `LoginSuccess`。`ServerConfigTest`：默认阈值 256；进程以配置的 512 为初值；`compressionThreshold(-1)` 抛 `compressionThreshold must not be negative but was -1, 0 turns compression off` |
+| 1 | 跑单测 `:test` 的 `io.github.bearisbug.synaxis.network.CompressionSocketTest` 与 `io.github.bearisbug.synaxis.ServerConfigTest` | 前者 `tests="3"`、后者 `tests="7"`，全绿。阈值 512：`SetCompression` 为 512；第一帧数据长度 0、包体 511 B；第二帧数据长度 512、包体 512 B，zlib 头 `0x78 0x9C`，以 `JvmFlags.COMPRESSION_LEVEL` 重新压缩逐字节相同；第三帧是 `LoginSuccess`。默认配置：`SetCompression` 为 256，255 B 不压缩、256 B 压缩，6 级写出的字节与 `new Deflater(Deflater.DEFAULT_COMPRESSION)` 逐字节相同。阈值 0：第一帧就是探针包（首字节是包 ID 4，没有数据长度），511 B 与 512 B 都原样发，之后是 `LoginSuccess`。`ServerConfigTest`：默认阈值 256；进程以配置的 512 为初值；`compressionThreshold(-1)` 抛 `synaxis.compression-threshold must not be negative but was -1, 0 turns compression off`（RUN-089 之前以组件名 `compressionThreshold` 开头） |
 | 2 | 反证（进程不取配置的阈值）：`src/main/java/io/github/bearisbug/synaxis/ServerProcessImpl.java` 的 `this.compressionThreshold = config.compressionThreshold();` 改成 `this.compressionThreshold = 256;`，跑第 1 步，再还原 | `10 tests completed, 3 failed`：`CompressionSocketTest.java:63` `expected: <512> but was: <256>`；`:99` `the first packet is the probe, not SetCompression ==> expected: <4> but was: <3>`；`ServerConfigTest.java:59` `expected: <512> but was: <256>` |
 | 3 | 反证（边界）：`src/main/java/io/github/bearisbug/synaxis/network/packet/PacketWriting.java` 的 `packetSize >= compressionThreshold` 改成 `>`，只跑 `CompressionSocketTest`，再还原 | `3 tests completed, 2 failed`：`:71` `512 bytes are at the threshold ==> expected: <512> but was: <0>`；`:87` `expected: <256> but was: <0>` |
-| 4 | 反证（负阈值放行）：删掉 `src/main/java/io/github/bearisbug/synaxis/ServerConfig.java` 构造器里的 `if (compressionThreshold < 0)` 与其后两行，只跑 `ServerConfigTest`，再还原 | `7 tests completed, 1 failed`：`invalidValuesAreRejected` 红在 `ServerConfigTest.java:86`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 4 | 反证（负阈值放行）：删掉 `src/main/java/io/github/bearisbug/synaxis/ServerConfig.java` 构造器里的 `if (compressionThreshold < 0)` 与其后两行，只跑 `ServerConfigTest`，再还原 | `7 tests completed, 1 failed`：`invalidValuesAreRejected` 红在 `ServerConfigTest.java:131`（`refusedWith` 里的 `assertThrows`，调用处 `:91`；RUN-089 之前是 `:86`），`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
 | 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -10039,10 +10040,10 @@ J=src/main/java/io/github/bearisbug/synaxis; A=server-app/src/main/java/io/githu
 chk $J/listener/ChatMessageListener.java 56 'chatRateLimiter().tryAcquire'
 chk $J/listener/ChatMessageListener.java 65 'new PlayerChatEvent(player, List.of(), message)'
 chk $J/listener/ChatMessageListener.java 71 'if (!recipients.isEmpty())'
-chk $J/ServerConfig.java 299 '"synaxis.chat-rate-per-second"'
-chk $J/ServerConfig.java 300 '"synaxis.chat-burst"'
-chk $J/ServerConfig.java 470 'chatRatePerSecond = 1;'
-chk $J/ServerConfig.java 471 'chatBurst = 3;'
+chk $J/ServerConfig.java 340 'intProperty(CHAT_RATE_PER_SECOND,'
+chk $J/ServerConfig.java 341 'intProperty(CHAT_BURST,'
+chk $J/ServerConfig.java 495 'chatRatePerSecond = 1;'
+chk $J/ServerConfig.java 496 'chatBurst = 3;'
 chk $A/ConfigFile.java 83 '"synaxis.chat-rate-per-second"'
 chk $A/ConfigFile.java 84 '"synaxis.chat-burst"'
 chk $J/entity/Player.java 454 'true, false);'
@@ -10050,9 +10051,9 @@ chk $J/message/Messenger.java 47 'new SystemChatPacket(message, position == Chat
 chk client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/mixin/ClientPacketListenerMixin.java 22 'skipUnsecureServerToast'
 chk $A/transfer/TicketIssuer.java 38 'public static final String TRANSFER_FAILED'
 chk $A/shard/ShardGates.java 113 'TicketIssuer.TRANSFER_FAILED'
-chk $J/network/player/PlayerSocketConnection.java 239 'private void processPackets('
-chk $J/network/player/PlayerSocketConnection.java 254 'private boolean processBatch('
-chk $J/network/player/PlayerSocketConnection.java 315 'rejectMisusedPacket()) disconnect();'
+chk $J/network/player/PlayerSocketConnection.java 242 'private void processPackets('
+chk $J/network/player/PlayerSocketConnection.java 257 'private boolean processBatch('
+chk $J/network/player/PlayerSocketConnection.java 318 'rejectMisusedPacket()) disconnect();'
 git merge-base --is-ancestor cf1a359794 HEAD && echo 'ok       cf1a359794 is in HEAD'
 git show 8babd09aa1:docs/DESIGN.md | grep -q '一批包的起始状态早于 configuration 时监听器抛异常一律断开' && echo 'ok       DESIGN.md v0.43 (8babd09aa1) rewrote ①'
 [ "$(git show 0b554bb0ed:docs/DESIGN-M3.md | grep -c -e '⑬⑯⑰⑱⑲ 已由该分册 v0.9.29' -e '⑮ 该分册 §28.3:3033 那一行可转已决')" = 2 ] && echo 'ok       DESIGN-M3 v0.38 (0b554bb0ed) records ⑬⑯⑰⑱⑲ and ⑮'
@@ -10370,7 +10371,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | --- | --- | --- |
 | 1 | 跑 `<P>.ArchitectureTest` | `tests="8"` 0 失败，其中 `publicStaticFieldsAreFinal` 是本节加的；`FilteredText` 的 `STRING_NETWORK_TYPE`、`STRING_CODEC`、`COMPONENT_NETWORK_TYPE`、`COMPONENT_CODEC` 与 `DataComponentPredicate.Damage.CODEC` 都是 `public static final` |
 | 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
-| 3 | 反证有齿：`FilteredText.java:14` 去掉 `final`，前面加一行 `@SuppressWarnings("ConstantField")`（不加时 Error Prone 的 `ConstantField` 先让编译失败），跑第 1 步的类，再还原 | `8 tests completed, 1 failed`：`publicStaticFieldsAreFinal` 红在 `ArchitectureTest.java:291`，`Architecture Violation [Priority: MEDIUM] - Rule 'fields that are public and are static and do not have full name '…EngineAdventure.COMPONENT_TRANSLATOR' should be final, because any code in the process could reassign it' was violated (1 times)`，`Field <…FilteredText.STRING_CODEC> does not have modifier FINAL` |
+| 3 | 反证有齿：`FilteredText.java:14` 去掉 `final`，前面加一行 `@SuppressWarnings("ConstantField")`（不加时 Error Prone 的 `ConstantField` 先让编译失败），跑第 1 步的类，再还原 | `8 tests completed, 1 failed`：`publicStaticFieldsAreFinal` 红在 `ArchitectureTest.java:292`，`Architecture Violation [Priority: MEDIUM] - Rule 'fields that are public and are static and do not have full name '…EngineAdventure.COMPONENT_TRANSLATOR' should be final, because any code in the process could reassign it' was violated (1 times)`，`Field <…FilteredText.STRING_CODEC> does not have modifier FINAL` |
 | 4 | 改动前的代码上默认与严格 grid 各跑一次第 1 步的类 | 两次都红在 `:291`，`was violated (5 times)`，列出 `DataComponentPredicate$Damage.CODEC` 与 `FilteredText` 的四个字段 |
 | 5 | 还原后重跑第 1、2 步 | 与第 1 步相同 |
 
@@ -11426,7 +11427,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | --- | --- | --- |
 | 1 | 跑 `PacketReadingMalformedTest`，看 `aLengthCutShortByTheReadWaitsForTheRest` 的 `[1]`、`[2]` | `tests="8"` 0 失败：两组都返回 `PacketReading.Result.Empty`，读下标仍是 0。同类的 `overlongVarIntLengthIsAProtocolError`（写下标之前 5 个真 0xFF）仍抛 `DataFormatException`，`truncatedVarIntLengthAtBufferEndRequiresABiggerBuffer`（容量 8、读下标 4、4 个 0xFF）仍返回 `Failure(9)`（第 3 次） |
 | 2 | 改动前的红：`<PR>` 取 `origin/main` `cb969826b7` 的，测试是本组的 | 两组都红在 `PacketReadingMalformedTest.java:65`（调 `readClients` 那一句）：`java.util.zip.DataFormatException: Packet length is not a valid var-int`，抛自 `PacketReading.java:215`（第 1 次） |
-| 3 | 反证有齿（判据退回只看容量）：`<PR>:215` 的 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE)` 改为 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE \|\| beginMark + MAX_VAR_INT_SIZE <= buffer.capacity())`，与 `TC-PROD-771`～`TC-PROD-773` 第 3 步同批跑四个类，再还原 | 两组都红在 `:65`，同一条消息，抛自 `PacketReading.java:216`；本类其余 6 个照绿（第 4 次） |
+| 3 | 反证有齿（判据退回只看容量）：`<PR>:186`（RUN-089 之前是 `:215`）的 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE)` 改为 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE \|\| beginMark + MAX_VAR_INT_SIZE <= buffer.capacity())`，与 `TC-PROD-771`～`TC-PROD-773` 第 3 步同批跑四个类，再还原 | 两组都红在 `:68`，同一条消息，抛自 `PacketReading.java:187`（RUN-089 之前是 `:65` 与 `:216`）；本类其余 6 个照绿（第 4 次） |
 | 4 | 还原后跑第 1 步 | 与第 1 步相同（第 3 次） |
 
 后置：`grep -rn proof.never src/main` 无输出。
@@ -11481,7 +11482,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | --- | --- | --- |
 | 1 | 四个类一条命令跑，加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | 4 个类 26 个 0 失败 0 跳过：`ConnectionManagerIntegrationTest` 6、`PacketReadingMalformedTest` 8、`PlayerConnectionKickIntegrationTest` 2、`PreAuthConnectionIntegrationTest` 10（第 6 次） |
 | 2 | 同第 1 步，再加 `-Dsynaxis.thread-provider=grid` | 与第 1 步相同（第 7 次） |
-| 3 | 只读核对行号：`grep -nF` 依次查 `<PR>` 的 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE)`，`<PS>` 的 `if (!isOnline()) {`，`<PC>` 的 `if (!online) return;` 与 `player.scheduleNextTick(Entity::remove);`，`<CM>` 的 `handleFinishConfigurationTimeout(tickStart);`、`this.finishingSince.remove(player);`、`public int getOnlinePlayerCount()`、`if (threshold > 0) socketConnection.startCompression();`、`player.remove(false);`、`player.kick(DisconnectReasons.KEEP_ALIVE_TIMEOUT);`；再查 `ConnectionManagerIntegrationTest.java` 的 `disconnects.assertSingle(disconnect -> assertEquals("synaxis:keep-alive-timeout",` 与 `PreAuthConnectionIntegrationTest.java` 的 `assertEquals(GameProfile.offlineUuid("Notch"), decided.uuid(),` | 依次是 215；172；245、276；654；518、552；217；419；731；803、817；92；187 |
+| 3 | 只读核对行号：`grep -nF` 依次查 `<PR>` 的 `if (buffer.writeIndex() - beginMark >= MAX_VAR_INT_SIZE)`，`<PS>` 的 `if (!isOnline()) {`，`<PC>` 的 `if (!online) return;` 与 `player.scheduleNextTick(Entity::remove);`，`<CM>` 的 `handleFinishConfigurationTimeout(tickStart);`、`this.finishingSince.remove(player);`、`public int getOnlinePlayerCount()`、`if (threshold > 0) socketConnection.startCompression();`、`player.remove(false);`、`player.kick(DisconnectReasons.KEEP_ALIVE_TIMEOUT);`；再查 `ConnectionManagerIntegrationTest.java` 的 `disconnects.assertSingle(disconnect -> assertEquals("synaxis:keep-alive-timeout",` 与 `PreAuthConnectionIntegrationTest.java` 的 `assertEquals(GameProfile.offlineUuid("Notch"), decided.uuid(),` | 依次是 186（RUN-089 之前是 215）；172；245、276；654；518、552；217；419；731；803、817；92；187 |
 
 后置：`git status --short` 无输出。
 
@@ -12187,7 +12188,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.ServerConfigTest`，看 `valuesThatBreakAStartedProcessAreRefusedByKey`（第 2 次运行） | 绿：`build()` 对下列取值抛 `IllegalArgumentException`，消息含所写的片段：`keep-alive-kick` 等于或小于 `keep-alive-delay`（`synaxis.keep-alive-kick (10000 ms) must be greater than synaxis.keep-alive-delay (10000 ms)`，只把 delay 调到 20,000 时同样）、`keep-alive-delay` 0、`login-timeout` 0、`packet-per-tick` 0、`packet-queue-size` 1 与 40（小于 `packet-per-tick` 50）、三个缓冲键各取 0、`watchdog.timeout-ms` 60、`chunk-queue.min-per-tick` 8 配 `max-per-tick` 4 与 min 为 NaN、`entity-synchronization-ticks` 0、`entity-view-distance` 与 `max-tick-catch-up` 各取 −1、`chunk-view-distance` −1（`chunkViewDistance must not be negative but was -1`）；三个网段与覆盖串给 null 抛 `NullPointerException`，消息是字段名。各键的边界值（kick 2 配 delay 1、队列 2、缓冲 1、`timeout-ms` 1,000 与 0、min 等于 max、视距 0）照常建出 |
+| 1 | 跑 `io.github.bearisbug.synaxis.ServerConfigTest`，看 `valuesThatBreakAStartedProcessAreRefusedByKey`（第 2 次运行） | 绿：`build()` 对下列取值抛 `IllegalArgumentException`，消息含所写的片段：`keep-alive-kick` 等于或小于 `keep-alive-delay`（`synaxis.keep-alive-kick (10000 ms) must be greater than synaxis.keep-alive-delay (10000 ms)`，只把 delay 调到 20,000 时同样）、`keep-alive-delay` 0、`login-timeout` 0、`packet-per-tick` 0、`packet-queue-size` 1 与 40（小于 `packet-per-tick` 50）、三个缓冲键各取 0、`watchdog.timeout-ms` 60、`chunk-queue.min-per-tick` 8 配 `max-per-tick` 4 与 min 为 NaN、`entity-synchronization-ticks` 0、`entity-view-distance` 与 `max-tick-catch-up` 各取 −1、`chunk-view-distance` −1（`synaxis.chunk-view-distance must not be negative but was -1`，RUN-089 之前以组件名 `chunkViewDistance` 开头）；三个网段与覆盖串给 null 抛 `NullPointerException`，消息是字段名。各键的边界值（kick 2 配 delay 1、队列 2、缓冲 1、`timeout-ms` 1,000 与 0、min 等于 max、视距 0）照常建出 |
 | 2 | 跑 `io.github.bearisbug.synaxis.JvmFlagsRangeTest`（第 2 次运行） | 2 条绿：测试 JVM 里 `synaxis.tps` 20、`Tick.SERVER_TICKS.getTicksPerSecond()` 等于它，`max-packet-size` 2,097,151、`-pre-auth` 8,192；分别带 `-Dsynaxis.max-packet-size=4194304`、`=8192`、`-Dsynaxis.max-packet-size-pre-auth=4194304`、`-Dsynaxis.tps=0`、`=30` 起子 JVM 初始化 `JvmFlags`，都以 `ExceptionInInitializerError` 失败，原因依次是 `Property 'synaxis.max-packet-size' value must be in range [16383..2097151] but was 4194304`、同一句 `but was 8192`、`Property 'synaxis.max-packet-size-pre-auth' value must be in range [1024..2097151] but was 4194304`、`Property 'synaxis.tps' value must be in range [1..1000] but was 0`、`Property 'synaxis.tps' value must divide 1000, …` |
 | 3 | 跑 `:server-app:test --tests io.github.bearisbug.synaxis.app.ConnectionGateLogTest`，看 `settingTheEventNodeParentsKeyWarnsThatItIsDeprecated`；`:architecture-tests:test --tests '*ConfigKeyGateTest'`（第 2 次运行） | 都绿：设了 `synaxis.event.multiple-parents` 时 `ServerConfig.fromSystemProperties()` 恰记一行 WARN `synaxis.event.multiple-parents is deprecated and has no effect, an event node has at most one parent`；配置键门禁照常 122 个键（这个键改由 `ServerConfig` 读、仍在 `ConfigFile.KEYS`） |
 | 4 | 改动前的红（第 1 次运行） | 第 1 步那条红在 `ServerConfigTest.java:162`（`refused` 里的 `assertThrows`），第一个断言 `synaxis.keep-alive-kick (10000 ms) must be greater than synaxis.keep-alive-delay (10000 ms) ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；第 2 步那条红在 `JvmFlagsRangeTest.java:59`，子 JVM 输出 `initialized JvmFlags[…, maxPacketSize=4194304, …]`（越界值照常生效）；第 3 步 WARN 那条红在 `ConnectionGateLogTest.java:228`，`but was: <[]>` |
@@ -14080,6 +14081,97 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | 4 | 仓库根目录 `rg -n --type java --type kotlin 'createHeadless\|DataComponentMap\.(networkType\|codec\|patchNetworkType\|patchCodec)'` | 无输出（退出码 1）：删掉的五个方法没有残留的调用方 |
 
 后置：`git status --short` 只有本组的改动。
+
+### 生产就绪 · RUN-089：NETCONN（切换状态的包不可取消、登录插件请求随连接结束、断开之后的发包、配置与包长的报错带键名、写线程的空闲等待与连接面的整理）
+
+对应 `REQ-PROD-019`、`REQ-PROD-025`、`REQ-PROD-033`、`REQ-PROD-036` 与引擎的 `REQ-014`、`REQ-017`（`docs/DESIGN-PROD.md` v0.9.111：`API-PROD-016` 线程契约里 `PlayerPacketOutEvent` 与 `AsyncPlayerPreLoginEvent` 两条、`API-PROD-020` 出站积压一条、`API-PROD-023`「报错带键名」，§16「断开之后的发包」「登录插件请求与断开、离开 LOGIN」两行，§28.3 一行；`docs/PLUGINS.md` §10 线程表两行）。分支 `prod/r089-NETCONN`，基于 `main` `17f2a2cfe1`。改了对外行为的有五处：`PlayerPacketOutEvent` 取消 `FinishConfigurationPacket`、`StartConfigurationPacket` 无效，包照常写出并记一行 WARN；`AsyncPlayerPreLoginEvent#sendPluginRequest` 的 future 在连接断开或离开 LOGIN 时以 `IllegalStateException` 异常完成，之后再调用抛同一异常，没有对应请求的应答报 `IllegalStateException`；断开之后再发的包当场丢弃；`ServerConfig` 构造器的范围检查一键一句、以 `synaxis.*` 键名开头；`synaxis.tps=1000` 时写线程在空队列上睡 1 ms。另有读写包超长的报错补上上限与键名。其余是行为不变的整理与只改文档的条目，归 `TC-PROD-1016`。
+
+测试（类名省去前缀 `io.github.bearisbug.synaxis.`）：新类 `network.StateChangingPacketCancelIntegrationTest`（1 条）、`network.plugin.LoginPluginRequestIntegrationTest`（3 条）、`network.player.OfflineSendIntegrationTest`（1 条），这三个带 `@EnvTest`；`network.player.WriteThreadIdleWaitTest`（1 条）。改了断言、条数不变的旧类：`ServerConfigTest`（8 条）、`network.PacketReadingMalformedTest`（8 条）、`network.packet.PacketWritingOversizedTest`（4 条）、`network.PacketWriteQueueIntegrationTest`（1 条）；`network.SendablePacketTest` 与 `network.packet.PacketReadingUnreadBytesTest` 改调 `readClients`，`ArchitectureTest` 只改 javadoc。都不连数据库。
+
+本组 4 次 Gradle 运行，都带 `--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`：第 1 次是「改动前的红」，基线 `17f2a2cfe1` 的主源码加本组的测试（基线没有 `PlayerSocketConnection#idleWaitMillis`，这一次运行里它按基线的算式 `1000 / tps / 2` 抽出、不加下限，否则测试编不过），跑 `:testNamingCheck :forbiddenImportsCheck` 与本组的十个测试类，`30 tests completed, 12 failed`，红的恰是下面六条用例的十二条；第 2 次「跑本节的类」即 `:testNamingCheck :forbiddenImportsCheck :test --tests 'io.github.bearisbug.synaxis.network.*' --tests 'io.github.bearisbug.synaxis.listener.*' --tests 'io.github.bearisbug.synaxis.ArchitectureTest' --tests 'io.github.bearisbug.synaxis.ServerConfigTest' --tests 'io.github.bearisbug.synaxis.ShutdownSequenceTest' :server-app:test --tests 'io.github.bearisbug.synaxis.app.HandshakeIntegrationTest' :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest'`；第 3、4 次是 `TC-PROD-1016` 的两种严格模式。引擎根模块的测试类路径上没有 SLF4J 实现，日志行看不到，本节的 WARN 按代码读。
+
+#### `TC-PROD-1010` 监听器取消全部出站包：`FinishConfigurationPacket` 照常写出、连接进 PLAY，别的包照旧不写 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。回环 socket 对，服务端一侧包成 `PlayerSocketConnection`（测试线程同时充当读线程与写线程），客户端状态设 CONFIGURATION、建好玩家；进程事件节点上挂一个取消一切 `PlayerPacketOutEvent` 的监听器。先排一个 8 字节负载的插件消息 `synaxis:noise`，再排 `FinishConfigurationPacket`，调一次 `flushSync`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类，看 `network.StateChangingPacketCancelIntegrationTest`（第 2 次运行） | 1 条绿：服务端状态是 PLAY；对端恰读到一帧 4 字节（3 字节帧头、1 字节包 ID），按 configuration 态解码是 `FinishConfigurationPacket`，插件消息没有写出。按代码读，这次取消记一行 WARN `Ignored the cancel of a state-changing packet: packet=FinishConfigurationPacket connection_id=<id>` |
+| 2 | 改动前的红（第 1 次运行） | 红在 `StateChangingPacketCancelIntegrationTest.java:54`：`the state moves with the packet ==> expected: <PLAY> but was: <CONFIGURATION>`（包被取消、没写出，服务端停在 configuration） |
+
+后置：`git status --short` 不列 `src` 下的文件。
+
+#### `TC-PROD-1011` 登录插件请求随连接结束：断开或离开 LOGIN 时等应答的请求以 `IllegalStateException` 失败，之后再发请求当场抛；没有对应请求的应答不带负载时照样报 `IllegalStateException` — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`LoginPluginRequestIntegrationTest` 用一个只记下所发包、从不应答的 `PlayerConnection`（不是 socket 连接），服务端状态设 LOGIN，以它的 `loginPluginMessageProcessor()` 建 `AsyncPlayerPreLoginEvent`，在事件上调 `sendPluginRequest`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类，看 `network.plugin.LoginPluginRequestIntegrationTest`（第 2 次运行） | 3 条绿。`aDisconnectFailsTheRequestStillWaitingForItsAnswer`：连接记下一个 `LoginPluginRequestPacket`，虚拟线程以 `join()` 等应答；`disconnect()` 之后 1 s 内等待结束，抛出的 `CompletionException` 的 cause 是 `IllegalStateException`。`leavingTheLoginStateEndsItsRequests`：服务端状态改为 CONFIGURATION 之后，还没应答的请求已异常完成，再调 `sendPluginRequest` 抛 `IllegalStateException`，连接只记下第一个请求包。`anAnswerNobodyAskedForIsRefusedEvenWithoutAPayload`：`handleResponse(42, null)` 抛 `IllegalStateException`，消息 `Received unexpected Login Plugin Response id 42 of no bytes` |
+| 2 | 同一次运行里的 `:server-app` 的 `app.HandshakeIntegrationTest` | 25 条绿：宿主 `HandshakeGate` 在登录阶段的协商照旧。按代码读，它以 `get(budget)` 等应答，future 异常完成时落进已有的 `ExecutionException` 分支 |
+| 3 | 改动前的红（第 1 次运行） | 3 条都红：第一条红在 `LoginPluginRequestIntegrationTest.java:84`，`the wait must end with the connection ==> expected: <false> but was: <true>`（future 永不完成，1 s 后等待的线程还活着）；第二条红在 `:101`，`the request still waiting for its answer fails ==> expected: <true> but was: <false>`；第三条红在 `:114`，`Unexpected exception type thrown, expected: <java.lang.IllegalStateException> but was: <java.lang.NullPointerException>`（拼报错时先对 null 取长度） |
+
+后置：同 `TC-PROD-1010`。
+
+#### `TC-PROD-1012` 断开之后再发的包当场丢弃：积压字节与积压踢人计数停在断开时的值 — 对应 `REQ-PROD-025` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`OfflineSendIntegrationTest` 用 `network.player.OutboundBacklogIntegrationTest` 的夹具（回环 socket 上的 `PlayerSocketConnection`，积压上限取默认的 4 MiB）：先 `disconnect()`，记下 `backlogBytes()` 与积压踢人计数，再连发 10,000 个 16 KiB 的 `FramedPacket`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类，看 `network.player.OfflineSendIntegrationTest`（第 2 次运行） | 1 条绿：`backlogBytes()` 与积压踢人计数都等于断开时记下的值。同一次运行里 `OutboundBacklogIntegrationTest` 2 条、`network.socket.DisconnectFlushSocketTest` 4 条照绿（断开之前入队的包与断线包照常写出） |
+| 2 | 改动前的红（第 1 次运行） | 红在 `OfflineSendIntegrationTest.java:31`：`nothing more is queued ==> expected: <0> but was: <163840000>`（10,000 × 16,384 B 全进了队列，写线程已退出，没有谁取走） |
+
+后置：同 `TC-PROD-1010`。
+
+#### `TC-PROD-1013` `ServerConfig` 的范围检查一键一句、以 `synaxis.*` 键名开头 — 对应 `REQ-PROD-033`、`REQ-014` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类，看 `ServerConfigTest` 的 `invalidValuesAreRejected` 与 `valuesThatBreakAStartedProcessAreRefusedByKey`（第 2 次运行） | 该类 8 条绿。前者对 33 个越界取值逐条断言整条消息，例如 `synaxis.dispatcher-threads must be at least 1 but was 0`、`synaxis.watchdog.halt-after-ms must not be negative but was -1`、`synaxis.thread-grid-exponent must be between 0 and 31 but was 32`、`synaxis.status-rate-per-ip must be positive but was NaN`、`synaxis.compression-threshold must not be negative but was -1, 0 turns compression off`，三个 null 照旧抛 `NullPointerException`；后者里 `entity-view-distance`、`max-tick-catch-up`、`chunk-view-distance` 各取 −1，报的是各自的键 |
+| 2 | 同一次运行里的 `:architecture-tests` 的 `architecture.ConfigKeyGateTest` | 1 条绿：键名提成编译期常量之后，`ServerConfig` 的常量池里照旧有整串键名，配置键门禁照常 |
+| 3 | 改动前的红（第 1 次运行） | 两条红：前者红在 `ServerConfigTest.java:131`（`refusedWith` 里，第一条断言），`expected: <synaxis.dispatcher-threads must be at least 1 but was 0> but was: <dispatcherThreads must be at least 1 but was 0>`；后者红在 `:207`（`refused` 里），`synaxis.entity-view-distance and synaxis.max-tick-catch-up must not be negative but were -1 and 5 ==> expected: <true> but was: <false>` |
+
+宿主拒启的 `Refusing to start: …` 一行随之变，真进程的两处（`TC-PROD-023` 第 4 步、`TC-PROD-081` 第 4 步）按改后的报错改了预期，本组没起真进程。
+
+后置：同 `TC-PROD-1010`。
+
+#### `TC-PROD-1014` 读写包超长的报错带上限与键名，写队列里写不下的包只报类名与缓冲容量 — 对应 `REQ-017`、`REQ-PROD-033` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。测试 JVM 里 `synaxis.max-packet-size` 是 2,097,151，`synaxis.max-packet-size-pre-auth` 是 8,192。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类，看 `network.PacketReadingMalformedTest` 的 `statusFramesUseThePreAuthPacketSizeLimit` 与 `aDeclaredDecompressedLengthOverTheLimitIsRefusedBeforeInflating`、`network.packet.PacketWritingOversizedTest` 的 `aPacketOverTheMaximumSizeIsRefusedInsteadOfGrowingForever`、`network.PacketWriteQueueIntegrationTest`（第 2 次运行） | 三个类 8、4、1 条绿。STATUS 态读到包长 8,193：`Packet too large: 8193 > 8192 (synaxis.max-packet-size-pre-auth)`；PLAY 态压缩帧声明解压长度 2,097,152：`Invalid decompressed length: 2097152, the limit is 2097151 (synaxis.max-packet-size)`；`allocateTrimmedPacket` 遇到超过最大包长的包：消息以 `Packet too large: ` 开头、以 ` > 2097151 (synaxis.max-packet-size)` 结尾；写队列里永远写不下的 `LoginPluginRequestPacket` 出队，消息 `Packet too large to be written: LoginPluginRequestPacket > 2097151 (synaxis.max-packet-size)`，不带包的字段 |
+| 2 | 改动前的红（第 1 次运行） | 四条红：`PacketReadingMalformedTest.java:42`，`expected: <Packet too large: 8193 > 8192 (synaxis.max-packet-size-pre-auth)> but was: <Packet too large: 8193>`；`:86`，`the announcement itself must be what is refused ==> expected: <Invalid decompressed length: 2097152, the limit is 2097151 (synaxis.max-packet-size)> but was: <Invalid decompressed length: 2097152>`；`PacketWritingOversizedTest.java:45`，`Packet too large: 2097166 ==> expected: <true> but was: <false>`；`PacketWriteQueueIntegrationTest.java:41`，`but was: <Packet too large to be written: LoginPluginRequestPacket[messageId=1, channel=t, data=[B@…]>`（拼的是 record 的 `toString`） |
+
+后置：同 `TC-PROD-1010`。
+
+#### `TC-PROD-1015` `synaxis.tps=1000` 时写线程在空队列上睡 1 ms，不睡 0 — 对应 `REQ-PROD-033` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`synaxis.tps` 的取值是 1～1000 且整除 1000（`docs/DESIGN-PROD.md` `API-PROD-023` 键表）；不开 `synaxis.new-socket-write-lock`（默认）时，写线程在空队列上按 `idleWaitMillis` 睡。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类，看 `network.player.WriteThreadIdleWaitTest`（第 2 次运行） | 1 条绿：`idleWaitMillis` 在 20、500、1000 tps 下依次是 25、1、1 ms |
+| 2 | 改动前的红（第 1 次运行，`idleWaitMillis` 取基线的算式） | 红在 `WriteThreadIdleWaitTest.java:18`：`expected: <1> but was: <0>`（1000 tps 时半个 tick 取整为 0 ms，每条连接的写线程空转） |
+
+后置：同 `TC-PROD-1010`。
+
+#### `TC-PROD-1016` 回归：连接面行为不变的整理与只改文档的条目，本节的类在默认、4 线程严格与严格 grid 下全绿 — 对应 `REQ-PROD-019`、`REQ-PROD-033`、`REQ-PROD-036` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。这一条覆盖的改动：`PacketReading` 删去 `readClient`、`readServer` 与两个不带读取器的重载，去掉类级 `@SuppressWarnings("ALL")`，两个结果常量改名，`PacketReader#read` 写明异常包一层 `RuntimeException`；`PacketWriting` 删去四个只被上一层转发的写包重载、`allocateTrimmedPacket` 的 parser 版改为私有，查表收进一个私有方法，帧头宽度与 zlib `compressBound` 有了名字（数值不变），`writeQueue` 补上 writer 的契约；`PlayerConnection` 的 `getServerAddress`、`getServerPort`、四个 setter 与 `fetchCookie` 的 javadoc；`PlayerSocketConnection` 的 `remoteAddress` 改为 volatile，缺 PROXY 头的分支不再重复判 `proxyProtocolRequired`（`ServerConfig` 拒启开 PROXY 而不配 required 的组合），`readClientPacket`、`flushSync` 的 javadoc 与写线程唤醒标志、登录看门狗的注释；`ServerConfig` 的五个取值方法合成一个 `parsedProperty`（报错文案逐字不变），`toBuilder` 的 javadoc；`LoginPluginMessageProcessor` 内联 `nextMessageId`；`ArchitectureTest#boundedReporters` 的 javadoc 写明取消切换状态的包那一行 WARN 的上界。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类（第 2 次运行） | `BUILD SUCCESSFUL`，`compileJava`（Error Prone `-Werror`，含 `:server-app`、`:synx`、`:baker`、`:game-rts`、`:game-rush`、`:play-kit`）、`testNamingCheck`、`forbiddenImportsCheck` 都过；101 个类 1,050 条，0 失败 0 跳过：`network` 包及子包 80 个类 930 条（`PacketWriteReadRegistriesTest` 470、`PacketWritingFramingTest` 4、`PacketWriteQueueTest` 6、`CompressionSocketTest` 3、`PacketCompressionIntegrationTest` 2、`ProxyProtocolTrustTest` 7、`ConnectionGateSocketTest` 12、`SocketWriteIntegrationTest` 6、`SendablePacketTest` 2、`PacketReadingUnreadBytesTest` 1 在内），`listener` 包 16 个类 67 条，`ArchitectureTest` 8、`ServerConfigTest` 8、`ShutdownSequenceTest` 11，`:server-app` 的 `HandshakeIntegrationTest` 25，`:architecture-tests` 的 `ConfigKeyGateTest` 1 |
+| 2 | 第 3 次运行：`:test --tests 'io.github.bearisbug.synaxis.network.*' --tests 'io.github.bearisbug.synaxis.listener.*' --tests 'io.github.bearisbug.synaxis.ServerConfigTest'`，加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | 97 个类 1,005 条，0 失败 0 跳过 |
+| 3 | 第 4 次运行：同第 2 步，再加 `-Dsynaxis.thread-provider=grid` | 与第 2 步相同 |
+| 4 | 第 1 次运行（基线主源码）里的 `SendablePacketTest` 与 `PacketReadingUnreadBytesTest` | 2 条、1 条都绿：两处缓冲都只有一帧，改调 `readClients` 前后结果相同 |
+
+后置：同 `TC-PROD-1010`。
 
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
@@ -16055,6 +16147,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-085，起子进程的测试从就绪行读游戏端口（`REQ-M2-021`、`REQ-PROD-008`，v0.9.109）→ TC-PROD-992；动了 `Main` 的就绪行、`ConfigFileLaunchTest.Launched` 或任一 `*LaunchTest` 的起服参数就跑 TC-PROD-992
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-089 组 CORE，`ServerProcess` 的 setter 拒收 null、所有权异常带元素本身、删去 `AcquirableCollection` 与 `Acquirable#localElements()`、`refreshThreads` 与改派归属的整理（`REQ-013`、`REQ-PROD-008`、`REQ-PROD-014`、`REQ-PROD-019`、`REQ-PROD-020`，v0.9.117）→ TC-PROD-1070～TC-PROD-1072；动了 `ServerProcessImpl` 的 `setBrandName`、`setDifficulty` 或 `setShutdownParticipant` 就跑 TC-PROD-1070；动了 `AcquirableImpl#assertOwnership` 或 `AcquirableOwnershipException` 就跑 TC-PROD-1071；动了 `ThreadDispatcherImpl#refreshThreads`、`#processUpdatedElement`、`#assignOwner` 或 `ThreadProvider` 就在三种模式下跑 TC-PROD-1072 第 2、3 步
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-089 组 NETBUF，长度前缀只读声明的字节、NBT 限额报错带属性名、组件映射拒收 null、物品参数报完整输入、客户端包与连接管理的文档（`REQ-017`、`REQ-016`、`REQ-001`、`REQ-PROD-047`、`REQ-PROD-012`、`REQ-PROD-001`，v0.9.110）→ TC-PROD-1000～TC-PROD-1005；动了 `NetworkBufferCombinatorTypes.LengthPrefixedType` 就跑 TC-PROD-1000；动了 `BinaryTagTypeImpl` 的深度检查、`ReadLimiter` 或 `readArrayLength` 就跑 TC-PROD-1001；动了 `DataComponentMapImpl` 的 `set`、`NetworkTypeImpl`、`CodecImpl` 或 `DataComponent` 的映射常量与 `values()` 就跑 TC-PROD-1002；动了 `ArgumentItemStack` 的读取器就跑 TC-PROD-1003；动了 `ClientUpdateStructureBlockPacket`、`ClientUpdateSignPacket`、`ClientPlayerAbilitiesPacket` 或 `AbilitiesListener` 就跑 TC-PROD-1004；动了 `NetworkBufferVarNumberTypes`、`NetworkBufferCollectionTypes` 或 `NetworkBufferCodecTypes` 就跑 TC-PROD-1005 第 1 步
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-089 组 NETCONN，切换状态的包不可取消、登录插件请求随连接结束、断开之后的发包、配置与包长的报错带键名、写线程的空闲等待与连接面的整理（`REQ-PROD-019`、`REQ-PROD-025`、`REQ-PROD-033`、`REQ-PROD-036`、`REQ-014`、`REQ-017`，v0.9.111）→ TC-PROD-1010～TC-PROD-1016；动了 `PlayerSocketConnection#writePacketSync` 里 `PlayerPacketOutEvent` 的取消分支跑 TC-PROD-1010；动了 `LoginPluginMessageProcessor`、`PlayerConnection#disconnect` 或 `#setServerState` 跑 TC-PROD-1011；动了 `PlayerSocketConnection#offer` 跑 TC-PROD-1012 与 TC-PROD-661；动了 `ServerConfig` 构造器的范围检查或键名常量跑 TC-PROD-1013，挪了 `fromSystemProperties` 读聊天两键的行或 `Builder` 的聊天默认值再跑 TC-PROD-664 的 `CLOSE_OUT`；动了 `PacketReading`、`PacketWriting` 超长包的报错跑 TC-PROD-1014；动了 `PlayerSocketConnection#idleWaitMillis` 跑 TC-PROD-1015；动了这几个类的其余部分跑 TC-PROD-1016 第 1～3 步
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170、TC-PLAY-180～TC-PLAY-185（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

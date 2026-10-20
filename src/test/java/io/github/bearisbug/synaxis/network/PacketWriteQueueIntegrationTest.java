@@ -10,6 +10,7 @@ import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,10 +31,14 @@ public class PacketWriteQueueIntegrationTest {
 
         final NetworkBuffer buffer = NetworkBuffer.staticBuffer(
                 env.process().config().pooledBufferSize(), env.process().registries());
-        assertThrows(IllegalStateException.class, () -> PacketWriting.writeQueue(buffer, queue, 1, (b, packet) -> {
+        final IllegalStateException error = assertThrows(IllegalStateException.class,
+                () -> PacketWriting.writeQueue(buffer, queue, 1, (b, packet) -> {
             PacketWriting.writeFramedPacket(b, ConnectionState.LOGIN, packet, 0);
             return true;
         }));
         assertTrue(queue.isEmpty(), "a packet that cannot be written must leave the queue");
+        // The class and the size, not the fields of the packet: a list in a record prints all of it
+        assertEquals("Packet too large to be written: LoginPluginRequestPacket > " + JvmFlags.MAX_PACKET_SIZE
+                + " (synaxis.max-packet-size)", error.getMessage());
     }
 }

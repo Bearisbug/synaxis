@@ -15,6 +15,9 @@ import org.jetbrains.annotations.ApiStatus;
  * until the backlog limit drops the connection. A {@code BufferedPacket} (chunks sent by handle,
  * batched broadcasts) is written without this event; a {@code CachedPacket} or a
  * {@code FramedPacket} gets it with the packet it holds.
+ * <p>
+ * Cancelling a {@code FinishConfigurationPacket} or a {@code StartConfigurationPacket} is ignored
+ * and logged: both ends switch their connection state at these packets, so the packet is written.
  */
 @ApiStatus.Experimental
 public class PlayerPacketOutEvent implements PlayerEvent, CancellableEvent {

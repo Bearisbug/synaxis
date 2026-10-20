@@ -56,6 +56,6 @@ public class PacketReadingUnreadBytesTest {
         for (int i = 0; i < TRAILING_BYTES; i++) buffer.write(NetworkBuffer.BYTE, (byte) 0);
 
         assertInstanceOf(PacketReading.Result.Success.class,
-                PacketReading.readClient(buffer, ConnectionState.STATUS, false));
+                PacketReading.readClients(buffer, ConnectionState.STATUS, false));
     }
 }

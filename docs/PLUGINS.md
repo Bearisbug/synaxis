@@ -167,9 +167,9 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 
 | 事件 | 线程 | 在这里可以做什么 |
 | --- | --- | --- |
-| `PlayerPacketOutEvent`（每个出站包一次） | 该连接的写线程（虚拟线程） | 只看或取消这个包（取消就不写出）；不读写实体与实例，要碰玩家用 `runOn`；不阻塞，阻塞卡住这名玩家的全部出站包。句柄区块、批量广播这类 `BufferedPacket` 不派发，`CachedPacket`、`FramedPacket` 派发其中的包 |
+| `PlayerPacketOutEvent`（每个出站包一次） | 该连接的写线程（虚拟线程） | 只看或取消这个包（取消就不写出；切换连接状态的 `FinishConfigurationPacket`、`StartConfigurationPacket` 取消无效，照常写出并记一行 WARN）；不读写实体与实例，要碰玩家用 `runOn`；不阻塞，阻塞卡住这名玩家的全部出站包。句柄区块、批量广播这类 `BufferedPacket` 不派发，`CachedPacket`、`FramedPacket` 派发其中的包 |
 | `PlayerPacketEvent` | 只为排进玩家队列的 PLAY 包派发，在玩家所属的 tick 线程上；玩家不在实例里时（configuration 结束后等待加入，或被送回 configuration、客户端还没确认）在 tick 调度线程的串行段上；keep-alive、ping 与 Cookie 的应答在读线程上处理，不派发；会切换解码状态的包（回到 configuration 的确认）也不派发，插件取消不了它 | 读写这名玩家；取消就不处理这个包 |
-| `AsyncPlayerPreLoginEvent`、`AsyncPlayerConfigurationEvent` | 连接的虚拟线程（在线模式下 `AsyncPlayerPreLoginEvent` 在验证线程上，离线模式下在登录线程上） | 可以阻塞（读库、HTTP；远程取皮肤在这里取，存下来到 `PlayerSkinInitEvent` 再设）；只碰事件、连接与这名还没进世界的玩家 |
+| `AsyncPlayerPreLoginEvent`、`AsyncPlayerConfigurationEvent` | 连接的虚拟线程（在线模式下 `AsyncPlayerPreLoginEvent` 在验证线程上，离线模式下在登录线程上） | 可以阻塞（读库、HTTP；远程取皮肤在这里取，存下来到 `PlayerSkinInitEvent` 再设）；只碰事件、连接与这名还没进世界的玩家。`sendPluginRequest` 的应答带超时等：连接断开或离开 LOGIN 时 future 以 `IllegalStateException` 异常完成，之后再调抛同一异常 |
 | `PlayerSkinInitEvent`、首次出生的 `PlayerSpawnEvent` | tick 调度线程的串行段，玩家这时还没分到 tick 线程（从 configuration 回来的玩家由这条线程持着） | 改这名玩家；不阻塞，整个进程的 tick 在等它；碰别的实体用 `runOn` |
 | `PlayerDisconnectEvent` | 已出生的玩家在他所属的 tick 线程上；进了 PLAY 还没出生的在 tick 调度线程上；PLAY 之前断开的在断开连接的那条线程上（读线程、configuration 线程或 tick 调度线程） | 清理按玩家记的状态；后两种与 tick 线程上的代码同时跑 |
 

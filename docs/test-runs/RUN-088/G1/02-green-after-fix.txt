@@ -1,0 +1,57 @@
+Green after the fix: the tree of 8d784527b3..d698250d49 as committed (8a04b74c48 only adds the JMH change, compiled here).
+  ./gradlew :compileJava :compileTestJava :synx:compileTestJava :baker:compileTestJava :architecture-tests:compileTestJava \
+    :jmh-benchmarks:compileJmhJava :jmh-benchmarks:compileWorldbenchJava \
+    :test --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteTest' --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteSwarTest' --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteCopyTest' \
+          --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteCloneTest' --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteOptimizationTest' --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteCompareTest' \
+          --tests 'io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest' \
+    :architecture-tests:test --tests '...architecture.BakerArchitectureTest' --tests '...architecture.SynxInternalSurfaceArchitectureTest' \
+    :baker:test --tests 'io.github.bearisbug.synaxis.baker.anvil.AnvilWorldTest' --tests 'io.github.bearisbug.synaxis.baker.anvil.AnvilBakeTest' --tests 'io.github.bearisbug.synaxis.baker.anvil.AnvilFarViewTest' \
+          --tests 'io.github.bearisbug.synaxis.baker.GeneratorBakeTest' \
+    :synx:test --tests 'io.github.bearisbug.synaxis.synx.<each class below>' --continue --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+BUILD SUCCESSFUL, every compile task passed (Error Prone -Werror).
+
+The :synx classes are every test class of the module that names SynxChunk, SynxChunkPacket, a palette, materialization or
+SynxVectors (git grep -l): materialized chunks encoding back to segment one (SynxChunkOverlayIntegrationTest), the frozen
+vectors (SynxVectorTest, SynxEdgeVectorTest, SynxBuildVerifierTest, SynxManifestTest) and relight snapshots that clone
+palettes (SynxRelightIntegrationTest). The :baker classes are the ones that read Anvil through AnvilWorld, which calls
+Palette.load, plus GeneratorBakeTest.
+
+<testsuite name="io.github.bearisbug.synaxis.architecture.BakerArchitectureTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest" tests="5" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.baker.GeneratorBakeTest" tests="17" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.baker.anvil.AnvilBakeTest" tests="14" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.baker.anvil.AnvilFarViewTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.baker.anvil.AnvilWorldTest" tests="29" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.palette.PaletteCloneTest" tests="12" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.palette.PaletteCompareTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="Basic Copy Operations" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="Different Palette Types" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="Edge Cases and Error Conditions" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="Internal Data Structure Integrity" tests="3" skipped="0" failures="0" errors="0">
+<testsuite name="Multiple Copy Operations" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="Copy of other widths and with an offset" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="Performance and Stress Tests" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.palette.PaletteOptimizationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.palette.PaletteSwarTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.palette.PaletteTest" tests="61" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayStoreTest" tests="38" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxBlockEntityLimitsTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxBuildVerifierTest" tests="10" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkLoaderIntegrationTest" tests="13" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkPacketTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxEdgeVectorTest" tests="8" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxEntitiesTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxManifestTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxOverlayCombinedIntegrationTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxParserBoundaryTest" tests="12" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRegionWriterTest" tests="9" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightIntegrationTest" tests="10" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightViewersIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxTruncatedMappingTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxVectorTest" tests="4" skipped="0" failures="0" errors="0">
+
+Root: 7 classes 111 tests (PaletteCopyTest is the seven nested suites), :synx 17 classes 151 tests, :baker 4 classes 62 tests,
+:architecture-tests 2 classes 9 tests; 0 failures, 0 skipped.

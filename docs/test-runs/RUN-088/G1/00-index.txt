@@ -1,0 +1,19 @@
+RUN-088 G1: palettes. Branch m3/r088-p3, base 17f2a2cfe1. JDK 25, every Gradle run with --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts.
+
+Commits
+  e6c3b7f9ba palette: index lookups leave the Palette interface, one table builder and one storage copy (no behavior change)
+  bda15e53d2 palette: Palettes package-private, count removed, pack/unpack moved to PaletteSwarTest, remap without its label (no behavior change)
+  8d784527b3 test: new PaletteTest cases; inputs past the direct width or not packed for their palette replaced
+  c8194e83ba palette: load checks its input, a direct load goes through Palettes.remap
+  99edb625aa palette: set, fill and replace(int, int) check the value range
+  08c3227b05 palette: the biome serializer below 9 biomes writes an indirect palette
+  d698250d49 palette: Javadoc
+  8a04b74c48 jmh: PaletteReplaceBenchmark.replaceLoop keeps its values in range
+
+Gradle runs (5)
+  1  red on 8d784527b3's tests before any fix commit existed (PaletteTest identical to the final one): same ten reds as 01
+  2  green attempt: PaletteCopyTest "Copy high value entries" red, it set 1_000_000 (past the direct width); its input
+     was replaced in 8d784527b3, see 02
+  3  green, every class of the group: 02-green-after-fix.txt
+  4  red with the three fix commits reverted on 8a04b74c48: 01-red-before-fix.txt
+  5  counterproofs, two temporary changes on 8a04b74c48: 03-counterproofs.txt

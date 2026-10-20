@@ -455,6 +455,36 @@ public class GeneratorTest {
         assertEquals(2, chunkUnit.forks().size(), "forks of the chunk unit after a section of the dynamic fork forked");
     }
 
+    // fork(start, end) rounds the area out to whole sections, and refuses an area empty on an axis once rounded
+    @ParameterizedTest
+    @MethodSource("emptyForkParam")
+    public void aForkWhoseEndIsNotAfterItsStartIsRefused(BlockVec start, BlockVec end) {
+        GenSection[] sections = new GenSection[8];
+        Arrays.setAll(sections, _ -> new GenSection());
+        var chunkUnit = GeneratorImpl.chunk(null, sections, 0, -4, 0);
+
+        final String message = assertThrows(IllegalArgumentException.class, () -> chunkUnit.fork(start, end)).getMessage();
+        assertTrue(message.contains(start.toString()) && message.contains(end.toString()), message);
+        assertTrue(chunkUnit.forks().isEmpty(), "forks of the chunk unit");
+    }
+
+    private static Stream<Arguments> emptyForkParam() {
+        return Stream.of(Arguments.of(new BlockVec(16, 0, 0), new BlockVec(0, 16, 16)), // x reversed
+                Arguments.of(new BlockVec(16, 16, 0), new BlockVec(0, 0, 16)), // x and y reversed
+                Arguments.of(new BlockVec(0, 0, 16), new BlockVec(16, 16, 16))); // z empty
+    }
+
+    @Test
+    public void aForkOfAnUnalignedPointIsTheSectionAroundIt() {
+        GenSection[] sections = new GenSection[8];
+        Arrays.setAll(sections, _ -> new GenSection());
+        var chunkUnit = GeneratorImpl.chunk(null, sections, 0, -4, 0);
+
+        final GenerationUnit fork = chunkUnit.fork(new BlockVec(5, 5, 5), new BlockVec(5, 5, 5));
+        assertEquals(BlockVec.ZERO, fork.absoluteStart());
+        assertEquals(BlockVec.SECTION, fork.size());
+    }
+
     // A section unit keeps the low 4 bits of a coordinate: it fills only the part of an area inside it,
     // the rest would wrap around into it
     @Test

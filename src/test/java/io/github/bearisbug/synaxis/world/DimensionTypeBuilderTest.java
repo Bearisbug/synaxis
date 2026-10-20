@@ -3,7 +3,9 @@ package io.github.bearisbug.synaxis.world;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DimensionTypeBuilderTest {
     @Test
@@ -47,17 +49,26 @@ class DimensionTypeBuilderTest {
         assertDoesNotThrow(() -> DimensionType.builder().monsterSpawnBlockLightLimit(15));
     }
 
+    // maxY is the first y above the world, VANILLA_MAX_Y the highest block
+    @Test
+    void maxYIsExclusive() {
+        assertEquals(DimensionType.VANILLA_MAX_Y + 1, DimensionType.builder().build().maxY());
+    }
+
     @Test
     void testBuild() {
-        assertThrows(IllegalArgumentException.class, () -> DimensionType.builder()
+        final String logicalHeight = assertThrows(IllegalArgumentException.class, () -> DimensionType.builder()
                 .height(32)
                 .logicalHeight(33)
-                .build());
+                .build()).getMessage();
+        assertTrue(logicalHeight.contains("33") && logicalHeight.contains("32"), logicalHeight);
 
-        assertThrows(IllegalArgumentException.class, () -> DimensionType.builder()
+        final String buildHeight = assertThrows(IllegalArgumentException.class, () -> DimensionType.builder()
                 .height(32)
+                .logicalHeight(32)
                 .minY(2016)
-                .build());
+                .build()).getMessage();
+        assertTrue(buildHeight.contains("2047"), buildHeight);
 
         assertDoesNotThrow(() -> DimensionType.builder()
                 .minY(2000)

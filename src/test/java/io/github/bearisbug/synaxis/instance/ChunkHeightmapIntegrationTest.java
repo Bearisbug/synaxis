@@ -25,6 +25,28 @@ public class ChunkHeightmapIntegrationTest {
         assertEquals(39, heightmap);
     }
 
+    // The column of getHeight is chunk-local: a world coordinate is refused instead of reading another column
+    @Test
+    public void getHeightRejectsWorldCoordinates(Env env) {
+        var chunk = env.createFlatInstance().loadChunk(1, 0).join();
+        var heightmap = chunk.motionBlockingHeightmap();
+
+        assertThrows(IllegalArgumentException.class, () -> heightmap.getHeight(20, 0));
+        assertThrows(IllegalArgumentException.class, () -> heightmap.getHeight(0, 16));
+        assertThrows(IllegalArgumentException.class, () -> heightmap.getHeight(-1, 0));
+        assertEquals(39, heightmap.getHeight(15, 15));
+    }
+
+    @Test
+    public void emptyColumnIsBelowMinY(Env env) {
+        var instance = env.createEmptyInstance();
+        var chunk = instance.loadChunk(0, 0).join();
+        final int belowWorld = instance.getCachedDimensionType().minY() - 1;
+
+        assertEquals(belowWorld, chunk.motionBlockingHeightmap().getHeight(0, 0));
+        assertEquals(belowWorld, chunk.worldSurfaceHeightmap().getHeight(15, 15));
+    }
+
     // A world saved with a different dimension height packs its heightmap into fewer longs than
     // this dimension needs, that must degrade to a recomputation instead of throwing and
     // taking the whole chunk down with it

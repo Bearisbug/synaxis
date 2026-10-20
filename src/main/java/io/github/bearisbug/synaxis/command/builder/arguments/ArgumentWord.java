@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.command.CommandSender;
 import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.utils.StringUtils;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
@@ -37,12 +38,15 @@ public class ArgumentWord extends Argument<String> {
      *                     can be null but if an array is passed
      *                     you need to ensure that it is filled with non-null values
      * @return 'this' for chaining
-     * @throws NullPointerException if {@code restrictions} is not null but contains null value(s)
+     * @throws NullPointerException     if {@code restrictions} is not null but contains null value(s)
+     * @throws IllegalArgumentException if a word is empty or contains a space, which no input would ever match
      */
     public ArgumentWord from(@Nullable String... restrictions) {
         if (restrictions != null) {
             for (String restriction : restrictions) {
                 Objects.requireNonNull(restriction, "ArgumentWord restriction cannot be null, you can pass 'null' instead of an empty array");
+                Check.argCondition(restriction.isEmpty() || restriction.contains(StringUtils.SPACE),
+                        "ArgumentWord '" + getId() + "' only takes non-empty words without spaces: '" + restriction + "'");
             }
         }
 

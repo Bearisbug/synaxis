@@ -136,6 +136,9 @@ public abstract class Argument<T> {
      * <p>
      * ex: /help I am a test - will always give you "I am a test"
      * if the first and single argument does use the remaining.
+     * <p>
+     * Such an argument must be the last argument of a syntax:
+     * {@link io.github.bearisbug.synaxis.command.builder.Command#addConditionalSyntax} refuses one anywhere else.
      *
      * @return true if the argument use all the remaining characters, false otherwise
      */

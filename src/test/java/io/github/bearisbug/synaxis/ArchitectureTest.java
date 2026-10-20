@@ -59,7 +59,6 @@ public class ArchitectureTest {
      */
     private static final String[] LOWER_LEVEL_PACKAGES = {
             "io.github.bearisbug.synaxis.codec..",
-            "io.github.bearisbug.synaxis.condition..",
             "io.github.bearisbug.synaxis.coordinate..",
             "io.github.bearisbug.synaxis.exception..",
             "io.github.bearisbug.synaxis.gamedata..",

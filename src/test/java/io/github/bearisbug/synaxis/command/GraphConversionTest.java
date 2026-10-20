@@ -124,7 +124,7 @@ public class GraphConversionTest {
 
     private static void assertEqualsGraph(Graph expected, Command command) {
         final Graph actual = Graph.fromCommand(command);
-        assertTrue(expected.compare(actual, Graph.Comparator.TREE), () -> {
+        assertTrue(expected.sameTree(actual), () -> {
             System.out.println("Expected: " + expected);
             System.out.println("Actual:   " + actual);
             return "";

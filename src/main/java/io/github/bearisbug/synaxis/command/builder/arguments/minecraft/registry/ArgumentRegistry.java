@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.command.builder.arguments.minecraft.registry
 import io.github.bearisbug.synaxis.command.CommandSender;
 import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
 import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException;
+import org.jetbrains.annotations.Nullable;
 
 public abstract class ArgumentRegistry<T> extends Argument<T> {
 
@@ -12,7 +13,14 @@ public abstract class ArgumentRegistry<T> extends Argument<T> {
         super(id);
     }
 
-    public abstract T getRegistry(String value);
+    /**
+     * Returns the entry of the registry this key names, or null if the key is unknown, which the parser reports as
+     * {@link #INVALID_NAME}. Do not throw: the parser only catches {@link ArgumentSyntaxException}.
+     *
+     * @param value the key as typed
+     * @return the entry, null if there is none
+     */
+    public abstract @Nullable T getRegistry(String value);
 
     @Override
     public T parse(CommandSender sender, String input) throws ArgumentSyntaxException {

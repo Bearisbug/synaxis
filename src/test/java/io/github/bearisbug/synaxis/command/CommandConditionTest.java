@@ -469,7 +469,7 @@ public class CommandConditionTest {
         Graph graph1 = Graph.fromCommand(command1);
         Graph graph2 = Graph.fromCommand(command2);
 
-        assertFalse(graph1.compare(graph2, Graph.Comparator.TREE),
+        assertFalse(graph1.sameTree(graph2),
                 "Graphs with different conditions should not be equal");
     }
 

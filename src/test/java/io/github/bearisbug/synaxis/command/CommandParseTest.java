@@ -259,6 +259,24 @@ public class CommandParseTest {
         assertEquals(List.of("\"abc def"), inputs);
     }
 
+    /**
+     * A quoted string holding escaped quotes is tried on ever longer input. A prefix whose closing quote is escaped
+     * is no string, so the parser goes on to the whole of it instead of running the syntax with the prefix.
+     */
+    @Test
+    public void aQuotedStringHoldingEscapedQuotesIsReadWhole() {
+        final AtomicReference<String> said = new AtomicReference<>();
+        final Command foo = new Command("foo");
+        final Argument<String> text = ArgumentType.String("text");
+        foo.addSyntax((_, context) -> said.set(context.get(text)), text);
+        final CommandDispatcher dispatcher = new CommandDispatcher(PROCESS);
+        dispatcher.register(foo);
+
+        assertEquals(CommandResult.Type.SUCCESS,
+                dispatcher.execute(new ServerSender(PROCESS), "foo \"say \\\"hi\\\" now\"").getType());
+        assertEquals("say \"hi\" now", said.get());
+    }
+
     private static void assertSyntaxError(Graph graph, String input) {
         assertInstanceOf(CommandParser.Result.KnownCommand.Invalid.class, parseCommand(graph, input));
     }

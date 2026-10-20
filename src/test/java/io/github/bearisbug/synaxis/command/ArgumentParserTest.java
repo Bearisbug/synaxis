@@ -6,6 +6,8 @@ import io.github.bearisbug.synaxis.command.builder.parser.ArgumentParser;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test string version of arguments.
@@ -48,6 +50,20 @@ public class ArgumentParserTest {
         // Test multiple argument functionality
         assertParserEquals("NBT<arg1> RelativeVec2<arg2>", ArgumentType.NBT("arg1"), ArgumentType.RelativeVec2("arg2"));
         assertParserEquals("Word<arg1> UUID<arg2> NBT<arg3>", ArgumentType.Word("arg1"), ArgumentType.UUID("arg2"), ArgumentType.NBT("arg3"));
+    }
+
+    /**
+     * A format cut short would otherwise leave a syntax without its last argument, so that the executor reads null.
+     */
+    @Test
+    public void aFormatWithAnUnclosedBracketOrAnUnknownTypeIsRefused() {
+        var unclosed = assertThrows(IllegalArgumentException.class, () -> ArgumentParser.generate("set Integer<amount"));
+        assertTrue(unclosed.getMessage().contains("set Integer<amount"), unclosed.getMessage());
+
+        var unknown = assertThrows(IllegalArgumentException.class, () -> ArgumentParser.generate("Foo<x>"));
+        assertTrue(unknown.getMessage().contains("Foo"), unknown.getMessage());
+        assertTrue(unknown.getMessage().contains("integer"), unknown.getMessage());
+        assertTrue(unknown.getMessage().contains("stringarray"), unknown.getMessage());
     }
 
     private static void assertParserEquals(String input, Argument<?> ... args) {

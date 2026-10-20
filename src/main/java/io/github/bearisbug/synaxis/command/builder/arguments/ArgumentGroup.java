@@ -8,6 +8,7 @@ import io.github.bearisbug.synaxis.command.builder.parser.CommandParser;
 import io.github.bearisbug.synaxis.command.builder.parser.ValidSyntaxHolder;
 import io.github.bearisbug.synaxis.utils.StringUtils;
 import io.github.bearisbug.synaxis.utils.validate.Check;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +27,7 @@ public class ArgumentGroup extends Argument<CommandContext> {
     public ArgumentGroup(String id, Argument<?>... group) {
         super(id, true, false);
         Check.argCondition(group.length == 0, "ArgumentGroup '" + id + "' needs at least one argument");
-        this.group = group;
+        this.group = group.clone();
     }
 
     @Override
@@ -44,7 +45,7 @@ public class ArgumentGroup extends Argument<CommandContext> {
     }
 
     @Override
-    public ArgumentParserType parser() {
+    public @Nullable ArgumentParserType parser() {
         return null;
     }
 

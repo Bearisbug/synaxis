@@ -61,11 +61,9 @@ public final class CommandManager {
     public synchronized void register(Command command) {
         Check.stateCondition(commandExists(command.getName()),
                 "A command with the name " + command.getName() + " is already registered!");
-        if (command.getAliases() != null) {
-            for (String alias : command.getAliases()) {
-                Check.stateCondition(commandExists(alias),
-                        "A command with the name " + alias + " is already registered!");
-            }
+        for (String alias : command.getAliases()) {
+            Check.stateCondition(commandExists(alias),
+                    "A command with the name " + alias + " is already registered!");
         }
         // Not where the graph is built for a parse: a command changed once registered would fail the parse of all
         GraphImpl.checkStructure(command);

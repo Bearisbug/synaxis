@@ -268,4 +268,65 @@ public class EntityViewerRuleIntegrationTest {
         assertTrue(vehicle.isViewer(testPlayer));
         assertFalse(passenger.isViewer(testPlayer));
     }
+
+    @Test
+    public void autoViewableAppliesToAPlayerRidingSomethingElse(Env env) {
+        var instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, 42, 0));
+        var mount = new Entity(EntityType.HORSE);
+        mount.setInstance(instance, new Pos(0, 42, 0)).join();
+        mount.addPassenger(player);
+        var zombie = new Entity(EntityType.ZOMBIE);
+        zombie.setInstance(instance, new Pos(2, 42, 0)).join();
+        assertTrue(zombie.isViewer(player));
+
+        zombie.setAutoViewable(false);
+        assertFalse(zombie.isViewer(player));
+
+        zombie.setAutoViewable(true);
+        assertTrue(zombie.isViewer(player));
+    }
+
+    @Test
+    public void viewableRuleAppliesToAPlayerRidingSomethingElse(Env env) {
+        var instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, 42, 0));
+        var mount = new Entity(EntityType.HORSE);
+        mount.setInstance(instance, new Pos(0, 42, 0)).join();
+        mount.addPassenger(player);
+        var zombie = new Entity(EntityType.ZOMBIE);
+        zombie.setInstance(instance, new Pos(2, 42, 0)).join();
+        assertTrue(zombie.isViewer(player));
+
+        zombie.updateViewableRule(_ -> false);
+        assertFalse(zombie.isViewer(player));
+
+        zombie.updateViewableRule(_ -> true);
+        assertTrue(zombie.isViewer(player));
+    }
+
+    @Test
+    public void aVehicleStaysVisibleToItsOwnRiders(Env env) {
+        var instance = env.createFlatInstance();
+        var rider = env.createPlayer(instance, new Pos(0, 42, 0));
+        var bystander = env.createPlayer(instance, new Pos(1, 42, 0));
+        var bottom = new Entity(EntityType.HORSE);
+        bottom.setInstance(instance, new Pos(0, 42, 0)).join();
+        var middle = new Entity(EntityType.ZOMBIE);
+        middle.setInstance(instance, new Pos(0, 42, 0)).join();
+        bottom.addPassenger(middle);
+        middle.addPassenger(rider);
+        assertTrue(bottom.isViewer(rider));
+        assertTrue(middle.isViewer(rider));
+        assertTrue(bottom.isViewer(bystander));
+
+        // The rider sits on the bottom one through the middle one: neither leaves its client
+        bottom.updateViewableRule(_ -> false);
+        assertTrue(bottom.isViewer(rider));
+        assertTrue(middle.isViewer(rider));
+        assertFalse(bottom.isViewer(bystander));
+
+        middle.setAutoViewable(false);
+        assertTrue(middle.isViewer(rider));
+    }
 }

@@ -5,6 +5,8 @@ public interface ObjectDataProvider {
 
     int getObjectData();
 
-    boolean requiresVelocityPacketAtSpawn();
+    default boolean requiresVelocityPacketAtSpawn() {
+        return true;
+    }
 
 }

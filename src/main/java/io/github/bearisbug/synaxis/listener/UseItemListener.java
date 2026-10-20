@@ -61,9 +61,9 @@ public class UseItemListener {
             useAnimation = ItemAnimation.SPEAR;
         }
 
-        boolean usingMainHand = player.getItemUseHand() == PlayerHand.MAIN && hand == PlayerHand.OFF;
+        boolean offHandWhileMainHandBusy = player.getItemUseHand() == PlayerHand.MAIN && hand == PlayerHand.OFF;
         PlayerUseItemEvent useItemEvent = new PlayerUseItemEvent(player, hand, itemStack,
-                usingMainHand ? 0 : useItemTime);
+                offHandWhileMainHandBusy ? 0 : useItemTime);
         player.process().eventHandler().call(useItemEvent);
 
         player.sendPacket(new AcknowledgeBlockChangePacket(packet.sequence()));
@@ -88,7 +88,7 @@ public class UseItemListener {
 
         // If the item was not usable, we can try to do an equipment swap with it.
         final Equippable equippable = itemStack.get(DataComponents.EQUIPPABLE);
-        if (equippable != null && equippable.swappable() && equippable.slot().armorSlot() > 0) {
+        if (equippable != null && equippable.swappable() && equippable.slot().isArmor()) {
             final ItemStack currentlyEquipped = player.getEquipment(equippable.slot());
             player.setEquipment(equippable.slot(), itemStack);
             player.setItemInHand(hand, currentlyEquipped);

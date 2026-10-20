@@ -38,9 +38,4 @@ public class WitherSkullMeta extends EntityMeta implements ObjectDataProvider, P
         return this.shooter == null ? 0 : this.shooter.getEntityId();
     }
 
-    @Override
-    public boolean requiresVelocityPacketAtSpawn() {
-        return true;
-    }
-
 }

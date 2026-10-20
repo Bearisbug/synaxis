@@ -15,8 +15,9 @@ import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Represents a type of damage, required when calling {@link LivingEntity#damage(Damage)}
- * and retrieved in {@link io.github.bearisbug.synaxis.event.entity.EntityDamageEvent}.
+ * Represents one infliction of damage: its type, direct source, attacker, source position and amount. Required when
+ * calling {@link LivingEntity#damage(Damage)} and retrieved in
+ * {@link io.github.bearisbug.synaxis.event.entity.EntityDamageEvent}.
  * <p>
  * This class can be extended if you need to include custom fields and/or methods.
  */
@@ -30,13 +31,15 @@ public class Damage implements Taggable {
     private float amount;
 
     /**
-     * Creates a new damage type.
+     * Creates a new damage.
      *
-     * @param attacker       The attacker that initiated this damage
-     * @param source         The source of the damage. For direct hits (melee), this will be the same as the attacker. For indirect hits (projectiles), this will be the projectile
      * @param type           the type of this damage
+     * @param source         the entity that directly causes the damage, null if none: for a melee hit the attacker
+     *                       itself, for a projectile the projectile (the arrow, not the archer)
+     * @param attacker       the entity that initiated the damage, null if none: for a melee hit the same as
+     *                       {@code source}, for a projectile its shooter
+     * @param sourcePosition the position of the source of damage, null if none
      * @param amount         amount of damage, negative heals
-     * @param sourcePosition The position of the source of damage
      * @throws IllegalArgumentException if {@code amount} is NaN
      */
     public Damage(RegistryKey<DamageType> type, @Nullable Entity source, @Nullable Entity attacker, @Nullable Point sourcePosition, float amount) {

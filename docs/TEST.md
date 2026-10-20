@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-21 | 分支 `prod/r089-LIVING`（基于 `main` `17f2a2cfe1`），跟进 `docs/DESIGN-PROD.md` v0.9.116（RUN-089 组 LIVING），不登执行轮次（集成轮登记 RUN-089）。**新增 §4「生产就绪 · RUN-089：LIVING」七条 `TC-PROD-1060`～`TC-PROD-1066`**：实体查找的参数校验与不给实例时按 UUID 查全部实例（1060），可见规则作用于骑在别的实体上的玩家（1061，三种线程模式），掉落物的拾取延迟从构造起算（1062，三种线程模式），`PlayerInputEvent` 的按键快照（1063），展示实体的亮度与插值起始延迟（1064），出生包速度、属性值与乘客偏移按改动前的值逐个核对（1065），本组回归（1066）；1060～1064 各有改动前的红，1064 另有临时去掉特例的反证。§5 局部轮加本组一行。行号与条数按新代码改：`ItemEntity` 的合并与 claim 下移 6 行，`TC-PROD-621` 第 2 步、`TC-PROD-643` 第 3 步、`TC-PROD-644` 第 2 步、`TC-PROD-645` 第 1 步的 `<IE>` 行号 `:114` → `:120`、`:102-109` → `:108-115`、`:183` → `:189`（621、645 预期里栈的 `ItemEntity.java:114` 同改）；`TC-PROD-941` 第 1 步 `EntityVelocityIntegrationTest` 9 → 10 条，`TC-PROD-948` 第 1 步 `EntityFinderIntegrationTest` 16 → 19 条 | Bearisbug |
 | 2026-10-21 | 分支 `prod/r089-ENTITY`（基于 `main` `17f2a2cfe1`），跟进 `docs/DESIGN-PROD.md` v0.9.122（RUN-089 组 ENTITY：死亡消息的范围、载具的驾驶者、生物转头的补发、出生环的预载票，实体、玩家与 tag 的小缺陷），不登执行轮次（集成后登记）。**新增 §4「生产就绪 · RUN-089：ENTITY」十条 `TC-PROD-1120`～`TC-PROD-1129`**：1120（死亡消息只到同实例，没受过伤的 `kill` 用 `death.attack.generic`）、1121（载具只认根载具的第一个乘客，骑乘中的位置包只采朝向，§19 场景）、1122（生物的位置同步带转头）、1123（出生环等区块期间持视距票，成功、取代、移除与失败都收票）、1124（传送等区块期间被移除或换实例，移除时放开牵绳）、1125（未注册的伤害类型、看向的方块、姿态判定）、1126（资源包的收回与替换）、1127（tag 的 list、transient 映射标签、`updateContent` 规则与 jcstress）、1128（`TimedPotion#remainingTicks` 与数据组件）、1129（回归：删掉的接口没有调用方、源码与 Javadoc 门禁、`JoinGame` 与视距的类、三种线程模式、新增行覆盖 97%）；修前的红与修后的绿都实跑过（本组 6 次 Gradle）。**旧用例**（本组给几个测试类加了用例与导入）：条数按本组的增减改，本组改到的类在第 3～5 次实跑过，`TC-PROD-667`、`TC-PROD-668`、`TC-PROD-692` 第 1 步 `PlayerVehicleMoveAuthorityIntegrationTest` 4 → 6 条，`TC-PROD-671` 第 1 步 12 → 14 条，`TC-PROD-869` 第 1 步 35 → 37 条，`TC-PROD-886` 第 1 步 `EntityTeleportIntegrationTest` 8 → 10 条，`TC-PROD-872` 第 6 步两类 12 → 13 条，`TC-PROD-876` 第 1 步 `DamageIntegrationTest` 3 → 4、`LivingEntityTargetBlockTest` 1 → 2，`TC-PROD-967` 第 1 步 `TagListTest` 18 → 19，`TC-PLAY-103` 第 1 步 `:game-rush` 的 `ArchitectureTest` 5 → 7；RUN-071 authority2 一节开头的条数说明补一句。红行按增减推算、没复跑：反证步骤直接改，`TC-PROD-869` 第 4 步 `:120` → `:123`、`TC-PROD-872` 第 6 步 `:150` → `:168`；改动前的红在括号里注明现在的行号，`TC-PROD-667` 第 3 步（`:80`、`:147`）、`TC-PROD-692` 第 2 步（`:123`）、`TC-PROD-886` 第 2 步（`:207`）、`TC-PROD-876` 第 2 步（`:38`、`:54`、`:70`、`:14`）、`TC-PROD-967` 第 2 步（`:272`）、`TC-PROD-940` 第 2 步（`:102`、`:185`）。代码行号：「生产就绪 · RUN-081：INV」一节开头的 `Player.java:2408-2409` → `:2453-2454`，`TC-PLAY-066` 前置的 `Entity.java:1373` → `:1416`、`Player.java:944` → `:953`；`TC-PROD-664` 的 `CLOSE_OUT` 里 `Player.java` 454 → 465（`docs/DESIGN-M2.md` 聊天一行同步），改后实跑 `CLOSE_OUT`，前 20 行都是 `ok`。**§5** 局部轮加本组一行 | Bearisbug |
 | 2026-10-21 | 分支 `prod/r089-EVENT`（基于 `main` `17f2a2cfe1`），跟进 `docs/DESIGN-PROD.md` v0.9.119（RUN-089 组 EVENT），不登执行轮次（集成轮登记）；本组 6 次 Gradle 运行的读数写在各步里，不另存证据目录。**新增 §4「生产就绪 · RUN-089：EVENT」六条 `TC-PROD-1090`～`TC-PROD-1095`**，放在「生产就绪 · RUN-082」一节之后、「玩法架构 · RUN-077：P」之前：1090（同一个所有者再 `map` 一次直接返回缓存的节点，`EventListener.of` 当场拒收 null，`expireCount` 拒收小于 1 的值）、1091（`OutgoingTransferEvent` 拒收空白 host 与 1～65535 之外的端口）、1092（`ClientPingServerEvent` 拒收 null 延迟）、1093（`PlayerStabEvent` 的物品是派发时主手物品的快照）、1094（`setExceptionHandler(null)` 换回默认落点，落点字段 volatile）、1095（只改文档与纯重构的条目在三种线程模式下的回归与旧说法的清点）；1090～1093 有改动前的红，线程敏感的类三种模式各跑一次。**随代码改的旧用例**（只注明条数与行号，没复跑）：`TC-PROD-001` 第 1 步注明 `ExceptionManagerTest` RUN-089 起 7 条；`TC-PROD-901` 第 3 步 `EventNodeMapTest` 12 条、`TC-PROD-902` 第 3 步 `EntityEventTraitTest` 4 条、`TC-PROD-904` 第 1 步 `EventListenerExpirationTest` 7 条；「生产就绪 · RUN-081：EVENT」一节开头改动列表里 `EventNodeImpl.java`、`EventNodeLazyImpl.java`、`EventFilter.java` 的行号注明 RUN-089 起的新行号，代码内容不变 | Bearisbug |
 | 2026-10-21 | 跟进 `docs/DESIGN-PROD.md` v0.9.112（RUN-089 组 PACKETS，分支 `prod/r089-PACKETS`，基于 `main` `17f2a2cfe1`）。**新增 §4「生产就绪 · RUN-089：PACKETS」一节六条**：`TC-PROD-1020`（插件构造的报告详情、朝向实体、地图色块在构造时拒绝客户端读不了的取值，链接条目的 null 类型报参数名）、`TC-PROD-1021`（128 列的整图读得回色块，实体标志为假时不再往后读，未知粒子 id 报出 id，粒子包的线上字节不变）、`TC-PROD-1022`（`synaxis.packet-limit.overrides` 的空条目忽略）、`TC-PROD-1023`（套接字读写循环交出的异常带连接号）、`TC-PROD-1024`（会话服务器的代理选择只认 `localhost` 与回环字面量）、`TC-PROD-1025`（只改 Javadoc、注释与写法的整理，三种线程模式的回归）；1020～1023 带改动前的红，1020、1024、1025 带反证。§5 局部轮加本组一行。改过的旧测试类 `InboundPacketLimitsTest`、`ProxyProtocolDecoderTest`、`SessionClientTest`、`ProxyProtocolTrustTest` 各加一条，`DisconnectFlushSocketTest` 写失败那条多记连接号；`TC-PROD-122`、`TC-PROD-123`、`TC-PROD-561`、`TC-PROD-583`、`TC-PROD-661`、`TC-PROD-855`、`TC-PROD-862` 随这几个类改条数与红行 | Bearisbug |
@@ -9568,7 +9569,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 同 `TC-PROD-620` 第 1、2 步的两次运行，看 `anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread` | 两次都通过。两个各 1 颗钻石的掉落物在 x = 31.7 与 x = 32.3（距离 0.6，在合并范围 1 之内），两边各在自己的 tick 线程上扫邻居，按实体 ID 的固定顺序 claim，只有一方合并成：`EntityItemMergeEvent` 恰 1 次，派发时被并掉的一方 `isOwned()` 为 false；恰一方已移除，留下的一方数量为 2；移除都在被移除者自己的线程上 |
-| 2 | 反证有齿（合并直接移除，即改动前的合并）：`<IE>:114` 的 `itemEntity.removeConsumed();` 改为 `itemEntity.remove();`，跑 `ItemEntityCrossCellConcurrencyTest`，再还原 | `2 tests completed, 1 failed`：红在 `ItemEntityCrossCellConcurrencyTest.java:87`（经 `:67`），`Server threw exception`，原因 `AcquirableOwnershipException`，抛在 `Entity.java:1915` ← `ItemEntity.java:114`；拾取那条仍绿 |
+| 2 | 反证有齿（合并直接移除，即改动前的合并）：`<IE>:120` 的 `itemEntity.removeConsumed();` 改为 `itemEntity.remove();`，跑 `ItemEntityCrossCellConcurrencyTest`，再还原 | `2 tests completed, 1 failed`：红在 `ItemEntityCrossCellConcurrencyTest.java:87`（经 `:67`），`Server threw exception`，原因 `AcquirableOwnershipException`，抛在 `Entity.java:1915` ← `ItemEntity.java:120`；拾取那条仍绿 |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -9784,7 +9785,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 跑 `GridItemRaceTest`，看 `aMergeAcrossACellBorderKeepsEveryItem` | `tests="2"` 0 失败。合并方 A（40 颗钻石）在 x = 31.7，邻居 B（10 颗）与第三堆 C（20 颗）在 x = 32.3、32.9，A 与 B、C 分属两条 tick 线程，A 与 C 相距 1.2 格、不在合并范围内；合并事件只放行 B 并 C 与 A 并 B，别的取消。B 覆写 `getItemStack`：A 的线程第一次读它时停住，直到 B 在自己的线程上并掉 C、放开 claim。测试先断言这个交错确实发生，再数地上的钻石：70 颗（A 40、B 30），A 占到两把 claim 后再读 B，读到的不是先前那个 `ItemStack`，这次合并作罢；之后 40 + 30 超过一组，不再合并；被移除的 C 在它自己的线程上移除 |
 | 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
-| 3 | 反证有齿（占到 claim 之后不再读，即改动前的合并）：删掉 `<IE>:102-109`（注释三行与 `if (itemEntity.getItemStack() != itemStackEntity) { … }` 五行），默认与严格 grid 各跑一次第 1 步的类，再还原 | 两次都是 `2 tests completed, 1 failed`：红在 `GridItemRaceTest.java:148`，`diamonds on the ground after the merges (merger holds 50) ==> expected: <70> but was: <50>`；`:143` 判交错的断言通过，窗口确实打开了。与修复前的红相同 |
+| 3 | 反证有齿（占到 claim 之后不再读，即改动前的合并）：删掉 `<IE>:108-115`（注释三行与 `if (itemEntity.getItemStack() != itemStackEntity) { … }` 五行），默认与严格 grid 各跑一次第 1 步的类，再还原 | 两次都是 `2 tests completed, 1 failed`：红在 `GridItemRaceTest.java:148`，`diamonds on the ground after the merges (merger holds 50) ==> expected: <70> but was: <50>`；`:143` 判交错的断言通过，窗口确实打开了。与修复前的红相同 |
 | 4 | 还原后重跑第 1、2 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -9796,7 +9797,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 同 `TC-PROD-643` 第 1、2 步的两次运行，看 `twoPickersOnTwoTickThreadsPickAnItemUpOnce` | 两次都通过：能拾取的僵尸在 x = 31.7 与 32.9，1 颗钻石在 x = 32.3；拾取事件里赢得 claim 的一方停住，直到另一方也试过 claim（至多 2 s）；claim 至少试了 2 次，`PickupItemEvent` 恰 1 次，掉落物已移除，移除都在掉落物自己的线程上 |
-| 2 | 反证有齿（claim 谁都拿得到）：`<IE>:183` 的 `return claimed.compareAndSet(false, true);` 改为 `claimed.set(true); return true;`，跑第 1 步的类，再还原 | `2 tests completed, 1 failed`：红在 `GridItemRaceTest.java:170`，`pickups of one item: [east on Syn-Tick-3, west on Syn-Tick-0] ==> expected: <1> but was: <2>`：两条 tick 线程上的拾取者都拿到 claim，各派发一次拾取 |
+| 2 | 反证有齿（claim 谁都拿得到）：`<IE>:189` 的 `return claimed.compareAndSet(false, true);` 改为 `claimed.set(true); return true;`，跑第 1 步的类，再还原 | `2 tests completed, 1 failed`：红在 `GridItemRaceTest.java:170`，`pickups of one item: [east on Syn-Tick-3, west on Syn-Tick-0] ==> expected: <1> but was: <2>`：两条 tick 线程上的拾取者都拿到 claim，各派发一次拾取 |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -9807,7 +9808,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 照 `TC-PROD-621` 第 2 步（`<IE>:114` 的 `itemEntity.removeConsumed();` 改为 `itemEntity.remove();`）跑 `io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest`，再还原 | `2 tests completed, 1 failed`：红在 `ItemEntityCrossCellConcurrencyTest.java:87`（经 `:67`），`Server threw exception`，原因 `AcquirableOwnershipException`，抛在 `AcquirableImpl.java:131` ← `Entity.java:1915` ← `ItemEntity.java:114`；拾取那条仍绿。与改写后的 `TC-PROD-621` 第 2 步相同 |
+| 1 | 照 `TC-PROD-621` 第 2 步（`<IE>:120` 的 `itemEntity.removeConsumed();` 改为 `itemEntity.remove();`）跑 `io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest`，再还原 | `2 tests completed, 1 failed`：红在 `ItemEntityCrossCellConcurrencyTest.java:87`（经 `:67`），`Server threw exception`，原因 `AcquirableOwnershipException`，抛在 `AcquirableImpl.java:131` ← `Entity.java:1915` ← `ItemEntity.java:120`；拾取那条仍绿。与改写后的 `TC-PROD-621` 第 2 步相同 |
 | 2 | 还原后跑 `ItemEntityCrossCellConcurrencyTest`、`ItemEntityClaimIntegrationTest` 与 `GridItemRaceTest`；再跑 `io.github.bearisbug.synaxis.entity.*`（`--tests` 给这个通配），默认模式与严格 grid 各一次 | 三个类 9 个 0 失败；`entity.*` 两次都 `BUILD SUCCESSFUL`，78 个类 301 个，0 失败、2 个跳过（v0.9.57～v0.9.61 加 1 个类 1 个：chunks 组 `entity.player.ChunkSendFailureIntegrationTest` 1 个；在此之前 77 个类 300 个，v0.9.52～v0.9.56 加 1 个类 8 个：chunks 组 `entity.player.ChunkSendBlockChangeIntegrationTest` 7 个，upstream 组 `NonLivingEquipmentIntegrationTest` 2 → 3；在此之前 76 个类 292 个，v0.9.47～v0.9.51 加 2 个类 8 个：本节的 `GridItemRaceTest` 2 个，chunks 组 `ChunkQueueBoundIntegrationTest` 6 个；在此之前 v0.9.43 的 74 个类 284 个；跳过的两个是 `PlayerSkinTest` 标着 `@Disabled` 的两条） |
 
 后置：`git status --short` 无输出。
@@ -13064,7 +13065,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `coordinate.VecTest`、`coordinate.BlockVecTest`、`coordinate.PosTest`、`entity.EntityVelocityIntegrationTest`、`collision.EntityBlockTouchTickIntegrationTest`、`entity.EntityLineOfSightIntegrationTest`（第 4 次运行） | `VecTest` `tests="26"`、`BlockVecTest` `tests="15"`、`PosTest` `tests="25"`、`EntityVelocityIntegrationTest` `tests="9"`、`EntityBlockTouchTickIntegrationTest` `tests="5"`、`EntityLineOfSightIntegrationTest` `tests="10"`，0 失败。`Vec.ZERO.normalize()`、`BlockVec.ZERO.normalize()` 等于 `Vec.ZERO`，(0, 0, 0, 45, 30) 的 `normalize()` 等于自身；`testRotateAroundZeroAxis`：(1, 2, 3) 绕零轴转 π/3 得原向量。`knockbackWithoutADirectionOnlyLifts`：着地的僵尸在 (5, 40, 5) 受 `takeKnockback(0.4f, 0, 0)`，速度三个分量有限、x 与 z 为 0，tick 一次后 x、z 仍为 5、y 高于 40。`entityOnTheCornerOfABlockTouchesIt`：僵尸站在 (0, 42, 0)，正是带 handler 的石头 (0, 42, 0) 的坐标，`tick(0)` 之后 `onTouch` 只收到这一格。`entityPhysicsCheckLineOfSightSameEyes`：两只僵尸同一位置，`hasLineOfSight(…, false)` 为 false（修前也是 false，方向由 NaN 变为零向量） |
+| 1 | 跑 `coordinate.VecTest`、`coordinate.BlockVecTest`、`coordinate.PosTest`、`entity.EntityVelocityIntegrationTest`、`collision.EntityBlockTouchTickIntegrationTest`、`entity.EntityLineOfSightIntegrationTest`（第 4 次运行） | `VecTest` `tests="26"`、`BlockVecTest` `tests="15"`、`PosTest` `tests="25"`、`EntityVelocityIntegrationTest` `tests="10"`、`EntityBlockTouchTickIntegrationTest` `tests="5"`、`EntityLineOfSightIntegrationTest` `tests="10"`，0 失败。`Vec.ZERO.normalize()`、`BlockVec.ZERO.normalize()` 等于 `Vec.ZERO`，(0, 0, 0, 45, 30) 的 `normalize()` 等于自身；`testRotateAroundZeroAxis`：(1, 2, 3) 绕零轴转 π/3 得原向量。`knockbackWithoutADirectionOnlyLifts`：着地的僵尸在 (5, 40, 5) 受 `takeKnockback(0.4f, 0, 0)`，速度三个分量有限、x 与 z 为 0，tick 一次后 x、z 仍为 5、y 高于 40。`entityOnTheCornerOfABlockTouchesIt`：僵尸站在 (0, 42, 0)，正是带 handler 的石头 (0, 42, 0) 的坐标，`tick(0)` 之后 `onTouch` 只收到这一格。`entityPhysicsCheckLineOfSightSameEyes`：两只僵尸同一位置，`hasLineOfSight(…, false)` 为 false（修前也是 false，方向由 NaN 变为零向量） |
 | 2 | 改动前的红（第 2 次运行） | 红 5 条：`VecTest.java:228`、`BlockVecTest.java:361`、`PosTest.java:438` 都是 `but was: <…[x=NaN, y=NaN, z=NaN…]>`；`VecTest.java:234`（绕零轴转出 NaN）；`EntityVelocityIntegrationTest.java:124`（`velocity Vec[x=NaN, y=7.216, z=NaN]`）；`EntityBlockTouchTickIntegrationTest.java:87`（`expected: <[Vec[x=0.0, y=42.0, z=0.0]]> but was: <[]>`）。同眼位一条修前也绿 |
 
 后置：无。
@@ -13143,7 +13144,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `entity.ExperienceOrbIntegrationTest`、`entity.EntityFinderIntegrationTest`（第 4 次运行） | `ExperienceOrbIntegrationTest` `tests="3"`、`EntityFinderIntegrationTest` `tests="16"`，0 失败。`orbWithoutGravityStaysInTheAir`：无重力的经验球在 (0.5, 45, 0.5) 过 20 tick，y 仍为 45、速度为零。`orbFallsOntoTheGround`：(0.5, 42, 0.5) 的经验球 20 tick 内落到 y = 40 并着地。`experienceCountKeepsTheViewers`：附近的玩家自动看见经验球，远处 (z = 5,000) 的玩家是手动观察者；`setExperienceCount(5)` 之后数量为 5，两人仍是观察者，附近的玩家没收到这颗球的第二个 `SpawnEntityPacket`；附近的玩家传送到 z = 5,000 之后不再是观察者。`differenceIsAnOffsetFromTheStart`：起点 (100, 40, 100)、`setDifference(5, 5, 5)` 只选中 (102, 42, 102) 的实体，不选 (50, 40, 50) 的。`sortReadsEachDistanceOnce`：64 个实体（覆写 `getDistanceSquared(Point)` 计数）按 NEAREST、limit 10 排序，恰好读 64 次距离，结果按距离递增 |
+| 1 | 跑 `entity.ExperienceOrbIntegrationTest`、`entity.EntityFinderIntegrationTest`（第 4 次运行） | `ExperienceOrbIntegrationTest` `tests="3"`、`EntityFinderIntegrationTest` `tests="19"`，0 失败。`orbWithoutGravityStaysInTheAir`：无重力的经验球在 (0.5, 45, 0.5) 过 20 tick，y 仍为 45、速度为零。`orbFallsOntoTheGround`：(0.5, 42, 0.5) 的经验球 20 tick 内落到 y = 40 并着地。`experienceCountKeepsTheViewers`：附近的玩家自动看见经验球，远处 (z = 5,000) 的玩家是手动观察者；`setExperienceCount(5)` 之后数量为 5，两人仍是观察者，附近的玩家没收到这颗球的第二个 `SpawnEntityPacket`；附近的玩家传送到 z = 5,000 之后不再是观察者。`differenceIsAnOffsetFromTheStart`：起点 (100, 40, 100)、`setDifference(5, 5, 5)` 只选中 (102, 42, 102) 的实体，不选 (50, 40, 50) 的。`sortReadsEachDistanceOnce`：64 个实体（覆写 `getDistanceSquared(Point)` 计数）按 NEAREST、limit 10 排序，恰好读 64 次距离，结果按距离递增 |
 | 2 | 改动前的红（第 2 次运行） | 红 5 条：`ExperienceOrbIntegrationTest.java:26`（`expected: <45.0> but was: <42.5154091053266>`：无重力反而每 tick 加下坠）、`:38`（`expected: <40.0> but was: <40.05872783491547>`：落地后还在弹）、`:57`（`the manual viewer still sees the orb ==> expected: <true> but was: <false>`）；`EntityFinderIntegrationTest.java:243`（选中的是 (50, 40, 50) 的实体）、`:269`（`expected: <64> but was: <620>`） |
 
 后置：无。
@@ -14495,6 +14496,93 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | 5 | 只改 Javadoc、注释与私有重构的条目：代码审阅 | 与代码一致：`Entity` 两个不带进程的构造器写明首次 `setInstance` 之前事件一律丢弃、可取消事件的动作照做；`setTrackingRange` 只在实体视距的方形内收窄、乘客的范围不起作用；`setInvulnerable`、`isImmune` 写明只有 `OUT_OF_WORLD` 打得进，`GENERIC_KILL` 也被挡；`getAttributes()` 只含已实例化的属性；`Player` 的 `setPendingOptions`、`dropPendingSpawn`、`UNSAFE_init`、`refreshSettings`、`setLocale` 的线程与 `ConnectionManager#updateWaitingPlayers`、`#tick` 一致；`refreshKeepAlive`、`getLastKeepAlive` 与 `KeepAliveListener` 的注释写明 id 是发出时的 `System.nanoTime()`；`AbstractInventory#addItemStack` 写明扫描 0..`getInnerSize()`、带结果格与产出格的类型照样写进去；`RelativeFlags` 每个位与 `PositionUtils#getVelocityWithRelativeFlags` 写明服务端不转速度；`EntityTeleportEvent#getNewPosition` 写明未经钳制。私有重构（`spawnInfo`、`LEVEL_FLAT`、区块批次的三个常量、`updatePose` 的 `ChunkCache`、`kill` 的分支、`StaticIntMap`、`initFullHealth`、`Math.clamp`）由第 2、3 步的类覆盖 |
 
 后置：`git status --short` 无输出。
+
+### 生产就绪 · RUN-089：LIVING（实体查找、骑乘玩家的可见规则、掉落物的拾取延迟、玩家输入事件、展示实体的亮度与元数据整理）
+
+对应 `REQ-PROD-012`、`REQ-PROD-019`、`REQ-PROD-023`、`REQ-PROD-024`、`REQ-PROD-046`、`REQ-001`、`REQ-003`（`docs/DESIGN-PROD.md` v0.9.116）。整理实体查找、可见性、掉落物、属性、实体元数据与玩家输入事件，修其中六处行为缺陷，逐条见设计文档那一行。
+
+测试：根项目 42 个类（其中 28 个在三种线程模式下各跑一次）与 `server-app` 的两个掉落物类，「跑 `<类>`」= `./gradlew :test --tests 'io.github.bearisbug.synaxis.<类>' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（本机带 `--max-workers=2`），不连数据库。新类三个：`entity.EntityUtilsTest`（1 条）、`entity.ItemEntityTest`（2 条）、`event.player.PlayerInputEventIntegrationTest`（1 条，带 `@EnvTest`）；加用例的旧类：`entity.EntityFinderIntegrationTest` 16 → 19、`entity.EntityViewerRuleIntegrationTest` 11 → 14、`entity.EntityMetaIntegrationTest` 4 → 5、`entity.EntityMetaTest` 1 → 2、`entity.EntityVelocityIntegrationTest` 9 → 10、`entity.attribute.AttributeInstanceTest` 3 → 4，`command.ArgumentTypeTest` 的 `testArgumentEntity` 加两句断言、条数不变。本组 5 次 Gradle：第 1 次测试编译不过（Error Prone `UnusedVariable`：`EntityUtilsTest` 匿名子类里返回的 `position` 解析成了 `Entity` 继承下来的字段，捕获的局部变量改名），没有跑测试；第 2 次改动前的红（`17f2a2cfe1` 的主代码，测试是本组的；`MetadataHolder` 同时临时去掉插值延迟的特例，即 `TC-PROD-1064` 第 3 步的反证）；第 3 次修后默认模式，同批 `:testNamingCheck`、`:forbiddenImportsCheck`、`:compileJava` 与 `:server-app:test` 的两个类；第 4、5 次修后在 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 与再加 `-Dsynaxis.thread-provider=grid` 下跑本组改到与新加的 28 个类。
+
+#### `TC-PROD-1060` 实体查找：`setLimit` 拒绝小于 1，没设选择器的 `find` 说明缺什么，不给实例时按 UUID 查全部实例；选择器的 `limit=0` 与 `distance=-3.4028235E38..` 报语法错误 — 对应 `REQ-PROD-012`、`REQ-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.EntityFinderIntegrationTest`、`command.ArgumentTypeTest`（第 3 次运行） | `EntityFinderIntegrationTest` `tests="19"`、`ArgumentTypeTest` `tests="33"`，0 失败。`aLimitBelowOneIsRefused`：`setLimit(0)`、`setLimit(-1)` 抛 `IllegalArgumentException`，`setLimit(1)` 照收。`findingWithoutATargetSelectorSaysWhatIsMissing`：新建的 `EntityFinder` 直接 `find` 抛 `NullPointerException`，信息含 `setTargetSelector`。`uuidWithoutAnInstanceSearchesEveryInstance`：两个实例各放一只僵尸，按第二只的 UUID 查，不给实例得 [第二只]，给第二个实例得 [第二只]，给第一个实例得空表；随机 UUID 不给实例得空表。`testArgumentEntity`：`@e[limit=0]` 与 `@e[distance=-3.4028235E38..]` 都抛 `ArgumentSyntaxException`，原有的 `limit=-500`、`distance=..10` 等断言照旧 |
+| 2 | 改动前的红（第 2 次运行） | 这两个类红 4 条：`EntityFinderIntegrationTest.java:280`（`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`）、`:290`（`expected: <java.lang.NullPointerException> but was: <java.lang.IllegalStateException>`）、`:305`（`NullPointerException: The instance should not be null when searching by UUID`）；`ArgumentTypeTest.java:136`（经 `:526`，`distance=-3.4028235E38..` 没有抛：下界等于 `-Float.MAX_VALUE` 被当成开放下界 0）。`@e[limit=0]` 修前也抛语法错误：修前 `setLimit(0)` 照收、随后判 ≤ 0；修后 `setLimit` 拒收，`ArgumentEntity` 先判再设，这句断言守的是两者的次序 |
+
+后置：无。
+
+#### `TC-PROD-1061` 可见规则作用于骑在别的实体上的玩家，实体不从自己的乘客那里撤走；`EntityView` 整理之后可见性照旧，三种线程模式 — 对应 `REQ-PROD-023`、`REQ-PROD-024`、`REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.EntityViewerRuleIntegrationTest`（第 3 次运行） | `tests="14"` 0 失败。`autoViewableAppliesToAPlayerRidingSomethingElse`：玩家骑在马上，2 格外的僵尸先对它可见；僵尸 `setAutoViewable(false)` 后 `isViewer(玩家)` 为 false，再 `setAutoViewable(true)` 回到 true。`viewableRuleAppliesToAPlayerRidingSomethingElse`：同样布置，`updateViewableRule(_ -> false)` 后不可见，`updateViewableRule(_ -> true)` 后可见。`aVehicleStaysVisibleToItsOwnRiders`：玩家骑僵尸、僵尸骑马，另一名玩家站在旁边；马 `updateViewableRule(_ -> false)` 后马与僵尸对骑手仍可见、马对旁观者不可见；僵尸 `setAutoViewable(false)` 后对骑手仍可见 |
+| 2 | 改动前的红（第 2 次运行） | 红 2 条：`EntityViewerRuleIntegrationTest.java:284`、`:302`，都是 `expected: <false> but was: <true>`：骑马的玩家不在候选里，隐藏不到它。`aVehicleStaysVisibleToItsOwnRiders` 修前也绿（修前排除全部乘客，骑手同样豁免），守的是修后只豁免骑在本实体上的玩家 |
+| 3 | 第 1 步的类与可见性的其余类 `entity.EntityViewIntegrationTest`、`EntityViewLockOrderIntegrationTest`、`EntityViewPacketOrderIntegrationTest`、`EntityViewStaleRegistrationTest`、`NonPlayerViewerOptionIntegrationTest`、`VisibleEntityLimitTest`、`VisibleEntityLimitConcurrencyTest`、`TrackingRangeTest`、`ManualViewerPassengerIntegrationTest`、`ManualViewerInstanceChangeIntegrationTest`、`ManualViewerLeakIntegrationTest`、`PassengerIntegrationTest`、`PassengerCycleIntegrationTest`、`PassengerRemovalOwnershipTest`、`EntityViewDirectionIntegrationTest`，默认、4 线程严格、严格 grid 各跑一次（第 3、4、5 次运行） | 三次条数相同，依次 14、11、2、3、3、1、6、1、6、2、2、1、7、2、1、4，0 失败。整理只换写法：两把视图锁经 `underBothMutexes` 按实体 ID 升序取，锁序不变；`updateRule()` 在遍历候选的同一个临界区里读规则；「玩家看不看得见载具」与「进程过不过滤可见性」各收成一个方法 |
+
+后置：无。
+
+#### `TC-PROD-1062` 掉落物：拾取延迟从构造起算，`spawn()` 之前同样守延迟；碰撞箱取注册表的，三种线程模式 — 对应 `REQ-PROD-046`、`REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.ItemEntityTest`（第 3 次运行） | `tests="2"` 0 失败。`thePickupDelayRunsFromConstructionUntilSpawned`：刚构造的掉落物 `getTimeSinceSpawn()` 小于 60,000 ms、`isPickable()` 为 true，设 1 小时的拾取延迟后为 false。`theBoundingBoxIsTheOneOfTheRegistry`：碰撞箱等于 `EntityType.ITEM.boundingBox()`，修前修后都绿，构造器不再重复设置 |
+| 2 | 改动前的红（第 2 次运行） | 红 1 条：`ItemEntityTest.java:24`，`time since spawn 210219473 ms`：出生时刻初值为 0，读数是 `System.nanoTime()` 的起点以来的毫秒数（本机约 58 小时） |
+| 3 | 第 1 步的类与掉落物的旧类 `entity.ItemEntityClaimIntegrationTest`、`ItemEntityCrossCellConcurrencyTest`、`GridItemRaceTest`，三种线程模式各一次（第 3、4、5 次运行）；`:server-app:test` 的 `app.play.DefaultPlayDropIntegrationTest`、`app.play.DefaultPlayPickupIntegrationTest`，默认模式（第 3 次运行） | 根项目依次 2、5、2、2 条，三次都 0 失败；`server-app` 3、5 条 0 失败：宿主丢出的掉落物构造后随即 `setInstance`，`spawn()` 重置出生时刻，40 tick 的拾取延迟照旧 |
+
+后置：无。
+
+#### `TC-PROD-1063` `PlayerInputEvent` 的当前按键是构造时的快照 — 对应 `REQ-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `event.player.PlayerInputEventIntegrationTest`、`entity.player.PlayerIntegrationTest`、`entity.PlayerSprintingMetadataIntegrationTest`（第 3 次运行） | 1、16、1 条，0 失败。`anEventKeepsTheInputsItWasFiredFor`：同一名玩家先后处理两个 `ClientInputPacket`（先按住前进与跳跃，再松开它们、按住后退），第一个事件读到 `isHoldingForwardKey()`、`hasPressedForwardKey()`、`isHoldingJumpKey()` 为 true、后退两项为 false；第二个事件读到松开前进、松开跳跃、按下后退。`PlayerIntegrationTest` 的 `inputsPressed`、`inputsReleased` 照绿 |
+| 2 | 改动前的红（第 2 次运行） | 红 1 条：`PlayerInputEventIntegrationTest.java:32`（`expected: <true> but was: <false>`）：第一个事件读的是第二个包之后的按键 |
+
+后置：无。
+
+#### `TC-PROD-1064` 展示实体：亮度覆盖拒绝 0～15 以外的等级；插值起始延迟同值也下发 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.EntityMetaTest`、`entity.EntityMetaIntegrationTest`（第 3 次运行） | 2、5 条，0 失败。`displayBrightnessOverride`：新建的方块展示实体 `getBrightnessOverride()` 为 −1、两个光照等级读 0；`setBrightness(15, 7)` 读回 15 与 7；`setBrightness(16, 0)`、`setBrightness(0, -1)` 抛 `IllegalArgumentException`，读数仍是 15 与 7。`displayInterpolationDelaySentAgainWithTheSameValue`：物品展示实体出生后隔一个 tick 两次写 0（等于默认值），观察者在出生的元数据包之外收到两个包，都带 `INTERPOLATION_DELAY` = 0 |
+| 2 | 改动前的红（第 2 次运行） | 红 1 条：`EntityMetaTest.java:45`，`setBrightness(16, 0)` 没有抛（按 `& 0xF` 截成 0） |
+| 3 | 反证（第 2 次运行同批）：`MetadataHolder#set` 的去重条件临时去掉 `&& entry != MetadataDef.Display.INTERPOLATION_DELAY`，跑第 1 步的 `EntityMetaIntegrationTest`，再还原 | 红在 `EntityMetaIntegrationTest.java:194`，`expected: <3> but was: <1>`：两次同值写入都被去重，只剩出生的那个包；原有的 `displayInterpolationDurationAlwaysSend` 写的是 1、2、3 三个不同值，这时照绿，钉不住「同值也发」 |
+
+后置：无。
+
+#### `TC-PROD-1065` 带速度的出生包、属性值的累加次序与乘客偏移，按改动前的值逐个核对 — 对应 `REQ-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `entity.EntityVelocityIntegrationTest`、`entity.attribute.AttributeInstanceTest`、`entity.EntityUtilsTest`（第 3 次运行） | 10、4、1 条，0 失败。`objectDataEntitiesSpawnWithTheirVelocity`：掉落物、箭、光灵箭、火球、小火球、末影龙火球、凋灵之首、风弹、旋风人风弹九种实体以每秒 (20, 0, 0) 格的速度放进实例后，出生包的速度是每 tick (1, 0, 0) 格；僵尸的出生包速度为零向量。`theValueAddsUpInTheVanillaOrder`：基础值 3.3，加值 0.7 与 1.1、乘基础值 0.15 与 0.35、乘总值 0.2 与 −0.05 六个修饰符，`getValue()` 与 `applyModifiers(7.25)` 的 `doubleToLongBits` 等于按原版次序逐个累加的结果。`passengerOffsetOfEachKindOfVehicle`：骆驼（站与坐、0 号与 1 号乘客、动物乘客）、骆驼尸壳、快乐恶魂（座位号超出时取最后一个）、橡木船与橡木运输船（各单人与双人）、竹筏、马，以及没有乘客挂点的掉落物，十四种布置在 yaw 30、−45、90、120 下的偏移与金值的差都在 1e-9 内 |
+| 2 | 改动前（第 2 次运行） | 这三条新用例修前都绿：出生包速度、属性值与乘客偏移是行为不变的整理，金值取自改动前的实现；第 1 步修后同样绿，整理没有改数值 |
+
+后置：无。
+
+#### `TC-PROD-1066` 本组的回归：只改文档与纯重构的条目跑现有的类，命名门与禁止导入门 — 对应 `REQ-PROD-019`、`REQ-003` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 第 3 次运行同批的 `:testNamingCheck`、`:forbiddenImportsCheck`、`:compileJava` | 都过：新类 `EntityUtilsTest`、`ItemEntityTest` 不带 `@EnvTest`，`PlayerInputEventIntegrationTest` 带 |
+| 2 | 只改文档、注释或纯重构的条目，跑它们现有的类（第 3 次运行）：`listener.UseItemListenerIntegrationTest`（盔甲判断改用 `isArmor()`）、`entity.NonLivingEquipmentIntegrationTest`、`inventory.EntityEquipEventIntegrationTest`、`network.PacketWriteReadRegistriesTest`（`EquipmentSlot` 去掉弃用，`EntityEquipmentPacket` 不再压弃用警告）、`item.component.ItemAttributeTest`（`AttributeList` 的槽位组类型）、`entity.attribute.AttributeInstanceConcurrencyTest`、`entity.EntityAttributeIntegrationTest`（属性值直接遍历修饰符）、`entity.EntityProjectileIntegrationTest`、`entity.MetadataHolderTest`、`entity.MetadataHolderConcurrencyTest`（元数据类删覆写、射手字段标注）、`entity.PlayerSkinTest`、`entity.ProfileSkinIntegrationTest`（Javadoc） | 依次 6、3、3、470、3、2、7、5、11、2、3、2 条，0 失败；`PlayerSkinTest` 3 条里 2 条是 `@Disabled`（要连 Mojang） |
+| 3 | 三次修后运行合计（第 3、4、5 次运行） | 第 3 次根项目 42 个类 686 条、`server-app` 2 个类 8 条，0 失败、2 条跳过（第 2 步）；第 4、5 次各 28 个类 152 条，0 失败 |
+
+后置：`git status --short` 只剩本组的改动。
 
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
@@ -16474,6 +16562,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-089 组 PACKETS，插件构造的包、读包时的宽度与标志、`overrides` 的空条目、套接字循环的连接号与会话服务器的代理选择（`REQ-001`、`REQ-011`、`REQ-PROD-002`、`REQ-PROD-013`、`REQ-PROD-015`、`REQ-PROD-019`、`REQ-PROD-036`，v0.9.112）→ TC-PROD-1020～TC-PROD-1025；动了 `network/packet/server` 下 `CustomReportDetailsPacket`、`FacePlayerPacket`、`MapDataPacket`、`ServerLinksPacket` 或 `ParticlePacket` 的构造器与序列化器就跑 TC-PROD-1020、TC-PROD-1021；动了 `InboundPacketLimits#parseOverrides` 跑 TC-PROD-1022；动了 `Server` 的读循环或写循环跑 TC-PROD-1023，三种线程模式各一次；动了 `SessionClient.LoopbackDirect` 跑 TC-PROD-1024；动了 `CachedPacket`、`SendablePacket`、`WindowItemsPacket`、`DeclareCommandsPacket` 或 `ProxyProtocolDecoder` 跑 TC-PROD-1025，`CachedPacket` 改了代码时三种线程模式各一次
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-089 组 EVENT，`map` 的缓存命中、`of` 与 `expireCount` 的入参、转服与 ping 事件拒收坏值、戳刺物品的快照、异常落点的可见性与事件类的文档（`REQ-PROD-022`、`REQ-PROD-031`、`REQ-PROD-037`、`REQ-PROD-015`、`REQ-PROD-019`、`REQ-001`，v0.9.119）→ TC-PROD-1090～TC-PROD-1095；动了 `EventNodeImpl` 或 `EventListener` 就在三种模式下跑 TC-PROD-1095 第 1～3 步（含 TC-PROD-1090 的三个类）；动了 `OutgoingTransferEvent` 或宿主 `PluginTransfers#send` 跑 TC-PROD-1091；动了 `ClientPingServerEvent` 或 `StatusListener` 的 ping 分支跑 TC-PROD-1092；动了 `PlayerStabEvent` 或 `PlayerActionListener` 的 `STAB` 分支跑 TC-PROD-1093；动了 `ExceptionManager` 的落点字段或 `setExceptionHandler`、`getExceptionHandler` 跑 TC-PROD-1094 与 TC-PROD-001；只改事件类的 Javadoc 跑 TC-PROD-1095 第 4、5 步
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-089 组 ENTITY，死亡消息的范围、载具的驾驶者、生物转头的补发、出生环的预载票，实体、玩家与 tag 的小缺陷（`REQ-PROD-009`、`REQ-PROD-013`、`REQ-PROD-025`、`REQ-M3-010`、`REQ-PROD-019`、`REQ-M2-015`，v0.9.122）→ TC-PROD-1120～TC-PROD-1129；动了 `Player#kill` 或 `PlayerDeathEvent` 跑 TC-PROD-1120；动了 `PlayerVehicleListener` 或 `PlayerPositionListener#processMovement` 跑 TC-PROD-1121 与 TC-PROD-869；动了 `Entity#synchronizePosition`、`LivingEntity#synchronizePosition` 或 `PacketViewableUtils` 跑 TC-PROD-1122 与 TC-PROD-294、TC-PROD-295；动了 `Player#setInstance` 的预载票或 `spawnPlayer` 的环票跑 TC-PROD-1123（三种线程模式，含 `:synx:test`）；动了 `Entity#teleport` 的落地回调或 `Entity#remove` 跑 TC-PROD-1124 与 TC-PROD-886；动了 `LivingEntity#damage`、`getTargetBlockPosition` 或 `Player#updatePose` 跑 TC-PROD-1125；动了 `Player` 的资源包方法跑 TC-PROD-1126；动了 `TagHandlerImpl`、`StaticIntMap` 或 `TagImpl#list` 跑 TC-PROD-1127（含第 5 步的 jcstress），改了游戏侧的 tag 规则跑 TC-PROD-1127 第 3、4 步与 TC-PLAY-103。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-089 组 LIVING，实体查找、骑乘玩家的可见规则、掉落物的拾取延迟、玩家输入事件与展示实体的亮度（`REQ-PROD-012`、`REQ-PROD-019`、`REQ-PROD-023`、`REQ-PROD-024`、`REQ-PROD-046`、`REQ-001`、`REQ-003`，v0.9.116）→ TC-PROD-1060～TC-PROD-1066；动了 `EntityFinder` 或 `ArgumentEntity` 的选择器参数就跑 TC-PROD-1060；动了 `EntityView` 的 `Option#select`、`underBothMutexes` 或 `updateRule`，在三种线程模式下跑 TC-PROD-1061 第 3 步；动了 `ItemEntity` 的出生时刻或拾取延迟，在三种线程模式下跑 TC-PROD-1062 第 3 步与 TC-PROD-620～TC-PROD-623；动了 `PlayerInputEvent` 或 `PlayerInputs` 跑 TC-PROD-1063；动了 `MetadataHolder#set` 的去重或 `AbstractDisplayMeta` 的亮度跑 TC-PROD-1064；动了 `ObjectDataProvider`、`AttributeInstance` 的取值或 `EntityUtils#getPassengerPositionOffset` 跑 TC-PROD-1065
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170、TC-PLAY-180～TC-PLAY-185（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

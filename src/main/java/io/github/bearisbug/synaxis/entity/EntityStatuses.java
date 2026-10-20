@@ -23,7 +23,9 @@ public sealed class EntityStatuses {
 
     public static final class Player extends LivingEntity {
         public static final int MARK_ITEM_FINISHED = 9;
+        /** Turns the reduced debug info on: the F3 screen hides the coordinates and other details. */
         public static final int ENABLE_DEBUG_SCREEN = 22;
+        /** Turns the reduced debug info off: the F3 screen shows everything again. */
         public static final int DISABLE_DEBUG_SCREEN = 23;
         public static final int PERMISSION_LEVEL_0 = 24;
         public static final int PERMISSION_LEVEL_1 = 25;

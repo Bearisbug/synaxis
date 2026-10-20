@@ -12,6 +12,7 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 
@@ -251,6 +252,24 @@ public class EntityVelocityIntegrationTest {
         assertEquals(0, entity.getVelocity().x(), Vec.EPSILON);
         assertEquals(initialVelocity.z() * expectedDrag, entity.getVelocity().z(), Vec.EPSILON);
         assertNotEquals(initialVelocity.z() * expectedOldDrag, entity.getVelocity().z(), Vec.EPSILON);
+    }
+
+    @Test
+    public void objectDataEntitiesSpawnWithTheirVelocity(Env env) {
+        var instance = env.createFlatInstance();
+        loadChunks(instance);
+        for (EntityType type : List.of(EntityType.ITEM, EntityType.ARROW, EntityType.SPECTRAL_ARROW,
+                EntityType.FIREBALL, EntityType.SMALL_FIREBALL, EntityType.DRAGON_FIREBALL, EntityType.WITHER_SKULL,
+                EntityType.WIND_CHARGE, EntityType.BREEZE_WIND_CHARGE)) {
+            var entity = new Entity(type);
+            entity.setInstance(instance, new Pos(0, 42, 0)).join();
+            entity.setVelocity(new Vec(20, 0, 0));
+            assertEquals(new Vec(1, 0, 0), entity.getSpawnPacket().velocity(), type.key().asString());
+        }
+        var zombie = new Entity(EntityType.ZOMBIE);
+        zombie.setInstance(instance, new Pos(0, 42, 0)).join();
+        zombie.setVelocity(new Vec(20, 0, 0));
+        assertEquals(Vec.ZERO, zombie.getSpawnPacket().velocity());
     }
 
     private static void testMovement(Env env, Entity entity, Vec... sample) {

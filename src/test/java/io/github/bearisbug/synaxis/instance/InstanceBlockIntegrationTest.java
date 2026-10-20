@@ -43,6 +43,21 @@ public class InstanceBlockIntegrationTest {
                 "An unloaded chunk must still be reported");
     }
 
+    @Test
+    public void getBiomeOfAnUnloadedChunkNamesThePosition(Env env) {
+        var instance = env.createFlatInstance();
+        var thrown = assertThrows(NullPointerException.class, () -> instance.getBiome(10_000, 0, 10_000));
+        assertEquals("Unloaded chunk at 10000,0,10000", thrown.getMessage());
+    }
+
+    @Test
+    public void setBlockWithAutoChunkLoadOffNamesTheChunk(Env env) {
+        var instance = env.createFlatInstance();
+        instance.enableAutoChunkLoad(false);
+        var thrown = assertThrows(IllegalStateException.class, () -> instance.setBlock(5 * 16 + 1, 40, -3 * 16 + 2, Block.STONE));
+        assertTrue(thrown.getMessage().endsWith("chunk 5,-3"), thrown.getMessage());
+    }
+
     // Light is queried with arbitrary coordinates, out of world ones have no section to look up
     @Test
     public void lightOutsideTheWorldIsZero(Env env) {

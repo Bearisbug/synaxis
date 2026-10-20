@@ -289,4 +289,12 @@ public class CoordinateTest {
         assertEquals(-32767, CoordConversion.deltaShort4096(0, 7.9999));
         assertEquals(4096, CoordConversion.deltaShort4096(10.5, 9.5));
     }
+
+    @Test
+    public void blockIndexKeepsTheLargestMagnitudeOfY() {
+        final int index = CoordConversion.chunkBlockIndex(15, -8_388_607, 15);
+        assertEquals(15, CoordConversion.chunkBlockIndexGetX(index));
+        assertEquals(-8_388_607, CoordConversion.chunkBlockIndexGetY(index));
+        assertEquals(15, CoordConversion.chunkBlockIndexGetZ(index));
+    }
 }

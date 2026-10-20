@@ -115,6 +115,19 @@ public final class CoordConversion {
 
     // BLOCK INDEX FROM CHUNK
 
+    /**
+     * Packs a block position inside a chunk into an int.
+     * <p>
+     * {@code x} and {@code z} are masked to their section-relative value, so global coordinates can be passed.
+     * {@code y} is stored as a 23-bit magnitude and a sign bit: a {@code y} whose absolute value is at least
+     * 2<sup>23</sup> is silently truncated.
+     *
+     * @param x the x coordinate, global or section-relative
+     * @param y the global y coordinate
+     * @param z the z coordinate, global or section-relative
+     * @return the index, read back with {@link #chunkBlockIndexGetX(int)}, {@link #chunkBlockIndexGetY(int)}
+     * and {@link #chunkBlockIndexGetZ(int)}
+     */
     public static int chunkBlockIndex(int x, int y, int z) {
         // Mask x and z to ensure only the lower 4 bits are used.
         x = globalToSectionRelative(x);
@@ -138,7 +151,7 @@ public final class CoordConversion {
     public static int chunkBlockIndexGetY(int index) {
         int y = (index & 0x07FFFFF0) >>> 4;
         if ((index & 0x08000000) != 0) y = -y; // Sign bit set, invert sign
-        return y; // 4-28 bits
+        return y; // bits 4-26 magnitude, bit 27 sign
     }
 
     public static int chunkBlockIndexGetZ(int index) {
@@ -153,8 +166,8 @@ public final class CoordConversion {
     }
 
     public static Point chunkBlockRelativeGetGlobal(int sectionRelativeX, int y, int sectionRelativeZ, int chunkX, int chunkZ) {
-        final int x = sectionRelativeX + 16 * chunkX;
-        final int z = sectionRelativeZ + 16 * chunkZ;
+        final int x = sectionRelativeX + SECTION_SIZE * chunkX;
+        final int z = sectionRelativeZ + SECTION_SIZE * chunkZ;
         return new Vec(x, y, z);
     }
 
@@ -196,6 +209,17 @@ public final class CoordConversion {
 
     // BLOCK INDEX FROM SECTION (0-15 for each coordinate)
 
+    /**
+     * Packs a block position inside a section into an int from 0 to 4095.
+     * <p>
+     * The coordinates are not masked: each must already be section-relative, from 0 to 15, or the index
+     * collides with the index of another block.
+     *
+     * @param x the section-relative x coordinate, from 0 to 15
+     * @param y the section-relative y coordinate, from 0 to 15
+     * @param z the section-relative z coordinate, from 0 to 15
+     * @return the index
+     */
     public static int sectionBlockIndex(int x, int y, int z) {
         return (x << 8) | (z << 4) | y;
     }

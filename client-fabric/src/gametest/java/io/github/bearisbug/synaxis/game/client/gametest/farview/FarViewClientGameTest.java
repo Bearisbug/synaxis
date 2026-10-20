@@ -96,6 +96,13 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
     private static final int QUERY_TICKS = 20 * 60;
     /** The side of the centre block of EDGE_VIEW: the pixels around the centre of the line of sight, 64 square. */
     private static final int CENTRE = 64;
+    /**
+     * Where the far view HUD line is in a shot, and where it was: the GUI of the 854×480 window, scale 2, takes the
+     * top-left 854×480 of the 1280×720 shot. The line from GUI (2, 2), at most about 115 wide; the old line at the
+     * bottom-left, GUI rows 230..238 left of the hotbar, which starts at x 121.
+     */
+    private static final Shots.Box HUD_TOP_LEFT = new Shots.Box(0, 0, 260, 24);
+    private static final Shots.Box HUD_BOTTOM_LEFT = new Shots.Box(0, 456, 236, 480);
     private static final Pattern BAKED = Pattern.compile(
             "view (\\w+) baked in (\\d+) ms: (\\d+) sources, (\\d+) B; written (\\d+) ms, visible (\\d+) ms after the announcement");
     private static final Pattern SAVE_FOLDER = Pattern.compile("Save folder overridden from \\[(.*)] -> \\[(.*)]\\.");
@@ -672,11 +679,19 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                 final Component text = c == null ? null : c.hudLine();
                 return text == null ? "none" : text.getString();
             });
-            shot("v1-hud", at(spawn.x, spawn.y + 2, spawn.z, -90f, 10f), 1);
+            final SpikeCamera.Settings hudView = at(spawn.x, spawn.y + 2, spawn.z, -90f, 10f);
+            final Path hudShown = shot("v1-hud", hudView, 1);
             context.runOnClient(client -> {
                 if (!client.gui.hud.isHidden()) client.gui.hud.toggle();
             });
+            final Path hudHidden = shot("v1-hud-hidden", hudView, 1);
             note("V1 HUD line during the bake: " + hud);
+            // ⑧ the line in the top-left corner, clear of the offhand slot left of the hotbar
+            final BufferedImage shown = Shots.read(hudShown), hidden = Shots.read(hudHidden);
+            final double atTop = Shots.changed(hidden, shown, HUD_TOP_LEFT), atBottom = Shots.changed(hidden, shown, HUD_BOTTOM_LEFT);
+            line("F31", !"none".equals(hud) && atTop > 0.05 && atBottom < 0.005, "HUD line \"" + hud + "\": top-left "
+                    + HUD_TOP_LEFT + " changed " + Shots.percent(atTop) + ", bottom-left " + HUD_BOTTOM_LEFT + " changed "
+                    + Shots.percent(atBottom));
             final boolean ready = ready();
             final FarViewConnection c = Objects.requireNonNull(connection());
             final String key = c.viewKey();

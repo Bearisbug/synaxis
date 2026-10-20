@@ -105,7 +105,8 @@ public final class FarViewClient {
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath("synaxis", "farview"), (graphics, _) -> {
             final FarViewConnection connection = current;
             final Component line = connection == null ? null : connection.hudLine();
-            if (line != null) graphics.text(Minecraft.getInstance().font, line, 2, graphics.guiHeight() - 10, 0xFFFFFFFF);
+            // Top-left: at the bottom-left the line runs into the offhand slot, which starts at x 93 of a 427 wide GUI
+            if (line != null) graphics.text(Minecraft.getInstance().font, line, 2, 2, 0xFFFFFFFF);
         });
         gate = gate(FabricLoader.getInstance().isModLoaded(DH_MOD_ID), FarViewClient::loadDh);
     }

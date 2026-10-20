@@ -70,6 +70,7 @@ public interface ChunkLoader {
      * that throws goes to the exception handler, the other chunks are saved anyway. Otherwise it calls them one
      * after the other and stops at the first exception. The engine calls this without holding any chunk lock: an
      * implementation that needs a consistent view of a chunk takes its {@link Chunk#lockReadLock() read lock}.
+     * In parallel, interrupting the calling thread interrupts the saves still running.
      *
      * @param chunks the chunks to save
      */

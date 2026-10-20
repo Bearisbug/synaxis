@@ -1289,7 +1289,6 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * {@code ExplosionPacket} with {@link PacketSendingUtils}
      */
     @Deprecated(forRemoval = true)
-    @SuppressWarnings("removal")
     public void explode(float centerX, float centerY, float centerZ, float strength) {
         explode(centerX, centerY, centerZ, strength, null);
     }

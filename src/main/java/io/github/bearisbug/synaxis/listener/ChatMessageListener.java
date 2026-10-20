@@ -17,23 +17,16 @@ public class ChatMessageListener {
     private static final Component ILLEGAL_CHARACTERS = Component.translatable("multiplayer.disconnect.illegal_characters");
 
     public static void commandChatListener(ClientCommandChatPacket packet, Player player) {
-        final String command = packet.message();
-        if (!isAllowedChatText(command)) {
-            player.kick(ILLEGAL_CHARACTERS);
-            return;
-        }
-        EventsJFR.newPlayerCommand(player.getUuid(), command).commit();
-        if (Messenger.canReceiveCommand(player)) {
-            player.process().command().execute(player, command);
-        } else {
-            Messenger.sendRejectionMessage(player);
-        }
+        executeCommand(player, packet.message());
     }
 
     public static void signedCommandChatListener(ClientSignedCommandChatPacket packet, Player player) {
         // Intentionally do the same thing as commandChatListener. We don't use signed commands, but Geyser
         // and Gate (the proxy) always send them so this is for compatibility with them.
-        final String command = packet.message();
+        executeCommand(player, packet.message());
+    }
+
+    private static void executeCommand(Player player, String command) {
         if (!isAllowedChatText(command)) {
             player.kick(ILLEGAL_CHARACTERS);
             return;

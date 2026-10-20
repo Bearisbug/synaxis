@@ -164,8 +164,7 @@ public non-sealed class PlayerInventory extends AbstractInventory {
 
     @Override
     public void sendSlotRefresh(int slot, ItemStack item) {
-        if (slot < 0 || slot > INVENTORY_SIZE)
-            return; // Sanity check
+        Check.argCondition(slot < 0 || slot >= INVENTORY_SIZE, "PlayerInventory does not have the slot " + slot);
         // See note in PlayerInventoryUtils about why we do this conversion
         boolean isPlayerInventorySlot = isPlayerInventorySlot(slot);
         int packetSlot = isPlayerInventorySlot
@@ -239,7 +238,7 @@ public non-sealed class PlayerInventory extends AbstractInventory {
             return false;
         }
         final ItemStack resultClicked = clickResult.getClicked();
-        if (resultClicked != null && !outsideDrop) {
+        if (!outsideDrop) {
             setItemStack(slot, resultClicked);
         }
         setCursorItem(clickResult.getCursor());

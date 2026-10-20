@@ -1,18 +1,23 @@
 package io.github.bearisbug.synaxis.listener;
 
+import io.github.bearisbug.synaxis.command.builder.Command;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.crypto.ArgumentSignatures;
 import io.github.bearisbug.synaxis.crypto.LastSeenMessages;
+import io.github.bearisbug.synaxis.entity.MainHand;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.player.PlayerChatEvent;
+import io.github.bearisbug.synaxis.message.ChatMessageType;
 import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
+import io.github.bearisbug.synaxis.network.packet.client.common.ClientSettingsPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientChatMessagePacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientCommandChatPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientSignedCommandChatPacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.DisconnectPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.JoinGamePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.SystemChatPacket;
+import io.github.bearisbug.synaxis.network.player.ClientSettings;
 import io.github.bearisbug.synaxis.testing.Collector;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
@@ -24,6 +29,8 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -145,6 +152,42 @@ public class ChatMessageListenerIntegrationTest {
         legal.assertSingle();
     }
 
+    /**
+     * A command comes unsigned or signed (Geyser and Gate always sign it): either one runs the command once, and
+     * either one is refused with {@code chat.cannotSend} once the player hides the chat.
+     */
+    @Test
+    public void bothCommandPacketsRunTheCommandUnlessTheChatIsHidden(Env env) {
+        var instance = env.createEmptyInstance();
+        final AtomicInteger runs = new AtomicInteger();
+        final Command count = new Command("count");
+        count.setDefaultExecutor((_, _) -> runs.incrementAndGet());
+        env.process().command().register(count);
+        var connection = env.createConnection();
+        var player = connection.connect(instance, Pos.ZERO);
+        final List<ClientPacket> commands = List.of(new ClientCommandChatPacket("count"), signedCommand("count"));
+
+        var accepted = connection.trackIncoming(SystemChatPacket.class);
+        for (ClientPacket packet : commands) {
+            player.addPacketToQueue(packet);
+            player.interpretPacketQueue();
+        }
+        assertEquals(2, runs.get(), "runs of the command, one per packet");
+        accepted.assertEmpty();
+
+        player.addPacketToQueue(new ClientSettingsPacket(new ClientSettings(Locale.US, (byte) 8, ChatMessageType.NONE,
+                true, (byte) 0, MainHand.RIGHT, false, true, ClientSettings.ParticleSetting.ALL)));
+        var refused = connection.trackIncoming(SystemChatPacket.class);
+        for (ClientPacket packet : commands) {
+            player.addPacketToQueue(packet);
+            player.interpretPacketQueue();
+        }
+        assertEquals(2, runs.get(), "a player hiding the chat runs no command");
+        refused.assertCount(2);
+        refused.assertAllMatch(packet -> packet.message() instanceof TranslatableComponent message
+                && message.key().equals("chat.cannotSend"));
+    }
+
     @Test
     public void joinGameDoesNotEnforceSecureChat(Env env) {
         var instance = env.createEmptyInstance();
@@ -156,6 +199,11 @@ public class ChatMessageListenerIntegrationTest {
             assertFalse(packet.enforcesSecureChat(), "chat is relayed as system messages, never signed");
             assertTrue(packet.onlineMode(), "online mode stays on for the tablist heads");
         });
+    }
+
+    private static ClientSignedCommandChatPacket signedCommand(String command) {
+        return new ClientSignedCommandChatPacket(command, 0L, 0L, new ArgumentSignatures(List.of()),
+                new LastSeenMessages.Update(0, new BitSet()), (byte) 0);
     }
 
     private static ClientChatMessagePacket chat(String message) {

@@ -22,7 +22,7 @@ public class PaletteSwarTest {
             final int range = 1 << bits;
             final int size = random.nextInt(1, 5000);
             final int[] indices = randomIndices(random, size, range);
-            final long[] packed = Palettes.pack(indices, bits);
+            final long[] packed = pack(indices, bits);
             final int target = random.nextInt(0, range);
             assertEquals(naiveCount(indices, target), Palettes.countEquals(bits, packed, size, target),
                     () -> "count bits=" + bits + " size=" + size + " target=" + target);
@@ -39,7 +39,7 @@ public class PaletteSwarTest {
             // Bias towards small ranges so both present/absent outcomes are common.
             final int effectiveRange = Math.max(2, Math.min(range, random.nextInt(2, 9)));
             final int[] indices = randomIndices(random, size, effectiveRange);
-            final long[] packed = Palettes.pack(indices, bits);
+            final long[] packed = pack(indices, bits);
             final int target = random.nextInt(0, range);
             assertEquals(naiveAny(indices, target), Palettes.anyEquals(bits, packed, size, target),
                     () -> "any bits=" + bits + " size=" + size + " target=" + target);
@@ -54,7 +54,7 @@ public class PaletteSwarTest {
             final int range = 1 << bits;
             final int size = random.nextInt(1, 5000);
             final int[] indices = randomIndices(random, size, range);
-            final long[] packed = Palettes.pack(indices, bits);
+            final long[] packed = pack(indices, bits);
             final int oldValue = random.nextInt(0, range);
             final int newValue = random.nextInt(0, range);
 
@@ -66,7 +66,7 @@ public class PaletteSwarTest {
             final int[] expected = indices.clone();
             for (int i = 0; i < expected.length; i++) if (expected[i] == oldValue) expected[i] = newValue;
             final int[] actual = new int[size];
-            Palettes.unpack(actual, packed, bits);
+            unpack(actual, packed, bits);
             assertArrayEquals(expected, actual,
                     () -> "replace content bits=" + bits + " size=" + size + " old=" + oldValue + " new=" + newValue);
         }
@@ -78,16 +78,44 @@ public class PaletteSwarTest {
             final int range = 1 << bits;
             final int size = 4096;
             final int[] zeros = new int[size];
-            final long[] packedZeros = Palettes.pack(zeros, bits);
+            final long[] packedZeros = pack(zeros, bits);
             assertEquals(size, Palettes.countEquals(bits, packedZeros, size, 0), "all-zero bits=" + bits);
             assertFalse(Palettes.anyEquals(bits, packedZeros, size, Math.min(range - 1, 1)), "all-zero any bits=" + bits);
 
             final int fillValue = range - 1;
             final int[] full = new int[size];
             Arrays.fill(full, fillValue);
-            final long[] packedFull = Palettes.pack(full, bits);
+            final long[] packedFull = pack(full, bits);
             assertEquals(size, Palettes.countEquals(bits, packedFull, size, fillValue), "all-set bits=" + bits);
             assertEquals(0, Palettes.countEquals(bits, packedFull, size, 0), "all-set zero count bits=" + bits);
+        }
+    }
+
+    private static long[] pack(int[] ints, int bitsPerEntry) {
+        final int valuesPerLong = 64 / bitsPerEntry;
+        long[] longs = new long[(ints.length + valuesPerLong - 1) / valuesPerLong];
+        final long mask = (1L << bitsPerEntry) - 1L;
+        for (int i = 0; i < longs.length; i++) {
+            for (int intIndex = 0; intIndex < valuesPerLong; intIndex++) {
+                final int bitIndex = intIndex * bitsPerEntry;
+                final int intActualIndex = intIndex + i * valuesPerLong;
+                if (intActualIndex < ints.length) {
+                    longs[i] |= (ints[intActualIndex] & mask) << bitIndex;
+                }
+            }
+        }
+        return longs;
+    }
+
+    private static void unpack(int[] out, long[] in, int bitsPerEntry) {
+        assert in.length != 0 : "unpack input array is zero";
+
+        final int valuesPerLong = 64 / bitsPerEntry;
+        final long mask = (1L << bitsPerEntry) - 1L;
+        for (int i = 0; i < out.length; i++) {
+            final int longIndex = i / valuesPerLong;
+            final int subIndex = i % valuesPerLong;
+            out[i] = (int) ((in[longIndex] >>> (bitsPerEntry * subIndex)) & mask);
         }
     }
 

@@ -206,6 +206,10 @@ public interface ServerProcess extends Registries {
      * Binds the address and starts taking connections. It does not tick: {@link #startTicking()}
      * starts the tick threads and the tick scheduler thread, or a test ticks the process by hand
      * through {@link #ticker()}.
+     * <p>
+     * It freezes the registries unless {@link ServerConfig#registryUnsafeOps()} or
+     * {@link ServerConfig#insideTest()} is set, and with {@link ServerConfig#shutdownOnSignal()} it
+     * registers a shutdown hook that stops the process on SIGTERM or SIGINT.
      *
      * @param socketAddress the address to bind
      * @throws IllegalStateException if the process has already been started
@@ -279,6 +283,14 @@ public interface ServerProcess extends Registries {
     @ApiStatus.Internal
     ShutdownPhase shutdownPhase();
 
+    /**
+     * Whether the process runs, from {@link #start(SocketAddress)} until the shutdown sequence of
+     * {@code docs/DESIGN-PROD.md} §11.4 reaches its end. It stays true while the gate is closed,
+     * while saving, kicking and disabling the plugins, so it does not tell whether a shutdown has
+     * begun.
+     *
+     * @return true if the process has started and has not stopped yet
+     */
     boolean isAlive();
 
     /**
@@ -302,6 +314,12 @@ public interface ServerProcess extends Registries {
 
     @ApiStatus.NonExtendable
     interface Ticker {
+        /**
+         * Runs one tick. Called by one thread at a time: the tick scheduler thread, or a test that
+         * ticks the process by hand.
+         *
+         * @param nanoTime {@link System#nanoTime()} taken at the start of the tick
+         */
         void tick(long nanoTime);
     }
 }

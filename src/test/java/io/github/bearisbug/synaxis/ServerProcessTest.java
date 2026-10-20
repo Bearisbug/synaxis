@@ -2,15 +2,19 @@ package io.github.bearisbug.synaxis;
 
 import io.github.bearisbug.synaxis.thread.TickThread;
 import io.github.bearisbug.synaxis.testing.TestUtils;
+import io.github.bearisbug.synaxis.world.Difficulty;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
 import java.net.InetSocketAddress;
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
@@ -26,6 +30,41 @@ public class ServerProcessTest {
         var process = ServerProcess.of();
         assertSame(process.registries(), process.registries());
         assertNotSame(process.registries(), ServerProcess.of().registries());
+    }
+
+    @Test
+    public void nullBrandNameIsRejectedAndTheBrandKept() {
+        var process = ServerProcess.of();
+        assertThrows(NullPointerException.class, () -> process.setBrandName(null));
+        assertEquals("synaxis", process.brandName());
+    }
+
+    @Test
+    public void nullDifficultyIsRejectedAndTheDifficultyKept() {
+        var process = ServerProcess.of();
+        assertThrows(NullPointerException.class, () -> process.setDifficulty(null));
+        assertEquals(Difficulty.NORMAL, process.difficulty());
+    }
+
+    @Test
+    public void nullShutdownParticipantIsRejected() {
+        var process = ServerProcess.of();
+        assertThrows(NullPointerException.class, () -> process.setShutdownParticipant(null));
+        // Nothing was registered: a participant can still be set
+        assertDoesNotThrow(() -> process.setShutdownParticipant(new ShutdownParticipant() {
+            @Override
+            public void onGateClosed(Duration countdown) {
+            }
+
+            @Override
+            public CompletableFuture<?> saveAll(Duration budget, boolean tickAlive) {
+                return CompletableFuture.completedFuture(null);
+            }
+
+            @Override
+            public void onSaveEnded(boolean timedOut) {
+            }
+        }));
     }
 
     @Test

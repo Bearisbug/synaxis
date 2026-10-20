@@ -8,6 +8,14 @@ import java.util.function.ToIntFunction;
 @FunctionalInterface
 @ApiStatus.Experimental
 public interface ThreadProvider<T> {
+    /**
+     * Hands the partitions to the threads in turn, in the order they load, so neighbouring chunks
+     * usually land on different threads and the interactions across them go through
+     * {@link Acquirable}; prefer {@link #grid} with more than one thread.
+     *
+     * @param <T> the partition type
+     * @return a provider that never moves a partition to another thread
+     */
     static <T> ThreadProvider<T> counter() {
         return new ThreadProvider<>() {
             private final AtomicInteger counter = new AtomicInteger();
@@ -45,14 +53,20 @@ public interface ThreadProvider<T> {
     }
 
     /**
-     * Performs a server tick for all chunks based on their linked thread.
+     * Returns the thread of a partition as an id, which the dispatcher maps onto its threads with
+     * {@link Math#floorMod(int, int)}, so any int is valid. Called while the dispatcher updates, in
+     * {@link ThreadDispatcher#updateAndAwait(long)} and {@link ThreadDispatcher#refreshThreads(long)}:
+     * once for each partition when it loads under {@link RefreshType#NEVER}, again on every refresh
+     * under {@link RefreshType#ALWAYS}.
      *
      * @param partition the partition
+     * @return the thread id of the partition, any int
      */
     int findThread(T partition);
 
     /**
-     * Defines how often chunks thread should be updated.
+     * Defines how often chunks thread should be updated. The dispatcher reads it once, when it is
+     * created, so it must always return the same value.
      *
      * @return the refresh type
      */

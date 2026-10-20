@@ -127,10 +127,10 @@ final class AcquirableImpl<T> implements Acquirable<T> {
             // tick scheduler thread, which is not a TickThread (REQ-PROD-019).
             final Thread current = Thread.currentThread();
             if (current == initThread || !(current instanceof TickThread)) return;
-            throw new AcquirableOwnershipException(initThread, null, unwrap().toString());
+            throw new AcquirableOwnershipException(initThread, null, unwrap());
         }
         if (isOwnedImpl(assignedThread)) return;
-        throw new AcquirableOwnershipException(initThread, assignedThread, unwrap().toString());
+        throw new AcquirableOwnershipException(initThread, assignedThread, unwrap());
     }
 
     void assertInitThread() {

@@ -6,26 +6,9 @@ import org.jetbrains.annotations.UnknownNullability;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 @ApiStatus.Experimental
 public sealed interface Acquirable<T> permits AcquirableImpl {
-
-    /**
-     * Gets everything being ticked in the current thread, the partitions as well as the elements
-     * assigned to them.
-     * <p>
-     * Useful when you want to ensure that no acquisition is ever done.
-     * <p>
-     * Be aware that the stream is only updated at the beginning of the thread tick.
-     *
-     * @return the tickables of the current thread
-     */
-    static Stream<Tickable> localElements() {
-        if (!(Thread.currentThread() instanceof TickThread tickThread)) return Stream.empty();
-        return tickThread.entries.stream()
-                .flatMap(partitionEntry -> partitionEntry.elements().stream());
-    }
 
     /**
      * Creates a new {@link Acquirable} object.
@@ -66,6 +49,11 @@ public sealed interface Acquirable<T> permits AcquirableImpl {
      * While the element is held, the dispatcher does not hand it to another tick thread. Held from a
      * thread that is not a tick thread past the end of a tick, it holds up the start of the next tick
      * for every tick thread.
+     * <p>
+     * Called on a tick thread for an element of another tick thread, it lets go of the lock of the
+     * calling thread while it waits for the global lock: once the element is held, other threads may
+     * have changed the elements of the calling thread, the one being ticked included, so read their
+     * state again.
      *
      * @return an acquired object
      * @throws IllegalStateException if the acquirable element is not initialized
@@ -127,6 +115,11 @@ public sealed interface Acquirable<T> permits AcquirableImpl {
      * While the element is held, the dispatcher does not hand it to another tick thread. Held from a
      * thread that is not a tick thread past the end of a tick, it holds up the start of the next tick
      * for every tick thread.
+     * <p>
+     * Called on a tick thread for an element of another tick thread, it lets go of the lock of the
+     * calling thread while it waits for the global lock: once the element is held, other threads may
+     * have changed the elements of the calling thread, the one being ticked included, so read their
+     * state again.
      *
      * @param consumer the callback to execute once the element has been safely acquired
      */
@@ -151,6 +144,11 @@ public sealed interface Acquirable<T> permits AcquirableImpl {
      * Locks the acquirable element, execute {@code function} synchronously and unlock the thread.
      * <p>
      * Free if the element is already present in the current thread, blocking otherwise.
+     * <p>
+     * Called on a tick thread for an element of another tick thread, it lets go of the lock of the
+     * calling thread while it waits for the global lock: once the element is held, other threads may
+     * have changed the elements of the calling thread, the one being ticked included, so read their
+     * state again.
      *
      * @param function the function to execute once the element has been safely acquired
      */

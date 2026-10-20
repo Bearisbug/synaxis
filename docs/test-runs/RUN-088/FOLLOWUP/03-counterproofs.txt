@@ -1,0 +1,25 @@
+Counterproofs, temporary changes each followed by git reset --hard HEAD.
+
+Run A, on e388bcbb05: Heightmap#invalidate increments version without taking the monitor
+  ./gradlew :compileJava ...
+Heightmap.java:107: warning: [NonAtomicVolatileUpdate] This update of a volatile variable is non-atomic
+error: warnings found and -Werror specified
+  Error Prone refuses a ++ on a volatile field outside a synchronized block. invalidate() increments version under
+  the monitor that refresh(int) and loadFrom hold, so two invalidations never lose one; an invalidation during a
+  computation waits for it to end and then moves the version on, which the next read sees.
+
+Run B, on 3e6ea2a6b7, two changes together
+  IntProvider.Weighted#minInclusive:   the lowest maxInclusive of the entries instead of the lowest minInclusive
+  Heightmap#refresh(int):              computedVersion = started written before the scan instead of after it
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.world.IntProviderTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest' --continue ...
+
+:test        15 tests completed, 2 failed
+<testsuite name="io.github.bearisbug.synaxis.world.IntProviderTest" tests="4" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest" tests="11" skipped="0" failures="1" errors="0">
+   weightedBoundsSpanTheDistribution() | org.opentest4j.AssertionFailedError: expected: <2> but was: <4> | IntProviderTest.java:19
+   aReaderDuringAComputationWaitsForIt(Env) | org.opentest4j.AssertionFailedError: the column changed before the computation ==> expected: <50> but was: <39> | ChunkHeightmapIntegrationTest.java:237
+  The weighted case has Uniform(7, 15) and Uniform(2, 4): the lowest maxInclusive is 4. With the Constant(2) the case
+  had before 3e6ea2a6b7, both minimums are 2 and the change passes (by arithmetic, not run). A computation that marks the
+  heights current before it scans lets the second thread read column (5, 5) at once, the height from before the
+  invalidation, as the code before e388bcbb05 did.

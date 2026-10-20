@@ -1,0 +1,17 @@
+Compile of the root main and test code at each commit on its own.
+
+  dd954396f4 test: a properties range on an integer property with bounds ...   compiled by the red run (01)
+  9f1c622b94 block: withProperty and withProperties hand the key of the block  compiled by its green run (02)
+  8212be3fb2 predicate: a properties range on an integer property reads ...    compiled by its green run (02)
+  e388bcbb05 heightmap: a read during a computation of the heightmap ...       compiled by its green run (02), on its
+                                                                               tree just before the commit
+  8a01e24268 heightmap: the loadFrom Javadoc names its one caller ...          -> exit 0 BUILD SUCCESSFUL in 14s
+  b051e42e58 generator: the fork Javadoc says writing to a fork ...            -> exit 0 BUILD SUCCESSFUL in 15s
+  3e6ea2a6b7 test: the weighted IntProvider bounds case has a uniform ...      the last green run (02): main up to
+                                                                               date (same as b051e42e58), test code
+                                                                               from the build cache
+
+  The two Javadoc commits, detached at the commit, then back to m3/r088-p3:
+  ./gradlew :compileJava :compileTestJava --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  Both compiled the root main code (Error Prone checks the Javadoc links); the test code was the same as at the
+  commit before and came from the build cache or was up to date.

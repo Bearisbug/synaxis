@@ -144,6 +144,21 @@ public class PropertiesPredicateTest {
             assertFalse(range("facing", "up", null).test(Block.HOPPER.withProperty("facing", "west")));
         }
 
+        /** The client parses a bound of an integer property with Integer.parseInt: "05" and "+5" are 5, "5.0" is none. */
+        @Test
+        public void integerBoundsReadAsTheClientParsesThem() {
+            var five = range("age", "5", null);
+            var seven = range("age", null, "7");
+            for (int age = 0; age <= 7; age++) {
+                var wheat = Block.WHEAT.withProperty("age", String.valueOf(age));
+                assertEquals(five.test(wheat), range("age", "05", null).test(wheat), "min 05, age " + age);
+                assertEquals(five.test(wheat), range("age", "+5", null).test(wheat), "min +5, age " + age);
+                assertEquals(seven.test(wheat), range("age", null, "07").test(wheat), "max 07, age " + age);
+                assertFalse(range("age", "5.0", null).test(wheat), "min 5.0, age " + age);
+                assertFalse(range("age", "x", null).test(wheat), "min x, age " + age);
+            }
+        }
+
         /** A value that reads as neither form names the failure of both. */
         @Test
         public void decodeFailureNamesBothForms() {

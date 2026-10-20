@@ -20,8 +20,9 @@ final class ItemStackHashImpl {
         final Map<DataComponent<?>, Integer> addedComponents = new HashMap<>();
         final Set<DataComponent<?>> removedComponents = new HashSet<>();
         for (var entry : itemStack.componentPatch().entrySet()) {
-            // The hash is computed with the codec, so components without one have to be left out
-            if (!entry.component().isSerialized()) continue;
+            // A client hashes the patch it was sent with the codec, so it only sees the components that have both a
+            // network type and a codec
+            if (!entry.component().isSerialized() || !entry.component().isSynced()) continue;
             if (entry.value() != null) {
                 addedComponents.put(entry.component(), ((DataComponent<Object>) entry.component()).encode(hashCoder, entry.value())
                         .orElseThrow("hash of component " + entry.component().name()));

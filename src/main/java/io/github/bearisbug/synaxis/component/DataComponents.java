@@ -137,8 +137,8 @@ public class DataComponents {
     public static final DataComponent<Integer> MAP_ID = register("map_id", NetworkBuffer.VAR_INT, Codec.INT);
     public static final DataComponent<MapDecorations> MAP_DECORATIONS = register("map_decorations", null, MapDecorations.CODEC);
     public static final DataComponent<MapPostProcessing> MAP_POST_PROCESSING = register("map_post_processing", MapPostProcessing.NETWORK_TYPE, null);
-    public static final DataComponent<List<ItemStack>> CHARGED_PROJECTILES = register("charged_projectiles", ItemStackTemplate.NETWORK_TYPE.list(Short.MAX_VALUE), ItemStackTemplate.CODEC.list(Short.MAX_VALUE), noAir("charged_projectiles"));
-    public static final DataComponent<List<ItemStack>> BUNDLE_CONTENTS = register("bundle_contents", ItemStackTemplate.NETWORK_TYPE.list(Short.MAX_VALUE), ItemStackTemplate.CODEC.list(Short.MAX_VALUE), noAir("bundle_contents"));
+    public static final DataComponent<List<ItemStack>> CHARGED_PROJECTILES = register("charged_projectiles", ItemStackTemplate.NETWORK_TYPE.list(Short.MAX_VALUE), ItemStackTemplate.CODEC.list(Short.MAX_VALUE), noAir("charged_projectiles", Short.MAX_VALUE));
+    public static final DataComponent<List<ItemStack>> BUNDLE_CONTENTS = register("bundle_contents", ItemStackTemplate.NETWORK_TYPE.list(Short.MAX_VALUE), ItemStackTemplate.CODEC.list(Short.MAX_VALUE), noAir("bundle_contents", Short.MAX_VALUE));
     public static final DataComponent<PotionContents> POTION_CONTENTS = register("potion_contents", PotionContents.NETWORK_TYPE, PotionContents.CODEC);
     public static final DataComponent<Float> POTION_DURATION_SCALE = register("potion_duration_scale", NetworkBuffer.FLOAT, Codec.FLOAT);
     public static final DataComponent<SuspiciousStewEffects> SUSPICIOUS_STEW_EFFECTS = register("suspicious_stew_effects", SuspiciousStewEffects.NETWORK_TYPE, SuspiciousStewEffects.CODEC);
@@ -154,7 +154,7 @@ public class DataComponents {
     public static final DataComponent<Integer> OMINOUS_BOTTLE_AMPLIFIER = register("ominous_bottle_amplifier", NetworkBuffer.VAR_INT, Codec.INT);
     public static final DataComponent<RegistryKey<BinaryTag>> JUKEBOX_PLAYABLE = register("jukebox_playable", RegistryKey.holderNetworkType(opaque(BuiltinRegistries.JUKEBOX_SONG)), RegistryKey.codec(opaque(BuiltinRegistries.JUKEBOX_SONG)));
     public static final DataComponent<RegistryTag<BinaryTag>> PROVIDES_BANNER_PATTERNS = register("provides_banner_patterns", RegistryTag.networkType(opaque(BuiltinRegistries.BANNER_PATTERN)), RegistryTag.codec(opaque(BuiltinRegistries.BANNER_PATTERN)));
-    public static final DataComponent<List<String>> RECIPES = register("recipes", NetworkBuffer.STRING.list(Short.MAX_VALUE), Codec.STRING.list(Short.MAX_VALUE), List::copyOf);
+    public static final DataComponent<List<String>> RECIPES = register("recipes", NetworkBuffer.STRING.list(Short.MAX_VALUE), Codec.STRING.list(Short.MAX_VALUE), atMost("recipes", Short.MAX_VALUE));
     public static final DataComponent<LodestoneTracker> LODESTONE_TRACKER = register("lodestone_tracker", LodestoneTracker.NETWORK_TYPE, LodestoneTracker.CODEC);
     public static final DataComponent<FireworkExplosion> FIREWORK_EXPLOSION = register("firework_explosion", FireworkExplosion.NETWORK_TYPE, FireworkExplosion.CODEC);
     public static final DataComponent<FireworkList> FIREWORKS = register("fireworks", FireworkList.NETWORK_TYPE, FireworkList.NBT_TYPE);
@@ -163,7 +163,7 @@ public class DataComponents {
     public static final DataComponent<BannerPatterns> BANNER_PATTERNS = register("banner_patterns", BannerPatterns.NETWORK_TYPE, BannerPatterns.CODEC);
     public static final DataComponent<DyeColor> BASE_COLOR = register("base_color", DyeColor.NETWORK_TYPE, DyeColor.CODEC);
     public static final DataComponent<PotDecorations> POT_DECORATIONS = register("pot_decorations", PotDecorations.NETWORK_TYPE, PotDecorations.NBT_TYPE);
-    public static final DataComponent<List<ItemStack>> CONTAINER = register("container", containerNetworkType(), containerCodec(), List::copyOf);
+    public static final DataComponent<List<ItemStack>> CONTAINER = register("container", containerNetworkType(), containerCodec(), atMost("container", CONTAINER_SIZE));
     public static final DataComponent<ItemBlockState> BLOCK_STATE = register("block_state", ItemBlockState.NETWORK_TYPE, ItemBlockState.CODEC);
     public static final DataComponent<List<Bee>> BEES = register("bees", Bee.NETWORK_TYPE.list(Short.MAX_VALUE), Bee.CODEC.list(), List::copyOf);
     public static final DataComponent<ItemStack> SULFUR_CUBE_CONTENT = register("sulfur_cube_content", ItemStackTemplate.NETWORK_TYPE, ItemStackTemplate.CODEC, notAir("sulfur_cube_content"));
@@ -230,9 +230,20 @@ public class DataComponents {
         };
     }
 
-    private static UnaryOperator<List<ItemStack>> noAir(String name) {
+    // A list longer than the network type allows makes a client drop the connection while it decodes the item, and the
+    // codec refuses it when the item is stored, so these components check the size when they are set.
+    private static <T> UnaryOperator<List<T>> atMost(String name, int max) {
+        return list -> {
+            if (list.size() > max)
+                throw new IllegalArgumentException("minecraft:" + name + " holds at most " + max + " entries, got " + list.size());
+            return List.copyOf(list);
+        };
+    }
+
+    private static UnaryOperator<List<ItemStack>> noAir(String name, int max) {
+        final UnaryOperator<List<ItemStack>> atMost = atMost(name, max);
         return items -> {
-            final List<ItemStack> copy = List.copyOf(items);
+            final List<ItemStack> copy = atMost.apply(items);
             for (int i = 0; i < copy.size(); i++) {
                 if (copy.get(i).isAir())
                     throw new IllegalArgumentException("minecraft:" + name + " cannot hold air (index " + i + "); leave the empty slots out instead");

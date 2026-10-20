@@ -1,6 +1,8 @@
 package io.github.bearisbug.synaxis.component;
 
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
+import io.github.bearisbug.synaxis.codec.Codec;
 import io.github.bearisbug.synaxis.codec.Result;
 import io.github.bearisbug.synaxis.codec.Transcoder;
 import io.github.bearisbug.synaxis.item.Material;
@@ -79,11 +81,24 @@ public class DataComponentMapTest {
 
     @Test
     void codecRejectsComponentDecodedToNull() {
-        // ItemRarity.CODEC maps an unknown name to null, which must not be read as "remove rarity".
+        // A null value means "component removed" in a patch, so it must not be what a codec decodes to. The
+        // component is not registered: other test classes go through every registered component concurrently.
+        final DataComponent<String> decodesToNull = DataComponent.createHeadless(0, Key.key("synaxis:decodes_to_null"),
+                null, Codec.STRING.<String>transform(_ -> null, value -> value), null);
+        final Codec<DataComponentMap> patchCodec = DataComponentMap.patchCodec(_ -> decodesToNull, _ -> decodesToNull);
+        final Result<DataComponentMap> result = patchCodec.decode(Transcoder.JAVA, Map.of(decodesToNull.name(), "value"));
+
+        assertEquals("synaxis:decodes_to_null: null", assertInstanceOf(Result.Error.class, result).message());
+    }
+
+    @Test
+    void codecNamesTheComponentAndTheValueItCannotDecode() {
         final Map<String, Object> input = Map.of(DataComponents.RARITY.name(), "legendary");
         final Result<DataComponentMap> result = DataComponent.PATCH_CODEC.decode(Transcoder.JAVA, input);
 
-        assertEquals("minecraft:rarity: null", assertInstanceOf(Result.Error.class, result).message());
+        assertEquals("minecraft:rarity: IllegalArgumentException: No enum constant "
+                        + "io.github.bearisbug.synaxis.item.component.ItemRarity.LEGENDARY",
+                assertInstanceOf(Result.Error.class, result).message());
     }
 
     @Test

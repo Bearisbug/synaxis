@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-21 | 分支 `prod/r089-CMD`（基线 `main` `17f2a2cfe1`），跟进 `docs/DESIGN-PROD.md` v0.9.113（RUN-089 组 CMD），不登执行轮次（集成轮登记）；本组 2 次 Gradle 运行的读数写在各步里，不另存证据目录。**新增 §4「生产就绪 · RUN-089：CMD」七条 `TC-PROD-1030`～`TC-PROD-1036`**，放在「生产就绪 · RUN-082」一节之后、「玩法架构 · RUN-077：P」之前，改动前的红都在基线主源码加本组测试上实跑过：1030（空格结尾时补全回调里正在补全的参数是空串）、1031（字符串参数的引号）、1032（读完剩余输入的参数只能在语法末尾）、1033（数值边界、空循环、候选词、循环与参数组的参数表）、1034（字符串格式的语法）、1035（`condition` 包删除之后的底层集合与导出，`REQ-015`）、1036（行为不变的整理与只改注解、javadoc 的条目，回归）。**随代码改的旧用例**（只改行号，按 `git diff` 前后对照，没复跑）：`TC-PROD-664` 的 `CLOSE_OUT` 里 `Messenger.java` 一行 `47` → `46`（删掉一行导入）；`TC-PROD-682` 第 3 步红行 `ArchitectureTest.java:291` → `:290`、`TC-PROD-686` 第 2 步 `module-info.java:95` → `:94`（各删掉 `condition` 一行）。**条数**：根项目 +10 条、+2 个类；写死全量条数的旧用例不改，由集成轮统一改。**§5** 局部轮加本组一行 | Bearisbug |
 | 2026-10-21 | 分支 `m3/hud-top-left` 的 `086f2f9fc8` 在 GitHub Actions 上跑完全量门禁、Concurrency、Client mod、Client gametest 与远景 gametest 四组（草稿 PR #41），反证在临时分支上手动触发，登记 RUN-086（通过 1/1，证据 `docs/test-runs/RUN-086/`）。RUN-079 明细里的待人工项「远景 HUD 英文行宽」由 RUN-086 的截图量法与 `TC-WORLD-170` 接手 | Bearisbug |
 | 2026-10-20 | 跟进 `docs/DESIGN-M3.md` v0.55（分支 `m3/hud-top-left`，远景 HUD 行改画在左上角）。**新增 `TC-WORLD-170`**（「M3 · 远景（M3-G）」一节末尾）：V1 烘焙期间同机位截带 HUD 与不带 HUD 的两张图，左上角有变化、左下角原来那一行的位置没有，报告行 F31；反证是把行画回左下角，在临时分支上手动触发 synthetic 组。§2 的 REQ ↔ TC 表（`REQ-M3-025`）与 Gherkin 覆盖口径随之补上。RUN-079 的待人工项「远景 HUD 英文行宽」由本轮的截图核实与 `TC-WORLD-170` 接手 | Bearisbug |
 | 2026-10-19 | 分支 `m3/light-fixups` 的 `3415eef1e0` 在 GitHub Actions 上跑完全量门禁、Concurrency、Client mod 与 Client gametest，远景 gametest 四组在 `fd9627e0ad` 上跑完（草稿 PR #38），登记 RUN-083（通过 6/6，证据 `docs/test-runs/RUN-083/`）。`TC-WORLD-049`、`TC-WORLD-060`、`TC-WORLD-094`、`TC-WORLD-132`、`TC-WORLD-150` 的反证步骤只改了行号、没有重跑，登在 §6 明细里 | Bearisbug |
@@ -10041,7 +10042,7 @@ chk $J/ServerConfig.java 471 'chatBurst = 3;'
 chk $A/ConfigFile.java 83 '"synaxis.chat-rate-per-second"'
 chk $A/ConfigFile.java 84 '"synaxis.chat-burst"'
 chk $J/entity/Player.java 454 'true, false);'
-chk $J/message/Messenger.java 47 'new SystemChatPacket(message, position == ChatPosition.GAME_INFO)'
+chk $J/message/Messenger.java 46 'new SystemChatPacket(message, position == ChatPosition.GAME_INFO)'
 chk client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/mixin/ClientPacketListenerMixin.java 22 'skipUnsecureServerToast'
 chk $A/transfer/TicketIssuer.java 38 'public static final String TRANSFER_FAILED'
 chk $A/shard/ShardGates.java 113 'TicketIssuer.TRANSFER_FAILED'
@@ -10365,7 +10366,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | --- | --- | --- |
 | 1 | 跑 `<P>.ArchitectureTest` | `tests="8"` 0 失败，其中 `publicStaticFieldsAreFinal` 是本节加的；`FilteredText` 的 `STRING_NETWORK_TYPE`、`STRING_CODEC`、`COMPONENT_NETWORK_TYPE`、`COMPONENT_CODEC` 与 `DataComponentPredicate.Damage.CODEC` 都是 `public static final` |
 | 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
-| 3 | 反证有齿：`FilteredText.java:14` 去掉 `final`，前面加一行 `@SuppressWarnings("ConstantField")`（不加时 Error Prone 的 `ConstantField` 先让编译失败），跑第 1 步的类，再还原 | `8 tests completed, 1 failed`：`publicStaticFieldsAreFinal` 红在 `ArchitectureTest.java:291`，`Architecture Violation [Priority: MEDIUM] - Rule 'fields that are public and are static and do not have full name '…EngineAdventure.COMPONENT_TRANSLATOR' should be final, because any code in the process could reassign it' was violated (1 times)`，`Field <…FilteredText.STRING_CODEC> does not have modifier FINAL` |
+| 3 | 反证有齿：`FilteredText.java:14` 去掉 `final`，前面加一行 `@SuppressWarnings("ConstantField")`（不加时 Error Prone 的 `ConstantField` 先让编译失败），跑第 1 步的类，再还原 | `8 tests completed, 1 failed`：`publicStaticFieldsAreFinal` 红在 `ArchitectureTest.java:290`，`Architecture Violation [Priority: MEDIUM] - Rule 'fields that are public and are static and do not have full name '…EngineAdventure.COMPONENT_TRANSLATOR' should be final, because any code in the process could reassign it' was violated (1 times)`，`Field <…FilteredText.STRING_CODEC> does not have modifier FINAL` |
 | 4 | 改动前的代码上默认与严格 grid 各跑一次第 1 步的类 | 两次都红在 `:291`，`was violated (5 times)`，列出 `DataComponentPredicate$Damage.CODEC` 与 `FilteredText` 的四个字段 |
 | 5 | 还原后重跑第 1、2 步 | 与第 1 步相同 |
 
@@ -10420,7 +10421,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `<P>.ModuleExportsTest`，默认与严格 grid 各一次 | `tests="1"` 0 失败：从 `build/classes/java/main` 读出的模块描述里，`io.github.bearisbug.synaxis` 的每个包都有不限定的 `exports`，含 `item.predicate` |
-| 2 | 反证有齿：删掉 `module-info.java:95` 的 `exports io.github.bearisbug.synaxis.item.predicate;`，跑第 1 步的类，再还原 | 红在 `ModuleExportsTest.java:31`，`packages of io.github.bearisbug.synaxis that module-info does not export ==> expected: <[]> but was: <[io.github.bearisbug.synaxis.item.predicate]>`；改动前的代码上默认与严格 grid 结果相同 |
+| 2 | 反证有齿：删掉 `module-info.java:94` 的 `exports io.github.bearisbug.synaxis.item.predicate;`，跑第 1 步的类，再还原 | 红在 `ModuleExportsTest.java:31`，`packages of io.github.bearisbug.synaxis that module-info does not export ==> expected: <[]> but was: <[io.github.bearisbug.synaxis.item.predicate]>`；改动前的代码上默认与严格 grid 结果相同 |
 | 3 | `./gradlew :server-app:dependencyInsight --dependency logback-classic --configuration runtimeClasspath --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 解析到 `ch.qos.logback:logback-classic:1.6.5`；改动前的代码上是 `1.6.3` |
 | 4 | `./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.LogbackConfigurationTest' :plugin-api:test --rerun --tests 'io.github.bearisbug.synaxis.plugin.LogBudgetTest' …`，默认与严格 grid 各一次 | 5 + 2 条 0 失败：生产 `logback.xml` 的文件模式（滚动、压缩、非阻塞队列）、`stdout` 模式、`org.java_websocket` 钉在 INFO 与未知模式的报错，在 1.6.5 上照旧 |
 
@@ -13926,6 +13927,100 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：`git status --short` 只剩本轮的改动。
 
+### 生产就绪 · RUN-089：CMD（补全的占位符、字符串的引号、读完剩余输入的参数、参数的配置校验、字符串格式的语法与命令面的整理）
+
+对应 `REQ-PROD-012`（`docs/DESIGN-PROD.md` v0.9.113：`API-PROD-011` 第一条与变更记录「引擎的命令与参数」一段）与 `REQ-015`（`docs/DESIGN.md`，底层集合由 9 个包变为 8 个）。插件经 `PluginContext#commands()` 注册的是引擎的 `Command`，本节改的都在插件命令可达的路径上：
+
+- **补全的占位符**：输入以空格结尾时 `TabCompleteListener` 追加的 `\0` 不再进补全回调，正在补全的参数是空串（`StringArray` 的末元素同样），`Suggestion` 的起点与长度照旧；`Suggestion`、`SuggestionCallback`、`TabCompleteListener#getSuggestion` 补了偏移、线程与 context 的说明。
+- **字符串的引号**：引号内从头顺序扫描，未转义的同种引号与被转义的闭合引号报 `QUOTE_ERROR`。
+- **读完剩余输入的参数**：`StringArray`、`Loop`、`Command`（含 `map`、`filter` 包装的）不在语法末尾时，`addSyntax`、`addConditionalSyntax` 当场抛 `IllegalArgumentException`。
+- **参数的配置**：数值边界拒收 null、`between` 拒绝下限大于上限，空的 `Loop` 与空串、含空格的 `Word#from` 在构造时拒绝，`Loop#arguments()` 不可改，`Group` 复制传入的数组。
+- **字符串格式的语法**：没闭合的 `<` 抛 `IllegalArgumentException`，未知类型的报错列出全部类型名。
+- **行为不变的整理**：`CommandParserImpl` 的链深度、`NodeResult` 没人读的补全回调分量、恒真的判空与不可达的去重、`CommandDispatcher` 不可达的 `case null`；`GraphConverter` 的节点编号、子节点收集与重定向标志；`Graph#sameTree` 取代只有一个常量的比较器，`Execution` 写明可见性语义与可空注解；`RelativeVec` 的坐标换算挪进 `from(Pos)`；`Messenger` 去掉永不生效的兜底；只改注解与 javadoc 的 `ArgumentRegistry#getRegistry`、数值边界、`ArgumentRange` 构造参数、五个返回 null 的 `parser()`、`ArgumentEnum` 的类型参数、`Command#getAliases`、`SimpleCommand`、`RelativeVec#fromView`。
+- **删掉没有调用方的公开成员**：`Command#getSyntaxesStrings()`、`Command#getSyntaxesTree()`、`CommandSyntax#hasSuggestion()`、`CommandSyntax#getSyntaxString()` 与整个 `io.github.bearisbug.synaxis.condition` 包（`module-info` 的导出、`ArchitectureTest` 与 `tools/pkgdeps.py` 的底层集合同删）。
+
+测试：根项目包 `io.github.bearisbug.synaxis.command`（下文 `<T>`）新类 `ArgumentSetupTest`（3 条）、`RelativeVecTest`（2 条），`ArgumentParserTest` 1 → 2、`ArgumentRobustnessTest` 5 → 6、`CommandParseTest` 13 → 14、`CommandSuggestionIntegrationTest` 8 → 9、`CommandSyntaxSingleTest` 8 → 9，`ArgumentTypeTest#testArgumentString` 加三条断言（条数不变）；`CommandConditionTest`、`GraphConversionTest`、`GraphMergeTest` 的比较改调 `sameTree`。都不连数据库，线程模式只跑默认（本组的类不随 tick 线程数变化）。
+
+「跑本节的类」即 `./gradlew :compileJava :testNamingCheck :forbiddenImportsCheck :test --rerun --tests '<T>.*' --tests 'io.github.bearisbug.synaxis.ArchitectureTest' --tests 'io.github.bearisbug.synaxis.ModuleExportsTest' --tests 'io.github.bearisbug.synaxis.message.*' --tests 'io.github.bearisbug.synaxis.listener.ChatMessageListenerIntegrationTest' --tests 'io.github.bearisbug.synaxis.entity.player.PlayerIntegrationTest' --tests 'io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest' --continue --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`<T>` 展开写全），本组第 2 次运行。「改动前的红」是基线 `17f2a2cfe1` 的主源码加本组的测试，只跑本组改到的八个测试类（第 1 次运行，`78 tests completed, 8 failed`，红的恰是下面五条用例的八条，其余 70 条通过）。
+
+#### `TC-PROD-1030` 输入以空格结尾时，补全回调里正在补全的参数是空串、按前缀过滤列出全部候选，回包的偏移照旧 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类，看 `<T>.CommandSuggestionIntegrationTest` 的 `anArgumentNotTypedYetIsEmptyInTheCallback` | 该类 9 条 0 失败。`foo` 有两条语法 `[Word target]` 与 `[Literal say, StringArray words]`，`target` 的补全回调从 `Alice`、`Bob` 里挑以已输入文本开头的名字：玩家发 `/foo `（一个尾随空格）时回调里 `context.get(target)` 与 `context.getRaw(target)` 都是空串，回包列出 `Alice`、`Bob`，`start` 5、`length` 1；发 `/foo say a ` 时 `words` 的回调拿到 `["a", ""]` |
+| 2 | 改动前的红（第 1 次运行） | 红在 `CommandSuggestionIntegrationTest.java:116`：回调记下的是 `[\0, \0, [a, \0]]`，期望 `[, , [a, ]]`（XML 报告把 `\0` 写成 `?`）。回调拿到的是占位符，按前缀过滤一个名字都不剩 |
+
+后置：`git status --short` 不列 `src` 下的文件。
+
+#### `TC-PROD-1031` 字符串参数：引号内未转义的同种引号与被转义的闭合引号报错，带转义引号的整串解析成功 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类，看 `<T>.ArgumentTypeTest` 的 `testArgumentString` 与 `<T>.CommandParseTest` 的 `aQuotedStringHoldingEscapedQuotesIsReadWhole` | 两类 33、14 条 0 失败。`""a"`（引号内第一个字符就是未转义的引号）、`"a\\"b"`（被转义的是反斜杠，后面的引号没有转义）、`"a\"`（闭合引号被转义）都抛 `ArgumentSyntaxException`，原有四条断言照旧；执行 `foo "say \"hi\" now"` 得 `SUCCESS`，执行器拿到 `say "hi" now` |
+| 2 | 改动前的红（第 1 次运行） | `testArgumentString` 红在 `ArgumentTypeTest.java:475`（`""a"`）：`Expected …ArgumentSyntaxException to be thrown, but nothing was thrown`；`aQuotedStringHoldingEscapedQuotesIsReadWhole` 红在 `CommandParseTest.java:277`：`expected: <say "hi" now> but was: <say "hi\>`，逐词试到 `"say \"hi\"` 就算解析成功，余下的 `now"` 当作多余输入丢掉 |
+
+后置：同 `TC-PROD-1030`。
+
+#### `TC-PROD-1032` 读完剩余输入的参数不在语法末尾时，`addSyntax` 与 `addConditionalSyntax` 当场拒绝，可选的、包装过的与字符串格式的同样 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类，看 `<T>.CommandSyntaxSingleTest` 的 `anArgumentTakingTheRestOfTheInputEndsTheSyntax` | 该类 9 条 0 失败。`StringArray`、`Loop`、`Command`、经 `map` 包装的 `StringArray`、带默认值的 `StringArray` 五种放在 `Integer n` 之前，`addSyntax` 抛 `IllegalArgumentException`，信息含 `'rest'`；放在 `[Word w, …, Literal end]` 中间，`addConditionalSyntax` 同样抛；字符串格式 `StringArray<rest> Integer<n>` 也抛；被拒之后命令一条语法也没有，`[Integer n, StringArray rest]` 照常加上 |
+| 2 | 改动前的红（第 1 次运行） | 红在 `CommandSyntaxSingleTest.java:174`（第一种 `StringArray`）：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown` |
+
+后置：同 `TC-PROD-1030`。
+
+#### `TC-PROD-1033` 参数的配置当场校验：数值边界不为 null、下限不大于上限，循环不空，候选词是不含空格的非空词；循环的参数表不可改，参数组不受调用方事后改数组影响 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类，看 `<T>.ArgumentSetupTest` | 3 条 0 失败。① `Integer("i").min(null)`、`max(null)`、`between(null, 1)` 与 `Long("l").between(1L, null)` 抛 `NullPointerException`。② 不带参数的 `Loop("l")`、`Word("w").from("add", "a b")`、`from("")`、`Integer("n").between(10, 1)` 抛 `IllegalArgumentException`，信息带参数 id；`between(1, 1)` 收 `1`、拒 `2`，`from("add", "remove")` 收 `remove`。③ `Loop` 的 `arguments()` 上 `add` 抛 `UnsupportedOperationException`；`Group("g", members)` 之后把 `members[1]` 换成 `Word("swapped")`，`group()` 照旧是 `first`、`second`，解析 `1 2` 得 `second` = 2 |
+| 2 | 改动前的红（第 1 次运行） | 三条都红：① `ArgumentSetupTest.java:26`：`Expected java.lang.NullPointerException to be thrown, but nothing was thrown`；② `:34`（`Loop("l")`）：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown`；③ `:56`：`Expected java.lang.UnsupportedOperationException to be thrown, but nothing was thrown` |
+
+后置：同 `TC-PROD-1030`。
+
+#### `TC-PROD-1034` 字符串格式的语法：没闭合的 `<` 被拒，未知类型的报错列出全部类型名 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类，看 `<T>.ArgumentParserTest` 的 `aFormatWithAnUnclosedBracketOrAnUnknownTypeIsRefused` | 该类 2 条 0 失败。`ArgumentParser.generate("set Integer<amount")` 抛 `IllegalArgumentException`，信息含整段格式；`generate("Foo<x>")` 的信息含 `Foo`、`integer` 与 `stringarray` |
+| 2 | 改动前的红（第 1 次运行） | 红在 `ArgumentParserTest.java:60`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown`（原先返回只含 `Literal<set>` 的数组，`amount` 静默丢掉） |
+
+后置：同 `TC-PROD-1030`。
+
+#### `TC-PROD-1035` `condition` 包删除之后底层集合是 8 个包、仍不依赖集合之外的引擎包，引擎的每个包都导出 — 对应 `REQ-015` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；在仓库根执行。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `rg -n "synaxis\.condition\|DataPredicate" --glob '!docs/**' .` | 无输出，退出码 1 |
+| 2 | `python3 tools/pkgdeps.py`，看第一行与末段 | `packages: 31   edges: 247   imports: 2669`；`lower layer: codec, coordinate, exception, gamedata, monitoring, thread, timer, utils`，`lower layer edges into the rest of the engine: 0 (0 imports)`。基线 `17f2a2cfe1` 上是 `packages: 32   edges: 248`，底层多一个 `condition` |
+| 3 | 跑本节的类，看 `io.github.bearisbug.synaxis.ArchitectureTest` 与 `io.github.bearisbug.synaxis.ModuleExportsTest` | 8 条、1 条，0 失败：`ArchitectureTest` 的底层集合与 `pkgdeps.py` 两份列表都是这 8 个包，`module-info` 导出引擎的全部包 |
+
+后置：同 `TC-PROD-1030`。
+
+#### `TC-PROD-1036` 回归：命令面行为不变的整理与只改注解、javadoc 的条目，本节的类全绿 — 对应 `REQ-PROD-012`、`REQ-PROD-009` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本节的类（第 2 次运行） | `BUILD SUCCESSFUL`，`compileJava`（Error Prone `-Werror`）、`testNamingCheck`、`forbiddenImportsCheck` 都过；36 个类 236 条，0 失败、0 跳过：`<T>.*` 29 个类 193 条（`CommandPacketTest` 15、`CommandPacketFilteringTest` 16、`CommandPacketLoopTest` 2、`GraphConversionTest` 8、`GraphMergeTest` 3、`CommandConditionTest` 18、`CommandParseInputEndTest` 4、`CommandSuggestionSubcommandTest` 2、`CommandManagerTest` 8、`ArgumentRobustnessTest` 6、`RelativeVecTest` 2 在内），`ArchitectureTest` 8、`ModuleExportsTest` 1、`message` 包 2 个类 6 条、`ChatMessageListenerIntegrationTest` 5、`PlayerIntegrationTest` 16、`InboundPacketLimitIntegrationTest` 7 |
+| 2 | 第 1 次运行（基线主源码）里的 `<T>.RelativeVecTest` 与 `<T>.ArgumentRobustnessTest` 的 `aRegistryArgumentAnsweringNullIsAnInvalidName` | 都通过：坐标换算挪进 `RelativeVec#from(Pos)` 前后同一组断言成立（相对、局部、绝对三种与 `fromView` 加偏航、俯仰）；插件的注册表参数对未知键返回 null 时报 `INVALID_NAME`，标 `@Nullable` 前后相同 |
+
+后置：同 `TC-PROD-1030`。
+
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
 对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的线上部分：`synaxis:play` v1 的五条消息、小部件属性的 TLV 编码与冻结向量（`docs/DESIGN-PLAY.md` `API-PLAY-002`、`API-PLAY-003`；本组跟进该分册 v0.2 与 `docs/DESIGN-M2.md` v0.66 的 `API-M2-001`）。用例号段 001～009，由组 P 在分支 `prod/r077-P` 写入。测试类：`:protocol` 包 `io.github.bearisbug.synaxis.game.protocol.play` 的 `PlayMessagesTest`、`PlayVectorTest`；`client-fabric` 的 `PlayFrozenVectorTest`。
@@ -15897,6 +15992,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 STORE，写权状态机的锁与纪元、退避的叫醒、登出快照的时机、`commitTogether` 的参数结果与提交冻结、`saveNow` 的快照线程、插件任务的日志预算、Redis URL 的 scheme 与事务的回滚（`REQ-PROD-005`～`REQ-PROD-008`、`REQ-PROD-021`，v0.9.105）→ TC-PROD-980～TC-PROD-989；动了 `PlayerStore` 的 `fence`、`finished`、`drain`、`backOff`、`submit` 或 `loadWithin`、`admitted` 里比对纪元的两处，跑 TC-PROD-980～TC-PROD-982 与 TC-PROD-149，三种线程模式各一次；动了 `attach` 挂登出监听器的那一处，跑 TC-PROD-983 与 `ShutdownSave*IntegrationTest`；动了 `commitTogether` 或 `isFrozen`，跑 TC-PROD-984、TC-PROD-985、TC-PROD-148、TC-PROD-835、TC-PROD-836 与 TC-PROD-161；动了 `saveNow`，跑 TC-PROD-986 与改到所属线程调用的 TC-PROD-145 一类旧用例（`PlayerStoreIntegrationTest`、`StoreMetricsIntegrationTest`、`PlayerDataIntegrationTest` 整类）；动了 `PluginSchedulerImpl#guarded` 或预算的分配，跑 TC-PROD-987 与 TC-PROD-140、TC-PROD-840；动了 `RedisLink#connect` 的校验，跑 TC-PROD-988；动了 `Sql`、`PostgresBackend` 的 `load` / `write` 或 `StoreHousekeeping#run`，跑 TC-PROD-989 与 TC-PROD-144。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-081 组 PLAYHOST，插件通道只收 PLAY 的负载、`minecraft:` 命名空间与非法通道名、准入的坏答案、插件 id 唯一、停机收回逐个隔离（`REQ-M2-003`、`REQ-M2-004`、`REQ-M2-006`、`REQ-M2-024`、`REQ-011`、`REQ-PROD-008`）→ TC-PROD-930～TC-PROD-934；动了 `PluginChannelRouter` 的路由、`PluginHost#registerHostChannel` 的调用方或 `SceneService#receive` 就跑 TC-PROD-930、TC-PROD-931 第 1 步，三种线程模式各一次；动了引擎 `PluginMessageListener` 跑 TC-PROD-931 第 2、4 步；动了 `AdmissionGate` 调 `admit` 的那一段、`AdmissionRegistry#register` 或 `Admission` 的两个 record 跑 TC-PROD-932；动了 `PluginHost#enable` 的校验跑 TC-PROD-933；动了 `PluginHost#disableAll` 跑 TC-PROD-934。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-082，`startTicking` 遇到已经起了的 tick 线程（`REQ-013`、`REQ-PROD-008`，v0.9.107）→ TC-PROD-990；动了 `ServerProcessImpl#startTicking` 或 `ThreadDispatcherImpl#start`、`#isAlive` 就跑 TC-PROD-990 与 TC-PROD-853
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-089 组 CMD，补全的占位符、字符串的引号、读完剩余输入的参数、参数的配置校验、字符串格式的语法与命令面的整理（`REQ-PROD-012`、`REQ-015`，v0.9.113）→ TC-PROD-1030～TC-PROD-1036；动了 `CommandParserImpl#withoutPlaceholder`、`InternalKnownCommand#suggestion` 或 `TabCompleteListener#getSuggestion` 跑 TC-PROD-1030；动了 `ArgumentString#staticParse` 跑 TC-PROD-1031；动了 `Command#addConditionalSyntax` 跑 TC-PROD-1032；动了 `ArgumentNumber` 的 `min`、`max`、`between`，`ArgumentLoop`、`ArgumentGroup` 的构造器或 `ArgumentWord#from` 跑 TC-PROD-1033；动了 `ArgumentParser#generate` 跑 TC-PROD-1034；增删底层集合的包或改 `module-info` 的导出跑 TC-PROD-1035 与 TC-024；动了 `command` 包的其余类跑 TC-PROD-1036 第 1 步
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170、TC-PLAY-180～TC-PLAY-185（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

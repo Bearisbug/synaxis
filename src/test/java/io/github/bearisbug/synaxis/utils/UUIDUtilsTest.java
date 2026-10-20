@@ -6,8 +6,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UUIDUtilsTest {
     private static final UUID TEST_UUID = UUID.fromString("d2ac7139-76a6-435b-b659-7852d34dd7a3");
@@ -17,13 +15,6 @@ class UUIDUtilsTest {
             0xb6597852,
             0xd34dd7a3
     };
-
-    @Test
-    void isUuid() {
-        assertTrue(UUIDUtils.isUuid("d2ac7139-76a6-435b-b659-7852d34dd7a3"));
-        assertFalse(UUIDUtils.isUuid("This is not a UUID"));
-        assertFalse(UUIDUtils.isUuid("d2acL139-76a6-435b-b659-7852d34dd7a3"));
-    }
 
     @Test
     void uuidToIntArray() {

@@ -4,9 +4,10 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import io.github.bearisbug.synaxis.network.PacketSendingUtils;
+import io.github.bearisbug.synaxis.network.packet.server.play.BossBarPacket;
 
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * A listener for boss bar updates. This class is not intended for public use, and it is
@@ -28,37 +29,42 @@ class BossBarListener implements BossBar.Listener {
 
     @Override
     public void bossBarNameChanged(BossBar bar, Component oldName, Component newName) {
-        this.doIfRegistered(bar, holder -> PacketSendingUtils.sendGroupedPacket(holder.players, holder.createTitleUpdate(newName)));
+        this.send(bar, BossBarPacket.UpdateTitleAction::new);
     }
 
     @Override
     public void bossBarProgressChanged(BossBar bar, float oldProgress, float newProgress) {
-        this.doIfRegistered(bar, holder -> PacketSendingUtils.sendGroupedPacket(holder.players, holder.createPercentUpdate(newProgress)));
-
+        this.send(bar, BossBarPacket.UpdateHealthAction::new);
     }
 
     @Override
     public void bossBarColorChanged(BossBar bar, BossBar.Color oldColor, BossBar.Color newColor) {
-        this.doIfRegistered(bar, holder -> PacketSendingUtils.sendGroupedPacket(holder.players, holder.createColorUpdate(newColor)));
+        this.send(bar, BossBarPacket.UpdateStyleAction::new);
     }
 
     @Override
     public void bossBarOverlayChanged(BossBar bar, BossBar.Overlay oldOverlay, BossBar.Overlay newOverlay) {
-        this.doIfRegistered(bar, holder -> PacketSendingUtils.sendGroupedPacket(holder.players, holder.createOverlayUpdate(newOverlay)));
+        this.send(bar, BossBarPacket.UpdateStyleAction::new);
     }
 
     @Override
     public void bossBarFlagsChanged(BossBar bar, Set<BossBar.Flag> flagsAdded, Set<BossBar.Flag> flagsRemoved) {
-        this.doIfRegistered(bar, holder -> PacketSendingUtils.sendGroupedPacket(holder.players, holder.createFlagsUpdate()));
+        this.send(bar, BossBarPacket.UpdateFlagsAction::new);
     }
 
-    private void doIfRegistered(BossBar bar, Consumer<BossBarHolder> consumer) {
-        BossBarHolder holder = this.manager.bars.get(bar);
-        if (holder != null) {
-            // The viewers of the holder only change under its monitor, see BossBarManager
-            synchronized (holder) {
-                consumer.accept(holder);
-            }
+    /**
+     * Sends a change to the viewers of a bar. Adventure sets the new value before it notifies the listeners, so the
+     * action is built from the bar itself.
+     *
+     * @param bar    the bar that changed
+     * @param action builds the action of the change from the bar
+     */
+    private void send(BossBar bar, Function<BossBar, BossBarPacket.Action> action) {
+        final BossBarHolder holder = this.manager.bars.get(bar);
+        if (holder == null) return;
+        // The viewers of the holder only change under its monitor, see BossBarManager
+        synchronized (holder) {
+            PacketSendingUtils.sendGroupedPacket(holder.players, new BossBarPacket(holder.uuid, action.apply(bar)));
         }
     }
 }

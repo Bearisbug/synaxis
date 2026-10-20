@@ -10,34 +10,6 @@ import org.jetbrains.annotations.Nullable;
  * @param <T> The type numeric of the range object.
  */
 public sealed interface Range<T extends Number> {
-    record Byte(@Nullable java.lang.Byte min, @Nullable java.lang.Byte max) implements Range<java.lang.Byte> {
-        public Byte {
-            if (min != null && max != null && min > max) throw new IllegalArgumentException("min must not exceed max");
-        }
-
-        public Byte(@Nullable java.lang.Byte value) {
-            this(value, value);
-        }
-
-        public boolean inRange(byte value) {
-            return (min == null || value >= min) && (max == null || value <= max);
-        }
-    }
-
-    record Short(@Nullable java.lang.Short min, @Nullable java.lang.Short max) implements Range<java.lang.Short> {
-        public Short {
-            if (min != null && max != null && min > max) throw new IllegalArgumentException("min must not exceed max");
-        }
-
-        public Short(@Nullable java.lang.Short value) {
-            this(value, value);
-        }
-
-        public boolean inRange(short value) {
-            return (min == null || value >= min) && (max == null || value <= max);
-        }
-    }
-
     record Int(@Nullable Integer min, @Nullable Integer max) implements Range<Integer> {
         private static final Codec<Range.Int> STRUCT_CODEC = StructCodec.struct(
                 "min", Codec.INT.optional(), Range.Int::min,
@@ -49,7 +21,8 @@ public sealed interface Range<T extends Number> {
                 range -> range.min != null && range.min.equals(range.max) ? Either.right(range.min) : Either.left(range));
 
         public Int {
-            if (min != null && max != null && min > max) throw new IllegalArgumentException("min must not exceed max");
+            if (min != null && max != null && min > max)
+                throw new IllegalArgumentException("min (" + min + ") must not exceed max (" + max + ")");
         }
 
         public Int(@Nullable Integer value) {
@@ -61,23 +34,10 @@ public sealed interface Range<T extends Number> {
         }
     }
 
-    record Long(@Nullable java.lang.Long min, @Nullable java.lang.Long max) implements Range<java.lang.Long> {
-        public Long {
-            if (min != null && max != null && min > max) throw new IllegalArgumentException("min must not exceed max");
-        }
-
-        public Long(@Nullable java.lang.Long value) {
-            this(value, value);
-        }
-
-        public boolean inRange(long value) {
-            return (min == null || value >= min) && (max == null || value <= max);
-        }
-    }
-
     record Float(@Nullable java.lang.Float min, @Nullable java.lang.Float max) implements Range<java.lang.Float> {
         public Float {
-            if (min != null && max != null && min > max) throw new IllegalArgumentException("min must not exceed max");
+            if (min != null && max != null && min > max)
+                throw new IllegalArgumentException("min (" + min + ") must not exceed max (" + max + ")");
         }
 
         public Float(@Nullable java.lang.Float value) {
@@ -100,7 +60,8 @@ public sealed interface Range<T extends Number> {
                 range -> range.min != null && range.min.equals(range.max) ? Either.right(range.min) : Either.left(range));
 
         public Double {
-            if (min != null && max != null && min > max) throw new IllegalArgumentException("min must not exceed max");
+            if (min != null && max != null && min > max)
+                throw new IllegalArgumentException("min (" + min + ") must not exceed max (" + max + ")");
         }
 
         public Double(@Nullable java.lang.Double value) {

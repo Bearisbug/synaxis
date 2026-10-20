@@ -27,12 +27,22 @@ public final class WeightedList<T> implements Iterable<T> {
     private final List<Entry<T>> entries;
     private final int totalWeight;
 
+    /**
+     * Creates a weighted list.
+     *
+     * @param entries the entries
+     * @throws IllegalArgumentException if a weight is negative or the weights add up to more than an int holds
+     */
     public WeightedList(List<Entry<T>> entries) {
         this.entries = List.copyOf(entries);
 
         int total = 0;
-        for (Entry<T> entry : this.entries)
-            total += entry.weight();
+        for (int i = 0; i < this.entries.size(); i++) {
+            final int weight = this.entries.get(i).weight();
+            if (weight < 0) throw new IllegalArgumentException("weight of entry " + i + " is negative: " + weight);
+            if (weight > Integer.MAX_VALUE - total) throw new IllegalArgumentException("total weight overflows int");
+            total += weight;
+        }
         this.totalWeight = total;
     }
 
@@ -40,7 +50,14 @@ public final class WeightedList<T> implements Iterable<T> {
         return entries;
     }
 
+    /**
+     * Picks an entry at random, each with a chance proportional to its weight.
+     *
+     * @param random the random source
+     * @return the value of the picked entry, or null if no entry has a positive weight
+     */
     public @Nullable T pick(Random random) {
+        if (totalWeight == 0) return null;
         int pick = random.nextInt(totalWeight);
         for (Entry<T> entry : entries) {
             pick -= entry.weight();
@@ -50,7 +67,7 @@ public final class WeightedList<T> implements Iterable<T> {
     }
 
     public T pickOrThrow(Random random) {
-        return Objects.requireNonNull(pick(random), "Weighted list was empty");
+        return Objects.requireNonNull(pick(random), "WeightedList has no entry with positive weight");
     }
 
     @Override

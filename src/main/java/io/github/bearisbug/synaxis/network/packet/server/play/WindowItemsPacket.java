@@ -1,7 +1,6 @@
 package io.github.bearisbug.synaxis.network.packet.server.play;
 
 import net.kyori.adventure.text.Component;
-import io.github.bearisbug.synaxis.component.DataComponents;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
@@ -30,47 +29,19 @@ public record WindowItemsPacket(int windowId, int stateId, List<ItemStack> items
 
     @Override
     public List<Component> components() {
-        final var list = new ArrayList<>(this.items);
-        list.add(this.carriedItem);
-
         final var components = new ArrayList<Component>();
-
-        list.forEach(itemStack -> {
-            components.addAll(itemStack.get(DataComponents.LORE, List.of()));
-
-            final var customName = itemStack.get(DataComponents.CUSTOM_NAME);
-            if (customName != null) {
-                components.add(customName);
-            }
-
-            final var itemName = itemStack.get(DataComponents.ITEM_NAME);
-            if (itemName != null) {
-                components.add(itemName);
-            }
-        });
-
+        for (ItemStack item : this.items) components.addAll(ItemStack.textComponents(item));
+        components.addAll(ItemStack.textComponents(this.carriedItem));
         return components;
     }
 
     @Override
     public ServerPacket copyWithOperator(UnaryOperator<Component> operator) {
-        UnaryOperator<List<Component>> loreOperator = lines -> {
-            final var translatedComponents = new ArrayList<Component>();
-            lines.forEach(component -> translatedComponents.add(operator.apply(component)));
-            return translatedComponents;
-        };
         return new WindowItemsPacket(
                 this.windowId,
                 this.stateId,
-                this.items.stream().map(stack -> stack
-                                .update(DataComponents.ITEM_NAME, operator)
-                                .update(DataComponents.CUSTOM_NAME, operator)
-                                .update(DataComponents.LORE, loreOperator))
-                        .toList(),
-                this.carriedItem
-                        .update(DataComponents.ITEM_NAME, operator)
-                        .update(DataComponents.CUSTOM_NAME, operator)
-                        .update(DataComponents.LORE, loreOperator)
+                this.items.stream().map(item -> ItemStack.copyWithOperator(item, operator)).toList(),
+                ItemStack.copyWithOperator(this.carriedItem, operator)
         );
     }
 }

@@ -12,7 +12,7 @@ public record DestroyEntitiesPacket(List<Integer> entityIds) implements ServerPa
     public static final int MAX_ENTRIES = Short.MAX_VALUE;
 
     public static final NetworkBuffer.Type<DestroyEntitiesPacket> SERIALIZER = NetworkBufferTemplate.template(
-            VAR_INT.list(Short.MAX_VALUE), DestroyEntitiesPacket::entityIds,
+            VAR_INT.list(MAX_ENTRIES), DestroyEntitiesPacket::entityIds,
             DestroyEntitiesPacket::new);
 
     public DestroyEntitiesPacket {

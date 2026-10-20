@@ -38,7 +38,7 @@ public class ViewableStorageRollbackIntegrationTest {
         final CountingViewable viewable = new CountingViewable();
 
         assertThrows(IllegalArgumentException.class,
-                () -> viewablePackets.prepareViewablePacket(viewable, unwritable));
+                () -> viewablePackets.prepareViewablePacket(viewable, unwritable, null));
         viewablePackets.flush();
 
         assertEquals(0, viewable.flushed.get(),

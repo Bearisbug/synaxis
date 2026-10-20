@@ -16,6 +16,7 @@ import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static com.tngtech.archunit.base.DescribedPredicate.not;
@@ -45,7 +46,8 @@ public class ArchitectureTest {
     /**
      * {@link Tag#Structure} and {@link Tag#View} read their sub compound through
      * {@link TagHandler#fromCompound}, which registers every key it meets in a process wide index
-     * that never shrinks (audit F49).
+     * that never shrinks (audit F49); {@link TagHandler#updateContent} runs its compound through the
+     * same index.
      * <p>
      * The ban is unconditional, not "not on client supplied compounds": where a compound came from
      * is a runtime taint, and bytecode analysis cannot see it, so a rule phrased that way would
@@ -61,11 +63,11 @@ public class ArchitectureTest {
      * §24 and §28.
      */
     private static final DescribedPredicate<JavaAccess<?>> STRUCTURED_TAG_ENTRY_POINTS =
-            DescribedPredicate.describe("Tag.Structure, Tag.View or TagHandler.fromCompound", access -> {
+            DescribedPredicate.describe("Tag.Structure, Tag.View, TagHandler.fromCompound or TagHandler.updateContent", access -> {
                 final String owner = access.getTargetOwner().getFullName();
                 final String name = access.getTarget().getName();
                 if (owner.equals(Tag.class.getName())) return name.equals("Structure") || name.equals("View");
-                return owner.equals(TagHandler.class.getName()) && name.equals("fromCompound");
+                return owner.equals(TagHandler.class.getName()) && (name.equals("fromCompound") || name.equals("updateContent"));
             });
 
     /**
@@ -105,6 +107,22 @@ public class ArchitectureTest {
         }
     }
 
+    /** Replacing the content of a handler runs the compound through the same index as {@link TagHandler#fromCompound}. */
+    private static final class GameClassUpdatingATagHandler {
+        @SuppressWarnings("unused")
+        static void replace(TagHandler handler, CompoundBinaryTag compound) {
+            handler.updateContent(compound);
+        }
+    }
+
+    /** The same violation as a method reference. */
+    private static final class GameClassReferencingTheTagHandlerUpdate {
+        @SuppressWarnings("unused")
+        static BiConsumer<TagHandler, CompoundBinaryTag> updater() {
+            return TagHandler::updateContent;
+        }
+    }
+
     @Test
     public void gameSideDoesNotUseTheStructuredTags() {
         gameSideDoesNotReadCompoundsIntoTags().check(gameSideClasses());
@@ -112,22 +130,32 @@ public class ArchitectureTest {
 
     @Test
     public void theRuleRejectsAGameClassCallingTheTagIndex() {
-        assertTheRuleRejects(GameClassCallingTheTagIndex.class);
+        assertTheRuleRejects(GameClassCallingTheTagIndex.class, "fromCompound");
     }
 
     @Test
     public void theRuleRejectsAGameClassReferencingTheTagIndex() {
-        assertTheRuleRejects(GameClassReferencingTheTagIndex.class);
+        assertTheRuleRejects(GameClassReferencingTheTagIndex.class, "fromCompound");
     }
 
-    private static void assertTheRuleRejects(Class<?> offender) {
+    @Test
+    public void theRuleRejectsAGameClassUpdatingATagHandler() {
+        assertTheRuleRejects(GameClassUpdatingATagHandler.class, "updateContent");
+    }
+
+    @Test
+    public void theRuleRejectsAGameClassReferencingTheTagHandlerUpdate() {
+        assertTheRuleRejects(GameClassReferencingTheTagHandlerUpdate.class, "updateContent");
+    }
+
+    private static void assertTheRuleRejects(Class<?> offender, String entryPoint) {
         JavaClasses synthetic = new ClassFileImporter().importClasses(offender);
 
         AssertionError violation = assertThrows(
                 AssertionError.class, () -> gameSideDoesNotReadCompoundsIntoTags().check(synthetic));
 
         assertTrue(violation.getMessage().contains(offender.getName()), violation.getMessage());
-        assertTrue(violation.getMessage().contains("fromCompound"), violation.getMessage());
+        assertTrue(violation.getMessage().contains(entryPoint + "("), violation.getMessage());
     }
 
     /**

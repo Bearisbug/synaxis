@@ -25,6 +25,7 @@ import io.github.bearisbug.synaxis.event.entity.EntitySetFireEvent;
 import io.github.bearisbug.synaxis.event.item.EntityEquipEvent;
 import io.github.bearisbug.synaxis.event.item.PickupItemEvent;
 import io.github.bearisbug.synaxis.instance.EntityTracker;
+import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.inventory.EquipmentHandler;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.component.AttributeList;
@@ -34,12 +35,12 @@ import io.github.bearisbug.synaxis.network.packet.server.play.CollectItemPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.DamageEventPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.EntityAnimationPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.EntityAttributesPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.EntityHeadLookPacket;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.sound.SoundEvent;
 import io.github.bearisbug.synaxis.thread.Acquirable;
 import io.github.bearisbug.synaxis.thread.TickThread;
-import io.github.bearisbug.synaxis.utils.MathUtils;
 import io.github.bearisbug.synaxis.utils.validate.Check;
 import io.github.bearisbug.synaxis.instance.block.BlockIterator;
 import io.github.bearisbug.synaxis.timer.Cooldown;
@@ -59,6 +60,12 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * An entity with health, equipment, attributes and effects.
+ * <p>
+ * Created without a {@link ServerProcess}, it dispatches no event until its first {@link #setInstance(Instance)}, see
+ * {@link Entity#Entity(EntityType, UUID)}.
+ */
 public class LivingEntity extends Entity implements EquipmentHandler {
 
     private static final AttributeModifier SPRINTING_SPEED_MODIFIER = new AttributeModifier(Key.key("sprinting"), 0.3F, AttributeOperation.ADD_MULTIPLIED_TOTAL);
@@ -109,22 +116,23 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     /**
      * Constructor which binds the entity to a process right away, see {@link Entity#Entity(ServerProcess, EntityType, UUID)}.
      */
-    @SuppressWarnings("this-escape") // Same pattern as EntityCreature, the entity is not usable until spawned
+    @SuppressWarnings("this-escape") // The entity is not usable until spawned
     public LivingEntity(ServerProcess process, EntityType entityType, UUID uuid) {
         super(process, entityType, uuid);
-        this.health = (float) getAttributeValue(Attribute.MAX_HEALTH);
-        final LivingEntityMeta livingMeta = getLivingEntityMeta();
-        if (livingMeta != null) livingMeta.setHealth(this.health);
+        initFullHealth();
     }
 
     /**
      * Constructor which allows to specify an UUID. Only use if you know what you are doing!
      */
-    @SuppressWarnings("this-escape") // Same pattern as EntityCreature, the entity is not usable until spawned
+    @SuppressWarnings("this-escape") // The entity is not usable until spawned
     public LivingEntity(EntityType entityType, UUID uuid) {
         super(entityType, uuid);
-        // Without this a bare LivingEntity spawns with the 1 HP field default and its health metadata
-        // is never written; EntityCreature and Player were the only ones healing themselves
+        initFullHealth();
+    }
+
+    /** Created at full health, written to the metadata. */
+    private void initFullHealth() {
         this.health = (float) getAttributeValue(Attribute.MAX_HEALTH);
         final LivingEntityMeta meta = getLivingEntityMeta();
         if (meta != null) meta.setHealth(this.health);
@@ -283,7 +291,9 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     }
 
     /**
-     * Makes the entity vulnerable or invulnerable.
+     * Makes the entity vulnerable or invulnerable. An invulnerable entity only takes {@link DamageType#OUT_OF_WORLD}
+     * damage, every other type is turned away, {@link DamageType#GENERIC_KILL} included: {@link #kill()} kills it all
+     * the same. Override {@link #isImmune(RegistryKey)} to judge otherwise.
      *
      * @param invulnerable should the entity be invulnerable
      */
@@ -376,6 +386,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
      *
      * @param damage the damage to be applied
      * @return true if damage has been applied, false if it didn't
+     * @throws IllegalArgumentException if the type of the damage is not registered, before anything changes
      */
     public boolean damage(Damage damage) {
         if (isDead())
@@ -383,6 +394,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
         if (isImmune(damage.getType())) {
             return false;
         }
+        final int typeId = damage.getTypeId(process().registries());
 
         EntityDamageEvent entityDamageEvent = new EntityDamageEvent(this, damage, damage.getSound(this));
         callCancellableEvent(entityDamageEvent, () -> {
@@ -393,7 +405,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
 
             if (entityDamageEvent.shouldAnimate()) {
                 sendPacketToViewersAndSelf(new DamageEventPacket(
-                        getEntityId(), damage.getTypeId(process().registries()),
+                        getEntityId(), typeId,
                         damage.getAttacker() == null ? 0 : damage.getAttacker().getEntityId() + 1,
                         damage.getSource() == null ? 0 : damage.getSource().getEntityId() + 1,
                         damage.getSourcePosition()
@@ -438,7 +450,9 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     }
 
     /**
-     * Is this entity immune to the given type of damage?
+     * Is this entity immune to the given type of damage? By default an {@link #isInvulnerable() invulnerable} entity is
+     * immune to every type but {@link DamageType#OUT_OF_WORLD}, {@link DamageType#GENERIC_KILL} included, and any
+     * other entity to none.
      *
      * @param type the type of damage
      * @return true if this entity is immune to the given type of damage
@@ -471,7 +485,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     public void setHealth(float health) {
         Check.argCondition(Float.isNaN(health), "Health cannot be NaN");
         acquirable().assertOwnership();
-        this.health = MathUtils.clamp(health, 0, (float) getAttributeValue(Attribute.MAX_HEALTH));
+        this.health = Math.clamp(health, 0, (float) getAttributeValue(Attribute.MAX_HEALTH));
         if (this.health <= 0) {
             if (!isDead) kill();
         } else if (isDead) {
@@ -528,9 +542,11 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     }
 
     /**
-     * Retrieves all {@link AttributeInstance}s on this entity.
+     * Retrieves the {@link AttributeInstance}s this entity has created: those {@link #getAttribute(Attribute)} was
+     * called for, and those a modifier of the equipment changed. Any other attribute has the default value of the
+     * entity type, which {@link #getAttributeValue(Attribute)} reads without creating an instance.
      *
-     * @return a collection of all attribute instances on this entity
+     * @return a view of the attribute instances created on this entity
      */
     public @UnmodifiableView Collection<AttributeInstance> getAttributes() {
         return unmodifiableModifiers;
@@ -763,15 +779,19 @@ public class LivingEntity extends Entity implements EquipmentHandler {
      * Gets the target (not-air) block position of the entity.
      *
      * @param maxDistance The max distance to scan before returning null, in blocks
-     * @return The block position targeted by this entity, null if non are found
+     * @return The block position targeted by this entity, null if none is found before the ray reaches a chunk that
+     * is not loaded, or if this entity is in no instance
      * @throws IllegalArgumentException if {@code maxDistance} is not positive
      */
     public @Nullable Point getTargetBlockPosition(int maxDistance) {
         Check.argCondition(maxDistance <= 0, "maxDistance must be positive but was {0}", maxDistance);
+        final Instance instance = getInstance();
+        if (instance == null) return null;
         Iterator<Point> it = new BlockIterator(this, maxDistance);
         while (it.hasNext()) {
             final Point position = it.next();
-            if (!getInstance().getBlock(position).air()) return position;
+            if (!instance.isChunkLoaded(position)) return null;
+            if (!instance.getBlock(position).air()) return position;
         }
         return null;
     }
@@ -801,6 +821,17 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     public void takeKnockback(float strength, final double x, final double z) {
         strength *= (float) (1 - getAttributeValue(Attribute.KNOCKBACK_RESISTANCE));
         super.takeKnockback(strength, x, z);
+    }
+
+    /**
+     * Sends the head rotation along: the moves send it in sheddable packets, which a connection over its outbound
+     * backlog drops, and the next synchronization is what puts the head back.
+     */
+    @ApiStatus.Internal
+    @Override
+    protected void synchronizePosition() {
+        super.synchronizePosition();
+        process().viewablePackets().prepareViewablePacket(currentChunk, new EntityHeadLookPacket(getEntityId(), headRotation), this);
     }
 
     @SuppressWarnings("unchecked")

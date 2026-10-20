@@ -31,6 +31,10 @@ public interface TagHandler extends TagReadable, TagWritable {
      * Updates the content of this handler.
      * <p>
      * Can be used as a clearing method with {@link CompoundBinaryTag#empty()}.
+     * <p>
+     * <b>Must not be used with untrusted data.</b> Like {@link #fromCompound(CompoundBinaryTag)}, it registers every
+     * key of the compound in a process wide, never shrinking index, so a compound coming from a client can grow that
+     * index without bound. Read client NBT key by key instead, the way the item components do.
      *
      * @param compound the new content of this handler
      */

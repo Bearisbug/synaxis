@@ -9,6 +9,12 @@ import org.jetbrains.annotations.Nullable;
 import java.time.Duration;
 import java.util.UUID;
 
+/**
+ * A living entity that can have a target to attack.
+ * <p>
+ * Created without a {@link io.github.bearisbug.synaxis.ServerProcess}, it dispatches no event until its first
+ * {@link #setInstance(io.github.bearisbug.synaxis.instance.Instance)}, see {@link Entity#Entity(EntityType, UUID)}.
+ */
 public class EntityCreature extends LivingEntity {
 
     private int removalAnimationDelay = 1000;
@@ -18,10 +24,8 @@ public class EntityCreature extends LivingEntity {
     /**
      * Constructor which allows to specify an UUID. Only use if you know what you are doing!
      */
-    @SuppressWarnings("this-escape") // deliberate self registration during construction
     public EntityCreature(EntityType entityType, UUID uuid) {
         super(entityType, uuid);
-        heal();
     }
 
     public EntityCreature(EntityType entityType) {

@@ -22,11 +22,13 @@ import static net.kyori.adventure.resource.ResourcePackRequest.resourcePackReque
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 class PlayerResourcePackIntegrationTest {
     private static final ResourcePackInfo INFO = ResourcePackInfo.resourcePackInfo(UUID.randomUUID(), URI.create("http://localhost:8080/missing.zip"), "i am not a hash!");
+    private static final ResourcePackInfo OTHER = ResourcePackInfo.resourcePackInfo(UUID.randomUUID(), URI.create("http://localhost:8080/other.zip"), "nor am i");
 
     @Test
     void applyCallbackOnSuccess(Env env) {
@@ -97,6 +99,58 @@ class PlayerResourcePackIntegrationTest {
 
         assertNull(player.getResourcePackFuture(),
                 "the status answered during the push was dropped, the configuration thread waits forever");
+    }
+
+    /**
+     * A replacing request keeps the wait whoever waits on the packs already holds: it ends once the new pack is answered.
+     * The pack it replaced is forgotten, the client discarding it neither calls its callback nor kicks for it.
+     */
+    @Test
+    void replacingKeepsTheWaitForTheNewPackAndForgetsTheOldOne(Env env) {
+        var instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, 40, 0));
+        AtomicBoolean replacedCalled = new AtomicBoolean();
+
+        player.sendResourcePacks(resourcePackRequest().required(true).callback((_, _, _) -> replacedCalled.set(true)).packs(INFO).build());
+        var future = player.getResourcePackFuture();
+        assertNotNull(future);
+        player.sendResourcePacks(resourcePackRequest().replace(true).packs(OTHER).build());
+
+        assertSame(future, player.getResourcePackFuture(), "the replacing request handed out another wait");
+        assertFalse(future.isDone(), "the new pack has not been answered yet");
+        player.addPacketToQueue(new ClientResourcePackStatusPacket(INFO.id(), ResourcePackStatus.DISCARDED));
+        player.addPacketToQueue(new ClientResourcePackStatusPacket(OTHER.id(), ResourcePackStatus.SUCCESSFULLY_LOADED));
+        player.interpretPacketQueue();
+
+        assertTrue(future.isDone(), "the wait outlived the answer to the new pack");
+        assertFalse(replacedCalled.get(), "the callback of the replaced pack was called");
+        assertTrue(player.isOnline(), "the replaced required pack kicked the player");
+    }
+
+    /** Removing or clearing the last packs ends the wait, and the answer to a pack taken back is ignored. */
+    @Test
+    void packsTakenBackEndTheWaitAndTheirAnswerIsIgnored(Env env) {
+        var instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, 40, 0));
+        AtomicBoolean called = new AtomicBoolean();
+
+        player.sendResourcePacks(resourcePackRequest().required(true).callback((_, _, _) -> called.set(true)).packs(INFO).build());
+        var removed = player.getResourcePackFuture();
+        assertNotNull(removed);
+        player.removeResourcePacks(INFO.id());
+        assertTrue(removed.isDone(), "the wait outlived the removal of its last pack");
+        assertNull(player.getResourcePackFuture());
+        player.addPacketToQueue(new ClientResourcePackStatusPacket(INFO.id(), ResourcePackStatus.DISCARDED));
+        player.interpretPacketQueue();
+        assertFalse(called.get(), "the callback of the removed pack was called");
+        assertTrue(player.isOnline(), "the removed required pack kicked the player");
+
+        player.sendResourcePacks(resourcePackRequest().packs(OTHER).build());
+        var cleared = player.getResourcePackFuture();
+        assertNotNull(cleared);
+        player.clearResourcePacks();
+        assertTrue(cleared.isDone(), "the wait outlived the clearing of the packs");
+        assertNull(player.getResourcePackFuture());
     }
 
     /**

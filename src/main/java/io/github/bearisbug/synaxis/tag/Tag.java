@@ -19,6 +19,12 @@ import java.util.function.Supplier;
  * Represents a key to retrieve or change a value.
  * <p>
  * All tags are serializable.
+ * <p>
+ * Build a tag once, in a {@code static final} field, and reuse it. {@link #ItemStack(String, Registries)},
+ * {@link #Component(String, Registries)}, {@link #Structure(String, TagSerializer)} and {@link #map(Function, Function)}
+ * create new functions on every call: two tags built that way from the same key are not equal and share no cached
+ * value, every read decodes the NBT again. A tag mapped from a {@link #Transient(String)} one reads only what the
+ * very same tag instance wrote.
  *
  * @param <T> the tag type
  */
@@ -71,6 +77,10 @@ public sealed interface Tag<T extends @UnknownNullability Object> permits TagImp
      * Creates a flexible tag able to read and write any {@link BinaryTag} objects.
      * <p>
      * Specialized tags are recommended if the type is known as conversion will be required both way (read and write).
+     * <p>
+     * A compound set with this tag on a {@link TagHandler} is separated key by key into the tags of the handler, which
+     * registers every key in a process wide, never shrinking index: <b>must not be used with untrusted data</b>, see
+     * {@link TagHandler#fromCompound(CompoundBinaryTag)}.
      */
     static Tag<BinaryTag> NBT(String key) {
         return TagImpl.tag(key, Serializers.NBT_ENTRY);
@@ -131,38 +141,66 @@ public sealed interface Tag<T extends @UnknownNullability Object> permits TagImp
      */
     @SuppressWarnings("unchecked")
     static <T> Tag<T> Transient(String key) {
-        return (Tag<T>) TagImpl.tag(key, Serializers.EMPTY);
+        return (Tag<T>) TagImpl.tag(key, Serializers.TRANSIENT);
     }
-
-    /**
-     * Use {@link #key()} instead
-     * @return the key
-     * @deprecated misleading non-record component, use {@link #key()} instead.
-     */
-    @Deprecated
-    String getKey();
 
     /**
      * Returns the key for the Tag
      * <br>
-     * Same key specified during the creation.
+     * Same key specified during the creation; a view has the empty key.
      * @return the key to use
      */
     String key();
 
+    /**
+     * Creates this tag with a default value, read where the tag has no value.
+     *
+     * @param defaultValue called on every read that finds no value
+     * @return the tag with the default value
+     */
     @Contract(value = "_ -> new", pure = true)
     Tag<T> defaultValue(Supplier<T> defaultValue);
 
+    /**
+     * Creates this tag with a default value, read where the tag has no value. Every such read returns this very
+     * instance: a mutable default takes {@link #defaultValue(Supplier)}.
+     *
+     * @param defaultValue the default value
+     * @return the tag with the default value
+     */
     @Contract(value = "_ -> new", pure = true)
     Tag<T> defaultValue(T defaultValue);
 
+    /**
+     * Creates a tag of another type over the same key, read through {@code readMap} and written through
+     * {@code writeMap}. Each call creates a new tag that shares no cached value with another, see the class
+     * description.
+     *
+     * @param readMap  turns a value of this tag into one of the new tag
+     * @param writeMap turns a value of the new tag into one of this tag
+     * @param <R>      the type of the new tag
+     * @return the mapped tag
+     */
     @Contract(value = "_, _ -> new", pure = true)
     <R> Tag<R> map(Function<T, R> readMap,
                    Function<R, T> writeMap);
 
+    /**
+     * Creates a tag holding a list of values of this tag, over the same key. The list tag has no default value, it
+     * does not take the one of this tag.
+     *
+     * @return the list tag
+     */
     @Contract(value = "-> new", pure = true)
     Tag<List<T>> list();
 
+    /**
+     * Creates this tag under the given path of nested compounds.
+     *
+     * @param path the keys of the nested compounds, outermost first; null or an empty array for no path
+     * @return the tag under the path
+     * @throws IllegalArgumentException if a key of the path is null or empty
+     */
     @Contract(value = "_ -> new", pure = true)
     Tag<T> path(String @Nullable ... path);
 
@@ -188,13 +226,38 @@ public sealed interface Tag<T extends @UnknownNullability Object> permits TagImp
      */
     void write(CompoundBinaryTag.Builder nbtCompound, T value);
 
-    void writeUnsafe(CompoundBinaryTag.Builder nbtCompound, @Nullable Object value);
-
+    /**
+     * Whether this tag is a view ({@link #View(TagSerializer)}): it reads and writes the whole compound rather than
+     * one key of it.
+     *
+     * @return true for a view
+     */
     boolean isView();
 
+    /**
+     * Whether a value cached for {@code other} is a value of this tag as well, so that it can be returned without
+     * decoding the NBT again.
+     *
+     * @param other the other tag
+     * @return true if the two tags share their values
+     */
+    @ApiStatus.Internal
     boolean shareValue(Tag<?> other);
 
+    /**
+     * Gets the default value of this tag.
+     *
+     * @return the default value, null if there is none
+     */
+    @ApiStatus.Internal
     T createDefault();
 
+    /**
+     * Copies a value before it is stored, for the tags of a type that is mutable, such as a list.
+     *
+     * @param value the value
+     * @return the copy to store, {@code value} itself for an immutable type
+     */
+    @ApiStatus.Internal
     T copyValue(T value);
 }

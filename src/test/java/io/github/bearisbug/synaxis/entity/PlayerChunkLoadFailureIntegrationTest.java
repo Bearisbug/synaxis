@@ -14,6 +14,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 @EnvTest
@@ -58,5 +59,6 @@ public class PlayerChunkLoadFailureIntegrationTest {
                 "setInstance never completed after a chunk load failure");
         var error = assertDoesNotThrow(() -> thrown.get(5, TimeUnit.SECONDS));
         assertInstanceOf(CompletionException.class, error, "the chunk load failure must reach the caller");
+        assertEquals(0, broken.chunkTicketCount(0, 0), "the failed change left the view tickets of its ring behind");
     }
 }

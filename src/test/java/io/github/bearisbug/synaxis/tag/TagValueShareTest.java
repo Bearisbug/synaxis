@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 
 import java.util.function.Function;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -111,5 +113,18 @@ public class TagValueShareTest {
         var tag2 = Tag.Structure("test", Vec.class).list();
         assertTrue(tag.shareValue(tag2));
         assertTrue(tag.list().shareValue(tag2.list()));
+    }
+
+    /** A mapped transient tag is only shared by itself: two built alike do not see each other's value. */
+    @Test
+    public void mappedTransientTagsBuiltTwiceShareNothing() {
+        var handler = TagHandler.newHandler();
+        Tag<Object> first = Tag.<Object>Transient("k").map(x -> x, x -> x);
+        Tag<Object> second = Tag.<Object>Transient("k").map(x -> x, x -> x);
+
+        handler.setTag(first, "value");
+
+        assertEquals("value", handler.getTag(first));
+        assertNull(handler.getTag(second));
     }
 }

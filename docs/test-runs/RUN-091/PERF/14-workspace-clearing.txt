@@ -1,0 +1,42 @@
+工作区的清空分支：同一尺寸连着算（f3352bfb57）
+
+LightEngine.Workspace 的 clearLoaded、clearStates、clearSkyHeight 在长度变了时新建、没变时 Arrays.fill。
+SynxRelight 的重算线程每次都是同一高度的 5×5，只走 Arrays.fill 那条；LightEngineWorkspaceTest 原来那条用例
+（oneWorkspaceGivesEachComputationTheLightOfANewOne）相邻两次的区域尺寸总不同，只走新建那条。
+
+新加 oneWorkspaceOverOneAreaInARowGivesEachTheLightOfANewOne：区域在外、视图在内，每块区域上一个工作区连着算
+7 个对拍场景、4 个缺区块 (0, 0) 的场景（pastAMissingChunk，连着 4 个同一尺寸）、1 个全空气的视图，再把这 12 个各包一层
+AirUnwritten（section 遇到全空气返回 false、不写数组）再算一遍；三块区域共 72 次。上一次有方块、这一次缺区块或
+section 返回 false 的位置都在其中。全部算完之后逐个与新建工作区的结果逐 section 比较 sky 与 block。
+
+绿：<G> :test --tests 'io.github.bearisbug.synaxis.instance.light.LightEngineWorkspaceTest' --rerun :testNamingCheck
+  <testsuite name="io.github.bearisbug.synaxis.instance.light.LightEngineWorkspaceTest" tests="2" skipped="0" failures="0" errors="0" time="1.991"
+
+反证（各在 f3352bfb57 上改一行，跑完 git reset --hard HEAD）：
+<G> :test --tests 'io.github.bearisbug.synaxis.instance.light.LightEngineWorkspaceTest' --rerun \
+    :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxRelight*' --rerun --continue
+
+一、删掉 LightEngine.java:159 的 else Arrays.fill(states, null);（clearStates 不清 section 引用表）
+  2 tests completed, 1 failed
+  <testsuite name="io.github.bearisbug.synaxis.instance.light.LightEngineWorkspaceTest" tests="2" skipped="0" failures="1" errors="0"
+    oneWorkspaceOverOneAreaInARowGivesEachTheLightOfANewOne：
+    sky of computation 1 (view 1, area -1,-1..1,1), section -1,-3,-1 ==> array contents differ at index [1152], expected: <-70> but was: <0>
+    at LightEngineWorkspaceTest.java:81（assertLikeNewWorkspaces，由 :51 调用）
+    原来那条用例（尺寸每次变）仍绿。
+  :synx 的 SynxRelight* 五个类全绿，抓不到：
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightIntegrationTest" tests="10" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightViewersIntegrationTest" tests="6" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightDeliveredIntegrationTest" tests="1" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightStateIdsTest" tests="7" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="1" failures="0" errors="0"
+
+二、删掉 LightEngine.java:152 的 else Arrays.fill(loaded, false);（clearLoaded 不清已载入表）
+  2 tests completed, 1 failed
+  <testsuite name="io.github.bearisbug.synaxis.instance.light.LightEngineWorkspaceTest" tests="2" skipped="0" failures="1" errors="0"
+    oneWorkspaceOverOneAreaInARowGivesEachTheLightOfANewOne：
+    sky of computation 7 (view 7, area -1,-1..1,1), section -1,-4,0 ==> array contents differ at index [1], expected: <0> but was: <33>
+    at LightEngineWorkspaceTest.java:81（由 :51 调用）；computation 7 是第一个缺区块 (0, 0) 的场景，紧跟在区块齐全的场景之后。
+    原来那条用例仍绿。
+  :synx 的 SynxRelight* 五个类同样全绿（10、6、1、7 条 0 失败，测量用例跳过），抓不到。
+
+读法：两处反证 synx 的重算各类都抓不到（原因没有查），只有引擎这条新用例守着。

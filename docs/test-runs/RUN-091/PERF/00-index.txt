@@ -16,6 +16,7 @@ JMH 的 jar 用同样的 mkdir 锁、owner 行与退出时放锁的写法单独�
   202c6407c8 light: LightEngine.Workspace 复用每次计算的状态、等级与队列数组，WorldView#section 写进引擎给的数组；
              SynxRelight 每个重算线程一个工作区，基准同
   87e25fe4c4 test: LightEngineWorkspaceTest（一个工作区连续算 33 次，与各自新建的逐字节相同）
+  f3352bfb57 test: LightEngineWorkspaceTest 加同一尺寸连着算的一条（72 次，含全空气视图与不写数组的视图）
 
 文件
   01-jmh-baseline.txt    单中心基准的基线（耗时与每次分配）
@@ -34,6 +35,7 @@ JMH 的 jar 用同样的 mkdir 锁、owner 行与退出时放锁的写法单独�
   11-jmh-ab.txt          工作区复用前后的单中心基准 A B A B（耗时与 B/op）
   12-tc-world-139-gc.txt 工作区复用前后的 TC-WORLD-139，各一次开 JFR：GC 暂停与装回耗时
   13-workspace-parity.txt 工作区复用后光照结果不变，复用测试与反证
+  14-workspace-clearing.txt 工作区的清空分支：同一尺寸连着算的用例与两条反证（synx 抓不到）
 
 结论
   1. 单中心（5×5 快照上的 relightArea，单线程，不挂代理）：7,488～7,802 µs → 3,284～3,286 µs；

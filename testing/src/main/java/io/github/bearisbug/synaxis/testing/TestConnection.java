@@ -10,10 +10,15 @@ public interface TestConnection {
 
     /**
      * Tracks the packets of a type sent to this connection, until the first
-     * {@link Collector#collect()} of the returned collector. A packet handed over already encoded is
-     * not tracked. With {@code synaxis.automatic-component-translation} on, a packet holding
+     * {@link Collector#collect()} of the returned collector. A
+     * {@link io.github.bearisbug.synaxis.network.packet.server.BufferedPacket}, which holds encoded bytes
+     * and no packet object, is not tracked; the packet inside a
+     * {@link io.github.bearisbug.synaxis.network.packet.server.CachedPacket} or a
+     * {@link io.github.bearisbug.synaxis.network.packet.server.FramedPacket} is. With
+     * {@code synaxis.automatic-component-translation} on, a packet sent as a packet object and holding
      * components is tracked as {@link io.github.bearisbug.synaxis.adventure.EngineAdventure#COMPONENT_TRANSLATOR}
-     * renders it for the player, which is what a socket connection sends.
+     * renders it for the player, and the packet inside a cached or framed packet is tracked as it is:
+     * both are what a socket connection sends.
      *
      * @param type the packet type, subtypes included
      * @param <T>  the packet type

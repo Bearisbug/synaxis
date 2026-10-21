@@ -713,4 +713,20 @@ class HandshakeIntegrationTest {
         }
         assertFalse(thread.isAlive(), "the pre login event never returned");
     }
+
+    @Test
+    void aRejectionKeyOfThePluginsOwnNamespaceIsLedgeredWhole(Env env) {
+        final Wire wire = wire(env);
+        final Player player = player(env, wire);
+        final PluginHost host = host(env);
+        host.registerHostAdmission(_ -> new Admission.Reject("rts:match-unavailable"));
+        host.requireHandshake();
+
+        assertNull(configure(env, player, hello(7, ProtocolSchema.SCHEMA_VERSION)));
+
+        assertKickedWith("rts:match-unavailable", wire);
+        // Only the synaxis namespace is dropped: this is not the host's match-unavailable (§20)
+        final String rejection = onlyLedgerLine("client_rejected");
+        assertTrue(rejection.contains("\"reason\":\"rts:match-unavailable\""), rejection);
+    }
 }

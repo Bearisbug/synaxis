@@ -157,8 +157,9 @@ final class AdmissionGate {
     private void rejected(UUID connectionId, HandshakeGate.HelloResult hello, String reasonKey) {
         final Map<String, Object> attributes = new LinkedHashMap<>();
         attributes.put("connection_id", connectionId);
-        // §20 names the reason without the translate prefix the disconnect key carries.
-        attributes.put("reason", reasonKey.substring(reasonKey.indexOf(':') + 1));
+        // §20 names a reason of the host without its synaxis: prefix; a plugin's own key stays whole,
+        // so that rts:match-unavailable is not taken for synaxis:match-unavailable.
+        attributes.put("reason", reasonKey.startsWith("synaxis:") ? reasonKey.substring("synaxis:".length()) : reasonKey);
         attributes.put("schema_version", hello.schemaVersion());
         ledger.record("client_rejected", attributes);
     }

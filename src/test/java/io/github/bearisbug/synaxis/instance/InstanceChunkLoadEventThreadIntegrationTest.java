@@ -25,11 +25,12 @@ public class InstanceChunkLoadEventThreadIntegrationTest {
     /** How far along x a listener loads another chunk from the event of a chunk the test thread asked for. */
     private static final int OFFSET = 100;
 
-    // The load event of a parallel loader's chunk is called on a virtual thread, never on the thread asking for the
-    // chunk: there it would run inside the computation of the instance's loading map, where a listener loading
-    // another chunk of the instance is a recursive update of that map
+    // The load event of a parallel loader's chunk is called on the virtual thread that processed it, not on the thread
+    // asking for the chunk: there it could run inside the computation of the instance's loading map, where a listener
+    // loading another chunk of the instance is a recursive update of that map. The requesting thread still calls it,
+    // after the mapping, if it registers its own callback in the nanoseconds the chain completes in
     @Test
-    public void loadEventOfAParallelLoadIsNeverCalledOnTheRequestingThread(Env env) throws InterruptedException {
+    public void loadEventOfAParallelLoadRunsOffTheRequestingThread(Env env) throws InterruptedException {
         final Queue<Throwable> handled = new ConcurrentLinkedQueue<>();
         env.process().exception().setExceptionHandler(handled::add);
         var instance = env.createEmptyInstance(new ChunkLoader() {

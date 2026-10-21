@@ -103,4 +103,20 @@ public class InstanceTimeIntegrationTest {
         env.tick();
         assertEquals(1, clock.time());
     }
+
+    // A finite rate above MAX_RATE would grow the partial tick past what a tick takes away from it, up to infinity,
+    // and a rate set again would not bring the clock back
+    @Test
+    void aRateAboveTheMaximumIsRefused(Env env) {
+        var clock = Objects.requireNonNull(env.createEmptyInstance().defaultClock());
+        assertThrows(IllegalArgumentException.class, () -> clock.rate(Float.MAX_VALUE));
+        assertThrows(IllegalArgumentException.class, () -> clock.rate(Math.nextUp(Clock.MAX_RATE)));
+        clock.rate(Clock.MAX_RATE);
+        env.tick();
+        env.tick();
+        assertEquals(2L << 24, clock.time());
+        clock.rate(1);
+        env.tick();
+        assertEquals((2L << 24) + 1, clock.time());
+    }
 }

@@ -1,0 +1,32 @@
+统计任务抛异常：挂地图的分片写 EVT:chunk_stream_stats 的重复任务
+
+行为：ShardWorld#start 用 process.scheduler().buildTask(...).delay(间隔).repeat(间隔) 登记统计任务。任务抛出
+异常时调度器（SchedulerImpl#handleTask）把它交给进程的异常处理器，随后取消任务，之后不再有
+EVT:chunk_stream_stats。修复照写入阶段（ShardWorld#scheduleWritePhase）的做法，在任务里接住
+RuntimeException 交给 process.exception()，任务照常按间隔重复。
+
+测试：ShardWorldAssemblyTest#aStatisticsTaskThatThrowsRunsAgainOnTheNextInterval（提交 d2cad332c0）。
+按 Main 的步骤 (3)(5) 挂地图，统计间隔 100 ms（ShardWorld#start 的 Duration statsInterval 包内重载，生产仍是
+STATS_INTERVAL 60 s），台账回调第一次收到 chunk_stream_stats 时抛 IllegalStateException("event ledger")；
+测试线程逐 tick 推进，10 s 内要收到第二条，进程异常处理器恰好收到这 1 个异常。不连数据库。
+
+<G> = ./gradlew --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts（JDK 25，重活锁下单跑）
+<SH> = io.github.bearisbug.synaxis.app.shard
+
+修复前（d2cad332c0：测试与间隔重载，统计任务没有 try/catch）
+<G> :server-app:test --tests '<SH>.ShardWorldAssemblyTest'
+  <testsuite name="io.github.bearisbug.synaxis.app.shard.ShardWorldAssemblyTest" tests="11" skipped="0" failures="1" errors="0"
+  ShardWorldAssemblyTest > aStatisticsTaskThatThrowsRunsAgainOnTheNextInterval() FAILED
+  org.opentest4j.AssertionFailedError: a second EVT:chunk_stream_stats within 10 s, reported
+    [java.lang.IllegalStateException: event ledger] ==> expected: <true> but was: <false>
+    at ShardWorldAssemblyTest.aStatisticsTaskThatThrowsRunsAgainOnTheNextInterval(ShardWorldAssemblyTest.java:503)
+  11 tests completed, 1 failed
+  （异常已由调度器交给处理器，任务随即被取消，所以 10 s 内只有第一条；该条用时 12.058 s）
+
+修复后（3ec8ff55a1：统计任务接住 RuntimeException 交给 process.exception()）
+<G> :server-app:test --tests '<SH>.ShardWorldAssemblyTest' --tests '<SH>.ShardWorldTest' --tests '<SH>.ShardWorldRelightTest'
+  <testsuite name="io.github.bearisbug.synaxis.app.shard.ShardWorldAssemblyTest" tests="11" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.app.shard.ShardWorldTest" tests="20" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.app.shard.ShardWorldRelightTest" tests="3" skipped="0" failures="0" errors="0"
+  aStatisticsTaskThatThrowsRunsAgainOnTheNextInterval() 2.255 s
+  BUILD SUCCESSFUL

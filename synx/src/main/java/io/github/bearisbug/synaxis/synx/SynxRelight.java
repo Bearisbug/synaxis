@@ -790,6 +790,16 @@ public final class SynxRelight {
         return backlog.get();
     }
 
+    /**
+     * The centers that left since the last {@link #stats()}, at most {@value #WINDOW_SAMPLES}: the samples its
+     * {@code queueMsP99} covers. Does not touch the window.
+     */
+    int queueSampleCount() {
+        synchronized (queueSamples) {
+            return queueSamples.size();
+        }
+    }
+
     /** {@code relight_pending} of a chunk position. */
     int pending(int chunkX, int chunkZ) {
         return pending.getOrDefault(key(chunkX, chunkZ), 0);

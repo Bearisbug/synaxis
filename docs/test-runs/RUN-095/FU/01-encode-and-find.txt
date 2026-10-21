@@ -1,0 +1,46 @@
+Message#encode 与 ArchetypeBox.find 的调用方（client-fabric、game-rts）
+
+改动：
+- client-fabric：ClientHandshake#answerLoginQuery 与 GamePayload、HandshakePayload、PlayPayload 的 encode(buf)
+  原先各写 MsgBuf.writing()、message.write(buf)、toByteArray() 三行，改为 message.encode()；
+  UnitPicker#boxOf 改为 ArchetypeBox.find(binding.archetype()).orElse(null)，删去 catch (IndexOutOfBoundsException _)。
+- game-rts：GameChannel#answer 与 Units#send 同样改为 encode()；Units 不再用 MsgBuf，删去它的 import。
+- FarViewPayload 不改：FarViewAnnouncement 不是 Message，没有 encode()。
+
+字节相同的核对（按代码）：
+- protocol/.../Message.java:37-41 的默认方法 encode() 是 final MsgBuf buf = MsgBuf.writing(); write(buf);
+  return buf.toByteArray();，与删去的三行是同样三次调用、同样顺序、同样在一个新缓冲上。
+- git grep -n "encode()" -- protocol/src/main：只有 Message.java:37，没有消息类型覆写 encode()。
+- GameMessage、HandshakeMessage、PlayMessage 都 extends Message；C2SHello、S2COrderResult 与 Units#send 收到的
+  GameMessage 都走这个默认方法。
+- 因此线上字节不变。:protocol 的 encodeGivesTheBytesWriteAppends（GameMessagesTest 的 S2COrderResult、
+  PlayMessagesTest 三种目标的 C2SAction）断言 encode() 与 write 写出的字节相同；game-rts 的 RecordedChannels
+  把宿主收到的字节按 GameMessages.read 解回消息，下面各类的断言都经过它。
+- ArchetypeBox.find 对 archetype < 0 或 ≥ 表长返回空，与 ArchetypeBox.of（List#get）抛 IndexOutOfBoundsException
+  的范围相同，boxOf 对认识的编号取到同一个盒子、对不认识的返回 null，与原先相同。
+
+<G> = ./gradlew --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts（JDK 25，重活锁下单跑）
+<RT> = io.github.bearisbug.synaxis.game.rts，<PR> = io.github.bearisbug.synaxis.game.protocol
+
+本机（工作树带上述改动，05:29:18～05:29:36）：
+<G> :game-rts:compileJava :game-rts:compileTestJava
+    :game-rts:test --tests '<RT>.GameChannelIntegrationTest' --tests '<RT>.UnitSnapshotIntegrationTest'
+      --tests '<RT>.UnitModelIntegrationTest' --tests '<RT>.UnitMovementIntegrationTest'
+      --tests '<RT>.RtsPluginIntegrationTest' --tests '<RT>.MatchIntegrationTest' --tests '<RT>.ArchitectureTest' --rerun
+    :protocol:test --tests '<PR>.GameMessagesTest' --tests '<PR>.HandshakeMessagesTest' --tests '<PR>.play.PlayMessagesTest' --rerun
+    :testing:test --tests 'io.github.bearisbug.synaxis.testing.test.TrackIncomingIntegrationTest' --rerun
+  BUILD SUCCESSFUL；:game-rts:compileJava、:game-rts:compileTestJava 真执行
+  <testsuite name="io.github.bearisbug.synaxis.game.rts.ArchitectureTest" tests="7" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.game.rts.GameChannelIntegrationTest" tests="18" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.game.rts.MatchIntegrationTest" tests="11" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.game.rts.RtsPluginIntegrationTest" tests="3" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.game.rts.UnitModelIntegrationTest" tests="6" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest" tests="8" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.game.rts.UnitSnapshotIntegrationTest" tests="3" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.game.protocol.GameMessagesTest" tests="15" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.game.protocol.HandshakeMessagesTest" tests="5" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest" tests="20" skipped="0" failures="0" errors="0"
+
+client-fabric 本机不构建，由 GitHub Actions 的 Client mod 与 Client gametest 编译并跑 UnitPickerTest
+（aUnitOfAnArchetypeThisBuildDoesNotKnowIsNotPickable：原型 5 不在表里，应照绿）、GamePayloadTest、PlayPayloadTest、
+ClientHandshakeTest 与冻结向量。

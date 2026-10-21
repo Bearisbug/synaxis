@@ -1,0 +1,30 @@
+TC-WORLD-056 本机读数（docs/TEST.md 第 1～3 步，基于 main df1b674127，testing 未改）
+
+<G> = ./gradlew --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts（JDK 25，重活锁下单跑）
+<TT> = io.github.bearisbug.synaxis.testing.test，<TC> = testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnectionImpl.java
+测试 JVM 不带 -Dsynaxis.automatic-component-translation=true（JAVA_TOOL_OPTIONS 未设）。
+
+第 1 步（05:29:18 那次运行的一部分，见 01-encode-and-find.txt）
+<G> :testing:test --tests '<TT>.TrackIncomingIntegrationTest' --rerun
+  > Task :testing:test 真执行
+  <testsuite name="io.github.bearisbug.synaxis.testing.test.TrackIncomingIntegrationTest" tests="3" skipped="1" failures="0" errors="0"
+  testcase：aCollectorStopsTrackingAtItsFirstCollect、aTrackedPacketIsRenderedWithTheEngineTranslator（skipped：
+  Assumption failed: needs -Dsynaxis.automatic-component-translation=true，TrackIncomingIntegrationTest.java:75）、
+  trackersPassOverABufferedChunkPacket
+
+第 2 步（反证：删掉 <TC> 的 "if (serverPacket == null) return;"，05:29:59～05:30:06，再 git checkout HEAD -- <TC>）
+<G> :testing:test --tests '<TT>.TrackIncomingIntegrationTest' --rerun
+  3 tests completed, 1 failed, 1 skipped；BUILD FAILED
+  <testsuite name="io.github.bearisbug.synaxis.testing.test.TrackIncomingIntegrationTest" tests="3" skipped="1" failures="1" errors="0"
+  红的只有 trackersPassOverABufferedChunkPacket(Env)：
+  java.lang.NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.network.packet.server.ServerPacket.getClass()" because "serverPacket" is null
+    at ...TestConnectionImpl$PlayerConnectionImpl.sendPacket(TestConnectionImpl.java:98)
+    at ...entity.Player.sendPacket(Player.java:2138)
+    at ...TestConnectionImpl$TestPlayerImpl.sendChunk(TestConnectionImpl.java:160)
+    at ...TrackIncomingIntegrationTest.trackersPassOverABufferedChunkPacket(TrackIncomingIntegrationTest.java:40)
+  （行号是删掉那一行之后的；用例前置的基准 86a8fda7b4 上是 :100、:158 与测试的 :35）
+
+第 3 步（还原之后，05:30:14～05:30:18）
+<G> :testing:test --tests '<TT>.TrackIncomingIntegrationTest' --rerun
+  <testsuite name="io.github.bearisbug.synaxis.testing.test.TrackIncomingIntegrationTest" tests="3" skipped="1" failures="0" errors="0"
+  git status --short -- testing：无输出

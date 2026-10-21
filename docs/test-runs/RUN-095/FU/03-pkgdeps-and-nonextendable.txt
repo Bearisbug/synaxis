@@ -1,0 +1,30 @@
+pkgdeps 与 plugin-api 的 NonExtendable 清单（docs/TEST.md TC-GAME-001 第 7 步、TC-GAME-072 第 1 步，基于 main df1b674127 加本组的代码改动，这些改动不动包结构与标注）
+
+TC-GAME-001 第 7 步：docs/ENGINE.md §3.6 的七条命令（python3 tools/pkgdeps.py ...），七条都退出码 0（各模块只留读数行，:protocol 另列它唯一的一条边）
+$ python3 tools/pkgdeps.py
+  lower layer edges into the rest of the engine: 0 (0 imports)
+$ python3 tools/pkgdeps.py protocol/src/main/java --root-package io.github.bearisbug.synaxis.game.protocol --skip-lower-layer
+  source roots: protocol/src/main/java   root package: io.github.bearisbug.synaxis.game.protocol
+  packages: 2   edges: 1   imports: 22
+    play           -> <root>           22
+$ python3 tools/pkgdeps.py plugin-api/src/main/java --root-package io.github.bearisbug.synaxis.plugin --skip-lower-layer
+  source roots: plugin-api/src/main/java   root package: io.github.bearisbug.synaxis.plugin
+  packages: 3   edges: 3   imports: 4
+$ python3 tools/pkgdeps.py server-app/src/main/java --root-package io.github.bearisbug.synaxis.app --skip-lower-layer
+  source roots: server-app/src/main/java   root package: io.github.bearisbug.synaxis.app
+  packages: 12   edges: 28   imports: 86
+$ python3 tools/pkgdeps.py game-rts/src/main/java --root-package io.github.bearisbug.synaxis.game.rts --skip-lower-layer
+  source roots: game-rts/src/main/java   root package: io.github.bearisbug.synaxis.game.rts
+  packages: 2   edges: 0   imports: 0
+$ python3 tools/pkgdeps.py play-kit/src/main/java --root-package io.github.bearisbug.synaxis.game.playkit --skip-lower-layer
+  source roots: play-kit/src/main/java   root package: io.github.bearisbug.synaxis.game.playkit
+  packages: 1   edges: 0   imports: 0
+$ python3 tools/pkgdeps.py game-rush/src/main/java --root-package io.github.bearisbug.synaxis.game.rush --skip-lower-layer
+  source roots: game-rush/src/main/java   root package: io.github.bearisbug.synaxis.game.rush
+  packages: 1   edges: 0   imports: 0
+
+TC-GAME-072 第 1 步
+$ grep -l 'ApiStatus.NonExtendable' plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/*.java | wc -l
+  15：Moderation Permissions PlayerDataStore PluginAdmission PluginAnalytics PluginChannels PluginCommands PluginContext PluginEntities PluginEvents PluginLifecycle PluginScheduler ShutdownNotice TabList Transfers
+$ grep -rl 'ApiStatus.NonExtendable' plugin-api/src/main/java | wc -l
+  19；子包里另 4 个：instance.ManagedInstance instance.PluginInstances play.Hud play.PluginPlay

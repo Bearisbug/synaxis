@@ -239,7 +239,7 @@ public final class SceneService {
         };
         final S2CScene message = new S2CScene(scene.sceneSeq() + 1, sceneId, WidgetEncoder.component(spec.title()),
                 camera, cursor, table);
-        final int bytes = Outbox.bytes(message).length;
+        final int bytes = message.encode().length;
         if (bytes > PlayProtocol.MAX_MESSAGE_BYTES)
             throw new IllegalArgumentException("scene " + sceneId + " encodes to " + bytes + " bytes, over the "
                     + PlayProtocol.MAX_MESSAGE_BYTES + " a scene may take");
@@ -417,7 +417,7 @@ public final class SceneService {
 
     private static void answer(Player player, int actionSeq, ActionResultCode code, EncodedComponent reason,
                                int cooldownMs) {
-        player.sendPluginMessage(CHANNEL, Outbox.bytes(new S2CActionResult(actionSeq, code, reason, cooldownMs)));
+        player.sendPluginMessage(CHANNEL, new S2CActionResult(actionSeq, code, reason, cooldownMs).encode());
     }
 
     /**

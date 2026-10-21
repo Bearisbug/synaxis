@@ -414,10 +414,8 @@ final class HandshakeGate {
     }
 
     private byte[] answer() {
-        final MsgBuf buf = MsgBuf.writing();
-        new S2CHello(ProtocolSchema.SCHEMA_VERSION, JvmFlags.SERVER_TICKS_PER_SECOND,
-                (int) (ticks.get() % Integer.MAX_VALUE)).write(buf);
-        return buf.toByteArray();
+        return new S2CHello(ProtocolSchema.SCHEMA_VERSION, JvmFlags.SERVER_TICKS_PER_SECOND,
+                (int) (ticks.get() % Integer.MAX_VALUE)).encode();
     }
 
     private static Map<String, Object> attributes(UUID connectionId, Object... pairs) {

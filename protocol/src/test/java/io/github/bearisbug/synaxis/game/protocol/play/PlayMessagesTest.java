@@ -85,6 +85,17 @@ class PlayMessagesTest {
     }
 
     @Test
+    void encodeGivesTheBytesWriteAppends() {
+        for (final C2SAction.Target target : List.of(new C2SAction.None(), new C2SAction.OfEntity(42),
+                new C2SAction.OfBlock(-1, 64, 1))) {
+            final PlayMessage message = new C2SAction(3, 7, "rush:back", target);
+            final MsgBuf writer = MsgBuf.writing();
+            message.write(writer);
+            assertArrayEquals(writer.toByteArray(), message.encode());
+        }
+    }
+
+    @Test
     void trailingUnknownBytesAreSkipped() {
         final MsgBuf writer = MsgBuf.writing();
         new C2SSceneReady(2).write(writer);

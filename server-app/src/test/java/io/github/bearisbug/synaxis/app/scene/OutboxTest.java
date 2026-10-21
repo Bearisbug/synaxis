@@ -94,8 +94,8 @@ class OutboxTest {
             if (i + 1 < sent.payloads().size()) {
                 // Cut on the byte cap, not earlier: the first op of the next message would not have fitted
                 final S2CHud next = (S2CHud) sent.messages().get(i + 1);
-                final int nextOp = Outbox.bytes(new S2CHud(List.of(next.ops().getFirst())))
-                        .length - Outbox.bytes(new S2CHud(List.of())).length;
+                final int nextOp = new S2CHud(List.of(next.ops().getFirst())).encode().length
+                        - new S2CHud(List.of()).encode().length;
                 assertTrue(payload.length + nextOp > PlayProtocol.MAX_MESSAGE_BYTES, "message " + i + " was cut early");
             }
         }

@@ -17,6 +17,12 @@ public record C2SAction(int sceneSeq, int actionSeq, String actionId, Target tar
 
     /** The {@code msg_id} of this message on {@code synaxis:play}. */
     public static final int MSG_ID = 0x02;
+    /** The {@code target} byte of {@link None}. */
+    public static final int TARGET_NONE = 0;
+    /** The {@code target} byte of {@link OfEntity}. */
+    public static final int TARGET_ENTITY = 1;
+    /** The {@code target} byte of {@link OfBlock}. */
+    public static final int TARGET_BLOCK = 2;
 
     /**
      * What an action aims at, as the client saw it: {@code target u8} and its payload. The host checks it as
@@ -26,7 +32,7 @@ public record C2SAction(int sceneSeq, int actionSeq, String actionId, Target tar
         /**
          * The {@code target} byte.
          *
-         * @return 0, 1 or 2
+         * @return {@link #TARGET_NONE}, {@link #TARGET_ENTITY} or {@link #TARGET_BLOCK}
          */
         int code();
     }
@@ -37,7 +43,7 @@ public record C2SAction(int sceneSeq, int actionSeq, String actionId, Target tar
     public record None() implements Target {
         @Override
         public int code() {
-            return 0;
+            return TARGET_NONE;
         }
     }
 
@@ -49,7 +55,7 @@ public record C2SAction(int sceneSeq, int actionSeq, String actionId, Target tar
     public record OfEntity(int entityId) implements Target {
         @Override
         public int code() {
-            return 1;
+            return TARGET_ENTITY;
         }
     }
 
@@ -63,7 +69,7 @@ public record C2SAction(int sceneSeq, int actionSeq, String actionId, Target tar
     public record OfBlock(int x, int y, int z) implements Target {
         @Override
         public int code() {
-            return 2;
+            return TARGET_BLOCK;
         }
     }
 
@@ -89,9 +95,9 @@ public record C2SAction(int sceneSeq, int actionSeq, String actionId, Target tar
         final String actionId = buf.readString(PlayProtocol.MAX_ID_BYTES);
         final int code = buf.readUnsignedByte();
         final Target target = switch (code) {
-            case 0 -> new None();
-            case 1 -> new OfEntity(buf.readVarInt());
-            case 2 -> new OfBlock(buf.readVarInt(), buf.readVarInt(), buf.readVarInt());
+            case TARGET_NONE -> new None();
+            case TARGET_ENTITY -> new OfEntity(buf.readVarInt());
+            case TARGET_BLOCK -> new OfBlock(buf.readVarInt(), buf.readVarInt(), buf.readVarInt());
             default -> throw new MalformedMessageException("unknown target: " + code);
         };
         return new C2SAction(sceneSeq, actionSeq, actionId, target);

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -39,6 +40,29 @@ class GameMessagesTest {
                 new S2CUnitDespawn(List.of(1, 2, 3)),
                 new S2COrderResult(3, OrderResultCode.OK, 10.5f, 64f, -8.25f));
         for (final GameMessage message : messages) assertEquals(message, roundTrip(message));
+    }
+
+    @Test
+    void encodeGivesTheBytesWriteAppends() {
+        final GameMessage message = new S2COrderResult(3, OrderResultCode.NO_PATH, 10.5f, 64f, -8.25f);
+        final MsgBuf writer = MsgBuf.writing();
+        message.write(writer);
+        assertArrayEquals(writer.toByteArray(), message.encode());
+    }
+
+    @Test
+    void everyOrderResultCodeAndUnitStateDecodesFromItsOwnWireValue() {
+        // A decoder disconnects at a value it does not know: one more value is a new schema_version and new
+        // frozen vectors in the same change (docs/DESIGN-M2.md §8 evolution and deprecation, §24)
+        final String bump = "a value of a rts:game enum changed: raise ProtocolSchema.SCHEMA_VERSION and freeze "
+                + "the vectors again (docs/DESIGN-M2.md §8, §24)";
+        for (final OrderResultCode code : OrderResultCode.values())
+            assertEquals(code, OrderResultCode.fromWireId(code.wireId()));
+        assertEquals(List.of(0, 1, 2, 3, 4, 5, 6),
+                List.of(OrderResultCode.values()).stream().map(OrderResultCode::wireId).toList(), bump);
+        for (final UnitState state : UnitState.values())
+            assertEquals(state, UnitState.fromWireId(state.wireId()));
+        assertEquals(List.of(0, 1), List.of(UnitState.values()).stream().map(UnitState::wireId).toList(), bump);
     }
 
     @Test

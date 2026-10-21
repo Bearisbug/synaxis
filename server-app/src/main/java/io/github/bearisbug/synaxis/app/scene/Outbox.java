@@ -1,7 +1,5 @@
 package io.github.bearisbug.synaxis.app.scene;
 
-import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
-import io.github.bearisbug.synaxis.game.protocol.play.PlayMessage;
 import io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol;
 import io.github.bearisbug.synaxis.game.protocol.play.S2CHud;
 import io.github.bearisbug.synaxis.game.protocol.play.S2CScene;
@@ -28,7 +26,7 @@ final class Outbox {
     private static final CompletableFuture<?> NO_HOLD = CompletableFuture.completedFuture(null);
 
     /** The bytes of an {@code S2C_HUD} besides its ops: the {@code msg_id} and a count of at most 32. */
-    private static final int HUD_HEADER_BYTES = bytes(new S2CHud(List.of())).length;
+    private static final int HUD_HEADER_BYTES = new S2CHud(List.of()).encode().length;
 
     private @Nullable S2CScene scene;
     private final List<S2CHud.Op> ops = new ArrayList<>();
@@ -100,21 +98,21 @@ final class Outbox {
     int flush(Consumer<byte[]> sink) {
         if (!hold.get().isDone() || (scene == null && ops.isEmpty())) return 0;
         final List<byte[]> messages = new ArrayList<>();
-        if (scene != null) messages.add(bytes(scene));
+        if (scene != null) messages.add(scene.encode());
         List<S2CHud.Op> batch = new ArrayList<>();
         int batchBytes = HUD_HEADER_BYTES;
         for (final S2CHud.Op op : ops) {
-            final int opBytes = bytes(new S2CHud(List.of(op))).length - HUD_HEADER_BYTES;
+            final int opBytes = new S2CHud(List.of(op)).encode().length - HUD_HEADER_BYTES;
             if (!batch.isEmpty() && (batch.size() == S2CHud.MAX_OPS
                     || batchBytes + opBytes > PlayProtocol.MAX_MESSAGE_BYTES)) {
-                messages.add(bytes(new S2CHud(batch)));
+                messages.add(new S2CHud(batch).encode());
                 batch = new ArrayList<>();
                 batchBytes = HUD_HEADER_BYTES;
             }
             batch.add(op);
             batchBytes += opBytes;
         }
-        if (!batch.isEmpty()) messages.add(bytes(new S2CHud(batch)));
+        if (!batch.isEmpty()) messages.add(new S2CHud(batch).encode());
         discard();
         messages.forEach(sink);
         return messages.size();
@@ -126,18 +124,6 @@ final class Outbox {
     void discard() {
         scene = null;
         ops.clear();
-    }
-
-    /**
-     * Encodes one message.
-     *
-     * @param message a message of {@code synaxis:play}
-     * @return its payload
-     */
-    static byte[] bytes(PlayMessage message) {
-        final MsgBuf buf = MsgBuf.writing();
-        message.write(buf);
-        return buf.toByteArray();
     }
 
     private void dropChangesOf(String owner, String widgetId) {

@@ -6,7 +6,6 @@ import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.crypto.KeyUtils;
 import io.github.bearisbug.synaxis.crypto.LoginCrypt;
 import io.github.bearisbug.synaxis.game.protocol.C2SHello;
-import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
 import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.loadtest.Profile.GateWalk;
 import io.github.bearisbug.synaxis.MinecraftServer;
@@ -392,9 +391,7 @@ final class Bot {
     }
 
     private static byte[] hello() {
-        final MsgBuf buf = MsgBuf.writing();
-        new C2SHello(MOD_VERSION, ProtocolSchema.SCHEMA_VERSION).write(buf);
-        return buf.toByteArray();
+        return new C2SHello(MOD_VERSION, ProtocolSchema.SCHEMA_VERSION).encode();
     }
 
     /** Answers the request the way a vanilla client does and switches both directions to AES/CFB8. */

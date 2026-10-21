@@ -47,10 +47,12 @@ public enum ActionResultCode {
     public static ActionResultCode fromWireId(int wireId) {
         return switch (wireId) {
             case 0 -> OK;
+            case 1 -> REJECTED;
             case 2 -> COOLDOWN;
             case 3 -> RATE_LIMITED;
             case 4 -> STALE_SCENE;
             case 5 -> UNKNOWN_ACTION;
+            // A value this version does not know, shown as rejected (§9)
             default -> REJECTED;
         };
     }

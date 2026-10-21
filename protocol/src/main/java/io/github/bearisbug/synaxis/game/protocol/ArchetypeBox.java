@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.game.protocol;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * The picking box of one archetype: the half of the archetype template of {@code docs/DESIGN-M2.md}
@@ -37,15 +38,26 @@ public record ArchetypeBox(float width, float height) {
     }
 
     /**
-     * The box of one archetype.
+     * The box of one archetype this build knows. A number that may be unknown, such as one a newer
+     * server sent, goes through {@link #find} instead.
      *
      * @param archetype the archetype number
      * @return its box
-     * @throws IndexOutOfBoundsException if no archetype carries that number; the client renders an
-     *                                   unknown archetype as a placeholder instead of asking
+     * @throws IndexOutOfBoundsException if no archetype carries that number
      */
     public static ArchetypeBox of(int archetype) {
         return TABLE.get(archetype);
+    }
+
+    /**
+     * The box of one archetype, if this build knows it: a newer server may field archetypes an
+     * older client does not, which the client renders as a placeholder instead of asking.
+     *
+     * @param archetype the archetype number
+     * @return its box, empty if no archetype carries that number
+     */
+    public static Optional<ArchetypeBox> find(int archetype) {
+        return archetype < 0 || archetype >= TABLE.size() ? Optional.empty() : Optional.of(TABLE.get(archetype));
     }
 
     /**

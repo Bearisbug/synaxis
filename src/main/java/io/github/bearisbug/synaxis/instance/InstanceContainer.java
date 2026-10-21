@@ -494,14 +494,20 @@ public class InstanceContainer extends Instance {
                 chunk.onLoad();
                 return chunk;
             };
+            // Nothing in the chain runs before the callback below is registered: a chain completed by
+            // then would run the callback, and call the event, on the requesting thread inside the mapping
+            final CompletableFuture<Void> start = new CompletableFuture<>();
             final CompletableFuture<Chunk> chain = loader.supportsParallelLoading()
                     // Load and process on a single virtual thread
-                    ? CompletableFuture.supplyAsync(() -> processChunk.apply(loaderSupplier.get()), Thread::startVirtualThread)
-                    // Loaders without parallel support load on the requesting thread, processing
-                    // still hops off it to keep the chain from completing inside the mapping
-                    : AsyncUtils.empty().thenApply(_ -> loaderSupplier.get())
+                    ? start.thenApplyAsync(_ -> processChunk.apply(loaderSupplier.get()), Thread::startVirtualThread)
+                    // Loaders without parallel support load on the requesting thread, inside the
+                    // mapping, processing still hops off it
+                    : start.thenApply(_ -> loaderSupplier.get())
                     .thenApplyAsync(processChunk, Thread::startVirtualThread);
-            // The chain never completes inside the mapping, this callback is always async
+            // A loaded chunk completes the chain on the virtual thread that processed it, the event is
+            // called there. An exception skips the hop to it: one thrown by a loader without parallel
+            // support completes the chain inside start.complete, the exception handler then runs inside
+            // the mapping
             var _ = chain.whenComplete((chunk, e) -> {
                 if (e != null) {
                     process().exception().handleException(e instanceof CompletionException ce ? ce.getCause() : e);
@@ -509,6 +515,7 @@ public class InstanceContainer extends Instance {
                     process().eventHandler().call(new InstanceChunkLoadEvent(this, chunk));
                 }
             });
+            start.complete(null);
             return chain;
         });
         return future.whenComplete((_, _) -> loadingChunks.remove(index, future));

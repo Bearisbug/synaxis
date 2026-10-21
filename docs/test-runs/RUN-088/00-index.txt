@@ -1,0 +1,29 @@
+RUN-088 · engine instances, chunks, palettes, blocks and world data (REQ-018). Branch m3/r088-p3, draft PR #43.
+
+Rebase: the five groups and their follow-ups ran locally on top of 17f2a2cfe1. Before the docs the branch was
+rebased onto main ce817adeda (RUN-085, which changes server-app launch tests and Main.java only, none of the
+classes run here) with no conflict; the commit ids in the group directories are the rebased ones.
+
+Group directories: G1 palettes, G2 chunks and the entity tracker (05 is the EntityCollisionBenchmark A/B,
+06 the negative range follow-up), G3 instances and chunk loading (last file: the follow-up after review),
+G4 blocks and predicates, G5 generator, heightmap and world data, FOLLOWUP the review follow-ups
+(property setters, integer range bounds, heightmap reads, BlockStateBenchmark bytes per operation).
+
+GitHub Actions on c355dec0dd (code as b0fdbd21be plus one Javadoc line):
+- CI 39520029859: Check, Test with 4 tick threads (strict), Test with 4 tick threads (strict, grid) success.
+- Concurrency 39520029886 (jcstress) success; Client mod 39520029837 success.
+- Counts from the three test-report artifacts, the same class by class: 756 classes, 5,370 tests, 0 failures,
+  0 errors, 22 skipped. root 498 / 3,717 (21 skipped), server-app 163 / 919, synx 24 / 185 (1 skipped),
+  baker 8 / 93, protocol 10 / 174, game-rts 14 / 94, game-rush 6 / 44, plugin-api 8 / 47, play-kit 3 / 35,
+  loadtest 6 / 26, testing 9 / 16, architecture-tests 7 / 20.
+- Client gametest 39520116950 (workflow_dispatch: the change is outside the workflow's pull_request paths):
+  attempt 1, the dev client R8 FAIL "Connection Lost. Disconnected" while the server kicked with
+  synaxis:protocol-error and the production client's R8 passed (the intermittent signature of TC-PROD-663);
+  attempt 2 after the workflow finished: gametest and rush success, both reports R1 to R8 PASS.
+
+Far view gametest 39512294173 (label farview-gametest, on b0fdbd21be):
+- light, synthetic, hidden success on attempt 1.
+- baked attempt 1: b6-counter-hidden F1 FAIL "override target none" and F7 FAIL "announcement at log line -1".
+  The client started 23:53:54 UTC; past midnight UTC its log rolled over by date, the announcement and save
+  folder lines went to logs/2026-10-20-1.log.gz and latest.log began at 00:05. The check reads latest.log only.
+  Unrelated to this round's code. attempt 2 (00:56 to 02:20 UTC) success, F31 PASS in every V1 case.

@@ -139,17 +139,8 @@ public final class LightEngine {
                 for (int cz = 0; cz < depth; cz++) {
                     if (!view.hasChunk(originX + cx, originZ + cz)) continue;
                     loaded[cx * depth + cz] = true;
-                    final int blockX = (originX + cx) << 4, blockZ = (originZ + cz) << 4;
                     for (int sy = 0; sy < sections; sy++) {
-                        char[] section = null;
-                        final int blockY = minY + (sy << 4);
-                        for (int i = 0; i < 4096; i++) {
-                            final int stateId = view.getBlock(blockX | (i & 15), blockY + (i >> 8), blockZ | ((i >> 4) & 15)).stateId();
-                            if (stateId == AIR) continue;
-                            if (section == null) section = new char[4096];
-                            section[i] = (char) stateId;
-                        }
-                        states[(cx * depth + cz) * sections + sy] = section;
+                        states[(cx * depth + cz) * sections + sy] = view.section(originX + cx, minY + (sy << 4), originZ + cz);
                     }
                 }
             }

@@ -1,0 +1,161 @@
+RUN-089 integration: prod/integrate-089, before and on the draft PR #44. Times are local (UTC+8).
+
+The branch: origin/main ce817adeda (RUN-085), then git merge --no-ff of the thirteen groups in this order (merge
+commit, merged group head, the group's version in docs/DESIGN-PROD.md); every group branch is based on 17f2a2cfe1:
+  fc1c631086  CORE      fafc4f69d9   v0.9.117
+  4b55fcc4aa  NETBUF    db38229337   v0.9.110
+  5c7f9c94ba  NETCONN   31772cbccd   v0.9.111
+  ff487b1655  PACKETS   3949f59f6f   v0.9.112
+  b373b9a550  EVENT     6a327b505f   v0.9.119
+  d45e15bd29  ENTITY    51befde1cb   v0.9.122
+  53daacf532  LIVING    3d548df06e   v0.9.116
+  4d94cd652b  PHYS      117b9a58f0   v0.9.121
+  b14c947935  INV       db490ac111   v0.9.120
+  0bad037893  ITEM      a195d549f3   v0.9.115
+  1099c9aa31  CMD       5f24700c6f   v0.9.113
+  0c6d294d4f  CODEC     7f9d4fbe36   v0.9.114
+  6c2d5d711d  ADV       510e8408ff   v0.9.118
+then the integration commits:
+  114fb7c242  docs: the integration of the thirteen groups (docs/DESIGN-PROD.md v0.9.123, docs/DESIGN.md v0.52,
+              docs/DESIGN-PLAY.md v0.22, docs/DESIGN-M2.md v0.70)
+  71ecb309b8  the changes that waited on other groups
+  84844a9d78  docs: TEST.md merge layout and integration steps
+  f2c7ecef4c  docs: line references after the merges
+  ecca0085c4  Javadoc only
+  30ddadc067  docs: TEST.md wording and counts
+  c8215bc251  docs: TEST.md line references into ItemStack.java
+  57e84bc7fa  Merge main (RUN-088) into the RUN-089 integration: main 7724fcd23e, the lighting session's RUN-088,
+              reached main after c8215bc251 (below); docs/DESIGN.md v0.52 went to RUN-088, RUN-089 takes v0.53
+  e9d209223c  docs: line references and handoff rows after that merge
+  then the registration (this directory, the counts of the old cases, docs/TEST.md section 6), documents only.
+The readings of the groups are in their own TEST.md sections. The merges, the conflicts and the cross-group
+follow-ups are in the docs/TEST.md change log row of the integration and in docs/DESIGN-PROD.md v0.9.123.
+
+Gradle on this machine, one build at a time (--max-workers=2 --no-daemon, test tasks with --rerun), 2026-10-21;
+13 builds before the merge of main 7724fcd23e:
+  merges and follow-ups, 7 builds: compileJava and compileTestJava of all modules; the red before the change
+    (HandshakeGate without the catch: HandshakeIntegrationTest 26 tests, 1 failed; the null check of the component
+    map off: DataComponentMapTest 18 tests, 1 failed at :101), restored after the run; all modules compiled with
+    the two :jmh-benchmarks source sets, :testNamingCheck, :forbiddenImportsCheck, :plugin-api:javadoc and the
+    classes two groups changed; :jcstress-tests:compileJcstressJava; the 128 root test classes the thirteen groups
+    changed and the ArchitectureTest of :game-rts and :game-rush, 130 classes, 1,429 tests, 0 failures, 0 skipped;
+    after the follow-ups, strict grid: the root compile, :forbiddenImportsCheck, :javadoc, checkBinaryCompatibility
+    of :plugin-api and :protocol against v0.3.0, the TC-PROD-859 step 2 batch (22 engine classes, 105 tests;
+    server-app 4 classes, 26 tests), AlphaColorTest 4 and HandshakeIntegrationTest 26, 0 failures; after the last
+    Javadoc commit: :compileJava :compileTestJava (Error Prone) :forbiddenImportsCheck :testNamingCheck :javadoc,
+    BUILD SUCCESSFUL
+  review, 1 build: the two reds above again, the same failing lines; restored with git checkout HEAD --
+  gates, 5 builds on 30ddadc067, no wait for the lock, free 52-55%, load 2-4:
+  1  07:22:45-07:22:59  compileJava, compileTestJava, testNamingCheck, forbiddenImportsCheck of all 14 modules;
+                        :architecture-tests:test 7 classes, 20 tests, 0 failures; :jcstress-tests:compileJcstressJava;
+                        :plugin-api:checkBinaryCompatibility and :protocol:checkBinaryCompatibility against the
+                        plugin-api.jar and protocol.jar of release v0.3.0 (gradle/abi-baseline.tag): both ran and passed;
+                        :protocol:publishToMavenLocal into a temporary maven directory
+  2  07:23:49-07:24:08  client-fabric: compileJava compileTestJava compileGametestJava against that :protocol,
+                        BUILD SUCCESSFUL
+  3  07:27:07-07:29:59  the M3 regression, default mode: :synx:test 24 classes, 184 tests, 1 skipped
+  4  07:31:58-07:34:52  (SynxRelightBacklogTest, measure only); :baker:test 8 classes, 93 tests; server-app app.shard.*
+  5  07:35:54-07:38:54  24 classes, 167 tests; root PlayerMovementAuthorityIntegrationTest 7 tests, the entity packages
+                        96 classes, 420 tests (2 skipped, PlayerSkinTest, @Disabled), the thread package 7 classes,
+                        41 tests; testing EnvDispatcherThreadsIntegrationTest 2 tests; 161 classes, 914 tests in all.
+                        Build 4 adds -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true, build 5 also
+                        -Dsynaxis.thread-provider=grid. All three: the same counts, 0 failures, 0 errors; the env
+                        dispatcher threads output is 1 counter, 4 counter and 4 grid. The database classes ran against
+                        the local PostgreSQL and Valkey, 0 skipped in server-app.
+9 builds after the merge of main 7724fcd23e (57e84bc7fa and the line reference commit; the lock was free each time):
+  sync     10:52:29-10:53:04  compileJava and compileTestJava of all modules, BUILD SUCCESSFUL
+  sync     11:10:24-11:12:59  strict grid, with the database variables: root entity.*, command.ArgumentTypeTest,
+                              instance.*, world.* (180 result files, 1,078 tests, 2 skipped, PlayerSkinTest) and
+                              server-app app.shard.* (24 classes, 167 tests), 0 failures
+  review   11:21:36-11:24:20  default mode: root entity.*, WeatherIntegrationTest, ArchitectureTest 432 tests
+                              (2 skipped); :synx:test 24 classes, 185 tests (1 skipped); :baker:test 93;
+                              :architecture-tests:test 20; :testNamingCheck, :forbiddenImportsCheck; 0 failures
+  review   11:53:58-11:54:26  -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true: :javadoc, the
+                              :jmh-benchmarks and :jcstress-tests compiles; root entity.*, WeatherIntegrationTest,
+                              ChunkUnloadIntegrationTest, ChunkLoaderContractIntegrationTest, ArgumentTypeTest:
+                              100 classes, 476 tests, 0 failures, 2 skipped
+  review   12:28:15-12:36:20  strict grid, with the database variables: :server-app:test in full (163 classes,
+                              920 tests), :game-rts:test (14 classes, 96), :game-rush:test (6 classes, 46), root
+                              PlayerInstanceChangeIntegrationTest, WeatherIntegrationTest, EntityTeleportIntegrationTest,
+                              EntityTrackerTest, EntityVelocityIntegrationTest, ArgumentTypeTest (6 classes, 78),
+                              testing EnvDispatcherThreadsIntegrationTest; 0 failures
+  gates 1  12:39:54-12:40:07  as gates build 1 above, on e9038ef9ae (the tree of e9d209223c): all passed, the ABI gate
+                              against v0.3.0 ran and passed
+  gates 2  12:40:54-12:40:58  client-fabric: compileJava compileTestJava compileGametestJava, BUILD SUCCESSFUL
+  gates 3  12:42:40-12:45:31  the M3 regression, default mode: :synx:test 24 classes, 185 tests (1 skipped);
+  gates 4  12:46:28-12:49:24  :baker:test 8 classes, 93 tests; server-app app.shard.* 24 classes, 167 tests; root
+                              entity packages 96 classes, 420 tests (2 skipped), instance packages 71 classes, 606
+                              tests, thread package 7 classes, 41 tests, PlayerMovementAuthorityIntegrationTest 7;
+                              testing EnvDispatcherThreadsIntegrationTest 2; 232 classes, 1,521 tests, 0 failures,
+                              3 skipped. Build 4 is strict grid; both builds the same counts; env dispatcher threads
+                              1 counter and 4 grid.
+The full suites, Concurrency, Client mod, Client gametest and the far-view gametest run on the draft PR.
+
+On the draft PR #44 (label farview-gametest), GitHub Actions.
+
+First round, head c8215bc251 (before the merge of main 7724fcd23e), 2026-10-21 07:46-10:49:
+  CI 39517175818 (Check BUILD SUCCESSFUL in 18m 9s, diff coverage 1084 lines, 44 missing, 95%; strict 14m 21s;
+  strict grid 15m 24s), Concurrency 39517175834, Client mod 39517175843, Client gametest 39517175814 (gametest, rush,
+  p11-smoke): attempt 1 success; three test jobs equal class by class, 787 classes, 5,485 tests, 0 failures,
+  22 skipped.
+  Far view gametest 39517176718 (label trigger): light (07:46-07:54) and hidden (07:46-08:30) success on attempt 1;
+  synthetic and baked failed on attempt 1 (case a1-synthetic and b4-serve-only: F1 FAIL "override target none",
+  F7 FAIL "announcement at log line -1, save folder at -1"). Those cases started before 00:00 UTC and their client
+  log rolled at midnight: the announcement and save folder lines went into logs/2026-10-20-1.log.gz, and the judge
+  reads latest.log only; the far-view code is not part of this round. Rerun of the failed jobs, attempt 2: synthetic
+  09:04-09:59 and baked 09:04-10:49 success.
+
+Judged on e9d209223c, attempt 1 of every workflow, 2026-10-21 12:52-14:38:
+  CI 39546441503: Check (./gradlew check jacocoTestReport with the database variables, BUILD SUCCESSFUL in 18m 54s;
+    ABI gate success; diff coverage 1084 lines, 44 missing, 95%, gate 80%), Test with 4 tick threads (strict)
+    (BUILD SUCCESSFUL in 18m 29s), Test with 4 tick threads (strict, grid) (BUILD SUCCESSFUL in 18m 32s): success
+  Concurrency 39546441507: jcstress success
+  Client mod 39546441523: Build the Fabric mod success;
+    mod jar: minecraft=26.2, 108 entries, ships META-INF/jars/protocol-dev.jar
+  Client gametest 39546441506: Run the client gametests, Run the rush script, Two shards, 2 round trips (P11 smoke):
+    success; Two shards, 100 round trips (P10): skipped, it runs on a manual trigger only (below)
+  Far view gametest 39546546079 (label farview-gametest set again on the new head), 12:54-14:38: Far view cases
+    (light) 9 min, (hidden) 35 min, (synthetic) 65 min, (baked) 104 min, all success on attempt 1. The far-view cases
+    belong to the lighting session (docs/DESIGN-M3.md); it checked the conflict resolutions of the merge.
+Counts from the JUnit XML in the artifacts (gh api .../actions/artifacts/<id>/zip, read with Python zipfile without
+unpacking: the archives hold file names that differ only in case):
+  test-reports, test-reports-multithreaded, test-reports-multithreaded-grid of 39546441503: equal class by class,
+  789 classes, 5,552 tests, 0 failures, 0 errors, 22 skipped (the same 7 classes as on main: 6 root, 1 synx)
+    module               classes   tests
+    root                     531   3,894
+    server-app               163     920
+    synx                      24     185
+    protocol                  10     174
+    game-rts                  14      96
+    baker                      8      93
+    plugin-api                 8      47
+    game-rush                  6      46
+    play-kit                   3      35
+    loadtest                   6      26
+    architecture-tests         7      20
+    testing                    9      16
+  Against main 7724fcd23e (the RUN-088 judged run 39520029859 on c355dec0dd, job Check, 756 classes, 5,370 tests):
+  33 classes and 182 tests more, root 33 classes and 177 tests (35 new classes; AcquirableCollectionTest and
+  AcquirableLocalsIntegrationTest removed with the code they tested), server-app 0 and 1 (HandshakeIntegrationTest
+  25 -> 26), game-rts and game-rush 0 and 2 each (ArchitectureTest 5 -> 7); synx, protocol, baker, plugin-api,
+  play-kit, loadtest, architecture-tests and testing unchanged. These are the same rows, class by class, as between
+  main ce817adeda and c8215bc251: no test class changed on both sides of the merge. Class by class:
+  02-class-counts.txt.
+  client-test-reports of 39546441523: 25 classes, 297 tests, 0 failures, as in RUN-081 (RUN-089 does not change the
+  mod or :protocol).
+  In all three modes: translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out;
+  config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out; env dispatcher threads 1, 4, 4.
+Rush job (6 min 13 s): judge unit tests Ran 36 tests, OK; waited 0.4 s for the ledger; Q0a to Q9 PASS in both
+  launches; rush judge: PASS (2 reports, 0 problems); prepare_ms 98 and 49; Q5 239 ms and 185 ms after the countdown
+  ran out; Q7 off by 23 ms and 40 ms; Q9 157 ms and 169 ms after the button; the ledger has the lobby at prepare_ms
+  157 and two rush_round_ended with players=1, cause=time_limit; the four checks of the forward and rollback
+  rehearsal ok.
+Client gametests: client regression: all checks passed; report 8 PASS; playable.txt core 10 PASS, rts 5 PASS.
+P11 smoke (TC-PROD-742): p10.py unit tests Ran 48 tests; 11 checks ok; P10: all checks passed.
+P10 by hand, 2026-10-21 15:13-15:37, on eacecf0b03 (the first version of the registration commit; it differs from
+e9d209223c in documents only):
+  Client gametest 39560529618 (workflow_dispatch, p10=true): Two shards, 100 round trips (P10) success; 11 checks ok,
+    P10: all checks passed. RUN-089 touches the transfer path: OutgoingTransferEvent checks its host and port (group
+    EVENT), and the login handshake handles a connection that drops while it is asked (group NETCONN and the
+    cross-group follow-ups).
+RUN-089 is registered in docs/TEST.md section 6: passed 79/79.

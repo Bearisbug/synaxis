@@ -26,16 +26,11 @@ public non-sealed class Inventory extends AbstractInventory {
     private final InventoryType inventoryType;
     private Component title;
 
-    private final int offset;
-
-    @SuppressWarnings("this-escape") // deliberate self registration during construction
     public Inventory(InventoryType inventoryType, Component title) {
         super(inventoryType.getSize());
         this.id = generateId();
         this.inventoryType = inventoryType;
         this.title = title;
-
-        this.offset = getSize();
     }
 
     public Inventory(InventoryType inventoryType, String title) {
@@ -46,14 +41,11 @@ public non-sealed class Inventory extends AbstractInventory {
      * Creates an inventory already bound to a server process, see
      * {@link AbstractInventory#AbstractInventory(ServerProcess, int)}.
      */
-    @SuppressWarnings("this-escape") // deliberate self registration during construction
     public Inventory(ServerProcess process, InventoryType inventoryType, Component title) {
         super(process, inventoryType.getSize());
         this.id = generateId();
         this.inventoryType = inventoryType;
         this.title = title;
-
-        this.offset = getSize();
     }
 
     public Inventory(ServerProcess process, InventoryType inventoryType, String title) {
@@ -142,9 +134,9 @@ public non-sealed class Inventory extends AbstractInventory {
     /**
      * Gets the cursor item of a player.
      *
-     * @deprecated normal inventories no longer store cursor items
+     * @deprecated normal inventories no longer store cursor items, use {@link PlayerInventory#getCursorItem()}
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public ItemStack getCursorItem(Player player) {
         return player.getInventory().getCursorItem();
     }
@@ -152,9 +144,9 @@ public non-sealed class Inventory extends AbstractInventory {
     /**
      * Changes the cursor item of a player.
      *
-     * @deprecated normal inventories no longer store cursor items
+     * @deprecated normal inventories no longer store cursor items, use {@link PlayerInventory#setCursorItem(ItemStack)}
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public void setCursorItem(Player player, ItemStack cursorItem) {
         player.getInventory().setCursorItem(cursorItem);
     }
@@ -175,7 +167,7 @@ public non-sealed class Inventory extends AbstractInventory {
         final PlayerInventory playerInventory = player.getInventory();
         final ItemStack cursor = playerInventory.getCursorItem();
         final boolean isInWindow = isClickInWindow(slot);
-        final int clickSlot = isInWindow ? slot : slot - offset;
+        final int clickSlot = isInWindow ? slot : slot - getSize();
         final AbstractInventory clickedInventory = isInWindow ? this : playerInventory;
         final ItemStack clicked = isInWindow ? getItemStack(slot) : playerInventory.getItemStack(clickSlot);
         final InventoryClickResult clickResult = clickProcessor.leftClick(clicked, cursor);
@@ -198,7 +190,7 @@ public non-sealed class Inventory extends AbstractInventory {
         final PlayerInventory playerInventory = player.getInventory();
         final ItemStack cursor = playerInventory.getCursorItem();
         final boolean isInWindow = isClickInWindow(slot);
-        final int clickSlot = isInWindow ? slot : slot - offset;
+        final int clickSlot = isInWindow ? slot : slot - getSize();
         final ItemStack clicked = isInWindow ? getItemStack(slot) : playerInventory.getItemStack(clickSlot);
         final AbstractInventory clickedInventory = isInWindow ? this : playerInventory;
         final InventoryClickResult clickResult = clickProcessor.rightClick(clicked, cursor);
@@ -220,7 +212,7 @@ public non-sealed class Inventory extends AbstractInventory {
     public boolean shiftClick(Player player, int slot, int button) {
         final PlayerInventory playerInventory = player.getInventory();
         final boolean isInWindow = isClickInWindow(slot);
-        final int clickSlot = isInWindow ? slot : slot - offset;
+        final int clickSlot = isInWindow ? slot : slot - getSize();
         final ItemStack clicked = isInWindow ? getItemStack(slot) : playerInventory.getItemStack(clickSlot);
         final ItemStack cursor = playerInventory.getCursorItem(); // Isn't used in the algorithm
 
@@ -269,7 +261,7 @@ public non-sealed class Inventory extends AbstractInventory {
         final int convertedKey = key == 40 ? PlayerInventoryUtils.OFFHAND_SLOT : key;
         final PlayerInventory playerInventory = player.getInventory();
         final boolean isInWindow = isClickInWindow(slot);
-        final int clickSlot = isInWindow ? slot : slot - offset;
+        final int clickSlot = isInWindow ? slot : slot - getSize();
         final ItemStack clicked = isInWindow ? getItemStack(slot) : playerInventory.getItemStack(clickSlot);
         final ItemStack heldItem = playerInventory.getItemStack(convertedKey);
         final AbstractInventory clickedInventory = isInWindow ? this : playerInventory;
@@ -300,7 +292,7 @@ public non-sealed class Inventory extends AbstractInventory {
         final PlayerInventory playerInventory = player.getInventory();
         final boolean isInWindow = isClickInWindow(slot);
         final boolean outsideDrop = slot == -999;
-        final int clickSlot = isInWindow ? slot : slot - offset;
+        final int clickSlot = isInWindow ? slot : slot - getSize();
         final ItemStack clicked = outsideDrop ?
                 ItemStack.AIR : (isInWindow ? getItemStack(slot) : playerInventory.getItemStack(clickSlot));
         final ItemStack cursor = playerInventory.getCursorItem();
@@ -310,7 +302,7 @@ public non-sealed class Inventory extends AbstractInventory {
             return false;
         }
         final ItemStack resultClicked = clickResult.getClicked();
-        if (!outsideDrop && resultClicked != null) {
+        if (!outsideDrop) {
             if (isInWindow) {
                 setItemStack(slot, resultClicked);
             } else {
@@ -340,7 +332,7 @@ public non-sealed class Inventory extends AbstractInventory {
     public boolean doubleClick(Player player, int slot) {
         final PlayerInventory playerInventory = player.getInventory();
         final boolean isInWindow = isClickInWindow(slot);
-        final int clickSlot = isInWindow ? slot : slot - offset;
+        final int clickSlot = isInWindow ? slot : slot - getSize();
         final ItemStack clicked = slot != -999 ?
                 (isInWindow ? getItemStack(slot) : playerInventory.getItemStack(clickSlot)) :
                 ItemStack.AIR;

@@ -78,6 +78,9 @@ class UntrustedBinaryTagTest {
         final IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> wrap(bytes).read(UNTRUSTED_NBT));
         assertTrue(error.getMessage().contains("NBT is too large"), error::getMessage);
+        // The budget counts approximate heap bytes, not encoded ones, and the message names its property
+        assertTrue(error.getMessage().contains("approximate heap bytes"), error::getMessage);
+        assertTrue(error.getMessage().contains("synaxis.nbt.max-bytes"), error::getMessage);
     }
 
     @Test

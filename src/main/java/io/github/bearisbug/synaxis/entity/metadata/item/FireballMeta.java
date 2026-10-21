@@ -10,7 +10,7 @@ import io.github.bearisbug.synaxis.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 public class FireballMeta extends EntityMeta implements ObjectDataProvider, ProjectileMeta {
-    private Entity shooter;
+    private @Nullable Entity shooter;
 
     public FireballMeta(@Nullable Entity entity, MetadataHolder metadata) {
         super(entity, metadata);
@@ -38,11 +38,6 @@ public class FireballMeta extends EntityMeta implements ObjectDataProvider, Proj
     @Override
     public int getObjectData() {
         return this.shooter == null ? 0 : this.shooter.getEntityId();
-    }
-
-    @Override
-    public boolean requiresVelocityPacketAtSpawn() {
-        return true;
     }
 
 }

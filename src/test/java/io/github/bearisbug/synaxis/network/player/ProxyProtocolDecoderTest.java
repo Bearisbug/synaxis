@@ -47,6 +47,24 @@ class ProxyProtocolDecoderTest {
     }
 
     @Test
+    void readsTheV2Ipv6SourceAddress() throws Exception {
+        final byte[] header = v2Header((byte) 0x21, (byte) 0x21, 36);
+        final byte[] source = InetAddress.ofLiteral("2001:db8::7").getAddress();
+        final byte[] destination = InetAddress.ofLiteral("2001:db8::1").getAddress();
+        System.arraycopy(source, 0, header, 16, 16);
+        System.arraycopy(destination, 0, header, 32, 16);
+        header[48] = 0x30; // source port 12345
+        header[49] = 0x39;
+        header[50] = 0x63; // destination port 25565
+        header[51] = (byte) 0xDD;
+        final NetworkBuffer buffer = NetworkBuffer.wrap(header, 0, header.length);
+
+        final ProxyProtocolDecoder.Result result = ProxyProtocolDecoder.parse(ORIGINAL, buffer);
+        assertEquals(new InetSocketAddress(InetAddress.ofLiteral("2001:db8::7"), 12345), result.clientAddress());
+        assertEquals(header.length, buffer.readIndex());
+    }
+
+    @Test
     void validatesV2FamilyProtocolAndAddressLength() {
         final byte[] invalidCombination = v2Header((byte) 0x21, (byte) 0x13, 0);
         assertThrows(Exception.class, () -> ProxyProtocolDecoder.parse(

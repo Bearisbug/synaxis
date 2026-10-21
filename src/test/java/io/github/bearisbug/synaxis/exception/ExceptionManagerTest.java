@@ -135,4 +135,16 @@ public class ExceptionManagerTest {
         });
         assertDoesNotThrow(() -> manager.handleException(original));
     }
+
+    @Test
+    public void settingNoHandlerRestoresTheDefaultOne() {
+        final ExceptionHandler fallback = new ExceptionManager().getExceptionHandler();
+        final ExceptionManager manager = new ExceptionManager();
+        manager.setExceptionHandler(_ -> {
+        });
+
+        manager.setExceptionHandler(null);
+
+        assertSame(fallback, manager.getExceptionHandler());
+    }
 }

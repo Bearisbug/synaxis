@@ -49,10 +49,10 @@ public class PacketViewableUtilsConcurrencyIntegrationTest {
                 try {
                     for (int round = 0; round < ROUNDS; round++) {
                         for (CountingViewable viewable : viewables) {
-                            viewablePackets.prepareViewablePacket(viewable, packet);
+                            viewablePackets.prepareViewablePacket(viewable, packet, null);
                         }
                         // Short lived viewables leave stale weak entries behind
-                        viewablePackets.prepareViewablePacket(new CountingViewable(), packet);
+                        viewablePackets.prepareViewablePacket(new CountingViewable(), packet, null);
                         if (round % 25 == 0) System.gc();
                     }
                 } catch (Throwable t) {

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 public class PlayerEventTraitIntegrationTest {
@@ -52,5 +53,28 @@ public class PlayerEventTraitIntegrationTest {
         assertSame(player, event.getPlayer());
         assertThrows(NullPointerException.class, () -> event.setHost(null));
         assertEquals("example.com", event.getHost());
+    }
+
+    @Test
+    public void aTransferRefusesABlankHostOrAPortOutOfRange(Env env) {
+        var instance = env.createEmptyInstance();
+        var player = env.createPlayer(instance, Pos.ZERO);
+        var event = new OutgoingTransferEvent(player, "example.com", 25565);
+
+        for (int port : new int[]{0, -1, 65536, 70000}) {
+            var refused = assertThrows(IllegalArgumentException.class, () -> event.setPort(port));
+            assertTrue(refused.getMessage().endsWith("got " + port), refused.getMessage());
+        }
+        assertThrows(IllegalArgumentException.class, () -> event.setHost(" "));
+        assertEquals("example.com", event.getHost(), "a refused value leaves the event as it was");
+        assertEquals(25565, event.getPort());
+
+        event.setPort(1);
+        assertEquals(1, event.getPort());
+        event.setPort(65535);
+        assertEquals(65535, event.getPort());
+
+        assertThrows(IllegalArgumentException.class, () -> new OutgoingTransferEvent(player, "", 25565));
+        assertThrows(IllegalArgumentException.class, () -> new OutgoingTransferEvent(player, "example.com", 0));
     }
 }

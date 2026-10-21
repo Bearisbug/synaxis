@@ -129,8 +129,8 @@ public interface Transcoder<D> {
     Result<Double> getDouble(D value);
 
     /**
-     * Creates a float representation of {@link D}
-     * @param value the float primitive
+     * Creates a double representation of {@link D}
+     * @param value the double primitive
      * @return the representation of value in {@link D}
      */
     D createDouble(double value);

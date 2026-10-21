@@ -18,11 +18,9 @@ import io.github.bearisbug.synaxis.network.packet.server.configuration.RegistryD
 import io.github.bearisbug.synaxis.utils.json.JsonUtil;
 import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.jetbrains.annotations.UnknownNullability;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,12 +38,25 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * The list and hash map backed {@link DynamicRegistry}. Its thread contract:
+ * <ul>
+ *     <li>Writes ({@code register}, {@code remove}) are serialized on {@code REGISTRY_LOCK}, one lock shared by every
+ *     registry, which also guards switching {@code registries} in {@link #registryDataPacket(Registries, boolean)}.</li>
+ *     <li>Reads take no lock, except that building the registry data packet before the freeze copies the entries
+ *     under {@code REGISTRY_LOCK}. They are consistent once the registry is frozen, or when every write
+ *     happens-before {@code ServerProcess#start}.</li>
+ *     <li>With {@code ServerConfig#registryUnsafeOps} or {@code insideTest} the registry is never frozen; a read
+ *     racing a write can then see an id of -1 or a null entry.</li>
+ *     <li>{@link #keys()} and {@link #values()} are live views: a write while one is iterated can throw
+ *     {@link java.util.ConcurrentModificationException}.</li>
+ * </ul>
+ */
 @ApiStatus.Internal
 final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
     private static final Logger LOGGER = LoggerFactory.getLogger(DynamicRegistryImpl.class);
 
-    // Could also just use `this`, but this is a good candidate for identityless classes.
-    // Also, what use case requires you to mutate registries faster than one monitor?
+    // Writes only happen while registries are set up, so one lock for all of them costs nothing
     private static final Object REGISTRY_LOCK = new Object();
 
     private volatile @Nullable Registries registries = null;
@@ -70,7 +81,6 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
     DynamicRegistryImpl(Key key, @Nullable Codec<T> codec) {
         this.key = key;
         this.codec = codec;
-        // Expect stale data possibilities with unsafe ops.
         this.idToValue = new ArrayList<>();
         this.idToKey = new ArrayList<>();
         this.keyToId = new HashMap<>();
@@ -81,29 +91,9 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
         this.tags = new ConcurrentHashMap<>();
     }
 
-    // Used to create compressed registries
-    DynamicRegistryImpl(Key key, @Nullable Codec<T> codec, List<T> idToValue,
-                        Map<RegistryKey<T>, Integer> keyToId, List<RegistryKey<T>> idToKey,
-                        Map<Key, T> keyToValue, Map<T, RegistryKey<T>> valueToKey,
-                        List<DataPack> packById, Map<TagKey<T>, RegistryTagImpl.Backed<T>> tags) {
-        this.key = key;
-        this.codec = codec;
-        this.idToValue = idToValue;
-        this.idToKey = idToKey;
-        this.keyToId = keyToId;
-        this.keyToValue = keyToValue;
-        this.valueToKey = valueToKey;
-        this.packById = packById;
-        this.tags = tags;
-    }
-
     @Override
     public Key key() {
         return this.key;
-    }
-
-    public @UnknownNullability Codec<T> codec() {
-        return codec;
     }
 
     @Override
@@ -144,14 +134,14 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
 
     @Override
     public RegistryKey<T> register(Key key, T object, DataPack pack) {
-        if (isFrozen()) throw new IllegalStateException(frozen("register"));
+        if (frozen) throw new IllegalStateException(frozen("register"));
         Objects.requireNonNull(key, "Key cannot be null");
         Objects.requireNonNull(object, "Object cannot be null");
         Objects.requireNonNull(pack, "Pack cannot be null");
 
         final RegistryKey<T> registryKey = new RegistryKeyImpl<>(key);
         synchronized (REGISTRY_LOCK) {
-            Integer id = keyToId.get(registryKey); // Array set at home
+            Integer id = keyToId.get(registryKey);
             keyToValue.put(key, object);
             if (id == null) {
                 valueToKey.put(object, registryKey);
@@ -176,7 +166,7 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
 
     @Override
     public boolean remove(Key key) {
-        if (isFrozen()) throw new IllegalStateException(frozen("remove"));
+        if (frozen) throw new IllegalStateException(frozen("remove"));
         Objects.requireNonNull(key, "Key cannot be null");
 
         final RegistryKey<T> registryKey = new RegistryKeyImpl<>(key);
@@ -244,7 +234,7 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
     public RegistryTag<T> getOrCreateTag(TagKey<T> key) {
         final RegistryTag<T> existing = this.tags.get(key);
         if (existing != null) return existing;
-        if (isFrozen()) throw new IllegalStateException(frozen("creating tag " + key.key().asString()));
+        if (frozen) throw new IllegalStateException(frozen("creating tag " + key.key().asString()));
         final RegistryTag<T> created = this.tags.computeIfAbsent(key, RegistryTagImpl.Backed::new);
         tagChangeListener.run();
         return created;
@@ -252,7 +242,7 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
 
     @Override
     public boolean removeTag(TagKey<T> key) {
-        if (isFrozen()) throw new IllegalStateException(frozen("removing tag " + key.key().asString()));
+        if (frozen) throw new IllegalStateException(frozen("removing tag " + key.key().asString()));
         if (this.tags.remove(key) == null) return false;
         tagChangeListener.run();
         return true;
@@ -269,7 +259,7 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
         // the vanilla datapack we can compute the entire thing.
         if (excludeVanilla) {
             if (this.registries != registries) {
-                synchronized (REGISTRY_LOCK) { // Bootleg off the static lock for this mutation
+                synchronized (REGISTRY_LOCK) {
                     if (this.registries != registries) {
                         this.registries = registries;
                         vanillaRegistryDataPacket.invalidate();
@@ -328,14 +318,8 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
         List<RegistryDataPacket.Entry> entries = new ArrayList<>(idToValue.size());
         for (int i = 0; i < idToValue.size(); i++) {
             CompoundBinaryTag data = null;
-            // sorta todo, sorta just a note:
-            // Right now we very much only support the minecraft:core (vanilla) 'pack'. Any entry which was not loaded
-            // from static data will be treated as non vanilla and always sent completely. However, we really should
-            // support arbitrary packs and associate all registry data with a datapack. Additionally, we should generate
-            // all data for the experimental datapacks built in to vanilla such as the next update experimental (1.21 at
-            // the time of writing). Datagen currently behaves kind of badly in that the registry inspecting generators
-            // like material, block, etc generate entries which are behind feature flags, whereas the ones which inspect
-            // static assets (the traditionally dynamic registries), do not generate those assets.
+            // Only entries of the minecraft:core pack leave their data out when excluding vanilla, every other
+            // entry is sent with its full NBT
             T entry = idToValue.get(i);
             DataPack pack = packById.get(i);
             if (!excludeVanilla || pack != DataPack.MINECRAFT_CORE) {
@@ -350,35 +334,12 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
         return new RegistryDataPacket(key.asString(), entries);
     }
 
-    /**
-     * Attempts to create a copy with compressed data structures.
-     *
-     * @return A safe copy of this registry
-     */
-    @Contract(pure = true)
-    DynamicRegistryImpl<T> compact() {
-        // Create new instances so they are trimmed to size without downcasting.
-        return new DynamicRegistryImpl<>(key, codec,
-                new ArrayList<>(idToValue),
-                new HashMap<>(keyToId),
-                new ArrayList<>(idToKey),
-                new HashMap<>(keyToValue),
-                new HashMap<>(valueToKey),
-                new ArrayList<>(packById),
-                new ConcurrentHashMap<>(tags)
-        );
-    }
-
     void freeze() {
         this.frozen = true;
     }
 
     void tagChangeListener(Runnable listener) {
         this.tagChangeListener = listener;
-    }
-
-    private boolean isFrozen() {
-        return frozen;
     }
 
     private String frozen(String operation) {
@@ -426,11 +387,11 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
                 if (valueResult instanceof Result.Ok(T value)) {
                     register(namespace, value, DataPack.MINECRAFT_CORE);
                 } else {
-                    throw new IllegalStateException("Failed to decode registry entry " + namespace + " for registry " + key() + ": " + valueResult);
+                    throw new IllegalStateException("Failed to decode registry entry " + namespace + " for registry " + key() + ": " + valueResult.cast().message());
                 }
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 }

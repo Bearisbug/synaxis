@@ -10,6 +10,13 @@ import java.util.Arrays;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.RAW_BYTES;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.STRING;
 
+/**
+ * A plugin message from the client, on the configuration or the play state.
+ *
+ * @param channel the channel of the message
+ * @param data    the payload; the accessor returns the storage of the packet, shared by every
+ *                listener that receives it, so do not modify it and copy it first to make changes
+ */
 public record ClientPluginMessagePacket(String channel, byte[] data) implements ClientPacket.Configuration, ClientPacket.Play {
     public static final NetworkBuffer.Type<ClientPluginMessagePacket> SERIALIZER = NetworkBufferTemplate.template(
             STRING, ClientPluginMessagePacket::channel,

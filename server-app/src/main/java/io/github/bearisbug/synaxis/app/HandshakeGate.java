@@ -317,7 +317,13 @@ final class HandshakeGate {
         if (!required || !event.getConnection().isOnline()) return;
         final PlayerConnection connection = event.getConnection();
         final UUID connectionId = connection.connectionId();
-        final CompletableFuture<LoginPlugin.Response> answered = event.sendPluginRequest(CHANNEL, answer());
+        final CompletableFuture<LoginPlugin.Response> answered;
+        try {
+            answered = event.sendPluginRequest(CHANNEL, answer());
+        } catch (IllegalStateException _) {
+            // Disconnected after the check above: login plugin requests end with the connection.
+            return;
+        }
         final byte[] payload;
         try {
             payload = answered.get(budget.toMillis(), TimeUnit.MILLISECONDS).payload();

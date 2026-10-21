@@ -26,9 +26,4 @@ public class ItemEntityMeta extends EntityMeta implements ObjectDataProvider {
         return 1;
     }
 
-    @Override
-    public boolean requiresVelocityPacketAtSpawn() {
-        return true;
-    }
-
 }

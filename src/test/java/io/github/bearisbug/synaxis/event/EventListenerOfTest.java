@@ -2,12 +2,15 @@ package io.github.bearisbug.synaxis.event;
 
 import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
 import io.github.bearisbug.synaxis.event.trait.RecursiveEvent;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class EventListenerOfTest {
 
@@ -50,8 +53,8 @@ public class EventListenerOfTest {
 
     @Test
     public void recursiveEventWithoutCancellationStillRuns() {
-        // The recursive branch of EventListener#of also wraps the cancellation check, a recursive
-        // event which is not cancellable must not be dropped by it.
+        // EventListener#of checks the cancellation of every event, a recursive event which is not
+        // cancellable must not be dropped by it.
         AtomicInteger calls = new AtomicInteger();
         var listener = EventListener.of(EventNodeTest.Recursive1.class, _ -> calls.incrementAndGet());
         assertEquals(EventListener.Result.SUCCESS, listener.run(new EventNodeTest.Recursive1()));
@@ -66,5 +69,20 @@ public class EventListenerOfTest {
         event.setCancelled(true);
         assertEquals(EventListener.Result.INVALID, listener.run(event));
         assertEquals(0, calls.get());
+    }
+
+    @Test
+    public void aMissingHandlerIsRefusedWhenTheListenerIsMade() {
+        final @Nullable Consumer<EventNodeTest.EventTest> noHandler = null;
+        var refused = assertThrows(NullPointerException.class,
+                () -> EventListener.of(EventNodeTest.EventTest.class, noHandler));
+        assertEquals("listener", refused.getMessage());
+    }
+
+    @Test
+    public void aMissingEventTypeIsRefusedWhenTheListenerIsMade() {
+        final @Nullable Class<EventNodeTest.EventTest> noType = null;
+        var refused = assertThrows(NullPointerException.class, () -> EventListener.of(noType, _ -> {}));
+        assertEquals("eventType", refused.getMessage());
     }
 }

@@ -52,9 +52,6 @@ public record DeclareCommandsPacket(List<Node> nodes,
             public void write(NetworkBuffer writer, Node value) {
                 writer.write(BYTE, value.flags);
 
-                if (value.children != null && value.children.length > 262114) {
-                    throw new RuntimeException("Children length " + value.children.length + " is bigger than the maximum allowed " + 262114);
-                }
                 writer.write(VAR_INT_ARRAY, value.children);
 
                 if ((value.flags & HAS_REDIRECT) != 0) {
@@ -136,9 +133,9 @@ public record DeclareCommandsPacket(List<Node> nodes,
 
     public static byte getFlag(NodeType type, boolean executable, boolean redirect, boolean suggestionType) {
         byte result = (byte) type.ordinal();
-        if (executable) result |= 0x04;
-        if (redirect) result |= 0x08;
-        if (suggestionType) result |= 0x10;
+        if (executable) result |= IS_EXECUTABLE;
+        if (redirect) result |= HAS_REDIRECT;
+        if (suggestionType) result |= HAS_SUGGESTION_TYPE;
         return result;
     }
 

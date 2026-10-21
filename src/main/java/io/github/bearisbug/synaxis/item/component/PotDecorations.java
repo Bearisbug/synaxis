@@ -13,13 +13,13 @@ public record PotDecorations(
         Material front
 ) {
     public static final Material DEFAULT_ITEM = Material.BRICK;
-    public static final PotDecorations EMPTY = new PotDecorations(DEFAULT_ITEM, DEFAULT_ITEM, DEFAULT_ITEM, DEFAULT_ITEM);
+    public static final PotDecorations EMPTY = new PotDecorations(DEFAULT_ITEM);
 
     public static final NetworkBuffer.Type<PotDecorations> NETWORK_TYPE = Material.NETWORK_TYPE.list(4).transform(PotDecorations::new, PotDecorations::asList);
     public static final Codec<PotDecorations> NBT_TYPE = Material.CODEC.list(4).transform(PotDecorations::new, PotDecorations::asList);
 
     public PotDecorations(List<Material> list) {
-        this(getOrAir(list, 0), getOrAir(list, 1), getOrAir(list, 2), getOrAir(list, 3));
+        this(getOrDefault(list, 0), getOrDefault(list, 1), getOrDefault(list, 2), getOrDefault(list, 3));
     }
 
     public PotDecorations(Material material) {
@@ -30,7 +30,7 @@ public record PotDecorations(
         return List.of(back, left, right, front);
     }
 
-    private static Material getOrAir(List<Material> list, int index) {
-        return index < list.size() ? list.get(index) : Material.BRICK;
+    private static Material getOrDefault(List<Material> list, int index) {
+        return index < list.size() ? list.get(index) : DEFAULT_ITEM;
     }
 }

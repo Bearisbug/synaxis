@@ -16,7 +16,7 @@ public record ChunkBiomesPacket(List<ChunkBiomeData> chunks) implements ServerPa
             ChunkBiomesPacket::new);
 
     public ChunkBiomesPacket {
-        chunks = List.copyOf(chunks); // TODO deep copy?
+        chunks = List.copyOf(chunks);
     }
 
     public record ChunkBiomeData(int chunkX, int chunkZ, byte[] data) {

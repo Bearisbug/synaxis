@@ -205,7 +205,7 @@ public final class PacketListenerManager {
     }
 
     /**
-     * Processes a packet by getting its {@link PacketPlayListenerConsumer} and calling all the packet listeners.
+     * Processes a packet by getting its {@link PacketPrePlayListenerConsumer} and calling it.
      * <p>
      * Runs on the read thread of the connection for the handshake, status and login packets and for
      * the immediate ones of {@code PlayerSocketConnection}, on the tick scheduler thread for the other
@@ -232,7 +232,7 @@ public final class PacketListenerManager {
         @SuppressWarnings("unchecked")
         PacketPrePlayListenerConsumer<T> packetListenerConsumer = listeners[currState.ordinal()].get(clazz);
 
-        // Listener can be null if none has been set before, call PacketConsumer anyway
+        // No listener: warn once per packet type and drop the packet
         if (packetListenerConsumer == null) {
             // A registered packet without a listener is a static defect: warn once, otherwise a
             // client spamming such a packet turns it into a log flood.
@@ -257,7 +257,9 @@ public final class PacketListenerManager {
     /**
      * Sets the listener of a packet.
      * <p>
-     * WARNING: this will overwrite the default engine listener, this is not reversible.
+     * WARNING: this will overwrite the default engine listener, this is not reversible. The default
+     * handshake and login listeners ({@link HandshakeListener}, {@link LoginListener}) run the
+     * connection gate L1 to L3 and the online mode authentication: replacing them turns those checks off.
      * <p>
      * The listener runs where {@link #processClientPacket} does: on the read thread for the
      * handshake, status and login states and for the immediate packets, on the tick scheduler thread
@@ -298,7 +300,8 @@ public final class PacketListenerManager {
      * <p>
      * The listener runs on the tick scheduler thread, or on the read thread for the immediate packets
      * of {@code PlayerSocketConnection} (the keep alive and cookie answers, the known packs, the end
-     * of the configuration), which skip the player's queue.
+     * of the configuration), which skip the player's queue. The {@code Player} already exists in the
+     * configuration state.
      *
      * @param packetClass the class of the packet
      * @param consumer    the new packet's listener
@@ -316,6 +319,7 @@ public final class PacketListenerManager {
      * @param packetClass the class of the packet
      * @param consumer    the new packet's listener
      * @param <T>         the type of the packet
+     * @deprecated use {@link #setPlayListener(Class, PacketPlayListenerConsumer)}
      */
     @Deprecated
     public <T extends ClientPacket> void setListener(Class<T> packetClass, PacketPlayListenerConsumer<T> consumer) {

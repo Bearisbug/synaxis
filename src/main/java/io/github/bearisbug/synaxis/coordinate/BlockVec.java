@@ -54,17 +54,6 @@ public record BlockVec(int blockX, int blockY, int blockZ) implements Point {
     }
 
     /**
-     * Creates a block vector from a point.
-     *
-     * @param point the point
-     * @deprecated Use {@link Point#asBlockVec()} instead
-     */
-    @Deprecated(forRemoval = true)
-    public BlockVec(Point point) {
-        this(point.blockX(), point.blockY(), point.blockZ());
-    }
-
-    /**
      * Creates a BlockVec with the blockX and blockZ, with blockY being zero.
      *
      * @param blockX the blockX

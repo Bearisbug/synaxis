@@ -173,6 +173,30 @@ public class EntityMetaIntegrationTest {
     }
 
     @Test
+    public void displayInterpolationDelaySentAgainWithTheSameValue(Env env) {
+        var connection = env.createConnection();
+        var instance = env.createFlatInstance();
+        var startPos = new Pos(0, 42, 1);
+
+        connection.connect(instance, startPos);
+        var incomingPackets = connection.trackIncoming(EntityMetaDataPacket.class);
+
+        var entity = new Entity(EntityType.ITEM_DISPLAY);
+        entity.setInstance(instance, startPos).join();
+        var meta = (ItemDisplayMeta) entity.getEntityMeta();
+        assertEquals(0, meta.getTransformationInterpolationStartDelta());
+
+        meta.setTransformationInterpolationStartDelta(0);
+        env.tick();
+        meta.setTransformationInterpolationStartDelta(0);
+
+        var packets = incomingPackets.collect();
+        assertEquals(3, packets.size()); // the spawn, then one for each write
+        assertEquals(0, packets.get(1).entries().get(MetadataDef.Display.INTERPOLATION_DELAY.index()).value());
+        assertEquals(0, packets.get(2).entries().get(MetadataDef.Display.INTERPOLATION_DELAY.index()).value());
+    }
+
+    @Test
     public void testMannequin(Env env) {
         // Ensure that mannequins have all skin layers by default, and that they can be changed by setting the metadata.
         var connection = env.createConnection();

@@ -1,5 +1,11 @@
 package io.github.bearisbug.synaxis.entity;
 
+/**
+ * The keys a player holds, as last sent by its client: a live view, updated in place on the player's tick thread
+ * each time a {@code ClientInputPacket} comes in. Copy the values out to keep them.
+ *
+ * @see Player#inputs()
+ */
 public class PlayerInputs {
 
     private boolean forward;
@@ -38,6 +44,11 @@ public class PlayerInputs {
         return sprint;
     }
 
+    /**
+     * Replaces the held keys. The engine calls it for every {@code ClientInputPacket}, through
+     * {@link Player#refreshInput}, which also fires {@code PlayerInputEvent} and syncs sneaking; calling it directly
+     * does neither.
+     */
     public void refresh(boolean forward, boolean backward, boolean left, boolean right, boolean jump, boolean shift, boolean sprint) {
         this.forward = forward;
         this.backward = backward;

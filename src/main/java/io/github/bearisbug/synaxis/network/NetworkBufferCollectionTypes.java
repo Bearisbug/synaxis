@@ -58,7 +58,7 @@ final class NetworkBufferCollectionTypes {
         }
 
         public FixedBitSetType(int length) {
-            this(length, FixedRawBytes((length + 7) / Long.BYTES));
+            this(length, FixedRawBytes((length + Byte.SIZE - 1) / Byte.SIZE));
         }
 
         @Override
@@ -67,9 +67,9 @@ final class NetworkBufferCollectionTypes {
                 throw new IllegalArgumentException("BitSet is larger than expected size (" + value.length() + ">" + length + ")");
             }
             byte[] array = value.toByteArray();
-            final int length = (this.length + 7) / Long.BYTES;
-            if (array.length != length) {
-                array = Arrays.copyOf(array, length);
+            final int byteLength = (length + Byte.SIZE - 1) / Byte.SIZE;
+            if (array.length != byteLength) {
+                array = Arrays.copyOf(array, byteLength);
             }
             arrayType.write(buffer, array);
         }
@@ -124,19 +124,11 @@ final class NetworkBufferCollectionTypes {
             for (T value : values) buffer.write(parent, value);
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         public List<T> read(NetworkBuffer buffer) {
             final int size = buffer.read(VAR_INT);
             Check.argCondition(size < 0 || size > maxSize, "Collection size ({0}) is out of the allowed range (0..{1})", size, maxSize);
-            T[] values = (T[]) new Object[NetworkBufferTypeImpl.initialCollectionSize(buffer, size)];
-            for (int i = 0; i < size; i++) {
-                if (i == values.length) {
-                    values = Arrays.copyOf(values, NetworkBufferTypeImpl.grownCollectionSize(values.length, size));
-                }
-                values[i] = buffer.read(parent);
-            }
-            return List.of(values);
+            return List.of(readElements(buffer, parent, size));
         }
     }
 
@@ -151,19 +143,30 @@ final class NetworkBufferCollectionTypes {
             for (T value : values) buffer.write(parent, value);
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         public Set<T> read(NetworkBuffer buffer) {
             final int size = buffer.read(VAR_INT);
             Check.argCondition(size < 0 || size > maxSize, "Collection size ({0}) is out of the allowed range (0..{1})", size, maxSize);
-            T[] values = (T[]) new Object[NetworkBufferTypeImpl.initialCollectionSize(buffer, size)];
-            for (int i = 0; i < size; i++) {
-                if (i == values.length) {
-                    values = Arrays.copyOf(values, NetworkBufferTypeImpl.grownCollectionSize(values.length, size));
-                }
-                values[i] = buffer.read(parent);
-            }
-            return Set.of(values);
+            return Set.of(readElements(buffer, parent, size));
         }
+    }
+
+    /**
+     * Reads {@code size} elements of {@code type}, reserving room the way
+     * {@link NetworkBufferTypeImpl#initialCollectionSize} and
+     * {@link NetworkBufferTypeImpl#grownCollectionSize} allow.
+     *
+     * @return an array of exactly {@code size} elements
+     */
+    @SuppressWarnings("unchecked")
+    private static <T> T[] readElements(NetworkBuffer buffer, NetworkBuffer.Type<T> type, int size) {
+        T[] values = (T[]) new Object[NetworkBufferTypeImpl.initialCollectionSize(buffer, size)];
+        for (int i = 0; i < size; i++) {
+            if (i == values.length) {
+                values = Arrays.copyOf(values, NetworkBufferTypeImpl.grownCollectionSize(values.length, size));
+            }
+            values[i] = buffer.read(type);
+        }
+        return values;
     }
 }

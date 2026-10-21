@@ -56,7 +56,9 @@ final class Serializers {
         );
     }
 
-    static final Entry<Object, ByteBinaryTag> EMPTY = new Entry<>(BinaryTagTypes.BYTE, _ -> null, _ -> null);
+    // The entry of Tag.Transient: its writer returns null, so a transient value is never serialized, and the BYTE type
+    // only fills the slot, nothing is ever read with it
+    static final Entry<Object, ByteBinaryTag> TRANSIENT = new Entry<>(BinaryTagTypes.BYTE, _ -> null, _ -> null);
 
     static <T> Entry<T, CompoundBinaryTag> fromTagSerializer(TagSerializer<T> serializer) {
         return new Serializers.Entry<>(BinaryTagTypes.COMPOUND,

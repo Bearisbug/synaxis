@@ -15,15 +15,19 @@ import java.util.function.Function;
  * To construct simply just do {@code new Result.Ok<>(value) } and {@code new Result.Error<>("Error message!") }
  * <br>
  * You should not rely on the identity of results as they are value candidates.
+ * <br>
+ * {@link Ok} can hold null, for example the value of an optional codec whose value is absent and whose default is
+ * null. The record pattern {@code Result.Ok(T v)} matches {@code Ok(null)} as well, so check {@code v != null} where a
+ * value is required.
  *
  * @param <T> the type, can be nullable.
  */
 public sealed interface Result<T extends @UnknownNullability Object> {
 
     /**
-     * Represents the {@link Result} was successful.
+     * Represents the {@link Result} was successful. The value can be null, see {@link Result}.
      *
-     * @param value the value of {@link T}
+     * @param value the value of {@link T}, possibly null
      * @param <T>   the value type
      */
     record Ok<T extends @UnknownNullability Object>(T value) implements Result<T> {
@@ -70,13 +74,10 @@ public sealed interface Result<T extends @UnknownNullability Object> {
     }
 
     /**
-     * Maps the {@link Error} result to the mapper function and creates a new {@link Error} result
-     * Otherwise, returns {@link Ok}.
-     * <br>
-     * Similar to {@link #map(Function)} but instead constructs the result instead.
+     * Rewrites the message of an {@link Error} with {@code mapper}; an {@link Ok} is returned as it is.
      *
-     * @param mapper the new result
-     * @return the new result or the error.
+     * @param mapper rewrites the error message
+     * @return the error with the new message, or this result if it is {@link Ok}
      */
     @Contract(pure = true)
     default Result<T> mapError(Function<String, String> mapper) {

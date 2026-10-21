@@ -78,13 +78,7 @@ public final class ComponentCodecs {
     }
 
     private static List<Component> extractTranslatableComponents(final TranslatableComponent component) {
-        final List<TranslationArgument> arguments = component.arguments();
-        if (arguments.isEmpty()) return List.of();
-        Component[] components = new Component[arguments.size()];
-        for (int i = 0; i < components.length; i++) {
-            components[i] = arguments.get(i).asComponent();
-        }
-        return List.of(components);
+        return component.arguments().stream().map(TranslationArgument::asComponent).toList();
     }
 
     public static final StructCodec<ClickEvent<?>> CLICK_EVENT = new StructCodec<>() {
@@ -305,6 +299,12 @@ public final class ComponentCodecs {
         }
     };
 
+    // The contents tried, in order, for a component without a type. NBT_CONTENT does not decode yet, a component
+    // of type "nbt" only goes through its own case. Has to stay below the codecs it lists, static fields are
+    // initialized in declaration order.
+    private static final List<StructCodec<? extends Component>> GUESS_ORDER = List.of(
+            TEXT_CONTENT, TRANSLATABLE_CONTENT, SCORE_CONTENT, SELECTOR_CONTENT, KEYBIND_CONTENT, OBJECT_CONTENT);
+
     public static final Codec<Component> COMPONENT = Codec.Recursive((componentCodec) -> {
         final Codec<List<Component>> componentListCodec = componentCodec.list();
         final StructCodec<List<Component>> childrenCodec = StructCodec.struct(
@@ -338,34 +338,18 @@ public final class ComponentCodecs {
                     case "object" -> OBJECT_CONTENT.decodeFromMap(coder, map);
                     case null, default -> {
                         // Type was not included, try to guess based on the content.
-                        final Result<? extends Component> textResult = TEXT_CONTENT.decodeFromMap(coder, map);
-                        if (textResult instanceof Result.Ok<? extends Component>)
-                            yield textResult;
-                        final Result<? extends Component> translatableResult = TRANSLATABLE_CONTENT.decodeFromMap(coder, map);
-                        if (translatableResult instanceof Result.Ok<? extends Component>)
-                            yield translatableResult;
-                        final Result<? extends Component> scoreResult = SCORE_CONTENT.decodeFromMap(coder, map);
-                        if (scoreResult instanceof Result.Ok<? extends Component>)
-                            yield scoreResult;
-                        final Result<? extends Component> selectorResult = SELECTOR_CONTENT.decodeFromMap(coder, map);
-                        if (selectorResult instanceof Result.Ok<? extends Component>)
-                            yield selectorResult;
-                        final Result<? extends Component> keybindResult = KEYBIND_CONTENT.decodeFromMap(coder, map);
-                        if (keybindResult instanceof Result.Ok<? extends Component>)
-                            yield keybindResult;
-                        final Result<? extends Component> nbtResult = NBT_CONTENT.decodeFromMap(coder, map);
-                        if (nbtResult instanceof Result.Ok<? extends Component>)
-                            yield nbtResult;
-                        final Result<? extends Component> objectResult = OBJECT_CONTENT.decodeFromMap(coder, map);
-                        if (objectResult instanceof Result.Ok<? extends Component>)
-                            yield objectResult;
+                        for (StructCodec<? extends Component> content : GUESS_ORDER) {
+                            final Result<? extends Component> result = content.decodeFromMap(coder, map);
+                            if (result instanceof Result.Ok<? extends Component>)
+                                yield result;
+                        }
                         yield new Result.Error<>("Unable to determine component type");
                     }
                 };
 
                 return baseResult
                         .map(base -> childrenCodec.decodeFromMap(coder, map).mapResult(base::children))
-                        .map(style -> STYLE.decodeFromMap(coder, map).mapResult(style::style));
+                        .map(withChildren -> STYLE.decodeFromMap(coder, map).mapResult(withChildren::style));
             }
 
             @Override

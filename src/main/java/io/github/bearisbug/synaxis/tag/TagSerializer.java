@@ -29,6 +29,11 @@ public interface TagSerializer<T> {
      */
     void write(TagWritable writer, T value);
 
+    /**
+     * Reads and writes the whole content as one compound. It reads from a {@link TagHandler} or from the snapshot of
+     * {@link TagHandler#readableCopy()}; any other {@link TagReadable} is refused with an
+     * {@link IllegalArgumentException}.
+     */
     @ApiStatus.Experimental
     TagSerializer<CompoundBinaryTag> COMPOUND = TagSerializerImpl.COMPOUND;
 

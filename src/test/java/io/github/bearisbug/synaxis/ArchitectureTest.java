@@ -59,7 +59,6 @@ public class ArchitectureTest {
      */
     private static final String[] LOWER_LEVEL_PACKAGES = {
             "io.github.bearisbug.synaxis.codec..",
-            "io.github.bearisbug.synaxis.condition..",
             "io.github.bearisbug.synaxis.coordinate..",
             "io.github.bearisbug.synaxis.exception..",
             "io.github.bearisbug.synaxis.gamedata..",
@@ -196,7 +195,8 @@ public class ArchitectureTest {
      * <ul>
      * <li>{@link PacketReading}: at most one line per 10 seconds, carrying the count it swallowed.</li>
      * <li>{@link PlayerSocketConnection}: one line per connection for a protocol error, kicked on
-     * the same branch ({@code rejectMalformedPacket}, on by default), and one report per packet a
+     * the same branch ({@code rejectMalformedPacket}, on by default), one line per state change whose
+     * packet a listener cancelled, which only the server starts, and one report per packet a
      * listener threw on. Before the configuration state that report drops the connection; from
      * there on only {@code rejectMisusedPacket} (off by default) bounds it — a hole left open,
      * tracked in {@code docs/DESIGN.md} §28. The same report per packet exists a second

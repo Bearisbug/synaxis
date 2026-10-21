@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerPreLoginEvent;
+import io.github.bearisbug.synaxis.exception.ExceptionHandler;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
@@ -20,6 +21,7 @@ import io.github.bearisbug.synaxis.network.packet.server.login.LoginPluginReques
 import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -32,6 +34,7 @@ import java.net.StandardSocketOptions;
 import java.nio.channels.SocketChannel;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -159,13 +162,26 @@ public class DisconnectFlushSocketTest {
 
     /**
      * A packet that fails on the write thread, here the supplier of a cached packet, is dropped: it
-     * is reported once, never built again, and the peer reads why it is disconnected.
+     * is reported once with the connection it was written for, never built again, and the peer reads
+     * why it is disconnected.
      */
     @Test
     public void aPacketThatFailsToBeWrittenIsDroppedAndThePeerToldOfTheInternalError() throws Exception {
         final ServerProcess process = ServerProcess.of(ServerConfig.builder().compressionThreshold(0).build());
         final List<Throwable> reported = new CopyOnWriteArrayList<>();
-        process.exception().setExceptionHandler(reported::add);
+        final List<Optional<UUID>> reportedFor = new CopyOnWriteArrayList<>();
+        process.exception().setExceptionHandler(new ExceptionHandler() {
+            @Override
+            public void handleException(Throwable e) {
+                handleException(e, null);
+            }
+
+            @Override
+            public void handleException(Throwable e, @Nullable UUID connectionId) {
+                reported.add(e);
+                reportedFor.add(Optional.ofNullable(connectionId));
+            }
+        });
         final CompletableFuture<PlayerSocketConnection> accepted = new CompletableFuture<>();
         final CountDownLatch done = new CountDownLatch(1);
         process.eventHandler().addListener(AsyncPlayerPreLoginEvent.class, event -> {
@@ -198,6 +214,7 @@ public class DisconnectFlushSocketTest {
             assertEquals(1, built.get(), "the failed packet is not built again");
             assertTrue(connection.writeThread().join(Duration.ofSeconds(5)), "the write thread ended");
             assertEquals(List.of(failure), reported);
+            assertEquals(List.of(Optional.of(connection.connectionId())), reportedFor);
         } finally {
             done.countDown();
             process.stop();

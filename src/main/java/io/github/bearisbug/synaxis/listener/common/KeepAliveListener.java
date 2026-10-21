@@ -17,7 +17,7 @@ public final class KeepAliveListener {
             return;
         }
         player.refreshAnswerKeepAlive(true);
-        // Update latency
+        // The id is the System.nanoTime() at send, see Player#refreshKeepAlive
         final long latencyNanos = System.nanoTime() - packetId;
 
         final int latency = (int) TimeUnit.NANOSECONDS.toMillis(latencyNanos);

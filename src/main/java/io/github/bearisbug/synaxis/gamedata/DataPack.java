@@ -11,13 +11,10 @@ public sealed interface DataPack permits DataPackImpl {
     DataPack ENGINE_UNNAMED = new DataPackImpl(Key.key("synaxis", "unnamed"), false);
 
     /**
-     * <p>Returns true if this data pack is synced with the client. The null data pack is never synced.</p>
+     * Returns whether the client already has this data pack, so that its entries need not be sent when the client
+     * lists it among its known packs. Only {@link #MINECRAFT_CORE} is.
      *
-     * <p>In practice, this currently only makes sense for vanilla and modded content.</p>
-     *
-     * <p>TODO: in the future this should be based on what the client responds with known packs, I suppose.</p>
-     *
-     * @return true if this data pack is synced with the client, false otherwise.
+     * @return true if the client has this data pack, false otherwise.
      */
     boolean isSynced();
 

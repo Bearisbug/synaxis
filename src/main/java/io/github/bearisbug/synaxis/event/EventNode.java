@@ -19,6 +19,11 @@ import java.util.function.Predicate;
  * A node may contain any number of children and/or listeners. When an event is called,
  * the node will filter it based on the parameters given at creation and then propagate
  * it down to child nodes and listeners if it passes.
+ * <p>
+ * Threading: every method may be called from any thread, except that an {@code AsyncEvent} is called on a
+ * virtual thread. {@link #call(Event)} runs the listeners synchronously on the calling thread. Adding or removing a
+ * listener, a child or a binding, and {@link #map}/{@link #unmap}, apply to every call that starts after they
+ * returned; a call already running may still dispatch through the tree as it was before.
  *
  * @param <T> The event type accepted by this node
  */
@@ -64,7 +69,7 @@ public sealed interface EventNode<T extends Event> permits EventNodeImpl {
      * <p><pre>{@code
      * var playerInPosXZNode = EventNode.event("abc", EventFilter.PLAYER, event -> {
      *     var position = event.getPlayer().getPosition();
-     *     return position.getX() > 0 && position.getZ() > 0;
+     *     return position.x() > 0 && position.z() > 0;
      * });
      * }</pre>
      *
@@ -91,7 +96,7 @@ public sealed interface EventNode<T extends Event> permits EventNodeImpl {
      * <p><pre>{@code
      * var playerInPosXZNode = EventNode.type("abc", EventFilter.PLAYER, (event, player) -> {
      *     var position = player.getPosition();
-     *     return position.getX() > 0 && position.getZ() > 0;
+     *     return position.x() > 0 && position.z() > 0;
      * });
      * }</pre>
      *
@@ -116,9 +121,10 @@ public sealed interface EventNode<T extends Event> permits EventNodeImpl {
      * <p>
      * For example, you could create an event filter which only accepts player events
      * where the player is in creative mode.
-     * <p><pre>
-     * var playerIsCreative = EventNode.value("abc", EventFilter.PLAYER, Player::isCreative);
-     * </pre>
+     * <p><pre>{@code
+     * var playerIsCreative = EventNode.value("creative", EventFilter.PLAYER,
+     *         player -> player.getGameMode() == GameMode.CREATIVE);
+     * }</pre>
      *
      * @param name      The name of the event node
      * @param filter    The event type filter to apply

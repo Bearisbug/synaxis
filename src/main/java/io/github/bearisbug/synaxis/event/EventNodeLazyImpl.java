@@ -7,6 +7,12 @@ import java.lang.ref.WeakReference;
  * a child or a binding, and registers itself in the holder under the same hold of the global lock
  * as that addition: an addition made before the registration is visible would miss the events
  * dispatched on the holder right after it returns.
+ * <p>
+ * The node only receives the events of the holder once {@code ensureMap()} put it in the
+ * holder's {@code registeredMappedNode}. Every method of {@link EventNode} that adds something
+ * events are dispatched to (a listener, a child, a binding) must therefore be overridden here and
+ * call {@code ensureMap()} first, in the same hold of the global lock. {@link EventNode#unmap}
+ * goes through {@code resetMapped()}, so the next addition registers the node again.
  */
 final class EventNodeLazyImpl<E extends Event> extends EventNodeImpl<E> {
     private final EventNodeImpl<? super E> holder;

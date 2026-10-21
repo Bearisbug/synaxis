@@ -18,7 +18,9 @@ import java.util.Set;
  * sent back to configuration later). The player is moved to the play state as soon as all event
  * handles finish processing this event.
  *
- * <p>The spawning instance <b>must</b> be set for the player to join.</p>
+ * <p>The spawning instance <b>must</b> be set for the player to join, on every entry into the configuration state,
+ * a configuration that is not the first one included: left null, the connection manager throws a
+ * {@link NullPointerException} and the player is kicked.</p>
  *
  * <p>The event is called off the tick threads, so it is safe to block here</p>
  *
@@ -43,7 +45,7 @@ public class AsyncPlayerConfigurationEvent implements PlayerEvent, AsyncEvent {
         this.player = player;
         this.isFirstConfig = isFirstConfig;
 
-        this.featureFlags.add(FeatureFlag.VANILLA); // Vanilla feature-set, without this you get nothing at all. Kinda wacky!
+        this.featureFlags.add(FeatureFlag.VANILLA); // Vanilla feature-set, without this you get nothing at all.
 
         this.hardcore = false;
         this.clearChat = false;
@@ -67,6 +69,11 @@ public class AsyncPlayerConfigurationEvent implements PlayerEvent, AsyncEvent {
         return this.hardcore;
     }
 
+    /**
+     * Sets whether the client shows the world as hardcore, false by default.
+     *
+     * @param hardcore true to show the hardcore hearts and screens
+     */
     public void setHardcore(boolean hardcore) {
         this.hardcore = hardcore;
     }
@@ -95,11 +102,11 @@ public class AsyncPlayerConfigurationEvent implements PlayerEvent, AsyncEvent {
      * @see io.github.bearisbug.synaxis.FeatureFlag
      */
     public boolean removeFeatureFlag(FeatureFlag feature) {
-        return this.featureFlags.remove(feature); // Should this have sanity checking to see if the feature was actually contained in the list?
+        return this.featureFlags.remove(feature);
     }
 
     /**
-     * The list of currently added feature flags. This is an unmodifiable copy of what will be sent to the client.
+     * The list of currently added feature flags. This is an unmodifiable view of what will be sent to the client.
      *
      * @return An unmodifiable set of feature flags
      *
@@ -133,10 +140,22 @@ public class AsyncPlayerConfigurationEvent implements PlayerEvent, AsyncEvent {
         this.clearChat = clearChat;
     }
 
+    /**
+     * Whether the registry data is sent to the client in this configuration. The default is
+     * {@link #isFirstConfig()}.
+     *
+     * @return true if the registry data will be sent
+     */
     public boolean willSendRegistryData() {
         return sendRegistryData;
     }
 
+    /**
+     * Sets whether the registry data is sent to the client in this configuration. Turned off on the first
+     * configuration, the client never gets the registries and cannot join.
+     *
+     * @param sendRegistryData true to send the registry data
+     */
     public void setSendRegistryData(boolean sendRegistryData) {
         this.sendRegistryData = sendRegistryData;
     }
@@ -145,6 +164,13 @@ public class AsyncPlayerConfigurationEvent implements PlayerEvent, AsyncEvent {
         return spawningInstance;
     }
 
+    /**
+     * Sets the instance the player spawns in when it leaves the configuration state. It must be set on every
+     * configuration, including one that is not the first: left null, the connection manager throws a
+     * {@link NullPointerException} and the player is kicked.
+     *
+     * @param spawningInstance the instance to spawn in
+     */
     public void setSpawningInstance(@Nullable Instance spawningInstance) {
         this.spawningInstance = spawningInstance;
     }

@@ -8,7 +8,9 @@ import java.util.function.Supplier;
  * Represents a scheduler that will execute tasks with a precision based on its ticking rate.
  * If precision is important, consider using a JDK executor service or any third party library.
  * <p>
- * Tasks are by default executed in the caller thread.
+ * Tasks run on the thread calling {@link #process()}, {@link #processTick()} or {@link #processTickEnd()}.
+ * Only the first call of the supplier given to {@link #submitTask(Supplier, ExecutionType)} runs right away on the
+ * submitting thread, to get the first {@link TaskSchedule}; for the shortcuts, it only returns the delay.
  */
 public sealed interface Scheduler extends Executor permits SchedulerImpl, SchedulerManager {
     static Scheduler newScheduler(Consumer<Throwable> exceptionHandler) {
@@ -25,16 +27,17 @@ public sealed interface Scheduler extends Executor permits SchedulerImpl, Schedu
     void process();
 
     /**
-     * Advance 1 tick and call {@link #process()}.
+     * Advances 1 tick, then runs the due {@link ExecutionType#TICK_START} tasks.
      * <p>
-     * This method is not thread-safe.
+     * Concurrent calls are memory safe and the tasks are consumed by a single caller at a time, but each call
+     * advances the tick: only one driver should call it, once per tick.
      */
     void processTick();
 
     /**
-     * Execute tasks set to run at the end of this tick.
+     * Runs the {@link ExecutionType#TICK_END} tasks due at the current tick, without advancing it.
      * <p>
-     * This method is not thread-safe.
+     * Concurrent calls are safe.
      */
     void processTickEnd();
 
@@ -73,22 +76,58 @@ public sealed interface Scheduler extends Executor permits SchedulerImpl, Schedu
         return new Task.Builder(this, task).delay(delay).schedule();
     }
 
+    /**
+     * Schedules a task to run on the next tick: on the next call of {@link #processTick()} for
+     * {@link ExecutionType#TICK_START}, on the first {@link #processTickEnd()} after it for {@link ExecutionType#TICK_END}.
+     *
+     * @param task          the task to run
+     * @param executionType the execution type
+     * @return the created task
+     */
     default Task scheduleNextTick(Runnable task, ExecutionType executionType) {
         return buildTask(task).delay(TaskSchedule.nextTick()).executionType(executionType).schedule();
     }
 
+    /**
+     * Schedules a task to run on the next call of {@link #processTick()}, as {@link ExecutionType#TICK_START}.
+     *
+     * @param task the task to run
+     * @return the created task
+     */
     default Task scheduleNextTick(Runnable task) {
         return scheduleNextTick(task, ExecutionType.TICK_START);
     }
 
+    /**
+     * Schedules a task to run on the next call of {@link #processTickEnd()}. A task submitted after the
+     * {@code processTickEnd()} of this tick waits for the next tick.
+     *
+     * @param task the task to run
+     * @return the created task
+     */
     default Task scheduleEndOfTick(Runnable task) {
         return scheduleNextProcess(task, ExecutionType.TICK_END);
     }
 
+    /**
+     * Schedules a task to run the next time its execution type is processed: for {@link ExecutionType#TICK_START}
+     * the next call of {@link #process()} or {@link #processTick()}, possibly still within this tick.
+     *
+     * @param task          the task to run
+     * @param executionType the execution type
+     * @return the created task
+     */
     default Task scheduleNextProcess(Runnable task, ExecutionType executionType) {
         return buildTask(task).delay(TaskSchedule.immediate()).executionType(executionType).schedule();
     }
 
+    /**
+     * Schedules a task to run on the next call of {@link #process()} or {@link #processTick()}, possibly still
+     * within this tick, as {@link ExecutionType#TICK_START}.
+     *
+     * @param task the task to run
+     * @return the created task
+     */
     default Task scheduleNextProcess(Runnable task) {
         return scheduleNextProcess(task, ExecutionType.TICK_START);
     }

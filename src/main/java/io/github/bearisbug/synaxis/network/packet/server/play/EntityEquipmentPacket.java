@@ -23,7 +23,6 @@ public record EntityEquipmentPacket(int entityId,
             throw new IllegalArgumentException("Equipments cannot be empty");
     }
 
-    @SuppressWarnings("deprecation") // legacy protocol ids are the wire format
     public static final NetworkBuffer.Type<EntityEquipmentPacket> SERIALIZER = new NetworkBuffer.Type<>() {
         @Override
         public void write(NetworkBuffer buffer, EntityEquipmentPacket value) {
@@ -60,7 +59,6 @@ public record EntityEquipmentPacket(int entityId,
         return new EntityEquipmentPacket(this.entityId, newEquipment);
     }
 
-    @SuppressWarnings("deprecation") // legacy protocol ids are the wire format
     private static Map<EquipmentSlot, ItemStack> readEquipments(NetworkBuffer reader) {
         Map<EquipmentSlot, ItemStack> equipments = new EnumMap<>(EquipmentSlot.class);
         byte slot;

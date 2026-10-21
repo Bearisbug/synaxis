@@ -20,10 +20,12 @@ public record LightData(
         blockMask = (BitSet) blockMask.clone();
         emptySkyMask = (BitSet) emptySkyMask.clone();
         emptyBlockMask = (BitSet) emptyBlockMask.clone();
-        skyLight = List.copyOf(skyLight); //TODO deep copy?
-        blockLight = List.copyOf(blockLight); //TODO deep copy?
+        // The byte arrays are kept as given, not copied
+        skyLight = List.copyOf(skyLight);
+        blockLight = List.copyOf(blockLight);
     }
 
+    // The 254 block sections of the tallest world (4064 blocks) plus the light sections below and above it
     public static final int MAX_SECTIONS = 4096 / 16;
 
     public static final NetworkBuffer.Type<LightData> NETWORK_TYPE = NetworkBufferTemplate.template(

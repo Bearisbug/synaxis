@@ -27,10 +27,12 @@ import java.util.function.Supplier;
  * systemd or the container to restart it.
  * <p>
  * A process that is judged dead does not come back, even if its tick ends in the meantime: the
- * halt is what the verdict leads to. Between the verdict and the halt the design saves the players
- * ({@code started}, {@code gate_closed} or {@code saving} → {@code saving} of §11.4); that save
- * sequence does not exist yet (wave 3, group 3A), so for now the verdict goes straight to the halt
- * timer.
+ * halt is what the verdict leads to. The host is told on the {@code Syn-Watchdog-Report} thread,
+ * where it runs the shutdown sequence without the stuck tick through
+ * {@link ServerProcess#shutdownAfterWatchdogDeath()} ({@code docs/DESIGN-PROD.md} §11.4, and
+ * {@code dying} → {@code exited} of §11.5); unless it is 0, {@link ServerConfig#watchdogHaltAfter()}
+ * after the verdict the JVM is halted all the same, cutting short whatever of that sequence has not
+ * run.
  * <p>
  * The host starts it and stops it. {@link #stop()} never takes a verdict back: while a tick is in
  * flight the watchdog keeps watching it, so a stop sequence stuck behind a stalled tick still ends

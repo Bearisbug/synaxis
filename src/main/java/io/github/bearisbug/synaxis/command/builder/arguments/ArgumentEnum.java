@@ -3,14 +3,14 @@ package io.github.bearisbug.synaxis.command.builder.arguments;
 import io.github.bearisbug.synaxis.command.ArgumentParserType;
 import io.github.bearisbug.synaxis.command.CommandSender;
 import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.UnaryOperator;
 
-@SuppressWarnings("rawtypes")
-public class ArgumentEnum<E extends Enum> extends Argument<E> {
+public class ArgumentEnum<E extends Enum<E>> extends Argument<E> {
 
     public final static int NOT_ENUM_VALUE_ERROR = 1;
 
@@ -40,7 +40,7 @@ public class ArgumentEnum<E extends Enum> extends Argument<E> {
     }
 
     @Override
-    public ArgumentParserType parser() {
+    public @Nullable ArgumentParserType parser() {
         return null;
     }
 

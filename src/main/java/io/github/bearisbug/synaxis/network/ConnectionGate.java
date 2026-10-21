@@ -155,7 +155,7 @@ public final class ConnectionGate {
      * @param ticket        the ticket of the connection
      * @param remoteAddress the address of the peer, the one the PROXY protocol header named if any
      * @param intent        the intent of the handshake
-     * @return whether the handshake may go on
+     * @return {@link Verdict#PASS}, or the verdict naming the layer that turned the connection away
      */
     public Verdict handshake(Ticket ticket, SocketAddress remoteAddress, ClientHandshakePacket.Intent intent) {
         final Prefix prefix = Prefix.of(remoteAddress);
@@ -241,7 +241,9 @@ public final class ConnectionGate {
      * Writes the rejections counted over the last 10 seconds as one line, if there were any, and
      * drops the buckets that are back to full every 60 seconds. Called once per tick.
      *
-     * @param nanoTime the time of the tick, {@link System#nanoTime()}
+     * @param nanoTime the time of the tick, {@link System#nanoTime()}; it only times the 10 second
+     *                 report window, the 60 second sweep of the buckets runs on the clock of the
+     *                 buckets (see {@code clock(LongSupplier)})
      */
     public void tick(long nanoTime) {
         if (!reportWindowStarted) {
@@ -462,8 +464,9 @@ public final class ConnectionGate {
 
     /**
      * What one connection holds in the gate: a socket of L0, the L1 count of its address and an L3
-     * seat. All three are given back once, when the connection closes; whatever the connection
-     * would take after that is refused, so a count taken while it is closing cannot outlive it.
+     * seat. All three are given back once, when the connection closes; asking for the L1 count or
+     * the seat after that answers true without counting anything, so a count taken while it is
+     * closing cannot outlive it.
      */
     public final class Ticket {
         private final boolean socket;

@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.command.CommandSender;
 import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
 import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
@@ -18,7 +19,7 @@ public class ArgumentNumber<T extends Number> extends Argument<T> {
     public static final int TOO_HIGH_ERROR = 3;
 
     protected boolean hasMin, hasMax;
-    protected T min, max;
+    protected @Nullable T min, max;
 
     protected final ArgumentParserType parserName;
     protected final Function<String, T> parser;
@@ -51,7 +52,7 @@ public class ArgumentNumber<T extends Number> extends Argument<T> {
             }
 
             return value;
-        } catch (NumberFormatException | NullPointerException _) {
+        } catch (NumberFormatException _) {
             throw new ArgumentSyntaxException("Input is not a number, or it's invalid for the given type", input, NOT_NUMBER_ERROR);
         }
     }
@@ -73,19 +74,31 @@ public class ArgumentNumber<T extends Number> extends Argument<T> {
     }
 
     public ArgumentNumber<T> min(T value) {
-        this.min = value;
+        this.min = Objects.requireNonNull(value, "min");
         this.hasMin = true;
         return this;
     }
 
     public ArgumentNumber<T> max(T value) {
-        this.max = value;
+        this.max = Objects.requireNonNull(value, "max");
         this.hasMax = true;
 
         return this;
     }
 
+    /**
+     * Sets both bounds, inclusive.
+     *
+     * @param min the lowest value accepted
+     * @param max the highest value accepted
+     * @return 'this' for chaining
+     * @throws IllegalArgumentException if {@code min} is above {@code max}, which no input would fit
+     */
     public ArgumentNumber<T> between(T min, T max) {
+        Objects.requireNonNull(min, "min");
+        Objects.requireNonNull(max, "max");
+        Check.argCondition(comparator.compare(min, max) > 0,
+                "ArgumentNumber '" + getId() + "': min " + min + " is above max " + max);
         this.min = min;
         this.max = max;
         this.hasMin = true;
@@ -119,9 +132,9 @@ public class ArgumentNumber<T extends Number> extends Argument<T> {
     /**
      * Gets the minimum value for this argument.
      *
-     * @return the minimum of this argument
+     * @return the minimum of this argument, null if it has none
      */
-    public T getMin() {
+    public @Nullable T getMin() {
         return min;
     }
 
@@ -137,9 +150,9 @@ public class ArgumentNumber<T extends Number> extends Argument<T> {
     /**
      * Gets the maximum value for this argument.
      *
-     * @return the maximum of this argument
+     * @return the maximum of this argument, null if it has none
      */
-    public T getMax() {
+    public @Nullable T getMax() {
         return max;
     }
 

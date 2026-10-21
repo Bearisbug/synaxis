@@ -16,7 +16,8 @@ public interface PayloadHandler {
      * dropped without reaching it.
      *
      * @param player  the sender
-     * @param payload the payload bytes
+     * @param payload the payload bytes: the array of the packet itself, shared with the listeners of
+     *                the plugin message event, so read it only and copy it first to make changes
      */
     void handle(Player player, byte[] payload);
 }

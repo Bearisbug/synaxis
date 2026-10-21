@@ -75,9 +75,7 @@ record BinaryTagTypeImpl(boolean untrusted, boolean sorted) implements NetworkBu
     }
 
     static void writeNamed(NetworkBuffer buffer, String name, BinaryTag value) {
-        buffer.write(BYTE, value.type().id());
-        buffer.write(STRING_IO_UTF8, name);
-        writePayload(buffer, value, 1, false);
+        writeEntry(buffer, name, value, 0, false);
     }
 
     @Override
@@ -88,7 +86,7 @@ record BinaryTagTypeImpl(boolean untrusted, boolean sorted) implements NetworkBu
     private static void writePayload(NetworkBuffer buffer, BinaryTag tag, int depth, boolean sorted) {
         switch (tag) {
             case CompoundBinaryTag value -> {
-                if (depth > NBT_MAX_DEPTH) throw new IllegalArgumentException("NBT is nested too deeply (max: " + NBT_MAX_DEPTH + ")");
+                checkDepth(depth);
                 if (sorted) {
                     final String[] keys = value.keySet().toArray(new String[0]);
                     Arrays.sort(keys);
@@ -101,7 +99,7 @@ record BinaryTagTypeImpl(boolean untrusted, boolean sorted) implements NetworkBu
                 buffer.write(BYTE, TAG_END);
             }
             case ListBinaryTag value -> {
-                if (depth > NBT_MAX_DEPTH) throw new IllegalArgumentException("NBT is nested too deeply (max: " + NBT_MAX_DEPTH + ")");
+                checkDepth(depth);
                 // A list encodes a single element type, so a heterogeneous one is boxed into a list of compounds
                 final ListBinaryTag list = value.wrapHeterogeneity();
                 buffer.write(BYTE, list.elementType().id());
@@ -159,7 +157,7 @@ record BinaryTagTypeImpl(boolean untrusted, boolean sorted) implements NetworkBu
     }
 
     private static CompoundBinaryTag readCompound(NetworkBuffer buffer, int depth, ReadLimiter limiter) {
-        if (depth > NBT_MAX_DEPTH) throw new IllegalArgumentException("NBT is nested too deeply (max: " + NBT_MAX_DEPTH + ")");
+        checkDepth(depth);
         final CompoundBinaryTag.Builder builder = CompoundBinaryTag.builder();
         while (true) {
             final byte type = buffer.read(BYTE);
@@ -173,7 +171,7 @@ record BinaryTagTypeImpl(boolean untrusted, boolean sorted) implements NetworkBu
     }
 
     private static ListBinaryTag readList(NetworkBuffer buffer, int depth, ReadLimiter limiter) {
-        if (depth > NBT_MAX_DEPTH) throw new IllegalArgumentException("NBT is nested too deeply (max: " + NBT_MAX_DEPTH + ")");
+        checkDepth(depth);
         final byte elementType = buffer.read(BYTE);
         final int size = buffer.read(INT);
         Check.argCondition(size < 0, "NBT list size cannot be negative: {0}", size);
@@ -217,8 +215,14 @@ record BinaryTagTypeImpl(boolean untrusted, boolean sorted) implements NetworkBu
         final int length = buffer.read(INT);
         Check.argCondition(length < 0, "NBT array size cannot be negative: {0}", length);
         limiter.accountBytes((long) length * elementSize);
-        buffer.ensureReadable((long) length * elementSize);
         return length;
+    }
+
+    private static void checkDepth(int depth) {
+        if (depth > NBT_MAX_DEPTH) {
+            throw new IllegalArgumentException("NBT is nested too deeply (max: " + NBT_MAX_DEPTH
+                    + ", set by -Dsynaxis.nbt.max-depth)");
+        }
     }
 
     private static int minimumSize(byte type) {
@@ -264,7 +268,8 @@ record BinaryTagTypeImpl(boolean untrusted, boolean sorted) implements NetworkBu
         private void accountBytes(long size) {
             if (size < 0) throw new IllegalArgumentException("Cannot account a negative NBT size: " + size);
             if (size > remainingBytes) {
-                throw new IllegalArgumentException("NBT is too large (max: " + NBT_MAX_BYTES + " bytes)");
+                throw new IllegalArgumentException("NBT is too large: decoding exceeds " + NBT_MAX_BYTES
+                        + " approximate heap bytes (-Dsynaxis.nbt.max-bytes)");
             }
             remainingBytes -= size;
         }

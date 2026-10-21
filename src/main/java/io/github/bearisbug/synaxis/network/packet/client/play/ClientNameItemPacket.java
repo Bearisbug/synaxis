@@ -13,6 +13,6 @@ public record ClientNameItemPacket(String itemName) implements ClientPacket.Play
             ClientNameItemPacket::new);
 
     public ClientNameItemPacket {
-        Check.argCondition(itemName.length() > Short.MAX_VALUE, "Item name cannot be longer than Short.MAX_SIZE");
+        Check.argCondition(itemName.length() > Short.MAX_VALUE, "Item name cannot be longer than Short.MAX_VALUE");
     }
 }

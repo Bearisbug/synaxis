@@ -45,7 +45,10 @@ public record ClientUpdateStructureBlockPacket(
     public static final byte IGNORE_ENTITIES = 0x1;
     public static final byte SHOW_AIR = 0x2;
     /**
-     * Requires the player to be in creative and have a permission level higher than 2.
+     * Shows the bounding box of the structure.
+     * <p>
+     * The engine does not handle this packet and checks no permission for it: a plugin listening to
+     * {@code PlayerPacketEvent} decides for itself.
      */
     public static final byte SHOW_BOUNDING_BOX = 0x4;
     public static final byte STRICT = 0x8;
@@ -77,7 +80,7 @@ public record ClientUpdateStructureBlockPacket(
             case FLIPPED -> 2;
             case COUNTER_CLOCKWISE -> 3;
             default ->
-                    throw new IllegalArgumentException("ClientUpdateStructurePacket#rotation must be a valid 90-degree rotation.");
+                    throw new IllegalArgumentException("ClientUpdateStructureBlockPacket#rotation must be one of the four 90-degree rotations, got: " + rotation);
         };
     }
 
@@ -88,7 +91,7 @@ public record ClientUpdateStructureBlockPacket(
             case 2 -> Rotation.FLIPPED;
             case 3 -> Rotation.COUNTER_CLOCKWISE;
             default ->
-                    throw new IllegalArgumentException("ClientUpdateStructurePacket#rotation must be a valid 90-degree rotation.");
+                    throw new IllegalArgumentException("ClientUpdateStructureBlockPacket#rotation must be one of the four 90-degree rotations, got: " + rotation);
         };
     }
 }

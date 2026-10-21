@@ -24,6 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -54,8 +55,8 @@ final class EntityView {
                 player -> hideEntityFromPlayer(this.entity, player)
         );
         this.viewerOption = new Option<>(EntityTracker.Target.ENTITIES, Entity::isAutoViewable,
-                entity instanceof Player player ? e -> e.viewEngine.viewableOption.addition.accept(player) : null,
-                entity instanceof Player player ? e -> e.viewEngine.viewableOption.removal.accept(player) : null);
+                entity instanceof Player player ? e -> showEntityToPlayer(e, player) : null,
+                entity instanceof Player player ? e -> hideEntityFromPlayer(e, player) : null);
     }
 
     private static void showEntityToPlayer(Entity entity, Player player) {
@@ -86,24 +87,20 @@ final class EntityView {
     }
 
     private static void collectEntityChain(Entity entity, Player player, List<Entity> chain) {
-        var lock1 = player.getEntityId() < entity.getEntityId() ? player : entity;
-        var lock2 = lock1 == entity ? player : entity;
-        boolean shouldAdd = false;
-        synchronized (lock1.viewEngine.mutex) {
-            synchronized (lock2.viewEngine.mutex) {
-                if (!entity.isViewer(player) &&
-                        player.getVehicle() != entity &&
-                        entity.viewEngine.viewableOption.predicate(player) &&
-                        player.viewEngine.viewerOption.predicate(entity) &&
-                        player.viewEngine.admits(entity, player)) {
+        final boolean shouldAdd = underBothMutexes(entity, player, () -> {
+            if (!entity.isViewer(player) &&
+                    player.getVehicle() != entity &&
+                    entity.viewEngine.viewableOption.predicate(player) &&
+                    player.viewEngine.viewerOption.predicate(entity) &&
+                    player.viewEngine.admits(entity, player)) {
 
-                    entity.viewEngine.viewableOption.register(player);
-                    player.viewEngine.viewerOption.register(entity);
-                    if (isCounted(entity)) player.viewEngine.counted.add(entity.getEntityId());
-                    shouldAdd = true;
-                }
+                entity.viewEngine.viewableOption.register(player);
+                player.viewEngine.viewerOption.register(entity);
+                if (isCounted(entity)) player.viewEngine.counted.add(entity.getEntityId());
+                return true;
             }
-        }
+            return false;
+        });
         if (shouldAdd) {
             chain.add(entity);
             for (Entity passenger : entity.getPassengers()) {
@@ -113,15 +110,12 @@ final class EntityView {
     }
 
     private static void hideEntityFromPlayer(Entity entity, Player player) {
-        var lock1 = player.getEntityId() < entity.getEntityId() ? player : entity;
-        var lock2 = lock1 == entity ? player : entity;
-        synchronized (lock1.viewEngine.mutex) {
-            synchronized (lock2.viewEngine.mutex) {
-                entity.viewEngine.viewableOption.unregister(player);
-                player.viewEngine.viewerOption.unregister(entity);
-                player.viewEngine.counted.remove(entity.getEntityId());
-            }
-        }
+        underBothMutexes(entity, player, () -> {
+            entity.viewEngine.viewableOption.unregister(player);
+            player.viewEngine.viewerOption.unregister(entity);
+            player.viewEngine.counted.remove(entity.getEntityId());
+            return true;
+        });
         entity.updateOldViewer(player);
         // As in showEntityToPlayer: a show on another thread may have registered the pair again and sent
         // its spawn before this destruction. The passengers stay with it, registered by that show or not yet
@@ -140,6 +134,24 @@ final class EntityView {
     }
 
     /**
+     * Runs {@code action} holding the view mutexes of both {@code entity} and {@code player}, taken in the order of
+     * their entity ids, lowest first. Every place holding both takes them in this order, so that two threads
+     * showing or hiding crossing pairs cannot lock each other out; the caller must not hold either of them already,
+     * see {@link Option#select}.
+     *
+     * @return what {@code action} returned
+     */
+    private static boolean underBothMutexes(Entity entity, Player player, BooleanSupplier action) {
+        final Entity first = player.getEntityId() < entity.getEntityId() ? player : entity;
+        final Entity second = first == entity ? player : entity;
+        synchronized (first.viewEngine.mutex) {
+            synchronized (second.viewEngine.mutex) {
+                return action.getAsBoolean();
+            }
+        }
+    }
+
+    /**
      * Whether {@code player} may take {@code entity} in on top of what it already sees. Called with
      * both view mutexes held, this being the player's view.
      */
@@ -149,11 +161,24 @@ final class EntityView {
         if (entity.isRemoved()) return false;
         // A passenger comes and goes with its vehicle, which is shown before its passengers
         final Entity vehicle = entity.getVehicle();
-        if (vehicle != null) return vehicle == player || vehicle == player.getVehicle() || viewerOption.isRegistered(vehicle);
+        if (vehicle != null) return seesVehicle(vehicle, player);
         if (!withinRange(entity, player)) return false;
         if (entity.isAlwaysVisible()) return true;
         final int limit = player.process().config().maxVisibleEntitiesPerPlayer();
         return limit == 0 || counted.size() < limit;
+    }
+
+    /**
+     * Whether {@code player}, whose view this is, sees {@code vehicle}: it is the player, the player rides it, or the
+     * player was shown it. Called with this view's mutex held.
+     */
+    private boolean seesVehicle(Entity vehicle, Player player) {
+        return vehicle == player || vehicle == player.getVehicle() || viewerOption.isRegistered(vehicle);
+    }
+
+    /** Whether the players of {@code process} see less than every entity around them, see {@link #refreshVisibility}. */
+    private static boolean filtersVisibility(ServerProcess process) {
+        return process.config().maxVisibleEntitiesPerPlayer() != 0 || process.trackingRanges().inUse();
     }
 
     /** Whether {@code entity} counts towards the visible entity limit of the players seeing it. */
@@ -193,8 +218,8 @@ final class EntityView {
         final TrackedLocation trackedLocation = this.trackedLocation;
         if (trackedLocation == null) return;
         final ServerProcess process = trackedLocation.instance().process();
+        if (!filtersVisibility(process)) return;
         final int limit = process.config().maxVisibleEntitiesPerPlayer();
-        if (limit == 0 && !process.trackingRanges().inUse()) return;
 
         final Pos origin = player.getPosition();
         final List<Entity> candidates = viewerOption.select(Entity::isAutoViewable);
@@ -250,8 +275,7 @@ final class EntityView {
                 if (isCounted(seen)) counted.add(seen.getEntityId());
                 else counted.remove(seen.getEntityId());
                 final Entity vehicle = seen.getVehicle();
-                if (vehicle != null && vehicle != player && vehicle != player.getVehicle()
-                        && !viewerOption.isRegistered(vehicle)) stranded.add(seen);
+                if (vehicle != null && !seesVehicle(vehicle, player)) stranded.add(seen);
                 else if (vehicle == null && seen != player.getVehicle()
                         && outsideSquare(seen.getPosition(), center, viewDistance)) outside.add(seen);
             }
@@ -359,8 +383,7 @@ final class EntityView {
         // A tracking range or the visible entity limit keeps some of the players around from seeing
         // it, while a packet for the players around its chunk would reach all of them
         final ServerProcess process = entity.process();
-        return process == null
-                || (process.config().maxVisibleEntitiesPerPlayer() == 0 && !process.trackingRanges().inUse());
+        return process == null || !filtersVisibility(process);
     }
 
     public void handleAutoViewAddition(Entity entity) {
@@ -441,18 +464,10 @@ final class EntityView {
             synchronized (mutex) {
                 this.predicate = predicate;
             }
-            updateRule0(predicate);
+            updateRule();
         }
 
         public void updateRule() {
-            final Predicate<? super T> predicate;
-            synchronized (mutex) {
-                predicate = this.predicate;
-            }
-            updateRule0(predicate);
-        }
-
-        void updateRule0(@Nullable Predicate<? super T> predicate) {
             final Consumer<T> addition = this.addition;
             final Consumer<T> removal = this.removal;
             // Non-players have no viewer consumers, there is nothing to send
@@ -460,6 +475,7 @@ final class EntityView {
             final List<T> additions = new ArrayList<>();
             final List<T> removals = new ArrayList<>();
             synchronized (mutex) {
+                final Predicate<? super T> predicate = this.predicate;
                 for (T entity : select(loopPredicate)) {
                     final boolean visible = predicate == null || predicate.test(entity);
                     if (visible != isRegistered(entity)) (visible ? additions : removals).add(entity);
@@ -471,9 +487,13 @@ final class EntityView {
 
         /**
          * Collects the entities an addition or removal applies to. The consumers are deliberately left
-         * to the caller to run once this mutex is released: they take both view mutexes ordered by
-         * entity id, and entering that region while already holding one of them reverses the order
-         * against every caller coming from the tracker.
+         * to the caller to run once this mutex is released: they take both view mutexes through
+         * {@link EntityView#underBothMutexes}, and entering that region while already holding one of them reverses
+         * the order against every caller coming from the tracker.
+         * <p>
+         * Among the entities this one sees, every passenger is left out: a passenger comes and goes with
+         * its vehicle. Among the players seeing this one, only those riding it, directly or not, are left
+         * out: it is never taken away from its own riders.
          */
         private List<T> select(Predicate<? super T> visibilityPredicate) {
             final List<T> selected = new ArrayList<>();
@@ -481,7 +501,8 @@ final class EntityView {
                 references().forEach(entity -> {
                     if (entity == EntityView.this.entity || !visibilityPredicate.test(entity)) return;
                     if (entity instanceof Player player && manualViewers.contains(player)) return;
-                    if (entity.getVehicle() != null) return;
+                    if (entity.getVehicle() != null && (target == EntityTracker.Target.ENTITIES
+                            || ridesOn(entity, EntityView.this.entity))) return;
                     selected.add(entity);
                 });
             }
@@ -502,6 +523,14 @@ final class EntityView {
             this.lastSize = entityMap.size();
             return entityMap.values();
         }
+    }
+
+    /** Whether {@code rider} sits on {@code mount}, or on something that does. */
+    private static boolean ridesOn(Entity rider, Entity mount) {
+        for (Entity vehicle = rider.getVehicle(); vehicle != null; vehicle = vehicle.getVehicle()) {
+            if (vehicle == mount) return true;
+        }
+        return false;
     }
 
     final class SetImpl extends AbstractSet<Player> {

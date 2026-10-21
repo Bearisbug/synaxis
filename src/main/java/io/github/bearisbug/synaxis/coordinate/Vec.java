@@ -42,20 +42,6 @@ public record Vec(double x, double y, double z) implements Point {
     }
 
     /**
-     * Converts a {@link Point} into a {@link Vec}.
-     * Will cast if possible, or instantiate a new object.
-     *
-     * @param point the point to convert
-     * @return the converted vector
-     * @deprecated use {@link Point#asVec()} instead
-     */
-    @Deprecated(forRemoval = true)
-    public static Vec fromPoint(Point point) {
-        if (point instanceof Vec vec) return vec;
-        return new Vec(point.x(), point.y(), point.z());
-    }
-
-    /**
      * Applies the given operator to this vector's coordinates (x/y/z).
      *
      * @param operator the operator to apply
@@ -225,15 +211,6 @@ public record Vec(double x, double y, double z) implements Point {
     @Contract(pure = true, value = "_ -> new")
     public Vec max(double value) {
         return new Vec(Math.max(x, value), Math.max(y, value), Math.max(z, value));
-    }
-
-    /**
-     * @deprecated use {@link Point#asPos()} instead.
-     */
-    @Deprecated(forRemoval = true)
-    @Contract(pure = true)
-    public Pos asPosition() {
-        return new Pos(x, y, z);
     }
 
     @Override
@@ -422,7 +399,7 @@ public record Vec(double x, double y, double z) implements Point {
      * @return a new vector
      */
     @Contract(pure = true, value = "_, _ -> new")
-    public Vec rotateAroundNonUnitAxis(Vec axis, double angle) throws IllegalArgumentException {
+    public Vec rotateAroundNonUnitAxis(Vec axis, double angle) {
         final double x = x(), y = y(), z = z();
         final double x2 = axis.x(), y2 = axis.y(), z2 = axis.z();
         double cosTheta = Math.cos(angle);
@@ -448,21 +425,6 @@ public record Vec(double x, double y, double z) implements Point {
         return new Vec(x + (alpha * (point.x() - x)),
                 y + (alpha * (point.y() - y)),
                 z + (alpha * (point.z() - z)));
-    }
-
-    /**
-     * Calculates an interpolation between this vector and a target vector.
-     *
-     * @param target        the target vector
-     * @param alpha         the alpha value, must be between 0.0 and 1.0
-     * @param interpolation the interpolation function to use
-     * @return the interpolated vector
-     * @deprecated use {@link Point#lerp(Point, double)} with a {@link io.github.bearisbug.synaxis.utils.EaseFunction} instead
-     */
-    @Deprecated(forRemoval = true)
-    @Contract(pure = true)
-    public Vec interpolate(Vec target, double alpha, Interpolation interpolation) {
-        return lerp(target, interpolation.apply(alpha));
     }
 
     /**
@@ -509,17 +471,5 @@ public record Vec(double x, double y, double z) implements Point {
          * @return the resulting vector
          */
         Vec apply(double x, double y, double z);
-    }
-
-    /**
-     * @deprecated use {@link io.github.bearisbug.synaxis.utils.EaseFunction} instead with {@link #lerp(Point, double)}
-     */
-    @Deprecated(forRemoval = true)
-    @FunctionalInterface
-    public interface Interpolation {
-        Interpolation LINEAR = a -> a;
-        Interpolation SMOOTH = a -> a * a * (3 - 2 * a);
-
-        double apply(double alpha);
     }
 }

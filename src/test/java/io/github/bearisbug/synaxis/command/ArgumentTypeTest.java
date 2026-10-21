@@ -113,6 +113,7 @@ public class ArgumentTypeTest {
 
         assertValidArg(arg, "@e[limit=500]");
         assertInvalidArg(arg, "@e[limit=-500]");
+        assertInvalidArg(arg, "@e[limit=0]");
         assertInvalidArg(arg, "@e[limit=invalid_integer]");
         assertInvalidArg(arg, "@e[limit=2147483648]");
 
@@ -135,6 +136,7 @@ public class ArgumentTypeTest {
         assertInvalidArg(arg, "@e[distance=..-3]");
         assertInvalidArg(arg, "@e[distance=NaN]");
         assertInvalidArg(arg, "@e[distance=Infinity..]");
+        assertInvalidArg(arg, "@e[distance=-3.4028235E38..]");
 
         assertInvalidArg(arg, "@e[type=pig,garbage]");
         assertInvalidArg(arg, "@e[type=pig,]");
@@ -474,6 +476,10 @@ public class ArgumentTypeTest {
         assertArg(arg, "more text, but with \"escaped\" quotes", "\"more text, but with \\\"escaped\\\" quotes\"");
         assertInvalidArg(arg, "\"unclosed quotes");
         assertInvalidArg(arg, "\"unescaped \" quotes\"");
+        // A quote right after the opening one, a quote after an escaped backslash, an escaped closing quote
+        assertInvalidArg(arg, "\"\"a\"");
+        assertInvalidArg(arg, "\"a\\\\\"b\"");
+        assertInvalidArg(arg, "\"a\\\"");
     }
 
     @Test

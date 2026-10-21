@@ -5,7 +5,6 @@ import io.github.bearisbug.synaxis.command.builder.CommandExecutor;
 import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
 import io.github.bearisbug.synaxis.command.builder.condition.CommandCondition;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.UnknownNullability;
 
 import java.util.Collection;
 import java.util.List;
@@ -39,20 +38,31 @@ sealed interface Graph permits GraphImpl {
 
     Node root();
 
-    boolean compare(Graph graph, Comparator comparator);
+    /**
+     * Whether the other graph has the same tree: the same arguments in the same order, with an executor, a condition
+     * and an executor condition at the same nodes.
+     */
+    boolean sameTree(Graph graph);
 
     sealed interface Node permits GraphImpl.NodeImpl {
         Argument<?> argument();
 
-        @UnknownNullability Execution execution();
+        @Nullable Execution execution();
 
         List<Node> next();
     }
 
+    /**
+     * What a node does for a sender. As a predicate it tells whether the sender sees the node: whether the commands
+     * packet built for the sender holds it, and whether the error callback of its argument runs for the sender when
+     * the argument fails. It asks the conditions with a null command string, and a node several syntaxes share is
+     * seen when any of them lets the sender through. Running an executor asks {@link #condition()} and
+     * {@link #executorCondition()} instead, with the command string.
+     */
     sealed interface Execution extends Predicate<CommandSender> permits GraphImpl.ExecutionImpl {
-        @UnknownNullability CommandExecutor defaultExecutor();
+        @Nullable CommandExecutor defaultExecutor();
 
-        @UnknownNullability CommandExecutor globalListener();
+        @Nullable CommandExecutor globalListener();
 
         /**
          * Non-null if the command at this point considered executable, must be present
@@ -87,9 +97,5 @@ sealed interface Graph permits GraphImpl {
         }
 
         Graph build();
-    }
-
-    enum Comparator {
-        TREE
     }
 }

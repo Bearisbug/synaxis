@@ -2,16 +2,14 @@ package io.github.bearisbug.synaxis.network.packet.server.play;
 
 import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.particle.Particle;
-
-import java.util.Objects;
 
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.BOOLEAN;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.DOUBLE;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.FLOAT;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.INT;
-import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
 
 public record ParticlePacket(Particle particle, boolean overrideLimiter, boolean longDistance, double x, double y, double z,
                              float offsetX, float offsetY, float offsetZ, float maxSpeed,
@@ -28,40 +26,18 @@ public record ParticlePacket(Particle particle, boolean overrideLimiter, boolean
         this(particle, false, false, position, offset, maxSpeed, particleCount);
     }
 
-    public static final NetworkBuffer.Type<ParticlePacket> SERIALIZER = new NetworkBuffer.Type<>() {
-        @Override
-        public void write(NetworkBuffer buffer, ParticlePacket value) {
-            buffer.write(BOOLEAN, value.overrideLimiter);
-            buffer.write(BOOLEAN, value.longDistance);
-            buffer.write(DOUBLE, value.x);
-            buffer.write(DOUBLE, value.y);
-            buffer.write(DOUBLE, value.z);
-            buffer.write(FLOAT, value.offsetX);
-            buffer.write(FLOAT, value.offsetY);
-            buffer.write(FLOAT, value.offsetZ);
-            buffer.write(FLOAT, value.maxSpeed);
-            buffer.write(INT, value.particleCount);
-            buffer.write(VAR_INT, value.particle.id());
-            value.particle.writeData(buffer);
-        }
-
-        @Override
-        public ParticlePacket read(NetworkBuffer buffer) {
-            Boolean overrideLimiter = buffer.read(BOOLEAN);
-            Boolean longDistance = buffer.read(BOOLEAN);
-            Double x = buffer.read(DOUBLE);
-            Double y = buffer.read(DOUBLE);
-            Double z = buffer.read(DOUBLE);
-            Float offsetX = buffer.read(FLOAT);
-            Float offsetY = buffer.read(FLOAT);
-            Float offsetZ = buffer.read(FLOAT);
-            Float maxSpeed = buffer.read(FLOAT);
-            Integer particleCount = buffer.read(INT);
-
-            Particle particle = Particle.fromId(buffer.read(VAR_INT));
-            Objects.requireNonNull(particle);
-
-            return new ParticlePacket(particle.readData(buffer), overrideLimiter, longDistance, x, y, z, offsetX, offsetY, offsetZ, maxSpeed, particleCount);
-        }
-    };
+    public static final NetworkBuffer.Type<ParticlePacket> SERIALIZER = NetworkBufferTemplate.template(
+            BOOLEAN, ParticlePacket::overrideLimiter,
+            BOOLEAN, ParticlePacket::longDistance,
+            DOUBLE, ParticlePacket::x,
+            DOUBLE, ParticlePacket::y,
+            DOUBLE, ParticlePacket::z,
+            FLOAT, ParticlePacket::offsetX,
+            FLOAT, ParticlePacket::offsetY,
+            FLOAT, ParticlePacket::offsetZ,
+            FLOAT, ParticlePacket::maxSpeed,
+            INT, ParticlePacket::particleCount,
+            Particle.NETWORK_TYPE, ParticlePacket::particle,
+            (overrideLimiter, longDistance, x, y, z, offsetX, offsetY, offsetZ, maxSpeed, particleCount, particle) ->
+                    new ParticlePacket(particle, overrideLimiter, longDistance, x, y, z, offsetX, offsetY, offsetZ, maxSpeed, particleCount));
 }

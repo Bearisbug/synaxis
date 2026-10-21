@@ -62,6 +62,30 @@ public class DoubleClickIntegrationTest {
     }
 
     /**
+     * A double click in the player inventory part of an open container collects from the player inventory first and
+     * only takes the rest from the container.
+     */
+    @Test
+    public void doubleClickInThePlayerInventoryCollectsFromItFirst(Env env) {
+        var instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, 42, 0));
+        var inventory = new Inventory(InventoryType.CHEST_1_ROW, Component.empty()); // 9
+        player.openInventory(inventory);
+
+        inventory.setItemStack(1, ItemStack.of(Material.COBBLESTONE, 40));
+        player.getInventory().setItemStack(9, ItemStack.of(Material.COBBLESTONE, 20));
+        player.getInventory().setCursorItem(ItemStack.of(Material.COBBLESTONE, 10));
+
+        // Window slot 36 is hotbar slot 0, which is empty
+        player.addPacketToQueue(clickPacket(PICKUP_ALL, inventory.getWindowId(), 0, 36));
+        player.interpretPacketQueue();
+
+        assertEquals(64, player.getInventory().getCursorItem().amount());
+        assertEquals(ItemStack.AIR, player.getInventory().getItemStack(9), "the player inventory is emptied first");
+        assertEquals(ItemStack.of(Material.COBBLESTONE, 6), inventory.getItemStack(1), "the container gives the rest");
+    }
+
+    /**
      * A cursor holding more than a stack (a plugin item, a stored one, a creative client) has no room left: the double
      * click collects nothing and must not cut the cursor down to a stack.
      */

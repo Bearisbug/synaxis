@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -93,7 +94,8 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private final AtomicBoolean started = new AtomicBoolean();
     private final AtomicBoolean ticking = new AtomicBoolean();
     private final AtomicBoolean stopped = new AtomicBoolean();
-    // Set by the first beginShutdown; `stopped` only follows at the end of the sequence (§11.4)
+    // Set by whichever of beginShutdown, stop and shutdownAfterWatchdogDeath wins the CAS first;
+    // `stopped` only follows at the end of the sequence (§11.4)
     private final AtomicBoolean stopping = new AtomicBoolean();
     private final CompletableFuture<Void> watchdogDeath = new CompletableFuture<>();
     // A signal that came while another call held the shutdown: the countdown ends there
@@ -108,8 +110,9 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private volatile int compressionThreshold;
     // The save phase budget once the watchdog judged the process dead, see save()
     private final long deathSaveBudgetNanos;
-    // Set by startTicking, or by a ticker started by hand on its first tick, so that stop() can wait
-    // for the in-flight tick to complete.
+    // Set by startTicking, or by a ticker started by hand on its first tick. Read by stop(), to wait
+    // for the in-flight tick to complete; by kickEveryone, which takes null for a process a test
+    // ticks by hand; and by runShutdownTasks, to run the shutdown tasks between two ticks.
     private volatile @Nullable TickSchedulerThread tickSchedulerThread;
     // Kept so that stop() can unregister it, the JVM strongly references every registered hook.
     volatile @Nullable Thread shutdownHook;
@@ -265,6 +268,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
 
     @Override
     public void setBrandName(String brandName) {
+        Objects.requireNonNull(brandName, "brandName");
         this.brandName = brandName;
         PacketSendingUtils.broadcastPlayPacket(this, PluginMessagePacket.brandPacket(brandName));
     }
@@ -276,6 +280,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
 
     @Override
     public void setDifficulty(Difficulty difficulty) {
+        Objects.requireNonNull(difficulty, "difficulty");
         this.difficulty = difficulty;
         PacketSendingUtils.broadcastPlayPacket(this, new ServerDifficultyPacket(difficulty, true));
     }
@@ -388,6 +393,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
 
     @Override
     public void setShutdownParticipant(ShutdownParticipant participant) {
+        Objects.requireNonNull(participant, "participant");
         Check.stateCondition(started.get(), "The shutdown participant is set before the server starts.");
         Check.stateCondition(this.shutdownParticipant != null, "A shutdown participant is already set.");
         this.shutdownParticipant = participant;

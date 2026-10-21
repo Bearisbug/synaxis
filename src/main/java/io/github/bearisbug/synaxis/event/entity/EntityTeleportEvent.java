@@ -32,6 +32,9 @@ public class EntityTeleportEvent implements EntityEvent {
 
     /**
      * Gets the absolute position that the {@link Entity} is about to teleport to.
+     * <p>
+     * It is not clamped yet: the teleport keeps the coordinates within {@link Entity#MAX_COORDINATE}, and once it is
+     * done {@link Entity#getPosition()} has where the entity ended up.
      *
      * @return the absolute teleport position
      */

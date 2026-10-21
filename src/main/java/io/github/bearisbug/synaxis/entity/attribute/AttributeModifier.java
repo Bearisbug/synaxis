@@ -23,7 +23,7 @@ public record AttributeModifier(Key id, double amount, AttributeOperation operat
             AttributeModifier::new);
 
     /**
-     * Creates a new modifier with a random id.
+     * Creates a modifier whose id is parsed from the given key string.
      *
      * @param id        the (namespace) id of this modifier
      * @param amount    the value of this modifier

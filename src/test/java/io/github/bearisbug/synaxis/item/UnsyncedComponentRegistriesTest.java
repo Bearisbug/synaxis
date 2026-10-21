@@ -3,11 +3,14 @@ package io.github.bearisbug.synaxis.item;
 import io.github.bearisbug.synaxis.codec.Transcoder;
 import io.github.bearisbug.synaxis.component.DataComponents;
 import io.github.bearisbug.synaxis.item.component.SeededContainerLoot;
+import io.github.bearisbug.synaxis.item.predicate.ItemPredicate;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryTranscoder;
 import io.github.bearisbug.synaxis.testing.RegistriesTest;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static io.github.bearisbug.synaxis.codec.CodecAssertions.assertOk;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -50,5 +53,15 @@ public class UnsyncedComponentRegistriesTest {
     public void itemHashSkipsComponentsWithoutCodec(Registries registries) {
         var itemStack = ItemStack.of(Material.STONE).with(DataComponents.ADDITIONAL_TRADE_COST, 3);
         assertDoesNotThrow(() -> ItemStack.Hash.of(itemStack, registries));
+    }
+
+    /**
+     * The client hashes the patch it was sent, which never holds a component without a network type.
+     */
+    @Test
+    public void itemHashSkipsComponentsWithoutNetworkType(Registries registries) {
+        var locked = ItemStack.of(Material.CHEST).with(DataComponents.LOCK, new ItemPredicate(List.of(Material.DIAMOND)));
+
+        assertEquals(ItemStack.Hash.of(ItemStack.of(Material.CHEST), registries), ItemStack.Hash.of(locked, registries));
     }
 }

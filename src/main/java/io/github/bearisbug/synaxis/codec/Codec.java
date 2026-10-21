@@ -88,7 +88,7 @@ public interface Codec<T extends @UnknownNullability Object> extends Encoder<T>,
 
     Codec<RawValue> RAW_VALUE = new CodecImpl.RawValueCodecImpl();
 
-    Codec<Unit> UNIT = StructCodec.struct(Unit.INSTANCE);
+    Codec<Unit> UNIT = new CodecImpl.UnitImpl();
 
     Codec<Boolean> BOOLEAN = new PrimitiveImpl<>(Transcoder::createBoolean, Transcoder::getBoolean);
 
@@ -116,10 +116,18 @@ public interface Codec<T extends @UnknownNullability Object> extends Encoder<T>,
 
     Codec<long[]> LONG_ARRAY = new PrimitiveImpl<>(Transcoder::createLongArray, Transcoder::getLongArray);
 
-    Codec<UUID> UUID = Codec.INT_ARRAY.transform(UUIDUtils::intArrayToUuid, UUIDUtils::uuidToIntArray);
+    Codec<UUID> UUID = Codec.INT_ARRAY.transform(array -> {
+        if (array.length != 4)
+            throw new IllegalArgumentException("UUID int array must have 4 entries, got " + array.length);
+        return UUIDUtils.intArrayToUuid(array);
+    }, UUIDUtils::uuidToIntArray);
 
     Codec<UUID> UUID_STRING = STRING.transform(java.util.UUID::fromString, java.util.UUID::toString);
 
+    /**
+     * A UUID read either as an array of four ints ({@link #UUID}) or as the hyphenated string ({@link #UUID_STRING}),
+     * written as the int array. When neither form decodes, the error is the one of the int array.
+     */
     Codec<UUID> UUID_COERCED = UUID.orElse(UUID_STRING);
 
     /**
@@ -277,13 +285,15 @@ public interface Codec<T extends @UnknownNullability Object> extends Encoder<T>,
     }
 
     /**
-     * Returns an unmodifiable list or the first element or null if no such element exists.
+     * Creates an unmodifiable list codec that also accepts a single element. Decoding takes a list, or a single
+     * element as a list of one; encoding writes a list of exactly one element as that element and any other list,
+     * empty included, as a list. It never produces null.
      *
      * @param maxSize the max size of the list before returning an error result
      * @return the list codec of type {@link T}
      */
     @Contract(pure = true, value = "_ -> new")
-    default Codec<@Unmodifiable @Nullable List<T>> listOrSingle(int maxSize) {
+    default Codec<@Unmodifiable List<T>> listOrSingle(int maxSize) {
         return Either(Codec.this.list(maxSize), Codec.this).transform(
                 either -> either.unify(Function.identity(), List::of),
                 list -> list.size() == 1 ? Either.right(list.getFirst()) : Either.left(list)
@@ -291,13 +301,12 @@ public interface Codec<T extends @UnknownNullability Object> extends Encoder<T>,
     }
 
     /**
-     * Returns an unmodifiable unbounded list or the first element or null if no such element exists.
-     * See {@link #listOrSingle(int)}
+     * Creates an unbounded list codec that also accepts a single element. See {@link #listOrSingle(int)}
      *
      * @return the list codec of type {@link T}
      */
     @Contract(pure = true, value = "-> new")
-    default Codec<@Unmodifiable @Nullable List<T>> listOrSingle() {
+    default Codec<@Unmodifiable List<T>> listOrSingle() {
         return this.listOrSingle(Integer.MAX_VALUE);
     }
 
@@ -354,7 +363,10 @@ public interface Codec<T extends @UnknownNullability Object> extends Encoder<T>,
      *
      * @param mapper  the function to get the codec for {@link V} from {@link T}
      * @param maxSize the max size before returning an error result.
-     * @param cached  whether to cache codecs for each key
+     * @param cached  whether to cache the codec {@code mapper} returns for each decoded key. The cache is never
+     *                evicted, so only pass true when the keys come from a fixed set such as a registry or an enum;
+     *                pass false when they can come from untrusted input such as client data. {@code mapper} must be
+     *                a pure function that never returns null, and may be called concurrently
      * @param <V>     the value type
      * @return the map codec of type {@link T} and {@link V}
      */
@@ -383,7 +395,8 @@ public interface Codec<T extends @UnknownNullability Object> extends Encoder<T>,
      * where the codec for {@link V} is determined by the key {@link T}
      *
      * @param mapper the function to get the codec for {@link V} from {@link T}
-     * @param cached whether to cache codecs for each key
+     * @param cached whether to cache the codec {@code mapper} returns for each decoded key, see
+     *               {@link #mapValueTyped(Function, int, boolean)}
      * @param <V>    the value type
      * @return the map codec of type {@link T} and {@link V}
      */
@@ -455,19 +468,18 @@ public interface Codec<T extends @UnknownNullability Object> extends Encoder<T>,
     }
 
     /**
-     * Creates a or else codec where it will attempt to use the first codec
-     * then use the second one and transform via mapper if it fails.
-     * <br>
-     * If both codecs fail the first error will be returned instead.
+     * Creates a or else codec that decodes with this codec first and, when that fails, decodes with {@code other} and
+     * converts the result with {@code mapper}. Encoding only uses this codec. If both codecs fail to decode, the error
+     * of this codec is returned.
      *
      * @param other  the other codec
-     * @param mapper the mapper to transform the error into a value of {@link T}
+     * @param mapper converts a value decoded by {@code other} into a value of {@link T}
      * @return the or else codec of {@link T}
      */
     @Contract(pure = true, value = "_, _ -> new")
     default <S> Codec<T> orElse(Codec<S> other, ThrowingFunction<S, T> mapper) {
         return new CodecImpl.OrElseImpl<>(this, other.transform(mapper, _ -> {
-            throw new UnsupportedOperationException("unreachable");
+            throw new UnsupportedOperationException("orElse(other, mapper) is decode-only");
         }));
     }
 

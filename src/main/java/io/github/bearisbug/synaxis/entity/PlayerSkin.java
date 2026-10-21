@@ -19,6 +19,9 @@ import org.jetbrains.annotations.Nullable;
  * or in the linked event {@link io.github.bearisbug.synaxis.event.player.PlayerSkinInitEvent}. That
  * event runs on the tick scheduler thread: fetch the skin with {@link #fromUuid} or
  * {@link #fromUsername} beforehand, off the tick threads, and only set it there.
+ * <p>
+ * In online mode a player already has its skin, taken from the verified profile at login
+ * ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-003}): do not call these two methods for an online player.
  */
 public record PlayerSkin(String textures, String signature) {
 
@@ -29,7 +32,9 @@ public record PlayerSkin(String textures, String signature) {
      * {@code PlayerSkinInitEvent} listener.
      *
      * @param uuid Mojang UUID
-     * @return a player skin based on the UUID, null if not found
+     * @return the skin when found, otherwise null: when the UUID does not exist or is malformed, Mojang's API is
+     * unreachable or rate limits the request, or the response is not of the expected form. The caller cannot tell
+     * these apart, and nothing is logged
      */
     @Blocking
     public static @Nullable PlayerSkin fromUuid(String uuid) {
@@ -58,7 +63,9 @@ public record PlayerSkin(String textures, String signature) {
      * {@code PlayerSkinInitEvent} listener.
      *
      * @param username the Minecraft username
-     * @return a skin based on a Minecraft username, null if not found
+     * @return the skin when found, otherwise null: when the username does not exist or is malformed, Mojang's API is
+     * unreachable or rate limits the request, or the response is not of the expected form. The caller cannot tell
+     * these apart, and nothing is logged
      */
     @Blocking
     public static @Nullable PlayerSkin fromUsername(String username) {

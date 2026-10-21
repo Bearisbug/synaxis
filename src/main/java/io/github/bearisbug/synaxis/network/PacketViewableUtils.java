@@ -14,7 +14,6 @@ import io.github.bearisbug.synaxis.network.packet.PacketWriting;
 import io.github.bearisbug.synaxis.network.packet.server.BufferedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
-import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
 import io.github.bearisbug.synaxis.utils.ObjectPool;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
@@ -23,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.WeakHashMap;
 
 /**
@@ -35,7 +33,9 @@ import java.util.WeakHashMap;
  * Only entity movement may go through here: the {@link BufferedPacket}s this class hands out are
  * sheddable, a connection over its outbound backlog drops them, which is only harmless for packets
  * that the next position sync of the entity replaces ({@code docs/DESIGN-PROD.md} {@code API-PROD-020},
- * {@code docs/DESIGN-M3.md} {@code ADR-M3-018}).
+ * {@code docs/DESIGN-M3.md} {@code ADR-M3-018}): relative moves and rotations, teleports, head turns
+ * and the position syncs themselves. A living entity sends its head along with its position sync, so
+ * a dropped head turn comes back with it; the head turn of any other entity is not sent again.
  */
 @ApiStatus.Internal
 public final class PacketViewableUtils {
@@ -62,7 +62,7 @@ public final class PacketViewableUtils {
             return;
         }
         if (!viewablePacket) {
-            PacketSendingUtils.sendGroupedPacket(viewable.getViewers(), serverPacket, value -> !Objects.equals(value, entity));
+            PacketSendingUtils.sendGroupedPacket(viewable.getViewers(), serverPacket, value -> value != entity);
             return;
         }
         final Player exception = entity instanceof Player player ? player : null;
@@ -80,10 +80,6 @@ public final class PacketViewableUtils {
         final List<Map.Entry<Viewable, ViewableStorage>> entries = new ArrayList<>();
         storageMap.forEach((viewable, storage) -> entries.add(Map.entry(viewable, storage)));
         entries.parallelStream().forEach(entry -> entry.getValue().process(entry.getKey()));
-    }
-
-    public void prepareViewablePacket(Viewable viewable, ServerPacket serverPacket) {
-        prepareViewablePacket(viewable, serverPacket, null);
     }
 
     private final class ViewableStorage {
@@ -141,11 +137,7 @@ public final class PacketViewableUtils {
         }
 
         private static void writeTo(PlayerConnection connection, NetworkBuffer buffer, long offset, long length) {
-            if (connection instanceof PlayerSocketConnection socketConnection) {
-                socketConnection.sendPacket(new BufferedPacket(buffer, offset, length, true));
-                return;
-            }
-            // TODO for non-socket connection
+            connection.sendPacket(new BufferedPacket(buffer, offset, length, true));
         }
     }
 }

@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ItemEntity extends Entity {
 
     /**
-     * Used to slow down the merge check delay
+     * Used to slow down the merge check delay. Shared by every process of the JVM, see {@link #setMergeDelay}.
      */
     private static Duration mergeDelay = Duration.of(10, TimeUnit.SERVER_TICK);
 
@@ -37,9 +37,10 @@ public class ItemEntity extends Entity {
     private float mergeRange = 1;
     private boolean previousOnGround = false;
 
-    // Spawn time in System#nanoTime
-    private long spawnTime;
-    // pickup delay in nanos
+    // Spawn time in System#nanoTime, construction time until spawned. Volatile: the entity is registered in the
+    // tracker before spawn() runs, a picker on a neighbouring cell's tick thread may read it meanwhile
+    private volatile long spawnTime = System.nanoTime();
+    // pickup delay in milliseconds
     private long pickupDelay;
     // Taken by whoever is about to consume this item. #isPickable and #remove alone are not enough:
     // the pickup and merge paths fire a cancellable event between the check and the removal, so two
@@ -50,13 +51,14 @@ public class ItemEntity extends Entity {
     public ItemEntity(ItemStack itemStack) {
         super(EntityType.ITEM);
         setItemStack(itemStack);
-        setBoundingBox(0.25f, 0.25f, 0.25f);
     }
 
     /**
-     * Gets the update option for the merging feature.
+     * Gets the minimum time between two merge checks of an item, measured on the tick time given to {@link #update}.
+     * <p>
+     * This is a static of the JVM, shared by every {@code ServerProcess} running in it.
      *
-     * @return the merge update option
+     * @return the minimum time between two merge checks, null to check every tick
      */
     @Nullable
     public static Duration getMergeDelay() {
@@ -66,6 +68,9 @@ public class ItemEntity extends Entity {
     /**
      * Changes the merge delay.
      * Can be set to null to entirely remove the delay.
+     * <p>
+     * This is a static of the JVM, shared by every {@code ServerProcess} running in it.
+     * The field is not volatile: set it before any process starts ticking.
      *
      * @param delay the new merge delay
      */
@@ -89,6 +94,7 @@ public class ItemEntity extends Entity {
 
                         if (!canStack) return;
                         final int totalAmount = itemStack.amount() + itemStackEntity.amount();
+                        // The lower bound also rejects the int overflow of two oversized stacks
                         if (!MathUtils.isBetween(totalAmount, 0, itemStack.maxStackSize())) return;
                         // Both sides are consumed by the merge, and both sides scan each other. Claiming
                         // them in a fixed order stops two neighbours from each absorbing the other.
@@ -250,7 +256,8 @@ public class ItemEntity extends Entity {
     }
 
     /**
-     * Gets the pickup delay in milliseconds, defined by {@link #setPickupDelay(Duration)}.
+     * Gets the pickup delay in milliseconds, defined by {@link #setPickupDelay(Duration)}. It is wall clock time,
+     * whatever the tick rate.
      *
      * @return the pickup delay
      */
@@ -259,7 +266,9 @@ public class ItemEntity extends Entity {
     }
 
     /**
-     * Sets the pickup delay of the ItemEntity.
+     * Sets the pickup delay of the ItemEntity, in wall clock time: {@code TimeUnit.SERVER_TICK} counts 1000 /
+     * {@code synaxis.tps} ms per tick (50 ms at the default 20), so the item is pickable earlier than that many ticks
+     * when the ticks run late.
      *
      * @param delay        the pickup delay
      * @param temporalUnit the unit of the delay
@@ -269,7 +278,7 @@ public class ItemEntity extends Entity {
     }
 
     /**
-     * Sets the pickup delay of the ItemEntity.
+     * Sets the pickup delay of the ItemEntity, in wall clock time whatever the tick rate, kept in milliseconds.
      *
      * @param delay the pickup delay
      */
@@ -280,7 +289,8 @@ public class ItemEntity extends Entity {
     /**
      * Used to know if the ItemEntity can be picked up.
      *
-     * @return the elapsed time in milliseconds since this entity has spawned
+     * @return the wall clock time in milliseconds since this entity has spawned, or since it was constructed when it
+     * has not spawned yet
      */
     public long getTimeSinceSpawn() {
         return java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - spawnTime);

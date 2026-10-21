@@ -19,7 +19,6 @@ import org.jetbrains.annotations.Nullable;
 
 public class WindowListener {
 
-    @SuppressWarnings("LabelledBreakTarget")
     public static void clickWindowListener(ClientClickWindowPacket packet, Player player) {
         final int windowId = packet.windowId();
         final boolean playerInventory = windowId == 0;
@@ -38,35 +37,7 @@ public class WindowListener {
         @Nullable Integer size = playerInventory ? null : inventory.getSize();
         Click click = player.getClickPreprocessor().processClick(packet, size);
 
-        boolean successful = true;
-        check: if (click != null) {
-            // Disallow creative clicks when not in creative
-            boolean isNotCreative = player.getGameMode() != GameMode.CREATIVE;
-            if (isNotCreative && player.getClickPreprocessor().isCreativeClick(click, !player.getInventory().getCursorItem().isAir())) {
-                successful = false;
-                break check;
-            }
-
-            // Remember what was open so that a listener closing (or replacing) it cancels the click
-            final AbstractInventory openBeforeEvent = player.getOpenInventory();
-
-            Click.Window window = Click.toWindow(click, size);
-            // Call InventoryPreClickEvent
-            InventoryPreClickEvent inventoryPreClickEvent = new InventoryPreClickEvent(window.inOpened() ? inventory : player.getInventory(), player, window.click());
-            player.process().eventHandler().call(inventoryPreClickEvent);
-
-            click = Click.fromWindow(new Click.Window(window.inOpened(), inventoryPreClickEvent.getClick()), size);
-
-            if (player.getOpenInventory() != openBeforeEvent) {
-                // Cancel the click if a listener closed or replaced the inventory it was aimed at
-                successful = false;
-            } else if (inventoryPreClickEvent.isCancelled()) {
-                // Cancel it if the event is cancelled and we haven't already done that
-                successful = false;
-            } else {
-                successful = inventory.handleClick(player, click);
-            }
-        }
+        final boolean successful = click == null || applyClick(player, inventory, click, size);
 
         // Prevent ghost item when the click is cancelled
         if (!successful) {
@@ -80,6 +51,34 @@ public class WindowListener {
         ItemStack cursorItem = player.getInventory().getCursorItem();
         if (!ItemStack.Hash.of(cursorItem, player.process()).equals(packet.clickedItem()))
             player.sendPacket(new SetCursorItemPacket(cursorItem));
+    }
+
+    /**
+     * Calls {@link InventoryPreClickEvent} for a click and applies the click the event leaves.
+     *
+     * @return false if the click is refused: a creative click outside creative mode, a cancelled
+     * event, or a listener that closed or replaced the inventory the click was aimed at
+     */
+    private static boolean applyClick(Player player, AbstractInventory inventory, Click click, @Nullable Integer size) {
+        // Disallow creative clicks when not in creative
+        boolean isNotCreative = player.getGameMode() != GameMode.CREATIVE;
+        if (isNotCreative && player.getClickPreprocessor().isCreativeClick(click, !player.getInventory().getCursorItem().isAir())) {
+            return false;
+        }
+
+        // Remember what was open so that a listener closing (or replacing) it cancels the click
+        final AbstractInventory openBeforeEvent = player.getOpenInventory();
+
+        Click.Window window = Click.toWindow(click, size);
+        // Call InventoryPreClickEvent
+        InventoryPreClickEvent inventoryPreClickEvent = new InventoryPreClickEvent(window.inOpened() ? inventory : player.getInventory(), player, window.click());
+        player.process().eventHandler().call(inventoryPreClickEvent);
+
+        // Cancel the click if a listener closed or replaced the inventory it was aimed at
+        if (player.getOpenInventory() != openBeforeEvent) return false;
+        // Cancel it if the event is cancelled
+        if (inventoryPreClickEvent.isCancelled()) return false;
+        return inventory.handleClick(player, Click.fromWindow(new Click.Window(window.inOpened(), inventoryPreClickEvent.getClick()), size));
     }
 
     public static void pong(ClientPongPacket packet, Player player) {
@@ -115,20 +114,14 @@ public class WindowListener {
         final AbstractInventory targetInventory;
         final int translatedSlot;
 
-        if (openInventory == null) {
-            translatedSlot = PlayerInventoryUtils.convertWindow0SlotToEngineSlot(rawSlot);
+        if (openInventory != null && rawSlot < openInventory.getSize()) {
+            targetInventory = openInventory;
+            translatedSlot = rawSlot;
+        } else {
+            translatedSlot = openInventory == null ? PlayerInventoryUtils.convertWindow0SlotToEngineSlot(rawSlot)
+                    : PlayerInventoryUtils.convertWindowSlotToEngineSlot(rawSlot, openInventory.getSize());
             if (translatedSlot >= player.getInventory().getSize() || translatedSlot < 0) return;
             targetInventory = player.getInventory();
-        } else {
-            final int containerSize = openInventory.getSize();
-            if (rawSlot < containerSize) {
-                targetInventory = openInventory;
-                translatedSlot = rawSlot;
-            } else {
-                translatedSlot = PlayerInventoryUtils.convertWindowSlotToEngineSlot(rawSlot, containerSize);
-                if (translatedSlot >= player.getInventory().getSize() || translatedSlot < 0) return;
-                targetInventory = player.getInventory();
-            }
         }
 
         InventoryBundleItemSelectEvent event = new InventoryBundleItemSelectEvent(

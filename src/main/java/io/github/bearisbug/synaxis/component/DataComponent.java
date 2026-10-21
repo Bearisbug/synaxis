@@ -8,19 +8,16 @@ import io.github.bearisbug.synaxis.codec.Decoder;
 import io.github.bearisbug.synaxis.codec.Encoder;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.registry.StaticProtocolObject;
-import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
-import java.util.function.UnaryOperator;
 
 /**
- * A common type to represent all forms of component in the game. Each group of component types has its own declaration
- * file (see {@link io.github.bearisbug.synaxis.component.DataComponent} for example).
+ * A data component type; every instance is registered in {@link DataComponents}.
  *
  * @param <T> The value type of the component
- * @see io.github.bearisbug.synaxis.component.DataComponent
  */
 public sealed interface DataComponent<T> extends StaticProtocolObject<DataComponent<T>>, Encoder<T>, Decoder<T> permits DataComponentImpl {
 
@@ -29,12 +26,12 @@ public sealed interface DataComponent<T> extends StaticProtocolObject<DataCompon
     Codec<DataComponent<?>> CODEC = Codec.KEY.transform(
             key -> Objects.requireNonNull(fromKey(key), () -> "unknown data component: " + key.asString()), DataComponent::key);
 
-    NetworkBuffer.Type<DataComponentMap> MAP_NETWORK_TYPE = DataComponentMap.networkType(DataComponent::fromId);
-    Codec<DataComponentMap> MAP_NBT_TYPE = DataComponentMap.codec(DataComponent::fromId, DataComponent::fromKey);
+    NetworkBuffer.Type<DataComponentMap> MAP_NETWORK_TYPE = new DataComponentMapImpl.NetworkTypeImpl(false, true);
+    Codec<DataComponentMap> MAP_NBT_TYPE = new DataComponentMapImpl.CodecImpl(false);
 
-    NetworkBuffer.Type<DataComponentMap> PATCH_NETWORK_TYPE = DataComponentMap.patchNetworkType(DataComponent::fromId, true);
-    NetworkBuffer.Type<DataComponentMap> UNTRUSTED_PATCH_NETWORK_TYPE = DataComponentMap.patchNetworkType(DataComponent::fromId, false);
-    Codec<DataComponentMap> PATCH_CODEC = DataComponentMap.patchCodec(DataComponent::fromId, DataComponent::fromKey);
+    NetworkBuffer.Type<DataComponentMap> PATCH_NETWORK_TYPE = new DataComponentMapImpl.NetworkTypeImpl(true, true);
+    NetworkBuffer.Type<DataComponentMap> UNTRUSTED_PATCH_NETWORK_TYPE = new DataComponentMapImpl.NetworkTypeImpl(true, false);
+    Codec<DataComponentMap> PATCH_CODEC = new DataComponentMapImpl.CodecImpl(true);
 
     /**
      * Represents any type which can hold data components. Represents a finalized view of a component, that is to say
@@ -57,9 +54,35 @@ public sealed interface DataComponent<T> extends StaticProtocolObject<DataCompon
     record Value(DataComponent<?> component, @Nullable Object value) {
     }
 
+    /**
+     * Whether the component has a network type. Without one it is skipped, without an error, when
+     * a component map is written to the network.
+     *
+     * @return whether {@link #networkType()} is not null
+     */
     boolean isSynced();
+
+    /**
+     * Whether the component has a codec. Without one it is skipped, without an error, when a
+     * component map is encoded with a codec, when an item is hashed and when an item is shown in a
+     * hover event.
+     *
+     * @return whether {@link #codec()} is not null
+     */
     boolean isSerialized();
+
+    /**
+     * The network type of the component.
+     *
+     * @return the network type, null when the component is not synced (see {@link #isSynced()})
+     */
     @Nullable NetworkBuffer.Type<T> networkType();
+
+    /**
+     * The codec of the component.
+     *
+     * @return the codec, null when the component is not serialized (see {@link #isSerialized()})
+     */
     @Nullable Codec<T> codec();
 
     T read(NetworkBuffer reader);
@@ -92,16 +115,6 @@ public sealed interface DataComponent<T> extends StaticProtocolObject<DataCompon
     }
 
     static Collection<DataComponent<?>> values() {
-        return DataComponentImpl.NAMESPACES.values();
-    }
-
-    @ApiStatus.Internal
-    static <T> DataComponent<T> createHeadless(
-            int id, Key key,
-            @Nullable NetworkBuffer.Type<T> network,
-            @Nullable Codec<T> codec,
-            @Nullable UnaryOperator<T> freeze
-    ) {
-        return new DataComponentImpl<>(id, key, network, codec, freeze);
+        return Collections.unmodifiableCollection(DataComponentImpl.NAMESPACES.values());
     }
 }

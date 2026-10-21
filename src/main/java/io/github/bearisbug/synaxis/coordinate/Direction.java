@@ -1,7 +1,5 @@
 package io.github.bearisbug.synaxis.coordinate;
 
-import io.github.bearisbug.synaxis.coordinate.Vec;
-
 public enum Direction {
     DOWN(0, -1, 0),
     UP(0, 1, 0),

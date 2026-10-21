@@ -3,6 +3,8 @@ package io.github.bearisbug.synaxis.listener;
 import io.github.bearisbug.synaxis.coordinate.BlockFace;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.coordinate.Vec;
+import io.github.bearisbug.synaxis.entity.Entity;
+import io.github.bearisbug.synaxis.entity.EntityType;
 import io.github.bearisbug.synaxis.entity.GameMode;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.entity.PlayerHand;
@@ -11,12 +13,16 @@ import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.player.PlayerBlockBreakEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerBlockInteractEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerEditSignEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerPickBlockEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerPickEntityEvent;
 import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientPickItemFromBlockPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientPickItemFromEntityPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerActionPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerBlockPlacementPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientUpdateSignPacket;
@@ -34,6 +40,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -168,6 +175,50 @@ public class PlayerBlockReachIntegrationTest {
         final Collector<PlayerEditSignEvent> nearEdits = env.trackEvent(PlayerEditSignEvent.class, EventFilter.PLAYER, player);
         send(player, new ClientUpdateSignPacket(new Vec(10, 41, 8), true, List.of("a", "b", "c", "d")));
         nearEdits.assertSingle(event -> assertEquals(new Vec(10, 41, 8), event.getBlockPosition().asVec()));
+    }
+
+    /** Picking a block is checked like digging it: out of reach the pick is dropped before any listener sees it. */
+    @Test
+    public void aBlockPickOutOfReachIsDropped(Env env) {
+        final Instance instance = env.createFlatInstance();
+        final Player player = env.createConnection().connect(instance, SPAWN);
+        final Collector<PlayerPickBlockEvent> farPicks = env.trackEvent(PlayerPickBlockEvent.class, EventFilter.PLAYER, player);
+        // The stone at (15, 39, 8), 6.7 blocks from the eyes
+        send(player, new ClientPickItemFromBlockPacket(new Vec(15, 39, 8), false));
+        farPicks.assertEmpty();
+
+        final Collector<PlayerPickBlockEvent> nearPicks = env.trackEvent(PlayerPickBlockEvent.class, EventFilter.PLAYER, player);
+        // The stone at (10, 39, 8), 2.2 blocks from the eyes
+        send(player, new ClientPickItemFromBlockPacket(new Vec(10, 39, 8), true));
+        nearPicks.assertSingle(event -> {
+            assertEquals(new Vec(10, 39, 8), event.getBlockPosition().asVec());
+            assertTrue(event.isIncludeData());
+        });
+    }
+
+    /**
+     * Picking an entity is checked like attacking it: a pick of an id the server does not know, or of an entity out of
+     * reach, is dropped before any listener sees it, so the event always names its entity.
+     */
+    @Test
+    public void anEntityPickOfAnUnknownIdOrOutOfReachIsDropped(Env env) {
+        final Instance instance = env.createFlatInstance();
+        final Player player = env.createConnection().connect(instance, SPAWN);
+        final Entity near = new Entity(EntityType.ZOMBIE);
+        near.setInstance(instance, new Pos(10.5, 40, 8.5)).join();
+        final Entity far = new Entity(EntityType.ZOMBIE);
+        far.setInstance(instance, new Pos(24.5, 40, 8.5)).join();
+        assertTrue(far.isViewer(player), "the player sees the far zombie");
+        final Collector<PlayerPickEntityEvent> dropped = env.trackEvent(PlayerPickEntityEvent.class, EventFilter.PLAYER, player);
+
+        send(player, new ClientPickItemFromEntityPacket(Integer.MAX_VALUE, false));
+        // 15.7 blocks from the eyes, range 3
+        send(player, new ClientPickItemFromEntityPacket(far.getEntityId(), false));
+        dropped.assertEmpty();
+
+        final Collector<PlayerPickEntityEvent> picks = env.trackEvent(PlayerPickEntityEvent.class, EventFilter.PLAYER, player);
+        send(player, new ClientPickItemFromEntityPacket(near.getEntityId(), false));
+        picks.assertSingle(event -> assertSame(near, event.getTarget()));
     }
 
     /** The limit is the block interaction range plus one block, exclusive, the range read from the attribute. */

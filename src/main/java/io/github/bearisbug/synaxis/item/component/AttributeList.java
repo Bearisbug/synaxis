@@ -30,7 +30,7 @@ public record AttributeList(List<Modifier> modifiers) {
         public static final NetworkBuffer.Type<Modifier> NETWORK_TYPE = NetworkBufferTemplate.template(
                 Attribute.NETWORK_TYPE, Modifier::attribute,
                 AttributeModifier.NETWORK_TYPE, Modifier::modifier,
-                NetworkBuffer.Enum(EquipmentSlotGroup.class), Modifier::slot,
+                EquipmentSlotGroup.NETWORK_TYPE, Modifier::slot,
                 Display.NETWORK_TYPE, Modifier::display,
                 Modifier::new);
         public static final Codec<Modifier> CODEC = StructCodec.struct(

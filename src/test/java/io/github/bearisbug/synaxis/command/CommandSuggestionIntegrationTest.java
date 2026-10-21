@@ -11,11 +11,13 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.Integer;
 import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.Literal;
+import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.StringArray;
 import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.Word;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -77,6 +79,47 @@ public class CommandSuggestionIntegrationTest {
 
         listener.assertSingle(tabCompletePacket ->
                 assertEquals(List.of(new TabCompletePacket.Match("suggested", null)), tabCompletePacket.matches()));
+    }
+
+    /**
+     * A request ending with a space gets a placeholder appended so that the next argument is parsed at all. The
+     * callback must not see it: a callback offering the names starting with what was typed would offer none.
+     */
+    @Test
+    public void anArgumentNotTypedYetIsEmptyInTheCallback(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 42, 0));
+
+        var seen = new ArrayList<Object>();
+        var target = Word("target");
+        target.setSuggestionCallback((_, context, suggestion) -> {
+            final String typed = context.get(target);
+            seen.add(typed);
+            seen.add(context.getRaw(target));
+            for (String name : List.of("Alice", "Bob")) {
+                if (name.startsWith(typed)) suggestion.addEntry(new SuggestionEntry(name));
+            }
+        });
+        var words = StringArray("words");
+        words.setSuggestionCallback((_, context, _) -> seen.add(List.of(context.get(words))));
+        var command = new Command("foo");
+        command.addSyntax((_, _) -> { }, target);
+        command.addSyntax((_, _) -> { }, Literal("say"), words);
+        env.process().command().register(command);
+
+        var listener = connection.trackIncoming(TabCompletePacket.class);
+        player.addPacketToQueue(new ClientTabCompletePacket(1, "/foo "));
+        player.addPacketToQueue(new ClientTabCompletePacket(2, "/foo say a "));
+        player.interpretPacketQueue();
+
+        assertEquals(List.of("", "", List.of("a", "")), seen);
+        var packets = listener.collect();
+        assertEquals(List.of(new TabCompletePacket.Match("Alice", null), new TabCompletePacket.Match("Bob", null)),
+                packets.getFirst().matches());
+        // The offsets still count the placeholder: the client replaces from after the space
+        assertEquals(5, packets.getFirst().start());
+        assertEquals(1, packets.getFirst().length());
     }
 
     @Test

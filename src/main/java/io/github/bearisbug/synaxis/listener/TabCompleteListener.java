@@ -34,14 +34,21 @@ public class TabCompleteListener {
         }
     }
 
+    /**
+     * The completions for a command being typed. The text loses its leading {@code /}, and after a trailing space a
+     * placeholder character is appended so that the next argument is parsed without its first character typed. The
+     * offsets the parser gives the {@link Suggestion} rely on both steps: they count the {@code /} back in, and the
+     * placeholder in the length.
+     *
+     * @param text the text of the client, as typed
+     * @return the completions, null if the command is unknown or the argument at the cursor has no suggestion callback
+     */
     public static @Nullable Suggestion getSuggestion(ServerProcess process, CommandSender commandSender, String text) {
         if (text.startsWith("/")) {
             text = text.substring(1);
         }
         if (text.endsWith(" ")) {
-            // Append a placeholder char if the command ends with a space allowing the parser to find suggestion
-            // for the next arg without typing the first char of it, this is probably the most hacky solution, but hey
-            // it works as intended :)
+            // The parser keeps the placeholder out of the arguments it hands the suggestion callback (CommandParserImpl)
             text = text + '\00';
         }
         return process.command().parseCommand(commandSender, text).suggestion(commandSender);

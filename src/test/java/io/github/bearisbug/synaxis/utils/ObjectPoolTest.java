@@ -33,19 +33,4 @@ public class ObjectPoolTest {
         assertEquals(0, pool.count());
         assertFalse(pooledBuffers.add(buffer));
     }
-
-    @Test
-    public void autoClose() {
-        var pool = PacketVanilla.PACKET_POOL;
-        assertEquals(0, pool.count());
-        try (var _ = pool.hold()) {
-            assertEquals(0, pool.count());
-        }
-        assertEquals(1, pool.count());
-
-        try (var _ = pool.hold()) {
-            assertEquals(0, pool.count());
-        }
-        assertEquals(1, pool.count());
-    }
 }

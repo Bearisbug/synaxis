@@ -33,15 +33,18 @@ public final class AlphaColor extends Color implements ARGBLike {
      */
     @Deprecated
     public static final Codec<ARGBLike> STRING_CODEC = Codec.STRING.transform(
-            hex -> (ARGBLike) Objects.requireNonNull(ShadowColor.fromHexString(hex)),
+            hex -> (ARGBLike) Objects.requireNonNull(ShadowColor.fromHexString(hex),
+                    () -> "invalid hex color '" + hex + "', expected #RRGGBBAA"),
             color -> ShadowColor.shadowColor(color).asHexString()).orElse(CODEC);
 
     public static final Codec<ARGBLike> RGBA_STRING_CODEC = Codec.STRING.transform(
-            hex -> (ARGBLike) Objects.requireNonNull(fromRGBAHexString(hex)),
+            hex -> (ARGBLike) Objects.requireNonNull(fromRGBAHexString(hex),
+                    () -> "invalid hex color '" + hex + "', expected #RRGGBBAA"),
             color -> String.format("#%08X", AlphaColor.fromARGBLike(color).asRGBA())).orElse(CODEC);
 
     public static final Codec<ARGBLike> ARGB_STRING_CODEC = Codec.STRING.transform(
-            hex -> (ARGBLike) Objects.requireNonNull(fromARGBHexString(hex)),
+            hex -> (ARGBLike) Objects.requireNonNull(fromARGBHexString(hex),
+                    () -> "invalid hex color '" + hex + "', expected #AARRGGBB"),
             color -> String.format("#%08X", AlphaColor.fromARGBLike(color).asARGB())).orElse(CODEC);
 
     public static final AlphaColor WHITE = new AlphaColor(255, 255, 255, 255);

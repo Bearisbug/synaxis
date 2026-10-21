@@ -77,7 +77,6 @@ public class CommandDispatcher {
             case CommandParser.Result.UnknownCommand _ -> CommandResult.Type.UNKNOWN;
             case CommandParser.Result.KnownCommand.Valid _ -> CommandResult.Type.SUCCESS;
             case CommandParser.Result.KnownCommand.Invalid _ -> CommandResult.Type.INVALID_SYNTAX;
-            case null -> throw new IllegalStateException("Unknown CommandParser.Result type");
         };
         return CommandResult.of(type, input, ParsedCommand.fromExecutable(parseResult.executable()), null);
     }

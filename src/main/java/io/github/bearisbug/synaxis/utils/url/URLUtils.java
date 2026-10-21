@@ -16,14 +16,21 @@ public final class URLUtils {
 
     }
 
+    /**
+     * Reads the body of a GET request as text. A response outside 2xx gives its error body, the status code is not
+     * exposed; a response without a body (a 204, or an error such as an empty 429) gives an empty string. Connecting
+     * and reading each time out after 5 s.
+     *
+     * @param url the url
+     * @return the body of the response, its lines joined without separators
+     * @throws IOException if the request fails or times out
+     */
     public static String getText(String url) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
-        //add headers to the connection, or check the status if desired..
         // An unresponsive endpoint would otherwise block the calling thread forever
         connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
         connection.setReadTimeout(READ_TIMEOUT_MS);
 
-        // handle error response code it occurs
         final int responseCode = connection.getResponseCode();
         final InputStream inputStream;
         if (200 <= responseCode && responseCode <= 299) {

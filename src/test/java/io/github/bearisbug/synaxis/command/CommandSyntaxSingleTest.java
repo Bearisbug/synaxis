@@ -3,7 +3,9 @@ package io.github.bearisbug.synaxis.command;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.command.builder.Command;
 import io.github.bearisbug.synaxis.command.builder.CommandContext;
+import io.github.bearisbug.synaxis.command.builder.CommandExecutor;
 import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
+import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType;
 import io.github.bearisbug.synaxis.entity.EntityType;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import org.jetbrains.annotations.Nullable;
@@ -17,9 +19,14 @@ import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType
 import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.EntityType;
 import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.Group;
 import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.Integer;
+import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.Literal;
 import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.Loop;
 import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.String;
+import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.StringArray;
+import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.Word;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class CommandSyntaxSingleTest {
@@ -152,6 +159,29 @@ public class CommandSyntaxSingleTest {
         assertSyntax(groupLoop, "minecraft:allay minecraft:allay", ExpectedExecution.DEFAULT);
         assertSyntax(groupLoop, "minecraft:stone", ExpectedExecution.DEFAULT);
         assertSyntax(groupLoop, "minecraft:stone minecraft:stone", ExpectedExecution.DEFAULT);
+    }
+
+    /**
+     * An argument taking the rest of the input leaves nothing for the arguments after it, so a syntax with one there
+     * could never run.
+     */
+    @Test
+    public void anArgumentTakingTheRestOfTheInputEndsTheSyntax() {
+        final CommandExecutor executor = (_, _) -> { };
+        var command = new Command("name");
+        for (Argument<?> rest : List.of(StringArray("rest"), Loop("rest", Integer("value")), ArgumentType.Command("rest"),
+                StringArray("rest").map(words -> words.length), StringArray("rest").setDefaultValue(new String[0]))) {
+            var thrown = assertThrows(IllegalArgumentException.class,
+                    () -> command.addSyntax(executor, rest, Integer("n")));
+            assertTrue(thrown.getMessage().contains("'rest'"), thrown.getMessage());
+            assertThrows(IllegalArgumentException.class,
+                    () -> command.addConditionalSyntax((_, _) -> true, executor, Word("w"), rest, Literal("end")));
+        }
+        assertThrows(IllegalArgumentException.class, () -> command.addSyntax(executor, "StringArray<rest> Integer<n>"));
+        assertTrue(command.getSyntaxes().isEmpty());
+
+        command.addSyntax(executor, Integer("n"), StringArray("rest"));
+        assertEquals(1, command.getSyntaxes().size());
     }
 
     private static void assertSyntax(List<Argument<?>> args, String input, ExpectedExecution expectedExecution, @Nullable Map<String, Object> expectedValues) {

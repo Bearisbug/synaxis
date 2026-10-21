@@ -18,12 +18,16 @@
  *     <li>an effect on another entity, which may belong to another tick thread (an attack, a
  *     trade), is handed to the target with {@code runOn} and runs on the target's thread at its
  *     next tick; {@code Acquirable#sync} is only for the case where the value has to be read in
- *     the same tick, since every access across tick threads waits on one lock of the process;</li>
+ *     the same tick, since every access across tick threads waits on one lock of the process. While a
+ *     tick thread waits for it ({@code lock} and {@code applySync} too), the engine lets go of the
+ *     locks of that thread, so another thread may change the entities it owns, the one being ticked
+ *     included: read the own state again once the other entity is held;</li>
  *     <li>a listener of {@link io.github.bearisbug.synaxis.plugin.PluginEvents#forInstance} runs on
  *     the thread that dispatches its event: an entity or player event on the tick thread owning that
  *     entity, several of them for one instance under {@code grid}; {@code InstanceTickEvent} on the
- *     tick scheduler thread; {@code InstanceChunkLoadEvent} on the virtual thread that loaded the
- *     chunk; {@code PlayInstanceStateEvent} on the thread that carried the transition out. State the
+ *     tick scheduler thread; {@code InstanceChunkLoadEvent} on the thread that completed the load,
+ *     usually the virtual thread that loaded the chunk, possibly the thread that asked for it, not
+ *     necessarily a tick thread; {@code PlayInstanceStateEvent} on the thread that carried the transition out. State the
  *     listeners of one instance share needs a concurrent structure or a lock;</li>
  *     <li>{@link io.github.bearisbug.synaxis.plugin.PluginScheduler#scheduleTask} runs on the tick
  *     scheduler thread, one task after another: logic a plugin runs there every tick is the serial
@@ -70,7 +74,9 @@
  * <ul>
  *     <li>{@code PlayerPacketOutEvent}, once per packet written, on the write thread of the
  *     connection: a listener only looks at or cancels the packet, touches no entity and no
- *     instance, and does not block, which would hold up every packet of that player;</li>
+ *     instance, and does not block, which would hold up every packet of that player. Cancelling
+ *     {@code FinishConfigurationPacket} or {@code StartConfigurationPacket}, which switch the state of
+ *     the connection, has no effect: the packet is written and one WARN line is logged;</li>
  *     <li>{@code PlayerPacketEvent} is only dispatched for the play packets queued for the player,
  *     on the player's tick thread, or in the serial part of the tick on the tick scheduler thread
  *     while the player is in no instance (waiting to join after the configuration, or sent back to
@@ -78,7 +84,10 @@
  *     handled on the read thread without it, and a packet that switches the decoding state (the
  *     acknowledgement of a return to the configuration) is never offered to it;</li>
  *     <li>{@code AsyncPlayerPreLoginEvent} and {@code AsyncPlayerConfigurationEvent} run on a
- *     virtual thread of the connection, where a listener may block;</li>
+ *     virtual thread of the connection, where a listener may block. The future of
+ *     {@code AsyncPlayerPreLoginEvent#sendPluginRequest} completes exceptionally with
+ *     {@code IllegalStateException} once the connection disconnects or leaves the login state, and a
+ *     call after that throws it;</li>
  *     <li>{@code PlayerSkinInitEvent} and the {@code PlayerSpawnEvent} of a first spawn run in the
  *     serial part of the tick on the tick scheduler thread, before the player is assigned to a tick
  *     thread (a player back from the configuration is held by that thread instead): a listener may

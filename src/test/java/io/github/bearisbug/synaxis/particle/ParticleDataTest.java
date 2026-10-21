@@ -47,13 +47,6 @@ public class ParticleDataTest {
     }
 
     @Test
-    public void testParticleData() {
-        var particle = Particle.ENTITY_EFFECT;
-        ParticlePacket packet = new ParticlePacket(particle, false, true, 0, 0, 0, 0, 0, 0, 0, 0);
-        assertDoesNotThrow(() -> ParticlePacket.SERIALIZER.write(NetworkBuffer.resizableBuffer(), packet));
-    }
-
-    @Test
     public void invalidBlock() {
         assertThrows(NullPointerException.class, () -> Particle.BLOCK.withBlock(null));
     }

@@ -31,10 +31,11 @@ public enum TropicalFishPattern {
         throw new IllegalArgumentException("Invalid pattern id: " + id);
     }
 
+    // The packed protocol id: the low 8 bits are the size (0 small, 1 large), the bits from 8 up are the index
     private final int id;
 
-    TropicalFishPattern(boolean isLarge, int id) {
-        this.id = (isLarge ? 1 : 0) | (id << 8);
+    TropicalFishPattern(boolean isLarge, int index) {
+        this.id = (isLarge ? 1 : 0) | (index << 8);
     }
 
     public int id() {

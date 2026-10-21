@@ -44,7 +44,7 @@ public class VisibleEntityLimitConcurrencyTest {
 
         @Override
         public void update(long time) {
-            refreshPosition(((getAliveTicks() + phase) / period) % 2 == 0 ? inside : outside);
+            moveTo(((getAliveTicks() + phase) / period) % 2 == 0 ? inside : outside);
         }
     }
 

@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 public abstract class SimpleCommand extends Command {
     @SuppressWarnings("this-escape") // deliberate self registration during construction
-    public SimpleCommand(String name, @Nullable String... aliases) {
+    public SimpleCommand(String name, String... aliases) {
         super(name, aliases);
 
         setCondition(this::hasAccess);
@@ -25,7 +25,7 @@ public abstract class SimpleCommand extends Command {
      * @param sender  the sender which executed the command
      * @param command the command name used
      * @param args    an array containing all the args (split by space char)
-     * @return true when the command is successful, false otherwise
+     * @return whether the command succeeded; the engine does not use it
      */
     public abstract boolean process(CommandSender sender, String command, String[] args);
 

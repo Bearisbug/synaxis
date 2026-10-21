@@ -40,7 +40,6 @@ LOWER_LEVEL_ROOT_CLASSES = frozenset({
 
 LOWER_LEVEL_PACKAGES = (
     "codec",
-    "condition",
     "coordinate",
     "exception",
     "gamedata",

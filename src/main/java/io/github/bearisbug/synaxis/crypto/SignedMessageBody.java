@@ -6,12 +6,14 @@ import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import java.time.Instant;
 
 public final class SignedMessageBody {
+    // The chat limit of the vanilla client, in characters
+    private static final int MAX_CONTENT_LENGTH = 256;
 
     public record Packed(String content, Instant timeStamp, long salt,
                          LastSeenMessages.Packed lastSeen) {
         public Packed {
-            if (content.length() > MessageSignature.SIGNATURE_BYTE_LENGTH) {
-                throw new IllegalArgumentException("Message content too long");
+            if (content.length() > MAX_CONTENT_LENGTH) {
+                throw new IllegalArgumentException("Message length cannot be greater than " + MAX_CONTENT_LENGTH + ": " + content.length());
             }
         }
 

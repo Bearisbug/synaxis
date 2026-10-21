@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.command.builder.arguments.minecraft.registry
 import io.github.bearisbug.synaxis.command.ArgumentParserType;
 import io.github.bearisbug.synaxis.command.builder.arguments.minecraft.SuggestionType;
 import io.github.bearisbug.synaxis.entity.EntityType;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Represents an argument giving an {@link EntityType}.
@@ -20,7 +21,7 @@ public class ArgumentEntityType extends ArgumentRegistry<EntityType> {
     }
 
     @Override
-    public EntityType getRegistry(String value) {
+    public @Nullable EntityType getRegistry(String value) {
         return EntityType.fromKey(value);
     }
 

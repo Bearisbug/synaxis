@@ -1,9 +1,11 @@
 package io.github.bearisbug.synaxis.network.packet;
 
+import io.github.bearisbug.synaxis.coordinate.Rotation;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientChangeDifficultyPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientSetBeaconEffectPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientUpdateSignPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientUpdateStructureBlockPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.DeleteChatPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.MoveMinecartPacket;
@@ -11,11 +13,15 @@ import io.github.bearisbug.synaxis.potion.PotionEffect;
 import io.github.bearisbug.synaxis.world.Difficulty;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Reads packets from bytes laid out the way the 26.2 client writes or reads them (the stream codecs of
@@ -95,6 +101,56 @@ class PacketVanillaLayoutTest {
         final ClientUpdateStructureBlockPacket packet = readWhole(ClientUpdateStructureBlockPacket.SERIALIZER, wire);
         assertEquals(300L, packet.seed());
         assertEquals(ClientUpdateStructureBlockPacket.SHOW_AIR, packet.flags());
+    }
+
+    /**
+     * The rotation of a structure block is one of the four quarter turns, and a refusal names the packet and the value.
+     */
+    @Test
+    void structureBlockRotationIsAQuarterTurn() {
+        final byte[] wire = wire(buffer -> {
+            buffer.write(NetworkBuffer.BLOCK_POSITION, Vec.ZERO);
+            buffer.write(NetworkBuffer.VAR_INT, 0); // update type UPDATE_DATA
+            buffer.write(NetworkBuffer.VAR_INT, 0); // mode SAVE
+            buffer.write(NetworkBuffer.STRING, "");
+            buffer.write(NetworkBuffer.VECTOR3B, Vec.ZERO); // offset
+            buffer.write(NetworkBuffer.VECTOR3B, Vec.ZERO); // size
+            buffer.write(NetworkBuffer.VAR_INT, 0); // mirror NONE
+            buffer.write(NetworkBuffer.VAR_INT, 4); // no such rotation
+        });
+        final IllegalArgumentException read = assertThrows(IllegalArgumentException.class,
+                () -> NetworkBuffer.wrap(wire, 0, wire.length).read(ClientUpdateStructureBlockPacket.SERIALIZER));
+        assertTrue(read.getMessage().startsWith("ClientUpdateStructureBlockPacket#rotation"), read::getMessage);
+        assertTrue(read.getMessage().endsWith("got: 4"), read::getMessage);
+
+        final ClientUpdateStructureBlockPacket diagonal = new ClientUpdateStructureBlockPacket(Vec.ZERO,
+                ClientUpdateStructureBlockPacket.Action.UPDATE_DATA, ClientUpdateStructureBlockPacket.Mode.SAVE, "",
+                Vec.ZERO, Vec.ZERO, ClientUpdateStructureBlockPacket.Mirror.NONE, Rotation.CLOCKWISE_45, "", 1f, 0L,
+                (byte) 0);
+        final IllegalArgumentException write = assertThrows(IllegalArgumentException.class,
+                () -> NetworkBuffer.makeArray(ClientUpdateStructureBlockPacket.SERIALIZER, diagonal));
+        assertTrue(write.getMessage().endsWith("got: CLOCKWISE_45"), write::getMessage);
+    }
+
+    /**
+     * {@code ServerboundSignUpdatePacket}: the position, whether it is the front text, then the four lines as plain
+     * strings, without a count in front of them.
+     */
+    @Test
+    void signLinesHaveNoCountPrefix() {
+        final byte[] wire = wire(buffer -> {
+            buffer.write(NetworkBuffer.BLOCK_POSITION, new Vec(3, 70, -9));
+            buffer.write(NetworkBuffer.BOOLEAN, false);
+            buffer.write(NetworkBuffer.STRING, "one");
+            buffer.write(NetworkBuffer.STRING, "");
+            buffer.write(NetworkBuffer.STRING, "three");
+            buffer.write(NetworkBuffer.STRING, "four");
+        });
+
+        final ClientUpdateSignPacket packet = readWhole(ClientUpdateSignPacket.SERIALIZER, wire);
+        assertEquals(new Vec(3, 70, -9), packet.blockPosition());
+        assertFalse(packet.isFrontText());
+        assertEquals(List.of("one", "", "three", "four"), packet.lines());
     }
 
     /**

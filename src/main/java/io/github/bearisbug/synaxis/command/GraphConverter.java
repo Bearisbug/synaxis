@@ -9,6 +9,7 @@ import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentLoop;
 import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentWord;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.network.packet.server.play.DeclareCommandsPacket;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -34,8 +35,7 @@ final class GraphConverter {
         List<DeclareCommandsPacket.Node> nodes = new ArrayList<>();
         List<BiConsumer<Graph, Integer>> redirects = new ArrayList<>();
         Map<Argument<?>, Integer> argToPacketId = new HashMap<>();
-        final AtomicInteger idSource = new AtomicInteger(0);
-        final int rootId = append(manager, graph.root(), nodes, redirects, idSource, null, new AtomicInteger(), player,
+        final int rootId = append(manager, graph.root(), nodes, redirects, null, new AtomicInteger(), player,
                 argToPacketId, null)[0];
         for (var r : redirects) {
             r.accept(graph, rootId);
@@ -44,14 +44,15 @@ final class GraphConverter {
     }
 
     /**
-     * Ids are given in post-order: a node gets its id after all of its descendants.
+     * The id of a node is its index in {@code to}, given in post-order: a node gets its id after all of its
+     * descendants.
      *
      * @param redirect where the node redirects to, set for the items of a loop
      * @param parent   the id of the parent node, set once the parent has one, which the items of a loop go back to
      * @param command  the name of the command the node belongs to, null for the root
      */
     private static int[] append(CommandManager manager, Graph.Node graphNode, List<DeclareCommandsPacket.Node> to,
-                                List<BiConsumer<Graph, Integer>> redirects, AtomicInteger id, @Nullable AtomicInteger redirect,
+                                List<BiConsumer<Graph, Integer>> redirects, @Nullable AtomicInteger redirect,
                                 AtomicInteger parent, @Nullable Player player, Map<Argument<?>, Integer> argToPacketId,
                                 @Nullable String command) {
         final Graph.Execution execution = graphNode.execution();
@@ -67,22 +68,16 @@ final class GraphConverter {
         final DeclareCommandsPacket.Node node = new DeclareCommandsPacket.Node();
         // The id of this node, set by every branch below that writes it: the parent the children get
         final AtomicInteger self = new AtomicInteger();
-        int[] packetNodeChildren = new int[children.size()];
-        for (int i = 0, appendIndex = 0; i < children.size(); i++) {
-            final int[] append = append(manager, children.get(i), to, redirects, id, redirect, self, player,
+        final IntArrayList packetNodeChildren = new IntArrayList(children.size());
+        for (int i = 0; i < children.size(); i++) {
+            final int[] append = append(manager, children.get(i), to, redirects, redirect, self, player,
                     argToPacketId, command != null ? command : children.get(i).argument().getId());
             if (append.length > 0) {
                 argToPacketId.put(children.get(i).argument(), append[0]);
             }
-            if (append.length == 1) {
-                packetNodeChildren[appendIndex++] = append[0];
-            } else {
-                packetNodeChildren = Arrays.copyOf(packetNodeChildren, packetNodeChildren.length + append.length - 1);
-                System.arraycopy(append, 0, packetNodeChildren, appendIndex, append.length);
-                appendIndex += append.length;
-            }
+            packetNodeChildren.addElements(packetNodeChildren.size(), append);
         }
-        node.children = packetNodeChildren;
+        node.children = packetNodeChildren.toIntArray();
 
         boolean isExecutable = graphNode.execution() != null && graphNode.execution().executor() != null;
 
@@ -90,16 +85,16 @@ final class GraphConverter {
             if (literal.getId().isEmpty()) {
                 node.flags = 0; //root
             } else {
-                node.flags = literal(isExecutable, false);
+                node.flags = literal(isExecutable, redirect != null);
                 node.name = argument.getId();
                 if (redirect != null) {
-                    node.flags |= 0x8;
                     redirects.add((_, _) -> node.redirectedNode = redirect.get());
                 }
             }
+            final int id = to.size();
             to.add(node);
-            self.set(id.getAndIncrement());
-            return new int[]{self.get()};
+            self.set(id);
+            return new int[]{id};
         } else {
             if (shape instanceof ArgumentCommand argCmd) {
                 node.flags = literal(isExecutable, true);
@@ -121,10 +116,10 @@ final class GraphConverter {
                         node.redirectedNode = target != null ? target : root;
                     });
                 }
+                final int id = to.size();
                 to.add(node);
-
-                self.set(id.getAndIncrement());
-                return new int[]{self.get()};
+                self.set(id);
+                return new int[]{id};
             } else if (shape instanceof ArgumentEnum<?> || (shape instanceof ArgumentWord word && word.hasRestrictions())) {
                 List<String> entries = shape instanceof ArgumentEnum<?> ?
                         ((ArgumentEnum<?>) shape).entries() :
@@ -134,14 +129,13 @@ final class GraphConverter {
                     String entry = entries.get(i);
                     final DeclareCommandsPacket.Node subNode = new DeclareCommandsPacket.Node();
                     subNode.children = node.children;
-                    subNode.flags = literal(isExecutable, false);
+                    subNode.flags = literal(isExecutable, redirect != null);
                     subNode.name = entry;
                     if (redirect != null) {
-                        subNode.flags |= 0x8;
                         redirects.add((_, _) -> subNode.redirectedNode = redirect.get());
                     }
+                    res[i] = to.size();
                     to.add(subNode);
-                    res[i] = id.getAndIncrement();
                 }
                 // Every entry has the children of the node, so any of them can be gone back to
                 if (res.length > 0) self.set(res[0]);
@@ -155,7 +149,7 @@ final class GraphConverter {
                     if (i == entries.size() - 1) {
                         // Last will be the parent of next args
                         final int[] l = append(manager, new GraphImpl.NodeImpl(entry, null, List.of()), to, redirects,
-                                id, redirect, self, player, argToPacketId, command);
+                                redirect, self, player, argToPacketId, command);
                         for (int n : l) {
                             to.get(n).children = node.children;
                         }
@@ -167,12 +161,12 @@ final class GraphConverter {
                         return res == null ? l : res;
                     } else if (i == 0) {
                         // First will be the children & parent of following
-                        res = append(manager, new GraphImpl.NodeImpl(entry, null, List.of()), to, redirects, id,
-                                null, self, player, argToPacketId, command);
+                        res = append(manager, new GraphImpl.NodeImpl(entry, null, List.of()), to, redirects, null,
+                                self, player, argToPacketId, command);
                         last = res;
                     } else {
                         final int[] l = append(manager, new GraphImpl.NodeImpl(entry, null, List.of()), to, redirects,
-                                id, null, self, player, argToPacketId, command);
+                                null, self, player, argToPacketId, command);
                         for (int n : last) {
                             to.get(n).children = l;
                         }
@@ -181,23 +175,17 @@ final class GraphConverter {
                 }
                 throw new RuntimeException("Arg group must have child args.");
             } else if (shape instanceof ArgumentLoop<?> special) {
-                int[] res = new int[special.arguments().size()];
                 List<?> arguments = special.arguments();
-                for (int i = 0, appendIndex = 0; i < arguments.size(); i++) {
+                final IntArrayList res = new IntArrayList(arguments.size());
+                for (int i = 0; i < arguments.size(); i++) {
                     Object arg = arguments.get(i);
                     // Each item goes back to the node holding the loop, for the next item
                     final int[] append = append(manager, new GraphImpl.NodeImpl((Argument<?>) arg, null, List.of()), to,
-                            redirects, id, parent, self, player, argToPacketId, command);
-                    if (append.length == 1) {
-                        res[appendIndex++] = append[0];
-                    } else {
-                        res = Arrays.copyOf(res, res.length + append.length - 1);
-                        System.arraycopy(append, 0, res, appendIndex, append.length);
-                        appendIndex += append.length;
-                    }
+                            redirects, parent, self, player, argToPacketId, command);
+                    res.addElements(res.size(), append);
                 }
-                if (res.length > 0) self.set(res[0]);
-                return res;
+                if (!res.isEmpty()) self.set(res.getInt(0));
+                return res.toIntArray();
             } else {
                 final ArgumentParserType parser = shape.parser();
                 if (parser == null) {
@@ -207,20 +195,20 @@ final class GraphConverter {
                     return new int[0];
                 }
                 final boolean hasSuggestion = argument.hasSuggestion();
-                node.flags = arg(isExecutable, hasSuggestion);
+                node.flags = arg(isExecutable, redirect != null, hasSuggestion);
                 node.name = argument.getId();
                 node.parser = parser;
                 node.properties = shape.nodeProperties();
                 if (redirect != null) {
-                    node.flags |= 0x8;
                     redirects.add((_, _) -> node.redirectedNode = redirect.get());
                 }
                 if (hasSuggestion) {
                     node.suggestionsType = argument.suggestionType().getIdentifier();
                 }
+                final int id = to.size();
                 to.add(node);
-                self.set(id.getAndIncrement());
-                return new int[]{self.get()};
+                self.set(id);
+                return new int[]{id};
             }
         }
     }
@@ -244,7 +232,8 @@ final class GraphConverter {
         return DeclareCommandsPacket.getFlag(DeclareCommandsPacket.NodeType.LITERAL, executable, hasRedirect, false);
     }
 
-    private static byte arg(boolean executable, boolean hasSuggestion) {
-        return DeclareCommandsPacket.getFlag(DeclareCommandsPacket.NodeType.ARGUMENT, executable, false, hasSuggestion);
+    private static byte arg(boolean executable, boolean hasRedirect, boolean hasSuggestion) {
+        return DeclareCommandsPacket.getFlag(DeclareCommandsPacket.NodeType.ARGUMENT, executable, hasRedirect,
+                hasSuggestion);
     }
 }

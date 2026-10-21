@@ -11,13 +11,13 @@ import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxExcep
 import io.github.bearisbug.synaxis.command.builder.suggestion.Suggestion;
 import io.github.bearisbug.synaxis.command.builder.suggestion.SuggestionCallback;
 import io.github.bearisbug.synaxis.utils.StringUtils;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +28,11 @@ import java.util.stream.Collectors;
 final class CommandParserImpl implements CommandParser {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandParserImpl.class);
     static final CommandParserImpl PARSER = new CommandParserImpl();
+    /**
+     * Appended by {@code TabCompleteListener#getSuggestion} to a request ending with a space, so that the argument
+     * after it is parsed and its suggestion callback found.
+     */
+    private static final String SUGGESTION_PLACEHOLDER = "\0";
 
     static final class Chain {
         @Nullable CommandExecutor defaultExecutor = null;
@@ -87,63 +92,32 @@ final class CommandParserImpl implements CommandParser {
         }
 
         /**
-         * Calculates the depth of the chain that is considered successful or valid, providing a more accurate measure
-         * for deciding which chain is the most reliable to use. For example a chain that contains the following
-         * values [, foo, bar, baz] given the command input "foo bar" will have a successful depth of 2.
+         * How far down the chain parsed: the number of successful results after the first one, the root, up to the
+         * first that is not a success. For example a chain [root, foo, bar, baz] whose input "foo bar" lacks the
+         * last argument has a depth of 2. Tells which of several failed chains got the furthest.
          *
-         * @return The successful result depth
-         * @see #size() getting the size of all results
+         * @return the successful depth
+         * @see #size() the number of all the results
          */
         int depth() {
-            int depth = 0;
-
-            for (NodeResult node : this.nodeResults) {
-                if (depth++ == 0) {
-                    // If we're on the first node, skip it and increment, we don't care about the empty first node
-                    continue;
-                }
-
-                // If this node isn't a success, we're going to stop counting the depth and stop here
-                if (!(node.argumentResult() instanceof ArgumentResult.Success<?>)) {
-                    depth--;
-                    break;
-                }
-            }
-
-            // The chain will always contain a empty node at the start, we don't care about it so we'll remove one
-            return depth - 1;
+            return successPrefix();
         }
 
         /**
-         * Gets the last successful argument result in the chain (breaking if hitting a non-successful result). This
-         * method is very similar in how {@link #depth()}'s functions, and is used to get the last successful result
+         * The last result of the successful part of the chain, the one {@link #depth()} counts up to.
          *
-         * @return The last successful result, or null if there isn't a good result to give back, such as if
-         * the depth of the chain is zero (containing only an empty node result, or if no node results exist).
-         * @see #depth() the depth size of the chain
-         * @see #nodeResults all the node results in the chain
+         * @return the last successful result, or null if the depth is zero: no node after the root parsed
+         * @see #depth()
          */
         @Nullable NodeResult lastSuccessfulResult() {
-            // Early exit if node results is empty or has only the empty node element
-            if (this.nodeResults.size() <= 1) return null;
+            final int prefix = successPrefix();
+            return prefix == 0 ? null : nodeResults.stream().skip(prefix).findFirst().orElseThrow();
+        }
 
-            NodeResult previousNode = null;
-            for (NodeResult node : this.nodeResults) {
-                // We want to just skip the initial node, we never want to return it
-                if (previousNode == null) {
-                    previousNode = node;
-                    continue;
-                }
-
-                // If this node isn't a success, we're going to stop counting the depth and stop here
-                if (!(node.argumentResult() instanceof ArgumentResult.Success<?>)) {
-                    return previousNode;
-                }
-
-                previousNode = node;
-            }
-
-            return previousNode;
+        private int successPrefix() {
+            return (int) nodeResults.stream().skip(1)
+                    .takeWhile(result -> result.argumentResult() instanceof ArgumentResult.Success<?>)
+                    .count();
         }
 
         Chain() {
@@ -190,7 +164,7 @@ final class CommandParserImpl implements CommandParser {
 
         if (result.argumentResult instanceof ArgumentResult.Success<?>) {
             final Graph.Execution execution = lastNode.execution();
-            CommandExecutor executor = nullSafeGetter(execution, Graph.Execution::executor);
+            final CommandExecutor executor = execution == null ? null : execution.executor();
             if (executor != null) return ValidCommand.executor(input, chain, executor, execution.executorCondition());
         }
 
@@ -206,11 +180,6 @@ final class CommandParserImpl implements CommandParser {
         return InvalidCommand.invalid(input, chain);
     }
 
-    @Contract("null, _ -> null; !null, null -> fail; !null, !null -> _")
-    private static <R, T> @Nullable R nullSafeGetter(@Nullable T obj, Function<T, R> getter) {
-        return obj == null ? null : getter.apply(obj);
-    }
-
     private static NodeResult parseNode(CommandSender sender, Node node, Chain chain, CommandStringReader reader) {
         chain = chain.fork();
         Argument<?> argument = node.argument();
@@ -220,7 +189,7 @@ final class CommandParserImpl implements CommandParser {
             SuggestionCallback suggestionCallback = argument.getSuggestionCallback();
             ArgumentResult<?> result = parseArgument(sender, argument, reader);
             @SuppressWarnings("unchecked")
-            NodeResult nodeResult = new NodeResult(node, chain, (ArgumentResult<Object>) result, suggestionCallback);
+            NodeResult nodeResult = new NodeResult(node, chain, (ArgumentResult<Object>) result);
             chain.append(nodeResult);
             if (suggestionCallback != null) chain.suggestionCallback = suggestionCallback;
             if (chain.size() == 1) { // If this is the root node (usually "Literal<>")
@@ -239,16 +208,11 @@ final class CommandParserImpl implements CommandParser {
             if (defaultSupplier != null) {
                 Object value = defaultSupplier.apply(sender);
                 ArgumentResult<Object> argumentResult = new ArgumentResult.Success<>(value, "");
-                chain.append(new NodeResult(node, chain, argumentResult, argument.getSuggestionCallback()));
+                chain.append(new NodeResult(node, chain, argumentResult));
                 // Add the default to the chain, and then carry on dealing with this node
             } else {
                 // Still being asked to parse yet there's nothing left, syntax error.
-                return new NodeResult(
-                        node,
-                        chain,
-                        new ArgumentResult.SyntaxError<>("Not enough arguments", "", -1),
-                        argument.getSuggestionCallback()
-                );
+                return new NodeResult(node, chain, new ArgumentResult.SyntaxError<>("Not enough arguments", "", -1));
             }
         }
         // Successfully matched this node's argument
@@ -281,12 +245,7 @@ final class CommandParserImpl implements CommandParser {
                             if (deepestSuggestion != null) errorChain.suggestionCallback = deepestSuggestion;
                             errorChain.failure = failure;
 
-                            lastSuccess = new NodeResult(
-                                    lastSuccess.node(),
-                                    errorChain,
-                                    lastSuccess.argumentResult(),
-                                    lastSuccess.callback()
-                            );
+                            lastSuccess = new NodeResult(lastSuccess.node(), errorChain, lastSuccess.argumentResult());
                         }
                         error = lastSuccess.asPartial();
                     }
@@ -299,7 +258,8 @@ final class CommandParserImpl implements CommandParser {
         }
         // None were successful. Either incompatible types, or syntax error. It doesn't matter to us, though
         // Try to execute this node
-        CommandExecutor executor = nullSafeGetter(node.execution(), Graph.Execution::executor);
+        final Graph.Execution execution = node.execution();
+        final CommandExecutor executor = execution == null ? null : execution.executor();
         if (executor == null) {
             // Stuck here with no executor
             if (error != null) {
@@ -320,17 +280,10 @@ final class CommandParserImpl implements CommandParser {
                 returnNode = nextNodes.getFirst();
                 suggestionCallback = returnNode.argument().getSuggestionCallback();
             }
-            NodeResult nodeResult = new NodeResult(
-                    returnNode,
-                    error == null ? chain : error.chain,
-                    new ArgumentResult.SyntaxError<>("Command has trailing data", "", -1),
-                    suggestionCallback
-            );
+            NodeResult nodeResult = new NodeResult(returnNode, error == null ? chain : error.chain,
+                    new ArgumentResult.SyntaxError<>("Command has trailing data", "", -1));
             if (suggestionCallback != null) chain.suggestionCallback = suggestionCallback;
-            // prevent duplicates from being added (Fixes CommandParseTest#singleCommandWithMultipleSyntax() failure)
-            if (chain.getArgs().stream().noneMatch(arg -> arg.getId().equals(argument.getId()))) {
-                chain.append(nodeResult);
-            }
+            // Not appended: the chain holds the result of this node already, this one only reports the trailing data
             return nodeResult;
         }
 
@@ -360,7 +313,7 @@ final class CommandParserImpl implements CommandParser {
     sealed interface InternalKnownCommand extends Result.KnownCommand {
         String input();
 
-        @Nullable CommandCondition condition();
+        CommandCondition condition();
 
         Map<String, ArgumentResult<Object>> arguments();
 
@@ -373,8 +326,11 @@ final class CommandParserImpl implements CommandParser {
             final SuggestionCallback callback = suggestionCallback();
             if (callback == null) return null;
             final int lastSpace = input().lastIndexOf(" ");
+            // Offsets into the text of the client, which TabCompleteListener stripped of its leading '/': + 1 skips
+            // the space, + 1 more puts the '/' back. The length counts the placeholder the listener appends after a
+            // trailing space, which the client tolerates.
             final Suggestion suggestion = new Suggestion(input(), lastSpace + 2, input().length() - lastSpace - 1);
-            final CommandContext context = createCommandContext(input(), arguments());
+            final CommandContext context = createCommandContext(input(), withoutPlaceholder(arguments()));
             callback.apply(sender, context, suggestion);
             return suggestion;
         }
@@ -462,7 +418,7 @@ final class CommandParserImpl implements CommandParser {
 
             globalListener().apply(sender, context);
 
-            if (condition != null && !condition.canUse(sender, input())) {
+            if (!condition.canUse(sender, input())) {
                 return ExecutionResultImpl.PRECONDITION_FAILED;
             }
             try {
@@ -483,7 +439,7 @@ final class CommandParserImpl implements CommandParser {
         public ExecutableCommand.Result execute(CommandSender sender) {
             globalListener().apply(sender, createCommandContext(input, arguments));
 
-            if (condition != null && !condition.canUse(sender, input())) {
+            if (!condition.canUse(sender, input())) {
                 return ExecutionResultImpl.PRECONDITION_FAILED;
             }
             if (callback != null) {
@@ -513,8 +469,35 @@ final class CommandParserImpl implements CommandParser {
         return context;
     }
 
+    /**
+     * The arguments as a suggestion callback sees them. After a trailing space {@code TabCompleteListener} appends
+     * {@link #SUGGESTION_PLACEHOLDER} so that the next argument gets parsed at all: the argument read from it is empty
+     * text, a string array ends with an empty word.
+     */
+    private static Map<String, ArgumentResult<Object>> withoutPlaceholder(
+            Map<String, ArgumentResult<Object>> arguments) {
+        final Map<String, ArgumentResult<Object>> result = new HashMap<>(arguments);
+        result.replaceAll((_, argument) -> {
+            if (!(argument instanceof ArgumentResult.Success<Object> success)
+                    || !success.input().endsWith(SUGGESTION_PLACEHOLDER)) return argument;
+            Object value = success.value();
+            if (value instanceof String text) {
+                value = stripPlaceholder(text);
+            } else if (value instanceof String[] words && words.length > 0) {
+                final String[] copy = words.clone();
+                copy[copy.length - 1] = stripPlaceholder(copy[copy.length - 1]);
+                value = copy;
+            }
+            return new ArgumentResult.Success<>(value, stripPlaceholder(success.input()));
+        });
+        return result;
+    }
+
+    private static String stripPlaceholder(String text) {
+        return text.endsWith(SUGGESTION_PLACEHOLDER) ? text.substring(0, text.length() - 1) : text;
+    }
+
     record ExecutionResultImpl(Type type, @Nullable CommandData commandData) implements ExecutableCommand.Result {
-        static final ExecutableCommand.Result CANCELLED = new ExecutionResultImpl(Type.CANCELLED, null);
         static final ExecutableCommand.Result UNKNOWN = new ExecutionResultImpl(Type.UNKNOWN, null);
         static final ExecutableCommand.Result EXECUTOR_EXCEPTION = new ExecutionResultImpl(Type.EXECUTOR_EXCEPTION, null);
         static final ExecutableCommand.Result PRECONDITION_FAILED = new ExecutionResultImpl(Type.PRECONDITION_FAILED, null);
@@ -526,14 +509,13 @@ final class CommandParserImpl implements CommandParser {
      *                 deepest successful node of a branch that failed further down, so it must not be mistaken for a
      *                 branch that matched, otherwise the sibling branches are never visited.
      */
-    private record NodeResult(Node node, Chain chain, ArgumentResult<Object> argumentResult,
-                              SuggestionCallback callback, boolean terminal) {
-        NodeResult(Node node, Chain chain, ArgumentResult<Object> argumentResult, SuggestionCallback callback) {
-            this(node, chain, argumentResult, callback, true);
+    private record NodeResult(Node node, Chain chain, ArgumentResult<Object> argumentResult, boolean terminal) {
+        NodeResult(Node node, Chain chain, ArgumentResult<Object> argumentResult) {
+            this(node, chain, argumentResult, true);
         }
 
         NodeResult asPartial() {
-            return terminal ? new NodeResult(node, chain, argumentResult, callback, false) : this;
+            return terminal ? new NodeResult(node, chain, argumentResult, false) : this;
         }
 
         String name() {

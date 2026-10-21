@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.command.builder.arguments.minecraft.registry
 
 import io.github.bearisbug.synaxis.command.ArgumentParserType;
 import io.github.bearisbug.synaxis.particle.Particle;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Represents an argument giving a {@link Particle}.
@@ -18,7 +19,7 @@ public class ArgumentParticle extends ArgumentRegistry<Particle> {
     }
 
     @Override
-    public Particle getRegistry(String value) {
+    public @Nullable Particle getRegistry(String value) {
         return Particle.fromKey(value);
     }
 

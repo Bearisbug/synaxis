@@ -99,9 +99,9 @@ public final class MetadataHolder {
             T current = get(entry);
 
             // If a metadata value is unchanged we should not send it. In particular we need to be careful with
-            //  sending bitmasks which will overwrite client-predicted values. See PR 3089 for more info.
+            //  sending bitmasks which will overwrite client-predicted values. See Minestom PR #3089 for more info.
             // However, interpolation delay is expected to be sent regularly with the same value to begin
-            //  interpolation so we always send it for now.
+            //  interpolation so it is always sent.
             if (Objects.deepEquals(current, value) && entry != MetadataDef.Display.INTERPOLATION_DELAY) {
                 return;
             }

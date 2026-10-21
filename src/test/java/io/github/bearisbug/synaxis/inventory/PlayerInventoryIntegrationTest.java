@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
@@ -213,6 +214,24 @@ public class PlayerInventoryIntegrationTest {
         player.interpretPacketQueue();
 
         assertTrue(received.get());
+    }
+
+    /** A slot the player inventory does not have is refused, not sent to the client as some other slot. */
+    @Test
+    public void aSlotRefreshOutsideTheInventoryIsRefused(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 42, 0));
+        var inventorySlots = connection.trackIncoming(SetPlayerInventorySlotPacket.class);
+        var windowSlots = connection.trackIncoming(SetSlotPacket.class);
+
+        for (int slot : new int[]{-1, PlayerInventory.INVENTORY_SIZE}) {
+            assertThrows(IllegalArgumentException.class, () -> player.getInventory().sendSlotRefresh(slot, MAGIC_STACK),
+                    "slot " + slot);
+        }
+
+        inventorySlots.assertEmpty();
+        windowSlots.assertEmpty();
     }
 
     @Test

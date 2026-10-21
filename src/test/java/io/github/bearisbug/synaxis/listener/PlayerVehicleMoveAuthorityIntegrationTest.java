@@ -7,6 +7,8 @@ import io.github.bearisbug.synaxis.entity.EntityType;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.WorldBorder;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerPositionAndRotationPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientTeleportConfirmPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientVehicleMovePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.VehicleMovePacket;
 import io.github.bearisbug.synaxis.testing.Collector;
@@ -20,7 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * What the server takes from a client's vehicle moves ({@code docs/DESIGN-PROD.md} {@code API-PROD-030}):
- * the two bounds of a player's own position packets, a move out across the world border, or farther
+ * only those of the first passenger of a vehicle that rides nothing, and only within the two bounds of a
+ * player's own position packets, a move out across the world border, or farther
  * out for a vehicle the server put outside it, and a move of more than 64 blocks in one packet. Such a
  * move is turned back where the vehicle is, the vehicle and its rider staying put and the rider's
  * client sent a {@link VehicleMovePacket} with the vehicle's position, as the vanilla server corrects a
@@ -153,5 +156,48 @@ public class PlayerVehicleMoveAuthorityIntegrationTest {
         assertEquals(new Pos(31.6, 40, 5.5), ride.vehicle().getPosition(), "x 31.6, past the border at 31.5, short of the wall at 32");
         ride.drive(32.1, 40, 5.5);
         assertEquals(new Pos(31.6, 40, 5.5), ride.vehicle().getPosition(), "x 32.1, past the wall at 32");
+    }
+
+    private static void drive(Player player, double x, double y, double z) {
+        player.addPacketToQueue(new ClientVehicleMovePacket(new Pos(x, y, z), true));
+        player.interpretPacketQueue();
+    }
+
+    /**
+     * Only the first passenger drives, as in vanilla: the moves of a second passenger, and of a player riding a
+     * passenger, are dropped.
+     */
+    @Test
+    public void onlyTheFirstPassengerOfTheRootVehicleDrivesIt(Env env) {
+        final Instance instance = instance(env);
+        final Ride ride = Ride.at(env, instance, SPAWN);
+        final Player second = env.createConnection().connect(instance, SPAWN);
+        ride.vehicle().addPassenger(second);
+        final Player onTop = env.createConnection().connect(instance, SPAWN);
+        second.addPassenger(onTop);
+
+        drive(second, 4.5, 40, 0.5);
+        assertEquals(SPAWN, ride.vehicle().getPosition(), "a move of the second passenger");
+        drive(onTop, 4.5, 40, 0.5);
+        assertEquals(SPAWN, ride.vehicle().getPosition(), "a move of a player riding the second passenger");
+        assertEquals(second, onTop.getVehicle());
+        ride.drive(4.5, 40, 0.5);
+        assertEquals(new Pos(4.5, 40, 0.5), ride.vehicle().getPosition(), "a move of the first passenger");
+    }
+
+    /** A riding player goes where its vehicle takes it: of its own position packets, only the view is taken. */
+    @Test
+    public void aRiderTakesOnlyTheViewOfItsPositionPackets(Env env) {
+        final Instance instance = instance(env);
+        final Ride ride = Ride.at(env, instance, SPAWN);
+        final Player player = ride.player();
+        player.addPacketToQueue(new ClientTeleportConfirmPacket(player.getLastSentTeleportId()));
+        player.interpretPacketQueue();
+        final Pos riding = player.getPosition();
+
+        player.addPacketToQueue(new ClientPlayerPositionAndRotationPacket(new Pos(8.5, 40, 0.5, 90, 10), true, false));
+        player.interpretPacketQueue();
+
+        assertEquals(riding.withView(90, 10), player.getPosition());
     }
 }

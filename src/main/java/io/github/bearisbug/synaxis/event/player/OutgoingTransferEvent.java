@@ -17,10 +17,18 @@ public class OutgoingTransferEvent implements PlayerEvent, CancellableEvent {
     private int port;
     private boolean cancelled;
 
+    /**
+     * Creates the event of a transfer to {@code host} and {@code port}.
+     *
+     * @param player the player to transfer
+     * @param host   the address of the target server, not blank
+     * @param port   the port of the target server, from 1 to 65535
+     * @throws IllegalArgumentException if {@code host} is blank or {@code port} is out of range
+     */
     public OutgoingTransferEvent(Player player, String host, int port) {
         this.player = Objects.requireNonNull(player);
-        this.host = Objects.requireNonNull(host);
-        this.port = port;
+        this.host = checkHost(host);
+        this.port = checkPort(port);
     }
 
     @Override
@@ -59,18 +67,30 @@ public class OutgoingTransferEvent implements PlayerEvent, CancellableEvent {
     /**
      * Changes the address of the target server that the player will be transferred to.
      *
-     * @param host the address of the target server, usually an IP or domain name
+     * @param host the address of the target server, usually an IP or domain name, not blank
+     * @throws IllegalArgumentException if {@code host} is blank
      */
     public void setHost(String host) {
-        this.host = Objects.requireNonNull(host);
+        this.host = checkHost(host);
     }
 
     /**
      * Changes the port of the target server that the player will be transferred to.
      *
-     * @param port the target port
+     * @param port the target port, from 1 to 65535
+     * @throws IllegalArgumentException if {@code port} is out of range
      */
     public void setPort(int port) {
-        this.port = port;
+        this.port = checkPort(port);
+    }
+
+    private static String checkHost(String host) {
+        if (Objects.requireNonNull(host).isBlank()) throw new IllegalArgumentException("host must not be blank");
+        return host;
+    }
+
+    private static int checkPort(int port) {
+        if (port < 1 || port > 65535) throw new IllegalArgumentException("port must be in 1..65535, got " + port);
+        return port;
     }
 }

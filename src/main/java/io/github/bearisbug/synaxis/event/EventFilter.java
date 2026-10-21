@@ -13,7 +13,6 @@ import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.inventory.AbstractInventory;
 import io.github.bearisbug.synaxis.item.ItemStack;
-import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
@@ -79,12 +78,6 @@ public interface EventFilter<E extends Event, H> {
      * @return The handler, if it exists for the given event
      */
     @Nullable H getHandler(E event);
-
-    @ApiStatus.Internal
-    @SuppressWarnings("unchecked")
-    default @Nullable H castHandler(Object event) {
-        return getHandler((E) event);
-    }
 
     /**
      * The event type to filter on.

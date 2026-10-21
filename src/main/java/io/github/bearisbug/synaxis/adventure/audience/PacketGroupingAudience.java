@@ -19,15 +19,18 @@ import io.github.bearisbug.synaxis.network.packet.server.play.PlayerListHeaderAn
 import io.github.bearisbug.synaxis.network.PacketSendingUtils;
 
 import java.util.Collection;
+import java.util.Iterator;
 
 /**
  * An audience implementation that sends grouped packets if possible.
+ *
+ * <p>All players of the audience must belong to the same {@code ServerProcess}: boss bars are shown and hidden
+ * through the boss bar manager of the process of the first player.</p>
  */
 public interface PacketGroupingAudience extends ForwardingAudience {
     /**
-     * Creates a packet grouping audience that copies an iterable of players. The
-     * underlying collection is not copied, so changes to the collection will be
-     * reflected in the audience.
+     * Creates a packet grouping audience backed by the given collection; the collection is not copied, so later
+     * changes are reflected. Pass a snapshot, {@code List.copyOf(players)} for instance, to fix the members.
      *
      * @param players the players
      * @return the audience
@@ -39,7 +42,7 @@ public interface PacketGroupingAudience extends ForwardingAudience {
     /**
      * Gets an iterable of the players this audience contains.
      *
-     * @return the connections
+     * @return the players
      */
     Collection<? extends Player> getPlayers();
 
@@ -85,21 +88,24 @@ public interface PacketGroupingAudience extends ForwardingAudience {
     @Override
     default void showBossBar(BossBar bar) {
         final Collection<? extends Player> players = this.getPlayers();
-        if (players.isEmpty()) return;
-        players.iterator().next().process().bossBar().addBossBar(players, bar);
+        // One iterator: the players may be a live collection, the last of them can leave between two calls
+        final Iterator<? extends Player> iterator = players.iterator();
+        if (!iterator.hasNext()) return;
+        iterator.next().process().bossBar().addBossBar(players, bar);
     }
 
     @Override
     default void hideBossBar(BossBar bar) {
         final Collection<? extends Player> players = this.getPlayers();
-        if (players.isEmpty()) return;
-        players.iterator().next().process().bossBar().removeBossBar(players, bar);
+        final Iterator<? extends Player> iterator = players.iterator();
+        if (!iterator.hasNext()) return;
+        iterator.next().process().bossBar().removeBossBar(players, bar);
     }
 
     /**
      * Plays a {@link Sound} at a given point
      * @param sound The sound to play
-     * @param point The point in this instance at which to play the sound
+     * @param point the position to play the sound at
      */
     default void playSound(Sound sound, Point point) {
         playSound(sound, point.x(), point.y(), point.z());

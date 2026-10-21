@@ -201,9 +201,9 @@ public abstract class PlayerConnection {
     }
 
     /**
-     * Gets the server address that the client used to connect.
-     * <p>
-     * WARNING: it is given by the client, it is possible for it to be wrong.
+     * Gets the server address the client wrote in its handshake. A connection that goes through no
+     * handshake (an NPC, a test connection) returns the address this process listens on,
+     * {@link io.github.bearisbug.synaxis.network.socket.Server#getAddress()}.
      *
      * @return the server address used
      */
@@ -213,9 +213,9 @@ public abstract class PlayerConnection {
 
 
     /**
-     * Gets the server port that the client used to connect.
-     * <p>
-     * WARNING: it is given by the client, it is possible for it to be wrong.
+     * Gets the server port the client wrote in its handshake. A connection that goes through no
+     * handshake (an NPC, a test connection) returns the port this process listens on,
+     * {@link io.github.bearisbug.synaxis.network.socket.Server#getPort()}.
      *
      * @return the server port used
      */
@@ -282,6 +282,8 @@ public abstract class PlayerConnection {
         this.online = false;
         if (wasOnline && !turnedAway)
             LOGGER.info("Connection closed: connection_id={} identifier={}", connectionId, getIdentifier());
+        final LoginPluginMessageProcessor processor = this.loginPluginMessageProcessor;
+        if (processor != null) processor.close();
         // Only the call that removes the player reports it: two threads may drop the connection at once
         final Player player = process.connection().dropPlayer(this);
         if (player != null) {
@@ -316,9 +318,8 @@ public abstract class PlayerConnection {
     }
 
     /**
-     * Changes the player linked to this connection.
-     * <p>
-     * WARNING: unsafe.
+     * Changes the player linked to this connection. Called by the {@link Player} constructor; plugins
+     * must not call it.
      *
      * @param player the player
      */
@@ -351,16 +352,35 @@ public abstract class PlayerConnection {
         return clientState;
     }
 
+    /**
+     * Changes the state the client is in, which the read thread decodes the next packet in. The
+     * packet listener moves it as each packet that switches the state arrives
+     * ({@code PacketListenerManager#processClientPacket}); changing it anywhere else makes the
+     * connection decode packets in the wrong state. Plugins must not call it.
+     *
+     * @param clientState the new client state
+     */
     public void setClientState(ConnectionState clientState) {
         if (this.clientState == ConnectionState.HANDSHAKE)
             this.serverState = clientState;
         this.clientState = clientState;
     }
 
+    /**
+     * Changes the state the server is in, which the write thread encodes the next packet in. The
+     * write thread moves it once it has written a packet that switches the state
+     * ({@code PlayerSocketConnection#writePacketSync}); changing it anywhere else makes the
+     * connection encode packets in the wrong state. Any state but the login one also ends the login
+     * plugin requests, those still waiting for an answer fail. Plugins must not call it.
+     *
+     * @param serverState the new server state
+     */
     public void setServerState(ConnectionState serverState) {
         this.serverState = serverState;
         if (serverState != ConnectionState.LOGIN) {
-            // Clear the plugin request map (it is not used beyond login)
+            // Login plugin requests only exist in the login state
+            final LoginPluginMessageProcessor processor = this.loginPluginMessageProcessor;
+            if (processor != null) processor.close();
             this.loginPluginMessageProcessor = null;
         }
     }
@@ -369,6 +389,12 @@ public abstract class PlayerConnection {
         return playerPublicKey;
     }
 
+    /**
+     * Changes the chat session key of the player. Nothing in the engine calls it; plugins must not
+     * call it.
+     *
+     * @param playerPublicKey the new key
+     */
     public void setPlayerPublicKey(PlayerPublicKey playerPublicKey) {
         this.playerPublicKey = playerPublicKey;
     }
@@ -386,6 +412,20 @@ public abstract class PlayerConnection {
         sendPacket(new CookieStorePacket(key, data));
     }
 
+    /**
+     * Asks the client for a cookie.
+     * <p>
+     * The future completes with the value the client answers, or with {@code null} if the client
+     * has no cookie under this key. Asking for the same key again before the answer replaces the
+     * earlier request, whose future then never completes. Nor does it complete if the connection
+     * goes away before the answer: the engine sets no timeout, so wait with {@code orTimeout} or a
+     * timed {@code get}, never with an unbounded {@code join()}.
+     *
+     * @param key the cookie key
+     * @return the value the client answers
+     * @throws IllegalStateException if called from the {@code PlayerProvider}, in the configuration
+     *                               state before the player exists
+     */
     public CompletableFuture<byte @Nullable []> fetchCookie(String key) {
         if (serverState == ConnectionState.CONFIGURATION && getPlayer() == null) {
             // This is a bit of an unfortunate limitation. The player provider blocks the player read virtual
@@ -458,6 +498,8 @@ public abstract class PlayerConnection {
      * @param host the host, usually an IP or domain name.
      * @param port the port, usually 25565.
      * @throws IllegalStateException if the connection is in another state, the login one for instance
+     * @throws IllegalArgumentException if the host is blank or the port is outside 1 to 65535, as the
+     *                                  {@code OutgoingTransferEvent} it calls refuses them
      */
     public void transfer(String host, int port) {
         Check.stateCondition(serverState != ConnectionState.CONFIGURATION && serverState != ConnectionState.PLAY,

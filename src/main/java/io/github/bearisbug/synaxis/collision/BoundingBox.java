@@ -184,6 +184,17 @@ public record BoundingBox(Vec relativeStart, Vec relativeEnd) implements Shape {
         NONE
     }
 
+    /**
+     * Iterates over the blocks this box covers once moved to {@code point}: every block between the floor of
+     * its minimum corner and the floor of its maximum corner, both included.
+     * <p>
+     * Every {@link PointIterator#next()} returns the same {@link MutablePoint}, updated in place. Read its
+     * {@link MutablePoint#blockX()}, {@link MutablePoint#blockY()} and {@link MutablePoint#blockZ()} before the
+     * next call to {@code next()}, and do not collect the points.
+     *
+     * @param point the position to move this box to
+     * @return an iterator over the covered blocks
+     */
     public PointIterator getBlocks(Point point) {
         return new PointIterator(this, point, AxisMask.NONE, 0);
     }
@@ -226,6 +237,11 @@ public record BoundingBox(Vec relativeStart, Vec relativeEnd) implements Shape {
         }
     }
 
+    /**
+     * Iterates over the blocks covered by a bounding box, see {@link #getBlocks(Point)}.
+     * <p>
+     * The iterator reuses one {@link MutablePoint}: each {@link #next()} overwrites the point it returned before.
+     */
     public static class PointIterator implements Iterator<MutablePoint> {
         private double sx, sy, sz;
         double x, y, z;
@@ -301,6 +317,13 @@ public record BoundingBox(Vec relativeStart, Vec relativeEnd) implements Shape {
         }
     }
 
+    /**
+     * Gets the bounding box of a pose that changes the size of an entity.
+     *
+     * @param pose the pose
+     * @return the box of the pose, or null for {@link EntityPose#STANDING} and the other poses without their own
+     * box: the entity keeps its own bounding box
+     */
     public static @Nullable BoundingBox fromPose(EntityPose pose) {
         return switch (pose) {
             case FALL_FLYING, SWIMMING, SPIN_ATTACK -> SMALL;

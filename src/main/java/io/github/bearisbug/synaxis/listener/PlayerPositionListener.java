@@ -58,6 +58,8 @@ public class PlayerPositionListener {
         }
 
         final var currentPosition = player.getPosition();
+        // A riding player goes where its vehicle takes it, only its view is its own
+        if (player.getVehicle() != null) packetPosition = currentPosition.withView(packetPosition.yaw(), packetPosition.pitch());
         if (currentPosition.equals(packetPosition)) {
             // For some reason, the position is the same
             return;
@@ -91,12 +93,12 @@ public class PlayerPositionListener {
         final Pos eventPosition = playerMoveEvent.getNewPosition();
         if (packetPosition.equals(eventPosition)) {
             // Event didn't change the position
-            player.refreshPosition(eventPosition);
+            player.refreshPosition(eventPosition, false, true);
             player.refreshOnGround(onGround);
         } else {
             // Position modified by the event
             if (packetPosition.samePoint(eventPosition)) {
-                player.refreshPosition(eventPosition, true);
+                player.refreshPosition(eventPosition, true, true);
                 player.refreshOnGround(onGround);
                 player.setView(eventPosition.yaw(), eventPosition.pitch());
             } else {

@@ -7,6 +7,13 @@ import org.jetbrains.annotations.Nullable;
 
 final class RayUtils {
     /**
+     * The share of a sweep that is accepted up to a hit. The sweep stops just short of the contact face, so the next
+     * sweep starts outside of it. Blocks and the world border both use this value: with a different one, which of
+     * the two is hit first would change.
+     */
+    static final double CONTACT_BACKOFF = 0.99999;
+
+    /**
      * Check if a bounding box intersects a ray
      *
      * @param rayStart         Ray start position
@@ -114,7 +121,7 @@ final class RayUtils {
         }
 
         if (percentage > Math.min(exitX, Math.min(exitY, exitZ)) || percentage < 0) return Double.NaN;
-        percentage *= 0.99999;
+        percentage *= CONTACT_BACKOFF;
         if (!(percentage <= maxPercentage)) return Double.NaN;
 
         if (finalResult != null) {

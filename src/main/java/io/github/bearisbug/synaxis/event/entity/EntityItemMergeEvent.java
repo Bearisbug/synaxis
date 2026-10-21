@@ -1,6 +1,5 @@
 package io.github.bearisbug.synaxis.event.entity;
 
-import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.ItemEntity;
 import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
 import io.github.bearisbug.synaxis.event.trait.EntityInstanceEvent;
@@ -11,7 +10,7 @@ import io.github.bearisbug.synaxis.item.ItemStack;
  */
 public class EntityItemMergeEvent implements EntityInstanceEvent, CancellableEvent {
 
-    private final Entity entity;
+    private final ItemEntity entity;
     private final ItemEntity merged;
     private ItemStack result;
 
@@ -32,7 +31,7 @@ public class EntityItemMergeEvent implements EntityInstanceEvent, CancellableEve
      */
     @Override
     public ItemEntity getEntity() {
-        return (ItemEntity) entity;
+        return entity;
     }
 
     /**

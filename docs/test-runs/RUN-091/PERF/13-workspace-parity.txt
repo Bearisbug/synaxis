@@ -1,0 +1,35 @@
+工作区复用：光照结果不变（87e25fe4c4 上，13:03:53～13:04:22，开跑时 load1 5）
+
+<G> :test --tests 'io.github.bearisbug.synaxis.instance.light.*' --tests 'io.github.bearisbug.synaxis.instance.LightingChunk*' \
+      --tests 'io.github.bearisbug.synaxis.instance.BlockLightMergeIntegrationTest' --rerun \
+    :synx:test --tests '<S>.SynxRelight*' --tests '<S>.OverlayCrossCellWritersTest' --tests '<S>.OverlayStoreTest' \
+      --tests '<S>.SynxOptionsTest' --tests '<S>.SynxTruncatedMappingTest' --rerun \
+    :baker:test --tests 'io.github.bearisbug.synaxis.baker.GeneratorBakeTest' --rerun \
+    :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest' --rerun \
+    :compileTestJava :synx:compileTestJava :baker:compileTestJava :server-app:compileTestJava \
+    :jmh-benchmarks:compileJmhJava :jmh-benchmarks:compileWorldbenchJava :synx:testNamingCheck :testNamingCheck :javadoc
+BUILD SUCCESSFUL in 28s
+25 个类 198 条，0 失败，1 条是不给测量属性时跳过的 SynxRelightBacklogTest：
+  根项目 14 个类 100 条：BlockLightMergeIntegrationTest 21、BlockIsOccludedTest 18、BlockLightTest 10、
+    HighSectionLightIntegrationTest 1、LightBlocksTest 2、LightDampeningIntegrationTest 14、LightDeadlockIntegrationTest 2、
+    LightEngineIsolationTest 4、LightEngineTest 5、LightEngineVersionTest 2、LightEngineWorkspaceTest 1（新）、
+    LightParityIntegrationTest 14、WorldRelightIntegrationTest 5、LightingChunkHeightmapIntegrationTest 1
+  :synx 9 个类 76 条：OverlayCrossCellWritersTest 5、OverlayStoreTest 38、SynxOptionsTest 6、SynxRelightBacklogTest 1（跳过）、
+    SynxRelightDeliveredIntegrationTest 1、SynxRelightIntegrationTest 10、SynxRelightStateIdsTest 7、
+    SynxRelightViewersIntegrationTest 6、SynxTruncatedMappingTest 2
+  :baker GeneratorBakeTest 17；SynxInternalSurfaceArchitectureTest 5
+LightParityIntegrationTest 对拍 0 差异；LightEngineVersionTest 的指纹不变，LightEngine.VERSION 仍是 1。
+
+LightEngineWorkspaceTest：一个工作区依次算 7 个对拍场景与 4 个缺区块场景，每个场景三块区域（重算的 3×3、单个区块、
+2×2），共 33 次；全部算完之后，再逐个与新建工作区算的结果逐 section 比较 sky 与 block。全部算完才比，是为了让与工作区
+共用数组的结果被后面的计算改掉而现形。SynxRelightStateIdsTest 改为往一个填满别的 id 的数组里写，核对每一格都被写到。
+
+反证：87e25fe4c4 上删掉 LightEngine.Workspace#takeLevels 里给复用的等级数组清 0 的那一行
+（else Arrays.fill(levels, (byte) 0);），跑 :test --tests 'io.github.bearisbug.synaxis.instance.light.LightEngineWorkspaceTest' --tests 'io.github.bearisbug.synaxis.instance.light.LightEngineTest'：
+  6 tests completed, 2 failed
+  <testsuite name="io.github.bearisbug.synaxis.instance.light.LightEngineWorkspaceTest" tests="1" skipped="0" failures="1" errors="0"
+    sky of view 0, area 0,0..0,0, section 0,1,0 ==> array contents differ at index [591], expected: <0> but was: <16>
+    at LightEngineWorkspaceTest.java:44
+  LightEngineTest > relightAreaIsTheThreeByThreeAroundTheChunk() FAILED（同一次计算里方块光那一遍复用天光那一遍的数组，
+    不清 0 也会留下天光）
+  之后 git reset --hard HEAD。

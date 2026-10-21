@@ -1,0 +1,43 @@
+TC-WORLD-139 第 2 步，工作区复用前后（测量模式不挂 JaCoCo），各一次不开 JFR、一次开 JFR
+
+改前：工作树临时 git revert --no-commit 87e25fe4c4 202c6407c8（与 0b9ee255ac 逐字节相同，跑完 git reset --hard HEAD）
+改后：87e25fe4c4
+命令：<G> :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest' -Dsynaxis.relight.measure=true --rerun
+开 JFR 的两次：synx 的 tasks.test 临时加 jvmArgs("-XX:StartFlightRecording=filename=<临时>.jfr,settings=<临时>.jfc,maxsize=2g")，
+跑完还原（没有提交），设置为 profile 加 jdk.MethodTrace 记 SynxRelight::installPhase 的每次调用；JFR 文件已删。
+四次背靠背：A（改前）12:52:50 → B（改后）12:55:04 → B 开 JFR 12:57:18 → A 开 JFR 12:59:36。同机另有会话，
+各次 load1：A 4.46～7.40，B 8.57～13.55，B 开 JFR 7.46～11.15，A 开 JFR 5.30～7.24（B 那两次更忙）。
+四次都是 tests="1" skipped="0" failures="0" errors="0"，等装回的条目峰值 ≤ 282。
+
+A（改前）
+  relight backlog: phase=107/s changes=6414 centers_left=6409 seconds=60.0 centers_per_s=106.9 relight_queue_p99_ms=57.6 relight_ms_p99=7.8 relight_pending_peak=11 install_ms_max=1.63 install_backlog_peak=58; phase=unlimited changes=37838848 centers_left=240 seconds=60.0 centers_per_s=791.8 relight_queue_p99_ms=54321.1 relight_ms_p99=38.2 relight_pending_peak=1024 install_ms_max=38.02 install_backlog_peak=282
+B（改后）
+  relight backlog: phase=107/s changes=6415 centers_left=6409 seconds=60.0 centers_per_s=106.9 relight_queue_p99_ms=60.3 relight_ms_p99=8.3 relight_pending_peak=7 install_ms_max=1.01 install_backlog_peak=54; phase=unlimited changes=40945664 centers_left=309 seconds=60.0 centers_per_s=856.2 relight_queue_p99_ms=57106.9 relight_ms_p99=7.0 relight_pending_peak=1024 install_ms_max=1.42 install_backlog_peak=279
+B 开 JFR
+  relight backlog: phase=107/s changes=6414 centers_left=6409 seconds=60.0 centers_per_s=106.9 relight_queue_p99_ms=57.1 relight_ms_p99=7.2 relight_pending_peak=8 install_ms_max=6.36 install_backlog_peak=64; phase=unlimited changes=47500288 centers_left=253 seconds=60.0 centers_per_s=940.9 relight_queue_p99_ms=53373.7 relight_ms_p99=12.3 relight_pending_peak=1024 install_ms_max=10.96 install_backlog_peak=282
+A 开 JFR
+  relight backlog: phase=107/s changes=6414 centers_left=6409 seconds=60.0 centers_per_s=106.9 relight_queue_p99_ms=59.4 relight_ms_p99=7.8 relight_pending_peak=11 install_ms_max=1.95 install_backlog_peak=92; phase=unlimited changes=39061504 centers_left=198 seconds=60.0 centers_per_s=802.4 relight_queue_p99_ms=55720.0 relight_ms_p99=36.3 relight_pending_peak=1024 install_ms_max=2.70 install_backlog_peak=282
+
+JFR，不限速档（按 installPhase 每秒超过 100 次的第一秒往前一秒起算，61 s）
+                                   A 改前            B 改后
+  GC 暂停（jdk.GCPhasePause）次数   501               330
+  暂停合计                          11,941.7 ms       2,382.8 ms
+  占墙钟                            19.6%             3.9%
+  暂停 p50 / p90 / 最长             28.01 / 36.27 / 60.09 ms    10.70 / 12.61 / 23.05 ms
+  jdk.GarbageCollection            G1New 403、G1Old 49        G1New 200、G1Old 65
+  installPhase 次数                 38,161            46,322
+  installPhase p50 / p99 / p99.99   0.004 / 0.023 / 0.151 ms    0.004 / 0.022 / 0.167 ms
+  installPhase 最长                 2.711 ms          10.965 ms
+    与 GC 暂停重叠                  2.582 ms（95%）   10.896 ms（99%）
+  不与 GC 重叠的最长                0.402 ms          0.461 ms
+  两次录像里 ≥ 1 ms 的 installPhase 都只有这一次，都落在 GC 暂停里；录像全程（含 107/s 档）里 ≥ 1 ms 的另外几次
+  （A 1.956 ms 重叠 1.764 ms，B 6.366 ms 重叠 6.071 ms）也一样。
+
+读法：
+  不限速档 GC 暂停占墙钟 19.6% → 3.9%，次数 501 → 330，最长 60.09 → 23.05 ms；这一档改后重算还多做了约 17%
+  （开 JFR 两次 802.4 → 940.9 个中心/s，不开 791.8 → 856.2）。剩下的暂停来自测试线程每 tick 改 1,024 个方块与覆盖层
+  写入，以及每次重算仍然新建的结果数组。
+  relight_ms_p99 不限速档 38.2 → 7.0（不开 JFR），36.3 → 12.3（开 JFR）：重算线程上的墙钟少了 GC 暂停。
+  install_ms_max 是一档里最长的那一次，取决于有没有一次 GC 暂停正好落在装回里（A 开 JFR 那次 2.70 ms 就没撞上大的），
+  单看它比不出前后；JFR 显示装回本身两边都在 0.5 ms 以内，长的那几次都是 GC 暂停。
+  107/s 档前后都跟得上输入，读数在噪声里。

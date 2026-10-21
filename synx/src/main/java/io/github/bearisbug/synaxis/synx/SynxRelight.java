@@ -171,6 +171,23 @@ public final class SynxRelight {
             final Palette section = blocks[(y - minY) >> 4];
             return Objects.requireNonNullElse(Block.fromStateId(section.get(x & 15, y & 15, z & 15)), Block.AIR);
         }
+
+        /**
+         * {@link #getBlock} for a whole section, straight out of its palette: 0 is air, as is an id past the
+         * registry.
+         */
+        @Override
+        public char @Nullable [] section(int chunkX, int sectionMinY, int chunkZ) {
+            final Palette[] blocks = Objects.requireNonNull(at(chunkX, chunkZ)).blocks();
+            if (blocks == null) return null;
+            final Palette section = blocks[(sectionMinY - minY) >> 4];
+            if (section.isEmpty()) return null;
+            final int states = Block.statesCount();
+            final char[] ids = new char[4096];
+            section.getAllPresent((x, y, z, stateId) ->
+                    ids[x | z << 4 | y << 8] = (char) (stateId < states ? stateId : 0));
+            return ids;
+        }
     }
 
     private final SynxChunkLoader loader;

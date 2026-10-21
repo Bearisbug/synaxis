@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.instance.light;
 
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.palette.Palette;
+import org.jetbrains.annotations.Nullable;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -49,8 +50,8 @@ public class RelightAreaBenchmark {
     }
 
     /**
-     * The 5×5 around a center as {@code SynxRelight}'s snapshot holds it: a palette per section, read one block at a
-     * time.
+     * The 5×5 around a center as {@code SynxRelight}'s snapshot holds it: a palette per section, which a section read
+     * copies out at once.
      */
     private static final class SnapshotView implements WorldView {
         private final int centerX, centerZ;
@@ -105,6 +106,17 @@ public class RelightAreaBenchmark {
         public Block getBlock(int x, int y, int z) {
             final Palette section = chunks[((x >> 4) - centerX + 2) * 5 + (z >> 4) - centerZ + 2][y >> 4];
             return Objects.requireNonNullElse(Block.fromStateId(section.get(x & 15, y & 15, z & 15)), Block.AIR);
+        }
+
+        @Override
+        public char @Nullable [] section(int chunkX, int sectionMinY, int chunkZ) {
+            final Palette section = chunks[(chunkX - centerX + 2) * 5 + chunkZ - centerZ + 2][sectionMinY >> 4];
+            if (section.isEmpty()) return null;
+            final int states = Block.statesCount();
+            final char[] ids = new char[4096];
+            section.getAllPresent((x, y, z, stateId) ->
+                    ids[x | z << 4 | y << 8] = (char) (stateId < states ? stateId : 0));
+            return ids;
         }
     }
 

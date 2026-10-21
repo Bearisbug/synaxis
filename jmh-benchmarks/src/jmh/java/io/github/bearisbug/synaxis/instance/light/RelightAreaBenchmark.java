@@ -115,7 +115,7 @@ public class RelightAreaBenchmark {
             final int states = Block.statesCount();
             final char[] ids = new char[4096];
             section.getAllPresent((x, y, z, stateId) ->
-                    ids[x | z << 4 | y << 8] = (char) (stateId < states ? stateId : 0));
+                    ids[x | z << 4 | y << 8] = (char) (stateId >= 0 && stateId < states ? stateId : 0));
             return ids;
         }
     }

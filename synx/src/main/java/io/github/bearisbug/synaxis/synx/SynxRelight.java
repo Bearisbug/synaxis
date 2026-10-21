@@ -488,14 +488,14 @@ public final class SynxRelight {
 
     /**
      * The state ids of a section's block palette as {@link WorldView#section} hands them to the light engine:
-     * 0 is air, as is an id past the registry; null for a palette that is all air.
+     * 0 is air, as is a negative id or one past the registry; null for a palette that is all air.
      */
     static char @Nullable [] stateIds(Palette section) {
         if (section.isEmpty()) return null;
         final int states = Block.statesCount();
         final char[] ids = new char[4096];
         section.getAllPresent((x, y, z, stateId) ->
-                ids[x | z << 4 | y << 8] = (char) (stateId < states ? stateId : 0));
+                ids[x | z << 4 | y << 8] = (char) (stateId >= 0 && stateId < states ? stateId : 0));
         return ids;
     }
 

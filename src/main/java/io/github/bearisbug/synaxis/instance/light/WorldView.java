@@ -23,9 +23,10 @@ public interface WorldView {
 
     /**
      * The state ids of the section of chunk {@code (chunkX, chunkZ)} whose lowest block y is {@code sectionMinY},
-     * each the one {@link #getBlock} gives, indexed {@code x | z << 4 | y << 8} by section-local coordinates; null
-     * when every block of it is {@link Block#AIR}. The engine only reads the array. The default asks
-     * {@link #getBlock} block by block; a view that holds the section's palette can copy it out at once.
+     * each the one {@link #getBlock} gives, indexed {@code x | z << 4 | y << 8} by section-local coordinates. When
+     * every block of it is {@link Block#AIR} it may be null, which the engine reads the same as an array of zeros.
+     * The engine only reads the array. The default asks {@link #getBlock} block by block; a view that holds the
+     * section's palette can copy it out at once.
      */
     default char @Nullable [] section(int chunkX, int sectionMinY, int chunkZ) {
         final int air = Block.AIR.stateId();

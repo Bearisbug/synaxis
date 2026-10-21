@@ -10,7 +10,7 @@
 # CONNECTIONS   connections those launches made to the server, N unless the spikes ran too (their S1
 #               connects once more per launch)
 # SERVER_LOG    the server-app's stdout
-# LEDGER_DIR    where the server-app writes events-YYYYMMDD.jsonl
+# LEDGER_DIR    where the server-app writes events-<shard_id>-YYYYMMDD.jsonl
 # SESSION_LOG   the stdout of tools/fake-sessionserver in record mode, in the full online tier: every
 #               connection has to have joined there and the server's hasJoined to have been answered
 #               200, which record mode only does for a serverId a client joined. Unset against an

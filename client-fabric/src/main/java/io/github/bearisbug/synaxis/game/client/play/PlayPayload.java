@@ -58,9 +58,7 @@ public record PlayPayload(@Nullable PlayMessage message) implements CustomPacket
      */
     public void encode(RegistryFriendlyByteBuf buf) {
         if (message == null) return;
-        final MsgBuf out = MsgBuf.writing();
-        message.write(out);
-        buf.writeBytes(out.toByteArray());
+        buf.writeBytes(message.encode());
     }
 
     @Override

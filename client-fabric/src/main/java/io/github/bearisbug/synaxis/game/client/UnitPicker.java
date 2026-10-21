@@ -60,12 +60,8 @@ public final class UnitPicker {
     private static AABB boxOf(UnitBindings.Binding binding, ClientWorldView world) {
         final Vec3 position = world.renderPosition(binding.entityId());
         if (position == null) return null;
-        final ArchetypeBox size;
-        try {
-            size = ArchetypeBox.of(binding.archetype());
-        } catch (IndexOutOfBoundsException _) {
-            return null;
-        }
+        final ArchetypeBox size = ArchetypeBox.find(binding.archetype()).orElse(null);
+        if (size == null) return null;
         // Same convention as an entity's own bounding box: centred on x and z, standing on y.
         final double half = size.width() / 2.0;
         return new AABB(position.x - half, position.y, position.z - half,

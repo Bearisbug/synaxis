@@ -1,0 +1,14 @@
+RUN-093 · Clock#rate refuses a rate above Clock.MAX_RATE (2^24 ticks per tick). Fix and test in 8db087e6c9.
+
+Before: rate refused negative and non finite values only. With Float.MAX_VALUE the partial tick reached infinity
+within two ticks, after which time jumped by 2,147,483,647 every tick and rate(1) did not bring it back (read from
+the code: partialTick += rate; ticks = (int) partialTick saturates; partialTick -= ticks stays huge).
+
+Red (the upper bound taken out of Instance.java's rate(float), then the file checked out again):
+  :test --tests io.github.bearisbug.synaxis.instance.InstanceTimeIntegrationTest --rerun
+  tests="7" failures="1": aRateAboveTheMaximumIsRefused at InstanceTimeIntegrationTest.java:112,
+  "Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown."
+
+Green (8db087e6c9):
+  :test --tests ...instance.InstanceTimeIntegrationTest --tests ...instance.WorldBorderIntegrationTest --rerun
+  InstanceTimeIntegrationTest 7, WorldBorderIntegrationTest 7: 0 failures.

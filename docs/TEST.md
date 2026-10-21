@@ -8,12 +8,13 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）、`docs/DESIGN-PROD.md`（生产就绪分册）与 `docs/DESIGN-PLAY.md`（玩法架构分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*`，玩法架构侧写作 `REQ-PLAY-*`，对应用例写作 `TC-PLAY-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-10-21 |
+| 最后更新 | 2026-10-22 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-22 | 分支 `prod/r094`（在组 API 的 `970aef70ef` 之上），跟进 `docs/DESIGN-PROD.md` v0.9.125 与 `docs/DESIGN-M2.md` v0.71 的组 MISC 一段，不登执行轮次。**新增 §4「生产就绪 · RUN-094：测试连接的翻译器与收集器、压测的事件名、文档里的计数与引用（组 MISC）」三条 `TC-PROD-1144`～`TC-PROD-1146`**，放在组 API 一节之后：1144（开着自动组件翻译时测试连接按 `EngineAdventure.COMPONENT_TRANSLATOR` 渲染、收集器跟踪到第一次 `collect()` 为止，改动前的红与判空的反证实跑过）、1145（`:loadtest` 的 tick 事件名与配置键门禁）、1146（全部模块编译、相关模块默认模式、ABI 门、`.gitignore` 与稳定面清单）。**改旧内容**：`TC-PLAY-049` 前置与「玩法架构 · RUN-080：HOST」节首引的 `TestConnectionImpl.java:131-133` 改为 `:129-131`（`disconnect()` 随本组的改动上移两行）。`TC-WORLD-056` 第 1、2 步的条数（`TrackIncomingIntegrationTest` 1 → 3 条）交光照会话（`docs/DESIGN-PROD.md` §28.3）。§5 加一行 | Bearisbug |
 | 2026-10-21 | 分支 `prod/r094`（基于 `main` `c542248aec`），跟进 `docs/DESIGN-PROD.md` v0.9.125、`docs/DESIGN-M2.md` v0.71、`docs/DESIGN-PLAY.md` v0.24（RUN-094 组 API），不登执行轮次。**新增 §4「生产就绪 · RUN-094：插件面的 Javadoc 对齐宿主、`:protocol` 的编码入口与线值（组 API）」四条 `TC-PROD-1140`～`TC-PROD-1143`**，放在「生产就绪 · RUN-092」一节之后，用例号段 1140～1149：1140（准入回调用插件自己命名空间的键拒绝时台账 `reason` 整串照记，改动前的红实跑过）、1141（`rts:game` 两个枚举钉住线值序列，加取值的反证实跑过）、1142（`Message#encode`、`ArchetypeBox.find`、`:protocol` 的包边与 ABI 门）、1143（插件面上限引用 `:protocol` 常量，全部模块编译、相关模块默认模式、Javadoc 与客户端模组编译）。**改旧内容**：§5 玩法架构域「动了 `Message` 的 `permits`」一句改为 `Message` 或消息族接口的 `permits`。写死条数的旧用例（`:protocol` 10 / 174 → 11 / 178，`:server-app` 163 / 920 → 163 / 921，`PlayMessagesTest` 19 → 20，`HandshakeIntegrationTest` 26 → 27）等 CI 读数登记时改；`TC-GAME-001` 第 7 步的 `:protocol` 包边读数交光照会话（`docs/DESIGN-PROD.md` §28.3）。§5 加一行 | Bearisbug |
 | 2026-10-21 | 分支 `prod/r092` 合入 `main` `1e46d5d358`（光照会话 RUN-090）之后，全量门禁、Concurrency、Client mod、Client gametest（job `gametest`、`rush`、`p11-smoke`）与远景 gametest 四组在 GitHub Actions 上对 `53d2fc400e` 跑完（草稿 PR #47，都是第 1 次尝试；远景 gametest run `39599009962` 四组 success；手动触发的 P10 run `39610969278` success；合并之前的 `23d7329528` 上 CI 的 Check 红在与本轮无关的地图生成耗时预算，两个严格 job 与另三个工作流 success），§6 登记 RUN-092（通过 8/8，证据 `docs/test-runs/RUN-092/00-index.txt`）。写死条数的旧用例按 artifact 的实数改：`TC-PROD-505`、`585`、`618`、`636`、`654` 的根项目 531 个类 3,894 → 537 个类 3,939（RUN-091 加 1 个类 2 个、RUN-090 加 1 个类 2 个、RUN-092 加 4 个类 41 个），`TC-PROD-636` 第 1 步的全部模块 789 个类 5,552 → 796 个类 5,604（RUN-091 加 2 个类 9 个、RUN-090 加 1 个类 2 个、RUN-092 加 4 个类 41 个；`synx` 24 / 185 → 25 / 192），条数取自的 CI run 改为 `39599011213`；`TC-PROD-505` 第 3 步逐类列出这三轮在根项目的新增，RUN-092 的逐类表在 `docs/test-runs/RUN-092/02-class-counts.txt`；`server-app` 163 / 920 不变，只写它的 `TC-PROD-486`、`510`、`529`、`549`、`596`、`607` 不改。`docs/DESIGN-M3.md` 交接行「M3 v0.58」① 与「M3 v0.59」③ 要改的写死条数随之改完。`TC-PROD-1132` 加第 3 步（评审那次运行里两处反证的红行），`TC-PROD-1137` 第 1 步注明合入 RUN-090 之后的 CI 读数 | Bearisbug |
 | 2026-10-21 | 分支 `prod/r092`（基于 `main` `e769d01f91`），跟进 `docs/DESIGN-PROD.md` v0.9.124（RUN-092），不登执行轮次（草稿 PR 的 CI 跑完后登记）。**新增 §4「生产就绪 · RUN-092：集合上限对照 26.2（写时查上限、放开 27 处收紧 3 处、段① 的读上限）与三件小事」八条 `TC-PROD-1130`～`TC-PROD-1137`**，放在「生产就绪 · RUN-089：ADV」一节之后，改动前的红都实跑过：1130（有上限的列表、集合与映射写时也查，读写可各设一个，有界数组读时先比长度）、1131（12 处包字段写得出、读得回超过原上限的集合）、1132（物品组件的 19 个列表写时不设条数、读时保留原上限）、1133（26.2 上限更小的三处写时当场抛）、1134（`ChunkData` 与 `LightData` 读时的上限，含方块实体表按剩余字节预分配与 `:synx:test`）、1135（ticker 只由 `startTicking` 记下）、1136（排队时离开的连接等服务端断开再放行）、1137（全部模块编译、默认模式根项目、`synx`、`server-app`，相关的类两种严格模式）。**改旧用例**：`TC-PROD-1051` 第 1 步（`ItemComponentLimitsRegistriesTest` 6 → 7 条，32,768 那条不再查 `charged_projectiles`）；`TC-PROD-853` 第 3 步（两份测试已改用 `startTicking`，引擎不再认领手工起的 ticker）；`TC-PROD-263` 第 3 步与 `TC-PROD-580` 第 2 步的 `OnlineLoginSocketTest` 行号（`:451` → `:452`、`:374` → `:375`）；`TC-PROD-636` 第 2 步的跳过数 15 → 16（与第 1 步同口径：根项目 15、`synx` 1）；「生产就绪 · RUN-080：HOST」一节开头与「玩法架构 · RUN-077：H」一节开头的本机脚本路径改为「本机重活锁脚本」；合入 `main` `1e46d5d358`（RUN-090）之后，`TC-PROD-030` 第 1、2 步的 `ThreadDispatcherTest` 条数 17 → 21（`docs/DESIGN-M3.md` 交接行「M3 v0.59」⑥）。写死条数的旧用例（根项目 532 / 3,896 → 536 / 3,937）等 CI 读数登记时改。§5 加一行 | Bearisbug |
@@ -15617,6 +15618,54 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 后置：同 `TC-PROD-1140`；临时仓库删掉。
 
+### 生产就绪 · RUN-094：测试连接的翻译器与收集器、压测的事件名、文档里的计数与引用（组 MISC）
+
+对应 `REQ-013`（`@EnvTest` 的测试环境）、`REQ-PROD-006`（插件存储的测试替身）、`REQ-PROD-029`（`:loadtest`）、`REQ-PROD-033`（配置键）、`REQ-M2-022`（ABI 门）；`docs/DESIGN-PROD.md` v0.9.125、`docs/DESIGN-M2.md` v0.71 的组 MISC 一段。用例 1144～1146（本轮号段 1140～1149），分支 `prod/r094`，在组 API 的 `970aef70ef` 之上。`:plugin-api` 与 `:protocol` 不动。改动：
+
+- **`:testing`**：开着 `synaxis.automatic-component-translation` 时，测试连接收到的含组件的包改用 `EngineAdventure.COMPONENT_TRANSLATOR` 渲染，与真连接相同；原先写死 `GlobalTranslator.render`，服务器换了翻译器之后，测试看到的包与玩家收到的不同。`trackIncoming` 的收集器去掉原始类型强转，`Collector#assertSingle(Class, Consumer)` 直接用 `assertInstanceOf` 的返回值。`Collector`、`Env#trackEvent`、`TestConnection#trackIncoming` 补 Javadoc：收集器跟踪到第一次 `collect()` 为止，每个断言都先 `collect()`。`InMemoryPlayerDataStore` 的类注释写明它不做的两处检查：`register` 的时机与命名空间，`get` 时数据是否已载入。
+- **其余**：`:loadtest` 的 `SampleCommand.TICK_EVENT` 改为引用 `EventsJFR.SERVER_TICK`；`ServerConfig` 六个时长字段注明单位；`PluginHost` 两处注释；`.gitignore` 加 `/profiles/` 与 `/synaxis.properties`；文档里过时的计数与引用见 `docs/DESIGN-PROD.md` v0.9.125。
+
+测试：`<TT>` 是 `io.github.bearisbug.synaxis.testing.test`，`<TC>` 是 `testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnectionImpl.java`。`<TT>.TrackIncomingIntegrationTest` 1 → 3 条（`aCollectorStopsTrackingAtItsFirstCollect`、`aTrackedPacketIsRenderedWithTheEngineTranslator`，后者只在测试 JVM 带 `-Dsynaxis.automatic-component-translation=true` 时跑，默认被 assume 跳过），`:testing` 合计 9 个类 16 → 18 条。`build-src` 只把 `dispatcher-threads`、`acquirable-strict`、`thread-provider` 三个系统属性转给测试 JVM，翻译开关经环境变量 `JAVA_TOOL_OPTIONS=-Dsynaxis.automatic-component-translation=true` 给，测试 JVM 的输出里有一行 `Picked up JAVA_TOOL_OPTIONS: …`。Gradle 运行都在 2026-10-22，经本机重活锁脚本（`--max-workers=2`），下文的读数取自第 1、4、5、6、7 次；带翻译开关的是第 1、4、6 次，带数据库变量的是第 5、7 次。
+
+#### `TC-PROD-1144` 开着自动组件翻译时，测试连接按引擎可替换的翻译器渲染下行包；收集器跟踪到第一次 `collect()` 为止 — 对应 `REQ-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。第 1～3 步带 `JAVA_TOOL_OPTIONS=-Dsynaxis.automatic-component-translation=true`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `<TT>.TrackIncomingIntegrationTest`（`:testing:test`，第 6 次运行，00:50:19～00:50:29） | 3 条 0 失败。`aTrackedPacketIsRenderedWithTheEngineTranslator` 把 `EngineAdventure.COMPONENT_TRANSLATOR` 换成一律返回文字 `rendered by the engine translator` 的函数（发完包即换回），发一个 `SystemChatPacket(translatable("probe.untranslated"))`，收集到的包的 `message()` 就是那段文字。`aCollectorStopsTrackingAtItsFirstCollect`：第一次断言之后再发的包不在第二次断言里 |
+| 2 | 改动前的红：测试先写，`<TC>` 还是 `GlobalTranslator.render` 时跑第 1 步（第 1 次运行，00:23:00～00:23:09） | `aTrackedPacketIsRenderedWithTheEngineTranslator` 红在 `TrackIncomingIntegrationTest.java:89`，`expected: <TextComponentImpl{content='rendered by the engine translator', …}> but was: <TranslatableComponentImpl[…, key=probe.untranslated, …]>`：换上的翻译器没被用上，`GlobalTranslator` 不认识这个键、原样返回。另两条通过 |
+| 3 | 反证（判空仍有齿）：删掉 `<TC>` 的 `if (serverPacket == null) return;`，跑第 1 步（第 4 次运行，00:42:38～00:42:46），再 `git checkout HEAD -- <TC>` | `3 tests completed, 1 failed`，红的只有 `trackersPassOverABufferedChunkPacket`（`TrackIncomingIntegrationTest.java:40`）：`NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.network.packet.server.ServerPacket.getClass()" because "serverPacket" is null`，抛自 `TestConnectionImpl.java:98`，异常文本与 `TC-WORLD-056` 第 2 步相同；本轮加的两条通过 |
+| 4 | 默认模式跑 `:testing:test`（第 7 次运行，00:50:47～00:52:31） | 9 个类 18 条 0 失败，1 条跳过（`aTrackedPacketIsRenderedWithTheEngineTranslator`）；`TrackEventIntegrationTest` 2 条、`InMemoryPlayerDataStoreIntegrationTest` 3 条通过 |
+
+后置：`git status --short -- testing` 无输出。
+
+#### `TC-PROD-1145` `:loadtest` 按 `EventsJFR.SERVER_TICK` 读 tick 事件；配置键门禁照旧，文档只在门禁输出行写键数 — 对应 `REQ-PROD-029`、`REQ-PROD-033` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:loadtest:test`（第 7 次运行） | 6 个类 26 条 0 失败。`SampleTest#everyServerTickEventIsCountedAndNoOtherEvent` 按 `SampleCommand.TICK_EVENT` 开录制、经引擎的 `EventsJFR.newServerTick()` 发 4 个事件，数到 4 个；`SampleAcquireTest` 2 条通过 |
+| 2 | 跑 `:architecture-tests:test`（第 7 次运行） | 7 个类 20 条 0 失败；输出有 `config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out` 与 `translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out`：`ServerConfig` 只加了单位注释，键数不变 |
+| 3 | `git grep -n -E '[0-9]+ 个键的默认值\|下表 [0-9]+ 个键' -- docs/ENGINE.md docs/DESIGN-PROD.md` | 无输出：`docs/ENGINE.md` §3.4、`docs/DESIGN-PROD.md` 的键表引导句与 §23 首段都不写键数，键数只留在 §24 门禁输出那一行 |
+
+后置：同 `TC-PROD-1144`。
+
+#### `TC-PROD-1146` 回归：全部模块编译，相关模块的默认模式，ABI 门，`.gitignore` 与稳定面清单 — 对应 `REQ-M2-022`、`REQ-PROD-006`、`REQ-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；第 1 步带数据库变量（同 `TC-PROD-636`）；第 2 步要 `gh` 能读本仓的 release（取 `v0.3.0` 的 `plugin-api.jar` 与 `protocol.jar` 到临时目录，同 `.github/workflows/ci.yml`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew compileJava compileTestJava testNamingCheck forbiddenImportsCheck`，同一次运行里 `test --rerun` 根项目 `io.github.bearisbug.synaxis` 下的 `inventory.PlayerInventoryIntegrationTest`、`entity.player.PlayerMovementIntegrationTest`、`entity.player.PlayerIntegrationTest`、`inventory.InventoryIntegrationTest`、`listener.PlayerBlockReachIntegrationTest`、`entity.EntityTeleportIntegrationTest`、`listener.ChatMessageListenerIntegrationTest`、`entity.player.PlayerReconfigurationIntegrationTest`、`entity.EntityMetaIntegrationTest`、`command.CommandSuggestionIntegrationTest`、`utils.TranslationIntegrationTest`、`ServerConfigTest`，`server-app` 的 `app.scene.SceneServiceIntegrationTest`、`app.PluginChannelsSendIntegrationTest`、`app.play.DefaultPlayChatIntegrationTest`、`app.CommandsIntegrationTest`、`app.PluginHostIntegrationTest`，`game-rts` 的 `game.rts.UnitModelIntegrationTest`、`game.rts.GameChannelIntegrationTest`（第 7 次运行） | 全部模块的编译与两道源码门禁通过（Error Prone `-Werror`）。根项目 12 个类 110 条 0 失败，3 条跳过（`TranslationIntegrationTest` 被 assume 跳过）；`server-app` 5 个类 57 条、`game-rts` 2 个类 24 条，0 失败。这些类大量用 `trackIncoming` 与 `assertSingle(类, …)` |
+| 2 | 同一次运行里的 `:plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<临时目录>` | 两个任务都执行，不是 `SKIPPED`，没有违例行，构建成功：本组不动 `:plugin-api` 与 `:protocol` |
+| 3 | `:testing:javadoc`（第 5 次运行，00:43:19～00:43:47） | 成功，`47 warnings`：46 条在没写注释的旧成员上（`no comment`、`no @param`、`use of default constructor`），1 条是 JetBrains annotations 的外链在未命名模块；本轮加的 Javadoc 没有警告，`{@link}` 都解析得到 |
+| 4 | `git check-ignore -v profiles/x.jfr synaxis.properties server-app/synaxis.properties` | 前两条分别命中 `.gitignore` 的 `/profiles/` 与 `/synaxis.properties`，第三条不命中：只忽略仓库根的那份 |
+| 5 | `git grep -l '@ApiStatus.NonExtendable' -- plugin-api/src/main/java \| wc -l` | `19`，与 `docs/DESIGN-PROD.md` §8 开头一段列的个数相同 |
+
+后置：同 `TC-PROD-1144`；临时目录删掉。
+
 ### 玩法架构 · RUN-077：P（`:protocol` 的 `synaxis:play` v1 与 `play-vectors/`）
 
 对应 `REQ-PLAY-003`、`REQ-PLAY-004`、`REQ-PLAY-005` 的线上部分：`synaxis:play` v1 的五条消息、小部件属性的 TLV 编码与冻结向量（`docs/DESIGN-PLAY.md` `API-PLAY-002`、`API-PLAY-003`；本组跟进该分册 v0.2 与 `docs/DESIGN-M2.md` v0.66 的 `API-M2-001`）。用例号段 001～009，由组 P 在分支 `prod/r077-P` 写入。测试类：`:protocol` 包 `io.github.bearisbug.synaxis.game.protocol.play` 的 `PlayMessagesTest`、`PlayVectorTest`；`client-fabric` 的 `PlayFrozenVectorTest`。
@@ -16280,7 +16329,7 @@ Q0b 的读数供组 C 与组 G 用：四次启动里换实例后的 `LevelLoadin
 
 #### `TC-PLAY-049` 断线时丢掉该连接的场景层，离线的连接不能再进场景 — 对应 `REQ-PLAY-003` · 级别: 回归 · 执行者: AI
 
-前置：本节开头。`docs/DESIGN-PLAY.md` `API-PLAY-002`「实现（S1，RUN-077 组 H）」一条的「连接断开（`PlayerDisconnectEvent`）时丢掉」，§19 宿主集成一行。`:testing` 的测试连接调 `disconnect()` 只把连接标成离线（`testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnectionImpl.java:131-133`），不移除玩家、不派发 `PlayerDisconnectEvent`，被踢的测试连接同样走不到 `SceneService` 的断线监听；要测断线清理，得照真连接在 PLAY 阶段的做法（`network/player/PlayerConnection.java:276`；RUN-080 组 NET 在它前面加了 2 行，此前是 `:274`）再让玩家在下一个 tick 移除自己，移除时派发该事件（`entity/Player.java:707`）。
+前置：本节开头。`docs/DESIGN-PLAY.md` `API-PLAY-002`「实现（S1，RUN-077 组 H）」一条的「连接断开（`PlayerDisconnectEvent`）时丢掉」，§19 宿主集成一行。`:testing` 的测试连接调 `disconnect()` 只把连接标成离线（`testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnectionImpl.java:129-131`），不移除玩家、不派发 `PlayerDisconnectEvent`，被踢的测试连接同样走不到 `SceneService` 的断线监听；要测断线清理，得照真连接在 PLAY 阶段的做法（`network/player/PlayerConnection.java:276`；RUN-080 组 NET 在它前面加了 2 行，此前是 `:274`）再让玩家在下一个 tick 移除自己，移除时派发该事件（`entity/Player.java:707`）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -17364,7 +17413,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
 
 对应 `REQ-PLAY-003`、`REQ-PLAY-008`（`docs/DESIGN-PLAY.md` v0.19：`API-PLAY-005` 的 `enter` 注释，§11.2 两条守卫与表后一段，§16 一行，§19 两个场景）。缺陷：网络线程断开连接时当场把它标成离线（`network/player/PlayerConnection.java:280`），PLAY 阶段的移除与 `PlayerDisconnectEvent` 要等玩家下一个 tick（`:291`）；这段时间里 `SceneService#enter` 抛 `IllegalStateException`，消息还写成 `is not in the play state`。插件在串行段里先查 `isOnline()` 再 `enter` 照样撞得上。`rush` 的出队挂在 `PlayerDisconnectEvent` 上，`LocalQueue#take` 不看在线，于是竞技场转 `OPEN` 前一刻断线的玩家照样被 `Lobby#open` 取出：`move` 之后的 `hud.enter` 抛出，异常冒出 `Lobby#tick`，被插件调度器记一行 ERROR 吞掉。这时 `preparing` 已清空、`round` 没建，没人再对竞技场调 `start` 或 `cancel`，§11.1 的 `OPEN` 又没有超时，竞技场与它的区块一直注册到停机；排在他前面的玩家困在竞技场的局内场景里，排在后面的已出队却没移动。修法：`enter` 对离线连接直接返回（不建场景层、不迁移、不记 `play_scene_entered`），与 `hud().set` 一致；在线却不在 PLAY 的连接仍抛，消息写出所处阶段（`connection_id=… is in CONFIGURATION, not play`）。`Lobby` 不改：宿主不再抛，`open` 照常把后面的人移入、建 `RushRound`；离线那人的 `move` 由宿主的离线检查以 false 完成（`ManagedInstanceImpl.java:269`、`:289`），`whenComplete` 见他不在线，不调 `arrived`。测试替身 `FakePlay#enter` 原先对离线玩家也照记，与宿主不一致，`:game-rush` 的测试因此碰不到这条路径；改为照宿主的新契约对离线玩家什么都不做。
 
-测试：`server-app` 包 `io.github.bearisbug.synaxis.app.scene` 的 `SceneServiceIntegrationTest` 12 → 13 条：`aConnectionThatGoesTakesItsSceneLayerAlongAndCannotEnterAnother`（`TC-PLAY-049`）断线之后那一句由「`enter` 抛 `IllegalStateException`」改为「`enter` 不抛、台账仍只有进大厅那一条」，新增 `aConnectionOnlineButOutsideThePlayStateCannotEnterAScene`。`:game-rush` 的 `LobbyIntegrationTest` 11 → 12 条，新增 `aQueuedPlayerWhoseConnectionDroppedDoesNotStrandTheArena`；`FakePlay#enter` 见上。`:testing` 的测试连接调 `disconnect()` 只把连接标成离线、不移除玩家（`TestConnectionImpl.java:131-133`），正是生产上那段窗口。`FakeManaged#move` 不看在线，照样把离线的玩家移进竞技场并以 true 完成（宿主以 false 完成），本节的断言不依赖这一处。「跑 `<类>`」与运行编号同「生产就绪 · RUN-080：HOST」一节，`:game-rush` 的类换成 `:game-rush:test`。源文件代号：`<SS>` 同「玩法架构 · RUN-077：H」一节（`server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/`），`<RT>` 是 `game-rush/src/test/java/io/github/bearisbug/synaxis/game/rush/`，行号按本组提交。本组把 `<SS>SceneService.java` 第 215、216 行换成 6 行，其后的行号加 4。
+测试：`server-app` 包 `io.github.bearisbug.synaxis.app.scene` 的 `SceneServiceIntegrationTest` 12 → 13 条：`aConnectionThatGoesTakesItsSceneLayerAlongAndCannotEnterAnother`（`TC-PLAY-049`）断线之后那一句由「`enter` 抛 `IllegalStateException`」改为「`enter` 不抛、台账仍只有进大厅那一条」，新增 `aConnectionOnlineButOutsideThePlayStateCannotEnterAScene`。`:game-rush` 的 `LobbyIntegrationTest` 11 → 12 条，新增 `aQueuedPlayerWhoseConnectionDroppedDoesNotStrandTheArena`；`FakePlay#enter` 见上。`:testing` 的测试连接调 `disconnect()` 只把连接标成离线、不移除玩家（`TestConnectionImpl.java:129-131`），正是生产上那段窗口。`FakeManaged#move` 不看在线，照样把离线的玩家移进竞技场并以 true 完成（宿主以 false 完成），本节的断言不依赖这一处。「跑 `<类>`」与运行编号同「生产就绪 · RUN-080：HOST」一节，`:game-rush` 的类换成 `:game-rush:test`。源文件代号：`<SS>` 同「玩法架构 · RUN-077：H」一节（`server-app/src/main/java/io/github/bearisbug/synaxis/app/scene/`），`<RT>` 是 `game-rush/src/test/java/io/github/bearisbug/synaxis/game/rush/`，行号按本组提交。本组把 `<SS>SceneService.java` 第 215、216 行换成 6 行，其后的行号加 4。
 
 #### `TC-PLAY-170` 刚断线的连接 `enter` 什么都不做，在线却不在 PLAY 的被拒并写出阶段；开局那一刻断线的排队玩家不让竞技场停在 `OPEN` — 对应 `REQ-PLAY-003`、`REQ-PLAY-008` · 级别: 回归 · 执行者: AI
 
@@ -17604,6 +17653,7 @@ RUN-078 组 J（`docs/DESIGN-PLAY.md` §28.2 S1 测试缺口一行的 ⑧～⑪�
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-089 组 ADV，音效与 Adventure 转换、点击回调、Boss 血条与成组受众、`utils` 与 `crypto` 的校验和整理（`REQ-001`、`REQ-017`、`REQ-013`、`REQ-PROD-019`、`REQ-004`，v0.9.118）→ TC-PROD-1080～TC-PROD-1085；动了 `SoundEvent.CODEC`、三个声音包的来源读写或 `AdventurePacketConvertor` 的建包方法，就跑 TC-PROD-1080 与 TC-PROD-1081；动了 `TickUtils` 跑 TC-PROD-1081；动了 `ClickCallbackManager` 跑 TC-PROD-1082，三种线程模式各一次；动了 `BossBarManager`、`BossBarListener`、`BossBarHolder` 或 `PacketGroupingAudience` 的 Boss 血条方法，跑 TC-PROD-1083 与 TC-PROD-968，三种线程模式各一次；动了 `WeightedList`、`Range` 或 `SignedMessageBody` 跑 TC-PROD-1084；动了 `ComponentCodecs` 的无类型分支、`AudienceRegistry`、`ObjectArray`、`ObjectPool` 或 `KeyUtils` 跑 TC-PROD-1085
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-092，集合上限对照 26.2、段① 的读上限与三件小事（`REQ-001`、`REQ-017`、`REQ-M3-001`、`REQ-013`、`REQ-PROD-008`、`REQ-PROD-002`，v0.9.124）→ TC-PROD-1130～TC-PROD-1137；动了 `NetworkBufferCollectionTypes` 或 `NetworkBufferArrayTypes` 跑 TC-PROD-1130；动了包或物品组件的集合类型（`list`、`set`、`mapValue` 的上限）跑 TC-PROD-1131～TC-PROD-1133 与 `PacketWriteReadRegistriesTest`，新加的上限先按 26.2 客户端核对（`javap -c -p`）；动了 `ChunkData` 或 `LightData` 的读取跑 TC-PROD-1134 与 TC-WORLD-009；动了 `ServerProcessImpl` 的 ticker 字段或 `TickSchedulerThread` 跑 TC-PROD-1135 与 TC-PROD-990，三种线程模式各一次；动了 `SessionClient` 的排队或 `ConnectionGate.Ticket#release` 跑 TC-PROD-1136
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-094 组 API，插件面的 Javadoc、准入拒绝键在台账里的写法、`:protocol` 的编码入口与线值（`REQ-M2-024`、`REQ-M2-007`、`REQ-M2-009`、`REQ-M2-022`、`REQ-M2-020`、`REQ-PLAY-003`、`REQ-PLAY-004`，v0.9.125）→ TC-PROD-1140～TC-PROD-1143；动了 `AdmissionGate#rejected` 跑 TC-PROD-1140；给 `OrderResultCode` 或 `UnitState` 加减取值、改线值跑 TC-PROD-1141，并按 `docs/DESIGN-M2.md` §8 升 `schema_version`、重冻向量；动了 `Message`、`ArchetypeBox` 或宿主里改用 `encode()` 的地方跑 TC-PROD-1142；动了 `:plugin-api` 的 `plugin.play` 记录类或它们引用的 `:protocol` 上限常量跑 TC-PROD-1143 第 1 步与 TC-PLAY-010、TC-PLAY-011；改 `:protocol` 的公开成员后跑 TC-PROD-1143 第 4 步（客户端模组照样编译）
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-094 组 MISC，测试连接的翻译器与收集器、压测的 tick 事件名、文档里的计数与引用（`REQ-013`、`REQ-PROD-006`、`REQ-PROD-029`、`REQ-PROD-033`、`REQ-M2-022`，v0.9.125）→ TC-PROD-1144～TC-PROD-1146；动了 `:testing` 的 `TestConnectionImpl`、`Collector` 或 `EnvImpl` 就跑 TC-PROD-1144（第 1 步带翻译开关）与 TC-WORLD-056；动了 `SampleCommand` 的事件名或 `EventsJFR.SERVER_TICK` 就跑 TC-PROD-1145 第 1 步，并对照 `tools/loadtest/soak.py` 里按字面量读的事件名；动了 `.gitignore` 的运行产物一段就跑 TC-PROD-1146 第 5 步；增删 `:plugin-api` 的 `@ApiStatus.NonExtendable` 就按 TC-PROD-1146 第 6 步核对 `docs/DESIGN-PROD.md` §8 的清单
   - 玩法架构域（`docs/DESIGN-PLAY.md`）：RUN-077 最小样板 S1（`REQ-PLAY-003`～`REQ-PLAY-008` 的 S1 部分）→ TC-PLAY-001～TC-PLAY-086、TC-PLAY-090～TC-PLAY-125、TC-PLAY-130～TC-PLAY-132、TC-PLAY-145、TC-PLAY-155、TC-PLAY-170、TC-PLAY-180～TC-PLAY-185（087～089、126～129 是空号），按改动的文件圈定：
     - 动了 `:protocol` 的 `game.protocol.play`、`play-vectors/` 或 `protocol/tools/gen_play_vectors.py` → TC-PLAY-001～TC-PLAY-008，客户端一侧的 TC-PLAY-009 随 client-mod 在 GitHub Actions 上跑；动了 `Message` 或某个消息族接口（`HandshakeMessage`、`GameMessage`、`PlayMessage`）的 `permits` 再加 TC-PLAY-008 第 1 步的 `ProtocolVectorTest`。
     - 动了 `:plugin-api` 的 `plugin.play`、`plugin.instance` 或 `PluginContext` → TC-PLAY-010～TC-PLAY-015、TC-PLAY-018（ABI 门）；动了 `PluginHost` 的场景层与托管实例接线 → TC-PLAY-013、TC-PLAY-019、TC-PLAY-067、TC-PLAY-068；动了 `ComponentBytes` 或 `play-vectors/component/` → TC-PLAY-014、TC-PLAY-020～TC-PLAY-022。

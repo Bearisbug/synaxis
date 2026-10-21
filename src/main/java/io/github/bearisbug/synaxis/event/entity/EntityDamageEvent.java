@@ -1,6 +1,5 @@
 package io.github.bearisbug.synaxis.event.entity;
 
-import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.LivingEntity;
 import io.github.bearisbug.synaxis.entity.damage.Damage;
 import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
@@ -17,7 +16,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public class EntityDamageEvent implements EntityInstanceEvent, CancellableEvent {
 
-    private final Entity entity;
+    private final LivingEntity entity;
     private final Damage damage;
     private SoundEvent sound;
     private boolean animation = true;
@@ -32,7 +31,7 @@ public class EntityDamageEvent implements EntityInstanceEvent, CancellableEvent 
 
     @Override
     public LivingEntity getEntity() {
-        return (LivingEntity) entity;
+        return entity;
     }
 
     /**

@@ -11,9 +11,11 @@ import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
@@ -270,5 +272,43 @@ public class EntityFinderIntegrationTest {
         for (int i = 1; i < found.size(); i++) {
             assertTrue(found.get(i - 1).getPosition().distanceSquared(ORIGIN) <= found.get(i).getPosition().distanceSquared(ORIGIN));
         }
+    }
+
+    @Test
+    public void aLimitBelowOneIsRefused() {
+        var finder = new EntityFinder();
+        assertThrows(IllegalArgumentException.class, () -> finder.setLimit(0));
+        assertThrows(IllegalArgumentException.class, () -> finder.setLimit(-1));
+        finder.setLimit(1);
+    }
+
+    @Test
+    public void findingWithoutATargetSelectorSaysWhatIsMissing(Env env) {
+        var instance = env.createFlatInstance();
+        var finder = new EntityFinder();
+
+        var thrown = assertThrows(NullPointerException.class, () -> finder.find(env.process(), instance, null));
+        assertTrue(thrown.getMessage().contains("setTargetSelector"), thrown.getMessage());
+    }
+
+    @Test
+    public void uuidWithoutAnInstanceSearchesEveryInstance(Env env) {
+        var first = env.createFlatInstance();
+        var second = env.createFlatInstance();
+        var _ = spawnZombie(first, 1);
+        var wanted = spawnZombie(second, 2);
+
+        var finder = new EntityFinder()
+                .setTargetSelector(EntityFinder.TargetSelector.ENGINE_UUID)
+                .setConstantUuid(wanted.getUuid());
+
+        assertEquals(List.of(wanted), finder.find(env.process(), null, null));
+        assertEquals(List.of(wanted), finder.find(env.process(), second, null));
+        // Given an instance, only that one is searched
+        assertEquals(List.of(), finder.find(env.process(), first, null));
+        assertEquals(List.of(), new EntityFinder()
+                .setTargetSelector(EntityFinder.TargetSelector.ENGINE_UUID)
+                .setConstantUuid(UUID.randomUUID())
+                .find(env.process(), null, null));
     }
 }

@@ -313,7 +313,7 @@ public final class SessionClient {
      * The default proxy selector, except for loopback addresses: a stand-in session server on the
      * same host is reached directly even when a proxy is configured for the outside world.
      */
-    private static final class LoopbackDirect extends ProxySelector {
+    static final class LoopbackDirect extends ProxySelector {
         private final @Nullable ProxySelector fallback;
 
         LoopbackDirect(@Nullable ProxySelector fallback) {
@@ -335,10 +335,10 @@ public final class SessionClient {
         private static boolean isLoopback(String host) {
             if (host.equalsIgnoreCase("localhost")) return true;
             // Only a literal is looked at, resolving a name here would block the query on DNS
-            if (!Character.isDigit(host.charAt(0)) && !host.startsWith("[")) return false;
+            final String literal = host.startsWith("[") && host.endsWith("]") ? host.substring(1, host.length() - 1) : host;
             try {
-                return InetAddress.getByName(host).isLoopbackAddress();
-            } catch (IOException _) {
+                return InetAddress.ofLiteral(literal).isLoopbackAddress();
+            } catch (IllegalArgumentException _) {
                 return false;
             }
         }

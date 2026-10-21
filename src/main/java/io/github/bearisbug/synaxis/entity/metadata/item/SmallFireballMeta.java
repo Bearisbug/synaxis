@@ -40,9 +40,4 @@ public class SmallFireballMeta extends EntityMeta implements ObjectDataProvider,
         return this.shooter == null ? 0 : this.shooter.getEntityId();
     }
 
-    @Override
-    public boolean requiresVelocityPacketAtSpawn() {
-        return true;
-    }
-
 }

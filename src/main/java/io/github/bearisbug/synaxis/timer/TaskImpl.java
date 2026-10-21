@@ -1,7 +1,5 @@
 package io.github.bearisbug.synaxis.timer;
 
-import it.unimi.dsi.fastutil.HashCommon;
-
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.function.Supplier;
@@ -110,19 +108,6 @@ final class TaskImpl implements Task {
     @Override
     public SchedulerImpl owner() {
         return owner;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
-        var that = (TaskImpl) obj;
-        return this.id == that.id;
-    }
-
-    @Override
-    public int hashCode() {
-        return HashCommon.murmurHash3(id);
     }
 
     @Override

@@ -31,19 +31,20 @@ final class NetworkBufferCombinatorTypes {
         public void write(NetworkBuffer buffer, T value) {
             // Write to another buffer and copy (kinda inefficient, but currently unused serverside so its ok for now)
             final byte[] componentData = NetworkBuffer.makeArray(b -> parent.write(b, value), buffer.registries());
+            Check.argCondition(componentData.length > maxLength, "Value is too long (length: {0}, max: {1})", componentData.length, maxLength);
             buffer.write(NetworkBuffer.BYTE_ARRAY, componentData);
         }
 
         @Override
         public T read(NetworkBuffer buffer) {
             final int length = buffer.read(VAR_INT);
-            Check.argCondition(length > maxLength, "Value is too long (length: {0}, max: {1})", length, maxLength);
-
-            final long availableBytes = buffer.readableBytes();
-            Check.argCondition(length > availableBytes, "Value is too long (length: {0}, available: {1})", length, availableBytes);
-            final T value = parent.read(buffer);
-            Check.argCondition(buffer.readableBytes() != availableBytes - length, "Value is too short (length: {0}, available: {1})", length, availableBytes);
-
+            Check.argCondition(length < 0 || length > maxLength, "Declared length {0} is outside [0, {1}]", length, maxLength);
+            buffer.ensureReadable(length);
+            // The parent reads a view over the declared range, so it cannot read past it
+            final long start = buffer.advanceRead(length);
+            final NetworkBuffer slice = buffer.slice(start, length, 0, length);
+            final T value = parent.read(slice);
+            Check.argCondition(slice.readableBytes() != 0, "Value length mismatch (declared: {0}, read: {1})", length, length - slice.readableBytes());
             return value;
         }
     }

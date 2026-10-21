@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -110,7 +111,8 @@ public class ArgumentParser {
                     final String argument = builder.toString();
                     argumentFunction = ARGUMENT_FUNCTION_MAP.get(argument.toLowerCase(Locale.ROOT));
                     if (argumentFunction == null) {
-                        throw new IllegalArgumentException("error invalid argument name: " + argument);
+                        throw new IllegalArgumentException("unknown argument type '" + argument + "' in syntax format: "
+                                + format + "; the types are " + new TreeSet<>(ARGUMENT_FUNCTION_MAP.keySet()));
                     }
 
                     builder = new StringBuilder();
@@ -140,6 +142,7 @@ public class ArgumentParser {
 
         }
 
+        if (state == 1) throw new IllegalArgumentException("unclosed '<' in syntax format: " + format);
         // Use remaining as literal if present
         if (state == 0) {
             final String argument = builder.toString();

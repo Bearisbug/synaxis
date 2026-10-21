@@ -1,10 +1,13 @@
 package io.github.bearisbug.synaxis.command;
 
 import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType;
+import io.github.bearisbug.synaxis.command.builder.arguments.minecraft.registry.ArgumentRegistry;
 import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -36,6 +39,28 @@ public class ArgumentRobustnessTest {
         assertThrows(ArgumentSyntaxException.class, () -> ArgumentType.Entity("entity").parse(null, "@e[type=Pig]"));
         assertThrows(ArgumentSyntaxException.class, () -> ArgumentType.EntityType("type").parse(null, "Pig"));
         assertThrows(ArgumentSyntaxException.class, () -> ArgumentType.Particle("particle").parse(null, "Flame"));
+    }
+
+    /**
+     * A registry argument answers null for a key it does not know, as the two of the engine do; the parser reports
+     * that as an invalid name.
+     */
+    @Test
+    public void aRegistryArgumentAnsweringNullIsAnInvalidName() {
+        var argument = new ArgumentRegistry<String>("thing") {
+            @Override
+            public @Nullable String getRegistry(String value) {
+                return value.equals("known") ? "found" : null;
+            }
+
+            @Override
+            public ArgumentParserType parser() {
+                return ArgumentParserType.RESOURCE_LOCATION;
+            }
+        };
+        assertEquals("found", argument.parse(null, "known"));
+        var thrown = assertThrows(ArgumentSyntaxException.class, () -> argument.parse(null, "unknown"));
+        assertEquals(ArgumentRegistry.INVALID_NAME, thrown.getErrorCode());
     }
 
     @Test

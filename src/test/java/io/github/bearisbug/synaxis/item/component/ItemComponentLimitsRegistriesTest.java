@@ -1,15 +1,19 @@
 package io.github.bearisbug.synaxis.item.component;
 
 import net.kyori.adventure.text.Component;
+import io.github.bearisbug.synaxis.codec.Transcoder;
 import io.github.bearisbug.synaxis.component.DataComponents;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
+import io.github.bearisbug.synaxis.registry.Registries;
+import io.github.bearisbug.synaxis.registry.RegistryTranscoder;
 import io.github.bearisbug.synaxis.testing.RegistriesTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
 
+import static io.github.bearisbug.synaxis.codec.CodecAssertions.assertOk;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -52,6 +56,40 @@ public class ItemComponentLimitsRegistriesTest {
         final IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> stone.withLore(lines));
         assertEquals("minecraft:lore holds at most 256 lines, got 257", error.getMessage());
         assertDoesNotThrow(() -> stone.withLore(lines.subList(0, 256)));
+    }
+
+    /**
+     * A 26.2 client reads at most 256 slots of a container; the codec stores no more either.
+     */
+    @Test
+    void containersHoldAtMost256Slots(Registries registries) {
+        final List<ItemStack> slots = Collections.nCopies(257, ItemStack.of(Material.STONE));
+        final ItemStack box = ItemStack.of(Material.SHULKER_BOX);
+
+        final IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> box.with(DataComponents.CONTAINER, slots));
+        assertEquals("minecraft:container holds at most 256 entries, got 257", error.getMessage());
+        assertThrows(IllegalArgumentException.class,
+                () -> ItemStack.builder(Material.SHULKER_BOX).set(DataComponents.CONTAINER, slots));
+
+        final ItemStack full = box.with(DataComponents.CONTAINER, slots.subList(0, 256));
+        final var coder = new RegistryTranscoder<>(Transcoder.NBT, registries);
+        assertEquals(full, assertOk(ItemStack.CODEC.decode(coder, assertOk(ItemStack.CODEC.encode(coder, full)))));
+    }
+
+    @Test
+    void itemListsAndRecipesHoldAtMost32767Entries() {
+        final List<ItemStack> items = Collections.nCopies(Short.MAX_VALUE + 1, ItemStack.of(Material.ARROW));
+
+        final IllegalArgumentException bundle = assertThrows(IllegalArgumentException.class,
+                () -> ItemStack.of(Material.BUNDLE).with(DataComponents.BUNDLE_CONTENTS, items));
+        assertEquals("minecraft:bundle_contents holds at most 32767 entries, got 32768", bundle.getMessage());
+        assertThrows(IllegalArgumentException.class,
+                () -> ItemStack.of(Material.CROSSBOW).with(DataComponents.CHARGED_PROJECTILES, items));
+        assertThrows(IllegalArgumentException.class, () -> ItemStack.of(Material.KNOWLEDGE_BOOK)
+                .with(DataComponents.RECIPES, Collections.nCopies(Short.MAX_VALUE + 1, "minecraft:stick")));
+        assertDoesNotThrow(() -> ItemStack.of(Material.KNOWLEDGE_BOOK)
+                .with(DataComponents.RECIPES, Collections.nCopies(Short.MAX_VALUE, "minecraft:stick")));
     }
 
     @Test

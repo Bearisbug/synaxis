@@ -9,7 +9,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.regex.Pattern;
 
 /**
- * Represents an argument which will take all the remaining of the command.
+ * Represents an argument which will take all the remaining of the command, so it must be the last argument of a
+ * syntax.
  * <p>
  * Example: Hey I am a string
  */

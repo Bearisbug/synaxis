@@ -3,8 +3,10 @@ package io.github.bearisbug.synaxis.component;
 import net.kyori.adventure.text.Component;
 import io.github.bearisbug.synaxis.codec.Result;
 import io.github.bearisbug.synaxis.codec.Transcoder;
+import io.github.bearisbug.synaxis.codec.TranscoderProxy;
 import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import io.github.bearisbug.synaxis.utils.Unit;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -79,11 +81,66 @@ public class DataComponentMapTest {
 
     @Test
     void codecRejectsComponentDecodedToNull() {
-        // ItemRarity.CODEC maps an unknown name to null, which must not be read as "remove rarity".
+        // A null value means "component removed" in a patch, so it must not be what a codec decodes to. A transcoder
+        // that reads every int as null makes a registered component decode to null; registering a component here is
+        // not an option: other test classes go through every registered component concurrently.
+        final Transcoder<Object> intsReadAsNull = new TranscoderProxy<>() {
+            @Override
+            public Transcoder<Object> delegate() {
+                return Transcoder.JAVA;
+            }
+
+            @Override
+            public Result<Integer> getInt(Object value) {
+                return new Result.Ok<>(null);
+            }
+        };
+        final Result<DataComponentMap> result = DataComponent.PATCH_CODEC.decode(intsReadAsNull,
+                Map.of(DataComponents.MAX_STACK_SIZE.name(), 1));
+
+        assertEquals("minecraft:max_stack_size: null", assertInstanceOf(Result.Error.class, result).message());
+    }
+
+    @Test
+    void codecNamesTheComponentAndTheValueItCannotDecode() {
         final Map<String, Object> input = Map.of(DataComponents.RARITY.name(), "legendary");
         final Result<DataComponentMap> result = DataComponent.PATCH_CODEC.decode(Transcoder.JAVA, input);
 
-        assertEquals("minecraft:rarity: null", assertInstanceOf(Result.Error.class, result).message());
+        assertEquals("minecraft:rarity: IllegalArgumentException: No enum constant "
+                        + "io.github.bearisbug.synaxis.item.component.ItemRarity.LEGENDARY",
+                assertInstanceOf(Result.Error.class, result).message());
+    }
+
+    /** null marks a removal inside a map, so setting it is refused rather than silently removing the component. */
+    @Test
+    void settingANullValueIsRefused() {
+        final NullPointerException patch = assertThrows(NullPointerException.class,
+                () -> DataComponentMap.patchBuilder().set(DataComponents.MAX_STACK_SIZE, null));
+        assertTrue(patch.getMessage().contains(DataComponents.MAX_STACK_SIZE.name()), patch::getMessage);
+        assertThrows(NullPointerException.class, () -> DataComponentMap.builder().set(DataComponents.MAX_STACK_SIZE, null));
+        assertThrows(NullPointerException.class, () -> DataComponentMap.EMPTY.set(DataComponents.MAX_STACK_SIZE, null));
+
+        // remove() is the way, and a removed component is not present in either builder
+        final DataComponentMap.PatchBuilder builder = DataComponentMap.patchBuilder().remove(DataComponents.MAX_STACK_SIZE);
+        assertFalse(builder.has(DataComponents.MAX_STACK_SIZE));
+        assertFalse(builder.build().has(DataComponents.MAX_STACK_SIZE));
+        assertFalse(DataComponentMap.builder().has(DataComponents.MAX_STACK_SIZE));
+    }
+
+    @Test
+    void theComponentRegistryCannotBeChangedThroughValues() {
+        final int count = DataComponent.values().size();
+        // A predicate removing nothing first: on a mutable view it returns quietly and leaves the registry alone
+        assertThrows(UnsupportedOperationException.class, () -> DataComponent.values().removeIf(_ -> false));
+        assertThrows(UnsupportedOperationException.class, () -> DataComponent.values().clear());
+        assertEquals(count, DataComponent.values().size());
+    }
+
+    @Test
+    void encodingAComponentWithoutACodecSaysSerialized() {
+        final NullPointerException error = assertThrows(NullPointerException.class,
+                () -> DataComponents.CREATIVE_SLOT_LOCK.encode(Transcoder.NBT, Unit.INSTANCE));
+        assertTrue(error.getMessage().contains("cannot be serialized to Codec"), error::getMessage);
     }
 
     @Test

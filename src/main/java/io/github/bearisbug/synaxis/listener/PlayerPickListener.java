@@ -15,6 +15,7 @@ public class PlayerPickListener {
         final Instance instance = player.getInstance();
         if (instance == null) return;
         if (!instance.isChunkLoaded(packet.pos())) return;
+        if (PlayerActionListener.outOfReach(player, packet.pos())) return;
         final Block block = instance.getBlock(packet.pos());
         final boolean includeData = packet.includeData();
 
@@ -26,6 +27,7 @@ public class PlayerPickListener {
         final Instance instance = player.getInstance();
         if (instance == null) return;
         final Entity entity = instance.getEntityById(packet.entityId());
+        if (entity == null || UseEntityListener.invalidUse(player, entity)) return;
         final boolean includeData = packet.includeData();
 
         PlayerPickEntityEvent playerPickEntityEvent = new PlayerPickEntityEvent(player, entity, includeData);

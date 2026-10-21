@@ -54,22 +54,18 @@ public final class LoginListener {
             connection.disconnectTurnedAway();
             return;
         }
-        // Connection gate L3, before any work is done for the login: a full process is not worth
-        // a key exchange or a session server query. The seat itself is taken once the peer is
-        // authenticated (ConnectionManager#transitionLoginToConfig). Counted by the gate rather
-        // than logged, how often a full process is knocked at is up to the peers.
-        if (connection instanceof PlayerSocketConnection
-                && !connection.process().connection().gate().seatFree()) {
-            connection.sendPacket(new LoginDisconnectPacket(DisconnectReasons.SHARD_FULL));
-            connection.disconnectTurnedAway();
-            return;
-        }
-
         final Auth auth = connection.process().auth();
-        final boolean isSocketConnection = connection instanceof PlayerSocketConnection;
-        // Socket clients: cache the login username
-        if (isSocketConnection) {
-            PlayerSocketConnection socketConnection = (PlayerSocketConnection) connection;
+        if (connection instanceof PlayerSocketConnection socketConnection) {
+            // Connection gate L3, before any work is done for the login: a full process is not worth
+            // a key exchange or a session server query. The seat itself is taken once the peer is
+            // authenticated (ConnectionManager#transitionLoginToConfig). Counted by the gate rather
+            // than logged, how often a full process is knocked at is up to the peers.
+            if (!connection.process().connection().gate().seatFree()) {
+                connection.sendPacket(new LoginDisconnectPacket(DisconnectReasons.SHARD_FULL));
+                connection.disconnectTurnedAway();
+                return;
+            }
+            // Socket clients: cache the login username
             socketConnection.UNSAFE_setLoginUsername(packet.username());
             // Online mode and encrypted offline mode: the login goes on once the key arrives
             final KeyPair keyPair = connection.process().connection().loginKeyPair();

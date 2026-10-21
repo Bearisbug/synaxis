@@ -71,7 +71,9 @@ public class EntityViewDirectionIntegrationTest {
         env.tick();
 
         rotationTracker.assertCount(1);
-        headLookTracker.assertCount(2);
+        // The teleport of setView sends the head with the position synchronization of a living entity and again
+        // for the turn, the tick synchronizes the view of the passenger
+        headLookTracker.assertCount(3);
     }
 
     @Test

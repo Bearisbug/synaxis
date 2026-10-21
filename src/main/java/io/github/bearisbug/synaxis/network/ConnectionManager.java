@@ -283,12 +283,13 @@ public final class ConnectionManager {
     }
 
     /**
-     * Gets the first player in the play state which validates {@link UUID#equals(Object)}.
+     * Gets the player in the play state holding this uuid.
      * <p>
-     * This can cause issue if two or more players have the same UUID.
+     * At most one player holds a uuid at a time: {@link #createPlayer} turns away a second
+     * connection carrying a uuid that is already taken.
      *
      * @param uuid the player UUID
-     * @return the first player who validate the UUID condition, null if none was found
+     * @return the player, null if none in the play state holds it
      */
     public @Nullable Player getOnlinePlayerByUuid(UUID uuid) {
         for (Player player : getOnlinePlayers()) {
@@ -321,6 +322,9 @@ public final class ConnectionManager {
 
     /**
      * Changes the {@link Player} provider, to change which object to link to him.
+     * <p>
+     * The new provider only applies to the logins that create their player after this call; set it
+     * before {@code ServerProcess#start} for every player to be of the same type.
      *
      * @param playerProvider the new {@link PlayerProvider}, can be set to null to apply the default provider
      */
@@ -349,8 +353,10 @@ public final class ConnectionManager {
      * one is only removed on the next tick ({@code docs/DESIGN-PROD.md} §11.1, §16). Runs on the
      * read thread of the new connection.
      *
-     * @return the player, or null when the uuid was still not free after 5 seconds or the manager
-     * has shut down ({@link #isShutDown()})
+     * @return the player, or null when the uuid was still not free after 5 seconds, the manager has
+     * shut down ({@link #isShutDown()}), the new connection went offline while waiting, or the
+     * waiting thread was interrupted (its interrupt flag is restored); the caller rejects the
+     * connection in every one of these cases
      */
     @ApiStatus.Internal
     public @Nullable Player createPlayerReplacing(PlayerConnection connection, GameProfile gameProfile) {
@@ -360,7 +366,7 @@ public final class ConnectionManager {
         while (true) {
             final Player previous = trackOrPrevious(player);
             if (previous == null) return player;
-            if (previous == player) return null;
+            if (previous == player) return null; // shut down, see #trackOrPrevious
             previous.kick(DisconnectReasons.LOGGED_IN_ELSEWHERE);
             while (uuidPlayerMap.get(player.getUuid()) == previous || !leftTheWorld(previous)) {
                 if (System.nanoTime() - deadline >= 0 || !connection.isOnline()) return null;
@@ -450,7 +456,23 @@ public final class ConnectionManager {
     }
 
     /**
-     * Return value exposed for testing
+     * Runs the configuration of a player, on its configuration virtual thread
+     * ({@code LoginListener#executeConfig}).
+     * <p>
+     * On the first configuration the player is put into the configuration and keep alive sets, and
+     * nothing more is done when its connection is already gone. The call returns early when the
+     * player was kicked during {@link AsyncPlayerConfigurationEvent}. When the event sends the
+     * registry data, the call blocks on the known packs answer
+     * ({@code synaxis.known-packs-response-timeout}; past it the connection is closed and the call
+     * returns, as it does when the player left while waiting). It then blocks on the pending
+     * resource packs and ends by writing {@link FinishConfigurationPacket}.
+     *
+     * @param player        the player to configure
+     * @param isFirstConfig whether this is the configuration right after the login, rather than a
+     *                      return from the play state
+     * @throws NullPointerException if the {@link AsyncPlayerConfigurationEvent} set no spawning
+     *                              instance
+     * @throws RuntimeException     if the known packs answer completed exceptionally
      */
     @ApiStatus.Internal
     public void doConfiguration(Player player, boolean isFirstConfig) {

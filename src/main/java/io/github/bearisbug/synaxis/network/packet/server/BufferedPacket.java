@@ -10,7 +10,10 @@ import org.jetbrains.annotations.ApiStatus;
  *
  * @param sheddable whether a connection over its outbound backlog may drop the packet unsent: only
  *                  entity movement the next position sync replaces is ({@code docs/DESIGN-M3.md}
- *                  {@code ADR-M3-018}); anything else, such as the chunk packets of {@code .synx}
+ *                  {@code ADR-M3-018}), the relative moves and rotations, teleports, head turns and
+ *                  position syncs of {@link io.github.bearisbug.synaxis.network.PacketViewableUtils}.
+ *                  The head of a living entity comes back with its next position sync, the head of any
+ *                  other entity does not. Anything else, such as the chunk packets of {@code .synx}
  *                  handle chunks, is written whatever the backlog
  */
 @ApiStatus.Internal

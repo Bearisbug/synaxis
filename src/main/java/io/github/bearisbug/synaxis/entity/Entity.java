@@ -84,7 +84,6 @@ import io.github.bearisbug.synaxis.thread.AcquirableSource;
 import io.github.bearisbug.synaxis.timer.Schedulable;
 import io.github.bearisbug.synaxis.timer.Scheduler;
 import io.github.bearisbug.synaxis.timer.TaskSchedule;
-import io.github.bearisbug.synaxis.utils.MathUtils;
 import io.github.bearisbug.synaxis.utils.async.AsyncUtils;
 import io.github.bearisbug.synaxis.instance.block.BlockIterator;
 import io.github.bearisbug.synaxis.instance.ChunkCache;
@@ -272,6 +271,18 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this(process, entityType, UUID.randomUUID());
     }
 
+    /**
+     * Creates an entity that belongs to no server process until its first {@link #setInstance(Instance)}.
+     * <p>
+     * Until then the events of this entity are dropped, so no listener can change or cancel them: the equipment set
+     * goes in as given ({@link io.github.bearisbug.synaxis.event.item.EntityEquipEvent}), setting it on fire and
+     * adding an effect always apply. For these events to be dispatched, create the entity with
+     * {@link #Entity(ServerProcess, EntityType, UUID)}, or change its state after placing it in an instance. Even bound
+     * to a process, the entity reaches no listener filtered by instance before it is in one.
+     *
+     * @param entityType the type of the entity
+     * @param uuid       the UUID of the entity
+     */
     @SuppressWarnings("this-escape") // deliberate self registration, entities are not usable until spawned
     public Entity(EntityType entityType, UUID uuid) {
         this.id = generateId();
@@ -294,6 +305,12 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         updateCollisions();
     }
 
+    /**
+     * Creates an entity with a random UUID that belongs to no server process until its first
+     * {@link #setInstance(Instance)}, see {@link #Entity(EntityType, UUID)}.
+     *
+     * @param entityType the type of the entity
+     */
     public Entity(EntityType entityType) {
         this(entityType, UUID.randomUUID());
     }
@@ -342,9 +359,9 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
                 y >= MAX_COORDINATE || y <= -MAX_COORDINATE ||
                 z >= MAX_COORDINATE || z <= -MAX_COORDINATE) {
             newPosition = newPosition.withCoord(
-                    MathUtils.clamp(x, -MAX_COORDINATE, MAX_COORDINATE),
-                    MathUtils.clamp(y, -MAX_COORDINATE, MAX_COORDINATE),
-                    MathUtils.clamp(z, -MAX_COORDINATE, MAX_COORDINATE)
+                    Math.clamp(x, -MAX_COORDINATE, MAX_COORDINATE),
+                    Math.clamp(y, -MAX_COORDINATE, MAX_COORDINATE),
+                    Math.clamp(z, -MAX_COORDINATE, MAX_COORDINATE)
             );
         }
         return newPosition;
@@ -415,6 +432,14 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         return this.entityMeta;
     }
 
+    /**
+     * Gets a data component of this entity. Only two are supported: {@link DataComponents#CUSTOM_DATA}, a copy of the
+     * tags of this entity, and {@link DataComponents#CUSTOM_NAME}, its {@link MetadataDef#CUSTOM_NAME} metadata.
+     *
+     * @param component the component
+     * @param <T>       the type of the component
+     * @return the value, null for any other component
+     */
     @SuppressWarnings("unchecked")
     @Override
     public <T> @Nullable T get(DataComponent<T> component) {
@@ -423,6 +448,18 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         return EntityMeta.getComponent(getEntityMeta(), component);
     }
 
+    /**
+     * Sets a data component of this entity, the two {@link #get(DataComponent)} supports: any other component is
+     * ignored.
+     * <p>
+     * {@link DataComponents#CUSTOM_DATA} replaces all the tags of this entity with the compound, through
+     * {@link io.github.bearisbug.synaxis.tag.TagHandler#updateContent(net.kyori.adventure.nbt.CompoundBinaryTag)}:
+     * <b>must not be used with untrusted data</b>, such as a {@code CustomData} a client sent, see that method.
+     *
+     * @param component the component
+     * @param value     the value
+     * @param <T>       the type of the component
+     */
     public <T> void set(DataComponent<T> component, T value) {
         if (component == DataComponents.CUSTOM_DATA) {
             tagHandler.updateContent(((CustomData) value).nbt());
@@ -529,7 +566,9 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * it must not be joined on the thread owning the entity, nor while holding any element through
      * {@link Acquirable#sync(Consumer)} or {@link Acquirable#lock()}: the teleport waits for that thread
      * and for the global lock. Joining this future on the owning thread throws {@link IllegalStateException};
-     * other waits never end. Chain the next step with {@link CompletableFuture#thenRun(Runnable)}
+     * other waits never end. Chain the next step with {@link CompletableFuture#thenRun(Runnable)}. An entity
+     * removed, or placed in another instance, while the chunks load is not moved, and the future completes
+     * normally
      * @throws IllegalStateException if you try to teleport an entity before settings its instance
      */
     public CompletableFuture<Void> teleport(Pos position, Vec velocity, long @Nullable [] chunks,
@@ -543,8 +582,11 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
         final Pos globalPosition = clampPosition(PositionUtils.getPositionWithRelativeFlags(this.position, position, flags));
         final Vec globalVelocity = PositionUtils.getVelocityWithRelativeFlags(this.velocity, velocity, flags);
+        final Instance target = this.instance;
 
         final Runnable endCallback = () -> {
+            // Removed, or sent to another instance, while the chunks loaded: the position belongs to the instance it left
+            if (isRemoved() || this.instance != target) return;
             // Before any state changes: moving into a chunk that is not there fails halfway, the position and
             // the tracker at the new point while the chunk and the tick thread stay with the old one. The test
             // of refreshCoordinate, not ChunkUtils.isLoaded: a LightingChunk already in the instance is not
@@ -726,7 +768,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     /**
      * Gets the tracking range set on this entity by {@link #setTrackingRange(double, double)}.
      *
-     * @return the range of this entity, null if it follows the default of its type
+     * @return the range set on this entity, null if none was set, the default of its type then applies
      * @see TrackingRanges
      */
     public @Nullable TrackingRange getTrackingRange() {
@@ -737,6 +779,10 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * Sets how far away players see this entity, overriding the default of its type
      * ({@code docs/DESIGN-PROD.md} {@code API-PROD-019}). Players pick the change up within
      * 5 ticks.
+     * <p>
+     * The range only narrows the square of {@link io.github.bearisbug.synaxis.ServerConfig#entityViewDistance()}
+     * chunks around a player, it never widens it. While this entity rides another one its own range does not
+     * count: a player sees it whenever the player sees the vehicle.
      *
      * @param horizontal the horizontal distance in blocks, positive
      * @param vertical   the vertical distance in blocks, positive
@@ -761,9 +807,9 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
     /**
      * Leaves this entity out of {@link io.github.bearisbug.synaxis.ServerConfig#maxVisibleEntitiesPerPlayer()}
-     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-019}): it is neither counted nor dropped for being
-     * too far, such as a teammate, a target or a boss. Its tracking range still applies. Players pick
-     * the change up within 5 ticks.
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-019}): it neither counts towards the limit nor is trimmed
+     * by it in favour of nearer entities, such as a teammate, a target or a boss. Its tracking range and the
+     * entity view distance still apply. Players pick the change up within 5 ticks.
      *
      * @param alwaysVisible true to leave this entity out of the limit
      */
@@ -842,7 +888,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         // Passengers are handled in EntityView
 
         // Leashes
-        if (leashHolder != null && (player.equals(leashHolder) || leashHolder.isViewer(player))) {
+        final Entity holder = this.leashHolder;
+        if (holder != null && (player.equals(holder) || holder.isViewer(player))) {
             player.sendPacket(getAttachEntityPacket());
         }
         for (Entity entity : leashedEntities) {
@@ -870,11 +917,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         List<EntityEffectPacket> packets = new ArrayList<>(effects.size());
         for (TimedPotion timedPotion : effects) {
             final Potion potion = timedPotion.potion();
-            final int duration = potion.duration();
-            final int remaining = duration == Potion.INFINITE_DURATION ? duration
-                    : (int) Math.max(0, timedPotion.startingTicks() + duration - aliveTicks);
-            packets.add(new EntityEffectPacket(getEntityId(),
-                    new Potion(potion.effect(), potion.amplifier(), remaining, potion.flags())));
+            packets.add(new EntityEffectPacket(getEntityId(), new Potion(potion.effect(), potion.amplifier(),
+                    timedPotion.remainingTicks(aliveTicks), potion.flags())));
         }
         return packets;
     }
@@ -1127,10 +1171,9 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         // listener may change the effects, which a removeIf running the event would fail on
         for (Iterator<TimedPotion> iterator = effects.iterator(); iterator.hasNext(); ) {
             final TimedPotion timedPotion = iterator.next();
-            long duration = timedPotion.potion().duration();
-            if (duration == Potion.INFINITE_DURATION) continue;
+            if (timedPotion.potion().duration() == Potion.INFINITE_DURATION) continue;
             // Remove if the potion should be expired
-            if (getAliveTicks() >= timedPotion.startingTicks() + duration && effects.remove(timedPotion)) {
+            if (timedPotion.remainingTicks(getAliveTicks()) == 0 && effects.remove(timedPotion)) {
                 // Send the packet that the potion should no longer be applied
                 timedPotion.potion().sendRemovePacket(this);
                 callEvent(new EntityPotionRemoveEvent(this, timedPotion.potion()));
@@ -1973,16 +2016,6 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.lastSyncedPosition = position;
     }
 
-    @ApiStatus.Internal
-    public void refreshPosition(final Pos newPosition, boolean ignoreView) {
-        refreshPosition(newPosition, ignoreView, true);
-    }
-
-    @ApiStatus.Internal
-    public void refreshPosition(final Pos newPosition) {
-        refreshPosition(newPosition, false);
-    }
-
     /**
      * Sets the coordinates of the passenger to the coordinates of this vehicle + {@link EntityUtils#getPassengerPositionOffset(Entity, Entity, int)}
      *
@@ -2193,6 +2226,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
         Set<Entity> leashedEntities = getLeashedEntities();
         leashedEntities.forEach(entity -> entity.setLeashHolder(null));
+        if (leashHolder != null) setLeashHolder(null);
 
         final ServerProcess process = this.process;
         if (process != null) process.dispatcher().removeElement(this);
@@ -2542,21 +2576,6 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     protected void updateCollisions() {
         preventBlockPlacement = !ALLOW_BLOCK_PLACEMENT_ENTITIES.contains(entityType);
         collidesWithEntities = !NO_ENTITY_COLLISION_ENTITIES.contains(entityType);
-    }
-
-    /**
-     * Acquires this entity.
-     *
-     * @param <T> the type of object to be acquired
-     * @return the acquirable for this entity
-     * @deprecated It's preferred to use {@link AcquirableSource#acquirable()} instead, as it is overridden by
-     * subclasses
-     */
-    @Deprecated
-    @ApiStatus.Experimental
-    @SuppressWarnings("unchecked")
-    public <T extends Entity> Acquirable<T> getAcquirable() {
-        return (Acquirable<T>) acquirable;
     }
 
     @ApiStatus.Experimental

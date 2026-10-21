@@ -62,16 +62,19 @@ public class ArgumentString extends Argument<String> {
         // Remove first and last characters (quotes)
         input = input.substring(1, input.length() - 1);
 
-        // Verify backslashes
-        for (int i = 1; i < input.length(); i++) {
+        // Quotes of the opening kind inside must be escaped, the closing quote must not be
+        boolean escaped = false;
+        for (int i = 0; i < input.length(); i++) {
             final char c = input.charAt(i);
-            if (c == first) {
-                final char lastChar = input.charAt(i - 1);
-                if (lastChar != BACKSLASH) {
-                    throw new ArgumentSyntaxException("Non-escaped quote", input, QUOTE_ERROR);
-                }
+            if (escaped) {
+                escaped = false;
+            } else if (c == BACKSLASH) {
+                escaped = true;
+            } else if (c == first) {
+                throw new ArgumentSyntaxException("Non-escaped quote", input, QUOTE_ERROR);
             }
         }
+        if (escaped) throw new ArgumentSyntaxException("Escaped closing quote", input, QUOTE_ERROR);
 
         return StringUtils.unescapeJavaString(input);
     }

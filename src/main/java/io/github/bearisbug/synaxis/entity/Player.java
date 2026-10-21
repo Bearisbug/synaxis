@@ -126,7 +126,6 @@ import io.github.bearisbug.synaxis.utils.async.AsyncUtils;
 import io.github.bearisbug.synaxis.instance.ChunkCache;
 import io.github.bearisbug.synaxis.instance.ChunkUpdateLimitChecker;
 import io.github.bearisbug.synaxis.utils.collection.ConcurrentMessageQueues;
-import io.github.bearisbug.synaxis.adventure.NamedAndIdentified;
 import io.github.bearisbug.synaxis.inventory.PlayerInventoryUtils;
 import io.github.bearisbug.synaxis.timer.Cooldown;
 import io.github.bearisbug.synaxis.timer.TimeUnit;
@@ -165,7 +164,7 @@ import java.util.function.UnaryOperator;
  * <p>
  * You can easily create your own implementation of this and use it with {@link ConnectionManager#setPlayerProvider(PlayerProvider)}.
  */
-public class Player extends LivingEntity implements CommandSender, HoverEventSource<ShowEntity>, NamedAndIdentified {
+public class Player extends LivingEntity implements CommandSender, HoverEventSource<ShowEntity> {
     private static final Component REMOVE_MESSAGE = Component.text("You have been removed from the server without reason.", NamedTextColor.RED);
     private static final Component MISSING_REQUIRED_RESOURCE_PACK = Component.text("Required resource pack was not loaded.", NamedTextColor.RED);
 
@@ -177,14 +176,20 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             .resolving(Identity.LOCALE, Player::getLocale)
             .build();
 
-    // This probably should be configurable (eg an instance field). However I(matt) am unclear
-    // on what it actually does so am holding off on adding API for this until I understand.
+    // The seaLevel field of the 26.2 PlayerSpawnInfo, always 63
     private static final int DEFAULT_SEA_LEVEL = 63;
+    // The isFlat field of PlayerSpawnInfo: the client draws the horizon at the bottom of the world, not at sea level
+    private static final boolean LEVEL_FLAT = true;
     // The view distances a client can ask for, see ClientSettings
     private static final int MIN_VIEW_DISTANCE = 2;
     private static final int MAX_VIEW_DISTANCE = 32;
     // How long a chunk batch waits for the write-locks of its chunks, all of them together, see #sendPendingChunks()
     private static final Duration CHUNK_LOCK_WAIT = Duration.ofMillis(1);
+    // The chunk batches of the vanilla ChunkSender: 9 chunks a tick until the client reports its rate, one batch
+    // ahead of the client's acknowledgements until it acknowledges the first one, then 10
+    private static final float INITIAL_CHUNKS_PER_TICK = 9f;
+    private static final int FIRST_BATCH_LEAD = 1;
+    private static final int MAX_BATCH_LEAD = 10;
 
     private volatile long lastKeepAlive;
     private volatile boolean answerKeepAlive;
@@ -216,8 +221,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     private WorldPos deathLocation;
 
     /**
-     * Keeps track of what chunks are sent to the client, this defines the center of the loaded area
-     * in the range of {@link ServerConfig#chunkViewDistance()}
+     * The center of the chunk ring: the chunk the client was last told about with {@link UpdateViewPositionPacket}
+     * (its coordinates in the x and z of the vector), the radius being {@link #effectiveViewDistance()}. The chunk
+     * update limiter can hold it behind the chunk the player is in.
      */
     private Vec chunksLoadedByClient = Vec.ZERO;
     private final ReentrantLock chunkQueueLock = new ReentrantLock();
@@ -226,12 +232,12 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     // a client changing its view distance back and forth would grow the queue without bound
     private final LongSet queuedChunks = new LongOpenHashSet();
     private boolean needsChunkPositionSync = true;
-    private float targetChunksPerTick = 9f; // Always send 9 chunks immediately
+    private float targetChunksPerTick = INITIAL_CHUNKS_PER_TICK;
     private float pendingChunkCount = 0f; // Number of chunks to send on the current tick (ie 0.5 means we cannot send a chunk yet, 1.5 would send a single chunk with a 0.5 remainder)
-    private int maxChunkBatchLead = 1; // Maximum number of batches to send before waiting for a reply
+    private int maxChunkBatchLead = FIRST_BATCH_LEAD; // Maximum number of batches to send before waiting for a reply
     private int chunkBatchLead = 0; // Number of batches sent without a reply
 
-    final ChunkRange.ChunkConsumer chunkAdder = (chunkX, chunkZ) -> {
+    private final ChunkRange.ChunkConsumer chunkAdder = (chunkX, chunkZ) -> {
         // Load new chunks. With auto chunk load off, a column outside the map comes back as an empty
         // future: there is nothing to send, and handing that null to sendChunk would only throw into a
         // future nobody keeps (REQ-M2-011)
@@ -239,7 +245,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             if (chunk != null) sendChunk(chunk);
         });
     };
-    final ChunkRange.ChunkConsumer chunkRemover = (chunkX, chunkZ) -> {
+    private final ChunkRange.ChunkConsumer chunkRemover = (chunkX, chunkZ) -> {
         // Unload old chunks
         sendPacket(new UnloadChunkPacket(chunkX, chunkZ));
         process().eventHandler().call(new PlayerChunkUnloadEvent(this, chunkX, chunkZ));
@@ -256,7 +262,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     private int receivedTeleportId;
 
     private final MessagePassingQueue<ClientPacket> packets;
-    private final boolean levelFlat;
     private volatile ClientSettings settings;
     // View distance the chunk ring sent to the client was computed from. A client may send a settings packet
     // every tick and each view distance change recomputes the whole ring, so this only catches up with
@@ -351,19 +356,25 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         this.gameMode = GameMode.SURVIVAL;
         this.dimensionTypeId = dimensionTypeRegistry.getId(DimensionType.OVERWORLD); // Default dimension
-        this.levelFlat = true;
 
-        // FakePlayer init its connection there
         playerConnectionInit();
 
         // When in configuration state no metadata updates can be sent.
         metadata.setNotifyAboutChanges(false);
     }
 
+    /**
+     * Records the spawn the configuration phase decided, which {@link #UNSAFE_init()} then carries out. Called on the
+     * configuration thread; the tick scheduler thread reads both fields after the client finished the configuration:
+     * {@code FinishConfigurationPacket} is written before the volatile server state turns to play,
+     * {@code LoginListener#finishConfigListener} checks that state before queuing the player for
+     * {@code ConnectionManager#playWaitingPlayers}, and that queue hands the player over.
+     *
+     * @param pendingInstance the instance to spawn in
+     * @param hardcore        whether the client shows the hardcore hearts
+     */
     @ApiStatus.Internal
     public void setPendingOptions(Instance pendingInstance, boolean hardcore) {
-        // I(mattw) am not a big fan of this function, but somehow we need to store
-        // the instance and i didn't like a record in ConnectionManager either.
         this.pendingInstance = pendingInstance;
         this.hardcore = hardcore;
     }
@@ -371,8 +382,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     /**
      * Gives up the spawn of a player that left before it spawned: the spawn the configuration phase
      * decided, which {@link #UNSAFE_init()} then never runs, or a first spawn that failed before the
-     * player was in any instance, whose entry in the tab list of the others it removes. Tick thread
-     * only, like {@link #UNSAFE_init()}.
+     * player was in any instance, whose entry in the tab list of the others it removes. Called by
+     * {@code ConnectionManager#updateWaitingPlayers} on the tick scheduler thread, like {@link #UNSAFE_init()}.
      *
      * @return true if the player is in no instance and never will be
      */
@@ -393,7 +404,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      * Used when the player is created.
      * Init the player and spawn him.
      * <p>
-     * WARNING: executed in the main update thread
+     * Called by {@code ConnectionManager#updateWaitingPlayers} on the tick scheduler thread, not on a tick thread of
+     * the player. A player back from a reconfiguration still belongs to the tick thread of its first spawn: it spawns
+     * holding the lock of that thread.
      * UNSAFE: Only meant to be used when a socket player connects through the server.
      *
      * @return the spawn; a failure before the player is in any instance completes it exceptionally
@@ -446,9 +459,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 getEntityId(), this.hardcore, List.of(), 0,
                 serverViewDistance, process().config().chunkViewDistance(),
                 false, true, false,
-                new PlayerSpawnInfo(dimensionTypeId, spawnInstance.getDimensionName(), 0,
-                        gameMode, null, false, levelFlat,
-                        deathLocation, portalCooldown, DEFAULT_SEA_LEVEL),
+                spawnInfo(spawnInstance.getDimensionName(), null),
                 // Online mode stays on so the client shows tablist heads. Secure chat is off: chat is
                 // relayed as system messages, never as signed player chat (docs/DESIGN-PROD.md ADR-PROD-009).
                 true, false);
@@ -488,7 +499,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         PlayerSkinInitEvent skinInitEvent = new PlayerSkinInitEvent(this, profileSkin);
         process().eventHandler().call(skinInitEvent);
         this.skin = skinInitEvent.getSkin();
-        // FIXME: when using Geyser, this line remove the skin of the client
         broadcastTabListEntry(EnumSet.allOf(PlayerInfoUpdatePacket.Action.class));
 
         // Everyone already online, in one packet rather than one per player (docs/DESIGN-PROD.md API-PROD-020)
@@ -534,11 +544,11 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
-     * Used to initialize the player connection
+     * Binds the player connection to this player. Called by the {@link Player} constructor, before the fields of a
+     * subclass are initialized; an override must call {@code super.playerConnectionInit()}.
      */
     protected void playerConnectionInit() {
-        PlayerConnection connection = playerConnection;
-        if (connection != null) connection.setPlayer(this);
+        playerConnection.setPlayer(this);
     }
 
     @Override
@@ -580,7 +590,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                     });
         }
 
-        // Eating animation
+        // Finish the item use once its duration has passed
         if (isUsingItem()) {
             final PlayerHand itemUseHand = this.itemUseHand;
             if (itemUseTime > 0 && getCurrentItemUseTime() >= itemUseTime) {
@@ -618,6 +628,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      * listener of {@link io.github.bearisbug.synaxis.event.entity.EntityDeathEvent} healing the player
      * back cancels the death, and then none of them is sent. See {@link LivingEntity#kill()} for what
      * such a cancelled death does not undo.
+     * <p>
+     * Both come from the last damage, or, for a player killed without any, are the vanilla generic death
+     * message {@code death.attack.generic}. The death message goes to every player of the instance the player
+     * died in, the dead one included; {@link PlayerDeathEvent} changes them.
      */
     @Override
     public void kill() {
@@ -625,23 +639,13 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         Component deathText = null;
         Component chatMessage = null;
         if (wasAlive) {
-
-            // get death screen text to the killed player
-            {
-                if (lastDamage != null) {
-                    deathText = lastDamage.buildDeathScreenText(this);
-                } else { // may happen if killed by the server without applying damage
-                    deathText = Component.text("Killed by poor programming.");
-                }
-            }
-
-            // get death message to chat
-            {
-                if (lastDamage != null) {
-                    chatMessage = lastDamage.buildDeathMessage(this);
-                } else { // may happen if killed by the server without applying damage
-                    chatMessage = Component.text(getUsername() + " was killed by poor programming.");
-                }
+            if (lastDamage != null) {
+                deathText = lastDamage.buildDeathScreenText(this);
+                chatMessage = lastDamage.buildDeathMessage(this);
+            } else {
+                // Killed by the server without applying damage
+                deathText = Component.translatable("death.attack.generic", Component.text(getUsername()));
+                chatMessage = deathText;
             }
 
             // Call player death event
@@ -661,9 +665,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         }
 
         // #buildDeathMessage can return null, check here
-        if (chatMessage != null) {
-            process().audiences().players().sendMessage(chatMessage);
-        }
+        final Instance instance = getInstance();
+        if (chatMessage != null && instance != null) instance.sendMessage(chatMessage);
 
         // Set death location
         if (getInstance() != null)
@@ -686,9 +689,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         resetFire();
         refreshHealth();
 
-        sendPacket(new RespawnPacket(new PlayerSpawnInfo(dimensionTypeId, instance.getDimensionName(),
-                0, gameMode, gameMode, false, levelFlat,
-                deathLocation, portalCooldown, DEFAULT_SEA_LEVEL), (byte) RespawnPacket.COPY_ALL));
+        sendPacket(new RespawnPacket(spawnInfo(instance.getDimensionName(), gameMode), (byte) RespawnPacket.COPY_ALL));
         refreshClientStateAfterRespawn();
 
         PlayerRespawnEvent respawnEvent = new PlayerRespawnEvent(this);
@@ -713,8 +714,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                         if (entity.hasPassenger()) sendPacket(entity.getPassengersPacket());
                     }
                 });
-        // Waiting here would deadlock: respawn() runs on the player tick thread, while the teleport
-        // continuation needs that very thread to own the player before it can run.
+        // Not joined: respawn() runs on the thread owning the player, where joining a teleport that still waits for
+        // its chunk throws IllegalStateException, the continuation needing this very thread to own the player
         var _ = teleport(respawnPosition).thenRun(() -> runOwned(this::refreshAfterTeleport));
     }
 
@@ -742,11 +743,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      */
     public void refreshCommands() {
         sendPacket(process().command().createDeclareCommandsPacket(this));
-    }
-
-    @Override
-    public boolean isOnGround() {
-        return onGround;
     }
 
     @Override
@@ -841,9 +837,14 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         resetChunkQueue();
 
-        // Ensure that surrounding chunks are loaded
+        // Ensure that surrounding chunks are loaded. The ring holds view tickets until the change is over, whatever
+        // its outcome: a chunk loaded long before the rest is not unloaded meanwhile, the player not being there yet
+        // to keep it. The spawn takes the tickets of the ring itself before these go
+        final int ringRadius = effectiveViewDistance(instance);
+        final long[] preload = ringChunks(spawnPosition.chunkX(), spawnPosition.chunkZ(), ringRadius, false, 0, 0, 0);
+        instance.addViewTickets(preload);
         List<CompletableFuture<Chunk>> futures = new ArrayList<>();
-        ChunkRange.chunksInRange(spawnPosition, effectiveViewDistance(instance), (chunkX, chunkZ) -> {
+        ChunkRange.chunksInRange(spawnPosition, ringRadius, (chunkX, chunkZ) -> {
             final CompletableFuture<Chunk> future = instance.loadOptionalChunk(chunkX, chunkZ);
             if (!future.isDone()) futures.add(future);
         });
@@ -855,6 +856,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 // The caller decides what to do with a failed spawn, throwing here would instead
                 // hand it to whoever is draining the queue of players waiting to join
                 return CompletableFuture.failedFuture(e);
+            } finally {
+                instance.removeViewTickets(preload);
             }
             return AsyncUtils.VOID_FUTURE;
         }
@@ -888,19 +891,23 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                     final AtomicBoolean claimed = new AtomicBoolean();
                     final Runnable land = () -> {
                         if (!claimed.compareAndSet(false, true)) return;
-                        if (throwable != null) {
-                            future.completeExceptionally(throwable);
-                            return;
-                        }
                         try {
-                            runnable.accept(instance);
-                        } catch (RuntimeException e) {
-                            // A spawn failing here would otherwise escape into the scheduler and
-                            // leave the future, and everyone joining it, waiting forever
-                            future.completeExceptionally(e);
-                            return;
+                            if (throwable != null) {
+                                future.completeExceptionally(throwable);
+                                return;
+                            }
+                            try {
+                                runnable.accept(instance);
+                            } catch (RuntimeException e) {
+                                // A spawn failing here would otherwise escape into the scheduler and
+                                // leave the future, and everyone joining it, waiting forever
+                                future.completeExceptionally(e);
+                                return;
+                            }
+                            future.complete(null);
+                        } finally {
+                            instance.removeViewTickets(preload);
                         }
-                        future.complete(null);
                     };
                     continuation.set(land);
                     // A failing chunk must still release the latch, otherwise a caller joining from
@@ -932,8 +939,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      * <p>
      * UNSAFE: only called with {@link #setInstance(Instance, Pos)}.
      *
-     * @param spawnPosition the position to teleport the player
-     * @param firstSpawn    true if this is the player first spawn
+     * @param spawnPosition   the position to teleport the player
+     * @param firstSpawn      true if this is the player first spawn
+     * @param dimensionChange true when the new instance has another dimension than the current one; never true
+     *                        together with {@code firstSpawn}
      */
     private void spawnPlayer(Instance instance, Pos spawnPosition,
                              boolean firstSpawn, boolean dimensionChange) {
@@ -979,9 +988,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         final CompletableFuture<Void> spawn = setInstanceAdmitted(instance, spawnPosition);
         // This is only reached once #setInstance has awaited the whole view distance range, spawn
-        // chunk included, so the continuation of setInstanceAdmitted already ran on this very thread
-        // and the future is settled. Reading it back is what surfaces a failed registration, which
-        // dropping the future used to hide (the player stayed in the world, untracked)
+        // chunk included, which held view tickets meanwhile so that none of it was unloaded: the
+        // continuation of setInstanceAdmitted already ran on this very thread and the future is settled.
+        // Reading it back is what surfaces a failed registration, which dropping the future used to hide
+        // (the player stayed in the world, untracked)
         spawn.getNow(null);
 
         final int chunkX = spawnPosition.chunkX();
@@ -1020,15 +1030,13 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     @ApiStatus.Internal
     public void onChunkBatchReceived(float newTargetChunksPerTick) {
-//        logger.debug("chunk batch received player={} chunks/tick={} lead={}", username, newTargetChunksPerTick, chunkBatchLead);
         chunkBatchLead = Math.max(0, chunkBatchLead - 1);
         final ServerConfig config = process().config();
         newTargetChunksPerTick = newTargetChunksPerTick * config.chunksPerTickMultiplier();
-        targetChunksPerTick = Float.isNaN(newTargetChunksPerTick) ? config.minChunksPerTick() : MathUtils.clamp(
+        targetChunksPerTick = Float.isNaN(newTargetChunksPerTick) ? config.minChunksPerTick() : Math.clamp(
                 newTargetChunksPerTick, config.minChunksPerTick(), config.maxChunksPerTick());
 
-        // Beyond the first batch we can preemptively send up to 10 (matching mojang server)
-        if (maxChunkBatchLead == 1) maxChunkBatchLead = 10;
+        if (maxChunkBatchLead == FIRST_BATCH_LEAD) maxChunkBatchLead = MAX_BATCH_LEAD;
     }
 
     /**
@@ -1111,7 +1119,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             }
             sendPacket(new ChunkBatchFinishedPacket(batchSize));
             chunkBatchLead += 1;
-//            logger.debug("chunk batch sent player={} chunks={} lead={}", username, batchSize, chunkBatchLead);
 
             // After sending the first chunk we always send a synchronize position to the client. This is to prevent
             // cases where the client falls through the floor slightly while loading the first chunk.
@@ -1244,7 +1251,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             chunkQueue.clear();
             queuedChunks.clear();
             needsChunkPositionSync = true;
-            targetChunksPerTick = 9f;
+            targetChunksPerTick = INITIAL_CHUNKS_PER_TICK;
             pendingChunkCount = 0f;
         } finally {
             chunkQueueLock.unlock();
@@ -1262,9 +1269,11 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             return;
         }
 
-        // Figure out their expected state
+        // Figure out their expected state. Out of any instance there are no blocks: no water, nothing to fit between
+        final Instance instance = this.instance;
+        final Block.Getter getter = instance != null ? new ChunkCache(instance, getChunk(), Block.AIR) : null;
         var meta = getEntityMeta();
-        meta.setSwimming(shouldSwim(meta.isSwimming()));
+        meta.setSwimming(getter != null && shouldSwim(getter, meta.isSwimming()));
         if (meta.isFlyingWithElytra()) {
             newPose = EntityPose.FALL_FLYING;
         } else if (meta instanceof LivingEntityMeta livingMeta && livingMeta.getBedInWhichSleepingPosition() != null) {
@@ -1280,11 +1289,11 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         }
 
         // Try to put them in their expected state, or the closest if they don't fit.
-        if (canFitWithBoundingBox(newPose)) {
+        if (getter == null || canFitWithBoundingBox(getter, newPose)) {
             // Use expected state
-        } else if (canFitWithBoundingBox(EntityPose.SNEAKING)) {
+        } else if (canFitWithBoundingBox(getter, EntityPose.SNEAKING)) {
             newPose = EntityPose.SNEAKING;
-        } else if (canFitWithBoundingBox(EntityPose.SWIMMING)) {
+        } else if (canFitWithBoundingBox(getter, EntityPose.SWIMMING)) {
             newPose = EntityPose.SWIMMING;
         } else {
             // If they can't fit anywhere, just use standing
@@ -1295,18 +1304,15 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
-     * Nothing else in the server ever calls {@code setSwimming}, so the swimming pose was unreachable.
-     * Vanilla starts swimming when sprinting with the eyes submerged and keeps it while the body still
-     * touches water.
+     * Whether the player swims, as in vanilla: it starts swimming when sprinting with the eyes submerged and keeps
+     * it while the body still touches water.
      *
+     * @param getter   the blocks of the instance of the player, air in a chunk that is not loaded
      * @param swimming whether the player is currently swimming
      * @return whether the player should be swimming
      */
-    private boolean shouldSwim(boolean swimming) {
-        final Instance instance = this.instance;
-        if (instance == null) return false;
+    private boolean shouldSwim(Block.Getter getter, boolean swimming) {
         if (!isSprinting() || getVehicle() != null || isFlying() || getGameMode() == GameMode.SPECTATOR) return false;
-        final Block.Getter getter = new ChunkCache(instance, getChunk(), Block.AIR);
         final Pos position = getPosition();
         if (!swimming) {
             // Starting to swim additionally requires the eyes to be submerged
@@ -1330,25 +1336,17 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     /**
      * Returns true if the player can fit at the current position with the given {@link EntityPose}, false otherwise.
      *
-     * @param pose The pose to check
+     * @param getter the blocks of the instance of the player, air in a chunk that is not loaded
+     * @param pose   The pose to check
      */
-    private boolean canFitWithBoundingBox(EntityPose pose) {
+    private boolean canFitWithBoundingBox(Block.Getter getter, EntityPose pose) {
         BoundingBox bb = pose == EntityPose.STANDING ? boundingBox : BoundingBox.fromPose(pose);
-        if (bb == null) return false;
 
         var position = getPosition();
-        var iter = bb.getBlocks(getPosition());
+        var iter = bb.getBlocks(position);
         while (iter.hasNext()) {
             var pos = iter.next();
-            Block block;
-            try {
-                block = instance.getBlock(pos.blockX(), pos.blockY(), pos.blockZ(), Block.Getter.Condition.TYPE);
-            } catch (NullPointerException _) {
-                block = null;
-            }
-
-            // Block was in unloaded chunk, no bounding box.
-            if (block == null) continue;
+            final Block block = getter.getBlock(pos.blockX(), pos.blockY(), pos.blockZ(), Block.Getter.Condition.TYPE);
 
             // For now just ignore scaffolding. It seems to have a dynamic bounding box, or is just parsed
             // incorrectly in the generated block data.
@@ -1748,10 +1746,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         final PlayerInfoRemovePacket removePlayerPacket = getRemovePlayerToList();
         final PlayerInfoUpdatePacket addPlayerPacket = getAddPlayerToList();
 
-        final RespawnPacket respawnPacket = new RespawnPacket(new PlayerSpawnInfo(dimensionTypeId,
-                instance.getDimensionName(), 0, gameMode, gameMode,
-                false, levelFlat, deathLocation, portalCooldown,
-                DEFAULT_SEA_LEVEL), (byte) RespawnPacket.COPY_ALL);
+        final RespawnPacket respawnPacket = new RespawnPacket(spawnInfo(instance.getDimensionName(), gameMode),
+                (byte) RespawnPacket.COPY_ALL);
 
         sendPacket(removePlayerPacket);
         sendPacket(destroyEntitiesPacket);
@@ -1770,9 +1766,17 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         }
 
         getInventory().update();
+        // The target is the current position: the teleport completes on this thread and the join returns at once. A
+        // teleport whose chunk may not be loaded yet is never joined on the thread owning the player, see #respawn()
         teleport(getPosition()).join();
     }
 
+    /**
+     * Sets the death location in the dimension of the instance of the player.
+     *
+     * @param position the death location
+     * @throws NullPointerException if the player is in no instance, use {@link #setDeathLocation(String, Pos)}
+     */
     public void setDeathLocation(Pos position) {
         setDeathLocation(getInstance().getDimensionName(), position);
     }
@@ -1813,7 +1817,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      *
      * @return the name
      */
-    @Override
     public Component getName() {
         return Objects.requireNonNullElse(displayName, usernameComponent);
     }
@@ -1842,33 +1845,67 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         return !itemDropEvent.isCancelled();
     }
 
+    /**
+     * Pushes resource packs to the client. A replacing request takes back the packs sent before and keeps
+     * {@link #getResourcePackFuture()}: whoever waits for the packs waits for the new ones. The client state of a pack
+     * the server took back calls no callback and kicks nobody.
+     */
     @Override
     public void sendResourcePacks(ResourcePackRequest request) {
-        if (request.replace()) clearResourcePacks();
-
-        for (final ResourcePackInfo pack : request.packs()) {
-            synchronized (resourcePackLock) {
-                // Registered before the push, the client answer can be interpreted before it returns
+        synchronized (resourcePackLock) {
+            // The packs replaced go in the same step: the future does not complete between the two
+            if (request.replace()) pendingResourcePacks.clear();
+            // Registered before the push, the client answer can be interpreted before it returns
+            for (final ResourcePackInfo pack : request.packs())
                 pendingResourcePacks.put(pack.id(), new PendingResourcePack(request.required(), request.callback()));
-                if (resourcePackFuture == null) {
-                    resourcePackFuture = new CompletableFuture<>();
-                }
-            }
-            sendPacket(new ResourcePackPushPacket(pack, request.required(), request.prompt()));
+            if (resourcePackFuture == null && !pendingResourcePacks.isEmpty())
+                resourcePackFuture = new CompletableFuture<>();
         }
+        if (request.replace()) sendPacket(new ResourcePackPopPacket(null));
+        for (final ResourcePackInfo pack : request.packs())
+            sendPacket(new ResourcePackPushPacket(pack, request.required(), request.prompt()));
+        finishIfIdle();
     }
 
+    /**
+     * Takes resource packs back from the client. Their client state calls no callback and kicks nobody, and
+     * {@link #getResourcePackFuture()} completes when no other pack is in-flight.
+     */
     @Override
     public void removeResourcePacks(UUID id, UUID... others) {
+        synchronized (resourcePackLock) {
+            pendingResourcePacks.remove(id);
+            for (var other : others) pendingResourcePacks.remove(other);
+        }
         sendPacket(new ResourcePackPopPacket(id));
         for (var other : others) {
             sendPacket(new ResourcePackPopPacket(other));
         }
+        finishIfIdle();
     }
 
+    /**
+     * Takes every resource pack back from the client. Their client state calls no callback and kicks nobody, and
+     * {@link #getResourcePackFuture()} completes.
+     */
     @Override
     public void clearResourcePacks() {
+        synchronized (resourcePackLock) {
+            pendingResourcePacks.clear();
+        }
         sendPacket(new ResourcePackPopPacket(null));
+        finishIfIdle();
+    }
+
+    /** Completes {@link #getResourcePackFuture()} once no pack is in-flight any more. */
+    private void finishIfIdle() {
+        final CompletableFuture<Void> future;
+        synchronized (resourcePackLock) {
+            if (!pendingResourcePacks.isEmpty()) return;
+            future = resourcePackFuture;
+            resourcePackFuture = null;
+        }
+        if (future != null) future.complete(null);
     }
 
     /**
@@ -1915,14 +1952,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         }
 
         // Remove the callback and finish the future if relevant
-        final CompletableFuture<Void> future;
         synchronized (resourcePackLock) {
             pendingResourcePacks.remove(id);
-            if (!pendingResourcePacks.isEmpty()) return;
-            future = resourcePackFuture;
-            resourcePackFuture = null;
         }
-        if (future != null) future.complete(null);
+        finishIfIdle();
     }
 
     /**
@@ -2132,11 +2165,15 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
-     * Changes the player settings internally.
+     * Replaces the client settings the server keeps for this player; the client is not told its settings changed.
      * <p>
-     * WARNING: the player will not be noticed by this change, probably unsafe.
-     * <p>
-     * A new view distance takes effect on the next player tick, everything else takes effect immediately.
+     * In the play state, once the player is in an instance, the displayed skin parts and the main hand go out in one
+     * metadata update to the viewers and to the player itself. A new view distance takes effect on the next player
+     * tick, or at the spawn for a player that has not spawned yet. The engine calls this from the packet queue of
+     * the player: in the play state on the tick thread owning the player, in the configuration phase on the tick
+     * scheduler thread ({@code ConnectionManager#tick} empties the queues of the players in configuration).
+     *
+     * @param settings the new settings
      */
     public void refreshSettings(ClientSettings settings) {
         this.settings = settings;
@@ -2249,10 +2286,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
-     * Used to get the player latency,
-     * computed by seeing how long it takes the client to answer the {@link KeepAlivePacket} packet.
+     * Gets the round trip of the last {@link KeepAlivePacket} the client answered.
      *
-     * @return the player latency
+     * @return the latency in milliseconds, 0 until the client answers the first keep-alive
      */
     public int getLatency() {
         return latency;
@@ -2327,10 +2363,19 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         Check.argCondition(instance.getDimensionName().equals(dimensionName),
                 "The dimension needs to be different than the current one!");
         this.dimensionTypeId = dimensionTypeRegistry.getId(dimensionType);
-        sendPacket(new RespawnPacket(new PlayerSpawnInfo(dimensionTypeId, dimensionName,
-                0, gameMode, gameMode, false, levelFlat,
-                deathLocation, portalCooldown, DEFAULT_SEA_LEVEL), (byte) RespawnPacket.COPY_ALL));
+        sendPacket(new RespawnPacket(spawnInfo(dimensionName, gameMode), (byte) RespawnPacket.COPY_ALL));
         refreshClientStateAfterRespawn();
+    }
+
+    /**
+     * The spawn info of the {@link JoinGamePacket} and {@link RespawnPacket}s, in the dimension of
+     * {@link #dimensionTypeId}.
+     *
+     * @param previousGameMode the game mode the client had, null on a join
+     */
+    private PlayerSpawnInfo spawnInfo(String dimensionName, @Nullable GameMode previousGameMode) {
+        return new PlayerSpawnInfo(dimensionTypeId, dimensionName, 0, gameMode, previousGameMode, false, LEVEL_FLAT,
+                deathLocation, portalCooldown, DEFAULT_SEA_LEVEL);
     }
 
     /**
@@ -2477,19 +2522,23 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
-     * Used internally to determine when sending the close inventory packet should be skipped.
+     * Used internally while an inventory closes: true when the server closes it itself ({@code fromClient} false in
+     * {@link #closeInventory(boolean, byte)}), the client is then sent a close packet by
+     * {@link AbstractInventory#removeViewer(Player)}. A client that closed the inventory itself is not.
+     *
+     * @return true if the inventory being closed was closed by the server
      */
     public boolean didCloseInventory() {
         return didCloseInventory;
     }
 
     /**
-     * Used internally to reset the skipClosePacket field, which determines when sending the close inventory packet
-     * should be skipped.
+     * Used internally to set {@link #didCloseInventory()}, which decides whether a closing inventory sends the client a
+     * close packet.
      * <p>
      * Shouldn't be used externally without proper understanding of its consequence.
      *
-     * @param didCloseInventory the new didCloseInventory field
+     * @param didCloseInventory true if the server closes the inventory
      */
     @ApiStatus.Internal
     public void UNSAFE_changeDidCloseInventory(boolean didCloseInventory) {
@@ -2539,6 +2588,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      */
     @Override
     public void setView(float yaw, float pitch) {
+        // The target is the current position: the teleport completes on this thread and the join returns at once. A
+        // teleport whose chunk may not be loaded yet is never joined on the thread owning the player, see #respawn()
         teleport(new Pos(0, 0, 0, yaw, pitch), null, RelativeFlags.COORD).join();
     }
 
@@ -2846,9 +2897,12 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     /**
      * Used to change internally the last sent last keep alive id.
      * <p>
-     * Warning: could lead to have the player kicked because of a wrong keep alive packet.
+     * The id is the {@link System#nanoTime()} the keep-alive was sent at: the connection manager reads it to pace
+     * the keep-alives and to kick a player that does not answer in time, the keep-alive listener to work out
+     * {@link #getLatency()}. A value that is not such a time breaks both, and a wrong one gets the player kicked for
+     * a bad keep-alive answer.
      *
-     * @param lastKeepAlive the new lastKeepAlive id
+     * @param lastKeepAlive the new lastKeepAlive id, the {@link System#nanoTime()} it was sent at
      */
     public void refreshKeepAlive(long lastKeepAlive) {
         this.lastKeepAlive = lastKeepAlive;
@@ -2910,7 +2964,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
-     * Gets the last sent keep alive id.
+     * Gets the last sent keep alive id, the {@link System#nanoTime()} it was sent at, see
+     * {@link #refreshKeepAlive(long)}.
      *
      * @return the last keep alive id sent to the player
      */
@@ -3015,6 +3070,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     /**
      * Sets the player's locale. This will only set the locale of the player as it
      * is stored in the server. This will also be reset if the settings are refreshed.
+     * Called on the same threads as {@link #refreshSettings(ClientSettings)}.
      *
      * @param locale the new locale
      */
@@ -3075,8 +3131,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         FEET,
         EYE
     }
-
-    // Settings enum
 
     private int compareChunkDistance(long chunkIndexA, long chunkIndexB) {
         int chunkAX = CoordConversion.chunkIndexGetX(chunkIndexA);

@@ -4,22 +4,35 @@ import io.github.bearisbug.synaxis.command.ArgumentParserType;
 import io.github.bearisbug.synaxis.command.CommandSender;
 import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException;
 import io.github.bearisbug.synaxis.utils.StringUtils;
+import io.github.bearisbug.synaxis.utils.validate.Check;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Repeats its arguments until the input runs out, so it takes the rest of the input and must be the last argument of
+ * a syntax.
+ *
+ * @param <T> the type of each item of the loop
+ */
 public class ArgumentLoop<T> extends Argument<List<T>> {
 
     public static final int INVALID_INPUT_ERROR = 1;
 
-    private final List<Argument<T>> arguments = new ArrayList<>();
+    private final List<Argument<T>> arguments;
 
+    /**
+     * @param id        the id of the argument
+     * @param arguments the arguments each item of the loop is one of
+     * @throws IllegalArgumentException if {@code arguments} is empty
+     */
     @SafeVarargs
     @SuppressWarnings("varargs")
     public ArgumentLoop(String id, Argument<T>... arguments) {
         super(id, true, true);
-        this.arguments.addAll(Arrays.asList(arguments));
+        Check.argCondition(arguments.length == 0, "ArgumentLoop '" + id + "' needs at least one argument");
+        this.arguments = List.of(arguments);
     }
 
     @Override
@@ -57,12 +70,17 @@ public class ArgumentLoop<T> extends Argument<List<T>> {
         return result;
     }
 
+    /**
+     * Gets the arguments each item of the loop is one of.
+     *
+     * @return the arguments, unmodifiable
+     */
     public List<Argument<T>> arguments() {
         return arguments;
     }
 
     @Override
-    public ArgumentParserType parser() {
+    public @Nullable ArgumentParserType parser() {
         return null;
     }
 }

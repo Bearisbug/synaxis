@@ -102,6 +102,12 @@ public final class Metadata {
         return VILLAGER_DATA.entry(data);
     }
 
+    /**
+     * An optional VarInt entry, written as {@code NetworkBuffer.OPTIONAL_VAR_INT}.
+     *
+     * @param value the value; null and -1 both mean absent and read back as null
+     * @return the entry
+     */
     public static Entry<@Nullable Integer> OptVarInt(@Nullable Integer value) {
         return OPT_VAR_INT.entry(value);
     }

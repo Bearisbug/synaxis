@@ -27,13 +27,13 @@ import java.util.function.Supplier;
  * reclaimed in response to memory pressure. The value is recomputed when the
  * reference has been cleared or when {@link #invalidate()} is called.
  *
- * <p>When caching is enabled, cache computation is serialized so that only one
- * thread invokes the packet supplier and computes a replacement value at a
- * time. Cache reads and publication use acquire and release memory semantics.
+ * <p>When caching is enabled, filling the cache is serialized: {@link #body}
+ * computes a replacement value on one thread at a time. Cache reads and
+ * publication use acquire and release memory semantics.
  *
- * <p>When caching is disabled, calls to {@link #packet()} invoke
- * the packet supplier directly. The supplier must therefore be thread safe if
- * this object may be accessed concurrently while caching is disabled.
+ * <p>The supplier may be invoked concurrently all the same and must be thread
+ * safe: {@link #packet()} invokes it directly whenever no value is cached,
+ * whether caching is enabled or not, outside of that serialization.
  *
  * <p>The supplied packet and its serialized representation must remain valid
  * for the {@link ConnectionState} used to populate the cache. A
@@ -61,15 +61,15 @@ public final class CachedPacket implements SendablePacket {
     }
 
     /**
-     * Wraps a packet meant for several players into a cached packet, unless caching is disabled or the
-     * packet holds components that have to be translated per player.
+     * Wraps a packet meant for several players into a cached packet, unless {@code synaxis.grouped-packet} or
+     * {@code synaxis.cached-packet} is off, or the packet holds components that have to be translated per player.
      * <p>
      * Note: {@link ServerPacket.ComponentHolding}s are not translated inside a {@code CachedPacket}.
      *
      * @see #body(ConnectionState, Registries, int)
      */
     public static SendablePacket grouped(ServerPacket packet) {
-        return JvmFlags.GROUPED_PACKET && shouldCache(packet) ? new CachedPacket(packet) : packet;
+        return JvmFlags.GROUPED_PACKET && JvmFlags.CACHED_PACKET && shouldCache(packet) ? new CachedPacket(packet) : packet;
     }
 
     private static boolean shouldCache(ServerPacket packet) {
@@ -115,9 +115,9 @@ public final class CachedPacket implements SendablePacket {
      * It may therefore be invoked multiple times over the lifetime of this
      * object.
      *
-     * <p>When caching is enabled, supplier invocation is serialized. When
-     * caching is disabled, the supplier may be invoked concurrently and must be
-     * thread safe if this object is accessed by multiple threads.
+     * <p>The supplier may be invoked concurrently and must be thread safe: only
+     * filling the cache through {@link #body} is serialized, {@link #packet()}
+     * invokes it directly whenever no value is cached.
      *
      * @param packetSupplier the packet supplier
      * @throws NullPointerException if {@code packetSupplier} is {@code null}

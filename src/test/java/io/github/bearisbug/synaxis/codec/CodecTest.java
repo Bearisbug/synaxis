@@ -1,9 +1,13 @@
 package io.github.bearisbug.synaxis.codec;
 
+import com.google.gson.JsonParser;
+import net.kyori.adventure.nbt.BinaryTag;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.nbt.ListBinaryTag;
 import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import io.github.bearisbug.synaxis.utils.Unit;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -16,8 +20,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 
+import static io.github.bearisbug.synaxis.codec.CodecAssertions.assertError;
 import static net.kyori.adventure.nbt.IntBinaryTag.intBinaryTag;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,10 +48,101 @@ public final class CodecTest {
      */
     @Test
     public void collectionEncodeOverMaxSizeIsAnError() {
-        Assertions.assertInstanceOf(Result.Error.class,
+        assertError("List size 2 exceeds maximum allowed size 1",
                 Codec.STRING.list(1).encode(Transcoder.NBT, List.of("a", "b")));
-        Assertions.assertInstanceOf(Result.Error.class,
+        assertError("Set size 2 exceeds maximum allowed size 1",
                 Codec.STRING.set(1).encode(Transcoder.NBT, Set.of("a", "b")));
+        assertError("Map size 2 exceeds maximum allowed size 1",
+                Codec.STRING.mapValue(Codec.STRING, 1).encode(Transcoder.NBT, Map.of("a", "b", "c", "d")));
+    }
+
+    /**
+     * An oversized input names its own size next to the limit, so a rejected client payload shows how far over it
+     * was.
+     */
+    @Test
+    public void collectionDecodeOverMaxSizeNamesTheSize() {
+        assertError("List size 2 exceeds maximum allowed size 1",
+                Codec.STRING.list(1).decode(Transcoder.JAVA, List.of("a", "b")));
+        assertError("Set size 2 exceeds maximum allowed size 1",
+                Codec.STRING.set(1).decode(Transcoder.JAVA, List.of("a", "b")));
+        assertError("Map size 2 exceeds maximum allowed size 1",
+                Codec.STRING.mapValue(Codec.STRING, 1).decode(Transcoder.JAVA, Map.of("a", "b", "c", "d")));
+    }
+
+    /**
+     * An element that does not decode names its index, and a map key that does not decode names the key, the way a
+     * map value already did. Without it a long list only says what was wrong, not where.
+     */
+    @Test
+    public void elementDecodeErrorNamesItsPosition() {
+        assertError("1: Not a string: 1", Codec.STRING.list().decode(Transcoder.JAVA, List.of("a", 1)));
+        assertError("1: Not a string: 1", Codec.STRING.set().decode(Transcoder.JAVA, List.of("a", 1)));
+        assertError("k: Not an int: k", Codec.INT.mapValue(Codec.STRING).decode(Transcoder.JAVA, Map.of("k", "v")));
+    }
+
+    /**
+     * An optional value decodes an explicit null to null, and a key codec may map a name it does not know to null.
+     * {@code Map.copyOf} threw {@link NullPointerException} out of decode for both, past orElse and Either; the cached
+     * typed map threw even earlier, from {@code computeIfAbsent(null)}.
+     */
+    @Test
+    public void mapDecodeSkipsNullValuesAndRejectsNullKeys() {
+        final Codec<Map<String, Integer>> optionalValues = Codec.STRING.mapValue(Codec.INT.optional());
+        assertEquals(Map.of("b", 1), CodecAssertions.assertOk(Assertions.assertDoesNotThrow(() ->
+                optionalValues.decode(Transcoder.JSON, JsonParser.parseString("{\"a\": null, \"b\": 1}")))));
+
+        final Codec<String> knownNames = Codec.STRING.transform(Map.of("a", "a")::get, name -> name);
+        final List<Codec<Map<String, Integer>>> codecs = List.of(knownNames.mapValue(Codec.INT),
+                knownNames.<Integer>mapValueTyped(_ -> Codec.INT, true));
+        for (Codec<Map<String, Integer>> codec : codecs) {
+            assertError("x: map key decoded to null", Assertions.assertDoesNotThrow(() ->
+                    codec.decode(Transcoder.JSON, JsonParser.parseString("{\"x\": 1}"))));
+        }
+    }
+
+    /**
+     * A UUID is exactly four ints. Five used to decode by dropping the last one, two failed with an index error; the
+     * coerced codec reports the int array error when the string form does not decode either.
+     */
+    @Test
+    public void uuidRejectsAnIntArrayOfAnotherLength() {
+        for (int[] array : List.of(new int[]{1, 2}, new int[]{1, 2, 3, 4, 5})) {
+            for (Codec<UUID> codec : List.of(Codec.UUID, Codec.UUID_COERCED)) {
+                final String message = Assertions.assertInstanceOf(Result.Error.class,
+                        codec.decode(Transcoder.NBT, Transcoder.NBT.createIntArray(array))).message();
+                assertTrue(message.contains("4 entries, got " + array.length), message);
+            }
+        }
+        final UUID uuid = new UUID(0x0102030405060708L, 0x090A0B0C0D0E0F10L);
+        assertEquals(uuid, CodecAssertions.assertOk(Codec.UUID.decode(Transcoder.NBT,
+                CodecAssertions.assertOk(Codec.UUID.encode(Transcoder.NBT, uuid)))));
+    }
+
+    /** When neither side decodes, both messages are reported as they are, not as the toString of the results. */
+    @Test
+    public void eitherReportsTheMessagesOfBothSides() {
+        assertError("Failed to decode Either: left: Not an int: x; right: Not a boolean: x",
+                Codec.Either(Codec.INT, Codec.BOOLEAN).decode(Transcoder.JAVA, "x"));
+        final StructCodec<Integer> left = StructCodec.struct("a", Codec.INT, value -> value, value -> value);
+        final StructCodec<Integer> right = StructCodec.struct("b", Codec.INT, value -> value, value -> value);
+        assertError("Failed to decode Either: left: a: No such key: a; right: b: No such key: b",
+                Codec.EitherStruct(left, right).decode(Transcoder.JAVA, Map.of()));
+    }
+
+    @Test
+    public void unitIsAnEmptyMap() {
+        final BinaryTag encoded = CodecAssertions.assertOk(Codec.UNIT.encode(Transcoder.NBT, Unit.INSTANCE));
+        assertEquals(CompoundBinaryTag.empty(), encoded);
+        assertEquals(Unit.INSTANCE, CodecAssertions.assertOk(Codec.UNIT.decode(Transcoder.NBT, encoded)));
+    }
+
+    /** The mapped fallback of orElse only decodes; a value the primary codec cannot encode keeps the primary error. */
+    @Test
+    public void orElseWithAMapperEncodesWithThePrimaryOnly() {
+        final Codec<Integer> codec = Codec.INT.orElse(Codec.STRING, Integer::parseInt);
+        assertEquals(12, CodecAssertions.assertOk(codec.decode(Transcoder.NBT, Transcoder.NBT.createString("12"))));
+        assertError("null", codec.encode(Transcoder.NBT, null));
     }
 
     /**
@@ -271,6 +368,16 @@ public final class CodecTest {
         var codec = Codec.INT.listOrSingle();
         var value = codec.encode(Transcoder.NBT, List.of(42)).orElseThrow();
         assertEquals(intBinaryTag(42), value);
+    }
+
+    @Test
+    void listOrSingleRoundTrips() {
+        var codec = Codec.STRING.listOrSingle();
+        for (List<String> list : List.of(List.<String>of(), List.of("a"), List.of("a", "b"))) {
+            assertEquals(list, CodecAssertions.assertOk(codec.decode(Transcoder.NBT,
+                    CodecAssertions.assertOk(codec.encode(Transcoder.NBT, list)))));
+        }
+        assertEquals(List.of("a"), CodecAssertions.assertOk(codec.decode(Transcoder.NBT, Transcoder.NBT.createString("a"))));
     }
 
     @Test

@@ -19,53 +19,33 @@ import java.util.function.BiPredicate;
  */
 @ApiStatus.Internal
 public final class PacketWriting {
+    /** The width of the {@link NetworkBuffer#VAR_INT_3} length fields of a frame header. */
+    private static final int VAR_INT_3_SIZE = 3;
+
     public static void writeFramedPacket(NetworkBuffer buffer,
                                          ConnectionState state,
                                          ClientPacket packet,
                                          int compressionThreshold) throws IndexOutOfBoundsException {
-        writeFramedPacket(buffer, PacketVanilla.CLIENT_PACKET_PARSER, state, packet, compressionThreshold);
+        final PacketRegistry.PacketInfo<? super ClientPacket> packetInfo =
+                packetInfo(PacketVanilla.CLIENT_PACKET_PARSER, state, packet);
+        writeFramedPacket(buffer, packetInfo.serializer(), packetInfo.id(), packet, compressionThreshold);
     }
 
     public static void writeFramedPacket(NetworkBuffer buffer,
                                          ConnectionState state,
                                          ServerPacket packet,
                                          int compressionThreshold) throws IndexOutOfBoundsException {
-        writeFramedPacket(buffer, PacketVanilla.SERVER_PACKET_PARSER, state, packet, compressionThreshold);
+        final PacketRegistry.PacketInfo<? super ServerPacket> packetInfo =
+                packetInfo(PacketVanilla.SERVER_PACKET_PARSER, state, packet);
+        writeFramedPacket(buffer, packetInfo.serializer(), packetInfo.id(), packet, compressionThreshold);
     }
 
-    public static <T> void writeFramedPacket(NetworkBuffer buffer,
-                                             PacketParser<? super T> parser,
-                                             ConnectionState state,
-                                             T packet,
-                                             int compressionThreshold) throws IndexOutOfBoundsException {
+    /** Looks the packet up in the registry of the state, before anything is written. */
+    private static <T> PacketRegistry.PacketInfo<? super T> packetInfo(PacketParser<? super T> parser,
+                                                                      ConnectionState state, T packet) {
         @SuppressWarnings("unchecked") // We assume ConnectionState and PacketRegistry are in sync
         final PacketRegistry<? super T> registry = (PacketRegistry<? super T>) parser.stateRegistry(state);
-        writeFramedPacket(buffer, registry, packet, compressionThreshold);
-    }
-
-    public static <T> void writeFramedPacket(NetworkBuffer buffer,
-                                             PacketRegistry<? super T> registry,
-                                             T packet,
-                                             int compressionThreshold) throws IndexOutOfBoundsException {
-        final PacketRegistry.PacketInfo<? super T> packetInfo = registry.packetInfo(packet);
-        writeFramedPacket(
-                buffer,
-                packetInfo, packet,
-                compressionThreshold
-        );
-    }
-
-    public static <T> void writeFramedPacket(NetworkBuffer buffer,
-                                             PacketRegistry.PacketInfo<? super T> packetInfo,
-                                             T packet,
-                                             int compressionThreshold) throws IndexOutOfBoundsException {
-        final int id = packetInfo.id();
-        final NetworkBuffer.Type<? super T> serializer = packetInfo.serializer();
-        writeFramedPacket(
-                buffer, serializer,
-                id, packet,
-                compressionThreshold
-        );
+        return registry.packetInfo(packet);
     }
 
     public static <T> void writeFramedPacket(NetworkBuffer buffer,
@@ -80,10 +60,10 @@ public final class PacketWriting {
                                                     NetworkBuffer.Type<? super T> type,
                                                     int id, T packet) throws IndexOutOfBoundsException {
         // Uncompressed format https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol#Without_compression
-        final long lengthIndex = buffer.advanceWrite(3);
+        final long lengthIndex = buffer.advanceWrite(VAR_INT_3_SIZE);
         buffer.write(NetworkBuffer.VAR_INT, id);
         buffer.write(type, packet);
-        final long finalSize = buffer.writeIndex() - (lengthIndex + 3);
+        final long finalSize = buffer.writeIndex() - (lengthIndex + VAR_INT_3_SIZE);
         buffer.writeAt(lengthIndex, NetworkBuffer.VAR_INT_3, (int) finalSize);
     }
 
@@ -92,8 +72,8 @@ public final class PacketWriting {
                                                   int id, T packet,
                                                   int compressionThreshold) throws IndexOutOfBoundsException {
         // Compressed format https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol#With_compression
-        final long compressedIndex = buffer.advanceWrite(3);
-        final long uncompressedIndex = buffer.advanceWrite(3);
+        final long compressedIndex = buffer.advanceWrite(VAR_INT_3_SIZE);
+        final long uncompressedIndex = buffer.advanceWrite(VAR_INT_3_SIZE);
         final long contentStart = buffer.writeIndex();
         buffer.write(NetworkBuffer.VAR_INT, id);
         buffer.write(type, packet);
@@ -131,7 +111,7 @@ public final class PacketWriting {
         return allocateTrimmedPacket(PacketVanilla.SERVER_PACKET_PARSER, state, packet, registries, compressionThreshold);
     }
 
-    public static <T> NetworkBuffer allocateTrimmedPacket(
+    private static <T> NetworkBuffer allocateTrimmedPacket(
             PacketParser<T> parser,
             ConnectionState state,
             T packet,
@@ -152,17 +132,7 @@ public final class PacketWriting {
             ConnectionState state,
             T packet,
             int compressionThreshold) {
-        @SuppressWarnings("unchecked") // We assume ConnectionState and PacketRegistry are in sync
-        final PacketRegistry<? super T> registry = (PacketRegistry<? super T>) parser.stateRegistry(state);
-        return allocateTrimmedPacket(tmpBuffer, registry, packet, compressionThreshold);
-    }
-
-    public static <T> NetworkBuffer allocateTrimmedPacket(
-            NetworkBuffer tmpBuffer,
-            PacketRegistry<? super T> registry,
-            T packet,
-            int compressionThreshold) {
-        final PacketRegistry.PacketInfo<? super T> packetInfo = registry.packetInfo(packet);
+        final PacketRegistry.PacketInfo<? super T> packetInfo = packetInfo(parser, state, packet);
         final int id = packetInfo.id();
         final NetworkBuffer.Type<? super T> serializer = packetInfo.serializer();
         try {
@@ -171,18 +141,48 @@ public final class PacketWriting {
         } catch (IndexOutOfBoundsException _) {
             final long sizeOf = serializer.sizeOf(packet, tmpBuffer.registries());
             if (sizeOf > JvmFlags.MAX_PACKET_SIZE) {
-                throw new IllegalStateException("Packet too large: " + sizeOf);
+                throw new IllegalStateException("Packet too large: " + sizeOf + " > " + JvmFlags.MAX_PACKET_SIZE
+                        + " (synaxis.max-packet-size)");
             }
-            // Add 15 bytes to account for the 3 potential varints in the packet header
-            // Packet Length - Data Length - Packet ID
-            // Plus zlib's compressBound margin, deflate grows incompressible payloads
-            tmpBuffer.resize(sizeOf + 15 + (sizeOf >> 12) + (sizeOf >> 14) + (sizeOf >> 25) + 13);
+            // 15 bytes on top of the compressed size of the payload: the two VAR_INT_3 lengths of the
+            // header (6), a packet id of up to 5 bytes, and 4 bytes of slack. The packet id goes into
+            // the compressed input too, the slack covers what it adds to the shifted terms. The write
+            // below catches no IndexOutOfBoundsException, so the slack must not shrink.
+            tmpBuffer.resize(zlibCompressBound(sizeOf) + 15);
             tmpBuffer.writeIndex(0);
             writeFramedPacket(tmpBuffer, serializer, id, packet, compressionThreshold);
             return tmpBuffer.copy(0, tmpBuffer.writeIndex());
         }
     }
 
+    /**
+     * zlib's {@code compressBound()}: the most deflate makes of {@code n} bytes, incompressible
+     * input grows.
+     */
+    private static long zlibCompressBound(long n) {
+        return n + (n >> 12) + (n >> 14) + (n >> 25) + 13;
+    }
+
+    /**
+     * Writes packets off the head of the queue into the buffer, at least {@code minWrite} of them if
+     * the queue holds that many: the buffer is grown, up to the maximum packet size, until they fit.
+     * <p>
+     * The writer decides what happens to the packet it is handed:
+     * <ul>
+     * <li>{@code true}: the packet is done with and leaves the queue, written or deliberately
+     * dropped (cancelled by a listener, movement shed from an outbound backlog). {@code minWrite}
+     * counts these.</li>
+     * <li>{@code false}, or an {@link IndexOutOfBoundsException}: the packet did not fit. The buffer
+     * goes back to the write index it had before the call and the packet stays at the head of the
+     * queue, to be handed to the writer again, which must therefore repeat no side effect of an
+     * earlier attempt.</li>
+     * <li>any other {@link RuntimeException}: the packet leaves the queue, the buffer goes back to
+     * the write index it had before the call, and the exception is rethrown.</li>
+     * </ul>
+     *
+     * @throws IllegalStateException if a packet does not fit in a buffer of the maximum packet size,
+     *                               the packet leaves the queue
+     */
     public static <T> void writeQueue(NetworkBuffer buffer, MessagePassingQueue<T> queue, int minWrite,
                                       BiPredicate<NetworkBuffer, T> writer) {
         // The goal of this method is to write at the very least `minWrite` packets if the queue permits it.
@@ -195,11 +195,11 @@ public final class PacketWriting {
         int written = 0;
         while ((packet = queue.peek()) != null) {
             final long index = buffer.writeIndex();
-            boolean success;
+            boolean consumed;
             try {
-                success = writer.test(buffer, packet);
+                consumed = writer.test(buffer, packet);
             } catch (IndexOutOfBoundsException _) {
-                success = false;
+                consumed = false;
             } catch (RuntimeException e) {
                 // A packet that fails to be written fails again: taken off the queue before the
                 // failure goes up, so that nothing runs it again. What it wrote is cut off, the
@@ -210,10 +210,8 @@ public final class PacketWriting {
             }
             // A writer may take a packet off the queue without writing it: cancelled by a listener, or
             // movement shed from an outbound backlog
-            assert !success || buffer.writeIndex() >= index;
-            // Poll the packet only if fully written
-            if (success) {
-                // Packet fully written
+            assert !consumed || buffer.writeIndex() >= index;
+            if (consumed) {
                 queue.poll();
                 written++;
             } else {
@@ -225,7 +223,8 @@ public final class PacketWriting {
                         // The buffer is at the maximum packet size, retrying would spin the write
                         // thread forever on a packet that can never be written.
                         queue.poll();
-                        throw new IllegalStateException("Packet too large to be written: " + packet);
+                        throw new IllegalStateException("Packet too large to be written: "
+                                + packet.getClass().getSimpleName() + " > " + buffer.capacity() + " (synaxis.max-packet-size)");
                     }
                     buffer.resize(newSize);
                 } else {

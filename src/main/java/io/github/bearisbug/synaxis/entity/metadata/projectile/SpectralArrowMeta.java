@@ -27,9 +27,4 @@ public class SpectralArrowMeta extends AbstractArrowMeta implements ObjectDataPr
     public int getObjectData() {
         return this.shooter == null ? 0 : this.shooter.getEntityId();
     }
-
-    @Override
-    public boolean requiresVelocityPacketAtSpawn() {
-        return true;
-    }
 }

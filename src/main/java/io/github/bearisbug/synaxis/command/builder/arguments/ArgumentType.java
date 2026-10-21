@@ -139,8 +139,7 @@ public class ArgumentType {
      *
      * @see ArgumentEnum
      */
-    @SuppressWarnings("rawtypes")
-    public static <E extends Enum> ArgumentEnum<E> Enum(String id, Class<E> enumClass) {
+    public static <E extends Enum<E>> ArgumentEnum<E> Enum(String id, Class<E> enumClass) {
         return new ArgumentEnum<>(id, enumClass);
     }
 

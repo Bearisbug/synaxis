@@ -61,6 +61,24 @@ public class PlayerInstanceChangeIntegrationTest {
         }
     }
 
+    /** Loads the chunk at the origin at once and holds every other chunk back until the gate opens. */
+    private record OriginFirstChunkLoader(CountDownLatch gate) implements ChunkLoader {
+        @Override
+        public @Nullable Chunk loadChunk(Instance instance, int chunkX, int chunkZ) {
+            if (chunkX == 0 && chunkZ == 0) return null;
+            return new GatedChunkLoader(gate).loadChunk(instance, chunkX, chunkZ);
+        }
+
+        @Override
+        public void saveChunk(Chunk chunk) {
+        }
+
+        @Override
+        public boolean supportsParallelLoading() {
+            return true;
+        }
+    }
+
     private static Instance gated(Env env, CountDownLatch gate) {
         return env.createFlatInstance(new GatedChunkLoader(gate));
     }
@@ -275,5 +293,32 @@ public class PlayerInstanceChangeIntegrationTest {
         final var error = assertThrows(IllegalArgumentException.class, () -> player.setInstance(origin, new Pos(5, 40, 5)));
         assertTrue(error.getMessage().contains(player.getUsername()), error.getMessage());
         assertTrue(error.getMessage().contains("teleport"), error.getMessage());
+    }
+
+    /**
+     * The chunk ring a player is about to spawn in holds view tickets while it loads: the spawn chunk, loaded long before
+     * the rest of the ring, is not unloaded for its grace period meanwhile. Once the player is in, every chunk of its ring
+     * has one ticket, its own.
+     */
+    @Test
+    public void theRingOfAPendingSpawnIsNotUnloadedWhileItLoads(Env env) {
+        var origin = env.createFlatInstance();
+        var gate = new CountDownLatch(1);
+        var target = env.createFlatInstance(new OriginFirstChunkLoader(gate));
+        target.setChunkUnloadGraceTicks(1);
+        Player player = env.createPlayer(origin, new Pos(0, 40, 0));
+
+        final CompletableFuture<Void> change = player.setInstance(target, new Pos(0.5, 40, 0.5));
+        assertFalse(change.isDone(), "the ring was not held back");
+        target.loadChunk(0, 0).join();
+        for (int i = 0; i < 5; i++) env.tick();
+        assertNotNull(target.getChunk(0, 0), "the spawn chunk was unloaded while the rest of the ring loaded");
+
+        gate.countDown();
+        change.join();
+        assertSame(target, player.getInstance());
+        final int radius = player.effectiveViewDistance();
+        assertEquals(1, target.chunkTicketCount(0, 0), "the spawned player holds one ticket on its chunk");
+        assertEquals(1, target.chunkTicketCount(radius, -radius), "and one on each chunk of its ring");
     }
 }

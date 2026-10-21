@@ -153,7 +153,7 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 | 回调 | 线程 | 在这里可以做什么 |
 | --- | --- | --- |
 | 实体与玩家的事件（含 `transfers().transfer(…)` 让宿主派发的 `OutgoingTransferEvent`，不论从哪条线程调用；例外见下一张表）、实体的休眠策略（`Entity#setDormancyPolicy`）、玩家发来的通道负载（handler 只在玩家处于 PLAY 态时收到，§8）、`scheduler().runOn(实体, …)` | 该实体所属的 tick 线程 | 读写这个实体 |
-| `events().forInstance(实例)` 的监听器 | 派发这个事件的线程：实体与玩家的事件在该实体所属的 tick 线程上（`grid` 下同一个实例同时有几条），`InstanceTickEvent` 在 tick 调度线程上，`InstanceChunkLoadEvent` 在载入区块的虚拟线程上，宿主派发的 `PlayInstanceStateEvent` 在执行这次转移的线程上 | 读写派发它的那个实体；同一个实例的几个监听器共用的每局状态用并发容器或锁。这些监听器排在全局作用域的插件监听器之前，也排在宿主节点的监听器之前：首次出生时宿主在自己的节点里用存档覆盖背包、手持格与生命值，要在那之后改出生结果，用全局作用域、按实例过滤（§7） |
+| `events().forInstance(实例)` 的监听器 | 派发这个事件的线程：实体与玩家的事件在该实体所属的 tick 线程上（`grid` 下同一个实例同时有几条），`InstanceTickEvent` 在 tick 调度线程上，`InstanceChunkLoadEvent` 在完成这次载入的线程上（通常是载入区块的虚拟线程，也可能是发起载入的线程，不保证是 tick 线程），宿主派发的 `PlayInstanceStateEvent` 在执行这次转移的线程上 | 读写派发它的那个实体；同一个实例的几个监听器共用的每局状态用并发容器或锁。这些监听器排在全局作用域的插件监听器之前，也排在宿主节点的监听器之前：首次出生时宿主在自己的节点里用存档覆盖背包、手持格与生命值，要在那之后改出生结果，用全局作用域、按实例过滤（§7） |
 | `scheduler().scheduleTask(…)` | tick 调度线程，所有插件的任务一个接一个跑 | 每 tick 的全局逻辑；它是整个 tick 的串行段，要扩到几百人就按格或按实体拆开。可以读任何实体，可以调写明能在串行段调用的宿主接口（场景层的写方法，`docs/DESIGN-PLAY.md` `API-PLAY-005`）；已分到 tick 线程的实体不在这里直接改，用 `runOn(实体, …)`（下一 tick 生效）或 `实体.acquirable().sync(…)`（当场生效）：严格模式下直接改抛 `AcquirableOwnershipException`，不开严格模式也会与别的线程的 `sync` 同时写 |
 | `scheduler().runOn(实例, …)` | tick 调度线程的串行段，与实例自己的调度器在同一处 | 同上一行 |
 | `playerData().commitTogether(…, apply)` 的 `apply` | tick 调度线程，提交写进库之后下一个 tick 的串行段，只跑一次 | 改每个参与者，不论他们分在哪条 tick 线程；参与者这时可能已经离开，先查 `isRemoved()`（`docs/DESIGN-PROD.md` `API-PROD-005`） |
@@ -167,13 +167,13 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 
 | 事件 | 线程 | 在这里可以做什么 |
 | --- | --- | --- |
-| `PlayerPacketOutEvent`（每个出站包一次） | 该连接的写线程（虚拟线程） | 只看或取消这个包（取消就不写出）；不读写实体与实例，要碰玩家用 `runOn`；不阻塞，阻塞卡住这名玩家的全部出站包。句柄区块、批量广播这类 `BufferedPacket` 不派发，`CachedPacket`、`FramedPacket` 派发其中的包 |
+| `PlayerPacketOutEvent`（每个出站包一次） | 该连接的写线程（虚拟线程） | 只看或取消这个包（取消就不写出；切换连接状态的 `FinishConfigurationPacket`、`StartConfigurationPacket` 取消无效，照常写出并记一行 WARN）；不读写实体与实例，要碰玩家用 `runOn`；不阻塞，阻塞卡住这名玩家的全部出站包。句柄区块、批量广播这类 `BufferedPacket` 不派发，`CachedPacket`、`FramedPacket` 派发其中的包 |
 | `PlayerPacketEvent` | 只为排进玩家队列的 PLAY 包派发，在玩家所属的 tick 线程上；玩家不在实例里时（configuration 结束后等待加入，或被送回 configuration、客户端还没确认）在 tick 调度线程的串行段上；keep-alive、ping 与 Cookie 的应答在读线程上处理，不派发；会切换解码状态的包（回到 configuration 的确认）也不派发，插件取消不了它 | 读写这名玩家；取消就不处理这个包 |
-| `AsyncPlayerPreLoginEvent`、`AsyncPlayerConfigurationEvent` | 连接的虚拟线程（在线模式下 `AsyncPlayerPreLoginEvent` 在验证线程上，离线模式下在登录线程上） | 可以阻塞（读库、HTTP；远程取皮肤在这里取，存下来到 `PlayerSkinInitEvent` 再设）；只碰事件、连接与这名还没进世界的玩家 |
+| `AsyncPlayerPreLoginEvent`、`AsyncPlayerConfigurationEvent` | 连接的虚拟线程（在线模式下 `AsyncPlayerPreLoginEvent` 在验证线程上，离线模式下在登录线程上） | 可以阻塞（读库、HTTP；远程取皮肤在这里取，存下来到 `PlayerSkinInitEvent` 再设）；只碰事件、连接与这名还没进世界的玩家。`sendPluginRequest` 的应答带超时等：连接断开或离开 LOGIN 时 future 以 `IllegalStateException` 异常完成，之后再调抛同一异常 |
 | `PlayerSkinInitEvent`、首次出生的 `PlayerSpawnEvent` | tick 调度线程的串行段，玩家这时还没分到 tick 线程（从 configuration 回来的玩家由这条线程持着） | 改这名玩家；不阻塞，整个进程的 tick 在等它；碰别的实体用 `runOn` |
 | `PlayerDisconnectEvent` | 已出生的玩家在他所属的 tick 线程上；进了 PLAY 还没出生的在 tick 调度线程上；PLAY 之前断开的在断开连接的那条线程上（读线程、configuration 线程或 tick 调度线程） | 清理按玩家记的状态；后两种与 tick 线程上的代码同时跑 |
 
-对另一个实体的影响（攻击、交易）不要在自己的线程上直接改对方：对方可能在另一条线程上，用 `scheduler().runOn(对方, 任务, TaskSchedule.immediate())` 投递，任务在对方下一次 tick 时在对方的线程上执行。只有必须在同一 tick 读到对方状态时才用 `对方.acquirable().sync(…)`，所有跨线程的 `sync` 都排同一把进程级的锁，用多了就退化成单线程。`sync` 持有对方期间，引擎不会把对方交给别的 tick 线程；从 `runAsync` 这类非 tick 线程持有时，持着它跨过 tick 边界会推迟下一个 tick 的开始，所有 tick 线程一起等，所以回调里不要阻塞（`docs/DESIGN-PROD.md` `API-PROD-016` 元素换线程一条）。
+对另一个实体的影响（攻击、交易）不要在自己的线程上直接改对方：对方可能在另一条线程上，用 `scheduler().runOn(对方, 任务, TaskSchedule.immediate())` 投递，任务在对方下一次 tick 时在对方的线程上执行。只有必须在同一 tick 读到对方状态时才用 `对方.acquirable().sync(…)`，所有跨线程的 `sync` 都排同一把进程级的锁，用多了就退化成单线程。在 tick 线程上跨线程 `sync`（`lock`、`applySync` 也一样）时，引擎在等这把锁期间放开本线程自己的锁，别的线程可能趁这时改了本线程名下的实体，正在 tick 的这一个也算，所以拿到对方之后要重新读自己的状态。`sync` 持有对方期间，引擎不会把对方交给别的 tick 线程；从 `runAsync` 这类非 tick 线程持有时，持着它跨过 tick 边界会推迟下一个 tick 的开始，所有 tick 线程一起等，所以回调里不要阻塞（`docs/DESIGN-PROD.md` `API-PROD-016` 元素换线程一条）。
 
 `teleport` 与 `setInstance` 要先载入区块时，返回的 future 在区块载入、实体所属线程放开它之后才完成。在这个实体所属的 tick 线程上（它的事件监听器、`runOn` 给它的任务），以及任何 `sync` 或 `lock` 回调里，都不要 `join()` 或 `get()` 这个 future。在所属线程上（`sync` 持有的就是这个实体时也算）等的正是当前线程，引擎对方法直接返回的 future 当场抛 `IllegalStateException`；`sync` 或 `lock` 从别的线程取到元素时，当前线程持着所有跨线程 `sync` 共用的那把锁，续延要先拿它，引擎拦不住，等下去整个进程停止 tick；在它上面 `thenRun` 得到的 future 引擎同样拦不住。要接后续，用 `thenRun`。玩家的 `setInstance` 是例外：在调用它的线程上 `join` 不抛，等区块载完、只跑这次换实例的续延，这段时间这条 tick 线程停着，所以同样用 `thenRun`；等区块期间再调一次 `setInstance` 或玩家被移除，前一次的 future 以 `CancellationException` 失败。
 
@@ -199,7 +199,7 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 
 | 方法 | 做什么 | 什么时候不做 |
 | --- | --- | --- |
-| `transfer(玩家, host, port)` | 发原版 `Transfer` 包（host、port 按监听器改过的），把客户端送去外部服务器，不带票据；玩家断开后宿主按普通登出保存。future 以 `true` 完成 | 玩家不在 PLAY（还在 configuration 或已断开）、离上一次转服不满 `synaxis.app.transfer-cooldown-ms`（默认 5 s）、或监听器取消了 `OutgoingTransferEvent` 时以 `false` 完成，什么都不发、冷却不记；5 s 内玩家没有 tick（已离开）同样以 `false` 完成；`host` 空白或 `port` 不在 1～65535 在调用线程上抛 `IllegalArgumentException` |
+| `transfer(玩家, host, port)` | 发原版 `Transfer` 包（host、port 按监听器改过的），把客户端送去外部服务器，不带票据；玩家断开后宿主按普通登出保存。future 以 `true` 完成 | 玩家不在 PLAY（还在 configuration 或已断开）、离上一次转服不满 `synaxis.app.transfer-cooldown-ms`（默认 5 s）、或监听器取消了 `OutgoingTransferEvent` 时以 `false` 完成，什么都不发、冷却不记；5 s 内玩家没有 tick（已离开）同样以 `false` 完成；`host` 空白或 `port` 不在 1～65535 在调用线程上抛 `IllegalArgumentException`。监听器把 host 设为空白或把 port 设到 1～65535 之外时，setter 抛 `IllegalArgumentException`，记日志后按最后一次被接受的 host 与 port 发 |
 | `wasTransferred(玩家)` | 客户端握手时是否自称由别的服务器转来 | 这是客户端自报的，不能当来源证明 |
 | `storeCookie(玩家, 键, 值)` | 把至多 5,120 B 存在客户端上，客户端转服时带去下一台服务器 | 键不在本插件命名空间或值超过 5,120 B 时抛 `IllegalArgumentException`，不发包 |
 | `fetchCookie(玩家, 键)` | 向客户端要回一个 Cookie；future 以值完成，客户端没有这个 Cookie 时以 `null` 完成 | 5 s 内没回答（玩家断开，或对同一玩家同一个键在回答前又要了一次）以 `TimeoutException` 完成；键不在本插件命名空间时抛 `IllegalArgumentException` |

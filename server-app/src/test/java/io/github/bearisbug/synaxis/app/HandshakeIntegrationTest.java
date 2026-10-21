@@ -681,6 +681,22 @@ class HandshakeIntegrationTest {
                 "ADR-M2-010 is the default; the login phase is the fallback spike 4 may force");
     }
 
+    @Test
+    void theLoginPhaseLeavesAConnectionThatDropsBeforeItIsAsked(Env env) {
+        final Wire wire = loginWire(env);
+        final HandshakeGate gate = gate(env, HandshakeGate.Phase.LOGIN, HandshakeGate.BUDGET);
+        gate.require();
+        // What a disconnect between the gate's isOnline check and its request leaves behind: the
+        // login plugin requests of the connection have ended, so sendPluginRequest throws.
+        wire.loginPluginMessageProcessor().close();
+
+        preLogin(env, wire);
+        env.tick();
+
+        assertEquals(List.of(), wire.of(LoginPluginRequestPacket.class));
+        assertEquals(List.of(), wire.of(LoginDisconnectPacket.class), "there is no one left to refuse");
+    }
+
     /**
      * Runs the pre login event the way {@code transitionLoginToConfig} does.
      */

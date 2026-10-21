@@ -43,44 +43,6 @@ public record Pos(double x, double y, double z, float yaw, float pitch) implemen
     }
 
     /**
-     * Creates a position from a point with the given view (yaw/pitch).
-     *
-     * @param point the point containing the coordinates (x/y/z)
-     * @param yaw   the yaw
-     * @param pitch the pitch
-     * @deprecated Use {@link Point#asPos()} instead with {@link #withView(float, float)}
-     */
-    @Deprecated
-    public Pos(Point point, float yaw, float pitch) {
-        this(point.x(), point.y(), point.z(), yaw, pitch);
-    }
-
-    /**
-     * Creates a position from a point with the default view (yaw/pitch = 0).
-     *
-     * @param point the point containing the coordinates (x/y/z)
-     * @deprecated Use {@link Point#asPos()} instead
-     */
-    @Deprecated
-    public Pos(Point point) {
-        this(point, 0, 0);
-    }
-
-    /**
-     * Converts a {@link Point} into a {@link Pos}.
-     * Will cast if possible, or instantiate a new object.
-     *
-     * @param point the point to convert
-     * @return the converted position
-     * @deprecated use {@link Point#asPos()} instead
-     */
-    @Deprecated(forRemoval = true)
-    public static Pos fromPoint(Point point) {
-        if (point instanceof Pos pos) return pos;
-        return new Pos(point.x(), point.y(), point.z());
-    }
-
-    /**
      * Fixes a pitch value that is not between -90.0f and 90.0f
      * So for example, -135.0f becomes -90.0f and 225.0f becomes 90.0f
      *
@@ -100,7 +62,13 @@ public record Pos(double x, double y, double z, float yaw, float pitch) implemen
      * @return a fixed yaw in the range (-180.0f, 180.0f]
      */
     public static float fixYaw(float yaw) {
-        return yaw - 360.0f * (float) Math.ceil((yaw - 180.0f) / 360.0f);
+        // Adding 0 turns -0 into 0, as the record compares the yaw with Float.compare
+        if (yaw > -180.0f && yaw <= 180.0f) return yaw + 0.0f;
+        // Exact for any finite yaw, NaN and infinities give NaN
+        float remainder = yaw % 360.0f;
+        if (remainder > 180.0f) remainder -= 360.0f;
+        else if (remainder <= -180.0f) remainder += 360.0f;
+        return remainder + 0.0f;
     }
 
     /**
@@ -261,6 +229,8 @@ public record Pos(double x, double y, double z, float yaw, float pitch) implemen
 
     /**
      * Checks if the yaw and pitch are approximately the same as the given ones.
+     * <p>
+     * The yaw difference is taken along the shortest arc: 179.99 and -179.99 are 0.02 apart.
      *
      * @param yaw     the yaw
      * @param pitch   the pitch
@@ -268,7 +238,7 @@ public record Pos(double x, double y, double z, float yaw, float pitch) implemen
      * @return true if the yaw and pitch are approximately the same
      */
     public boolean similarView(float yaw, float pitch, float epsilon) {
-        return Math.abs(this.yaw - yaw) < epsilon &&
+        return Math.abs(fixYaw(this.yaw - yaw)) < epsilon &&
                 Math.abs(this.pitch - pitch) < epsilon;
     }
 
@@ -522,15 +492,17 @@ public record Pos(double x, double y, double z, float yaw, float pitch) implemen
     /**
      * Calculates a linear interpolation between this position's view and another position's view (yaw/pitch).
      * The coordinates (x/y/z) remain unchanged.
+     * <p>
+     * The yaw turns along the shortest arc: from 170 to -170 it goes through 180.
      *
      * @param pos   the other position
-     * @param alpha the alpha value, must be between 0.0 and 1.0
+     * @param alpha the alpha value, 0 gives this view and 1 the view of {@code pos}; outside [0, 1] it extrapolates
      * @return a new position with interpolated view
      */
     @Contract(pure = true, value = "_, _ -> new")
     public Pos lerpView(Pos pos, float alpha) {
         return new Pos(x, y, z,
-                yaw + (alpha * (pos.yaw() - yaw)),
+                yaw + (alpha * fixYaw(pos.yaw() - yaw)),
                 pitch + (alpha * (pos.pitch() - pitch)));
     }
 

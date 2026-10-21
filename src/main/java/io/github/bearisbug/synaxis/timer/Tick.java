@@ -65,7 +65,7 @@ public final class Tick implements TemporalUnit {
      *
      * @param duration the duration
      * @return the number of whole ticks in this duration
-     * @throws ArithmeticException if the duration is zero or an overflow occurs
+     * @throws ArithmeticException if the number of ticks does not fit in an int
      */
     public int fromDuration(Duration duration) {
         return Math.toIntExact(duration.dividedBy(this.getDuration()));

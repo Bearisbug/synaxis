@@ -1,18 +1,16 @@
 package io.github.bearisbug.synaxis.entity;
 
+import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanMaps;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.command.CommandSender;
 import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.coordinate.Vec;
-import io.github.bearisbug.synaxis.entity.Entity;
-import io.github.bearisbug.synaxis.entity.EntityType;
-import io.github.bearisbug.synaxis.entity.GameMode;
-import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.utils.MathUtils;
 import io.github.bearisbug.synaxis.utils.Range;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -22,8 +20,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
-
-// TODO
 
 /**
  * Represents a query which can be call to find one or multiple entities.
@@ -41,15 +37,15 @@ public class EntityFinder {
 
     // By traits
     private Integer limit;
-    private final ToggleableMap<EntityType> entityTypes = new ToggleableMap<>();
+    private final Object2BooleanMap<EntityType> entityTypes = new Object2BooleanOpenHashMap<>();
     private String constantName;
     private UUID constantUuid;
-    private final ToggleableMap<String> names = new ToggleableMap<>();
-    private final ToggleableMap<UUID> uuids = new ToggleableMap<>();
+    private final Object2BooleanMap<String> names = new Object2BooleanOpenHashMap<>();
+    private final Object2BooleanMap<UUID> uuids = new Object2BooleanOpenHashMap<>();
 
 
     // Players specific
-    private final ToggleableMap<GameMode> gameModes = new ToggleableMap<>();
+    private final Object2BooleanMap<GameMode> gameModes = new Object2BooleanOpenHashMap<>();
     private Range.Int level;
 
     public EntityFinder setTargetSelector(TargetSelector targetSelector) {
@@ -72,7 +68,15 @@ public class EntityFinder {
         return this;
     }
 
+    /**
+     * Keeps at most {@code limit} entities, like the {@code limit} argument of a target selector.
+     *
+     * @param limit the maximum number of entities found, at least 1
+     * @return this finder
+     * @throws IllegalArgumentException if {@code limit} is below 1
+     */
     public EntityFinder setLimit(int limit) {
+        Check.argCondition(limit < 1, "limit must be >= 1, got {0}", limit);
         this.limit = limit;
         return this;
     }
@@ -132,20 +136,23 @@ public class EntityFinder {
     /**
      * Find a list of entities (could be empty) based on the conditions
      *
-     * @param instance the instance to search from,
-     *                 null if the query can be executed using global data (all online players)
+     * @param process  the process to search in
+     * @param instance the instance to search in, or null to search the whole process: every online player for the
+     *                 player selectors, every instance for the entity selectors and for a UUID. A player name is
+     *                 looked up among every online player either way
      * @param self     the source of the query, null if not any
      * @return all entities validating the conditions, can be empty
+     * @throws NullPointerException if no target selector was set
      */
     public List<Entity> find(ServerProcess process, @Nullable Instance instance, @Nullable Entity self) {
+        Objects.requireNonNull(targetSelector, "call setTargetSelector before find");
         if (targetSelector == TargetSelector.ENGINE_USERNAME) {
             Objects.requireNonNull(constantName, "The player name should not be null when searching for it");
             final Player player = process.connection().getOnlinePlayerByUsername(constantName);
             return player != null ? List.of(player) : List.of();
         } else if (targetSelector == TargetSelector.ENGINE_UUID) {
             Objects.requireNonNull(constantUuid, "The UUID should not be null when searching for it");
-            Objects.requireNonNull(instance, "The instance should not be null when searching by UUID");
-            final Entity entity = instance.getEntityByUuid(constantUuid);
+            final Entity entity = instance != null ? instance.getEntityByUuid(constantUuid) : findByUuid(process, constantUuid);
             return entity != null ? List.of(entity) : List.of();
         }
 
@@ -347,10 +354,6 @@ public class EntityFinder {
         }
     }
 
-    @SuppressWarnings("serial") // never serialized
-    private static class ToggleableMap<T> extends Object2BooleanOpenHashMap<T> {
-    }
-
     private static List<Entity> findTarget(ServerProcess process, @Nullable Instance instance,
                                            TargetSelector targetSelector,
                                            @Nullable Entity self) {
@@ -371,10 +374,18 @@ public class EntityFinder {
         } else if (targetSelector == TargetSelector.SELF) {
             return self != null ? List.of(self) : List.of();
         }
-        throw new IllegalStateException("Weird thing happened: " + targetSelector);
+        throw new IllegalStateException("unhandled target selector: " + targetSelector);
     }
 
-    private static <T> boolean filterToggleableMap(T value, ToggleableMap<T> map) {
+    private static @Nullable Entity findByUuid(ServerProcess process, UUID uuid) {
+        for (Instance instance : process.instance().getInstances()) {
+            final Entity entity = instance.getEntityByUuid(uuid);
+            if (entity != null) return entity;
+        }
+        return null;
+    }
+
+    private static <T> boolean filterToggleableMap(T value, Object2BooleanMap<T> map) {
         for (var entry : Object2BooleanMaps.fastIterable(map)) {
             if (entry.getBooleanValue() != Objects.equals(value, entry.getKey())) {
                 return false;

@@ -21,7 +21,11 @@ public final class MinecraftServer implements MinecraftConstants {
     public static final String THREAD_NAME_BENCHMARK = "Syn-Benchmark";
 
     // Config
-    // Can be modified at performance cost when increased
+    /**
+     * The number of ticks per second.
+     *
+     * @deprecated use {@link JvmFlags#SERVER_TICKS_PER_SECOND}, set through {@code synaxis.tps}
+     */
     @Deprecated
     public static final int TICK_PER_SECOND = JvmFlags.SERVER_TICKS_PER_SECOND;
     public static final int TICK_MS = 1000 / TICK_PER_SECOND;

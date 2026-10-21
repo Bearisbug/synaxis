@@ -48,18 +48,20 @@ public class CreativeInventoryActionEvent implements PlayerInstanceEvent, Cancel
     }
 
     /**
-     * Gets the item which has been clicked.
+     * Gets the item the client asks to put in the slot, or to drop when {@link #getSlot()} is -1. The client builds
+     * the item freely, components included: the engine only checks that the player is in creative mode, never the
+     * item itself.
      *
-     * @return the clicked item
+     * @return the item the client sent
      */
     public ItemStack getClickedItem() {
         return clickedItem;
     }
 
     /**
-     * Changes the clicked item.
+     * Replaces the item that ends up in the slot, or that is dropped.
      *
-     * @param clickedItem the clicked item
+     * @param clickedItem the item to put in the slot or to drop
      */
     public void setClickedItem(ItemStack clickedItem) {
         this.clickedItem = clickedItem;

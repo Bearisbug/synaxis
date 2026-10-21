@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
+import static io.github.bearisbug.synaxis.codec.CodecAssertions.assertError;
 import static io.github.bearisbug.synaxis.codec.CodecAssertions.assertOk;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,6 +40,34 @@ public class TranscoderTest {
             final var encoded = assertOk(Codec.TRI_STATE.encode(Transcoder.JSON, state));
             assertEquals(state, assertOk(Codec.TRI_STATE.decode(Transcoder.JSON, encoded)));
         }
+    }
+
+    /**
+     * A value that is neither a boolean nor one of the three strings is named in the error: the string itself, or
+     * why it is not a string, never the toString of the result records.
+     */
+    @Test
+    public void triStateNamesTheValueItCannotRead() {
+        assertError("expected true, false, or \"default\", got: \"maybe\"",
+                Codec.TRI_STATE.decode(Transcoder.JSON, Transcoder.JSON.createString("maybe")));
+        assertError("expected true, false, or \"default\": Not a string: 5",
+                Codec.TRI_STATE.decode(Transcoder.JSON, Transcoder.JSON.createInt(5)));
+    }
+
+    /**
+     * Pins the CRC32C values of the hash transcoder for a list, a map and a string with characters above one byte,
+     * so a change to how it feeds bytes to the checksum cannot slip through as a refactor: the client compares these
+     * hashes with its own.
+     */
+    @Test
+    public void hashValuesArePinned() {
+        final Transcoder<Integer> hash = Transcoder.CRC32_HASH;
+        assertEquals(0xae1b0624, hash.createList(2).add(hash.createInt(1)).add(hash.createInt(2)).build());
+        assertEquals(0x7218348f, hash.createMap()
+                .put(hash.createInt(1), hash.createInt(2))
+                .put(hash.createInt(3), hash.createInt(4))
+                .build());
+        assertEquals(0x5bffb711, hash.createString("a\u00e9\u2603"));
     }
 
     /**

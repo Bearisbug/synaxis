@@ -29,6 +29,8 @@ import java.util.function.Consumer;
 
 non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
 
+    // JVM-wide: one static lock for the event trees of every ServerProcess in this JVM. It guards
+    // listenerMap, bindingConsumers, the mapped node caches, children and the invalidation of handles.
     static final Object GLOBAL_CHILD_LOCK = new Object();
 
     private final Map<Class<?>, Handle<T>> handleMap = new ConcurrentHashMap<>();
@@ -189,19 +191,16 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
     @Override
     @SuppressWarnings("unchecked")
     public <E extends T, H> EventNode<E> map(H value, EventFilter<E, H> filter) {
-        EventNodeImpl<E> node;
         synchronized (GLOBAL_CHILD_LOCK) {
-            node = new EventNodeLazyImpl<>(this, value, filter);
-            Check.stateCondition(node.parent != null, "Node already has a parent");
-            Check.stateCondition(Objects.equals(parent, node), "Cannot map to self");
             WeakReference<EventNodeLazyImpl<T>> previousRef = this.mappedNodeCache.get(value);
             EventNodeImpl<T> previous;
             if (previousRef != null && (previous = previousRef.get()) != null) return (EventNode<E>) previous;
             // Either no entry at all, or one whose node has been collected and must be replaced
+            final EventNodeLazyImpl<E> node = new EventNodeLazyImpl<>(this, value, filter);
             this.mappedNodeCache.put(value, new WeakReference<>((EventNodeLazyImpl<T>) node));
             node.parent = this;
+            return node;
         }
-        return node;
     }
 
     @Override
@@ -321,7 +320,6 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
         for (Class<? extends T> eventType : listenerMap.keySet()) {
             node.invalidateEvent(eventType);
         }
-        // TODO bindings?
         // Mapped nodes are not part of children, their listeners must be invalidated too
         for (WeakReference<EventNodeLazyImpl<T>> mappedNodeRef : registeredMappedNode.values()) {
             final EventNodeLazyImpl<T> mappedNode = mappedNodeRef.get();
@@ -332,12 +330,10 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void invalidateEvent(Class<? extends T> eventClass) {
         forTargetEvents(eventClass, type -> {
-            Handle<T> handle = handleMap.computeIfAbsent(type,
-                    aClass -> new Handle<>((Class<T>) aClass));
-            handle.invalidate();
+            final Handle<T> handle = handleMap.get(type);
+            if (handle != null) handle.invalidate();
         });
         invalidateRecursiveSuperclasses(eventClass);
         final EventNodeImpl<? super T> parent = this.parent;
@@ -569,7 +565,7 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
             if (filters.isEmpty()) return null;
             final EventFilter<E, ?>[] filterList = filters.toArray(EventFilter[]::new);
             final BiConsumer<EventFilter<E, ?>, E> mapper = (filter, event) -> {
-                final Object handler = filter.castHandler(event);
+                final Object handler = filter.getHandler(event);
                 if (handler == null) return;
                 final List<MappedHandler<E>> candidates = handlers.get(handler.hashCode());
                 if (candidates == null) return;

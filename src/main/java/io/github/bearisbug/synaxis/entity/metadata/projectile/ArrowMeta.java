@@ -7,7 +7,7 @@ import io.github.bearisbug.synaxis.entity.metadata.ObjectDataProvider;
 import org.jetbrains.annotations.Nullable;
 
 public class ArrowMeta extends AbstractArrowMeta implements ObjectDataProvider, ProjectileMeta {
-    private Entity shooter;
+    private @Nullable Entity shooter;
 
     public ArrowMeta(@Nullable Entity entity, MetadataHolder metadata) {
         super(entity, metadata);
@@ -35,11 +35,6 @@ public class ArrowMeta extends AbstractArrowMeta implements ObjectDataProvider, 
     @Override
     public int getObjectData() {
         return this.shooter == null ? 0 : this.shooter.getEntityId();
-    }
-
-    @Override
-    public boolean requiresVelocityPacketAtSpawn() {
-        return true;
     }
 
 }

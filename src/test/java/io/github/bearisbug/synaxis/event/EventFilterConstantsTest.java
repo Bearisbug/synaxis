@@ -37,10 +37,4 @@ public class EventFilterConstantsTest {
         assertSame(Entity.class, EventFilter.ENTITY.handlerType());
         assertSame(entity, EventFilter.ENTITY.getHandler(new EventNodeTest.EntityTestEvent(entity)));
     }
-
-    @Test
-    public void castHandlerGoesThroughTheSameGetter() {
-        var item = ItemStack.of(Material.DIAMOND);
-        assertSame(item, EventFilter.ITEM.castHandler(new EventNodeTest.ItemTestEvent(item)));
-    }
 }

@@ -1,11 +1,12 @@
 package io.github.bearisbug.synaxis.event;
 
 import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
-import io.github.bearisbug.synaxis.event.trait.RecursiveEvent;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 import org.jetbrains.annotations.Contract;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -22,6 +23,14 @@ public interface EventListener<T extends Event> {
 
     Class<T> eventType();
 
+    /**
+     * Runs this listener on an event. The engine only reads {@link Result#EXPIRED}, which removes
+     * the listener from its node once it returned; it treats every other value alike. A listener
+     * that fails throws: the exception goes to the {@code ExceptionManager} of the process.
+     *
+     * @param event the event
+     * @return the outcome of the run
+     */
     Result run(T event);
 
     @Contract(pure = true)
@@ -40,20 +49,9 @@ public interface EventListener<T extends Event> {
      */
     @Contract(pure = true)
     static <T extends Event> EventListener<T> of(Class<T> eventType, Consumer<T> listener) {
-        if (CancellableEvent.class.isAssignableFrom(eventType) || RecursiveEvent.class.isAssignableFrom(eventType)) {
-            return new Builder.ListenerImpl<>(eventType, event -> {
-                if (event instanceof CancellableEvent cancellableEvent && cancellableEvent.isCancelled()) {
-                    return Result.INVALID;
-                }
-                listener.accept(event);
-                return Result.SUCCESS;
-            });
-        } else {
-            return new Builder.ListenerImpl<>(eventType, event -> {
-                listener.accept(event);
-                return Result.SUCCESS;
-            });
-        }
+        Objects.requireNonNull(eventType, "eventType");
+        Objects.requireNonNull(listener, "listener");
+        return builder(eventType).handler(listener).build();
     }
 
     class Builder<T extends Event> {
@@ -107,12 +105,14 @@ public interface EventListener<T extends Event> {
          * The handler runs at most that many times, concurrent dispatches included: a run takes its
          * slot before the handler is called, so a handler that throws has used it up too. Events
          * skipped as cancelled (see {@link #ignoreCancelled(boolean)}) or refused by a filter take no
-         * slot.
+         * slot. Without a call to this method the listener does not expire after a number of runs.
          *
          * @param expireCount The number of times to execute
+         * @throws IllegalArgumentException if {@code expireCount} is less than 1
          */
         @Contract(value = "_ -> this")
         public EventListener.Builder<T> expireCount(int expireCount) {
+            Check.argCondition(expireCount <= 0, "expireCount must be at least 1, was {0}", expireCount);
             this.expireCount = expireCount;
             return this;
         }
@@ -185,10 +185,20 @@ public interface EventListener<T extends Event> {
         }
     }
 
+    /**
+     * The outcome of {@link EventListener#run(Event)}.
+     */
     enum Result {
+        /** The handler ran. */
         SUCCESS,
+        /** The handler was skipped: a filter refused the event, or the event was cancelled. */
         INVALID,
+        /** The listener is done: the engine removes it from its node once this run returned. */
         EXPIRED,
+        /**
+         * Never produced nor read by the engine, it has the effect of {@link #SUCCESS}. A listener
+         * that fails throws instead.
+         */
         EXCEPTION
     }
 }

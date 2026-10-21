@@ -1,7 +1,5 @@
 package io.github.bearisbug.synaxis.coordinate;
 
-import io.github.bearisbug.synaxis.coordinate.Direction;
-
 public enum BlockFace {
     BOTTOM(Direction.DOWN),
     TOP(Direction.UP),
@@ -31,6 +29,12 @@ public enum BlockFace {
         };
     }
 
+    /**
+     * Whether {@code other} is on the same axis as this face: the same face or the opposite one.
+     *
+     * @param other the other face
+     * @return true if both faces are on one axis
+     */
     public boolean isSimilar(BlockFace other) {
         return this == other || this == other.getOppositeFace();
     }
@@ -40,7 +44,11 @@ public enum BlockFace {
      *
      * @param yaw the yaw angle
      * @return a horizontal BlockFace
+     * @deprecated use {@code pos.withPitch(0).facing()} with {@link #fromDirection(Direction)}: {@link Pos#facing()}
+     * is the one the engine uses. The two differ on the boundaries, a yaw of exactly ±45 or ±135 degrees: 45 is
+     * {@link #WEST} here and {@link Direction#SOUTH} there
      */
+    @Deprecated(forRemoval = true)
     public static BlockFace fromYaw(float yaw) {
         float degrees = (yaw - 90) % 360;
         if (degrees < 0) {

@@ -100,7 +100,7 @@ public class ItemStackTemplateRegistriesTest {
     public void containerCodecWritesTheFilledSlots(Registries registries) throws IOException {
         final var coder = new RegistryTranscoder<>(Transcoder.NBT, registries);
         final BinaryTag expected = EngineAdventure.tagStringIO().asTag(
-                "[{slot:0,item:{id:\"minecraft:stone\",count:1}},{slot:2,item:{id:\"minecraft:dirt\",count:2}}]");
+                "[{slot:0,item:{id:\"minecraft:stone\"}},{slot:2,item:{id:\"minecraft:dirt\",count:2}}]");
 
         final BinaryTag encoded = assertOk(DataComponents.CONTAINER.encode(coder, CONTAINER_CONTENTS));
 
@@ -108,6 +108,24 @@ public class ItemStackTemplateRegistriesTest {
         assertEquals(CONTAINER_CONTENTS, assertOk(DataComponents.CONTAINER.decode(coder, encoded)));
         assertInstanceOf(Result.Error.class, DataComponents.CONTAINER.decode(coder,
                 EngineAdventure.tagStringIO().asTag("[{slot:256,item:{id:\"minecraft:stone\",count:1}}]")));
+    }
+
+    /**
+     * 26.2 writes the count of a template only when it is not 1, and a client hashes the components it was sent with
+     * that codec. A count that is still written is read back.
+     */
+    @Test
+    public void templateCodecLeavesOutACountOf1(Registries registries) throws IOException {
+        final var coder = new RegistryTranscoder<>(Transcoder.NBT, registries);
+        final List<ItemStack> contents = List.of(ItemStack.of(Material.STONE), ItemStack.of(Material.DIRT, 2));
+
+        final BinaryTag encoded = assertOk(DataComponents.BUNDLE_CONTENTS.encode(coder, contents));
+
+        assertEquals(EngineAdventure.tagStringIO().asTag(
+                "[{id:\"minecraft:stone\"},{id:\"minecraft:dirt\",count:2}]"), encoded);
+        assertEquals(contents, assertOk(DataComponents.BUNDLE_CONTENTS.decode(coder, encoded)));
+        assertEquals(List.of(ItemStack.of(Material.STONE)), assertOk(DataComponents.BUNDLE_CONTENTS.decode(coder,
+                EngineAdventure.tagStringIO().asTag("[{id:\"minecraft:stone\",count:1}]"))));
     }
 
     /**

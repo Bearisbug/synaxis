@@ -66,8 +66,6 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
                     case Update.ElementUpdate<P, E> elementUpdate ->
                             processUpdatedElement(elementUpdate.element(), elementUpdate.partition());
                     case Update.ElementRemove<P, E> elementRemove -> processRemovedElement(elementRemove.element());
-                    case null, default -> throw new IllegalStateException("Unknown update type: " +
-                            (update == null ? "null" : update.getClass().getSimpleName()));
                 }
             });
         } finally {
@@ -92,51 +90,30 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
 
     @Override
     public synchronized void refreshThreads(long nanoTimeout) {
-        switch (provider.refreshType()) {
-            case NEVER -> {
-                // Do nothing
-            }
-            case ALWAYS -> {
-                final long currentTime = System.nanoTime();
-                int counter = partitionUpdateQueue.size();
-                while (true) {
-                    final P partition = partitionUpdateQueue.pollFirst();
-                    if (partition == null) break;
-                    // Update chunk's thread
-                    Partition partitionEntry = partitions.get(partition);
-                    assert partitionEntry != null;
-                    final TickThread previous = partitionEntry.thread;
-                    final TickThread next = retrieveThread(partition);
-                    if (next != previous) {
-                        partitionEntry.thread = next;
-                        previous.entries.remove(partitionEntry);
-                        next.entries.add(partitionEntry);
-                        // Acquirable ownership must follow the partition, otherwise sync() would lock
-                        // the thread that no longer ticks the element. Under the global lock, as in
-                        // updateAndAwait.
-                        AcquirableImpl.lockGlobal();
-                        try {
-                            for (Tickable element : partitionEntry.elements) {
-                                if (element instanceof AcquirableSource<?> acquirableSource) {
-                                    ((AcquirableImpl<?>) acquirableSource.acquirable()).assign(next);
-                                }
-                            }
-                        } finally {
-                            AcquirableImpl.GLOBAL_LOCK.unlock();
-                        }
-                    }
-                    this.partitionUpdateQueue.addLast(partition);
-                    if (--counter <= 0 || System.nanoTime() - currentTime >= nanoTimeout) {
-                        break;
-                    }
+        if (!refreshesThreads) return;
+        final long currentTime = System.nanoTime();
+        for (int left = partitionUpdateQueue.size(); left > 0; left--) {
+            final P partition = partitionUpdateQueue.pollFirst();
+            // Update chunk's thread
+            Partition partitionEntry = partitions.get(partition);
+            assert partitionEntry != null;
+            final TickThread previous = partitionEntry.thread;
+            final TickThread next = retrieveThread(partition);
+            if (next != previous) {
+                partitionEntry.thread = next;
+                previous.entries.remove(partitionEntry);
+                next.entries.add(partitionEntry);
+                // Under the global lock, as in updateAndAwait
+                AcquirableImpl.lockGlobal();
+                try {
+                    for (Tickable element : partitionEntry.elements) assignOwner(element, next);
+                } finally {
+                    AcquirableImpl.GLOBAL_LOCK.unlock();
                 }
             }
+            this.partitionUpdateQueue.addLast(partition);
+            if (System.nanoTime() - currentTime >= nanoTimeout) break;
         }
-    }
-
-    @Override
-    public void refreshThreads() {
-        refreshThreads(Long.MAX_VALUE);
     }
 
     @Override
@@ -214,9 +191,20 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
         if (partitionEntry != null) {
             this.elements.put(tickable, partitionEntry);
             partitionEntry.elements.add(tickable);
-            if (tickable instanceof AcquirableSource<?> acquirableSource) {
-                ((AcquirableImpl<?>) acquirableSource.acquirable()).assign(partitionEntry.thread());
-            }
+            assignOwner(tickable, partitionEntry.thread());
+        }
+    }
+
+    /**
+     * Hands the acquirable of {@code element}, if it has one, to {@code thread}. Every element of the
+     * dispatcher is owned by the thread of its partition, which is the thread {@link Acquirable#sync}
+     * locks: the owner follows the element to a new partition and the partition to a new thread,
+     * otherwise {@code sync} would lock a thread that no longer ticks the element. Called under the
+     * global lock.
+     */
+    private static void assignOwner(Tickable element, TickThread thread) {
+        if (element instanceof AcquirableSource<?> acquirableSource) {
+            ((AcquirableImpl<?>) acquirableSource.acquirable()).assign(thread);
         }
     }
 

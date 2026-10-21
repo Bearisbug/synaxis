@@ -5,84 +5,55 @@ import org.jetbrains.annotations.Range;
 import org.jetbrains.annotations.UnknownNullability;
 
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.function.Consumer;
 
-sealed interface StaticIntMap<T extends @UnknownNullability Object> permits StaticIntMap.Array {
+/**
+ * The entries of a tag node, an array indexed by tag index. The keys are the indexes {@code TagImpl.INDEX_MAP} hands
+ * out, one per tag key in the whole JVM, and the array grows to {@code 2 * key + 1} slots for the largest key put: its
+ * size follows how many tag keys the JVM has seen, not how many entries the node holds. A node holding only the tag
+ * of index 5000 has 10001 slots.
+ */
+final class StaticIntMap<T extends @UnknownNullability Object> {
+    private static final Object[] EMPTY_ARRAY = new Object[0];
 
-    T get(@Range(from = 0, to = Integer.MAX_VALUE) int key);
+    @SuppressWarnings("unchecked")
+    private T[] array = (T[]) EMPTY_ARRAY;
 
-    void forValues(Consumer<T> consumer);
+    @Nullable T get(@Range(from = 0, to = Integer.MAX_VALUE) int key) {
+        final T[] array = this.array;
+        return key < array.length ? array[key] : null;
+    }
 
-    StaticIntMap<T> copy();
+    void forValues(Consumer<T> consumer) {
+        final T[] array = this.array;
+        for (T value : array) {
+            if (value != null) consumer.accept(value);
+        }
+    }
 
-    // Methods potentially causing re-hashing
-
-    void put(@Range(from = 0, to = Integer.MAX_VALUE) int key, T value);
-
-    void remove(@Range(from = 0, to = Integer.MAX_VALUE) int key);
-
-    void updateContent(StaticIntMap<T> content);
-
-    final class Array<T extends @UnknownNullability Object> implements StaticIntMap<T> {
-        private static final Object[] EMPTY_ARRAY = new Object[0];
-
-        private T[] array;
-
-        public Array(T[] array) {
+    void put(@Range(from = 0, to = Integer.MAX_VALUE) int key, T value) {
+        T[] array = this.array;
+        if (key >= array.length) {
+            array = Arrays.copyOf(array, key * 2 + 1);
             this.array = array;
         }
+        array[key] = value;
+    }
 
-        @SuppressWarnings("unchecked")
-        public Array() {
-            this.array = (T[]) EMPTY_ARRAY;
-        }
+    void remove(@Range(from = 0, to = Integer.MAX_VALUE) int key) {
+        T[] array = this.array;
+        if (key < array.length) array[key] = null;
+    }
 
-        @Override
-        public @Nullable T get(int key) {
-            final T[] array = this.array;
-            return key < array.length ? array[key] : null;
-        }
+    /** Drops every entry. The shared empty array is never written to: a put always grows it first. */
+    @SuppressWarnings("unchecked")
+    void clear() {
+        this.array = (T[]) EMPTY_ARRAY;
+    }
 
-        @Override
-        public void forValues(Consumer<T> consumer) {
-            final T[] array = this.array;
-            for (T value : array) {
-                if (value != null) consumer.accept(value);
-            }
-        }
-
-        @Override
-        public StaticIntMap<T> copy() {
-            return new Array<>(array.clone());
-        }
-
-        @Override
-        public void put(int key, T value) {
-            T[] array = this.array;
-            if (key >= array.length) {
-                array = updateArray(Arrays.copyOf(array, key * 2 + 1));
-            }
-            array[key] = value;
-        }
-
-        @Override
-        public void updateContent(StaticIntMap<T> content) {
-            if (content instanceof StaticIntMap.Array<T> arrayMap) {
-                updateArray(arrayMap.array.clone());
-            } else {
-                throw new IllegalArgumentException("Invalid content type: " + content.getClass());
-            }
-        }
-
-        @Override
-        public void remove(int key) {
-            T[] array = this.array;
-            if (key < array.length) array[key] = null;
-        }
-
-        T[] updateArray(T[] result) {
-            this.array = result;
-            return result;
-        }
+    @Override
+    public String toString() {
+        return Arrays.stream(array).filter(Objects::nonNull).toList().toString();
     }
 }

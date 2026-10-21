@@ -43,11 +43,10 @@ public record PluginMessagePacket(String channel,
     }
 
     /**
-     * Gets the current server brand name packet.
-     * <p>
-     * Sent to all players when the name changes.
+     * Creates a {@code minecraft:brand} packet carrying {@code brandName}.
      *
-     * @return the current brand name packet
+     * @param brandName the server brand to show
+     * @return the brand packet
      */
     public static PluginMessagePacket brandPacket(String brandName) {
         final byte[] data = NetworkBuffer.makeArray(STRING, brandName);

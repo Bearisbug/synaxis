@@ -290,8 +290,8 @@ final class TranscoderNbtImpl implements Transcoder<BinaryTag> {
                 for (int i = 0; i < listTag.size(); i++) {
                     switch (convertTo(coder, listTag.get(i))) {
                         case Result.Ok<O> ok -> list.add(ok.value());
-                        case Result.Error<O> error -> {
-                            yield new Result.Error<>(i + ": " + error);
+                        case Result.Error(String message) -> {
+                            yield new Result.Error<>(i + ": " + message);
                         }
                     }
                 }
@@ -302,8 +302,8 @@ final class TranscoderNbtImpl implements Transcoder<BinaryTag> {
                 for (Map.Entry<String, ? extends BinaryTag> entry : compoundTag) {
                     switch (convertTo(coder, entry.getValue())) {
                         case Result.Ok<O> ok -> map.put(coder.createString(entry.getKey()), ok.value());
-                        case Result.Error<O> error -> {
-                            yield new Result.Error<>(entry.getKey() + ": " + error);
+                        case Result.Error(String message) -> {
+                            yield new Result.Error<>(entry.getKey() + ": " + message);
                         }
                     }
                 }

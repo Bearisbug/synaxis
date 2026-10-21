@@ -9,6 +9,9 @@ import io.github.bearisbug.synaxis.instance.block.Block;
 
 /**
  * Called when a player tries to pick a block (middle-click).
+ * <p>
+ * The engine drops a pick out of the player's block interaction range, by the same rule as a dig, before calling
+ * this event; whether to include the data comes from the client as it is.
  */
 public class PlayerPickBlockEvent implements PlayerInstanceEvent, BlockEvent {
 

@@ -11,6 +11,7 @@ import java.util.List;
 
 import static io.github.bearisbug.synaxis.testing.TestUtils.assertEqualsSNBT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -270,5 +271,18 @@ public class TagListTest {
 
         assertNull(handler.getTag(Tag.Integer("tags").list()));
         assertEquals(List.of("a"), handler.getTag(Tag.String("tags").list()));
+    }
+
+    /** A transient element writes no NBT, so the list it is in writes none either: the handler leaves the key out. */
+    @Test
+    public void aListWithAnElementWritingNoNbtIsLeftOut() {
+        var handler = TagHandler.newHandler();
+        Tag<List<Object>> list = Tag.<Object>Transient("transients").list();
+        final List<Object> value = List.of(new Object());
+
+        handler.setTag(list, value);
+
+        assertFalse(handler.asCompound().keySet().contains("transients"));
+        assertEquals(value, handler.getTag(list));
     }
 }

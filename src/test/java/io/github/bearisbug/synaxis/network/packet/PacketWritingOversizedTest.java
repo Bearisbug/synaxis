@@ -42,7 +42,9 @@ public class PacketWritingOversizedTest {
         final var error = assertThrows(IllegalStateException.class,
                 () -> PacketWriting.allocateTrimmedPacket(scratch,
                         PacketVanilla.SERVER_PACKET_PARSER, ConnectionState.LOGIN, oversized, 0));
-        assertTrue(error.getMessage().startsWith("Packet too large: "), error.getMessage());
+        assertTrue(error.getMessage().startsWith("Packet too large: ")
+                && error.getMessage().endsWith(" > " + JvmFlags.MAX_PACKET_SIZE + " (synaxis.max-packet-size)"),
+                error.getMessage());
     }
 
     @Test

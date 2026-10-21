@@ -29,7 +29,10 @@ public final class JvmFlags {
      */
     public static final boolean AUTOMATIC_COMPONENT_TRANSLATION = booleanProperty("synaxis.automatic-component-translation", false);
 
-    /** Groups packets sent to several players into one shared buffer. */
+    /**
+     * Groups packets sent to several players into one shared buffer. Has no effect while
+     * {@code synaxis.cached-packet} is off.
+     */
     public static final boolean GROUPED_PACKET = booleanProperty("synaxis.grouped-packet", true);
 
     /**

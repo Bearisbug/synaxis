@@ -39,8 +39,8 @@ import java.util.function.UnaryOperator;
 /**
  * Represents an inventory where items can be modified/retrieved.
  * <p>
- * Slots are written inside this inventory's monitor. A click ({@link #handleClick(Player, Click)}) holds the clicked
- * inventory's monitor and then the clicking player's one; the {@link InventoryClickEvent}s and
+ * Slots are written inside this inventory's monitor. A click ({@link #handleClick(Player, Click)}) holds the monitor
+ * of this inventory and then the clicking player's one; the {@link InventoryClickEvent}s and
  * {@link InventoryItemChangeEvent}s it raises are dispatched after the whole click, cursor included, has been committed
  * and both monitors are released. Two kinds of events are still dispatched inside a monitor: {@link EntityEquipEvent}
  * (inside the player inventory's one, before the click is committed) and the {@link InventoryItemChangeEvent}s of
@@ -145,6 +145,7 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
         // Drop cursor item when closing inventory
         player.dropCursorItem();
 
+        // A close the server started has to reach the client, one the client made itself is not answered
         if (player.didCloseInventory()) {
             player.sendPacket(new CloseWindowPacket(getWindowId()));
         }
@@ -228,7 +229,10 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
      *
      * @param slot       the slot to set the item
      * @param itemStack  the item to set
-     * @param sendPacket whether to send packets
+     * @param sendPacket false to skip only the slot update packet to the viewers of this inventory: the
+     *                   {@link InventoryItemChangeEvent} is dispatched all the same, and on a {@link PlayerInventory}
+     *                   an equipment slot still calls the {@link EntityEquipEvent}, updates the attributes and
+     *                   syncs the equipment; call {@link #update()} once a batch of writes is done
      */
     public void setItemStack(int slot, ItemStack itemStack, boolean sendPacket) {
         Check.argCondition(!MathUtils.isBetween(slot, 0, getSize() - 1), // Subtract 1 because MathUtils is <= max, instead of strictly less than
@@ -294,6 +298,11 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
 
     /**
      * Adds an {@link ItemStack} to the inventory and sends relevant update to the viewer(s).
+     * <p>
+     * The slots from 0 up to {@link #getInnerSize()}, exclusive, take it, the result and output slots of a type that
+     * has them included: slot 0 of a {@code CRAFTING} inventory, the slots from {@link InventoryType#getInputSlotEnd()}
+     * on of a {@code FURNACE} or an {@code ANVIL}. To fill only the input slots, pick them between
+     * {@link InventoryType#getInputSlotStart()} and {@link InventoryType#getInputSlotEnd()} and write them.
      *
      * @param itemStack the item to add
      * @param option    the transaction option
@@ -304,12 +313,20 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
         return processItemStack(itemStack, TransactionType.ADD, option);
     }
 
+    /**
+     * Adds an {@link ItemStack} to the inventory, all of it or nothing, see
+     * {@link #addItemStack(ItemStack, TransactionOption)}.
+     *
+     * @param itemStack the item to add
+     * @return true if the whole item was added
+     */
     public boolean addItemStack(ItemStack itemStack) {
         return addItemStack(itemStack, TransactionOption.ALL_OR_NOTHING);
     }
 
     /**
-     * Adds {@link ItemStack}s to the inventory and sends relevant updates to the viewer(s).
+     * Adds {@link ItemStack}s to the inventory and sends relevant updates to the viewer(s), in the slots
+     * {@link #addItemStack(ItemStack, TransactionOption)} fills.
      * <p>
      * Each item is added on its own, the list is not one transaction: see
      * {@link #processItemStacks(List, TransactionType, TransactionOption)}.
@@ -414,7 +431,8 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
     }
 
     /**
-     * Gets the size of the "inner inventory" (which includes only "usable" slots).
+     * Gets the size of the "inner inventory": {@link #getSize()} for an {@link Inventory}, the 36 slots without the
+     * equipment and crafting slots for a {@link PlayerInventory}.
      *
      * @return inner inventory's size
      */

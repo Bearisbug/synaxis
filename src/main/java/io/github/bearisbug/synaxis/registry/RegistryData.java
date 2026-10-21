@@ -1,7 +1,5 @@
 package io.github.bearisbug.synaxis.registry;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.ToNumberPolicy;
 import com.google.gson.stream.JsonReader;
 import net.kyori.adventure.key.Key;
@@ -47,7 +45,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -62,13 +59,7 @@ import java.util.function.Supplier;
 public final class RegistryData {
     private static final Logger LOGGER = LoggerFactory.getLogger(RegistryData.class);
 
-    static final Gson GSON = new GsonBuilder().disableHtmlEscaping().disableJdkUnsafe().create();
     private static final String DATA_RESOURCE_ROOT = "/data/";
-
-    @ApiStatus.Internal
-    public static BlockEntry block(String namespace, Properties main) {
-        return new BlockEntry(namespace, main, new HashMap<>(), null, null);
-    }
 
     @ApiStatus.Internal
     public static BlockEntry block(String namespace, Properties main, Map<Object, Object> internCache, @Nullable BlockEntry parent, @Nullable Properties parentProperties) {
@@ -131,6 +122,7 @@ public final class RegistryData {
         // 2. Try to load from working directory
         final Path filesystemPath = Path.of(path);
         if (resourceStream == null && Files.exists(filesystemPath)) {
+            LOGGER.info("Registry data {} loaded from working directory {}", path, filesystemPath.toAbsolutePath());
             resourceStream = Files.newInputStream(filesystemPath);
         }
 
@@ -199,13 +191,9 @@ public final class RegistryData {
         for (String tagName : tagJson.asMap().keySet()) {
             final TagKeyImpl<T> tagKey = new TagKeyImpl<>(Key.key(tagName));
             final RegistryTagImpl.Backed<T> tagValue = tags.computeIfAbsent(tagKey, RegistryTagImpl.Backed::new);
-            getTagValues(tagValue, tagJson, tagName);
+            getTagValues(tagValue, tagJson, tagName, new HashSet<>());
         }
         return Map.copyOf(tags);
-    }
-
-    private static <T> void getTagValues(RegistryTagImpl.Backed<T> tag, Properties main, String value) {
-        getTagValues(tag, main, value, new HashSet<>());
     }
 
     private static <T> void getTagValues(RegistryTagImpl.Backed<T> tag, Properties main, String value, Set<String> visited) {
@@ -313,22 +301,12 @@ public final class RegistryData {
                 }, null);
             }
             { // Unique special case where the shape strings can mutate but arent saved after the parse.
-                this.outlineShape = fromParent(parent, BlockEntry::outlineShape, main, "shape", (properties, string) -> {
-                    String shape = properties.getString(string);
-                    return CollisionUtils.parseCollisionShape(internCache, shape);
-                }, null);
-                this.interactionShape = fromParent(parent, BlockEntry::interactionShape, main, "interactionShape", (properties, string) -> {
-                    String shape = properties.getString(string);
-                    return CollisionUtils.parseCollisionShape(internCache, shape);
-                }, null);
-                this.visualShape = fromParent(parent, BlockEntry::visualShape, main, "visualShape", (properties, string) -> {
-                    String shape = properties.getString(string);
-                    return CollisionUtils.parseCollisionShape(internCache, shape);
-                }, null);
-                this.collisionShape = fromParent(parent, BlockEntry::collisionShape, main, "collisionShape", (properties, string) -> {
-                    String shape = properties.getString(string);
-                    return CollisionUtils.parseCollisionShape(internCache, shape);
-                }, null);
+                final BiFunction<Properties, String, Shape> parseShape = (properties, string) ->
+                        CollisionUtils.parseCollisionShape(internCache, properties.getString(string));
+                this.outlineShape = fromParent(parent, BlockEntry::outlineShape, main, "shape", parseShape, null);
+                this.interactionShape = fromParent(parent, BlockEntry::interactionShape, main, "interactionShape", parseShape, null);
+                this.visualShape = fromParent(parent, BlockEntry::visualShape, main, "visualShape", parseShape, null);
+                this.collisionShape = fromParent(parent, BlockEntry::collisionShape, main, "collisionShape", parseShape, null);
                 Shape occludeShape = fromParent(parent, BlockEntry::occlusionShape, main, "occlusionShape", (properties, string) -> {
                     String shape = properties.getString(string);
                     if (parent == null || parentProperties == null) // No parent, so we can just parse the shape
@@ -527,7 +505,7 @@ public final class RegistryData {
         private final Supplier<Block> blockSupplier;
         // Material is a static registry shared by every process, so several of them can bind the
         // prototype of the same entry at once.
-        private volatile @Nullable Either<Properties, DataComponentMap> prototype;
+        private volatile Either<Properties, DataComponentMap> prototype;
 
         private MaterialEntry(String namespace, Properties main) {
             this.prototype = Either.left(main.section("components"));
@@ -558,14 +536,17 @@ public final class RegistryData {
 
         public DataComponentMap prototype() {
             return switch (prototype) {
-                case Either.Left(_) -> throw new IllegalStateException("Should have been bound");
+                case Either.Left(_) -> throw new IllegalStateException("Component prototype of material " + key
+                        + " is not bound yet: create a ServerProcess or call Registries.vanilla() before reading item components");
                 case Either.Right(var dataComponentMap) -> dataComponentMap;
-                case null -> DataComponentMap.EMPTY;
             };
         }
 
         /**
-         * Attempts the bind the current prototype using the registries provided.
+         * Binds the component prototype by decoding the vendored components with the registries provided. Material is
+         * a static registry shared by the whole JVM, so only the first call binds it: the first {@link Registries} to
+         * be created (a {@code ServerProcess} or {@link Registries#vanilla()}) decides the prototype, later calls
+         * return without decoding.
          *
          * @param registries the registries used during decode
          */
@@ -586,8 +567,7 @@ public final class RegistryData {
                             throw new IllegalStateException("Failed to decode component " + entry.getKey() + " in " + key + ": " + message);
                 }
             }
-            final DataComponentMap prototype = builder.build();
-            this.prototype = prototype.isEmpty() ? null : Either.right(prototype); // null is essential for EMPTY
+            this.prototype = Either.right(builder.build());
         }
 
         public boolean isArmor() {
@@ -731,7 +711,7 @@ public final class RegistryData {
         }
 
         /**
-         * Gets the entity attachment by name. Typically, will be PASSENGER or VEHICLE, but some entities have custom attachments (e.g. WARDEN_CHEST, NAMETAG)
+         * Gets the entity attachment by name. Typically, will be PASSENGER or VEHICLE, but some entities have custom attachments (e.g. WARDEN_CHEST, NAME_TAG)
          *
          * @param attachmentName The attachment to retrieve
          * @return A list of 3 doubles if the attachment is defined for this entity, or null if it is not defined
@@ -747,7 +727,7 @@ public final class RegistryData {
         }
 
         /**
-         * Gets all entity attachments under a specific name. Typically, will be PASSENGER or VEHICLE, but some entities have custom attachments (e.g. WARDEN_CHEST, NAMETAG)
+         * Gets all entity attachments under a specific name. Typically, will be PASSENGER or VEHICLE, but some entities have custom attachments (e.g. WARDEN_CHEST, NAME_TAG)
          * <p></p>
          * This is only needed for happy ghast, as that is (currently) the only entity that has multiple attachments for PASSENGER as of 26.1
          *
@@ -963,9 +943,7 @@ public final class RegistryData {
 
         @Override
         public String toString() {
-            AtomicReference<String> string = new AtomicReference<>("{ ");
-            this.map.forEach((s, object) -> string.set(string.get() + " , " + "\"" + s + "\"" + " : " + "\"" + object + "\""));
-            return string.updateAndGet(s -> s.replaceFirst(" , ", "") + "}");
+            return map.toString();
         }
 
     }

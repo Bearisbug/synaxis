@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.inventory.Inventory;
 import io.github.bearisbug.synaxis.inventory.InventoryType;
+import io.github.bearisbug.synaxis.inventory.click.Click;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientCloseWindowPacket;
@@ -18,6 +19,7 @@ import static io.github.bearisbug.synaxis.inventory.click.ClickUtils.clickPacket
 import static io.github.bearisbug.synaxis.network.packet.client.play.ClientClickWindowPacket.ClickType.QUICK_CRAFT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 public class DragClickIntegrationTest {
@@ -35,7 +37,7 @@ public class DragClickIntegrationTest {
         player.getInventory().setCursorItem(ItemStack.of(Material.DIAMOND, 64));
 
         // 89 - 27 = 62, which is past PlayerInventory#INVENTORY_SIZE (46)
-        assertFalse(inventory.dragging(player, List.of(0, 89), 2));
+        assertFalse(inventory.handleClick(player, new Click.LeftDrag(List.of(0, 89))));
 
         assertEquals(ItemStack.AIR, inventory.getItemStack(0), "no slot may be written by a rejected drag");
         assertEquals(ItemStack.of(Material.DIAMOND, 64), player.getInventory().getCursorItem(),
@@ -74,6 +76,24 @@ public class DragClickIntegrationTest {
         assertEquals(ItemStack.AIR, small.getItemStack(0), "stale drag slots must not be applied");
         assertEquals(ItemStack.of(Material.DIAMOND, 64), player.getInventory().getCursorItem(),
                 "the cursor must not keep its items after a partially applied drag");
+    }
+
+    /** A client can end a left drag it never added a slot to: nothing moves. */
+    @Test
+    public void aLeftDragOverNoSlotMovesNothing(Env env) {
+        var instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, 42, 0));
+        var inventory = new Inventory(InventoryType.CHEST_1_ROW, Component.empty()); // 9
+        player.openInventory(inventory);
+        player.getInventory().setCursorItem(ItemStack.of(Material.DIAMOND, 6));
+
+        assertTrue(inventory.handleClick(player, new Click.LeftDrag(List.of())));
+
+        assertEquals(ItemStack.of(Material.DIAMOND, 6), player.getInventory().getCursorItem());
+        for (int slot = 0; slot < inventory.getSize(); slot++) assertEquals(ItemStack.AIR, inventory.getItemStack(slot));
+        for (int slot = 0; slot < player.getInventory().getSize(); slot++) {
+            assertEquals(ItemStack.AIR, player.getInventory().getItemStack(slot));
+        }
     }
 
     @Test

@@ -37,7 +37,7 @@ public record LastSeenMessages(List<MessageSignature> entries) {
     public record Update(int offset, BitSet acknowledged) {
         public static final NetworkBuffer.Type<Update> SERIALIZER = NetworkBufferTemplate.template(
                 VAR_INT, Update::offset,
-                FixedBitSet(20), Update::acknowledged,
+                FixedBitSet(MAX_ENTRIES), Update::acknowledged,
                 Update::new
         );
 

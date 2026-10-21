@@ -3,10 +3,8 @@ package io.github.bearisbug.synaxis.command.builder;
 import io.github.bearisbug.synaxis.command.CommandSender;
 import io.github.bearisbug.synaxis.command.builder.arguments.Argument;
 import io.github.bearisbug.synaxis.command.builder.condition.CommandCondition;
-import io.github.bearisbug.synaxis.utils.StringUtils;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -22,8 +20,6 @@ public class CommandSyntax {
     private final @Nullable Map<String, Function<CommandSender, Object>> defaultValuesMap;
     private final Argument<?>[] args;
 
-    private final boolean suggestion;
-
     protected CommandSyntax(@Nullable CommandCondition commandCondition,
                             CommandExecutor commandExecutor,
                             @Nullable Map<String, Function<CommandSender, Object>> defaultValuesMap,
@@ -33,8 +29,6 @@ public class CommandSyntax {
 
         this.defaultValuesMap = defaultValuesMap;
         this.args = args;
-
-        this.suggestion = Arrays.stream(args).anyMatch(Argument::hasSuggestion);
     }
 
     protected CommandSyntax(@Nullable CommandCondition commandCondition,
@@ -99,18 +93,5 @@ public class CommandSyntax {
      */
     public Argument<?>[] getArguments() {
         return args;
-    }
-
-    public boolean hasSuggestion() {
-        return suggestion;
-    }
-
-    public String getSyntaxString() {
-        StringBuilder builder = new StringBuilder();
-        for (Argument<?> argument : args) {
-            builder.append(argument)
-                    .append(StringUtils.SPACE);
-        }
-        return builder.toString().trim();
     }
 }

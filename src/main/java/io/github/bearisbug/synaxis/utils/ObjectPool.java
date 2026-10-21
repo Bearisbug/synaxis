@@ -6,10 +6,6 @@ import org.jetbrains.annotations.ApiStatus;
 
 import java.lang.ref.Cleaner;
 import java.lang.ref.SoftReference;
-import java.util.Collection;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -65,72 +61,14 @@ public final class ObjectPool<T> {
         return pool.size();
     }
 
-    public void register(Object ref, AtomicReference<T> objectRef) {
-        CLEANER.register(ref, new BufferRefCleaner<>(this, objectRef));
-    }
-
     public void register(Object ref, T object) {
         CLEANER.register(ref, new BufferCleaner<>(this, object));
-    }
-
-    public void register(Object ref, Collection<T> objects) {
-        CLEANER.register(ref, new BuffersCleaner<>(this, objects));
-    }
-
-    public Holder hold() {
-        return new Holder(get());
-    }
-
-    public <R> R use(Function<T, R> function) {
-        T object = get();
-        try {
-            return function.apply(object);
-        } finally {
-            add(object);
-        }
-    }
-
-    private record BufferRefCleaner<T>(ObjectPool<T> pool, AtomicReference<T> objectRef) implements Runnable {
-        @Override
-        public void run() {
-            this.pool.add(objectRef.get());
-        }
     }
 
     private record BufferCleaner<T>(ObjectPool<T> pool, T object) implements Runnable {
         @Override
         public void run() {
             this.pool.add(object);
-        }
-    }
-
-    private record BuffersCleaner<T>(ObjectPool<T> pool, Collection<T> objects) implements Runnable {
-        @Override
-        public void run() {
-            for (T buffer : objects) {
-                this.pool.add(buffer);
-            }
-        }
-    }
-
-    public final class Holder implements AutoCloseable {
-        private final T object;
-        private final AtomicBoolean closed = new AtomicBoolean(false);
-
-        Holder(T object) {
-            this.object = object;
-        }
-
-        public T get() {
-            if (closed.get()) throw new IllegalStateException("Holder is closed");
-            return object;
-        }
-
-        @Override
-        public void close() {
-            if (closed.compareAndSet(false, true)) {
-                add(object);
-            }
         }
     }
 }

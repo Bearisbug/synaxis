@@ -63,11 +63,11 @@ public record ServerLinksPacket(List<Entry> entries) implements ServerPacket.Con
         }
 
         public Entry(KnownLinkType type, String link) {
-            this(type, null, link);
+            this(Either.left(Objects.requireNonNull(type, "type")), link);
         }
 
         public Entry(Component type, String link) {
-            this(null, type, link);
+            this(Either.right(Objects.requireNonNull(type, "type")), link);
         }
     }
 

@@ -14,6 +14,7 @@ import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static com.tngtech.archunit.core.domain.JavaCall.Predicates.target;
@@ -38,13 +39,16 @@ public class ArchitectureTest {
 
     private static final String GAME_SIDE_PACKAGE = "io.github.bearisbug.synaxis.game..";
 
-    /** {@link Tag#Structure}, {@link Tag#View} and {@link TagHandler#fromCompound}: the tag index that never shrinks (audit F49). */
+    /**
+     * {@link Tag#Structure}, {@link Tag#View}, {@link TagHandler#fromCompound} and {@link TagHandler#updateContent}:
+     * the tag index that never shrinks (audit F49).
+     */
     private static final DescribedPredicate<JavaAccess<?>> STRUCTURED_TAG_ENTRY_POINTS =
-            DescribedPredicate.describe("Tag.Structure, Tag.View or TagHandler.fromCompound", access -> {
+            DescribedPredicate.describe("Tag.Structure, Tag.View, TagHandler.fromCompound or TagHandler.updateContent", access -> {
                 final String owner = access.getTargetOwner().getFullName();
                 final String name = access.getTarget().getName();
                 if (owner.equals(Tag.class.getName())) return name.equals("Structure") || name.equals("View");
-                return owner.equals(TagHandler.class.getName()) && name.equals("fromCompound");
+                return owner.equals(TagHandler.class.getName()) && (name.equals("fromCompound") || name.equals("updateContent"));
             });
 
     /** Over {@link JavaAccess}, so that a method reference is caught as well as a call. */
@@ -71,6 +75,22 @@ public class ArchitectureTest {
         }
     }
 
+    /** Replacing the content of a handler, which runs the compound through the same index. */
+    private static final class GameClassUpdatingATagHandler {
+        @SuppressWarnings("unused")
+        static void replace(TagHandler handler, CompoundBinaryTag compound) {
+            handler.updateContent(compound);
+        }
+    }
+
+    /** The same violation as a method reference. */
+    private static final class GameClassReferencingTheTagHandlerUpdate {
+        @SuppressWarnings("unused")
+        static BiConsumer<TagHandler, CompoundBinaryTag> updater() {
+            return TagHandler::updateContent;
+        }
+    }
+
     @Test
     public void gameSideDoesNotUseTheStructuredTags() {
         gameSideDoesNotReadCompoundsIntoTags().check(gameSideClasses());
@@ -78,22 +98,32 @@ public class ArchitectureTest {
 
     @Test
     public void theRuleRejectsAGameClassCallingTheTagIndex() {
-        assertTheTagRuleRejects(GameClassCallingTheTagIndex.class);
+        assertTheTagRuleRejects(GameClassCallingTheTagIndex.class, "fromCompound");
     }
 
     @Test
     public void theRuleRejectsAGameClassReferencingTheTagIndex() {
-        assertTheTagRuleRejects(GameClassReferencingTheTagIndex.class);
+        assertTheTagRuleRejects(GameClassReferencingTheTagIndex.class, "fromCompound");
     }
 
-    private static void assertTheTagRuleRejects(Class<?> offender) {
+    @Test
+    public void theRuleRejectsAGameClassUpdatingATagHandler() {
+        assertTheTagRuleRejects(GameClassUpdatingATagHandler.class, "updateContent");
+    }
+
+    @Test
+    public void theRuleRejectsAGameClassReferencingTheTagHandlerUpdate() {
+        assertTheTagRuleRejects(GameClassReferencingTheTagHandlerUpdate.class, "updateContent");
+    }
+
+    private static void assertTheTagRuleRejects(Class<?> offender, String entryPoint) {
         final JavaClasses synthetic = new ClassFileImporter().importClasses(offender);
 
         final AssertionError violation = assertThrows(
                 AssertionError.class, () -> gameSideDoesNotReadCompoundsIntoTags().check(synthetic));
 
         assertTrue(violation.getMessage().contains(offender.getName()), violation.getMessage());
-        assertTrue(violation.getMessage().contains("fromCompound"), violation.getMessage());
+        assertTrue(violation.getMessage().contains(entryPoint + "("), violation.getMessage());
     }
 
     /**

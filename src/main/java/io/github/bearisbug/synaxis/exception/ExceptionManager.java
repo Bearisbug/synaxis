@@ -4,6 +4,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -49,7 +50,7 @@ public final class ExceptionManager {
         }
     };
 
-    private @Nullable ExceptionHandler exceptionHandler;
+    private volatile ExceptionHandler exceptionHandler = DEFAULT_HANDLER;
 
     /**
      * Handles an exception, if no {@link ExceptionHandler} is set it is logged as an ERROR.
@@ -82,11 +83,14 @@ public final class ExceptionManager {
      * Changes the exception handler, to allow custom exception handling. There is one handler for the
      * whole process, this replaces it; the host installs its own when it starts
      * ({@code docs/DESIGN-PROD.md} {@code API-PROD-013}).
+     * <p>
+     * Without a handler, exceptions are logged as one line per 10 s at most, carrying the count of
+     * the ones it stands for; that window is shared by every process of the JVM that has no handler.
      *
      * @param exceptionHandler the new {@link ExceptionHandler}, can be set to null to apply the default provider
      */
     public void setExceptionHandler(@Nullable ExceptionHandler exceptionHandler) {
-        this.exceptionHandler = exceptionHandler;
+        this.exceptionHandler = Objects.requireNonNullElse(exceptionHandler, DEFAULT_HANDLER);
     }
 
     /**
@@ -95,7 +99,6 @@ public final class ExceptionManager {
      * @return the current {@link ExceptionHandler}
      */
     public ExceptionHandler getExceptionHandler() {
-        if (this.exceptionHandler == null) this.exceptionHandler = DEFAULT_HANDLER;
         return this.exceptionHandler;
     }
 }

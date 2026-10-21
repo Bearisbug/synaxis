@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.command.builder.arguments;
 import io.github.bearisbug.synaxis.command.ArgumentParserType;
 import io.github.bearisbug.synaxis.command.CommandSender;
 import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException;
+import org.jetbrains.annotations.Nullable;
 
 public class ArgumentLiteral extends Argument<String> {
 
@@ -21,7 +22,7 @@ public class ArgumentLiteral extends Argument<String> {
     }
 
     @Override
-    public ArgumentParserType parser() {
+    public @Nullable ArgumentParserType parser() {
         return null;
     }
 

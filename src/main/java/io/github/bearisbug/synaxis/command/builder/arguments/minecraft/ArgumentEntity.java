@@ -164,7 +164,6 @@ public class ArgumentEntity extends Argument<EntityFinder> {
 
         // Remove brackets
         final String structureData = structure.substring(1, structure.length() - 1);
-        //System.out.println("structure data: " + structureData);
 
         String currentArgument = "";
         boolean danglingComma = false;
@@ -222,7 +221,6 @@ public class ArgumentEntity extends Argument<EntityFinder> {
 
         final String value = valueBuilder.toString().trim();
 
-        //System.out.println("value: " + value);
         switch (argumentName) {
             case "type" -> {
                 final boolean include = !value.startsWith("!");
@@ -246,13 +244,13 @@ public class ArgumentEntity extends Argument<EntityFinder> {
                 int limit;
                 try {
                     limit = Integer.parseInt(value);
-                    entityFinder.setLimit(limit);
                 } catch (NumberFormatException _) {
                     throw new ArgumentSyntaxException("Invalid limit number", input, INVALID_ARGUMENT_VALUE);
                 }
                 if (limit <= 0) {
                     throw new ArgumentSyntaxException("Limit must be positive", input, INVALID_ARGUMENT_VALUE);
                 }
+                entityFinder.setLimit(limit);
             }
             case "sort" -> {
                 try {
@@ -278,8 +276,8 @@ public class ArgumentEntity extends Argument<EntityFinder> {
                     throw new ArgumentSyntaxException("Invalid distance", input, INVALID_ARGUMENT_VALUE);
                 }
 
-                // An open lower bound like ..10 parses to null or -Float.MAX_VALUE, meaning zero
-                final double minDistance = distanceRange.min() == null || distanceRange.min() == -Float.MAX_VALUE ? 0 : distanceRange.min();
+                // An open lower bound like ..10 parses to null, meaning zero
+                final double minDistance = distanceRange.min() == null ? 0 : distanceRange.min();
                 final double maxDistance = distanceRange.max() == null ? Double.MAX_VALUE : distanceRange.max();
 
                 if (!Double.isFinite(minDistance) || !Double.isFinite(maxDistance) || minDistance < 0 || maxDistance < 0) {

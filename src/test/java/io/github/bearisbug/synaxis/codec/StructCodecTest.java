@@ -153,9 +153,53 @@ public class StructCodecTest {
         assertEquals(snbt("{name: \"test\", value: \"innerValue\"}"), assertOk(encodeResult));
     }
 
+    /** An inlined struct whose own fields are optional decodes from a map without its keys and writes none back. */
     @Test
     void inlineFieldEmpty() {
         record InnerObject(String value) {
+        }
+        record TheObject(String name, InnerObject inner) {
+        }
+
+        var codec = StructCodec.struct(
+                "name", Codec.STRING, TheObject::name,
+                StructCodec.INLINE, StructCodec.struct(
+                        "value", Codec.STRING.optional("default"), InnerObject::value,
+                        InnerObject::new
+                ), TheObject::inner,
+                TheObject::new);
+        var result = codec.decode(Transcoder.NBT, snbt("{name: \"test\"}"));
+        assertEquals(new TheObject("test", new InnerObject("default")), assertOk(result));
+
+        var encodeResult = codec.encode(Transcoder.NBT, new TheObject("test", new InnerObject("default")));
+        assertEquals(snbt("{name: \"test\"}"), assertOk(encodeResult));
+    }
+
+    /**
+     * Optional does not let an absent inlined struct decode to null: the inlined struct reads the map itself and
+     * reports its missing field under the inline key.
+     */
+    @Test
+    void inlineOptionalStructWithoutItsFieldsIsAnError() {
+        record InnerObject(String value) {
+        }
+        record TheObject(String name, @Nullable InnerObject inner) {
+        }
+
+        var codec = StructCodec.struct(
+                "name", Codec.STRING, TheObject::name,
+                StructCodec.INLINE, StructCodec.struct(
+                        "value", Codec.STRING, InnerObject::value,
+                        InnerObject::new
+                ).optional(), TheObject::inner,
+                TheObject::new);
+        assertError(StructCodec.INLINE + ": value: No such key: value", codec.decode(Transcoder.NBT, snbt("{name: \"test\"}")));
+    }
+
+    /** An inlined struct that does not encode reports its own message under the inline key, not the error record. */
+    @Test
+    void inlineEncodeErrorNamesTheField() {
+        record InnerObject(@Nullable String value) {
         }
         record TheObject(String name, InnerObject inner) {
         }
@@ -167,11 +211,7 @@ public class StructCodecTest {
                         InnerObject::new
                 ), TheObject::inner,
                 TheObject::new);
-        var result = codec.decode(Transcoder.NBT, snbt("{name: \"test\", value: \"innerValue\"}"));
-        assertEquals(new TheObject("test", new InnerObject("innerValue")), assertOk(result));
-
-        var encodeResult = codec.encode(Transcoder.NBT, new TheObject("test", new InnerObject("innerValue")));
-        assertEquals(snbt("{name: \"test\", value: \"innerValue\"}"), assertOk(encodeResult));
+        assertError(StructCodec.INLINE + ": value: null", codec.encode(Transcoder.NBT, new TheObject("test", new InnerObject(null))));
     }
 
     @Test

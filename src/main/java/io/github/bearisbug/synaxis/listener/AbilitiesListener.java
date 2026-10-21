@@ -12,7 +12,7 @@ public class AbilitiesListener {
         final boolean canFly = player.isAllowFlying() || player.getGameMode() == GameMode.CREATIVE;
 
         if (canFly) {
-            final boolean isFlying = (packet.flags() & 0x2) > 0;
+            final boolean isFlying = packet.flying();
 
             player.refreshFlying(isFlying);
 

@@ -82,11 +82,14 @@ public interface StructCodec<R> extends Codec<R> {
     <D> Result<R> decodeFromMap(Transcoder<D> coder, MapLike<D> map);
 
     /**
-     * Decode a value {@link R} into the backing map of {@link D}
+     * Encodes the fields of a value {@link R} into {@code map} and returns the result of encoding.
+     * {@link #encode(Transcoder, Object)} returns that result as the encoded value; a struct inlined with
+     * {@link #INLINE} only has it checked for an {@link Result.Error}, its value is ignored. Most implementations
+     * return {@code map.build()} on success; one that delegates to another struct returns what that one returns.
      *
      * @param coder the transcoder for {@link D}
      * @param value the value of {@link R} to encode
-     * @param map   the map to decode from
+     * @param map   the builder to write the fields into
      * @param <D>   the transcoder type
      * @return the result of encoding
      */
@@ -3427,7 +3430,11 @@ public interface StructCodec<R> extends Codec<R> {
         };
     }
 
-    private static <D, T> @Nullable Result<D> put(Transcoder<D> coder, Codec<T> codec, MapBuilder<D> map, String key, @Nullable T value) {
+    /**
+     * Writes one field into {@code map}. Returns null when the field was written or left out as an optional, and
+     * otherwise the error, already prefixed with the key, for the caller to return as it is.
+     */
+    private static <D, T> Result.@Nullable Error<D> put(Transcoder<D> coder, Codec<T> codec, MapBuilder<D> map, String key, @Nullable T value) {
         if (value == null) {
             if (!(codec instanceof CodecImpl.OptionalImpl<T>))
                 return new Result.Error<>(key + ": null");
@@ -3441,12 +3448,13 @@ public interface StructCodec<R> extends Codec<R> {
             if (!(encodeCodec instanceof StructCodec<T> s))
                 return new Result.Error<>(key + ": not a struct");
             final Result<D> mapEncodeResult = s.encodeToMap(coder, value, map);
-            if (mapEncodeResult instanceof Result.Error<?> e)
-                return new Result.Error<>(key + ": " + e);
+            if (mapEncodeResult instanceof Result.Error<D> error)
+                return new Result.Error<>(key + ": " + error.message());
             return null;
         }
         return switch (codec.encode(coder, value)) {
             case Result.Ok(D ok) -> {
+                // Result.Ok may hold null: a codec can encode a value to Ok(null) to leave the key out
                 if (ok != null) map.put(key, ok);
                 yield null;
             }

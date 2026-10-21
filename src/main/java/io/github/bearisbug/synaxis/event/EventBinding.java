@@ -17,8 +17,23 @@ public interface EventBinding<E extends Event> {
         return new FilteredBuilder<>(filter, predicate);
     }
 
+    /**
+     * The event types this binding has a consumer for. The set must not change after the binding is
+     * registered.
+     *
+     * @return the bound event types
+     */
     Collection<Class<? extends Event>> eventTypes();
 
+    /**
+     * The consumer of one of the {@link #eventTypes()}. Must return the same (equal) instance on
+     * every call for a given type: {@link EventNode#register} deduplicates and
+     * {@link EventNode#unregister} removes by equals, so a fresh lambda per call is registered again
+     * on each register and is never removed by unregister.
+     *
+     * @param eventType one of the bound event types
+     * @return the consumer of that type
+     */
     Consumer<E> consumer(Class<? extends Event> eventType);
 
     class FilteredBuilder<E extends Event, T> {

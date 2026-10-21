@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -28,6 +29,8 @@ public class RegistryIntegrationTest {
         assertDoesNotThrow(() -> {
             dimensionRegistry.registryDataPacket(env.process(), false);
         }, "Registry data packet should not throw for null pack");
+        assertFalse(DataPack.ENGINE_UNNAMED.isSynced());
+        assertTrue(DataPack.MINECRAFT_CORE.isSynced(), "the client has the vanilla core pack");
     }
 
     /**

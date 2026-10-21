@@ -43,7 +43,14 @@ public enum EquipmentSlot {
         return ARMORS;
     }
 
-    @Deprecated
+    /**
+     * Gets the slot of a slot number of the {@code set_equipment} packet ({@code EntityEquipmentPacket}).
+     *
+     * @param legacyProtocolId the slot number, 0 to 7
+     * @return the slot
+     * @throws IllegalStateException if no slot has this number
+     * @see #legacyProtocolId()
+     */
     public static EquipmentSlot fromLegacyProtocolId(int legacyProtocolId) {
         final EquipmentSlot slot = BY_LEGACY_PROTOCOL_ID.get(legacyProtocolId);
         if (slot != null) return slot;
@@ -70,14 +77,11 @@ public enum EquipmentSlot {
     }
 
     /**
-     * Legacy protocol ID exists because that format is used in EntityEquipmentPacket
-     * It is being referred to as the legacy ID here because newer components are using
-     * the equipment slot stream codec (the more modern mechanism for network serialization)
-     * The legacy ID is expected to be removed eventually.
+     * Gets the slot number of the {@code set_equipment} packet ({@code EntityEquipmentPacket}), 0 to 7. The item
+     * components encode the slot with {@link #protocolId()} instead.
      *
-     * @return the equipment slot
+     * @return the slot number in {@code set_equipment}
      */
-    @Deprecated
     public int legacyProtocolId() {
         return legacyProtocolId;
     }
@@ -94,6 +98,11 @@ public enum EquipmentSlot {
         return armor;
     }
 
+    /**
+     * Gets the slot of the {@code PlayerInventory} holding this armor piece.
+     *
+     * @return the inventory slot, -1 when this is not an armor slot ({@link #isArmor()} is false)
+     */
     public int armorSlot() {
         return armorSlot;
     }

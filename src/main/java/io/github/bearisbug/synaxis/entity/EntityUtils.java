@@ -2,9 +2,6 @@ package io.github.bearisbug.synaxis.entity;
 
 import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.coordinate.Vec;
-import io.github.bearisbug.synaxis.entity.Entity;
-import io.github.bearisbug.synaxis.entity.EntityPose;
-import io.github.bearisbug.synaxis.entity.EntityType;
 import io.github.bearisbug.synaxis.entity.metadata.AgeableMobMeta;
 
 import java.util.List;
@@ -21,10 +18,18 @@ public final class EntityUtils {
      * @return the height offset for the passenger of this vehicle
      */
     public static Point getPassengerPositionOffset(Entity vehicle, Entity passenger, int passengerIndex) {
+        return unrotatedOffset(vehicle, passenger, passengerIndex)
+                .rotateAroundY(Math.toRadians(-vehicle.getPosition().yaw()));
+    }
+
+    /** The offset of {@link #getPassengerPositionOffset} for a vehicle facing yaw 0. */
+    private static Vec unrotatedOffset(Entity vehicle, Entity passenger, int passengerIndex) {
         // Special cases: Boats, Rafts, Camel, Happy Ghast
         EntityType vehicleType = vehicle.getEntityType();
+        EntityType passengerType = passenger.getEntityType();
+        double animalOffset = ANIMALS.contains(passengerType) ? 0.2 : 0;
         if (vehicleType == EntityType.CAMEL || vehicleType == EntityType.CAMEL_HUSK) {
-            Vec vehicleOffset = firstAttachmentOrDefault(passenger.getEntityType(), "VEHICLE", Vec.ZERO);
+            Vec vehicleOffset = firstAttachmentOrDefault(passengerType, "VEHICLE", Vec.ZERO);
             // Check pose
             boolean isSitting = vehicle.getPose() == EntityPose.SITTING;
             boolean isBaby = vehicle.getEntityMeta() instanceof AgeableMobMeta ageableMeta && ageableMeta.isBaby();
@@ -39,19 +44,13 @@ public final class EntityUtils {
                     height -= 1.23f;
                 }
             }
-
-            double animalOffset = ANIMALS.contains(passenger.getEntityType()) ? 0.2 : 0;
-            if (passengerIndex == 0) {
-                return new Vec(0, height, 0.5 + animalOffset).sub(vehicleOffset).rotateAroundY(Math.toRadians(vehicle.getPosition().yaw() * -1));
-            } else {
-                return new Vec(0, height, -0.7 + animalOffset).sub(vehicleOffset).rotateAroundY(Math.toRadians(vehicle.getPosition().yaw() * -1));
-            }
+            return new Vec(0, height, (passengerIndex == 0 ? 0.5 : -0.7) + animalOffset).sub(vehicleOffset);
         } else if (vehicleType == EntityType.HAPPY_GHAST) {
             List<Vec> positions = vehicleType.entityAttachments("PASSENGER");
             Vec passengerOffset = positions != null && !positions.isEmpty()
                     ? positions.get(Math.min(passengerIndex, positions.size() - 1)) : Vec.ZERO;
-            Vec vehicleOffset = firstAttachmentOrDefault(passenger.getEntityType(), "VEHICLE", Vec.ZERO);
-            return passengerOffset.sub(vehicleOffset).rotateAroundY(Math.toRadians(-vehicle.getPosition().yaw()));
+            Vec vehicleOffset = firstAttachmentOrDefault(passengerType, "VEHICLE", Vec.ZERO);
+            return passengerOffset.sub(vehicleOffset);
         } else if (vehicleType.key().value().contains("boat")) {
             // As AbstractBoat: a single passenger sits in the middle, or forward of the chest of a chest boat;
             // two sit front and back whatever the boat
@@ -59,22 +58,17 @@ public final class EntityUtils {
             if (vehicle.getPassengers().size() == 1) {
                 z = CHEST_BOATS.contains(vehicleType) ? 0.15 : 0;
             } else {
-                final double animalOffset = ANIMALS.contains(passenger.getEntityType()) ? 0.2 : 0;
                 z = (passengerIndex == 0 ? 0.2 : -0.6) + animalOffset;
             }
-            return new Vec(0, vehicleType.height() / 3f, z).rotateAroundY(Math.toRadians(vehicle.getPosition().yaw() * -1));
+            return new Vec(0, vehicleType.height() / 3f, z);
         } else if (vehicleType.key().value().contains("raft")) {
-            if (passengerIndex == 0) {
-                return new Vec(0, vehicleType.height() / 0.8888f, 0.2).rotateAroundY(Math.toRadians(vehicle.getPosition().yaw() * -1));
-            } else {
-                return new Vec(0, vehicleType.height() / 0.8888f, -0.6).rotateAroundY(Math.toRadians(vehicle.getPosition().yaw() * -1));
-            }
+            return new Vec(0, vehicleType.height() / 0.8888f, passengerIndex == 0 ? 0.2 : -0.6);
         } else {
             // Passenger position offset is a combination of vehicle passenger position and passenger vehicle position (if it exists)
             Vec passengerOffset = firstAttachmentOrDefault(
                     vehicleType, "PASSENGER", new Vec(0, vehicleType.height(), 0));
-            Vec vehicleOffset = firstAttachmentOrDefault(passenger.getEntityType(), "VEHICLE", Vec.ZERO);
-            return passengerOffset.sub(vehicleOffset).rotateAroundY(Math.toRadians(-vehicle.getPosition().yaw()));
+            Vec vehicleOffset = firstAttachmentOrDefault(passengerType, "VEHICLE", Vec.ZERO);
+            return passengerOffset.sub(vehicleOffset);
         }
     }
 

@@ -1,7 +1,6 @@
 package io.github.bearisbug.synaxis.network.packet.server.play;
 
 import net.kyori.adventure.sound.Sound.Source;
-import io.github.bearisbug.synaxis.adventure.AdventurePacketConvertor;
 import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
@@ -11,7 +10,6 @@ import io.github.bearisbug.synaxis.sound.SoundEvent;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.FLOAT;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.INT;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.LONG;
-import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
 
 public record SoundEffectPacket(
         SoundEvent soundEvent,
@@ -21,11 +19,13 @@ public record SoundEffectPacket(
         float pitch,
         long seed
 ) implements ServerPacket.Play {
+    private static final NetworkBuffer.Type<Source> SOURCE = NetworkBuffer.Enum(Source.class);
+
     public static final NetworkBuffer.Type<SoundEffectPacket> SERIALIZER = new NetworkBuffer.Type<>() {
         @Override
         public void write(NetworkBuffer buffer, SoundEffectPacket value) {
             buffer.write(SoundEvent.NETWORK_TYPE, value.soundEvent());
-            buffer.write(VAR_INT, AdventurePacketConvertor.getSoundSourceValue(value.source()));
+            buffer.write(SOURCE, value.source());
             buffer.write(INT, (int)(value.origin.x() * 8));
             buffer.write(INT, (int)(value.origin.y() * 8));
             buffer.write(INT, (int)(value.origin.z() * 8));
@@ -37,7 +37,7 @@ public record SoundEffectPacket(
         @Override
         public SoundEffectPacket read(NetworkBuffer buffer) {
             return new SoundEffectPacket(buffer.read(SoundEvent.NETWORK_TYPE),
-                    buffer.read(NetworkBuffer.Enum(Source.class)),
+                    buffer.read(SOURCE),
                     new Vec(buffer.read(INT) / 8.0, buffer.read(INT) / 8.0, buffer.read(INT) / 8.0),
                     buffer.read(FLOAT),
                     buffer.read(FLOAT),

@@ -148,7 +148,7 @@ public class WorldBorderIntegrationTest {
         entity.setInstance(instance, new Pos(maximumEntityX, 42, 0)).join();
 
         assertTrue(border.inBounds(entity.getPosition(), entity.getBoundingBox()));
-        entity.refreshPosition(new Pos(maximumEntityX + Vec.EPSILON, 42, 0));
+        entity.moveTo(new Pos(maximumEntityX + Vec.EPSILON, 42, 0));
         assertFalse(border.inBounds(entity.getPosition(), entity.getBoundingBox()));
     }
 }

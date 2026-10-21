@@ -53,6 +53,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 import java.util.stream.Stream;
@@ -470,6 +472,41 @@ public class ShardWorldAssemblyTest {
 
             instance.loadChunk(3, 3).join();
             assertEquals(Block.GOLD_BLOCK, instance.getBlock(3 * 16 + 1, 50, 3 * 16 + 1), "loaded again from the overlay record");
+        } finally {
+            process.stop();
+        }
+    }
+
+    /**
+     * §20 {@code EVT:chunk_stream_stats}: the statistics task repeats, and the scheduler stops a repeating task
+     * for good once it throws. A throw, here the event ledger's on the first event, is reported and the next
+     * interval writes the event again.
+     */
+    @Test
+    public void aStatisticsTaskThatThrowsRunsAgainOnTheNextInterval() throws InterruptedException {
+        final ServerProcess process = process();
+        try {
+            final List<Throwable> reported = new CopyOnWriteArrayList<>();
+            process.exception().setExceptionHandler(reported::add);
+            final ShardWorld world = ShardWorld.prepare(process, release, SYNX, new OverlayOptions(16_384, 10), null);
+            final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
+            process.setShutdownParticipant(shutdown);
+            final AtomicInteger written = new AtomicInteger();
+            world.start(shutdown, (name, _) -> {
+                if (!name.equals("chunk_stream_stats")) return;
+                if (written.incrementAndGet() == 1) throw new IllegalStateException("event ledger");
+            }, null, overlayRoot, null, System::currentTimeMillis, Duration.ofMillis(100));
+            process.dispatcher().start();
+
+            final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (written.get() < 2) {
+                assertTrue(System.nanoTime() < deadline,
+                        "a second EVT:chunk_stream_stats within 10 s, reported " + reported);
+                tick(process, 1);
+                Thread.sleep(10);
+            }
+            assertEquals(1, reported.size(), reported.toString());
+            assertEquals("event ledger", reported.getFirst().getMessage());
         } finally {
             process.stop();
         }

@@ -624,6 +624,17 @@ public final class ShardWorld {
      */
     Started start(ShutdownSequence shutdown, BiConsumer<String, Map<String, ?>> events, @Nullable WorldFlagsImpl flags,
                   Path overlayRoot, @Nullable Executor relightExecutor, LongSupplier wallMillis) {
+        return start(shutdown, events, flags, overlayRoot, relightExecutor, wallMillis, STATS_INTERVAL);
+    }
+
+    /**
+     * {@link #start(ShutdownSequence, BiConsumer, WorldFlagsImpl, Path, Executor, LongSupplier)} with
+     * {@code EVT:chunk_stream_stats} every {@code statsInterval} instead of every {@link #STATS_INTERVAL},
+     * for the tests of the statistics task.
+     */
+    Started start(ShutdownSequence shutdown, BiConsumer<String, Map<String, ?>> events, @Nullable WorldFlagsImpl flags,
+                  Path overlayRoot, @Nullable Executor relightExecutor, LongSupplier wallMillis,
+                  Duration statsInterval) {
         // Before the overlay store is opened: flags that cannot be read refuse the start with the disk untouched
         if (flags != null) flags.load();
         final SynxSettings overlaySettings = overlaySettings(manifest, process.compressionThreshold());
@@ -692,7 +703,7 @@ public final class ShardWorld {
         this.lastFlagConflicts = flags == null ? 0 : flags.stats().conflicts();
         this.lastVoidChunks = instance.voidChunks();
         process.scheduler().buildTask(() -> recordStreamStats(events))
-                .delay(STATS_INTERVAL).repeat(STATS_INTERVAL).schedule();
+                .delay(statsInterval).repeat(statsInterval).schedule();
         LOGGER.info("Map mounted: build_id={} simulation_distance={} chunk_unload_grace_ticks={} spawn={} overlay={} "
                 + "overlay_cap={} flush_interval_s={} overlay_max_bytes={} relight_threads={} resend_light={} "
                 + "section_cache_bytes={}", manifest.buildId(), settings.simulationDistance(),

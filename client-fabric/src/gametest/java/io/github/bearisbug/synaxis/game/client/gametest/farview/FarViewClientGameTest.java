@@ -110,7 +110,8 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             "view (\\w+) baked in (\\d+) ms: (\\d+) sources, (\\d+) B; written (\\d+) ms, visible (\\d+) ms after the announcement");
     private static final Pattern SAVE_FOLDER = Pattern.compile("Save folder overridden from \\[(.*)] -> \\[(.*)]\\.");
     /** A file log4j rolls {@code logs/latest.log} into, not one of the {@code debug-<n>.log.gz} of {@code debug.log}. */
-    private static final Pattern ROLLED_LOG = Pattern.compile("\\d{4}-\\d{2}-\\d{2}-\\d+\\.log\\.gz");
+    // log4j renames latest.log to <date>-<n>.log, then compresses that into <date>-<n>.log.gz and deletes it
+    private static final Pattern ROLLED_LOG = Pattern.compile("\\d{4}-\\d{2}-\\d{2}-\\d+\\.log(\\.gz)?");
     /** The day time V1 holds the client's sky at: noon, where a fixture without a {@code dayTime} stops its clock. */
     private static final long NOON = 6000;
     /** The day time the client's default clock is held at, at the end of every client tick; null leaves it to the server. */
@@ -326,8 +327,15 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                             && modified(path) >= started).sorted(Comparator.comparingLong(Run::modified)).toList();
                 }
                 for (Path path : rolled) {
-                    try (InputStream in = new GZIPInputStream(Files.newInputStream(path))) {
-                        all.addAll(new String(in.readAllBytes(), StandardCharsets.UTF_8).lines().toList());
+                    final String name = path.getFileName().toString();
+                    if (name.endsWith(".gz")) {
+                        // Still being compressed while the plain file is there
+                        if (rolled.contains(path.resolveSibling(name.substring(0, name.length() - 3)))) continue;
+                        try (InputStream raw = Files.newInputStream(path); InputStream in = new GZIPInputStream(raw)) {
+                            all.addAll(new String(in.readAllBytes(), StandardCharsets.UTF_8).lines().toList());
+                        }
+                    } else {
+                        all.addAll(Files.readAllLines(path, StandardCharsets.UTF_8));
                     }
                 }
                 all.addAll(Files.readAllLines(logs.resolve("latest.log"), StandardCharsets.UTF_8));

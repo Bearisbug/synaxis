@@ -1,10 +1,14 @@
 package io.github.bearisbug.synaxis.item.component;
 
+import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.text.Component;
+import io.github.bearisbug.synaxis.codec.Result;
 import io.github.bearisbug.synaxis.codec.Transcoder;
 import io.github.bearisbug.synaxis.component.DataComponents;
 import io.github.bearisbug.synaxis.item.ItemStack;
+import io.github.bearisbug.synaxis.item.ItemStackTemplate;
 import io.github.bearisbug.synaxis.item.Material;
+import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryTranscoder;
 import io.github.bearisbug.synaxis.testing.RegistriesTest;
@@ -16,6 +20,7 @@ import java.util.List;
 import static io.github.bearisbug.synaxis.codec.CodecAssertions.assertOk;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -84,12 +89,31 @@ public class ItemComponentLimitsRegistriesTest {
         final IllegalArgumentException bundle = assertThrows(IllegalArgumentException.class,
                 () -> ItemStack.of(Material.BUNDLE).with(DataComponents.BUNDLE_CONTENTS, items));
         assertEquals("minecraft:bundle_contents holds at most 32767 entries, got 32768", bundle.getMessage());
-        assertThrows(IllegalArgumentException.class,
-                () -> ItemStack.of(Material.CROSSBOW).with(DataComponents.CHARGED_PROJECTILES, items));
         assertThrows(IllegalArgumentException.class, () -> ItemStack.of(Material.KNOWLEDGE_BOOK)
                 .with(DataComponents.RECIPES, Collections.nCopies(Short.MAX_VALUE + 1, "minecraft:stick")));
         assertDoesNotThrow(() -> ItemStack.of(Material.KNOWLEDGE_BOOK)
                 .with(DataComponents.RECIPES, Collections.nCopies(Short.MAX_VALUE, "minecraft:stick")));
+    }
+
+    /**
+     * A 26.2 client reads at most 1,024 charged projectiles; 26.2 builds and stores no more either.
+     */
+    @Test
+    void chargedProjectilesHoldAtMost1024Items(Registries registries) {
+        final List<ItemStack> arrows = Collections.nCopies(1025, ItemStack.of(Material.ARROW));
+        final ItemStack crossbow = ItemStack.of(Material.CROSSBOW);
+
+        final IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> crossbow.with(DataComponents.CHARGED_PROJECTILES, arrows));
+        assertEquals("minecraft:charged_projectiles holds at most 1024 entries, got 1025", error.getMessage());
+        final ItemStack loaded = crossbow.with(DataComponents.CHARGED_PROJECTILES, arrows.subList(0, 1024));
+        final var coder = new RegistryTranscoder<>(Transcoder.NBT, registries);
+        assertEquals(loaded, assertOk(ItemStack.CODEC.decode(coder, assertOk(ItemStack.CODEC.encode(coder, loaded)))));
+
+        assertThrows(IllegalArgumentException.class, () -> NetworkBuffer.makeArray(
+                buffer -> DataComponents.CHARGED_PROJECTILES.write(buffer, arrows), registries));
+        final BinaryTag stored = assertOk(ItemStackTemplate.CODEC.list().encode(coder, arrows));
+        assertInstanceOf(Result.Error.class, DataComponents.CHARGED_PROJECTILES.decode(coder, stored));
     }
 
     @Test

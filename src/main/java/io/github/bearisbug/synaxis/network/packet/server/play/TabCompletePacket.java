@@ -18,13 +18,11 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
 
 public record TabCompletePacket(int transactionId, int start, int length,
                                 List<Match> matches) implements ServerPacket.Play, ServerPacket.ComponentHolding {
-    public static final int MAX_ENTRIES = Short.MAX_VALUE;
-
     public static final NetworkBuffer.Type<TabCompletePacket> SERIALIZER = NetworkBufferTemplate.template(
             VAR_INT, TabCompletePacket::transactionId,
             VAR_INT, TabCompletePacket::start,
             VAR_INT, TabCompletePacket::length,
-            Match.SERIALIZER.list(MAX_ENTRIES), TabCompletePacket::matches,
+            Match.SERIALIZER.list(), TabCompletePacket::matches,
             TabCompletePacket::new);
 
     public TabCompletePacket {

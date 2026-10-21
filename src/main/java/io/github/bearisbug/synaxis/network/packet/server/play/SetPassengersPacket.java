@@ -10,11 +10,9 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
 
 public record SetPassengersPacket(int vehicleEntityId,
                                   List<Integer> passengersId) implements ServerPacket.Play {
-    public static final int MAX_PASSENGERS = 16384;
-
     public static final NetworkBuffer.Type<SetPassengersPacket> SERIALIZER = NetworkBufferTemplate.template(
             VAR_INT, SetPassengersPacket::vehicleEntityId,
-            VAR_INT.list(MAX_PASSENGERS), SetPassengersPacket::passengersId,
+            VAR_INT.list(), SetPassengersPacket::passengersId,
             SetPassengersPacket::new);
 
     public SetPassengersPacket {

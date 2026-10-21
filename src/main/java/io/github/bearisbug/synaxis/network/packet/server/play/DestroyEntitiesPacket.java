@@ -9,10 +9,8 @@ import java.util.List;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
 
 public record DestroyEntitiesPacket(List<Integer> entityIds) implements ServerPacket.Play {
-    public static final int MAX_ENTRIES = Short.MAX_VALUE;
-
     public static final NetworkBuffer.Type<DestroyEntitiesPacket> SERIALIZER = NetworkBufferTemplate.template(
-            VAR_INT.list(MAX_ENTRIES), DestroyEntitiesPacket::entityIds,
+            VAR_INT.list(), DestroyEntitiesPacket::entityIds,
             DestroyEntitiesPacket::new);
 
     public DestroyEntitiesPacket {

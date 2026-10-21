@@ -12,10 +12,8 @@ import java.util.Objects;
 import java.util.function.Function;
 
 public record ServerLinksPacket(List<Entry> entries) implements ServerPacket.Configuration, ServerPacket.Play {
-    private static final int MAX_ENTRIES = 100;
-
     public static final NetworkBuffer.Type<ServerLinksPacket> SERIALIZER = NetworkBufferTemplate.template(
-            Entry.NETWORK_TYPE.list(MAX_ENTRIES), ServerLinksPacket::entries,
+            Entry.NETWORK_TYPE.list(), ServerLinksPacket::entries,
             ServerLinksPacket::new);
 
     public ServerLinksPacket {

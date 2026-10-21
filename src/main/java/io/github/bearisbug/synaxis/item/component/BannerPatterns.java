@@ -16,7 +16,7 @@ import java.util.List;
 public record BannerPatterns(List<Layer> layers) {
     public static final int MAX_LAYERS = 1024;
 
-    public static final NetworkBuffer.Type<BannerPatterns> NETWORK_TYPE = Layer.NETWORK_TYPE.list(MAX_LAYERS).transform(BannerPatterns::new, BannerPatterns::layers);
+    public static final NetworkBuffer.Type<BannerPatterns> NETWORK_TYPE = Layer.NETWORK_TYPE.list(MAX_LAYERS, Integer.MAX_VALUE).transform(BannerPatterns::new, BannerPatterns::layers);
     public static final Codec<BannerPatterns> CODEC = Layer.CODEC.list().transform(BannerPatterns::new, BannerPatterns::layers);
 
     public record Layer(RegistryKey<BinaryTag> pattern, DyeColor color) {

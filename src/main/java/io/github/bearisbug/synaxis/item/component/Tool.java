@@ -18,7 +18,7 @@ public record Tool(List<Rule> rules, float defaultMiningSpeed, int damagePerBloc
     public static final int DEFAULT_DAMAGE_PER_BLOCK = 1;
 
     public static final NetworkBuffer.Type<Tool> NETWORK_TYPE = NetworkBufferTemplate.template(
-            Rule.NETWORK_TYPE.list(Short.MAX_VALUE), Tool::rules,
+            Rule.NETWORK_TYPE.list(Short.MAX_VALUE, Integer.MAX_VALUE), Tool::rules,
             NetworkBuffer.FLOAT, Tool::defaultMiningSpeed,
             NetworkBuffer.VAR_INT, Tool::damagePerBlock,
             NetworkBuffer.BOOLEAN, Tool::canDestroyBlocksInCreative,

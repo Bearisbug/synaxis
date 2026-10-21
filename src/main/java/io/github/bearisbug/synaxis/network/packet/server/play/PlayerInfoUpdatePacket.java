@@ -25,8 +25,6 @@ public record PlayerInfoUpdatePacket(
         EnumSet<Action> actions,
         List<Entry> entries
 ) implements ServerPacket.Play, ServerPacket.ComponentHolding {
-    public static final int MAX_ENTRIES = 1024;
-
     public PlayerInfoUpdatePacket(EnumSet<Action> actions, Entry entry) {
         this(actions, List.of(entry));
     }
@@ -48,13 +46,13 @@ public record PlayerInfoUpdatePacket(
         @Override
         public void write(NetworkBuffer writer, PlayerInfoUpdatePacket value) {
             writer.write(EnumSet(Action.class), value.actions);
-            writer.write(Entry.serializer(value.actions).list(MAX_ENTRIES), value.entries);
+            writer.write(Entry.serializer(value.actions).list(), value.entries);
         }
 
         @Override
         public PlayerInfoUpdatePacket read(NetworkBuffer reader) {
             var actions = reader.read(EnumSet(Action.class));
-            var entries = reader.read(Entry.serializer(actions).list(MAX_ENTRIES));
+            var entries = reader.read(Entry.serializer(actions).list());
             return new PlayerInfoUpdatePacket(actions, entries);
         }
     };
@@ -150,7 +148,7 @@ public record PlayerInfoUpdatePacket(
     public enum Action {
         ADD_PLAYER((writer, entry) -> {
             writer.write(STRING, entry.username);
-            writer.write(Property.SERIALIZER.list(), entry.properties);
+            writer.write(Property.SERIALIZER.list(GameProfile.MAX_PROPERTIES), entry.properties);
         }),
         INITIALIZE_CHAT((writer, entry) -> writer.write(ChatSession.SERIALIZER.optional(), entry.chatSession)),
         UPDATE_GAME_MODE((writer, entry) -> writer.write(VAR_INT, entry.gameMode.ordinal())),

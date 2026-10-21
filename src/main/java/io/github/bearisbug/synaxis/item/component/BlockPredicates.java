@@ -14,7 +14,7 @@ public record BlockPredicates(List<BlockPredicate> predicates) {
      */
     public static final BlockPredicates NEVER = new BlockPredicates(List.of());
 
-    public static final NetworkBuffer.Type<BlockPredicates> NETWORK_TYPE = BlockPredicate.NETWORK_TYPE.list(Short.MAX_VALUE)
+    public static final NetworkBuffer.Type<BlockPredicates> NETWORK_TYPE = BlockPredicate.NETWORK_TYPE.list(Short.MAX_VALUE, Integer.MAX_VALUE)
             .transform(BlockPredicates::new, BlockPredicates::predicates);
     public static final Codec<BlockPredicates> CODEC = BlockPredicate.CODEC.listOrSingle(Short.MAX_VALUE)
             .transform(BlockPredicates::new, BlockPredicates::predicates);

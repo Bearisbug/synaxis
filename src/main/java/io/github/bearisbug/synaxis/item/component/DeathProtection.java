@@ -9,7 +9,7 @@ import java.util.List;
 
 public record DeathProtection(List<ConsumeEffect> deathEffects) {
     public static final NetworkBuffer.Type<DeathProtection> NETWORK_TYPE = NetworkBufferTemplate.template(
-            ConsumeEffect.NETWORK_TYPE.list(256), DeathProtection::deathEffects,
+            ConsumeEffect.NETWORK_TYPE.list(256, Integer.MAX_VALUE), DeathProtection::deathEffects,
             DeathProtection::new);
     public static final Codec<DeathProtection> CODEC = StructCodec.struct(
             "death_effects", ConsumeEffect.CODEC.list().optional(List.of()), DeathProtection::deathEffects,

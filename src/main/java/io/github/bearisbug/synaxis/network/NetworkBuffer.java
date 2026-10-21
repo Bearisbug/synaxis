@@ -98,8 +98,8 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
     Type<java.util.UUID> UUID = new NetworkBufferPrimitiveTypes.UUIDType();
     Type<Pos> POS = new NetworkBufferSpatialTypes.PosType();
 
-    Type<byte[]> BYTE_ARRAY = new NetworkBufferArrayTypes.ByteArrayType();
-    Type<long[]> LONG_ARRAY = new NetworkBufferArrayTypes.LongArrayType();
+    Type<byte[]> BYTE_ARRAY = new NetworkBufferArrayTypes.ByteArrayType(Integer.MAX_VALUE);
+    Type<long[]> LONG_ARRAY = new NetworkBufferArrayTypes.LongArrayType(Integer.MAX_VALUE);
     Type<int[]> VAR_INT_ARRAY = new NetworkBufferArrayTypes.VarIntArrayType();
     Type<long[]> VAR_LONG_ARRAY = new NetworkBufferArrayTypes.VarLongArrayType();
 
@@ -145,6 +145,28 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
     static Type<BitSet> FixedBitSet(int length) {
         Check.argCondition(length < 0, "Length cannot be negative: {0}", length);
         return new NetworkBufferCollectionTypes.FixedBitSetType(length);
+    }
+
+    /**
+     * Creates a type for a byte array like {@link #BYTE_ARRAY}, whose read refuses a declared length
+     * over {@code maxLength} before reading the bytes. Writing takes any length.
+     *
+     * @param maxLength the most bytes reading accepts
+     * @return the byte array type
+     */
+    static Type<byte[]> ByteArray(int maxLength) {
+        return new NetworkBufferArrayTypes.ByteArrayType(maxLength);
+    }
+
+    /**
+     * Creates a type for a long array like {@link #LONG_ARRAY}, whose read refuses a declared length
+     * over {@code maxLength} before reading the longs. Writing takes any length.
+     *
+     * @param maxLength the most longs reading accepts
+     * @return the long array type
+     */
+    static Type<long[]> LongArray(int maxLength) {
+        return new NetworkBufferArrayTypes.LongArrayType(maxLength);
     }
 
     /**
@@ -371,6 +393,13 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
             return new NetworkBufferCombinatorTypes.TransformType<>(this, to, from);
         }
 
+        /**
+         * A map of at most {@code maxSize} entries, when reading and when writing.
+         *
+         * @param valueType the type of the values
+         * @param maxSize   the most entries accepted
+         * @return the map type
+         */
         default <V> Type<Map<T, V>> mapValue(Type<V> valueType, int maxSize) {
             return new NetworkBufferCollectionTypes.MapType<>(this, valueType, maxSize);
         }
@@ -379,14 +408,40 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
             return mapValue(valueType, Integer.MAX_VALUE);
         }
 
+        /**
+         * A list of at most {@code maxSize} elements, when reading and when writing.
+         *
+         * @param maxSize the most elements accepted
+         * @return the list type
+         */
         default Type<List<T>> list(int maxSize) {
-            return new NetworkBufferCollectionTypes.ListType<>(this, maxSize);
+            return list(maxSize, maxSize);
+        }
+
+        /**
+         * A list with one cap for reading and another for writing. For a type the server writes to
+         * clients that read any length, and also reads from clients, such as the item components
+         * of {@code ClientCreativeInventoryActionPacket}: the write follows the client, the frame
+         * length bounding what it gets, and the read keeps a cap on what a client uploads.
+         *
+         * @param maxReadSize  the most elements reading accepts
+         * @param maxWriteSize the most elements writing accepts
+         * @return the list type
+         */
+        default Type<List<T>> list(int maxReadSize, int maxWriteSize) {
+            return new NetworkBufferCollectionTypes.ListType<>(this, maxReadSize, maxWriteSize);
         }
 
         default Type<List<T>> list() {
             return list(Integer.MAX_VALUE);
         }
 
+        /**
+         * A set of at most {@code maxSize} elements, when reading and when writing.
+         *
+         * @param maxSize the most elements accepted
+         * @return the set type
+         */
         default Type<Set<T>> set(int maxSize) {
             return new NetworkBufferCollectionTypes.SetType<>(this, maxSize);
         }

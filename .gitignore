@@ -50,10 +50,14 @@ __pycache__/
 .github/copilot/
 GEMINI.md
 
-# server-app runtime output (plugin data directories, the event ledger, the logs and crash reports)
+# server-app runtime output (plugin data directories, the event ledger, the logs, crash reports and
+# the recordings of the profile command); :server-app:run works in the repository root
 /plugins/
 /logs/
 /crash-reports/
+/profiles/
+# The configuration file of a local :server-app:run, read from the working directory
+/synaxis.properties
 
 # The baker's events under :baker:run, whose working directory is baker/
 /baker/logs/

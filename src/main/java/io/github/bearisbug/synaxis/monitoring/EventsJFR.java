@@ -34,7 +34,7 @@ public final class EventsJFR {
     }
 
     public static final String SERVER_PING = "synaxis.ServerPing";
-    public static final String SERVER_TICK = "synaxis.ServerTickTime";
+    public static final String SERVER_TICK = "synaxis.ServerTickTime"; // tools/loadtest/soak.py reads it as a literal
 
     public static final String CHUNK_GENERATION = "synaxis.ChunkGeneration";
     public static final String CHUNK_LOADING = "synaxis.ChunkLoading";

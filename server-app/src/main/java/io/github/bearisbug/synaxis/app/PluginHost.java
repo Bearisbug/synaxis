@@ -35,8 +35,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * Discovery and lifecycle of the plugins of one process (REQ-M2-003).
  * <p>
- * M2 has a single compile time plugin, so there is no dependency resolution: the order
- * {@link ServiceLoader} hands them over is the enable order, and disabling walks it backwards.
+ * Plugins are compile time only and declare no dependencies: the order {@link ServiceLoader}
+ * hands them over is the enable order, and disabling walks it backwards.
  * Hot reloading is not supported either, a plugin only ever goes constructed, enabled, disabled.
  */
 final class PluginHost {
@@ -229,8 +229,8 @@ final class PluginHost {
      * stop thread when the ticker does not pick it up; safe to call twice. Each {@code onDisable}
      * runs on a thread of its own that owns no tick thread (API-PROD-007).
      * <p>
-     * The plugin side of the shutdown gets the {@value #DISABLE_BUDGET_SECONDS} s of the 15 s
-     * budget of {@code docs/DESIGN-M2.md} §17. A plugin still inside {@code onDisable} when the
+     * The plugin side of the shutdown gets {@value #DISABLE_BUDGET_SECONDS} s
+     * ({@code docs/DESIGN-PROD.md} §11.4, API-PROD-007). A plugin still inside {@code onDisable} when the
      * budget is spent is left behind on its own daemon thread and its capabilities are taken back
      * anyway: a blocking plugin must not be able to keep the process from exiting. The budget is
      * shared by the whole loop and no plugin gets a reserved slice of it, so once a plugin has spent

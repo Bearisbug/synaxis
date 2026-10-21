@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.loadtest;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import io.github.bearisbug.synaxis.monitoring.EventsJFR;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordingFile;
 import org.jetbrains.annotations.Nullable;
@@ -34,7 +35,7 @@ import java.util.stream.Stream;
  */
 final class SampleCommand {
 
-    static final String TICK_EVENT = "synaxis.ServerTickTime";
+    static final String TICK_EVENT = EventsJFR.SERVER_TICK;
     /** The field of {@link #TICK_EVENT} holding the acquisition wait of the tick ({@code API-PROD-016}). */
     static final String ACQUIRE_FIELD = "acquisitionTime";
     private static final String GATE = "synaxis_gate_rejections_total{reason=\"";

@@ -30,8 +30,8 @@ public record ServerConfig(
         // How the chunks are spread over the dispatcher threads (docs/DESIGN-PROD.md API-PROD-016)
         ThreadProviderKind threadProvider,
         int threadGridExponent,
-        int sendLightAfterBlockPlacementDelay,
-        long loginTimeout,
+        int sendLightAfterBlockPlacementDelay, // ticks
+        long loginTimeout, // milliseconds, as are the next two
         long loginPluginMessageTimeout,
         long knownPacksResponseTimeout,
         boolean acceptTransfers,
@@ -39,7 +39,7 @@ public record ServerConfig(
         // Network rate limiting
         int playerPacketPerTick,
         int playerPacketQueueSize,
-        long keepAliveDelay,
+        long keepAliveDelay, // milliseconds, as is the next one
         long keepAliveKick,
         int playerChunkUpdateLimiterHistorySize,
 

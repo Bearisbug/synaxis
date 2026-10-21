@@ -51,6 +51,41 @@ public class ChunkLoaderContractIntegrationTest {
         assertNull(instance.getChunk(1, 2));
     }
 
+    // A loader without parallel support that throws fails the load: the exception handler gets the exception, and the
+    // coordinates are left free, the next load calls the loader again
+    @Test
+    public void aThrowingLoaderFailsTheLoadAndTheNextLoadCallsItAgain(Env env) throws Exception {
+        CompletableFuture<Throwable> handled = new CompletableFuture<>();
+        env.process().exception().setExceptionHandler(handled::complete);
+        var failure = new IllegalStateException("loader failure");
+        AtomicInteger calls = new AtomicInteger();
+        var instance = env.createEmptyInstance(new ChunkLoader() {
+            @Override
+            public @Nullable Chunk loadChunk(Instance instance, int chunkX, int chunkZ) {
+                if (calls.incrementAndGet() == 1) throw failure;
+                return null;
+            }
+
+            @Override
+            public void saveChunk(Chunk chunk) {
+            }
+
+            @Override
+            public boolean supportsParallelLoading() {
+                return false;
+            }
+        });
+
+        var thrown = assertThrows(CompletionException.class, () -> instance.loadChunk(1, 2).join());
+        assertSame(failure, thrown.getCause());
+        assertSame(failure, handled.get(5, TimeUnit.SECONDS), "the exception handler gets the failure");
+        assertNull(instance.getChunk(1, 2));
+
+        var loaded = instance.loadChunk(1, 2).join();
+        assertEquals(2, calls.get(), "the second load called the loader again");
+        assertSame(loaded, instance.getChunk(1, 2));
+    }
+
     // A chunk a supplier built for other coordinates fails the load before the generator writes forks for its neighbours
     @Test
     public void aSuppliedChunkOfOtherCoordinatesFailsBeforeItIsGenerated(Env env) throws Exception {

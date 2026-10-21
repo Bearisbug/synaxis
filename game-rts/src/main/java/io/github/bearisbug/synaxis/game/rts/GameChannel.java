@@ -245,9 +245,7 @@ final class GameChannel {
     }
 
     private void answer(Player player, S2COrderResult result) {
-        final MsgBuf buf = MsgBuf.writing();
-        result.write(buf);
-        channels.send(player, NAME, buf.toByteArray());
+        channels.send(player, NAME, result.encode());
     }
 
     private void refuse(PlayerConnection connection, UUID connectionId, String cause) {

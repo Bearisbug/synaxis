@@ -5,7 +5,6 @@ import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.game.protocol.C2SMoveOrder;
 import io.github.bearisbug.synaxis.game.protocol.GameMessage;
-import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
 import io.github.bearisbug.synaxis.game.protocol.OrderResultCode;
 import io.github.bearisbug.synaxis.game.protocol.S2COrderResult;
 import io.github.bearisbug.synaxis.game.protocol.S2CUnitDespawn;
@@ -418,9 +417,7 @@ final class Units {
     }
 
     private void send(Player player, GameMessage message) {
-        final MsgBuf buf = MsgBuf.writing();
-        message.write(buf);
-        channels.send(player, GameChannel.NAME, buf.toByteArray());
+        channels.send(player, GameChannel.NAME, message.encode());
     }
 
     private Map<String, Object> attributes(UUID connectionId, Object... pairs) {

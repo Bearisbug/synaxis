@@ -172,21 +172,12 @@ public final class SynxRelight {
             return Objects.requireNonNullElse(Block.fromStateId(section.get(x & 15, y & 15, z & 15)), Block.AIR);
         }
 
-        /**
-         * {@link #getBlock} for a whole section, straight out of its palette: 0 is air, as is an id past the
-         * registry.
-         */
+        /** {@link #getBlock} for a whole section, straight out of its palette ({@link SynxRelight#stateIds}). */
         @Override
         public char @Nullable [] section(int chunkX, int sectionMinY, int chunkZ) {
             final Palette[] blocks = Objects.requireNonNull(at(chunkX, chunkZ)).blocks();
             if (blocks == null) return null;
-            final Palette section = blocks[(sectionMinY - minY) >> 4];
-            if (section.isEmpty()) return null;
-            final int states = Block.statesCount();
-            final char[] ids = new char[4096];
-            section.getAllPresent((x, y, z, stateId) ->
-                    ids[x | z << 4 | y << 8] = (char) (stateId < states ? stateId : 0));
-            return ids;
+            return stateIds(blocks[(sectionMinY - minY) >> 4]);
         }
     }
 
@@ -493,6 +484,19 @@ public final class SynxRelight {
     /** Null and empty arrays are all 0, as a missing section sends. */
     static boolean sameLight(byte @Nullable [] a, byte @Nullable [] b) {
         return Arrays.equals(a == null || a.length == 0 ? DARK : a, b == null || b.length == 0 ? DARK : b);
+    }
+
+    /**
+     * The state ids of a section's block palette as {@link WorldView#section} hands them to the light engine:
+     * 0 is air, as is an id past the registry; null for a palette that is all air.
+     */
+    static char @Nullable [] stateIds(Palette section) {
+        if (section.isEmpty()) return null;
+        final int states = Block.statesCount();
+        final char[] ids = new char[4096];
+        section.getAllPresent((x, y, z, stateId) ->
+                ids[x | z << 4 | y << 8] = (char) (stateId < states ? stateId : 0));
+        return ids;
     }
 
     private void failed(Task task, RuntimeException e) {

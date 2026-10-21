@@ -11,8 +11,9 @@ import io.github.bearisbug.synaxis.registry.RegistryKey;
 /// not advance [#time()], [#time(long)] still sets it.
 public sealed interface Clock permits Instance.ClockInstance {
 
-    /// The highest [#rate(float)], 2^24 ticks per tick: below it a float holds every whole number, so the partial
-    /// tick never grows past what a tick takes away from it.
+    /// The highest [#rate(float)], 2^24 ticks per tick. Above 2^31 the whole ticks taken from the partial tick no
+    /// longer fit an int and the partial tick grows to infinity; up to 2^24 a float holds every whole number of
+    /// ticks, so the partial tick stays below one.
     float MAX_RATE = 1 << 24;
 
     /// Returns the key of this clock in `BuiltinRegistries.WORLD_CLOCK`.

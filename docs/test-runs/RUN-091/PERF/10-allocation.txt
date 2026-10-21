@@ -23,6 +23,8 @@
                     交给 LightResult 的 2,048 字节 nibble 数组：装回要持有，必须是新数组
      1.24%  int[]   LightEngine$Area.<init>:113、:114（skyHeight 与 16 条初始队列）
   中间态（状态、等级、队列、每块区域的表）合计约 90%，交出去的结果数组约 9%：复用划算。
+  以上份额是采样估计，以 11-jmh-ab.txt 的 B/op 差为准：复用之后每次少 2,894,535 − 158,260 = 2,736,275 B，中间态精确占
+  94.5%；结果数组连同 LightResult 与两个 section 引用数组至多 158,260 B（5.5%），上面采样给结果数组的 9.15% 高估约 1.7 倍。
 
 改后（87e25fe4c4，基准的 Worker 状态每线程一个 LightEngine.Workspace，12:52:10～12:52:26，load1 6.24～5.60）
   RelightAreaBenchmark.relightArea  avgt   10  2904.290 ± 34.031  us/op（gc.alloc.rate.norm 见 11-jmh-ab.txt：158,260 B/op）

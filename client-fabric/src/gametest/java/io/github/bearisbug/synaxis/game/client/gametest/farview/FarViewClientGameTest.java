@@ -14,8 +14,10 @@ import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
 import io.github.bearisbug.synaxis.game.protocol.FarViewPack;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -43,6 +45,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import java.util.zip.GZIPInputStream;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -106,6 +109,8 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
     private static final Pattern BAKED = Pattern.compile(
             "view (\\w+) baked in (\\d+) ms: (\\d+) sources, (\\d+) B; written (\\d+) ms, visible (\\d+) ms after the announcement");
     private static final Pattern SAVE_FOLDER = Pattern.compile("Save folder overridden from \\[(.*)] -> \\[(.*)]\\.");
+    /** A file log4j rolls {@code logs/latest.log} into, not one of the {@code debug-<n>.log.gz} of {@code debug.log}. */
+    private static final Pattern ROLLED_LOG = Pattern.compile("\\d{4}-\\d{2}-\\d{2}-\\d+\\.log\\.gz");
     /** The day time V1 holds the client's sky at: noon, where a fixture without a {@code dayTime} stops its clock. */
     private static final long NOON = 6000;
     /** The day time the client's default clock is held at, at the end of every client tick; null leaves it to the server. */
@@ -175,6 +180,11 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
         private final String server;
         private final String http;
         private final Path gameDir = FabricLoader.getInstance().getGameDir();
+        /**
+         * When this run began: {@link #log()} reads the files rolled since. Not the JVM start: log4j rolls the last
+         * client's {@code latest.log} away as this one starts, into a file written after the JVM started.
+         */
+        private final long started = System.currentTimeMillis();
         private final boolean dh = FabricLoader.getInstance().isModLoaded(FarViewClient.DH_MOD_ID);
         private final boolean iris = FabricLoader.getInstance().isModLoaded("iris");
         private final Map<String, String> lines = new LinkedHashMap<>();
@@ -301,11 +311,37 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
 
         // ---- The client
 
+        /**
+         * The client's log: the files log4j rolled {@code latest.log} into since this run began (at midnight, the date
+         * of the file names changing), in the order they were written, then {@code latest.log}; an index into it stays
+         * on its line when the log rolls. A read that fails returns the lines read before it.
+         */
         List<String> log() {
+            final Path logs = gameDir.resolve("logs");
+            final List<String> all = new ArrayList<>();
             try {
-                return Files.readAllLines(gameDir.resolve("logs").resolve("latest.log"), StandardCharsets.UTF_8);
+                final List<Path> rolled;
+                try (Stream<Path> files = Files.list(logs)) {
+                    rolled = files.filter(path -> ROLLED_LOG.matcher(path.getFileName().toString()).matches()
+                            && modified(path) >= started).sorted(Comparator.comparingLong(Run::modified)).toList();
+                }
+                for (Path path : rolled) {
+                    try (InputStream in = new GZIPInputStream(Files.newInputStream(path))) {
+                        all.addAll(new String(in.readAllBytes(), StandardCharsets.UTF_8).lines().toList());
+                    }
+                }
+                all.addAll(Files.readAllLines(logs.resolve("latest.log"), StandardCharsets.UTF_8));
+            } catch (IOException | UncheckedIOException e) {
+                // The lines read so far
+            }
+            return all;
+        }
+
+        private static long modified(Path path) {
+            try {
+                return Files.getLastModifiedTime(path).toMillis();
             } catch (IOException e) {
-                return List.of();
+                return Long.MIN_VALUE;
             }
         }
 

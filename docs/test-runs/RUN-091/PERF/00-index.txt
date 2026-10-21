@@ -1,0 +1,30 @@
+RUN-091 · PERF：运行时光照重算的单中心耗时（分支 m3/r091-relight，基于 main 7724fcd23e）
+
+机器：12 核，同机另有会话，测时 load1 4.5～7.0（各文件逐次记了开跑与结束时的负载）。
+重活锁：Gradle 经组内的锁脚本跑（一次一个，--max-workers=2，--no-daemon，阿里云镜像 init 脚本）；
+JMH 的 jar 用同样的 mkdir 锁、owner 行与退出时放锁的写法单独跑，JDK 25.0.4.1（openjdk@25），JMH 1.37。
+
+提交
+  d8f57beb11 jmh: RelightAreaBenchmark（基准，改动之前的视图：逐格 getBlock）
+  02d11eae3f light: LightEngine 经 WorldView#section 按 section 读方块，默认实现逐格问 getBlock，与原来的读法相同
+  f9148760f9 synx: 重算快照的 section 从调色板一次拷出状态 id，全空气的 section 返回 null；基准的视图跟着改
+
+文件
+  01-jmh-baseline.txt    单中心基准的基线（耗时与每次分配）
+  02-hotspots.txt        CPU 采样：基准里的热点、TC-WORLD-139 测试 JVM 里重算线程的热点、JaCoCo 探针的对照
+  03-jmh-ab.txt          改前（A）改后（B）交替 A B A B，另有 3 线程与挂 JaCoCo 代理的对照
+  04-tc-world-139.txt    TC-WORLD-139 第 2 步改前改后背靠背各一次（用例原样，测试 JVM 挂 JaCoCo），
+                         另各一次不挂 JaCoCo 的诊断读数；每 10 s 的负载
+  05-light-parity.txt    光照结果不变：对拍、版本指纹、instance.light 全包、LightingChunk、synx 重算相关、
+                         baker GeneratorBakeTest、synx 内部面门禁；一次反证
+
+结论
+  1. 单中心（5×5 快照上的 relightArea，单线程，不挂代理）：7,488～7,802 µs → 3,284～3,286 µs；
+     每次分配 2,894,564～2,894,566 B → 2,894,535 B（不变）。
+  2. 改前的热点是 LightEngine$Area.read 逐格经 WorldView#getBlock 取状态 id：基准里占 64.0% 的样本，
+     TC-WORLD-139 的测试 JVM 里占重算线程 93.8% 的样本（LightEngine.java:147 那一行）。
+  3. TC-WORLD-139 读到的 27～38 个中心/s 主要来自 Gradle 测试任务挂的 JaCoCo 代理：同一基准 3 线程并发时，
+     不挂代理每次 7,593 µs，挂代理 62,342～65,979 µs；不挂代理跑 TC-WORLD-139，改前 107/s 档就是 106.9 个中心/s。
+     改后挂代理 3 线程每次 7,363～7,983 µs，TC-WORLD-139（挂代理）107/s 档 34.8 → 106.9 个中心/s，
+     relight_queue_p99_ms 29,998.5 → 60.3，relight_ms_p99 113.8 → 15.4。
+  4. LightEngineVersionTest 的指纹不变，LightEngine.VERSION 仍是 1，不升版本。

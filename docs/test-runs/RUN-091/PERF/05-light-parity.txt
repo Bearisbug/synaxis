@@ -1,0 +1,64 @@
+光照结果不变（f9148760f9 上，2026-10-21 11:57:04～11:57:27，开跑时 load1 4）
+
+<G> :test --tests 'io.github.bearisbug.synaxis.instance.light.*' --tests 'io.github.bearisbug.synaxis.instance.LightingChunk*' \
+      --tests 'io.github.bearisbug.synaxis.instance.BlockLightMergeIntegrationTest' --rerun \
+    :synx:test --tests '<S>.SynxRelight*' --tests '<S>.OverlayCrossCellWritersTest' --tests '<S>.OverlayStoreTest' \
+      --tests '<S>.SynxOptionsTest' --tests '<S>.SynxTruncatedMappingTest' --rerun \
+    :baker:test --tests 'io.github.bearisbug.synaxis.baker.GeneratorBakeTest' --rerun \
+    :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest' --rerun \
+    :compileTestJava :synx:compileTestJava :baker:compileTestJava :server-app:compileTestJava \
+    :jmh-benchmarks:compileJmhJava :jmh-benchmarks:compileWorldbenchJava
+BUILD SUCCESSFUL in 23s
+
+根项目（13 个类 99 条，0 失败）
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockLightMergeIntegrationTest" tests="21" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.instance.light.BlockIsOccludedTest" tests="18" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.instance.light.BlockLightTest" tests="10" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.instance.light.HighSectionLightIntegrationTest" tests="1" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.instance.light.LightBlocksTest" tests="2" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" tests="14" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.instance.light.LightDeadlockIntegrationTest" tests="2" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.instance.light.LightEngineIsolationTest" tests="4" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.instance.light.LightEngineTest" tests="5" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.instance.light.LightEngineVersionTest" tests="2" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.instance.light.LightParityIntegrationTest" tests="14" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.instance.light.WorldRelightIntegrationTest" tests="5" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.instance.LightingChunkHeightmapIntegrationTest" tests="1" skipped="0" failures="0" errors="0"
+
+:synx（8 个类 69 条，0 失败，1 条是不给测量属性时跳过的 SynxRelightBacklogTest）
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayCrossCellWritersTest" tests="5" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayStoreTest" tests="38" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxOptionsTest" tests="6" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="1" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightDeliveredIntegrationTest" tests="1" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightIntegrationTest" tests="10" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightViewersIntegrationTest" tests="6" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxTruncatedMappingTest" tests="2" skipped="0" failures="0" errors="0"
+
+:baker 与门禁
+<testsuite name="io.github.bearisbug.synaxis.baker.GeneratorBakeTest" tests="17" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest" tests="5" skipped="0" failures="0" errors="0"
+
+说明
+  LightParityIntegrationTest 与原版 26.2 对拍 0 差异；LightEngineVersionTest 的指纹与 verified-light-versions.txt
+  里版本 1 的一行相同，所以 LightEngine.VERSION 不升。这两类与 LightEngineTest 走 WorldView#section 的默认实现
+  （逐格 getBlock，与改前的读法相同）。SynxRelight.Task 的覆写由 :synx 的重算集成测试核对：它们把装回后发给玩家的
+  光照，与 RelightWorld#truth（实例上逐格取方块、走默认实现的 computeArea）逐 nibble 比较。烘焙器的 AreaView
+  不覆写，走默认实现（GeneratorBakeTest）。
+
+反证：覆写的测试确实覆盖到
+  f9148760f9 上把 SynxRelight.java 里 Task#section 写入的下标 ids[x | z << 4 | y << 8] 改成 ids[z | x << 4 | y << 8]
+  （x 与 z 对调），跑 :synx:test --tests '<S>.SynxRelightIntegrationTest' --tests '<S>.SynxRelightViewersIntegrationTest'
+  --tests '<S>.SynxRelightDeliveredIntegrationTest'：
+    17 tests completed, 6 failed
+    <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightIntegrationTest" tests="10" skipped="0" failures="1" errors="0"
+      aReadOnlyNeighbourPastTheRegionKeepsItsLight：chunk 4,3 block section 2: the nibble at x 15 z 11 y 8 ==> expected: <0> but was: <1>
+      at SynxRelightIntegrationTest.java:241
+    <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightViewersIntegrationTest" tests="6" skipped="0" failures="5" errors="0"
+      红的 5 条：theFallbackSendsTheChangedSectionsToEveryViewer、aPlayerSentTheChunksWhileTheirRecomputationWaitsGetsOneResend、
+      viewersThatComputeTheLightThemselvesGetNoPacketTheOthersOne、aTargetWhoseThreeByThreeTheViewerDoesNotHoldIsResent、
+      aLightPacketTurnsTheChangesOfThe100TicksAfterItIntoResends
+      前三条断言信息：A, 2,3 changed=true ==> expected: <1> but was: <0>；E, 2,3 changed=true ==> expected: <1> but was: <0>；
+      D light packet of 2,3 block section 2: the nibble at x 15 z 10 y 8 ==> expected: <1> but was: <0>
+      栈里的行：SynxRelightViewersIntegrationTest.java:115、:234（经 assertFullAndTrue :60）
+  之后 git reset --hard HEAD，工作树干净。

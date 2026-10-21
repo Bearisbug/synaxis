@@ -1,0 +1,46 @@
+CPU 采样：热点在哪
+
+一、基准里（改前，A，单线程，不挂代理）
+  java -jar <A>.jar RelightAreaBenchmark -bm avgt -f 1 -wi 5 -i 10 -t 1 \
+    -jvmArgsAppend "-XX:StartFlightRecording=filename=jmhA.jfr,settings=profile"
+  RelightAreaBenchmark.relightArea  avgt   10  7556.474 ± 42.186  us/op
+  jfr print --events jdk.ExecutionSample --stack-depth 40，按方法汇总（1,329 个样本）：
+    含子调用   LightEngine$Area.read                      64.0%
+                 RelightAreaBenchmark$SnapshotView.getBlock  63.1%（自身，即逐格的 getBlock：调色板读、Block.fromStateId）
+               LightEngine$Area.propagate                 18.6%
+               LightEngine$Area.skySources                12.3%
+               LightEngine$Area.blockSources               2.5%
+  每格一次 getBlock：5×5 × 16 个 section × 4,096 = 1,638,400 次，全空气的 section 也逐格问。
+
+二、TC-WORLD-139 的测试 JVM 里（改前，main 7724fcd23e，Gradle 测试任务原样，挂 JaCoCo 代理）
+  JAVA_TOOL_OPTIONS="-XX:StartFlightRecording=filename=backlog-%p.jfr,settings=profile" \
+    <G> :synx:test --tests '<S>.SynxRelightBacklogTest' -Dsynaxis.relight.measure=true --rerun
+  本次读数（带 JFR）：107/s 档 39.6 个中心/s、relight_ms_p99 98.7；不限速档 33.4 个中心/s、140.3。
+  jdk.ThreadCPULoad：synaxis-relight-0/1/2 各 user 8.05%～8.06%（占全机 12 核，约合每条线程 0.97 核）：
+    三条重算线程一直在跑 CPU，不是在等锁。
+  三条重算线程的 30,620 个样本，按调用栈所在的源码行：
+    SynxRelight.compute line 440（relightArea）                     99.8%
+    LightEngine$Area.read line 147（view.getBlock(...).stateId()）   93.8%
+    LightEngine$Area.propagate / skySources / blockSources 等           各 ≤ 2.1%
+    SynxRelight.snapshot（取 5×5 的调色板）                             0.1%
+  这 93.8% 的栈顶 JFR 记在 baker.AreaView.chunk 名下：同一 JVM 先用烘焙器烘测试图，read() 里 getBlock
+  的调用点见过 AreaView 与 SynxRelight$Task 两种视图，样本的方法名按编译后代码的调试信息归属；按调用栈它们都在
+  read() 第 147 行，即逐格 getBlock。快照、比较当前光照与装回不是热点。
+
+三、JaCoCo 代理（Gradle 测试任务给测试 JVM 挂的 jacocoagent.jar 0.8.15，参数同测试任务：output=file,jmx=false，另加 -ea）
+  同一基准，-f 1 -wi 5 -i 5，µs/op（每条线程每次重算）：
+                       不挂代理 1 线程   不挂代理 3 线程   挂代理 1 线程   挂代理 3 线程
+    A（改前）           7,488～7,802      7,593.283        11,357.306      65,979.286 / 63,944.579 / 62,341.869
+                                                           11,461.926
+    B（改后）           3,284～3,286      3,248.104         4,817.871       7,362.949 / 7,983.160
+  改前 3 线程挂代理比 1 线程挂代理慢 5.4～5.8 倍，不挂代理时 3 线程与 1 线程相同：三条线程同时跑逐格 getBlock
+  时，代理的探针把它拖到每次 62～66 ms，与 TC-WORLD-139 折算的每个中心 78～111 ms 线程占用同一量级。
+  改后这条路径没有了，挂代理 3 线程每次 7.4～8.0 ms。
+
+四、改后的基准（B，单线程，不挂代理）
+  RelightAreaBenchmark.relightArea  avgt   10  3310.359 ± 21.851  us/op（1,197 个样本）
+    含子调用   LightEngine$Area.propagate                 41.6%（neighbour 16.6%、enqueue 14.8% 自身）
+               LightEngine$Area.skySources                27.6%（skyEdgeOccluded 13.5% 自身）
+               LightEngine$Area.read                      17.7%（PaletteImpl.getAllPresent 17.5%）
+               LightEngine$Area.blockSources               9.4%
+  剩下的是 BFS 本身与天光源的逐格写入，各占 3.3 ms 里的 0.3～1.4 ms，没有再改。

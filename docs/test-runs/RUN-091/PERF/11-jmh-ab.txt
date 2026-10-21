@@ -1,6 +1,6 @@
 工作区复用前后的单中心基准（同一基准、同一场景、同一参数）
 
-A：0b9ee255ac 构建的 jar（每次重算新建全部数组）
+A：0b9ee255ac 构建的 jar（每次 relightArea 新建全部数组）
 B：87e25fe4c4 构建的 jar（基准的 Worker 状态每线程一个 LightEngine.Workspace，与 SynxRelight 每个重算线程一份相同）
 命令：java -jar <jar> RelightAreaBenchmark -bm avgt -prof gc -t 1（预热 5 × 1 s，测量 10 × 1 s，2 个 fork）
 四次背靠背，12:49:54～12:51:59。同机另有会话，load1 从 12.83 降到 6.65，A1 那次最高。
@@ -33,5 +33,5 @@ RelightAreaBenchmark.relightArea:gc.alloc.rate.norm  avgt   20  158260.154 ±  0
 RelightAreaBenchmark.relightArea:gc.count            avgt   20       4.000           counts
 RelightAreaBenchmark.relightArea:gc.time             avgt   20       1.000               ms
 
-小结：每次分配 2,894,535 B → 158,260 B（少 94.5%）；每次重算 3,302 µs → 2,890～2,936 µs（少 11～12%）。
+小结：每次分配 2,894,535 B → 158,260 B（少 94.5%）；每次 relightArea 3,302 µs → 2,890～2,936 µs（少 11～12%）。
 同样 20 s 的测量里 GC 次数 68～75 → 4。

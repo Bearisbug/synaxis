@@ -1,4 +1,5 @@
-每次重算的分配：去向（改前，0b9ee255ac）与改后剩下的（87e25fe4c4）
+每次 relightArea 的分配：去向（改前，0b9ee255ac）与改后剩下的（87e25fe4c4）
+只量 relightArea。一次重算端到端的分配（快照的 Palette.clone()、每个目标的 currentLight() 与解码）未测。
 
 做法：java -jar <jar> RelightAreaBenchmark -bm avgt -prof gc -f 1 -wi 5 -i 10 -t 1 \
         -jvmArgsAppend "-XX:StartFlightRecording=filename=<临时>.jfr,settings=profile"

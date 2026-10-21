@@ -29,7 +29,7 @@ RelightAreaBenchmark.relightArea:gc.alloc.rate.norm  avgt   20  2894534.965 ±  
 RelightAreaBenchmark.relightArea:gc.count            avgt   20       76.000           counts
 RelightAreaBenchmark.relightArea:gc.time             avgt   20       32.000               ms
 
-小结：每次重算 7,488～7,802 µs → 3,284～3,286 µs（约 2.3 倍）；每次分配 2,894,564～2,894,566 B → 2,894,535 B，
+小结：每次 relightArea 7,488～7,802 µs → 3,284～3,286 µs（约 2.3 倍）；每次分配 2,894,564～2,894,566 B → 2,894,535 B，
 不变（大头仍是每个有方块的 section 一个 char[4096] 与光照数组，读法改了，数组没变）。
 gc.count 多是因为同样 10 s 里多做了 2.3 倍的重算。
 

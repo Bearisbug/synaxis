@@ -31,7 +31,7 @@ JMH 的 jar 用同样的 mkdir 锁、owner 行与退出时放锁的写法单独�
   07-negative-state-id.txt  负的状态 id：SynxRelightStateIdsTest 修前红、修后绿
   08-centers-left.txt    读数行加离开的中心数（queue P99 的样本数）之后的两次 TC-WORLD-139
   09-install-time.txt    不限速档装回耗时的 JFR：最长那次是 GC 暂停
-  10-allocation.txt      每次重算 2.89 MB 分到了哪里（JFR 分配采样），改后剩下的
+  10-allocation.txt      每次 relightArea 2.89 MB 分到了哪里（JFR 分配采样），改后剩下的
   11-jmh-ab.txt          工作区复用前后的单中心基准 A B A B（耗时与 B/op）
   12-tc-world-139-gc.txt 工作区复用前后的 TC-WORLD-139，各一次开 JFR：GC 暂停与装回耗时
   13-workspace-parity.txt 工作区复用后光照结果不变，复用测试与反证
@@ -50,5 +50,6 @@ JMH 的 jar 用同样的 mkdir 锁、owner 行与退出时放锁的写法单独�
   5. 不挂 JaCoCo 的测量模式（ac35b18068 起）：107/s 档 106.9 个中心/s，relight_ms_p99 7.5～7.6 ms，
      离开的中心 6,409～6,410 个；不限速档只离开 121～264 个中心，它的 relight_queue_p99_ms 不能当排队延迟读。
   6. 不限速档 install_ms_max 的几十毫秒是 GC 暂停落在装回里（09-install-time.txt），装回本身每 tick 最长 0.576 ms。
-  7. 每次重算的分配 2,894,535 B → 158,260 B（工作区复用状态、等级与队列数组，剩下的是交出去的结果数组）；
+  7. 每次 relightArea 的分配 2,894,535 B → 158,260 B（工作区复用状态、等级与队列数组，剩下的是交出去的结果数组；
+     一次重算端到端的分配，即快照的 Palette.clone()、每个目标的 currentLight() 与解码，未测）；
      不限速档 GC 暂停占墙钟 19.6% → 3.9%，最长暂停 60.09 → 23.05 ms，relight_ms_p99 38.2 → 7.0。

@@ -1,0 +1,11 @@
+RUN-095 · follow-ups of RUN-094 in client-fabric and game-rts, the ledger file name, the cases RUN-094 moved.
+Branch m3/r095 on main df1b674127, draft PR #50.
+
+FU/: game-rts, protocol and TrackIncomingIntegrationTest runs, the TC-WORLD-056 counterproof, pkgdeps readings.
+
+GitHub Actions:
+- ad1f18ebd8 (head after a docs fix): CI 39681427952 (Check, strict, strict grid), Concurrency 39681427969,
+  Client mod 39681428018, Client gametest 39681427967, all success.
+- db6f00ea40 (same code): Client mod 39680468670, Concurrency 39680468702, Client gametest 39680468867 success;
+  Far view gametest 39680488336 (label): light, synthetic, hidden, baked success on attempt 1.
+- Counts (CI run 39681427952): 797 classes, 5,615 tests, 0 failures, 0 errors, 23 skipped; the same as RUN-094.

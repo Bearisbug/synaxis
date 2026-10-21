@@ -33,7 +33,9 @@ public interface PluginCommands {
      * Registers a command under this plugin's namespace.
      * <p>
      * Do not change the command once it is registered, a change takes effect at no set time:
-     * unregister it and register it again instead. A name the engine refuses (upper case,
+     * unregister it and register it again instead. The host wraps the executors, conditions and
+     * argument error callbacks of the command, its syntaxes and its subcommands in place, so from
+     * this call on their getters return the host's wrappers. A name the engine refuses (upper case,
      * whitespace, a leading {@code /}) has already failed in the {@link Command} constructor.
      *
      * @param command a command whose name and aliases hold no {@code :}

@@ -3,10 +3,11 @@ package io.github.bearisbug.synaxis.plugin;
 /**
  * The plugin API version axis, see {@code docs/DESIGN-M2.md} §8.
  * <p>
- * This module is the only stable surface of the server: what it exports is held to binary
- * compatibility by the {@code checkBinaryCompatibility} gate, the engine below it is not. The
- * lifecycle and capability types ({@code SynaxisPlugin}, {@code PluginDescriptor},
- * {@code PluginContext}) land with REQ-M2-003 and REQ-M2-004.
+ * This module is the surface a plugin is written against. It and {@code :protocol}, which it
+ * carries along, are what the compatibility promise of {@code docs/DESIGN-M2.md} §8 covers, held to
+ * binary compatibility by the {@code checkBinaryCompatibility} gate; the engine reached through
+ * {@link PluginContext#process()} is not. The entry point is {@link SynaxisPlugin}; what the host
+ * grants is {@link PluginContext}.
  */
 public final class PluginApi {
 
@@ -25,6 +26,10 @@ public final class PluginApi {
      * second one registered after the port is open would shift the dimension indices of everybody
      * already in game, so the host registers exactly one and every match shares it. Matches tell
      * themselves apart by their dimension name, which is free form and goes into no registry.
+     * <p>
+     * It has a minimum y of 0 and a height of 64, the world height of {@code docs/DESIGN-M2.md}
+     * §9: blocks go at y 0 to 63. A plugin that has to be sure reads the height of the registered
+     * dimension type at run time, as {@code game-rts} does before it builds a map.
      */
     public static final String MATCH_DIMENSION_TYPE = "synaxis:match";
 

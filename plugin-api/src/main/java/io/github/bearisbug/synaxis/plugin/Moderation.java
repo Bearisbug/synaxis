@@ -23,6 +23,10 @@ import java.util.concurrent.CompletableFuture;
  * Every method may be called from any thread, a tick thread included: the changes go to the
  * database on a virtual thread, and a future that fails carries an {@link IllegalStateException}.
  * <p>
+ * A process without a database ({@code synaxis.app.store=memory}, the default) bans nobody:
+ * {@link #activeBan} is always empty, and the futures of {@link #ban}, {@link #unban} and
+ * {@link #whitelist} fail with an {@link IllegalStateException}.
+ * <p>
  * Only the host implements this interface: a plugin is handed one and calls it.
  */
 @ApiStatus.NonExtendable

@@ -17,7 +17,10 @@ import java.util.Optional;
  * {@code <plugin_id>:<name>}. A name may be given with or without this plugin's prefix, which the
  * host adds; a prefix that is not this plugin's id is refused with an
  * {@link IllegalArgumentException}, the same rule as the channels of
- * {@link io.github.bearisbug.synaxis.plugin.PluginChannels}.
+ * {@link io.github.bearisbug.synaxis.plugin.PluginChannels}. So is a name that does not match
+ * {@code [a-z0-9._/-]+}, and an id that is over
+ * {@value io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol#MAX_ID_BYTES} bytes of UTF-8
+ * once the prefix is added.
  * <p>
  * Threads: {@link #enter}, {@link #leave}, {@link #currentScene} and the writing methods of
  * {@link #hud} are called either on the tick thread that owns the player or in the serial part of
@@ -40,7 +43,9 @@ public interface PluginPlay {
      * goes up by one; the HUD changes of this plugin still queued for the player are dropped and a
      * clear of this plugin's widgets is queued in their place, so a widget set before this call in
      * the same tick never reaches the new scene. The scene is sent at the end of the player's tick,
-     * or after a move of the player into another managed instance completes if one is under way.
+     * or after a move of the player into another managed instance completes if one is under way,
+     * whichever way the move went: when it completes with false the player is still where it was, in
+     * this scene, and the plugin enters the scene that fits where the player is.
      * <p>
      * Nothing happens for a player whose connection has dropped. A connection is offline from the
      * moment it drops, while {@code PlayerDisconnectEvent} waits for the player's next tick, so
@@ -51,15 +56,19 @@ public interface PluginPlay {
      * @throws IllegalStateException    if called on a thread that neither owns the player nor runs
      *                                  the serial part of the tick, this plugin is not the scene owner
      *                                  of the process, or the player is online but not in the play state
-     * @throws IllegalArgumentException if the encoded scene is over 8 KiB, a component of it cannot
-     *                                  be encoded, an id carries another plugin's namespace, or an
-     *                                  action id was not registered with {@link #onAction}; the
-     *                                  player's scene is left as it was
+     * @throws IllegalArgumentException if the encoded scene is over 8 KiB, a component of it
+     *                                  encodes to more than
+     *                                  {@value io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent#MAX_BYTES}
+     *                                  bytes or cannot be encoded, the scene id or an action id is not
+     *                                  an id of this plugin (see above), or an action id was not
+     *                                  registered with {@link #onAction}; the player's scene is left
+     *                                  as it was
      */
     void enter(Player player, SceneSpec scene);
 
     /**
-     * Takes a player out of its scene and queues a clear of this plugin's widgets.
+     * Takes a player out of its scene and queues a clear of this plugin's widgets. Nothing happens
+     * for a player in no scene.
      *
      * @param player the player
      * @throws IllegalStateException if called on a thread that neither owns the player nor runs the
@@ -87,14 +96,20 @@ public interface PluginPlay {
 
     /**
      * Registers what happens when a player sends an action of this plugin, by action key or panel
-     * button. The host answers every action exactly once; it only calls the handler for an action of
-     * the player's current scene that is neither over the rate limit nor cooling down.
+     * button. The host answers every action exactly once; it only calls the handler for an action
+     * sent in the player's current scene, or before the first one, that is a key of that scene or a
+     * button on one of the player's panels, and that is neither over the rate limit nor, for a key,
+     * cooling down.
      *
      * @param actionId the action id, with or without this plugin's prefix
      * @param handler  the handler, called on the tick thread that owns the sender
      * @throws IllegalStateException    if called after {@code onEnable} returned, or the action is
      *                                  already registered
-     * @throws IllegalArgumentException if the id carries another plugin's namespace
+     * @throws IllegalArgumentException if the id is not an id of this plugin: another plugin's
+     *                                  namespace, a name that does not match {@code [a-z0-9._/-]+},
+     *                                  or over
+     *                                  {@value io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol#MAX_ID_BYTES}
+     *                                  bytes in full
      */
     void onAction(String actionId, ActionHandler handler);
 }

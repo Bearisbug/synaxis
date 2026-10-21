@@ -16,6 +16,10 @@ import java.util.Set;
  * {@link Player#getPermissionLevel()} is not consulted: it only drives what the client shows.
  * Both methods may be called from any thread.
  * <p>
+ * A process without a database ({@code synaxis.app.store=memory}, the default) loads no roles:
+ * {@link #has} is false and {@link #roles} is empty for every player, so a command whose condition
+ * asks this interface is hidden from every player there.
+ * <p>
  * Only the host implements this interface: a plugin is handed one and calls it.
  */
 @ApiStatus.NonExtendable

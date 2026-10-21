@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
 final class RushRound extends Round {
 
     private static final int SCOREBOARD_ROWS = 8;
-    private static final int PANEL_ROWS = 12;
+    private static final int PANEL_ROWS = io.github.bearisbug.synaxis.game.protocol.play.Widget.MAX_PANEL_ROWS;
 
     private final RushConfig config;
     private final ManagedInstance lobby;

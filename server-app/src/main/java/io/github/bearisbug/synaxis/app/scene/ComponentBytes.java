@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.app.scene;
 
+import io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import net.kyori.adventure.text.Component;
 
@@ -14,7 +15,7 @@ public final class ComponentBytes {
     /**
      * The most bytes one encoded component may take (§6.4.3).
      */
-    public static final int MAX_BYTES = 2_048;
+    public static final int MAX_BYTES = EncodedComponent.MAX_BYTES;
 
     private ComponentBytes() {
     }

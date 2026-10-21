@@ -9,8 +9,10 @@ import java.util.Map;
  * <p>
  * The events of §20 are produced on both sides of the plugin boundary: the host writes the session
  * and plugin ones, the plugin writes the match, unit and order ones. They all have to end up in the
- * same {@code logs/events-YYYYMMDD.jsonl}, so the host owns the file and the plugin hands its
- * events over through here.
+ * same file, so the host owns it and the plugin hands its events over through here. The file is
+ * {@code logs/events-<shard_id>-YYYYMMDD.jsonl}, {@code <shard_id>} being
+ * {@code synaxis.app.shard-id} ({@code local} by default); the files of earlier days are compressed
+ * to {@code .jsonl.gz} and kept 30 days ({@code docs/DESIGN-PROD.md} {@code API-PROD-014}).
  * <p>
  * This capability holds no state, so there is nothing to take back when the plugin is disabled.
  * <p>

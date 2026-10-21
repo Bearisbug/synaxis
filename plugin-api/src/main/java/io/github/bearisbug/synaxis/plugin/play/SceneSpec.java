@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.plugin.play;
 
+import io.github.bearisbug.synaxis.game.protocol.play.S2CScene;
 import net.kyori.adventure.text.Component;
 
 import java.util.List;
@@ -12,7 +13,8 @@ import java.util.List;
  * @param title   the title, a translate key with a fallback where the text is new
  * @param camera  the camera
  * @param cursor  the cursor mode
- * @param actions the action slots, no slot twice, which also keeps them to 6; copied
+ * @param actions the action slots, no slot twice, which also keeps them to
+ *                {@value io.github.bearisbug.synaxis.game.protocol.play.S2CScene#MAX_ACTIONS}; copied
  */
 public record SceneSpec(String id, Component title, CameraSpec camera, CursorMode cursor, List<ActionSlot> actions) {
 
@@ -23,7 +25,7 @@ public record SceneSpec(String id, Component title, CameraSpec camera, CursorMod
      */
     public SceneSpec {
         actions = List.copyOf(actions);
-        final boolean[] taken = new boolean[6];
+        final boolean[] taken = new boolean[S2CScene.MAX_ACTIONS];
         for (final ActionSlot action : actions) {
             if (taken[action.slot()])
                 throw new IllegalArgumentException("action key " + action.slot() + " is used twice in scene " + id);

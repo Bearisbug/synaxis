@@ -1,5 +1,7 @@
 package io.github.bearisbug.synaxis.plugin.play;
 
+import io.github.bearisbug.synaxis.game.protocol.play.PropValue;
+import io.github.bearisbug.synaxis.game.protocol.play.S2CHud;
 import net.kyori.adventure.text.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -12,12 +14,15 @@ import java.util.List;
  * The kinds are a closed catalogue the client mod draws; version 1 of {@code synaxis:play} has the
  * four below. Text is sent as a component, a translate key with a fallback where the text is new.
  * The host checks the encoded size when the widget is set ({@link Hud#set}); the limits that need no
- * encoding are checked here, and break with an {@link IllegalArgumentException}.
+ * encoding are checked here, against the limits of {@code synaxis:play} in
+ * {@code io.github.bearisbug.synaxis.game.protocol.play}, and break with an
+ * {@link IllegalArgumentException}.
  */
 public sealed interface Widget {
 
     /**
-     * The id of the widget, unique among this plugin's widgets: 1 to 32 bytes of UTF-8.
+     * The id of the widget, unique among this plugin's widgets: 1 to
+     * {@value io.github.bearisbug.synaxis.game.protocol.play.S2CHud#MAX_WIDGET_ID_BYTES} bytes of UTF-8.
      *
      * @return the widget id
      */
@@ -92,20 +97,23 @@ public sealed interface Widget {
      * @param slot  where it goes
      * @param order its position in the slot
      * @param title the title
-     * @param rows  at most 16 rows; copied
+     * @param rows  at most {@value io.github.bearisbug.synaxis.game.protocol.play.PropValue.Rows#MAX_ROWS}
+     *              rows; copied
      */
     record Scoreboard(String id, HudSlot slot, int order, Component title, List<Row> rows) implements Widget {
 
         /**
          * Checks the id and copies the rows.
          *
-         * @throws IllegalArgumentException if the id is out of range or there are more than 16 rows
+         * @throws IllegalArgumentException if the id is out of range or there are more rows than
+         *                                  {@code rows} allows
          */
         public Scoreboard {
             checkId(id);
             rows = List.copyOf(rows);
-            if (rows.size() > 16)
-                throw new IllegalArgumentException("a scoreboard has at most 16 rows, not " + rows.size());
+            if (rows.size() > PropValue.Rows.MAX_ROWS)
+                throw new IllegalArgumentException("a scoreboard has at most " + PropValue.Rows.MAX_ROWS + " rows, not "
+                        + rows.size());
         }
     }
 
@@ -115,25 +123,29 @@ public sealed interface Widget {
      *
      * @param id      the widget id
      * @param title   the title
-     * @param rows    at most 12 rows; copied
-     * @param buttons at most 4 buttons; copied
+     * @param rows    at most {@value io.github.bearisbug.synaxis.game.protocol.play.Widget#MAX_PANEL_ROWS}
+     *                rows; copied
+     * @param buttons at most {@value io.github.bearisbug.synaxis.game.protocol.play.PropValue.Buttons#MAX_BUTTONS}
+     *                buttons; copied
      */
     record Panel(String id, Component title, List<Row> rows, List<Button> buttons) implements Widget {
 
         /**
          * Checks the id and copies the rows and the buttons.
          *
-         * @throws IllegalArgumentException if the id is out of range, or there are more than 12 rows
-         *                                  or more than 4 buttons
+         * @throws IllegalArgumentException if the id is out of range, or there are more rows or
+         *                                  buttons than {@code rows} and {@code buttons} allow
          */
         public Panel {
             checkId(id);
             rows = List.copyOf(rows);
             buttons = List.copyOf(buttons);
-            if (rows.size() > 12)
-                throw new IllegalArgumentException("a panel has at most 12 rows, not " + rows.size());
-            if (buttons.size() > 4)
-                throw new IllegalArgumentException("a panel has at most 4 buttons, not " + buttons.size());
+            final int maxRows = io.github.bearisbug.synaxis.game.protocol.play.Widget.MAX_PANEL_ROWS;
+            if (rows.size() > maxRows)
+                throw new IllegalArgumentException("a panel has at most " + maxRows + " rows, not " + rows.size());
+            if (buttons.size() > PropValue.Buttons.MAX_BUTTONS)
+                throw new IllegalArgumentException("a panel has at most " + PropValue.Buttons.MAX_BUTTONS + " buttons, not "
+                        + buttons.size());
         }
 
         @Override
@@ -151,7 +163,9 @@ public sealed interface Widget {
      * One row of a scoreboard or a panel.
      *
      * @param label     the name of the row
-     * @param value     its value, at most 32 bytes of UTF-8
+     * @param value     its value, at most
+     *                  {@value io.github.bearisbug.synaxis.game.protocol.play.PropValue.Row#MAX_VALUE_BYTES} bytes
+     *                  of UTF-8
      * @param highlight whether the row is highlighted, such as the player's own
      */
     record Row(Component label, String value, boolean highlight) {
@@ -159,12 +173,13 @@ public sealed interface Widget {
         /**
          * Checks the length of the value.
          *
-         * @throws IllegalArgumentException if the value is more than 32 bytes of UTF-8
+         * @throws IllegalArgumentException if the value is longer than {@code value} allows
          */
         public Row {
             final int bytes = value.getBytes(StandardCharsets.UTF_8).length;
-            if (bytes > 32)
-                throw new IllegalArgumentException("a row value is at most 32 bytes of UTF-8, \"" + value + "\" is " + bytes);
+            if (bytes > PropValue.Row.MAX_VALUE_BYTES)
+                throw new IllegalArgumentException("a row value is at most " + PropValue.Row.MAX_VALUE_BYTES
+                        + " bytes of UTF-8, \"" + value + "\" is " + bytes);
         }
     }
 
@@ -181,8 +196,9 @@ public sealed interface Widget {
 
     private static void checkId(String id) {
         final int bytes = id.getBytes(StandardCharsets.UTF_8).length;
-        if (bytes < 1 || bytes > 32)
-            throw new IllegalArgumentException("a widget id is 1 to 32 bytes of UTF-8, \"" + id + "\" is " + bytes);
+        if (bytes < 1 || bytes > S2CHud.MAX_WIDGET_ID_BYTES)
+            throw new IllegalArgumentException("a widget id is 1 to " + S2CHud.MAX_WIDGET_ID_BYTES + " bytes of UTF-8, \""
+                    + id + "\" is " + bytes);
     }
 
     private static void checkMillis(Duration duration, String what) {

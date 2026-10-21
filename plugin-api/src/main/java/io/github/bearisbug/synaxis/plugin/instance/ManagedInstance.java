@@ -18,8 +18,13 @@ import java.util.function.Function;
  * <p>
  * Every transition is carried out by the host, which writes a ledger line for it and calls a
  * {@link PlayInstanceStateEvent}. {@link #start}, {@link #cancel}, {@link #end} and {@link #settled}
- * are requests: they are called on the tick scheduler thread or on the tick thread of the instance,
- * and throw {@link IllegalStateException} from a state the transition does not leave.
+ * are requests, and throw {@link IllegalStateException} from a state the transition does not leave.
+ * Call them in {@code onEnable}, on the tick scheduler thread or on the tick thread of the instance.
+ * The calling thread is not checked, since the state swap is atomic and the host unregisters the
+ * instance only on the startup thread or in the serial part of the tick; but the
+ * {@link PlayInstanceStateEvent} of the transition is dispatched on the calling thread, and
+ * {@code cancel} and {@code settled} call the exit function for each player there too. Called from
+ * another thread, those listeners and that function run on it.
  * <p>
  * Only the host implements this interface: a plugin is handed one and calls it.
  */
@@ -84,7 +89,10 @@ public interface ManagedInstance {
      * until the move is done.
      *
      * @param player the player
-     * @param at     where the player lands
+     * @param at     where the player lands; not used for a player already in this instance, for whom
+     *               the future completes with whether the instance still takes players
+     *               ({@link State#OPEN} or {@link State#RUNNING}): {@code Player#teleport} moves a
+     *               player within the instance
      * @return completes with true once the player is in, with false if the instance is not
      *         {@link State#OPEN} or {@link State#RUNNING}, the player left, a listener kept the
      *         player out, a later change of instance took the place of this one, or the engine

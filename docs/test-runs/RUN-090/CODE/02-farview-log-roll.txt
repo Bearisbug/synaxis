@@ -1,0 +1,19 @@
+FarViewClientGameTest's client log across a log4j roll (1f76340a38).
+
+client-fabric is not built on this machine: no Gradle task of it ran, the gametest runs in CI (farview-gametest.yml).
+What ran here: a copy of the new Run#log(), Run#logSince(int), Run#modified(Path) and ROLLED_LOG, word for word, in
+one class run by the JDK 25 single-file source launcher against a temporary game directory, removed afterwards.
+
+  Before the run begins: logs/2026-10-20-9.log.gz and logs/debug-1.log.gz, as log4j writes them when a client starts
+  on a run directory a client used before (OnStartupTriggeringPolicy on latest.log and debug.log in Loom's log4j
+  configuration), and latest.log a1..a3. Then the run, from = log().size(), two more lines, a roll at midnight into
+  2026-10-20-10.log.gz (before -9 by name), a new latest.log b1, b2 and a new debug-1.log.gz; then a second roll.
+
+  OK   before any roll: latest.log only, the startup rolls left out [a1, a2, a3]
+  OK   across the roll the index stays on its line [a4 announcement, a5 save folder, b1, b2]
+  OK   two rolls in write order [a4 announcement, a5 save folder, b1, b2, b3, c1]
+  OK   latest.log missing: the rolled lines read before it [a1, a2, a3, a4 announcement, a5 save folder, b1, b2, b3]
+  OK   a broken rolled file: the lines read before it [a1, a2, a3, a4 announcement, a5 save folder]
+
+The reader before the change (latest.log only) on the same first roll:
+  latest.log only, across the roll: logSince(3) = [], expected [a4 announcement, a5 save folder, b1, b2]

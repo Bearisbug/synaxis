@@ -66,7 +66,7 @@ public class TranslationIntegrationTest {
 
     @Test
     public void testTranslationDisabled(final Env env) {
-        Assumptions.assumeTrue(JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION);
+        Assumptions.assumeFalse(JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION);
         final var instance = env.createFlatInstance();
         final var connection = env.createConnection();
         final var player = connection.connect(instance, new Pos(0, 40, 0));

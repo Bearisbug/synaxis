@@ -341,10 +341,12 @@ public class OnlineLoginSocketTest {
                 }
             });
             awaitUntil(() -> sessions.inFlight() == 1, "the only slot is taken");
+            final SessionClient sessionClient = rig.process().connection().sessionClient();
+            assertNotNull(sessionClient);
             try (EncryptedLoginClient queued = rig.client()) {
                 queued.handshakeAndStart("Queued");
                 queued.answer(queued.readEncryptionRequest());
-                Thread.sleep(300);
+                awaitUntil(() -> sessionClient.queuedQueries() == 1, "the server queued the peer for the slot");
             }
             // The queued peer's socket is given back to the gate once the server has dropped the connection
             awaitUntil(() -> rig.gate().connections() == 1, "the server saw the queued peer leave");

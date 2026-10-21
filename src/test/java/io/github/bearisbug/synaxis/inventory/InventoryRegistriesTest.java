@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import io.github.bearisbug.synaxis.component.DataComponents;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
+import io.github.bearisbug.synaxis.testing.RegistriesTest;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -11,7 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class InventoryTest {
+@RegistriesTest
+public class InventoryRegistriesTest {
 
     @Test
     public void testCreation() {

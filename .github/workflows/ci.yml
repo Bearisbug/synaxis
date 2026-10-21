@@ -86,6 +86,18 @@ jobs:
           path: '**/build/reports/jacoco/test/jacocoTestReport.xml'
           retention-days: 14
 
+      # Server-side translation is a JVM-wide switch, off by default, so the run above skips the
+      # tests that need it on. Only the two classes that hold them run again with it on, after the
+      # uploads so that those keep the reports of the whole suite: about a minute on top of the job.
+      - name: Run the translation tests with automatic component translation on
+        run: |
+          ./gradlew :test --tests io.github.bearisbug.synaxis.utils.TranslationIntegrationTest \
+            :testing:test --tests io.github.bearisbug.synaxis.testing.test.TrackIncomingIntegrationTest \
+            -Dsynaxis.automatic-component-translation=true
+          # Without this a build that stopped forwarding the property would pass with them skipped
+          grep -q 'skipped="0"' testing/build/test-results/test/TEST-io.github.bearisbug.synaxis.testing.test.TrackIncomingIntegrationTest.xml
+          grep -q 'skipped="1"' build/test-results/test/TEST-io.github.bearisbug.synaxis.utils.TranslationIntegrationTest.xml
+
       # The baseline is the jar of our own last tag, named in gradle/abi-baseline.tag. No such
       # file means no tag has been cut yet, and then the gate is not given -PbaselineJarDir and
       # ends as an explicit SKIPPED. See docs/ENGINE.md §7.1 for how to cut that first tag.

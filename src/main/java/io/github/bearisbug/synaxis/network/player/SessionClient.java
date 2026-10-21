@@ -220,6 +220,15 @@ public final class SessionClient {
     }
 
     /**
+     * How many logins wait for a query slot right now, an estimate ({@link Semaphore#getQueueLength()}).
+     *
+     * @return the logins queued behind {@link SessionServer#maxInFlight()} running queries
+     */
+    public int queuedQueries() {
+        return inFlight.getQueueLength();
+    }
+
+    /**
      * Tells {@code observer} how long each query to the session server took, in nanoseconds,
      * failures and timeouts included, on the verification thread of the login.
      *

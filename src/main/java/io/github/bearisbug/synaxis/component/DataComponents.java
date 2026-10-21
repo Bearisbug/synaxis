@@ -154,7 +154,7 @@ public class DataComponents {
     public static final DataComponent<Integer> OMINOUS_BOTTLE_AMPLIFIER = register("ominous_bottle_amplifier", NetworkBuffer.VAR_INT, Codec.INT);
     public static final DataComponent<RegistryKey<BinaryTag>> JUKEBOX_PLAYABLE = register("jukebox_playable", RegistryKey.holderNetworkType(opaque(BuiltinRegistries.JUKEBOX_SONG)), RegistryKey.codec(opaque(BuiltinRegistries.JUKEBOX_SONG)));
     public static final DataComponent<RegistryTag<BinaryTag>> PROVIDES_BANNER_PATTERNS = register("provides_banner_patterns", RegistryTag.networkType(opaque(BuiltinRegistries.BANNER_PATTERN)), RegistryTag.codec(opaque(BuiltinRegistries.BANNER_PATTERN)));
-    public static final DataComponent<List<String>> RECIPES = register("recipes", NetworkBuffer.STRING.list(Short.MAX_VALUE), Codec.STRING.list(Short.MAX_VALUE), atMost("recipes", Short.MAX_VALUE));
+    public static final DataComponent<List<String>> RECIPES = register("recipes", NetworkBuffer.TypedNBT(Codec.STRING.list(Short.MAX_VALUE)), Codec.STRING.list(Short.MAX_VALUE), atMost("recipes", Short.MAX_VALUE));
     public static final DataComponent<LodestoneTracker> LODESTONE_TRACKER = register("lodestone_tracker", LodestoneTracker.NETWORK_TYPE, LodestoneTracker.CODEC);
     public static final DataComponent<FireworkExplosion> FIREWORK_EXPLOSION = register("firework_explosion", FireworkExplosion.NETWORK_TYPE, FireworkExplosion.CODEC);
     public static final DataComponent<FireworkList> FIREWORKS = register("fireworks", FireworkList.NETWORK_TYPE, FireworkList.NBT_TYPE);

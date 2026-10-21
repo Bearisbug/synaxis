@@ -1,0 +1,15 @@
+RUN-090 CODE: the thread InstanceChunkLoadEvent is called on, and the far view gametest's client log across a log4j
+roll. Branch m3/r090, base 7724fcd23e. JDK 25, every Gradle run with --max-workers=2 --no-daemon --init-script
+gradle/init/aliyun-mirror.init.gradle.kts. <P> stands for io.github.bearisbug.synaxis.
+
+Commits
+  4b78e8e58e test: the load event of a parallel loader's chunk is called on a virtual thread, never on the thread that asked for the chunk, also for a chunk a listener of the event loads; a loader without parallel support that throws fails the load and the next load calls it again
+  3d86d42a1c instance: a chunk load starts its chain only once the completion callback is registered, so InstanceChunkLoadEvent is called on the virtual thread that processed the chunk, where a parallel load finishing first called it on the requesting thread inside the loading map's computation
+  1f76340a38 client gametest: the far view log reads the files log4j rolled latest.log into since the run began, in the order written, then latest.log, so a run past midnight still finds its earlier lines and a logSince index stays on its line
+
+Files
+  01-chunk-load-event-thread.txt  red on 4b78e8e58e (three runs), green on 3d86d42a1c (three runs), the instance, synx
+                                  and server-app shard classes run on it
+  02-farview-log-roll.txt         client-fabric is not built here; a copy of the new reader run against a logs/ directory
+                                  that rolls, and the old reader on the same directory
+  03-counterproofs.txt            two temporary changes on 3d86d42a1c, one red in each test

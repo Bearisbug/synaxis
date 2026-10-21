@@ -1,0 +1,54 @@
+InstanceChunkLoadEvent on the requesting thread inside the loading map's computation.
+
+Red before the fix: 4b78e8e58e (the tests on the code of 7724fcd23e), three runs of
+  ./gradlew :test --tests '<P>.instance.InstanceChunkLoadEventThreadIntegrationTest' --tests '<P>.instance.ChunkLoaderContractIntegrationTest' --rerun
+
+  run 1  <testsuite name="<P>.instance.InstanceChunkLoadEventThreadIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
+         <testsuite name="<P>.instance.ChunkLoaderContractIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+  run 2  5 tests completed, 1 failed
+         <testsuite name="<P>.instance.InstanceChunkLoadEventThreadIntegrationTest" tests="1" skipped="0" failures="1" errors="0">
+         <testsuite name="<P>.instance.ChunkLoaderContractIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+         loadEventOfAParallelLoadIsNeverCalledOnTheRequestingThread, InstanceChunkLoadEventThreadIntegrationTest.java:72
+         where the 4000 load events were called ==> expected: <0 on the thread that asked for the chunk, 0 on a platform
+         thread> but was: <8 on the thread that asked for the chunk, 0 on a platform thread>
+  run 3  5 tests completed, 1 failed, the same two testsuite lines, red at the same line:
+         but was: <3 on the thread that asked for the chunk, 0 on a platform thread>
+
+  The 4,000 events are those of the 2,000 chunks the test thread asks for and of the 2,000 chunks their listeners ask
+  for (x + 100). Every event on the requesting thread was one of a chunk a listener asked for, on the listener's virtual
+  thread, inside that chunk's computation of the loading map; none was on the test thread. Nothing reached the exception
+  handler in any run (the assertion before :72 held): the listener of such a chunk loads no further chunk, so no recursive
+  update of the map came of it. The window is a race of the load's virtual thread against the registration of the
+  callback: one run of the three stayed green.
+  aThrowingLoaderFailsTheLoadAndTheNextLoadCallsItAgain is green before the fix too: it guards the failure path of a
+  loader without parallel support, which completes the chain inside the computation before and after the fix.
+
+Green after the fix: 3d86d42a1c, three runs of
+  ./gradlew :test --tests '<P>.instance.InstanceChunkLoadEventThreadIntegrationTest' --tests '<P>.instance.ChunkLoaderContractIntegrationTest' --tests '<P>.instance.ChunkLoaderSaveIntegrationTest' --tests '<P>.instance.InstanceBlockIntegrationTest' --tests '<P>.instance.UnloadChunkIntegrationTest' --rerun
+
+  each of the three runs, BUILD SUCCESSFUL:
+  <testsuite name="<P>.instance.ChunkLoaderContractIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+  <testsuite name="<P>.instance.ChunkLoaderSaveIntegrationTest" tests="2" skipped="0" failures="0" errors="0">
+  <testsuite name="<P>.instance.InstanceBlockIntegrationTest" tests="11" skipped="0" failures="0" errors="0">
+  <testsuite name="<P>.instance.InstanceChunkLoadEventThreadIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
+  <testsuite name="<P>.instance.UnloadChunkIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+
+The synx classes that use SynxChunkLoader (a parallel loader), on 3d86d42a1c:
+  ./gradlew :synx:test --tests '<P>.synx.OverlayCrossCellWritersTest' --tests '<P>.synx.SynxBlockEntityLimitsTest' --tests '<P>.synx.SynxChunkLoaderIntegrationTest' --tests '<P>.synx.SynxChunkOverlayIntegrationTest' --tests '<P>.synx.SynxOverlayCombinedIntegrationTest' --tests '<P>.synx.SynxParserBoundaryTest' --tests '<P>.synx.SynxRelightBacklogTest' --tests '<P>.synx.SynxRelightIntegrationTest' --tests '<P>.synx.SynxSegmentOneBlockEntityTest' --tests '<P>.synx.SynxTruncatedMappingTest' --rerun
+
+  BUILD SUCCESSFUL
+  <testsuite name="<P>.synx.OverlayCrossCellWritersTest" tests="5" skipped="0" failures="0" errors="0">
+  <testsuite name="<P>.synx.SynxBlockEntityLimitsTest" tests="2" skipped="0" failures="0" errors="0">
+  <testsuite name="<P>.synx.SynxChunkLoaderIntegrationTest" tests="13" skipped="0" failures="0" errors="0">
+  <testsuite name="<P>.synx.SynxChunkOverlayIntegrationTest" tests="15" skipped="0" failures="0" errors="0">
+  <testsuite name="<P>.synx.SynxOverlayCombinedIntegrationTest" tests="7" skipped="0" failures="0" errors="0">
+  <testsuite name="<P>.synx.SynxParserBoundaryTest" tests="12" skipped="0" failures="0" errors="0">
+  <testsuite name="<P>.synx.SynxRelightBacklogTest" tests="1" skipped="1" failures="0" errors="0">  (measurement mode, off without -Dsynaxis.relight.measure=true)
+  <testsuite name="<P>.synx.SynxRelightIntegrationTest" tests="10" skipped="0" failures="0" errors="0">
+  <testsuite name="<P>.synx.SynxSegmentOneBlockEntityTest" tests="1" skipped="0" failures="0" errors="0">
+  <testsuite name="<P>.synx.SynxTruncatedMappingTest" tests="2" skipped="0" failures="0" errors="0">
+
+ShardInstance overrides retrieveChunk and calls the engine's, on 3d86d42a1c:
+  ./gradlew :server-app:test --tests '<P>.app.shard.ShardInstanceTest' --rerun
+  BUILD SUCCESSFUL
+  <testsuite name="<P>.app.shard.ShardInstanceTest" tests="6" skipped="0" failures="0" errors="0">

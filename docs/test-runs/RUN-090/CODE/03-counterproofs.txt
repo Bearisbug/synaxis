@@ -1,0 +1,28 @@
+Counterproofs on 3d86d42a1c, one temporary change each to InstanceContainer#retrieveChunk, then git reset --hard HEAD.
+  ./gradlew :test --tests '<P>.instance.InstanceChunkLoadEventThreadIntegrationTest' --tests '<P>.instance.ChunkLoaderContractIntegrationTest' --rerun
+
+A. The parallel load processed on the requesting thread:
+   ? start.thenApplyAsync(_ -> processChunk.apply(loaderSupplier.get()), Thread::startVirtualThread)
+   replaced by
+   ? start.thenApply(_ -> processChunk.apply(loaderSupplier.get()))
+   5 tests completed, 1 failed
+   <testsuite name="<P>.instance.InstanceChunkLoadEventThreadIntegrationTest" tests="1" skipped="0" failures="1" errors="0">
+   <testsuite name="<P>.instance.ChunkLoaderContractIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+   InstanceChunkLoadEventThreadIntegrationTest.java:72  where the 4000 load events were called ==> expected: <0 on the
+   thread that asked for the chunk, 0 on a platform thread> but was: <4000 on the thread that asked for the chunk, 4000
+   on a platform thread>
+
+B. A failed load left in the loading map:
+   return future.whenComplete((_, _) -> loadingChunks.remove(index, future));
+   replaced by
+   return future.thenApply(chunk -> {
+       loadingChunks.remove(index, future);
+       return chunk;
+   });
+   5 tests completed, 1 failed
+   <testsuite name="<P>.instance.InstanceChunkLoadEventThreadIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
+   <testsuite name="<P>.instance.ChunkLoaderContractIntegrationTest" tests="4" skipped="0" failures="1" errors="0">
+   aThrowingLoaderFailsTheLoadAndTheNextLoadCallsItAgain: java.util.concurrent.CompletionException:
+   java.lang.IllegalStateException: loader failure. The second load (:84) gets the failed future still in the map and
+   throws the CompletionException the first load made: its stack is that of the first load, under start.complete
+   (InstanceContainer.java:518) from ChunkLoaderContractIntegrationTest.java:79, caused by the loader's exception (:60).

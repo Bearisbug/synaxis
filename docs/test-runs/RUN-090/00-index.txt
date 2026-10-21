@@ -1,0 +1,20 @@
+RUN-090 · chunk load events never inside the loading map; the far view gametest reads its log across a roll; docs
+after RUN-089. Branch m3/r090, draft PR #46.
+
+Merges: the code was written on top of main 7724fcd23e. The branch merged main with --no-ff twice: c6854b6cbf
+(RUN-089), no conflict, and e769d01f91 (RUN-091), with ordering conflicts in the change logs of DESIGN-M3 and
+TEST.md and in DESIGN-M3 §28.2, both sides kept. The commit ids in CODE/ are those of the branch.
+
+CODE/: the red before the fix (3 of 4 runs, 6, 8 and 3 of 4,000 events on the requesting thread), the green after it,
+two counterproofs, the instance, synx and shard classes run on it, and the far view log reader across a roll.
+
+GitHub Actions on aae1e42e7b (the merge of e769d01f91):
+- CI 39584201063: Check, Test with 4 tick threads (strict), Test with 4 tick threads (strict, grid) success.
+- Concurrency 39584201074 (jcstress) success; Client mod 39584201052 success.
+- Client gametest 39584201071 (pull_request, client-fabric changed) success.
+- Far view gametest 39584232312 (label taken off and put back on the merge head): light, synthetic, hidden, baked
+  success on attempt 1; the run on ad910784c9 before the merge was cancelled.
+- Counts from the three test-report artifacts, the same class by class: 792 classes, 5,563 tests, 0 failures,
+  0 errors, 22 skipped. root 533 / 3,898 (21 skipped), synx 25 / 192 (1 skipped), server-app 163 / 920,
+  baker 8 / 93, protocol 10 / 174, game-rts 14 / 96, game-rush 6 / 46, plugin-api 8 / 47, play-kit 3 / 35,
+  loadtest 6 / 26, testing 9 / 16, architecture-tests 7 / 20.

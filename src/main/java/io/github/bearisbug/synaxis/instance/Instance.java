@@ -1106,8 +1106,9 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     }
 
     /**
-     * Counts the tickets of a chunk: one for every player whose chunk ring covers it, plus the plugin
-     * tickets. Any thread.
+     * Counts the tickets of a chunk: one for every player whose chunk ring covers it, one for every
+     * player changing to this instance whose spawn ring covers it while that ring loads, plus the
+     * plugin tickets. Any thread.
      *
      * @param chunkX the chunk X
      * @param chunkZ the chunk Z
@@ -1120,7 +1121,8 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
 
     /**
      * The chunks entering the chunk ring of a player get their view ticket, before the player asks
-     * for them to load.
+     * for them to load. A player changing to this instance gives the chunks of its spawn ring a view
+     * ticket the same way, held while the ring loads.
      *
      * @param chunks the chunk indexes
      */
@@ -1131,7 +1133,8 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
 
     /**
      * The chunks leaving the chunk ring of a player lose their view ticket, after the player unloaded
-     * them.
+     * them. The spawn ring of a player changing to this instance loses its tickets once it loaded:
+     * after the spawn gave the chunk ring its own, or when the change failed or was superseded.
      *
      * @param chunks the chunk indexes
      */

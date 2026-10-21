@@ -7,8 +7,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -49,6 +52,41 @@ public class ChunkLoaderContractIntegrationTest {
         assertSame(thrown.getCause(), handled.get(5, TimeUnit.SECONDS), "the exception handler gets the failure");
         assertSame(loaded, instance.getChunk(2, 1), "the chunk at 2,1 stays");
         assertNull(instance.getChunk(1, 2));
+    }
+
+    // A loader without parallel support that throws fails the load: the exception handler gets the exception, and the
+    // coordinates are left free, the next load calls the loader again
+    @Test
+    public void aThrowingLoaderFailsTheLoadAndTheNextLoadCallsItAgain(Env env) throws Exception {
+        Queue<Throwable> handled = new ConcurrentLinkedQueue<>();
+        env.process().exception().setExceptionHandler(handled::add);
+        var failure = new IllegalStateException("loader failure");
+        AtomicInteger calls = new AtomicInteger();
+        var instance = env.createEmptyInstance(new ChunkLoader() {
+            @Override
+            public @Nullable Chunk loadChunk(Instance instance, int chunkX, int chunkZ) {
+                if (calls.incrementAndGet() == 1) throw failure;
+                return null;
+            }
+
+            @Override
+            public void saveChunk(Chunk chunk) {
+            }
+
+            @Override
+            public boolean supportsParallelLoading() {
+                return false;
+            }
+        });
+
+        var thrown = assertThrows(CompletionException.class, () -> instance.loadChunk(1, 2).join());
+        assertSame(failure, thrown.getCause());
+        assertNull(instance.getChunk(1, 2));
+
+        var loaded = instance.loadChunk(1, 2).join();
+        assertEquals(2, calls.get(), "the second load called the loader again");
+        assertSame(loaded, instance.getChunk(1, 2));
+        assertEquals(List.of(failure), List.copyOf(handled), "the exception handler got the failure once");
     }
 
     // A chunk a supplier built for other coordinates fails the load before the generator writes forks for its neighbours

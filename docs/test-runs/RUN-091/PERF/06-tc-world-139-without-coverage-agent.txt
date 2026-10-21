@@ -1,0 +1,8 @@
+TC-WORLD-139 step 2 after the measurement mode drops the coverage agent (synx/build.gradle.kts), on this branch with the section reads.
+  :synx:test --tests io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest -Dsynaxis.relight.measure=true --rerun
+  load1 before 3.44, after 5.57
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="0" failures="0" errors="0"
+  relight backlog: phase=107/s changes=6415 seconds=60.0 centers_per_s=106.9 relight_queue_p99_ms=60.2 relight_ms_p99=7.5 relight_pending_peak=9 install_ms_max=1.14 install_backlog_peak=54; phase=unlimited changes=42105856 seconds=60.0 centers_per_s=843.2 relight_queue_p99_ms=58089.8 relight_ms_p99=37.8 relight_pending_peak=1024 install_ms_max=36.52 install_backlog_peak=280
+
+107/s phase: 106.9 centers/s keeps up with the input (relight_pending peak 9), relight_queue_p99_ms 60.2, relight_ms_p99 7.5.
+Unlimited phase: 843.2 centers/s, the queue fills (peak 1,024) and installs back up to 280 of 282; the longest install of a tick took 36.52 ms.

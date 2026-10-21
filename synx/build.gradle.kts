@@ -1,3 +1,5 @@
+import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
+
 plugins {
     id("synaxis.java-library")
 }
@@ -25,11 +27,16 @@ dependencies {
 // of skipping the byte for byte comparison when the JDK's zlib is not the one the vectors were frozen with.
 // The measurement mode of SynxRelightBacklogTest (docs/DESIGN-M3.md §15 光照重算吞吐) only runs with
 // `-Dsynaxis.relight.measure=true`: a key of the tests alone, which the config key gate does not see.
+// It runs without the coverage agent, whose probes on every block the relight reads would be most of
+// what it measures.
 tasks.test {
     val requireFrozenZlib = "synaxis.synx.require-frozen-zlib"
     providers.systemProperty(requireFrozenZlib).orNull?.let { systemProperty(requireFrozenZlib, it) }
     val relightMeasure = "synaxis.relight.measure"
-    providers.systemProperty(relightMeasure).orNull?.let { systemProperty(relightMeasure, it) }
+    providers.systemProperty(relightMeasure).orNull?.let {
+        systemProperty(relightMeasure, it)
+        if (it.toBoolean()) extensions.configure<JacocoTaskExtension> { isEnabled = false }
+    }
 }
 
 // Regenerates the frozen test vectors of docs/DESIGN-M3.md §24. Only run it together with a

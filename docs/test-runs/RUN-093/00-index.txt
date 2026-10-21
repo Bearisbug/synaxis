@@ -1,0 +1,19 @@
+RUN-093 · segment one read caps in synx, a statistics task that survives a throw, a bound on Clock#rate.
+Branch m3/r093, draft PR #48.
+
+Merge: the STATS group was written on top of main 1e46d5d358; the branch then merged main c542248aec (RUN-092)
+with --no-ff, no conflict, and the SEG group, the clock bound and the docs followed on top of it.
+
+STATS/: the statistics task that throws, red before the catch and green after it.
+SEG/: the segment one read caps, red before the SynxPacketDecoder change, green after it, two counterproofs.
+CLOCK/: Clock#rate above Clock.MAX_RATE, red with the bound taken out and green with it.
+
+GitHub Actions on 523fb38c0d:
+- CI 39633567861: Check, Test with 4 tick threads (strict), Test with 4 tick threads (strict, grid) success.
+- Concurrency 39633567868 (jcstress) success; Client mod 39633568005 success.
+- Client gametest 39633567960 (pull_request, server-app changed) success.
+- Far view gametest 39633583980 (label): light, synthetic, hidden, baked success on attempt 1.
+- Counts from the three test-report artifacts, the same class by class: 796 classes, 5,608 tests, 0 failures,
+  0 errors, 22 skipped. root 537 / 3,940 (21 skipped), server-app 163 / 921, synx 25 / 194 (1 skipped),
+  baker 8 / 93, protocol 10 / 174, game-rts 14 / 96, game-rush 6 / 46, plugin-api 8 / 47, play-kit 3 / 35,
+  loadtest 6 / 26, testing 9 / 16, architecture-tests 7 / 20.

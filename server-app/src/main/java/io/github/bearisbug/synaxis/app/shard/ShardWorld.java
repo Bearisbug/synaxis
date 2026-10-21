@@ -702,8 +702,15 @@ public final class ShardWorld {
         this.lastRelight = relight.stats();
         this.lastFlagConflicts = flags == null ? 0 : flags.stats().conflicts();
         this.lastVoidChunks = instance.voidChunks();
-        process.scheduler().buildTask(() -> recordStreamStats(events))
-                .delay(statsInterval).repeat(statsInterval).schedule();
+        // A throw is reported and the next interval runs it again: the scheduler stops a repeating task that
+        // throws, after which no EVT:chunk_stream_stats would be written any more
+        process.scheduler().buildTask(() -> {
+            try {
+                recordStreamStats(events);
+            } catch (RuntimeException e) {
+                process.exception().handleException(e);
+            }
+        }).delay(statsInterval).repeat(statsInterval).schedule();
         LOGGER.info("Map mounted: build_id={} simulation_distance={} chunk_unload_grace_ticks={} spawn={} overlay={} "
                 + "overlay_cap={} flush_interval_s={} overlay_max_bytes={} relight_threads={} resend_light={} "
                 + "section_cache_bytes={}", manifest.buildId(), settings.simulationDistance(),

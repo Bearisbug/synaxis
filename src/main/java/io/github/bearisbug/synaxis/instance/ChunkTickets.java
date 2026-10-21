@@ -25,7 +25,7 @@ final class ChunkTickets {
 
     /** Counts the ticks of the instance: the idle ticks of a chunk are measured on it. */
     private long clock;
-    /** How many chunk rings of players cover a chunk. */
+    /** How many chunk rings of players cover a chunk, spawn rings still loading included. */
     private final Long2IntOpenHashMap viewTickets = new Long2IntOpenHashMap();
     /** The owners of the plugin tickets of a chunk, one ticket per owner. */
     private final Long2ObjectOpenHashMap<Set<Object>> pluginTickets = new Long2ObjectOpenHashMap<>();

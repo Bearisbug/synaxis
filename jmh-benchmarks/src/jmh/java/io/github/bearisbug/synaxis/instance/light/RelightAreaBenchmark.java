@@ -2,7 +2,6 @@ package io.github.bearisbug.synaxis.instance.light;
 
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.palette.Palette;
-import org.jetbrains.annotations.Nullable;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -14,6 +13,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -39,14 +39,20 @@ public class RelightAreaBenchmark {
 
     private SnapshotView view;
 
+    /** The workspace of one recomputation thread, kept from one call to the next as {@code SynxRelight} keeps it. */
+    @State(Scope.Thread)
+    public static class Worker {
+        final LightEngine.Workspace workspace = new LightEngine.Workspace();
+    }
+
     @Setup
     public void setup() {
         view = new SnapshotView(CENTER_X, CENTER_Z, new Terrain(7));
     }
 
     @Benchmark
-    public LightResult relightArea() {
-        return LightEngine.relightArea(view, CENTER_X, CENTER_Z);
+    public LightResult relightArea(Worker worker) {
+        return LightEngine.relightArea(view, CENTER_X, CENTER_Z, worker.workspace);
     }
 
     /**
@@ -109,14 +115,14 @@ public class RelightAreaBenchmark {
         }
 
         @Override
-        public char @Nullable [] section(int chunkX, int sectionMinY, int chunkZ) {
+        public boolean section(int chunkX, int sectionMinY, int chunkZ, char[] ids) {
             final Palette section = chunks[(chunkX - centerX + 2) * 5 + chunkZ - centerZ + 2][sectionMinY >> 4];
-            if (section.isEmpty()) return null;
+            if (section.isEmpty()) return false;
+            Arrays.fill(ids, (char) 0);
             final int states = Block.statesCount();
-            final char[] ids = new char[4096];
             section.getAllPresent((x, y, z, stateId) ->
                     ids[x | z << 4 | y << 8] = (char) (stateId >= 0 && stateId < states ? stateId : 0));
-            return ids;
+            return true;
         }
     }
 

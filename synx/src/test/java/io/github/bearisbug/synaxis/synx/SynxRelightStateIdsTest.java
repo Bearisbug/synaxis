@@ -3,9 +3,9 @@ package io.github.bearisbug.synaxis.synx;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.light.WorldView;
 import io.github.bearisbug.synaxis.instance.palette.Palette;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -14,7 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * {@link SynxRelight#stateIds}, which the recomputation's snapshot hands the light engine for a section, against
  * {@link WorldView#section}'s default over the snapshot's {@code getBlock}, which asks block by block: the same
- * state ids for every way a block palette stores them. Null and an array of zeros are the same, all air.
+ * state ids for every way a block palette stores them. Each writes into an array still full of other ids, as the
+ * engine hands its arrays out again; a section reported as air and one written out as zeros are the same.
  */
 public class SynxRelightStateIdsTest {
 
@@ -102,13 +103,23 @@ public class SynxRelightStateIdsTest {
                 return Objects.requireNonNullElse(Block.fromStateId(palette.get(x, y, z)), Block.AIR);
             }
         };
-        assertArrayEquals(ids(blockByBlock.section(0, 0, 0)), ids(SynxRelight.stateIds(palette)));
+        final char[] byBlock = used(), fromPalette = used();
+        final boolean blocksByBlock = blockByBlock.section(0, 0, 0, byBlock);
+        final boolean blocksFromPalette = SynxRelight.stateIds(palette, fromPalette);
+        assertArrayEquals(ids(blocksByBlock, byBlock), ids(blocksFromPalette, fromPalette));
     }
 
-    /** The ids as ints, which an assertion prints as numbers; null as all 0. */
-    private static int[] ids(char @Nullable [] states) {
+    /** An array as the engine hands it out again, holding the ids of another section. */
+    private static char[] used() {
+        final char[] states = new char[4096];
+        Arrays.fill(states, (char) Block.GLOWSTONE.stateId());
+        return states;
+    }
+
+    /** The ids as ints, which an assertion prints as numbers; all 0 for a section reported as air. */
+    private static int[] ids(boolean blocks, char[] states) {
         final int[] ids = new int[4096];
-        if (states != null) for (int i = 0; i < ids.length; i++) ids[i] = states[i];
+        if (blocks) for (int i = 0; i < ids.length; i++) ids[i] = states[i];
         return ids;
     }
 }

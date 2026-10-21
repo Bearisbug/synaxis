@@ -66,6 +66,15 @@ public final class LightEngine {
      * {@value #MAX_SECTIONS} sections, 147 x 147 chunks at a height of 384.
      */
     public static LightResult computeArea(WorldView view, int chunkMinX, int chunkMinZ, int chunkMaxX, int chunkMaxZ) {
+        return computeArea(view, chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ, new Workspace());
+    }
+
+    /**
+     * {@link #computeArea(WorldView, int, int, int, int)} in the arrays of {@code workspace}, which it keeps for the
+     * next call.
+     */
+    public static LightResult computeArea(WorldView view, int chunkMinX, int chunkMinZ, int chunkMaxX, int chunkMaxZ,
+                                          Workspace workspace) {
         if (chunkMaxX < chunkMinX || chunkMaxZ < chunkMinZ) {
             throw new IllegalArgumentException("empty area " + chunkMinX + "," + chunkMinZ + ".." + chunkMaxX + "," + chunkMaxZ);
         }
@@ -73,13 +82,90 @@ public final class LightEngine {
         if (areaSections > MAX_SECTIONS) {
             throw new IllegalArgumentException(areaSections + " sections with the ring around the area, more than " + MAX_SECTIONS);
         }
-        return new Area(view, chunkMinX - 1, chunkMinZ - 1, chunkMaxX - chunkMinX + 3, chunkMaxZ - chunkMinZ + 3)
+        return new Area(view, chunkMinX - 1, chunkMinZ - 1, chunkMaxX - chunkMinX + 3, chunkMaxZ - chunkMinZ + 3, workspace)
                 .compute(chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ);
     }
 
     /** Light of the 3x3 chunks around {@code (chunkX, chunkZ)}; the view must hold the 5x5 around it. */
     public static LightResult relightArea(WorldView view, int chunkX, int chunkZ) {
         return computeArea(view, chunkX - 1, chunkZ - 1, chunkX + 1, chunkZ + 1);
+    }
+
+    /** {@link #relightArea(WorldView, int, int)} in the arrays of {@code workspace}, which it keeps for the next call. */
+    public static LightResult relightArea(WorldView view, int chunkX, int chunkZ, Workspace workspace) {
+        return computeArea(view, chunkX - 1, chunkZ - 1, chunkX + 1, chunkZ + 1, workspace);
+    }
+
+    /**
+     * The arrays a computation works in: the block states of the sections, their light levels, the queues and the
+     * per-area tables. A computation given a workspace takes them from it and leaves them there for the next one, which
+     * spares allocating them again; a {@link LightResult} never shares an array with it. A workspace serves one
+     * computation at a time: keep one per thread.
+     */
+    public static final class Workspace {
+        private char[][] statePool = new char[0][];
+        private int statesTaken;
+        private byte[][] levelPool = new byte[0][];
+        private int levelsTaken;
+        private final int[][] queues = new int[16][];
+        private boolean[] loaded = new boolean[0];
+        private char[][] states = new char[0][];
+        private byte[][] light = new byte[0][];
+        private int[] skyHeight = new int[0];
+
+        public Workspace() {
+            for (int i = 0; i < queues.length; i++) queues[i] = new int[1024];
+        }
+
+        /** The next free state array of the pool: {@link #keepStates} takes it, or the next call hands it out again. */
+        private char[] nextStates() {
+            if (statesTaken == statePool.length) statePool = Arrays.copyOf(statePool, Math.max(16, statePool.length * 2));
+            char[] states = statePool[statesTaken];
+            if (states == null) statePool[statesTaken] = states = new char[4096];
+            return states;
+        }
+
+        private void keepStates() {
+            statesTaken++;
+        }
+
+        /** A level array of all 0 from the pool. */
+        private byte[] takeLevels() {
+            if (levelsTaken == levelPool.length) levelPool = Arrays.copyOf(levelPool, Math.max(16, levelPool.length * 2));
+            byte[] levels = levelPool[levelsTaken];
+            if (levels == null) levelPool[levelsTaken] = levels = new byte[4096];
+            else Arrays.fill(levels, (byte) 0);
+            levelsTaken++;
+            return levels;
+        }
+
+        /** A new light pass: no section has levels yet, and the level arrays of the last pass go back to the pool. */
+        private byte[][] clearLight(int length) {
+            if (light.length != length) light = new byte[length][];
+            else Arrays.fill(light, null);
+            levelsTaken = 0;
+            return light;
+        }
+
+        private boolean[] clearLoaded(int length) {
+            if (loaded.length != length) loaded = new boolean[length];
+            else Arrays.fill(loaded, false);
+            return loaded;
+        }
+
+        /** A new computation: no section has states yet, and every state array is back in the pool. */
+        private char[][] clearStates(int length) {
+            if (states.length != length) states = new char[length][];
+            else Arrays.fill(states, null);
+            statesTaken = 0;
+            return states;
+        }
+
+        private int[] clearSkyHeight(int length) {
+            if (skyHeight.length != length) skyHeight = new int[length];
+            else Arrays.fill(skyHeight, 0);
+            return skyHeight;
+        }
     }
 
     /**
@@ -89,6 +175,7 @@ public final class LightEngine {
      */
     private static final class Area {
         private final WorldView view;
+        private final Workspace workspace;
         private final int originX, originZ, width, depth, sections;
         private final boolean[] loaded;
         private final char[][] states;
@@ -98,20 +185,21 @@ public final class LightEngine {
          */
         private final int[] skyHeight;
         private byte[][] light;
-        private final int[][] queues = new int[16][];
+        private final int[][] queues;
         private final int[] queueSizes = new int[16];
 
-        Area(WorldView view, int originX, int originZ, int width, int depth) {
+        Area(WorldView view, int originX, int originZ, int width, int depth, Workspace workspace) {
             this.view = view;
+            this.workspace = workspace;
             this.originX = originX;
             this.originZ = originZ;
             this.width = width;
             this.depth = depth;
             this.sections = view.height() >> 4;
-            this.loaded = new boolean[width * depth];
-            this.states = new char[width * depth * sections][];
-            this.skyHeight = new int[width * 16 * depth * 16];
-            for (int i = 0; i < queues.length; i++) queues[i] = new int[1024];
+            this.loaded = workspace.clearLoaded(width * depth);
+            this.states = workspace.clearStates(width * depth * sections);
+            this.skyHeight = workspace.clearSkyHeight(width * 16 * depth * 16);
+            this.queues = workspace.queues;
         }
 
         LightResult compute(int chunkMinX, int chunkMinZ, int chunkMaxX, int chunkMaxZ) {
@@ -119,13 +207,13 @@ public final class LightEngine {
             final byte[][] sky = new byte[(chunkMaxX - chunkMinX + 1) * (chunkMaxZ - chunkMinZ + 1) * sections][];
             final byte[][] block = new byte[sky.length][];
 
-            light = new byte[states.length][];
+            light = workspace.clearLight(states.length);
             skySources();
             queueSkySpread();
             propagate();
             collect(sky, chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ);
 
-            light = new byte[states.length][];
+            light = workspace.clearLight(states.length);
             blockSources();
             propagate();
             collect(block, chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ);
@@ -140,7 +228,10 @@ public final class LightEngine {
                     if (!view.hasChunk(originX + cx, originZ + cz)) continue;
                     loaded[cx * depth + cz] = true;
                     for (int sy = 0; sy < sections; sy++) {
-                        states[(cx * depth + cz) * sections + sy] = view.section(originX + cx, minY + (sy << 4), originZ + cz);
+                        final char[] section = workspace.nextStates();
+                        if (!view.section(originX + cx, minY + (sy << 4), originZ + cz, section)) continue;
+                        states[(cx * depth + cz) * sections + sy] = section;
+                        workspace.keepStates();
                     }
                 }
             }
@@ -158,7 +249,7 @@ public final class LightEngine {
 
         private void setLevel(int s, int i, int level) {
             byte[] section = light[s];
-            if (section == null) light[s] = section = new byte[4096];
+            if (section == null) light[s] = section = workspace.takeLevels();
             section[i] = (byte) level;
         }
 

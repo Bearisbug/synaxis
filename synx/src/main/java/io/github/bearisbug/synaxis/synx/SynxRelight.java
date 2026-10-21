@@ -174,10 +174,9 @@ public final class SynxRelight {
 
         /** {@link #getBlock} for a whole section, straight out of its palette ({@link SynxRelight#stateIds}). */
         @Override
-        public char @Nullable [] section(int chunkX, int sectionMinY, int chunkZ) {
+        public boolean section(int chunkX, int sectionMinY, int chunkZ, char[] states) {
             final Palette[] blocks = Objects.requireNonNull(at(chunkX, chunkZ)).blocks();
-            if (blocks == null) return null;
-            return stateIds(blocks[(sectionMinY - minY) >> 4]);
+            return blocks != null && stateIds(blocks[(sectionMinY - minY) >> 4], states);
         }
     }
 
@@ -190,6 +189,8 @@ public final class SynxRelight {
     private final int minY;
     private final int minSection;
     private final int sectionCount;
+    // The arrays of the light computation, one set per recomputation thread, kept from one center to the next
+    private final ThreadLocal<LightEngine.Workspace> workspaces = ThreadLocal.withInitial(LightEngine.Workspace::new);
 
     private final Object lock = new Object();
     private final Map<Long, Center> centers = new HashMap<>();
@@ -445,7 +446,7 @@ public final class SynxRelight {
      */
     private List<Target> compute(Task task) {
         final int centerX = task.center.x, centerZ = task.center.z;
-        final LightResult result = LightEngine.relightArea(task, centerX, centerZ);
+        final LightResult result = LightEngine.relightArea(task, centerX, centerZ, workspaces.get());
         final List<Target> targets = new ArrayList<>(9);
         for (int x = centerX - 1; x <= centerX + 1; x++) {
             for (int z = centerZ - 1; z <= centerZ + 1; z++) {
@@ -487,16 +488,17 @@ public final class SynxRelight {
     }
 
     /**
-     * The state ids of a section's block palette as {@link WorldView#section} hands them to the light engine:
-     * 0 is air, as is a negative id or one past the registry; null for a palette that is all air.
+     * Writes the state ids of a section's block palette into {@code ids} as {@link WorldView#section} hands them to
+     * the light engine: 0 is air, as is a negative id or one past the registry. False, writing nothing, for a palette
+     * that is all air.
      */
-    static char @Nullable [] stateIds(Palette section) {
-        if (section.isEmpty()) return null;
+    static boolean stateIds(Palette section, char[] ids) {
+        if (section.isEmpty()) return false;
+        Arrays.fill(ids, (char) 0);
         final int states = Block.statesCount();
-        final char[] ids = new char[4096];
         section.getAllPresent((x, y, z, stateId) ->
                 ids[x | z << 4 | y << 8] = (char) (stateId >= 0 && stateId < states ? stateId : 0));
-        return ids;
+        return true;
     }
 
     private void failed(Task task, RuntimeException e) {

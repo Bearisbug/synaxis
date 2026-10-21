@@ -31,8 +31,8 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT_ARRAY;
  * Coordinates are in {@code [0, dimension())} on every axis, a method given one outside throws
  * {@link IllegalArgumentException}. Values are not negative and fit in the direct width: {@link #set},
  * {@link #fill} and {@link #replace(int, int)} throw {@link IllegalArgumentException} for one that does not, as
- * does {@link #setAll} when its supplier gives every entry the same value (it then fills); otherwise
- * {@link #setAll}, {@link #replaceAll}, {@link #offset} and {@link #load} do not check.
+ * does {@link #setAll} when its supplier gives every entry the same non-negative value (it then fills);
+ * otherwise {@link #setAll}, {@link #replaceAll}, {@link #offset} and {@link #load} do not check.
  */
 public sealed interface Palette permits PaletteImpl {
     int BLOCK_DIMENSION = 16;

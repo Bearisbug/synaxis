@@ -135,7 +135,7 @@ ls -d "$TMPDIR"minestom-* 2>/dev/null | wc -l   # 期望 0
 nc -z 127.0.0.1 25565 && echo "server is up"
 ```
 
-在服务端 stdin 输入 `stop` 回车即可停服：先关登录门，再保存在线玩家（≤ 30 s）、踢人（≤ 5 s）、禁用插件、台账落盘（≤ 2 s）后退出，阶段与预算见 `docs/DESIGN-PROD.md` §11.4；`stop <秒数>` 在关登录门之后先倒计时再保存。进程会在仓库根写两处运行时产物：插件数据目录 `plugins/<plugin_id>/` 与事件台账 `logs/events-YYYYMMDD.jsonl`，两者都已 gitignore，删掉即回到基线。
+在服务端 stdin 输入 `stop` 回车即可停服：先关登录门，再保存在线玩家（≤ 30 s）、踢人（≤ 5 s）、禁用插件、台账落盘（≤ 2 s）后退出，阶段与预算见 `docs/DESIGN-PROD.md` §11.4；`stop <秒数>` 在关登录门之后先倒计时再保存。进程会在仓库根写两处运行时产物：插件数据目录 `plugins/<plugin_id>/` 与事件台账 `logs/events-<shard_id>-YYYYMMDD.jsonl`（`<shard_id>` 默认 `local`，前几天的文件压成 `.jsonl.gz`，`docs/DESIGN-PROD.md` `API-PROD-014`），两者都已 gitignore，删掉即回到基线。
 
 #### 核心模式（不带任何玩法插件跑服务端核心）
 
@@ -219,7 +219,7 @@ python3 tools/pkgdeps.py play-kit/src/main/java   --root-package io.github.beari
 python3 tools/pkgdeps.py game-rush/src/main/java  --root-package io.github.bearisbug.synaxis.game.rush     --skip-lower-layer
 ```
 
-引擎那一跑要看的是最后一段 `lower layer edges into the rest of the engine: 0`（`--detail` 会把违规文件逐个列出来）；`--skip-lower-layer` 把这段去掉，因为底层 8 包的分层只是引擎的，其余模块没有对应的层。各模块的读数（RUN-077 集成分支）：`:protocol` 2 个包、2 条边：`play` 引根包的消息公共类型，根包的 `Message` 又在 sealed `permits` 里列了 `play.PlayMessage`，两个包互相依赖是 sealed 层次决定的，不是违规；`:plugin-api` 3 个包、3 条边（根包的 `PluginContext` 引 `play`、`instance` 的两个入口，`instance` 引回根包）；`:server-app` 12 个包、28 条边；`:game-rts` 2 个包、0 条边；`:play-kit`、`:game-rush` 各 1 个包，矩阵为空。`architecture-tests/` 没有主源码，没有它的一条。
+引擎那一跑要看的是最后一段 `lower layer edges into the rest of the engine: 0`（`--detail` 会把违规文件逐个列出来）；`--skip-lower-layer` 把这段去掉，因为底层 8 包的分层只是引擎的，其余模块没有对应的层。各模块的读数（RUN-077 集成分支，`:protocol` 是 RUN-094 的）：`:protocol` 2 个包、1 条边：`play` 引根包的消息公共类型；根包不引 `play`，因为 `Message` 不是 sealed，封闭的是三个消息族接口，新的消息族在自己的包里加，不用回头改根包；`:plugin-api` 3 个包、3 条边（根包的 `PluginContext` 引 `play`、`instance` 的两个入口，`instance` 引回根包）；`:server-app` 12 个包、28 条边；`:game-rts` 2 个包、0 条边；`:play-kit`、`:game-rush` 各 1 个包，矩阵为空。`architecture-tests/` 没有主源码，没有它的一条。
 
 ---
 

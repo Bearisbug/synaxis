@@ -18,6 +18,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-16 | v0.1 | 初稿：M2 范围、模块拆分、插件宿主、自定义协议、单位模型、寻路、世界管理与四条审计残留处置、垂直切片验收、阶段计划 | Bearisbug |
+| 2026-10-21 | v0.71 | RUN-094（分支 `prod/r094`，基于 `main` `c542248aec`，见 `docs/DESIGN-PROD.md` v0.9.125），**消息布局与 `schema_version` 未改**。**§8「演进与弃用」**：线协议的破坏性变更加一类，给解码时把未知值判畸形的枚举加取值，点名 `rts:game` 的 `order_result_code` 与 `unit_state`；`ProtocolSchema#SCHEMA_VERSION` 的 Javadoc 写明它只覆盖 `synaxis:handshake` 与 `rts:game`、这两个枚举加取值同样升版，`GameMessagesTest` 钉住两者的线值序列（0～6、0～1）。**`API-M2-011`**：`Reject` 的原因键与 `SynaxisPlugin#translationKeys()` 对齐，可以是插件自己声明的键；写明宿主不保存 `Accept` 的 `team`。**§20**：`client_rejected` 的 `reason` 只去掉 `synaxis:` 前缀，别的命名空间整串照记（`AdmissionGate#rejected`，原先去掉任意命名空间）；§5 指标一段、`API-M2-008` 的 `analytics()` 一条与 §20 首段的台账文件名改为 `logs/events-<shard_id>-YYYYMMDD.jsonl`。用例 `docs/TEST.md` 生产就绪 · RUN-094 一节 | Bearisbug |
 | 2026-10-21 | v0.70 | 跟进 `docs/DESIGN-PROD.md` 的 RUN-089（集成分支 `prod/integrate-089`，基于 `main` `ce817adeda`，该分册 v0.9.110～v0.9.123），各组只改了内容、没升本分册的版本，本版汇总，**消息布局与 `schema_version` 未改**。**组 ENTITY**（删去 `Entity#refreshPosition` 的两个包内重载、`TagHandler#updateContent` 与 `fromCompound` 同样执行 NBT 分离器）：第 182 行 `REQ-M2-015` 的禁止清单由三个入口改为四个（加 `TagHandler#updateContent`）；第 192 行 `REQ-M2-025`、第 899 行 `ADR-M2-005` 的 S4 一段与第 1345 行 §19 场景里的「三个 `refreshPosition` 重载」改为 `refreshPosition(Pos, boolean, boolean)`；第 1192、1194、1197 行 §19 F49 场景同样列四项；第 1436 行 §24 规则 ③ 加 `updateContent`，自测改为按入口各一对。**组 PACKETS**：第 364 行 `API-M2-006`「缓存与超时」一条补 `PluginMessagePacket` 构造时复制负载、各玩家共用编码结果。**组 CODEC**：第 882 行 `ADR-M2-002` 的 `configurationRegistries()` 由 28 项改为 27 项。**组 CMD**：第 1436 行 §24 规则 ①「底层 9 包」改为 8 包。**组 INV**（选取实体的余量沿用攻击判定的 1 格）：第 939 行 `ADR-M2-012` 的 Alternatives 把 `UseEntityListener` 的 + 1 校验改称引擎的交互距离检查，写明比原版 26.2 的 + 3 严（集成时改）。**§28.2「原版聊天是一进 N 出的放大面」已决行（第 1526 行）**：`ChatMessageListener.java:49`、`:58`、`:64`（INV）、`Player.java:465`（ENTITY）、`Messenger.java:46`（CMD），`ServerConfig.java:340-341`、`:495-496`（NETCONN 移动的行，集成时改）。两组改同一行的按词合并（第 1436、1526 行） | Bearisbug |
 | 2026-10-20 | v0.69 | 跟进 `docs/DESIGN-PROD.md` v0.9.109（RUN-085），需求不改。`API-M2-010` 启动序列的就绪判定写明 `<port>` 是游戏端口实际绑定的端口：`synaxis.app.port=0` 时打印系统分配的端口（原先打印配置的 0），配成非零值时输出不变。起子进程的测试改用 `port=0`、从这一行读端口，不再先用一个关掉的 socket 取空闲端口：那样子进程里绑 `127.0.0.1:0` 的指标端点可能分到同一个端口，游戏端口随之绑不上 | Bearisbug |
 | 2026-10-19 | v0.68 | §19 加场景「单位推进时面朝前进方向，原地不动时保持朝向」（`REQ-M2-016`）：`docs/DESIGN-PROD.md` v0.9.101 起 `Pos#withDirection` 收到零向量时视角不变，单位被命令到脚下那一点时 `Unit#advance` 原先拿到航点自带的视角（yaw 0、pitch 0），现在保留单位原来的朝向（`docs/TEST.md` `TC-GAME-076`） | Bearisbug |
@@ -122,7 +123,7 @@
 
 ## 3. 成功指标 / 验收阈值
 
-指标只用来判「切片是不是真的成立」，全部由 §20 的 `EVT:*` 事件计算，事件写进 server-app 的本地 JSONL 文件（`logs/events-YYYYMMDD.jsonl`），用一条离线脚本聚合。**每条指标的分子分母都必须是 §20 里实际存在的事件计数，不允许出现「需要人工判断」的排除项**——否则指标算不出来。接口可用性类 SLI 在 §21，不混入本表。
+指标只用来判「切片是不是真的成立」，全部由 §20 的 `EVT:*` 事件计算，事件写进 server-app 的本地 JSONL 文件（`logs/events-<shard_id>-YYYYMMDD.jsonl`，`<shard_id>` 默认 `local`，见 `docs/DESIGN-PROD.md` `API-PROD-014`），用一条离线脚本聚合。**每条指标的分子分母都必须是 §20 里实际存在的事件计数，不允许出现「需要人工判断」的排除项**——否则指标算不出来。接口可用性类 SLI 在 §21，不混入本表。
 
 | 指标 | 定义（分子 ÷ 分母，全部是事件计数） | 当前 | 目标 | 由哪些事件算 |
 | --- | --- | --- | --- | --- |
@@ -379,7 +380,7 @@ M2 的对外契约有两类，都不是 HTTP：① 两端共享的**自定义负
   - `channels()`：`register(String name, PayloadHandler)` 与 `send(Player, String name, byte[])`；实际通道 id 强制补 `<plugin_id>:` 前缀，注册时前缀不等于自身 id 直接抛 `IllegalArgumentException`。
   - `admission()`：见 `API-M2-011`。禁用插件时宿主一并摘掉它注册的准入回调——此后新连接一律 `synaxis:match-unavailable`（没有回调 = 没人能说玩家该进哪儿）。
   - `dataDirectory()`：`plugins/<plugin_id>/`，宿主保证存在。
-  - `analytics()`：`record(事件名, 属性)`，把 §20 的事件交给宿主写进 `logs/events-YYYYMMDD.jsonl`。**它是本阶段唯一的设计改动**（v0.15 登记）：§20 的事件产生在插件边界两侧（会话与插件侧由宿主写，对局 / 单位 / 指令侧由插件产生），而它们必须落进同一个文件；原来的七项里没有任何一条能把插件那一半交过来，`REQ-M2-011` 的 `match_created` / `match_started` / `match_ended` 因此写不出去。该能力**不持有状态**，所以禁用插件时没有东西要摘（与事件节点 / 任务 / 通道 / 准入回调四项不同）；它也不是破坏性变更——按「演进与弃用」，插件 API 的破坏性变更是删方法 / 改签名 / 收紧约束，新增方法不在其中（`PluginContext` 由宿主实现，插件只调用），`api_version` 保持 `1`。
+  - `analytics()`：`record(事件名, 属性)`，把 §20 的事件交给宿主写进 `logs/events-<shard_id>-YYYYMMDD.jsonl`。**它是本阶段唯一的设计改动**（v0.15 登记）：§20 的事件产生在插件边界两侧（会话与插件侧由宿主写，对局 / 单位 / 指令侧由插件产生），而它们必须落进同一个文件；原来的七项里没有任何一条能把插件那一半交过来，`REQ-M2-011` 的 `match_created` / `match_started` / `match_ended` 因此写不出去。该能力**不持有状态**，所以禁用插件时没有东西要摘（与事件节点 / 任务 / 通道 / 准入回调四项不同）；它也不是破坏性变更——按「演进与弃用」，插件 API 的破坏性变更是删方法 / 改签名 / 收紧约束，新增方法不在其中（`PluginContext` 由宿主实现，插件只调用），`api_version` 保持 `1`。
   - 错误与归因：三个包装层（事件、任务、通道）各 catch 一次并各打一行带 `plugin_id` 的 ERROR，异常不外溢、进程继续。引擎自身的隔离（`TickThread` 逐 `Tickable`；事件树在根节点的 `EventNodeImpl.Handle#call` 与每个映射节点的 `handle.call` 各接一次异常，同一次派发里剩下的监听器与子节点放弃，映射节点内抛出的只放弃那棵子树）只管不让异常逃出派发；插件监听器之间的隔离就是上面事件那一层包装（`PluginEventsImpl` 逐个监听器 catch 并归因，`docs/DESIGN-PROD.md` v0.9.98），宿主**不在别处再加 catch**。**M2 不做熔断**：滑窗统计与「异常超阈值自动禁用」推到第二个插件出现时（见 §28.3）——只有一个插件时，禁用它等于关掉唯一的玩法，与直接停机没有区别。
   - 稳定性承诺：本接口与 `API-M2-007` 是唯一稳定面，由 `checkBinaryCompatibility` 门禁保证（见 §24）；`process()` 返回的引擎对象**不承诺兼容**，插件用它自担风险。
 
@@ -405,7 +406,7 @@ M2 的对外契约有两类，都不是 HTTP：① 两端共享的**自定义负
   - 缓存与超时：停机总预算 15 s（插件 5 s + 引擎 10 s，见 §17）；超时强制退出并记日志。
 
 - **`API-M2-011` 对局提供者与准入回调 `PluginContext#admission()`** — 实现 `REQ-M2-024`
-  - 方法：`admission().register(AdmissionProvider provider)`。`interface AdmissionProvider { Admission admit(AdmissionRequest request); }`；`record AdmissionRequest(UUID connectionId, String username, int modVersion, int schemaVersion)`；`sealed interface Admission permits Admission.Accept, Admission.Reject`，`record Accept(Instance instance, int team)`、`record Reject(String reasonKey)`（`reasonKey` 必须是 §14 的某个 `synaxis:*` 键）。
+  - 方法：`admission().register(AdmissionProvider provider)`。`interface AdmissionProvider { Admission admit(AdmissionRequest request); }`；`record AdmissionRequest(UUID connectionId, String username, int modVersion, int schemaVersion)`；`sealed interface Admission permits Admission.Accept, Admission.Reject`，`record Accept(Instance instance, int team)`、`record Reject(String reasonKey)`（`reasonKey` 是客户端模组有译文的键：`DisconnectKeys` 的常量，即 §14 的 `synaxis:*` 键，或本插件 `translationKeys()` 里声明的键，`docs/DESIGN-PROD.md` `API-PROD-029`）。宿主只读 `Accept` 的 `instance`，`team` 既不保存也不读：要按队伍做事的插件在回调里按 `connection_id` 自己记下，判活与回收照下面「provider 在回调里按 `connection_id` 建的表项」一条。
   - **为什么需要它**：`§11.1` 要求宿主在 configuration 阶段决定「玩家落到哪个对局实例」并在没有可用对局时踢人，而「插件的内容引擎与宿主都不知道」——对局是插件造的，宿主无从得知。本接口就是把这个决定权交回插件的入口，同时让宿主保留唯一的 `setSpawningInstance` 调用点。
   - 唯一性：**全进程只接受一个 provider**。第二次 `register` 抛 `IllegalStateException`；宿主在全部 `onEnable` 之后检查这个槽（`API-M2-010` 启动序列第 ⑤ 步），**有插件参与了启动却没人注册 → 以非零码退出**；**一个插件都没有参与启动 → 核心模式，宿主用保留 id `synaxis` 自己占这个槽**（任何连接一律 `Accept` 到核心世界、`team=0`），槽位仍然只有一个占用者，插件侧的这条约束不因此松动——核心模式下本来就没有插件在争。多插件同时想提供对局是 M3 的问题（见 §28）。
   - 调用线程与时机：宿主在 `AsyncPlayerConfigurationEvent` 处理器所在的 **configuration 虚拟线程**上、拿到握手结果之后、`setSpawningInstance` 之前**内联**调用一次。provider 内**禁止阻塞、禁止碰实体与区块**（此时既没有该实体的 tick 线程所有权，玩家也还不在任何实例里）——它只做「取自己那个 `running` 对局的实例并定队伍」这种纯查表工作（M2 只有一局；接口按「一张对局表」设计，多局时 provider 内部改选路即可，不动签名）。`admit` **抛异常**按 `Reject("synaxis:match-unavailable")` 处理并记一行带 `plugin_id` 的 ERROR；**返回 null 与抛异常同样处理**，在回调里构造出非法答案也一样（`Accept` 的 `instance`、`Reject` 的 `reasonKey` 为 null 时两个 record 的构造器抛 `NullPointerException`），这时宿主放弃这名玩家的载入、照常写 `client_rejected`。`register(null)` 抛 `NullPointerException`：插件的 `onEnable` 随之失败、被拆掉，槽位不被占住。**200 ms 是事后测量的软预算，不是硬超时**：同一条线程内联调用一个同步方法，中途没有任何地方能把它中止，宿主只能在 `admit` 返回后测耗时——超过 200 ms 记一行带 `plugin_id` 与实测耗时的 WARN，**返回值照常生效**（此时结果已经拿到，再改判成 `Reject` 只是凭空多踢一个本可放行的玩家）。要做硬超时就得把 `admit` 丢到另一条虚拟线程上 `get(200, MILLISECONDS)`，代价是被弃的那条线程仍在跑、事后返回的 `Accept` 还要有人处置（玩家早已放行或断线），为一次纯查表引入这套机制不划算，**本设计不做**。真卡住的 provider 占的是这条连接自己的 configuration 虚拟线程：只拖慢这一条握手，不占 tick 线程、不影响其他连接；它落在 3 s 有界等待之外（那 3 s 只覆盖等 `C2S_HELLO`），所以对「慢」的兜底只有那行 WARN，不是断线。
@@ -430,7 +431,7 @@ M2 的对外契约有两类，都不是 HTTP：① 两端共享的**自定义负
 演进与弃用：
 
 - 版本方案：两条独立版本轴。① **线协议** `schema_version`（整数，握手时必须严格相等）；② **插件 API** `api_version`（整数，SemVer 的 major 位）。当前 `schema_version` 为 `1`、`api_version` 为 `2`。
-- 破坏性变更定义：线协议——删字段 / 改字段类型 / 改 `msg_id` 语义 / 改枚举既有取值语义；插件 API——删方法 / 改签名 / 收紧约束。破坏性变更禁止原地改：新方法或新 `msg_id` 并行，旧项标 `@Deprecated` 并注明替代，观察期后移除。
+- 破坏性变更定义：线协议——删字段 / 改字段类型 / 改 `msg_id` 语义 / 改枚举既有取值语义 / 给解码时把未知值判畸形的枚举加取值（`rts:game` 的 `order_result_code` 与 `unit_state`：旧端读到新值抛 `MalformedMessageException`、断线；`synaxis:play` 的结果码按 `rejected` 显示，不在此列）；插件 API——删方法 / 改签名 / 收紧约束。破坏性变更禁止原地改：新方法或新 `msg_id` 并行，旧项标 `@Deprecated` 并注明替代，观察期后移除。
 - 弃用期：线协议**无弃用期**（两端由同一个整合包分发，升级是原子的，严格相等校验就是它的防漂移机制）；插件 API 弃用期不少于 1 个内测周期（约 30 天），兼容承诺对象是本仓库之外的社区插件作者。
 - 兼容承诺对象：`:plugin-api` 与 `:protocol` 承诺；引擎内部 API 与 `server-app` 不承诺（`docs/DESIGN.md` §8 与 `ADR-007` 里的「唯一稳定面」已按 `ADR-M2-005` 由 `platform-api` 改称 `plugin-api`，见该文档变更记录 v0.22）。
 - 当前 deprecated 清单：无。
@@ -1362,13 +1363,13 @@ flowchart LR
 
 ## 20. 埋点 / 分析事件
 
-事件由 server-app 统一写入本地 `logs/events-YYYYMMDD.jsonl`（一行一个 JSON，字段名与 §9 一致），不接第三方分析服务——内测 50 人、单进程，一条离线聚合脚本就够，接 SaaS 是过度设计。每条事件必带 `ts`、`connection_id`（有连接上下文时）、`match_id`（有对局上下文时）。**下半张表的事件产生在插件里**（对局、单位、指令），它们经 `PluginContext#analytics()` 交给宿主写同一个文件（见 `API-M2-008`）；上半张表的会话与插件事件由宿主自己写。
+事件由 server-app 统一写入本地 `logs/events-<shard_id>-YYYYMMDD.jsonl`（一行一个 JSON，字段名与 §9 一致；`<shard_id>` 取 `synaxis.app.shard-id`，默认 `local`，前几天的文件压成 `.jsonl.gz`、保留 30 天，见 `docs/DESIGN-PROD.md` `API-PROD-014`），不接第三方分析服务——内测 50 人、单进程，一条离线聚合脚本就够，接 SaaS 是过度设计。每条事件必带 `ts`、`connection_id`（有连接上下文时）、`match_id`（有对局上下文时）。**下半张表的事件产生在插件里**（对局、单位、指令），它们经 `PluginContext#analytics()` 交给宿主写同一个文件（见 `API-M2-008`）；上半张表的会话与插件事件由宿主自己写。
 
 | 事件（ID=事件名） | 触发时机 | 关键属性 | 对应指标 |
 | --- | --- | --- | --- |
 | `EVT:session_entered_configuration` | 连接进入 configuration（§11.1 `[*] → awaiting_hello`），无论后续是否握手 | `protocol_version` | 客户端接入成功率（分母）、§21 握手成功率 |
 | `EVT:client_verified` | 握手通过、`session_state → verified` | `mod_version`, `schema_version` | 客户端接入成功率 |
-| `EVT:client_rejected` | 会话以 `rejected` 终态结束（§11.1 的三条入边） | `reason`（mod-missing / version-mismatch / match-unavailable）, `schema_version` | 客户端接入成功率（分子的补集，不直接进分母） |
+| `EVT:client_rejected` | 会话以 `rejected` 终态结束（§11.1 的三条入边） | `reason`（mod-missing / version-mismatch / match-unavailable；断线键去掉 `synaxis:` 前缀，准入回调用插件自己命名空间的键拒绝时整串照记，如 `rts:match-unavailable`，与宿主的 `match-unavailable` 分得开）, `schema_version` | 客户端接入成功率（分子的补集，不直接进分母） |
 | `EVT:player_entered_play` | `session_state → in_game`（§11.1 `verified → in_game`） | `match_id` | 首次上手完成率（分母） |
 | `EVT:unit_selected` | 服务端接受一条 `C2S_SELECT` 后 | `count`, `rejected_count` | 首次上手完成率 |
 | `EVT:unit_order_issued` | 一条移动指令被接受（`code=ok`） | `order_seq`, `order_group`, `unit_id`, `path_nodes`, `path_ms` | 指令被接受率、指令到达率、首次上手完成率 |

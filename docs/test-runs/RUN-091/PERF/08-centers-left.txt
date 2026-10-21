@@ -1,0 +1,16 @@
+TC-WORLD-139 第 2 步，读数行加 centers_left（提交 d4a32565a9）
+
+centers_left：这一档里离开的中心数，即 relight_queue_p99_ms 统计的样本数（一个窗口至多 65,536 个），在测试读
+stats() 之前读（SynxRelight#queueSampleCount）。中心只在一轮里没有新改动时才离开，又被改的会再跑一轮、不记样本。
+测量模式不挂 JaCoCo（ac35b18068）。
+
+<G> :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest' -Dsynaxis.relight.measure=true --rerun
+12:16:01～12:18:10，load1 3.96～7.15（12:17:31 起 6.91～7.15，同机另有会话）
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="0" failures="0" errors="0" time="122.926"
+  relight backlog: phase=107/s changes=6415 centers_left=6409 seconds=60.0 centers_per_s=106.9 relight_queue_p99_ms=63.1 relight_ms_p99=7.6 relight_pending_peak=12 install_ms_max=2.26 install_backlog_peak=80; phase=unlimited changes=44375040 centers_left=121 seconds=60.0 centers_per_s=868.5 relight_queue_p99_ms=53608.9 relight_ms_p99=37.1 relight_pending_peak=1024 install_ms_max=37.44 install_backlog_peak=279
+
+同一提交、测试 JVM 开 JFR 的一次（09-install-time.txt），12:19:27～12:21:38，load1 3.43～5.43：
+  relight backlog: phase=107/s changes=6414 centers_left=6410 seconds=60.0 centers_per_s=106.9 relight_queue_p99_ms=60.6 relight_ms_p99=7.6 relight_pending_peak=12 install_ms_max=1.58 install_backlog_peak=85; phase=unlimited changes=33940480 centers_left=264 seconds=60.0 centers_per_s=716.2 relight_queue_p99_ms=48195.9 relight_ms_p99=36.3 relight_pending_peak=1024 install_ms_max=25.38 install_backlog_peak=282
+
+读法：107/s 档 6,409～6,410 个样本，P99 是第 6,345 个左右，读数可信。不限速档 60 s 里只离开 121～264 个中心，
+P99 落在最慢的 2～3 个样本上，量的是「连续被改了多久」（接近整档的 60 s），不能当排队延迟读。

@@ -8,6 +8,11 @@ JMH 的 jar 用同样的 mkdir 锁、owner 行与退出时放锁的写法单独�
   d8f57beb11 jmh: RelightAreaBenchmark（基准，改动之前的视图：逐格 getBlock）
   02d11eae3f light: LightEngine 经 WorldView#section 按 section 读方块，默认实现逐格问 getBlock，与原来的读法相同
   f9148760f9 synx: 重算快照的 section 从调色板一次拷出状态 id，全空气的 section 返回 null；基准的视图跟着改
+  ac35b18068 synx: 测量模式不挂 JaCoCo 代理
+  f22b674195 synx: 调色板到状态 id 的拷出提成 SynxRelight#stateIds
+  0ffadd8d2a test: SynxRelightStateIdsTest（负 id 那条在修复前红）
+  af05689e64 synx: stateIds 把负 id 读作空气；WorldView#section 的说明改为全空气时可以是 null 或全 0
+  d4a32565a9 synx: 测量读数每档加离开的中心数
 
 文件
   01-jmh-baseline.txt    单中心基准的基线（耗时与每次分配）
@@ -17,6 +22,11 @@ JMH 的 jar 用同样的 mkdir 锁、owner 行与退出时放锁的写法单独�
                          另各一次不挂 JaCoCo 的诊断读数；每 10 s 的负载
   05-light-parity.txt    光照结果不变：对拍、版本指纹、instance.light 全包、LightingChunk、synx 重算相关、
                          baker GeneratorBakeTest、synx 内部面门禁；一次反证
+  06-tc-world-139-without-coverage-agent.txt
+                         测量模式不挂 JaCoCo 之后的一次 TC-WORLD-139
+  07-negative-state-id.txt  负的状态 id：SynxRelightStateIdsTest 修前红、修后绿
+  08-centers-left.txt    读数行加离开的中心数（queue P99 的样本数）之后的两次 TC-WORLD-139
+  09-install-time.txt    不限速档装回耗时的 JFR：最长那次是 GC 暂停
 
 结论
   1. 单中心（5×5 快照上的 relightArea，单线程，不挂代理）：7,488～7,802 µs → 3,284～3,286 µs；
@@ -28,3 +38,6 @@ JMH 的 jar 用同样的 mkdir 锁、owner 行与退出时放锁的写法单独�
      改后挂代理 3 线程每次 7,363～7,983 µs，TC-WORLD-139（挂代理）107/s 档 34.8 → 106.9 个中心/s，
      relight_queue_p99_ms 29,998.5 → 60.3，relight_ms_p99 113.8 → 15.4。
   4. LightEngineVersionTest 的指纹不变，LightEngine.VERSION 仍是 1，不升版本。
+  5. 不挂 JaCoCo 的测量模式（ac35b18068 起）：107/s 档 106.9 个中心/s，relight_ms_p99 7.5～7.6 ms，
+     离开的中心 6,409～6,410 个；不限速档只离开 121～264 个中心，它的 relight_queue_p99_ms 不能当排队延迟读。
+  6. 不限速档 install_ms_max 的几十毫秒是 GC 暂停落在装回里（09-install-time.txt），装回本身每 tick 最长 0.576 ms。

@@ -1,0 +1,30 @@
+装回耗时：不限速档 install_ms_max 几十毫秒的来源
+
+做法：d4a32565a9 上跑 TC-WORLD-139 第 2 步（测量模式，不挂 JaCoCo），synx 的 tasks.test 临时加
+jvmArgs("-XX:StartFlightRecording=filename=<临时>.jfr,settings=<临时>.jfc")，跑完还原（没有提交）。
+设置：profile 加 method-profiling=max（Java 采样 1 ms 一次）；jdk.MethodTrace 记 SynxRelight::installPhase 的
+每一次调用（阈值 0）；jdk.MethodTiming 统计 SynxRelight::install、SynxChunk::installLight、SynxRelight::finish。
+测试里的 installPhase 在测试线程（Test worker）上跑，即这里的 tick 调度线程。
+本次读数：不限速档 install_ms_max=25.38、centers_per_s=716.2（读数行见 08-centers-left.txt）。
+录像按默认的 250 MB 上限只留下最后 56 s（12:20:42～12:21:38），即不限速档的后 55 s。
+
+installPhase（MethodTrace，录到的 55.2 s 里 30,341 次，合计 196.1 ms）
+  p50 0.005 ms  p90 0.011 ms  p99 0.028 ms  p99.9 0.079 ms  p99.99 0.238 ms  最长 25.375 ms
+  ≥ 1 ms 的只有 1 次，就是最长那次：12:20:49.601552 开始，25.375 ms；
+    同一段时间有一次 GC 暂停（jdk.GCPhasePause，G1New），12:20:49.601592 开始，25.278 ms，与它重叠 25.278 ms（99.6%）。
+  其次的四次 0.576、0.465、0.261、0.238 ms，都没有与 GC 暂停重叠。
+
+装回各段（MethodTiming，JVM 起至录像结束的累计）
+  SynxRelight.install       444,465 次  平均 0.000432 ms  最长 25.3 ms（同上那一次）
+  SynxChunk.installLight     30,426 次  平均 0.00398 ms   最长 1.55 ms
+  SynxRelight.finish         49,385 次  平均 0.00258 ms   最长 0.550 ms
+
+GC（录到的 55.2 s）
+  jdk.GCPhasePause 416 次，合计 10,144.3 ms（墙钟的 18%），p50 28.60 ms、p90 38.10 ms、最长 48.86 ms；≥ 20 ms 的 288 次
+  jdk.GarbageCollection：G1New 338 次（合计 10,092.0 ms，最长 48.86 ms），G1Old 39 次
+  测试 JVM 的堆是 -Xmx1024m（build-src 里所有 Test 任务的设置），不限速档每秒 700～870 次重算、每次分配约 2.9 MB。
+
+结论：这一次的 25.38 ms 是 GC 暂停落在 installPhase 里（暂停占这次调用的 99.6%），不是单个目标慢：除掉这一次，
+installPhase 每次最长 0.576 ms，单个 installLight 最长 1.55 ms。协调者那一次的 36.52 ms 与本文件 08 里那一次的
+37.44 ms 没有录像，落在同一测试堆上 G1 暂停的范围里（p90 38.10 ms、最长 48.86 ms），按同一来源判断。
+没有找到装回代码里的原因，代码不改。

@@ -1,0 +1,63 @@
+Green after each fix, then for the whole follow-up.
+
+5d9b00dc2c (block state setter), with the benchmark jar of 04-block-state-jmh.txt
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.BlockTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.BlockPropertiesTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.BlockStateMapCodecTest' :jmh-benchmarks:jmhJar --continue ...
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockTest" tests="17" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockPropertiesTest" tests="10" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockStateMapCodecTest" tests="4" skipped="0" failures="0" errors="0">
+  BlockTest#withPropertyKeepsNbtAndReusesCanonicalState checks the messages of a refused value and key: both still
+  list the valid values and keys, the block named through Key#toString, which returns asString().
+
+141b94961c (integer bounds)
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest' ...
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest$ValuePredicate" tests="29" skipped="0" failures="0" errors="0">
+
+8ffd07d629 (reads during a computation), run on its tree just before the commit
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.LightingChunkHeightmapIntegrationTest' ...
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest" tests="11" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.LightingChunkHeightmapIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
+  aReaderDuringAComputationWaitsForIt took 0.88 s, the instance included.
+
+cf03d3f2b9 (all commits)
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.BlockTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.BlockPropertiesTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.BlockStateMapCodecTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.LightingChunkHeightmapIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.InstanceBlockPacketIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.TickableBlockIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.world.IntProviderTest' --rerun \
+    :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest' \
+    --tests 'io.github.bearisbug.synaxis.synx.SynxVectorTest' --tests 'io.github.bearisbug.synaxis.synx.SynxChunkPacketTest' \
+    --tests 'io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest' --rerun \
+    :synx:compileTestJava :baker:compileTestJava :server-app:compileTestJava :jmh-benchmarks:compileJmhJava \
+    :jmh-benchmarks:compileWorldbenchJava --continue ...
+BUILD SUCCESSFUL
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockTest" tests="17" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockPropertiesTest" tests="10" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockStateMapCodecTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest$ValuePredicate" tests="29" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest" tests="11" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.LightingChunkHeightmapIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceBlockPacketIntegrationTest" tests="3" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.TickableBlockIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.world.IntProviderTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxVectorTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkPacketTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" tests="15" skipped="0" failures="0" errors="0">
+  Root 10 classes 85 tests, synx 4 classes 27 tests, 0 failures. The root classes besides the ones of this follow-up
+  are those that name Heightmap; SynxSegmentOneBlockEntityTest and SynxVectorTest (through SynxVectors) are the
+  synx tests that do. SynxChunkOverlayIntegrationTest#aThousandMaterializedChunksEncodeBackToTheirSegmentOne builds
+  the packets of 1,000 materialized chunks, whose heightmaps are computed again after the materialization
+  invalidated them, and compares them with segment one; SynxChunkPacketTest encodes the heightmaps of a packet. The
+  public signatures of the changed classes are the same, so the synx, baker, server-app and jmh-benchmarks compiles
+  were up to date against the new root code.

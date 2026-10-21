@@ -1,0 +1,29 @@
+EntityCollisionBenchmark (jmh-benchmarks, avgt, us/op), before and after the nearbyEntities rewrite
+A = 17f2a2cfe1 (before RUN-088), B = this branch at 830cce78a1 (G1 and G2 committed).
+Both jars built with :jmh-benchmarks:jmhJar, then run alternately A B A B under the heavy lock:
+  java -jar <jar> EntityCollisionBenchmark -bm avgt -f 1 -wi 4 -i 6 -w 1s -r 1s
+The machine was not idle (load1 9.2 to 12.5 from other work), so only the A/B order within a round compares.
+
+== a round 1 04:33:23 load { 10.45 10.50 11.71 }
+EntityCollisionBenchmark.checkCollisions             16  avgt    6   0.459 ±  0.216  us/op
+EntityCollisionBenchmark.checkCollisions            128  avgt    6   3.035 ±  0.413  us/op
+EntityCollisionBenchmark.checkCollisions           1024  avgt    6  31.105 ± 20.778  us/op
+== b round 1 04:33:54 load { 9.19 10.18 11.54 }
+EntityCollisionBenchmark.checkCollisions             16  avgt    6   0.321 ± 0.048  us/op
+EntityCollisionBenchmark.checkCollisions            128  avgt    6   2.672 ± 0.982  us/op
+EntityCollisionBenchmark.checkCollisions           1024  avgt    6  30.044 ± 4.884  us/op
+== a round 2 04:34:26 load { 9.94 10.32 11.55 }
+EntityCollisionBenchmark.checkCollisions             16  avgt    6   0.412 ± 0.119  us/op
+EntityCollisionBenchmark.checkCollisions            128  avgt    6   2.943 ± 0.476  us/op
+EntityCollisionBenchmark.checkCollisions           1024  avgt    6  27.890 ± 3.168  us/op
+== b round 2 04:34:57 load { 10.11 10.32 11.50 }
+EntityCollisionBenchmark.checkCollisions             16  avgt    6   0.272 ± 0.022  us/op
+EntityCollisionBenchmark.checkCollisions            128  avgt    6   2.450 ± 0.761  us/op
+EntityCollisionBenchmark.checkCollisions           1024  avgt    6  26.244 ± 4.267  us/op
+end 04:35:29 load { 12.54 10.85 11.64 }
+
+entityCount   A round 1   B round 1   A round 2   B round 2
+  16          0.459       0.321       0.412       0.272
+  128         3.035       2.672       2.943       2.450
+  1024       31.105      30.044      27.890      26.244
+B is at or below A in every row: no slowdown of the collision query from the rewrite.

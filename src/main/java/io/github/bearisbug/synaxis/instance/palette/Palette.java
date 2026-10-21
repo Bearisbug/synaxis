@@ -1,11 +1,9 @@
 package io.github.bearisbug.synaxis.instance.palette;
 
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.utils.MathUtils;
 import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.function.IntUnaryOperator;
 
@@ -29,6 +27,12 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT_ARRAY;
  * No palette structures, values array contains actual block values using directBits.
  * <br>
  * You can optimize for space/speed using {@link #optimize(Optimization)}
+ * <br>
+ * Coordinates are in {@code [0, dimension())} on every axis, a method given one outside throws
+ * {@link IllegalArgumentException}. Values are not negative and fit in the direct width: {@link #set},
+ * {@link #fill} and {@link #replace(int, int)} throw {@link IllegalArgumentException} for one that does not, as
+ * does {@link #setAll} when its supplier gives every entry the same non-negative value (it then fills);
+ * otherwise {@link #setAll}, {@link #replaceAll}, {@link #offset} and {@link #load} do not check.
  */
 public sealed interface Palette permits PaletteImpl {
     int BLOCK_DIMENSION = 16;
@@ -72,24 +76,55 @@ public sealed interface Palette permits PaletteImpl {
 
     void getAll(EntryConsumer consumer);
 
+    /**
+     * Like {@link #getAll(EntryConsumer)}, skipping the entries whose value is 0.
+     */
     void getAllPresent(EntryConsumer consumer);
 
+    /**
+     * Returns the highest y at {@code (x, z)}, searching down from {@code dimension() - 1}, whose entry
+     * satisfies {@code predicate}, or -1 when none does.
+     */
     int height(int x, int z, EntryPredicate predicate);
 
     void set(int x, int y, int z, int value);
 
     void fill(int value);
 
+    /**
+     * Loads a palette and the indices into it, as an Anvil section stores them. {@code palette} is not empty;
+     * {@code values} packs one index per entry in y, z, x order at
+     * {@code max(minBitsPerEntry, ceil(log2(palette.length)))} bits, no index spanning two longs, and may be
+     * empty for a palette of one value; longs past those the entries need are ignored. Past
+     * {@code maxBitsPerEntry} bits the palette is stored direct.
+     *
+     * @throws IllegalArgumentException if {@code palette} is empty, {@code values} is shorter than the entries
+     *                                  need or an index is past the palette
+     */
     void load(int[] palette, long[] values);
 
+    /**
+     * Adds {@code offset} to every entry. An offset of 0 changes nothing; otherwise a single value palette stays
+     * one and any other is stored direct;
+     * {@link #optimize(Optimization)} with {@link Optimization#SIZE} packs it again.
+     */
     void offset(int offset);
 
     void replace(int oldValue, int newValue);
 
+    /**
+     * Sets every entry to what {@code supplier} returns for it. The palette becomes a single value one when the
+     * supplier returns one value everywhere and is stored direct otherwise, at the direct width (15 bits for
+     * biomes too); {@link #optimize(Optimization)} with {@link Optimization#SIZE} packs it.
+     */
     void setAll(EntrySupplier supplier);
 
     void replace(int x, int y, int z, IntUnaryOperator operator);
 
+    /**
+     * Sets every entry to what {@code function} returns for it. Always stores the palette direct;
+     * {@link #optimize(Optimization)} with {@link Optimization#SIZE} packs it again.
+     */
     void replaceAll(EntryFunction function);
 
     /**
@@ -123,7 +158,9 @@ public sealed interface Palette permits PaletteImpl {
     void copyFrom(Palette source);
 
     /**
-     * Returns the number of entries in this palette.
+     * Returns the number of entries whose value is not 0. In a block palette 0 is the state id of air, and
+     * {@code cave_air} and {@code void_air} count as not empty; in a biome palette 0 is the id of a biome,
+     * counted as empty all the same. A single value palette returns 0 or {@link #maxSize()}.
      */
     int count();
 
@@ -135,6 +172,9 @@ public sealed interface Palette permits PaletteImpl {
      */
     int count(int value);
 
+    /**
+     * Same as {@code count() == 0}: every entry is 0.
+     */
     default boolean isEmpty() {
         return count() == 0;
     }
@@ -163,9 +203,10 @@ public sealed interface Palette permits PaletteImpl {
     }
 
     /**
-     * Attempts to optimize the current {@link Palette}
-     * <br>
-     * If plausible the only optimization will be performed is converting to a single value regardless of {@link Optimization}
+     * Turns this palette into a single value one when every entry holds the same value. Otherwise
+     * {@link Optimization#SPEED} stores it direct, and {@link Optimization#SIZE} packs its distinct values into
+     * a narrower indirect palette when they fit in {@code maxBitsPerEntry} bits; when they do not, or no
+     * narrower width exists, the palette is left as it is.
      *
      * @param focus the optimization focus
      */
@@ -195,23 +236,11 @@ public sealed interface Palette permits PaletteImpl {
 
     Palette clone();
 
-    @ApiStatus.Internal
-    int paletteIndexToValue(int value);
-
-    @ApiStatus.Internal
-    int valueToPaletteIndex(int value);
-
     /**
      * Gets the single value of this palette if it is a single value palette, otherwise returns -1.
      */
     @ApiStatus.Internal
     int singleValue();
-
-    /**
-     * Gets the value array if it has one, otherwise returns null (i.e. single value palette).
-     */
-    @ApiStatus.Internal
-    long @Nullable [] indexedValues();
 
     @FunctionalInterface
     interface EntrySupplier {
@@ -247,11 +276,23 @@ public sealed interface Palette permits PaletteImpl {
             @Override
             public void write(NetworkBuffer buffer, Palette palette) {
                 PaletteImpl value = (PaletteImpl) palette;
-                // Temporary fix for biome direct bits depending on the number of registered biomes
+                // The client expects a direct biome palette at ceil(log2(biomeCount)) bits (see #biomeSerializer)
+                // while storage keeps BIOME_PALETTE_DIRECT_BITS: re-encode at the wire width, and below 9 biomes as
+                // an indirect palette since the wire has no direct width that small
                 if (directBits != value.directBits && !value.hasPalette()) {
-                    PaletteImpl tmp = new PaletteImpl((byte) dimension, (byte) minIndirect, (byte) maxIndirect, (byte) directBits);
-                    tmp.setAll(value::get);
-                    value = tmp;
+                    if (directBits <= maxIndirect) {
+                        PaletteImpl tmp = (PaletteImpl) value.clone();
+                        tmp.optimize(Optimization.SIZE);
+                        if (!tmp.hasPalette()) {
+                            throw new IllegalStateException("biome palette holds ids outside a registry of "
+                                    + (1 << directBits) + " entries");
+                        }
+                        value = tmp;
+                    } else {
+                        PaletteImpl tmp = new PaletteImpl((byte) dimension, (byte) minIndirect, (byte) maxIndirect, (byte) directBits);
+                        tmp.setAll(value::get);
+                        value = tmp;
+                    }
                 }
                 final byte bitsPerEntry = value.bitsPerEntry;
                 buffer.write(BYTE, bitsPerEntry);
@@ -283,12 +324,7 @@ public sealed interface Palette permits PaletteImpl {
                     palette = buffer.read(VAR_INT_ARRAY);
                     if (palette.length == 0 || palette.length > Palettes.maxPaletteSize(bitsPerEntry))
                         throw new IllegalArgumentException("Invalid palette length: " + palette.length);
-                    result.paletteToValueList = new IntArrayList(palette);
-                    result.valueToPaletteMap = new Int2IntOpenHashMap(palette.length);
-                    result.valueToPaletteMap.defaultReturnValue(-1);
-                    for (int i = 0; i < palette.length; i++) {
-                        result.valueToPaletteMap.put(palette[i], i);
-                    }
+                    result.setIndirect(new IntArrayList(palette));
                 }
                 final long[] data = buffer.read(FixedRawLongs(Palettes.arrayLength(dimension, bitsPerEntry)));
                 result.values = data;

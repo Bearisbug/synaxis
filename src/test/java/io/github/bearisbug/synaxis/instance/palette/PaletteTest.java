@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.github.bearisbug.synaxis.instance.palette.PaletteAssertions.assertAllEquals;
 import static io.github.bearisbug.synaxis.instance.palette.PaletteAssertions.testPalettes;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -65,7 +66,7 @@ public class PaletteTest {
 
     @Test
     public void placementHighValue() {
-        final int value = 250_000;
+        final int value = (1 << 15) - 1; // the largest value of the 15-bit direct width
         for (Palette palette : testPalettes()) {
             palette.set(0, 0, 1, value);
             assertEquals(value, palette.get(0, 0, 1));
@@ -83,6 +84,52 @@ public class PaletteTest {
             assertThrows(IllegalArgumentException.class, () -> palette.get(0, -1, 0));
             assertThrows(IllegalArgumentException.class, () -> palette.get(0, 0, -1));
         }
+    }
+
+    @Test
+    public void setRejectsNegativeValue() {
+        Palette palette = Palette.blocks();
+        palette.setAll((x, y, z) -> 1 + x + 16 * (z + 16 * y)); // 4096 values, direct storage
+        assertEquals(Palette.BLOCK_PALETTE_DIRECT_BITS, palette.bitsPerEntry());
+
+        assertThrows(IllegalArgumentException.class, () -> palette.set(0, 0, 0, -1));
+        // -1 written as it is sets every bit of its long, the entries next to it included
+        assertEquals(1, palette.get(0, 0, 0));
+        assertEquals(2, palette.get(1, 0, 0));
+        assertEquals(3, palette.get(2, 0, 0));
+        assertEquals(4, palette.get(3, 0, 0));
+    }
+
+    @Test
+    public void setRejectsValuePastDirectBits() {
+        Palette direct = Palette.blocks();
+        direct.setAll((x, y, z) -> 1 + x + 16 * (z + 16 * y));
+        assertThrows(IllegalArgumentException.class, () -> direct.set(0, 0, 0, 1 << 15));
+        assertEquals(1, direct.get(0, 0, 0));
+        assertEquals(2, direct.get(1, 0, 0));
+
+        // An indirect palette could hold it until it turns direct
+        Palette indirect = Palette.blocks();
+        assertThrows(IllegalArgumentException.class, () -> indirect.set(0, 0, 0, 1 << 15));
+        assertEquals(0, indirect.count());
+    }
+
+    @Test
+    public void fillRejectsNegativeValue() {
+        Palette palette = Palette.blocks();
+        palette.set(0, 0, 0, 5);
+        assertThrows(IllegalArgumentException.class, () -> palette.fill(-1));
+        assertEquals(5, palette.get(0, 0, 0));
+        assertEquals(1, palette.count());
+    }
+
+    @Test
+    public void replaceRejectsNegativeValue() {
+        Palette palette = Palette.blocks();
+        palette.set(0, 0, 0, 5);
+        assertThrows(IllegalArgumentException.class, () -> palette.replace(5, -1));
+        assertEquals(5, palette.get(0, 0, 0));
+        assertEquals(1, palette.count(5));
     }
 
     @Test
@@ -371,13 +418,13 @@ public class PaletteTest {
             assertEquals(palette.maxSize(), palette.count(0));
             assertEquals(0, palette.count(-1));
             assertEquals(0, palette.count(Integer.MAX_VALUE));
-            // Fill with negative value
-            palette.fill(-7);
-            assertEquals(palette.maxSize(), palette.count(-7));
-            assertEquals(0, palette.count(0));
-            // Fill with max int
-            palette.fill(Integer.MAX_VALUE);
-            assertEquals(palette.maxSize(), palette.count(Integer.MAX_VALUE));
+            // A negative value or one past the direct width is not stored
+            assertThrows(IllegalArgumentException.class, () -> palette.fill(-7));
+            assertThrows(IllegalArgumentException.class, () -> palette.fill(Integer.MAX_VALUE));
+            assertEquals(palette.maxSize(), palette.count(0));
+            // Fill with the largest value of the direct width
+            palette.fill((1 << 15) - 1);
+            assertEquals(palette.maxSize(), palette.count((1 << 15) - 1));
             assertEquals(0, palette.count(0));
         }
         for (Palette palette : testPalettes()) {
@@ -748,12 +795,60 @@ public class PaletteTest {
     }
 
     @Test
+    public void biomeSerializerWritesASmallRegistryAsIndirect() {
+        // 4 biomes give a direct width of 2 bits, which the client reads as an indirect palette
+        final var serializer = Palette.biomeSerializer(4);
+        Palette palette = Palette.biomes();
+        palette.setAll((x, _, _) -> x & 1); // two values, direct storage
+        assertEquals(Palette.BIOME_PALETTE_DIRECT_BITS, palette.bitsPerEntry());
+
+        NetworkBuffer buffer = NetworkBuffer.resizableBuffer();
+        buffer.write(serializer, palette);
+        assertEquals((byte) 1, buffer.readAt(buffer.readIndex(), NetworkBuffer.BYTE), "an indirect palette at 1 bit");
+
+        Palette deserialized = buffer.read(serializer);
+        assertTrue(palette.compare(deserialized));
+        assertEquals(0, buffer.readableBytes());
+        assertEquals(Palette.BIOME_PALETTE_DIRECT_BITS, palette.bitsPerEntry(), "the written palette is not changed");
+    }
+
+    @Test
+    public void biomeSerializerRejectsIdsPastASmallRegistry() {
+        final var serializer = Palette.biomeSerializer(4);
+        Palette palette = Palette.biomes();
+        palette.setAll((x, y, z) -> x + 4 * z + 16 * y); // 64 ids, no indirect palette holds them
+
+        NetworkBuffer buffer = NetworkBuffer.resizableBuffer();
+        assertThrows(IllegalStateException.class, () -> buffer.write(serializer, palette));
+    }
+
+    @Test
+    public void biomeSerializerKeepsTheDirectWidthOfALargeRegistry() {
+        // From 9 biomes on the direct width is past the indirect widths and the entries are packed at it
+        for (int registry : new int[]{9, 65, 66}) {
+            final int bits = 32 - Integer.numberOfLeadingZeros(registry - 1);
+            final int perLong = 64 / bits;
+            final long[] expected = new long[(64 + perLong - 1) / perLong];
+            for (int i = 0; i < 64; i++) expected[i / perLong] |= (long) (i % registry) << (i % perLong * bits);
+
+            Palette palette = Palette.biomes();
+            palette.setAll((x, y, z) -> (x + 4 * z + 16 * y) % registry);
+            NetworkBuffer buffer = NetworkBuffer.resizableBuffer();
+            buffer.write(Palette.biomeSerializer(registry), palette);
+
+            assertEquals((byte) bits, buffer.read(NetworkBuffer.BYTE), "registry of " + registry);
+            assertArrayEquals(expected, buffer.read(NetworkBuffer.FixedRawLongs(expected.length)), "registry of " + registry);
+            assertEquals(0, buffer.readableBytes(), "registry of " + registry);
+        }
+    }
+
+    @Test
     public void loadBelowMinBitsPerEntry() {
         // Test loading with bpe below minBitsPerEntry - should resize to minBitsPerEntry
         Palette palette = Palette.sized(4, 4, 8, 15, 4); // min=4, max=8, direct=15
 
         int[] paletteData = {0, 1, 2, 3}; // 4 values need 2 bits, but min is 4
-        long[] values = new long[]{0x3210L}; // packed with 2 bits per entry
+        long[] values = new long[]{0x3210L, 0, 0, 0}; // packed with 4 bits per entry
 
         palette.load(paletteData, values);
 
@@ -893,7 +988,7 @@ public class PaletteTest {
         Palette palette = Palette.sized(4, 2, 6, 15, 2);
 
         int[] paletteData = {0, 1, 2};
-        long[] originalValues = {0x123456789ABCDEFL, 0xFEDCBA9876543210L};
+        long[] originalValues = {0x0124568A9A865421L, 0x1A2958640A1A2958L}; // every 2-bit index below 3
 
         palette.load(paletteData, originalValues);
 
@@ -902,10 +997,10 @@ public class PaletteTest {
         originalValues[1] = 0L;
 
         // Palette should still have the original values
-        long[] paletteValues = palette.indexedValues();
+        long[] paletteValues = ((PaletteImpl) palette).values;
         assertNotNull(paletteValues);
-        assertEquals(0x123456789ABCDEFL, paletteValues[0]);
-        assertEquals(0xFEDCBA9876543210L, paletteValues[1]);
+        assertEquals(0x0124568A9A865421L, paletteValues[0]);
+        assertEquals(0x1A2958640A1A2958L, paletteValues[1]);
     }
 
     @Test
@@ -959,6 +1054,66 @@ public class PaletteTest {
         // Verify the palette has proper count (non-zero blocks)
         assertTrue(palette.count() > 0, "Palette should have non-zero count");
         assertTrue(palette.count() <= palette.maxSize(), "Count should not exceed max size");
+    }
+
+    @Test
+    public void loadManyIndicesBecomesDirectAndKeepsValues() {
+        // 257 values need 9 bits, past the 8 of an indirect block palette
+        int[] paletteData = new int[257];
+        for (int i = 0; i < paletteData.length; i++) paletteData[i] = i;
+        final int perLong = 64 / 9;
+        long[] values = new long[(4096 + perLong - 1) / perLong];
+        int nonZero = 0;
+        for (int i = 0; i < 4096; i++) {
+            final int index = i % paletteData.length;
+            values[i / perLong] |= (long) index << (i % perLong * 9);
+            if (paletteData[index] != 0) nonZero++;
+        }
+
+        Palette palette = Palette.blocks();
+        palette.load(paletteData, values);
+
+        assertEquals(Palette.BLOCK_PALETTE_DIRECT_BITS, palette.bitsPerEntry());
+        for (int y = 0; y < 16; y++) {
+            for (int z = 0; z < 16; z++) {
+                for (int x = 0; x < 16; x++) {
+                    assertEquals(paletteData[(x + 16 * z + 256 * y) % paletteData.length], palette.get(x, y, z),
+                            "Mismatch at (" + x + "," + y + "," + z + ")");
+                }
+            }
+        }
+        assertEquals(nonZero, palette.count());
+    }
+
+    @Test
+    public void loadOneValueWithoutData() {
+        // An Anvil section of one value leaves out its packed data
+        Palette palette = Palette.blocks();
+        palette.load(new int[]{7}, new long[0]);
+        assertAllEquals(7, palette);
+        assertEquals(palette.maxSize(), palette.count());
+    }
+
+    @Test
+    public void loadRejectsEmptyPalette() {
+        Palette palette = Palette.blocks();
+        assertThrows(IllegalArgumentException.class, () -> palette.load(new int[0], new long[256]));
+    }
+
+    @Test
+    public void loadRejectsShortValues() {
+        Palette palette = Palette.sized(4, 2, 6, 15, 2);
+        // 3 values pack 64 entries at 2 bits into 2 longs
+        final IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> palette.load(new int[]{0, 10, 20}, new long[1]));
+        assertTrue(e.getMessage().contains("2 longs"), e.getMessage());
+    }
+
+    @Test
+    public void loadRejectsIndexPastPalette() {
+        Palette palette = Palette.sized(4, 2, 6, 15, 2);
+        // The first entry points at index 3 of a palette of 2
+        assertThrows(IllegalArgumentException.class, () -> palette.load(new int[]{1, 2}, new long[]{0b11L, 0L}));
     }
 
     @Test

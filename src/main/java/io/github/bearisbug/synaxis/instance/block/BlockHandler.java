@@ -122,6 +122,11 @@ public interface BlockHandler {
         return List.of();
     }
 
+    /**
+     * @deprecated the engine never reads it and an override has no effect: the block entity type a client gets is
+     * {@link Block#blockEntityType()}; removed in the next breaking release
+     */
+    @Deprecated(forRemoval = true)
     default byte getBlockEntityAction() {
         return -1;
     }

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class InstanceContainerTest {
 
@@ -20,5 +21,12 @@ public class InstanceContainerTest {
         var copyInstance = instance.copy();
         var result = copyInstance.getTag(tag);
         assertEquals("123", result);
+    }
+
+    // Refused when set, not on the next chunk load on a virtual thread
+    @Test
+    public void setChunkSupplierRejectsNull() {
+        var instance = new InstanceContainer(ServerProcess.of(), UUID.randomUUID(), DimensionType.OVERWORLD);
+        assertThrows(NullPointerException.class, () -> instance.setChunkSupplier(null));
     }
 }

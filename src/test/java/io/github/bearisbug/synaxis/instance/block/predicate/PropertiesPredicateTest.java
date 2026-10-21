@@ -1,6 +1,10 @@
 package io.github.bearisbug.synaxis.instance.block.predicate;
 
+import com.google.gson.JsonParser;
+import io.github.bearisbug.synaxis.codec.Result;
+import io.github.bearisbug.synaxis.codec.Transcoder;
 import io.github.bearisbug.synaxis.instance.block.Block;
+import net.kyori.adventure.nbt.IntBinaryTag;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -11,8 +15,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static io.github.bearisbug.synaxis.codec.CodecAssertions.assertOk;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -95,6 +101,80 @@ public class PropertiesPredicateTest {
             assertTrue(predicate.test(Block.WHEAT.withProperty("age", "7")));
             assertTrue(predicate.test(Block.WHEAT.withProperty("age", "0")));
             assertFalse(predicate.test(Block.STONE));
+        }
+
+        /** The client orders an enum property as its enum is declared: half has top before bottom. */
+        @Test
+        public void enumRangeFollowsDeclarationOrder() {
+            var predicate = range("half", "top", "bottom");
+            assertTrue(predicate.test(Block.OAK_STAIRS.withProperty("half", "bottom")));
+            assertTrue(predicate.test(Block.OAK_STAIRS.withProperty("half", "top")));
+        }
+
+        /** Directions go down, up, north, south, west, east, which the six way facing does not list them in. */
+        @Test
+        public void directionRangeFollowsTheDirectionOrder() {
+            var facing = range("facing", "up", "north");
+            assertTrue(facing.test(Block.DISPENSER.withProperty("facing", "up")));
+            assertTrue(facing.test(Block.DISPENSER.withProperty("facing", "north")));
+            assertFalse(facing.test(Block.DISPENSER.withProperty("facing", "down")));
+            assertFalse(facing.test(Block.DISPENSER.withProperty("facing", "east")));
+
+            var vertical = range("vertical_direction", "down", "up");
+            assertTrue(vertical.test(Block.POINTED_DRIPSTONE.withProperty("vertical_direction", "up")));
+            assertTrue(vertical.test(Block.POINTED_DRIPSTONE.withProperty("vertical_direction", "down")));
+        }
+
+        /** The client puts false before true. */
+        @Test
+        public void booleanRangeHasFalseFirst() {
+            var predicate = range("waterlogged", "false", "true");
+            assertTrue(predicate.test(Block.OAK_STAIRS.withProperty("waterlogged", "true")));
+            assertTrue(predicate.test(Block.OAK_STAIRS.withProperty("waterlogged", "false")));
+            assertFalse(range("waterlogged", "true", "false").test(Block.OAK_STAIRS));
+        }
+
+        /** A bound that is no value of the property matches nothing, the way the client reads it. */
+        @Test
+        public void ageRangeWithAnInvalidBoundMatchesNothing() {
+            var wheat = Block.WHEAT.withProperty("age", "3");
+            assertFalse(range("age", "-1", "7").test(wheat));
+            assertFalse(range("age", null, "8").test(wheat));
+            assertTrue(range("age", "2", null).test(wheat));
+            assertFalse(range("facing", "up", null).test(Block.HOPPER.withProperty("facing", "west")));
+        }
+
+        /** The client parses a bound of an integer property with Integer.parseInt: "05" and "+5" are 5, "5.0" is none. */
+        @Test
+        public void integerBoundsReadAsTheClientParsesThem() {
+            var five = range("age", "5", null);
+            var seven = range("age", null, "7");
+            for (int age = 0; age <= 7; age++) {
+                var wheat = Block.WHEAT.withProperty("age", String.valueOf(age));
+                assertEquals(five.test(wheat), range("age", "05", null).test(wheat), "min 05, age " + age);
+                assertEquals(five.test(wheat), range("age", "+5", null).test(wheat), "min +5, age " + age);
+                assertEquals(seven.test(wheat), range("age", null, "07").test(wheat), "max 07, age " + age);
+                assertFalse(range("age", "5.0", null).test(wheat), "min 5.0, age " + age);
+                assertFalse(range("age", "x", null).test(wheat), "min x, age " + age);
+            }
+        }
+
+        /** A value that reads as neither form names the failure of both. */
+        @Test
+        public void decodeFailureNamesBothForms() {
+            final Result<PropertiesPredicate.ValuePredicate> result =
+                    PropertiesPredicate.ValuePredicate.CODEC.decode(Transcoder.NBT, IntBinaryTag.intBinaryTag(3));
+            final String message = assertInstanceOf(Result.Error.class, result).message();
+            assertTrue(message.contains("Failed to decode Either"), message);
+
+            assertEquals(new PropertiesPredicate.ValuePredicate.Range("1", null),
+                    assertOk(PropertiesPredicate.ValuePredicate.CODEC.decode(Transcoder.JSON, JsonParser.parseString("{\"min\":\"1\"}"))));
+            assertEquals(new PropertiesPredicate.ValuePredicate.Exact("east"),
+                    assertOk(PropertiesPredicate.ValuePredicate.CODEC.decode(Transcoder.JSON, JsonParser.parseString("\"east\""))));
+        }
+
+        private static PropertiesPredicate range(String key, @Nullable String min, @Nullable String max) {
+            return new PropertiesPredicate(Map.of(key, new PropertiesPredicate.ValuePredicate.Range(min, max)));
         }
 
     }

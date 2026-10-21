@@ -195,6 +195,8 @@ public final class GeneratorImpl {
             final int width = maxSectionX - minSectionX;
             final int height = maxSectionY - minSectionY;
             final int depth = maxSectionZ - minSectionZ;
+            Check.argCondition(width <= 0 || height <= 0 || depth <= 0,
+                    "fork end must be after start on every axis, got {0} and {1}", start, end);
 
             GenerationUnit[] units = new GenerationUnit[width * height * depth];
             int index = 0;
@@ -239,7 +241,7 @@ public final class GeneratorImpl {
     }
 
     public record SectionModifierImpl(DynamicRegistry<Biome> biomeRegistry, BlockVec start, BlockVec end,
-                                      GenSection genSection, boolean fork) implements GenericModifier {
+                                      GenSection genSection, boolean fork) implements UnitModifier {
 
         @Override
         public void setBiome(int x, int y, int z, RegistryKey<Biome> biome) {
@@ -268,6 +270,20 @@ public final class GeneratorImpl {
                     "x, y and z must be in the section: {0}, {1}, {2}", x, y, z);
             handleCache(x, y, z, block);
             this.genSection.blocks.set(x, y, z, retrieveBlockId(block));
+        }
+
+        @Override
+        public void setAll(Supplier supplier) {
+            final BlockVec start = start(), end = end();
+            final int startX = start.blockX(), startY = start.blockY(), startZ = start.blockZ();
+            final int endX = end.blockX(), endY = end.blockY(), endZ = end.blockZ();
+            for (int x = startX; x < endX; x++) {
+                for (int y = startY; y < endY; y++) {
+                    for (int z = startZ; z < endZ; z++) {
+                        setBlock(x, y, z, supplier.get(x, y, z));
+                    }
+                }
+            }
         }
 
         @Override
@@ -326,13 +342,10 @@ public final class GeneratorImpl {
             this.genSection.biomes.fill(id);
         }
 
-        @Override
-        public BlockVec size() {
-            return BlockVec.SECTION;
-        }
-
         private int retrieveBlockId(Block block) {
             final int stateId = block.stateId();
+            // The palette of a fork section holds stateId + 1: 0 is a block the fork did not write, skipped when
+            // the fork is applied (InstanceContainer#applyFork and sendForkSectionUpdate subtract the 1 again)
             return fork ? stateId + 1 : stateId;
         }
 
@@ -373,7 +386,7 @@ public final class GeneratorImpl {
 
     public record AreaModifierImpl(BlockVec size, BlockVec start, BlockVec end,
                                    int width, int height, int depth,
-                                   List<GenerationUnit> sections) implements GenericModifier {
+                                   List<GenerationUnit> sections) implements UnitModifier {
         @Override
         public void setBlock(int x, int y, int z, Block block) {
             checkBorder(x, y, z);
@@ -429,6 +442,19 @@ public final class GeneratorImpl {
         }
 
         @Override
+        public void fill(Point start, Point end, Block block) {
+            final int startX = start.blockX(), startY = start.blockY(), startZ = start.blockZ();
+            final int endX = end.blockX(), endY = end.blockY(), endZ = end.blockZ();
+            for (int x = startX; x < endX; x++) {
+                for (int y = startY; y < endY; y++) {
+                    for (int z = startZ; z < endZ; z++) {
+                        setBlock(x, y, z, block);
+                    }
+                }
+            }
+        }
+
+        @Override
         public void fillBiome(RegistryKey<Biome> biome) {
             for (GenerationUnit section : sections) {
                 section.modifier().fillBiome(biome);
@@ -437,47 +463,8 @@ public final class GeneratorImpl {
 
         @Override
         public void fillHeight(int minHeight, int maxHeight, Block block) {
-            final BlockVec start = this.start;
-            final int startX = start.blockX(), startY = start.blockY(), startZ = start.blockZ();
-            final int endY = end.blockY();
-            minHeight = Math.max(minHeight, startY);
-            maxHeight = Math.min(maxHeight, endY);
-            if (minHeight >= maxHeight) return;
-            final int width = this.width, depth = this.depth;
-            final int minMultiple = floorSection(minHeight);
-            final int maxMultiple = ceilSection(maxHeight);
-            final boolean startOffset = minMultiple != minHeight;
-            final boolean endOffset = maxMultiple != maxHeight;
-            if (startOffset || endOffset) {
-                final int firstFill = Math.min(minMultiple + SECTION_SIZE, maxHeight);
-                final int lastFill = startOffset ? Math.max(firstFill, floorSection(maxHeight)) : floorSection(maxHeight);
-                for (int x = 0; x < width; x++) {
-                    for (int z = 0; z < depth; z++) {
-                        final int sectionX = startX + x * SECTION_SIZE;
-                        final int sectionZ = startZ + z * SECTION_SIZE;
-                        // Fill start
-                        if (startOffset) {
-                            final GenerationUnit section = findAbsoluteSection(sectionX, minMultiple, sectionZ);
-                            section.modifier().fillHeight(minHeight, firstFill, block);
-                        }
-                        // Fill end
-                        if (endOffset) {
-                            final GenerationUnit section = findAbsoluteSection(sectionX, maxHeight, sectionZ);
-                            section.modifier().fillHeight(lastFill, maxHeight, block);
-                        }
-                    }
-                }
-            }
-            // Middle sections (to fill)
-            final int startSection = minMultiple / SECTION_SIZE + (startOffset ? 1 : 0);
-            final int endSection = maxMultiple / SECTION_SIZE + (endOffset ? -1 : 0);
-            for (int i = startSection; i < endSection; i++) {
-                for (int x = 0; x < width; x++) {
-                    for (int z = 0; z < depth; z++) {
-                        final GenerationUnit section = findAbsoluteSection(startX + x * SECTION_SIZE, i * SECTION_SIZE, startZ + z * SECTION_SIZE);
-                        section.modifier().fill(block);
-                    }
-                }
+            for (GenerationUnit section : sections) {
+                section.modifier().fillHeight(minHeight, maxHeight, block);
             }
         }
 
@@ -494,74 +481,6 @@ public final class GeneratorImpl {
                     || y < start.blockY() || y >= end.blockY()
                     || z < start.blockZ() || z >= end.blockZ();
             Check.argCondition(outside, "Invalid coordinates: {0}, {1}, {2} for area {3} {4}", x, y, z, start, end);
-        }
-    }
-
-    sealed interface GenericModifier extends UnitModifier
-            permits AreaModifierImpl, SectionModifierImpl {
-        BlockVec size();
-
-        BlockVec start();
-
-        BlockVec end();
-
-        @Override
-        default void setAll(Supplier supplier) {
-            final BlockVec start = start(), end = end();
-            final int startX = start.blockX(), startY = start.blockY(), startZ = start.blockZ();
-            final int endX = end.blockX(), endY = end.blockY(), endZ = end.blockZ();
-            for (int x = startX; x < endX; x++) {
-                for (int y = startY; y < endY; y++) {
-                    for (int z = startZ; z < endZ; z++) {
-                        setBlock(x, y, z, supplier.get(x, y, z));
-                    }
-                }
-            }
-        }
-
-        @Override
-        default void setAllRelative(Supplier supplier) {
-            final BlockVec size = size();
-            final int endX = size.blockX(), endY = size.blockY(), endZ = size.blockZ();
-            for (int x = 0; x < endX; x++) {
-                for (int y = 0; y < endY; y++) {
-                    for (int z = 0; z < endZ; z++) {
-                        setRelative(x, y, z, supplier.get(x, y, z));
-                    }
-                }
-            }
-        }
-
-        @Override
-        default void fill(Block block) {
-            fill(start(), end(), block);
-        }
-
-        @Override
-        default void fill(Point start, Point end, Block block) {
-            final int startX = start.blockX(), startY = start.blockY(), startZ = start.blockZ();
-            final int endX = end.blockX(), endY = end.blockY(), endZ = end.blockZ();
-            for (int x = startX; x < endX; x++) {
-                for (int y = startY; y < endY; y++) {
-                    for (int z = startZ; z < endZ; z++) {
-                        setBlock(x, y, z, block);
-                    }
-                }
-            }
-        }
-
-        @Override
-        default void fillHeight(int minHeight, int maxHeight, Block block) {
-            final BlockVec start = start();
-            final BlockVec end = end();
-            final int startY = start.blockY(), endY = end.blockY();
-            if (startY >= minHeight && endY <= maxHeight) {
-                // Fast path if the unit is fully contained in the height range
-                fill(start, end, block);
-            } else {
-                // Slow path if the unit is not fully contained in the height range
-                fill(start.withY(Math.max(minHeight, startY)), end.withY(Math.min(maxHeight, endY)), block);
-            }
         }
     }
 

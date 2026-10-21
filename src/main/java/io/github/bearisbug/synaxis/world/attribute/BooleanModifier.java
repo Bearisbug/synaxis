@@ -2,14 +2,14 @@ package io.github.bearisbug.synaxis.world.attribute;
 
 import io.github.bearisbug.synaxis.codec.Codec;
 
-@FunctionalInterface
 non-sealed interface BooleanModifier extends EnvironmentAttribute.Modifier<Boolean, Boolean> {
-    BooleanModifier AND = (a, b) -> a && b;
-    BooleanModifier NAND = (a, b) -> !a || !b;
-    BooleanModifier OR = (a, b) -> a || b;
-    BooleanModifier NOR = (a, b) -> !a && !b;
-    BooleanModifier XOR = (a, b) -> a ^ b;
-    BooleanModifier XNOR = java.lang.Boolean::equals;
+    // One instance per operator: the modifier codec of a type finds the operator of a modifier by its instance
+    BooleanModifier AND = new BooleanModifier() {};
+    BooleanModifier NAND = new BooleanModifier() {};
+    BooleanModifier OR = new BooleanModifier() {};
+    BooleanModifier NOR = new BooleanModifier() {};
+    BooleanModifier XOR = new BooleanModifier() {};
+    BooleanModifier XNOR = new BooleanModifier() {};
 
     @java.lang.Override
     default Codec<java.lang.Boolean> argumentCodec() {

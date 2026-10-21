@@ -3,8 +3,6 @@ package io.github.bearisbug.synaxis.instance.block;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import io.github.bearisbug.synaxis.coordinate.Point;
-import io.github.bearisbug.synaxis.instance.block.Block;
-import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.tag.Tag;
 import io.github.bearisbug.synaxis.tag.TagNbtAccess;
 import org.jetbrains.annotations.Nullable;
@@ -60,6 +58,15 @@ public class BlockUtils {
         return getBlock().compare(block);
     }
 
+    /**
+     * Parses the property list of a block state, the {@code [k=v,...]} of {@code ns:id[k=v,...]}. Keys and values
+     * are trimmed and blank entries skipped; a string not in brackets has no properties.
+     *
+     * @param query the property list, brackets included
+     * @return the properties, in the order of the list
+     * @throws IllegalArgumentException if an entry that is not blank has no {@code =} or an empty key, or names a
+     *                                  key an earlier entry names
+     */
     public static Map<String, String> parseProperties(String query) {
         if (!query.startsWith("[") || !query.endsWith("]")) return Map.of();
         if (query.length() == 2) return Map.of();
@@ -80,15 +87,26 @@ public class BlockUtils {
                 final int equalIndex = query.indexOf('=', start);
                 if (equalIndex != -1 && equalIndex < index) {
                     final String key = query.substring(start, equalIndex).trim();
+                    if (key.isEmpty()) throw malformedProperty(query, start, index);
+                    for (int i = 0; i < entryCount; i++) {
+                        if (keys[i].equals(key)) throw malformedProperty(query, start, index);
+                    }
                     final String value = query.substring(equalIndex + 1, index).trim();
                     keys[entryCount] = key;
                     values[entryCount++] = value;
+                } else if (!query.substring(start, index).isBlank()) {
+                    throw malformedProperty(query, start, index);
                 }
                 start = index + 1;
             }
             index++;
         }
         return new Object2ObjectArrayMap<>(keys, values, entryCount);
+    }
+
+    private static IllegalArgumentException malformedProperty(String query, int start, int end) {
+        return new IllegalArgumentException("malformed block state property '" + query.substring(start, end).trim()
+                + "' in " + query);
     }
 
     public static @Nullable CompoundBinaryTag extractClientNbt(Block block) {

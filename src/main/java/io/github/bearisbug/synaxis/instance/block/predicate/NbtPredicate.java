@@ -48,7 +48,7 @@ public record NbtPredicate(CompoundBinaryTag nbt) implements Predicate<@Nullable
         if (standard == null) {
             return true; // If there's no standard, it must always pass
         } else if (comparison == null) {
-            return false; // If it's null at this point, we already assured that standard is null, so it must be invalid
+            return false; // comparison is null while standard is not
         } else if (!standard.type().equals(comparison.type())) {
             return false; // If the classes aren't equal it can't fulfill the standard anyway
         }

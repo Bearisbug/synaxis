@@ -8,9 +8,16 @@ import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * Chooses the state of a block when it is placed and when a block next to it changes. A rule is registered for a
+ * block type ({@link Block#id()}) with
+ * {@link io.github.bearisbug.synaxis.instance.block.BlockManager#registerBlockPlacementRule(BlockPlacementRule)}:
+ * every state of the type shares it.
+ */
 public abstract class BlockPlacementRule {
     public static final int DEFAULT_UPDATE_RANGE = 10;
 
+    /** The block given to the constructor, naming the block type of the rule: not the block placed or updated. */
     protected final Block block;
 
     protected BlockPlacementRule(Block block) {
@@ -18,8 +25,10 @@ public abstract class BlockPlacementRule {
     }
 
     /**
-     * Called when the block state id can be updated (for instance if a neighbour block changed).
-     * This is first called on a newly placed block, and then this is called for all neighbors of the block
+     * Called on this block after a block next to it was set, {@code fromFace} pointing to that block; a block just
+     * placed is not called for its own placement. When the block returned is not the same object as
+     * {@code currentBlock}, it is set in its turn and its own neighbours are updated, see
+     * {@link #maxUpdateDistance()}.
      * <p>
      * Runs inside the call that set the changed block, holding the monitor of the instance and the write lock of
      * the chunk of that block: do not take an entity another tick thread owns nor wait for a future here, see
@@ -36,6 +45,10 @@ public abstract class BlockPlacementRule {
      * Called when the block is placed.
      * It is recommended that you only set up basic properties on the block for this placement, such as determining facing, etc
      * <p>
+     * Called only by {@link io.github.bearisbug.synaxis.instance.Instance#placeBlock} with block updates on, the way
+     * a player places a block; {@link io.github.bearisbug.synaxis.instance.Instance#setBlock} does not call it. Start
+     * from {@code placementState.block()}, the block placed, not from the field {@link #block}.
+     * <p>
      * Runs holding the monitor of the instance and the write lock of the chunk, with the same restrictions as
      * {@link #blockUpdate(UpdateState)}.
      *
@@ -50,18 +63,40 @@ public abstract class BlockPlacementRule {
         return false;
     }
 
+    /**
+     * Returns the block given to the constructor, naming the block type of the rule: not the block placed or updated.
+     *
+     * @return the block of the rule
+     */
     public Block getBlock() {
         return block;
     }
 
     /**
-     * The max distance where a block update can be triggered. It is not based on block, so if the value is 3 and a completely
-     * different block updates 3 blocks away it could still trigger an update.
+     * The depth of chained neighbour updates from which this rule is no longer called. The neighbours of a block set
+     * from outside are at depth 0, those of a block an update changed one deeper; a block of this rule at a depth of
+     * at least this value is not given {@link #blockUpdate(UpdateState)}. The depth counts the blocks of every rule
+     * along the chain, not only this one.
      */
     public int maxUpdateDistance() {
         return DEFAULT_UPDATE_RANGE;
     }
 
+    /**
+     * What {@link #blockPlace(PlacementState)} is given. Without a player placing, {@code blockFace},
+     * {@code cursorPosition}, {@code playerPosition} and {@code usedItemStack} are null.
+     *
+     * @param instance         the {@link io.github.bearisbug.synaxis.instance.Instance} of the block; reading a chunk
+     *                         that is not loaded throws {@link NullPointerException}, so check a neighbour's chunk
+     *                         first, for example with {@code ((Instance) instance).isChunkLoaded(point)}
+     * @param block            the block placed
+     * @param blockFace        the face of the block clicked
+     * @param placePosition    the position of the block placed
+     * @param cursorPosition   the position of the cursor on the face clicked
+     * @param playerPosition   the position of the player
+     * @param usedItemStack    the item used
+     * @param isPlayerShifting whether the player is sneaking
+     */
     public record PlacementState(
             Block.Getter instance,
             Block block,
@@ -74,20 +109,37 @@ public abstract class BlockPlacementRule {
     ) {
     }
 
+    /**
+     * What {@link #blockUpdate(UpdateState)} is given.
+     *
+     * @param instance      the {@link io.github.bearisbug.synaxis.instance.Instance} of the block; reading a chunk that
+     *                      is not loaded throws {@link NullPointerException}, so check a neighbour's chunk first, for
+     *                      example with {@code ((Instance) instance).isChunkLoaded(point)}. An exception the rule
+     *                      throws leaves the setBlock that led to the update with its block written and neither the
+     *                      block change packet nor the {@code InstanceBlockUpdateEvent} sent
+     * @param blockPosition the position of this block
+     * @param currentBlock  this block
+     * @param fromFace      the face of this block toward the block set
+     */
     public record UpdateState(Block.Getter instance,
                               Point blockPosition,
                               Block currentBlock,
                               BlockFace fromFace) {
     }
 
+    /**
+     * What {@link #isSelfReplaceable(Replacement)} is given.
+     *
+     * @param block          the block in place
+     * @param blockFace      the face clicked
+     * @param cursorPosition the position of the cursor on the face clicked
+     * @param isOffset       whether the placement position is offset from the position of the block clicked
+     * @param material       the material of the item placed
+     */
     public record Replacement(
             Block block,
             BlockFace blockFace,
             Point cursorPosition,
-            /*
-			  Whether the placement position is offset from the clicked block
-			  position.
-			 */
             boolean isOffset,
             Material material
     ) {

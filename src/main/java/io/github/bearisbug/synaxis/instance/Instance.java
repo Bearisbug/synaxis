@@ -25,8 +25,6 @@ import io.github.bearisbug.synaxis.adventure.audience.PacketGroupingAudience;
 import io.github.bearisbug.synaxis.coordinate.CoordConversion;
 import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.entity.Entity;
-import io.github.bearisbug.synaxis.entity.EntityCreature;
-import io.github.bearisbug.synaxis.entity.ExperienceOrb;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.EventHandler;
@@ -47,7 +45,6 @@ import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.tag.TagHandler;
 import io.github.bearisbug.synaxis.tag.Taggable;
-import io.github.bearisbug.synaxis.thread.ThreadDispatcher;
 import io.github.bearisbug.synaxis.timer.Schedulable;
 import io.github.bearisbug.synaxis.timer.Scheduler;
 import io.github.bearisbug.synaxis.network.PacketSendingUtils;
@@ -73,7 +70,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 
 /**
  * Instances are what are called "worlds" in Minecraft, you can add an entity in it using {@link Entity#setInstance(Instance)}.
@@ -81,9 +78,10 @@ import java.util.stream.Collectors;
  * An instance has entities and chunks, each instance contains its own entity list but the
  * chunk implementation has to be defined, see {@link InstanceContainer}.
  * <p>
- * WARNING: when making your own implementation registering the instance manually is required
- * with {@link InstanceManager#registerInstance(Instance)}, and
- * you need to be sure to signal the {@link ThreadDispatcher} of every partition/element changes.
+ * A custom implementation extends {@link InstanceContainer} and overrides
+ * {@link InstanceContainer#createChunk(int, int)}, or sets its own {@link ChunkSupplier} or {@link ChunkLoader}.
+ * Extending {@code Instance} directly is not supported: the chunk tickets, the automatic unload and the
+ * dispatcher partitions are only kept by {@link InstanceContainer}.
  */
 public abstract class Instance implements Block.Getter, Block.Setter, Biome.Getter, Biome.Setter,
         Tickable, Schedulable, EventHandler<InstanceEvent>, Taggable, PacketGroupingAudience, Pointered, Identified {
@@ -96,6 +94,9 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     // The largest view distance of a player (Player#setMaxViewDistance): a tick simulates (2d + 1)² chunks
     // per player, docs/DESIGN-M3.md API-M3-006
     private static final int MAX_SIMULATION_DISTANCE = 32;
+
+    // How much the rain and the thunder level change per tick in setWeather(Weather)
+    private static final double WEATHER_STEP_PER_TICK = 0.01;
 
     private volatile boolean registered;
 
@@ -153,6 +154,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     private final ServerProcess process;
 
     // the explosion supplier
+    @SuppressWarnings("removal")
     private ExplosionSupplier explosionSupplier;
 
     /**
@@ -245,6 +247,19 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         setBlock(blockPosition.blockX(), blockPosition.blockY(), blockPosition.blockZ(), block, doBlockUpdates);
     }
 
+    /**
+     * Sets a block; with {@code doBlockUpdates}, the placement rules of its six neighbours are asked to
+     * update them.
+     * <p>
+     * The same block set at the same position again within one tick takes effect once; changes made
+     * directly with {@link Chunk#setBlock(int, int, int, Block)} in between do not lift that.
+     *
+     * @param x              the block X
+     * @param y              the block Y
+     * @param z              the block Z
+     * @param block          the block to set
+     * @param doBlockUpdates whether the neighbours are updated
+     */
     public abstract void setBlock(int x, int y, int z, Block block, boolean doBlockUpdates);
 
     @ApiStatus.Internal
@@ -297,9 +312,10 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     public abstract CompletableFuture<Chunk> loadChunk(int chunkX, int chunkZ);
 
     /**
-     * Loads the chunk at the given {@link Point} with a callback.
+     * Loads the chunk at the given {@link Point}.
      *
      * @param point the chunk position
+     * @return a {@link CompletableFuture} completed once the chunk has been loaded
      */
     public CompletableFuture<Chunk> loadChunk(Point point) {
         return loadChunk(point.chunkX(), point.chunkZ());
@@ -316,8 +332,8 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     public abstract CompletableFuture<@Nullable Chunk> loadOptionalChunk(int chunkX, int chunkZ);
 
     /**
-     * Loads a {@link Chunk} (if {@link #hasEnabledAutoChunkLoad()} returns true)
-     * at the given {@link Point} with a callback.
+     * Loads the chunk at the given {@link Point} if the chunk is already loaded or if
+     * {@link #hasEnabledAutoChunkLoad()} returns true.
      *
      * @param point the chunk position
      * @return a {@link CompletableFuture} completed once the chunk has been processed, can be null if not loaded
@@ -418,6 +434,12 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      */
     public abstract CompletableFuture<Void> saveChunksToStorage();
 
+    /**
+     * Changes which type of {@link Chunk} implementation to use once one needs to be loaded.
+     *
+     * @param chunkSupplier the new chunk supplier
+     * @throws NullPointerException if {@code chunkSupplier} is null
+     */
     public abstract void setChunkSupplier(ChunkSupplier chunkSupplier);
 
     /**
@@ -721,32 +743,6 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     }
 
     /**
-     * Gets the creatures in the instance;
-     *
-     * @return an unmodifiable {@link Set} containing all the creatures in the instance
-     */
-    @Deprecated
-    public Set<EntityCreature> getCreatures() {
-        return entityTracker.entities().stream()
-                .filter(EntityCreature.class::isInstance)
-                .map(entity -> (EntityCreature) entity)
-                .collect(Collectors.toUnmodifiableSet());
-    }
-
-    /**
-     * Gets the experience orbs in the instance.
-     *
-     * @return an unmodifiable {@link Set} containing all the experience orbs in the instance
-     */
-    @Deprecated
-    public Set<ExperienceOrb> getExperienceOrbs() {
-        return entityTracker.entities().stream()
-                .filter(ExperienceOrb.class::isInstance)
-                .map(entity -> (ExperienceOrb) entity)
-                .collect(Collectors.toUnmodifiableSet());
-    }
-
-    /**
      * Gets the entities located in the chunk.
      *
      * @param chunk the chunk to get the entities from
@@ -771,6 +767,12 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         return result;
     }
 
+    /**
+     * Gets the block at a position of this instance.
+     *
+     * @throws NullPointerException if the chunk is not loaded, except for {@link Condition#CACHED}, which
+     *                              answers null then
+     */
     @Override
     public @Nullable Block getBlock(int x, int y, int z, Condition condition) {
         final Block block = blockRetriever.getBlock(x, y, z, condition);
@@ -780,10 +782,15 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         return block;
     }
 
+    /**
+     * Gets the biome at a position of this instance.
+     *
+     * @throws NullPointerException if the chunk is not loaded
+     */
     @Override
     public RegistryKey<Biome> getBiome(int x, int y, int z) {
         Chunk chunk = getChunk(CoordConversion.globalToChunk(x), CoordConversion.globalToChunk(z));
-        Objects.requireNonNull(chunk);
+        if (chunk == null) throw new NullPointerException("Unloaded chunk at " + x + "," + y + "," + z);
         chunk.lockReadLock();
         try {
             return chunk.getBiome(x, y, z);
@@ -801,9 +808,9 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * @see <a href="https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol#Block_Action">BlockActionPacket</a> for the action id &amp; param
      */
     public void sendBlockAction(Point blockPosition, byte actionId, byte actionParam) {
-        final Block block = getBlock(blockPosition);
         final Chunk chunk = getChunkAt(blockPosition);
         Check.notNull(chunk, "The chunk at {0} is not loaded!", blockPosition);
+        final Block block = getBlock(blockPosition);
         chunk.sendPacketToViewers(new BlockActionPacket(blockPosition, actionId, actionParam, block));
     }
 
@@ -901,12 +908,23 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     }
 
     /**
-     * Gets the weather of this instance
+     * Gets the target weather of this instance, where the transition in progress ends. What the
+     * clients see now is {@link #getCurrentWeather()}.
      *
-     * @return the instance weather
+     * @return the target weather
      */
     public Weather getWeather() {
         return weather;
+    }
+
+    /**
+     * Gets the weather the clients see at this moment: during a transition, between where it started
+     * and {@link #getWeather()}.
+     *
+     * @return the current weather
+     */
+    public Weather getCurrentWeather() {
+        return transitioningWeather;
     }
 
     /**
@@ -914,23 +932,25 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      *
      * @param weather         the new weather
      * @param transitionTicks the ticks to transition to new weather
+     * @throws IllegalArgumentException if {@code transitionTicks} is below 1
      */
     public void setWeather(Weather weather, int transitionTicks) {
-        Check.stateCondition(transitionTicks < 1, "Transition ticks cannot be lower than 0");
+        Check.argCondition(transitionTicks < 1, "Transition ticks must be at least 1 but was {0}", transitionTicks);
         this.weather = weather;
         remainingRainTransitionTicks = transitionTicks;
         remainingThunderTransitionTicks = transitionTicks;
     }
 
     /**
-     * Sets the weather of this instance with a fixed transition
+     * Sets the weather of this instance: rain and thunder levels each move by 0.01 per tick, so the
+     * transition takes |difference| / 0.01 ticks (at least 1).
      *
      * @param weather the new weather
      */
     public void setWeather(Weather weather) {
         this.weather = weather;
-        remainingRainTransitionTicks = (int) Math.max(1, Math.abs((this.weather.rainLevel() - transitioningWeather.rainLevel()) / 0.01));
-        remainingThunderTransitionTicks = (int) Math.max(1, Math.abs((this.weather.thunderLevel() - transitioningWeather.thunderLevel()) / 0.01));
+        remainingRainTransitionTicks = (int) Math.max(1, Math.abs((this.weather.rainLevel() - transitioningWeather.rainLevel()) / WEATHER_STEP_PER_TICK));
+        remainingThunderTransitionTicks = (int) Math.max(1, Math.abs((this.weather.thunderLevel() - transitioningWeather.thunderLevel()) / WEATHER_STEP_PER_TICK));
     }
 
     private void sendWeatherPackets(Weather previousWeather) {
@@ -962,6 +982,12 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     /**
      * Sets the chunk view distance of this instance, 0 or more. A subclass writing the field
      * {@code chunkViewDistance} directly bypasses this check.
+     * <p>
+     * Changes the chunk ring of every player in the instance and sends them the new view distance on the
+     * calling thread, so call it on the tick scheduler thread only (in a task of the scheduler of the
+     * instance or of the server, for example), see {@code docs/DESIGN-PROD.md} §16. Called on a tick thread
+     * or on another thread, it changes the chunk rings while the players update their own; the engine does
+     * not check.
      *
      * @param newViewDistance the new view distance
      * @throws IllegalArgumentException if {@code newViewDistance} is negative
@@ -1116,8 +1142,8 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
 
     /**
      * Unloads the chunks idle for the grace period of {@link #setChunkUnloadGraceTicks(int)}. Called
-     * once a tick on the tick scheduler thread, after every tick thread is done with the tick. An
-     * instance that does not own its chunks unloads nothing.
+     * once a tick on the tick scheduler thread, after every tick thread is done with the tick. Unloads
+     * nothing by default, {@link InstanceContainer} overrides it.
      */
     @ApiStatus.Internal
     public void unloadIdleChunks() {
@@ -1259,7 +1285,10 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * @param centerZ  the center Z
      * @param strength the strength of the explosion
      * @throws IllegalStateException If no {@link ExplosionSupplier} was supplied
+     * @deprecated set the blocks with {@link #setBlock(int, int, int, Block)}, then send an
+     * {@code ExplosionPacket} with {@link PacketSendingUtils}
      */
+    @Deprecated(forRemoval = true)
     public void explode(float centerX, float centerY, float centerZ, float strength) {
         explode(centerX, centerY, centerZ, strength, null);
     }
@@ -1274,7 +1303,11 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * @param strength       the strength of the explosion
      * @param additionalData data to pass to the explosion supplier
      * @throws IllegalStateException If no {@link ExplosionSupplier} was supplied
+     * @deprecated set the blocks with {@link #setBlock(int, int, int, Block)}, then send an
+     * {@code ExplosionPacket} with {@link PacketSendingUtils}
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public void explode(float centerX, float centerY, float centerZ, float strength, @Nullable CompoundBinaryTag additionalData) {
         final ExplosionSupplier explosionSupplier = getExplosionSupplier();
         Check.stateCondition(explosionSupplier == null, "Tried to create an explosion with no explosion supplier");
@@ -1286,7 +1319,11 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * Gets the registered {@link ExplosionSupplier}, or null if none was provided.
      *
      * @return the instance explosion supplier, null if none was provided
+     * @deprecated set the blocks with {@link #setBlock(int, int, int, Block)}, then send an
+     * {@code ExplosionPacket} with {@link PacketSendingUtils}
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public @Nullable ExplosionSupplier getExplosionSupplier() {
         return explosionSupplier;
     }
@@ -1295,7 +1332,11 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * Registers the {@link ExplosionSupplier} to use in this instance.
      *
      * @param supplier the explosion supplier
+     * @deprecated set the blocks with {@link #setBlock(int, int, int, Block)}, then send an
+     * {@code ExplosionPacket} with {@link PacketSendingUtils}
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public void setExplosionSupplier(@Nullable ExplosionSupplier supplier) {
         this.explosionSupplier = supplier;
     }
@@ -1319,28 +1360,19 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     }
 
     public int getBlockLight(int blockX, int blockY, int blockZ) {
-        var chunk = getChunkAt(blockX, blockZ);
-        if (chunk == null) return 0;
-        if (isOutsideWorld(blockY)) return 0;
-        Section section = chunk.getSectionAt(blockY);
-        Light light = section.blockLight();
-        int sectionCoordinate = CoordConversion.globalToChunk(blockY);
-
-        int coordX = CoordConversion.globalToSectionRelative(blockX);
-        int coordY = CoordConversion.globalToSectionRelative(blockY);
-        int coordZ = CoordConversion.globalToSectionRelative(blockZ);
-
-        if (light.requiresUpdate())
-            LightingChunk.relightSection(chunk.getInstance(), chunk.chunkX, sectionCoordinate, chunk.chunkZ);
-        return light.getLevel(coordX, coordY, coordZ);
+        return lightLevel(blockX, blockY, blockZ, Section::blockLight);
     }
 
     public int getSkyLight(int blockX, int blockY, int blockZ) {
+        return lightLevel(blockX, blockY, blockZ, Section::skyLight);
+    }
+
+    private int lightLevel(int blockX, int blockY, int blockZ, Function<Section, Light> kind) {
         var chunk = getChunkAt(blockX, blockZ);
         if (chunk == null) return 0;
         if (isOutsideWorld(blockY)) return 0;
         Section section = chunk.getSectionAt(blockY);
-        Light light = section.skyLight();
+        Light light = kind.apply(section);
         int sectionCoordinate = CoordConversion.globalToChunk(blockY);
 
         int coordX = CoordConversion.globalToSectionRelative(blockX);

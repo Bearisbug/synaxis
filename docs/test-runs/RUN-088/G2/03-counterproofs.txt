@@ -1,0 +1,21 @@
+Counterproofs: e8ba73b39f with two temporary changes, run together, then git reset --hard HEAD.
+  EntityTrackerImpl#nearbyEntities: the condition of the walk over every bucket, boxChunks > entities(target).size(),
+    becomes boxChunks < 0 (never taken: every range goes through its box of chunks).
+  SynxChunk#setBiome: the four lines sending a y outside the world to super before materializing are deleted.
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerTest.nearbyEntitiesWithHugeRangeFindsAll' \
+      --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerTest.nearbyQueriesMatchABruteForceScan' \
+    :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest.biomesOutsideTheWorldReadAndSetAlikeInBothModes' \
+    --continue --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+:test        2 tests completed, 1 failed
+:synx:test   1 test completed, 1 failed
+<testsuite name="io.github.bearisbug.synaxis.instance.EntityTrackerTest" tests="2" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" tests="1" skipped="0" failures="1" errors="0">
+   nearbyEntitiesWithHugeRangeFindsAll() | org.opentest4j.AssertionFailedError: range 1.7976931348623157E308 around Vec[x=0.0, y=0.0, z=0.0] ==> execution timed out after 5000 ms | EntityTrackerTest.java:280
+   biomesOutsideTheWorldReadAndSetAlikeInBothModes(Env) | org.opentest4j.AssertionFailedError: neither materialized nor demoted ==> expected: <HANDLE> but was: <OVERLAY> | SynxChunkOverlayIntegrationTest.java:522
+
+  Without the walk over the buckets, Double.MAX_VALUE spans 2^28 x 2^28 chunks and the query does not end within 5 s
+  (:280); nearbyQueriesMatchABruteForceScan stays green, the box loop alone finds the same entities up to range 1000.
+  Without the bound check SynxChunk materializes a handle chunk for a biome it then does not set (:522); the two WARN
+  lines of DynamicChunk come all the same, the assertion on them (:520) passes.
+  The getBiome clamp of SynxChunk has its red in 01 (:509, handle mode, before any fix).

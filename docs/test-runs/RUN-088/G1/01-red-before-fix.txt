@@ -1,0 +1,35 @@
+Red before the fix: e2b2c8c1ab with the three behavior commits reverted, tests as committed.
+  git revert --no-commit fe9eaf41fa 7f80661971 aa0b6c0a44
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteTest' --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteCopyTest' --continue --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  git reset --hard HEAD
+
+84 tests completed, 10 failed
+<testsuite name="Basic Copy Operations" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="Different Palette Types" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="Edge Cases and Error Conditions" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="Internal Data Structure Integrity" tests="3" skipped="0" failures="0" errors="0">
+<testsuite name="Multiple Copy Operations" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="Copy of other widths and with an offset" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="Performance and Stress Tests" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.palette.PaletteTest" tests="61" skipped="0" failures="10" errors="0">
+   replaceRejectsNegativeValue() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | PaletteTest.java:130
+   loadRejectsIndexPastPalette() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | PaletteTest.java:1116
+   biomeSerializerRejectsIdsPastASmallRegistry() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalStateException to be thrown, but nothing was thrown. | PaletteTest.java:822
+   countValueEdgeCases() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | PaletteTest.java:422
+   loadRejectsEmptyPalette() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | PaletteTest.java:1100
+   fillRejectsNegativeValue() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | PaletteTest.java:121
+   biomeSerializerWritesASmallRegistryAsIndirect() | org.opentest4j.AssertionFailedError: an indirect palette at 1 bit ==> expected: <1> but was: <2> | PaletteTest.java:807
+   setRejectsNegativeValue() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | PaletteTest.java:95
+   setRejectsValuePastDirectBits() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | PaletteTest.java:107
+   loadRejectsShortValues() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | PaletteTest.java:1107
+
+Per fix
+  load input (aa0b6c0a44):          loadRejectsEmptyPalette :1100, loadRejectsShortValues :1107, loadRejectsIndexPastPalette :1116
+                                    (loadOneValueWithoutData and loadManyIndicesBecomesDirectAndKeepsValues green before and after)
+  value range (7f80661971):         setRejectsNegativeValue :95, setRejectsValuePastDirectBits :107, fillRejectsNegativeValue :121,
+                                    replaceRejectsNegativeValue :130, countValueEdgeCases :422
+  biome serializer (fe9eaf41fa):    biomeSerializerWritesASmallRegistryAsIndirect :807 (the old code wrote bitsPerEntry 2 with an
+                                    empty palette list, which the reader refuses with "Invalid palette length: 0"),
+                                    biomeSerializerRejectsIdsPastASmallRegistry :822
+                                    (biomeSerializerKeepsTheDirectWidthOfALargeRegistry green before and after: 9, 65 and 66 biomes
+                                    write the same bitsPerEntry and the same longs)

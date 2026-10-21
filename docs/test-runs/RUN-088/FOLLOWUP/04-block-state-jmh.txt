@@ -1,0 +1,52 @@
+BlockStateBenchmark (jmh-benchmarks), before and after the property setter takes the key of the block
+before = e55983ab3a (main code of 22f3272ad3), after = 5d9b00dc2c. Each jar built with :jmh-benchmarks:jmhJar,
+the before one in a temporary detached worktree, removed afterwards; both run once, before then after, under the
+heavy lock, JDK 25.0.4.1, JMH 1.37:
+  java -jar <jar> 'BlockStateBenchmark.(withPropertyUnchanged|withPropertyChanged|withPropertiesChanged|fromState)' \
+    -bm avgt -f 1 -wi 3 -i 5 -w 1s -r 1s -prof gc
+The pattern also matches fromStateId, which does not reach the setter. Load average 4.1 to 5.3 during both runs
+(before 06:38:28 to 06:40:35, after to 06:42:42): the times are one run each beside other work, the bytes per
+operation do not depend on it.
+
+gc.alloc.rate.norm, bytes per operation (± error)
+  benchmark                blockType                  before              after
+  withPropertyUnchanged    CHEST              32.000 ± 0.001             ≈ 10⁻⁴
+  withPropertyUnchanged    OAK_STAIRS         40.000 ± 0.001             ≈ 10⁻⁴
+  withPropertyUnchanged    REDSTONE_WIRE      40.000 ± 0.001             ≈ 10⁻⁴
+  withPropertyChanged      CHEST              32.000 ± 0.001             ≈ 10⁻⁴
+  withPropertyChanged      OAK_STAIRS         40.000 ± 0.001             ≈ 10⁻⁴
+  withPropertyChanged      REDSTONE_WIRE      40.000 ± 0.001             ≈ 10⁻⁴
+  withPropertiesChanged    CHEST              32.000 ± 0.001             ≈ 10⁻⁴
+  withPropertiesChanged    OAK_STAIRS         40.000 ± 0.001             ≈ 10⁻⁴
+  withPropertiesChanged    REDSTONE_WIRE      40.000 ± 0.001             ≈ 10⁻⁴
+  fromState                CHEST             856.002 ± 0.001    760.002 ± 0.001
+  fromState                OAK_STAIRS       1072.002 ± 0.001    912.003 ± 0.001
+  fromState                REDSTONE_WIRE    1232.003 ± 0.001   1032.003 ± 0.001
+  fromStateId              CHEST                      ≈ 10⁻⁵             ≈ 10⁻⁵
+  fromStateId              OAK_STAIRS                 ≈ 10⁻⁵             ≈ 10⁻⁵
+  fromStateId              REDSTONE_WIRE              ≈ 10⁻⁵             ≈ 10⁻⁵
+
+Time, ns per operation (± error)
+  benchmark                blockType                  before              after
+  withPropertyUnchanged    CHEST               9.686 ± 0.092      5.052 ± 0.043
+  withPropertyUnchanged    OAK_STAIRS         17.508 ± 0.208      4.608 ± 0.023
+  withPropertyUnchanged    REDSTONE_WIRE      16.145 ± 1.052      6.415 ± 0.212
+  withPropertyChanged      CHEST              17.498 ± 0.114     10.871 ± 0.210
+  withPropertyChanged      OAK_STAIRS         15.604 ± 0.167     12.595 ± 0.077
+  withPropertyChanged      REDSTONE_WIRE      16.734 ± 0.096     12.618 ± 0.126
+  withPropertiesChanged    CHEST              18.033 ± 0.198     11.554 ± 0.149
+  withPropertiesChanged    OAK_STAIRS         16.460 ± 0.118     13.112 ± 0.143
+  withPropertiesChanged    REDSTONE_WIRE      20.415 ± 0.158     14.600 ± 1.131
+  fromState                CHEST             310.025 ± 7.101    247.977 ± 4.586
+  fromState                OAK_STAIRS        348.379 ± 3.235    367.586 ± 0.865
+  fromState                REDSTONE_WIRE     494.142 ± 2.067    423.983 ± 4.363
+  fromStateId              CHEST               0.577 ± 0.004      0.533 ± 0.004
+  fromStateId              OAK_STAIRS          0.533 ± 0.002      0.534 ± 0.003
+  fromStateId              REDSTONE_WIRE       0.533 ± 0.003      0.542 ± 0.074
+
+Each withProperty and withProperties call allocated one byte array of the block name, which name() builds:
+32 bytes for the 15 characters of minecraft:chest, 40 for minecraft:oak_stairs (20) and minecraft:redstone_wire
+(23), with no String object counted around it (scalar replaced, as the byte counts show). After the change these
+calls allocate nothing. fromState sets every property of the parsed state through withProperties, one name per
+property: 96 bytes less for the chest (3 properties), 160 for the stairs (4) and 200 for the redstone wire (5).
+fromStateId is unchanged.

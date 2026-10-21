@@ -1,6 +1,12 @@
 package io.github.bearisbug.synaxis.instance.generator;
 
+import io.github.bearisbug.synaxis.instance.Chunk;
+import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.generator.GeneratorImpl.GenSection;
+import io.github.bearisbug.synaxis.network.ConnectionState;
+import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
+import io.github.bearisbug.synaxis.registry.RegistryKey;
+import io.github.bearisbug.synaxis.world.DimensionType;
 import io.github.bearisbug.synaxis.world.biome.Biome;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
@@ -10,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 public class BiomeIntegrationTest {
@@ -64,5 +72,41 @@ public class BiomeIntegrationTest {
             section.biomes().getAll((_, _, _, value) ->
                     assertEquals(plainsId, value));
         }
+    }
+
+    // Above or below the world a chunk reads the biome of its top or bottom section, as getBlock reads air there
+    @Test
+    public void biomeOutsideTheWorldReadsTheNearestSection(Env env) {
+        final Instance instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+        final DimensionType dimension = instance.getCachedDimensionType();
+        instance.setBiome(0, dimension.maxY() - 1, 0, Biome.DESERT);
+        instance.setBiome(0, dimension.minY(), 0, Biome.BADLANDS);
+
+        for (int y : new int[]{dimension.maxY(), dimension.maxY() + 16, Integer.MAX_VALUE}) {
+            assertEquals(Biome.DESERT, instance.getBiome(0, y, 0), "y " + y);
+        }
+        for (int y : new int[]{dimension.minY() - 1, dimension.minY() - 16, Integer.MIN_VALUE}) {
+            assertEquals(Biome.BADLANDS, instance.getBiome(0, y, 0), "y " + y);
+        }
+    }
+
+    // A biome set above or below the world changes nothing, the cached chunk packet included
+    @Test
+    public void biomeSetOutsideTheWorldChangesNothing(Env env) {
+        final Instance instance = env.createFlatInstance();
+        final Chunk chunk = instance.loadChunk(0, 0).join();
+        final DimensionType dimension = instance.getCachedDimensionType();
+        final RegistryKey<Biome> top = instance.getBiome(0, dimension.maxY() - 1, 0);
+        final RegistryKey<Biome> bottom = instance.getBiome(0, dimension.minY(), 0);
+        final CachedPacket packet = (CachedPacket) chunk.getFullDataPacket();
+        assertNotNull(packet.body(ConnectionState.PLAY, env.process().registries(), 0));
+
+        instance.setBiome(0, dimension.maxY() + 16, 0, Biome.DESERT);
+        instance.setBiome(0, dimension.minY() - 16, 0, Biome.DESERT);
+
+        assertTrue(packet.isValid(), "the chunk packet is still cached");
+        assertEquals(top, instance.getBiome(0, dimension.maxY() - 1, 0));
+        assertEquals(bottom, instance.getBiome(0, dimension.minY(), 0));
     }
 }

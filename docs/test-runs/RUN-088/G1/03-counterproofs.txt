@@ -1,0 +1,37 @@
+Counterproofs: two temporary changes to the main code of e2b2c8c1ab, each caught by a different test, run together, then
+dropped with git reset --hard HEAD.
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.palette.PaletteTest' --continue --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+== The changes
+diff --git a/src/main/java/io/github/bearisbug/synaxis/instance/palette/PaletteImpl.java b/src/main/java/io/github/bearisbug/synaxis/instance/palette/PaletteImpl.java
+index 1e124746b3..4f9b3bd7c1 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/instance/palette/PaletteImpl.java
++++ b/src/main/java/io/github/bearisbug/synaxis/instance/palette/PaletteImpl.java
+@@ -103,7 +103,6 @@ final class PaletteImpl implements Palette {
+     @Override
+     public void set(int x, int y, int z, int value) {
+         validateCoord(dimension, x, y, z);
+-        validateValue(value);
+         final int paletteIndex = indexOrAppend(value);
+         final int oldValue = Palettes.write(dimension(), bitsPerEntry, values, x, y, z, paletteIndex);
+         // Check if block count needs to be updated
+@@ -140,7 +139,7 @@ final class PaletteImpl implements Palette {
+             this.paletteToValueList = null;
+             this.valueToPaletteMap = null;
+             this.bitsPerEntry = directBits;
+-            this.values = Palettes.remap(dimension, sourceBpe, directBits, packedIndices, i -> palette[i]);
++            this.values = Palettes.remap(dimension, sourceBpe, directBits, packedIndices, i -> palette[i] + 1);
+         } else {
+             // Indirect mode: use palette
+             this.bitsPerEntry = (byte) sourceBpe;
+
+== Result
+61 tests completed, 3 failed
+<testsuite name="io.github.bearisbug.synaxis.instance.palette.PaletteTest" tests="61" skipped="0" failures="3" errors="0">
+   setRejectsNegativeValue() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | PaletteTest.java:95
+   setRejectsValuePastDirectBits() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | PaletteTest.java:107
+   loadManyIndicesBecomesDirectAndKeepsValues() | org.opentest4j.AssertionFailedError: Mismatch at (0,0,0) ==> expected: <0> but was: <1> | PaletteTest.java:1080
+
+The direct load mapping is pinned by loadManyIndicesBecomesDirectAndKeepsValues alone (loadThousandsOfIndicesBecomesDirectPalette
+only checks a range and stays green). Without the check in set, fillRejectsNegativeValue, replaceRejectsNegativeValue and
+countValueEdgeCases stay green: each of the three entry points has its own test.

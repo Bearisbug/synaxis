@@ -1,15 +1,14 @@
 package io.github.bearisbug.synaxis.instance.block.predicate;
 
 import io.github.bearisbug.synaxis.codec.Codec;
-import io.github.bearisbug.synaxis.codec.Result;
 import io.github.bearisbug.synaxis.codec.StructCodec;
-import io.github.bearisbug.synaxis.codec.Transcoder;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import io.github.bearisbug.synaxis.utils.Either;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -36,8 +35,10 @@ public record PropertiesPredicate(Map<String, ValuePredicate> properties) implem
     @Override
     public boolean test(Block block) {
         for (Map.Entry<String, ValuePredicate> entry : properties.entrySet()) {
-            final String value = block.getProperty(entry.getKey());
-            if (!entry.getValue().test(value))
+            final boolean matches = entry.getValue() instanceof ValuePredicate.Range range
+                    ? range.test(block, entry.getKey())
+                    : entry.getValue().test(block.getProperty(entry.getKey()));
+            if (!matches)
                 return false;
         }
         return true;
@@ -45,31 +46,15 @@ public record PropertiesPredicate(Map<String, ValuePredicate> properties) implem
 
     public sealed interface ValuePredicate extends Predicate<@Nullable String> permits ValuePredicate.Exact, ValuePredicate.Range {
         NetworkBuffer.Type<ValuePredicate> NETWORK_TYPE = NetworkBuffer.Either(Exact.NETWORK_TYPE, Range.NETWORK_TYPE)
-                .transform(Either::identity, it -> switch (it) {
-                            case Exact exact -> Either.left(exact);
-                            case Range range -> Either.right(range);
-                });
-        Codec<ValuePredicate> CODEC = new Codec<>() {
-            @Override
-            public <D> Result<ValuePredicate> decode(Transcoder<D> coder, D value) {
-                final Result<Exact> exactResult = Exact.CODEC.decode(coder, value);
-                if (exactResult instanceof Result.Ok(Exact exact))
-                    return new Result.Ok<>(exact);
-                final Result<Range> rangeResult = Range.CODEC.decode(coder, value);
-                if (rangeResult instanceof Result.Ok(Range range))
-                    return new Result.Ok<>(range);
-                return new Result.Error<>("Invalid value predicate");
-            }
+                .transform(Either::identity, ValuePredicate::split);
+        Codec<ValuePredicate> CODEC = Codec.Either(Exact.CODEC, Range.CODEC).transform(Either::identity, ValuePredicate::split);
 
-            @Override
-            public <D> Result<D> encode(Transcoder<D> coder, @Nullable ValuePredicate value) {
-                if (value == null) return new Result.Error<>("null");
-                return switch (value) {
-                    case Exact exact -> Exact.CODEC.encode(coder, exact);
-                    case Range range -> Range.CODEC.encode(coder, range);
-                };
-            }
-        };
+        private static Either<Exact, Range> split(ValuePredicate predicate) {
+            return switch (predicate) {
+                case Exact exact -> Either.left(exact);
+                case Range range -> Either.right(range);
+            };
+        }
 
         record Exact(String value) implements ValuePredicate {
 
@@ -87,9 +72,13 @@ public record PropertiesPredicate(Map<String, ValuePredicate> properties) implem
         }
 
         /**
-         * <p>Matches a property whose value lies between {@code min} and {@code max}, both inclusive. A value that
-         * parses as an integer is compared as one, and then a bound that does not parse matches nothing; any other
-         * value, such as a boolean or an enum constant, is compared as a string.</p>
+         * <p>Matches a property whose value lies between {@code min} and {@code max}, both inclusive.</p>
+         *
+         * <p>The property of a block, in {@link PropertiesPredicate#test(Block)} and {@link #test(Block, String)}, is
+         * compared in its own order, the one the client compares it in: integers by value, booleans false before
+         * true, directions as down, up, north, south, west, east, other enum constants in the order the registry
+         * lists them. A bound of an integer property is read as {@link Integer#parseInt(String)} reads it, "05" and
+         * "+5" as 5; a bound that is no value of the property matches nothing.</p>
          *
          * <p>Without either bound, the property only has to exist.</p>
          *
@@ -106,6 +95,61 @@ public record PropertiesPredicate(Map<String, ValuePredicate> properties) implem
                     "max", Codec.STRING.optional(), Range::max,
                     Range::new);
 
+            // The order of the Direction enum of the client
+            private static final List<String> DIRECTIONS = List.of("down", "up", "north", "south", "west", "east");
+
+            /**
+             * Tests the property {@code key} of {@code block}, in the order of the property, see {@link Range}.
+             *
+             * @param block the block
+             * @param key   the property name
+             * @return false if the block has no such property, a bound is no value of it, or its value is out of range
+             */
+            public boolean test(Block block, String key) {
+                final List<String> values = block.propertyValues(key);
+                if (values == null) return false;
+                final List<String> order = order(values);
+                final int value = order.indexOf(block.getProperty(key));
+                final String lower = bound(min, values);
+                final String upper = bound(max, values);
+                return (lower == null || (values.contains(lower) && value >= order.indexOf(lower)))
+                        && (upper == null || (values.contains(upper) && value <= order.indexOf(upper)));
+            }
+
+            // A bound of an integer property in the form the registry lists its values in; one that does not parse
+            // stays as given, which no value of the property equals
+            private static @Nullable String bound(@Nullable String bound, List<String> values) {
+                if (bound == null || !integers(values)) return bound;
+                try {
+                    return String.valueOf(Integer.parseInt(bound));
+                } catch (NumberFormatException _) {
+                    return bound;
+                }
+            }
+
+            // The registry lists the values of an integer property in decimal digits, never negative
+            private static boolean integers(List<String> values) {
+                for (String value : values) {
+                    for (int i = 0; i < value.length(); i++) {
+                        final char c = value.charAt(i);
+                        if (c < '0' || c > '9') return false;
+                    }
+                }
+                return true;
+            }
+
+            // The order the client compares the values of a property in: the registry lists booleans true first, and
+            // the six way facing and vertical_direction list their directions out of the order of the enum
+            private static List<String> order(List<String> values) {
+                if (values.equals(List.of("true", "false"))) return List.of("false", "true");
+                return DIRECTIONS.containsAll(values) ? DIRECTIONS : values;
+            }
+
+            /**
+             * Tests a value without its block, so without the order of its property: a value that parses as an
+             * integer is compared as one, and then a bound that does not parse matches nothing; any other value is
+             * compared as a string. The property of a block is matched by {@link #test(Block, String)}.
+             */
             @Override
             public boolean test(@Nullable String prop) {
                 if (prop == null) return false;

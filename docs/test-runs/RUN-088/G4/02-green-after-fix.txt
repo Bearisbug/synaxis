@@ -1,0 +1,57 @@
+Green after the fix: b53d945d21.
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.BlockTest' --tests 'io.github.bearisbug.synaxis.instance.BlockPropertiesTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.BlockStateMapCodecTest' --tests 'io.github.bearisbug.synaxis.command.ArgumentTypeTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.BlockBreakCalculationIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.block.BlockIteratorTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.predicate.ComponentPredicateSetRegistriesTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.predicate.BlockPredicateRegistriesTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.predicate.DataComponentPredicateTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.predicate.NbtPredicateTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.block.predicate.BlockPredicateIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.item.component.BlockPredicatesTest' --tests 'io.github.bearisbug.synaxis.item.component.ItemBlockStateTest' \
+    --tests 'io.github.bearisbug.synaxis.entity.player.PlayerBlockPlacementIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.InstanceBlockIntegrationTest' \
+    :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxHandlersTest' --tests 'io.github.bearisbug.synaxis.synx.SynxChunkLoaderIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest' \
+    :baker:test --tests 'io.github.bearisbug.synaxis.baker.anvil.AnvilWorldTest' \
+    :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest' \
+    :server-app:compileTestJava :game-rts:compileTestJava :game-rush:compileTestJava :loadtest:compileTestJava \
+    :jmh-benchmarks:compileJmhJava :jmh-benchmarks:compileWorldbenchJava --continue --max-workers=2 --no-daemon \
+    --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+BUILD SUCCESSFUL
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockTest" tests="17" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockPropertiesTest" tests="10" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.BlockStateMapCodecTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.command.ArgumentTypeTest" tests="33" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.BlockBreakCalculationIntegrationTest" tests="8" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.BlockIteratorTest" tests="15" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.ComponentPredicateSetRegistriesTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest$ValuePredicate" tests="28" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.PropertiesPredicateTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.BlockPredicateRegistriesTest$NbtPredicate" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.BlockPredicateRegistriesTest" tests="5" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.DataComponentPredicateTest" tests="13" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.NbtPredicateTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.predicate.BlockPredicateIntegrationTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.item.component.BlockPredicatesTest" tests="9" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.item.component.ItemBlockStateTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.entity.player.PlayerBlockPlacementIntegrationTest" tests="9" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceBlockIntegrationTest" tests="11" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxHandlersTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkLoaderIntegrationTest" tests="13" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" tests="15" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.baker.anvil.AnvilWorldTest" tests="29" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest" tests="5" skipped="0" failures="0" errors="0">
+
+  The compile tasks ran: :compileJava, :compileTestJava, :synx:compileJava, :synx:compileTestJava, :baker:compileJava,
+  :baker:compileTestJava, :server-app:compileJava, :server-app:compileTestJava, :game-rts:compileJava,
+  :game-rts:compileTestJava, :game-rush:compileJava, :game-rush:compileTestJava, :loadtest:compileJava,
+  :loadtest:compileTestJava, :architecture-tests:compileTestJava, :jmh-benchmarks:compileJmhJava,
+  :jmh-benchmarks:compileWorldbenchJava.
+
+  The synx classes log the new text of a missing handler, once per key and manager, for example
+    WARN  i.g.b.s.instance.block.BlockManager - No block handler registered for synaxis:ticker; using a placeholder that
+    keeps the key and NBT but has no behavior. Register one with BlockManager#registerHandler or a META-INF/services
+    BlockHandler entry.
+  No class of the run registers a key or a block type twice, so "replaced by a later registration" does not appear.

@@ -1,0 +1,10 @@
+ff97d4121d: getHeight and getNBT used to compute getHighestBlockSection before taking the read-lock, so a block written
+above the highest section between that and the lock, followed by an invalidation, was missed by a computation
+that then counted as done. The start is now found inside the read-lock and the monitor; refresh(int) keeps the
+start its caller gives.
+
+Green (ff97d4121d):
+  :test --tests ...instance.ChunkHeightmapIntegrationTest --tests ...instance.LightingChunkHeightmapIntegrationTest --rerun
+  ChunkHeightmapIntegrationTest 11, LightingChunkHeightmapIntegrationTest 1: 0 failures.
+
+Not covered by a test: the window sat between two statements of the reading thread with no hook to stop it there.

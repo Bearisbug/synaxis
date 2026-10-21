@@ -19,6 +19,7 @@ import org.jetbrains.annotations.Nullable;
  * <a href="https://minecraft.wiki/w/Dimension_type">Dimension type</a>
  */
 public sealed interface DimensionType extends DimensionTypes permits DimensionTypeImpl {
+    // Inclusive: the lowest and the highest y a block of the vanilla overworld is at
     int VANILLA_MIN_Y = -64;
     int VANILLA_MAX_Y = 319;
 
@@ -42,6 +43,10 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
             "default_clock", RegistryKey.<BinaryTag>codec(registries -> registries.opaque(BuiltinRegistries.WORLD_CLOCK)).optional(), DimensionType::defaultClock,
             DimensionType::create);
 
+    /**
+     * Creates a dimension type from all its fields, without the checks of the {@link Builder}: build one
+     * with {@link #builder()}.
+     */
     static DimensionType create(
             boolean hasFixedTime, boolean hasSkyLight, boolean hasCeiling, boolean hasEnderDragonFight,
             double coordinateScale, int minY, int height, int logicalHeight,
@@ -87,6 +92,12 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
 
     int minY();
 
+    /**
+     * The first y above the world, exclusive: the blocks are at [{@link #minY()}, {@code maxY()}), the
+     * highest at {@code maxY() - 1}. 320 for the overworld.
+     *
+     * @return minY() + height()
+     */
     default int maxY() {
         return minY() + height();
     }
@@ -121,6 +132,10 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
      */
     @Nullable RegistryKey<BinaryTag> defaultClock();
 
+    /**
+     * @deprecated use {@link #maxY()}, which this returns
+     */
+    @Deprecated(forRemoval = true)
     default int totalHeight() {
         return minY() + height();
     }
@@ -201,7 +216,7 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
             return this;
         }
 
-        @Contract
+        @Contract(value = "_ -> this")
         public Builder enderDragonFight(boolean hasEnderDragonFight) {
             this.hasEnderDragonFight = hasEnderDragonFight;
             return this;
@@ -239,7 +254,7 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
 
         @Contract(value = "_ -> this")
         public Builder infiniburn(String infiniburn) {
-            Check.argCondition(!infiniburn.startsWith("#"), "blockTag has to start with #");
+            Check.argCondition(!infiniburn.startsWith("#"), "infiniburn must be a block tag starting with '#', got " + infiniburn);
             this.infiniburn = infiniburn;
             return this;
         }
@@ -308,8 +323,10 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
 
         @Contract(pure = true)
         public DimensionType build() {
-            Check.argCondition(height < logicalHeight, "logicalHeight must be less than or equals height");
-            Check.argCondition(minY + height - 1 > 2031, "the maximum building height (minY + height -1) must be less than 3032");
+            Check.argCondition(height < logicalHeight, "logicalHeight (" + logicalHeight + ") must be <= height ("
+                    + height + "); set logicalHeight(...) when changing height");
+            Check.argCondition(minY + height - 1 > 2031,
+                    "minY + height - 1 (" + (minY + height - 1) + ") must be at most 2031");
 
             return DimensionType.create(hasFixedTime, hasSkylight, hasCeiling, hasEnderDragonFight, coordinateScale,
                     minY, height, logicalHeight, infiniburn, ambientLight, monsterSpawnLightLevel,

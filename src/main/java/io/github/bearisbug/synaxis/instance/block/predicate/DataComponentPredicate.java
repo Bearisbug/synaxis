@@ -181,6 +181,14 @@ public sealed interface DataComponentPredicate extends Predicate<DataComponent.H
         }
     }
 
+    private static boolean allMatch(List<EnchantmentListPredicate> children, @Nullable EnchantmentList list) {
+        if (list == null) return false;
+        for (EnchantmentListPredicate child : children) {
+            if (!child.test(list)) return false;
+        }
+        return true;
+    }
+
     /**
      * Tests an object's enchantments in its {@link DataComponents#ENCHANTMENTS} component.
      *
@@ -201,14 +209,7 @@ public sealed interface DataComponentPredicate extends Predicate<DataComponent.H
 
         @Override
         public boolean test(DataComponent.Holder holder) {
-            EnchantmentList enchantments = holder.get(DataComponents.ENCHANTMENTS);
-            if (enchantments == null) return false;
-            for (EnchantmentListPredicate child : children) {
-                if (!child.test(enchantments)) {
-                    return false;
-                }
-            }
-            return true;
+            return allMatch(children, holder.get(DataComponents.ENCHANTMENTS));
         }
 
         @Override
@@ -238,14 +239,7 @@ public sealed interface DataComponentPredicate extends Predicate<DataComponent.H
 
         @Override
         public boolean test(DataComponent.Holder holder) {
-            EnchantmentList enchantments = holder.get(DataComponents.STORED_ENCHANTMENTS);
-            if (enchantments == null) return false;
-            for (EnchantmentListPredicate child : children) {
-                if (!child.test(enchantments)) {
-                    return false;
-                }
-            }
-            return true;
+            return allMatch(children, holder.get(DataComponents.STORED_ENCHANTMENTS));
         }
 
         @Override

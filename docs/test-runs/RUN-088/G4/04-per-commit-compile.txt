@@ -1,0 +1,18 @@
+Compile of the root main and test code at each commit on its own, detached at the commit, then back to m3/r088-p3.
+  ./gradlew :compileJava :compileTestJava --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+  4f16182c9f test: block cases for state ids out of range, malformed property lists, the val -> exit 0 BUILD SUCCESSFUL in 2s
+  a808f7d9b3 block: fromStateId returns null for a state id out of range, as its signature s -> exit 0 BUILD SUCCESSFUL in 25s
+  560c221e2e block: parseProperties refuses an entry without = or a key, and a key named twi -> exit 0 BUILD SUCCESSFUL in 17s
+  bee249b26e block: one BlockSchema method sets a property for the registry loading, withPro -> exit 0 BUILD SUCCESSFUL in 18s
+  8dd76a721b block: remove the isAir, isSolid, isLiquid and isFluid aliases deprecated for r -> exit 0 BUILD SUCCESSFUL in 28s
+  c825d02844 rule: BlockPlacementRule Javadoc for the block type a rule is registered for, b -> exit 0 BUILD SUCCESSFUL in 16s
+  8d616af541 block: BlockManager logs a WARN when a handler key or a block type is registere -> exit 0 BUILD SUCCESSFUL in 26s
+  829326e9ed block: BlockBreakCalculation finds water at the eyes by the block type of the w -> exit 0 BUILD SUCCESSFUL in 4s
+  c14dbc3197 block: BlockIterator keeps its side distances and block coordinates private, it -> exit 0 BUILD SUCCESSFUL in 6s
+  5e6baa5d4a block: BlockHandler#getBlockEntityAction is deprecated for removal, the engine  -> exit 0 BUILD SUCCESSFUL in 26s
+  31fa37ba1f predicate: ComponentPredicateSet keeps one predicate per type, the last given,  -> exit 0 BUILD SUCCESSFUL in 17s
+  b53d945d21 predicate: a range of a PropertiesPredicate tested against a block compares in  -> exit 0 BUILD SUCCESSFUL in 3s
+
+  4f16182c9f and b53d945d21 took their compile outputs from the build cache, filled by runs 1 and 2 on the same
+  sources.

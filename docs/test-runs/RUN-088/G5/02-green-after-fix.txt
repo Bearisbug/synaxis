@@ -1,0 +1,57 @@
+Green after the fix: 8a78cc0d8a.
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.generator.GeneratorTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.GeneratorIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.GeneratorForkIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.generator.GeneratorForkConsumerIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.generator.BiomeIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.LightingChunkHeightmapIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.InstanceBlockPacketIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.TickableBlockIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.world.DimensionTypeBuilderTest' --tests 'io.github.bearisbug.synaxis.world.IntProviderTest' \
+    --tests 'io.github.bearisbug.synaxis.world.BuilderRegistriesTest' \
+    --tests 'io.github.bearisbug.synaxis.world.attribute.EnvironmentAttributeMapTest' \
+    --tests 'io.github.bearisbug.synaxis.registry.RegistryIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.registry.RegistryDataByteParityIntegrationTest' --rerun \
+    :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxChunkPacketTest' \
+    --tests 'io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest' --tests 'io.github.bearisbug.synaxis.synx.SynxVectorTest' \
+    --tests 'io.github.bearisbug.synaxis.synx.SynxChunkLoaderIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.synx.SynxOverlayCombinedIntegrationTest' --rerun \
+    :baker:test --tests 'io.github.bearisbug.synaxis.baker.GeneratorBakeTest' --tests 'io.github.bearisbug.synaxis.baker.FarViewBakeTest' \
+    --tests 'io.github.bearisbug.synaxis.baker.FarViewSamplingTest' --tests 'io.github.bearisbug.synaxis.baker.anvil.AnvilFarViewTest' \
+    --rerun :server-app:compileTestJava :game-rts:compileTestJava :game-rush:compileTestJava :loadtest:compileTestJava \
+    :jmh-benchmarks:compileJmhJava :jmh-benchmarks:compileWorldbenchJava --continue --max-workers=2 --no-daemon \
+    --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+BUILD SUCCESSFUL, 25 classes, 226 tests, 0 failures
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest" tests="10" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.generator.BiomeIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.generator.GeneratorForkConsumerIntegrationTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.generator.GeneratorTest" tests="55" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.GeneratorForkIntegrationTest" tests="10" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.GeneratorIntegrationTest" tests="25" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceBlockPacketIntegrationTest" tests="3" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.LightingChunkHeightmapIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.TickableBlockIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.registry.RegistryDataByteParityIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.registry.RegistryIntegrationTest" tests="3" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.world.attribute.EnvironmentAttributeMapTest" tests="3" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.world.BuilderRegistriesTest" tests="5" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.world.DimensionTypeBuilderTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.world.IntProviderTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkLoaderIntegrationTest" tests="13" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" tests="15" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkPacketTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxOverlayCombinedIntegrationTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxVectorTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.baker.anvil.AnvilFarViewTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.baker.FarViewBakeTest" tests="10" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.baker.FarViewSamplingTest" tests="8" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.baker.GeneratorBakeTest" tests="17" skipped="0" failures="0" errors="0">
+
+  The three test tasks ran (--rerun after each). The compile tasks of synx, baker, server-app (the synaxis:map
+  dimension of ShardWorld and the match dimension of Main, both DimensionType.builder() with minY, height and
+  logicalHeight equal to the height), game-rts, game-rush, loadtest and jmh-benchmarks passed, up to date: the root
+  classes keep the API these modules were compiled against in an earlier run of this command.

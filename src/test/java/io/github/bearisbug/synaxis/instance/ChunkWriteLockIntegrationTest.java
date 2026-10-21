@@ -59,4 +59,20 @@ public class ChunkWriteLockIntegrationTest {
         assertEquals(Block.STONE, instance.getBlock(0, 41, 0));
         assertEquals(Biome.DESERT, instance.getBiome(0, 41, 0));
     }
+
+    /** The read-only flag is no content of the chunk: any thread sets it without a lock. */
+    @Test
+    public void setReadOnlyNeedsNoLock(Env env) {
+        final Instance instance = env.createFlatInstance();
+        final Chunk chunk = instance.loadChunk(0, 0).join();
+
+        chunk.setReadOnly(true);
+        assertTrue(chunk.isReadOnly());
+        instance.setBlock(0, 41, 0, Block.STONE);
+        assertEquals(Block.AIR, instance.getBlock(0, 41, 0), "a read-only chunk keeps its block");
+
+        chunk.setReadOnly(false);
+        instance.setBlock(0, 41, 0, Block.STONE);
+        assertEquals(Block.STONE, instance.getBlock(0, 41, 0), "writable again");
+    }
 }

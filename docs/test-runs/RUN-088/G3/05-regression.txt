@@ -1,0 +1,54 @@
+Regression the TEST.md rules ask for when these methods change, on the code of e39db70f4b (the evidence commit on top changes no code).
+  InstanceContainer#UNSAFE_setBlock (TC-PROD-633, TC-PROD-790 to 792):   PlayerBlockPlacementIntegrationTest
+  generateChunk and processChunk (TC-PROD-914):                          GeneratorTest (GeneratorForkIntegrationTest in 02)
+  InstanceManager#registerInstance (TC-PROD-915):                        ChunkPartitionIntegrationTest
+  Instance weather and Clock (TC-PROD-918):                              InstanceTimeIntegrationTest, BuilderRegistriesTest (WeatherIntegrationTest in 02)
+  Instance#viewDistance(int) Javadoc (TC-PROD-658):                      ChunkQueueBoundIntegrationTest
+  the continuation of Entity#setInstance (TC-PROD-782, TC-PROD-783):     EntityAsyncContinuationIntegrationTest
+  InstanceManager#unregisterInstance (TC-PROD-920 step 2, three modes):  InstanceUnregisterIntegrationTest, BlockHandlerIntegrationTest,
+                                                                         UnloadChunkIntegrationTest, InstanceEventsIntegrationTest,
+                                                                         UseItemListenerIntegrationTest
+
+Default mode
+  ./gradlew :test --rerun --tests 'io.github.bearisbug.synaxis.entity.player.PlayerBlockPlacementIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.generator.GeneratorTest' --tests 'io.github.bearisbug.synaxis.instance.ChunkPartitionIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.InstanceTimeIntegrationTest' --tests 'io.github.bearisbug.synaxis.world.BuilderRegistriesTest' \
+    --tests 'io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest' --tests 'io.github.bearisbug.synaxis.entity.EntityAsyncContinuationIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.InstanceUnregisterIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.block.handler.BlockHandlerIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.UnloadChunkIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.InstanceEventsIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.listener.UseItemListenerIntegrationTest' --continue --max-workers=2 --no-daemon \
+    --init-script gradle/init/aliyun-mirror.init.gradle.kts
+BUILD SUCCESSFUL
+<testsuite name="io.github.bearisbug.synaxis.entity.EntityAsyncContinuationIntegrationTest" tests="5" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.entity.player.PlayerBlockPlacementIntegrationTest" tests="9" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.block.handler.BlockHandlerIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkPartitionIntegrationTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.generator.GeneratorTest" tests="51" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceEventsIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceTimeIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceUnregisterIntegrationTest" tests="5" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.UnloadChunkIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.listener.UseItemListenerIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.world.BuilderRegistriesTest" tests="4" skipped="0" failures="0" errors="0">
+
+4 tick threads, strict: the five TC-PROD-920 classes, plus -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+BUILD SUCCESSFUL
+<testsuite name="io.github.bearisbug.synaxis.instance.block.handler.BlockHandlerIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceEventsIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceUnregisterIntegrationTest" tests="5" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.UnloadChunkIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.listener.UseItemListenerIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+
+Strict grid: the same plus -Dsynaxis.thread-provider=grid
+BUILD SUCCESSFUL
+<testsuite name="io.github.bearisbug.synaxis.instance.block.handler.BlockHandlerIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceEventsIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceUnregisterIntegrationTest" tests="5" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.UnloadChunkIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.listener.UseItemListenerIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+
+Not run here, left to CI: TC-PROD-919 steps 1 to 3 (root instance, thread and world packages, the whole :synx:test and the
+server-app app.shard classes in three modes, which TC-PROD-915's rule adds for registerInstance), TC-PROD-920 step 3
+(server-app app.instance and game-rts MatchIntegrationTest, the callers of unregisterInstance) and the server-app shard
+tests that load through ShardInstance and SynxChunkLoader.

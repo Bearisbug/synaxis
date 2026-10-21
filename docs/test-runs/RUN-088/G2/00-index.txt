@@ -1,0 +1,20 @@
+RUN-088 G2: chunks and the entity tracker. Branch m3/r088-p3, base 17f2a2cfe1 (the G1 commits before these touch none of
+the files below). JDK 25, every Gradle run with --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts.
+
+Commits
+  5267160af8 instance: EntityTracker Javadoc names the Entity methods behind register, move and unregister, what target and update report, the chunk bucket views and the ranges of the two nearby queries
+  be8f3d9a0f instance: EntityTrackerImpl keeps one chunk view map by chunk index, lists a chunk's viewers without an id map, drops the null checks of a tracked position and the bucket lookup helper, and refuses a second registration through Check.stateCondition; the manual viewer exception names Player#isChunkInRing
+  6e12a33d7a test: nearby entity queries against a scan of every entity, across a chunk edge and with huge ranges; setReadOnly without a lock; biome reads and sets above and below the world in DynamicChunk and in both SynxChunk modes
+  cbd1aad037 instance: nearbyEntities goes through the chunks of the box around the range, or every bucket when the box has more chunks than the target has entities, with one distance filter; nearbyEntitiesByChunkRange leaves the center chunk to ChunkRange
+  b78a2cf1da instance: the read-only flag of a chunk is volatile and set without the chunk lock; isReadOnly and setReadOnly document what a read-only chunk refuses and what it does not
+  a81d29ed98 instance, synx: a biome read above or below the world reads the section at that end, a biome set there warns and changes nothing, before the packet cache is invalidated; SynxChunk reads alike in handle mode and leaves such a set to DynamicChunk without materializing
+  8eef9c34eb instance: Chunk and DynamicChunk Javadoc for the lock model, the section count, setBlock, tick, the viewers, the entry and tickable maps and the light masks; the tickable map drops a this-escape suppression it does not need
+  e8ba73b39f instance: remove OptionalCallback and ChunkCallback, which nothing uses since chunk loads return futures
+  1f31998db8 instance: EntityTracker Javadoc leaves the entity itself out of what register and unregister tell update
+
+Gradle runs (5)
+  1  red on 6e12a33d7a, the tests committed before any fix: 01-red-before-fix.txt
+  2  green on e8ba73b39f, every class of the group and the compile of the root, synx, baker and server-app main and test code: 02-green-after-fix.txt
+  3  counterproofs, two temporary changes on e8ba73b39f, then git reset --hard HEAD: 03-counterproofs.txt
+  4  chunk viewer regression, default mode, on 1f31998db8: 04-chunk-viewer-regression.txt
+  5  the same classes and the tracker classes in strict grid, on 1f31998db8: 04-chunk-viewer-regression.txt

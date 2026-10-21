@@ -65,6 +65,9 @@ public class ArgumentTypeTest {
         assertInvalidArg(arg, "minecraft:invalid_block[invalid_property=invalid_key]");
         assertInvalidArg(arg, "minecraft:stone[invalid_property=invalid_key]");
         assertInvalidArg(arg, "minecraft:kelp[age=invalid_key]");
+        assertInvalidArg(arg, "minecraft:oak_stairs[facing]");
+        assertInvalidArg(arg, "minecraft:stone[garbage]");
+        assertInvalidArg(arg, "minecraft:oak_stairs[facing=north,facing=south]");
 
         assertArg(arg, Block.COBBLESTONE, "minecraft:cobblestone");
         assertArg(arg, Block.KELP.withProperty("age", "14"), "minecraft:kelp[age=14]");

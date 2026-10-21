@@ -27,13 +27,32 @@ public sealed interface EntityTracker permits EntityTrackerImpl {
     }
 
     /**
-     * Register an entity to be tracked.
+     * Registers an entity to be tracked at {@code point}. Called by {@link Entity#setInstance}: plugins and
+     * game code place an entity with that method, a direct call conflicts with the entity's own
+     * registration. The register, move and unregister calls of one entity are made one after another
+     * by the thread owning it.
+     *
+     * @param entity the entity to track
+     * @param point  the position of the entity
+     * @param target the kind of nearby entities {@code update} is told; the entity itself is tracked
+     *               under every {@link Target} its type matches
+     * @param update told {@link Update#referenceUpdate} with this tracker, then each other {@code target}
+     *               entity in the {@code entityViewDistance} square of chunks around {@code point}; null for none
+     * @throws IllegalStateException if an entity with the same id or the same uuid is registered already
      */
     <T extends Entity> void register(Entity entity, Point point,
                                      Target<T> target, @Nullable Update<T> update);
 
     /**
-     * Unregister an entity tracking.
+     * Stops tracking an entity; nothing happens for one not tracked here. Called by {@link Entity#remove()}
+     * and by {@link Entity#setInstance} when the entity leaves this instance, see
+     * {@link #register(Entity, Point, Target, Update)}.
+     *
+     * @param entity the entity to stop tracking
+     * @param target the kind of nearby entities {@code update} is told
+     * @param update told {@link Update#referenceUpdate} with a null tracker, then each other {@code target}
+     *               entity in the {@code entityViewDistance} square of chunks around the last position
+     *               of the entity; null for none
      */
     <T extends Entity> void unregister(Entity entity, Target<T> target, @Nullable Update<T> update);
 
@@ -54,27 +73,56 @@ public sealed interface EntityTracker permits EntityTrackerImpl {
     @Nullable Entity getEntityByUuid(UUID uuid);
 
     /**
-     * Called every time an entity move, you may want to verify if the new
-     * position is in a different chunk.
+     * Records the new position of an entity; one not tracked here is ignored. Called by
+     * {@link Entity#teleport}, {@link Entity#moveTo} and {@link Entity#refreshPosition}, see
+     * {@link #register(Entity, Point, Target, Update)}.
+     * <p>
+     * Within the same chunk only the recorded position changes. Into another chunk, the entity moves to
+     * the bucket of that chunk, and {@code update} is told the {@code target} entities entering and
+     * leaving the {@code entityViewDistance} square of chunks around it.
+     *
+     * @param entity   the entity that moved
+     * @param newPoint its new position
+     * @param target   the kind of nearby entities {@code update} is told
+     * @param update   told the entities entering and leaving the square, then
+     *                 {@link Update#referenceUpdate} with this tracker; null for none
      */
     <T extends Entity> void move(Entity entity, Point newPoint,
                                  Target<T> target, @Nullable Update<T> update);
 
+    /**
+     * The entities of {@code target} in a chunk, as a read-only view of the current bucket of that chunk,
+     * to use within the call that got it. Once the chunk holds none of them the bucket is dropped, and
+     * a new one is made for the next entity: a kept view does not follow. Copy it to keep it.
+     */
     @UnmodifiableView <T extends Entity> Collection<T> chunkEntities(int chunkX, int chunkZ, Target<T> target);
 
+    /**
+     * The entities of {@code target} in the chunk of {@code point}, see {@link #chunkEntities(int, int, Target)}.
+     */
     @UnmodifiableView
     default <T extends Entity> Collection<T> chunkEntities(Point point, Target<T> target) {
         return chunkEntities(point.chunkX(), point.chunkZ(), target);
     }
 
     /**
-     * Gets the entities within a chunk range.
+     * Calls {@code query} with every entity of {@code target} in the {@code (2 * chunkRange + 1)²} chunks
+     * of the square centered on the chunk of {@code point}, with no distance filter; with none for a
+     * negative {@code chunkRange}. {@code query} runs on the calling thread before this method returns.
+     *
+     * @throws IllegalArgumentException if {@code chunkRange} is above 23169
      */
     <T extends Entity> void nearbyEntitiesByChunkRange(Point point, int chunkRange,
                                                        Target<T> target, Consumer<T> query);
 
     /**
-     * Gets the entities within a range.
+     * Calls {@code query} with every entity of {@code target} whose position recorded here, the last one
+     * it was registered or moved to, is within {@code range} blocks of {@code point}: the euclidean
+     * distance in three dimensions, y included. A negative or NaN {@code range} finds none;
+     * {@link Double#MAX_VALUE} finds every entity.
+     * <p>
+     * {@code query} runs on the calling thread before this method returns, while other tick threads may
+     * move the entities.
      */
     <T extends Entity> void nearbyEntities(Point point, double range,
                                            Target<T> target, Consumer<T> query);
@@ -90,6 +138,11 @@ public sealed interface EntityTracker permits EntityTrackerImpl {
         return entities(Target.ENTITIES);
     }
 
+    /**
+     * The viewers of the chunk at {@code chunkX, chunkZ}, one object per coordinate. Taken by the
+     * {@link Chunk} constructor and released through {@link #unregisterViewable(Viewable)} when the chunk
+     * unloads; one taken for a coordinate with no chunk stays in this tracker until a chunk there unloads.
+     */
     Viewable viewable(int chunkX, int chunkZ);
 
     /**
@@ -143,6 +196,10 @@ public sealed interface EntityTracker permits EntityTrackerImpl {
 
         void remove(E entity);
 
+        /**
+         * Called with the position the entity is tracked at and this tracker after a register or a move
+         * into another chunk, and with its last position and a null tracker once it is unregistered.
+         */
         default void referenceUpdate(Point point, @Nullable EntityTracker tracker) {
             // Empty
         }

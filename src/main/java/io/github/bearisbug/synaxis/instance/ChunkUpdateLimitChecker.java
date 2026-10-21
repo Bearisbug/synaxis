@@ -1,7 +1,6 @@
 package io.github.bearisbug.synaxis.instance;
 
 import io.github.bearisbug.synaxis.coordinate.CoordConversion;
-import io.github.bearisbug.synaxis.instance.Chunk;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.util.Arrays;

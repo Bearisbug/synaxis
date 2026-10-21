@@ -1,0 +1,26 @@
+RUN-088 G4: blocks, placement rules and predicates. Branch m3/r088-p3, base 17f2a2cfe1 (the G1, G2 and G3 commits before
+these touch none of the files of this group). JDK 25, every Gradle run with --max-workers=2 --no-daemon --init-script
+gradle/init/aliyun-mirror.init.gradle.kts.
+
+Commits
+  4f16182c9f test: block cases for state ids out of range, malformed property lists, the valid values a refused property lists, invalid properties in the struct codec and lava at the eyes; predicate cases for a repeated predicate type, ranges against a block and the decode error of a value predicate
+  a808f7d9b3 block: fromStateId returns null for a state id out of range, as its signature says, and documents the range with fromBlockId; the state struct codec returns an error for a property the block does not have or a value it does not take
+  560c221e2e block: parseProperties refuses an entry without = or a key, and a key named twice, with IllegalArgumentException, so Block.fromState returns null and the block state argument fails for them; Javadoc for both, the index of the property list is named propertiesStart, BlockUtils drops two same-package imports
+  bee249b26e block: one BlockSchema method sets a property for the registry loading, withProperty and withProperties, its errors naming the block and the valid keys or values; compute takes the canonical state through copy; MAX_PROPERTIES, propertyCount and stateCount name what they count, and a property with more values than its index bits hold fails the registry loading with IllegalStateException naming it, where the assert left a misleading Duplicate properties error
+  8dd76a721b block: remove the isAir, isSolid, isLiquid and isFluid aliases deprecated for removal, none of them called; Javadoc for compare comparing the block type only, the three comparators and the canonical states possibleStates returns
+  c825d02844 rule: BlockPlacementRule Javadoc for the block type a rule is registered for, blockUpdate called on the neighbours of a block set and not on the block placed, blockPlace called by placeBlock only, the depth maxUpdateDistance counts, the block field and the record components; Block.Getter.Condition.NONE says an Instance throws for a chunk that is not loaded
+  8d616af541 block: BlockManager logs a WARN when a handler key or a block type is registered again and the later registration replaces the earlier, Javadoc for keys taken in full without normalization, the supplier called on each getHandler and one placement rule per block type; the WARN of a missing handler says what the placeholder keeps and how to register one; the negative block id check, unreachable, goes
+  829326e9ed block: BlockBreakCalculation finds water at the eyes by the block type of the water block, without the fluid tag and the second eye position; the fluid level parse catches NumberFormatException only; the Fluid import and the same-package Block import go
+  c14dbc3197 block: BlockIterator keeps its side distances and block coordinates private, its field comments describe the three axes, the this-escape suppression names the overridable reset the constructor calls, and the grid comment sits above the lines it explains
+  5e6baa5d4a block: BlockHandler#getBlockEntityAction is deprecated for removal, the engine never reading it and the block entity type a client gets coming from Block#blockEntityType
+  31fa37ba1f predicate: ComponentPredicateSet keeps one predicate per type, the last given, so that equals holds both ways and a stored set reads back equal to itself; Javadoc for the type rule of add and remove, for DataComponentPredicates and for the block types a BlockPredicate of blocks matches; the two enchantment predicates share one loop; NbtPredicate and CollectionPredicate.Count comments say what the code does, the second null message of DataComponentPredicates names the component predicates
+  b53d945d21 predicate: a range of a PropertiesPredicate tested against a block compares in the order of the property, as the client does: integers by value, booleans false first, directions in the order of their enum, other enum constants in registry order, a bound that is no value of the property matching nothing; Block#propertyValues, internal, gives the values; ValuePredicate.CODEC is an Either codec whose error names both forms
+
+Gradle runs
+  1  red on 4f16182c9f, the tests committed before any fix: 01-red-before-fix.txt
+  2  green on b53d945d21, the classes of the group, three synx classes, the baker class with the AnvilSourceException
+     messages, the synx internal surface architecture class, and the compile of the root, synx, baker, server-app,
+     game-rts, game-rush, loadtest and jmh-benchmarks (jmh and worldbench) code: 02-green-after-fix.txt
+  3  counterproofs, three runs of temporary changes on b53d945d21, each followed by git reset --hard HEAD:
+     03-counterproofs.txt
+  4  compile of the root main and test code at each commit on its own: 04-per-commit-compile.txt

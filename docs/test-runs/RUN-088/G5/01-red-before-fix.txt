@@ -1,0 +1,45 @@
+Red before the fix: ac283c5ebe, the new tests on the code before the fix commits (fork(start, end) builds its section
+array from the rounded area without a check, Heightmap#getHeight indexes z << 4 | x as given, IntProvider.Weighted
+returns 0 for both bounds and the records take any minimum and maximum, the two DimensionType.Builder#build errors
+carry no value).
+  ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.generator.GeneratorTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.GeneratorIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest' \
+    --tests 'io.github.bearisbug.synaxis.world.IntProviderTest' --tests 'io.github.bearisbug.synaxis.world.DimensionTypeBuilderTest' \
+    --tests 'io.github.bearisbug.synaxis.world.BuilderRegistriesTest' --continue --max-workers=2 --no-daemon \
+    --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+:test        106 tests completed, 9 failed
+<testsuite name="io.github.bearisbug.synaxis.instance.generator.GeneratorTest" tests="55" skipped="0" failures="3" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.GeneratorIntegrationTest" tests="25" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest" tests="10" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.world.IntProviderTest" tests="4" skipped="0" failures="4" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.world.DimensionTypeBuilderTest" tests="7" skipped="0" failures="1" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.world.BuilderRegistriesTest" tests="5" skipped="0" failures="0" errors="0">
+   [1] BlockVec[blockX=16, blockY=0, blockZ=0], BlockVec[blockX=0, blockY=16, blockZ=16] (aForkWhoseEndIsNotAfterItsStartIsRefused) | org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.NegativeArraySizeException> | GeneratorTest.java:466
+   [2] BlockVec[blockX=16, blockY=16, blockZ=0], BlockVec[blockX=0, blockY=0, blockZ=16] (same) | org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.NullPointerException> | GeneratorTest.java:466
+   [3] BlockVec[blockX=0, blockY=0, blockZ=16], BlockVec[blockX=16, blockY=16, blockZ=16] (same) | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | GeneratorTest.java:466
+   getHeightRejectsWorldCoordinates(Env) | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | ChunkHeightmapIntegrationTest.java:34
+   weightedBoundsSpanTheDistribution() | org.opentest4j.AssertionFailedError: expected: <2> but was: <0> | IntProviderTest.java:19
+   anEmptyWeightedListHasNoBounds() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalStateException to be thrown, but nothing was thrown. | IntProviderTest.java:27
+   aMaximumBelowTheMinimumIsRefused() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | IntProviderTest.java:33
+   aTrapezoidPlateauFitsItsSpan() | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown. | IntProviderTest.java:45
+   testBuild() | org.opentest4j.AssertionFailedError: logicalHeight must be less than or equals height ==> expected: <true> but was: <false> | DimensionTypeBuilderTest.java:64
+
+Per change
+  fork(start, end) check (d45154ae06):     GeneratorTest:466, x reversed throws NegativeArraySizeException, x and y
+                                           reversed NullPointerException (List.of of a null section), an area empty
+                                           on z registers a fork without sections and throws nothing
+  getHeight column check (142d2b900c):     ChunkHeightmapIntegrationTest:34, getHeight(20, 0) returns the height of
+                                           column (x 4, z 1) of the chunk
+  Weighted bounds (a494ba1d8a):            IntProviderTest:19, minInclusive is 0; :27, an empty list returns 0
+  min and max checks (a494ba1d8a):         IntProviderTest:33, new Uniform(7, 0) builds; :45, a Trapezoid plateau of 8
+                                           over a span of 7 builds
+  build error values (7ff52380bf):         DimensionTypeBuilderTest:64, the message has no value; the second case,
+                                           :71, is reached once :64 passes (its message before the fix is "the maximum
+                                           building height (minY + height -1) must be less than 3032", without 2047)
+
+  Green before the fix as they pin what does not change: the nine cases of fillHeightSetsTheRangeOnly
+  (GeneratorIntegrationTest, the area fillHeight that the refactor replaces), aForkOfAnUnalignedPointIsTheSectionAroundIt
+  (GeneratorTest), emptyColumnIsBelowMinY (ChunkHeightmapIntegrationTest), maxYIsExclusive (DimensionTypeBuilderTest)
+  and eachOperatorModifierEncodesToItsOperatorAndBack (BuilderRegistriesTest, the operator tables before modify goes).

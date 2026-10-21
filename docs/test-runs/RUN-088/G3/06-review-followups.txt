@@ -1,0 +1,18 @@
+RUN-088 G3 follow-up after its review. Test 9de4f7e674; fixes 9c6a3b32af (createChunk checks the supplied chunk before
+generating it), 00ca784589 (a joining player gets the weather again if a weather step came before its registration),
+dfddee2ead (saveChunks Javadoc on interrupts, one removal suppression dropped).
+
+Red (9c6a3b32af reverted with git revert --no-commit, then git reset --hard HEAD):
+  :test --tests io.github.bearisbug.synaxis.instance.ChunkLoaderContractIntegrationTest --rerun
+  tests="3" failures="1": aSuppliedChunkOfOtherCoordinatesFailsBeforeItIsGenerated
+  "the generator never ran on the chunk of other coordinates ==> expected: <0> but was: <1>" at
+  ChunkLoaderContractIntegrationTest.java:68 (the load still failed with IllegalStateException, after generating)
+
+Green (dfddee2ead):
+  :test with ChunkLoaderContractIntegrationTest 3, ChunkLoaderSaveIntegrationTest 2, InstanceBlockIntegrationTest 11,
+  WeatherIntegrationTest 4, GeneratorIntegrationTest 16, InstanceContainerTest 2, EntityTeleportIntegrationTest 8:
+  0 failures, 0 skipped. The root main code compiles under -Werror without the dropped suppression.
+  parallelSaveHandlesMoreThanAPhaserHolds took 1.452 s.
+
+Not covered by a test: the weather resend of 00ca784589. It closes a window between two statements that only a tick
+of the instance on another thread can hit; no hook stops that tick there.

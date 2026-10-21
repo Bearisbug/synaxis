@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.synx;
 import ch.qos.logback.classic.Level;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.instance.DynamicChunk;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.Section;
 import io.github.bearisbug.synaxis.instance.block.Block;
@@ -481,6 +482,49 @@ public class SynxChunkOverlayIntegrationTest {
         final ChunkDataPacket sent = packet(chunk);
         final ChunkDataPacket decoded = SynxChunkPacket.decode(encode(chunk, map).record().packet(), SynxTestMap.REGISTRIES);
         assertArrayEquals(sent.chunkData().data(), decoded.chunkData().data(), "the new biome is in the record");
+    }
+
+    /**
+     * Above or below the world a chunk reads the biome of its top or bottom section, and a biome set
+     * there warns and changes nothing, in handle mode as in overlay mode: a handle chunk is neither
+     * materialized nor counted as changed.
+     */
+    @Test
+    public void biomesOutsideTheWorldReadAndSetAlikeInBothModes(Env env) {
+        final SynxTestMap map = SynxTestMap.get();
+        final MemoryOverlay overlay = new MemoryOverlay();
+        final Instance instance = SynxWorlds.instance(env.process(), SynxWorlds.loader(SynxWorlds.WRITABLE, overlay));
+        final int cx = 13, cz = 11, x = cx * 16 + 5, z = cz * 16 + 9;
+        final SynxChunk chunk = (SynxChunk) instance.loadChunk(cx, cz).join();
+        // Another biome in the top and in the bottom section, written out for handle mode to read them
+        instance.setBiome(x, SynxTestMap.HEIGHT - 1, z, Biome.DESERT);
+        instance.setBiome(x, 0, z, Biome.BADLANDS);
+        final OverlayEncoding encoding = encode(chunk, map);
+        chunk.written(encoding.generation(), overlay.store(encoding), true);
+
+        for (SynxChunk.Mode mode : List.of(SynxChunk.Mode.HANDLE, SynxChunk.Mode.OVERLAY)) {
+            if (mode == SynxChunk.Mode.OVERLAY) materialize(chunk);
+            assertEquals(mode, chunk.mode());
+            for (int y : new int[]{SynxTestMap.HEIGHT, SynxTestMap.HEIGHT + 16, Integer.MAX_VALUE}) {
+                assertEquals(Biome.DESERT, instance.getBiome(x, y, z), mode + ", y " + y);
+            }
+            for (int y : new int[]{-1, -16, Integer.MIN_VALUE}) {
+                assertEquals(Biome.BADLANDS, instance.getBiome(x, y, z), mode + ", y " + y);
+            }
+
+            final long generation = chunk.generation();
+            final boolean dirty = chunk.dirty();
+            try (LogCapture logs = LogCapture.of(DynamicChunk.class)) {
+                instance.setBiome(x, SynxTestMap.HEIGHT, z, Biome.PLAINS);
+                instance.setBiome(x, -1, z, Biome.PLAINS);
+                assertEquals(2, logs.messagesAt(Level.WARN).size(), mode.toString());
+            }
+            assertEquals(mode, chunk.mode(), "neither materialized nor demoted");
+            assertEquals(generation, chunk.generation(), mode.toString());
+            assertEquals(dirty, chunk.dirty(), mode.toString());
+            assertEquals(Biome.DESERT, instance.getBiome(x, SynxTestMap.HEIGHT - 1, z), mode.toString());
+            assertEquals(Biome.BADLANDS, instance.getBiome(x, 0, z), mode.toString());
+        }
     }
 
     /** {@code section_cache_bytes} bounds the decoded palettes; the counters of the loader. */

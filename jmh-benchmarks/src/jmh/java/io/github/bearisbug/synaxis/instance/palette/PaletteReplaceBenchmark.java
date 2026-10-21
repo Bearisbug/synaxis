@@ -45,7 +45,8 @@ public class PaletteReplaceBenchmark {
         for (int x = 0; x < dimension; x++) {
             for (int y = 0; y < dimension; y++) {
                 for (int z = 0; z < dimension; z++) {
-                    palette.replace(x, y, z, value -> value + 1);
+                    // Wraps within the 15-bit direct width, set refuses a value past it
+                    palette.replace(x, y, z, value -> (value + 1) & 0x7FFF);
                 }
             }
         }

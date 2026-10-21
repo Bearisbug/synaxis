@@ -293,6 +293,6 @@ public class EntityVelocityIntegrationTest {
                 CoordConversion.chunkIndex(1, -1),
                 CoordConversion.chunkIndex(1, 0),
                 CoordConversion.chunkIndex(1, 1),
-        }, null).join();
+        }).join();
     }
 }

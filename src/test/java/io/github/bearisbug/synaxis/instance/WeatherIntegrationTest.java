@@ -10,6 +10,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 public class WeatherIntegrationTest {
@@ -50,6 +52,30 @@ public class WeatherIntegrationTest {
         state = tracker2.collect().getFirst();
         assertEquals(ChangeGameStatePacket.Reason.RAIN_LEVEL_CHANGE, state.reason());
         assertEquals(0.5f, state.value());
+    }
+
+    // A player joining during a transition gets the weather the other players see, not where it ends
+    @Test
+    public void aPlayerJoiningMidTransitionGetsTheCurrentWeather(Env env) {
+        var instance = env.createFlatInstance();
+        instance.setWeather(new Weather(1, 0), 100);
+        for (int i = 0; i < 10; i++) instance.tick(0);
+
+        var connection = env.createConnection();
+        var tracker = connection.trackIncoming(ChangeGameStatePacket.class);
+        connection.connect(instance, new Pos(0, 0, 0));
+        var rainLevel = tracker.collect().stream()
+                .filter(packet -> packet.reason() == ChangeGameStatePacket.Reason.RAIN_LEVEL_CHANGE)
+                .toList();
+        assertEquals(1, rainLevel.size());
+        assertEquals(0.1f, rainLevel.getFirst().value(), 0.02f);
+    }
+
+    @Test
+    public void zeroTransitionTicksIsAnArgumentError(Env env) {
+        var instance = env.createFlatInstance();
+        var thrown = assertThrows(IllegalArgumentException.class, () -> instance.setWeather(Weather.RAIN, 0));
+        assertTrue(thrown.getMessage().contains("at least 1"), thrown.getMessage());
     }
 
     @Test

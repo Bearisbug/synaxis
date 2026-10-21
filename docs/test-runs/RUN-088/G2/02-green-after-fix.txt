@@ -1,0 +1,49 @@
+Green after the fix: e8ba73b39f.
+  ./gradlew :compileJava :compileTestJava :synx:compileTestJava :baker:compileTestJava :server-app:compileTestJava \
+    :test --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerTest' --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerLeakIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerUuidConflictTest' \
+      --tests 'io.github.bearisbug.synaxis.instance.EntityTrackerUnregisteredMoveTest' --tests 'io.github.bearisbug.synaxis.instance.ChunkViewerIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.instance.ChunkWriteLockIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.generator.BiomeIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.instance.TickableBlockIntegrationTest' --tests 'io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.instance.InstanceBlockIntegrationTest' --tests 'io.github.bearisbug.synaxis.listener.PlayerBlockReachIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest' \
+    :synx:test --tests 'io.github.bearisbug.synaxis.synx.OverlayCrossCellWritersTest' --tests 'io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest' \
+      --tests 'io.github.bearisbug.synaxis.synx.OverlayStoreTest' --tests 'io.github.bearisbug.synaxis.synx.SynxBlockEntityLimitsTest' --tests 'io.github.bearisbug.synaxis.synx.SynxChunkLoaderIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest' --tests 'io.github.bearisbug.synaxis.synx.SynxEntitiesTest' \
+      --tests 'io.github.bearisbug.synaxis.synx.SynxOverlayCombinedIntegrationTest' --tests 'io.github.bearisbug.synaxis.synx.SynxParserBoundaryTest' \
+      --tests 'io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest' --tests 'io.github.bearisbug.synaxis.synx.SynxRelightDeliveredIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.synx.SynxRelightIntegrationTest' --tests 'io.github.bearisbug.synaxis.synx.SynxRelightViewersIntegrationTest' \
+      --tests 'io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest' --tests 'io.github.bearisbug.synaxis.synx.SynxTruncatedMappingTest' \
+    --continue --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+
+BUILD SUCCESSFUL. Compiled: root, synx, baker and server-app main and test code (Error Prone, -Werror), plugin-api, testing.
+Root 13 classes 67 tests, synx 15 classes 129 tests (SynxRelightBacklogTest has one test, skipped without -Dsynaxis.relight.measure=true).
+<testsuite name="io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkHeightmapIntegrationTest" tests="8" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkViewerIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkWriteLockIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.EntityTrackerIntegrationTest" tests="3" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.EntityTrackerLeakIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.EntityTrackerTest" tests="11" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.EntityTrackerUnregisteredMoveTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.EntityTrackerUuidConflictTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.InstanceBlockIntegrationTest" tests="9" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.TickableBlockIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.instance.generator.BiomeIntegrationTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.listener.PlayerBlockReachIntegrationTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayCrossCellWritersTest" tests="5" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest" tests="12" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayStoreTest" tests="38" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxBlockEntityLimitsTest" tests="2" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkLoaderIntegrationTest" tests="13" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkOverlayIntegrationTest" tests="15" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxEntitiesTest" tests="4" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxOverlayCombinedIntegrationTest" tests="7" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxParserBoundaryTest" tests="12" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="1" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightDeliveredIntegrationTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightIntegrationTest" tests="10" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightViewersIntegrationTest" tests="6" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest" tests="1" skipped="0" failures="0" errors="0">
+<testsuite name="io.github.bearisbug.synaxis.synx.SynxTruncatedMappingTest" tests="2" skipped="0" failures="0" errors="0">
+

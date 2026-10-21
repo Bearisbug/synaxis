@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.instance;
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import io.github.bearisbug.synaxis.adventure.EngineAdventure;
+import io.github.bearisbug.synaxis.codec.Result;
 import io.github.bearisbug.synaxis.codec.Transcoder;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import java.io.IOException;
 
 import static io.github.bearisbug.synaxis.instance.block.Block.STATE_STRUCT_CODEC;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 public class BlockStateMapCodecTest {
     @Test
@@ -42,5 +44,18 @@ public class BlockStateMapCodecTest {
         BinaryTag nbt = STATE_STRUCT_CODEC.encode(Transcoder.NBT, block).orElseThrow();
         String nbtString = EngineAdventure.NBT_CODEC.encode((CompoundBinaryTag) nbt);
         assertEquals("{Properties:{facing:\"south\"},Name:\"spruce_stairs\"}", nbtString);
+    }
+
+    /** A property the block does not have, or a value it does not take, is an error of the read, not an exception. */
+    @Test
+    public void invalidPropertyIsAnError() throws IOException {
+        assertInstanceOf(Result.Error.class, decode("{Name:\"minecraft:copper_bulb\",Properties:{lit:\"maybe\"}}"));
+        assertInstanceOf(Result.Error.class, decode("{Name:\"minecraft:copper_bulb\",Properties:{color:\"red\"}}"));
+        assertInstanceOf(Result.Error.class, decode("{Name:\"no_such_block\"}"));
+        assertInstanceOf(Result.Error.class, decode("{Name:\"no_such_block\",Properties:{lit:\"true\"}}"));
+    }
+
+    private static Result<Block> decode(String snbt) throws IOException {
+        return STATE_STRUCT_CODEC.decode(Transcoder.NBT, EngineAdventure.NBT_CODEC.decode(snbt));
     }
 }

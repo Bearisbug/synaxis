@@ -2,7 +2,6 @@ package io.github.bearisbug.synaxis.instance;
 
 import io.github.bearisbug.synaxis.collision.BoundingBox;
 import io.github.bearisbug.synaxis.coordinate.Point;
-import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.network.packet.server.play.InitializeWorldBorderPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.WorldBorderCenterPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.WorldBorderLerpSizePacket;
@@ -113,19 +112,6 @@ public record WorldBorder(double diameter, double centerX, double centerZ, int w
     }
 
     /**
-     * Used to know if an entity is located inside the world border or not.
-     *
-     * @param entity the entity to check
-     * @return true if {@code entity} is inside the world border, false otherwise
-     * @deprecated Use {@link #inBounds(Point, BoundingBox)} instead. This method now checks
-     * the complete bounding box where it previously checked only the entity position.
-     */
-    @Deprecated(forRemoval = true)
-    public boolean inBounds(Entity entity) {
-        return inBounds(entity.getPosition(), entity.getBoundingBox());
-    }
-
-    /**
      * Creates a {@link InitializeWorldBorderPacket} which dictates every property
      * of the world border.
      *
@@ -140,9 +126,9 @@ public record WorldBorder(double diameter, double centerX, double centerZ, int w
     }
 
     /**
-     * Creates a {@link WorldBorderSizePacket} which dictates the origin of the world border.
+     * Creates a {@link WorldBorderCenterPacket} which dictates the origin of the world border.
      *
-     * @return the {@link WorldBorderSizePacket} with the center values of this world border
+     * @return the {@link WorldBorderCenterPacket} with the center values of this world border
      */
     public WorldBorderCenterPacket createCenterPacket() {
         return new WorldBorderCenterPacket(centerX, centerZ);

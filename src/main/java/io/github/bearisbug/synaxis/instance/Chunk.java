@@ -26,12 +26,19 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-// TODO light data & API
-
 /**
- * A chunk is a part of an {@link Instance}, limited by a size of 16x256x16 blocks and subdivided in 16 sections of 16 blocks height.
+ * A column of 16×16 blocks of an {@link Instance}, in {@link #getMaxSection()} - {@link #getMinSection()}
+ * sections of 16 blocks height, as many as the {@code minY} and {@code height} of its dimension make.
  * Should contain all the blocks located at those positions and manage their tick updates.
- * Be aware that implementations do not need to be thread-safe, all chunks are guarded by their own instance ('this').
+ * <p>
+ * Each chunk has one read-write lock. The reads ({@code getBlock}, {@code getBiome}, the content of its
+ * sections, {@link #copy}) hold the {@link #lockReadLock() read-lock}; the changes ({@link #setBlock},
+ * {@code setBiome}, {@link #reset()}, {@link #loadHeightmapsFromNBT}) hold the
+ * {@link #lockWriteLock() write-lock} and throw {@link IllegalStateException} without it. The read-lock
+ * cannot be upgraded to the write-lock. The methods of {@link Instance} of the same names take the lock
+ * themselves, and {@link Instance#setBlock} also tells the viewers and runs the placement rules: plugins
+ * use those. {@link #setReadOnly(boolean)} needs no lock, and {@link #tick(long)} is called without one
+ * and takes the locks it needs.
  * <p>
  * You can create your own implementation of this class by extending it
  * and create the objects in {@link InstanceContainer#setChunkSupplier(ChunkSupplier)}.
@@ -53,7 +60,8 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
 
     // Options
     private final boolean shouldGenerate;
-    private boolean readOnly;
+    // Set and read from any thread without the chunk lock
+    private volatile boolean readOnly;
 
     protected volatile boolean loaded = true;
     final Viewable viewable;
@@ -78,9 +86,9 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
      * <p>
      * This is used when the previous block has to be destroyed/replaced, meaning that it clears the previous data and update method.
      * <p>
-     * WARNING: this method is not thread-safe.
-     * The thread-safe version is {@link Instance#setBlock(int, int, int, Block)} (or any similar instance methods)
-     * Otherwise, remember to have this chunk {@link #lockWriteLock() locked} when this is called.
+     * The caller holds the {@link #lockWriteLock() write-lock}. Unlike {@link Instance#setBlock(int, int, int, Block)}
+     * (or any similar instance methods) this method sends no block change, ignores {@link #isReadOnly()}, calls
+     * no event and runs no placement rule. {@link DynamicChunk} ignores a y outside the world, with a warning.
      *
      * @param x     the block X
      * @param y     the block Y
@@ -117,7 +125,7 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
      * <p>
      * Should be used to update all the blocks in the chunk.
      * <p>
-     * WARNING: this method doesn't necessary have to be thread-safe, proceed with caution.
+     * Called by a tick thread without the chunk lock: an implementation takes the locks it needs.
      *
      * @param time the time of the update in milliseconds
      */
@@ -238,10 +246,13 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
     }
 
     /**
-     * Gets if this chunk is read-only.
+     * Gets if this chunk is read-only. Any thread may call it, without the chunk lock.
      * <p>
-     * Being read-only should prevent block placing/breaking and setting block from an {@link Instance}.
-     * It does not affect {@link ChunkLoader} and {@link Generator}.
+     * A read-only chunk refuses {@link Instance#setBlock}, {@link Instance#placeBlock} and
+     * {@link Instance#breakBlock}, and with them the blocks players place and break. It does not refuse
+     * {@link Instance#setBiome} or a direct {@link #setBlock}, and does not affect {@link ChunkLoader} and
+     * {@link Generator}. A subclass may add conditions of its own here, which {@link #setReadOnly(boolean)}
+     * does not lift.
      *
      * @return true if the chunk is read-only
      */
@@ -250,15 +261,12 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
     }
 
     /**
-     * Changes the read state of the chunk.
-     * <p>
-     * Being read-only should prevent block placing/breaking and setting block from an {@link Instance}.
-     * It does not affect {@link ChunkLoader} and {@link Generator}.
+     * Changes the read state of the chunk, see {@link #isReadOnly()}. Any thread may call it, without the
+     * chunk lock: the flag is no content of the chunk, and the next read on any thread sees it.
      *
      * @param readOnly true to make the chunk read-only, false otherwise
      */
     public void setReadOnly(boolean readOnly) {
-        assertWriteLock();
         this.readOnly = readOnly;
     }
 
@@ -288,16 +296,36 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
         return getClass().getSimpleName() + "[" + chunkX + ":" + chunkZ + "]";
     }
 
+    /**
+     * Not supported, see {@link #getViewers()}.
+     *
+     * @throws UnsupportedOperationException always: a chunk's viewers are the players whose chunk ring
+     *                                       contains it ({@link Player#isChunkInRing}), set by their position
+     *                                       and view distance; there is no manual viewer list
+     */
     @Override
     public boolean addViewer(Player player) {
         return viewable.addViewer(player);
     }
 
+    /**
+     * Not supported, see {@link #getViewers()}.
+     *
+     * @throws UnsupportedOperationException always: a chunk's viewers are the players whose chunk ring
+     *                                       contains it ({@link Player#isChunkInRing}), set by their position
+     *                                       and view distance; there is no manual viewer list
+     */
     @Override
     public boolean removeViewer(Player player) {
         return viewable.removeViewer(player);
     }
 
+    /**
+     * The players whose chunk ring contains this chunk ({@link Player#isChunkInRing}). Each call, and each
+     * {@code size}, {@code isEmpty}, {@code contains} and iteration of the set it returns, scans the players
+     * of the instance again: no snapshot, two of them may differ. Take one first for a consistent result,
+     * {@code List.copyOf(getViewers())}.
+     */
     @Override
     public Set<? extends Player> getViewers() {
         return viewable.getViewers();

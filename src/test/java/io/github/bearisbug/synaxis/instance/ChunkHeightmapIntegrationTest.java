@@ -8,6 +8,10 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import io.github.bearisbug.synaxis.utils.MathUtils;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,6 +27,28 @@ public class ChunkHeightmapIntegrationTest {
 
         int heightmap = chunk.motionBlockingHeightmap().getHeight(0, 0);
         assertEquals(39, heightmap);
+    }
+
+    // The column of getHeight is chunk-local: a world coordinate is refused instead of reading another column
+    @Test
+    public void getHeightRejectsWorldCoordinates(Env env) {
+        var chunk = env.createFlatInstance().loadChunk(1, 0).join();
+        var heightmap = chunk.motionBlockingHeightmap();
+
+        assertThrows(IllegalArgumentException.class, () -> heightmap.getHeight(20, 0));
+        assertThrows(IllegalArgumentException.class, () -> heightmap.getHeight(0, 16));
+        assertThrows(IllegalArgumentException.class, () -> heightmap.getHeight(-1, 0));
+        assertEquals(39, heightmap.getHeight(15, 15));
+    }
+
+    @Test
+    public void emptyColumnIsBelowMinY(Env env) {
+        var instance = env.createEmptyInstance();
+        var chunk = instance.loadChunk(0, 0).join();
+        final int belowWorld = instance.getCachedDimensionType().minY() - 1;
+
+        assertEquals(belowWorld, chunk.motionBlockingHeightmap().getHeight(0, 0));
+        assertEquals(belowWorld, chunk.worldSurfaceHeightmap().getHeight(15, 15));
     }
 
     // A world saved with a different dimension height packs its heightmap into fewer longs than
@@ -162,6 +188,56 @@ public class ChunkHeightmapIntegrationTest {
             assertEquals(2, chunk.getHeightmaps().size());
         } finally {
             chunk.unlockWriteLock();
+        }
+    }
+
+    // A column changed before a computation started, read on another thread while that computation has not reached
+    // it yet: the reader waits for the computation instead of reading the height from before the change
+    @Test
+    @Timeout(30)
+    public void aReaderDuringAComputationWaitsForIt(Env env) throws Exception {
+        var instance = env.createFlatInstance();
+        var chunk = instance.loadChunk(0, 0).join();
+        final Thread test = Thread.currentThread();
+        final CountDownLatch stopped = new CountDownLatch(1);
+        final CountDownLatch resume = new CountDownLatch(1);
+        var heightmap = new Heightmap(chunk) {
+            @Override
+            public Heightmap.Type type() {
+                return Heightmap.Type.MOTION_BLOCKING;
+            }
+
+            // The first computation off the test thread stops at its first block until resume
+            @Override
+            protected boolean checkBlock(Block block) {
+                if (Thread.currentThread() != test && stopped.getCount() != 0) {
+                    stopped.countDown();
+                    try {
+                        resume.await();
+                    } catch (InterruptedException e) {
+                        throw new IllegalStateException(e);
+                    }
+                }
+                return !block.air();
+            }
+        };
+        assertEquals(39, heightmap.getHeight(5, 5));
+        instance.setBlock(5, 50, 5, Block.STONE);
+        heightmap.invalidate();
+
+        final FutureTask<Integer> compute = new FutureTask<>(() -> heightmap.getHeight(0, 0));
+        Thread.ofPlatform().daemon().name("heightmap-compute").start(compute);
+        try {
+            stopped.await();
+            final FutureTask<Integer> read = new FutureTask<>(() -> heightmap.getHeight(5, 5));
+            final Thread reader = Thread.ofPlatform().daemon().name("heightmap-read").start(read);
+            // The reader either returns at once or waits to enter the monitor the computation holds
+            while (reader.isAlive() && reader.getState() != Thread.State.BLOCKED) Thread.onSpinWait();
+            resume.countDown();
+            assertEquals(50, read.get(), "the column changed before the computation");
+            assertEquals(39, compute.get());
+        } finally {
+            resume.countDown();
         }
     }
 }

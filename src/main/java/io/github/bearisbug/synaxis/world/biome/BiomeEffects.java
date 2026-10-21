@@ -36,7 +36,7 @@ public record BiomeEffects(
     }
 
     public static final class Builder {
-        private RGBLike waterColor = new Color(0x3f76e4);
+        private RGBLike waterColor = DEFAULT.waterColor();
         private @Nullable RGBLike foliageColor;
         private @Nullable RGBLike dryFoliageColor;
         private @Nullable RGBLike grassColor;

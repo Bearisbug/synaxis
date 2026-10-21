@@ -9,6 +9,7 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Duration;
@@ -106,6 +107,24 @@ public class GeneratorIntegrationTest {
         instance.loadChunk(0, 0).join();
         for (int y = 0; y < 40; y++) {
             assertEquals(y == 39 ? Block.STONE : Block.GRASS_BLOCK, instance.getBlock(0, y, 0), "y=" + y);
+        }
+    }
+
+    // fillHeight sets y in [minHeight, maxHeight) of every column of the chunk, the part outside the world cut off
+    @ParameterizedTest
+    @CsvSource({"1, 2", "1, 16", "0, 16", "15, 17", "1, 47", "-64, -63", "40, 500", "3, 7", "-20, 5"})
+    public void fillHeightSetsTheRangeOnly(int minHeight, int maxHeight, Env env) {
+        var instance = env.process().instance().createInstanceContainer();
+        instance.setGenerator(unit -> unit.modifier().fillHeight(minHeight, maxHeight, Block.STONE));
+        var chunk = instance.loadChunk(0, 0).join();
+        for (int sectionY = chunk.getMinSection(); sectionY < chunk.getMaxSection(); sectionY++) {
+            final int sectionMinY = sectionY * 16;
+            chunk.getSection(sectionY).blockPalette().getAll((x, y, z, value) -> {
+                final int worldY = sectionMinY + y;
+                final boolean inRange = worldY >= minHeight && worldY < maxHeight;
+                assertEquals(inRange ? Block.STONE.stateId() : Block.AIR.stateId(), value,
+                        () -> "at " + x + ", " + worldY + ", " + z);
+            });
         }
     }
 

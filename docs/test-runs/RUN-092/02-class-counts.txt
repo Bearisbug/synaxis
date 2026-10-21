@@ -1,0 +1,20 @@
+RUN-092: test classes whose count differs between main and prod/r092, from the JUnit XML in the test-reports
+artifacts (read with Python zipfile, not unpacked). main 1e46d5d358 (RUN-090): its judged run 39584201063 (on
+aae1e42e7b, job Check), 792 classes, 5,563 tests. prod/r092 53d2fc400e (main 1e46d5d358 merged in): CI run
+39599011213, job Check, 796 classes, 5,604 tests; the strict and strict grid artifacts of both runs are equal to
+their Check artifact class by class. "-" is a class that does not exist on that side. The last column is the part
+of this round the change belongs to: "caps" for the collection caps (checked on write, loosened and tightened
+against the 26.2 client), "M3 read caps" for the caps ChunkData and LightData read with (segment one of .synx
+reads through them). The small items (Check.isTrue, the ticker only startTicking records, the queued login test)
+change no count: TickSchedulerThreadTest 2 and OnlineLoginSocketTest 22 on both sides. No row comes from the merge
+of main 1e46d5d358: the RUN-090 rows (InstanceChunkLoadEventThreadIntegrationTest 1, ChunkLoaderContractIntegrationTest
+3 -> 4) are on both sides. Every module other than root is equal class by class.
+
+root
+  io.github.bearisbug.synaxis.item.component.ItemComponentCollectionCapsRegistriesTest      - -> 12   caps +12
+  io.github.bearisbug.synaxis.item.component.ItemComponentLimitsRegistriesTest              6 -> 7    caps +1
+  io.github.bearisbug.synaxis.network.ClientboundCollectionCapsRegistriesTest               - -> 15   caps +15
+  io.github.bearisbug.synaxis.network.NetworkBufferCollectionTypesTest                     10 -> 13   caps +3
+  io.github.bearisbug.synaxis.network.packet.server.play.data.ChunkDataReadLimitsTest       - -> 5    M3 read caps +5
+  io.github.bearisbug.synaxis.network.packet.server.play.data.LightDataReadLimitsTest       - -> 5    M3 read caps +5
+root: 533 classes, 3,898 tests -> 537 classes, 3,939 tests; caps 2 classes, 31 tests; M3 read caps 2 classes, 10 tests.

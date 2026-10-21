@@ -19,11 +19,9 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
 public record TradeListPacket(int windowId, List<Trade> trades,
                               int villagerLevel, int experience,
                               boolean regularVillager, boolean canRestock) implements ServerPacket.Play {
-    public static final int MAX_TRADES = Short.MAX_VALUE;
-
     public static final NetworkBuffer.Type<TradeListPacket> SERIALIZER = NetworkBufferTemplate.template(
             VAR_INT, TradeListPacket::windowId,
-            Trade.SERIALIZER.list(MAX_TRADES), TradeListPacket::trades,
+            Trade.SERIALIZER.list(), TradeListPacket::trades,
             VAR_INT, TradeListPacket::villagerLevel,
             VAR_INT, TradeListPacket::experience,
             BOOLEAN, TradeListPacket::regularVillager,

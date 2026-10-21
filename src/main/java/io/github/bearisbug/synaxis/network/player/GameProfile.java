@@ -20,7 +20,7 @@ public record GameProfile(
         UUID uuid, String name,
         List<Property> properties
 ) {
-    public static final int MAX_PROPERTIES = 1024;
+    public static final int MAX_PROPERTIES = 16;
 
     public GameProfile {
         Objects.requireNonNull(uuid, "uuid");

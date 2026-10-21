@@ -16,7 +16,7 @@ import java.util.List;
 public record AttributeList(List<Modifier> modifiers) {
     public static final AttributeList EMPTY = new AttributeList(List.of());
 
-    public static final NetworkBuffer.Type<AttributeList> NETWORK_TYPE = Modifier.NETWORK_TYPE.list(Short.MAX_VALUE)
+    public static final NetworkBuffer.Type<AttributeList> NETWORK_TYPE = Modifier.NETWORK_TYPE.list(Short.MAX_VALUE, Integer.MAX_VALUE)
             .transform(AttributeList::new, AttributeList::modifiers);
     public static final Codec<AttributeList> CODEC = Modifier.CODEC.list(Short.MAX_VALUE)
             .transform(AttributeList::new, AttributeList::modifiers);

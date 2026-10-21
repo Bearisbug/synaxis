@@ -114,6 +114,59 @@ class NetworkBufferCollectionTypesTest {
         assertEquals(3, values.size());
     }
 
+    /**
+     * A capped list, set or map refuses to write more elements than it reads, as vanilla's own
+     * encoders do: the peer would drop the connection over the bytes.
+     */
+    @Test
+    void writingMoreElementsThanTheCapThrows() {
+        assertThrows(IllegalArgumentException.class, () -> NetworkBuffer.makeArray(INT.list(4), List.of(1, 2, 3, 4, 5)));
+        assertThrows(IllegalArgumentException.class, () -> NetworkBuffer.makeArray(INT.set(4), Set.of(1, 2, 3, 4, 5)));
+        assertThrows(IllegalArgumentException.class,
+                () -> NetworkBuffer.makeArray(INT.mapValue(INT, 1), Map.of(1, 1, 2, 2)));
+
+        assertEquals(List.of(1, 2, 3, 4), roundTrip(INT.list(4), List.of(1, 2, 3, 4)));
+        assertEquals(Set.of(1, 2, 3, 4), roundTrip(INT.set(4), Set.of(1, 2, 3, 4)));
+        assertEquals(Map.of(1, 1), roundTrip(INT.mapValue(INT, 1), Map.of(1, 1)));
+    }
+
+    /** A list with a read cap only writes past it, and the bytes read back through an uncapped list. */
+    @Test
+    void aListWithItsOwnWriteCapWritesPastItsReadCap() {
+        final NetworkBuffer.Type<List<Integer>> readCapped = INT.list(4, Integer.MAX_VALUE);
+        final List<Integer> five = List.of(1, 2, 3, 4, 5);
+        final byte[] bytes = NetworkBuffer.makeArray(readCapped, five);
+
+        assertEquals(five, NetworkBuffer.wrap(bytes, 0, bytes.length).read(INT.list()));
+        assertThrows(IllegalArgumentException.class, () -> NetworkBuffer.wrap(bytes, 0, bytes.length).read(readCapped));
+        assertEquals(List.of(1, 2, 3, 4), roundTrip(readCapped, List.of(1, 2, 3, 4)));
+        assertThrows(IllegalArgumentException.class, () -> NetworkBuffer.makeArray(INT.list(Integer.MAX_VALUE, 4), five));
+    }
+
+    /** A bounded array refuses a longer declared length before reading it, and writes any length. */
+    @Test
+    void boundedArraysRefuseALongerLengthOnRead() {
+        final byte[] fiveBytes = NetworkBuffer.makeArray(NetworkBuffer.ByteArray(4), new byte[5]);
+        final byte[] fiveLongs = NetworkBuffer.makeArray(NetworkBuffer.LongArray(4), new long[5]);
+        assertThrows(IllegalArgumentException.class,
+                () -> NetworkBuffer.wrap(fiveBytes, 0, fiveBytes.length).read(NetworkBuffer.ByteArray(4)));
+        assertThrows(IllegalArgumentException.class,
+                () -> NetworkBuffer.wrap(fiveLongs, 0, fiveLongs.length).read(NetworkBuffer.LongArray(4)));
+        assertEquals(5, NetworkBuffer.wrap(fiveBytes, 0, fiveBytes.length).read(NetworkBuffer.BYTE_ARRAY).length);
+        assertEquals(5, NetworkBuffer.wrap(fiveLongs, 0, fiveLongs.length).read(NetworkBuffer.LONG_ARRAY).length);
+        assertArrayEquals(new byte[4], roundTrip(NetworkBuffer.ByteArray(4), new byte[4]));
+        assertArrayEquals(new long[4], roundTrip(NetworkBuffer.LongArray(4), new long[4]));
+
+        // A declared length far past the input fails on the cap, before any read is attempted
+        final NetworkBuffer huge = declaring(IMPOSSIBLE_SIZE, 10);
+        assertThrows(IllegalArgumentException.class, () -> huge.read(NetworkBuffer.ByteArray(4)));
+    }
+
+    private static <T> T roundTrip(NetworkBuffer.Type<T> type, T value) {
+        final byte[] bytes = NetworkBuffer.makeArray(type, value);
+        return NetworkBuffer.wrap(bytes, 0, bytes.length).read(type);
+    }
+
     /** A null list or set is written as an empty one, a var-int length of zero, and reads back empty. */
     @Test
     void aNullListOrSetIsWrittenAsAnEmptyOne() {

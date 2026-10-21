@@ -234,7 +234,7 @@ public final class Metadata {
             stateId -> stateId == 0 ? null : Block.fromStateId(stateId),
             block -> block == null ? 0 : block.stateId()), null);
     private static final Type<Particle> PARTICLE = type(Particle.NETWORK_TYPE, Particle.DUST);
-    private static final Type<List<Particle>> PARTICLE_LIST = type(Particle.NETWORK_TYPE.list(Short.MAX_VALUE), List.of());
+    private static final Type<List<Particle>> PARTICLE_LIST = type(Particle.NETWORK_TYPE.list(), List.of());
     private static final Type<VillagerData> VILLAGER_DATA = type(VillagerData.NETWORK_TYPE, VillagerData.DEFAULT);
     private static final Type<@Nullable Integer> OPT_VAR_INT = type(NetworkBuffer.OPTIONAL_VAR_INT, null);
     private static final Type<EntityPose> POSE = type(NetworkBuffer.POSE, EntityPose.STANDING);

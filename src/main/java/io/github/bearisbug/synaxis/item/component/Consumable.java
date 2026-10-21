@@ -24,7 +24,7 @@ public record Consumable(
             ItemAnimation.NETWORK_TYPE, Consumable::animation,
             SoundEvent.NETWORK_TYPE, Consumable::sound,
             NetworkBuffer.BOOLEAN, Consumable::hasConsumeParticles,
-            ConsumeEffect.NETWORK_TYPE.list(Short.MAX_VALUE), Consumable::effects,
+            ConsumeEffect.NETWORK_TYPE.list(Short.MAX_VALUE, Integer.MAX_VALUE), Consumable::effects,
             Consumable::new);
     public static final Codec<Consumable> CODEC = StructCodec.struct(
             "consume_seconds", Codec.FLOAT.optional(DEFAULT_CONSUME_SECONDS), Consumable::consumeSeconds,

@@ -85,6 +85,7 @@ final class NetworkBufferCollectionTypes {
                          int maxSize) implements NetworkBufferTypeImpl<Map<K, V>> {
         @Override
         public void write(NetworkBuffer buffer, Map<K, V> map) {
+            Check.argCondition(map.size() > maxSize, "Map size ({0}) is out of the allowed range (0..{1})", map.size(), maxSize);
             buffer.write(VAR_INT, map.size());
             for (Map.Entry<K, V> entry : map.entrySet()) {
                 buffer.write(parent, entry.getKey());
@@ -113,13 +114,15 @@ final class NetworkBufferCollectionTypes {
         }
     }
 
-    record ListType<T>(NetworkBuffer.Type<T> parent, int maxSize) implements NetworkBufferTypeImpl<List<T>> {
+    record ListType<T>(NetworkBuffer.Type<T> parent, int maxReadSize,
+                       int maxWriteSize) implements NetworkBufferTypeImpl<List<T>> {
         @Override
         public void write(NetworkBuffer buffer, List<T> values) {
             if (values == null) {
                 buffer.write(VAR_INT, 0);
                 return;
             }
+            checkWriteSize(values.size(), maxWriteSize);
             buffer.write(VAR_INT, values.size());
             for (T value : values) buffer.write(parent, value);
         }
@@ -127,7 +130,7 @@ final class NetworkBufferCollectionTypes {
         @Override
         public List<T> read(NetworkBuffer buffer) {
             final int size = buffer.read(VAR_INT);
-            Check.argCondition(size < 0 || size > maxSize, "Collection size ({0}) is out of the allowed range (0..{1})", size, maxSize);
+            Check.argCondition(size < 0 || size > maxReadSize, "Collection size ({0}) is out of the allowed range (0..{1})", size, maxReadSize);
             return List.of(readElements(buffer, parent, size));
         }
     }
@@ -139,6 +142,7 @@ final class NetworkBufferCollectionTypes {
                 buffer.write(VAR_INT, 0);
                 return;
             }
+            checkWriteSize(values.size(), maxSize);
             buffer.write(VAR_INT, values.size());
             for (T value : values) buffer.write(parent, value);
         }
@@ -149,6 +153,10 @@ final class NetworkBufferCollectionTypes {
             Check.argCondition(size < 0 || size > maxSize, "Collection size ({0}) is out of the allowed range (0..{1})", size, maxSize);
             return Set.of(readElements(buffer, parent, size));
         }
+    }
+
+    private static void checkWriteSize(int size, int maxSize) {
+        Check.argCondition(size > maxSize, "Collection size ({0}) is out of the allowed range (0..{1})", size, maxSize);
     }
 
     /**

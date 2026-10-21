@@ -11,6 +11,7 @@ import io.github.bearisbug.synaxis.instance.palette.Palette;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import io.github.bearisbug.synaxis.instance.block.BlockUtils;
+import io.github.bearisbug.synaxis.utils.validate.Check;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,6 +30,13 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
 
 public record ChunkData(Map<Heightmap.Type, long[]> heightmaps, byte[] data,
                         Map<Integer, Block> blockEntities) {
+    /** The most bytes of section data a 26.2 client reads. */
+    public static final int MAX_DATA_BYTES = 2_097_152;
+    // Map files are read through NETWORK_TYPE too: at most one block entity for every block of the tallest world
+    private static final int MAX_BLOCK_ENTITIES = LightData.MAX_SECTIONS * 4096;
+    // The fewest bytes a block entity takes: xz, y, a one byte type id and an empty tag
+    private static final int MIN_BLOCK_ENTITY_BYTES = 5;
+
     /**
      * Both maps are copied into a fixed iteration order (heightmap type ordinal, block index), which
      * is the order they are encoded in, and the NBT of each block entity is written with its keys
@@ -51,6 +59,7 @@ public record ChunkData(Map<Heightmap.Type, long[]> heightmaps, byte[] data,
     public static final NetworkBuffer.Type<ChunkData> NETWORK_TYPE = new NetworkBuffer.Type<>() {
         private static final NetworkBuffer.Type<Map<Heightmap.Type, long[]>> HEIGHTMAPS = Heightmap.Type.NETWORK_TYPE
                 .mapValue(LONG_ARRAY, Heightmap.Type.values().length);
+        private static final NetworkBuffer.Type<byte[]> DATA = NetworkBuffer.ByteArray(MAX_DATA_BYTES);
 
         @Override
         public void write(NetworkBuffer buffer, ChunkData value) {
@@ -77,13 +86,17 @@ public record ChunkData(Map<Heightmap.Type, long[]> heightmaps, byte[] data,
 
         @Override
         public ChunkData read(NetworkBuffer buffer) {
-            return new ChunkData(buffer.read(HEIGHTMAPS), buffer.read(BYTE_ARRAY), readBlockEntities(buffer));
+            return new ChunkData(buffer.read(HEIGHTMAPS), buffer.read(DATA), readBlockEntities(buffer));
         }
     };
 
     private static Map<Integer, Block> readBlockEntities(NetworkBuffer reader) {
         final int size = reader.read(VAR_INT);
-        final Map<Integer, Block> blockEntities = HashMap.newHashMap(size);
+        Check.argCondition(size < 0 || size > MAX_BLOCK_ENTITIES,
+                "Block entity count ({0}) is out of the allowed range (0..{1})", size, MAX_BLOCK_ENTITIES);
+        // Sized by the entries the bytes left can hold, not by the count they declare
+        final Map<Integer, Block> blockEntities = HashMap.newHashMap(
+                (int) Math.min(size, reader.readableBytes() / MIN_BLOCK_ENTITY_BYTES));
         for (int i = 0; i < size; i++) {
             final byte xz = reader.read(BYTE);
             final short y = reader.read(SHORT);

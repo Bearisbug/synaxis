@@ -346,7 +346,8 @@ public class OnlineLoginSocketTest {
                 queued.answer(queued.readEncryptionRequest());
                 Thread.sleep(300);
             }
-            Thread.sleep(300);
+            // The queued peer's socket is given back to the gate once the server has dropped the connection
+            awaitUntil(() -> rig.gate().connections() == 1, "the server saw the queued peer leave");
             sessions.release();
             firstResult.get(10, TimeUnit.SECONDS);
             Thread.sleep(500);

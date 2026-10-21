@@ -22,7 +22,7 @@ public record WrittenBookContent(FilteredText<String> title, String author, int 
             FilteredText.STRING_NETWORK_TYPE, WrittenBookContent::title,
             STRING, WrittenBookContent::author,
             VAR_INT, WrittenBookContent::generation,
-            FilteredText.COMPONENT_NETWORK_TYPE.list(100), WrittenBookContent::pages,
+            FilteredText.COMPONENT_NETWORK_TYPE.list(100, Integer.MAX_VALUE), WrittenBookContent::pages,
             BOOLEAN, WrittenBookContent::resolved,
             WrittenBookContent::new);
     // The transform reports a value the constructor refuses as a decode error rather than throwing it out of decode

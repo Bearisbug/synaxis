@@ -13,7 +13,7 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.DOUBLE;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
 
 public record EntityAttributesPacket(int entityId, List<Property> properties) implements ServerPacket.Play {
-    public static final int MAX_ENTRIES = 1024;
+    public static final int MAX_ENTRIES = 128;
 
     public static final NetworkBuffer.Type<EntityAttributesPacket> SERIALIZER = NetworkBufferTemplate.template(
             VAR_INT, EntityAttributesPacket::entityId,

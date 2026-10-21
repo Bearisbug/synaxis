@@ -16,10 +16,10 @@ public record CustomModelData(
     private static final int MAX_ENTRIES = 256;
 
     public static final NetworkBuffer.Type<CustomModelData> NETWORK_TYPE = NetworkBufferTemplate.template(
-            NetworkBuffer.FLOAT.list(MAX_ENTRIES), CustomModelData::floats,
-            NetworkBuffer.BOOLEAN.list(MAX_ENTRIES), CustomModelData::flags,
-            NetworkBuffer.STRING.list(MAX_ENTRIES), CustomModelData::strings,
-            Color.NETWORK_TYPE.list(MAX_ENTRIES), CustomModelData::colors,
+            NetworkBuffer.FLOAT.list(MAX_ENTRIES, Integer.MAX_VALUE), CustomModelData::floats,
+            NetworkBuffer.BOOLEAN.list(MAX_ENTRIES, Integer.MAX_VALUE), CustomModelData::flags,
+            NetworkBuffer.STRING.list(MAX_ENTRIES, Integer.MAX_VALUE), CustomModelData::strings,
+            Color.NETWORK_TYPE.list(MAX_ENTRIES, Integer.MAX_VALUE), CustomModelData::colors,
             CustomModelData::new);
     public static final Codec<CustomModelData> CODEC = StructCodec.struct(
             "floats", Codec.FLOAT.list().optional(List.of()), CustomModelData::floats,

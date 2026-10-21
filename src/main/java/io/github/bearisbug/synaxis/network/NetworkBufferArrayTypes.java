@@ -13,7 +13,7 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_LONG;
 
 final class NetworkBufferArrayTypes {
 
-    record ByteArrayType() implements NetworkBufferTypeImpl<byte[]> {
+    record ByteArrayType(int maxLength) implements NetworkBufferTypeImpl<byte[]> {
         @Override
         public void write(NetworkBuffer buffer, byte[] value) {
             buffer.write(VAR_INT, value.length);
@@ -23,11 +23,12 @@ final class NetworkBufferArrayTypes {
         @Override
         public byte[] read(NetworkBuffer buffer) {
             final int length = buffer.read(VAR_INT);
+            checkReadLength(length, maxLength);
             return buffer.read(FixedRawBytes(length));
         }
     }
 
-    record LongArrayType() implements NetworkBufferTypeImpl<long[]> {
+    record LongArrayType(int maxLength) implements NetworkBufferTypeImpl<long[]> {
         @Override
         public void write(NetworkBuffer buffer, long[] value) {
             buffer.write(VAR_INT, value.length);
@@ -37,8 +38,14 @@ final class NetworkBufferArrayTypes {
         @Override
         public long[] read(NetworkBuffer buffer) {
             final int length = buffer.read(VAR_INT);
+            checkReadLength(length, maxLength);
             return buffer.read(FixedRawLongs(length));
         }
+    }
+
+    // A negative length is refused by the fixed length type that reads the elements
+    private static void checkReadLength(int length, int maxLength) {
+        Check.argCondition(length > maxLength, "Array length ({0}) is over the maximum of {1}", length, maxLength);
     }
 
     record VarIntArrayType() implements NetworkBufferTypeImpl<int[]> {

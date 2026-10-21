@@ -25,9 +25,9 @@
  *     <li>a listener of {@link io.github.bearisbug.synaxis.plugin.PluginEvents#forInstance} runs on
  *     the thread that dispatches its event: an entity or player event on the tick thread owning that
  *     entity, several of them for one instance under {@code grid}; {@code InstanceTickEvent} on the
- *     tick scheduler thread; {@code InstanceChunkLoadEvent} on the thread that completed the load,
- *     usually the virtual thread that loaded the chunk, possibly the thread that asked for it, not
- *     necessarily a tick thread; {@code PlayInstanceStateEvent} on the thread that carried the transition out. State the
+ *     tick scheduler thread; {@code InstanceChunkLoadEvent} on the virtual thread that handles the
+ *     chunk, now and then on the thread that asked for it, outside the mapping of the loading table,
+ *     not necessarily a tick thread; {@code PlayInstanceStateEvent} on the thread that carried the transition out. State the
  *     listeners of one instance share needs a concurrent structure or a lock;</li>
  *     <li>{@link io.github.bearisbug.synaxis.plugin.PluginScheduler#scheduleTask} runs on the tick
  *     scheduler thread, one task after another: logic a plugin runs there every tick is the serial

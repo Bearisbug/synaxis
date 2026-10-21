@@ -24,7 +24,7 @@ public record BlocksAttacks(
     public static final NetworkBuffer.Type<BlocksAttacks> NETWORK_TYPE = NetworkBufferTemplate.template(
             NetworkBuffer.FLOAT, BlocksAttacks::blockDelaySeconds,
             NetworkBuffer.FLOAT, BlocksAttacks::disableCooldownScale,
-            DamageReduction.NETWORK_TYPE.list(Short.MAX_VALUE), BlocksAttacks::damageReductions,
+            DamageReduction.NETWORK_TYPE.list(Short.MAX_VALUE, Integer.MAX_VALUE), BlocksAttacks::damageReductions,
             ItemDamageFunction.NETWORK_TYPE, BlocksAttacks::itemDamage,
             RegistryTag.networkType(Registries::damageType).optional(), BlocksAttacks::bypassedBy,
             SoundEvent.NETWORK_TYPE.optional(), BlocksAttacks::blockSound,

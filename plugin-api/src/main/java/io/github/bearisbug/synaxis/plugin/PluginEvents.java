@@ -110,7 +110,8 @@ public interface PluginEvents {
      * A listener runs on the thread that dispatches its event: an entity or player event on the
      * tick thread owning that entity, so one instance has several of them at once under the
      * {@code grid} thread provider; {@code InstanceTickEvent} on the tick scheduler thread;
-     * {@code InstanceChunkLoadEvent} on the virtual thread that loaded the chunk; a
+     * {@code InstanceChunkLoadEvent} on the virtual thread that handles the chunk, now and then on
+     * the thread that asked for it, not necessarily a tick thread; a
      * {@code PlayInstanceStateEvent} on the thread that carried the transition out. State the
      * listeners of one instance share needs a concurrent structure or a lock.
      * <p>

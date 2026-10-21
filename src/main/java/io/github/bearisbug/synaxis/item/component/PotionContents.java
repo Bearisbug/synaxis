@@ -23,7 +23,7 @@ public record PotionContents(
     public static final NetworkBuffer.Type<PotionContents> NETWORK_TYPE = NetworkBufferTemplate.template(
             PotionType.NETWORK_TYPE.optional(), PotionContents::potion,
             Color.NETWORK_TYPE.optional(), PotionContents::customColor,
-            CustomPotionEffect.NETWORK_TYPE.list(Short.MAX_VALUE), PotionContents::customEffects,
+            CustomPotionEffect.NETWORK_TYPE.list(Short.MAX_VALUE, Integer.MAX_VALUE), PotionContents::customEffects,
             NetworkBuffer.STRING.optional(), PotionContents::customName,
             PotionContents::new);
     private static final Codec<PotionContents> POTION_CODEC = PotionType.CODEC.transform(PotionContents::new, PotionContents::potion);

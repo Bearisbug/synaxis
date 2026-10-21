@@ -12,7 +12,7 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.VECTOR3D;
 public record MoveMinecartPacket(int entityId, List<LerpStep> lerpSteps) implements ServerPacket.Play {
     public static final NetworkBuffer.Type<MoveMinecartPacket> SERIALIZER = NetworkBufferTemplate.template(
             NetworkBuffer.VAR_INT, MoveMinecartPacket::entityId,
-            LerpStep.SERIALIZER.list(Short.MAX_VALUE), MoveMinecartPacket::lerpSteps,
+            LerpStep.SERIALIZER.list(), MoveMinecartPacket::lerpSteps,
             MoveMinecartPacket::new);
 
     public MoveMinecartPacket {

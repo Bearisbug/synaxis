@@ -23,7 +23,7 @@ public sealed interface ConsumeEffect {
         private static final int MAX_EFFECTS = 256;
 
         public static final NetworkBuffer.Type<ApplyEffects> NETWORK_TYPE = NetworkBufferTemplate.template(
-                CustomPotionEffect.NETWORK_TYPE.list(MAX_EFFECTS), ApplyEffects::effects,
+                CustomPotionEffect.NETWORK_TYPE.list(MAX_EFFECTS, Integer.MAX_VALUE), ApplyEffects::effects,
                 NetworkBuffer.FLOAT, ApplyEffects::probability,
                 ApplyEffects::new);
         public static final StructCodec<ApplyEffects> CODEC = StructCodec.struct(

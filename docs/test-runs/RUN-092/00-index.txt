@@ -1,0 +1,130 @@
+RUN-092 · the collection caps follow the 26.2 client and are checked on write; ChunkData and LightData bound what
+they read; three small items. Branch prod/r092, draft PR #47. Times are local (UTC+8).
+
+The branch: main e769d01f91 (RUN-091), then
+  c140edd7d7  network: collection caps checked on write, 27 loosened and 3 tightened against 26.2; the read caps
+              of ChunkData and LightData
+  b5ab65ef33  the small items: only startTicking records the process ticker; Check.isTrue removed; the queued
+              login test waits for the disconnect
+  23d7329528  docs: docs/DESIGN-PROD.md v0.9.124, docs/DESIGN-PLAY.md v0.23, docs/TEST.md TC-PROD-1130 to
+              TC-PROD-1137
+  f1f9fa7894  merge of main 1e46d5d358 (the lighting session's RUN-090), --no-ff; the only conflict is the change
+              log of docs/TEST.md, both rows kept
+  53d2fc400e  docs: line references after that merge and the thread InstanceChunkLoadEvent is dispatched on
+              (docs/DESIGN-M3.md section 28.2, handover row "M3 v0.59", items 1, 2, 4, 5, 6); the three Java files
+              it touches change Javadoc only
+  then the registration (this directory, the counts of the old cases, docs/TEST.md section 6), documents only.
+The reds before the change, the counterproofs and the readings of each case are in its docs/TEST.md step.
+
+Gradle on this machine, one build at a time under the heavy lock (--max-workers=2 --no-daemon), 2026-10-21;
+11 builds before the merge of main 1e46d5d358:
+  fix, 6 builds:
+  1  18:46:45-18:47:17  :test filtered to 11 classes: compileTestJava failed (Error Prone
+                        UnnecessarilyFullyQualified in ChunkDataReadLimitsTest), no test ran
+  2  18:48:22-18:48:59  the red before the change: 61 tests completed, 23 failed, 6 skipped (an OutOfMemoryError
+                        ended the JUnit engine of that JVM)
+  3  18:58:59-18:59:56  caps fixed, the two small items reproduced: 99 tests, 1 failed (OnlineLoginSocketTest.java:349);
+                        the 6 classes of the caps 57 tests green; with the claim deleted, 5 classes 20 tests green
+  4  19:02:20-19:13:53  default mode, with the database variables: compileJava and compileTestJava of all modules;
+                        root 536 classes, 3,937 tests, 0 failures, 15 skipped; :synx:test 25 classes, 192 tests,
+                        1 skipped; :server-app:test 163 classes, 920 tests, 0 skipped
+  5  19:15:20-19:16:01  -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true, the related classes
+                        (TC-PROD-1137): 139 classes, 1,181 tests, 0 failures, 0 skipped
+  6  19:17:24-19:18:08  build 5 with -Dsynaxis.thread-provider=grid: equal to build 5 class by class, 0 failures
+  review, 1 build on 23d7329528, 19:46:38-19:47:16: four reverts at once (ChunkData sized by the declared count,
+     no read cap on attribute_modifiers, bundle_contents back to list(Short.MAX_VALUE), GameProfile.MAX_PROPERTIES
+     back to 1024), 3 classes, 32 tests, 5 failed as expected (ChunkDataReadLimitsTest.java:78,
+     ItemComponentCollectionCapsRegistriesTest.java:48 and :47, ClientboundCollectionCapsRegistriesTest.java:161
+     and :173); restored with git checkout HEAD --
+  gates, 4 builds on 23d7329528, no wait for the lock:
+  1  19:55:15-19:55:31  compileJava, compileTestJava of all modules; testNamingCheck, forbiddenImportsCheck of root
+                        and 13 modules; :architecture-tests:test 7 classes, 20 tests, 0 failures;
+                        :jcstress-tests:compileJcstressJava; :plugin-api:checkBinaryCompatibility and
+                        :protocol:checkBinaryCompatibility against the jars of release v0.3.0
+                        (gradle/abi-baseline.tag): both ran and passed; :protocol:publishToMavenLocal into a
+                        temporary maven directory
+  2  19:56:11-19:57:38  client-fabric: compileJava compileTestJava compileGametestJava against that :protocol,
+                        BUILD SUCCESSFUL
+  3  19:58:13-20:01:24  the M3 regression, default mode (test tasks with --rerun): :synx:test 25 classes, 192 tests
+  4  20:02:17-20:05:44  (1 skipped, SynxRelightBacklogTest, measure only); :baker:test 8 classes, 93 tests;
+                        server-app app.shard.* 24 classes, 167 tests (the 6 database classes ran against the local
+                        PostgreSQL and Valkey, 0 skipped); root network.* 89 classes, 985 tests; root instance.*
+                        80 result files, 608 tests; testing EnvDispatcherThreadsIntegrationTest 2 tests; 227 result
+                        files, 2,047 tests, 0 failures, 0 errors. Build 4 is strict grid; both builds the same
+                        totals per module; env dispatcher threads 1 counter and 4 grid.
+1 build after the merge of main 1e46d5d358:
+     20:20:35-20:21:16  :compileJava :plugin-api:compileJava :plugin-api:javadoc, BUILD SUCCESSFUL in 40s
+The full suites, Concurrency, Client mod, Client gametest and the far-view gametest run on the draft PR.
+
+On the draft PR #47, GitHub Actions.
+
+Early round, head 23d7329528 (before the merge of main 1e46d5d358, no far-view label), 2026-10-21 20:08-21:13:
+  CI 39597211207: Test with 4 tick threads (strict) and Test with 4 tick threads (strict, grid) success on attempt 1;
+    Check failure on attempt 1, in a time budget this round does not touch: game-rts MatchIntegrationTest >
+    theFullSizeMapGenerates at MatchIntegrationTest.java:147, "generating the map took load_ms=4626, the §15 budget
+    is 3 s"; 96 tests completed, 1 failed; BUILD FAILED in 1h 3m 19s. The runner was slow: in the same job
+    FarViewBakeTest took 3,085.82 s, 439.848 s in the judged Check. The class passed in the two strict jobs of the
+    same head and in all three modes of the judged round; the job was not rerun. After the failure the build
+    started no further test task: its test-reports hold root, architecture-tests, baker, game-rts and protocol only.
+    test-reports-multithreaded and test-reports-multithreaded-grid: equal class by class, 795 classes, 5,602 tests,
+    0 failures, 0 errors, 22 skipped (root 536 / 3,937, as in local build 4); against the judged round they differ
+    only by the two RUN-090 rows the merge brought in (InstanceChunkLoadEventThreadIntegrationTest 1,
+    ChunkLoaderContractIntegrationTest 3 -> 4).
+  Concurrency 39597211138 (jcstress), Client mod 39597211187 (client-test-reports 25 classes, 297 tests,
+    0 failures), Client gametest 39597211369 (Run the client gametests, Run the rush script, Two shards, 2 round trips
+    (P11 smoke); P10 skipped): success on attempt 1.
+
+Judged on 53d2fc400e, attempt 1 of every workflow, 2026-10-21 20:21-21:43:
+  CI 39599011213: Check (./gradlew check jacocoTestReport with the database variables, BUILD SUCCESSFUL in 17m 55s;
+    ABI gate success; diff coverage against origin/main 62 lines, 0 missing, 100%, gate 80%), Test with 4 tick
+    threads (strict) (BUILD SUCCESSFUL in 16m 32s), Test with 4 tick threads (strict, grid) (BUILD SUCCESSFUL in
+    13m 29s): success
+  Concurrency 39599010977: jcstress success
+  Client mod 39599010948: Build the Fabric mod success;
+    mod jar: minecraft=26.2, 108 entries, ships META-INF/jars/protocol-dev.jar
+  Client gametest 39599011008: Run the client gametests, Run the rush script, Two shards, 2 round trips (P11 smoke):
+    success; Two shards, 100 round trips (P10): skipped, it runs on a manual trigger only (below)
+  Far view gametest 39599009962 (label farview-gametest), 20:21-21:43: Far view cases (light) 8 min, (hidden)
+    44 min, (synthetic) 69 min, (baked) 82 min, all success on attempt 1. The far-view cases belong to the lighting
+    session (docs/DESIGN-M3.md); it checked the ChunkData and LightData change of c140edd7d7.
+Counts from the JUnit XML in the artifacts (gh api .../actions/artifacts/<id>/zip, read with Python zipfile without
+unpacking: the archives hold file names that differ only in case):
+  test-reports, test-reports-multithreaded, test-reports-multithreaded-grid of 39599011213: equal class by class,
+  796 classes, 5,604 tests, 0 failures, 0 errors, 22 skipped (the same 7 classes as on main: 6 root, 1 synx)
+    module               classes   tests
+    root                     537   3,939
+    server-app               163     920
+    synx                      25     192
+    protocol                  10     174
+    game-rts                  14      96
+    baker                      8      93
+    plugin-api                 8      47
+    game-rush                  6      46
+    play-kit                   3      35
+    loadtest                   6      26
+    architecture-tests         7      20
+    testing                    9      16
+  The protocol results in all three come from the build cache (:protocol:test FROM-CACHE, result files of
+  2026-10-18), as in the main run below; this round does not change :protocol.
+  Against main 1e46d5d358 (the RUN-090 judged run 39584201063 on aae1e42e7b, job Check, 792 classes, 5,563 tests):
+  4 classes and 41 tests more, all in root and all from this round: the caps 2 classes, 31 tests; the M3 read caps
+  2 classes, 10 tests; the small items none; nothing from the merge. Class by class: 02-class-counts.txt.
+  client-test-reports of 39599010948: 25 classes, 297 tests, 0 failures, equal class by class to those of RUN-090
+  (Client mod 39584201052).
+  In all three modes: translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out;
+  config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out; env dispatcher threads 1, 4, 4
+  (thread provider counter, counter, grid).
+Rush job (6 min 6 s): judge unit tests Ran 36 tests, OK; waited 0.4 s for the ledger; Q0a to Q9 PASS in both
+  launches; rush judge: PASS (2 reports, 0 problems); prepare_ms 99 and 49; Q5 257 ms and 208 ms after the countdown
+  ran out; Q7 off by 7 ms and 3 ms; Q9 128 ms and 205 ms after the button; the ledger has the lobby at prepare_ms
+  158 and two rush_round_ended with players=1, cause=time_limit; the four checks of the forward and rollback
+  rehearsal ok.
+Client gametests: client regression: all checks passed; report 8 PASS; playable.txt core 10 PASS, rts 5 PASS.
+P11 smoke (TC-PROD-742): p10.py unit tests Ran 48 tests; 11 checks ok; P10: all checks passed.
+P10 by hand, 2026-10-21 21:46-22:09, on 53d2fc400e:
+  Client gametest 39610969278 (workflow_dispatch, p10=true): Two shards, 100 round trips (P10) success on attempt 1;
+    p10.py unit tests Ran 48 tests; 11 checks ok (200 of 200 transfers answered, 200 arrived on their target shard,
+    the client joined 201 worlds alternating between the two shards); P10: all checks passed. RUN-092 changes packets
+    every login sends (the properties of the login success packet, at most 16 now; SelectKnownPacksPacket, no longer
+    capped at 64) and the ADD_PLAYER entries of the player list.
+RUN-092 is registered in docs/TEST.md section 6: passed 8/8.

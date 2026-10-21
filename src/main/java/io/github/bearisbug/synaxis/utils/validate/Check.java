@@ -101,18 +101,4 @@ public final class Check {
             throw new IllegalStateException(MessageFormat.format(reason, arguments));
         }
     }
-
-    @Contract("false, _ -> fail")
-    public static void isTrue(boolean condition, String reason) {
-        if (!condition) {
-            throw new IllegalStateException(reason);
-        }
-    }
-
-    @Contract("false, _, _ -> fail")
-    public static void isTrue(boolean condition, String reason, Object... arguments) {
-        if (!condition) {
-            throw new IllegalStateException(MessageFormat.format(reason, arguments));
-        }
-    }
 }

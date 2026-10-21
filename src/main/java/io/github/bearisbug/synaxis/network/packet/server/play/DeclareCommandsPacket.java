@@ -21,14 +21,12 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT_ARRAY;
 
 public record DeclareCommandsPacket(List<Node> nodes,
                                     int rootIndex) implements ServerPacket.Play {
-    public static final int MAX_NODES = Short.MAX_VALUE;
-
     public DeclareCommandsPacket {
         nodes = List.copyOf(nodes);
     }
 
     public static final NetworkBuffer.Type<DeclareCommandsPacket> SERIALIZER = NetworkBufferTemplate.template(
-            Node.SERIALIZER.list(MAX_NODES), DeclareCommandsPacket::nodes,
+            Node.SERIALIZER.list(), DeclareCommandsPacket::nodes,
             VAR_INT, DeclareCommandsPacket::rootIndex,
             DeclareCommandsPacket::new
     );

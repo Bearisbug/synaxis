@@ -10,7 +10,7 @@ import java.util.Map;
 
 /**
  * The analytics ledger of a test: the host writes the real one to
- * {@code logs/events-YYYYMMDD.jsonl}, here the events stay in memory.
+ * {@code logs/events-<shard_id>-YYYYMMDD.jsonl}, here the events stay in memory.
  */
 final class RecordedEvents implements PluginAnalytics {
 

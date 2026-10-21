@@ -59,9 +59,7 @@ public record GamePayload(GameMessage message) implements CustomPacketPayload {
      * @param buf the buffer to append to
      */
     public void encode(RegistryFriendlyByteBuf buf) {
-        final MsgBuf out = MsgBuf.writing();
-        message.write(out);
-        buf.writeBytes(out.toByteArray());
+        buf.writeBytes(message.encode());
     }
 
     @Override

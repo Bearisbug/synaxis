@@ -148,9 +148,7 @@ public final class ClientHandshake {
         }
         state = State.VERIFIED;
         serverHello = hello;
-        final MsgBuf answer = MsgBuf.writing();
-        new C2SHello(MOD_VERSION, ProtocolSchema.SCHEMA_VERSION).write(answer);
-        return answer.toByteArray();
+        return new C2SHello(MOD_VERSION, ProtocolSchema.SCHEMA_VERSION).encode();
     }
 
     /**

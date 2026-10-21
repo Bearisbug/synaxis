@@ -21,6 +21,8 @@ import java.util.Map;
 final class SynxPacketDecoder {
     private static final NetworkBuffer.Type<Map<Heightmap.Type, long[]>> HEIGHTMAPS = Heightmap.Type.NETWORK_TYPE
             .mapValue(NetworkBuffer.LONG_ARRAY, Heightmap.Type.values().length);
+    // The cap ChunkData.NETWORK_TYPE reads the section data to, held before the array is allocated
+    private static final NetworkBuffer.Type<byte[]> DATA = NetworkBuffer.ByteArray(ChunkData.MAX_DATA_BYTES);
 
     /**
      * The palettes of every section, bottom up. They are shared through the section cache: read them,
@@ -49,7 +51,7 @@ final class SynxPacketDecoder {
     static Sections sections(MemorySegment framed, Registries registries, int sectionCount) {
         final NetworkBuffer buffer = body(framed, registries);
         buffer.read(HEIGHTMAPS);
-        return sections(buffer.read(NetworkBuffer.BYTE_ARRAY), registries, sectionCount);
+        return sections(buffer.read(DATA), registries, sectionCount);
     }
 
     /**

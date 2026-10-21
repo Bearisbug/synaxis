@@ -1,0 +1,60 @@
+段① 读上限：handle 模式读段数组与方块实体计数
+
+行为：句柄区块的段缓存经 SynxPacketDecoder#sections 读段①，不经 ChunkData.NETWORK_TYPE。修复前它用
+NetworkBuffer.BYTE_ARRAY（上限 Integer.MAX_VALUE）读区块段字节数组：声明 2,097,153 字节且字节都在时，先按声明长度
+分配并拷出整个数组，再在逐段解析时因多出的字节判 failed。修复后改用 NetworkBuffer.ByteArray(ChunkData.MAX_DATA_BYTES)，
+与 ChunkData.NETWORK_TYPE 同一上限（2,097,152），超限在分配数组之前抛 IllegalArgumentException，区块同样判 failed。
+高度图本来就按 Heightmap.Type 个数读（与 ChunkData 一致），没有改。
+
+方块实体表只有物化与读光照时才读（ChunkData.NETWORK_TYPE，RUN-092 起计数上限 1,048,576、预分配按剩余字节 / 5），
+区块加载时不读这张表，所以计数超限不会让区块判 failed：改块与读光照被拒、报错带区块与文件，区块留在句柄模式，
+failed 计数 0，与同类的未知类型 id 一条相同。
+
+测试（提交 c8fa856f68）：
+- SynxParserBoundaryTest#sectionDataOverTheCapLoadsAsFailed：带会 tick 的 handler 的区块（加载时读段数组），
+  段① 声明 2,097,153 字节区块段数据且字节都在（压缩帧），加载判 failed，ERROR 含 "segment ①: Array length ("，failed 计数 1。
+- SynxSegmentOneBlockEntityTest#aBlockEntityCountOverTheCapRefusesTheChangeNamingTheChunk：两个区块的段① 方块实体计数
+  分别为 1,048,577 与 Integer.MAX_VALUE、后面没有条目；两块都以句柄模式加载，setBlock 与 currentLight 抛
+  IllegalArgumentException（"chunk 10,5: the overlay segment seg.3.synx, segment ①: Block entity count (" 开头），
+  不是 OutOfMemoryError；方块不变；随后第三个区块照常改块；failed 计数 0。
+
+<G> = ./gradlew --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts（JDK 25，重活锁下单跑）
+<SX> = io.github.bearisbug.synaxis.synx
+
+修复前（c8fa856f68：只有测试，SynxPacketDecoder#sections 仍用 BYTE_ARRAY）
+<G> :synx:test --tests '<SX>.SynxParserBoundaryTest' --tests '<SX>.SynxSegmentOneBlockEntityTest'
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxParserBoundaryTest" tests="13" skipped="0" failures="1" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest" tests="2" skipped="0" failures="0" errors="0"
+  SynxParserBoundaryTest > sectionDataOverTheCapLoadsAsFailed() FAILED
+  org.opentest4j.AssertionFailedError: Chunk 7,5 of synx-test-7a96d760fdce-p776 does not read, it loads as read only air:
+    the overlay segment seg.3.synx, segment ①: more sections than the 16 of the world ==> expected: <true> but was: <false>
+    at SynxParserBoundaryTest.java:243
+  15 tests completed, 1 failed
+  （区块已判 failed，但是在按声明长度读出 2,097,153 字节、解析完 16 段之后，红在报错信息那条断言上）
+  aBlockEntityCountOverTheCapRefusesTheChangeNamingTheChunk() 绿：计数上限由 RUN-092 的 ChunkData 改动提供，
+  本组没有改它；RUN-092 之前的代码（HashMap.newHashMap(size)）上没有实跑。
+
+修复后（8bab2c61dc：SynxPacketDecoder#sections 用 NetworkBuffer.ByteArray(ChunkData.MAX_DATA_BYTES)）
+<G> :synx:test --tests '<SX>.SynxParserBoundaryTest' --tests '<SX>.SynxSegmentOneBlockEntityTest' --tests '<SX>.SynxChunkLoaderIntegrationTest' --tests '<SX>.SynxTruncatedMappingTest'
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxParserBoundaryTest" tests="13" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest" tests="2" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxChunkLoaderIntegrationTest" tests="13" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxTruncatedMappingTest" tests="2" skipped="0" failures="0" errors="0"
+  ERROR 的段① 部分：segment ①: Array length (2,097,153) is over the maximum of 2,097,152（数字按 JVM 区域设置分组）
+  sectionDataOverTheCapLoadsAsFailed() 7.176 s，aBlockEntityCountOverTheCapRefusesTheChangeNamingTheChunk() 0.015 s
+  BUILD SUCCESSFUL
+
+反证（8bab2c61dc 上临时改两处、同一次运行，跑完 git checkout 还原）：
+  SynxPacketDecoder 的 DATA 由 NetworkBuffer.ByteArray(ChunkData.MAX_DATA_BYTES) 改成 NetworkBuffer.ByteArray(Integer.MAX_VALUE)
+  （等价于修复前的 BYTE_ARRAY，字段仍被用，Error Prone 不拒）；
+  ChunkData#readBlockEntities 的 Check.argCondition(size < 0 || size > MAX_BLOCK_ENTITIES, ...) 改成
+  Check.argCondition(Boolean.getBoolean("proof.never") && (size < 0 || size > MAX_BLOCK_ENTITIES), ...)
+<G> :synx:test --tests '<SX>.SynxParserBoundaryTest' --tests '<SX>.SynxSegmentOneBlockEntityTest'
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxParserBoundaryTest" tests="13" skipped="0" failures="1" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxSegmentOneBlockEntityTest" tests="2" skipped="0" failures="1" errors="0"
+  15 tests completed, 2 failed
+  SynxParserBoundaryTest.java:243：... the overlay segment seg.3.synx, segment ①: more sections than the 16 of the world
+    ==> expected: <true> but was: <false>（与修复前同一行同一信息）
+  SynxSegmentOneBlockEntityTest.java:93：chunk 10,5: the overlay segment seg.3.synx, segment ①: unknown block entity type id: 112
+    ==> expected: <true> but was: <false>（没有计数上限时，1,048,577 之后把光照字节当条目读，读到未知类型 id 才拒；
+    没有 OutOfMemoryError：预分配按剩余字节 / 5）

@@ -1410,7 +1410,8 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
 
         @Override
         public void rate(float rate) {
-            Check.argCondition(!Float.isFinite(rate) || rate < 0, "rate must be finite and >= 0 but was " + rate);
+            Check.argCondition(!Float.isFinite(rate) || rate < 0 || rate > Clock.MAX_RATE,
+                    "rate must be from 0 to " + Clock.MAX_RATE + " but was " + rate);
             this.rate = rate;
             refreshTime();
         }

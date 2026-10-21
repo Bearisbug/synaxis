@@ -3,6 +3,12 @@ package io.github.bearisbug.synaxis.synx;
 import ch.qos.logback.classic.Level;
 import com.sun.management.ThreadMXBean;
 import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.instance.heightmap.Heightmap;
+import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.data.ChunkData;
+import io.github.bearisbug.synaxis.network.packet.server.play.data.LightData;
+import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.testing.Env;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.junit.jupiter.api.Test;
@@ -207,6 +213,64 @@ public class SynxParserBoundaryTest {
         } finally {
             env.close();
         }
+    }
+
+    /**
+     * The section data of segment ① is held to the {@value ChunkData#MAX_DATA_BYTES} bytes the vanilla client
+     * reads before it is read in, as {@code ChunkData} holds it: a chunk with a handler that ticks, which reads
+     * its sections as it loads, whose segment ① states one byte more and holds them, deflated, loads as
+     * failed, the ERROR naming the stated length.
+     */
+    @Test
+    public void sectionDataOverTheCapLoadsAsFailed() {
+        final Env env = Env.create(UnaryOperator.identity());
+        try {
+            final SynxWorlds.Ticker ticker = new SynxWorlds.Ticker(SynxTestMap.TICKER_HANDLER);
+            env.process().block().registerHandler(SynxTestMap.TICKER_HANDLER, () -> ticker);
+            final SynxChunkRecord ticking = SynxTestMap.get().record(SynxTestMap.TICKER_CHUNK_X, SynxTestMap.TICKER_CHUNK_Z);
+            final SynxChunkRecord oversized = new SynxChunkRecord(ticking.chunkX(), ticking.chunkZ(),
+                    withSectionData(ticking, new byte[ChunkData.MAX_DATA_BYTES + 1], env.process()),
+                    ticking.navigation(), ticking.blockEntities(), ticking.staticEntities(), ticking.columns());
+            final MemoryOverlay overlay = new MemoryOverlay();
+            overlay.put(MemoryOverlay.hit(oversized, 0, 3, 256));
+            final SynxChunkLoader loader = SynxWorlds.loader(SynxWorlds.WRITABLE, overlay);
+            final Instance instance = SynxWorlds.instance(env.process(), loader);
+            try (LogCapture logs = LogCapture.of(SynxChunkLoader.class)) {
+                assertEquals(SynxChunk.Mode.FAILED,
+                        ((SynxChunk) instance.loadChunk(ticking.chunkX(), ticking.chunkZ()).join()).mode());
+                final List<String> errors = logs.messagesAt(Level.ERROR);
+                assertEquals(1, errors.size(), errors.toString());
+                assertTrue(errors.getFirst().contains(" it loads as read only air: the overlay segment seg.3.synx, segment ①: "
+                        + "Array length ("), errors.getFirst());
+            }
+            assertEquals(1, loader.stats().failed());
+        } finally {
+            env.close();
+        }
+    }
+
+    /**
+     * Segment ① of {@code record} with {@code data} for its section data and no block entity table, deflated:
+     * uncompressed, a body this long is over the frame cap.
+     */
+    private static byte[] withSectionData(SynxChunkRecord record, byte[] data, Registries registries) {
+        final ChunkDataPacket packet = SynxChunkPacket.decode(record.packet(), registries);
+        final byte[] body = NetworkBuffer.makeArray(buffer -> {
+            buffer.write(NetworkBuffer.VAR_INT, SynxFormat.CHUNK_DATA_PACKET_ID);
+            buffer.write(NetworkBuffer.INT, packet.chunkX());
+            buffer.write(NetworkBuffer.INT, packet.chunkZ());
+            buffer.write(Heightmap.Type.NETWORK_TYPE.mapValue(NetworkBuffer.LONG_ARRAY, Heightmap.Type.values().length),
+                    packet.chunkData().heightmaps());
+            buffer.write(NetworkBuffer.BYTE_ARRAY, data);
+            buffer.write(NetworkBuffer.VAR_INT, 0);
+            buffer.write(LightData.NETWORK_TYPE, packet.lightData());
+        }, registries);
+        final byte[] compressed = SynxChunkPacket.deflate(body, 9);
+        final ByteArrayOutputStream frame = new ByteArrayOutputStream();
+        SynxChunkPacket.writeVarInt(frame, SynxChunkPacket.varIntSize(body.length) + compressed.length);
+        SynxChunkPacket.writeVarInt(frame, body.length);
+        frame.writeBytes(compressed);
+        return frame.toByteArray();
     }
 
     /** A chunk of the region whose region file the release does not have loads as failed, the ERROR naming the file. */

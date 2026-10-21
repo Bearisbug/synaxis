@@ -1,0 +1,22 @@
+单中心基准的基线（提交 d8f57beb11 的代码，即 main 7724fcd23e 加基准本身）
+
+基准 RelightAreaBenchmark#relightArea（jmh-benchmarks/src/jmh/.../instance/light/RelightAreaBenchmark.java）：
+  场景：SynxRelightBacklogTest 用的 :synx 测试图，烘焙器的 SyntheticTerrain，种子 7，y 0 起 256 高（16 个 section）；
+        每个区块角上 y 204 一格 cave_air、东边一格 void_air（同 SynxTestMap）；中心 (16,16) 与测试在它之前改过的区块
+        （z 更小的行，同一行 x 不大于中心）在 y 220 的区块正中放萤石，即测试第一轮改到中心时的样子。
+  视图：每个 section 一个调色板，按 SynxChunkPacket#canonical 的写法（setAll 再 optimize(SIZE)），getBlock 与
+        SynxRelight.Task#getBlock 同写法。量的是 LightEngine.relightArea(view, 16, 16)，即中心改一个方块后的重算。
+
+构建：<G> :jmh-benchmarks:jmhJar
+运行：java -jar jmh-benchmarks-dev-jmh.jar RelightAreaBenchmark -bm avgt -prof gc -t 1
+      （注解：预热 5 × 1 s，测量 10 × 1 s，2 个 fork，单线程）
+
+[PERF-jmh-A0] start 11:18:14 load { 5.44 6.33 6.25 }   end 11:18:45 load { 5.54 6.27 6.23 }
+RelightAreaBenchmark.relightArea                     avgt   20     7628.176 ± 706.461   us/op
+RelightAreaBenchmark.relightArea:gc.alloc.rate       avgt   20      364.593 ±  23.701  MB/sec
+RelightAreaBenchmark.relightArea:gc.alloc.rate.norm  avgt   20  2894565.417 ±   4.941    B/op
+RelightAreaBenchmark.relightArea:gc.count            avgt   20       33.000            counts
+RelightAreaBenchmark.relightArea:gc.time             avgt   20       30.000                ms
+
+同一 jar 在 03-jmh-ab.txt 的 A1、A2 两次：7,487.952 ± 74.751、7,801.785 ± 383.620 µs/op，2,894,564～2,894,566 B/op。
+基线：每次 relightArea 约 7.5～7.8 ms，每次分配约 2.89 MB。

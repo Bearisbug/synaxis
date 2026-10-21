@@ -1,0 +1,21 @@
+RUN-091 · M3 runtime relight: section reads, a reused workspace, and the measurement without the coverage agent.
+Branch m3/r091-relight, draft PR #45.
+
+Merge: the code (head f3352bfb57), the evidence and the docs were written on top of main 7724fcd23e. After RUN-089
+reached main (c6854b6cbf) the branch merged it with --no-ff (c6a62b942a); the only conflict was the change log at
+the top of docs/TEST.md, both sides kept. The commit ids in PERF/ are those of the branch, still in its history.
+
+PERF/: 00 index of the profiling, 01 baseline, 02 hot spots, 03 coverage agent, 04 to 06 and 08 TC-WORLD-139 before
+and after, 07 negative ids and the palette parity test, 09 installs and GC, 10 to 13 allocation and the workspace,
+12 TC-WORLD-139 with GC, 14 the workspace counterproofs.
+
+GitHub Actions on c6a62b942a:
+- CI 39566788197: Check, Test with 4 tick threads (strict), Test with 4 tick threads (strict, grid) success.
+- Concurrency 39566788125 (jcstress) success; Client mod 39566788071 success.
+- Client gametest 39566819215 (workflow_dispatch: the change is outside the workflow's pull_request paths) success.
+- Far view gametest 39566816362 (label taken off and put back after the merge): light, synthetic, hidden, baked
+  success on attempt 1. Before the merge, on cee6ba8492, run 39553234847 was green on attempt 1 as well.
+- Counts from the three test-report artifacts, the same class by class: 791 classes, 5,561 tests, 0 failures,
+  0 errors, 22 skipped. root 532 / 3,896 (21 skipped), synx 25 / 192 (1 skipped), server-app 163 / 920,
+  baker 8 / 93, protocol 10 / 174, game-rts 14 / 96, game-rush 6 / 46, plugin-api 8 / 47, play-kit 3 / 35,
+  loadtest 6 / 26, testing 9 / 16, architecture-tests 7 / 20.

@@ -1,0 +1,41 @@
+单中心基准改前改后交替（同一基准、同一场景、同一参数）
+
+A：d8f57beb11 的代码（改前；基准视图逐格 getBlock）构建的 jar
+B：f9148760f9 的代码（改后；基准视图同 SynxRelight.Task 按 section 从调色板拷出）构建的 jar
+命令：java -jar <jar> RelightAreaBenchmark -bm avgt -prof gc -t 1（预热 5 × 1 s，测量 10 × 1 s，2 个 fork）
+四次背靠背，11:46:23～11:48:28：
+
+A1  start 11:46:23 load { 6.96 6.19 6.16 }  end 11:46:54 load { 6.13 6.06 6.12 }
+RelightAreaBenchmark.relightArea                     avgt   20     7487.952 ± 74.751   us/op
+RelightAreaBenchmark.relightArea:gc.alloc.rate.norm  avgt   20  2894564.275 ±  0.577    B/op
+RelightAreaBenchmark.relightArea:gc.count            avgt   20       34.000           counts
+RelightAreaBenchmark.relightArea:gc.time             avgt   20       29.000               ms
+
+B1  start 11:46:54 load { 6.13 6.06 6.12 }  end 11:47:26 load { 5.67 5.95 6.07 }
+RelightAreaBenchmark.relightArea                     avgt   20     3283.595 ± 27.230   us/op
+RelightAreaBenchmark.relightArea:gc.alloc.rate.norm  avgt   20  2894534.982 ±  0.204    B/op
+RelightAreaBenchmark.relightArea:gc.count            avgt   20       76.000           counts
+RelightAreaBenchmark.relightArea:gc.time             avgt   20       33.000               ms
+
+A2  start 11:47:26 load { 5.67 5.95 6.07 }  end 11:47:57 load { 5.19 5.80 6.01 }
+RelightAreaBenchmark.relightArea                     avgt   20     7801.785 ± 383.620   us/op
+RelightAreaBenchmark.relightArea:gc.alloc.rate.norm  avgt   20  2894566.446 ±   2.705    B/op
+RelightAreaBenchmark.relightArea:gc.count            avgt   20       33.000            counts
+RelightAreaBenchmark.relightArea:gc.time             avgt   20       30.000                ms
+
+B2  start 11:47:57 load { 5.19 5.80 6.01 }  end 11:48:28 load { 4.99 5.69 5.97 }
+RelightAreaBenchmark.relightArea                     avgt   20     3286.415 ± 23.374   us/op
+RelightAreaBenchmark.relightArea:gc.alloc.rate.norm  avgt   20  2894534.965 ±  0.169    B/op
+RelightAreaBenchmark.relightArea:gc.count            avgt   20       76.000           counts
+RelightAreaBenchmark.relightArea:gc.time             avgt   20       32.000               ms
+
+小结：每次 relightArea 7,488～7,802 µs → 3,284～3,286 µs（约 2.3 倍）；每次分配 2,894,564～2,894,566 B → 2,894,535 B，
+不变（大头仍是每个有方块的 section 一个 char[4096] 与光照数组，读法改了，数组没变）。
+gc.count 多是因为同样 10 s 里多做了 2.3 倍的重算。
+
+3 线程与挂 JaCoCo 代理（-f 1 -wi 5 -i 5，11:48:44～11:49:50 背靠背）：
+  不挂代理 3 线程   A 7593.283 ± 396.588   B 3248.104 ± 112.900   us/op
+  挂代理 3 线程     A 62341.869 ± 9868.528 B 7983.160 ± 651.760   us/op
+  挂代理 1 线程     A 11461.926 ± 303.462  B 4817.871 ± 169.216   us/op
+  （11:22 那一组用改前的 jar：挂代理 1 线程 11357.306 ± 160.056，3 线程 65979.286 ± 6571.294，
+   不挂代理 3 线程 8267.676 ± 633.509；11:30 那一组挂代理 3 线程 A 63944.579 ± 7720.543、B 7362.949 ± 587.833）

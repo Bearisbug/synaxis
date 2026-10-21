@@ -171,6 +171,13 @@ public final class SynxRelight {
             final Palette section = blocks[(y - minY) >> 4];
             return Objects.requireNonNullElse(Block.fromStateId(section.get(x & 15, y & 15, z & 15)), Block.AIR);
         }
+
+        /** {@link #getBlock} for a whole section, straight out of its palette ({@link SynxRelight#stateIds}). */
+        @Override
+        public boolean section(int chunkX, int sectionMinY, int chunkZ, char[] states) {
+            final Palette[] blocks = Objects.requireNonNull(at(chunkX, chunkZ)).blocks();
+            return blocks != null && stateIds(blocks[(sectionMinY - minY) >> 4], states);
+        }
     }
 
     private final SynxChunkLoader loader;
@@ -182,6 +189,8 @@ public final class SynxRelight {
     private final int minY;
     private final int minSection;
     private final int sectionCount;
+    // The arrays of the light computation, one set per recomputation thread, kept from one center to the next
+    private final ThreadLocal<LightEngine.Workspace> workspaces = ThreadLocal.withInitial(LightEngine.Workspace::new);
 
     private final Object lock = new Object();
     private final Map<Long, Center> centers = new HashMap<>();
@@ -437,7 +446,7 @@ public final class SynxRelight {
      */
     private List<Target> compute(Task task) {
         final int centerX = task.center.x, centerZ = task.center.z;
-        final LightResult result = LightEngine.relightArea(task, centerX, centerZ);
+        final LightResult result = LightEngine.relightArea(task, centerX, centerZ, workspaces.get());
         final List<Target> targets = new ArrayList<>(9);
         for (int x = centerX - 1; x <= centerX + 1; x++) {
             for (int z = centerZ - 1; z <= centerZ + 1; z++) {
@@ -476,6 +485,20 @@ public final class SynxRelight {
     /** Null and empty arrays are all 0, as a missing section sends. */
     static boolean sameLight(byte @Nullable [] a, byte @Nullable [] b) {
         return Arrays.equals(a == null || a.length == 0 ? DARK : a, b == null || b.length == 0 ? DARK : b);
+    }
+
+    /**
+     * Writes the state ids of a section's block palette into {@code ids} as {@link WorldView#section} hands them to
+     * the light engine: 0 is air, as is a negative id or one past the registry. False, writing nothing, for a palette
+     * that is all air.
+     */
+    static boolean stateIds(Palette section, char[] ids) {
+        if (section.isEmpty()) return false;
+        Arrays.fill(ids, (char) 0);
+        final int states = Block.statesCount();
+        section.getAllPresent((x, y, z, stateId) ->
+                ids[x | z << 4 | y << 8] = (char) (stateId >= 0 && stateId < states ? stateId : 0));
+        return true;
     }
 
     private void failed(Task task, RuntimeException e) {
@@ -767,6 +790,16 @@ public final class SynxRelight {
     /** The target entries waiting for the install now, which the recomputation threads hold under {@value #INSTALL_BACKLOG} plus what one task adds each. */
     int installBacklog() {
         return backlog.get();
+    }
+
+    /**
+     * The centers that left since the last {@link #stats()}, at most {@value #WINDOW_SAMPLES}: the samples its
+     * {@code queueMsP99} covers. Does not touch the window.
+     */
+    int queueSampleCount() {
+        synchronized (queueSamples) {
+            return queueSamples.size();
+        }
     }
 
     /** {@code relight_pending} of a chunk position. */

@@ -37,13 +37,14 @@ public class SynxRelightBacklogTest {
     private static final Duration SPAN = Duration.ofSeconds(60);
 
     /** What one phase came to. */
-    private record Reading(String phase, long changes, double seconds, double centersPerSecond, double queueMsP99,
-                           double relightMsP99, int pendingPeak, double installMsMax, int backlogPeak) {
+    private record Reading(String phase, long changes, int centersLeft, double seconds, double centersPerSecond,
+                           double queueMsP99, double relightMsP99, int pendingPeak, double installMsMax, int backlogPeak) {
         @Override
         public String toString() {
-            return String.format(Locale.ROOT, "phase=%s changes=%d seconds=%.1f centers_per_s=%.1f relight_queue_p99_ms=%.1f"
-                            + " relight_ms_p99=%.1f relight_pending_peak=%d install_ms_max=%.2f install_backlog_peak=%d", phase,
-                    changes, seconds, centersPerSecond, queueMsP99, relightMsP99, pendingPeak, installMsMax, backlogPeak);
+            return String.format(Locale.ROOT, "phase=%s changes=%d centers_left=%d seconds=%.1f centers_per_s=%.1f"
+                            + " relight_queue_p99_ms=%.1f relight_ms_p99=%.1f relight_pending_peak=%d install_ms_max=%.2f"
+                            + " install_backlog_peak=%d", phase, changes, centersLeft, seconds, centersPerSecond, queueMsP99,
+                    relightMsP99, pendingPeak, installMsMax, backlogPeak);
         }
     }
 
@@ -104,9 +105,11 @@ public class SynxRelightBacklogTest {
             }
         }
         final double seconds = (System.nanoTime() - start) / 1e9;
+        // The centers that left, the samples relight_queue_p99_ms covers; read right before stats() clears them
+        final int centersLeft = relight.queueSampleCount();
         final RelightStats stats = relight.stats();
-        return new Reading(phase, changes, seconds, (stats.relights() - relightsBefore) / seconds, stats.queueMsP99(),
-                stats.relightMsP99(), pendingPeak, stats.installMsMax(), backlogPeak);
+        return new Reading(phase, changes, centersLeft, seconds, (stats.relights() - relightsBefore) / seconds,
+                stats.queueMsP99(), stats.relightMsP99(), pendingPeak, stats.installMsMax(), backlogPeak);
     }
 
     /** Change {@code n}: glowstone on and off in the sky over one chunk after the other of the region. */

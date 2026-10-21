@@ -1,0 +1,36 @@
+每次 relightArea 的分配：去向（改前，0b9ee255ac）与改后剩下的（87e25fe4c4）
+只量 relightArea。一次重算端到端的分配（快照的 Palette.clone()、每个目标的 currentLight() 与解码）未测。
+
+做法：java -jar <jar> RelightAreaBenchmark -bm avgt -prof gc -f 1 -wi 5 -i 10 -t 1 \
+        -jvmArgsAppend "-XX:StartFlightRecording=filename=<临时>.jfr,settings=profile"
+      jfr print --json --events jdk.ObjectAllocationSample --stack-depth 6，只取基准线程，按对象类型与分配处
+      （栈里最近的两层 synaxis 帧）把 weight 加总。jdk.ObjectAllocationSample 是节流采样，份额是估计。
+
+改前（0b9ee255ac，12:36:56～12:37:12，load1 4.41～4.15）
+  RelightAreaBenchmark.relightArea                     avgt   10     3137.028 ± 9.864   us/op
+  RelightAreaBenchmark.relightArea:gc.alloc.rate.norm  avgt   10  2894534.264 ± 0.148    B/op
+  4,520 个样本，按估计的字节份额：
+    46.00%  char[]  RelightAreaBenchmark$SnapshotView.section:116 <- LightEngine$Area.read:143
+                    每个有方块的 section 一个 char[4096]（8 KB），状态 id
+    18.85%  byte[]  LightEngine$Area.setLevel:161 <- skySources:219
+     4.54%  byte[]  LightEngine$Area.setLevel:161 <- propagate:291
+     0.54%  byte[]  LightEngine$Area.setLevel:161 <- blockSources:260
+                    （以上三行合计 23.9%）每个有光的 section 一个 byte[4096] 光照等级，天光一遍、方块光一遍
+    13.35%  int[]   LightEngine$Area.enqueue:167 <- propagate:292
+     5.52%  int[]   LightEngine$Area.enqueue:167 <- queueSkySpread:246
+                    （合计 18.9%）队列从每级 1,024 个起倍增的 Arrays.copyOf
+     9.15%  byte[]  LightEngine$Area.pack:350 <- collect:343
+                    交给 LightResult 的 2,048 字节 nibble 数组：装回要持有，必须是新数组
+     1.24%  int[]   LightEngine$Area.<init>:113、:114（skyHeight 与 16 条初始队列）
+  中间态（状态、等级、队列、每块区域的表）合计约 90%，交出去的结果数组约 9%：复用划算。
+  以上份额是采样估计，以 11-jmh-ab.txt 的 B/op 差为准：复用之后每次少 2,894,535 − 158,260 = 2,736,275 B，中间态精确占
+  94.5%；结果数组连同 LightResult 与两个 section 引用数组至多 158,260 B（5.5%），上面采样给结果数组的 9.15% 高估约 1.7 倍。
+
+改后（87e25fe4c4，基准的 Worker 状态每线程一个 LightEngine.Workspace，12:52:10～12:52:26，load1 6.24～5.60）
+  RelightAreaBenchmark.relightArea  avgt   10  2904.290 ± 34.031  us/op（gc.alloc.rate.norm 见 11-jmh-ab.txt：158,260 B/op）
+  493 个样本：
+    94.87%  byte[]  LightEngine$Area.pack:441 <- collect:434（交出去的结果数组）
+     4.99%  char[]  LightEngine$Workspace.nextStates:124（预热时工作区第一次填池）
+     0.07%  int[]   LightEngine$Area.enqueue:258
+     0.07%  byte[]  LightEngine$Workspace.takeLevels:136
+  剩下的几乎全是结果数组，外加 LightResult 与两个 section 引用数组。

@@ -1,0 +1,62 @@
+TC-WORLD-139 第 2 步，改前改后背靠背
+
+命令（用例原样）：<G> :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest' -Dsynaxis.relight.measure=true --rerun
+改前：工作树临时 git revert --no-commit f9148760f9 02d11eae3f（与 d8f57beb11 逐字节相同，跑完 git reset --hard HEAD）
+改后：f9148760f9
+前置「机器空闲」（load1 < 6）不满足：同机另有会话，开跑时 load1 4.55～6.07，测时最高 6.87。读数只作同一时段的前后对比。
+四次背靠背：A（改前，挂 JaCoCo）→ B（改后，挂 JaCoCo）→ B'（改后，不挂）→ A'（改前，不挂）。
+不挂 JaCoCo 是诊断：多给一个 init 脚本，对每个 Test 任务把 JacocoTaskExtension#isEnabled 设成 false
+（synx/build/jacoco/test.exec 的修改时间停在 B 那次的 11:40:25，确认没挂上）；仓库里没有这个脚本。
+
+A（改前，挂 JaCoCo）11:35:54～11:38:04
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="0" failures="0" errors="0" time="127.301"
+  relight backlog: phase=107/s changes=6414 seconds=60.0 centers_per_s=34.8 relight_queue_p99_ms=29998.5 relight_ms_p99=113.8 relight_pending_peak=1024 install_ms_max=1.00 install_backlog_peak=27; phase=unlimited changes=11478016 seconds=60.0 centers_per_s=28.5 relight_queue_p99_ms=21350.8 relight_ms_p99=131.8 relight_pending_peak=1024 install_ms_max=0.06 install_backlog_peak=27
+  负载：11:35:54 { 4.55 5.38 6.15 } 11:36:04 { 4.55 5.35 6.13 } 11:36:14 { 4.91 5.41 6.14 } 11:36:24 { 5.01 5.41 6.13 }
+        11:36:34 { 5.23 5.45 6.13 } 11:36:44 { 5.42 5.48 6.14 } 11:36:54 { 5.74 5.54 6.15 } 11:37:04 { 5.63 5.53 6.14 }
+        11:37:14 { 5.93 5.59 6.15 } 11:37:24 { 5.79 5.57 6.14 } 11:37:34 { 6.15 5.65 6.16 } 11:37:44 { 6.13 5.66 6.16 }
+        11:37:54 { 6.28 5.71 6.17 } 11:38:04 { 6.31 5.73 6.17 }
+
+B（改后，挂 JaCoCo）11:38:12～11:40:25
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="0" failures="0" errors="0" time="127.153"
+  relight backlog: phase=107/s changes=6415 seconds=60.0 centers_per_s=106.9 relight_queue_p99_ms=60.3 relight_ms_p99=15.4 relight_pending_peak=12 install_ms_max=1.23 install_backlog_peak=63; phase=unlimited changes=30780416 seconds=60.0 centers_per_s=342.6 relight_queue_p99_ms=47437.0 relight_ms_p99=23.6 relight_pending_peak=1024 install_ms_max=8.21 install_backlog_peak=282
+  负载：11:38:12 { 5.88 5.66 6.14 } 11:38:22 { 5.75 5.64 6.13 } 11:38:32 { 6.03 5.70 6.14 } 11:38:42 { 5.72 5.64 6.12 }
+        11:38:52 { 6.67 5.84 6.18 } 11:39:02 { 6.26 5.78 6.15 } 11:39:12 { 6.16 5.77 6.15 } 11:39:22 { 5.92 5.73 6.13 }
+        11:39:32 { 6.17 5.78 6.14 } 11:39:42 { 6.39 5.84 6.16 } 11:39:52 { 6.25 5.83 6.15 } 11:40:02 { 6.45 5.88 6.17 }
+        11:40:12 { 6.46 5.90 6.17 } 11:40:22 { 6.87 6.01 6.20 }
+
+B'（改后，不挂 JaCoCo，诊断）11:41:06～11:43:18
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="0" failures="0" errors="0" time="124.035"
+  relight backlog: phase=107/s changes=6415 seconds=60.0 centers_per_s=106.9 relight_queue_p99_ms=100.5 relight_ms_p99=14.4 relight_pending_peak=21 install_ms_max=2.01 install_backlog_peak=119; phase=unlimited changes=33107968 seconds=60.0 centers_per_s=666.3 relight_queue_p99_ms=55432.4 relight_ms_p99=43.9 relight_pending_peak=1024 install_ms_max=2.89 install_backlog_peak=279
+  负载：11:41:06 { 5.82 5.88 6.15 } 至 11:43:16 { 6.44 5.99 6.14 }，load1 5.39～6.44
+
+A'（改前，不挂 JaCoCo，诊断）11:43:26～11:45:33
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightBacklogTest" tests="1" skipped="0" failures="0" errors="0" time="122.891"
+  relight backlog: phase=107/s changes=6415 seconds=60.0 centers_per_s=106.9 relight_queue_p99_ms=60.3 relight_ms_p99=11.1 relight_pending_peak=11 install_ms_max=1.38 install_backlog_peak=54; phase=unlimited changes=40958976 seconds=60.0 centers_per_s=296.2 relight_queue_p99_ms=96.4 relight_ms_p99=58.1 relight_pending_peak=1024 install_ms_max=1.14 install_backlog_peak=105
+  负载：11:43:26 { 6.07 5.92 6.12 } 至 11:45:27 { 6.40 5.89 6.06 }，load1 4.92～6.40
+
+四次都没有超过 200 ms 的重算 WARN 行；等装回的条目峰值都 ≤ 282（断言成立，B 那次正好 282）。
+
+对比                         A 改前    B 改后    |  A' 改前    B' 改后（不挂 JaCoCo）
+107/s 档
+  中心/s                       34.8     106.9    |   106.9      106.9
+  relight_queue_p99_ms     29,998.5      60.3    |    60.3      100.5
+  relight_ms_p99              113.8      15.4    |    11.1       14.4
+  relight_pending 峰值        1,024        12    |      11         21
+  每 tick 装回最长 ms          1.00      1.23    |    1.38       2.01
+  等装回的条目峰值               27        63    |      54        119
+不限速档
+  中心/s                       28.5     342.6    |   296.2      666.3
+  relight_queue_p99_ms     21,350.8  47,437.0    |    96.4   55,432.4
+  relight_ms_p99              131.8      23.6    |    58.1       43.9
+  relight_pending 峰值        1,024     1,024    |   1,024      1,024
+  每 tick 装回最长 ms          0.06      8.21    |    1.14       2.89
+  等装回的条目峰值               27       282    |     105        279
+
+读法：
+  用例原样（挂 JaCoCo）时，改前三条线程合计 34.8 个中心/s，跟不上 107/s 的输入；改后跟上（106.9），
+  107/s 档的 relight_queue_p99_ms 低于 §21 的 250 ms。
+  不挂 JaCoCo 时改前就跟得上 107/s：之前三次 27～38 个中心/s 的读数里，大部分时间花在 JaCoCo 探针上（02-hotspots.txt 三）。
+  不限速档改后的 relight_queue_p99_ms 变大：重算快于装回之后，等装回的条目顶到上限（279～282），每个目标要等
+  好几个 tick 才装回；这一档每个 tick 把 1,024 个区块各改一次，中心从开跑到 9 个目标装回完之间又被改，就再跑
+  一次（SynxRelight#finish 的 again），直到某一轮里没有新的改动才离开并记一个排队样本，所以样本是「连续被改了
+  多久」。107/s 档没有这个现象。

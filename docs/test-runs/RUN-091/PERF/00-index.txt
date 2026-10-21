@@ -1,0 +1,56 @@
+RUN-091 · PERF：运行时光照重算的单中心耗时（分支 m3/r091-relight，基于 main 7724fcd23e）
+
+机器：12 核，同机另有会话，测时 load1 4.5～7.0（各文件逐次记了开跑与结束时的负载）。
+重活锁：Gradle 经组内的锁脚本跑（一次一个，--max-workers=2，--no-daemon，阿里云镜像 init 脚本）；
+JMH 的 jar 用同样的 mkdir 锁、owner 行与退出时放锁的写法单独跑，JDK 25.0.4.1（openjdk@25），JMH 1.37。
+
+提交
+  d8f57beb11 jmh: RelightAreaBenchmark（基准，改动之前的视图：逐格 getBlock）
+  02d11eae3f light: LightEngine 经 WorldView#section 按 section 读方块，默认实现逐格问 getBlock，与原来的读法相同
+  f9148760f9 synx: 重算快照的 section 从调色板一次拷出状态 id，全空气的 section 返回 null；基准的视图跟着改
+  ac35b18068 synx: 测量模式不挂 JaCoCo 代理
+  f22b674195 synx: 调色板到状态 id 的拷出提成 SynxRelight#stateIds
+  0ffadd8d2a test: SynxRelightStateIdsTest（负 id 那条在修复前红）
+  af05689e64 synx: stateIds 把负 id 读作空气；WorldView#section 的说明改为全空气时可以是 null 或全 0
+  d4a32565a9 synx: 测量读数每档加离开的中心数
+  202c6407c8 light: LightEngine.Workspace 复用每次计算的状态、等级与队列数组，WorldView#section 写进引擎给的数组；
+             SynxRelight 每个重算线程一个工作区，基准同
+  87e25fe4c4 test: LightEngineWorkspaceTest（一个工作区连续算 33 次，与各自新建的逐字节相同）
+  f3352bfb57 test: LightEngineWorkspaceTest 加同一尺寸连着算的一条（72 次，含全空气视图与不写数组的视图）
+
+文件
+  01-jmh-baseline.txt    单中心基准的基线（耗时与每次分配）
+  02-hotspots.txt        CPU 采样：基准里的热点、TC-WORLD-139 测试 JVM 里重算线程的热点、JaCoCo 探针的对照
+  03-jmh-ab.txt          改前（A）改后（B）交替 A B A B，另有 3 线程与挂 JaCoCo 代理的对照
+  04-tc-world-139.txt    TC-WORLD-139 第 2 步改前改后背靠背各一次（用例原样，测试 JVM 挂 JaCoCo），
+                         另各一次不挂 JaCoCo 的诊断读数；每 10 s 的负载
+  05-light-parity.txt    光照结果不变：对拍、版本指纹、instance.light 全包、LightingChunk、synx 重算相关、
+                         baker GeneratorBakeTest、synx 内部面门禁；一次反证
+  06-tc-world-139-without-coverage-agent.txt
+                         测量模式不挂 JaCoCo 之后的一次 TC-WORLD-139
+  07-negative-state-id.txt  负的状态 id：SynxRelightStateIdsTest 修前红、修后绿
+  08-centers-left.txt    读数行加离开的中心数（queue P99 的样本数）之后的两次 TC-WORLD-139
+  09-install-time.txt    不限速档装回耗时的 JFR：最长那次是 GC 暂停
+  10-allocation.txt      每次 relightArea 2.89 MB 分到了哪里（JFR 分配采样），改后剩下的
+  11-jmh-ab.txt          工作区复用前后的单中心基准 A B A B（耗时与 B/op）
+  12-tc-world-139-gc.txt 工作区复用前后的 TC-WORLD-139，各一次开 JFR：GC 暂停与装回耗时
+  13-workspace-parity.txt 工作区复用后光照结果不变，复用测试与反证
+  14-workspace-clearing.txt 工作区的清空分支：同一尺寸连着算的用例与两条反证（synx 抓不到）
+
+结论
+  1. 单中心（5×5 快照上的 relightArea，单线程，不挂代理）：7,488～7,802 µs → 3,284～3,286 µs；
+     每次分配 2,894,564～2,894,566 B → 2,894,535 B（不变）。
+  2. 改前的热点是 LightEngine$Area.read 逐格经 WorldView#getBlock 取状态 id：基准里占 64.0% 的样本，
+     TC-WORLD-139 的测试 JVM 里占重算线程 93.8% 的样本（LightEngine.java:147 那一行）。
+  3. TC-WORLD-139 读到的 27～38 个中心/s 主要来自 Gradle 测试任务挂的 JaCoCo 代理：同一基准 3 线程并发时，
+     不挂代理每次 7,593 µs，挂代理 62,342～65,979 µs；不挂代理跑 TC-WORLD-139，改前 107/s 档就是 106.9 个中心/s。
+     改后挂代理 3 线程每次 7,363～7,983 µs，TC-WORLD-139（挂代理）107/s 档 34.8 → 106.9 个中心/s，
+     relight_queue_p99_ms 29,998.5 → 60.3，relight_ms_p99 113.8 → 15.4。
+  4. LightEngineVersionTest 的指纹不变，LightEngine.VERSION 仍是 1，不升版本。
+  5. 不挂 JaCoCo 的测量模式（ac35b18068 起）：107/s 档 106.9 个中心/s，relight_ms_p99 7.5～7.6 ms，
+     离开的中心 6,409～6,410 个；不限速档只离开 121～264 个中心，它的 relight_queue_p99_ms 不能当排队延迟读。
+  6. 不限速档 install_ms_max 的几十毫秒是 GC 暂停落在装回里（09-install-time.txt），装回本身每 tick 最长 0.576 ms。
+  7. 每次 relightArea 的分配 2,894,535 B → 158,260 B（工作区复用状态、等级与队列数组，剩下的是交出去的结果数组；
+     一次重算端到端的分配，即快照的 Palette.clone()、每个目标的 currentLight() 与解码，未测）；
+     不限速档 GC 暂停占墙钟 19.6% → 3.9%，最长暂停 60.09 → 23.05 ms；relight_ms_p99 36.3～38.2 → 7.0～12.3
+     （不开 JFR 38.2 → 7.0，开 JFR 36.3 → 12.3）。

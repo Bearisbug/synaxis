@@ -1,0 +1,28 @@
+负的状态 id：重算快照按 section 交出的状态 id 与逐格 getBlock 不同
+
+行为：SynxRelight.Task#getBlock 对负的 id 得 Block.fromStateId(负数) == null，按空气；按 section 拷出的
+SynxRelight#stateIds（之前在 Task#section 里）只挡了「过了注册表」的 id，负 id 经 (char) 变成 65533 之类，
+引擎拿它查 OPACITY 会越界，整次重算按失败处理、3×3 留旧光照。调色板只有经 Palette#load、setAll 这类
+不检查数值的写法才会存进负数。
+
+测试：SynxRelightStateIdsTest（提交 0ffadd8d2a），对每种存储形态比较 SynxRelight#stateIds 与
+WorldView#section 默认实现（逐格问与 Task#getBlock 同写法的 getBlock）：单值石头、单值空气、间接含空气（4 位）、
+直接（15 位）、只有 cave_air 与 void_air、过了注册表的 id、负 id。null 与全 0 数组按同一个算。
+
+修复前（f22b674195 的 stateIds + 0ffadd8d2a 的测试）
+<G> :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxRelightStateIdsTest' --rerun
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightStateIdsTest" tests="7" skipped="0" failures="1" errors="0"
+  SynxRelightStateIdsTest > aNegativeIdIsAir() FAILED
+  org.opentest4j.AssertionFailedError: array contents differ at index [2], expected: <0> but was: <65533>
+    at SynxRelightStateIdsTest.assertSameAsBlockByBlock(SynxRelightStateIdsTest.java:105)
+    at SynxRelightStateIdsTest.aNegativeIdIsAir(SynxRelightStateIdsTest.java:69)
+  7 tests completed, 1 failed
+
+修复后（af05689e64：stateId >= 0 && stateId < states，基准的视图同改；WorldView#section 的说明改为全空气时
+可以是 null，与全 0 数组相同）
+<G> :synx:test --tests '<S>.SynxRelightStateIdsTest' --tests '<S>.SynxRelight*IntegrationTest' --rerun :jmh-benchmarks:compileJmhJava :compileJava
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightStateIdsTest" tests="7" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightIntegrationTest" tests="10" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightViewersIntegrationTest" tests="6" skipped="0" failures="0" errors="0"
+  <testsuite name="io.github.bearisbug.synaxis.synx.SynxRelightDeliveredIntegrationTest" tests="1" skipped="0" failures="0" errors="0"
+  BUILD SUCCESSFUL

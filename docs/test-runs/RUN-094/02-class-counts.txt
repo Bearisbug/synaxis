@@ -1,0 +1,30 @@
+RUN-094: test classes whose count differs between main and prod/r094, from the JUnit XML in the test-reports
+artifacts (read with Python zipfile, not unpacked). main efd6347059 (RUN-093): its judged run 39633567861 (on
+523fb38c0d, job Check; efd6347059 differs from 523fb38c0d in documents only), 796 classes, 5,608 tests. prod/r094
+70c5ee50d4 (main efd6347059 merged in): CI run 39653618937, job Check, 797 classes, 5,615 tests; the strict and
+strict grid artifacts of both runs are equal to their Check artifact class by class. "-" is a class that does not
+exist on that side. The last column is the group of this round the change belongs to: "API" for the plugin API
+Javadoc, the rejection key the ledger keeps whole and the encode and find of :protocol, "MISC" for the translator
+and the collectors of the test connection. No row comes from the merge of main efd6347059: the RUN-093 rows
+(InstanceTimeIntegrationTest 7, ShardWorldAssemblyTest 11, SynxParserBoundaryTest 13, SynxSegmentOneBlockEntityTest
+2) are on both sides. Every module not listed is equal class by class.
+
+server-app
+  io.github.bearisbug.synaxis.app.HandshakeIntegrationTest                          26 -> 27   API +1
+protocol
+  io.github.bearisbug.synaxis.game.protocol.ArchetypeBoxTest                         - -> 1    API +1
+  io.github.bearisbug.synaxis.game.protocol.GameMessagesTest                        13 -> 15   API +2
+  io.github.bearisbug.synaxis.game.protocol.play.PlayMessagesTest                   19 -> 20   API +1
+testing
+  io.github.bearisbug.synaxis.testing.test.TrackIncomingIntegrationTest              1 -> 3    MISC +2
+server-app: 163 classes, 921 tests -> 163 classes, 922 tests; protocol: 10 classes, 174 tests -> 11 classes,
+178 tests; testing: 9 classes, 16 tests -> 9 classes, 18 tests, 1 of them skipped in all three artifacts
+(aTrackedPacketIsRenderedWithTheEngineTranslator, "Assumption failed: needs
+-Dsynaxis.automatic-component-translation=true"). API 1 class, 5 tests; MISC 2 tests.
+
+The test methods the rows add (testcase names in the XML of 39653618937 that the XML of 39633567861 does not have):
+  HandshakeIntegrationTest        aRejectionKeyOfThePluginsOwnNamespaceIsLedgeredWhole
+  ArchetypeBoxTest                findHasTheBoxOfAKnownArchetypeAndNothingForAnUnknownOne
+  GameMessagesTest                encodeGivesTheBytesWriteAppends, everyOrderResultCodeAndUnitStateDecodesFromItsOwnWireValue
+  PlayMessagesTest                encodeGivesTheBytesWriteAppends
+  TrackIncomingIntegrationTest    aCollectorStopsTrackingAtItsFirstCollect, aTrackedPacketIsRenderedWithTheEngineTranslator

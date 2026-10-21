@@ -1,0 +1,183 @@
+RUN-094 · the plugin API Javadoc says what the host does, the ledger keeps a rejection key of the plugin's own
+namespace whole, :protocol gets Message#encode and ArchetypeBox.find (group API); the test connection renders with
+the engine translator, the load test takes the tick event name from EventsJFR, counts and references in the docs
+(group MISC). Branch prod/r094, draft PR #49. Times are local (UTC+8).
+
+The branch: main c542248aec (RUN-092), then
+  group API
+  23d028123c  server-app: AdmissionGate ledgers a rejection key of the plugin's own namespace whole
+  f04e702e0a  protocol: Message is not sealed and has encode(); ArchetypeBox.find; named target bytes of
+              C2SAction; HandshakeGate, the scene layer (Outbox, SceneService) and the load test Bot use encode()
+  703ccea0de  plugin-api: Javadoc only; the play limits of :plugin-api, ComponentBytes.MAX_BYTES and
+              RushRound.PANEL_ROWS refer to the :protocol constants, the values do not change
+  970aef70ef  docs: docs/DESIGN-PROD.md v0.9.125, docs/DESIGN-M2.md v0.71, docs/DESIGN-PLAY.md v0.24,
+              docs/TEST.md TC-PROD-1140 to TC-PROD-1143
+  group MISC
+  c9dcb092bb  testing: the test connection renders with the engine translator; collectors say when they stop
+              tracking
+  f33bec3634  loadtest takes the tick event name from EventsJFR; the ServerConfig durations name their units; two
+              PluginHost comments; .gitignore
+  7fd01ddcc2  docs: the group MISC paragraph of v0.9.125 and v0.71, docs/TEST.md TC-PROD-1144 to TC-PROD-1146
+  d75d2d3f83  docs, after the first review: every :testing:test of TC-PROD-1144 with --rerun; the test doubles of
+              docs/DESIGN-PROD.md section 8
+  6537b7a124  testing, after the second review: Javadoc of TestConnection#trackIncoming and InMemoryPlayerDataStore,
+              and the documents that quote them
+  70c5ee50d4  merge of main efd6347059 (the lighting session's RUN-093), --no-ff; the only conflict is the change
+              log of docs/TEST.md, both rows kept; the code of RUN-093 changes ShardWorld, Clock, Instance and
+              SynxPacketDecoder, none of the files of this round
+  then the registration (this directory, the counts of the old cases, docs/TEST.md section 6), documents only.
+The reds before the change, the counterproofs and the readings of each case are in its docs/TEST.md step.
+
+Gradle on this machine, one build at a time under the heavy lock (--max-workers=2 --no-daemon); 28 builds before
+the merge of main efd6347059, 2026-10-21 23:17 to 2026-10-22 02:15:
+  group API, 4 builds, 2026-10-21:
+  1  23:17:15-23:17:43  the new tests first (rejection key rts:full), :protocol:test and :plugin-api:test: protocol
+                        178 tests, plugin-api 47, 0 failures; HandshakeIntegrationTest red on the new test, as
+                        expected (the ledger row has reason=full)
+  2  23:27:46-23:28:00  the reds before the change: AdmissionGate back to the code of main, OrderResultCode with a
+                        PROOF_ONLY(7): GameMessagesTest 15 tests, 2 failed (GameMessagesTest.java:61 and :144),
+                        ProtocolVectorTest 21 tests, 0 failures; HandshakeIntegrationTest red at
+                        HandshakeIntegrationTest.java:730 (reason=match-unavailable); restored after the run
+  3  23:28:47-23:38:25  with the database variables: compileJava and compileTestJava of all modules; test --rerun of
+                        :protocol 11 classes, 178 tests, :plugin-api 8 / 47, :play-kit 3 / 35, :game-rush 6 / 46,
+                        :loadtest 6 / 26, :server-app 163 / 921, 0 failures, 0 skipped;
+                        :plugin-api:checkBinaryCompatibility and :protocol:checkBinaryCompatibility against the
+                        plugin-api.jar and protocol.jar of release v0.3.0 (gradle/abi-baseline.tag): both ran, no
+                        violation; :plugin-api:javadoc and :protocol:javadoc: warnings only on files this round does
+                        not touch (plugin-api 10, protocol 3); :protocol:publishToMavenLocal into a temporary maven
+                        directory
+  4  23:39:40-23:42:51  client-fabric: compileJava compileTestJava compileGametestJava against that :protocol,
+                        BUILD SUCCESSFUL
+  review of group API, 2 builds: AdmissionGate#rejected back to cutting any namespace and ArchetypeBox.find with >
+     in place of >=: red at HandshakeIntegrationTest.java:730 (reason=match-unavailable) and ArchetypeBoxTest.java:18
+     (IndexOutOfBoundsException), restored with git checkout HEAD --; on 970aef70ef the ABI gate with --rerun (both
+     ran, no violation), the two javadoc tasks (the same warnings), ArchetypeBoxTest 1, HandshakeIntegrationTest 27,
+     :architecture-tests 7 classes, 20 tests, BUILD SUCCESSFUL
+  group MISC, 11 builds, 2026-10-22; "flag on" is JAVA_TOOL_OPTIONS=-Dsynaxis.automatic-component-translation=true:
+  1  00:23:00-00:23:09  flag on, the new tests before the change: TrackIncomingIntegrationTest 3 tests, 1 failed at
+                        TrackIncomingIntegrationTest.java:89 (a TranslatableComponent with key probe.untranslated
+                        where the text of the engine translator was expected)
+  2  00:35:47-00:36:32  flag on, an intermediate version of the change: TrackIncomingIntegrationTest 3 tests,
+                        0 failures
+  3  00:37:38-00:39:35  default mode, with the database variables, the intermediate version: compileJava and
+                        compileTestJava of all modules, testNamingCheck, forbiddenImportsCheck; root 12 classes,
+                        110 tests (3 skipped), testing 9 / 18 (1 skipped), loadtest 6 / 26, server-app 5 / 57,
+                        game-rts 2 / 24, architecture-tests 7 / 20, 0 failures; config key gate 122 of 122 keys,
+                        translation key gate 75 keys; the ABI gate ran, no violation; :testing:javadoc 47 warnings
+  4  00:42:38-00:42:46  flag on, the final code without the null check of TestConnectionImpl: 3 tests, 1 failed,
+                        trackersPassOverABufferedChunkPacket (NullPointerException at TestConnectionImpl.java:98);
+                        restored with git checkout HEAD
+  5  00:43:19-00:43:47  default mode, the final code: testing 9 / 18 (1 skipped), root 4 / 54, server-app 2 / 31,
+                        game-rts 1 / 18, 0 failures; :testing:javadoc 47 warnings
+  6  00:50:19-00:50:29  flag on, the final code: TrackIncomingIntegrationTest 3 tests, 0 failures. The build cache
+                        key of a test task leaves JAVA_TOOL_OPTIONS out, so this reading can be one from the cache;
+                        build 9 replaces it
+  7  00:50:47-00:52:31  default mode, with the database variables, the final code, the tasks of build 3: the same
+                        readings; the ABI gate ran, no violation; BUILD SUCCESSFUL
+  first review, 2 builds: flag on, the engine translator back to GlobalTranslator.render and the collector not
+     removed at collect(): TrackIncomingIntegrationTest 3 tests, 2 failed (TrackIncomingIntegrationTest.java:89 and
+     :64), restored with git checkout HEAD --; then on 7fd01ddcc2 the ABI gate (both ran, no violation), the Sample
+     classes of :loadtest 6 tests, and the flag-on TrackIncomingIntegrationTest came from the build cache with the
+     result of build 6: from build 8 on every :testing:test runs with --rerun
+  8  01:16:33-01:16:41  no flag, the null check at TestConnectionImpl.java:97 removed, :testing:test --tests
+                        ...TrackIncomingIntegrationTest --rerun: BUILD FAILED, 3 tests completed, 1 failed,
+                        1 skipped; trackersPassOverABufferedChunkPacket at TrackIncomingIntegrationTest.java:40, the
+                        NullPointerException at TestConnectionImpl.java:98 via TestPlayerImpl.sendChunk; restored
+                        with git checkout HEAD
+  9  01:17:06-01:17:11  flag on, the final code, the same command: the test task ran (not FROM-CACHE),
+                        tests="3" skipped="0" failures="0"
+  10 01:17:19-01:17:27  default mode, :testing:test --rerun: 9 classes, 18 tests, 1 skipped, 0 failures
+  second review, 2 builds: both stopped at :testing:compileJava (Error Prone) on the reverts the reviewer wrote, no
+     test ran
+  11 01:40:48-01:41:01  :testing:compileJava :testing:javadoc on the Javadoc of 6537b7a124: both ran, BUILD
+                        SUCCESSFUL, 47 warnings, none on the new text
+  third review, 2 builds: flag on, the engine translator back to GlobalTranslator.render and the collector not
+     removed at collect(): 3 tests, 2 failed (:89 and :64), restored with git checkout HEAD --; on the head the ABI gate (both ran, no violation) and :testing:test --rerun
+     in default mode, 9 classes, 18 tests, 1 skipped, 0 failures
+  gates, 5 builds on 6537b7a124, no wait for the lock, free 44-55%, load 5-7:
+  1  01:56:14-01:56:28  compileJava, compileTestJava, testNamingCheck, forbiddenImportsCheck of all modules (up to
+                        date after the builds above, the forbiddenImportsCheck of :testing ran);
+                        :architecture-tests:test ran and passed; :jcstress-tests:compileJcstressJava (from the cache);
+                        :plugin-api:javadoc; :plugin-api:checkBinaryCompatibility and
+                        :protocol:checkBinaryCompatibility against the jars of release v0.3.0: both ran and passed;
+                        :protocol:publishToMavenLocal into a temporary maven directory; BUILD SUCCESSFUL in 13s
+  2  01:57:17-01:57:21  client-fabric: compileJava compileTestJava compileGametestJava against that :protocol, all
+                        up to date, BUILD SUCCESSFUL
+  3  01:57:47-02:06:03  default mode, with the database variables, test --rerun --continue of :plugin-api 8 / 47,
+                        :protocol 11 / 178, :testing 9 / 18 (1 skipped), :play-kit 3 / 35, :game-rush 6 / 46,
+                        :server-app 163 / 921 (its 7 database classes ran against the local PostgreSQL and Valkey,
+                        0 skipped): 200 result files, 1,245 tests, 0 failures, 0 errors, 1 skipped
+  4  02:06:46-02:15:00  build 3 in strict grid (-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+                        -Dsynaxis.thread-provider=grid): the same counts per module, 0 failures; the env dispatcher
+                        threads output is 1 counter in build 3 and 4 grid here
+  5  02:15:33-02:15:37  flag on: :testing:test --tests ...TrackIncomingIntegrationTest --rerun, tests="3"
+                        skipped="0" failures="0"
+1 build after the merge of main efd6347059:
+     02:30:58-02:31:32  compileJava and compileTestJava of all modules, BUILD SUCCESSFUL in 33s
+The full suites, the 4 tick thread strict mode, check with the coverage gates, Concurrency, Client mod, Client
+gametest and the far-view gametest run on the draft PR.
+At registration, without Gradle, on 70c5ee50d4: the steps of the new cases that run only git or Python give what
+their steps record: TC-PROD-1142 step 4 (pkgdeps: packages 2, edges 1, imports 22; on c542248aec edges 2, the
+extra one <root> -> play 1), TC-PROD-1143 step 5, TC-PROD-1145 step 3 (no output), TC-PROD-1146 steps 4 (the first
+two paths hit .gitignore:58 /profiles/ and .gitignore:60 /synaxis.properties, the third does not) and 5 (19).
+
+On the draft PR #49, GitHub Actions. The branch was pushed once, after the merge of main efd6347059: this is the
+only round.
+
+Judged on 70c5ee50d4, attempt 1 of every workflow, 2026-10-22 02:32-04:18:
+  CI 39653618937 (02:32-02:52): Check (./gradlew check jacocoTestReport with the database variables, BUILD
+    SUCCESSFUL in 19m 3s; the player store tests ran against the database; ABI gate success; diff coverage against
+    origin/main 46 lines, 2 missing, 95%, gate 80%), Test with 4 tick threads (strict) (BUILD SUCCESSFUL in
+    18m 56s), Test with 4 tick threads (strict, grid) (BUILD SUCCESSFUL in 15m 12s): success. Every test task of
+    the three jobs ran; none came from the build cache.
+  Concurrency 39653618947: jcstress success (BUILD SUCCESSFUL in 6m 17s)
+  Client mod 39653618949: Build the Fabric mod success;
+    mod jar: minecraft=26.2, 108 entries, ships META-INF/jars/protocol-dev.jar
+  Client gametest 39653619157: Run the client gametests, Run the rush script, Two shards, 2 round trips (P11 smoke):
+    success; Two shards, 100 round trips (P10): skipped, it runs on a manual trigger only (below)
+  Far view gametest 39653648844 (label farview-gametest), 02:32-04:18: Far view cases (light) 8 min, (hidden)
+    28 min, (synthetic) 55 min, (baked) 106 min, all success on attempt 1. The far-view cases belong to the
+    lighting session (docs/DESIGN-M3.md).
+Counts from the JUnit XML in the artifacts (gh api .../actions/artifacts/<id>/zip, read with Python zipfile without
+unpacking: the archives hold file names that differ only in case):
+  test-reports, test-reports-multithreaded, test-reports-multithreaded-grid of 39653618937: equal class by class,
+  797 classes, 5,615 tests, 0 failures, 0 errors, 23 skipped: the 7 classes of main (6 root, 21 tests; 1 synx) and
+  testing's TrackIncomingIntegrationTest#aTrackedPacketIsRenderedWithTheEngineTranslator ("Assumption failed: needs
+  -Dsynaxis.automatic-component-translation=true"; no job of CI sets it)
+    module               classes   tests
+    root                     537   3,940
+    server-app               163     922
+    synx                      25     194
+    protocol                  11     178
+    game-rts                  14      96
+    baker                      8      93
+    plugin-api                 8      47
+    game-rush                  6      46
+    play-kit                   3      35
+    loadtest                   6      26
+    architecture-tests         7      20
+    testing                    9      18
+  Against main efd6347059 (the RUN-093 judged run 39633567861 on 523fb38c0d, job Check, 796 classes, 5,608 tests):
+  1 class and 7 tests more, all from this round: group API 1 class, 5 tests (protocol: ArchetypeBoxTest new, 1;
+  GameMessagesTest 13 -> 15; PlayMessagesTest 19 -> 20; server-app: HandshakeIntegrationTest 26 -> 27), group MISC
+  2 tests (testing: TrackIncomingIntegrationTest 1 -> 3); nothing from the merge. Class by class:
+  02-class-counts.txt.
+  client-test-reports of 39653618949: 25 classes, 297 tests, 0 failures, equal class by class to those of RUN-093
+  (Client mod 39633568005); the mod does not change, it builds and tests against the new :protocol.
+  In all three modes: translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out;
+  config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out; env dispatcher threads 1, 4, 4
+  (thread provider counter, counter, grid).
+Rush job (6 min 40 s): judge unit tests Ran 36 tests, OK; waited 0.2 s for the ledger; Q0a to Q9 PASS in both
+  launches; rush judge: PASS (2 reports, 0 problems); prepare_ms 149 and 49; Q5 323 ms and 300 ms after the countdown
+  ran out; Q7 off by -12 ms and -18 ms; Q9 198 ms and 213 ms after the button; the ledger has the lobby at prepare_ms
+  266 and two rush_round_ended with players=1, cause=time_limit; the four checks of the forward and rollback
+  rehearsal ok.
+Client gametests: client regression: all checks passed; report 8 PASS; playable.txt core 10 PASS, rts 5 PASS.
+P11 smoke (TC-PROD-742): p10.py unit tests Ran 48 tests, OK; 11 checks ok; P10: all checks passed.
+P10 by hand, 2026-10-22 02:32-02:55, on 70c5ee50d4:
+  Client gametest 39653719716 (workflow_dispatch, p10=true; its other three jobs skipped): Two shards, 100 round
+    trips (P10) success on attempt 1; p10.py unit tests Ran 48 tests, OK; 11 checks ok (200 of 200 transfers
+    answered, 200 arrived on their target shard, character.version read 201 times and larger after every transfer,
+    the client joined 201 worlds alternating between the two shards, the seeded inventory in all 201 worlds);
+    P10: all checks passed.
+RUN-094 is registered in docs/TEST.md section 6: passed 7/7.

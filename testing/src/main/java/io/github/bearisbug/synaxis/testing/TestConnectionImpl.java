@@ -1,6 +1,5 @@
 package io.github.bearisbug.synaxis.testing;
 
-import net.kyori.adventure.translation.GlobalTranslator;
 import io.github.bearisbug.synaxis.JvmFlags;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.adventure.EngineAdventure;
@@ -31,7 +30,7 @@ final class TestConnectionImpl implements TestConnection {
 
     private final AtomicBoolean connected = new AtomicBoolean(false);
 
-    private final List<IncomingCollector<ServerPacket>> incomingTrackers = new CopyOnWriteArrayList<>();
+    private final List<IncomingCollector<?>> incomingTrackers = new CopyOnWriteArrayList<>();
 
     TestConnectionImpl(Env env, GameProfile gameProfile) {
         this.process = env.process();
@@ -78,10 +77,9 @@ final class TestConnectionImpl implements TestConnection {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public <T extends ServerPacket> Collector<T> trackIncoming(Class<T> type) {
         var tracker = new IncomingCollector<>(type);
-        this.incomingTrackers.add(IncomingCollector.class.cast(tracker));
+        this.incomingTrackers.add(tracker);
         return tracker;
     }
 
@@ -98,7 +96,7 @@ final class TestConnectionImpl implements TestConnection {
             // A BufferedPacket holds encoded bytes and no packet object; the outgoing event skips it too
             if (serverPacket == null) return;
             for (var tracker : incomingTrackers) {
-                if (tracker.type.isAssignableFrom(serverPacket.getClass())) tracker.packets.add(serverPacket);
+                if (tracker.type.isAssignableFrom(serverPacket.getClass())) tracker.add(serverPacket);
             }
         }
 
@@ -111,7 +109,7 @@ final class TestConnectionImpl implements TestConnection {
 
             if (JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION && serverPacket instanceof ServerPacket.ComponentHolding) {
                 serverPacket = ((ServerPacket.ComponentHolding) serverPacket).copyWithOperator(component ->
-                        GlobalTranslator.render(component, Objects.requireNonNullElseGet(player.getLocale(), EngineAdventure::getDefaultLocale)));
+                        EngineAdventure.COMPONENT_TRANSLATOR.apply(component, Objects.requireNonNullElseGet(player.getLocale(), EngineAdventure::getDefaultLocale)));
             }
 
             return serverPacket;
@@ -139,6 +137,10 @@ final class TestConnectionImpl implements TestConnection {
 
         public IncomingCollector(Class<T> type) {
             this.type = type;
+        }
+
+        void add(ServerPacket packet) {
+            packets.add(type.cast(packet));
         }
 
         @Override

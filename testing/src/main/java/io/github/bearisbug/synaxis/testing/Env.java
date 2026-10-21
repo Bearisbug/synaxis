@@ -49,6 +49,19 @@ public interface Env extends AutoCloseable {
         return createConnection(new GameProfile(UUID.randomUUID(), "RandName"));
     }
 
+    /**
+     * Tracks the events of a type that reach the event node of {@code actor}, until the first
+     * {@link Collector#collect()} of the returned collector. For an entity or an instance that node
+     * is the one it listens on itself; collecting takes only this tracker's listener off it, so the
+     * actor's own listeners and the other trackers on it keep hearing.
+     *
+     * @param eventType the event type
+     * @param filter    how an event finds its actor
+     * @param actor     the actor
+     * @param <E>       the event type
+     * @param <H>       the type of the actor
+     * @return the collector
+     */
     <E extends Event, H> Collector<E> trackEvent(Class<E> eventType, EventFilter<? super E, H> filter, H actor);
 
     <E extends Event> FlexibleListener<E> listen(Class<E> eventType);

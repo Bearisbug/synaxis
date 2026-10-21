@@ -25,6 +25,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * host completes a save or a commit it does not turn away at once on a virtual thread; and nothing
  * here is frozen while a commit is written, where the host freezes the participants until the
  * future completes.
+ * <p>
+ * It takes what the host refuses: {@link #register} at any time and under any id, where the host
+ * takes a section only inside {@code onEnable} and only under an id that starts with
+ * {@code <plugin_id>:}, and otherwise throws {@link IllegalStateException}
+ * ({@link PlayerDataStore#register}), which disables the plugin as the server starts; and
+ * {@link #get} for any player, where the host throws for a player whose data is not loaded.
  */
 public final class InMemoryPlayerDataStore implements PlayerDataStore {
 

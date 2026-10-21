@@ -10,16 +10,28 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * What a test tracked, from {@link Env#trackEvent} or {@link TestConnection#trackIncoming}.
+ * <p>
+ * A collector tracks from its creation until its first {@link #collect()}. Every assert method calls
+ * {@code collect()}, so the first assertion ends the tracking, and a later assertion on the same
+ * collector sees nothing that arrived after it. Track again for a later phase of the test.
+ *
+ * @param <T> the type of what is tracked
+ */
 public interface Collector<T> {
+    /**
+     * Stops tracking and returns what was tracked.
+     *
+     * @return what was tracked, in the order it arrived
+     */
     List<T> collect();
 
-    @SuppressWarnings("unchecked")
     default <P extends T> void assertSingle(Class<P> type, Consumer<P> consumer) {
         List<T> elements = collect();
         assertEquals(1, elements.size(), "Expected 1 element, got " + elements);
         var element = elements.getFirst();
-        assertInstanceOf(type, element, "Expected type " + type.getSimpleName() + ", got " + element.getClass().getSimpleName());
-        consumer.accept((P) element);
+        consumer.accept(assertInstanceOf(type, element, "Expected type " + type.getSimpleName() + ", got " + element.getClass().getSimpleName()));
     }
 
     default void assertSingle(Consumer<T> consumer) {

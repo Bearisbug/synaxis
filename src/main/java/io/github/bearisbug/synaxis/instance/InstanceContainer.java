@@ -506,9 +506,9 @@ public class InstanceContainer extends Instance {
                     .thenApplyAsync(processChunk, Thread::startVirtualThread);
             // A loaded chunk completes the chain on the virtual thread that processed it, the event is
             // called there; it runs on the requesting thread only when that thread registers its own
-            // callback just as the chain completes, after the mapping returned. An exception skips the hop to it: one thrown by a loader without parallel
-            // support completes the chain inside start.complete, the exception handler then runs inside
-            // the mapping
+            // callback just as the chain completes, after the mapping returned. An exception skips the
+            // hop to it: one thrown by a loader without parallel support completes the chain inside
+            // start.complete, the exception handler then runs inside the mapping
             var _ = chain.whenComplete((chunk, e) -> {
                 if (e != null) {
                     process().exception().handleException(e instanceof CompletionException ce ? ce.getCause() : e);

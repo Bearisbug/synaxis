@@ -15,8 +15,9 @@ import java.util.Set;
  * never loads one; tickets live on coordinates, loaded or not.
  * <p>
  * One lock of its own guards everything, never the instance monitor: players change their view
- * tickets on their tick threads, plugins theirs on any thread, the unload reads them on the tick
- * scheduler thread. Nothing else is locked while it is held.
+ * tickets on their tick threads (the ring an instance change preloads also on the thread that
+ * finishes the change), plugins theirs on any thread, the unload reads them on the tick scheduler
+ * thread. Nothing else is locked while it is held.
  */
 final class ChunkTickets {
     private final Object lock = new Object();

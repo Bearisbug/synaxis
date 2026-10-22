@@ -46,7 +46,7 @@ dependencies {
 `hello-plugin/src/main/java/com/example/helloplugin/HelloPlugin.java`：实现 `SynaxisPlugin` 的三个方法即可，完整代码见仓内 `example-plugin/src/main/java/com/example/helloplugin/HelloPlugin.java`。四条硬规则：
 
 - **无参构造器里禁止注册任何东西**。宿主先 new 出实例只为读 `descriptor()`，一切注册都在 `onEnable`。
-- `descriptor()` 的 `id` 必须匹配 `[a-z0-9][a-z0-9_-]{0,63}`、不得是 `synaxis`，且全进程唯一：两个插件声明同一个 id 时宿主拒启；`api_version` 必须等于 `PluginApi.API_VERSION`（当前 `2`）。任何一条不满足，宿主拒绝加载并以非零码退出，端口不会 bind。
+- `descriptor()` 不能返回 null，`id` 与 `version` 不能为 null；`id` 必须匹配 `[a-z0-9][a-z0-9_-]{0,63}`、不得是 `synaxis`，且全进程唯一：两个插件声明同一个 id 时宿主拒启；`api_version` 必须等于 `PluginApi.API_VERSION`（当前 `2`）。任何一条不满足，宿主拒绝加载并以非零码退出，端口不会 bind，日志一行 `Refusing to start: Refused plugin …`，点名插件类。白名单按 id 选插件，所以描述为 null 或没有 id 的插件即使不在白名单里也会让起服失败。
 - `onDisable()` 里只关自己开的东西（线程池、连接、文件）；宿主收回的那些（清单见第 7 节末列）不用管。`onDisable` 跑在宿主新起的 daemon 平台线程 `plugin-disable-<id>` 上，这条线程不拥有任何 tick 线程，改已分给 tick 线程的实体要经 `acquirable().sync(…)`。全部插件共用 5 s：用完时还在 `onDisable` 里的插件被留在它的线程上，宿主照样收回它的能力、接着停机。`onEnable` 抛异常时宿主直接收回能力、不调 `onDisable`，抛出之前自己开的线程池与连接要在 `onEnable` 的 catch 里关（`docs/DESIGN-PROD.md` `API-PROD-007`）。
 - 自己起的线程设成 daemon，或在 `onDisable` 里关掉：停机序列走完，宿主就以退出码 0 结束进程（`docs/DESIGN-PROD.md` §11.4），不等插件留下的线程，上面做到一半的活就此中断。
 
@@ -81,7 +81,7 @@ java -Dsynaxis.app.auth=offline \
 
 就绪日志是 `synaxis server-app listening on 0.0.0.0:25565`，它之前会出现 `Plugin enabled: plugin_id=hello ...` 与插件自己的打印。stdin 输入 `stop` 停服，停机日志里会出现 `hello-plugin is disabling`。
 
-`synaxis.properties`（`docs/DESIGN-PROD.md` `API-PROD-023`）只收服务端键表里的键，写了表外的键整个进程拒启：插件自己的设置放在 `dataDirectory()`（`plugins/<plugin_id>/`）下的文件里，或者从命令行 `-D` 给。
+`synaxis.properties`（`docs/DESIGN-PROD.md` `API-PROD-023`）只收服务端键表里的键，写了表外的键整个进程拒启：插件自己的设置放在 `dataDirectory()`（`plugins/<plugin_id>/`）下的文件里，或者从命令行 `-D` 给。不以 `synaxis.` 开头的键拒启时报 `unknown key <键> (every key of this file starts with synaxis.; a plugin's own settings are not read from this file)`。
 
 插件的 `onEnable` 抛了异常、进程因此拒启时，结尾的汇总先一行 `Plugin <plugin_id> failed to enable: <异常类>: <消息> (stack above)`，再是缺准入、缺对局与不绑端口的几行 ERROR：原因在这一行与更上面的栈里。
 

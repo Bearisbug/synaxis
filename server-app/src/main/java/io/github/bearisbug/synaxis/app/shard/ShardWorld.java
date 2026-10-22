@@ -4,10 +4,6 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.app.FileTrust;
 import io.github.bearisbug.synaxis.app.ShutdownSequence;
 import io.github.bearisbug.synaxis.coordinate.Pos;
-import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
-import io.github.bearisbug.synaxis.game.protocol.FarViewPack;
-import io.github.bearisbug.synaxis.game.protocol.MalformedMessageException;
-import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
 import io.github.bearisbug.synaxis.instance.Clock;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.WorldBorder;
@@ -19,7 +15,6 @@ import io.github.bearisbug.synaxis.synx.OverlayStore;
 import io.github.bearisbug.synaxis.synx.RelightStats;
 import io.github.bearisbug.synaxis.synx.SynxBuildVerifier;
 import io.github.bearisbug.synaxis.synx.SynxChunkLoader;
-import io.github.bearisbug.synaxis.synx.SynxDigests;
 import io.github.bearisbug.synaxis.synx.SynxError;
 import io.github.bearisbug.synaxis.synx.SynxException;
 import io.github.bearisbug.synaxis.synx.SynxExpectations;
@@ -52,12 +47,8 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.security.MessageDigest;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -94,12 +85,8 @@ public final class ShardWorld {
      * the center chunk: after the walkable bit set, one little endian i16 per column by z × 16 + x.
      */
     private static final long SPAWN_SURFACE_Y_OFFSET = SynxFormat.NAVIGATION_SURFACE_Y + (8 * 16 + 8) * 2L;
-    /** {@code API-M3-015}: the coarse prefixes of the tiles up to 256 chunks, 4,096 blocks, past the bounds are announced. */
-    static final int COARSE_REACH = 256;
     /** {@code API-M3-002} 只读一次: the largest manifest read, 16 MiB. */
     static final int MAX_MANIFEST_BYTES = 16 << 20;
-    /** The buffer a far view pack is read into while its digests are computed. */
-    private static final int DIGEST_BUFFER_BYTES = 1 << 20;
     /** How {@link FileTrust} ends the refusal of an overlay directory or segment group or others may write. */
     private static final String OVERLAY_WRITER = "only the service user may write it";
     /**
@@ -131,7 +118,6 @@ public final class ShardWorld {
     private @Nullable WorldFlagsImpl flags;
     private @Nullable SynxRelight relight;
     private @Nullable ShardInstance instance;
-    private int farViewTiles;
     private long overlayRecords;
     // First read by #start, then read and replaced by the statistics task only, on the tick scheduler thread
     private @Nullable SynxStreamStats lastStream;
@@ -146,197 +132,8 @@ public final class ShardWorld {
      * @param instance the map instance
      * @param spawn    the spawn point
      * @param relight  the runtime light of the instance, whose counters the light fixture and the tests read
-     * @param farView  the encoded far view announcement ({@code API-M3-015}), null when the shard announces none
      */
-    public record Started(InstanceContainer instance, Pos spawn, SynxRelight relight, byte @Nullable [] farView) {
-    }
-
-    /**
-     * A tile of {@code farview[]} the shard announces.
-     *
-     * @param pack  the manifest entry of the tile
-     * @param layer {@link FarViewAnnouncement#LAYER_FULL} or {@link FarViewAnnouncement#LAYER_COARSE}
-     */
-    record AnnouncedTile(SynxManifest.FarView pack, int layer) {
-    }
-
-    /**
-     * {@code API-M3-015} 选瓦片: the tiles of {@code farview[]} meeting the bounds are announced whole, those
-     * meeting the bounds grown by {@value #COARSE_REACH} chunks (4,096 blocks) on every side but not the
-     * bounds by their coarse prefix, the rest not at all.
-     *
-     * @param farview the entries of the manifest
-     * @param bounds  the bounds the shard serves, B
-     * @return the tiles to announce, by x and then z
-     */
-    static List<AnnouncedTile> announcedTiles(List<SynxManifest.FarView> farview, SynxManifest.Bounds bounds) {
-        final SynxManifest.Bounds reach = bounds.grow(COARSE_REACH);
-        final List<AnnouncedTile> tiles = new ArrayList<>();
-        for (SynxManifest.FarView pack : farview) {
-            if (meets(pack, bounds)) tiles.add(new AnnouncedTile(pack, FarViewAnnouncement.LAYER_FULL));
-            else if (meets(pack, reach)) tiles.add(new AnnouncedTile(pack, FarViewAnnouncement.LAYER_COARSE));
-        }
-        tiles.sort(Comparator.comparingInt((AnnouncedTile tile) -> tile.pack().tileX())
-                .thenComparingInt(tile -> tile.pack().tileZ()));
-        return List.copyOf(tiles);
-    }
-
-    /** Whether the 256 × 256 chunks of the tile of {@code pack} meet {@code bounds}. */
-    private static boolean meets(SynxManifest.FarView pack, SynxManifest.Bounds bounds) {
-        final int minX = pack.tileX() << FarViewPack.TILE_SHIFT, minZ = pack.tileZ() << FarViewPack.TILE_SHIFT;
-        final int side = 1 << FarViewPack.TILE_SHIFT;
-        return minX <= bounds.maxX() && minX + side - 1 >= bounds.minX() && minZ <= bounds.maxZ()
-                && minZ + side - 1 >= bounds.minZ();
-    }
-
-    /**
-     * {@code API-M3-015} 远景宣告, computed once when the shard starts: the tiles of {@link #announcedTiles},
-     * each pack held to the manifest first, its size and SHA-256, and for a tile announced by its coarse
-     * prefix also {@code coarse_bytes} against the {@code fine_offset} of its header and
-     * {@code coarse_sha256} against its first {@code coarse_bytes} bytes. Who may have written the packs
-     * was checked in step (3) ({@code API-M3-002} 文件信任). A url root of plain http to another host than
-     * this one is announced all the same, with a WARN: it lets anyone on the way see which tiles a player
-     * loads. Nothing is announced without a url root, when the manifest lists no pack (a release baked
-     * before M3-G), without a tile meeting the bounds, when one pack does not match, when the tiles to
-     * announce differ in {@code base_level} or {@code coarse_level}, or when they make no announcement (over
-     * 64 of them, a url over 1,024 bytes); one line of the log says which, a WARN for the last three. None
-     * of it refuses the start: the far view is optional.
-     *
-     * @return the announcement, null when there is none
-     */
-    static @Nullable FarViewAnnouncement farViewAnnouncement(Path buildDir, SynxManifest manifest,
-                                                            SynxManifest.Bounds bounds, String urlRoot) {
-        if (urlRoot.isEmpty()) {
-            LOGGER.info("Far view off: {} is empty", ShardSettings.FARVIEW_URL_ROOT);
-            return null;
-        }
-        if (manifest.farview().isEmpty()) {
-            LOGGER.info("Far view off: {} has no far view packs (baker_version {}); rebake it for a far view",
-                    manifest.buildId(), manifest.bakerVersion());
-            return null;
-        }
-        final List<AnnouncedTile> tiles = announcedTiles(manifest.farview(), bounds);
-        if (tiles.stream().noneMatch(tile -> tile.layer() == FarViewAnnouncement.LAYER_FULL)) {
-            LOGGER.info("Far view off: no far view tile of {} meets the bounds {}", manifest.buildId(), bounds);
-            return null;
-        }
-        final SynxManifest.FarView first = tiles.getFirst().pack();
-        for (AnnouncedTile tile : tiles) {
-            final SynxManifest.FarView pack = tile.pack();
-            final String file = packFile(pack);
-            final String mismatch = pack.baseLevel() != first.baseLevel() || pack.coarseLevel() != first.coarseLevel()
-                    ? "has the levels " + pack.baseLevel() + "/" + pack.coarseLevel() + " in the manifest, another tile "
-                    + first.baseLevel() + "/" + first.coarseLevel()
-                    : mismatch(buildDir.resolve(file), pack, tile.layer());
-            if (!mismatch.isEmpty()) {
-                LOGGER.warn("Far view off: {} of {} {}", file, manifest.buildId(), mismatch);
-                return null;
-            }
-        }
-        final FarViewAnnouncement announcement;
-        try {
-            final List<FarViewAnnouncement.Tile> announced = new ArrayList<>(tiles.size());
-            for (AnnouncedTile tile : tiles) {
-                final SynxManifest.FarView pack = tile.pack();
-                final boolean whole = tile.layer() == FarViewAnnouncement.LAYER_FULL;
-                final byte[] digest = whole ? pack.sha256() : pack.coarseSha256();
-                announced.add(new FarViewAnnouncement.Tile(pack.tileX(), pack.tileZ(), tile.layer(),
-                        whole ? pack.bytes() : pack.coarseBytes(), digest,
-                        urlRoot + "/" + SynxFormat.farViewObject(manifest.mapId(), digest)));
-            }
-            announcement = new FarViewAnnouncement(manifest.buildId(), first.baseLevel(), first.coarseLevel(),
-                    manifest.world().minY(), manifest.world().height(), announced);
-        } catch (MalformedMessageException e) {
-            LOGGER.warn("Far view off: the far view tiles of {} make no announcement: {}", manifest.buildId(), e.getMessage());
-            return null;
-        }
-        final long coarse = tiles.stream().filter(tile -> tile.layer() == FarViewAnnouncement.LAYER_COARSE).count();
-        LOGGER.info("Far view: {} tile(s), {} coarse, from {}", tiles.size() - coarse, coarse, urlRoot);
-        final String host = plainHttpHost(urlRoot);
-        if (host != null && !loopback(host)) {
-            LOGGER.warn("Far view packs go over plain http to {}: which tiles a player loads can be seen on the way, use https",
-                    host);
-        }
-        return announcement;
-    }
-
-    /** The path of the pack of a tile under the release directory, {@code farview/t.<tx>.<tz>.hfp}. */
-    static String packFile(SynxManifest.FarView pack) {
-        return "farview/" + SynxFormat.farViewFileName(pack.tileX(), pack.tileZ());
-    }
-
-    /** How the pack in {@code file} differs from its manifest entry, empty when it does not. */
-    private static String mismatch(Path file, SynxManifest.FarView pack, int layer) {
-        try (FileChannel channel = FileChannel.open(file, StandardOpenOption.READ)) {
-            return mismatch(channel, pack, layer);
-        } catch (IOException e) {
-            return "cannot be read: " + e;
-        }
-    }
-
-    /**
-     * {@link #mismatch(Path, SynxManifest.FarView, int)} on a channel of the pack (M3-S, {@code API-M3-015}
-     * 宣告条): its size first, held to the manifest and to {@link FarViewAnnouncement#MAX_OBJECT_BYTES}
-     * before a byte is read; then its SHA-256, and that of its first {@code coarse_bytes} bytes for a tile
-     * announced by its coarse prefix, computed {@value #DIGEST_BUFFER_BYTES} bytes at a time on the same
-     * channel.
-     */
-    static String mismatch(SeekableByteChannel channel, SynxManifest.FarView pack, int layer) throws IOException {
-        final long size = channel.size();
-        if (size != pack.bytes()) return "is " + size + " bytes, the manifest says " + pack.bytes();
-        if (size > FarViewAnnouncement.MAX_OBJECT_BYTES) {
-            return "is " + size + " bytes, over the " + FarViewAnnouncement.MAX_OBJECT_BYTES + " bytes a far view object may have";
-        }
-        final boolean coarse = layer == FarViewAnnouncement.LAYER_COARSE;
-        final MessageDigest whole = SynxDigests.sha256();
-        final MessageDigest prefix = SynxDigests.sha256();
-        final ByteBuffer header = ByteBuffer.allocate(FarViewPack.HEADER_BYTES).order(ByteOrder.LITTLE_ENDIAN);
-        final ByteBuffer buffer = ByteBuffer.allocate(DIGEST_BUFFER_BYTES);
-        long read = 0;
-        while (channel.read(buffer.clear()) >= 0) {
-            buffer.flip();
-            if (header.hasRemaining()) header.put(buffer.duplicate().limit(Math.min(buffer.limit(), header.remaining())));
-            if (coarse && read < pack.coarseBytes()) {
-                prefix.update(buffer.duplicate().limit((int) Math.min(buffer.limit(), pack.coarseBytes() - read)));
-            }
-            read += buffer.remaining();
-            whole.update(buffer);
-        }
-        if (read != size) return "is " + read + " bytes read, " + size + " bytes long";
-        if (!MessageDigest.isEqual(whole.digest(), pack.sha256())) return "does not match the sha256 of the manifest";
-        if (!coarse) return "";
-        if (header.hasRemaining()) return "is not a far view pack: shorter than its " + FarViewPack.HEADER_BYTES + " byte header";
-        final long fineOffset = FarViewPack.fineOffset(header);
-        if (fineOffset != pack.coarseBytes()) {
-            return "has its coarse prefix in " + fineOffset + " bytes, the manifest says coarse_bytes " + pack.coarseBytes();
-        }
-        if (!MessageDigest.isEqual(prefix.digest(), pack.coarseSha256())) {
-            return "has a coarse prefix that does not match the coarse_sha256 of the manifest";
-        }
-        return "";
-    }
-
-    /** The host of a url root of plain http, null for https. */
-    static @Nullable String plainHttpHost(String urlRoot) {
-        final String scheme = "http://";
-        if (!urlRoot.regionMatches(true, 0, scheme, 0, scheme.length())) return null;
-        String authority = urlRoot.substring(scheme.length());
-        final int path = authority.indexOf('/');
-        if (path >= 0) authority = authority.substring(0, path);
-        authority = authority.substring(authority.lastIndexOf('@') + 1);
-        if (authority.startsWith("[")) {
-            final int end = authority.indexOf(']');
-            return end < 0 ? authority : authority.substring(0, end + 1);
-        }
-        final int port = authority.indexOf(':');
-        return port < 0 ? authority : authority.substring(0, port);
-    }
-
-    /** Whether a host names this machine without a lookup: {@code localhost}, 127.0.0.0/8 or ::1. */
-    static boolean loopback(String host) {
-        final String bare = host.startsWith("[") && host.endsWith("]") ? host.substring(1, host.length() - 1) : host;
-        return bare.equalsIgnoreCase("localhost") || bare.equals("::1") || bare.equals("0:0:0:0:0:0:0:1")
-                || bare.matches("127\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}");
+    public record Started(InstanceContainer instance, Pos spawn, SynxRelight relight) {
     }
 
     private ShardWorld(ServerProcess process, ShardSettings settings, SynxOptions synxOptions,
@@ -423,8 +220,7 @@ public final class ShardWorld {
     /**
      * The start-up check, in the order of {@code API-M3-002} 文件信任: who may have written the shard
      * directory, the release directory and the manifest before the manifest is read, once, on one
-     * channel; who may have written the region files the shard maps and the far view packs it
-     * announces before a byte of them is read; then the start-up check on the expectations of this
+     * channel; who may have written the region files the shard maps before a byte of them is read; then the start-up check on the expectations of this
      * process (its registries and compression threshold, the light engine version, and the world the
      * manifest declares, which the map dimension type is then built on) over the mappings the shard
      * keeps. The scope is the {@code view_bounds} of the bounds the shard serves, its region in the
@@ -455,11 +251,6 @@ public final class ShardWorld {
         final SynxManifest.Bounds bounds = bounds(declared, directory);
         final SynxManifest.Bounds scope = viewBounds(bounds);
         for (Path region : SynxBuildVerifier.regionFiles(buildDir, declared, scope)) trust.check(region);
-        if (!settings.farviewUrlRoot().isEmpty()) {
-            for (AnnouncedTile tile : announcedTiles(declared.farview(), bounds)) {
-                trust.check(buildDir.resolve(packFile(tile.pack())));
-            }
-        }
         final SynxManifest.World world = declared.world();
         final SynxExpectations expectations = SynxExpectations.of(process.registries(), process.compressionThreshold(),
                 world.minY(), world.height(), LightEngine.VERSION);
@@ -584,13 +375,13 @@ public final class ShardWorld {
      * chunks past them read only), replays the flags into it, sets its world border and spawn point on
      * those bounds, sets its clock to the wall clock and holds it there ({@code API-M3-006} 日夜),
      * schedules the write phase of the overlay store at the end of every tick and
-     * {@code EVT:chunk_stream_stats} every 60 s, and computes the far view announcement of those bounds.
+     * {@code EVT:chunk_stream_stats} every 60 s.
      *
      * @param shutdown the shutdown sequence, still taking steps
      * @param events   where the events go, the event ledger of the host
      * @param flags    the world state flags in the directory mode ({@code API-M3-013}), null outside
      *                 it: nothing is then read or replayed
-     * @return the map instance, the spawn point and the far view announcement
+     * @return the map instance, its spawn point and its runtime light
      * @throws IllegalArgumentException for a refused start
      */
     public Started start(ShutdownSequence shutdown, BiConsumer<String, Map<String, ?>> events,
@@ -717,12 +508,7 @@ public final class ShardWorld {
                 settings.chunkUnloadGraceTicks(), spawn, overlayDirectory, overlayOptions.cap(),
                 overlayOptions.flushIntervalSeconds(), overlayOptions.maxBytes(), synxOptions.relightThreads(),
                 synxOptions.resendLight(), synxOptions.sectionCacheBytes());
-        final FarViewAnnouncement farView = farViewAnnouncement(settings.buildDir(), manifest, bounds,
-                settings.farviewUrlRoot());
-        this.farViewTiles = farView == null ? 0 : farView.tiles().size();
-        final MsgBuf encoded = MsgBuf.writing();
-        if (farView != null) farView.write(encoded);
-        return new Started(instance, spawn, relight, farView == null ? null : encoded.toByteArray());
+        return new Started(instance, spawn, relight);
     }
 
     /**
@@ -810,7 +596,6 @@ public final class ShardWorld {
         final ShardDirectory.Channel channel = directory == null ? null : directory.ownChannel();
         attributes.put("region_id", channel == null ? null : channel.regionId());
         attributes.put("capacity", channel == null ? null : channel.capacity());
-        attributes.put("farview_tiles", farViewTiles);
         attributes.put("world_writable", synxOptions.worldWritable());
         attributes.put("overlay_cap", overlayOptions.cap());
         attributes.put("overlay_max_bytes", overlayOptions.maxBytes());

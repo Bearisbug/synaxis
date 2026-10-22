@@ -50,7 +50,6 @@ import io.github.bearisbug.synaxis.command.CommandManager;
 import io.github.bearisbug.synaxis.command.builder.CommandResult;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
-import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
 import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.plugin.Admission;
@@ -552,15 +551,8 @@ public final class Main {
      */
     private static void serveMap(ServerProcess process, PluginHost host, ShardWorld.Started world,
                                  @Nullable DirectoryMode directoryMode, PlayerStore store, EventLedger ledger) {
-        // The far view announcement goes out here, in the configuration phase and before FinishConfiguration
-        // is queued, so the client has it before it builds its level; once per connection (API-M3-015)
-        final byte[] farView = world.farView();
-        process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class, event -> {
-            event.getPlayer().setRespawnPoint(world.spawn());
-            if (farView != null && event.isFirstConfig()) {
-                event.getPlayer().sendPluginMessage(FarViewAnnouncement.CHANNEL, farView);
-            }
-        });
+        process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
+                event -> event.getPlayer().setRespawnPoint(world.spawn()));
         host.registerHostAdmission(_ -> new Admission.Accept(world.instance()));
         if (directoryMode != null) {
             new ShardGates(directoryMode.directory(), directoryMode.service(), ledger::record, store::isOnline).attach(world.instance());

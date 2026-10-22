@@ -99,12 +99,12 @@ public class ShardWorldFileTrustTest {
         return path.toRealPath().toString();
     }
 
-    /** A copy of the release with {@code shards.json} 0644 next to it, its far view announced. */
+    /** A copy of the release with {@code shards.json} 0644 next to it. */
     private static ShardSettings copy(Path maps) throws IOException {
         final ShardSettings copy = MapFixture.copy(release, maps);
         final Path shards = Files.writeString(copy.mapRoot().resolve(ShardDirectory.FILE_NAME), "{}");
         mode(shards, "rw-r--r--");
-        return new ShardSettings(copy.mapRoot(), copy.mapBuild(), 4, 100, "https://cdn.test");
+        return new ShardSettings(copy.mapRoot(), copy.mapBuild(), 4, 100);
     }
 
     private static Path regionFile(ShardSettings settings) {
@@ -119,7 +119,6 @@ public class ShardWorldFileTrustTest {
         final Path build = copy.buildDir();
         final Path region = regionFile(copy);
         final Path manifest = build.resolve(SynxManifest.FILE_NAME);
-        final Path farview = build.resolve("farview");
         assertNull(refusal(copy, directory()), "the release as the baker publishes it");
 
         mode(shards, "rw-rw-rw-");
@@ -134,9 +133,6 @@ public class ShardWorldFileTrustTest {
         mode(manifest, "rw-r--rw-");
         assertEquals(real(manifest) + ": writable by group or others (rw-r--rw-); " + WHO_WRITES, refusal(copy, directory()));
         mode(manifest, "rw-r--r--");
-        Files.setAttribute(farview, "unix:mode", 01777);
-        assertNull(refusal(copy, directory()), "farview/ is only the directory of the packs, the sticky bit lets it pass");
-        mode(farview, "rwxr-xr-x");
         assertNull(refusal(copy, directory()), "all of it back as it was");
 
         mode(region.getParent(), "rwxrwxr-x");
@@ -354,7 +350,7 @@ public class ShardWorldFileTrustTest {
         }
     }
 
-    /** §19 「读文件之前先比大小」, the manifest and {@code shards.json}; the far view pack is in {@code ShardWorldFarViewTest}. */
+    /** §19 「读文件之前先比大小」, the manifest and {@code shards.json}. */
     @Test
     public void theManifestAndTheShardDirectoryAreSizedBeforeAByteIsRead(@TempDir Path maps) throws Exception {
         final ShardSettings copy = MapFixture.copy(release, maps);

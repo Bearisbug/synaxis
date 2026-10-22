@@ -139,18 +139,6 @@ tasks.register("lightFixtureArgs") {
     }
 }
 
-// The far view fixture of M3-G (docs/DESIGN-M3.md §26 M3-G step 0) the same way:
-// `java @server-app/build/farview-fixture.args … FarViewShardFixture <port> <httpPort> <workDir> <mode>`.
-tasks.register("farviewFixtureArgs") {
-    val classpath = sourceSets.test.get().runtimeClasspath
-    val args = layout.buildDirectory.file("farview-fixture.args")
-    inputs.files(classpath)
-    outputs.file(args)
-    doLast {
-        args.get().asFile.writeText("-cp " + classpath.asPath + "\n")
-    }
-}
-
 // The sample game of docs/DESIGN-PLAY.md §6.7 (ADR-PLAY-011): :game-rush rides on a configuration of its
 // own, so that installDist, distZip and run keep the classpath they have, where :game-rts is the one
 // plugin. It is resolved the way the runtime classpath is, which brings :play-kit and the stable surface

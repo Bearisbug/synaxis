@@ -19,9 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The module boundary of {@code :baker} ({@code docs/DESIGN-M3.md} §6 and §24). The baker's package
- * sits inside the engine's tree, so the game side rule of {@link EngineInternalsArchitectureTest} does
- * not stop it from using engine internals; what stops it is the §6 table, the complete list of the
- * internals {@code :synx} and {@code :baker} may use. The same table is written out below, and a change
+ * sits inside the engine's tree and the baker depends on the engine, so the compiler lets it use
+ * engine internals; what stops it is the §6 table, the complete list of the internals {@code :synx}
+ * and {@code :baker} may use. The same table is written out below, and a change
  * to one goes with a change to the other.
  */
 public class BakerArchitectureTest {
@@ -41,8 +41,8 @@ public class BakerArchitectureTest {
             "io.github.bearisbug.synaxis.instance.Chunk#getFullDataPacket");
 
     /**
-     * The engine as {@link EngineInternalsArchitectureTest} defines it, minus the two M3 engine side
-     * modules: their own internal types are theirs to use.
+     * The engine: everything under the root package except the protocol, the stable surface and the
+     * host, and except the two engine side map modules, whose own internal types are theirs to use.
      */
     private static boolean isEngine(JavaClass owner) {
         final String pkg = owner.getPackageName();
@@ -99,7 +99,7 @@ public class BakerArchitectureTest {
     }
 
     /**
-     * The MMO path computes light through the light engine, never through {@code LightingChunk} (§24).
+     * The map shard path computes light through the light engine, never through {@code LightingChunk} (§24).
      */
     @Test
     public void theBakerDoesNotUseLightingChunk() {

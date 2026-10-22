@@ -1,4 +1,4 @@
-package io.github.bearisbug.synaxis.game.fixture;
+package io.github.bearisbug.synaxis.architecture.fixture;
 
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.plugin.PluginContext;
@@ -11,7 +11,7 @@ import java.util.Set;
  * strings can find, so it names the key in {@link #translationKeys()}. Not registered as a service:
  * it is only ever handed to the gate directly.
  */
-public final class GamePluginDeclaringAKeyWithoutText implements SynaxisPlugin {
+public final class PluginDeclaringAKeyWithoutText implements SynaxisPlugin {
 
     @Override
     public PluginDescriptor descriptor() {

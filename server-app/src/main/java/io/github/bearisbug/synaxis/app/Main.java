@@ -966,7 +966,7 @@ public final class Main {
      * @return the rule to set
      */
     static PositionRule positionRule(CoreMode.Mode mode, @Nullable ShardWorld shardWorld) {
-        return mode != CoreMode.Mode.CORE ? new PositionRule.Rts()
+        return mode != CoreMode.Mode.CORE ? new PositionRule.Gameplay()
                 : shardWorld == null ? new PositionRule.Core()
                 : new PositionRule.MapShard(shardWorld.mapId(), shardWorld.buildId(), shardWorld.bounds());
     }

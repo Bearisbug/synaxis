@@ -188,8 +188,8 @@ class PlayerStateSectionIntegrationTest {
 
     /** Under a gameplay plugin its spawn decides where the player is; the rest of the saved state is applied. */
     @Test
-    void underTheRtsRuleThePluginSpawnDecidesThePosition(Env env) {
-        final PlayerStateFixture.Memory memory = PlayerStateFixture.memory(env, new PositionRule.Rts(), PlayerStore.Options.DEFAULT);
+    void underTheGameplayRuleThePluginSpawnDecidesThePosition(Env env) {
+        final PlayerStateFixture.Memory memory = PlayerStateFixture.memory(env, new PositionRule.Gameplay(), PlayerStore.Options.DEFAULT);
         final Instance instance = env.createFlatInstance();
         final UUID account = UUID.randomUUID();
         final Player first = online(env, memory.store(), instance, account, "Commander");
@@ -205,7 +205,7 @@ class PlayerStateSectionIntegrationTest {
         assertEquals(slots(inventory()), slots(again));
         final String written = stored(memory.backend(), account);
         assertNotNull(written);
-        assertTrue(written.contains("\"kind\":\"rts\""), written);
+        assertTrue(written.contains("\"kind\":\"gameplay\""), written);
     }
 
     /** The core rule only takes a position saved in the core world: a map's coordinates mean nothing there. */
@@ -321,7 +321,7 @@ class PlayerStateSectionIntegrationTest {
         assertThrows(IllegalStateException.class,
                 () -> memory.store().registerHostSection(new PlayerStateSection(env.process().registries()), _ -> null),
                 "synaxis:player twice");
-        assertThrows(IllegalStateException.class, () -> memory.section().useRule(new PositionRule.Rts()), "a second rule");
+        assertThrows(IllegalStateException.class, () -> memory.section().useRule(new PositionRule.Gameplay()), "a second rule");
         final PluginPlayerData plugin = memory.store().forPlugin("synaxis");
         assertThrows(IllegalStateException.class, () -> plugin.get(player, memory.section()), "a plugin reading it");
         assertThrows(IllegalStateException.class, () -> plugin.markDirty(player, memory.section()), "a plugin marking it");

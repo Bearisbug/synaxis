@@ -20,7 +20,7 @@ public record PlayerState(@Nullable World world, @Nullable Pos position, Map<Int
                           int heldSlot, float health) {
 
     /** Which world a saved position belongs to. */
-    public sealed interface World permits Core, Rts, MapShard {
+    public sealed interface World permits Core, Gameplay, MapShard {
     }
 
     /** The flat core world. */
@@ -28,7 +28,7 @@ public record PlayerState(@Nullable World world, @Nullable Pos position, Map<Int
     }
 
     /** The world of a gameplay plugin. */
-    public record Rts() implements World {
+    public record Gameplay() implements World {
     }
 
     /**

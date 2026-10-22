@@ -47,6 +47,6 @@ class MainPositionRuleTest {
     @Test
     void withoutAMapTheCoreWorldAndAGameplayPluginGetTheRuleOfTheirMode() {
         assertEquals(new PositionRule.Core(), Main.positionRule(CoreMode.Mode.CORE, null), "the core world");
-        assertEquals(new PositionRule.Rts(), Main.positionRule(CoreMode.Mode.GAMEPLAY, null), "a gameplay plugin");
+        assertEquals(new PositionRule.Gameplay(), Main.positionRule(CoreMode.Mode.GAMEPLAY, null), "a gameplay plugin");
     }
 }

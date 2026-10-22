@@ -80,9 +80,9 @@ class PlayerStateCodecIntegrationTest {
     }
 
     @Test
-    void theCoreAndTheRtsWorldsCarryNoMap(Env env) {
+    void theCoreAndTheGameplayWorldsCarryNoMap(Env env) {
         final PlayerStateSection section = new PlayerStateSection(env.process().registries());
-        for (PlayerState.World world : new PlayerState.World[]{new PlayerState.Core(), new PlayerState.Rts()}) {
+        for (PlayerState.World world : new PlayerState.World[]{new PlayerState.Core(), new PlayerState.Gameplay()}) {
             final PlayerState state = new PlayerState(world, new Pos(8.5, 40, -3.5, 45, 10), Map.of(), 0, 20f);
             final JsonElement encoded = section.encode(state);
             assertEquals(1, encoded.getAsJsonObject().getAsJsonObject("world").size(), "only the kind: " + encoded);

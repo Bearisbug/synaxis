@@ -112,7 +112,7 @@ enum Profile {
     }
 
     /**
-     * The walk of a {@link #GATE} bot from one spawn ({@code docs/DESIGN-M3.md} §26 M3-E track D). It
+     * The walk of a {@link #GATE} bot from one spawn ({@code docs/DESIGN-M3.md} §26). It
      * stands at the spawn for the dwell, then walks at 10 blocks a second straight to the centre of
      * the nearest frame and stays there. The centre is taken at the bot's own height when that is
      * within the frame, so that a frame as tall as the world is walked into level, else at the

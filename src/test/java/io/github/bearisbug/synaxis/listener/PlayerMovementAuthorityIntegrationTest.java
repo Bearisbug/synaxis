@@ -150,7 +150,7 @@ public class PlayerMovementAuthorityIntegrationTest {
         assertEquals(new Pos(120.5, 40, 0.5), player.getPosition(), "the last jump inside the border, at x 120.5");
     }
 
-    /** S1-02: one packet carries the player 64 blocks at most, in any direction. */
+    /** One packet carries the player 64 blocks at most, in any direction. */
     @Test
     public void aMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env env) {
         final Instance instance = instance(env);

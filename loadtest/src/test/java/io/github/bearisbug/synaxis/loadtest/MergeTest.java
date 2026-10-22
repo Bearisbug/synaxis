@@ -60,7 +60,7 @@ public class MergeTest {
     }
 
     /**
-     * {@code docs/DESIGN-M3.md} §26 M3-E track D: the transfers of two bot processes make one
+     * {@code docs/DESIGN-M3.md} §26: the transfers of two bot processes make one
      * distribution, failures kept by reason, and the verdict asks for enough completed trips, the
      * samples of the P95 ({@code docs/DESIGN-M3.md} §15, the transfer row).
      */

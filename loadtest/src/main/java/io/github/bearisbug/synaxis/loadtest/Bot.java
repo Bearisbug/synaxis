@@ -98,7 +98,7 @@ import java.util.zip.Inflater;
  * with a {@code ChunkBatchReceived} — and moves along its {@link Profile} with a position packet and
  * a tick end every tick.
  * <p>
- * It follows a {@code Transfer} the way a client does ({@code docs/DESIGN-M3.md} §26 M3-E track D):
+ * It follows a {@code Transfer} the way a client does ({@code docs/DESIGN-M3.md} §26):
  * the cookies stored during play are kept, the connection is dropped, a new one to the given
  * address says intent transfer and answers the new server's cookie requests with them, and plays on
  * as the same bot. A gate bot times each try from its first position in a frame to the 9th chunk

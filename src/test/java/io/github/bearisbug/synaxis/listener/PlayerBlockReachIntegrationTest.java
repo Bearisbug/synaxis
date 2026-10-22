@@ -65,7 +65,7 @@ public class PlayerBlockReachIntegrationTest {
     }
 
     /**
-     * S1-01 as reported: a survival player with nothing in hand sends one FINISHED_DIGGING, no
+     * A survival player with nothing in hand sends one FINISHED_DIGGING, no
      * STARTED_DIGGING, for a stone block 13 chunks away on both axes.
      */
     @Test

@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The movement profiles ({@code docs/DESIGN-PROD.md} {@code API-PROD-025}; the {@code gate} profile
- * of {@code docs/DESIGN-M3.md} §26 M3-E track D): the town crowd stays in sight of its spawn, and a
+ * of {@code docs/DESIGN-M3.md} §26): the town crowd stays in sight of its spawn, and a
  * gate bot judges a frame the way the shard's {@code ShardGates} does, waits, walks in at 10 blocks
  * a second and backs out of a frame that sent it nowhere.
  */

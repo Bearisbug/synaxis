@@ -17,8 +17,8 @@ class ComponentBytesTest {
 
     @Test
     void aComponentIsWrittenInTheNetworkFormatAndReadsBackAsItself() {
-        final Component hint = Component.translatable("rush.hint", NamedTextColor.GOLD, Component.text("1"))
-                .fallback("Press action key 1 (default H) to join or leave the queue. Queued: %s");
+        final Component hint = Component.translatable("synaxis.action.cooldown", NamedTextColor.GOLD, Component.text("1"))
+                .fallback("Ready again in %s s.");
 
         final byte[] bytes = ComponentBytes.encode(hint);
 

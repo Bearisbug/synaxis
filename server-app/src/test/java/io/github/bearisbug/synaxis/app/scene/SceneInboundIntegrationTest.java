@@ -75,7 +75,7 @@ class SceneInboundIntegrationTest {
             new ActionSlot(2, "boom", Component.text("Boom"), Duration.ZERO),
             new ActionSlot(3, "switch", Component.text("Switch"), Duration.ofSeconds(5))));
     /** A reason with an argument and a fallback, the way a widget's text is written. */
-    private static final Component NOT_NOW = Component.translatable("rush.no", Component.text(3)).fallback("Not now, %s s left");
+    private static final Component NOT_NOW = Component.translatable("probe.no", Component.text(3)).fallback("Not now, %s s left");
     private static final SceneSpec ROUND = new SceneSpec("round", Component.text("Round"), new CameraSpec.Vanilla(),
             CursorMode.LOCKED, List.of());
 
@@ -87,7 +87,7 @@ class SceneInboundIntegrationTest {
     }
 
     private SceneService scenes;
-    private PluginPlay rush;
+    private PluginPlay probe;
 
     @AfterEach
     void detachTheAppender() {
@@ -95,7 +95,7 @@ class SceneInboundIntegrationTest {
     }
 
     /**
-     * The scene layer with {@code rush} as the scene owner and four actions; the payloads of
+     * The scene layer with {@code probe} as the scene owner and four actions; the payloads of
      * {@code synaxis:play} reach it the way the plugin host's router hands them over.
      */
     private void start(Env env, @Nullable String owner) {
@@ -105,20 +105,20 @@ class SceneInboundIntegrationTest {
             if (event.getIdentifier().equals(PlayProtocol.CHANNEL)) scenes.receive(event.getPlayer(), event.getMessage());
         });
         env.process().eventHandler().addChild(router);
-        rush = scenes.forPlugin("rush");
-        rush.onAction("queue", (_, _) -> {
+        probe = scenes.forPlugin("probe");
+        probe.onAction("queue", (_, _) -> {
             queued.incrementAndGet();
             return new ActionResult.Ok();
         });
-        rush.onAction("deny", (_, _) -> new ActionResult.Rejected(NOT_NOW));
-        rush.onAction("boom", (_, _) -> {
+        probe.onAction("deny", (_, _) -> new ActionResult.Rejected(NOT_NOW));
+        probe.onAction("boom", (_, _) -> {
             throw new IllegalStateException("a handler that fails");
         });
-        rush.onAction("switch", (player, _) -> {
-            rush.enter(player, ROUND);
+        probe.onAction("switch", (player, _) -> {
+            probe.enter(player, ROUND);
             return new ActionResult.Ok();
         });
-        scenes.sealActions("rush");
+        scenes.sealActions("probe");
         lines.start();
         ((Logger) LoggerFactory.getLogger(SceneService.class)).addAppender(lines);
     }
@@ -126,7 +126,7 @@ class SceneInboundIntegrationTest {
     /** A player of the scene owner in the lobby, its scene sent: {@code scene_seq} 1. */
     private Client inTheLobby(Env env) {
         final Client client = join(env);
-        rush.enter(client.player(), LOBBY);
+        probe.enter(client.player(), LOBBY);
         env.tick();
         return client;
     }
@@ -138,7 +138,7 @@ class SceneInboundIntegrationTest {
 
     /** Enters a scene on the tick thread that owns the player, which the test thread no longer is once a tick ran. */
     private void enterOwned(Client client, SceneSpec scene) {
-        client.player().acquirable().sync(player -> rush.enter(player, scene));
+        client.player().acquirable().sync(player -> probe.enter(player, scene));
     }
 
     private static byte[] action(int sceneSeq, int actionSeq, String actionId) {
@@ -181,13 +181,13 @@ class SceneInboundIntegrationTest {
 
     @Test
     void anActionOfAnEarlierSceneIsAnsweredStaleAndNeverReachesTheHandler(Env env) {
-        start(env, "rush");
+        start(env, "probe");
         final Client client = inTheLobby(env);
         enterOwned(client, LOBBY);
         env.tick();
         final Collector<PluginMessagePacket> packets = client.track();
 
-        send(env, client, action(1, 1, "rush:queue"));
+        send(env, client, action(1, 1, "probe:queue"));
 
         assertEquals(List.of(new S2CActionResult(1, ActionResultCode.STALE_SCENE, EncodedComponent.NONE, 0)), results(packets));
         assertEquals(0, queued.get());
@@ -195,18 +195,18 @@ class SceneInboundIntegrationTest {
 
     @Test
     void aKeyStillCoolingDownIsAnsweredCooldownAndTheEleventhActionOfTheWindowIsRateLimited(Env env) {
-        start(env, "rush");
+        start(env, "probe");
         final Client client = inTheLobby(env);
         clock.set(100 * SECOND + 900_000_000L);
         final Collector<PluginMessagePacket> first = client.track();
-        send(env, client, action(1, 0, "rush:queue"));
+        send(env, client, action(1, 0, "probe:queue"));
         assertEquals(List.of(new S2CActionResult(0, ActionResultCode.OK, EncodedComponent.NONE, 2_000)), results(first));
 
         // Eleven more in the window [101 s, 102 s), every one inside the 2 s cooldown
         clock.set(101 * SECOND + 200_000_000L);
         final Collector<PluginMessagePacket> packets = client.track();
         final byte[][] eleven = new byte[11][];
-        for (int i = 0; i < 11; i++) eleven[i] = action(1, 1 + i, "rush:queue");
+        for (int i = 0; i < 11; i++) eleven[i] = action(1, 1 + i, "probe:queue");
         send(env, client, eleven);
 
         final List<S2CActionResult> results = results(packets);
@@ -222,15 +222,15 @@ class SceneInboundIntegrationTest {
 
     @Test
     void aStaleActionIsJudgedBeforeTheRateLimit(Env env) {
-        start(env, "rush");
+        start(env, "probe");
         final Client client = inTheLobby(env);
         enterOwned(client, LOBBY);
         env.tick();
         final Collector<PluginMessagePacket> packets = client.track();
         // Eleven of the scene before, then eleven of the current one, all in the window [100 s, 101 s)
         final byte[][] payloads = new byte[22][];
-        for (int i = 0; i < 11; i++) payloads[i] = action(1, i, "rush:queue");
-        for (int i = 11; i < 22; i++) payloads[i] = action(2, i, "rush:nope");
+        for (int i = 0; i < 11; i++) payloads[i] = action(1, i, "probe:queue");
+        for (int i = 11; i < 22; i++) payloads[i] = action(2, i, "probe:nope");
 
         send(env, client, payloads);
 
@@ -243,11 +243,11 @@ class SceneInboundIntegrationTest {
 
     @Test
     void theRateLimitIsJudgedBeforeTheActionIsLookedUp(Env env) {
-        start(env, "rush");
+        start(env, "probe");
         final Client client = inTheLobby(env);
         final Collector<PluginMessagePacket> packets = client.track();
         final byte[][] eleven = new byte[11][];
-        for (int i = 0; i < 11; i++) eleven[i] = action(1, i, "rush:nope");
+        for (int i = 0; i < 11; i++) eleven[i] = action(1, i, "probe:nope");
 
         send(env, client, eleven);
 
@@ -258,37 +258,37 @@ class SceneInboundIntegrationTest {
 
     @Test
     void aRefusalCarriesThePluginsReasonAndAFailingHandlerIsRefusedWithoutOne(Env env) {
-        start(env, "rush");
+        start(env, "probe");
         final Client client = inTheLobby(env);
         final Collector<PluginMessagePacket> packets = client.track();
 
-        send(env, client, action(1, 4, "rush:deny"), action(1, 5, "rush:boom"));
+        send(env, client, action(1, 4, "probe:deny"), action(1, 5, "probe:boom"));
 
         assertEquals(List.of(
                 new S2CActionResult(4, ActionResultCode.REJECTED, WidgetEncoder.component(NOT_NOW), 0),
                 new S2CActionResult(5, ActionResultCode.REJECTED, EncodedComponent.NONE, 0)), results(packets));
         final List<String> errors = linesAt(Level.ERROR);
         assertEquals(1, errors.size(), errors.toString());
-        assertTrue(errors.getFirst().contains("action_id=rush:boom"), errors.getFirst());
+        assertTrue(errors.getFirst().contains("action_id=probe:boom"), errors.getFirst());
     }
 
     @Test
     void aHandlerThatChangesTheSceneIsAnsweredWithoutStartingACooldown(Env env) {
-        start(env, "rush");
+        start(env, "probe");
         final Client client = inTheLobby(env);
         final Collector<PluginMessagePacket> packets = client.track();
 
-        send(env, client, action(1, 9, "rush:switch"));
+        send(env, client, action(1, 9, "probe:switch"));
 
         final List<PlayMessage> messages = SceneTestKit.messages(packets);
         assertEquals(new S2CActionResult(9, ActionResultCode.OK, EncodedComponent.NONE, 0), messages.getFirst());
-        assertEquals("rush:round", ((S2CScene) messages.get(1)).sceneId());
+        assertEquals("probe:round", ((S2CScene) messages.get(1)).sceneId());
         assertEquals(2, ((S2CScene) messages.get(1)).sceneSeq());
     }
 
     @Test
     void aPayloadThatDoesNotDecodeOrIsAMessageOfOursDisconnects(Env env) {
-        start(env, "rush");
+        start(env, "probe");
         final Client truncated = inTheLobby(env);
         final Client echoing = inTheLobby(env);
         final Collector<DisconnectPacket> firstKick = truncated.connection().trackIncoming(DisconnectPacket.class);
@@ -307,7 +307,7 @@ class SceneInboundIntegrationTest {
 
     @Test
     void anUnknownMessageIsDroppedWithoutAnAnswerAndItsLineIsWithinTheBudget(Env env) {
-        start(env, "rush");
+        start(env, "probe");
         final Client client = inTheLobby(env);
         final Collector<PluginMessagePacket> packets = client.track();
 
@@ -326,7 +326,7 @@ class SceneInboundIntegrationTest {
 
     @Test
     void onlyTheFirstReadyOfTheCurrentSceneReachesTheLedger(Env env) {
-        start(env, "rush");
+        start(env, "probe");
         final Client client = inTheLobby(env);
         enterOwned(client, LOBBY);
         env.tick();
@@ -347,7 +347,7 @@ class SceneInboundIntegrationTest {
         final MsgBuf result = MsgBuf.writing();
         new S2CActionResult(1, ActionResultCode.OK, EncodedComponent.NONE, 0).write(result);
 
-        send(env, client, action(0, 0, "rush:queue"), ready(1), new byte[]{0x02, 0x01}, new byte[]{0x7f},
+        send(env, client, action(0, 0, "probe:queue"), ready(1), new byte[]{0x02, 0x01}, new byte[]{0x7f},
                 result.toByteArray(), new byte[0]);
 
         assertEquals(List.of(), SceneTestKit.messages(packets));

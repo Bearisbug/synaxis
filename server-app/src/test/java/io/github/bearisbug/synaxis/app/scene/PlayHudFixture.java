@@ -47,7 +47,7 @@ import java.util.concurrent.TimeoutException;
 
 /**
  * The fixture of the first step of {@code docs/DESIGN-PLAY.md} §26 S1 (Q0 of §6.7.6): a bare server the real
- * client of job {@code rush} joins before any scene layer exists. It binds {@code 0.0.0.0:<port>} and prints
+ * client of the {@code synaxis:play} gametest joins before any scene layer exists. It binds {@code 0.0.0.0:<port>} and prints
  * {@value #READY}.
  * <p>
  * It answers the client's {@code C2S_HELLO} the way a gameplay process does, from the configuration thread
@@ -79,10 +79,10 @@ final class PlayHudFixture {
     static final Key ELSEWHERE = Key.key("synaxis_test", "play_elsewhere");
 
     /** The title of the scene: a key of the mod's language files without arguments. */
-    static final Component TITLE = Component.translatable("rush.scene.lobby");
+    static final Component TITLE = Component.translatable("key.category.synaxis.play");
     /** A key of the mod's language files with one argument and a colour; the fallback differs from the text. */
-    static final Component HINT = Component.translatable("rush.hint", NamedTextColor.GOLD, Component.text("1"))
-            .fallback("The fallback of rush.hint, queued: %s");
+    static final Component HINT = Component.translatable("synaxis.action.cooldown", NamedTextColor.GOLD,
+            Component.text("1")).fallback("The fallback of synaxis.action.cooldown: %s");
     /** A key no language file has: the client shows the fallback (ADR-PLAY-007). */
     static final Component MISSING = Component.translatable("synaxis_test.missing", NamedTextColor.GREEN)
             .fallback("Shown from the fallback");
@@ -96,10 +96,9 @@ final class PlayHudFixture {
     /** The panel's widget id. */
     static final String PANEL_ID = "result";
 
-    private static final Component TIMER_LABEL = Component.translatable("rush.timer.round", NamedTextColor.AQUA);
-    private static final Component SCORE_TITLE = Component.translatable("rush.score", NamedTextColor.YELLOW);
-    private static final Component CAPTURE = Component.translatable("rush.capture", NamedTextColor.LIGHT_PURPLE,
-            Component.text("A"), Component.text("40"));
+    private static final Component TIMER_LABEL = Component.text("Time left", NamedTextColor.AQUA);
+    private static final Component SCORE_TITLE = Component.text("Score", NamedTextColor.YELLOW);
+    private static final Component CAPTURE = Component.text("Capturing A: 40%", NamedTextColor.LIGHT_PURPLE);
     private static final Component REFUSED = Component.translatable("synaxis_test.refused", NamedTextColor.RED)
             .fallback("Refused by the fixture");
 
@@ -206,8 +205,9 @@ final class PlayHudFixture {
 
     /** Q0c's scene: one action key, {@value #POKE} on slot 0. */
     static S2CScene widgetScene() {
-        return new S2CScene(2, WIDGETS_SCENE_ID, component(Component.translatable("rush.scene.round")), S2CScene.CAMERA_VANILLA,
-                S2CScene.CURSOR_LOCKED, List.of(new S2CScene.Action(0, POKE, component(Component.translatable("rush.action.queue")),
+        return new S2CScene(2, WIDGETS_SCENE_ID, component(Component.translatable("key.category.synaxis.play")),
+                S2CScene.CAMERA_VANILLA, S2CScene.CURSOR_LOCKED,
+                List.of(new S2CScene.Action(0, POKE, component(Component.translatable("key.synaxis.action_1")),
                 POKE_COOLDOWN_MS)));
     }
 
@@ -225,13 +225,11 @@ final class PlayHudFixture {
     }
 
     private static S2CHud.SetWidget panel() {
-        return new S2CHud.SetWidget(OWNER, PANEL_ID, Widget.panel(component(Component.translatable("rush.result")), List.of(
-                        new PropValue.Row(component(Component.translatable("rush.result.row", Component.text("1"),
-                                Component.text("Player"), Component.text("2"))), "7", true),
-                        new PropValue.Row(component(Component.translatable("rush.result.row", Component.text("2"),
-                                Component.text("Sam"), Component.text("1"))), "3", false)),
+        return new S2CHud.SetWidget(OWNER, PANEL_ID, Widget.panel(component(Component.text("Round over")), List.of(
+                        new PropValue.Row(component(Component.text("1. Player (2 captures)")), "7", true),
+                        new PropValue.Row(component(Component.text("2. Sam (1 captures)")), "3", false)),
                 List.of(new PropValue.Button(REFUSE, component(Component.text("Refuse"))),
-                        new PropValue.Button(CLOSE, component(Component.translatable("rush.action.back"))))));
+                        new PropValue.Button(CLOSE, component(Component.translatable("synaxis.action.ok"))))));
     }
 
     /** One action, answered once, the way the host's dispatch would for these three. */

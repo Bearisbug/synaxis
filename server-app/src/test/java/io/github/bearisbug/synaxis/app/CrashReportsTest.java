@@ -30,7 +30,7 @@ class CrashReportsTest {
 
     private static CrashReports reports(Path directory) {
         return new CrashReports(directory, "r01-c1", CLOCK, () -> "synaxis.app.port=25601\n",
-                () -> List.of("rts 0.1.0"));
+                () -> List.of("probe 0.1.0"));
     }
 
     @Test
@@ -44,7 +44,7 @@ class CrashReportsTest {
         assertTrue(report.contains("Reason: fatal error: test"), report);
         assertTrue(report.contains("java.lang.IllegalStateException: the cause"), report);
         assertTrue(report.contains("-- Git head --\n"), report);
-        assertTrue(report.contains("-- Plugins --\nrts 0.1.0\n"), report);
+        assertTrue(report.contains("-- Plugins --\nprobe 0.1.0\n"), report);
         assertTrue(report.contains("-- Effective configuration --\nsynaxis.app.port=25601\n"), report);
         // The thread writing the report is in its own dump, with more than the eight frames
         // ThreadInfo#toString would have kept

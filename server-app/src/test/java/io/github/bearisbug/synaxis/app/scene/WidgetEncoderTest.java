@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class WidgetEncoderTest {
 
-    private static final Component HINT = Component.translatable("rush.hint", NamedTextColor.GOLD, Component.text("1"))
+    private static final Component HINT = Component.translatable("probe.hint", NamedTextColor.GOLD, Component.text("1"))
             .fallback("Queued: %s");
 
     private static EncodedComponent encoded(Component component) {
@@ -44,13 +44,13 @@ class WidgetEncoderTest {
         final Widget.Row row = new Widget.Row(Component.text("Alex"), "12", true);
         final PropValue.Row wireRow = new PropValue.Row(encoded(Component.text("Alex")), "12", true);
 
-        final WidgetEncoder.Encoded text = WidgetEncoder.encode("rush",
+        final WidgetEncoder.Encoded text = WidgetEncoder.encode("probe",
                 new Widget.Text("hint", HudSlot.TOP_CENTER, 3, HINT, Duration.ofSeconds(5)));
-        final WidgetEncoder.Encoded timer = WidgetEncoder.encode("rush",
+        final WidgetEncoder.Encoded timer = WidgetEncoder.encode("probe",
                 new Widget.Timer("timer", HudSlot.TOP_RIGHT, 0, Component.text("Round"), Duration.ofSeconds(45), true));
-        final WidgetEncoder.Encoded board = WidgetEncoder.encode("rush",
+        final WidgetEncoder.Encoded board = WidgetEncoder.encode("probe",
                 new Widget.Scoreboard("score", HudSlot.RIGHT, 1, Component.text("Score"), List.of(row)));
-        final WidgetEncoder.Encoded panel = WidgetEncoder.encode("rush", new Widget.Panel("result",
+        final WidgetEncoder.Encoded panel = WidgetEncoder.encode("probe", new Widget.Panel("result",
                 Component.text("Result"), List.of(row), List.of(new Widget.Button("back", Component.text("Back")))));
 
         assertEquals(io.github.bearisbug.synaxis.game.protocol.play.Widget.text(1, 3, encoded(HINT), 5_000), text.widget());
@@ -59,10 +59,10 @@ class WidgetEncoderTest {
         assertEquals(io.github.bearisbug.synaxis.game.protocol.play.Widget.scoreboard(4, 1,
                 encoded(Component.text("Score")), List.of(wireRow)), board.widget());
         assertEquals(io.github.bearisbug.synaxis.game.protocol.play.Widget.panel(encoded(Component.text("Result")),
-                List.of(wireRow), List.of(new PropValue.Button("rush:back", encoded(Component.text("Back"))))),
+                List.of(wireRow), List.of(new PropValue.Button("probe:back", encoded(Component.text("Back"))))),
                 panel.widget());
         assertEquals(Set.of(), text.buttonActions());
-        assertEquals(Set.of("rush:back"), panel.buttonActions());
+        assertEquals(Set.of("probe:back"), panel.buttonActions());
     }
 
     private static Widget.Panel panel(int titleLength) {
@@ -75,7 +75,7 @@ class WidgetEncoderTest {
 
     private static boolean fits(Widget widget) {
         try {
-            WidgetEncoder.encode("rush", widget);
+            WidgetEncoder.encode("probe", widget);
             return true;
         } catch (IllegalArgumentException _) {
             return false;
@@ -88,10 +88,10 @@ class WidgetEncoderTest {
         int titleLength = 1;
         while (titleLength < 2_000 && fits(panel(titleLength + 1))) titleLength++;
 
-        assertEquals(PlayProtocol.MAX_WIDGET_BYTES, size(WidgetEncoder.encode("rush", panel(titleLength)).widget()));
+        assertEquals(PlayProtocol.MAX_WIDGET_BYTES, size(WidgetEncoder.encode("probe", panel(titleLength)).widget()));
         final int longer = titleLength + 1;
         final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
-                () -> WidgetEncoder.encode("rush", panel(longer)));
+                () -> WidgetEncoder.encode("probe", panel(longer)));
         assertTrue(refused.getMessage().contains("4097 bytes"), refused.getMessage());
     }
 
@@ -101,26 +101,26 @@ class WidgetEncoderTest {
         for (int i = 0; i < 12; i++) rows.add(new Widget.Row(Component.text("r".repeat(245)), "", false));
         final Widget.Panel panel = new Widget.Panel("big", Component.text("t".repeat(2_000)), rows, List.of());
 
-        assertThrows(IllegalArgumentException.class, () -> WidgetEncoder.encode("rush", panel));
+        assertThrows(IllegalArgumentException.class, () -> WidgetEncoder.encode("probe", panel));
     }
 
     @Test
     void aComponentOver2048BytesIsRefused() {
         final Widget.Text text = new Widget.Text("hint", HudSlot.TOP_LEFT, 0, Component.text("x".repeat(2_100)), Duration.ZERO);
 
-        assertThrows(IllegalArgumentException.class, () -> WidgetEncoder.encode("rush", text));
+        assertThrows(IllegalArgumentException.class, () -> WidgetEncoder.encode("probe", text));
     }
 
     @Test
     void aButtonGetsThePluginsPrefixAndAnotherPluginsIsRefused() {
-        final WidgetEncoder.Encoded panel = WidgetEncoder.encode("rush", new Widget.Panel("result", Component.text("R"),
+        final WidgetEncoder.Encoded panel = WidgetEncoder.encode("probe", new Widget.Panel("result", Component.text("R"),
                 List.of(), List.of(new Widget.Button("back", Component.text("Back")),
-                new Widget.Button("rush:again", Component.text("Again")))));
+                new Widget.Button("probe:again", Component.text("Again")))));
 
-        assertEquals(Set.of("rush:back", "rush:again"), panel.buttonActions());
-        assertThrows(IllegalArgumentException.class, () -> WidgetEncoder.encode("rush", new Widget.Panel("result",
-                Component.text("R"), List.of(), List.of(new Widget.Button("rts:back", Component.text("Back"))))));
-        assertThrows(IllegalArgumentException.class, () -> WidgetEncoder.encode("rush", new Widget.Panel("result",
+        assertEquals(Set.of("probe:back", "probe:again"), panel.buttonActions());
+        assertThrows(IllegalArgumentException.class, () -> WidgetEncoder.encode("probe", new Widget.Panel("result",
+                Component.text("R"), List.of(), List.of(new Widget.Button("other:back", Component.text("Back"))))));
+        assertThrows(IllegalArgumentException.class, () -> WidgetEncoder.encode("probe", new Widget.Panel("result",
                 Component.text("R"), List.of(), List.of(new Widget.Button("Back Home", Component.text("Back"))))));
     }
 }

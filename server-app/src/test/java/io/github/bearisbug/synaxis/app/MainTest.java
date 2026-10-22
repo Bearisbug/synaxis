@@ -115,10 +115,10 @@ class MainTest {
         assertTrue(Main.awaitStopped(process));
     }
 
-    // §15: the RTS camera sees far more of the world than the engine defaults send, and two of
-    // these three freeze while the process is being created
+    // §15: the host's view range differs from the engine defaults, and two of these three freeze
+    // while the process is being created
     @Test
-    void theViewRangeOfTheRtsCameraIsSetBeforeTheProcessExists() {
+    void theViewRangeOfTheHostIsSetBeforeTheProcessExists() {
         Main.applyViewRangeDefaults();
 
         assertEquals("8", System.getProperty("synaxis.entity-view-distance"));
@@ -143,8 +143,8 @@ class MainTest {
 
     @Test
     void theSelectionPropertyIsACommaSeparatedList() {
-        System.setProperty("synaxis.app.plugins", "rts, probe ,");
-        assertEquals(Set.of("rts", "probe"), Main.selectedPlugins());
+        System.setProperty("synaxis.app.plugins", "first, probe ,");
+        assertEquals(Set.of("first", "probe"), Main.selectedPlugins());
     }
 
     @Test

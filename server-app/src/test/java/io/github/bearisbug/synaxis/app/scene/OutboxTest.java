@@ -27,11 +27,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class OutboxTest {
 
-    private static final S2CScene LOBBY = scene(1, "rush:lobby");
+    private static final S2CScene LOBBY = scene(1, "probe:lobby");
 
     private static S2CScene scene(int sceneSeq, String sceneId) {
         return new S2CScene(sceneSeq, sceneId, text("title"), S2CScene.CAMERA_VANILLA, S2CScene.CURSOR_LOCKED,
-                List.of(new S2CScene.Action(0, "rush:queue", text("queue"), 2_000)));
+                List.of(new S2CScene.Action(0, "probe:queue", text("queue"), 2_000)));
     }
 
     private static EncodedComponent text(String opaque) {
@@ -65,16 +65,16 @@ class OutboxTest {
     @Test
     void theSceneGoesFirstAndAChangeTheSceneOwnerQueuedBeforeItIsGone() {
         final Outbox outbox = new Outbox();
-        outbox.set("rush", "hint", line("hint"));
+        outbox.set("probe", "hint", line("hint"));
         // What entering a scene queues: the header, and a clear of the owner in place of its earlier changes
         outbox.scene(LOBBY);
-        outbox.clearOwner("rush");
-        outbox.set("rush", "timer", line("timer"));
+        outbox.clearOwner("probe");
+        outbox.set("probe", "timer", line("timer"));
 
         final List<PlayMessage> messages = flush(outbox).messages();
 
-        assertEquals(List.of(LOBBY, new S2CHud(List.of(new S2CHud.ClearOwner("rush"),
-                new S2CHud.SetWidget("rush", "timer", line("timer"))))), messages);
+        assertEquals(List.of(LOBBY, new S2CHud(List.of(new S2CHud.ClearOwner("probe"),
+                new S2CHud.SetWidget("probe", "timer", line("timer"))))), messages);
     }
 
     @Test
@@ -83,7 +83,7 @@ class OutboxTest {
         final List<PropValue.Row> rows = new ArrayList<>();
         for (int row = 0; row < 16; row++) rows.add(new PropValue.Row(text("n".repeat(40)), "v".repeat(16), false));
         for (int i = 0; i < 32; i++)
-            outbox.set("rush", "board" + i, Widget.scoreboard(Widget.RIGHT, i, text("scores"), rows));
+            outbox.set("probe", "board" + i, Widget.scoreboard(Widget.RIGHT, i, text("scores"), rows));
 
         final Sent sent = flush(outbox);
 
@@ -107,7 +107,7 @@ class OutboxTest {
     @Test
     void thirtyThreeSmallTextsSplitOnTheOpCap() {
         final Outbox outbox = new Outbox();
-        for (int i = 0; i < 33; i++) outbox.set("rush", "t" + i, line("x"));
+        for (int i = 0; i < 33; i++) outbox.set("probe", "t" + i, line("x"));
 
         final Sent sent = flush(outbox);
 
@@ -125,7 +125,7 @@ class OutboxTest {
         final CompletableFuture<Boolean> second = new CompletableFuture<>();
         outbox.holdUntil(first);
         outbox.scene(LOBBY);
-        outbox.set("rush", "timer", line("timer"));
+        outbox.set("probe", "timer", line("timer"));
 
         assertEquals(0, flush(outbox).payloads().size(), "sent while the move was under way");
         outbox.holdUntil(second);
@@ -147,7 +147,7 @@ class OutboxTest {
         outbox.holdUntil(first);
         outbox.holdUntil(second);
         outbox.scene(LOBBY);
-        outbox.set("rush", "timer", line("timer"));
+        outbox.set("probe", "timer", line("timer"));
 
         second.complete(true);
         assertEquals(0, flush(outbox).payloads().size(), "sent while the first move was under way");
@@ -195,32 +195,32 @@ class OutboxTest {
     @Test
     void twoChangesOfOneWidgetInOneTickReachTheClientAsTheLaterOne() {
         final Outbox outbox = new Outbox();
-        outbox.set("rush", "timer", line("first"));
+        outbox.set("probe", "timer", line("first"));
         outbox.set("x", "banner", line("banner"));
-        outbox.set("rush", "timer", line("second"));
+        outbox.set("probe", "timer", line("second"));
         outbox.set("x", "gone", line("gone"));
         outbox.remove("x", "gone");
 
         assertEquals(List.of(new S2CHud.SetWidget("x", "banner", line("banner")),
-                new S2CHud.SetWidget("rush", "timer", line("second")),
+                new S2CHud.SetWidget("probe", "timer", line("second")),
                 new S2CHud.RemoveWidget("x", "gone")), flush(outbox).ops());
     }
 
     @Test
     void aClearOfOneOwnerKeepsTheOtherOwnersChanges() {
         final Outbox outbox = new Outbox();
-        outbox.set("rush", "timer", line("timer"));
+        outbox.set("probe", "timer", line("timer"));
         outbox.set("x", "banner", line("banner"));
-        outbox.clearOwner("rush");
+        outbox.clearOwner("probe");
 
-        assertEquals(List.of(new S2CHud.SetWidget("x", "banner", line("banner")), new S2CHud.ClearOwner("rush")),
+        assertEquals(List.of(new S2CHud.SetWidget("x", "banner", line("banner")), new S2CHud.ClearOwner("probe")),
                 flush(outbox).ops());
     }
 
     @Test
     void ofTwoScenesInOneTickOnlyTheLaterGoesOut() {
         final Outbox outbox = new Outbox();
-        final S2CScene round = scene(2, "rush:round");
+        final S2CScene round = scene(2, "probe:round");
         outbox.scene(LOBBY);
         outbox.scene(round);
 
@@ -231,7 +231,7 @@ class OutboxTest {
     void anEmptyQueueSendsNothingAndAFlushEmptiesIt() {
         final Outbox outbox = new Outbox();
         assertEquals(0, flush(outbox).payloads().size());
-        outbox.set("rush", "timer", line("timer"));
+        outbox.set("probe", "timer", line("timer"));
         assertEquals(1, flush(outbox).payloads().size());
         assertEquals(0, flush(outbox).payloads().size(), "a flushed change went out twice");
     }

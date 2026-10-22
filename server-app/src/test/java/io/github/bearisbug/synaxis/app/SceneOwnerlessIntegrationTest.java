@@ -69,7 +69,7 @@ class SceneOwnerlessIntegrationTest {
     /** Every kind of payload: an action, a ready, an unknown id, a message of ours, a truncated one, nothing. */
     private static List<byte[]> probes() {
         final MsgBuf action = MsgBuf.writing();
-        new C2SAction(0, 1, "rush:queue", new C2SAction.None()).write(action);
+        new C2SAction(0, 1, "probe:queue", new C2SAction.None()).write(action);
         final MsgBuf ready = MsgBuf.writing();
         new C2SSceneReady(1).write(ready);
         final MsgBuf ours = MsgBuf.writing();

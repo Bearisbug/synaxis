@@ -4,7 +4,7 @@
 
 | 字段 | 值 |
 | --- | --- |
-| 状态 | 草稿 |
+| 状态 | 草稿（第一期已由用户 2026-10-22 签字，第二期待写） |
 | 项目画像 | 生产产品 |
 | Owner | Bearisbug（光照会话维护本分册，§6.2 插件平台由生产就绪会话起草） |
 | 评审人 | Bearisbug |
@@ -17,6 +17,7 @@
 
 | 日期 | 版本 | 涉及 ID | 一句话 | 类型 |
 | --- | --- | --- | --- | --- |
+| 2026-10-22 | v0.7 | ADR-ECO-001、ADR-ECO-002、ADR-ECO-003、ADR-ECO-004、ADR-ECO-005、ADR-ECO-006、ADR-ECO-007、ADR-ECO-011、ADR-ECO-012、ADR-ECO-013、ADR-ECO-014、ADR-ECO-021、ADR-ECO-022、ADR-ECO-023 | 用户签第一期：十四条决定生效，确认框、原版客户端、插件连库三件事定稿 | 拍板 |
 | 2026-10-22 | v0.6 | REQ-ECO-020 | 资源根统一为 pack 目录，插件平台估时 5 到 7 天，保留 id 交接已完成 | 文档 |
 | 2026-10-22 | v0.5 | ADR-ECO-011、ADR-ECO-013、ADR-ECO-014、ADR-ECO-020、ADR-ECO-022、ADR-ECO-023、ADR-ECO-024、RULE-ECO-010、RULE-ECO-011、RULE-ECO-020、INV-ECO-020、INV-ECO-021、FLOW-SDK-RELEASE、REQ-ECO-024、REQ-ECO-031、REQ-ECO-047 | 按两份对抗评审改：发布要用户审批，先推包再载存档，资源可复现，里程碑重排 | 文档 |
 | 2026-10-22 | v0.4 | FLOW-PLUGIN-LOAD、FLOW-PLUGIN-ADMIT、FLOW-PLUGIN-DISABLE、FLOW-PLUGIN-STOP、FLOW-PLUGIN-SERVICE、RULE-ECO-002、RULE-ECO-010、REQ-ECO-006、REQ-ECO-014、REQ-ECO-015、REQ-ECO-016、REQ-ECO-017、REQ-ECO-019 | 按独立评审改插件平台：起服模式只看准入回调，禁用不调插件出口，停用回调逐个等，可见面按 jar 生成 | 文档 |
@@ -1046,7 +1047,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 
 ### 6.3 客户端能力目录
 
-能力是模组能替插件做的事。只有模组自己实现的能力才有能力 id，每个 id 对应「通道加最低版本」。插件在描述文件 `requiredCapabilities` 里声明，宿主把它折算成对应通道的最低版本，与插件 `ChannelSpec` 声明的取较大的一个，走 `docs/DESIGN-PLAY.md` W1 同一条断线路径（`ADR-ECO-013`、`RULE-ECO-011`）。资源包承载的能力没有 id，装了模组、推了必需包就有。加一项模组能力就要发一版模组（`ADR-ECO-010`），能力 id 的取值第二期在 §8 定。
+能力是模组能替插件做的事。只有模组自己实现的能力才有能力 id，每个 id 对应「通道加最低版本」。插件在描述文件 `requiredCapabilities` 里声明，宿主把它折算成对应通道的最低版本，与插件 `ChannelSpec` 声明的取较大的一个，走 `docs/DESIGN-PLAY.md` W1 同一条断线路径（`ADR-ECO-013`、`RULE-ECO-011`）。资源包承载的能力没有 id，装了模组、推了必需包就有。没装模组的原版客户端一律不放行，断线原因提示去装模组，核心模式也一样。加一项模组能力就要发一版模组（`ADR-ECO-010`），能力 id 的取值第二期在 §8 定。
 
 | 能力 | 承载 | 能力 id | 首批内容 | 现状 |
 | --- | --- | --- | --- | --- |
@@ -1069,8 +1070,9 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 5. 宿主用内置 HTTP 端点提供这些包，服主也可以改配外部地址
 6. 玩家进服时，握手与能力判定之后、载入存档之前，按插件加载顺序把全部包作为必需包推送
 7. 宿主等客户端回报，最长 120 秒，超时或任一包失败就断线，这时还没占存档租约
-8. 之后才载入存档与角色，跑准入检查与准入回调，拒绝原因能用插件自己的语言文件
-9. 客户端按 SHA-1 缓存，官方模组调高原版的缓存上限，没变的包不重下
+8. 模组只对完成 Synaxis 握手的服自动接受资源包确认框，其余服保留原版确认框
+9. 之后才载入存档与角色，跑准入检查与准入回调，拒绝原因能用插件自己的语言文件
+10. 客户端按 SHA-1 缓存，官方模组调高原版的缓存上限，没变的包不重下
 
 原版按文件类型合并资源包：语言文件按键合并，与文件放在哪个命名空间无关；`sounds.json`、图集与字体是叠加，不是整份覆盖。所以命名空间只管文件路径，语言键另加前缀规则，叠加类文件写进别的命名空间也算覆盖、要声明，逐类规则第二期在 §8 定。
 
@@ -1078,7 +1080,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 
 引擎已有原版的资源包推送包与 `Player#sendResourcePacks`，必需包失败即踢（`Player.java:1950-1951`）。配置阶段会等客户端回报，但等的是不带超时的 `join()`（`ConnectionManager.java:528-529`），第 7 步的上限要补上；今天它在准入之后才等包，第 6 步要把推包挪到载存档之前。宿主、插件 API 与模组都还没用上资源包。
 
-`docs/DESIGN-M2.md` 的非目标与 `docs/DESIGN-PLAY.md` 的 `ADR-PLAY-007` 都写了不做服务端资源包，本分册取代这两处（`ADR-ECO-010`、`ADR-ECO-011`）；`ADR-PLAY-007` 里翻译键带回退文本的做法不变。确认框、托管默认值与原版客户端放行三件事见 §28 风险与开放问题。
+`docs/DESIGN-M2.md` 的非目标与 `docs/DESIGN-PLAY.md` 的 `ADR-PLAY-007` 都写了不做服务端资源包，本分册取代这两处（`ADR-ECO-010`、`ADR-ECO-011`）；`ADR-PLAY-007` 里翻译键带回退文本的做法不变。托管默认值见 §28 风险与开放问题。
 
 ### 6.5 SDK 与兼容承诺
 
@@ -1141,7 +1143,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 
 ## 18. ADR 决策记录
 
-- **`ADR-ECO-001` 描述文件放在插件 jar 里，读描述不加载类** — Status: Proposed
+- **`ADR-ECO-001` 描述文件放在插件 jar 里，读描述不加载类** — Status: Accepted（用户 2026-10-22 签字）
   - Context：依赖解析与建加载器要在加载插件类之前拿到全部描述，今天要先实例化入口类才读得到
   - Decision：jar 根放 `synaxis-plugin.json`，宿主扫 `plugins/*.jar` 读这份文件，`descriptor()` 退役
   - Alternatives：
@@ -1153,7 +1155,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
     - 取代 `ADR-M2-006` 第二段里「descriptor 改由注解处理器生成」一句
     - classpath 上的插件还认不认待 Q-PLUGIN-LOAD-2；只认目录时，发行包、起服任务与回归用例的启动方式要改
     - 保留 classpath 发现时，那里的插件由应用加载器加载，违反 `INV-ECO-004` 与 `REQ-ECO-007`
-- **`ADR-ECO-002` 依赖按拓扑序启用，同层按 id 排** — Status: Proposed
+- **`ADR-ECO-002` 依赖按拓扑序启用，同层按 id 排** — Status: Accepted（用户 2026-10-22 签字）
   - Context：`docs/DESIGN-M2.md` §28.3 ① 约定出现第二个插件时补回依赖字段、拓扑排序与环检测
   - Decision：硬依赖与软依赖各带版本范围，拓扑序启用、同层按 id 字典序，硬依赖成环与缺依赖拒载
   - Alternatives：
@@ -1163,7 +1165,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
   - Consequences：
     - 命令无前缀名、同档事件与服务、资源包推送的先后都随之确定；拒载是否整服拒启待 Q-PLUGIN-LOAD-1
     - 补回 §28.3 ① 前两行，取代 `ADR-M2-006`「descriptor 里连 depends 都不写」一句
-- **`ADR-ECO-003` 每插件一个类加载器，父链只放行可见面** — Status: Proposed
+- **`ADR-ECO-003` 每插件一个类加载器，父链只放行可见面** — Status: Accepted（用户 2026-10-22 签字）
   - Context：插件与宿主共用应用加载器，宿主独占的驱动与连接池对插件可见，两个插件的同名库互相顶掉
   - Decision：每插件一个加载器，依次查 JDK、可见面、本插件 jar、声明过的依赖；可见面按 jar 判，清单由构建生成
   - Alternatives：
@@ -1175,7 +1177,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
   - Consequences：
     - 宿主独占库运行期不可见，插件之间不用重定位库；直接用引擎内部依赖的插件要自带
     - 取代 `ADR-M2-006` 第二段的「parent = app loader」与 `docs/DESIGN-M2.md` §2 每插件加载器的非目标
-- **`ADR-ECO-004` 依赖库打进插件 jar，宿主不下载** — Status: Proposed
+- **`ADR-ECO-004` 依赖库打进插件 jar，宿主不下载** — Status: Accepted（用户 2026-10-22 签字）
   - Context：隔离之后插件要自带依赖库，Bukkit 的 `libraries` 在起服时从 Maven 仓库下载
   - Decision：库打进插件 jar，归该插件的加载器；插件之间的接口只用自己的类与可见面类型
   - Alternatives：
@@ -1186,14 +1188,14 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
   - Consequences：
     - 起服不联网、可复现；互相依赖的插件跨接口传同名库的类型会 `LinkageError`，出现第一起就改嵌 jar
     - `play-kit` 同样打进用它的插件 jar，不进可见面，理由见 §6.2.2 每插件类加载器
-- **`ADR-ECO-005` 服务注册表按类型登记，五档优先级** — Status: Proposed
+- **`ADR-ECO-005` 服务注册表按类型登记，五档优先级** — Status: Accepted（用户 2026-10-22 签字）
   - Context：用户 2026-10-22 拍板要服务互调，今天插件之间只能直接调对方的类，实现换不掉
   - Decision：按接口 `Class` 登记实现与五档优先级，查最高档、同档取先登记，提供者停用即注销并通知
   - Alternatives：
     - 只靠直接依赖调对方的类：实现换不掉，提供者停用后调用方拿着失效引用
     - 宿主给服务套动态代理，停用后调用抛异常：只支持接口，每次调用多一层反射，调用方仍要接异常
   - Consequences：经济、权限这类抽象可由第三方插件提供；调用方缓存的旧引用在提供者停用后行为不保证
-- **`ADR-ECO-006` 准入分多个检查与一个准入回调** — Status: Proposed
+- **`ADR-ECO-006` 准入分多个检查与一个准入回调** — Status: Accepted（用户 2026-10-22 签字）
   - Context：`API-M2-011` 全进程一个准入槽，`docs/DESIGN-M2.md` §28.2 留着「多插件时谁提供对局」
   - Decision：检查可多个、只答放行或拒绝，按启用顺序调，首个拒绝即断线；落点仍只由准入回调定
   - Alternatives：
@@ -1204,7 +1206,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
     - 越过别人的拒绝只能由拒绝方自己查权限
     - 起服模式只看有没有准入回调，不再要求起服时恰好一个实例，玩法实例可以按需建
     - 关掉 `docs/DESIGN-M2.md` §28.2 的「多插件时谁提供对局」
-- **`ADR-ECO-007` 运行中禁用连带硬依赖者** — Status: Proposed
+- **`ADR-ECO-007` 运行中禁用连带硬依赖者** — Status: Accepted（用户 2026-10-22 签字）
   - Context：今天只在启用失败与停机时拆插件，`docs/DESIGN-M2.md` §28.3 ① 把运行中禁用推到第二个插件
   - Decision：按依赖逆序连带硬依赖它的全部插件，串行段里收回登记、由宿主撤离玩家，再按同一顺序逐个调停用回调
   - Alternatives：
@@ -1226,7 +1228,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
     - 作者不写客户端代码，每加一种模组能力都要发一版模组
     - 取代 `ADR-PLAY-007` 里不做服务端资源包的一半，翻译键带回退文本的一半不变
     - 资源包里的着色器在显卡上执行，算代码，插件资源包不得带 `shaders/`
-- **`ADR-ECO-011` 每个插件一个原版必需资源包，先推包再载存档** — Status: Proposed
+- **`ADR-ECO-011` 每个插件一个原版必需资源包，先推包再载存档** — Status: Accepted（用户 2026-10-22 签字）
   - Context：引擎已有原版多资源包推送，原版客户端启动时把下载缓存修剪到 20 个文件
   - Decision：每个插件可复现地打一个包，在握手之后、载存档之前作为必需包推送，等回报最长 120 秒
   - Alternatives：
@@ -1239,7 +1241,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
     - 被拒的玩家也下过一次包，按 SHA-1 缓存，下次不重下
     - 一个包的地址挂了全员进不来，外部地址要有 Runbook，第二期写进 §22
     - 宿主要提供 HTTP 端点或接受外部地址，包的推送顺序决定覆盖优先级
-- **`ADR-ECO-012` 资源命名空间等于插件 id** — Status: Proposed
+- **`ADR-ECO-012` 资源命名空间等于插件 id** — Status: Accepted（用户 2026-10-22 签字）
   - Context：两个插件改同一份原版资源时只有一个生效，今天作者和服主都看不出来
   - Decision：资源只放在自己 id 的命名空间，语言键以自己的 id 开头，覆盖别的要声明，没声明的插件拒载
   - Alternatives：
@@ -1250,7 +1252,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
     - 拒载只拒这一个插件与硬依赖它的插件，整服拒不拒启见 Q-PLUGIN-LOAD-1
     - 声明字段是 §6.2.1 的 `resourceOverrides`
     - 保留 id 除了 `synaxis`，还要加 `minecraft` 与官方整合包里各模组的 id
-- **`ADR-ECO-013` 能力 id 折算成通道的最低版本** — Status: Proposed
+- **`ADR-ECO-013` 能力 id 折算成通道的最低版本** — Status: Accepted（用户 2026-10-22 签字）
   - Context：`docs/DESIGN-PLAY.md` W1 已有按通道协商与必需通道断线，资源包承载的能力没有通道
   - Decision：只有模组实现的能力有 id，宿主把它折算成通道最低版本，与 `ChannelSpec` 取较大者
   - Alternatives：
@@ -1259,7 +1261,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
   - Consequences：
     - 缺能力与缺必需通道走 W1 同一条断线路径
     - 加能力就给对应通道升版本，模组随之发版，资源包承载的项靠必需包兜住
-- **`ADR-ECO-014` 界面能力加只含数据的布局树** — Status: Proposed
+- **`ADR-ECO-014` 界面能力加只含数据的布局树** — Status: Accepted（用户 2026-10-22 签字）
   - Context：四种 HUD 小部件撑不起插件自己的界面，`ADR-PLAY-004` 否掉了服务端下发布局
   - Decision：加一种布局树，元素有容器、文字、图片、按钮、进度条、列表，不含脚本
   - Alternatives：
@@ -1278,7 +1280,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
   - Consequences：
     - Central 上的发布撤不回，每次发布前都先问用户
     - 签名密钥与命名空间要长期维护，Modrinth 能否上架见 §28 Modrinth 的内容规则
-- **`ADR-ECO-021` 稳定面含两个模块与它们签名引到的引擎类型** — Status: Proposed
+- **`ADR-ECO-021` 稳定面含两个模块与它们签名引到的引擎类型** — Status: Accepted（用户 2026-10-22 签字）
   - Context：`plugin-api` 以 api 依赖再导出引擎，公开签名直接用 `Player`、`Instance` 这些引擎类型
   - Decision：稳定面是两个模块的导出包，加上它们公开与 protected 签名逐层引到的引擎类型，由构建算出
   - Alternatives：
@@ -1290,7 +1292,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
     - 计算不经过 `PluginContext#process()`，它给出的引擎入口仍不承诺
     - 首方示例只准引用集合内的类型，架构测试拦截，缺什么先补进 `plugin-api`
     - 集合有多大第二期量出来，大到拖住引擎时再评估门面方案
-- **`ADR-ECO-022` 稳定面的版本号与弃用期** — Status: Proposed
+- **`ADR-ECO-022` 稳定面的版本号与弃用期** — Status: Accepted（用户 2026-10-22 签字）
   - Context：`docs/DESIGN-M2.md` 定的弃用期约 30 天，当时还没有对外发布过
   - Decision：1.0.0 前次版本可以破坏但要在发布说明列出，之后破坏只进主版本，弃用成员至少保留一个次版本且不少于 90 天
   - Alternatives：
@@ -1302,7 +1304,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
     - 本地构建的版本是 `dev`，宿主拿它怎么比版本范围由 §6.2.1 定
     - 兼容门比较基线与当前版本差在哪一位，再决定放不放行清单里的项
     - 模组每条通道的旧版本至少支持 90 天，玩家只装最新模组也能进旧宿主
-- **`ADR-ECO-023` 推送版本标签触发发布，用户审批后执行，Central 排最后** — Status: Proposed
+- **`ADR-ECO-023` 推送版本标签触发发布，用户审批后执行，Central 排最后** — Status: Accepted（用户 2026-10-22 签字）
   - Context：仓库没有发布工作流，Central 配的是校验通过即自动发布，发出去撤不回
   - Decision：推 `v*` 标签后先检查，再等用户批准 `release` 环境，依次发 Release 草稿、Modrinth、Central
   - Alternatives：
@@ -1422,8 +1424,8 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 
 | 类型 | 描述 | 负责人 | 何时需拍板 | 谁定 | 卡住 |
 | --- | --- | --- | --- | --- | --- |
-| Open Question | 进服时的资源包确认框：推荐模组只对完成 Synaxis 握手的服自动接受，其余服保留原版确认框 | Bearisbug | 资源下发开工前 | 产品 | FLOW-ASSET-JOIN |
-| Open Question | 没装模组的原版客户端：推荐一律不放行，给「未装模组」的断线原因，插件作者能确信玩家都有模组 | Bearisbug | 契约层成稿前 | 产品 | FLOW-ASSET-JOIN |
+| 已决 | 进服时的资源包确认框：模组只对完成 Synaxis 握手的服自动接受，其余服保留原版确认框，见 §6.4 资源下发 | Bearisbug | 已于 2026-10-22 决定 | — | — |
+| 已决 | 没装模组的原版客户端一律不放行，断线原因提示去装模组，核心模式也一样，见 §6.3 客户端能力目录 | Bearisbug | 已于 2026-10-22 决定 | — | — |
 | Open Question | 资源包托管：推荐单进程服默认内置 HTTP，分片多于 1 个或包合计超过 64 MiB 时要求外部地址 | 光照会话 | M4-E 开工前 | 技术 | FLOW-ASSET-PACK |
 | Open Question | `docs/DESIGN.md` 的项目画像：推荐升为生产产品，与本分册一致，M4-B 补齐它的 §3 与 §20 | 光照会话 | M4-B 成稿前 | 技术 | 不卡 |
 | 前置 | 首次发布前，用户在 Maven Central 用 GitHub 账号验证 `io.github.bearisbug` 命名空间 | Bearisbug | M4-H 开工前 | — | — |
@@ -1431,7 +1433,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 | 前置 | 用户生成 GPG 签名密钥，公钥传到 Central 认的密钥服务器，如 keyserver.ubuntu.com | Bearisbug | M4-H 开工前 | — | — |
 | 前置 | GPG 私钥与口令、Central 的 Portal 令牌、Modrinth 令牌先存 Bitwarden，再配进 Actions secrets | Bearisbug | M4-H 开工前 | — | — |
 | 前置 | 用户在 GitHub 建 `release` 环境，把自己设为必需审批人 | Bearisbug | M4-H 开工前 | — | — |
-| Open Question | Modrinth 的内容规则第 6 条不许主要由 AI 产出的项目公开，模组上不上 Modrinth、贴不贴 AI 标签 | Bearisbug | SDK 首发开工前 | 产品 | FLOW-SDK-RELEASE |
+| Open Question | Modrinth 的内容规则第 6 条不许主要由 AI 产出的项目公开，模组上不上 Modrinth、贴不贴 AI 标签，用户定在 SDK 首发前再议 | Bearisbug | SDK 首发开工前 | 产品 | FLOW-SDK-RELEASE |
 | 风险 | 插件拥有完整 JVM 权限，恶意插件能读写服主机器上的任意文件 | Bearisbug | — | — | — |
 | 风险 | 资源包变更后在线玩家同时重下，单分片 500 人约 62.5 GiB 出站，按分片数相乘 | 光照会话 | — | — | — |
 | 风险 | 客户端下载资源包时带玩家名与 UUID 请求头，外部地址的托管方会拿到，服主文档要写明 | 光照会话 | — | — | — |
@@ -1439,13 +1441,14 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 | 交接 | `docs/DESIGN-PLAY.md` §6.4 的「服务端资源包不做」与只读模组语言文件，改为引用本分册 §6.4 | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `ADR-PLAY-004` 否掉的服务端下发布局，若 `ADR-ECO-014` 签字就标为部分被取代 | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `ADR-PLAY-007` 标为部分被 `ADR-ECO-010` 取代：资源包要做，翻译键带回退文本不变 | 生产就绪会话 | M4-A 签字后 | — | — |
+| 交接 | `docs/DESIGN.md` 的 `REQ-011` 与 `TC-038` 写的是核心模式放原版客户端进服，随 M4-C 改为要求装模组 | 光照会话 | M4-C 合入时 | — | — |
 | 已决 | §6.2.1 的保留 id 已加上 `minecraft` 与官方整合包里各模组的 id，提交 886a8ce6f9 | 生产就绪会话 | — | — | — |
 | 交接 | `docs/DESIGN-PLAY.md` §26 的 6b、W4b、W5 标暂停，其余波次按本分册 §26 重排 | 生产就绪会话 | M4-A 签字后 | — | — |
-| 交接 | `docs/DESIGN-M2.md` 非目标里的服务端资源包分发，改为引用本分册 | 光照会话 | M4-A 签字后 | — | — |
+| 已决 | `docs/DESIGN-M2.md` 非目标里的服务端资源包分发已改为引用本分册 | 光照会话 | — | — | — |
 | Open Question | 版本范围的写法：推荐比较式，只认 `>=` 与 `<`，空格表示同时满足；多数作者要求 Maven 区间时改 | 生产就绪会话 | 本分册契约成稿前 | 技术 | FLOW-PLUGIN-LOAD |
 | Open Question | 回调期间的线程上下文类加载器：推荐启用与停用回调期间切成插件的，监听器与任务里不切；常用库在监听器里也靠它找自带实现时改为都切 | 生产就绪会话 | 本分册契约成稿前 | 技术 | 不卡 |
 | Open Question | 每个插件的停用回调保底多久：推荐停机时每插件 1 秒、总上限 15 秒，多于 15 个时取 15 秒除以插件数；运行中禁用同用每插件 1 秒 | 生产就绪会话 | 本分册契约成稿前 | 技术 | 不卡 |
-| Open Question | 第三方插件能不能连自己的数据库：推荐能，驱动打进自己的 jar，宿主的库与连接池仍不可见 | Bearisbug | 本分册第一期签字时 | 产品 | 不卡 |
+| 已决 | 第三方插件可以连自己的数据库，驱动打进自己的 jar，宿主的库与连接池仍不可见 | Bearisbug | 已于 2026-10-22 决定 | — | — |
 | Open Question | 本地构建的 dev 宿主怎么校验 `apiVersion`：推荐跳过范围校验，起服汇总里逐个插件提示一行；正式版本号的宿主严格校验 | 生产就绪会话 | 本分册契约成稿前 | 技术 | FLOW-PLUGIN-LOAD |
 | Open Question | 可见面签名门禁的范围：推荐 public 与 protected 都查，标 Internal 的类豁免，`DynamicChunk` 两个字段改走方法 | 生产就绪会话 | 本分册契约成稿前 | 技术 | 不卡 |
 | Open Question | 翻译键门禁：推荐宿主起服时按 `RULE-ECO-010` 查插件的键，`API-PROD-029` 只管宿主与模组的键 | 生产就绪会话 | 本分册契约成稿前 | 技术 | 不卡 |

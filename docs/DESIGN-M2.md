@@ -18,6 +18,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-16 | v0.1 | 初稿：M2 范围、模块拆分、插件宿主、自定义协议、单位模型、寻路、世界管理与四条审计残留处置、垂直切片验收、阶段计划 | Bearisbug |
+| 2026-10-22 | v0.74 | §2 非目标「不做服务端资源包分发」标为被生态分册 `docs/DESIGN-ECO.md` 的 `ADR-ECO-010`、`ADR-ECO-011` 取代（用户 2026-10-22 签字）。**需求、消息布局与 `schema_version` 不变** | Bearisbug |
 | 2026-10-22 | v0.73 | §28.2「新仓库公开还是私有」转已决：仓库 2026-10-10 已改为公开，与 `docs/DESIGN.md` v0.56 同一条；`:plugin-api` 的发布方式改由生态分册 `docs/DESIGN-ECO.md` 定。**需求、消息布局与 `schema_version` 不变** | Bearisbug |
 | 2026-10-22 | v0.72 | RUN-096（分支 `prod/r096`，基于 `main` `df1b674127`，见 `docs/DESIGN-PROD.md` v0.9.126），**消息布局与 `schema_version` 未改**，只改一处文字：§24 lint 口径一条不再写检查脚本的本机路径，改称本机的设计文档检查脚本，四项检查与两件不能动的事不变 | Bearisbug |
 | 2026-10-21 | v0.71 | RUN-094（分支 `prod/r094`，基于 `main` `c542248aec`，见 `docs/DESIGN-PROD.md` v0.9.125），**消息布局与 `schema_version` 未改**。**§8「演进与弃用」**：线协议的破坏性变更加一类，给解码时把未知值判畸形的枚举加取值，点名 `rts:game` 的 `order_result_code` 与 `unit_state`；`ProtocolSchema#SCHEMA_VERSION` 的 Javadoc 写明它只覆盖 `synaxis:handshake` 与 `rts:game`、这两个枚举加取值同样升版，`GameMessagesTest` 钉住两者的线值序列（0～6、0～1）。**`API-M2-011`**：`Reject` 的原因键与 `SynaxisPlugin#translationKeys()` 对齐，可以是插件自己声明的键；写明宿主不保存 `Accept` 的 `team`。**§20**：`client_rejected` 的 `reason` 只去掉 `synaxis:` 前缀，别的命名空间整串照记（`AdmissionGate#rejected`，原先去掉任意命名空间）；§5 指标一段、`API-M2-008` 的 `analytics()` 一条与 §20 首段的台账文件名改为 `logs/events-<shard_id>-YYYYMMDD.jsonl`。用例 `docs/TEST.md` 生产就绪 · RUN-094 一节。**同轮组 MISC（只改文字）**：`REQ-M2-003` 不再写「M2 只有一个编译期插件」，改为插件都是编译期插件、不声明依赖，触发条件的读法指向 `docs/DESIGN-PLAY.md` §28.1 D2；`API-M2-008` 写明 M2 定义的八项之后又加了十项默认方法，`analytics()` 一条的 `api_version` 改为「当时为 1」；`API-M2-010` 的停机一条与「缓存与超时」改为引用 `docs/DESIGN-PROD.md` §11.4 与 `API-PROD-007` 的阶段与预算（原写的「15 s，插件 5 s + 引擎 10 s，见 §17」在 §17 里没有）；§24 与 §28.2 的 `@ApiStatus.NonExtendable` 不再写个数，清单以 `docs/DESIGN-PROD.md` §8 为准，由插件实现的一侧补上 `ActionHandler` | Bearisbug |
@@ -111,7 +112,7 @@
   - 不做自定义实体类型（协议上不可行，见 `ADR-M2-002`）。
   - 不把引擎下沉到 `engine/` 子目录（见 `ADR-M2-005`）。
   - 不升 Minecraft 版本（26.2 / 协议 776 继续钉死；**2026-09-16 已签字定为「M2 不跟 26.3」**，重估留到 M3 开工前，见 `ADR-M2-016`）。
-  - 不做服务端资源包分发（资源打进模组 jar，见 `REQ-M2-020`）。
+  - 不做服务端资源包分发（M2 时资源打进模组 jar，见 `REQ-M2-020`）。2026-10-22 起由生态分册 `docs/DESIGN-ECO.md` 的 `ADR-ECO-010`、`ADR-ECO-011` 取代：插件资源随插件 jar 带上、进服时下发。
 
 规模画像（下游 §15 / §17 / §21 全部数字的唯一来源）：
 

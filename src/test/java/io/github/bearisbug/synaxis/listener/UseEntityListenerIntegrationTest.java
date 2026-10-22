@@ -151,14 +151,15 @@ public class UseEntityListenerIntegrationTest {
     }
 
     /**
-     * An item with an attack range attacks by it instead of the entity interaction range, as vanilla 26.2 does: a
-     * spear reaches 4.5 blocks plus its 0.125 margin plus the three blocks, and an item with a minimum reach refuses a
-     * box closer than the minimum less the margin and the three blocks.
+     * An item with an attack range attacks by it instead of the entity interaction range, as vanilla 26.2 does: one
+     * reaching 4.5 blocks with a 0.125 margin reaches the margin and the three blocks further, and an item with a
+     * minimum reach refuses a box closer than the minimum less the margin and the three blocks.
      */
     @Test
     public void theAttackRangeOfTheItemInHandDecides() {
         player.getAttribute(Attribute.ENTITY_INTERACTION_RANGE).setBaseValue(3.0);
-        player.setItemInMainHand(ItemStack.of(Material.IRON_SPEAR));
+        player.setItemInMainHand(ItemStack.of(Material.STICK)
+                .with(DataComponents.ATTACK_RANGE, new AttackRange(0f, 4.5f, 0f, 6.5f, 0.125f, 1f)));
         assertTrue(attackReaches(new Pos(-10.6, 1, 0)), "its edge is 7.6 blocks away");
         assertFalse(attackReaches(new Pos(-10.65, 1, 0)), "its edge is 7.65 blocks away");
 
@@ -166,6 +167,17 @@ public class UseEntityListenerIntegrationTest {
                 .with(DataComponents.ATTACK_RANGE, new AttackRange(5f, 6f, 5f, 6f, 0f, 1f)));
         assertFalse(attackReaches(new Pos(-4.5, 1, 0)), "its edge is 1.5 blocks away, under 5 - 3");
         assertTrue(attackReaches(new Pos(-5.5, 1, 0)), "its edge is 2.5 blocks away");
+    }
+
+    /**
+     * Vanilla 26.2 drops an attack while the main hand holds a piercing weapon, however close: the client stabs with
+     * it instead of attacking.
+     */
+    @Test
+    public void aPiercingWeaponInTheMainHandAttacksNothing() {
+        player.getAttribute(Attribute.ENTITY_INTERACTION_RANGE).setBaseValue(3.0);
+        player.setItemInMainHand(ItemStack.of(Material.IRON_SPEAR));
+        assertFalse(attackReaches(new Pos(-4, 1, 0)), "its edge is 1 block away");
     }
 
     /** Whether an attack on a 6 blocks wide interaction entity at {@code at} reaches it. */

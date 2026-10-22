@@ -17,7 +17,10 @@ import io.github.bearisbug.synaxis.network.packet.client.play.ClientInteractEnti
 
 public class UseEntityListener {
 
-    /** The blocks vanilla 26.2 allows over the range when it judges a use, a pick or an attack of an entity. */
+    /**
+     * The blocks vanilla 26.2 allows over the range when it judges using, picking, spectating or attacking an
+     * entity.
+     */
     private static final double MARGIN = 3.0;
 
     public static void useEntityListener(ClientInteractEntityPacket packet, Player player) {
@@ -35,15 +38,18 @@ public class UseEntityListener {
         final Entity entity = instance.getEntityById(packet.targetId());
         if (entity == null || !entity.isViewer(player) || beyondAttackRange(player, entity))
             return;
+        // As vanilla 26.2: a piercing weapon stabs (PlayerStabEvent), its client never attacks with it
+        if (player.getItemInMainHand().has(DataComponents.PIERCING_WEAPON))
+            return;
         if (entity instanceof LivingEntity livingEntity && livingEntity.isDead()) // Can't attack dead entities
             return;
         player.process().eventHandler().call(new EntityAttackEvent(player, entity));
     }
 
     /**
-     * Whether using or picking the entity is refused: the player does not see it, or it is out of reach by vanilla
-     * 26.2's rule for both, {@code isWithinEntityInteractionRange(…, 3.0)}: its box is at least the player's
-     * {@link Attribute#ENTITY_INTERACTION_RANGE} plus three blocks from the eyes.
+     * Whether using, picking or spectating the entity is refused: the player does not see it, or it is out of reach
+     * by vanilla 26.2's rule for all three, {@code isWithinEntityInteractionRange(…, 3.0)}: its box is at least the
+     * player's {@link Attribute#ENTITY_INTERACTION_RANGE} plus three blocks from the eyes.
      */
     static boolean invalidUse(Player player, Entity entity) {
         if (!entity.isViewer(player))

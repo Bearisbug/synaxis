@@ -69,8 +69,8 @@ class SeedTest(unittest.TestCase):
         return run, directory / "calls.json", directory / "seed.json"
 
     def test_the_account_is_the_one_the_shards_record_for_the_name(self) -> None:
-        # The production client without --uuid, the fake sessionserver in record mode: Player998 joined the shards
-        # as 5bd62aa7-8886-32aa-953e-97bdbc2a6931 (CI run 38096423208, docs/test-runs/RUN-073/G/06)
+        # The production client without --uuid, the fake sessionserver in record mode: Player998 joins the shards
+        # as 5bd62aa7-8886-32aa-953e-97bdbc2a6931
         self.assertEqual(load_p10().offline_uuid("Player998"), "5bd62aa7-8886-32aa-953e-97bdbc2a6931")
 
     def test_the_section_goes_to_the_character_of_the_account(self) -> None:
@@ -199,7 +199,7 @@ class JudgeTest(unittest.TestCase):
         cases = {"emptied by a transfer": ([self.state(self.SAVED), self.state(inventory="empty"), self.state()], 2,
                                            "held=1 inventory=empty"),
                  "held slot": ([self.state(self.SAVED), self.state(), self.state(held=4)], 3, f"held=4 inventory={self.KIT}"),
-                 # What CI compared until RUN-075: no shard applied a saved inventory, and every world was empty
+                 # No shard applied a saved inventory, and every world is empty
                  "never applied": ([self.state(self.SAVED, held=0, inventory="empty"), empty, empty], 1,
                                    "held=0 inventory=empty")}
         for name, (states, world, shown) in cases.items():
@@ -295,7 +295,7 @@ class DriveTest(unittest.TestCase):
 
     def test_the_first_transfer_waits_the_gap_like_every_other_one(self) -> None:
         # Sent on at once, the client can leave the first world before its first tick there and
-        # write state 1 none (RUN-073, run 38096423208)
+        # write state 1 none
         asked, _ = self.drive()
         self.assertEqual(asked, [5.5, 11.0, 16.5, 22.0])
 

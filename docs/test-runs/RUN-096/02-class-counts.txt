@@ -1,0 +1,27 @@
+RUN-096: test classes whose count differs between main and prod/r096, from the JUnit XML in the test-reports
+artifacts (read with Python zipfile, not unpacked). main bb5302b53f (RUN-095): its judged run 39681427952 (on
+ad1f18ebd8, job Check; bb5302b53f differs from ad1f18ebd8 in documents only), 797 classes, 5,615 tests. prod/r096
+37ad77a63b (main bb5302b53f merged in): CI run 39695795739, job Check, 798 classes, 5,618 tests; the strict and
+strict grid artifacts of both runs are equal to their Check artifact class by class, and the three artifacts of
+bf5be014b8 before the merge (CI run 39689491885) are equal to those of 37ad77a63b. "-" is a class that does not exist
+on that side. The last column is the change of this round the row belongs to: "recipes" for minecraft:recipes on the
+wire the way 26.2 sends it, "inventory" for InventoryTest renamed InventoryRegistriesTest with @RegistriesTest. No
+row comes from the merge of main bb5302b53f: RUN-095 changes no test count. Every module not listed is equal class
+by class.
+
+root
+  io.github.bearisbug.synaxis.inventory.InventoryRegistriesTest                       - -> 7    inventory (renamed)
+  io.github.bearisbug.synaxis.inventory.InventoryTest                                 7 -> -    inventory (renamed)
+  io.github.bearisbug.synaxis.item.component.RecipesTest                              - -> 3    recipes +3
+root: 537 classes, 3,940 tests -> 538 classes, 3,943 tests. recipes 1 class, 3 tests; the rename moves 7 tests and
+changes no count.
+
+The test methods the rows add (testcase names in the XML of 39695795739 that the XML of 39681427952 does not have):
+  RecipesTest                "empty", "two recipes", theRecipesAreSentAsAnNbtListOfStrings(Registries)
+  InventoryRegistriesTest    testCreation(), testAdd(), testIds(), testEntry(), testTake(), testStackSize99OnSmaller(),
+                             testStackSize99(): the 7 methods of InventoryTest under the same names
+
+The one skip that differs: root TranslationIntegrationTest, tests="3" in both runs, skipped="3" -> skipped="2" in
+all three artifacts; testTranslationDisabled(Env) is no longer skipped and passes (its assumption is now that
+synaxis.automatic-component-translation is off; the full test runs of CI do not set it, and the new step of job check
+that does runs after the reports are uploaded). All modules: 23 -> 22 skipped.

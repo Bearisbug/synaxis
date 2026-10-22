@@ -1,0 +1,164 @@
+RUN-096 · minecraft:recipes goes on the wire the way 26.2 sends it (an unnamed NBT list of strings); the build forwards
+synaxis.automatic-component-translation to the test JVM and job check runs the two translation test classes with it
+on; OnlineLoginSocketTest waits until the server has queued the peer; InventoryTest becomes InventoryRegistriesTest
+and binds the registries itself; PluginHost line numbers and local paths in the docs. Branch prod/r096, draft PR #51.
+Times are local (UTC+8).
+
+The branch: main df1b674127 (RUN-094), then
+  4c0284fcba  Send minecraft:recipes as NBT like 26.2; run the translation tests with translation on in CI
+  bf5be014b8  docs: DESIGN-PROD v0.9.126, DESIGN-PLAY v0.25 and DESIGN-M2 v0.72 follow RUN-096; TEST.md adds
+              TC-PROD-1150 to TC-PROD-1154
+  9e2fc0e222  merge of main bb5302b53f (the lighting session's RUN-095), --no-ff; the only conflict is the change log
+              of docs/TEST.md, both rows kept; RUN-095 changes client-fabric, game-rts, docs/DESIGN-M3.md and
+              docs/TEST.md, and apart from docs/TEST.md none of the files of this round
+  37ad77a63b  docs: DESIGN-PROD section 28.3 marks the eleven rows the lighting session completed, with their sources
+  then the registration (this directory, the counts of the old cases, docs/TEST.md section 6), documents only.
+The reds before the change, the counterproofs and the readings of each case are in its docs/TEST.md step.
+
+Gradle on this machine, one build at a time under the heavy lock (--max-workers=2 --no-daemon, every test task with
+--rerun); 18 builds before the merge of main bb5302b53f, 2026-10-22 05:38 to 06:50. "Flag on" is
+-Dsynaxis.automatic-component-translation=true on the Gradle command line.
+  the change, 9 builds:
+  1  05:38:58-05:39:38  flag on, before the change: InventoryTest alone 7 tests, 5 failed (IllegalStateException:
+                        Component prototype of material minecraft:diamond is not bound yet);
+                        TrackIncomingIntegrationTest 3 tests, 0 skipped, 0 failures (the property reaches the test
+                        JVM through Gradle)
+  2  05:40:20-05:40:26  flag on, the new tests before the change of the main code: TranslationIntegrationTest and
+                        RecipesTest, 6 tests, 2 failed: TranslationIntegrationTest.java:79 (testTranslationDisabled,
+                        a TextComponentImpl where a TranslatableComponentImpl was expected) and RecipesTest.java:40
+                        (array lengths differ, expected: <45> but was: <38>)
+  3  05:41:31-05:41:54  compileJava, compileTestJava, testNamingCheck, forbiddenImportsCheck of all modules;
+                        InventoryRegistriesTest alone 7 tests, 0 failures; :plugin-api:checkBinaryCompatibility and
+                        :protocol:checkBinaryCompatibility against the jars of release v0.3.0
+                        (gradle/abi-baseline.tag): both ran, no violation; BUILD SUCCESSFUL in 23s
+  4  05:42:28-05:42:35  flag on, the command of the new step of job check and its two greps: BUILD SUCCESSFUL in 6s
+                        (warm build); TranslationIntegrationTest tests="3" skipped="1" failures="0",
+                        TrackIncomingIntegrationTest tests="3" skipped="0" failures="0"; both greps match
+  5  05:42:52-05:43:23  default mode: root utils.TranslationIntegrationTest, network.*, item.*, component.*,
+                        inventory.*, adventure.provider.EngineFlattenerProviderTest, SessionServerTest: 156 classes,
+                        1,274 tests, 0 failures, 2 skipped (TranslationIntegrationTest skipped="2"); :testing 9
+                        classes, 18 tests, 1 skipped (TrackIncomingIntegrationTest skipped="1")
+  6  05:50:53-05:51:22  strict (-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true): root
+                        TranslationIntegrationTest, OnlineLoginSocketTest, item.component.*, inventory.*: 56 classes,
+                        242 tests, 2 skipped; :testing 9 / 18, 1 skipped; 0 failures; no AcquirableOwnershipException
+                        in the result files; env dispatcher threads: 4
+  7  05:51:30-05:52:00  build 6 plus -Dsynaxis.thread-provider=grid: the same counts; env thread provider: grid
+  8  06:11:23-06:11:54  the online check of SessionClient#query after it takes the slot made always false
+                        (!online.getAsBoolean() && quietUntil.get() == Long.MIN_VALUE): OnlineLoginSocketTest
+                        22 tests, 1 failed, aPeerThatLeavesWhileQueuedForASlotAsksNothing at
+                        OnlineLoginSocketTest.java:356 (expected: <[Holder]> but was: <[Holder, Queued]>); restored
+                        with git checkout HEAD --
+  9  06:12:16-06:12:44  the restored tree: the two ABI tasks against the jars of v0.3.0 (both ran, no violation)
+                        and OnlineLoginSocketTest 22 tests, 0 failures (the queued one 0.686 s); BUILD SUCCESSFUL in
+                        28s
+  first review, 2 builds:
+     06:04:26-06:04:41  the line with the online check deleted: :compileJava stops on Error Prone UnusedVariable
+                        (nothing reads the parameter online), no test ran
+     06:05:01-06:05:18  DataComponents.RECIPES back to NetworkBuffer.STRING.list(Short.MAX_VALUE) and the online
+                        check always false: 4 tests, 2 failed, RecipesTest.java:40 (expected: <45> but was: <38>)
+                        and OnlineLoginSocketTest.java:356 (but was: <[Holder, Queued]>); restored with
+                        git checkout HEAD --
+  second review, 2 builds:
+     06:24:44-06:25:23  build-src no longer forwarding the property; the command of the new step of job check and
+                        the two ABI tasks: BUILD SUCCESSFUL in 37s; TranslationIntegrationTest skipped="2",
+                        TrackIncomingIntegrationTest skipped="1", both greps exit 1, so the step goes red; both ABI
+                        tasks ran, no violation; restored
+     06:25:45-06:26:27  flag on, testTranslationDisabled back to assumeTrue and SessionClient#query taking the slot
+                        with tryAcquire() (no queue): 4 tests, 2 failed, TranslationIntegrationTest.java:79 and
+                        OnlineLoginSocketTest.java:503 (the server queued the peer for the slot ==> expected: <true>
+                        but was: <false>); restored with git checkout HEAD --
+  gates, 5 builds on bf5be014b8, no wait for the lock, free 55-57%, load 3-5:
+  1  06:31:07-06:31:22  compileJava, compileTestJava, testNamingCheck, forbiddenImportsCheck of all modules;
+                        :architecture-tests:test 7 classes, 20 tests, 0 failures; :jcstress-tests:compileJcstressJava;
+                        :plugin-api:javadoc (10 warnings, on files this round does not touch); the two ABI tasks
+                        against the jars of v0.3.0, both ran, no violation; :protocol:publishToMavenLocal into a
+                        temporary maven directory; BUILD SUCCESSFUL in 14s
+  2  06:31:49-06:32:03  client-fabric: compileJava compileTestJava compileGametestJava against that :protocol,
+                        BUILD SUCCESSFUL in 11s
+  3  06:32:21-06:40:43  default mode, with the database variables, test --continue of root, :testing and :server-app:
+                        root 538 classes, 3,943 tests, 14 skipped (TestMojangUtils 9, PlayerSkinTest 2, TagNbtTest 1,
+                        TranslationIntegrationTest 2; testTranslationDisabled ran and passed); :testing 9 / 18,
+                        1 skipped; :server-app 163 / 922, 0 skipped (its 7 database classes ran against the local
+                        PostgreSQL and Valkey); 0 failures, 0 errors; BUILD SUCCESSFUL in 8m 21s
+  4  06:41:09-06:49:32  build 3 in strict grid (-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+                        -Dsynaxis.thread-provider=grid): the same counts per module, 0 failures; env dispatcher
+                        threads 1 / counter in build 3, 4 / grid here; no AcquirableOwnershipException;
+                        BUILD SUCCESSFUL in 8m 22s
+  5  06:50:00-06:50:07  flag on, root utils.* and :testing: utils 12 classes, 36 tests, 10 skipped (TestMojangUtils 9,
+                        testTranslationDisabled 1), TranslationIntegrationTest tests="3" skipped="1"; :testing 9 / 18,
+                        0 skipped; 0 failures; BUILD SUCCESSFUL in 7s
+1 build after the merge of main bb5302b53f:
+     07:48:21-07:48:29  compileJava and compileTestJava of all modules, BUILD SUCCESSFUL in 7s
+The full suites, the 4 tick thread strict mode, check with the coverage gates, Concurrency, Client mod and Client
+gametest run on the draft PR.
+At registration, without Gradle, on 37ad77a63b: TC-PROD-1154 step 3 (PluginHost.java is the same as on bf5be014b8;
+every reference the step lists lands on the code it names, and at 0a73f035a0 :183-188 is the catch of enableOne and
+:301-310 is tearDown) and step 4 (7 hits besides the step's own line, the places the step lists) give what the steps
+record.
+
+On the draft PR #51, GitHub Actions: two rounds, attempt 1 of every workflow in both.
+
+Before the merge, on bf5be014b8, 2026-10-22 06:51-07:11:
+  CI 39689491885: Check (BUILD SUCCESSFUL in 18m 25s; the new step 07:10:38-07:10:50, BUILD SUCCESSFUL in 11s;
+    diff coverage 2 lines, 0 missing, 100%), Test with 4 tick threads (strict) (BUILD SUCCESSFUL in 19m 6s),
+    Test with 4 tick threads (strict, grid) (BUILD SUCCESSFUL in 18m 38s): success
+  Concurrency 39689491801: jcstress success (BUILD SUCCESSFUL in 5m 21s)
+  Client mod 39689491843: success
+  Client gametest 39689491798: the client gametests, the rush script and the P11 smoke success; P10 skipped
+  Its three test-reports artifacts are equal class by class to each other and to those of the judged round below
+  (798 classes, 5,618 tests, 0 failures, 22 skipped); its client-test-reports 25 classes, 297 tests, 0 failures.
+
+Judged on 37ad77a63b, attempt 1 of every workflow, 2026-10-22 07:48-08:09:
+  CI 39695795739 (07:48-08:09): Check (./gradlew check jacocoTestReport with the database variables, BUILD
+    SUCCESSFUL in 19m 21s; the player store tests ran against the database; the new step "Run the translation
+    tests with automatic component translation on", 08:08:46-08:08:59: both test tasks ran, BUILD SUCCESSFUL in
+    12s, both greps matched; ABI gate: both tasks ran, BUILD SUCCESSFUL; diff coverage against origin/main 2 lines
+    (DataComponents.java, SessionClient.java), 0 missing, 100%, gate 80%), Test with 4 tick threads (strict)
+    (BUILD SUCCESSFUL in 18m 47s), Test with 4 tick threads (strict, grid) (BUILD SUCCESSFUL in 19m 17s): success.
+    In all three jobs :protocol:test came from the build cache (FROM-CACHE: :protocol changes neither in this round
+    nor in RUN-095); every other test task ran.
+  Concurrency 39695795747: jcstress success (BUILD SUCCESSFUL in 5m 39s)
+  Client mod 39695795737: Build the Fabric mod success;
+    mod jar: minecraft=26.2, 108 entries, ships META-INF/jars/protocol-dev.jar
+  Client gametest 39695795806: Run the client gametests, Run the rush script, Two shards, 2 round trips (P11 smoke):
+    success; Two shards, 100 round trips (P10): skipped, it runs on a manual trigger only. Not triggered by hand in
+    this round: SessionClient only gains a read-only query method, and the login path is what the P11 smoke runs.
+  The far-view gametest did not run in this round: the round does not touch what M3 depends on, and the lighting
+  session agreed.
+Counts from the JUnit XML in the artifacts (gh api .../actions/artifacts/<id>/zip, read with Python zipfile without
+unpacking: the archives hold file names that differ only in case):
+  test-reports, test-reports-multithreaded, test-reports-multithreaded-grid of 39695795739: equal class by class,
+  798 classes, 5,618 tests, 0 failures, 0 errors, 22 skipped: root 6 classes, 20 tests (TestMojangUtils 9,
+  ServerAddressTest 3, ServerProcessTest 3, PlayerSkinTest 2, TranslationIntegrationTest 2, TagNbtTest 1), synx 1
+  (SynxRelightBacklogTest), testing 1 (TrackIncomingIntegrationTest#aTrackedPacketIsRenderedWithTheEngineTranslator);
+  TranslationIntegrationTest#testTranslationDisabled ran and passed in all three
+    module               classes   tests
+    root                     538   3,943
+    server-app               163     922
+    synx                      25     194
+    protocol                  11     178
+    game-rts                  14      96
+    baker                      8      93
+    plugin-api                 8      47
+    game-rush                  6      46
+    play-kit                   3      35
+    loadtest                   6      26
+    architecture-tests         7      20
+    testing                    9      18
+  Against main bb5302b53f (the RUN-095 judged run 39681427952 on ad1f18ebd8, job Check; bb5302b53f differs from
+  ad1f18ebd8 in documents only; 797 classes, 5,615 tests, 23 skipped): 1 class and 3 tests more, all from this
+  round (root: RecipesTest new, 3; InventoryTest renamed InventoryRegistriesTest, 7 on both sides), 1 skip fewer
+  (testTranslationDisabled); nothing from the merge, RUN-095 changes no count. Class by class: 02-class-counts.txt.
+  client-test-reports of 39695795737: 25 classes, 297 tests, 0 failures, equal class by class to those of RUN-095
+  (Client mod 39681428018); the mod does not change.
+  In all three modes: translation key gate: 75 keys checked against [en_us.json, zh_cn.json], 17 identifiers left out;
+  config key gate: 122 keys read, 122 in ConfigFile.KEYS, 21 meter names left out; env dispatcher threads 1, 4, 4
+  (thread provider counter, counter, grid).
+Rush job (6 min 43 s): judge unit tests Ran 36 tests, OK; waited 0.0 s for the ledger; Q0a to Q9 PASS in both
+  launches; rush judge: PASS (2 reports, 0 problems); prepare_ms 149 and 49; Q5 330 ms and 265 ms after the countdown
+  ran out; Q7 off by -3 ms and -13 ms; Q9 237 ms and 149 ms after the button; the ledger has the lobby at prepare_ms
+  215 and two rush_round_ended with players=1, cause=time_limit; the four checks of the forward and rollback
+  rehearsal ok.
+Client gametests: client regression: all checks passed; report 8 PASS; playable.txt core 10 PASS, rts 5 PASS.
+P11 smoke (TC-PROD-742): p10.py unit tests Ran 48 tests, OK; 11 checks ok; P10: all checks passed.
+RUN-096 is registered in docs/TEST.md section 6: passed 5/5.

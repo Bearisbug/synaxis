@@ -151,14 +151,15 @@ public final class PlayerActionListener {
 
     /**
      * Whether the block at {@code blockPosition} is out of the player's reach, by the vanilla
-     * server's rule for digging and using a block: the cube of the block is at least the player's
-     * {@link Attribute#BLOCK_INTERACTION_RANGE} plus one block from its eyes. The client picks blocks
-     * as far as the same attribute, which the engine sends it.
+     * server's rule for digging and using a block, {@code isWithinBlockInteractionRange(pos, 1.0)}:
+     * the cube of the block is at least the player's {@link Attribute#BLOCK_INTERACTION_RANGE} plus
+     * one block from its eyes. The client picks blocks as far as the same attribute, which the engine
+     * sends it.
      */
     static boolean outOfReach(Player player, Point blockPosition) {
         final int x = blockPosition.blockX(), y = blockPosition.blockY(), z = blockPosition.blockZ();
-        return beyondReach(player, player.getAttributeValue(Attribute.BLOCK_INTERACTION_RANGE),
-                x, y, z, x + 1, y + 1, z + 1);
+        final double reach = player.getAttributeValue(Attribute.BLOCK_INTERACTION_RANGE) + 1;
+        return distanceSquared(player, x, y, z, x + 1, y + 1, z + 1) >= reach * reach;
     }
 
     private static void dropStack(Player player) {
@@ -248,18 +249,17 @@ public final class PlayerActionListener {
     }
 
     /**
-     * Whether a box is out of the player's reach: the point of the box closest to the player's eyes is at least
-     * {@code range} plus one block from them. That is the vanilla server's margin for blocks; for entities vanilla
-     * allows three blocks over the range, and the engine keeps the one block its attack check has always used.
+     * The square of the distance from the player's eyes to the point of a box closest to them, as vanilla's
+     * {@code AABB#distanceToSqr} from {@code Player#getEyePosition()}: what the reach of blocks and entities is
+     * judged on.
      */
-    static boolean beyondReach(Player player, double range, double minX, double minY, double minZ,
-                               double maxX, double maxY, double maxZ) {
+    static double distanceSquared(Player player, double minX, double minY, double minZ,
+                                  double maxX, double maxY, double maxZ) {
         final Pos position = player.getPosition();
         final double eyeY = position.y() + player.getEyeHeight();
         final double dx = position.x() - Math.clamp(position.x(), minX, maxX);
         final double dy = eyeY - Math.clamp(eyeY, minY, maxY);
         final double dz = position.z() - Math.clamp(position.z(), minZ, maxZ);
-        final double reach = range + 1;
-        return dx * dx + dy * dy + dz * dz >= reach * reach;
+        return dx * dx + dy * dy + dz * dz;
     }
 }

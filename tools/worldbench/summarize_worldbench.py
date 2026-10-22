@@ -1,4 +1,4 @@
-"""Prints the LargeWorldBench result JSON as the markdown tables bench-2026-09.md uses.
+"""Prints the LargeWorldBench result JSON as markdown tables.
 
 Usage: python3 tools/worldbench/summarize_worldbench.py <results.json>
 """

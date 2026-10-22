@@ -11,8 +11,7 @@
 
 ## LargeWorldBench
 
-用来重测 `docs/research/large-world-2026-09/README.md` §8.1 列为「未核实」的数字。结果与对照写在
-`docs/research/large-world-2026-09/bench-2026-09.md`，原始 JSON 在同目录 `bench-2026-09-results.json`。
+在合成地形上测引擎整图级的单区块成本，测哪几项见上表。结果写成一个 JSON 文件，字段含义见下文。
 
 ### 复跑
 
@@ -47,8 +46,8 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 
 | 参数 | 默认 | 含义 |
 | --- | --- | --- |
-| `h` | 384 | 世界高度。384 用原版布局 minY=-64；256 与 64 从 y=0 起（与 M2 对局世界一致） |
-| `t` | natural | 地形：`natural`（噪声高度场 + 基岩/深板岩/石头/泥土/草/沙/水 + 约 1.2% 矿石 + 噪声隧道 + 约每两个区块一棵橡树）、`solid`（同一地表，地下无矿无洞）、`flat40`（M2 RTS 地图形状：石头到 y=40，每 64 列一根 3 格柱子） |
+| `h` | 384 | 世界高度。384 用原版布局 minY=-64；256 与 64 从 y=0 起（与宿主托管实例的世界一样） |
+| `t` | natural | 地形：`natural`（噪声高度场 + 基岩/深板岩/石头/泥土/草/沙/水 + 约 1.2% 矿石 + 噪声隧道 + 约每两个区块一棵橡树）、`solid`（同一地表，地下无矿无洞）、`flat40`（石头填到 y=40，每 64 列一根 3 格高的柱子） |
 | `p` | opt | `opt`：生成后对每个 section 做 `Palette#optimize(SIZE)`，等于从网络格式（.synx / Anvil）解码出来的间接调色板；`setall`：保持 `setAllRelative` 生成的直接调色板（15 bit/方块） |
 | `grid` / `n` | 32 / —— | `packet`、`local` 用 grid×grid 区块；`relight` 用 n 个区块（必须是平方数） |
 | `rounds` / `warmup` | 3 / 1 | 测量轮数与丢弃的预热轮数；每轮新建世界 |
@@ -62,7 +61,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 
 ### 测堆方法
 
-`System.gc()` 两次后读 `totalMemory - freeMemory`，与 `Match#sampleLiveHeap` 同法；若两次调用都没触发回收（例如加了 `-XX:+DisableExplicitGC`）直接报错，不产出假数字。
+`System.gc()` 两次后读 `totalMemory - freeMemory`；若两次调用都没触发回收（例如加了 `-XX:+DisableExplicitGC`）直接报错，不产出假数字。
 每个堆读数都是同一 JVM 内「建世界前」与「建世界后」的差，除以区块数。预热轮吸收类加载和注册表懒初始化的一次性分配，
 不预热时这部分会摊进第一张世界（64 区块世界实测多出约 1 MiB，KiB/区块偏大约 60%）。包缓存由 `SoftReference` 持有，内存紧张时会被回收，所以「带包缓存」一项是上界。
 
@@ -75,4 +74,4 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 `LightingChunk` 的 work-stealing 线程池，所以另记进程 CPU 时间（`*CpuMs`）。`wholePass` 是整遍序列化的总耗时除以区块数，
 比逐区块分布更能代表平均成本：懒光照下第一个碰到某片区域的区块会顺带算邻居，逐区块数字偏斜。
 `loadAverageBefore` / `loadAverageAfter` 是作业前后的 1 分钟系统负载，高于核数一半时墙钟数字只能当上界。
-`tools/worldbench/summarize_worldbench.py <json>`（在 `.venv` 里跑，只用标准库）把结果打印成 bench-2026-09.md 用的表格。
+`tools/worldbench/summarize_worldbench.py <json>`（在 `.venv` 里跑，只用标准库）把结果打印成 Markdown 表格。

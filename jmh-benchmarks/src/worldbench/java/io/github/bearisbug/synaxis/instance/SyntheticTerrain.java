@@ -16,8 +16,7 @@ import io.github.bearisbug.synaxis.instance.generator.Generator;
  *   ores in about 1.2% of the stone, noise tunnels, and about one oak tree per two chunks.</li>
  *   <li>{@link Kind#SOLID}: the same surface without ores and caves, what a hand-built map with an
  *   untouched underground looks like.</li>
- *   <li>{@link Kind#FLAT40}: the M2 RTS map shape, stone up to y=40 with a 3-block pillar on one
- *   column in 64 (MapTerrain).</li>
+ *   <li>{@link Kind#FLAT40}: stone up to y=40 with a 3-block pillar on one column in 64.</li>
  * </ul>
  * Worlds at least 256 high keep the vanilla vertical layout (sea level 62, surface roughly
  * 42 to 156). A 64-high world squeezes the same field into sea level 28, surface 16 to 55.

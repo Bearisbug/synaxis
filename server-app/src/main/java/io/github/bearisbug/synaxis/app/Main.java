@@ -561,8 +561,7 @@ public final class Main {
                 event.getPlayer().sendPluginMessage(FarViewAnnouncement.CHANNEL, farView);
             }
         });
-        // §9: team 0 is the neutral team, as in the core world
-        host.registerHostAdmission(_ -> new Admission.Accept(world.instance(), 0));
+        host.registerHostAdmission(_ -> new Admission.Accept(world.instance()));
         if (directoryMode != null) {
             new ShardGates(directoryMode.directory(), directoryMode.service(), ledger::record, store::isOnline).attach(world.instance());
             directoryMode.arrivals().attach(world.instance());

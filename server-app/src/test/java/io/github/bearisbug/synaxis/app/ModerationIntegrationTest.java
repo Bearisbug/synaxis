@@ -198,7 +198,7 @@ class ModerationIntegrationTest {
             this.context = ctx;
             ctx.admission().register(_ -> {
                 admissions.incrementAndGet();
-                return new Admission.Accept(match, 1);
+                return new Admission.Accept(match);
             });
         }
 

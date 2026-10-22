@@ -140,7 +140,7 @@ class CommandsIntegrationTest {
         @Override
         public void onEnable(PluginContext ctx) {
             this.context = ctx;
-            if (descriptor.id().equals("mmo")) ctx.admission().register(_ -> new Admission.Accept(match, 1));
+            if (descriptor.id().equals("mmo")) ctx.admission().register(_ -> new Admission.Accept(match));
             onEnable.accept(ctx);
         }
 

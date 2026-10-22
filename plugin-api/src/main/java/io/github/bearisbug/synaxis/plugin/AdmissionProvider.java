@@ -18,7 +18,7 @@ package io.github.bearisbug.synaxis.plugin;
  * up by its disconnect, while an entry made without the check would never be taken away. The host
  * may still turn a connection away after an {@code Accept}, with {@code synaxis:state-unavailable}
  * once the shutdown save has started, so whatever this call sets up is taken back on the disconnect
- * event too. The rts plugin's {@code GameSessions} is written this way.
+ * event too.
  * <p>
  * The call has a soft budget of 200 ms, measured once it returned: a slower one is written as one
  * WARN line, and its answer stands.

@@ -31,7 +31,7 @@ class InstanceSpecTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "Round", "round-1", "rush:round", "abcdefghijklmnopqrstuvwxyz0123456", "回合"})
+    @ValueSource(strings = {"", "Round", "round-1", "probe:round", "abcdefghijklmnopqrstuvwxyz0123456", "回合"})
     void anyOtherNameIsRefused(String name) {
         assertThrows(IllegalArgumentException.class, () -> spec(name, 2, Duration.ofSeconds(30)));
     }

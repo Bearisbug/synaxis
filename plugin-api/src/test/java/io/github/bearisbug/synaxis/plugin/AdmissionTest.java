@@ -16,7 +16,7 @@ class AdmissionTest {
     @Test
     void anAcceptWithoutAnInstanceIsRefused() {
         final NullPointerException refused = assertThrows(NullPointerException.class,
-                () -> new Admission.Accept(noInstance(), 1));
+                () -> new Admission.Accept(noInstance()));
         assertEquals("instance", refused.getMessage());
     }
 

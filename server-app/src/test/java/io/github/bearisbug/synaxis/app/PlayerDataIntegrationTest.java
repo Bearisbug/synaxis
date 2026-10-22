@@ -131,7 +131,7 @@ class PlayerDataIntegrationTest {
         final AtomicReference<Integer> atSpawn = new AtomicReference<>();
         final Probe probe = new Probe("probe", ctx -> {
             ctx.playerData().register(coins);
-            ctx.admission().register(_ -> new Admission.Accept(match, 1));
+            ctx.admission().register(_ -> new Admission.Accept(match));
             ctx.events().addListener(PlayerSpawnEvent.class, event ->
                     atSpawn.set(ctx.playerData().get(event.getPlayer(), coins).get()));
         });
@@ -200,7 +200,7 @@ class PlayerDataIntegrationTest {
         final Counter theirs = new Counter("other:coins");
         final Instance match = env.createFlatInstance();
         final Probe other = new Probe("other", ctx -> ctx.playerData().register(theirs));
-        final Probe probe = new Probe("probe", ctx -> ctx.admission().register(_ -> new Admission.Accept(match, 1)));
+        final Probe probe = new Probe("probe", ctx -> ctx.admission().register(_ -> new Admission.Accept(match)));
         final PluginHost host = host(env, new MemoryBackend());
         host.enable(List.of(other, probe), Set.of());
         final Player player = env.createPlayer(match, new Pos(0, 41, 0));
@@ -219,7 +219,7 @@ class PlayerDataIntegrationTest {
         final Instance match = env.createFlatInstance();
         final AdmissionProvider provider = _ -> {
             admitted.incrementAndGet();
-            return new Admission.Accept(match, 1);
+            return new Admission.Accept(match);
         };
         final PluginHost host = host(env, new FailingBackend());
         host.enable(List.of(new Probe("probe", ctx -> ctx.admission().register(provider))), Set.of());
@@ -260,7 +260,7 @@ class PlayerDataIntegrationTest {
         // The shutdown save starts while the provider decides, which then lets the player in
         final Probe probe = new Probe("probe", ctx -> ctx.admission().register(_ -> {
             var _ = store.saveAll(Duration.ofSeconds(5), true);
-            return new Admission.Accept(match, 1);
+            return new Admission.Accept(match);
         }));
         final PluginHost host = new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger, store);
         host.enable(List.of(probe), Set.of());
@@ -313,7 +313,7 @@ class PlayerDataIntegrationTest {
             ctx.lifecycle().onShutdownSave(_ -> hooks.incrementAndGet());
             throw new IllegalStateException("the test's plugin fails to enable");
         });
-        final Probe admitting = new Probe("probe", ctx -> ctx.admission().register(_ -> new Admission.Accept(match, 1)));
+        final Probe admitting = new Probe("probe", ctx -> ctx.admission().register(_ -> new Admission.Accept(match)));
         ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
         ledger.start();
         final PlayerStore store = new PlayerStore(env.process(), new MemoryBackend(), RedisLink.disabled("test"), "test",

@@ -131,7 +131,7 @@ class PermissionsIntegrationTest {
         @Override
         public void onEnable(PluginContext ctx) {
             this.context = ctx;
-            ctx.admission().register(_ -> new Admission.Accept(match, 1));
+            ctx.admission().register(_ -> new Admission.Accept(match));
         }
 
         @Override

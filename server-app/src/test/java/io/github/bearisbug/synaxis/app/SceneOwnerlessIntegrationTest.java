@@ -132,7 +132,7 @@ class SceneOwnerlessIntegrationTest {
         final PluginHost host = host(env);
         final Instance map = env.createFlatInstance();
         // What Main#serveMap does with the admission slot; a map shard loads no plugin
-        host.registerHostAdmission(_ -> new Admission.Accept(map, 0));
+        host.registerHostAdmission(_ -> new Admission.Accept(map));
 
         floodAndExpectNothing(env, map, ConnectionState.PLAY);
     }

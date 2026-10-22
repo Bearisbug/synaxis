@@ -501,7 +501,7 @@ class HandshakeIntegrationTest {
         final List<AdmissionRequest> seen = new CopyOnWriteArrayList<>();
         host.registerHostAdmission(request -> {
             seen.add(request);
-            return new Admission.Accept(match, 1);
+            return new Admission.Accept(match);
         });
         host.requireHandshake();
 
@@ -520,7 +520,7 @@ class HandshakeIntegrationTest {
         final Player player = player(env, wire);
         final Instance match = env.createFlatInstance();
         final PluginHost host = host(env);
-        host.registerHostAdmission(_ -> new Admission.Accept(match, 1));
+        host.registerHostAdmission(_ -> new Admission.Accept(match));
         host.requireHandshake();
         // This thread interprets the hello, and whatever it writes waits for the configuration thread
         // it wakes to finish the phase: the schedule of GitHub Actions run 36459937261, made certain

@@ -13,12 +13,8 @@ public sealed interface Admission {
      * The player is let in.
      *
      * @param instance the instance to spawn them into
-     * @param team     the team they play for, {@code 0} being neutral; the host neither keeps nor
-     *                 reads it, so a plugin that needs the team records it itself by
-     *                 {@link AdmissionRequest#connectionId()} and drops it on
-     *                 {@code PlayerDisconnectEvent}
      */
-    record Accept(Instance instance, int team) implements Admission {
+    record Accept(Instance instance) implements Admission {
 
         /**
          * Checks that there is an instance to spawn into.

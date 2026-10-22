@@ -42,7 +42,7 @@ public class ShutdownExitLaunchTest {
         @Override
         public void onEnable(PluginContext context) {
             final Instance match = context.process().instance().createInstanceContainer();
-            context.admission().register(_ -> new Admission.Accept(match, 1));
+            context.admission().register(_ -> new Admission.Accept(match));
             Thread.ofPlatform().name("lingering").daemon(false).start(() -> {
                 while (true) LockSupport.park();
             });

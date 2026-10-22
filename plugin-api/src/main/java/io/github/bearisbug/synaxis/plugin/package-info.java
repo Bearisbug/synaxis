@@ -3,7 +3,7 @@
  *
  * <h2>Threads</h2>
  * The thread contract of {@code docs/DESIGN-PROD.md} {@code API-PROD-016}, which holds whatever
- * number of tick threads the process runs with (an MMO shard runs all cores but two, spread by
+ * number of tick threads the process runs with (a map shard runs all cores but two, spread by
  * cells of 16 by 16 chunks):
  * <ul>
  *     <li>a callback about an entity or a player (its events, its dormancy policy, the payloads of

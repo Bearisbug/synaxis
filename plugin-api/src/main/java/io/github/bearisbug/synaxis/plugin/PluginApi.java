@@ -29,7 +29,7 @@ public final class PluginApi {
      * <p>
      * It has a minimum y of 0 and a height of 64, the world height of {@code docs/DESIGN-M2.md}
      * §9: blocks go at y 0 to 63. A plugin that has to be sure reads the height of the registered
-     * dimension type at run time, as {@code game-rts} does before it builds a map.
+     * dimension type at run time.
      */
     public static final String MATCH_DIMENSION_TYPE = "synaxis:match";
 

@@ -526,7 +526,7 @@ class PluginHostIntegrationTest {
         final ProbePlugin probe = new ProbePlugin("probe");
         final Queue<Supplier<Admission>> answers = new ConcurrentLinkedQueue<>(List.of(
                 PluginHostIntegrationTest::nothing,
-                () -> new Admission.Accept(noInstance(), 1),
+                () -> new Admission.Accept(noInstance()),
                 () -> new Admission.Reject(noKey())));
         probe.admission = _ -> answers.remove().get();
         final PluginHost host = host(env);
@@ -593,7 +593,7 @@ class PluginHostIntegrationTest {
         final ProbePlugin probe = new ProbePlugin("probe");
         final PluginHost host = host(env);
         final Instance match = env.createFlatInstance();
-        probe.admission = _ -> new Admission.Accept(match, 1);
+        probe.admission = _ -> new Admission.Accept(match);
         host.enable(List.of(probe), Set.of());
 
         try (LogCapture logs = LogCapture.of(AdmissionGate.class)) {
@@ -613,7 +613,7 @@ class PluginHostIntegrationTest {
         final Instance match = env.createFlatInstance();
         probe.admission = _ -> {
             sleepQuietly(AdmissionGate.BUDGET_MILLIS + 50);
-            return new Admission.Accept(match, 1);
+            return new Admission.Accept(match);
         };
         host.enable(List.of(probe), Set.of());
 

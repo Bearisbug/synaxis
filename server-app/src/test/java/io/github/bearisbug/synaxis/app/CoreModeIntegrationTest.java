@@ -119,7 +119,7 @@ class CoreModeIntegrationTest {
 
         final AdmissionProvider provider = host.admissionProvider();
         assertNotNull(provider);
-        assertEquals(new Admission.Accept(world, 0),
+        assertEquals(new Admission.Accept(world),
                 provider.admit(new AdmissionRequest(UUID.randomUUID(), "probe", 0, 0, UUID.randomUUID(),
                         InetAddress.getLoopbackAddress())));
 

@@ -3,8 +3,8 @@ package io.github.bearisbug.synaxis.plugin;
 /**
  * Identity a plugin reports to the host (API-M2-007).
  * <p>
- * M2 has no {@code depends} field: with a single compile time plugin there is nothing to resolve,
- * so declarative dependencies arrive with the second plugin (see {@code docs/DESIGN-M2.md} §28.3).
+ * There is no {@code depends} field: declarative dependencies arrive with the descriptor file of
+ * the plugin platform.
  *
  * @param id         the plugin id, matching {@code [a-z0-9][a-z0-9_-]{0,63}} and never {@code synaxis};
  *                   it is also the namespace of every channel this plugin owns. It is unique in the

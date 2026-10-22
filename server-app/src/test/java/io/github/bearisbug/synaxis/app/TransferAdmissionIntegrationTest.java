@@ -120,7 +120,7 @@ class TransferAdmissionIntegrationTest {
                 final var match = env.createFlatInstance();
                 ctx.admission().register(_ -> {
                     admitted.incrementAndGet();
-                    return new Admission.Accept(match, 1);
+                    return new Admission.Accept(match);
                 });
             }
 

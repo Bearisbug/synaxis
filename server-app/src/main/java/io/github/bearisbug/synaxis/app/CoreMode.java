@@ -71,11 +71,6 @@ final class CoreMode {
     private static final int BORDER_DIAMETER = 4096;
 
     /**
-     * §9: team 0 is the neutral team, and the core mode has no sides.
-     */
-    private static final int TEAM = 0;
-
-    /**
      * What the operator asked for.
      */
     enum Setting {
@@ -161,7 +156,7 @@ final class CoreMode {
         lightAroundTheSpawn(world, process.config().chunkViewDistance() + 1);
         process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
                 event -> event.getPlayer().setRespawnPoint(SPAWN));
-        host.registerHostAdmission(_ -> new Admission.Accept(world, TEAM));
+        host.registerHostAdmission(_ -> new Admission.Accept(world));
         // The core mode asks for no handshake, and the echo answers in both states (docs/DESIGN.md API-002)
         host.registerHostChannel(ECHO_CHANNEL, (player, payload) -> player.sendPluginMessage(ECHO_CHANNEL, payload), true);
         LOGGER.info("Core mode ({}={}): no plugin is serving gameplay, so the host serves its own flat world. "

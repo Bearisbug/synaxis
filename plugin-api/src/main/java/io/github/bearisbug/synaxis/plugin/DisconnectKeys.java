@@ -30,14 +30,6 @@ public final class DisconnectKeys {
     public static final String PROTOCOL_VERSION_MISMATCH = "synaxis:protocol-version-mismatch";
 
     /**
-     * The connection kept a game channel above the flood threshold of {@code docs/DESIGN-M2.md} §15
-     * for three seconds running. It is a gate against scripted floods, not a gameplay limit: going
-     * over the per second budget of an order or a camera report is answered in band, and only this
-     * one disconnects.
-     */
-    public static final String GAME_FLOOD = "synaxis:game-flood";
-
-    /**
      * The player's data cannot be had right now: it failed to load, the shard lost the database,
      * or another live session holds the character and did not let go in time
      * ({@code docs/DESIGN-PROD.md} §14). Trying again after 30 seconds works once the cause is gone.

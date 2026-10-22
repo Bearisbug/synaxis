@@ -149,9 +149,9 @@ final class PluginHost {
      * {@code synaxis.app.plugins} leaves out too: its descriptor is what the selection reads.
      *
      * @return the discovered plugins, in {@link ServiceLoader} order
-     * @throws IllegalArgumentException if a provider cannot be loaded or built (its jar misses a class,
-     *                                  its constructor throws), which refuses the start; the message names
-     *                                  its class
+     * @throws IllegalArgumentException if a provider cannot be built (its class is not found, or its
+     *                                  constructor throws or misses a class while it runs), which refuses
+     *                                  the start; the message names its class
      */
     static List<SynaxisPlugin> discover() {
         try {

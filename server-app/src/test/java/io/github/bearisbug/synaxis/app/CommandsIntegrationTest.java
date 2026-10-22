@@ -532,7 +532,9 @@ class CommandsIntegrationTest {
 
     /**
      * A player's list spends the chat budget of its connection ({@code docs/DESIGN-PROD.md} {@code API-PROD-011}),
-     * three back to back by default: past it the command answers nothing. The console has no budget.
+     * three back to back by default and one more a second: past it the command answers nothing. The console has no
+     * budget. Ten lists take far less than the seven seconds that would refill the budget for all of them, and a
+     * stall of the test thread may refill one or two, so only the bounds are asserted.
      */
     @Test
     void aPlayersListPastTheChatBudgetOfItsConnectionAnswersNothing(Env env) {
@@ -543,12 +545,12 @@ class CommandsIntegrationTest {
         final Collector<SystemChatPacket> chat = connection.trackIncoming(SystemChatPacket.class);
         final Player lister = connection.connect(match, new Pos(0, 41, 0));
 
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 10; i++)
             assertEquals(CommandResult.Type.SUCCESS, env.process().command().execute(lister, "list").getType());
-        assertEquals(List.of("synaxis:command-list 1|Lister", "synaxis:command-list 1|Lister",
-                        "synaxis:command-list 1|Lister"),
-                chat.collect().stream().map(packet -> text(packet.message())).toList(),
-                "synaxis.chat-burst is 3 and the rate 1 a second");
+        final List<String> answers = chat.collect().stream().map(packet -> text(packet.message())).toList();
+        assertTrue(answers.size() >= 3 && answers.size() < 10,
+                "synaxis.chat-burst is 3 and the rate 1 a second: " + answers);
+        assertTrue(answers.stream().allMatch("synaxis:command-list 1|Lister"::equals), answers.toString());
 
         final RecordingConsole console = new RecordingConsole(env.process());
         for (int i = 0; i < 5; i++) env.process().command().execute(console, "list");

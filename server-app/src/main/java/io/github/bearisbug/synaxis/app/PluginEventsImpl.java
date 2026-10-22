@@ -218,7 +218,9 @@ final class PluginEventsImpl implements PluginEvents {
             final Class<? extends Event> covered = coveredWithoutInstance(eventType);
             if (covered != null)
                 throw new IllegalArgumentException("Cannot scope " + eventType.getName() + " to an instance: "
-                        + (covered == eventType ? "it" : "it covers " + covered.getName() + ", which")
+                        + (covered == eventType ? "it"
+                        : covered.isAssignableFrom(eventType) ? "it is a " + covered.getName() + ", which"
+                        : "it covers " + covered.getName() + ", which")
                         + " is also dispatched while the player has no instance; listen on the global scope and "
                         + "check the player's instance instead");
         }

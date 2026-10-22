@@ -366,6 +366,28 @@ class PluginEventsIntegrationTest {
         host.disableAll();
     }
 
+    /** A plugin's own kind of disconnect: an instance scope refuses it as the type it extends. */
+    static final class OwnDisconnectEvent extends PlayerDisconnectEvent {
+        OwnDisconnectEvent(Player player) {
+            super(player);
+        }
+    }
+
+    @Test
+    void theInstanceScopeRefusesASubtypeAsTheTypeItExtends(Env env) {
+        final Instance instance = env.createFlatInstance();
+        final PluginEvents[] kept = new PluginEvents[1];
+        final PluginHost host = host(env, new Plugin("scoped", events -> kept[0] = events));
+
+        final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> kept[0].forInstance(instance).addListener(OwnDisconnectEvent.class, _ -> {
+                }));
+        assertTrue(refused.getMessage().contains("it is a " + PlayerDisconnectEvent.class.getName() + ", which"),
+                refused.getMessage());
+        assertTrue(refused.getMessage().contains("listen on the global scope"), refused.getMessage());
+        host.disableAll();
+    }
+
     /** The plugins' nodes under the host node, which also holds the host's own (the store's freeze). */
     private static long pluginNodes(EventNode<?> hostNode) {
         return hostNode.getChildren().stream().filter(node -> node.getName().startsWith("plugin/")).count();

@@ -5,16 +5,17 @@
 | 字段 | 值 |
 | --- | --- |
 | 状态 | 已批准并实施完毕（M1 与 M1.5 代码侧于 2026-09-09 完成，见 §26；阶段 3 剩两条人工用例：`REQ-011` 的核心模式下原版客户端冒烟 `TC-038`（取代废弃的 `TC-030`，用户 2026-10-06 选做法 A）与 `REQ-012` 的 `TC-016`） |
-| 项目画像 | 内部系统（引擎只被本团队的游戏工程消费，不对公网；§3/§20 降为按需，§23 简化为「直接放量 + 回滚预案」。游戏本身对外发布时另立设计文档，画像为生产产品） |
+| 项目画像 | 内部系统（§3/§20 降为按需，§23 简化为「直接放量 + 回滚预案」。M1 时引擎只被本团队的游戏工程消费；2026-10-22 起引擎经稳定面面向公开社区的插件作者，对外承诺与指标写在 `docs/DESIGN-ECO.md`，本文档要不要升为生产产品见该分册 §28） |
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
-| 最后更新 | 2026-10-21 |
-| 关联 | 仓库 `https://github.com/Bearisbug/synaxis` · **里程碑分册 `docs/DESIGN-M2.md`（M2「游戏工程骨架与 RTS 垂直切片」，M2 范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · **里程碑分册 `docs/DESIGN-M3.md`（M3「大世界地图管线与分片」，M3 范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · **生产就绪分册 `docs/DESIGN-PROD.md`（生产就绪：加密与正版验证、连接闸门、玩家数据持久化（PostgreSQL + Redis）、运维与可观测性、tick 多线程（空间分格 ThreadProvider 的引擎侧）、面向客户端的基础能力与插件 API、真客户端回归与 200～500 人压测；范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · **玩法架构分册 `docs/DESIGN-PLAY.md`（玩法架构：玩法插件怎么写、宿主托管的玩法实例与生命周期、四种形态（MMO 开放世界、RTS 对局、副本或小游戏、限时活动）的落点、客户端协作（按通道协商版本、服务端驱动的场景与 HUD）、样板玩法；范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · 审计与架构评审 `docs/research/minestom-audit/`（00 总结、07 架构评审第八章） · 测试文档 `docs/TEST.md` |
+| 最后更新 | 2026-10-22 |
+| 关联 | 仓库 `https://github.com/Bearisbug/synaxis` · **里程碑分册 `docs/DESIGN-M2.md`（M2「游戏工程骨架与 RTS 垂直切片」，M2 范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · **里程碑分册 `docs/DESIGN-M3.md`（M3「大世界地图管线与分片」，M3 范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · **生产就绪分册 `docs/DESIGN-PROD.md`（生产就绪：加密与正版验证、连接闸门、玩家数据持久化（PostgreSQL + Redis）、运维与可观测性、tick 多线程（空间分格 ThreadProvider 的引擎侧）、面向客户端的基础能力与插件 API、真客户端回归与 200～500 人压测；范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · **玩法架构分册 `docs/DESIGN-PLAY.md`（玩法架构：玩法插件怎么写、宿主托管的玩法实例与生命周期、四种形态（MMO 开放世界、RTS 对局、副本或小游戏、限时活动）的落点、客户端协作（按通道协商版本、服务端驱动的场景与 HUD）、样板玩法；范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · **生态分册 `docs/DESIGN-ECO.md`（生态：插件平台、客户端能力目录与资源下发、SDK 发布与兼容承诺；范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · 审计与架构评审 `docs/research/minestom-audit/`（00 总结、07 架构评审第八章） · 测试文档 `docs/TEST.md` |
 
 变更记录：
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-10-22 | v0.56 | 按用户 2026-10-22 改定的产品目标改 §2 背景：Synaxis 是面向公开社区、由第三方插件扩展的服务端核心，客户端强制安装我们的 Fabric 模组，生态的设计在新分册 `docs/DESIGN-ECO.md`（§1 关联行登记）；规模画像的用户量一行改写引擎的直接用户。§1 项目画像删去「引擎只被本团队消费」的过时说法，升不升档由该分册 §28 定。§28「新仓库公开还是私有」转已决：2026-10-10 已改为公开。需求、接口与 ADR 不变 | Bearisbug |
 | 2026-10-21 | v0.55 | RUN-093（分支 `m3/r093`）在 `Clock#rate` 加上限，需求不改。**§8** `API-006` 加「时钟」一条：`rate` 收 0 到 `Clock.MAX_RATE`（2^24 个 tick 每 tick），负值、非有限值或超过上限抛 `IllegalArgumentException`，时钟不变；原先只拒负值与非有限值，超过 2^31 的有限值（如 `Float.MAX_VALUE`）会让部分 tick 涨到无穷，此后时间每 tick 跳 2,147,483,647，改回 `rate(1)` 也恢复不了。用例 `docs/TEST.md` `TC-066` | Bearisbug |
 | 2026-10-21 | v0.54 | RUN-090（分支 `m3/r090`，代码头 `5516c8b975`）改引擎 `InstanceContainer#retrieveChunk`：载入链在登记完成回调之后才开始，`InstanceChunkLoadEvent` 不再在载入表的映射函数里、请求线程上派发，需求不改。**§8** `API-006` 区块载入一条写明事件的派发线程、loader 在哪条线程上跑、不支持并行的 loader 抛异常时异常处理器在映射里被调，以及失败的坐标不留在载入表里。**§19** 加场景「区块载入事件不在载入表的映射里派发」（`REQ-018`，`docs/TEST.md` `TC-065`） | Bearisbug |
 | 2026-10-21 | v0.53 | 跟进 `docs/DESIGN-PROD.md` 的 RUN-089（集成分支 `prod/integrate-089`，基于 `main` `ce817adeda`，该分册 v0.9.110～v0.9.123），各组只改了内容、没升本文档的版本，本版汇总，需求不改。**§4** 术语表「不透明注册表」一行的类名改为 `Registries#opaque` / `RegistriesImpl.OPAQUE_KEYS`（CODEC）。**§5** `REQ-015` 的底层集合由 9 个包改为 8 个：`condition` 包没有使用方，已删除（CMD，该分册 v0.9.113）。**§8** `API-003` 约束一条补 `setShutdownParticipant` 传 null 抛 `NullPointerException`，引的 `ServerProcess.java:205-258` 随代码改为 `:205-262`（CORE，该分册 v0.9.117，集成时改）。**§11.1**「断线口径」段的行号随代码改为 `PlayerConnection.java:291-293`（NETCONN）与 `ConnectionManager.java:828-832`（NETBUF）。**§24** 分层一条「底层 9 包」改为 8 包（CMD）。**§28** 纯文本断线清点行的 `ConnectionManager.java:848`（NETBUF）；`SOAK-3` 清点行写明 `TagNbtSeparator` 在 `TagHandler.fromCompound`、`TagHandler#updateContent` 与 `setTag(Tag.NBT, compound)` 三条路径下都会执行，前两条由规则禁止游戏侧调用（ENTITY，该分册 v0.9.122）；F49 残留一行的禁止清单扩到四项（ENTITY）；「读超时」一行的 `ServerConfig.java:298-301`（NETCONN）与 `ConnectionManager.java:848`（NETBUF）。两组改同一行的按词合并（§11.1「断线口径」段、§28「读超时」一行），相邻两行分属两组的各取各的（§28 纯文本断线清点行与 `SOAK-3` 清点行）。集成分支合入 `main` `7724fcd23e`（RUN-088，本文档 v0.52）时，§28 `SOAK-3` 清点行 RUN-088 也改了（补 `InstanceContainer` 那条 WARN 的现文案），按词合并。§1「关联」与 §26 不改 | Bearisbug |
@@ -74,7 +75,7 @@
 
 ## 2. 背景 / 目标 / 非目标
 
-- 背景：我们要做一款跑在 Minecraft 客户端上的自研游戏（小游戏 + MMORPG + 肉鸽），不要任何原版玩法，客户端强制安装我们的 Fabric 模组。服务端以 Minestom（Apache-2.0，commit `16842f1954`）为起点硬 fork，不再跟随上游。审计发现 15 条 P0 与 48 条 P1，已在分支 `fork/main` 修复并合入（133 个提交，187 文件）。当前代码仍带着 1,412 个文件的原版玩法逻辑、上游包名、上游数据生成链和一个 GitHub fork 关系，这些都不属于我们。
+- 背景：Synaxis 是给公开社区用的服务端核心，像 Spigot 那样由第三方插件扩展，不要任何原版玩法，客户端强制安装我们的 Fabric 模组（用户 2026-10-22 定，生态的设计见 `docs/DESIGN-ECO.md`）。服务端以 Minestom（Apache-2.0，commit `16842f1954`）为起点硬 fork，不再跟随上游。审计发现 15 条 P0 与 48 条 P1，已在分支 `fork/main` 修复并合入（133 个提交，187 文件）。当前代码仍带着 1,412 个文件的原版玩法逻辑、上游包名、上游数据生成链和一个 GitHub fork 关系，这些都不属于我们。
 - 目标：在一个独立维护的仓库里得到一个**只含我们需要的部分、以我们的名字命名、构建与验证链完全自控**的引擎，并证明原版客户端仍能登录进世界、完成一次自定义协议往返。
 - 非目标：
   - 不做任何游戏玩法、不做 Fabric 客户端模组、不做美术资源（属于下一里程碑 M2「RTS 垂直切片」）。
@@ -87,7 +88,7 @@
 
 | 维度 | 估算 | 依据 / 假设（未知则写假设 + 重估阈值） |
 | --- | --- | --- |
-| 用户量 | 引擎的直接用户是本团队 1 到 3 名开发者；引擎最终承载的游戏内测规模为同时在线 ≤ 50 人 | 用户于 2026-09-09 选定「内测规模，单机单区」；超过 50 同时在线需重估线程模型与是否上代理 |
+| 用户量 | 引擎的直接用户是插件作者：M1 时是本团队 1 到 3 名开发者，面向公开社区后的作者规模见 `docs/DESIGN-ECO.md` §2；引擎最终承载的游戏内测规模为同时在线 ≤ 50 人 | 用户于 2026-09-09 选定「内测规模，单机单区」；超过 50 同时在线需重估线程模型与是否上代理 |
 | 请求量 | 每玩家每 tick 约 1 到 5 个入站包，50 人峰值约 5,000 包/秒；tick 频率 20 Hz | 原版协议经验值；超过 20,000 包/秒需重估网络线程数 |
 | 数据量 | 注册表数据 74 个 JSON 解压 17.6 MB 随包 vendoring；世界数据由 M2 决定格式（预烘焙地图整块载入），M1 不落盘任何世界 | 数据量假设 ≤ 100 MB/张地图；超过需重估载入策略 |
 | 分布与形态 | 单机单进程单区，无 CDN | 用户选定 |
@@ -805,7 +806,7 @@ N/A — M1 与 M1.5 的代码侧已于 2026-09-09 完成，阶段 3 还剩两条
 | 已决 | M1.5（REQ-013～016，阶段 4～6）按用户 2026-09-09「按重构计划并行推进」指示视为确认，M1 阶段 3 完成后开工 | Bearisbug | 已决 |
 | 已决 | `command` 包（83 文件）M1 保留：耦合低，开发期调试与运维指令依赖它；M2 自定义协议成型后再评估 | Bearisbug | 已于 2026-09-09 决定 |
 | 已决 | `snapshot` 包（11 文件，零测试）删除，纳入 REQ-005 | Bearisbug | 已于 2026-09-09 决定 |
-| Open Question | 新仓库公开还是私有；当前私有（`gh repo view` 为 PRIVATE）。`docs/DESIGN-M2.md` §28.2 同一条：社区写插件要拿到 `:plugin-api` 时必须公开 | Bearisbug | 内测全量放量前（与 `docs/DESIGN-M2.md` §28.2 对齐） |
+| 已决 | 新仓库公开还是私有：2026-10-10 改为公开（`gh repo view` 为 PUBLIC），生态面向公开社区，见 `docs/DESIGN-ECO.md` `ADR-ECO-020` | Bearisbug | 已于 2026-10-10 决定 |
 | 风险 | Apache-2.0 §4(b) 修改声明采用 NOTICE 加 README 集中声明而非逐文件头，需法务确认 | Bearisbug | 阶段 3 |
 | 已决 | `assertOwnership()` 对未分配线程的实体一律拒绝，`setInstance` / `teleport` 三处仍未接线；接线需先放宽未分配态语义。按 `docs/DESIGN-PROD.md` `API-PROD-016` 的未分配态语义关闭：dispatcher 还没给元素分配 tick 线程时，放行创建它的线程与任何非 `TickThread` 的线程，其他 tick 线程判越权抛 `AcquirableOwnershipException`；未分配元素上的 `lock()` / `sync()` 仍只认创建线程。三处接线与 4 线程严格模式 CI job 随生产就绪第 0 波落地（commit `4a22b96e99`、`df6ff745ae`，`REQ-PROD-019` 前半） | Bearisbug | 已于 2026-09-23 处置 |
 | 已决 | jcstress Gradle 插件与 isolated-projects / configuration cache 不兼容，CI 需单独 job 并关闭这两项：已按这个办法规避，`.github/workflows/concurrency.yml` 单独成一个工作流，以 `-Dorg.gradle.isolated-projects=false -Dorg.gradle.configuration-cache=false` 跑 `:jcstress-tests:jcstress`（`concurrency.yml:30-33`），`main` 头的 Concurrency run 36969350284 绿 | Bearisbug | 已于阶段 0 处置 |

@@ -15,6 +15,7 @@ import io.github.bearisbug.synaxis.game.protocol.play.C2SAction;
 import io.github.bearisbug.synaxis.game.protocol.play.C2SSceneReady;
 import io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent;
 import io.github.bearisbug.synaxis.game.protocol.play.PlayMessage;
+import io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol;
 import io.github.bearisbug.synaxis.game.protocol.play.S2CActionResult;
 import io.github.bearisbug.synaxis.game.protocol.play.S2CScene;
 import io.github.bearisbug.synaxis.network.packet.client.common.ClientPluginMessagePacket;
@@ -73,6 +74,8 @@ class SceneInboundIntegrationTest {
             new ActionSlot(1, "deny", Component.text("Deny"), Duration.ZERO),
             new ActionSlot(2, "boom", Component.text("Boom"), Duration.ZERO),
             new ActionSlot(3, "switch", Component.text("Switch"), Duration.ofSeconds(5))));
+    /** A reason with an argument and a fallback, the way a widget's text is written. */
+    private static final Component NOT_NOW = Component.translatable("rush.no", Component.text(3)).fallback("Not now, %s s left");
     private static final SceneSpec ROUND = new SceneSpec("round", Component.text("Round"), new CameraSpec.Vanilla(),
             CursorMode.LOCKED, List.of());
 
@@ -99,7 +102,7 @@ class SceneInboundIntegrationTest {
         scenes = SceneTestKit.service(env, owner, ledger, clock::get);
         final EventNode<Event> router = EventNode.all("router-stand-in");
         router.addListener(PlayerPluginMessageEvent.class, event -> {
-            if (event.getIdentifier().equals(SceneService.CHANNEL)) scenes.receive(event.getPlayer(), event.getMessage());
+            if (event.getIdentifier().equals(PlayProtocol.CHANNEL)) scenes.receive(event.getPlayer(), event.getMessage());
         });
         env.process().eventHandler().addChild(router);
         rush = scenes.forPlugin("rush");
@@ -107,7 +110,7 @@ class SceneInboundIntegrationTest {
             queued.incrementAndGet();
             return new ActionResult.Ok();
         });
-        rush.onAction("deny", (_, _) -> new ActionResult.Rejected("rush.no"));
+        rush.onAction("deny", (_, _) -> new ActionResult.Rejected(NOT_NOW));
         rush.onAction("boom", (_, _) -> {
             throw new IllegalStateException("a handler that fails");
         });
@@ -153,7 +156,7 @@ class SceneInboundIntegrationTest {
     /** Queues the payloads as a client sends them, then ticks once: the player handles them on its thread. */
     private static void send(Env env, Client client, byte[]... payloads) {
         for (byte[] payload : payloads)
-            client.player().addPacketToQueue(new ClientPluginMessagePacket(SceneService.CHANNEL, payload));
+            client.player().addPacketToQueue(new ClientPluginMessagePacket(PlayProtocol.CHANNEL, payload));
         env.tick();
     }
 
@@ -262,7 +265,7 @@ class SceneInboundIntegrationTest {
         send(env, client, action(1, 4, "rush:deny"), action(1, 5, "rush:boom"));
 
         assertEquals(List.of(
-                new S2CActionResult(4, ActionResultCode.REJECTED, WidgetEncoder.component(Component.translatable("rush.no")), 0),
+                new S2CActionResult(4, ActionResultCode.REJECTED, WidgetEncoder.component(NOT_NOW), 0),
                 new S2CActionResult(5, ActionResultCode.REJECTED, EncodedComponent.NONE, 0)), results(packets));
         final List<String> errors = linesAt(Level.ERROR);
         assertEquals(1, errors.size(), errors.toString());

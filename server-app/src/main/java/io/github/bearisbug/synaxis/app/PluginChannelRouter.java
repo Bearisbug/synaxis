@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
 
 /**
  * The single inbound listener of the host, routing custom payloads by channel namespace
@@ -44,11 +43,9 @@ final class PluginChannelRouter {
     private static final Logger LOGGER = LoggerFactory.getLogger(PluginChannelRouter.class);
 
     /**
-     * The wire limit on a channel name (§8).
+     * The wire limit on a channel name (§8), its characters being the bytes of the ASCII {@link PluginIds} takes.
      */
     private static final int MAX_CHANNEL_ID_LENGTH = 256;
-
-    private static final Pattern NAME = Pattern.compile("[a-z0-9._/-]+");
 
     private final Map<String, Registration> registrations = new ConcurrentHashMap<>();
 
@@ -79,7 +76,7 @@ final class PluginChannelRouter {
     }
 
     /**
-     * Resolves the channel id a plugin means by {@code name}.
+     * Resolves the channel id a plugin means by {@code name}, under the rule of {@link PluginIds}.
      *
      * @param pluginId the plugin claiming the channel
      * @param name     the name it asked for, with or without its own namespace
@@ -87,26 +84,7 @@ final class PluginChannelRouter {
      * @throws IllegalArgumentException if the name carries another namespace or is not usable
      */
     static String channelId(String pluginId, String name) {
-        final int colon = name.indexOf(':');
-        final String path;
-        if (colon < 0) {
-            path = name;
-        } else {
-            final String namespace = name.substring(0, colon);
-            if (!namespace.equals(pluginId))
-                throw new IllegalArgumentException("Refused channel \"" + name + "\" for plugin_id=" + pluginId
-                        + ": a channel id is <plugin_id>:<name>, and " + pluginId + " does not own \""
-                        + namespace + "\"");
-            path = name.substring(colon + 1);
-        }
-        if (!NAME.matcher(path).matches())
-            throw new IllegalArgumentException("Refused channel \"" + name + "\" for plugin_id=" + pluginId
-                    + ": the name part must match " + NAME.pattern());
-        final String channelId = pluginId + ":" + path;
-        if (channelId.length() > MAX_CHANNEL_ID_LENGTH)
-            throw new IllegalArgumentException("Refused channel \"" + channelId + "\": over "
-                    + MAX_CHANNEL_ID_LENGTH + " characters");
-        return channelId;
+        return PluginIds.qualify(pluginId, name, MAX_CHANNEL_ID_LENGTH, "a channel id");
     }
 
     /**

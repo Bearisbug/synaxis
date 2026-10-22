@@ -78,7 +78,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutionException;
 
 import static io.github.bearisbug.synaxis.app.management.ManagementClient.await;
@@ -325,6 +327,37 @@ class ManagementIntegrationTest {
         assertTrue(client.call(3, "synaxis:shard/status", null).getAsJsonObject("result").get("draining").getAsBoolean());
         assertEquals(List.of("synaxis:shard/drain null ok", "synaxis:shard/drain null invalid", "synaxis:shard/status null ok"),
                 managementCommands());
+    }
+
+    /**
+     * Two drains at once, as from two operators or from one connection that does not wait for the first
+     * answer, each call on its own virtual thread: one of them closed the gate, so exactly one answers true
+     * and is recorded {@code ok}, the other {@code invalid} ({@code docs/DESIGN-PROD.md} {@code API-PROD-022}).
+     */
+    @Test
+    void ofTwoDrainsAtOnceExactlyOneClosesTheGate(Env env) throws Exception {
+        final ManagementMethods methods = methods(env);
+        final CyclicBarrier together = new CyclicBarrier(2);
+        final List<Boolean> answers = new CopyOnWriteArrayList<>();
+        final List<Thread> calls = new ArrayList<>();
+        for (int id = 1; id <= 2; id++) {
+            final String request = "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"method\":\"synaxis:shard/drain\"}";
+            calls.add(Thread.ofVirtual().start(() -> {
+                try {
+                    together.await();
+                } catch (InterruptedException | BrokenBarrierException e) {
+                    throw new IllegalStateException(e);
+                }
+                final String reply = methods.handle(request).text();
+                answers.add(JsonParser.parseString(String.valueOf(reply)).getAsJsonObject().get("result").getAsBoolean());
+            }));
+        }
+        for (Thread call : calls) call.join();
+
+        assertEquals(1, answers.stream().filter(Boolean::booleanValue).count(), answers.toString());
+        assertEquals(List.of("synaxis:shard/drain null invalid", "synaxis:shard/drain null ok"),
+                managementCommands().stream().sorted().toList());
+        assertTrue(env.process().connection().gate().isClosed());
     }
 
     private static void send(SocketChannel channel, ConnectionState state, ClientPacket packet) throws IOException {

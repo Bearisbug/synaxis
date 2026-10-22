@@ -61,8 +61,6 @@ class WidgetEncoderTest {
         assertEquals(io.github.bearisbug.synaxis.game.protocol.play.Widget.panel(encoded(Component.text("Result")),
                 List.of(wireRow), List.of(new PropValue.Button("rush:back", encoded(Component.text("Back"))))),
                 panel.widget());
-        for (WidgetEncoder.Encoded each : List.of(text, timer, board, panel))
-            assertEquals(size(each.widget()), each.bytes(), "the size it reports");
         assertEquals(Set.of(), text.buttonActions());
         assertEquals(Set.of("rush:back"), panel.buttonActions());
     }
@@ -77,7 +75,8 @@ class WidgetEncoderTest {
 
     private static boolean fits(Widget widget) {
         try {
-            return WidgetEncoder.encode("rush", widget).bytes() <= PlayProtocol.MAX_WIDGET_BYTES;
+            WidgetEncoder.encode("rush", widget);
+            return true;
         } catch (IllegalArgumentException _) {
             return false;
         }
@@ -89,7 +88,7 @@ class WidgetEncoderTest {
         int titleLength = 1;
         while (titleLength < 2_000 && fits(panel(titleLength + 1))) titleLength++;
 
-        assertEquals(PlayProtocol.MAX_WIDGET_BYTES, WidgetEncoder.encode("rush", panel(titleLength)).bytes());
+        assertEquals(PlayProtocol.MAX_WIDGET_BYTES, size(WidgetEncoder.encode("rush", panel(titleLength)).widget()));
         final int longer = titleLength + 1;
         final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
                 () -> WidgetEncoder.encode("rush", panel(longer)));

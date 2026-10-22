@@ -1,7 +1,6 @@
 package io.github.bearisbug.synaxis.app;
 
 import ch.qos.logback.classic.Level;
-import io.github.bearisbug.synaxis.app.scene.SceneService;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
@@ -10,6 +9,7 @@ import io.github.bearisbug.synaxis.game.protocol.play.ActionResultCode;
 import io.github.bearisbug.synaxis.game.protocol.play.C2SAction;
 import io.github.bearisbug.synaxis.game.protocol.play.C2SSceneReady;
 import io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent;
+import io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol;
 import io.github.bearisbug.synaxis.game.protocol.play.S2CActionResult;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.ConnectionState;
@@ -92,7 +92,7 @@ class SceneOwnerlessIntegrationTest {
         player.getPlayerConnection().setServerState(state);
         try (LogCapture logs = LogCapture.rootOfThisThread()) {
             for (int i = 0; i < FLOOD; i++)
-                env.process().eventHandler().call(new PlayerPluginMessageEvent(player, SceneService.CHANNEL,
+                env.process().eventHandler().call(new PlayerPluginMessageEvent(player, PlayProtocol.CHANNEL,
                         probes.get(i % probes.size())));
 
             assertEquals(List.of(), logs.messagesAt(Level.INFO), "a line per payload");
@@ -103,7 +103,7 @@ class SceneOwnerlessIntegrationTest {
         }
         // A tick for the end of the player's tick, where anything queued would go out
         env.tick();
-        sent.assertNoneMatch(packet -> packet.channel().equals(SceneService.CHANNEL));
+        sent.assertNoneMatch(packet -> packet.channel().equals(PlayProtocol.CHANNEL));
         kicks.assertEmpty();
         assertTrue(player.getPlayerConnection().isOnline(), "the connection was ended");
     }
@@ -142,7 +142,7 @@ class SceneOwnerlessIntegrationTest {
         // The read thread counts every packet before the player's queue, whatever its channel
         // (docs/DESIGN-PROD.md API-PROD-012): 750 in a window of 7 s, the next one kicks
         final InboundPacketLimits.Limiter limiter = env.process().connection().inboundLimits().newLimiter();
-        final ClientPluginMessagePacket packet = new ClientPluginMessagePacket(SceneService.CHANNEL, probes().getFirst());
+        final ClientPluginMessagePacket packet = new ClientPluginMessagePacket(PlayProtocol.CHANNEL, probes().getFirst());
         final long now = System.nanoTime();
 
         for (int i = 0; i < 750; i++)

@@ -2,7 +2,6 @@ package io.github.bearisbug.synaxis.app.transfer;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -42,9 +41,13 @@ public final class TransferKeys {
             throw new IllegalArgumentException(VARIABLE + " holds " + entries.length + " keys, at most 2 are allowed");
         final Map<Integer, byte[]> keys = new LinkedHashMap<>();
         int signing = -1;
-        for (String entry : entries) {
+        for (int i = 0; i < entries.length; i++) {
+            final String entry = entries[i];
             final int colon = entry.indexOf(':');
-            if (colon <= 0) throw new IllegalArgumentException(VARIABLE + " has an entry that is not key_id:base64");
+            // The value is a secret and never repeated: the entry is named by its place
+            if (colon <= 0)
+                throw new IllegalArgumentException(VARIABLE + " entry " + (i + 1) + " of " + entries.length
+                        + (entry.isBlank() ? " is empty (a trailing comma?)" : " is not key_id:base64"));
             final int id;
             try {
                 id = Integer.parseInt(entry.substring(0, colon).strip());
@@ -82,16 +85,12 @@ public final class TransferKeys {
         return signingId;
     }
 
-    byte[] signingKey() {
-        return keys.get(signingId);
-    }
-
     @Nullable byte[] key(int id) {
         return keys.get(id);
     }
 
     @Override
     public String toString() {
-        return "TransferKeys[signing=" + signingId + ", ids=" + Arrays.toString(keys.keySet().toArray()) + "]";
+        return "TransferKeys[signing=" + signingId + ", ids=" + keys.keySet() + "]";
     }
 }

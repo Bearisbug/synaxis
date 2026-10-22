@@ -26,8 +26,10 @@ public final class StoreHousekeeping implements AutoCloseable {
     static final long NONCE_GC_LOCK = 0x5359_4E58_0001L;
     static final long SESSION_CLEANUP_LOCK = 0x5359_4E58_0002L;
 
-    // Past its expiry a ticket is refused by check ③ anyway, so deleting its nonce lets nothing replay
-    private static final String NONCE_GC = "DELETE FROM transfer_nonce WHERE expires_at < now()";
+    // A nonce goes 5 minutes after its ticket expired: the target reads the expiry (check ③) on its own clock
+    // and spends the nonce (⑤) only in the account's turn of the load, up to some 7 s later, and the
+    // database's clock this compares with may run ahead of the shard's. Past that a ticket is refused by ③
+    private static final String NONCE_GC = "DELETE FROM transfer_nonce WHERE expires_at < now() - interval '5 minutes'";
     // Every start and every reopen adds a session; a day old and pointed at by nobody, it can go
     private static final String SESSION_CLEANUP = """
             DELETE FROM shard_session s WHERE s.expires_at < now() - interval '1 day'
@@ -51,7 +53,7 @@ public final class StoreHousekeeping implements AutoCloseable {
     }
 
     /**
-     * {@code transfer_nonce.gc}: deletes the nonces of expired tickets.
+     * {@code transfer_nonce.gc}: deletes the nonces of tickets expired 5 minutes ago or more.
      *
      * @return the rows deleted, -1 if another shard holds the job or it failed
      */

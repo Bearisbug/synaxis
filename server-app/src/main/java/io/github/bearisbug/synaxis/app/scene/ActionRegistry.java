@@ -51,7 +51,7 @@ final class ActionRegistry {
     String register(String pluginId, String actionId, ActionHandler handler) {
         if (sealed.contains(pluginId))
             throw new IllegalStateException("plugin_id=" + pluginId + " registers its actions in onEnable only");
-        final String id = PlayIds.qualify(pluginId, actionId);
+        final String id = SceneService.qualify(pluginId, actionId);
         final Registration previous = byId.putIfAbsent(id,
                 new Registration(pluginId, Objects.requireNonNull(handler, "handler"), new LogBudget(logger, "failures")));
         if (previous != null) throw new IllegalStateException("action " + id + " is already registered");

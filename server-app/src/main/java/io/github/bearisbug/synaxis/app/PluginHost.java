@@ -12,6 +12,7 @@ import io.github.bearisbug.synaxis.app.transfer.TicketVerifier;
 import io.github.bearisbug.synaxis.app.transfer.TransferCooldowns;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventNode;
+import io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol;
 import io.github.bearisbug.synaxis.plugin.AdmissionProvider;
 import io.github.bearisbug.synaxis.plugin.PayloadHandler;
 import io.github.bearisbug.synaxis.plugin.PluginDescriptor;
@@ -113,9 +114,14 @@ final class PluginHost {
         this.tabList = new TabListSlot(process.connection());
         this.cooldowns = cooldowns;
         this.handshake = new HandshakeGate(HandshakeGate.phase(), HandshakeGate.BUDGET, ledger);
+        // In the core mode and on a map shard the host holds the admission slot under the reserved id, which
+        // makes no plugin the scene owner
+        this.scenes = new SceneService(() -> {
+            final String holder = admission.pluginId();
+            return PluginDescriptors.RESERVED_ID.equals(holder) ? null : holder;
+        }, ledger::record, System::nanoTime);
         // Built on the thread that goes on to enable the plugins, which is the startup thread a
         // managed instance created in onEnable is prepared on (docs/DESIGN-PLAY.md §6.1)
-        this.scenes = new SceneService(process, admission::pluginId, ledger::record, System::nanoTime);
         this.instances = new InstanceRegistry(process, ledger::record, scenes, Thread.currentThread(),
                 InstanceRegistry.Durations.DEFAULT, System::nanoTime);
         process.eventHandler().addChild(hostNode);
@@ -132,7 +138,7 @@ final class PluginHost {
         store.attach(hostNode);
         permissions.attach(hostNode);
         // The scene layer's channel goes through the router the same way the handshake's does
-        registerHostChannel(SceneService.CHANNEL, scenes::receive, false);
+        registerHostChannel(PlayProtocol.CHANNEL, scenes::receive, false);
         scenes.attach(hostNode);
     }
 

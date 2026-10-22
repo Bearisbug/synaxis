@@ -50,19 +50,21 @@ final class InstanceLedger {
 
     /**
      * Writes the line of a transition into {@code CLOSED}, once the instance is unregistered or dropped.
+     * {@code evacuated} is {@code players - kicked}: whoever was not kicked left in time
+     * ({@code docs/DESIGN-PLAY.md} {@code API-PLAY-006}, the ledger attributes).
      *
-     * @param players       the players online inside when the instance closed
-     * @param evacuated     how many of them left before the evacuation ran out
-     * @param kicked        how many players were still inside when it ran out, and were kicked
+     * @param players       the players handed the exit, those online inside at the close and those whose
+     *                      move landed afterwards, plus those still on their way in when the evacuation ran out
+     * @param kicked        how many of them were still inside or on their way in when it ran out, and were kicked
      * @param settleTimeout whether the host closed it because the plugin did not settle in time
      */
-    void closed(ManagedInstanceImpl managed, EndCause cause, int players, long durationMs, int evacuated, int kicked,
+    void closed(ManagedInstanceImpl managed, EndCause cause, int players, long durationMs, int kicked,
                 boolean settleTimeout) {
         final Map<String, Object> attributes = instance(managed);
         attributes.put("cause", name(cause));
         attributes.put("players", players);
         attributes.put("duration_ms", durationMs);
-        attributes.put("evacuated", evacuated);
+        attributes.put("evacuated", players - kicked);
         attributes.put("kicked", kicked);
         attributes.put("settle_timeout", settleTimeout);
         ledger.record("play_instance_closed", attributes);
@@ -70,7 +72,7 @@ final class InstanceLedger {
 
     void moved(ManagedInstanceImpl managed, Player player, @Nullable Instance from) {
         final Map<String, Object> attributes = new LinkedHashMap<>();
-        attributes.put("instance_id", managed.instanceId().toString());
+        attributes.put("instance_id", managed.instance().getUuid().toString());
         attributes.put("connection_id", player.getPlayerConnection().connectionId());
         attributes.put("from_instance_id", from == null ? null : from.getUuid().toString());
         ledger.record("play_instance_moved", attributes);
@@ -79,7 +81,7 @@ final class InstanceLedger {
     private static Map<String, Object> instance(ManagedInstanceImpl managed) {
         final Map<String, Object> attributes = new LinkedHashMap<>();
         attributes.put("kind_id", managed.kindId());
-        attributes.put("instance_id", managed.instanceId().toString());
+        attributes.put("instance_id", managed.instance().getUuid().toString());
         return attributes;
     }
 

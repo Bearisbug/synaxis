@@ -19,7 +19,8 @@ public interface TransferTickets {
      * @param targetShardId the shard the ticket is valid for
      * @param host          where the client connects
      * @param port          the port it connects to
-     * @return completes once the transfer packet is sent or the transfer is known to have failed
+     * @return completes once the transfer packet is sent or the transfer is known to have failed, with the
+     *         outcome of {@link TransferOutcome}
      */
     CompletableFuture<TransferOutcome> transfer(Player player, String targetShardId, String host, int port);
 }

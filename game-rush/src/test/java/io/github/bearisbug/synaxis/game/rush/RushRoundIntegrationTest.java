@@ -244,9 +244,9 @@ class RushRoundIntegrationTest {
 
     private static Setup setup(Env env, String... names) {
         final FakeInstances instances = new FakeInstances(env, ManagedInstance.State.OPEN);
-        final FakeManaged arena = (FakeManaged) instances.create(new InstanceSpec("round", Arena.ROUND_RADIUS, Arena.round(), Arena.SPAWN));
+        final FakeManaged arena = (FakeManaged) instances.create(new InstanceSpec("round", Arena.ROUND_RADIUS, Arena.round()));
         final FakeManaged lobby = (FakeManaged) new FakeInstances(env, ManagedInstance.State.RUNNING)
-                .create(new InstanceSpec("lobby", Arena.LOBBY_RADIUS, Arena.lobby(), Arena.SPAWN));
+                .create(new InstanceSpec("lobby", Arena.LOBBY_RADIUS, Arena.lobby()));
         final List<Player> players = new ArrayList<>();
         for (final String name : names) {
             players.add(env.createConnection(new GameProfile(UUID.randomUUID(), name)).connect(arena.instance(), Arena.SPAWN));

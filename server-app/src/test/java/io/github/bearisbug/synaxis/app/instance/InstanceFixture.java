@@ -48,8 +48,8 @@ final class InstanceFixture {
     }
 
     /** The scene layer the registry holds back a moved player's packets on; nobody owns a scene in these tests. */
-    static SceneService scenes(ServerProcess process) {
-        return new SceneService(process, () -> null, (_, _) -> {
+    static SceneService scenes() {
+        return new SceneService(() -> null, (_, _) -> {
         }, System::nanoTime);
     }
 
@@ -117,7 +117,7 @@ final class InstanceFixture {
 
         /** The lines about one instance, the moves into it included. */
         List<Line> of(ManagedInstance managed) {
-            final String id = managed.instanceId().toString();
+            final String id = managed.instance().getUuid().toString();
             return lines.stream().filter(line -> id.equals(line.get("instance_id"))).toList();
         }
 

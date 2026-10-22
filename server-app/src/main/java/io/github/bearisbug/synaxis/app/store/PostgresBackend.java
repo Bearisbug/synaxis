@@ -25,20 +25,26 @@ public final class PostgresBackend implements StoreBackend {
     private static final String INSERT_CHARACTER = """
             INSERT INTO character (account_uuid, slot, version, lease_session_id) VALUES (?, 0, 0, NULL)
             ON CONFLICT (account_uuid, slot) DO NOTHING""";
-    // Acquire: nobody holds it, this session holds it, or its holder's session has expired. The
-    // locked read before it is what reports the previous holder of a takeover.
+    /**
+     * When a lease may be taken ({@code docs/DESIGN-PROD.md} {@code API-PROD-004}): nobody holds the
+     * character, the caller's session holds it, or its holder's session has expired. A statement using it
+     * names the character table {@code c} and binds one parameter here, the caller's session; the transfer
+     * check takes it too, so that a transfer never takes a lease a load would refuse.
+     */
+    public static final String LEASE_AVAILABLE = """
+            (c.lease_session_id IS NULL
+             OR c.lease_session_id = ?
+             OR NOT EXISTS (SELECT 1 FROM shard_session s
+                             WHERE s.session_id = c.lease_session_id AND s.expires_at > now()))""";
+    // The locked read before the acquire is what reports the previous holder of a takeover
     private static final String ACQUIRE = """
             WITH previous AS (
                 SELECT character_id, lease_session_id, last_saved_at FROM character
                  WHERE account_uuid = ? AND slot = 0 FOR UPDATE)
             UPDATE character c SET lease_session_id = ?
               FROM previous p
-             WHERE c.character_id = p.character_id
-               AND (c.lease_session_id IS NULL
-                    OR c.lease_session_id = ?
-                    OR NOT EXISTS (SELECT 1 FROM shard_session s
-                                    WHERE s.session_id = c.lease_session_id AND s.expires_at > now()))
-            RETURNING c.character_id, c.version, p.lease_session_id, p.last_saved_at""";
+             WHERE c.character_id = p.character_id"""
+            + " AND " + LEASE_AVAILABLE + " RETURNING c.character_id, c.version, p.lease_session_id, p.last_saved_at";
     private static final String HOLDER = """
             SELECT s.shard_id FROM character c JOIN shard_session s ON s.session_id = c.lease_session_id
              WHERE c.account_uuid = ? AND c.slot = 0""";

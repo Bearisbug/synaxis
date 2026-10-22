@@ -1,7 +1,6 @@
 package io.github.bearisbug.synaxis.app;
 
 import ch.qos.logback.classic.Level;
-import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.ChunkLoader;
 import io.github.bearisbug.synaxis.instance.Instance;
@@ -45,7 +44,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PluginHostInstancesIntegrationTest {
 
     static final Generator FLAT = unit -> unit.modifier().fillHeight(0, 10, Block.STONE);
-    private static final Pos SPAWN = new Pos(0.5, 10, 0.5);
 
     @TempDir
     Path workingDirectory;
@@ -103,7 +101,7 @@ class PluginHostInstancesIntegrationTest {
         final PluginHost host = host(env);
 
         host.enable(List.of(new ProbePlugin(context -> {
-            final ManagedInstance arena = context.instances().create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+            final ManagedInstance arena = context.instances().create(new InstanceSpec("arena", 1, FLAT));
             created.add(arena);
             arena.start();
             throw new IllegalStateException("probe failure");
@@ -129,7 +127,7 @@ class PluginHostInstancesIntegrationTest {
         final List<ManagedInstance> created = new ArrayList<>();
         final PluginHost host = host(env);
         host.enable(List.of(new ProbePlugin(context ->
-                created.add(context.instances().create(new InstanceSpec("lobby", 1, FLAT, SPAWN)))
+                created.add(context.instances().create(new InstanceSpec("lobby", 1, FLAT)))
         )), Set.of());
         final ManagedInstance lobby = created.getFirst();
         assertTrue(lobby.instance().isRegistered());
@@ -155,12 +153,12 @@ class PluginHostInstancesIntegrationTest {
         final PluginHost host = host(env);
         host.enable(List.of(
                 new ProbePlugin(new PluginDescriptor("first", "1.0.0", PluginApi.API_VERSION), context -> {
-                    final ManagedInstance lobby = context.instances().create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+                    final ManagedInstance lobby = context.instances().create(new InstanceSpec("lobby", 1, FLAT));
                     created.add(lobby);
                     context.admission().register(_ -> new Admission.Accept(lobby.instance(), 0));
                 }),
                 new ProbePlugin(new PluginDescriptor("second", "1.0.0", PluginApi.API_VERSION), context -> {
-                    final ManagedInstance arena = context.instances().create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+                    final ManagedInstance arena = context.instances().create(new InstanceSpec("arena", 1, FLAT));
                     arena.instance().setChunkLoader(new FailingToUnload());
                     created.add(arena);
                 })), Set.of());
@@ -204,11 +202,11 @@ class PluginHostInstancesIntegrationTest {
         final PluginHost host = host(env);
 
         host.enable(List.of(new ProbePlugin(context -> {
-            final ManagedInstance lobby = context.instances().create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+            final ManagedInstance lobby = context.instances().create(new InstanceSpec("lobby", 1, FLAT));
             created.add(lobby);
             created.add(context.instances().create(new InstanceSpec("broken", 1, _ -> {
                 throw new IllegalStateException("probe generator failure");
-            }, SPAWN)));
+            })));
             context.admission().register(_ -> new Admission.Accept(lobby.instance(), 0));
         })), Set.of());
 

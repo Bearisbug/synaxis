@@ -206,9 +206,13 @@ class SceneServiceIntegrationTest {
         final Client client = join(env, env.createFlatInstance());
         final Collector<PluginMessagePacket> packets = client.track();
 
-        assertThrows(IllegalStateException.class, () -> overlay.enter(client.player(), LOBBY));
-        assertThrows(IllegalStateException.class, () -> overlay.leave(client.player()));
+        final IllegalStateException enter = assertThrows(IllegalStateException.class, () -> overlay.enter(client.player(), LOBBY));
+        final IllegalStateException leave = assertThrows(IllegalStateException.class, () -> overlay.leave(client.player()));
         env.tick();
+
+        for (IllegalStateException refused : List.of(enter, leave))
+            assertEquals("plugin_id=x is not the scene owner of this process, plugin_id=rush is; the scene owner is the "
+                    + "plugin that registered admission()", refused.getMessage());
 
         assertEquals(Optional.empty(), overlay.currentScene(client.player()));
         assertEquals(List.of(), SceneTestKit.messages(packets));
@@ -449,6 +453,33 @@ class SceneServiceIntegrationTest {
 
         assertEquals("action rush:queu is not registered; register it with onAction in onEnable", scene.getMessage());
         assertEquals("action rush:bakc is not registered; register it with onAction in onEnable", widget.getMessage());
+        assertEquals(Optional.empty(), rush.currentScene(client.player()));
+        assertEquals(List.of(), SceneTestKit.messages(packets));
+        assertEquals(List.of(), ledger.lines);
+    }
+
+    /**
+     * {@code API-PLAY-005}: two action keys of a scene cannot send the same action, {@code queue} and
+     * {@code rush:queue} being one: {@code C2S_ACTION} carries the action id and no key, so the host could not
+     * tell which key's cooldown to start, while the client counts the one pressed.
+     */
+    @Test
+    void twoActionKeysOfASceneCannotSendTheSameAction(Env env) {
+        final SceneService scenes = SceneTestKit.service(env, "rush", ledger, System::nanoTime);
+        final PluginPlay rush = scenes.forPlugin("rush");
+        registerQueue(rush);
+        final Client client = join(env, env.createFlatInstance());
+        final SceneSpec twice = new SceneSpec("lobby", Component.text("Lobby"), new CameraSpec.Vanilla(), CursorMode.LOCKED,
+                List.of(new ActionSlot(0, "queue", Component.text("Queue"), Duration.ofSeconds(2)),
+                        new ActionSlot(1, "rush:queue", Component.text("Queue"), Duration.ZERO)));
+        final Collector<PluginMessagePacket> packets = client.track();
+
+        final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> rush.enter(client.player(), twice));
+        env.tick();
+
+        assertEquals("action rush:queue is on two action keys of scene rush:lobby: an action is sent by its id, so each "
+                + "key needs an action of its own", refused.getMessage());
         assertEquals(Optional.empty(), rush.currentScene(client.player()));
         assertEquals(List.of(), SceneTestKit.messages(packets));
         assertEquals(List.of(), ledger.lines);

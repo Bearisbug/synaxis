@@ -51,18 +51,23 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>
  * The token is checked while the upgrade request is read, so a peer without it never gets a
  * WebSocket and nothing it sends is ever parsed as JSON-RPC; nor does a request carrying
- * {@code Origin}, which every browser sends. A message longer than
- * {@value #MAX_MESSAGE_BYTES} bytes closes the connection with 1009 before it runs, a fragmented one
- * at the fragment that takes it past the limit, and one in more than {@value #MAX_MESSAGE_FRAGMENTS}
- * fragments at the fragment past that count, however short; before the handshake, a request longer than
- * {@value #MAX_HANDSHAKE_BYTES} bytes or one not finished within 5 s closes the socket, and a
- * connection accepted while {@value #MAX_UNFINISHED_HANDSHAKES} others have not finished theirs is
- * closed at once, bounds the library does not set on its own. Nor does it bound what it queues to
- * send: a message that finds {@value #MAX_QUEUED_FRAMES} frames or {@value #MAX_QUEUED_BYTES} bytes
- * queued and not yet written closes the connection with 1008 instead. Nor does its selector thread
- * always write what is queued while it finishes writing a connection's queue: every
- * {@link #WRITE_RECHECK} a connection with frames queued and no write pending is put back up for
- * writing.
+ * {@code Origin}, which every browser sends. The bounds below are this class's, the library sets none
+ * of them on its own:
+ * <ul>
+ * <li>a message longer than {@value #MAX_MESSAGE_BYTES} bytes closes the connection with 1009 before it
+ * runs, a fragmented one at the fragment that takes it past the limit;</li>
+ * <li>a message in more than {@value #MAX_MESSAGE_FRAGMENTS} fragments, however short, closes it with 1009
+ * at the fragment past that count;</li>
+ * <li>an upgrade request longer than {@value #MAX_HANDSHAKE_BYTES} bytes, or not finished within
+ * {@link #HANDSHAKE_DEADLINE}, closes the socket;</li>
+ * <li>a connection accepted while {@value #MAX_UNFINISHED_HANDSHAKES} others have not finished their
+ * handshake is closed at once;</li>
+ * <li>a message to send that finds {@value #MAX_QUEUED_FRAMES} frames or {@value #MAX_QUEUED_BYTES} bytes
+ * queued and not yet written closes the connection with 1008 instead;</li>
+ * <li>every {@link #WRITE_RECHECK} a connection with frames queued and no write pending is put back up
+ * for writing, which the library's selector thread does not always do once it finished writing a
+ * connection's queue.</li>
+ * </ul>
  */
 public final class ManagementServer implements AutoCloseable {
 
@@ -74,6 +79,7 @@ public final class ManagementServer implements AutoCloseable {
     static final int MAX_MESSAGE_FRAGMENTS = 1_024;
     /** The longest upgrade request: a handshake with its token is well under 1 KiB. */
     static final int MAX_HANDSHAKE_BYTES = 8_192;
+    /** How long a connection has to finish its upgrade request before its socket is closed. */
     static final Duration HANDSHAKE_DEADLINE = Duration.ofSeconds(5);
     /** The connections whose handshake is not over at which one more is closed as it is accepted. */
     static final int MAX_UNFINISHED_HANDSHAKES = 64;
@@ -83,6 +89,12 @@ public final class ManagementServer implements AutoCloseable {
     static final int MAX_QUEUED_BYTES = 1_048_576;
     /** How often the connections are looked at for frames queued with no write pending. */
     static final Duration WRITE_RECHECK = Duration.ofMillis(100);
+    /**
+     * Java-WebSocket's decoder threads, shared by every connection. One is enough because every call runs on
+     * a {@code Syn-Management-Call} virtual thread of its own ({@code onMessage}), so a decoder never waits
+     * on the database.
+     */
+    private static final int DECODER_THREADS = 1;
     private static final Duration BIND_TIMEOUT = Duration.ofSeconds(10);
     private static final int CLOSE_TIMEOUT_MILLIS = 1_000;
 
@@ -128,22 +140,19 @@ public final class ManagementServer implements AutoCloseable {
             endpoint.shutDown();
             throw new IllegalArgumentException("interrupted while binding the management interface", e);
         }
-        final ManagementServer server = new ManagementServer(endpoint);
-        server.announcePlayers(process);
+        announcePlayers(endpoint, process);
         LOGGER.info("Effective management: {}", settings);
         final InetSocketAddress listening = InetSocketAddress.createUnresolved(settings.bind().getHostString(),
                 endpoint.getPort());
         LOGGER.info("Management interface listening on {}", BindAddress.format(listening));
-        return server;
+        return new ManagementServer(endpoint);
     }
 
     /**
      * A player who entered the world is announced as joined; one announced as joined is announced
      * as left when leaving, one who never got into the world is announced neither way.
      */
-    private void announcePlayers(ServerProcess process) {
-        final Endpoint endpoint = this.endpoint;
-        if (endpoint == null) return;
+    private static void announcePlayers(Endpoint endpoint, ServerProcess process) {
         final Set<Player> joined = ConcurrentHashMap.newKeySet();
         process.eventHandler().addListener(PlayerSpawnEvent.class, event -> {
             if (event.isFirstSpawn() && joined.add(event.getPlayer()))
@@ -181,7 +190,7 @@ public final class ManagementServer implements AutoCloseable {
         private final Thread writeRecheck = Thread.ofVirtual().name("Syn-Management-Writes").unstarted(this::recheckWrites);
 
         Endpoint(ManagementSettings settings, ManagementMethods methods, Duration handshakeDeadline) {
-            super(settings.bind(), 1, List.of(new BoundedDraft()));
+            super(settings.bind(), DECODER_THREADS, List.of(new BoundedDraft()));
             this.settings = settings;
             this.methods = methods;
             setDaemon(true);

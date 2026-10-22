@@ -1,6 +1,5 @@
 package io.github.bearisbug.synaxis.plugin.instance;
 
-import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import org.junit.jupiter.api.Test;
@@ -20,10 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 class InstanceSpecTest {
 
-    private static final Pos SPAWN = new Pos(0.5, 41, 0.5);
-
     private static InstanceSpec spec(String name, int chunkRadius, Duration settleTimeout) {
-        return new InstanceSpec(name, PluginApi.MATCH_DIMENSION_TYPE, chunkRadius, _ -> { }, SPAWN, settleTimeout,
+        return new InstanceSpec(name, PluginApi.MATCH_DIMENSION_TYPE, chunkRadius, _ -> { }, settleTimeout,
                 _ -> new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE));
     }
 
@@ -58,12 +55,12 @@ class InstanceSpecTest {
 
     @Test
     void theShortConstructorBuildsOnTheMatchTypeSettlesIn30SecondsAndKicks() {
-        final InstanceSpec spec = new InstanceSpec("round", 2, _ -> { }, SPAWN);
+        final InstanceSpec spec = new InstanceSpec("round", 2, _ -> { });
 
         assertEquals(PluginApi.MATCH_DIMENSION_TYPE, spec.dimensionType());
         assertEquals(Duration.ofSeconds(30), spec.settleTimeout());
         // The default exit is the same for every player, so it is asked without one
         assertEquals(new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE), spec.fallbackExit().apply(null));
-        assertThrows(IllegalArgumentException.class, () -> new InstanceSpec("Round", 2, _ -> { }, SPAWN));
+        assertThrows(IllegalArgumentException.class, () -> new InstanceSpec("Round", 2, _ -> { }));
     }
 }

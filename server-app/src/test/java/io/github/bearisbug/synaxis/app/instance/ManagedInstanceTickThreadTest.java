@@ -37,7 +37,6 @@ import java.util.function.Supplier;
 
 import static io.github.bearisbug.synaxis.app.instance.InstanceFixture.FLAT;
 import static io.github.bearisbug.synaxis.app.instance.InstanceFixture.FLOOR;
-import static io.github.bearisbug.synaxis.app.instance.InstanceFixture.SPAWN;
 import static io.github.bearisbug.synaxis.app.instance.InstanceFixture.computedSkyLight;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -85,7 +84,7 @@ class ManagedInstanceTickThreadTest {
         process.eventHandler().addListener(PlayInstanceStateEvent.class, event ->
                 transition(event.managed(), event.to()).complete(Thread.currentThread().getName()));
         // The startup thread is one that never calls create: the test thread counts as any other thread
-        registry = new InstanceRegistry(process, ledger, InstanceFixture.scenes(process), Thread.ofPlatform().unstarted(() -> {
+        registry = new InstanceRegistry(process, ledger, InstanceFixture.scenes(), Thread.ofPlatform().unstarted(() -> {
         }), InstanceRegistry.Durations.DEFAULT, () -> System.nanoTime() + clockOffset.get());
         process.start(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
         // The tick threads and the tick scheduler thread, where the serial parts of this class run
@@ -187,7 +186,7 @@ class ManagedInstanceTickThreadTest {
             throws InterruptedException, ExecutionException {
         final PluginInstances instances = registry.forPlugin("tick");
         for (int ordinal = 1; ordinal <= CREATES; ordinal++) {
-            final Created created = create(instances, new InstanceSpec("arena", 2, FLAT, SPAWN));
+            final Created created = create(instances, new InstanceSpec("arena", 2, FLAT));
             final ManagedInstance arena = created.managed();
 
             assertEquals(State.PREPARING, created.state(), "create waited for the chunks on the tick scheduler thread");
@@ -230,7 +229,7 @@ class ManagedInstanceTickThreadTest {
         final CountDownLatch release = new CountDownLatch(1);
         try {
             final ManagedInstance arena = create(registry.forPlugin("stuck"),
-                    new InstanceSpec("arena", 2, InstanceFixture.stuckUntil(release), SPAWN)).managed();
+                    new InstanceSpec("arena", 2, InstanceFixture.stuckUntil(release))).managed();
             assertEquals(State.PREPARING, arena.state());
 
             // The shutdown task of the host runs on the tick scheduler thread, between two ticks
@@ -265,7 +264,7 @@ class ManagedInstanceTickThreadTest {
         final long budget = InstanceRegistry.Durations.DEFAULT.prepareBudget().toNanos();
         try {
             final ManagedInstance arena = create(registry.forPlugin("slow"),
-                    new InstanceSpec("arena", 0, InstanceFixture.stuckUntil(release), SPAWN)).managed();
+                    new InstanceSpec("arena", 0, InstanceFixture.stuckUntil(release))).managed();
             twoSerialParts();
             assertEquals(State.PREPARING, arena.state(), "closed before the budget was spent");
 
@@ -291,7 +290,7 @@ class ManagedInstanceTickThreadTest {
     void aGeneratorThatThrowsOutsideTheTickClosesTheInstance() throws InterruptedException, ExecutionException {
         final ManagedInstance arena = create(registry.forPlugin("broken"), new InstanceSpec("arena", 1, _ -> {
             throw new IllegalStateException("probe generator failure");
-        }, SPAWN)).managed();
+        })).managed();
 
         assertEquals(TickSchedulerThread.THREAD_NAME_TICK_SCHEDULER, awaitTransition(arena, State.CLOSED));
 
@@ -303,12 +302,12 @@ class ManagedInstanceTickThreadTest {
     /** The startup thread prepares in place only before the process runs; afterwards it is any other thread. */
     @Test
     void theStartupThreadIsAnyOtherThreadOnceTheProcessRuns() {
-        final InstanceRegistry late = new InstanceRegistry(process, ledger, InstanceFixture.scenes(process),
+        final InstanceRegistry late = new InstanceRegistry(process, ledger, InstanceFixture.scenes(),
                 Thread.currentThread(), InstanceRegistry.Durations.DEFAULT, System::nanoTime);
         final PluginInstances instances = late.forPlugin("late");
 
         final IllegalStateException refused = assertThrows(IllegalStateException.class,
-                () -> instances.create(new InstanceSpec("arena", 0, FLAT, SPAWN)));
+                () -> instances.create(new InstanceSpec("arena", 0, FLAT)));
 
         assertTrue(refused.getMessage().contains(Thread.currentThread().getName()), refused.getMessage());
         assertEquals(List.of(), instances.owned());

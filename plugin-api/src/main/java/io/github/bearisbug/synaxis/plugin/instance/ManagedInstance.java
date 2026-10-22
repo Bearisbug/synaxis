@@ -8,7 +8,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
@@ -37,13 +36,6 @@ public interface ManagedInstance {
      * @return the id
      */
     String id();
-
-    /**
-     * The engine's id of the instance.
-     *
-     * @return the instance UUID
-     */
-    UUID instanceId();
 
     /**
      * The engine instance. It is unregistered until the instance turns {@link State#OPEN}, and again
@@ -118,7 +110,13 @@ public interface ManagedInstance {
      *
      * @param exit where each player goes; an exit into another managed instance names one that is
      *             {@link State#OPEN} or {@link State#RUNNING}, and a player whose move there
-     *             completes with false is kicked with {@code synaxis:match-unavailable}
+     *             completes with false is kicked with {@code synaxis:match-unavailable}, as is one the
+     *             function throws for or gives null. It is called at most once per player: for those online
+     *             inside at the close before this returns, on the calling thread; for one whose move into
+     *             this instance lands after the close, on the thread that move completes on (the player's
+     *             tick thread or the tick scheduler thread), up to the evacuation time limit later, 5 s by
+     *             default, and possibly at the same time as a call on another thread. So it should read only
+     *             state that is thread safe and not cleared once the instance closes
      * @throws IllegalStateException if the instance is not {@code OPEN}
      */
     void cancel(Function<Player, Exit> exit);

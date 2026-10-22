@@ -15,6 +15,8 @@ public final class TransferCooldowns {
 
     static final String PROPERTY = "synaxis.app.transfer-cooldown-ms";
     static final long DEFAULT_MILLIS = 5_000;
+    /** The accounts held at which the expired ones are dropped, far above the transfers of one cooldown. */
+    private static final int PRUNE_ABOVE = 4_096;
 
     private final long cooldownMillis;
     private final LongSupplier clock;
@@ -44,7 +46,8 @@ public final class TransferCooldowns {
             } catch (NumberFormatException _) {
                 millis = -1;
             }
-            if (millis < 0) throw new IllegalArgumentException(PROPERTY + "=" + value + " is not a number of milliseconds");
+            if (millis < 0)
+                throw new IllegalArgumentException(PROPERTY + "=" + value + " is not a whole number of milliseconds >= 0");
         }
         return new TransferCooldowns(millis, System::currentTimeMillis);
     }
@@ -64,16 +67,31 @@ public final class TransferCooldowns {
     }
 
     /**
-     * Records a transfer of the player, out of here or into here.
+     * Records a transfer of the player, out of here or into here. Past 4,096 accounts held, the
+     * ones whose cooldown is over are dropped: one that transferred in and never transfers out again is
+     * never asked about, and would otherwise stay until the process ends.
      *
      * @param account the account
      * @param at      when, Unix milliseconds: now for a transfer out, the ticket's {@code issued_at} in
      */
     void record(UUID account, long at) {
         lastTransfer.merge(account, at, Math::max);
+        if (lastTransfer.size() > PRUNE_ABOVE) {
+            final long now = clock.getAsLong();
+            lastTransfer.values().removeIf(last -> now - last >= cooldownMillis);
+        }
     }
 
     long now() {
         return clock.getAsLong();
+    }
+
+    /**
+     * The accounts the table holds, for a test.
+     *
+     * @return how many there are
+     */
+    int size() {
+        return lastTransfer.size();
     }
 }

@@ -24,8 +24,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class PluginTransfers implements Transfers {
 
-    /** How long a cookie request waits for the client, as long as a transfer's target waits for its ticket. */
-    static final long COOKIE_TIMEOUT_MILLIS = 5_000;
+    /**
+     * How long a cookie request waits for the client, as long as a transfer's target waits for its ticket; the
+     * 5 s of {@code Transfers#fetchCookie} and {@code API-PROD-021} follow from it.
+     */
+    static final long COOKIE_TIMEOUT_MILLIS = TicketVerifier.COOKIE_TIMEOUT_MILLIS;
     /** How long a transfer waits for the player's next tick; a player that does not tick in that time has left. */
     static final long TICK_TIMEOUT_MILLIS = 5_000;
     private static final int MAX_PORT = 65_535;
@@ -96,7 +99,7 @@ public final class PluginTransfers implements Transfers {
 
     @Override
     public void storeCookie(Player player, Key key, byte[] value) {
-        // CookieStorePacket refuses a value over 5,120 bytes before anything is sent
+        // CookieStorePacket refuses a value over CookieStorePacket.MAX_VALUE_LENGTH bytes before anything is sent
         player.getPlayerConnection().storeCookie(own(key), value);
     }
 

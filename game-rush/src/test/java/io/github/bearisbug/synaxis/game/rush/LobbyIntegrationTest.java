@@ -139,7 +139,6 @@ class LobbyIntegrationTest {
         assertEquals("round", spec.name());
         assertEquals(PluginApi.MATCH_DIMENSION_TYPE, spec.dimensionType());
         assertEquals(Arena.ROUND_RADIUS, spec.chunkRadius());
-        assertEquals(Arena.SPAWN, spec.spawn());
         assertEquals(Duration.ofSeconds(25), spec.settleTimeout(), "the settle timeout is not the result time plus 15 s");
         assertEquals(new Exit.ToInstance(setup.lobby(), Arena.SPAWN), spec.fallbackExit().apply(alice));
         assertNull(play.widgets(alice).get(RushHud.TIMER), "the countdown stayed on screen while the arena was prepared");
@@ -367,7 +366,7 @@ class LobbyIntegrationTest {
 
     private Setup setup(Env env, RushConfig config) {
         final FakeManaged lobby = (FakeManaged) new FakeInstances(env, ManagedInstance.State.RUNNING)
-                .create(new InstanceSpec("lobby", Arena.LOBBY_RADIUS, Arena.lobby(), Arena.SPAWN));
+                .create(new InstanceSpec("lobby", Arena.LOBBY_RADIUS, Arena.lobby()));
         final FakeInstances arenas = new FakeInstances(env, ManagedInstance.State.PREPARING);
         final Lobby rules = new Lobby(arenas, lobby, queue, config, new RushHud(play), this::record, clock::get,
                 LoggerFactory.getLogger("plugin.rush"));

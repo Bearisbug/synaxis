@@ -34,15 +34,22 @@ class StoreHousekeepingDbTest {
         if (database != null) database.close();
     }
 
+    /**
+     * A nonce goes 5 minutes after its ticket expired, not at once: the target spends it after the account's turn in
+     * the load, seconds after it read the ticket against its own clock, and the database's clock may run ahead.
+     */
     @Test
-    void onlyExpiredNoncesAreCollected() throws SQLException {
+    void onlyNoncesExpiredForFiveMinutesAreCollected() throws SQLException {
         database.execute("INSERT INTO transfer_nonce VALUES (decode(repeat('01', 16), 'hex'), now() - interval '1 second'),"
                 + " (decode(repeat('02', 16), 'hex'), now() - interval '1 hour'),"
-                + " (decode(repeat('03', 16), 'hex'), now() + interval '30 seconds')");
+                + " (decode(repeat('03', 16), 'hex'), now() + interval '30 seconds'),"
+                + " (decode(repeat('04', 16), 'hex'), now() - interval '6 minutes')");
 
         assertEquals(2, new StoreHousekeeping(pool.pool()).collectNonces());
 
-        assertEquals(1, count(database, "SELECT count(*) FROM transfer_nonce"), "the live ticket's nonce stays");
+        assertEquals(2, count(database, "SELECT count(*) FROM transfer_nonce"),
+                "the live ticket's nonce and the one expired a second ago stay");
+        assertEquals(1, count(database, "SELECT count(*) FROM transfer_nonce WHERE nonce = decode(repeat('01', 16), 'hex')"));
     }
 
     @Test
@@ -66,7 +73,7 @@ class StoreHousekeepingDbTest {
 
     @Test
     void aJobAnotherShardIsRunningIsSkipped() throws SQLException {
-        database.execute("INSERT INTO transfer_nonce VALUES (decode(repeat('01', 16), 'hex'), now() - interval '1 second')");
+        database.execute("INSERT INTO transfer_nonce VALUES (decode(repeat('01', 16), 'hex'), now() - interval '1 hour')");
         try (Connection other = database.connect(); Statement lock = other.createStatement()) {
             lock.execute("SELECT pg_advisory_lock(" + StoreHousekeeping.NONCE_GC_LOCK + ")");
 
@@ -84,7 +91,7 @@ class StoreHousekeepingDbTest {
      */
     @Test
     void aCleanupMayRunForItsOwnTimeoutPastTheSocketTimeoutOfThePool() throws Exception {
-        database.execute("INSERT INTO transfer_nonce VALUES (decode(repeat('01', 16), 'hex'), now() - interval '1 second')");
+        database.execute("INSERT INTO transfer_nonce VALUES (decode(repeat('01', 16), 'hex'), now() - interval '1 hour')");
         try (Connection other = database.connect(); Statement lock = other.createStatement()) {
             other.setAutoCommit(false);
             lock.execute("LOCK TABLE transfer_nonce IN ACCESS EXCLUSIVE MODE");

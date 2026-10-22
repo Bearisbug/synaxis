@@ -111,6 +111,8 @@ public final class HostMetrics implements AutoCloseable {
 
     /** How often the world figures are counted, in ticks: once a second at 20 TPS. */
     private static final int WORLD_SAMPLE_TICKS = 20;
+    /** The three states of {@code synaxis.connections}; login is what the gate counts minus the other two. */
+    private static final String CONNECTIONS = "Sockets by state; login is the gate's count minus configuration and play";
     private static final double[] PERCENTILES = {0.5, 0.95, 0.99};
 
     /**
@@ -204,13 +206,13 @@ public final class HostMetrics implements AutoCloseable {
         Gauge.builder("synaxis.players.online", connections::getOnlinePlayerCount)
                 .description("Players in the play state").register(registry);
         Gauge.builder("synaxis.connections", () -> connections.getConfigPlayers().size())
-                .tag("state", "configuration").register(registry);
+                .tag("state", "configuration").description(CONNECTIONS).register(registry);
         Gauge.builder("synaxis.connections", connections::getOnlinePlayerCount)
-                .tag("state", "play").register(registry);
+                .tag("state", "play").description(CONNECTIONS).register(registry);
         // Every socket the gate counts that is neither: handshake, status and login
         Gauge.builder("synaxis.connections", () -> Math.max(0, connections.gate().connections()
                         - connections.getConfigPlayers().size() - connections.getOnlinePlayerCount()))
-                .tag("state", "login").register(registry);
+                .tag("state", "login").description(CONNECTIONS).register(registry);
         final ConnectionGate gate = connections.gate();
         for (ConnectionGate.Reason reason : ConnectionGate.Reason.values()) {
             FunctionCounter.builder("synaxis.gate.rejections", gate, g -> g.rejected(reason))
@@ -218,18 +220,23 @@ public final class HostMetrics implements AutoCloseable {
                     .description("Connections the connection gate turned away").register(registry);
         }
         final TrafficCounters traffic = connections.traffic();
-        traffic("synaxis.packets", traffic, TrafficCounters::packetsIn, TrafficCounters::packetsOut);
-        traffic("synaxis.bytes", traffic, TrafficCounters::bytesIn, TrafficCounters::bytesOut);
+        traffic("synaxis.packets", "Packets read, and sendable units written to connection buffers, a view "
+                + "broadcast counting once", traffic, TrafficCounters::packetsIn, TrafficCounters::packetsOut);
+        traffic("synaxis.bytes", "Bytes on the wire, in and out", traffic, TrafficCounters::bytesIn,
+                TrafficCounters::bytesOut);
+        final String cipher = "Seconds spent decrypting and encrypting connections";
         FunctionCounter.builder("synaxis.cipher.cpu.seconds", traffic, t -> t.decryptNanos() / 1e9)
-                .tag("direction", "in").register(registry);
+                .tag("direction", "in").description(cipher).register(registry);
         FunctionCounter.builder("synaxis.cipher.cpu.seconds", traffic, t -> t.encryptNanos() / 1e9)
-                .tag("direction", "out").register(registry);
+                .tag("direction", "out").description(cipher).register(registry);
     }
 
-    private void traffic(String name, TrafficCounters traffic, ToLongFunction<TrafficCounters> in,
+    private void traffic(String name, String description, TrafficCounters traffic, ToLongFunction<TrafficCounters> in,
                          ToLongFunction<TrafficCounters> out) {
-        FunctionCounter.builder(name, traffic, in::applyAsLong).tag("direction", "in").register(registry);
-        FunctionCounter.builder(name, traffic, out::applyAsLong).tag("direction", "out").register(registry);
+        FunctionCounter.builder(name, traffic, in::applyAsLong).tag("direction", "in").description(description)
+                .register(registry);
+        FunctionCounter.builder(name, traffic, out::applyAsLong).tag("direction", "out").description(description)
+                .register(registry);
     }
 
     private void registerWorld(ServerProcess process) {
@@ -295,15 +302,17 @@ public final class HostMetrics implements AutoCloseable {
         if (session != null) session.useMetrics(store);
         for (ShardSession.State state : ShardSession.State.values()) {
             Gauge.builder("synaxis.shard.session.state", () -> session != null && session.state() == state ? 1 : 0)
-                    .tag("state", state.name().toLowerCase(Locale.ROOT)).register(registry);
+                    .tag("state", state.name().toLowerCase(Locale.ROOT))
+                    .description("1 for the current state of the shard session, 0 for the others").register(registry);
         }
         final Database database = sources.database();
         Gauge.builder("synaxis.db.pool.active", () -> database == null ? 0 : database.activeConnections())
-                .register(registry);
+                .description("Connections of the store's pool in use").register(registry);
         Gauge.builder("synaxis.db.pool.pending", () -> database == null ? 0 : database.pendingThreads())
-                .register(registry);
+                .description("Threads waiting for a connection of the store's pool").register(registry);
         final RedisLink redis = sources.redis();
-        Gauge.builder("synaxis.redis.up", () -> redis.isUp() ? 1 : 0).register(registry);
+        Gauge.builder("synaxis.redis.up", () -> redis.isUp() ? 1 : 0).description("1 while the Redis link is up")
+                .register(registry);
         ledgerDropped = sources.ledgerDropped();
         FunctionCounter.builder("synaxis.ledger.dropped", ledgerDropped, LongSupplier::getAsLong)
                 .description("Lines the event ledger dropped").register(registry);

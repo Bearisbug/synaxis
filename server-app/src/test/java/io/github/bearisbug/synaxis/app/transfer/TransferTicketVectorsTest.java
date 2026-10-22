@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.app.transfer;
 
+import io.github.bearisbug.synaxis.network.packet.server.common.CookieStorePacket;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -100,7 +101,7 @@ class TransferTicketVectorsTest {
 
         assertNotNull(TransferTicket.decode(HEX.parseHex(vector("good")), rotated), "a ticket of the old key during the rollover");
         assertEquals(3, rotated.signingId());
-        assertArrayEquals(fresh, rotated.signingKey());
+        assertArrayEquals(fresh, rotated.key(rotated.signingId()));
     }
 
     @Test
@@ -118,6 +119,50 @@ class TransferTicketVectorsTest {
         assertFalse(refused.getMessage().contains(Base64.getEncoder().encodeToString(new byte[31])),
                 "a refusal never repeats the key");
         assertNull(TransferKeys.fromEnvironment(Map.of()));
+
+        // The value is a secret and never shown, so the refusal points at the entry by its place
+        final IllegalArgumentException trailing = assertThrows(IllegalArgumentException.class,
+                () -> TransferKeys.parse("1:" + key + ","));
+        assertEquals(TransferKeys.VARIABLE + " entry 2 of 2 is empty (a trailing comma?)", trailing.getMessage());
+        final IllegalArgumentException noId = assertThrows(IllegalArgumentException.class,
+                () -> TransferKeys.parse("1:" + key + "," + key));
+        assertEquals(TransferKeys.VARIABLE + " entry 2 of 2 is not key_id:base64", noId.getMessage());
+    }
+
+    @Test
+    void aNegativeCooldownIsRefusedWithTheRangeItTakes() {
+        final String before = System.getProperty("synaxis.app.transfer-cooldown-ms");
+        System.setProperty("synaxis.app.transfer-cooldown-ms", "-1");
+        try {
+            final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                    TransferCooldowns::fromSystemProperties);
+            assertEquals("synaxis.app.transfer-cooldown-ms=-1 is not a whole number of milliseconds >= 0",
+                    refused.getMessage());
+        } finally {
+            if (before == null) System.clearProperty("synaxis.app.transfer-cooldown-ms");
+            else System.setProperty("synaxis.app.transfer-cooldown-ms", before);
+        }
+    }
+
+    /**
+     * An account cooling down no more takes no room: a shard many accounts pass through keeps only those of
+     * the last cooldown, whether or not they ever ask again.
+     */
+    @Test
+    void theCooldownsForgetTheAccountsPastTheirCooldown() {
+        final AtomicLong clock = new AtomicLong(1_000_000);
+        final TransferCooldowns cooldowns = new TransferCooldowns(5_000, clock::get);
+        for (int i = 0; i < 5_000; i++) cooldowns.record(UUID.randomUUID(), clock.get());
+        final UUID recent = UUID.randomUUID();
+        clock.addAndGet(4_000);
+        cooldowns.record(recent, clock.get());
+        assertEquals(5_001, cooldowns.size(), "nobody is past the cooldown yet");
+
+        clock.addAndGet(1_000);
+        cooldowns.record(UUID.randomUUID(), clock.get());
+
+        assertEquals(2, cooldowns.size(), "the 5,000 accounts past their cooldown are forgotten");
+        assertTrue(cooldowns.coolingDown(recent), "an account still cooling down is kept");
     }
 
     @Test
@@ -125,7 +170,7 @@ class TransferTicketVectorsTest {
         final TransferTicket good = goodFields();
         final TransferTicket longest = new TransferTicket(7, good.playerUuid(), 1, "s".repeat(255), "t".repeat(255), 1,
                 good.nonce(), 0, 30_000);
-        assertTrue(longest.encode(keys()).length <= TransferTicket.MAX_BYTES);
+        assertTrue(longest.encode(keys()).length <= CookieStorePacket.MAX_VALUE_LENGTH);
         final TransferTicket tooLong = new TransferTicket(7, good.playerUuid(), 1, "s".repeat(256), "t", 1,
                 good.nonce(), 0, 30_000);
         assertThrows(IllegalArgumentException.class, () -> tooLong.encode(keys()));

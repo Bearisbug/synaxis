@@ -39,14 +39,16 @@ final class Evacuation {
     /** The players online inside when the instance closed, the ones {@link #start} sends away. */
     private final List<Player> atTheClose;
     /** The players handed the exit: those online inside when the instance closed, then the late arrivals. */
-    private final Set<Player> inside = ConcurrentHashMap.newKeySet();
+    private final Set<Player> handedExit = ConcurrentHashMap.newKeySet();
     private final long startedAt;
     private final AtomicBoolean finished = new AtomicBoolean();
 
     /**
      * Takes the players online inside the instance, which is turning {@code CLOSED} under its monitor.
      *
-     * @param exit          where each player goes
+     * @param exit          where each player goes; a forced close ({@link ManagedInstanceImpl#reclaim}) never
+     *                      calls {@link #start} and kicks those inside, so it only reaches a player whose move
+     *                      lands before {@link #finish}
      * @param settleTimeout whether the instance closes because its plugin did not settle it in time
      */
     Evacuation(ManagedInstanceImpl managed, InstanceRegistry registry, Function<Player, Exit> exit, boolean settleTimeout) {
@@ -55,7 +57,7 @@ final class Evacuation {
         this.exit = exit;
         this.settleTimeout = settleTimeout;
         this.atTheClose = managed.online();
-        this.inside.addAll(atTheClose);
+        this.handedExit.addAll(atTheClose);
         this.startedAt = registry.now();
     }
 
@@ -83,7 +85,7 @@ final class Evacuation {
             player.kick(MATCH_UNAVAILABLE);
             return;
         }
-        if (inside.add(player)) send(player);
+        if (handedExit.add(player)) send(player);
     }
 
     /**
@@ -102,7 +104,7 @@ final class Evacuation {
                                 : new IllegalStateException("the exit " + to.id() + " took nobody, it is " + to.state()));
                     });
                 }
-                case Exit.Kick(String reasonKey) -> player.kick(Component.translatable(reasonKey));
+                case Exit.Kick(Component reason) -> player.kick(reason);
             }
         } catch (Throwable e) {
             kickForWantOfAnExit(player, e);
@@ -142,8 +144,8 @@ final class Evacuation {
         kicked.removeIf(player -> !player.isOnline());
         for (Player player : kicked) player.kick(MATCH_UNAVAILABLE);
         registry.process().instance().unregisterInstance(managed.instance());
-        final Set<Player> players = new HashSet<>(inside);
+        final Set<Player> players = new HashSet<>(handedExit);
         players.addAll(kicked);
-        managed.closed(players.size(), players.size() - kicked.size(), kicked.size(), settleTimeout);
+        managed.closed(players.size(), kicked.size(), settleTimeout);
     }
 }

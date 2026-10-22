@@ -60,9 +60,9 @@ public interface PluginPlay {
      *                                  encodes to more than
      *                                  {@value io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent#MAX_BYTES}
      *                                  bytes or cannot be encoded, the scene id or an action id is not
-     *                                  an id of this plugin (see above), or an action id was not
-     *                                  registered with {@link #onAction}; the player's scene is left
-     *                                  as it was
+     *                                  an id of this plugin (see above), an action id was not
+     *                                  registered with {@link #onAction}, or two action keys send the
+     *                                  same action; the player's scene is left as it was
      */
     void enter(Player player, SceneSpec scene);
 

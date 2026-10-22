@@ -54,7 +54,7 @@ public final class RushPlugin implements SynaxisPlugin {
         // On the startup thread the lobby comes back open, or closed when it could not be prepared,
         // which start() refuses: onEnable fails and the host refuses to start (API-PLAY-006)
         final ManagedInstance lobby = context.instances()
-                .create(new InstanceSpec("lobby", Arena.LOBBY_RADIUS, Arena.lobby(), Arena.SPAWN));
+                .create(new InstanceSpec("lobby", Arena.LOBBY_RADIUS, Arena.lobby()));
         lobby.start();
         final PluginPlay play = context.play();
         final Lobby rules = new Lobby(context.instances(), lobby, queue, config, new RushHud(play), context.analytics(),

@@ -7,7 +7,6 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -104,7 +103,7 @@ public final class ManagementSettings {
         final byte[] expected = tokenDigest;
         if (expected == null || authorization == null) return false;
         final boolean bearer = authorization.length() > BEARER.length()
-                && authorization.substring(0, BEARER.length()).toLowerCase(Locale.ROOT).equals(BEARER);
+                && authorization.regionMatches(true, 0, BEARER, 0, BEARER.length());
         final String presented = bearer ? authorization.substring(BEARER.length()).strip() : "";
         return MessageDigest.isEqual(sha256(presented), expected) && bearer;
     }
@@ -118,10 +117,12 @@ public final class ManagementSettings {
         }
     }
 
-    /** The token is written as whether it is set, never as itself. */
+    /**
+     * The token is written as whether it is set, never as itself; disabled, it is never read, so whether one
+     * is set is not known.
+     */
     @Override
     public String toString() {
-        return "enabled=" + enabled + " bind=" + BindAddress.format(bind)
-                + " token=" + (tokenDigest == null ? "unset" : "set");
+        return "enabled=" + enabled + " bind=" + BindAddress.format(bind) + " token=" + (enabled ? "set" : "not read");
     }
 }

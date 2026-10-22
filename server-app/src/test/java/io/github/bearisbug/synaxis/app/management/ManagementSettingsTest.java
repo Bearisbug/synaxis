@@ -90,8 +90,11 @@ class ManagementSettingsTest {
 
         assertEquals("enabled=true bind=127.0.0.1:25585 token=set", printed);
         assertFalse(printed.contains(TOKEN.substring(0, 8)), printed);
-        assertEquals("enabled=false bind=127.0.0.1:25585 token=unset",
+        // Disabled, the token is never read: whether one is set is not known, so it is not printed as unset
+        assertEquals("enabled=false bind=127.0.0.1:25585 token=not read",
                 ManagementSettings.parse("false", "127.0.0.1:25585", null).toString());
+        assertEquals("enabled=false bind=127.0.0.1:25585 token=not read",
+                ManagementSettings.parse("false", "127.0.0.1:25585", TOKEN).toString());
     }
 
     /** The self-check line keeps an IPv6 address apart from its port, in the form the key reads. */

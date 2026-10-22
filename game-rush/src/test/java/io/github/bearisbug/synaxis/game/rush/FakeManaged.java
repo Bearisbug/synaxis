@@ -6,7 +6,6 @@ import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.plugin.instance.EndCause;
 import io.github.bearisbug.synaxis.plugin.instance.Exit;
 import io.github.bearisbug.synaxis.plugin.instance.ManagedInstance;
-import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
@@ -14,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -49,11 +47,6 @@ final class FakeManaged implements ManagedInstance {
     @Override
     public String id() {
         return id;
-    }
-
-    @Override
-    public UUID instanceId() {
-        return instance.getUuid();
     }
 
     @Override
@@ -145,7 +138,7 @@ final class FakeManaged implements ManagedInstance {
                 case Exit.ToInstance to -> {
                     var _ = to.target().move(player, to.at());
                 }
-                case Exit.Kick kick -> player.kick(Component.translatable(kick.reasonKey()));
+                case Exit.Kick kick -> player.kick(kick.reason());
             }
         }
     }

@@ -85,7 +85,7 @@ class EvacuationIntegrationTest {
 
     private PluginInstances instances(Env env) {
         InstanceFixture.registerMatchDimension(env.process());
-        return new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(env.process()), Thread.currentThread(),
+        return new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(), Thread.currentThread(),
                 new InstanceRegistry.Durations(Duration.ofSeconds(30), EVACUATION), clock::get).forPlugin("evacuation");
     }
 
@@ -123,8 +123,8 @@ class EvacuationIntegrationTest {
     @Test
     void cancelSendsThePlayerToItsExitAndUnregistersOnceTheyAreOut(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final Player player = joinInto(env, arena, env.createConnection());
 
         arena.cancel(_ -> new Exit.ToInstance(lobby, SPAWN));
@@ -140,18 +140,18 @@ class EvacuationIntegrationTest {
         assertEquals(1, closed.get("players"));
         assertEquals(1, closed.get("evacuated"));
         assertEquals(0, closed.get("kicked"));
-        assertEquals(arena.instanceId().toString(), ledger.last(lobby, "play_instance_moved").get("from_instance_id"));
+        assertEquals(arena.instance().getUuid().toString(), ledger.last(lobby, "play_instance_moved").get("from_instance_id"));
     }
 
     /** {@code API-PLAY-006} 撤离: still inside when the evacuation time is up, kicked with match-unavailable. */
     @Test
     void whoeverIsStillInsideWhenTheEvacuationRunsOutIsKicked(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final CountDownLatch release = new CountDownLatch(1);
         try {
             final ManagedInstance far = instances.create(new InstanceSpec("far", 1,
-                    InstanceFixture.stuckBeyond(1, release), SPAWN));
+                    InstanceFixture.stuckBeyond(1, release)));
             far.instance().enableAutoChunkLoad(true);
             final TestConnection connection = env.createConnection();
             final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
@@ -203,8 +203,8 @@ class EvacuationIntegrationTest {
     @Test
     void anExitIntoAnInstanceThatTakesNobodyKicksThePlayerAtOnce(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
-        final ManagedInstance gone = instances.create(new InstanceSpec("gone", 0, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
+        final ManagedInstance gone = instances.create(new InstanceSpec("gone", 0, FLAT));
         gone.cancel(_ -> new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE));
         final TestConnection connection = env.createConnection();
         final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
@@ -238,7 +238,7 @@ class EvacuationIntegrationTest {
     @Test
     void aMoveAListenerKeepsThePlayerOutOfCompletesWithFalse(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         arena.instance().eventNode().addListener(AddEntityToInstanceEvent.class, event -> {
             if (event.getEntity() instanceof Player) event.setCancelled(true);
         });
@@ -271,7 +271,7 @@ class EvacuationIntegrationTest {
         final List<Throwable> reported = new CopyOnWriteArrayList<>();
         env.process().exception().setExceptionHandler(reported::add);
         final PluginInstances instances = instances(env);
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         arena.instance().setChunkLoader(new FailingLoader());
         arena.instance().enableAutoChunkLoad(true);
         final Instance world = env.createFlatInstance();
@@ -303,7 +303,7 @@ class EvacuationIntegrationTest {
     @Test
     void aMoveWhoseInstanceIsUnregisteredAfterItsAdmissionCompletesWithFalse(Env env) {
         final InstanceRegistry registry = registry(env, Thread.currentThread());
-        final ManagedInstance arena = registry.forPlugin("race").create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance arena = registry.forPlugin("race").create(new InstanceSpec("arena", 1, FLAT));
         final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 41, 0));
         registry.pauseWith(window -> {
             if (window == InstanceRegistry.Window.ADMIT) env.destroyInstance(arena.instance());
@@ -324,7 +324,7 @@ class EvacuationIntegrationTest {
     @Test
     void aMoveWhosePlayerASpawnListenerSendsBackCompletesWithFalse(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final Instance world = env.createFlatInstance();
         final Player player = env.createPlayer(world, new Pos(0, 41, 0));
         final AtomicReference<CompletableFuture<Void>> back = new AtomicReference<>();
@@ -381,7 +381,7 @@ class EvacuationIntegrationTest {
     @Test
     void aKickExitDisconnectsWithItsOwnKey(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final TestConnection connection = env.createConnection();
         final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
         final Player player = joinInto(env, arena, connection);
@@ -400,7 +400,7 @@ class EvacuationIntegrationTest {
     @Test
     void anExitThatThrowsKicksThePlayer(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final TestConnection connection = env.createConnection();
         final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
         final Player player = joinInto(env, arena, connection);
@@ -418,9 +418,9 @@ class EvacuationIntegrationTest {
     @Test
     void theSettleTimeoutSendsThePlayersToTheFallbackExit(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT));
         final ManagedInstance arena = instances.create(new InstanceSpec("arena", PluginApi.MATCH_DIMENSION_TYPE, 1, FLAT,
-                SPAWN, Duration.ofSeconds(15), _ -> new Exit.ToInstance(lobby, SPAWN)));
+                Duration.ofSeconds(15), _ -> new Exit.ToInstance(lobby, SPAWN)));
         assertEquals(Duration.ofSeconds(15), arena.settleTimeout(), "the instance reports another settle timeout than its spec");
         final Player player = joinInto(env, arena, env.createConnection());
         arena.start();
@@ -448,8 +448,8 @@ class EvacuationIntegrationTest {
     @Test
     void aPlayerAlreadyMovingToTheExitWhenTheInstanceSettlesLandsThereOnce(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final Player player = joinInto(env, arena, env.createConnection());
         arena.start();
         arena.end(EndCause.OBJECTIVE);
@@ -483,7 +483,7 @@ class EvacuationIntegrationTest {
     @Test
     void aPlayerWhoLeavesBeforeTheMoveRunsIsNotMoved(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final Instance world = env.createFlatInstance();
         final Player player = env.createPlayer(world, new Pos(0, 41, 0));
 
@@ -504,7 +504,7 @@ class EvacuationIntegrationTest {
     @Test
     void anExitThatThrowsAnErrorOrACheckedExceptionKicksThePlayer(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final TestConnection first = env.createConnection();
         final Collector<DisconnectPacket> firstDisconnects = first.trackIncoming(DisconnectPacket.class);
         final Player one = joinInto(env, arena, first);
@@ -543,7 +543,7 @@ class EvacuationIntegrationTest {
     @Test
     void anExitThatGivesNothingKicksThePlayer(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final TestConnection connection = env.createConnection();
         final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
         final Player player = joinInto(env, arena, connection);
@@ -569,8 +569,8 @@ class EvacuationIntegrationTest {
     @Test
     void aPlayerWhoArrivesWhileTheInstanceClosesGetsTheExitToo(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         // Called on the player's tick thread before the player is added to the instance
         arena.instance().eventNode().addListener(AddEntityToInstanceEvent.class, event -> {
             if (event.getEntity() instanceof Player && arena.state() == State.OPEN)
@@ -598,8 +598,8 @@ class EvacuationIntegrationTest {
     @Test
     void aPlayerKeptOutWhileTheInstanceClosesIsHandedNoExit(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final List<Player> handed = new CopyOnWriteArrayList<>();
         arena.instance().eventNode().addListener(AddEntityToInstanceEvent.class, event -> {
             if (!(event.getEntity() instanceof Player)) return;
@@ -634,8 +634,8 @@ class EvacuationIntegrationTest {
     @Test
     void aPlayerSentBackAsTheyLandWhileTheInstanceClosesIsHandedNoExit(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final List<Player> handed = new CopyOnWriteArrayList<>();
         arena.instance().eventNode().addListener(AddEntityToInstanceEvent.class, event -> {
             if (event.getEntity() instanceof Player && arena.state() == State.OPEN) arena.cancel(leaving -> {
@@ -673,12 +673,12 @@ class EvacuationIntegrationTest {
      */
     @Test
     void aForcedCloseFromTheClosingEventFinishesTheEvacuation(Env env) {
-        final InstanceRegistry registry = new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(env.process()),
+        final InstanceRegistry registry = new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(),
                 Thread.currentThread(), new InstanceRegistry.Durations(Duration.ofSeconds(30), EVACUATION), clock::get);
         InstanceFixture.registerMatchDimension(env.process());
         final PluginInstances instances = registry.forPlugin("evacuation");
-        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final Player player = joinInto(env, arena, env.createConnection());
         final List<Boolean> insideWhenCalled = new CopyOnWriteArrayList<>();
         arena.instance().eventNode().addListener(PlayInstanceStateEvent.class, event -> {
@@ -715,11 +715,11 @@ class EvacuationIntegrationTest {
     @Test
     void theEvacuationWaitsForAMoveStillLoadingItsChunks(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT));
         final CountDownLatch release = new CountDownLatch(1);
         try {
             final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1,
-                    InstanceFixture.stuckBeyond(1, release), SPAWN));
+                    InstanceFixture.stuckBeyond(1, release)));
             final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 41, 0));
             final List<Player> handed = new CopyOnWriteArrayList<>();
             final CompletableFuture<Boolean> moved = onItsWay(env, arena, player);
@@ -761,7 +761,7 @@ class EvacuationIntegrationTest {
         final CountDownLatch release = new CountDownLatch(1);
         try {
             final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1,
-                    InstanceFixture.stuckBeyond(1, release), SPAWN));
+                    InstanceFixture.stuckBeyond(1, release)));
             final TestConnection connection = env.createConnection();
             final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
             final Player player = connection.connect(env.createFlatInstance(), new Pos(0, 41, 0));
@@ -800,13 +800,13 @@ class EvacuationIntegrationTest {
      */
     @Test
     void aForcedCloseKicksAPlayerStillOnTheirWay(Env env) {
-        final InstanceRegistry registry = new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(env.process()),
+        final InstanceRegistry registry = new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(),
                 Thread.currentThread(), new InstanceRegistry.Durations(Duration.ofSeconds(30), EVACUATION), clock::get);
         InstanceFixture.registerMatchDimension(env.process());
         final CountDownLatch release = new CountDownLatch(1);
         try {
             final ManagedInstance arena = registry.forPlugin("evacuation").create(new InstanceSpec("arena", 1,
-                    InstanceFixture.stuckBeyond(1, release), SPAWN));
+                    InstanceFixture.stuckBeyond(1, release)));
             final TestConnection connection = env.createConnection();
             final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
             final Player player = connection.connect(env.createFlatInstance(), new Pos(0, 41, 0));
@@ -840,8 +840,8 @@ class EvacuationIntegrationTest {
     @Test
     void aPlayerWhoLandsAsTheInstanceClosesIsHandedTheExitOnce(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final List<Player> handed = new CopyOnWriteArrayList<>();
         final List<Boolean> insideWhenClosed = new CopyOnWriteArrayList<>();
         env.process().eventHandler().addListener(PlayerSpawnEvent.class, event -> {
@@ -882,9 +882,9 @@ class EvacuationIntegrationTest {
         try {
             final InstanceRegistry registry = registry(env, onStartup(startup, Thread::currentThread));
             final ManagedInstance lobby = onStartup(startup,
-                    () -> registry.forPlugin("lobby").create(new InstanceSpec("lobby", 1, FLAT, SPAWN)));
+                    () -> registry.forPlugin("lobby").create(new InstanceSpec("lobby", 1, FLAT)));
             final ManagedInstance arena = onStartup(startup, () -> registry.forPlugin("race")
-                    .create(new InstanceSpec("arena", 1, InstanceFixture.stuckBeyond(1, release), SPAWN)));
+                    .create(new InstanceSpec("arena", 1, InstanceFixture.stuckBeyond(1, release))));
             final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 41, 0));
             final List<Player> handed = new CopyOnWriteArrayList<>();
             final AtomicReference<Future<?>> closing = new AtomicReference<>();
@@ -931,9 +931,9 @@ class EvacuationIntegrationTest {
         final InstanceRegistry registry = registry(env, Thread.currentThread());
         final CountDownLatch release = new CountDownLatch(1);
         try {
-            final ManagedInstance lobby = registry.forPlugin("lobby").create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
+            final ManagedInstance lobby = registry.forPlugin("lobby").create(new InstanceSpec("lobby", 1, FLAT));
             final ManagedInstance arena = registry.forPlugin("race").create(new InstanceSpec("arena", 1,
-                    InstanceFixture.stuckBeyond(1, release), SPAWN));
+                    InstanceFixture.stuckBeyond(1, release)));
             final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 41, 0));
             final List<Player> handed = new CopyOnWriteArrayList<>();
             final CompletableFuture<Boolean> moved = onItsWay(env, arena, player);
@@ -975,8 +975,8 @@ class EvacuationIntegrationTest {
     @Test
     void aForcedCloseWhileTheCloseIsPublishingItsEvacuationFinishesIt(Env env) {
         final InstanceRegistry registry = registry(env, Thread.currentThread());
-        final ManagedInstance lobby = registry.forPlugin("lobby").create(new InstanceSpec("lobby", 1, FLAT, SPAWN));
-        final ManagedInstance arena = registry.forPlugin("race").create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance lobby = registry.forPlugin("lobby").create(new InstanceSpec("lobby", 1, FLAT));
+        final ManagedInstance arena = registry.forPlugin("race").create(new InstanceSpec("arena", 1, FLAT));
         final TestConnection connection = env.createConnection();
         final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
         final Player player = joinInto(env, arena, connection);
@@ -1020,7 +1020,7 @@ class EvacuationIntegrationTest {
         final CountDownLatch release = new CountDownLatch(1);
         try {
             final ManagedInstance arena = registry.forPlugin("race").create(new InstanceSpec("arena", 1,
-                    InstanceFixture.stuckBeyond(1, release), SPAWN));
+                    InstanceFixture.stuckBeyond(1, release)));
             final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 41, 0));
             final CompletableFuture<Boolean> moved = onItsWay(env, arena, player);
             final CountDownLatch between = new CountDownLatch(1);
@@ -1071,7 +1071,7 @@ class EvacuationIntegrationTest {
     /** A registry like that of {@link #instances} whose startup thread is {@code startupThread}. */
     private InstanceRegistry registry(Env env, Thread startupThread) {
         InstanceFixture.registerMatchDimension(env.process());
-        return new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(env.process()), startupThread,
+        return new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(), startupThread,
                 new InstanceRegistry.Durations(Duration.ofSeconds(30), EVACUATION), clock::get);
     }
 

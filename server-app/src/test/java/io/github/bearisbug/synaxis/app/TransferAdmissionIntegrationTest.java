@@ -1,5 +1,7 @@
 package io.github.bearisbug.synaxis.app;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.app.permission.HostPermissions;
 import io.github.bearisbug.synaxis.app.store.MemoryBackend;
@@ -131,8 +133,14 @@ class TransferAdmissionIntegrationTest {
         final long now = System.currentTimeMillis();
         final byte[] good = new TransferTicket(7, account, 1, "r2-c1", SHARD, 3, new byte[16], now,
                 now + TransferTicket.LIFETIME_MS).encode(KEYS);
-        final Arriving forged = arrive(env, UUID.randomUUID(), new byte[]{1, 2, 3});
-        final Arriving storeDown = arrive(env, account, good);
+        final Arriving forged;
+        final Arriving storeDown;
+        final List<ILoggingEvent> warnings;
+        try (LogCapture verifierLog = LogCapture.of(TicketVerifier.class)) {
+            forged = arrive(env, UUID.randomUUID(), new byte[]{1, 2, 3});
+            storeDown = arrive(env, account, good);
+            warnings = verifierLog.eventsAt(Level.WARN);
+        }
         host.disableAll();
         ledger.close();
 
@@ -150,6 +158,13 @@ class TransferAdmissionIntegrationTest {
         assertTrue(refused.get(1).contains("\"reason\":\"store-unavailable\""), refused.get(1));
         assertFalse(lines.stream().anyMatch(line -> line.contains("\"client_rejected\"")),
                 "a refused ticket is not also a failed load: " + lines);
+        // The failure of the store reaches an operator who reads WARN and above, with its stack
+        assertEquals(1, warnings.size(), warnings.toString());
+        final String reference = new TransferTicket(7, account, 1, "r2-c1", SHARD, 3, new byte[16], now,
+                now + TransferTicket.LIFETIME_MS).reference();
+        assertTrue(warnings.getFirst().getFormattedMessage().contains("transfer_ref=" + reference),
+                warnings.getFirst().getFormattedMessage());
+        assertNotNull(warnings.getFirst().getThrowableProxy(), "the cause and its stack");
     }
 
     private static Arriving arrive(Env env, UUID account, byte[] cookie) {

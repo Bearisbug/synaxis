@@ -37,7 +37,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.github.bearisbug.synaxis.app.instance.InstanceFixture.FLAT;
-import static io.github.bearisbug.synaxis.app.instance.InstanceFixture.SPAWN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -83,13 +82,13 @@ class ManagedInstanceTransitionsTest {
         process.eventHandler().addListener(PlayInstanceStateEvent.class, event -> {
             if (event.managed().id().startsWith("transitions:")) events.add(event);
         });
-        this.registry = new InstanceRegistry(process, ledger, InstanceFixture.scenes(process), startupThread,
+        this.registry = new InstanceRegistry(process, ledger, InstanceFixture.scenes(), startupThread,
                 InstanceRegistry.Durations.DEFAULT, clock::get);
         return registry.forPlugin("transitions");
     }
 
     private ManagedInstance open() {
-        final ManagedInstance managed = instances(Thread.currentThread()).create(new InstanceSpec("round", 0, FLAT, SPAWN));
+        final ManagedInstance managed = instances(Thread.currentThread()).create(new InstanceSpec("round", 0, FLAT));
         assertEquals(State.OPEN, managed.state());
         return managed;
     }
@@ -203,7 +202,7 @@ class ManagedInstanceTransitionsTest {
         final AtomicReference<PluginInstances> instances = new AtomicReference<>();
         final AtomicReference<ManagedInstance> created = new AtomicReference<>();
         final Thread startup = Thread.ofPlatform().name("probe-startup").unstarted(() ->
-                created.set(instances.get().create(new InstanceSpec("round", 0, InstanceFixture.stuckUntil(release), SPAWN))));
+                created.set(instances.get().create(new InstanceSpec("round", 0, InstanceFixture.stuckUntil(release)))));
         instances.set(instances(startup));
         try {
             startup.start();
@@ -321,7 +320,7 @@ class ManagedInstanceTransitionsTest {
             if (window == InstanceRegistry.Window.OPEN) reclaiming.reclaim("transitions", EndCause.SHUTDOWN);
         });
 
-        final ManagedInstance round = instances.create(new InstanceSpec("round", 0, FLAT, SPAWN));
+        final ManagedInstance round = instances.create(new InstanceSpec("round", 0, FLAT));
 
         assertEquals(State.CLOSED, round.state());
         assertEquals(EndCause.SHUTDOWN, round.endCause());
@@ -341,7 +340,7 @@ class ManagedInstanceTransitionsTest {
 
         assertEquals(State.CLOSED, round.state());
         final IllegalStateException refused = assertThrows(IllegalStateException.class,
-                () -> instances.create(new InstanceSpec("round", 0, FLAT, SPAWN)));
+                () -> instances.create(new InstanceSpec("round", 0, FLAT)));
         assertTrue(refused.getMessage().contains("transitions"), refused.getMessage());
         assertEquals(List.of(), instances.owned());
     }
@@ -358,7 +357,7 @@ class ManagedInstanceTransitionsTest {
             if (unit.absoluteStart().chunkX() != 0 || unit.absoluteStart().chunkZ() != 0) throw failure;
             FLAT.generate(unit);
         };
-        final ManagedInstance round = instances(Thread.currentThread()).create(new InstanceSpec("round", 0, throwsOffTheMap, SPAWN));
+        final ManagedInstance round = instances(Thread.currentThread()).create(new InstanceSpec("round", 0, throwsOffTheMap));
         assertEquals(State.OPEN, round.state());
         final List<Throwable> handled = new CopyOnWriteArrayList<>();
         process.exception().setExceptionHandler(handled::add);

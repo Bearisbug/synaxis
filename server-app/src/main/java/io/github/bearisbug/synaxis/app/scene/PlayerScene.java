@@ -15,16 +15,6 @@ import java.util.Set;
  */
 final class PlayerScene {
 
-    /**
-     * One action key of the current scene.
-     *
-     * @param slot       the action key, 0 to 5
-     * @param actionId   the full action id
-     * @param cooldownMs the cooldown it starts once an action is accepted
-     */
-    record Slot(int slot, String actionId, int cooldownMs) {
-    }
-
     private final ActionGate gate = new ActionGate();
     private final Outbox outbox = new Outbox();
 
@@ -33,7 +23,8 @@ final class PlayerScene {
 
     private int sceneSeq;
     private @Nullable String sceneId;
-    private List<Slot> slots = List.of();
+    /** The action keys of the current scene, as its {@code S2C_SCENE} carries them. */
+    private List<S2CScene.Action> actions = List.of();
     private int readySeq;
 
     /**
@@ -66,14 +57,13 @@ final class PlayerScene {
      * Enters a scene: its header replaces the current one, the cooldowns end, the owner's widgets go and a
      * clear of them is queued behind the scene (§6.4.3, §11.2).
      *
-     * @param scene the scene, numbered one above the current
+     * @param scene the scene, numbered one above the current, with its action keys
      * @param owner the scene owner
-     * @param slots its action keys
      */
-    void enter(S2CScene scene, String owner, List<Slot> slots) {
+    void enter(S2CScene scene, String owner) {
         this.sceneSeq = scene.sceneSeq();
         this.sceneId = scene.sceneId();
-        this.slots = List.copyOf(slots);
+        this.actions = scene.actions();
         gate.clearCooldowns();
         widgets.remove(owner);
         outbox.scene(scene);
@@ -89,7 +79,7 @@ final class PlayerScene {
     void leave(String owner) {
         if (sceneId == null) return;
         sceneId = null;
-        slots = List.of();
+        actions = List.of();
         gate.clearCooldowns();
         widgets.remove(owner);
         outbox.clearOwner(owner);
@@ -118,9 +108,9 @@ final class PlayerScene {
      * @param actionId a full action id
      * @return the key, null when none sends it
      */
-    @Nullable Slot slotOf(String actionId) {
-        for (final Slot slot : slots)
-            if (slot.actionId().equals(actionId)) return slot;
+    @Nullable S2CScene.Action slotOf(String actionId) {
+        for (final S2CScene.Action action : actions)
+            if (action.actionId().equals(actionId)) return action;
         return null;
     }
 

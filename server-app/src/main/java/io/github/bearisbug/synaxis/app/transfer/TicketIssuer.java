@@ -30,7 +30,8 @@ import java.util.function.BiConsumer;
  * A client told where to go leaves at once. One still connected {@link #LEAVE_WITHIN} later is
  * disconnected with {@code synaxis:transfer-rejected}: it would otherwise stay in {@code in_transit},
  * frozen and holding a seat, for as long as it keeps the connection, and so would a player whose
- * {@code OutgoingTransferEvent} a listener cancelled.
+ * {@code OutgoingTransferEvent} a listener cancelled, or whose ticket could not be built once the lease was
+ * given back.
  */
 public final class TicketIssuer implements TransferTickets {
 
@@ -107,6 +108,12 @@ public final class TicketIssuer implements TransferTickets {
     private TransferOutcome send(Player player, PlayerStore.Handoff released, String targetShardId, String host, int port) {
         // Gone since the write: nobody would take the ticket
         if (!player.isOnline()) return TransferOutcome.NOT_ONLINE;
+        // Before anything below can throw: the lease is given back already, and whatever fails the player
+        // must not stay in transit. It also lets go of a player whose OutgoingTransferEvent a listener
+        // cancelled, which sends no Transfer packet
+        player.scheduler().buildTask(() -> {
+            if (player.isOnline()) player.kick(Component.translatable(DisconnectKeys.TRANSFER_REJECTED));
+        }).delay(TaskSchedule.duration(LEAVE_WITHIN)).schedule();
         final byte[] nonce = new byte[TransferTicket.NONCE_BYTES];
         random.nextBytes(nonce);
         final long issuedAt = cooldowns.now();
@@ -116,9 +123,6 @@ public final class TicketIssuer implements TransferTickets {
         // The cookie first: the client stores it before it acts on the transfer
         player.getPlayerConnection().storeCookie(TransferTicket.COOKIE, ticket.encode(keys));
         player.getPlayerConnection().transfer(host, port);
-        player.scheduler().buildTask(() -> {
-            if (player.isOnline()) player.kick(Component.translatable(DisconnectKeys.TRANSFER_REJECTED));
-        }).delay(TaskSchedule.duration(LEAVE_WITHIN)).schedule();
         final Map<String, Object> issued = new LinkedHashMap<>();
         issued.put("transfer_ref", ticket.reference());
         issued.put("player_uuid", ticket.playerUuid());

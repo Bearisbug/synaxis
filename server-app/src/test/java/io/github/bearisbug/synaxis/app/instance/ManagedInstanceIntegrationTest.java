@@ -55,7 +55,7 @@ class ManagedInstanceIntegrationTest {
 
     private PluginInstances instances(Env env, InstanceRegistry.Durations durations) {
         InstanceFixture.registerMatchDimension(env.process());
-        return new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(env.process()), Thread.currentThread(),
+        return new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(), Thread.currentThread(),
                 durations, clock::get).forPlugin(PLUGIN);
     }
 
@@ -71,7 +71,7 @@ class ManagedInstanceIntegrationTest {
         env.process().eventHandler().addListener(PlayInstanceStateEvent.class, events::add);
         clock.set(1_000_000_000L);
 
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 2, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 2, FLAT));
 
         assertEquals(State.OPEN, arena.state());
         final InstanceContainer instance = arena.instance();
@@ -90,7 +90,7 @@ class ManagedInstanceIntegrationTest {
         assertEquals(List.of(arena), instances.owned());
         assertEquals(List.of("play_instance_created", "play_instance_opened"), ledger.events(arena));
         final InstanceFixture.Line created = ledger.last(arena, "play_instance_created");
-        assertEquals(Map.of("kind_id", "probe:arena", "instance_id", arena.instanceId().toString(), "chunk_radius", 2),
+        assertEquals(Map.of("kind_id", "probe:arena", "instance_id", arena.instance().getUuid().toString(), "chunk_radius", 2),
                 created.attributes());
         assertEquals(0L, ledger.last(arena, "play_instance_opened").get("prepare_ms"),
                 "the injected clock did not move while the instance prepared");
@@ -106,7 +106,7 @@ class ManagedInstanceIntegrationTest {
         final PluginInstances instances = instances(env);
         final int registered = env.process().instance().getInstances().size();
 
-        assertThrows(IllegalArgumentException.class, () -> instances.create(new InstanceSpec("arena", 17, FLAT, SPAWN)));
+        assertThrows(IllegalArgumentException.class, () -> instances.create(new InstanceSpec("arena", 17, FLAT)));
 
         assertEquals(List.of(), instances.owned());
         assertEquals(List.of(), ledger.lines());
@@ -118,11 +118,14 @@ class ManagedInstanceIntegrationTest {
     void aDimensionTypeNobodyRegisteredIsRefusedBeforeAnythingIsBuilt(Env env) {
         final PluginInstances instances = instances(env);
 
-        for (String dimensionType : List.of("probe:nowhere", "Not A Key")) {
-            final InstanceSpec spec = new InstanceSpec("arena", dimensionType, 0, FLAT, SPAWN, Duration.ofSeconds(30),
+        final Map<String, String> refusals = Map.of(
+                "probe:nowhere", "plugin_id=probe: the dimension type probe:nowhere was not registered before the port was bound",
+                "Not A Key", "plugin_id=probe: the dimension type \"Not A Key\" is not a valid key");
+        for (Map.Entry<String, String> refusal : refusals.entrySet()) {
+            final InstanceSpec spec = new InstanceSpec("arena", refusal.getKey(), 0, FLAT, Duration.ofSeconds(30),
                     _ -> new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE));
             final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class, () -> instances.create(spec));
-            assertTrue(refused.getMessage().contains(dimensionType), refused.getMessage());
+            assertEquals(refusal.getValue(), refused.getMessage());
         }
         assertEquals(List.of(), instances.owned());
         assertEquals(List.of(), ledger.lines());
@@ -136,7 +139,7 @@ class ManagedInstanceIntegrationTest {
 
         final Thread other = Thread.ofPlatform().name("probe-other").start(() -> {
             try {
-                instances.create(new InstanceSpec("arena", 0, FLAT, SPAWN));
+                instances.create(new InstanceSpec("arena", 0, FLAT));
             } catch (Throwable throwable) {
                 thrown.set(throwable);
             }
@@ -144,7 +147,8 @@ class ManagedInstanceIntegrationTest {
         assertTrue(other.join(TEN_SECONDS), "the other thread is still in create");
 
         final IllegalStateException refused = assertInstanceOf(IllegalStateException.class, thrown.get());
-        assertTrue(refused.getMessage().contains("probe-other"), refused.getMessage());
+        assertEquals("plugin_id=probe creates a managed instance in onEnable before the port is bound, or in a task of "
+                + "scheduleTask; probe-other is neither: hand it over with scheduler().scheduleTask", refused.getMessage());
         assertEquals(List.of(), instances.owned());
         assertEquals(List.of(), ledger.lines());
     }
@@ -153,7 +157,7 @@ class ManagedInstanceIntegrationTest {
     @Test
     void aMoveIntoAnEndingInstanceCompletesWithFalse(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final Instance lobby = env.createFlatInstance();
         final Player first = env.createPlayer(lobby, new Pos(0, 41, 0));
 
@@ -183,7 +187,7 @@ class ManagedInstanceIntegrationTest {
     @Test
     void theStateEventReachesTheInstanceNodeAndTheGlobalOne(Env env) {
         final PluginInstances instances = instances(env);
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 0, FLAT, SPAWN));
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", 0, FLAT));
         final List<PlayInstanceStateEvent> scoped = new CopyOnWriteArrayList<>();
         final List<PlayInstanceStateEvent> global = new CopyOnWriteArrayList<>();
         arena.instance().eventNode().addListener(PlayInstanceStateEvent.class, scoped::add);
@@ -205,15 +209,15 @@ class ManagedInstanceIntegrationTest {
     void everyInstanceHasADimensionNameOfItsOwn(Env env) {
         final PluginInstances instances = instances(env);
 
-        final ManagedInstance first = instances.create(new InstanceSpec("arena", 0, FLAT, SPAWN));
-        final ManagedInstance second = instances.create(new InstanceSpec("arena", 0, FLAT, SPAWN));
-        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 0, FLAT, SPAWN));
+        final ManagedInstance first = instances.create(new InstanceSpec("arena", 0, FLAT));
+        final ManagedInstance second = instances.create(new InstanceSpec("arena", 0, FLAT));
+        final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 0, FLAT));
 
         assertEquals(List.of("probe:arena_1", "probe:arena_2", "probe:lobby_1"),
                 List.of(first.id(), second.id(), lobby.id()));
         for (ManagedInstance managed : List.of(first, second, lobby))
             assertEquals(managed.id(), managed.instance().getDimensionName());
-        assertNotSame(first.instanceId(), second.instanceId());
+        assertNotSame(first.instance().getUuid(), second.instance().getUuid());
         assertEquals(List.of(first, second, lobby), instances.owned());
     }
 
@@ -225,7 +229,7 @@ class ManagedInstanceIntegrationTest {
         final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1,
                 _ -> {
                     throw new IllegalStateException("probe generator failure");
-                }, SPAWN));
+                }));
 
         assertEquals(State.CLOSED, arena.state());
         assertEquals(EndCause.PREPARE_FAILED, arena.endCause());
@@ -246,7 +250,7 @@ class ManagedInstanceIntegrationTest {
         final CountDownLatch release = new CountDownLatch(1);
         try {
             final ManagedInstance arena = instances.create(new InstanceSpec("arena", 0,
-                    InstanceFixture.stuckUntil(release), SPAWN));
+                    InstanceFixture.stuckUntil(release)));
 
             assertEquals(State.CLOSED, arena.state());
             assertEquals(EndCause.PREPARE_FAILED, arena.endCause());

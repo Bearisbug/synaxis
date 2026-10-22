@@ -1,6 +1,5 @@
 package io.github.bearisbug.synaxis.app.instance;
 
-import io.github.bearisbug.synaxis.TickSchedulerThread;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.instance.EndCause;
 import io.github.bearisbug.synaxis.plugin.instance.InstanceSpec;
@@ -60,10 +59,11 @@ final class PluginInstancesImpl implements PluginInstances {
     public ManagedInstance create(InstanceSpec spec) {
         if (tornDown)
             throw new IllegalStateException("plugin_id=" + pluginId + " was taken back and creates no more managed instances");
+        if (!registry.inSerialPart())
+            throw new IllegalStateException("plugin_id=" + pluginId + " creates a managed instance in onEnable before the "
+                    + "port is bound, or in a task of scheduleTask; " + Thread.currentThread().getName()
+                    + " is neither: hand it over with scheduler().scheduleTask");
         final boolean inPlace = registry.onStartupThread();
-        if (!inPlace && !(Thread.currentThread() instanceof TickSchedulerThread))
-            throw new IllegalStateException("a managed instance is created on the startup thread or the tick scheduler "
-                    + "thread, not on " + Thread.currentThread().getName());
         final RegistryKey<DimensionType> dimensionType = dimensionType(spec.dimensionType());
         final int serial = serials.computeIfAbsent(spec.name(), _ -> new AtomicInteger()).incrementAndGet();
         final ManagedInstanceImpl managed = new ManagedInstanceImpl(registry, this, spec, dimensionType, serial);
@@ -89,7 +89,7 @@ final class PluginInstancesImpl implements PluginInstances {
      *
      * @param managed the instance
      */
-    void closed(ManagedInstanceImpl managed) {
+    void forget(ManagedInstanceImpl managed) {
         live.remove(managed);
     }
 
@@ -104,10 +104,12 @@ final class PluginInstancesImpl implements PluginInstances {
     }
 
     private RegistryKey<DimensionType> dimensionType(String name) {
-        final RegistryKey<DimensionType> key = Key.parseable(name)
-                ? registry.process().dimensionType().getKey(Key.key(name)) : null;
+        if (!Key.parseable(name))
+            throw new IllegalArgumentException("plugin_id=" + pluginId + ": the dimension type \"" + name + "\" is not a valid key");
+        final RegistryKey<DimensionType> key = registry.process().dimensionType().getKey(Key.key(name));
         if (key == null)
-            throw new IllegalArgumentException("the dimension type " + name + " was not registered before the port was bound");
+            throw new IllegalArgumentException("plugin_id=" + pluginId + ": the dimension type " + name
+                    + " was not registered before the port was bound");
         return key;
     }
 }

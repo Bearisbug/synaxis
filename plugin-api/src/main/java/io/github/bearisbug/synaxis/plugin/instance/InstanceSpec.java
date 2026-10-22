@@ -1,6 +1,5 @@
 package io.github.bearisbug.synaxis.plugin.instance;
 
-import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.instance.generator.Generator;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
@@ -22,14 +21,16 @@ import java.util.regex.Pattern;
  *                      rules of {@link Generator#generate}; while the instance is
  *                      {@link ManagedInstance.State#PREPARING} the host turns an exception it throws
  *                      into {@link EndCause#PREPARE_FAILED} ({@code API-PLAY-006})
- * @param spawn         the spawn point of the instance
  * @param settleTimeout how long the instance may stay {@link ManagedInstance.State#ENDING} before the
  *                      host closes it with {@code fallbackExit}; more than zero
  * @param fallbackExit  where the host sends each player when the instance is still
  *                      {@link ManagedInstance.State#ENDING} once {@code settleTimeout} is over (the
- *                      settle timeout of {@code docs/DESIGN-PLAY.md} §11.1)
+ *                      settle timeout of {@code docs/DESIGN-PLAY.md} §11.1): called on the tick scheduler
+ *                      thread for those online inside, and like the exit of {@link ManagedInstance#cancel}
+ *                      for a move that lands afterwards, so it should read only state that is thread safe and
+ *                      not cleared once the instance closes
  */
-public record InstanceSpec(String name, String dimensionType, int chunkRadius, Generator generator, Pos spawn,
+public record InstanceSpec(String name, String dimensionType, int chunkRadius, Generator generator,
                            Duration settleTimeout, Function<Player, Exit> fallbackExit) {
 
     private static final Pattern NAME = Pattern.compile("[a-z0-9_]{1,32}");
@@ -59,11 +60,10 @@ public record InstanceSpec(String name, String dimensionType, int chunkRadius, G
      * @param name        the kind of instance, matching {@code [a-z0-9_]{1,32}}
      * @param chunkRadius the chunks loaded around chunk 0, 0, from 0 to 16
      * @param generator   the generator of those chunks
-     * @param spawn       the spawn point of the instance
      * @throws IllegalArgumentException if the name or the chunk radius is out of range
      */
-    public InstanceSpec(String name, int chunkRadius, Generator generator, Pos spawn) {
-        this(name, PluginApi.MATCH_DIMENSION_TYPE, chunkRadius, generator, spawn, Duration.ofSeconds(30),
+    public InstanceSpec(String name, int chunkRadius, Generator generator) {
+        this(name, PluginApi.MATCH_DIMENSION_TYPE, chunkRadius, generator, Duration.ofSeconds(30),
                 _ -> new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE));
     }
 }

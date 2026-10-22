@@ -14,7 +14,9 @@ import java.util.List;
  * @param camera  the camera
  * @param cursor  the cursor mode
  * @param actions the action slots, no slot twice, which also keeps them to
- *                {@value io.github.bearisbug.synaxis.game.protocol.play.S2CScene#MAX_ACTIONS}; copied
+ *                {@value io.github.bearisbug.synaxis.game.protocol.play.S2CScene#MAX_ACTIONS}; copied. No
+ *                action id twice either, with or without the prefix, which {@link PluginPlay#enter}
+ *                checks: an action is sent by its id alone
  */
 public record SceneSpec(String id, Component title, CameraSpec camera, CursorMode cursor, List<ActionSlot> actions) {
 

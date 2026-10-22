@@ -209,7 +209,7 @@ final class Lobby {
     }
 
     private InstanceSpec arenaSpec() {
-        return new InstanceSpec("round", PluginApi.MATCH_DIMENSION_TYPE, Arena.ROUND_RADIUS, Arena.round(), Arena.SPAWN,
+        return new InstanceSpec("round", PluginApi.MATCH_DIMENSION_TYPE, Arena.ROUND_RADIUS, Arena.round(),
                 config.resultLength().plusSeconds(15), this::exitOf);
     }
 

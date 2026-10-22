@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -486,17 +485,12 @@ class RoundTest {
         @Nullable EndCause cause;
         @Nullable Function<Player, Exit> exit;
         Set<Player> players = Set.of();
-        /** The 30 s of the spec of four arguments. */
+        /** The 30 s of the spec of three arguments. */
         Duration settleTimeout = Duration.ofSeconds(30);
 
         @Override
         public String id() {
             return "test:round_1";
-        }
-
-        @Override
-        public UUID instanceId() {
-            return new UUID(0, 1);
         }
 
         @Override

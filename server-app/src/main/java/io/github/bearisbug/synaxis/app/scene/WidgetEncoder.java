@@ -24,11 +24,9 @@ final class WidgetEncoder {
      * One encoded widget.
      *
      * @param widget        the widget as the wire carries it
-     * @param bytes         its encoded size
      * @param buttonActions the full action ids of its buttons, empty unless it is a panel
      */
-    record Encoded(io.github.bearisbug.synaxis.game.protocol.play.Widget widget, int bytes,
-                   Set<String> buttonActions) {
+    record Encoded(io.github.bearisbug.synaxis.game.protocol.play.Widget widget, Set<String> buttonActions) {
     }
 
     private WidgetEncoder() {
@@ -58,7 +56,7 @@ final class WidgetEncoder {
             case Widget.Panel panel -> {
                 final List<PropValue.Button> buttons = new ArrayList<>();
                 for (final Widget.Button button : panel.buttons()) {
-                    final String actionId = PlayIds.qualify(pluginId, button.actionId());
+                    final String actionId = SceneService.qualify(pluginId, button.actionId());
                     buttonActions.add(actionId);
                     buttons.add(new PropValue.Button(actionId, component(button.label())));
                 }
@@ -72,7 +70,7 @@ final class WidgetEncoder {
         if (bytes > PlayProtocol.MAX_WIDGET_BYTES)
             throw new IllegalArgumentException("widget " + widget.id() + " of plugin_id=" + pluginId + " encodes to "
                     + bytes + " bytes, over the " + PlayProtocol.MAX_WIDGET_BYTES + " a widget may take");
-        return new Encoded(encoded, bytes, Set.copyOf(buttonActions));
+        return new Encoded(encoded, Set.copyOf(buttonActions));
     }
 
     /**

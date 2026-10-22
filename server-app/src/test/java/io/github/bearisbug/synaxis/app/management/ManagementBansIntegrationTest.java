@@ -204,6 +204,22 @@ class ManagementBansIntegrationTest {
     }
 
     /**
+     * {@code 2026-12-01} is an ISO-8601 date, not the instant {@code expires} takes: the refusal shows the form
+     * that is taken, and nothing is written.
+     */
+    @Test
+    void anExpiryWithoutATimeIsRefusedWithTheFormItTakes(Env env) throws Exception {
+        final ManagementClient client = serve(env);
+        final JsonObject refused = client.call(1, "minecraft:bans/add", "{\"add\":[{\"player\":{\"id\":\""
+                + UUID.randomUUID() + "\"},\"expires\":\"2026-12-01\"}]}");
+
+        assertEquals(-32602, refused.getAsJsonObject("error").get("code").getAsInt(), refused.toString());
+        assertEquals("expires 2026-12-01 is not an instant like 2026-12-01T00:00:00Z",
+                refused.getAsJsonObject("error").get("message").getAsString());
+        assertEquals(List.of(), moderation.activeBans(), "nothing was written");
+    }
+
+    /**
      * An expiry the ban table cannot hold is a bad parameter like a past one: {@code bans/add} checks
      * it with the rest of the batch and answers −32602 before the first ban is written, the plugin
      * API throws before the database ({@code docs/DESIGN-PROD.md} {@code API-PROD-022},

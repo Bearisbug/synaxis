@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.app.transfer;
 
+import io.github.bearisbug.synaxis.network.packet.server.common.CookieStorePacket;
 import org.jetbrains.annotations.Nullable;
 
 import javax.crypto.Mac;
@@ -46,8 +47,6 @@ public record TransferTicket(int keyId, UUID playerUuid, long characterId, Strin
     static final int NONCE_BYTES = 16;
     private static final int HMAC_BYTES = 32;
     private static final int MAX_SHARD_BYTES = 255;
-    /** The largest value a cookie may carry, {@code CookieStorePacket.MAX_VALUE_LENGTH}. */
-    static final int MAX_BYTES = 5_120;
 
     public TransferTicket {
         if (nonce.length != NONCE_BYTES) throw new IllegalArgumentException("a nonce is " + NONCE_BYTES + " bytes");
@@ -101,7 +100,7 @@ public record TransferTicket(int keyId, UUID playerUuid, long characterId, Strin
      * @return the ticket, or null if it is not one this shard signed ({@code bad-signature})
      */
     public static @Nullable TransferTicket decode(byte @Nullable [] value, TransferKeys keys) {
-        if (value == null || value.length < 2 + HMAC_BYTES || value.length > MAX_BYTES) return null;
+        if (value == null || value.length < 2 + HMAC_BYTES || value.length > CookieStorePacket.MAX_VALUE_LENGTH) return null;
         if ((value[0] & 0xFF) != VERSION) return null;
         final int keyId = value[1] & 0xFF;
         final byte[] key = keys.key(keyId);

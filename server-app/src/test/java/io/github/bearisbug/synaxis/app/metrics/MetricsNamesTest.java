@@ -40,6 +40,32 @@ public class MetricsNamesTest {
     }
 
     /**
+     * Every {@code synaxis_*} family says what it counts in its {@code # HELP} line, the way {@code API-PROD-015}
+     * counts it, so that an operator building a dashboard need not look it up.
+     */
+    @Test
+    public void everyFamilyHasAHelpLine() {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true).build());
+        try (HostMetrics metrics = HostMetrics.register(process, new HostMetrics.Sources(() -> 0,
+                PlayerStore.inMemory(process, (_, _) -> {
+                }), null, null, RedisLink.disabled("help")))) {
+            final String text = metrics.scrape();
+            final Set<String> withoutHelp = new TreeSet<>();
+            final Matcher type = TYPE.matcher(text);
+            while (type.find()) {
+                final String name = type.group(1);
+                if (!name.startsWith("synaxis_")) continue;
+                final Matcher help = Pattern.compile("^# HELP " + Pattern.quote(name) + " (\\S.*)$", Pattern.MULTILINE)
+                        .matcher(text);
+                if (!help.find()) withoutHelp.add(name);
+            }
+            assertEquals(Set.of(), withoutHelp, "the families whose HELP line is missing or empty");
+        } finally {
+            process.stop();
+        }
+    }
+
+    /**
      * The {@code synaxis_} families of a Prometheus text: a counter under its {@code _total} name,
      * the {@code _max} gauge Micrometer adds to a summary folded into the summary.
      */

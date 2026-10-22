@@ -441,17 +441,15 @@ public final class ManagementMethods {
             try {
                 expires = expiresText == null ? null : Instant.parse(expiresText);
             } catch (DateTimeParseException _) {
-                throw invalid("expires is not an ISO-8601 instant: " + expiresText);
+                throw invalid("expires " + expiresText + " is not an instant like 2026-12-01T00:00:00Z");
             }
             if (expires != null && !expires.isAfter(Instant.now())) throw invalid("expires " + expires + " is not in the future");
             if (expires != null && !expires.isBefore(HostModeration.EXPIRY_LIMIT))
                 throw invalid("expires " + expires + " is not before " + HostModeration.EXPIRY_LIMIT);
             bans.add(new NewBan(uuid, reason, expires));
         }
-        for (NewBan ban : bans) {
-            joinModeration(() -> moderation.ban(new BanTarget.ByUuid(ban.uuid()), ban.reason(), ban.expires(),
-                    HostModeration.CONSOLE).join());
-        }
+        for (NewBan ban : bans)
+            joinModeration(moderation.ban(new BanTarget.ByUuid(ban.uuid()), ban.reason(), ban.expires(), HostModeration.CONSOLE));
         return new Outcome(banList(), "ok", bans.size() == 1 ? bans.getFirst().uuid() : null);
     }
 
@@ -462,21 +460,16 @@ public final class ManagementMethods {
         int revoked = 0;
         for (Ban ban : moderation.activeBans()) {
             if (!(ban.target() instanceof BanTarget.ByUuid(UUID uuid)) || !accounts.contains(uuid)) continue;
-            if (joinModeration(() -> moderation.unban(ban.banId(), HostModeration.CONSOLE).join())) revoked++;
+            if (joinModeration(moderation.unban(ban.banId(), HostModeration.CONSOLE))) revoked++;
         }
         return new Outcome(banList(), revoked == 0 ? "no_ban" : "ok",
                 accounts.size() == 1 ? accounts.iterator().next() : null);
     }
 
-    @FunctionalInterface
-    private interface ModerationWrite<T> {
-        T run();
-    }
-
     /** A write of the moderation store, its failure being a state of the server rather than a bug. */
-    private static <T> T joinModeration(ModerationWrite<T> write) throws Failure {
+    private static <T> T joinModeration(CompletableFuture<T> write) throws Failure {
         try {
-            return write.run();
+            return write.join();
         } catch (CompletionException e) {
             if (e.getCause() instanceof IllegalStateException state)
                 throw new Failure(UNAVAILABLE, "Bans cannot be changed right now: " + state.getMessage(), "unavailable");
@@ -496,7 +489,11 @@ public final class ManagementMethods {
 
     // synaxis:shard/*, synaxis:broadcast, synaxis:profile, synaxis:transfer
 
-    private Outcome drain() {
+    /**
+     * Closes the login gate; synchronized so that of two drains at once, each on its own call thread, only the
+     * one that closed it answers true.
+     */
+    private synchronized Outcome drain() {
         final ConnectionGate gate = process.connection().gate();
         final boolean closedNow = !gate.isClosed();
         gate.close();

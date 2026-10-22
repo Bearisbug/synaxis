@@ -50,7 +50,10 @@ public sealed interface Widget {
      * @param order its position in the slot
      * @param text  the text
      * @param ttl   how long it stays, {@link Duration#ZERO} for until it is removed; 0 to
-     *              {@link Integer#MAX_VALUE} milliseconds
+     *              {@link Integer#MAX_VALUE} milliseconds. It only hides the line on the client: the host
+     *              keeps the id until it is removed, the owner's widgets are cleared or the connection ends,
+     *              so reuse a fixed set of ids for passing lines such as a kill feed instead of a new id
+     *              per line
      */
     record Text(String id, HudSlot slot, int order, Component text, Duration ttl) implements Widget {
 

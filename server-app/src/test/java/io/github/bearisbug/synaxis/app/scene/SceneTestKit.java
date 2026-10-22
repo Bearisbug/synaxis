@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
 import io.github.bearisbug.synaxis.game.protocol.play.PlayMessage;
 import io.github.bearisbug.synaxis.game.protocol.play.PlayMessages;
+import io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol;
 import io.github.bearisbug.synaxis.game.protocol.play.S2CHud;
 import io.github.bearisbug.synaxis.game.protocol.play.Widget;
 import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
@@ -53,7 +54,7 @@ final class SceneTestKit {
      * @param owner the scene owner, null for none
      */
     static SceneService service(Env env, @Nullable String owner, Ledger ledger, LongSupplier clock) {
-        final SceneService service = new SceneService(env.process(), () -> owner, ledger, clock);
+        final SceneService service = new SceneService(() -> owner, ledger, clock);
         final EventNode<Event> node = EventNode.all("scene-layer-test");
         env.process().eventHandler().addChild(node);
         service.attach(node);
@@ -66,7 +67,7 @@ final class SceneTestKit {
      * @return the messages of the channel among what the collector caught, in order
      */
     static List<PlayMessage> messages(Collector<PluginMessagePacket> packets) {
-        return packets.collect().stream().filter(packet -> packet.channel().equals(SceneService.CHANNEL))
+        return packets.collect().stream().filter(packet -> packet.channel().equals(PlayProtocol.CHANNEL))
                 .map(packet -> PlayMessages.read(MsgBuf.reading(packet.data()))).toList();
     }
 

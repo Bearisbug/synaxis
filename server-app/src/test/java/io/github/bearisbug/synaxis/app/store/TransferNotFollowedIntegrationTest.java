@@ -200,6 +200,31 @@ class TransferNotFollowedIntegrationTest {
         assertNull(row(database, account).lease(), "the character is free for a login anywhere");
     }
 
+    /**
+     * The disconnect is scheduled before the ticket is built: a transfer that fails after the lease was given back,
+     * here a target shard id too long for the ticket, still lets the player go instead of leaving it in transit for
+     * as long as it keeps the connection.
+     */
+    @Test
+    void aTransferThatFailsAfterTheReleaseLetsThePlayerGoAllTheSame(Env env) throws SQLException {
+        final StoreFixture.Shard source = shard(env, SOURCE, RedisLink.disabled(SOURCE));
+        final UUID account = UUID.randomUUID();
+        final Player player = online(env, source, account, "Stranded");
+
+        final CompletableFuture<TransferOutcome> outcome = issuer(source).transfer(player, "t".repeat(256), "127.0.0.1", 25631);
+        await(env, outcome::isDone, "the transfer completes");
+        final long failedAt = System.nanoTime();
+        assertTrue(outcome.isCompletedExceptionally(), "the ticket could not be built");
+        assertTrue(sent(player).stream().noneMatch(TransferPacket.class::isInstance), "nobody told the client to go");
+        assertTrue(source.store().isFrozen(player), "in transit");
+
+        tickUntil(env, player, failedAt + GRACE.plusSeconds(5).toNanos(), () -> !player.isOnline(),
+                "the source lets go of a player whose transfer failed after the release");
+        assertEquals(List.of("synaxis:transfer-rejected"), kicks(player));
+        await(env, () -> source.store().loadedCount() == 0, "the source forgets the player");
+        assertNull(row(database, account).lease(), "the character is free for a login anywhere");
+    }
+
     @Test
     void thePresenceRefreshReportsAPlayerInTransitAsInTransit(Env env) throws Exception {
         final String run = UUID.randomUUID().toString().substring(0, 8);

@@ -214,18 +214,13 @@ final class ManagedInstanceImpl implements ManagedInstance {
     private void failPreparation(Throwable failure) {
         if (!swap(State.PREPARING, State.CLOSED, EndCause.PREPARE_FAILED)) return;
         owner.prepareFailures.error(failure, "Managed instance failed to prepare: plugin_id={} instance={}", owner.pluginId(), id);
-        closed(0, 0, 0, false);
+        closed(0, 0, false);
         dispatch(State.PREPARING, State.CLOSED);
     }
 
     @Override
     public String id() {
         return id;
-    }
-
-    @Override
-    public UUID instanceId() {
-        return instance.getUuid();
     }
 
     @Override
@@ -302,8 +297,9 @@ final class ManagedInstanceImpl implements ManagedInstance {
             final Evacuation closing = landed(player);
             registry.reached(Window.LANDED);
             if (closing != null) {
-                // Closed while the move was on its way: a player who got in gets the exit like those who were
-                // inside, one the unregistration beat stays where they were
+                // Closed while on the way: one who landed gets the exit like those inside (arrived kicks once the
+                // evacuation finished); a failed landing, such as setInstance refused because the evacuation
+                // unregistered the instance first, leaves them where they were. Either way the move reports false
                 if (in) closing.arrived(player);
                 moved.complete(false);
             } else if (in) {
@@ -440,13 +436,14 @@ final class ManagedInstanceImpl implements ManagedInstance {
                     break;
                 }
             }
-            // Nobody is sent anywhere: the evacuation is finished as soon as it is made
+            // Whoever is online inside at the close is kicked by finish() below, with no exit. A move on its
+            // way that lands before that, while the closing event is dispatched, gets the spec's fallbackExit
             if (closedFrom != null && closedFrom != State.PREPARING)
                 this.evacuation = new Evacuation(this, registry, spec.fallbackExit(), false);
             closing = this.evacuation;
         }
         if (closedFrom == State.PREPARING) {
-            closed(0, 0, 0, false);
+            closed(0, 0, false);
             dispatch(State.PREPARING, State.CLOSED);
             return;
         }
@@ -457,11 +454,14 @@ final class ManagedInstanceImpl implements ManagedInstance {
     /**
      * Writes the closing line once the instance is unregistered, or was dropped before it ever was,
      * and forgets it.
+     *
+     * @param players the players handed the exit or kicked, see {@link InstanceLedger#closed}
+     * @param kicked  how many of them were kicked when the evacuation ran out
      */
-    void closed(int players, int evacuated, int kicked, boolean settleTimeout) {
-        registry.ledger().closed(this, Objects.requireNonNull(endCause()), players, millisSinceCreated(),
-                evacuated, kicked, settleTimeout);
-        owner.closed(this);
+    void closed(int players, int kicked, boolean settleTimeout) {
+        registry.ledger().closed(this, Objects.requireNonNull(endCause()), players, millisSinceCreated(), kicked,
+                settleTimeout);
+        owner.forget(this);
     }
 
     String pluginId() {

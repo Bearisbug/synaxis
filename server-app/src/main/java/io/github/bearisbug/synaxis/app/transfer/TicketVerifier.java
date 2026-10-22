@@ -1,7 +1,9 @@
 package io.github.bearisbug.synaxis.app.transfer;
 
+import io.github.bearisbug.synaxis.app.store.PostgresBackend;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
+import io.github.bearisbug.synaxis.plugin.LogBudget;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -49,12 +51,8 @@ public final class TicketVerifier {
     // The acquire statement of API-PROD-004 for one character, which has to belong to the account
     private static final String ACQUIRE = """
             UPDATE character c SET lease_session_id = ?
-             WHERE c.character_id = ? AND c.account_uuid = ?
-               AND (c.lease_session_id IS NULL
-                    OR c.lease_session_id = ?
-                    OR NOT EXISTS (SELECT 1 FROM shard_session s
-                                    WHERE s.session_id = c.lease_session_id AND s.expires_at > now()))
-            RETURNING c.version""";
+             WHERE c.character_id = ? AND c.account_uuid = ?"""
+            + " AND " + PostgresBackend.LEASE_AVAILABLE + " RETURNING c.version";
     private static final String RELEASE = """
             UPDATE character SET lease_session_id = NULL WHERE character_id = ? AND lease_session_id = ?""";
 
@@ -78,6 +76,7 @@ public final class TicketVerifier {
         }
     }
 
+    private final LogBudget failures = new LogBudget(LOGGER, "transfer tickets the store could not check");
     private final DataSource dataSource;
     private final LongSupplier sessionId;
     private final String shardId;
@@ -167,8 +166,7 @@ public final class TicketVerifier {
                 return reject(player, ticket, Reason.VERSION_MISMATCH);
             }
         } catch (SQLException e) {
-            LOGGER.info("A transfer ticket could not be checked against the store: transfer_ref={} cause={}",
-                    ticket.reference(), e.toString());
+            failures.warn(e, "A transfer ticket could not be checked against the store: transfer_ref={}", ticket.reference());
             return reject(player, ticket, Reason.STORE_UNAVAILABLE);
         }
         cooldowns.record(ticket.playerUuid(), ticket.issuedAt());

@@ -1,7 +1,7 @@
 package io.github.bearisbug.synaxis.app.scene;
 
-import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.TickSchedulerThread;
+import io.github.bearisbug.synaxis.app.PluginIds;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventNode;
@@ -39,10 +39,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -67,17 +69,6 @@ import java.util.function.Supplier;
  * reading a byte of it, and never answers one.
  */
 public final class SceneService {
-
-    /**
-     * The host channel of the scene layer, in the reserved namespace.
-     */
-    public static final String CHANNEL = "synaxis:play";
-
-    /**
-     * The id the host takes the admission slot under in the core mode and on a map shard, the reserved
-     * namespace that no plugin may have: holding the slot under it makes no plugin the scene owner.
-     */
-    private static final String HOST_ID = "synaxis";
 
     /**
      * The reason of a {@link ActionResultCode#COOLDOWN} answer, with the seconds left as its argument
@@ -106,15 +97,13 @@ public final class SceneService {
     private final LogBudget flushFailures = new LogBudget(LOGGER, "failed flushes");
 
     /**
-     * @param process    the engine process
      * @param sceneOwner the id of the plugin allowed to enter and leave scenes, the holder of the
-     *                   admission slot; null while nobody holds it
+     *                   admission slot; null while nobody holds it or the host holds it itself
      * @param ledger     the event ledger, for {@code play_scene_entered} and {@code play_scene_ready}
      * @param nanoClock  a monotonic clock in nanoseconds, {@link System#nanoTime} outside tests; the
      *                   rate limit and the cooldowns run on it
      */
-    public SceneService(ServerProcess process, Supplier<@Nullable String> sceneOwner, PluginAnalytics ledger,
-                        LongSupplier nanoClock) {
+    public SceneService(Supplier<@Nullable String> sceneOwner, PluginAnalytics ledger, LongSupplier nanoClock) {
         this.sceneOwner = sceneOwner;
         this.ledger = ledger;
         this.nanoClock = nanoClock;
@@ -133,7 +122,7 @@ public final class SceneService {
     }
 
     /**
-     * Handles one payload a client sent on {@link #CHANNEL}, on the player's tick thread. The router
+     * Handles one payload a client sent on {@link PlayProtocol#CHANNEL}, on the player's tick thread. The router
      * hands over the payloads of a connection in the play state only.
      * <p>
      * Without a scene owner the payload is dropped unread, unlogged and unanswered (§6.2). Otherwise
@@ -144,7 +133,7 @@ public final class SceneService {
      * @param payload the payload
      */
     public void receive(Player player, byte[] payload) {
-        if (owner() == null) return;
+        if (sceneOwner.get() == null) return;
         final PlayerConnection connection = player.getPlayerConnection();
         if (!connection.isOnline()) return;
         final PlayMessage message;
@@ -203,33 +192,33 @@ public final class SceneService {
      * @param move   completes when the move is done, whichever way it went
      */
     public void holdUntil(Player player, CompletableFuture<?> move) {
-        final PlayerScene scene = sceneOf(player);
+        final PlayerScene scene = sceneOrCreate(player);
         if (scene != null) scene.outbox().holdUntil(move);
     }
 
     void enter(String pluginId, Player player, SceneSpec spec) {
         checkThread(player, "enter");
-        final String owner = owner();
-        if (!pluginId.equals(owner))
-            throw new IllegalStateException("plugin_id=" + pluginId + " is not the scene owner of this process"
-                    + (owner == null ? ", which has none" : ", plugin_id=" + owner + " is"));
+        requireOwner(pluginId);
         final PlayerConnection connection = player.getPlayerConnection();
-        final PlayerScene scene = connection.getServerState() == ConnectionState.PLAY ? sceneOf(player) : null;
+        final PlayerScene scene = connection.getServerState() == ConnectionState.PLAY ? sceneOrCreate(player) : null;
         if (scene == null) {
             // Offline since it dropped, before PlayerDisconnectEvent: nothing to enter, as for a widget set
             if (!connection.isOnline()) return;
             throw new IllegalStateException("connection_id=" + connection.connectionId() + " is in "
                     + connection.getServerState() + ", not play");
         }
-        final String sceneId = PlayIds.qualify(pluginId, spec.id());
+        final String sceneId = qualify(pluginId, spec.id());
         final List<S2CScene.Action> table = new ArrayList<>(spec.actions().size());
-        final List<PlayerScene.Slot> slots = new ArrayList<>(spec.actions().size());
+        final Set<String> actionIds = new HashSet<>();
         for (final ActionSlot action : spec.actions()) {
-            final String actionId = PlayIds.qualify(pluginId, action.actionId());
+            final String actionId = qualify(pluginId, action.actionId());
             checkRegistered(actionId);
-            final int cooldownMs = (int) action.cooldown().toMillis();
-            table.add(new S2CScene.Action(action.slot(), actionId, WidgetEncoder.component(action.label()), cooldownMs));
-            slots.add(new PlayerScene.Slot(action.slot(), actionId, cooldownMs));
+            // C2S_ACTION carries no key: two keys of one action would leave the host to guess whose cooldown runs
+            if (!actionIds.add(actionId))
+                throw new IllegalArgumentException("action " + actionId + " is on two action keys of scene " + sceneId
+                        + ": an action is sent by its id, so each key needs an action of its own");
+            table.add(new S2CScene.Action(action.slot(), actionId, WidgetEncoder.component(action.label()),
+                    (int) action.cooldown().toMillis()));
         }
         final int camera = switch (spec.camera()) {
             case CameraSpec.Vanilla _ -> S2CScene.CAMERA_VANILLA;
@@ -243,22 +232,19 @@ public final class SceneService {
         if (bytes > PlayProtocol.MAX_MESSAGE_BYTES)
             throw new IllegalArgumentException("scene " + sceneId + " encodes to " + bytes + " bytes, over the "
                     + PlayProtocol.MAX_MESSAGE_BYTES + " a scene may take");
-        scene.enter(message, pluginId, slots);
+        scene.enter(message, pluginId);
         final Map<String, Object> attributes = new LinkedHashMap<>();
         attributes.put("connection_id", connection.connectionId());
         attributes.put("scene_id", sceneId);
         attributes.put("scene_seq", message.sceneSeq());
         attributes.put("owner", pluginId);
-        attributes.put("downgraded", false);
+        attributes.put("downgraded", false); // S1 has only Vanilla and LOCKED; the downgrade comes with W2 (API-PLAY-005)
         ledger.record("play_scene_entered", attributes);
     }
 
     void leave(String pluginId, Player player) {
         checkThread(player, "leave");
-        final String owner = owner();
-        if (!pluginId.equals(owner))
-            throw new IllegalStateException("plugin_id=" + pluginId + " is not the scene owner of this process"
-                    + (owner == null ? ", which has none" : ", plugin_id=" + owner + " is"));
+        requireOwner(pluginId);
         final PlayerScene scene = scenes.get(player.getPlayerConnection().connectionId());
         if (scene != null) scene.leave(pluginId);
     }
@@ -272,7 +258,7 @@ public final class SceneService {
         checkThread(player, "set");
         final WidgetEncoder.Encoded encoded = WidgetEncoder.encode(pluginId, widget);
         for (final String actionId : encoded.buttonActions()) checkRegistered(actionId);
-        final PlayerScene scene = sceneOf(player);
+        final PlayerScene scene = sceneOrCreate(player);
         if (scene != null) scene.set(pluginId, widget.id(), encoded);
     }
 
@@ -319,18 +305,36 @@ public final class SceneService {
     }
 
     /**
-     * @return the plugin that may enter and leave scenes, null when no plugin holds the admission slot
+     * The check of {@code ROLE-SceneOwner}: only the plugin holding the admission slot enters and leaves scenes.
+     *
+     * @throws IllegalStateException if {@code pluginId} is not the scene owner
      */
-    private @Nullable String owner() {
-        final String holder = sceneOwner.get();
-        return holder == null || holder.equals(HOST_ID) ? null : holder;
+    private void requireOwner(String pluginId) {
+        final String owner = sceneOwner.get();
+        if (!pluginId.equals(owner))
+            throw new IllegalStateException("plugin_id=" + pluginId + " is not the scene owner of this process"
+                    + (owner == null ? ", which has none" : ", plugin_id=" + owner + " is")
+                    + "; the scene owner is the plugin that registered admission()");
     }
 
     /**
-     * @return the scene layer of the player's connection, made on first use; null once it is offline,
-     * so that a call coming after the disconnect cannot leave an entry nobody takes away
+     * An id of a plugin's scene layer, under the rule of its channels with the wire limit of
+     * {@code synaxis:play}.
      */
-    private @Nullable PlayerScene sceneOf(Player player) {
+    static String qualify(String pluginId, String name) {
+        return PluginIds.qualify(pluginId, name, PlayProtocol.MAX_ID_BYTES, "an id");
+    }
+
+    /**
+     * The scene layer of the player's connection, made on first use. The calls that may come first take
+     * this one: {@link #holdUntil}, so that a scene entered after the move starts is held back too;
+     * {@code set}, as a widget may come before any scene; {@code enter} and an action. The others
+     * look the scene layer up and do nothing without one.
+     *
+     * @return the scene layer; null once the connection is offline, so that a call coming after the
+     * disconnect cannot leave an entry nobody takes away
+     */
+    private @Nullable PlayerScene sceneOrCreate(Player player) {
         final PlayerConnection connection = player.getPlayerConnection();
         if (!connection.isOnline()) return null;
         return scenes.computeIfAbsent(connection.connectionId(), _ -> new PlayerScene());
@@ -341,10 +345,12 @@ public final class SceneService {
         final PlayerScene scene = scenes.get(connectionId);
         if (scene == null) return;
         try {
-            scene.outbox().flush(bytes -> player.sendPluginMessage(CHANNEL, bytes));
+            scene.outbox().flush(bytes -> player.sendPluginMessage(PlayProtocol.CHANNEL, bytes));
         } catch (RuntimeException e) {
+            // An encoding that threw left the queue as it was
             scene.outbox().discard();
-            flushFailures.error(e, "Dropped the scene layer changes of one tick: connection_id={}", connectionId);
+            flushFailures.error(e, "play.hud.flush dropped the scene layer changes of one tick: connection_id={}",
+                    connectionId);
         }
     }
 
@@ -364,7 +370,7 @@ public final class SceneService {
      * next one.
      */
     private void act(Player player, C2SAction action) {
-        final PlayerScene scene = sceneOf(player);
+        final PlayerScene scene = sceneOrCreate(player);
         if (scene == null) return;
         final long now = nanoClock.getAsLong();
         final int actionSeq = action.actionSeq();
@@ -377,7 +383,7 @@ public final class SceneService {
             return;
         }
         final String actionId = action.actionId();
-        final PlayerScene.Slot slot = scene.slotOf(actionId);
+        final S2CScene.Action slot = scene.slotOf(actionId);
         final ActionRegistry.Registration registration = actions.find(actionId);
         if ((slot == null && !scene.hasButton(actionId)) || registration == null) {
             answer(player, actionSeq, ActionResultCode.UNKNOWN_ACTION, EncodedComponent.NONE, 0);
@@ -410,24 +416,24 @@ public final class SceneService {
                 answer(player, actionSeq, ActionResultCode.OK, EncodedComponent.NONE, cooldownMs);
             }
             case ActionResult.Rejected rejected ->
-                    answer(player, actionSeq, ActionResultCode.REJECTED, reason(rejected.reasonKey()), 0);
+                    answer(player, actionSeq, ActionResultCode.REJECTED, reason(rejected.reason()), 0);
             case null -> answer(player, actionSeq, ActionResultCode.REJECTED, EncodedComponent.NONE, 0);
         }
     }
 
     private static void answer(Player player, int actionSeq, ActionResultCode code, EncodedComponent reason,
                                int cooldownMs) {
-        player.sendPluginMessage(CHANNEL, new S2CActionResult(actionSeq, code, reason, cooldownMs).encode());
+        player.sendPluginMessage(PlayProtocol.CHANNEL, new S2CActionResult(actionSeq, code, reason, cooldownMs).encode());
     }
 
     /**
-     * @return the plugin's translate key as a component, no reason for a key that is missing or does not fit
+     * @return the plugin's reason as the wire carries it, no reason for one that is missing or does not encode
      */
-    private static EncodedComponent reason(@Nullable String key) {
-        if (key == null) return EncodedComponent.NONE;
+    private static EncodedComponent reason(@Nullable Component reason) {
+        if (reason == null) return EncodedComponent.NONE;
         try {
-            return WidgetEncoder.component(Component.translatable(key));
-        } catch (IllegalArgumentException _) {
+            return WidgetEncoder.component(reason);
+        } catch (IllegalArgumentException | IllegalStateException _) {
             return EncodedComponent.NONE;
         }
     }

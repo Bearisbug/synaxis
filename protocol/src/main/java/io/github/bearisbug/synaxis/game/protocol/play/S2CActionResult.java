@@ -5,7 +5,7 @@ import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
 
 /**
  * The answer to exactly one {@link C2SAction} ({@code API-PLAY-002}): every action gets one, whichever check
- * of the host stopped it, after the precedent of {@code rts:game}'s order result.
+ * of the host stopped it.
  *
  * @param actionSeq  the {@code action_seq} of the action being answered
  * @param code       the result code, a u8 kept as received; {@link #resultCode()} maps a value this version

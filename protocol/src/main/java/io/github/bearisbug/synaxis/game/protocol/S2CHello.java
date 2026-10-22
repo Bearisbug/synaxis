@@ -4,9 +4,8 @@ package io.github.bearisbug.synaxis.game.protocol;
  * The host letting a verified client through ({@code API-M2-002}).
  *
  * @param schemaVersion the wire schema the host speaks, {@code >= 1} and equal to the client's
- * @param tickRate      ticks per second, a u8; M2 runs at 20
- * @param serverTick    the tick this answer was written on, so the client can align its
- *                      interpolation from the first snapshot
+ * @param tickRate      ticks per second, a u8; 20 unless the host sets {@code synaxis.tps}
+ * @param serverTick    the tick this answer was written on
  */
 public record S2CHello(int schemaVersion, int tickRate, int serverTick) implements HandshakeMessage {
 

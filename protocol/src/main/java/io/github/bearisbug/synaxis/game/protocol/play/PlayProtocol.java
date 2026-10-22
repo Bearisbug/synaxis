@@ -4,9 +4,9 @@ package io.github.bearisbug.synaxis.game.protocol.play;
  * The host's scene layer channel {@value #CHANNEL} of {@code docs/DESIGN-PLAY.md} {@code API-PLAY-002}: its
  * name, its version and the limits shared by the messages of this package.
  * <p>
- * The channel has a version of its own, apart from the {@code schema_version} of the handshake, after the
- * precedent of {@code synaxis:farview}: the frozen vectors under {@code play-vectors/} are bound to it, and from
- * W1 on the handshake negotiates it per channel (§6.4.1).
+ * The channel has a version of its own, apart from the {@code schema_version} of the handshake: the frozen
+ * vectors under {@code play-vectors/} are bound to it, and once capability negotiation lands the handshake
+ * negotiates it per channel (§6.4.1).
  */
 public final class PlayProtocol {
 

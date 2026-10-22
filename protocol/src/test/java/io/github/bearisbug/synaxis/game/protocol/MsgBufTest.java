@@ -51,9 +51,9 @@ class MsgBufTest {
     @Test
     void aStringRoundTripsAsUtf8() {
         final MsgBuf writer = MsgBuf.writing();
-        writer.writeString("rts:game 中文");
+        writer.writeString("synaxis:play 中文");
         final MsgBuf reader = MsgBuf.reading(writer.toByteArray());
-        assertEquals("rts:game 中文", reader.readString(256));
+        assertEquals("synaxis:play 中文", reader.readString(256));
         assertEquals(0, reader.remaining());
     }
 

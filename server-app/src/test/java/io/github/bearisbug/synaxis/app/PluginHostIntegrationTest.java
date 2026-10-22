@@ -27,6 +27,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -160,12 +162,37 @@ class PluginHostIntegrationTest {
         return new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger);
     }
 
+    /** Discovery builds the plugins {@code META-INF/services} files list, and only those. */
     @Test
-    void discoveryFindsTheCompileTimePlugin() {
-        final List<String> ids = PluginHost.discover().stream()
-                .map(plugin -> plugin.descriptor().id())
-                .toList();
-        assertTrue(ids.contains("rts"), "ServiceLoader did not find the rts plugin: " + ids);
+    void discoveryFindsAPluginListedByAServicesFile(@TempDir Path classes) throws IOException {
+        final Path services = classes.resolve("META-INF/services/" + SynaxisPlugin.class.getName());
+        Files.createDirectories(services.getParent());
+        Files.writeString(services, ListedPlugin.class.getName() + "\n");
+        final Thread thread = Thread.currentThread();
+        final ClassLoader previous = thread.getContextClassLoader();
+        try (URLClassLoader loader = new URLClassLoader(new URL[]{classes.toUri().toURL()},
+                PluginHostIntegrationTest.class.getClassLoader())) {
+            // ServiceLoader#load(Class), which discovery uses, reads the context class loader
+            thread.setContextClassLoader(loader);
+            final List<String> ids = PluginHost.discover().stream()
+                    .map(plugin -> plugin.descriptor().id())
+                    .toList();
+            assertEquals(List.of("listed"), ids);
+        } finally {
+            thread.setContextClassLoader(previous);
+        }
+    }
+
+    /** The plugin {@link #discoveryFindsAPluginListedByAServicesFile} lists. */
+    public static final class ListedPlugin implements SynaxisPlugin {
+        @Override
+        public PluginDescriptor descriptor() {
+            return new PluginDescriptor("listed", "1.0.0", PluginApi.API_VERSION);
+        }
+
+        @Override
+        public void onEnable(PluginContext context) {
+        }
     }
 
     @Test
@@ -202,17 +229,17 @@ class PluginHostIntegrationTest {
 
     @Test
     void aSelectedIdNoPluginAnswersToIsNamedInAWarning(Env env) {
-        final ProbePlugin discovered = new ProbePlugin("rts");
+        final ProbePlugin discovered = new ProbePlugin("probe");
         final PluginHost host = host(env);
 
         try (LogCapture logs = LogCapture.of(PluginHost.class)) {
             // A typo in synaxis.app.plugins otherwise comes out as the core mode and nothing else.
-            host.enable(List.of(discovered), Set.of("rst"));
+            host.enable(List.of(discovered), Set.of("prboe"));
 
             final List<String> warnings = logs.messagesAt(Level.WARN);
             assertEquals(1, warnings.size(), warnings.toString());
-            assertTrue(warnings.getFirst().contains("rst"), warnings.getFirst());
-            assertTrue(warnings.getFirst().contains("rts"), warnings.getFirst());
+            assertTrue(warnings.getFirst().contains("prboe"), warnings.getFirst());
+            assertTrue(warnings.getFirst().contains("probe"), warnings.getFirst());
         }
 
         assertEquals(List.of(), host.enabledPluginIds());

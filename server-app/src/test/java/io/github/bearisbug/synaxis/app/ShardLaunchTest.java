@@ -120,7 +120,7 @@ public class ShardLaunchTest {
         assertNoShardStarted(directory);
     }
 
-    /** A second handler with the key of the door marker of {@code :game-rts}. */
+    /** A second handler with the key of {@link DoorMarker}. */
     public static final class SecondDoor implements BlockHandler {
         @Override
         public Key getKey() {
@@ -144,7 +144,7 @@ public class ShardLaunchTest {
             assertEquals(1, launched.awaitExit(), launched.log());
             final String log = launched.log();
             assertTrue(log.contains("Refusing to start: two block handlers have the key synaxis:door: "), log);
-            assertTrue(log.contains("io.github.bearisbug.synaxis.game.rts.marker.DoorMarker"), log);
+            assertTrue(log.contains(DoorMarker.class.getName()), log);
             assertTrue(log.contains(SecondDoor.class.getName()), log);
             assertFalse(log.contains("listening on"), log);
         }

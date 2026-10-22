@@ -2,11 +2,13 @@ package io.github.bearisbug.synaxis.app;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.bearisbug.synaxis.plugin.SynaxisPlugin;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -34,10 +36,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code minecraft:server/stop} while a real Main is still starting, in a JVM of its own
  * ({@code docs/DESIGN-PROD.md} {@code API-PROD-022} the {@code server/stop} row, §11.4 below the
  * table, §19 the scenario of a stop while starting). The management interface listens before the
- * gameplay plugin is enabled and its map loaded; a stop that got through then ran the whole
- * shutdown sequence before Main registered its shutdown tasks, and Main went on to bind the game
- * port of a process that no longer ticked and never exited. Refused then, the process starts as
- * usual, and a stop once it is ready ends it.
+ * gameplay plugin is enabled; a stop that got through then ran the whole shutdown sequence before
+ * Main registered its shutdown tasks, and Main went on to bind the game port of a process that no
+ * longer ticked and never exited. Refused then, the process starts as usual, and a stop once it is
+ * ready ends it. {@link GameplayFixturePlugin} holds the startup in its {@code onEnable} until the
+ * test has had the refusal.
  */
 public class ManagementStopWhileStartingLaunchTest {
 
@@ -50,10 +53,16 @@ public class ManagementStopWhileStartingLaunchTest {
         final byte[] secret = new byte[32];
         new SecureRandom().nextBytes(secret);
         final String token = HexFormat.of().formatHex(secret);
+        // The plugin is listed by a services file on a class path entry of this test alone
+        final Path classes = directory.resolve("classes");
+        Files.writeString(Files.createDirectories(classes.resolve("META-INF/services"))
+                .resolve(SynaxisPlugin.class.getName()), GameplayFixturePlugin.class.getName() + "\n");
+        final Path release = directory.resolve("release");
         final List<String> command = List.of(
                 Path.of(System.getProperty("java.home"), "bin", "java").toString(), "-Xmx1g",
-                "-cp", System.getProperty("java.class.path"), "-Dlogback.configurationFile=logback.xml",
-                "-Dsynaxis.app.log=stdout", "-Dsynaxis.app.auth=offline", "-Dsynaxis.app.map=rts-512",
+                "-cp", classes + File.pathSeparator + System.getProperty("java.class.path"),
+                "-Dlogback.configurationFile=logback.xml", "-D" + GameplayFixturePlugin.RELEASE + "=" + release,
+                "-Dsynaxis.app.log=stdout", "-Dsynaxis.app.auth=offline",
                 // Ports the system picks: one taken in between by another test would refuse the start
                 "-Dsynaxis.app.port=0", "-Dsynaxis.app.metrics.bind=127.0.0.1:0",
                 "-Dsynaxis.app.management.enabled=true", "-Dsynaxis.app.management.bind=127.0.0.1:0",
@@ -74,13 +83,14 @@ public class ManagementStopWhileStartingLaunchTest {
         try (Socket management = connectOnceListening(output, process)) {
             upgrade(management, token);
 
-            // The port answers before the plugin is enabled: this call lands while the map loads
+            // The port answers before the plugin is enabled: this call lands while onEnable waits for the release
             final JsonObject early = call(management, 1, "minecraft:server/stop");
             final String logAtTheReply = String.join("\n", output);
 
             assertTrue(early.has("error"), "a stop before the game port is bound is refused, not "
                     + early + ":\n" + logAtTheReply);
             assertEquals(-32000, early.getAsJsonObject("error").get("code").getAsInt(), early.toString());
+            Files.createFile(release);
             awaitLine(output, process, READY);
             assertTrue(String.join("\n", output).lines().noneMatch(line -> line.contains("Stopping synaxis server.")),
                     "nothing stopped:\n" + String.join("\n", output));
@@ -93,7 +103,8 @@ public class ManagementStopWhileStartingLaunchTest {
             final String log = String.join("\n", output);
             assertEquals(0, process.exitValue(), log);
             assertTrue(log.contains("synaxis server stopped successfully."), log);
-            assertTrue(log.contains("Disabling plugin: plugin_id=rts"), "the shutdown tasks ran, onDisable among them:\n" + log);
+            assertTrue(log.contains("Disabling plugin: plugin_id=" + GameplayFixturePlugin.ID),
+                    "the shutdown tasks ran, onDisable among them:\n" + log);
             assertEquals(List.of("unavailable", "ok"), stopResults(directory));
         } finally {
             process.destroyForcibly();

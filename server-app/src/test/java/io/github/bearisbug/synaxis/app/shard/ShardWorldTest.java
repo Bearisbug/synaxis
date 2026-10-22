@@ -1,5 +1,7 @@
 package io.github.bearisbug.synaxis.app.shard;
 
+import io.github.bearisbug.synaxis.app.DoorMarker;
+import io.github.bearisbug.synaxis.app.LootMarker;
 import io.github.bearisbug.synaxis.baker.Baker;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.instance.WorldBorder;
@@ -116,8 +118,9 @@ public class ShardWorldTest {
 
     /**
      * §19 「分片与烘焙器登记同一份处理器清单」 (REQ-M3-022): the shard registers the handlers
-     * {@link SynxHandlers#registerAll} finds on its class path, the data markers of {@code :game-rts}, which
-     * are the handlers the baker bakes with ({@code BakerMainTest#theCommandLineBakesASaveWithDataMarkers}).
+     * {@link SynxHandlers#registerAll} finds on its class path, here the test's {@code synaxis:door} and
+     * {@code synaxis:loot} data markers, the keys the baker bakes with
+     * ({@code BakerMainTest#theCommandLineBakesASaveWithDataMarkers}).
      */
     @Test
     public void theShardRegistersTheHandlersOfTheBaker() {
@@ -131,10 +134,9 @@ public class ShardWorldTest {
                 assertNotNull(handler, key.asString() + " is registered");
                 assertEquals(key, handler.getKey());
             }
-            assertEquals("io.github.bearisbug.synaxis.game.rts.marker.DoorMarker",
-                    env.process().block().getHandler("synaxis:door").getClass().getName());
+            assertEquals(DoorMarker.class, env.process().block().getHandler("synaxis:door").getClass());
             final BlockHandler loot = env.process().block().getHandler("synaxis:loot");
-            assertEquals("io.github.bearisbug.synaxis.game.rts.marker.LootMarker", loot.getClass().getName());
+            assertEquals(LootMarker.class, loot.getClass());
             assertEquals(List.of("table"), loot.getBlockEntityTags().stream().map(Tag::key).toList());
         } finally {
             env.close();

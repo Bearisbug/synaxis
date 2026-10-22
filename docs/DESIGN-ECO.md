@@ -17,6 +17,7 @@
 
 | 日期 | 版本 | 涉及 ID | 一句话 | 类型 |
 | --- | --- | --- | --- | --- |
+| 2026-10-22 | v0.6 | REQ-ECO-020 | 资源根统一为 pack 目录，插件平台估时 5 到 7 天，保留 id 交接已完成 | 文档 |
 | 2026-10-22 | v0.5 | ADR-ECO-011、ADR-ECO-013、ADR-ECO-014、ADR-ECO-020、ADR-ECO-022、ADR-ECO-023、ADR-ECO-024、RULE-ECO-010、RULE-ECO-011、RULE-ECO-020、INV-ECO-020、INV-ECO-021、FLOW-SDK-RELEASE、REQ-ECO-024、REQ-ECO-031、REQ-ECO-047 | 按两份对抗评审改：发布要用户审批，先推包再载存档，资源可复现，里程碑重排 | 文档 |
 | 2026-10-22 | v0.4 | FLOW-PLUGIN-LOAD、FLOW-PLUGIN-ADMIT、FLOW-PLUGIN-DISABLE、FLOW-PLUGIN-STOP、FLOW-PLUGIN-SERVICE、RULE-ECO-002、RULE-ECO-010、REQ-ECO-006、REQ-ECO-014、REQ-ECO-015、REQ-ECO-016、REQ-ECO-017、REQ-ECO-019 | 按独立评审改插件平台：起服模式只看准入回调，禁用不调插件出口，停用回调逐个等，可见面按 jar 生成 | 文档 |
 | 2026-10-22 | v0.3 | ADR-ECO-010、ADR-ECO-011、ADR-ECO-012、ADR-ECO-021、ADR-ECO-022、ADR-ECO-023、RULE-ECO-010、RULE-ECO-020、FLOW-SDK-RELEASE、FLOW-PLUGIN-DISABLE | 按独立评审改：稳定面含签名引到的引擎类型，发布把撤不回的 Central 排最后，补资源合并规则与等包上限 | 文档 |
@@ -841,7 +842,7 @@ flowchart LR
 | 示例 | `:game-rts`、`:game-rush` | Synaxis 维护者 | 只引用稳定面内的类型，见 `ADR-ECO-021` |
 | 插件 | 作者自己的工程 | 第三方作者 | 作者自定 |
 | 官方模组 | `client-fabric` | Synaxis 维护者 | 按通道协商版本，见 `ADR-ECO-013` |
-| 插件资源 | 插件 jar 的 `assets/<插件 id>/` | 第三方作者 | 命名空间归插件，见 `RULE-ECO-010` |
+| 插件资源 | 插件 jar 的 `pack/assets/<插件 id>/` | 第三方作者 | 命名空间归插件，见 `RULE-ECO-010` |
 
 插件与宿主之间、插件与插件之间的隔离由 §6.2 插件平台定义。
 
@@ -1397,13 +1398,13 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 
 ## 26. 里程碑
 
-生态是项目的第四个里程碑 M4。本机一次只跑一个重任务，同一会话的里程碑串行：生产就绪会话依次做 M4-C、M4-D，光照会话依次做 M4-E、M4-G、M4-H。M4-E 要等 M4-C 的插件 jar 加载，M4-F 要等 M4-D，M4-H 要等 M4-C 与 M4-G，因为 Central 上第一个公开版就要带新描述文件与稳定面门禁，发出去撤不回。M4-I 要等其余全部完成。估时是会话的工作日，第二期契约成稿后重估；M4-C 待生产就绪会话估。
+生态是项目的第四个里程碑 M4。本机一次只跑一个重任务，同一会话的里程碑串行：生产就绪会话依次做 M4-C、M4-D，光照会话依次做 M4-E、M4-G、M4-H。M4-E 要等 M4-C 的插件 jar 加载，M4-F 要等 M4-D，M4-H 要等 M4-C 与 M4-G，因为 Central 上第一个公开版就要带新描述文件与稳定面门禁，发出去撤不回。M4-I 要等其余全部完成。估时是会话的工作日，第二期契约成稿后重估。
 
 | 里程碑 | 产出与退出条件 | 需求 | 负责 | 估时 | 状态 |
 | --- | --- | --- | --- | --- | --- |
 | M4-A 方向签字 | 本分册第一期签字，`docs/DESIGN.md` §2 与 §28 的交接改完 | — | 两个会话 | 1 天 | 进行中 |
 | M4-B 契约成稿 | 其余契约节补全并签字，`docs/TEST.md` 写好用例 | — | 两个会话 | 4～5 天 | 未开始 |
-| M4-C 插件平台 | 见 §6.2 插件平台，两个示例在新加载器下照常跑 | REQ-ECO-001、REQ-ECO-002、REQ-ECO-003、REQ-ECO-004、REQ-ECO-005、REQ-ECO-006、REQ-ECO-007、REQ-ECO-008、REQ-ECO-009、REQ-ECO-010、REQ-ECO-011、REQ-ECO-012、REQ-ECO-013、REQ-ECO-014、REQ-ECO-015、REQ-ECO-016、REQ-ECO-017、REQ-ECO-018、REQ-ECO-019 | 生产就绪会话 | 待估 | 未开始 |
+| M4-C 插件平台 | 见 §6.2 插件平台，分三轮，两个示例在新加载器下照常跑 | REQ-ECO-001、REQ-ECO-002、REQ-ECO-003、REQ-ECO-004、REQ-ECO-005、REQ-ECO-006、REQ-ECO-007、REQ-ECO-008、REQ-ECO-009、REQ-ECO-010、REQ-ECO-011、REQ-ECO-012、REQ-ECO-013、REQ-ECO-014、REQ-ECO-015、REQ-ECO-016、REQ-ECO-017、REQ-ECO-018、REQ-ECO-019 | 生产就绪会话 | 5～7 天 | 未开始 |
 | M4-D 能力协商 | `docs/DESIGN-PLAY.md` 的 W0 与 W1 合入 | REQ-ECO-025 | 生产就绪会话 | 4～5 天 | 未开始 |
 | M4-E 资源下发 | 可复现打包、托管、载存档前推包，模组调高缓存上限，真客户端 CI 判 | REQ-ECO-020、REQ-ECO-021、REQ-ECO-022、REQ-ECO-023、REQ-ECO-024、REQ-ECO-030、REQ-ECO-032 | 光照会话 | 5～7 天 | 未开始 |
 | M4-F 能力首批 | 布局树、W2 的小部件、相机、输入与模型，示例插件用上 | REQ-ECO-026、REQ-ECO-027、REQ-ECO-028、REQ-ECO-029、REQ-ECO-031 | 两个会话 | 10～14 天 | 未开始 |
@@ -1438,7 +1439,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 | 交接 | `docs/DESIGN-PLAY.md` §6.4 的「服务端资源包不做」与只读模组语言文件，改为引用本分册 §6.4 | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `ADR-PLAY-004` 否掉的服务端下发布局，若 `ADR-ECO-014` 签字就标为部分被取代 | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `ADR-PLAY-007` 标为部分被 `ADR-ECO-010` 取代：资源包要做，翻译键带回退文本不变 | 生产就绪会话 | M4-A 签字后 | — | — |
-| 交接 | §6.2.1 的保留 id 加上 `minecraft` 与官方整合包里各模组的 id | 生产就绪会话 | M4-B 成稿前 | — | — |
+| 已决 | §6.2.1 的保留 id 已加上 `minecraft` 与官方整合包里各模组的 id，提交 886a8ce6f9 | 生产就绪会话 | — | — | — |
 | 交接 | `docs/DESIGN-PLAY.md` §26 的 6b、W4b、W5 标暂停，其余波次按本分册 §26 重排 | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `docs/DESIGN-M2.md` 非目标里的服务端资源包分发，改为引用本分册 | 光照会话 | M4-A 签字后 | — | — |
 | Open Question | 版本范围的写法：推荐比较式，只认 `>=` 与 `<`，空格表示同时满足；多数作者要求 Maven 区间时改 | 生产就绪会话 | 本分册契约成稿前 | 技术 | FLOW-PLUGIN-LOAD |

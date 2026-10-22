@@ -17,6 +17,7 @@
 
 | 日期 | 版本 | 涉及 ID | 一句话 | 类型 |
 | --- | --- | --- | --- | --- |
+| 2026-10-22 | v0.4 | FLOW-PLUGIN-LOAD、FLOW-PLUGIN-ADMIT、FLOW-PLUGIN-DISABLE、FLOW-PLUGIN-STOP、FLOW-PLUGIN-SERVICE、RULE-ECO-002、RULE-ECO-010、REQ-ECO-006、REQ-ECO-014、REQ-ECO-015、REQ-ECO-016、REQ-ECO-017、REQ-ECO-019 | 按独立评审改插件平台：起服模式只看准入回调，禁用不调插件出口，停用回调逐个等，可见面按 jar 生成 | 文档 |
 | 2026-10-22 | v0.3 | ADR-ECO-010、ADR-ECO-011、ADR-ECO-012、ADR-ECO-021、ADR-ECO-022、ADR-ECO-023、RULE-ECO-010、RULE-ECO-020、FLOW-SDK-RELEASE、FLOW-PLUGIN-DISABLE | 按独立评审改：稳定面含签名引到的引擎类型，发布把撤不回的 Central 排最后，补资源合并规则与等包上限 | 文档 |
 | 2026-10-22 | v0.2 | FLOW-PLUGIN-LOAD、FLOW-PLUGIN-ADMIT、FLOW-PLUGIN-DISABLE、FLOW-PLUGIN-STOP、FLOW-PLUGIN-SERVICE、RULE-ECO-001、RULE-ECO-002、RULE-ECO-010、INV-ECO-001、INV-ECO-002、INV-ECO-003、INV-ECO-004、REQ-ECO-001、REQ-ECO-002、REQ-ECO-003、REQ-ECO-004、REQ-ECO-005、REQ-ECO-006、REQ-ECO-007、REQ-ECO-008、REQ-ECO-009、REQ-ECO-010、REQ-ECO-011、REQ-ECO-012、REQ-ECO-013、REQ-ECO-014、REQ-ECO-015、REQ-ECO-016、REQ-ECO-017、REQ-ECO-018、ADR-ECO-012 | 合入插件平台与第四条拍板，统一资源覆盖冲突的处置 | 文档 |
 | 2026-10-22 | v0.1 | ADR-ECO-010、ADR-ECO-020、ADR-ECO-024 | 初稿：生态方向、范围与链路，写入用户当天拍板的三条决定 | 文档、拍板 |
@@ -37,16 +38,16 @@
 
 | 链路 | 名称 | 领域 | 状态 | 涉及需求 |
 | --- | --- | --- | --- | --- |
-| FLOW-PLUGIN-LOAD | 起服加载插件 | 插件平台 | 已实现 | REQ-ECO-001、REQ-ECO-002、REQ-ECO-003、REQ-ECO-004、REQ-ECO-005、REQ-ECO-006、REQ-ECO-007、REQ-ECO-008、REQ-ECO-014 |
+| FLOW-PLUGIN-LOAD | 起服加载插件 | 插件平台 | 设计中 | REQ-ECO-001、REQ-ECO-002、REQ-ECO-003、REQ-ECO-004、REQ-ECO-005、REQ-ECO-006、REQ-ECO-007、REQ-ECO-008、REQ-ECO-014、REQ-ECO-019 |
 | FLOW-PLUGIN-DISABLE | 运行中禁用插件 | 插件平台 | 设计中 | REQ-ECO-015、REQ-ECO-016、REQ-ECO-017 |
-| FLOW-PLUGIN-STOP | 停机逆序停用 | 插件平台 | 已实现 | REQ-ECO-018 |
+| FLOW-PLUGIN-STOP | 停机逆序停用 | 插件平台 | 设计中 | REQ-ECO-018 |
 | FLOW-ASSET-PACK | 起服打包插件资源 | 资源下发 | 设计中 | REQ-ECO-020、REQ-ECO-021、REQ-ECO-022 |
 
 ### 角色：玩家
 
 | 链路 | 名称 | 领域 | 状态 | 涉及需求 |
 | --- | --- | --- | --- | --- |
-| FLOW-PLUGIN-ADMIT | 进服准入判定 | 插件平台 | 已实现 | REQ-ECO-012、REQ-ECO-013 |
+| FLOW-PLUGIN-ADMIT | 进服准入判定 | 插件平台 | 设计中 | REQ-ECO-012、REQ-ECO-013 |
 | FLOW-ASSET-JOIN | 进服下载资源 | 资源下发 | 设计中 | REQ-ECO-023、REQ-ECO-024、REQ-ECO-031 |
 | FLOW-CAP-USE | 插件驱动客户端 | 客户端能力 | 设计中 | REQ-ECO-025、REQ-ECO-026、REQ-ECO-027、REQ-ECO-028、REQ-ECO-029、REQ-ECO-030、REQ-ECO-032 |
 
@@ -77,15 +78,16 @@
 1. S1 扫 plugins 目录，逐个读 jar 里的描述文件 〔无界面〕
 2. S2 校验每份描述的字段 〔无界面〕
 3. S3 按白名单筛出要启用的插件 〔无界面〕
-4. S4 建依赖图，排出启用顺序，同层按 id 排 〔无界面〕
-5. S5 为每个插件建自己的类加载器 〔无界面〕
-6. S6 按顺序实例化入口类，调用启用回调 〔无界面〕
-7. S7 写一行汇总：启用了谁、拒载了谁、为什么 〔无界面〕
-8. S8 交给启动序列判定服务模式 〔无界面〕
+4. S4 扫选中插件 jar 里的资源，查没声明的覆盖 〔无界面〕
+5. S5 建依赖图，排出启用顺序，同层按 id 排 〔无界面〕
+6. S6 为每个插件建自己的类加载器 〔无界面〕
+7. S7 按顺序实例化入口类，调用启用回调 〔无界面〕
+8. S8 写一行汇总：启用了谁、拒载了谁、为什么 〔无界面〕
+9. S9 按有没有准入回调判定服务模式 〔无界面〕
 
 #### 分支
 
-> 分支未与用户逐类核对：S1–S8
+> 分支未与用户逐类核对：S1–S9
 
 ##### S1 读描述
 
@@ -113,7 +115,13 @@
 | 边界 | 白名单里的 id 没有插件对应 | 一行 WARN 点名没对上的 id，其余照常 | 现状待确认：§8 缺白名单键；ADR-ECO-002 | 无用例 |
 | 边界 | 选中的插件，其硬依赖没被选中 | 按缺硬依赖处理 | RULE-ECO-002；ADR-ECO-002 | 无用例 |
 
-##### S4 排启用顺序
+##### S4 扫资源
+
+| 类型 | 分支 | 结果 | 依据 | 测试 |
+| --- | --- | --- | --- | --- |
+| 失败 | 文件写进别的命名空间或语言键不带插件 id，又没声明覆盖 | 待决策 Q-PLUGIN-LOAD-1 | RULE-ECO-010；ADR-ECO-012 | 无用例 |
+
+##### S5 排启用顺序
 
 | 类型 | 分支 | 结果 | 依据 | 测试 |
 | --- | --- | --- | --- | --- |
@@ -124,15 +132,15 @@
 | 边界 | 软依赖不在或版本不合 | 照常启用，当作这个软依赖不存在 | ADR-ECO-002 | 无用例 |
 | 边界 | 软依赖之间成环 | 去掉造成环的软依赖边，按 id 排 | ADR-ECO-002 | 无用例 |
 
-##### S5 建类加载器
+##### S6 建类加载器
 
 | 类型 | 分支 | 结果 | 依据 | 测试 |
 | --- | --- | --- | --- | --- |
 | 失败 | jar 打不开或已损坏 | 待决策 Q-PLUGIN-LOAD-1 | ADR-ECO-003 | 无用例 |
-| 边界 | 插件 jar 带了与稳定面同包的类 | 用宿主那份，插件自带的不生效 | ADR-ECO-003；INV-ECO-004 | 无用例 |
+| 边界 | 插件 jar 带了可见面里也有的类 | 用宿主那份，插件自带的不生效 | ADR-ECO-003；INV-ECO-004 | 无用例 |
 | 边界 | 两个插件带了同一个库的不同版本 | 各用各的，互不影响 | ADR-ECO-004 | 无用例 |
 
-##### S6 实例化并启用
+##### S7 实例化并启用
 
 | 类型 | 分支 | 结果 | 依据 | 测试 |
 | --- | --- | --- | --- | --- |
@@ -142,16 +150,17 @@
 | 失败 | 第二个插件登记准入回调 | 记下冲突，判模式时整服拒启并点名两个插件 | ADR-ECO-006；INV-ECO-003 | 无用例 |
 | 边界 | 启用回调里查软依赖提供的服务 | 软依赖已排在前面启用，查得到 | ADR-ECO-005 | 无用例 |
 
-##### S7 写汇总
+##### S8 写汇总
 
 | 类型 | 分支 | 结果 | 依据 | 测试 |
 | --- | --- | --- | --- | --- |
 | 边界 | 有插件被拒载或启用失败 | 汇总行逐个写原因，台账每个一行 | 现状待确认：§20 缺插件拒载事件；ADR-ECO-002 | 无用例 |
 
-##### S8 判定服务模式
+##### S9 判定服务模式
 
 | 类型 | 分支 | 结果 | 依据 | 测试 |
 | --- | --- | --- | --- | --- |
+| 边界 | 有准入回调，起服时实例一个没有或有好几个 | 照常进玩法模式，实例由插件按需建 | ADR-ECO-006 | 无用例 |
 | 失败 | 有插件失败且没人登记准入回调 | 整服拒启，端口不绑定 | 现状待确认：§8 缺起服模式判定；ADR-ECO-006 | 无用例 |
 | 边界 | 全部启用成功但没人登记准入回调 | 待决策 Q-PLUGIN-LOAD-3 | ADR-ECO-006；待决策 | 无用例 |
 
@@ -177,7 +186,7 @@
   - 卡住：不卡
 - **Q-PLUGIN-LOAD-3 · 没有插件登记准入回调时，核心世界放行还是拒启？**
   - 现状：有插件参与却没人登记，整服拒启
-  - 建议：全部插件启用成功时用核心世界放行，有失败时仍拒启
+  - 建议：全部启用成功时用核心世界放行，有失败仍拒启；放行时照样按必需能力要求握手
   - 何时换：认定核心世界不该承载对外开服时
   - 代价：只装工具插件的服起在平坦的核心世界上
   - 不可逆：否
@@ -185,20 +194,20 @@
   - 谁定：产品
   - 卡住：不卡
 
-另见：§28 版本范围的写法；§28 回调期间的线程上下文类加载器
+另见：§28 版本范围的写法；§28 回调期间的线程上下文类加载器；§28 本地构建的 dev 宿主怎么校验；§28 可见面签名门禁的范围
 
 #### 关联
 
 - **契约锚点**：ADR-ECO-001；ADR-ECO-002；ADR-ECO-003；ADR-ECO-004；ADR-ECO-006
 - **上游**：—
-- **下游**：FLOW-PLUGIN-ADMIT、FLOW-PLUGIN-DISABLE
+- **下游**：FLOW-PLUGIN-ADMIT、FLOW-PLUGIN-DISABLE、FLOW-PLUGIN-STOP、FLOW-PLUGIN-SERVICE
 - **守住的不变量**：INV-ECO-001、INV-ECO-002、INV-ECO-003、INV-ECO-004
 
 | 步骤 | 位置 |
 | --- | --- |
-| S1–S4 | `server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java#discover`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginDescriptors.java#validate`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java#selectedPlugins`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java#enable` |
-| S6 | `server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java#enableOne`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/AdmissionRegistry.java#register` |
-| S8 | `server-app/src/main/java/io/github/bearisbug/synaxis/app/CoreMode.java#decide`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java#start` |
+| S1–S5 | `server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java#discover`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginDescriptors.java#validate`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java#selectedPlugins`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java#enable` |
+| S7 | `server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java#enableOne`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/AdmissionRegistry.java#register` |
+| S9 | `server-app/src/main/java/io/github/bearisbug/synaxis/app/CoreMode.java#decide`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java#start` |
 
 ### FLOW-PLUGIN-ADMIT · 进服准入判定
 
@@ -212,7 +221,7 @@
 
 #### 主流程
 
-1. S1 宿主依次做完封禁、握手、票据、存档、角色 〔无界面〕
+1. S1 宿主依次做完封禁、握手、票据、推资源包、存档、角色 〔无界面〕
 2. S2 按插件启用顺序逐个调用准入检查 〔无界面〕
 3. S3 全部放行后问准入回调要落点 〔无界面〕
 4. S4 把玩家放进返回的实例 〔无界面〕
@@ -268,7 +277,7 @@
   - 谁定：产品
   - 卡住：不卡
 
-另见：无
+另见：§28 资源包推送与准入谁先
 
 #### 关联
 
@@ -299,9 +308,9 @@
 3. S3 在 tick 调度线程的串行段逐个处理 〔无界面〕
 4. S4 摘掉它的事件、准入、命令、通道与服务 〔无界面〕
 5. S5 通知软依赖它的插件：服务已注销 〔无界面〕
-6. S6 按兜底出口撤离它托管实例里的玩家，关闭实例 〔无界面〕
+6. S6 宿主撤走它托管实例里的玩家，强制关闭实例 〔无界面〕
 7. S7 取消它的任务，收回 Tab 可见性与动作 〔无界面〕
-8. S8 在独立线程调它的停用回调，不阻塞 tick 〔无界面〕
+8. S8 在宿主的停用线程上按依赖逆序逐个调停用回调 〔无界面〕
 9. S9 记日志与台账，状态改为已禁用 〔无界面〕
 
 #### 分支
@@ -334,7 +343,9 @@
 
 | 类型 | 分支 | 结果 | 依据 | 测试 |
 | --- | --- | --- | --- | --- |
-| 失败 | 兜底出口抛异常或给不出去处 | 该玩家断线〔提示：对局暂不可用〕 | 现状待确认：§14 缺对局暂不可用；ADR-ECO-007 | 无用例 |
+| 边界 | 进程开着核心世界 | 玩家送回核心世界的出生点 | ADR-ECO-007 | 无用例 |
+| 边界 | 进程没有核心世界 | 该玩家断线〔提示：对局暂不可用〕 | 现状待确认：§14 缺对局暂不可用；ADR-ECO-007 | 无用例 |
+| 边界 | 实例配了兜底出口 | 不调用，那是被禁用插件自己的代码 | ADR-ECO-007 | 无用例 |
 | 边界 | 5 秒内没撤完 | 剩下的玩家断线，实例注销 | 现状待确认：§15 缺撤离时限行；ADR-ECO-007 | 无用例 |
 
 ##### S7 收回其余登记
@@ -348,8 +359,9 @@
 
 | 类型 | 分支 | 结果 | 依据 | 测试 |
 | --- | --- | --- | --- | --- |
-| 失败 | 停用回调抛异常 | 一行 ERROR，禁用照常完成 | 现状待确认：§14 缺停用失败日志码；ADR-ECO-007 | 无用例 |
-| 边界 | 停用回调 5 秒没返回 | 一行 ERROR，留在它自己的线程上 | ADR-ECO-007 | 无用例 |
+| 失败 | 停用回调抛异常 | 一行 ERROR，接着调下一个，禁用照常完成 | 现状待确认：§14 缺停用失败日志码；ADR-ECO-007 | 无用例 |
+| 边界 | 停用回调超过预算没返回 | 一行 ERROR，回调留在它自己的线程上，接着调下一个 | ADR-ECO-007 | 无用例 |
+| 边界 | 硬依赖者的停用回调还在跑 | 等它返回或等满预算，才调被依赖者的 | RULE-ECO-002；ADR-ECO-007 | 无用例 |
 
 ##### S9 收尾
 
@@ -388,7 +400,7 @@
   - 谁定：产品
   - 卡住：不卡
 
-另见：无
+另见：§28 每个插件的停用回调保底多久
 
 #### 关联
 
@@ -402,6 +414,129 @@
 | S4–S7 | `server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java#tearDown` |
 | S6 | `server-app/src/main/java/io/github/bearisbug/synaxis/app/instance/InstanceRegistry.java#reclaim` |
 | S8 | `server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java#disableWithin` |
+
+### FLOW-PLUGIN-STOP · 停机逆序停用
+
+#### 概要
+
+- **执行者**：宿主，替服主在停机时做
+- **触发**：服主停服，或编排发来停止信号
+- **进入条件**：停机序列已存完玩家数据、踢出全部玩家
+- **结果**：全部已启用插件按依赖逆序停用，每个停用回调都有保底时间
+- **不管**：运行中禁用、玩家数据怎么保存
+
+#### 主流程
+
+1. S1 停机序列存完玩家数据，踢出全部玩家 〔无界面〕
+2. S2 宿主按依赖逆序排出全部已启用插件 〔无界面〕
+3. S3 逐个调停用回调，等它返回或等满保底时间 〔无界面〕
+4. S4 收回它的全部登记，强制关闭它剩下的托管实例 〔无界面〕
+5. S5 全部插件处理完，进程退出 〔无界面〕
+
+#### 分支
+
+> 分支未与用户逐类核对：S3–S4
+
+##### S3 调停用回调
+
+| 类型 | 分支 | 结果 | 依据 | 测试 |
+| --- | --- | --- | --- | --- |
+| 失败 | 停用回调抛异常 | 一行 ERROR，接着收回它的登记 | ADR-ECO-002 | 无用例 |
+| 边界 | 停用回调超过保底时间没返回 | 一行 ERROR，回调留在它自己的线程上，接着收回 | ADR-ECO-002 | 无用例 |
+| 边界 | 前面一个插件的停用回调卡死 | 后面每个插件仍等满自己的保底时间 | ADR-ECO-002 | 无用例 |
+| 边界 | 回调里调它硬依赖的插件 | 那个插件还没停用，调得通 | RULE-ECO-002；ADR-ECO-002 | 无用例 |
+
+##### S4 收回登记
+
+| 类型 | 分支 | 结果 | 依据 | 测试 |
+| --- | --- | --- | --- | --- |
+| 失败 | 收回时抛异常，例如区块加载器出错 | 一行 ERROR，后面的插件照常停用与收回 | ADR-ECO-002 | 无用例 |
+
+#### 待决策
+
+无。
+
+另见：§28 每个插件的停用回调保底多久
+
+#### 关联
+
+- **契约锚点**：ADR-ECO-002
+- **上游**：FLOW-PLUGIN-LOAD
+- **下游**：—
+- **守住的不变量**：INV-ECO-002
+
+| 步骤 | 位置 |
+| --- | --- |
+| S2–S4 | `server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java#disableAll`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java#disableWithin`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java#tearDown` |
+
+### FLOW-PLUGIN-SERVICE · 提供与调用服务
+
+#### 概要
+
+- **执行者**：插件，经宿主的服务注册表
+- **触发**：提供方插件登记一个实现，调用方按接口类型查找
+- **进入条件**：双方都已启用，调用方把定义接口的插件列为依赖
+- **结果**：调用方拿到最高档的实现，提供方停用后换到下一个
+- **不管**：服务接口自身的版本兼容、跨进程调用
+
+#### 主流程
+
+1. S1 提供方在启用期间按接口类型登记实现与档位 〔无界面〕
+2. S2 调用方按接口类型查找 〔无界面〕
+3. S3 宿主返回最高档的实现，同档取先登记的 〔无界面〕
+4. S4 调用方直接调用这个实现 〔无界面〕
+5. S5 提供方离开启用时，宿主注销它的登记并派发注销事件 〔无界面〕
+6. S6 仍在运行的调用方收到事件，重新查找 〔无界面〕
+
+#### 分支
+
+> 分支未与用户逐类核对：S1–S5
+
+##### S1 登记
+
+| 类型 | 分支 | 结果 | 依据 | 测试 |
+| --- | --- | --- | --- | --- |
+| 边界 | 同一接口已有同档的实现 | 都留下，先登记的排在前面 | ADR-ECO-005 | 无用例 |
+| 边界 | 接口由第三个插件定义 | 提供方与调用方都要把它列为依赖 | RULE-ECO-001；ADR-ECO-005 | 无用例 |
+
+##### S2 查找
+
+| 类型 | 分支 | 结果 | 依据 | 测试 |
+| --- | --- | --- | --- | --- |
+| 失败 | 调用方没把定义接口的插件列为依赖 | 加载不到接口类，查不了 | RULE-ECO-001；ADR-ECO-003 | 无用例 |
+| 边界 | 提供方是软依赖，可能没装 | 先查它是否已启用，再碰它的类 | ADR-ECO-005 | 无用例 |
+
+##### S3 返回实现
+
+| 类型 | 分支 | 结果 | 依据 | 测试 |
+| --- | --- | --- | --- | --- |
+| 边界 | 没有任何实现 | 返回空 | ADR-ECO-005 | 无用例 |
+| 边界 | 查不到，但有同名接口的登记 | 返回空，一行 WARN 点名两个加载器 | ADR-ECO-005 | 无用例 |
+| 边界 | 要列出全部实现 | 按档位从高到低、同档按登记先后列出 | ADR-ECO-005 | 无用例 |
+
+##### S5 注销
+
+| 类型 | 分支 | 结果 | 依据 | 测试 |
+| --- | --- | --- | --- | --- |
+| 边界 | 硬依赖提供方的插件 | 已被连带停用，不再调用 | RULE-ECO-002；ADR-ECO-007 | 无用例 |
+| 边界 | 软依赖提供方的插件 | 收到注销事件，换到下一个实现 | ADR-ECO-005 | 无用例 |
+| 边界 | 调用方缓存着旧实现的引用 | 行为不保证，由调用方负责 | ADR-ECO-005 | 不测：行为不保证 |
+| 并发 | 调用进行中提供方被停用 | 这次调用不被打断，之后查不到它 | ADR-ECO-005 | 无用例 |
+
+#### 待决策
+
+无。
+
+#### 关联
+
+- **契约锚点**：ADR-ECO-005；ADR-ECO-003
+- **上游**：FLOW-PLUGIN-LOAD
+- **下游**：—
+- **守住的不变量**：INV-ECO-002
+
+| 步骤 | 位置 |
+| --- | --- |
+| S1–S6 | 待补 |
 
 ### FLOW-SDK-RELEASE · 发布 SDK 与模组
 
@@ -502,13 +637,13 @@
 适用链路：FLOW-PLUGIN-LOAD、FLOW-PLUGIN-DISABLE
 
 - IF 插件的某个硬依赖没启用、被拒载、启用失败或被禁用
-- THEN 这个插件不启用，已启用的先于该依赖停用
+- THEN 这个插件不启用；已启用的先于该依赖收回登记、调完停用回调或等满预算
 
 出处：ADR-ECO-002；ADR-ECO-007
 
 ### RULE-ECO-010 · 资源命名空间归插件所有
 
-适用链路：FLOW-ASSET-PACK、FLOW-CAP-USE
+适用链路：FLOW-PLUGIN-LOAD、FLOW-ASSET-PACK、FLOW-CAP-USE
 
 - IF 资源写进别的命名空间，或语言键不以自己的 id 开头
 - AND 描述文件没有声明覆盖这个命名空间
@@ -602,7 +737,7 @@
 | REQ-ECO-003 | 按依赖拓扑序启用、逆序停用，无先后约束的按 id 排 | 目标 2 | P0 |
 | REQ-ECO-004 | 描述不合规、缺硬依赖、版本不合或成环的插件不启用 | 目标 2 | P0 |
 | REQ-ECO-005 | 硬依赖没启用或启用失败时，依赖它的插件也不启用 | 目标 2 | P0 |
-| REQ-ECO-006 | 每个插件一个类加载器，只看得见稳定面与声明的依赖 | 目标 2 | P0 |
+| REQ-ECO-006 | 每个插件一个类加载器，只看得见可见面与声明的依赖 | 目标 2 | P0 |
 | REQ-ECO-007 | 宿主内部类与宿主独占的库对插件不可见 | 目标 2 | P0 |
 | REQ-ECO-008 | 插件自带的库互不冲突，宿主不在运行期下载库 | 目标 2 | P1 |
 | REQ-ECO-009 | 插件可按接口类型登记服务实现，带五档优先级 | 目标 2 | P0 |
@@ -610,11 +745,12 @@
 | REQ-ECO-011 | 提供者停用时服务自动注销，并通知仍在运行的调用方 | 目标 2 | P0 |
 | REQ-ECO-012 | 多个插件可各登记准入检查，任一拒绝即拒绝进服 | 目标 2 | P0 |
 | REQ-ECO-013 | 准入被拒时日志与台账记下是哪个插件拒的 | 目标 2 | P1 |
-| REQ-ECO-014 | 无人登记准入回调且无插件失败时，用核心世界放行 | 目标 2 | P1 |
-| REQ-ECO-015 | 运行中禁用一个插件时，硬依赖它的插件先停用 | 目标 2 | P0 |
-| REQ-ECO-016 | 运行中禁用时收回全部登记，撤离其实例里的玩家 | 目标 2 | P0 |
-| REQ-ECO-017 | 插件 60 秒内异常满 20 次即被熔断禁用 | 目标 2 | P1 |
+| REQ-ECO-014 | 无准入回调时用核心世界还是拒启，按待决策结论（Q-PLUGIN-LOAD-3） | 目标 2 | P1 |
+| REQ-ECO-015 | 运行中禁用一个插件时，硬依赖它的插件先停用 | 目标 2 | P1 |
+| REQ-ECO-016 | 运行中禁用时收回全部登记，撤离其实例里的玩家 | 目标 2 | P1 |
+| REQ-ECO-017 | 运行中禁用由熔断还是运维命令触发，按待决策结论 | 目标 2 | P1 |
 | REQ-ECO-018 | 停机时每个插件的停用回调都有保底时间 | 目标 2 | P1 |
+| REQ-ECO-019 | 有准入回调即进玩法模式，不要求起服时恰好一个实例 | 目标 2 | P0 |
 | REQ-ECO-020 | 插件在 jar 里随带自己命名空间的资源 | 目标 4 | P0 |
 | REQ-ECO-021 | 起服时宿主为每个插件打一个资源包 | 目标 4 | P0 |
 | REQ-ECO-022 | 宿主托管资源包，也可改用外部地址 | 目标 4 | P0 |
@@ -636,6 +772,8 @@
 | REQ-ECO-045 | 推送版本标签触发发布工作流 | 目标 5 | P1 |
 | REQ-ECO-046 | 首方示例只用稳定面，CI 门禁拦截 | 目标 6 | P1 |
 | REQ-ECO-047 | 服主从 GitHub Release 下载服务端发行版 | 目标 1 | P0 |
+
+运行中禁用的三条需求 `REQ-ECO-015`、`REQ-ECO-016`、`REQ-ECO-017` 跟着 Q-PLUGIN-DISABLE-1 与 Q-PLUGIN-DISABLE-3 走：两项里选了任一项，三条按 P1 做；两项都不做，运行中禁用不会发生，三条移入 §2 非目标，`FLOW-PLUGIN-DISABLE` 改为占位行。
 
 ## 6. 总体架构
 
@@ -698,7 +836,7 @@ flowchart LR
 | 硬依赖 | 不在、没启用或版本不合时，本插件不启用 |
 | 软依赖 | 在且版本合就排在它后面启用，否则当它不存在 |
 | 拒载 | 插件因描述或依赖问题不启用；整服拒不拒启见 Q-PLUGIN-LOAD-1 |
-| 稳定面集合 | `plugin-api` 的 api 传递闭包，插件的类加载器只经父链看见这一组 |
+| 可见面 | `plugin-api` 解析后的 api 依赖闭包，插件的加载器经父链只看见这些 jar；含稳定面，可见不等于承诺兼容 |
 | 准入检查 | 进服时只答放行或拒绝的插件回调，可以有多个 |
 | 准入回调 | `API-M2-011` 的 `AdmissionProvider`，定落点，进程至多一个 |
 | 运行中禁用 | 端口绑定之后把一个已启用的插件停掉，不能再启用 |
@@ -726,16 +864,21 @@ flowchart LR
 
 - 版本范围推荐只认大于等于与小于两种比较，空格表示同时满足，见 §28 版本范围的写法
 - 宿主的稳定面版本取它自带的 `plugin-api` 版本，不落在 `apiVersion` 范围内的插件拒载
+- 本地构建的宿主版本是 `dev`（`synaxis.java-library.gradle.kts:10`），排不进任何范围，处理见下段
 - SDK 默认把 `apiVersion` 写成不低于编译所用版本、低于下一个主版本，1.0.0 前上界取下一个次版本
 - `resourceOverrides` 每项须是合法命名空间，不得是自己的 id 或 `synaxis`，不合规的插件拒载
 - 覆盖另一个插件的命名空间时须把它列为依赖，资源包才推在它后面（§6.4 第 4 步）
 - 两个插件声明覆盖同一项时的处置归 `ADR-ECO-012`
+- 起服还扫选中插件 jar 里的资源：写进别的命名空间的文件、不以插件 id 开头的语言键都要有覆盖声明，否则拒载
 - `requiredCapabilities` 每项须是 §6.3 能力目录里的 id，宿主不认识的说明宿主太旧，插件拒载
 - 起服只查能力 id 认不认识，进服时按协商结果放行归 `RULE-ECO-011`
 
+`dev` 宿主的处理待 §28 本地构建的 dev 宿主怎么校验。推荐 `dev` 宿主跳过 `apiVersion` 范围校验，起服汇总里逐个插件打一行提示，写明它声明的范围；带正式版本号的宿主严格校验。理由是构建版本取环境变量 `GAME_ENGINE_VERSION`，没设时是 `dev`，本地起服、CI 与真客户端回归跑的都是 `dev` 宿主，严格校验会把这些场合的插件全部拒载。代价是 `dev` 宿主上要求更新 API 的插件不被拒载，要到用到缺的成员时才报 `NoSuchMethodError`。本地构建改为带预发布版本号（例如由最近的标签派生）时，改为照常比较。
+
 解析规则：
 
-- 宿主只扫 `plugins/*.jar` 一层，插件的数据目录 `plugins/<id>/` 不变
+- 宿主扫 `plugins/*.jar` 一层，插件的数据目录 `plugins/<id>/` 不变
+- classpath 上的插件还认不认，待 Q-PLUGIN-LOAD-2
 - 白名单 `synaxis.app.plugins` 照旧按 id 筛，没被选中的硬依赖按缺硬依赖处理
 - 启用顺序是依赖图的拓扑序，没有先后约束的按 id 字典序，停用倒过来（`ADR-ECO-002`）
 - 只用硬依赖边判环，环上的插件全部拒载；软依赖边造成环时去掉这条边
@@ -743,6 +886,8 @@ flowchart LR
 - 两个 jar 声明同一个 id 仍整服拒启，因为分不出该留哪一个
 - 不做 Bukkit 的 `loadbefore` 与 `provides`，需要时按新增可选字段加入
 - 起服汇总一行列出已启用与被拒载的插件和原因，台账每个拒载插件记一行
+
+Q-PLUGIN-LOAD-2 两种答案的后果：只认 plugins 目录时，首方示例要挪进去，发行包（`server-app/build.gradle.kts:29` 把 `game-rts` 放在运行期 classpath）、`runRush` 任务与回归用例的启动方式都要改；保留 classpath 发现时，那里的插件由应用加载器加载，看得见宿主内部类与独占库，违反 `INV-ECO-004` 与 `REQ-ECO-007`，依赖声明也约束不到它们。
 
 启用顺序还定下四件事的先后，今天它们都随 classpath 顺序变：命令的无前缀名归先注册者（`API-PROD-011`）；同档事件监听器按插件首次在该档注册的先后执行（`EventNodeImpl.java:38` 是保留插入序的集合，`:466` 按档位稳定排序）；同档服务取先登记的（§6.2.3）；资源包按加载顺序推送，后推的覆盖先推的（§6.4 第 4 步、`ADR-ECO-011`）。
 
@@ -753,27 +898,40 @@ flowchart LR
 ```mermaid
 flowchart LR
   pb[插件 B 的加载器] -->|1 平台类| jdk[JDK]
-  pb -->|2 只放行这一组| surface[稳定面集合：引擎、protocol、plugin-api、Adventure、Gson、SLF4J]
+  pb -->|2 只放行这些 jar| surface[可见面：plugin-api 的 api 依赖闭包]
   pb -->|3 自己的 jar 与自带库| bjar[B 的 jar]
   pb -->|4 声明过的依赖| pa[插件 A 的加载器]
-  pb -.->|不可见| hidden[server-app、宿主独占库、Logback、引擎的内部依赖]
+  pb -.->|不可见| hidden[server-app、synx、宿主独占库、Logback、引擎的 implementation 依赖]
   surface --- app[应用加载器]
   hidden --- app
 ```
 
-- 查找次序：JDK 平台类，再稳定面集合，再本插件 jar，再声明过的依赖的加载器（`ADR-ECO-003`）
-- 稳定面集合今天是引擎、`protocol`、`plugin-api`、Adventure、Gson、SLF4J，随 `plugin-api` 的 api 依赖变
-- 稳定面集合交给应用加载器，插件不得定义这些包，jar 里自带的同包类不生效
-- 应用加载器上集合之外的类一律不可见，含 `server-app`、宿主独占库、Logback 与引擎的 implementation 依赖
+- 查找次序：JDK 平台类，再可见面，再本插件 jar，再声明过的依赖的加载器（`ADR-ECO-003`）
+- 可见面由构建从 `plugin-api` 解析后的 api 依赖闭包生成一份 jar 清单，随发行版带上，不手写
+- 放行按类所在的 jar 判，不按包名前缀判
+- 可见面的类一律由应用加载器给，插件 jar 里自带的同名类不生效
+- 应用加载器上可见面之外的 jar 一律不可见，含 `server-app`、`synx`、宿主独占库、Logback 与引擎的 implementation 依赖
 - 声明过的依赖指硬依赖与在场的软依赖，不传递：C 要用 A 的类就得自己声明 A（`RULE-ECO-001`）
 - 资源先找本插件 jar，再找声明过的依赖；宿主打资源包直接读 jar 文件，不经插件加载器
 - 依赖库打进插件 jar，归该插件的加载器，宿主不下载、不解压（`ADR-ECO-004`）
 - 插件被禁用后加载器不关闭、不卸载，进程退出时随之结束
 - 线程上下文类加载器怎么设，见 §28 回调期间的线程上下文类加载器
 
-对照：Bukkit 的 `PluginClassLoader` 先问父加载器即服务端的加载器，再问 `libraries` 建的库加载器，最后在全部插件里全局查找。从没声明的插件加载类不会被拦下，Paper 源码注释写明连这段不强制的检查也删了。Paper 插件改为只看见依赖过的插件（`join-classpath`）。本设计取后者，另把父链过滤到稳定面集合。
+包名前缀分不开引擎与宿主：引擎根包是 `io.github.bearisbug.synaxis`，`server-app` 在 `.app` 下，`synx` 在 `.synx` 下，`play-kit` 在 `.game.playkit` 下，都以引擎根包开头，按前缀放行会把它们一并放给插件。
 
-引擎公开签名若用到稳定面集合之外的类型，插件解析不到。粗查引擎源码的公开方法签名没发现这类用法（fastutil 只出现在包内可见的方法上），第二期在 §24 加一道门禁。
+今天的闭包按依赖元数据手算是引擎、`protocol`、`plugin-api`，Adventure 的九个模块及其 api 依赖 `net.kyori:option`、`net.kyori:ansi`、jspecify 与 auto-service 注解，Gson 及其 Error Prone 注解，SLF4J 与 JetBrains 注解，以构建生成的清单为准。
+
+可见面包含稳定面（`ADR-ECO-021`），但可见不等于承诺：稳定面没引到的引擎公开类插件也看得见，改了不走弃用期。
+
+`play-kit` 不进可见面，用它的插件把它打进自己的 jar（`ADR-ECO-004`）。它只有 `Countdown`、`LocalQueue`、`Round` 三个按实例使用的工具类，插件之间没有要共享的状态，也不承诺兼容（`ADR-PLAY-001`）；放进可见面等于让宿主替它定版本，所有插件被绑在宿主带的那一版上。它的类型不得出现在插件之间的接口里。日后要跨插件共享状态时，改成一个经服务注册表提供能力的库插件。
+
+对照：Bukkit 的 `PluginClassLoader` 先问父加载器即服务端的加载器，再问 `libraries` 建的库加载器，最后在全部插件里全局查找。从没声明的插件加载类不会被拦下，Paper 源码注释写明连这段不强制的检查也删了。Paper 插件改为只看见依赖过的插件（`join-classpath`）。本设计取后者，另把父链过滤到可见面。
+
+可见面里的类若在 public 或 protected 签名里用到可见面之外的类型，插件自己的代码碰到这个成员时解析不到；引擎类自己照常解析，因为它们由应用加载器加载。
+
+今天有四处：`DynamicChunk` 的两个 protected 字段是 fastutil 的 `Int2ObjectOpenHashMap`（`DynamicChunk.java:57`、`:65`）；`GeneratorImpl` 的公开 record 用到 `Int2ObjectMap`（`GeneratorImpl.java:31`）；`ConcurrentMessageQueues` 与 `PacketWriting` 的公开方法收发 jctools 类型（`ConcurrentMessageQueues.java:22-34`、`PacketWriting.java:186`）。
+
+`DynamicChunk` 有 `LightingChunk` 与 `SynxChunk` 两个子类，插件也能继承它；后三处所在的类标了 `@ApiStatus.Internal`。第二期在 §24 加门禁，public 与 protected 成员都查，这四处怎么改见 §28 可见面签名门禁的范围。
 
 #### 6.2.3 服务注册表
 
@@ -783,7 +941,7 @@ flowchart LR
 - 启用期间任何时刻都可登记，建议在启用回调里做，调用方按拓扑序排在提供方之后（§6.2.1）
 - 查找返回最高档的实现，同档取先登记的；另可按同一顺序列出全部实现（`ADR-ECO-005`）
 - Bukkit 按二分查找插入，同档先后没有定义；本设计固定为先登记者在前
-- 服务接口由定义它的插件加载，或放在稳定面里；调用方要把定义方声明为依赖（`RULE-ECO-001`）
+- 服务接口由定义它的插件加载，或放在可见面里；调用方要把定义方声明为依赖（`RULE-ECO-001`）
 - 查找按 `Class` 身份比对；查不到但有同名的登记时记一行 WARN，点名两个加载器
 - 提供者离开启用时，宿主注销它的全部登记并派发注销事件（`INV-ECO-002`）
 - 硬依赖提供者的插件已被连带停用，软依赖的靠注销事件换到下一个实现
@@ -794,44 +952,55 @@ flowchart LR
 
 现状：整个进程只有一个准入槽，第二个插件登记就抛 `IllegalStateException`（`AdmissionRegistry.java:26-33`），起服时冲突即拒启的 `API-PLAY-007` 排在 W0、还没实现。占槽的插件同时是场景所有者（`PluginHost.java:111`）。封禁、维护、人数上限这类插件只能在事件里自己踢人，宿主不知道是谁拒的。
 
+起服模式今天要求有准入回调且恰好一个已注册实例（`CoreMode.java:134`），而实例数的是进程里的全部实例（`Main.java:984-986`）：第二个插件在启用回调里建了实例，或玩法插件按需建实例、起服时一个没有，都会判成拒启。核心模式不要求握手（`CoreMode.java:164`），`requireHandshake` 只在玩法模式调（`Main.java:332`）。拒绝与踢人的原因今天是 `String` 键，没有回退文本（`Admission.java:40` 的 `Admission.Reject`、`Exit.java:26` 的 `Exit.Kick`）。
+
 - 准入分两种登记：准入检查可以有多个，准入回调至多一个（`ADR-ECO-006`、`INV-ECO-003`）
-- 准入回调的签名不变，持有者仍是场景所有者（`ADR-PLAY-006`），准入检查第二期进 §8
-- 顺序：封禁与白名单、握手、转服票据、载入存档、载入角色，然后准入检查，最后准入回调
+- 准入回调的方法签名不变，持有者仍是场景所有者（`ADR-PLAY-006`），准入检查第二期进 §8
+- 顺序：封禁与白名单、握手、转服票据、推资源包、载入存档、载入角色，然后准入检查，最后准入回调
+- 推资源包的位置取 §28 资源包推送与准入谁先的推荐
 - 多个准入检查按插件启用顺序调用，第一个拒绝即断线，后面的检查与准入回调都不再调用
 - 玩家只看到拒绝方给的那句话，台账 `client_rejected` 加一个属性记拒绝方的插件 id 或 `synaxis`
-- 拒绝原因的类型与 RUN-097 改后的 `Exit.Kick` 一致；文本怎么送到客户端归 §6.4
+- 准入检查的拒绝、`Admission.Reject` 与 `Exit.Kick` 的原因都改收 Adventure 的 `Component`
+- 翻译组件带回退文本与参数，沿用 `ADR-PLAY-007` 的回退文本约定，`ADR-ECO-010` 没取代这一半
 - 每个检查各有 200 毫秒软预算，同 `API-M2-011`：超了记一行 WARN 点名插件，答案照常生效
 - 检查在该连接配置阶段的虚拟线程上同步调用，不得阻塞、不得碰实体
 - 检查抛异常或返回空怎么判，待 Q-PLUGIN-ADMIT-1
 - 没有检查时直接问准入回调；没有准入回调时断线，原因是对局暂不可用，与现状相同
+- 起服模式按准入回调判：有准入回调就进玩法模式，起服时有几个实例都行，实例由插件按需建
 - 起服时没有任何插件登记准入回调的默认行为，待 Q-PLUGIN-LOAD-3
+- 玩法模式要求握手；核心模式下只要有已启用插件声明了必需能力，也要求握手（`RULE-ECO-011`）
 - 两个插件登记准入回调仍按 `API-PLAY-007` 拒启；允不允许接力，待 Q-PLUGIN-ADMIT-2
 
 Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二个插件设置就抛异常。它不在本期五个主题里，登记在 §28。
 
 #### 6.2.5 停用：启用失败、运行中禁用与停机
 
-现状：插件只在两处被拆掉：端口绑定之前启用回调抛异常（`PluginHost.java:207-212`），以及停机时按启用逆序停用（`PluginHost.java:244-257`）。两处都经 `tearDown` 收回八类登记（`PluginHost.java:340-351`），数据段只在启用失败时丢弃（`PluginHost.java:208`）。全部插件的停用回调共用 5 秒（`PluginHost.java:46`），`EndCause.PLUGIN_DISABLED` 今天只出现在启用失败（`EndCause.java:21`）。运行中没有禁用路径。
+现状：插件只在两处被拆掉：端口绑定之前启用回调抛异常（`PluginHost.java:207-212`），以及停机时按启用逆序停用（`PluginHost.java:244-257`）。两处都经 `tearDown` 收回八类登记（`PluginHost.java:340-351`），数据段只在启用失败时丢弃（`PluginHost.java:208`）。全部插件的停用回调共用 5 秒（`PluginHost.java:46`），`EndCause.PLUGIN_DISABLED` 今天只出现在启用失败（`EndCause.java:22`）。运行中没有禁用路径。
+
+强制关闭托管实例时宿主直接踢人、不调插件给的出口（`ManagedInstanceImpl.java:427-433`）。
 
 | 路径 | 何时 | 范围与顺序 | 停用回调 |
 | --- | --- | --- | --- |
 | 启用失败 | 起服时，端口绑定之前 | 该插件，硬依赖它的跟着拒载 | 不调，同 `API-M2-007` |
-| 运行中禁用 | 端口绑定之后，触发源见 Q-PLUGIN-DISABLE-1、Q-PLUGIN-DISABLE-3 | 该插件与硬依赖它的全部插件，按依赖逆序 | 收回登记之后在独立线程调，不等它 |
-| 停机 | 踢人之后，见 `API-PROD-007` | 全部已启用插件，按拓扑逆序 | 先调再收回，保底时长见 §28 停机时每个插件的停用回调 |
+| 运行中禁用 | 端口绑定之后，触发源见 Q-PLUGIN-DISABLE-1、Q-PLUGIN-DISABLE-3 | 该插件与硬依赖它的全部插件，按依赖逆序 | 收回登记之后按依赖逆序逐个调，每个最多等一份预算，不占 tick |
+| 停机 | 踢人之后，见 `API-PROD-007` | 全部已启用插件，按拓扑逆序 | 先调再收回，保底时长见 §28 每个插件的停用回调保底多久 |
 
 运行中禁用（`ADR-ECO-007`）：
 
 - 在 tick 调度线程的串行段做，与托管实例注销在同一处（`API-PLAY-006`）
 - 先摘输入：事件节点、准入检查与准入回调、命令、通道、服务登记
-- 再派发服务注销事件，按兜底出口撤离它托管实例里的玩家，强制关闭实例
+- 再派发服务注销事件，强制关闭它托管的实例
+- 实例里的玩家由宿主兜底：开着核心世界就送回核心世界出生点，没有就断线，原因是对局暂不可用
+- 不调插件给的兜底出口：那是被禁用插件自己的代码，出口多半指向它正被关闭的实例
 - 再取消任务，收回 Tab 可见性、动作与停机保存钩子
-- 最后在独立线程调停用回调，5 秒没返回记一行 ERROR，不阻塞 tick
+- 最后在宿主的停用线程上按依赖逆序逐个调停用回调，不占 tick 调度线程
+- 每个回调等它返回或等满一份预算再调下一个，超时记一行 ERROR，预算同停机时的每插件保底
 - 数据段保留，照常随玩家保存；只放在插件内存里的状态丢失
 - 命令空出的无前缀名不转给别的插件，Tab 可见性回到默认
 - 持有准入回调的插件被禁用时进程怎么办，待 Q-PLUGIN-DISABLE-2
 - 被禁用的插件不能再启用，要重启进程（`ADR-M2-007`）
 
-运行中禁用把停用回调放在最后：`SynaxisPlugin` 的约定是宿主自己收回全部登记，停用回调只关插件自己开的东西（`SynaxisPlugin.java:61-64`），收回之后再调不违反约定。停机路径仍先调停用回调，因为那时 tick 照常在跑、玩家已存完，插件可以用自己的能力收尾。状态机第二期在 §11.1 补拒载终态与运行中的两条转移。
+运行中禁用把停用回调放在最后：`SynaxisPlugin` 的约定是宿主自己收回全部登记，停用回调只关插件自己开的东西（`SynaxisPlugin.java:61-64`），收回之后再调不违反约定。回调按依赖逆序逐个等，是因为依赖者的停用回调里还可能用到被依赖插件的类与对象。停机路径仍先调停用回调，因为那时 tick 照常在跑、玩家已存完，插件可以用自己的能力收尾。状态机第二期在 §11.1 补拒载终态与运行中的两条转移。
 
 #### 6.2.6 与 Bukkit、Paper 的对照
 
@@ -842,7 +1011,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 | 缺硬依赖 | 该插件不加载，报 `Unknown dependency`，其余照常 | 未核实 | 拒载，整服拒不拒启待 Q-PLUGIN-LOAD-1 |
 | 依赖成环 | 环上插件不加载，报 `circular dependency detected` | 不尝试解环，报错 | 硬依赖成环拒载，软依赖成环去边 |
 | 无先后约束的顺序 | 跟 `HashMap` 的迭代顺序走，没有定义 | 未核实 | 按 id 字典序 |
-| 类的可见性 | 先父加载器，再插件库，再全局查找全部插件 | 只看见依赖过的插件 | 只放行稳定面集合，再自己，再声明的依赖 |
+| 类的可见性 | 先父加载器，再插件库，再全局查找全部插件 | 只看见依赖过的插件 | 只放行可见面，再自己，再声明的依赖 |
 | 依赖库 | `libraries` 字段，起服时从 Maven 仓库下载 | `PluginLoader` 加 Maven 解析或本地 jar | 打进插件 jar |
 | 服务 | `ServicesManager` 五档优先级，同档先后没有定义 | 沿用 Bukkit 的 `ServicesManager` | 五档，同档先登记者在前 |
 | 停用 | 取消任务，注销服务、监听器与通道，不连带依赖者 | 未核实 | 连带硬依赖者，另收回命令、准入与托管实例 |
@@ -946,14 +1115,16 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 
 - **`ADR-ECO-001` 描述文件放在插件 jar 里，读描述不加载类** — Status: Proposed
   - Context：依赖解析与建加载器要在加载插件类之前拿到全部描述，今天要先实例化入口类才读得到
-  - Decision：jar 根放 `synaxis-plugin.json`，宿主只扫 `plugins/*.jar` 读这份文件，`descriptor()` 退役
+  - Decision：jar 根放 `synaxis-plugin.json`，宿主扫 `plugins/*.jar` 读这份文件，`descriptor()` 退役
   - Alternatives：
     - 注解处理器生成描述（Velocity 做法，`ADR-M2-006` 原定）：可作为 SDK 生成这份文件的手段，叠在本决定之上
     - 保留 `descriptor()`，用临时加载器实例化后读：依赖没解析就建不出正确的父链，构造器副作用照旧
-    - 用 YAML 写（Bukkit 的 `plugin.yml`）：宿主要多带 SnakeYAML，JSON 用的 Gson 已在稳定面里
+    - 用 YAML 写（Bukkit 的 `plugin.yml`）：宿主要多带 SnakeYAML，JSON 用的 Gson 已在可见面里
   - Consequences：
     - 读描述不跑插件代码；`descriptor()` 退役是破坏性变更，跟稳定面的下一个破坏性版本走
     - 取代 `ADR-M2-006` 第二段里「descriptor 改由注解处理器生成」一句
+    - classpath 上的插件还认不认待 Q-PLUGIN-LOAD-2；只认目录时，发行包、起服任务与回归用例的启动方式要改
+    - 保留 classpath 发现时，那里的插件由应用加载器加载，违反 `INV-ECO-004` 与 `REQ-ECO-007`
 - **`ADR-ECO-002` 依赖按拓扑序启用，同层按 id 排** — Status: Proposed
   - Context：`docs/DESIGN-M2.md` §28.3 ① 约定出现第二个插件时补回依赖字段、拓扑排序与环检测
   - Decision：硬依赖与软依赖各带版本范围，拓扑序启用、同层按 id 字典序，硬依赖成环与缺依赖拒载
@@ -964,25 +1135,29 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
   - Consequences：
     - 命令无前缀名、同档事件与服务、资源包推送的先后都随之确定；拒载是否整服拒启待 Q-PLUGIN-LOAD-1
     - 补回 §28.3 ① 前两行，取代 `ADR-M2-006`「descriptor 里连 depends 都不写」一句
-- **`ADR-ECO-003` 每插件一个类加载器，父链只放行稳定面** — Status: Proposed
+- **`ADR-ECO-003` 每插件一个类加载器，父链只放行可见面** — Status: Proposed
   - Context：插件与宿主共用应用加载器，宿主独占的驱动与连接池对插件可见，两个插件的同名库互相顶掉
-  - Decision：每插件一个加载器，依次查 JDK、稳定面集合、本插件 jar、声明过的依赖，其余不可见
+  - Decision：每插件一个加载器，依次查 JDK、可见面、本插件 jar、声明过的依赖；可见面按 jar 判，清单由构建生成
   - Alternatives：
     - 父加载器取应用加载器（`ADR-M2-006` 原定，也是 Bukkit 做法）：宿主独占库仍可见，`ADR-PROD-012` 只剩约定
     - 每插件一个 `ModuleLayer`：`ADR-M2-006` 已否，要写 `module-info`，没有版本解析
     - 全局查找全部插件的类（Bukkit）：能用没声明的插件的类，对方没装或晚加载就找不到
+    - 按包名前缀放行：引擎根包也是宿主、`synx` 与 `play-kit` 的包前缀，宿主的类会漏给插件
+    - 手写可见面清单：会漏掉传递来的 api 依赖，例如 Adventure 带来的 `net.kyori:option`
   - Consequences：
     - 宿主独占库运行期不可见，插件之间不用重定位库；直接用引擎内部依赖的插件要自带
     - 取代 `ADR-M2-006` 第二段的「parent = app loader」与 `docs/DESIGN-M2.md` §2 每插件加载器的非目标
 - **`ADR-ECO-004` 依赖库打进插件 jar，宿主不下载** — Status: Proposed
   - Context：隔离之后插件要自带依赖库，Bukkit 的 `libraries` 在起服时从 Maven 仓库下载
-  - Decision：库打进插件 jar，归该插件的加载器；插件之间的接口只用自己的类与稳定面类型
+  - Decision：库打进插件 jar，归该插件的加载器；插件之间的接口只用自己的类与可见面类型
   - Alternatives：
     - 起服时下载（Bukkit `libraries`、Paper `MavenLibraryResolver`）：起服要联网，直连 Central 属于过量请求
       - Sonatype 条款 2026-03-31 版禁止过量请求与带宽：[Central Repository Terms of Service](https://central.sonatype.org/terms.html)
       - PaperMC 文档要求改用镜像：[Paper plugins](https://docs.papermc.io/paper/dev/getting-started/paper-plugins/)
     - jar 里嵌 jar，由私有库加载器加载：库对依赖方不可见，但宿主要解压缓存，SDK 要会打这种包
-  - Consequences：起服不联网、可复现；互相依赖的插件跨接口传同名库的类型会 `LinkageError`，出现第一起就改嵌 jar
+  - Consequences：
+    - 起服不联网、可复现；互相依赖的插件跨接口传同名库的类型会 `LinkageError`，出现第一起就改嵌 jar
+    - `play-kit` 同样打进用它的插件 jar，不进可见面，理由见 §6.2.2 每插件类加载器
 - **`ADR-ECO-005` 服务注册表按类型登记，五档优先级** — Status: Proposed
   - Context：用户 2026-10-22 拍板要服务互调，今天插件之间只能直接调对方的类，实现换不掉
   - Decision：按接口 `Class` 登记实现与五档优先级，查最高档、同档取先登记，提供者停用即注销并通知
@@ -997,16 +1172,21 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
     - 准入事件按优先级改结果、最后写的生效（Bukkit `AsyncPlayerPreLoginEvent`）：封禁会被后面的插件放行
     - 准入回调接力，各答放行、拒绝或交下一个：违反 `ADR-PLAY-006`，要改 `API-M2-011` 的签名
   - Consequences：
-    - `API-M2-011` 签名与 `ADR-PLAY-006` 不变；越过别人的拒绝只能由拒绝方自己查权限
+    - `API-M2-011` 的方法签名与 `ADR-PLAY-006` 不变，拒绝原因改收 `Component`
+    - 越过别人的拒绝只能由拒绝方自己查权限
+    - 起服模式只看有没有准入回调，不再要求起服时恰好一个实例，玩法实例可以按需建
     - 关掉 `docs/DESIGN-M2.md` §28.2 的「多插件时谁提供对局」
 - **`ADR-ECO-007` 运行中禁用连带硬依赖者** — Status: Proposed
   - Context：今天只在启用失败与停机时拆插件，`docs/DESIGN-M2.md` §28.3 ① 把运行中禁用推到第二个插件
-  - Decision：按依赖逆序连带硬依赖它的全部插件，在串行段收回登记，最后才调停用回调
+  - Decision：按依赖逆序连带硬依赖它的全部插件，串行段里收回登记、由宿主撤离玩家，再按同一顺序逐个调停用回调
   - Alternatives：
     - 不连带（Bukkit 的 `disablePlugin`）：依赖者带着失效的依赖继续跑，硬依赖只剩排序作用
     - 运行中不禁用任何插件（现状）：一个插件出错只能整进程重启
+    - 按插件给的兜底出口撤离：被禁用插件的代码还要再跑，出口多半指向它正被关闭的实例
+    - 停用回调在独立线程调、不等它：依赖者的回调可能晚于被依赖者，逆序只管到收回登记
   - Consequences：
     - 禁用一个底层插件会带走一串插件，撤离的玩家与关闭的实例回不来
+    - 每个停用回调最多等一份预算，与停机时的每插件保底同一个值
     - 补回 §28.3 ① 的运行中禁用与降级手段，熔断待 Q-PLUGIN-DISABLE-1，`ADR-M2-007` 不变
 - **`ADR-ECO-010` 客户端扩展走服务端驱动加资源下发** — Status: Accepted
   - Context：用户 2026-10-22 要客户端自由度高，并面向公开社区做生态
@@ -1112,11 +1292,12 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 - REQ-ECO-011：A 被禁用后 B 再查得到 C 的实现，且 B 收到一次注销通知
 - REQ-ECO-012：两个检查一个放行一个拒绝，玩家被断线，原因是拒绝方给的文本
 - REQ-ECO-013：上一条的台账 `client_rejected` 那一行带拒绝方的插件 id
-- REQ-ECO-014：只装工具插件且全部启用成功时进程进核心模式放行；待 Q-PLUGIN-LOAD-3 拍板
-- REQ-ECO-015：禁用 A 时，硬依赖 A 的 B 先于 A 停用，软依赖 A 的 C 照常运行
-- REQ-ECO-016：禁用后 A 的监听器、任务、命令、通道、服务都不在，实例里的玩家按兜底出口离开
-- REQ-ECO-017：插件 60 秒内抛 20 次异常后被禁用，台账记一行；待 Q-PLUGIN-DISABLE-1 拍板
+- REQ-ECO-014：只装工具插件且全部启用成功，按 Q-PLUGIN-LOAD-3 的结论进核心模式放行或拒启
+- REQ-ECO-015：禁用 A 时 B 先收回登记，B 的停用回调返回或等满预算后才调 A 的，软依赖 A 的 C 照常运行
+- REQ-ECO-016：禁用后 A 的监听器、任务、命令、通道、服务都不在，实例里的玩家回核心世界或断线，A 的出口没被调用
+- REQ-ECO-017：按 Q-PLUGIN-DISABLE-1、Q-PLUGIN-DISABLE-3 的结论写；选熔断时，60 秒内抛 20 次异常即禁用
 - REQ-ECO-018：第一个插件的停用回调卡死时，后面每个插件的停用回调仍至少等满保底时长
+- REQ-ECO-019：持准入回调的插件起服时不建实例、另一个插件建两个实例，进程照常进玩法模式
 
 ## 20. 埋点 / 分析事件
 
@@ -1181,17 +1362,19 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 | 交接 | `docs/DESIGN-M2.md` 非目标里的服务端资源包分发，改为引用本分册 | 光照会话 | M4-A 签字后 | — | — |
 | Open Question | 版本范围的写法：推荐比较式，只认 `>=` 与 `<`，空格表示同时满足；多数作者要求 Maven 区间时改 | 生产就绪会话 | 本分册契约成稿前 | 技术 | FLOW-PLUGIN-LOAD |
 | Open Question | 回调期间的线程上下文类加载器：推荐启用与停用回调期间切成插件的，监听器与任务里不切；常用库在监听器里也靠它找自带实现时改为都切 | 生产就绪会话 | 本分册契约成稿前 | 技术 | 不卡 |
-| Open Question | 停机时每个插件的停用回调保底多久：推荐每插件保底 1 秒、总上限 15 秒，插件多于 15 个时保底取 15 秒除以插件数 | 生产就绪会话 | 本分册契约成稿前 | 技术 | 不卡 |
+| Open Question | 每个插件的停用回调保底多久：推荐停机时每插件 1 秒、总上限 15 秒，多于 15 个时取 15 秒除以插件数；运行中禁用同用每插件 1 秒 | 生产就绪会话 | 本分册契约成稿前 | 技术 | 不卡 |
 | Open Question | 第三方插件能不能连自己的数据库：推荐能，驱动打进自己的 jar，宿主的库与连接池仍不可见 | Bearisbug | 本分册第一期签字时 | 产品 | 不卡 |
+| Open Question | 本地构建的 dev 宿主怎么校验 `apiVersion`：推荐跳过范围校验，起服汇总里逐个插件提示一行；正式版本号的宿主严格校验 | 生产就绪会话 | 本分册契约成稿前 | 技术 | FLOW-PLUGIN-LOAD |
+| Open Question | 可见面签名门禁的范围：推荐 public 与 protected 都查，标 Internal 的类豁免，`DynamicChunk` 两个字段改走方法 | 生产就绪会话 | 本分册契约成稿前 | 技术 | 不卡 |
 | Open Question | 资源包推送与准入谁先：推荐握手之后、载存档之前先推包，等包时不占存档租约，拒绝原因也能用插件的语言文件 | 光照会话 | 本分册契约成稿前 | 技术 | FLOW-ASSET-JOIN |
 | Open Question | 插件语言文件改走资源包后，`API-PROD-029` 的翻译键门禁怎么改、归谁 | 两个会话 | 本分册契约成稿前 | 技术 | 不卡 |
 | 风险 | Tab 列表可见性也是全进程单槽，两个插件都设置时第二个抛异常，本期没改 | 生产就绪会话 | — | — | — |
 | 交接 | `docs/DESIGN-M2.md` 非目标里的插件依赖、熔断、每插件 classloader 与注解处理器，改为引用本分册 | 生产就绪会话 | M4-A 签字后 | — | — |
-| 交接 | `docs/DESIGN-M2.md` 插件相关的需求与接口，按本分册 §6.2 插件平台改写 | 生产就绪会话 | M4-A 签字后 | — | — |
+| 交接 | `docs/DESIGN-M2.md` 插件相关的需求与接口，含起服模式判定与拒绝原因类型，按本分册 §6.2 插件平台改写 | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `docs/DESIGN-M2.md` §11.2 插件状态机、`ADR-M2-006`、§23 降级手段与 §28.3 补回项按本分册改 | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `docs/DESIGN-M2.md` §28.2 的多插件时谁提供对局转已决，见 `ADR-ECO-006` | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `docs/DESIGN-PLAY.md` §2 非目标的服务端资源包删去，每插件 classloader 出自 `ADR-M2-006`，改引 `ADR-ECO-003` | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `docs/DESIGN-PLAY.md` 背景、§6.2、§28.1 的 D2 与 D7 里插件依赖与准入的写法按本分册改 | 生产就绪会话 | M4-A 签字后 | — | — |
-| 交接 | `docs/DESIGN-PLAY.md` 的准入冲突与托管实例收回，按准入回调与运行中禁用改 | 生产就绪会话 | M4-A 签字后 | — | — |
+| 交接 | `docs/DESIGN-PLAY.md` 的准入冲突、托管实例收回与 `Exit.Kick` 的原因类型，按准入回调与运行中禁用改 | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `docs/DESIGN-PROD.md` 的段收回、停用预算、命令别名与 `ADR-PROD-012`，按本分册改 | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `docs/PLUGINS.md` 的引 SDK、登记入口、带插件起服、能力表与停用预算，按本分册改 | 生产就绪会话 | M4-A 签字后 | — | — |

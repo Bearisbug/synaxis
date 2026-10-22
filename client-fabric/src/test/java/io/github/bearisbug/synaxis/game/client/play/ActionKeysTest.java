@@ -69,7 +69,7 @@ class ActionKeysTest {
         assertEquals(1, ActionKeys.tick(play));
         assertEquals(0, ActionKeys.tick(play));
 
-        assertEquals(List.of(new C2SAction(1, 1, "rush:queue", new C2SAction.None())), sent);
+        assertEquals(List.of(new C2SAction(1, 1, "probe:queue", new C2SAction.None())), sent);
         assertEquals(1, play.actionsSent());
     }
 

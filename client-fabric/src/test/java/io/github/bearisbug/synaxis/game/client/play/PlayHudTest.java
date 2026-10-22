@@ -55,7 +55,7 @@ class PlayHudTest {
         play.receive(hud(set("empty", 2, EncodedComponent.NONE), set("missing", 1, component("missing.bin")),
                 set("hint", 0, component("hint.bin"))), RegistryAccess.EMPTY);
 
-        assertEquals(List.of("rush.hint", "synaxis_test.missing", ""), lines(play));
+        assertEquals(List.of("synaxis.action.cooldown", "synaxis_test.missing", ""), lines(play));
     }
 
     @Test

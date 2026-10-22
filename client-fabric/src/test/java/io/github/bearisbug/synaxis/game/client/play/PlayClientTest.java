@@ -39,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class PlayClientTest {
 
-    private static final String OWNER = "rush";
+    private static final String OWNER = "probe";
     private static final long MS = 1_000_000L;
 
     private final List<PlayMessage> sent = new ArrayList<>();
@@ -66,12 +66,12 @@ class PlayClientTest {
 
         final PlayClient.Scene scene = present(play.scene());
         assertEquals(3, scene.seq());
-        assertEquals("rush:lobby", scene.id());
-        assertEquals("rush", scene.owner());
-        assertEquals("rush.scene.lobby", key(scene.title()));
+        assertEquals("probe:lobby", scene.id());
+        assertEquals("probe", scene.owner());
+        assertEquals("probe.scene.lobby", key(scene.title()));
         final PlayClient.Action action = present(scene.action(0));
-        assertEquals("rush:queue", action.actionId());
-        assertEquals("rush.action.queue", key(action.label()));
+        assertEquals("probe:queue", action.actionId());
+        assertEquals("probe.action.queue", key(action.label()));
         assertEquals(2000, action.cooldownMs());
         assertNull(scene.action(1));
     }
@@ -87,7 +87,7 @@ class PlayClientTest {
                         new PropValue.Row(encode(Component.literal("Bob")), "7", true)))),
                 set("result", Widget.panel(encode(Component.literal("Round over")),
                         List.of(new PropValue.Row(encode(Component.literal("1. Bob")), "7", true)),
-                        List.of(new PropValue.Button("rush:back", encode(Component.literal("Back")))))),
+                        List.of(new PropValue.Button("probe:back", encode(Component.literal("Back")))))),
                 set("bar", new Widget(3, Widget.TOP_CENTER, 1, List.of()))), RegistryAccess.EMPTY);
 
         assertEquals(List.of("timer", "score", "hint", "result"), play.widgets().stream().map(PlayClient.Entry::widgetId).toList());
@@ -101,7 +101,7 @@ class PlayClientTest {
                 score.rows().stream().map(row -> row.label().getString() + " " + row.value() + " " + row.highlight()).toList());
         final PlayClient.Panel panel = assertInstanceOf(PlayClient.Panel.class, entry("result").content());
         assertEquals("Round over", panel.title().getString());
-        assertEquals(List.of("rush:back Back"),
+        assertEquals(List.of("probe:back Back"),
                 panel.buttons().stream().map(button -> button.actionId() + " " + button.label().getString()).toList());
     }
 
@@ -193,7 +193,7 @@ class PlayClientTest {
         play.receive(scene(4, 2000), RegistryAccess.EMPTY);
 
         assertEquals(PlayClient.Press.SENT, play.press(0));
-        assertEquals(List.of(new C2SAction(4, 1, "rush:queue", new C2SAction.None())), sent);
+        assertEquals(List.of(new C2SAction(4, 1, "probe:queue", new C2SAction.None())), sent);
         assertEquals(2000, play.cooldownLeftMs(0));
         assertEquals(1, play.actionsSent());
 
@@ -205,7 +205,7 @@ class PlayClientTest {
 
         now += 1_800 * MS;
         assertEquals(PlayClient.Press.SENT, play.press(0));
-        assertEquals(new C2SAction(4, 2, "rush:queue", new C2SAction.None()), sent.get(1));
+        assertEquals(new C2SAction(4, 2, "probe:queue", new C2SAction.None()), sent.get(1));
     }
 
     @Test
@@ -262,7 +262,7 @@ class PlayClientTest {
     void rejectedClearsTheCooldownAndShowsTheReasonOrTheClientsTextWhenThereIsNone() {
         play.receive(scene(1, 2000), RegistryAccess.EMPTY);
         play.press(0);
-        play.receive(new S2CActionResult(1, ActionResultCode.REJECTED, encode(Component.translatable("rush.hint.failed")), 0),
+        play.receive(new S2CActionResult(1, ActionResultCode.REJECTED, encode(Component.translatable("probe.hint.failed")), 0),
                 RegistryAccess.EMPTY);
         assertEquals(0, play.cooldownLeftMs(0));
 
@@ -272,7 +272,7 @@ class PlayClientTest {
         play.press(0);
         play.receive(new S2CActionResult(3, 200, EncodedComponent.NONE, 0), RegistryAccess.EMPTY);
 
-        assertEquals(List.of("rush.hint.failed []", "synaxis.action.rejected []", "synaxis.action.rejected []"),
+        assertEquals(List.of("probe.hint.failed []", "synaxis.action.rejected []", "synaxis.action.rejected []"),
                 notices.stream().map(PlayClientTest::keyAndArgs).toList());
         assertEquals(0, play.cooldownLeftMs(0));
     }
@@ -302,7 +302,7 @@ class PlayClientTest {
         play.receive(result(1, ActionResultCode.OK, 2000), RegistryAccess.EMPTY);
         assertEquals(0, play.cooldownLeftMs(0));
         assertEquals(PlayClient.Press.SENT, play.press(0));
-        assertEquals(new C2SAction(2, 2, "rush:queue", new C2SAction.None()), sent.get(1));
+        assertEquals(new C2SAction(2, 2, "probe:queue", new C2SAction.None()), sent.get(1));
     }
 
     @Test
@@ -318,13 +318,13 @@ class PlayClientTest {
 
     @Test
     void aRefusalAnsweringTheSceneBeforeLeavesTheCooldownsTheNewTableStarted() {
-        final List<S2CScene.Action> keys = List.of(new S2CScene.Action(0, "rush:a", EncodedComponent.NONE, 2000),
-                new S2CScene.Action(1, "rush:b", EncodedComponent.NONE, 2000),
-                new S2CScene.Action(2, "rush:c", EncodedComponent.NONE, 2000));
-        play.receive(new S2CScene(1, "rush:lobby", EncodedComponent.NONE, S2CScene.CAMERA_VANILLA, S2CScene.CURSOR_LOCKED, keys),
+        final List<S2CScene.Action> keys = List.of(new S2CScene.Action(0, "probe:a", EncodedComponent.NONE, 2000),
+                new S2CScene.Action(1, "probe:b", EncodedComponent.NONE, 2000),
+                new S2CScene.Action(2, "probe:c", EncodedComponent.NONE, 2000));
+        play.receive(new S2CScene(1, "probe:lobby", EncodedComponent.NONE, S2CScene.CAMERA_VANILLA, S2CScene.CURSOR_LOCKED, keys),
                 RegistryAccess.EMPTY);
         for (int slot = 0; slot < 3; slot++) play.press(slot);
-        play.receive(new S2CScene(2, "rush:lobby", EncodedComponent.NONE, S2CScene.CAMERA_VANILLA, S2CScene.CURSOR_LOCKED, keys),
+        play.receive(new S2CScene(2, "probe:lobby", EncodedComponent.NONE, S2CScene.CAMERA_VANILLA, S2CScene.CURSOR_LOCKED, keys),
                 RegistryAccess.EMPTY);
         for (int slot = 0; slot < 3; slot++) play.press(slot);
 
@@ -338,7 +338,7 @@ class PlayClientTest {
     void aResultForNoActionThisConnectionSentIsOnlyRecorded() {
         play.receive(scene(1, 2000), RegistryAccess.EMPTY);
         play.press(0);
-        play.receive(new S2CActionResult(9, ActionResultCode.REJECTED, encode(Component.translatable("rush.hint.failed")), 0),
+        play.receive(new S2CActionResult(9, ActionResultCode.REJECTED, encode(Component.translatable("probe.hint.failed")), 0),
                 RegistryAccess.EMPTY);
 
         assertEquals(9, present(play.lastResult()).actionSeq());
@@ -352,7 +352,7 @@ class PlayClientTest {
     void thePanelIsShownUntilItIsClosedLocallyAndItsNextSetShowsItAgain() {
         play.receive(scene(1, 0), RegistryAccess.EMPTY);
         assertNull(play.panel());
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         final PlayClient.Entry shown = present(play.panel());
         assertEquals("result", shown.widgetId());
 
@@ -360,7 +360,7 @@ class PlayClientTest {
         assertNull(play.panel());
         assertEquals(1, play.widgets().size());
 
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         assertEquals("result", present(play.panel()).widgetId());
         play.receive(hud(new S2CHud.RemoveWidget(OWNER, "result")), RegistryAccess.EMPTY);
         assertNull(play.panel());
@@ -368,7 +368,7 @@ class PlayClientTest {
 
     @Test
     void aPanelWithoutASceneIsNotShown() {
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         assertNull(play.panel());
     }
 
@@ -378,7 +378,7 @@ class PlayClientTest {
         play.receive(hud(set("hint", Widget.text(Widget.TOP_LEFT, 0, EncodedComponent.NONE, 0)),
                 set("timer", Widget.timer(Widget.TOP_CENTER, 0, EncodedComponent.NONE, 10_000, true)),
                 set("score", Widget.scoreboard(Widget.TOP_RIGHT, 0, EncodedComponent.NONE, List.of())),
-                panel("result", "rush:back")), RegistryAccess.EMPTY);
+                panel("result", "probe:back")), RegistryAccess.EMPTY);
 
         assertEquals("result", present(play.panel()).widgetId());
     }
@@ -386,16 +386,16 @@ class PlayClientTest {
     @Test
     void aClickedButtonThatIsRefusedKeepsThePanelWithTheReasonAndOkClosesIt() {
         play.receive(scene(5, 0), RegistryAccess.EMPTY);
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         final PlayClient.Entry shown = present(play.panel());
         final PlayClient.Button back = ((PlayClient.Panel) shown.content()).buttons().getFirst();
 
         play.click(shown, back);
-        assertEquals(List.of(new C2SAction(5, 1, "rush:back", new C2SAction.None())), sent);
-        play.receive(new S2CActionResult(1, ActionResultCode.REJECTED, encode(Component.translatable("rush.hint.failed")), 0),
+        assertEquals(List.of(new C2SAction(5, 1, "probe:back", new C2SAction.None())), sent);
+        play.receive(new S2CActionResult(1, ActionResultCode.REJECTED, encode(Component.translatable("probe.hint.failed")), 0),
                 RegistryAccess.EMPTY);
         assertEquals(shown, play.panel());
-        assertEquals("rush.hint.failed", key(present(play.panelReason(shown))));
+        assertEquals("probe.hint.failed", key(present(play.panelReason(shown))));
         assertEquals(List.of(), notices);
 
         play.click(shown, back);
@@ -415,10 +415,10 @@ class PlayClientTest {
     @Test
     void anOkForAPanelThatWasSetAgainAfterTheClickLeavesTheNewContentShown() {
         play.receive(scene(5, 0), RegistryAccess.EMPTY);
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         final PlayClient.Entry clicked = present(play.panel());
         play.click(clicked, ((PlayClient.Panel) clicked.content()).buttons().getFirst());
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         final PlayClient.Entry next = present(play.panel());
 
         play.receive(result(1, ActionResultCode.OK, 0), RegistryAccess.EMPTY);
@@ -428,21 +428,21 @@ class PlayClientTest {
     @Test
     void aRefusalShowsOnlyOnTheContentWhoseButtonWasClicked() {
         play.receive(scene(5, 0), RegistryAccess.EMPTY);
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         final PlayClient.Entry first = present(play.panel());
         play.click(first, ((PlayClient.Panel) first.content()).buttons().getFirst());
-        play.receive(new S2CActionResult(1, ActionResultCode.REJECTED, encode(Component.translatable("rush.hint.failed")), 0),
+        play.receive(new S2CActionResult(1, ActionResultCode.REJECTED, encode(Component.translatable("probe.hint.failed")), 0),
                 RegistryAccess.EMPTY);
-        assertEquals("rush.hint.failed", key(present(play.panelReason(first))));
+        assertEquals("probe.hint.failed", key(present(play.panelReason(first))));
 
         // The next SET of the same panel is new content, which nothing was refused on
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         final PlayClient.Entry second = present(play.panel());
         assertNull(play.panelReason(second));
 
         // A refusal that arrives after the panel was set again is about the content that was clicked
         play.click(second, ((PlayClient.Panel) second.content()).buttons().getFirst());
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         final PlayClient.Entry third = present(play.panel());
         play.receive(result(2, ActionResultCode.COOLDOWN, 3_000), RegistryAccess.EMPTY);
         assertNull(play.panelReason(third));
@@ -459,7 +459,7 @@ class PlayClientTest {
                 RegistryAccess.EMPTY);
 
         // The scene owner's panel comes first (§6.4.8), and the ok of its button closes it here
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         final PlayClient.Entry front = present(play.panel());
         assertEquals("result", front.widgetId());
         play.click(front, ((PlayClient.Panel) front.content()).buttons().getFirst());
@@ -473,7 +473,7 @@ class PlayClientTest {
     @Test
     void aRefusedButtonWithoutAReasonShowsTheClientsTextAndACooldownWithTheHostsReasonShowsThatReason() {
         play.receive(scene(5, 0), RegistryAccess.EMPTY);
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         final PlayClient.Entry shown = present(play.panel());
         final PlayClient.Button back = ((PlayClient.Panel) shown.content()).buttons().getFirst();
         final List<String> reasons = new ArrayList<>();
@@ -493,7 +493,7 @@ class PlayClientTest {
     @Test
     void anOkForAPanelNoLongerInTheTableChangesNothing() {
         play.receive(scene(5, 0), RegistryAccess.EMPTY);
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         final PlayClient.Entry clicked = present(play.panel());
         play.click(clicked, ((PlayClient.Panel) clicked.content()).buttons().getFirst());
         // The host may take the panel off (a scene switch clears its owner's widgets) before the result arrives
@@ -501,7 +501,7 @@ class PlayClientTest {
 
         play.receive(result(1, ActionResultCode.OK, 0), RegistryAccess.EMPTY);
         assertEquals(List.of(), play.widgets());
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         assertEquals("result", present(play.panel()).widgetId());
     }
 
@@ -522,7 +522,7 @@ class PlayClientTest {
     @Test
     void resetForgetsTheSceneTheWidgetsTheActionsAndTheReadiness() {
         play.receive(scene(1, 2000), RegistryAccess.EMPTY);
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         play.press(0);
         play.tick(new SceneReadyProbe.View(true, null, true));
         play.reset();
@@ -538,7 +538,7 @@ class PlayClientTest {
         play.receive(scene(1, 0), RegistryAccess.EMPTY);
         play.receive(scene(1, 2000), RegistryAccess.EMPTY);
         play.press(0);
-        assertEquals(new C2SAction(1, 1, "rush:queue", new C2SAction.None()), sent.getLast());
+        assertEquals(new C2SAction(1, 1, "probe:queue", new C2SAction.None()), sent.getLast());
         play.tick(new SceneReadyProbe.View(true, null, true));
         assertEquals(new C2SSceneReady(1), sent.getLast());
     }
@@ -546,29 +546,29 @@ class PlayClientTest {
     @Test
     void resetForgetsThePanelsClosedLocallySoTheNewConnectionsPanelShows() {
         play.receive(scene(1, 0), RegistryAccess.EMPTY);
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         play.dismiss(present(play.panel()));
         play.reset();
 
         // The new connection numbers its SETs from 1 again, so its first one carries the number the closed one had
         play.receive(scene(1, 0), RegistryAccess.EMPTY);
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         assertEquals("result", present(play.panel()).widgetId());
     }
 
     @Test
     void resetForgetsWhatWasRefusedOnAPanel() {
         play.receive(scene(1, 0), RegistryAccess.EMPTY);
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         final PlayClient.Entry refused = present(play.panel());
         play.click(refused, ((PlayClient.Panel) refused.content()).buttons().getFirst());
-        play.receive(new S2CActionResult(1, ActionResultCode.REJECTED, encode(Component.translatable("rush.hint.failed")), 0),
+        play.receive(new S2CActionResult(1, ActionResultCode.REJECTED, encode(Component.translatable("probe.hint.failed")), 0),
                 RegistryAccess.EMPTY);
         play.reset();
         assertNull(play.lastResult());
 
         play.receive(scene(1, 0), RegistryAccess.EMPTY);
-        play.receive(hud(panel("result", "rush:back")), RegistryAccess.EMPTY);
+        play.receive(hud(panel("result", "probe:back")), RegistryAccess.EMPTY);
         assertNull(play.panelReason(present(play.panel())));
     }
 
@@ -582,7 +582,7 @@ class PlayClientTest {
         // The new connection sent action 1 only, so a result for action 2 answers nothing it sent
         play.receive(scene(1, 2000), RegistryAccess.EMPTY);
         play.press(0);
-        play.receive(new S2CActionResult(2, ActionResultCode.REJECTED, encode(Component.translatable("rush.hint.failed")), 0),
+        play.receive(new S2CActionResult(2, ActionResultCode.REJECTED, encode(Component.translatable("probe.hint.failed")), 0),
                 RegistryAccess.EMPTY);
 
         assertEquals(2000, play.cooldownLeftMs(0));
@@ -606,8 +606,8 @@ class PlayClientTest {
     }
 
     static S2CScene scene(int seq, int cooldownMs) {
-        return new S2CScene(seq, "rush:lobby", encode(Component.translatable("rush.scene.lobby")), S2CScene.CAMERA_VANILLA,
-                S2CScene.CURSOR_LOCKED, List.of(new S2CScene.Action(0, "rush:queue", encode(Component.translatable("rush.action.queue")),
+        return new S2CScene(seq, "probe:lobby", encode(Component.translatable("probe.scene.lobby")), S2CScene.CAMERA_VANILLA,
+                S2CScene.CURSOR_LOCKED, List.of(new S2CScene.Action(0, "probe:queue", encode(Component.translatable("probe.action.queue")),
                 cooldownMs)));
     }
 

@@ -76,6 +76,6 @@ class SceneReadyProbeTest {
     }
 
     private static PlayClient.Scene scene(int seq) {
-        return new PlayClient.Scene(seq, "rush:lobby", Component.empty(), List.of());
+        return new PlayClient.Scene(seq, "probe:lobby", Component.empty(), List.of());
     }
 }

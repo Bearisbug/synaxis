@@ -25,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * {@code synaxis:play} as a Fabric payload ({@code docs/DESIGN-PLAY.md} {@code API-PLAY-002}): the bytes are
  * {@code :protocol}'s in both directions; a malformed message from the server throws out of the decoder, which
- * Fabric answers by dropping the connection, the way {@code rts:game} does; a {@code msg_id} version 1 does
- * not define is dropped with a warning instead.
+ * Fabric answers by dropping the connection; a {@code msg_id} version 1 does not define is dropped with a warning
+ * instead.
  */
 class PlayPayloadTest {
 
@@ -37,7 +37,7 @@ class PlayPayloadTest {
     @Test
     void theTwoUpwardMessagesGoOutAsTheSharedCodecWritesThem() {
         for (final PlayMessage message : List.<PlayMessage>of(new C2SSceneReady(3),
-                new C2SAction(3, 7, "rush:queue", new C2SAction.OfBlock(1, -2, 3)))) {
+                new C2SAction(3, 7, "probe:queue", new C2SAction.OfBlock(1, -2, 3)))) {
             final RegistryFriendlyByteBuf buf = buffer();
             PlayPayload.CODEC.encode(buf, new PlayPayload(message));
             final byte[] onTheWire = new byte[buf.readableBytes()];
@@ -52,9 +52,9 @@ class PlayPayloadTest {
     @Test
     void theThreeDownwardMessagesComeBackAsTheySent() {
         for (final PlayMessage message : List.<PlayMessage>of(
-                new S2CScene(2, "rush:round", EncodedComponent.NONE, 0, 0, List.of()),
-                new S2CHud(List.of(new S2CHud.SetWidget("rush", "timer", Widget.timer(Widget.TOP_CENTER, 0,
-                        EncodedComponent.NONE, 45_000, true)), new S2CHud.ClearOwner("rush"))),
+                new S2CScene(2, "probe:round", EncodedComponent.NONE, 0, 0, List.of()),
+                new S2CHud(List.of(new S2CHud.SetWidget("probe", "timer", Widget.timer(Widget.TOP_CENTER, 0,
+                        EncodedComponent.NONE, 45_000, true)), new S2CHud.ClearOwner("probe"))),
                 new S2CActionResult(7, ActionResultCode.COOLDOWN, EncodedComponent.NONE, 1_500))) {
             final RegistryFriendlyByteBuf buf = buffer();
             PlayPayload.CODEC.encode(buf, new PlayPayload(message));
@@ -80,7 +80,7 @@ class PlayPayloadTest {
         out.writeVarInt(S2CHud.MSG_ID);
         out.writeVarInt(1);
         out.writeUnsignedByte(9);
-        out.writeString("rush");
+        out.writeString("probe");
         out.writeString("timer");
         final RegistryFriendlyByteBuf buf = buffer();
         buf.writeBytes(out.toByteArray());

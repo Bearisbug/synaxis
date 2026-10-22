@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * The client half of the first step of {@code docs/DESIGN-PLAY.md} §26 S1: the vanilla component stream codec
  * reads the bytes the host's {@code ComponentBytes} writes. The three files under {@code play-vectors/component/}
  * are the ones the server's {@code PlayComponentVectorTest} holds {@code ComponentBytes} to, and the components
- * the fixture of job {@code rush} sends; the build points {@code synaxis.play-vectors.dir} at that directory.
+ * the fixture of the {@code synaxis:play} gametest sends; the build points {@code synaxis.play-vectors.dir} at that directory.
  * <p>
  * Should the codec not read them, the fallback of {@code API-PLAY-002} applies: the host writes the engine's JSON
  * encoding instead, which changes {@code ComponentBytes} and {@link PlayComponents} and nothing else.
@@ -42,7 +42,7 @@ class PlayComponentDecodeTest {
         final Component title = decode("title.bin");
 
         final TranslatableContents contents = assertInstanceOf(TranslatableContents.class, title.getContents());
-        assertEquals("rush.scene.lobby", contents.getKey());
+        assertEquals("key.category.synaxis.play", contents.getKey());
         assertEquals(List.of(), arguments(contents));
         assertNull(contents.getFallback());
         assertNull(title.getStyle().getColor());
@@ -53,9 +53,9 @@ class PlayComponentDecodeTest {
         final Component hint = decode("hint.bin");
 
         final TranslatableContents contents = assertInstanceOf(TranslatableContents.class, hint.getContents());
-        assertEquals("rush.hint", contents.getKey());
+        assertEquals("synaxis.action.cooldown", contents.getKey());
         assertEquals(List.of("1"), arguments(contents));
-        assertEquals("The fallback of rush.hint, queued: %s", contents.getFallback());
+        assertEquals("The fallback of synaxis.action.cooldown: %s", contents.getFallback());
         assertEquals(0xFFAA00, colour(hint));
     }
 

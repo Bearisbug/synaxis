@@ -3,7 +3,6 @@
 
 DROP TABLE transfer_nonce;
 DROP TABLE character_section;
-DROP TABLE character_location;
 DROP TABLE character;
 DROP TABLE shard_session;
 DROP TABLE account;

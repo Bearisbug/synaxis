@@ -1,4 +1,4 @@
--- docs/DESIGN-M3.md API-M3-013 and §25, docs/DESIGN-PROD.md §25 V6: the world state flags, the
+-- docs/DESIGN-M3.md API-M3-013 and §25, docs/DESIGN-PROD.md §25 V5: the world state flags, the
 -- world state every channel of a region and every map release share. A write is conditional on
 -- version (new key 0, written as version + 1); a shard only reads and writes the rows of its own
 -- map_id and region_id.

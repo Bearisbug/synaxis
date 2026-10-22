@@ -1,4 +1,4 @@
--- docs/DESIGN-PROD.md §7, §9 and §25 V4: bans and the whitelist (API-PROD-009).
+-- docs/DESIGN-PROD.md §7, §9 and §25 V3: bans and the whitelist (API-PROD-009).
 -- Neither has a foreign key to account: an account can be banned or invited before it ever logged
 -- in (§9). A ban is in force while revoked_at is null and expires_at is null or later than now()
 -- (§11: derived, no state column). created_by and revoked_by are the operators, the nil UUID for

@@ -50,7 +50,7 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
     private static final int FORMAT_VERSION = 1;
     /** §9: how a {@code region_id} and a {@code gate_id} are written. */
     private static final Pattern ID = Pattern.compile("[a-z0-9][a-z0-9_-]{0,31}");
-    // The CHECKs of shard_heartbeat (V5__shard_heartbeat.sql): a channel the directory takes can always
+    // The CHECKs of shard_heartbeat (V4__shard_heartbeat.sql): a channel the directory takes can always
     // write its heartbeat row, so a change here needs a migration
     private static final int MAX_CHANNEL = 999;
     private static final int MAX_HOST_LENGTH = 253;

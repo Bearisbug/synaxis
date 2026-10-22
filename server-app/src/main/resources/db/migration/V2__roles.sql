@@ -1,4 +1,4 @@
--- docs/DESIGN-PROD.md §7, §9 and §25 V3: roles and the permission nodes they grant (API-PROD-010).
+-- docs/DESIGN-PROD.md §7, §9 and §25 V2: roles and the permission nodes they grant (API-PROD-010).
 -- A node is lower case and dotted; its last segment may be * (gm.* grants every node under gm.).
 
 CREATE TABLE role (

@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 /**
  * The grammar of a permission node and what a granted node covers ({@code docs/DESIGN-PROD.md}
  * {@code API-PROD-010}, §9): lower case and dotted, and a granted node may end in {@code *}. The
- * {@code CHECK} on {@code role_permission.node} in {@code V3__roles.sql} is the same grammar.
+ * {@code CHECK} on {@code role_permission.node} in {@code V2__roles.sql} is the same grammar.
  */
 final class PermissionNodes {
 

@@ -30,23 +30,10 @@ CREATE TABLE character (
     slot             smallint NOT NULL CHECK (slot >= 0),
     version          bigint   NOT NULL DEFAULT 0 CHECK (version >= 0),
     lease_session_id bigint REFERENCES shard_session (session_id),
-    current_region   text,
     last_saved_at    timestamptz,
     UNIQUE (account_uuid, slot)
 );
 CREATE INDEX character_lease_session_id ON character (lease_session_id) WHERE lease_session_id IS NOT NULL;
-
-CREATE TABLE character_location (
-    character_id bigint           NOT NULL REFERENCES character (character_id) ON DELETE CASCADE,
-    region_id    text             NOT NULL,
-    x            double precision NOT NULL CHECK (x NOT IN ('NaN', 'Infinity', '-Infinity')),
-    y            double precision NOT NULL CHECK (y NOT IN ('NaN', 'Infinity', '-Infinity')),
-    z            double precision NOT NULL CHECK (z NOT IN ('NaN', 'Infinity', '-Infinity')),
-    yaw          real             NOT NULL CHECK (yaw NOT IN ('NaN', 'Infinity', '-Infinity')),
-    pitch        real             NOT NULL CHECK (pitch NOT IN ('NaN', 'Infinity', '-Infinity')),
-    updated_at   timestamptz      NOT NULL DEFAULT now(),
-    PRIMARY KEY (character_id, region_id)
-);
 
 -- A plugin section; 65,536 bytes of JSON at most (§9)
 CREATE TABLE character_section (

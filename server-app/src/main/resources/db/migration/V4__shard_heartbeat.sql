@@ -1,4 +1,4 @@
--- docs/DESIGN-M3.md API-M3-010 and §25, docs/DESIGN-PROD.md §25 V5: the heartbeat of the map shards
+-- docs/DESIGN-M3.md API-M3-010 and §25, docs/DESIGN-PROD.md §25 V4: the heartbeat of the map shards
 -- in the directory mode. A shard overwrites its own row every 5 s; a row counts as live while
 -- updated_at > now() - interval '15 seconds', judged by the database clock. Rows are never deleted:
 -- a stopped or crashed shard drops out of the choice of a channel by expiring.

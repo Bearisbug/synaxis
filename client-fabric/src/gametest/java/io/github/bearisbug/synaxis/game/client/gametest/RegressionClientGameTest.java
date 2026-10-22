@@ -38,7 +38,8 @@ import org.jspecify.annotations.Nullable;
  * The regression assertions R1 to R5 of {@code API-PROD-026} ({@code REQ-PROD-030}), run by the real
  * client against a server-app.
  * <p>
- * R1 the mod and its nested :protocol are loaded, R2 the configuration phase handshake is accepted,
+ * R1 the mod and its nested :protocol are loaded, R2 the configuration phase handshake is accepted
+ * (answered, or on a core mode server sent and let into the world),
  * R3 the client reaches the world (in the full online tier, over an encrypted connection), R4 the
  * sky light the server sent is 15 above the ground and 0 below it, R5 a protocol error disconnects
  * with a readable sentence rather than the raw key. R5 is last because it ends the connection.
@@ -103,10 +104,15 @@ public final class RegressionClientGameTest implements FabricClientGameTest {
                 CONNECT_TIMEOUT_TICKS);
 
         final ClientHandshake handshake = staticField(ClientHandshake.class, "HANDSHAKE");
-        report.put(2, context.computeOnClient(_ -> handshake.state() == ClientHandshake.State.VERIFIED),
-                context.computeOnClient(_ -> "state=" + handshake.state()
-                        + (handshake.serverHello() == null ? "" : " schema_version=" + handshake.serverHello().schemaVersion())));
         final boolean inWorld = context.computeOnClient(RegressionClientGameTest::inWorld);
+        // A core mode server answers the hello on its tick thread without holding the configuration
+        // phase for it. A hello it handles after that phase gets its answer in the play phase, where
+        // the mod does not listen, and the client stays SENT in the world; the server's acceptance is
+        // then the client_verified of its ledger, which the judge counts.
+        final ClientHandshake.State state = context.computeOnClient(_ -> handshake.state());
+        report.put(2, state == ClientHandshake.State.VERIFIED || (state == ClientHandshake.State.SENT && inWorld),
+                context.computeOnClient(_ -> "state=" + handshake.state() + " in_world=" + inWorld
+                        + (handshake.serverHello() == null ? "" : " schema_version=" + handshake.serverHello().schemaVersion())));
         final boolean online = System.getProperty(SESSION_HOST_PROPERTY) != null;
         final boolean encrypted = context.computeOnClient(RegressionClientGameTest::encrypted);
         report.put(3, inWorld && (encrypted || !online), context.computeOnClient(client -> inWorld

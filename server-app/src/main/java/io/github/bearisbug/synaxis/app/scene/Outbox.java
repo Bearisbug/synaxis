@@ -1,9 +1,9 @@
 package io.github.bearisbug.synaxis.app.scene;
 
-import io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol;
-import io.github.bearisbug.synaxis.game.protocol.play.S2CHud;
-import io.github.bearisbug.synaxis.game.protocol.play.S2CScene;
-import io.github.bearisbug.synaxis.game.protocol.play.Widget;
+import io.github.bearisbug.synaxis.protocol.play.PlayProtocol;
+import io.github.bearisbug.synaxis.protocol.play.S2CHud;
+import io.github.bearisbug.synaxis.protocol.play.S2CScene;
+import io.github.bearisbug.synaxis.protocol.play.Widget;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;

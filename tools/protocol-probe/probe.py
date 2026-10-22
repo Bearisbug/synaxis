@@ -59,7 +59,7 @@ COST_PER_EMPTY_COMPOUND = 52
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PACKET_VANILLA = REPO_ROOT / "src/main/java/io/github/bearisbug/synaxis/network/packet/PacketVanilla.java"
 DATA_COMPONENTS = REPO_ROOT / "src/main/java/io/github/bearisbug/synaxis/component/DataComponents.java"
-PROTOCOL_SCHEMA = REPO_ROOT / "protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/ProtocolSchema.java"
+PROTOCOL_SCHEMA = REPO_ROOT / "protocol/src/main/java/io/github/bearisbug/synaxis/protocol/ProtocolSchema.java"
 
 # The host reserved handshake channel and its two message ids, see docs/DESIGN-M2.md API-M2-002
 HANDSHAKE_CHANNEL = "synaxis:handshake"

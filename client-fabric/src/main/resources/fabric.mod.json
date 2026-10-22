@@ -16,7 +16,7 @@
 	"environment": "client",
 	"entrypoints": {
 		"client": [
-			"io.github.bearisbug.synaxis.game.client.SynaxisClientMod"
+			"io.github.bearisbug.synaxis.client.SynaxisClientMod"
 		]
 	},
 	"mixins": [

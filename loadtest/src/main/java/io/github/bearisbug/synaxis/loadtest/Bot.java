@@ -5,8 +5,6 @@ import com.google.gson.JsonObject;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.crypto.KeyUtils;
 import io.github.bearisbug.synaxis.crypto.LoginCrypt;
-import io.github.bearisbug.synaxis.game.protocol.C2SHello;
-import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.loadtest.Profile.GateWalk;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.network.ConnectionState;
@@ -52,6 +50,8 @@ import io.github.bearisbug.synaxis.network.packet.server.play.PlayerPositionAndL
 import io.github.bearisbug.synaxis.network.packet.server.play.SpawnEntityPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.StartConfigurationPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
+import io.github.bearisbug.synaxis.protocol.C2SHello;
+import io.github.bearisbug.synaxis.protocol.ProtocolSchema;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.TranslatableComponent;

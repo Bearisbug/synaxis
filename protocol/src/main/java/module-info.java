@@ -1,4 +1,4 @@
-module io.github.bearisbug.synaxis.game.protocol {
-    exports io.github.bearisbug.synaxis.game.protocol;
-    exports io.github.bearisbug.synaxis.game.protocol.play;
+module io.github.bearisbug.synaxis.protocol {
+    exports io.github.bearisbug.synaxis.protocol;
+    exports io.github.bearisbug.synaxis.protocol.play;
 }

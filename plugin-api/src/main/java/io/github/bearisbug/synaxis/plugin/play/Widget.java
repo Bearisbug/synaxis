@@ -1,7 +1,7 @@
 package io.github.bearisbug.synaxis.plugin.play;
 
-import io.github.bearisbug.synaxis.game.protocol.play.PropValue;
-import io.github.bearisbug.synaxis.game.protocol.play.S2CHud;
+import io.github.bearisbug.synaxis.protocol.play.PropValue;
+import io.github.bearisbug.synaxis.protocol.play.S2CHud;
 import net.kyori.adventure.text.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -15,14 +15,14 @@ import java.util.List;
  * four below. Text is sent as a component, a translate key with a fallback where the text is new.
  * The host checks the encoded size when the widget is set ({@link Hud#set}); the limits that need no
  * encoding are checked here, against the limits of {@code synaxis:play} in
- * {@code io.github.bearisbug.synaxis.game.protocol.play}, and break with an
+ * {@code io.github.bearisbug.synaxis.protocol.play}, and break with an
  * {@link IllegalArgumentException}.
  */
 public sealed interface Widget {
 
     /**
      * The id of the widget, unique among this plugin's widgets: 1 to
-     * {@value io.github.bearisbug.synaxis.game.protocol.play.S2CHud#MAX_WIDGET_ID_BYTES} bytes of UTF-8.
+     * {@value io.github.bearisbug.synaxis.protocol.play.S2CHud#MAX_WIDGET_ID_BYTES} bytes of UTF-8.
      *
      * @return the widget id
      */
@@ -100,7 +100,7 @@ public sealed interface Widget {
      * @param slot  where it goes
      * @param order its position in the slot
      * @param title the title
-     * @param rows  at most {@value io.github.bearisbug.synaxis.game.protocol.play.PropValue.Rows#MAX_ROWS}
+     * @param rows  at most {@value io.github.bearisbug.synaxis.protocol.play.PropValue.Rows#MAX_ROWS}
      *              rows; copied
      */
     record Scoreboard(String id, HudSlot slot, int order, Component title, List<Row> rows) implements Widget {
@@ -126,9 +126,9 @@ public sealed interface Widget {
      *
      * @param id      the widget id
      * @param title   the title
-     * @param rows    at most {@value io.github.bearisbug.synaxis.game.protocol.play.Widget#MAX_PANEL_ROWS}
+     * @param rows    at most {@value io.github.bearisbug.synaxis.protocol.play.Widget#MAX_PANEL_ROWS}
      *                rows; copied
-     * @param buttons at most {@value io.github.bearisbug.synaxis.game.protocol.play.PropValue.Buttons#MAX_BUTTONS}
+     * @param buttons at most {@value io.github.bearisbug.synaxis.protocol.play.PropValue.Buttons#MAX_BUTTONS}
      *                buttons; copied
      */
     record Panel(String id, Component title, List<Row> rows, List<Button> buttons) implements Widget {
@@ -143,7 +143,7 @@ public sealed interface Widget {
             checkId(id);
             rows = List.copyOf(rows);
             buttons = List.copyOf(buttons);
-            final int maxRows = io.github.bearisbug.synaxis.game.protocol.play.Widget.MAX_PANEL_ROWS;
+            final int maxRows = io.github.bearisbug.synaxis.protocol.play.Widget.MAX_PANEL_ROWS;
             if (rows.size() > maxRows)
                 throw new IllegalArgumentException("a panel has at most " + maxRows + " rows, not " + rows.size());
             if (buttons.size() > PropValue.Buttons.MAX_BUTTONS)
@@ -167,7 +167,7 @@ public sealed interface Widget {
      *
      * @param label     the name of the row
      * @param value     its value, at most
-     *                  {@value io.github.bearisbug.synaxis.game.protocol.play.PropValue.Row#MAX_VALUE_BYTES} bytes
+     *                  {@value io.github.bearisbug.synaxis.protocol.play.PropValue.Row#MAX_VALUE_BYTES} bytes
      *                  of UTF-8
      * @param highlight whether the row is highlighted, such as the player's own
      */

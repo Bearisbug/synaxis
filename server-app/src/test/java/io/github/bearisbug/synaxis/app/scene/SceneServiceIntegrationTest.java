@@ -4,15 +4,6 @@ import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.PlayerTickEvent;
-import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
-import io.github.bearisbug.synaxis.game.protocol.play.ActionResultCode;
-import io.github.bearisbug.synaxis.game.protocol.play.C2SAction;
-import io.github.bearisbug.synaxis.game.protocol.play.C2SSceneReady;
-import io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent;
-import io.github.bearisbug.synaxis.game.protocol.play.PlayMessage;
-import io.github.bearisbug.synaxis.game.protocol.play.S2CActionResult;
-import io.github.bearisbug.synaxis.game.protocol.play.S2CHud;
-import io.github.bearisbug.synaxis.game.protocol.play.S2CScene;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
@@ -27,6 +18,15 @@ import io.github.bearisbug.synaxis.plugin.play.PluginPlay;
 import io.github.bearisbug.synaxis.plugin.play.SceneSpec;
 import io.github.bearisbug.synaxis.plugin.play.Target;
 import io.github.bearisbug.synaxis.plugin.play.Widget;
+import io.github.bearisbug.synaxis.protocol.MsgBuf;
+import io.github.bearisbug.synaxis.protocol.play.ActionResultCode;
+import io.github.bearisbug.synaxis.protocol.play.C2SAction;
+import io.github.bearisbug.synaxis.protocol.play.C2SSceneReady;
+import io.github.bearisbug.synaxis.protocol.play.EncodedComponent;
+import io.github.bearisbug.synaxis.protocol.play.PlayMessage;
+import io.github.bearisbug.synaxis.protocol.play.S2CActionResult;
+import io.github.bearisbug.synaxis.protocol.play.S2CHud;
+import io.github.bearisbug.synaxis.protocol.play.S2CScene;
 import io.github.bearisbug.synaxis.testing.Collector;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
@@ -188,7 +188,7 @@ class SceneServiceIntegrationTest {
         owned(client.player(), () -> probe.enter(client.player(), ROUND));
         env.tick();
 
-        final Map<String, Map<String, io.github.bearisbug.synaxis.game.protocol.play.Widget>> shown =
+        final Map<String, Map<String, io.github.bearisbug.synaxis.protocol.play.Widget>> shown =
                 SceneTestKit.apply(new HashMap<>(), SceneTestKit.messages(packets));
         assertEquals(Set.of("x"), shown.keySet(), "the widgets left on the client: " + shown);
         assertEquals(Set.of("banner"), shown.get("x").keySet());

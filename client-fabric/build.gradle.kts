@@ -4,7 +4,7 @@ plugins {
     id("fabric-loom") version "1.17.21"
 }
 
-group = "io.github.bearisbug.synaxis.game"
+group = "io.github.bearisbug.synaxis"
 
 // The mod version is what players see in the mod list, so it stays SemVer; the engine's own
 // version scheme (`dev` unless SYNAXIS_VERSION says otherwise) is what :protocol is published
@@ -191,7 +191,7 @@ val verifyModJar = tasks.register("verifyModJar") {
             val engine = entries.filter {
                 it.endsWith(".class") &&
                     it.startsWith("io/github/bearisbug/synaxis/") &&
-                    !it.startsWith("io/github/bearisbug/synaxis/game/client/")
+                    !it.startsWith("io/github/bearisbug/synaxis/client/")
             }
             check(engine.isEmpty()) { "模组 jar 里混进了客户端包之外的服务端类：${engine.take(5)}" }
 

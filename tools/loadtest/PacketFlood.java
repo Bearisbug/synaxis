@@ -140,7 +140,7 @@ public final class PacketFlood {
             throw new IllegalStateException("run this from the worktree root, " + packetVanilla + " is not there");
         final String source = Files.readString(packetVanilla);
         final Path protocolSchema = repository.resolve(
-                "protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/ProtocolSchema.java");
+                "protocol/src/main/java/io/github/bearisbug/synaxis/protocol/ProtocolSchema.java");
         final Matcher schema = Pattern.compile("SCHEMA_VERSION\\s*=\\s*(\\d+)")
                 .matcher(Files.readString(protocolSchema));
         if (!schema.find()) throw new IllegalStateException("cannot find SCHEMA_VERSION in " + protocolSchema);

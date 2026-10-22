@@ -6,15 +6,15 @@
 	"environment": "client",
 	"entrypoints": {
 		"client": [
-			"io.github.bearisbug.synaxis.game.client.gametest.light.LightProbe",
-			"io.github.bearisbug.synaxis.game.client.gametest.play.PlayTestHook"
+			"io.github.bearisbug.synaxis.client.gametest.light.LightProbe",
+			"io.github.bearisbug.synaxis.client.gametest.play.PlayTestHook"
 		],
 		"fabric-client-gametest": [
-			"io.github.bearisbug.synaxis.game.client.gametest.light.LightClientGameTest",
-			"io.github.bearisbug.synaxis.game.client.gametest.RegressionClientGameTest",
-			"io.github.bearisbug.synaxis.game.client.gametest.PlayableClientGameTest",
-			"io.github.bearisbug.synaxis.game.client.gametest.TransferRoundTripClientGameTest",
-			"io.github.bearisbug.synaxis.game.client.gametest.play.PlayClientGameTest"
+			"io.github.bearisbug.synaxis.client.gametest.light.LightClientGameTest",
+			"io.github.bearisbug.synaxis.client.gametest.RegressionClientGameTest",
+			"io.github.bearisbug.synaxis.client.gametest.PlayableClientGameTest",
+			"io.github.bearisbug.synaxis.client.gametest.TransferRoundTripClientGameTest",
+			"io.github.bearisbug.synaxis.client.gametest.play.PlayClientGameTest"
 		]
 	},
 	"mixins": [

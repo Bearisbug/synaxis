@@ -47,7 +47,7 @@ public class BakerArchitectureTest {
     private static boolean isEngine(JavaClass owner) {
         final String pkg = owner.getPackageName();
         return inTree(pkg, "io.github.bearisbug.synaxis")
-                && !inTree(pkg, "io.github.bearisbug.synaxis.game")
+                && !inTree(pkg, "io.github.bearisbug.synaxis.protocol")
                 && !inTree(pkg, "io.github.bearisbug.synaxis.plugin")
                 && !inTree(pkg, "io.github.bearisbug.synaxis.app")
                 && !inTree(pkg, "io.github.bearisbug.synaxis.baker")

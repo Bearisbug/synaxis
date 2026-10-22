@@ -93,7 +93,6 @@ public class ArchitectureTest {
      * its classpath. See {@code docs/DESIGN-M2.md} §24 and §28.
      */
     private static final String[] OTHER_MODULE_PACKAGES = {
-            "io.github.bearisbug.synaxis.game..",
             "io.github.bearisbug.synaxis.protocol..",
             "io.github.bearisbug.synaxis.plugin..",
             "io.github.bearisbug.synaxis.app..",

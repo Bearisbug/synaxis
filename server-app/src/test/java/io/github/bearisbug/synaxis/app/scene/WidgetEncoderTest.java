@@ -1,11 +1,11 @@
 package io.github.bearisbug.synaxis.app.scene;
 
-import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
-import io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent;
-import io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol;
-import io.github.bearisbug.synaxis.game.protocol.play.PropValue;
 import io.github.bearisbug.synaxis.plugin.play.HudSlot;
 import io.github.bearisbug.synaxis.plugin.play.Widget;
+import io.github.bearisbug.synaxis.protocol.MsgBuf;
+import io.github.bearisbug.synaxis.protocol.play.EncodedComponent;
+import io.github.bearisbug.synaxis.protocol.play.PlayProtocol;
+import io.github.bearisbug.synaxis.protocol.play.PropValue;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ class WidgetEncoderTest {
         return new EncodedComponent(ComponentBytes.encode(component));
     }
 
-    private static int size(io.github.bearisbug.synaxis.game.protocol.play.Widget widget) {
+    private static int size(io.github.bearisbug.synaxis.protocol.play.Widget widget) {
         final MsgBuf buf = MsgBuf.writing();
         widget.write(buf);
         return buf.toByteArray().length;
@@ -53,12 +53,12 @@ class WidgetEncoderTest {
         final WidgetEncoder.Encoded panel = WidgetEncoder.encode("probe", new Widget.Panel("result",
                 Component.text("Result"), List.of(row), List.of(new Widget.Button("back", Component.text("Back")))));
 
-        assertEquals(io.github.bearisbug.synaxis.game.protocol.play.Widget.text(1, 3, encoded(HINT), 5_000), text.widget());
-        assertEquals(io.github.bearisbug.synaxis.game.protocol.play.Widget.timer(2, 0, encoded(Component.text("Round")),
+        assertEquals(io.github.bearisbug.synaxis.protocol.play.Widget.text(1, 3, encoded(HINT), 5_000), text.widget());
+        assertEquals(io.github.bearisbug.synaxis.protocol.play.Widget.timer(2, 0, encoded(Component.text("Round")),
                 45_000, true), timer.widget());
-        assertEquals(io.github.bearisbug.synaxis.game.protocol.play.Widget.scoreboard(4, 1,
+        assertEquals(io.github.bearisbug.synaxis.protocol.play.Widget.scoreboard(4, 1,
                 encoded(Component.text("Score")), List.of(wireRow)), board.widget());
-        assertEquals(io.github.bearisbug.synaxis.game.protocol.play.Widget.panel(encoded(Component.text("Result")),
+        assertEquals(io.github.bearisbug.synaxis.protocol.play.Widget.panel(encoded(Component.text("Result")),
                 List.of(wireRow), List.of(new PropValue.Button("probe:back", encoded(Component.text("Back"))))),
                 panel.widget());
         assertEquals(Set.of(), text.buttonActions());

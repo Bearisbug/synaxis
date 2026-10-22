@@ -1,6 +1,6 @@
 package io.github.bearisbug.synaxis.app.scene;
 
-import io.github.bearisbug.synaxis.game.protocol.play.S2CScene;
+import io.github.bearisbug.synaxis.protocol.play.S2CScene;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;

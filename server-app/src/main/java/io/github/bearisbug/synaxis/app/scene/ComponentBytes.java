@@ -1,7 +1,7 @@
 package io.github.bearisbug.synaxis.app.scene;
 
-import io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import io.github.bearisbug.synaxis.protocol.play.EncodedComponent;
 import net.kyori.adventure.text.Component;
 
 /**

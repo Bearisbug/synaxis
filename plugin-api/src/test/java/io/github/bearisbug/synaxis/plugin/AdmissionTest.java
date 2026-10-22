@@ -24,7 +24,7 @@ class AdmissionTest {
     void aRejectWithoutAReasonKeyIsRefused() {
         final NullPointerException refused = assertThrows(NullPointerException.class, () -> new Admission.Reject(noKey()));
         assertEquals("reasonKey", refused.getMessage());
-        assertEquals(DisconnectKeys.MATCH_UNAVAILABLE, new Admission.Reject(DisconnectKeys.MATCH_UNAVAILABLE).reasonKey());
+        assertEquals(DisconnectKeys.INSTANCE_UNAVAILABLE, new Admission.Reject(DisconnectKeys.INSTANCE_UNAVAILABLE).reasonKey());
     }
 
     private static @Nullable Instance noInstance() {

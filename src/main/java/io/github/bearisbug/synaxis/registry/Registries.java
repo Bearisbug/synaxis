@@ -32,7 +32,7 @@ public interface Registries {
     /**
      * Loads the whole vanilla data from the classpath on every call and returns a new, independent, writable registry
      * set that is never frozen, so keep the result instead of calling this repeatedly. It sees none of the entries a
-     * {@link io.github.bearisbug.synaxis.ServerProcess} registers (such as a host's {@code synaxis:match}); encode,
+     * {@link io.github.bearisbug.synaxis.ServerProcess} registers (such as a host's {@code synaxis:managed}); encode,
      * decode and look up with {@link io.github.bearisbug.synaxis.ServerProcess#registries()} or the process a plugin
      * context gives.
      *

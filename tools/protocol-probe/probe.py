@@ -1136,7 +1136,8 @@ def split_ignored(item: str) -> tuple[str, str]:
     colon = item.rfind(":")
     slash = item.rfind("/", 0, colon)
     if colon < 0 or slash < 0 or ":" not in item[:slash]:
-        raise SystemExit(f"--ignore {item}: expected <registry>/<entry>, as in minecraft:dimension_type/synaxis:match")
+        raise SystemExit(f"--ignore {item}: expected <registry>/<entry>, "
+                         "as in minecraft:dimension_type/synaxis:managed")
     return item[:slash], item[slash + 1:]
 
 
@@ -1292,7 +1293,7 @@ def build_parser() -> argparse.ArgumentParser:
                                         "registry-data-26.2.bin")
     compare.add_argument("recorded", help="the dump record-registry wrote")
     compare.add_argument("--ignore", action="append", default=[], metavar="REGISTRY/ENTRY",
-                         help="leave this entry out on both sides, e.g. minecraft:dimension_type/synaxis:match; "
+                         help="leave this entry out on both sides, e.g. minecraft:dimension_type/synaxis:managed; "
                               "repeatable")
     compare.set_defaults(run=cmd_compare_registry)
 

@@ -15,8 +15,8 @@ class ExitTest {
 
     @Test
     void aKickHasAReasonAndAKeyAloneIsTheTranslatableComponentOfThatKey() {
-        assertEquals(new Exit.Kick(Component.translatable(DisconnectKeys.MATCH_UNAVAILABLE)),
-                new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE));
+        assertEquals(new Exit.Kick(Component.translatable(DisconnectKeys.INSTANCE_UNAVAILABLE)),
+                new Exit.Kick(DisconnectKeys.INSTANCE_UNAVAILABLE));
         assertThrows(NullPointerException.class, () -> new Exit.Kick((Component) null));
     }
 }

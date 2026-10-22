@@ -71,7 +71,7 @@ class CoreModeIntegrationTest {
     }
 
     private static InstanceContainer core(Env env, PluginHost host) {
-        return CoreMode.start(env.process(), host, Main.registerMatchDimensionType(env.process()),
+        return CoreMode.start(env.process(), host, Main.registerManagedDimensionType(env.process()),
                 CoreMode.Setting.AUTO);
     }
 

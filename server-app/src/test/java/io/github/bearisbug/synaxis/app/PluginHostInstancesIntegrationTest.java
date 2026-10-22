@@ -70,7 +70,7 @@ class PluginHostInstancesIntegrationTest {
     }
 
     private PluginHost host(Env env) {
-        Main.registerMatchDimensionType(env.process());
+        Main.registerManagedDimensionType(env.process());
         final EventLedger opened = new EventLedger(workingDirectory.resolve("logs"), "test",
                 EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
         opened.start();
@@ -114,7 +114,7 @@ class PluginHostInstancesIntegrationTest {
         assertEquals(0, env.process().instance().getInstances().size());
         assertEquals(CoreMode.Mode.REFUSED, CoreMode.decide(CoreMode.Setting.AUTO, host.attemptedPluginCount(),
                 host.hasAdmissionProvider(), env.process().instance().getInstances().size()),
-                "the instance taken back counts as no running match");
+                "the instance taken back counts as no running instance");
         final List<String> closed = closedLines(readLedger());
         assertEquals(1, closed.size(), closed.toString());
         assertTrue(closed.getFirst().contains("\"cause\":\"plugin_disabled\""), closed.getFirst());

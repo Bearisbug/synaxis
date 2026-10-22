@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * second half of REQ-M2-024).
  * <p>
  * <b>Two threads share one decision.</b> {@code C2S_HELLO} arrives as a custom payload, which the
- * engine interprets and dispatches from inside a tick; the connection is let into a match by
+ * engine interprets and dispatches from inside a tick; the connection is let into an instance by
  * setting the spawning instance, which is only meaningful on the configuration virtual thread that
  * event runs on. A {@link CompletableFuture} per connection is the whole mechanism, and it is also
  * the only arbiter: the tick thread judges a hello only if its {@code complete} wins, the waiting

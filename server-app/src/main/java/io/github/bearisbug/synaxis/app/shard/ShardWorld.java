@@ -151,7 +151,7 @@ public final class ShardWorld {
     }
 
     /**
-     * Step (3) of {@code Main}, after the match dimension type, while the registries still take new
+     * Step (3) of {@code Main}, after the managed dimension type, while the registries still take new
      * entries: checks the view and simulation distances, checks who may have written the files of the
      * release before reading them ({@link MapFileTrust}), reads the manifest once, runs the start-up check
      * of {@code API-M3-002} on the region files it maps for good, registers the map dimension type from

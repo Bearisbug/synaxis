@@ -24,7 +24,7 @@ import java.util.concurrent.CompletableFuture;
  * no game on top of it.
  * <p>
  * Gameplay comes from a plugin, and the host needs both halves of it — an admission provider to say
- * where a connection goes and exactly one running match to put it in. With {@code core-mode=auto} a
+ * where a connection goes and exactly one running instance to put it in. With {@code core-mode=auto} a
  * launch in which no plugin took part serves the core world instead, so that the core can be run,
  * load tested and smoke tested on its own: one flat instance, an admission provider that lets
  * everybody into it, and the {@value #ECHO_CHANNEL} diagnostic channel that sends every payload it
@@ -32,7 +32,7 @@ import java.util.concurrent.CompletableFuture;
  * discovered; with {@code off} a launch without gameplay is refused.
  * <p>
  * A launch in which a plugin took part and did not leave both halves (one half, neither, or more than
- * one match) is refused (API-M2-010 step 5).
+ * one running instance) is refused (API-M2-010 step 5).
  */
 final class CoreMode {
 
@@ -88,7 +88,7 @@ final class CoreMode {
     enum Mode {
         /** The host serves its own world. */
         CORE,
-        /** A plugin provides both the admission provider and the one running match. */
+        /** A plugin provides both the admission provider and the one running instance. */
         GAMEPLAY,
         /** Neither is true: report it and exit without binding. */
         REFUSED
@@ -121,14 +121,14 @@ final class CoreMode {
      * @param setting              what the operator asked for
      * @param attemptedPlugins     how many plugins the host took on
      * @param hasAdmissionProvider whether a plugin registered one
-     * @param runningMatches       the registered instances, the host side view of "a match is
-     *                             running" (§11.3)
+     * @param runningInstances     the registered instances, the host side view of "an instance
+     *                             is running" (§11.3)
      * @return the mode to serve in
      */
-    static Mode decide(Setting setting, int attemptedPlugins, boolean hasAdmissionProvider, int runningMatches) {
+    static Mode decide(Setting setting, int attemptedPlugins, boolean hasAdmissionProvider, int runningInstances) {
         if (setting == Setting.ON) return Mode.CORE;
-        if (hasAdmissionProvider && runningMatches == 1) return Mode.GAMEPLAY;
-        if (setting == Setting.AUTO && attemptedPlugins == 0 && !hasAdmissionProvider && runningMatches == 0)
+        if (hasAdmissionProvider && runningInstances == 1) return Mode.GAMEPLAY;
+        if (setting == Setting.AUTO && attemptedPlugins == 0 && !hasAdmissionProvider && runningInstances == 0)
             return Mode.CORE;
         return Mode.REFUSED;
     }
@@ -151,8 +151,8 @@ final class CoreMode {
         world.setChunkSupplier(LightingChunk::new);
         world.setGenerator(unit -> unit.modifier().fillHeight(0, FLOOR_HEIGHT, Block.STONE));
         world.setWorldBorder(WorldBorder.defaultBorder().withDiameter(BORDER_DIAMETER));
-        // Automatic chunk loading stays on, unlike a match: within the border the core world is a flat
-        // plane, so a column is generated whenever somebody gets close enough to it.
+        // Automatic chunk loading stays on, unlike a managed instance: within the border the core world
+        // is a flat plane, so a column is generated whenever somebody gets close enough to it.
         lightAroundTheSpawn(world, process.config().chunkViewDistance() + 1);
         process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
                 event -> event.getPlayer().setRespawnPoint(SPAWN));

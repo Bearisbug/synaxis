@@ -1,7 +1,7 @@
 {
 	"synaxis:client-mod-required": "本服务器需要 Synaxis 客户端模组，请安装整合包后重进。",
 	"synaxis:protocol-version-mismatch": "模组与服务器的协议版本不一致，请更新整合包。",
-	"synaxis:match-unavailable": "当前没有可进入的世界，请稍后再试。",
+	"synaxis:instance-unavailable": "当前没有可进入的世界，请稍后再试。",
 	"synaxis:protocol-error": "服务器判定本连接发来的消息畸形。",
 	"synaxis:unsupported-version": "该 Minecraft 版本无法与服务器通信。",
 	"synaxis:login-timeout": "登录超时。",

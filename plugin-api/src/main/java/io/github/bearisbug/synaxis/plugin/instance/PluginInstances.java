@@ -13,10 +13,9 @@ import java.util.List;
 public interface PluginInstances {
 
     /**
-     * Creates a managed instance and prepares it the way a match map is prepared: an unregistered
-     * instance whose chunks light themselves, every chunk within the radius loaded (generated on the
-     * engine's virtual threads), the whole map lit once they are all in, automatic chunk loading off,
-     * then registered.
+     * Creates a managed instance and prepares its map: an unregistered instance whose chunks light
+     * themselves, every chunk within the radius loaded (generated on the engine's virtual threads),
+     * the whole map lit once they are all in, automatic chunk loading off, then registered.
      * <p>
      * Called on the startup thread ({@code onEnable}, before the port is bound), the preparation is
      * done in place and the instance comes back {@link ManagedInstance.State#OPEN}. Called on the

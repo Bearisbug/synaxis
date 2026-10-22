@@ -19,19 +19,20 @@ public final class PluginApi {
 
     /**
      * The key of the one shallow dimension type the host registers before it binds, which a plugin
-     * builds its match instances on (see {@code docs/DESIGN-M2.md} §11.3 and the startup sequence
+     * builds its managed instances on (see {@code docs/DESIGN-M2.md} §11.3 and the startup sequence
      * of {@code API-M2-010}).
      * <p>
      * The dimension type registry is a dynamic one, sent once during the configuration phase: a
      * second one registered after the port is open would shift the dimension indices of everybody
-     * already in game, so the host registers exactly one and every match shares it. Matches tell
-     * themselves apart by their dimension name, which is free form and goes into no registry.
+     * already in game, so the host registers exactly one and every managed instance shares it.
+     * Managed instances tell themselves apart by their dimension name, which is free form and goes
+     * into no registry.
      * <p>
      * It has a minimum y of 0 and a height of 64, the world height of {@code docs/DESIGN-M2.md}
      * §9: blocks go at y 0 to 63. A plugin that has to be sure reads the height of the registered
      * dimension type at run time.
      */
-    public static final String MATCH_DIMENSION_TYPE = "synaxis:match";
+    public static final String MANAGED_DIMENSION_TYPE = "synaxis:managed";
 
     private PluginApi() {
     }

@@ -127,18 +127,18 @@ class PlayerDataIntegrationTest {
     @Test
     void aSectionIsTheLoadedValueInTheWorldAndSavesThroughTheStore(Env env) {
         final Counter coins = new Counter("probe:coins");
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final AtomicReference<Integer> atSpawn = new AtomicReference<>();
         final Probe probe = new Probe("probe", ctx -> {
             ctx.playerData().register(coins);
-            ctx.admission().register(_ -> new Admission.Accept(match));
+            ctx.admission().register(_ -> new Admission.Accept(instance));
             ctx.events().addListener(PlayerSpawnEvent.class, event ->
                     atSpawn.set(ctx.playerData().get(event.getPlayer(), coins).get()));
         });
         final PluginHost host = host(env, new MemoryBackend());
         host.enable(List.of(probe), Set.of());
 
-        final Player player = env.createPlayer(match, new Pos(0, 41, 0));
+        final Player player = env.createPlayer(instance, new Pos(0, 41, 0));
 
         assertEquals(0, atSpawn.get(), "loaded before the player entered the world, as the default");
         final PluginContext ctx = Objects.requireNonNull(probe.context);
@@ -198,12 +198,12 @@ class PlayerDataIntegrationTest {
     @Test
     void aPluginCannotReadASectionItDidNotRegister(Env env) {
         final Counter theirs = new Counter("other:coins");
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final Probe other = new Probe("other", ctx -> ctx.playerData().register(theirs));
-        final Probe probe = new Probe("probe", ctx -> ctx.admission().register(_ -> new Admission.Accept(match)));
+        final Probe probe = new Probe("probe", ctx -> ctx.admission().register(_ -> new Admission.Accept(instance)));
         final PluginHost host = host(env, new MemoryBackend());
         host.enable(List.of(other, probe), Set.of());
-        final Player player = env.createPlayer(match, new Pos(0, 41, 0));
+        final Player player = env.createPlayer(instance, new Pos(0, 41, 0));
 
         final PluginContext ctx = Objects.requireNonNull(probe.context);
         assertThrows(IllegalStateException.class, () -> ctx.playerData().get(player, theirs));
@@ -216,15 +216,15 @@ class PlayerDataIntegrationTest {
     @Test
     void aLoadThatFailsTurnsTheConnectionAwayBeforeTheAdmission(Env env) throws IOException {
         final AtomicInteger admitted = new AtomicInteger();
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final AdmissionProvider provider = _ -> {
             admitted.incrementAndGet();
-            return new Admission.Accept(match);
+            return new Admission.Accept(instance);
         };
         final PluginHost host = host(env, new FailingBackend());
         host.enable(List.of(new Probe("probe", ctx -> ctx.admission().register(provider))), Set.of());
 
-        final Player player = env.createPlayer(match, new Pos(0, 41, 0));
+        final Player player = env.createPlayer(instance, new Pos(0, 41, 0));
 
         assertFalse(player.getPlayerConnection().isOnline());
         assertEquals(0, admitted.get(), "no admission without the player's data");
@@ -237,7 +237,7 @@ class PlayerDataIntegrationTest {
     @Test
     void aRefusedAdmissionGivesTheLeaseBack(Env env) {
         final CountingBackend backend = new CountingBackend();
-        final Probe probe = new Probe("probe", ctx -> ctx.admission().register(_ -> new Admission.Reject("synaxis:match-unavailable")));
+        final Probe probe = new Probe("probe", ctx -> ctx.admission().register(_ -> new Admission.Reject("synaxis:instance-unavailable")));
         final PluginHost host = host(env, backend);
         host.enable(List.of(probe), Set.of());
 
@@ -256,16 +256,16 @@ class PlayerDataIntegrationTest {
         ledger.start();
         final PlayerStore store = new PlayerStore(env.process(), backend, RedisLink.disabled("test"), "test", false,
                 PlayerStore.Options.DEFAULT, ledger::record);
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         // The shutdown save starts while the provider decides, which then lets the player in
         final Probe probe = new Probe("probe", ctx -> ctx.admission().register(_ -> {
             var _ = store.saveAll(Duration.ofSeconds(5), true);
-            return new Admission.Accept(match);
+            return new Admission.Accept(instance);
         }));
         final PluginHost host = new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger, store);
         host.enable(List.of(probe), Set.of());
 
-        final Player player = env.createPlayer(match, new Pos(0, 41, 0));
+        final Player player = env.createPlayer(instance, new Pos(0, 41, 0));
 
         assertFalse(player.getPlayerConnection().isOnline(), "refused instead of playing outside of the shutdown save");
         assertEquals(1, backend.loads.get());
@@ -307,13 +307,14 @@ class PlayerDataIntegrationTest {
                 return new JsonPrimitive(value.get());
             }
         };
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final Probe broken = new Probe("broken", ctx -> {
             ctx.playerData().register(bag);
             ctx.lifecycle().onShutdownSave(_ -> hooks.incrementAndGet());
             throw new IllegalStateException("the test's plugin fails to enable");
         });
-        final Probe admitting = new Probe("probe", ctx -> ctx.admission().register(_ -> new Admission.Accept(match)));
+        final Probe admitting = new Probe("probe",
+                ctx -> ctx.admission().register(_ -> new Admission.Accept(instance)));
         ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
         ledger.start();
         final PlayerStore store = new PlayerStore(env.process(), new MemoryBackend(), RedisLink.disabled("test"), "test",
@@ -321,7 +322,7 @@ class PlayerDataIntegrationTest {
         final PluginHost host = new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger, store);
         host.enable(List.of(broken, admitting), Set.of());
 
-        final Player player = env.createPlayer(match, new Pos(0, 41, 0));
+        final Player player = env.createPlayer(instance, new Pos(0, 41, 0));
         assertTrue(player.getPlayerConnection().isOnline());
         final var saved = store.saveAll(Duration.ofSeconds(5), true);
         env.tick();

@@ -30,8 +30,8 @@ import java.util.function.BooleanSupplier;
  * <p>
  * The engine requires a spawning instance while the connection is still in the configuration phase
  * and throws a {@code NullPointerException} when it does not get one, which would show the player
- * {@code synaxis:internal-error} instead of the designed reason. Only a plugin knows what matches
- * exist, so the decision is taken from the registered admission provider, inline on the
+ * {@code synaxis:internal-error} instead of the designed reason. Only a plugin knows what instances
+ * it serves, so the decision is taken from the registered admission provider, inline on the
  * configuration virtual thread of that connection, and a failure to decide is a kick.
  */
 final class AdmissionGate {
@@ -77,7 +77,7 @@ final class AdmissionGate {
         if (hello == null) return;
         final AdmissionProvider provider = registry.provider();
         if (provider == null) {
-            refuse(player, connectionId, hello, DisconnectKeys.MATCH_UNAVAILABLE,
+            refuse(player, connectionId, hello, DisconnectKeys.INSTANCE_UNAVAILABLE,
                     "no admission provider is registered");
             return;
         }
@@ -120,7 +120,7 @@ final class AdmissionGate {
             LOGGER.error("Admission provider failed: plugin_id={} connection_id={}",
                     registry.pluginId(), connectionId, throwable);
             store.abandon(player);
-            refuse(player, connectionId, hello, DisconnectKeys.MATCH_UNAVAILABLE,
+            refuse(player, connectionId, hello, DisconnectKeys.INSTANCE_UNAVAILABLE,
                     "the admission provider threw");
             return;
         }
@@ -158,7 +158,7 @@ final class AdmissionGate {
         final Map<String, Object> attributes = new LinkedHashMap<>();
         attributes.put("connection_id", connectionId);
         // §20 names a reason of the host without its synaxis: prefix; a plugin's own key stays whole,
-        // so that probe:match-unavailable is not taken for synaxis:match-unavailable.
+        // so that probe:instance-unavailable is not taken for synaxis:instance-unavailable.
         attributes.put("reason", reasonKey.startsWith("synaxis:") ? reasonKey.substring("synaxis:".length()) : reasonKey);
         attributes.put("schema_version", hello.schemaVersion());
         ledger.record("client_rejected", attributes);

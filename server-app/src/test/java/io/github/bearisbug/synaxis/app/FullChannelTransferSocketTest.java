@@ -248,7 +248,7 @@ class FullChannelTransferSocketTest {
                 @Override
                 public void onEnable(PluginContext ctx) {
                     // The provider is never asked here: every transfer stops at the gate or the ticket
-                    ctx.admission().register(_ -> new Admission.Reject(DisconnectKeys.MATCH_UNAVAILABLE));
+                    ctx.admission().register(_ -> new Admission.Reject(DisconnectKeys.INSTANCE_UNAVAILABLE));
                 }
 
                 @Override

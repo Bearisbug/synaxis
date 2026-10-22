@@ -496,12 +496,12 @@ class HandshakeIntegrationTest {
     void aVerifiedConnectionReachesTheAdmissionProviderWithWhatItReported(Env env) {
         final Wire wire = wire(env);
         final Player player = player(env, wire);
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final PluginHost host = host(env);
         final List<AdmissionRequest> seen = new CopyOnWriteArrayList<>();
         host.registerHostAdmission(request -> {
             seen.add(request);
-            return new Admission.Accept(match);
+            return new Admission.Accept(instance);
         });
         host.requireHandshake();
 
@@ -518,9 +518,9 @@ class HandshakeIntegrationTest {
     void theAnswerIsQueuedBeforeFinishConfigurationHoweverLateTheTickThreadIs(Env env) {
         final Wire wire = wire(env);
         final Player player = player(env, wire);
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final PluginHost host = host(env);
-        host.registerHostAdmission(_ -> new Admission.Accept(match));
+        host.registerHostAdmission(_ -> new Admission.Accept(instance));
         host.requireHandshake();
         // This thread interprets the hello, and whatever it writes waits for the configuration thread
         // it wakes to finish the phase: the schedule where that thread finishes first, made certain
@@ -546,11 +546,11 @@ class HandshakeIntegrationTest {
     }
 
     @Test
-    void aRejectedConnectionIsToldTheMatchIsUnavailableRatherThanAnInternalError(Env env) {
+    void aRejectedConnectionIsToldTheInstanceIsUnavailableRatherThanAnInternalError(Env env) {
         final Wire wire = wire(env);
         final Player player = player(env, wire);
         final PluginHost host = host(env);
-        host.registerHostAdmission(_ -> new Admission.Reject(DisconnectKeys.MATCH_UNAVAILABLE));
+        host.registerHostAdmission(_ -> new Admission.Reject(DisconnectKeys.INSTANCE_UNAVAILABLE));
         host.requireHandshake();
 
         final Throwable failure = configure(env, player, hello(7, ProtocolSchema.SCHEMA_VERSION));
@@ -559,11 +559,11 @@ class HandshakeIntegrationTest {
         // NullPointerException at a connection that has none, which is what would turn the designed
         // refusal into synaxis:internal-error (§26 phase 4).
         assertNull(failure, "a refused connection must be kicked, not left to the requireNonNull");
-        assertKickedWith(DisconnectKeys.MATCH_UNAVAILABLE, wire);
+        assertKickedWith(DisconnectKeys.INSTANCE_UNAVAILABLE, wire);
         // §20 registers client_rejected with both of these, and the reason alone does not say
         // which client it was: this one handshook, so its schema version is known here too.
         final String rejection = onlyLedgerLine("client_rejected");
-        assertTrue(rejection.contains("\"reason\":\"match-unavailable\""), rejection);
+        assertTrue(rejection.contains("\"reason\":\"instance-unavailable\""), rejection);
         assertTrue(rejection.contains("\"schema_version\":" + ProtocolSchema.SCHEMA_VERSION), rejection);
     }
 
@@ -725,7 +725,7 @@ class HandshakeIntegrationTest {
         assertNull(configure(env, player, hello(7, ProtocolSchema.SCHEMA_VERSION)));
 
         assertKickedWith("probe:no-world", wire);
-        // Only the synaxis namespace is dropped: this is not the host's match-unavailable (§20)
+        // Only the synaxis namespace is dropped: this is not the host's instance-unavailable (§20)
         final String rejection = onlyLedgerLine("client_rejected");
         assertTrue(rejection.contains("\"reason\":\"probe:no-world\""), rejection);
     }

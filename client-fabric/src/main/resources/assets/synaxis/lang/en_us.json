@@ -1,7 +1,7 @@
 {
 	"synaxis:client-mod-required": "This server needs the Synaxis client mod. Install the modpack and join again.",
 	"synaxis:protocol-version-mismatch": "This mod speaks a different protocol than the server. Update the modpack.",
-	"synaxis:match-unavailable": "No world is available right now. Please try again later.",
+	"synaxis:instance-unavailable": "No world is available right now. Please try again later.",
 	"synaxis:protocol-error": "The server rejected a message from this connection as malformed.",
 	"synaxis:unsupported-version": "This Minecraft version cannot talk to the server.",
 	"synaxis:login-timeout": "Logging in took too long.",

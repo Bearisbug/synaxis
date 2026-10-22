@@ -214,7 +214,7 @@ class DefaultPlayHostIntegrationTest {
     private static InstanceContainer coreWorld(Env env, PluginHost host, PlayerStore store) {
         final PlayerStateSection playerState = new PlayerStateSection(env.process().registries());
         playerState.install(store, host.hostNode());
-        final InstanceContainer world = CoreMode.start(env.process(), host, Main.registerMatchDimensionType(env.process()),
+        final InstanceContainer world = CoreMode.start(env.process(), host, Main.registerManagedDimensionType(env.process()),
                 CoreMode.Setting.ON);
         playerState.useRule(new PositionRule.Core());
         DefaultPlay.attach(env.process(), host.hostNode(), Main.defaultPlay(CoreMode.Mode.CORE, false),

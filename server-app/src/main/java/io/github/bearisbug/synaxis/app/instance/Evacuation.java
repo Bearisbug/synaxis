@@ -26,11 +26,11 @@ import java.util.function.Function;
  * unregistered as soon as nobody is left and no such move is on its way, on the startup thread or in a
  * serial part of the tick scheduler thread. When the evacuation time runs out nothing more is waited
  * for: whoever is still inside, and whoever is still on their way in, is kicked with
- * {@code synaxis:match-unavailable} first.
+ * {@code synaxis:instance-unavailable} first.
  */
 final class Evacuation {
 
-    private static final Component MATCH_UNAVAILABLE = Component.translatable(DisconnectKeys.MATCH_UNAVAILABLE);
+    private static final Component INSTANCE_UNAVAILABLE = Component.translatable(DisconnectKeys.INSTANCE_UNAVAILABLE);
 
     private final ManagedInstanceImpl managed;
     private final InstanceRegistry registry;
@@ -82,7 +82,7 @@ final class Evacuation {
      */
     void arrived(Player player) {
         if (finished.get()) {
-            player.kick(MATCH_UNAVAILABLE);
+            player.kick(INSTANCE_UNAVAILABLE);
             return;
         }
         if (handedExit.add(player)) send(player);
@@ -114,7 +114,7 @@ final class Evacuation {
     private void kickForWantOfAnExit(Player player, Throwable cause) {
         managed.missingExits().error(cause, "No exit for a player of a closing managed instance, kicking them: plugin_id={} "
                 + "instance={} connection_id={}", managed.pluginId(), managed.id(), player.getPlayerConnection().connectionId());
-        player.kick(MATCH_UNAVAILABLE);
+        player.kick(INSTANCE_UNAVAILABLE);
     }
 
     private boolean nobodyLeft() {
@@ -142,7 +142,7 @@ final class Evacuation {
         registry.reached(Window.FINISH);
         kicked.addAll(managed.online());
         kicked.removeIf(player -> !player.isOnline());
-        for (Player player : kicked) player.kick(MATCH_UNAVAILABLE);
+        for (Player player : kicked) player.kick(INSTANCE_UNAVAILABLE);
         registry.process().instance().unregisterInstance(managed.instance());
         final Set<Player> players = new HashSet<>(handedExit);
         players.addAll(kicked);

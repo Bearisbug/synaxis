@@ -244,13 +244,13 @@ class ManagementIntegrationTest {
     @Test
     void everyMethodAnswersOverARealWebSocket(Env env) throws Exception {
         final ManagementClient client = connect(serve(env, "127.0.0.1:0"));
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final TestConnection aliceConnection = env.createConnection(new GameProfile(UUID.randomUUID(), "Alice"));
         final Collector<SystemChatPacket> aliceChat = aliceConnection.trackIncoming(SystemChatPacket.class);
-        final Player alice = aliceConnection.connect(match, new Pos(0, 41, 0));
+        final Player alice = aliceConnection.connect(instance, new Pos(0, 41, 0));
         final TestConnection bobConnection = env.createConnection(new GameProfile(UUID.randomUUID(), "Bob"));
         final Collector<DisconnectPacket> bobKicked = bobConnection.trackIncoming(DisconnectPacket.class);
-        final Player bob = bobConnection.connect(match, new Pos(0, 41, 0));
+        final Player bob = bobConnection.connect(instance, new Pos(0, 41, 0));
 
         final JsonArray players = client.call(1, "minecraft:players", null).getAsJsonArray("result");
         assertEquals(2, players.size(), players.toString());

@@ -6,7 +6,7 @@ package io.github.bearisbug.synaxis.plugin;
  * The host calls it inline on the configuration virtual thread of that connection, once per
  * connection, after the handshake and before the spawning instance is set. It must not block and
  * must not touch entities or chunks: the player is not in any instance yet. An exception is treated
- * as {@code Reject("synaxis:match-unavailable")}; returning null, or building an answer its
+ * as {@code Reject("synaxis:instance-unavailable")}; returning null, or building an answer its
  * constructor refuses, is treated the same way.
  * <p>
  * A provider that keeps an entry per {@link AdmissionRequest#connectionId()} checks that the

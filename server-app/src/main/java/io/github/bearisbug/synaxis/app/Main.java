@@ -97,7 +97,7 @@ import java.util.stream.Collectors;
  * a connection reaches the configuration phase; and it has to be synchronous on this thread,
  * because the scheduler is only advanced from inside a tick and the tick thread does not exist yet.
  * <p>
- * What the plugins left behind decides how the process serves: with gameplay it serves the match
+ * What the plugins left behind decides how the process serves: with gameplay it serves the instance
  * they built, without any it serves the core world of {@link CoreMode}.
  */
 public final class Main {
@@ -142,7 +142,7 @@ public final class Main {
      * so the core world and every instance a plugin builds on that type are this tall. A plugin that
      * needs to know reads the height of the registered type.
      */
-    private static final int MATCH_WORLD_HEIGHT = 64;
+    private static final int MANAGED_WORLD_HEIGHT = 64;
 
     /**
      * The process wide half of the view range contract of {@code docs/DESIGN-M2.md} §15, the view
@@ -253,16 +253,16 @@ public final class Main {
         LOGGER.info("Effective {}", JvmFlags.describe());
         logAuth(auth);
 
-        // (3) The one shallow dimension type every match is built on. It has to be registered here:
-        // step (6) freezes the registries, and a dimension type registered after the port is open
-        // would shift the dimension indices of the players already in game (§11.3).
-        final RegistryKey<DimensionType> dimensionType = registerMatchDimensionType(process);
+        // (3) The one shallow dimension type every managed instance is built on. It has to be
+        // registered here: step (6) freezes the registries, and a dimension type registered after the
+        // port is open would shift the dimension indices of the players already in game (§11.3).
+        final RegistryKey<DimensionType> dimensionType = registerManagedDimensionType(process);
         // The map release is checked, and its dimension type and block handlers registered, while the
         // registries still take them; nothing is written yet
         final @Nullable ShardWorld shardWorld = map == null ? null
                 : ShardWorld.prepare(process, map.settings(), map.synx(), map.overlay(), directory);
 
-        // (4) Plugins, on this thread. A plugin builds its match here, before anything is bound.
+        // (4) Plugins, on this thread. A plugin builds its instance here, before anything is bound.
         // An operator who asked for the core mode gets no plugin at all: that is the only way the
         // core mode is deterministic while a gameplay plugin sits on the classpath.
         final EventLedger ledger = new EventLedger(Path.of("logs"), shardId, ledgerMaxBytesPerDay);
@@ -320,14 +320,14 @@ public final class Main {
         if (coreMode != CoreMode.Setting.ON) host.enable(PluginHost.discover(), selectedPlugins);
 
         // (5) Which mode this process serves in. Gameplay needs both halves — an admission provider
-        // to say where a player goes and a running match to put them in — and a launch with no
+        // to say where a player goes and a running instance to put them in — and a launch with no
         // plugin to provide them serves the core's own world instead. A plugin that took part and
         // left one half or neither behind is a plugin that came up wrong: the port stays closed
         // rather than letting every player hit an internal error, or hiding the failure behind a
         // world nobody can play in.
-        final int runningMatches = runningMatches(process);
+        final int runningInstances = runningInstances(process);
         final CoreMode.Mode mode = CoreMode.decide(coreMode, host.attemptedPluginCount(),
-                host.hasAdmissionProvider(), runningMatches);
+                host.hasAdmissionProvider(), runningInstances);
         @Nullable InstanceContainer coreWorld = null;
         switch (mode) {
             case CORE -> {
@@ -339,13 +339,13 @@ public final class Main {
                 // Only a process that serves a game demands the mod that renders it; the core mode
                 // answers a handshake but never waits for one (REQ-M2-008, API-M2-010 step 5).
                 host.requireHandshake();
-                LOGGER.info("Gameplay mode: the running match and the admission provider come from "
+                LOGGER.info("Gameplay mode: the running instance and the admission provider come from "
                         + "plugin_ids={}, and a client has {} s to send C2S_HELLO on {} in the {} phase "
                         + "(schema_version={})", host.enabledPluginIds(), HandshakeGate.BUDGET.toSeconds(),
                         HandshakeGate.CHANNEL, HandshakeGate.phase().name().toLowerCase(Locale.ROOT),
                         ProtocolSchema.SCHEMA_VERSION);
             }
-            case REFUSED -> refuseToServe(host, ledger, runningMatches, port);
+            case REFUSED -> refuseToServe(host, ledger, runningInstances, port);
         }
         // The position rule of the mode; a refused launch has exited in its branch above
         playerState.useRule(positionRule(mode, shardWorld));
@@ -910,11 +910,12 @@ public final class Main {
      * Registers the one shallow dimension type of the process, before anything is bound.
      *
      * @param process the engine process
-     * @return its key, which the core world and every match are built on
+     * @return its key, which the core world and every managed instance are built on
      */
-    static RegistryKey<DimensionType> registerMatchDimensionType(ServerProcess process) {
-        return process.dimensionType().register(Key.key(PluginApi.MATCH_DIMENSION_TYPE),
-                DimensionType.builder().minY(0).height(MATCH_WORLD_HEIGHT).logicalHeight(MATCH_WORLD_HEIGHT).build());
+    static RegistryKey<DimensionType> registerManagedDimensionType(ServerProcess process) {
+        return process.dimensionType().register(Key.key(PluginApi.MANAGED_DIMENSION_TYPE),
+                DimensionType.builder().minY(0).height(MANAGED_WORLD_HEIGHT).logicalHeight(MANAGED_WORLD_HEIGHT)
+                        .build());
     }
 
     /**
@@ -922,21 +923,21 @@ public final class Main {
      * {@code onEnable} threw is named first, with what it threw. Both halves are reported, because
      * which one is missing says what went wrong with the plugin.
      *
-     * @param host    the plugin host
-     * @param ledger  the event ledger, drained before the exit so the plugin events stay
-     * @param matches how many matches are running, the count the mode was decided on
-     * @param port    the port that is not going to be bound
+     * @param host      the plugin host
+     * @param ledger    the event ledger, drained before the exit so the plugin events stay
+     * @param instances how many instances are running, the count the mode was decided on
+     * @param port      the port that is not going to be bound
      */
-    private static void refuseToServe(PluginHost host, EventLedger ledger, int matches, int port) {
+    private static void refuseToServe(PluginHost host, EventLedger ledger, int instances, int port) {
         // What a plugin that failed to enable left behind is what is missing below; its stack is further up
         host.failedToEnable().forEach((id, failure) ->
                 LOGGER.error("Plugin {} failed to enable: {} (stack above)", id, failure));
         if (!host.hasAdmissionProvider())
             LOGGER.error("No admission provider: no plugin registered one, so nothing would know where to put "
                     + "a player.");
-        if (matches != 1)
-            LOGGER.error("No running match: a plugin has to build one and register it before the port opens, "
-                    + "and the gameplay mode takes exactly one (found {}).", matches);
+        if (instances != 1)
+            LOGGER.error("No running instance: a plugin has to build one and register it before the port opens, "
+                    + "and the gameplay mode takes exactly one (found {}).", instances);
         LOGGER.error("Not binding {}:{}.", BIND_ADDRESS, port);
         ledger.close();
         System.exit(1);
@@ -990,14 +991,14 @@ public final class Main {
     }
 
     /**
-     * The registered instances, which a match only becomes once its whole map is generated
-     * (§11.3 {@code loading → running}): that makes the instance registry the host side view of
-     * "the match is running", without the host having to know what a match is.
+     * The registered instances, which a managed instance only becomes once its whole map is
+     * generated (§11.3 {@code loading → running}): that makes the instance registry the host side
+     * view of "the instance is running", without the host having to know what a plugin serves in it.
      *
      * @param process the engine process
-     * @return the number of running matches
+     * @return the number of running instances
      */
-    private static int runningMatches(ServerProcess process) {
+    private static int runningInstances(ServerProcess process) {
         return process.instance().getInstances().size();
     }
 

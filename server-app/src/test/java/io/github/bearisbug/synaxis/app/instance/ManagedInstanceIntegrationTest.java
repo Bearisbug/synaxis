@@ -54,7 +54,7 @@ class ManagedInstanceIntegrationTest {
     private final AtomicLong clock = new AtomicLong();
 
     private PluginInstances instances(Env env, InstanceRegistry.Durations durations) {
-        InstanceFixture.registerMatchDimension(env.process());
+        InstanceFixture.registerManagedDimension(env.process());
         return new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(), Thread.currentThread(),
                 durations, clock::get).forPlugin(PLUGIN);
     }
@@ -63,7 +63,7 @@ class ManagedInstanceIntegrationTest {
         return instances(env, InstanceRegistry.Durations.DEFAULT);
     }
 
-    /** §19 「tick 调度线程上建实例不占 tick」, its startup thread half; MatchIntegrationTest#theMapIsLitBeforeTheMatchRuns. */
+    /** §19 「tick 调度线程上建实例不占 tick」, its startup thread half. */
     @Test
     void onTheStartupThreadCreateComesBackOpenWithTheWholeMapLit(Env env) {
         final PluginInstances instances = instances(env);
@@ -123,7 +123,7 @@ class ManagedInstanceIntegrationTest {
                 "Not A Key", "plugin_id=probe: the dimension type \"Not A Key\" is not a valid key");
         for (Map.Entry<String, String> refusal : refusals.entrySet()) {
             final InstanceSpec spec = new InstanceSpec("arena", refusal.getKey(), 0, FLAT, Duration.ofSeconds(30),
-                    _ -> new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE));
+                    _ -> new Exit.Kick(DisconnectKeys.INSTANCE_UNAVAILABLE));
             final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class, () -> instances.create(spec));
             assertEquals(refusal.getValue(), refused.getMessage());
         }

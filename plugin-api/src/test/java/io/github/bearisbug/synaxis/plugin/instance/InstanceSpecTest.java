@@ -20,8 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class InstanceSpecTest {
 
     private static InstanceSpec spec(String name, int chunkRadius, Duration settleTimeout) {
-        return new InstanceSpec(name, PluginApi.MATCH_DIMENSION_TYPE, chunkRadius, _ -> { }, settleTimeout,
-                _ -> new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE));
+        return new InstanceSpec(name, PluginApi.MANAGED_DIMENSION_TYPE, chunkRadius, _ -> { }, settleTimeout,
+                _ -> new Exit.Kick(DisconnectKeys.INSTANCE_UNAVAILABLE));
     }
 
     @ParameterizedTest
@@ -54,13 +54,13 @@ class InstanceSpecTest {
     }
 
     @Test
-    void theShortConstructorBuildsOnTheMatchTypeSettlesIn30SecondsAndKicks() {
+    void theShortConstructorBuildsOnTheManagedTypeSettlesIn30SecondsAndKicks() {
         final InstanceSpec spec = new InstanceSpec("round", 2, _ -> { });
 
-        assertEquals(PluginApi.MATCH_DIMENSION_TYPE, spec.dimensionType());
+        assertEquals(PluginApi.MANAGED_DIMENSION_TYPE, spec.dimensionType());
         assertEquals(Duration.ofSeconds(30), spec.settleTimeout());
         // The default exit is the same for every player, so it is asked without one
-        assertEquals(new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE), spec.fallbackExit().apply(null));
+        assertEquals(new Exit.Kick(DisconnectKeys.INSTANCE_UNAVAILABLE), spec.fallbackExit().apply(null));
         assertThrows(IllegalArgumentException.class, () -> new InstanceSpec("Round", 2, _ -> { }));
     }
 }

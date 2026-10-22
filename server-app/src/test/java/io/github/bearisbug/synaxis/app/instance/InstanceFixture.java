@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
- * What the tests of the managed instances share: the match dimension type the host registers before
+ * What the tests of the managed instances share: the managed dimension type the host registers before
  * it enables any plugin, a flat map, a ledger that keeps its lines and the sky light read straight from
  * the sections.
  */
@@ -40,9 +40,12 @@ final class InstanceFixture {
     private InstanceFixture() {
     }
 
-    /** What the startup sequence of the host does before the plugins are enabled (Main#registerMatchDimensionType). */
-    static void registerMatchDimension(ServerProcess process) {
-        final Key key = Key.key(PluginApi.MATCH_DIMENSION_TYPE);
+    /**
+     * What the startup sequence of the host does before the plugins are enabled
+     * (Main#registerManagedDimensionType).
+     */
+    static void registerManagedDimension(ServerProcess process) {
+        final Key key = Key.key(PluginApi.MANAGED_DIMENSION_TYPE);
         if (process.dimensionType().getKey(key) != null) return;
         process.dimensionType().register(key, DimensionType.builder().minY(0).height(64).logicalHeight(64).build());
     }
@@ -81,7 +84,7 @@ final class InstanceFixture {
     }
 
     /**
-     * The sky light the server computed for a block, read from its section as MatchIntegrationTest does:
+     * The sky light the server computed for a block, read from its section:
      * {@code Instance#getSkyLight} would compute a stale section on demand and pass on an unlit map.
      */
     static int computedSkyLight(InstanceContainer instance, int x, int y, int z) {

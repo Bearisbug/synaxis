@@ -114,13 +114,13 @@ class PermissionsIntegrationTest {
         }
     }
 
-    /** A plugin that lets every player into one match and remembers its context. */
+    /** A plugin that lets every player into one instance and remembers its context. */
     private static final class Probe implements SynaxisPlugin {
-        private final Instance match;
+        private final Instance instance;
         private @Nullable PluginContext context;
 
-        Probe(Instance match) {
-            this.match = match;
+        Probe(Instance instance) {
+            this.instance = instance;
         }
 
         @Override
@@ -131,7 +131,7 @@ class PermissionsIntegrationTest {
         @Override
         public void onEnable(PluginContext ctx) {
             this.context = ctx;
-            ctx.admission().register(_ -> new Admission.Accept(match));
+            ctx.admission().register(_ -> new Admission.Accept(instance));
         }
 
         @Override
@@ -180,8 +180,8 @@ class PermissionsIntegrationTest {
         final List<String> events = new CopyOnWriteArrayList<>();
         env.process().command().register(new RoleCommand(env.process(), permissions, (event, attributes) ->
                 events.add(event + " " + attributes)));
-        final Instance match = env.createFlatInstance();
-        final Probe probe = new Probe(match);
+        final Instance instance = env.createFlatInstance();
+        final Probe probe = new Probe(instance);
         host.enable(List.of(probe), Set.of());
         final PluginContext context = probe.context;
         final Permissions seen = context == null ? null : context.permissions();
@@ -196,8 +196,8 @@ class PermissionsIntegrationTest {
         final UUID nobody = UUID.randomUUID();
         final UUID target = UUID.randomUUID();
         database.execute("INSERT INTO account_role (account_uuid, role_id) VALUES ('" + gm + "', 'gm')");
-        final Player g = env.createConnection(new GameProfile(gm, "Gamemaster")).connect(match, new Pos(0, 41, 0));
-        final Player n = env.createConnection(new GameProfile(nobody, "Nobody")).connect(match, new Pos(0, 41, 0));
+        final Player g = env.createConnection(new GameProfile(gm, "Gamemaster")).connect(instance, new Pos(0, 41, 0));
+        final Player n = env.createConnection(new GameProfile(nobody, "Nobody")).connect(instance, new Pos(0, 41, 0));
         n.setPermissionLevel(4);
 
         assertEquals(true, atSpawn.get(), "the roles are read before the player enters the world");

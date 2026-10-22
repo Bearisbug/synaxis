@@ -8,14 +8,14 @@ import java.util.Objects;
 /**
  * Where a player goes when a managed instance closes ({@code docs/DESIGN-PLAY.md} {@code API-PLAY-006}).
  * A player still inside 5 s after the evacuation started is kicked with
- * {@code synaxis:match-unavailable}.
+ * {@code synaxis:instance-unavailable}.
  */
 public sealed interface Exit {
 
     /**
      * Into another managed instance, the way {@link ManagedInstance#move} moves a player. A target that does
      * not take the player, one not {@link ManagedInstance.State#OPEN} or {@link ManagedInstance.State#RUNNING}
-     * when the move runs, has the player kicked with {@code synaxis:match-unavailable}.
+     * when the move runs, has the player kicked with {@code synaxis:instance-unavailable}.
      *
      * @param target the instance
      * @param at     where the player lands

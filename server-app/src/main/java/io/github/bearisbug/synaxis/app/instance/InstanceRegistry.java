@@ -32,7 +32,7 @@ public final class InstanceRegistry {
     public record Durations(Duration prepareBudget, Duration evacuation) {
 
         /**
-         * The limits of {@code API-PLAY-006}: 30 s to prepare, the budget of a match map, and 5 s to
+         * The limits of {@code API-PLAY-006}: 30 s to prepare, the budget of a managed map, and 5 s to
          * evacuate.
          */
         public static final Durations DEFAULT = new Durations(Duration.ofSeconds(30), Duration.ofSeconds(5));

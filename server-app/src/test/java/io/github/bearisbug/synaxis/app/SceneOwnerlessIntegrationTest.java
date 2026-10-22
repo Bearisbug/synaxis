@@ -111,7 +111,7 @@ class SceneOwnerlessIntegrationTest {
     @Test
     void theCoreModeDropsEveryPlayPayloadSilently(Env env) {
         final PluginHost host = host(env);
-        final Instance world = CoreMode.start(env.process(), host, Main.registerMatchDimensionType(env.process()),
+        final Instance world = CoreMode.start(env.process(), host, Main.registerManagedDimensionType(env.process()),
                 CoreMode.Setting.AUTO);
 
         floodAndExpectNothing(env, world, ConnectionState.PLAY);
@@ -121,7 +121,7 @@ class SceneOwnerlessIntegrationTest {
     @Test
     void theCoreModeDropsThePlayPayloadsOfTheConfigurationSilently(Env env) {
         final PluginHost host = host(env);
-        final Instance world = CoreMode.start(env.process(), host, Main.registerMatchDimensionType(env.process()),
+        final Instance world = CoreMode.start(env.process(), host, Main.registerManagedDimensionType(env.process()),
                 CoreMode.Setting.AUTO);
 
         floodAndExpectNothing(env, world, ConnectionState.CONFIGURATION);

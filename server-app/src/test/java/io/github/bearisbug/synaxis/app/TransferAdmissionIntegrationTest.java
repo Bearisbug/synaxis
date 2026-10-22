@@ -117,10 +117,10 @@ class TransferAdmissionIntegrationTest {
 
             @Override
             public void onEnable(PluginContext ctx) {
-                final var match = env.createFlatInstance();
+                final var instance = env.createFlatInstance();
                 ctx.admission().register(_ -> {
                     admitted.incrementAndGet();
-                    return new Admission.Accept(match);
+                    return new Admission.Accept(instance);
                 });
             }
 

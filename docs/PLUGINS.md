@@ -81,6 +81,10 @@ java -Dsynaxis.app.auth=offline \
 
 就绪日志是 `synaxis server-app listening on 0.0.0.0:25565`，它之前会出现 `Plugin enabled: plugin_id=hello ...` 与插件自己的打印。stdin 输入 `stop` 停服，停机日志里会出现 `hello-plugin is disabling`。
 
+`synaxis.properties`（`docs/DESIGN-PROD.md` `API-PROD-023`）只收服务端键表里的键，写了表外的键整个进程拒启：插件自己的设置放在 `dataDirectory()`（`plugins/<plugin_id>/`）下的文件里，或者从命令行 `-D` 给。
+
+插件的 `onEnable` 抛了异常、进程因此拒启时，结尾的汇总先一行 `Plugin <plugin_id> failed to enable: <异常类>: <消息> (stack above)`，再是缺准入、缺对局与不绑端口的几行 ERROR：原因在这一行与更上面的栈里。
+
 只想启用一部分插件时用 `-Dsynaxis.app.plugins=hello,rts`（留空即全部）。注意 `installDist` 的 `lib/` 里只有 `rts` 一个玩法插件，去掉它就没有玩法了——它是 `lib/` 里唯一创建对局、唯一注册准入回调的插件，没有它没人知道玩家该进哪个对局。默认配置下进程不会因此退出，而是落进**核心模式**：宿主自建一张平坦世界、任何连接一律放行、只有 `synaxis:main` 这一条 echo 通道，端口照常 bind（日志第一眼就能认出来，见 `docs/ENGINE.md` 3.4）。要让它像以前那样拒启（两行 ERROR + 非零码退出 + 端口不 bind），得同时给 `-Dsynaxis.app.core-mode=off`。插件 id 写错（比如把 `rts` 写成 `rst`）同样不会退出，只会多一行点名没匹配上的 id 的 WARN 然后进核心模式——起服后没人能进对局时先看这行。
 
 classpath 上有不止一个注册准入的玩法插件时，白名单必须给：一个进程只有一个准入槽，两个插件都启用时，后注册准入的那个在 `onEnable` 里抛异常（`docs/DESIGN-PLAY.md` §6.2）。服务端的 `lib/` 里恒有 `rts`，所以带样板玩法 `rush` 起服（`docs/DESIGN-PLAY.md` §23 的 R1 环）时给 `-Dsynaxis.app.plugins=rush`，并把 `:game-rush` 与 `:play-kit` 两个 jar 都追加上：
@@ -92,7 +96,7 @@ java -Dsynaxis.app.plugins=rush \
   io.github.bearisbug.synaxis.app.Main
 ```
 
-jar 名里的 `dev` 是版本号，设了环境变量 `GAME_ENGINE_VERSION` 时换成它的值。`:play-kit` 的 jar 不能省，白名单改成 `rts` 回滚时也不能：宿主先实例化 classpath 上的每个插件、读它的描述，再按白名单启用，而 `RushPlugin` 的构造就要用 `:play-kit` 的类，少了这个 jar 起服直接失败（`ServiceConfigurationError`，cause 是 `NoClassDefFoundError`）。本机开发用 `./gradlew :server-app:runRush` 更省事：它的 classpath 自带这两个模块，默认白名单就是 `rush`。
+jar 名里的 `dev` 是版本号，设了环境变量 `GAME_ENGINE_VERSION` 时换成它的值。`:play-kit` 的 jar 不能省，白名单改成 `rts` 回滚时也不能：宿主先实例化 classpath 上的每个插件、读它的描述，再按白名单启用，而 `RushPlugin` 的构造就要用 `:play-kit` 的类，少了这个 jar 起服直接失败：日志一行 `Refusing to start: Could not load the plugins on the classpath: io.github.bearisbug.synaxis.plugin.SynaxisPlugin: Provider … could not be instantiated`，点名构造失败的插件类，下面是 `ServiceConfigurationError` 的栈（cause 是 `NoClassDefFoundError`），退出码 1，端口不 bind。本机开发用 `./gradlew :server-app:runRush` 更省事：它的 classpath 自带这两个模块，默认白名单就是 `rush`。
 
 ## 7. `PluginContext` 给了你什么
 

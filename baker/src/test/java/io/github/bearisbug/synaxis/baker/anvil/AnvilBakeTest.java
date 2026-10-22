@@ -198,7 +198,7 @@ public class AnvilBakeTest {
     }
 
     /**
-     * REQ-M3-021: the fixture's three data markers turn into air, which lights them and the blocks they stand
+     * REQ-M3-021: the fixture's two data markers turn into air, which lights them and the blocks they stand
      * on differently from the source; those cells are left out, and the rest of the fixture matches.
      */
     @Test

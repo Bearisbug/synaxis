@@ -14,7 +14,6 @@
 #   (10,-60,1) suspicious_sand
 #   (4,-60,1) chest, under a DATA structure block at (4,-59,1): metadata synaxis:loot {table:"t1"}
 #   (5,-60,5) lever, under a DATA structure block at (5,-59,5): metadata synaxis:door {locked:1b}
-#   (9,-60,9) DATA structure block: metadata synaxis:hidden 0 0 15 15
 #   item_frame at (7,-60,7) facing up, text_display "hi" at (8.5,-59,8.5)
 #
 # Needs JDK 25 (JAVA_HOME). The server jar is taken from $SERVER_JAR, else Fabric Loom's cache, else
@@ -96,7 +95,6 @@ setblock 4 -60 1 minecraft:chest
 setblock 4 -59 1 minecraft:structure_block[mode=data]{mode:"DATA",metadata:'synaxis:loot {table:"t1"}'}
 setblock 5 -60 5 minecraft:lever[face=floor]
 setblock 5 -59 5 minecraft:structure_block[mode=data]{mode:"DATA",metadata:"synaxis:door {locked:1b}"}
-setblock 9 -60 9 minecraft:structure_block[mode=data]{mode:"DATA",metadata:"synaxis:hidden 0 0 15 15"}
 summon minecraft:item_frame 7 -60 7 {Facing:1b}
 summon minecraft:text_display 8.5 -59 8.5 {text:"hi"}
 EOF
@@ -109,9 +107,9 @@ server_pid=""
 
 placed="$(grep -c 'Changed the block' server.log || true)"
 summoned="$(grep -c 'Summoned new' server.log || true)"
-if [[ "$placed" != 13 || "$summoned" != 2 ]]; then
+if [[ "$placed" != 12 || "$summoned" != 2 ]]; then
   grep -v '^\s*at ' server.log >&2
-  echo "expected 13 blocks and 2 entities, the server reports $placed and $summoned" >&2
+  echo "expected 12 blocks and 2 entities, the server reports $placed and $summoned" >&2
   exit 1
 fi
 

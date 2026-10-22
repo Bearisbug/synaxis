@@ -14,13 +14,12 @@ import java.util.Set;
  * @param sections      sections carrying block states, in ascending y
  * @param blockEntities every block entity, markers merged, in ascending (section, index)
  * @param entities      the compounds of {@code entities/} for this chunk, each whole (id, Pos, all tags)
- * @param hiddenAreas   areas marked hidden inside this chunk
  * @param markerCells   {@link #cellKey} of every data marker turned into air and of the block below it, the cells
  *                      whose light the markers change
  */
 public record AnvilChunk(int chunkX, int chunkZ, boolean lightOn, List<AnvilSection> sections,
                          List<AnvilBlockEntity> blockEntities, List<CompoundBinaryTag> entities,
-                         List<HiddenArea> hiddenAreas, Set<Long> markerCells) {
+                         Set<Long> markerCells) {
     public AnvilChunk {
         markerCells = Set.copyOf(markerCells);
     }

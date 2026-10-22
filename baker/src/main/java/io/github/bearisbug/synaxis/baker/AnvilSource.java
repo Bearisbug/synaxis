@@ -6,7 +6,6 @@ import io.github.bearisbug.synaxis.baker.anvil.AnvilChunk;
 import io.github.bearisbug.synaxis.baker.anvil.AnvilSection;
 import io.github.bearisbug.synaxis.baker.anvil.AnvilSourceException;
 import io.github.bearisbug.synaxis.baker.anvil.AnvilWorld;
-import io.github.bearisbug.synaxis.baker.anvil.HiddenArea;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.palette.Palette;
 import io.github.bearisbug.synaxis.registry.Registries;
@@ -21,7 +20,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -47,7 +45,6 @@ public final class AnvilSource implements BakeSource {
     private final SynxManifest.Bounds bounds;
     private final int minY;
     private volatile @Nullable Double lightCoverage;
-    private volatile List<HiddenArea> hiddenAreas = List.of();
 
     private AnvilSource(AnvilWorld world, SynxManifest.Bounds bounds, int minY) {
         this.world = world;
@@ -122,42 +119,30 @@ public final class AnvilSource implements BakeSource {
         return lightCoverage;
     }
 
-    /** What the gate keeps of a chunk it read. */
-    private record Gated(boolean lightOn, List<HiddenArea> hiddenAreas) {
-    }
-
     /**
-     * Reads every chunk inside the bounds once, collecting the hidden areas of its markers. The first failure in
-     * (x, z) order is thrown, so the same save always names the same chunk. Reads are submitted in that order with
-     * at most four per thread in flight, so the gate's memory does not grow with the bounds and stops at the first
-     * failure.
+     * Reads every chunk inside the bounds once. The first failure in (x, z) order is thrown, so the same save
+     * always names the same chunk. Reads are submitted in that order with at most four per thread in flight, so the
+     * gate's memory does not grow with the bounds and stops at the first failure.
      */
     @Override
     public void checkGate(int threads) throws IOException {
         final ExecutorService executor = Executors.newFixedThreadPool(threads);
         try {
             final int window = threads * 4;
-            final ArrayDeque<Future<Gated>> reads = new ArrayDeque<>(window);
-            final List<HiddenArea> hidden = new ArrayList<>();
+            final ArrayDeque<Future<Boolean>> reads = new ArrayDeque<>(window);
             long total = 0, lit = 0;
             for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
                 for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
                     final int chunkX = x, chunkZ = z;
-                    reads.add(executor.submit(() -> {
-                        final AnvilChunk chunk = chunk(chunkX, chunkZ);
-                        return new Gated(chunk.lightOn(), chunk.hiddenAreas());
-                    }));
+                    reads.add(executor.submit(() -> chunk(chunkX, chunkZ).lightOn()));
                     total++;
-                    if (reads.size() == window && collect(reads.removeFirst(), hidden)) lit++;
+                    if (reads.size() == window && collect(reads.removeFirst())) lit++;
                 }
             }
             while (!reads.isEmpty()) {
-                if (collect(reads.removeFirst(), hidden)) lit++;
+                if (collect(reads.removeFirst())) lit++;
             }
             lightCoverage = (double) lit / total;
-            hidden.sort(Comparator.comparingInt(HiddenArea::x1).thenComparingInt(HiddenArea::z1)
-                    .thenComparingInt(HiddenArea::x2).thenComparingInt(HiddenArea::z2));
-            hiddenAreas = List.copyOf(hidden);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("interrupted", e);
@@ -166,24 +151,14 @@ public final class AnvilSource implements BakeSource {
         }
     }
 
-    /** Waits for one read and adds its hidden areas, corners as min and max; returns whether the chunk is lit. */
-    private static boolean collect(Future<Gated> read, List<HiddenArea> hidden) throws IOException, InterruptedException {
+    /** Waits for one read and returns whether the chunk is lit. */
+    private static boolean collect(Future<Boolean> read) throws IOException, InterruptedException {
         try {
-            final Gated gated = read.get();
-            for (HiddenArea area : gated.hiddenAreas()) {
-                hidden.add(new HiddenArea(Math.min(area.x1(), area.x2()), Math.min(area.z1(), area.z2()),
-                        Math.max(area.x1(), area.x2()), Math.max(area.z1(), area.z2())));
-            }
-            return gated.lightOn();
+            return read.get();
         } catch (ExecutionException e) {
             if (e.getCause() instanceof IOException io) throw io;
             throw new IOException(e.getCause());
         }
-    }
-
-    @Override
-    public List<HiddenArea> hiddenAreas() {
-        return hiddenAreas;
     }
 
     @Override

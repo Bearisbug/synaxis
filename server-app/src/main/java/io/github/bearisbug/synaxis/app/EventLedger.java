@@ -138,15 +138,15 @@ final class EventLedger {
      * @param maxBytesPerDay the size at which a day's file stops taking events
      */
     EventLedger(Path directory, String shardId, long maxBytesPerDay) {
-        this(directory, shardId, maxBytesPerDay, Clock.system(ZoneId.systemDefault()), QUEUE_CAPACITY);
+        this(directory, shardId, maxBytesPerDay, Clock.system(ZoneId.systemDefault()));
     }
 
-    EventLedger(Path directory, String shardId, long maxBytesPerDay, Clock clock, int queueCapacity) {
+    EventLedger(Path directory, String shardId, long maxBytesPerDay, Clock clock) {
         this.directory = directory;
         this.shardId = shardId;
         this.maxBytesPerDay = maxBytesPerDay;
         this.clock = clock;
-        this.queue = new ArrayBlockingQueue<>(queueCapacity);
+        this.queue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
         this.fileName = Pattern.compile("events-" + Pattern.quote(shardId) + "-(\\d{8})\\.jsonl(\\.gz)?");
     }
 
@@ -183,9 +183,12 @@ final class EventLedger {
     private void offer(String event, Map<String, ?> attributes) {
         final Instant now = clock.instant();
         final StringBuilder line = new StringBuilder(128);
-        line.append("{\"ts\":\"").append(now).append("\",\"event\":\"").append(event).append('"');
+        line.append("{\"ts\":\"").append(now).append("\",\"event\":");
+        appendString(line, event);
         for (Map.Entry<String, ?> attribute : attributes.entrySet()) {
-            line.append(",\"").append(attribute.getKey()).append("\":");
+            line.append(',');
+            appendString(line, attribute.getKey());
+            line.append(':');
             appendValue(line, attribute.getValue());
         }
         line.append('}').append('\n');
@@ -225,13 +228,11 @@ final class EventLedger {
 
     private void run() {
         long lastWrite = System.nanoTime();
-        while (true) {
-            final boolean draining = closing;
+        while (!closing) {
             final long sinceWriteMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastWrite);
             final Line line;
             try {
-                line = draining ? queue.poll()
-                        : queue.poll(Math.max(1, Math.min(POLL_MS, FLUSH_INTERVAL_MS - sinceWriteMs)), TimeUnit.MILLISECONDS);
+                line = queue.poll(Math.max(1, Math.min(POLL_MS, FLUSH_INTERVAL_MS - sinceWriteMs)), TimeUnit.MILLISECONDS);
             } catch (InterruptedException _) {
                 continue;
             }
@@ -241,14 +242,15 @@ final class EventLedger {
                 writeOut();
                 lastWrite = System.nanoTime();
             }
-            if (draining && line == null) {
-                drainSealed();
-                return;
-            }
         }
+        drainSealed();
     }
 
-    /** Refuses new lines, waits for the {@link #record} calls already past the seal, writes the rest. */
+    /**
+     * Refuses new lines, waits for the {@link #record} calls already past the seal, writes the rest. The writer seals
+     * as soon as it sees {@link #closing}: a line recorded after that is refused and counted, so the last drain is
+     * bounded by the queue's capacity whatever the rate of the producers.
+     */
     private void drainSealed() {
         sealed = true;
         while (recording.get() != 0) LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
@@ -416,13 +418,25 @@ final class EventLedger {
         }
     }
 
+    /**
+     * Writes a value as {@code docs/DESIGN-PROD.md} §20 maps it: null as {@code null}, a boolean as {@code true} or
+     * {@code false}, a finite number as a number and one that is not ({@code NaN}, an infinity) as {@code null},
+     * anything else as the JSON string of its {@link String#valueOf}.
+     */
     private static void appendValue(StringBuilder line, @Nullable Object value) {
-        if (value instanceof Number number) {
-            line.append(number);
-            return;
+        switch (value) {
+            case null -> line.append("null");
+            case Boolean bool -> line.append(bool);
+            case Double number when !Double.isFinite(number) -> line.append("null");
+            case Float number when !Float.isFinite(number) -> line.append("null");
+            case Number number -> line.append(number);
+            default -> appendString(line, String.valueOf(value));
         }
+    }
+
+    /** Writes a JSON string: the event name, a key or a value, escaped alike. */
+    private static void appendString(StringBuilder line, String text) {
         line.append('"');
-        final String text = String.valueOf(value);
         for (int i = 0; i < text.length(); i++) {
             final char character = text.charAt(i);
             switch (character) {

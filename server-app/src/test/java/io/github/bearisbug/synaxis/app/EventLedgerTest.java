@@ -2,11 +2,18 @@ package io.github.bearisbug.synaxis.app;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.Strictness;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,6 +24,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -73,7 +81,7 @@ class EventLedgerTest {
     }
 
     private static EventLedger ledger(Path directory, long maxBytesPerDay, Clock clock) {
-        return new EventLedger(directory, SHARD, maxBytesPerDay, clock, EventLedger.QUEUE_CAPACITY);
+        return new EventLedger(directory, SHARD, maxBytesPerDay, clock);
     }
 
     private static List<String> lines(Path file) throws IOException {
@@ -140,6 +148,41 @@ class EventLedgerTest {
             final String line = lines.get(1 + i);
             assertTrue(line.endsWith("\"order_seq\":" + i + "}"), line);
         }
+    }
+
+    /**
+     * Every line is one object a strict JSON parser reads ({@code docs/DESIGN-PROD.md} §20): the event name and the
+     * keys are escaped the way string values are, null and a number that is not finite are {@code null}, a boolean is
+     * {@code true} or {@code false}.
+     */
+    @Test
+    void everyLineIsStrictJsonWithTheTypesOfItsValues(@TempDir Path directory) throws IOException {
+        final EventLedger ledger = ledger(directory, EventLedger.DEFAULT_MAX_BYTES_PER_DAY, new MovableClock(NOON));
+        final Map<String, Object> attributes = new LinkedHashMap<>();
+        attributes.put("win_rate", Double.NaN);
+        attributes.put("ratio", Float.POSITIVE_INFINITY);
+        attributes.put("k\"ey\n", 1);
+        attributes.put("actor_uuid", null);
+        attributes.put("timed_out", false);
+        attributes.put("count", 3);
+        attributes.put("name", "a \"b\"");
+        ledger.start();
+        ledger.record("odd\"event\\", attributes);
+        ledger.close();
+
+        final String line = lines(dayFile(directory, "20260923")).getFirst();
+        final JsonReader reader = new JsonReader(new StringReader(line));
+        reader.setStrictness(Strictness.STRICT);
+        final JsonObject object = JsonParser.parseReader(reader).getAsJsonObject();
+        assertEquals(JsonToken.END_DOCUMENT, reader.peek(), line);
+        assertEquals("odd\"event\\", object.get("event").getAsString());
+        assertTrue(object.get("win_rate").isJsonNull(), line);
+        assertTrue(object.get("ratio").isJsonNull(), line);
+        assertEquals(1, object.get("k\"ey\n").getAsInt(), line);
+        assertTrue(object.get("actor_uuid").isJsonNull(), line);
+        assertEquals(new JsonPrimitive(false), object.get("timed_out"), line);
+        assertEquals(new JsonPrimitive(3), object.get("count"), line);
+        assertEquals("a \"b\"", object.get("name").getAsString());
     }
 
     @Test

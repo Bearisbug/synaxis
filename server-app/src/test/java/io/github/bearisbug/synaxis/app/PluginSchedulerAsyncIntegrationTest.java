@@ -135,4 +135,24 @@ class PluginSchedulerAsyncIntegrationTest {
         assertFalse(task.isAlive());
         assertEquals(0, ran.get(), "a task of a disabled plugin never runs");
     }
+
+    /**
+     * A task submitted once the plugin is torn down, by a body that kept running past its interrupt, is cancelled as
+     * it is submitted: a disabled plugin gets no callback (docs/DESIGN-M2.md §11.2).
+     */
+    @Test
+    void aTaskSubmittedAfterThePluginIsTornDownNeverRuns(Env env) {
+        final PluginSchedulerImpl scheduler = new PluginSchedulerImpl("probe", env.process().scheduler());
+        final Instance instance = env.createFlatInstance();
+        final AtomicInteger ran = new AtomicInteger();
+        scheduler.cancelAll();
+
+        final Task repeating = scheduler.scheduleTask(ran::incrementAndGet, TaskSchedule.nextTick(), TaskSchedule.tick(1));
+        final Task delivered = scheduler.runOn(instance, ran::incrementAndGet, TaskSchedule.immediate());
+        for (int i = 0; i < 5; i++) env.tick();
+
+        assertEquals(0, ran.get(), "a task of a disabled plugin never runs");
+        assertFalse(repeating.isAlive());
+        assertFalse(delivered.isAlive());
+    }
 }

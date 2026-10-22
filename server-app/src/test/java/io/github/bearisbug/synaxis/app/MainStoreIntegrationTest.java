@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.app;
 
+import ch.qos.logback.classic.Level;
 import io.github.bearisbug.synaxis.Auth;
 import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
@@ -29,6 +30,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -149,6 +151,36 @@ class MainStoreIntegrationTest {
             final List<Boolean> inForce = new ArrayList<>();
             while (rows.next()) inForce.add(rows.getBoolean(1));
             return inForce;
+        }
+    }
+
+    /**
+     * A whitelist that is on and empty lets nobody in, operators included, and only the console can fill it then: the
+     * boot self-check says how many accounts it holds and warns when there are none.
+     */
+    @Test
+    void anEmptyWhitelistThatIsOnIsWarnedAboutAtTheStart(Env env) {
+        assertEquals(0, Main.migrateOnly(new String[]{"--migrate-only", "--auth-mode=offline"}, environment()));
+        ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
+        try (LogCapture logs = LogCapture.of(Main.class)) {
+            Main.openStore(Main.STORE_POSTGRES, env.process(), new Auth.Offline(), "r1-c1", true, ledger,
+                    environment()).close();
+            assertTrue(logs.messagesAt(Level.INFO).contains("Effective whitelist: on accounts=0"),
+                    logs.messagesAt(Level.INFO).toString());
+            // Redis is not set up here, which is a warning of its own
+            final List<String> warnings = logs.messagesAt(Level.WARN).stream()
+                    .filter(line -> line.contains("whitelist")).toList();
+            assertEquals(1, warnings.size(), warnings.toString());
+            assertTrue(warnings.getFirst().contains("every login is refused"), warnings.getFirst());
+        }
+
+        database.execute("INSERT INTO whitelist (account_uuid) VALUES ('" + UUID.randomUUID() + "')");
+        try (LogCapture logs = LogCapture.of(Main.class)) {
+            Main.openStore(Main.STORE_POSTGRES, env.process(), new Auth.Offline(), "r1-c1", true, ledger,
+                    environment()).close();
+            assertTrue(logs.messagesAt(Level.INFO).contains("Effective whitelist: on accounts=1"),
+                    logs.messagesAt(Level.INFO).toString());
+            assertEquals(List.of(), logs.messagesAt(Level.WARN).stream().filter(line -> line.contains("whitelist")).toList());
         }
     }
 

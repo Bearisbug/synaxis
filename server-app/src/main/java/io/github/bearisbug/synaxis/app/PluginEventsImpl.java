@@ -14,6 +14,7 @@ import io.github.bearisbug.synaxis.event.trait.RecursiveEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.PluginEvents;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -214,19 +215,24 @@ final class PluginEventsImpl implements PluginEvents {
             if (!InstanceEvent.class.isAssignableFrom(eventType))
                 throw new IllegalArgumentException("Not an instance event, it cannot be scoped to an instance: "
                         + eventType.getName());
-            if (dispatchedWithoutInstance(eventType))
-                throw new IllegalArgumentException("Also dispatched while the player has no instance: "
-                        + eventType.getName());
+            final Class<? extends Event> covered = coveredWithoutInstance(eventType);
+            if (covered != null)
+                throw new IllegalArgumentException("Cannot scope " + eventType.getName() + " to an instance: "
+                        + (covered == eventType ? "it" : "it covers " + covered.getName() + ", which")
+                        + " is also dispatched while the player has no instance; listen on the global scope and "
+                        + "check the player's instance instead");
         }
 
-        private static boolean dispatchedWithoutInstance(Class<? extends Event> eventType) {
-            // A subtype is dispatched without an instance just the same. A supertype is an
-            // interface, which the engine refuses as a listener type anyway; refused here first, with
-            // the reason that matters to an instance scope.
+        /**
+         * The first of {@link #DISPATCHED_WITHOUT_INSTANCE} the type is, is a subtype of or covers, null for none.
+         * A subtype is dispatched without an instance just the same. A supertype is an interface, which the engine
+         * refuses as a listener type anyway; refused here first, with the reason that matters to an instance scope.
+         */
+        private static @Nullable Class<? extends Event> coveredWithoutInstance(Class<? extends Event> eventType) {
             for (Class<? extends Event> type : DISPATCHED_WITHOUT_INSTANCE) {
-                if (eventType.isAssignableFrom(type) || type.isAssignableFrom(eventType)) return true;
+                if (eventType.isAssignableFrom(type) || type.isAssignableFrom(eventType)) return type;
             }
-            return false;
+            return null;
         }
 
         @Override

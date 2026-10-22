@@ -33,8 +33,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * named on {@code synaxis:permission}, so a change reaches every shard within that period even
  * while Redis is down. A read that started earlier never overwrites one that started later.
  * <p>
- * A player whose roles could not be read holds none until the next read: a failure to authorise
- * refuses. A process without a database ({@code synaxis.app.store=memory}) has no roles at all.
+ * A player whose roles could not be read while it logged in holds none until a read succeeds; one
+ * whose roles could not be read again while online keeps what was read last. Either way a failure to
+ * authorise refuses. A process without a database ({@code synaxis.app.store=memory}) has no roles at
+ * all.
  */
 public final class HostPermissions implements Permissions {
 
@@ -109,12 +111,13 @@ public final class HostPermissions implements Permissions {
     }
 
     /**
-     * Reads again the roles of the players of an account online here, on the calling thread.
+     * Reads again the roles of the players of an account online here, on a virtual thread of its own: the
+     * caller, the thread of the Redis subscription, does not wait for the result.
      *
      * @param account the account whose roles changed
      */
     void changed(UUID account) {
-        final List<Player> players = loaded.keySet().stream().filter(player -> player.getUuid().equals(account)).toList();
+        final List<Player> players = playersOf(account);
         if (players.isEmpty()) return;
         Thread.ofVirtual().name("Syn-Role-Change").start(() -> read(players));
     }
@@ -133,13 +136,18 @@ public final class HostPermissions implements Permissions {
         }
         for (Player player : players) {
             final Entry next = new Entry(found.getOrDefault(player.getUuid(), RoleStore.Grants.NONE), read);
-            final Entry before = loaded.get(player);
-            final Entry after = loaded.computeIfPresent(player, (_, previous) -> later(previous, next));
+            // Compared inside the update, against the entry it replaces: another read of the same player
+            // may land between a look before it and the update
+            final boolean[] changed = {false};
+            loaded.computeIfPresent(player, (_, previous) -> {
+                final Entry after = later(previous, next);
+                changed[0] = !previous.grants().nodes().equals(after.grants().nodes());
+                return after;
+            });
             // The commands a player may run are also its completions (API-PROD-011), sent once at
             // spawn; a player still logging in gets them at spawn, with what was just read. They are
             // built on the player's tick thread, where the conditions of the plugins' commands are asked
-            if (before != null && after != null && !before.grants().nodes().equals(after.grants().nodes())
-                    && player.getPlayerConnection().getServerState() == ConnectionState.PLAY)
+            if (changed[0] && player.getPlayerConnection().getServerState() == ConnectionState.PLAY)
                 player.scheduler().scheduleNextTick(player::refreshCommands);
         }
     }
@@ -208,16 +216,16 @@ public final class HostPermissions implements Permissions {
     }
 
     /**
-     * What a player's grants in force give it, read from the database when it asks rather than
+     * What an account's grants in force give it, online or not, read from the database rather than
      * taken from what this shard read last: a grant that expired or was taken back since then must
-     * not let it hand out roles (§28.2).
+     * not let a player hand out roles (§28.2).
      *
-     * @param player the player running the role command
+     * @param account the account, such as that of the player running the role command
      * @return its grants in force now
      * @throws SQLException if the database failed
      */
-    RoleStore.Grants grantsOf(Player player) throws SQLException {
-        return requireRoles().load(List.of(player.getUuid())).getOrDefault(player.getUuid(), RoleStore.Grants.NONE);
+    RoleStore.Grants grantsOf(UUID account) throws SQLException {
+        return requireRoles().load(List.of(account)).getOrDefault(account, RoleStore.Grants.NONE);
     }
 
     /**
@@ -238,24 +246,16 @@ public final class HostPermissions implements Permissions {
         return true;
     }
 
-    /**
-     * The roles an account holds now, online or not.
-     *
-     * @param account the account
-     * @return the role ids
-     * @throws SQLException if the database failed
-     */
-    Set<String> rolesOf(UUID account) throws SQLException {
-        return requireRoles().load(List.of(account)).getOrDefault(account, RoleStore.Grants.NONE).roles();
-    }
-
     private RoleStore.Change announced(UUID account, RoleStore.Change change) {
         if (change != RoleStore.Change.DONE) return change;
         redis.publishPermissionChange(account);
         // Not through Redis: this shard sees its own change whether Redis is up or not
-        final List<Player> players = loaded.keySet().stream().filter(player -> player.getUuid().equals(account)).toList();
-        read(players);
+        read(playersOf(account));
         return change;
+    }
+
+    private List<Player> playersOf(UUID account) {
+        return loaded.keySet().stream().filter(player -> player.getUuid().equals(account)).toList();
     }
 
     private RoleStore requireRoles() {

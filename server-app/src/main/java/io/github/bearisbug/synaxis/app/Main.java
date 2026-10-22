@@ -192,6 +192,8 @@ public final class Main {
             System.exit(1);
             return;
         }
+        // Before anything is read from it: a key refused in step (1) names its value, this line where it came from
+        LOGGER.info("Effective config file: {}", CONFIG_FILE.describe());
         if (Arrays.asList(args).contains(MIGRATE_ONLY)) {
             System.exit(migrateOnly(args, System.getenv()));
             return;
@@ -199,10 +201,16 @@ public final class Main {
         try {
             start(shard);
         } catch (IllegalArgumentException e) {
-            // A refused launch argument or a refused descriptor is a decision, not a crash: it gets
-            // the same ERROR line and non zero exit as the missing admission provider below,
-            // rather than a bare stack trace on stderr.
-            LOGGER.error("Refusing to start: {}", e.getMessage(), e);
+            // Every refusal of start is an IllegalArgumentException, NumberFormatException of ServerConfig
+            // included, and ends with exit code 1. One without a cause is a setting written wrong: one ERROR
+            // line, its stack at DEBUG. One with a cause, a database that cannot be reached or a port that
+            // cannot be bound, keeps its stack.
+            if (e.getCause() == null) {
+                LOGGER.error("Refusing to start: {}", e.getMessage());
+                LOGGER.debug("Refusing to start", e);
+            } else {
+                LOGGER.error("Refusing to start: {}", e.getMessage(), e);
+            }
             System.exit(1);
         }
     }
@@ -238,8 +246,7 @@ public final class Main {
         final ServerProcess process = server.process();
 
         // Boot self-check: the effective settings go in the log, so a launch argument that did not
-        // land is visible here instead of at the first symptom.
-        LOGGER.info("Effective config file: {}", CONFIG_FILE.describe());
+        // land is visible here instead of at the first symptom. The configuration file is named in main.
         LOGGER.info("Effective {}", process.config());
         LOGGER.info("Effective {}", JvmFlags.describe());
         logAuth(auth);
@@ -411,7 +418,8 @@ public final class Main {
 
     /**
      * Reads the map keys in step (1). Without {@code synaxis.map.root} and {@code synaxis.map.build}
-     * no map is mounted and the other six keys are not read. A map is only mounted by the shard host,
+     * no map is mounted and none of the other map keys ({@link ShardSettings}, {@link SynxOptions},
+     * {@link OverlayOptions}) is read. A map is only mounted by the shard host,
      * whose defaults (threads, view, chunk and entity caps) the server application does not write, and
      * serves no plugin.
      *
@@ -598,7 +606,8 @@ public final class Main {
         }, TaskSchedule.nextTick());
         final HostExceptionHandler handler = new HostExceptionHandler(crashReports, tick::get);
         process.exception().setExceptionHandler(handler);
-        Thread.setDefaultUncaughtExceptionHandler(handler::handleUncaught);
+        // Written on the dying thread, so the log pattern names it
+        Thread.setDefaultUncaughtExceptionHandler((_, e) -> handler.handleException(e));
         return handler;
     }
 
@@ -821,7 +830,16 @@ public final class Main {
             final HostModeration moderation = new HostModeration(process, new ModerationStore(database.pool()), redis,
                     HostModeration.REFRESH, whitelist, ledger::record);
             moderation.start();
-            LOGGER.info("Effective whitelist: {}", whitelist ? "on" : "off");
+            if (whitelist) {
+                final int accounts = moderation.whitelistSize();
+                LOGGER.info("Effective whitelist: on accounts={}", accounts);
+                // Nobody is online to be found by name, the console has to add an account by its UUID
+                if (accounts == 0)
+                    LOGGER.warn("{}=on and the whitelist is empty: every login is refused until the console runs "
+                            + "whitelist add <uuid>", WHITELIST_PROPERTY);
+            } else {
+                LOGGER.info("Effective whitelist: off");
+            }
             LOGGER.info("Effective store: mode=postgres auth_mode={} {}", effective.value(), settings);
             if (keys == null)
                 return new StoreRuntime(store, database, housekeeping, null, null, permissions, moderation, session, redis,
@@ -906,8 +924,9 @@ public final class Main {
     }
 
     /**
-     * Reports what a gameplay launch is missing and exits without binding. Both halves are reported,
-     * because which one is missing says what went wrong with the plugin.
+     * Reports what a gameplay launch is missing and exits without binding. A plugin whose
+     * {@code onEnable} threw is named first, with what it threw. Both halves are reported, because
+     * which one is missing says what went wrong with the plugin.
      *
      * @param host    the plugin host
      * @param ledger  the event ledger, drained before the exit so the plugin events stay
@@ -915,6 +934,9 @@ public final class Main {
      * @param port    the port that is not going to be bound
      */
     private static void refuseToServe(PluginHost host, EventLedger ledger, int matches, int port) {
+        // What a plugin that failed to enable left behind is what is missing below; its stack is further up
+        host.failedToEnable().forEach((id, failure) ->
+                LOGGER.error("Plugin {} failed to enable: {} (stack above)", id, failure));
         if (!host.hasAdmissionProvider())
             LOGGER.error("No admission provider: no plugin registered one, so nothing would know where to put "
                     + "a player.");
@@ -1062,7 +1084,6 @@ public final class Main {
                     + "tests only", online.sessionServer().hasJoinedUrl());
             case Auth.Offline offline -> LOGGER.info("Effective auth: mode={}",
                     offline.encrypt() ? "offline-encrypted" : "offline");
-            default -> LOGGER.info("Effective auth: {}", auth);
         }
     }
 

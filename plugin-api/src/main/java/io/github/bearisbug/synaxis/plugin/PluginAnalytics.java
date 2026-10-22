@@ -23,7 +23,10 @@ import java.util.Map;
 public interface PluginAnalytics {
 
     /**
-     * Appends one event to the ledger.
+     * Appends one event to the ledger, one JSON object per line. The name and the keys are JSON strings;
+     * a value is written as {@code null} when it is null or a number that is not finite, as {@code true}
+     * or {@code false} when it is a boolean, as a number when it is any other number, and as the JSON
+     * string of its {@link String#valueOf} otherwise.
      *
      * @param event      the event name, without the {@code EVT:} prefix the design document uses
      * @param attributes the attributes of that event, written in iteration order

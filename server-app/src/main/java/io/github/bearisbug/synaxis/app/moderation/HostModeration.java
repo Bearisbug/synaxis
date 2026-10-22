@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 /**
  * Bans and the whitelist of this shard ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-010},
@@ -187,9 +188,7 @@ public final class HostModeration implements Moderation {
 
     @Override
     public Optional<Ban> activeBan(UUID uuid, @Nullable InetAddress ip) {
-        final Instant now = Instant.now();
-        return snapshot.get().bans().stream()
-                .filter(ban -> ban.expiresAt() == null || ban.expiresAt().isAfter(now))
+        return inForce()
                 .filter(ban -> ban.target().covers(uuid, ip))
                 .max(Comparator.comparing(ban -> ban.expiresAt() == null ? Instant.MAX : ban.expiresAt()));
     }
@@ -201,10 +200,22 @@ public final class HostModeration implements Moderation {
      * @return the bans that have not expired, in the order they were read
      */
     public List<Ban> activeBans() {
+        return inForce().toList();
+    }
+
+    /** The bans this shard holds that have not expired, in the order they were read. */
+    private Stream<Ban> inForce() {
         final Instant now = Instant.now();
-        return snapshot.get().bans().stream()
-                .filter(ban -> ban.expiresAt() == null || ban.expiresAt().isAfter(now))
-                .toList();
+        return snapshot.get().bans().stream().filter(ban -> ban.expiresAt() == null || ban.expiresAt().isAfter(now));
+    }
+
+    /**
+     * How many accounts the whitelist this shard holds has, for the boot self-check.
+     *
+     * @return the accounts on the whitelist
+     */
+    public int whitelistSize() {
+        return snapshot.get().whitelist().size();
     }
 
     @Override

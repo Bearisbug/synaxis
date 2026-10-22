@@ -27,16 +27,23 @@ public final class FileTrust {
     /**
      * Why someone besides the owner of the file may have written it, null when nobody may: the
      * configuration file decides the login mode, the gates and the whitelist, a map release what
-     * players are sent and where they are sent to. Group or others may write the file, or
-     * write its directory without the sticky bit and so replace it. The owner is not looked at: a file
-     * root owns and the service user only reads is fine. So a file someone else created in a directory
-     * with the sticky bit while there was none is read, and only the directory the file is in is looked
-     * at, not the ones above it: {@code docs/DESIGN-PROD.md} §23 keeps the working directory the service
-     * user's alone.
+     * players are sent and where they are sent to. Two things refuse the file:
+     * <ul>
+     *     <li>group or others may write the file itself;</li>
+     *     <li>group or others may write the directory the file is in, which has no sticky bit, so they
+     *     may replace the file.</li>
+     * </ul>
+     * Three things are not looked at:
+     * <ul>
+     *     <li>the owner: a file root owns and the service user only reads is fine;</li>
+     *     <li>the directories above the one the file is in: {@code docs/DESIGN-PROD.md} §23 keeps the
+     *     working directory the service user's alone;</li>
+     *     <li>a file someone else put into the directory before it got its sticky bit.</li>
+     * </ul>
      *
      * @param file      the file, on a file system with the {@code unix} attribute view
-     * @param whoWrites how the refusal of a file group or others may write ends, after {@code ; }: who
-     *                  alone may write it
+     * @param whoWrites who alone may write the file, appended after {@code ; } to the refusal of a file
+     *                  that group or others may write; the refusal of its directory has its own ending
      * @return why the file is refused, or null
      * @throws IOException if the permissions cannot be read
      */

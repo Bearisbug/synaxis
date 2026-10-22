@@ -59,8 +59,7 @@ public final class ModerationStore {
                     + "FROM ban WHERE revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())")) {
                 while (rows.next()) {
                     final UUID uuid = rows.getObject(2, UUID.class);
-                    final BanTarget target = uuid != null ? new BanTarget.ByUuid(uuid)
-                            : new BanTarget.ByNetwork(rows.getString(3));
+                    final BanTarget target = uuid != null ? new BanTarget.ByUuid(uuid) : network(rows);
                     final OffsetDateTime expires = rows.getObject(5, OffsetDateTime.class);
                     bans.add(new Ban(rows.getLong(1), target, rows.getString(4),
                             expires == null ? null : expires.toInstant()));
@@ -71,6 +70,21 @@ public final class ModerationStore {
             }
         }
         return new Contents(List.copyOf(bans), Set.copyOf(whitelist));
+    }
+
+    /**
+     * The network of a ban row. The table takes networks a ban cannot hold, an IPv4 mapped IPv6 one written by hand
+     * among them; such a row fails the read as the database failing would, naming the ban, so that a starting shard
+     * refuses, a running one keeps what it read before and a change made here is put in by hand.
+     */
+    private static BanTarget network(ResultSet rows) throws SQLException {
+        final String cidr = rows.getString(3);
+        try {
+            return new BanTarget.ByNetwork(cidr);
+        } catch (IllegalArgumentException e) {
+            throw new SQLException("ban " + rows.getLong(1) + " has subject_ip " + cidr
+                    + ", which is not a network a ban can name: " + e.getMessage(), e);
+        }
     }
 
     /**

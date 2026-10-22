@@ -68,8 +68,12 @@ import java.util.function.Function;
  * A player's sections are loaded on the configuration thread of its connection before it is let
  * into the world, live in memory while it plays, and are written by the dirty section: every
  * {@value #DEFAULT_AUTOSAVE_SECONDS} s spread over the ticks, when a plugin asks, on logout and on
- * shutdown. Values are read and encoded on the tick thread that owns the player; writes run on
- * virtual threads, at most one at a time per character, a newer snapshot replacing a queued one.
+ * shutdown. Values are read and encoded on the tick thread that owns the player, with two
+ * exceptions: a logout reads them on the thread that dispatches the disconnect, under the record's
+ * lock (for a player that never entered the world that is the connection's thread or the tick
+ * scheduler thread), and a shutdown after the watchdog judged the tick dead reads them on the
+ * shutdown thread, without the shutdown hooks. Writes run on virtual threads, at most one at a time
+ * per character, a newer snapshot replacing a queued one.
  * <p>
  * The database says who may write a character: every write checks the lease and the version in
  * the statement that bumps the version, and a write that finds either moved on is fenced.
@@ -128,7 +132,8 @@ public final class PlayerStore implements ShutdownParticipant {
         final Set<String> dirty = ConcurrentHashMap.newKeySet();
         final ReentrantLock writeLock = new ReentrantLock();
         final CompletableFuture<Void> gone = new CompletableFuture<>();
-        final AtomicBoolean shutdownSnapshot = new AtomicBoolean();
+        // The shutdown save took this record's snapshot, at most once
+        final AtomicBoolean shutdownSnapshotTaken = new AtomicBoolean();
         final AtomicLong version;
         // Bumped by every commitTogether once its values are in, with the sections it wrote; both
         // are written under writeLock
@@ -145,7 +150,7 @@ public final class PlayerStore implements ShutdownParticipant {
         private @Nullable CompletableFuture<SaveResult> transferAsked;
         private boolean transferring;
         // The player logged out while its transfer was writing: the write goes on as the logout save
-        private boolean loggedOut;
+        private boolean loggedOutDuringTransfer;
         private boolean writing;
         private final List<CompletableFuture<SaveResult>> waiting = new ArrayList<>();
 
@@ -323,12 +328,14 @@ public final class PlayerStore implements ShutdownParticipant {
             return TaskSchedule.nextTick();
         }, TaskSchedule.nextTick());
         // A Redis round trip never runs on the tick scheduler thread: an unreachable Redis would
-        // hold the tick for its connect timeout
+        // hold the tick for its connect timeout. The period stays well under RedisLink#PRESENCE_TTL_MS (30 s), so that
+        // a refresh or two missed does not let the presence of an online player run out: a login on another shard
+        // and the choice of a channel read it (docs/DESIGN-PROD.md §17 presence.refresh)
         process.scheduler().scheduleTask(() -> {
             Thread.ofVirtual().name("Syn-Presence").start(this::refreshPresence);
             return TaskSchedule.seconds(10);
         }, TaskSchedule.seconds(10));
-        redis.listen(this::kickRequested);
+        redis.listenKicks(this::kickRequested);
     }
 
     /** The root node's reading of the freeze for a player's event, built to run on cancelled events too. */
@@ -963,7 +970,11 @@ public final class PlayerStore implements ShutdownParticipant {
 
     // ---- saving ----
 
-    /** Captures the host sections, then encodes the dirty sections, on the tick thread that owns the player. */
+    /**
+     * Captures the host sections, then encodes the dirty sections: on the tick thread that owns the player, on the
+     * thread dispatching the disconnect for a logout (under the record's lock), on the shutdown thread once the tick
+     * is judged dead.
+     */
     private Map<String, Encoded> snapshot(Record record) {
         capture(record);
         final long takenAt = record.commits.get();
@@ -1068,12 +1079,13 @@ public final class PlayerStore implements ShutdownParticipant {
             final SaveResult result = write(record, snapshot, release);
             metrics.saved(result);
             if (transfer && result == SaveResult.UNAVAILABLE) {
-                // saving → online: a transfer gets one attempt, the player stays and the snapshot
-                // waits for the next save as an ordinary one. A player that logged out meanwhile
+                // saving → online: a transfer gets one attempt, the player stays and the snapshot goes
+                // back to the write slot as an ordinary save, which this writer retries with the backoff of
+                // retryDelays; an autosave meanwhile joins that slot. A player that logged out meanwhile
                 // stays in saving: the snapshot is retried as its logout save
                 synchronized (record) {
                     record.transferring = false;
-                    if (!record.loggedOut) {
+                    if (!record.loggedOutDuringTransfer) {
                         record.release = false;
                         record.state = LeaseState.ONLINE;
                     }
@@ -1098,7 +1110,7 @@ public final class PlayerStore implements ShutdownParticipant {
                         final boolean left;
                         synchronized (record) {
                             record.writing = false;
-                            left = record.loggedOut;
+                            left = record.loggedOutDuringTransfer;
                             // saving → in_transit: the lease is given back, the ticket carries the version
                             if (!left) record.state = LeaseState.IN_TRANSIT;
                         }
@@ -1301,7 +1313,7 @@ public final class PlayerStore implements ShutdownParticipant {
                 }
                 case SAVING -> {
                     if (record.transferring) {
-                        record.loggedOut = true;
+                        record.loggedOutDuringTransfer = true;
                         return;
                     }
                     // Saving already (shutdown, a previous logout) unless a transfer is not snapshotted yet
@@ -1414,10 +1426,11 @@ public final class PlayerStore implements ShutdownParticipant {
                     // A tick late past the save phase takes nothing more
                     if (!saveEnded) shutdownSnapshot(record, entry.getValue(), true);
                 });
-            } else if (!record.shutdownSnapshot.get()) {
+            } else if (!record.shutdownSnapshotTaken.get()) {
                 if (directSnapshotWarned.compareAndSet(false, true))
                     LOGGER.warn("The tick is stuck: the shutdown save reads the players' data on the shutdown thread, "
                             + "what a plugin did not write into its sections is lost");
+                // No hooks: they run on the tick thread that owns the player, which is the stuck one
                 shutdownSnapshot(record, entry.getValue(), false);
             }
         }
@@ -1439,7 +1452,7 @@ public final class PlayerStore implements ShutdownParticipant {
     }
 
     private void shutdownSnapshot(Record record, CompletableFuture<SaveResult> done, boolean runHooks) {
-        if (!record.shutdownSnapshot.compareAndSet(false, true)) return;
+        if (!record.shutdownSnapshotTaken.compareAndSet(false, true)) return;
         if (runHooks) {
             final ShutdownNotice notice = () -> record.player;
             for (Hook hook : shutdownHooks) {

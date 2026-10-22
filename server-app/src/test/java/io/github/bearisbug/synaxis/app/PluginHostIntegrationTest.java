@@ -37,6 +37,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -324,6 +325,40 @@ class PluginHostIntegrationTest {
 
         assertEquals(List.of(), host.enabledPluginIds());
         assertFalse(host.hasAdmissionProvider());
+    }
+
+    /**
+     * The 5 s budget is shared: a plugin disabled after one that spent it still gets its onDisable called, but the
+     * line about it says the budget was gone before its turn rather than that it ran over.
+     */
+    @Test
+    void aPluginWhoseTurnComesAfterTheBudgetIsSpentIsNotBlamedForIt(Env env) {
+        final CountDownLatch release = new CountDownLatch(1);
+        final List<String> calls = new CopyOnWriteArrayList<>();
+        final ProbePlugin first = new ProbePlugin("first", calls);
+        final ProbePlugin hanging = new ProbePlugin("hanging", calls);
+        hanging.registerAdmission = false;
+        hanging.disableRelease = release;
+        final PluginHost host = host(env);
+        host.enable(List.of(first, hanging), Set.of());
+
+        try (LogCapture logs = LogCapture.of(PluginHost.class)) {
+            host.disableAll();
+
+            final List<String> errors = logs.messagesAt(Level.ERROR);
+            assertEquals(2, errors.size(), errors.toString());
+            assertTrue(errors.get(0).contains("still in onDisable") && errors.get(0).contains("plugin_id=hanging"),
+                    errors.get(0));
+            assertTrue(errors.get(1).contains("already spent") && errors.get(1).contains("plugin_id=first"),
+                    errors.get(1));
+            assertFalse(errors.get(1).contains("still in onDisable"), errors.get(1));
+        } finally {
+            release.countDown();
+        }
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (!calls.contains("disable:first") && System.nanoTime() < deadline) Thread.onSpinWait();
+        assertTrue(calls.contains("disable:first"), "its onDisable is still called: " + calls);
+        assertEquals(List.of(), host.enabledPluginIds());
     }
 
     @Test

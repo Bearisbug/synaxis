@@ -144,7 +144,7 @@ public class ShutdownBeforeTheWorldLaunchTest {
             assertFalse(log.contains("Not saved on shutdown"), log);
             final String saved = ledgerLine(directory, "\"shutdown_saved\"");
             assertTrue(saved.contains("\"online\":1") && saved.contains("\"saved\":1") && saved.contains("\"failed\":0")
-                    && saved.contains("\"timed_out\":\"false\""), saved + " (stop took " + tookMillis + " ms)");
+                    && saved.contains("\"timed_out\":false"), saved + " (stop took " + tookMillis + " ms)");
             answering.join(TimeUnit.SECONDS.toMillis(10));
             return received;
         }

@@ -98,10 +98,9 @@ public interface StoreBackend {
         /**
          * A live session of another shard holds the lease.
          *
-         * @param shardId   the shard that holds it
-         * @param sessionId its session
+         * @param shardId the shard that holds it
          */
-        record Held(String shardId, long sessionId) implements LoadOutcome {
+        record Held(String shardId) implements LoadOutcome {
         }
     }
 

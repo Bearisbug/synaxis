@@ -48,8 +48,11 @@ public interface DataSection<T> {
     T decode(JsonElement json, int storedVersion);
 
     /**
-     * Encodes a value. Called on the tick thread that owns the player; the returned tree must not
-     * share mutable state with the value, the host writes it later on another thread. Whatever it
+     * Encodes a value. Called on the tick thread that owns the player, except when the player leaves
+     * before it entered the world, which calls it on the thread of the disconnect, and when the tick
+     * is stuck at shutdown, which calls it on the shutdown thread: it must not rely on state only a
+     * tick thread may touch. The returned tree must not share mutable state with the value, the host
+     * writes it later on another thread. Whatever it
      * throws, an {@link Error} too, leaves the section dirty and unwritten this time, with one ERROR
      * line; the other sections of the same save are written, and a logout or a transfer still
      * gives the character back.

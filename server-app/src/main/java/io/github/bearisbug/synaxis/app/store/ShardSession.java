@@ -82,8 +82,10 @@ public final class ShardSession implements AutoCloseable {
     private final ScheduledExecutorService watch = Executors.newSingleThreadScheduledExecutor(
             Thread.ofPlatform().name("Syn-Shard-Watch").daemon().factory());
 
-    // Only touched on the renewal thread, and by open() before it starts
-    private @Nullable Connection connection;
+    // Touched on the renewal thread, by open() before that starts and by close() once it stopped; when it
+    // does not stop within 2 x STATEMENT_TIMEOUT_MS, close() closes the connection under it to cut a stuck
+    // statement short, hence volatile
+    private volatile @Nullable Connection connection;
     // Guarded by this
     private long lastRenewed;
 

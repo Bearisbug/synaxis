@@ -67,13 +67,14 @@ public final class Migrations {
         final ValidateResult result = flyway.validateWithResult();
         if (!result.validationSuccessful)
             throw new IllegalArgumentException("the database schema is not the one this build expects: "
-                    + result.getAllErrorMessages() + "; run server-app --migrate-only first");
+                    + result.getAllErrorMessages() + "; run server-app --migrate-only --auth-mode=online|offline first");
         final MigrationInfo[] future = Arrays.stream(flyway.info().applied())
                 .filter(info -> info.getState().name().startsWith("FUTURE")).toArray(MigrationInfo[]::new);
         if (future.length > 0)
             throw new IllegalArgumentException("the database schema is ahead of this build: "
                     + Arrays.stream(future).map(info -> "V" + info.getVersion()).collect(Collectors.joining(", "))
-                    + " unknown here");
+                    + " unknown here; run the build that migrated it, or roll its migrations back with their "
+                    + "db/rollback scripts first");
     }
 
     /**

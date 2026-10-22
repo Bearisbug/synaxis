@@ -224,6 +224,18 @@ class PluginEventsIntegrationTest {
             assertThrows(IllegalArgumentException.class, () -> scope.addListener(type, _ -> {
             }), type.getName());
         }
+        // A supertype is refused for the type it covers, which the message names with the way out
+        final IllegalArgumentException covering = assertThrows(IllegalArgumentException.class,
+                () -> scope.addListener(PlayerInstanceEvent.class, _ -> {
+                }));
+        assertTrue(covering.getMessage().contains("it covers " + PlayerPluginMessageEvent.class.getName()),
+                covering.getMessage());
+        assertTrue(covering.getMessage().contains("listen on the global scope"), covering.getMessage());
+        final IllegalArgumentException itself = assertThrows(IllegalArgumentException.class,
+                () -> scope.addListener(PlayerDisconnectEvent.class, _ -> {
+                }));
+        assertFalse(itself.getMessage().contains("it covers"), itself.getMessage());
+        assertTrue(itself.getMessage().contains("listen on the global scope"), itself.getMessage());
         scope.addListener(PlayerChatEvent.class, _ -> {
         });
         assertEquals(1, instance.eventNode().getChildren().size());

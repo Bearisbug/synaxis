@@ -12,6 +12,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.app.command.GmCommands;
 import io.github.bearisbug.synaxis.app.command.HostCommands;
 import io.github.bearisbug.synaxis.app.command.Profiler;
 import io.github.bearisbug.synaxis.app.command.TickStats;
@@ -339,13 +340,8 @@ public final class ManagementMethods {
     }
 
     private void record(Call call, @Nullable UUID target, String result) {
-        final Map<String, Object> attributes = new LinkedHashMap<>();
-        attributes.put("actor", "management");
-        attributes.put("actor_uuid", null);
-        attributes.put("command", call.params() == null ? call.method() : call.method() + " " + call.params());
-        attributes.put("target", target);
-        attributes.put("result", result);
-        analytics.accept("gm_command", attributes);
+        GmCommands.record(analytics, "management", null,
+                call.params() == null ? call.method() : call.method() + " " + call.params(), target, result);
     }
 
     // minecraft:players, minecraft:players/kick, minecraft:server/*

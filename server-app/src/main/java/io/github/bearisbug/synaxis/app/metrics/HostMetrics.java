@@ -277,7 +277,7 @@ public final class HostMetrics implements AutoCloseable {
         final Map<SaveResult, Counter> saves = new EnumMap<>(SaveResult.class);
         for (SaveResult result : SaveResult.values()) {
             saves.put(result, Counter.builder("synaxis.store.save").tag("result", result.name().toLowerCase(Locale.ROOT))
-                    .description("Saves of a character by their outcome").register(registry));
+                    .description("Write attempts of a character by their outcome, retries included").register(registry));
         }
         final StoreMetrics store = new StoreMetrics() {
             @Override

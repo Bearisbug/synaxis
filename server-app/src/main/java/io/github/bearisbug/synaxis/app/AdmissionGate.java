@@ -102,7 +102,7 @@ final class AdmissionGate {
             if (!ticketRefused.get()) rejected(connectionId, hello, DisconnectKeys.STATE_UNAVAILABLE);
             return;
         }
-        // The roles next, so that the admission provider can already ask about them (API-PROD-010)
+        // The roles next, before the admission: the player enters the world holding them (API-PROD-010)
         permissions.load(player);
         if (!player.isOnline()) {
             store.abandon(player);

@@ -10,18 +10,19 @@ import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentWord;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.Permissions;
-import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
+
+import static io.github.bearisbug.synaxis.app.command.GmCommands.record;
+import static io.github.bearisbug.synaxis.app.command.GmCommands.reply;
 
 /**
  * The GM command that sends a player to another shard of the map ({@code docs/DESIGN-PROD.md}
@@ -78,13 +79,13 @@ public final class TransferCommand extends Command {
         if (shards == null) {
             reply(sender, "synaxis:command-transfer-unavailable",
                     "This shard cannot send players to other shards: it is not in the directory mode");
-            record(sender, input, null, "unavailable");
+            record(analytics, sender, input, null, "unavailable");
             return;
         }
         final Player player = online(targetText);
         if (player == null) {
             reply(sender, "synaxis:command-transfer-no-target", "%s is not a player online on this shard", targetText);
-            record(sender, input, null, "no_target");
+            record(analytics, sender, input, null, "no_target");
             return;
         }
         var _ = (toShard ? shards.transferTo(player, destination) : shards.transfer(player, destination))
@@ -100,32 +101,16 @@ public final class TransferCommand extends Command {
                     destination);
             reply(sender, "synaxis:command-transfer-error", "The transfer of %s failed; the server log has the cause",
                     player.getUsername());
-            record(sender, input, player.getUuid(), "unavailable");
+            record(analytics, sender, input, player.getUuid(), "unavailable");
             return;
         }
         final String name = result.name().toLowerCase(Locale.ROOT);
         reply(sender, "synaxis:command-transfer-result", "Transfer of %s to %s: %s", player.getUsername(), destination, name);
-        record(sender, input, player.getUuid(), name);
+        record(analytics, sender, input, player.getUuid(), name);
     }
 
     private @Nullable Player online(String text) {
         if (UUID_TEXT.matcher(text).matches()) return process.connection().getOnlinePlayerByUuid(UUID.fromString(text));
         return process.connection().getOnlinePlayerByUsername(text);
-    }
-
-    private static void reply(CommandSender sender, String key, String fallback, String... arguments) {
-        final Component[] components = new Component[arguments.length];
-        for (int i = 0; i < arguments.length; i++) components[i] = Component.text(arguments[i]);
-        sender.sendMessage(Component.translatable(key, fallback, components));
-    }
-
-    private void record(CommandSender sender, String input, @Nullable UUID target, String result) {
-        final Map<String, Object> attributes = new LinkedHashMap<>();
-        attributes.put("actor", sender instanceof Player ? "player" : "console");
-        attributes.put("actor_uuid", sender instanceof Player player ? player.getUuid() : null);
-        attributes.put("command", input);
-        attributes.put("target", target);
-        attributes.put("result", result);
-        analytics.accept("gm_command", attributes);
     }
 }

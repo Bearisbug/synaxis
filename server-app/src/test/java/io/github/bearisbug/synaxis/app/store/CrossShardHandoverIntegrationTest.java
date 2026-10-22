@@ -317,7 +317,7 @@ class CrossShardHandoverIntegrationTest {
         final StoreBackend backend = new StoreBackend() {
             @Override
             public LoadOutcome load(UUID account, String name, long sessionId) throws SQLException {
-                if (heldElsewhere.contains(account)) return new LoadOutcome.Held("c-" + run, 1);
+                if (heldElsewhere.contains(account)) return new LoadOutcome.Held("c-" + run);
                 return postgres.load(account, name, sessionId);
             }
 

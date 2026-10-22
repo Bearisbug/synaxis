@@ -56,7 +56,9 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -67,6 +69,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
@@ -617,6 +620,34 @@ class ModerationIntegrationTest {
         } finally {
             System.clearProperty("synaxis.app.whitelist");
         }
+    }
+
+    /**
+     * A network ban written into the table by hand that no ban can hold, an IPv4 mapped IPv6 network, is read as a
+     * failed read: a starting shard refuses naming the ban, and a running one keeps what it had, puts a ban made
+     * meanwhile in by hand and still answers it.
+     */
+    @Test
+    void aBanRowNoBanCanHoldIsAFailedReadThatNamesIt(Env env) throws Exception {
+        final HostModeration running = shard(env, "a", false, HostModeration.REFRESH, false);
+        database.execute("INSERT INTO ban (kind, subject_ip, reason, created_by) VALUES ('network', "
+                + "'::ffff:10.0.0.0/104', 'mapped', '" + HostModeration.CONSOLE + "')");
+        final long banId;
+        try (Connection connection = database.connect(); Statement statement = connection.createStatement();
+             ResultSet row = statement.executeQuery("SELECT ban_id FROM ban WHERE reason = 'mapped'")) {
+            assertTrue(row.next());
+            banId = row.getLong(1);
+        }
+
+        final HostModeration starting = new HostModeration(env.process(), new ModerationStore(pool.pool()),
+                RedisLink.disabled("b-" + run), HostModeration.REFRESH, false, (_, _) -> { });
+        final SQLException refused = assertThrows(SQLException.class, starting::start);
+        assertTrue(refused.getMessage().contains("ban " + banId + " "), refused.getMessage());
+
+        final UUID account = UUID.randomUUID();
+        final Ban ban = running.ban(new BanTarget.ByUuid(account), "spam", null, HostModeration.CONSOLE)
+                .get(10, TimeUnit.SECONDS);
+        assertEquals(Optional.of(ban), running.activeBan(account, null), "put in by hand when the read again failed");
     }
 
     @Test

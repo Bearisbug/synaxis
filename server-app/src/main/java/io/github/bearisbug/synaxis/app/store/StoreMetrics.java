@@ -42,7 +42,10 @@ public interface StoreMetrics {
     void statement(Statement statement, long nanos);
 
     /**
-     * One save of a character ended, or one {@code commitTogether} that reached the database.
+     * One write attempt of a character ended, or one {@code commitTogether} that reached the database.
+     * Every attempt counts, a retry too: a snapshot with nothing in it is {@code saved} without the
+     * database being asked, and a write while the shard session is isolated is {@code fenced} without
+     * it either.
      *
      * @param result the outcome
      */

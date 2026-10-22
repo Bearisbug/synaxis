@@ -12,14 +12,12 @@ import io.github.bearisbug.synaxis.plugin.BanTarget;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.Permissions;
 import io.github.bearisbug.synaxis.utils.StringUtils;
-import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,6 +25,9 @@ import java.util.concurrent.CompletionException;
 import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static io.github.bearisbug.synaxis.app.command.GmCommands.record;
+import static io.github.bearisbug.synaxis.app.command.GmCommands.reply;
 
 /**
  * The GM commands of bans and the whitelist ({@code docs/DESIGN-PROD.md} {@code API-PROD-009}, §10
@@ -128,13 +129,7 @@ public final class ModerationCommands {
                 reply(sender, "synaxis:moderation-unavailable", "Bans cannot be reached right now");
                 outcome = new Outcome("unavailable", null);
             }
-            final Map<String, Object> attributes = new LinkedHashMap<>();
-            attributes.put("actor", sender instanceof Player ? "player" : "console");
-            attributes.put("actor_uuid", sender instanceof Player player ? player.getUuid() : null);
-            attributes.put("command", input);
-            attributes.put("target", outcome.target());
-            attributes.put("result", outcome.result());
-            analytics.accept("gm_command", attributes);
+            record(analytics, sender, input, outcome.target(), outcome.result());
         });
     }
 
@@ -232,11 +227,5 @@ public final class ModerationCommands {
 
     private static UUID operator(CommandSender sender) {
         return sender instanceof Player player ? player.getUuid() : HostModeration.CONSOLE;
-    }
-
-    private static void reply(CommandSender sender, String key, String fallback, String... arguments) {
-        final Component[] components = new Component[arguments.length];
-        for (int i = 0; i < arguments.length; i++) components[i] = Component.text(arguments[i]);
-        sender.sendMessage(Component.translatable(key, fallback, components));
     }
 }

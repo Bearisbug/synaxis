@@ -40,7 +40,7 @@ public final class PostgresBackend implements StoreBackend {
                                     WHERE s.session_id = c.lease_session_id AND s.expires_at > now()))
             RETURNING c.character_id, c.version, p.lease_session_id, p.last_saved_at""";
     private static final String HOLDER = """
-            SELECT s.shard_id, s.session_id FROM character c JOIN shard_session s ON s.session_id = c.lease_session_id
+            SELECT s.shard_id FROM character c JOIN shard_session s ON s.session_id = c.lease_session_id
              WHERE c.account_uuid = ? AND c.slot = 0""";
     private static final String SECTIONS = """
             SELECT section_id, schema_version, data::text FROM character_section WHERE character_id = ?""";
@@ -101,7 +101,7 @@ public final class PostgresBackend implements StoreBackend {
             try (PreparedStatement holder = connection.prepareStatement(HOLDER)) {
                 holder.setObject(1, account);
                 try (ResultSet row = holder.executeQuery()) {
-                    if (row.next()) return new LoadOutcome.Held(row.getString(1), row.getLong(2));
+                    if (row.next()) return new LoadOutcome.Held(row.getString(1));
                 }
             }
             if (attempt > 0) throw new SQLException("character of " + account + " neither acquired nor held");

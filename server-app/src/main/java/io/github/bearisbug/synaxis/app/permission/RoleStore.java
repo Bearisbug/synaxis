@@ -75,8 +75,8 @@ public final class RoleStore {
                     final UUID account = rows.getObject(1, UUID.class);
                     roles.computeIfAbsent(account, _ -> new TreeSet<>()).add(rows.getString(2));
                     final String node = rows.getString(3);
-                    final Set<String> granted = nodes.computeIfAbsent(account, _ -> new TreeSet<>());
-                    if (node != null) granted.add(node);
+                    // Null for a role that grants no node yet
+                    if (node != null) nodes.computeIfAbsent(account, _ -> new TreeSet<>()).add(node);
                     final OffsetDateTime expires = rows.getObject(4, OffsetDateTime.class);
                     if (expires != null) expiries.merge(account, expires.toInstant(), (a, b) -> a.isBefore(b) ? a : b);
                 }
@@ -84,7 +84,8 @@ public final class RoleStore {
         }
         final Map<UUID, Grants> grants = new HashMap<>();
         for (Map.Entry<UUID, Set<String>> entry : roles.entrySet())
-            grants.put(entry.getKey(), new Grants(Set.copyOf(entry.getValue()), Set.copyOf(nodes.get(entry.getKey())),
+            grants.put(entry.getKey(), new Grants(Set.copyOf(entry.getValue()),
+                    Set.copyOf(nodes.getOrDefault(entry.getKey(), Set.of())),
                     expiries.get(entry.getKey())));
         return grants;
     }

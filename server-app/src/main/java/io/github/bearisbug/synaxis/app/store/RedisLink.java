@@ -30,7 +30,9 @@ import java.util.function.Consumer;
  * What a shard keeps in Redis, all of it disposable ({@code docs/DESIGN-PROD.md} {@code API-PROD-006},
  * {@code ADR-PROD-003}): where a player is ({@code presence:{uuid}}, a routing hint only) and the
  * requests to let a player go ({@code synaxis:kick:{shard_id}}), the accounts whose roles changed
- * ({@code synaxis:permission}) and the changes of the bans and the whitelist ({@code synaxis:moderation}).
+ * ({@code synaxis:permission}), the changes of the bans and the whitelist ({@code synaxis:moderation})
+ * and the world state flags written ({@code synaxis:worldflag:<map_id>:<region_id>},
+ * {@code docs/DESIGN-M3.md} {@code API-M3-013}).
  * <p>
  * Nothing here decides who holds a character, PostgreSQL does; Redis being down only turns a
  * cross-shard duplicate login into a refusal. Its failures are counted into one warning per 10 s.
@@ -155,12 +157,12 @@ public final class RedisLink implements AutoCloseable {
      *
      * @param listener told about every kick request
      */
-    public void listen(KickListener listener) {
+    public void listenKicks(KickListener listener) {
         subscribe("Syn-Redis-Kick", kickChannel(shardId), message -> deliver(message, listener));
     }
 
     /**
-     * Starts listening on {@value #PERMISSION_CHANNEL}, the same way as {@link #listen}.
+     * Starts listening on {@value #PERMISSION_CHANNEL}, the same way as {@link #listenKicks}.
      *
      * @param listener told the account of every role change
      */
@@ -176,7 +178,7 @@ public final class RedisLink implements AutoCloseable {
     }
 
     /**
-     * Starts listening on {@value #MODERATION_CHANNEL}, the same way as {@link #listen}. What changed
+     * Starts listening on {@value #MODERATION_CHANNEL}, the same way as {@link #listenKicks}. What changed
      * is not handed on: every change is answered by reading the bans and the whitelist again.
      *
      * @param listener told about every change
@@ -187,7 +189,7 @@ public final class RedisLink implements AutoCloseable {
 
     /**
      * Starts listening on the world state flag channel of a region ({@code docs/DESIGN-M3.md}
-     * {@code API-M3-013}), the same way as {@link #listen}.
+     * {@code API-M3-013}), the same way as {@link #listenKicks}.
      *
      * @param channel  {@code synaxis:worldflag:<map_id>:<region_id>}
      * @param listener told every message as it came
@@ -204,6 +206,15 @@ public final class RedisLink implements AutoCloseable {
      * @return false if the message could not be sent: Redis is down, or not configured
      */
     public boolean publishWorldFlag(String channel, String message) {
+        return publish(channel, message);
+    }
+
+    /**
+     * Publishes one message.
+     *
+     * @return false if it could not be sent: Redis is down, or not configured
+     */
+    private boolean publish(String channel, String message) {
         final RedisClient redis = this.client;
         if (redis == null) return false;
         try {
@@ -263,20 +274,11 @@ public final class RedisLink implements AutoCloseable {
      * @return false if the request could not be sent: Redis is down, or not configured
      */
     public boolean requestKick(String holderShard, UUID account) {
-        final RedisClient redis = this.client;
-        if (redis == null) return false;
         final JsonObject message = new JsonObject();
         message.addProperty("uuid", account.toString());
         message.addProperty("requester_shard", shardId);
         message.addProperty("reason", "logged-in-elsewhere");
-        try {
-            redis.publish(kickChannel(holderShard), message.toString());
-            up = true;
-            return true;
-        } catch (RuntimeException e) {
-            failed(e, "publish");
-            return false;
-        }
+        return publish(kickChannel(holderShard), message.toString());
     }
 
     /**
@@ -286,18 +288,9 @@ public final class RedisLink implements AutoCloseable {
      * @return false if the message could not be sent: Redis is down, or not configured
      */
     public boolean publishPermissionChange(UUID account) {
-        final RedisClient redis = this.client;
-        if (redis == null) return false;
         final JsonObject message = new JsonObject();
         message.addProperty("account_uuid", account.toString());
-        try {
-            redis.publish(PERMISSION_CHANNEL, message.toString());
-            up = true;
-            return true;
-        } catch (RuntimeException e) {
-            failed(e, "publish");
-            return false;
-        }
+        return publish(PERMISSION_CHANNEL, message.toString());
     }
 
     /**
@@ -309,20 +302,11 @@ public final class RedisLink implements AutoCloseable {
      * @return false if the message could not be sent: Redis is down, or not configured
      */
     public boolean publishModeration(String kind, String subject, @Nullable Long banId) {
-        final RedisClient redis = this.client;
-        if (redis == null) return false;
         final JsonObject message = new JsonObject();
         message.addProperty("kind", kind);
         message.addProperty("subject", subject);
         message.addProperty("ban_id", banId);
-        try {
-            redis.publish(MODERATION_CHANNEL, message.toString());
-            up = true;
-            return true;
-        } catch (RuntimeException e) {
-            failed(e, "publish");
-            return false;
-        }
+        return publish(MODERATION_CHANNEL, message.toString());
     }
 
     /**

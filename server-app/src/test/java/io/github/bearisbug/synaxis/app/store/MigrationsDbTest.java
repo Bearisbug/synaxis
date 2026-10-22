@@ -78,8 +78,10 @@ class MigrationsDbTest {
     void theDatabaseOfThePreviousVersionMigratesForward() throws SQLException {
         Flyway.configure().dataSource(pool.pool()).locations("classpath:db/migration").target("1").load().migrate();
         assertEquals(List.of("1"), appliedVersions());
-        assertThrows(IllegalArgumentException.class, () -> Migrations.validate(pool.pool()),
-                "V2 to V6 are pending, the shard refuses");
+        final IllegalArgumentException behind = assertThrows(IllegalArgumentException.class,
+                () -> Migrations.validate(pool.pool()), "V2 to V6 are pending, the shard refuses");
+        assertTrue(behind.getMessage().endsWith("; run server-app --migrate-only --auth-mode=online|offline first"),
+                behind.getMessage());
 
         Migrations.migrate(pool.pool(), AuthMode.OFFLINE);
 
@@ -96,7 +98,8 @@ class MigrationsDbTest {
 
         final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
                 () -> Migrations.validate(pool.pool()));
-        assertTrue(refused.getMessage().contains("ahead of this build: V99"), refused.getMessage());
+        assertTrue(refused.getMessage().contains("ahead of this build: V99 unknown here; run the build that migrated "
+                + "it, or roll its migrations back with their db/rollback scripts first"), refused.getMessage());
     }
 
     @Test

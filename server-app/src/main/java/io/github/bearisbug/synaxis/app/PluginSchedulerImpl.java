@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,9 +29,13 @@ import java.util.concurrent.atomic.AtomicReference;
  * whose number a plugin that delivers an effect per inbound packet leaves to the client.
  * <p>
  * A {@link #runAsync} body runs on a virtual thread; its handle is an engine task parked on the
- * body's completion, so it reads alive exactly while the body runs. The engine task cannot tell
- * anyone it was cancelled, so while bodies run a sweeper looks at their handles once per tick and
- * interrupts the body of a cancelled one.
+ * body's completion, so it reads alive from the call until the tick after the body finishes. The
+ * engine task cannot tell anyone it was cancelled, so the first {@link #runAsync} starts a sweeper
+ * that looks at the handles once per tick, until the plugin is disabled, and interrupts the body of a
+ * cancelled one.
+ * <p>
+ * Once the plugin is disabled every task submitted is cancelled as it is submitted: a body that kept
+ * running past its interrupt gets no callback scheduled for a plugin that is gone.
  */
 final class PluginSchedulerImpl implements PluginScheduler {
 
@@ -40,13 +45,13 @@ final class PluginSchedulerImpl implements PluginScheduler {
     private final Scheduler scheduler;
     private final List<Task> tasks = new CopyOnWriteArrayList<>();
     /**
-     * One shot tasks of {@link #runOn} and {@link #runAsync}, dropped once they are over. Held weakly: a
-     * {@link #runOn} task whose target is removed or unregistered before it is due, or that the plugin
-     * cancels, is never over, and through the target's scheduler it holds the target. As long as such a
-     * task can still run, that scheduler holds it, so {@link #cancelAll} still finds it.
+     * The one shot tasks of {@link #runOn}, dropped once they are over. Held weakly: a task whose
+     * target is removed or unregistered before it is due, or that the plugin cancels, is never over, and
+     * through the target's scheduler it holds the target. As long as such a task can still run, that
+     * scheduler holds it, so {@link #cancelAll} still finds it.
      */
-    private final Map<Task, Boolean> transientTasks = Collections.synchronizedMap(new WeakHashMap<>());
-    /** The running {@link #runAsync} bodies, by their handle. */
+    private final Set<Task> transientTasks = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
+    /** The running {@link #runAsync} bodies, by their handle, which {@link #cancelAll} cancels and interrupts. */
     private final Map<Task, Thread> asyncBodies = new ConcurrentHashMap<>();
     private final AtomicReference<Task> sweeper = new AtomicReference<>();
     private final LogBudget failures = new LogBudget(LOGGER, "task failures");
@@ -62,6 +67,8 @@ final class PluginSchedulerImpl implements PluginScheduler {
         final LogBudget budget = repeat.equals(TaskSchedule.stop()) ? failures : new LogBudget(LOGGER, "task failures");
         final Task submitted = scheduler.buildTask(guarded(task, budget)).delay(delay).repeat(repeat).schedule();
         tasks.add(submitted);
+        // Read after the task is listed, while cancelAll sets it before reading the list: one of the two sees the other
+        if (closed) submitted.cancel();
         return submitted;
     }
 
@@ -75,15 +82,13 @@ final class PluginSchedulerImpl implements PluginScheduler {
                 guarded(task, failures).run();
             } finally {
                 asyncBodies.remove(handle);
-                transientTasks.remove(handle);
                 done.complete(null);
             }
         });
-        transientTasks.put(handle, Boolean.TRUE);
         asyncBodies.put(handle, body);
         startSweeper();
         body.start();
-        // A plugin disabled while this call was running has already been swept, so the body is
+        // A plugin disabled while this call was running has already run cancelAll, so the body is
         // stopped here instead of being left to run for a plugin that is gone
         if (closed) cancelAll();
         return handle;
@@ -102,7 +107,8 @@ final class PluginSchedulerImpl implements PluginScheduler {
             }
         }).delay(delay).schedule();
         self.set(submitted);
-        if (submitted.isAlive()) transientTasks.put(submitted, Boolean.TRUE);
+        if (submitted.isAlive()) transientTasks.add(submitted);
+        if (closed) submitted.cancel();
         return submitted;
     }
 
@@ -114,10 +120,13 @@ final class PluginSchedulerImpl implements PluginScheduler {
         closed = true;
         for (Task task : tasks) task.cancel();
         tasks.clear();
-        // A copy taken under the map's lock: tick threads drop the tasks that ran meanwhile
-        for (Task task : List.copyOf(transientTasks.keySet())) task.cancel();
+        // A copy taken under the set's lock: tick threads drop the tasks that ran meanwhile
+        for (Task task : List.copyOf(transientTasks)) task.cancel();
         transientTasks.clear();
-        for (Thread body : asyncBodies.values()) body.interrupt();
+        for (Map.Entry<Task, Thread> async : asyncBodies.entrySet()) {
+            async.getKey().cancel();
+            async.getValue().interrupt();
+        }
         asyncBodies.clear();
         final Task running = sweeper.getAndSet(null);
         if (running != null) running.cancel();

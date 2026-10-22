@@ -18,7 +18,7 @@ public final class MemoryBackend implements StoreBackend {
     }
 
     private final AtomicLong ids = new AtomicLong();
-    // Guarded by itself
+    // Both guarded by the monitor of characters
     private final Map<UUID, Long> byAccount = new HashMap<>();
     private final Map<Long, Character> characters = new HashMap<>();
 

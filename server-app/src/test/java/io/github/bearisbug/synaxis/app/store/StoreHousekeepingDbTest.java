@@ -77,4 +77,28 @@ class StoreHousekeepingDbTest {
         }
         assertEquals(1, new StoreHousekeeping(pool.pool()).collectNonces(), "the next run does it");
     }
+
+    /**
+     * A cleanup statement may run as long as its own timeout says, 10 s for the nonces (§17), not only the 4 s the
+     * driver waits on the socket of every statement of the pool: a delete held up 6 s behind a lock still finishes.
+     */
+    @Test
+    void aCleanupMayRunForItsOwnTimeoutPastTheSocketTimeoutOfThePool() throws Exception {
+        database.execute("INSERT INTO transfer_nonce VALUES (decode(repeat('01', 16), 'hex'), now() - interval '1 second')");
+        try (Connection other = database.connect(); Statement lock = other.createStatement()) {
+            other.setAutoCommit(false);
+            lock.execute("LOCK TABLE transfer_nonce IN ACCESS EXCLUSIVE MODE");
+            final Thread release = Thread.ofVirtual().start(() -> {
+                try {
+                    Thread.sleep(6_000);
+                    other.commit();
+                } catch (InterruptedException | SQLException e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+
+            assertEquals(1, new StoreHousekeeping(pool.pool()).collectNonces(), "the delete waited for the lock");
+            release.join();
+        }
+    }
 }

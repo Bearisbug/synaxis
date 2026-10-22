@@ -52,7 +52,7 @@ public class ShutdownSignalLaunchTest {
                     "the sequence the console started ran to its end before the JVM halted ("
                             + tookMillis + " ms):\n" + log);
             final String saved = ShutdownBeforeTheWorldLaunchTest.ledgerLine(directory, "\"shutdown_saved\"");
-            assertTrue(saved.contains("\"timed_out\":\"false\""), saved);
+            assertTrue(saved.contains("\"timed_out\":false"), saved);
         }
     }
 }

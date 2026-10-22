@@ -307,6 +307,19 @@ class PermissionsIntegrationTest {
         await(env, () -> second.roles(lapsed).isEmpty(), Duration.ofSeconds(3), "a player that left is forgotten");
     }
 
+    /** A role that grants no node yet is held all the same, and covers nothing. */
+    @Test
+    void aRoleWithoutNodesIsHeldAndCoversNothing(Env env) {
+        database.execute("INSERT INTO role (role_id) VALUES ('newcomer')");
+        final HostPermissions permissions = shard(env, "a", false, HostPermissions.REFRESH);
+        final UUID account = UUID.randomUUID();
+        database.execute("INSERT INTO account_role (account_uuid, role_id) VALUES ('" + account + "', 'newcomer')");
+        final Player player = online(env, permissions, env.createFlatInstance(), account, "Newcomer");
+
+        assertEquals(Set.of("newcomer"), permissions.roles(player));
+        assertFalse(permissions.has(player, "gm.ban"));
+    }
+
     @Test
     void aLoginWhoseRolesCannotBeReadHoldsNoneUntilTheNextRead(Env env) {
         final AtomicBoolean down = new AtomicBoolean(true);

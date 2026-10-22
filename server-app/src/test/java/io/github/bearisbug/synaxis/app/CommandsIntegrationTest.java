@@ -530,6 +530,32 @@ class CommandsIntegrationTest {
         host.disableAll();
     }
 
+    /**
+     * A player's list spends the chat budget of its connection ({@code docs/DESIGN-PROD.md} {@code API-PROD-011}),
+     * three back to back by default: past it the command answers nothing. The console has no budget.
+     */
+    @Test
+    void aPlayersListPastTheChatBudgetOfItsConnectionAnswersNothing(Env env) {
+        final Instance match = env.createFlatInstance();
+        final PluginHost host = host(env);
+        host.enable(List.of(new Probe("mmo", match, _ -> { })), Set.of());
+        final TestConnection connection = env.createConnection(new GameProfile(UUID.randomUUID(), "Lister"));
+        final Collector<SystemChatPacket> chat = connection.trackIncoming(SystemChatPacket.class);
+        final Player lister = connection.connect(match, new Pos(0, 41, 0));
+
+        for (int i = 0; i < 5; i++)
+            assertEquals(CommandResult.Type.SUCCESS, env.process().command().execute(lister, "list").getType());
+        assertEquals(List.of("synaxis:command-list 1|Lister", "synaxis:command-list 1|Lister",
+                        "synaxis:command-list 1|Lister"),
+                chat.collect().stream().map(packet -> text(packet.message())).toList(),
+                "synaxis.chat-burst is 3 and the rate 1 a second");
+
+        final RecordingConsole console = new RecordingConsole(env.process());
+        for (int i = 0; i < 5; i++) env.process().command().execute(console, "list");
+        assertEquals(5, console.answers.size(), "the console lists every time: " + console.answers);
+        host.disableAll();
+    }
+
     @Test
     void aPlayersUnknownCommandIsAnsweredWithItsFirstWordAndTheConsoleOnlyLogsIt(Env env) {
         final Instance match = env.createFlatInstance();

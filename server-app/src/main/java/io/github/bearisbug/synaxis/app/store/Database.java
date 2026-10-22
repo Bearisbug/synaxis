@@ -19,12 +19,18 @@ import java.util.Properties;
 public final class Database implements AutoCloseable {
 
     static final int POOL_SIZE = 4;
+    /**
+     * How long getting a connection may take. Whole seconds: {@code driverProperties} hands it to pgjdbc
+     * as {@code connectTimeout} and {@code loginTimeout} in seconds, and under 1,000 it becomes 0, no
+     * timeout at all.
+     */
     static final int CONNECTION_TIMEOUT_MS = 2_000;
     static final int STATEMENT_TIMEOUT_MS = 2_000;
     /**
      * How long a read on the socket may wait. A database that stops answering without closing the
      * connection (paused, or a network that drops packets) never trips the statement timeout, which
-     * the server enforces; without this a statement would wait for it forever.
+     * the server enforces; without this a statement would wait for it forever. Whole seconds: pgjdbc
+     * takes {@code socketTimeout} in seconds, and under 1,000 it becomes 0, no timeout at all.
      */
     static final int SOCKET_TIMEOUT_MS = 4_000;
     static final int VALIDATION_TIMEOUT_MS = 1_000;

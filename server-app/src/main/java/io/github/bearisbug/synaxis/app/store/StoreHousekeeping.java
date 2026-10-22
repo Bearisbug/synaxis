@@ -78,6 +78,9 @@ public final class StoreHousekeeping implements AutoCloseable {
                         if (!row.next() || !row.getBoolean(1)) return -1;
                     }
                 }
+                // The driver waits on the socket of a pooled connection only Database.SOCKET_TIMEOUT_MS, which would cut
+                // the job short of its own timeout; the pool puts the network timeout back when the connection returns
+                connection.setNetworkTimeout(Runnable::run, (timeoutSeconds + 2) * 1_000);
                 try (Statement statement = connection.createStatement()) {
                     statement.execute("SET LOCAL statement_timeout = '" + timeoutSeconds + "s'");
                     return statement.executeUpdate(sql);

@@ -44,7 +44,11 @@ public final class ShutdownSequence implements ShutdownParticipant {
          *                  block. False once the watchdog judged the tick dead: no tick thread runs
          *                  anything anymore, and the step does its work on the calling thread, the
          *                  thread of the shutdown sequence
-         * @return completes once the step is over, done or failed
+         * @return completes once the step is over, done or failed. The sequence logs neither a future
+         *         that completes exceptionally nor a step still running when the budget runs out: the step
+         *         logs both itself ({@code docs/DESIGN-PROD.md} {@code API-PROD-007}). Only a
+         *         {@link RuntimeException} this call throws is logged by the sequence, and the step then
+         *         counts as over
          */
         CompletableFuture<?> run(Duration remaining, boolean tickAlive);
     }

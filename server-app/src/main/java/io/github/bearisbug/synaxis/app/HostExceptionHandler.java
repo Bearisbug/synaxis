@@ -29,8 +29,10 @@ import java.util.function.LongSupplier;
  * listener can cause and survive — also writes a crash report, once per process: the first fatal
  * error is the one the report is about, and a process that keeps running after it would otherwise
  * write one per occurrence. Nothing here stops the process. An exhausted heap is meant to end in
- * {@code -XX:+ExitOnOutOfMemoryError} before this handler ever runs; if the flag is missing, the
- * stop sequence on an exhausted heap is exactly what the design takes out.
+ * {@code -XX:+ExitOnOutOfMemoryError} (REQ-PROD-028) before this handler runs; without the flag it
+ * still only gets this line and the report, because API-PROD-013 has no stop sequence for an
+ * exhausted heap. A report that could not be written leaves its own ERROR line from
+ * {@link CrashReports}, and every fatal error after the first is logged with {@code crash_report=-}.
  */
 final class HostExceptionHandler implements ExceptionHandler {
 
@@ -70,17 +72,6 @@ final class HostExceptionHandler implements ExceptionHandler {
         }
         budgets.computeIfAbsent(e.getClass(), _ -> new LogBudget(LOGGER, e.getClass().getSimpleName()))
                 .error(e, "Unhandled exception: tick={} connection_id={}", tick.getAsLong(), connection);
-    }
-
-    /**
-     * The default uncaught exception handler of the process. The line is written on the dying
-     * thread, so the log pattern names it.
-     *
-     * @param thread the thread that dies
-     * @param e      what it dies of
-     */
-    void handleUncaught(Thread thread, Throwable e) {
-        handleException(e, null);
     }
 
     static boolean isFatal(Throwable e) {

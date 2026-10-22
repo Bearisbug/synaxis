@@ -3,7 +3,10 @@ package io.github.bearisbug.synaxis.app;
 import io.github.bearisbug.synaxis.plugin.SynaxisPlugin;
 
 /**
- * What the host has to take back when a plugin leaves the {@code enabled} state (§11.2).
+ * The capabilities a plugin holds handles of its own, which the host closes one by one when it leaves
+ * the {@code enabled} state (§11.2). The capabilities kept in host wide registries (channels,
+ * admission, tab list, actions, managed instances) are taken back by id in {@code PluginHost#tearDown},
+ * and the player data only when {@code onEnable} fails, by {@code PluginHost#enableOne}.
  *
  * @param plugin    the plugin itself
  * @param id        its id, also the namespace of its channels

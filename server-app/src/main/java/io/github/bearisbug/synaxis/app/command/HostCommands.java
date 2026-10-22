@@ -18,14 +18,15 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+
+import static io.github.bearisbug.synaxis.app.command.GmCommands.record;
+import static io.github.bearisbug.synaxis.app.command.GmCommands.reply;
 
 /**
  * The seven commands the host brings along ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-012},
@@ -36,7 +37,8 @@ import java.util.function.BiConsumer;
  * The console may run all of them. A player runs one other than {@code list} only while holding
  * {@code synaxis.command.<name>}; without it the engine refuses the command as a failed
  * precondition and leaves it out of the player's completions. {@code list} asks for no node, as the
- * vanilla {@code /list} asks for permission level 0. Every run writes one {@code gm_command} event
+ * vanilla {@code /list} asks for permission level 0, and spends a token of the chat budget of the
+ * player's connection, past which it answers nothing. Every run writes one {@code gm_command} event
  * except a player's {@code list}, which is no GM command. A player's command the engine does not
  * know is answered with one line.
  */
@@ -150,12 +152,15 @@ public final class HostCommands {
         // No condition: every player runs it and sees it among the completions
         final Command list = new Command("list");
         list.setDefaultExecutor((sender, context) -> {
+            // A player's list spends a token of the chat budget of its connection (API-PROD-008): the answer names
+            // every player online, and the client picks how often it asks
+            if (sender instanceof Player player && !player.chatRateLimiter().tryAcquire(System.nanoTime())) return;
             final List<String> names = process.connection().getOnlinePlayers().stream()
                     .map(Player::getUsername).sorted().toList();
             reply(sender, "synaxis:command-list", "%s players online: %s", String.valueOf(names.size()),
                     String.join(", ", names));
             // A player's list is no GM command; recording it would let the client fill the ledger
-            if (!(sender instanceof Player)) record(sender, context.getInput(), null, "ok");
+            if (!(sender instanceof Player)) record(analytics, sender, context.getInput(), null, "ok");
         });
         return list;
     }
@@ -196,13 +201,13 @@ public final class HostCommands {
         final Player player = process.connection().getOnlinePlayerByUsername(name);
         if (player == null) {
             reply(sender, "synaxis:command-no-player", "No player online here is called %s", name);
-            record(sender, input, null, "no_target");
+            record(analytics, sender, input, null, "no_target");
             return;
         }
         player.kick(reason == null ? Component.translatable("multiplayer.disconnect.kicked", "Kicked by an operator")
                 : Component.text(reason));
         reply(sender, "synaxis:command-kicked", "Kicked %s", player.getUsername());
-        record(sender, input, player.getUuid(), "ok");
+        record(analytics, sender, input, player.getUuid(), "ok");
     }
 
     private Command broadcast() {
@@ -216,7 +221,7 @@ public final class HostCommands {
                 players++;
             }
             reply(sender, "synaxis:command-broadcast", "Sent to %s players", String.valueOf(players));
-            record(sender, context.getInput(), null, "ok");
+            record(analytics, sender, context.getInput(), null, "ok");
         }, text);
         return broadcast;
     }
@@ -228,7 +233,7 @@ public final class HostCommands {
             var _ = store.saveOnline().thenAccept(count -> {
                 reply(sender, "synaxis:command-saved", "Saved %s of %s players", String.valueOf(count.saved()),
                         String.valueOf(count.online()));
-                record(sender, context.getInput(), null, count.saved() == count.online() ? "ok" : "partial");
+                record(analytics, sender, context.getInput(), null, count.saved() == count.online() ? "ok" : "partial");
             });
         });
         return save;
@@ -243,7 +248,7 @@ public final class HostCommands {
             // "stop -1" must not stop at once
             if (context.getInput().strip().indexOf(' ') >= 0) {
                 reply(sender, "synaxis:command-stop-usage", "Usage: stop [seconds], a whole number from 0");
-                record(sender, context.getInput(), null, "invalid");
+                record(analytics, sender, context.getInput(), null, "invalid");
                 return;
             }
             stop(sender, context.getInput(), 0);
@@ -257,11 +262,11 @@ public final class HostCommands {
         try {
             if (!started) {
                 reply(sender, "synaxis:command-already-stopping", "The server is already stopping");
-                record(sender, input, null, "invalid");
+                record(analytics, sender, input, null, "invalid");
                 return;
             }
             reply(sender, "synaxis:command-stopping", "The server stops in %s s", String.valueOf(seconds));
-            record(sender, input, null, "ok");
+            record(analytics, sender, input, null, "ok");
         } finally {
             stopAnswered();
         }
@@ -276,7 +281,7 @@ public final class HostCommands {
             if (context.getInput().strip().indexOf(' ') >= 0) {
                 reply(sender, "synaxis:command-profile-usage", "Usage: profile [seconds], a whole number from %s to %s",
                         String.valueOf(Profiler.MIN_SECONDS), String.valueOf(Profiler.MAX_SECONDS));
-                record(sender, context.getInput(), null, "invalid");
+                record(analytics, sender, context.getInput(), null, "invalid");
                 return;
             }
             profile(sender, context.getInput(), Profiler.DEFAULT_SECONDS);
@@ -291,14 +296,14 @@ public final class HostCommands {
             start = profiler.start(seconds);
         } catch (IOException e) {
             reply(sender, "synaxis:command-profile-failed", "The recording failed: %s", String.valueOf(e.getMessage()));
-            record(sender, input, null, "unavailable");
+            record(analytics, sender, input, null, "unavailable");
             return;
         }
         switch (start) {
             case Profiler.Busy busy -> {
                 reply(sender, "synaxis:command-profile-busy", "A recording to %s is still running",
                         busy.path().toString());
-                record(sender, input, null, "invalid");
+                record(analytics, sender, input, null, "invalid");
             }
             case Profiler.Started started -> {
                 reply(sender, "synaxis:command-profile-started", "Recording %s s to %s", String.valueOf(seconds),
@@ -307,11 +312,11 @@ public final class HostCommands {
                 var _ = started.written().whenComplete((path, failure) -> {
                     if (failure == null) {
                         reply(sender, "synaxis:command-profile-done", "Recorded %s", path.toString());
-                        record(sender, input, null, "ok");
+                        record(analytics, sender, input, null, "ok");
                     } else {
                         reply(sender, "synaxis:command-profile-failed", "The recording failed: %s",
                                 String.valueOf(failure.getMessage()));
-                        record(sender, input, null, "unavailable");
+                        record(analytics, sender, input, null, "unavailable");
                     }
                 });
             }
@@ -325,28 +330,12 @@ public final class HostCommands {
             reply(sender, "synaxis:command-tps", "TPS %s, MSPT p50 %s ms, p95 %s ms, p99 %s ms over the last %s ticks",
                     decimal(snapshot.tps()), decimal(snapshot.p50()), decimal(snapshot.p95()), decimal(snapshot.p99()),
                     String.valueOf(snapshot.ticks()));
-            record(sender, context.getInput(), null, "ok");
+            record(analytics, sender, context.getInput(), null, "ok");
         });
         return tps;
     }
 
     private static String decimal(double value) {
         return String.format(Locale.ROOT, "%.1f", value);
-    }
-
-    private static void reply(CommandSender sender, String key, String fallback, String... arguments) {
-        final Component[] components = new Component[arguments.length];
-        for (int i = 0; i < arguments.length; i++) components[i] = Component.text(arguments[i]);
-        sender.sendMessage(Component.translatable(key, fallback, components));
-    }
-
-    private void record(CommandSender sender, String input, @Nullable UUID target, String result) {
-        final Map<String, Object> attributes = new LinkedHashMap<>();
-        attributes.put("actor", sender instanceof Player ? "player" : "console");
-        attributes.put("actor_uuid", sender instanceof Player player ? player.getUuid() : null);
-        attributes.put("command", input);
-        attributes.put("target", target);
-        attributes.put("result", result);
-        analytics.accept("gm_command", attributes);
     }
 }

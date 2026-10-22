@@ -24,14 +24,15 @@ import java.util.concurrent.CompletableFuture;
  * no game on top of it.
  * <p>
  * Gameplay comes from a plugin, and the host needs both halves of it — an admission provider to say
- * where a connection goes and a running match to put it in. A process with no plugin at all used to
- * refuse to open the port over the missing halves, which made the core impossible to run, load test
- * or smoke test on its own. It now serves a world of its own instead: one flat instance, an
- * admission provider that lets everybody into it, and the {@value #ECHO_CHANNEL} diagnostic channel
- * that sends every payload it receives straight back.
+ * where a connection goes and exactly one running match to put it in. With {@code core-mode=auto} a
+ * launch in which no plugin took part serves the core world instead, so that the core can be run,
+ * load tested and smoke tested on its own: one flat instance, an admission provider that lets
+ * everybody into it, and the {@value #ECHO_CHANNEL} diagnostic channel that sends every payload it
+ * receives straight back. With {@code on} the core world is always served and no plugin is
+ * discovered; with {@code off} a launch without gameplay is refused.
  * <p>
- * A plugin that did take part still has to deliver: half provided gameplay, or none at all out of a
- * plugin that came up wrong, is a refusal exactly as it was before.
+ * A launch in which a plugin took part and did not leave both halves (one half, neither, or more than
+ * one match) is refused (API-M2-010 step 5).
  */
 final class CoreMode {
 
@@ -82,7 +83,7 @@ final class CoreMode {
         AUTO,
         /** Serve the core world, plugins not discovered at all. */
         ON,
-        /** Never serve the core world: a launch without gameplay is refused, as it was before. */
+        /** Never serve the core world: a launch without gameplay is refused. */
         OFF
     }
 

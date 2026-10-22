@@ -7,18 +7,19 @@ import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType;
 import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentWord;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
-import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
+
+import static io.github.bearisbug.synaxis.app.command.GmCommands.record;
+import static io.github.bearisbug.synaxis.app.command.GmCommands.reply;
 
 /**
  * The GM command that grants and takes back roles ({@code docs/DESIGN-PROD.md} {@code API-PROD-010},
@@ -75,7 +76,7 @@ public final class RoleCommand extends Command {
             final String result = target == null ? "no_target" : execute(sender, action, target, targetText, role);
             if (target == null)
                 reply(sender, "synaxis:role-no-target", "No online player or uuid %s", targetText);
-            record(sender, input, target, result);
+            record(analytics, sender, input, target, result);
         });
     }
 
@@ -86,14 +87,14 @@ public final class RoleCommand extends Command {
         }
         try {
             if ("list".equals(action)) {
-                final Set<String> held = permissions.rolesOf(target);
+                final Set<String> held = permissions.grantsOf(target).roles();
                 reply(sender, "synaxis:role-list", "%s holds: %s", targetText, String.join(", ", held));
                 return "ok";
             }
             final String roleId = role == null ? "" : role;
             // The console hands out any role, for good; a player none above what the database says
             // it holds now, itself included, and none for longer than its own grants run
-            final RoleStore.Grants own = sender instanceof Player player ? permissions.grantsOf(player) : null;
+            final RoleStore.Grants own = sender instanceof Player player ? permissions.grantsOf(player.getUuid()) : null;
             if (own != null && !permissions.mayHandOut(own, roleId)) {
                 reply(sender, "synaxis:role-above-sender", "You cannot hand out %s: it grants nodes you do not hold", roleId);
                 return "above_sender";
@@ -126,21 +127,5 @@ public final class RoleCommand extends Command {
         if (UUID_TEXT.matcher(text).matches()) return UUID.fromString(text);
         final Player online = process.connection().getOnlinePlayerByUsername(text);
         return online == null ? null : online.getUuid();
-    }
-
-    private static void reply(CommandSender sender, String key, String fallback, String... arguments) {
-        final Component[] components = new Component[arguments.length];
-        for (int i = 0; i < arguments.length; i++) components[i] = Component.text(arguments[i]);
-        sender.sendMessage(Component.translatable(key, fallback, components));
-    }
-
-    private void record(CommandSender sender, String input, @Nullable UUID target, String result) {
-        final Map<String, Object> attributes = new LinkedHashMap<>();
-        attributes.put("actor", sender instanceof Player ? "player" : "console");
-        attributes.put("actor_uuid", sender instanceof Player player ? player.getUuid() : null);
-        attributes.put("command", input);
-        attributes.put("target", target);
-        attributes.put("result", result);
-        analytics.accept("gm_command", attributes);
     }
 }

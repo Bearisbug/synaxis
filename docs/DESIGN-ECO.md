@@ -975,7 +975,9 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
   - Context：隔离之后插件要自带依赖库，Bukkit 的 `libraries` 在起服时从 Maven 仓库下载
   - Decision：库打进插件 jar，归该插件的加载器；插件之间的接口只用自己的类与稳定面类型
   - Alternatives：
-    - 起服时下载（Bukkit `libraries`、Paper `MavenLibraryResolver`）：起服要联网，直连 Central 违反其条款
+    - 起服时下载（Bukkit `libraries`、Paper `MavenLibraryResolver`）：起服要联网，直连 Central 属于过量请求
+      - Sonatype 条款 2026-03-31 版禁止过量请求与带宽：[Central Repository Terms of Service](https://central.sonatype.org/terms.html)
+      - PaperMC 文档要求改用镜像：[Paper plugins](https://docs.papermc.io/paper/dev/getting-started/paper-plugins/)
     - jar 里嵌 jar，由私有库加载器加载：库对依赖方不可见，但宿主要解压缓存，SDK 要会打这种包
   - Consequences：起服不联网、可复现；互相依赖的插件跨接口传同名库的类型会 `LinkageError`，出现第一起就改嵌 jar
 - **`ADR-ECO-005` 服务注册表按类型登记，五档优先级** — Status: Proposed

@@ -1,8 +1,6 @@
 package io.github.bearisbug.synaxis.game.client.gametest;
 
 import io.github.bearisbug.synaxis.game.client.ClientHandshake;
-import io.github.bearisbug.synaxis.game.client.RtsClient;
-import io.github.bearisbug.synaxis.game.client.UnitBindings;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -66,10 +64,9 @@ import org.lwjgl.glfw.GLFW;
 /**
  * The playable items of {@code docs/DESIGN-PROD.md} §19 ({@code REQ-PROD-046}, {@code REQ-PROD-047},
  * the playable script of {@code API-PROD-026}), played by the real client: the ten steps G1 to G10
- * on the flat core world SYNAXIS_PLAYABLE_SERVER names, then G1, G2, G6, G7 and G10 on the RTS
- * server of the regression, SYNAXIS_GAMETEST_SERVER.
+ * on the flat core world SYNAXIS_PLAYABLE_SERVER names.
  * <p>
- * Every step is one line {@code <mode> G<n> PASS|FAIL|SKIP <evidence>} of
+ * Every step is one line {@code core G<n> PASS|FAIL|SKIP <evidence>} of
  * {@code synaxis-gametest/playable.txt}, written in a {@code finally}; a step that could not run
  * because an earlier one left the client out of the world, or dead, is {@code SKIP}, one the run
  * never reached is {@code FAIL}. The test catches what its steps throw and never fails itself:
@@ -82,8 +79,8 @@ import org.lwjgl.glfw.GLFW;
  * second starts as a new character at the spawn: G2 walks south in the launch with the dev mod and
  * north in the one with the production mod jar, and G3 and G4 change the blocks beside the end of
  * their own launch's walk. The G9 shaft north-west of the spawn is shared: a second launch finds it
- * dug and drops in. G9 needs the core world and the RTS map to have no bedrock: the shaft goes
- * through y = 0 into the void.
+ * dug and drops in. G9 needs the core world to have no bedrock: the shaft goes through y = 0 into
+ * the void.
  * <p>
  * The client is driven the way a player drives it: {@link TestInput} keys for walking, digging,
  * using, dropping, the hotbar, the inventory and chat; the clicks inside the inventory screen go
@@ -94,12 +91,10 @@ import org.lwjgl.glfw.GLFW;
 public final class PlayableClientGameTest implements FabricClientGameTest {
 
     private static final String CORE_VARIABLE = "SYNAXIS_PLAYABLE_SERVER";
-    private static final String RTS_VARIABLE = "SYNAXIS_GAMETEST_SERVER";
 
     /** The lines of the report, in the order they are written. */
     private static final List<String> STEPS = List.of(
-            "core G1", "core G2", "core G3", "core G4", "core G5", "core G6", "core G7", "core G8", "core G9", "core G10",
-            "rts G1", "rts G2", "rts G6", "rts G7", "rts G10");
+            "core G1", "core G2", "core G3", "core G4", "core G5", "core G6", "core G7", "core G8", "core G9", "core G10");
 
     /** server-app's own cap; the gametest harness drops the render distance to 5 chunks. */
     private static final int RENDER_DISTANCE = 10;
@@ -117,8 +112,6 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
     private static final int WALK_TICKS = 60;
     private static final double MIN_WALK = 3.0;
     private static final int LIGHT_TIMEOUT_TICKS = 100;
-    /** G2 on the RTS map: how far ahead a direction has to be free of pillars to be taken. */
-    private static final int CLEAR_RUN = 16;
 
     /** G3: stone takes 150 ticks bare handed, 8 with the iron pickaxe. */
     private static final int DIG_TIMEOUT_TICKS = 300;
@@ -166,8 +159,6 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
     private static final int REJOIN_TIMEOUT_TICKS = 100;
     private static final double REJOIN_DISTANCE = 0.5;
     private static final float REJOIN_DEGREES = 1f;
-    private static final int UNITS_TIMEOUT_TICKS = 20 * 60;
-    private static final int UNITS_STILL_TICKS = 20;
 
     /** A speed below which the player counts as standing, in blocks per tick. */
     private static final double STOPPED = 0.01;
@@ -192,7 +183,6 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
     private final Report report = new Report();
     private @Nullable ClientGameTestContext context;
     private @Nullable TestInput input;
-    private @Nullable Vec3 rtsSpawn;
     /** {@link #DISCONNECTS} when the current connection began: the evidence names only its own disconnects. */
     private int connectionMark;
 
@@ -201,7 +191,6 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
         if (TransferRoundTripClientGameTest.enabled()) return;
         final String core = System.getenv(CORE_VARIABLE);
         if (core == null || core.isBlank()) return;
-        final String rts = System.getenv(RTS_VARIABLE);
         this.context = context;
         this.input = context.getInput();
         String ended = "the playthrough ended before this step";
@@ -210,9 +199,6 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
             context.waitForScreen(TitleScreen.class);
             context.runOnClient(client -> client.options.renderDistance().set(RENDER_DISTANCE));
             core(core);
-            leave();
-            if (rts == null || rts.isBlank()) report.failRest("rts", RTS_VARIABLE + " not set");
-            else rts(rts);
         } catch (RuntimeException | AssertionError e) {
             ended = "the playthrough threw " + e;
         } finally {
@@ -226,36 +212,27 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
     }
 
     private void core(String server) {
-        if (!joined("core", server)) return;
-        attempt("core G2", () -> move("core"));
+        if (!joined(server)) return;
+        attempt("core G2", this::move);
         attempt("core G3", this::dig);
         attempt("core G4", this::place);
         attempt("core G5", this::inventory);
-        attempt("core G6", () -> chat("core"));
-        attempt("core G7", () -> commands("core"));
+        attempt("core G6", this::chat);
+        attempt("core G7", this::commands);
         attempt("core G8", this::melee);
         attempt("core G9", this::death);
         attempt("core G10", () -> rejoinCore(server));
     }
 
-    private void rts(String server) {
-        if (!joined("rts", server)) return;
-        rtsSpawn = position();
-        attempt("rts G2", () -> move("rts"));
-        attempt("rts G6", () -> chat("rts"));
-        attempt("rts G7", () -> commands("rts"));
-        attempt("rts G10", () -> rejoinRts(server));
-    }
-
-    /** G1, and SKIP for the rest of the mode when it did not reach the world. */
-    private boolean joined(String mode, String server) {
+    /** G1, and SKIP for the rest when it did not reach the world. */
+    private boolean joined(String server) {
         boolean inWorld = false;
         try {
-            inWorld = join(mode, server);
+            inWorld = join(server);
         } catch (RuntimeException | AssertionError e) {
-            report.failIfAbsent(mode + " G1", "threw " + e + disconnectsSince(connectionMark));
+            report.failIfAbsent("core G1", "threw " + e + disconnectsSince(connectionMark));
         }
-        if (!inWorld) report.skipRest(mode, mode + " G1 did not reach the world");
+        if (!inWorld) report.skipRest("core G1 did not reach the world");
         return inWorld;
     }
 
@@ -276,19 +253,18 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
 
     /**
      * G1: in the world within 60 s, in the full online tier over an encrypted connection (R3's
-     * criterion); on the core world also in survival and alive.
+     * criterion), in survival and alive.
      */
-    private boolean join(String mode, String server) {
-        final String step = mode + " G1";
-        connect(server, "synaxis-" + mode);
+    private boolean join(String server) {
+        final String step = "core G1";
+        connect(server, "synaxis-core");
         final boolean inWorld = ctx().computeOnClient(RegressionClientGameTest::inWorld);
         final boolean settled = inWorld && settle();
         final ClientHandshake handshake = RegressionClientGameTest.staticField(ClientHandshake.class, "HANDSHAKE");
         final boolean online = System.getProperty(RegressionClientGameTest.SESSION_HOST_PROPERTY) != null;
         final boolean encrypted = inWorld && ctx().computeOnClient(RegressionClientGameTest::encrypted);
-        final boolean core = mode.equals("core");
-        final boolean pass = inWorld && (encrypted || !online) && (!core || ctx().computeOnClient(client ->
-                client.gameMode.getPlayerMode() == GameType.SURVIVAL && client.player.getHealth() > 0));
+        final boolean pass = inWorld && (encrypted || !online) && ctx().computeOnClient(client ->
+                client.gameMode.getPlayerMode() == GameType.SURVIVAL && client.player.getHealth() > 0);
         report.put(step, pass, ctx().computeOnClient(client -> RegressionClientGameTest.inWorld(client)
                 ? String.format(Locale.ROOT, "in world at %s mode=%s health=%.1f handshake=%s encrypted=%s online=%s settled=%s",
                         xyz(client.player.position()), client.gameMode.getPlayerMode(), client.player.getHealth(),
@@ -298,14 +274,13 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
     }
 
     /**
-     * G2: the forward key held for 3 s; on the core world south in the dev mod launch and north in
-     * the production mod jar one (see the class comment), on the RTS map the first of south, east,
-     * north and west that is free of pillars for {@link #CLEAR_RUN} blocks.
+     * G2: the forward key held for 3 s, south in the dev mod launch and north in the production mod
+     * jar one (see the class comment).
      */
-    private void move(String mode) {
-        final String step = mode + " G2";
+    private void move() {
+        final String step = "core G2";
         if (!ready(step)) return;
-        final float yaw = !mode.equals("core") ? clearYaw() : FabricLoader.getInstance().isDevelopmentEnvironment() ? 0f : 180f;
+        final float yaw = FabricLoader.getInstance().isDevelopmentEnvironment() ? 0f : 180f;
         input().lookAt(yaw, 0f);
         final Vec3 start = position();
         input().holdKeyFor(options -> options.keyUp, WALK_TICKS);
@@ -316,37 +291,12 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
         final boolean grounded = ctx().computeOnClient(client -> !client.level.getBlockState(client.player.blockPosition().below()).isAir());
         final boolean loaded = ctx().computeOnClient(client -> client.level.hasChunk(
                 client.player.blockPosition().getX() >> 4, client.player.blockPosition().getZ() >> 4));
-        ctx().takeScreenshot(mode + "-g2-walked");
+        ctx().takeScreenshot("core-g2-walked");
         report.put(step, moved >= MIN_WALK && grounded && loaded && lit, ctx().computeOnClient(client -> String.format(Locale.ROOT,
                 "yaw %.0f from %s to %s moved %.2f blocks (need %.1f) stopped=%s ground_below=%s chunk_loaded=%s sky_above=%d",
                 yaw, xyz(start), xyz(client.player.position()), moved, MIN_WALK, stopped,
                 client.level.getBlockState(client.player.blockPosition().below()), loaded,
                 RegressionClientGameTest.sky(client, client.player.blockPosition().above()))));
-    }
-
-    private float clearYaw() {
-        return ctx().computeOnClient(client -> {
-            final BlockPos feet = client.player.blockPosition();
-            float best = 0f;
-            int bestRun = -1;
-            for (float yaw : new float[] {0f, -90f, 180f, 90f}) {
-                final int dx = (int) Math.round(-Math.sin(Math.toRadians(yaw)));
-                final int dz = (int) Math.round(Math.cos(Math.toRadians(yaw)));
-                int run = 0;
-                while (run < CLEAR_RUN) {
-                    final BlockPos at = feet.offset(dx * (run + 1), 0, dz * (run + 1));
-                    if (!client.level.getBlockState(at).isAir() || !client.level.getBlockState(at.above()).isAir()
-                            || client.level.getBlockState(at.below()).isAir()) break;
-                    run++;
-                }
-                if (run > bestRun) {
-                    best = yaw;
-                    bestRun = run;
-                }
-                if (run == CLEAR_RUN) break;
-            }
-            return best;
-        });
     }
 
     // ---- G3, G4 ------------------------------------------------------------------------------
@@ -570,8 +520,8 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
     // ---- G6, G7 ------------------------------------------------------------------------------
 
     /** G6: a chat line with a random string comes back. */
-    private void chat(String mode) {
-        final String step = mode + " G6";
+    private void chat() {
+        final String step = "core G6";
         if (!ready(step)) return;
         final String token = "g6-" + UUID.randomUUID().toString().substring(0, 8);
         final int mark = MESSAGES.size();
@@ -588,8 +538,8 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
     }
 
     /** G7: /list answers with the player's name, an unknown command with its own sentence. */
-    private void commands(String mode) {
-        final String step = mode + " G7";
+    private void commands() {
+        final String step = "core G7";
         if (!ready(step)) return;
         final String name = ctx().computeOnClient(client -> client.player.getName().getString());
         final String list = command("list", "synaxis:command-list", name);
@@ -918,43 +868,6 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
                 + (matched >= 0 ? " within " + matched + " ticks" : "; differs in " + before.differences(after)));
     }
 
-    /** G10 on the RTS map: the units the player may command are still there after a reconnect. */
-    private void rejoinRts(String server) {
-        final String step = "rts G10";
-        if (!ready(step)) return;
-        final RtsClient rts = RegressionClientGameTest.staticField(RtsClient.class, "RTS");
-        // Counted where G1 put the player, as the reconnect puts it there again
-        final Vec3 spawn = rtsSpawn;
-        if (spawn != null) walkTo(spawn.x, spawn.z, 0.5, WALK_TO_TICKS, null);
-        final long before = stableCount(rts);
-        final String rejoined = reconnect(server, "synaxis-rts");
-        if (rejoined != null) {
-            report.put(step, false, "commandable before " + before + "; " + rejoined);
-            return;
-        }
-        final int matched = ticksUntil(_ -> commandable(rts) == before, UNITS_TIMEOUT_TICKS);
-        final long after = ctx().computeOnClient(_ -> commandable(rts));
-        report.put(step, before > 0 && matched >= 0, "commandable before " + before + " after " + after
-                + (matched >= 0 ? " within " + matched + " ticks" : " after " + UNITS_TIMEOUT_TICKS + " ticks"));
-    }
-
-    /** The commandable units once their number stayed the same for {@link #UNITS_STILL_TICKS} ticks. */
-    private long stableCount(RtsClient rts) {
-        long last = -1;
-        int still = 0;
-        for (int tick = 0; tick < UNITS_TIMEOUT_TICKS && still < UNITS_STILL_TICKS; tick++) {
-            final long now = ctx().computeOnClient(_ -> commandable(rts));
-            still = now == last && now > 0 ? still + 1 : 0;
-            last = now;
-            ctx().waitTick();
-        }
-        return last;
-    }
-
-    private static long commandable(RtsClient rts) {
-        return rts.bindings().all().stream().filter(UnitBindings.Binding::commandable).count();
-    }
-
     // ---- connection ----------------------------------------------------------------------------
 
     private void connect(String server, String name) {
@@ -1199,7 +1112,7 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
         return Objects.requireNonNull(input);
     }
 
-    /** The fifteen lines, written whole every time so the file never holds a previous run's lines. */
+    /** The ten lines, written whole every time so the file never holds a previous run's lines. */
     private static final class Report {
 
         private final Map<String, String> lines = new HashMap<>();
@@ -1212,16 +1125,12 @@ public final class PlayableClientGameTest implements FabricClientGameTest {
             lines.putIfAbsent(step, step + " SKIP " + oneLine(why));
         }
 
-        void skipRest(String mode, String why) {
-            for (String step : STEPS) if (step.startsWith(mode + " ")) skip(step, why);
+        void skipRest(String why) {
+            for (String step : STEPS) skip(step, why);
         }
 
         void failIfAbsent(String step, String why) {
             lines.putIfAbsent(step, step + " FAIL " + oneLine(why));
-        }
-
-        void failRest(String mode, String why) {
-            for (String step : STEPS) if (step.startsWith(mode + " ")) failIfAbsent(step, why);
         }
 
         void write(String why) {

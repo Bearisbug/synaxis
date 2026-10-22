@@ -17,14 +17,12 @@ import org.slf4j.LoggerFactory;
  * <p>
  * <b>Both phases are supported and the client does not choose between them.</b> Which phase the
  * negotiation happens in is the server's launch argument {@code synaxis.app.handshake-phase}
- * ({@code configuration} by default), because {@code ADR-M2-010} is still Proposed: the source of
- * {@code fabric-networking-api-v1} says a configuration phase payload does go out to a server that
- * never sends {@code minecraft:register}, but that reading has never been run against a real
- * client (see {@code docs/research/client-spikes-2026-09/spike4-configuration-send.md}). So this
- * class answers whichever way it is spoken to: {@link #beginConfiguration(Sink)} opens the
+ * ({@code configuration} by default, {@code ADR-M2-010}). Fabric's networking API sends a
+ * configuration phase payload to a server that never sends {@code minecraft:register}, and the real
+ * client regression's R2 checks that this form is accepted; {@code login} is the server's fallback.
+ * So this class answers whichever way it is spoken to: {@link #beginConfiguration(Sink)} opens the
  * exchange when the server waits for one, {@link #answerLoginQuery(byte[])} answers when the
- * server asks first. Should the run time half of that spike come out against the configuration
- * phase, the fallback is a server side launch argument and nothing here changes.
+ * server asks first, and switching the server between the two changes nothing here.
  * <p>
  * <b>The state has to survive the login to configuration boundary.</b> A server running the login
  * form still routes {@code synaxis:handshake} during configuration, so a hello sent there after
@@ -32,9 +30,9 @@ import org.slf4j.LoggerFactory;
  * protocol error. {@link #reset()} therefore belongs to the start of a connection attempt, not to
  * the start of a phase.
  * <p>
- * <b>A refusal is shown, not worked around.</b> M2 does not reconnect: the server's disconnect
- * reason is a {@code translate} key, the mod ships the text for it, and the vanilla disconnect
- * screen is the whole of the client's part.
+ * <b>A refusal is shown, not worked around.</b> The client does not reconnect: the server's
+ * disconnect reason is a {@code translate} key, the mod ships the text for it, and the vanilla
+ * disconnect screen is the whole of the client's part.
  */
 public final class ClientHandshake {
 

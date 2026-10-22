@@ -1,6 +1,6 @@
 package io.github.bearisbug.synaxis.game.client.gametest.play;
 
-import io.github.bearisbug.synaxis.game.client.ClientHandshake;
+import io.github.bearisbug.synaxis.game.client.HandshakePayload;
 import io.github.bearisbug.synaxis.game.client.SynaxisClientMod;
 import io.github.bearisbug.synaxis.game.client.play.PlayClient;
 import io.github.bearisbug.synaxis.game.client.play.PlayHud;
@@ -24,11 +24,14 @@ import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
 /**
- * What {@link RushClientGameTest} reads of the client, kept in the gametest mod so that the shipped mod holds no
+ * What {@link PlayClientGameTest} reads of the client, kept in the gametest mod so that the shipped mod holds no
  * test hook ({@code docs/DESIGN-PLAY.md} §6.4.8): the client end of the test channel {@code synaxis_test:play}
  * of {@code PlayHudFixture}, the client state of every tick while a sampling runs, and the scene mirror of
  * {@code synaxis:play} as the HUD draws it, read off {@code SynaxisClientMod.PLAY} by reflection the way the
- * regression reads {@code RTS}, with {@code HANDSHAKE} beside it.
+ * regression reads {@code HANDSHAKE}.
+ * <p>
+ * It also registers {@code synaxis:handshake} for the play phase, serverbound: the regression's R5 sends an
+ * {@code S2C_HELLO} there, and the mod registers the channel for the configuration phase only.
  * <p>
  * Once a script starts a recording, the end of every client tick also records what arrived since the recording
  * began ({@code docs/DESIGN-PLAY.md} §6.4.8): each SET, with the moment {@code PlayClient} took it in and a
@@ -125,6 +128,7 @@ public final class PlayTestHook implements ClientModInitializer {
     public void onInitializeClient() {
         PayloadTypeRegistry.serverboundPlay().register(Payload.TYPE, Payload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(Payload.TYPE, Payload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(HandshakePayload.TYPE, HandshakePayload.CODEC);
         ClientPlayNetworking.registerGlobalReceiver(Payload.TYPE, (payload, _) -> ANSWERS.add(payload.data()));
         ClientTickEvents.END_CLIENT_TICK.register(PlayTestHook::sample);
         ClientTickEvents.END_CLIENT_TICK.register(_ -> record());
@@ -286,15 +290,6 @@ public final class PlayTestHook implements ClientModInitializer {
      */
     static PlayClient play() {
         return field("PLAY", PlayClient.class);
-    }
-
-    /**
-     * The client's end of the handshake (§6.7.6 Q1).
-     *
-     * @return {@code SynaxisClientMod.HANDSHAKE}; on the client thread only
-     */
-    static ClientHandshake handshake() {
-        return field("HANDSHAKE", ClientHandshake.class);
     }
 
     private static <T> T field(String name, Class<T> type) {

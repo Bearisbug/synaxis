@@ -49,7 +49,7 @@ import org.jspecify.annotations.Nullable;
  * judges and the exit code is only recorded.
  * <p>
  * It runs only when SYNAXIS_P10_SERVER is set, and then alone: {@link RegressionClientGameTest}
- * returns at once, and the spikes run only with SYNAXIS_SPIKES, which a P10 run does not set.
+ * returns at once.
  */
 public final class TransferRoundTripClientGameTest implements FabricClientGameTest {
 

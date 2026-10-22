@@ -14,10 +14,9 @@ import org.slf4j.LoggerFactory;
 /**
  * The {@code synaxis:handshake} channel of {@code API-M2-002} as a Fabric custom payload.
  * <p>
- * It is the configuration phase twin of {@link GamePayload}, and the buffer type is the difference
- * that matters: the configuration registries hand out a plain {@link FriendlyByteBuf}, because a
- * connection being configured has no registries yet. Nothing in this channel needs them — every
- * byte is written by the shared {@code :protocol} jar.
+ * Its buffer type is the configuration phase's: the configuration registries hand out a plain
+ * {@link FriendlyByteBuf}, because a connection being configured has no registries yet. Nothing in
+ * this channel needs them — every byte is written by the shared {@code :protocol} jar.
  * <p>
  * The login phase form of the same negotiation carries no payload type at all: there the bytes
  * travel in a login plugin request, and {@link ClientHandshake#answerLoginQuery(byte[])} reads and

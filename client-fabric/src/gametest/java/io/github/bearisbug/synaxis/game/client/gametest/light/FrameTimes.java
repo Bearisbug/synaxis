@@ -1,12 +1,12 @@
-package io.github.bearisbug.synaxis.game.client.gametest.farview;
+package io.github.bearisbug.synaxis.game.client.gametest.light;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Frame times for the V8b bench of {@code docs/DESIGN-M3.md} §26 M3-G (真机验收) and the {@code light-frames} mode of
- * {@code LightClientGameTest} (M3-S, 真机六项 P1①): while recording, {@code FrameTimeMixin} hands over the start of every
- * frame, and the bench writes the gaps out as {@code farview-bench.csv}. Off, which is always but during a bench, a frame costs one volatile read.
+ * Frame times for the {@code light-frames} mode of {@link LightClientGameTest}: while recording, {@code FrameTimeMixin}
+ * hands over the start of every frame, and the mode writes the gaps out as {@code light-frames.csv}. Off, which is
+ * always but during that mode, a frame costs one volatile read.
  */
 public final class FrameTimes {
 

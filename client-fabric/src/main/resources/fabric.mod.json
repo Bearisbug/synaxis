@@ -3,7 +3,7 @@
 	"id": "synaxis",
 	"version": "${version}",
 	"name": "Synaxis",
-	"description": "Client mod for the Synaxis RTS server. Required to join.",
+	"description": "Client mod for Synaxis servers. Required to join.",
 	"authors": [
 		"Bearisbug"
 	],
@@ -30,8 +30,5 @@
 		"fabric-rendering-v1": "*",
 		"fabric-key-mapping-api-v1": "*",
 		"fabric-lifecycle-events-v1": "*"
-	},
-	"suggests": {
-		"distanthorizons": "3.3.2"
 	}
 }

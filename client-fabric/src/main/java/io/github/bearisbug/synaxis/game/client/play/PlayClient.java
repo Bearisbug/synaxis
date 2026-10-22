@@ -36,9 +36,8 @@ import org.slf4j.LoggerFactory;
  * its {@link SceneReadyProbe}. What it sends goes to the sender it was given; the texts a result shows go to
  * the notice sink (the vanilla action bar in the mod).
  * <p>
- * One connection's worth: {@link #reset} at {@code ClientPlayConnectionEvents.INIT}. Single threaded, like
- * {@code RtsClient}: the payloads, that event, the client tick, the HUD and the panel all run on the client
- * thread.
+ * One connection's worth: {@link #reset} at {@code ClientPlayConnectionEvents.INIT}. Single threaded: the
+ * payloads, that event, the client tick, the HUD and the panel all run on the client thread.
  */
 public final class PlayClient {
 
@@ -560,7 +559,7 @@ public final class PlayClient {
 
     /**
      * Turns the local cooldown on or off; on by default. With it off a press is sent whatever the cooldown, so
-     * the server's cooldown answers it (§6.7.6 Q4 turns it off through the gametest's hook).
+     * the server's cooldown answers it (the gametest's hook turns it off).
      *
      * @param on whether a press inside the local cooldown is held back
      */

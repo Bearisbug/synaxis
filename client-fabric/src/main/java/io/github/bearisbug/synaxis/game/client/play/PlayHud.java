@@ -16,7 +16,7 @@ import org.jspecify.annotations.Nullable;
  * The HUD element {@code synaxis:play} ({@code docs/DESIGN-PLAY.md} §6.4.8): the {@code TEXT}s, {@code TIMER}s
  * and {@code SCOREBOARD}s of {@link PlayClient}, placed by {@link WidgetLayout}; a {@code PANEL} is a screen of
  * its own, {@link PanelScreen}. A connection that has not entered a scene draws nothing, so a server without
- * the scene layer, the light and far view fixtures among them, renders exactly as without this element.
+ * the scene layer, the light fixture among them, renders exactly as without this element.
  */
 public final class PlayHud {
 

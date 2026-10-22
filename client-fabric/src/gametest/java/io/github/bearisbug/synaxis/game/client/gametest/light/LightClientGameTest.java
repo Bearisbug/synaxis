@@ -1,6 +1,5 @@
 package io.github.bearisbug.synaxis.game.client.gametest.light;
 
-import io.github.bearisbug.synaxis.game.client.gametest.farview.FrameTimes;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -44,7 +43,7 @@ import org.jspecify.annotations.Nullable;
  * The runtime light cases of {@code docs/DESIGN-M3.md} §19 that need the real client, run in the
  * headless container against the light fixture of the server test sources ({@code LightShardFixture}),
  * or, in mode {@code real}, against {@code bin/server-shard} (§26 M3-D step 4). Without
- * {@code SYNAXIS_LIGHT_SERVER} it does nothing; the regression R1 to R8 runs after it either way.
+ * {@code SYNAXIS_LIGHT_SERVER} it does nothing; the regression R1 to R5 runs after it either way.
  * <p>
  * The light of the client is what {@link LayerLightEventListener#getLightValue} answers, the light of
  * the server what the fixture computes over its blocks right now ({@code truth}). Every case writes

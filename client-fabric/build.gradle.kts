@@ -1,13 +1,3 @@
-import java.net.ProxySelector
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
-import java.security.MessageDigest
-import java.time.Duration
-import java.util.HexFormat
 import java.util.zip.ZipFile
 
 plugins {
@@ -58,68 +48,14 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-// Distant Horizons, the far view renderer of docs/DESIGN-M3.md API-M3-015, pinned to the one jar its
-// surface table was checked against. The mod compiles against it and never ships it (LGPL-3.0: it
-// goes into mods/ as a jar of its own, verifyModJar below); a player without it gets vanilla view
-// distance. Nothing is committed: the jar is fetched into build/dh/ and kept while its SHA-1 holds.
-val dhJarName = "DistantHorizons-3.3.2-26.2-fabric-neoforge.jar"
-val dhUrl = "https://cdn.modrinth.com/data/uCdwusMi/versions/9NoftEde/$dhJarName"
-val dhSha1 = "51cdbdd9d25b1f27c3825bfc405ca6c49b864889"
-val dhJar = layout.buildDirectory.file("dh/$dhJarName")
-
-val fetchDistantHorizons = tasks.register("fetchDistantHorizons") {
-    group = "build setup"
-    description = "Fetches the pinned Distant Horizons jar into build/dh/, skipped while the one there has its SHA-1"
-    inputs.property("url", dhUrl)
-    inputs.property("sha1", dhSha1)
-    outputs.file(dhJar)
-    val url = dhUrl
-    val sha1 = dhSha1
-    doLast {
-        val target = dhJar.get().asFile.toPath()
-        fun sha1Of(bytes: ByteArray) = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-1").digest(bytes))
-        if (Files.isRegularFile(target) && sha1Of(Files.readAllBytes(target)) == sha1) return@doLast
-        // The JVM's proxy settings (JAVA_TOOL_OPTIONS on this machine and in the container), not http_proxy
-        val client = HttpClient.newBuilder().proxy(ProxySelector.getDefault())
-            .followRedirects(HttpClient.Redirect.NORMAL).connectTimeout(Duration.ofSeconds(30)).build()
-        var body: ByteArray? = null
-        var attempt = 1
-        while (body == null) {
-            try {
-                val response = client.send(HttpRequest.newBuilder(URI.create(url)).header("User-Agent", "synaxis-build").build(),
-                    HttpResponse.BodyHandlers.ofByteArray())
-                check(response.statusCode() == 200) { "$url answered HTTP ${response.statusCode()}" }
-                body = response.body()
-            } catch (e: java.io.IOException) {
-                if (attempt == 4) throw e
-                logger.lifecycle("fetchDistantHorizons: retrying after $e")
-                attempt++
-            }
-        }
-        val got = sha1Of(body)
-        check(got == sha1) { "$url has SHA-1 $got, not the pinned $sha1" }
-        Files.createDirectories(target.parent)
-        val part = target.resolveSibling("${target.fileName}.part")
-        Files.write(part, body)
-        Files.move(part, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-        logger.lifecycle("fetchDistantHorizons: ${body.size} B into $target")
-    }
-}
-
-dependencies {
-    compileOnly(files(dhJar).builtBy(fetchDistantHorizons))
-    // DhSurfaceTest holds the DH surface the mod uses to the very jar it compiled against
-    testRuntimeOnly(files(dhJar).builtBy(fetchDistantHorizons))
-}
-
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(25)
 }
 
-// The real client, driven through Fabric's client gametest API (docs/research/client-spikes-2026-09).
-// It needs a display, so it runs in the headless container of gametest-env/, never on a desktop:
-// Minecraft grabs the mouse once a world is open. `./gradlew runClientGameTest` inside that
-// container; SYNAXIS_GAMETEST_SERVER=<host:port> points it at a running server-app.
+// The real client, driven through Fabric's client gametest API. It needs a display, so it runs in
+// the headless container of gametest-env/, never on a desktop: Minecraft grabs the mouse once a
+// world is open. `./gradlew runClientGameTest` inside that container;
+// SYNAXIS_GAMETEST_SERVER=<host:port> points it at a running server-app.
 fabricApi {
     configureTests {
         createSourceSet = true
@@ -141,7 +77,7 @@ val authlibHosts = providers.environmentVariable("SYNAXIS_GAMETEST_SESSION_HOST"
 
 // The gametests load the mod jar players get, from the run directory's mods/, instead of the dev
 // classes: only that jar nests :protocol, and whether Fabric Loader accepts the nested jar is what
-// spike S0 has to see.
+// regression R1 has to see.
 tasks.named<JavaExec>("runClientGameTest") {
     val modJar = tasks.named<AbstractArchiveTask>("remapJar").flatMap { it.archiveFile }
     val devMod = sourceSets.main.get().output
@@ -191,8 +127,6 @@ tasks.withType<JavaCompile>().configureEach {
 // files rather than a copy each: a copy is a second thing to keep in step, which is the drift the
 // vectors exist to catch.
 val frozenVectors = layout.projectDirectory.asFile.parentFile.resolve("protocol/src/test/resources/vectors")
-// The far view vectors of docs/DESIGN-M3.md §24, with a format_version of their own
-val farviewVectors = layout.projectDirectory.asFile.parentFile.resolve("protocol/src/test/resources/farview-vectors")
 // The synaxis:play vectors of docs/DESIGN-PLAY.md §24, with a play_version of their own
 val playVectors = layout.projectDirectory.asFile.parentFile.resolve("protocol/src/test/resources/play-vectors")
 
@@ -200,8 +134,6 @@ tasks.withType<Test>().configureEach {
     useJUnitPlatform()
     systemProperty("synaxis.vectors.dir", frozenVectors.absolutePath)
     inputs.dir(frozenVectors).withPropertyName("frozenVectors").withPathSensitivity(PathSensitivity.RELATIVE)
-    systemProperty("synaxis.farview-vectors.dir", farviewVectors.absolutePath)
-    inputs.dir(farviewVectors).withPropertyName("farviewVectors").withPathSensitivity(PathSensitivity.RELATIVE)
     systemProperty("synaxis.play-vectors.dir", playVectors.absolutePath)
     inputs.dir(playVectors).withPropertyName("playVectors").withPathSensitivity(PathSensitivity.RELATIVE)
     // Loading Minecraft classes brings its log4j2 configuration along, which writes `logs/` under
@@ -225,11 +157,11 @@ tasks.processResources {
 }
 
 // What the mod jar ships is itself a delivery criterion (REQ-M2-020b, docs/TEST.md TC-GAME-045),
-// and every one of these five facts is silent when it breaks: a jar that lost its resources, or
+// and every one of these four facts is silent when it breaks: a jar that lost its resources, or
 // quietly loosened the version pin, still builds and still loads.
 val verifyModJar = tasks.register("verifyModJar") {
     group = "verification"
-    description = "Asserts what the mod jar ships: the pinned game version, the resources, the shared codec, no engine, no Distant Horizons"
+    description = "Asserts what the mod jar ships: the pinned game version, the resources, the shared codec, no engine"
 
     val modJar = tasks.named<AbstractArchiveTask>("remapJar").flatMap { it.archiveFile }
     val pinnedVersion = minecraftVersion
@@ -262,11 +194,6 @@ val verifyModJar = tasks.register("verifyModJar") {
                     !it.startsWith("io/github/bearisbug/synaxis/game/client/")
             }
             check(engine.isEmpty()) { "模组 jar 里混进了客户端包之外的服务端类：${engine.take(5)}" }
-
-            val distantHorizons = entries.filter { it.startsWith("com/seibel/") }
-            check(distantHorizons.isEmpty()) {
-                "模组 jar 里混进了 Distant Horizons 的类（LGPL-3.0，DH 以独立 jar 放进 mods/，docs/DESIGN-M3.md API-M3-015 许可条）：${distantHorizons.take(5)}"
-            }
 
             logger.lifecycle("mod jar: minecraft=$declared, ${entries.size} entries, ships ${nested.single()}")
         }

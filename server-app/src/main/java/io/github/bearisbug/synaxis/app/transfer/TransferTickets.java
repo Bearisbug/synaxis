@@ -6,8 +6,8 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * Sends a player to another shard with a ticket ({@code docs/DESIGN-PROD.md} {@code API-PROD-028}).
- * The host interface M3's {@code ShardService#transfer} calls once it picked the channel; it never
- * reaches the plugin API.
+ * The host interface {@code ShardService#transfer} calls once it picked the channel; it never reaches
+ * the plugin API.
  */
 public interface TransferTickets {
 

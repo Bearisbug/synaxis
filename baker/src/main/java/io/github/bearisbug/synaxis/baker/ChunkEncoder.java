@@ -1,7 +1,6 @@
 package io.github.bearisbug.synaxis.baker;
 
 import io.github.bearisbug.synaxis.baker.anvil.AnvilChunk;
-import io.github.bearisbug.synaxis.game.protocol.FarViewPack;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.instance.heightmap.Heightmap;
@@ -33,45 +32,27 @@ import java.util.Set;
 import java.util.function.Function;
 
 /**
- * Turns one lit source chunk into its four segments (API-M3-001) and, in the same pass over its columns, its fine
- * far view samples (API-M3-014). A pure function of the chunk, its light and the settings: the region task and
- * the verification's sampled re-encode call it the same way.
+ * Turns one lit source chunk into its four segments (API-M3-001). A pure function of the chunk, its light and the
+ * settings: the region task and the verification's sampled re-encode call it the same way.
  */
 final class ChunkEncoder {
     /** Indirect block palettes hold at most this many states; a section with more can only be sent direct. */
     static final int MAX_INDIRECT_STATES = 1 << Palette.BLOCK_PALETTE_MAX_BITS;
 
-    /**
-     * What one chunk bakes into.
-     *
-     * @param record  the four segments
-     * @param farView the fine far view samples of the chunk at {@link FarViewAssembler#BASE_LEVEL}, by z and then
-     *                x; {@code biome} is the biome's registry id, not yet an index into a tile's table
-     */
-    record Encoded(SynxChunkRecord record, List<FarViewPack.Sample> farView) {
-        Encoded {
-            farView = List.copyOf(farView);
-        }
-    }
-
     private static final boolean[] NON_AIR;
     private static final boolean[] MOTION_BLOCKING;
     private static final boolean[] FLUID;
-    /** The ground of a far view column: blocks motion and holds no fluid. */
-    private static final boolean[] GROUND;
 
     static {
         final int states = Block.statesCount();
         NON_AIR = new boolean[states];
         MOTION_BLOCKING = new boolean[states];
         FLUID = new boolean[states];
-        GROUND = new boolean[states];
         for (int state = 0; state < states; state++) {
             final Block block = Objects.requireNonNull(Block.fromStateId(state));
             NON_AIR[state] = !block.air();
             FLUID[state] = block.fluid();
             MOTION_BLOCKING[state] = block.blocksMotion() || block.fluid();
-            GROUND[state] = block.blocksMotion() && !block.fluid();
         }
     }
 
@@ -85,7 +66,7 @@ final class ChunkEncoder {
      * @throws IllegalStateException if a section holds more block states than an indirect palette, or a record of
      *                               segment ③ names a handler namespace that has no handler
      */
-    static Encoded encode(SourceChunk chunk, LightResult light, int minY, SynxSettings settings,
+    static SynxChunkRecord encode(SourceChunk chunk, LightResult light, int minY, SynxSettings settings,
                           Registries registries, Function<String, @Nullable BlockHandler> handlers) {
         final int sections = chunk.blocks().length, minSection = minY >> 4;
         // y << 8 | z << 4 | x with y counted from the bottom of the world; s << 12 | SynxBlockEntity#index is the same cell
@@ -116,15 +97,14 @@ final class ChunkEncoder {
             packetSections.add(new ChunkData.Section((short) counts[0], (short) counts[1], blocks, chunk.biomes()[s]));
         }
 
-        // One pass over every column: the two heightmaps, segment ②, segment ④ and the far view column.
-        // Segment ② (the M2 nav layer): bit `column` of bytes 0..31 is walkable, then from NAVIGATION_SURFACE_Y one
-        // i16 per column, the absolute y a unit stands at (one above the top, min_y for an empty column).
+        // One pass over every column: the two heightmaps, segment ② and segment ④.
+        // Segment ②: bit `column` of bytes 0..31 is walkable, then from NAVIGATION_SURFACE_Y one i16 per column,
+        // the absolute y of the cell above the top (min_y for an empty column).
         // Segment ④: 5 B per column, the top non-air block as a y index (y - min_y, 0 for an empty column), its
         // state, and the sky light above it.
         final int height = sections * 16;
         final short[] worldSurface = new short[256];
         final short[] motionBlocking = new short[256];
-        final FarViewPack.Sample[] farViewColumns = new FarViewPack.Sample[256];
         final ByteBuffer navigation = ByteBuffer.allocate(SynxFormat.NAVIGATION_BYTES).order(ByteOrder.LITTLE_ENDIAN);
         final ByteBuffer columns = ByteBuffer.allocate(SynxFormat.COLUMN_BYTES).order(ByteOrder.LITTLE_ENDIAN);
         for (int column = 0; column < 256; column++) {
@@ -137,7 +117,6 @@ final class ChunkEncoder {
             }
             worldSurface[column] = (short) (surface + 1);
             motionBlocking[column] = (short) (motion + 1);
-            farViewColumns[column] = farViewColumn(states, chunk.biomes(), column, motion, height);
 
             final boolean walkable = motion >= 0 && !FLUID[states[motion << 8 | column]];
             if (walkable) navigation.put(column >> 3, (byte) (navigation.get(column >> 3) | 1 << (column & 7)));
@@ -166,9 +145,8 @@ final class ChunkEncoder {
         }, registries);
         final ChunkDataPacket packet = new ChunkDataPacket(chunk.chunkX(), chunk.chunkZ(),
                 new ChunkData(heightmaps, data, packetBlockEntities), lightData(chunk, light, minSection));
-        return new Encoded(new SynxChunkRecord(chunk.chunkX(), chunk.chunkZ(),
-                SynxChunkPacket.encode(packet, settings, registries), navigation.array(), blockEntities, chunk.entities(),
-                columns.array()), farViewSamples(farViewColumns));
+        return new SynxChunkRecord(chunk.chunkX(), chunk.chunkZ(), SynxChunkPacket.encode(packet, settings, registries),
+                navigation.array(), blockEntities, chunk.entities(), columns.array());
     }
 
     /**
@@ -203,56 +181,6 @@ final class ChunkEncoder {
             packetBlockEntities.put(blockEntity.chunkBlockIndex(), block);
         }
         return packetBlockEntities;
-    }
-
-    /**
-     * Rules 1 to 4 of {@code API-M3-014} 来源与采样规则 on one column: the top is the highest block that blocks
-     * motion or holds fluid. Fluid on top runs down through the fluid touching it; the ground is then the first
-     * block below that blocks motion without fluid, and every cell between it and the top counts as fluid. A
-     * column without a top is empty. The biome is that of the top's cell, or of the world's highest cell for a
-     * column without a top.
-     *
-     * @param states the chunk's block states at {@code y << 8 | z << 4 | x}, y counted from the bottom of the world
-     * @param top    the top's y index, -1 for an empty column
-     */
-    private static FarViewPack.Sample farViewColumn(int[] states, Palette[] biomes, int column, int top, int height) {
-        final int x = column & 15, z = column >> 4;
-        final int biomeY = top >= 0 ? top : height - 1;
-        final int biome = biomes[biomeY >> 4].get(x >> 2, (biomeY & 15) >> 2, z >> 2);
-        if (top < 0) return new FarViewPack.Sample(0, 0, 0, 0, 0, biome);
-        final int topState = states[top << 8 | column];
-        if (!FLUID[topState]) return new FarViewPack.Sample(topState, 0, top, 0, 0, biome);
-        int y = top - 1;
-        while (y >= 0 && FLUID[states[y << 8 | column]]) y--;
-        final int lowestFluid = y + 1;
-        while (y >= 0 && !GROUND[states[y << 8 | column]]) y--;
-        if (y < 0) return new FarViewPack.Sample(0, topState, 0, lowestFluid, top, biome);
-        return new FarViewPack.Sample(states[y << 8 | column], topState, y, y + 1, top, biome);
-    }
-
-    /**
-     * Rule 5: each square of {@code 2^b × 2^b} columns gives the column with the highest top, ties going to the
-     * first by z and then x.
-     *
-     * @param columns the 256 columns, {@code z × 16 + x}
-     * @return the squares by z and then x
-     */
-    private static List<FarViewPack.Sample> farViewSamples(FarViewPack.Sample[] columns) {
-        final int side = FarViewAssembler.CHUNK_SAMPLES, square = 16 / side;
-        final List<FarViewPack.Sample> samples = new ArrayList<>(side * side);
-        for (int sz = 0; sz < side; sz++) {
-            for (int sx = 0; sx < side; sx++) {
-                FarViewPack.Sample highest = null;
-                for (int z = sz * square; z < (sz + 1) * square; z++) {
-                    for (int x = sx * square; x < (sx + 1) * square; x++) {
-                        final FarViewPack.Sample candidate = columns[z << 4 | x];
-                        if (highest == null || candidate.top() > highest.top()) highest = candidate;
-                    }
-                }
-                samples.add(highest);
-            }
-        }
-        return samples;
     }
 
     /**

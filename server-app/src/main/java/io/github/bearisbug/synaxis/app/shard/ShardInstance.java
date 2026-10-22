@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.LongAdder;
 
 /**
  * The map instance of a shard ({@code docs/DESIGN-M3.md} {@code API-M3-006} 「view_bounds 外的区块请求」,
- * M3-S {@code REQ-M3-029}): an {@link InstanceContainer} that counts the requests for a chunk outside
+ * {@code REQ-M3-029}): an {@link InstanceContainer} that counts the requests for a chunk outside
  * {@code view_bounds}, where the loader has nothing and the engine builds an air chunk. The count goes into
  * {@code EVT:chunk_stream_stats.void_chunks}. The first request logs a WARN with the stack of the thread that
  * made it, which is the requester's: {@code loadChunk} and {@code loadOptionalChunk} call

@@ -13,7 +13,7 @@ public sealed interface PositionRule {
     }
 
     /** A gameplay plugin: never, the plugin's spawn decides. */
-    record Rts() implements PositionRule {
+    record Gameplay() implements PositionRule {
     }
 
     /**

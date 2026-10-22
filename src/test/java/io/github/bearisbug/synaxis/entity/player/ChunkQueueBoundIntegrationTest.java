@@ -49,8 +49,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * The chunk send queue of a client that does not acknowledge its batches, or acknowledges them at the
- * minimum rate ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-026}, {@code API-PROD-020}; finding ⑥ of the M3
- * side security review). The server sends the first batch and then waits for a {@code ChunkBatchReceived},
+ * minimum rate ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-026}, {@code API-PROD-020}). The server sends
+ * the first batch and then waits for a {@code ChunkBatchReceived},
  * while every chunk entering the ring of the moving player is still queued: the queue may hold no more
  * chunks than the ring has, (2r + 1)² for a ring of radius r, and what it drops must not leave the client a
  * hole.

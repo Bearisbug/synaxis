@@ -2,9 +2,7 @@ package io.github.bearisbug.synaxis.baker;
 
 import io.github.bearisbug.synaxis.instance.block.BlockManager;
 import io.github.bearisbug.synaxis.registry.Registries;
-import io.github.bearisbug.synaxis.synx.SynxDigests;
 import io.github.bearisbug.synaxis.synx.SynxException;
-import io.github.bearisbug.synaxis.synx.SynxFormat;
 import io.github.bearisbug.synaxis.synx.SynxHandlers;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import net.kyori.adventure.key.InvalidKeyException;
@@ -14,11 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -30,7 +24,6 @@ import java.util.regex.Pattern;
  * bake --map-id &lt;id&gt; --source anvil:&lt;dir&gt;|generator:&lt;preset&gt;:&lt;seed&gt; --out &lt;maps_root&gt;
  *      [--threads N] [--bounds minX,minZ,maxX,maxZ] [--dimension minecraft:overworld] [--min-y -64] [--logs logs] [--samples 4]
  * verify --build &lt;maps_root&gt;/&lt;map_id&gt;/&lt;build_id&gt;
- * farview-export --build &lt;maps_root&gt;/&lt;map_id&gt;/&lt;build_id&gt; --out &lt;dir&gt;
  * </pre>
  * The exit code is the bake's (API-M3-003); a command line that does not parse, two handlers with one key, or a
  * block handler service that does not load, exit with 1. Not parsing includes an option the command does not take
@@ -40,13 +33,12 @@ import java.util.regex.Pattern;
  */
 public final class BakerMain {
     static final int EXIT_USAGE = 1;
-    /** {@code map_id} of §9: it names directories and a far view url path, and starts the build_id. */
+    /** {@code map_id} of §9: it names directories and starts the build_id. */
     private static final Pattern MAP_ID = Pattern.compile("[a-z0-9][a-z0-9_-]{0,31}");
     /** The options each command takes. */
     private static final Map<String, Set<String>> OPTIONS = Map.of(
             "bake", Set.of("map-id", "source", "out", "threads", "bounds", "dimension", "min-y", "logs", "samples"),
-            "verify", Set.of("build"),
-            "farview-export", Set.of("build", "out"));
+            "verify", Set.of("build"));
 
     private BakerMain() {
     }
@@ -70,7 +62,6 @@ public final class BakerMain {
             return switch (args[0]) {
                 case "bake" -> bake(options);
                 case "verify" -> verify(options);
-                case "farview-export" -> farViewExport(options);
                 default -> throw new IllegalStateException("a command of OPTIONS without a case: " + args[0]);
             };
         } catch (IllegalArgumentException e) {
@@ -81,8 +72,8 @@ public final class BakerMain {
     private static int bake(Map<String, String> options) {
         final String mapId = required(options, "map-id");
         if (!MAP_ID.matcher(mapId).matches()) {
-            throw new IllegalArgumentException("--map-id is " + MAP_ID.pattern() + ", a directory name and a part of the"
-                    + " far view urls, got '" + mapId + "'");
+            throw new IllegalArgumentException("--map-id is " + MAP_ID.pattern() + ", a directory name, got '" + mapId
+                    + "'");
         }
         final String sourceSpec = required(options, "source");
         final Path out = Path.of(required(options, "out"));
@@ -159,91 +150,16 @@ public final class BakerMain {
     }
 
     /**
-     * {@code verify --build}: what a shard checks at start-up and the far view packs ({@link Baker#checkDigests}),
-     * over the whole build. Unlike a bake's own verification it does not recompute region_content_hash from the
-     * records or look for a record of every chunk, and it bakes nothing again (API-M3-003).
+     * {@code verify --build}: what a shard checks at start-up ({@link Baker#checkDigests}), over the whole build.
+     * Unlike a bake's own verification it does not recompute region_content_hash from the records or look for a
+     * record of every chunk, and it bakes nothing again (API-M3-003).
      */
     private static int verify(Map<String, String> options) {
         final Path build = Path.of(required(options, "build"));
         try {
             final SynxManifest manifest = SynxManifest.fromJson(Files.readString(build.resolve(SynxManifest.FILE_NAME)));
-            final String farView = Baker.checkDigests(build, manifest, Registries.vanilla());
-            if (farView != null) {
-                System.err.println("baker: " + farView);
-                return Baker.EXIT_VERIFY;
-            }
+            Baker.checkDigests(build, manifest, Registries.vanilla());
             System.out.println("baker: " + build + " verified");
-            return Baker.EXIT_PUBLISHED;
-        } catch (SynxException e) {
-            System.err.println("baker: " + e.getMessage());
-            return Baker.EXIT_VERIFY;
-        } catch (IOException e) {
-            System.err.println("baker: " + Baker.describe(e));
-            return Baker.EXIT_VERIFY;
-        }
-    }
-
-    /** One object {@code farview-export} writes: a whole pack or its coarse prefix, named by its digest. */
-    private record Export(String file, boolean coarse, String relative, byte[] bytes) {
-    }
-
-    /**
-     * {@code farview-export} of API-M3-003: every pack of {@code farview[]} as two objects named by their digest,
-     * the whole pack and its coarse prefix, under {@code <out>/<map_id>/farview/}. Every pack is checked against
-     * the manifest before anything is written; an object that is already there is kept when its bytes are the
-     * same and refuses the export when they are not. A release without packs exports nothing and says so.
-     */
-    private static int farViewExport(Map<String, String> options) {
-        final Path build = Path.of(required(options, "build"));
-        final Path out = Path.of(required(options, "out"));
-        try {
-            final SynxManifest manifest = SynxManifest.fromJson(Files.readString(build.resolve(SynxManifest.FILE_NAME)));
-            if (manifest.farview().isEmpty()) {
-                System.out.println("baker: " + build + " lists no far view packs (baker_version " + manifest.bakerVersion()
-                        + "), nothing to export");
-                return Baker.EXIT_PUBLISHED;
-            }
-            final List<Export> exports = new ArrayList<>();
-            for (SynxManifest.FarView entry : manifest.farview()) {
-                final String file = SynxFormat.farViewFileName(entry.tileX(), entry.tileZ());
-                final byte[] pack = Files.readAllBytes(build.resolve("farview").resolve(file));
-                if (pack.length != entry.bytes() || !Arrays.equals(SynxDigests.sha256(pack), entry.sha256())) {
-                    System.err.println("baker: farview/" + file + " does not have the size and SHA-256 of the manifest");
-                    return Baker.EXIT_VERIFY;
-                }
-                // Clamped into the pack: a coarse_bytes outside it gives a prefix of another length, refused below
-                final byte[] prefix = Arrays.copyOf(pack, Math.clamp(entry.coarseBytes(), 0, pack.length));
-                if (prefix.length != entry.coarseBytes() || !Arrays.equals(SynxDigests.sha256(prefix), entry.coarseSha256())) {
-                    System.err.println("baker: the coarse prefix of farview/" + file
-                            + " does not have the coarse_bytes and coarse_sha256 of the manifest");
-                    return Baker.EXIT_VERIFY;
-                }
-                exports.add(new Export(file, false, SynxFormat.farViewObject(manifest.mapId(), entry.sha256()), pack));
-                exports.add(new Export(file, true, SynxFormat.farViewObject(manifest.mapId(), entry.coarseSha256()), prefix));
-            }
-            Files.createDirectories(out.resolve(manifest.mapId()).resolve("farview"));
-            for (Export export : exports) {
-                final Path target = out.resolve(export.relative());
-                final String line = export.file() + (export.coarse() ? " coarse" : "") + " -> " + export.relative()
-                        + " (" + export.bytes().length + " B)";
-                if (Files.exists(target)) {
-                    if (!Arrays.equals(Files.readAllBytes(target), export.bytes())) {
-                        System.err.println("baker: " + export.relative() + " is already there with other bytes");
-                        return Baker.EXIT_VERIFY;
-                    }
-                    System.out.println("kept " + line);
-                    continue;
-                }
-                // 0644 like the files of a release (REQ-M3-031), and on disk before it has the object's name
-                final Path staging = Files.createTempFile(target.getParent(), ".export-", ".part");
-                try {
-                    Baker.forced(Baker.publishedFile(Files.write(staging, export.bytes())));
-                    Files.move(staging, target, StandardCopyOption.ATOMIC_MOVE);
-                } finally {
-                    Files.deleteIfExists(staging);
-                }
-                System.out.println("exported " + line);
-            }
             return Baker.EXIT_PUBLISHED;
         } catch (SynxException e) {
             System.err.println("baker: " + e.getMessage());
@@ -284,7 +200,6 @@ public final class BakerMain {
                 + " [--min-y <y> (anvil only, a multiple of 16, default -64)] [--logs <dir> (default logs)]"
                 + " [--samples <chunks per region> (default 4)]");
         System.err.println("       verify --build <maps_root>/<map_id>/<build_id>");
-        System.err.println("       farview-export --build <maps_root>/<map_id>/<build_id> --out <dir>");
         return EXIT_USAGE;
     }
 }

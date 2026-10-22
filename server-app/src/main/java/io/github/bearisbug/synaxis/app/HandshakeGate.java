@@ -7,20 +7,20 @@ import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerPreLoginEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
 import io.github.bearisbug.synaxis.event.server.ServerTickMonitorEvent;
-import io.github.bearisbug.synaxis.game.protocol.C2SHello;
-import io.github.bearisbug.synaxis.game.protocol.HandshakeMessage;
-import io.github.bearisbug.synaxis.game.protocol.HandshakeMessages;
-import io.github.bearisbug.synaxis.game.protocol.MalformedMessageException;
-import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
-import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
-import io.github.bearisbug.synaxis.game.protocol.S2CHello;
-import io.github.bearisbug.synaxis.game.protocol.UnknownMessageException;
 import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.network.plugin.LoginPlugin;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
+import io.github.bearisbug.synaxis.protocol.C2SHello;
+import io.github.bearisbug.synaxis.protocol.HandshakeMessage;
+import io.github.bearisbug.synaxis.protocol.HandshakeMessages;
+import io.github.bearisbug.synaxis.protocol.MalformedMessageException;
+import io.github.bearisbug.synaxis.protocol.MsgBuf;
+import io.github.bearisbug.synaxis.protocol.ProtocolSchema;
+import io.github.bearisbug.synaxis.protocol.S2CHello;
+import io.github.bearisbug.synaxis.protocol.UnknownMessageException;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * second half of REQ-M2-024).
  * <p>
  * <b>Two threads share one decision.</b> {@code C2S_HELLO} arrives as a custom payload, which the
- * engine interprets and dispatches from inside a tick; the connection is let into a match by
+ * engine interprets and dispatches from inside a tick; the connection is let into an instance by
  * setting the spawning instance, which is only meaningful on the configuration virtual thread that
  * event runs on. A {@link CompletableFuture} per connection is the whole mechanism, and it is also
  * the only arbiter: the tick thread judges a hello only if its {@code complete} wins, the waiting

@@ -119,16 +119,16 @@ class CommandsIntegrationTest {
         return message instanceof TextComponent plain ? plain.content() : message.toString();
     }
 
-    /** A plugin that lets every player into one match and does in onEnable what the test hands it. */
+    /** A plugin that lets every player into one instance and does in onEnable what the test hands it. */
     private static final class Probe implements SynaxisPlugin {
         private final PluginDescriptor descriptor;
-        private final Instance match;
+        private final Instance instance;
         private final Consumer<PluginContext> onEnable;
         private @Nullable PluginContext context;
 
-        Probe(String id, Instance match, Consumer<PluginContext> onEnable) {
+        Probe(String id, Instance instance, Consumer<PluginContext> onEnable) {
             this.descriptor = new PluginDescriptor(id, "1.0.0", PluginApi.API_VERSION);
-            this.match = match;
+            this.instance = instance;
             this.onEnable = onEnable;
         }
 
@@ -140,7 +140,7 @@ class CommandsIntegrationTest {
         @Override
         public void onEnable(PluginContext ctx) {
             this.context = ctx;
-            if (descriptor.id().equals("mmo")) ctx.admission().register(_ -> new Admission.Accept(match, 1));
+            if (descriptor.id().equals("mmo")) ctx.admission().register(_ -> new Admission.Accept(instance));
             onEnable.accept(ctx);
         }
 
@@ -186,11 +186,11 @@ class CommandsIntegrationTest {
 
     @Test
     void theConsoleRunsListTpsAndSaveAndAnUnknownLineIsOneLine(Env env) {
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final PluginHost host = host(env);
-        host.enable(List.of(new Probe("mmo", match, _ -> { })), Set.of());
-        env.createConnection(new GameProfile(UUID.randomUUID(), "Bravo")).connect(match, new Pos(0, 41, 0));
-        env.createConnection(new GameProfile(UUID.randomUUID(), "Alpha")).connect(match, new Pos(0, 41, 0));
+        host.enable(List.of(new Probe("mmo", instance, _ -> { })), Set.of());
+        env.createConnection(new GameProfile(UUID.randomUUID(), "Bravo")).connect(instance, new Pos(0, 41, 0));
+        env.createConnection(new GameProfile(UUID.randomUUID(), "Alpha")).connect(instance, new Pos(0, 41, 0));
         for (int i = 0; i < 5; i++) env.tick();
 
         try (LogCapture main = LogCapture.of(Main.class); LogCapture console = LogCapture.of(ConsoleSender.class)) {
@@ -219,17 +219,17 @@ class CommandsIntegrationTest {
 
     @Test
     void theNodeDecidesWhetherAPlayerRunsAndSeesACommandOfTheHost(Env env) {
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final PluginHost host = host(env);
-        host.enable(List.of(new Probe("mmo", match, _ -> { })), Set.of());
+        host.enable(List.of(new Probe("mmo", instance, _ -> { })), Set.of());
         nodes.put("Keeper", Set.of("synaxis.command.kick", "synaxis.command.list"));
         final TestConnection keeperConnection = env.createConnection(new GameProfile(UUID.randomUUID(), "Keeper"));
         final Collector<DeclareCommandsPacket> keeperCommands = keeperConnection.trackIncoming(DeclareCommandsPacket.class);
-        final Player keeper = keeperConnection.connect(match, new Pos(0, 41, 0));
+        final Player keeper = keeperConnection.connect(instance, new Pos(0, 41, 0));
         final TestConnection ruffianConnection = env.createConnection(new GameProfile(UUID.randomUUID(), "Ruffian"));
         final Collector<DeclareCommandsPacket> ruffianCommands = ruffianConnection.trackIncoming(DeclareCommandsPacket.class);
         final Collector<DisconnectPacket> ruffianKicked = ruffianConnection.trackIncoming(DisconnectPacket.class);
-        final Player ruffian = ruffianConnection.connect(match, new Pos(0, 41, 0));
+        final Player ruffian = ruffianConnection.connect(instance, new Pos(0, 41, 0));
         ruffian.setPermissionLevel(4);
 
         final Set<String> keeperSees = lastTree(keeperCommands);
@@ -261,16 +261,16 @@ class CommandsIntegrationTest {
 
     @Test
     void broadcastReachesEveryPlayerAndKickWithoutAReasonIsTheVanillaOne(Env env) {
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final PluginHost host = host(env);
-        host.enable(List.of(new Probe("mmo", match, _ -> { })), Set.of());
+        host.enable(List.of(new Probe("mmo", instance, _ -> { })), Set.of());
         final TestConnection first = env.createConnection(new GameProfile(UUID.randomUUID(), "First"));
         final Collector<SystemChatPacket> firstChat = first.trackIncoming(SystemChatPacket.class);
-        first.connect(match, new Pos(0, 41, 0));
+        first.connect(instance, new Pos(0, 41, 0));
         final TestConnection second = env.createConnection(new GameProfile(UUID.randomUUID(), "Second"));
         final Collector<SystemChatPacket> secondChat = second.trackIncoming(SystemChatPacket.class);
         final Collector<DisconnectPacket> secondKicked = second.trackIncoming(DisconnectPacket.class);
-        second.connect(match, new Pos(0, 41, 0));
+        second.connect(instance, new Pos(0, 41, 0));
         final RecordingConsole console = new RecordingConsole(env.process());
 
         env.process().command().execute(console, "broadcast restart   at noon");
@@ -392,7 +392,7 @@ class CommandsIntegrationTest {
 
     @Test
     void aPluginCommandLivesUnderItsNamespaceAndABareNameGoesToTheFirst(Env env) {
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final List<String> ran = new CopyOnWriteArrayList<>();
         final Command party = new Command("party", "p");
         party.setDefaultExecutor((_, context) -> ran.add("mmo " + context.getInput()));
@@ -400,11 +400,11 @@ class CommandsIntegrationTest {
         otherParty.setDefaultExecutor((_, context) -> ran.add("other " + context.getInput()));
         final Command list = new Command("list");
         list.setDefaultExecutor((_, context) -> ran.add("mmo " + context.getInput()));
-        final Probe mmo = new Probe("mmo", match, ctx -> {
+        final Probe mmo = new Probe("mmo", instance, ctx -> {
             ctx.commands().register(party);
             ctx.commands().register(list);
         });
-        final Probe other = new Probe("other", match, ctx -> ctx.commands().register(otherParty));
+        final Probe other = new Probe("other", instance, ctx -> ctx.commands().register(otherParty));
         final PluginHost host = host(env);
         host.enable(List.of(mmo, other), Set.of());
         final RecordingConsole console = new RecordingConsole(env.process());
@@ -428,18 +428,18 @@ class CommandsIntegrationTest {
 
     @Test
     void aThrowingPluginCommandIsOneLinePerTenSecondsAndGoneOnceDisabled(Env env) throws ClassNotFoundException {
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final Command party = new Command("party");
         party.setDefaultExecutor((_, _) -> {
             throw new IllegalStateException("the party is over");
         });
-        final Probe mmo = new Probe("mmo", match, ctx -> ctx.commands().register(party));
+        final Probe mmo = new Probe("mmo", instance, ctx -> ctx.commands().register(party));
         final PluginHost host = host(env);
         host.enable(List.of(mmo), Set.of());
         final TestConnection connection = env.createConnection(new GameProfile(UUID.randomUUID(), "Partier"));
         final Collector<SystemChatPacket> chat = connection.trackIncoming(SystemChatPacket.class);
         final Collector<DeclareCommandsPacket> atSpawn = connection.trackIncoming(DeclareCommandsPacket.class);
-        final Player player = connection.connect(match, new Pos(0, 41, 0));
+        final Player player = connection.connect(instance, new Pos(0, 41, 0));
         assertTrue(lastTree(atSpawn).containsAll(Set.of("mmo:party", "party")));
 
         try (LogCapture host1 = LogCapture.of(PluginCommandsImpl.class);
@@ -465,13 +465,13 @@ class CommandsIntegrationTest {
 
     @Test
     void aCommandRegisteredOrTakenBackWhilePlayersAreOnlineReachesTheirCompletions(Env env) {
-        final Instance match = env.createFlatInstance();
-        final Probe mmo = new Probe("mmo", match, _ -> { });
+        final Instance instance = env.createFlatInstance();
+        final Probe mmo = new Probe("mmo", instance, _ -> { });
         final PluginHost host = host(env);
         host.enable(List.of(mmo), Set.of());
         final TestConnection connection = env.createConnection(new GameProfile(UUID.randomUUID(), "Watcher"));
         Collector<DeclareCommandsPacket> declared = connection.trackIncoming(DeclareCommandsPacket.class);
-        connection.connect(match, new Pos(0, 41, 0));
+        connection.connect(instance, new Pos(0, 41, 0));
         assertFalse(lastTree(declared).contains("party"));
 
         final Command party = new Command("party");
@@ -489,11 +489,11 @@ class CommandsIntegrationTest {
 
     @Test
     void aCommandRegisteredAfterThePluginIsTakenBackIsDropped(Env env) {
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final Command party = new Command("party");
         party.setDefaultExecutor((_, _) -> { });
         // What an async task of the plugin still running after the failed onEnable does
-        final Probe mmo = new Probe("mmo", match, _ -> {
+        final Probe mmo = new Probe("mmo", instance, _ -> {
             throw new IllegalStateException("enable failed");
         });
         final PluginHost host = host(env);
@@ -508,13 +508,13 @@ class CommandsIntegrationTest {
 
     @Test
     void aPlayerWithoutNodesSeesAndRunsListAndOnlyTheConsoleWritesAGmCommand(Env env) {
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final PluginHost host = host(env);
-        host.enable(List.of(new Probe("mmo", match, _ -> { })), Set.of());
+        host.enable(List.of(new Probe("mmo", instance, _ -> { })), Set.of());
         final TestConnection connection = env.createConnection(new GameProfile(UUID.randomUUID(), "Newcomer"));
         final Collector<DeclareCommandsPacket> declared = connection.trackIncoming(DeclareCommandsPacket.class);
         final Collector<SystemChatPacket> chat = connection.trackIncoming(SystemChatPacket.class);
-        final Player newcomer = connection.connect(match, new Pos(0, 41, 0));
+        final Player newcomer = connection.connect(instance, new Pos(0, 41, 0));
 
         assertEquals(CommandResult.Type.SUCCESS, env.process().command().execute(newcomer, "list").getType(),
                 "list asks for no node, as the vanilla /list asks for permission level 0");
@@ -538,12 +538,12 @@ class CommandsIntegrationTest {
      */
     @Test
     void aPlayersListPastTheChatBudgetOfItsConnectionAnswersNothing(Env env) {
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final PluginHost host = host(env);
-        host.enable(List.of(new Probe("mmo", match, _ -> { })), Set.of());
+        host.enable(List.of(new Probe("mmo", instance, _ -> { })), Set.of());
         final TestConnection connection = env.createConnection(new GameProfile(UUID.randomUUID(), "Lister"));
         final Collector<SystemChatPacket> chat = connection.trackIncoming(SystemChatPacket.class);
-        final Player lister = connection.connect(match, new Pos(0, 41, 0));
+        final Player lister = connection.connect(instance, new Pos(0, 41, 0));
 
         for (int i = 0; i < 10; i++)
             assertEquals(CommandResult.Type.SUCCESS, env.process().command().execute(lister, "list").getType());
@@ -560,12 +560,12 @@ class CommandsIntegrationTest {
 
     @Test
     void aPlayersUnknownCommandIsAnsweredWithItsFirstWordAndTheConsoleOnlyLogsIt(Env env) {
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final PluginHost host = host(env);
-        host.enable(List.of(new Probe("mmo", match, _ -> { })), Set.of());
+        host.enable(List.of(new Probe("mmo", instance, _ -> { })), Set.of());
         final TestConnection connection = env.createConnection(new GameProfile(UUID.randomUUID(), "Newcomer"));
         final Collector<SystemChatPacket> chat = connection.trackIncoming(SystemChatPacket.class);
-        final Player newcomer = connection.connect(match, new Pos(0, 41, 0));
+        final Player newcomer = connection.connect(instance, new Pos(0, 41, 0));
 
         // The commands run on this thread, so its lines are all the lines they log
         try (LogCapture all = LogCapture.rootOfThisThread()) {
@@ -599,7 +599,7 @@ class CommandsIntegrationTest {
      */
     @Test
     void aPluginConditionThatThrowsHidesItsCommandAndEveryoneStillSpawns(Env env) throws ClassNotFoundException {
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final List<String> ran = new CopyOnWriteArrayList<>();
         final Command boss = new Command("boss");
         boss.setDefaultExecutor((_, _) -> ran.add("boss"));
@@ -616,7 +616,7 @@ class CommandsIntegrationTest {
         loot.addConditionalSyntax((_, _) -> {
             throw new IllegalStateException("no loot table");
         }, (_, _) -> ran.add("loot all"), ArgumentType.Literal("all"));
-        final Probe mmo = new Probe("mmo", match, ctx -> {
+        final Probe mmo = new Probe("mmo", instance, ctx -> {
             boss.setCondition((sender, _) -> !(sender instanceof Player player) || ctx.permissions().has(player, "mmo:Admin"));
             ctx.commands().register(raid);
             ctx.commands().register(loot);
@@ -627,14 +627,14 @@ class CommandsIntegrationTest {
             host.enable(List.of(mmo), Set.of());
             final TestConnection firstConnection = env.createConnection(new GameProfile(UUID.randomUUID(), "First"));
             Collector<DeclareCommandsPacket> firstTrees = firstConnection.trackIncoming(DeclareCommandsPacket.class);
-            final Player first = firstConnection.connect(match, new Pos(0, 41, 0));
-            assertEquals(match, first.getInstance(), "the player did not spawn");
+            final Player first = firstConnection.connect(instance, new Pos(0, 41, 0));
+            assertEquals(instance, first.getInstance(), "the player did not spawn");
             final Set<String> atSpawn = lastTree(firstTrees);
             assertTrue(atSpawn.containsAll(Set.of("mmo:raid", "raid", "mmo:loot", "loot")), atSpawn.toString());
             assertFalse(atSpawn.contains("start") || atSpawn.contains("all"), atSpawn.toString());
             final TestConnection secondConnection = env.createConnection(new GameProfile(UUID.randomUUID(), "Second"));
-            final Player second = secondConnection.connect(match, new Pos(0, 41, 0));
-            assertEquals(match, second.getInstance(), "the second player did not spawn");
+            final Player second = secondConnection.connect(instance, new Pos(0, 41, 0));
+            assertEquals(instance, second.getInstance(), "the second player did not spawn");
 
             firstTrees = firstConnection.trackIncoming(DeclareCommandsPacket.class);
             final Collector<DeclareCommandsPacket> secondTrees = secondConnection.trackIncoming(DeclareCommandsPacket.class);
@@ -664,19 +664,19 @@ class CommandsIntegrationTest {
 
     @Test
     void aPluginArgumentCallbackThatThrowsIsInThePluginsBudget(Env env) throws ClassNotFoundException {
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final Command roll = new Command("roll");
         final Argument<Integer> sides = ArgumentType.Integer("sides").between(1, 100);
         sides.setCallback((_, _) -> {
             throw new IllegalStateException("no dice");
         });
         roll.addSyntax((_, _) -> { }, sides);
-        final Probe mmo = new Probe("mmo", match, ctx -> ctx.commands().register(roll));
+        final Probe mmo = new Probe("mmo", instance, ctx -> ctx.commands().register(roll));
         final PluginHost host = host(env);
         host.enable(List.of(mmo), Set.of());
         final TestConnection connection = env.createConnection(new GameProfile(UUID.randomUUID(), "Roller"));
         final Collector<SystemChatPacket> chat = connection.trackIncoming(SystemChatPacket.class);
-        final Player player = connection.connect(match, new Pos(0, 41, 0));
+        final Player player = connection.connect(instance, new Pos(0, 41, 0));
 
         try (LogCapture plugins = LogCapture.of(PluginCommandsImpl.class);
              LogCapture engine = LogCapture.of(Class.forName("io.github.bearisbug.synaxis.command.CommandParserImpl"))) {

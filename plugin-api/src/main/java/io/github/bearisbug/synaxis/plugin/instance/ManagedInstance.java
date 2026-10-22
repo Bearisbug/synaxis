@@ -110,7 +110,7 @@ public interface ManagedInstance {
      *
      * @param exit where each player goes; an exit into another managed instance names one that is
      *             {@link State#OPEN} or {@link State#RUNNING}, and a player whose move there
-     *             completes with false is kicked with {@code synaxis:match-unavailable}, as is one the
+     *             completes with false is kicked with {@code synaxis:instance-unavailable}, as is one the
      *             function throws for or gives null. It is called at most once per player: for those online
      *             inside at the close before this returns, on the calling thread; for one whose move into
      *             this instance lands after the close, on the thread that move completes on (the player's

@@ -1,6 +1,6 @@
 package io.github.bearisbug.synaxis.app;
 
-import io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol;
+import io.github.bearisbug.synaxis.protocol.play.PlayProtocol;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

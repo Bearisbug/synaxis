@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The map instance of a shard, M3-S ({@code docs/DESIGN-M3.md} {@code REQ-M3-029}): the chunks asked for
+ * The map instance of a shard ({@code docs/DESIGN-M3.md} {@code REQ-M3-029}): the chunks asked for
  * outside {@code view_bounds}, the light of the air chunks the engine builds, and what the start says: of a
  * map players may change, of the settings in effect and of a spawn column without ground.
  */

@@ -32,7 +32,7 @@ public class ShutdownExitLaunchTest {
 
     private static final long EXIT_WITHIN_SECONDS = 20;
 
-    /** A match and an admission provider, and a non daemon thread that never ends and is never stopped. */
+    /** An instance and an admission provider, and a non daemon thread that never ends and is never stopped. */
     public static final class LingeringPlugin implements SynaxisPlugin {
         @Override
         public PluginDescriptor descriptor() {
@@ -41,8 +41,8 @@ public class ShutdownExitLaunchTest {
 
         @Override
         public void onEnable(PluginContext context) {
-            final Instance match = context.process().instance().createInstanceContainer();
-            context.admission().register(_ -> new Admission.Accept(match, 1));
+            final Instance instance = context.process().instance().createInstanceContainer();
+            context.admission().register(_ -> new Admission.Accept(instance));
             Thread.ofPlatform().name("lingering").daemon(false).start(() -> {
                 while (true) LockSupport.park();
             });

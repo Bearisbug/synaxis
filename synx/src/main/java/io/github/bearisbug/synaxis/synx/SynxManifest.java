@@ -34,8 +34,7 @@ import java.util.function.Function;
  */
 public record SynxManifest(String mapId, String buildId, byte[] contentHash, String mcVersion, int protocolVersion,
                            byte[] registryDigest, int lightEngineVersion, int bakerVersion, World world,
-                           Bounds bounds, List<Region> regions, List<FarView> farview, Source source, Bake bake,
-                           Verify verify) {
+                           Bounds bounds, List<Region> regions, Source source, Bake bake, Verify verify) {
     public static final String FILE_NAME = "manifest.json";
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
@@ -45,7 +44,6 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
         contentHash = contentHash.clone();
         registryDigest = registryDigest.clone();
         regions = List.copyOf(regions);
-        farview = List.copyOf(farview);
     }
 
     @Override
@@ -89,28 +87,6 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
         @Override
         public byte[] payloadSha256() {
             return payloadSha256.clone();
-        }
-    }
-
-    /**
-     * One {@code farview/t.<tile_x>.<tile_z>.hfp}, API-M3-014: the size and SHA-256 of the whole pack and of
-     * its coarse prefix, the first {@code coarse_bytes} bytes, which is distributed as an object of its own.
-     */
-    public record FarView(int tileX, int tileZ, int baseLevel, int coarseLevel, long bytes, byte[] sha256,
-                          long coarseBytes, byte[] coarseSha256) {
-        public FarView {
-            sha256 = sha256.clone();
-            coarseSha256 = coarseSha256.clone();
-        }
-
-        @Override
-        public byte[] sha256() {
-            return sha256.clone();
-        }
-
-        @Override
-        public byte[] coarseSha256() {
-            return coarseSha256.clone();
         }
     }
 
@@ -171,20 +147,6 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
             regionsJson.add(entry);
         }
         json.add("regions", regionsJson);
-        final JsonArray farviewJson = new JsonArray();
-        for (FarView pack : farview) {
-            final JsonObject entry = new JsonObject();
-            entry.addProperty("tile_x", pack.tileX());
-            entry.addProperty("tile_z", pack.tileZ());
-            entry.addProperty("base_level", pack.baseLevel());
-            entry.addProperty("coarse_level", pack.coarseLevel());
-            entry.addProperty("bytes", pack.bytes());
-            entry.addProperty("sha256", SynxDigests.hex(pack.sha256));
-            entry.addProperty("coarse_bytes", pack.coarseBytes());
-            entry.addProperty("coarse_sha256", SynxDigests.hex(pack.coarseSha256));
-            farviewJson.add(entry);
-        }
-        json.add("farview", farviewJson);
         final JsonObject sourceJson = new JsonObject();
         sourceJson.addProperty("kind", source.kind());
         if (source.dataVersion() != null) sourceJson.addProperty("data_version", source.dataVersion());
@@ -228,9 +190,6 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
                             integer(boundsJson, "max_x"), integer(boundsJson, "max_z")),
                     list(json, "regions", entry -> new Region(integer(entry, "rx"), integer(entry, "rz"),
                             longInteger(entry, "bytes"), digest(entry, "payload_sha256"), integer(entry, "chunks"))),
-                    list(json, "farview", entry -> new FarView(integer(entry, "tile_x"), integer(entry, "tile_z"),
-                            integer(entry, "base_level"), integer(entry, "coarse_level"), longInteger(entry, "bytes"),
-                            digest(entry, "sha256"), longInteger(entry, "coarse_bytes"), digest(entry, "coarse_sha256"))),
                     new Source(string(sourceJson, "kind"),
                             sourceJson.has("data_version") ? integer(sourceJson, "data_version") : null,
                             sourceJson.has("light_coverage") ? number(sourceJson, "light_coverage").doubleValue() : null),

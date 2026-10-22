@@ -178,14 +178,14 @@ class ModerationIntegrationTest {
         }
     }
 
-    /** A plugin that lets every player into one match, counts the admissions and keeps its context. */
+    /** A plugin that lets every player into one instance, counts the admissions and keeps its context. */
     private static final class Probe implements SynaxisPlugin {
-        private final Instance match;
+        private final Instance instance;
         private final AtomicInteger admissions = new AtomicInteger();
         private @Nullable PluginContext context;
 
-        Probe(Instance match) {
-            this.match = match;
+        Probe(Instance instance) {
+            this.instance = instance;
         }
 
         @Override
@@ -198,7 +198,7 @@ class ModerationIntegrationTest {
             this.context = ctx;
             ctx.admission().register(_ -> {
                 admissions.incrementAndGet();
-                return new Admission.Accept(match, 1);
+                return new Admission.Accept(instance);
             });
         }
 

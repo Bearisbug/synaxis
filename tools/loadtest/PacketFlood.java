@@ -86,7 +86,10 @@ public final class PacketFlood {
     private static final int PROTOCOL_VERSION = 776;
     private static final String ECHO_CHANNEL = "synaxis:main";
     private static final String HANDSHAKE_CHANNEL = "synaxis:handshake";
-    /** C2S_HELLO of API-M2-002; the mod version the tool announces is the only one M2 defines. */
+    /**
+     * C2S_HELLO of API-M2-002; the mod version the tool announces is the only one the handshake
+     * defines.
+     */
     private static final int C2S_HELLO = 0x01;
     private static final int MOD_VERSION = 1;
     private static final double FLOOR_Y = 40.0;
@@ -137,7 +140,7 @@ public final class PacketFlood {
             throw new IllegalStateException("run this from the worktree root, " + packetVanilla + " is not there");
         final String source = Files.readString(packetVanilla);
         final Path protocolSchema = repository.resolve(
-                "protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/ProtocolSchema.java");
+                "protocol/src/main/java/io/github/bearisbug/synaxis/protocol/ProtocolSchema.java");
         final Matcher schema = Pattern.compile("SCHEMA_VERSION\\s*=\\s*(\\d+)")
                 .matcher(Files.readString(protocolSchema));
         if (!schema.find()) throw new IllegalStateException("cannot find SCHEMA_VERSION in " + protocolSchema);

@@ -46,8 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * A dig or a block use whose block is out of the player's reach is refused
  * ({@code docs/DESIGN-PROD.md} {@code API-PROD-030}): the vanilla server's rule, the block's cube
- * at least the player's block interaction range plus one block from its eyes. Security review M3,
- * finding S1-01.
+ * at least the player's block interaction range plus one block from its eyes.
  * <p>
  * The player never ticks here: the test thread hands it its packets.
  */
@@ -66,7 +65,7 @@ public class PlayerBlockReachIntegrationTest {
     }
 
     /**
-     * S1-01 as reported: a survival player with nothing in hand sends one FINISHED_DIGGING, no
+     * A survival player with nothing in hand sends one FINISHED_DIGGING, no
      * STARTED_DIGGING, for a stone block 13 chunks away on both axes.
      */
     @Test

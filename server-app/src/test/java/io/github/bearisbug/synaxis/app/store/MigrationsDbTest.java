@@ -50,10 +50,10 @@ class MigrationsDbTest {
         Migrations.migrate(pool.pool(), AuthMode.OFFLINE);
 
         Migrations.validate(pool.pool());
-        assertEquals(List.of("1", "2", "3", "4", "5", "6"), appliedVersions());
-        assertEquals(List.of("account", "account_role", "ban", "character", "character_location", "character_section",
-                "flyway_schema_history", "item_ledger", "role", "role_permission", "shard_heartbeat", "shard_session",
-                "store_meta", "transfer_nonce", "whitelist", "world_flag"), tables());
+        assertEquals(List.of("1", "2", "3", "4", "5"), appliedVersions());
+        assertEquals(List.of("account", "account_role", "ban", "character", "character_section", "flyway_schema_history",
+                "role", "role_permission", "shard_heartbeat", "shard_session", "store_meta", "transfer_nonce", "whitelist",
+                "world_flag"), tables());
     }
 
     /**
@@ -79,13 +79,13 @@ class MigrationsDbTest {
         Flyway.configure().dataSource(pool.pool()).locations("classpath:db/migration").target("1").load().migrate();
         assertEquals(List.of("1"), appliedVersions());
         final IllegalArgumentException behind = assertThrows(IllegalArgumentException.class,
-                () -> Migrations.validate(pool.pool()), "V2 to V6 are pending, the shard refuses");
+                () -> Migrations.validate(pool.pool()), "V2 to V5 are pending, the shard refuses");
         assertTrue(behind.getMessage().endsWith("; run server-app --migrate-only --auth-mode=online|offline first"),
                 behind.getMessage());
 
         Migrations.migrate(pool.pool(), AuthMode.OFFLINE);
 
-        assertEquals(List.of("1", "2", "3", "4", "5", "6"), appliedVersions());
+        assertEquals(List.of("1", "2", "3", "4", "5"), appliedVersions());
         Migrations.validate(pool.pool());
     }
 
@@ -106,27 +106,24 @@ class MigrationsDbTest {
     void everyVersionRollsBackAndMigratesAgain() throws Exception {
         Migrations.migrate(pool.pool(), AuthMode.OFFLINE);
 
-        database.execute(resource("db/rollback/V6__world_flag.down.sql"));
-        assertEquals(List.of("1", "2", "3", "4", "5"), appliedVersions());
-        assertTrue(!tables().contains("world_flag"));
-        database.execute(resource("db/rollback/V5__shard_heartbeat.down.sql"));
+        database.execute(resource("db/rollback/V5__world_flag.down.sql"));
         assertEquals(List.of("1", "2", "3", "4"), appliedVersions());
-        assertTrue(!tables().contains("shard_heartbeat"));
-        database.execute(resource("db/rollback/V4__moderation.down.sql"));
+        assertTrue(!tables().contains("world_flag"));
+        database.execute(resource("db/rollback/V4__shard_heartbeat.down.sql"));
         assertEquals(List.of("1", "2", "3"), appliedVersions());
-        assertTrue(!tables().contains("ban") && !tables().contains("whitelist"));
-        database.execute(resource("db/rollback/V3__roles.down.sql"));
+        assertTrue(!tables().contains("shard_heartbeat"));
+        database.execute(resource("db/rollback/V3__moderation.down.sql"));
         assertEquals(List.of("1", "2"), appliedVersions());
-        assertTrue(!tables().contains("role") && !tables().contains("role_permission") && !tables().contains("account_role"));
-        database.execute(resource("db/rollback/V2__item_ledger.down.sql"));
+        assertTrue(!tables().contains("ban") && !tables().contains("whitelist"));
+        database.execute(resource("db/rollback/V2__roles.down.sql"));
         assertEquals(List.of("1"), appliedVersions());
-        assertTrue(!tables().contains("item_ledger"));
+        assertTrue(!tables().contains("role") && !tables().contains("role_permission") && !tables().contains("account_role"));
         database.execute(resource("db/rollback/V1__player_store.down.sql"));
         assertEquals(List.of(), appliedVersions());
         assertEquals(List.of("flyway_schema_history"), tables());
 
         Migrations.migrate(pool.pool(), AuthMode.OFFLINE);
-        assertEquals(List.of("1", "2", "3", "4", "5", "6"), appliedVersions());
+        assertEquals(List.of("1", "2", "3", "4", "5"), appliedVersions());
         Migrations.validate(pool.pool());
     }
 

@@ -120,8 +120,6 @@ final class SynxVectors {
         final SynxSettings settings = settings();
         return new SynxManifest(MAP_ID, SynxManifest.buildId(MAP_ID, contentHash, 776), contentHash, "26.2", 776,
                 settings.registryDigest(), 1, 1, new SynxManifest.World(0, HEIGHT), bounds(), regions,
-                List.of(new SynxManifest.FarView(-1, 0, 2, 4, 8_912_896, SynxDigests.sha256(new byte[]{1}), 524_544,
-                        SynxDigests.sha256(new byte[]{2}))),
                 new SynxManifest.Source("generator", null, null),
                 new SynxManifest.Bake("2026-09-25T00:00:00Z", 1_234, 5_678, 1, "25"),
                 new SynxManifest.Verify(4, 0, null));

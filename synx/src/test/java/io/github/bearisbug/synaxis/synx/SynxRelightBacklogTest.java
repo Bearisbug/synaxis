@@ -17,15 +17,15 @@ import java.util.function.UnaryOperator;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * §19 「重算池在满速改方块下的积压与吞吐」 ({@code docs/DESIGN-M3.md} {@code REQ-M3-012}, §15 光照重算吞吐, M3 side
- * security review S1-04): a measurement, not a gate. Only with {@code -Dsynaxis.relight.measure=true}, which
- * {@code synx/build.gradle.kts} hands to the test JVM:
+ * §19 「重算池在满速改方块下的积压与吞吐」 ({@code docs/DESIGN-M3.md} {@code REQ-M3-012}, §15 光照重算吞吐): a
+ * measurement, not a gate. Only with {@code -Dsynaxis.relight.measure=true}, which {@code synx/build.gradle.kts}
+ * hands to the test JVM:
  * {@code ./gradlew :synx:test --tests '*SynxRelightBacklogTest' -Dsynaxis.relight.measure=true --rerun}.
  * <p>
  * Three recomputation threads, the 16 section high test map, the real overlay store, the install at the end
  * of every tick: 60 s of changes of block state at 107 centers a second (one client at the cap of the inbound
- * gate, S1-01), each in another chunk of the region, then 60 s as fast as the test thread changes them. One
- * line of the readings goes to the standard output; that the target entries waiting for the install stay
+ * gate), each in another chunk of the region, then 60 s as fast as the test thread changes them. One line of the
+ * readings goes to the standard output; that the target entries waiting for the install stay
  * within 282 (the recomputation threads take no new center from 256 on, and each of the three adds the 9
  * targets of its 3×3 once more) is the assertion.
  */

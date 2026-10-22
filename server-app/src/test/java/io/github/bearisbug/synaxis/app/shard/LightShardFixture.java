@@ -39,7 +39,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * The light fixture of M3-D ({@code docs/DESIGN-M3.md} §26 step 4, §19 the container entries): a map
+ * The light fixture ({@code docs/DESIGN-M3.md} §26 step 4, §19 the container entries): a map
  * shard on the {@link LightMapFixture} map, assembled as {@code Main} assembles one and with the
  * defaults {@code ShardMain} writes, that the real client of the headless container joins. It binds
  * {@code 0.0.0.0:<port>} and prints {@value #READY}.

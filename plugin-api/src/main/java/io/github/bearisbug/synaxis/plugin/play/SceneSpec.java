@@ -1,6 +1,6 @@
 package io.github.bearisbug.synaxis.plugin.play;
 
-import io.github.bearisbug.synaxis.game.protocol.play.S2CScene;
+import io.github.bearisbug.synaxis.protocol.play.S2CScene;
 import net.kyori.adventure.text.Component;
 
 import java.util.List;
@@ -14,7 +14,7 @@ import java.util.List;
  * @param camera  the camera
  * @param cursor  the cursor mode
  * @param actions the action slots, no slot twice, which also keeps them to
- *                {@value io.github.bearisbug.synaxis.game.protocol.play.S2CScene#MAX_ACTIONS}; copied. No
+ *                {@value io.github.bearisbug.synaxis.protocol.play.S2CScene#MAX_ACTIONS}; copied. No
  *                action id twice either, with or without the prefix, which {@link PluginPlay#enter}
  *                checks: an action is sent by its id alone
  */

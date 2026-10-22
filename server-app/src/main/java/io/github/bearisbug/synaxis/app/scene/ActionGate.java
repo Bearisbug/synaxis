@@ -1,6 +1,6 @@
 package io.github.bearisbug.synaxis.app.scene;
 
-import io.github.bearisbug.synaxis.game.protocol.play.S2CScene;
+import io.github.bearisbug.synaxis.protocol.play.S2CScene;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -17,8 +17,8 @@ import java.util.concurrent.TimeUnit;
 final class ActionGate {
 
     /**
-     * The most actions a connection may send in one whole second window, the client's own budget
-     * ({@code RtsClient.BUDGET_PER_SECOND}).
+     * The most actions a connection may send in one whole second window, the action budget of
+     * {@code synaxis:play}.
      */
     static final int PER_SECOND = 10;
 

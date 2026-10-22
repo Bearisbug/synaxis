@@ -42,7 +42,7 @@ class PluginDescriptorsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"Synaxis RTS", "", "-probe", "probe.plugin", "PROBE"})
+    @ValueSource(strings = {"Synaxis Probe", "", "-probe", "probe.plugin", "PROBE"})
     void rejectsAnIdOutsideThePattern(String id) {
         final IllegalArgumentException thrown =
                 assertThrows(IllegalArgumentException.class, () -> PluginDescriptors.validate(withId(id)));

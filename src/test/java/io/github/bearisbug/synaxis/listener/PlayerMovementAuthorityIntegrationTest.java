@@ -28,7 +28,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * packet, is turned back where the player is, as a move into a chunk that is not loaded is, and
  * loads no chunk; a player the server put outside the border gets no farther out; the border ends
  * at the wall the vanilla client collides with; the moves the server makes itself are followed.
- * Security review M3, findings S1-V01 and S1-02.
  * <p>
  * The test thread hands the player its packets, and the chunks a move needs are loaded beforehand,
  * so that nothing waits on a chunk load; the player ticks only in the test of the chunks a move
@@ -84,7 +83,7 @@ public class PlayerMovementAuthorityIntegrationTest {
         assertTrue(settled, "the chunks of the ring around " + player.getPosition() + " loaded in 10 s");
     }
 
-    /** S1-V01: a move out across the world border is turned back where the player is. */
+    /** A move out across the world border is turned back where the player is. */
     @Test
     public void aMoveOutAcrossTheWorldBorderIsTurnedBack(Env env) {
         final Instance instance = instance(env);
@@ -102,7 +101,7 @@ public class PlayerMovementAuthorityIntegrationTest {
     }
 
     /**
-     * S1-V01: the move turned back at the border asks for no chunk. Once the chunks of the player's
+     * The move turned back at the border asks for no chunk. Once the chunks of the player's
      * ring are loaded, the instance holds as many as before it; the same ticks after a move the server
      * takes, into the next chunk inside the border, load the column of chunks its ring reaches past the
      * ring of the spawn.
@@ -129,7 +128,7 @@ public class PlayerMovementAuthorityIntegrationTest {
     }
 
     /**
-     * S1-V01 as reported: one jump after the other along x, each into a chunk the ring has loaded.
+     * One jump after the other along x, each into a chunk the ring has loaded.
      * They stop at the border, and so does the chunk ring that loads chunks around the player.
      */
     @Test
@@ -151,7 +150,7 @@ public class PlayerMovementAuthorityIntegrationTest {
         assertEquals(new Pos(120.5, 40, 0.5), player.getPosition(), "the last jump inside the border, at x 120.5");
     }
 
-    /** S1-02: one packet carries the player 64 blocks at most, in any direction. */
+    /** One packet carries the player 64 blocks at most, in any direction. */
     @Test
     public void aMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env env) {
         final Instance instance = instance(env);

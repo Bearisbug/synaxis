@@ -26,12 +26,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
- * Security review 2026-10, surface 3 ③: two grid tick threads change blocks on both sides of a chunk border, each
- * on its own side and across into the other's chunk, every tick, while the runtime light recomputes and installs
- * and the overlay store writes at the end of every tick ({@code docs/DESIGN-M3.md} §16). 4 tick threads on a grid
- * of 2 by 2 chunk cells: chunk x = 1 is in cell (0, 5), chunk x = 2 in cell (1, 5). After a final flush the
- * reopened store has, for both chunks, the generation and the blocks the instance has. A regression test since
- * M3-S: green under the grid of 4 threads in strict mode as well.
+ * Two grid tick threads change blocks on both sides of a chunk border, each on its own side and across into the
+ * other's chunk, every tick, while the runtime light recomputes and installs and the overlay store writes at the
+ * end of every tick ({@code docs/DESIGN-M3.md} §16). 4 tick threads on a grid of 2 by 2 chunk cells: chunk x = 1 is
+ * in cell (0, 5), chunk x = 2 in cell (1, 5). After a final flush the reopened store has, for both chunks, the
+ * generation and the blocks the instance has, under the grid of 4 threads in strict mode as well.
  */
 public class OverlayCrossCellWritersTest {
     private static final int Y = SynxTestMap.FEATURE_Y;

@@ -7,7 +7,7 @@ plugins {
 val javaVersion = System.getenv("JAVA_VERSION") ?: "25"
 
 group = "io.github.bearisbug.synaxis"
-version = System.getenv("GAME_ENGINE_VERSION") ?: "dev"
+version = System.getenv("SYNAXIS_VERSION") ?: "dev"
 
 configurations.all {
     // We only use Jetbrains Annotations

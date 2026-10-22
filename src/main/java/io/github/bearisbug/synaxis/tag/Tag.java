@@ -94,7 +94,7 @@ public sealed interface Tag<T extends @UnknownNullability Object> permits TagImp
      * <b>Must not be used with untrusted data.</b> Reading this tag runs the whole sub compound
      * through {@link TagHandler#fromCompound(net.kyori.adventure.nbt.CompoundBinaryTag)}, which
      * registers every key it finds in a process wide, never shrinking index: a compound coming from
-     * a client can grow that index without bound (audit F49). Read client NBT key by key instead,
+     * a client can grow that index without bound. Read client NBT key by key instead,
      * the way the item components do.
      *
      * @param key        the tag key

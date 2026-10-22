@@ -37,10 +37,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Security review 2026-10 (surface 2): the readers of a map release and of segment ③ against
- * malformed bytes. A broken index entry or segment table has to come back as {@link SynxSlot.Failed}, a
- * record the loader cannot place loads as failed, and every length is held to its cap before anything is
- * allocated for it (M3-S, {@code API-M3-001} 长度上限). The failed loads name the file they read, or miss.
+ * The readers of a map release and of segment ③ against malformed bytes. A broken index entry or segment table
+ * has to come back as {@link SynxSlot.Failed}, a record the loader cannot place loads as failed, and every length
+ * is held to its cap before anything is allocated for it (M3-S, {@code API-M3-001} 长度上限). The failed loads
+ * name the file they read, or miss.
  */
 public class SynxParserBoundaryTest {
 
@@ -411,7 +411,7 @@ public class SynxParserBoundaryTest {
     @Test
     public void theManifestRefusesADuplicateNameAndAnOversizedNumber() throws Exception {
         final SynxManifest manifest = new SynxManifest("vectors", SynxManifest.buildId("vectors", NO_HASH, 776), NO_HASH,
-                "26.2", 776, NO_HASH, 1, 1, new SynxManifest.World(0, 64), SynxVectors.bounds(), List.of(), List.of(),
+                "26.2", 776, NO_HASH, 1, 1, new SynxManifest.World(0, 64), SynxVectors.bounds(), List.of(),
                 new SynxManifest.Source("generator", null, null),
                 new SynxManifest.Bake("2026-10-02T00:00:00Z", 1, 1, 1, "25"), new SynxManifest.Verify(0, 0, null));
         final String json = manifest.toJson();

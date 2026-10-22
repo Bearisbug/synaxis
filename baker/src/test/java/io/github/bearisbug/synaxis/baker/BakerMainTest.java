@@ -28,14 +28,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The command line on the vanilla fixture save of {@code anvil/}: the handler namespaces a data marker may
- * name are the {@link BlockHandler} services on the class path, here the two {@code :game-rts} lists
- * ({@code synaxis:door} and {@code synaxis:loot}).
+ * name are the {@link BlockHandler} services on the class path, here the two the test sources list
+ * ({@link DoorMarker} and {@link LootMarker}).
  */
 public class BakerMainTest {
     @TempDir
     Path temp;
 
-    /** A second handler with the key of the door marker of {@code :game-rts}. */
+    /** A second handler with the key of {@link DoorMarker}. */
     public static final class SecondDoor implements BlockHandler {
         @Override
         public Key getKey() {
@@ -91,7 +91,7 @@ public class BakerMainTest {
         final String message = err.toString(StandardCharsets.UTF_8);
         assertEquals(BakerMain.EXIT_USAGE, exit, message);
         assertTrue(message.contains("synaxis:door"), message);
-        assertTrue(message.contains("io.github.bearisbug.synaxis.game.rts.marker.DoorMarker"), message);
+        assertTrue(message.contains(DoorMarker.class.getName()), message);
         assertTrue(message.contains(SecondDoor.class.getName()), message);
         assertFalse(Files.exists(temp.resolve("maps")));
         assertFalse(Files.exists(temp.resolve("logs")));
@@ -135,8 +135,8 @@ public class BakerMainTest {
     }
 
     /**
-     * §9 map_id, API-M3-003: an id that is not {@code [a-z0-9][a-z0-9_-]{0,31}} names no directory to bake into
-     * or a far view url path, so it exits with 1 before anything is written.
+     * §9 map_id, API-M3-003: an id that is not {@code [a-z0-9][a-z0-9_-]{0,31}} names no directory to bake into,
+     * so it exits with 1 before anything is written.
      */
     @Test
     public void aMapIdThatIsNotOneExitsOneAndWritesNothing() throws Exception {
@@ -149,10 +149,7 @@ public class BakerMainTest {
         assertEquals(List.of(), list(temp));
     }
 
-    /**
-     * A map_id of 32 characters bakes, its build_id within the 96 bytes of an announcement; the started event
-     * records the {@code --source} as given (§20 source_spec).
-     */
+    /** A map_id of 32 characters bakes; the started event records the {@code --source} as given (§20 source_spec). */
     @Test
     public void aMapIdOfThirtyTwoCharactersBakesAndTheEventRecordsTheSource() throws Exception {
         final String mapId = "a".repeat(31) + "9";

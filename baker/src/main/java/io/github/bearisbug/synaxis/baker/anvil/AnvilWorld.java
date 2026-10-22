@@ -36,8 +36,8 @@ import java.util.regex.Pattern;
 
 /**
  * Offline, read-only reader of a vanilla 26.2 Anvil save, the baker's edit source ({@code docs/DESIGN-M3.md}
- * REQ-M3-020, API-M3-003). Revived from the engine's {@code AnvilLoader} and {@code RegionFile} as they
- * stood before {@code 74592d8fdf}, with the write path, the instance plumbing and the pre-26.1 layout left
+ * REQ-M3-020, API-M3-003). Revived from the {@code AnvilLoader} and {@code RegionFile} the engine inherited
+ * from Minestom and later removed, with the write path, the instance plumbing and the pre-26.1 layout left
  * behind.
  * <p>
  * A dimension lives in {@code <world>/dimensions/<namespace>/<path>/}; blocks come from its {@code region/},
@@ -52,15 +52,11 @@ import java.util.regex.Pattern;
  * {@code metadata} is {@code <handler namespace> <SNBT>} turns into air, and the block directly below it
  * gets a block entity record carrying that handler, the marker's SNBT merged over whatever block entity
  * the source had there. The handler namespace must satisfy the {@code registeredHandlers} predicate, the
- * SNBT may not set {@code id}, {@code x}, {@code y} or {@code z}, and the block below may not be a marker. A
- * {@code synaxis:hidden <x1> <z1> <x2> <z2>} marker also turns into air and is reported as a
- * {@link HiddenArea}.
+ * SNBT may not set {@code id}, {@code x}, {@code y} or {@code z}, and the block below may not be a marker.
  * <p>
  * Thread safe: region files are opened once, under a lock, and read with positional reads.
  */
 public final class AnvilWorld implements AutoCloseable {
-    public static final String HIDDEN_MARKER = "synaxis:hidden";
-
     private static final String FULL = "minecraft:full";
     private static final String STRUCTURE_BLOCK = "minecraft:structure_block";
     private static final List<String> RECORD_KEYS = List.of("id", "x", "y", "z");
@@ -156,10 +152,10 @@ public final class AnvilWorld implements AutoCloseable {
         final Map<Integer, AnvilSection> sections = readSections(chunkX, chunkZ, data);
         final Map<Long, AnvilBlockEntity> blockEntities = readBlockEntities(chunkX, chunkZ, data);
         final Set<Long> markerCells = new HashSet<>();
-        final List<HiddenArea> hiddenAreas = applyMarkers(chunkX, chunkZ, sections, blockEntities, markerCells);
+        applyMarkers(chunkX, chunkZ, sections, blockEntities, markerCells);
         return new AnvilChunk(chunkX, chunkZ, data.getBoolean("isLightOn"),
                 List.copyOf(sections.values()), List.copyOf(blockEntities.values()),
-                readEntities(chunkX, chunkZ, fileName), List.copyOf(hiddenAreas), markerCells);
+                readEntities(chunkX, chunkZ, fileName), markerCells);
     }
 
     @Override
@@ -338,8 +334,8 @@ public final class AnvilWorld implements AutoCloseable {
         return blockEntities;
     }
 
-    private List<HiddenArea> applyMarkers(int chunkX, int chunkZ, Map<Integer, AnvilSection> sections,
-                                          Map<Long, AnvilBlockEntity> blockEntities, Set<Long> markerCells) throws AnvilSourceException {
+    private void applyMarkers(int chunkX, int chunkZ, Map<Integer, AnvilSection> sections,
+                              Map<Long, AnvilBlockEntity> blockEntities, Set<Long> markerCells) throws AnvilSourceException {
         final List<AnvilBlockEntity> markers = new ArrayList<>();
         final Set<Long> markerKeys = new HashSet<>();
         for (AnvilBlockEntity blockEntity : blockEntities.values()) {
@@ -350,7 +346,6 @@ public final class AnvilWorld implements AutoCloseable {
             }
         }
 
-        final List<HiddenArea> hiddenAreas = new ArrayList<>();
         for (AnvilBlockEntity marker : markers) {
             final int x = marker.nbt().getInt("x"), y = marker.nbt().getInt("y"), z = marker.nbt().getInt("z");
             final String where = "data marker at " + x + ", " + y + ", " + z;
@@ -368,10 +363,6 @@ public final class AnvilWorld implements AutoCloseable {
             markerCells.add(markerKey);
             markerCells.add(below);
 
-            if (namespace.equals(HIDDEN_MARKER)) {
-                hiddenAreas.add(hiddenArea(chunkX, chunkZ, where, argument));
-                continue;
-            }
             if (namespace.isEmpty() || !registeredHandlers.test(namespace)) {
                 throw new AnvilSourceException(chunkX, chunkZ, where + " names handler namespace '" + namespace
                         + "', which is not registered");
@@ -402,7 +393,6 @@ public final class AnvilWorld implements AutoCloseable {
                     : CompoundBinaryTag.builder().put(existing.nbt()).put(markerNbt).build();
             blockEntities.put(below, new AnvilBlockEntity(belowSection, belowIndex, namespace, merged));
         }
-        return hiddenAreas;
     }
 
     private static AnvilSection section(int chunkX, int chunkZ, Map<Integer, AnvilSection> sections, int y,
@@ -410,22 +400,6 @@ public final class AnvilWorld implements AutoCloseable {
         final AnvilSection section = sections.get(y >> 4);
         if (section == null) throw new AnvilSourceException(chunkX, chunkZ, where + " lies outside of every section");
         return section;
-    }
-
-    private static HiddenArea hiddenArea(int chunkX, int chunkZ, String where, String argument)
-            throws AnvilSourceException {
-        final String[] corners = argument.split("\\s+", -1);
-        if (corners.length != 4) {
-            throw new AnvilSourceException(chunkX, chunkZ, where + ": " + HIDDEN_MARKER + " takes <x1> <z1> <x2> <z2>, got '"
-                    + argument + "'");
-        }
-        try {
-            return new HiddenArea(Integer.parseInt(corners[0]), Integer.parseInt(corners[1]),
-                    Integer.parseInt(corners[2]), Integer.parseInt(corners[3]));
-        } catch (NumberFormatException _) {
-            throw new AnvilSourceException(chunkX, chunkZ, where + ": " + HIDDEN_MARKER + " takes four integers, got '"
-                    + argument + "'");
-        }
     }
 
     private List<CompoundBinaryTag> readEntities(int chunkX, int chunkZ, String fileName) throws IOException {

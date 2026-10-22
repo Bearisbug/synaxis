@@ -4,20 +4,12 @@
 # protocol 的 ProtocolVectorTest 逐字节对拍（那里的 record 是期望值的事实源，本文件是它的
 # 可读副本）；客户端模组在 §26 阶段 6a 跑同一个目录，两端共用这一份字节。
 #
-# archetype_box.bin 不是消息：它是 §9 原型模板里两端各持一份的那半份（客户端拾取包围盒的宽高，
-# 按原型号索引），线上任何消息都不带它，所以两端写歪了也不会有包报错——单位会画在一处、点在另一处。
-# §24 因此把整张表一起冻进本目录，与消息向量同一套对拍与 digest。
-#
 # 下面的 digest 是全部 .bin 按「相对路径 + 内容」顺序喂进 SHA-256 的结果，它与 schema_version
 # 绑在一起：改任何消息布局都必须在同一个改动里把 ProtocolSchema.SCHEMA_VERSION 加 1、重新生成
 # 全部向量并更新这两行，否则 ProtocolVectorTest 会红。
 
 schema_version=1
-digest=81b4bfd19377aeb7a78fb27d671b2bf597183884351f8e28952608d6c1dd2486
-
-## archetype_box.bin  (9 字节)
-期望值: [ArchetypeBox[width=0.9, height=0.9]]  —— count:varint + 每个原型 (width:f32, height:f32)
-字节:   01 3F 66 66 66 3F 66 66 66
+digest=f293a820698bd1d26d8bc5508538dc98e22d8df58b9fd2ab935e993d0f62395e
 
 ## c2s_hello.bin  (3 字节)
 期望值: C2SHello[modVersion=1, schemaVersion=1]
@@ -27,34 +19,6 @@ digest=81b4bfd19377aeb7a78fb27d671b2bf597183884351f8e28952608d6c1dd2486
 期望值: S2CHello[schemaVersion=1, tickRate=20, serverTick=0]
 字节:   81 01 01 14 00
 
-## c2s_camera.bin  (17 字节)
-期望值: C2SCamera[anchorX=128.5, anchorZ=-64.25, zoom=24.0, cameraYaw=90.0]
-字节:   01 43 00 80 00 C2 80 80 00 41 C0 00 00 42 B4 00 00
-
-## c2s_select.bin  (3 字节)
-期望值: C2SSelect[unitIds=[7]]
-字节:   02 01 07
-
-## c2s_move_order.bin  (17 字节)
-期望值: C2SMoveOrder[orderSeq=1, orderGroup=1, unitId=7, targetX=12.5, targetY=64.0, targetZ=-30.25, mods=0]
-字节:   03 01 01 07 41 48 00 00 42 80 00 00 C1 F2 00 00 00
-
-## s2c_order_result.bin  (16 字节)
-期望值: S2COrderResult[orderSeq=1, code=OK, snappedX=12.5, snappedY=64.0, snappedZ=-30.25]
-字节:   84 01 01 00 41 48 00 00 42 80 00 00 C1 F2 00 00
-
-## s2c_unit_spawn.bin  (9 字节)
-期望值: S2CUnitSpawn[unitId=1, entityId=42, archetype=0, team=1, hp=100, maxHp=100, flags=1]
-字节:   81 01 01 2A 00 01 64 64 01
-
-## s2c_unit_state.bin  (11 字节)
-期望值: S2CUnitState[serverTick=1234, entries=[Entry[unitId=1, unitState=IDLE, hp=100], Entry[unitId=2, unitState=MOVING, hp=80]]]
-字节:   82 01 D2 09 02 01 00 64 02 01 50
-
-## s2c_unit_despawn.bin  (6 字节)
-期望值: S2CUnitDespawn[unitIds=[1, 2, 3]]
-字节:   83 01 03 01 02 03
-
 ## edge/c2s_hello.bin  (11 字节)
 期望值: C2SHello[modVersion=2147483647, schemaVersion=2147483647]
 字节:   01 FF FF FF FF 07 FF FF FF FF 07
@@ -62,32 +26,3 @@ digest=81b4bfd19377aeb7a78fb27d671b2bf597183884351f8e28952608d6c1dd2486
 ## edge/s2c_hello.bin  (9 字节)
 期望值: S2CHello[schemaVersion=1, tickRate=255, serverTick=2147483647]
 字节:   81 01 01 FF FF FF FF FF 07
-
-## edge/c2s_camera.bin  (17 字节)
-期望值: C2SCamera[anchorX=-256.0, anchorZ=255.75, zoom=48.0, cameraYaw=359.9375]
-字节:   01 C3 80 00 00 43 7F C0 00 42 40 00 00 43 B3 F8 00
-
-## edge/c2s_select.bin  (12 字节)
-期望值: C2SSelect[unitIds=[1, 2, 3, 4, 5, 6, 7, 65535]]
-字节:   02 08 01 02 03 04 05 06 07 FF FF 03
-
-## edge/c2s_move_order.bin  (25 字节)
-期望值: C2SMoveOrder[orderSeq=2147483647, orderGroup=2147483647, unitId=1, targetX=511.5, targetY=0.0, targetZ=-0.5, mods=0]
-字节:   03 FF FF FF FF 07 FF FF FF FF 07 01 43 FF C0 00 00 00 00 00 BF 00 00 00 00
-
-## edge/s2c_order_result.bin  (20 字节)
-期望值: S2COrderResult[orderSeq=2147483647, code=NO_PATH, snappedX=0.0, snappedY=0.0, snappedZ=0.0]
-字节:   84 01 FF FF FF FF 07 06 00 00 00 00 00 00 00 00 00 00 00 00
-
-## edge/s2c_unit_spawn.bin  (16 字节)
-期望值: S2CUnitSpawn[unitId=511, entityId=2147483647, archetype=127, team=0, hp=0, maxHp=65535, flags=0]
-字节:   81 01 FF 03 FF FF FF FF 07 7F 00 00 FF FF 03 00
-
-## edge/s2c_unit_state.bin  (1930 字节)
-期望值: S2CUnitState[serverTick=2147483647, entries=[Entry[unitId=1, unitState=IDLE, hp=0], Entry[unitId=2, unitState=MOVING, hp=1], Entry[unitId=3, unitState=IDLE, hp=2], Entry[unitId=4, unitState=MOVING, hp=3], Entry[unitId=5, unitState=IDLE, hp=4], Entry[unitId=6, unitState=MOVING, hp=5], Entry[unitId=7,… (共 21901 字符)
-字节:   82 01 FF FF FF FF 07 80 04 01 00 00 02 01 01 03 00 02 04 01 03 05 00 04 06 01 05 07 00 06 08 01 07 09 00 08 0A 01 09 0B 00 0A 0C 01 0B 0D 00 0C …
-
-## edge/s2c_unit_despawn.bin  (3 字节)
-期望值: S2CUnitDespawn[unitIds=[]]
-字节:   83 01 00
-

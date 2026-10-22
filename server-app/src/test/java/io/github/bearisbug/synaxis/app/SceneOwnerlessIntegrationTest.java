@@ -4,13 +4,6 @@ import ch.qos.logback.classic.Level;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
-import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
-import io.github.bearisbug.synaxis.game.protocol.play.ActionResultCode;
-import io.github.bearisbug.synaxis.game.protocol.play.C2SAction;
-import io.github.bearisbug.synaxis.game.protocol.play.C2SSceneReady;
-import io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent;
-import io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol;
-import io.github.bearisbug.synaxis.game.protocol.play.S2CActionResult;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.packet.client.common.ClientPluginMessagePacket;
@@ -18,6 +11,13 @@ import io.github.bearisbug.synaxis.network.packet.server.common.DisconnectPacket
 import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
 import io.github.bearisbug.synaxis.network.player.InboundPacketLimits;
 import io.github.bearisbug.synaxis.plugin.Admission;
+import io.github.bearisbug.synaxis.protocol.MsgBuf;
+import io.github.bearisbug.synaxis.protocol.play.ActionResultCode;
+import io.github.bearisbug.synaxis.protocol.play.C2SAction;
+import io.github.bearisbug.synaxis.protocol.play.C2SSceneReady;
+import io.github.bearisbug.synaxis.protocol.play.EncodedComponent;
+import io.github.bearisbug.synaxis.protocol.play.PlayProtocol;
+import io.github.bearisbug.synaxis.protocol.play.S2CActionResult;
 import io.github.bearisbug.synaxis.testing.Collector;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
@@ -69,7 +69,7 @@ class SceneOwnerlessIntegrationTest {
     /** Every kind of payload: an action, a ready, an unknown id, a message of ours, a truncated one, nothing. */
     private static List<byte[]> probes() {
         final MsgBuf action = MsgBuf.writing();
-        new C2SAction(0, 1, "rush:queue", new C2SAction.None()).write(action);
+        new C2SAction(0, 1, "probe:queue", new C2SAction.None()).write(action);
         final MsgBuf ready = MsgBuf.writing();
         new C2SSceneReady(1).write(ready);
         final MsgBuf ours = MsgBuf.writing();
@@ -111,7 +111,7 @@ class SceneOwnerlessIntegrationTest {
     @Test
     void theCoreModeDropsEveryPlayPayloadSilently(Env env) {
         final PluginHost host = host(env);
-        final Instance world = CoreMode.start(env.process(), host, Main.registerMatchDimensionType(env.process()),
+        final Instance world = CoreMode.start(env.process(), host, Main.registerManagedDimensionType(env.process()),
                 CoreMode.Setting.AUTO);
 
         floodAndExpectNothing(env, world, ConnectionState.PLAY);
@@ -121,7 +121,7 @@ class SceneOwnerlessIntegrationTest {
     @Test
     void theCoreModeDropsThePlayPayloadsOfTheConfigurationSilently(Env env) {
         final PluginHost host = host(env);
-        final Instance world = CoreMode.start(env.process(), host, Main.registerMatchDimensionType(env.process()),
+        final Instance world = CoreMode.start(env.process(), host, Main.registerManagedDimensionType(env.process()),
                 CoreMode.Setting.AUTO);
 
         floodAndExpectNothing(env, world, ConnectionState.CONFIGURATION);
@@ -132,7 +132,7 @@ class SceneOwnerlessIntegrationTest {
         final PluginHost host = host(env);
         final Instance map = env.createFlatInstance();
         // What Main#serveMap does with the admission slot; a map shard loads no plugin
-        host.registerHostAdmission(_ -> new Admission.Accept(map, 0));
+        host.registerHostAdmission(_ -> new Admission.Accept(map));
 
         floodAndExpectNothing(env, map, ConnectionState.PLAY);
     }

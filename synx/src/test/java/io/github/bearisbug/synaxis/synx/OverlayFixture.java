@@ -46,7 +46,7 @@ final class OverlayFixture {
 
     static SynxManifest manifest(String buildId, byte[] contentHash, int protocolVersion) {
         return new SynxManifest(MAP_ID, buildId, contentHash, "26.2", protocolVersion, REGISTRY_DIGEST, 1, 1,
-                new SynxManifest.World(0, 256), new SynxManifest.Bounds(-64, -64, 63, 63), List.of(), List.of(),
+                new SynxManifest.World(0, 256), new SynxManifest.Bounds(-64, -64, 63, 63), List.of(),
                 new SynxManifest.Source("generator", null, null),
                 new SynxManifest.Bake("2026-09-27T00:00:00Z", 1, 1, 1, "25"), new SynxManifest.Verify(0, 0, null));
     }

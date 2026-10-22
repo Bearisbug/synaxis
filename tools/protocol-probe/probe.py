@@ -25,10 +25,6 @@ Subcommands, see docs/TEST.md section 3:
     record-registry --out FILE    dump every received RegistryData packet to FILE
     compare-registry SAMPLE RECORDED [--ignore REGISTRY/ENTRY]
                                   compare two such dumps per registry and entry, no server needed
-    order [--count N] [--group G] send move orders on rts:game and report the result codes
-    select --units 1,2,3          send one C2S_SELECT and check it is not answered
-    march [--units N]             keep N units walking, so a load test has moving units under it
-    game-flood [--rate R]         hold a payload rate on rts:game for a few seconds
     handshake                     log in and report the S2C_HELLO the server answered with
     no-hello                      log in and never send C2S_HELLO, the client without the mod
     bad-schema --schema N         send C2S_HELLO announcing a schema_version of N
@@ -63,27 +59,13 @@ COST_PER_EMPTY_COMPOUND = 52
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PACKET_VANILLA = REPO_ROOT / "src/main/java/io/github/bearisbug/synaxis/network/packet/PacketVanilla.java"
 DATA_COMPONENTS = REPO_ROOT / "src/main/java/io/github/bearisbug/synaxis/component/DataComponents.java"
-PROTOCOL_SCHEMA = REPO_ROOT / "protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/ProtocolSchema.java"
+PROTOCOL_SCHEMA = REPO_ROOT / "protocol/src/main/java/io/github/bearisbug/synaxis/protocol/ProtocolSchema.java"
 
 # The host reserved handshake channel and its two message ids, see docs/DESIGN-M2.md API-M2-002
 HANDSHAKE_CHANNEL = "synaxis:handshake"
 C2S_HELLO = 0x01
 S2C_HELLO = 0x81
 
-# The RTS slice channel and the message ids of API-M2-003 to API-M2-005. msg_id is scoped to one
-# channel, which is why these may collide with the handshake's.
-GAME_CHANNEL = "rts:game"
-C2S_CAMERA = 0x01
-C2S_SELECT = 0x02
-C2S_MOVE_ORDER = 0x03
-S2C_UNIT_SPAWN = 0x81
-S2C_UNIT_STATE = 0x82
-S2C_UNIT_DESPAWN = 0x83
-S2C_ORDER_RESULT = 0x84
-# docs/DESIGN-M2.md section 9 order_result_code, in the order it is encoded in
-ORDER_RESULT_CODES = ("ok", "stale", "rate-limited", "not-owner", "out-of-bounds", "busy", "no-path")
-# docs/DESIGN-M2.md section 9 unit_state, in the order it is encoded in; removed is never sent
-UNIT_STATES = ("idle", "moving")
 
 
 # --------------------------------------------------------------------------------------
@@ -466,70 +448,6 @@ def hello_body(mod_version: int, schema_version: int) -> bytes:
     return Writer().varint(C2S_HELLO).varint(mod_version).varint(schema_version).bytes()
 
 
-def camera_body(anchor_x: float, anchor_z: float, zoom: float, camera_yaw: float) -> bytes:
-    """C2S_CAMERA{msg_id=0x01, anchor_x, anchor_z, zoom, camera_yaw}, see API-M2-003."""
-    return (Writer().varint(C2S_CAMERA).float32(anchor_x).float32(anchor_z)
-            .float32(zoom).float32(camera_yaw).bytes())
-
-
-def select_body(unit_ids: list[int]) -> bytes:
-    """C2S_SELECT{msg_id=0x02, count, unit_ids}, see API-M2-004. The count is written as given, so
-    a caller may go past the cap of eight on purpose."""
-    writer = Writer().varint(C2S_SELECT).varint(len(unit_ids))
-    for unit_id in unit_ids:
-        writer.varint(unit_id)
-    return writer.bytes()
-
-
-def move_order_body(order_seq: int, order_group: int, unit_id: int,
-                    target: tuple[float, float, float], mods: int = 0) -> bytes:
-    """C2S_MOVE_ORDER{msg_id=0x03, order_seq, order_group, unit_id, target, mods}, see API-M2-005."""
-    writer = Writer().varint(C2S_MOVE_ORDER).varint(order_seq).varint(order_group).varint(unit_id)
-    for coordinate in target:
-        writer.float32(coordinate)
-    return writer.raw(bytes([mods])).bytes()
-
-
-def read_order_result(data: bytes) -> dict | None:
-    """Decodes S2C_ORDER_RESULT{msg_id=0x84, order_seq, code:u8, snapped_x, snapped_y, snapped_z}."""
-    reader = Reader(data)
-    if reader.varint() != S2C_ORDER_RESULT:
-        return None
-    order_seq = reader.varint()
-    code = reader.u8()
-    return {"order_seq": order_seq,
-            "code": ORDER_RESULT_CODES[code] if code < len(ORDER_RESULT_CODES) else f"unknown({code})",
-            "snapped": (reader.float32(), reader.float32(), reader.float32())}
-
-
-def read_unit_message(data: bytes) -> dict | None:
-    """Decodes the three downlink unit messages of API-M2-006, which carry no position at all.
-
-    Position and facing travel on the engine's own entity packets and nowhere else, so a unit's
-    place on the map is never in here; the client binds unit_id to entity_id with the spawn message
-    and reads the position off that entity.
-    """
-    reader = Reader(data)
-    msg_id = reader.varint()
-    if msg_id == S2C_UNIT_SPAWN:
-        return {"message": "S2C_UNIT_SPAWN", "unit_id": reader.varint(), "entity_id": reader.varint(),
-                "archetype": reader.varint(), "team": reader.u8(), "hp": reader.varint(),
-                "max_hp": reader.varint(), "flags": reader.u8()}
-    if msg_id == S2C_UNIT_STATE:
-        server_tick = reader.varint()
-        entries = []
-        for _ in range(reader.varint()):
-            unit_id = reader.varint()
-            state = reader.u8()
-            entries.append({"unit_id": unit_id,
-                            "unit_state": UNIT_STATES[state] if state < len(UNIT_STATES) else f"unknown({state})",
-                            "hp": reader.varint()})
-        return {"message": "S2C_UNIT_STATE", "server_tick": server_tick, "entries": entries}
-    if msg_id == S2C_UNIT_DESPAWN:
-        return {"message": "S2C_UNIT_DESPAWN", "unit_ids": [reader.varint() for _ in range(reader.varint())]}
-    return None
-
-
 def login_plugin_response_payload(message_id: int, data: bytes | None) -> bytes:
     """The login phase answer; a client that does not know the channel sends no data at all."""
     writer = Writer().varint(message_id).boolean(data is not None)
@@ -629,14 +547,6 @@ class Session:
         self.hello_mod_version = 1
         self.hello_schema_version = SCHEMA_VERSION
         self.server_hello: dict[str, int] | None = None
-        # Every S2C_ORDER_RESULT this session has been answered with, in arrival order
-        self.order_results: list[dict] = []
-        # The interest set as the server describes it: what was spawned into it, what the last
-        # snapshot said each unit is doing, and how many snapshots have arrived (API-M2-006)
-        self.units: dict[int, dict] = {}
-        self.unit_states: dict[int, str] = {}
-        self.snapshots = 0
-        self.despawned: list[int] = []
         # Set once this session has handshaken, so that the login phase form of it is not followed
         # by a second C2S_HELLO in the configuration phase (which is a protocol error).
         self.handshook = False
@@ -697,30 +607,14 @@ class Session:
         self.log(f"sent C2S_HELLO mod_version={self.hello_mod_version} "
                  f"schema_version={self.hello_schema_version}")
 
-    def send_game(self, body: bytes) -> None:
-        self.connection.send("ClientPluginMessagePacket", plugin_message_payload(GAME_CHANNEL, body))
-
     def read_payload(self, reader: Reader) -> bool:
-        """Handles a custom payload on one of the two channels this probe knows.
+        """Handles a custom payload on the handshake channel, the one channel this probe knows.
 
-        Returns whether it was one of them; the caller keeps the reader either way, so a payload on
-        a third channel is simply not looked at.
+        Returns whether it was that channel; the caller keeps the reader either way, so a payload on
+        another channel is simply not looked at.
         """
         channel = reader.string()
         data = reader.raw(reader.remaining())
-        if channel == GAME_CHANNEL:
-            result = read_order_result(data)
-            if result is not None:
-                self.order_results.append(result)
-                self.log(f"     S2C_ORDER_RESULT order_seq={result['order_seq']} code={result['code']} "
-                         f"snapped={result['snapped']}")
-                return True
-            unit = read_unit_message(data)
-            if unit is None:
-                self.log(f"     unexpected message on {channel}")
-                return True
-            self.read_unit(unit)
-            return True
         if channel != HANDSHAKE_CHANNEL:
             return False
         answer = read_server_hello(data)
@@ -731,26 +625,6 @@ class Session:
         self.log(f"     S2C_HELLO schema_version={answer['schema_version']} "
                  f"tick_rate={answer['tick_rate']} server_tick={answer['server_tick']}")
         return True
-
-    def read_unit(self, message: dict) -> None:
-        """Keeps what the three unit messages say, which is this probe's view of its interest set."""
-        if message["message"] == "S2C_UNIT_SPAWN":
-            self.units[message["unit_id"]] = message
-            self.log(f"     S2C_UNIT_SPAWN unit_id={message['unit_id']} entity_id={message['entity_id']} "
-                     f"archetype={message['archetype']} team={message['team']} flags={message['flags']}")
-        elif message["message"] == "S2C_UNIT_STATE":
-            self.snapshots += 1
-            for entry in message["entries"]:
-                self.unit_states[entry["unit_id"]] = entry["unit_state"]
-            moving = [entry["unit_id"] for entry in message["entries"] if entry["unit_state"] == "moving"]
-            self.log(f"     S2C_UNIT_STATE server_tick={message['server_tick']} "
-                     f"count={len(message['entries'])} moving={moving}")
-        else:
-            self.despawned.extend(message["unit_ids"])
-            for unit_id in message["unit_ids"]:
-                self.units.pop(unit_id, None)
-                self.unit_states.pop(unit_id, None)
-            self.log(f"     S2C_UNIT_DESPAWN unit_ids={message['unit_ids']}")
 
     def configuration(self) -> None:
         """Answers the configuration phase until the server finishes it."""
@@ -818,27 +692,6 @@ class Session:
     def pump(self, seconds: float) -> None:
         """Reads packets for the given duration, answering keep alives."""
         self.pump_until(lambda: False, seconds)
-
-    def drain(self) -> None:
-        """Reads whatever has already arrived without waiting for more.
-
-        The flood subcommand sends far faster than it reads, and a socket buffer that fills up
-        blocks the server's writer rather than this probe; draining between bursts keeps the rate
-        the server sees equal to the rate that was asked for.
-        """
-        self.connection.socket.settimeout(0.01)
-        try:
-            while True:
-                try:
-                    packet, reader, _ = self.recv()
-                except socket.timeout:
-                    return
-                if packet == "KeepAlivePacket":
-                    self.answer_keep_alive(reader)
-                elif packet == "PluginMessagePacket":
-                    self.read_payload(reader)
-        finally:
-            self.connection.socket.settimeout(self.args.timeout)
 
     def pump_until(self, ready, seconds: float) -> bool:
         """Reads packets until ``ready()`` holds or the time is up, answering keep alives."""
@@ -994,234 +847,6 @@ def cmd_deep_recursion(args: argparse.Namespace) -> int:
         # The probe logs in as a survival player, so the server drops the frame without decoding it.
         # Surviving is the expected outcome; what would fail here is a crash or a stalled connection.
         session.log("no disconnect received, the creative packet was skipped before decoding")
-        return 0
-    finally:
-        session.close()
-
-
-# API-M2-005: how many order packets one order_group may carry.
-GROUP = 8
-
-
-def cmd_order(args: argparse.Namespace) -> int:
-    """Sends move orders and reports the result codes they came back with (API-M2-005).
-
-    Every request is answered, so the check is twofold: as many answers as requests, and the
-    histogram the caller expected. With `--group` the whole burst shares one order_group, which is
-    what a single click on several units looks like and what the token bucket counts as one;
-    `--group-size` cuts the burst into groups of that size instead, which is how a burst larger
-    than the eight packets a group may carry is sent without being rate limited.
-
-    `--select` puts a selection in front of the orders on the same connection, which is the only
-    way to see that a selection carrying a unit the sender does not command still leaves it able to
-    order the ones it does.
-    """
-    if args.group_size < 1:
-        raise SystemExit("--group-size counts the orders sharing a group, so it is at least 1")
-    session = Session(args)
-    try:
-        session.enter_play()
-        if args.select:
-            units = [int(unit) for unit in args.select.split(",")]
-            session.send_game(select_body(units))
-            session.log(f"sent C2S_SELECT count={len(units)} unit_ids={units}")
-        target = (args.x, args.y, args.z)
-        for index in range(args.count):
-            order_seq = args.seq + index
-            order_group = args.group if args.group is not None else args.seq + index // args.group_size
-            session.send_game(move_order_body(order_seq, order_group, args.unit, target))
-            session.log(f"sent C2S_MOVE_ORDER order_seq={order_seq} "
-                        f"order_group={order_group} unit_id={args.unit}")
-        session.pump_until(lambda: len(session.order_results) >= args.count, args.wait)
-        histogram: dict[str, int] = {}
-        for result in session.order_results:
-            histogram[result["code"]] = histogram.get(result["code"], 0) + 1
-        session.log(f"answers={len(session.order_results)}/{args.count} "
-                    + " ".join(f"{code}={count}" for code, count in sorted(histogram.items())))
-        if len(session.order_results) != args.count:
-            session.log("every request is answered exactly once, and this one was not")
-            return 1
-        if args.expect and histogram.get(args.expect, 0) != args.expect_count:
-            session.log(f"expected {args.expect_count} answers of {args.expect}")
-            return 1
-        if args.watch <= 0:
-            return 0
-        # The walk itself, as the snapshots describe it: the unit goes moving and comes back idle
-        # once it is there (section 11.4). Its position is not in here — that is on the entity
-        # packets — so what is asserted is the state machine, not the coordinates.
-        seen_moving = session.unit_states.get(args.unit) == "moving"
-
-        def arrived() -> bool:
-            nonlocal seen_moving
-            state = session.unit_states.get(args.unit)
-            seen_moving = seen_moving or state == "moving"
-            return seen_moving and state == "idle"
-
-        session.pump_until(arrived, args.watch)
-        session.log(f"unit_id={args.unit} snapshots={session.snapshots} "
-                    f"seen_moving={seen_moving} unit_state={session.unit_states.get(args.unit)}")
-        if not seen_moving:
-            session.log("the unit never reported itself moving")
-            return 1
-        if session.unit_states.get(args.unit) != "idle":
-            session.log(f"the unit was still moving after {args.watch}s")
-            return 1
-        return 0
-    finally:
-        session.close()
-
-
-def cmd_march(args: argparse.Namespace) -> int:
-    """Keeps a number of units walking for a while, so that a load test has moving units under it.
-
-    A walking unit puts an entity position packet on the wire every other tick for every player who
-    can see it, which is downlink the core baselines were measured without. Producing it takes a
-    connection that stays: the units of a connection that goes away are stopped (section 11.4). So
-    this holds one, and every period it sends the whole set of units to the other of two targets,
-    in groups of eight spaced far enough apart to stay under both the operation budget and the
-    search queue.
-
-    What it reports is the sampled count of units the snapshots called moving, which is the number
-    the load test needs to stand behind: an order that was answered `ok` is not yet a unit walking.
-    """
-    session = Session(args)
-    try:
-        session.enter_play()
-        targets = ((args.ax, args.az), (args.bx, args.bz))
-        deadline = time.monotonic() + args.seconds
-        samples: list[int] = []
-        order_seq = 0
-        period = 0
-        while time.monotonic() < deadline:
-            x, z = targets[period % 2]
-            for first in range(1, args.units + 1, GROUP):
-                for unit_id in range(first, min(first + GROUP, args.units + 1)):
-                    order_seq += 1
-                    session.send_game(move_order_body(order_seq, period * args.units + first,
-                                                      unit_id, (x, args.y, z)))
-                session.pump(args.spacing)
-            until = min(time.monotonic() + args.period, deadline)
-            while time.monotonic() < until:
-                session.pump(1.0)
-                samples.append(sum(1 for state in session.unit_states.values() if state == "moving"))
-            period += 1
-        histogram: dict[str, int] = {}
-        for result in session.order_results:
-            histogram[result["code"]] = histogram.get(result["code"], 0) + 1
-        moving = sorted(samples)
-        session.log(f"periods={period} orders={order_seq} "
-                    + " ".join(f"{code}={count}" for code, count in sorted(histogram.items())))
-        session.log(f"moving samples={len(moving)} min={moving[0]} median={moving[len(moving) // 2]} "
-                    f"max={moving[-1]}")
-        if moving[len(moving) // 2] < args.expect_moving:
-            session.log(f"half the samples were under {args.expect_moving} units moving")
-            return 1
-        return 0
-    finally:
-        session.close()
-
-
-def cmd_units(args: argparse.Namespace) -> int:
-    """Reports the interest set the server describes over the three downlink unit messages.
-
-    The interest set is the engine's viewer set projected onto units (API-M2-006), so what arrives
-    here is whatever the server decided this connection can see from where its player stands.
-    """
-    session = Session(args)
-    try:
-        session.enter_play()
-        session.pump_until(lambda: len(session.units) >= args.expect_min and session.snapshots > 0, args.wait)
-        commandable = sorted(unit_id for unit_id, unit in session.units.items() if unit["flags"] & 0x01)
-        session.log(f"units={len(session.units)} commandable={commandable} "
-                    f"snapshots={session.snapshots} despawned={session.despawned}")
-        session.log(f"states={dict(sorted(session.unit_states.items()))}")
-        if len(session.units) < args.expect_min:
-            session.log(f"expected at least {args.expect_min} units in the interest set")
-            return 1
-        if session.snapshots == 0:
-            session.log("no snapshot arrived at all")
-            return 1
-        return 0
-    finally:
-        session.close()
-
-
-def cmd_select(args: argparse.Namespace) -> int:
-    """Sends one C2S_SELECT and checks what it costs (API-M2-004).
-
-    A selection is never answered, so the outcome is either silence or, when the count is past the
-    cap of eight, the protocol error of section 14.
-    """
-    session = Session(args)
-    try:
-        session.enter_play()
-        units = [int(unit) for unit in args.units.split(",")] if args.units else []
-        session.send_game(select_body(units))
-        session.log(f"sent C2S_SELECT count={len(units)} unit_ids={units}")
-        try:
-            session.pump(args.wait)
-        except Disconnected as disconnected:
-            if args.expect == "protocol-error" and disconnected.reason == "synaxis:protocol-error":
-                return 0
-            session.log(f"unexpected disconnect: {disconnected.reason}")
-            return 1
-        except ClosedByServer:
-            session.log("connection closed without a disconnect packet")
-            return 1
-        if args.expect == "protocol-error":
-            session.log("a count past the cap was accepted")
-            return 1
-        if session.order_results:
-            session.log("a selection was answered, which it must not be")
-            return 1
-        session.log("still connected, nothing answered")
-        return 0
-    finally:
-        session.close()
-
-
-def cmd_game_flood(args: argparse.Namespace) -> int:
-    """Holds a rate on the game channel for a number of seconds (section 14, section 15).
-
-    It is the difference between the two limits that this proves: a rate over the flood threshold
-    ends the connection, and one under it never does however long it is held.
-
-    The rate that is reached is reported next to the verdict, and it is not the rate that was
-    asked for: reading between the bursts costs time, so a window may run past its second and the
-    server, which counts in fixed one second buckets, then sees fewer payloads than were sent. A
-    gate that never fired tells the reader nothing on its own — whether it is the gate or the probe
-    that fell short is the slowest window's answer to give.
-    """
-    session = Session(args)
-    try:
-        session.enter_play()
-        session.log(f"flooding {args.rate} payloads a second for {args.seconds}s")
-        windows: list[float] = []
-        try:
-            for second in range(args.seconds):
-                started = time.monotonic()
-                for index in range(args.rate):
-                    session.send_game(camera_body(8.0, 8.0, 24.0, 0.0))
-                    if index % 32 == 0:
-                        session.drain()
-                left = 1.0 - (time.monotonic() - started)
-                if left > 0:
-                    session.pump(left)
-                windows.append(args.rate / (time.monotonic() - started))
-            session.pump(args.wait)
-        except Disconnected as disconnected:
-            if args.expect == "flood" and disconnected.reason == "synaxis:game-flood":
-                return 0
-            session.log(f"unexpected disconnect: {disconnected.reason}")
-            return 1
-        except ClosedByServer:
-            session.log("connection closed without a disconnect packet")
-            return 1
-        session.log(f"asked for {args.rate} payloads a second, slowest window {min(windows):.0f}")
-        if args.expect == "flood":
-            session.log("the flood gate never fired")
-            return 1
-        session.log(f"still connected, keep_alives={session.keep_alives}")
         return 0
     finally:
         session.close()
@@ -1511,7 +1136,8 @@ def split_ignored(item: str) -> tuple[str, str]:
     colon = item.rfind(":")
     slash = item.rfind("/", 0, colon)
     if colon < 0 or slash < 0 or ":" not in item[:slash]:
-        raise SystemExit(f"--ignore {item}: expected <registry>/<entry>, as in minecraft:dimension_type/synaxis:match")
+        raise SystemExit(f"--ignore {item}: expected <registry>/<entry>, "
+                         "as in minecraft:dimension_type/synaxis:managed")
     return item[:slash], item[slash + 1:]
 
 
@@ -1638,60 +1264,6 @@ def build_parser() -> argparse.ArgumentParser:
     duplicate = subparsers.add_parser("duplicate-hello", help="send a second C2S_HELLO on the same connection")
     duplicate.set_defaults(run=cmd_duplicate_hello)
 
-    order = subparsers.add_parser("order", help="send move orders and report the result codes")
-    order.add_argument("--count", type=int, default=1, help="how many orders to send")
-    order.add_argument("--seq", type=int, default=1, help="the order_seq of the first one")
-    order.add_argument("--group", type=int, default=None,
-                       help="share one order_group, the shape of a single click on several units")
-    order.add_argument("--group-size", type=int, default=1,
-                       help="how many consecutive orders share an order_group (default: 1, one each)")
-    order.add_argument("--unit", type=int, default=1, help="the unit_id to order about")
-    order.add_argument("--select", default="",
-                       help="comma separated unit_ids to select first, on the same connection")
-    order.add_argument("--x", type=float, default=8.0)
-    order.add_argument("--y", type=float, default=32.0)
-    order.add_argument("--z", type=float, default=8.0)
-    order.add_argument("--expect", default=None, help="the result code to count, see section 9")
-    order.add_argument("--expect-count", type=int, default=0, help="how many answers must carry it")
-    order.add_argument("--wait", type=float, default=5.0, help="seconds to wait for the answers")
-    order.add_argument("--watch", type=float, default=0.0,
-                       help="seconds to follow the unit in the snapshots until it is idle again")
-    order.set_defaults(run=cmd_order)
-
-    march = subparsers.add_parser("march", help="keep units walking for a while, under a load test")
-    march.add_argument("--units", type=int, default=64, help="order unit_ids 1..N")
-    march.add_argument("--seconds", type=float, default=300.0, help="how long to keep them walking")
-    march.add_argument("--period", type=float, default=10.0, help="seconds between two rounds of orders")
-    march.add_argument("--spacing", type=float, default=0.25,
-                       help="seconds between two groups of orders, which is what keeps them inside "
-                            "the operation budget and the search queue")
-    march.add_argument("--ax", type=float, default=100.5)
-    march.add_argument("--az", type=float, default=100.5)
-    march.add_argument("--bx", type=float, default=40.5)
-    march.add_argument("--bz", type=float, default=40.5)
-    march.add_argument("--y", type=float, default=40.0)
-    march.add_argument("--expect-moving", type=int, default=0,
-                       help="how many units at least half the samples must report moving")
-    march.set_defaults(run=cmd_march)
-
-    units = subparsers.add_parser("units", help="report the units the server puts in this connection's view")
-    units.add_argument("--wait", type=float, default=5.0, help="seconds to collect spawns and snapshots")
-    units.add_argument("--expect-min", type=int, default=1, help="how many units must be in the view")
-    units.set_defaults(run=cmd_units)
-
-    select = subparsers.add_parser("select", help="send one C2S_SELECT")
-    select.add_argument("--units", default="", help="comma separated unit_ids")
-    select.add_argument("--expect", default="silence", choices=["silence", "protocol-error"])
-    select.add_argument("--wait", type=float, default=2.0)
-    select.set_defaults(run=cmd_select)
-
-    flood = subparsers.add_parser("game-flood", help="hold a payload rate on the game channel")
-    flood.add_argument("--rate", type=int, default=800, help="payloads a second")
-    flood.add_argument("--seconds", type=int, default=3, help="how long to hold it")
-    flood.add_argument("--expect", default="flood", choices=["flood", "alive"])
-    flood.add_argument("--wait", type=float, default=2.0)
-    flood.set_defaults(run=cmd_game_flood)
-
     slow = subparsers.add_parser("slow-reader",
                                  help="stop reading after login and see whether the server lets go of the socket")
     slow.add_argument("--payloads", type=int, default=256, help="echo payloads to send, none of them read back")
@@ -1721,7 +1293,7 @@ def build_parser() -> argparse.ArgumentParser:
                                         "registry-data-26.2.bin")
     compare.add_argument("recorded", help="the dump record-registry wrote")
     compare.add_argument("--ignore", action="append", default=[], metavar="REGISTRY/ENTRY",
-                         help="leave this entry out on both sides, e.g. minecraft:dimension_type/synaxis:match; "
+                         help="leave this entry out on both sides, e.g. minecraft:dimension_type/synaxis:managed; "
                               "repeatable")
     compare.set_defaults(run=cmd_compare_registry)
 

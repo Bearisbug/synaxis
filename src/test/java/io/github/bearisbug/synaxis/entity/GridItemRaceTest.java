@@ -24,8 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Items consumed across a grid cell border by two tick threads at once ({@code docs/DESIGN-PROD.md} §28.2, security
- * review 2026-10 S3-01; the probe of commit {@code 7219ce342d}). 4 tick threads on a grid of 2 by 2 chunk cells,
+ * Items consumed across a grid cell border by two tick threads at once ({@code docs/DESIGN-PROD.md} §28.2).
+ * 4 tick threads on a grid of 2 by 2 chunk cells,
  * x = 32 is the border of cell (0, 0) and cell (1, 0), so an entity at x = 31.7 and one at x = 32.3 or 32.9 are
  * ticked by two tick threads in the same tick.
  * <p>

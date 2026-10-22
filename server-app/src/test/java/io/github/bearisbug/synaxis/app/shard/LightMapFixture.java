@@ -14,7 +14,7 @@ import io.github.bearisbug.synaxis.synx.SynxManifest;
 import java.nio.file.Path;
 
 /**
- * The light test map of M3-D ({@code docs/DESIGN-M3.md} §26 step 4), baked by {@code :baker}: map id
+ * The light test map ({@code docs/DESIGN-M3.md} §26 step 4), baked by {@code :baker}: map id
  * {@value #MAP_ID}, 33 × 33 chunks, y 0 to 255. Bedrock at y 0, stone to y 59, dirt to 62, grass at
  * {@value #GRASS}. Every chunk is one of five kinds by {@code (x + z) mod 5}: flat; a roof of stone
  * slabs at y 68 on four oak logs; a cave of 7 × 7 × 4 at y 30 to 33 with glowstone on its floor and a

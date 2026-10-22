@@ -15,11 +15,11 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Security review 2026-10 (surface 2): who may write {@code shards.json}, whose {@code host:port} of
- * a channel goes into that shard's heartbeat and from there into every {@code Transfer} other shards
- * send to it, and how its reader takes malformed text. The shard checks who may have written it in step
- * (3) ({@link MapFileTrust}, {@code docs/DESIGN-M3.md} {@code API-M3-002} 文件信任); reading it is
- * {@link ShardDirectory#load} alone, which only holds it to its size.
+ * Who may write {@code shards.json}, whose {@code host:port} of a channel goes into that shard's
+ * heartbeat and from there into every {@code Transfer} other shards send to it, and how its reader takes
+ * malformed text. The shard checks who may have written it in step (3) ({@link MapFileTrust},
+ * {@code docs/DESIGN-M3.md} {@code API-M3-002} 文件信任); reading it is {@link ShardDirectory#load} alone,
+ * which only holds it to its size.
  */
 public class ShardDirectoryFileTrustTest {
 

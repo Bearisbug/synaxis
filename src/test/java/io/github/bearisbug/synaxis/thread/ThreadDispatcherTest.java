@@ -511,7 +511,7 @@ public class ThreadDispatcherTest {
     }
 
     /**
-     * Unloading a chunk deletes its partition, and an MMO shard unloads up to 256 chunks a tick
+     * Unloading a chunk deletes its partition, and a map shard unloads up to 256 chunks a tick
      * ({@code docs/DESIGN-M3.md} API-M3-006): a deletion must not scan the other partitions. Counted
      * through equals, which a scan calls on every partition it passes, a hash lookup about once.
      */

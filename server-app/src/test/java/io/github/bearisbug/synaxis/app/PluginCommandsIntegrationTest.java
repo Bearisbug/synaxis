@@ -76,16 +76,16 @@ class PluginCommandsIntegrationTest {
         if (ledger != null) ledger.close();
     }
 
-    /** A plugin that lets every player into one match and does in onEnable what the test hands it. */
+    /** A plugin that lets every player into one instance and does in onEnable what the test hands it. */
     private static final class Probe implements SynaxisPlugin {
         private final PluginDescriptor descriptor;
-        private final Instance match;
+        private final Instance instance;
         private final Consumer<PluginContext> onEnable;
         private @Nullable PluginContext context;
 
-        Probe(String id, Instance match, Consumer<PluginContext> onEnable) {
+        Probe(String id, Instance instance, Consumer<PluginContext> onEnable) {
             this.descriptor = new PluginDescriptor(id, "1.0.0", PluginApi.API_VERSION);
-            this.match = match;
+            this.instance = instance;
             this.onEnable = onEnable;
         }
 
@@ -97,7 +97,7 @@ class PluginCommandsIntegrationTest {
         @Override
         public void onEnable(PluginContext ctx) {
             this.context = ctx;
-            ctx.admission().register(_ -> new Admission.Accept(match, 1));
+            ctx.admission().register(_ -> new Admission.Accept(instance));
             onEnable.accept(ctx);
         }
 
@@ -134,12 +134,12 @@ class PluginCommandsIntegrationTest {
      */
     @Test
     void aPluginCommandThatThrowsAnErrorLeavesTheConsoleReadingTheNextLine(Env env) {
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final Command party = new Command("party");
         party.setDefaultExecutor((_, _) -> {
             throw new AssertionError("the party is over");
         });
-        final Probe mmo = new Probe("mmo", match, ctx -> ctx.commands().register(party));
+        final Probe mmo = new Probe("mmo", instance, ctx -> ctx.commands().register(party));
         final PluginHost host = host(env);
         host.enable(List.of(mmo), Set.of());
 
@@ -161,12 +161,12 @@ class PluginCommandsIntegrationTest {
      */
     @Test
     void aCommandLineIsLoggedOnOneLine(Env env) throws ClassNotFoundException {
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final Command party = new Command("party");
         party.setDefaultExecutor((_, _) -> {
             throw new IllegalStateException("the party is over");
         });
-        final Probe mmo = new Probe("mmo", match, ctx -> ctx.commands().register(party));
+        final Probe mmo = new Probe("mmo", instance, ctx -> ctx.commands().register(party));
         final PluginHost host = host(env);
         host.enable(List.of(mmo), Set.of());
         final Command echo = new Command("echo");
@@ -197,12 +197,12 @@ class PluginCommandsIntegrationTest {
      */
     @Test
     void theTreeARegisterSendsIsBuiltOnThePlayersTickThread(Env env) {
-        final Instance match = env.createFlatInstance();
-        final Probe mmo = new Probe("mmo", match, _ -> { });
+        final Instance instance = env.createFlatInstance();
+        final Probe mmo = new Probe("mmo", instance, _ -> { });
         final PluginHost host = host(env);
         host.enable(List.of(mmo), Set.of());
         final TestConnection connection = env.createConnection(new GameProfile(UUID.randomUUID(), "Watcher"));
-        connection.connect(match, new Pos(0, 41, 0));
+        connection.connect(instance, new Pos(0, 41, 0));
 
         final List<Thread> asked = new CopyOnWriteArrayList<>();
         final Command party = new Command("party");

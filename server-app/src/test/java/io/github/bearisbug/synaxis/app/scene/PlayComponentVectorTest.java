@@ -1,13 +1,13 @@
 package io.github.bearisbug.synaxis.app.scene;
 
-import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
-import io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent;
-import io.github.bearisbug.synaxis.game.protocol.play.PlayMessages;
-import io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol;
-import io.github.bearisbug.synaxis.game.protocol.play.PropValue;
-import io.github.bearisbug.synaxis.game.protocol.play.S2CHud;
-import io.github.bearisbug.synaxis.game.protocol.play.S2CScene;
-import io.github.bearisbug.synaxis.game.protocol.play.Widget;
+import io.github.bearisbug.synaxis.protocol.MsgBuf;
+import io.github.bearisbug.synaxis.protocol.play.EncodedComponent;
+import io.github.bearisbug.synaxis.protocol.play.PlayMessages;
+import io.github.bearisbug.synaxis.protocol.play.PlayProtocol;
+import io.github.bearisbug.synaxis.protocol.play.PropValue;
+import io.github.bearisbug.synaxis.protocol.play.S2CHud;
+import io.github.bearisbug.synaxis.protocol.play.S2CScene;
+import io.github.bearisbug.synaxis.protocol.play.Widget;
 import net.kyori.adventure.text.Component;
 import org.junit.jupiter.api.Test;
 

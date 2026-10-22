@@ -29,9 +29,9 @@ import java.util.function.Predicate;
  * A walk in is a move whose new position, floored to its block, is in the frame of a gate, when the
  * last move of the player was outside it (outside every frame, or in another gate's). Moving inside
  * the frame sends nothing more, and neither does a walk in while a transfer of the player is under
- * way, or by a player that is not online here (security review B-01): one a transfer would turn
- * away (saving, in transit, still loading, or from the shutdown save on) reads no heartbeat and
- * writes nothing, so a client that ignores its {@code Transfer} cannot fill the ledger from here.
+ * way, or by a player that is not online here: one a transfer would turn away (saving, in transit,
+ * still loading, or from the shutdown save on) reads no heartbeat and writes nothing, so a client
+ * that ignores its {@code Transfer} cannot fill the ledger from here.
  * A choice of channel that failed ({@code FULL}, {@code OFFLINE},
  * {@code DIRECTORY_UNAVAILABLE}) is told to the player, who walks out and in again to retry. Every
  * refusal, those three and {@code COOLDOWN}, {@code NOT_ONLINE}, {@code SAVE_FAILED}, is written to

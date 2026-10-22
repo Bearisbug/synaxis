@@ -66,7 +66,7 @@ public class ShardDirectoryTest {
     /** The manifest of the 4k test map {@code synth} the example belongs to: 256 × 256 chunks, y 0 to 255. */
     static SynxManifest synth(String mapId, SynxManifest.Bounds bounds, SynxManifest.World world) {
         return new SynxManifest(mapId, mapId + "-000000000000-p776", new byte[32], "26.2", 776, new byte[32], 1, 1,
-                world, bounds, List.of(), List.of(), new SynxManifest.Source("generator", null, null),
+                world, bounds, List.of(), new SynxManifest.Source("generator", null, null),
                 new SynxManifest.Bake("2026-09-28T00:00:00Z", 0, 0, 1, "25"), new SynxManifest.Verify(0, 0, null));
     }
 

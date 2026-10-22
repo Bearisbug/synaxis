@@ -71,7 +71,7 @@ class CoreModeIntegrationTest {
     }
 
     private static InstanceContainer core(Env env, PluginHost host) {
-        return CoreMode.start(env.process(), host, Main.registerMatchDimensionType(env.process()),
+        return CoreMode.start(env.process(), host, Main.registerManagedDimensionType(env.process()),
                 CoreMode.Setting.AUTO);
     }
 
@@ -119,7 +119,7 @@ class CoreModeIntegrationTest {
 
         final AdmissionProvider provider = host.admissionProvider();
         assertNotNull(provider);
-        assertEquals(new Admission.Accept(world, 0),
+        assertEquals(new Admission.Accept(world),
                 provider.admit(new AdmissionRequest(UUID.randomUUID(), "probe", 0, 0, UUID.randomUUID(),
                         InetAddress.getLoopbackAddress())));
 

@@ -51,16 +51,15 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * A gate walk in onto an item copies nothing, whatever plugin listener hands the stack over ({@code docs/DESIGN-PROD.md}
- * {@code API-PROD-005}; security review 2026-10 S3-V01, the probe of commit {@code 7062cfecd2}). The stack is handed
- * over by a listener that honours earlier cancels and would run before the store's freeze node: an instance scoped
- * one (the instance's own node is dispatched before the host node, whatever its priority) or a global one below
- * priority 3, built the way {@code PluginEventsImpl} builds its nodes. The player walks into a gate frame onto an
- * item with one position packet on 4 grid tick threads: the gate freezes it in the packet handling, and the pickup
- * of the same update must reach those listeners already cancelled. Otherwise they hand the stack over, the freeze
- * cancels the pickup after them, the transfer snapshot of the next tick takes the grant and the item stays on the
- * ground. A drop in the same batch of packets, after the move, reaches even an instance scoped {@code LOWEST} listener,
- * the first plugin listener of all, already cancelled.
+ * A gate walk in onto an item copies nothing, whatever plugin listener hands the stack over
+ * ({@code docs/DESIGN-PROD.md} {@code API-PROD-005}). The stack is handed over by a listener that honours earlier
+ * cancels and would run before the store's freeze node: an instance scoped one (the instance's own node is dispatched
+ * before the host node, whatever its priority) or a global one below priority 3, built the way {@code PluginEventsImpl}
+ * builds its nodes. The player walks into a gate frame onto an item with one position packet on 4 grid tick threads:
+ * the gate freezes it in the packet handling, and the pickup of the same update must reach those listeners already
+ * cancelled. Otherwise they hand the stack over, the freeze cancels the pickup after them, the transfer snapshot of the
+ * next tick takes the grant and the item stays on the ground. A drop in the same batch of packets, after the move,
+ * reaches even an instance scoped {@code LOWEST} listener, the first plugin listener of all, already cancelled.
  * <p>
  * In production the gate's heartbeat read completes on a virtual thread ({@code ShardHeartbeat}), and the transfer
  * freezes the player on that thread, whenever it completes. The last two cases complete it from inside a global

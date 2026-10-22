@@ -24,9 +24,6 @@ dependencies {
     // The management interface (docs/DESIGN-PROD.md API-PROD-022, ADR-PROD-014), host only as well
     implementation(libs.java.websocket)
 
-    // The one compile time plugin of M2, found through ServiceLoader (ADR-M2-006). The host never
-    // names a game class, so the dependency is runtime only.
-    runtimeOnly(project(":game-rts"))
     runtimeOnly(libs.bundles.logback)
 
     testImplementation(project(":testing"))
@@ -54,7 +51,7 @@ application {
     )
 }
 
-// The launcher of an MMO shard (docs/DESIGN-PROD.md REQ-PROD-020): bin/server-shard next to
+// The launcher of a map shard (docs/DESIGN-PROD.md REQ-PROD-020): bin/server-shard next to
 // bin/server-app in the same distribution, with the same JVM defaults and the same SERVER_APP_OPTS.
 val shardStartScripts = tasks.register<CreateStartScripts>("shardStartScripts") {
     applicationName = "server-shard"
@@ -126,7 +123,7 @@ tasks.named<Test>("test") {
         layout.settingsDirectory.dir("protocol/src/test/resources/play-vectors/component").asFile))
 }
 
-// The light fixture of M3-D (docs/DESIGN-M3.md §26 step 4) runs on the test runtime classpath, which
+// The light fixture (docs/DESIGN-M3.md §26 step 4) runs on the test runtime classpath, which
 // this writes as a java argument file: `java @server-app/build/light-fixture.args … LightShardFixture`
 // starts it without a Gradle process kept alive beside it.
 tasks.register("lightFixtureArgs") {
@@ -139,48 +136,22 @@ tasks.register("lightFixtureArgs") {
     }
 }
 
-// The far view fixture of M3-G (docs/DESIGN-M3.md §26 M3-G step 0) the same way:
-// `java @server-app/build/farview-fixture.args … FarViewShardFixture <port> <httpPort> <workDir> <mode>`.
-tasks.register("farviewFixtureArgs") {
+// The gameplay fixture the same way, with a directory in front of the test runtime classpath whose only file
+// lists GameplayFixturePlugin as a SynaxisPlugin service: `java @server-app/build/gameplay-fixture.args … Main`
+// starts the host in the gameplay mode. That services file stays out of src/test/resources, where every process
+// a test starts in the auto mode would find the plugin and serve gameplay instead of the core world.
+tasks.register("gameplayFixtureArgs") {
     val classpath = sourceSets.test.get().runtimeClasspath
-    val args = layout.buildDirectory.file("farview-fixture.args")
+    val services = layout.buildDirectory.dir("gameplay-fixture")
+    val args = layout.buildDirectory.file("gameplay-fixture.args")
     inputs.files(classpath)
+    outputs.dir(services)
     outputs.file(args)
     doLast {
-        args.get().asFile.writeText("-cp " + classpath.asPath + "\n")
+        val root = services.get().asFile
+        root.resolve("META-INF/services").mkdirs()
+        root.resolve("META-INF/services/io.github.bearisbug.synaxis.plugin.SynaxisPlugin")
+            .writeText("io.github.bearisbug.synaxis.app.GameplayFixturePlugin\n")
+        args.get().asFile.writeText("-cp " + root.absolutePath + File.pathSeparator + classpath.asPath + "\n")
     }
-}
-
-// The sample game of docs/DESIGN-PLAY.md §6.7 (ADR-PLAY-011): :game-rush rides on a configuration of its
-// own, so that installDist, distZip and run keep the classpath they have, where :game-rts is the one
-// plugin. It is resolved the way the runtime classpath is, which brings :play-kit and the stable surface
-// along with it.
-val rush: Configuration by configurations.creating {
-    isCanBeConsumed = false
-    attributes {
-        attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
-        attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
-        attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements.JAR))
-        attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.EXTERNAL))
-        attribute(TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE, objects.named(TargetJvmEnvironment.STANDARD_JVM))
-    }
-}
-dependencies {
-    rush(project(":game-rush"))
-}
-
-// `./gradlew :server-app:runRush` is `run` with that configuration added: the same main class, JVM
-// defaults, console and working directory, every synaxis.* property handed over, and only rush enabled
-// unless synaxis.app.plugins says otherwise (both plugins register an admission provider, and a
-// process has one slot).
-tasks.register<JavaExec>("runRush") {
-    group = "application"
-    description = "Runs the host with the sample game rush (docs/DESIGN-PLAY.md §6.7.6)."
-    mainClass = application.mainClass
-    classpath = sourceSets.main.get().runtimeClasspath + rush
-    jvmArgs(application.applicationDefaultJvmArgs)
-    standardInput = System.`in`
-    systemProperty("synaxis.app.plugins", "rush")
-    systemProperties(synaxisProperties.get())
-    workingDir = layout.settingsDirectory.asFile
 }

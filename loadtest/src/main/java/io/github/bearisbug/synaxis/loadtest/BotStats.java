@@ -56,7 +56,7 @@ final class BotStats {
     final Map<String, LongAdder> kicks = new ConcurrentHashMap<>();
     final Map<String, LongAdder> loginFailures = new ConcurrentHashMap<>();
     /**
-     * The tries of gate bots ({@code docs/DESIGN-M3.md} §26 M3-E track D): how long the completed ones
+     * The tries of gate bots ({@code docs/DESIGN-M3.md} §26): how long the completed ones
      * took, from the first position in a frame to the 9th chunk on the new connection, and how many
      * failed, by reason. A try the run ended is neither.
      */

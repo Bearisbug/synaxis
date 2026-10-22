@@ -57,7 +57,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 class ManagedInstanceTransitionsTest {
 
     static final Function<Player, Exit> KICK =
-            _ -> new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE);
+            _ -> new Exit.Kick(DisconnectKeys.INSTANCE_UNAVAILABLE);
     private static final Duration SETTLE = Duration.ofSeconds(30);
 
     private static ServerProcess process;
@@ -70,7 +70,7 @@ class ManagedInstanceTransitionsTest {
     @BeforeAll
     static void buildProcess() {
         process = ServerProcess.of(ServerConfig.builder().insideTest(true).shutdownOnSignal(false).build());
-        InstanceFixture.registerMatchDimension(process);
+        InstanceFixture.registerManagedDimension(process);
     }
 
     @AfterAll

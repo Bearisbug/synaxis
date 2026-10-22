@@ -19,7 +19,7 @@ import java.util.Optional;
  * {@link IllegalArgumentException}, the same rule as the channels of
  * {@link io.github.bearisbug.synaxis.plugin.PluginChannels}. So is a name that does not match
  * {@code [a-z0-9._/-]+}, and an id that is over
- * {@value io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol#MAX_ID_BYTES} bytes of UTF-8
+ * {@value io.github.bearisbug.synaxis.protocol.play.PlayProtocol#MAX_ID_BYTES} bytes of UTF-8
  * once the prefix is added.
  * <p>
  * Threads: {@link #enter}, {@link #leave}, {@link #currentScene} and the writing methods of
@@ -58,7 +58,7 @@ public interface PluginPlay {
      *                                  of the process, or the player is online but not in the play state
      * @throws IllegalArgumentException if the encoded scene is over 8 KiB, a component of it
      *                                  encodes to more than
-     *                                  {@value io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent#MAX_BYTES}
+     *                                  {@value io.github.bearisbug.synaxis.protocol.play.EncodedComponent#MAX_BYTES}
      *                                  bytes or cannot be encoded, the scene id or an action id is not
      *                                  an id of this plugin (see above), an action id was not
      *                                  registered with {@link #onAction}, or two action keys send the
@@ -108,7 +108,7 @@ public interface PluginPlay {
      * @throws IllegalArgumentException if the id is not an id of this plugin: another plugin's
      *                                  namespace, a name that does not match {@code [a-z0-9._/-]+},
      *                                  or over
-     *                                  {@value io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol#MAX_ID_BYTES}
+     *                                  {@value io.github.bearisbug.synaxis.protocol.play.PlayProtocol#MAX_ID_BYTES}
      *                                  bytes in full
      */
     void onAction(String actionId, ActionHandler handler);

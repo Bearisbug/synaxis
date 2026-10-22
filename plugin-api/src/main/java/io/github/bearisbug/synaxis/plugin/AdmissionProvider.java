@@ -6,7 +6,7 @@ package io.github.bearisbug.synaxis.plugin;
  * The host calls it inline on the configuration virtual thread of that connection, once per
  * connection, after the handshake and before the spawning instance is set. It must not block and
  * must not touch entities or chunks: the player is not in any instance yet. An exception is treated
- * as {@code Reject("synaxis:match-unavailable")}; returning null, or building an answer its
+ * as {@code Reject("synaxis:instance-unavailable")}; returning null, or building an answer its
  * constructor refuses, is treated the same way.
  * <p>
  * A provider that keeps an entry per {@link AdmissionRequest#connectionId()} checks that the
@@ -18,7 +18,7 @@ package io.github.bearisbug.synaxis.plugin;
  * up by its disconnect, while an entry made without the check would never be taken away. The host
  * may still turn a connection away after an {@code Accept}, with {@code synaxis:state-unavailable}
  * once the shutdown save has started, so whatever this call sets up is taken back on the disconnect
- * event too. The rts plugin's {@code GameSessions} is written this way.
+ * event too.
  * <p>
  * The call has a soft budget of 200 ms, measured once it returned: a slower one is written as one
  * WARN line, and its answer stands.

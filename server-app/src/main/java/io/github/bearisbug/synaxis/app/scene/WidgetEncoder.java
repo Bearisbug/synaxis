@@ -1,10 +1,10 @@
 package io.github.bearisbug.synaxis.app.scene;
 
-import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
-import io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent;
-import io.github.bearisbug.synaxis.game.protocol.play.PlayProtocol;
-import io.github.bearisbug.synaxis.game.protocol.play.PropValue;
 import io.github.bearisbug.synaxis.plugin.play.Widget;
+import io.github.bearisbug.synaxis.protocol.MsgBuf;
+import io.github.bearisbug.synaxis.protocol.play.EncodedComponent;
+import io.github.bearisbug.synaxis.protocol.play.PlayProtocol;
+import io.github.bearisbug.synaxis.protocol.play.PropValue;
 import net.kyori.adventure.text.Component;
 
 import java.util.ArrayList;
@@ -26,7 +26,7 @@ final class WidgetEncoder {
      * @param widget        the widget as the wire carries it
      * @param buttonActions the full action ids of its buttons, empty unless it is a panel
      */
-    record Encoded(io.github.bearisbug.synaxis.game.protocol.play.Widget widget, Set<String> buttonActions) {
+    record Encoded(io.github.bearisbug.synaxis.protocol.play.Widget widget, Set<String> buttonActions) {
     }
 
     private WidgetEncoder() {
@@ -44,13 +44,13 @@ final class WidgetEncoder {
      */
     static Encoded encode(String pluginId, Widget widget) {
         final Set<String> buttonActions = new LinkedHashSet<>();
-        final io.github.bearisbug.synaxis.game.protocol.play.Widget encoded = switch (widget) {
-            case Widget.Text text -> io.github.bearisbug.synaxis.game.protocol.play.Widget.text(
+        final io.github.bearisbug.synaxis.protocol.play.Widget encoded = switch (widget) {
+            case Widget.Text text -> io.github.bearisbug.synaxis.protocol.play.Widget.text(
                     text.slot().ordinal(), text.order(), component(text.text()), (int) text.ttl().toMillis());
-            case Widget.Timer timer -> io.github.bearisbug.synaxis.game.protocol.play.Widget.timer(
+            case Widget.Timer timer -> io.github.bearisbug.synaxis.protocol.play.Widget.timer(
                     timer.slot().ordinal(), timer.order(), component(timer.label()),
                     (int) timer.remaining().toMillis(), timer.running());
-            case Widget.Scoreboard scoreboard -> io.github.bearisbug.synaxis.game.protocol.play.Widget.scoreboard(
+            case Widget.Scoreboard scoreboard -> io.github.bearisbug.synaxis.protocol.play.Widget.scoreboard(
                     scoreboard.slot().ordinal(), scoreboard.order(), component(scoreboard.title()),
                     rows(scoreboard.rows()));
             case Widget.Panel panel -> {
@@ -60,7 +60,7 @@ final class WidgetEncoder {
                     buttonActions.add(actionId);
                     buttons.add(new PropValue.Button(actionId, component(button.label())));
                 }
-                yield io.github.bearisbug.synaxis.game.protocol.play.Widget.panel(component(panel.title()),
+                yield io.github.bearisbug.synaxis.protocol.play.Widget.panel(component(panel.title()),
                         rows(panel.rows()), buttons);
             }
         };

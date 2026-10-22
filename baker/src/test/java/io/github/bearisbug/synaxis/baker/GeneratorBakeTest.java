@@ -10,7 +10,6 @@ import io.github.bearisbug.synaxis.instance.palette.Palette;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.ChunkData;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.LightData;
 import io.github.bearisbug.synaxis.synx.SynxBuildVerifier;
-import io.github.bearisbug.synaxis.synx.SynxChunkRecord;
 import io.github.bearisbug.synaxis.synx.SynxExpectations;
 import io.github.bearisbug.synaxis.synx.SynxFormat;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
@@ -18,8 +17,6 @@ import net.kyori.adventure.key.Key;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
@@ -105,8 +102,6 @@ public class GeneratorBakeTest {
         assertEquals(4, manifest.bake().threads());
         assertTrue(manifest.bake().wallMs() > 0 && manifest.bake().cpuMs() > 0, manifest.toJson());
         assertEquals(new SynxManifest.Verify(16, 0, null), manifest.verify(), "4 samples in each of the 4 regions");
-        assertEquals(List.of("0,0"), manifest.farview().stream().map(pack -> pack.tileX() + "," + pack.tileZ()).toList(),
-                "the far view pack of the one tile the bounds meet (FarViewBakeTest)");
 
         // What a shard checks at start-up passes on the whole build
         SynxBuildVerifier.verify(build, SynxExpectations.of(REGISTRIES, Baker.COMPRESSION_THRESHOLD, 0, 256,
@@ -309,7 +304,7 @@ public class GeneratorBakeTest {
                 + " here"), result.message());
     }
 
-    /** API-M3-003: a preset the far view packs cannot hold, or without a height, is refused before anything is made. */
+    /** API-M3-003: a preset over 256 blocks high, or without a height, is refused before anything is made. */
     @Test
     public void aPresetOverTwoHundredFiftySixHighIsRefused() {
         for (int height : new int[]{272, 0}) {
@@ -331,30 +326,6 @@ public class GeneratorBakeTest {
         assertEquals(Baker.EXIT_VERIFY, result.exitCode(), result.message());
         assertEquals(new SynxManifest.Verify(1, 1, null), result.manifest().verify());
         assertTrue(events(temp).get(1).contains("\"verify_diffs\":1"), events(temp).toString());
-    }
-
-    /** The M2 map generator, found through its provider on the class path, as {@code generator:rts-128:<seed>}. */
-    @Test
-    public void theM2GeneratorBakesFromTheCommandLine() throws Exception {
-        final int exit = BakerMain.run(new String[]{"bake", "--map-id", "rts", "--source", "generator:rts-128:21075",
-                "--out", temp.resolve("maps").toString(), "--threads", "2", "--logs", temp.resolve("logs").toString()});
-
-        assertEquals(Baker.EXIT_PUBLISHED, exit);
-        final Path build = list(temp.resolve("maps").resolve("rts")).getFirst();
-        final SynxManifest manifest = SynxManifest.fromJson(Files.readString(build.resolve(SynxManifest.FILE_NAME)));
-        assertEquals(new SynxManifest.Bounds(0, 0, 7, 7), manifest.bounds());
-        assertEquals(new SynxManifest.World(0, 64), manifest.world());
-
-        // Segment ②: the ground is 40 layers of stone, a unit stands at y 40 unless a pillar is in the way
-        final SynxChunkRecord record = record(build, 0, 0);
-        final ByteBuffer navigation = ByteBuffer.wrap(record.navigation()).order(ByteOrder.LITTLE_ENDIAN);
-        int flat = 0;
-        for (int column = 0; column < 256; column++) {
-            final short standing = navigation.getShort(32 + column * 2);
-            assertTrue(standing == 40 || standing == 43, "column " + column + " stands at " + standing);
-            if (standing == 40) flat++;
-        }
-        assertTrue(flat > 200, flat + " flat columns");
     }
 
     @Test

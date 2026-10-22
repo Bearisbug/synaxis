@@ -80,7 +80,7 @@ class ManagedInstanceTickThreadTest {
                 .threadProvider(ServerConfig.fromSystemProperties().threadProvider())
                 .build());
         process.exception().setExceptionHandler(throwable -> caught.compareAndSet(null, throwable));
-        InstanceFixture.registerMatchDimension(process);
+        InstanceFixture.registerManagedDimension(process);
         process.eventHandler().addListener(PlayInstanceStateEvent.class, event ->
                 transition(event.managed(), event.to()).complete(Thread.currentThread().getName()));
         // The startup thread is one that never calls create: the test thread counts as any other thread

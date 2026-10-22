@@ -20,7 +20,7 @@ public sealed interface ActionResult {
      * @param reason what the client shows, a translate key with a fallback and arguments where the text is
      *               new, the way the text of a widget is written; null for none. A reason that does not
      *               encode, over
-     *               {@value io.github.bearisbug.synaxis.game.protocol.play.EncodedComponent#MAX_BYTES} bytes
+     *               {@value io.github.bearisbug.synaxis.protocol.play.EncodedComponent#MAX_BYTES} bytes
      *               or holding a {@code show_item} hover, is answered without one
      */
     record Rejected(@Nullable Component reason) implements ActionResult {

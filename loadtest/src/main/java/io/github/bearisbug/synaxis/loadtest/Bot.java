@@ -5,8 +5,6 @@ import com.google.gson.JsonObject;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.crypto.KeyUtils;
 import io.github.bearisbug.synaxis.crypto.LoginCrypt;
-import io.github.bearisbug.synaxis.game.protocol.C2SHello;
-import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.loadtest.Profile.GateWalk;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.network.ConnectionState;
@@ -52,6 +50,8 @@ import io.github.bearisbug.synaxis.network.packet.server.play.PlayerPositionAndL
 import io.github.bearisbug.synaxis.network.packet.server.play.SpawnEntityPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.StartConfigurationPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
+import io.github.bearisbug.synaxis.protocol.C2SHello;
+import io.github.bearisbug.synaxis.protocol.ProtocolSchema;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.TranslatableComponent;
@@ -98,7 +98,7 @@ import java.util.zip.Inflater;
  * with a {@code ChunkBatchReceived} — and moves along its {@link Profile} with a position packet and
  * a tick end every tick.
  * <p>
- * It follows a {@code Transfer} the way a client does ({@code docs/DESIGN-M3.md} §26 M3-E track D):
+ * It follows a {@code Transfer} the way a client does ({@code docs/DESIGN-M3.md} §26):
  * the cookies stored during play are kept, the connection is dropped, a new one to the given
  * address says intent transfer and answers the new server's cookie requests with them, and plays on
  * as the same bot. A gate bot times each try from its first position in a frame to the 9th chunk

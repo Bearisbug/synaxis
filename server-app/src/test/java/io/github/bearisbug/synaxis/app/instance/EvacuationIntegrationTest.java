@@ -69,7 +69,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The evacuation of a closing instance with real players ({@code docs/DESIGN-PLAY.md} {@code API-PLAY-006},
  * internal task {@code play.instance.evacuate}): each player gets their exit, the instance is
  * unregistered once nobody is left, and whoever is still inside when the evacuation time runs out is
- * kicked with {@code synaxis:match-unavailable}. The evacuation time comes from the registry's
+ * kicked with {@code synaxis:instance-unavailable}. The evacuation time comes from the registry's
  * constructor and runs on a clock the test moves.
  */
 @EnvTest
@@ -84,7 +84,7 @@ class EvacuationIntegrationTest {
     private final AtomicLong clock = new AtomicLong();
 
     private PluginInstances instances(Env env) {
-        InstanceFixture.registerMatchDimension(env.process());
+        InstanceFixture.registerManagedDimension(env.process());
         return new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(), Thread.currentThread(),
                 new InstanceRegistry.Durations(Duration.ofSeconds(30), EVACUATION), clock::get).forPlugin("evacuation");
     }
@@ -143,7 +143,7 @@ class EvacuationIntegrationTest {
         assertEquals(arena.instance().getUuid().toString(), ledger.last(lobby, "play_instance_moved").get("from_instance_id"));
     }
 
-    /** {@code API-PLAY-006} 撤离: still inside when the evacuation time is up, kicked with match-unavailable. */
+    /** {@code API-PLAY-006} 撤离: still inside when the evacuation time is up, kicked with instance-unavailable. */
     @Test
     void whoeverIsStillInsideWhenTheEvacuationRunsOutIsKicked(Env env) {
         final PluginInstances instances = instances(env);
@@ -173,7 +173,7 @@ class EvacuationIntegrationTest {
 
             assertFalse(player.isOnline());
             assertFalse(arena.instance().isRegistered());
-            assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(disconnects));
+            assertEquals(List.of(DisconnectKeys.INSTANCE_UNAVAILABLE), kickKeys(disconnects));
             final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
             assertEquals("time_limit", closed.get("cause"));
             assertEquals(1, closed.get("players"));
@@ -182,7 +182,7 @@ class EvacuationIntegrationTest {
             assertEquals(false, closed.get("settle_timeout"));
 
             // The move of the exit, of a player gone, then lands in an instance no longer registered and fails
-            far.cancel(_ -> new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE));
+            far.cancel(_ -> new Exit.Kick(DisconnectKeys.INSTANCE_UNAVAILABLE));
             clock.addAndGet(EVACUATION.toNanos());
             env.tick();
             assertFalse(far.instance().isRegistered());
@@ -196,7 +196,7 @@ class EvacuationIntegrationTest {
 
     /**
      * {@code API-PLAY-006} 撤离: an exit into an instance that takes nobody, here one cancelled before, kicks
-     * the player with match-unavailable as soon as its move completes with false, with one ERROR line naming
+     * the player with instance-unavailable as soon as its move completes with false, with one ERROR line naming
      * the exit, instead of leaving them inside until the evacuation time runs out. The player got their exit,
      * so they count as evacuated.
      */
@@ -205,7 +205,7 @@ class EvacuationIntegrationTest {
         final PluginInstances instances = instances(env);
         final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
         final ManagedInstance gone = instances.create(new InstanceSpec("gone", 0, FLAT));
-        gone.cancel(_ -> new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE));
+        gone.cancel(_ -> new Exit.Kick(DisconnectKeys.INSTANCE_UNAVAILABLE));
         final TestConnection connection = env.createConnection();
         final Collector<DisconnectPacket> disconnects = connection.trackIncoming(DisconnectPacket.class);
         final Player player = joinInto(env, arena, connection);
@@ -215,7 +215,7 @@ class EvacuationIntegrationTest {
 
             assertFalse(player.isOnline(), "the player was left inside until the evacuation time ran out");
             assertFalse(arena.instance().isRegistered(), "nobody was left, the startup thread unregisters at once");
-            assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(disconnects));
+            assertEquals(List.of(DisconnectKeys.INSTANCE_UNAVAILABLE), kickKeys(disconnects));
             final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
             assertEquals(1, closed.get("players"));
             assertEquals(1, closed.get("evacuated"));
@@ -396,7 +396,7 @@ class EvacuationIntegrationTest {
         assertEquals(0, closed.get("kicked"));
     }
 
-    /** A plugin's exit that throws: the player is kicked with match-unavailable rather than left behind. */
+    /** A plugin's exit that throws: the player is kicked with instance-unavailable rather than left behind. */
     @Test
     void anExitThatThrowsKicksThePlayer(Env env) {
         final PluginInstances instances = instances(env);
@@ -411,7 +411,7 @@ class EvacuationIntegrationTest {
 
         assertFalse(player.isOnline());
         assertFalse(arena.instance().isRegistered());
-        assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(disconnects));
+        assertEquals(List.of(DisconnectKeys.INSTANCE_UNAVAILABLE), kickKeys(disconnects));
     }
 
     /** §19 「结算超时强制关闭」 with a player: the fallback exit of the spec takes them out. */
@@ -419,7 +419,7 @@ class EvacuationIntegrationTest {
     void theSettleTimeoutSendsThePlayersToTheFallbackExit(Env env) {
         final PluginInstances instances = instances(env);
         final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT));
-        final ManagedInstance arena = instances.create(new InstanceSpec("arena", PluginApi.MATCH_DIMENSION_TYPE, 1, FLAT,
+        final ManagedInstance arena = instances.create(new InstanceSpec("arena", PluginApi.MANAGED_DIMENSION_TYPE, 1, FLAT,
                 Duration.ofSeconds(15), _ -> new Exit.ToInstance(lobby, SPAWN)));
         assertEquals(Duration.ofSeconds(15), arena.settleTimeout(), "the instance reports another settle timeout than its spec");
         final Player player = joinInto(env, arena, env.createConnection());
@@ -498,7 +498,7 @@ class EvacuationIntegrationTest {
 
     /**
      * A plugin's exit that throws what is no {@code RuntimeException}, an {@code Error} for the first
-     * player asked about and a checked exception for the second: both are kicked with match-unavailable
+     * player asked about and a checked exception for the second: both are kicked with instance-unavailable
      * like for any other failure, the request does not throw and the instance closes.
      */
     @Test
@@ -521,8 +521,8 @@ class EvacuationIntegrationTest {
         assertFalse(one.isOnline());
         assertFalse(other.isOnline());
         assertFalse(arena.instance().isRegistered());
-        assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(firstDisconnects));
-        assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(secondDisconnects));
+        assertEquals(List.of(DisconnectKeys.INSTANCE_UNAVAILABLE), kickKeys(firstDisconnects));
+        assertEquals(List.of(DisconnectKeys.INSTANCE_UNAVAILABLE), kickKeys(secondDisconnects));
         final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
         assertEquals("cancelled", closed.get("cause"));
         assertEquals(2, closed.get("players"));
@@ -552,7 +552,7 @@ class EvacuationIntegrationTest {
 
         assertFalse(player.isOnline());
         assertFalse(arena.instance().isRegistered());
-        assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(disconnects));
+        assertEquals(List.of(DisconnectKeys.INSTANCE_UNAVAILABLE), kickKeys(disconnects));
         assertEquals("cancelled", ledger.last(arena, "play_instance_closed").get("cause"));
     }
 
@@ -675,7 +675,7 @@ class EvacuationIntegrationTest {
     void aForcedCloseFromTheClosingEventFinishesTheEvacuation(Env env) {
         final InstanceRegistry registry = new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(),
                 Thread.currentThread(), new InstanceRegistry.Durations(Duration.ofSeconds(30), EVACUATION), clock::get);
-        InstanceFixture.registerMatchDimension(env.process());
+        InstanceFixture.registerManagedDimension(env.process());
         final PluginInstances instances = registry.forPlugin("evacuation");
         final ManagedInstance lobby = instances.create(new InstanceSpec("lobby", 1, FLAT));
         final ManagedInstance arena = instances.create(new InstanceSpec("arena", 1, FLAT));
@@ -751,7 +751,7 @@ class EvacuationIntegrationTest {
 
     /**
      * The evacuation time limit holds for a move still on its way: at the limit the player is kicked
-     * with match-unavailable, the instance unregistered and its closing line written, and the move
+     * with instance-unavailable, the instance unregistered and its closing line written, and the move
      * completes with false once its chunks are in, the engine refusing to land a player in an
      * unregistered instance.
      */
@@ -778,7 +778,7 @@ class EvacuationIntegrationTest {
 
             assertFalse(arena.instance().isRegistered(), "the move on its way held the instance past the evacuation time");
             assertFalse(player.isOnline());
-            assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(disconnects));
+            assertEquals(List.of(DisconnectKeys.INSTANCE_UNAVAILABLE), kickKeys(disconnects));
             final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
             assertEquals(1, closed.get("players"));
             assertEquals(0, closed.get("evacuated"));
@@ -795,14 +795,14 @@ class EvacuationIntegrationTest {
 
     /**
      * A forced close with a move still on its way, a plugin taken back while its players are being
-     * moved in: the player on their way is kicked with match-unavailable before the instance is
+     * moved in: the player on their way is kicked with instance-unavailable before the instance is
      * unregistered on the spot, and counts as kicked.
      */
     @Test
     void aForcedCloseKicksAPlayerStillOnTheirWay(Env env) {
         final InstanceRegistry registry = new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(),
                 Thread.currentThread(), new InstanceRegistry.Durations(Duration.ofSeconds(30), EVACUATION), clock::get);
-        InstanceFixture.registerMatchDimension(env.process());
+        InstanceFixture.registerManagedDimension(env.process());
         final CountDownLatch release = new CountDownLatch(1);
         try {
             final ManagedInstance arena = registry.forPlugin("evacuation").create(new InstanceSpec("arena", 1,
@@ -816,7 +816,7 @@ class EvacuationIntegrationTest {
 
             assertFalse(arena.instance().isRegistered());
             assertFalse(player.isOnline(), "the player on their way was left online");
-            assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(disconnects));
+            assertEquals(List.of(DisconnectKeys.INSTANCE_UNAVAILABLE), kickKeys(disconnects));
             final InstanceFixture.Line closed = ledger.last(arena, "play_instance_closed");
             assertEquals("shutdown", closed.get("cause"));
             assertEquals(1, closed.get("players"));
@@ -996,7 +996,7 @@ class EvacuationIntegrationTest {
         assertFalse(arena.instance().isRegistered(), "the forced close found the instance closed and no evacuation");
         assertFalse(player.isOnline());
         join(closing, "the cancel");
-        assertEquals(List.of(DisconnectKeys.MATCH_UNAVAILABLE), kickKeys(disconnects));
+        assertEquals(List.of(DisconnectKeys.INSTANCE_UNAVAILABLE), kickKeys(disconnects));
         final List<InstanceFixture.Line> closed = ledger.of(arena).stream()
                 .filter(line -> line.event().equals("play_instance_closed")).toList();
         assertEquals(1, closed.size(), closed.toString());
@@ -1070,7 +1070,7 @@ class EvacuationIntegrationTest {
 
     /** A registry like that of {@link #instances} whose startup thread is {@code startupThread}. */
     private InstanceRegistry registry(Env env, Thread startupThread) {
-        InstanceFixture.registerMatchDimension(env.process());
+        InstanceFixture.registerManagedDimension(env.process());
         return new InstanceRegistry(env.process(), ledger, InstanceFixture.scenes(), startupThread,
                 new InstanceRegistry.Durations(Duration.ofSeconds(30), EVACUATION), clock::get);
     }

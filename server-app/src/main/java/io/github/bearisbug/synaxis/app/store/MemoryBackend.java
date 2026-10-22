@@ -7,10 +7,10 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * The player store of a process without a database ({@code synaxis.app.store=memory}, the M2 RTS
- * process): the sections of a player live as long as the process does. There is only ever one
- * process holding them, so there is no lease; the version check is kept, it is what a plugin's
- * {@code commitTogether} relies on.
+ * The player store of a process without a database ({@code synaxis.app.store=memory}): the sections
+ * of a player live as long as the process does. There is only ever one process holding them, so
+ * there is no lease; the version check is kept, it is what a plugin's {@code commitTogether} relies
+ * on.
  */
 public final class MemoryBackend implements StoreBackend {
 

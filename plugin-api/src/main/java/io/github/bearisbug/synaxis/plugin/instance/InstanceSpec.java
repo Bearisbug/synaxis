@@ -51,11 +51,10 @@ public record InstanceSpec(String name, String dimensionType, int chunkRadius, G
     }
 
     /**
-     * A spec on the match dimension type ({@link PluginApi#MATCH_DIMENSION_TYPE}), with a settle
-     * timeout of 30 s and every player kicked with {@link DisconnectKeys#MATCH_UNAVAILABLE} when the
-     * instance is not settled within it. An instance a round of {@code :play-kit} is played in takes
-     * the canonical constructor instead, with a settle timeout longer than the time the round shows
-     * its result and a fallback exit back to the lobby.
+     * A spec on the managed dimension type ({@link PluginApi#MANAGED_DIMENSION_TYPE}), with a settle
+     * timeout of 30 s and every player kicked with {@link DisconnectKeys#INSTANCE_UNAVAILABLE} when the
+     * instance is not settled within it. An instance that needs another settle timeout or another
+     * fallback exit takes the canonical constructor instead.
      *
      * @param name        the kind of instance, matching {@code [a-z0-9_]{1,32}}
      * @param chunkRadius the chunks loaded around chunk 0, 0, from 0 to 16
@@ -63,7 +62,7 @@ public record InstanceSpec(String name, String dimensionType, int chunkRadius, G
      * @throws IllegalArgumentException if the name or the chunk radius is out of range
      */
     public InstanceSpec(String name, int chunkRadius, Generator generator) {
-        this(name, PluginApi.MATCH_DIMENSION_TYPE, chunkRadius, generator, Duration.ofSeconds(30),
-                _ -> new Exit.Kick(DisconnectKeys.MATCH_UNAVAILABLE));
+        this(name, PluginApi.MANAGED_DIMENSION_TYPE, chunkRadius, generator, Duration.ofSeconds(30),
+                _ -> new Exit.Kick(DisconnectKeys.INSTANCE_UNAVAILABLE));
     }
 }

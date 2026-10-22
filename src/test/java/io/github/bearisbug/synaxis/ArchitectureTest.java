@@ -9,7 +9,6 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
 import io.github.bearisbug.synaxis.adventure.EngineAdventure;
 import io.github.bearisbug.synaxis.exception.ExceptionManager;
-import io.github.bearisbug.synaxis.game.rts.GameSideFixture;
 import io.github.bearisbug.synaxis.listener.UnboundedClientDrivenLogFixture;
 import io.github.bearisbug.synaxis.listener.manager.PacketListenerManager;
 import io.github.bearisbug.synaxis.listener.preplay.LoginListener;
@@ -21,6 +20,7 @@ import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
 import io.github.bearisbug.synaxis.network.player.SessionClient;
 import io.github.bearisbug.synaxis.network.plugin.LoginPlugin;
 import io.github.bearisbug.synaxis.network.socket.Server;
+import io.github.bearisbug.synaxis.protocol.fixture.ProtocolClassFixture;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 
@@ -77,71 +77,72 @@ public class ArchitectureTest {
     private static final String LOWER_LEVEL_ROOT_CLASS = "io.github.bearisbug.synaxis.JvmFlags";
 
     /**
-     * The other Gradle modules: the game side ({@code :game-rts}, {@code :protocol}), the stable
-     * surface ({@code :plugin-api}) and the host ({@code :server-app}). The engine is the root
-     * module and must never name any of them (REQ-M2-002).
+     * The other Gradle modules: the protocol ({@code :protocol}), the stable surface
+     * ({@code :plugin-api}) and the host ({@code :server-app}). The engine is the root module and
+     * must never name any of them (REQ-M2-002).
      * <p>
      * Every entry is a full package prefix on purpose. The shorthand {@code ..plugin..} matches any
      * package segment named {@code plugin} and would hit the engine's own
      * {@code io.github.bearisbug.synaxis.network.plugin}, so the rule would go red on the engine
-     * itself. {@code :protocol} ({@code io.github.bearisbug.synaxis.game.protocol}) needs no entry
-     * of its own, the game prefix already covers it.
+     * itself.
      * <p>
      * Two blind spots this rule cannot see, and neither can any other bytecode analysis: class
      * names produced by reflection or string concatenation ({@code Class.forName}, four sites in
-     * the engine), and the reverse direction "the game side must not reach into engine internals",
-     * which no rule living in this module can express because the game classes are not on its
-     * classpath. See {@code docs/DESIGN-M2.md} §24 and §28.
+     * the engine), and the reverse direction "the other modules must not reach into engine
+     * internals", which no rule living in this module can express because their classes are not on
+     * its classpath. See {@code docs/DESIGN-M2.md} §24 and §28.
      */
-    private static final String[] GAME_SIDE_PACKAGES = {
-            "io.github.bearisbug.synaxis.game..",
+    private static final String[] OTHER_MODULE_PACKAGES = {
+            "io.github.bearisbug.synaxis.protocol..",
             "io.github.bearisbug.synaxis.plugin..",
             "io.github.bearisbug.synaxis.app..",
     };
 
     /**
-     * Stands in for an engine class that reaches into the game side. Only ever imported as a
+     * Stands in for an engine class that reaches into the protocol. Only ever imported as a
      * synthetic {@link JavaClasses}, never scanned as part of the engine.
      */
-    private static final class EngineClassReachingIntoTheGameSide implements GameSideFixture {
+    private static final class EngineClassReachingIntoTheProtocol implements ProtocolClassFixture {
     }
 
     /**
      * The second gate behind the Gradle module graph, see {@code docs/DESIGN-M2.md} §24. The first
      * one is Gradle itself: the engine is the root project and the other modules depend on it, so
-     * an engine import of a game class needs a main source set cycle that Gradle refuses to build.
+     * an engine import of a class of another module needs a main source set cycle that Gradle
+     * refuses to build.
      */
-    private static ArchRule engineDoesNotDependOnTheGameSide() {
+    private static ArchRule engineDependsOnNoOtherModule() {
         return noClasses()
                 .that().resideInAPackage("io.github.bearisbug.synaxis..")
-                .and().resideOutsideOfPackages(GAME_SIDE_PACKAGES)
-                .should().dependOnClassesThat().resideInAnyPackage(GAME_SIDE_PACKAGES)
-                .because("the engine must not depend on the game side, the stable surface or the host");
+                .and().resideOutsideOfPackages(OTHER_MODULE_PACKAGES)
+                .should().dependOnClassesThat().resideInAnyPackage(OTHER_MODULE_PACKAGES)
+                .because("the engine must not depend on the protocol, the stable surface or the host");
     }
 
     @Test
-    public void engineDoesNotDependOnTheGameSideModules() {
-        engineDoesNotDependOnTheGameSide().check(engineClasses());
+    public void engineDoesNotDependOnTheOtherModules() {
+        engineDependsOnNoOtherModule().check(engineClasses());
     }
 
     /**
      * The rule itself is tested against synthetic classes rather than by writing an offending
-     * import: an engine class that imports a game class does not compile in the first place, and
-     * {@link ImportOption.DoNotIncludeTests} keeps a test written one out of the scanned set.
+     * import: an engine class that imports a class of another module does not compile in the first
+     * place, and {@link ImportOption.DoNotIncludeTests} keeps a test written one out of the scanned
+     * set.
      */
     @Test
-    public void theGameSideRuleRejectsADependencyOnTheGameSide() {
+    public void theModuleRuleRejectsADependencyOnTheProtocol() {
         JavaClasses synthetic = new ClassFileImporter()
-                .importClasses(EngineClassReachingIntoTheGameSide.class, GameSideFixture.class);
+                .importClasses(EngineClassReachingIntoTheProtocol.class, ProtocolClassFixture.class);
 
         AssertionError violation = assertThrows(
-                AssertionError.class, () -> engineDoesNotDependOnTheGameSide().check(synthetic));
+                AssertionError.class, () -> engineDependsOnNoOtherModule().check(synthetic));
 
         // A rule whose that() clause matches nothing fails with an AssertionError of its own
         // (failOnEmptyShould), so only the message proves that the dependency is what went red.
-        assertTrue(violation.getMessage().contains(EngineClassReachingIntoTheGameSide.class.getName()),
+        assertTrue(violation.getMessage().contains(EngineClassReachingIntoTheProtocol.class.getName()),
                 violation.getMessage());
-        assertTrue(violation.getMessage().contains(GameSideFixture.class.getName()), violation.getMessage());
+        assertTrue(violation.getMessage().contains(ProtocolClassFixture.class.getName()), violation.getMessage());
     }
 
     /**
@@ -149,11 +150,11 @@ public class ArchitectureTest {
      * the very reason the forbidden list carries full prefixes.
      */
     @Test
-    public void theGameSideRuleAcceptsTheEngineOwnNetworkPluginPackage() {
+    public void theModuleRuleAcceptsTheEngineOwnNetworkPluginPackage() {
         JavaClasses synthetic = new ClassFileImporter()
                 .importClasses(ConnectionManager.class, LoginPlugin.class);
 
-        engineDoesNotDependOnTheGameSide().check(synthetic);
+        engineDependsOnNoOtherModule().check(synthetic);
     }
 
     /**

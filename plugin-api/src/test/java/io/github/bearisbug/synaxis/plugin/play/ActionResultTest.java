@@ -13,8 +13,8 @@ class ActionResultTest {
 
     @Test
     void aKeyAloneIsTheTranslatableComponentOfThatKey() {
-        assertEquals(new ActionResult.Rejected(Component.translatable("rush.no")), new ActionResult.Rejected("rush.no"));
-        final Component withArguments = Component.translatable("rush.no", Component.text(3)).fallback("Not now, %s s left");
+        assertEquals(new ActionResult.Rejected(Component.translatable("probe.no")), new ActionResult.Rejected("probe.no"));
+        final Component withArguments = Component.translatable("probe.no", Component.text(3)).fallback("Not now, %s s left");
         assertEquals(withArguments, new ActionResult.Rejected(withArguments).reason());
     }
 }

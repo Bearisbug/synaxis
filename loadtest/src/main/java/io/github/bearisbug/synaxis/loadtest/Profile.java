@@ -19,7 +19,7 @@ import java.util.Locale;
  * <p>
  * {@link #GATE} is the other: no circle, but a walk at 10 blocks a second into the nearest gate
  * frame of {@code --gates}, to be sent to another shard ({@code docs/DESIGN-M3.md} §15, the transfer
- * row, and §26 M3-E track D). Where it goes depends on whether a Transfer came, see {@link GateWalk}.
+ * row). Where it goes depends on whether a Transfer came, see {@link GateWalk}.
  */
 enum Profile {
     WALK(4.317, 64, 192, 0),
@@ -112,7 +112,7 @@ enum Profile {
     }
 
     /**
-     * The walk of a {@link #GATE} bot from one spawn ({@code docs/DESIGN-M3.md} §26 M3-E track D). It
+     * The walk of a {@link #GATE} bot from one spawn ({@code docs/DESIGN-M3.md} §26). It
      * stands at the spawn for the dwell, then walks at 10 blocks a second straight to the centre of
      * the nearest frame and stays there. The centre is taken at the bot's own height when that is
      * within the frame, so that a frame as tall as the world is walked into level, else at the

@@ -54,7 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * {@code docs/DESIGN-PROD.md} {@code REQ-PROD-029}: bots against a real ticking server on loopback,
  * a plain and an encrypted login, a kick counted as a lost bot, chunk batch receipts that keep the chunks coming, and the packet
- * rates the run file reports; and the transfers of a gate bot ({@code docs/DESIGN-M3.md} §26 M3-E track D).
+ * rates the run file reports; and the transfers of a gate bot ({@code docs/DESIGN-M3.md} §26).
  */
 public class BotSocketTest {
 
@@ -134,7 +134,7 @@ public class BotSocketTest {
     }
 
     /**
-     * {@code docs/DESIGN-M3.md} §26 M3-E track D: two servers that each send a gate bot to the other
+     * {@code docs/DESIGN-M3.md} §26: two servers that each send a gate bot to the other
      * the moment it steps into the frame, the way a shard's gate does, a cookie stored first, three
      * transfers in all. The bot goes back and forth, each time connecting with intent transfer and
      * answering both cookie requests of the new server with the bytes the old one stored, and stays

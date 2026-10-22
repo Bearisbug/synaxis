@@ -22,8 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * engine internals, but only the ones the §6 internal surface table lists. The table is written out
  * here as constants; a change to either is a change to both.
  * <p>
- * The same aggregate reason as {@link EngineInternalsArchitectureTest}: the rule needs the engine's
- * annotations and the {@code :synx} classes on one classpath. {@code :baker} joins the scanned
+ * It lives in this aggregate project because the rule needs the engine's annotations and the
+ * {@code :synx} classes on one classpath. {@code :baker} joins the scanned
  * packages when it exists.
  */
 public class SynxInternalSurfaceArchitectureTest {
@@ -44,7 +44,7 @@ public class SynxInternalSurfaceArchitectureTest {
     private static boolean isEngineOwned(JavaClass owner) {
         final String pkg = owner.getPackageName();
         return inTree(pkg, "io.github.bearisbug.synaxis")
-                && !inTree(pkg, "io.github.bearisbug.synaxis.game")
+                && !inTree(pkg, "io.github.bearisbug.synaxis.protocol")
                 && !inTree(pkg, "io.github.bearisbug.synaxis.plugin")
                 && !inTree(pkg, "io.github.bearisbug.synaxis.app")
                 && !inTree(pkg, "io.github.bearisbug.synaxis.synx")
@@ -81,11 +81,11 @@ public class SynxInternalSurfaceArchitectureTest {
                 .because("the §6 internal surface table of docs/DESIGN-M3.md is the whole of what :synx may use");
     }
 
-    /** §24 ArchUnit: the MMO path never lights through {@code LightingChunk}. */
+    /** §24 ArchUnit: the map shard path never lights through {@code LightingChunk}. */
     private static ArchRule leavesLightingChunkAlone() {
         return noClasses().that().resideInAPackage(SYNX_PACKAGE)
                 .should().dependOnClassesThat().haveFullyQualifiedName("io.github.bearisbug.synaxis.instance.LightingChunk")
-                .because("MMO instances take their light from the baker, not from LightingChunk (docs/DESIGN-M3.md §5 ①)");
+                .because("map shard instances take their light from the baker, not from LightingChunk (docs/DESIGN-M3.md §5 ①)");
     }
 
     @Test

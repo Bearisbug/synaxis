@@ -6,7 +6,7 @@ import org.jetbrains.annotations.ApiStatus;
  * The admission slot of the process (API-M2-011).
  * <p>
  * The engine requires a spawning instance while a connection is still in the configuration phase,
- * but only a plugin knows what matches exist. This is where that decision is handed back.
+ * but only a plugin knows what instances it serves. This is where that decision is handed back.
  * <p>
  * Only the host implements this interface: a plugin is handed one and calls it.
  */

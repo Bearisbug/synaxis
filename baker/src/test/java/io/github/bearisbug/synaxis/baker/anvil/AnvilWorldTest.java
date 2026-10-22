@@ -292,7 +292,6 @@ public class AnvilWorldTest {
             // The structure blocks themselves are gone, block and block entity
             assertEquals(Block.AIR, blockAt(chunk, 5, -59, 5));
             assertEquals(Block.AIR, blockAt(chunk, 4, -59, 1));
-            assertEquals(Block.AIR, blockAt(chunk, 9, -60, 9));
             assertFalse(chunk.blockEntities().stream()
                             .anyMatch(blockEntity -> blockEntity.nbt().getString("id").equals("minecraft:structure_block")),
                     chunk.blockEntities().toString());
@@ -308,8 +307,6 @@ public class AnvilWorldTest {
             assertEquals("synaxis:loot", chest.handler());
             assertEquals("minecraft:chest", chest.nbt().getString("id"));
             assertEquals("t1", chest.nbt().getString("table"));
-
-            assertEquals(List.of(new HiddenArea(0, 0, 15, 15)), chunk.hiddenAreas());
         }
     }
 

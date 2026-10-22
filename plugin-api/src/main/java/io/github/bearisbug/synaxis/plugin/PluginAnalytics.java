@@ -8,8 +8,8 @@ import java.util.Map;
  * The analytics ledger of {@code docs/DESIGN-M2.md} §20, as seen by a plugin.
  * <p>
  * The events of §20 are produced on both sides of the plugin boundary: the host writes the session
- * and plugin ones, the plugin writes the match, unit and order ones. They all have to end up in the
- * same file, so the host owns it and the plugin hands its events over through here. The file is
+ * and plugin ones, a plugin writes its own. They all have to end up in the same file, so the host
+ * owns it and the plugin hands its events over through here. The file is
  * {@code logs/events-<shard_id>-YYYYMMDD.jsonl}, {@code <shard_id>} being
  * {@code synaxis.app.shard-id} ({@code local} by default); the files of earlier days are compressed
  * to {@code .jsonl.gz} and kept 30 days ({@code docs/DESIGN-PROD.md} {@code API-PROD-014}).

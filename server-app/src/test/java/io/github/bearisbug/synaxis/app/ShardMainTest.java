@@ -71,7 +71,7 @@ public class ShardMainTest {
     }
 
     /**
-     * §19 「挂地图分片默认不能改地形」 (M3-S, {@code REQ-M3-029}): a map shard does not take the players'
+     * §19 「挂地图分片默认不能改地形」 ({@code REQ-M3-029}): a map shard does not take the players'
      * changes to its terrain unless the command line says it does; the two defaults are judged each on its own.
      */
     @Test

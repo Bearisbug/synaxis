@@ -10,12 +10,6 @@ include("jcstress-tests")
 include("protocol")
 include("plugin-api")
 include("server-app")
-include("game-rts")
-
-// The play kit and the sample game of docs/DESIGN-PLAY.md (API-PLAY-008, §6.7): game side modules on the
-// stable surface. :server-app does not depend on :game-rush, only its runRush task does (ADR-PLAY-011).
-include("play-kit")
-include("game-rush")
 
 // The offline map baker (docs/DESIGN-M3.md §6, API-M3-003): an engine side tool, the engine never depends on it
 include("baker")

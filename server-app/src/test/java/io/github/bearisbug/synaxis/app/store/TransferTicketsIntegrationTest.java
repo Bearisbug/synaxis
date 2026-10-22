@@ -59,7 +59,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code REQ-PROD-045}, {@code API-PROD-028}, §11.3 {@code saving → in_transit → loading}): the
  * issuing side, every check of the target side in its order, the one time nonce, the version
  * assertion and the cooldown a ticket carries across. Source and target live in one process, which
- * is all §26 asks of the 3D acceptance: no M3 {@code ShardService} is needed.
+ * is all §26 asks of the 3D acceptance: no {@code ShardService} is needed.
  */
 @EnvTest
 class TransferTicketsIntegrationTest {

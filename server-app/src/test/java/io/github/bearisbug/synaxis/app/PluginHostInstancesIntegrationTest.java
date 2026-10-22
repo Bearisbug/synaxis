@@ -70,7 +70,7 @@ class PluginHostInstancesIntegrationTest {
     }
 
     private PluginHost host(Env env) {
-        Main.registerMatchDimensionType(env.process());
+        Main.registerManagedDimensionType(env.process());
         final EventLedger opened = new EventLedger(workingDirectory.resolve("logs"), "test",
                 EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
         opened.start();
@@ -114,7 +114,7 @@ class PluginHostInstancesIntegrationTest {
         assertEquals(0, env.process().instance().getInstances().size());
         assertEquals(CoreMode.Mode.REFUSED, CoreMode.decide(CoreMode.Setting.AUTO, host.attemptedPluginCount(),
                 host.hasAdmissionProvider(), env.process().instance().getInstances().size()),
-                "the instance taken back counts as no running match");
+                "the instance taken back counts as no running instance");
         final List<String> closed = closedLines(readLedger());
         assertEquals(1, closed.size(), closed.toString());
         assertTrue(closed.getFirst().contains("\"cause\":\"plugin_disabled\""), closed.getFirst());
@@ -155,7 +155,7 @@ class PluginHostInstancesIntegrationTest {
                 new ProbePlugin(new PluginDescriptor("first", "1.0.0", PluginApi.API_VERSION), context -> {
                     final ManagedInstance lobby = context.instances().create(new InstanceSpec("lobby", 1, FLAT));
                     created.add(lobby);
-                    context.admission().register(_ -> new Admission.Accept(lobby.instance(), 0));
+                    context.admission().register(_ -> new Admission.Accept(lobby.instance()));
                 }),
                 new ProbePlugin(new PluginDescriptor("second", "1.0.0", PluginApi.API_VERSION), context -> {
                     final ManagedInstance arena = context.instances().create(new InstanceSpec("arena", 1, FLAT));
@@ -207,7 +207,7 @@ class PluginHostInstancesIntegrationTest {
             created.add(context.instances().create(new InstanceSpec("broken", 1, _ -> {
                 throw new IllegalStateException("probe generator failure");
             })));
-            context.admission().register(_ -> new Admission.Accept(lobby.instance(), 0));
+            context.admission().register(_ -> new Admission.Accept(lobby.instance()));
         })), Set.of());
 
         assertEquals(ManagedInstance.State.OPEN, created.get(0).state());

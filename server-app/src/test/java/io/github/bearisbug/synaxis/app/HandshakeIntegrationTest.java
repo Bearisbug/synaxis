@@ -5,12 +5,6 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerPreLoginEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
-import io.github.bearisbug.synaxis.game.protocol.C2SHello;
-import io.github.bearisbug.synaxis.game.protocol.HandshakeMessage;
-import io.github.bearisbug.synaxis.game.protocol.HandshakeMessages;
-import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
-import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
-import io.github.bearisbug.synaxis.game.protocol.S2CHello;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
@@ -25,6 +19,12 @@ import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.plugin.Admission;
 import io.github.bearisbug.synaxis.plugin.AdmissionRequest;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
+import io.github.bearisbug.synaxis.protocol.C2SHello;
+import io.github.bearisbug.synaxis.protocol.HandshakeMessage;
+import io.github.bearisbug.synaxis.protocol.HandshakeMessages;
+import io.github.bearisbug.synaxis.protocol.MsgBuf;
+import io.github.bearisbug.synaxis.protocol.ProtocolSchema;
+import io.github.bearisbug.synaxis.protocol.S2CHello;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import net.kyori.adventure.text.Component;
@@ -496,12 +496,12 @@ class HandshakeIntegrationTest {
     void aVerifiedConnectionReachesTheAdmissionProviderWithWhatItReported(Env env) {
         final Wire wire = wire(env);
         final Player player = player(env, wire);
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final PluginHost host = host(env);
         final List<AdmissionRequest> seen = new CopyOnWriteArrayList<>();
         host.registerHostAdmission(request -> {
             seen.add(request);
-            return new Admission.Accept(match, 1);
+            return new Admission.Accept(instance);
         });
         host.requireHandshake();
 
@@ -518,12 +518,12 @@ class HandshakeIntegrationTest {
     void theAnswerIsQueuedBeforeFinishConfigurationHoweverLateTheTickThreadIs(Env env) {
         final Wire wire = wire(env);
         final Player player = player(env, wire);
-        final Instance match = env.createFlatInstance();
+        final Instance instance = env.createFlatInstance();
         final PluginHost host = host(env);
-        host.registerHostAdmission(_ -> new Admission.Accept(match, 1));
+        host.registerHostAdmission(_ -> new Admission.Accept(instance));
         host.requireHandshake();
         // This thread interprets the hello, and whatever it writes waits for the configuration thread
-        // it wakes to finish the phase: the schedule of GitHub Actions run 36459937261, made certain
+        // it wakes to finish the phase: the schedule where that thread finishes first, made certain
         wire.holdUntilFinished(Thread.currentThread());
 
         assertNull(configure(env, player, hello(7, ProtocolSchema.SCHEMA_VERSION)),
@@ -546,11 +546,11 @@ class HandshakeIntegrationTest {
     }
 
     @Test
-    void aRejectedConnectionIsToldTheMatchIsUnavailableRatherThanAnInternalError(Env env) {
+    void aRejectedConnectionIsToldTheInstanceIsUnavailableRatherThanAnInternalError(Env env) {
         final Wire wire = wire(env);
         final Player player = player(env, wire);
         final PluginHost host = host(env);
-        host.registerHostAdmission(_ -> new Admission.Reject(DisconnectKeys.MATCH_UNAVAILABLE));
+        host.registerHostAdmission(_ -> new Admission.Reject(DisconnectKeys.INSTANCE_UNAVAILABLE));
         host.requireHandshake();
 
         final Throwable failure = configure(env, player, hello(7, ProtocolSchema.SCHEMA_VERSION));
@@ -559,11 +559,11 @@ class HandshakeIntegrationTest {
         // NullPointerException at a connection that has none, which is what would turn the designed
         // refusal into synaxis:internal-error (§26 phase 4).
         assertNull(failure, "a refused connection must be kicked, not left to the requireNonNull");
-        assertKickedWith(DisconnectKeys.MATCH_UNAVAILABLE, wire);
+        assertKickedWith(DisconnectKeys.INSTANCE_UNAVAILABLE, wire);
         // §20 registers client_rejected with both of these, and the reason alone does not say
         // which client it was: this one handshook, so its schema version is known here too.
         final String rejection = onlyLedgerLine("client_rejected");
-        assertTrue(rejection.contains("\"reason\":\"match-unavailable\""), rejection);
+        assertTrue(rejection.contains("\"reason\":\"instance-unavailable\""), rejection);
         assertTrue(rejection.contains("\"schema_version\":" + ProtocolSchema.SCHEMA_VERSION), rejection);
     }
 
@@ -719,14 +719,14 @@ class HandshakeIntegrationTest {
         final Wire wire = wire(env);
         final Player player = player(env, wire);
         final PluginHost host = host(env);
-        host.registerHostAdmission(_ -> new Admission.Reject("rts:match-unavailable"));
+        host.registerHostAdmission(_ -> new Admission.Reject("probe:no-world"));
         host.requireHandshake();
 
         assertNull(configure(env, player, hello(7, ProtocolSchema.SCHEMA_VERSION)));
 
-        assertKickedWith("rts:match-unavailable", wire);
-        // Only the synaxis namespace is dropped: this is not the host's match-unavailable (§20)
+        assertKickedWith("probe:no-world", wire);
+        // Only the synaxis namespace is dropped: this is not the host's instance-unavailable (§20)
         final String rejection = onlyLedgerLine("client_rejected");
-        assertTrue(rejection.contains("\"reason\":\"rts:match-unavailable\""), rejection);
+        assertTrue(rejection.contains("\"reason\":\"probe:no-world\""), rejection);
     }
 }

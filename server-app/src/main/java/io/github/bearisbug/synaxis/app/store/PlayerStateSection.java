@@ -161,7 +161,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
     private static PlayerState.World world(PositionRule rule) {
         return switch (rule) {
             case PositionRule.Core _ -> new PlayerState.Core();
-            case PositionRule.Rts _ -> new PlayerState.Rts();
+            case PositionRule.Gameplay _ -> new PlayerState.Gameplay();
             case PositionRule.MapShard map -> new PlayerState.MapShard(map.mapId(), map.buildId());
         };
     }
@@ -207,7 +207,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
     private static boolean usesSavedPosition(PositionRule rule, PlayerState saved, boolean arrived) {
         return switch (rule) {
             case PositionRule.Core _ -> saved.world() instanceof PlayerState.Core;
-            case PositionRule.Rts _ -> false;
+            case PositionRule.Gameplay _ -> false;
             case PositionRule.MapShard map -> !arrived
                     && saved.world() instanceof PlayerState.MapShard(String mapId, String buildId)
                     && mapId.equals(map.mapId()) && buildId.equals(map.buildId())
@@ -227,7 +227,7 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
         final JsonObject world = new JsonObject();
         world.addProperty("kind", switch (savedWorld) {
             case PlayerState.Core _ -> "core";
-            case PlayerState.Rts _ -> "rts";
+            case PlayerState.Gameplay _ -> "gameplay";
             case PlayerState.MapShard _ -> "map";
         });
         if (savedWorld instanceof PlayerState.MapShard(String mapId, String buildId)) {
@@ -269,10 +269,10 @@ public final class PlayerStateSection implements DataSection<PlayerState> {
         final String kind = field(world, "kind").getAsString();
         final PlayerState.World decodedWorld = switch (kind) {
             case "core" -> new PlayerState.Core();
-            case "rts" -> new PlayerState.Rts();
+            case "gameplay" -> new PlayerState.Gameplay();
             case "map" -> new PlayerState.MapShard(field(world, "map_id").getAsString(),
                     field(world, "build_id").getAsString());
-            default -> throw new IllegalArgumentException("world.kind " + kind + " is not core, rts or map");
+            default -> throw new IllegalArgumentException("world.kind " + kind + " is not core, gameplay or map");
         };
         final JsonObject pos = field(object, "pos").getAsJsonObject();
         final Pos position = new Pos(finite(pos, "x"), finite(pos, "y"), finite(pos, "z"),

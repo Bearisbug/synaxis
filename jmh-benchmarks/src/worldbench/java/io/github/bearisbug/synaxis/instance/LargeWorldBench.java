@@ -48,10 +48,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 
 /**
- * Re-measures the per-chunk costs the large-world report (docs/research/large-world-2026-09 §8.1)
- * could not reproduce: ChunkDataPacket size, first serialization time and retained heap on
- * synthetic terrain, whole-map {@link LightingChunk#relight} time and heap, and the 3x3 local
- * recompute after a single block change.
+ * Measures the per-chunk costs of a whole map: ChunkDataPacket size, first serialization time and
+ * retained heap on synthetic terrain, whole-map {@link LightingChunk#relight} time and heap, and the
+ * 3x3 local recompute after a single block change.
  * <p>
  * The driver (no arguments, or {@code --jobs}) runs every job in its own child JVM, with the same
  * fixed heap, so that one job's garbage, JIT profile and heap sizing cannot leak into the next.
@@ -65,7 +64,7 @@ public final class LargeWorldBench {
     private static final int COMPRESSION_THRESHOLD = 256;
     private static final int LIGHT_ARRAY_BYTES = 2048 + 16; // byte[2048] plus the array header
 
-    /** The default job list, the one bench-2026-09.md reports. */
+    /** The default job list. */
     private static final List<String> DEFAULT_JOBS = List.of(
             "packet h=384 t=natural p=opt",
             "packet h=384 t=natural p=setall",
@@ -294,7 +293,7 @@ public final class LargeWorldBench {
         Bench(Spec spec) {
             this.spec = spec;
             this.height = spec.integer("h", 384);
-            // 384 keeps the vanilla overworld layout; the lower worlds start at 0 like the M2 match world
+            // 384 keeps the vanilla overworld layout; the lower worlds start at 0 like the host's managed instance world
             this.minY = height == 384 ? -64 : 0;
             this.kind = SyntheticTerrain.Kind.valueOf(spec.string("t", "natural").toUpperCase(Locale.ROOT));
             this.optimize = spec.string("p", "opt").equals("opt");
@@ -367,7 +366,7 @@ public final class LargeWorldBench {
                 final boolean measured = round >= warmup;
                 final JsonObject roundJson = new JsonObject();
 
-                // DynamicChunk: the M2 default, no light at all
+                // DynamicChunk: the engine default, no light at all
                 long base = liveHeap();
                 InstanceContainer instance = world(false);
                 List<Chunk> chunks = load(instance, grid);
@@ -752,8 +751,8 @@ public final class LargeWorldBench {
     }
 
     /**
-     * Heap that survives two full collections, the method Match#sampleLiveHeap uses. Fails loudly
-     * if no collection ran, because then the number would measure allocation instead of retention.
+     * Heap that survives two full collections. Fails loudly if no collection ran, because then the
+     * number would measure allocation instead of retention.
      */
     private static long liveHeap() {
         final long before = collections();

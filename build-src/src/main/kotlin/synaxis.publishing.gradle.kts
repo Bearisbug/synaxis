@@ -15,7 +15,7 @@ publishing.publications.create<MavenPublication>("maven") {
 
     pom {
         name.set(this@create.artifactId)
-        description.set("$mcVersion Lightweight Minecraft server")
+        description.set("Extensible Minecraft $mcVersion server core, plugin SDK and companion client mod, derived from Minestom")
         url.set("https://github.com/Bearisbug/synaxis")
 
         licenses {
@@ -61,7 +61,7 @@ signing {
 }
 
 // The bootstrap rule of docs/DESIGN-M2.md §24: -PbaselineJarDir points at the jars of our own
-// previous tag, and :plugin-api / :protocol have no tag at all before M2 ships one. Without the
+// previous tag, and :plugin-api / :protocol have no tag at all before the first release. Without the
 // property the task ends as an explicit SKIPPED saying so, so that a build stays green without
 // the gate ever passing silently; with the property a missing baseline jar is a failure.
 tasks.register<CheckAbiTask>("checkBinaryCompatibility") {
@@ -70,7 +70,7 @@ tasks.register<CheckAbiTask>("checkBinaryCompatibility") {
 
     // Local, not a script property: an onlyIf spec that reads a script field cannot be stored in
     // the configuration cache.
-    val noBaselineMessage = "无 baseline，ABI 门未生效 — pass -PbaselineJarDir=<dir> once a tag exists, see docs/DESIGN-M2.md §24"
+    val noBaselineMessage = "无 baseline，ABI 门未生效 — pass -PbaselineJarDir=<dir> once the first release exists, see docs/DESIGN-M2.md §24"
     val projectName = project.name
     val baselineJarDir = providers.gradleProperty("baselineJarDir")
     val baselineJar = baselineJarDir.map { dir -> layout.settingsDirectory.file("$dir/$projectName.jar").asFile }

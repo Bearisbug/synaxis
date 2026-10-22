@@ -138,7 +138,7 @@ jobs:
           git fetch --no-tags origin main:refs/remotes/origin/main
           diff-cover $(find . -path '*/build/reports/jacoco/test/jacocoTestReport.xml' | sort) \
             --compare-branch=origin/main \
-            --src-roots src/main/java testing/src/main/java protocol/src/main/java plugin-api/src/main/java server-app/src/main/java game-rts/src/main/java play-kit/src/main/java game-rush/src/main/java synx/src/main/java baker/src/main/java \
+            --src-roots src/main/java testing/src/main/java protocol/src/main/java plugin-api/src/main/java server-app/src/main/java synx/src/main/java baker/src/main/java \
             --fail-under=80
 
   # REQ-PROD-019: the whole suite again with four tick threads and the ownership assertions on.
@@ -207,7 +207,7 @@ jobs:
           retention-days: 14
 
   # REQ-PROD-020: the same round with the chunks spread by the grid of 16 by 16 chunk cells, the
-  # provider of the MMO shards; side by side with the counter round above.
+  # provider of the map shards; side by side with the counter round above.
   multithreaded-grid:
     name: Test with 4 tick threads (strict, grid)
     runs-on: ubuntu-latest

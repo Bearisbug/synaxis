@@ -34,8 +34,7 @@ public final class GeneratorSource implements BakeSource {
     public GeneratorSource(GeneratorPreset preset, Registries registries) {
         if (preset.minY() % 16 != 0 || preset.height() <= 0 || preset.height() % 16 != 0 || preset.height() > 256) {
             throw new IllegalArgumentException("the generator preset has min_y " + preset.minY() + " and height "
-                    + preset.height() + "; both must be multiples of 16 and the height 16 to 256 (a far view y index"
-                    + " is one byte)");
+                    + preset.height() + "; both must be multiples of 16 and the height 16 to 256");
         }
         this.preset = preset;
         this.registries = registries;

@@ -10,8 +10,6 @@ plugins {
 dependencies {
     implementation(project(":"))
     implementation(project(":synx"))
-    // The far view height field pack (docs/DESIGN-M3.md API-M3-014): FarViewPack writes it, the client reads it
-    implementation(project(":protocol"))
     // GeneratorImpl.GenSection#specials is a fastutil map
     implementation(libs.fastutil)
 }

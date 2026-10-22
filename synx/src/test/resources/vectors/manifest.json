@@ -47,18 +47,6 @@
       "chunks": 1
     }
   ],
-  "farview": [
-    {
-      "tile_x": -1,
-      "tile_z": 0,
-      "base_level": 2,
-      "coarse_level": 4,
-      "bytes": 8912896,
-      "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
-      "coarse_bytes": 524544,
-      "coarse_sha256": "dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986"
-    }
-  ],
   "source": {
     "kind": "generator"
   },

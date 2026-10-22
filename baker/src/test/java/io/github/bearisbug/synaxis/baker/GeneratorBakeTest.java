@@ -102,8 +102,6 @@ public class GeneratorBakeTest {
         assertEquals(4, manifest.bake().threads());
         assertTrue(manifest.bake().wallMs() > 0 && manifest.bake().cpuMs() > 0, manifest.toJson());
         assertEquals(new SynxManifest.Verify(16, 0, null), manifest.verify(), "4 samples in each of the 4 regions");
-        assertEquals(List.of("0,0"), manifest.farview().stream().map(pack -> pack.tileX() + "," + pack.tileZ()).toList(),
-                "the far view pack of the one tile the bounds meet (FarViewBakeTest)");
 
         // What a shard checks at start-up passes on the whole build
         SynxBuildVerifier.verify(build, SynxExpectations.of(REGISTRIES, Baker.COMPRESSION_THRESHOLD, 0, 256,
@@ -306,7 +304,7 @@ public class GeneratorBakeTest {
                 + " here"), result.message());
     }
 
-    /** API-M3-003: a preset the far view packs cannot hold, or without a height, is refused before anything is made. */
+    /** API-M3-003: a preset over 256 blocks high, or without a height, is refused before anything is made. */
     @Test
     public void aPresetOverTwoHundredFiftySixHighIsRefused() {
         for (int height : new int[]{272, 0}) {

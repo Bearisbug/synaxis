@@ -135,8 +135,8 @@ public class BakerMainTest {
     }
 
     /**
-     * §9 map_id, API-M3-003: an id that is not {@code [a-z0-9][a-z0-9_-]{0,31}} names no directory to bake into
-     * or a far view url path, so it exits with 1 before anything is written.
+     * §9 map_id, API-M3-003: an id that is not {@code [a-z0-9][a-z0-9_-]{0,31}} names no directory to bake into,
+     * so it exits with 1 before anything is written.
      */
     @Test
     public void aMapIdThatIsNotOneExitsOneAndWritesNothing() throws Exception {
@@ -149,10 +149,7 @@ public class BakerMainTest {
         assertEquals(List.of(), list(temp));
     }
 
-    /**
-     * A map_id of 32 characters bakes, its build_id within the 96 bytes of an announcement; the started event
-     * records the {@code --source} as given (§20 source_spec).
-     */
+    /** A map_id of 32 characters bakes; the started event records the {@code --source} as given (§20 source_spec). */
     @Test
     public void aMapIdOfThirtyTwoCharactersBakesAndTheEventRecordsTheSource() throws Exception {
         final String mapId = "a".repeat(31) + "9";

@@ -66,14 +66,4 @@ public final class SynxFormat {
     public static String regionFileName(int regionX, int regionZ) {
         return "r." + regionX + "." + regionZ + ".synx";
     }
-
-    /** {@code t.<tile_x>.<tile_z>.hfp}, a far view pack under {@code farview/} of the release directory, API-M3-014. */
-    public static String farViewFileName(int tileX, int tileZ) {
-        return "t." + tileX + "." + tileZ + ".hfp";
-    }
-
-    /** {@code <map_id>/farview/<sha256 hex>.hfp}, a far view object under the export directory and the url root. */
-    public static String farViewObject(String mapId, byte[] sha256) {
-        return mapId + "/farview/" + SynxDigests.hex(sha256) + ".hfp";
-    }
 }

@@ -411,7 +411,7 @@ public class SynxParserBoundaryTest {
     @Test
     public void theManifestRefusesADuplicateNameAndAnOversizedNumber() throws Exception {
         final SynxManifest manifest = new SynxManifest("vectors", SynxManifest.buildId("vectors", NO_HASH, 776), NO_HASH,
-                "26.2", 776, NO_HASH, 1, 1, new SynxManifest.World(0, 64), SynxVectors.bounds(), List.of(), List.of(),
+                "26.2", 776, NO_HASH, 1, 1, new SynxManifest.World(0, 64), SynxVectors.bounds(), List.of(),
                 new SynxManifest.Source("generator", null, null),
                 new SynxManifest.Bake("2026-10-02T00:00:00Z", 1, 1, 1, "25"), new SynxManifest.Verify(0, 0, null));
         final String json = manifest.toJson();

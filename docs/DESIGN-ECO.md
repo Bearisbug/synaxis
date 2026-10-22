@@ -17,6 +17,7 @@
 
 | 日期 | 版本 | 涉及 ID | 一句话 | 类型 |
 | --- | --- | --- | --- | --- |
+| 2026-10-22 | v0.5 | ADR-ECO-011、ADR-ECO-013、ADR-ECO-014、ADR-ECO-020、ADR-ECO-022、ADR-ECO-023、ADR-ECO-024、RULE-ECO-010、RULE-ECO-011、RULE-ECO-020、INV-ECO-020、INV-ECO-021、FLOW-SDK-RELEASE、REQ-ECO-024、REQ-ECO-031、REQ-ECO-047 | 按两份对抗评审改：发布要用户审批，先推包再载存档，资源可复现，里程碑重排 | 文档 |
 | 2026-10-22 | v0.4 | FLOW-PLUGIN-LOAD、FLOW-PLUGIN-ADMIT、FLOW-PLUGIN-DISABLE、FLOW-PLUGIN-STOP、FLOW-PLUGIN-SERVICE、RULE-ECO-002、RULE-ECO-010、REQ-ECO-006、REQ-ECO-014、REQ-ECO-015、REQ-ECO-016、REQ-ECO-017、REQ-ECO-019 | 按独立评审改插件平台：起服模式只看准入回调，禁用不调插件出口，停用回调逐个等，可见面按 jar 生成 | 文档 |
 | 2026-10-22 | v0.3 | ADR-ECO-010、ADR-ECO-011、ADR-ECO-012、ADR-ECO-021、ADR-ECO-022、ADR-ECO-023、RULE-ECO-010、RULE-ECO-020、FLOW-SDK-RELEASE、FLOW-PLUGIN-DISABLE | 按独立评审改：稳定面含签名引到的引擎类型，发布把撤不回的 Central 排最后，补资源合并规则与等包上限 | 文档 |
 | 2026-10-22 | v0.2 | FLOW-PLUGIN-LOAD、FLOW-PLUGIN-ADMIT、FLOW-PLUGIN-DISABLE、FLOW-PLUGIN-STOP、FLOW-PLUGIN-SERVICE、RULE-ECO-001、RULE-ECO-002、RULE-ECO-010、INV-ECO-001、INV-ECO-002、INV-ECO-003、INV-ECO-004、REQ-ECO-001、REQ-ECO-002、REQ-ECO-003、REQ-ECO-004、REQ-ECO-005、REQ-ECO-006、REQ-ECO-007、REQ-ECO-008、REQ-ECO-009、REQ-ECO-010、REQ-ECO-011、REQ-ECO-012、REQ-ECO-013、REQ-ECO-014、REQ-ECO-015、REQ-ECO-016、REQ-ECO-017、REQ-ECO-018、ADR-ECO-012 | 合入插件平台与第四条拍板，统一资源覆盖冲突的处置 | 文档 |
@@ -277,7 +278,7 @@
   - 谁定：产品
   - 卡住：不卡
 
-另见：§28 资源包推送与准入谁先
+另见：ADR-ECO-011
 
 #### 关联
 
@@ -542,24 +543,26 @@
 
 #### 概要
 
-- **执行者**：Synaxis 维护者
-- **触发**：在 main 上推送版本标签
+- **执行者**：Synaxis 维护者，每次发布都经用户批准
+- **触发**：用户同意后在 main 上推送版本标签
 - **进入条件**：标签所指的提交 CI 全绿
 - **结果**：发行版、模组、SDK 分别进 Release、Modrinth、Central
 - **不管**：第三方插件自己的发布
 
 #### 主流程
 
-1. S1 维护者在 main 上推送 vX.Y.Z 标签 〔无界面〕
+1. S1 用户同意后，维护者推送 vX.Y.Z 标签 〔无界面〕
 2. S2 发布工作流从标签取版本号，注入构建 〔无界面〕
-3. S3 跑全量检查、示例门禁与稳定面兼容门 〔无界面〕
-4. S4 发 GitHub Release，附发行版与稳定面 jar 〔无界面〕
-5. S5 把客户端模组上传到 Modrinth 〔无界面〕
-6. S6 签名后把 SDK 上传到 Maven Central 〔无界面〕
+3. S3 跑全量检查与真客户端回归、示例门禁、兼容门 〔无界面〕
+4. S4 等用户在 GitHub 上批准 release 环境 〔无界面〕
+5. S5 建 GitHub Release 草稿，附发行版与稳定面 jar 〔无界面〕
+6. S6 把客户端模组上传到 Modrinth 〔无界面〕
+7. S7 签名后把 SDK 上传到 Maven Central 〔无界面〕
+8. S8 公开 Release 草稿 〔无界面〕
 
 #### 分支
 
-> 分支未与用户逐类核对：S2–S6
+> 分支未与用户逐类核对：S2–S8
 
 ##### S2 取版本号
 
@@ -574,29 +577,36 @@
 | 失败 | 稳定面的破坏性变更没登记，或版本号没按规则升 | 工作流失败 | RULE-ECO-020；ADR-ECO-022 | 无用例 |
 | 失败 | 示例引用了稳定面之外的引擎类型 | 工作流失败 | ADR-ECO-021 | 无用例 |
 
-##### S4 发 GitHub Release
+##### S4 审批
 
 | 类型 | 分支 | 结果 | 依据 | 测试 |
 | --- | --- | --- | --- | --- |
-| 边界 | 同一标签重跑，Release 已存在 | 跳过这一步，用已有的 | 现状待确认：§23 缺重跑规则；ADR-ECO-023 | 无用例 |
+| 失败 | 用户拒绝批准 | 工作流结束，什么都没发 | 现状待确认：§23 缺发布门禁；ADR-ECO-023 | 无用例 |
 
-##### S5 上传 Modrinth
+##### S5 建 Release 草稿
+
+| 类型 | 分支 | 结果 | 依据 | 测试 |
+| --- | --- | --- | --- | --- |
+| 边界 | 同一标签重跑，草稿已存在 | 跳过这一步，用已有的 | 现状待确认：§23 缺重跑规则；ADR-ECO-023 | 无用例 |
+
+##### S6 上传 Modrinth
 
 | 类型 | 分支 | 结果 | 依据 | 测试 |
 | --- | --- | --- | --- | --- |
 | 失败 | Modrinth 上传失败 | 工作流失败，Central 还没发，修好后同一标签重跑 | ADR-ECO-023 | 无用例 |
 
-##### S6 上传 Maven Central
+##### S7 上传 Maven Central
 
 | 类型 | 分支 | 结果 | 依据 | 测试 |
 | --- | --- | --- | --- | --- |
-| 失败 | 该版本号已在 Maven Central | 工作流失败，已发布的版本不变 | INV-ECO-020；ADR-ECO-023 | 不测：由 Maven Central 拒绝覆盖 |
-| 失败 | Central 校验没过或上传中断 | 工作流失败，同一标签重跑，前两步跳过 | 现状待确认：§23 缺重跑规则；ADR-ECO-023 | 无用例 |
+| 失败 | Central 校验没过或上传中断 | 工作流失败，Modrinth 版本保留，同一标签重跑 | 现状待确认：§23 缺重跑规则；ADR-ECO-023 | 无用例 |
+| 边界 | 重跑时全部坐标已在 Central | 跳过这一步 | INV-ECO-020；ADR-ECO-023 | 无用例 |
+| 边界 | 决定放弃这个版本 | 删掉 Modrinth 版本与 Release 草稿 | ADR-ECO-023 | 不测：人工操作 |
 
 #### 待决策
 
 - **Q-SDK-RELEASE-1 · 模组与 SDK 用同一个版本号，还是各自编号？**
-  - 现状：SDK 从未发布，模组版本写死为 0.1.0
+  - 现状：Central 没发过，Release 已有三个版本，模组写死 0.1.0
   - 建议：同一个版本号，一个标签同时发两边
   - 何时换：模组要单独修缺陷而 SDK 不动的情况每月超过一次
   - 代价：SDK 没改也要跟着模组升补丁号
@@ -605,7 +615,7 @@
   - 谁定：技术
   - 卡住：FLOW-SDK-RELEASE
 
-另见：§28 首次发布前，用户在 Maven Central
+另见：§28 首次发布前，用户在 Maven Central；§28 Modrinth 的内容规则
 
 #### 关联
 
@@ -618,8 +628,8 @@
 | --- | --- |
 | S2 | `build-src/src/main/kotlin/synaxis.java-library.gradle.kts#GAME_ENGINE_VERSION` |
 | S3 | `.github/workflows/ci.yml#ABI gate of the stable surface` |
-| S5 | `client-fabric/build.gradle.kts#version` |
-| S6 | `build.gradle.kts#nmcpAggregation`；`build-src/src/main/kotlin/synaxis.publishing.gradle.kts#publishing` |
+| S6 | `client-fabric/build.gradle.kts#version` |
+| S7 | `build.gradle.kts#nmcpAggregation`；`build-src/src/main/kotlin/synaxis.publishing.gradle.kts#publishing` |
 
 ## L3. 业务规则
 
@@ -641,19 +651,22 @@
 
 出处：ADR-ECO-002；ADR-ECO-007
 
-### RULE-ECO-010 · 资源命名空间归插件所有
+### RULE-ECO-010 · 资源命名空间与语言键归插件所有
 
 适用链路：FLOW-PLUGIN-LOAD、FLOW-ASSET-PACK、FLOW-CAP-USE
 
-- IF 资源写进别的命名空间，或语言键不以自己的 id 开头
-- AND 描述文件没有声明覆盖这个命名空间
-- THEN 这个插件拒载
+| 资源写在哪 | 描述文件 | 依赖 | 结果 |
+| --- | --- | --- | --- |
+| 自己的命名空间，或以自己 id 加点开头的语言键 | — | — | 放行 |
+| 已装插件的命名空间或语言键 | 声明了覆盖对方 | 已把对方列为依赖 | 放行 |
+| 原版命名空间或原版语言键 | 声明了覆盖原版 | — | 放行 |
+| 其余组合 | — | — | 这个插件拒载 |
 
 出处：ADR-ECO-012
 
 ### RULE-ECO-011 · 必需能力缺失时拒绝进服
 
-适用链路：FLOW-ASSET-JOIN、FLOW-CAP-USE
+适用链路：FLOW-PLUGIN-LOAD、FLOW-ASSET-JOIN、FLOW-CAP-USE
 
 - IF 能力协商结果缺少某个已启用插件声明为必需的能力
 - THEN 拒绝进服，提示升级模组
@@ -662,7 +675,7 @@
 
 ### RULE-ECO-020 · 兼容承诺只覆盖稳定面
 
-适用链路：FLOW-SDK-UPGRADE、FLOW-SDK-RELEASE
+适用链路：FLOW-PLUGIN-LOAD、FLOW-SDK-UPGRADE、FLOW-SDK-RELEASE
 
 - IF 成员属于稳定面，范围见 ADR-ECO-021
 - THEN 受语义化版本、兼容门与弃用期约束，其余成员不承诺
@@ -679,14 +692,14 @@
 | INV-ECO-004 | 宿主内部类与宿主独占的库对插件加载器不可见 | ADR-ECO-003 | 无用例 |
 | INV-ECO-010 | 客户端加载的插件资源包与宿主起服时算出的 SHA-1 相同 | ADR-ECO-011 | 无用例 |
 | INV-ECO-011 | 一个资源命名空间至多属于一个插件 | RULE-ECO-010；ADR-ECO-012 | 无用例 |
-| INV-ECO-020 | 发布过的版本号不会再发布第二次 | ADR-ECO-023 | 不测：由 Maven Central 拒绝覆盖 |
-| INV-ECO-021 | 同一主版本内，稳定面的新版本对旧版本二进制兼容 | ADR-ECO-022 | 无用例 |
+| INV-ECO-020 | Maven Central 上发布过的版本号不会再发布 | ADR-ECO-023 | 不测：由 Maven Central 拒绝覆盖 |
+| INV-ECO-021 | 稳定面的新版本对旧版本二进制兼容：1.0.0 起看主版本，之前看次版本 | ADR-ECO-022 | 无用例 |
 
 ## 2. 背景 / 目标 / 非目标
 
 背景：Synaxis 从 Minestom 硬 fork 而来，引擎底座已经完成（`docs/DESIGN.md`）。插件宿主、自定义协议与客户端模组也能用（`docs/DESIGN-M2.md`、`docs/DESIGN-PLAY.md`），但都按「本团队做自己的游戏」设计。
 
-插件只从宿主的 classpath 加载，没有依赖声明与服务互调，整个进程只有一个准入槽。模组只认静态注册的四条通道与四种 HUD 小部件，资源全部打在模组 jar 里。`plugin-api` 与 `protocol` 不在 Maven Central 的发布聚合里，`docs/DESIGN-M2.md` 的 `ADR-M2-006` 写明 M2 期间社区可用性为零。
+插件只从宿主的 classpath 加载，没有依赖声明与服务互调，整个进程只有一个准入槽。模组只认静态注册的四条通道与四种小部件，资源全部打在模组 jar 里。`plugin-api` 与 `protocol` 不在 Maven Central 的发布聚合里，`docs/DESIGN-M2.md` 的 `ADR-M2-006` 写明 M2 期间社区可用性为零。
 
 用户 2026-10-22 把目标改定为：像 Spigot 那样让第三方自由扩展的服务端核心，靠强制安装的客户端模组拿到原版做不到的自由度，面向公开社区做成生态。同日拍板四条：客户端扩展走服务端驱动加资源下发（`ADR-ECO-010`）；一台服支持多个作者的插件，照 Spigot 做依赖、服务互调与隔离（见 §6.2 插件平台）；首方玩法降为示例（`ADR-ECO-024`）；SDK 与模组公开发布（`ADR-ECO-020`）。
 
@@ -695,7 +708,7 @@
 1. 作者从 Maven Central 拿 SDK 写插件，服主把插件 jar 放进 `plugins/` 起服即可
 2. 多个作者的插件同服共存，可以互相依赖、互调服务
 3. 插件只写服务端代码，就能用客户端能力目录里的界面、模型、音效、相机与输入
-4. 插件的资源随 jar 带上，玩家进服时下发，只装一次官方模组
+4. 插件的资源随 jar 带上、进服下发；玩家只装一个官方模组，服务器要求新能力时升级它
 5. 稳定面按语义化版本发布，破坏性变更由 CI 拦下，弃用成员按承诺期保留
 6. 首方示例只用稳定面构建，CI 全绿，给作者当参照
 
@@ -707,7 +720,7 @@
 - 运行 Bukkit、Spigot 或 Paper 插件：「像 Spigot」指扩展模型，不兼容它们的 API
 - 自建插件市场网站：插件由作者自己发布
 - 升级 Minecraft 版本：仍钉死 26.2
-- 首方玩法的新功能：RTS 相机切片、`docs/DESIGN-PLAY.md` 的 W4b 与 W5 暂停
+- 首方玩法的新功能：RTS 专属的相机切片与 `docs/DESIGN-PLAY.md` 的 W3、W4a、W4b、W5 暂停
 
 规模画像：
 
@@ -717,7 +730,7 @@
 | 单服插件数 | 每台服 ≤ 50 个插件 | 假设；超过 50 个时重估起服耗时与资源包总量 |
 | 在线玩家 | 每分片 50～500 人 | 沿用 `docs/DESIGN-PROD.md` §2 |
 | 资源量 | 每个插件的资源包 ≤ 32 MiB，单服合计 ≤ 128 MiB | 假设；超过时重估下载时长与托管方式 |
-| 请求量 | 资源包按 SHA-1 缓存，只在首次进服或包变更后下载 | 500 人同时重下 128 MiB 约 62.5 GiB 出站，这时改用外部地址 |
+| 请求量 | 资源包按 SHA-1 缓存，前提是官方模组调高原版 20 个的缓存上限 | 单分片 500 人重下 128 MiB 约 62.5 GiB 出站，按分片数相乘，这时改用外部地址 |
 | 分布与形态 | 单区，SDK 在 Maven Central，模组在 Modrinth | 资源包由宿主内置 HTTP 或服主给的外部地址提供 |
 
 ## 3. 成功指标 / 验收阈值
@@ -755,14 +768,14 @@
 | REQ-ECO-021 | 起服时宿主为每个插件打一个资源包 | 目标 4 | P0 |
 | REQ-ECO-022 | 宿主托管资源包，也可改用外部地址 | 目标 4 | P0 |
 | REQ-ECO-023 | 玩家进服时在配置阶段收到并加载全部资源包 | 目标 4 | P0 |
-| REQ-ECO-024 | 必需的资源包下载失败或被拒时拒绝进服 | 目标 4 | P0 |
+| REQ-ECO-024 | 资源包下载失败或被拒时拒绝进服 | 目标 4 | P0 |
 | REQ-ECO-025 | 插件声明必需能力，宿主按协商结果放行 | 目标 3 | P0 |
 | REQ-ECO-026 | 界面能力支持只含数据的布局树 | 目标 3 | P1 |
 | REQ-ECO-027 | 物品与展示实体可用插件自己的模型 | 目标 3 | P0 |
 | REQ-ECO-028 | 插件可切换玩家的相机形态 | 目标 3 | P1 |
 | REQ-ECO-029 | 插件可注册动作键、光标模式与点选 | 目标 3 | P1 |
 | REQ-ECO-030 | 插件可播放自己命名空间下的音效 | 目标 3 | P1 |
-| REQ-ECO-031 | 模组版本过低时拒绝进服并给出升级链接 | 目标 4 | P0 |
+| REQ-ECO-031 | 模组版本过低时拒绝进服，给出可点开的升级链接 | 目标 4 | P0 |
 | REQ-ECO-032 | 插件可用自己的语言文件显示文字 | 目标 3 | P0 |
 | REQ-ECO-040 | SDK 发布到 Maven Central | 目标 1 | P0 |
 | REQ-ECO-041 | 提供插件模板仓库与本地起服任务 | 目标 1 | P1 |
@@ -771,7 +784,7 @@
 | REQ-ECO-044 | 客户端模组发布到 Modrinth | 目标 4 | P0 |
 | REQ-ECO-045 | 推送版本标签触发发布工作流 | 目标 5 | P1 |
 | REQ-ECO-046 | 首方示例只用稳定面，CI 门禁拦截 | 目标 6 | P1 |
-| REQ-ECO-047 | 服主从 GitHub Release 下载服务端发行版 | 目标 1 | P0 |
+| REQ-ECO-047 | 每个版本标签的 Release 附服务端发行版 | 目标 1 | P0 |
 
 运行中禁用的三条需求 `REQ-ECO-015`、`REQ-ECO-016`、`REQ-ECO-017` 跟着 Q-PLUGIN-DISABLE-1 与 Q-PLUGIN-DISABLE-3 走：两项里选了任一项，三条按 P1 做；两项都不做，运行中禁用不会发生，三条移入 §2 非目标，`FLOW-PLUGIN-DISABLE` 改为占位行。
 
@@ -957,7 +970,7 @@ flowchart LR
 - 准入分两种登记：准入检查可以有多个，准入回调至多一个（`ADR-ECO-006`、`INV-ECO-003`）
 - 准入回调的方法签名不变，持有者仍是场景所有者（`ADR-PLAY-006`），准入检查第二期进 §8
 - 顺序：封禁与白名单、握手、转服票据、推资源包、载入存档、载入角色，然后准入检查，最后准入回调
-- 推资源包的位置取 §28 资源包推送与准入谁先的推荐
+- 推资源包的位置见 `ADR-ECO-011`：握手之后、载存档之前
 - 多个准入检查按插件启用顺序调用，第一个拒绝即断线，后面的检查与准入回调都不再调用
 - 玩家只看到拒绝方给的那句话，台账 `client_rejected` 加一个属性记拒绝方的插件 id 或 `synaxis`
 - 准入检查的拒绝、`Admission.Reject` 与 `Exit.Kick` 的原因都改收 Adventure 的 `Component`
@@ -1024,31 +1037,37 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 
 ### 6.3 客户端能力目录
 
-能力是模组能替插件做的事。插件在服务端声明要用哪些能力，宿主按 `docs/DESIGN-PLAY.md` W1 的按通道协商结果判定放不放行（`ADR-ECO-013`、`RULE-ECO-011`）。一部分能力原版客户端加资源包就能做到，模组只需保证每个玩家都装着同一套基础；另一部分要模组自己实现，加一项就要发一版模组（`ADR-ECO-010`）。描述文件 `requiredCapabilities` 用的能力 id 第二期在 §8 定。
+能力是模组能替插件做的事。只有模组自己实现的能力才有能力 id，每个 id 对应「通道加最低版本」。插件在描述文件 `requiredCapabilities` 里声明，宿主把它折算成对应通道的最低版本，与插件 `ChannelSpec` 声明的取较大的一个，走 `docs/DESIGN-PLAY.md` W1 同一条断线路径（`ADR-ECO-013`、`RULE-ECO-011`）。资源包承载的能力没有 id，装了模组、推了必需包就有。加一项模组能力就要发一版模组（`ADR-ECO-010`），能力 id 的取值第二期在 §8 定。
 
-| 能力 | 承载 | 首批内容 | 现状 |
-| --- | --- | --- | --- |
-| 界面 | `synaxis:play` 通道 | 小部件目录加只含数据的布局树，见 `ADR-ECO-014` | 已有文字、计时器、计分板、面板四种小部件 |
-| 模型与贴图 | 插件资源包加 `minecraft:item_model` 组件 | 物品与展示实体用插件自己的模型 | 引擎已有该组件，宿主还没接资源包 |
-| 音效 | 资源包的 `sounds.json` 加原版播放音效包 | 插件命名空间下的新音效 | 原版机制可用，宿主还没接资源包 |
-| 文字 | 资源包的语言文件 | 以插件 id 开头的翻译键，组件仍带回退文本 | 只读模组自带的两份语言文件 |
-| 相机 | `synaxis:play` 的场景相机 | 原版第一人称与俯视透视 | API 只有原版相机，客户端忽略相机字段 |
-| 输入 | `synaxis:play` 的动作键与光标 | 六个动作键、光标模式与点选 | 客户端只注册了一个动作键 |
-| 粒子 | 原版粒子包 | 原版粒子，自定义外观放第二批 | 原版粒子可用 |
-| 远景 | `synaxis:farview` 通道 | 沿用 M3-G | 已实现 |
+| 能力 | 承载 | 能力 id | 首批内容 | 现状 |
+| --- | --- | --- | --- | --- |
+| 界面 | `synaxis:play` 通道 | 有 | 小部件目录加只含数据的布局树，见 `ADR-ECO-014` | 已有文字、计时器、计分板、面板四种小部件 |
+| 相机 | `synaxis:play` 的场景相机 | 有 | 原版第一人称与俯视透视 | API 只有原版相机，客户端忽略相机字段 |
+| 输入 | `synaxis:play` 的动作键与光标 | 有 | 六个动作键、光标模式与点选 | 客户端只注册了一个动作键 |
+| 模型与贴图 | 插件资源包加 `minecraft:item_model` 组件 | 无 | 物品与展示实体用插件自己的模型 | 引擎已有该组件，宿主还没接资源包 |
+| 音效 | 资源包的 `sounds.json` 加原版播放音效包 | 无 | 插件命名空间下的新音效 | 原版机制可用，宿主还没接资源包 |
+| 文字 | 资源包的语言文件 | 无 | 以插件 id 加点开头的翻译键，组件仍带回退文本 | 只读模组自带的两份语言文件 |
+| 粒子 | 原版粒子包 | 无 | 原版粒子，自定义外观要模组新能力，放第二批 | 原版粒子可用 |
+
+远景 `synaxis:farview` 按 `ADR-ECO-024` 作示例，不进能力目录。
 
 ### 6.4 资源下发
 
-1. 作者把资源放在插件 jar 的 `assets/<插件 id>/` 下，语言键以插件 id 开头，覆盖别的命名空间要声明
-2. 宿主起服时为每个启用的插件打一个资源包，算 SHA-1，包 id 由插件 id 派生
-3. 宿主用内置 HTTP 端点提供这些包，服主也可以改配外部地址
-4. 玩家进服时，宿主在配置阶段按插件加载顺序推送全部包，等客户端回报，最长 120 秒，超时断线
-5. 客户端按 SHA-1 缓存，没变的包不重下
-6. 插件把资源声明为必需时，下载失败或被拒就拒绝进服
+1. 作者把资源放在插件 jar 的 `pack/assets/<插件 id>/` 下，与打进 jar 的库自带的 `assets/` 分开
+2. 语言键以插件 id 加点开头，覆盖别的命名空间或别人的键要声明，见 `RULE-ECO-010`
+3. 插件资源包不得带 `shaders/`，着色器在显卡上执行，算代码，见 `ADR-ECO-010`
+4. 宿主起服时为每个启用的插件可复现地打一个包，同一输入得同一 SHA-1，包 id 由插件 id 派生
+5. 宿主用内置 HTTP 端点提供这些包，服主也可以改配外部地址
+6. 玩家进服时，握手与能力判定之后、载入存档之前，按插件加载顺序把全部包作为必需包推送
+7. 宿主等客户端回报，最长 120 秒，超时或任一包失败就断线，这时还没占存档租约
+8. 之后才载入存档与角色，跑准入检查与准入回调，拒绝原因能用插件自己的语言文件
+9. 客户端按 SHA-1 缓存，官方模组调高原版的缓存上限，没变的包不重下
 
-原版按文件类型合并资源包：语言文件按键合并，与文件放在哪个命名空间无关；`sounds.json`、图集与字体是叠加，不是整份覆盖。所以命名空间只管文件路径，语言键另加前缀规则，叠加类文件写进别的命名空间也算覆盖、要声明，逐类规则第二期在 §8 定。这几条是原版客户端的行为，本仓库还没实测，M4-E 用真客户端核对。
+原版按文件类型合并资源包：语言文件按键合并，与文件放在哪个命名空间无关；`sounds.json`、图集与字体是叠加，不是整份覆盖。所以命名空间只管文件路径，语言键另加前缀规则，叠加类文件写进别的命名空间也算覆盖、要声明，逐类规则第二期在 §8 定。
 
-引擎已有原版的资源包推送包与 `Player#sendResourcePacks`，配置阶段会等客户端回报，但等的是不带超时的 `join()`（`ConnectionManager.java:528-529`），第 4 步的上限要补上。宿主、插件 API 与模组都还没用上资源包。
+原版 26.2 客户端每次启动都把下载缓存修剪到 20 个文件（`DownloadQueue` 的 `MAX_KEPT_PACKS`），单服 50 个插件时，玩家每次重开游戏都要重下 30 个以上的包。官方模组用 mixin 把上限调到单服包数上限的 3 倍，即 150 个。包也必须可复现：条目按路径排序、时间戳与压缩参数固定，否则每次起服 SHA-1 都变，等于每次重启全员重下。以上两段来自原版客户端的字节码，本仓库还没实测，M4-E 用真客户端核对。
+
+引擎已有原版的资源包推送包与 `Player#sendResourcePacks`，必需包失败即踢（`Player.java:1950-1951`）。配置阶段会等客户端回报，但等的是不带超时的 `join()`（`ConnectionManager.java:528-529`），第 7 步的上限要补上；今天它在准入之后才等包，第 6 步要把推包挪到载存档之前。宿主、插件 API 与模组都还没用上资源包。
 
 `docs/DESIGN-M2.md` 的非目标与 `docs/DESIGN-PLAY.md` 的 `ADR-PLAY-007` 都写了不做服务端资源包，本分册取代这两处（`ADR-ECO-010`、`ADR-ECO-011`）；`ADR-PLAY-007` 里翻译键带回退文本的做法不变。确认框、托管默认值与原版客户端放行三件事见 §28 风险与开放问题。
 
@@ -1059,11 +1078,11 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 | `plugin-api`、`protocol` | Maven Central，组 `io.github.bearisbug.synaxis` | 稳定面，范围见 `ADR-ECO-021` |
 | 引擎 `synaxis` | Maven Central，同一组 | 稳定面引到的类型承诺，其余不承诺 |
 | `testing` | Maven Central，同一组 | 插件测试工具，不承诺兼容 |
-| 服务端发行版 | GitHub Release 附件 | 服主下载即用 |
-| 客户端模组 | Modrinth | 按通道协商版本 |
+| 服务端发行版 | 每个版本标签的 GitHub Release 附件 | 服主下载即用 |
+| 客户端模组 | Modrinth，能否上架见 §28 Modrinth 的内容规则 | 每条通道的旧版本至少支持 90 天 |
 | 插件模板 | GitHub 模板仓库 | 跟随最新 SDK |
 
-现状：发布插件已配好 POM 与 CI 签名，但 Maven Central 的聚合只含引擎与 `testing`，`plugin-api` 与 `protocol` 不在里面；仓库没有发布工作流，构建版本取环境变量、默认是 `dev`。
+现状：发布插件已配好 POM 与 CI 签名，但 Maven Central 的聚合只含引擎与 `testing`，`plugin-api` 与 `protocol` 不在里面，配的是校验通过即自动发布。仓库没有发布工作流，Actions secrets 是空的，构建版本取环境变量、默认是 `dev`。GitHub Release 已有 v0.1.0、v0.2.0、v0.3.0，附 `plugin-api.jar` 与 `protocol.jar`；根目录的 `jitpack.yml` 让 JitPack 能按标签现场构建。JitPack 不作发布渠道，M4-H 删掉 `jitpack.yml`。
 
 `plugin-api` 以 api 依赖再导出整个引擎，公开签名直接用 `Player`、`Instance` 这些引擎类型，而兼容门在 CI 里只拿 GitHub Release `v0.3.0` 的 `plugin-api.jar`、`protocol.jar` 比对，引擎类型改了拦不住（`ADR-ECO-021` 补上）。描述文件的 `apiVersion` 今天要求与宿主严格相等，要按语义化版本改成范围匹配，由 §6.2 插件平台定义。
 
@@ -1197,15 +1216,20 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
   - Consequences：
     - 作者不写客户端代码，每加一种模组能力都要发一版模组
     - 取代 `ADR-PLAY-007` 里不做服务端资源包的一半，翻译键带回退文本的一半不变
-- **`ADR-ECO-011` 每个插件一个原版资源包，配置阶段推送** — Status: Proposed
-  - Context：引擎已有原版多资源包推送，配置阶段会等客户端回报
-  - Decision：宿主为每个插件打一个包，包 id 由插件 id 派生，客户端按 SHA-1 缓存
+    - 资源包里的着色器在显卡上执行，算代码，插件资源包不得带 `shaders/`
+- **`ADR-ECO-011` 每个插件一个原版必需资源包，先推包再载存档** — Status: Proposed
+  - Context：引擎已有原版多资源包推送，原版客户端启动时把下载缓存修剪到 20 个文件
+  - Decision：每个插件可复现地打一个包，在握手之后、载存档之前作为必需包推送，等回报最长 120 秒
   - Alternatives：
     - 合成一个总包：任一插件改动，全员要重下整包
     - 模组自带下载器：要多写下载与资源重载代码，原版已经有
+    - 准入之后再推包：等包时占着存档租约，拒绝原因用不了插件的语言文件
+    - 让插件选必需或可选：描述文件多一个字段，缺包进服只会缺图
   - Consequences：
+    - 官方模组用 mixin 把缓存上限调到 150 个，没装模组的客户端仍按 20 个算
+    - 被拒的玩家也下过一次包，按 SHA-1 缓存，下次不重下
+    - 一个包的地址挂了全员进不来，外部地址要有 Runbook，第二期写进 §22
     - 宿主要提供 HTTP 端点或接受外部地址，包的推送顺序决定覆盖优先级
-    - 配置阶段等客户端回报要有上限，超时断线，默认值见 §6.4 资源下发
 - **`ADR-ECO-012` 资源命名空间等于插件 id** — Status: Proposed
   - Context：两个插件改同一份原版资源时只有一个生效，今天作者和服主都看不出来
   - Decision：资源只放在自己 id 的命名空间，语言键以自己的 id 开头，覆盖别的要声明，没声明的插件拒载
@@ -1216,25 +1240,35 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
     - 互不依赖的两个插件覆盖同一资源路径时，后推的生效，起服汇总点名路径与双方
     - 拒载只拒这一个插件与硬依赖它的插件，整服拒不拒启见 Q-PLUGIN-LOAD-1
     - 声明字段是 §6.2.1 的 `resourceOverrides`
-- **`ADR-ECO-013` 能力目录是通道版本到能力的对照表** — Status: Proposed
-  - Context：`docs/DESIGN-PLAY.md` W1 已经设计了按通道协商版本
-  - Decision：每项能力对应「通道加最低版本」，插件声明必需能力，宿主按协商结果判定
+    - 保留 id 除了 `synaxis`，还要加 `minecraft` 与官方整合包里各模组的 id
+- **`ADR-ECO-013` 能力 id 折算成通道的最低版本** — Status: Proposed
+  - Context：`docs/DESIGN-PLAY.md` W1 已有按通道协商与必需通道断线，资源包承载的能力没有通道
+  - Decision：只有模组实现的能力有 id，宿主把它折算成通道最低版本，与 `ChannelSpec` 取较大者
   - Alternatives：
     - 每项能力一条新通道：通道数随能力增长，W1 的协商要重做
-  - Consequences：加能力就给对应通道升版本，模组随之发版
+    - 模组在握手里另报能力 id 集合：hello 要加字段，能力与协议成了两套编号
+  - Consequences：
+    - 缺能力与缺必需通道走 W1 同一条断线路径
+    - 加能力就给对应通道升版本，模组随之发版，资源包承载的项靠必需包兜住
 - **`ADR-ECO-014` 界面能力加只含数据的布局树** — Status: Proposed
   - Context：四种 HUD 小部件撑不起插件自己的界面，`ADR-PLAY-004` 否掉了服务端下发布局
   - Decision：加一种布局树，元素有容器、文字、图片、按钮、进度条、列表，不含脚本
   - Alternatives：
     - 只加小部件种类：插件每要一种新界面都得等模组发版
     - 下发脚本：违背 `ADR-ECO-010`
-  - Consequences：要改 `ADR-PLAY-004`，布局树的上限与校验在第二期定
+  - Consequences：
+    - 要改 `ADR-PLAY-004`，布局树的上限与校验在第二期定
+    - 图片只引用资源包里的贴图，不收 URL，客户端按地址拉图会暴露玩家 IP
+    - 按钮沿用动作每连接每秒 10 次的上限
 - **`ADR-ECO-020` 生态面向公开社区** — Status: Accepted
-  - Context：用户 2026-10-22 定生态面向公开社区
+  - Context：用户 2026-10-22 定生态面向公开社区，真正发布属于对外操作，执行前再问用户
   - Decision：SDK 发布到 Maven Central，模组发布到 Modrinth，稳定面做兼容承诺
   - Alternatives：
     - 先给自己与合作方：用 GitHub Packages，兼容承诺后置
-  - Consequences：发布撤不回，首次发布前先问用户，签名密钥与命名空间要长期维护
+    - 模组只发 GitHub Release：玩家手动装，没有 Modrinth 的更新提示
+  - Consequences：
+    - Central 上的发布撤不回，每次发布前都先问用户
+    - 签名密钥与命名空间要长期维护，Modrinth 能否上架见 §28 Modrinth 的内容规则
 - **`ADR-ECO-021` 稳定面含两个模块与它们签名引到的引擎类型** — Status: Proposed
   - Context：`plugin-api` 以 api 依赖再导出引擎，公开签名直接用 `Player`、`Instance` 这些引擎类型
   - Decision：稳定面是两个模块的导出包，加上它们公开与 protected 签名逐层引到的引擎类型，由构建算出
@@ -1257,23 +1291,29 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
     - 弃用成员要标 `@Deprecated(since, forRemoval)`，发布说明列出弃用与移除
     - 有意的破坏性变更登记在仓内清单，兼容门放行清单里的项，发布说明从清单生成
     - 本地构建的版本是 `dev`，宿主拿它怎么比版本范围由 §6.2.1 定
-- **`ADR-ECO-023` 推送版本标签触发发布工作流，Central 排最后** — Status: Proposed
-  - Context：仓库没有发布工作流，构建版本默认是 `dev`，Maven Central 的发布撤不回
-  - Decision：推 `v*` 标签后取版本、全量检查，依次发 GitHub Release、Modrinth，最后发 Maven Central
+    - 兼容门比较基线与当前版本差在哪一位，再决定放不放行清单里的项
+    - 模组每条通道的旧版本至少支持 90 天，玩家只装最新模组也能进旧宿主
+- **`ADR-ECO-023` 推送版本标签触发发布，用户审批后执行，Central 排最后** — Status: Proposed
+  - Context：仓库没有发布工作流，Central 配的是校验通过即自动发布，发出去撤不回
+  - Decision：推 `v*` 标签后先检查，再等用户批准 `release` 环境，依次发 Release 草稿、Modrinth、Central
   - Alternatives：
     - 在本机手动发布：密钥落在本机，过程不可复现
-    - Central 改成发布前人工确认：每次发版都要用户去网页点一次
+    - Central 改成人工确认发布：用户要另去 Central 网页点，审批分散在两处
     - Central 排在前面：后面的步骤失败时，撤不回的版本已经发出去了
   - Consequences：
-    - 每一步按同一标签可重跑，已完成的跳过
-    - Release 资产固定叫 `plugin-api.jar` 与 `protocol.jar`，兼容门改取最新发布的 Release 作基线
-    - Maven Central、Modrinth 的令牌与 GPG 签名密钥由用户配进 GitHub Actions secrets
+    - 会话推 `v*` 标签前先问用户，环境审批是第二道闸
+    - 每一步按同一标签可重跑，已完成的跳过，Central 上全部坐标已在时跳过那一步
+    - Release 资产固定叫 `plugin-api.jar` 与 `protocol.jar`，兼容门改取最新公开的 Release 作基线
+    - 发布用的密钥先存 Bitwarden，再由用户配进 GitHub Actions secrets，清单见 §28 风险与开放问题
 - **`ADR-ECO-024` 首方玩法降为示例** — Status: Accepted
   - Context：用户 2026-10-22 定首方玩法降为示例，人力转到平台
   - Decision：rts、rush 与远景保持能跑与 CI 全绿，RTS 相机切片、W4b、W5 暂停
   - Alternatives：
     - 继续当产品推进：平台与玩法并行，排期更长
-  - Consequences：示例按 `ADR-ECO-021` 只用稳定面，暂停项在 M4-H 之后重排
+  - Consequences：
+    - 6b 里通用的相机与输入属于能力目录，并入 M4-F，RTS 专属的单位渲染与选中框暂停
+    - 同属示例的 W3 与 W4a 一并暂停，暂停项在 M4-I 之后重排
+    - 示例按 `ADR-ECO-021` 只引用稳定面内的类型，迁移排在 M4-G
 
 ## 19. 验收 / 测试
 
@@ -1298,6 +1338,30 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 - REQ-ECO-017：按 Q-PLUGIN-DISABLE-1、Q-PLUGIN-DISABLE-3 的结论写；选熔断时，60 秒内抛 20 次异常即禁用
 - REQ-ECO-018：第一个插件的停用回调卡死时，后面每个插件的停用回调仍至少等满保底时长
 - REQ-ECO-019：持准入回调的插件起服时不建实例、另一个插件建两个实例，进程照常进玩法模式
+
+资源下发、客户端能力与 SDK 需求的验收口径，第二期同样转成场景：
+
+- REQ-ECO-020：jar 里 `pack/assets/<id>/` 下的模型与贴图进了它的包，jar 根的 `assets/` 不进
+- REQ-ECO-021：同一组插件 jar 起服两次，每个包的 SHA-1 都不变
+- REQ-ECO-022：配外部地址时宿主把包导出到目录，推送的地址指向外部，起服核不核外部 SHA-1 第二期定
+- REQ-ECO-023：三个插件各带资源，真客户端进服后三个包都加载，后推的覆盖先推的
+- REQ-ECO-024：客户端拒绝或下载失败时断线，存档租约没被占用
+- REQ-ECO-025：插件声明必需的界面能力，旧模组没授予对应通道版本时以模组过旧断线
+- REQ-ECO-026：布局树超过元素数、层数或字节上限时宿主拒发，上限第二期定
+- REQ-ECO-027：物品的 `minecraft:item_model` 指向插件模型，真客户端截图显示插件模型
+- REQ-ECO-028：插件把相机切到俯视透视，真客户端视角改变，切回原版后恢复
+- REQ-ECO-029：插件注册六个动作键与点选，点选的目标是实体还是方块第二期定
+- REQ-ECO-030：插件播放自己命名空间下的音效，真客户端播放出来
+- REQ-ECO-031：旧模组被拒时，断线界面的升级链接点得开
+- REQ-ECO-032：插件的语言键按玩家语言显示译文，键不带 id 前缀的插件拒载
+- REQ-ECO-040：仓库外的空工程只依赖 Maven Central 上的 `plugin-api` 就能编译
+- REQ-ECO-041：用模板仓库建的插件跑本地起服任务能进服
+- REQ-ECO-042：改一个稳定面方法的签名又不登记，CI 的兼容门红
+- REQ-ECO-043：弃用成员在承诺期内被删，CI 红
+- REQ-ECO-044：发布后 Modrinth 上有同版本号的模组
+- REQ-ECO-045：推 v* 标签后工作流停在审批，批准后依次发布
+- REQ-ECO-046：示例引用一个稳定面之外的引擎类，架构测试红
+- REQ-ECO-047：每个版本标签的 Release 附服务端发行版的压缩包
 
 ## 20. 埋点 / 分析事件
 
@@ -1325,18 +1389,21 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 
 ## 26. 里程碑
 
-生态是项目的第四个里程碑 M4。M4-C 与 M4-D 互不依赖，可以并行；M4-E 要等 M4-C 的插件 jar 加载，M4-F 要等 M4-D；M4-G 在 M4-B 之后随时可做；M4-H 要等其余全部完成。估时是会话的工作日，第二期契约成稿后重估。
+生态是项目的第四个里程碑 M4。本机一次只跑一个重任务，同一会话的里程碑串行：生产就绪会话依次做 M4-C、M4-D，光照会话依次做 M4-E、M4-G、M4-H。M4-E 要等 M4-C 的插件 jar 加载，M4-F 要等 M4-D，M4-H 要等 M4-C 与 M4-G，因为 Central 上第一个公开版就要带新描述文件与稳定面门禁，发出去撤不回。M4-I 要等其余全部完成。估时是会话的工作日，第二期契约成稿后重估；M4-C 待生产就绪会话估。
 
-| 里程碑 | 产出与退出条件 | 负责 | 估时 | 状态 |
-| --- | --- | --- | --- | --- |
-| M4-A 方向签字 | 本分册第一期签字，`docs/DESIGN.md` §2 与 §28 的交接改完 | 两个会话 | 1 天 | 进行中 |
-| M4-B 契约成稿 | 其余契约节补全并签字，`docs/TEST.md` 写好用例 | 两个会话 | 4～5 天 | 未开始 |
-| M4-C 插件平台 | 见 §6.2 插件平台 | 生产就绪会话 | 待估 | 未开始 |
-| M4-D 能力协商 | `docs/DESIGN-PLAY.md` 的 W0 与 W1 合入 | 生产就绪会话 | 4～5 天 | 未开始 |
-| M4-E 资源下发 | 插件资源打包、托管与配置阶段推送，真客户端 CI 判 | 光照会话 | 4～6 天 | 未开始 |
-| M4-F 能力首批 | 布局树、相机、输入与模型，示例插件用上 | 两个会话 | 8～12 天 | 未开始 |
-| M4-G SDK 首发 | 发布工作流、Maven Central、Modrinth 与模板仓库 | 光照会话 | 3～5 天 | 未开始 |
-| M4-H 生态验收 | 仓库外两个插件互相依赖、带资源、用能力，真客户端 CI 全绿 | 两个会话 | 3～4 天 | 未开始 |
+| 里程碑 | 产出与退出条件 | 需求 | 负责 | 估时 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| M4-A 方向签字 | 本分册第一期签字，`docs/DESIGN.md` §2 与 §28 的交接改完 | — | 两个会话 | 1 天 | 进行中 |
+| M4-B 契约成稿 | 其余契约节补全并签字，`docs/TEST.md` 写好用例 | — | 两个会话 | 4～5 天 | 未开始 |
+| M4-C 插件平台 | 见 §6.2 插件平台，两个示例在新加载器下照常跑 | REQ-ECO-001、REQ-ECO-002、REQ-ECO-003、REQ-ECO-004、REQ-ECO-005、REQ-ECO-006、REQ-ECO-007、REQ-ECO-008、REQ-ECO-009、REQ-ECO-010、REQ-ECO-011、REQ-ECO-012、REQ-ECO-013、REQ-ECO-014、REQ-ECO-015、REQ-ECO-016、REQ-ECO-017、REQ-ECO-018、REQ-ECO-019 | 生产就绪会话 | 待估 | 未开始 |
+| M4-D 能力协商 | `docs/DESIGN-PLAY.md` 的 W0 与 W1 合入 | REQ-ECO-025 | 生产就绪会话 | 4～5 天 | 未开始 |
+| M4-E 资源下发 | 可复现打包、托管、载存档前推包，模组调高缓存上限，真客户端 CI 判 | REQ-ECO-020、REQ-ECO-021、REQ-ECO-022、REQ-ECO-023、REQ-ECO-024、REQ-ECO-030、REQ-ECO-032 | 光照会话 | 5～7 天 | 未开始 |
+| M4-F 能力首批 | 布局树、W2 的小部件、相机、输入与模型，示例插件用上 | REQ-ECO-026、REQ-ECO-027、REQ-ECO-028、REQ-ECO-029、REQ-ECO-031 | 两个会话 | 10～14 天 | 未开始 |
+| M4-G 稳定面与示例 | 构建算出稳定面并接兼容门，示例去掉内部类引用，加示例门禁 | REQ-ECO-042、REQ-ECO-043、REQ-ECO-046 | 光照会话 | 4～6 天 | 未开始 |
+| M4-H SDK 首发 | 发布工作流与审批环境、Maven Central、Modrinth、模板仓库，发布前问用户 | REQ-ECO-040、REQ-ECO-041、REQ-ECO-044、REQ-ECO-045、REQ-ECO-047 | 光照会话 | 3～5 天 | 未开始 |
+| M4-I 生态验收 | 仓库外两个插件互相依赖、带资源、用能力，真客户端 CI 全绿 | — | 两个会话 | 3～4 天 | 未开始 |
+
+`docs/DESIGN-PLAY.md` 的波次去向：W0、W1 就是 M4-D；W2 的小部件并入 M4-F；6b 里通用的相机与输入并入 M4-F，RTS 专属的单位渲染与选中框暂停；W3、W4a、W4b、W5 是示例，暂停；W6、W7 在 M4-I 之后重排。
 
 ## 27. 上线后度量与复盘
 
@@ -1346,18 +1413,24 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 
 | 类型 | 描述 | 负责人 | 何时需拍板 | 谁定 | 卡住 |
 | --- | --- | --- | --- | --- | --- |
-| Open Question | 进服时的资源包确认框，由模组自动接受，还是保留原版确认框 | Bearisbug | 资源下发开工前 | 产品 | FLOW-ASSET-JOIN |
-| Open Question | 所有插件都没声明必需能力时，放不放行没装模组的原版客户端 | Bearisbug | 契约层成稿前 | 产品 | FLOW-ASSET-JOIN |
-| Open Question | 资源包托管默认用宿主内置 HTTP，还是要求服主给外部地址 | 光照会话 | M4-E 开工前 | 技术 | FLOW-ASSET-PACK |
-| Open Question | `docs/DESIGN.md` 的项目画像是否从内部系统升为生产产品 | 光照会话 | M4-B 成稿前 | 技术 | 不卡 |
-| 前置 | 首次发布前，用户在 Maven Central 用 GitHub 账号验证 `io.github.bearisbug` 命名空间 | Bearisbug | M4-G 开工前 | — | — |
-| 前置 | 用户在 Modrinth 建项目页，把上传令牌配进 GitHub Actions secrets | Bearisbug | M4-G 开工前 | — | — |
-| 前置 | 用户把 Maven Central 的发布令牌与 GPG 签名密钥配进 GitHub Actions secrets | Bearisbug | M4-G 开工前 | — | — |
+| Open Question | 进服时的资源包确认框：推荐模组只对完成 Synaxis 握手的服自动接受，其余服保留原版确认框 | Bearisbug | 资源下发开工前 | 产品 | FLOW-ASSET-JOIN |
+| Open Question | 没装模组的原版客户端：推荐一律不放行，给「未装模组」的断线原因，插件作者能确信玩家都有模组 | Bearisbug | 契约层成稿前 | 产品 | FLOW-ASSET-JOIN |
+| Open Question | 资源包托管：推荐单进程服默认内置 HTTP，分片多于 1 个或包合计超过 64 MiB 时要求外部地址 | 光照会话 | M4-E 开工前 | 技术 | FLOW-ASSET-PACK |
+| Open Question | `docs/DESIGN.md` 的项目画像：推荐升为生产产品，与本分册一致，M4-B 补齐它的 §3 与 §20 | 光照会话 | M4-B 成稿前 | 技术 | 不卡 |
+| 前置 | 首次发布前，用户在 Maven Central 用 GitHub 账号验证 `io.github.bearisbug` 命名空间 | Bearisbug | M4-H 开工前 | — | — |
+| 前置 | 用户在 Modrinth 建项目页，生成只带 `VERSION_CREATE` 权限的上传令牌 | Bearisbug | M4-H 开工前 | — | — |
+| 前置 | 用户生成 GPG 签名密钥，公钥传到 Central 认的密钥服务器，如 keyserver.ubuntu.com | Bearisbug | M4-H 开工前 | — | — |
+| 前置 | GPG 私钥与口令、Central 的 Portal 令牌、Modrinth 令牌先存 Bitwarden，再配进 Actions secrets | Bearisbug | M4-H 开工前 | — | — |
+| 前置 | 用户在 GitHub 建 `release` 环境，把自己设为必需审批人 | Bearisbug | M4-H 开工前 | — | — |
+| Open Question | Modrinth 的内容规则第 6 条不许主要由 AI 产出的项目公开，模组上不上 Modrinth、贴不贴 AI 标签 | Bearisbug | SDK 首发开工前 | 产品 | FLOW-SDK-RELEASE |
 | 风险 | 插件拥有完整 JVM 权限，恶意插件能读写服主机器上的任意文件 | Bearisbug | — | — | — |
-| 风险 | 资源包变更后在线玩家同时重下，宿主出站带宽可能打满 | 光照会话 | — | — | — |
+| 风险 | 资源包变更后在线玩家同时重下，单分片 500 人约 62.5 GiB 出站，按分片数相乘 | 光照会话 | — | — | — |
+| 风险 | 客户端下载资源包时带玩家名与 UUID 请求头，外部地址的托管方会拿到，服主文档要写明 | 光照会话 | — | — | — |
+| 风险 | 原版断线界面里的链接点不开，可点的升级链接要由模组画，第一个公开版就得带上 | 光照会话 | — | — | — |
 | 交接 | `docs/DESIGN-PLAY.md` §6.4 的「服务端资源包不做」与只读模组语言文件，改为引用本分册 §6.4 | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `ADR-PLAY-004` 否掉的服务端下发布局，若 `ADR-ECO-014` 签字就标为部分被取代 | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `ADR-PLAY-007` 标为部分被 `ADR-ECO-010` 取代：资源包要做，翻译键带回退文本不变 | 生产就绪会话 | M4-A 签字后 | — | — |
+| 交接 | §6.2.1 的保留 id 加上 `minecraft` 与官方整合包里各模组的 id | 生产就绪会话 | M4-B 成稿前 | — | — |
 | 交接 | `docs/DESIGN-PLAY.md` §26 的 6b、W4b、W5 标暂停，其余波次按本分册 §26 重排 | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `docs/DESIGN-M2.md` 非目标里的服务端资源包分发，改为引用本分册 | 光照会话 | M4-A 签字后 | — | — |
 | Open Question | 版本范围的写法：推荐比较式，只认 `>=` 与 `<`，空格表示同时满足；多数作者要求 Maven 区间时改 | 生产就绪会话 | 本分册契约成稿前 | 技术 | FLOW-PLUGIN-LOAD |
@@ -1366,8 +1439,7 @@ Tab 列表可见性也是全进程单槽（`TabListSlot.java:33-38`），第二�
 | Open Question | 第三方插件能不能连自己的数据库：推荐能，驱动打进自己的 jar，宿主的库与连接池仍不可见 | Bearisbug | 本分册第一期签字时 | 产品 | 不卡 |
 | Open Question | 本地构建的 dev 宿主怎么校验 `apiVersion`：推荐跳过范围校验，起服汇总里逐个插件提示一行；正式版本号的宿主严格校验 | 生产就绪会话 | 本分册契约成稿前 | 技术 | FLOW-PLUGIN-LOAD |
 | Open Question | 可见面签名门禁的范围：推荐 public 与 protected 都查，标 Internal 的类豁免，`DynamicChunk` 两个字段改走方法 | 生产就绪会话 | 本分册契约成稿前 | 技术 | 不卡 |
-| Open Question | 资源包推送与准入谁先：推荐握手之后、载存档之前先推包，等包时不占存档租约，拒绝原因也能用插件的语言文件 | 光照会话 | 本分册契约成稿前 | 技术 | FLOW-ASSET-JOIN |
-| Open Question | 插件语言文件改走资源包后，`API-PROD-029` 的翻译键门禁怎么改、归谁 | 两个会话 | 本分册契约成稿前 | 技术 | 不卡 |
+| Open Question | 翻译键门禁：推荐宿主起服时按 `RULE-ECO-010` 查插件的键，`API-PROD-029` 只管宿主与模组的键 | 生产就绪会话 | 本分册契约成稿前 | 技术 | 不卡 |
 | 风险 | Tab 列表可见性也是全进程单槽，两个插件都设置时第二个抛异常，本期没改 | 生产就绪会话 | — | — | — |
 | 交接 | `docs/DESIGN-M2.md` 非目标里的插件依赖、熔断、每插件 classloader 与注解处理器，改为引用本分册 | 生产就绪会话 | M4-A 签字后 | — | — |
 | 交接 | `docs/DESIGN-M2.md` 插件相关的需求与接口，含起服模式判定与拒绝原因类型，按本分册 §6.2 插件平台改写 | 生产就绪会话 | M4-A 签字后 | — | — |

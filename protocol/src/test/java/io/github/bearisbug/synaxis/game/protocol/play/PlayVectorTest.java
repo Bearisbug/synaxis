@@ -89,38 +89,38 @@ class PlayVectorTest {
 
     static List<Vector> vectors() {
         return List.of(
-                new Vector("s2c_scene.bin", () -> new S2CScene(1, "rush:lobby", text("Lobby"), 0, 0,
-                        List.of(new S2CScene.Action(0, "rush:queue", text("Queue"), 2000)))),
+                new Vector("s2c_scene.bin", () -> new S2CScene(1, "probe:lobby", text("Lobby"), 0, 0,
+                        List.of(new S2CScene.Action(0, "probe:queue", text("Queue"), 2000)))),
                 new Vector("s2c_hud.bin", () -> new S2CHud(List.of(
-                        new ClearOwner("rush"),
-                        new SetWidget("rush", "hint", Widget.text(Widget.LEFT, 0, text("Press 1 to queue"), 0)),
-                        new SetWidget("rush", "timer", Widget.timer(Widget.TOP_CENTER, 0, text("Time left"), 45_000, true)),
-                        new SetWidget("rush", "score", Widget.scoreboard(Widget.TOP_RIGHT, 0, text("Score"), List.of(
+                        new ClearOwner("probe"),
+                        new SetWidget("probe", "hint", Widget.text(Widget.LEFT, 0, text("Press 1 to queue"), 0)),
+                        new SetWidget("probe", "timer", Widget.timer(Widget.TOP_CENTER, 0, text("Time left"), 45_000, true)),
+                        new SetWidget("probe", "score", Widget.scoreboard(Widget.TOP_RIGHT, 0, text("Score"), List.of(
                                 new Row(text("Steve"), "12", true), new Row(text("Alex"), "7", false)))),
-                        new SetWidget("rush", "result", Widget.panel(text("Result"),
+                        new SetWidget("probe", "result", Widget.panel(text("Result"),
                                 List.of(new Row(text("Steve"), "12", true)),
-                                List.of(new Button("rush:back", text("Back to lobby"))))),
-                        new RemoveWidget("rush", "capture")))),
+                                List.of(new Button("probe:back", text("Back to lobby"))))),
+                        new RemoveWidget("probe", "capture")))),
                 new Vector("s2c_action_result.bin", () -> new S2CActionResult(1, ActionResultCode.OK, EncodedComponent.NONE, 2000)),
                 new Vector("c2s_scene_ready.bin", () -> new C2SSceneReady(1)),
-                new Vector("c2s_action.bin", () -> new C2SAction(1, 1, "rush:queue", new C2SAction.None())),
+                new Vector("c2s_action.bin", () -> new C2SAction(1, 1, "probe:queue", new C2SAction.None())),
 
                 new Vector("edge/s2c_scene.bin", () -> new S2CScene(MAX, "edge:" + "s".repeat(59), text("a".repeat(2045)),
                         255, 254, edgeActions())),
                 new Vector("edge/s2c_hud.bin", () -> new S2CHud(edgeOps())),
-                new Vector("edge/s2c_hud-unknown-prop.bin", () -> new S2CHud(List.of(new SetWidget("rush", "timer",
+                new Vector("edge/s2c_hud-unknown-prop.bin", () -> new S2CHud(List.of(new SetWidget("probe", "timer",
                         new Widget(Widget.TIMER, Widget.TOP_CENTER, 0, List.of(
                                 new Prop(Widget.PROP_TEXT, new PropValue.Component(text("Time left"))),
                                 new Prop(Widget.PROP_REMAINING_MS, new PropValue.VarInt(45_000)),
                                 new Prop(Widget.PROP_RUNNING, new PropValue.Bool(true)),
                                 new Prop(99, new PropValue.VarInt(7)))))))),
-                new Vector("edge/s2c_hud-unknown-kind.bin", () -> new S2CHud(List.of(new SetWidget("rush", "capture",
+                new Vector("edge/s2c_hud-unknown-kind.bin", () -> new S2CHud(List.of(new SetWidget("probe", "capture",
                         new Widget(3, Widget.BOTTOM, 0, List.of(
                                 new Prop(1, new PropValue.Component(text("Capture A"))),
                                 new Prop(4, new PropValue.F32(0.4f)),
                                 new Prop(5, new PropValue.F32(0.1f)),
                                 new Prop(6, new PropValue.VarLong(0xFF00FF00L)))))))),
-                new Vector("edge/s2c_action_result.bin", () -> new S2CActionResult(MAX, 255, text("rush.reason"), 600_000)),
+                new Vector("edge/s2c_action_result.bin", () -> new S2CActionResult(MAX, 255, text("probe.reason"), 600_000)),
                 new Vector("edge/c2s_scene_ready.bin", () -> new C2SSceneReady(MAX)),
                 new Vector("edge/c2s_action.bin", () -> new C2SAction(MAX, MAX, "edge:" + "q".repeat(59),
                         new C2SAction.OfBlock(MIN, -64, MAX))),
@@ -178,12 +178,12 @@ class PlayVectorTest {
                 new Prop(24, new PropValue.F32(Float.MAX_VALUE)),
                 new Prop(25, new PropValue.Bool(true)),
                 new Prop(MAX, new PropValue.VarInt(7))))));
-        ops.add(new SetWidget("rush", "score", Widget.scoreboard(Widget.TOP_RIGHT, MAX, text("Score"), rows(16))));
+        ops.add(new SetWidget("probe", "score", Widget.scoreboard(Widget.TOP_RIGHT, MAX, text("Score"), rows(16))));
         final List<Button> buttons = new ArrayList<>();
-        for (int i = 0; i < 4; i++) buttons.add(new Button("rush:b" + i, text("B" + i)));
-        ops.add(new SetWidget("rush", "result", Widget.panel(text("Result"), rows(12), buttons)));
-        ops.add(new SetWidget("rush", "timer", Widget.timer(Widget.BOTTOM, 0, text("t"), MAX, false)));
-        for (int i = 0; i < 27; i++) ops.add(new RemoveWidget("rush", "w" + i));
+        for (int i = 0; i < 4; i++) buttons.add(new Button("probe:b" + i, text("B" + i)));
+        ops.add(new SetWidget("probe", "result", Widget.panel(text("Result"), rows(12), buttons)));
+        ops.add(new SetWidget("probe", "timer", Widget.timer(Widget.BOTTOM, 0, text("t"), MAX, false)));
+        for (int i = 0; i < 27; i++) ops.add(new RemoveWidget("probe", "w" + i));
         return ops;
     }
 

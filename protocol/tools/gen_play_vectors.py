@@ -200,16 +200,16 @@ def rows(count: int, highlight_odd: bool = True) -> list[tuple[bytes, str, bool]
 
 def canonical_hud() -> bytes:
     return s2c_hud([
-        op_clear("rush"),
-        op_set("rush", "hint", widget(TEXT, LEFT, 0, [p_component(1, text("Press 1 to queue")), p_varint(13, 0)])),
-        op_set("rush", "timer", widget(TIMER, TOP_CENTER, 0, [
+        op_clear("probe"),
+        op_set("probe", "hint", widget(TEXT, LEFT, 0, [p_component(1, text("Press 1 to queue")), p_varint(13, 0)])),
+        op_set("probe", "timer", widget(TIMER, TOP_CENTER, 0, [
             p_component(1, text("Time left")), p_varint(2, 45_000), p_bool(3, True)])),
-        op_set("rush", "score", widget(SCOREBOARD, TOP_RIGHT, 0, [
+        op_set("probe", "score", widget(SCOREBOARD, TOP_RIGHT, 0, [
             p_component(1, text("Score")), p_rows(7, [(text("Steve"), "12", True), (text("Alex"), "7", False)])])),
-        op_set("rush", "result", widget(PANEL, CENTER, 0, [
+        op_set("probe", "result", widget(PANEL, CENTER, 0, [
             p_component(1, text("Result")), p_rows(7, [(text("Steve"), "12", True)]),
-            p_buttons(10, [("rush:back", text("Back to lobby"))])])),
-        op_remove("rush", "capture"),
+            p_buttons(10, [("probe:back", text("Back to lobby"))])])),
+        op_remove("probe", "capture"),
     ])
 
 
@@ -235,35 +235,35 @@ def edge_hud() -> bytes:
             p_bool(25, True),
             p_varint(MAX, 7),
         ])),
-        op_set("rush", "score", widget(SCOREBOARD, TOP_RIGHT, MAX, [p_component(1, text("Score")), p_rows(7, rows(16))])),
-        op_set("rush", "result", widget(PANEL, CENTER, 0, [
+        op_set("probe", "score", widget(SCOREBOARD, TOP_RIGHT, MAX, [p_component(1, text("Score")), p_rows(7, rows(16))])),
+        op_set("probe", "result", widget(PANEL, CENTER, 0, [
             p_component(1, text("Result")), p_rows(7, rows(12)),
-            p_buttons(10, [(f"rush:b{i}", text(f"B{i}")) for i in range(4)])])),
-        op_set("rush", "timer", widget(TIMER, BOTTOM, 0, [
+            p_buttons(10, [(f"probe:b{i}", text(f"B{i}")) for i in range(4)])])),
+        op_set("probe", "timer", widget(TIMER, BOTTOM, 0, [
             p_component(1, text("t")), p_varint(2, MAX), p_bool(3, False)])),
     ]
-    ops += [op_remove("rush", f"w{i}") for i in range(27)]
+    ops += [op_remove("probe", f"w{i}") for i in range(27)]
     return s2c_hud(ops)
 
 
 def hint(props: list[bytes], slot: int = LEFT) -> bytes:
-    """One SET of rush/hint, a TEXT with the given props."""
-    return s2c_hud([op_set("rush", "hint", widget(TEXT, slot, 0, props))])
+    """One SET of probe/hint, a TEXT with the given props."""
+    return s2c_hud([op_set("probe", "hint", widget(TEXT, slot, 0, props))])
 
 
 VECTORS: list[tuple[str, str, bytes]] = [
     # canonical, one per message of version 1
-    ("c2s_action.bin", "C2S_ACTION scene_seq=1 action_seq=1 rush:queue target none",
-     c2s_action(1, 1, "rush:queue", no_target())),
+    ("c2s_action.bin", "C2S_ACTION scene_seq=1 action_seq=1 probe:queue target none",
+     c2s_action(1, 1, "probe:queue", no_target())),
     ("c2s_scene_ready.bin", "C2S_SCENE_READY scene_seq=1", c2s_scene_ready(1)),
     ("s2c_action_result.bin", "S2C_ACTION_RESULT action_seq=1 code=0 ok, no reason, cooldown 2000 ms",
      s2c_action_result(1, 0, b"", 2000)),
-    ("s2c_hud.bin", "S2C_HUD 6 ops: CLEAR_OWNER rush; SET rush/hint TEXT; SET rush/timer TIMER 45000 ms running; "
-                    "SET rush/score SCOREBOARD 2 rows; SET rush/result PANEL 1 row 1 button; REMOVE rush/capture",
+    ("s2c_hud.bin", "S2C_HUD 6 ops: CLEAR_OWNER probe; SET probe/hint TEXT; SET probe/timer TIMER 45000 ms running; "
+                    "SET probe/score SCOREBOARD 2 rows; SET probe/result PANEL 1 row 1 button; REMOVE probe/capture",
      canonical_hud()),
-    ("s2c_scene.bin", 'S2C_SCENE scene_seq=1 scene_id=rush:lobby title="Lobby" camera=0 cursor=0 '
-                      'actions=[slot 0 rush:queue "Queue" 2000 ms]',
-     s2c_scene(1, "rush:lobby", text("Lobby"), 0, 0, [(0, "rush:queue", text("Queue"), 2000)])),
+    ("s2c_scene.bin", 'S2C_SCENE scene_seq=1 scene_id=probe:lobby title="Lobby" camera=0 cursor=0 '
+                      'actions=[slot 0 probe:queue "Queue" 2000 ms]',
+     s2c_scene(1, "probe:lobby", text("Lobby"), 0, 0, [(0, "probe:queue", text("Queue"), 2000)])),
 
     # accepted boundary vectors
     ("edge/c2s_action-entity.bin",
@@ -277,46 +277,46 @@ VECTORS: list[tuple[str, str, bytes]] = [
 
     # refused: both ends must treat these as malformed
     ("edge/refused-c2s_action-target-3.bin", "refused: target 3, targets are 0..2",
-     c2s_action(1, 1, "rush:queue", u8(3))),
+     c2s_action(1, 1, "probe:queue", u8(3))),
     ("edge/refused-s2c_hud-17-props.bin", "refused: a TEXT with 17 props, over the cap of 16",
      hint([p_component(1, text("x")), p_varint(13, 0)] + [p_varint(30 + i, i) for i in range(15)])),
     ("edge/refused-s2c_hud-33-ops.bin", "refused: 33 ops, over the cap of 32",
-     s2c_hud([op_remove("rush", f"w{i}") for i in range(33)])),
+     s2c_hud([op_remove("probe", f"w{i}") for i in range(33)])),
     ("edge/refused-s2c_hud-component-2049.bin", "refused: a 2,049 B component, over the cap of 2,048",
      hint([p_component(1, b"\x08" + struct.pack(">H", 2046) + b"a" * 2046)])),
     ("edge/refused-s2c_hud-declared-prop-wrong-type.bin",
      "refused: remaining_ms of a TIMER carried as varlong, its declared type is varint",
-     s2c_hud([op_set("rush", "timer", widget(TIMER, TOP_CENTER, 0, [
+     s2c_hud([op_set("probe", "timer", widget(TIMER, TOP_CENTER, 0, [
          p_component(1, text("Time left")), p_varlong(2, 45_000)]))])),
     ("edge/refused-s2c_hud-op-4.bin", "refused: op 4, ops are 1..3",
-     s2c_hud([u8(4) + string("rush") + string("hint")])),
+     s2c_hud([u8(4) + string("probe") + string("hint")])),
     ("edge/refused-s2c_hud-panel-13-rows.bin", "refused: a PANEL with 13 rows, over its cap of 12",
-     s2c_hud([op_set("rush", "result", widget(PANEL, CENTER, 0, [p_component(1, text("Result")), p_rows(7, rows(13, highlight_odd=False))]))])),
+     s2c_hud([op_set("probe", "result", widget(PANEL, CENTER, 0, [p_component(1, text("Result")), p_rows(7, rows(13, highlight_odd=False))]))])),
     ("edge/refused-s2c_hud-panel-5-buttons.bin", "refused: a buttons value of 5 buttons, over the cap of 4",
-     s2c_hud([op_set("rush", "result", widget(PANEL, CENTER, 0, [
-         p_component(1, text("Result")), p_buttons(10, [(f"rush:b{i}", text("B")) for i in range(5)])]))])),
+     s2c_hud([op_set("probe", "result", widget(PANEL, CENTER, 0, [
+         p_component(1, text("Result")), p_buttons(10, [(f"probe:b{i}", text("B")) for i in range(5)])]))])),
     ("edge/refused-s2c_hud-panel-not-center.bin", "refused: a PANEL on TOP_LEFT, a PANEL is always CENTER",
-     s2c_hud([op_set("rush", "result", widget(PANEL, TOP_LEFT, 0, [p_component(1, text("Result"))]))])),
+     s2c_hud([op_set("probe", "result", widget(PANEL, TOP_LEFT, 0, [p_component(1, text("Result"))]))])),
     ("edge/refused-s2c_hud-scoreboard-17-rows.bin", "refused: a rows value of 17 rows, over the cap of 16",
-     s2c_hud([op_set("rush", "score", widget(SCOREBOARD, TOP_RIGHT, 0, [p_component(1, text("Score")), p_rows(7, rows(17, highlight_odd=False))]))])),
+     s2c_hud([op_set("probe", "score", widget(SCOREBOARD, TOP_RIGHT, 0, [p_component(1, text("Score")), p_rows(7, rows(17, highlight_odd=False))]))])),
     ("edge/refused-s2c_hud-slot-7.bin", "refused: slot 7, outside 0..6",
      hint([p_component(1, text("x"))], slot=7)),
     ("edge/refused-s2c_hud-value-type-10.bin", "refused: value type 10, no such type in v1 so the prop cannot be skipped",
      hint([p_component(1, text("x")), varint(14) + u8(10) + b"\x00"])),
     ("edge/refused-s2c_scene-7-actions.bin", "refused: 7 actions, over the cap of 6",
-     s2c_scene(1, "rush:lobby", text("Lobby"), 0, 0, [(i, f"rush:a{i}", text("A"), 0) for i in range(7)])),
+     s2c_scene(1, "probe:lobby", text("Lobby"), 0, 0, [(i, f"probe:a{i}", text("A"), 0) for i in range(7)])),
 
     ("edge/s2c_action_result.bin",
      "S2C_ACTION_RESULT action_seq=MAX_INT, code=255 kept as received (shown as rejected), a reason, cooldown 600,000 ms",
-     s2c_action_result(MAX, 255, text("rush.reason"), 600_000)),
+     s2c_action_result(MAX, 255, text("probe.reason"), 600_000)),
     ("edge/s2c_hud-unknown-kind.bin",
      "S2C_HUD one SET of kind 3 (BAR of v2) to a v1 decoder: accepted and kept, the client drops it",
-     s2c_hud([op_set("rush", "capture", widget(3, BOTTOM, 0, [
+     s2c_hud([op_set("probe", "capture", widget(3, BOTTOM, 0, [
          p_component(1, text("Capture A")), p_f32(4, 0.4), p_f32(5, 0.1), p_varlong(6, 0xFF00FF00)]))])),
     ("edge/s2c_hud-unknown-prop.bin",
      'S2C_HUD one SET of a TIMER carrying prop_id=99 of type varint (DESIGN-PLAY §19 "未知属性被跳过"): '
      "accepted, the prop kept",
-     s2c_hud([op_set("rush", "timer", widget(TIMER, TOP_CENTER, 0, [
+     s2c_hud([op_set("probe", "timer", widget(TIMER, TOP_CENTER, 0, [
          p_component(1, text("Time left")), p_varint(2, 45_000), p_bool(3, True), p_varint(99, 7)]))])),
     ("edge/s2c_hud.bin",
      "S2C_HUD at its caps: 32 ops; a 64 B owner and a 32 B widget_id; a TEXT with 16 props, 14 of them undeclared "

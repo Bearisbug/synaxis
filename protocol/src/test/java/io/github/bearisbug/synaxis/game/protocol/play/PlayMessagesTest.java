@@ -57,7 +57,7 @@ class PlayMessagesTest {
         final MsgBuf buf = body(S2CHud.MSG_ID);
         buf.writeVarInt(1);
         buf.writeUnsignedByte(S2CHud.OP_SET);
-        buf.writeString("rush");
+        buf.writeString("probe");
         buf.writeString("w");
         buf.writeUnsignedByte(kind);
         buf.writeUnsignedByte(slot);
@@ -74,13 +74,13 @@ class PlayMessagesTest {
     @Test
     void everyMessageOfVersionOneRoundTrips() {
         final List<PlayMessage> messages = List.of(
-                new S2CScene(3, "rush:round", text("Round"), S2CScene.CAMERA_VANILLA, S2CScene.CURSOR_LOCKED, List.of()),
-                new S2CHud(List.of(new ClearOwner("rush"), new RemoveWidget("rush", "hint"),
-                        new SetWidget("rush", "capture", Widget.text(Widget.BOTTOM, 1, text("Capture A: 40%"), 0)))),
+                new S2CScene(3, "probe:round", text("Round"), S2CScene.CAMERA_VANILLA, S2CScene.CURSOR_LOCKED, List.of()),
+                new S2CHud(List.of(new ClearOwner("probe"), new RemoveWidget("probe", "hint"),
+                        new SetWidget("probe", "capture", Widget.text(Widget.BOTTOM, 1, text("Capture A: 40%"), 0)))),
                 new S2CActionResult(7, ActionResultCode.COOLDOWN, text("synaxis:action-cooldown"), 1500),
                 new C2SSceneReady(3),
-                new C2SAction(3, 7, "rush:back", new C2SAction.OfEntity(42)),
-                new C2SAction(3, 8, "rush:queue", new C2SAction.OfBlock(-1, 64, 1)));
+                new C2SAction(3, 7, "probe:back", new C2SAction.OfEntity(42)),
+                new C2SAction(3, 8, "probe:queue", new C2SAction.OfBlock(-1, 64, 1)));
         for (final PlayMessage message : messages) assertEquals(message, roundTrip(message));
     }
 
@@ -88,7 +88,7 @@ class PlayMessagesTest {
     void encodeGivesTheBytesWriteAppends() {
         for (final C2SAction.Target target : List.of(new C2SAction.None(), new C2SAction.OfEntity(42),
                 new C2SAction.OfBlock(-1, 64, 1))) {
-            final PlayMessage message = new C2SAction(3, 7, "rush:back", target);
+            final PlayMessage message = new C2SAction(3, 7, "probe:back", target);
             final MsgBuf writer = MsgBuf.writing();
             message.write(writer);
             assertArrayEquals(writer.toByteArray(), message.encode());
@@ -170,7 +170,7 @@ class PlayMessagesTest {
                 Widget.timer(Widget.TOP_CENTER, 0, text("x"), 1, true).props().stream().map(Prop::id).toList());
         assertEquals(List.of(Widget.PROP_TEXT, Widget.PROP_ROWS),
                 Widget.scoreboard(Widget.TOP_RIGHT, 0, text("x"), List.of()).props().stream().map(Prop::id).toList());
-        final Widget panel = Widget.panel(text("x"), List.of(), List.of(new Button("rush:back", text("Back"))));
+        final Widget panel = Widget.panel(text("x"), List.of(), List.of(new Button("probe:back", text("Back"))));
         assertEquals(List.of(Widget.PROP_TEXT, Widget.PROP_ROWS, Widget.PROP_BUTTONS), panel.props().stream().map(Prop::id).toList());
         assertEquals(Widget.CENTER, panel.slot());
         assertEquals(Widget.PANEL, panel.kind());
@@ -228,8 +228,8 @@ class PlayMessagesTest {
         assertMalformed("action_id is 0 bytes", () -> new C2SAction(1, 1, "", new C2SAction.None()));
         assertMalformed("owner is 0 bytes", () -> new ClearOwner(""));
         assertMalformed("owner is 65 bytes", () -> new RemoveWidget("o".repeat(65), "w"));
-        assertMalformed("widget_id is 0 bytes", () -> new RemoveWidget("rush", ""));
-        assertMalformed("widget_id is 33 bytes", () -> new RemoveWidget("rush", "w".repeat(33)));
+        assertMalformed("widget_id is 0 bytes", () -> new RemoveWidget("probe", ""));
+        assertMalformed("widget_id is 33 bytes", () -> new RemoveWidget("probe", "w".repeat(33)));
         assertMalformed("button action_id is 0 bytes", () -> new Button("", text("b")));
         assertMalformed("string value is 65 bytes", () -> new PropValue.Str("s".repeat(65)));
         assertMalformed("row value is 33 bytes", () -> new Row(text("r"), "v".repeat(33), false));
@@ -247,28 +247,28 @@ class PlayMessagesTest {
         final MsgBuf buf = body(S2CHud.MSG_ID);
         buf.writeVarInt(1);
         buf.writeUnsignedByte(S2CHud.OP_CLEAR_OWNER);
-        buf.writeString("rush");
+        buf.writeString("probe");
         buf.writeString("hint");
         assertMalformed("CLEAR_OWNER carries widget_id hint", () -> decode(buf));
-        assertEquals("", new ClearOwner("rush").widgetId());
+        assertEquals("", new ClearOwner("probe").widgetId());
     }
 
     @Test
     void theActionTableHasSixDistinctSlots() {
-        final S2CScene.Action first = new S2CScene.Action(0, "rush:a", text("A"), 0);
+        final S2CScene.Action first = new S2CScene.Action(0, "probe:a", text("A"), 0);
         assertMalformed("action slot 0 is taken twice",
-                () -> new S2CScene(1, "x:y", text("t"), 0, 0, List.of(first, new S2CScene.Action(0, "rush:b", text("B"), 0))));
-        assertMalformed("action slot 6 is outside [0, 5]", () -> new S2CScene.Action(6, "rush:a", text("A"), 0));
-        assertMalformed("action slot -1 is outside [0, 5]", () -> new S2CScene.Action(-1, "rush:a", text("A"), 0));
+                () -> new S2CScene(1, "x:y", text("t"), 0, 0, List.of(first, new S2CScene.Action(0, "probe:b", text("B"), 0))));
+        assertMalformed("action slot 6 is outside [0, 5]", () -> new S2CScene.Action(6, "probe:a", text("A"), 0));
+        assertMalformed("action slot -1 is outside [0, 5]", () -> new S2CScene.Action(-1, "probe:a", text("A"), 0));
         final List<S2CScene.Action> seven = new ArrayList<>();
-        for (int slot = 0; slot < 7; slot++) seven.add(new S2CScene.Action(slot % 6, "rush:a", text("A"), 0));
+        for (int slot = 0; slot < 7; slot++) seven.add(new S2CScene.Action(slot % 6, "probe:a", text("A"), 0));
         assertMalformed("7 actions are over the cap of 6", () -> new S2CScene(1, "x:y", text("t"), 0, 0, seven));
     }
 
     @Test
     void aCooldownOverTenMinutesIsMalformed() {
-        assertMalformed("cooldown_ms 600001 is outside [0, 600000]", () -> new S2CScene.Action(0, "rush:a", text("A"), 600_001));
-        assertMalformed("cooldown_ms -1 is outside [0, 600000]", () -> new S2CScene.Action(0, "rush:a", text("A"), -1));
+        assertMalformed("cooldown_ms 600001 is outside [0, 600000]", () -> new S2CScene.Action(0, "probe:a", text("A"), 600_001));
+        assertMalformed("cooldown_ms -1 is outside [0, 600000]", () -> new S2CScene.Action(0, "probe:a", text("A"), -1));
         final MsgBuf buf = body(S2CActionResult.MSG_ID);
         buf.writeVarInt(1);
         buf.writeUnsignedByte(2);
@@ -327,14 +327,14 @@ class PlayMessagesTest {
         assertMalformed("17 rows are over the cap of 16", () -> new PropValue.Rows(rows));
         assertMalformed("a PANEL has 13 rows, over the cap of 12", () -> Widget.panel(text("t"), rows.subList(0, 13), List.of()));
         final List<Button> buttons = new ArrayList<>();
-        for (int i = 0; i < 5; i++) buttons.add(new Button("rush:b", text("b")));
+        for (int i = 0; i < 5; i++) buttons.add(new Button("probe:b", text("b")));
         assertMalformed("5 buttons are over the cap of 4", () -> new PropValue.Buttons(buttons));
         assertMalformed("a PANEL is on slot 5, not CENTER",
                 () -> new Widget(Widget.PANEL, Widget.BOTTOM, 0, List.of(new Prop(Widget.PROP_TEXT, new PropValue.Component(text("t"))))));
         assertMalformed("prop 1 of kind 1 carries value type 4, not 5",
                 () -> new Widget(Widget.TEXT, Widget.LEFT, 0, List.of(new Prop(Widget.PROP_TEXT, new PropValue.Str("plain")))));
         final List<S2CHud.Op> ops = new ArrayList<>();
-        for (int i = 0; i < 33; i++) ops.add(new RemoveWidget("rush", "w" + i));
+        for (int i = 0; i < 33; i++) ops.add(new RemoveWidget("probe", "w" + i));
         assertMalformed("33 ops are over the cap of 32", () -> new S2CHud(ops));
     }
 

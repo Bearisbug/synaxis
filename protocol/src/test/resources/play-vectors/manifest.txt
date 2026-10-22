@@ -15,11 +15,11 @@
 # component/ 子目录（组件解码的冻结字节）不进 digest、不绑 play_version。
 
 play_version=1
-digest=f3eaee54b87163e45bbd30ab3df6c5230a1c6a8236142c464ef279f69883205e
+digest=89f119a2677f7fec8a2adc29a0b607df303946de0a3cde6100f7acd8a088cf02
 
-## c2s_action.bin  (15 字节)
-内容: C2S_ACTION scene_seq=1 action_seq=1 rush:queue target none
-字节:   02 01 01 0A 72 75 73 68 3A 71 75 65 75 65 00
+## c2s_action.bin  (16 字节)
+内容: C2S_ACTION scene_seq=1 action_seq=1 probe:queue target none
+字节:   02 01 01 0B 70 72 6F 62 65 3A 71 75 65 75 65 00
 
 ## c2s_scene_ready.bin  (2 字节)
 内容: C2S_SCENE_READY scene_seq=1
@@ -29,13 +29,13 @@ digest=f3eaee54b87163e45bbd30ab3df6c5230a1c6a8236142c464ef279f69883205e
 内容: S2C_ACTION_RESULT action_seq=1 code=0 ok, no reason, cooldown 2000 ms
 字节:   84 01 01 00 00 D0 0F
 
-## s2c_hud.bin  (232 字节)
-内容: S2C_HUD 6 ops: CLEAR_OWNER rush; SET rush/hint TEXT; SET rush/timer TIMER 45000 ms running; SET rush/score SCOREBOARD 2 rows; SET rush/result PANEL 1 row 1 button; REMOVE rush/capture
-字节:   82 01 06 03 04 72 75 73 68 00 01 04 72 75 73 68 04 68 69 6E 74 01 03 00 02 01 05 13 08 00 10 50 72 65 73 73 20 31 20 74 6F 20 71 75 65 75 65 0D …
+## s2c_hud.bin  (239 字节)
+内容: S2C_HUD 6 ops: CLEAR_OWNER probe; SET probe/hint TEXT; SET probe/timer TIMER 45000 ms running; SET probe/score SCOREBOARD 2 rows; SET probe/result PANEL 1 row 1 button; REMOVE probe/capture
+字节:   82 01 06 03 05 70 72 6F 62 65 00 01 05 70 72 6F 62 65 04 68 69 6E 74 01 03 00 02 01 05 13 08 00 10 50 72 65 73 73 20 31 20 74 6F 20 71 75 65 75 …
 
-## s2c_scene.bin  (49 字节)
-内容: S2C_SCENE scene_seq=1 scene_id=rush:lobby title="Lobby" camera=0 cursor=0 actions=[slot 0 rush:queue "Queue" 2000 ms]
-字节:   81 01 01 0A 72 75 73 68 3A 6C 6F 62 62 79 08 08 00 05 4C 6F 62 62 79 00 00 01 00 0A 72 75 73 68 3A 71 75 65 75 65 08 08 00 05 51 75 65 75 65 D0 …
+## s2c_scene.bin  (51 字节)
+内容: S2C_SCENE scene_seq=1 scene_id=probe:lobby title="Lobby" camera=0 cursor=0 actions=[slot 0 probe:queue "Queue" 2000 ms]
+字节:   81 01 01 0B 70 72 6F 62 65 3A 6C 6F 62 62 79 08 08 00 05 4C 6F 62 62 79 00 00 01 00 0B 70 72 6F 62 65 3A 71 75 65 75 65 08 08 00 05 51 75 65 75 …
 
 ## edge/c2s_action-entity.bin  (13 字节)
 内容: C2S_ACTION scene_seq=0 (no scene yet) action_seq=1, entity target MAX_INT; scene_seq and action_seq differ so that their order is pinned
@@ -49,71 +49,71 @@ digest=f3eaee54b87163e45bbd30ab3df6c5230a1c6a8236142c464ef279f69883205e
 内容: C2S_SCENE_READY scene_seq=MAX_INT
 字节:   01 FF FF FF FF 07
 
-## edge/refused-c2s_action-target-3.bin  (15 字节)
+## edge/refused-c2s_action-target-3.bin  (16 字节)
 内容: refused: target 3, targets are 0..2
-字节:   02 01 01 0A 72 75 73 68 3A 71 75 65 75 65 03
+字节:   02 01 01 0B 70 72 6F 62 65 3A 71 75 65 75 65 03
 
-## edge/refused-s2c_hud-17-props.bin  (73 字节)
+## edge/refused-s2c_hud-17-props.bin  (74 字节)
 内容: refused: a TEXT with 17 props, over the cap of 16
-字节:   82 01 01 01 04 72 75 73 68 04 68 69 6E 74 01 03 00 11 01 05 04 08 00 01 78 0D 01 00 1E 01 00 1F 01 01 20 01 02 21 01 03 22 01 04 23 01 05 24 01 …
+字节:   82 01 01 01 05 70 72 6F 62 65 04 68 69 6E 74 01 03 00 11 01 05 04 08 00 01 78 0D 01 00 1E 01 00 1F 01 01 20 01 02 21 01 03 22 01 04 23 01 05 24 …
 
-## edge/refused-s2c_hud-33-ops.bin  (323 字节)
+## edge/refused-s2c_hud-33-ops.bin  (356 字节)
 内容: refused: 33 ops, over the cap of 32
-字节:   82 01 21 02 04 72 75 73 68 02 77 30 02 04 72 75 73 68 02 77 31 02 04 72 75 73 68 02 77 32 02 04 72 75 73 68 02 77 33 02 04 72 75 73 68 02 77 34 …
+字节:   82 01 21 02 05 70 72 6F 62 65 02 77 30 02 05 70 72 6F 62 65 02 77 31 02 05 70 72 6F 62 65 02 77 32 02 05 70 72 6F 62 65 02 77 33 02 05 70 72 6F …
 
-## edge/refused-s2c_hud-component-2049.bin  (2071 字节)
+## edge/refused-s2c_hud-component-2049.bin  (2072 字节)
 内容: refused: a 2,049 B component, over the cap of 2,048
-字节:   82 01 01 01 04 72 75 73 68 04 68 69 6E 74 01 03 00 01 01 05 81 10 08 07 FE 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 …
+字节:   82 01 01 01 05 70 72 6F 62 65 04 68 69 6E 74 01 03 00 01 01 05 81 10 08 07 FE 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 …
 
-## edge/refused-s2c_hud-declared-prop-wrong-type.bin  (39 字节)
+## edge/refused-s2c_hud-declared-prop-wrong-type.bin  (40 字节)
 内容: refused: remaining_ms of a TIMER carried as varlong, its declared type is varint
-字节:   82 01 01 01 04 72 75 73 68 05 74 69 6D 65 72 02 01 00 02 01 05 0C 08 00 09 54 69 6D 65 20 6C 65 66 74 02 02 C8 DF 02
+字节:   82 01 01 01 05 70 72 6F 62 65 05 74 69 6D 65 72 02 01 00 02 01 05 0C 08 00 09 54 69 6D 65 20 6C 65 66 74 02 02 C8 DF 02
 
-## edge/refused-s2c_hud-op-4.bin  (14 字节)
+## edge/refused-s2c_hud-op-4.bin  (15 字节)
 内容: refused: op 4, ops are 1..3
-字节:   82 01 01 04 04 72 75 73 68 04 68 69 6E 74
+字节:   82 01 01 04 05 70 72 6F 62 65 04 68 69 6E 74
 
-## edge/refused-s2c_hud-panel-13-rows.bin  (158 字节)
+## edge/refused-s2c_hud-panel-13-rows.bin  (159 字节)
 内容: refused: a PANEL with 13 rows, over its cap of 12
-字节:   82 01 01 01 04 72 75 73 68 06 72 65 73 75 6C 74 06 06 00 02 01 05 09 08 00 06 52 65 73 75 6C 74 07 08 0D 05 08 00 02 70 30 01 30 00 05 08 00 02 …
+字节:   82 01 01 01 05 70 72 6F 62 65 06 72 65 73 75 6C 74 06 06 00 02 01 05 09 08 00 06 52 65 73 75 6C 74 07 08 0D 05 08 00 02 70 30 01 30 00 05 08 00 …
 
-## edge/refused-s2c_hud-panel-5-buttons.bin  (100 字节)
+## edge/refused-s2c_hud-panel-5-buttons.bin  (106 字节)
 内容: refused: a buttons value of 5 buttons, over the cap of 4
-字节:   82 01 01 01 04 72 75 73 68 06 72 65 73 75 6C 74 06 06 00 02 01 05 09 08 00 06 52 65 73 75 6C 74 0A 09 05 07 72 75 73 68 3A 62 30 04 08 00 01 42 …
+字节:   82 01 01 01 05 70 72 6F 62 65 06 72 65 73 75 6C 74 06 06 00 02 01 05 09 08 00 06 52 65 73 75 6C 74 0A 09 05 08 70 72 6F 62 65 3A 62 30 04 08 00 …
 
-## edge/refused-s2c_hud-panel-not-center.bin  (32 字节)
+## edge/refused-s2c_hud-panel-not-center.bin  (33 字节)
 内容: refused: a PANEL on TOP_LEFT, a PANEL is always CENTER
-字节:   82 01 01 01 04 72 75 73 68 06 72 65 73 75 6C 74 06 00 00 01 01 05 09 08 00 06 52 65 73 75 6C 74
+字节:   82 01 01 01 05 70 72 6F 62 65 06 72 65 73 75 6C 74 06 00 00 01 01 05 09 08 00 06 52 65 73 75 6C 74
 
-## edge/refused-s2c_hud-scoreboard-17-rows.bin  (200 字节)
+## edge/refused-s2c_hud-scoreboard-17-rows.bin  (201 字节)
 内容: refused: a rows value of 17 rows, over the cap of 16
-字节:   82 01 01 01 04 72 75 73 68 05 73 63 6F 72 65 04 02 00 02 01 05 08 08 00 05 53 63 6F 72 65 07 08 11 05 08 00 02 70 30 01 30 00 05 08 00 02 70 31 …
+字节:   82 01 01 01 05 70 72 6F 62 65 05 73 63 6F 72 65 04 02 00 02 01 05 08 08 00 05 53 63 6F 72 65 07 08 11 05 08 00 02 70 30 01 30 00 05 08 00 02 70 …
 
-## edge/refused-s2c_hud-slot-7.bin  (25 字节)
+## edge/refused-s2c_hud-slot-7.bin  (26 字节)
 内容: refused: slot 7, outside 0..6
-字节:   82 01 01 01 04 72 75 73 68 04 68 69 6E 74 01 07 00 01 01 05 04 08 00 01 78
+字节:   82 01 01 01 05 70 72 6F 62 65 04 68 69 6E 74 01 07 00 01 01 05 04 08 00 01 78
 
-## edge/refused-s2c_hud-value-type-10.bin  (28 字节)
+## edge/refused-s2c_hud-value-type-10.bin  (29 字节)
 内容: refused: value type 10, no such type in v1 so the prop cannot be skipped
-字节:   82 01 01 01 04 72 75 73 68 04 68 69 6E 74 01 03 00 02 01 05 04 08 00 01 78 0E 0A 00
+字节:   82 01 01 01 05 70 72 6F 62 65 04 68 69 6E 74 01 03 00 02 01 05 04 08 00 01 78 0E 0A 00
 
-## edge/refused-s2c_scene-7-actions.bin  (131 字节)
+## edge/refused-s2c_scene-7-actions.bin  (139 字节)
 内容: refused: 7 actions, over the cap of 6
-字节:   81 01 01 0A 72 75 73 68 3A 6C 6F 62 62 79 08 08 00 05 4C 6F 62 62 79 00 00 07 00 07 72 75 73 68 3A 61 30 04 08 00 01 41 00 01 07 72 75 73 68 3A …
+字节:   81 01 01 0B 70 72 6F 62 65 3A 6C 6F 62 62 79 08 08 00 05 4C 6F 62 62 79 00 00 07 00 08 70 72 6F 62 65 3A 61 30 04 08 00 01 41 00 01 08 70 72 6F …
 
-## edge/s2c_action_result.bin  (26 字节)
+## edge/s2c_action_result.bin  (27 字节)
 内容: S2C_ACTION_RESULT action_seq=MAX_INT, code=255 kept as received (shown as rejected), a reason, cooldown 600,000 ms
-字节:   84 01 FF FF FF FF 07 FF 0E 08 00 0B 72 75 73 68 2E 72 65 61 73 6F 6E C0 CF 24
+字节:   84 01 FF FF FF FF 07 FF 0F 08 00 0C 70 72 6F 62 65 2E 72 65 61 73 6F 6E C0 CF 24
 
-## edge/s2c_hud-unknown-kind.bin  (55 字节)
+## edge/s2c_hud-unknown-kind.bin  (56 字节)
 内容: S2C_HUD one SET of kind 3 (BAR of v2) to a v1 decoder: accepted and kept, the client drops it
-字节:   82 01 01 01 04 72 75 73 68 07 63 61 70 74 75 72 65 03 05 00 04 01 05 0C 08 00 09 43 61 70 74 75 72 65 20 41 04 03 3E CC CC CD 05 03 3D CC CC CD …
+字节:   82 01 01 01 05 70 72 6F 62 65 07 63 61 70 74 75 72 65 03 05 00 04 01 05 0C 08 00 09 43 61 70 74 75 72 65 20 41 04 03 3E CC CC CD 05 03 3D CC CC …
 
-## edge/s2c_hud-unknown-prop.bin  (45 字节)
+## edge/s2c_hud-unknown-prop.bin  (46 字节)
 内容: S2C_HUD one SET of a TIMER carrying prop_id=99 of type varint (DESIGN-PLAY §19 "未知属性被跳过"): accepted, the prop kept
-字节:   82 01 01 01 04 72 75 73 68 05 74 69 6D 65 72 02 01 00 04 01 05 0C 08 00 09 54 69 6D 65 20 6C 65 66 74 02 01 C8 DF 02 03 06 01 63 01 07
+字节:   82 01 01 01 05 70 72 6F 62 65 05 74 69 6D 65 72 02 01 00 04 01 05 0C 08 00 09 54 69 6D 65 20 6C 65 66 74 02 01 C8 DF 02 03 06 01 63 01 07
 
-## edge/s2c_hud.bin  (1134 字节)
+## edge/s2c_hud.bin  (1168 字节)
 内容: S2C_HUD at its caps: 32 ops; a 64 B owner and a 32 B widget_id; a TEXT with 16 props, 14 of them undeclared and covering all nine value types (prop ids 0 and MAX_INT, a 64 B string, an empty component, Float.MAX_VALUE); a SCOREBOARD with 16 rows; a PANEL with 12 rows and 4 buttons; a stopped TIMER at MAX_INT ms; 27 REMOVE
 字节:   82 01 20 03 40 65 64 67 65 3A 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F 6F …
 

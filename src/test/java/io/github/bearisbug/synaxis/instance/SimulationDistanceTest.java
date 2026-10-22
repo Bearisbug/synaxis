@@ -196,7 +196,7 @@ public class SimulationDistanceTest {
         assertTrue(asked.get() > 0);
     }
 
-    /** What the M2 match runs with: no simulation distance, no automatic unload. */
+    /** The engine defaults: no simulation distance, no automatic unload. */
     @Test
     public void theEngineDefaultsSimulateEveryChunkAndUnloadNothing() {
         final Instance instance = env.createFlatInstance();

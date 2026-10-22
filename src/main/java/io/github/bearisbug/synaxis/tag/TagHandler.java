@@ -56,7 +56,7 @@ public interface TagHandler extends TagReadable, TagWritable {
      * <p>
      * <b>Must not be used with untrusted data.</b> Every key of the compound is registered in a
      * process wide, never shrinking index, so a compound coming from a client can grow that index
-     * without bound (audit F49). Read client NBT key by key instead, the way the item components do.
+     * without bound. Read client NBT key by key instead, the way the item components do.
      *
      * @param compound the compound to read tags from
      * @return a new tag handler with the content of the given compound

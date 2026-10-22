@@ -53,12 +53,12 @@ public class CommandManagerTest {
         assertThrows(IllegalArgumentException.class, () -> new Command("bar", "Baz"), "an alias follows the rule");
 
         var manager = new CommandManager(PROCESS);
-        var command = new Command("mmo:party", "party");
+        var command = new Command("probe:party", "party");
         command.setDefaultExecutor((_, _) -> { });
         manager.register(command);
         assertSame(command, manager.getCommand("PARTY"), "the lookup stays case-insensitive");
         assertThrows(IllegalStateException.class, () -> manager.register(new Command("party")));
-        assertEquals(CommandResult.Type.SUCCESS, manager.executeServerCommand("mmo:party").getType());
+        assertEquals(CommandResult.Type.SUCCESS, manager.executeServerCommand("probe:party").getType());
 
         manager.unregister(command);
         assertNull(manager.getCommand("party"));

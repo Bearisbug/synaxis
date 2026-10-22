@@ -186,7 +186,7 @@ public record ServerConfig(
     public enum ThreadProviderKind {
         /** Every new chunk goes to the next thread, the engine default. */
         COUNTER,
-        /** The chunks of one cell of the grid share a thread, for the shards of the MMO. */
+        /** The chunks of one cell of the grid share a thread, for map shards. */
         GRID
     }
 
@@ -494,8 +494,8 @@ public record ServerConfig(
         private boolean hideOnlinePlayers = false;
         private int chatRatePerSecond = 1;
         private int chatBurst = 3;
-        // Twice the highest 7 s P99 of the packets one bot sent in the load tiers of RUN-057, 374
-        // (ride, 200 bots; docs/test-runs/RUN-057/10-limit-readings.txt), rounded up to 750
+        // Twice the highest 7 s P99 of the packets one load test bot sent, 374 (ride profile, 200
+        // bots), rounded up to 750
         private long packetLimitWindow = 7_000;
         private int packetLimitMaxPackets = 750;
         private PacketLimitAction packetLimitAction = PacketLimitAction.KICK;

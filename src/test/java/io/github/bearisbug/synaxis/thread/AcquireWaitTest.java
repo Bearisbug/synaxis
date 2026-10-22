@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The acquisition wait of a tick ({@code docs/DESIGN-PROD.md} {@code API-PROD-016}, audit P3-3), on
+ * The acquisition wait of a tick ({@code docs/DESIGN-PROD.md} {@code API-PROD-016}), on
  * the grid with 4 tick threads: a wait belongs to the thread that was blocked, only engine threads
  * count one, and the figure of the whole tick is the serial part plus the longest tick thread.
  * <p>

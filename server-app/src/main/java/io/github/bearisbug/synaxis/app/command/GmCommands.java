@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.app.command;
 
 import io.github.bearisbug.synaxis.command.CommandSender;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.network.ConnectionManager;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 
@@ -9,13 +10,18 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.regex.Pattern;
 
 /**
  * What every GM command of the host does the same way ({@code docs/DESIGN-PROD.md} {@code API-PROD-011}): its
- * answer, and its {@code gm_command} event (§20), whose attributes are put together here alone, for the commands of
- * the console and the players and for the management methods.
+ * answer, its {@code gm_command} event (§20), whose attributes are put together here alone, for the commands of
+ * the console and the players and for the management methods, and how it reads the account it is run on.
  */
 public final class GmCommands {
+
+    /** A UUID written out in full, which a command takes as the account itself. */
+    public static final Pattern UUID_TEXT =
+            Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
 
     private GmCommands() {
     }
@@ -68,5 +74,19 @@ public final class GmCommands {
         attributes.put("target", target);
         attributes.put("result", result);
         analytics.accept("gm_command", attributes);
+    }
+
+    /**
+     * Reads the account a command names: a UUID written out in full is the account, whether it is online or not;
+     * any other text is the name of an online player.
+     *
+     * @param connections the players online on this shard
+     * @param text        what was typed
+     * @return the account, null when the text is no UUID and no online player has that name
+     */
+    public static @Nullable UUID accountOf(ConnectionManager connections, String text) {
+        if (UUID_TEXT.matcher(text).matches()) return UUID.fromString(text);
+        final Player online = connections.getOnlinePlayerByUsername(text);
+        return online == null ? null : online.getUuid();
     }
 }

@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.function.BiConsumer;
-import java.util.regex.Pattern;
 
 import static io.github.bearisbug.synaxis.app.command.GmCommands.record;
 import static io.github.bearisbug.synaxis.app.command.GmCommands.reply;
@@ -44,9 +43,6 @@ public final class TransferCommand extends Command {
 
     /** The node that lets a player run this command. */
     public static final String NODE = "gm.transfer";
-
-    private static final Pattern UUID_TEXT =
-            Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
 
     private final ServerProcess process;
     private final @Nullable ShardService shards;
@@ -110,7 +106,7 @@ public final class TransferCommand extends Command {
     }
 
     private @Nullable Player online(String text) {
-        if (UUID_TEXT.matcher(text).matches()) return process.connection().getOnlinePlayerByUuid(UUID.fromString(text));
+        if (GmCommands.UUID_TEXT.matcher(text).matches()) return process.connection().getOnlinePlayerByUuid(UUID.fromString(text));
         return process.connection().getOnlinePlayerByUsername(text);
     }
 }

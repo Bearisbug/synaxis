@@ -2,6 +2,8 @@ package io.github.bearisbug.synaxis.app;
 
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.plugin.PluginDescriptor;
+import io.github.bearisbug.synaxis.plugin.SynaxisPlugin;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.regex.Pattern;
 
@@ -30,21 +32,46 @@ final class PluginDescriptors {
     }
 
     /**
-     * Checks one descriptor.
+     * Reads the id a plugin goes by, which the selection of {@code synaxis.app.plugins} needs of every discovered
+     * plugin, the ones it leaves out too.
      *
-     * @param descriptor the descriptor a plugin reported
-     * @throws IllegalArgumentException if the id or the api version is refused
+     * @param plugin a discovered plugin
+     * @return its id
+     * @throws IllegalArgumentException if it reports no descriptor or a descriptor without an id; the message names
+     *                                  the plugin class
      */
-    static void validate(PluginDescriptor descriptor) {
-        final String id = descriptor.id();
+    static String id(SynaxisPlugin plugin) {
+        final @Nullable PluginDescriptor descriptor = plugin.descriptor();
+        if (descriptor == null)
+            throw new IllegalArgumentException("Refused plugin_class=" + plugin.getClass().getName()
+                    + ": its descriptor() returned null");
+        final @Nullable String id = descriptor.id();
+        if (id == null)
+            throw new IllegalArgumentException("Refused plugin_class=" + plugin.getClass().getName()
+                    + ": its descriptor has no id");
+        return id;
+    }
+
+    /**
+     * Checks the descriptor of a selected plugin.
+     *
+     * @param plugin the plugin
+     * @throws IllegalArgumentException if it has no id or no version, or its id or its api version is refused; the
+     *                                  message names the plugin class, since the id alone does not say which jar
+     *                                  to look in
+     */
+    static void validate(SynaxisPlugin plugin) {
+        final String id = id(plugin);
+        final PluginDescriptor descriptor = plugin.descriptor();
+        final String refused = "Refused plugin id \"" + id + "\" of plugin_class=" + plugin.getClass().getName() + ": ";
         if (!ID.matcher(id).matches())
-            throw new IllegalArgumentException(
-                    "Refused plugin id \"" + id + "\": a plugin id must match " + ID_PATTERN);
+            throw new IllegalArgumentException(refused + "a plugin id must match " + ID_PATTERN);
         if (RESERVED_ID.equals(id))
-            throw new IllegalArgumentException(
-                    "Refused plugin id \"" + id + "\": that id is reserved for the host");
+            throw new IllegalArgumentException(refused + "that id is reserved for the host");
+        if (descriptor.version() == null)
+            throw new IllegalArgumentException(refused + "its descriptor has no version");
         if (descriptor.apiVersion() != PluginApi.API_VERSION)
-            throw new IllegalArgumentException("Refused plugin id \"" + id + "\": it declares api_version="
-                    + descriptor.apiVersion() + " but this host is api_version=" + PluginApi.API_VERSION);
+            throw new IllegalArgumentException(refused + "it declares api_version=" + descriptor.apiVersion()
+                    + " but this host is api_version=" + PluginApi.API_VERSION);
     }
 }

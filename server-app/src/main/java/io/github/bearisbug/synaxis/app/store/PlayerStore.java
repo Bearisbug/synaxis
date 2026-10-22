@@ -120,7 +120,7 @@ public final class PlayerStore implements ShutdownParticipant {
     private record Encoded(StoreBackend.StoredSection section, long takenAt) {
     }
 
-    /** One loaded character. */
+    /** One loaded character; the substates of saving are the §11.3 transitions, see {@code drain} and {@code loggedOut}. */
     static final class Record {
         final Player player;
         final UUID account;
@@ -143,7 +143,7 @@ public final class PlayerStore implements ShutdownParticipant {
         final AtomicInteger committing = new AtomicInteger();
         // Volatile for the readers that take no lock; every write is under this record's lock
         volatile LeaseState state = LeaseState.LOADING;
-        // Guarded by this record: the single slot write queue
+        // Guarded by this record: the single slot write queue, and whether it gives the lease back (logout, transfer, shutdown)
         private @Nullable Map<String, Encoded> pending;
         private boolean release;
         // A transfer asked for and not snapshotted yet, its caller's future

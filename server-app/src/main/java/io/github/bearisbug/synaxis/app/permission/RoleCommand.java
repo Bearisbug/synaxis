@@ -16,8 +16,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
-import java.util.regex.Pattern;
 
+import static io.github.bearisbug.synaxis.app.command.GmCommands.accountOf;
 import static io.github.bearisbug.synaxis.app.command.GmCommands.record;
 import static io.github.bearisbug.synaxis.app.command.GmCommands.reply;
 
@@ -40,9 +40,6 @@ public final class RoleCommand extends Command {
 
     /** The node that lets a player run this command. */
     public static final String NODE = "gm.role";
-
-    private static final Pattern UUID_TEXT =
-            Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
 
     private final ServerProcess process;
     private final HostPermissions permissions;
@@ -72,7 +69,7 @@ public final class RoleCommand extends Command {
 
     private void run(CommandSender sender, String input, String action, String targetText, @Nullable String role) {
         Thread.ofVirtual().name("Syn-Role-Command").start(() -> {
-            final UUID target = resolve(targetText);
+            final UUID target = accountOf(process.connection(), targetText);
             final String result = target == null ? "no_target" : execute(sender, action, target, targetText, role);
             if (target == null)
                 reply(sender, "synaxis:role-no-target", "No online player or uuid %s", targetText);
@@ -123,9 +120,4 @@ public final class RoleCommand extends Command {
         }
     }
 
-    private @Nullable UUID resolve(String text) {
-        if (UUID_TEXT.matcher(text).matches()) return UUID.fromString(text);
-        final Player online = process.connection().getOnlinePlayerByUsername(text);
-        return online == null ? null : online.getUuid();
-    }
 }

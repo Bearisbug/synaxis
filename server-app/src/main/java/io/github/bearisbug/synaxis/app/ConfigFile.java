@@ -267,6 +267,10 @@ public final class ConfigFile {
         for (final String key : entries.keySet()) {
             if (PATH_PROPERTY.equals(key))
                 problems.add(PATH_PROPERTY + " names the file and is only read from the command line");
+            else if (!key.startsWith("synaxis."))
+                // Every key of KEYS starts so: this is no typo of one, rather a plugin's own setting or a vanilla one
+                problems.add("unknown key " + key + " (every key of this file starts with synaxis.; a plugin's own "
+                        + "settings are not read from this file)");
             else if (!KEYS.contains(key))
                 problems.add("unknown key " + key + " (nearest known key " + nearest(key) + ")");
         }

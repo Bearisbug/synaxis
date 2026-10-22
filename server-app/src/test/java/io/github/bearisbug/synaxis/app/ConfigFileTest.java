@@ -81,11 +81,25 @@ class ConfigFileTest {
         final Path file = file("synaxis.app.auht=offline", "server-port=25565", "synaxis.config-file=other.properties");
 
         assertEquals(file.toAbsolutePath() + ": "
-                        + "unknown key server-port (nearest known key synaxis.motd); "
+                        + "unknown key server-port (every key of this file starts with synaxis.; a plugin's own "
+                        + "settings are not read from this file); "
                         + "unknown key synaxis.app.auht (nearest known key synaxis.app.auth); "
                         + "synaxis.config-file names the file and is only read from the command line",
                 apply(file).refusal());
         assertEquals(Map.of(), properties);
+    }
+
+    /**
+     * A key outside the namespace of the server is no typo of one of its keys, so no nearest key is offered for it:
+     * it is most likely a setting of a plugin, or one copied from a vanilla {@code server.properties}.
+     */
+    @Test
+    void aKeyOutsideTheServerNamespaceIsRefusedWithoutANearestKey() throws IOException {
+        final Path file = file("synaxis.motd=Synaxis", "hello.greeting=Hi");
+
+        assertEquals(file.toAbsolutePath() + ": unknown key hello.greeting (every key of this file starts with "
+                + "synaxis.; a plugin's own settings are not read from this file)", apply(file).refusal());
+        assertEquals(Map.of(), properties, "a refused file sets no key, not even its known ones");
     }
 
     @Test

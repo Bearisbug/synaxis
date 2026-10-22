@@ -682,6 +682,92 @@ class PluginHostIntegrationTest {
         }
     }
 
+    /**
+     * A plugin the selection cannot read an id from refuses the start whether it is selected or not, and a refused
+     * descriptor names the plugin class: the id alone does not say which jar to look in.
+     */
+    @Test
+    void aDescriptorWithoutAnIdOrVersionRefusesTheStartNamingThePluginClass(Env env) {
+        final ProbePlugin legal = new ProbePlugin("legal");
+        final PluginHost host = host(env);
+
+        assertRefusedNaming(DescribedPlugin.class,
+                () -> host.enable(List.of(legal, new DescribedPlugin(null)), Set.of("legal")));
+        assertRefusedNaming(DescribedPlugin.class, () -> host.enable(List.of(legal,
+                new DescribedPlugin(new PluginDescriptor(noText(), "1.0.0", PluginApi.API_VERSION))), Set.of("legal")));
+        assertRefusedNaming(DescribedPlugin.class, () -> host.enable(List.of(legal,
+                new DescribedPlugin(new PluginDescriptor("versionless", noText(), PluginApi.API_VERSION))), Set.of()));
+        assertRefusedNaming(ProbePlugin.class, () -> host.enable(List.of(new ProbePlugin("Illegal Id")), Set.of()));
+
+        assertEquals(List.of(), legal.calls);
+        assertEquals(List.of(), host.enabledPluginIds());
+    }
+
+    private static void assertRefusedNaming(Class<?> pluginClass, Runnable enable) {
+        final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class, enable::run);
+        assertTrue(refused.getMessage().contains(pluginClass.getName()), refused.getMessage());
+    }
+
+    /** What a broken plugin reports where its descriptor should hold text. */
+    private static @Nullable String noText() {
+        return null;
+    }
+
+    /** A plugin reporting the descriptor the test gives it, a broken one included. */
+    private static final class DescribedPlugin implements SynaxisPlugin {
+
+        private final @Nullable PluginDescriptor descriptor;
+
+        DescribedPlugin(@Nullable PluginDescriptor descriptor) {
+            this.descriptor = descriptor;
+        }
+
+        @Override
+        public @Nullable PluginDescriptor descriptor() {
+            return descriptor;
+        }
+
+        @Override
+        public void onEnable(PluginContext ctx) {
+            // Nothing to register
+        }
+    }
+
+    /**
+     * What a plugin registers once it is taken back, from a thread it left running, is dropped: the one shot
+     * teardown that would take it back has already run (REQ-M2-004).
+     */
+    @Test
+    void aChannelOrTabListVisibilityRegisteredAfterTheTeardownIsDropped(Env env) {
+        final List<PluginContext> kept = new ArrayList<>();
+        final PluginHost host = host(env);
+        host.enable(List.of(new SynaxisPlugin() {
+            @Override
+            public PluginDescriptor descriptor() {
+                return new PluginDescriptor("keeper", "1.0.0", PluginApi.API_VERSION);
+            }
+
+            @Override
+            public void onEnable(PluginContext ctx) {
+                kept.add(ctx);
+            }
+        }), Set.of());
+        host.disableAll();
+
+        final PluginContext ctx = kept.getFirst();
+        final AtomicInteger payloads = new AtomicInteger();
+        ctx.channels().register("late", (_, _) -> payloads.incrementAndGet());
+        ctx.tabList().setVisibility((_, _) -> false);
+
+        final Instance instance = env.createFlatInstance();
+        final Player viewer = env.createPlayer(instance, new Pos(0, 41, 0));
+        final Player subject = env.createPlayer(instance, new Pos(1, 41, 0));
+        env.process().eventHandler().call(new PlayerPluginMessageEvent(viewer, "keeper:late", PAYLOAD));
+        assertEquals(0, payloads.get(), "a channel registered after the teardown got a payload");
+        assertTrue(env.process().connection().isListedFor(viewer, subject),
+                "a tab list visibility set after the teardown applies");
+    }
+
     private List<String> readLedger() {
         // The writer thread owns the file; closing drains what is queued and forces it
         Objects.requireNonNull(ledger, "only a test that built a host has a ledger").close();

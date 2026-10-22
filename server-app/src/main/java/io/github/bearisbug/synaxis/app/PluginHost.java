@@ -149,9 +149,10 @@ final class PluginHost {
      * {@code synaxis.app.plugins} leaves out too: its descriptor is what the selection reads.
      *
      * @return the discovered plugins, in {@link ServiceLoader} order
-     * @throws IllegalArgumentException if a provider cannot be built (its class is not found, or its
-     *                                  constructor throws or misses a class while it runs), which refuses
-     *                                  the start; the message names its class
+     * @throws IllegalArgumentException if a provider cannot be built, which refuses the start: its class is
+     *                                  not found, or its constructor throws or misses a class while it runs,
+     *                                  and the message names its class; or a class it extends or implements is
+     *                                  missing, and the message names that class
      */
     static List<SynaxisPlugin> discover() {
         try {
@@ -160,6 +161,10 @@ final class PluginHost {
                     .toList();
         } catch (ServiceConfigurationError e) {
             throw new IllegalArgumentException("Could not load the plugins on the classpath: " + e.getMessage(), e);
+        } catch (LinkageError e) {
+            // ServiceLoader looks a provider class up before it wraps a failure: a superclass or an
+            // interface missing from the classpath comes out as it is
+            throw new IllegalArgumentException("Could not load the plugins on the classpath: " + e, e);
         }
     }
 
@@ -179,10 +184,13 @@ final class PluginHost {
      *
      * @param plugins     the discovered plugins
      * @param selectedIds the ids to enable, empty for all of them
-     * @throws IllegalArgumentException if a selected descriptor is refused, or two of them have the same id
+     * @throws IllegalArgumentException if a discovered plugin reports no descriptor or no id, which the
+     *                                  selection needs of every one of them, if a selected descriptor is
+     *                                  refused, or if two of them have the same id; the message names the
+     *                                  plugin class
      */
     void enable(List<SynaxisPlugin> plugins, Set<String> selectedIds) {
-        final List<String> discoveredIds = plugins.stream().map(plugin -> plugin.descriptor().id()).toList();
+        final List<String> discoveredIds = plugins.stream().map(PluginDescriptors::id).toList();
         final List<String> unknownIds = selectedIds.stream().filter(id -> !discoveredIds.contains(id)).sorted().toList();
         if (!unknownIds.isEmpty())
             // A selection nothing answers to is not fatal (the operator may be excluding every
@@ -192,7 +200,7 @@ final class PluginHost {
         final List<SynaxisPlugin> selected = plugins.stream()
                 .filter(plugin -> selectedIds.isEmpty() || selectedIds.contains(plugin.descriptor().id()))
                 .toList();
-        for (SynaxisPlugin plugin : selected) PluginDescriptors.validate(plugin.descriptor());
+        for (SynaxisPlugin plugin : selected) PluginDescriptors.validate(plugin);
         final Map<String, List<String>> classesById = new LinkedHashMap<>();
         for (SynaxisPlugin plugin : selected)
             classesById.computeIfAbsent(plugin.descriptor().id(), _ -> new ArrayList<>()).add(plugin.getClass().getName());

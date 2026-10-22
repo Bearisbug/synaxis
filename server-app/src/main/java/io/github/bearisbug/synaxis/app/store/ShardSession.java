@@ -27,7 +27,8 @@ import java.util.function.LongSupplier;
  * shard still holds its leases is only ever decided by the database's clock, through an update that
  * finds the session already expired; the local clock only decides when to freeze early.
  * <p>
- * The 10 s freeze and the 30 s isolation are decided by a watch thread of their own every
+ * The freeze past {@link Timing#degradedAfter()} and the isolation past {@link Timing#isolatedAfter()}
+ * (10 s and 30 s in {@link Timing#DEFAULT}) are decided by a watch thread of their own every
  * {@value #WATCH_EVERY_MS} ms, not by the renewal: a database that stops answering without closing
  * the connection holds the renewal inside its statement until the socket timeout of
  * {@link Database}, and the deadlines must not wait for it.
@@ -40,7 +41,7 @@ public final class ShardSession implements AutoCloseable {
     /** The states of §11.2. */
     public enum State {
         ACTIVE,
-        /** Renewal has failed for more than 10 s: everybody is frozen. */
+        /** Renewal has failed for longer than {@link Timing#degradedAfter()}: everybody is frozen. */
         DEGRADED,
         /** The session expired: this shard writes nothing and holds nobody. */
         ISOLATED,

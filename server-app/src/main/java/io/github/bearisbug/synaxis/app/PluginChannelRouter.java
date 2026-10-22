@@ -9,10 +9,12 @@ import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.PayloadHandler;
 import io.github.bearisbug.synaxis.utils.StringUtils;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
@@ -49,6 +51,12 @@ final class PluginChannelRouter {
     private static final Pattern NAME = Pattern.compile("[a-z0-9._/-]+");
 
     private final Map<String, Registration> registrations = new ConcurrentHashMap<>();
+
+    /**
+     * The plugins already taken back: a channel one of them registers afterwards, from a thread it left running,
+     * would stay with nothing to take it back.
+     */
+    private final Set<String> takenBack = ConcurrentHashMap.newKeySet();
 
     /**
      * The budget of the drop line. A client invents the channel ids, so this one is shared by every
@@ -117,9 +125,9 @@ final class PluginChannelRouter {
      * @param pluginId the owning plugin
      * @param name     the channel name, with or without the owning namespace
      * @param handler  the inbound handler
-     * @return the resolved channel id
+     * @return the resolved channel id, null when the plugin is already taken back and the channel is dropped
      */
-    String register(String pluginId, String name, PayloadHandler handler) {
+    @Nullable String register(String pluginId, String name, PayloadHandler handler) {
         return register(pluginId, name, handler, false);
     }
 
@@ -131,24 +139,33 @@ final class PluginChannelRouter {
      * @param handler              the inbound handler
      * @param configurationAllowed whether the handler also gets the payloads of a connection that is not
      *                             in the play state
-     * @return the resolved channel id
+     * @return the resolved channel id, null when the plugin is already taken back and the channel is dropped
      */
-    String register(String pluginId, String name, PayloadHandler handler, boolean configurationAllowed) {
+    @Nullable String register(String pluginId, String name, PayloadHandler handler, boolean configurationAllowed) {
         final String channelId = channelId(pluginId, name);
-        final Registration previous = registrations.putIfAbsent(channelId,
-                new Registration(pluginId, handler, new LogBudget(LOGGER, "failures"), configurationAllowed));
+        final Registration registration =
+                new Registration(pluginId, handler, new LogBudget(LOGGER, "failures"), configurationAllowed);
+        final Registration previous = registrations.putIfAbsent(channelId, registration);
         if (previous != null)
             throw new IllegalStateException("Channel " + channelId + " is already registered by plugin_id="
                     + previous.pluginId());
+        // Read once the registration is in: unregisterAll marks the plugin before it sweeps, so either
+        // the sweep finds this registration or this finds the mark
+        if (takenBack.contains(pluginId)) {
+            registrations.remove(channelId, registration);
+            return null;
+        }
         return channelId;
     }
 
     /**
-     * Drops every channel of one plugin, part of the one shot teardown of REQ-M2-004.
+     * Drops every channel of one plugin, part of the one shot teardown of REQ-M2-004; a channel it
+     * registers afterwards is dropped as well.
      *
      * @param pluginId the plugin being disabled
      */
     void unregisterAll(String pluginId) {
+        takenBack.add(pluginId);
         registrations.values().removeIf(registration -> registration.pluginId().equals(pluginId));
     }
 

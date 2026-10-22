@@ -255,9 +255,9 @@ class RushPluginIntegrationTest {
     }
 
     /**
-     * §23: the host builds every plugin on its classpath before the whitelist picks the ones to enable,
-     * so a classpath with the rush jar and without the play kit fails discovery itself, the way
-     * {@code PluginHost.discover()} runs it, whatever {@code synaxis.app.plugins} says.
+     * §23: the host builds every plugin on its classpath before the whitelist picks the ones to enable, so a classpath
+     * with the rush jar and without the play kit fails discovery whatever {@code synaxis.app.plugins} says: the
+     * {@code ServiceLoader} step of {@code PluginHost.discover()} throws, which the host turns into a refused start.
      */
     @Test
     void discoveringRushNeedsThePlayKitOnTheClasspath() throws IOException {
@@ -296,8 +296,8 @@ class RushPluginIntegrationTest {
     }
 
     /**
-     * What {@code PluginHost.discover()} does, in a loader of its own: every provider on the classpath
-     * is built.
+     * The {@code ServiceLoader} step of {@code PluginHost.discover()}, in a loader of its own and
+     * without the host's wrapping of its failure: every provider on the classpath is built.
      */
     private static List<String> discover(ClassLoader loader) {
         final Class<?> service;

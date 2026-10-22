@@ -26,6 +26,7 @@ import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static io.github.bearisbug.synaxis.app.command.GmCommands.accountOf;
 import static io.github.bearisbug.synaxis.app.command.GmCommands.record;
 import static io.github.bearisbug.synaxis.app.command.GmCommands.reply;
 
@@ -52,8 +53,6 @@ public final class ModerationCommands {
     /** The node that lets a player change the whitelist. */
     public static final String WHITELIST_NODE = "gm.whitelist";
 
-    private static final Pattern UUID_TEXT =
-            Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
     private static final Pattern DURATION = Pattern.compile("([1-9][0-9]{0,5})([mhd])");
 
     private final ServerProcess process;
@@ -191,7 +190,7 @@ public final class ModerationCommands {
     }
 
     private Outcome whitelist(CommandSender sender, String accountText, boolean listed) {
-        final UUID account = account(accountText);
+        final UUID account = accountOf(process.connection(), accountText);
         if (account == null) {
             reply(sender, "synaxis:moderation-no-target", "No online player, uuid or address %s", accountText);
             return new Outcome("no_target", null);
@@ -215,14 +214,8 @@ public final class ModerationCommands {
                 return null;
             }
         }
-        final UUID account = account(text);
+        final UUID account = accountOf(process.connection(), text);
         return account == null ? null : new BanTarget.ByUuid(account);
-    }
-
-    private @Nullable UUID account(String text) {
-        if (UUID_TEXT.matcher(text).matches()) return UUID.fromString(text);
-        final Player online = process.connection().getOnlinePlayerByUsername(text);
-        return online == null ? null : online.getUuid();
     }
 
     private static UUID operator(CommandSender sender) {

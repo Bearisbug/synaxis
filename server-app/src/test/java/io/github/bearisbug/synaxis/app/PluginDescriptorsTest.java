@@ -1,7 +1,9 @@
 package io.github.bearisbug.synaxis.app;
 
 import io.github.bearisbug.synaxis.plugin.PluginApi;
+import io.github.bearisbug.synaxis.plugin.PluginContext;
 import io.github.bearisbug.synaxis.plugin.PluginDescriptor;
+import io.github.bearisbug.synaxis.plugin.SynaxisPlugin;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -16,34 +18,48 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class PluginDescriptorsTest {
 
-    private static PluginDescriptor descriptor(String id) {
-        return new PluginDescriptor(id, "1.0.0", PluginApi.API_VERSION);
+    private static SynaxisPlugin withId(String id) {
+        return plugin(new PluginDescriptor(id, "1.0.0", PluginApi.API_VERSION));
+    }
+
+    private static SynaxisPlugin plugin(PluginDescriptor descriptor) {
+        return new SynaxisPlugin() {
+            @Override
+            public PluginDescriptor descriptor() {
+                return descriptor;
+            }
+
+            @Override
+            public void onEnable(PluginContext ctx) {
+                // Never enabled
+            }
+        };
     }
 
     @Test
     void acceptsALegalId() {
-        assertDoesNotThrow(() -> PluginDescriptors.validate(descriptor("probe-plugin")));
+        assertDoesNotThrow(() -> PluginDescriptors.validate(withId("probe-plugin")));
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"Synaxis RTS", "", "-probe", "probe.plugin", "PROBE"})
     void rejectsAnIdOutsideThePattern(String id) {
         final IllegalArgumentException thrown =
-                assertThrows(IllegalArgumentException.class, () -> PluginDescriptors.validate(descriptor(id)));
+                assertThrows(IllegalArgumentException.class, () -> PluginDescriptors.validate(withId(id)));
         assertTrue(thrown.getMessage().contains(PluginDescriptors.ID_PATTERN), thrown.getMessage());
     }
 
     @Test
     void rejectsAnIdOverSixtyFourCharacters() {
         assertThrows(IllegalArgumentException.class,
-                () -> PluginDescriptors.validate(descriptor("a".repeat(65))));
-        assertDoesNotThrow(() -> PluginDescriptors.validate(descriptor("a".repeat(64))));
+                () -> PluginDescriptors.validate(withId("a".repeat(65))));
+        assertDoesNotThrow(() -> PluginDescriptors.validate(withId("a".repeat(64))));
     }
 
     @Test
     void rejectsTheReservedHostId() {
         final IllegalArgumentException thrown =
-                assertThrows(IllegalArgumentException.class, () -> PluginDescriptors.validate(descriptor("synaxis")));
+                assertThrows(IllegalArgumentException.class, () -> PluginDescriptors.validate(withId("synaxis")));
         assertTrue(thrown.getMessage().contains("reserved"), thrown.getMessage());
     }
 
@@ -51,7 +67,7 @@ class PluginDescriptorsTest {
     @ValueSource(ints = {1, 3})
     void rejectsAnApiVersionThatIsNotTheHostOne(int apiVersion) {
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
-                () -> PluginDescriptors.validate(new PluginDescriptor("probe", "1.0.0", apiVersion)));
+                () -> PluginDescriptors.validate(plugin(new PluginDescriptor("probe", "1.0.0", apiVersion))));
         assertTrue(thrown.getMessage().contains(String.valueOf(PluginApi.API_VERSION)), thrown.getMessage());
         assertTrue(thrown.getMessage().contains(String.valueOf(apiVersion)), thrown.getMessage());
     }

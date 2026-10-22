@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.app;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.plugin.PayloadHandler;
 import io.github.bearisbug.synaxis.plugin.PluginChannels;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,8 +19,8 @@ record PluginChannelsImpl(String pluginId, PluginChannelRouter router) implement
 
     @Override
     public void register(String name, PayloadHandler handler) {
-        final String channelId = router.register(pluginId, name, handler);
-        LOGGER.info("Registered channel: plugin_id={} channel={}", pluginId, channelId);
+        final @Nullable String channelId = router.register(pluginId, name, handler);
+        if (channelId != null) LOGGER.info("Registered channel: plugin_id={} channel={}", pluginId, channelId);
     }
 
     @Override

@@ -7,7 +7,9 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiPredicate;
 
 /**
@@ -25,6 +27,9 @@ final class TabListSlot {
     private final ConnectionManager connections;
     private final LogBudget failures = new LogBudget(LOGGER, "tab list visibility failures");
     private @Nullable String owner;
+    // Guarded by this: the plugins already taken back, whose visibility set afterwards, from a thread
+    // they left running, would stay with nothing to take it back
+    private final Set<String> takenBack = new HashSet<>();
 
     TabListSlot(ConnectionManager connections) {
         this.connections = connections;
@@ -32,6 +37,7 @@ final class TabListSlot {
 
     synchronized void set(String pluginId, BiPredicate<Player, Player> visibility) {
         Objects.requireNonNull(visibility, "visibility");
+        if (takenBack.contains(pluginId)) return;
         final String current = this.owner;
         if (current != null && !current.equals(pluginId))
             throw new IllegalStateException("The process has one tab list visibility: plugin_id=" + pluginId
@@ -49,11 +55,13 @@ final class TabListSlot {
     }
 
     /**
-     * Drops the visibility if the plugin being disabled set it; everyone is listed again.
+     * Drops the visibility if the plugin being disabled set it; everyone is listed again. A visibility
+     * the plugin sets afterwards is dropped.
      *
      * @param pluginId the plugin being disabled
      */
     synchronized void unregister(String pluginId) {
+        takenBack.add(pluginId);
         if (!pluginId.equals(owner)) return;
         this.owner = null;
         connections.setTabListVisibility(null);

@@ -47,12 +47,12 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Security review 2026-10, surface 3 ① ({@code docs/research/security-review-2026-10/README.md} §5 row 3): the
- * gates, the shard service, the ticket issuer and the player store of a shard wired as {@code Main#serveMap} wires
- * them, on 4 grid tick threads, a store without a database. The heartbeat reads are held by the test, so that two
- * sends of one player reach {@code PlayerStore#transferOut} from two threads at once, or never answer. A read of
- * the heartbeats of a region answers the walks in of a second ({@code docs/DESIGN-M3.md} {@code REQ-M3-033}): the
- * two tests that count the reads wait 1,000 ms after a read was done before the next walk in.
+ * Two sends of one player at once on a shard: the gates, the shard service, the ticket issuer and the player store of a
+ * shard wired as {@code Main#serveMap} wires them, on 4 grid tick threads, a store without a database. The heartbeat
+ * reads are held by the test, so that two sends of one player reach {@code PlayerStore#transferOut} from two threads at
+ * once, or never answer. A read of the heartbeats of a region answers the walks in of a second
+ * ({@code docs/DESIGN-M3.md} {@code REQ-M3-033}): the two tests that count the reads wait 1,000 ms after a read was
+ * done before the next walk in.
  */
 class ShardGatesRaceTest {
 

@@ -47,13 +47,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Security review 2026-10, surface 1 (movement and block authority on a map shard), as regression tests
- * ({@code docs/DESIGN-M3.md} {@code REQ-M3-029}, M3-S): what one modified survival client gets past the
- * engine listeners on a mounted map. The packets go through the player's packet queue and a tick, as the
- * engine takes them; the map is the baked fixture mounted as {@code Main} mounts a map shard without a
- * directory, view distance 12 as {@code ShardMain} sets. The tests assert outcomes only: the position, the
- * block, the overlay and the transfers. The moves are judged by the engine (DESIGN-PROD v0.9.47, the handoffs
- * ①② of the M3 v0.38 row of §28.2): until those are in, the two tests that move are red.
+ * Movement and block authority on a map shard ({@code docs/DESIGN-M3.md} {@code REQ-M3-029}): what one modified
+ * survival client gets past the engine listeners on a mounted map. The packets go through the player's packet queue and
+ * a tick, as the engine takes them; the map is the baked fixture mounted as {@code Main} mounts a map shard without a
+ * directory, view distance 12 as {@code ShardMain} sets. The tests assert outcomes only: the position, the block, the
+ * overlay and the transfers. The moves are judged by the engine.
  */
 @Timeout(300)
 public class MapShardPlayerAuthorityTest {

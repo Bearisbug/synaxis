@@ -8,14 +8,14 @@ import java.util.Map;
 import java.util.function.UnaryOperator;
 
 /**
- * The launcher of an MMO shard: the server application of {@link Main} with the shard defaults on
+ * The launcher of a shard: the server application of {@link Main} with the shard defaults on
  * top ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-020}, {@code API-PROD-016};
  * {@code docs/DESIGN-M3.md} {@code API-M3-006}). The chunks are spread over the tick threads by
  * cells of the grid, and the shard takes all cores but two for them, leaving those to the tick
  * scheduler, the network carriers and the GC. A player sees 12 chunks, is sent at most 4 of them a
  * tick and is shown at most 100 entities. A shard storing in PostgreSQL takes transfers; one storing
- * in memory does not, as {@link Main} refuses to take them there. The RTS process is launched
- * through {@link Main} and keeps the engine defaults, the counter and one tick thread. A shard given
+ * in memory does not, as {@link Main} refuses to take them there. A process launched through
+ * {@link Main} keeps the engine defaults, the counter and one tick thread. A shard given
  * {@code synaxis.map.root} and {@code synaxis.map.build} mounts that map release, loads no plugin and
  * leaves the terrain to the map, which only this launcher does. The connection gate of a shard holds
  * 3 sockets a seat of its capacity and lets 5 players into the game a tick ({@code API-PROD-003}).
@@ -126,8 +126,8 @@ public final class ShardMain {
     /**
      * Returns the defaults of a shard mounting a map ({@code docs/DESIGN-M3.md} {@code API-M3-006}), both
      * map keys given, each of the two only when the command line and {@code synaxis.properties} left it
-     * out: {@code synaxis.app.core-mode=on} and {@code synaxis.world-writable=false} (M3-S,
-     * {@code REQ-M3-029}: players do not change the terrain of a map shard). A map shard loads no plugin;
+     * out: {@code synaxis.app.core-mode=on} and {@code synaxis.world-writable=false}
+     * ({@code REQ-M3-029}: players do not change the terrain of a map shard). A map shard loads no plugin;
      * {@link Main} refuses one given another core mode, and one given a single map key.
      *
      * @param properties the system properties already set

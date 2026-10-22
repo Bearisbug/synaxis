@@ -45,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * {@code docs/DESIGN-M3.md} {@code API-M3-002} 文件信任 on a shard, M3-S ({@code REQ-M3-031}): who may have
+ * {@code docs/DESIGN-M3.md} {@code API-M3-002} 文件信任 on a shard ({@code REQ-M3-031}): who may have
  * written the files of a release and of the overlay before the shard reads them, the manifest and
  * {@code shards.json} read once on one channel after their size, and the region files read through the
  * one mapping the start-up check made.

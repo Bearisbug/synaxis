@@ -123,7 +123,7 @@ tasks.named<Test>("test") {
         layout.settingsDirectory.dir("protocol/src/test/resources/play-vectors/component").asFile))
 }
 
-// The light fixture of M3-D (docs/DESIGN-M3.md §26 step 4) runs on the test runtime classpath, which
+// The light fixture (docs/DESIGN-M3.md §26 step 4) runs on the test runtime classpath, which
 // this writes as a java argument file: `java @server-app/build/light-fixture.args … LightShardFixture`
 // starts it without a Gradle process kept alive beside it.
 tasks.register("lightFixtureArgs") {

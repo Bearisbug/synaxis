@@ -17,8 +17,8 @@ import java.util.concurrent.TimeUnit;
 final class ActionGate {
 
     /**
-     * The most actions a connection may send in one whole second window, the client's own budget
-     * ({@code RtsClient.BUDGET_PER_SECOND}).
+     * The most actions a connection may send in one whole second window, the action budget of
+     * {@code synaxis:play}.
      */
     static final int PER_SECOND = 10;
 

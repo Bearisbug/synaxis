@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The runtime light of a map shard assembled as {@code Main} assembles it ({@code docs/DESIGN-M3.md}
- * §19, the server-app entry of M3-D; {@code REQ-M3-012}): the shutdown step {@code relight} before
+ * §19; {@code REQ-M3-012}): the shutdown step {@code relight} before
  * {@code overlay}, and the light counters of {@code EVT:chunk_stream_stats}.
  */
 @Timeout(60)

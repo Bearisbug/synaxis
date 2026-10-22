@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * The gates send only a player that is online here ({@code docs/DESIGN-M3.md} {@code API-M3-010},
- * {@code REQ-M3-017}; security review B-01): a walk into a frame by a player the player store does
+ * {@code REQ-M3-017}): a walk into a frame by a player the player store does
  * not have {@code online} (saving, in transit, still loading, or from the shutdown save on) asks
  * the shard service nothing, so no heartbeat is read, and writes no {@code EVT:transfer_refused}.
  */

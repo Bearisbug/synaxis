@@ -138,21 +138,24 @@ public final class Main {
     private static final AtomicBoolean JUDGED_DEAD = new AtomicBoolean();
 
     /**
-     * The world height of §9, and the only one M2 has: the single shallow dimension type is built
-     * from it, and a map preset taller than this is refused by the match that submits it.
+     * The world height of §9: the single shallow dimension type is built from it, 64 blocks from y 0,
+     * so the core world and every instance a plugin builds on that type are this tall. A plugin that
+     * needs to know reads the height of the registered type.
      */
     private static final int MATCH_WORLD_HEIGHT = 64;
 
     /**
-     * The process wide half of the view range contract of {@code docs/DESIGN-M2.md} §15: the RTS
-     * camera looks at far more of the world than a first person player does, and the engine
-     * defaults are nowhere near it. Two of the three freeze early — the entity view distance is
-     * baked into the entity tracker when an instance is constructed, and the whole configuration is
-     * read once while the process is created — so they are applied here, before anything else.
+     * The process wide half of the view range contract of {@code docs/DESIGN-M2.md} §15, the view
+     * range the host serves unless the operator says otherwise: an entity view distance of 8 and a
+     * chunk view distance of 10 instead of the engine's defaults. The world border and memory estimate
+     * of the core world and the load test baselines are measured with these values. Two of the three
+     * freeze early — the entity view distance is baked into the entity tracker when an instance is
+     * constructed, and the whole configuration is read once while the process is created — so they are
+     * applied here, before anything else.
      * <p>
      * The chunk update limiter is off rather than tuned: it swallows a chunk update for a chunk it
-     * has seen in its last five calls, which is exactly what pushing an RTS camera back and forth
-     * across a chunk border does (see {@code ADR-M2-013}).
+     * has seen in its last five calls, which is what a view moved back and forth across a chunk
+     * border asks for (see {@code ADR-M2-013}).
      * <p>
      * A value the operator passed on the command line wins, so that one of them can still be taken
      * out of the picture while diagnosing.
@@ -279,8 +282,8 @@ public final class Main {
         final @Nullable DirectoryMode directoryMode = directory == null || arrivals == null || map == null ? null
                 : DirectoryMode.build(directory, arrivals, store, map.settings(), process);
         // The engine takes one participant: the players save first, then the steps registered on
-        // this before the start, in their order (docs/DESIGN-PROD.md API-PROD-007). The RTS path
-        // registers none, so the save phase is the player store's alone; a map shard registers the
+        // this before the start, in their order (docs/DESIGN-PROD.md API-PROD-007). Without a map
+        // none is registered, so the save phase is the player store's alone; a map shard registers the
         // final flush of its overlay store in step (5).
         final ShutdownSequence shutdown = new ShutdownSequence(process, store.store());
         process.setShutdownParticipant(shutdown);
@@ -933,7 +936,7 @@ public final class Main {
                     + "a player.");
         if (matches != 1)
             LOGGER.error("No running match: a plugin has to build one and register it before the port opens, "
-                    + "and M2 expects exactly one (found {}).", matches);
+                    + "and the gameplay mode takes exactly one (found {}).", matches);
         LOGGER.error("Not binding {}:{}.", BIND_ADDRESS, port);
         ledger.close();
         System.exit(1);

@@ -452,7 +452,7 @@ public final class ShardWorld {
         this.loader = loader;
         this.flags = flags;
 
-        // Built as createInstanceContainer builds one, counting the chunks asked for outside view_bounds (M3-S)
+        // Built as createInstanceContainer builds one, counting the chunks asked for outside view_bounds
         final ShardInstance instance = new ShardInstance(process, dimensionType, loader, viewBounds(bounds));
         process.instance().registerInstance(instance);
         this.instance = instance;
@@ -636,7 +636,7 @@ public final class ShardWorld {
      * {@code EVT:chunk_stream_stats} ({@code docs/DESIGN-M3.md} §20): the counters as the difference
      * of two readings, the current values and the window maxima as read.
      *
-     * @param voidChunks the requests for a chunk outside {@code view_bounds} between the two readings (M3-S)
+     * @param voidChunks the requests for a chunk outside {@code view_bounds} between the two readings
      */
     static Map<String, Object> streamStats(SynxStreamStats before, SynxStreamStats now, OverlayStats overlayBefore,
                                            OverlayStats overlayNow, RelightStats relightBefore, RelightStats relightNow,

@@ -166,7 +166,7 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
 
     /**
      * {@link #load(Path, String)} on a channel of the file: its size is compared with {@value #MAX_BYTES}
-     * before a byte is read, and no more is read than one byte past it (M3-S).
+     * before a byte is read, and no more is read than one byte past it.
      *
      * @param absolute the file, for the messages
      * @throws IOException if the channel cannot be read, or the file is not UTF-8

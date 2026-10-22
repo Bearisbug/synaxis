@@ -39,9 +39,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A frozen player's pickup and drop reach every plugin listener already cancelled, in every scope
- * ({@code docs/DESIGN-PROD.md} {@code API-PROD-005}; security review 2026-10 S3-V01, the probe of commit
- * {@code 7062cfecd2}). A listener that honours cancels and runs before the freeze would hand the stack over, and
- * the freeze would then cancel the pickup: the item stays on the ground and the next save takes the copy.
+ * ({@code docs/DESIGN-PROD.md} {@code API-PROD-005}). A listener that honours cancels and runs before the freeze would
+ * hand the stack over, and the freeze would then cancel the pickup: the item stays on the ground and the next save
+ * takes the copy.
  * <p>
  * One plugin listens at every priority in the global scope and in the instance scope, on the player's own node
  * (the entity scope, reached through the engine) and on the root node itself, all of them with

@@ -20,7 +20,7 @@ public class ShardArchitectureTest {
     private static ArchRule leavesLightingChunkAlone() {
         return noClasses().that().resideInAPackage("io.github.bearisbug.synaxis.app.shard..")
                 .should().dependOnClassesThat().haveFullyQualifiedName("io.github.bearisbug.synaxis.instance.LightingChunk")
-                .because("MMO instances take their light from the baker, not from LightingChunk (docs/DESIGN-M3.md §5 ①)");
+                .because("map shard instances take their light from the baker, not from LightingChunk (docs/DESIGN-M3.md §5 ①)");
     }
 
     private static JavaClasses shardClasses() {

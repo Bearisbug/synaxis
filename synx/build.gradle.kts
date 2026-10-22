@@ -15,11 +15,8 @@ dependencies {
 
     testImplementation(project(":testing"))
     // The integration tests of SynxChunkLoader run on a map the real baker bakes, and read the log
-    // lines the loader writes for broken records and skipped entities. Without the baker's runtime
-    // :game-rts: its data marker services would take the keys SynxHandlersTest registers its own under
-    testImplementation(project(":baker")) {
-        exclude(group = "io.github.bearisbug.synaxis", module = "game-rts")
-    }
+    // lines the loader writes for broken records and skipped entities
+    testImplementation(project(":baker"))
     testImplementation(libs.bundles.logback)
 }
 

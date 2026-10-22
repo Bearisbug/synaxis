@@ -14,10 +14,6 @@ dependencies {
     implementation(project(":protocol"))
     // GeneratorImpl.GenSection#specials is a fastutil map
     implementation(libs.fastutil)
-
-    // The M2 generator presets (generator:rts-512:<seed>), found through ServiceLoader: the baker never
-    // compiles against a game module (§6)
-    runtimeOnly(project(":game-rts"))
 }
 
 application {

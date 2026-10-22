@@ -36,8 +36,8 @@ import java.util.regex.Pattern;
 
 /**
  * Offline, read-only reader of a vanilla 26.2 Anvil save, the baker's edit source ({@code docs/DESIGN-M3.md}
- * REQ-M3-020, API-M3-003). Revived from the engine's {@code AnvilLoader} and {@code RegionFile} as they
- * stood before {@code 74592d8fdf}, with the write path, the instance plumbing and the pre-26.1 layout left
+ * REQ-M3-020, API-M3-003). Revived from the {@code AnvilLoader} and {@code RegionFile} the engine inherited
+ * from Minestom and later removed, with the write path, the instance plumbing and the pre-26.1 layout left
  * behind.
  * <p>
  * A dimension lives in {@code <world>/dimensions/<namespace>/<path>/}; blocks come from its {@code region/},

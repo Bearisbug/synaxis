@@ -37,10 +37,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Security review 2026-10 (surface 2): the readers of a map release and of segment ③ against
- * malformed bytes. A broken index entry or segment table has to come back as {@link SynxSlot.Failed}, a
- * record the loader cannot place loads as failed, and every length is held to its cap before anything is
- * allocated for it (M3-S, {@code API-M3-001} 长度上限). The failed loads name the file they read, or miss.
+ * The readers of a map release and of segment ③ against malformed bytes. A broken index entry or segment table
+ * has to come back as {@link SynxSlot.Failed}, a record the loader cannot place loads as failed, and every length
+ * is held to its cap before anything is allocated for it (M3-S, {@code API-M3-001} 长度上限). The failed loads
+ * name the file they read, or miss.
  */
 public class SynxParserBoundaryTest {
 

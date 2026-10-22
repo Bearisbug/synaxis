@@ -523,7 +523,7 @@ class HandshakeIntegrationTest {
         host.registerHostAdmission(_ -> new Admission.Accept(match));
         host.requireHandshake();
         // This thread interprets the hello, and whatever it writes waits for the configuration thread
-        // it wakes to finish the phase: the schedule of GitHub Actions run 36459937261, made certain
+        // it wakes to finish the phase: the schedule where that thread finishes first, made certain
         wire.holdUntilFinished(Thread.currentThread());
 
         assertNull(configure(env, player, hello(7, ProtocolSchema.SCHEMA_VERSION)),

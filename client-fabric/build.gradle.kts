@@ -7,14 +7,14 @@ plugins {
 group = "io.github.bearisbug.synaxis.game"
 
 // The mod version is what players see in the mod list, so it stays SemVer; the engine's own
-// version scheme (`dev` unless GAME_ENGINE_VERSION says otherwise) is what :protocol is published
+// version scheme (`dev` unless SYNAXIS_VERSION says otherwise) is what :protocol is published
 // under and is read separately below.
 version = "0.1.0"
 
 val minecraftVersion = "26.2"
 val loaderVersion = "0.19.5"
 val fabricApiVersion = "0.161.0+26.2"
-val protocolVersion = System.getenv("GAME_ENGINE_VERSION") ?: "dev"
+val protocolVersion = System.getenv("SYNAXIS_VERSION") ?: "dev"
 
 repositories {
     // :protocol comes from the engine build's publishToMavenLocal (ADR-M2-015). That is the only

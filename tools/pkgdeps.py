@@ -13,8 +13,8 @@ root and drop the lower layer report for the modules that have no such layering:
 
     python3 tools/pkgdeps.py                 # the engine: matrix + lower layer report
     python3 tools/pkgdeps.py --detail        # also list the offending files
-    python3 tools/pkgdeps.py game-rts/src/main/java \
-        --root-package io.github.bearisbug.synaxis.game.rts --skip-lower-layer
+    python3 tools/pkgdeps.py server-app/src/main/java \
+        --root-package io.github.bearisbug.synaxis.app --skip-lower-layer
 
 The lower layer is the same set the ArchUnit rule in
 ``src/test/java/io/github/bearisbug/synaxis/ArchitectureTest.java`` enforces; keep the two in

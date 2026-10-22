@@ -23,7 +23,7 @@ $BACKUP_ROOT/
 
 `$BACKUP_ROOT` 不能和数据目录在同一块盘上。生产上挂单独的卷，再由主机侧每分钟把 `wal/` 与 `base/` 同步到另一台机器或机房对象存储：整台数据库机器丢失时，恢复点是「60 s 切段 + 至多 60 s 同步间隔」，仍在 5 分钟之内。远端是本地的镜像，本地的删除只来自 `base-backup.sh` 的保留规则。
 
-## 1. 安装与开归档（内测开放当天做，`REQ-PROD-035`）
+## 1. 安装与开归档（开服前做，`REQ-PROD-035`）
 
 1. 以 `postgres` 用户把本目录的五个脚本拷到 `$BACKUP_ROOT/bin/` 并 `chmod +x`；`$BACKUP_ROOT` 属主是 `postgres`。
 2. `BACKUP_ROOT=/backup /backup/bin/enable-wal-archive.sh`。输出四行 `pending_restart`，`archive_mode` 那行是 `true`。
@@ -31,7 +31,7 @@ $BACKUP_ROOT/
 4. 验证：`psql -Atc "SELECT pg_walfile_name(pg_switch_wal())"`，2 s 内 `$BACKUP_ROOT/wal/` 出现同名 `.gz`，`pg_stat_archiver.failed_count` 为 0。
 5. 立即做第一份基础备份：`BACKUP_CHECKPOINT=fast /backup/bin/base-backup.sh`。没有基础备份时归档的 WAL 无从回放，`check-archive.sh` 也会一直告警。
 
-恢复点：提交在 `archive_timeout`（60 s）之内被切进一个已完成的段，归档本身在秒级完成，所以正常情况下提交后可恢复的上限是 60 s 加一次压缩的时间（`TC-PROD-191` 两次实测 27 s 与 57.5 s）；归档失败时由 `check-archive.sh` 在 WAL 等待满 300 s 时告警，两者合起来守住 5 分钟。
+恢复点：提交在 `archive_timeout`（60 s）之内被切进一个已完成的段，归档本身在秒级完成，所以正常情况下提交后可恢复的上限是 60 s 加一次压缩的时间；归档失败时由 `check-archive.sh` 在 WAL 等待满 300 s 时告警，两者合起来守住 5 分钟。
 
 ## 2. 定时任务
 

@@ -86,7 +86,10 @@ public final class PacketFlood {
     private static final int PROTOCOL_VERSION = 776;
     private static final String ECHO_CHANNEL = "synaxis:main";
     private static final String HANDSHAKE_CHANNEL = "synaxis:handshake";
-    /** C2S_HELLO of API-M2-002; the mod version the tool announces is the only one M2 defines. */
+    /**
+     * C2S_HELLO of API-M2-002; the mod version the tool announces is the only one the handshake
+     * defines.
+     */
     private static final int C2S_HELLO = 0x01;
     private static final int MOD_VERSION = 1;
     private static final double FLOOR_Y = 40.0;
